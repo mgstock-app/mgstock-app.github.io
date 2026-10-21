@@ -89,10 +89,10 @@ create policy "docs_leer" on public.docs for select to authenticated
     (col = 'locales' and public.es_miembro())
     or (col = 'equipo' and public.es_miembro() and (
           public.mi_rol() in ('creadora', 'dueno')
-          or lower(data ->> 'email') = lower(coalesce(auth.jwt() ->> 'email', ''))
+          or lower(data ->> 'email') = lower(coalesce((select auth.jwt()) ->> 'email', ''))
           or data ->> 'rol' in ('creadora', 'dueno')
           or public.comparte_local(data -> 'locales')))
-    or (col = 'solicitudes' and (public.es_creadora() or id = lower(coalesce(auth.jwt() ->> 'email', ''))))
+    or (col = 'solicitudes' and (public.es_creadora() or id = lower(coalesce((select auth.jwt()) ->> 'email', ''))))
     or (position('/' in col) > 0 and public.puede_ver_local(split_part(col, '/', 1)))
   );
 

@@ -45,6 +45,8 @@ async def main():
         ctx, pg, errs = await login(b, 'kmu15lopez@gmail.com', {'width': 1280, 'height': 860}, SETUP % (HOJA % '', ''))
         menu = await pg.evaluate("[...document.querySelectorAll('#snav [data-go]')].map(b => b.querySelector('.nl').textContent)")
         check('Stock Cajas' in menu and 'Pedido' not in menu, 'menú con Stock Cajas y sin Pedido: ' + str(menu))
+        check(await pg.locator('#view .kpis.k3').count() == 1 and await pg.locator('#view [data-go=pedido]').count() == 0, 'Inicio sin acceso a Pedido (quitada del menú)')
+        check(await pg.locator('#view [data-go=conteo]').count() >= 1, 'Inicio con Nuevo conteo (Conteo en el menú)')
         await click(pg, '#snav [data-go=h-cajas01]', 400)
         check(await pg.locator('#sg-tg[aria-checked=false]').count() == 1, 'interruptor Stock sugerido apagado en la hoja nueva')
         await click(pg, '[data-act=aj-open][data-tab=agregar]', 300)
@@ -111,7 +113,11 @@ async def main():
         check(not errs, 'sin errores (gerente): ' + str(errs)); await ctx.close()
 
         # Gerente con sugerido desactivado: solo carga el stock
-        ctx, pg, errs = await login(b, 'gerente.munro@example.com', {'width': 390, 'height': 844}, SETUP % (HOJA % ', sugerido: false', prods))
+        oculta = "window.__rows.push({col: 'munro/hojas', id: 'conteo', data: {oculta: true}});"
+        ctx, pg, errs = await login(b, 'gerente.munro@example.com', {'width': 390, 'height': 844}, SETUP % (HOJA % ', sugerido: false', prods + oculta))
+        cg = await pg.evaluate("[...document.querySelectorAll('#view [data-go=stock]')].map(b => b.textContent.trim())")
+        check(await pg.locator('#view [data-go=conteo], #view [data-go=pedido]').count() == 0 and 'Cargar stock' in cg, 'Inicio lleva a Stock si Conteo está quitada: ' + str(cg))
+        await pg.screenshot(path=OUT + 'cajas-7-inicio-celular.png')
         await click(pg, '#snav [data-go=h-cajas01]', 400)
         check(await pg.locator('.r-sug').count() == 0 and await pg.locator('#inc-c-1:not([disabled])').count() == 1, 'sin sugerido: el gerente solo carga el stock')
         await pg.screenshot(path=OUT + 'cajas-4-gerente-sin-sugerido.png')

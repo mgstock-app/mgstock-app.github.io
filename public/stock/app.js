@@ -380,22 +380,27 @@ V.inicio = () => {
   const ped = pedidoItems().length, last = lastStock(), flagged = ps.filter(p => estado(p) === 'sin');
   const pct = k => n ? Math.max(cnt[k] / n * 100, cnt[k] ? 1.5 : 0) : 0;
   const ncats = cats();
+  /* Los accesos de Inicio llevan solo a hojas que están en el menú */
+  const vis = id => visibles().some(h => h.id === id), pedV = vis('pedido');
+  const cg = vis('conteo') ? 'conteo' : vis('stock') ? 'stock' : '';
+  const cgB = (cls, txt) => cg ? `<button class="${cls}" data-go="${cg}">${txt}</button>` : '';
+  const cgL = cg === 'conteo' ? 'Nuevo conteo' : 'Cargar stock';
   const catRows = ncats.map(([c, total]) => { const it = ps.filter(p => catOf(p) === c); const cont = it.filter(p => estado(p) !== 'nc').length; return {c, total, cont, sin:it.filter(p => estado(p) === 'sin').length}; });
   const lastCard = last
-    ? `<div class="lc"><span class="big">${esc(fechaHora(last.fecha))}</span><small>${esc(whoName(last))} · ${plural((last.cambios||[]).length, 'cambio', 'cambios')} · ${rel(last.fecha)}</small><div class="bar-a"><button class="btn sm" data-go="historial">Ver historial</button><button class="btn sm primary" data-go="conteo">Nuevo conteo</button></div></div>`
-    : `<div class="lc"><span class="big">Sin conteos todavía</span><small>${S.loaded.c ? 'Cuando guardes el primero, aparece acá con fecha y hora.' : 'Cargando…'}</small><div class="bar-a"><button class="btn sm primary" data-go="conteo">Empezar a contar</button></div></div>`;
+    ? `<div class="lc"><span class="big">${esc(fechaHora(last.fecha))}</span><small>${esc(whoName(last))} · ${plural((last.cambios||[]).length, 'cambio', 'cambios')} · ${rel(last.fecha)}</small><div class="bar-a"><button class="btn sm" data-go="historial">Ver historial</button>${cgB('btn sm primary', cgL)}</div></div>`
+    : `<div class="lc"><span class="big">Sin conteos todavía</span><small>${S.loaded.c ? 'Cuando guardes el primero, aparece acá con fecha y hora.' : 'Cargando…'}</small><div class="bar-a">${cgB('btn sm primary', cg === 'conteo' ? 'Empezar a contar' : 'Cargar stock')}</div></div>`;
   return `${banners()}
   <section class="hello">
     <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Estado de los ${n} productos en este momento, por categoría.</p></div>
-    <div class="bar-a"><button class="btn" data-act="share">${ic('userplus')}Equipo</button><button class="btn primary" data-go="conteo">${ic('clip')}Nuevo conteo</button></div>
+    <div class="bar-a"><button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
   ${S.loaded.p && !n ? `<div class="onb"><b>Primer paso: cargá los productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div></div>` : ''}
-  <div class="kpis">
+  <div class="kpis${pedV ? '' : ' k3'}">
     <button class="kpi" data-act="kpi" data-k="todos" style="--kc:var(--accent)"><span class="k-l"><i></i>Productos</span><span class="k-v">${n}</span><span class="k-s">en ${plural(ncats.length, 'categoría', 'categorías')}</span></button>
     <button class="kpi" data-act="kpi" data-k="sin" style="--kc:var(--crit)"><span class="k-l"><i></i>Sin stock</span><span class="k-v" style="color:var(--crit)">${cnt.sin}</span><span class="k-s">tildados o en cero</span></button>
     <button class="kpi" data-act="kpi" data-k="nc" style="--kc:var(--nc)"><span class="k-l"><i></i>Sin contar</span><span class="k-v">${cnt.nc}</span><span class="k-s">todavía sin cantidad</span></button>
-    <button class="kpi" data-go="pedido" style="--kc:var(--spark)"><span class="k-l"><i></i>A pedir</span><span class="k-v">${ped}</span><span class="k-s">sin stock o bajo mínimo</span></button>
+    ${pedV ? `<button class="kpi" data-go="pedido" style="--kc:var(--spark)"><span class="k-l"><i></i>A pedir</span><span class="k-v">${ped}</span><span class="k-s">sin stock o bajo mínimo</span></button>` : ''}
   </div>
   <div class="dash">
     <div class="col">
