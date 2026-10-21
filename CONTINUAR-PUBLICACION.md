@@ -42,14 +42,17 @@
 - Web publicada: todos los archivos 200, sin errores en consola, service worker activo con ámbito `/` y caché propia `mgstock:/:…`, enlace de invitación en Equipo = `https://mgstock-app.github.io/`, sin email personal en pantalla.
 - Recorrido con sesión de administradora (solo mirando): Locales, Inicio, Stock (33 productos), Conteo, Conteo Fábrica, Pedido e Historial abren sin errores; barra "Sin cambios".
 - Celular (vista 375 px): ingreso, Stock y privacidad sin desplazamiento horizontal.
-- Google: vuelve a `https://mgstock-app.github.io/` con el cliente MGStock. Excel: la librería carga y genera .xlsx.
+- Google: vuelve a `https://mgstock-app.github.io/` con el cliente MGStock.
 - No se modificaron datos reales.
+
+## Cambios posteriores
+- 21/10, 12:50: se quitaron los botones de descarga en Excel de Stock, Conteo Fábrica, Pedido e Historial (pedido de la usuaria). Queda «Copia de seguridad» en Inicio. Pruebas de navegador (Playwright, 3 suites) en verde.
+- Video tutorial para gerentes (local Torcuato, 50 s, vertical): grabado sobre una copia local con datos de ejemplo; no se guarda en el repositorio.
 
 ## Pendientes
 1. Celulares físicos (iPhone Safari y Android Chrome): instalar, ingresar con Google, cerrar/reabrir, sin conexión y actualización de versión.
 2. Revisar los emails cargados en Equipo: una dirección Gmail con guion bajo (`_`) no puede existir en Gmail, y esa persona no va a poder entrar hasta corregirla.
 3. Recomendar ingreso con Google: los correos de confirmación por email salen por el servidor de Supabase, con límites bajos. Si hace falta, configurar SMTP propio.
-4. Hacer una descarga real de Excel desde la app y abrirla (generación ya verificada en el navegador).
-5. Opcional, pago: la pantalla de Google muestra "Ir a vgsepaaewbctjsjcpeta.supabase.co". Para mostrar un nombre propio hace falta un dominio personalizado de Supabase (complemento pago).
+4. Opcional, pago: la pantalla de Google muestra "Ir a vgsepaaewbctjsjcpeta.supabase.co". Para mostrar un nombre propio hace falta un dominio personalizado de Supabase (complemento pago).
 
 No hay porcentaje verificable de cuota disponible. Continuar en bloques cortos.
