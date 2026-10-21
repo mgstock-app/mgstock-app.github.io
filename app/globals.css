@@ -261,10 +261,11 @@ button.r-name:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .sg-in.bad{border-color:var(--crit);background:var(--crit-soft)}
 .sg-in.saved{border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
 .sg-d{font:600 11px/1.6 var(--f-num);padding:0 7px;border-radius:999px;white-space:nowrap}
-.sg-p{display:inline-flex;align-items:center;gap:4px;font:500 11px var(--f-body);color:var(--muted);white-space:nowrap}
-.sg-pin{width:46px;height:28px;padding:0 6px;border:1px solid var(--line-2);border-radius:7px;background:var(--surface);text-align:right;font:600 13px var(--f-num);color:var(--ink-2);transition:border-color .2s,box-shadow .2s}
-.sg-pin.bad{border-color:var(--crit);background:var(--crit-soft)}
-.sg-pin.saved{border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.sg-e{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border:1px solid var(--line-2);border-radius:7px;background:var(--surface);font:600 11.5px var(--f-body);color:var(--accent);white-space:nowrap}
+.sg-e svg{width:13px;height:13px}
+.sg-e:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.est-prev{display:flex;flex-wrap:wrap;gap:8px}
+#est-form input.bad{border-color:var(--crit);background:var(--crit-soft)}
 .sg-d.neg{background:var(--crit-soft);color:var(--crit)}.sg-d.pos{background:var(--exc-soft);color:var(--exc)}.sg-d.eq{background:var(--ok-soft);color:var(--ok)}
 .sheet.k-conteo{--cols:30px 56px minmax(0,1fr) 72px 238px 86px;--areas:"n ss name sys cnt dif"}
 .sheet.k-pedido{--cols:30px 56px minmax(0,1fr) 64px 64px 140px;--areas:"n ss name hay min ped"}
@@ -278,7 +279,7 @@ button.r-name:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .r-name .mo{display:block}
   .sheet.k-stock{--cols:54px minmax(0,1fr) auto;--areas:"ss name q" "ss st adj" "ss sug sug"}
   .r-sug{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
-  .sg-pin{width:52px;height:36px;font-size:16px}
+  .sg-e{height:36px;padding:0 10px;font-size:12.5px}
   .sg-l{display:inline;margin-right:auto;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .sg-in{width:76px;height:44px}
   .r-q .ql{display:block;font:600 10px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}

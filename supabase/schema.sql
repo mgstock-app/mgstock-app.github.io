@@ -152,7 +152,7 @@ language sql security invoker set search_path = public as $$
 $$;
 grant execute on function public.doc_update(text, text, jsonb) to authenticated;
 
--- Stock sugerido y umbral de poco stock: solo la administradora y el dueño los cambian.
+-- Stock sugerido y umbrales de poco stock y exceso: solo la administradora y el dueño los cambian.
 -- A cualquier otro rol se le conserva el valor anterior (no da error: el resto del cambio se guarda).
 create or replace function public.proteger_sugerido() returns trigger
 language plpgsql set search_path = public as $$
@@ -161,7 +161,7 @@ begin
   if split_part(new.col, '/', 2) = 'productos'
      and coalesce(auth.role(), '') = 'authenticated'
      and coalesce(public.mi_rol(), '') not in ('creadora', 'dueno') then
-    foreach k in array array['sugerido', 'poco'] loop
+    foreach k in array array['sugerido', 'poco', 'exceso'] loop
       if tg_op = 'INSERT' then
         new.data := new.data - k;
       elsif (new.data -> k) is distinct from (old.data -> k) then

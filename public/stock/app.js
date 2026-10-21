@@ -156,13 +156,20 @@ const sugOf = p => { const m = num(p.sugerido); return m != null && m >= 0 ? m :
 /* Poco stock: hasta cuánto se marca en amarillo. La dueña lo puede fijar; si no, es la mitad del sugerido */
 const pocoDef = p => { const s = sugOf(p); return s == null ? null : Math.floor(s) / 2; };
 const pocoOf = p => { const m = num(p.poco); return m != null && m >= 0 ? m : pocoDef(p); };
+/* Exceso: a partir de cuánto se marca en naranja. La dueña lo puede fijar; si no, es más que el sugerido */
+const excOf = p => { const m = num(p.exceso); return m != null && m >= 0 ? m : sugOf(p); };
+function rangoTxt(p){
+  if (sugOf(p) == null) return '';
+  const pc = pocoOf(p), ex = excOf(p);
+  return `Sin stock: 0 · Poco stock: hasta ${fmt(pc)} · Stock ideal: más de ${fmt(pc)} hasta ${fmt(ex)} · Exceso: más de ${fmt(ex)}`;
+}
 /* Estado en la hoja Stock: con sugerido cargado manda el sugerido; sin sugerido, el estado de siempre */
 function estadoSug(p){
   const s = sugOf(p); if (s == null) return estado(p);
   if (p.sinStock) return 'sin';
   const q = qty(p); if (q == null) return 'nc';
   if (q <= 0) return 'sin';
-  if (q > s) return 'exc';
+  if (q > excOf(p)) return 'exc';
   if (q <= pocoOf(p)) return 'poco';
   return 'ideal';
 }
@@ -420,7 +427,7 @@ V.inicio = () => {
 };
 
 V.stock = () => {
-  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, si querés, hasta cuánto es <b>poco stock</b> (vacío: la mitad).' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.'}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, con <b>Estados</b>, desde qué número aparece cada estado.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.'}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const base = sorted().filter(p => catOK(p) && qOK(p));
@@ -439,7 +446,7 @@ function rowStock(p){
     <span class="r-n">${S.rn.get(p.id) || ''}</span>
     <div class="r-ss">${ssBox(p,'ss')}</div>
     <button class="r-name" data-act="aj-item" data-id="${id}" title="Modificar en Ajustes"><b>${esc(p.nombre)}</b>${meta ? `<small>${meta}</small>` : ''}${p.obs ? `<small class="obs">${esc(p.obs)}</small>` : ''}</button>
-    <div class="r-st"><span class="st ${st}">${ESTADO[st]}</span></div>
+    <div class="r-st"><span class="st ${st}" ${sugOf(p) != null ? `title="${esc(rangoTxt(p))}"` : ''}>${ESTADO[st]}</span></div>
     <div class="r-q"><small class="ql">Local</small><span class="q">${fmt(q)}</span>${chg ? `<small>antes ${fmt(stockOf(p))}</small>` : ''}</div>
     <div class="r-adj"><div class="adj"><button class="out" id="dec-${id}" data-act="dec" data-id="${id}" aria-label="Restar 1 a ${esc(p.nombre)}" ${!(q > 0) || !canW() ? 'disabled' : ''}>−</button><button class="in" id="inc-${id}" data-act="inc" data-id="${id}" aria-label="Sumar 1 a ${esc(p.nombre)}" ${canW() ? '' : 'disabled'}>+</button></div></div>
     <div class="r-sug">${sugCell(p, q)}</div>
@@ -449,27 +456,50 @@ function sugCell(p, q){
   const s = sugOf(p), id = esc(p.id), edit = S.sgEdit && has(S.sgEdit, p.id) ? S.sgEdit[p.id] : null;
   const d = s != null && q != null ? round(q - s) : null;
   const dif = d == null ? '' : d < 0 ? `<small class="sg-d neg">faltan ${fmt(-d)}</small>` : d > 0 ? `<small class="sg-d pos">sobran ${fmt(d)}</small>` : `<small class="sg-d eq">justo</small>`;
-  const pe = S.sgEdit && has(S.sgEdit, 'p:' + p.id) ? S.sgEdit['p:' + p.id] : null, pd = pocoDef(p);
   const val = esTotal()
     ? `<input class="sg-in" id="sg-${id}" data-sg="${id}" inputmode="decimal" autocomplete="off" value="${esc(edit ?? fmtIn(s))}" placeholder="—" aria-label="Stock sugerido de ${esc(p.nombre)}">`
     : `<span class="q">${fmt(s)}</span>`;
-  const poco = esTotal() && s != null
-    ? `<label class="sg-p" title="Hasta este número se marca Poco stock. Vacío: la mitad del sugerido.">poco ≤<input class="sg-pin" id="sgp-${id}" data-sgp="${id}" inputmode="decimal" autocomplete="off" value="${esc(pe ?? fmtIn(num(p.poco)))}" placeholder="${esc(fmtIn(pd))}" aria-label="Poco stock de ${esc(p.nombre)}"></label>`
-    : '';
-  return `<span class="sg-l">Sugerido</span>${val}${poco}${dif}`;
+  const est = esTotal() ? `<button class="sg-e" id="se-${id}" data-act="est" data-id="${id}" title="Elegir desde qué número aparece cada estado">${ic('edit')}Estados</button>` : '';
+  return `<span class="sg-l">Sugerido</span>${val}${est}${dif}`;
 }
-async function guardarPoco(id, el){
-  if (!esTotal()){ toast('El poco stock lo cambian la dueña o la administradora.', true); return; }
+/* Estados de un producto: sugerido, hasta cuánto es poco stock y desde cuánto es exceso (solo dueña y administradora) */
+function estPrev(sg, pc, ex){
+  if (sg == null) return `<span class="st nc">Cargá el sugerido para ver los estados</span>`;
+  const p0 = pc ?? Math.floor(sg) / 2, e0 = ex ?? sg;
+  return `<span class="st sin">Sin stock: 0</span><span class="st poco">Poco stock: hasta ${fmt(p0)}</span><span class="st ideal">Stock ideal: más de ${fmt(p0)} hasta ${fmt(e0)}</span><span class="st exc">Exceso: más de ${fmt(e0)}</span>`;
+}
+function openEstados(id){
+  if (!esTotal()){ toast('Los estados los configuran la dueña o la administradora.', true); return; }
   const p = S.allProds.find(x => x.id === id); if (!p) return;
-  const raw = el.value.trim(); let v = num(raw);
-  if (raw && (v == null || v < 0 || !isHalf(v))){ el.classList.add('bad'); toast('Poco stock va en unidades enteras o medias (ej. 2 o 2,5).', true); return; }
-  el.classList.remove('bad'); v = raw ? round(v) : null;
-  const k = 'p:' + id, cur = num(p.poco);
-  if ((cur ?? null) === v){ if (S.sgEdit) delete S.sgEdit[k]; return; }
+  S.panel = 'est';
+  const sg = sugOf(p), pc = num(p.poco), ex = num(p.exceso), sid = esc(p.id);
+  openPanel(`<div class="pn-h"><div><small>Estados por stock sugerido</small><h3>${esc(p.nombre)}</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="pn-b"><p class="lead">Elegí desde qué número aparece cada estado. Si dejás vacío <b>Poco stock</b>, es la mitad del sugerido; si dejás vacío <b>Exceso</b>, es más que el sugerido.</p>
+    <form id="est-form" data-id="${sid}" novalidate><div class="frow">
+      <div class="fld"><label for="es-sug">Stock sugerido</label><input id="es-sug" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(sg))}" placeholder="—"></div>
+      <div class="fld"><label for="es-poco">Poco stock hasta</label><input id="es-poco" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(pc))}" placeholder="${esc(sg == null ? 'mitad' : fmtIn(Math.floor(sg) / 2))}"></div>
+      <div class="fld"><label for="es-exc">Exceso desde más de</label><input id="es-exc" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(ex))}" placeholder="${esc(sg == null ? 'sugerido' : fmtIn(sg))}"></div>
+    </div></form>
+    <div class="est-prev" id="es-prev">${estPrev(sg, pc, ex)}</div>
+  </div>
+  <div class="pn-f"><button class="btn" data-act="close">Cancelar</button><button class="btn primary" type="submit" form="est-form" id="es-ok">${ic('save')}Guardar</button></div>`, 'dlg');
+  setTimeout(() => $('#es-sug')?.focus(), 40);
+}
+function estLeer(sel){ const el = $(sel), raw = el.value.trim(); if (!raw){ el.classList.remove('bad'); return {v:null}; } const v = num(raw); const bad = v == null || v < 0 || !isHalf(v); el.classList.toggle('bad', bad); return bad ? {bad:true} : {v:round(v)}; }
+function estRefresh(){ const pv = $('#es-prev'); if (!pv) return; const a = estLeer('#es-sug'), b = estLeer('#es-poco'), c = estLeer('#es-exc'); if (!a.bad && !b.bad && !c.bad) pv.innerHTML = estPrev(a.v, b.v, c.v); }
+async function guardarEstados(id){
+  if (!esTotal()) return;
+  const p = S.allProds.find(x => x.id === id); if (!p) return;
+  const a = estLeer('#es-sug'), b = estLeer('#es-poco'), c = estLeer('#es-exc');
+  if (a.bad || b.bad || c.bad){ toast('Usá unidades enteras o medias (ej. 3 o 3,5).', true); return; }
+  const sg = a.v, pc = b.v, ex = c.v;
+  if (sg == null && (pc != null || ex != null)){ toast('Primero cargá el stock sugerido.', true); return; }
+  if (sg != null && pc != null && pc >= sg){ $('#es-poco').classList.add('bad'); toast('Poco stock tiene que ser menor que el sugerido.', true); return; }
+  if (sg != null && ex != null && ex < sg){ $('#es-exc').classList.add('bad'); toast('Exceso tiene que ser igual o mayor que el sugerido.', true); return; }
   try {
-    await w(() => C('productos').doc(id).update({poco:v, actualizado:Date.now()}));
-    if (S.sgEdit) delete S.sgEdit[k];
-    el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 1000);
+    await w(() => C('productos').doc(id).update({sugerido:sg, poco:pc, exceso:ex, actualizado:Date.now()}));
+    if (S.sgEdit) delete S.sgEdit[id];
+    closePanel(); toast(`Estados de ${p.nombre} guardados`);
   } catch(err){ fail(err); }
 }
 async function guardarSugerido(id, el){
@@ -1668,6 +1698,7 @@ document.addEventListener('click', e => {
     case 'close': closePanel(); break;
     case 'ajustes': openAjustes(); break;
     case 'aj-open': openAjustes(t.dataset.tab); break;
+    case 'est': openEstados(id); break;
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
     case 'local': abrirLocal(id); break;
@@ -1747,7 +1778,6 @@ document.addEventListener('change', e => {
   else if (t.name === 'hn-tipo'){ S.hj.tipo = t.value; const s = $('#hn-copia'); if (s) s.innerHTML = copiaOpts(t.value); }
   else if (t.matches('[data-qmin]')) qGuardar(t.dataset.qmin, 'min', t);
   else if (t.matches('[data-sg]')) guardarSugerido(t.dataset.sg, t);
-  else if (t.matches('[data-sgp]')) guardarPoco(t.dataset.sgp, t);
   else if (t.matches('[data-qprov]')) qGuardar(t.dataset.qprov, 'proveedor', t);
   else if (t.id === 'h-hoja'){ S.histHoja = t.value; S.histN = 30; render(); }
   else if (t.id === 'h-per'){ S.histPer = t.value; S.histN = 30; render(); }
@@ -1770,7 +1800,7 @@ document.addEventListener('input', e => {
   if (t.matches('[data-cn]')){ S.notas[t.dataset.cn] = t.value; saveDraft(); renderChrome(); const pr = $('#cprog'); if (pr) pr.outerHTML = progHTML(); return; }
   if (t.matches('[data-pq]')){ const v = num(t.value); if (v != null && v >= 0) S.pedAdj[t.dataset.pq] = round(v); return; }
   if (t.matches('[data-sg]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit[t.dataset.sg] = t.value; return; }
-  if (t.matches('[data-sgp]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit['p:' + t.dataset.sgp] = t.value; return; }
+  if (['es-sug', 'es-poco', 'es-exc'].includes(t.id)){ estRefresh(); return; }
   if (['q-stock','q-conteo','q-pedido'].includes(t.id)){ S.q = t.value; clearTimeout(qT); qT = setTimeout(render, 120); return; }
   if (t.id === 'q-hist'){ S.histQ = t.value; clearTimeout(qT); qT = setTimeout(render, 150); return; }
   if (t.id === 'aj-q'){ S.aj.q = t.value; clearTimeout(qT); qT = setTimeout(renderAjustesBody, 120); return; }
@@ -1791,6 +1821,7 @@ document.addEventListener('submit', e => {
   else if (f.id === 'afe-form') fGuardarEdicion(f.dataset.id);
   else if (f.id === 'hn-form') crearHoja();
   else if (f.id === 'hr-form') renombrarHoja(f.dataset.id, $('#hr-nombre').value);
+  else if (f.id === 'est-form') guardarEstados(f.dataset.id);
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){
