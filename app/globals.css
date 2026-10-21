@@ -252,6 +252,7 @@ button.r-name:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .r-min{grid-area:min;text-align:right;font:500 14px var(--f-num);color:var(--muted)}
 .r-ped{grid-area:ped;justify-self:end}
 .sheet.k-stock{--cols:30px 56px minmax(0,1fr) 132px 70px 82px 104px;--areas:"n ss name st q adj sug"}
+.sheet.k-stock.nosug{--cols:30px 56px minmax(0,1fr) 132px 80px 82px;--areas:"n ss name st q adj"}
 /* Stock sugerido: valor de referencia (editable solo por administradora y dueño) y diferencia con lo que hay */
 .r-sug{grid-area:sug;display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0}
 .r-sug .q{font:600 17px/1.2 var(--f-num);color:var(--accent)}
@@ -265,6 +266,12 @@ button.r-name:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .sg-e svg{width:13px;height:13px}
 .sg-e:hover{border-color:var(--accent-line);background:var(--accent-soft)}
 .est-prev{display:flex;flex-wrap:wrap;gap:8px}
+/* Interruptor del stock sugerido por hoja (dueña y administradora) */
+.sg-tg .tk{position:relative;flex:none;width:30px;height:18px;border-radius:999px;background:var(--line-2);transition:background .2s}
+.sg-tg .tk::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(11,13,16,.3);transition:transform .2s}
+.sg-tg[aria-checked="true"]{border-color:var(--ok);color:var(--ok)}
+.sg-tg[aria-checked="true"] .tk{background:var(--ok)}
+.sg-tg[aria-checked="true"] .tk::after{transform:translateX(12px)}
 #est-form input.bad{border-color:var(--crit);background:var(--crit-soft)}
 .sg-d.neg{background:var(--crit-soft);color:var(--crit)}.sg-d.pos{background:var(--exc-soft);color:var(--exc)}.sg-d.eq{background:var(--ok-soft);color:var(--ok)}
 .sheet.k-conteo{--cols:30px 56px minmax(0,1fr) 72px 238px 86px;--areas:"n ss name sys cnt dif"}
@@ -278,6 +285,7 @@ button.r-name:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .ss span{display:block}
   .r-name .mo{display:block}
   .sheet.k-stock{--cols:54px minmax(0,1fr) auto;--areas:"ss name q" "ss st adj" "ss sug sug"}
+  .sheet.k-stock.nosug{--cols:54px minmax(0,1fr) auto;--areas:"ss name q" "ss st adj"}
   .r-sug{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
   .sg-e{height:36px;padding:0 10px;font-size:12.5px}
   .sg-l{display:inline;margin-right:auto;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}

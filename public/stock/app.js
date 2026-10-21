@@ -163,6 +163,9 @@ function rangoTxt(p){
   const pc = pocoOf(p), ex = excOf(p);
   return `Sin stock: 0 · Poco stock: hasta ${fmt(pc)} · Stock ideal: más de ${fmt(pc)} hasta ${fmt(ex)} · Exceso: más de ${fmt(ex)}`;
 }
+/* Stock sugerido por hoja: lo activan o desactivan la dueña o la administradora. La hoja Stock lo trae activado; las hojas nuevas, desactivado. */
+const sugHoja = () => listaCtx() || 'stock';
+function sugActivo(){ const id = sugHoja(), h = S.hojasDB.find(x => x.id === id); return h && typeof h.sugerido === 'boolean' ? h.sugerido : id === 'stock'; }
 /* Estado en la hoja Stock: con sugerido cargado manda el sugerido; sin sugerido, el estado de siempre */
 function estadoSug(p){
   const s = sugOf(p); if (s == null) return estado(p);
@@ -353,13 +356,14 @@ function noProducts(){
 }
 const HEADS = {
   stock:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span>Estado</span><span class="ar">Local</span><span class="ar">Ajustar</span><span class="ar">Sugerido</span>`,
+  stock0:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span>Estado</span><span class="ar">Local</span><span class="ar">Ajustar</span>`,
   conteo:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span class="ar">Sistema</span><span>Contado</span><span class="ar">Diferencia</span>`,
   pedido:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span class="ar">Hay</span><span class="ar">Mínimo</span><span class="ar">A pedir</span>`
 };
 function sheet(kind, list, rowFn, o = {}){
   const gs = groups(list, o.key || catOf); if (o.sort) gs.sort(o.sort);
   const color = o.color || ccOf;
-  return `<div class="sheet k-${kind}"><div class="sh-h">${HEADS[kind]}</div>${gs.map(([c, items]) => {
+  return `<div class="sheet k-${kind}${o.cls ? ' ' + o.cls : ''}"><div class="sh-h">${o.head || HEADS[kind]}</div>${gs.map(([c, items]) => {
     const sin = items.filter(p => estado(p) === 'sin').length, nc = items.filter(p => estado(p) === 'nc').length;
     return `<div class="sh-g" style="--cc:${color(c)}"><i></i><b>${esc(c)}</b><span class="num">${items.length}</span><span class="gs">${sin ? `<span class="st sin">${sin} sin stock</span>` : ''}${nc && kind !== 'pedido' ? `<span class="st nc">${nc} sin contar</span>` : ''}${o.extra ? o.extra(c, items) : ''}</span></div>` + items.map(rowFn).join('');
   }).join('')}</div>`;
@@ -427,29 +431,44 @@ V.inicio = () => {
 };
 
 V.stock = () => {
-  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, con <b>Estados</b>, desde qué número aparece cada estado.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.'}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
+  const sg = sugActivo();
+  const tg = esTotal() ? `<button class="btn sm sg-tg" id="sg-tg" role="switch" aria-checked="${sg}" data-act="sug-tg" title="${sg ? 'Ocultar' : 'Mostrar'} el stock sugerido y sus estados para todo el equipo"><span class="tk" aria-hidden="true"></span>Stock sugerido</button>` : '';
+  const txt = sg
+    ? (esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, con <b>Estados</b>, desde qué número aparece cada estado.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.')
+    : (esTotal() ? 'Activá <b>Stock sugerido</b> para cargar un número de referencia por producto y ver los estados por color.' : '');
+  const acts = tg + (S.prods.length ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button>` : '');
+  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${txt}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${acts ? `<div class="bar-a">${acts}</div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const base = sorted().filter(p => catOK(p) && qOK(p));
+  const btn = (c, fil) => (k, l, kc) => `<button data-act="filtro" data-f="${k}" aria-pressed="${fil === k}" style="--kc:${kc}"><span class="l"><i></i>${l}</span><span class="v">${c[k]}</span></button>`;
+  const vacio = noMatch('Nada para mostrar', 'Probá con otra búsqueda, categoría o filtro.');
+  if (!sg){
+    const fil = S.filtro === 'poco' ? 'bajo' : ['ideal', 'exc'].includes(S.filtro) ? 'todos' : S.filtro;
+    const c = {todos:base.length, sin:0, bajo:0, nc:0}; base.forEach(p => { const e = estado(p); if (has(c, e)) c[e]++; });
+    const list = base.filter(p => fil === 'todos' || estado(p) === fil), f = btn(c, fil);
+    return head + `<div class="statf">${f('todos','Todos','var(--accent)')}${f('sin','Sin stock','var(--crit)')}${f('bajo','Stock bajo','var(--warn)')}${f('nc','Sin contar','var(--nc)')}</div>
+    ${tools('q-stock', S.q, 'Buscar producto')}
+    ${list.length ? sheet('stock', list, p => rowStock(p, false), {cls:'nosug', head:HEADS.stock0}) : vacio}`;
+  }
   const grp = e => e === 'bajo' ? 'poco' : e;
   const fil = S.filtro === 'bajo' ? 'poco' : S.filtro;
   const c = {todos:base.length, sin:0, poco:0, ideal:0, exc:0, nc:0}; base.forEach(p => { const e = grp(estadoSug(p)); if (has(c, e)) c[e]++; });
-  const list = base.filter(p => fil === 'todos' || grp(estadoSug(p)) === fil);
-  const f = (k, l, kc) => `<button data-act="filtro" data-f="${k}" aria-pressed="${fil === k}" style="--kc:${kc}"><span class="l"><i></i>${l}</span><span class="v">${c[k]}</span></button>`;
+  const list = base.filter(p => fil === 'todos' || grp(estadoSug(p)) === fil), f = btn(c, fil);
   return head + `<div class="statf st6">${f('todos','Todos','var(--accent)')}${f('sin','Sin stock','var(--crit)')}${f('poco','Poco stock','var(--yel)')}${f('ideal','Stock ideal','var(--ok)')}${f('exc','Exceso','var(--exc)')}${f('nc','Sin contar','var(--nc)')}</div>
     ${tools('q-stock', S.q, 'Buscar producto')}
-    ${list.length ? sheet('stock', list, rowStock) : noMatch('Nada para mostrar', 'Probá con otra búsqueda, categoría o filtro.')}`;
+    ${list.length ? sheet('stock', list, p => rowStock(p, true)) : vacio}`;
 };
-function rowStock(p){
-  const st = estadoSug(p), q = qty(p), chg = has(S.draft, p.id) && q !== stockOf(p), meta = metaTxt(p), id = esc(p.id);
+function rowStock(p, sg = sugActivo()){
+  const st = sg ? estadoSug(p) : estado(p), q = qty(p), chg = has(S.draft, p.id) && q !== stockOf(p), meta = metaTxt(p), id = esc(p.id);
   return `<div class="sh-r ${st}">
     <span class="r-n">${S.rn.get(p.id) || ''}</span>
     <div class="r-ss">${ssBox(p,'ss')}</div>
     <button class="r-name" data-act="aj-item" data-id="${id}" title="Modificar en Ajustes"><b>${esc(p.nombre)}</b>${meta ? `<small>${meta}</small>` : ''}${p.obs ? `<small class="obs">${esc(p.obs)}</small>` : ''}</button>
-    <div class="r-st"><span class="st ${st}" ${sugOf(p) != null ? `title="${esc(rangoTxt(p))}"` : ''}>${ESTADO[st]}</span></div>
+    <div class="r-st"><span class="st ${st}" ${sg && sugOf(p) != null ? `title="${esc(rangoTxt(p))}"` : ''}>${ESTADO[st]}</span></div>
     <div class="r-q"><small class="ql">Local</small><span class="q">${fmt(q)}</span>${chg ? `<small>antes ${fmt(stockOf(p))}</small>` : ''}</div>
     <div class="r-adj"><div class="adj"><button class="out" id="dec-${id}" data-act="dec" data-id="${id}" aria-label="Restar 1 a ${esc(p.nombre)}" ${!(q > 0) || !canW() ? 'disabled' : ''}>−</button><button class="in" id="inc-${id}" data-act="inc" data-id="${id}" aria-label="Sumar 1 a ${esc(p.nombre)}" ${canW() ? '' : 'disabled'}>+</button></div></div>
-    <div class="r-sug">${sugCell(p, q)}</div>
+    ${sg ? `<div class="r-sug">${sugCell(p, q)}</div>` : ''}
   </div>`;
 }
 function sugCell(p, q){
@@ -501,6 +520,11 @@ async function guardarEstados(id){
     if (S.sgEdit) delete S.sgEdit[id];
     closePanel(); toast(`Estados de ${p.nombre} guardados`);
   } catch(err){ fail(err); }
+}
+async function toggleSug(){
+  if (!esTotal()){ toast('El stock sugerido lo activan la dueña o la administradora.', true); return; }
+  const id = sugHoja(), on = !sugActivo();
+  try { await guardarHoja(id, {sugerido:on}); render(); toast(`Stock sugerido ${on ? 'activado' : 'desactivado'} en ${nombreHoja(id)}`); } catch(e){ fail(e); }
 }
 async function guardarSugerido(id, el){
   if (!esTotal()){ toast('El sugerido lo cambian la dueña o la administradora.', true); return; }
@@ -1082,7 +1106,7 @@ function ajRow(p){
   const id = esc(p.id), m = minOf(p);
   if (S.aj.editId === p.id) return `<div class="ar editing" id="ar-${id}"><form id="ae-form" data-id="${id}" class="frow">
       <div class="fld wide"><label for="ae-nombre">Nombre</label><input id="ae-nombre" value="${esc(p.nombre)}" required></div>
-      <div class="fld"><label for="ae-cat">Categoría</label><input id="ae-cat" list="dl-cats" value="${esc(p.cat || '')}"></div>
+      <div class="fld"><label for="ae-cat">Categoría</label><input id="ae-cat" list="dl-cats" value="${esc(p.cat || '')}" placeholder="Elegí o escribí una nueva"></div>
       <div class="fld"><label for="ae-unidad">Unidad</label><input id="ae-unidad" list="dl-units" value="${esc(p.unidad || '')}"></div>
       <div class="fld"><label for="ae-min">Mínimo</label><input id="ae-min" inputmode="decimal" value="${esc(fmtIn(m))}" placeholder="Sin mínimo"></div>
       <div class="fld"><label for="ae-prov">Proveedor</label><input id="ae-prov" list="dl-prov" value="${esc(p.proveedor || '')}" placeholder="Opcional"></div>
@@ -1094,9 +1118,11 @@ function ajRow(p){
   return `<div class="ar${canW() ? ' dr' : ''}" id="ar-${id}" data-rid="${id}">${canW() ? dragHandle(p.id, p.nombre) : ''}<div><b>${esc(p.nombre)}</b><small style="--cc:${ccOf(catOf(p))}"><i></i>${esc(catOf(p))} · ${esc(p.unidad || 'unidad')} · mín ${m != null ? fmt(m) : '—'}${provOf(p) ? ` · ${esc(provOf(p))}` : ''} · stock ${fmt(stockOf(p))}${p.sinStock ? ' · <span style="color:var(--crit)">sin stock</span>' : ''}</small></div>
     <div class="ar-a"><button class="btn sm" data-act="aj-edit" data-id="${id}" ${canW() ? '' : 'disabled'}>${ic('edit')}Modificar</button><button class="btn sm danger" data-act="aj-del" data-id="${id}" ${canW() ? '' : 'disabled'} aria-label="Eliminar ${esc(p.nombre)}">${ic('trash')}</button></div></div>`;
 }
+/* Categoría sugerida al agregar: la elegida o la última usada, solo si existe en esta hoja */
+function catIni(){ if (S.aj.cat) return S.aj.cat; const c = lsGet('spm-lastcat', ''); return cats().some(([x]) => x === c) ? c : ''; }
 AJ.agregar = () => `${catDatalist()}<form id="aa-form" class="frow">
     <div class="fld wide"><label for="aa-nombre">Nombre del producto</label><input id="aa-nombre" required placeholder="Ej. Mix Provolone Hebras 600gr"></div>
-    <div class="fld"><label for="aa-cat">Categoría</label><input id="aa-cat" list="dl-cats" value="${esc(S.aj.cat || lsGet('spm-lastcat', ''))}" placeholder="Ej. Fiambres"></div>
+    <div class="fld"><label for="aa-cat">Categoría</label><input id="aa-cat" list="dl-cats" value="${esc(catIni())}" placeholder="Elegí o escribí una nueva"></div>
     <div class="fld"><label for="aa-unidad">Unidad</label><input id="aa-unidad" list="dl-units" value="${esc(lsGet('spm-lastunit', 'unidad'))}"></div>
     <div class="fld"><label for="aa-min">Mínimo</label><input id="aa-min" inputmode="decimal" placeholder="Opcional"></div>
     <div class="fld"><label for="aa-stock">Stock actual</label><input id="aa-stock" inputmode="decimal" placeholder="Sin contar"></div>
@@ -1141,8 +1167,9 @@ async function qGuardar(id, k, el){
   } catch(e){ fail(e); }
 }
 AJ.categorias = () => {
-  const cs = cats(); if (!cs.length) return '<p class="lead">Las categorías aparecen cuando cargás productos.</p>';
-  return `<p class="lead">Renombrá una categoría y se actualizan todos sus productos. Para borrar una categoría, eliminá o mové sus productos.</p><div class="alist">${cs.map(([c,n]) => S.aj.catEdit === c
+  const nueva = 'Para crear una categoría nueva, escribí su nombre en <b>Categoría</b> al agregar o modificar un producto.';
+  const cs = cats(); if (!cs.length) return `<p class="lead">Las categorías aparecen cuando cargás productos. ${nueva}</p><div class="bar-a"><button class="btn primary sm" data-act="aj-tab" data-tab="agregar">${ic('plus')}Agregar producto</button></div>`;
+  return `<p class="lead">Renombrá una categoría y se actualizan todos sus productos. Para borrar una categoría, eliminá o mové sus productos. ${nueva}</p><div class="alist">${cs.map(([c,n]) => S.aj.catEdit === c
     ? `<div class="ar editing"><form id="ac-form" data-cat="${esc(c)}" class="frow"><div class="fld wide"><label for="ac-name">Nuevo nombre para «${esc(c)}»</label><input id="ac-name" value="${esc(c)}" required></div><div class="bar-a wide"><button type="button" class="btn" data-act="aj-cancel">Cancelar</button><button type="submit" class="btn primary">Renombrar</button></div></form></div>`
     : `<div class="ar"><div><b>${esc(c)}</b><small style="--cc:${ccOf(c)}"><i></i>${plural(n, 'producto', 'productos')}</small></div><div class="ar-a"><button class="btn sm" data-act="ac-edit" data-cat="${esc(c)}" ${canW() ? '' : 'disabled'}>${ic('edit')}Renombrar</button></div></div>`).join('')}</div>`;
 };
@@ -1699,6 +1726,7 @@ document.addEventListener('click', e => {
     case 'ajustes': openAjustes(); break;
     case 'aj-open': openAjustes(t.dataset.tab); break;
     case 'est': openEstados(id); break;
+    case 'sug-tg': toggleSug(); break;
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
     case 'local': abrirLocal(id); break;

@@ -117,3 +117,16 @@ test('only owner and administrator change the suggested stock', async () => {
   const added = (await manager.db.collection('torcuato/productos').get()).docs.map(d => d.data()).find(d => d.nombre === 'Nuevo');
   assert.ok(added && !('sugerido' in added));
 });
+
+test('only owner and administrator show or hide the suggested stock of a sheet', async () => {
+  const owner = await session('dueno@example.com');
+  await owner.db.doc('torcuato/hojas/h-cajas').set({ nombre: 'Stock Cajas', tipo: 'lista', orden: 4, sugerido: true });
+  assert.equal((await owner.db.doc('torcuato/hojas/h-cajas').get()).data().sugerido, true);
+
+  const manager = await session('gerente.torcuato@example.com');
+  manager.context.window.__rows.push({ col: 'torcuato/hojas', id: 'h-cajas', data: { nombre: 'Stock Cajas', tipo: 'lista', orden: 4, sugerido: true } });
+  await manager.db.doc('torcuato/hojas/h-cajas').set({ nombre: 'Cajas', tipo: 'lista', orden: 4, sugerido: false });
+  const hoja = (await manager.db.doc('torcuato/hojas/h-cajas').get()).data();
+  assert.equal(hoja.nombre, 'Cajas');
+  assert.equal(hoja.sugerido, true);
+});

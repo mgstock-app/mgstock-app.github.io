@@ -153,12 +153,13 @@ $$;
 grant execute on function public.doc_update(text, text, jsonb) to authenticated;
 
 -- Stock sugerido y umbrales de poco stock y exceso: solo la administradora y el dueño los cambian.
+-- En las hojas, el campo "sugerido" activa o desactiva la columna Sugerido y también lo cambian solo ellas.
 -- A cualquier otro rol se le conserva el valor anterior (no da error: el resto del cambio se guarda).
 create or replace function public.proteger_sugerido() returns trigger
 language plpgsql set search_path = public as $$
 declare k text;
 begin
-  if split_part(new.col, '/', 2) = 'productos'
+  if split_part(new.col, '/', 2) in ('productos', 'hojas')
      and coalesce(auth.role(), '') = 'authenticated'
      and coalesce(public.mi_rol(), '') not in ('creadora', 'dueno') then
     foreach k in array array['sugerido', 'poco', 'exceso'] loop
