@@ -152,20 +152,22 @@ language sql security invoker set search_path = public as $$
 $$;
 grant execute on function public.doc_update(text, text, jsonb) to authenticated;
 
--- Stock sugerido: solo la administradora y el dueño lo cambian. Al resto se le conserva el valor anterior.
+-- Stock sugerido y umbral de poco stock: solo la administradora y el dueño los cambian.
+-- A cualquier otro rol se le conserva el valor anterior (no da error: el resto del cambio se guarda).
 create or replace function public.proteger_sugerido() returns trigger
 language plpgsql set search_path = public as $$
+declare k text;
 begin
   if split_part(new.col, '/', 2) = 'productos'
      and coalesce(auth.role(), '') = 'authenticated'
      and coalesce(public.mi_rol(), '') not in ('creadora', 'dueno') then
-    if tg_op = 'INSERT' then
-      new.data := new.data - 'sugerido';
-    elsif (new.data -> 'sugerido') is distinct from (old.data -> 'sugerido') then
-      new.data := case when old.data ? 'sugerido'
-                       then jsonb_set(new.data, '{sugerido}', old.data -> 'sugerido')
-                       else new.data - 'sugerido' end;
-    end if;
+    foreach k in array array['sugerido', 'poco'] loop
+      if tg_op = 'INSERT' then
+        new.data := new.data - k;
+      elsif (new.data -> k) is distinct from (old.data -> k) then
+        new.data := case when old.data ? k then jsonb_set(new.data, array[k], old.data -> k) else new.data - k end;
+      end if;
+    end loop;
   end if;
   return new;
 end $$;

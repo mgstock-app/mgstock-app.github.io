@@ -14,8 +14,8 @@
     if (!col.includes('/')) return false;
     return total(a) || (a.locales || []).includes(col.split('/')[0]);
   }
-  // Como el trigger proteger_sugerido de la base: solo administradora y dueño cambian "sugerido"
-  function keepSug(col, prev, data){ if (!/\/productos$/.test(col) || total(acc())) return data; const d = {...data}; if (prev && 'sugerido' in prev) d.sugerido = prev.sugerido; else delete d.sugerido; return d; }
+  // Como el trigger proteger_sugerido de la base: solo administradora y dueño cambian "sugerido" y "poco"
+  function keepSug(col, prev, data){ if (!/\/productos$/.test(col) || total(acc())) return data; const d = {...data}; for (const k of ['sugerido', 'poco']){ if (prev && k in prev) d[k] = prev[k]; else delete d[k]; } return d; }
   function canWrite(col){
     const a = acc(); if (!a) return false;
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';

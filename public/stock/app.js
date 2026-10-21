@@ -153,13 +153,26 @@ const qty = p => has(S.draft, p.id) ? S.draft[p.id] : stockOf(p);
 const minOf = p => { const m = num(p.min); return m && m > 0 ? m : null; };
 /* Stock sugerido: lo cargan la administradora o el dueño; el resto lo ve para comparar con lo que hay en el local */
 const sugOf = p => { const m = num(p.sugerido); return m != null && m >= 0 ? m : null; };
+/* Poco stock: hasta cuánto se marca en amarillo. La dueña lo puede fijar; si no, es la mitad del sugerido */
+const pocoDef = p => { const s = sugOf(p); return s == null ? null : Math.floor(s) / 2; };
+const pocoOf = p => { const m = num(p.poco); return m != null && m >= 0 ? m : pocoDef(p); };
+/* Estado en la hoja Stock: con sugerido cargado manda el sugerido; sin sugerido, el estado de siempre */
+function estadoSug(p){
+  const s = sugOf(p); if (s == null) return estado(p);
+  if (p.sinStock) return 'sin';
+  const q = qty(p); if (q == null) return 'nc';
+  if (q <= 0) return 'sin';
+  if (q > s) return 'exc';
+  if (q <= pocoOf(p)) return 'poco';
+  return 'ideal';
+}
 const uTxt = p => (p.unidad && p.unidad !== 'unidad') ? String(p.unidad) : '';
 const provOf = p => (p.proveedor && String(p.proveedor).trim()) || '';
 const SINPROV = 'Sin proveedor';
 const provKey = p => provOf(p) || SINPROV;
 function provs(){ const m = new Map(); for (const p of S.allProds){ const v = provOf(p); if (v) m.set(v, (m.get(v) || 0) + 1); } return [...m].sort((a,b) => a[0].localeCompare(b[0], 'es')); }
 function estado(p){ if (p.sinStock) return 'sin'; const q = qty(p); if (q == null) return 'nc'; if (q <= 0) return 'sin'; const m = minOf(p); if (m != null && q < m) return 'bajo'; return 'ok'; }
-const ESTADO = {ok:'En stock', bajo:'Stock bajo', sin:'Sin stock', nc:'Sin contar'};
+const ESTADO = {ok:'En stock', bajo:'Stock bajo', sin:'Sin stock', nc:'Sin contar', poco:'Poco stock', ideal:'Stock ideal', exc:'Exceso de stock'};
 const alerta = p => { const e = estado(p); return e === 'sin' || e === 'bajo'; };
 function metaTxt(p){ const m = minOf(p), u = uTxt(p); return [u && esc(u), m != null ? `mín ${fmt(m)}` : ''].filter(Boolean).join(' · '); }
 function cats(){ const m = new Map(); for (const p of sorted()){ const c = catOf(p); m.set(c, (m.get(c)||0) + 1); } return [...m]; }
@@ -407,19 +420,21 @@ V.inicio = () => {
 };
 
 V.stock = () => {
-  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.'}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, si querés, hasta cuánto es <b>poco stock</b> (vacío: la mitad).' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.'}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const base = sorted().filter(p => catOK(p) && qOK(p));
-  const c = {todos:base.length, sin:0, bajo:0, nc:0}; base.forEach(p => { const e = estado(p); if (has(c, e)) c[e]++; });
-  const list = base.filter(p => S.filtro === 'todos' || estado(p) === S.filtro);
-  const f = (k, l, kc) => `<button data-act="filtro" data-f="${k}" aria-pressed="${S.filtro === k}" style="--kc:${kc}"><span class="l"><i></i>${l}</span><span class="v">${c[k]}</span></button>`;
-  return head + `<div class="statf">${f('todos','Todos','var(--accent)')}${f('sin','Sin stock','var(--crit)')}${f('bajo','Stock bajo','var(--warn)')}${f('nc','Sin contar','var(--nc)')}</div>
+  const grp = e => e === 'bajo' ? 'poco' : e;
+  const fil = S.filtro === 'bajo' ? 'poco' : S.filtro;
+  const c = {todos:base.length, sin:0, poco:0, ideal:0, exc:0, nc:0}; base.forEach(p => { const e = grp(estadoSug(p)); if (has(c, e)) c[e]++; });
+  const list = base.filter(p => fil === 'todos' || grp(estadoSug(p)) === fil);
+  const f = (k, l, kc) => `<button data-act="filtro" data-f="${k}" aria-pressed="${fil === k}" style="--kc:${kc}"><span class="l"><i></i>${l}</span><span class="v">${c[k]}</span></button>`;
+  return head + `<div class="statf st6">${f('todos','Todos','var(--accent)')}${f('sin','Sin stock','var(--crit)')}${f('poco','Poco stock','var(--yel)')}${f('ideal','Stock ideal','var(--ok)')}${f('exc','Exceso','var(--exc)')}${f('nc','Sin contar','var(--nc)')}</div>
     ${tools('q-stock', S.q, 'Buscar producto')}
     ${list.length ? sheet('stock', list, rowStock) : noMatch('Nada para mostrar', 'Probá con otra búsqueda, categoría o filtro.')}`;
 };
 function rowStock(p){
-  const st = estado(p), q = qty(p), chg = has(S.draft, p.id) && q !== stockOf(p), meta = metaTxt(p), id = esc(p.id);
+  const st = estadoSug(p), q = qty(p), chg = has(S.draft, p.id) && q !== stockOf(p), meta = metaTxt(p), id = esc(p.id);
   return `<div class="sh-r ${st}">
     <span class="r-n">${S.rn.get(p.id) || ''}</span>
     <div class="r-ss">${ssBox(p,'ss')}</div>
@@ -434,10 +449,28 @@ function sugCell(p, q){
   const s = sugOf(p), id = esc(p.id), edit = S.sgEdit && has(S.sgEdit, p.id) ? S.sgEdit[p.id] : null;
   const d = s != null && q != null ? round(q - s) : null;
   const dif = d == null ? '' : d < 0 ? `<small class="sg-d neg">faltan ${fmt(-d)}</small>` : d > 0 ? `<small class="sg-d pos">sobran ${fmt(d)}</small>` : `<small class="sg-d eq">justo</small>`;
+  const pe = S.sgEdit && has(S.sgEdit, 'p:' + p.id) ? S.sgEdit['p:' + p.id] : null, pd = pocoDef(p);
   const val = esTotal()
     ? `<input class="sg-in" id="sg-${id}" data-sg="${id}" inputmode="decimal" autocomplete="off" value="${esc(edit ?? fmtIn(s))}" placeholder="—" aria-label="Stock sugerido de ${esc(p.nombre)}">`
     : `<span class="q">${fmt(s)}</span>`;
-  return `<span class="sg-l">Sugerido</span>${val}${dif}`;
+  const poco = esTotal() && s != null
+    ? `<label class="sg-p" title="Hasta este número se marca Poco stock. Vacío: la mitad del sugerido.">poco ≤<input class="sg-pin" id="sgp-${id}" data-sgp="${id}" inputmode="decimal" autocomplete="off" value="${esc(pe ?? fmtIn(num(p.poco)))}" placeholder="${esc(fmtIn(pd))}" aria-label="Poco stock de ${esc(p.nombre)}"></label>`
+    : '';
+  return `<span class="sg-l">Sugerido</span>${val}${poco}${dif}`;
+}
+async function guardarPoco(id, el){
+  if (!esTotal()){ toast('El poco stock lo cambian la dueña o la administradora.', true); return; }
+  const p = S.allProds.find(x => x.id === id); if (!p) return;
+  const raw = el.value.trim(); let v = num(raw);
+  if (raw && (v == null || v < 0 || !isHalf(v))){ el.classList.add('bad'); toast('Poco stock va en unidades enteras o medias (ej. 2 o 2,5).', true); return; }
+  el.classList.remove('bad'); v = raw ? round(v) : null;
+  const k = 'p:' + id, cur = num(p.poco);
+  if ((cur ?? null) === v){ if (S.sgEdit) delete S.sgEdit[k]; return; }
+  try {
+    await w(() => C('productos').doc(id).update({poco:v, actualizado:Date.now()}));
+    if (S.sgEdit) delete S.sgEdit[k];
+    el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 1000);
+  } catch(err){ fail(err); }
 }
 async function guardarSugerido(id, el){
   if (!esTotal()){ toast('El sugerido lo cambian la dueña o la administradora.', true); return; }
@@ -1714,6 +1747,7 @@ document.addEventListener('change', e => {
   else if (t.name === 'hn-tipo'){ S.hj.tipo = t.value; const s = $('#hn-copia'); if (s) s.innerHTML = copiaOpts(t.value); }
   else if (t.matches('[data-qmin]')) qGuardar(t.dataset.qmin, 'min', t);
   else if (t.matches('[data-sg]')) guardarSugerido(t.dataset.sg, t);
+  else if (t.matches('[data-sgp]')) guardarPoco(t.dataset.sgp, t);
   else if (t.matches('[data-qprov]')) qGuardar(t.dataset.qprov, 'proveedor', t);
   else if (t.id === 'h-hoja'){ S.histHoja = t.value; S.histN = 30; render(); }
   else if (t.id === 'h-per'){ S.histPer = t.value; S.histN = 30; render(); }
@@ -1736,6 +1770,7 @@ document.addEventListener('input', e => {
   if (t.matches('[data-cn]')){ S.notas[t.dataset.cn] = t.value; saveDraft(); renderChrome(); const pr = $('#cprog'); if (pr) pr.outerHTML = progHTML(); return; }
   if (t.matches('[data-pq]')){ const v = num(t.value); if (v != null && v >= 0) S.pedAdj[t.dataset.pq] = round(v); return; }
   if (t.matches('[data-sg]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit[t.dataset.sg] = t.value; return; }
+  if (t.matches('[data-sgp]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit['p:' + t.dataset.sgp] = t.value; return; }
   if (['q-stock','q-conteo','q-pedido'].includes(t.id)){ S.q = t.value; clearTimeout(qT); qT = setTimeout(render, 120); return; }
   if (t.id === 'q-hist'){ S.histQ = t.value; clearTimeout(qT); qT = setTimeout(render, 150); return; }
   if (t.id === 'aj-q'){ S.aj.q = t.value; clearTimeout(qT); qT = setTimeout(renderAjustesBody, 120); return; }
