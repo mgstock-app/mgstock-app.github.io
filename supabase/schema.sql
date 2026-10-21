@@ -152,6 +152,29 @@ language sql security invoker set search_path = public as $$
 $$;
 grant execute on function public.doc_update(text, text, jsonb) to authenticated;
 
+-- Stock sugerido: solo la administradora y el dueño lo cambian. Al resto se le conserva el valor anterior.
+create or replace function public.proteger_sugerido() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if split_part(new.col, '/', 2) = 'productos'
+     and coalesce(auth.role(), '') = 'authenticated'
+     and coalesce(public.mi_rol(), '') not in ('creadora', 'dueno') then
+    if tg_op = 'INSERT' then
+      new.data := new.data - 'sugerido';
+    elsif (new.data -> 'sugerido') is distinct from (old.data -> 'sugerido') then
+      new.data := case when old.data ? 'sugerido'
+                       then jsonb_set(new.data, '{sugerido}', old.data -> 'sugerido')
+                       else new.data - 'sugerido' end;
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function public.proteger_sugerido() from public, anon, authenticated;
+drop trigger if exists docs_proteger_sugerido on public.docs;
+create trigger docs_proteger_sugerido
+  before insert or update on public.docs
+  for each row execute function public.proteger_sugerido();
+
 -- Cambios en vivo para todo el equipo
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'docs') then

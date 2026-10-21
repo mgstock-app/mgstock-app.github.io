@@ -14,6 +14,8 @@
     if (!col.includes('/')) return false;
     return total(a) || (a.locales || []).includes(col.split('/')[0]);
   }
+  // Como el trigger proteger_sugerido de la base: solo administradora y dueño cambian "sugerido"
+  function keepSug(col, prev, data){ if (!/\/productos$/.test(col) || total(acc())) return data; const d = {...data}; if (prev && 'sugerido' in prev) d.sugerido = prev.sugerido; else delete d.sugerido; return d; }
   function canWrite(col){
     const a = acc(); if (!a) return false;
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';
@@ -34,7 +36,7 @@
     const colOf = () => (st.f.find(x => x[0] === 'col') || [])[1];
     function run(){
       if (st.op === 'select'){ const d = rows.filter(match).filter(r => canView(r.col, r.id, r.data)).map(r => ({id:r.id, data:JSON.parse(JSON.stringify(r.data))})); return {data: st.single ? (d[0] || null) : d, error:null}; }
-      if (st.op === 'upsert'){ if (!canWrite(st.row.col)) return {error:{code:'42501', message:'new row violates row-level security policy'}}; const i = rows.findIndex(r => r.col === st.row.col && r.id === st.row.id); const nr = {col:st.row.col, id:st.row.id, data:st.row.data}; if (i >= 0) rows[i] = nr; else rows.push(nr); window.__log.push(['set', st.row.col, st.row.id]); notify(st.row.col); return {error:null}; }
+      if (st.op === 'upsert'){ if (!canWrite(st.row.col)) return {error:{code:'42501', message:'new row violates row-level security policy'}}; const i = rows.findIndex(r => r.col === st.row.col && r.id === st.row.id); const nr = {col:st.row.col, id:st.row.id, data:keepSug(st.row.col, i >= 0 ? rows[i].data : null, st.row.data)}; if (i >= 0) rows[i] = nr; else rows.push(nr); window.__log.push(['set', st.row.col, st.row.id]); notify(st.row.col); return {error:null}; }
       if (st.op === 'delete'){ const c = colOf(); if (!canWrite(c)) return {error:null}; for (let i = rows.length - 1; i >= 0; i--) if (match(rows[i])) rows.splice(i, 1); window.__log.push(['delete', c]); notify(c); return {error:null}; }
     }
     return b;
@@ -57,7 +59,7 @@
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || [])} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }
-      if (fn === 'doc_update'){ if (!canWrite(args.p_col)) return {data:0, error:null}; const r = rows.find(x => x.col === args.p_col && x.id === args.p_id); if (!r) return {data:0, error:null}; Object.assign(r.data, args.p_patch); window.__log.push(['update', args.p_col, args.p_id]); notify(args.p_col); return {data:1, error:null}; }
+      if (fn === 'doc_update'){ if (!canWrite(args.p_col)) return {data:0, error:null}; const r = rows.find(x => x.col === args.p_col && x.id === args.p_id); if (!r) return {data:0, error:null}; r.data = keepSug(args.p_col, r.data, {...r.data, ...args.p_patch}); window.__log.push(['update', args.p_col, args.p_id]); notify(args.p_col); return {data:1, error:null}; }
       return {data:null, error:null};
     },
     channel(){ const ch = { on(_e, f, cb){ subs.push({col:f.filter.split('eq.')[1], cb}); return ch; }, subscribe(){ return ch; } }; return ch; },

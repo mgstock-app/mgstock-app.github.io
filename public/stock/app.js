@@ -151,6 +151,8 @@ const catOf = p => (p.cat && String(p.cat).trim()) || 'Sin categoría';
 const stockOf = p => num(p.stock);
 const qty = p => has(S.draft, p.id) ? S.draft[p.id] : stockOf(p);
 const minOf = p => { const m = num(p.min); return m && m > 0 ? m : null; };
+/* Stock sugerido: lo cargan la administradora o el dueño; el resto lo ve para comparar con lo que hay en el local */
+const sugOf = p => { const m = num(p.sugerido); return m != null && m >= 0 ? m : null; };
 const uTxt = p => (p.unidad && p.unidad !== 'unidad') ? String(p.unidad) : '';
 const provOf = p => (p.proveedor && String(p.proveedor).trim()) || '';
 const SINPROV = 'Sin proveedor';
@@ -330,7 +332,7 @@ function noProducts(){
   return `<div class="sheet"><div class="empty"><b>Todavía no hay productos cargados</b>Abrí Ajustes para agregarlos uno por uno o pegá la lista completa de una vez.<div class="bar-a"><button class="btn primary" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="pegar">Pegar lista</button></div></div></div>`;
 }
 const HEADS = {
-  stock:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span>Estado</span><span class="ar">Stock</span><span class="ar">Ajustar</span>`,
+  stock:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span>Estado</span><span class="ar">Local</span><span class="ar">Ajustar</span><span class="ar">Sugerido</span>`,
   conteo:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span class="ar">Sistema</span><span>Contado</span><span class="ar">Diferencia</span>`,
   pedido:`<span class="ar">N°</span><span class="ac">Sin stock</span><span>Producto</span><span class="ar">Hay</span><span class="ar">Mínimo</span><span class="ar">A pedir</span>`
 };
@@ -405,7 +407,7 @@ V.inicio = () => {
 };
 
 V.stock = () => {
-  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo.${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.'}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const base = sorted().filter(p => catOK(p) && qOK(p));
@@ -423,9 +425,32 @@ function rowStock(p){
     <div class="r-ss">${ssBox(p,'ss')}</div>
     <button class="r-name" data-act="aj-item" data-id="${id}" title="Modificar en Ajustes"><b>${esc(p.nombre)}</b>${meta ? `<small>${meta}</small>` : ''}${p.obs ? `<small class="obs">${esc(p.obs)}</small>` : ''}</button>
     <div class="r-st"><span class="st ${st}">${ESTADO[st]}</span></div>
-    <div class="r-q"><span class="q">${fmt(q)}</span>${chg ? `<small>antes ${fmt(stockOf(p))}</small>` : ''}</div>
+    <div class="r-q"><small class="ql">Local</small><span class="q">${fmt(q)}</span>${chg ? `<small>antes ${fmt(stockOf(p))}</small>` : ''}</div>
     <div class="r-adj"><div class="adj"><button class="out" id="dec-${id}" data-act="dec" data-id="${id}" aria-label="Restar 1 a ${esc(p.nombre)}" ${!(q > 0) || !canW() ? 'disabled' : ''}>−</button><button class="in" id="inc-${id}" data-act="inc" data-id="${id}" aria-label="Sumar 1 a ${esc(p.nombre)}" ${canW() ? '' : 'disabled'}>+</button></div></div>
+    <div class="r-sug">${sugCell(p, q)}</div>
   </div>`;
+}
+function sugCell(p, q){
+  const s = sugOf(p), id = esc(p.id), edit = S.sgEdit && has(S.sgEdit, p.id) ? S.sgEdit[p.id] : null;
+  const d = s != null && q != null ? round(q - s) : null;
+  const dif = d == null ? '' : d < 0 ? `<small class="sg-d neg">faltan ${fmt(-d)}</small>` : d > 0 ? `<small class="sg-d pos">sobran ${fmt(d)}</small>` : `<small class="sg-d eq">justo</small>`;
+  const val = esTotal()
+    ? `<input class="sg-in" id="sg-${id}" data-sg="${id}" inputmode="decimal" autocomplete="off" value="${esc(edit ?? fmtIn(s))}" placeholder="—" aria-label="Stock sugerido de ${esc(p.nombre)}">`
+    : `<span class="q">${fmt(s)}</span>`;
+  return `<span class="sg-l">Sugerido</span>${val}${dif}`;
+}
+async function guardarSugerido(id, el){
+  if (!esTotal()){ toast('El sugerido lo cambian la dueña o la administradora.', true); return; }
+  const p = S.allProds.find(x => x.id === id); if (!p) return;
+  const raw = el.value.trim(); let v = num(raw);
+  if (raw && (v == null || v < 0 || !isHalf(v))){ el.classList.add('bad'); toast('El sugerido va en unidades enteras o medias (ej. 3 o 3,5).', true); return; }
+  el.classList.remove('bad'); v = raw ? round(v) : null;
+  if (sugOf(p) === v){ if (S.sgEdit) delete S.sgEdit[id]; return; }
+  try {
+    await w(() => C('productos').doc(id).update({sugerido:v, actualizado:Date.now()}));
+    if (S.sgEdit) delete S.sgEdit[id];
+    el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 1000);
+  } catch(err){ fail(err); }
 }
 
 V.conteo = () => {
@@ -1579,7 +1604,7 @@ function backup(){
   const prods = [...S.allProds].sort((a,b) => String(a.hoja || '').localeCompare(String(b.hoja || '')) || (a.orden ?? 1e9) - (b.orden ?? 1e9));
   const fabs = [...S.allFab].sort((a,b) => String(a.hoja || '').localeCompare(String(b.hoja || '')) || (a.orden ?? 1e9) - (b.orden ?? 1e9));
   bajarExcel(`copia-de-seguridad-stock-${slug(localNombre())}-${hoyISO()}.xlsx`, [
-    {name:'Productos', rows:[['Hoja','Categoría','Producto','Unidad','Mínimo','Proveedor','Stock','Sin stock','Observación','Orden'], ...prods.map(p => [hojaDe(p), catOf(p), p.nombre || '', p.unidad || 'unidad', n0(minOf(p)), provOf(p), n0(stockOf(p)), p.sinStock ? 'Sí' : 'No', p.obs || '', n0(p.orden)])]},
+    {name:'Productos', rows:[['Hoja','Categoría','Producto','Unidad','Mínimo','Proveedor','Stock','Sugerido','Sin stock','Observación','Orden'], ...prods.map(p => [hojaDe(p), catOf(p), p.nombre || '', p.unidad || 'unidad', n0(minOf(p)), provOf(p), n0(stockOf(p)), n0(sugOf(p)), p.sinStock ? 'Sí' : 'No', p.obs || '', n0(p.orden)])]},
     {name:'Local + Fábrica', rows:[['Hoja','Bloque','Orden','Producto','Resaltado','Local','Fábrica','Total','Sin stock'], ...fabs.map(it => [nombreHoja(it.hoja || 'fabrica'), bloqueOf(it), n0(it.orden), it.nombre || '', it.resaltar ? 'Sí' : 'No', n0(num(it.local)), n0(num(it.fabrica)), n0(round((num(it.local) || 0) + (num(it.fabrica) || 0))), it.sinStock ? 'Sí' : 'No'])]},
     {name:'Historial', rows:filasHist(S.conteos)},
     {name:'Historial Fábrica', rows:filasHistF(S.conteos)},
@@ -1688,6 +1713,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'aj-cat'){ S.aj.cat = t.value; renderAjustesBody(); }
   else if (t.name === 'hn-tipo'){ S.hj.tipo = t.value; const s = $('#hn-copia'); if (s) s.innerHTML = copiaOpts(t.value); }
   else if (t.matches('[data-qmin]')) qGuardar(t.dataset.qmin, 'min', t);
+  else if (t.matches('[data-sg]')) guardarSugerido(t.dataset.sg, t);
   else if (t.matches('[data-qprov]')) qGuardar(t.dataset.qprov, 'proveedor', t);
   else if (t.id === 'h-hoja'){ S.histHoja = t.value; S.histN = 30; render(); }
   else if (t.id === 'h-per'){ S.histPer = t.value; S.histN = 30; render(); }
@@ -1709,6 +1735,7 @@ document.addEventListener('input', e => {
   }
   if (t.matches('[data-cn]')){ S.notas[t.dataset.cn] = t.value; saveDraft(); renderChrome(); const pr = $('#cprog'); if (pr) pr.outerHTML = progHTML(); return; }
   if (t.matches('[data-pq]')){ const v = num(t.value); if (v != null && v >= 0) S.pedAdj[t.dataset.pq] = round(v); return; }
+  if (t.matches('[data-sg]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit[t.dataset.sg] = t.value; return; }
   if (['q-stock','q-conteo','q-pedido'].includes(t.id)){ S.q = t.value; clearTimeout(qT); qT = setTimeout(render, 120); return; }
   if (t.id === 'q-hist'){ S.histQ = t.value; clearTimeout(qT); qT = setTimeout(render, 150); return; }
   if (t.id === 'aj-q'){ S.aj.q = t.value; clearTimeout(qT); qT = setTimeout(renderAjustesBody, 120); return; }

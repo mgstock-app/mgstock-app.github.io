@@ -47,6 +47,7 @@
 
 ## Cambios posteriores
 - 21/10, 12:50: se quitaron los botones de descarga en Excel de Stock, Conteo Fábrica, Pedido e Historial (pedido de la usuaria). Queda «Copia de seguridad» en Inicio. Pruebas de navegador (Playwright, 3 suites) en verde.
+- 21/10, 16:40: hoja Stock (renombrada «Stock Sugerido» desde la app) con dos columnas a la derecha: «Local» (lo que carga el gerente con − y +) y «Sugerido» (lo carga la dueña o la administradora; el resto lo ve). Muestra si faltan, sobran o está justo. Campo `sugerido` en `<local>/productos`; la base lo protege con el trigger `docs_proteger_sugerido` (migración `proteger_stock_sugerido`): si otro rol intenta cambiarlo, se conserva el valor anterior. Gerentes siguen pudiendo agregar, editar y borrar productos. Pruebas: 11/11 y 3 suites de navegador en verde; simulación SQL: dueña y administradora guardan el sugerido, gerente no.
 - Video tutorial para gerentes (local Torcuato, 50 s, vertical): grabado sobre una copia local con datos de ejemplo; no se guarda en el repositorio.
 
 ## Pendientes

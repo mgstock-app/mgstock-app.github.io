@@ -101,3 +101,19 @@ test('managers only see the team of their own branch', async () => {
   const admin = await session('kmu15lopez@gmail.com');
   assert.equal((await admin.db.collection('equipo').get()).size, 5);
 });
+
+test('only owner and administrator change the suggested stock', async () => {
+  const owner = await session('dueno@example.com');
+  await owner.db.doc('torcuato/productos/p-001').update({ sugerido: 6 });
+  assert.equal((await owner.db.doc('torcuato/productos/p-001').get()).data().sugerido, 6);
+
+  const manager = await session('gerente.torcuato@example.com');
+  manager.context.window.__rows.find(r => r.col === 'torcuato/productos' && r.id === 'p-001').data.sugerido = 6;
+  await manager.db.doc('torcuato/productos/p-001').update({ sugerido: 99, stock: 2 });
+  const row = (await manager.db.doc('torcuato/productos/p-001').get()).data();
+  assert.equal(row.stock, 2);
+  assert.equal(row.sugerido, 6);
+  await manager.db.collection('torcuato/productos').add({ nombre: 'Nuevo', cat: 'Salsas', sugerido: 50 });
+  const added = (await manager.db.collection('torcuato/productos').get()).docs.map(d => d.data()).find(d => d.nombre === 'Nuevo');
+  assert.ok(added && !('sugerido' in added));
+});
