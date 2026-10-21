@@ -1,0 +1,4 @@
+-- Sin datos internos en el codigo fuente.
+-- Los productos y miembros existentes se conservan exclusivamente en Supabase.
+-- Este archivo no crea ni modifica registros.
+-- Para una instalacion nueva, cargar los datos por un canal privado autorizado.
