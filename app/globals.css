@@ -233,6 +233,21 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 button.r-name{all:unset;grid-area:name;min-width:0;cursor:pointer;border-radius:4px}
 button.r-name:hover b{color:var(--accent)}
 button.r-name:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.r-nb{all:unset;display:block;max-width:100%;cursor:pointer;border-radius:4px}
+.r-nb:hover b{color:var(--accent)}
+.r-nb:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* Observación del gerente para la dueña, debajo de cada producto */
+.nw{min-width:0;max-width:100%}
+.nt{all:unset;box-sizing:border-box;display:inline-flex;align-items:flex-start;gap:6px;max-width:100%;margin-top:5px;padding:5px 9px;border-radius:8px;background:var(--hl);color:var(--hl-ink);font-size:12.5px;line-height:1.35;overflow-wrap:anywhere}
+button.nt{cursor:pointer}
+button.nt:hover{box-shadow:inset 0 0 0 1px rgba(77,58,0,.25)}
+button.nt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nt .i{width:14px;height:14px;flex:none;margin-top:1px}
+.nt-t{min-width:0}
+.r-name .nt small,.nt small{display:block;margin-top:1px;font-size:11px;color:var(--hl-ink);opacity:.75}
+.xpn{display:flex;flex-direction:column;align-items:flex-start;min-width:0;padding-block:6px}
+.xpn .cn{margin-top:4px}
+.xp.hl .nt{background:var(--surface);box-shadow:inset 0 0 0 1px rgba(77,58,0,.22)}
 .r-st{grid-area:st}
 .r-q{grid-area:q;text-align:right}
 .r-q .q{display:block;font:600 17px/1.2 var(--f-num)}

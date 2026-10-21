@@ -19,6 +19,7 @@ const TIPOS = {
 };
 const UNIDADES = ['unidad','caja','docena','kg','bolsa','paquete','botella','lata','rollo','balde','pack'];
 const IC = {
+  msg:'<path d="M4 5h16v11H10l-6 4z"/>',
   box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
   clip:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12.5l2 2 4-4"/>',
   cart:'<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11.5l2-8H6.2"/>',
@@ -436,7 +437,7 @@ V.stock = () => {
   const txt = sg
     ? (esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, con <b>Estados</b>, desde qué número aparece cada estado.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.')
     : (esTotal() ? 'Activá <b>Stock sugerido</b> para cargar un número de referencia por producto y ver los estados por color.' : '');
-  const acts = tg + (S.prods.length ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button>` : '');
+  const acts = tg + (S.prods.length ? `${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button>` : '');
   const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${txt}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${acts ? `<div class="bar-a">${acts}</div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
@@ -464,7 +465,7 @@ function rowStock(p, sg = sugActivo()){
   return `<div class="sh-r ${st}">
     <span class="r-n">${S.rn.get(p.id) || ''}</span>
     <div class="r-ss">${ssBox(p,'ss')}</div>
-    <button class="r-name" data-act="aj-item" data-id="${id}" title="Modificar en Ajustes"><b>${esc(p.nombre)}</b>${meta ? `<small>${meta}</small>` : ''}${p.obs ? `<small class="obs">${esc(p.obs)}</small>` : ''}</button>
+    <div class="r-name"><button class="r-nb" data-act="aj-item" data-id="${id}" title="Modificar en Ajustes"><b>${esc(p.nombre)}</b>${meta ? `<small>${meta}</small>` : ''}${p.obs ? `<small class="obs">${esc(p.obs)}</small>` : ''}</button>${notaCell(p, 'p')}</div>
     <div class="r-st"><span class="st ${st}" ${sg && sugOf(p) != null ? `title="${esc(rangoTxt(p))}"` : ''}>${ESTADO[st]}</span></div>
     <div class="r-q"><small class="ql">Local</small><span class="q">${fmt(q)}</span>${chg ? `<small>antes ${fmt(stockOf(p))}</small>` : ''}</div>
     <div class="r-adj"><div class="adj"><button class="out" id="dec-${id}" data-act="dec" data-id="${id}" aria-label="Restar 1 a ${esc(p.nombre)}" ${!(q > 0) || !canW() ? 'disabled' : ''}>−</button><button class="in" id="inc-${id}" data-act="inc" data-id="${id}" aria-label="Sumar 1 a ${esc(p.nombre)}" ${canW() ? '' : 'disabled'}>+</button></div></div>
@@ -520,6 +521,68 @@ async function guardarEstados(id){
     if (S.sgEdit) delete S.sgEdit[id];
     closePanel(); toast(`Estados de ${p.nombre} guardados`);
   } catch(err){ fail(err); }
+}
+/* Observación por producto: un mensaje corto del gerente para la dueña. Se borra con Borrar datos. */
+const fechaNota = ts => { const d = new Date(ts), z = n => String(n).padStart(2, '0'); return `${z(d.getDate())}/${z(d.getMonth() + 1)} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+const notaItem = (k, id) => (k === 'f' ? S.allFab : S.allProds).find(x => x.id === id);
+function notaCell(x, k){ return `<div class="nw" id="nw-${k}-${esc(x.id)}">${notaInner(x, k)}</div>`; }
+function notaInner(x, k){
+  const key = k + ':' + x.id, id = esc(x.id), n = String(x.nota || '').trim();
+  if (S.ntEdit && has(S.ntEdit, key)) return `<input class="cn" id="nt-${k}-${id}" data-nt="${esc(key)}" maxlength="200" autocomplete="off" enterkeyhint="done" value="${esc(S.ntEdit[key])}" placeholder="Mensaje para la dueña (opcional)" aria-label="Observación de ${esc(x.nombre)}">`;
+  if (n){
+    const meta = [x.notaPor, x.notaFecha ? fechaNota(x.notaFecha) : ''].filter(Boolean).join(' · ');
+    const body = `${ic('msg')}<span class="nt-t">${esc(n)}${meta ? `<small>${esc(meta)}</small>` : ''}</span>`;
+    return canW() ? `<button class="nt" data-act="nota" data-k="${k}" data-id="${id}" title="Tocá para cambiar o borrar la observación">${body}</button>` : `<span class="nt">${body}</span>`;
+  }
+  return canW() ? `<button class="addnote" data-act="nota" data-k="${k}" data-id="${id}">+ Observación</button>` : '';
+}
+function refreshNota(key){
+  const k = key.slice(0, 1), id = key.slice(2), x = notaItem(k, id), el = document.getElementById(`nw-${k}-${id}`);
+  if (el && x) el.innerHTML = notaInner(x, k);
+}
+function abrirNota(k, id){
+  if (!needWrite()) return;
+  const x = notaItem(k, id); if (!x) return;
+  S.ntEdit = S.ntEdit || {}; S.ntEdit[k + ':' + id] = String(x.nota || '');
+  refreshNota(k + ':' + id);
+  const el = document.getElementById(`nt-${k}-${id}`); if (el){ el.focus(); const L = el.value.length; try { el.setSelectionRange(L, L); } catch {} }
+}
+async function cerrarNota(key, el){
+  const k = key.slice(0, 1), id = key.slice(2), x = notaItem(k, id);
+  const v = String(el.value || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (S.ntEdit) delete S.ntEdit[key];
+  if (x && v !== String(x.nota || '').trim() && canW()){
+    const patch = v ? {nota:v, notaPor:(S.me && S.me.name) || S.uid || null, notaFecha:Date.now()} : {nota:null, notaPor:null, notaFecha:null};
+    try { await w(() => C(k === 'f' ? 'fabrica' : 'productos').doc(id).update(patch)); Object.assign(x, patch); toast(v ? 'Observación guardada' : 'Observación borrada'); } catch(e){ fail(e); }
+  }
+  refreshNota(key);
+}
+/* Borrar datos: deja la hoja lista para el día siguiente. Borra cantidades, Sin stock y observaciones; no toca productos, categorías ni stock sugerido. */
+function pedirBorrar(){
+  if (!needWrite()) return;
+  const fab = isFabV(S.view), n = fab ? S.fab.length : S.prods.length;
+  const que = fab ? 'las cantidades de <b>Local</b> y <b>Fábrica</b>' : 'las cantidades';
+  openConfirm(`Borrar datos de ${nombreHoja(S.view)}`, `Se borran ${que}, las casillas <b>Sin stock</b> y las observaciones de ${plural(n, 'producto', 'productos')}, para volver a usar la hoja. <b>No se tocan</b> los productos, las categorías ni el stock sugerido. Los conteos ya guardados siguen en el Historial.`, 'Borrar datos', 'borrar-ok', true);
+}
+async function borrarDatos(){
+  if (!needWrite()) return;
+  const fab = isFabV(S.view), now = Date.now(), nom = nombreHoja(S.view);
+  const btn = document.querySelector('#pn [data-act="borrar-ok"]'); if (btn){ btn.disabled = true; btn.textContent = 'Borrando…'; }
+  const sinNota = {nota:null, notaPor:null, notaFecha:null};
+  try {
+    if (fab){
+      const its = S.fab.filter(it => it.local != null || it.fabrica != null || it.sinStock || it.nota);
+      await batchRun(its, it => C('fabrica').doc(it.id).update({local:null, fabrica:null, sinStock:false, ...sinNota, actualizado:now}));
+      for (const it of its) Object.assign(it, {local:null, fabrica:null, sinStock:false, ...sinNota});
+      clearFDraftCtx();
+    } else {
+      const ps = S.prods.filter(p => p.stock != null || p.sinStock || p.nota);
+      await batchRun(ps, p => C('productos').doc(p.id).update({stock:null, sinStock:false, ...sinNota, actualizado:now}));
+      for (const p of ps) Object.assign(p, {stock:null, sinStock:false, ...sinNota});
+      clearDraftCtx();
+    }
+    S.ntEdit = {}; closePanel(); render(); toast(`Datos borrados en ${nom}`);
+  } catch(e){ if (btn){ btn.disabled = false; btn.textContent = 'Borrar datos'; } fail(e); }
 }
 async function toggleSug(){
   if (!esTotal()){ toast('El stock sugerido lo activan la dueña o la administradora.', true); return; }
@@ -660,7 +723,7 @@ V.fabrica = () => {
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras o medias (0,5).</p>
-    <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button><button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
+    <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Abrí Ajustes para agregar los productos de ${esc(nom)}.<div class="bar-a"><button class="btn primary" data-act="aj-open" data-tab="f-add">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -680,7 +743,7 @@ function rowFab(it, n){
   const chgL = has(d, 'l') && d.l !== num(it.local), chgF = has(d, 'f') && d.f !== num(it.fabrica);
   return `<div class="xl-r ${fSin(it) ? 'sin' : ''}" id="fr-${id}" role="row">
     <span class="xn">${n}</span>
-    <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><b>${esc(it.nombre)}</b></span>
+    <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn"><b>${esc(it.nombre)}</b>${notaCell(it, 'f')}</span></span>
     <span class="xt" id="ft-${id}">${fmt(fTot(it))}</span>
     <span class="xc"><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}></span>
     <span class="xc fab"><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="Fábrica de ${esc(it.nombre)}" ${dis}></span>
@@ -1727,6 +1790,9 @@ document.addEventListener('click', e => {
     case 'aj-open': openAjustes(t.dataset.tab); break;
     case 'est': openEstados(id); break;
     case 'sug-tg': toggleSug(); break;
+    case 'nota': abrirNota(t.dataset.k === 'f' ? 'f' : 'p', id); break;
+    case 'borrar': pedirBorrar(); break;
+    case 'borrar-ok': borrarDatos(); break;
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
     case 'local': abrirLocal(id); break;
@@ -1828,6 +1894,7 @@ document.addEventListener('input', e => {
   if (t.matches('[data-cn]')){ S.notas[t.dataset.cn] = t.value; saveDraft(); renderChrome(); const pr = $('#cprog'); if (pr) pr.outerHTML = progHTML(); return; }
   if (t.matches('[data-pq]')){ const v = num(t.value); if (v != null && v >= 0) S.pedAdj[t.dataset.pq] = round(v); return; }
   if (t.matches('[data-sg]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit[t.dataset.sg] = t.value; return; }
+  if (t.matches('[data-nt]')){ S.ntEdit = S.ntEdit || {}; S.ntEdit[t.dataset.nt] = t.value; return; }
   if (['es-sug', 'es-poco', 'es-exc'].includes(t.id)){ estRefresh(); return; }
   if (['q-stock','q-conteo','q-pedido'].includes(t.id)){ S.q = t.value; clearTimeout(qT); qT = setTimeout(render, 120); return; }
   if (t.id === 'q-hist'){ S.histQ = t.value; clearTimeout(qT); qT = setTimeout(render, 150); return; }
@@ -1838,6 +1905,8 @@ document.addEventListener('input', e => {
 document.addEventListener('focusout', e => {
   const t = e.target;
   if (t.matches && t.matches('[data-cn]') && !String(t.value).trim()){ delete S.notas[t.dataset.cn]; saveDraft(); renderChrome(); }
+  /* Si la vista se volvió a dibujar y el campo sigue con el foco, no se cierra */
+  if (t.matches && t.matches('[data-nt]')){ const fid = t.id; setTimeout(() => { const el = document.getElementById(fid); if (el && document.activeElement !== el && el.dataset.nt) cerrarNota(el.dataset.nt, el); }, 0); }
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
@@ -1852,6 +1921,10 @@ document.addEventListener('submit', e => {
   else if (f.id === 'est-form') guardarEstados(f.dataset.id);
 });
 document.addEventListener('keydown', e => {
+  if (e.target.matches && e.target.matches('[data-nt]')){
+    if (e.key === 'Enter'){ e.preventDefault(); e.target.blur(); return; }
+    if (e.key === 'Escape'){ const k = e.target.dataset.nt; if (S.ntEdit) delete S.ntEdit[k]; refreshNota(k); return; }
+  }
   if (e.key === 'Escape'){
     if (!$('#ov').hidden) closePanel();
     else if ($('#app').classList.contains('open')){ $('#app').classList.remove('open'); $('#scrim').hidden = true; }
@@ -1945,7 +2018,7 @@ function abrirLocal(id){
     S.local = id;
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = [];
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
-    S.view = 'inicio'; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
+    S.ntEdit = {}; S.view = 'inicio'; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
   }
   S.ro = !puedeEditarLocal(id);
