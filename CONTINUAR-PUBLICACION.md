@@ -16,6 +16,8 @@
 - Google Cloud: proyecto `mgstock` (ID `mgstock-512313`), separado de `reporte-mensual` (no se modificó). Pantalla de consentimiento "MGStock", usuarios externos, en producción, solo permisos básicos (email y perfil). Página principal y política de privacidad apuntan a `mgstock-app.github.io`.
 - Cliente OAuth web "MGStock web": origen `https://mgstock-app.github.io`, URI de redirección `https://vgsepaaewbctjsjcpeta.supabase.co/auth/v1/callback`. El secreto está cargado solo en Supabase; no está en ningún archivo.
 - `public/privacidad.html`: política de privacidad requerida por Google.
+- Equipo por local (21/10, migración `equipo_visible_por_local`): la administradora y el dueño ven a todo el Equipo; gerentes y "solo ver" ven solo a la administradora, al dueño, a sí mismos y a quienes comparten alguno de sus locales. Lo aplica la base (política `docs_leer` y función `comparte_local`), no solo la pantalla. Verificado con simulación SQL: gerente de Torcuato ve administradora, dueña y a sí mismo; gerente de Munro ídem con Munro.
+- Equipo cargado el 21/10: administradora, dueña (Hotmail), gerente de Munro y gerente de Torcuato. Hay además una cuenta Gmail de Gisela con rol Editor sin locales: la usuaria pidió quitarla, pero el borrado desde la herramienta SQL no se ejecutó (espera una confirmación). Se puede quitar desde Equipo en la app.
 
 ## Seguridad y datos personales
 - Historial revisado: sin claves de servicio, tokens ni contraseñas. La única clave es la anon pública de `public/stock/config.js`.
@@ -27,7 +29,7 @@
 - Supabase Advisor: 8 avisos WARN por funciones SECURITY DEFINER ejecutables por usuarios con sesión (solo devuelven datos de quien consulta) y "Leaked password protection" desactivado. No bloquean.
 
 ## Verificado el 21/10
-- `npm test` 9/9; lint y build en GitHub Actions.
+- `npm test` 10/10 (incluye la prueba de equipo por local); lint y build en GitHub Actions.
 - Sin sesión: 401 en la tabla `docs` y en las funciones.
 - Google: flujo correcto con el cliente MGStock; la administradora entró y ve Munro y Torcuato (33 productos cada uno), "En vivo".
 - Simulación SQL con permisos reales y sin cambiar datos: gerente de Munro ve y edita solo Munro; usuario fuera del Equipo no ve nada.

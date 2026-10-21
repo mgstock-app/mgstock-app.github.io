@@ -6,9 +6,10 @@
   const me = () => session && session.user.email;
   const acc = () => { const r = rows.find(x => x.col === 'equipo' && x.data.email === me()); return r ? r.data : null; };
   const total = a => a && ['creadora', 'dueno'].includes(a.rol);
-  function canView(col, id){
+  function canView(col, id, data){
     const a = acc(); if (!a) return col === 'solicitudes' && id === me();
-    if (col === 'equipo' || col === 'locales') return true;
+    if (col === 'locales') return true;
+    if (col === 'equipo') { const d = data || {}; return total(a) || d.email === me() || ['creadora', 'dueno'].includes(d.rol) || (d.locales || []).some(l => (a.locales || []).includes(l)); }
     if (col === 'solicitudes') return a.rol === 'creadora' || id === me();
     if (!col.includes('/')) return false;
     return total(a) || (a.locales || []).includes(col.split('/')[0]);
@@ -32,7 +33,7 @@
     const match = r => st.f.every(([k,v]) => r[k] === v);
     const colOf = () => (st.f.find(x => x[0] === 'col') || [])[1];
     function run(){
-      if (st.op === 'select'){ const d = rows.filter(match).filter(r => canView(r.col, r.id)).map(r => ({id:r.id, data:JSON.parse(JSON.stringify(r.data))})); return {data: st.single ? (d[0] || null) : d, error:null}; }
+      if (st.op === 'select'){ const d = rows.filter(match).filter(r => canView(r.col, r.id, r.data)).map(r => ({id:r.id, data:JSON.parse(JSON.stringify(r.data))})); return {data: st.single ? (d[0] || null) : d, error:null}; }
       if (st.op === 'upsert'){ if (!canWrite(st.row.col)) return {error:{code:'42501', message:'new row violates row-level security policy'}}; const i = rows.findIndex(r => r.col === st.row.col && r.id === st.row.id); const nr = {col:st.row.col, id:st.row.id, data:st.row.data}; if (i >= 0) rows[i] = nr; else rows.push(nr); window.__log.push(['set', st.row.col, st.row.id]); notify(st.row.col); return {error:null}; }
       if (st.op === 'delete'){ const c = colOf(); if (!canWrite(c)) return {error:null}; for (let i = rows.length - 1; i >= 0; i--) if (match(rows[i])) rows.splice(i, 1); window.__log.push(['delete', c]); notify(c); return {error:null}; }
     }

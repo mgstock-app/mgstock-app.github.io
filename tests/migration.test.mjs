@@ -90,3 +90,14 @@ test('administrator creates, renames and removes a custom sheet', async () => {
   await sheet.delete();
   assert.equal((await sheet.get()).exists, false);
 });
+
+test('managers only see the team of their own branch', async () => {
+  const munro = await session('gerente.munro@example.com');
+  const vistos = Array.from((await munro.db.collection('equipo').get()).docs, d => d.data().email).sort();
+  assert.deepEqual(vistos, ['dueno@example.com', 'gerente.munro@example.com', 'kmu15lopez@gmail.com', 'lectura@example.com']);
+  const torcuato = await session('gerente.torcuato@example.com');
+  const vistosT = Array.from((await torcuato.db.collection('equipo').get()).docs, d => d.data().email).sort();
+  assert.deepEqual(vistosT, ['dueno@example.com', 'gerente.torcuato@example.com', 'kmu15lopez@gmail.com']);
+  const admin = await session('kmu15lopez@gmail.com');
+  assert.equal((await admin.db.collection('equipo').get()).size, 5);
+});

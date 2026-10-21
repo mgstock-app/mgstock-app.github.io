@@ -60,18 +60,38 @@ language sql stable security definer set search_path = public as $$
     limit 1), false)
 $$;
 
-grant execute on function public.mi_rol(), public.es_miembro(), public.es_editor(), public.es_creadora(), public.mi_acceso(), public.puede_ver_local(text), public.puede_editar_local(text) to authenticated;
+-- ¿Quien está conectado comparte algún local con esta lista de locales? (para ver solo el equipo de sus locales)
+create or replace function public.comparte_local(p_locales jsonb) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((
+    select exists (
+      select 1
+      from jsonb_array_elements_text(case when jsonb_typeof(d.data -> 'locales') = 'array' then d.data -> 'locales' else '[]'::jsonb end) as m(l)
+      where (case when jsonb_typeof(p_locales) = 'array' then p_locales else '[]'::jsonb end) ? m.l)
+    from public.docs d
+    where d.col = 'equipo' and lower(d.data ->> 'email') = lower(coalesce(auth.jwt() ->> 'email', ''))
+    limit 1), false)
+$$;
+
+grant execute on function public.mi_rol(), public.es_miembro(), public.es_editor(), public.es_creadora(), public.mi_acceso(), public.puede_ver_local(text), public.puede_editar_local(text), public.comparte_local(jsonb) to authenticated;
 
 drop policy if exists "docs_leer"   on public.docs;
 drop policy if exists "docs_crear"  on public.docs;
 drop policy if exists "docs_editar" on public.docs;
 drop policy if exists "docs_borrar" on public.docs;
 
--- Leer: Equipo y Locales, cualquier persona del Equipo. Pedidos de acceso: la administradora (y cada uno el suyo).
+-- Leer: Locales, cualquier persona del Equipo. Equipo: la administradora y el dueño ven a todos; el resto ve
+-- a la administradora, al dueño, a sí mismo y a quienes comparten alguno de sus locales.
+-- Pedidos de acceso: la administradora (y cada uno el suyo).
 -- Datos de un local: quien tenga ese local (la administradora y el dueño ven todos).
 create policy "docs_leer" on public.docs for select to authenticated
   using (
-    (col in ('equipo', 'locales') and public.es_miembro())
+    (col = 'locales' and public.es_miembro())
+    or (col = 'equipo' and public.es_miembro() and (
+          public.mi_rol() in ('creadora', 'dueno')
+          or lower(data ->> 'email') = lower(coalesce(auth.jwt() ->> 'email', ''))
+          or data ->> 'rol' in ('creadora', 'dueno')
+          or public.comparte_local(data -> 'locales')))
     or (col = 'solicitudes' and (public.es_creadora() or id = lower(coalesce(auth.jwt() ->> 'email', ''))))
     or (position('/' in col) > 0 and public.puede_ver_local(split_part(col, '/', 1)))
   );
@@ -140,5 +160,5 @@ do $$ begin
 end $$;
 
 -- Sin acceso para visitantes sin sesión
-revoke execute on function public.mi_rol(), public.es_miembro(), public.es_editor(), public.es_creadora(), public.mi_acceso(), public.puede_ver_local(text), public.puede_editar_local(text), public.pedir_acceso(text, text), public.doc_update(text, text, jsonb) from public, anon;
+revoke execute on function public.mi_rol(), public.es_miembro(), public.es_editor(), public.es_creadora(), public.mi_acceso(), public.puede_ver_local(text), public.puede_editar_local(text), public.comparte_local(jsonb), public.pedir_acceso(text, text), public.doc_update(text, text, jsonb) from public, anon;
 revoke all on public.docs from anon;
