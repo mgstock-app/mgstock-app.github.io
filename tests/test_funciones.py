@@ -51,9 +51,7 @@ async def main():
         txt = await pg.evaluate("document.getElementById('cp-txt') ? document.getElementById('cp-txt').value : '(portapapeles)'")
         check('La Salsera' in txt or txt == '(portapapeles)', 'copiar pedido de un proveedor: ' + txt[:60].replace('\n', ' | '))
         if await pg.locator('#cp-txt').count(): await click(pg, '[data-act=close]')
-        await click(pg, '[data-act=xls-pedido]', 300)
-        xl = await pg.evaluate("window.__xl.slice(-1)[0]")
-        check(xl and xl[0].startswith('pedido-munro-') and xl[0].endswith('.xlsx') and xl[1][0][1] == 4, 'Excel del pedido: ' + str(xl))
+        check(await pg.locator('[data-act=xls-pedido]').count() == 0, 'Pedido sin botón de Excel')
 
         # Conteos para el historial
         await click(pg, '#snav [data-go=stock]', 300)
@@ -70,6 +68,7 @@ async def main():
         check(await pg.locator('.hc').count() == 0, 'filtro Ayer sin conteos')
         await pg.select_option('#h-per', 'hoy'); await pg.wait_for_timeout(250)
         check(await pg.locator('.hc').count() == 1, 'filtro Hoy')
+        check(await pg.locator('[data-act=xls-hist]').count() == 0, 'Historial sin botón de Excel')
         await pg.screenshot(path=OUT + 'x3-historial.png')
         await click(pg, '[data-act=hist-clear]', 250)
         check(await pg.locator('.hc').count() == 2, 'sacar filtros')

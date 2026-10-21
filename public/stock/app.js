@@ -386,7 +386,7 @@ V.inicio = () => {
       </section>
       <section class="card pad"><div class="ch"><h4>Hojas</h4>${canW() ? `<button class="btn sm" data-act="hojas">${ic('edit')}Editar hojas</button>` : ''}</div>
         <div class="sheets">${visibles().map(h => `<button data-go="${esc(h.id)}"><span class="six">${ic(h.ic)}</span><span><b>${esc(h.nombre)}</b><small>${esc(h.desc)}</small></span><span class="chev">${ic('chev')}</span></button>`).join('') || `<p class="lead" style="margin:0">No hay hojas en el menú. Tocá Editar hojas para agregar una.</p>`}</div>
-        ${S.dl && S.db ? `<div class="bar-a" style="margin-top:12px">${n ? `<button class="btn sm" data-act="xls-stock">${ic('down')}Stock en Excel</button>` : ''}<button class="btn sm" data-act="backup" title="Descarga todos los datos en un Excel">${ic('shield')}Copia de seguridad</button></div>` : ''}
+        ${S.dl && S.db ? `<div class="bar-a" style="margin-top:12px"><button class="btn sm" data-act="backup" title="Descarga todos los datos en un Excel">${ic('shield')}Copia de seguridad</button></div>` : ''}
       </section>
     </div>
     <div class="col">
@@ -405,7 +405,7 @@ V.inicio = () => {
 };
 
 V.stock = () => {
-  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo.${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button>${S.dl ? `<button class="btn sm" data-act="xls-stock">${ic('down')}Excel</button>` : ''}</div>` : ''}</div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo.${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${S.prods.length ? `<div class="bar-a"><button class="btn sm" data-act="print">${ic('print')}Imprimir</button></div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const base = sorted().filter(p => catOK(p) && qOK(p));
@@ -495,7 +495,7 @@ function setCount(id, v){
 V.pedido = () => {
   const all = pedidoItems(), byProv = S.pedGrp === 'prov';
   const head = `${banners()}<div class="bar"><p class="lead">Productos sin stock o por debajo del mínimo. Ajustá la cantidad a pedir y copiá el pedido para mandarlo.</p>
-    <div class="bar-a">${all.length ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button>` : ''}${S.dl && all.length ? `<button class="btn sm" data-act="xls-pedido">${ic('down')}Excel</button>` : ''}${all.length ? `<button class="btn primary sm" data-act="copiar-pedido">${ic('copy')}Copiar pedido</button>` : ''}</div></div>`;
+    <div class="bar-a">${all.length ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button>` : ''}${all.length ? `<button class="btn primary sm" data-act="copiar-pedido">${ic('copy')}Copiar pedido</button>` : ''}</div></div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const sinMin = !S.prods.some(p => minOf(p) != null);
@@ -548,7 +548,7 @@ V.fabrica = () => {
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras o medias (0,5).</p>
-    <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button><button class="btn sm" data-act="print">${ic('print')}Imprimir</button>${S.dl ? `<button class="btn sm" data-act="f-xls">${ic('down')}Excel</button>` : ''}<button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
+    <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button><button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Abrí Ajustes para agregar los productos de ${esc(nom)}.<div class="bar-a"><button class="btn primary" data-act="aj-open" data-tab="f-add">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -685,7 +685,7 @@ function histList(){
     && (!q || (c.cambios || c.filas || []).some(x => norm(x.nombre).includes(q)) || norm(whoName(c)).includes(q) || norm(c.nota).includes(q)));
 }
 V.historial = () => {
-  const head = `${banners()}<div class="bar"><p class="lead">Cada vez que se toca Guardar conteo queda registrado acá, con fecha, hora y qué cambió.</p>${S.dl && S.conteos.length ? `<div class="bar-a"><button class="btn sm" data-act="xls-hist">${ic('down')}Descargar Excel</button></div>` : ''}</div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">Cada vez que se toca Guardar conteo queda registrado acá, con fecha, hora y qué cambió.</p></div>`;
   if (!S.loaded.c) return head + loadingList();
   if (!S.conteos.length) return head + noMatch('Todavía no hay conteos guardados', 'Cuando alguien toque Guardar conteo en cualquier hoja, aparece acá.');
   const q = norm(S.histQ), list = histList();
