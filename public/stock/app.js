@@ -744,7 +744,7 @@ V.fabrica = () => {
   const its = fItems(), lf = lastFab(), d = new Date(), nom = nombreHoja(fabCtx());
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
-  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras, medias o cuartos: escribí 0,25 · 0,5 · 0,75 (o 1/4, 3/4).</p>
+  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras, medias o cuartos: en Local usá <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.</p>
     <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Abrí Ajustes para agregar los productos de ${esc(nom)}.<div class="bar-a"><button class="btn primary" data-act="aj-open" data-tab="f-add">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
@@ -767,9 +767,14 @@ function rowFab(it, n){
     <span class="xn">${n}</span>
     <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn"><b>${esc(it.nombre)}</b>${notaCell(it, 'f')}</span></span>
     <span class="xt" id="ft-${id}">${fmt(fTot(it))}</span>
-    <span class="xc"><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}></span>
+    <span class="xc xcl"><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}>${fracFab(it, l)}</span>
     <span class="xc fab"><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="Fábrica de ${esc(it.nombre)}" ${dis}></span>
   </div>`;
+}
+/* ¼ ½ ¾ debajo de Local: eligen la fracción (tocar la misma otra vez la saca) */
+function fracFab(it, l){
+  const id = esc(it.id), fr = fracOf(l), dis = canW() ? '' : 'disabled';
+  return `<span class="fq" role="group" aria-label="Fracción de Local de ${esc(it.nombre)}">${[[1, '¼'], [2, '½'], [3, '¾']].map(([k, t]) => `<button id="ffq${k}-${id}" data-act="ffrac" data-id="${id}" data-f="${k / 4}" aria-pressed="${Math.abs(fr - k / 4) < 1e-9}" aria-label="${t} en Local de ${esc(it.nombre)}" ${dis}>${t}</button>`).join('')}</span>`;
 }
 function refreshF(id){
   const it = S.fab.find(x => x.id === id); if (!it) return;
@@ -778,6 +783,7 @@ function refreshF(id){
   const li = document.getElementById('fl-' + id); if (li) li.classList.toggle('chg', has(d, 'l') && d.l !== num(it.local));
   const fi = document.getElementById('ff-' + id); if (fi) fi.classList.toggle('chg', has(d, 'f') && d.f !== num(it.fabrica));
   const row = document.getElementById('fr-' + id); if (row) row.classList.toggle('sin', fSin(it));
+  const fr = fracOf(fVal(it, 'l')); if (row) row.querySelectorAll('[data-act="ffrac"]').forEach(b => b.setAttribute('aria-pressed', Math.abs(fr - +b.dataset.f) < 1e-9));
   const cb = row && row.querySelector('[data-fss]'); if (cb) cb.checked = fSin(it);
   renderChrome();
 }
@@ -1855,6 +1861,7 @@ document.addEventListener('click', e => {
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
+    case 'ffrac': { if (!needWrite()) break; const it = S.fab.find(x => x.id === id); if (!it) break; const l = fVal(it, 'l') ?? 0, ent = Math.floor(l + 1e-9), f = +t.dataset.f, v = round(ent + (Math.abs(fracOf(l) - f) < 1e-9 ? 0 : f)); setF(id, 'l', v); const inp = document.getElementById('fl-' + id); if (inp){ inp.value = fmtIn(v); inp.classList.remove('bad'); } refreshF(id); break; }
     case 'frac': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; const q = qty(p) ?? 0, ent = Math.floor(q + 1e-9), f = +t.dataset.f; S.draft[id] = round(ent + (Math.abs(fracOf(q) - f) < 1e-9 ? 0 : f)); saveDraft(); render(); break; }
     case 'dec': case 'inc': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; S.draft[id] = Math.max(0, round((qty(p) ?? 0) + (a === 'inc' ? 1 : -1))); saveDraft(); render(); break; }
     case 'cdec': case 'cinc': case 'chalf': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; const b = has(S.draft, id) ? S.draft[id] : (stockOf(p) ?? 0); setCount(id, b + (a === 'cinc' ? 1 : a === 'chalf' ? .5 : -1)); break; }

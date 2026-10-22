@@ -467,6 +467,9 @@ button.nt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .xt{justify-content:center;font:700 17px var(--f-num);background:var(--tot-bg);color:var(--tot-ink)}
 .xc{padding:4px!important;justify-content:center}
 .xc.fab{background:var(--fab-bg)}
+/* Local en Conteo Fábrica: casilla y ¼ ½ ¾ debajo */
+.xc.xcl{flex-direction:column;align-items:stretch;gap:4px}
+.xc .fq button{height:24px;font-size:13.5px}
 .xc input{width:100%;height:38px;min-width:0;border:1px solid transparent;border-radius:7px;background:transparent;text-align:center;font:600 16px var(--f-num);color:var(--ink)}
 .xc input::placeholder{color:var(--muted);font-weight:500}
 .xc input:hover{border-color:var(--line-2)}
@@ -479,7 +482,7 @@ button.nt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .xl-r.sin .xp b{color:var(--crit)}
 .xl-r.sin .xt{background:var(--crit-soft);color:var(--crit)}
 @media (max-width:640px){
-  .xl-r{grid-template-columns:minmax(0,1fr) 50px 66px 66px}
+  .xl-r{grid-template-columns:minmax(0,1fr) 50px 84px 62px}
   .xn{display:none!important}
   .xl-r > *{padding:0 7px;min-height:48px}
   .xp{gap:8px}
@@ -684,6 +687,7 @@ a.btn{text-decoration:none}
   .adj{grid-template-columns:52px 52px}
   .adj button{height:46px;font-size:22px}
   .fq button{height:38px;font-size:17px}
+  .xc .fq button{height:32px;font-size:15px}
   .stp{grid-template-columns:48px minmax(0,1fr) 48px 52px 52px}
   .stp button,.stp input{height:48px}
   .pst{grid-template-columns:44px 64px 44px}
@@ -707,6 +711,7 @@ a.btn{text-decoration:none}
   .sh-r,.xl-r,.hc,.card{break-inside:avoid}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .xc input{border:0!important;background:transparent!important}
+  .xc .fq{display:none!important}
 }
 .prev{font-size:13.5px;color:var(--muted)}
 .prev b{color:var(--ink)}
