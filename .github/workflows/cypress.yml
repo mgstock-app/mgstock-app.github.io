@@ -36,7 +36,12 @@ jobs:
           cat /tmp/mgstock-cypress.log
           exit 1
       - name: Cypress E2E
-        run: npm --prefix qa test
+        run: |
+          set -o pipefail
+          npm --prefix qa test 2>&1 | tee /tmp/cypress.log
+      - name: Resumen de fallos
+        if: failure()
+        run: grep -aE "✖|Error|failing|expected|Timed out|[0-9]+\) " /tmp/cypress.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
       - name: Capturas de fallos
         if: failure()
         uses: actions/upload-artifact@v4

@@ -187,8 +187,8 @@ async def main():
         check(await pg.locator('#ing-nada').count() == 1 and await pg.evaluate("document.querySelector('#ing-ok').disabled"), 'sin coincidencias: no deja confirmar')
         await click(pg, '[data-act=ing-cancelar]', 300)
         check(await pg.locator('#ing-file').count() == 1 and await pg.evaluate("window.__log.filter(x => x[0] === 'importar').length") == n0, 'Cancelar no guarda nada')
-        await cargar(pg, 'foto.jpg', b'\xff\xd8\xff', 'image/jpeg')
-        check('próxima etapa' in await pg.inner_text('#ing-err'), 'fotos todavía no: lo explica')
+        await cargar(pg, 'planilla.ods', b'xx', 'application/vnd.oasis.opendocument.spreadsheet')
+        check('Formato no admitido' in await pg.inner_text('#ing-err'), 'formato no admitido: lo explica')
         check(not errs, 'sin errores (administradora): ' + str(errs)); await ctx.close()
 
         # ---------- Dueña en el celular ----------
@@ -205,4 +205,5 @@ async def main():
     print('\nRESULTADO: ' + ('TODO OK' if not fails else f'{len(fails)} FALLAS'))
     sys.exit(1 if fails else 0)
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())

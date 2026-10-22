@@ -21,6 +21,7 @@ const TIPOS = {
 };
 const UNIDADES = ['unidad','caja','docena','kg','bolsa','paquete','botella','lata','rollo','balde','pack'];
 const IC = {
+  check:'<path d="m5 12 5 5 9-10"/>',
   in:'<path d="M12 3v11m0 0-4-4m4 4 4-4"/><path d="M4 14v5h16v-5"/>',
   msg:'<path d="M4 5h16v11H10l-6 4z"/>',
   box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
@@ -411,7 +412,7 @@ V.inicio = () => {
   return `${banners()}
   <section class="hello">
     <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Estado de los ${n} productos en este momento, por categoría.</p></div>
-    <div class="bar-a"><button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
+    <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
   ${S.loaded.p && !n ? `<div class="onb"><b>Primer paso: cargá los productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div></div>` : ''}
@@ -1641,12 +1642,12 @@ async function ingArchivo(file){
   const I = S.ing; if (!I || !file) return;
   I.arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}; I.lineas = []; I.res = null; I.msg = null; I.leyendo = true; render();
   try {
-    const M = await cargarIngreso(), r = await M.leerArchivo(file);
-    Object.assign(I.arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null});
+    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
+    Object.assign(I.arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
     I.hojaSel = 0; I.col = r.hojas ? M.columnas(r.hojas[0].filas) : null;
     if (I.datos) ingProcesar();
   } catch(e){ I.arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
-  I.leyendo = false; render();
+  I.leyendo = false; I.prog = ''; render();
 }
 function ingProcesar(mantener){
   const M = window.MGSIngreso, I = S.ing; if (!M || !I.arch || !I.datos) return;
@@ -1688,7 +1689,7 @@ function ingPlan(){
     /* Un renglón elegido por la dueña (destino o producto) cuenta como revisado */
     const elegido = g.rs.some(r => has(I.dec, r.i)), parecido = g.rs.some(r => r.estado !== 'coincide' && !has(I.dec, r.i));
     const estado = (valores && !has(I.cant, g.key)) ? 'valores' : !cantOk ? 'cantidad' : uniDist ? 'unidad' : parecido ? 'parecido' : elegido ? 'elegido' : 'coincide';
-    const on = has(I.on, g.key) ? !!I.on[g.key] && cantOk : (estado === 'coincide' || estado === 'elegido');
+    const on = has(I.on, g.key) ? !!I.on[g.key] && cantOk : !(I.arch && I.arch.ocr) && (estado === 'coincide' || estado === 'elegido');
     const antes = d.vals[campo] ?? null, despues = cantOk ? (I.op === 'ingreso' ? round((antes || 0) + cant) : cant) : null;
     return {...g, campo, det, raw, cant, cantOk, estado, on, antes, despues, valores, uniDist};
   }).sort((a, b) => a.d.hojaNombre.localeCompare(b.d.hojaNombre, 'es') || a.d.nombre.localeCompare(b.d.nombre, 'es'));
@@ -1733,11 +1734,11 @@ V.ingreso = () => {
       const letra = i => String.fromCharCode(65 + (i % 26)), op = (k, conNo) => `${conNo ? `<option value="-1" ${I.col[k] < 0 ? 'selected' : ''}>${k === 'cantidad' ? 'En el mismo renglón' : 'No hay'}</option>` : ''}${Array.from({length:n}, (_, i) => `<option value="${i}" ${I.col[k] === i ? 'selected' : ''}>Columna ${letra(i)}${hdr && hdr[i] ? ` · ${esc(String(hdr[i]).slice(0, 24))}` : ''}</option>`).join('')}`;
       cols = `<div class="frow ing-cols"><div class="fld"><label for="ing-col-producto">Producto</label><select id="ing-col-producto" data-ingcol="producto">${op('producto', false)}</select></div><div class="fld"><label for="ing-col-cantidad">Cantidad</label><select id="ing-col-cantidad" data-ingcol="cantidad">${op('cantidad', true)}</select></div><div class="fld"><label for="ing-col-unidad">Unidad</label><select id="ing-col-unidad" data-ingcol="unidad">${op('unidad', true)}</select></div></div>`;
     }
-    archTxt = `<div class="ing-file"><span class="six">${ic('list')}</span><div><b>${esc(A.nombre)}</b><small>${ingTam(A.tam || 0)}${I.leyendo ? ' · leyendo…' : A.error ? '' : I.lineas.length ? ` · ${plural(I.lineas.length, 'renglón leído', 'renglones leídos')}` : ''}</small></div><button class="btn sm" data-act="ing-quitar" ${I.busy ? 'disabled' : ''}>${ic('x')}Quitar</button></div>
-      ${A.error ? `<p class="note warn" id="ing-err">${esc(A.error)}</p>` : ''}${hojasSel}${cols}`;
+    archTxt = `<div class="ing-file"><span class="six">${ic('list')}</span><div><b>${esc(A.nombre)}</b><small id="ing-prog-w">${ingTam(A.tam || 0)}${I.leyendo ? ` · <span id="ing-prog">${esc(I.prog || 'Leyendo…')}</span>` : A.error ? '' : I.lineas.length ? ` · ${plural(I.lineas.length, 'renglón leído', 'renglones leídos')}` : ''}</small></div><button class="btn sm" data-act="ing-quitar" ${I.busy ? 'disabled' : ''}>${ic('x')}Quitar</button></div>
+      ${A.error ? `<p class="note warn" id="ing-err">${esc(A.error)}</p>` : ''}${A.ocr && !A.error && !I.leyendo ? `<p class="note warn" id="ing-ocr">Leído de ${A.kind === 'pdf' ? 'un PDF escaneado' : 'una foto'}: <b>revisá cada renglón</b> y tildá los correctos. La lectura de imágenes puede confundir letras o números.</p>` : ''}${hojasSel}${cols}`;
   }
-  const paso3 = `<section class="card pad ing-c"><div class="ch"><h4>3. Archivo</h4></div>
-    ${listo ? (I.arch ? archTxt : `<label class="ing-drop" id="ing-drop" for="ing-file">${ic('in')}<b>Elegí un archivo</b><small>Excel (.xlsx) o CSV. Se lee en este dispositivo; no se sube a ningún lado.</small><small>PDF y fotos: en la próxima etapa.</small></label><input type="file" id="ing-file" class="ing-inp" accept=".xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">`)
+  const paso3 = `<section class="card pad ing-c"><div class="ch"><h4>3. Remito</h4></div>
+    ${listo ? (I.arch ? archTxt : `<label class="ing-drop" id="ing-drop" for="ing-file"><span class="btn primary ing-rem">${ic('in')}Ingresar remito</span><small>Sacá una foto del remito o elegí un PDF, Excel (.xlsx) o CSV. Se lee en este dispositivo; no se sube a ningún lado.</small></label><input type="file" id="ing-file" class="ing-inp" accept="image/*,.pdf,application/pdf,.xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">`)
       : `<p class="lead" style="margin:0">Primero elegí la sucursal y la operación.</p>`}</section>`;
   let paso4 = '';
   if (listo && I.arch && !I.arch.error && !I.leyendo && I.res){
@@ -1768,14 +1769,14 @@ V.ingreso = () => {
     const msg = I.msg ? `<div class="note ${I.msg.t === 'ok' ? '' : 'warn'} ing-msg" id="ing-msg"><b>${esc(I.msg.h)}</b> ${I.msg.b}${I.msg.t === 'net' ? `<div class="bar-a" style="margin-top:8px"><button class="btn sm primary" data-act="ing-confirmar" id="ing-retry">Reintentar</button></div>` : ''}</div>` : '';
     paso4 = `<section class="card pad ing-c" id="ing-vista"><div class="ch"><h4>4. Revisar y confirmar</h4><span class="num">${esc(nomLoc)} · ${ING_OP[I.op]}</span></div>
       <p class="lead">${I.op === 'ingreso' ? 'Se <b>suma</b> la cantidad al stock actual.' : 'La cantidad <b>reemplaza</b> el valor actual.'} Podés corregir cantidades y destinos. Solo se guardan los tildados.</p>
-      <div class="ing-sum"><span class="pill ok">${n} para importar</span>${P.pend.length ? `<span class="pill warn">${P.pend.length} para decidir</span>` : ''}<span class="pill">${P.ign.length} ignorados</span></div>
+      <div class="ing-sum">${I.arch.ocr && F.some(f => !f.on && f.cantOk && (f.estado === 'coincide' || f.estado === 'elegido')) ? `<button class="btn sm" data-act="ing-tildar" id="ing-tildar">${ic('check')}Tildar los que coinciden</button>` : ''}<span class="pill ok">${n} para importar</span>${P.pend.length ? `<span class="pill warn">${P.pend.length} para decidir</span>` : ''}<span class="pill">${P.ign.length} ignorados</span></div>
       ${F.length ? `<div class="ing-t" id="ing-tabla"><div class="ing-r ing-hd"><span></span><span>Producto</span><span>Hoja de destino</span><span class="ing-n">Detectado</span><span class="ing-n">Cantidad</span><span class="ing-n">Actual</span><span class="ing-n">Resultado</span><span>Estado</span></div>${F.map(fila).join('')}</div>` : `<p class="note warn" id="ing-nada">Ningún renglón coincide con productos de ${esc(nomLoc)}. No se va a modificar nada.</p>`}
       ${pendHTML}${ignHTML}${msg}
       <div class="ing-pie">${bloqueo ? `<small id="ing-bloqueo">${bloqueo}</small>` : '<span></span>'}<div class="bar-a"><button class="btn" data-act="ing-cancelar" ${I.busy ? 'disabled' : ''}>Cancelar</button><button class="btn primary" data-act="ing-confirmar" id="ing-ok" ${bloqueo || I.busy ? 'disabled' : ''}>${ic('save')}${I.busy ? 'Guardando…' : `Confirmar importación${n ? ` (${n})` : ''}`}</button></div></div></section>`;
   }
   const H = I.hist;
   const hist = loc ? `<section class="card pad ing-c" id="ing-hist"><div class="ch"><h4>Últimos ingresos en ${esc(nomLoc)}</h4></div>${H == null ? '<p class="lead" style="margin:0">Cargando…</p>' : !H.length ? '<p class="lead" style="margin:0">Todavía no hay ingresos de mercadería en esta sucursal.</p>' : `<div class="alist">${H.map(h => `<div class="ar ing-hr"><div><b>${esc(ING_OP[h.operacion] || h.operacion)} · ${esc(fechaHora(h.fecha))}</b><small>${esc((h.archivo && h.archivo.nombre) || 'archivo')} · ${plural((h.items || []).length, 'producto', 'productos')} · ${esc(String(h.por || '').split('@')[0])}${h.forzada ? ' · importado de nuevo' : ''}</small>${I.histOpen[h.id] ? `<div class="ing-hd2">${(h.items || []).map(it => `<div><span>${esc(it.nombre)} <small>${esc(it.nombreHoja || '')}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Fábrica'}` : ''}</small></span><span class="num">${fmt(it.antes)} → ${fmt(it.despues)}</span></div>`).join('')}${(h.ignorados || []).length ? `<small>Ignorados: ${esc(h.ignorados.slice(0, 20).join(' · '))}</small>` : ''}</div>` : ''}</div><div class="ar-a"><button class="btn sm" data-act="ing-hist" data-id="${esc(h.id)}">${I.histOpen[h.id] ? 'Ocultar' : 'Ver detalle'}</button></div></div>`).join('')}</div>`}</section>` : '';
-  return `${banners()}<div class="bar"><p class="lead">Cargá un archivo de mercadería de una sucursal y revisá las coincidencias. <b>Nada cambia hasta que toques Confirmar importación.</b> Solo la dueña y la administradora ven esta pantalla.</p></div>
+  return `${banners()}<div class="bar"><p class="lead">Ingresá un remito (foto, PDF, Excel o CSV) de una sucursal y revisá las coincidencias. <b>Nada cambia hasta que toques Confirmar importación.</b> Solo la dueña y la administradora ven esta pantalla.</p></div>
     <div class="ing">${paso1}${paso2}${paso3}${paso4}${hist}</div>`;
 };
 async function ingConfirmar(forzar){
@@ -2151,6 +2152,7 @@ document.addEventListener('click', e => {
     case 'ing-quitar': if (!S.ing.busy) ingQuitar(); break;
     case 'ing-cancelar': if (!S.ing.busy){ ingQuitar(); toast('Importación cancelada: no se guardó nada'); } break;
     case 'ing-otro': ingQuitar(); break;
+    case 'ing-tildar': { const I = S.ing; for (const f of ingPlan().filas) if (f.cantOk && (f.estado === 'coincide' || f.estado === 'elegido')) I.on[f.key] = true; ingCambio(); render(); break; }
     case 'ing-confirmar': ingConfirmar(false); break;
     case 'ing-forzar': closePanel(); ingConfirmar(true); break;
     case 'ing-hist': S.ing.histOpen[id] = !S.ing.histOpen[id]; render(); break;

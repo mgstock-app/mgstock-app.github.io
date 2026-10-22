@@ -1,8 +1,10 @@
 /* MG Stock · Ingreso de mercadería: lectura de archivos y reconocimiento de productos.
    Todo corre en el dispositivo de la dueña: los archivos no se suben a ningún lado.
-   Etapa 1: CSV, texto y Excel (.xlsx) con un lector propio (sin librerías externas). */
+   CSV, texto y Excel (.xlsx) con un lector propio; PDF con pdf.js y fotos o PDF escaneados con Tesseract.js
+   (librerías gratuitas alojadas en la misma web, en /vendor, que se cargan solo al usarlas). */
 (() => {
   'use strict';
+  const VENDOR = (() => { try { return new URL('../vendor/', (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || location.href).href; } catch { return 'vendor/'; } })();
 
   /* ---------- Texto ---------- */
   const FRQ = {'¼':' 1/4', '½':' 1/2', '¾':' 3/4'};
@@ -213,6 +215,87 @@
     });
   }
 
+  /* ---------- PDF y fotos: de palabras con posición a tabla o renglones ---------- */
+  const W_PROD = /^(producto|productos|descripcion|detalle|articulo|item|mercaderia|concepto|insumo|nombre)$/;
+  const W_CANT = /^(cantidad|cant|cantidades|unidades|unid|bultos|qty|cajas|piezas)$/;
+  const W_UNI = /^(unidad|um|medida|presentacion)$/;
+  const wn = t => norm(t).replace(/\./g, ' ').trim().split(' ')[0] || '';
+  function lineasDe(palabras){
+    const ws = palabras.filter(w => String(w.t).trim()).map(w => ({...w, yc:w.y + w.h / 2})).sort((a, b) => a.yc - b.yc);
+    const hs = ws.map(w => w.h).sort((a, b) => a - b), mh = hs[Math.floor(hs.length / 2)] || 10;
+    const out = [];
+    for (const w of ws){ const l = out[out.length - 1]; if (l && Math.abs(w.yc - l.y) <= mh * 0.6){ l.ws.push(w); l.y = (l.y * (l.ws.length - 1) + w.yc) / l.ws.length; } else out.push({y:w.yc, ws:[w]}); }
+    for (const l of out) l.ws.sort((a, b) => a.x - b.x);
+    return out;
+  }
+  function desdePalabras(palabras, nombre){
+    const ls = lineasDe(palabras);
+    const hi = ls.findIndex(l => l.ws.some(w => W_PROD.test(wn(w.t))) && l.ws.some(w => W_CANT.test(wn(w.t))));
+    if (hi >= 0){
+      const hd = ls[hi].ws, cortes = hd.map((w, i) => i ? (hd[i - 1].x + hd[i - 1].w + w.x) / 2 : -Infinity);
+      const col = w => { const c = w.x + w.w / 2; let k = 0; for (let i = 0; i < cortes.length; i++) if (c >= cortes[i]) k = i; return k; };
+      const filas = [hd.map(w => String(w.t))];
+      for (const l of ls.slice(hi + 1)){ const f = Array(hd.length).fill(''); for (const w of l.ws){ const k = col(w); f[k] = (f[k] ? f[k] + ' ' : '') + String(w.t).trim(); } if (f.some(Boolean)) filas.push(f); }
+      return {hojas:[{nombre, filas}]};
+    }
+    return {texto:ls.map(l => l.ws.map(w => String(w.t).trim()).join(' ')).join('\n')};
+  }
+  function cargarScript(url){
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = url; s.async = true; s.onload = res; s.onerror = () => { s.remove(); rej(new Error('No se pudo cargar el lector. Revisá la conexión.')); }; document.head.appendChild(s); });
+  }
+  /* OCR en el dispositivo (Tesseract.js, español). Devuelve palabras con posición. */
+  async function ocr(canvases, prog){
+    if (!window.Tesseract) await cargarScript(VENDOR + 'ocr/tesseract.min.js');
+    prog && prog('Preparando la lectura de la imagen…');
+    const wk = await window.Tesseract.createWorker('spa', 1, {workerPath:VENDOR + 'ocr/worker.min.js', corePath:VENDOR + 'ocr/', langPath:VENDOR + 'ocr/', logger:m => { if (prog && m && m.status === 'recognizing text') prog(`Leyendo la imagen… ${Math.round((m.progress || 0) * 100)}%`); }});
+    const pal = [];
+    try {
+      for (let k = 0; k < canvases.length; k++){
+        const {data} = await wk.recognize(canvases[k], {}, {tsv:true, text:true});
+        const dy = k * 100000;
+        if (data && data.tsv){
+          for (const ln of String(data.tsv).split('\n')){ const c = ln.split('\t'); if (c[0] !== '5' || c.length < 12) continue; const t = c.slice(11).join(' ').trim(); if (!t || +c[10] < 0) continue; pal.push({t, x:+c[6], y:+c[7] + dy, w:+c[8], h:+c[9]}); }
+        } else if (data && data.text){ String(data.text).split('\n').forEach((t, i) => { if (t.trim()) pal.push({t, x:0, y:dy + i * 20, w:10, h:10}); }); }
+      }
+    } finally { try { await wk.terminate(); } catch {} }
+    return pal;
+  }
+  function lienzo(src, w, h){
+    const max = 2400, k = Math.min(1, max / Math.max(w, h)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    const x = c.getContext('2d', {willReadFrequently:true}); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(src, 0, 0, c.width, c.height);
+    const im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+    for (let i = 0; i < d.length; i += 4){ const g = Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114); d[i] = d[i + 1] = d[i + 2] = g; }
+    x.putImageData(im, 0, 0); return c;
+  }
+  async function leerImagen(file, prog){
+    let bmp;
+    try { bmp = await createImageBitmap(file); }
+    catch { throw new Error('No se pudo abrir la imagen. Si es una foto HEIC de iPhone, sacala desde «Ingresar remito» con la cámara o compartila como JPG.'); }
+    const c = lienzo(bmp, bmp.width, bmp.height); if (bmp.close) bmp.close();
+    return desdePalabras(await ocr([c], prog), 'Foto');
+  }
+  async function leerPDF(buf, prog){
+    prog && prog('Abriendo el PDF…');
+    let pdfjs;
+    try { pdfjs = await import(VENDOR + 'pdfjs/pdf.min.mjs'); } catch { throw new Error('No se pudo cargar el lector de PDF. Revisá la conexión.'); }
+    pdfjs.GlobalWorkerOptions.workerSrc = VENDOR + 'pdfjs/pdf.worker.min.mjs';
+    let doc; try { doc = await pdfjs.getDocument({data:new Uint8Array(buf), isEvalSupported:false}).promise; } catch { throw new Error('El PDF está dañado o tiene contraseña.'); }
+    const n = Math.min(doc.numPages, 10), pal = [], escan = [];
+    for (let i = 1; i <= n; i++){
+      const pg = await doc.getPage(i), vp = pg.getViewport({scale:1}), tc = await pg.getTextContent(), dy = (i - 1) * 100000;
+      const its = tc.items.filter(it => it.str && it.str.trim());
+      if (its.map(it => it.str).join('').replace(/\s/g, '').length < 15){ escan.push(pg); continue; }
+      for (const it of its){ const h = Math.abs(it.height || it.transform[3] || 10); pal.push({t:it.str, x:it.transform[4], y:vp.height - it.transform[5] - h + dy, w:it.width || it.str.length * h * 0.5, h}); }
+    }
+    if (escan.length && !pal.length){
+      const cs = [];
+      for (const pg of escan.slice(0, 5)){ prog && prog('El PDF es escaneado: preparando la imagen…'); const v0 = pg.getViewport({scale:1}), vp = pg.getViewport({scale:Math.min(3, 2000 / v0.width)}); const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height); await pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise; cs.push(lienzo(c, c.width, c.height)); }
+      return {...desdePalabras(await ocr(cs, prog), 'PDF escaneado'), ocr:true};
+    }
+    return desdePalabras(pal, 'PDF');
+  }
+
   /* ---------- Huellas para detectar importaciones repetidas ---------- */
   async function huella(datos){
     const b = typeof datos === 'string' ? new TextEncoder().encode(datos) : new Uint8Array(datos);
@@ -221,7 +304,7 @@
   }
 
   /* ---------- Entrada principal: un archivo → tablas o renglones ---------- */
-  async function leerArchivo(file){
+  async function leerArchivo(file, prog){
     const nombre = String(file.name || 'archivo'), ext = (nombre.match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || '';
     if (file.size > 15 * 1024 * 1024) throw new Error('El archivo pesa más de 15 MB.');
     const buf = await file.arrayBuffer(), hash = await huella(buf);
@@ -229,11 +312,12 @@
     if (ext === 'xls') throw new Error('Los Excel viejos (.xls) no se pueden leer. Abrilo y guardalo como .xlsx o CSV.');
     if (ext === 'csv' || /csv/.test(file.type || '')) return {tipo:'csv', hash, hojas:[{nombre:'CSV', filas:leerCSV(decodificar(buf))}]};
     if (ext === 'txt' || /^text\//.test(file.type || '')) return {tipo:'txt', hash, texto:decodificar(buf)};
-    if (ext === 'pdf' || /pdf/.test(file.type || '') || /^image\//.test(file.type || '') || ['jpg', 'jpeg', 'png', 'heic', 'webp'].includes(ext)) throw new Error('PDF y fotos llegan en la próxima etapa. Por ahora usá Excel (.xlsx) o CSV.');
-    throw new Error('Formato no admitido. Usá Excel (.xlsx) o CSV.');
+    if (ext === 'pdf' || /pdf/.test(file.type || '')) return {tipo:'pdf', hash, ...(await leerPDF(buf, prog))};
+    if (/^image\//.test(file.type || '') || ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'gif', 'bmp'].includes(ext)) return {tipo:'foto', hash, ocr:true, ...(await leerImagen(file, prog))};
+    throw new Error('Formato no admitido. Usá una foto, un PDF, Excel (.xlsx) o CSV.');
   }
 
-  const api = {norm, unidadDe, cantidadDe, renglon, leerCSV, leerXLSX, columnas, renglonesTabla, renglonesTexto, prep, puntaje, coincidencias, huella, leerArchivo, decodificar, UMBRAL_SI, UMBRAL_TAL_VEZ};
+  const api = {desdePalabras, lineasDe, norm, unidadDe, cantidadDe, renglon, leerCSV, leerXLSX, columnas, renglonesTabla, renglonesTexto, prep, puntaje, coincidencias, huella, leerArchivo, decodificar, UMBRAL_SI, UMBRAL_TAL_VEZ};
   if (typeof window !== 'undefined') window.MGSIngreso = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

@@ -102,3 +102,20 @@ test('matching: exact, plural, accents, typos, numbers, several sheets and unkno
 test('fingerprints are stable', async () => {
   assert.equal(await I.huella('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 });
+
+test('PDF and photo words become a table using the header columns', () => {
+  const W = (t, x, y, w = 60) => ({t, x, y, w, h:12});
+  const pal = [
+    W('Remito', 10, 10), W('0001-123', 90, 10),
+    W('Código', 10, 40), W('Descripción', 80, 40, 90), W('Cant.', 320, 40, 40), W('Precio', 400, 40),
+    W('1023', 10, 70), W('Jamón', 80, 70), W('cocido', 140, 70), W('2', 330, 70, 10), W('15000', 400, 70),
+    W('1024', 10, 100), W('Muzzarella', 80, 100, 80), W('3,5', 325, 101, 20), W('9000', 400, 100),
+    W('Total', 300, 140), W('24000', 400, 140)
+  ];
+  const r = I.desdePalabras(pal, 'Foto');
+  const filas = r.hojas[0].filas, col = I.columnas(filas);
+  assert.equal(col.producto, 1); assert.equal(col.cantidad, 2);
+  assert.deepEqual(I.renglonesTabla(filas, col).map(x => [x.nombre, x.cantidad]), [['Jamón cocido', 2], ['Muzzarella', 3.5]]);
+  const sin = I.desdePalabras([W('Jamón', 10, 10), W('cocido', 70, 10), W('2', 140, 10, 10), W('Muzzarella:', 10, 40, 80), W('3', 100, 40, 10)], 'Foto');
+  assert.deepEqual(I.renglonesTexto(sin.texto).map(x => [x.nombre, x.cantidad]), [['Jamón cocido', 2], ['Muzzarella', 3]]);
+});
