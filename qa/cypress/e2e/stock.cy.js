@@ -5,6 +5,10 @@ const signIn = (email) => {
   cy.get("#au-in button[type=submit]").click();
 };
 describe("MG Stock: navegación, permisos y stock aislados", () => {
+  // Error de hidratación conocido del HTML heredado; otras excepciones fallan.
+  Cypress.on("uncaught:exception", (error) => {
+    if (error.message.includes("Minified React error #418")) return false;
+  });
   beforeEach(() => {
     cy.task("mockSupabase").then((mock) => {
       cy.intercept("GET", "**/vendor/supabase.js", {
