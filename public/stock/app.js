@@ -1625,7 +1625,7 @@ async function ingCargar(quieto){
     const [ps, fs, hs] = await Promise.all(['productos', 'fabrica', 'hojas'].map(c => S.db.collection(`${loc}/${c}`).get()));
     if (S.ing !== I || I.local !== loc) return;
     I.datos = armarDestinos(ps.docs.map(d => ({id:d.id, ...d.data()})), fs.docs.map(d => ({id:d.id, ...d.data()})), hs.docs.map(d => ({id:d.id, ...d.data()})));
-    if (I.arch && !I.arch.error && window.MGSIngreso) ingProcesar(true);
+    if (I.arch && !I.arch.error && !I.leyendo && (I.arch.hojas || I.arch.texto != null) && window.MGSIngreso) ingProcesar(true);
   } catch(e){ if (S.ing === I) I.err = `No se pudieron leer los productos de ${localNombre(loc)}. Revisá la conexión y volvé a elegir la sucursal.`; }
   if (S.ing === I){ I.cargando = false; render(); ingHist(); }
 }

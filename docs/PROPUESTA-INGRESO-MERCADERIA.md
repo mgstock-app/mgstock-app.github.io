@@ -1,6 +1,6 @@
 # Ingreso de mercadería — propuesta técnica
 
-**Estado (22/10/2026):** etapa 1 **publicada** con autorización de la usuaria: migración `ingreso_mercaderia` aplicada y verificada en la base, código en `main`.
+**Estado (22/10/2026):** etapas 1, 2 y 3 **publicadas** (Excel/CSV, PDF digital y fotos o PDF escaneados con OCR, botón «Ingresar remito»). Etapa 1 publicada con autorización de la usuaria: migración `ingreso_mercaderia` aplicada y verificada en la base, código en `main`.
 
 **Decisiones de la usuaria (22/10):** pueden usarla la dueña y la administradora; se puede asignar a mano un renglón no reconocido a un producto existente; si el archivo ya se importó, se avisa y se sigue solo con confirmación; empezar por la etapa 1.
 

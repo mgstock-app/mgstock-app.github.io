@@ -68,7 +68,7 @@
 7. Conteo Fábrica tiene «Poner todo en 0» y «Borrar datos»; preguntar si se quita el primero.
 8. Al pasar a Supabase Pro: activar la protección contra contraseñas filtradas.
 
-9. Ingreso de mercadería: etapa 1 PUBLICADA el 22/10 con autorización de la usuaria (migración `ingreso_mercaderia` aplicada y verificada; rama unida a `main`). Pendientes: etapa 2 (PDF digital) y etapa 3 (fotos y PDF escaneado). Detalle en `docs/PROPUESTA-INGRESO-MERCADERIA.md`.
+9. Ingreso de mercadería: etapa 1 PUBLICADA el 22/10 con autorización de la usuaria (migración `ingreso_mercaderia` aplicada y verificada; rama unida a `main`). Etapas 2 y 3 publicadas el 22/10: PDF con pdf.js 4.10.38 y fotos o PDF escaneados con Tesseract.js 5.1.1 (español), todo en el dispositivo; las librerías se bajan de npm en GitHub Actions (`scripts/vendor-ocr.mjs`) y no se guardan en el repo. Botón «Ingresar remito» en Inicio (dueña y administradora) y en la pantalla. Lo leído de fotos nunca va tildado solo. Pruebas: `tests/test_ingreso_ocr.py` (lectores simulados) y `qa/cypress/e2e/remito.cy.js` (lectores reales, en GitHub). Detalle en `docs/PROPUESTA-INGRESO-MERCADERIA.md`.
 
 ## Ideas para más adelante (no empezar sin pedido de la usuaria)
 - Multi-empresa: un solo link y cada empresa aislada por la base (nombre y logo, locales, equipo, hojas y productos propios), alta manual por la administradora y Mi Gusto como primera empresa. Hacerlo en una rama aparte con pruebas de aislamiento entre empresas. Antes: Supabase Pro (copias diarias), quitar la marca Mi Gusto para otros rubros y definir condiciones de uso.

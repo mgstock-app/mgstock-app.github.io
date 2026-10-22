@@ -88,12 +88,12 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get("#ing-op-ingreso").click();
     subir();
     cy.get("#ing-pend select").select("No importar");
-    cy.get("#ing-ok").click();
+    cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#ing-listo").should("be.visible");
     cy.get('[data-act="ing-otro"]').click();
     subir();
     cy.get("#ing-pend select").select("No importar");
-    cy.get("#ing-ok").click();
+    cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#pn").should("contain.text", "ya se importó");
     cy.get('#pn [data-act="close"]').first().click();
     cy.get('[data-act="ing-cancelar"]').click();
