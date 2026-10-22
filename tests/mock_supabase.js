@@ -37,10 +37,11 @@
     }
     const faltan = [], cambios = [];
     for (const i of its){
-      if (!((i.col === 'productos' && i.campo === 'stock') || (i.col === 'fabrica' && ['local', 'fabrica'].includes(i.campo))) || !i.id) return err('destino');
+      if (!(i.col === 'fabrica' && i.campo === 'fabrica') || !i.id) return err('destino');
       const q = Number(i.cantidad); if (!Number.isFinite(q) || q < 0 || q > 100000 || Math.abs(q * 4 - Math.round(q * 4)) > 1e-9) return err('cantidad');
       const r = rows.find(z => z.col === x.p_local + '/' + i.col && z.id === i.id);
       if (!r){ faltan.push(i.nombre || i.id); continue; }
+      if (!rows.some(z => z.col === x.p_local + '/hojas' && z.id === r.data.hoja && z.data.tipo === 'ingreso')) return err('destino');
       const act = r.data[i.campo] == null ? null : Number(r.data[i.campo]), ant = i.antes == null ? null : Number(i.antes);
       if (act !== ant) cambios.push({col:i.col, id:i.id, campo:i.campo, nombre:r.data.nombre, antes:ant, ahora:act});
     }

@@ -1,14 +1,11 @@
 /* global describe, beforeEach, it, cy, Cypress */
 // «Ingresar remito» con los lectores reales (pdf.js y Tesseract.js descargados en el build), datos ficticios.
 const SETUP = (w) => {
-  const P = (id) => w.__rows.find((r) => r.col === `munro/productos` && r.id === id).data;
-  Object.assign(P("p-001"), { nombre: "Jamón cocido", unidad: "unidad" });
-  Object.assign(P("p-002"), { nombre: "Muzzarella", unidad: "unidad" });
-  w.__rows.push(
-    { col: "munro/hojas", id: "h-cajas01", data: { nombre: "Stock Cajas", tipo: "lista", orden: 4 } },
-    { col: "munro/productos", id: "c-1", data: { nombre: "Cajas grandes", cat: "Cajas", unidad: "unidad", stock: 3, sinStock: false, orden: 1, hoja: "h-cajas01" } },
-  );
+  const it = (id, nombre, local, fabrica, orden) => ({ col: "munro/fabrica", id, data: { nombre, bloque: 1, orden, local, fabrica, sinStock: false, resaltar: false, hoja: "h-ing01" } });
+  w.__rows.push({ col: "munro/hojas", id: "h-ing01", data: { nombre: "Stock", tipo: "ingreso", orden: 5 } },
+    it("i-1", "Jamón cocido", 1, null, 1), it("i-2", "Muzzarella", null, null, 2), it("i-3", "Cajas grandes", 3, 1, 3));
 };
+const F = (rows, id) => rows.find((r) => r.col === "munro/fabrica" && r.id === id).data;
 const abrir = () => {
   cy.window().then(SETUP);
   cy.get("#au-email").type("dueno@example.com");
@@ -35,27 +32,27 @@ describe("MG Stock: Ingresar remito (PDF y foto)", () => {
   it("lee un PDF digital y lo guarda al confirmar", () => {
     abrir();
     cy.get("#ing-file").selectFile("cypress/fixtures/remito.pdf", { force: true });
-    cy.get('[id="ing-g-p:p-002"]', { timeout: 60000 }).should("contain.text", "3,5");
-    cy.get('[id="ing-g-p:c-1"]').should("contain.text", "5");
-    cy.get("#ing-ok").click();
+    cy.get('[id="ing-g-f:i-2"]', { timeout: 60000 }).should("contain.text", "3,5");
+    cy.get('[id="ing-g-f:i-3"]').should("contain.text", "3");
+    cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#ing-listo").should("be.visible");
     cy.window().its("__rows").should((rows) => {
-      expect(rows.find((r) => r.col === "munro/productos" && r.id === "p-002").data.stock).to.eq(3.5);
-      expect(rows.find((r) => r.col === "munro/productos" && r.id === "c-1").data.stock).to.eq(5);
+      expect(F(rows, "i-2").fabrica).to.eq(3.5);
+      expect(F(rows, "i-3").fabrica).to.eq(3);
     });
   });
   it("lee una foto con OCR, no tilda nada solo y guarda lo revisado", () => {
     abrir();
     cy.get("#ing-file").selectFile("cypress/fixtures/remito-foto.png", { force: true });
     cy.get("#ing-ocr", { timeout: 180000 }).should("be.visible");
-    cy.get('[id="ing-g-p:p-001"]').should("exist").find("[data-ingon]").should("not.be.checked");
-    cy.get('[id="ing-g-p:c-1"]').should("exist");
+    cy.get('[id="ing-g-f:i-1"]').should("exist").find("[data-ingon]").should("not.be.checked");
+    cy.get('[id="ing-g-f:i-3"]').should("exist");
     cy.get("#ing-tildar").click();
-    cy.get("#ing-ok").click();
+    cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#ing-listo").should("be.visible");
     cy.window().its("__rows").should((rows) => {
-      expect(rows.find((r) => r.col === "munro/productos" && r.id === "p-001").data.stock).to.eq(2);
-      expect(rows.find((r) => r.col === "munro/productos" && r.id === "c-1").data.stock).to.eq(8);
+      expect(F(rows, "i-1").fabrica).to.eq(2);
+      expect(F(rows, "i-3").fabrica).to.eq(6);
     });
   });
 });

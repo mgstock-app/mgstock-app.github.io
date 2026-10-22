@@ -17,7 +17,8 @@ const BASE = [
 ];
 const TIPOS = {
   lista:{nombre:'Lista de stock', ic:'list', desc:'Cantidades por categoría, sin stock y conteo', largo:'Productos por categoría con cantidad, casilla Sin stock y Guardar conteo. Como la hoja Stock.'},
-  fabrica:{nombre:'Local + Fábrica', ic:'fab', desc:'Local + Fábrica = total', largo:'Producto, Total stock, Local y Fábrica (ingreso mañana). Como Conteo Fábrica.'}
+  fabrica:{nombre:'Local + Fábrica', ic:'fab', desc:'Local + Fábrica = total', largo:'Producto, Total stock, Local y Fábrica (ingreso mañana). Como Conteo Fábrica.'},
+  ingreso:{nombre:'Local + Ingreso', ic:'in', desc:'Local + remitos = stock real', largo:'Producto, Local (lo carga el gerente), Ingreso (se suma con Ingresar remito) y Stock real.'}
 };
 const UNIDADES = ['unidad','caja','docena','kg','bolsa','paquete','botella','lata','rollo','balde','pack'];
 const IC = {
@@ -121,13 +122,17 @@ const hojaById = id => hojas().find(h => h.id === id) || null;
 function nombreHoja(id){ if (id === 'inicio') return 'Inicio'; const h = hojaById(id); return h ? h.nombre : 'Hoja'; }
 const hojaLabel = (c, def) => (c.hoja === 'inicio' ? 'Inicio' : (c.hoja && hojaById(c.hoja)?.nombre) || c.nombreHoja || def);
 function tipoVista(v){ if (v === 'inicio') return 'inicio'; const b = BASE.find(x => x.id === v); if (b) return b.tipo; const c = S.hojasDB.find(x => x.id === v); return c && TIPOS[c.tipo] ? c.tipo : null; }
-const isFabV = v => tipoVista(v) === 'fabrica';
+const isFabV = v => esFabT(tipoVista(v));
 /* Contexto: cada hoja nueva tiene sus propios productos (campo "hoja"). Las hojas fijas usan los de siempre. */
 let CTX = null;
 const ctxView = () => CTX ?? S.view;
 function withCtx(v, fn){ const o = CTX; CTX = v; try { return fn(); } finally { CTX = o; } }
 function listaCtx(){ const v = ctxView(); if (!isCustom(v)) return ''; const h = S.hojasDB.find(x => x.id === v); return h && h.tipo === 'lista' ? v : ''; }
-function fabCtx(){ const v = ctxView(); if (isCustom(v)){ const h = S.hojasDB.find(x => x.id === v); if (h && h.tipo === 'fabrica') return v; } return 'fabrica'; }
+const esFabT = t => t === 'fabrica' || t === 'ingreso';
+function fabCtx(){ const v = ctxView(); if (isCustom(v)){ const h = S.hojasDB.find(x => x.id === v); if (h && esFabT(h.tipo)) return v; } return 'fabrica'; }
+/* Hoja «Local + Ingreso»: la segunda columna es lo ingresado por remito y el total se llama «Stock real» (renombrable) */
+const ingHoja = () => { const v = fabCtx(); const h = S.hojasDB.find(x => x.id === v); return h && h.tipo === 'ingreso' ? h : null; };
+const totalNombre = h => String((h && h.total) || '').trim() || 'Stock real';
 const ctxKey = v => withCtx(v, () => listaCtx() + '|' + fabCtx());
 Object.defineProperty(S, 'prods', {get(){ const c = listaCtx(); return S.allProds.filter(p => (p.hoja || '') === c); }, set(v){ S.allProds = v; }});
 Object.defineProperty(S, 'fab', {get(){ const c = fabCtx(); return S.allFab.filter(it => (it.hoja || 'fabrica') === c); }, set(v){ S.allFab = v; }});
@@ -277,7 +282,7 @@ function viewHTML(){
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
-  if (t === 'fabrica') return V.fabrica();
+  if (esFabT(t)) return V.fabrica();
   if (t && V[S.view]) return V[S.view]();
   if (isCustom(S.view) && !S.loaded.h) return loadingList();
   return V.inicio();
@@ -299,7 +304,7 @@ function hojaBadge(h){
   if (h.tipo === 'stock' || h.tipo === 'lista') n = withCtx(h.id, () => S.prods.filter(alerta).length);
   else if (h.tipo === 'pedido') n = withCtx(h.id, () => pedidoItems().length);
   else if (h.tipo === 'conteo'){ n = withCtx(h.id, () => pendientes().length); acc = true; }
-  else if (h.tipo === 'fabrica'){ n = withCtx(h.id, () => fPend().length); acc = true; }
+  else if (esFabT(h.tipo)){ n = withCtx(h.id, () => fPend().length); acc = true; }
   return n ? `<span class="badge${acc ? ' acc' : ''}">${n}</span>` : '';
 }
 function renderNav(){
@@ -614,6 +619,19 @@ async function borrarDatos(){
     S.ntEdit = {}; closePanel(); render(); toast(`Datos borrados en ${nom}`);
   } catch(e){ if (btn){ btn.disabled = false; btn.textContent = 'Borrar datos'; } fail(e); }
 }
+function openTotNombre(){
+  const h = ingHoja(); if (!h || !esTotal()) return;
+  S.panel = 'totn';
+  openPanel(`<div class="pn-h"><div><small>${esc(h.nombre)}</small><h3>Nombre de la columna total</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="pn-b"><form id="tn-form" class="frow" novalidate><div class="fld wide"><label for="tn-nombre">Nombre (Local + Ingreso)</label><input id="tn-nombre" maxlength="30" value="${esc(totalNombre(h))}" autocomplete="off"></div></form></div>
+  <div class="pn-f"><button class="btn" data-act="close">Cancelar</button><button class="btn primary" type="submit" form="tn-form" id="tn-ok">${ic('save')}Guardar</button></div>`, 'dlg');
+  setTimeout(() => $('#tn-nombre')?.select(), 40);
+}
+async function guardarTotNombre(){
+  const h = ingHoja(); if (!h || !esTotal()) return;
+  const v = limpiarNombre($('#tn-nombre').value).slice(0, 30) || 'Stock real';
+  try { await guardarHoja(h.id, {total:v}); closePanel(); render(); toast(`La columna se llama «${v}»`); } catch(e){ fail(e); }
+}
 async function toggleSug(){
   if (!esTotal()){ toast('El stock sugerido lo activan la dueña o la administradora.', true); return; }
   const id = sugHoja(), on = !sugActivo();
@@ -752,8 +770,9 @@ V.fabrica = () => {
   const its = fItems(), lf = lastFab(), d = new Date(), nom = nombreHoja(fabCtx());
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
-  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras, medias o cuartos: en Local usá <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
-    <div class="bar-a">${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
+  const IH = ingHoja(), TN = esc(totalNombre(IH));
+  const head = `${banners()}<div class="bar"><p class="lead">${IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se suma con <b>Ingresar remito</b>. <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: en Local usá <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
+    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -764,7 +783,7 @@ V.fabrica = () => {
   }
   return head + `<div class="xl" role="table" aria-label="${esc(nom)}">
     <div class="xl-top"><b>Planilla<span class="num">${esc(hoy)}</span></b><small>${lf ? `Último guardado ${esc(fechaHora(lf.fecha))}` : 'Sin guardar todavía'} · <label class="ss" aria-hidden="true"><input type="checkbox" tabindex="-1"></label> = sin stock</small></div>
-    <div class="xl-r xl-h" role="row"><span class="xn"></span><span class="xh-p">Producto</span><span class="xh-t">Total stock<small>local + fábrica</small></span><span>Local<small>stock local</small></span><span class="xh-f">Fábrica<small>ingreso mañana ${esc(manana)}</small></span></div>
+    <div class="xl-r xl-h" role="row"><span class="xn"></span><span class="xh-p">Producto</span>${IH ? `<span class="xh-t">${TN}<small>local + ingreso</small></span><span>Local<small>stock local</small></span><span class="xh-f">Ingreso<small>remitos</small></span>` : `<span class="xh-t">Total stock<small>local + fábrica</small></span><span>Local<small>stock local</small></span><span class="xh-f">Fábrica<small>ingreso mañana ${esc(manana)}</small></span>`}</div>
     ${rows}
     ${canW() ? `<div class="xl-add"><button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button></div>` : ''}
   </div>`;
@@ -777,7 +796,7 @@ function rowFab(it, n){
     <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn">${canW() ? `<button class="xpb" data-act="f-item" data-id="${id}" title="Modificar o eliminar"><b>${esc(it.nombre)}</b></button>` : `<b>${esc(it.nombre)}</b>`}${notaCell(it, 'f')}</span></span>
     <span class="xt" id="ft-${id}">${fmt(fTot(it))}</span>
     <span class="xc xcl"><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}>${fracFab(it, l)}</span>
-    <span class="xc fab"><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="Fábrica de ${esc(it.nombre)}" ${dis}></span>
+    <span class="xc fab"><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${ingHoja() && !esTotal() ? 'disabled title="Se carga con Ingresar remito (dueña o administradora)"' : dis}></span>
   </div>`;
 }
 /* ¼ ½ ¾ debajo de Local: eligen la fracción (tocar la misma otra vez la saca) */
@@ -889,7 +908,8 @@ window.addEventListener('offline', onOffline);
 function fabTexto(){
   const d = new Date();
   const man = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
-  let t = `${nombreHoja(fabCtx()).toUpperCase()} · Mi Gusto ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\nProducto: total (local + fábrica, ingreso ${man})\n`;
+  const IH = ingHoja();
+  let t = `${nombreHoja(fabCtx()).toUpperCase()} · Mi Gusto ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\n${IH ? `Producto: ${totalNombre(IH).toLowerCase()} (local + ingreso)` : `Producto: total (local + fábrica, ingreso ${man})`}\n`;
   let prev = null;
   for (const it of fItems()){ const b = bloqueOf(it); if (prev != null && b !== prev) t += '\n'; prev = b; t += `- ${it.nombre}: ${fmt(fTot(it))} (${fmt(fVal(it,'l') ?? 0)} + ${fmt(fVal(it,'f') ?? 0)})${fSin(it) ? ' · sin stock' : ''}\n`; }
   return t.trim();
@@ -1593,7 +1613,7 @@ function cargarIngreso(){
   });
   return ingP;
 }
-const ingNuevo = () => ({local:'', op:'', fabCampo:'local', datos:null, cargando:false, err:'', arch:null, leyendo:false, hojaSel:0, col:null, lineas:[], dec:{}, cant:{}, on:{}, campo:{}, clave:'', msg:null, res:null, hist:null, histOpen:{}, busy:false});
+const ingNuevo = () => ({local:'', op:'', fabCampo:'fabrica', datos:null, cargando:false, err:'', arch:null, leyendo:false, hojaSel:0, col:null, lineas:[], dec:{}, cant:{}, on:{}, campo:{}, clave:'', msg:null, res:null, hist:null, histOpen:{}, busy:false});
 const ING_OP = {ingreso:'Ingreso', conteo:'Conteo'};
 /* Hojas y productos de la sucursal elegida, leídos una sola vez (solo lectura) */
 function hojasDe(hdb){
@@ -1604,16 +1624,11 @@ function hojasDe(hdb){
 }
 function armarDestinos(ps, fs, hdb){
   const hs = hojasDe(hdb), by = id => hs.find(h => h.id === id);
-  const principal = ['stock', 'conteo', 'pedido'].map(by).find(h => h && !h.oculta);
   const dest = [];
-  for (const p of ps){
-    const h = p.hoja ? by(p.hoja) : principal;
-    if (!h || h.oculta || (p.hoja && h.tipo !== 'lista')) continue;
-    dest.push({key:'p:' + p.id, col:'productos', id:p.id, nombre:String(p.nombre || ''), hoja:p.hoja || 'stock', hojaNombre:h.nombre, unidad:p.unidad || 'unidad', cat:p.cat || '', vals:{stock:num(p.stock)}});
-  }
+  /* Los remitos solo van a hojas «Local + Ingreso» (columna Ingreso): las demás hojas no se tocan */
   for (const it of fs){
     const h = by(it.hoja || 'fabrica');
-    if (!h || h.oculta || h.tipo !== 'fabrica') continue;
+    if (!h || h.oculta || h.tipo !== 'ingreso') continue;
     dest.push({key:'f:' + it.id, col:'fabrica', id:it.id, nombre:String(it.nombre || ''), hoja:it.hoja || 'fabrica', hojaNombre:h.nombre, unidad:'', cat:'', vals:{local:num(it.local), fabrica:num(it.fabrica)}});
   }
   return {dest, map:new Map(dest.map(d => [d.key, d])), hojas:hs.filter(h => !h.oculta)};
@@ -1717,14 +1732,14 @@ V.ingreso = () => {
     <p class="lead" style="margin:0 0 10px">Los cambios se aplican solo en la sucursal que elijas.</p>
     <div class="ing-ops" role="radiogroup" aria-label="Sucursal">${locs.map(l => `<button class="ing-op" role="radio" aria-checked="${loc === l.id}" data-act="ing-local" data-id="${esc(l.id)}" id="ing-loc-${esc(l.id)}"><b>${esc(l.nombre || l.id)}</b></button>`).join('')}</div>
     ${I.cargando ? `<p class="lead" style="margin:10px 0 0">Leyendo los productos de ${esc(nomLoc)}…</p>` : ''}${I.err ? `<p class="note warn" style="margin:10px 0 0">${esc(I.err)}</p>` : ''}
-    ${I.datos && !I.cargando ? `<p class="lead" style="margin:10px 0 0">${plural(I.datos.dest.length, 'producto', 'productos')} en ${esc(I.datos.hojas.filter(h => ['stock', 'lista', 'fabrica'].includes(h.tipo)).map(h => h.nombre).join(', '))}.</p>` : ''}</section>`;
+    ${I.datos && !I.cargando ? (I.datos.dest.length ? `<p class="lead" style="margin:10px 0 0">Se carga en la columna Ingreso de ${esc(I.datos.hojas.filter(h => h.tipo === 'ingreso').map(h => `«${h.nombre}»`).join(', '))} (${plural(I.datos.dest.length, 'producto', 'productos')}). Las demás hojas no se tocan.</p>` : `<p class="note warn" style="margin:10px 0 0" id="ing-sinhoja">${esc(localNombre(loc))} no tiene una hoja «Local + Ingreso». Creala desde Hojas → Agregar hoja (tipo «Local + Ingreso») y cargale los productos.</p>`) : ''}</section>`;
   const paso2 = `<section class="card pad ing-c"><div class="ch"><h4>2. Operación</h4></div>
     <div class="ing-ops" role="radiogroup" aria-label="Operación">
-      <button class="ing-op" role="radio" aria-checked="${I.op === 'ingreso'}" data-act="ing-op" data-op="ingreso" id="ing-op-ingreso"><b>Ingreso</b><small>Suma lo recibido al stock actual</small></button>
-      <button class="ing-op" role="radio" aria-checked="${I.op === 'conteo'}" data-act="ing-op" data-op="conteo" id="ing-op-conteo"><b>Conteo</b><small>Reemplaza por la cantidad del archivo</small></button>
+      <button class="ing-op" role="radio" aria-checked="${I.op === 'ingreso'}" data-act="ing-op" data-op="ingreso" id="ing-op-ingreso"><b>Ingreso</b><small>Suma lo del remito a la columna Ingreso</small></button>
+      <button class="ing-op" role="radio" aria-checked="${I.op === 'conteo'}" data-act="ing-op" data-op="conteo" id="ing-op-conteo"><b>Reemplazar</b><small>La columna Ingreso queda con la cantidad del remito</small></button>
     </div>
-    <div class="fld ing-fab"><label for="ing-fab">En Conteo Fábrica, cargar en</label><select id="ing-fab"><option value="local" ${I.fabCampo === 'local' ? 'selected' : ''}>Local (stock del local)</option><option value="fabrica" ${I.fabCampo === 'fabrica' ? 'selected' : ''}>Fábrica (ingreso de mañana)</option></select></div></section>`;
-  const listo = !!(loc && I.op && I.datos && !I.cargando);
+</section>`;
+  const listo = !!(loc && I.op && I.datos && !I.cargando && I.datos.dest.length);
   let archTxt = '';
   if (I.arch){
     const A = I.arch, hojasSel = A.hojas && A.hojas.length > 1 ? `<div class="fld"><label for="ing-hoja">Hoja del Excel</label><select id="ing-hoja">${A.hojas.map((h, i) => `<option value="${i}" ${i === I.hojaSel ? 'selected' : ''}>${esc(h.nombre)} (${h.filas.length} filas)</option>`).join('')}</select></div>` : '';
@@ -1745,7 +1760,7 @@ V.ingreso = () => {
     const R = I.res;
     paso4 = `<section class="card pad ing-c ing-ok" id="ing-listo"><div class="ch"><h4>Listo: ${plural(R.aplicados, 'producto actualizado', 'productos actualizados')} en ${esc(localNombre(R.local))}</h4></div>
       <p class="lead">${R.repetida ? 'Esta importación ya estaba guardada: no se sumó dos veces. ' : ''}Operación: <b>${ING_OP[R.op]}</b>. Quedó registrado en el historial de abajo.</p>
-      ${R.repetida ? '' : `<div class="ing-t ing-res">${R.items.map(it => `<div class="ing-r"><div class="ing-p"><b>${esc(it.nombre)}</b><small>${esc(it.nombreHoja)}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Fábrica'}` : ''}</small></div><span class="num">${fmt(it.antes)} → <b>${fmt(R.op === 'ingreso' ? round((it.antes || 0) + it.cantidad) : it.cantidad)}</b></span></div>`).join('')}</div>`}
+      ${R.repetida ? '' : `<div class="ing-t ing-res">${R.items.map(it => `<div class="ing-r"><div class="ing-p"><b>${esc(it.nombre)}</b><small>${esc(it.nombreHoja)}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Ingreso'}` : ''}</small></div><span class="num">${fmt(it.antes)} → <b>${fmt(R.op === 'ingreso' ? round((it.antes || 0) + it.cantidad) : it.cantidad)}</b></span></div>`).join('')}</div>`}
       <div class="bar-a" style="margin-top:12px"><button class="btn primary" data-act="ing-otro">${ic('plus')}Cargar otro archivo</button></div></section>`;
   } else if (listo && I.arch && !I.arch.error && !I.leyendo){
     const P = ingPlan(), F = P.filas;
@@ -1755,7 +1770,7 @@ V.ingreso = () => {
       return `<div class="ing-r ${f.on ? 'on' : ''}" id="ing-g-${k}">
         <label class="ing-ck"><input type="checkbox" data-ingon="${k}" ${f.on ? 'checked' : ''} ${f.cantOk ? '' : 'disabled'} aria-label="Importar ${esc(f.d.nombre)}"></label>
         <div class="ing-p"><b>${esc(f.d.nombre)}</b><small title="${esc(f.rs.map(r => r.texto).join(' | '))}">Archivo: «${esc(String(f.rs[0].texto || f.rs[0].nombre).slice(0, 70))}»${f.rs.length > 1 ? ` y ${f.rs.length - 1} más` : ''}${f.rs[0].fila ? ` · fila ${f.rs.map(r => r.fila).join(', ')}` : ''}</small></div>
-        <div class="ing-h"><select data-ingdest="${k}" aria-label="Destino de ${esc(f.d.nombre)}">${ingOpts(cands, sel, true)}</select>${f.d.col === 'fabrica' ? `<select data-ingcampo="${k}" aria-label="Columna de ${esc(f.d.nombre)}"><option value="local" ${f.campo === 'local' ? 'selected' : ''}>Local</option><option value="fabrica" ${f.campo === 'fabrica' ? 'selected' : ''}>Fábrica</option></select>` : ''}</div>
+        <div class="ing-h"><select data-ingdest="${k}" aria-label="Destino de ${esc(f.d.nombre)}">${ingOpts(cands, sel, true)}</select></div>
         <span class="ing-n"><small>Detectado</small>${f.det == null ? (f.valores ? f.rs.map(r => fmt(r.cantidad)).join(' / ') : '—') : fmt(f.det)}${f.rs.some(r => r.unidadTxt) ? ` <small>${esc(f.rs.find(r => r.unidadTxt).unidadTxt)}</small>` : ''}</span>
         <span class="ing-n ing-q"><small>Cantidad</small><input data-ingcant="${k}" id="ing-q-${k}" inputmode="decimal" autocomplete="off" value="${esc(f.raw)}" class="${f.cantOk ? '' : 'bad'}" aria-label="Cantidad de ${esc(f.d.nombre)}"></span>
         <span class="ing-n"><small>Actual</small>${fmt(f.antes)}</span>
@@ -1775,7 +1790,7 @@ V.ingreso = () => {
       <div class="ing-pie">${bloqueo ? `<small id="ing-bloqueo">${bloqueo}</small>` : '<span></span>'}<div class="bar-a"><button class="btn" data-act="ing-cancelar" ${I.busy ? 'disabled' : ''}>Cancelar</button><button class="btn primary" data-act="ing-confirmar" id="ing-ok" ${bloqueo || I.busy ? 'disabled' : ''}>${ic('save')}${I.busy ? 'Guardando…' : `Confirmar importación${n ? ` (${n})` : ''}`}</button></div></div></section>`;
   }
   const H = I.hist;
-  const hist = loc ? `<section class="card pad ing-c" id="ing-hist"><div class="ch"><h4>Últimos ingresos en ${esc(nomLoc)}</h4></div>${H == null ? '<p class="lead" style="margin:0">Cargando…</p>' : !H.length ? '<p class="lead" style="margin:0">Todavía no hay ingresos de mercadería en esta sucursal.</p>' : `<div class="alist">${H.map(h => `<div class="ar ing-hr"><div><b>${esc(ING_OP[h.operacion] || h.operacion)} · ${esc(fechaHora(h.fecha))}</b><small>${esc((h.archivo && h.archivo.nombre) || 'archivo')} · ${plural((h.items || []).length, 'producto', 'productos')} · ${esc(String(h.por || '').split('@')[0])}${h.forzada ? ' · importado de nuevo' : ''}</small>${I.histOpen[h.id] ? `<div class="ing-hd2">${(h.items || []).map(it => `<div><span>${esc(it.nombre)} <small>${esc(it.nombreHoja || '')}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Fábrica'}` : ''}</small></span><span class="num">${fmt(it.antes)} → ${fmt(it.despues)}</span></div>`).join('')}${(h.ignorados || []).length ? `<small>Ignorados: ${esc(h.ignorados.slice(0, 20).join(' · '))}</small>` : ''}</div>` : ''}</div><div class="ar-a"><button class="btn sm" data-act="ing-hist" data-id="${esc(h.id)}">${I.histOpen[h.id] ? 'Ocultar' : 'Ver detalle'}</button></div></div>`).join('')}</div>`}</section>` : '';
+  const hist = loc ? `<section class="card pad ing-c" id="ing-hist"><div class="ch"><h4>Últimos ingresos en ${esc(nomLoc)}</h4></div>${H == null ? '<p class="lead" style="margin:0">Cargando…</p>' : !H.length ? '<p class="lead" style="margin:0">Todavía no hay ingresos de mercadería en esta sucursal.</p>' : `<div class="alist">${H.map(h => `<div class="ar ing-hr"><div><b>${esc(ING_OP[h.operacion] || h.operacion)} · ${esc(fechaHora(h.fecha))}</b><small>${esc((h.archivo && h.archivo.nombre) || 'archivo')} · ${plural((h.items || []).length, 'producto', 'productos')} · ${esc(String(h.por || '').split('@')[0])}${h.forzada ? ' · importado de nuevo' : ''}</small>${I.histOpen[h.id] ? `<div class="ing-hd2">${(h.items || []).map(it => `<div><span>${esc(it.nombre)} <small>${esc(it.nombreHoja || '')}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Ingreso'}` : ''}</small></span><span class="num">${fmt(it.antes)} → ${fmt(it.despues)}</span></div>`).join('')}${(h.ignorados || []).length ? `<small>Ignorados: ${esc(h.ignorados.slice(0, 20).join(' · '))}</small>` : ''}</div>` : ''}</div><div class="ar-a"><button class="btn sm" data-act="ing-hist" data-id="${esc(h.id)}">${I.histOpen[h.id] ? 'Ocultar' : 'Ver detalle'}</button></div></div>`).join('')}</div>`}</section>` : '';
   return `${banners()}<div class="bar"><p class="lead">Ingresá un remito (foto, PDF, Excel o CSV) de una sucursal y revisá las coincidencias. <b>Nada cambia hasta que toques Confirmar importación.</b> Solo la dueña y la administradora ven esta pantalla.</p></div>
     <div class="ing">${paso1}${paso2}${paso3}${paso4}${hist}</div>`;
 };
@@ -1837,7 +1852,7 @@ function refreshHojas(){
 }
 function hojaItems(h){
   if (h.tipo === 'lista') return S.allProds.filter(p => p.hoja === h.id).length;
-  if (h.tipo === 'fabrica' && !h.base) return S.allFab.filter(it => it.hoja === h.id).length;
+  if (esFabT(h.tipo) && !h.base) return S.allFab.filter(it => it.hoja === h.id).length;
   return 0;
 }
 function hojasList(){
@@ -1871,8 +1886,8 @@ function hojasOcultas(){
   return `<div class="ml">Quitadas del menú</div><div class="alist">${oc.map(h => `<div class="ar hj-r"><span class="hj-ic">${ic(h.ic)}</span><div><b>${esc(h.nombre)}</b><small>Sus datos siguen guardados</small></div><div class="ar-a"><button class="btn sm" data-act="hoja-show" data-id="${esc(h.id)}" ${canW() ? '' : 'disabled'}>Volver a mostrar</button></div></div>`).join('')}</div>`;
 }
 function copiaOpts(tipo){
-  const src = tipo === 'fabrica'
-    ? [['fabrica', nombreHoja('fabrica'), S.allFab.filter(it => (it.hoja || 'fabrica') === 'fabrica').length], ...hojas().filter(h => !h.base && h.tipo === 'fabrica').map(h => [h.id, h.nombre, hojaItems(h)])]
+  const src = esFabT(tipo)
+    ? [['fabrica', nombreHoja('fabrica'), S.allFab.filter(it => (it.hoja || 'fabrica') === 'fabrica').length], ...hojas().filter(h => !h.base && esFabT(h.tipo)).map(h => [h.id, h.nombre, hojaItems(h)])]
     : [['stock', nombreHoja('stock'), S.allProds.filter(p => !p.hoja).length], ...hojas().filter(h => h.tipo === 'lista').map(h => [h.id, h.nombre, hojaItems(h)])];
   return `<option value="">Empezar vacía</option>${src.filter(s => s[2]).map(([id, n, k]) => `<option value="${esc(id)}">Copiar los productos de ${esc(n)} (${k})</option>`).join('')}`;
 }
@@ -1900,7 +1915,7 @@ async function crearHoja(){
   const inp = $('#hn-nombre'), nombre = limpiarNombre(inp.value);
   if (!nombre){ toast('Escribí el nombre de la hoja.', true); inp.focus(); return; }
   if (!nombreLibre(nombre)){ toast('Ya hay una hoja con ese nombre.', true); inp.focus(); return; }
-  const tipo = document.querySelector('[name="hn-tipo"]:checked')?.value === 'fabrica' ? 'fabrica' : 'lista';
+  const tv = document.querySelector('[name="hn-tipo"]:checked')?.value, tipo = TIPOS[tv] ? tv : 'lista';
   const src = $('#hn-copia').value, id = 'h-' + rid(), now = Date.now();
   const orden = Math.max(0, ...hojas().map(h => num(h.orden) || 0)) + 1;
   S.hj.busy = true; const btn = $('#hn-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Creando…'; }
@@ -2103,6 +2118,7 @@ document.addEventListener('click', e => {
     case 'aj-open': openAjustes(t.dataset.tab); break;
     case 'est': openEstados(id); break;
     case 'sug-tg': toggleSug(); break;
+    case 'tot-nombre': openTotNombre(); break;
     case 'nota': abrirNota(t.dataset.k === 'f' ? 'f' : 'p', id); break;
     case 'borrar': pedirBorrar(); break;
     case 'borrar-ok': borrarDatos(); break;
@@ -2256,6 +2272,7 @@ document.addEventListener('submit', e => {
   else if (f.id === 'hn-form') crearHoja();
   else if (f.id === 'hr-form') renombrarHoja(f.dataset.id, $('#hr-nombre').value);
   else if (f.id === 'est-form') guardarEstados(f.dataset.id);
+  else if (f.id === 'tn-form') guardarTotNombre();
 });
 document.addEventListener('keydown', e => {
   if (e.target.matches && e.target.matches('[data-nt]')){

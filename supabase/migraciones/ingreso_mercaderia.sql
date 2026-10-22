@@ -52,13 +52,17 @@ begin
   -- Primero se valida y se bloquea todo; recién después se cambia
   for v_it in select * from jsonb_array_elements(p_items) loop
     v_col := v_it ->> 'col'; v_campo := v_it ->> 'campo'; v_id := v_it ->> 'id';
-    if not ((v_col = 'productos' and v_campo = 'stock') or (v_col = 'fabrica' and v_campo in ('local', 'fabrica'))) or coalesce(v_id, '') = '' then
+    -- Solo la columna Ingreso de hojas «Local + Ingreso»: las demás hojas no se tocan
+    if not (v_col = 'fabrica' and v_campo = 'fabrica') or coalesce(v_id, '') = '' then
       raise exception 'MGS:destino' using errcode = '22023';
     end if;
     begin v_cant := (v_it ->> 'cantidad')::numeric; exception when others then raise exception 'MGS:cantidad' using errcode = '22023'; end;
     if v_cant is null or v_cant < 0 or v_cant > 100000 or v_cant * 4 <> trunc(v_cant * 4) then raise exception 'MGS:cantidad' using errcode = '22023'; end if;
     select data into v_doc from public.docs where col = p_local || '/' || v_col and id = v_id for update;
     if not found then v_falt := v_falt || jsonb_build_array(left(coalesce(v_it ->> 'nombre', v_id), 120)); continue; end if;
+    if not exists (select 1 from public.docs where col = p_local || '/hojas' and id = coalesce(v_doc ->> 'hoja', '') and data ->> 'tipo' = 'ingreso') then
+      raise exception 'MGS:destino' using errcode = '22023';
+    end if;
     begin v_actual := (v_doc ->> v_campo)::numeric; exception when others then v_actual := null; end;
     begin v_antes := (v_it ->> 'antes')::numeric; exception when others then v_antes := null; end;
     if v_actual is distinct from v_antes then

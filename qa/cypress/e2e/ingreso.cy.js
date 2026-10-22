@@ -1,21 +1,22 @@
 /* global describe, beforeEach, it, cy, Cypress */
 // Ingreso de mercadería con datos y archivos ficticios: el simulador reemplaza a Supabase.
+// Los remitos solo cargan la columna Ingreso de las hojas «Local + Ingreso».
 const SETUP = (w) => {
   for (const L of ["munro", "torcuato"]) {
     const P = (id) => w.__rows.find((r) => r.col === `${L}/productos` && r.id === id).data;
-    const F = (id) => w.__rows.find((r) => r.col === `${L}/fabrica` && r.id === id).data;
     Object.assign(P("p-001"), { nombre: "Jamón cocido", unidad: "unidad" });
-    Object.assign(P("p-002"), { nombre: "Muzzarella", unidad: "unidad" });
-    Object.assign(P("p-003"), { nombre: "Pepperoni", unidad: "unidad" });
-    Object.assign(F("f-001"), { nombre: "Pepperoni", local: 1, fabrica: 0 });
+    const it = (id, hoja, nombre, local, fabrica, orden) => ({ col: `${L}/fabrica`, id, data: { nombre, bloque: 1, orden, local, fabrica, sinStock: false, resaltar: false, hoja } });
     w.__rows.push(
-      { col: `${L}/hojas`, id: "h-cajas01", data: { nombre: "Stock Cajas", tipo: "lista", orden: 4 } },
-      { col: `${L}/productos`, id: "c-1", data: { nombre: "Cajas grandes", cat: "Cajas", unidad: "unidad", stock: 3, sinStock: false, orden: 1, hoja: "h-cajas01" } },
+      { col: `${L}/hojas`, id: "h-ing01", data: { nombre: "Stock", tipo: "ingreso", orden: 5 } },
+      { col: `${L}/hojas`, id: "h-ing02", data: { nombre: "Depósito", tipo: "ingreso", orden: 6 } },
+      it("i-1", "h-ing01", "Jamón cocido", 1, null, 1), it("i-2", "h-ing01", "Muzzarella", null, null, 2),
+      it("i-3", "h-ing01", "Cajas grandes", 3, 1, 3), it("i-4", "h-ing01", "Pepperoni", null, null, 4),
+      it("i-5", "h-ing02", "Pepperoni", 2, null, 1),
     );
   }
 };
 const CSV = "Producto;Cantidad\nJamon cocido;2\nMuzzarella;3,5\nMuzzarella;1\nCajas grandes;5\nPepperoni;1 1/4\nProducto desconocido;10\n";
-const row = (rows, local, col, id) => rows.find((r) => r.col === `${local}/${col}` && r.id === id).data;
+const row = (rows, local, id) => rows.find((r) => r.col === `${local}/fabrica` && r.id === id).data;
 const signIn = (email) => {
   cy.window().then(SETUP);
   cy.get("#au-email").type(email);
@@ -44,13 +45,13 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get("#brand-local").should("contain.text", "Munro");
     cy.get('#snav [data-go="ingreso"]').should("not.exist");
     cy.window().then(async (w) => {
-      const r = await w.supabase.createClient().rpc("importar_mercaderia", { p_local: "munro", p_operacion: "ingreso", p_items: [{ col: "productos", id: "p-001", campo: "stock", cantidad: 5, antes: null }], p_archivo: {}, p_clave: "clave-cypress-1" });
+      const r = await w.supabase.createClient().rpc("importar_mercaderia", { p_local: "munro", p_operacion: "ingreso", p_items: [{ col: "fabrica", id: "i-1", campo: "fabrica", cantidad: 5, antes: null }], p_archivo: {}, p_clave: "clave-cypress-1" });
       expect(r.error.message).to.eq("MGS:sin_permiso");
-      expect(row(w.__rows, "munro", "productos", "p-001").stock).to.eq(null);
+      expect(row(w.__rows, "munro", "i-1").fabrica).to.eq(null);
     });
   });
 
-  it("la dueña importa en Torcuato, elige la hoja de un producto repetido y no toca Munro", () => {
+  it("la dueña ingresa en Torcuato: suma a Ingreso, elige la hoja y no toca otras hojas ni Munro", () => {
     signIn("dueno@example.com");
     cy.get('.lcard [data-act="local"][data-id="munro"]').click();
     cy.get('#snav [data-go="ingreso"]').click();
@@ -60,27 +61,25 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get("#ing-vista").should("be.visible");
     cy.get("#ing-ign").should("contain.text", "Producto desconocido");
     cy.get("#ing-ok").should("be.disabled");
-    cy.get("#ing-pend select").select("Pepperoni — Conteo Fábrica");
-    cy.get('[id="ing-g-p:p-002"]').should("contain.text", "4,5");
-    cy.window().its("__log").should((log) => expect(log.filter((x) => x[0] === "importar")).to.have.length(0));
+    cy.get("#ing-pend select").select("Pepperoni — Depósito");
+    cy.get('[id="ing-g-f:i-2"]').should("contain.text", "4,5");
     cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#ing-listo").should("be.visible");
     cy.window().its("__rows").should((rows) => {
-      expect(row(rows, "torcuato", "productos", "p-001").stock).to.eq(2);
-      expect(row(rows, "torcuato", "productos", "p-002").stock).to.eq(4.5);
-      expect(row(rows, "torcuato", "productos", "c-1").stock).to.eq(8);
-      expect(row(rows, "torcuato", "fabrica", "f-001").local).to.eq(2.25);
-      expect(row(rows, "torcuato", "productos", "p-003").stock).to.eq(null);
-      expect(row(rows, "munro", "productos", "p-001").stock).to.eq(null);
-      const h = rows.filter((r) => r.col === "importaciones");
-      expect(h).to.have.length(1);
-      expect(h[0].data.items).to.have.length(4);
-      expect(h[0].data.por).to.eq("dueno@example.com");
+      expect(row(rows, "torcuato", "i-1").fabrica).to.eq(2);
+      expect(row(rows, "torcuato", "i-1").local).to.eq(1);
+      expect(row(rows, "torcuato", "i-2").fabrica).to.eq(4.5);
+      expect(row(rows, "torcuato", "i-3").fabrica).to.eq(6);
+      expect(row(rows, "torcuato", "i-5").fabrica).to.eq(1.25);
+      expect(row(rows, "torcuato", "i-4").fabrica).to.eq(null);
+      expect(rows.find((r) => r.col === "torcuato/productos" && r.id === "p-001").data.stock).to.eq(null);
+      expect(row(rows, "munro", "i-1").fabrica).to.eq(null);
+      expect(rows.filter((r) => r.col === "importaciones")).to.have.length(1);
     });
     cy.get("#ing-hist").should("contain.text", "remito.csv");
   });
 
-  it("avisa si el archivo ya se importó y cancelar no guarda nada", () => {
+  it("avisa si el archivo ya se importó, cancelar no guarda nada y la hoja muestra el stock real", () => {
     signIn("dueno@example.com");
     cy.get('.lcard [data-act="local"][data-id="munro"]').click();
     cy.get('#snav [data-go="ingreso"]').click();
@@ -96,10 +95,13 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#pn").should("contain.text", "ya se importó");
     cy.get('#pn [data-act="close"]').first().click();
-    cy.get('[data-act="ing-cancelar"]').click();
+    cy.get('[data-act="ing-cancelar"]').should("not.be.disabled").click();
     cy.window().its("__rows").should((rows) => {
-      expect(row(rows, "munro", "productos", "p-001").stock).to.eq(2);
+      expect(row(rows, "munro", "i-1").fabrica).to.eq(2);
       expect(rows.filter((r) => r.col === "importaciones")).to.have.length(1);
     });
+    cy.get('#snav [data-go="h-ing01"]').click();
+    cy.get(".xl-h").should("contain.text", "Stock real");
+    cy.get("#ft-i-1").should("have.text", "3");
   });
 });
