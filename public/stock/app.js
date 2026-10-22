@@ -57,6 +57,18 @@ const has = (o,k) => Object.prototype.hasOwnProperty.call(o,k);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = v => { if (v === '' || v == null) return null; const n = parseFloat(String(v).trim().replace(',', '.')); return Number.isFinite(n) ? n : null; };
 const isHalf = v => Math.abs(v * 2 - Math.round(v * 2)) < 1e-9;
+/* Cuartos de unidad (¼, ½, ¾) para el stock del local y Conteo Fábrica */
+const isQuarter = v => Math.abs(v * 4 - Math.round(v * 4)) < 1e-9;
+const FRQ = {'¼':'1/4', '½':'1/2', '¾':'3/4'};
+/* Cantidad escrita: acepta 2,75 · 2.75 · 2 3/4 · 3/4 · 2¾ · ¾ */
+function numQ(v){
+  const t = String(v ?? '').trim().replace(/(\d)\s*([¼½¾])/g, (m, d, f) => `${d} ${FRQ[f]}`).replace(/[¼½¾]/g, f => FRQ[f]).replace(/\s+/g, ' ');
+  if (!t) return null;
+  const m = t.match(/^(?:(\d+) )?(\d+)\/(\d+)$/);
+  if (m) return +m[3] ? (m[1] ? +m[1] : 0) + (+m[2]) / (+m[3]) : null;
+  return /^\d*[.,]?\d+$|^\d+[.,]$/.test(t) ? num(t) : null;
+}
+const fracOf = q => q == null ? 0 : round(q - Math.floor(q + 1e-9));
 const round = n => Math.round(n * 100) / 100;
 const fmt = n => (n == null || !Number.isFinite(Number(n))) ? '—' : Number(n).toLocaleString('es-AR', {maximumFractionDigits:2});
 const fmtIn = n => n == null ? '' : String(round(n)).replace('.', ',');
@@ -443,7 +455,7 @@ V.stock = () => {
     ? (esTotal() ? 'Cargá el <b>Sugerido</b> de cada producto en la última columna y, con <b>Estados</b>, desde qué número aparece cada estado.' : 'El <b>Sugerido</b> lo carga la dueña: compará con lo que hay en el local.')
     : (esTotal() ? 'Activá <b>Stock sugerido</b> para cargar un número de referencia por producto y ver los estados por color.' : '');
   const acts = tg + (S.prods.length ? `${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button>` : '');
-  const head = `${banners()}<div class="bar"><p class="lead">Cantidades en unidades enteras o medias. Corregí con − y +, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${txt}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${acts ? `<div class="bar-a">${acts}</div>` : ''}</div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">${listaCtx() ? 'Cantidades en unidades enteras o medias. Corregí con − y +' : 'Cantidades en unidades enteras o con <b>¼ ½ ¾</b>. Corregí con − y +, elegí la fracción con ¼ ½ ¾'}, tildá <b>Sin stock</b> cuando se termine algo y confirmá con Guardar conteo. ${txt}${listaCtx() ? ' Los productos de esta hoja son solo de esta hoja.' : ''}</p>${acts ? `<div class="bar-a">${acts}</div>` : ''}</div>`;
   if (!S.loaded.p) return head + loadingList();
   if (!S.prods.length) return head + noProducts();
   const base = sorted().filter(p => catOK(p) && qOK(p));
@@ -473,9 +485,14 @@ function rowStock(p, sg = sugActivo()){
     <div class="r-name"><button class="r-nb" data-act="aj-item" data-id="${id}" title="Modificar en Ajustes"><b>${esc(p.nombre)}</b>${meta ? `<small>${meta}</small>` : ''}${p.obs ? `<small class="obs">${esc(p.obs)}</small>` : ''}</button>${notaCell(p, 'p')}</div>
     <div class="r-st"><span class="st ${st}" ${sg && sugOf(p) != null ? `title="${esc(rangoTxt(p))}"` : ''}>${ESTADO[st]}</span></div>
     <div class="r-q"><small class="ql">Local</small><span class="q">${fmt(q)}</span>${chg ? `<small>antes ${fmt(stockOf(p))}</small>` : ''}</div>
-    <div class="r-adj"><div class="adj"><button class="out" id="dec-${id}" data-act="dec" data-id="${id}" aria-label="Restar 1 a ${esc(p.nombre)}" ${!(q > 0) || !canW() ? 'disabled' : ''}>−</button><button class="in" id="inc-${id}" data-act="inc" data-id="${id}" aria-label="Sumar 1 a ${esc(p.nombre)}" ${canW() ? '' : 'disabled'}>+</button></div></div>
+    <div class="r-adj"><div class="adj"><button class="out" id="dec-${id}" data-act="dec" data-id="${id}" aria-label="Restar 1 a ${esc(p.nombre)}" ${!(q > 0) || !canW() ? 'disabled' : ''}>−</button><button class="in" id="inc-${id}" data-act="inc" data-id="${id}" aria-label="Sumar 1 a ${esc(p.nombre)}" ${canW() ? '' : 'disabled'}>+</button></div>${listaCtx() ? '' : fracBtns(p, q)}</div>
     ${sg ? `<div class="r-sug">${sugCell(p, q)}</div>` : ''}
   </div>`;
+}
+/* ¼ ½ ¾: eligen la fracción de la cantidad (tocar la misma otra vez la saca). − y + cambian de a 1. */
+function fracBtns(p, q){
+  const id = esc(p.id), fr = fracOf(q), dis = canW() ? '' : 'disabled';
+  return `<div class="fq" role="group" aria-label="Fracción de ${esc(p.nombre)}">${[[1, '¼'], [2, '½'], [3, '¾']].map(([k, l]) => `<button id="fq${k}-${id}" data-act="frac" data-id="${id}" data-f="${k / 4}" aria-pressed="${Math.abs(fr - k / 4) < 1e-9}" aria-label="${l} de ${esc(p.nombre)}" ${dis}>${l}</button>`).join('')}</div>`;
 }
 function sugCell(p, q){
   const s = sugOf(p), id = esc(p.id), edit = S.sgEdit && has(S.sgEdit, p.id) ? S.sgEdit[p.id] : null;
@@ -667,7 +684,7 @@ function refreshCC(id){
 }
 function setCount(id, v){
   const p = S.prods.find(x => x.id === id); if (!p) return;
-  v = Math.max(0, Math.round(v * 2) / 2); S.draft[id] = v; saveDraft();
+  v = Math.max(0, Math.round(v * 4) / 4); S.draft[id] = v; saveDraft();
   const inp = document.getElementById('cq-' + id); if (inp){ inp.value = fmtIn(v); inp.classList.remove('bad'); }
   refreshCC(id);
 }
@@ -727,7 +744,7 @@ V.fabrica = () => {
   const its = fItems(), lf = lastFab(), d = new Date(), nom = nombreHoja(fabCtx());
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
-  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras o medias (0,5).</p>
+  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras, medias o cuartos: escribí 0,25 · 0,5 · 0,75 (o 1/4, 3/4).</p>
     <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Abrí Ajustes para agregar los productos de ${esc(nom)}.<div class="bar-a"><button class="btn primary" data-act="aj-open" data-tab="f-add">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
@@ -1838,6 +1855,7 @@ document.addEventListener('click', e => {
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
+    case 'frac': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; const q = qty(p) ?? 0, ent = Math.floor(q + 1e-9), f = +t.dataset.f; S.draft[id] = round(ent + (Math.abs(fracOf(q) - f) < 1e-9 ? 0 : f)); saveDraft(); render(); break; }
     case 'dec': case 'inc': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; S.draft[id] = Math.max(0, round((qty(p) ?? 0) + (a === 'inc' ? 1 : -1))); saveDraft(); render(); break; }
     case 'cdec': case 'cinc': case 'chalf': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; const b = has(S.draft, id) ? S.draft[id] : (stockOf(p) ?? 0); setCount(id, b + (a === 'cinc' ? 1 : a === 'chalf' ? .5 : -1)); break; }
     case 'ceq': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (p && stockOf(p) != null) setCount(id, stockOf(p)); break; }
@@ -1887,13 +1905,13 @@ document.addEventListener('input', e => {
   if (t.matches('[data-cq]')){
     const id = t.dataset.cq, raw = t.value.trim();
     if (!raw){ delete S.draft[id]; t.classList.remove('bad'); saveDraft(); refreshCC(id); return; }
-    const v = num(raw); if (v == null || v < 0 || !isHalf(v)){ t.classList.add('bad'); t.title = 'Solo unidades enteras o medias (ej. 3 o 3,5)'; if (v != null && !isHalf(v)) toast('Solo unidades enteras o medias (ej. 3 o 3,5)', true); return; }
+    const v = numQ(raw); if (v == null || v < 0 || !isQuarter(v)){ t.classList.add('bad'); t.title = 'Unidades enteras, medias o cuartos (ej. 3, 3,5 o 3 3/4)'; if (v != null && !isQuarter(v)) toast('Unidades enteras, medias o cuartos (ej. 3, 3,5 o 3 3/4)', true); return; }
     t.classList.remove('bad'); S.draft[id] = round(v); saveDraft(); refreshCC(id); return;
   }
   if (t.matches('[data-fl],[data-ff]')){
     const id = t.dataset.fl || t.dataset.ff, k = t.dataset.fl ? 'l' : 'f', raw = t.value.trim();
     if (!raw){ t.classList.remove('bad'); setF(id, k, null); refreshF(id); return; }
-    const v = num(raw); if (v == null || v < 0 || !isHalf(v)){ t.classList.add('bad'); if (v != null && !isHalf(v)) toast('Solo unidades enteras o medias (ej. 3 o 3,5)', true); return; }
+    const v = numQ(raw); if (v == null || v < 0 || !isQuarter(v)){ t.classList.add('bad'); if (v != null && !isQuarter(v)) toast('Unidades enteras, medias o cuartos (ej. 3, 3,5 o 3 3/4)', true); return; }
     t.classList.remove('bad'); setF(id, k, round(v)); refreshF(id); return;
   }
   if (t.matches('[data-cn]')){ S.notas[t.dataset.cn] = t.value; saveDraft(); renderChrome(); const pr = $('#cprog'); if (pr) pr.outerHTML = progHTML(); return; }
