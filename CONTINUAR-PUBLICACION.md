@@ -68,6 +68,8 @@
 7. Conteo Fábrica tiene «Poner todo en 0» y «Borrar datos»; preguntar si se quita el primero.
 8. Al pasar a Supabase Pro: activar la protección contra contraseñas filtradas.
 
+9. Ingreso de mercadería (pedido 22/10): propuesta técnica en `docs/PROPUESTA-INGRESO-MERCADERIA.md`, rama `ingreso-mercaderia`. Esperando decisiones y autorización; no implementar ni publicar antes.
+
 ## Ideas para más adelante (no empezar sin pedido de la usuaria)
 - Multi-empresa: un solo link y cada empresa aislada por la base (nombre y logo, locales, equipo, hojas y productos propios), alta manual por la administradora y Mi Gusto como primera empresa. Hacerlo en una rama aparte con pruebas de aislamiento entre empresas. Antes: Supabase Pro (copias diarias), quitar la marca Mi Gusto para otros rubros y definir condiciones de uso.
 - Panel de la administradora: altas de empresas, fecha de ingreso y vencimiento mensual del abono de cada una.
