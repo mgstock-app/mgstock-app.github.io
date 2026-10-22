@@ -2,7 +2,7 @@ import asyncio, json, sys
 from playwright.async_api import async_playwright
 
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harness import load_app, OUT
+from harness import load_app, OUT, solo_este_local
 
 
 fails = []
@@ -15,7 +15,7 @@ async def login(b, who, vp):
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     await pg.route('**/auth/v1/settings', lambda r: r.fulfill(status=200, content_type='application/json', body='{"external":{"google":true,"email":true}}'))
-    await load_app(pg); await pg.wait_for_timeout(300)
+    await load_app(pg); await solo_este_local(pg); await pg.wait_for_timeout(300)
     await pg.fill('#au-email', who); await pg.fill('#au-pass', 'secreto1')
     await pg.click('#au-in button[type=submit]'); await pg.wait_for_timeout(700)
     await pg.evaluate("(() => { const b = document.querySelector('#hub:not([hidden]) [data-act=local][data-id=munro]'); if (b) b.click(); })()"); await pg.wait_for_timeout(400)

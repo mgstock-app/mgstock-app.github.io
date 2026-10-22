@@ -11,3 +11,7 @@ async def load_app(page):
     await page.route('**/*.supabase.co/**', lambda route: route.abort())
     await page.goto(BASE_URL)
     await page.wait_for_selector('#au-in:not([hidden])')
+
+async def solo_este_local(page):
+    """Responde «Solo este local» cada vez que aparece la pregunta de aplicar a todos los locales."""
+    await page.evaluate("new MutationObserver(() => { const b = document.getElementById('ask-uno'); if (b) b.click(); }).observe(document.body, {childList: true})")

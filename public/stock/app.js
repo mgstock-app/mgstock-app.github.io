@@ -778,7 +778,7 @@ V.fabrica = () => {
   let rows = '', n = 0, prev = null;
   for (const it of its){
     const b = bloqueOf(it);
-    if (prev != null && b !== prev){ n++; rows += `<div class="xl-r sep" aria-hidden="true"><span class="xn">${n}</span><span></span><span class="xt">-</span><span></span><span></span></div>`; }
+    if (b !== prev) rows += `<div class="xl-r xl-bq" data-bloque="${b}"><div class="xbq"><b>${esc(bloqueNombre(b))}</b>${canW() ? `<button class="btn sm" data-act="bq-edit" data-b="${b}" id="bq-e-${b}" aria-label="Nombre de ${esc(bloqueNombre(b))}">${ic('edit')}Nombre</button>` : ''}</div></div>`;
     prev = b; n++; rows += rowFab(it, n);
   }
   return head + `<div class="xl" role="table" aria-label="${esc(nom)}">
@@ -807,7 +807,7 @@ function fracFab(it, l){
 /* Agregar, modificar o eliminar productos desde la misma planilla */
 function fBloqueOpts(sel){
   const bs = bloques(), last = bs.length ? bs[bs.length - 1] : 1, v = sel ?? last;
-  return `${(bs.length ? bs : [1]).map(b => `<option value="${b}" ${b === v ? 'selected' : ''}>Bloque ${b}</option>`).join('')}<option value="${last + 1}">Bloque nuevo (${last + 1})</option>`;
+  return `${(bs.length ? bs : [1]).map(b => `<option value="${b}" ${b === v ? 'selected' : ''}>${esc(bloqueNombre(b))}</option>`).join('')}<option value="${last + 1}">Bloque nuevo (${last + 1})</option>`;
 }
 const fDlgHead = t => `<div class="pn-h"><div><small>${esc(nombreHoja(fabCtx()))}</small><h3>${t}</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>`;
 function openFAdd(){
@@ -911,7 +911,7 @@ function fabTexto(){
   const IH = ingHoja();
   let t = `${nombreHoja(fabCtx()).toUpperCase()} · Mi Gusto ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\n${IH ? `Producto: ${totalNombre(IH).toLowerCase()} (local + ingreso)` : `Producto: total (local + fábrica, ingreso ${man})`}\n`;
   let prev = null;
-  for (const it of fItems()){ const b = bloqueOf(it); if (prev != null && b !== prev) t += '\n'; prev = b; t += `- ${it.nombre}: ${fmt(fTot(it))} (${fmt(fVal(it,'l') ?? 0)} + ${fmt(fVal(it,'f') ?? 0)})${fSin(it) ? ' · sin stock' : ''}\n`; }
+  for (const it of fItems()){ const b = bloqueOf(it); if (b !== prev){ t += `${prev != null ? '\n' : ''}${bloqueNombre(b).toUpperCase()}\n`; } prev = b; t += `- ${it.nombre}: ${fmt(fTot(it))} (${fmt(fVal(it,'l') ?? 0)} + ${fmt(fVal(it,'f') ?? 0)})${fSin(it) ? ' · sin stock' : ''}\n`; }
   return t.trim();
 }
 async function toggleFSS(id, val, el){
@@ -1333,7 +1333,7 @@ AJ['f-items'] = () => {
   if (!S.loaded.f) return '<p class="lead">Cargando…</p>';
   if (!S.fab.length) return `<div class="empty"><b>No hay productos todavía</b>Usá la pestaña Agregar o Pegar lista.</div>`;
   let h = '', prev = null;
-  for (const it of fItems()){ const b = bloqueOf(it); if (b !== prev){ h += `<div class="ar bq" data-bloque="${b}"><small>Bloque ${b}</small></div>`; prev = b; } h += afRow(it); }
+  for (const it of fItems()){ const b = bloqueOf(it); if (b !== prev){ h += `<div class="ar bq" data-bloque="${b}"><small>${esc(bloqueNombre(b))}</small></div>`; prev = b; } h += afRow(it); }
   return `<div class="alist">${h}</div>`;
 };
 function afRow(it){
@@ -1350,7 +1350,7 @@ function afRow(it){
 }
 AJ['f-add'] = () => { const bs = bloques(), last = bs.length ? bs[bs.length - 1] : 1; return `<form id="afa-form" class="frow">
     <div class="fld wide"><label for="afa-nombre">Nombre del producto</label><input id="afa-nombre" required placeholder="Ej. Caja Ketchup"></div>
-    <div class="fld"><label for="afa-bloque">Bloque</label><select id="afa-bloque">${bs.map(b => `<option value="${b}" ${b === last ? 'selected' : ''}>Bloque ${b}</option>`).join('')}<option value="${last + 1}">Bloque nuevo (${last + 1})</option></select></div>
+    <div class="fld"><label for="afa-bloque">Bloque</label><select id="afa-bloque">${bs.map(b => `<option value="${b}" ${b === last ? 'selected' : ''}>${esc(bloqueNombre(b))}</option>`).join('')}<option value="${last + 1}">Bloque nuevo (${last + 1})</option></select></div>
     <label class="fld" style="display:flex;align-items:center;gap:10px;cursor:pointer;align-self:end;height:42px"><input type="checkbox" id="afa-hl" style="width:20px;height:20px;accent-color:#C99A00"><span style="font-size:14px;font-weight:600">Resaltar en amarillo</span></label>
     <div class="bar-a wide" style="justify-content:flex-end"><button type="submit" class="btn primary" ${canW() ? '' : 'disabled'}>${ic('plus')}Agregar a la planilla</button></div>
   </form>`; };
@@ -1397,16 +1397,101 @@ function fOrdenFin(bloque, exceptId){
   const a = antes.length ? Math.max(...antes) : (despues.length ? Math.min(...despues) - 1 : 0), d = despues.length ? Math.min(...despues) : null;
   return d == null || d <= a ? a + 1 : (a + d) / 2;
 }
+/* Nombre de cada bloque de una planilla (Conteo Fábrica, Stock…): se guarda en la hoja, campo «bloques» */
+const hojaDocF = () => S.hojasDB.find(x => x.id === fabCtx()) || {};
+const bloqueNombre = (b, h) => { const m = (h || hojaDocF()).bloques; const n = m && String(m[b] || '').trim(); return n || `Bloque ${b}`; };
+function openBloque(b){
+  if (!needWrite()) return;
+  S.panel = 'bq';
+  const n = (hojaDocF().bloques || {})[b] || '';
+  openPanel(`<div class="pn-h"><div><small>${esc(nombreHoja(fabCtx()))}</small><h3>Nombre del bloque ${b}</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="pn-b"><form id="bq-form" data-b="${b}" class="frow" novalidate><div class="fld wide"><label for="bq-nombre">Nombre (ej. Fiambres, Mangas)</label><input id="bq-nombre" maxlength="40" value="${esc(n)}" placeholder="Bloque ${b}" autocomplete="off"></div></form><p class="lead" style="margin:0">Vacío vuelve a «Bloque ${b}».</p></div>
+  <div class="pn-f"><button class="btn" data-act="close">Cancelar</button><button class="btn primary" type="submit" form="bq-form" id="bq-ok">${ic('save')}Guardar</button></div>`, 'dlg');
+  setTimeout(() => $('#bq-nombre')?.focus(), 40);
+}
+async function guardarBloque(b){
+  if (!needWrite()) return;
+  const v = limpiarNombre($('#bq-nombre').value).slice(0, 40), hid = fabCtx();
+  const modo = await preguntarTodos(`Nombre del bloque ${b}: «${v || `Bloque ${b}`}»`); if (!modo) return;
+  try {
+    const cur = {...(hojaDocF().bloques || {})}; if (v) cur[b] = v; else delete cur[b];
+    await guardarHoja(hid, {bloques:cur}); closePanel(); render(); toast(v ? `Bloque ${b}: ${v}` : `Bloque ${b} sin nombre`);
+    if (modo === 'todos') replicar({tipo:'bloque', hoja:hid, b, nombre:v});
+  } catch(e){ fail(e); }
+}
+
+/* ---------- Aplicar a todos los locales (solo administradora y dueña) ---------- */
+function duenaNombre(){
+  const d = S.equipo && S.equipo.find ? S.equipo.find(e => ROLN(e.rol) === 'dueno') : null;
+  if (!d) return '';
+  const n = String(d.nombre || S.names[d.email] || '').trim() || String(d.email || '').split('@')[0];
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+function preguntarTodos(que){
+  const otros = localesTodos().filter(l => l.id !== S.local);
+  if (!esTotal() || !otros.length) return Promise.resolve('uno');
+  const dn = duenaNombre(), todos = localesTodos().map(l => l.nombre || l.id);
+  return new Promise(res => {
+    const d = document.createElement('div'); d.className = 'ask-ov'; d.id = 'ask-todos';
+    d.innerHTML = `<div class="ask" role="dialog" aria-modal="true" aria-labelledby="ask-t"><h3 id="ask-t">¿Aplicar a todos los locales${dn ? ` de ${esc(dn)}` : ''}?</h3>
+      <p class="lead">${esc(que)}</p><p class="lead" style="margin:0">Todos los locales: <b>${esc(todos.join(' y '))}</b>. En los otros locales se busca la misma hoja y el producto por su nombre; las cantidades no se copian.</p>
+      <div class="ask-a"><button class="btn" data-r="">Cancelar</button><button class="btn" data-r="uno" id="ask-uno">Solo ${esc(localNombre())}</button><button class="btn primary" data-r="todos" id="ask-todos-ok">Todos los locales</button></div></div>`;
+    const fin = r => { d.remove(); document.removeEventListener('keydown', esc_); res(r); };
+    const esc_ = e => { if (e.key === 'Escape'){ e.stopPropagation(); fin(null); } };
+    d.addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (b) fin(b.dataset.r || null); else if (e.target === d) fin(null); });
+    document.addEventListener('keydown', esc_, true);
+    document.body.appendChild(d); setTimeout(() => $('#ask-todos-ok')?.focus(), 20);
+  });
+}
+/* Copia el cambio a la misma hoja de los otros locales (por tipo y nombre de hoja; producto por nombre). Nunca copia cantidades. */
+async function replicar(c){
+  const otros = localesTodos().filter(l => l.id !== S.local), ok = [], no = [];
+  const hojaLocal = S.hojasDB.find(x => x.id === c.hoja);
+  for (const L of otros){
+    try {
+      let hid = c.hoja;
+      if (isCustom(c.hoja)){
+        const hs = (await S.db.collection(`${L.id}/hojas`).get()).docs.map(d => ({id:d.id, ...d.data()}));
+        const m = hojaLocal && hs.find(x => x.tipo === hojaLocal.tipo && norm(x.nombre) === norm(hojaLocal.nombre));
+        if (!m){ no.push(`${L.nombre}: no tiene la hoja «${hojaLocal ? hojaLocal.nombre : c.hoja}»`); continue; }
+        hid = m.id;
+      }
+      if (c.tipo === 'bloque'){
+        const ref = S.db.collection(`${L.id}/hojas`).doc(hid), cur = await ref.get(), data = cur.exists ? cur.data() : {};
+        const bq = {...(data.bloques || {})}; if (c.nombre) bq[c.b] = c.nombre; else delete bq[c.b];
+        await ref.set({...data, bloques:bq, actualizado:Date.now()}); ok.push(L.nombre); continue;
+      }
+      const col = c.col, enHoja = col === 'fabrica' ? (x => (x.hoja || 'fabrica') === hid) : (x => (x.hoja || '') === (hid === 'stock' ? '' : hid));
+      const items = (await S.db.collection(`${L.id}/${col}`).get()).docs.map(d => ({id:d.id, ...d.data()})).filter(enHoja);
+      const igual = items.find(x => norm(x.nombre) === norm(c.antes || c.data.nombre));
+      if (c.tipo === 'agregar'){
+        if (items.some(x => norm(x.nombre) === norm(c.data.nombre))){ no.push(`${L.nombre}: «${c.data.nombre}» ya estaba`); continue; }
+        const extra = col === 'fabrica'
+          ? {local:null, fabrica:null, sinStock:false, orden:(items.filter(x => bloqueOf(x) <= c.data.bloque).reduce((m, x) => Math.max(m, num(x.orden) || 0), 0)) + 0.5, ...(hid !== 'fabrica' ? {hoja:hid} : {})}
+          : {stock:null, sinStock:false, orden:items.reduce((m, x) => Math.max(m, num(x.orden) || 0), 0) + 1, ...(hid !== 'stock' ? {hoja:hid} : {})};
+        await S.db.collection(`${L.id}/${col}`).doc().set({...c.data, ...extra, creado:Date.now()}); ok.push(L.nombre); continue;
+      }
+      if (!igual){ no.push(`${L.nombre}: no tiene «${c.antes || c.data.nombre}»`); continue; }
+      if (c.tipo === 'eliminar') await S.db.collection(`${L.id}/${col}`).doc(igual.id).delete();
+      else await S.db.collection(`${L.id}/${col}`).doc(igual.id).update({...c.data, actualizado:Date.now()});
+      ok.push(L.nombre);
+    } catch { no.push(`${L.nombre}: no se pudo guardar`); }
+  }
+  if (no.length) toast(`${ok.length ? `También en ${ok.join(' y ')}. ` : ''}${no.join(' · ')}`, true);
+  else if (ok.length) toast(`Aplicado también en ${ok.join(' y ')}`);
+}
 async function fAgregar(){
   if (!needWrite()) return;
   const nombre = $('#afa-nombre').value.trim(); if (!nombre){ toast('Escribí el nombre del producto.', true); return; }
   if (S.fab.some(x => norm(x.nombre) === norm(nombre))){ toast('Ese producto ya está en la planilla.', true); return; }
   const bloque = Math.max(1, parseInt($('#afa-bloque').value, 10) || 1), resaltar = $('#afa-hl').checked;
-  const orden = fOrdenFin(bloque);
+  const orden = fOrdenFin(bloque), hid = fabCtx();
+  const modo = await preguntarTodos(`Agregar «${nombre}» a ${nombreHoja(hid)} (${bloqueNombre(bloque)})`); if (!modo) return;
   try {
     const hf = fHojaField();
     await w(() => C('fabrica').doc().set({nombre, bloque, resaltar, orden, local:null, fabrica:null, sinStock:false, creado:Date.now(), ...hf}));
-    $('#afa-nombre').value = ''; $('#afa-nombre').focus(); toast(`${nombre} agregado al bloque ${bloque}`);
+    const el = $('#afa-nombre'); if (el){ el.value = ''; el.focus(); } toast(`${nombre} agregado a ${bloqueNombre(bloque)}`);
+    if (modo === 'todos') replicar({tipo:'agregar', col:'fabrica', hoja:hid, data:{nombre, bloque, resaltar}});
   } catch(e){ fail(e); }
 }
 async function fGuardarEdicion(id){
@@ -1415,12 +1500,21 @@ async function fGuardarEdicion(id){
   const data = {nombre, bloque:Math.max(1, parseInt($('#afe-bloque').value, 10) || 1), resaltar:$('#afe-hl').checked, actualizado:Date.now()};
   const it = S.fab.find(x => x.id === id);
   if (it && bloqueOf(it) !== data.bloque) data.orden = fOrdenFin(data.bloque, id);
-  try { await w(() => C('fabrica').doc(id).update(data)); S.aj.editId = null; renderAjustesBody(); if (S.panel === 'fedit') closePanel(); toast('Cambios guardados'); } catch(e){ fail(e); }
+  const hid = fabCtx(), antes = it ? it.nombre : nombre;
+  const modo = await preguntarTodos(`Modificar «${antes}» en ${nombreHoja(hid)}`); if (!modo) return;
+  try {
+    await w(() => C('fabrica').doc(id).update(data)); S.aj.editId = null; renderAjustesBody(); if (S.panel === 'fedit') closePanel(); toast('Cambios guardados');
+    if (modo === 'todos') replicar({tipo:'modificar', col:'fabrica', hoja:hid, antes, data:{nombre:data.nombre, bloque:data.bloque, resaltar:data.resaltar}});
+  } catch(e){ fail(e); }
 }
 async function fEliminar(id){
   if (!needWrite()) return;
-  const it = S.fab.find(x => x.id === id);
-  try { await w(() => C('fabrica').doc(id).delete()); delete S.fdraft[id]; saveDraft(); S.aj.delId = null; renderAjustesBody(); if (S.panel === 'fedit') closePanel(); toast(`${it?.nombre || 'Producto'} eliminado`); } catch(e){ fail(e); }
+  const it = S.fab.find(x => x.id === id), hid = fabCtx();
+  const modo = await preguntarTodos(`Eliminar «${it?.nombre || 'Producto'}» de ${nombreHoja(hid)}`); if (!modo) return;
+  try {
+    await w(() => C('fabrica').doc(id).delete()); delete S.fdraft[id]; saveDraft(); S.aj.delId = null; renderAjustesBody(); if (S.panel === 'fedit') closePanel(); toast(`${it?.nombre || 'Producto'} eliminado`);
+    if (modo === 'todos' && it) replicar({tipo:'eliminar', col:'fabrica', hoja:hid, antes:it.nombre, data:{nombre:it.nombre}});
+  } catch(e){ fail(e); }
 }
 function parseLista(txt){
   const out = []; let cat = '';
@@ -1473,10 +1567,12 @@ async function agregar(){
   const min = num($('#aa-min').value), stock = num($('#aa-stock').value), obs = $('#aa-obs').value.trim(), proveedor = limpiarNombre($('#aa-prov').value);
   if (stock != null && (stock < 0 || !isHalf(stock))){ toast('El stock va en unidades enteras o medias (ej. 3 o 3,5).', true); return; }
   if (S.prods.some(p => norm(p.nombre) === norm(nombre) && norm(catOf(p)) === norm(cat || 'Sin categoría'))){ toast('Ya hay un producto con ese nombre en esa categoría.', true); return; }
-  const orden = Math.max(0, ...S.prods.map(p => num(p.orden) || 0)) + 1;
+  const orden = Math.max(0, ...S.prods.map(p => num(p.orden) || 0)) + 1, hid = listaCtx() || 'stock';
+  const modo = await preguntarTodos(`Agregar «${nombre}» a ${nombreHoja(hid)}`); if (!modo) return;
   try {
     const hf = hojaField();
     await w(() => C('productos').doc().set({nombre, cat, unidad, min, stock, sinStock:false, obs, proveedor, orden, creado:Date.now(), ...hf}));
+    if (modo === 'todos') replicar({tipo:'agregar', col:'productos', hoja:hid, data:{nombre, cat, unidad, min, obs, proveedor}});
     lsSet('spm-lastcat', cat); lsSet('spm-lastunit', unidad); lsSet('spm-lastprov', proveedor);
     $('#aa-nombre').value = ''; $('#aa-min').value = ''; $('#aa-stock').value = ''; $('#aa-obs').value = ''; $('#aa-nombre').focus();
     toast(`${nombre} agregado`);
@@ -1486,12 +1582,21 @@ async function guardarEdicion(id){
   if (!needWrite()) return;
   const nombre = $('#ae-nombre').value.trim(); if (!nombre){ toast('El nombre no puede quedar vacío.', true); return; }
   const data = {nombre, cat:$('#ae-cat').value.trim(), unidad:$('#ae-unidad').value.trim() || 'unidad', min:num($('#ae-min').value), proveedor:limpiarNombre($('#ae-prov').value), obs:$('#ae-obs').value.trim(), actualizado:Date.now()};
-  try { await w(() => C('productos').doc(id).update(data)); S.aj.editId = null; renderAjustesBody(); toast('Cambios guardados'); } catch(e){ fail(e); }
+  const p0 = S.allProds.find(x => x.id === id), antes = p0 ? p0.nombre : nombre, hid = listaCtx() || 'stock';
+  const modo = await preguntarTodos(`Modificar «${antes}» en ${nombreHoja(hid)}`); if (!modo) return;
+  try {
+    await w(() => C('productos').doc(id).update(data)); S.aj.editId = null; renderAjustesBody(); toast('Cambios guardados');
+    if (modo === 'todos'){ const {actualizado:_a, ...rest} = data; replicar({tipo:'modificar', col:'productos', hoja:hid, antes, data:rest}); }
+  } catch(e){ fail(e); }
 }
 async function eliminar(id){
   if (!needWrite()) return;
-  const p = S.prods.find(x => x.id === id);
-  try { await w(() => C('productos').doc(id).delete()); delete S.draft[id]; delete S.notas[id]; saveDraft(); S.aj.delId = null; renderAjustesBody(); toast(`${p?.nombre || 'Producto'} eliminado`); } catch(e){ fail(e); }
+  const p = S.prods.find(x => x.id === id), hid = listaCtx() || 'stock';
+  const modo = await preguntarTodos(`Eliminar «${p?.nombre || 'Producto'}» de ${nombreHoja(hid)}`); if (!modo) return;
+  try {
+    await w(() => C('productos').doc(id).delete()); delete S.draft[id]; delete S.notas[id]; saveDraft(); S.aj.delId = null; renderAjustesBody(); toast(`${p?.nombre || 'Producto'} eliminado`);
+    if (modo === 'todos' && p) replicar({tipo:'eliminar', col:'productos', hoja:hid, antes:p.nombre, data:{nombre:p.nombre}});
+  } catch(e){ fail(e); }
 }
 async function renombrarCat(oldC, nuevo){
   if (!needWrite()) return; nuevo = nuevo.trim(); if (!nuevo || nuevo === oldC){ S.aj.catEdit = null; renderAjustesBody(); return; }
@@ -2119,6 +2224,7 @@ document.addEventListener('click', e => {
     case 'est': openEstados(id); break;
     case 'sug-tg': toggleSug(); break;
     case 'tot-nombre': openTotNombre(); break;
+    case 'bq-edit': openBloque(+t.dataset.b || 1); break;
     case 'nota': abrirNota(t.dataset.k === 'f' ? 'f' : 'p', id); break;
     case 'borrar': pedirBorrar(); break;
     case 'borrar-ok': borrarDatos(); break;
@@ -2273,6 +2379,7 @@ document.addEventListener('submit', e => {
   else if (f.id === 'hr-form') renombrarHoja(f.dataset.id, $('#hr-nombre').value);
   else if (f.id === 'est-form') guardarEstados(f.dataset.id);
   else if (f.id === 'tn-form') guardarTotNombre();
+  else if (f.id === 'bq-form') guardarBloque(+f.dataset.b || 1);
 });
 document.addEventListener('keydown', e => {
   if (e.target.matches && e.target.matches('[data-nt]')){

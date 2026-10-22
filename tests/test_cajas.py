@@ -3,7 +3,7 @@ import asyncio, json
 from playwright.async_api import async_playwright
 
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harness import load_app, OUT
+from harness import load_app, OUT, solo_este_local
 
 fails = []
 def check(c, m):
@@ -26,7 +26,7 @@ async def login(b, email, size, setup):
     ctx = await b.new_context(viewport=size)
     pg = await ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    await load_app(pg)
+    await load_app(pg); await solo_este_local(pg)
     await pg.evaluate(setup)
     await pg.evaluate("localStorage.setItem('spm-lastcat', JSON.stringify('Fiambres'))")
     await pg.fill('#au-email', email); await pg.fill('#au-pass', 'secreto1')

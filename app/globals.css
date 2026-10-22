@@ -769,6 +769,16 @@ a.btn{text-decoration:none}
   .ing-res .ing-r > *{grid-area:auto!important}
   .ing-d{grid-template-columns:1fr}
 }
+/* Bloques con nombre en las planillas */
+.xl-r.xl-bq{display:block}
+.xl-bq .xbq{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--sunk);border-bottom:1px solid var(--line);min-height:0}
+.xl-bq .xbq b{font:700 14px var(--f-display);letter-spacing:.01em;text-transform:uppercase;color:var(--ink-2)}
+.xl-bq .btn.sm{height:28px}
+/* Pregunta «¿Aplicar a todos los locales?» */
+.ask-ov{position:fixed;inset:0;z-index:80;background:rgba(11,13,16,.45);display:grid;place-items:center;padding:16px}
+.ask{width:min(460px,100%);background:var(--surface);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:20px}
+.ask h3{margin:0 0 8px;font-family:var(--f-display);font-size:19px}
+.ask-a{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}
 /* Imprimir o guardar en PDF */
 @media print{
   @page{margin:12mm}
@@ -787,6 +797,7 @@ a.btn{text-decoration:none}
   .xc input{border:0!important;background:transparent!important}
   .xc .fq{display:none!important}
   .xl-add{display:none!important}
+  .xl-bq .btn{display:none!important}
 }
 .prev{font-size:13.5px;color:var(--muted)}
 .prev b{color:var(--ink)}
