@@ -11,11 +11,54 @@
     if (col === 'locales') return true;
     if (col === 'equipo') { const d = data || {}; return total(a) || d.email === me() || ['creadora', 'dueno'].includes(d.rol) || (d.locales || []).some(l => (a.locales || []).includes(l)); }
     if (col === 'solicitudes') return a.rol === 'creadora' || id === me();
+    if (col === 'importaciones') return total(a);
     if (!col.includes('/')) return false;
     return total(a) || (a.locales || []).includes(col.split('/')[0]);
   }
   // Como el trigger proteger_sugerido de la base: solo administradora y dueño cambian "sugerido", "poco" y "exceso"
   function keepSug(col, prev, data){ if (!/\/(productos|hojas)$/.test(col) || total(acc())) return data; const d = {...data}; for (const k of ['sugerido', 'poco', 'exceso']){ if (prev && k in prev) d[k] = prev[k]; else delete d[k]; } return d; }
+  // Como public.importar_mercaderia() de la base: rol, sucursal, destinos, cuartos, clave repetida, duplicados, conflictos, todo junto y registro.
+  // window.__rpcFalla = 'antes' (se corta sin guardar) o 'despues' (guarda y se pierde la respuesta) simula falta de internet.
+  function importar(a, x){
+    const err = m => ({data:null, error:{message:'MGS:' + m}});
+    const falla = window.__rpcFalla; if (falla === 'antes'){ window.__rpcFalla = null; return {data:null, error:{message:'TypeError: Failed to fetch'}}; }
+    if (!a || !total(a)) return err('sin_permiso');
+    if (!rows.some(r => r.col === 'locales' && r.id === x.p_local)) return err('sucursal');
+    if (!['ingreso', 'conteo'].includes(x.p_operacion)) return err('operacion');
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(x.p_clave || '')) return err('clave');
+    const its = x.p_items; if (!Array.isArray(its) || !its.length || its.length > 500) return err('items');
+    if (new Set(its.map(i => i.col + '|' + i.id + '|' + i.campo)).size !== its.length) return err('repetidos');
+    const prev = rows.find(r => r.col === 'importaciones' && r.id === x.p_clave);
+    if (prev) return {data:{estado:'ok', repetida:true, aplicados:(prev.data.items || []).length, fecha:prev.data.fecha}, error:null};
+    const ar = x.p_archivo || {}, h = ar.hash || '', c = ar.contenido || '';
+    if (!x.p_forzar && (h || c)){
+      const d = rows.filter(r => r.col === 'importaciones' && r.data.local === x.p_local && ((h && r.data.archivo.hash === h) || (c && r.data.archivo.contenido === c))).sort((p, q) => q.data.fecha - p.data.fecha)[0];
+      if (d) return {data:{estado:'duplicado', fecha:d.data.fecha, por:d.data.por, archivo:d.data.archivo.nombre}, error:null};
+    }
+    const faltan = [], cambios = [];
+    for (const i of its){
+      if (!((i.col === 'productos' && i.campo === 'stock') || (i.col === 'fabrica' && ['local', 'fabrica'].includes(i.campo))) || !i.id) return err('destino');
+      const q = Number(i.cantidad); if (!Number.isFinite(q) || q < 0 || q > 100000 || Math.abs(q * 4 - Math.round(q * 4)) > 1e-9) return err('cantidad');
+      const r = rows.find(z => z.col === x.p_local + '/' + i.col && z.id === i.id);
+      if (!r){ faltan.push(i.nombre || i.id); continue; }
+      const act = r.data[i.campo] == null ? null : Number(r.data[i.campo]), ant = i.antes == null ? null : Number(i.antes);
+      if (act !== ant) cambios.push({col:i.col, id:i.id, campo:i.campo, nombre:r.data.nombre, antes:ant, ahora:act});
+    }
+    if (faltan.length) return {data:{estado:'faltan', productos:faltan}, error:null};
+    if (cambios.length) return {data:{estado:'conflicto', cambios}, error:null};
+    const now = Date.now(), reg = [];
+    for (const i of its){
+      const r = rows.find(z => z.col === x.p_local + '/' + i.col && z.id === i.id), act = r.data[i.campo] == null ? null : Number(r.data[i.campo]);
+      const nuevo = x.p_operacion === 'ingreso' ? Math.round(((act || 0) + Number(i.cantidad)) * 100) / 100 : Number(i.cantidad);
+      r.data = {...r.data, [i.campo]:nuevo, actualizado:now, ...(i.col === 'productos' ? {sinStock:nuevo <= 0} : i.campo === 'local' ? {sinStock:nuevo === 0} : {})};
+      reg.push({col:i.col, id:i.id, campo:i.campo, nombre:r.data.nombre || '', hoja:r.data.hoja || (i.col === 'productos' ? 'stock' : 'fabrica'), nombreHoja:i.nombreHoja || '', antes:act, cantidad:Number(i.cantidad), despues:nuevo, lineas:(i.lineas || []).slice(0, 20)});
+      notify(x.p_local + '/' + i.col);
+    }
+    rows.push({col:'importaciones', id:x.p_clave, data:{local:x.p_local, operacion:x.p_operacion, fecha:now, por:me(), forzada:!!x.p_forzar, archivo:{nombre:ar.nombre || '', tipo:ar.tipo || '', hash:h, contenido:c}, items:reg, ignorados:(ar.ignorados || []).slice(0, 300)}});
+    window.__log.push(['importar', x.p_local, x.p_operacion, reg.length]); notify('importaciones');
+    if (falla === 'despues'){ window.__rpcFalla = null; return {data:null, error:{message:'TypeError: Failed to fetch'}}; }
+    return {data:{estado:'ok', aplicados:reg.length, fecha:now}, error:null};
+  }
   function canWrite(col){
     const a = acc(); if (!a) return false;
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';
@@ -60,6 +103,7 @@
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || [])} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }
       if (fn === 'doc_update'){ if (!canWrite(args.p_col)) return {data:0, error:null}; const r = rows.find(x => x.col === args.p_col && x.id === args.p_id); if (!r) return {data:0, error:null}; r.data = keepSug(args.p_col, r.data, {...r.data, ...args.p_patch}); window.__log.push(['update', args.p_col, args.p_id]); notify(args.p_col); return {data:1, error:null}; }
+      if (fn === 'importar_mercaderia') return importar(a, args);
       return {data:null, error:null};
     },
     channel(){ const ch = { on(_e, f, cb){ subs.push({col:f.filter.split('eq.')[1], cb}); return ch; }, subscribe(){ return ch; } }; return ch; },

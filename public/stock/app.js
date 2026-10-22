@@ -4,6 +4,8 @@
 
 /* ---------- Constantes ---------- */
 const APP_URL = 'https://mgstock-app.github.io/';
+/* Carpeta de los scripts (para cargar el lector de Ingreso de mercadería solo cuando se usa) */
+const JS_BASE = (document.currentScript && document.currentScript.src) || ((document.querySelector('script[src*="stock/app.js"]') || {}).src) || location.href;
 const CREADORA = 'kmu15lopez@gmail.com';
 /* Hojas fijas. Se pueden renombrar, ordenar y quitar del menú; las hojas nuevas se guardan en la colección "hojas". */
 const BASE = [
@@ -19,6 +21,7 @@ const TIPOS = {
 };
 const UNIDADES = ['unidad','caja','docena','kg','bolsa','paquete','botella','lata','rollo','balde','pack'];
 const IC = {
+  in:'<path d="M12 3v11m0 0-4-4m4 4 4-4"/><path d="M4 14v5h16v-5"/>',
   msg:'<path d="M4 5h16v11H10l-6 4z"/>',
   box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
   clip:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12.5l2 2 4-4"/>',
@@ -270,6 +273,7 @@ function render(){
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
 function viewHTML(){
+  if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (t === 'fabrica') return V.fabrica();
@@ -282,8 +286,10 @@ function renderChrome(){
   document.querySelectorAll('#snav [data-go]').forEach(b => { if (b.dataset.go === S.view) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : nombreHoja(S.view);
-  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
+  const ing = S.view === 'ingreso';
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
+  $('#savebar').hidden = ing;
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -299,6 +305,7 @@ function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
   const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>
+    ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
     ${edit ? `<button class="snav-add" data-act="hoja-new">${ic('plus')}<span class="nl">Agregar hoja</span></button>` : ''}`;
@@ -1571,6 +1578,241 @@ document.addEventListener('keydown', e => {
 });
 let DR_T = null;
 
+/* ---------- Ingreso de mercadería (solo dueña y administradora) ---------- */
+/* La dueña elige la sucursal y la operación, carga un archivo y revisa. Nada cambia hasta Confirmar importación:
+   ahí la base (importar_mercaderia) vuelve a verificar rol, sucursal, productos y valores, y guarda todo junto. */
+let ingP = null;
+function cargarIngreso(){
+  if (window.MGSIngreso) return Promise.resolve(window.MGSIngreso);
+  if (!ingP) ingP = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = new URL('ingreso.js?v=1', JS_BASE).href; s.async = true;
+    s.onload = () => window.MGSIngreso ? res(window.MGSIngreso) : rej(new Error('ingreso'));
+    s.onerror = () => { ingP = null; s.remove(); rej(new Error('No se pudo cargar el lector de archivos. Revisá la conexión.')); };
+    document.head.appendChild(s);
+  });
+  return ingP;
+}
+const ingNuevo = () => ({local:'', op:'', fabCampo:'local', datos:null, cargando:false, err:'', arch:null, leyendo:false, hojaSel:0, col:null, lineas:[], dec:{}, cant:{}, on:{}, campo:{}, clave:'', msg:null, res:null, hist:null, histOpen:{}, busy:false});
+const ING_OP = {ingreso:'Ingreso', conteo:'Conteo'};
+/* Hojas y productos de la sucursal elegida, leídos una sola vez (solo lectura) */
+function hojasDe(hdb){
+  const ov = new Map(hdb.map(h => [h.id, h]));
+  const base = BASE.map(b => { const o = ov.get(b.id) || {}; return {id:b.id, tipo:b.tipo, nombre:String(o.nombre || '').trim() || b.nombre, oculta:!!o.oculta}; });
+  const nuevas = hdb.filter(h => isCustom(h.id) && TIPOS[h.tipo]).map(h => ({id:h.id, tipo:h.tipo, nombre:String(h.nombre || '').trim() || 'Hoja nueva', oculta:false}));
+  return [...base, ...nuevas];
+}
+function armarDestinos(ps, fs, hdb){
+  const hs = hojasDe(hdb), by = id => hs.find(h => h.id === id);
+  const principal = ['stock', 'conteo', 'pedido'].map(by).find(h => h && !h.oculta);
+  const dest = [];
+  for (const p of ps){
+    const h = p.hoja ? by(p.hoja) : principal;
+    if (!h || h.oculta || (p.hoja && h.tipo !== 'lista')) continue;
+    dest.push({key:'p:' + p.id, col:'productos', id:p.id, nombre:String(p.nombre || ''), hoja:p.hoja || 'stock', hojaNombre:h.nombre, unidad:p.unidad || 'unidad', cat:p.cat || '', vals:{stock:num(p.stock)}});
+  }
+  for (const it of fs){
+    const h = by(it.hoja || 'fabrica');
+    if (!h || h.oculta || h.tipo !== 'fabrica') continue;
+    dest.push({key:'f:' + it.id, col:'fabrica', id:it.id, nombre:String(it.nombre || ''), hoja:it.hoja || 'fabrica', hojaNombre:h.nombre, unidad:'', cat:'', vals:{local:num(it.local), fabrica:num(it.fabrica)}});
+  }
+  return {dest, map:new Map(dest.map(d => [d.key, d])), hojas:hs.filter(h => !h.oculta)};
+}
+async function ingCargar(quieto){
+  const I = S.ing, loc = I.local; if (!loc) return;
+  if (!quieto){ I.cargando = true; I.err = ''; render(); }
+  try {
+    const [ps, fs, hs] = await Promise.all(['productos', 'fabrica', 'hojas'].map(c => S.db.collection(`${loc}/${c}`).get()));
+    if (S.ing !== I || I.local !== loc) return;
+    I.datos = armarDestinos(ps.docs.map(d => ({id:d.id, ...d.data()})), fs.docs.map(d => ({id:d.id, ...d.data()})), hs.docs.map(d => ({id:d.id, ...d.data()})));
+    if (I.arch && !I.arch.error && window.MGSIngreso) ingProcesar(true);
+  } catch(e){ if (S.ing === I) I.err = `No se pudieron leer los productos de ${localNombre(loc)}. Revisá la conexión y volvé a elegir la sucursal.`; }
+  if (S.ing === I){ I.cargando = false; render(); ingHist(); }
+}
+async function ingHist(){
+  const I = S.ing; if (!I || !I.local) return;
+  try {
+    const snap = await S.db.collection('importaciones').get();
+    if (S.ing !== I) return;
+    I.hist = snap.docs.map(d => ({id:d.id, ...d.data()})).filter(h => h.local === I.local).sort((a, b) => (b.fecha || 0) - (a.fecha || 0)).slice(0, 15);
+  } catch { if (S.ing === I) I.hist = []; }
+  if (S.view === 'ingreso') render();
+}
+async function ingArchivo(file){
+  const I = S.ing; if (!I || !file) return;
+  I.arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}; I.lineas = []; I.res = null; I.msg = null; I.leyendo = true; render();
+  try {
+    const M = await cargarIngreso(), r = await M.leerArchivo(file);
+    Object.assign(I.arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null});
+    I.hojaSel = 0; I.col = r.hojas ? M.columnas(r.hojas[0].filas) : null;
+    if (I.datos) ingProcesar();
+  } catch(e){ I.arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
+  I.leyendo = false; render();
+}
+function ingProcesar(mantener){
+  const M = window.MGSIngreso, I = S.ing; if (!M || !I.arch || !I.datos) return;
+  const ren = I.arch.texto != null ? M.renglonesTexto(I.arch.texto) : M.renglonesTabla((I.arch.hojas[I.hojaSel] || {filas:[]}).filas, I.col);
+  I.lineas = M.coincidencias(ren.slice(0, 1000), I.datos.dest).map((r, i) => ({...r, i}));
+  if (!mantener){ I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; }
+  I.clave = ''; I.msg = null;
+  const firma = JSON.stringify(ren.map(r => [M.norm(r.nombre), r.cantidad, r.unidad]).sort());
+  M.huella(firma).then(h => { if (S.ing === I && I.arch) I.arch.contenido = h; });
+}
+/* Destino final de cada renglón: elegido por la dueña o sugerido por el reconocimiento ('' = no importar) */
+function ingDestino(r){
+  const I = S.ing;
+  if (has(I.dec, r.i)) return I.dec[r.i];
+  return r.estado === 'coincide' || r.estado === 'parecido' ? r.key : (r.estado === 'ignorado' ? '' : undefined);
+}
+function ingPlan(){
+  const I = S.ing, M = window.MGSIngreso, D = I.datos ? I.datos.map : new Map();
+  const grupos = new Map(), pend = [], ign = [];
+  for (const r of I.lineas){
+    const k = ingDestino(r);
+    if (k === undefined){ pend.push(r); continue; }
+    if (!k || !D.has(k)){ ign.push(r); continue; }
+    if (!grupos.has(k)) grupos.set(k, {key:k, d:D.get(k), rs:[]});
+    grupos.get(k).rs.push(r);
+  }
+  const filas = [...grupos.values()].map(g => {
+    const d = g.d, campo = d.col === 'fabrica' ? (I.campo[g.key] || I.fabCampo) : 'stock';
+    const qs = g.rs.map(r => r.cantidad), conCant = qs.filter(q => q != null);
+    let det = null, valores = false;
+    if (conCant.length === qs.length && qs.length){
+      if (I.op === 'conteo'){ valores = new Set(qs).size > 1; det = valores ? null : qs[0]; }
+      else det = round(qs.reduce((a, b) => a + b, 0));
+    }
+    const raw = has(I.cant, g.key) ? I.cant[g.key] : (det == null ? '' : fmtIn(det));
+    const cant = numQ(raw), cantOk = cant != null && cant >= 0 && isQuarter(cant) && cant <= 100000;
+    const du = d.col === 'productos' ? (M ? M.unidadDe(d.unidad || 'unidad') : null) : null;
+    const uniDist = !!(du && g.rs.some(r => r.unidad && r.unidad !== du));
+    /* Un renglón elegido por la dueña (destino o producto) cuenta como revisado */
+    const elegido = g.rs.some(r => has(I.dec, r.i)), parecido = g.rs.some(r => r.estado !== 'coincide' && !has(I.dec, r.i));
+    const estado = (valores && !has(I.cant, g.key)) ? 'valores' : !cantOk ? 'cantidad' : uniDist ? 'unidad' : parecido ? 'parecido' : elegido ? 'elegido' : 'coincide';
+    const on = has(I.on, g.key) ? !!I.on[g.key] && cantOk : (estado === 'coincide' || estado === 'elegido');
+    const antes = d.vals[campo] ?? null, despues = cantOk ? (I.op === 'ingreso' ? round((antes || 0) + cant) : cant) : null;
+    return {...g, campo, det, raw, cant, cantOk, estado, on, antes, despues, valores, uniDist};
+  }).sort((a, b) => a.d.hojaNombre.localeCompare(b.d.hojaNombre, 'es') || a.d.nombre.localeCompare(b.d.nombre, 'es'));
+  const elegidas = filas.filter(f => f.on && f.cantOk);
+  const items = elegidas.map(f => ({col:f.d.col, id:f.d.id, campo:f.campo, cantidad:f.cant, antes:f.antes, nombre:f.d.nombre, nombreHoja:f.d.hojaNombre, lineas:f.rs.map(r => String(r.texto || r.nombre).slice(0, 160))}));
+  const ignorados = [...ign, ...filas.filter(f => !f.on).flatMap(f => f.rs)].map(r => String(r.texto || r.nombre).slice(0, 160));
+  return {filas, pend, ign, items, ignorados};
+}
+const ING_EST = {coincide:['ok', 'Coincide'], elegido:['ok', 'Elegido'], parecido:['bajo', 'Revisar'], unidad:['bajo', 'Unidad distinta'], valores:['bajo', 'Valores distintos'], cantidad:['sin', 'Falta cantidad']};
+function ingOpts(cands, sel, conNo){
+  const D = S.ing.datos.map, ks = [...new Set([...(cands || []).map(c => c.key), ...(sel && D.has(sel) ? [sel] : [])])];
+  return `${conNo ? `<option value="" ${sel === '' ? 'selected' : ''}>No importar</option>` : ''}${ks.map(k => { const d = D.get(k); return d ? `<option value="${esc(k)}" ${k === sel ? 'selected' : ''}>${esc(d.nombre)} — ${esc(d.hojaNombre)}</option>` : ''; }).join('')}`;
+}
+function ingTodos(sel){
+  const D = S.ing.datos, por = new Map();
+  for (const d of D.dest){ if (!por.has(d.hojaNombre)) por.set(d.hojaNombre, []); por.get(d.hojaNombre).push(d); }
+  return `<option value="" ${!sel ? 'selected' : ''}>No importar</option>${[...por].map(([h, ds]) => `<optgroup label="${esc(h)}">${ds.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map(d => `<option value="${esc(d.key)}" ${d.key === sel ? 'selected' : ''}>${esc(d.nombre)}</option>`).join('')}</optgroup>`).join('')}`;
+}
+const ingTam = n => n > 1048576 ? `${fmt(round(n / 1048576))} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+V.ingreso = () => {
+  if (!esTotal()) return V.inicio();
+  const I = S.ing || (S.ing = ingNuevo());
+  const locs = localesTodos(), loc = I.local, nomLoc = loc ? localNombre(loc) : '';
+  const paso1 = `<section class="card pad ing-c"><div class="ch"><h4>1. Sucursal</h4></div>
+    <p class="lead" style="margin:0 0 10px">Los cambios se aplican solo en la sucursal que elijas.</p>
+    <div class="ing-ops" role="radiogroup" aria-label="Sucursal">${locs.map(l => `<button class="ing-op" role="radio" aria-checked="${loc === l.id}" data-act="ing-local" data-id="${esc(l.id)}" id="ing-loc-${esc(l.id)}"><b>${esc(l.nombre || l.id)}</b></button>`).join('')}</div>
+    ${I.cargando ? `<p class="lead" style="margin:10px 0 0">Leyendo los productos de ${esc(nomLoc)}…</p>` : ''}${I.err ? `<p class="note warn" style="margin:10px 0 0">${esc(I.err)}</p>` : ''}
+    ${I.datos && !I.cargando ? `<p class="lead" style="margin:10px 0 0">${plural(I.datos.dest.length, 'producto', 'productos')} en ${esc(I.datos.hojas.filter(h => ['stock', 'lista', 'fabrica'].includes(h.tipo)).map(h => h.nombre).join(', '))}.</p>` : ''}</section>`;
+  const paso2 = `<section class="card pad ing-c"><div class="ch"><h4>2. Operación</h4></div>
+    <div class="ing-ops" role="radiogroup" aria-label="Operación">
+      <button class="ing-op" role="radio" aria-checked="${I.op === 'ingreso'}" data-act="ing-op" data-op="ingreso" id="ing-op-ingreso"><b>Ingreso</b><small>Suma lo recibido al stock actual</small></button>
+      <button class="ing-op" role="radio" aria-checked="${I.op === 'conteo'}" data-act="ing-op" data-op="conteo" id="ing-op-conteo"><b>Conteo</b><small>Reemplaza por la cantidad del archivo</small></button>
+    </div>
+    <div class="fld ing-fab"><label for="ing-fab">En Conteo Fábrica, cargar en</label><select id="ing-fab"><option value="local" ${I.fabCampo === 'local' ? 'selected' : ''}>Local (stock del local)</option><option value="fabrica" ${I.fabCampo === 'fabrica' ? 'selected' : ''}>Fábrica (ingreso de mañana)</option></select></div></section>`;
+  const listo = !!(loc && I.op && I.datos && !I.cargando);
+  let archTxt = '';
+  if (I.arch){
+    const A = I.arch, hojasSel = A.hojas && A.hojas.length > 1 ? `<div class="fld"><label for="ing-hoja">Hoja del Excel</label><select id="ing-hoja">${A.hojas.map((h, i) => `<option value="${i}" ${i === I.hojaSel ? 'selected' : ''}>${esc(h.nombre)} (${h.filas.length} filas)</option>`).join('')}</select></div>` : '';
+    let cols = '';
+    if (A.hojas && I.col && !A.error){
+      const f = (A.hojas[I.hojaSel] || {filas:[]}).filas, n = Math.max(1, ...f.slice(0, 50).map(x => x.length)), hdr = I.col.encabezado >= 0 ? f[I.col.encabezado] : null;
+      const letra = i => String.fromCharCode(65 + (i % 26)), op = (k, conNo) => `${conNo ? `<option value="-1" ${I.col[k] < 0 ? 'selected' : ''}>${k === 'cantidad' ? 'En el mismo renglón' : 'No hay'}</option>` : ''}${Array.from({length:n}, (_, i) => `<option value="${i}" ${I.col[k] === i ? 'selected' : ''}>Columna ${letra(i)}${hdr && hdr[i] ? ` · ${esc(String(hdr[i]).slice(0, 24))}` : ''}</option>`).join('')}`;
+      cols = `<div class="frow ing-cols"><div class="fld"><label for="ing-col-producto">Producto</label><select id="ing-col-producto" data-ingcol="producto">${op('producto', false)}</select></div><div class="fld"><label for="ing-col-cantidad">Cantidad</label><select id="ing-col-cantidad" data-ingcol="cantidad">${op('cantidad', true)}</select></div><div class="fld"><label for="ing-col-unidad">Unidad</label><select id="ing-col-unidad" data-ingcol="unidad">${op('unidad', true)}</select></div></div>`;
+    }
+    archTxt = `<div class="ing-file"><span class="six">${ic('list')}</span><div><b>${esc(A.nombre)}</b><small>${ingTam(A.tam || 0)}${I.leyendo ? ' · leyendo…' : A.error ? '' : I.lineas.length ? ` · ${plural(I.lineas.length, 'renglón leído', 'renglones leídos')}` : ''}</small></div><button class="btn sm" data-act="ing-quitar" ${I.busy ? 'disabled' : ''}>${ic('x')}Quitar</button></div>
+      ${A.error ? `<p class="note warn" id="ing-err">${esc(A.error)}</p>` : ''}${hojasSel}${cols}`;
+  }
+  const paso3 = `<section class="card pad ing-c"><div class="ch"><h4>3. Archivo</h4></div>
+    ${listo ? (I.arch ? archTxt : `<label class="ing-drop" id="ing-drop" for="ing-file">${ic('in')}<b>Elegí un archivo</b><small>Excel (.xlsx) o CSV. Se lee en este dispositivo; no se sube a ningún lado.</small><small>PDF y fotos: en la próxima etapa.</small></label><input type="file" id="ing-file" class="ing-inp" accept=".xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">`)
+      : `<p class="lead" style="margin:0">Primero elegí la sucursal y la operación.</p>`}</section>`;
+  let paso4 = '';
+  if (listo && I.arch && !I.arch.error && !I.leyendo && I.res){
+    const R = I.res;
+    paso4 = `<section class="card pad ing-c ing-ok" id="ing-listo"><div class="ch"><h4>Listo: ${plural(R.aplicados, 'producto actualizado', 'productos actualizados')} en ${esc(localNombre(R.local))}</h4></div>
+      <p class="lead">${R.repetida ? 'Esta importación ya estaba guardada: no se sumó dos veces. ' : ''}Operación: <b>${ING_OP[R.op]}</b>. Quedó registrado en el historial de abajo.</p>
+      ${R.repetida ? '' : `<div class="ing-t ing-res">${R.items.map(it => `<div class="ing-r"><div class="ing-p"><b>${esc(it.nombre)}</b><small>${esc(it.nombreHoja)}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Fábrica'}` : ''}</small></div><span class="num">${fmt(it.antes)} → <b>${fmt(R.op === 'ingreso' ? round((it.antes || 0) + it.cantidad) : it.cantidad)}</b></span></div>`).join('')}</div>`}
+      <div class="bar-a" style="margin-top:12px"><button class="btn primary" data-act="ing-otro">${ic('plus')}Cargar otro archivo</button></div></section>`;
+  } else if (listo && I.arch && !I.arch.error && !I.leyendo){
+    const P = ingPlan(), F = P.filas;
+    const fila = f => {
+      const [cls, txt] = ING_EST[f.estado], k = esc(f.key), sel = f.rs.map(r => ingDestino(r))[0];
+      const cands = f.rs.flatMap(r => r.cands || []);
+      return `<div class="ing-r ${f.on ? 'on' : ''}" id="ing-g-${k}">
+        <label class="ing-ck"><input type="checkbox" data-ingon="${k}" ${f.on ? 'checked' : ''} ${f.cantOk ? '' : 'disabled'} aria-label="Importar ${esc(f.d.nombre)}"></label>
+        <div class="ing-p"><b>${esc(f.d.nombre)}</b><small title="${esc(f.rs.map(r => r.texto).join(' | '))}">Archivo: «${esc(String(f.rs[0].texto || f.rs[0].nombre).slice(0, 70))}»${f.rs.length > 1 ? ` y ${f.rs.length - 1} más` : ''}${f.rs[0].fila ? ` · fila ${f.rs.map(r => r.fila).join(', ')}` : ''}</small></div>
+        <div class="ing-h"><select data-ingdest="${k}" aria-label="Destino de ${esc(f.d.nombre)}">${ingOpts(cands, sel, true)}</select>${f.d.col === 'fabrica' ? `<select data-ingcampo="${k}" aria-label="Columna de ${esc(f.d.nombre)}"><option value="local" ${f.campo === 'local' ? 'selected' : ''}>Local</option><option value="fabrica" ${f.campo === 'fabrica' ? 'selected' : ''}>Fábrica</option></select>` : ''}</div>
+        <span class="ing-n"><small>Detectado</small>${f.det == null ? (f.valores ? f.rs.map(r => fmt(r.cantidad)).join(' / ') : '—') : fmt(f.det)}${f.rs.some(r => r.unidadTxt) ? ` <small>${esc(f.rs.find(r => r.unidadTxt).unidadTxt)}</small>` : ''}</span>
+        <span class="ing-n ing-q"><small>Cantidad</small><input data-ingcant="${k}" id="ing-q-${k}" inputmode="decimal" autocomplete="off" value="${esc(f.raw)}" class="${f.cantOk ? '' : 'bad'}" aria-label="Cantidad de ${esc(f.d.nombre)}"></span>
+        <span class="ing-n"><small>Actual</small>${fmt(f.antes)}</span>
+        <span class="ing-n ing-res-c"><small>Resultado</small><b>${f.despues == null ? '—' : fmt(f.despues)}</b></span>
+        <span class="ing-e"><span class="st ${cls}">${txt}</span>${f.uniDist ? `<small>Producto en ${esc(f.d.unidad)}; el archivo dice ${esc(f.rs.find(r => r.unidad).unidadTxt)}</small>` : f.valores && !has(I.cant, f.key) ? `<small>El archivo trae ${f.rs.map(r => fmt(r.cantidad)).join(' y ')}: escribí la correcta</small>` : f.estado === 'parecido' ? `<small>Nombre parecido: revisalo</small>` : ''}</span>
+      </div>`;
+    };
+    const pendHTML = P.pend.length ? `<div class="ing-sec" id="ing-pend"><h5>Necesitan tu decisión (${P.pend.length})</h5>${P.pend.map(r => `<div class="ing-d"><div><b>«${esc(String(r.texto || r.nombre).slice(0, 80))}»</b><small>${esc(r.motivo)} · cantidad ${r.cantidad == null ? '—' : fmt(r.cantidad)}</small></div><select data-ingdec="${r.i}" id="ing-dec-${r.i}" aria-label="Destino de ${esc(r.nombre)}"><option value="" disabled selected>Elegí el destino…</option>${ingOpts(r.cands, null, false)}<option value="">No importar</option></select></div>`).join('')}</div>` : '';
+    const ignHTML = P.ign.length ? `<details class="ing-sec" id="ing-ign" ${P.ign.length <= 8 ? 'open' : ''}><summary><h5>Ignorados (${P.ign.length})</h5></summary><p class="lead" style="margin:4px 0 8px">No se importan. Si alguno es un producto que ya existe, elegilo; nunca se crean productos nuevos.</p>${P.ign.map(r => `<div class="ing-d"><div><b>«${esc(String(r.texto || r.nombre).slice(0, 80))}»</b><small>${esc(r.cantidad == null ? 'Sin cantidad' : r.motivo || 'Sin destino')}${r.cantidad != null ? ` · cantidad ${fmt(r.cantidad)}` : ''}</small></div><select data-ingdec="${r.i}" id="ing-dec-${r.i}" aria-label="Asignar ${esc(r.nombre)}">${ingTodos(ingDestino(r))}</select></div>`).join('')}</details>` : '';
+    const n = P.items.length, bloqueo = P.pend.length ? `Elegí el destino de ${plural(P.pend.length, 'renglón', 'renglones')} (o «No importar»).` : !n ? 'Tildá al menos un producto para importar.' : S.offline ? 'Sin internet: conectate para confirmar.' : '';
+    const msg = I.msg ? `<div class="note ${I.msg.t === 'ok' ? '' : 'warn'} ing-msg" id="ing-msg"><b>${esc(I.msg.h)}</b> ${I.msg.b}${I.msg.t === 'net' ? `<div class="bar-a" style="margin-top:8px"><button class="btn sm primary" data-act="ing-confirmar" id="ing-retry">Reintentar</button></div>` : ''}</div>` : '';
+    paso4 = `<section class="card pad ing-c" id="ing-vista"><div class="ch"><h4>4. Revisar y confirmar</h4><span class="num">${esc(nomLoc)} · ${ING_OP[I.op]}</span></div>
+      <p class="lead">${I.op === 'ingreso' ? 'Se <b>suma</b> la cantidad al stock actual.' : 'La cantidad <b>reemplaza</b> el valor actual.'} Podés corregir cantidades y destinos. Solo se guardan los tildados.</p>
+      <div class="ing-sum"><span class="pill ok">${n} para importar</span>${P.pend.length ? `<span class="pill warn">${P.pend.length} para decidir</span>` : ''}<span class="pill">${P.ign.length} ignorados</span></div>
+      ${F.length ? `<div class="ing-t" id="ing-tabla"><div class="ing-r ing-hd"><span></span><span>Producto</span><span>Hoja de destino</span><span class="ing-n">Detectado</span><span class="ing-n">Cantidad</span><span class="ing-n">Actual</span><span class="ing-n">Resultado</span><span>Estado</span></div>${F.map(fila).join('')}</div>` : `<p class="note warn" id="ing-nada">Ningún renglón coincide con productos de ${esc(nomLoc)}. No se va a modificar nada.</p>`}
+      ${pendHTML}${ignHTML}${msg}
+      <div class="ing-pie">${bloqueo ? `<small id="ing-bloqueo">${bloqueo}</small>` : '<span></span>'}<div class="bar-a"><button class="btn" data-act="ing-cancelar" ${I.busy ? 'disabled' : ''}>Cancelar</button><button class="btn primary" data-act="ing-confirmar" id="ing-ok" ${bloqueo || I.busy ? 'disabled' : ''}>${ic('save')}${I.busy ? 'Guardando…' : `Confirmar importación${n ? ` (${n})` : ''}`}</button></div></div></section>`;
+  }
+  const H = I.hist;
+  const hist = loc ? `<section class="card pad ing-c" id="ing-hist"><div class="ch"><h4>Últimos ingresos en ${esc(nomLoc)}</h4></div>${H == null ? '<p class="lead" style="margin:0">Cargando…</p>' : !H.length ? '<p class="lead" style="margin:0">Todavía no hay ingresos de mercadería en esta sucursal.</p>' : `<div class="alist">${H.map(h => `<div class="ar ing-hr"><div><b>${esc(ING_OP[h.operacion] || h.operacion)} · ${esc(fechaHora(h.fecha))}</b><small>${esc((h.archivo && h.archivo.nombre) || 'archivo')} · ${plural((h.items || []).length, 'producto', 'productos')} · ${esc(String(h.por || '').split('@')[0])}${h.forzada ? ' · importado de nuevo' : ''}</small>${I.histOpen[h.id] ? `<div class="ing-hd2">${(h.items || []).map(it => `<div><span>${esc(it.nombre)} <small>${esc(it.nombreHoja || '')}${it.col === 'fabrica' ? ` · ${it.campo === 'local' ? 'Local' : 'Fábrica'}` : ''}</small></span><span class="num">${fmt(it.antes)} → ${fmt(it.despues)}</span></div>`).join('')}${(h.ignorados || []).length ? `<small>Ignorados: ${esc(h.ignorados.slice(0, 20).join(' · '))}</small>` : ''}</div>` : ''}</div><div class="ar-a"><button class="btn sm" data-act="ing-hist" data-id="${esc(h.id)}">${I.histOpen[h.id] ? 'Ocultar' : 'Ver detalle'}</button></div></div>`).join('')}</div>`}</section>` : '';
+  return `${banners()}<div class="bar"><p class="lead">Cargá un archivo de mercadería de una sucursal y revisá las coincidencias. <b>Nada cambia hasta que toques Confirmar importación.</b> Solo la dueña y la administradora ven esta pantalla.</p></div>
+    <div class="ing">${paso1}${paso2}${paso3}${paso4}${hist}</div>`;
+};
+async function ingConfirmar(forzar){
+  const I = S.ing; if (!esTotal() || !I || I.busy) return;
+  const P = ingPlan(); if (!P.items.length || P.pend.length) return;
+  if (!navigator.onLine){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
+  if (!I.clave) I.clave = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
+  I.busy = true; I.msg = null; render();
+  let r = null;
+  try {
+    r = await S.db.rpc('importar_mercaderia', {p_local:I.local, p_operacion:I.op, p_items:P.items, p_archivo:{nombre:I.arch.nombre, tipo:I.arch.kind || I.arch.tipo, hash:I.arch.hash || '', contenido:I.arch.contenido || '', ignorados:P.ignorados.slice(0, 300)}, p_clave:I.clave, p_forzar:!!forzar});
+  } catch(e){
+    I.busy = false;
+    const c = e && e.code;
+    I.msg = c === 'unavailable' ? {t:'net', h:'No llegó la respuesta.', b:'Puede que se haya guardado o no. Tocá <b>Reintentar</b>: si ya se guardó, no se suma dos veces.'}
+      : c === 'sin_permiso' ? {t:'err', h:'Sin permiso.', b:'Solo la dueña o la administradora pueden importar mercadería.'}
+      : {t:'err', h:'No se guardó nada.', b:'Revisá los datos y probá de nuevo. ' + esc(c === 'cantidad' ? 'Hay una cantidad inválida.' : c === 'sucursal' ? 'La sucursal no existe.' : '')};
+    render(); return;
+  }
+  I.busy = false;
+  if (r && r.estado === 'ok'){ I.res = {...r, items:P.items, local:I.local, op:I.op}; I.clave = ''; I.msg = null; render(); toast(`Ingreso guardado en ${localNombre(I.local)}`); ingCargar(true); return; }
+  if (r && r.estado === 'duplicado'){
+    render();
+    openConfirm('Este archivo ya se importó', `En ${esc(localNombre(I.local))} ya se importó ${r.archivo ? `«${esc(r.archivo)}» ` : 'este contenido '}el ${esc(fechaHora(r.fecha))}${r.por ? ` (${esc(String(r.por).split('@')[0])})` : ''}. Si lo importás de nuevo, ${I.op === 'ingreso' ? 'las cantidades se <b>suman otra vez</b>' : 'se vuelve a cargar el conteo'}.`, 'Importar igual', 'ing-forzar', true);
+    return;
+  }
+  if (r && (r.estado === 'conflicto' || r.estado === 'faltan')){
+    const lista = r.estado === 'conflicto' ? (r.cambios || []).map(c => `${esc(c.nombre)} (${fmt(c.antes)} → ahora ${fmt(c.ahora)})`) : (r.productos || []).map(esc);
+    I.msg = {t:'warn', h:r.estado === 'conflicto' ? 'No se guardó nada: algunos productos cambiaron mientras revisabas.' : 'No se guardó nada: algunos productos ya no existen.', b:`${lista.join(' · ')}. Actualicé la vista previa; revisala y confirmá de nuevo.`};
+    const keep = I.msg; await ingCargar(true); I.msg = keep; render(); return;
+  }
+  I.msg = {t:'err', h:'No se guardó nada.', b:'Respuesta inesperada. Probá de nuevo.'}; render();
+}
+/* Un cambio en la revisión pide una confirmación nueva, salvo que la anterior haya quedado sin respuesta (así un reintento no suma dos veces) */
+function ingCambio(){ const I = S.ing; if (I && !(I.msg && I.msg.t === 'net')) I.clave = ''; }
+function ingQuitar(){ const I = S.ing; I.arch = null; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
+
 /* ---------- Editar hojas ---------- */
 function openHojas(add){
   $('#app').classList.remove('open'); $('#scrim').hidden = true;
@@ -1838,7 +2080,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   S.view = v; $('#app').classList.remove('open'); $('#scrim').hidden = true;
@@ -1904,6 +2146,14 @@ document.addEventListener('click', e => {
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
     case 'f-add-dlg': openFAdd(); break;
+    case 'ing-local': { const I = S.ing || (S.ing = ingNuevo()); if (I.busy || I.local === id || !localesTodos().some(l => l.id === id)) break; Object.assign(I, {local:id, datos:null, hist:null, res:null, msg:null, clave:'', dec:{}, cant:{}, on:{}, campo:{}}); ingCargar(); break; }
+    case 'ing-op': { const I = S.ing; if (!I || I.busy) break; I.op = t.dataset.op === 'conteo' ? 'conteo' : 'ingreso'; ingCambio(); render(); break; }
+    case 'ing-quitar': if (!S.ing.busy) ingQuitar(); break;
+    case 'ing-cancelar': if (!S.ing.busy){ ingQuitar(); toast('Importación cancelada: no se guardó nada'); } break;
+    case 'ing-otro': ingQuitar(); break;
+    case 'ing-confirmar': ingConfirmar(false); break;
+    case 'ing-forzar': closePanel(); ingConfirmar(true); break;
+    case 'ing-hist': S.ing.histOpen[id] = !S.ing.histOpen[id]; render(); break;
     case 'f-item': openFEdit(id); break;
     case 'f-del-ask': openFEdit(id, true); break;
     case 'ffrac': { if (!needWrite()) break; const it = S.fab.find(x => x.id === id); if (!it) break; const l = fVal(it, 'l') ?? 0, ent = Math.floor(l + 1e-9), f = +t.dataset.f, v = round(ent + (Math.abs(fracOf(l) - f) < 1e-9 ? 0 : f)); setF(id, 'l', v); const inp = document.getElementById('fl-' + id); if (inp){ inp.value = fmtIn(v); inp.classList.remove('bad'); } refreshF(id); break; }
@@ -1950,6 +2200,15 @@ document.addEventListener('change', e => {
   else if (t.matches('[data-qprov]')) qGuardar(t.dataset.qprov, 'proveedor', t);
   else if (t.id === 'h-hoja'){ S.histHoja = t.value; S.histN = 30; render(); }
   else if (t.id === 'h-per'){ S.histPer = t.value; S.histN = 30; render(); }
+  else if (t.id === 'ing-file'){ const f = t.files && t.files[0]; if (f) ingArchivo(f); }
+  else if (t.id === 'ing-fab'){ S.ing.fabCampo = t.value === 'fabrica' ? 'fabrica' : 'local'; ingCambio(); render(); }
+  else if (t.id === 'ing-hoja'){ const I = S.ing; I.hojaSel = +t.value || 0; I.col = window.MGSIngreso.columnas((I.arch.hojas[I.hojaSel] || {filas:[]}).filas); ingProcesar(); render(); }
+  else if (t.matches('[data-ingcol]')){ const I = S.ing; I.col = {...I.col, [t.dataset.ingcol]:+t.value}; ingProcesar(); render(); }
+  else if (t.matches('[data-ingdec]')){ S.ing.dec[+t.dataset.ingdec] = t.value; ingCambio(); render(); }
+  else if (t.matches('[data-ingdest]')){ const I = S.ing, k = t.dataset.ingdest; for (const r of I.lineas) if (ingDestino(r) === k) I.dec[r.i] = t.value; ingCambio(); render(); }
+  else if (t.matches('[data-ingcampo]')){ S.ing.campo[t.dataset.ingcampo] = t.value === 'fabrica' ? 'fabrica' : 'local'; ingCambio(); render(); }
+  else if (t.matches('[data-ingon]')){ S.ing.on[t.dataset.ingon] = t.checked; ingCambio(); render(); }
+  else if (t.matches('[data-ingcant]')){ S.ing.cant[t.dataset.ingcant] = t.value; ingCambio(); render(); }
 });
 let qT = null;
 document.addEventListener('input', e => {
@@ -1970,6 +2229,7 @@ document.addEventListener('input', e => {
   if (t.matches('[data-pq]')){ const v = num(t.value); if (v != null && v >= 0) S.pedAdj[t.dataset.pq] = round(v); return; }
   if (t.matches('[data-sg]')){ S.sgEdit = S.sgEdit || {}; S.sgEdit[t.dataset.sg] = t.value; return; }
   if (t.matches('[data-nt]')){ S.ntEdit = S.ntEdit || {}; S.ntEdit[t.dataset.nt] = t.value; return; }
+  if (t.matches('[data-ingcant]')){ S.ing.cant[t.dataset.ingcant] = t.value; return; }
   if (['es-sug', 'es-poco', 'es-exc'].includes(t.id)){ estRefresh(); return; }
   if (['q-stock','q-conteo','q-pedido'].includes(t.id)){ S.q = t.value; clearTimeout(qT); qT = setTimeout(render, 120); return; }
   if (t.id === 'q-hist'){ S.histQ = t.value; clearTimeout(qT); qT = setTimeout(render, 150); return; }

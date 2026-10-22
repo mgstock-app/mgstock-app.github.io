@@ -1,6 +1,17 @@
 # Ingreso de mercadería — propuesta técnica
 
-**Estado (22/10/2026):** propuesta para revisar. No hay nada implementado, migrado ni publicado. Rama de trabajo: `ingreso-mercaderia`.
+**Estado (22/10/2026):** etapa 1 programada y probada en la rama `ingreso-mercaderia`. **No está publicada ni migrada**: la web y la base siguen como antes hasta que la usuaria autorice.
+
+**Decisiones de la usuaria (22/10):** pueden usarla la dueña y la administradora; se puede asignar a mano un renglón no reconocido a un producto existente; si el archivo ya se importó, se avisa y se sigue solo con confirmación; empezar por la etapa 1.
+
+**Hecho en la etapa 1:**
+- Pantalla «Ingreso de mercadería» en el menú (solo dueña y administradora; la ruta directa vuelve a Inicio). Código en `public/stock/app.js` (bloque «Ingreso de mercadería») y lectores en `public/stock/ingreso.js`, que se carga solo al usar la pantalla.
+- Lectura de CSV (`;` `,` tab, comillas, acentos de Windows), .txt y Excel .xlsx con lector propio. Elegir hoja del Excel y corregir columnas Producto, Cantidad y Unidad.
+- Reconocimiento, vista previa editable y estados: Coincide, Elegido, Revisar, Unidad distinta, Valores distintos, Falta cantidad. Renglones para decidir y renglones ignorados (asignables a mano).
+- Base: `importar_mercaderia()` y lectura de `importaciones` en `supabase/schema.sql`. La migración para aplicar al publicar está en `supabase/migraciones/ingreso_mercaderia.sql`; la prueba que se deshace sola está en `supabase/pruebas/ingreso_mercaderia_prueba.sql` y dio todo lo esperado en la base real sin dejar rastros.
+- Pruebas: `tests/ingreso.test.mjs` (lectores y coincidencias), `tests/test_ingreso.py` (recorridos completos) y `qa/cypress/e2e/ingreso.cy.js` (corre en el pull request).
+
+**Para publicar (cuando se autorice):** aplicar la migración `ingreso_mercaderia`, unir la rama a `main` y verificar con la dueña. **Siguientes etapas:** PDF digital (pdf.js) y fotos o PDF escaneado (Tesseract.js); las librerías se bajan en GitHub Actions porque desde este entorno la red está bloqueada.
 
 ## 1. Qué hay hoy en el código
 
@@ -117,9 +128,6 @@ Función nueva en la base, `public.importar_mercaderia(p_local, p_operacion, p_i
 
 Cada etapa se guarda en la rama con sus pruebas. Se publica solo con autorización. No se tocan ReciboNet, Reporte Mensual ni GESTLOK.
 
-## 9. Decisiones pendientes
+## 9. Decisiones
 
-1. ¿La administradora también puede usar Ingreso de mercadería, o solo la dueña?
-2. ¿Se puede asignar a mano un renglón ignorado a un producto que ya existe (sin crear nada)?
-3. Si el archivo ya se importó en esa sucursal: ¿bloquear siempre, o avisar y dejar seguir con confirmación?
-4. Autorización para empezar la etapa 1 en la rama (sin publicar).
+Resueltas el 22/10 (ver arriba). Pendiente: autorización para publicar la etapa 1.

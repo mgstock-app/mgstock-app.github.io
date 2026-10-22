@@ -193,7 +193,16 @@
   }
   const db = Object.freeze({
     collection(col){ const q = query(col, {}); return Object.assign(Object.create(q), q, { path: col, doc: id => docRef(col, id || uid()), async add(d){ const r = docRef(col, uid()); await r.set(d); return r; } }); },
-    doc(path){ const i = path.lastIndexOf('/'); return docRef(path.slice(0, i), path.slice(i + 1)); }
+    doc(path){ const i = path.lastIndexOf('/'); return docRef(path.slice(0, i), path.slice(i + 1)); },
+    /* Operaciones del servidor permitidas desde la app (la base vuelve a verificar el rol) */
+    async rpc(name, args){
+      if (name !== 'importar_mercaderia') throw { code: 'invalid_argument', message: 'Operación no permitida' };
+      let res;
+      try { res = await sb.rpc(name, args); } catch (e) { throw { code: 'unavailable', message: 'Sin conexión' }; }
+      const { data, error } = res;
+      if (error){ const m = String(error.message || ''); if (/^MGS:/.test(m)) throw { code: m.slice(4), message: m }; throw toErr(error); }
+      return data;
+    }
   });
 
   /* ---------- Persona conectada ---------- */

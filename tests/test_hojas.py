@@ -22,7 +22,7 @@ async def login(b, who, vp):
     return pg, errs
 
 async def nav(pg):
-    return await pg.evaluate("[...document.querySelectorAll('#snav [data-go]')].map(b => b.querySelector('.nl').textContent)")
+    return await pg.evaluate("[...document.querySelectorAll('#snav [data-go]:not([data-go=ingreso])')].map(b => b.querySelector('.nl').textContent)")
 
 async def click(pg, sel, wait=250):
     await pg.evaluate(f"document.querySelector({json.dumps(sel)}).click()"); await pg.wait_for_timeout(wait)
