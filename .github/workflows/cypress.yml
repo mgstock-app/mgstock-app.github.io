@@ -19,6 +19,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Lectores de PDF y fotos (librerías gratuitas desde npm)
+        run: node scripts/vendor-ocr.mjs
       - run: npm run lint
       - run: npm test
       - run: npm run build

@@ -42,3 +42,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# lectores de PDF y fotos: se descargan en GitHub Actions (scripts/vendor-ocr.mjs)
+/public/vendor/pdfjs/
+/public/vendor/ocr/
