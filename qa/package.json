@@ -1,0 +1,12 @@
+{
+  "name": "mgstock-cypress-qa",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "cypress run",
+    "open": "cypress open"
+  },
+  "devDependencies": {
+    "cypress": "16.1.1"
+  }
+}
