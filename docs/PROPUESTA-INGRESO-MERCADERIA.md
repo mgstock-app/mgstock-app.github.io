@@ -1,6 +1,6 @@
 # Ingreso de mercadería — propuesta técnica
 
-**Estado (22/10/2026):** etapa 1 programada y probada en la rama `ingreso-mercaderia`. **No está publicada ni migrada**: la web y la base siguen como antes hasta que la usuaria autorice.
+**Estado (22/10/2026):** etapa 1 **publicada** con autorización de la usuaria: migración `ingreso_mercaderia` aplicada y verificada en la base, código en `main`.
 
 **Decisiones de la usuaria (22/10):** pueden usarla la dueña y la administradora; se puede asignar a mano un renglón no reconocido a un producto existente; si el archivo ya se importó, se avisa y se sigue solo con confirmación; empezar por la etapa 1.
 
