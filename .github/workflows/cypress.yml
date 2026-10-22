@@ -41,7 +41,7 @@ jobs:
           npm --prefix qa test 2>&1 | tee /tmp/cypress.log
       - name: Resumen de fallos
         if: failure()
-        run: grep -aE "✖|Error|failing|expected|Timed out|[0-9]+\) " /tmp/cypress.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+        run: sed 's/\x1b\[[0-9;]*m//g' /tmp/cypress.log | grep -aE -A8 "CypressError|AssertionError" | head -60 | while IFS= read -r l; do echo "::error::$l"; done
       - name: Capturas de fallos
         if: failure()
         uses: actions/upload-artifact@v4
