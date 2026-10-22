@@ -21,7 +21,9 @@ const put = (src, dest) => { mkdirSync(join(out, dest), { recursive: true }); co
 const need = (f) => { if (!existsSync(f)) throw new Error('Falta ' + f); return f; };
 
 const pdf = dirs['pdfjs-dist@4.10.38'];
-put(need(join(pdf, 'legacy/build/pdf.min.mjs')), 'pdfjs'); put(need(join(pdf, 'legacy/build/pdf.worker.min.mjs')), 'pdfjs'); put(need(join(pdf, 'LICENSE')), 'pdfjs');
+// Se copian con extensión .js para que cualquier servidor los entregue como JavaScript
+const putAs = (src, dest, name) => { mkdirSync(join(out, dest), { recursive: true }); copyFileSync(src, join(out, dest, name)); console.log('vendor:', dest + '/' + name); };
+putAs(need(join(pdf, 'legacy/build/pdf.min.mjs')), 'pdfjs', 'pdf.min.js'); putAs(need(join(pdf, 'legacy/build/pdf.worker.min.mjs')), 'pdfjs', 'pdf.worker.min.js'); put(need(join(pdf, 'LICENSE')), 'pdfjs');
 const tj = dirs['tesseract.js@5.1.1'];
 put(need(join(tj, 'dist/tesseract.min.js')), 'ocr'); put(need(join(tj, 'dist/worker.min.js')), 'ocr'); put(need(join(tj, 'LICENSE.md')), 'ocr');
 const core = walk(dirs['tesseract.js-core@5.1.1']).filter(f => /tesseract-core.*\.(wasm\.js|wasm)$/.test(basename(f)) && /lstm/.test(basename(f)));

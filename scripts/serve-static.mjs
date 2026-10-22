@@ -5,7 +5,7 @@ import { resolve, extname, sep } from 'node:path';
 const root = resolve('out');
 const html = await readFile(resolve(root, 'index.html'), 'utf8');
 const base = html.includes('/mgstock/_next/') ? '/mgstock' : '';
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.pdf': 'application/pdf', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 createServer(async (req, res) => {
   try {
     let path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);

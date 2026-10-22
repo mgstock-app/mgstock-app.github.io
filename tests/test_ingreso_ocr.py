@@ -37,7 +37,7 @@ async def login(b, email):
     pg = await ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     await pg.route('**/vendor/ocr/tesseract.min.js', lambda r: r.fulfill(content_type='application/javascript', body=TESS))
-    await pg.route('**/vendor/pdfjs/pdf.min.mjs', lambda r: r.fulfill(content_type='text/javascript', body=PDFJS))
+    await pg.route('**/vendor/pdfjs/pdf.min.js', lambda r: r.fulfill(content_type='text/javascript', body=PDFJS))
     await load_app(pg); await pg.evaluate(SETUP)
     await pg.fill('#au-email', email); await pg.fill('#au-pass', 'secreto1')
     await pg.click('#au-in button[type=submit]'); await pg.wait_for_timeout(700)

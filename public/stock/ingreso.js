@@ -278,8 +278,8 @@
   async function leerPDF(buf, prog){
     prog && prog('Abriendo el PDF…');
     let pdfjs;
-    try { pdfjs = await import(VENDOR + 'pdfjs/pdf.min.mjs'); } catch { throw new Error('No se pudo cargar el lector de PDF. Revisá la conexión.'); }
-    pdfjs.GlobalWorkerOptions.workerSrc = VENDOR + 'pdfjs/pdf.worker.min.mjs';
+    try { pdfjs = await import(VENDOR + 'pdfjs/pdf.min.js'); } catch { throw new Error('No se pudo cargar el lector de PDF. Revisá la conexión.'); }
+    pdfjs.GlobalWorkerOptions.workerSrc = VENDOR + 'pdfjs/pdf.worker.min.js';
     let doc; try { doc = await pdfjs.getDocument({data:new Uint8Array(buf), isEvalSupported:false}).promise; } catch { throw new Error('El PDF está dañado o tiene contraseña.'); }
     const n = Math.min(doc.numPages, 10), pal = [], escan = [];
     for (let i = 1; i <= n; i++){
