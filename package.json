@@ -6,7 +6,7 @@
     "start": "node scripts/serve-static.mjs",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs",
-    "test:e2e": "python tests/test_locales.py && python tests/test_hojas.py && python tests/test_funciones.py && python tests/test_sugerido.py && python tests/test_cajas.py && python tests/test_notas.py && python tests/test_cuartos.py",
+    "test:e2e": "python tests/test_locales.py && python tests/test_hojas.py && python tests/test_funciones.py && python tests/test_sugerido.py && python tests/test_cajas.py && python tests/test_notas.py && python tests/test_cuartos.py && python tests/test_fab_productos.py",
     "prebuild": "node scripts/version-cache.mjs"
   },
   "dependencies": {

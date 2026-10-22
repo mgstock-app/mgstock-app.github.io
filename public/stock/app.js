@@ -744,10 +744,10 @@ V.fabrica = () => {
   const its = fItems(), lf = lastFab(), d = new Date(), nom = nombreHoja(fabCtx());
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
-  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras, medias o cuartos: en Local usá <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.</p>
-    <div class="bar-a">${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
+  const head = `${banners()}<div class="bar"><p class="lead">Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo. Unidades enteras, medias o cuartos: en Local usá <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
+    <div class="bar-a">${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
-  if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Abrí Ajustes para agregar los productos de ${esc(nom)}.<div class="bar-a"><button class="btn primary" data-act="aj-open" data-tab="f-add">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
+  if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
   for (const it of its){
     const b = bloqueOf(it);
@@ -758,6 +758,7 @@ V.fabrica = () => {
     <div class="xl-top"><b>Planilla<span class="num">${esc(hoy)}</span></b><small>${lf ? `Último guardado ${esc(fechaHora(lf.fecha))}` : 'Sin guardar todavía'} · <label class="ss" aria-hidden="true"><input type="checkbox" tabindex="-1"></label> = sin stock</small></div>
     <div class="xl-r xl-h" role="row"><span class="xn"></span><span class="xh-p">Producto</span><span class="xh-t">Total stock<small>local + fábrica</small></span><span>Local<small>stock local</small></span><span class="xh-f">Fábrica<small>ingreso mañana ${esc(manana)}</small></span></div>
     ${rows}
+    ${canW() ? `<div class="xl-add"><button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button></div>` : ''}
   </div>`;
 };
 function rowFab(it, n){
@@ -765,7 +766,7 @@ function rowFab(it, n){
   const chgL = has(d, 'l') && d.l !== num(it.local), chgF = has(d, 'f') && d.f !== num(it.fabrica);
   return `<div class="xl-r ${fSin(it) ? 'sin' : ''}" id="fr-${id}" role="row">
     <span class="xn">${n}</span>
-    <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn"><b>${esc(it.nombre)}</b>${notaCell(it, 'f')}</span></span>
+    <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn">${canW() ? `<button class="xpb" data-act="f-item" data-id="${id}" title="Modificar o eliminar"><b>${esc(it.nombre)}</b></button>` : `<b>${esc(it.nombre)}</b>`}${notaCell(it, 'f')}</span></span>
     <span class="xt" id="ft-${id}">${fmt(fTot(it))}</span>
     <span class="xc xcl"><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}>${fracFab(it, l)}</span>
     <span class="xc fab"><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="Fábrica de ${esc(it.nombre)}" ${dis}></span>
@@ -775,6 +776,40 @@ function rowFab(it, n){
 function fracFab(it, l){
   const id = esc(it.id), fr = fracOf(l), dis = canW() ? '' : 'disabled';
   return `<span class="fq" role="group" aria-label="Fracción de Local de ${esc(it.nombre)}">${[[1, '¼'], [2, '½'], [3, '¾']].map(([k, t]) => `<button id="ffq${k}-${id}" data-act="ffrac" data-id="${id}" data-f="${k / 4}" aria-pressed="${Math.abs(fr - k / 4) < 1e-9}" aria-label="${t} en Local de ${esc(it.nombre)}" ${dis}>${t}</button>`).join('')}</span>`;
+}
+/* Agregar, modificar o eliminar productos desde la misma planilla */
+function fBloqueOpts(sel){
+  const bs = bloques(), last = bs.length ? bs[bs.length - 1] : 1, v = sel ?? last;
+  return `${(bs.length ? bs : [1]).map(b => `<option value="${b}" ${b === v ? 'selected' : ''}>Bloque ${b}</option>`).join('')}<option value="${last + 1}">Bloque nuevo (${last + 1})</option>`;
+}
+const fDlgHead = t => `<div class="pn-h"><div><small>${esc(nombreHoja(fabCtx()))}</small><h3>${t}</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>`;
+function openFAdd(){
+  if (!needWrite()) return;
+  S.panel = 'fadd';
+  openPanel(`${fDlgHead('Agregar producto')}<div class="pn-b"><form id="afa-form" class="frow" novalidate>
+    <div class="fld wide"><label for="afa-nombre">Nombre del producto</label><input id="afa-nombre" required autocomplete="off" placeholder="Ej. Caja Ketchup"></div>
+    <div class="fld"><label for="afa-bloque">Bloque</label><select id="afa-bloque">${fBloqueOpts()}</select></div>
+    <label class="fld fchk"><input type="checkbox" id="afa-hl"><span>Resaltar en amarillo</span></label>
+  </form><p class="lead" style="margin:0">Podés agregar varios seguidos: después de cada uno queda listo para el próximo. Para pegar una lista entera, usá Ajustes → Pegar lista.</p></div>
+  <div class="pn-f"><button class="btn" data-act="close">Listo</button><button class="btn primary" type="submit" form="afa-form" id="afa-ok">${ic('plus')}Agregar</button></div>`, 'dlg');
+  setTimeout(() => $('#afa-nombre')?.focus(), 40);
+}
+function openFEdit(id, del){
+  if (!needWrite()) return;
+  const it = S.fab.find(x => x.id === id); if (!it) return;
+  S.panel = 'fedit'; const sid = esc(id);
+  if (del){
+    openPanel(`${fDlgHead('Eliminar producto')}<div class="pn-b"><p class="lead" style="margin:0">¿Eliminar <b>${esc(it.nombre)}</b> de la planilla? Los conteos ya guardados lo siguen mostrando en el Historial.</p></div>
+    <div class="pn-f"><button class="btn" data-act="f-item" data-id="${sid}">Cancelar</button><button class="btn danger solid" data-act="af-del-ok" data-id="${sid}" id="afd-ok">${ic('trash')}Eliminar</button></div>`, 'dlg');
+    return;
+  }
+  openPanel(`${fDlgHead('Modificar producto')}<div class="pn-b"><form id="afe-form" data-id="${sid}" class="frow" novalidate>
+    <div class="fld wide"><label for="afe-nombre">Nombre</label><input id="afe-nombre" value="${esc(it.nombre)}" required autocomplete="off"></div>
+    <div class="fld"><label for="afe-bloque">Bloque</label><select id="afe-bloque">${fBloqueOpts(bloqueOf(it))}</select></div>
+    <label class="fld fchk"><input type="checkbox" id="afe-hl" ${it.resaltar ? 'checked' : ''}><span>Resaltar en amarillo</span></label>
+  </form></div>
+  <div class="pn-f"><button class="btn danger" data-act="f-del-ask" data-id="${sid}" id="afe-del" style="margin-right:auto">${ic('trash')}Eliminar</button><button class="btn" data-act="close">Cancelar</button><button class="btn primary" type="submit" form="afe-form" id="afe-ok">${ic('save')}Guardar</button></div>`, 'dlg');
+  setTimeout(() => $('#afe-nombre')?.focus(), 40);
 }
 function refreshF(id){
   const it = S.fab.find(x => x.id === id); if (!it) return;
@@ -1327,12 +1362,19 @@ async function fImportar(){
     S.aj.fpaste = ''; S.aj.tab = 'f-items'; S.aj.busy = false; renderAjustes(); toast(`${rows.length} productos agregados`);
   } catch(e){ S.aj.busy = false; fail(e); }
 }
+/* Orden para dejar un producto al final de su bloque sin pasarse al bloque siguiente */
+function fOrdenFin(bloque, exceptId){
+  const os = fItems().filter(x => x.id !== exceptId), o = x => num(x.orden) || 0;
+  const antes = os.filter(x => bloqueOf(x) <= bloque).map(o), despues = os.filter(x => bloqueOf(x) > bloque).map(o);
+  const a = antes.length ? Math.max(...antes) : (despues.length ? Math.min(...despues) - 1 : 0), d = despues.length ? Math.min(...despues) : null;
+  return d == null || d <= a ? a + 1 : (a + d) / 2;
+}
 async function fAgregar(){
   if (!needWrite()) return;
   const nombre = $('#afa-nombre').value.trim(); if (!nombre){ toast('Escribí el nombre del producto.', true); return; }
   if (S.fab.some(x => norm(x.nombre) === norm(nombre))){ toast('Ese producto ya está en la planilla.', true); return; }
   const bloque = Math.max(1, parseInt($('#afa-bloque').value, 10) || 1), resaltar = $('#afa-hl').checked;
-  const enB = fItems().filter(x => bloqueOf(x) <= bloque); const orden = (enB.length ? Math.max(...enB.map(x => num(x.orden) || 0)) : 0) + 0.5;
+  const orden = fOrdenFin(bloque);
   try {
     const hf = fHojaField();
     await w(() => C('fabrica').doc().set({nombre, bloque, resaltar, orden, local:null, fabrica:null, sinStock:false, creado:Date.now(), ...hf}));
@@ -1344,13 +1386,13 @@ async function fGuardarEdicion(id){
   const nombre = $('#afe-nombre').value.trim(); if (!nombre){ toast('El nombre no puede quedar vacío.', true); return; }
   const data = {nombre, bloque:Math.max(1, parseInt($('#afe-bloque').value, 10) || 1), resaltar:$('#afe-hl').checked, actualizado:Date.now()};
   const it = S.fab.find(x => x.id === id);
-  if (it && bloqueOf(it) !== data.bloque){ const enB = fItems().filter(x => x.id !== id && bloqueOf(x) <= data.bloque); data.orden = (enB.length ? Math.max(...enB.map(x => num(x.orden) || 0)) : 0) + 0.5; }
-  try { await w(() => C('fabrica').doc(id).update(data)); S.aj.editId = null; renderAjustesBody(); toast('Cambios guardados'); } catch(e){ fail(e); }
+  if (it && bloqueOf(it) !== data.bloque) data.orden = fOrdenFin(data.bloque, id);
+  try { await w(() => C('fabrica').doc(id).update(data)); S.aj.editId = null; renderAjustesBody(); if (S.panel === 'fedit') closePanel(); toast('Cambios guardados'); } catch(e){ fail(e); }
 }
 async function fEliminar(id){
   if (!needWrite()) return;
   const it = S.fab.find(x => x.id === id);
-  try { await w(() => C('fabrica').doc(id).delete()); delete S.fdraft[id]; saveDraft(); S.aj.delId = null; renderAjustesBody(); toast(`${it?.nombre || 'Producto'} eliminado`); } catch(e){ fail(e); }
+  try { await w(() => C('fabrica').doc(id).delete()); delete S.fdraft[id]; saveDraft(); S.aj.delId = null; renderAjustesBody(); if (S.panel === 'fedit') closePanel(); toast(`${it?.nombre || 'Producto'} eliminado`); } catch(e){ fail(e); }
 }
 function parseLista(txt){
   const out = []; let cat = '';
@@ -1861,6 +1903,9 @@ document.addEventListener('click', e => {
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
+    case 'f-add-dlg': openFAdd(); break;
+    case 'f-item': openFEdit(id); break;
+    case 'f-del-ask': openFEdit(id, true); break;
     case 'ffrac': { if (!needWrite()) break; const it = S.fab.find(x => x.id === id); if (!it) break; const l = fVal(it, 'l') ?? 0, ent = Math.floor(l + 1e-9), f = +t.dataset.f, v = round(ent + (Math.abs(fracOf(l) - f) < 1e-9 ? 0 : f)); setF(id, 'l', v); const inp = document.getElementById('fl-' + id); if (inp){ inp.value = fmtIn(v); inp.classList.remove('bad'); } refreshF(id); break; }
     case 'frac': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; const q = qty(p) ?? 0, ent = Math.floor(q + 1e-9), f = +t.dataset.f; S.draft[id] = round(ent + (Math.abs(fracOf(q) - f) < 1e-9 ? 0 : f)); saveDraft(); render(); break; }
     case 'dec': case 'inc': { if (!needWrite()) break; const p = S.prods.find(x => x.id === id); if (!p) break; S.draft[id] = Math.max(0, round((qty(p) ?? 0) + (a === 'inc' ? 1 : -1))); saveDraft(); render(); break; }
