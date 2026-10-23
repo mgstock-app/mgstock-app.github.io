@@ -280,6 +280,7 @@ function render(){
 function viewHTML(){
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
   if (S.view === 'chat') return V.chat();
+  if (S.view === 'proveedores') return V.proveedores();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (esFabT(t)) return V.fabrica();
@@ -293,9 +294,9 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat;
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores';
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -310,7 +311,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span></button>
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span></button>
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -406,6 +407,14 @@ const noMatch = (t, s) => `<div class="sheet"><div class="empty"><b>${t}</b>${s}
 
 /* ---------- Hojas ---------- */
 const V = {};
+V.proveedores = () => {
+  const lista = provs();
+  const items = lista.map(([nombre, count]) => `<article class="card pad"><div class="eyebrow">Proveedor</div><h2>${esc(nombre)}</h2><p class="lead">${plural(count, 'producto asociado', 'productos asociados')} en ${esc(localNombre())}.</p></article>`).join('');
+  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1><p class="lead">Vista agrupada a partir de los proveedores asignados a los productos de este local.</p>
+    <div class="lcards">${items || '<div class="card pad">Todavía no hay proveedores asignados.</div>'}</div>
+    ${canW() ? `<button class="btn primary" data-act="aj-open" data-tab="rapido">Administrar proveedores en productos</button>` : ''}
+  </section>`;
+};
 
 V.chat = () => {
   const mensajes = S.chat.map(m => {
@@ -929,9 +938,10 @@ async function doSaveF(v = S.view){
 /* Sin internet: el conteo queda listo y se guarda solo cuando vuelve la conexión */
 function queueSave(v, fab){
   S.queued = {view:v, fab:!!fab};
+  saveDraft(); // el borrador persiste aunque se cierre la aplicación
   if (S.panel === 'save') closePanel();
   render();
-  toast('Sin internet. El conteo queda listo y se guarda solo cuando vuelva la conexión.', true);
+  toast('Sin conexión: borrador guardado en este equipo. Si cerrás la app, al volver revisá y guardá el conteo.', true);
 }
 function onOnline(){
   if (!S.offline) return;
@@ -2238,7 +2248,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   S.view = v; $('#app').classList.remove('open'); $('#scrim').hidden = true;
