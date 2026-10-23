@@ -19,7 +19,7 @@ test("legal links are available from the React app", () => {
   for (const path of ["privacidad", "terminos", "almacenamiento"]) {
     assert.ok(page.includes(`/${path}.html`));
   }
-  assert.match(page, /aria-label="Información legal de MG Stock"/);
+  assert.match(page, /aria-label="Información legal de GestLok"/);
 });
 
 test("public client does not grant owner status from an embedded personal email", () => {
