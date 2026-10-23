@@ -91,7 +91,12 @@ async def main():
             check(res['hist'] == 0, f'{who}: no puede leer el historial de ingresos')
             if who.startswith('gerente'):
                 await click(pg, '#snav [data-go=h-ing01]', 400)
-                check(await pg.locator('#ff-i-1[disabled]').count() == 1 and await pg.locator('#fl-i-1:not([disabled])').count() == 1, 'gerente: carga Local; Ingreso solo por remito')
+                check(await pg.locator('#ff-i-1:not([disabled])').count() == 1 and await pg.locator('#fl-i-1:not([disabled])').count() == 1, 'gerente: puede cargar Local e Ingreso a mano')
+                await pg.fill('#ff-i-1', '2,5'); await pg.wait_for_timeout(150)
+                await click(pg, '#sb-save', 300); await click(pg, '#sv-ok', 700)
+                fi = await pg.evaluate(F('munro', 'i-1'))
+                check(fi.get('fabrica') == 2.5 and fi.get('local') == 1, 'gerente: el Ingreso cargado a mano se guarda (2,5) y Local queda igual: ' + str(fi))
+                await pg.fill('#ff-i-1', ''); await pg.wait_for_timeout(150); await click(pg, '#sb-save', 300); await click(pg, '#sv-ok', 700)
                 check('Stock real' in await pg.inner_text('.xl-h') and await pg.locator('.bar [data-go=ingreso]').count() == 0, 'gerente: ve «Stock real» y no tiene «Ingresar remito»')
             await ctx.close()
 
