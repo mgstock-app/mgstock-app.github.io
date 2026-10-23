@@ -8,7 +8,7 @@ export default function Home() {
     <>
       <div id="stock-root" dangerouslySetInnerHTML={{ __html: markup }} />
       <StockRuntime />
-      <nav className="stock-legal-nav" aria-label="Información legal de MG Stock">
+      <nav className="stock-legal-nav" aria-label="Información legal de GestLok">
         <a href={`${basePath}/privacidad.html`}>Privacidad</a>
         <a href={`${basePath}/terminos.html`}>Condiciones de uso</a>
         <a href={`${basePath}/almacenamiento.html`}>Cookies y almacenamiento</a>
