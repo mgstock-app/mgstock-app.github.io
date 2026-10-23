@@ -93,7 +93,7 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{},
   view:'inicio', q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
@@ -154,7 +154,7 @@ function restoreDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
@@ -279,6 +279,7 @@ function render(){
 }
 function viewHTML(){
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
+  if (S.view === 'chat') return V.chat();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (esFabT(t)) return V.fabrica();
@@ -291,10 +292,10 @@ function renderChrome(){
   document.querySelectorAll('#snav [data-go]').forEach(b => { if (b.dataset.go === S.view) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
-  const ing = S.view === 'ingreso';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  const ing = S.view === 'ingreso', chat = S.view === 'chat';
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing;
+  $('#savebar').hidden = ing || chat;
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -309,7 +310,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span></button>
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -358,6 +359,14 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
+  // Marca comercial asignada expresamente a esta cuenta, nunca por rol o email incrustado.
+  const perfil = miEquipo();
+  if (perfil && perfil.logoId === 'mi-gusto') {
+    const p = document.createElement('div');
+    p.className = 'gestlok-tenant-mark';
+    const logo = document.createElement('img'); logo.src = 'img/mi-gusto-negro.png'; logo.alt = 'Mi Gusto';
+    p.append(logo); m.append(p);
+  }
 }
 
 /* ---------- Piezas compartidas ---------- */
@@ -397,6 +406,36 @@ const noMatch = (t, s) => `<div class="sheet"><div class="empty"><b>${t}</b>${s}
 
 /* ---------- Hojas ---------- */
 const V = {};
+
+V.chat = () => {
+  const mensajes = S.chat.map(m => {
+    const own = !!(m.autor && m.autor === S.uid);
+    const ts = Number(m.fecha);
+    const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
+    return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong><small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
+  }).join('');
+  const puedeEnviar = canW() && !S.offline;
+  return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes no se mezclan con otros locales.</p>
+    <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
+    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados, pero necesitás internet para enviar.</p>' : ''}
+    ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
+    <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${puedeEnviar ? '' : 'disabled'}></textarea>
+      <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>Enviar mensaje</button></form>
+  </section>`;
+};
+
+async function sendGestlokChat(form){
+  if (!S.db || !S.local || S.offline || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
+  const input = form.querySelector('#gestlok-chat-text'), txt = (input?.value || '').trim();
+  if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
+  const btn = form.querySelector('[type="submit"]'); if (btn) btn.disabled = true;
+  try {
+    await w(() => C('chat').add({texto:txt, autor:S.uid || null, nombre:S.me?.name || 'Equipo', fecha:Date.now()}));
+    if (input && input.isConnected) input.value = '';
+    toast('Mensaje enviado');
+  } catch (error){ fail(error); }
+  finally { if (btn && btn.isConnected) btn.disabled = false; }
+}
 
 V.inicio = () => {
   const ps = sorted(), n = ps.length;
@@ -745,7 +784,7 @@ function rowPedido(x){
 function pedidoTexto(prov){
   const items = pedidoItems().filter(x => prov == null || provKey(x.p) === prov); const d = new Date();
   const byProv = prov == null && S.pedGrp === 'prov';
-  let t = `PEDIDO${prov ? ' · ' + prov : ''} · Mi Gusto ${localNombre()}\n${fechaLarga()} ${d.getFullYear()}\n`;
+  let t = `PEDIDO${prov ? ' · ' + prov : ''} · ${localNombre()}\n${fechaLarga()} ${d.getFullYear()}\n`;
   const gs = groups(items.map(x => x.p), byProv ? provKey : catOf); if (byProv) gs.sort(provGroupSort);
   for (const [c, ps] of gs){
     t += `\n${c.toUpperCase()}\n`;
@@ -1122,10 +1161,10 @@ function renderHub(){
   let body;
   if (!listo) body = `<div class="lcards">${'<div class="lcard sk-card" aria-hidden="true"></div>'.repeat(2)}</div>`;
   else if (!S.db) body = `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
-  else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administradora tiene que asignarte Munro, Torcuato o los dos. Cuando lo haga, aparece acá.</p></div>`;
+  else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto" width="562" height="278"><div class="hb-t"><b>Stock Productos</b><span>Locales y equipo</span></div></div>
+      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t"><b>Inventario</b><span>Locales y equipo</span></div></div>
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
@@ -2199,7 +2238,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   S.view = v; $('#app').classList.remove('open'); $('#scrim').hidden = true;
@@ -2367,7 +2406,8 @@ document.addEventListener('focusout', e => {
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
-  if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
+  if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
+  else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
   else if (f.id === 'aa-form') agregar();
   else if (f.id === 'ae-form') guardarEdicion(f.dataset.id);
   else if (f.id === 'ac-form') renombrarCat(f.dataset.cat, $('#ac-name').value);
@@ -2443,6 +2483,10 @@ function afterAccess(){
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
+  push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
+    S.chat = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
+    if (S.view === 'chat') render();
+  }), errLive));
   push(C('hojas').onSnapshot(mine(snap => {
     S.hojasDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
     S.loaded.h = true;
@@ -2475,7 +2519,7 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = [];
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = [];
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
