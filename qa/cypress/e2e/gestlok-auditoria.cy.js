@@ -138,7 +138,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
       expect(rows.filter(r=>r.col==="munro/conteos")).to.have.length(0);
     });
     cy.window().then(w => {
-      const borrador=w.localStorage.getItem("spm-draft-munro");
+      const borrador=w.localStorage.getItem("spm-draft-v2-dueno%40example.com:munro");
       expect(borrador).to.be.a("string");
       expect(JSON.parse(borrador).draft).not.to.deep.equal({});
     });
@@ -147,6 +147,39 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
       expect(rows.filter(r=>r.col==="munro/conteos")).to.have.length(0);
     });
     cy.get("#sb-save").should("not.be.disabled");
+  });
+
+  it("borrador del dueño no se carga automáticamente en otro usuario del mismo local", () => {
+    cy.window().then(w => {
+      w.localStorage.setItem("spm-draft-v2-dueno%40example.com:munro",
+        JSON.stringify({draft:{"p-002":30},notas:{},editing:null,fdraft:{}}));
+    });
+    login("gerente.munro@example.com");
+    cy.get("#brand-local").should("contain.text","Munro");
+    cy.get('#snav [data-go="stock"]').click();
+    cy.window().then(w => {
+      expect(w.localStorage.getItem("spm-draft-v2-dueno%40example.com:munro")).to.be.a("string");
+      expect(w.localStorage.getItem("spm-draft-v2-gerente.munro%40example.com:munro")).to.eq(null);
+    });
+    cy.get("#view").should("not.contain.text","Recuperar borrador anterior");
+  });
+
+  it("borrador anterior exige recuperación expresa sin borrarse antes", () => {
+    cy.window().then(w => {
+      w.localStorage.setItem("spm-draft-munro",
+        JSON.stringify({draft:{"p-002":13},notas:{},editing:null,fdraft:{}}));
+    });
+    owner();
+    toLocal("munro");
+    cy.get('#snav [data-go="stock"]').click();
+    cy.get('[data-act="recover-draft"]').should("be.visible");
+    cy.window().its("localStorage").invoke("getItem", "spm-draft-munro").should("be.a","string");
+    cy.get('[data-act="recover-draft"]').click();
+    cy.get('[data-act="recover-draft"]').should("not.exist");
+    cy.window().then(w => {
+      expect(w.localStorage.getItem("spm-draft-munro")).to.eq(null);
+      expect(JSON.parse(w.localStorage.getItem("spm-draft-v2-dueno%40example.com:munro")).draft["p-002"]).to.eq(13);
+    });
   });
 
   it("gerente de Munro no ve contenido ni acceso de Torcuato", () => {
