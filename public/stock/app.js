@@ -94,7 +94,7 @@ const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
   allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
-  draft:{}, notas:{}, editing:null, fdraft:{},
+  draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
   view:'inicio', q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
@@ -143,13 +143,34 @@ function clearDraftCtx(){ for (const p of S.prods){ delete S.draft[p.id]; delete
 function clearFDraftCtx(){ for (const it of S.fab) delete S.fdraft[it.id]; saveDraft(); }
 const rid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 10);
 const slug = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'hoja';
-/* Lo cargado y sin guardar se guarda en este equipo, separado por local */
-const draftKey = () => 'spm-draft-' + (S.local || '_');
-function saveDraft(){ if (S.local) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft}); }
+/* Borradores aislados por usuario Y local, sin compartir entradas sin confirmar. 
+   Los borradores antiguos quedan disponibles para recuperación explícita. */
+const legacyDraftKey = () => 'spm-draft-' + (S.local || '_');
+const draftKey = () => 'spm-draft-v2-' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + (S.local || '_');
+const hasLocalDraft = d => !!(d && typeof d === 'object' && 
+  (Object.keys(d.draft || {}).length || Object.keys(d.notas || {}).length ||
+   Object.keys(d.fdraft || {}).length || d.editing));
+function saveDraft(){
+  if (S.local && (S.uid || S.me?.email)) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft});
+}
 function restoreDraft(){
-  S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {};
-  const d = S.local ? lsGet(draftKey(), null) : null;
+  S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {}; S.legacyDraft = false;
+  const d = S.local && (S.uid || S.me?.email) ? lsGet(draftKey(), null) : null;
   if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; }
+  else if (S.local && hasLocalDraft(lsGet(legacyDraftKey(), null))) S.legacyDraft = true;
+}
+function recoverLegacyDraft(){
+  if (!S.local || !S.legacyDraft || !canW()) return;
+  if (hasLocalDraft({draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft})){
+    toast('Primero guardá o descartá los cambios nuevos antes de recuperar el borrador anterior.', true); return;
+  }
+  const d = lsGet(legacyDraftKey(), null);
+  if (!hasLocalDraft(d)){ S.legacyDraft = false; render(); return; }
+  try {
+    localStorage.setItem(draftKey(), JSON.stringify(d));
+    localStorage.removeItem(legacyDraftKey());
+  } catch { toast('No se pudo trasladar el borrador. Revisá el almacenamiento del teléfono.', true); return; }
+  restoreDraft(); render(); toast('Borrador recuperado. Revisalo y confirmá Guardar al volver internet.');
 }
 
 /* ---------- Locales y permisos ---------- */
@@ -330,7 +351,7 @@ function renderSavebar(){
   const enCola = S.queued && S.queued.view === S.view;
   if (isFabV(S.view)){
     const fp = fPend().length, lf = lastFab();
-    $('#sb-main').textContent = enCola ? 'Se guarda cuando vuelva internet' : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
+    $('#sb-main').textContent = enCola ? 'Borrador local: guardar al volver internet' : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
     $('#sb-sub').textContent = lf ? `${nombreHoja(fabCtx())} guardado ${rel(lf.fecha)} · ${whoName(lf)}` : (S.loaded.c ? 'Esta planilla todavía no se guardó' : 'Cargando…');
     $('#savebar').classList.toggle('dirty', !!fp);
     const c = $('#sb-cnt'); c.hidden = !fp; c.textContent = fp;
@@ -341,7 +362,7 @@ function renderSavebar(){
   const ed = editingCtx(), pend = pendientes().length, cont = draftCount(), last = lastStockCtx();
   const lastTxt = last ? `Último conteo ${rel(last.fecha)} · ${whoName(last)}` : (S.loaded.c ? 'Todavía no hay conteos guardados' : 'Cargando…');
   let main;
-  if (enCola) main = 'Se guarda cuando vuelva internet';
+  if (enCola) main = 'Borrador local: guardar al volver internet';
   else if (ed) main = `Corrigiendo el conteo del ${fechaHora(ed.fecha)}`;
   else if (pend) main = `${plural(pend, 'cambio', 'cambios')} sin guardar`;
   else if (cont) main = `${cont} contados, sin diferencias`;
@@ -373,6 +394,7 @@ function renderMe(){
 /* ---------- Piezas compartidas ---------- */
 function banners(){
   let h = '';
+  if (S.legacyDraft && canW()) h += '<p class="note warn"><b>Borrador anterior encontrado en este equipo.</b> Si te pertenece, podés recuperarlo antes de cargar un conteo nuevo. <button class="btn sm" data-act="recover-draft">Recuperar borrador anterior</button></p>';
   if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
@@ -945,14 +967,15 @@ function queueSave(v, fab){
 }
 function onOnline(){
   if (!S.offline) return;
-  S.offline = false; render();
   const q = S.queued;
-  if (q && S.db){ toast('Volvió internet. Revisá el conteo y confirmá el guardado.'); S.queued = null; }
+  S.offline = false; S.queued = null; render();
+  if (q && S.db) toast('Volvió internet. Tu borrador sigue pendiente: revisalo y tocá Guardar conteo.');
   else toast('Volvió la conexión');
 }
 function onOffline(){ if (S.offline) return; S.offline = true; render(); toast('Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
 window.addEventListener('online', onOnline);
 window.addEventListener('offline', onOffline);
+window.addEventListener('pagehide', saveDraft);
 function fabTexto(){
   const d = new Date();
   const man = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
@@ -2339,6 +2362,7 @@ document.addEventListener('click', e => {
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
     case 'guardar': openSave(); break;
+    case 'recover-draft': recoverLegacyDraft(); break;
     case 'save-ok': doSave(); break;
     case 'descartar': if (isFabV(S.view)) openConfirm('Descartar cambios', 'Se borran los valores de Local y Fábrica que todavía no guardaste. La planilla vuelve al último guardado.', 'Descartar', 'desc-f-ok', true); else openConfirm('Descartar cambios', `Se borran las cantidades contadas y las notas que todavía no guardaste${editingCtx() ? ', y se cancela la corrección' : ''}.`, 'Descartar', 'desc-ok', true); break;
     case 'desc-ok': clearDraftCtx(); closePanel(); render(); toast('Cambios descartados'); break;
