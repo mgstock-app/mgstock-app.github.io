@@ -1,5 +1,6 @@
 import markup from "@/lib/stock/markup.json";
 import { StockRuntime } from "@/components/stock-runtime";
+import { GestLokIntro } from "@/components/gestlok-intro";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -7,6 +8,7 @@ export default function Home() {
   return (
     <>
       <div id="stock-root" dangerouslySetInnerHTML={{ __html: markup }} />
+      <GestLokIntro />
       <StockRuntime />
       <nav className="stock-legal-nav" aria-label="Información legal de GestLok">
         <a href={`${basePath}/privacidad.html`}>Privacidad</a>
