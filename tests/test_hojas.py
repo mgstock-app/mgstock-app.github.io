@@ -30,7 +30,7 @@ async def click(pg, sel, wait=250):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        pg, errs = await login(b, 'kmu15lopez@gmail.com', {'width': 1280, 'height': 860})
+        pg, errs = await login(b, 'admin@example.com', {'width': 1280, 'height': 860})
         txt = await pg.inner_text('#snav')
         check('H1' not in txt and 'H5' not in txt, 'sin etiquetas H1–H5 en el menú')
         check(await nav(pg) == ['Inicio', 'Stock', 'Conteo', 'Conteo Fábrica', 'Pedido', 'Historial'], 'menú inicial: ' + str(await nav(pg)))

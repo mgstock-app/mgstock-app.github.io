@@ -82,7 +82,7 @@ test('read-only user cannot save through adapter', async () => {
 });
 
 test('administrator creates, renames and removes a custom sheet', async () => {
-  const { db, user } = await session('kmu15lopez@gmail.com');
+  const { db, user } = await session('admin@example.com');
   assert.equal(await user.isOwner(), true);
   const sheet = await db.collection('munro/hojas').add({ nombre: 'Prueba', tipo: 'stock', orden: 10 });
   await sheet.update({ nombre: 'Nueva' });
@@ -94,11 +94,11 @@ test('administrator creates, renames and removes a custom sheet', async () => {
 test('managers only see the team of their own branch', async () => {
   const munro = await session('gerente.munro@example.com');
   const vistos = Array.from((await munro.db.collection('equipo').get()).docs, d => d.data().email).sort();
-  assert.deepEqual(vistos, ['dueno@example.com', 'gerente.munro@example.com', 'kmu15lopez@gmail.com', 'lectura@example.com']);
+  assert.deepEqual(vistos, ['admin@example.com', 'dueno@example.com', 'gerente.munro@example.com', 'lectura@example.com']);
   const torcuato = await session('gerente.torcuato@example.com');
   const vistosT = Array.from((await torcuato.db.collection('equipo').get()).docs, d => d.data().email).sort();
-  assert.deepEqual(vistosT, ['dueno@example.com', 'gerente.torcuato@example.com', 'kmu15lopez@gmail.com']);
-  const admin = await session('kmu15lopez@gmail.com');
+  assert.deepEqual(vistosT, ['admin@example.com', 'dueno@example.com', 'gerente.torcuato@example.com']);
+  const admin = await session('admin@example.com');
   assert.equal((await admin.db.collection('equipo').get()).size, 5);
 });
 

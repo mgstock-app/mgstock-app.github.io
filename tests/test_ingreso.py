@@ -101,8 +101,8 @@ async def main():
             await ctx.close()
 
         # ---------- Administradora: recorrido completo en Torcuato ----------
-        ctx, pg, errs = await login(b, 'kmu15lopez@gmail.com')
-        r = await pg.evaluate("""(async () => { const c = window.supabase.createClient(); await c.auth.signInWithPassword({email: 'kmu15lopez@gmail.com', password: 'secreto1'});
+        ctx, pg, errs = await login(b, 'admin@example.com')
+        r = await pg.evaluate("""(async () => { const c = window.supabase.createClient(); await c.auth.signInWithPassword({email: 'admin@example.com', password: 'secreto1'});
           const r = await c.rpc('importar_mercaderia', {p_local: 'munro', p_operacion: 'conteo', p_items: [{col: 'productos', id: 'p-001', campo: 'stock', cantidad: 5, antes: null}], p_archivo: {}, p_clave: 'clave-admin-01'});
           const f = await c.rpc('importar_mercaderia', {p_local: 'munro', p_operacion: 'conteo', p_items: [{col: 'fabrica', id: 'f-001', campo: 'fabrica', cantidad: 5, antes: 0}], p_archivo: {}, p_clave: 'clave-admin-02'});
           return [r.error && r.error.message, f.error && f.error.message]; })()""")

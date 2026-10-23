@@ -82,7 +82,7 @@ async def main():
 
         # Administradora: pedido de acceso pendiente, aprobar con rol y local, y cambiar locales
         pend = "window.__rows.push({col:'solicitudes', id:'nuevo@example.com', data:{email:'nuevo@example.com', nombre:'Nuevo', proveedor:'google', fecha:Date.now()}})"
-        pg, errs = await login(b, 'kmu15lopez@gmail.com', {'width': 1280, 'height': 860}, pend)
+        pg, errs = await login(b, 'admin@example.com', {'width': 1280, 'height': 860}, pend)
         check(await vis(pg, '#hub') and await pg.locator('.hub-sol').count() == 1, 'la administradora ve el pedido pendiente en Locales')
         await pg.screenshot(path=OUT + 'l5-hub-admin.png')
         await click(pg, '.hub-sol [data-act=sol-ok]', 300)

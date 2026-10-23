@@ -143,12 +143,31 @@ function clearDraftCtx(){ for (const p of S.prods){ delete S.draft[p.id]; delete
 function clearFDraftCtx(){ for (const it of S.fab) delete S.fdraft[it.id]; saveDraft(); }
 const rid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 10);
 const slug = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'hoja';
-/* Lo cargado y sin guardar se guarda en este equipo, separado por local */
-const draftKey = () => 'spm-draft-' + (S.local || '_');
-function saveDraft(){ if (S.local) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft}); }
+/* Lo no enviado se conserva por identidad y local; nunca se atribuye un legado sin dueño. */
+const draftKey = () => {
+  const owner = (S.me && S.me.storageId) || S.uid;
+  return owner && S.local ? 'spm-draft-v2:' + encodeURIComponent(owner) + ':' + encodeURIComponent(S.local) : null;
+};
+function quarantineLegacyDraft(){
+  if (!S.local) return;
+  try {
+    const oldKey = 'spm-draft-' + S.local, raw = localStorage.getItem(oldKey);
+    if (raw === null) return;
+    // Preserve the exact bytes before removing the old, shared lookup key.
+    let backup = 'spm-draft-unclaimed:' + encodeURIComponent(S.local);
+    if (localStorage.getItem(backup) !== null && localStorage.getItem(backup) !== raw) backup += ':' + rid();
+    localStorage.setItem(backup, raw);
+    if (localStorage.getItem(backup) === raw) {
+      localStorage.removeItem(oldKey);
+      toast('Se conservaron borradores anteriores para revisión. No se cargaron en esta cuenta.', true);
+    }
+  } catch { /* Never delete a legacy draft if its preserved copy cannot be verified. */ }
+}
+function saveDraft(){ const key = draftKey(); if (key) lsSet(key, {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft}); }
 function restoreDraft(){
   S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {};
-  const d = S.local ? lsGet(draftKey(), null) : null;
+  quarantineLegacyDraft();
+  const key = draftKey(), d = key ? lsGet(key, null) : null;
   if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; }
 }
 
@@ -2507,6 +2526,15 @@ async function boot(){
 }
 
 /* ---------- Inicio ---------- */
+window.addEventListener('spm-session-ended', () => {
+  saveDraft();
+  closePanel();
+  for (const unsubscribe of S.unsubs) try { unsubscribe(); } catch {}
+  S.unsubs = []; S.local = null; S.ro = true; S.db = null; S.user = null; S.me = null; S.uid = null;
+  S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {};
+  S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.equipo = []; S.sol = []; S.hub = {};
+  S.ing = null; S.ntEdit = {}; S.names = {}; S.rn.clear(); S.cc.clear();
+});
 function start(){
   applySkin(); render(); renderInstall(); boot();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

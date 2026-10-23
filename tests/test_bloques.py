@@ -33,7 +33,7 @@ async def login(b, email, size=None):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        ctx, pg, errs = await login(b, 'kmu15lopez@gmail.com')
+        ctx, pg, errs = await login(b, 'admin@example.com')
         await click(pg, '#snav [data-go=fabrica]', 400)
         heads = await pg.evaluate("[...document.querySelectorAll('.xl-bq b')].map(x => x.textContent)")
         check(heads[:2] == ['Bloque 1', 'Bloque 2'], 'cada bloque tiene su encabezado: ' + str(heads))

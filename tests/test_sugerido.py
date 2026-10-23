@@ -30,7 +30,7 @@ async def login(b, email, size, setup=None):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        ctx, pg, errs = await login(b, 'kmu15lopez@gmail.com', {'width': 1280, 'height': 860})
+        ctx, pg, errs = await login(b, 'admin@example.com', {'width': 1280, 'height': 860})
         check(await pg.locator('.sheet.k-stock .sh-h').inner_text() == 'N°\nSIN STOCK\nPRODUCTO\nESTADO\nLOCAL\nAJUSTAR\nSUGERIDO' or 'SUGERIDO' in (await pg.locator('.sheet.k-stock .sh-h').inner_text()).upper(), 'columnas Local y Sugerido')
         await pg.fill('#sg-p-001', '4'); await pg.press('#sg-p-001', 'Tab'); await pg.wait_for_timeout(300)
         r = await pg.evaluate("window.__rows.find(r => r.col === 'munro/productos' && r.id === 'p-001').data")
