@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "GestLok",
   description: "Productos, proveedores, conteos y movimientos en un espacio seguro por local. Acceso gratuito con autorización.",
   manifest: `${basePath}/manifest.webmanifest`,
-  icons: { icon: `${basePath}/icons/gestlok.svg`, apple: `${basePath}/icons/gestlok.svg` },
+  icons: { icon: `${basePath}/icons/icon-32.png`, apple: `${basePath}/icons/apple-touch-icon.png` },
   appleWebApp: { capable: true, title: "GestLok", statusBarStyle: "default" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#11283c" };
