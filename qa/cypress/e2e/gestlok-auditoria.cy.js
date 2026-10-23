@@ -7,7 +7,7 @@ const login = email => {
   cy.get('#au-in button[type="submit"]').click();
 };
 const owner = () => login("dueno@example.com");
-const toLocal = loc => cy.get(`#hub [data-act="local"][data-id="${loc}"]`).click();
+const toLocal = loc => cy.get(`#hub [data-act="local"][data-id="${loc}"]`).first().click();
 
 describe("GestLok: auditoría de recorridos, perfiles y sincronización local", () => {
   Cypress.on("uncaught:exception", error => {
