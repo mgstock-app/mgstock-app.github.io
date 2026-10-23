@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-page-custom-font -- Shared font stylesheet in the App Router root layout. */
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./gestlok-intro.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
