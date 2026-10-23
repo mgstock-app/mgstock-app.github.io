@@ -1173,6 +1173,64 @@ function renderHub(){
   else if (!S.db) body = `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
+
+  // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
+  // No es un panel de pagos: GestLok sigue gratuito y todas las altas requieren aprobación.
+  if (adm && listo && S.db) {
+    const usuarios = equipoList();
+    const totalProductos = mios.reduce((n,l) => n + ((S.hub[l.id]?.lp) ? S.hub[l.id].prods.length : 0), 0);
+    const ready = mios.every(l => S.hub[l.id]?.lp);
+    const puestos = mios.map(l => {
+      const st = hubStats(l.id);
+      return `<article class="gl-admin-location">
+        <div class="gl-admin-location-icon">${ic('store')}</div>
+        <div class="gl-admin-location-text"><b>${esc(l.nombre)}</b><small>${st.loaded ? plural(st.n,'producto','productos') + ' · ' + st.sin + ' sin stock' : 'Cargando información…'}</small></div>
+        <button class="btn sm" data-act="local" data-id="${esc(l.id)}">Abrir local →</button>
+      </article>`;
+    }).join('');
+    const members = usuarios.map(u => `<tr>
+      <td><b>${esc(u.nombre || u.name || u.email || 'Usuario')}</b><small>${esc(u.email || '')}</small></td>
+      <td>${esc(rolLabel(ROLN(u.rol)))}</td>
+      <td>${esc(localesTxt(u))}</td>
+      <td><span class="gl-admin-good">Autorizado</span></td>
+    </tr>`).join('');
+    const adminHTML = `<div class="gl-admin">
+      <aside class="gl-admin-sidebar" aria-label="Administración GestLok">
+        <div class="gl-admin-logo"><img src="icons/gestlok-wordmark.svg" alt="GestLok" width="170" height="48"><small>Administración privada</small></div>
+        <div class="gl-admin-nav"><span aria-current="page">${ic('home')} Resumen</span>
+        <button data-act="admin-locales">${ic('store')} Locales</button>
+        <button data-act="share">${ic('userplus')} Equipo y autorizaciones ${S.sol.length ? `<b>${S.sol.length}</b>` : ''}</button></div>
+        <div class="gl-admin-footer">Acceso exclusivo de la administradora<br><small>GestLok · Uso gratuito con autorización</small></div>
+      </aside>
+      <main class="gl-admin-main">
+        <header class="gl-admin-heading">
+          <div><p class="eyebrow">GESTLOK / ADMINISTRACIÓN</p><h1>Panel administrativo</h1><p>Control de los locales y usuarios autorizados.</p></div>
+          <div class="gl-admin-person"><span class="gl-admin-avatar">${esc((S.me?.name || 'A').trim().charAt(0).toUpperCase())}</span><span><b>${esc(S.me?.name || 'Administradora')}</b><small>Rol: creadora</small></span><button class="btn sm" data-au="out">Salir</button></div>
+        </header>
+        <section class="gl-admin-stats" aria-label="Resumen administrativo">
+          <article><span>${ic('store')} Locales habilitados</span><strong>${mios.length}</strong><small>Accesibles desde tu cuenta</small></article>
+          <article><span>${ic('userplus')} Usuarios autorizados</span><strong>${usuarios.length}</strong><small>Miembros del equipo</small></article>
+          <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
+          <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
+        </section>
+        <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No hay suscripciones, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
+        <div class="gl-admin-panels">
+          <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
+          <section class="gl-admin-card"><header><h2>Acceso y privacidad</h2><small>Protección de información</small></header>
+            <p>Los registros de Munro y Torcuato se mantienen separados. El ingreso requiere una cuenta aprobada.</p>
+            <p>Los datos de cada comercio se mostrarán únicamente a usuarios de ese comercio, tras finalizar la separación multiempresa.</p>
+            <button class="btn" data-act="share">Administrar equipo</button>
+          </section>
+        </div>
+        <section class="gl-admin-card gl-admin-team"><header><h2>Usuarios aprobados</h2><button class="btn" data-act="share">Ver equipo completo</button></header>
+          <div class="gl-admin-tablewrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Locales</th><th>Acceso</th></tr></thead><tbody>${members}</tbody></table></div>
+        </section>
+        <footer class="gl-admin-bottom">GestLok · Panel privado · Sin servicios de pago</footer>
+      </main>
+    </div>`;
+    if (hub._h !== adminHTML) { hub.innerHTML = adminHTML; hub._h = adminHTML; }
+    return;
+  }
   const html = `<div class="hub-top"><header class="hub-h">
       <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t"><b>Inventario</b><span>Locales y equipo</span></div></div>
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
@@ -2277,6 +2335,7 @@ document.addEventListener('click', e => {
     case 'borrar-ok': borrarDatos(); break;
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
+    case 'admin-locales': document.getElementById('gl-admin-locales')?.scrollIntoView({behavior:'smooth',block:'start'}); break;
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
     case 'guardar': openSave(); break;
@@ -2482,7 +2541,7 @@ function afterAccess(){
   for (const l of mios) if (!S.hub[l.id]) subscribeHub(l.id);
   if (!S.started){
     S.started = true;
-    if (mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
+    if (!isCreadora() && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
     return;
   }
   if (S.local){
