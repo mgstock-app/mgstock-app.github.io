@@ -373,7 +373,7 @@ function renderMe(){
 /* ---------- Piezas compartidas ---------- */
 function banners(){
   let h = '';
-  if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `, y el conteo de ${esc(nombreHoja(S.queued.view))} se guarda solo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
+  if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `, ; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
   if (S.editing && S.view !== 'conteo' && !isCustom(S.view)) h += `<div class="editbar"><span>Estás corrigiendo el conteo del <b>${esc(fechaHora(S.editing.fecha))}</b>.</span><span class="bar-a"><button class="btn sm" data-go="conteo">Ir a Conteo</button><button class="btn sm" data-act="edit-cancel">Cancelar corrección</button></span></div>`;
@@ -947,7 +947,7 @@ function onOnline(){
   if (!S.offline) return;
   S.offline = false; render();
   const q = S.queued;
-  if (q && S.db){ toast('Volvió internet. Guardando el conteo…'); setTimeout(() => (q.fab ? doSaveF(q.view) : doSave(q.view)), 600); }
+  if (q && S.db){ toast('Volvió internet. Revisá el conteo y confirmá el guardado.'); S.queued = null; }
   else toast('Volvió la conexión');
 }
 function onOffline(){ if (S.offline) return; S.offline = true; render(); toast('Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
