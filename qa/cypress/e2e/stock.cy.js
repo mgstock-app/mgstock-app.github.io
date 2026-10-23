@@ -20,6 +20,8 @@ describe("MG Stock: navegación, permisos y stock aislados", () => {
     cy.intercept("**/*.supabase.co/**", { forceNetworkError: true });
     cy.visit("/");
     cy.wait("@fakeSupabase");
+    // La presentación permanece visible ~3,7 s antes de permitir el ingreso.
+    cy.get(".gl-intro", { timeout: 10000 }).should("not.be.visible");
     cy.get("#au-in").should("be.visible");
   });
   it("solo la cuenta creadora abre el panel administrativo gratuito", () => {
