@@ -23,7 +23,7 @@ async def main():
         pg.on('pageerror', lambda e: errs.append(str(e)))
         await pg.route('**/auth/v1/settings', lambda r: r.fulfill(status=200, content_type='application/json', body='{"external":{"google":true}}'))
         await load_app(pg); await pg.wait_for_timeout(300)
-        await pg.fill('#au-email', 'kmu15lopez@gmail.com'); await pg.fill('#au-pass', 'secreto1')
+        await pg.fill('#au-email', 'admin@example.com'); await pg.fill('#au-pass', 'secreto1')
         await pg.click('#au-in button[type=submit]'); await pg.wait_for_timeout(700)
         await pg.evaluate("(() => { const b = document.querySelector('#hub:not([hidden]) [data-act=local][data-id=munro]'); if (b) b.click(); })()"); await pg.wait_for_timeout(400)
         await pg.evaluate(FAKE_XLSX)

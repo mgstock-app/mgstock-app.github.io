@@ -12,7 +12,29 @@
   catch (e) { console.error('Supabase no configurado', e); }
 
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
-  let email = null, rol = null, locales = [], started = false;
+  let email = null, rol = null, locales = [], started = false, storageId = null, generation = 0;
+  function conceal(){
+    for (const id of ['#app', '#hub', '#logout-wrap']) { const el = $(id); if (el) el.hidden = true; }
+    clearInterval(window.__spmPoll);
+    window.dispatchEvent?.(new Event('spm-session-ended'));
+  }
+  async function signOut(){
+    ++generation; conceal(); show('in', 'Cerrando sesión…');
+    try {
+      if (!sb) throw new Error('Sin conexión');
+      const result = await sb.auth.signOut();
+      if (result && result.error) throw result.error;
+      location.reload();
+    } catch {
+      show('in', 'No se pudo cerrar la sesión. Reintentá antes de compartir el dispositivo.', true);
+      const message = $('#au-msg');
+      if (message) {
+        const retry = document.createElement('button');
+        retry.type = 'button'; retry.dataset.au = 'out'; retry.textContent = 'Reintentar cierre de sesión';
+        message.appendChild(retry);
+      }
+    }
+  }
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
 
   /* ---------- Pantalla de ingreso ---------- */
@@ -69,7 +91,7 @@
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-au]'); if (!t) return;
     e.preventDefault();
-    if (t.dataset.au === 'out'){ sb && sb.auth.signOut().finally(() => location.reload()); return; }
+    if (t.dataset.au === 'out'){ void signOut(); return; }
     if (t.dataset.au === 'google'){ google(t); return; }
     if (t.dataset.au === 'retry'){ location.reload(); return; }
     show(t.dataset.au, '');
@@ -98,10 +120,15 @@
   }
 
   async function entered(session){
+    const current = ++generation;
+    const nextEmail = String(session.user.email || '').toLowerCase();
+    if (started && nextEmail !== email){ conceal(); location.reload(); return; }
     email = String(session.user.email || '').toLowerCase();
+    storageId = session.user.id || email;
     let r = null, ls = [];
     try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; } else throw error; }
     catch { try { const { data } = await sb.rpc('mi_rol'); r = data || null; } catch {} }
+    if (current !== generation) return;
     rol = r; locales = ls;
     if (!rol){
       const meta = session.user.user_metadata || {}, prov = (session.user.app_metadata || {}).provider || 'email';
@@ -120,8 +147,11 @@
    if (sb){
     sb.auth.onAuthStateChange((ev, session) => {
       if (ev === 'PASSWORD_RECOVERY'){ show('np', 'Elegí tu contraseña nueva.'); return; }
-      if (session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED')){ if (!started) entered(session); }
-      if (ev === 'SIGNED_OUT'){ if (started) location.reload(); else show('in', ''); }
+      if (session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED')){
+        if (started && String(session.user.email || '').toLowerCase() !== email){ ++generation; conceal(); location.reload(); }
+        else if (!started) Promise.resolve().then(() => { void entered(session); });
+      }
+      if (ev === 'SIGNED_OUT'){ ++generation; conceal(); if (started) location.reload(); else show('in', ''); }
     });
     const uErr = urlError();
     sb.auth.getSession().then(({ data }) => { if (data.session){ if (!/type=recovery/.test(location.hash)) entered(data.session); } else show('in', uErr, !!uErr); });
@@ -208,7 +238,7 @@
   const avatar = (txt, bg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="32" fill="${bg}"/><text x="32" y="41" font-family="Arial" font-size="26" font-weight="700" text-anchor="middle" fill="#fff">${String(txt || '?').charAt(0).toUpperCase()}</text></svg>`);
   const nameOf = e => String(e || '').split('@')[0];
   const user = Object.freeze({
-    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
+    async me(){ return { id: email, storageId, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
     async id(){ return email; },
     async isOwner(){ return rol === 'creadora'; },
     async canEdit(){ return EDITA.includes(rol); },

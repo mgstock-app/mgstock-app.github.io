@@ -42,7 +42,7 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
         # Administradora: hoja nueva vacía, productos y categorías propios
-        ctx, pg, errs = await login(b, 'kmu15lopez@gmail.com', {'width': 1280, 'height': 860}, SETUP % (HOJA % '', ''))
+        ctx, pg, errs = await login(b, 'admin@example.com', {'width': 1280, 'height': 860}, SETUP % (HOJA % '', ''))
         menu = await pg.evaluate("[...document.querySelectorAll('#snav [data-go]')].map(b => b.querySelector('.nl').textContent)")
         check('Stock Cajas' in menu and 'Pedido' not in menu, 'menú con Stock Cajas y sin Pedido: ' + str(menu))
         check(await pg.locator('#view .kpis.k3').count() == 1 and await pg.locator('#view [data-go=pedido]').count() == 0, 'Inicio sin acceso a Pedido (quitada del menú)')
