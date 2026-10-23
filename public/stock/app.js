@@ -93,7 +93,7 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{},
   view:'inicio', q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
@@ -154,7 +154,7 @@ function restoreDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
@@ -279,6 +279,8 @@ function render(){
 }
 function viewHTML(){
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
+  if (S.view === 'chat') return V.chat();
+  if (S.view === 'proveedores') return V.proveedores();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (esFabT(t)) return V.fabrica();
@@ -291,10 +293,10 @@ function renderChrome(){
   document.querySelectorAll('#snav [data-go]').forEach(b => { if (b.dataset.go === S.view) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
-  const ing = S.view === 'ingreso';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  const ing = S.view === 'ingreso', chat = S.view === 'chat';
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing;
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores';
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -309,7 +311,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span></button>
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -358,12 +360,20 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
+  // Marca comercial asignada expresamente a esta cuenta, nunca por rol o email incrustado.
+  const perfil = miEquipo();
+  if (perfil && perfil.logoId === 'mi-gusto') {
+    const p = document.createElement('div');
+    p.className = 'gestlok-tenant-mark';
+    const logo = document.createElement('img'); logo.src = 'img/mi-gusto-negro.png'; logo.alt = 'Mi Gusto';
+    p.append(logo); m.append(p);
+  }
 }
 
 /* ---------- Piezas compartidas ---------- */
 function banners(){
   let h = '';
-  if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `, y el conteo de ${esc(nombreHoja(S.queued.view))} se guarda solo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
+  if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
   if (S.editing && S.view !== 'conteo' && !isCustom(S.view)) h += `<div class="editbar"><span>Estás corrigiendo el conteo del <b>${esc(fechaHora(S.editing.fecha))}</b>.</span><span class="bar-a"><button class="btn sm" data-go="conteo">Ir a Conteo</button><button class="btn sm" data-act="edit-cancel">Cancelar corrección</button></span></div>`;
@@ -397,6 +407,44 @@ const noMatch = (t, s) => `<div class="sheet"><div class="empty"><b>${t}</b>${s}
 
 /* ---------- Hojas ---------- */
 const V = {};
+V.proveedores = () => {
+  const lista = provs();
+  const items = lista.map(([nombre, count]) => `<article class="card pad"><div class="eyebrow">Proveedor</div><h2>${esc(nombre)}</h2><p class="lead">${plural(count, 'producto asociado', 'productos asociados')} en ${esc(localNombre())}.</p></article>`).join('');
+  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1><p class="lead">Vista agrupada a partir de los proveedores asignados a los productos de este local.</p>
+    <div class="lcards">${items || '<div class="card pad">Todavía no hay proveedores asignados.</div>'}</div>
+    ${canW() ? `<button class="btn primary" data-act="aj-open" data-tab="rapido">Administrar proveedores en productos</button>` : ''}
+  </section>`;
+};
+
+V.chat = () => {
+  const mensajes = S.chat.map(m => {
+    const own = !!(m.autor && m.autor === S.uid);
+    const ts = Number(m.fecha);
+    const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
+    return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong><small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
+  }).join('');
+  const puedeEnviar = canW() && !S.offline;
+  return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes no se mezclan con otros locales.</p>
+    <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
+    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados, pero necesitás internet para enviar.</p>' : ''}
+    ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
+    <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${puedeEnviar ? '' : 'disabled'}></textarea>
+      <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>Enviar mensaje</button></form>
+  </section>`;
+};
+
+async function sendGestlokChat(form){
+  if (!S.db || !S.local || S.offline || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
+  const input = form.querySelector('#gestlok-chat-text'), txt = (input?.value || '').trim();
+  if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
+  const btn = form.querySelector('[type="submit"]'); if (btn) btn.disabled = true;
+  try {
+    await w(() => C('chat').add({texto:txt, autor:S.uid || null, nombre:S.me?.name || 'Equipo', fecha:Date.now()}));
+    if (input && input.isConnected) input.value = '';
+    toast('Mensaje enviado');
+  } catch (error){ fail(error); }
+  finally { if (btn && btn.isConnected) btn.disabled = false; }
+}
 
 V.inicio = () => {
   const ps = sorted(), n = ps.length;
@@ -745,7 +793,7 @@ function rowPedido(x){
 function pedidoTexto(prov){
   const items = pedidoItems().filter(x => prov == null || provKey(x.p) === prov); const d = new Date();
   const byProv = prov == null && S.pedGrp === 'prov';
-  let t = `PEDIDO${prov ? ' · ' + prov : ''} · Mi Gusto ${localNombre()}\n${fechaLarga()} ${d.getFullYear()}\n`;
+  let t = `PEDIDO${prov ? ' · ' + prov : ''} · ${localNombre()}\n${fechaLarga()} ${d.getFullYear()}\n`;
   const gs = groups(items.map(x => x.p), byProv ? provKey : catOf); if (byProv) gs.sort(provGroupSort);
   for (const [c, ps] of gs){
     t += `\n${c.toUpperCase()}\n`;
@@ -890,15 +938,16 @@ async function doSaveF(v = S.view){
 /* Sin internet: el conteo queda listo y se guarda solo cuando vuelve la conexión */
 function queueSave(v, fab){
   S.queued = {view:v, fab:!!fab};
+  saveDraft(); // el borrador persiste aunque se cierre la aplicación
   if (S.panel === 'save') closePanel();
   render();
-  toast('Sin internet. El conteo queda listo y se guarda solo cuando vuelva la conexión.', true);
+  toast('Sin conexión: borrador guardado en este equipo. Si cerrás la app, al volver revisá y guardá el conteo.', true);
 }
 function onOnline(){
   if (!S.offline) return;
   S.offline = false; render();
   const q = S.queued;
-  if (q && S.db){ toast('Volvió internet. Guardando el conteo…'); setTimeout(() => (q.fab ? doSaveF(q.view) : doSave(q.view)), 600); }
+  if (q && S.db){ toast('Volvió internet. Revisá el conteo y confirmá el guardado.'); S.queued = null; }
   else toast('Volvió la conexión');
 }
 function onOffline(){ if (S.offline) return; S.offline = true; render(); toast('Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
@@ -908,7 +957,7 @@ function fabTexto(){
   const d = new Date();
   const man = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja();
-  let t = `${nombreHoja(fabCtx()).toUpperCase()} · Mi Gusto ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\n${IH ? `Producto: ${totalNombre(IH).toLowerCase()} (local + ingreso)` : `Producto: total (local + fábrica, ingreso ${man})`}\n`;
+  let t = `${nombreHoja(fabCtx()).toUpperCase()} · ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\n${IH ? `Producto: ${totalNombre(IH).toLowerCase()} (local + ingreso)` : `Producto: total (local + fábrica, ingreso ${man})`}\n`;
   let prev = null;
   for (const it of fItems()){ const b = bloqueOf(it); if (b !== prev){ t += `${prev != null ? '\n' : ''}${bloqueNombre(b).toUpperCase()}\n`; } prev = b; t += `- ${it.nombre}: ${fmt(fTot(it))} (${fmt(fVal(it,'l') ?? 0)} + ${fmt(fVal(it,'f') ?? 0)})${fSin(it) ? ' · sin stock' : ''}\n`; }
   return t.trim();
@@ -1064,7 +1113,7 @@ function refreshShare(){ const l = $('#eq-list'); if (l) l.innerHTML = equipoRow
 function openShare(){
   S.panel = 'share'; S.eqDel = null;
   const adm = isCreadora();
-  openPanel(`<div class="pn-h"><div><small>Stock Productos</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+  openPanel(`<div class="pn-h"><div><small>GestLok</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
     <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
     ${adm ? `<form id="eq-form" class="eq-add" novalidate>
@@ -1122,10 +1171,68 @@ function renderHub(){
   let body;
   if (!listo) body = `<div class="lcards">${'<div class="lcard sk-card" aria-hidden="true"></div>'.repeat(2)}</div>`;
   else if (!S.db) body = `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
-  else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administradora tiene que asignarte Munro, Torcuato o los dos. Cuando lo haga, aparece acá.</p></div>`;
+  else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
+
+  // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
+  // No es un panel de pagos: GestLok sigue gratuito y todas las altas requieren aprobación.
+  if (adm && listo && S.db) {
+    const usuarios = equipoList();
+    const totalProductos = mios.reduce((n,l) => n + ((S.hub[l.id]?.lp) ? S.hub[l.id].prods.length : 0), 0);
+    const ready = mios.every(l => S.hub[l.id]?.lp);
+    const puestos = mios.map(l => {
+      const st = hubStats(l.id);
+      return `<article class="gl-admin-location">
+        <div class="gl-admin-location-icon">${ic('store')}</div>
+        <div class="gl-admin-location-text"><b>${esc(l.nombre)}</b><small>${st.loaded ? plural(st.n,'producto','productos') + ' · ' + st.sin + ' sin stock' : 'Cargando información…'}</small></div>
+        <button class="btn sm" data-act="local" data-id="${esc(l.id)}">Abrir local →</button>
+      </article>`;
+    }).join('');
+    const members = usuarios.map(u => `<tr>
+      <td><b>${esc(u.nombre || u.name || u.email || 'Usuario')}</b><small>${esc(u.email || '')}</small></td>
+      <td>${esc(rolLabel(ROLN(u.rol)))}</td>
+      <td>${esc(localesTxt(u))}</td>
+      <td><span class="gl-admin-good">Autorizado</span></td>
+    </tr>`).join('');
+    const adminHTML = `<div class="gl-admin">
+      <aside class="gl-admin-sidebar" aria-label="Administración GestLok">
+        <div class="gl-admin-logo"><img src="icons/gestlok-wordmark.svg" alt="GestLok" width="170" height="48"><small>Administración privada</small></div>
+        <div class="gl-admin-nav"><span aria-current="page">${ic('home')} Resumen</span>
+        <button data-act="admin-locales">${ic('store')} Locales</button>
+        <button data-act="share">${ic('userplus')} Equipo y autorizaciones ${S.sol.length ? `<b>${S.sol.length}</b>` : ''}</button></div>
+        <div class="gl-admin-footer">Acceso exclusivo de la administradora<br><small>GestLok · Uso gratuito con autorización</small></div>
+      </aside>
+      <main class="gl-admin-main">
+        <header class="gl-admin-heading">
+          <div><p class="eyebrow">GESTLOK / ADMINISTRACIÓN</p><h1>Panel administrativo</h1><p>Control de los locales y usuarios autorizados.</p></div>
+          <div class="gl-admin-person"><span class="gl-admin-avatar">${esc((S.me?.name || 'A').trim().charAt(0).toUpperCase())}</span><span><b>${esc(S.me?.name || 'Administradora')}</b><small>Rol: creadora</small></span><button class="btn sm" data-au="out">Salir</button></div>
+        </header>
+        <section class="gl-admin-stats" aria-label="Resumen administrativo">
+          <article><span>${ic('store')} Locales habilitados</span><strong>${mios.length}</strong><small>Accesibles desde tu cuenta</small></article>
+          <article><span>${ic('userplus')} Usuarios autorizados</span><strong>${usuarios.length}</strong><small>Miembros del equipo</small></article>
+          <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
+          <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
+        </section>
+        <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
+        <div class="gl-admin-panels">
+          <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
+          <section class="gl-admin-card"><header><h2>Acceso y privacidad</h2><small>Protección de información</small></header>
+            <p>Los registros de Munro y Torcuato se mantienen separados. El ingreso requiere una cuenta aprobada.</p>
+            <p>Los datos de cada comercio se mostrarán únicamente a usuarios de ese comercio, tras finalizar la separación multiempresa.</p>
+            <button class="btn" data-act="share">Administrar equipo</button>
+          </section>
+        </div>
+        <section class="gl-admin-card gl-admin-team"><header><h2>Usuarios aprobados</h2><button class="btn" data-act="share">Ver equipo completo</button></header>
+          <div class="gl-admin-tablewrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Locales</th><th>Acceso</th></tr></thead><tbody>${members}</tbody></table></div>
+        </section>
+        <footer class="gl-admin-bottom">GestLok · Panel privado · Sin servicios de pago</footer>
+      </main>
+    </div>`;
+    if (hub._h !== adminHTML) { hub.innerHTML = adminHTML; hub._h = adminHTML; }
+    return;
+  }
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto" width="562" height="278"><div class="hb-t"><b>Stock Productos</b><span>Locales y equipo</span></div></div>
+      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t"><b>Inventario</b><span>Locales y equipo</span></div></div>
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
@@ -1629,7 +1736,7 @@ function openInstall(){
   const pAnd = `<div class="steps"><b>Android (Chrome)</b><ol><li>Tocá el menú <b>⋮</b> arriba a la derecha.</li><li>Elegí <b>Instalar app</b> o <b>Agregar a pantalla principal</b>.</li><li>Confirmá con <b>Instalar</b>.</li></ol></div>`;
   S.panel = 'install';
   openPanel(`<div class="pn-h"><div><small>Celular</small><h3>Instalar como app</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-  <div class="pn-b"><p class="lead">Queda el ícono de Mi Gusto en la pantalla de inicio y se abre a pantalla completa, como cualquier app. Se entra con la misma cuenta.</p>${ios ? pIos + pAnd : pAnd + pIos}</div>`, 'dlg');
+  <div class="pn-b"><p class="lead">Queda el ícono de GestLok en la pantalla de inicio y se abre a pantalla completa, como cualquier app. Se entra con la misma cuenta.</p>${ios ? pIos + pAnd : pAnd + pIos}</div>`, 'dlg');
 }
 
 /* ---------- Ordenar arrastrando (Ajustes) ---------- */
@@ -2199,7 +2306,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   S.view = v; $('#app').classList.remove('open'); $('#scrim').hidden = true;
@@ -2228,6 +2335,7 @@ document.addEventListener('click', e => {
     case 'borrar-ok': borrarDatos(); break;
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
+    case 'admin-locales': document.getElementById('gl-admin-locales')?.scrollIntoView({behavior:'smooth',block:'start'}); break;
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
     case 'guardar': openSave(); break;
@@ -2367,7 +2475,8 @@ document.addEventListener('focusout', e => {
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
-  if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
+  if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
+  else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
   else if (f.id === 'aa-form') agregar();
   else if (f.id === 'ae-form') guardarEdicion(f.dataset.id);
   else if (f.id === 'ac-form') renombrarCat(f.dataset.cat, $('#ac-name').value);
@@ -2432,7 +2541,7 @@ function afterAccess(){
   for (const l of mios) if (!S.hub[l.id]) subscribeHub(l.id);
   if (!S.started){
     S.started = true;
-    if (mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
+    if (!isCreadora() && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
     return;
   }
   if (S.local){
@@ -2443,6 +2552,10 @@ function afterAccess(){
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
+  push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
+    S.chat = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
+    if (S.view === 'chat') render();
+  }), errLive));
   push(C('hojas').onSnapshot(mine(snap => {
     S.hojasDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
     S.loaded.h = true;
@@ -2475,7 +2588,7 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = [];
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = [];
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();

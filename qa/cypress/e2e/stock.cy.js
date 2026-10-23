@@ -22,6 +22,20 @@ describe("MG Stock: navegación, permisos y stock aislados", () => {
     cy.wait("@fakeSupabase");
     cy.get("#au-in").should("be.visible");
   });
+  it("solo la cuenta creadora abre el panel administrativo gratuito", () => {
+    signIn("kmu15lopez@gmail.com");
+    cy.get("#hub .gl-admin").should("be.visible");
+    cy.get(".gl-admin h1").should("contain.text", "Panel administrativo");
+    cy.get(".gl-admin").should("not.contain.text", "Suscripciones");
+    cy.get(".gl-admin").should("contain.text", "GestLok es gratuito");
+    cy.get(".gl-admin [data-act=admin-locales]").click();
+    cy.get("#gl-admin-locales").should("exist");
+  });
+  it("la dueña no tiene acceso visual al panel privado de creadora", () => {
+    signIn("dueno@example.com");
+    cy.get("#hub").should("be.visible");
+    cy.get("#hub .gl-admin").should("not.exist");
+  });
   it("muestra el formulario de acceso", () => {
     cy.get("#au-email").should("be.visible");
     cy.get("#au-pass").should("be.visible");

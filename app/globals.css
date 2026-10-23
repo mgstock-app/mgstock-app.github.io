@@ -846,3 +846,108 @@ html.auth-on body{overflow:hidden}
 .eq-r.sol .sol-a{grid-column:1/-1}
 .logout button{border:1px solid var(--mast-line);background:transparent;color:var(--mast-muted);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:600}
 .logout button:hover{color:var(--mast-ink);background:var(--mast-2)}
+
+/* GestLok: identidad visual general. No depende de marcas de los comercios. */
+:root {
+  --bg:#f5f7fa; --surface:#ffffff; --sunk:#f1f5f8; --line:#dde5eb; --line-2:#cbd8e0;
+  --ink:#11283c; --ink-2:#254254; --muted:#607583;
+  --accent:#173b55; --accent-ink:#ffffff; --accent-soft:#e9f5f5; --accent-line:#b7d9df;
+  --spark:#087e82; --spark-ink:#ffffff; --mast:#11283c; --mast-2:#1b3950;
+  --mast-ink:#f8fcfd; --mast-muted:#bed0dc; --mast-line:#345267;
+  --f-display:"Inter",system-ui,sans-serif;
+  --shadow:0 2px 12px rgba(17,40,60,.06); --r:14px;
+}
+.app .side {background:linear-gradient(165deg,#11283c 4%,#1a3e57 100%);color:var(--mast-ink)}
+.side .brand b,.side .brand div span,.side .status,.side .side-f {color:var(--mast-ink)}
+.side .brand div span {color:#c0d4de}
+.side .mg {background:transparent;border-radius:12px;padding:0;width:52px;height:52px;overflow:hidden}
+.side .mg img {width:52px;height:52px;object-fit:cover}
+.side .status {background:#23445c;color:#d8e7ee;border-color:#3b5e70}
+.top {background:rgba(255,255,255,.96);backdrop-filter:blur(16px)}
+.tt h2,.hub-t,.au-card h1 {font-weight:750;letter-spacing:-.035em}
+.btn.primary,.au-card .btn.primary {background:#173b55;color:white;border-color:#173b55}
+.btn.primary:hover,.au-card .btn.primary:hover {background:#0e6270;border-color:#0e6270}
+.card,.lcard,.au-card {border-radius:16px;box-shadow:0 6px 28px rgba(17,40,60,.06)}
+.auth {background:radial-gradient(circle at 12% 16%,#dceff0 0,transparent 45%),linear-gradient(155deg,#edf4f6,#f9fbfc 60%,#e9eff3)}
+.au-card {padding:24px;border-color:#dce5ec}
+.au-cover {background:linear-gradient(140deg,#11283c,#1b455b);border-radius:14px;padding:28px 18px 24px;margin:-7px -7px 8px}
+.au-cover img {height:auto;max-width:230px;filter:brightness(0) invert(1);animation:gestlok-enter .6s ease-out both}
+.au-cover b {font-family:var(--f-body);font-size:17px;font-weight:650;color:#fff;letter-spacing:-.02em}
+.au-cover span {text-transform:none;letter-spacing:.03em;color:#b7d9db;font-weight:500}
+.hub-top {background:linear-gradient(135deg,#11283c,#1e4b64)}
+.hub-top .hub-logo {width:172px;height:44px;object-fit:contain;filter:brightness(0) invert(1)}
+.hub-top .hub-brand .hb-t b,.hub-top .hub-brand .hb-t span {color:#d0e2e9}
+.gestlok-chat {display:grid;gap:16px}
+.gestlok-chat-list {display:flex;flex-direction:column;gap:10px;max-height:55vh;overflow:auto;padding:15px;background:#f5f8fa;border:1px solid var(--line);border-radius:14px}
+.gestlok-chat-message {max-width:88%;align-self:flex-start;padding:11px 14px;background:white;border:1px solid var(--line);border-radius:12px}
+.gestlok-chat-message.mine {align-self:flex-end;background:#e3f3f2;border-color:#b8e0dd}
+.gestlok-chat-message strong {font-weight:700}
+.gestlok-chat-message small {display:block;color:var(--muted);font-size:11px;margin-top:5px}
+.gestlok-chat-message p {white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0}
+.gestlok-chat-form {display:grid;gap:10px}
+.gestlok-chat-form textarea {width:100%;resize:vertical;min-height:84px;border:1px solid var(--line-2);border-radius:10px;padding:12px;background:white}
+.gestlok-chat-form button {justify-self:end}
+.gestlok-tenant-mark {display:inline-flex;gap:8px;align-items:center;margin:8px 0 0;padding:5px 9px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:11px}
+.gestlok-tenant-mark img {width:42px;max-height:28px;object-fit:contain}
+@keyframes gestlok-enter {from {opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media (max-width:650px) {
+  .au-card {padding:17px}
+  .au-cover {margin:-4px -4px 3px}
+  .gestlok-chat-message {max-width:95%}
+}
+@media (prefers-reduced-motion:reduce){.au-cover img{animation:none}}
+
+/* Panel administrativo personal — exclusivo para el rol creadora. */
+.gl-admin {min-height:100dvh;display:grid;grid-template-columns:238px minmax(0,1fr);background:#f4f7fa;color:#122b41;font:14px/1.5 var(--f-body)}
+.gl-admin-sidebar {background:linear-gradient(160deg,#0a1d31,#122c44);color:#d7e6f0;display:flex;flex-direction:column;gap:24px;padding:28px 18px;min-height:100vh}
+.gl-admin-logo {display:grid;gap:2px;padding:8px 12px 12px}
+.gl-admin-logo img {max-width:165px;filter:brightness(0) invert(1);height:52px;object-fit:contain}
+.gl-admin-logo small {color:#9fb4c4;font-size:11px;letter-spacing:.02em}
+.gl-admin-nav {display:grid;gap:6px}
+.gl-admin-nav > span,.gl-admin-nav > button {display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:12px;text-align:left;background:transparent;color:#d6e3ed;padding:13px 12px;font-weight:600;font-size:13px}
+.gl-admin-nav > span[aria-current] {background:#1c4264;color:white}
+.gl-admin-nav > button:hover {background:#17364f}
+.gl-admin-nav .i {width:19px;height:19px}
+.gl-admin-nav b {margin-left:auto;color:white;border-radius:50%;background:#da5661;min-width:21px;text-align:center}
+.gl-admin-footer {margin-top:auto;border-top:1px solid #3c5062;padding:19px 10px;font-size:11px;color:#bfd1dd}
+.gl-admin-footer small {color:#91aabb}
+.gl-admin-main {min-width:0;max-width:1600px;width:100%;margin:0 auto;padding:28px clamp(16px,3vw,42px) 25px;display:grid;align-content:start;gap:20px}
+.gl-admin-heading {display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;align-items:center}
+.gl-admin-heading h1 {font-size:clamp(25px,2.2vw,32px);line-height:1.1;letter-spacing:-.035em;margin:2px 0 7px}
+.gl-admin-heading p {margin:0;color:#5e7384}
+.gl-admin-heading .eyebrow {font-size:11px;font-weight:750;letter-spacing:.14em;color:#63829a}
+.gl-admin-person {display:flex;align-items:center;gap:12px;font-size:12px}
+.gl-admin-person span:not(.gl-admin-avatar) {display:grid;gap:1px}
+.gl-admin-person small {color:#718496}
+.gl-admin-avatar {display:grid;place-items:center;border-radius:50%;width:40px;height:40px;background:#173955;color:white;font-weight:800;font-size:16px}
+.gl-admin-stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.gl-admin-stats article,.gl-admin-card {background:#fff;border:1px solid #e1e8ee;border-radius:14px;box-shadow:0 6px 20px rgba(18,44,68,.04)}
+.gl-admin-stats article {padding:18px 20px;display:grid;gap:7px}
+.gl-admin-stats span {display:flex;align-items:center;gap:9px;color:#42596e;font-size:12px;font-weight:700}
+.gl-admin-stats span .i {color:#187b92}
+.gl-admin-stats strong {font-size:31px;line-height:1.1;letter-spacing:-.04em;color:#152f46;font-weight:800}
+.gl-admin-stats small {font-size:11px;color:#728699}
+.gl-admin-notice {display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;padding:20px 24px;border:1px solid #cadde9;border-radius:14px;background:linear-gradient(110deg,#eaf5ff,#f6fbfd)}
+.gl-admin-notice b {font-size:17px}
+.gl-admin-notice p {margin:4px 0 0;color:#52697c}
+.gl-admin-panels {display:grid;grid-template-columns:minmax(0,1.45fr) minmax(240px,1fr);gap:16px}
+.gl-admin-card {padding:20px}
+.gl-admin-card header {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.gl-admin-card h2 {font-size:17px;letter-spacing:-.025em;margin:0}
+.gl-admin-card header small {color:#7c8b99;font-size:11px}
+.gl-admin-card > p {color:#63778b}
+.gl-admin-location {display:flex;align-items:center;gap:14px;border-top:1px solid #edf1f4;padding:15px 2px}
+.gl-admin-location-icon {width:38px;height:38px;background:#edf5f8;color:#206d7a;border-radius:10px;display:grid;place-items:center}
+.gl-admin-location-text {display:grid;gap:3px;flex:1;min-width:0}
+.gl-admin-location-text small {color:#7a8a97;font-size:11px}
+.gl-admin-team {overflow:hidden}
+.gl-admin-tablewrap {width:100%;overflow-x:auto}
+.gl-admin-team table {width:100%;border-collapse:collapse;text-align:left}
+.gl-admin-team th {background:#f4f8fa;color:#708393;font-size:11px;font-weight:750}
+.gl-admin-team td,.gl-admin-team th {padding:12px;border-bottom:1px solid #edf1f5}
+.gl-admin-team td {font-size:12px}
+.gl-admin-team td small {display:block;color:#738496;margin-top:3px}
+.gl-admin-good {display:inline-flex;border-radius:99px;background:#dff5ed;color:#127e5c;padding:4px 8px;font-weight:750;font-size:10px}
+.gl-admin-bottom {font-size:11px;text-align:center;color:#93a0ac;margin-top:6px}
+@media (max-width:1020px){.gl-admin{grid-template-columns:195px minmax(0,1fr)}.gl-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-admin-panels{grid-template-columns:1fr}}
+@media (max-width:650px){.gl-admin{display:block}.gl-admin-sidebar{position:static;min-height:auto;padding:12px 16px;gap:8px}.gl-admin-logo{padding:0}.gl-admin-logo img{height:42px}.gl-admin-nav{display:flex;overflow-x:auto}.gl-admin-nav > span,.gl-admin-nav > button{min-width:max-content;padding:10px}.gl-admin-footer{display:none}.gl-admin-main{padding:18px 12px 30px;gap:14px}.gl-admin-stats{gap:8px}.gl-admin-stats article{padding:12px}.gl-admin-stats strong{font-size:26px}.gl-admin-stats span{font-size:11px}.gl-admin-notice{padding:16px}.gl-admin-heading{align-items:flex-start}.gl-admin-person{width:100%}.gl-admin-team td,.gl-admin-team th{white-space:nowrap;padding:10px}}

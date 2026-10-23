@@ -1,15 +1,15 @@
 {
-  "name": "Stock Productos Mi Gusto",
-  "short_name": "Stock Mi Gusto",
-  "description": "Stock Productos Mi Gusto: stock, conteos y pedidos de los locales Munro y Torcuato.",
+  "name": "GestLok",
+  "short_name": "GestLok",
+  "description": "Productos, proveedores, inventario y conteos. Acceso gratuito previa autorización.",
   "lang": "es-AR",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#000000",
-  "theme_color": "#FFFFFF",
+  "background_color": "#11283c",
+  "theme_color": "#11283c",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -28,6 +28,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "icons/gestlok.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

@@ -1,8 +1,8 @@
-# mgstock — Next.js y Supabase
+# GestLok — Inventario y proveedores (Next.js y Supabase)
 
-App publicada: https://mgstock-app.github.io/
+**Versión actual publicada:** https://mgstock-app.github.io/ (el rediseño GestLok está en una rama de revisión y NO en producción).
 
-Estado de publicación y pendientes: [CONTINUAR-PUBLICACION.md](CONTINUAR-PUBLICACION.md). Historial técnico: [ESTADO-MGSTOCK.md](ESTADO-MGSTOCK.md).
+Precauciones del relanzamiento: [GESTLOK-SEGURIDAD-Y-DESPLIEGUE.md](GESTLOK-SEGURIDAD-Y-DESPLIEGUE.md). Estado de publicación y pendientes: [CONTINUAR-PUBLICACION.md](CONTINUAR-PUBLICACION.md). Historial técnico: [ESTADO-MGSTOCK.md](ESTADO-MGSTOCK.md).
 
 ## Ejecutar
 
