@@ -157,7 +157,7 @@ function restoreDraft(){
   S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {}; S.legacyDraft = false;
   const d = S.local && (S.uid || S.me?.email) ? lsGet(draftKey(), null) : null;
   if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; }
-  else if (S.local && hasLocalDraft(lsGet(legacyDraftKey(), null))) S.legacyDraft = true;
+  if (S.local && !hasLocalDraft(d) && hasLocalDraft(lsGet(legacyDraftKey(), null))) S.legacyDraft = true;
 }
 function recoverLegacyDraft(){
   if (!S.local || !S.legacyDraft || !canW()) return;
