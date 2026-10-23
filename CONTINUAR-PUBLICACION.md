@@ -2,6 +2,10 @@
 
 Última actualización: 21/10/2026, 12:15 (hora de Buenos Aires).
 
+## Reglas fijas de la usuaria (leer antes de cualquier cambio)
+- **Toda actualización se aplica siempre a los dos locales (Munro y Torcuato), aunque el pedido no lo diga.** Esto incluye funciones, hojas, columnas, permisos y datos de configuración. Si hace falta crear o convertir hojas, hacerlo en ambas sucursales. Si un cambio no pudiera aplicarse en las dos, avisar antes. (Pedido del 22/10/2026, 23:42.)
+- No borrar ni sobrescribir información real, no exponer credenciales, no modificar ReciboNet ni GESTLOK, no activar servicios pagos sin autorización.
+
 ## Estado
 - URL: https://mgstock-app.github.io/
 - Repositorio público (copia limpia, sin historial): https://github.com/mgstock-app/mgstock-app.github.io
