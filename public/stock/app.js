@@ -6,7 +6,6 @@
 const APP_URL = 'https://mgstock-app.github.io/';
 /* Carpeta de los scripts (para cargar el lector de Ingreso de mercadería solo cuando se usa) */
 const JS_BASE = (document.currentScript && document.currentScript.src) || ((document.querySelector('script[src*="stock/app.js"]') || {}).src) || location.href;
-const CREADORA = 'kmu15lopez@gmail.com';
 /* Hojas fijas. Se pueden renombrar, ordenar y quitar del menú; las hojas nuevas se guardan en la colección "hojas". */
 const BASE = [
   {id:'stock', nombre:'Stock', tipo:'stock', ic:'box', desc:'Cantidades por categoría y sin stock', orden:1},
@@ -1005,7 +1004,6 @@ const rolLabel = r => (ROL[r] || ROL.gerente)[0];
 const RANGO = {creadora:0, dueno:1, gerente:2, editor:2, lectura:3};
 function equipoList(){
   const list = [...S.equipo];
-  if (!list.some(e => String(e.email || '').toLowerCase() === CREADORA)) list.unshift({id:'_c', email:CREADORA, rol:'creadora', _local:true});
   return list.sort((a,b) => (RANGO[a.rol] ?? 9) - (RANGO[b.rol] ?? 9) || (a.agregado || 0) - (b.agregado || 0));
 }
 const fijo = e => ['creadora', 'dueno'].includes(ROLN(e.rol));
@@ -1068,7 +1066,7 @@ function openShare(){
   const adm = isCreadora();
   openPanel(`<div class="pn-h"><div><small>Stock Productos</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
-    <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora (${esc(CREADORA)}).`}</p>
+    <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
     ${adm ? `<form id="eq-form" class="eq-add" novalidate>
       <div class="frow"><div class="fld wide"><label for="eq-email">Email</label><input id="eq-email" type="email" inputmode="email" autocomplete="email" placeholder="nombre@gmail.com" required></div>
       <div class="fld"><label for="eq-rol">Rol</label><select id="eq-rol"><option value="gerente">Gerente</option><option value="lectura">Solo ver</option></select></div></div>
