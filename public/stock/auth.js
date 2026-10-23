@@ -4,7 +4,6 @@
 (() => {
   'use strict';
   const CFG = window.SPM_CONFIG || {};
-  const CREADORA = 'kmu15lopez@gmail.com';
   const $ = s => document.querySelector(s);
   const SITE = location.origin + location.pathname;
 
@@ -209,7 +208,7 @@
   const avatar = (txt, bg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="32" fill="${bg}"/><text x="32" y="41" font-family="Arial" font-size="26" font-weight="700" text-anchor="middle" fill="#fff">${String(txt || '?').charAt(0).toUpperCase()}</text></svg>`);
   const nameOf = e => String(e || '').split('@')[0];
   const user = Object.freeze({
-    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], isOwner: rol === 'creadora' || email === CREADORA, canEdit: EDITA.includes(rol) }; },
+    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
     async id(){ return email; },
     async isOwner(){ return rol === 'creadora'; },
     async canEdit(){ return EDITA.includes(rol); },
