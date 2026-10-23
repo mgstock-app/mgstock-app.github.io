@@ -947,7 +947,7 @@ function fabTexto(){
   const d = new Date();
   const man = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja();
-  let t = `${nombreHoja(fabCtx()).toUpperCase()} · Mi Gusto ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\n${IH ? `Producto: ${totalNombre(IH).toLowerCase()} (local + ingreso)` : `Producto: total (local + fábrica, ingreso ${man})`}\n`;
+  let t = `${nombreHoja(fabCtx()).toUpperCase()} · ${localNombre()} ${d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'})}\n${IH ? `Producto: ${totalNombre(IH).toLowerCase()} (local + ingreso)` : `Producto: total (local + fábrica, ingreso ${man})`}\n`;
   let prev = null;
   for (const it of fItems()){ const b = bloqueOf(it); if (b !== prev){ t += `${prev != null ? '\n' : ''}${bloqueNombre(b).toUpperCase()}\n`; } prev = b; t += `- ${it.nombre}: ${fmt(fTot(it))} (${fmt(fVal(it,'l') ?? 0)} + ${fmt(fVal(it,'f') ?? 0)})${fSin(it) ? ' · sin stock' : ''}\n`; }
   return t.trim();
@@ -1103,7 +1103,7 @@ function refreshShare(){ const l = $('#eq-list'); if (l) l.innerHTML = equipoRow
 function openShare(){
   S.panel = 'share'; S.eqDel = null;
   const adm = isCreadora();
-  openPanel(`<div class="pn-h"><div><small>Stock Productos</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+  openPanel(`<div class="pn-h"><div><small>GestLok</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
     <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
     ${adm ? `<form id="eq-form" class="eq-add" novalidate>
@@ -1668,7 +1668,7 @@ function openInstall(){
   const pAnd = `<div class="steps"><b>Android (Chrome)</b><ol><li>Tocá el menú <b>⋮</b> arriba a la derecha.</li><li>Elegí <b>Instalar app</b> o <b>Agregar a pantalla principal</b>.</li><li>Confirmá con <b>Instalar</b>.</li></ol></div>`;
   S.panel = 'install';
   openPanel(`<div class="pn-h"><div><small>Celular</small><h3>Instalar como app</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-  <div class="pn-b"><p class="lead">Queda el ícono de Mi Gusto en la pantalla de inicio y se abre a pantalla completa, como cualquier app. Se entra con la misma cuenta.</p>${ios ? pIos + pAnd : pAnd + pIos}</div>`, 'dlg');
+  <div class="pn-b"><p class="lead">Queda el ícono de GestLok en la pantalla de inicio y se abre a pantalla completa, como cualquier app. Se entra con la misma cuenta.</p>${ios ? pIos + pAnd : pAnd + pIos}</div>`, 'dlg');
 }
 
 /* ---------- Ordenar arrastrando (Ajustes) ---------- */
