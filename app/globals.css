@@ -951,3 +951,77 @@ html.auth-on body{overflow:hidden}
 .gl-admin-bottom {font-size:11px;text-align:center;color:#93a0ac;margin-top:6px}
 @media (max-width:1020px){.gl-admin{grid-template-columns:195px minmax(0,1fr)}.gl-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-admin-panels{grid-template-columns:1fr}}
 @media (max-width:650px){.gl-admin{display:block}.gl-admin-sidebar{position:static;min-height:auto;padding:12px 16px;gap:8px}.gl-admin-logo{padding:0}.gl-admin-logo img{height:42px}.gl-admin-nav{display:flex;overflow-x:auto}.gl-admin-nav > span,.gl-admin-nav > button{min-width:max-content;padding:10px}.gl-admin-footer{display:none}.gl-admin-main{padding:18px 12px 30px;gap:14px}.gl-admin-stats{gap:8px}.gl-admin-stats article{padding:12px}.gl-admin-stats strong{font-size:26px}.gl-admin-stats span{font-size:11px}.gl-admin-notice{padding:16px}.gl-admin-heading{align-items:flex-start}.gl-admin-person{width:100%}.gl-admin-team td,.gl-admin-team th{white-space:nowrap;padding:10px}}
+
+/* GestLok · presentación de apertura para PWA y web. Aprox. 3,7 s.
+   No consulta ni guarda datos, no cambia autenticación ni sesiones. */
+.gl-intro {
+  position:fixed; inset:0; z-index:10000; display:grid; place-items:center;
+  overflow:hidden; isolation:isolate; background:#060c14; color:#fff;
+  padding:calc(22px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px))
+          calc(22px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+  animation:gl-intro-dismiss .62s ease-in-out 3.1s forwards;
+}
+.gl-intro::before {
+  content:""; position:absolute; inset:-25%;
+  background:radial-gradient(ellipse at 48% 46%,rgba(16,38,61,.24),transparent 60%);
+  pointer-events:none;
+}
+.gl-intro-ring {
+  position:absolute; display:block; left:50%; top:51%; width:150vw; height:63vh;
+  min-width:720px; min-height:500px; max-width:1600px; max-height:940px;
+  border-radius:50%; border:1.5px solid rgba(45,91,139,.34);
+  pointer-events:none; transform:translate(-50%,-50%) rotate(-8deg);
+  animation:gl-intro-orbit 5.2s ease-in-out infinite alternate;
+}
+.gl-intro-ring-two {
+  width:135vw; height:57vh; min-width:650px; min-height:440px;
+  border-color:rgba(17,64,96,.13); animation-direction:alternate-reverse;
+}
+.gl-intro-content {
+  position:relative; z-index:1; display:grid; justify-items:center;
+  text-align:center; width:100%; transform:translateY(1vh);
+}
+.gl-intro-title {
+  font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:clamp(46px,9vw,78px); font-weight:800; letter-spacing:-.055em;
+  line-height:1.05; color:#fff; text-shadow:0 2px 20px rgba(0,0,0,.12);
+  animation:gl-intro-appear 1.05s cubic-bezier(.2,.8,.2,1) .16s both;
+}
+.gl-intro-tagline {
+  margin:19px 0 0; color:#c6ccd4; font-size:clamp(16px,3.5vw,23px);
+  font-weight:400; line-height:1.4; letter-spacing:.006em;
+  animation:gl-intro-appear .86s ease-out .95s both;
+}
+.gl-intro-progress {
+  width:min(208px,53vw); height:4px; margin-top:57px;
+  overflow:hidden; border-radius:999px; background:rgba(150,177,206,.13);
+  animation:gl-intro-appear .7s ease-out 1.3s both;
+}
+.gl-intro-progress > span {
+  display:block; width:100%; height:100%; transform-origin:left center;
+  background:linear-gradient(90deg,#316487,#72bfd0,#aac9e6);
+  border-radius:inherit; animation:gl-intro-progress 2.9s cubic-bezier(.25,.15,.5,1) .35s both;
+}
+@keyframes gl-intro-appear {
+  from {opacity:0;transform:translateY(18px) scale(.97)}
+  to {opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes gl-intro-progress {
+  from {transform:scaleX(0)}
+  to {transform:scaleX(1)}
+}
+@keyframes gl-intro-orbit {
+  from {transform:translate(-50%,-50%) rotate(-9deg) scale(.96)}
+  to {transform:translate(-50%,-50%) rotate(5deg) scale(1.04)}
+}
+@keyframes gl-intro-dismiss {
+  from {opacity:1;visibility:visible}
+  99% {opacity:0;visibility:visible}
+  to {opacity:0;visibility:hidden;pointer-events:none}
+}
+@media (prefers-reduced-motion:reduce) {
+  .gl-intro-title,.gl-intro-tagline,.gl-intro-progress,
+  .gl-intro-progress > span,.gl-intro-ring {animation:none!important}
+  .gl-intro {animation:gl-intro-dismiss .2s ease 3.1s forwards}
+  .gl-intro-progress > span {transform:none}
+}
