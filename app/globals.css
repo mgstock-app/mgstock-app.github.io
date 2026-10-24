@@ -951,3 +951,42 @@ html.auth-on body{overflow:hidden}
 .gl-admin-bottom {font-size:11px;text-align:center;color:#93a0ac;margin-top:6px}
 @media (max-width:1020px){.gl-admin{grid-template-columns:195px minmax(0,1fr)}.gl-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-admin-panels{grid-template-columns:1fr}}
 @media (max-width:650px){.gl-admin{display:block}.gl-admin-sidebar{position:static;min-height:auto;padding:12px 16px;gap:8px}.gl-admin-logo{padding:0}.gl-admin-logo img{height:42px}.gl-admin-nav{display:flex;overflow-x:auto}.gl-admin-nav > span,.gl-admin-nav > button{min-width:max-content;padding:10px}.gl-admin-footer{display:none}.gl-admin-main{padding:18px 12px 30px;gap:14px}.gl-admin-stats{gap:8px}.gl-admin-stats article{padding:12px}.gl-admin-stats strong{font-size:26px}.gl-admin-stats span{font-size:11px}.gl-admin-notice{padding:16px}.gl-admin-heading{align-items:flex-start}.gl-admin-person{width:100%}.gl-admin-team td,.gl-admin-team th{white-space:nowrap;padding:10px}}
+
+/* GestLok tablet/mobile: fix de contraste del encabezado.
+   Antes heredaba --mast-ink (blanco) sobre la barra blanca. */
+.top-brand-name {display:none}
+@media screen and (max-width:899px) {
+  .top {background:#ffffff;color:#11283c}
+  .top-in {gap:10px}
+  .top .ham {
+    display:grid;place-items:center;min-width:44px;width:44px;height:44px;
+    color:#16344c;background:#eef5f8;border:1px solid #ccd9e1;border-radius:11px
+  }
+  .top .ham svg.i {color:inherit;width:22px;height:22px}
+  .top .ham:focus-visible,.top #btn-ajustes:focus-visible {outline:3px solid #087e82;outline-offset:2px}
+  .top .plogo {display:block;width:38px;height:38px;flex:none;object-fit:contain}
+  .top .tt {min-width:0;flex:1}
+  .top .tt h2 {font-size:clamp(16px,2.4vw,20px);color:#11283c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top .crumb,.top .crumb b,.top .crumb .cm {color:#506576}
+  .top .live {border-color:#cbd9e1;background:#f5f9fa;color:#2f556a;min-width:34px;justify-content:center}
+  .top .btn,.top #btn-ajustes {
+    border-color:#ccd9e1;background:#f4f8fa;color:#173b55;font-weight:650;
+  }
+  .top #btn-ajustes svg.i {color:inherit;width:18px;height:18px}
+  .top .btn:hover,.top #btn-ajustes:hover,.top .ham:hover {background:#e5f0f4}
+  .top .tact {flex:none;gap:8px}
+}
+@media screen and (min-width:640px) and (max-width:899px) {
+  .top-brand-name {display:inline-block;font-weight:800;font-size:15px;color:#15394f;letter-spacing:-.03em;white-space:nowrap}
+}
+@media screen and (max-width:480px) {
+  .top-in {gap:8px}
+  .top .ham {min-width:40px;width:40px;height:40px}
+  .top .plogo {width:30px;height:30px}
+  .top .tt h2 {font-size:16px}
+  .top .crumb {font-size:10px}
+  .top #btn-ajustes {min-width:40px;width:40px;padding:0;font-size:0;gap:0}
+  .top #btn-ajustes svg.i {width:20px;height:20px}
+  .top .tact {gap:5px}
+  .top .live {padding:0 7px}
+}
