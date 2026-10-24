@@ -1,185 +1,204 @@
-/* GestLok · administración de la vidriera pública por sucursal.
- * Catálogo comercial separado del inventario histórico; RLS obligatorio en Supabase.
- * Los pedidos de visitantes se envían voluntariamente por WhatsApp, sin cobros ni débitos de stock. */
+/* GestLok · organización INTERNA de tienda online por empresa y sucursal.
+ * No muestra vidrieras ni permite comprar. Datos protegidos por RLS y tenant/local.
+ * El stock de esta sección no modifica ni reemplaza las planillas existentes. */
 (() => {
   'use strict';
   let api = null;
-  let state = {local:null, loaded:false, loading:false, saving:false, store:null, items:[], editing:null, error:''};
-  const $ = s => document.querySelector(s);
-  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const empty = local => ({local,loaded:false,loading:false,saving:false,workspace:null,items:[],editing:null,tab:'resumen',filter:'todos',q:'',error:''});
+  let state=empty(null);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n)||0);
   const client = () => window.GestLokSupabase;
-  const authorized = () => api && api.S.me && api.S.me.tenant_id && api.S.local && window.GestLokCommerce?.online();
-  const owner = () => api && ['creadora','dueno'].includes(api.miRol());
-  const editable = () => api && api.canW() && !api.S.offline && !!client();
-  const fmt = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(n)||0);
-  const link = slug => location.origin + '/tienda.html?slug=' + encodeURIComponent(slug);
-  const errMessage = e => String(e?.message || 'No se pudo completar la operación.').slice(0,220);
-  function reset() {
-    const loc = api?.S?.local || null;
-    if (state.local !== loc) state = {local:loc, loaded:false, loading:false, saving:false, store:null, items:[], editing:null, error:''};
-  }
-  async function load(force) {
+  const canView = () => !!(api?.S?.me?.tenant_id && api?.S?.local && window.GestLokCommerce?.online());
+  const isOwner = () => ['creadora','dueno'].includes(api?.miRol?.());
+  const canEdit = () => canView() && !!api?.canW?.() && !api.S.offline && !!client();
+  const shortage = p => Number(p.minimo)>0 && Number(p.stock)<=Number(p.minimo);
+  const low = () => state.items.filter(p=>p.activo!==false && shortage(p));
+  const err = e => String(e?.message || 'No se pudo completar la operación.').slice(0,180);
+  function reset(){const loc=api?.S?.local||null;if(state.local!==loc)state=empty(loc);}
+  function render(){if(api?.S?.view==='tienda-online')api.render();}
+  async function load(force=false){
     reset();
-    if (!authorized() || state.loading || (state.loaded && !force)) return;
-    const local = state.local, tenant = api.S.me.tenant_id, sb = client();
-    if (!sb) { state.error = 'No se pudo iniciar el catálogo comercial.'; state.loaded = true; return; }
-    state.loading = true; state.error = '';
-    try {
-      const a = await sb.from('gestlok_tiendas').select('*').eq('tenant_id',tenant).eq('local_id',local).maybeSingle();
-      if (a.error) throw a.error;
-      const store = a.data || null;
-      let items = [];
-      if (store) {
-        const b = await sb.from('gestlok_productos_tienda').select('*').eq('tenant_id',tenant).eq('tienda_id',store.id).order('nombre');
-        if (b.error) throw b.error;
-        items = b.data || [];
+    if(!canView() || state.loading || (state.loaded&&!force))return;
+    const local=state.local, tenant=api.S.me.tenant_id, sb=client();
+    if(!sb){state.error='No se pudo iniciar el espacio de gestión.';state.loaded=true;return;}
+    state.loading=true;state.error='';
+    try{
+      const a=await sb.from('gestlok_tiendas').select('*').eq('tenant_id',tenant).eq('local_id',local).maybeSingle();
+      if(a.error)throw a.error;
+      let products=[];
+      if(a.data){
+        const b=await sb.from('gestlok_productos_tienda').select('*').eq('tenant_id',tenant).eq('tienda_id',a.data.id).order('nombre');
+        if(b.error)throw b.error;
+        products=b.data||[];
       }
-      if (state.local !== local) return;
-      state.store = store; state.items = items; state.loaded = true;
-    } catch(e) { if (state.local === local) {state.error = errMessage(e); state.loaded = true;} }
-    finally { if(state.local===local){state.loading=false;if(api.S.view==='tienda-online')api.render();} }
+      if(local!==state.local)return;
+      state.workspace=a.data||null;state.items=products;state.loaded=true;
+    }catch(e){if(local===state.local){state.error=err(e);state.loaded=true;}}
+    finally{if(local===state.local){state.loading=false;render();}}
   }
-  function settingsForm() {
-    const t = state.store || {}, locked = !owner() || !editable() || state.saving;
-    return '<form id="gl-tienda-settings" class="card pad gl-commerce-order-form">' +
-      '<h3>' + (t.id ? 'Configuración de tu tienda' : 'Prepará tu tienda online') + '</h3>' +
-      '<p class="lead">La dueña controla la publicación. Nada se publica automáticamente y cada sucursal tiene su vidriera.</p>' +
-      '<fieldset class="gl-tienda-fieldset" ' + (locked ? 'disabled' : '') + '><div class="gl-commerce-fields">' +
-      '<label>Nombre público de tienda<input name="nombre" required maxlength="100" minlength="2" value="' + esc(t.nombre || api.localNombre()) + '"></label>' +
-      '<label>Enlace único (sin espacios)<input name="slug" required pattern="[a-z0-9][a-z0-9-]{2,55}" maxlength="56" value="' + esc(t.slug || '') + '" placeholder="mi-comercio-centro"></label>' +
-      '<label>WhatsApp de pedidos (código país sin +)<input name="whatsapp" inputmode="numeric" pattern="[1-9][0-9]{7,14}" value="' + esc(t.whatsapp || '') + '" placeholder="54911XXXXXXXX"></label>' +
-      '<label>Dirección para retiros<input name="direccion" maxlength="240" value="' + esc(t.direccion || '') + '"></label>' +
-      '<label class="gl-commerce-wide">Presentación<textarea name="descripcion" rows="2" maxlength="800">' + esc(t.descripcion || '') + '</textarea></label>' +
-      '</div><div class="gl-tienda-toggles">' +
-      '<label><input name="permite_retiro" type="checkbox" ' + (t.permite_retiro !== false ? 'checked' : '') + '> Retiro en local</label>' +
-      '<label><input name="permite_envio" type="checkbox" ' + (t.permite_envio ? 'checked' : '') + '> Envío a coordinar</label>' +
-      '<label><input name="visible" type="checkbox" ' + (t.visible ? 'checked' : '') + '> Publicar mi tienda</label>' +
-      '</div><button class="btn primary" type="submit">Guardar tienda</button></fieldset>' +
-      (!owner() ? '<p class="note">Solo la dueña o creadora puede cambiar estos datos.</p>' : '') + '</form>';
+  function metrics(){
+    const live=state.items.filter(p=>p.activo!==false), alert=live.filter(shortage);
+    const categories=new Set(live.map(p=>p.categoria)), suppliers=new Set(live.map(p=>p.proveedor).filter(Boolean));
+    const cards=[
+      ['Productos registrados',live.length,'Control interno de este local'],
+      ['Alertas de reposición',alert.length,'Stock en mínimo o menor'],
+      ['Categorías',categories.size,'Organización del catálogo'],
+      ['Proveedores asociados',suppliers.size,'Referencia por producto']
+    ];
+    return '<section class="gl-demo-metrics">'+cards.map(x=>'<article><small>'+x[0]+'</small><strong>'+x[1]+'</strong><span>'+x[2]+'</span></article>').join('')+'</section>';
   }
-  function productForm() {
-    if (!editable() || !state.store) return '';
-    const p = state.items.find(x => x.id === state.editing) || {};
-    return '<form id="gl-tienda-product-form" class="card pad gl-commerce-order-form">' +
-      '<h3>' + (p.id ? 'Editar producto' : 'Agregar producto al catálogo') + '</h3>' +
-      '<div class="gl-commerce-fields">' +
-      '<label>Nombre<input name="nombre" maxlength="140" required value="' + esc(p.nombre || '') + '"></label>' +
-      '<label>Categoría<input name="categoria" maxlength="80" required value="' + esc(p.categoria || 'General') + '"></label>' +
-      '<label>Precio (ARS)<input name="precio" type="number" step="0.01" min="0" max="9999999999" required value="' + esc(p.precio ?? '') + '"></label>' +
-      '<label>Precio anterior (oferta)<input name="precio_anterior" type="number" step="0.01" min="0" value="' + esc(p.precio_anterior ?? '') + '"></label>' +
-      '<label>Unidades disponibles para venta online<input name="stock" type="number" min="0" max="100000000" step="1" required value="' + esc(p.stock ?? 0) + '"></label>' +
-      '<label>Código / SKU<input name="sku" maxlength="80" value="' + esc(p.sku || '') + '"></label>' +
-      '<label class="gl-commerce-wide">Imagen (URL HTTPS)<input name="imagen_url" type="url" maxlength="600" pattern="https://.*" value="' + esc(p.imagen_url || '') + '" placeholder="https://..."></label>' +
-      '<label class="gl-commerce-wide">Descripción<textarea name="descripcion" rows="2" maxlength="1000">' + esc(p.descripcion || '') + '</textarea></label>' +
-      '</div><div class="gl-tienda-toggles">' +
-      '<label><input name="publicado" type="checkbox" ' + (p.publicado ? 'checked' : '') + '> Mostrar este producto</label>' +
-      '<label><input name="destacado" type="checkbox" ' + (p.destacado ? 'checked' : '') + '> Destacado</label>' +
-      '</div><div class="gl-tienda-actions"><button class="btn primary" type="submit" ' + (state.saving ? 'disabled' : '') + '>Guardar producto</button>' +
-      (p.id ? '<button type="button" class="btn" data-gl-cancel>Cancelar edición</button>' : '') + '</div></form>';
+  function summary(){
+    const items=low();
+    return metrics() + '<div class="gl-demo-two"><section class="card pad"><div class="gl-demo-section-title"><h3>Faltantes para revisar</h3><button class="btn sm" data-gl-tab="productos">Ver productos</button></div>'+
+    (items.length?items.map(p=>'<article class="gl-demo-line"><div><b>'+esc(p.nombre)+'</b><small>'+esc(p.sku||'Sin SKU')+' · Disponible '+esc(p.stock)+' · Mínimo '+esc(p.minimo)+'</small></div><span class="gl-demo-critical">Reponer</span></article>').join(''):'<p class="lead">Sin alertas de reposición.</p>')+
+    '</section><section class="card pad"><h3>Operación de ventas externas</h3><p class="lead">Usá <b>Pedidos online</b> para registrar las órdenes que recibís por WhatsApp, Instagram, marketplace u otros canales.</p><button class="btn primary" data-go="pedidos-online">Gestionar pedidos</button><p class="note">GestLok registra y organiza pedidos; no les vende a tus clientes.</p></section></div>'+
+    '<section class="card pad"><h3>Gestión unificada</h3><p class="lead">Productos, existencias, mínimos y proveedores por sucursal. Los conteos y el stock histórico anterior permanecen separados y disponibles.</p></section>';
   }
-  function productsList() {
-    const list = state.items;
-    return '<section class="card pad"><h3>Catálogo de la sucursal</h3>' +
-      '<p class="lead">' + list.length + ' productos · ' + list.filter(p => p.publicado).length + ' visibles al publicar la tienda.</p>' +
-      (!list.length ? '<p class="note">Todavía no se cargaron productos. Empezá con el formulario anterior.</p>' :
-      '<div class="gl-tienda-items">' + list.map(p =>
-      '<article class="gl-tienda-item">' +
-      (p.imagen_url ? '<img src="' + esc(p.imagen_url) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '<span class="gl-tienda-placeholder" aria-hidden="true">🛍️</span>') +
-      '<div><b>' + esc(p.nombre) + '</b><small>' + esc(p.categoria) + ' · SKU ' + esc(p.sku || '—') + '</small>' +
-      '<small>' + fmt(p.precio) + ' · ' + esc(p.stock) + ' unidades · ' + (p.publicado ? 'En catálogo' : 'Oculto') + '</small></div>' +
-      (editable() ? '<div class="gl-tienda-actions"><button type="button" class="btn sm" data-gl-edit="' + esc(p.id) + '">Editar</button><button type="button" class="btn sm" data-gl-delete="' + esc(p.id) + '">Quitar</button></div>' : '') +
-      '</article>').join('') + '</div>') +
-      '<p class="note">El stock comercial de este catálogo es independiente del inventario físico. Al recibir ventas por WhatsApp registrá manualmente sus movimientos para mantener ambos actualizados.</p>' +
-      '</section>';
+  function productRows(){
+    const q=state.q.toLocaleLowerCase('es').trim();
+    const rows=state.items.filter(p => (state.filter==='todos'||(state.filter==='alertas' && shortage(p))||(state.filter==='activos'&&p.activo!==false)) &&
+      (!q||[p.nombre,p.sku,p.categoria,p.proveedor,p.ubicacion].join(' ').toLocaleLowerCase('es').includes(q)));
+    return rows.length ? rows.map(p=>'<article class="gl-tienda-item">'+
+      '<span class="gl-tienda-placeholder" aria-hidden="true">📦</span><div><b>'+esc(p.nombre)+'</b><small>'+esc(p.sku||'Sin SKU')+' · '+esc(p.categoria)+' · '+esc(p.proveedor||'Sin proveedor')+'</small>'+
+      '<small>Stock: '+esc(p.stock)+' '+esc(p.unidad||'unidad')+' · Mínimo: '+esc(p.minimo??0)+' · Precio ref.: '+money(p.precio)+'</small>'+
+      (p.activo===false?'<small>Archivado</small>':shortage(p)?'<small class="gl-demo-critical">Reposición pendiente</small>':'<small>En control</small>')+'</div>'+
+      (canEdit()?'<div class="gl-tienda-actions"><button class="btn sm" data-gl-edit="'+esc(p.id)+'">Editar</button><button class="btn sm" data-gl-delete="'+esc(p.id)+'">Quitar</button></div>':'')+
+      '</article>').join('') : '<p class="lead">No hay productos que coincidan.</p>';
   }
-  function view() {
+  function productForm(){
+    if(!canEdit())return '';
+    const p=state.items.find(x=>x.id===state.editing)||{};
+    const val=(k,def='')=>esc(p[k]??def);
+    return '<form id="gl-tienda-product-form" class="card pad gl-commerce-order-form"><h3>'+(p.id?'Editar producto':'Agregar producto a la organización')+'</h3>'+
+      '<div class="gl-commerce-fields">'+
+      '<label>Nombre<input name="nombre" required minlength="2" maxlength="140" value="'+val('nombre')+'"></label>'+
+      '<label>SKU / Código<input name="sku" maxlength="80" value="'+val('sku')+'"></label>'+
+      '<label>Categoría<input name="categoria" required maxlength="80" value="'+val('categoria','General')+'"></label>'+
+      '<label>Proveedor<input name="proveedor" maxlength="120" value="'+val('proveedor')+'"></label>'+
+      '<label>Stock de control<input name="stock" type="number" min="0" max="100000000" step="1" required value="'+val('stock',0)+'"></label>'+
+      '<label>Stock mínimo<input name="minimo" type="number" min="0" max="100000000" step="1" required value="'+val('minimo',0)+'"></label>'+
+      '<label>Unidad<input name="unidad" maxlength="30" required value="'+val('unidad','unidad')+'"></label>'+
+      '<label>Ubicación / estante<input name="ubicacion" maxlength="120" value="'+val('ubicacion')+'"></label>'+
+      '<label>Precio de referencia (ARS)<input name="precio" type="number" min="0" max="9999999999" step="0.01" required value="'+val('precio',0)+'"></label>'+
+      '<label>Costo (ARS, opcional)<input name="costo" type="number" min="0" max="9999999999" step="0.01" value="'+val('costo')+'"></label>'+
+      '<label class="gl-commerce-wide">Notas del producto<textarea name="descripcion" maxlength="1000" rows="2">'+val('descripcion')+'</textarea></label>'+
+      '</div><div class="gl-tienda-toggles"><label><input name="activo" type="checkbox" '+(p.activo===false?'':'checked')+'> Producto activo en la organización</label></div>'+
+      '<div class="gl-tienda-actions"><button type="submit" class="btn primary" '+(state.saving?'disabled':'')+'>Guardar producto</button>'+
+      (p.id?'<button type="button" class="btn" data-gl-cancel>Cancelar edición</button>':'')+'</div></form>';
+  }
+  function products(){
+    return '<section class="card pad"><h3>Productos y stock de control</h3><p class="lead">Organizá lo que administrás en tu negocio online, aunque vendas en una plataforma externa.</p>'+
+      '<div class="gl-demo-tools"><label>Buscar<input id="gl-tienda-search" type="search" placeholder="Producto, SKU o proveedor" value="'+esc(state.q)+'"></label>'+
+      '<label>Ver<select id="gl-tienda-filter"><option value="todos" '+(state.filter==='todos'?'selected':'')+'>Todos</option><option value="activos" '+(state.filter==='activos'?'selected':'')+'>Activos</option><option value="alertas" '+(state.filter==='alertas'?'selected':'')+'>Con alerta</option></select></label></div>'+
+      '<div class="gl-tienda-items" id="gl-tienda-list">'+productRows()+'</div>'+
+      '<p class="note">Este stock de control es independiente del stock de las planillas generales. Los cambios se guardan solo en la sucursal autorizada.</p></section>'+
+      productForm();
+  }
+  function categories(){
+    const cats=[...new Set(state.items.map(p=>p.categoria))].sort();
+    return '<section class="card pad"><h3>Organización por categoría</h3>'+
+      '<p class="lead">Totales y mínimos registrados para esta sucursal, sin publicar productos ni abrir un comercio público.</p>'+
+      (cats.length?cats.map(cat=>{
+        const rows=state.items.filter(p=>p.categoria===cat && p.activo!==false);
+        return '<article class="gl-demo-line"><div><b>'+esc(cat)+'</b><small>'+rows.length+' productos · '+rows.filter(shortage).length+' con alerta</small></div><strong>'+rows.reduce((n,p)=>n+(Number(p.stock)||0),0)+' unidades</strong></article>';
+      }).join(''):'<p class="lead">Agregá productos y categorías desde la sección Productos.</p>')+'</section>';
+  }
+  function workspace(){
+    return '<section class="card pad"><h3>Espacio de gestión privado</h3><p class="lead">Nombre: <b>'+esc(state.workspace.nombre)+'</b>. Este espacio no está publicado ni permite vender a clientes desde GestLok.</p>'+
+      '<p class="note">Proveedores, conteos, hojas y pedidos del local están disponibles en el menú habitual. Los datos privados solo pueden verlos los usuarios autorizados de la empresa.</p></section>';
+  }
+  function view(){
     reset();
-    if (!authorized()) return '<section class="card pad"><h3>Tienda online</h3><p>Disponible cuando la dueña elige Tienda online o Tienda mixta.</p></section>';
-    if (!state.loaded && !state.loading) Promise.resolve().then(() => load(false));
-    if (state.loading || !state.loaded) return '<section class="card pad"><h3>Tienda online</h3><p>Cargando configuración y catálogo...</p></section>';
-    return '<div class="gl-commerce-page">' +
-      '<section class="card pad"><p class="eyebrow">GestLok · ' + esc(api.localNombre()) + '</p><h3>Tu tienda online</h3>' +
-      '<p class="lead">Catálogo, precios, ofertas, disponibilidad, WhatsApp y retiros o envíos. Solo la dueña puede activar la vidriera pública.</p>' +
-      (state.error ? '<p class="note warn" role="alert">' + esc(state.error) + '</p><button class="btn" data-gl-refresh>Reintentar</button>' : '') +
-      (state.store ? '<div class="gl-tienda-status"><span>' + (state.store.visible ? '🟢 Publicación solicitada' : '⚪ Borrador privado') + '</span><a href="' + esc(link(state.store.slug)) + '" target="_blank" rel="noopener noreferrer">Ver vidriera ' + esc(state.store.slug) + ' ↗</a></div>' : '') +
-      '<p class="note">La tienda pública solo es visible si la dueña la publica y la empresa está en modalidad online o mixta. Pedidos por WhatsApp, sin pagos automáticos.</p></section>' +
-      settingsForm() + (state.store ? productForm() + productsList() : '') + '</div>';
+    if(!canView())return '<section class="card pad"><h3>Organización de tienda online</h3><p>La dueña debe seleccionar la modalidad online o mixta de la empresa.</p></section>';
+    if(!state.loaded&&!state.loading)Promise.resolve().then(()=>load());
+    if(!state.loaded||state.loading)return '<section class="card pad"><h3>Organización online</h3><p>Cargando datos internos de la sucursal…</p></section>';
+    return '<div class="gl-commerce-page gl-online-admin">'+
+      '<section class="card pad"><p class="eyebrow">GESTLOK / GESTIÓN INTERNA · '+esc(api.localNombre())+'</p><h3>Organización de tienda online</h3>'+
+      '<p class="lead">Gestioná los productos, el stock mínimo y los pedidos que recibís por otras plataformas. Esta herramienta no publica una tienda ni vende a clientes.</p>'+
+      (state.error?'<p class="note warn" role="alert">'+esc(state.error)+'</p><button class="btn" data-gl-refresh>Reintentar</button>':'')+
+      '</section>'+
+      (!state.workspace?
+        '<section class="card pad"><h3>Empezar a organizar este local</h3><p class="lead">Se creará un espacio administrativo privado, vacío y exclusivo de esta empresa y sucursal. No se copiarán productos, ni se habilitarán ventas.</p>'+
+        (isOwner()&&canEdit()?'<button class="btn primary" data-gl-create>Crear espacio de gestión privado</button>':'<p class="note">La dueña debe habilitar el espacio antes de cargar productos.</p>')+'</section>':
+        '<nav class="gl-demo-nav" aria-label="Organización online">'+
+        ['resumen','productos','categorias'].map(t=>'<button data-gl-tab="'+t+'" aria-current="'+(state.tab===t?'page':'false')+'">'+({resumen:'Resumen',productos:'Productos',categorias:'Categorías'}[t])+'</button>').join('')+'</nav>'+
+        (state.tab==='resumen'?summary():state.tab==='productos'?products():categories())+workspace())+
+      '</div>';
   }
-  async function saveStore(form) {
-    if (!owner() || !editable() || state.saving || !authorized()) return;
-    const f=new FormData(form), tenant=api.S.me.tenant_id, local=api.S.local;
-    const get=n=>String(f.get(n)||'').trim();
-    const slug=get('slug').toLowerCase(), phone=get('whatsapp');
-    const retiro=f.has('permite_retiro'), envio=f.has('permite_envio'), visible=f.has('visible');
-    if (!/^[a-z0-9][a-z0-9-]{2,55}$/.test(slug) || get('nombre').length<2 ||
-        (!retiro&&!envio) || (phone && !/^[1-9][0-9]{7,14}$/.test(phone)) || (visible&&!phone)) {
-      api.toast('Revisá el enlace, las formas de entrega y el WhatsApp para publicar.',true); return;
-    }
-    const payload={nombre:get('nombre').slice(0,100),slug,whatsapp:phone,
-      direccion:get('direccion').slice(0,240),descripcion:get('descripcion').slice(0,800),
-      permite_retiro:retiro,permite_envio:envio,visible,actualizado:new Date().toISOString()};
-    state.saving=true;
-    try {
-      let r;
-      if(state.store) r=await client().from('gestlok_tiendas').update(payload).eq('id',state.store.id).eq('tenant_id',tenant).eq('local_id',local).select('id').single();
-      else r=await client().from('gestlok_tiendas').insert({...payload,tenant_id:tenant,local_id:local}).select('id').single();
-      if(r.error) throw r.error;
-      api.toast('Configuración comercial guardada.'); await load(true);
-    } catch(e){api.toast('No se guardó la tienda: ' + errMessage(e),true);}
-    finally{state.saving=false;if(api.S.view==='tienda-online')api.render();}
-  }
-  async function saveProduct(form) {
-    if(!editable() || !authorized() || !state.store || state.saving)return;
-    const f=new FormData(form),get=n=>String(f.get(n)||'').trim();
-    const price=Number(get('precio')),prev=get('precio_anterior')===''?null:Number(get('precio_anterior'));
-    const stock=Number(get('stock')),img=get('imagen_url');
-    if(get('nombre').length<2 || !Number.isFinite(price) || price<0 || !Number.isInteger(stock) ||
-       stock<0 || (prev!==null && (!Number.isFinite(prev)||prev<=price)) ||
-       (img && (!/^https:\/\/[^\s]+$/i.test(img)||img.length>600))) {
-      api.toast('Revisá nombre, precios, stock e imagen HTTPS.',true);return;
-    }
-    const payload={nombre:get('nombre').slice(0,140),categoria:get('categoria').slice(0,80)||'General',
-      descripcion:get('descripcion').slice(0,1000),sku:get('sku').slice(0,80),
-      precio:price,precio_anterior:prev,stock,imagen_url:img,publicado:f.has('publicado'),
-      destacado:f.has('destacado'),actualizado:new Date().toISOString()};
+  async function createWorkspace(){
+    if(!canView()||!canEdit()||!isOwner()||state.workspace||state.saving)return;
     state.saving=true;
     try{
-      const sb=client(),id=state.editing,tenant=api.S.me.tenant_id;
-      const r=id ? await sb.from('gestlok_productos_tienda').update(payload).eq('id',id).eq('tienda_id',state.store.id).eq('tenant_id',tenant).select('id').single()
-        : await sb.from('gestlok_productos_tienda').insert({...payload,tenant_id:tenant,tienda_id:state.store.id}).select('id').single();
+      const tenant=api.S.me.tenant_id,local=api.S.local;
+      const slug='interno-'+String(tenant).replace(/-/g,'').slice(0,16)+'-'+String(local).toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,16);
+      const r=await client().from('gestlok_tiendas').insert({tenant_id:tenant,local_id:local,
+        nombre:api.localNombre(),slug,visible:false,descripcion:'Gestión administrativa privada',whatsapp:'',permite_retiro:false,permite_envio:false}).select('id').single();
       if(r.error)throw r.error;
-      state.editing=null;api.toast('Producto guardado.');await load(true);
-    }catch(e){api.toast('No se guardó el producto: '+errMessage(e),true);}
-    finally{state.saving=false;if(api.S.view==='tienda-online')api.render();}
+      api.toast('Espacio de organización creado.');await load(true);
+    }catch(e){api.toast('No se pudo crear el espacio: '+err(e),true);}
+    finally{state.saving=false;render();}
   }
-  async function removeProduct(id) {
-    if(!editable() || !state.store || !state.items.some(p=>p.id===id) || state.saving)return;
-    if(!window.confirm('¿Quitar este producto de la vidriera? No se elimina ningún registro de stock.'))return;
+  async function saveProduct(form){
+    if(!canEdit()||!state.workspace||state.saving)return;
+    const f=new FormData(form),get=n=>String(f.get(n)||'').trim();
+    const stock=Number(get('stock')),minimo=Number(get('minimo')),precio=Number(get('precio'));
+    const costo=get('costo')===''?null:Number(get('costo'));
+    if(get('nombre').length<2||!get('categoria')||!get('unidad')||
+      !Number.isInteger(stock)||stock<0||stock>100000000||
+      !Number.isInteger(minimo)||minimo<0||minimo>100000000||
+      !Number.isFinite(precio)||precio<0||precio>9999999999||
+      (costo!==null&&(!Number.isFinite(costo)||costo<0||costo>9999999999))){
+        api.toast('Revisá el nombre, stock, mínimo, precio y costo.',true);return;
+      }
+    const payload={nombre:get('nombre').slice(0,140),sku:get('sku').slice(0,80),
+      categoria:get('categoria').slice(0,80),proveedor:get('proveedor').slice(0,120),
+      stock,minimo,unidad:get('unidad').slice(0,30),ubicacion:get('ubicacion').slice(0,120),
+      precio,costo,descripcion:get('descripcion').slice(0,1000),activo:f.has('activo'),
+      publicado:false,destacado:false,imagen_url:'',precio_anterior:null,
+      actualizado:new Date().toISOString()};
     state.saving=true;
     try{
-      const r=await client().from('gestlok_productos_tienda').delete().eq('id',id).eq('tienda_id',state.store.id).eq('tenant_id',api.S.me.tenant_id);
-      if(r.error)throw r.error;api.toast('Producto quitado del catálogo.');await load(true);
-    }catch(e){api.toast('No se pudo quitar: '+errMessage(e),true);}
-    finally{state.saving=false;if(api.S.view==='tienda-online')api.render();}
+      const sb=client(),tenant=api.S.me.tenant_id,id=state.editing;
+      const r=id?await sb.from('gestlok_productos_tienda').update(payload).eq('id',id).eq('tienda_id',state.workspace.id).eq('tenant_id',tenant).select('id').single()
+        :await sb.from('gestlok_productos_tienda').insert({...payload,tenant_id:tenant,tienda_id:state.workspace.id}).select('id').single();
+      if(r.error)throw r.error;
+      state.editing=null;api.toast('Producto guardado en el control interno.');await load(true);
+    }catch(e){api.toast('No se guardó el producto: '+err(e),true);}
+    finally{state.saving=false;render();}
   }
-  document.addEventListener('submit',e=>{
-    if(e.target.id==='gl-tienda-settings'){e.preventDefault();saveStore(e.target);}
-    if(e.target.id==='gl-tienda-product-form'){e.preventDefault();saveProduct(e.target);}
-  });
+  async function removeProduct(id){
+    if(!canEdit()||!state.workspace||state.saving||!state.items.some(p=>p.id===id))return;
+    if(!window.confirm('¿Quitar este producto de la organización online? No modifica las planillas generales.'))return;
+    state.saving=true;
+    try{
+      const r=await client().from('gestlok_productos_tienda').delete().eq('id',id).eq('tienda_id',state.workspace.id).eq('tenant_id',api.S.me.tenant_id);
+      if(r.error)throw r.error;api.toast('Producto quitado del control online.');await load(true);
+    }catch(e){api.toast('No se pudo quitar: '+err(e),true);}
+    finally{state.saving=false;render();}
+  }
+  document.addEventListener('submit',e=>{if(e.target.id==='gl-tienda-product-form'){e.preventDefault();saveProduct(e.target);}});
   document.addEventListener('click',e=>{
-    const b=e.target.closest('[data-gl-edit],[data-gl-delete],[data-gl-cancel],[data-gl-refresh]');
-    if(!b)return;
+    const t=e.target.closest('[data-gl-tab],[data-gl-create],[data-gl-refresh],[data-gl-edit],[data-gl-delete],[data-gl-cancel]');
+    if(!t)return;
     e.preventDefault();
-    if(b.hasAttribute('data-gl-refresh')){state.loaded=false;load(true);return;}
-    if(b.hasAttribute('data-gl-cancel'))state.editing=null;
-    if(b.hasAttribute('data-gl-edit'))state.editing=b.dataset.glEdit;
-    if(b.hasAttribute('data-gl-delete')){removeProduct(b.dataset.glDelete);return;}
-    api?.render();
+    if(t.hasAttribute('data-gl-create')){createWorkspace();return;}
+    if(t.hasAttribute('data-gl-refresh')){state.loaded=false;load(true);return;}
+    if(t.hasAttribute('data-gl-delete')){removeProduct(t.dataset.glDelete);return;}
+    if(t.hasAttribute('data-gl-edit')){state.editing=t.dataset.glEdit;state.tab='productos';}
+    if(t.hasAttribute('data-gl-cancel'))state.editing=null;
+    if(t.dataset.glTab&&['resumen','productos','categorias'].includes(t.dataset.glTab)){state.tab=t.dataset.glTab;state.editing=null;}
+    render();
   });
-  window.GestLokTienda=Object.freeze({
-    attach(ctx){api=ctx;},
-    view,
-    reset(){state.local=null;reset();},
-    link,
+  document.addEventListener('input',e=>{
+    if(e.target.id!=='gl-tienda-search')return;
+    state.q=e.target.value;
+    const list=document.getElementById('gl-tienda-list');
+    if(list)list.innerHTML=productRows();
   });
+  document.addEventListener('change',e=>{
+    if(e.target.id!=='gl-tienda-filter')return;
+    state.filter=e.target.value;render();
+  });
+  window.GestLokTienda=Object.freeze({attach(ctx){api=ctx;},view,reset(){state=empty(null);}});
 })();
