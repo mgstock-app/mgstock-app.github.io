@@ -90,7 +90,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#view").should("not.contain.text","Proveedor Munro QA");
   });
 
-  it("Inicio resume cada hoja guardada y no mezcla las cantidades entre planillas", () => {
+  it("Inicio operativo no duplica hojas; los registros siguen en sus secciones", () => {
     cy.window().then(w => {
       const fabrica = w.__rows.filter(r => r.col === "munro/fabrica");
       fabrica.forEach(r => { r.data.local = null; r.data.fabrica = null; });
@@ -98,27 +98,22 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
       expect(primera).not.to.equal(undefined);
       primera.data.local = 6;
       primera.data.fabrica = 2;
-      w.__rows.push({col:"munro/hojas", id:"h-qa-cajas-resumen",
-        data:{nombre:"Stock Cajas QA", tipo:"lista", orden:90}});
-      w.__rows.push({col:"munro/productos", id:"p-qa-cajas-resumen",
-        data:{nombre:"Caja de prueba", cat:"Envases QA", hoja:"h-qa-cajas-resumen", stock:12}});
+      w.__rows.push({col:"munro/hojas",id:"h-qa-cajas-resumen",
+        data:{nombre:"Stock Cajas QA",tipo:"lista",orden:90}});
+      w.__rows.push({col:"munro/productos",id:"p-qa-cajas-resumen",
+        data:{nombre:"Caja de prueba",cat:"Envases QA",hoja:"h-qa-cajas-resumen",stock:12}});
     });
     owner();
     toLocal("munro");
-    cy.get('.gl-home-sheet-summaries').should("be.visible");
-    cy.get('.gl-home-sheet-summaries [data-go="fabrica"]')
-      .should("contain.text","Local guardado: 1/")
-      .and("contain.text","Fábrica: 1/");
-    cy.get('.gl-home-sheet-summaries [data-go="h-qa-cajas-resumen"]')
-      .should("contain.text","Stock Cajas QA")
-      .and("contain.text","Con cantidad guardada: 1/1");
-    cy.get('.gl-home-sheet-summaries [data-go="stock"]')
-      .should("not.contain.text","Caja de prueba");
-    cy.get('#view').should("contain.text","Datos guardados");
-    cy.get('.gl-home-sheet-summaries [data-go="h-qa-cajas-resumen"]').click();
-    cy.get('#view').should("contain.text","Caja de prueba");
+    cy.get('.gl-home-essential').should('be.visible');
+    cy.get('.gl-home-essential-stat').should('have.length',3);
+    cy.get('.gl-home-sheet-summaries').should('not.exist');
+    cy.get('#view').should('not.contain.text','Caja de prueba');
+    cy.get('#snav [data-go="h-qa-cajas-resumen"]').should('exist').click();
+    cy.get('#view').should('contain.text','Caja de prueba');
+    cy.get('#snav [data-go="fabrica"]').click();
+    cy.get('#view').should('contain.text','Fábrica');
   });
-
   it("chat de equipo: guarda el mensaje solamente en el local seleccionado", () => {
     owner();
     toLocal("munro");
@@ -373,9 +368,9 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
 
   it("inicio: muestra tareas claras para el cliente", () => {
     login("gerente.munro@example.com");
-    cy.get("#view .gl-today").should("be.visible");
-    cy.get("#view .gl-today").should("contain.text","¿Qué necesitás resolver?");
-    cy.get('.gl-today-action[data-go="proveedores"]').click();
+    cy.get("#view .gl-home-essential").should("be.visible");
+    cy.get("#view .gl-home-essential-stat").should("have.length",3);
+    cy.get('.gl-home-essential-links [data-go="proveedores"]').click();
     cy.get("#view").should("contain.text","Proveedores");
   });
 
