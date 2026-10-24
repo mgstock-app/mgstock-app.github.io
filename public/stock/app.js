@@ -182,9 +182,7 @@ function recoverLegacyDraft(){
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
 const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'diario', 'vencimientos', 'avisos'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
-window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol(),
-  pushEnable:()=>window.GestLokPush?.enable?.(),
-  pushDisable:()=>window.GestLokPush?.disable?.()});
+
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
 function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
@@ -3328,6 +3326,9 @@ function start(){
   applySkin(); render(); renderInstall(); boot();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol(),
+  pushEnable:()=>window.GestLokPush?.enable?.(),
+  pushDisable:()=>window.GestLokPush?.disable?.()});
 start();
 setInterval(() => { if (!S.panel && S.local) renderSavebar(); }, 60000);
 })();
