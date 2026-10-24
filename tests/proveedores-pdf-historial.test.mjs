@@ -75,3 +75,15 @@ test('WhatsApp recibe un solo PDF como archivo, sin mensaje ni imagen',()=>{
  assert.match(app,/https:\/\/wa\.me\/'\+p\.telefono/);
  assert.doesNotMatch(app,/wa\.me\/'\+p\.telefono\+'\?text=/);
 });
+
+test('Proveedor asignado por catálogo se crea junto con historial, sin ficha duplicada',()=>{
+ const auto=read('supabase/migrations/20261024_gestlok_proveedores_catalogo_auto.sql');
+ const mock=read('tests/mock_supabase.js');
+ assert.match(auto,/p_productos->0->>'proveedor'/);
+ assert.match(auto,/insert into public\.docs\(col,id,data,tenant_id,updated_by\)/);
+ assert.match(auto,/on conflict \(col,id\) do nothing/);
+ assert.match(auto,/for update/);
+ assert.match(auto,/p_version/);
+ assert.match(app,/proveedor:nombre/);
+ assert.match(mock,/gestlok_proveedor_guardar_historial/);
+});
