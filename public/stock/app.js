@@ -93,9 +93,9 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], provHistorial:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, provBusy:false, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
@@ -180,7 +180,7 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
@@ -528,13 +528,13 @@ function proveedorFilas(nombre){
     const sugerido=stored.sugerido ?? (objetivo!=null && stock!=null ? Math.max(0,round(objetivo-stock)):null);
     return {
       id:'c:'+p.id,productoId:p.id,origen:'catalogo',
-      nombre:p.nombre||'',unidad:p.unidad||'unidad',
+      nombre:p.nombre||'',unidad:p.unidad||'unidad',categoria:catOf(p)||'General',
       stockLocal:stock,sugerido,pedir:stored.pedir??0
     };
   });
   for(const x of draft.items||[]){
     if(!x?.id || !x.nombre)continue;
-    filas.push({...x,origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
+    filas.push({...x,origen:'manual',categoria:x.categoria||'General',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
   }
   return filas;
 }
@@ -621,11 +621,12 @@ function agregarProductoProveedor(form){
   if(!canW() || !S.provOpen)return;
   const nombre=form.querySelector('#prov-item-name').value.trim().replace(/\s+/g,' ');
   const unidad=form.querySelector('#prov-item-unit').value.trim().slice(0,30)||'unidad';
+  const categoria=(form.querySelector('#prov-item-category')?.value||'General').trim().slice(0,70)||'General';
   if(!nombre || nombre.length>100){toast('Ingresá un nombre válido de producto.',true);return;}
   if(proveedorFilas(S.provOpen).some(x=>norm(x.nombre)===norm(nombre))){toast('Ese producto ya existe en esta carpeta.',true);return;}
   const id='m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const d=proveedorBase(S.provOpen);
-  d.items.push({id,nombre,unidad,stockLocal:null,pedir:0,sugerido:null});
+  d.items.push({id,nombre,unidad,categoria,stockLocal:null,pedir:0,sugerido:null});
   proveedorGuardarBorrador(S.provOpen);S.provAdding=false;render();toast('Producto agregado al borrador. Guardá la planilla.');
 }
 function quitarProductoProveedor(id){
@@ -655,15 +656,15 @@ function proveedorResumenHTML(nombre){
      <tbody>${rows.map(x=>`<tr><td>${esc(nombre)}</td><td>${esc(x.nombre)}</td><td><b>${fmt(x.pedir)}</b> ${esc(x.unidad)}</td></tr>`).join('')}</tbody>
      </table></div>` :
    '<p class="gl-prov-empty">Todavía no hay productos para pedir. Completá la columna <b>Pedir</b> y aparecerán automáticamente acá.</p>';
-  return `<div class="gl-provider-summary-head"><h3>Pedido listo para compartir</h3>
+  return `<div class="gl-provider-summary-head"><h3>Resumen del pedido</h3>
      <span class="gl-provider-count">${rows.length} ${rows.length===1?'producto':'productos'}</span></div>
-     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar en esta carpeta. Revisalos antes de compartir.' : 'El resumen se arma automáticamente con las cantidades de Pedir.'}</p>
+     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar. Tocá Guardar cuando tu lista esté lista.' : 'Lista guardada. Podés compartir el PDF o consultar el historial.'}</p>
      ${footer}
      <div id="prov-err" class="gl-prov-err" role="status"></div>
      <div class="bar-a">
-       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar lista y pedido</button>`:''}
-       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length?'disabled':''}>${ic('share')}Compartir por WhatsApp</button>`:''}
-       ${rows.length? `<button class="btn" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+       ${canW()? `<button class="btn primary" data-act="prov-save-plan" ${S.offline||S.provBusy?'disabled':''}>${ic('save')}Guardar</button>`:''}
+       ${esTotal()? `<button class="btn" data-act="prov-share" ${!rows.length||draft.dirty||draft.stale||!draft.base?'disabled':''}>${ic('share')}Enviar PDF por WhatsApp</button>`:''}
+       
      </div>
      ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
      ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
@@ -673,113 +674,159 @@ function mostrarResumenProveedor(){
   const wrap=document.getElementById('prov-resumen');
   if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
 }
-async function guardarPlanProveedor(){
-  if(!canW() || S.offline || !S.db || !S.local || !S.provOpen){toast('Necesitás internet y permiso de edición para guardar.',true);return;}
+async function guardarPlanProveedor(historico=false){
+  if(!canW()||S.offline||!S.db||!S.local||!S.provOpen){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
+  }
+  if(S.provBusy)return;
   if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
   const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
-  const btn=document.querySelector('[data-act="prov-save-plan"]');
-  if(btn)btn.disabled=true;
+  const btn=document.querySelector('[data-act="prov-save-draft"],[data-act="prov-save-history"]');
+  S.provBusy=true;if(btn)btn.disabled=true;
   try{
     const ref=C('proveedores').doc(proveedorId(nombre));
     const snap=await ref.get();
-    const ver=snap.exists ? Number(snap.data()?.pedidoActualizado)||0 : 0;
+    const ver=snap.exists?Number(snap.data()?.pedidoActualizado)||0:0;
     if(ver!==d.base){
       d.stale=true;
-      toast('Otra persona cambió este pedido. Copiá tu lista antes de recargar para evitar reemplazar sus datos.',true);
+      toast('Otro usuario cambió el pedido. Copiá tus datos antes de recargar para no pisar sus cambios.',true);
       return;
     }
     const stamp=Date.now();
-    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},pedidoActualizado:stamp,pedidoPor:S.uid};
-    await w(()=>snap.exists ? ref.update(payload) : ref.set({nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''}));
-    if(local!==S.local)return;
-    delete S.provDrafts[proveedorId(nombre)];
+    const seleccionados=proveedorSeleccionados(nombre).map(x=>({
+      nombre:x.nombre,unidad:x.unidad,categoria:x.categoria||'General',pedir:x.pedir
+    }));
+    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},
+      pedidoActualizado:stamp,pedidoPor:S.uid};
+    await w(()=>snap.exists?ref.update(payload):ref.set({
+      nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''
+    }));
+    if(S.local!==local)return;
+    const ficha=proveedorFicha(nombre);
+    if(ficha)Object.assign(ficha,payload);
+    else S.provInfo.push({id:proveedorId(nombre),nombre,...payload});
+    d.base=stamp;d.dirty=false;d.stale=false;
     try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
-    toast('Lista y pedido guardados sin cambiar el stock real.');
-  }catch(e){fail(e);}finally{if(btn?.isConnected)btn.disabled=false;}
+    if(historico&&seleccionados.length){
+      try{
+        await w(()=>C('proveedores_historial').add({
+          proveedor:nombre,proveedorId:proveedorId(nombre),local,
+          fecha:stamp,autor:S.uid,productos:seleccionados,
+          productosTotal:seleccionados.length,version:stamp
+        }));
+        toast('Pedido guardado en el historial. Podés exportarlo en PDF.');
+      }catch(e){
+        toast('La lista se guardó, pero falló el historial. Comprobá tu conexión antes de repetir.',true);
+      }
+    }else toast('Lista guardada en GestLok. Podés seguir editándola o exportar su PDF.');
+    closePanel();render();
+  }catch(e){fail(e);}
+  finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
 }
-function crearImagenPedido(nombre,productos,pagina,total){
-  const W=1000, H=310+productos.length*64;
-  const canvas=document.createElement('canvas');
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  if(!ctx)return Promise.reject(new Error('canvas'));
-  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#0c2034';ctx.fillRect(0,0,W,150);
-  ctx.fillStyle='#ffffff';ctx.font='bold 40px Arial, sans-serif';ctx.fillText('GESTLOK',50,75);
-  ctx.font='22px Arial, sans-serif';ctx.fillText('PEDIDO A PROVEEDOR',50,112);
-  ctx.fillStyle='#14354b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText(nombre.slice(0,55),50,205);
-  ctx.font='18px Arial, sans-serif';ctx.fillText('Local: '+localNombre().slice(0,40)+'   |   '+hoyISO()+'   |   Página '+pagina+'/'+total,50,240);
-  ctx.fillStyle='#eff5f7';ctx.fillRect(42,263,W-84,42);
-  ctx.fillStyle='#17394f';ctx.font='bold 19px Arial, sans-serif';ctx.fillText('PRODUCTO',55,290);ctx.fillText('PEDIR',755,290);
-  ctx.font='19px Arial, sans-serif';
-  productos.forEach((p,i)=>{
-    const y=332+i*64;
-    if(i%2===0){ctx.fillStyle='#f6f9fb';ctx.fillRect(42,y-24,W-84,58);}
-    ctx.fillStyle='#1a364b';
-    const product=String(p.nombre).length>53?String(p.nombre).slice(0,50)+'…':String(p.nombre);
-    ctx.fillText(product,55,y,670);
-    ctx.font='bold 19px Arial, sans-serif';
-    ctx.fillText(fmt(p.pedir)+' '+String(p.unidad||'').slice(0,16),755,y,200);
-    ctx.font='19px Arial, sans-serif';
-  });
-  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('imagen')),'image/png'));
-}
-async function compartirPedidoProveedor(){
-  if(!esTotal() || !S.provOpen)return;
-  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
-  if(!rows.length){toast('Completá primero las cantidades de Pedir.',true);return;}
-  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de compartir.',true);return;}
-  const texto=pedidoProveedorTexto(nombre),telefono=telWa(proveedorFicha(nombre)?.telefono);
-  const wa='https://wa.me/'+telefono+'?text='+encodeURIComponent(texto);
-  if(!navigator.share){
-    window.open(wa,'_blank','noopener,noreferrer');
-    toast('WhatsApp abierto con el pedido escrito. Confirmá el envío.');
-    return;
+function confirmarGuardarProveedor(){
+  if(!canW()||!S.provOpen||S.offline||S.provBusy){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
   }
-  const btn=document.querySelector('[data-act="prov-share"]');if(btn)btn.disabled=true;
-  try{
-    const chunks=[];for(let i=0;i<rows.length;i+=28)chunks.push(rows.slice(i,i+28));
-    const archivos=[];
-    for(let i=0;i<chunks.length;i++){
-      const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
-      archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
-    }
-    if(S.provOpen!==nombre)return;
-    S.provEnvio={nombre,local:S.local,texto,wa,archivos};
-    S.panel='prov-share';
-    const filesAllowed=!!navigator.canShare?.({files:archivos});
-    openPanel(`<div class="pn-h"><h3>Compartir pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-      <div class="pn-b gl-prov-sharing">
-        <p class="lead"><b>${esc(nombre)}</b> · ${plural(rows.length,'producto','productos')} · ${plural(archivos.length,'imagen preparada','imágenes preparadas')}.</p>
-        <p class="lead">Elegí WhatsApp en el menú de compartir y confirmá el destinatario. GestLok no envía nada sin tu confirmación.</p>
-        <button class="btn primary" type="button" data-act="prov-share-ready">${ic('share')}${filesAllowed?'Enviar imagen por WhatsApp':'Compartir pedido como texto'}</button>
-        ${navigator.clipboard?.write && window.ClipboardItem && archivos.length===1?`<button class="btn" type="button" data-act="prov-copy-image">${ic('copy')}Copiar imagen</button>`:''}
-        <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}Abrir WhatsApp con el pedido escrito</a>
-        <small>Si tu dispositivo no admite adjuntar la imagen, podés compartir el texto completo.</small>
-      </div>`,'dlg');
-  }catch(e){toast('No se pudo generar la imagen. Usá Copiar pedido o WhatsApp.',true);}
-  finally{if(btn?.isConnected)btn.disabled=false;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades antes de guardar.',true);return;}
+  const nombre=S.provOpen,total=proveedorSeleccionados(nombre).length;
+  S.panel='prov-save';
+  openPanel('<div class="pn-h"><h3>¿Terminaste el pedido?</h3>'+
+    '<button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+    '<div class="pn-b gl-prov-sharing">'+
+    '<p class="lead"><b>'+esc(nombre)+'</b> · '+plural(total,'producto para pedir','productos para pedir')+'.</p>'+
+    '<p class="lead">Podés guardar la lista para seguir después o finalizar el pedido y archivarlo en el historial. Ningún pedido anterior se borra.</p>'+
+    '<button class="btn primary" data-act="prov-save-history" '+(total?'':'disabled')+'>'+
+      ic('save')+'Sí, terminé. Guardar en historial</button>'+
+    '<button class="btn" data-act="prov-save-draft">'+ic('save')+'Guardar lista sin finalizar</button>'+
+    '<button class="btn" data-act="close">Cancelar</button></div>','dlg');
 }
-/* El usuario toca una segunda vez: mantiene la activación requerida por Web Share. */
+function ponerEnCeroProveedorCategoria(categoria){
+  if(!canW()||!S.provOpen)return;
+  const nombre=S.provOpen,rows=proveedorFilas(nombre)
+    .filter(x=>(x.categoria||'General')===categoria);
+  if(!rows.length)return;
+  if(!window.confirm('¿Poner en 0 Stock local y Pedir de '+categoria+
+    '? La columna Sugerido quedará intacta. Después tocá Guardar.'))return;
+  const d=proveedorBase(nombre);
+  for(const row of rows){
+    if(row.origen==='manual'){
+      const it=d.items.find(x=>x.id===row.id);
+      if(it){it.stockLocal=0;it.pedir=0;it.sugerido=row.sugerido;}
+    }else{
+      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),
+        stockLocal:0,pedir:0,sugerido:row.sugerido};
+    }
+  }
+  proveedorGuardarBorrador(nombre);render();
+  toast('Stock local y Pedir quedaron en 0; Sugerido permanece intacto. Guardá la lista.');
+}
+/* Solo PDF real. WhatsApp no permite adjuntar archivos mediante enlaces wa.me;
+   Web Share adjunta el PDF si el móvil lo soporta; si no, se descarga para
+   adjuntarlo manualmente. Nunca se envía foto o texto en este flujo. */
+function compartirPedidoProveedor(historialId){
+  if(!esTotal()||!S.provOpen)return;
+  const nombre=S.provOpen;
+  const registro=historialId?S.provHistorial.find(x=>x.id===historialId && x.proveedorId===proveedorId(nombre)):null;
+  if(historialId&&!registro){toast('No se encontró ese pedido en el historial.',true);return;}
+  const d=proveedorBase(nombre);
+  if(!registro&&(d.dirty||d.stale||!d.base)){
+    toast('Primero guardá la lista antes de exportar el PDF.',true);return;
+  }
+  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de exportar.',true);return;}
+  const rows=registro?registro.productos:proveedorSeleccionados(nombre);
+  if(!Array.isArray(rows)||!rows.length){toast('No hay productos para exportar.',true);return;}
+  if(!window.GestLokProviderPDF?.createFile){
+    toast('El generador PDF no está disponible. Actualizá la aplicación.',true);return;
+  }
+  try{
+    const file=window.GestLokProviderPDF.createFile({
+      proveedor:nombre,local:localNombre(),
+      fecha:registro?new Date(registro.fecha).toLocaleDateString('es-AR'):hoyISO(),rows
+    });
+    const telefono=telWa(proveedorFicha(nombre)?.telefono);
+    const share=!!navigator.share && !!navigator.canShare?.({files:[file]});
+    S.provEnvio={nombre,local:S.local,archivo:file,telefono,share};
+    S.panel='prov-share';
+    openPanel('<div class="pn-h"><h3>Compartir PDF</h3>'+
+      '<button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+      '<div class="pn-b gl-prov-sharing">'+
+      '<p class="lead"><b>'+esc(nombre)+'</b> · '+plural(rows.length,'producto','productos')+
+      ' · PDF de '+Math.max(1,Math.ceil(file.size/1024))+' KB.</p>'+
+      '<p class="lead">Se comparte exclusivamente el archivo PDF, sin fotografía ni texto de pedido. Elegí WhatsApp en el menú y confirmá el destinatario.</p>'+
+      (share?'<button class="btn primary" data-act="prov-share-ready">'+ic('share')+
+        'Compartir PDF (elegir WhatsApp)</button>':'<p class="note warn">Este dispositivo no permite adjuntar el PDF directamente. Descargalo y adjuntalo desde WhatsApp.</p>')+
+      '<button class="btn" data-act="prov-download-pdf">'+ic('save')+'Descargar PDF</button>'+
+      (telefono?'<a class="btn" href="https://wa.me/'+telefono+'" target="_blank" rel="noopener noreferrer">'+ic('msg')+
+        'Abrir chat del proveedor (sin texto)</a>':
+        '<p class="note">Agregá el número de WhatsApp en la ficha del proveedor para abrir directamente su chat.</p>')+
+      '</div>','dlg');
+  }catch(e){toast('No se pudo generar el PDF. Revisá los artículos y volvé a intentar.',true);}
+}
+function descargarPdfProveedor(){
+  const p=S.provEnvio;
+  if(!p||p.local!==S.local||!p.archivo||!esTotal())return;
+  const u=URL.createObjectURL(p.archivo),a=document.createElement('a');
+  a.href=u;a.download=p.archivo.name;document.body.appendChild(a);a.click();a.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(u),15000);
+  toast('PDF descargado. Adjuntá ese archivo desde el chat de WhatsApp.');
+}
 function enviarProveedorPreparado(){
   const p=S.provEnvio;
-  if(!p || p.local!==S.local || !esTotal() || !navigator.share)return;
-  const filesAllowed=!!navigator.canShare?.({files:p.archivos});
-  let promise;
-  try{promise=navigator.share(filesAllowed?{title:'Pedido · '+p.nombre,text:p.texto,files:p.archivos}:{title:'Pedido · '+p.nombre,text:p.texto});}
-  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);return;}
-  Promise.resolve(promise).then(()=>{
-    if(S.provEnvio===p){closePanel();toast('El pedido se entregó al menú de compartir. Confirmá el envío en WhatsApp.');}
-  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);});
+  if(!p||p.local!==S.local||!esTotal()||!p.share||!navigator.share)return;
+  let task;
+  try{
+    // Solo el archivo: nunca text ni imágenes en el payload.
+    task=navigator.share({files:[p.archivo]});
+  }catch(e){
+    if(e?.name!=='AbortError')toast('No se pudo compartir el PDF. Usá Descargar PDF.',true);
+    return;
+  }
+  Promise.resolve(task).then(()=>{
+    if(S.provEnvio===p){closePanel();toast('PDF entregado al menú de compartir. Confirmá el envío en WhatsApp.');}
+  }).catch(e=>{
+    if(e?.name!=='AbortError')toast('El dispositivo no pudo adjuntar el PDF. Usá Descargar PDF.',true);
+  });
 }
-function copiarImagenProveedor(){
-  const p=S.provEnvio;
-  if(!p || p.archivos.length!==1 || !navigator.clipboard?.write || !window.ClipboardItem)return;
-  navigator.clipboard.write([new window.ClipboardItem({'image/png':p.archivos[0]})])
-    .then(()=>toast('Imagen copiada. Abrí WhatsApp y pegala en el chat.'))
-    .catch(()=>toast('Este navegador no permite copiar la imagen.',true));
-}
-
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
    Cada confirmación es un registro nuevo, para conservar revisiones y autoría. */
 const diarioVal = v => {
@@ -890,10 +937,8 @@ V.proveedores = () => {
   const carpetas=lista.map(([nombre])=>{
     const ficha=proveedorFicha(nombre)||{};
     const pendientes=S.allProds.filter(p=>provOf(p)===nombre && alerta(p));
-    const telefono=telWa(ficha.telefono);
     const rows=proveedorFilas(nombre);
     const porPedir=rows.filter(x=>Number(x.pedir)>0).length;
-    const wa=telefono?'https://wa.me/'+telefono+'?text='+encodeURIComponent(porPedir?pedidoProveedorTexto(nombre):'Hola, quisiera hacer un pedido para '+localNombre()):'';
     const meta=[ficha.contacto,ficha.entrega].filter(Boolean);
     const abierto=S.provOpen===nombre;
     return `<article class="card pad gl-provider-card ${abierto?'is-open':''}">
@@ -908,19 +953,27 @@ V.proveedores = () => {
       ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
         <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
-        ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
-        ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
         ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
     </article>`;
   }).join('');
   const nombre=S.provOpen && lista.some(([n])=>n===S.provOpen)?S.provOpen:'';
   const draft=nombre?proveedorBase(nombre):null;
-  const rows=nombre?proveedorFilas(nombre):[];
-  const filaHTML=rows.map(p=>{
+  const rows=nombre?proveedorFilas(nombre).sort((a,b)=>
+    String(a.categoria||'General').localeCompare(String(b.categoria||'General'),'es')||
+    String(a.nombre||'').localeCompare(String(b.nombre||''),'es')):[];
+  const filaHTML=rows.map((p,index)=>{
+    const categoria=p.categoria||'General';
+    const encabezado=index===0||categoria!==(rows[index-1].categoria||'General')
+      ?'<tr class="gl-prov-category"><td colspan="4"><div class="gl-prov-category-head">'+
+        '<b>'+esc(categoria)+'</b>'+
+        (canW()?'<button class="btn sm" type="button" data-act="prov-zero-cat" data-cat="'+esc(categoria)+'">Poner en 0</button>'+
+          '<button class="btn sm" type="button" data-act="prov-save-plan">'+ic('save')+'Guardar</button>':'')+
+        '</div></td></tr>':'';
+
     const disabled=!canW()?'disabled':'';
     const manual=p.origen==='manual';
-    return `<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
+    return encabezado+`<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
         <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
         ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
       </td>
@@ -932,6 +985,16 @@ V.proveedores = () => {
       </td>`).join('')}
     </tr>`;
   }).join('');
+  const historial=nombre?S.provHistorial.filter(h=>h.proveedorId===proveedorId(nombre)).slice(0,60):[];
+  const historialHTML='<section class="gl-prov-history"><h3>Historial de pedidos</h3>'+
+    (historial.length?historial.map(h=>'<details class="gl-prov-history-entry">'+
+      '<summary><b>'+esc(new Date(h.fecha).toLocaleString('es-AR'))+'</b> · '+
+      plural(h.productosTotal||h.productos?.length||0,'producto','productos')+'</summary>'+
+      '<div class="gl-prov-history-body">'+
+      (Array.isArray(h.productos)?h.productos.map(x=>'<p>'+esc(x.nombre)+' · '+fmt(x.pedir)+' '+esc(x.unidad||'unidad')+'</p>').join(''):'')+
+      (esTotal()?'<button class="btn sm" data-act="prov-history-pdf" data-id="'+esc(h.id)+'">Exportar este PDF</button>':'')+
+      '</div></details>').join(''):'<p class="note">No hay pedidos finalizados todavía.</p>')+
+    '</section>';
   const details=nombre?`<section id="prov-carpeta" class="gl-prov-workspace card pad">
     <div class="gl-prov-workspace-head">
       <div><p class="eyebrow">Carpeta abierta · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2>
@@ -941,11 +1004,12 @@ V.proveedores = () => {
     ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
     <div class="gl-prov-toolbar">
       <b>Lista de productos</b>
-      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button>`:''}
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar</button>`:''}
     </div>
     ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
       <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
       <div class="fld"><label for="prov-item-unit">Unidad</label><input id="prov-item-unit" maxlength="30" placeholder="kg, caja, unidad"></div>
+      <div class="fld"><label for="prov-item-category">Categoría</label><input id="prov-item-category" maxlength="70" value="General" placeholder="Ej.: Lácteos"></div>
       <button class="btn primary" type="submit">Agregar a la lista</button>
     </form>`:''}
     ${rows.length?`<div class="gl-prov-table-scroll"><table class="gl-prov-table">
@@ -953,10 +1017,11 @@ V.proveedores = () => {
        <tbody>${filaHTML}</tbody>
       </table></div>`:'<p class="note">Esta carpeta está vacía. Agregá productos manualmente o asigná este proveedor a productos del catálogo.</p>'}
     <div id="prov-resumen" class="gl-prov-summary">${proveedorResumenHTML(nombre)}</div>
+    ${historialHTML}
     </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
   return `<section class="sheet gl-proveedores">
     <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
-    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y compartilos por WhatsApp como imagen desde tu dispositivo.</p></div>
+    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y guardalos en GestLok y compartí exclusivamente el PDF por WhatsApp.</p></div>
     ${canW()?`<button class="btn primary" data-act="prov-new">${ic('plus')}Crear proveedor</button>`:''}
     </div>
     ${!S.loaded.p?loadingList():`<div class="gl-provider-grid">${carpetas||'<div class="card pad">Todavía no hay proveedores. Creá una carpeta para comenzar.</div>'}</div>`}
@@ -3017,10 +3082,14 @@ document.addEventListener('click', e => {
     case 'prov-add-open': S.provAdding = true; render(); break;
     case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
     case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
-    case 'prov-save-plan': guardarPlanProveedor(); break;
+    case 'prov-save-plan': confirmarGuardarProveedor(); break;
+    case 'prov-save-draft': guardarPlanProveedor(false); break;
+    case 'prov-save-history': guardarPlanProveedor(true); break;
+    case 'prov-zero-cat': ponerEnCeroProveedorCategoria(t.dataset.cat); break;
+    case 'prov-history-pdf': compartirPedidoProveedor(t.dataset.id); break;
+    case 'prov-download-pdf': descargarPdfProveedor(); break;
     case 'prov-share': compartirPedidoProveedor(); break;
     case 'prov-share-ready': enviarProveedorPreparado(); break;
-    case 'prov-copy-image': copiarImagenProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
@@ -3325,6 +3394,10 @@ function subscribeLocal(){
     S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
     if(S.view === 'proveedores') render();
   }), errLive));
+  push(C('proveedores_historial').orderBy('fecha','desc').limit(200).onSnapshot(mine(snap => {
+    S.provHistorial=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(S.view==='proveedores')render();
+  }),errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
     S.chat = snap.docs.map(d => ({id:d.id, ...d.data()}))
       .filter(chatRecent).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
@@ -3371,7 +3444,7 @@ function abrirLocal(id){
     if (S.local) cerrarLocal();
     S.local = id;
     window.GestLokMunroDaily?.reset();
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();

@@ -20,11 +20,11 @@ test("el envío de pedidos requiere intervención humana y nunca envía WhatsApp
   assert.match(app, /https:\/\/wa\.me\//);
   assert.match(app, /target="_blank" rel="noopener noreferrer"/);
   assert.match(app, /copyText\(proveedorSeleccionados\(t\.dataset\.name\)\.length/);
-  assert.match(app, /new File\(\[blob\]/);
+  assert.match(read('public/stock/gestlok-provider-pdf.js'), /new File\(\[blob\]/);
   assert.match(app, /navigator\.canShare/);
-  assert.match(app, /promise=navigator\.share\(/);
+  assert.match(app, /task=navigator\.share\(\{files:\[p\.archivo\]\}\)/);
   assert.match(app, /data-act="prov-share-ready"/);
-  assert.match(app, /if\(!esTotal\(\) \|\| !S\.provOpen\)return/);
+  assert.match(app, /if\(!esTotal\(\)\|\|!S\.provOpen\)return/);
   assert.doesNotMatch(app, /whatsapp\.sendMessage\(/);
 });
 
