@@ -1,6 +1,5 @@
 /* global describe, it, cy, expect */
 // Tienda pública con base ficticia interceptada. No accede a Supabase real.
-const uuid='11111111-1111-4111-8111-111111111111';
 const fake = `
 window.supabase={
   createClient(){
