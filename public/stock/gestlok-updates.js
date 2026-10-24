@@ -81,6 +81,40 @@
       (inactive.length?'<div class="gl-exp-archived"><button class="btn sm" data-up-action="toggle-archived">Archivados ('+inactive.length+')</button>'+(archivedOpen?inactive.map(row).join(''):'')+'</div>':'') +
       '<p class="gl-exp-footnote">Estados: verde 6 días o más · naranja de 1 a 5 días · amarillo hoy · rojo vencido. Fechas según Argentina.</p></section>';
   };
+  /* Inicio: cada local muestra únicamente sus servicios vencidos o con <=5 días.
+     Un servicio renovado (>5 días) o archivado desaparece en la próxima
+     actualización de la colección, sin guardar alertas que puedan quedar viejas. */
+  const homeDueItems = items => (Array.isArray(items) ? items : [])
+    .filter(item => item && item.activo !== false)
+    .map(item => ({...item, vencimiento:stateOf(item.fechaVencimiento)}))
+    .filter(item => ['soon','today','expired'].includes(item.vencimiento.cls))
+    .sort((a,b) => a.vencimiento.days-b.vencimiento.days ||
+      String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  const homeDue = () => {
+    if (!ctx || !ctx.S.local) return '';
+    const items=homeDueItems(ctx.S.vencimientos);
+    if (!items.length) return '';
+    const copy=item=>{
+      const name=esc(item.nombre || 'Servicio sin nombre');
+      const days=item.vencimiento.days;
+      const title=days<0 ? name+': plazo vencido' :
+        days===0 ? name+' vence hoy' :
+        days===1 ? name+' vence mañana' :
+        name+' vence en '+days+' días';
+      const label=days<0?'Vencido':days===0?'Vence hoy':days===1?'Vence mañana':'Vence pronto';
+      const overdue=days<0?' · '+Math.abs(days)+' días de atraso':'';
+      return '<li class="gl-home-due-item">' +
+        '<span class="gl-home-due-status '+item.vencimiento.cls+'">'+esc(label)+'</span>' +
+        '<div class="gl-home-due-details"><strong>'+title+'</strong>' +
+        '<small>Fecha de vencimiento: '+dateAR(item.fechaVencimiento)+esc(overdue)+'</small></div></li>';
+    };
+    return '<section class="gl-home-due card" aria-label="Vencimientos que requieren atención" aria-live="polite">'+
+      '<div class="gl-home-due-top"><div><p class="eyebrow">Control de servicios · '+esc(ctx.localNombre())+'</p>'+
+      '<h4>Vencimientos que requieren atención <span class="gl-home-due-count">'+items.length+'</span></h4>'+
+      '<p class="lead">Avisos de este local. Se retiran automáticamente al renovar el servicio.</p></div>'+
+      '<button class="btn sm" data-go="vencimientos">Ver vencimientos</button></div>'+
+      '<ul class="gl-home-due-list">'+items.map(copy).join('')+'</ul></section>';
+  };
   const getAlerts = S => {
     const alerts=[];
     const today=todayISO();
@@ -161,7 +195,7 @@
   });
   window.GestLokUpdates={
     attach:function(c){ctx=c;},
-    viewDue,viewAlerts,plusDays,remaining,stateOf,dateAR,todayISO,
+    viewDue,viewAlerts,homeDue,homeDueItems,plusDays,remaining,stateOf,dateAR,todayISO,
     reset:function(){editing=null;showingHistory='';archivedOpen=false;},
     getAlerts
   };
