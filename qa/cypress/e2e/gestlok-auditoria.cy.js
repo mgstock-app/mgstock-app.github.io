@@ -225,6 +225,59 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#app .top-brand-name").should("not.be.visible");
   });
 
+
+  it("planilla de fábrica: sumar y restar en Local e Ingreso modifica solo el borrador", () => {
+    owner();
+    toLocal("munro");
+    cy.get('#snav [data-go="fabrica"]').click();
+    cy.get('#fl-f-001').should("be.visible");
+    cy.get('#fr-f-001 [data-act="fstep"][data-field="l"][data-delta="1"]').click();
+    cy.get("#fl-f-001").should("have.value","1");
+    cy.get('#fr-f-001 [data-act="fstep"][data-field="l"][data-delta="-1"]').click();
+    cy.get("#fl-f-001").should("have.value","0");
+    cy.get('#ffq1-f-001').click();
+    cy.get("#fl-f-001").should("have.value","0,25");
+    cy.get('#fr-f-001 [data-act="fstep"][data-field="f"][data-delta="1"]').click();
+    cy.get("#ff-f-001").should("have.value","1");
+    cy.get("#ft-f-001").should("contain.text","1,25");
+    cy.window().its("__rows").should(rows => {
+      const original = rows.find(r=>r.col==="munro/fabrica" && r.id==="f-001");
+      expect(original.data.local).to.eq(null);
+      expect(original.data.fabrica).to.eq(null);
+    });
+    cy.get("#sb-save").should("not.be.disabled");
+  });
+
+  it("planilla: botones no permiten cantidades negativas y respetan solo lectura", () => {
+    login("lectura@example.com");
+    cy.get('#snav [data-go="fabrica"]').click();
+    cy.get('#fr-f-001 [data-act="fstep"]').should("have.length",4).each(b => cy.wrap(b).should("be.disabled"));
+    cy.get('#fl-f-001').should("be.disabled");
+    cy.get('#ff-f-001').should("be.disabled");
+  });
+
+  it("planilla tablet 820: filas amplias y controles sin desbordar la pantalla", () => {
+    cy.viewport(820,1180);
+    owner();
+    toLocal("munro");
+    cy.get('#snav [data-go="fabrica"]').click();
+    cy.get('#fr-f-001').should("be.visible").within(() => {
+      cy.contains("Local").should("be.visible");
+      cy.contains("Fábrica").should("be.visible");
+      cy.get('.xl-stepper').should("have.length",2);
+      cy.get('.xl-stepper button').should("have.length",4);
+    });
+    cy.get('#fr-f-001').then(els => {
+      const row = els[0].getBoundingClientRect();
+      expect(row.width).to.be.greaterThan(450);
+      expect(row.right).to.be.lessThan(821);
+    });
+    cy.get('#fr-f-001 .xl-stepper').each(($el) => {
+      const bounds=$el[0].getBoundingClientRect();
+      expect(bounds.width).to.be.greaterThan(120);
+    });
+  });
+
   it("formato móvil: el menú abre y permite entrar al chat", () => {
     cy.viewport(390,844);
     login("gerente.munro@example.com");
