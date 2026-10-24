@@ -1018,10 +1018,49 @@ async function sendGestlokChat(form){
   }
 }
 
+
+/* El panel usa datos guardados de cada hoja independiente.
+   Stock y Conteo comparten productos, por eso no se duplican. */
+function resumenHojasInicio(){
+  if (!S.loaded.h || !S.loaded.p || !S.loaded.f || !S.loaded.c)
+    return '<section class="card pad"><h4>Resumen de hojas</h4><p class="lead">Cargando información guardada del local…</p></section>';
+  const inventarios = visibles().filter(h => ['stock', 'conteo', 'lista', 'fabrica', 'ingreso'].includes(h.tipo));
+  const vistos = new Set(), filas = [];
+  for (const h of inventarios){
+    const principal = h.tipo === 'stock' || h.tipo === 'conteo';
+    const key = principal ? 'principal' : h.id;
+    if (vistos.has(key)) continue;
+    vistos.add(key);
+    const datos = withCtx(h.id, () => {
+      if (esFabT(h.tipo)){
+        const items = S.fab, total = items.length;
+        const conLocal = items.filter(it => num(it.local) != null).length;
+        const conIngreso = items.filter(it => num(it.fabrica) != null).length;
+        const sin = items.filter(it => it.sinStock || (num(it.local) != null && num(it.local) <= 0)).length;
+        const ultimo = S.conteos.find(c => c.tipo === 'fabrica' && (c.hoja || 'fabrica') === h.id);
+        return {total, detalle:`Local guardado: ${conLocal}/${total} · ${h.tipo === 'ingreso' ? 'Ingreso' : 'Fábrica'}: ${conIngreso}/${total} · Sin stock: ${sin}`, ultimo};
+      }
+      const items = S.prods, total = items.length;
+      const cargados = items.filter(p => stockOf(p) != null || p.sinStock).length;
+      const sin = items.filter(p => p.sinStock || (stockOf(p) != null && stockOf(p) <= 0)).length;
+      const bajo = items.filter(p => !p.sinStock && stockOf(p) != null && stockOf(p) > 0 && minOf(p) != null && stockOf(p) < minOf(p)).length;
+      const ultimo = S.conteos.find(c => c.tipo !== 'fabrica' && (principal ? !isCustom(c.hoja) : c.hoja === h.id));
+      return {total, detalle:`Con cantidad guardada: ${cargados}/${total} · Sin stock: ${sin} · Bajo mínimo: ${bajo}`, ultimo};
+    });
+    const ultima = datos.ultimo ? `Último conteo: ${fechaHora(datos.ultimo.fecha)}` : 'Sin conteos históricos en esta hoja';
+    filas.push(`<button class="gl-home-sheet-summary" data-go="${esc(h.id)}"><span class="six">${ic(h.ic)}</span><span><b>${esc(h.nombre)}</b><small>${datos.total} productos · ${esc(datos.detalle)}</small><small>${esc(ultima)}</small></span><span class="chev">${ic('chev')}</span></button>`);
+  }
+  return `<section class="card pad" aria-label="Resumen de hojas" style="margin-bottom:16px">
+    <div class="ch"><h4>Resumen de todas tus hojas</h4><span class="num">Datos guardados · ${filas.length} hojas de inventario</span></div>
+    <p class="lead" style="margin:0 0 12px">Cada hoja muestra sus cantidades guardadas por separado. Los borradores sin guardar no se cuentan; Stock y Conteo comparten el catálogo.</p>
+    <div class="sheets gl-home-sheet-summaries">${filas.join('') || '<p class="lead">No hay hojas de inventario visibles.</p>'}</div>
+  </section>`;
+}
+
 V.inicio = () => {
   const ps = sorted(), n = ps.length;
   const cnt = {ok:0, bajo:0, sin:0, nc:0}; ps.forEach(p => cnt[estado(p)]++);
-  const ped = pedidoItems().length, last = lastStock(), flagged = ps.filter(p => estado(p) === 'sin');
+  const ped = pedidoItems().length, last = S.conteos[0] || null, flagged = ps.filter(p => estado(p) === 'sin');
   const pct = k => n ? Math.max(cnt[k] / n * 100, cnt[k] ? 1.5 : 0) : 0;
   const ncats = cats();
   /* Los accesos de Inicio llevan solo a hojas que están en el menú */
@@ -1031,15 +1070,16 @@ V.inicio = () => {
   const cgL = cg === 'conteo' ? 'Nuevo conteo' : 'Cargar stock';
   const catRows = ncats.map(([c, total]) => { const it = ps.filter(p => catOf(p) === c); const cont = it.filter(p => estado(p) !== 'nc').length; return {c, total, cont, sin:it.filter(p => estado(p) === 'sin').length}; });
   const lastCard = last
-    ? `<div class="lc"><span class="big">${esc(fechaHora(last.fecha))}</span><small>${esc(whoName(last))} · ${plural((last.cambios||[]).length, 'cambio', 'cambios')} · ${rel(last.fecha)}</small><div class="bar-a"><button class="btn sm" data-go="historial">Ver historial</button>${cgB('btn sm primary', cgL)}</div></div>`
+    ? `<div class="lc"><span class="big">${esc(fechaHora(last.fecha))}</span><small>${esc(hojaLabel(last, last.tipo === 'fabrica' ? 'Conteo Fábrica' : 'Stock'))} · ${esc(whoName(last))} · ${plural((last.cambios||[]).length, 'cambio', 'cambios')} · ${rel(last.fecha)}</small><div class="bar-a"><button class="btn sm" data-go="historial">Ver historial</button>${cgB('btn sm primary', cgL)}</div></div>`
     : `<div class="lc"><span class="big">Sin conteos todavía</span><small>${S.loaded.c ? 'Cuando guardes el primero, aparece acá con fecha y hora.' : 'Cargando…'}</small><div class="bar-a">${cgB('btn sm primary', cg === 'conteo' ? 'Empezar a contar' : 'Cargar stock')}</div></div>`;
   return `${banners()}
   <section class="hello">
-    <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Estado de los ${n} productos en este momento, por categoría.</p></div>
+    <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Abajo podés consultar los registros de todas las hojas. Las estadísticas principales corresponden a ${esc(nombreHoja('stock'))}.</p></div>
     <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
   ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
+  ${resumenHojasInicio()}
   <section class="gl-today card pad" aria-label="Acciones para hoy">
     <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? 'Sin conexión · los conteos quedan pendientes' : 'Datos actualizados del local'}</small></div>
     <div class="gl-today-grid">
@@ -1052,12 +1092,12 @@ V.inicio = () => {
   <div class="kpis${pedV ? '' : ' k3'}">
     <button class="kpi" data-act="kpi" data-k="todos" style="--kc:var(--accent)"><span class="k-l"><i></i>Productos</span><span class="k-v">${n}</span><span class="k-s">en ${plural(ncats.length, 'categoría', 'categorías')}</span></button>
     <button class="kpi" data-act="kpi" data-k="sin" style="--kc:var(--crit)"><span class="k-l"><i></i>Sin stock</span><span class="k-v" style="color:var(--crit)">${cnt.sin}</span><span class="k-s">tildados o en cero</span></button>
-    <button class="kpi" data-act="kpi" data-k="nc" style="--kc:var(--nc)"><span class="k-l"><i></i>Sin contar</span><span class="k-v">${cnt.nc}</span><span class="k-s">todavía sin cantidad</span></button>
+    <button class="kpi" data-act="kpi" data-k="nc" style="--kc:var(--nc)"><span class="k-l"><i></i>Sin contar · ${esc(nombreHoja("stock"))}</span><span class="k-v">${cnt.nc}</span><span class="k-s">todavía sin cantidad</span></button>
     ${pedV ? `<button class="kpi" data-go="pedido" style="--kc:var(--spark)"><span class="k-l"><i></i>A pedir</span><span class="k-v">${ped}</span><span class="k-s">sin stock o bajo mínimo</span></button>` : ''}
   </div>
   <div class="dash">
     <div class="col">
-      <section class="card pad"><div class="ch"><h4>Estado del stock</h4><span class="num">${n} productos</span></div>
+      <section class="card pad"><div class="ch"><h4>Estado de ${esc(nombreHoja('stock'))}</h4><span class="num">${n} productos</span></div>
         <div class="dist" role="img" aria-label="En stock ${cnt.ok}, stock bajo ${cnt.bajo}, sin stock ${cnt.sin}, sin contar ${cnt.nc}">${cnt.ok ? `<i style="width:${pct('ok')}%;background:var(--ok)"></i>` : ''}${cnt.bajo ? `<i style="width:${pct('bajo')}%;background:var(--warn)"></i>` : ''}${cnt.sin ? `<i style="width:${pct('sin')}%;background:var(--crit)"></i>` : ''}${cnt.nc ? `<i style="width:${pct('nc')}%;background:var(--nc)"></i>` : ''}</div>
         <div class="legend">
           <div><span><i style="background:var(--ok)"></i>En stock</span><b>${cnt.ok}</b></div>
@@ -1076,8 +1116,8 @@ V.inicio = () => {
     </div>
     <div class="col">
       ${fabCard()}
-      <section class="card pad"><div class="ch"><h4>Último conteo</h4></div>${lastCard}</section>
-      <section class="card pad"><div class="ch"><h4>Sin stock</h4><span class="num">${flagged.length}</span></div>
+      <section class="card pad"><div class="ch"><h4>Último conteo de cualquier hoja</h4></div>${lastCard}</section>
+      <section class="card pad"><div class="ch"><h4>Sin stock · ${esc(nombreHoja("stock"))}</h4><span class="num">${flagged.length}</span></div>
         ${flagged.length ? `<div class="mini">${flagged.slice(0, 8).map(p => `<div class="mini-r">${ssBox(p,'hs')}<div><b>${esc(p.nombre)}</b><small style="--cc:${ccOf(catOf(p))}"><i></i>${esc(catOf(p))}</small></div><span class="st sin">Sin stock</span></div>`).join('')}</div>${flagged.length > 8 ? `<div class="bar-a" style="margin-top:8px"><button class="btn sm" data-act="kpi" data-k="sin">Ver los ${flagged.length}</button></div>` : ''}`
           : `<p class="lead" style="margin:0">Ningún producto sin stock. Tildá la casilla al lado de cada producto en cualquier hoja.</p>`}
       </section>
