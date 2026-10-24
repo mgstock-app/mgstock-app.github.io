@@ -1,6 +1,6 @@
 {
-  "public/stock/auth.js": "6a7b26aca2ae759eb5ab4689fdacff828fb33d7bed44a6144400be5adfb29a1e",
-  "public/stock/app.js": "551cc7e6c96cbd5f6c0ad5c7e475dd0be906d6f5b6f6f2727a011e77dc4590c1",
-  "app/globals.css": "479bb7b306b1f81741ef2f4717d824df79d7ef683c5361d33c4b2057a025bc2a",
+  "public/stock/auth.js": "83188527a17829e646c0ab798cce8a012281d45b57251b40a0ce665a615991b3",
+  "public/stock/app.js": "9b42dca6b2245b93a1478a0a8e79d2da77d7a7cebd52115f7b46ba8832d328dd",
+  "app/globals.css": "6f075ef85f6a99ae8bc25d74c0aa05956e51de2930e071f145b1612830515545",
   "markup": "198a2bd6d19a94bc8e0cf0ec5f4faffa4d4c2d8fc48dbf07a373b377847065f6"
 }
