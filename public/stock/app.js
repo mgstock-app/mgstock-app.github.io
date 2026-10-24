@@ -357,7 +357,7 @@ function renderSavebar(){
   const enCola = S.queued && S.queued.view === S.view;
   if (isFabV(S.view)){
     const fp = fPend().length, lf = lastFab();
-    $('#sb-main').textContent = enCola ? 'Borrador local: guardar al volver internet' : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
+    $('#sb-main').textContent = enCola ? (S.offline ? 'Borrador local: guardar al volver internet' : 'Borrador pendiente: revisá y guardá')  : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
     $('#sb-sub').textContent = lf ? `${nombreHoja(fabCtx())} guardado ${rel(lf.fecha)} · ${whoName(lf)}` : (S.loaded.c ? 'Esta planilla todavía no se guardó' : 'Cargando…');
     $('#savebar').classList.toggle('dirty', !!fp);
     const c = $('#sb-cnt'); c.hidden = !fp; c.textContent = fp;
@@ -368,7 +368,7 @@ function renderSavebar(){
   const ed = editingCtx(), pend = pendientes().length, cont = draftCount(), last = lastStockCtx();
   const lastTxt = last ? `Último conteo ${rel(last.fecha)} · ${whoName(last)}` : (S.loaded.c ? 'Todavía no hay conteos guardados' : 'Cargando…');
   let main;
-  if (enCola) main = 'Borrador local: guardar al volver internet';
+  if (enCola) main = S.offline ? 'Borrador local: guardar al volver internet' : 'Borrador pendiente: revisá y guardá';
   else if (ed) main = `Corrigiendo el conteo del ${fechaHora(ed.fecha)}`;
   else if (pend) main = `${plural(pend, 'cambio', 'cambios')} sin guardar`;
   else if (cont) main = `${cont} contados, sin diferencias`;
@@ -1519,7 +1519,7 @@ async function doSaveF(v = S.view){
     if (!navigator.onLine){ S.offline = true; queueSave(v, true); } else fail(e);
   }
 }
-/* Sin internet: el conteo queda listo y se guarda solo cuando vuelve la conexión */
+/* Sin internet: conserva el borrador hasta que la persona confirme guardarlo con conexión. */
 function queueSave(v, fab){
   S.queued = {view:v, fab:!!fab};
   if (S.local && (S.uid || S.me?.email)) lsSet(queuedKey(), S.queued);
