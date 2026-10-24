@@ -11,8 +11,6 @@
   try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); }
   catch (e) { console.error('Supabase no configurado', e); }
 
-  // Devuelve la sesión existente a la función de avisos; nunca expone llaves privadas.
-  window.GestLokSession = () => sb?.auth.getSession();
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
   let email = null, rol = null, locales = [], started = false;
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
