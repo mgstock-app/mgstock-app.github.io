@@ -1628,3 +1628,11 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 
 .gl-home-essential-tools{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0}
 .gl-home-essential-tools .btn{min-height:37px}
+
+.gl-home-essential .gl-home-essential-alert.gl-home-due{margin:0;box-shadow:none;padding:12px 14px;border-color:var(--line);border-left:3px solid var(--warn);border-radius:10px}
+.gl-home-essential-due-content{display:grid;gap:6px;min-width:0}
+.gl-home-essential-due-items{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.gl-home-essential-due-items li{display:flex;align-items:center;gap:8px;font-size:11px;line-height:1.35;color:var(--ink)}
+.gl-home-essential-due-items .gl-home-due-status{width:auto;min-width:52px;min-height:20px;padding:3px 6px;font-size:10px;font-weight:650}
+.gl-home-essential-due-more{color:var(--muted)!important}
+@media(max-width:640px){.gl-home-essential-due-items li{align-items:flex-start;flex-wrap:wrap}}
