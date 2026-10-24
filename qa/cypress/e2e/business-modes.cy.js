@@ -48,7 +48,7 @@ describe('GestLok: tienda física, online y mixta',()=>{
     cy.get('#snav [data-go="pedidos-online"]').should('not.exist');
     cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').click();
     cy.get('#snav [data-go="pedidos-online"]').should('exist');
-    cy.get('#snav [data-go="fabrica"]').should('exist');
+    cy.get('#snav [data-go="ingreso"]').should('exist');
     cy.window().its('__rows').should(rows=>{
       expect(rows.filter(r=>r.col==='munro/pedidos_online')).to.have.length(1);
       expect(rows.filter(r=>r.col==='torcuato/pedidos_online')).to.have.length(0);
