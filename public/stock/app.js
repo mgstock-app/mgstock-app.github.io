@@ -99,7 +99,7 @@ const S = {
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
-  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false
+  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false
 };
 S.loaded.l = false;
 
@@ -1820,6 +1820,11 @@ function lcard(l){
 function renderHub(){
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  if (adm && listo && S.db && S.creatorSetup) {
+    const creatorHTML=window.GestLokCreator?.view() || '';
+    if(hub._h!==creatorHTML){hub.innerHTML=creatorHTML;hub._h=creatorHTML;}
+    return;
+  }
   if (adm && listo && S.db && S.demoTienda) {
     const demoHTML = window.GestLokDemo?.view() || '';
     if (hub._h !== demoHTML) { hub.innerHTML=demoHTML; hub._h=demoHTML; }
@@ -1869,6 +1874,11 @@ function renderHub(){
           <article><span>${ic('userplus')} Usuarios autorizados</span><strong>${usuarios.length}</strong><small>Miembros del equipo</small></article>
           <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
           <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
+        </section>
+        <section class="gl-admin-card gl-demo-launch" aria-label="Preparar una empresa">
+          <header><h2>Preparar empresa para un cliente</h2><small>Exclusivo de la creadora</small></header>
+          <p>Elegí física, online o mixta y dejá creados el local, las carpetas y el catálogo a partir de un CSV. Todo queda separado de las empresas existentes.</p>
+          <button class="btn primary" data-act="admin-preparar-empresa">Preparar empresa nueva →</button>
         </section>
         <section class="gl-admin-card gl-demo-launch" aria-label="Demo de gestión online">
           <header><h2>Explorar gestión de tienda online</h2><small>Ejemplo independiente · Sin crear empresas</small></header>
@@ -3021,6 +3031,7 @@ document.addEventListener('click', e => {
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
     case 'admin-locales': document.getElementById('gl-admin-locales')?.scrollIntoView({behavior:'smooth',block:'start'}); break;
+    case 'admin-preparar-empresa': if(isCreadora() && !S.local){ S.creatorSetup=true; window.GestLokCreator?.open(); } break;
     case 'admin-demo-online': if(isCreadora() && !S.local){ S.demoTienda=true; window.GestLokDemo?.reset(); renderHub(); window.scrollTo({top:0}); } break;
     case 'admin-demo-close': if(S.demoTienda){ S.demoTienda=false; renderHub(); window.scrollTo({top:0}); } break;
     case 'local': abrirLocal(id); break;
@@ -3412,6 +3423,7 @@ window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});
+window.GestLokCreator?.attach({isCreadora,renderHub,toast});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
