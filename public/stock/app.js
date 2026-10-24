@@ -674,111 +674,171 @@ function mostrarResumenProveedor(){
   const wrap=document.getElementById('prov-resumen');
   if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
 }
-async function guardarPlanProveedor(){
-  if(!canW() || S.offline || !S.db || !S.local || !S.provOpen){toast('Necesitás internet y permiso de edición para guardar.',true);return;}
-  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
-  const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
-  const btn=document.querySelector('[data-act="prov-save-plan"]');
-  if(btn)btn.disabled=true;
-  try{
-    const ref=C('proveedores').doc(proveedorId(nombre));
-    const snap=await ref.get();
-    const ver=snap.exists ? Number(snap.data()?.pedidoActualizado)||0 : 0;
-    if(ver!==d.base){
-      d.stale=true;
-      toast('Otra persona cambió este pedido. Copiá tu lista antes de recargar para evitar reemplazar sus datos.',true);
-      return;
+function ponerEnCeroCategoriaProveedor(categoria){
+  if(!canW()||!S.provOpen)return;
+  const nombre=S.provOpen;
+  const productos=proveedorFilas(nombre).filter(p=>(p.categoria||'General')===categoria);
+  if(!productos.length)return;
+  if(!window.confirm('¿Poner en 0 Stock local y Pedir para '+categoria+' ('+productos.length+' productos)? La columna Sugerido NO se modifica. Este cambio queda como borrador hasta guardar.'))return;
+  const draft=proveedorBase(nombre);
+  for(const p of productos){
+    if(p.origen==='manual'){
+      const m=draft.items.find(x=>x.id===p.id);
+      if(m){m.stockLocal=0;m.pedir=0;}
+    }else{
+      draft.catalogo[p.productoId]={
+        ...(draft.catalogo[p.productoId]||{}),
+        stockLocal:0,pedir:0,sugerido:p.sugerido
+      };
     }
-    const stamp=Date.now();
-    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},pedidoActualizado:stamp,pedidoPor:S.uid};
-    await w(()=>snap.exists ? ref.update(payload) : ref.set({nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''}));
-    if(local!==S.local)return;
-    delete S.provDrafts[proveedorId(nombre)];
-    try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
-    toast('Lista y pedido guardados sin cambiar el stock real.');
-  }catch(e){fail(e);}finally{if(btn?.isConnected)btn.disabled=false;}
-}
-function crearImagenPedido(nombre,productos,pagina,total){
-  const W=1000, H=310+productos.length*64;
-  const canvas=document.createElement('canvas');
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  if(!ctx)return Promise.reject(new Error('canvas'));
-  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#0c2034';ctx.fillRect(0,0,W,150);
-  ctx.fillStyle='#ffffff';ctx.font='bold 40px Arial, sans-serif';ctx.fillText('GESTLOK',50,75);
-  ctx.font='22px Arial, sans-serif';ctx.fillText('PEDIDO A PROVEEDOR',50,112);
-  ctx.fillStyle='#14354b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText(nombre.slice(0,55),50,205);
-  ctx.font='18px Arial, sans-serif';ctx.fillText('Local: '+localNombre().slice(0,40)+'   |   '+hoyISO()+'   |   Página '+pagina+'/'+total,50,240);
-  ctx.fillStyle='#eff5f7';ctx.fillRect(42,263,W-84,42);
-  ctx.fillStyle='#17394f';ctx.font='bold 19px Arial, sans-serif';ctx.fillText('PRODUCTO',55,290);ctx.fillText('PEDIR',755,290);
-  ctx.font='19px Arial, sans-serif';
-  productos.forEach((p,i)=>{
-    const y=332+i*64;
-    if(i%2===0){ctx.fillStyle='#f6f9fb';ctx.fillRect(42,y-24,W-84,58);}
-    ctx.fillStyle='#1a364b';
-    const product=String(p.nombre).length>53?String(p.nombre).slice(0,50)+'…':String(p.nombre);
-    ctx.fillText(product,55,y,670);
-    ctx.font='bold 19px Arial, sans-serif';
-    ctx.fillText(fmt(p.pedir)+' '+String(p.unidad||'').slice(0,16),755,y,200);
-    ctx.font='19px Arial, sans-serif';
-  });
-  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('imagen')),'image/png'));
-}
-async function compartirPedidoProveedor(){
-  if(!esTotal() || !S.provOpen)return;
-  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
-  if(!rows.length){toast('Completá primero las cantidades de Pedir.',true);return;}
-  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de compartir.',true);return;}
-  const texto=pedidoProveedorTexto(nombre),telefono=telWa(proveedorFicha(nombre)?.telefono);
-  const wa='https://wa.me/'+telefono+'?text='+encodeURIComponent(texto);
-  if(!navigator.share){
-    window.open(wa,'_blank','noopener,noreferrer');
-    toast('WhatsApp abierto con el pedido escrito. Confirmá el envío.');
-    return;
   }
-  const btn=document.querySelector('[data-act="prov-share"]');if(btn)btn.disabled=true;
-  try{
-    const chunks=[];for(let i=0;i<rows.length;i+=28)chunks.push(rows.slice(i,i+28));
-    const archivos=[];
-    for(let i=0;i<chunks.length;i++){
-      const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
-      archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
-    }
-    if(S.provOpen!==nombre)return;
-    S.provEnvio={nombre,local:S.local,texto,wa,archivos};
-    S.panel='prov-share';
-    const filesAllowed=!!navigator.canShare?.({files:archivos});
-    openPanel(`<div class="pn-h"><h3>Compartir pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-      <div class="pn-b gl-prov-sharing">
-        <p class="lead"><b>${esc(nombre)}</b> · ${plural(rows.length,'producto','productos')} · ${plural(archivos.length,'imagen preparada','imágenes preparadas')}.</p>
-        <p class="lead">Elegí WhatsApp en el menú de compartir y confirmá el destinatario. GestLok no envía nada sin tu confirmación.</p>
-        <button class="btn primary" type="button" data-act="prov-share-ready">${ic('share')}${filesAllowed?'Enviar imagen por WhatsApp':'Compartir pedido como texto'}</button>
-        ${navigator.clipboard?.write && window.ClipboardItem && archivos.length===1?`<button class="btn" type="button" data-act="prov-copy-image">${ic('copy')}Copiar imagen</button>`:''}
-        <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}Abrir WhatsApp con el pedido escrito</a>
-        <small>Si tu dispositivo no admite adjuntar la imagen, podés compartir el texto completo.</small>
-      </div>`,'dlg');
-  }catch(e){toast('No se pudo generar la imagen. Usá Copiar pedido o WhatsApp.',true);}
-  finally{if(btn?.isConnected)btn.disabled=false;}
+  proveedorGuardarBorrador(nombre);
+  toast('Stock local y Pedir en 0 para '+categoria+'. Sugerido no cambió.');
+  render();
 }
-/* El usuario toca una segunda vez: mantiene la activación requerida por Web Share. */
+function proveedorHistorial(nombre){
+  return (S.provHist||[]).filter(h=>h.proveedorId===proveedorId(nombre))
+    .sort((a,b)=>(b.fecha||0)-(a.fecha||0));
+}
+function confirmarGuardadoProveedor(){
+  if(!canW()||!S.provOpen||S.offline){toast('Necesitás conexión y permiso de edición para guardar.',true);return;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
+  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
+  if(!rows.length){toast('Completá al menos un producto en la columna Pedir antes de guardar.',true);return;}
+  S.panel='prov-finalizar';
+  openPanel('<div class="pn-h"><h3>Confirmar pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+    '<div class="pn-b gl-prov-confirm"><p class="lead"><b>¿Ya terminaste tu pedido y querés guardarlo en el historial?</b></p>'+
+    '<p>'+esc(nombre)+' · '+esc(localNombre())+' · '+plural(rows.length,'producto','productos')+'.</p>'+
+    '<p class="note">Se guardará una copia permanente del pedido, con fecha y usuario. Después podrás compartir únicamente el PDF.</p>'+
+    '<div class="bar-a"><button class="btn" data-act="close">Todavía no</button>'+
+    '<button class="btn primary" data-act="prov-confirm-save">'+ic('save')+'Sí, guardar en historial</button></div></div>','dlg');
+}
+async function guardarPlanProveedor(){
+  if(!canW()||S.offline||!S.db||!S.local||!S.provOpen){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
+  }
+  const nombre=S.provOpen,local=S.local,rows=proveedorSeleccionados(nombre),draft=proveedorBase(nombre);
+  if(!rows.length||document.querySelector('.gl-prov-table .bad')){
+    toast('Revisá las cantidades de Pedir antes de guardar.',true);return;
+  }
+  const btn=document.querySelector('[data-act="prov-confirm-save"]');
+  if(btn)btn.disabled=true;
+  const sb=window.GestLokSupabase;
+  if(!sb?.rpc){toast('No se pudo conectar con el guardado seguro.',true);if(btn)btn.disabled=false;return;}
+  const productos=rows.map(x=>({nombre:x.nombre,unidad:x.unidad||'unidad',pedir:Number(x.pedir),categoria:x.categoria||'General'}));
+  try{
+    const {data,error}=await sb.rpc('gestlok_proveedor_guardar_historial',{
+      p_local:local,
+      p_proveedor_id:proveedorId(nombre),
+      p_version:Number(draft.base)||0,
+      p_items:draft.items.map(x=>({...x})),
+      p_catalogo:{...draft.catalogo},
+      p_productos:productos
+    });
+    if(error)throw error;
+    if(S.local!==local||S.provOpen!==nombre)return;
+    draft.base=Number(data?.pedidoActualizado)||draft.base;
+    draft.dirty=false;draft.stale=false;
+    S.provHist=[{id:data.historialId,proveedorId:proveedorId(nombre),proveedor:nombre,
+      productos,fecha:draft.base,version:draft.base,local,autor:S.me?.email||S.uid},...(S.provHist||[])];
+    const ficha=proveedorFicha(nombre);
+    if(ficha){ficha.items=draft.items.map(x=>({...x}));ficha.catalogo={...draft.catalogo};
+      ficha.pedidoActualizado=draft.base;ficha.pedidoPor=S.uid;}
+    try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
+    closePanel();
+    toast('Pedido guardado en el historial. Ya podés compartir su PDF.');
+    render();
+  }catch(e){
+    if(/otro usuario|actualizó|recarg/i.test(String(e?.message||'')))draft.stale=true;
+    toast('No se pudo guardar el pedido: '+String(e?.message||'Error de conexión').slice(0,150),true);
+  }finally{if(btn?.isConnected)btn.disabled=false;}
+}
+function historialProveedorHTML(nombre){
+  const list=proveedorHistorial(nombre);
+  const items=list.length?list.slice(0,30).map(h=>{
+    const date=Number(h.fecha)>0?new Date(Number(h.fecha)).toLocaleString('es-AR'):'Fecha no disponible';
+    const products=Array.isArray(h.productos)?h.productos:[];
+    return '<article class="gl-prov-history-line"><div><b>'+esc(date)+'</b>'+
+      '<small>'+plural(products.length,'producto guardado','productos guardados')+
+      ' · '+esc(h.autor||'Usuario autorizado')+'</small></div>'+
+      '<button type="button" class="btn sm" data-act="prov-history-pdf" data-id="'+esc(h.id)+'">Descargar PDF</button></article>';
+  }).join(''):'<p class="note">Todavía no hay pedidos finalizados de este proveedor.</p>';
+  return '<details class="gl-prov-history"><summary>Historial de pedidos guardados ('+list.length+')</summary>'+
+    '<div class="gl-prov-history-list">'+items+'</div>'+
+    (list.length>30?'<p class="note">Se muestran los 30 más recientes de esta carpeta.</p>':'')+
+    '</details>';
+}
+function descargarHistorialProveedor(id){
+  const h=(S.provHist||[]).find(x=>x.id===id&&x.local===S.local&&
+    S.provOpen&&x.proveedorId===proveedorId(S.provOpen));
+  if(!h)return;
+  try{
+    const file=window.GestLokProveedorPDF?.crear({
+      proveedor:h.proveedor||S.provOpen,local:localNombre(),productos:h.productos,
+      fecha:new Date(Number(h.fecha)||Date.now()).toLocaleDateString('es-AR')
+    });
+    if(!file)throw Error('PDF no disponible.');
+    descargarArchivoPdfProveedor(file);
+  }catch(e){toast('No se pudo generar el PDF del historial.',true);}
+}
+function descargarArchivoPdfProveedor(file){
+  const uri=URL.createObjectURL(file);
+  const anchor=document.createElement('a');
+  anchor.href=uri;anchor.download=file.name;anchor.style.display='none';
+  document.body.appendChild(anchor);anchor.click();anchor.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(uri),60000);
+}
+function compartirPedidoProveedor(){
+  if(!esTotal()||!S.provOpen)return;
+  const nombre=S.provOpen,draft=proveedorBase(nombre);
+  if(draft.dirty){toast('Primero guardá el pedido terminado en el historial.',true);return;}
+  const record=proveedorHistorial(nombre).find(h=>Number(h.version)===Number(draft.base));
+  if(!record){toast('Primero guardá el pedido en el historial para compartir el PDF.',true);return;}
+  if(!Array.isArray(record.productos)||!record.productos.length){
+    toast('El pedido guardado no tiene productos para compartir.',true);return;
+  }
+  const telefono=telWa(proveedorFicha(nombre)?.telefono);
+  try{
+    const archivo=window.GestLokProveedorPDF?.crear({proveedor:nombre,local:localNombre(),
+      productos:record.productos,fecha:new Date(Number(record.fecha)||Date.now()).toLocaleDateString('es-AR')});
+    if(!archivo || archivo.type!=='application/pdf')throw Error('No se generó un PDF válido.');
+    S.provEnvio={nombre,local:S.local,archivo,telefono};
+    const shareable=!!(navigator.share&&navigator.canShare?.({files:[archivo]}));
+    S.panel='prov-share';
+    openPanel('<div class="pn-h"><h3>Pedido en PDF</h3><button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+      '<div class="pn-b gl-prov-sharing"><p class="lead"><b>'+esc(nombre)+'</b> · '+plural(record.productos.length,'producto','productos')+'.</p>'+
+      '<p>Se preparó <b>un único archivo PDF</b>, sin foto ni mensaje de texto adjunto.</p>'+
+      '<p class="note">Elegí WhatsApp cuando aparezca el menú de aplicaciones y confirmá el destinatario. GestLok no envía nada automáticamente.</p>'+
+      (shareable?'<button class="btn primary" data-act="prov-share-ready">'+ic('share')+'Compartir solo PDF</button>':
+        '<p class="note warn">Este navegador no puede adjuntar archivos directamente. Descargá el PDF y adjuntalo manualmente desde WhatsApp.</p>')+
+      '<button class="btn" data-act="prov-pdf-download">'+ic('in')+'Descargar PDF</button>'+
+      (telefono?'<button class="btn" data-act="prov-whatsapp-open">'+ic('msg')+'Abrir WhatsApp (adjuntar PDF)</button>':'')+
+      '</div>','dlg');
+  }catch(e){toast('No se pudo generar el PDF. Revisá el pedido guardado.',true);}
+}
+/* El navegador solo entrega un PDF a Web Share: nunca texto ni imágenes. */
 function enviarProveedorPreparado(){
   const p=S.provEnvio;
-  if(!p || p.local!==S.local || !esTotal() || !navigator.share)return;
-  const filesAllowed=!!navigator.canShare?.({files:p.archivos});
+  if(!p||p.local!==S.local||!esTotal()||p.archivo?.type!=='application/pdf')return;
+  if(!navigator.share||!navigator.canShare?.({files:[p.archivo]})){
+    toast('Descargá el PDF y adjuntalo manualmente en WhatsApp.',true);return;
+  }
   let promise;
-  try{promise=navigator.share(filesAllowed?{title:'Pedido · '+p.nombre,text:p.texto,files:p.archivos}:{title:'Pedido · '+p.nombre,text:p.texto});}
-  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);return;}
+  try{promise=navigator.share({files:[p.archivo]});}
+  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Descargá el PDF.',true);return;}
   Promise.resolve(promise).then(()=>{
-    if(S.provEnvio===p){closePanel();toast('El pedido se entregó al menú de compartir. Confirmá el envío en WhatsApp.');}
-  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);});
+    if(S.provEnvio===p){closePanel();toast('PDF entregado al menú de compartir. Confirmá el envío en WhatsApp.');}
+  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Descargá el PDF.',true);});
 }
-function copiarImagenProveedor(){
+function descargarPdfProveedor(){
   const p=S.provEnvio;
-  if(!p || p.archivos.length!==1 || !navigator.clipboard?.write || !window.ClipboardItem)return;
-  navigator.clipboard.write([new window.ClipboardItem({'image/png':p.archivos[0]})])
-    .then(()=>toast('Imagen copiada. Abrí WhatsApp y pegala en el chat.'))
-    .catch(()=>toast('Este navegador no permite copiar la imagen.',true));
+  if(p&&p.local===S.local&&p.archivo?.type==='application/pdf')descargarArchivoPdfProveedor(p.archivo);
+}
+function abrirWhatsappProveedor(){
+  const p=S.provEnvio;
+  if(!p||p.local!==S.local||!p.telefono)return;
+  window.open('https://wa.me/'+p.telefono,'_blank','noopener,noreferrer');
+  toast('Adjuntá el PDF descargado en WhatsApp. No se agregó texto.');
 }
 
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
