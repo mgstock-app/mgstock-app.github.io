@@ -42,10 +42,11 @@ test("Vencimientos, Avisos y CSS están integrados en el menú",()=>{
     assert.match(css,new RegExp("\\.gl-exp-state\\."+status));
   }
 });
-test("El service worker solo muestra push y no pide permiso sin un clic",()=>{
-  assert.match(sw,/addEventListener\('push'/);
-  assert.match(sw,/registration\.showNotification/);
-  assert.doesNotMatch(sw,/Notification\.requestPermission/);
+test("Las notificaciones push quedan deshabilitadas y solo hay avisos internos",()=>{
+  assert.doesNotMatch(sw,/addEventListener\('push'/);
+  assert.doesNotMatch(sw,/showNotification/);
+  assert.doesNotMatch(app,/GestLokPush/);
+  assert.doesNotMatch(source,/push-enable|push-disable/);
 });
 test("Nunca se precrean vencimientos ficticios en producción",()=>{
   assert.doesNotMatch(source,/C\('vencimientos'\)\.add\(\s*\{\s*nombre:\s*'Fumigación'/);
