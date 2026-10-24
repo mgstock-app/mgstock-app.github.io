@@ -11,6 +11,9 @@
   try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); }
   catch (e) { console.error('Supabase no configurado', e); }
 
+  // Misma sesión de usuario para el catálogo comercial; RLS sigue siendo la autoridad.
+  if (sb) window.GestLokSupabase = sb;
+
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
   let email = null, rol = null, locales = [], tenantId = null, started = false;
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
