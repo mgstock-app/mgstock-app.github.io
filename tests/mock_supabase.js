@@ -109,8 +109,13 @@
       if (fn === 'gestlok_proveedor_guardar_historial'){
         const col=args.p_local+'/proveedores';
         if(!canWrite(col))return {data:null,error:{message:'No tenés permiso.'}};
-        const p=rows.find(r=>r.col===col&&r.id===args.p_proveedor_id);
-        if(!p)return {data:null,error:{message:'Carpeta inexistente.'}};
+        let p=rows.find(r=>r.col===col&&r.id===args.p_proveedor_id);
+        if(!p){
+          const nombre=String(args.p_productos?.[0]?.proveedor||'').trim();
+          if(!nombre||Number(args.p_version||0)!==0)return {data:null,error:{message:'Carpeta inexistente.'}};
+          p={col,id:args.p_proveedor_id,data:{nombre,contacto:'',telefono:'',entrega:'',nota:'',items:[],catalogo:{},pedidoActualizado:0}};
+          rows.push(p);
+        }
         if(Number(p.data.pedidoActualizado||0)!==Number(args.p_version||0))
           return {data:null,error:{message:'Otro usuario actualizó el pedido.'}};
         if(!Array.isArray(args.p_productos)||!args.p_productos.length)
