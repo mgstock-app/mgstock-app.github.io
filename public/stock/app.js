@@ -3423,7 +3423,7 @@ window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});
-window.GestLokCreator?.attach({isCreadora,renderHub,toast});
+window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
