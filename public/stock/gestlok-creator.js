@@ -95,7 +95,7 @@
     show();
     refresh();
   }
-  function close(){s.shown=false;show();}
+  function close(){s.shown=false;api?.onClose?.();}
   function download(){
     const url=URL.createObjectURL(new Blob(['\uFEFF'+example],{type:'text/csv;charset=utf-8'}));
     const a=document.createElement('a');
