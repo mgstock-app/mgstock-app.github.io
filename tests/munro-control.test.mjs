@@ -7,7 +7,9 @@ const file = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 
 test('Conteo diario solo se habilita para la creadora y gerentes de Munro', () => {
   const app = file('public/stock/app.js');
-  assert.match(app, /const puedeVerDiarioMunro = \(\) => S\.local === 'munro'/);
+  const auth = file('public/stock/auth.js');
+  assert.match(auth, /tenant_id: tenantId/);
+  assert.match(app, /const puedeVerDiarioMunro = \(\) => S\.me\?\.tenant_id === '[a-f0-9-]+' && S\.local === 'munro'/);
   assert.match(app, /miRol\(\) === 'creadora'/);
   assert.match(app, /miRol\(\) === 'gerente' && misLocales\(\)\.includes\('munro'\)/);
   assert.match(app, /\$\{puedeVerDiarioMunro\(\) \? \`<button data-go="diario"/);
