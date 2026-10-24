@@ -86,3 +86,14 @@ test('Pedidos admiten varios artículos, entregas, estados y exportación local 
   assert.match(commerce,/data-commerce-page/);
   assert.match(commerce,/devuelto:'Devuelto'/);
 });
+
+test('Dueño puede administrar sólo gerentes de su propio tenant y no elevar roles',()=>{
+  const rls=read('supabase/migrations/20261024_gestlok_owner_managers.sql');
+  assert.match(rls,/public\.mi_rol\(\)='dueno'/);
+  assert.match(rls,/tenant_id=\(select gestlok_tenancy\.current_tenant_id\(\)\)/);
+  assert.match(rls,/data->>'rol' in \('gerente','lectura'\)/);
+  assert.match(rls,/not public\.puede_ver_local\(x\.value\)/);
+  assert.doesNotMatch(rls,/data->>'rol' in \('gerente','dueno'\)/);
+  assert.match(app,/puedeAdministrarEquipo/);
+  assert.match(app,/case 'eq-del-ok'/);
+});
