@@ -990,3 +990,89 @@ html.auth-on body{overflow:hidden}
   .top .tact {gap:5px}
   .top .live {padding:0 7px}
 }
+
+/* Planillas Local + Ingreso/Fábrica: controles amplios, sin achicar las cantidades. */
+.xl-r:not(.xl-bq):not(.xl-h) {grid-template-columns:38px minmax(180px,1fr) 96px minmax(166px,185px) minmax(166px,185px)}
+.xl-mob-label {display:none}
+.xt strong {font:inherit}
+.xc.xcl,.xc.fab {min-width:0;flex-direction:column;align-items:stretch;gap:7px;padding:9px!important}
+.xl-stepper {display:grid;grid-template-columns:38px minmax(0,1fr) 38px;gap:5px;width:100%;align-items:center}
+.xl-stepper button {
+  min-width:0;min-height:42px;height:42px;padding:0;border-radius:9px;
+  border:1px solid #c8d5df;background:#fff;color:#163b56;
+  font:750 23px/1 var(--f-body);touch-action:manipulation;
+}
+.xl-stepper button:hover:not(:disabled) {background:#e8f4f5;border-color:#77acb6}
+.xl-stepper button:active:not(:disabled) {background:#cfe8ea}
+.xl-stepper button:disabled {opacity:.32;cursor:not-allowed}
+.xl-stepper input {height:42px;min-width:0;width:100%;border:1px solid #c8d5df;border-radius:9px;background:#fff}
+.xl-stepper:focus-within {border-radius:9px}
+.xc.xcl .fq {border-radius:9px}
+.xc.xcl .fq button {height:34px;font-size:16px;touch-action:manipulation}
+.xc.fab .xl-stepper button {color:#236143}
+.xl-r:not(.xl-h):not(.xl-bq) > .xp {padding:12px 14px;align-self:stretch}
+.xl-r:not(.xl-h):not(.xl-bq) .xp b {font-size:15px;line-height:1.45}
+.xl-r:not(.xl-h):not(.xl-bq) .xt {font-size:18px}
+@media screen and (max-width:1150px) {
+  .xl {background:transparent;border:0;box-shadow:none;overflow:visible}
+  .xl-top {background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px;padding:14px}
+  .xl-r.xl-h {display:none}
+  .xl-r.xl-bq {margin:16px 0 8px;overflow:hidden;border-radius:12px;border:1px solid var(--line)}
+  .xl-r:not(.xl-h):not(.xl-bq) {
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-template-areas:"product product product" "total local factory";
+    gap:0;margin-bottom:12px;border:1px solid #dbe5ec;border-radius:14px;
+    background:#fff;box-shadow:0 4px 14px rgba(17,40,60,.05);overflow:hidden
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > * {border:0;min-width:0}
+  .xl-r:not(.xl-h):not(.xl-bq) > .xn {display:none!important}
+  .xl-r:not(.xl-h):not(.xl-bq) > .xp {
+    grid-area:product;display:flex;gap:12px;align-items:center;
+    border-bottom:1px solid var(--line);padding:13px 16px;background:#f8fafc
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > .xt {
+    grid-area:total;display:flex;flex-direction:column;gap:8px;justify-content:center;
+    min-height:116px;padding:12px 8px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > .xc.xcl {
+    grid-area:local;border-left:1px solid var(--line);
+    border-right:1px solid var(--line);padding:12px!important
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > .xc.fab {
+    grid-area:factory;padding:12px!important
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xl-mob-label {
+    display:block;text-align:center;font:700 12px/1.3 var(--f-body);
+    letter-spacing:.04em;text-transform:uppercase;color:#4b6577
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xt strong {font-size:22px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper {grid-template-columns:44px minmax(0,1fr) 44px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper button,
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper input {height:48px;min-height:48px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .fq button {height:40px;font-size:17px}
+}
+@media screen and (max-width:600px) {
+  .xl-r:not(.xl-h):not(.xl-bq) {
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"product" "total" "local" "factory"
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > .xt {
+    min-height:54px;flex-direction:row;justify-content:space-between;padding:11px 16px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > .xc.xcl {
+    border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:13px 16px!important
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) > .xc.fab {padding:13px 16px!important}
+  .xl-r:not(.xl-h):not(.xl-bq) .xl-mob-label {text-align:left}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper {grid-template-columns:52px minmax(0,1fr) 52px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper button,
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper input {height:52px;min-height:52px}
+}
+@media print {
+ .xl-r:not(.xl-bq):not(.xl-h){grid-template-columns:38px minmax(0,1fr) 96px 116px 116px;break-inside:avoid}
+ .xl-stepper{display:block}
+ .xl-stepper button,.xl-mob-label{display:none!important}
+ .xc.xcl,.xc.fab{gap:0;padding:4px!important}
+ .xl-r:not(.xl-h):not(.xl-bq) {box-shadow:none}
+}
