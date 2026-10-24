@@ -93,7 +93,7 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], provHist:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
   view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
@@ -180,7 +180,7 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
@@ -528,13 +528,13 @@ function proveedorFilas(nombre){
     const sugerido=stored.sugerido ?? (objetivo!=null && stock!=null ? Math.max(0,round(objetivo-stock)):null);
     return {
       id:'c:'+p.id,productoId:p.id,origen:'catalogo',
-      nombre:p.nombre||'',unidad:p.unidad||'unidad',
+      nombre:p.nombre||'',categoria:p.cat||p.categoria||'General',unidad:p.unidad||'unidad',
       stockLocal:stock,sugerido,pedir:stored.pedir??0
     };
   });
   for(const x of draft.items||[]){
     if(!x?.id || !x.nombre)continue;
-    filas.push({...x,origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
+    filas.push({...x,categoria:x.categoria||'General',origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
   }
   return filas;
 }
@@ -621,11 +621,12 @@ function agregarProductoProveedor(form){
   if(!canW() || !S.provOpen)return;
   const nombre=form.querySelector('#prov-item-name').value.trim().replace(/\s+/g,' ');
   const unidad=form.querySelector('#prov-item-unit').value.trim().slice(0,30)||'unidad';
+  const categoria=form.querySelector('#prov-item-category')?.value.trim().slice(0,70)||'General';
   if(!nombre || nombre.length>100){toast('Ingresá un nombre válido de producto.',true);return;}
   if(proveedorFilas(S.provOpen).some(x=>norm(x.nombre)===norm(nombre))){toast('Ese producto ya existe en esta carpeta.',true);return;}
   const id='m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const d=proveedorBase(S.provOpen);
-  d.items.push({id,nombre,unidad,stockLocal:null,pedir:0,sugerido:null});
+  d.items.push({id,nombre,categoria,unidad,stockLocal:null,pedir:0,sugerido:null});
   proveedorGuardarBorrador(S.provOpen);S.provAdding=false;render();toast('Producto agregado al borrador. Guardá la planilla.');
 }
 function quitarProductoProveedor(id){
@@ -655,18 +656,18 @@ function proveedorResumenHTML(nombre){
      <tbody>${rows.map(x=>`<tr><td>${esc(nombre)}</td><td>${esc(x.nombre)}</td><td><b>${fmt(x.pedir)}</b> ${esc(x.unidad)}</td></tr>`).join('')}</tbody>
      </table></div>` :
    '<p class="gl-prov-empty">Todavía no hay productos para pedir. Completá la columna <b>Pedir</b> y aparecerán automáticamente acá.</p>';
-  return `<div class="gl-provider-summary-head"><h3>Pedido listo para compartir</h3>
+  return `<div class="gl-provider-summary-head"><h3>Pedido a proveedor</h3>
      <span class="gl-provider-count">${rows.length} ${rows.length===1?'producto':'productos'}</span></div>
-     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar en esta carpeta. Revisalos antes de compartir.' : 'El resumen se arma automáticamente con las cantidades de Pedir.'}</p>
+     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar. Cuando termines, tocá Guardar para registrar el pedido en el historial.' : 'El pedido se prepara desde la columna Pedir. Guardalo en el historial antes de exportarlo como PDF.'}</p>
      ${footer}
      <div id="prov-err" class="gl-prov-err" role="status"></div>
      <div class="bar-a">
-       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar lista y pedido</button>`:''}
-       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length?'disabled':''}>${ic('share')}Compartir por WhatsApp</button>`:''}
-       ${rows.length? `<button class="btn" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline||!rows.length?'disabled':''}>${ic('save')}Guardar</button>`:''}
+       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length||draft.dirty?'disabled':''}>${ic('share')}Compartir PDF por WhatsApp</button>`:''}
+       
      </div>
      ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
-     ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
+     ${!esTotal()?'<p class="lead">El envío del PDF está reservado a la dueña o la administradora.</p>':''}`;
 }
 function mostrarResumenProveedor(){
   if(!S.provOpen)return;
@@ -909,7 +910,7 @@ V.proveedores = () => {
       <div class="bar-a">
         <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
         ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
-        ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
+        
         ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
     </article>`;
@@ -945,6 +946,7 @@ V.proveedores = () => {
     </div>
     ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
       <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
+      <div class="fld"><label for="prov-item-category">Categoría</label><input id="prov-item-category" maxlength="70" placeholder="Ej.: Bebidas, Envases"></div>
       <div class="fld"><label for="prov-item-unit">Unidad</label><input id="prov-item-unit" maxlength="30" placeholder="kg, caja, unidad"></div>
       <button class="btn primary" type="submit">Agregar a la lista</button>
     </form>`:''}
@@ -956,7 +958,7 @@ V.proveedores = () => {
     </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
   return `<section class="sheet gl-proveedores">
     <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
-    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y compartilos por WhatsApp como imagen desde tu dispositivo.</p></div>
+    <p class="lead">Una carpeta por proveedor. Guardá los pedidos terminados en el historial y compartí únicamente el PDF por WhatsApp.</p></div>
     ${canW()?`<button class="btn primary" data-act="prov-new">${ic('plus')}Crear proveedor</button>`:''}
     </div>
     ${!S.loaded.p?loadingList():`<div class="gl-provider-grid">${carpetas||'<div class="card pad">Todavía no hay proveedores. Creá una carpeta para comenzar.</div>'}</div>`}
@@ -3017,10 +3019,14 @@ document.addEventListener('click', e => {
     case 'prov-add-open': S.provAdding = true; render(); break;
     case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
     case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
-    case 'prov-save-plan': guardarPlanProveedor(); break;
+    case 'prov-save-plan': confirmarGuardadoProveedor(); break;
+    case 'prov-confirm-save': guardarPlanProveedor(); break;
+    case 'prov-zero-cat': ponerEnCeroCategoriaProveedor(t.dataset.cat); break;
+    case 'prov-history-pdf': descargarHistorialProveedor(t.dataset.id); break;
     case 'prov-share': compartirPedidoProveedor(); break;
     case 'prov-share-ready': enviarProveedorPreparado(); break;
-    case 'prov-copy-image': copiarImagenProveedor(); break;
+    case 'prov-pdf-download': descargarPdfProveedor(); break;
+    case 'prov-whatsapp-open': abrirWhatsappProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
@@ -3325,6 +3331,10 @@ function subscribeLocal(){
     S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
     if(S.view === 'proveedores') render();
   }), errLive));
+  push(C('proveedores_historial').orderBy('fecha','desc').limit(250).onSnapshot(mine(snap => {
+    S.provHist = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(S.view === 'proveedores')render();
+  }),errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
     S.chat = snap.docs.map(d => ({id:d.id, ...d.data()}))
       .filter(chatRecent).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
@@ -3371,7 +3381,7 @@ function abrirLocal(id){
     if (S.local) cerrarLocal();
     S.local = id;
     window.GestLokMunroDaily?.reset();
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHist = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
