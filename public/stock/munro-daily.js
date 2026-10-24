@@ -18,7 +18,7 @@
     {id:'pizza-grande',nombre:'Pizza grande',categoria:'Pizzas',inicio:5,remitos:30}
   ];
   let api = null, registros = [], borrador = null, filtro = 'Todas';
-  let edicion = false, comparar = false, ajustes = false, guardando = false;
+  let edicion = false, comparar = false, ajustes = false, guardando = false, ultimaFecha = '';
   const $ = sel => document.querySelector(sel);
   const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const vnum = value => value === '' || value == null ? null : (Number.isFinite(Number(value)) ? Number(value) : null);
@@ -107,6 +107,7 @@
     '</section>' : '';
   function view(){
     if(!permitido()) return '<section class="sheet"><p>No tenés acceso a este módulo.</p></section>';
+    if (ultimaFecha !== fecha()) { borrador=null; edicion=false; ultimaFecha=fecha(); }
     const rows = filas(), k = kpis(rows);
     const cats = [...new Set(rows.map(p=>p.categoria))];
     const categorias = ['Todas',...cats].map(c=>
@@ -184,7 +185,7 @@
     document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   function reset(){
-    registros=[];borrador=null;filtro='Todas';edicion=false;comparar=false;ajustes=false;guardando=false;
+    registros=[];borrador=null;filtro='Todas';edicion=false;comparar=false;ajustes=false;guardando=false;ultimaFecha='';
   }
   function subscribe(loc,push){
     if(loc!=='munro'||!permitido())return;
