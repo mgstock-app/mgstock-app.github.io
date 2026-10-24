@@ -93,9 +93,9 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
@@ -175,7 +175,7 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'diario'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
@@ -302,6 +302,7 @@ function viewHTML(){
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
   if (S.view === 'chat') return V.chat();
   if (S.view === 'proveedores') return V.proveedores();
+  if (S.view === 'diario') return V.diario();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (esFabT(t)) return V.fabrica();
@@ -315,9 +316,9 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'diario' ? 'Control diario' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat || S.view === 'proveedores';
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'diario';
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -332,7 +333,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span></button>
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos">${Math.min(99,S.unreadChat)}</span>` : ''}</button><button data-go="diario">${ic('clip')}<span class="nl">Control diario</span></button>
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -476,6 +477,111 @@ async function guardarProveedor(f){
     closePanel(); toast('Ficha del proveedor guardada');
   } catch(e) { fail(e); if(btn.isConnected){btn.disabled=false;btn.textContent='Guardar ficha';} }
 }
+
+/* Control diario: registros adicionales por producto, sin modificar el stock operativo.
+   Cada confirmación es un registro nuevo, para conservar revisiones y autoría. */
+const diarioVal = v => {
+  const t = String(v ?? '').trim();
+  if (!t) return null;
+  if (!/^-?\d+(?:[.,]\d{1,2})?$/.test(t)) return NaN;
+  return Number(t.replace(',','.'));
+};
+function diarioResumen(data){
+  const esperado = round(data.inicio + data.ingresos - data.ventas - data.consumo - data.merma + data.ajustes);
+  const diferencia = round(data.final - esperado);
+  return {esperado,diferencia};
+}
+const diarioRegistros = () => {
+  const dia = S.diarioDia || hoyISO();
+  const m = new Map();
+  for(const d of S.diarios) {
+    if(d.dia !== dia || !S.allProds.some(p=>p.id===d.producto))continue;
+    if(!m.has(d.producto))m.set(d.producto,d);
+  }
+  return [...m.values()];
+};
+function diarioNuevo(){
+  S.diarioProd = '';
+  render();
+}
+V.diario = () => {
+  const dia = S.diarioDia || hoyISO();
+  const prods = S.allProds.filter(p=> !p.hoja).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  const r = diarioRegistros();
+  const faltantes = r.filter(d=>Math.abs(Number(d.diferencia)||0)>0.001);
+  const p = prods.find(x=>x.id===S.diarioProd) || prods[0];
+  const prev = p && r.find(d=>d.producto===p.id);
+  const fields = [
+    ['inicio','Stock inicial'],['ingresos','Ingresos'],['ventas','Ventas'],
+    ['consumo','Consumo interno'],['merma','Merma'],['ajustes','Ajustes (+/−)'],['final','Conteo físico final']
+  ];
+  return `<section class="sheet gl-daily">
+    <div class="bar"><div><p class="eyebrow">Movimientos · ${esc(localNombre())}</p><h1>Control diario</h1>
+      <p class="lead">Registrá los movimientos reales de cada producto y compará el conteo físico con el stock esperado. No modifica el stock de las otras planillas.</p></div>
+      <div class="fld"><label for="diario-fecha">Fecha</label><input id="diario-fecha" type="date" max="${hoyISO()}" value="${esc(dia)}"></div>
+    </div>
+    <div class="gl-daily-kpis"><div><b>${r.length}</b><small>Productos revisados</small></div><div><b>${faltantes.length}</b><small>Con diferencias</small></div><div><b>${prods.length-r.length}</b><small>Sin registrar</small></div></div>
+    ${!prods.length ? '<div class="note warn">Todavía no hay productos en la hoja principal.</div>' : `
+      <div class="gl-daily-layout">
+        <section class="card pad gl-daily-entry">
+          <h2>Registrar producto</h2>
+          <div class="fld"><label for="diario-producto">Producto</label><select id="diario-producto">${prods.map(x=>`<option value="${esc(x.id)}" ${x.id===p.id?'selected':''}>${esc(x.nombre)} · ${esc(x.unidad||'unidad')}</option>`).join('')}</select></div>
+          <p class="lead">${prev ? `Último registro: ${esc(fechaHora(prev.creado))} · ${esc(prev.autor||'equipo')}. Podés agregar una corrección sin borrar el anterior.` : 'Los campos de movimientos vacíos se interpretan como cero. El inicial y el conteo físico son obligatorios.'}</p>
+          <form id="diario-form">
+            <div class="gl-daily-fields">${fields.map(([k,label])=>`<div class="fld"><label for="diario-${k}">${label}</label><input id="diario-${k}" data-diario-num="${k}" inputmode="decimal" autocomplete="off" placeholder="${k==='ajustes'?'0 (puede ser negativo)':'0'}" ${!canW() || S.offline ? 'disabled' : ''}></div>`).join('')}</div>
+            <div class="fld"><label for="diario-nota">Observación / motivo</label><textarea id="diario-nota" maxlength="250" rows="2" placeholder="Ej.: consumo de personal, rotura, diferencia de conteo" ${!canW() || S.offline ? 'disabled' : ''}></textarea></div>
+            <div id="diario-preview" class="gl-daily-result" role="status">Completá el stock inicial y el conteo final para calcular la diferencia.</div>
+            <div class="bar-a"><button class="btn primary" type="submit" ${!canW() || S.offline ? 'disabled' : ''}>${ic('save')}Guardar registro diario</button></div>
+            ${S.offline ? '<p class="note warn">Sin conexión. No se puede guardar este registro; volvé a abrirlo cuando haya internet.</p>' : ''}
+            ${!canW() ? '<p class="note">Tu cuenta tiene permiso de lectura, no de edición.</p>' : ''}
+          </form>
+        </section>
+        <section class="card pad gl-daily-history">
+          <h2>Resumen del día</h2>
+          ${r.length ? `<div class="gl-daily-list">${r.map(d=>{
+            const prod=S.allProds.find(x=>x.id===d.producto);
+            const n=Number(d.diferencia)||0;
+            return `<div class="gl-daily-item"><div><b>${esc(prod?.nombre||d.nombre||'Producto')}</b><small>${esc(fechaHora(d.creado))}</small></div><span class="${n?'gl-daily-alert':'gl-daily-ok'}">${n>0?'+':''}${fmt(n)}</span></div>`;
+          }).join('')}</div>` : '<p class="lead">Todavía no hay registros para esta fecha.</p>'}
+          <p class="lead">Las cantidades se expresan en la unidad de cada producto; no sumamos litros, kilos y unidades entre sí.</p>
+        </section>
+      </div>`}
+  </section>`;
+};
+function diarioCalcularDesdeForm(f){
+  const keys=['inicio','ingresos','ventas','consumo','merma','ajustes','final'];
+  const data={};
+  for(const key of keys) {
+    const v=diarioVal(f.querySelector('#diario-'+key)?.value);
+    if(!Number.isFinite(v) && v!==null) return {error:'Revisá las cantidades. Usá números con hasta dos decimales.'};
+    if(v!==null && (Math.abs(v)>100000000 || (key!=='ajustes' && v<0))) return {error:'Las cantidades deben ser positivas (excepto los ajustes) y razonables.'};
+    if(v===null && (key==='inicio' || key==='final')) return {error:'Completá stock inicial y conteo físico final.'};
+    data[key]=v??0;
+  }
+  return {data,...diarioResumen(data)};
+}
+function refrescarDiarioPreview(f){
+  const el=document.getElementById('diario-preview');if(!el)return;
+  const result=diarioCalcularDesdeForm(f);
+  el.textContent=result.error || ('Stock esperado: '+fmt(result.esperado)+' · Conteo físico: '+fmt(result.data.final)+' · Diferencia: '+(result.diferencia>0?'+':'')+fmt(result.diferencia));
+  el.classList.toggle('gl-daily-alert',!result.error && Math.abs(result.diferencia)>0.001);
+}
+async function guardarDiario(f){
+  if(!S.db || !S.local || !canW() || S.offline){toast('Necesitás internet y permiso de edición.',true);return;}
+  const date=S.diarioDia || hoyISO();
+  const prod=S.allProds.find(x=>x.id===S.diarioProd) || S.allProds.filter(x=>!x.hoja)[0];
+  const result=diarioCalcularDesdeForm(f);
+  if(!prod || prod.hoja || result.error || !/^\d{4}-\d\d-\d\d$/.test(date) || date>hoyISO()){toast(result.error||'Revisá el producto y la fecha.',true);return;}
+  const local=S.local, btn=f.querySelector('button[type="submit"]');
+  if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  const record={dia:date,producto:prod.id,nombre:prod.nombre||'',unidad:prod.unidad||'unidad',
+    ...result.data,esperado:result.esperado,diferencia:result.diferencia,
+    nota:f.querySelector('#diario-nota').value.trim().slice(0,250),creado:Date.now(),autor:S.uid};
+  try {
+    await w(()=>C('diario').add(record));
+    if(S.local===local){toast('Registro guardado. No se modificó el stock operativo.');render();}
+  }catch(e){fail(e);if(btn?.isConnected){btn.disabled=false;btn.textContent='Guardar registro diario';}}
+}
 V.proveedores = () => {
   const lista = provs();
   const items = lista.map(([nombre,count]) => {
@@ -503,6 +609,14 @@ V.proveedores = () => {
   </section>`;
 };
 
+
+const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+function markChatRead(){
+  if (!S.local || !S.uid) return;
+  const latest = Math.max(Date.now(),...S.chat.map(m=>Number(m.fecha)||0));
+  lsSet(chatSeenKey(),latest);
+  S.unreadChat = 0;
+}
 V.chat = () => {
   const mensajes = S.chat.map(m => {
     const own = !!(m.autor && m.autor === S.uid);
@@ -561,7 +675,7 @@ V.inicio = () => {
       ${cg ? `<button class="gl-today-action" data-go="${cg}">${ic('clip')}<b>${cgL}</b><small>${cnt.nc ? plural(cnt.nc,'producto pendiente','productos pendientes') : 'Revisar cantidades'}</small></button>` : ''}
       ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
       <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
-      <button class="gl-today-action" data-go="historial">${ic('clock')}<b>Últimos movimientos</b><small>${last ? esc(fechaHora(last.fecha)) : 'Aún no hay conteos'}</small></button>
+      <button class="gl-today-action" data-go="diario">${ic('clock')}<b>Control diario</b><small>Ventas, consumo y diferencias</small></button>
     </div>
   </section>
   <div class="kpis${pedV ? '' : ' k3'}">
@@ -1899,6 +2013,7 @@ function dragEnd(){
 }
 document.addEventListener('pointerup', dragEnd);
 document.addEventListener('pointercancel', dragEnd);
+document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } });
 document.addEventListener('keydown', e => {
   const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   e.preventDefault();
@@ -2399,6 +2514,10 @@ function backup(){
     {name:'Local + Fábrica', rows:[['Hoja','Bloque','Orden','Producto','Resaltado','Local','Fábrica','Total','Sin stock'], ...fabs.map(it => [nombreHoja(it.hoja || 'fabrica'), bloqueOf(it), n0(it.orden), it.nombre || '', it.resaltar ? 'Sí' : 'No', n0(num(it.local)), n0(num(it.fabrica)), n0(round((num(it.local) || 0) + (num(it.fabrica) || 0))), it.sinStock ? 'Sí' : 'No'])]},
     {name:'Historial', rows:filasHist(S.conteos)},
     {name:'Historial Fábrica', rows:filasHistF(S.conteos)},
+    {name:'Control diario', rows:[['Fecha','Producto','Unidad','Inicio','Ingresos','Ventas','Consumo interno','Merma','Ajustes','Esperado','Conteo físico','Diferencia','Nota','Autor','Guardado'],
+      ...S.diarios.map(d => [d.dia||'',d.nombre||'',d.unidad||'',n0(d.inicio),n0(d.ingresos),n0(d.ventas),n0(d.consumo),n0(d.merma),n0(d.ajustes),n0(d.esperado),n0(d.final),n0(d.diferencia),d.nota||'',d.autor||'',fechaHora(d.creado)])]},
+    {name:'Proveedores', rows:[['Proveedor','Contacto','Teléfono','Entrega','Observaciones'],
+      ...S.provInfo.map(p=>[p.nombre||'',p.contacto||'',p.telefono||'',p.entrega||'',p.nota||''])]},
     {name:'Hojas', rows:[['Hoja','Tipo','En el menú','Orden'], ...hojas().map(h => [h.nombre, h.base ? 'Fija' : TIPOS[h.tipo].nombre, h.oculta ? 'No' : 'Sí', h.orden])]},
     {name:'Equipo', rows:[['Email','Acceso'], ...equipoList().map(e => [e.email, (ROL[e.rol] || ROL.editor)[0]])]}
   ]);
@@ -2406,10 +2525,10 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || v === 'diario' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
-  S.view = v; $('#app').classList.remove('open'); $('#scrim').hidden = true;
+  S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
   render(); if (!silent) window.scrollTo({top:0});
 }
 function applySkin(){ document.documentElement.removeAttribute('data-skin'); }
@@ -2424,6 +2543,7 @@ document.addEventListener('click', e => {
     case 'menu-open': $('#app').classList.add('open'); $('#scrim').hidden = false; $('#snav button')?.focus(); break;
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
+    case 'diario-nuevo': diarioNuevo(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo y pegalo en WhatsApp.'); break;
     case 'ajustes': openAjustes(); break;
@@ -2538,6 +2658,8 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.matches('[data-ss]')) toggleSS(t.dataset.ss, t.checked, t);
+  else if (t.id === 'diario-fecha') { S.diarioDia = t.value; render(); }
+  else if (t.id === 'diario-producto') { S.diarioProd = t.value; render(); }
   else if (t.matches('[data-fss]')) toggleFSS(t.dataset.fss, t.checked, t);
   else if (t.matches('[data-rolsel]')) cambiarRol(t.dataset.rolsel, t.value === 'lectura' ? 'lectura' : 'gerente');
   else if (t.matches('[data-eqloc]')) cambiarLocales(t.dataset.eqloc);
@@ -2593,7 +2715,8 @@ document.addEventListener('focusout', e => {
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
-  if (f.id === 'prov-form') guardarProveedor(f);
+  if (f.id === 'diario-form') guardarDiario(f);
+  else if (f.id === 'prov-form') guardarProveedor(f);
   else if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
   else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
   else if (f.id === 'aa-form') agregar();
@@ -2671,12 +2794,25 @@ function afterAccess(){
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
+  push(C('diario').onSnapshot(mine(snap => {
+    S.diarios = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (b.creado||0)-(a.creado||0));
+    if(S.view === 'diario') render();
+  }), errLive));
   push(C('proveedores').onSnapshot(mine(snap => {
     S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
     if(S.view === 'proveedores') render();
   }), errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
     S.chat = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
+    const key = chatSeenKey();
+    const baseline = lsGet(key, null);
+    if (baseline == null) lsSet(key, Date.now());
+    if (S.view === 'chat') markChatRead();
+    else {
+      const since = baseline == null ? Date.now() : baseline;
+      S.unreadChat = S.chat.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
+      renderNav();
+    }
     if (S.view === 'chat') render();
   }), errLive));
   push(C('hojas').onSnapshot(mine(snap => {
@@ -2711,9 +2847,9 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.provInfo = [];
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
-    S.ntEdit = {}; S.view = 'inicio'; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
+    S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
   }
   S.ro = !puedeEditarLocal(id);
