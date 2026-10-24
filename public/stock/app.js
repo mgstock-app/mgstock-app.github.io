@@ -2514,6 +2514,10 @@ function backup(){
     {name:'Local + Fábrica', rows:[['Hoja','Bloque','Orden','Producto','Resaltado','Local','Fábrica','Total','Sin stock'], ...fabs.map(it => [nombreHoja(it.hoja || 'fabrica'), bloqueOf(it), n0(it.orden), it.nombre || '', it.resaltar ? 'Sí' : 'No', n0(num(it.local)), n0(num(it.fabrica)), n0(round((num(it.local) || 0) + (num(it.fabrica) || 0))), it.sinStock ? 'Sí' : 'No'])]},
     {name:'Historial', rows:filasHist(S.conteos)},
     {name:'Historial Fábrica', rows:filasHistF(S.conteos)},
+    {name:'Control diario', rows:[['Fecha','Producto','Unidad','Inicio','Ingresos','Ventas','Consumo interno','Merma','Ajustes','Esperado','Conteo físico','Diferencia','Nota','Autor','Guardado'],
+      ...S.diarios.map(d => [d.dia||'',d.nombre||'',d.unidad||'',n0(d.inicio),n0(d.ingresos),n0(d.ventas),n0(d.consumo),n0(d.merma),n0(d.ajustes),n0(d.esperado),n0(d.final),n0(d.diferencia),d.nota||'',d.autor||'',fechaHora(d.creado)])]},
+    {name:'Proveedores', rows:[['Proveedor','Contacto','Teléfono','Entrega','Observaciones'],
+      ...S.provInfo.map(p=>[p.nombre||'',p.contacto||'',p.telefono||'',p.entrega||'',p.nota||''])]},
     {name:'Hojas', rows:[['Hoja','Tipo','En el menú','Orden'], ...hojas().map(h => [h.nombre, h.base ? 'Fija' : TIPOS[h.tipo].nombre, h.oculta ? 'No' : 'Sí', h.orden])]},
     {name:'Equipo', rows:[['Email','Acceso'], ...equipoList().map(e => [e.email, (ROL[e.rol] || ROL.editor)[0]])]}
   ]);
@@ -2712,7 +2716,6 @@ document.addEventListener('focusout', e => {
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
   if (f.id === 'diario-form') guardarDiario(f);
-  else if (f.id === 'diario-form') guardarDiario(f);
   else if (f.id === 'prov-form') guardarProveedor(f);
   else if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
   else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
