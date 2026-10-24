@@ -18,11 +18,12 @@ test("proveedores se guardan por local y se bloquean sin permisos", () => {
 test("el envío de pedidos requiere intervención humana y nunca envía WhatsApp por código", () => {
   const app = read("public/stock/app.js");
   assert.match(app, /https:\/\/wa\.me\//);
-  assert.match(app, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(app, /window\.open\('https:\/\/wa\.me\/'\+p\.telefono/);
   assert.match(app, /copyText\(proveedorSeleccionados\(t\.dataset\.name\)\.length/);
-  assert.match(app, /new File\(\[blob\]/);
+  assert.match(read("public/stock/gestlok-proveedor-pdf.js"), /new File\(\[blob\]/);
   assert.match(app, /navigator\.canShare/);
-  assert.match(app, /promise=navigator\.share\(/);
+  assert.match(app, /navigator\.share\(\{files:\[p\.archivo\]\}\)/);
+  assert.doesNotMatch(app, /image\/png|crearImagenPedido/);
   assert.match(app, /data-act="prov-share-ready"/);
   assert.match(app, /if\(!esTotal\(\) \|\| !S\.provOpen\)return/);
   assert.doesNotMatch(app, /whatsapp\.sendMessage\(/);
