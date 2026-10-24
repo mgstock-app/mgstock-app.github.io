@@ -401,16 +401,14 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#snav [data-act="locales"]').click();
     toLocal('torcuato');
     cy.get('#snav [data-go="proveedores"]').click();
-    cy.get('.gl-provider-card').should('not.contain.text','Cafetería Insumos QA');
+    cy.get('#view').should('not.contain.text','Cafetería Insumos QA');
   });
 
   it("proveedores: una cuenta de lectura no puede modificar ni compartir pedidos", () => {
+    cy.window().then(w=>w.__rows.find(r=>r.col==='munro/productos' && r.id==='p-001').data.proveedor='Proveeduría lectura');
     login('lectura@example.com');
     cy.get('#snav [data-go="proveedores"]').click();
     cy.get('[data-act="prov-new"]').should('not.exist');
-    cy.window().then(w=>w.__rows.find(r=>r.col==='munro/productos' && r.id==='p-001').data.proveedor='Proveeduría lectura');
-    cy.get('#snav [data-go="inicio"]').click();
-    cy.get('#snav [data-go="proveedores"]').click();
     cy.get('[data-act="prov-open"][data-name="Proveeduría lectura"]').click();
     cy.get('[data-prov-val]').should('be.disabled');
     cy.get('[data-act="prov-save-plan"]').should('not.exist');
