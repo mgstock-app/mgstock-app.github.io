@@ -760,89 +760,73 @@ function ponerEnCeroProveedorCategoria(categoria){
   proveedorGuardarBorrador(nombre);render();
   toast('Stock local y Pedir quedaron en 0; Sugerido permanece intacto. Guardá la lista.');
 }
-function crearImagenPedido(nombre,productos,pagina,total){
-  const W=1000, H=310+productos.length*64;
-  const canvas=document.createElement('canvas');
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  if(!ctx)return Promise.reject(new Error('canvas'));
-  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#0c2034';ctx.fillRect(0,0,W,150);
-  ctx.fillStyle='#ffffff';ctx.font='bold 40px Arial, sans-serif';ctx.fillText('GESTLOK',50,75);
-  ctx.font='22px Arial, sans-serif';ctx.fillText('PEDIDO A PROVEEDOR',50,112);
-  ctx.fillStyle='#14354b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText(nombre.slice(0,55),50,205);
-  ctx.font='18px Arial, sans-serif';ctx.fillText('Local: '+localNombre().slice(0,40)+'   |   '+hoyISO()+'   |   Página '+pagina+'/'+total,50,240);
-  ctx.fillStyle='#eff5f7';ctx.fillRect(42,263,W-84,42);
-  ctx.fillStyle='#17394f';ctx.font='bold 19px Arial, sans-serif';ctx.fillText('PRODUCTO',55,290);ctx.fillText('PEDIR',755,290);
-  ctx.font='19px Arial, sans-serif';
-  productos.forEach((p,i)=>{
-    const y=332+i*64;
-    if(i%2===0){ctx.fillStyle='#f6f9fb';ctx.fillRect(42,y-24,W-84,58);}
-    ctx.fillStyle='#1a364b';
-    const product=String(p.nombre).length>53?String(p.nombre).slice(0,50)+'…':String(p.nombre);
-    ctx.fillText(product,55,y,670);
-    ctx.font='bold 19px Arial, sans-serif';
-    ctx.fillText(fmt(p.pedir)+' '+String(p.unidad||'').slice(0,16),755,y,200);
-    ctx.font='19px Arial, sans-serif';
-  });
-  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('imagen')),'image/png'));
-}
-async function compartirPedidoProveedor(){
-  if(!esTotal() || !S.provOpen)return;
-  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
-  if(!rows.length){toast('Completá primero las cantidades de Pedir.',true);return;}
-  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de compartir.',true);return;}
-  const texto=pedidoProveedorTexto(nombre),telefono=telWa(proveedorFicha(nombre)?.telefono);
-  const wa='https://wa.me/'+telefono+'?text='+encodeURIComponent(texto);
-  if(!navigator.share){
-    window.open(wa,'_blank','noopener,noreferrer');
-    toast('WhatsApp abierto con el pedido escrito. Confirmá el envío.');
-    return;
+/* Solo PDF real. WhatsApp no permite adjuntar archivos mediante enlaces wa.me;
+   Web Share adjunta el PDF si el móvil lo soporta; si no, se descarga para
+   adjuntarlo manualmente. Nunca se envía foto o texto en este flujo. */
+function compartirPedidoProveedor(historialId){
+  if(!esTotal()||!S.provOpen)return;
+  const nombre=S.provOpen;
+  const registro=historialId?S.provHistorial.find(x=>x.id===historialId && x.proveedorId===proveedorId(nombre)):null;
+  if(historialId&&!registro){toast('No se encontró ese pedido en el historial.',true);return;}
+  const d=proveedorBase(nombre);
+  if(!registro&&(d.dirty||d.stale||!d.base)){
+    toast('Primero guardá la lista antes de exportar el PDF.',true);return;
   }
-  const btn=document.querySelector('[data-act="prov-share"]');if(btn)btn.disabled=true;
+  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de exportar.',true);return;}
+  const rows=registro?registro.productos:proveedorSeleccionados(nombre);
+  if(!Array.isArray(rows)||!rows.length){toast('No hay productos para exportar.',true);return;}
+  if(!window.GestLokProviderPDF?.createFile){
+    toast('El generador PDF no está disponible. Actualizá la aplicación.',true);return;
+  }
   try{
-    const chunks=[];for(let i=0;i<rows.length;i+=28)chunks.push(rows.slice(i,i+28));
-    const archivos=[];
-    for(let i=0;i<chunks.length;i++){
-      const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
-      archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
-    }
-    if(S.provOpen!==nombre)return;
-    S.provEnvio={nombre,local:S.local,texto,wa,archivos};
+    const file=window.GestLokProviderPDF.createFile({
+      proveedor:nombre,local:localNombre(),
+      fecha:registro?new Date(registro.fecha).toLocaleDateString('es-AR'):hoyISO(),rows
+    });
+    const telefono=telWa(proveedorFicha(nombre)?.telefono);
+    const share=!!navigator.share && !!navigator.canShare?.({files:[file]});
+    S.provEnvio={nombre,local:S.local,archivo:file,telefono,share};
     S.panel='prov-share';
-    const filesAllowed=!!navigator.canShare?.({files:archivos});
-    openPanel(`<div class="pn-h"><h3>Compartir pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-      <div class="pn-b gl-prov-sharing">
-        <p class="lead"><b>${esc(nombre)}</b> · ${plural(rows.length,'producto','productos')} · ${plural(archivos.length,'imagen preparada','imágenes preparadas')}.</p>
-        <p class="lead">Elegí WhatsApp en el menú de compartir y confirmá el destinatario. GestLok no envía nada sin tu confirmación.</p>
-        <button class="btn primary" type="button" data-act="prov-share-ready">${ic('share')}${filesAllowed?'Enviar imagen por WhatsApp':'Compartir pedido como texto'}</button>
-        ${navigator.clipboard?.write && window.ClipboardItem && archivos.length===1?`<button class="btn" type="button" data-act="prov-copy-image">${ic('copy')}Copiar imagen</button>`:''}
-        <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}Abrir WhatsApp con el pedido escrito</a>
-        <small>Si tu dispositivo no admite adjuntar la imagen, podés compartir el texto completo.</small>
-      </div>`,'dlg');
-  }catch(e){toast('No se pudo generar la imagen. Usá Copiar pedido o WhatsApp.',true);}
-  finally{if(btn?.isConnected)btn.disabled=false;}
+    openPanel('<div class="pn-h"><h3>Compartir PDF</h3>'+
+      '<button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+      '<div class="pn-b gl-prov-sharing">'+
+      '<p class="lead"><b>'+esc(nombre)+'</b> · '+plural(rows.length,'producto','productos')+
+      ' · PDF de '+Math.max(1,Math.ceil(file.size/1024))+' KB.</p>'+
+      '<p class="lead">Se comparte exclusivamente el archivo PDF, sin fotografía ni texto de pedido. Elegí WhatsApp en el menú y confirmá el destinatario.</p>'+
+      (share?'<button class="btn primary" data-act="prov-share-ready">'+ic('share')+
+        'Compartir PDF (elegir WhatsApp)</button>':'<p class="note warn">Este dispositivo no permite adjuntar el PDF directamente. Descargalo y adjuntalo desde WhatsApp.</p>')+
+      '<button class="btn" data-act="prov-download-pdf">'+ic('save')+'Descargar PDF</button>'+
+      (telefono?'<a class="btn" href="https://wa.me/'+telefono+'" target="_blank" rel="noopener noreferrer">'+ic('msg')+
+        'Abrir chat del proveedor (sin texto)</a>':
+        '<p class="note">Agregá el número de WhatsApp en la ficha del proveedor para abrir directamente su chat.</p>')+
+      '</div>','dlg');
+  }catch(e){toast('No se pudo generar el PDF. Revisá los artículos y volvé a intentar.',true);}
 }
-/* El usuario toca una segunda vez: mantiene la activación requerida por Web Share. */
+function descargarPdfProveedor(){
+  const p=S.provEnvio;
+  if(!p||p.local!==S.local||!p.archivo||!esTotal())return;
+  const u=URL.createObjectURL(p.archivo),a=document.createElement('a');
+  a.href=u;a.download=p.archivo.name;document.body.appendChild(a);a.click();a.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(u),15000);
+  toast('PDF descargado. Adjuntá ese archivo desde el chat de WhatsApp.');
+}
 function enviarProveedorPreparado(){
   const p=S.provEnvio;
-  if(!p || p.local!==S.local || !esTotal() || !navigator.share)return;
-  const filesAllowed=!!navigator.canShare?.({files:p.archivos});
-  let promise;
-  try{promise=navigator.share(filesAllowed?{title:'Pedido · '+p.nombre,text:p.texto,files:p.archivos}:{title:'Pedido · '+p.nombre,text:p.texto});}
-  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);return;}
-  Promise.resolve(promise).then(()=>{
-    if(S.provEnvio===p){closePanel();toast('El pedido se entregó al menú de compartir. Confirmá el envío en WhatsApp.');}
-  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);});
+  if(!p||p.local!==S.local||!esTotal()||!p.share||!navigator.share)return;
+  let task;
+  try{
+    // Solo el archivo: nunca text ni imágenes en el payload.
+    task=navigator.share({files:[p.archivo]});
+  }catch(e){
+    if(e?.name!=='AbortError')toast('No se pudo compartir el PDF. Usá Descargar PDF.',true);
+    return;
+  }
+  Promise.resolve(task).then(()=>{
+    if(S.provEnvio===p){closePanel();toast('PDF entregado al menú de compartir. Confirmá el envío en WhatsApp.');}
+  }).catch(e=>{
+    if(e?.name!=='AbortError')toast('El dispositivo no pudo adjuntar el PDF. Usá Descargar PDF.',true);
+  });
 }
-function copiarImagenProveedor(){
-  const p=S.provEnvio;
-  if(!p || p.archivos.length!==1 || !navigator.clipboard?.write || !window.ClipboardItem)return;
-  navigator.clipboard.write([new window.ClipboardItem({'image/png':p.archivos[0]})])
-    .then(()=>toast('Imagen copiada. Abrí WhatsApp y pegala en el chat.'))
-    .catch(()=>toast('Este navegador no permite copiar la imagen.',true));
-}
-
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
    Cada confirmación es un registro nuevo, para conservar revisiones y autoría. */
 const diarioVal = v => {
