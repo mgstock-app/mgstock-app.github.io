@@ -106,8 +106,7 @@
     if (!online() || !api.canW() || !disponible() || busy) return;
     const d = new FormData(form);
     const cliente = String(d.get('cliente')||'').trim().slice(0,100);
-    const lines=String(d.get('lineas')||'').split(/?
-/).map(v=>v.trim()).filter(Boolean);
+    const lines=String(d.get('lineas')||'').split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
     if(!lines.length||lines.length>30){api.toast('Indicá entre 1 y 30 renglones de productos.',true);return;}
     const items=[];
     for(const line of lines){
@@ -130,7 +129,7 @@
     const tracking=String(d.get('tracking')||'').trim().slice(0,100);
     if(!cliente||!producto||cantidad<1||cantidad>1000000||!Number.isFinite(total)||total>999999999999
        ||!CANALES[canal]||!['retiro','envio','coordinar'].includes(entrega)
-       ||(fechaEntrega&&!/^d{4}-d{2}-d{2}$/.test(fechaEntrega))){
+       ||(fechaEntrega&&!/^\d{4}-\d{2}-\d{2}$/.test(fechaEntrega))){
       api.toast('Revisá los datos del pedido.',true);return;
     }
     busy=true;
@@ -162,8 +161,7 @@
         CANALES[o.canal]||o.canal,Array.isArray(o.items)?o.items.map(x=>x.nombre+' x'+x.cantidad).join(' | '):o.producto,
         o.cantidad,o.total??'',ESTADOS[o.estado]||o.estado,o.entrega||'',o.fechaEntrega||'',o.transportista||'',o.tracking||'']);
     }
-    const content='﻿'+lines.map(r=>r.map(quote).join(';')).join('
-');
+    const content='﻿'+lines.map(r=>r.map(quote).join(';')).join('\r\n');
     const u=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));
     const a=document.createElement('a');a.href=u;a.download='gestlok-pedidos-'+api.S.local+'.csv';
     document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);
