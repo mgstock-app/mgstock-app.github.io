@@ -29,8 +29,7 @@ describe('GestLok: tienda física, online y mixta',()=>{
     cy.get('#view .gl-commerce-choice[data-commerce-mode="online"]').click();
     cy.get('#snav [data-go="pedidos-online"]').should('exist').click();
     cy.get('#gl-commerce-order-form input[name="cliente"]').type('Pedido de prueba');
-    cy.get('#gl-commerce-order-form input[name="producto"]').type('Remera azul');
-    cy.get('#gl-commerce-order-form input[name="cantidad"]').clear().type('2');
+    cy.get('#gl-commerce-order-form textarea[name="lineas"]').type('Remera azul | 2 | 12500{enter}Buzo negro | 1 | 22500');
     cy.get('#gl-commerce-order-form button[type="submit"]').click();
     cy.get('.gl-commerce-order-list').should('contain.text','Pedido de prueba');
     cy.get('[data-commerce-status]').first().select('preparando');
