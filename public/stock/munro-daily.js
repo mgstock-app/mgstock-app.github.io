@@ -15,7 +15,7 @@
   const SEED = [
     {id:'empanadas',nombre:'Empanadas',categoria:'Empanadas',inicio:1339,remitos:810},
     {id:'pizza-indi',nombre:'Pizza Indi',categoria:'Pizzas',inicio:35,remitos:0},
-    {id:'pizza-grande',nombre:'Pizza grande',categoria:'Pizzas',inicio:5,remitos:30}
+    {id:'pizza-grande',nombre:'Pizza grande',categoria:'Pizzas',inicio:4,remitos:30}
   ];
   let api = null, registros = [], borrador = null, filtro = 'Todas';
   let edicion = false, comparar = false, ajustes = false, guardando = false, ultimaFecha = '';
@@ -25,7 +25,7 @@
   const n = value => Number(value) || 0;
   const f = value => Number.isFinite(value) ? value.toLocaleString('es-AR',{maximumFractionDigits:2}) : '—';
   const fecha = () => api?.S.diarioDia || api?.hoyISO() || new Date().toISOString().slice(0,10);
-  const permitido = () => !!api && api.S.local === 'munro' &&
+  const permitido = () => !!api && api.S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && api.S.local === 'munro' &&
     (api.miRol() === 'creadora' ||
      (api.miRol() === 'gerente' && api.misLocales().includes('munro')));
   const editable = () => permitido() && api.canW() && !api.S.offline;
