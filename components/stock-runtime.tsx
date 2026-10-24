@@ -28,6 +28,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-tienda.js");
       await load("/stock/gestlok-demo.js");
+      await load("/stock/gestlok-creator.js");
       await load("/stock/app.js");
     })();
     startup.catch(() => { if (active) setError(true); });
