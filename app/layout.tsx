@@ -7,8 +7,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: "GestLok",
   description: "Productos, proveedores, conteos y movimientos en un espacio seguro por local. Acceso gratuito con autorización.",
-  manifest: `${basePath}/manifest.webmanifest`,
-  icons: { icon: `${basePath}/icons/icon-32.png`, apple: `${basePath}/icons/apple-touch-icon.png` },
+  manifest: `${basePath}/manifest.webmanifest?brand=gestlok-20261024`,
+  icons: {
+    icon: [
+      { url: `${basePath}/icons/gestlok-favicon-v2-32.png`, type: "image/png", sizes: "32x32" },
+      { url: `${basePath}/icons/gestlok.svg`, type: "image/svg+xml" },
+    ],
+    apple: `${basePath}/icons/gestlok-apple-v2-180.png`,
+  },
   appleWebApp: { capable: true, title: "GestLok", statusBarStyle: "default" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#11283c" };
