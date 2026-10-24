@@ -126,7 +126,7 @@
       const history=Array.isArray(old?.historial) ? old.historial.slice(-199) : [];
       item.historial=[...history,change];
       await ctx.w(()=>old ? ref.update(item) : ref.set(item));
-      if(ctx.S.local===local){editing=null;ctx.toast('Vencimiento guardado con historial.');ctx.render();}
+      if(ctx.S.local===local){editing=null;showingHistory='';ctx.toast('Vencimiento guardado con historial.');ctx.render();}
     } catch(e){ctx.fail(e);}
     finally{busy=false;}
   };
