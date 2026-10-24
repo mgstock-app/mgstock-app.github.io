@@ -2,7 +2,7 @@
 
 Estado (24/10/2026): **no se cobra a nadie ni existe una pantalla de pagos o licencias en la aplicación**. Se creó exclusivamente la estructura privada de base de datos para habilitar suscripciones más adelante. El acceso actual por autorización sigue intacto.
 
-## Excepción de Gisela: permanente hasta revocación administrativa
+## Excepción histórica: permanente hasta revocación administrativa
 
 La cuenta verificada de la dueña original tiene un registro `complimentary_unlimited`, activo, sin vencimiento y sin restricciones de cantidad de locales. Se vinculó por identidad de Auth (UUID), y NO por el rol genérico `dueno`; las dueñas futuras no heredan esta excepción.
 
