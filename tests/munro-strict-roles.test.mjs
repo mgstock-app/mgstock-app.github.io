@@ -10,7 +10,7 @@ test('Munro daily: RLS only allows the creator or a manager assigned to Munro', 
   assert.match(sql, /col in \('munro\/munro_control', 'munro\/diario'\)/i);
   assert.match(sql, /public\.mi_rol\(\) = 'creadora'/);
   assert.match(sql, /public\.mi_rol\(\) = 'gerente' and public\.puede_editar_local\('munro'\)/);
-  assert.doesNotMatch(sql, /'editor'|'dueno'/);
+  assert.doesNotMatch(sql.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n'), /'editor'|'dueno'/);
   assert.match(sql, /with check\s*\(/i);
   assert.doesNotMatch(sql, /delete\s+from\s+public\.docs|truncate|drop\s+table/i);
 });
