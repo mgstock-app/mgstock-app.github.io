@@ -371,6 +371,88 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#diario-preview").should("be.visible");
   });
 
+
+  it("hoja Proveedores: crea carpeta, agrega productos, completa las tres cantidades y guarda resumen", () => {
+    owner(); toLocal("munro");
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get('[data-act="prov-new"]').click();
+    cy.get('#prov-new-name').type('Cafetería Insumos QA');
+    cy.get('#prov-create-form button[type="submit"]').click();
+    cy.get('#prov-carpeta').should('contain.text','Cafetería Insumos QA');
+    cy.get('[data-act="prov-add-open"]').click();
+    cy.get('#prov-item-name').type('Leche larga vida');
+    cy.get('#prov-item-unit').type('cajas');
+    cy.get('#prov-add-form button[type="submit"]').click();
+    cy.get('.gl-prov-table tbody tr').should('have.length',1).and('contain.text','Leche larga vida');
+    cy.get('[data-prov-val="stockLocal"]').clear().type('7');
+    cy.get('[data-prov-val="sugerido"]').clear().type('4');
+    cy.get('[data-prov-val="pedir"]').clear().type('3');
+    cy.get('#prov-resumen').should('contain.text','Cafetería Insumos QA').and('contain.text','Leche larga vida').and('contain.text','3 cajas');
+    cy.get('[data-act="prov-save-plan"]').click();
+    cy.window().its('__rows').should(rows=>{
+      const entry=rows.find(x=>x.col==='munro/proveedores' && x.data.nombre==='Cafetería Insumos QA');
+      expect(entry).not.to.equal(undefined);
+      expect(entry.data.items[0].nombre).eq('Leche larga vida');
+      expect(entry.data.items[0].stockLocal).eq(7);
+      expect(entry.data.items[0].pedir).eq(3);
+      expect(entry.data.items[0].sugerido).eq(4);
+      expect(rows.filter(x=>x.col==='torcuato/proveedores')).to.have.length(0);
+    });
+    cy.get('#snav [data-act="locales"]').click();
+    toLocal('torcuato');
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get('#view').should('not.contain.text','Cafetería Insumos QA');
+  });
+
+  it("proveedores: una cuenta de lectura no puede modificar ni compartir pedidos", () => {
+    cy.window().then(w=>w.__rows.find(r=>r.col==='munro/productos' && r.id==='p-001').data.proveedor='Proveeduría lectura');
+    login('lectura@example.com');
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get('[data-act="prov-new"]').should('not.exist');
+    cy.get('[data-act="prov-open"][data-name="Proveeduría lectura"]').click();
+    cy.get('[data-prov-val]').should('be.disabled');
+    cy.get('[data-act="prov-save-plan"]').should('not.exist');
+    cy.get('[data-act="prov-share"]').should('not.exist');
+  });
+
+  it("pedido de proveedor: compartir como imagen PNG usa el menú nativo en tablet", () => {
+    cy.window().then(w=>{
+      const item=w.__rows.find(r=>r.col==='munro/productos' && r.id==='p-001');
+      item.data.proveedor='Proveedor para compartir';
+      Object.defineProperty(w.navigator,'share',{configurable:true,value:cy.stub().resolves().as('nativeShare')});
+      Object.defineProperty(w.navigator,'canShare',{configurable:true,value:()=>true});
+    });
+    owner(); toLocal('munro');
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get('[data-act="prov-open"][data-name="Proveedor para compartir"]').click();
+    cy.get('[data-prov-val="pedir"]').first().clear().type('2');
+    cy.get('#prov-resumen').should('contain.text','2 unidad');
+    cy.get('[data-act="prov-share"]').click();
+    cy.get('[data-act="prov-share-ready"]',{timeout:12000}).should('be.visible').click();
+    cy.get('@nativeShare',{timeout:12000}).should('have.been.calledOnce');
+    cy.get('@nativeShare').then(stub=>{
+      const arg=stub.firstCall.args[0];
+      expect(arg.title).to.contain('Proveedor para compartir');
+      expect(arg.files).to.have.length(1);
+      expect(arg.files[0].type).eq('image/png');
+      expect(arg.text).to.contain('Producto de prueba 001');
+    });
+  });
+
+  it("planilla proveedores en tablet: las tres columnas siguen visibles sin apretarse", () => {
+    cy.viewport(820,1180);
+    cy.window().then(w=>{w.__rows.find(x=>x.col==='munro/productos' && x.id==='p-001').data.proveedor='Proveedor vista tablet';});
+    owner();toLocal('munro');
+    cy.get('#app [data-act="menu-open"]').click();
+    cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
+    cy.get('[data-act="prov-open"][data-name="Proveedor vista tablet"]').click();
+    cy.get('.gl-prov-table tbody tr').first().within(()=>{
+      cy.get('[data-label="Stock local"]').should('be.visible');
+      cy.get('[data-label="Pedir"]').should('be.visible');
+      cy.get('[data-label="Sugerido"]').should('be.visible');
+    });
+  });
+
   it("formato móvil: el menú abre y permite entrar al chat", () => {
     cy.viewport(390,844);
     login("gerente.munro@example.com");

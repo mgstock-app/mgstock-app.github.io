@@ -95,7 +95,7 @@ const S = {
   loaded:{p:false, c:false, e:false, f:false, h:false},
   allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
@@ -463,7 +463,7 @@ function editarProveedor(nombre){
 async function guardarProveedor(f){
   if (!S.db || !S.local || !canW() || S.offline){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
   const nombre = f.dataset.name, local = S.local;
-  if (!nombre || !S.allProds.some(p=>provOf(p)===nombre)){toast('El proveedor ya no está asignado a este local.',true);return;}
+  if (!nombre || (!S.allProds.some(p=>provOf(p)===nombre) && !proveedorFicha(nombre))){toast('El proveedor no existe en este local.',true);return;}
   const contacto = f.querySelector('#prov-contact').value.trim();
   const telefono = f.querySelector('#prov-phone').value.trim();
   const entrega = f.querySelector('#prov-delivery').value.trim();
@@ -472,10 +472,297 @@ async function guardarProveedor(f){
   const btn = f.querySelector('button[type="submit"]');
   btn.disabled = true; btn.textContent = 'Guardando…';
   try{
-    await w(() => C('proveedores').doc(proveedorId(nombre)).set({nombre,contacto,telefono,entrega,nota,actualizado:Date.now()}));
+    const ref=C('proveedores').doc(proveedorId(nombre));
+    const snap=await ref.get();
+    const payload={nombre,contacto,telefono,entrega,nota,actualizado:Date.now()};
+    await w(() => snap.exists ? ref.update(payload) : ref.set(payload));
     if (S.local !== local) return;
     closePanel(); toast('Ficha del proveedor guardada');
   } catch(e) { fail(e); if(btn.isConnected){btn.disabled=false;btn.textContent='Guardar ficha';} }
+}
+
+
+/* Hoja de proveedores: carpetas por local, borrador por persona y pedido confirmado por la dueña. */
+function proveedorNombres(){
+  const map=new Map(provs());
+  for (const ficha of S.provInfo) if (String(ficha.nombre||'').trim() && !map.has(ficha.nombre)) map.set(ficha.nombre,0);
+  return [...map].sort((a,b)=>a[0].localeCompare(b[0],'es'));
+}
+const proveedorDraftKey = nombre => 'gestlok-prov-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local + ':' + encodeURIComponent(proveedorId(nombre));
+function proveedorBase(nombre){
+  const ficha=proveedorFicha(nombre)||{};
+  const key=proveedorId(nombre);
+  if(!S.provDrafts[key]){
+    const version=Number(ficha.pedidoActualizado)||0;
+    const cached=lsGet(proveedorDraftKey(nombre),null);
+    const draft=cached && cached.base===version ? cached : {
+      base:version, items:Array.isArray(ficha.items)?ficha.items.map(it=>({...it})):[],
+      catalogo:{...(ficha.catalogo||{})},dirty:false,stale:!!(cached && cached.base!==version)
+    };
+    S.provDrafts[key]=draft;
+  }
+  return S.provDrafts[key];
+}
+function proveedorFilas(nombre){
+  const draft=proveedorBase(nombre);
+  const catalogo=S.allProds.filter(p=>provOf(p)===nombre).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  const filas=catalogo.map(p=>{
+    const stored=draft.catalogo[p.id]||{};
+    const stock=stored.stockLocal ?? stockOf(p);
+    const objetivo=sugOf(p) ?? minOf(p);
+    const sugerido=stored.sugerido ?? (objetivo!=null && stock!=null ? Math.max(0,round(objetivo-stock)):null);
+    return {
+      id:'c:'+p.id,productoId:p.id,origen:'catalogo',
+      nombre:p.nombre||'',unidad:p.unidad||'unidad',
+      stockLocal:stock,sugerido,pedir:stored.pedir??0
+    };
+  });
+  for(const x of draft.items||[]){
+    if(!x?.id || !x.nombre)continue;
+    filas.push({...x,origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
+  }
+  return filas;
+}
+const proveedorCantidad = valor => {
+  const txt=String(valor??'').trim();
+  if (!txt) return null;
+  if (!/^\d+(?:[.,]\d{1,2})?$/.test(txt))return NaN;
+  const n=Number(txt.replace(',','.'));
+  return Number.isFinite(n) && n<=1000000 ? n : NaN;
+};
+function proveedorGuardarBorrador(nombre){
+  const d=proveedorBase(nombre);
+  d.dirty=true;
+  lsSet(proveedorDraftKey(nombre),d);
+}
+function abrirCarpetaProveedor(nombre){
+  if(!proveedorNombres().some(([n])=>n===nombre))return;
+  S.provOpen=nombre;S.provAdding=false;
+  proveedorBase(nombre);
+  render();
+  document.querySelector('#prov-carpeta')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function actualizarValorProveedor(input){
+  if(!canW() || !S.provOpen)return;
+  const field=input.dataset.provVal,id=input.dataset.id;
+  if(!['stockLocal','pedir','sugerido'].includes(field))return;
+  const n=proveedorCantidad(input.value);
+  const invalid=Number.isNaN(n);
+  input.classList.toggle('bad',invalid);
+  if(invalid){
+    const error=document.getElementById('prov-err');
+    if(error)error.textContent='Revisá las cantidades: usá números positivos con hasta dos decimales.';
+    return;
+  }
+  const name=S.provOpen,d=proveedorBase(name),row=proveedorFilas(name).find(x=>x.id===id);
+  if(!row)return;
+  if(row.origen==='manual'){
+    const x=d.items.find(x=>x.id===row.id);if(x)x[field]=n;
+  }else{
+    const old=d.catalogo[row.productoId]||{};
+    d.catalogo[row.productoId]={
+      stockLocal:field==='stockLocal'?n:(old.stockLocal??row.stockLocal),
+      sugerido:field==='sugerido'?n:(old.sugerido??row.sugerido),
+      pedir:field==='pedir'?n:(old.pedir??row.pedir)
+    };
+  }
+  proveedorGuardarBorrador(name);
+  mostrarResumenProveedor();
+}
+function usarSugeridoProveedor(id){
+  if(!canW() || !S.provOpen)return;
+  const name=S.provOpen,row=proveedorFilas(name).find(x=>x.id===id);
+  if(!row || row.sugerido==null || Number(row.sugerido)<0)return;
+  const d=proveedorBase(name);
+  if(row.origen==='manual')d.items.find(x=>x.id===id).pedir=row.sugerido;
+  else d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),stockLocal:row.stockLocal,sugerido:row.sugerido,pedir:row.sugerido};
+  proveedorGuardarBorrador(name);render();
+}
+function nuevoProveedor(){
+  if(!canW() || S.offline){toast('Necesitás permiso de edición e internet.',true);return;}
+  S.panel='prov-new';
+  openPanel(`<div class="pn-h"><h3>Nueva carpeta de proveedor</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+   <div class="pn-b"><form id="prov-create-form" class="frow">
+   <div class="fld"><label for="prov-new-name">Nombre del proveedor</label><input id="prov-new-name" maxlength="90" autocomplete="off" required placeholder="Ej.: Distribuidora Central"></div>
+   <button class="btn primary" type="submit">${ic('plus')}Crear carpeta</button></form></div>`,'dlg');
+}
+async function crearCarpetaProveedor(form){
+  if(!canW() || S.offline || !S.local)return;
+  const nombre=form.querySelector('#prov-new-name').value.trim().replace(/\s+/g,' ');
+  if(!nombre || nombre.length>90){toast('Ingresá un nombre de hasta 90 caracteres.',true);return;}
+  if(proveedorNombres().some(([n])=>proveedorId(n)===proveedorId(nombre))){toast('Ese proveedor ya tiene una carpeta.',true);return;}
+  const btn=form.querySelector('button[type="submit"]');btn.disabled=true;
+  const loc=S.local;
+  try{
+    const doc=C('proveedores').doc(proveedorId(nombre));
+    const check=await doc.get();
+    if(check.exists){toast('Ese proveedor ya existe.',true);return;}
+    await w(()=>doc.set({nombre,contacto:'',telefono:'',entrega:'',nota:'',items:[],catalogo:{},pedidoActualizado:0,actualizado:Date.now()}));
+    if(S.local!==loc)return;
+    closePanel();S.provOpen=nombre;render();toast('Carpeta creada. Agregá los productos.');
+  }catch(e){fail(e);}finally{if(btn.isConnected)btn.disabled=false;}
+}
+function agregarProductoProveedor(form){
+  if(!canW() || !S.provOpen)return;
+  const nombre=form.querySelector('#prov-item-name').value.trim().replace(/\s+/g,' ');
+  const unidad=form.querySelector('#prov-item-unit').value.trim().slice(0,30)||'unidad';
+  if(!nombre || nombre.length>100){toast('Ingresá un nombre válido de producto.',true);return;}
+  if(proveedorFilas(S.provOpen).some(x=>norm(x.nombre)===norm(nombre))){toast('Ese producto ya existe en esta carpeta.',true);return;}
+  const id='m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const d=proveedorBase(S.provOpen);
+  d.items.push({id,nombre,unidad,stockLocal:null,pedir:0,sugerido:null});
+  proveedorGuardarBorrador(S.provOpen);S.provAdding=false;render();toast('Producto agregado al borrador. Guardá la planilla.');
+}
+function quitarProductoProveedor(id){
+  if(!canW() || !S.provOpen)return;
+  const d=proveedorBase(S.provOpen);
+  d.items=d.items.filter(x=>x.id!==id);
+  proveedorGuardarBorrador(S.provOpen);render();
+}
+function proveedorSeleccionados(nombre){
+  return proveedorFilas(nombre).filter(x=>Number(x.pedir)>0 && Number.isFinite(Number(x.pedir)));
+}
+function pedidoProveedorTexto(nombre){
+  const pedidos=proveedorSeleccionados(nombre);
+  return [
+    'GESTLOK · PEDIDO A PROVEEDOR',
+    'Proveedor: '+nombre,'Local: '+localNombre(),'Fecha: '+fechaLarga(),
+    '',...pedidos.map(x=>'• '+x.nombre+' — '+fmt(x.pedir)+' '+x.unidad),
+    '', 'Productos: '+pedidos.length
+  ].join('\n');
+}
+function proveedorResumenHTML(nombre){
+  const rows=proveedorSeleccionados(nombre);
+  const draft=proveedorBase(nombre);
+  const footer=rows.length?
+   `<div class="gl-prov-table-wrap"><table class="gl-prov-summary-table">
+     <thead><tr><th>Proveedor</th><th>Producto</th><th>La dueña va a pedir</th></tr></thead>
+     <tbody>${rows.map(x=>`<tr><td>${esc(nombre)}</td><td>${esc(x.nombre)}</td><td><b>${fmt(x.pedir)}</b> ${esc(x.unidad)}</td></tr>`).join('')}</tbody>
+     </table></div>` :
+   '<p class="gl-prov-empty">Todavía no hay productos para pedir. Completá la columna <b>Pedir</b> y aparecerán automáticamente acá.</p>';
+  return `<div class="gl-provider-summary-head"><h3>Pedido listo para compartir</h3>
+     <span class="gl-provider-count">${rows.length} ${rows.length===1?'producto':'productos'}</span></div>
+     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar en esta carpeta. Revisalos antes de compartir.' : 'El resumen se arma automáticamente con las cantidades de Pedir.'}</p>
+     ${footer}
+     <div id="prov-err" class="gl-prov-err" role="status"></div>
+     <div class="bar-a">
+       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar lista y pedido</button>`:''}
+       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length?'disabled':''}>${ic('share')}Compartir por WhatsApp</button>`:''}
+       ${rows.length? `<button class="btn" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+     </div>
+     ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
+     ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
+}
+function mostrarResumenProveedor(){
+  if(!S.provOpen)return;
+  const wrap=document.getElementById('prov-resumen');
+  if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
+}
+async function guardarPlanProveedor(){
+  if(!canW() || S.offline || !S.db || !S.local || !S.provOpen){toast('Necesitás internet y permiso de edición para guardar.',true);return;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
+  const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
+  const btn=document.querySelector('[data-act="prov-save-plan"]');
+  if(btn)btn.disabled=true;
+  try{
+    const ref=C('proveedores').doc(proveedorId(nombre));
+    const snap=await ref.get();
+    const ver=snap.exists ? Number(snap.data()?.pedidoActualizado)||0 : 0;
+    if(ver!==d.base){
+      d.stale=true;
+      toast('Otra persona cambió este pedido. Copiá tu lista antes de recargar para evitar reemplazar sus datos.',true);
+      return;
+    }
+    const stamp=Date.now();
+    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},pedidoActualizado:stamp,pedidoPor:S.uid};
+    await w(()=>snap.exists ? ref.update(payload) : ref.set({nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''}));
+    if(local!==S.local)return;
+    delete S.provDrafts[proveedorId(nombre)];
+    try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
+    toast('Lista y pedido guardados sin cambiar el stock real.');
+  }catch(e){fail(e);}finally{if(btn?.isConnected)btn.disabled=false;}
+}
+function crearImagenPedido(nombre,productos,pagina,total){
+  const W=1000, H=310+productos.length*64;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)return Promise.reject(new Error('canvas'));
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0c2034';ctx.fillRect(0,0,W,150);
+  ctx.fillStyle='#ffffff';ctx.font='bold 40px Arial, sans-serif';ctx.fillText('GESTLOK',50,75);
+  ctx.font='22px Arial, sans-serif';ctx.fillText('PEDIDO A PROVEEDOR',50,112);
+  ctx.fillStyle='#14354b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText(nombre.slice(0,55),50,205);
+  ctx.font='18px Arial, sans-serif';ctx.fillText('Local: '+localNombre().slice(0,40)+'   |   '+hoyISO()+'   |   Página '+pagina+'/'+total,50,240);
+  ctx.fillStyle='#eff5f7';ctx.fillRect(42,263,W-84,42);
+  ctx.fillStyle='#17394f';ctx.font='bold 19px Arial, sans-serif';ctx.fillText('PRODUCTO',55,290);ctx.fillText('PEDIR',755,290);
+  ctx.font='19px Arial, sans-serif';
+  productos.forEach((p,i)=>{
+    const y=332+i*64;
+    if(i%2===0){ctx.fillStyle='#f6f9fb';ctx.fillRect(42,y-24,W-84,58);}
+    ctx.fillStyle='#1a364b';
+    const product=String(p.nombre).length>53?String(p.nombre).slice(0,50)+'…':String(p.nombre);
+    ctx.fillText(product,55,y,670);
+    ctx.font='bold 19px Arial, sans-serif';
+    ctx.fillText(fmt(p.pedir)+' '+String(p.unidad||'').slice(0,16),755,y,200);
+    ctx.font='19px Arial, sans-serif';
+  });
+  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('imagen')),'image/png'));
+}
+async function compartirPedidoProveedor(){
+  if(!esTotal() || !S.provOpen)return;
+  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
+  if(!rows.length){toast('Completá primero las cantidades de Pedir.',true);return;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de compartir.',true);return;}
+  const texto=pedidoProveedorTexto(nombre),telefono=telWa(proveedorFicha(nombre)?.telefono);
+  const wa='https://wa.me/'+telefono+'?text='+encodeURIComponent(texto);
+  if(!navigator.share){
+    window.open(wa,'_blank','noopener,noreferrer');
+    toast('WhatsApp abierto con el pedido escrito. Confirmá el envío.');
+    return;
+  }
+  const btn=document.querySelector('[data-act="prov-share"]');if(btn)btn.disabled=true;
+  try{
+    const chunks=[];for(let i=0;i<rows.length;i+=28)chunks.push(rows.slice(i,i+28));
+    const archivos=[];
+    for(let i=0;i<chunks.length;i++){
+      const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
+      archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
+    }
+    if(S.provOpen!==nombre)return;
+    S.provEnvio={nombre,local:S.local,texto,wa,archivos};
+    S.panel='prov-share';
+    const filesAllowed=!!navigator.canShare?.({files:archivos});
+    openPanel(`<div class="pn-h"><h3>Compartir pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+      <div class="pn-b gl-prov-sharing">
+        <p class="lead"><b>${esc(nombre)}</b> · ${plural(rows.length,'producto','productos')} · ${plural(archivos.length,'imagen preparada','imágenes preparadas')}.</p>
+        <p class="lead">Elegí WhatsApp en el menú de compartir y confirmá el destinatario. GestLok no envía nada sin tu confirmación.</p>
+        <button class="btn primary" type="button" data-act="prov-share-ready">${ic('share')}${filesAllowed?'Enviar imagen por WhatsApp':'Compartir pedido como texto'}</button>
+        ${navigator.clipboard?.write && window.ClipboardItem && archivos.length===1?`<button class="btn" type="button" data-act="prov-copy-image">${ic('copy')}Copiar imagen</button>`:''}
+        <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}Abrir WhatsApp con el pedido escrito</a>
+        <small>Si tu dispositivo no admite adjuntar la imagen, podés compartir el texto completo.</small>
+      </div>`,'dlg');
+  }catch(e){toast('No se pudo generar la imagen. Usá Copiar pedido o WhatsApp.',true);}
+  finally{if(btn?.isConnected)btn.disabled=false;}
+}
+/* El usuario toca una segunda vez: mantiene la activación requerida por Web Share. */
+function enviarProveedorPreparado(){
+  const p=S.provEnvio;
+  if(!p || p.local!==S.local || !esTotal() || !navigator.share)return;
+  const filesAllowed=!!navigator.canShare?.({files:p.archivos});
+  let promise;
+  try{promise=navigator.share(filesAllowed?{title:'Pedido · '+p.nombre,text:p.texto,files:p.archivos}:{title:'Pedido · '+p.nombre,text:p.texto});}
+  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);return;}
+  Promise.resolve(promise).then(()=>{
+    if(S.provEnvio===p){closePanel();toast('El pedido se entregó al menú de compartir. Confirmá el envío en WhatsApp.');}
+  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);});
+}
+function copiarImagenProveedor(){
+  const p=S.provEnvio;
+  if(!p || p.archivos.length!==1 || !navigator.clipboard?.write || !window.ClipboardItem)return;
+  navigator.clipboard.write([new window.ClipboardItem({'image/png':p.archivos[0]})])
+    .then(()=>toast('Imagen copiada. Abrí WhatsApp y pegala en el chat.'))
+    .catch(()=>toast('Este navegador no permite copiar la imagen.',true));
 }
 
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
@@ -582,33 +869,85 @@ async function guardarDiario(f){
     if(S.local===local){toast('Registro guardado. No se modificó el stock operativo.');render();}
   }catch(e){fail(e);if(btn?.isConnected){btn.disabled=false;btn.textContent='Guardar registro diario';}}
 }
+
 V.proveedores = () => {
-  const lista = provs();
-  const items = lista.map(([nombre,count]) => {
-    const ficha = proveedorFicha(nombre) || {};
-    const pendientes = S.allProds.filter(p => provOf(p) === nombre && alerta(p));
-    const telefono = telWa(ficha.telefono);
-    const mensaje = pendientes.length ? proveedorPedido(nombre) : 'Hola, quisiera consultar disponibilidad de productos de ' + localNombre() + '.';
-    const wa = telefono ? 'https://wa.me/' + telefono + '?text=' + encodeURIComponent(mensaje) : '';
-    const meta = [ficha.contacto, ficha.entrega].filter(Boolean);
-    return `<article class="card pad gl-provider-card">
-      <div class="gl-provider-head"><div><p class="eyebrow">Proveedor · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2></div><span class="gl-provider-count">${plural(count,'producto','productos')}</span></div>
-      <p class="lead">${pendientes.length ? `<b>${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.` : 'Sin faltantes detectados.'}</p>
-      ${meta.length ? `<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>` : '<p class="gl-provider-meta">Podés agregar teléfono, contacto y datos de entrega.</p>'}
+  const lista=proveedorNombres();
+  const carpetas=lista.map(([nombre])=>{
+    const ficha=proveedorFicha(nombre)||{};
+    const pendientes=S.allProds.filter(p=>provOf(p)===nombre && alerta(p));
+    const telefono=telWa(ficha.telefono);
+    const rows=proveedorFilas(nombre);
+    const porPedir=rows.filter(x=>Number(x.pedir)>0).length;
+    const wa=telefono?'https://wa.me/'+telefono+'?text='+encodeURIComponent(porPedir?pedidoProveedorTexto(nombre):'Hola, quisiera hacer un pedido para '+localNombre()):'';
+    const meta=[ficha.contacto,ficha.entrega].filter(Boolean);
+    const abierto=S.provOpen===nombre;
+    return `<article class="card pad gl-provider-card ${abierto?'is-open':''}">
+      <div class="gl-provider-head">
+        <div class="gl-prov-folder-head"><span class="gl-prov-folder-icon" aria-hidden="true">${ic('box')}</span>
+          <div><p class="eyebrow">Carpeta de proveedor</p><h2>${esc(nombre)}</h2></div>
+        </div>
+        <span class="gl-provider-count">${plural(rows.length,'producto','productos')}</span>
+      </div>
+      <p class="lead">${pendientes.length?`<b>${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.`:'Sin faltantes detectados.'}
+        ${porPedir?`<b> · ${plural(porPedir,'producto en el pedido','productos en el pedido')}</b>`:''}</p>
+      ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
-        ${pendientes.length ? `<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>` : ''}
-        ${wa ? `<a class="btn sm primary" href="${esc(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del proveedor ${esc(nombre)}">${ic('msg')}WhatsApp</a>` : ''}
-        ${canW() ? `<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.telefono || ficha.contacto ? 'Editar ficha' : 'Completar ficha'}</button>` : ''}
+        <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
+        ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+        ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
+        ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
     </article>`;
   }).join('');
-  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1>
-  <p class="lead">Consultá los productos asociados, prepará pedidos y contactá a cada proveedor sin mezclar información entre locales.</p>
-  ${!S.loaded.p ? loadingList() : `<div class="lcards gl-provider-grid">${items || '<div class="card pad">Todavía no hay proveedores asignados. Asigná uno desde los productos.</div>'}</div>`}
-  ${canW() ? `<div class="bar-a"><button class="btn" data-act="aj-open" data-tab="rapido">Administrar productos y proveedores</button></div>` : ''}
+  const nombre=S.provOpen && lista.some(([n])=>n===S.provOpen)?S.provOpen:'';
+  const draft=nombre?proveedorBase(nombre):null;
+  const rows=nombre?proveedorFilas(nombre):[];
+  const filaHTML=rows.map(p=>{
+    const disabled=!canW()?'disabled':'';
+    const manual=p.origen==='manual';
+    return `<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
+        <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
+        ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
+      </td>
+      ${['stockLocal','pedir','sugerido'].map(field=>`<td data-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'}">
+        <input data-prov-val="${field}" data-id="${esc(p.id)}" inputmode="decimal" autocomplete="off"
+        aria-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'} de ${esc(p.nombre)}"
+        value="${p[field]==null?'':esc(fmtIn(p[field]))}" placeholder="0" ${disabled}>
+        ${field==='pedir' && canW() && p.sugerido!=null?`<button class="gl-prov-sug" data-act="prov-use-suggested" data-id="${esc(p.id)}" type="button">Usar sugerido</button>`:''}
+      </td>`).join('')}
+    </tr>`;
+  }).join('');
+  const details=nombre?`<section id="prov-carpeta" class="gl-prov-workspace card pad">
+    <div class="gl-prov-workspace-head">
+      <div><p class="eyebrow">Carpeta abierta · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2>
+        <p class="lead">Completá Stock local, Pedir y Sugerido. Los valores de esta hoja no cambian el stock real de las planillas.</p></div>
+      <button class="btn sm" data-act="prov-close">${ic('x')}Cerrar carpeta</button>
+    </div>
+    ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
+    <div class="gl-prov-toolbar">
+      <b>Lista de productos</b>
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button>`:''}
+    </div>
+    ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
+      <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
+      <div class="fld"><label for="prov-item-unit">Unidad</label><input id="prov-item-unit" maxlength="30" placeholder="kg, caja, unidad"></div>
+      <button class="btn primary" type="submit">Agregar a la lista</button>
+    </form>`:''}
+    ${rows.length?`<div class="gl-prov-table-scroll"><table class="gl-prov-table">
+       <thead><tr><th>Producto</th><th>Stock local</th><th>Pedir</th><th>Sugerido</th></tr></thead>
+       <tbody>${filaHTML}</tbody>
+      </table></div>`:'<p class="note">Esta carpeta está vacía. Agregá productos manualmente o asigná este proveedor a productos del catálogo.</p>'}
+    <div id="prov-resumen" class="gl-prov-summary">${proveedorResumenHTML(nombre)}</div>
+    </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
+  return `<section class="sheet gl-proveedores">
+    <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
+    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y compartilos por WhatsApp como imagen desde tu dispositivo.</p></div>
+    ${canW()?`<button class="btn primary" data-act="prov-new">${ic('plus')}Crear proveedor</button>`:''}
+    </div>
+    ${!S.loaded.p?loadingList():`<div class="gl-provider-grid">${carpetas||'<div class="card pad">Todavía no hay proveedores. Creá una carpeta para comenzar.</div>'}</div>`}
+    ${details}
   </section>`;
 };
-
 
 const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
 function markChatRead(){
@@ -2013,7 +2352,7 @@ function dragEnd(){
 }
 document.addEventListener('pointerup', dragEnd);
 document.addEventListener('pointercancel', dragEnd);
-document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } });
+document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } if(e.target.matches('[data-prov-val]')) actualizarValorProveedor(e.target); });
 document.addEventListener('keydown', e => {
   const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   e.preventDefault();
@@ -2422,6 +2761,7 @@ function openPanel(html, kind){
 }
 function closePanel(){
   $('#ov').hidden = true; $('#pn').innerHTML = ''; S.panel = null; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; S.eqDel = null; S.hj.editId = null; S.hj.delId = null; S.hj.add = false;
+  S.provEnvio = null;
   if (lastFocus && document.contains(lastFocus)) try { lastFocus.focus({preventScroll:true}); } catch {}
 }
 let toastT = null;
@@ -2518,6 +2858,8 @@ function backup(){
       ...S.diarios.map(d => [d.dia||'',d.nombre||'',d.unidad||'',n0(d.inicio),n0(d.ingresos),n0(d.ventas),n0(d.consumo),n0(d.merma),n0(d.ajustes),n0(d.esperado),n0(d.final),n0(d.diferencia),d.nota||'',d.autor||'',fechaHora(d.creado)])]},
     {name:'Proveedores', rows:[['Proveedor','Contacto','Teléfono','Entrega','Observaciones'],
       ...S.provInfo.map(p=>[p.nombre||'',p.contacto||'',p.telefono||'',p.entrega||'',p.nota||''])]},
+    {name:'Pedidos por proveedor', rows:[['Proveedor','Producto','Unidad','Stock local (planilla)','Pedir','Sugerido'],
+      ...proveedorNombres().flatMap(([nombre])=>proveedorFilas(nombre).map(p=>[nombre,p.nombre,p.unidad,n0(p.stockLocal),n0(p.pedir),n0(p.sugerido)]))]},
     {name:'Hojas', rows:[['Hoja','Tipo','En el menú','Orden'], ...hojas().map(h => [h.nombre, h.base ? 'Fija' : TIPOS[h.tipo].nombre, h.oculta ? 'No' : 'Sí', h.orden])]},
     {name:'Equipo', rows:[['Email','Acceso'], ...equipoList().map(e => [e.email, (ROL[e.rol] || ROL.editor)[0]])]}
   ]);
@@ -2544,8 +2886,18 @@ document.addEventListener('click', e => {
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
     case 'diario-nuevo': diarioNuevo(); break;
+    case 'prov-new': nuevoProveedor(); break;
+    case 'prov-open': abrirCarpetaProveedor(t.dataset.name); break;
+    case 'prov-close': S.provOpen = ''; S.provAdding = false; render(); break;
+    case 'prov-add-open': S.provAdding = true; render(); break;
+    case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
+    case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
+    case 'prov-save-plan': guardarPlanProveedor(); break;
+    case 'prov-share': compartirPedidoProveedor(); break;
+    case 'prov-share-ready': enviarProveedorPreparado(); break;
+    case 'prov-copy-image': copiarImagenProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
-    case 'prov-copy': copyText(proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo y pegalo en WhatsApp.'); break;
+    case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
     case 'aj-open': openAjustes(t.dataset.tab); break;
     case 'est': openEstados(id); break;
@@ -2715,7 +3067,9 @@ document.addEventListener('focusout', e => {
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
-  if (f.id === 'diario-form') guardarDiario(f);
+  if (f.id === 'prov-create-form') crearCarpetaProveedor(f);
+  else if (f.id === 'prov-add-form') agregarProductoProveedor(f);
+  else if (f.id === 'diario-form') guardarDiario(f);
   else if (f.id === 'prov-form') guardarProveedor(f);
   else if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
   else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
@@ -2847,7 +3201,7 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.unreadChat = 0;
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();

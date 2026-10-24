@@ -1137,3 +1137,84 @@ html.auth-on body{overflow:hidden}
 .gl-daily-alert{color:#ab5817}.gl-daily-ok{color:#1c8261}
 @media(max-width:900px){.gl-daily-layout{grid-template-columns:1fr}}
 @media(max-width:480px){.gl-daily-kpis{gap:6px}.gl-daily-kpis>div{padding:10px}.gl-daily-kpis b{font-size:21px}.gl-daily-kpis small{font-size:10px}.gl-daily-fields{gap:9px}.gl-daily .bar .fld{width:100%}}
+
+/* GestLok — hoja de proveedores con carpetas y pedidos para WhatsApp */
+.gl-proveedores{display:grid;gap:18px}
+.gl-prov-title{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px}
+.gl-prov-title>.btn{min-height:44px}
+.gl-provider-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px;align-items:stretch}
+.gl-prov-folder-head{display:flex;align-items:center;gap:12px;min-width:0}
+.gl-prov-folder-icon{flex:none;width:42px;height:42px;display:grid;place-items:center;background:#e8f2f4;border:1px solid #c7dce3;border-radius:11px;color:#255d71}
+.gl-prov-folder-icon svg.i{width:24px;height:24px}
+.gl-provider-card{min-height:200px}
+.gl-provider-card.is-open{border:2px solid #438d9e;box-shadow:0 6px 24px #0c364118}
+.gl-provider-card .bar-a .btn{min-height:40px}
+.gl-prov-prompt{text-align:center;display:grid;gap:9px;padding:28px!important}
+.gl-prov-workspace{display:grid;gap:16px;min-width:0;scroll-margin-top:110px}
+.gl-prov-workspace-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.gl-prov-workspace-head h2{margin:2px 0 8px;font-size:23px}
+.gl-prov-workspace-head .lead{margin:0;max-width:700px}
+.gl-prov-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.gl-prov-toolbar>b{font-size:17px}
+.gl-prov-add-form{display:grid;grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) auto;align-items:end;gap:11px;border:1px dashed #99b7c3;border-radius:12px;padding:14px;background:#f6fafb}
+.gl-prov-add-form .fld{min-width:0;margin:0}
+.gl-prov-add-form input{width:100%;min-height:44px;background:white;border:1px solid #bfcfd9;border-radius:9px;padding:9px 11px}
+.gl-prov-add-form button{min-height:44px}
+.gl-prov-table-scroll,.gl-prov-table-wrap{overflow-x:auto;border:1px solid #d6e2e8;border-radius:12px}
+.gl-prov-table,.gl-prov-summary-table{border-collapse:collapse;width:100%;min-width:550px;background:#fff}
+.gl-prov-table th,.gl-prov-summary-table th{font-weight:750;font-size:12px;letter-spacing:.025em;background:#eaf3f5;color:#24485a;padding:13px;text-align:left;border-bottom:1px solid #cbdce3}
+.gl-prov-table td,.gl-prov-summary-table td{padding:13px;vertical-align:middle;border-bottom:1px solid #e4edf1;font-size:13px;color:#223e51}
+.gl-prov-table tbody tr:last-child td,.gl-prov-summary-table tbody tr:last-child td{border-bottom:0}
+.gl-prov-table tbody tr:nth-child(even),.gl-prov-summary-table tbody tr:nth-child(even){background:#f9fbfc}
+.gl-prov-table th:first-child,.gl-prov-table td:first-child{width:40%;min-width:170px}
+.gl-prov-table th:not(:first-child){width:20%;min-width:112px}
+.gl-prov-product b,.gl-prov-product small{display:block}
+.gl-prov-product b{font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.gl-prov-product small{font-size:11px;color:var(--muted);margin-top:3px}
+.gl-prov-table input{width:100%;min-width:0;min-height:44px;padding:10px 8px;border:1px solid #c0d1db;border-radius:9px;background:#fff;font-size:17px;font-weight:650;color:#14394f;text-align:center}
+.gl-prov-table input:focus-visible{outline:3px solid #3e9099;outline-offset:1px}
+.gl-prov-table input:disabled{background:#f1f4f6;color:#738a9a}
+.gl-prov-table input.bad{border-color:#bd4454;background:#fff0f0}
+.gl-prov-sug{display:block;margin:5px auto 0;color:#256c7d;background:none;border:0;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;min-height:26px}
+.gl-prov-remove{color:#aa3344;border:0;background:none;padding:8px 0;font-size:11px;text-decoration:underline;cursor:pointer}
+.gl-prov-summary{display:grid;gap:12px;margin-top:10px;border-top:2px solid #d6e2e8;padding-top:20px}
+.gl-provider-summary-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.gl-provider-summary-head h3{margin:0;font-size:19px}
+.gl-prov-summary .lead{margin:0;font-size:12px}
+.gl-prov-summary .bar-a{display:flex;gap:9px;flex-wrap:wrap}
+.gl-prov-summary .bar-a .btn{min-height:46px}
+.gl-prov-summary .bar-a .btn.primary{background:#143a57;color:white}
+.gl-prov-summary .bar-a .btn:disabled{opacity:.48}
+.gl-prov-empty{padding:24px 14px;text-align:center;background:#f5f9fa;border:1px dashed #bfd6df;border-radius:12px;color:#5a7181}
+.gl-prov-err{color:#ac394b;font-size:12px;line-height:1.4}
+.gl-prov-summary-table th:first-child{width:28%}
+.gl-prov-summary-table th:nth-child(2){width:42%}
+.gl-prov-summary-table th:last-child{width:30%}
+@media(max-width:800px){
+  .gl-prov-add-form{grid-template-columns:1fr 1fr}
+  .gl-prov-add-form button{grid-column:1/-1}
+  .gl-prov-table-scroll{border:0;overflow:visible}
+  .gl-prov-table{min-width:0;display:block;background:transparent}
+  .gl-prov-table thead{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .gl-prov-table tbody{display:grid;gap:12px}
+  .gl-prov-table tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #d6e2e8;border-radius:12px;background:#fff!important;overflow:hidden}
+  .gl-prov-table td{min-width:0;padding:12px!important;border:0}
+  .gl-prov-table td.gl-prov-product{grid-column:1/-1;background:#f3f8fa;border-bottom:1px solid #dbe6eb;padding:13px!important}
+  .gl-prov-table td:not(.gl-prov-product){border-right:1px solid #e4ebee}
+  .gl-prov-table td:last-child{border:0}
+  .gl-prov-table td[data-label]:before{content:attr(data-label);display:block;color:#526f80;font-size:11px;font-weight:700;margin-bottom:7px}
+  .gl-prov-table input{min-height:48px}
+  .gl-prov-summary-table{min-width:450px}
+}
+@media(max-width:480px){
+  .gl-prov-title>.btn{width:100%;justify-content:center}
+  .gl-prov-workspace{padding:13px!important}
+  .gl-prov-workspace-head h2{font-size:19px}
+  .gl-prov-table td{padding:9px!important}
+  .gl-prov-table input{padding:8px 3px;font-size:16px;min-height:48px}
+  .gl-prov-sug{font-size:10px}
+  .gl-prov-add-form{grid-template-columns:1fr}
+  .gl-prov-add-form button{grid-column:auto}
+  .gl-prov-summary-table{min-width:400px}
+  .gl-prov-summary .bar-a .btn{flex:1;min-width:160px}
+}
