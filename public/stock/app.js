@@ -1172,7 +1172,7 @@ function inicioOperativo(){
     ...(!conteo&&ver('stock')?[['stock','Stock','box']]:[])
   ].slice(0,4);
   const tarjeta=(titulo,cantidad,detalle,act,k)=>{
-    const accion=act? (k?`data-act="kpi" data-k="${k}"`:`data-go="${act}"`):'';
+    const accion=act? (k?`data-act="home-stock-filter" data-k="${k}"`:`data-go="${act}"`):'';
     const tag=act?'button':'div';
     return `<${tag} class="gl-home-essential-stat" ${accion}>
       <span class="gl-home-essential-stat-label">${esc(titulo)}</span>
@@ -3225,6 +3225,7 @@ document.addEventListener('click', e => {
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
+    case 'home-stock-filter': go('stock'); S.filtro = ['sin','nc'].includes(t.dataset.k)?t.dataset.k:'todos'; render(); break;
     case 'f-add-dlg': openFAdd(); break;
     case 'ing-local': { const I = S.ing || (S.ing = ingNuevo()); if (I.busy || I.local === id || !localesTodos().some(l => l.id === id)) break; Object.assign(I, {local:id, datos:null, hist:null, res:null, msg:null, clave:'', dec:{}, cant:{}, on:{}, campo:{}}); ingCargar(); break; }
     case 'ing-op': { const I = S.ing; if (!I || I.busy) break; I.op = t.dataset.op === 'conteo' ? 'conteo' : 'ingreso'; ingCambio(); render(); break; }
