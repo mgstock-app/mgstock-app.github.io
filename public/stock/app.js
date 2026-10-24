@@ -554,7 +554,16 @@ V.inicio = () => {
     <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
-  ${S.loaded.p && !n ? `<div class="onb"><b>Primer paso: cargá los productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div></div>` : ''}
+  ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
+  <section class="gl-today card pad" aria-label="Acciones para hoy">
+    <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? 'Sin conexión · los conteos quedan pendientes' : 'Datos actualizados del local'}</small></div>
+    <div class="gl-today-grid">
+      ${cg ? `<button class="gl-today-action" data-go="${cg}">${ic('clip')}<b>${cgL}</b><small>${cnt.nc ? plural(cnt.nc,'producto pendiente','productos pendientes') : 'Revisar cantidades'}</small></button>` : ''}
+      ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
+      <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
+      <button class="gl-today-action" data-go="historial">${ic('clock')}<b>Últimos movimientos</b><small>${last ? esc(fechaHora(last.fecha)) : 'Aún no hay conteos'}</small></button>
+    </div>
+  </section>
   <div class="kpis${pedV ? '' : ' k3'}">
     <button class="kpi" data-act="kpi" data-k="todos" style="--kc:var(--accent)"><span class="k-l"><i></i>Productos</span><span class="k-v">${n}</span><span class="k-s">en ${plural(ncats.length, 'categoría', 'categorías')}</span></button>
     <button class="kpi" data-act="kpi" data-k="sin" style="--kc:var(--crit)"><span class="k-l"><i></i>Sin stock</span><span class="k-v" style="color:var(--crit)">${cnt.sin}</span><span class="k-s">tildados o en cero</span></button>
