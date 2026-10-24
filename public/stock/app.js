@@ -954,7 +954,7 @@ V.proveedores = () => {
     const telefono=telWa(ficha.telefono);
     const rows=proveedorFilas(nombre);
     const porPedir=rows.filter(x=>Number(x.pedir)>0).length;
-    const wa=telefono?'https://wa.me/'+telefono+'?text='+encodeURIComponent(porPedir?pedidoProveedorTexto(nombre):'Hola, quisiera hacer un pedido para '+localNombre()):'';
+
     const meta=[ficha.contacto,ficha.entrega].filter(Boolean);
     const abierto=S.provOpen===nombre;
     return `<article class="card pad gl-provider-card ${abierto?'is-open':''}">
@@ -969,7 +969,7 @@ V.proveedores = () => {
       ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
         <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
-        ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+
         
         ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
@@ -978,10 +978,12 @@ V.proveedores = () => {
   const nombre=S.provOpen && lista.some(([n])=>n===S.provOpen)?S.provOpen:'';
   const draft=nombre?proveedorBase(nombre):null;
   const rows=nombre?proveedorFilas(nombre):[];
-  const filaHTML=rows.map(p=>{
+  const filaHTML=rows.slice().sort((a,b)=>String(a.categoria||'General').localeCompare(String(b.categoria||'General'),'es') || String(a.nombre).localeCompare(String(b.nombre),'es')).map((p,index,all)=>{
+    const categoria=String(p.categoria||'General');
+    const encabezado=(index===0||categoria!==String(all[index-1].categoria||'General'))?`<tr class="gl-prov-category"><td colspan="4"><div class="gl-prov-category-head"><strong>${esc(categoria)}</strong>${canW()?`<button type="button" class="btn sm" data-act="prov-zero-cat" data-cat="${esc(categoria)}">Poner en 0</button>`:''}</div></td></tr>`:'';
     const disabled=!canW()?'disabled':'';
     const manual=p.origen==='manual';
-    return `<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
+    return `${encabezado}<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
         <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
         ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
       </td>
@@ -1015,6 +1017,7 @@ V.proveedores = () => {
        <tbody>${filaHTML}</tbody>
       </table></div>`:'<p class="note">Esta carpeta está vacía. Agregá productos manualmente o asigná este proveedor a productos del catálogo.</p>'}
     <div id="prov-resumen" class="gl-prov-summary">${proveedorResumenHTML(nombre)}</div>
+    ${historialProveedorHTML(nombre)}
     </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
   return `<section class="sheet gl-proveedores">
     <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
