@@ -1218,3 +1218,82 @@ html.auth-on body{overflow:hidden}
   .gl-prov-summary-table{min-width:400px}
   .gl-prov-summary .bar-a .btn{flex:1;min-width:160px}
 }
+
+
+
+/* GestLok · Vencimientos y centro de avisos — diseño de escritorio y móvil. */
+.gl-exp-page{padding:clamp(12px,2.6vw,28px);max-width:1340px;margin:0 auto;width:100%;color:var(--ink)}
+.gl-exp-page>h1,.gl-exp-heading h1{font-family:var(--f-display);font-size:clamp(28px,3vw,37px);letter-spacing:-.02em;margin:3px 0 7px;color:var(--ink)}
+.gl-exp-page>h2{font-size:18px;margin:23px 0 12px}
+.gl-exp-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:21px}
+.gl-exp-heading .lead{max-width:680px}
+.gl-exp-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 24px}
+.gl-exp-stats>div{padding:17px 20px;border:1px solid var(--line);background:var(--surface);border-radius:13px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow)}
+.gl-exp-stats strong{font-size:26px;color:var(--ink);font-variant-numeric:tabular-nums}
+.gl-exp-stats span{font-size:12px;color:var(--muted);font-weight:600}
+.gl-exp-stats>div:nth-child(1){border-top:3px solid #188650}
+.gl-exp-stats>div:nth-child(2){border-top:3px solid #dc8616}
+.gl-exp-stats>div:nth-child(3){border-top:3px solid #d8af0a}
+.gl-exp-stats>div:nth-child(4){border-top:3px solid #c63833}
+.gl-exp-form{margin:0 0 22px;border:1px solid var(--accent-line);background:var(--surface);box-shadow:var(--shadow)}
+.gl-exp-form-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.gl-exp-form-title h2{margin:0;font-size:18px}
+.gl-exp-form-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:14px;align-items:end}
+.gl-exp-form .fld{display:flex;flex-direction:column;gap:5px}
+.gl-exp-form .fld label{font-weight:650;color:var(--ink-2);font-size:12px}
+.gl-exp-form .fld input{width:100%;min-height:43px;border:1px solid var(--line-2);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink)}
+.gl-exp-preview{display:flex;flex-direction:column;gap:3px;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:9px;padding:8px 12px;min-height:43px}
+.gl-exp-preview small,.gl-exp-values small{color:var(--muted);font-size:11px;font-weight:600}
+.gl-exp-preview strong{font-weight:750;color:var(--accent);font-size:17px}
+.gl-exp-form .lead{margin:16px 0}
+.gl-exp-list{display:flex;flex-direction:column;gap:12px}
+.gl-exp-row{border:1px solid var(--line);background:var(--surface);border-radius:13px;box-shadow:var(--shadow)}
+.gl-exp-row-body{padding:17px 20px}
+.gl-exp-name{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:15px}
+.gl-exp-name strong{font-size:17px;letter-spacing:-.01em}
+.gl-exp-state{display:inline-flex;align-items:center;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:750;line-height:1.4}
+.gl-exp-state.valid{background:#e4f4e9;color:#146639}
+.gl-exp-state.soon{background:#fff0dd;color:#a55205}
+.gl-exp-state.today{background:#fff6bd;color:#735500}
+.gl-exp-state.expired{background:#ffe4e2;color:#a31f1b}
+.gl-exp-state.invalid{background:#eef1f3;color:#42484f}
+.gl-exp-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.gl-exp-values>div{display:flex;flex-direction:column;gap:5px}
+.gl-exp-values b{font-size:13px;line-height:1.3}
+.gl-exp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.gl-exp-actions .btn{font-size:12px}
+.gl-exp-history{padding:14px 20px 20px;border-top:1px solid var(--line);background:var(--sunk)}
+.gl-exp-history h4{font-size:13px;margin:0 0 12px}
+.gl-exp-history-item{display:grid;grid-template-columns:minmax(120px,1fr) minmax(160px,2fr) minmax(100px,1fr);gap:10px;font-size:12px;padding:9px 0;border-top:1px solid var(--line)}
+.gl-exp-history-item:first-of-type{border-top:0}
+.gl-exp-history-item small{color:var(--muted)}
+.gl-exp-archived{margin-top:22px}
+.gl-exp-footnote{margin-top:24px;font-size:12px;color:var(--muted)}
+.gl-push-optin{border:1px solid var(--accent-line);margin-top:15px}
+.gl-push-optin h2{margin:0 0 7px;font-size:17px}
+.gl-push-optin .bar-a{display:flex;gap:8px;margin-top:14px}
+.gl-push-status{font-weight:650;font-size:12px;color:var(--accent)}
+.gl-exp-alerts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.gl-alert{border-left:4px solid #d59b1b}
+.gl-alert.urgent{border-left-color:#bd2c26}
+.gl-alert.important{border-left-color:#dd7a18}
+.gl-alert b{font-size:14px}
+.gl-alert p{font-size:12px;color:var(--muted);margin:6px 0 0}
+.gl-activity{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:8px;font-size:13px}
+.gl-activity small{color:var(--muted)}
+@media(max-width:850px){
+ .gl-exp-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gl-exp-values{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .gl-exp-heading{align-items:flex-start;flex-direction:column}
+ .gl-exp-stats{gap:8px}
+ .gl-exp-stats>div{padding:12px 9px}
+ .gl-exp-stats strong{font-size:22px}
+ .gl-exp-stats span{font-size:10px}
+ .gl-exp-form-grid{grid-template-columns:1fr}
+ .gl-exp-values{gap:13px}
+ .gl-exp-row-body{padding:16px}
+ .gl-exp-history-item{grid-template-columns:1fr}
+ .gl-activity{flex-direction:column;align-items:flex-start;gap:5px}
+}
