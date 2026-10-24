@@ -1297,3 +1297,24 @@ html.auth-on body{overflow:hidden}
  .gl-exp-history-item{grid-template-columns:1fr}
  .gl-activity{flex-direction:column;align-items:flex-start;gap:5px}
 }
+
+
+/* Alertas de Vencimientos · Inicio de cada local. Sin push ni alertas globales. */
+.gl-home-due{margin:0 0 18px;border:1px solid var(--accent-line,#cbd6e2);background:var(--surface,#fff);border-radius:14px;padding:19px clamp(14px,2.3vw,24px);box-shadow:var(--shadow,0 3px 18px #0b1e3210)}
+.gl-home-due-top{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.gl-home-due-top .eyebrow{margin:0 0 5px;color:var(--accent,#1f3a5f);font-size:11px;font-weight:700}
+.gl-home-due-top h4{font-size:18px;line-height:1.35;letter-spacing:-.02em;margin:0 0 5px}
+.gl-home-due-top .lead{font-size:12px;color:var(--muted,#5e6570);margin:0}
+.gl-home-due-top .btn{flex:none}
+.gl-home-due-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:5px;border-radius:20px;background:var(--accent-soft,#eef2f7);color:var(--accent,#1f3a5f);font-size:12px;vertical-align:middle}
+.gl-home-due-list{display:grid;gap:0;list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--line,#e3e6eb)}
+.gl-home-due-item{display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--line,#e3e6eb)}
+.gl-home-due-item:last-child{padding-bottom:0;border-bottom:0}
+.gl-home-due-status{display:inline-flex;flex:none;align-items:center;justify-content:center;width:112px;min-height:29px;border-radius:18px;padding:5px 9px;text-align:center;font-size:11px;font-weight:750;letter-spacing:.01em}
+.gl-home-due-status.soon{color:#a55205;background:#fff0dd}
+.gl-home-due-status.today{color:#705300;background:#fff2b8}
+.gl-home-due-status.expired{color:#a31f1b;background:#ffe4e2}
+.gl-home-due-details{display:flex;flex-direction:column;gap:3px;min-width:0}
+.gl-home-due-details strong{font-size:14px;font-weight:680;color:var(--ink,#0b0d10);overflow-wrap:anywhere}
+.gl-home-due-details small{font-size:12px;color:var(--muted,#5e6570)}
+@media(max-width:620px){.gl-home-due-top{align-items:flex-start;flex-direction:column}.gl-home-due-item{align-items:flex-start;gap:10px}.gl-home-due-status{width:100px;font-size:10px}.gl-home-due-details strong{font-size:13px}}

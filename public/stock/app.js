@@ -1080,6 +1080,7 @@ V.inicio = () => {
     <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Abajo podés consultar los registros de todas las hojas. Las estadísticas principales corresponden a ${esc(nombreHoja('stock'))}.</p></div>
     <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
+  ${['creadora','dueno','gerente'].includes(miRol()) ? (window.GestLokUpdates?.homeDue?.() || '') : ''}
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
   ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
   ${resumenHojasInicio()}
@@ -3230,7 +3231,7 @@ function subscribeLocal(){
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
   push(C('vencimientos').onSnapshot(mine(snap => {
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if (S.view === 'vencimientos' || S.view === 'avisos') render();
+    if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
   }), errLive));
   push(C('avisos').orderBy('fecha','desc').limit(100).onSnapshot(mine(snap => {
     S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -3327,5 +3328,13 @@ function start(){
 }
 window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 start();
-setInterval(() => { if (!S.panel && S.local) renderSavebar(); }, 60000);
+let alertDay = window.GestLokUpdates?.todayISO?.() || '';
+setInterval(() => {
+  if (!S.panel && S.local) renderSavebar();
+  const today = window.GestLokUpdates?.todayISO?.() || '';
+  if (today && today !== alertDay) {
+    alertDay = today;
+    if (S.local && ['inicio','vencimientos','avisos'].includes(S.view)) render();
+  }
+}, 60000);
 })();
