@@ -26,7 +26,7 @@ describe("GestLok · avisos de vencimientos por sucursal en Inicio",()=>{
     });
   };
   const addService=(name,offset,days)=>{
-    cy.get('[data-go="vencimientos"]').click();
+    cy.get('#snav [data-go="vencimientos"]').click();
     cy.get('[data-up-action="new"]').click();
     cy.get("#gl-exp-name").type(name);
     inputDate(offset);
