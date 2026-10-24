@@ -1194,6 +1194,7 @@ function inicioOperativo(){
     <summary>Más herramientas</summary>
     <div class="gl-home-essential-tools">
       <button class="btn sm" data-act="share">${ic('userplus')}Equipo</button>
+      ${miRol()==='dueno'&&window.GestLokCommerce?.mode()!=='online'?`<button class="btn sm" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>`:''}
       ${S.dl&&S.db?`<button class="btn sm" data-act="backup">${ic('shield')}Copia de seguridad</button>`:''}
     </div>
     ${miRol()==='dueno'?window.GestLokCommerce?.card?.()||'':''}
