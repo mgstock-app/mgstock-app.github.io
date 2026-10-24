@@ -1318,3 +1318,11 @@ html.auth-on body{overflow:hidden}
 .gl-home-due-details strong{font-size:14px;font-weight:680;color:var(--ink,#0b0d10);overflow-wrap:anywhere}
 .gl-home-due-details small{font-size:12px;color:var(--muted,#5e6570)}
 @media(max-width:620px){.gl-home-due-top{align-items:flex-start;flex-direction:column}.gl-home-due-item{align-items:flex-start;gap:10px}.gl-home-due-status{width:100px;font-size:10px}.gl-home-due-details strong{font-size:13px}}
+
+
+/* GestLok · indicador discreto de mensajes nuevos (solo en el menú del local). */
+.gl-chat-badge{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:27px;height:24px;padding:0 7px;border:1px solid rgba(52,211,190,.28);border-radius:99px;background:rgba(31,161,145,.12);color:#55e1c7;font-size:11px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto}
+.gl-chat-dot{display:block;flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#21d6b7;box-shadow:0 0 0 3px rgba(33,214,183,.14)}
+.gl-chat-count{line-height:1;color:inherit}
+.snav button[aria-current="page"] .gl-chat-badge{color:#17695d;border-color:#99d2c5;background:#e5f7f1}
+.snav button[aria-current="page"] .gl-chat-dot{background:#168775;box-shadow:0 0 0 3px #1687751c}
