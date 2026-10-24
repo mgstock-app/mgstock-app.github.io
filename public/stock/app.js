@@ -3326,9 +3326,7 @@ function start(){
   applySkin(); render(); renderInstall(); boot();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
-window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol(),
-  pushEnable:()=>window.GestLokPush?.enable?.(),
-  pushDisable:()=>window.GestLokPush?.disable?.()});
+window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 start();
 setInterval(() => { if (!S.panel && S.local) renderSavebar(); }, 60000);
 })();
