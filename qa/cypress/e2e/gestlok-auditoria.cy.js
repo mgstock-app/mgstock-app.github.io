@@ -260,7 +260,8 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.viewport(820,1180);
     owner();
     toLocal("munro");
-    cy.get('#snav [data-go="fabrica"]').click();
+    cy.get('#app [data-act="menu-open"]').click();
+    cy.get('#snav [data-go="fabrica"]').should("be.visible").click();
     cy.get('#fr-f-001').should("be.visible").within(() => {
       cy.contains("Local").should("be.visible");
       cy.contains("Fábrica").should("be.visible");
