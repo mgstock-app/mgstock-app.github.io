@@ -36,7 +36,7 @@ select cron.schedule(
 -- A single function keeps enqueue and delivery in the same scheduled job.
 create or replace function public.gestlok_digest_and_dispatch()
 returns void language plpgsql security definer set search_path=''
-as $
+as $digest$
 begin
  perform public.gestlok_queue_daily_digest();
  perform net.http_post(
@@ -48,7 +48,7 @@ begin
     body:='{"op":"dispatch"}'::jsonb,
     timeout_milliseconds:=10000
  );
-end $;
+end $digest$;
 revoke all on function public.gestlok_digest_and_dispatch() from public,anon,authenticated;
 
 -- The closing digest is generated and sent every day at 23:15
