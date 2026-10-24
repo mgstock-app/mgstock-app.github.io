@@ -73,5 +73,5 @@ test('RLS niega compradores anónimos, impide publicar y protege registros exist
 test('En sesión iniciada no se superponen los enlaces legales en el panel',()=>{
  const page=read('app/page.tsx');
  assert.match(page,/\.stock-legal-nav \{ display:none/);
- assert.match(page,/html\.auth-on \.stock-legal-nav \{display:flex/);
+ assert.match(page,/html\.auth-on \.stock-legal-nav \{ display:flex/);
 });
