@@ -674,29 +674,91 @@ function mostrarResumenProveedor(){
   const wrap=document.getElementById('prov-resumen');
   if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
 }
-async function guardarPlanProveedor(){
-  if(!canW() || S.offline || !S.db || !S.local || !S.provOpen){toast('Necesitás internet y permiso de edición para guardar.',true);return;}
+async function guardarPlanProveedor(historico=false){
+  if(!canW()||S.offline||!S.db||!S.local||!S.provOpen){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
+  }
+  if(S.provBusy)return;
   if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
   const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
-  const btn=document.querySelector('[data-act="prov-save-plan"]');
-  if(btn)btn.disabled=true;
+  const btn=document.querySelector('[data-act="prov-save-draft"],[data-act="prov-save-history"]');
+  S.provBusy=true;if(btn)btn.disabled=true;
   try{
     const ref=C('proveedores').doc(proveedorId(nombre));
     const snap=await ref.get();
-    const ver=snap.exists ? Number(snap.data()?.pedidoActualizado)||0 : 0;
+    const ver=snap.exists?Number(snap.data()?.pedidoActualizado)||0:0;
     if(ver!==d.base){
       d.stale=true;
-      toast('Otra persona cambió este pedido. Copiá tu lista antes de recargar para evitar reemplazar sus datos.',true);
+      toast('Otro usuario cambió el pedido. Copiá tus datos antes de recargar para no pisar sus cambios.',true);
       return;
     }
     const stamp=Date.now();
-    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},pedidoActualizado:stamp,pedidoPor:S.uid};
-    await w(()=>snap.exists ? ref.update(payload) : ref.set({nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''}));
-    if(local!==S.local)return;
-    delete S.provDrafts[proveedorId(nombre)];
+    const seleccionados=proveedorSeleccionados(nombre).map(x=>({
+      nombre:x.nombre,unidad:x.unidad,categoria:x.categoria||'General',pedir:x.pedir
+    }));
+    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},
+      pedidoActualizado:stamp,pedidoPor:S.uid};
+    await w(()=>snap.exists?ref.update(payload):ref.set({
+      nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''
+    }));
+    if(S.local!==local)return;
+    const ficha=proveedorFicha(nombre);
+    if(ficha)Object.assign(ficha,payload);
+    else S.provInfo.push({id:proveedorId(nombre),nombre,...payload});
+    d.base=stamp;d.dirty=false;d.stale=false;
     try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
-    toast('Lista y pedido guardados sin cambiar el stock real.');
-  }catch(e){fail(e);}finally{if(btn?.isConnected)btn.disabled=false;}
+    if(historico&&seleccionados.length){
+      try{
+        await w(()=>C('proveedores_historial').add({
+          proveedor:nombre,proveedorId:proveedorId(nombre),local,
+          fecha:stamp,autor:S.uid,productos:seleccionados,
+          productosTotal:seleccionados.length,version:stamp
+        }));
+        toast('Pedido guardado en el historial. Podés exportarlo en PDF.');
+      }catch(e){
+        toast('La lista se guardó, pero falló el historial. Comprobá tu conexión antes de repetir.',true);
+      }
+    }else toast('Lista guardada en GestLok. Podés seguir editándola o exportar su PDF.');
+    closePanel();render();
+  }catch(e){fail(e);}
+  finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
+}
+function confirmarGuardarProveedor(){
+  if(!canW()||!S.provOpen||S.offline||S.provBusy){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
+  }
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades antes de guardar.',true);return;}
+  const nombre=S.provOpen,total=proveedorSeleccionados(nombre).length;
+  S.panel='prov-save';
+  openPanel('<div class="pn-h"><h3>¿Terminaste el pedido?</h3>'+
+    '<button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+    '<div class="pn-b gl-prov-sharing">'+
+    '<p class="lead"><b>'+esc(nombre)+'</b> · '+plural(total,'producto para pedir','productos para pedir')+'.</p>'+
+    '<p class="lead">Podés guardar la lista para seguir después o finalizar el pedido y archivarlo en el historial. Ningún pedido anterior se borra.</p>'+
+    '<button class="btn primary" data-act="prov-save-history" '+(total?'':'disabled')+'>'+
+      ic('save')+'Sí, terminé. Guardar en historial</button>'+
+    '<button class="btn" data-act="prov-save-draft">'+ic('save')+'Guardar lista sin finalizar</button>'+
+    '<button class="btn" data-act="close">Cancelar</button></div>','dlg');
+}
+function ponerEnCeroProveedorCategoria(categoria){
+  if(!canW()||!S.provOpen)return;
+  const nombre=S.provOpen,rows=proveedorFilas(nombre)
+    .filter(x=>(x.categoria||'General')===categoria);
+  if(!rows.length)return;
+  if(!window.confirm('¿Poner en 0 Stock local y Pedir de '+categoria+
+    '? La columna Sugerido quedará intacta. Después tocá Guardar.'))return;
+  const d=proveedorBase(nombre);
+  for(const row of rows){
+    if(row.origen==='manual'){
+      const it=d.items.find(x=>x.id===row.id);
+      if(it){it.stockLocal=0;it.pedir=0;it.sugerido=row.sugerido;}
+    }else{
+      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),
+        stockLocal:0,pedir:0,sugerido:row.sugerido};
+    }
+  }
+  proveedorGuardarBorrador(nombre);render();
+  toast('Stock local y Pedir quedaron en 0; Sugerido permanece intacto. Guardá la lista.');
 }
 function crearImagenPedido(nombre,productos,pagina,total){
   const W=1000, H=310+productos.length*64;
