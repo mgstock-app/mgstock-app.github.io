@@ -330,7 +330,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     });
   });
 
-  it("proveedor: ficha, WhatsApp y pedido solo para el local autorizado", () => {
+  it("proveedor: ficha privada y pedido separado por local, sin WhatsApp de texto", () => {
     cy.window().then(w => {
       for (const loc of ["munro","torcuato"]) {
         const p = w.__rows.find(r=>r.col===loc+"/productos" && r.id==="p-001");
@@ -352,8 +352,8 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
       expect(p.data.telefono).to.eq("5491123456789");
       expect(rows.filter(r=>r.col==="torcuato/proveedores")).to.have.length(0);
     });
-    cy.get(".gl-provider-card a[href^='https://wa.me/5491123456789']").should("have.attr","target","_blank");
-    cy.get('[data-act="prov-copy"][data-name="Distribuidora QA"]').should("be.visible");
+    cy.get(".gl-provider-card a[href^='https://wa.me/']").should("not.exist");
+    cy.get('[data-act="prov-open"][data-name="Distribuidora QA"]').should("exist");
     cy.get('#snav [data-act="locales"]').click();
     toLocal("torcuato");
     cy.get('#snav [data-go="proveedores"]').click();
@@ -435,12 +435,15 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#prov-item-name').type('Leche larga vida');
     cy.get('#prov-item-unit').type('cajas');
     cy.get('#prov-add-form button[type="submit"]').click();
-    cy.get('.gl-prov-table tbody tr').should('have.length',1).and('contain.text','Leche larga vida');
+    cy.get('.gl-prov-table tbody tr[data-prov-row]').should('have.length',1).and('contain.text','Leche larga vida');
+    cy.get('.gl-prov-table .gl-prov-category').should('contain.text','General');
     cy.get('[data-prov-val="stockLocal"]').clear().type('7');
     cy.get('[data-prov-val="sugerido"]').clear().type('4');
     cy.get('[data-prov-val="pedir"]').clear().type('3');
     cy.get('#prov-resumen').should('contain.text','Cafetería Insumos QA').and('contain.text','Leche larga vida').and('contain.text','3 cajas');
     cy.get('[data-act="prov-save-plan"]').click();
+    cy.get('#pn').should('contain.text','¿Ya terminaste tu pedido');
+    cy.get('[data-act="prov-confirm-save"]').click();
     cy.window().its('__rows').should(rows=>{
       const entry=rows.find(x=>x.col==='munro/proveedores' && x.data.nombre==='Cafetería Insumos QA');
       expect(entry).not.to.equal(undefined);
@@ -467,7 +470,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('[data-act="prov-share"]').should('not.exist');
   });
 
-  it("pedido de proveedor: compartir como imagen PNG usa el menú nativo en tablet", () => {
+  it("pedido de proveedor: guarda antes de compartir PDF único sin texto", () => {
     cy.window().then(w=>{
       const item=w.__rows.find(r=>r.col==='munro/productos' && r.id==='p-001');
       item.data.proveedor='Proveedor para compartir';
@@ -479,15 +482,18 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('[data-act="prov-open"][data-name="Proveedor para compartir"]').click();
     cy.get('[data-prov-val="pedir"]').first().clear().type('2');
     cy.get('#prov-resumen').should('contain.text','2 unidad');
-    cy.get('[data-act="prov-share"]').click();
+    cy.get('[data-act="prov-save-plan"]').click();
+    cy.get('[data-act="prov-confirm-save"]').click();
+    cy.get('[data-act="prov-share"]').should('be.enabled').click();
     cy.get('[data-act="prov-share-ready"]',{timeout:12000}).should('be.visible').click();
     cy.get('@nativeShare',{timeout:12000}).should('have.been.calledOnce');
     cy.get('@nativeShare').then(stub=>{
       const arg=stub.firstCall.args[0];
-      expect(arg.title).to.contain('Proveedor para compartir');
+      expect(Object.keys(arg)).to.deep.eq(['files']);
       expect(arg.files).to.have.length(1);
-      expect(arg.files[0].type).eq('image/png');
-      expect(arg.text).to.contain('Producto de prueba 001');
+      expect(arg.files[0].type).eq('application/pdf');
+      expect(arg.files[0].name).to.match(/\.pdf$/);
+      expect(arg).not.to.have.property('text');
     });
   });
 
@@ -498,7 +504,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#app [data-act="menu-open"]').click();
     cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
     cy.get('[data-act="prov-open"][data-name="Proveedor vista tablet"]').click();
-    cy.get('.gl-prov-table tbody tr').first().within(()=>{
+    cy.get('.gl-prov-table tbody tr[data-prov-row]').first().within(()=>{
       cy.get('[data-label="Stock local"]').should('be.visible');
       cy.get('[data-label="Pedir"]').should('be.visible');
       cy.get('[data-label="Sugerido"]').should('be.visible');
