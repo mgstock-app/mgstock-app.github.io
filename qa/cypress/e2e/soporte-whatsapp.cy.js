@@ -49,11 +49,13 @@ describe('GestLok · Soporte WhatsApp',()=>{
       expect(decoded).to.include('soy de Munro');
       expect(decoded).to.include('sector de Inicio');
     });
-    cy.get('#snav [data-go="stock"]').click();
+    cy.get('[data-act="menu-open"]').click();
+    cy.get('#snav [data-go="stock"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
       expect(decodeURIComponent(url)).to.include('sector de Stock');
     });
-    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get('[data-act="menu-open"]').click();
+    cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
       expect(decodeURIComponent(url)).to.include('sector de Proveedores');
     });
