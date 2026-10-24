@@ -11,7 +11,7 @@ function loadCommerce(role = 'dueno') {
   const handlers = {};
   const rows = [];
   const saved = [];
-  const state = {db:{}, loaded:{e:true}, me:{email:'duena@demo.invalid'},offline:false,local:'sucursal-centro',view:'inicio'};
+  const state = {db:{}, loaded:{e:true}, me:{email:'duena@demo.invalid',tenant_id:'11111111-1111-4111-8111-111111111111'},offline:false,local:'sucursal-centro',view:'inicio'};
   const root = {confirm:() => true};
   const document = {addEventListener:(event,fn)=>{handlers[event]=fn;},querySelector:()=>null};
   new Script(commerce).runInNewContext({window:root,document,Date,Number,String,Object,Array});
@@ -36,7 +36,7 @@ test('Se presentan las tres modalidades y la dueña puede elegirlas', async () =
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(saved.length,1);
   assert.equal(saved[0].col,'configuracion_negocio');
-  assert.equal(saved[0].id,'principal');
+  assert.equal(saved[0].id,'empresa-11111111-1111-4111-8111-111111111111');
   assert.equal(saved[0].d.tipo,'online');
   assert.equal(api.online(),true);
 });
@@ -79,6 +79,7 @@ test('Las rutas cambian según modalidad y se conserva el Conteo diario exclusiv
 test('El acceso a configuración de empresa queda limitado por RLS y tenant', () => {
   const migration=file('supabase/migrations/20261024_gestlok_business_modes.sql');
   assert.match(migration,/gestlok_tenant_fence/);
+  assert.match(migration,/gestlok_tenancy\.current_tenant_id\(\)/);
   assert.match(migration,/public\.es_miembro\(\)/);
   assert.match(migration,/public\.mi_rol\(\) in \('creadora','dueno'\)/);
   assert.doesNotMatch(migration,/\bdrop table\b|\btruncate\b/i);
