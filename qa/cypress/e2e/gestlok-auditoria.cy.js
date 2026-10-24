@@ -297,7 +297,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#prov-form button[type="submit"]').click();
     cy.window().its("__rows").should(rows=>{
       const p=rows.find(r=>r.col==="munro/proveedores");
-      expect(p).to.exist;
+      expect(p).not.to.equal(undefined);
       expect(p.data.telefono).to.eq("5491123456789");
       expect(rows.filter(r=>r.col==="torcuato/proveedores")).to.have.length(0);
     });
