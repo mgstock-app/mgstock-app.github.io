@@ -52,6 +52,7 @@ describe("GestLok · Vencimientos y avisos nuevos, datos de prueba solamente",()
     cy.get(".lcard [data-id='munro']").click();
     cy.get('[data-go="avisos"]').click();
     cy.get(".gl-exp-page h1").should("contain.text","Centro de avisos");
-    cy.get(".gl-push-optin").should("contain.text","23:15");
+    cy.get(".gl-exp-page").should("contain.text","Estos avisos se consultan dentro de GestLok");
+    cy.get('[data-up-action="push-enable"]').should("not.exist");
   });
 });
