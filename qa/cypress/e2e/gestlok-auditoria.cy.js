@@ -279,6 +279,54 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     });
   });
 
+  it("proveedor: ficha, WhatsApp y pedido solo para el local autorizado", () => {
+    cy.window().then(w => {
+      for (const loc of ["munro","torcuato"]) {
+        const p = w.__rows.find(r=>r.col===loc+"/productos" && r.id==="p-001");
+        p.data.proveedor="Distribuidora QA";
+        p.data.min=5; p.data.stock=1;
+      }
+    });
+    owner(); toLocal("munro");
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get(".gl-provider-card").should("contain.text","Distribuidora QA").and("contain.text","1 para reponer");
+    cy.get('[data-act="prov-edit"][data-name="Distribuidora QA"]').click();
+    cy.get("#prov-contact").type("Pedidos");
+    cy.get("#prov-phone").type("5491123456789");
+    cy.get("#prov-delivery").type("Entrega los martes");
+    cy.get('#prov-form button[type="submit"]').click();
+    cy.window().its("__rows").should(rows=>{
+      const p=rows.find(r=>r.col==="munro/proveedores");
+      expect(p).to.exist;
+      expect(p.data.telefono).to.eq("5491123456789");
+      expect(rows.filter(r=>r.col==="torcuato/proveedores")).to.have.length(0);
+    });
+    cy.get(".gl-provider-card a[href^='https://wa.me/5491123456789']").should("have.attr","target","_blank");
+    cy.get('[data-act="prov-copy"][data-name="Distribuidora QA"]').should("be.visible");
+    cy.get('#snav [data-act="locales"]').click();
+    toLocal("torcuato");
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get(".gl-provider-card").should("contain.text","Distribuidora QA");
+    cy.get(".gl-provider-card").should("not.contain.text","Entrega los martes");
+    cy.get(".gl-provider-card a[href^='https://wa.me/']").should("not.exist");
+  });
+
+  it("cuenta lectura no puede editar proveedores", () => {
+    cy.window().then(w => { w.__rows.find(r=>r.col==="munro/productos" && r.id==="p-001").data.proveedor="Solo lectura QA"; });
+    login("lectura@example.com");
+    cy.get('#snav [data-go="proveedores"]').click();
+    cy.get("#view").should("contain.text","Solo lectura QA");
+    cy.get('[data-act="prov-edit"]').should("not.exist");
+  });
+
+  it("inicio: muestra tareas claras para el cliente", () => {
+    login("gerente.munro@example.com");
+    cy.get("#view .gl-today").should("be.visible");
+    cy.get("#view .gl-today").should("contain.text","¿Qué necesitás resolver?");
+    cy.get('.gl-today-action[data-go="proveedores"]').click();
+    cy.get("#view").should("contain.text","Proveedores");
+  });
+
   it("formato móvil: el menú abre y permite entrar al chat", () => {
     cy.viewport(390,844);
     login("gerente.munro@example.com");
