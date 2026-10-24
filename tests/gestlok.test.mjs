@@ -23,7 +23,7 @@ test("el chat queda asociado al local autenticado con control de permisos", () =
   const app = read("public/stock/app.js");
   assert.match(app, /LOCAL_COLS = \[[^\]]*'chat'/);
   assert.match(app, /C\('chat'\)\.orderBy\('fecha'/);
-  assert.match(app, /C\('chat'\)\.add\(\{texto:txt/);
+  assert.match(app, /S\\.db\\.collection\\(local \\+ '\\/chat'\\)\\.doc\\(payload\\.id\\)\\.set/);
   assert.match(app, /!S\.local \|\| S\.offline \|\| !canW\(\)/);
 });
 
@@ -43,4 +43,30 @@ test("el panel administrativo solo aparece con rol creadora y es gratuito", () =
   assert.match(app, /if \(!isCreadora\(\) && mios\.length === 1\)/);
   assert.match(app, /Las nuevas cuentas solo ingresan cuando las autorizás/);
   assert.doesNotMatch(app.slice(app.indexOf('const adminHTML ='), app.indexOf('if (hub._h !== adminHTML)')), /facturaci[oó]n|ingresos del mes|suscripciones|cobros recurrentes/i);
+});
+
+test("los mensajes pendientes se recuperan sin duplicar el envío y sin mezclar locales", () => {
+  const app = read("public/stock/app.js");
+  assert.match(app, /const chatDraftKey =/);
+  assert.match(app, /const chatPendingKey =/);
+  assert.match(app, /p\\.autor === S\\.uid && p\\.local === S\\.local/);
+  assert.match(app, /localStorage\\.setItem\\(pendingKey, JSON\\.stringify\\(payload\\)\\)/);
+  assert.match(app, /payload\\.id\\)\\.set/);
+  assert.match(app, /No pudimos confirmar el envío anterior/);
+  assert.match(app, /t\\.id === 'gestlok-chat-text'/);
+});
+
+test("los conteos sin conexión requieren confirmación incluso después de reconectarse", () => {
+  const app = read("public/stock/app.js");
+  assert.match(app, /const queuedKey =/);
+  assert.match(app, /lsSet\\(queuedKey\\(\\), S\\.queued\\)/);
+  assert.match(app, /S\\.queued = q && typeof q\\.view/);
+  assert.match(app, /S\\.offline = false; render\\(\\);/);
+  assert.doesNotMatch(app, /S\\.offline = false; S\\.queued = null/);
+});
+
+test("las respuestas viejas de Supabase no sobrescriben las nuevas", () => {
+  const auth = read("public/stock/auth.js");
+  assert.match(auth, /generation = 0/);
+  assert.match(auth, /current === generation/);
 });
