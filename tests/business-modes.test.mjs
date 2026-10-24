@@ -72,6 +72,7 @@ test('Las rutas cambian según modalidad y se conserva el Conteo diario exclusiv
   assert.match(app,/if \(S\.view === 'pedidos-online'\)/);
   assert.match(app,/S\.db\.collection\('configuracion_negocio'\)/);
   assert.match(app,/C\('pedidos_online'\)/);
+  assert.match(app,/LOCAL_COLS = \[[^\]]*'pedidos_online'/);
   assert.match(app,/puedeVerDiarioMunro\(\)/);
   assert.match(file('components/stock-runtime.tsx'),/load\("\/stock\/gestlok-commerce\.js"\)/);
 });
