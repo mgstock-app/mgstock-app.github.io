@@ -3213,7 +3213,6 @@ function subscribeHub(id){
 /* Qué puede ver cada persona: se decide con su fila del Equipo */
 function afterAccess(){
   if (!S.loaded.e || !S.loaded.l) return;
-  if (esTotal()) window.GestLokPush?.init(() => { if (S.view === "avisos") render(); });
   const mios = localesMios();
   for (const l of mios) if (!S.hub[l.id]) subscribeHub(l.id);
   if (!S.started){
