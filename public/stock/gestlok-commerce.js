@@ -17,6 +17,7 @@
   const esDueno = () => ['creadora','dueno'].includes(api?.miRol?.());
   const disponible = () => !!(api?.S?.db && !api.S.offline);
   const etiqueta = () => TIPOS[tipo()].nombre;
+  const configId = () => api?.S?.me?.tenant_id ? 'empresa-' + String(api.S.me.tenant_id) : null;
   function card() {
     if (!api?.S?.db || !api.S.loaded.e) return '';
     return `<section class="gl-commerce-card card pad" aria-label="Modalidad de tu negocio">
@@ -62,11 +63,12 @@
   }
   async function changeMode(mode) {
     if (!TIPOS[mode] || !esDueno() || !disponible() || busy || mode === tipo()) return;
+    if (!configId()) {api.toast('No pudimos verificar la empresa de tu cuenta. Volvé a iniciar sesión.',true);return;}
     const previo = tipo();
     if (!window.confirm(`¿Cambiar la modalidad a ${TIPOS[mode].nombre}? Se adaptarán las secciones visibles para toda la empresa. No se borrará ningún registro.`)) return;
     busy = true;
     try {
-      const ref = api.C('configuracion_negocio').doc('principal');
+      const ref = api.C('configuracion_negocio').doc(configId());
       const current = await ref.get();
       const payload = {tipo:mode, actualizado:Date.now(), actualizadoPor:api.S.me?.email || ''};
       if (current.exists) await ref.update(payload); else await ref.set(payload);
@@ -121,6 +123,6 @@
     attach(ctx) { api=ctx; },
     config(data) { cfg=data && typeof data==='object'?data:null; },
     orders(local,rows) {ordersLocal=local;orders=Array.isArray(rows)?rows.slice().sort((a,b)=>(b.fecha||0)-(a.fecha||0)):[];},
-    mode: tipo, online, card, summary, view, etiqueta
+    mode: tipo, online, card, summary, view, etiqueta, configId
   });
 })();
