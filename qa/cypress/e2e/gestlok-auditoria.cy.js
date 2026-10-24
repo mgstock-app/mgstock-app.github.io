@@ -430,6 +430,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('[data-prov-val="pedir"]').first().clear().type('2');
     cy.get('#prov-resumen').should('contain.text','2 unidad');
     cy.get('[data-act="prov-share"]').click();
+    cy.get('[data-act="prov-share-ready"]',{timeout:12000}).should('be.visible').click();
     cy.get('@nativeShare',{timeout:12000}).should('have.been.calledOnce');
     cy.get('@nativeShare').then(stub=>{
       const arg=stub.firstCall.args[0];
