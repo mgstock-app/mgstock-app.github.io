@@ -56,12 +56,14 @@ revoke all on public.gestlok_tiendas, public.gestlok_productos_tienda from anon,
 grant select on public.gestlok_tiendas, public.gestlok_productos_tienda to anon, authenticated;
 grant insert,update,delete on public.gestlok_tiendas, public.gestlok_productos_tienda to authenticated;
 
+-- Anónimo no puede acceder al esquema privado gestlok_tenancy: política separada.
 drop policy if exists gestlok_tiendas_read on public.gestlok_tiendas;
-create policy gestlok_tiendas_read on public.gestlok_tiendas for select to anon, authenticated
-using (
- (visible and public.gestlok_modo_tienda_publico(tenant_id))
- or ((select auth.uid()) is not null and tenant_id = (select gestlok_tenancy.current_tenant_id()) and public.puede_ver_local(local_id))
-);
+drop policy if exists gestlok_tiendas_read_public on public.gestlok_tiendas;
+create policy gestlok_tiendas_read_public on public.gestlok_tiendas for select to anon, authenticated
+using (visible and public.gestlok_modo_tienda_publico(tenant_id));
+drop policy if exists gestlok_tiendas_read_private on public.gestlok_tiendas;
+create policy gestlok_tiendas_read_private on public.gestlok_tiendas for select to authenticated
+using (tenant_id = (select gestlok_tenancy.current_tenant_id()) and public.puede_ver_local(local_id));
 drop policy if exists gestlok_tiendas_insert on public.gestlok_tiendas;
 create policy gestlok_tiendas_insert on public.gestlok_tiendas for insert to authenticated
 with check (
@@ -77,15 +79,20 @@ create policy gestlok_tiendas_delete on public.gestlok_tiendas for delete to aut
 using (tenant_id = (select gestlok_tenancy.current_tenant_id()) and public.mi_rol() in ('creadora','dueno') and public.puede_ver_local(local_id));
 
 drop policy if exists gestlok_productos_read on public.gestlok_productos_tienda;
-create policy gestlok_productos_read on public.gestlok_productos_tienda for select to anon, authenticated
+drop policy if exists gestlok_productos_read_public on public.gestlok_productos_tienda;
+create policy gestlok_productos_read_public on public.gestlok_productos_tienda for select to anon, authenticated
 using (
- (publicado and exists (
+ publicado and exists (
    select 1 from public.gestlok_tiendas t
    where t.id = tienda_id and t.tenant_id = tenant_id
      and t.visible and public.gestlok_modo_tienda_publico(t.tenant_id)
- ))
- or ((select auth.uid()) is not null and tenant_id = (select gestlok_tenancy.current_tenant_id())
-     and exists (select 1 from public.gestlok_tiendas t where t.id = tienda_id and t.tenant_id = tenant_id and public.puede_ver_local(t.local_id)))
+ )
+);
+drop policy if exists gestlok_productos_read_private on public.gestlok_productos_tienda;
+create policy gestlok_productos_read_private on public.gestlok_productos_tienda for select to authenticated
+using (
+ tenant_id = (select gestlok_tenancy.current_tenant_id())
+ and exists (select 1 from public.gestlok_tiendas t where t.id = tienda_id and t.tenant_id = tenant_id and public.puede_ver_local(t.local_id))
 );
 drop policy if exists gestlok_productos_insert on public.gestlok_productos_tienda;
 create policy gestlok_productos_insert on public.gestlok_productos_tienda for insert to authenticated
