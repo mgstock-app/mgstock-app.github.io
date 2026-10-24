@@ -849,7 +849,7 @@ async function guardarDiario(f){
 
 V.proveedores = () => {
   const lista=proveedorNombres();
-  const carpetas=lista.map(([nombre,cant])=>{
+  const carpetas=lista.map(([nombre])=>{
     const ficha=proveedorFicha(nombre)||{};
     const pendientes=S.allProds.filter(p=>provOf(p)===nombre && alerta(p));
     const telefono=telWa(ficha.telefono);
