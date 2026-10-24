@@ -204,7 +204,7 @@
   });
   document.addEventListener('change',e=>{
     if(!s.shown||!ready())return;
-    if(e.target.id==='gl-creator-company'){s.selected=e.target.value; s.progress=0;}
+    if(e.target.id==='gl-creator-company'){s.selected=e.target.value; s.progress=0;show();}
     if(e.target.id==='gl-creator-file')parseFile(e.target.files?.[0]);
   });
   document.addEventListener('submit',e=>{
