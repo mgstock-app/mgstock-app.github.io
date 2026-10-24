@@ -7,9 +7,9 @@
     online: {nombre:'Tienda online', detalle:'Gestión privada de productos, stock, pedidos recibidos por otros canales y proveedores.', icono:'🗂️'},
     mixta: {nombre:'Tienda mixta', detalle:'Combiná la administración presencial con la organización de pedidos y productos online.', icono:'🏬'}
   };
-  const ESTADOS = {nuevo:'Nuevo', preparando:'Preparando', listo:'Listo para entregar', entregado:'Entregado', cancelado:'Cancelado'};
+  const ESTADOS = {nuevo:'Nuevo', preparando:'Preparando', listo:'Listo para entregar', enviado:'Enviado', entregado:'Entregado', cancelado:'Cancelado', devuelto:'Devuelto'};
   const CANALES = {web:'Tienda web', whatsapp:'WhatsApp', instagram:'Instagram', otro:'Otro'};
-  let api = null, cfg = null, orders = [], ordersLocal = '', busy = false;
+  let api = null, cfg = null, orders = [], ordersLocal = '', busy = false, orderFilter='todos', orderPage=0;
   const $ = q => document.querySelector(q);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const tipo = () => TIPOS[cfg?.tipo] ? cfg.tipo : 'fisica';
@@ -37,27 +37,50 @@
     const loc = api.S.local;
     const all = ordersLocal === loc ? orders : [];
     const pending = all.filter(o => o.estado === 'nuevo' || o.estado === 'preparando').length;
+    const filtered=all.filter(o => orderFilter==='todos'||o.estado===orderFilter);
+    const maxPage=Math.max(1,Math.ceil(filtered.length/40));
+    orderPage=Math.max(0,Math.min(orderPage,maxPage-1));
+    const shown=filtered.slice(orderPage*40,(orderPage+1)*40);
+    const logged=all.filter(o=>o.estado==='entregado'&&Number.isFinite(Number(o.total)));
+    const total=logged.reduce((sum,o)=>sum+Number(o.total||0),0);
+    const peso=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(n)||0);
     const opts = (map, val) => Object.entries(map).map(([k,v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${esc(v)}</option>`).join('');
     return `<div class="gl-commerce-page">
       <section class="card pad"><p class="eyebrow">${esc(etiqueta())} · ${esc(api.localNombre())}</p><h3>Pedidos online</h3>
         <p class="lead">Registrá pedidos que recibís por web, redes o WhatsApp y seguí su preparación por sucursal.</p>
         <div class="gl-commerce-counts"><span><b>${all.length}</b>Pedidos registrados</span><span><b>${pending}</b>Pendientes</span><span><b>${all.filter(o=>o.estado==='entregado').length}</b>Entregados</span></div>
-        <p class="note">Este registro es interno: no cobra, no crea una tienda web y no modifica automáticamente el stock. Actualizá las existencias desde las planillas correspondientes.</p>
+        <p class="note">Pedidos internos de canales externos. No cobra ni descuenta stock automáticamente; registrá sus movimientos en las planillas.</p>
+        <p class="lead"><b>Importe de pedidos entregados con precio informado:</b> ${peso(total)}. No equivale a facturación contable.</p>
+        <div class="gl-tienda-actions">
+          <label>Filtrar estado <select id="gl-order-filter"><option value="todos">Todos</option>${opts(ESTADOS,orderFilter)}</select></label>
+          <button class="btn" type="button" data-commerce-export>Exportar pedidos CSV</button>
+        </div>
       </section>
       ${api.canW() ? `<form id="gl-commerce-order-form" class="card pad gl-commerce-order-form">
         <h3>Registrar pedido online</h3><div class="gl-commerce-fields">
         <label>Cliente / referencia<input name="cliente" type="text" maxlength="100" required placeholder="Nombre o código del pedido" autocomplete="off"></label>
-        <label>Producto / detalle<input name="producto" type="text" maxlength="180" required placeholder="Producto solicitado" autocomplete="off"></label>
-        <label>Cantidad<input name="cantidad" type="number" min="1" max="1000000" step="1" required value="1"></label>
+        <label class="gl-commerce-wide">Productos (uno por línea: producto | cantidad | precio unitario)<textarea name="lineas" rows="4" maxlength="4000" required placeholder="Café 500g | 2 | 8500&#10;Chocolate 100g | 3 | 1200"></textarea></label>
         <label>Canal<select name="canal">${opts(CANALES,'web')}</select></label>
-        <label class="gl-commerce-wide">Observaciones<input name="nota" type="text" maxlength="240" placeholder="Entrega, retiro, indicaciones (opcional)"></label>
+        <label>Entrega<select name="entrega"><option value="retiro">Retiro</option><option value="envio">Envío</option><option value="coordinar">A coordinar</option></select></label>
+        <label>Fecha acordada<input name="fecha_entrega" type="date"></label>
+        <label>Transportista (opcional)<input name="transportista" maxlength="100" placeholder="Correo o repartidor"></label>
+        <label>Seguimiento (opcional)<input name="tracking" maxlength="100" placeholder="Código externo"></label>
+        <label class="gl-commerce-wide">Observaciones<input name="nota" type="text" maxlength="240" placeholder="Indicaciones (opcional)"></label>
         </div><button class="btn primary" type="submit" ${busy ? 'disabled' : ''}>Guardar pedido</button></form>` : ''}
       <section class="card pad"><h3>Seguimiento de pedidos</h3>
-        ${all.length ? `<div class="gl-commerce-order-list">${all.map(o => `<article class="gl-commerce-order">
-          <div><b>${esc(o.cliente)}</b><small>${esc(o.producto)} · ${esc(o.cantidad)} unidad(es) · ${esc(CANALES[o.canal]||'Otro')}</small>
+        ${filtered.length ? `<div class="gl-commerce-order-list">${shown.map(o => `<article class="gl-commerce-order">
+          <div><b>${esc(o.cliente)}</b><small>${Array.isArray(o.items)?o.items.map(i=>esc(i.nombre)+' ×'+Number(i.cantidad)).join(' · '):esc(o.producto)+' · '+esc(o.cantidad)+' unidad(es)'} · ${esc(CANALES[o.canal]||'Otro')}</small>
+          ${Number.isFinite(Number(o.total))&&o.total!=null?'<small>Importe informado: '+peso(o.total)+'</small>':''}
+          ${o.entrega?'<small>Entrega: '+esc(o.entrega)+(o.fechaEntrega?' · '+esc(o.fechaEntrega):'')+'</small>':''}
+          ${o.tracking?'<small>Seguimiento: '+esc(o.tracking)+'</small>':''}
           ${o.nota ? `<small>${esc(o.nota)}</small>` : ''}<small>${o.fecha ? new Date(o.fecha).toLocaleString('es-AR') : ''}</small></div>
           <div><label>Estado<select data-commerce-status="${esc(o.id)}" ${api.canW() && disponible() && !busy ? '' : 'disabled'}>${opts(ESTADOS,o.estado)}</select></label></div>
-        </article>`).join('')}</div>` : '<p class="lead">Todavía no hay pedidos online en este local.</p>'}
+        </article>`).join('')}</div>` : '<p class="lead">No hay pedidos con este filtro.</p>'}
+        <div class="gl-tienda-actions" style="margin-top:10px">
+          <small>Página ${orderPage+1} de ${maxPage} · ${filtered.length} pedidos</small>
+          <button class="btn sm" data-commerce-page="-1" ${orderPage===0?'disabled':''}>Anterior</button>
+          <button class="btn sm" data-commerce-page="1" ${orderPage+1>=maxPage?'disabled':''}>Siguiente</button>
+        </div>
       </section>
     </div>`;
   }
@@ -83,15 +106,37 @@
     if (!online() || !api.canW() || !disponible() || busy) return;
     const d = new FormData(form);
     const cliente = String(d.get('cliente')||'').trim().slice(0,100);
-    const producto = String(d.get('producto')||'').trim().slice(0,180);
-    const cantidad = Number(d.get('cantidad'));
+    const lines=String(d.get('lineas')||'').split(/?
+/).map(v=>v.trim()).filter(Boolean);
+    if(!lines.length||lines.length>30){api.toast('Indicá entre 1 y 30 renglones de productos.',true);return;}
+    const items=[];
+    for(const line of lines){
+      const [nombre,q,precio,...extra]=line.split('|').map(x=>x.trim());
+      const cantidad=Number(q),unit=Number(precio);
+      if(extra.length||!nombre||nombre.length>140||!Number.isInteger(cantidad)||cantidad<1||cantidad>100000
+         ||!precio||!Number.isFinite(unit)||unit<0||unit>9999999999){
+         api.toast('Usá: Producto | cantidad | precio, en cada línea.',true);return;
+      }
+      items.push({nombre,cantidad,precio:unit});
+    }
+    const producto=items.map(i=>i.nombre).join(', ').slice(0,180);
+    const cantidad=items.reduce((n,i)=>n+i.cantidad,0);
+    const total=items.reduce((n,i)=>n+i.cantidad*i.precio,0);
     const canal = String(d.get('canal')||'web');
     const nota = String(d.get('nota')||'').trim().slice(0,240);
-    if (!cliente || !producto || !Number.isInteger(cantidad) || cantidad<1 || cantidad>1000000 || !CANALES[canal]) { api.toast('Revisá los datos del pedido.',true);return; }
+    const entrega=String(d.get('entrega')||'coordinar');
+    const fechaEntrega=String(d.get('fecha_entrega')||'');
+    const transportista=String(d.get('transportista')||'').trim().slice(0,100);
+    const tracking=String(d.get('tracking')||'').trim().slice(0,100);
+    if(!cliente||!producto||cantidad<1||cantidad>1000000||!Number.isFinite(total)||total>999999999999
+       ||!CANALES[canal]||!['retiro','envio','coordinar'].includes(entrega)
+       ||(fechaEntrega&&!/^d{4}-d{2}-d{2}$/.test(fechaEntrega))){
+      api.toast('Revisá los datos del pedido.',true);return;
+    }
     busy=true;
     try {
       const ahora=Date.now();
-      await api.C('pedidos_online').add({cliente,producto,cantidad,canal,nota,estado:'nuevo',fecha:ahora,actualizado:ahora,autor:api.S.me?.email||'',historial:[{estado:'nuevo',fecha:ahora}]});
+      await api.C('pedidos_online').add({cliente,producto,cantidad,items,total,canal,nota,entrega,fechaEntrega,transportista,tracking,estado:'nuevo',fecha:ahora,actualizado:ahora,autor:api.S.me?.email||'',historial:[{estado:'nuevo',fecha:ahora}]});
       form.reset(); api.toast('Pedido online registrado.');
     }catch(e){api.fail(e);}
     finally{busy=false;api.render();}
@@ -108,7 +153,26 @@
     }catch(e){select.value=previo;api.fail(e);}
     finally{busy=false; api.render();}
   }
+  function exportOrders(){
+    if(!online()||!api?.S?.local)return;
+    const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+    const lines=[['Fecha','Cliente','Canal','Productos','Unidades','Total ARS','Estado','Entrega','Fecha entrega','Transportista','Seguimiento']];
+    for(const o of orders){
+      lines.push([o.fecha?new Date(o.fecha).toLocaleString('es-AR'):'',o.cliente,
+        CANALES[o.canal]||o.canal,Array.isArray(o.items)?o.items.map(x=>x.nombre+' x'+x.cantidad).join(' | '):o.producto,
+        o.cantidad,o.total??'',ESTADOS[o.estado]||o.estado,o.entrega||'',o.fechaEntrega||'',o.transportista||'',o.tracking||'']);
+    }
+    const content='﻿'+lines.map(r=>r.map(quote).join(';')).join('
+');
+    const u=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');a.href=u;a.download='gestlok-pedidos-'+api.S.local+'.csv';
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u);
+  }
   document.addEventListener('click', e => {
+    const page=e.target.closest('[data-commerce-page]');
+    if(page){orderPage+=Number(page.dataset.commercePage)||0;api.render();return;}
+    const exportBtn=e.target.closest('[data-commerce-export]');
+    if(exportBtn){exportOrders();return;}
     const b = e.target.closest('[data-commerce-mode]');
     if (b) { e.preventDefault(); changeMode(b.dataset.commerceMode); }
   });
@@ -116,6 +180,7 @@
     if (e.target.id === 'gl-commerce-order-form') {e.preventDefault(); addOrder(e.target);}
   });
   document.addEventListener('change', e => {
+    if(e.target.id==='gl-order-filter'){orderFilter=e.target.value;orderPage=0;api.render();return;}
     const sel = e.target.closest('[data-commerce-status]');
     if (sel) changeStatus(sel.dataset.commerceStatus, sel.value, sel);
   });
