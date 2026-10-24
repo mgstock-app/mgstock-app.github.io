@@ -90,6 +90,35 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#view").should("not.contain.text","Proveedor Munro QA");
   });
 
+  it("Inicio resume cada hoja guardada y no mezcla las cantidades entre planillas", () => {
+    cy.window().then(w => {
+      const fabrica = w.__rows.filter(r => r.col === "munro/fabrica");
+      fabrica.forEach(r => { r.data.local = null; r.data.fabrica = null; });
+      const primera = fabrica.find(r => r.id === "f-001");
+      expect(primera).not.to.equal(undefined);
+      primera.data.local = 6;
+      primera.data.fabrica = 2;
+      w.__rows.push({col:"munro/hojas", id:"h-qa-cajas-resumen",
+        data:{nombre:"Stock Cajas QA", tipo:"lista", orden:90}});
+      w.__rows.push({col:"munro/productos", id:"p-qa-cajas-resumen",
+        data:{nombre:"Caja de prueba", cat:"Envases QA", hoja:"h-qa-cajas-resumen", stock:12}});
+    });
+    owner();
+    toLocal("munro");
+    cy.get('.gl-home-sheet-summaries').should("be.visible");
+    cy.get('.gl-home-sheet-summaries [data-go="fabrica"]')
+      .should("contain.text","Local guardado: 1/")
+      .and("contain.text","Fábrica: 1/");
+    cy.get('.gl-home-sheet-summaries [data-go="h-qa-cajas-resumen"]')
+      .should("contain.text","Stock Cajas QA")
+      .and("contain.text","Con cantidad guardada: 1/1");
+    cy.get('.gl-home-sheet-summaries [data-go="stock"]')
+      .should("not.contain.text","Caja de prueba");
+    cy.get('#view').should("contain.text","Datos guardados");
+    cy.get('.gl-home-sheet-summaries [data-go="h-qa-cajas-resumen"]').click();
+    cy.get('#view').should("contain.text","Caja de prueba");
+  });
+
   it("chat de equipo: guarda el mensaje solamente en el local seleccionado", () => {
     owner();
     toLocal("munro");
