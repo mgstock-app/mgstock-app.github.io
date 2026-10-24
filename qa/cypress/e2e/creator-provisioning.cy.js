@@ -29,7 +29,7 @@ describe('GestLok: asistente exclusivo de preparación',()=>{
         rpc:async(name,args)=>{
           calls.push({name,args});
           if(name==='gestlok_creator_list_companies')return {data:companies,error:null};
-          if(name==='gestlok_creator_prepare_company'){
+          if(name==='gestlok_creator_prepare_company_named'){
             const entry={tenant_id:tenant,local_id:local,nombre:args.p_name,local:args.p_local_name,
               code:'neg-test-ficticio',correo_dueno:args.p_owner_email,modalidad:args.p_mode,productos:0};
             companies.push(entry);
@@ -48,6 +48,7 @@ describe('GestLok: asistente exclusivo de preparación',()=>{
     cy.get('[data-act="admin-preparar-empresa"]').click();
     cy.get('#gl-creator-preparacion').should('be.visible');
     cy.get('#gl-create-company input[name="empresa"]').type('Librería de prueba');
+    cy.get('#gl-create-company input[name="dueno"]').type('Dueña Ficticia');
     cy.get('#gl-create-company input[name="email"]').type('cliente.nuevo@example.invalid');
     cy.get('#gl-create-company input[name="local"]').type('Depósito ficticio');
     cy.get('#gl-create-company select[name="modo"]').select('mixta');
@@ -62,6 +63,7 @@ describe('GestLok: asistente exclusivo de preparación',()=>{
     cy.window().its('__creatorCalls').should(calls=>{
       const req=calls.filter(x=>x.name==='gestlok_creator_import_products');
       expect(req).to.have.length(3);
+      expect(calls.find(x=>x.name==='gestlok_creator_prepare_company_named').args.p_owner_name).to.eq('Dueña Ficticia');
       expect(req.map(x=>x.args.p_rows.length)).to.deep.equal([150,150,20]);
       expect(req.every(x=>x.args.p_tenant==='55555555-5555-4555-8555-555555555555')).to.eq(true);
     });

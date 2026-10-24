@@ -116,7 +116,7 @@
       '<p class="lead">Se crean su empresa privada, la primera sucursal, el usuario Dueño y las carpetas de GestLok. El cliente se registra después con el correo autorizado.</p>'+
       '<form id="gl-create-company" class="gl-demo-fields">'+
       '<label>Nombre de la empresa<input name="empresa" maxlength="100" minlength="2" required placeholder="Ej. Librería Central"></label>'+
-      '<label>Email del Dueño<input name="email" type="email" autocomplete="off" maxlength="254" required placeholder="dueno@empresa.com"></label>'+
+      '<label>Nombre del Dueño<input name="dueno" maxlength="100" minlength="2" required placeholder="Ej. Gisela"></label><label>Email del Dueño<input name="email" type="email" autocomplete="off" maxlength="254" required placeholder="dueno@empresa.com"></label>'+
       '<label>Nombre del primer local<input name="local" maxlength="100" minlength="2" required placeholder="Ej. Depósito principal"></label>'+
       '<label>Modalidad<select name="modo"><option value="fisica">Tienda física</option><option value="online">Tienda online</option><option value="mixta">Tienda mixta</option></select></label>'+
       '<div class="gl-commerce-wide"><button type="submit" class="btn primary" '+(s.busy?'disabled':'')+'>Crear empresa y carpetas privadas</button></div>'+
@@ -165,8 +165,8 @@
     if(!window.confirm('¿Crear una NUEVA empresa independiente para '+get('email')+'? No podrá reasignarse ese correo desde este formulario.'))return;
     s.busy=true;s.error='';show();
     try{
-      const {data,error}=await sb().rpc('gestlok_creator_prepare_company',
-        {p_name:get('empresa'),p_owner_email:get('email'),p_mode:get('modo'),p_local_name:get('local')});
+      const {data,error}=await sb().rpc('gestlok_creator_prepare_company_named',
+        {p_name:get('empresa'),p_owner_email:get('email'),p_mode:get('modo'),p_local_name:get('local'),p_owner_name:get('dueno')});
       if(error)throw error;
       s.created=data;s.selected=data.tenant_id;notify('Empresa preparada. Cargá ahora sus productos.');
       form.reset();
