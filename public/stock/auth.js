@@ -1,4 +1,4 @@
-/* Stock Productos Mi Gusto · conexión con Supabase
+/* GestLok · conexión con Supabase
    Inicio de sesión con email y contraseña, y la base compartida en tiempo real.
    La app usa window.claude.use('db' | 'user' | 'downloads'); acá se arma eso sobre Supabase. */
 (() => {
