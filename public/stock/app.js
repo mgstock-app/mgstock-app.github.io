@@ -950,6 +950,16 @@ V.proveedores = () => {
 };
 
 const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+/* Borradores y reintentos separados por cuenta y local. Nunca reenviar automáticamente. */
+const chatDraftKey = () => 'gestlok-chat-draft-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+const chatPendingKey = () => 'gestlok-chat-pending-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+const chatDraftText = () => String(lsGet(chatDraftKey(), '') || '').slice(0, 1000);
+function chatPending(){
+  const p = lsGet(chatPendingKey(), null);
+  return p && /^[a-z0-9]{10,40}$/.test(String(p.id || '')) &&
+    typeof p.texto === 'string' && p.texto.length <= 1000 &&
+    p.autor === S.uid && p.local === S.local ? p : null;
+}
 function markChatRead(){
   if (!S.local || !S.uid) return;
   const latest = Math.max(Date.now(),...S.chat.map(m=>Number(m.fecha)||0));
@@ -963,27 +973,44 @@ V.chat = () => {
     const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
     return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong><small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
   }).join('');
+  const pending = chatPending();
   const puedeEnviar = canW() && !S.offline;
   return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes no se mezclan con otros locales.</p>
     <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
-    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados, pero necesitás internet para enviar.</p>' : ''}
+    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>' : ''}
+    ${pending ? '<p class="note warn">No pudimos confirmar el envío anterior. Reintentá el mismo mensaje; no se duplicará.</p>' : ''}
     ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
-    <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${puedeEnviar ? '' : 'disabled'}></textarea>
-      <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>Enviar mensaje</button></form>
+    <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${canW() && !pending ? '' : 'disabled'}>${esc(pending ? pending.texto : chatDraftText())}</textarea>
+      <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>${pending ? 'Reintentar envío' : 'Enviar mensaje'}</button></form>
   </section>`;
 };
 
 async function sendGestlokChat(form){
   if (!S.db || !S.local || S.offline || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
-  const input = form.querySelector('#gestlok-chat-text'), txt = (input?.value || '').trim();
+  const local = S.local, author = S.uid, input = form.querySelector('#gestlok-chat-text');
+  const pending = chatPending(), txt = (pending ? pending.texto : input?.value || '').trim();
   if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
-  const btn = form.querySelector('[type="submit"]'); if (btn) btn.disabled = true;
+  const payload = pending || {id:rid() + rid(), texto:txt, autor:author, local, nombre:S.me?.name || 'Equipo', fecha:Date.now()};
+  const pendingKey = chatPendingKey(), draftKey = chatDraftKey();
+  // Identificador fijo de mensaje: si la respuesta se pierde, reintentar no crea otro registro.
+  try { localStorage.setItem(pendingKey, JSON.stringify(payload)); }
+  catch { toast('No se pudo guardar el reintento en este dispositivo. Revisá el espacio disponible.', true); return; }
+  const btn = form.querySelector('[type="submit"]');
+  if (btn) btn.disabled = true;
+  if (input) input.disabled = true;
   try {
-    await w(() => C('chat').add({texto:txt, autor:S.uid || null, nombre:S.me?.name || 'Equipo', fecha:Date.now()}));
-    if (input && input.isConnected) input.value = '';
+    await w(() => S.db.collection(local + '/chat').doc(payload.id).set({
+      texto:payload.texto, autor:payload.autor, nombre:payload.nombre, fecha:payload.fecha
+    }));
+    if (lsGet(pendingKey, null)?.id === payload.id) localStorage.removeItem(pendingKey);
+    if (lsGet(draftKey, '') === payload.texto || lsGet(draftKey, '') === '') localStorage.removeItem(draftKey);
     toast('Mensaje enviado');
-  } catch (error){ fail(error); }
-  finally { if (btn && btn.isConnected) btn.disabled = false; }
+  } catch (error){
+    if (error?.code === 'invalid_argument') localStorage.removeItem(pendingKey);
+    fail(error);
+  } finally {
+    if (S.local === local && S.view === 'chat') render();
+  }
 }
 
 V.inicio = () => {
