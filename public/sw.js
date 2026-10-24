@@ -1,8 +1,8 @@
 /* Generated into public/sw.js before each build. Never clear another app's cache. */
 const BASE = new URL('.', self.location.href).pathname.replace(/\/$/, '');
 const PREFIX = `mgstock:${BASE || '/'}:`;
-const CACHE = PREFIX + '72aa7ad36c2fca6c';
-const SHELL = ['/', '/stock/app.js', '/stock/auth.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png', '/img/mi-gusto-blanco.png', '/img/mi-gusto-negro.png'].map(path => BASE + path);
+const CACHE = PREFIX + 'gestlok-brand-20261024';
+const SHELL = ['/', '/stock/app.js', '/stock/auth.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png'].map(path => BASE + path);
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
