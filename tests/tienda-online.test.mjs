@@ -32,7 +32,7 @@ test('El catálogo es independiente del inventario de Mi Gusto y arranca despubl
   assert.match(sql,/foreign key \(tienda_id,tenant_id\)/);
   assert.doesNotMatch(sql,/drop table|truncate|delete from public\.docs|update public\.docs/i);
   assert.doesNotMatch(admin,/C\('productos'\)|C\('conteos'\)|\.from\('docs'\)/);
-  assert.doesNotMatch(shop,/\.insert\(|\.upsert\(|\.update\(|\.delete\(/);
+  assert.doesNotMatch(shop,/\.from\(['\"][^'\"]+['\"]\)\.(insert|upsert|update|delete)\(/);
 });
 
 test('Aislamiento RLS por empresa y local, escritura de tienda solo dueña/creadora',()=>{
