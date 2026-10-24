@@ -3337,7 +3337,22 @@ async function boot(){
 /* ---------- Inicio ---------- */
 function start(){
   applySkin(); render(); renderInstall(); boot();
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    // Keep the existing installed PWA: request SW revalidation on launch and
+    // when returning to GestLok. Never force a reload while editing stock.
+    navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(reg => {
+      let lastCheck = 0;
+      const refresh = () => {
+        if (document.visibilityState !== 'visible' || navigator.onLine === false) return;
+        if (Date.now() - lastCheck < 30 * 60 * 1000) return;
+        lastCheck = Date.now();
+        reg.update().catch(() => {});
+      };
+      refresh();
+      document.addEventListener('visibilitychange', refresh);
+      window.addEventListener('online', refresh);
+    }).catch(() => {});
+  }
 }
 window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 start();
