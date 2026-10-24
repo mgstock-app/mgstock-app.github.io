@@ -18,7 +18,7 @@ test('Genera un PDF real multipágina de pedidos con unidades y fecha, sin PNG',
   assert.equal((binary.match(/\/Type \/Page \/Parent/g)||[]).length,3);
   assert.match(binary,/PEDIDO A PROVEEDOR/);
   assert.match(binary,/Munro/);
-  assert.match(binary,/Caf.e en grano/);
+  assert.match(binary,/Café en grano/);
   assert.match(binary,/trailer\n/);
   assert.match(binary,/startxref\n\d+\n%%EOF/);
   assert.doesNotMatch(binary,/image\/png|\/Subtype \/Image|base64/i);
