@@ -1107,3 +1107,33 @@ html.auth-on body{overflow:hidden}
 @media(max-width:1150px){.gl-today-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.gl-provider-grid{grid-template-columns:1fr}.gl-today{padding:14px}.gl-today-action{padding:12px;min-height:94px}.gl-today-action b{font-size:13px}.gl-provider-card .bar-a .btn{min-height:40px}}
 @media(prefers-reduced-motion:reduce){.gl-today-action{transition:none}.gl-today-action:hover{transform:none}}
+
+/* Control diario y avisos de chat GestLok */
+.gl-chat-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:100px;background:#c8334a;color:#fff;font-weight:800;font-size:11px;padding:0 5px;margin-left:auto}
+.gl-daily{display:grid;gap:18px}
+.gl-daily .bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.gl-daily .bar .fld{min-width:165px}
+.gl-daily .bar input{min-height:44px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#16354d}
+.gl-daily-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.gl-daily-kpis>div{border:1px solid var(--line);background:#fff;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:5px}
+.gl-daily-kpis b{color:#173e54;font-size:25px;line-height:1.1}
+.gl-daily-kpis small{color:var(--muted);font-size:12px}
+.gl-daily-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+.gl-daily-layout .card h2{font-size:19px;margin:0 0 12px}
+.gl-daily-entry .fld{min-width:0}
+.gl-daily-entry input,.gl-daily-entry select,.gl-daily-entry textarea{width:100%;min-height:44px;border:1px solid #cad5df;padding:9px 12px;border-radius:9px;color:#17394f;background:#fff}
+.gl-daily-entry input:disabled,.gl-daily-entry textarea:disabled{background:#f4f6f8}
+.gl-daily-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.gl-daily-fields .fld{margin:0}
+.gl-daily-entry form{display:grid;gap:16px;margin-top:12px}
+.gl-daily-result{padding:13px 14px;border:1px solid #b4d7d7;border-radius:10px;background:#eef9f9;color:#195d60;font-size:13px;line-height:1.6;font-weight:600}
+.gl-daily-result.gl-daily-alert{border-color:#d9ba82;background:#fff4dc;color:#7a4e15}
+.gl-daily-list{display:grid;gap:0}
+.gl-daily-item{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:12px 0}
+.gl-daily-item div{display:grid;gap:4px;min-width:0}
+.gl-daily-item b{overflow-wrap:anywhere;font-size:13px}
+.gl-daily-item small{font-size:11px;color:var(--muted)}
+.gl-daily-item span{font-weight:750;font-size:15px;white-space:nowrap}
+.gl-daily-alert{color:#ab5817}.gl-daily-ok{color:#1c8261}
+@media(max-width:900px){.gl-daily-layout{grid-template-columns:1fr}}
+@media(max-width:480px){.gl-daily-kpis{gap:6px}.gl-daily-kpis>div{padding:10px}.gl-daily-kpis b{font-size:21px}.gl-daily-kpis small{font-size:10px}.gl-daily-fields{gap:9px}.gl-daily .bar .fld{width:100%}}
