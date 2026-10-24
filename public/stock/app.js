@@ -93,7 +93,7 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
   view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
@@ -180,8 +180,9 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'diario'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'diario', 'vencimientos', 'avisos'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
+
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
 function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
@@ -308,6 +309,8 @@ function viewHTML(){
   if (S.view === 'chat') return V.chat();
   if (S.view === 'proveedores') return V.proveedores();
   if (S.view === 'diario') return V.diario();
+  if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
+  if (S.view === 'avisos') return window.GestLokUpdates.viewAlerts();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (esFabT(t)) return V.fabrica();
@@ -321,9 +324,9 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'diario' ? 'Control diario' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'diario' ? 'Control diario' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'diario';
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'diario' || S.view === 'vencimientos' || S.view === 'avisos';
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -338,7 +341,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos">${Math.min(99,S.unreadChat)}</span>` : ''}</button><button data-go="diario">${ic('clip')}<span class="nl">Control diario</span></button>
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos">${Math.min(99,S.unreadChat)}</span>` : ''}</button><button data-go="diario">${ic('clip')}<span class="nl">Control diario</span></button><button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${esTotal() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -2940,7 +2943,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || v === 'diario' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || v === 'diario' || v === 'vencimientos' || (v === 'avisos' && esTotal()) || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
@@ -3225,6 +3228,14 @@ function afterAccess(){
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
+  push(C('vencimientos').onSnapshot(mine(snap => {
+    S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if (S.view === 'vencimientos' || S.view === 'avisos') render();
+  }), errLive));
+  push(C('avisos').orderBy('fecha','desc').limit(100).onSnapshot(mine(snap => {
+    S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if (S.view === 'avisos') render();
+  }), () => {}));
   push(C('diario').onSnapshot(mine(snap => {
     S.diarios = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (b.creado||0)-(a.creado||0));
     if(S.view === 'diario') render();
@@ -3278,7 +3289,7 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
@@ -3314,6 +3325,7 @@ function start(){
   applySkin(); render(); renderInstall(); boot();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 start();
 setInterval(() => { if (!S.panel && S.local) renderSavebar(); }, 60000);
 })();
