@@ -1161,7 +1161,8 @@ function inicioOperativo(){
   const conteo=ver('conteo')?'conteo':ver('stock')?'stock':'';
   const pedidos=ver('pedido');
   const pendienteOnline=online?Number(window.GestLokCommerce?.pendingCount?.()||0):0;
-  const vence=window.GestLokUpdates?.homeDueItems?.(S.vencimientos)?.length||0;
+  const vencimientos=window.GestLokUpdates?.homeDueItems?.(S.vencimientos)||[];
+  const vence=vencimientos.length;
   const acciones=[
     ...(puedeVerDiarioMunro()?[['diario','Control diario','clock']]:
       conteo?[[conteo,conteo==='conteo'?'Conteo':'Stock','clip']]:[]),
@@ -1212,10 +1213,23 @@ function inicioOperativo(){
       <section class="gl-home-essential-overview" aria-label="Indicadores del local">
         ${metricas.join('')}
       </section>
-      ${vence?`<div class="gl-home-essential-alert">
-        <span><b>${vence} ${vence===1?'vencimiento requiere':'vencimientos requieren'} atención</b><small>Servicios del local próximos a vencer o vencidos</small></span>
+      ${vence?`<section class="gl-home-essential-alert gl-home-due" aria-label="Vencimientos que requieren atención">
+        <div class="gl-home-essential-due-content">
+          <b>${vence} ${vence===1?'vencimiento':'vencimientos'} · ${esc(localNombre())}</b>
+          <ul class="gl-home-essential-due-items">
+            ${vencimientos.slice(0,2).map(item=>{
+              const dias=item.vencimiento.days;
+              const titulo=esc(item.nombre||'Servicio sin nombre')+
+                (dias<0?': plazo vencido':dias===0?' vence hoy':
+                 dias===1?' vence mañana':' vence en '+dias+' días');
+              return `<li><small class="gl-home-due-status ${esc(item.vencimiento.cls)}">${dias<0?'Vencido':dias===0?'Hoy':'Próximo'}</small>
+                <span>${titulo}</span></li>`;
+            }).join('')}
+            ${vence>2?`<li class="gl-home-essential-due-more">+${vence-2} más en Vencimientos</li>`:''}
+          </ul>
+        </div>
         <button class="btn sm" data-go="vencimientos">Revisar</button>
-      </div>`:''}
+      </section>`:''}
       <section class="gl-home-essential-actions" aria-label="Accesos rápidos">
         <h2>Accesos rápidos</h2>
         <div class="gl-home-essential-links">
