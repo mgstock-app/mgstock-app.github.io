@@ -846,33 +846,85 @@ async function guardarDiario(f){
     if(S.local===local){toast('Registro guardado. No se modificó el stock operativo.');render();}
   }catch(e){fail(e);if(btn?.isConnected){btn.disabled=false;btn.textContent='Guardar registro diario';}}
 }
+
 V.proveedores = () => {
-  const lista = provs();
-  const items = lista.map(([nombre,count]) => {
-    const ficha = proveedorFicha(nombre) || {};
-    const pendientes = S.allProds.filter(p => provOf(p) === nombre && alerta(p));
-    const telefono = telWa(ficha.telefono);
-    const mensaje = pendientes.length ? proveedorPedido(nombre) : 'Hola, quisiera consultar disponibilidad de productos de ' + localNombre() + '.';
-    const wa = telefono ? 'https://wa.me/' + telefono + '?text=' + encodeURIComponent(mensaje) : '';
-    const meta = [ficha.contacto, ficha.entrega].filter(Boolean);
-    return `<article class="card pad gl-provider-card">
-      <div class="gl-provider-head"><div><p class="eyebrow">Proveedor · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2></div><span class="gl-provider-count">${plural(count,'producto','productos')}</span></div>
-      <p class="lead">${pendientes.length ? `<b>${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.` : 'Sin faltantes detectados.'}</p>
-      ${meta.length ? `<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>` : '<p class="gl-provider-meta">Podés agregar teléfono, contacto y datos de entrega.</p>'}
+  const lista=proveedorNombres();
+  const carpetas=lista.map(([nombre,cant])=>{
+    const ficha=proveedorFicha(nombre)||{};
+    const pendientes=S.allProds.filter(p=>provOf(p)===nombre && alerta(p));
+    const telefono=telWa(ficha.telefono);
+    const rows=proveedorFilas(nombre);
+    const porPedir=rows.filter(x=>Number(x.pedir)>0).length;
+    const wa=telefono?'https://wa.me/'+telefono+'?text='+encodeURIComponent(porPedir?pedidoProveedorTexto(nombre):'Hola, quisiera hacer un pedido para '+localNombre()):'';
+    const meta=[ficha.contacto,ficha.entrega].filter(Boolean);
+    const abierto=S.provOpen===nombre;
+    return `<article class="card pad gl-provider-card ${abierto?'is-open':''}">
+      <div class="gl-provider-head">
+        <div class="gl-prov-folder-head"><span class="gl-prov-folder-icon" aria-hidden="true">${ic('box')}</span>
+          <div><p class="eyebrow">Carpeta de proveedor</p><h2>${esc(nombre)}</h2></div>
+        </div>
+        <span class="gl-provider-count">${plural(rows.length,'producto','productos')}</span>
+      </div>
+      <p class="lead">${pendientes.length?`<b>${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.`:'Sin faltantes detectados.'}
+        ${porPedir?`<b> · ${plural(porPedir,'producto en el pedido','productos en el pedido')}</b>`:''}</p>
+      ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
-        ${pendientes.length ? `<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>` : ''}
-        ${wa ? `<a class="btn sm primary" href="${esc(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del proveedor ${esc(nombre)}">${ic('msg')}WhatsApp</a>` : ''}
-        ${canW() ? `<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.telefono || ficha.contacto ? 'Editar ficha' : 'Completar ficha'}</button>` : ''}
+        <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
+        ${porPedir?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+        ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
+        ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
     </article>`;
   }).join('');
-  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1>
-  <p class="lead">Consultá los productos asociados, prepará pedidos y contactá a cada proveedor sin mezclar información entre locales.</p>
-  ${!S.loaded.p ? loadingList() : `<div class="lcards gl-provider-grid">${items || '<div class="card pad">Todavía no hay proveedores asignados. Asigná uno desde los productos.</div>'}</div>`}
-  ${canW() ? `<div class="bar-a"><button class="btn" data-act="aj-open" data-tab="rapido">Administrar productos y proveedores</button></div>` : ''}
+  const nombre=S.provOpen && lista.some(([n])=>n===S.provOpen)?S.provOpen:'';
+  const draft=nombre?proveedorBase(nombre):null;
+  const rows=nombre?proveedorFilas(nombre):[];
+  const filaHTML=rows.map(p=>{
+    const disabled=!canW()?'disabled':'';
+    const manual=p.origen==='manual';
+    return `<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
+        <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
+        ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
+      </td>
+      ${['stockLocal','pedir','sugerido'].map(field=>`<td data-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'}">
+        <input data-prov-val="${field}" data-id="${esc(p.id)}" inputmode="decimal" autocomplete="off"
+        aria-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'} de ${esc(p.nombre)}"
+        value="${p[field]==null?'':esc(fmtIn(p[field]))}" placeholder="0" ${disabled}>
+        ${field==='pedir' && canW() && p.sugerido!=null?`<button class="gl-prov-sug" data-act="prov-use-suggested" data-id="${esc(p.id)}" type="button">Usar sugerido</button>`:''}
+      </td>`).join('')}
+    </tr>`;
+  }).join('');
+  const details=nombre?`<section id="prov-carpeta" class="gl-prov-workspace card pad">
+    <div class="gl-prov-workspace-head">
+      <div><p class="eyebrow">Carpeta abierta · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2>
+        <p class="lead">Completá Stock local, Pedir y Sugerido. Los valores de esta hoja no cambian el stock real de las planillas.</p></div>
+      <button class="btn sm" data-act="prov-close">${ic('x')}Cerrar carpeta</button>
+    </div>
+    ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
+    <div class="gl-prov-toolbar">
+      <b>Lista de productos</b>
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button>`:''}
+    </div>
+    ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
+      <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
+      <div class="fld"><label for="prov-item-unit">Unidad</label><input id="prov-item-unit" maxlength="30" placeholder="kg, caja, unidad"></div>
+      <button class="btn primary" type="submit">Agregar a la lista</button>
+    </form>`:''}
+    ${rows.length?`<div class="gl-prov-table-scroll"><table class="gl-prov-table">
+       <thead><tr><th>Producto</th><th>Stock local</th><th>Pedir</th><th>Sugerido</th></tr></thead>
+       <tbody>${filaHTML}</tbody>
+      </table></div>`:'<p class="note">Esta carpeta está vacía. Agregá productos manualmente o asigná este proveedor a productos del catálogo.</p>'}
+    <div id="prov-resumen" class="gl-prov-summary">${proveedorResumenHTML(nombre)}</div>
+    </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
+  return `<section class="sheet gl-proveedores">
+    <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
+    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y compartilos por WhatsApp como imagen desde tu dispositivo.</p></div>
+    ${canW()?`<button class="btn primary" data-act="prov-new">${ic('plus')}Crear proveedor</button>`:''}
+    </div>
+    ${!S.loaded.p?loadingList():`<div class="gl-provider-grid">${carpetas||'<div class="card pad">Todavía no hay proveedores. Creá una carpeta para comenzar.</div>'}</div>`}
+    ${details}
   </section>`;
 };
-
 
 const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
 function markChatRead(){
@@ -2817,7 +2869,7 @@ document.addEventListener('click', e => {
     case 'prov-save-plan': guardarPlanProveedor(); break;
     case 'prov-share': compartirPedidoProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
-    case 'prov-copy': copyText(proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo y pegalo en WhatsApp.'); break;
+    case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
     case 'aj-open': openAjustes(t.dataset.tab); break;
     case 'est': openEstados(id); break;
