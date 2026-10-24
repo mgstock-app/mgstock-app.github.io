@@ -93,7 +93,7 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
   view:'inicio', q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
@@ -175,7 +175,7 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
@@ -429,12 +429,77 @@ const noMatch = (t, s) => `<div class="sheet"><div class="empty"><b>${t}</b>${s}
 
 /* ---------- Hojas ---------- */
 const V = {};
+const proveedorId = nombre => 'p-' + encodeURIComponent(String(nombre).normalize('NFC').trim().toLowerCase());
+const proveedorFicha = nombre => S.provInfo.find(p => p.id === proveedorId(nombre)) || null;
+const telWa = telefono => {
+  const raw = String(telefono || '').trim();
+  const digits = raw.replace(/\D/g,'');
+  return /^\+?[0-9()\s-]{8,24}$/.test(raw) && digits.length >= 8 && digits.length <= 15 ? digits : '';
+};
+function proveedorPedido(nombre){
+  const products = S.allProds.filter(p => provOf(p) === nombre && alerta(p));
+  const list = products.map(p => {
+    const n = minOf(p), qtyNow = p.sinStock ? 0 : qty(p);
+    const sugerido = n != null ? Math.max(0,round(n - (qtyNow || 0))) : null;
+    return '- ' + p.nombre + ': ' + (sugerido != null && sugerido > 0 ? fmt(sugerido) + ' ' + (uTxt(p) || 'unidades') : 'cantidad a confirmar');
+  });
+  return ['PEDIDO · ' + nombre,'Local: ' + localNombre(),fechaLarga(),'',...list].join('\n').trim();
+}
+function editarProveedor(nombre){
+  if (!canW()) { toast('Tu acceso es de solo lectura.', true); return; }
+  const actual = proveedorFicha(nombre) || {};
+  S.panel = 'proveedor';
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())}</small><h3>Datos de proveedor</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+    <div class="pn-b"><p class="lead"><b>${esc(nombre)}</b> · Esta ficha es privada de este local.</p>
+    <form id="prov-form" data-name="${esc(nombre)}" class="frow">
+      <div class="fld"><label for="prov-contact">Persona de contacto</label><input id="prov-contact" maxlength="100" autocomplete="off" value="${esc(actual.contacto || '')}"></div>
+      <div class="fld"><label for="prov-phone">WhatsApp / teléfono con código de país</label><input id="prov-phone" inputmode="tel" maxlength="24" autocomplete="off" placeholder="Ej.: 5491123456789" value="${esc(actual.telefono || '')}"></div>
+      <div class="fld"><label for="prov-delivery">Días o condiciones de entrega</label><input id="prov-delivery" maxlength="160" autocomplete="off" value="${esc(actual.entrega || '')}"></div>
+      <div class="fld"><label for="prov-note">Observaciones</label><textarea id="prov-note" maxlength="450" rows="3">${esc(actual.nota || '')}</textarea></div>
+      <button class="btn primary" type="submit">Guardar ficha</button>
+    </form></div>`, 'dlg');
+}
+async function guardarProveedor(f){
+  if (!S.db || !S.local || !canW() || S.offline){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
+  const nombre = f.dataset.name, local = S.local;
+  if (!nombre || !S.allProds.some(p=>provOf(p)===nombre)){toast('El proveedor ya no está asignado a este local.',true);return;}
+  const contacto = f.querySelector('#prov-contact').value.trim();
+  const telefono = f.querySelector('#prov-phone').value.trim();
+  const entrega = f.querySelector('#prov-delivery').value.trim();
+  const nota = f.querySelector('#prov-note').value.trim();
+  if (telefono && !telWa(telefono)){toast('Ingresá un teléfono con código de país y de 8 a 15 dígitos.',true);return;}
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try{
+    await w(() => C('proveedores').doc(proveedorId(nombre)).set({nombre,contacto,telefono,entrega,nota,actualizado:Date.now()}));
+    if (S.local !== local) return;
+    closePanel(); toast('Ficha del proveedor guardada');
+  } catch(e) { fail(e); if(btn.isConnected){btn.disabled=false;btn.textContent='Guardar ficha';} }
+}
 V.proveedores = () => {
   const lista = provs();
-  const items = lista.map(([nombre, count]) => `<article class="card pad"><div class="eyebrow">Proveedor</div><h2>${esc(nombre)}</h2><p class="lead">${plural(count, 'producto asociado', 'productos asociados')} en ${esc(localNombre())}.</p></article>`).join('');
-  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1><p class="lead">Vista agrupada a partir de los proveedores asignados a los productos de este local.</p>
-    <div class="lcards">${items || '<div class="card pad">Todavía no hay proveedores asignados.</div>'}</div>
-    ${canW() ? `<button class="btn primary" data-act="aj-open" data-tab="rapido">Administrar proveedores en productos</button>` : ''}
+  const items = lista.map(([nombre,count]) => {
+    const ficha = proveedorFicha(nombre) || {};
+    const pendientes = S.allProds.filter(p => provOf(p) === nombre && alerta(p));
+    const telefono = telWa(ficha.telefono);
+    const mensaje = pendientes.length ? proveedorPedido(nombre) : 'Hola, quisiera consultar disponibilidad de productos de ' + localNombre() + '.';
+    const wa = telefono ? 'https://wa.me/' + telefono + '?text=' + encodeURIComponent(mensaje) : '';
+    const meta = [ficha.contacto, ficha.entrega].filter(Boolean);
+    return `<article class="card pad gl-provider-card">
+      <div class="gl-provider-head"><div><p class="eyebrow">Proveedor · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2></div><span class="gl-provider-count">${plural(count,'producto','productos')}</span></div>
+      <p class="lead">${pendientes.length ? `<b>${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.` : 'Sin faltantes detectados.'}</p>
+      ${meta.length ? `<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>` : '<p class="gl-provider-meta">Podés agregar teléfono, contacto y datos de entrega.</p>'}
+      <div class="bar-a">
+        ${pendientes.length ? `<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>` : ''}
+        ${wa ? `<a class="btn sm primary" href="${esc(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del proveedor ${esc(nombre)}">${ic('msg')}WhatsApp</a>` : ''}
+        ${canW() ? `<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.telefono || ficha.contacto ? 'Editar ficha' : 'Completar ficha'}</button>` : ''}
+      </div>
+    </article>`;
+  }).join('');
+  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1>
+  <p class="lead">Consultá los productos asociados, prepará pedidos y contactá a cada proveedor sin mezclar información entre locales.</p>
+  ${!S.loaded.p ? loadingList() : `<div class="lcards gl-provider-grid">${items || '<div class="card pad">Todavía no hay proveedores asignados. Asigná uno desde los productos.</div>'}</div>`}
+  ${canW() ? `<div class="bar-a"><button class="btn" data-act="aj-open" data-tab="rapido">Administrar productos y proveedores</button></div>` : ''}
   </section>`;
 };
 
@@ -489,7 +554,16 @@ V.inicio = () => {
     <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
-  ${S.loaded.p && !n ? `<div class="onb"><b>Primer paso: cargá los productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div></div>` : ''}
+  ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
+  <section class="gl-today card pad" aria-label="Acciones para hoy">
+    <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? 'Sin conexión · los conteos quedan pendientes' : 'Datos actualizados del local'}</small></div>
+    <div class="gl-today-grid">
+      ${cg ? `<button class="gl-today-action" data-go="${cg}">${ic('clip')}<b>${cgL}</b><small>${cnt.nc ? plural(cnt.nc,'producto pendiente','productos pendientes') : 'Revisar cantidades'}</small></button>` : ''}
+      ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
+      <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
+      <button class="gl-today-action" data-go="historial">${ic('clock')}<b>Últimos movimientos</b><small>${last ? esc(fechaHora(last.fecha)) : 'Aún no hay conteos'}</small></button>
+    </div>
+  </section>
   <div class="kpis${pedV ? '' : ' k3'}">
     <button class="kpi" data-act="kpi" data-k="todos" style="--kc:var(--accent)"><span class="k-l"><i></i>Productos</span><span class="k-v">${n}</span><span class="k-s">en ${plural(ncats.length, 'categoría', 'categorías')}</span></button>
     <button class="kpi" data-act="kpi" data-k="sin" style="--kc:var(--crit)"><span class="k-l"><i></i>Sin stock</span><span class="k-v" style="color:var(--crit)">${cnt.sin}</span><span class="k-s">tildados o en cero</span></button>
@@ -2350,6 +2424,8 @@ document.addEventListener('click', e => {
     case 'menu-open': $('#app').classList.add('open'); $('#scrim').hidden = false; $('#snav button')?.focus(); break;
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
+    case 'prov-edit': editarProveedor(t.dataset.name); break;
+    case 'prov-copy': copyText(proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo y pegalo en WhatsApp.'); break;
     case 'ajustes': openAjustes(); break;
     case 'aj-open': openAjustes(t.dataset.tab); break;
     case 'est': openEstados(id); break;
@@ -2517,7 +2593,8 @@ document.addEventListener('focusout', e => {
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
-  if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
+  if (f.id === 'prov-form') guardarProveedor(f);
+  else if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
   else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
   else if (f.id === 'aa-form') agregar();
   else if (f.id === 'ae-form') guardarEdicion(f.dataset.id);
@@ -2594,6 +2671,10 @@ function afterAccess(){
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
+  push(C('proveedores').onSnapshot(mine(snap => {
+    S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    if(S.view === 'proveedores') render();
+  }), errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
     S.chat = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
     if (S.view === 'chat') render();
@@ -2630,7 +2711,7 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = [];
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.provInfo = [];
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
