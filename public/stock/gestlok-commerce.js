@@ -4,8 +4,8 @@
   'use strict';
   const TIPOS = {
     fisica: {nombre:'Tienda física', detalle:'Inventario, conteos, mercadería, proveedores y operación presencial.', icono:'🏬'},
-    online: {nombre:'Tienda online', detalle:'Catálogo, pedidos online, preparación y entregas, stock y proveedores.', icono:'🛒'},
-    mixta: {nombre:'Tienda mixta', detalle:'Unificá el trabajo presencial y los pedidos online por sucursal.', icono:'🏬'}
+    online: {nombre:'Tienda online', detalle:'Gestión privada de productos, stock, pedidos recibidos por otros canales y proveedores.', icono:'🗂️'},
+    mixta: {nombre:'Tienda mixta', detalle:'Combiná la administración presencial con la organización de pedidos y productos online.', icono:'🏬'}
   };
   const ESTADOS = {nuevo:'Nuevo', preparando:'Preparando', listo:'Listo para entregar', entregado:'Entregado', cancelado:'Cancelado'};
   const CANALES = {web:'Tienda web', whatsapp:'WhatsApp', instagram:'Instagram', otro:'Otro'};
@@ -25,12 +25,12 @@
       <div class="gl-commerce-options">${Object.entries(TIPOS).map(([id,t]) => `
         <button type="button" data-commerce-mode="${id}" class="gl-commerce-choice ${tipo() === id ? 'is-selected' : ''}" aria-pressed="${tipo() === id}" ${!esDueno() || !disponible() || busy ? 'disabled' : ''}>
         <span class="gl-commerce-emoji" aria-hidden="true">${t.icono}</span><b>${t.nombre}</b><small>${t.detalle}</small></button>`).join('')}</div>
-      <p class="gl-commerce-foot">${esDueno() ? 'Solo la dueña o creadora puede cambiar esta configuración.' : 'La modalidad la configura la dueña de la empresa.'} ${online() ? 'Pedidos online: registro y seguimiento interno; no incluye tienda pública, cobros ni descuento automático del stock.' : ''}</p>
+      <p class="gl-commerce-foot">${esDueno() ? 'Solo la dueña o creadora puede cambiar esta configuración.' : 'La modalidad la configura la dueña de la empresa.'} ${online() ? 'Registro y seguimiento administrativo; no es una tienda para compradores, no cobra ni descuenta stock automáticamente.' : ''}</p>
     </section>`;
   }
   function summary() {
     const pending = orders.filter(o => o.estado === 'nuevo' || o.estado === 'preparando').length;
-    return `<section class="gl-commerce-today card pad"><div><p class="eyebrow">${esc(etiqueta())}</p><h4>${online() ? 'Pedidos de la tienda online' : 'Operación de tienda física'}</h4><p class="lead">${online() ? pending+' pedidos pendientes de preparación en este local.' : 'Usá el inventario, los conteos y los proveedores para organizar la tienda.'}</p></div>${online() ? '<button class="btn primary" data-go="pedidos-online">Ver pedidos online</button>' : ''}</section>`;
+    return `<section class="gl-commerce-today card pad"><div><p class="eyebrow">${esc(etiqueta())}</p><h4>${online() ? 'Organización de pedidos online' : 'Operación de tienda física'}</h4><p class="lead">${online() ? pending+' pedidos pendientes de preparación en este local.' : 'Usá el inventario, los conteos y los proveedores para organizar la tienda.'}</p></div>${online() ? '<button class="btn primary" data-go="pedidos-online">Ver pedidos online</button>' : ''}</section>`;
   }
   function view() {
     if (!online()) return '<section class="card pad"><h3>Pedidos online</h3><p>Habilitá Tienda online o Tienda mixta desde Inicio para ver esta sección.</p></section>';
