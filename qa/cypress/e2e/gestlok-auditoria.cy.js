@@ -378,50 +378,51 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#view").should("contain.text","Proveedores");
   });
 
-  it("control diario: calcula diferencia, guarda historial sin alterar stock", () => {
+  it("Conteo diario exclusivo: no aparece para dueña en Munro ni Torcuato", () => {
     owner(); toLocal("munro");
-    cy.get('#snav [data-go="diario"]').click();
-    cy.get("#view").should("contain.text","Control diario");
-    cy.get("#diario-inicio").type("10");
-    cy.get("#diario-ingresos").type("5");
-    cy.get("#diario-ventas").type("3");
-    cy.get("#diario-consumo").type("1");
-    cy.get("#diario-final").type("10");
-    cy.get("#diario-preview").should("contain.text","Stock esperado: 11").and("contain.text","Diferencia: −1".replace("−","-"));
-    cy.get('#diario-form button[type="submit"]').click();
-    cy.window().its("__rows").should(rows => {
-      const logs=rows.filter(r=>r.col==="munro/diario");
-      expect(logs).to.have.length(1);
-      expect(logs[0].data.esperado).to.eq(11);
-      expect(logs[0].data.diferencia).to.eq(-1);
-      expect(rows.find(r=>r.col==="munro/productos" && r.id==="p-001").data.stock).to.eq(null);
-      expect(rows.filter(r=>r.col==="torcuato/diario")).to.have.length(0);
-    });
-    cy.get(".gl-daily-list").should("contain.text","Producto de prueba 001");
+    cy.get('#snav [data-go="diario"]').should("not.exist");
     cy.get('#snav [data-act="locales"]').click();
     toLocal("torcuato");
-    cy.get('#snav [data-go="diario"]').click();
-    cy.get("#view").should("contain.text","Todavía no hay registros");
+    cy.get('#snav [data-go="diario"]').should("not.exist");
+    cy.window().its("__rows").should(rows =>
+      expect(rows.filter(r=>r.col==="torcuato/munro_control")).to.have.length(0));
   });
 
-  it("control diario valida cantidades y solo permite edición a personal autorizado", () => {
+  it("gerente Munro: tablero por categorías, diferencia y guardado con historial", () => {
+    login("gerente.munro@example.com");
+    cy.get('#snav [data-go="diario"]').should("be.visible").click();
+    cy.get("#view").should("contain.text", "Conteo diario");
+    cy.get("#view").should("contain.text", "Empanadas");
+    cy.get("#view").should("contain.text", "Pizza Indi");
+    cy.get("#diario-fecha").clear().type("2026-10-24");
+    cy.get('[data-md-act="edit"]').click();
+    cy.get('[data-md-id="empanadas"][data-md-field="contado"]').clear().type("2147");
+    cy.get('[data-md-diff="empanadas"]').should("contain.text", "-2");
+    cy.get('[data-md-act="save"]').click();
+    cy.window().its("__rows").should(rows => {
+      const logs=rows.filter(r=>r.col==="munro/munro_control" && r.data.tipo==="cierre");
+      expect(logs).to.have.length(1);
+      expect(logs[0].data.filas.find(p=>p.id==="empanadas").contado).to.eq(2147);
+      expect(rows.find(r=>r.col==="munro/productos" && r.id==="p-001").data.stock).to.eq(null);
+      expect(rows.filter(r=>r.col==="torcuato/munro_control")).to.have.length(0);
+    });
+    cy.get(".md-hist").should("contain.text","Historial de guardados");
+  });
+
+  it("Conteo diario exclusivo: solo creadora y gerentes autorizados tienen acceso", () => {
     login("lectura@example.com");
-    cy.get('#snav [data-go="diario"]').click();
-    cy.get("#diario-inicio").should("be.disabled");
-    cy.get('#diario-form button[type="submit"]').should("be.disabled");
-    cy.window().its("__rows").should(rows => expect(rows.filter(r=>r.col==="munro/diario")).to.have.length(0));
+    cy.get('#snav [data-go="diario"]').should("not.exist");
   });
 
-  it("control diario se ve ordenado en tablet", () => {
+  it("Conteo diario Munro conserva el menú en tablet", () => {
     cy.viewport(820,1180);
-    owner();toLocal("munro");
+    login("gerente.munro@example.com");
     cy.get('#app [data-act="menu-open"]').click();
     cy.get('#snav [data-go="diario"]').should("be.visible").click();
-    cy.get(".gl-daily-layout").should("be.visible");
-    cy.get("#diario-producto").should("be.visible");
-    cy.get("#diario-preview").should("be.visible");
+    cy.get(".md-stats").should("exist");
+    cy.get(".md-grupo").should("exist");
+    cy.get('[data-md-act="compare"]').should("exist");
   });
-
 
   it("hoja Proveedores: crea carpeta, agrega productos, completa las tres cantidades y guarda resumen", () => {
     owner(); toLocal("munro");

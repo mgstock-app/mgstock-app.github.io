@@ -101,7 +101,7 @@
     async rpc(fn, args){
       const a = acc();
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
-      if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || [])} : null, error:null};
+      if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }
       if (fn === 'doc_update'){ if (!canWrite(args.p_col)) return {data:0, error:null}; const r = rows.find(x => x.col === args.p_col && x.id === args.p_id); if (!r) return {data:0, error:null}; r.data = keepSug(args.p_col, r.data, {...r.data, ...args.p_patch}); window.__log.push(['update', args.p_col, args.p_id]); notify(args.p_col); return {data:1, error:null}; }
       if (fn === 'importar_mercaderia') return importar(a, args);
