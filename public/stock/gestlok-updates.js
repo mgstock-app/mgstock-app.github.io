@@ -98,14 +98,9 @@
   const viewAlerts = () => {
     if (!ctx) return '';
     const S=ctx.S, alerts=getAlerts(S), logs=(S.avisos || []).slice().sort((a,b)=>Number(b.fecha||0)-Number(a.fecha||0)).slice(0,40);
-    const state=window.GestLokPush?.state?.() || {supported:false,ready:false,enabled:false,issue:'Servicio no disponible',permission:'unsupported'};
-    const supported=state.supported;
     return '<section class="sheet gl-exp-page"><p class="eyebrow">GestLok · '+esc(ctx.localNombre())+'</p><h1>Centro de avisos</h1>'+
       '<p class="lead">Consultá faltantes, conteos pendientes y novedades del equipo en el local.</p>'+
-      '<div class="card pad gl-push-optin"><h2>Notificaciones en tu dispositivo</h2><p class="lead">Se habilitan únicamente si aceptás recibirlas. Los avisos del servidor requieren activar el servicio de notificaciones; esta pantalla no solicita permisos sin tu consentimiento.</p>'+
-      '<p class="gl-push-status">'+esc(!supported?'Este dispositivo no admite notificaciones push.':state.permission==='denied'?'Bloqueadas por el navegador.':state.issue?'Servicio: '+state.issue:state.enabled?'Notificaciones activas en este dispositivo · Resumen diario 23:15.':state.ready?'Listo para activar · Resumen diario 23:15 (Argentina).':'Conectando con el servicio de avisos…')+'</p>'+
-      '<p class="gl-push-status">Resumen diario del cierre · 23:15 h (Argentina)</p>'+
-      '<div class="bar-a"><button class="btn sm" data-up-action="push-enable" '+(!supported || !state.ready || state.enabled?'disabled':'')+'>Activar notificaciones</button><button class="btn sm" data-up-action="push-disable" '+(!state.enabled?'disabled':'')+'>Desactivar</button></div></div>'+
+      '<p class="lead">Estos avisos se consultan dentro de GestLok. No se envían notificaciones al dispositivo.</p>'+ 
       '<h2>Situación actual</h2><div class="gl-exp-alerts">'+(alerts.length?alerts.map(a=>'<article class="card pad gl-alert '+a.level+'"><b>'+esc(a.label)+'</b><p>'+esc(a.desc)+'</p></article>').join(''):'<div class="card pad"><b>Sin alertas urgentes en este local.</b></div>')+'</div>'+
       '<h2>Actividad reciente</h2>'+(logs.length?logs.map(a=>'<div class="gl-activity card pad"><b>'+esc(a.titulo||'Actualización')+'</b><small>'+esc(a.detalle||'')+'</small></div>').join(''):'<p class="lead">Las próximas actualizaciones guardadas aparecerán acá.</p>')+'</section>';
   };
@@ -153,8 +148,6 @@
     if(action==='history'){showingHistory=showingHistory===id?'':id;ctx.render();}
     if(action==='archive')archive(id);
     if(action==='toggle-archived'){archivedOpen=!archivedOpen;ctx.render();}
-    if(action==='push-enable') ctx.pushEnable?.();
-    if(action==='push-disable') ctx.pushDisable?.();
   });
   document.addEventListener('submit',e=>{
     if(e.target.id!=='gl-exp-form')return;
