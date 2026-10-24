@@ -9,8 +9,8 @@ test("la identidad de instalación de GestLok usa íconos nuevos y válidos", ()
   const layout = read("app/layout.tsx");
   assert.equal(manifest.name, "GestLok");
   assert.equal(manifest.short_name, "GestLok");
-  assert.match(layout, /manifest\\.webmanifest\x60/);
-  assert.doesNotMatch(layout, /manifest\\.webmanifest\\?brand=/);
+  assert.ok(layout.includes('manifest: `${basePath}/manifest.webmanifest`'));
+  assert.ok(!layout.includes('manifest.webmanifest?brand='));
   assert.equal(manifest.id,"./");
   const icons = [
     ["icons/gestlok-app-v2-192.png", 192],
