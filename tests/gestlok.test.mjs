@@ -23,7 +23,7 @@ test("el chat queda asociado al local autenticado con control de permisos", () =
   const app = read("public/stock/app.js");
   assert.match(app, /LOCAL_COLS = \[[^\]]*'chat'/);
   assert.match(app, /C\('chat'\)\.orderBy\('fecha'/);
-  assert.match(app, /S\\.db\\.collection\\(local \\+ '\\/chat'\\)\\.doc\\(payload\\.id\\)\\.set/);
+  assert.ok(app.includes("S.db.collection(local + '/chat').doc(payload.id).set"));
   assert.match(app, /!S\.local \|\| S\.offline \|\| !canW\(\)/);
 });
 
@@ -49,20 +49,20 @@ test("los mensajes pendientes se recuperan sin duplicar el envío y sin mezclar 
   const app = read("public/stock/app.js");
   assert.match(app, /const chatDraftKey =/);
   assert.match(app, /const chatPendingKey =/);
-  assert.match(app, /p\\.autor === S\\.uid && p\\.local === S\\.local/);
-  assert.match(app, /localStorage\\.setItem\\(pendingKey, JSON\\.stringify\\(payload\\)\\)/);
-  assert.match(app, /payload\\.id\\)\\.set/);
+  assert.ok(app.includes('p.autor === S.uid && p.local === S.local'));
+  assert.ok(app.includes('localStorage.setItem(pendingKey, JSON.stringify(payload))'));
+  assert.ok(app.includes('payload.id).set'));
   assert.match(app, /No pudimos confirmar el envío anterior/);
-  assert.match(app, /t\\.id === 'gestlok-chat-text'/);
+  assert.ok(app.includes('t.id === \'gestlok-chat-text\''));
 });
 
 test("los conteos sin conexión requieren confirmación incluso después de reconectarse", () => {
   const app = read("public/stock/app.js");
   assert.match(app, /const queuedKey =/);
-  assert.match(app, /lsSet\\(queuedKey\\(\\), S\\.queued\\)/);
-  assert.match(app, /S\\.queued = q && typeof q\\.view/);
-  assert.match(app, /S\\.offline = false; render\\(\\);/);
-  assert.doesNotMatch(app, /S\\.offline = false; S\\.queued = null/);
+  assert.ok(app.includes('lsSet(queuedKey(), S.queued)'));
+  assert.ok(app.includes('S.queued = q && typeof q.view'));
+  assert.ok(app.includes('S.offline = false; render();'));
+  assert.ok(!app.includes('S.offline = false; S.queued = null'));
 });
 
 test("las respuestas viejas de Supabase no sobrescriben las nuevas", () => {
