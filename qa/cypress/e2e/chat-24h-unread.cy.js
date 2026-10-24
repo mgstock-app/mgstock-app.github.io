@@ -19,7 +19,7 @@ describe("GestLok · chat efímero y punto de mensajes nuevos",()=>{
   });
   it("muestra punto turquesa al llegar un mensaje ajeno y lo marca leído al abrir",()=>{
     login("dueno@example.com");
-    cy.get('#hub [data-act="local"][data-id="munro"]').click();
+    cy.get('#hub .lcard [data-act="local"][data-id="munro"]').first().click();
     cy.window().then(async win=>{
       const res=await win.supabase.createClient().from("docs").upsert({
         col:"munro/chat",id:"qa-inbound-24h",
@@ -56,7 +56,7 @@ describe("GestLok · chat efímero y punto de mensajes nuevos",()=>{
         data:{texto:"Mensaje de ayer que ya venció",nombre:"Sofía",autor:"gerente.munro@example.com",fecha:Date.now()-25*60*60*1000}
       });
     });
-    cy.get('#hub [data-act="local"][data-id="munro"]').click();
+    cy.get('#hub .lcard [data-act="local"][data-id="munro"]').first().click();
     cy.get('#snav [data-go="chat"] .gl-chat-badge').should("not.exist");
     cy.get('#snav [data-go="chat"]').click();
     cy.get(".gestlok-chat-list").should("not.contain.text","Mensaje de ayer que ya venció");
