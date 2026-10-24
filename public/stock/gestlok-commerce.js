@@ -18,8 +18,44 @@
   const disponible = () => !!(api?.S?.db && !api.S.offline);
   const etiqueta = () => TIPOS[tipo()].nombre;
   const configId = () => api?.S?.me?.tenant_id ? 'empresa-' + String(api.S.me.tenant_id) : null;
+  // Indicador estrictamente informativo: solo el rol Dueño lo ve.
+  // Se coloca inmediatamente debajo de "En vivo", sin tocar la estructura original.
+  function renderOwnerBadge(){
+    const live=$('#live');
+    if(!live || !api?.S)return;
+    const show=api.miRol?.()==='dueno' && !!api.S.local;
+    let stack=$('#gl-store-mode-stack');
+    if(!show){
+      if(stack){
+        // Restablecer el indicador original al cambiar de usuario/local.
+        stack.parentNode?.insertBefore(live,stack);
+        stack.remove();
+      }
+      return;
+    }
+    if(!stack){
+      stack=document.createElement('div');
+      stack.id='gl-store-mode-stack';
+      stack.className='gl-store-mode-stack';
+      live.parentNode.insertBefore(stack,live);
+      stack.appendChild(live);
+    }
+    let badge=$('#gl-store-mode-owner');
+    if(!badge){
+      badge=document.createElement('span');
+      badge.id='gl-store-mode-owner';
+      badge.className='live gl-store-mode-owner';
+      badge.setAttribute('role','status');
+      stack.appendChild(badge);
+    }
+    const title=etiqueta();
+    badge.textContent=title;
+    badge.setAttribute('aria-label','Modalidad del negocio: '+title);
+    badge.title='Modalidad del negocio: '+title;
+  }
   function card() {
-    if (!api?.S?.db || !api.S.loaded.e) return '';
+    // La modalidad y sus controles son privados para Dueño y Creadora.
+    if (!esDueno() || !api?.S?.db || !api.S.loaded.e) return '';
     return `<section class="gl-commerce-card card pad" aria-label="Modalidad de tu negocio">
       <div class="gl-commerce-heading"><div><p class="eyebrow">Configuración de empresa</p><h3>¿Cómo vendés en tu negocio?</h3><p class="lead">La modalidad se aplica a todos tus locales. Los registros existentes se conservan al cambiarla.</p></div><span class="gl-commerce-current">${esc(etiqueta())}</span></div>
       <div class="gl-commerce-options">${Object.entries(TIPOS).map(([id,t]) => `
@@ -30,7 +66,7 @@
   }
   function summary() {
     const pending = orders.filter(o => o.estado === 'nuevo' || o.estado === 'preparando').length;
-    return `<section class="gl-commerce-today card pad"><div><p class="eyebrow">${esc(etiqueta())}</p><h4>${online() ? 'Organización de pedidos online' : 'Operación de tienda física'}</h4><p class="lead">${online() ? pending+' pedidos pendientes de preparación en este local.' : 'Usá el inventario, los conteos y los proveedores para organizar la tienda.'}</p></div>${online() ? '<button class="btn primary" data-go="pedidos-online">Ver pedidos online</button>' : ''}</section>`;
+    return `<section class="gl-commerce-today card pad"><div><p class="eyebrow">${esDueno() ? esc(etiqueta()) : 'Gestión del local'}</p><h4>${esDueno() ? (online() ? 'Organización de pedidos online' : 'Operación de tienda física') : 'Organización diaria'}</h4><p class="lead">${online() ? pending+' pedidos pendientes de preparación en este local.' : 'Usá el inventario, los conteos y los proveedores para organizar la tienda.'}</p></div>${online() ? '<button class="btn primary" data-go="pedidos-online">Ver pedidos online</button>' : ''}</section>`;
   }
   function view() {
     if (!online()) return '<section class="card pad"><h3>Pedidos online</h3><p>Habilitá Tienda online o Tienda mixta desde Inicio para ver esta sección.</p></section>';
@@ -46,7 +82,7 @@
     const peso=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(n)||0);
     const opts = (map, val) => Object.entries(map).map(([k,v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${esc(v)}</option>`).join('');
     return `<div class="gl-commerce-page">
-      <section class="card pad"><p class="eyebrow">${esc(etiqueta())} · ${esc(api.localNombre())}</p><h3>Pedidos online</h3>
+      <section class="card pad"><p class="eyebrow">${esDueno() ? esc(etiqueta())+' · ' : ''}${esc(api.localNombre())}</p><h3>Pedidos online</h3>
         <p class="lead">Registrá pedidos que recibís por web, redes o WhatsApp y seguí su preparación por sucursal.</p>
         <div class="gl-commerce-counts"><span><b>${all.length}</b>Pedidos registrados</span><span><b>${pending}</b>Pendientes</span><span><b>${all.filter(o=>o.estado==='entregado').length}</b>Entregados</span></div>
         <p class="note">Pedidos internos de canales externos. No cobra ni descuenta stock automáticamente; registrá sus movimientos en las planillas.</p>
@@ -186,6 +222,6 @@
     attach(ctx) { api=ctx; },
     config(data) { cfg=data && typeof data==='object'?data:null; },
     orders(local,rows) {ordersLocal=local;orders=Array.isArray(rows)?rows.slice().sort((a,b)=>(b.fecha||0)-(a.fecha||0)):[];},
-    mode: tipo, online, card, summary, view, etiqueta, configId
+    mode: tipo, online, card, summary, view, etiqueta, configId, renderOwnerBadge
   });
 })();
