@@ -116,7 +116,7 @@ function hojas(){
   }
   return list.sort((a,b) => (a.orden - b.orden) || a.nombre.localeCompare(b.nombre, 'es'));
 }
-const visibles = () => hojas().filter(h => !h.oculta);
+const visibles = () => hojas().filter(h => !h.oculta && !(window.GestLokCommerce?.mode() === 'online' && (h.id === 'fabrica' || h.tipo === 'fabrica' || h.tipo === 'ingreso')));
 const hojaById = id => hojas().find(h => h.id === id) || null;
 function nombreHoja(id){ if (id === 'inicio') return 'Inicio'; const h = hojaById(id); return h ? h.nombre : 'Hoja'; }
 const hojaLabel = (c, def) => (c.hoja === 'inicio' ? 'Inicio' : (c.hoja && hojaById(c.hoja)?.nombre) || c.nombreHoja || def);
@@ -310,6 +310,7 @@ function viewHTML(){
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
   if (S.view === 'chat') return V.chat();
   if (S.view === 'proveedores') return V.proveedores();
+  if (S.view === 'pedidos-online') return window.GestLokCommerce?.online() ? window.GestLokCommerce.view() : V.inicio();
   if (S.view === 'diario') return puedeVerDiarioMunro() ? window.GestLokMunroDaily.view() : V.inicio();
   if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
   if (S.view === 'avisos') return window.GestLokUpdates.viewAlerts();
@@ -326,9 +327,9 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'diario' ? 'Conteo diario' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'diario' ? 'Conteo diario' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'diario' || S.view === 'vencimientos' || S.view === 'avisos';
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'diario' || S.view === 'vencimientos' || S.view === 'avisos';
   renderLive(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -343,7 +344,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${esTotal() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${esTotal() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -1097,6 +1098,8 @@ V.inicio = () => {
     <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Abajo podés consultar los registros de todas las hojas. Las estadísticas principales corresponden a ${esc(nombreHoja('stock'))}.</p></div>
     <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
+  ${window.GestLokCommerce?.card() || ''}
+  ${window.GestLokCommerce?.summary() || ''}
   ${['creadora','dueno','gerente'].includes(miRol()) ? (window.GestLokUpdates?.homeDue?.() || '') : ''}
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
   ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
@@ -1860,6 +1863,7 @@ function renderHub(){
           <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
           <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
         </section>
+        ${window.GestLokCommerce?.card() || ''}
         <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
         <div class="gl-admin-panels">
           <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
@@ -1887,6 +1891,7 @@ function renderHub(){
       <h1 class="hub-t">Locales</h1>
       <p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>
       ${adm && S.sol.length ? `<section class="card pad hub-sol">${solRows()}</section>` : ''}
+      ${window.GestLokCommerce?.card() || ''}
       ${body}
       ${S.me && listo ? `<p class="hub-me">Entraste como <b>${esc(S.me.email || '')}</b> · ${esc(rolLabel(miRol()))}</p>` : ''}
     </main>`;
@@ -2961,7 +2966,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && esTotal()) || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && esTotal()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
@@ -3221,6 +3226,12 @@ function subscribeGlobal(){
     S.localesDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
     S.loaded.l = true; afterAccess(); onSnapRefresh();
   }, errLive);
+  S.db.collection('configuracion_negocio').onSnapshot(snap => {
+    const c = snap.docs.find(d => d.id === 'principal');
+    window.GestLokCommerce?.config(c ? c.data() : null);
+    if (S.view === 'pedidos-online' && !window.GestLokCommerce?.online()) S.view='inicio';
+    onSnapRefresh();
+  }, () => { window.GestLokCommerce?.config(null); onSnapRefresh(); });
 }
 /* Resumen de cada local para la pantalla Locales */
 function subscribeHub(id){
@@ -3262,6 +3273,10 @@ function subscribeLocal(){
     S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'avisos') render();
   }), () => {}));
+  push(C('pedidos_online').onSnapshot(mine(snap => {
+    window.GestLokCommerce?.orders(loc, snap.docs.map(d => ({id:d.id, ...d.data()})));
+    if (S.view === 'pedidos-online' || S.view === 'inicio') render();
+  }), errLive));
   push(C('proveedores').onSnapshot(mine(snap => {
     S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
     if(S.view === 'proveedores') render();
@@ -3302,6 +3317,7 @@ function cerrarLocal(){
   saveDraft();
   for (const u of S.unsubs) try { u(); } catch {}
   S.unsubs = []; S.local = null; S.queued = null;
+  window.GestLokCommerce?.orders('',[]);
 }
 function abrirLocal(id){
   if (!localesMios().some(l => l.id === id)) return;
@@ -3363,6 +3379,7 @@ function start(){
 }
 window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
+window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
