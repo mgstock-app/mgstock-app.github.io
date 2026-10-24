@@ -41,7 +41,7 @@ describe('GestLok: demo privada de organización online',()=>{
       cy.get('[data-demo-tab="reportes"]').first().click();
       cy.get('#gl-admin-demo').should('contain.text','Pedidos por estado');
       cy.get('[data-demo-reset]').click();
-      cy.get('#gl-admin-demo').should('contain.text','3</strong>');
+      cy.get('#gl-admin-demo .gl-demo-metrics article').eq(1).find('strong').should('have.text','3');
       cy.get('[data-act="admin-demo-close"]').click();
       cy.get('#gl-admin-demo').should('not.exist');
       cy.get('#hub').should('contain.text','Panel administrativo');
