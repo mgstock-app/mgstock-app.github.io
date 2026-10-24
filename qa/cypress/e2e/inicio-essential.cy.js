@@ -1,4 +1,4 @@
-/* global Cypress, describe, it, cy, expect */
+/* global Cypress, describe, it, cy */
 function start(){
  cy.task('mockSupabase').then(mock=>cy.intercept('GET','**/vendor/supabase.js',{
   statusCode:200,headers:{'content-type':'application/javascript'},body:mock
