@@ -95,7 +95,7 @@ const S = {
   loaded:{p:false, c:false, e:false, f:false, h:false},
   allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
@@ -729,17 +729,40 @@ async function compartirPedidoProveedor(){
       const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
       archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
     }
-    if(navigator.canShare?.({files:archivos})){
-      await navigator.share({title:'Pedido · '+nombre,text:texto,files:archivos});
-    }else{
-      await navigator.share({title:'Pedido · '+nombre,text:texto});
-      toast('Se compartió el texto. Este dispositivo no permite adjuntar la imagen automáticamente.');
-    }
-  }catch(e){
-    if(e?.name!=='AbortError'){
-      toast('No se pudo abrir Compartir. Usá Copiar pedido o WhatsApp.',true);
-    }
-  }finally{if(btn?.isConnected)btn.disabled=false;}
+    if(S.provOpen!==nombre)return;
+    S.provEnvio={nombre,local:S.local,texto,wa,archivos};
+    S.panel='prov-share';
+    const filesAllowed=!!navigator.canShare?.({files:archivos});
+    openPanel(`<div class="pn-h"><h3>Compartir pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+      <div class="pn-b gl-prov-sharing">
+        <p class="lead"><b>${esc(nombre)}</b> · ${plural(rows.length,'producto','productos')} · ${plural(archivos.length,'imagen preparada','imágenes preparadas')}.</p>
+        <p class="lead">Elegí WhatsApp en el menú de compartir y confirmá el destinatario. GestLok no envía nada sin tu confirmación.</p>
+        <button class="btn primary" type="button" data-act="prov-share-ready">${ic('share')}${filesAllowed?'Enviar imagen por WhatsApp':'Compartir pedido como texto'}</button>
+        ${navigator.clipboard?.write && window.ClipboardItem && archivos.length===1?`<button class="btn" type="button" data-act="prov-copy-image">${ic('copy')}Copiar imagen</button>`:''}
+        <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}Abrir WhatsApp con el pedido escrito</a>
+        <small>Si tu dispositivo no admite adjuntar la imagen, podés compartir el texto completo.</small>
+      </div>`,'dlg');
+  }catch(e){toast('No se pudo generar la imagen. Usá Copiar pedido o WhatsApp.',true);}
+  finally{if(btn?.isConnected)btn.disabled=false;}
+}
+/* El usuario toca una segunda vez: mantiene la activación requerida por Web Share. */
+function enviarProveedorPreparado(){
+  const p=S.provEnvio;
+  if(!p || p.local!==S.local || !esTotal() || !navigator.share)return;
+  const filesAllowed=!!navigator.canShare?.({files:p.archivos});
+  let promise;
+  try{promise=navigator.share(filesAllowed?{title:'Pedido · '+p.nombre,text:p.texto,files:p.archivos}:{title:'Pedido · '+p.nombre,text:p.texto});}
+  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);return;}
+  Promise.resolve(promise).then(()=>{
+    if(S.provEnvio===p){closePanel();toast('El pedido se entregó al menú de compartir. Confirmá el envío en WhatsApp.');}
+  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);});
+}
+function copiarImagenProveedor(){
+  const p=S.provEnvio;
+  if(!p || p.archivos.length!==1 || !navigator.clipboard?.write || !window.ClipboardItem)return;
+  navigator.clipboard.write([new window.ClipboardItem({'image/png':p.archivos[0]})])
+    .then(()=>toast('Imagen copiada. Abrí WhatsApp y pegala en el chat.'))
+    .catch(()=>toast('Este navegador no permite copiar la imagen.',true));
 }
 
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
@@ -2738,6 +2761,7 @@ function openPanel(html, kind){
 }
 function closePanel(){
   $('#ov').hidden = true; $('#pn').innerHTML = ''; S.panel = null; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; S.eqDel = null; S.hj.editId = null; S.hj.delId = null; S.hj.add = false;
+  S.provEnvio = null;
   if (lastFocus && document.contains(lastFocus)) try { lastFocus.focus({preventScroll:true}); } catch {}
 }
 let toastT = null;
@@ -2870,6 +2894,8 @@ document.addEventListener('click', e => {
     case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
     case 'prov-save-plan': guardarPlanProveedor(); break;
     case 'prov-share': compartirPedidoProveedor(); break;
+    case 'prov-share-ready': enviarProveedorPreparado(); break;
+    case 'prov-copy-image': copiarImagenProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
