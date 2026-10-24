@@ -107,6 +107,24 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get(".gestlok-chat-list").should("not.contain.text","Mensaje privado de prueba Munro");
   });
 
+  it("chat: reintento idempotente de un mensaje ya recibido por el servidor", () => {
+    owner();
+    toLocal("munro");
+    cy.window().then(w => {
+      const payload={id:"abcd1234efgh5678ijkl",texto:"Mensaje recuperable QA",autor:"dueno@example.com",local:"munro",nombre:"Dueña",fecha:Date.now()};
+      w.localStorage.setItem("gestlok-chat-pending-v1:dueno%40example.com:munro",JSON.stringify(payload));
+      w.__rows.push({col:"munro/chat",id:payload.id,data:{texto:payload.texto,autor:payload.autor,nombre:payload.nombre,fecha:payload.fecha}});
+    });
+    cy.get('#snav [data-go="chat"]').click();
+    cy.get('#gestlok-chat-form button[type="submit"]').should("contain.text","Reintentar envío").click();
+    cy.window().its("__rows").should(rows => {
+      expect(rows.filter(r=>r.col==="munro/chat" && r.id==="abcd1234efgh5678ijkl")).to.have.length(1);
+    });
+    cy.window().then(w => {
+      expect(w.localStorage.getItem("gestlok-chat-pending-v1:dueno%40example.com:munro")).to.eq(null);
+    });
+  });
+
   it("solo lectura: puede leer el chat pero no escribir", () => {
     login("lectura@example.com");
     cy.get('#snav [data-go="chat"]').click();
@@ -122,10 +140,14 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#snav [data-go="chat"]').click();
     cy.window().then(w => w.dispatchEvent(new w.Event("offline")));
     cy.get("#view").should("contain.text","Sin conexión");
-    cy.get("#gestlok-chat-text").should("be.disabled");
+    cy.get("#gestlok-chat-text").should("be.enabled").type("Borrador sin conexión");
+    cy.get('#gestlok-chat-form button[type="submit"]').should("be.disabled");
     cy.window().its("__rows").should(rows => expect(rows.filter(r=>r.col==="munro/chat")).to.have.length(0));
     cy.window().then(w => w.dispatchEvent(new w.Event("online")));
-    cy.get("#gestlok-chat-text").should("be.enabled");
+    cy.get("#gestlok-chat-text").should("be.enabled").and("have.value", "Borrador sin conexión");
+    cy.get('#snav [data-go="inicio"]').click();
+    cy.get('#snav [data-go="chat"]').click();
+    cy.get("#gestlok-chat-text").should("have.value", "Borrador sin conexión");
   });
 
   it("sin conexión: el conteo permanece pendiente sin escribir en base", () => {

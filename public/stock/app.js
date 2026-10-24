@@ -147,17 +147,22 @@ const slug = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || '
    Los borradores antiguos quedan disponibles para recuperación explícita. */
 const legacyDraftKey = () => 'spm-draft-' + (S.local || '_');
 const draftKey = () => 'spm-draft-v2-' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + (S.local || '_');
+const queuedKey = () => 'spm-pending-save-v1-' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + (S.local || '_');
 const hasLocalDraft = d => !!(d && typeof d === 'object' && 
   (Object.keys(d.draft || {}).length || Object.keys(d.notas || {}).length ||
    Object.keys(d.fdraft || {}).length || d.editing));
 function saveDraft(){
   if (S.local && (S.uid || S.me?.email)) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft});
+  const chatText = S.view === 'chat' && S.local ? $('#gestlok-chat-text') : null;
+  if (chatText && !chatPending()) lsSet(chatDraftKey(), chatText.value.slice(0, 1000));
 }
 function restoreDraft(){
   S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {}; S.legacyDraft = false;
   const d = S.local && (S.uid || S.me?.email) ? lsGet(draftKey(), null) : null;
   if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; }
   if (S.local && !hasLocalDraft(d) && hasLocalDraft(lsGet(legacyDraftKey(), null))) S.legacyDraft = true;
+  const q = S.local && (S.uid || S.me?.email) ? lsGet(queuedKey(), null) : null;
+  S.queued = q && typeof q.view === 'string' && typeof q.fab === 'boolean' ? q : null;
 }
 function recoverLegacyDraft(){
   if (!S.local || !S.legacyDraft || !canW()) return;
@@ -352,7 +357,7 @@ function renderSavebar(){
   const enCola = S.queued && S.queued.view === S.view;
   if (isFabV(S.view)){
     const fp = fPend().length, lf = lastFab();
-    $('#sb-main').textContent = enCola ? 'Borrador local: guardar al volver internet' : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
+    $('#sb-main').textContent = enCola ? (S.offline ? 'Borrador local: guardar al volver internet' : 'Borrador pendiente: revisá y guardá')  : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
     $('#sb-sub').textContent = lf ? `${nombreHoja(fabCtx())} guardado ${rel(lf.fecha)} · ${whoName(lf)}` : (S.loaded.c ? 'Esta planilla todavía no se guardó' : 'Cargando…');
     $('#savebar').classList.toggle('dirty', !!fp);
     const c = $('#sb-cnt'); c.hidden = !fp; c.textContent = fp;
@@ -363,7 +368,7 @@ function renderSavebar(){
   const ed = editingCtx(), pend = pendientes().length, cont = draftCount(), last = lastStockCtx();
   const lastTxt = last ? `Último conteo ${rel(last.fecha)} · ${whoName(last)}` : (S.loaded.c ? 'Todavía no hay conteos guardados' : 'Cargando…');
   let main;
-  if (enCola) main = 'Borrador local: guardar al volver internet';
+  if (enCola) main = S.offline ? 'Borrador local: guardar al volver internet' : 'Borrador pendiente: revisá y guardá';
   else if (ed) main = `Corrigiendo el conteo del ${fechaHora(ed.fecha)}`;
   else if (pend) main = `${plural(pend, 'cambio', 'cambios')} sin guardar`;
   else if (cont) main = `${cont} contados, sin diferencias`;
@@ -950,6 +955,16 @@ V.proveedores = () => {
 };
 
 const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+/* Borradores y reintentos separados por cuenta y local. Nunca reenviar automáticamente. */
+const chatDraftKey = () => 'gestlok-chat-draft-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+const chatPendingKey = () => 'gestlok-chat-pending-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
+const chatDraftText = () => String(lsGet(chatDraftKey(), '') || '').slice(0, 1000);
+function chatPending(){
+  const p = lsGet(chatPendingKey(), null);
+  return p && /^[a-z0-9]{10,40}$/.test(String(p.id || '')) &&
+    typeof p.texto === 'string' && p.texto.length <= 1000 &&
+    p.autor === S.uid && p.local === S.local ? p : null;
+}
 function markChatRead(){
   if (!S.local || !S.uid) return;
   const latest = Math.max(Date.now(),...S.chat.map(m=>Number(m.fecha)||0));
@@ -963,27 +978,44 @@ V.chat = () => {
     const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
     return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong><small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
   }).join('');
+  const pending = chatPending();
   const puedeEnviar = canW() && !S.offline;
   return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes no se mezclan con otros locales.</p>
     <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
-    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados, pero necesitás internet para enviar.</p>' : ''}
+    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>' : ''}
+    ${pending ? '<p class="note warn">No pudimos confirmar el envío anterior. Reintentá el mismo mensaje; no se duplicará.</p>' : ''}
     ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
-    <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${puedeEnviar ? '' : 'disabled'}></textarea>
-      <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>Enviar mensaje</button></form>
+    <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${canW() && !pending ? '' : 'disabled'}>${esc(pending ? pending.texto : chatDraftText())}</textarea>
+      <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>${pending ? 'Reintentar envío' : 'Enviar mensaje'}</button></form>
   </section>`;
 };
 
 async function sendGestlokChat(form){
   if (!S.db || !S.local || S.offline || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
-  const input = form.querySelector('#gestlok-chat-text'), txt = (input?.value || '').trim();
+  const local = S.local, author = S.uid, input = form.querySelector('#gestlok-chat-text');
+  const pending = chatPending(), txt = (pending ? pending.texto : input?.value || '').trim();
   if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
-  const btn = form.querySelector('[type="submit"]'); if (btn) btn.disabled = true;
+  const payload = pending || {id:rid() + rid(), texto:txt, autor:author, local, nombre:S.me?.name || 'Equipo', fecha:Date.now()};
+  const pendingKey = chatPendingKey(), draftKey = chatDraftKey();
+  // Identificador fijo de mensaje: si la respuesta se pierde, reintentar no crea otro registro.
+  try { localStorage.setItem(pendingKey, JSON.stringify(payload)); }
+  catch { toast('No se pudo guardar el reintento en este dispositivo. Revisá el espacio disponible.', true); return; }
+  const btn = form.querySelector('[type="submit"]');
+  if (btn) btn.disabled = true;
+  if (input) input.disabled = true;
   try {
-    await w(() => C('chat').add({texto:txt, autor:S.uid || null, nombre:S.me?.name || 'Equipo', fecha:Date.now()}));
-    if (input && input.isConnected) input.value = '';
+    await w(() => S.db.collection(local + '/chat').doc(payload.id).set({
+      texto:payload.texto, autor:payload.autor, nombre:payload.nombre, fecha:payload.fecha
+    }));
+    if (lsGet(pendingKey, null)?.id === payload.id) localStorage.removeItem(pendingKey);
+    if (lsGet(draftKey, '') === payload.texto || lsGet(draftKey, '') === '') localStorage.removeItem(draftKey);
     toast('Mensaje enviado');
-  } catch (error){ fail(error); }
-  finally { if (btn && btn.isConnected) btn.disabled = false; }
+  } catch (error){
+    if (error?.code === 'invalid_argument') localStorage.removeItem(pendingKey);
+    fail(error);
+  } finally {
+    if (S.local === local && S.view === 'chat') render();
+  }
 }
 
 V.inicio = () => {
@@ -1479,7 +1511,7 @@ async function doSaveF(v = S.view){
   try {
     await batchRun(plan.ups, u => C('fabrica').doc(u.id).update(u.data));
     await w(() => C('conteos').add({tipo:'fabrica', fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:plan.hoja, nombreHoja:plan.nom, filas:plan.filas, cambiadas:plan.n, total:plan.filas.length, sinStock:plan.filas.filter(x => x.sin).map(x => x.nombre)}));
-    withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v) S.queued = null;
+    withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
     toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}`);
   } catch(e){
@@ -1487,9 +1519,10 @@ async function doSaveF(v = S.view){
     if (!navigator.onLine){ S.offline = true; queueSave(v, true); } else fail(e);
   }
 }
-/* Sin internet: el conteo queda listo y se guarda solo cuando vuelve la conexión */
+/* Sin internet: conserva el borrador hasta que la persona confirme guardarlo con conexión. */
 function queueSave(v, fab){
   S.queued = {view:v, fab:!!fab};
+  if (S.local && (S.uid || S.me?.email)) lsSet(queuedKey(), S.queued);
   saveDraft(); // el borrador persiste aunque se cierre la aplicación
   if (S.panel === 'save') closePanel();
   render();
@@ -1498,7 +1531,7 @@ function queueSave(v, fab){
 function onOnline(){
   if (!S.offline) return;
   const q = S.queued;
-  S.offline = false; S.queued = null; render();
+  S.offline = false; render();
   if (q && S.db) toast('Volvió internet. Tu borrador sigue pendiente: revisalo y tocá Guardar conteo.');
   else toast('Volvió la conexión');
 }
@@ -1845,7 +1878,7 @@ async function doSave(v = S.view){
     } else {
       await w(() => C('conteos').add({fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:v, nombreHoja:plan.nom, cambios:plan.pend.map(entry), contados:plan.contados, total:plan.total, sinStock:plan.sinStock, foto:plan.foto}));
     }
-    withCtx(v, clearDraftCtx); if (S.queued && S.queued.view === v) S.queued = null;
+    withCtx(v, clearDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
     toast(ed ? 'Corrección guardada' : `Conteo guardado${plan.pend.length ? ` · ${plural(plan.pend.length, 'cambio', 'cambios')}` : ''}`);
   } catch(e){
@@ -3035,6 +3068,10 @@ document.addEventListener('change', e => {
 let qT = null;
 document.addEventListener('input', e => {
   const t = e.target;
+  if (t.id === 'gestlok-chat-text'){
+    if (S.local && canW() && !chatPending()) lsSet(chatDraftKey(), t.value.slice(0, 1000));
+    return;
+  }
   if (t.matches('[data-cq]')){
     const id = t.dataset.cq, raw = t.value.trim();
     if (!raw){ delete S.draft[id]; t.classList.remove('bad'); saveDraft(); refreshCC(id); return; }

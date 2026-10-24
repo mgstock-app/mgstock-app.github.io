@@ -158,8 +158,13 @@
       limit(n){ return query(col, { ...opts, l: n }); },
       async get(){ return snap(shape(await fetchCol(col))); },
       onSnapshot(next, onErr){
-        let alive = true, t = null;
-        const refresh = async () => { try { const rows = await fetchCol(col); if (alive) next(snap(shape(rows))); } catch (e) { if (alive && e && e.code === 'invalid_argument' && onErr) onErr(e); } };
+        let alive = true, t = null, generation = 0;
+        // Ignorar respuestas anteriores para no reemplazar datos nuevos del chat o stock.
+        const refresh = async () => {
+          const current = ++generation;
+          try { const rows = await fetchCol(col); if (alive && current === generation) next(snap(shape(rows))); }
+          catch (e) { if (alive && current === generation && e && e.code === 'invalid_argument' && onErr) onErr(e); }
+        };
         const later = () => { clearTimeout(t); t = setTimeout(refresh, 120); };
         if (!refreshers.has(col)) refreshers.set(col, new Set());
         refreshers.get(col).add(later);
