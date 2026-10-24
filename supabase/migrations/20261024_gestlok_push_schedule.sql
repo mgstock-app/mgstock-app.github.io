@@ -33,14 +33,13 @@ select cron.schedule(
  $job$
 );
 
--- The closing digest is generated and sent every day at 23:15
--- America/Argentina/Buenos_Aires (02:15 UTC the following day).
-select cron.schedule(
- 'gestlok-digest-2315-argentina',
- '15 2 * * *',
- $job$
-  select public.gestlok_queue_daily_digest();
-  select net.http_post(
+-- A single function keeps enqueue and delivery in the same scheduled job.
+create or replace function public.gestlok_digest_and_dispatch()
+returns void language plpgsql security definer set search_path=''
+as $
+begin
+ perform public.gestlok_queue_daily_digest();
+ perform net.http_post(
     url:='https://vgsepaaewbctjsjcpeta.supabase.co/functions/v1/gestlok-push',
     headers:=jsonb_build_object(
        'Content-Type','application/json',
@@ -48,6 +47,14 @@ select cron.schedule(
     ),
     body:='{"op":"dispatch"}'::jsonb,
     timeout_milliseconds:=10000
-  );
- $job$
+ );
+end $;
+revoke all on function public.gestlok_digest_and_dispatch() from public,anon,authenticated;
+
+-- The closing digest is generated and sent every day at 23:15
+-- America/Argentina/Buenos_Aires (02:15 UTC the following day).
+select cron.schedule(
+ 'gestlok-digest-2315-argentina',
+ '15 2 * * *',
+ $job$ select public.gestlok_digest_and_dispatch(); $job$
 );
