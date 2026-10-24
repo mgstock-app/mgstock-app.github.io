@@ -725,7 +725,7 @@ async function guardarPlanProveedor(){
   if(btn)btn.disabled=true;
   const sb=window.GestLokSupabase;
   if(!sb?.rpc){toast('No se pudo conectar con el guardado seguro.',true);if(btn)btn.disabled=false;return;}
-  const productos=rows.map(x=>({nombre:x.nombre,unidad:x.unidad||'unidad',pedir:Number(x.pedir),categoria:x.categoria||'General'}));
+  const productos=rows.map(x=>({nombre:x.nombre,unidad:x.unidad||'unidad',pedir:Number(x.pedir),categoria:x.categoria||'General',proveedor:nombre}));
   try{
     const {data,error}=await sb.rpc('gestlok_proveedor_guardar_historial',{
       p_local:local,
