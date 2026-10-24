@@ -48,7 +48,8 @@ test('Gerentes y perfiles de lectura no pueden cambiar la modalidad', async () =
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(saved.length,0);
     assert.equal(api.mode(),'fisica');
-    assert.match(api.card(),/disabled/);
+    assert.equal(api.card(),'');
+    assert.doesNotMatch(api.summary(),/Tienda física|Tienda online|Tienda mixta/);
   }
 });
 

@@ -14,7 +14,7 @@ test('Gestión de tienda online es administrativa, nunca una vidriera para compr
   assert.equal(existsSync(new URL('../public/tienda.html',import.meta.url)),false);
   assert.equal(existsSync(new URL('../public/stock/tienda-publica.js',import.meta.url)),false);
   assert.doesNotMatch(admin,/window\.open|wa\.me|data-gl-publish|Publicar mi tienda|carrito|checkout/i);
-  assert.match(admin,/Organización de tienda online/);
+  assert.match(admin,/Organización de productos/);
   assert.match(admin,/Gestionar pedidos/);
   assert.match(admin,/Stock mínimo/);
   assert.match(admin,/tenant_id/);

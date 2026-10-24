@@ -26,7 +26,10 @@ describe('GestLok: tienda física, online y mixta',()=>{
     login('dueno@example.com');
     cy.get('#hub .gl-commerce-choice[data-commerce-mode="fisica"]').should('exist');
     openLocal('munro');
+    cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
+    cy.get('#gl-store-mode-owner').prev('#live').should('exist');
     cy.get('#view .gl-commerce-choice[data-commerce-mode="online"]').click();
+    cy.get('#gl-store-mode-owner').should('have.text','Tienda online');
     cy.get('#snav [data-go="pedidos-online"]').should('exist').click();
     cy.get('#gl-commerce-order-form input[name="cliente"]').type('Pedido de prueba');
     cy.get('#gl-commerce-order-form textarea[name="lineas"]').type('Remera azul | 2 | 12500{enter}Buzo negro | 1 | 22500');
@@ -44,8 +47,10 @@ describe('GestLok: tienda física, online y mixta',()=>{
     cy.get('#view').should('contain.text','Pedido de prueba');
     cy.get('#snav [data-go="inicio"]').click();
     cy.get('#view .gl-commerce-choice[data-commerce-mode="fisica"]').click();
+    cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#snav [data-go="pedidos-online"]').should('not.exist');
     cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').click();
+    cy.get('#gl-store-mode-owner').should('have.text','Tienda mixta');
     cy.get('#snav [data-go="pedidos-online"]').should('exist');
     cy.get('#snav [data-go="ingreso"]').should('exist');
     cy.window().its('__rows').should(rows=>{
@@ -57,7 +62,10 @@ describe('GestLok: tienda física, online y mixta',()=>{
   it('gerentes pueden operar sus locales, pero no cambiar la modalidad',()=>{
     launch();
     login('gerente.munro@example.com');
-    cy.get('#view .gl-commerce-choice').should('have.length',3).each(b=>cy.wrap(b).should('be.disabled'));
-    cy.get('#view').should('contain.text','La modalidad la configura la dueña');
+    cy.get('#gl-store-mode-owner').should('not.exist');
+    cy.get('#view .gl-commerce-choice').should('not.exist');
+    cy.get('#view .gl-commerce-current').should('not.exist');
+    cy.get('#view').should('not.contain.text','Tienda física');
+    cy.get('#view').should('not.contain.text','Tienda mixta');
   });
 });
