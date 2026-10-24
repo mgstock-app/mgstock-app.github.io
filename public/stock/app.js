@@ -1147,7 +1147,86 @@ function resumenHojasInicio(){
   </section>`;
 }
 
+/* Portada operativa breve para Dueño y Gerente.
+   Los informes detallados permanecen en sus hojas y no se repiten en Inicio. */
+function inicioOperativo(){
+  const productos=sorted(), total=productos.length;
+  const estados={sin:0,bajo:0,nc:0};
+  for(const p of productos){
+    const e=estado(p);
+    if(e in estados)estados[e]++;
+  }
+  const ver=id=>visibles().some(h=>h.id===id);
+  const online=!!window.GestLokCommerce?.online();
+  const conteo=ver('conteo')?'conteo':ver('stock')?'stock':'';
+  const pedidos=ver('pedido');
+  const pendienteOnline=online?Number(window.GestLokCommerce?.pendingCount?.()||0):0;
+  const vence=window.GestLokUpdates?.homeDueItems?.(S.vencimientos)?.length||0;
+  const acciones=[
+    ...(puedeVerDiarioMunro()?[['diario','Control diario','clock']]:
+      conteo?[[conteo,conteo==='conteo'?'Conteo':'Stock','clip']]:[]),
+    ['proveedores','Proveedores','store'],
+    ...(online?[['pedidos-online','Pedidos online','cart']]:
+       pedidos?[['pedido','Pedidos','cart']]:[]),
+    ...(ver('historial')?[['historial','Historial','clock']]:[]),
+    ...(!conteo&&ver('stock')?[['stock','Stock','box']]:[])
+  ].slice(0,4);
+  const tarjeta=(titulo,cantidad,detalle,act,k)=>{
+    const accion=act? (k?`data-act="kpi" data-k="${k}"`:`data-go="${act}"`):'';
+    const tag=act?'button':'div';
+    return `<${tag} class="gl-home-essential-stat" ${accion}>
+      <span class="gl-home-essential-stat-label">${esc(titulo)}</span>
+      <b class="gl-home-essential-stat-number">${S.loaded.p?cantidad:'—'}</b>
+      <small>${esc(detalle)}</small>
+    </${tag}>`;
+  };
+  const metricas=online ? [
+    tarjeta('Pedidos pendientes',pendienteOnline,'Por preparar o entregar','pedidos-online'),
+    tarjeta('Productos',total,'En el catálogo del local','stock'),
+    tarjeta('Sin stock',estados.sin,'Revisar existencias','stock','sin')
+  ] : [
+    tarjeta('Sin stock',estados.sin,'Reponer o revisar','stock','sin'),
+    tarjeta('Para pedir',pedidoItems().length,'Productos bajo mínimo',pedidos?'pedido':'proveedores'),
+    tarjeta('Sin contar',estados.nc,'Sin cantidad registrada','stock','nc')
+  ];
+  const modo=miRol()==='dueno'&&window.GestLokCommerce?.card?.()
+    ? `<details class="gl-home-essential-settings">
+        <summary>Configuración del negocio</summary>
+        ${window.GestLokCommerce.card()}
+       </details>`:'';
+  return `${banners()}
+    <div class="gl-home-essential" aria-label="Inicio del local">
+      <header class="gl-home-essential-head">
+        <div><p class="eyebrow">${esc(fechaLarga())}</p>
+          <h1>Inicio · ${esc(localNombre())}</h1>
+          <p>Lo importante para trabajar hoy.</p></div>
+      </header>
+      ${!S.loaded.p?'<p class="note">Cargando información del local…</p>':''}
+      ${S.loaded.p&&!total&&canW()?`<div class="gl-home-essential-setup">
+        <span>Este local todavía no tiene productos cargados.</span>
+        <button class="btn sm primary" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button>
+        </div>`:''}
+      <section class="gl-home-essential-overview" aria-label="Indicadores del local">
+        ${metricas.join('')}
+      </section>
+      ${vence?`<div class="gl-home-essential-alert">
+        <span><b>${vence} ${vence===1?'vencimiento requiere':'vencimientos requieren'} atención</b><small>Servicios del local próximos a vencer o vencidos</small></span>
+        <button class="btn sm" data-go="vencimientos">Revisar</button>
+      </div>`:''}
+      <section class="gl-home-essential-actions" aria-label="Accesos rápidos">
+        <h2>Accesos rápidos</h2>
+        <div class="gl-home-essential-links">
+          ${acciones.map(([id,label,icono])=>`<button data-go="${id}">
+              <span aria-hidden="true">${ic(icono)}</span><b>${esc(label)}</b>${ic('chev')}
+            </button>`).join('')}
+        </div>
+      </section>
+      ${modo}
+    </div>`;
+}
+
 V.inicio = () => {
+  if (['dueno','gerente'].includes(miRol())) return inicioOperativo();
   const ps = sorted(), n = ps.length;
   const cnt = {ok:0, bajo:0, sin:0, nc:0}; ps.forEach(p => cnt[estado(p)]++);
   const ped = pedidoItems().length, last = S.conteos[0] || null, flagged = ps.filter(p => estado(p) === 'sin');
