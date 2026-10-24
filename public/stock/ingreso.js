@@ -1,4 +1,4 @@
-/* MG Stock · Ingreso de mercadería: lectura de archivos y reconocimiento de productos.
+/* GestLok · Ingreso de mercadería: lectura de archivos y reconocimiento de productos.
    Todo corre en el dispositivo de la dueña: los archivos no se suben a ningún lado.
    CSV, texto y Excel (.xlsx) con un lector propio; PDF con pdf.js y fotos o PDF escaneados con Tesseract.js
    (librerías gratuitas alojadas en la misma web, en /vendor, que se cargan solo al usarlas). */
