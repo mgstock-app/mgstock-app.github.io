@@ -198,6 +198,33 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#hub .gl-admin").should("not.exist");
   });
 
+
+  it("tablet 820 px: logo visible y menú/Ajustes con contraste correcto", () => {
+    cy.viewport(820,1180);
+    login("gerente.munro@example.com");
+    cy.get("#app").should("be.visible");
+    cy.get("#app .plogo").should("be.visible").and("have.attr", "alt", "GestLok");
+    cy.get("#app .top-brand-name").should("be.visible").and("contain.text", "GestLok");
+    cy.get("#app .ham").should("be.visible").and("have.css", "color", "rgb(22, 52, 76)");
+    cy.get("#app #btn-ajustes").should("be.visible").and("have.css", "color", "rgb(23, 59, 85)");
+    cy.get("#app .crumb").should("have.css", "color", "rgb(80, 101, 118)");
+    cy.get("#app .ham").click();
+    cy.get("#app").should("have.class", "open");
+    cy.get("#snav [data-go=chat]").should("be.visible");
+    cy.get("#app .xside").click();
+    cy.get("#app").should("not.have.class", "open");
+  });
+
+  it("celular 390 px: los iconos del encabezado son visibles sin tapar el título", () => {
+    cy.viewport(390,844);
+    login("gerente.munro@example.com");
+    cy.get("#app .ham").should("be.visible");
+    cy.get("#app .plogo").should("be.visible");
+    cy.get("#app #btn-ajustes svg.i").should("be.visible");
+    cy.get("#app #ttl").should("be.visible").and("contain.text", "Panel del local");
+    cy.get("#app .top-brand-name").should("not.be.visible");
+  });
+
   it("formato móvil: el menú abre y permite entrar al chat", () => {
     cy.viewport(390,844);
     login("gerente.munro@example.com");
