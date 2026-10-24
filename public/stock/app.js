@@ -449,15 +449,15 @@ function editarProveedor(nombre){
   if (!canW()) { toast('Tu acceso es de solo lectura.', true); return; }
   const actual = proveedorFicha(nombre) || {};
   S.panel = 'proveedor';
-  openPanel(\`<div class="pn-h"><div><small>\${esc(localNombre())}</small><h3>Datos de proveedor</h3></div><button class="ib" data-act="close" aria-label="Cerrar">\${ic('x')}</button></div>
-    <div class="pn-b"><p class="lead"><b>\${esc(nombre)}</b> · Esta ficha es privada de este local.</p>
-    <form id="prov-form" data-name="\${esc(nombre)}" class="frow">
-      <div class="fld"><label for="prov-contact">Persona de contacto</label><input id="prov-contact" maxlength="100" autocomplete="off" value="\${esc(actual.contacto || '')}"></div>
-      <div class="fld"><label for="prov-phone">WhatsApp / teléfono con código de país</label><input id="prov-phone" inputmode="tel" maxlength="24" autocomplete="off" placeholder="Ej.: 5491123456789" value="\${esc(actual.telefono || '')}"></div>
-      <div class="fld"><label for="prov-delivery">Días o condiciones de entrega</label><input id="prov-delivery" maxlength="160" autocomplete="off" value="\${esc(actual.entrega || '')}"></div>
-      <div class="fld"><label for="prov-note">Observaciones</label><textarea id="prov-note" maxlength="450" rows="3">\${esc(actual.nota || '')}</textarea></div>
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())}</small><h3>Datos de proveedor</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+    <div class="pn-b"><p class="lead"><b>${esc(nombre)}</b> · Esta ficha es privada de este local.</p>
+    <form id="prov-form" data-name="${esc(nombre)}" class="frow">
+      <div class="fld"><label for="prov-contact">Persona de contacto</label><input id="prov-contact" maxlength="100" autocomplete="off" value="${esc(actual.contacto || '')}"></div>
+      <div class="fld"><label for="prov-phone">WhatsApp / teléfono con código de país</label><input id="prov-phone" inputmode="tel" maxlength="24" autocomplete="off" placeholder="Ej.: 5491123456789" value="${esc(actual.telefono || '')}"></div>
+      <div class="fld"><label for="prov-delivery">Días o condiciones de entrega</label><input id="prov-delivery" maxlength="160" autocomplete="off" value="${esc(actual.entrega || '')}"></div>
+      <div class="fld"><label for="prov-note">Observaciones</label><textarea id="prov-note" maxlength="450" rows="3">${esc(actual.nota || '')}</textarea></div>
       <button class="btn primary" type="submit">Guardar ficha</button>
-    </form></div>\`, 'dlg');
+    </form></div>`, 'dlg');
 }
 async function guardarProveedor(f){
   if (!S.db || !S.local || !canW() || S.offline){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
@@ -485,22 +485,22 @@ V.proveedores = () => {
     const mensaje = pendientes.length ? proveedorPedido(nombre) : 'Hola, quisiera consultar disponibilidad de productos de ' + localNombre() + '.';
     const wa = telefono ? 'https://wa.me/' + telefono + '?text=' + encodeURIComponent(mensaje) : '';
     const meta = [ficha.contacto, ficha.entrega].filter(Boolean);
-    return \`<article class="card pad gl-provider-card">
-      <div class="gl-provider-head"><div><p class="eyebrow">Proveedor · \${esc(localNombre())}</p><h2>\${esc(nombre)}</h2></div><span class="gl-provider-count">\${plural(count,'producto','productos')}</span></div>
-      <p class="lead">\${pendientes.length ? \`<b>\${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.\` : 'Sin faltantes detectados.'}</p>
-      \${meta.length ? \`<p class="gl-provider-meta">\${meta.map(m=>esc(m)).join(' · ')}</p>\` : '<p class="gl-provider-meta">Podés agregar teléfono, contacto y datos de entrega.</p>'}
+    return `<article class="card pad gl-provider-card">
+      <div class="gl-provider-head"><div><p class="eyebrow">Proveedor · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2></div><span class="gl-provider-count">${plural(count,'producto','productos')}</span></div>
+      <p class="lead">${pendientes.length ? `<b>${pendientes.length} para reponer</b> · Revisá las cantidades antes de enviarlas.` : 'Sin faltantes detectados.'}</p>
+      ${meta.length ? `<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>` : '<p class="gl-provider-meta">Podés agregar teléfono, contacto y datos de entrega.</p>'}
       <div class="bar-a">
-        \${pendientes.length ? \`<button class="btn sm" data-act="prov-copy" data-name="\${esc(nombre)}">\${ic('copy')}Copiar pedido</button>\` : ''}
-        \${wa ? \`<a class="btn sm primary" href="\${esc(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del proveedor \${esc(nombre)}">\${ic('msg')}WhatsApp</a>\` : ''}
-        \${canW() ? \`<button class="btn sm" data-act="prov-edit" data-name="\${esc(nombre)}">\${ic('edit')}\${ficha.telefono || ficha.contacto ? 'Editar ficha' : 'Completar ficha'}</button>\` : ''}
+        ${pendientes.length ? `<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>` : ''}
+        ${wa ? `<a class="btn sm primary" href="${esc(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del proveedor ${esc(nombre)}">${ic('msg')}WhatsApp</a>` : ''}
+        ${canW() ? `<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.telefono || ficha.contacto ? 'Editar ficha' : 'Completar ficha'}</button>` : ''}
       </div>
-    </article>\`;
+    </article>`;
   }).join('');
-  return \`<section class="sheet"><p class="eyebrow">Directorio · \${esc(localNombre())}</p><h1>Proveedores</h1>
+  return `<section class="sheet"><p class="eyebrow">Directorio · ${esc(localNombre())}</p><h1>Proveedores</h1>
   <p class="lead">Consultá los productos asociados, prepará pedidos y contactá a cada proveedor sin mezclar información entre locales.</p>
-  \${!S.loaded.p ? loadingList() : \`<div class="lcards gl-provider-grid">\${items || '<div class="card pad">Todavía no hay proveedores asignados. Asigná uno desde los productos.</div>'}</div>\`}
-  \${canW() ? \`<div class="bar-a"><button class="btn" data-act="aj-open" data-tab="rapido">Administrar productos y proveedores</button></div>\` : ''}
-  </section>\`;
+  ${!S.loaded.p ? loadingList() : `<div class="lcards gl-provider-grid">${items || '<div class="card pad">Todavía no hay proveedores asignados. Asigná uno desde los productos.</div>'}</div>`}
+  ${canW() ? `<div class="bar-a"><button class="btn" data-act="aj-open" data-tab="rapido">Administrar productos y proveedores</button></div>` : ''}
+  </section>`;
 };
 
 V.chat = () => {
