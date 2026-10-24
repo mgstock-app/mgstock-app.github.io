@@ -123,11 +123,11 @@
   }
   function view(){
     reset();
-    if(!canView())return '<section class="card pad"><h3>Organización de tienda online</h3><p>La dueña debe seleccionar la modalidad online o mixta de la empresa.</p></section>';
+    if(!canView())return '<section class="card pad"><h3>Organización de productos</h3><p>La dueña debe seleccionar la modalidad online o mixta de la empresa.</p></section>';
     if(!state.loaded&&!state.loading)Promise.resolve().then(()=>load());
     if(!state.loaded||state.loading)return '<section class="card pad"><h3>Organización online</h3><p>Cargando datos internos de la sucursal…</p></section>';
     return '<div class="gl-commerce-page gl-online-admin">'+
-      '<section class="card pad"><p class="eyebrow">GESTLOK / GESTIÓN INTERNA · '+esc(api.localNombre())+'</p><h3>Organización de tienda online</h3>'+
+      '<section class="card pad"><p class="eyebrow">GESTLOK / GESTIÓN INTERNA · '+esc(api.localNombre())+'</p><h3>Organización de productos</h3>'+
       '<p class="lead">Gestioná los productos, el stock mínimo y los pedidos que recibís por otras plataformas. Esta herramienta no publica una tienda ni vende a clientes.</p>'+
       (state.error?'<p class="note warn" role="alert">'+esc(state.error)+'</p><button class="btn" data-gl-refresh>Reintentar</button>':'')+
       '</section>'+
