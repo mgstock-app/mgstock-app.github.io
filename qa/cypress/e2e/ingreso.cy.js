@@ -94,6 +94,9 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get('[data-act="ing-otro"]').click();
     subir();
     cy.get("#ing-pend select").select("No importar");
+    // Después de volver a leer el archivo, la selección es explícita.
+    // Así el test comprueba el flujo de duplicados sin depender del auto-tildado.
+    cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().check({force:true});
     cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#pn").should("contain.text", "ya se importó");
     cy.get('#pn [data-act="close"]').first().click();
