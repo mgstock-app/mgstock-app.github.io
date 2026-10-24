@@ -147,17 +147,22 @@ const slug = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || '
    Los borradores antiguos quedan disponibles para recuperación explícita. */
 const legacyDraftKey = () => 'spm-draft-' + (S.local || '_');
 const draftKey = () => 'spm-draft-v2-' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + (S.local || '_');
+const queuedKey = () => 'spm-pending-save-v1-' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + (S.local || '_');
 const hasLocalDraft = d => !!(d && typeof d === 'object' && 
   (Object.keys(d.draft || {}).length || Object.keys(d.notas || {}).length ||
    Object.keys(d.fdraft || {}).length || d.editing));
 function saveDraft(){
   if (S.local && (S.uid || S.me?.email)) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft});
+  const chatText = S.view === 'chat' && S.local ? $('#gestlok-chat-text') : null;
+  if (chatText && !chatPending()) lsSet(chatDraftKey(), chatText.value.slice(0, 1000));
 }
 function restoreDraft(){
   S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {}; S.legacyDraft = false;
   const d = S.local && (S.uid || S.me?.email) ? lsGet(draftKey(), null) : null;
   if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; }
   if (S.local && !hasLocalDraft(d) && hasLocalDraft(lsGet(legacyDraftKey(), null))) S.legacyDraft = true;
+  const q = S.local && (S.uid || S.me?.email) ? lsGet(queuedKey(), null) : null;
+  S.queued = q && typeof q.view === 'string' && typeof q.fab === 'boolean' ? q : null;
 }
 function recoverLegacyDraft(){
   if (!S.local || !S.legacyDraft || !canW()) return;
@@ -1506,7 +1511,7 @@ async function doSaveF(v = S.view){
   try {
     await batchRun(plan.ups, u => C('fabrica').doc(u.id).update(u.data));
     await w(() => C('conteos').add({tipo:'fabrica', fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:plan.hoja, nombreHoja:plan.nom, filas:plan.filas, cambiadas:plan.n, total:plan.filas.length, sinStock:plan.filas.filter(x => x.sin).map(x => x.nombre)}));
-    withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v) S.queued = null;
+    withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
     toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}`);
   } catch(e){
@@ -1517,6 +1522,7 @@ async function doSaveF(v = S.view){
 /* Sin internet: el conteo queda listo y se guarda solo cuando vuelve la conexión */
 function queueSave(v, fab){
   S.queued = {view:v, fab:!!fab};
+  if (S.local && (S.uid || S.me?.email)) lsSet(queuedKey(), S.queued);
   saveDraft(); // el borrador persiste aunque se cierre la aplicación
   if (S.panel === 'save') closePanel();
   render();
@@ -1525,7 +1531,7 @@ function queueSave(v, fab){
 function onOnline(){
   if (!S.offline) return;
   const q = S.queued;
-  S.offline = false; S.queued = null; render();
+  S.offline = false; render();
   if (q && S.db) toast('Volvió internet. Tu borrador sigue pendiente: revisalo y tocá Guardar conteo.');
   else toast('Volvió la conexión');
 }
@@ -1872,7 +1878,7 @@ async function doSave(v = S.view){
     } else {
       await w(() => C('conteos').add({fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:v, nombreHoja:plan.nom, cambios:plan.pend.map(entry), contados:plan.contados, total:plan.total, sinStock:plan.sinStock, foto:plan.foto}));
     }
-    withCtx(v, clearDraftCtx); if (S.queued && S.queued.view === v) S.queued = null;
+    withCtx(v, clearDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
     toast(ed ? 'Corrección guardada' : `Conteo guardado${plan.pend.length ? ` · ${plural(plan.pend.length, 'cambio', 'cambios')}` : ''}`);
   } catch(e){
@@ -3062,6 +3068,10 @@ document.addEventListener('change', e => {
 let qT = null;
 document.addEventListener('input', e => {
   const t = e.target;
+  if (t.id === 'gestlok-chat-text'){
+    if (S.local && canW() && !chatPending()) lsSet(chatDraftKey(), t.value.slice(0, 1000));
+    return;
+  }
   if (t.matches('[data-cq]')){
     const id = t.dataset.cq, raw = t.value.trim();
     if (!raw){ delete S.draft[id]; t.classList.remove('bad'); saveDraft(); refreshCC(id); return; }
