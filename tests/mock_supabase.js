@@ -106,6 +106,25 @@
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }
       if (fn === 'doc_update'){ if (!canWrite(args.p_col)) return {data:0, error:null}; const r = rows.find(x => x.col === args.p_col && x.id === args.p_id); if (!r) return {data:0, error:null}; r.data = keepSug(args.p_col, r.data, {...r.data, ...args.p_patch}); window.__log.push(['update', args.p_col, args.p_id]); notify(args.p_col); return {data:1, error:null}; }
+      if (fn === 'gestlok_proveedor_guardar_historial'){
+        const col=args.p_local+'/proveedores';
+        if(!canWrite(col))return {data:null,error:{message:'No tenés permiso.'}};
+        const p=rows.find(r=>r.col===col&&r.id===args.p_proveedor_id);
+        if(!p)return {data:null,error:{message:'Carpeta inexistente.'}};
+        if(Number(p.data.pedidoActualizado||0)!==Number(args.p_version||0))
+          return {data:null,error:{message:'Otro usuario actualizó el pedido.'}};
+        if(!Array.isArray(args.p_productos)||!args.p_productos.length)
+          return {data:null,error:{message:'Falta completar el pedido.'}};
+        const stamp=Math.max(Date.now(),Number(args.p_version||0)+1);
+        p.data={...p.data,items:args.p_items,catalogo:args.p_catalogo,pedidoActualizado:stamp,pedidoPor:me()};
+        const id='pedido-'+Math.random().toString(36).slice(2);
+        const historyCol=args.p_local+'/proveedores_historial';
+        rows.push({col:historyCol,id,data:{proveedorId:args.p_proveedor_id,
+          proveedor:p.data.nombre,productos:args.p_productos,fecha:stamp,version:stamp,autor:me(),local:args.p_local}});
+        window.__log.push(['finalizar-proveedor',col,args.p_proveedor_id]);
+        notify(col);notify(historyCol);
+        return {data:{pedidoActualizado:stamp,historialId:id},error:null};
+      }
       if (fn === 'importar_mercaderia') return importar(a, args);
       return {data:null, error:null};
     },
