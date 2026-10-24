@@ -298,6 +298,7 @@ async function batchRun(items, fn, size=5){ for (let i = 0; i < items.length; i 
 
 /* ---------- Render general ---------- */
 function render(){
+  window.GestLokSupport?.render();
   if (!S.local){ renderHub(); return; }
   const ae = document.activeElement; const fid = ae && ae.id && $('#view').contains(ae) ? ae.id : null;
   let sel = null; try { if (fid && ae.selectionStart != null) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
@@ -1819,6 +1820,7 @@ function lcard(l){
   </article>`;
 }
 function renderHub(){
+  window.GestLokSupport?.render();
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
   if (adm && listo && S.db && S.creatorSetup) {
@@ -1886,6 +1888,7 @@ function renderHub(){
           <p>Probá un panel administrativo ficticio con productos, stock mínimo, pedidos, proveedores y reportes. No publica una tienda ni modifica la empresa de Gisela.</p>
           <button class="btn primary" data-act="admin-demo-online">Ver demo de gestión online →</button>
         </section>
+        ${window.GestLokSupport?.adminCard() || ''}
         ${window.GestLokCommerce?.card() || ''}
         <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
         <div class="gl-admin-panels">
@@ -3425,6 +3428,7 @@ window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go}
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
+window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
