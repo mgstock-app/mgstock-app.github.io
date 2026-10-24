@@ -3228,7 +3228,8 @@ function subscribeGlobal(){
     S.loaded.l = true; afterAccess(); onSnapRefresh();
   }, errLive);
   S.db.collection('configuracion_negocio').onSnapshot(snap => {
-    const c = snap.docs.find(d => d.id === 'principal');
+    const configId = window.GestLokCommerce?.configId();
+    const c = configId ? snap.docs.find(d => d.id === configId) : null;
     window.GestLokCommerce?.config(c ? c.data() : null);
     if ((S.view === 'pedidos-online' && !window.GestLokCommerce?.online()) || (window.GestLokCommerce?.mode() === 'online' && (S.view === 'ingreso' || esFabT(tipoVista(S.view))))) S.view='inicio';
     onSnapRefresh();
