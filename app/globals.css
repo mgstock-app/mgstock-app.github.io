@@ -1573,3 +1573,55 @@ html.auth-on body{overflow:hidden}
  .gl-prov-category-head b{width:100%;margin:0 0 2px}
  .gl-prov-category-head .btn{font-size:.72rem}
 }
+
+/* GestLok · Inicio operativo de Dueño/Gerente: una pantalla breve, sin duplicar hojas. */
+.gl-home-essential{display:grid;gap:18px;max-width:1080px;margin:0 auto;padding-bottom:26px}
+.gl-home-essential-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 0 0}
+.gl-home-essential-head .eyebrow{margin:0 0 4px;letter-spacing:.035em;font-size:11px;color:var(--muted)}
+.gl-home-essential-head h1{font-size:clamp(21px,2.8vw,29px);line-height:1.25;letter-spacing:-.025em;font-weight:750;margin:0;color:var(--ink)}
+.gl-home-essential-head p:not(.eyebrow){font-size:13px;color:var(--muted);margin:5px 0 0}
+.gl-home-essential-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.gl-home-essential-stat{display:flex;flex-direction:column;align-items:flex-start;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;min-width:0;text-align:left;box-shadow:none;font:inherit;color:var(--ink)}
+button.gl-home-essential-stat{cursor:pointer}
+button.gl-home-essential-stat:hover{border-color:var(--line-2);background:var(--sunk)}
+button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gl-home-essential-stat-label{font-size:12px;color:var(--muted);font-weight:650}
+.gl-home-essential-stat-number{font:750 29px/1.2 var(--f-num);letter-spacing:-.025em;color:var(--ink)}
+.gl-home-essential-stat small{font-size:11px;line-height:1.35;color:var(--muted)}
+.gl-home-essential-actions{display:grid;gap:10px}
+.gl-home-essential-actions h2{font-size:14px;font-weight:750;color:var(--ink);margin:0}
+.gl-home-essential-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.gl-home-essential-links button{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:var(--surface);font:inherit;min-width:0;min-height:49px;cursor:pointer;color:var(--ink)}
+.gl-home-essential-links button:hover{background:var(--sunk);border-color:var(--line-2)}
+.gl-home-essential-links button span{width:20px;height:20px;color:var(--muted);display:flex;align-items:center;flex:none}
+.gl-home-essential-links button b{flex:1;font-size:13px;font-weight:650}
+.gl-home-essential-links button>svg{width:16px;height:16px;color:var(--muted);flex:none}
+.gl-home-essential-alert{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:10px;background:var(--surface)}
+.gl-home-essential-alert span{display:grid;gap:3px;min-width:0}
+.gl-home-essential-alert b{font-size:12px;font-weight:700;color:var(--ink)}
+.gl-home-essential-alert small{font-size:11px;color:var(--muted)}
+.gl-home-essential-setup{display:flex;align-items:center;flex-wrap:wrap;gap:12px;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:13px;background:var(--surface);font-size:13px}
+.gl-home-essential-settings{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.gl-home-essential-settings summary{cursor:pointer;display:inline-flex;gap:8px;font-weight:650;padding:7px 2px}
+.gl-home-essential-settings summary:focus-visible{outline:2px solid var(--accent)}
+.gl-home-essential-settings[open]>section{margin:12px 0}
+@media(max-width:640px){
+ .gl-home-essential{gap:15px}
+ .gl-home-essential-head h1{font-size:22px}
+ .gl-home-essential-overview{gap:6px}
+ .gl-home-essential-stat{padding:11px 9px;border-radius:10px}
+ .gl-home-essential-stat-label{font-size:11px}
+ .gl-home-essential-stat-number{font-size:25px}
+ .gl-home-essential-stat small{font-size:10px;line-height:1.35}
+ .gl-home-essential-links{gap:7px}
+ .gl-home-essential-links button{padding:10px;font-size:12px}
+ .gl-home-essential-links button b{font-size:12px}
+ .gl-home-essential-alert{align-items:flex-start}
+}
+@media(max-width:360px){
+ .gl-home-essential-overview{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .gl-home-essential-stat{padding:9px 7px}
+ .gl-home-essential-stat-number{font-size:22px}
+ .gl-home-essential-links{grid-template-columns:1fr}
+}
+@media print{.gl-home-essential-links,.gl-home-essential-settings{display:none!important}}
