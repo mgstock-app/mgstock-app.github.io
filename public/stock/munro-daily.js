@@ -84,11 +84,13 @@
     }).join('');
   };
   const historial = () => {
-    const entradas = registrosDia().slice(0,15);
-    return '<details class="md-hist"><summary>Historial de guardados ('+registrosDia().length+')</summary>'+
+    const anteriores = (api?.S.diarios || []).map(d=>({...d,tipo:'anterior',filas:[d]}));
+    const todos = ordenados([...registrosDia(),...anteriores]);
+    const entradas = todos.slice(0,15);
+    return '<details class="md-hist"><summary>Historial de guardados ('+todos.length+')</summary>'+
       (entradas.length ? '<div class="md-scroll"><table><thead><tr><th>Fecha</th><th>Guardado</th><th>Productos</th><th>Cuenta</th></tr></thead><tbody>'+
       entradas.map(r=>'<tr><td>'+E(r.dia)+'</td><td>'+new Date(r.creado).toLocaleString('es-AR')+
-        '</td><td>'+r.filas.length+'</td><td>'+E(r.autor||'Equipo')+'</td></tr>').join('')+
+        '</td><td>'+(r.tipo==='anterior'?'Anterior: '+E(r.nombre||'Producto'):r.filas.length+' productos')+'</td><td>'+E(r.autor||'Equipo')+'</td></tr>').join('')+
       '</tbody></table></div>' : '<p>Sin registros guardados todavía. Los próximos conteos conservarán su historial.</p>')+
       '</details>';
   };
