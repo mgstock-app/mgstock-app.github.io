@@ -17,12 +17,10 @@ test("la introducción GestLok aparece antes del login sin cambiar los accesos",
   assert.match(css, /visibility:hidden;pointer-events:none/);
 });
 
-test("la introducción respeta movimiento reducido y reaparece al volver a la PWA", () => {
+test("la introducción respeta movimiento reducido y no interrumpe al volver a la PWA", () => {
   const splash = read("components/gestlok-intro.tsx");
   const css = read("app/gestlok-intro.css");
-  assert.match(splash, /REPLAY_AFTER_BACKGROUND_MS = 45_000/);
-  assert.match(splash, /visibilitychange/);
-  assert.match(splash, /setOpening\(\(current\) => current \+ 1\)/);
+  assert.doesNotMatch(splash, /visibilitychange|setOpening|REPLAY_AFTER_BACKGROUND_MS/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(splash, /supabase|localStorage|sessionStorage|fetch\(/i);
 });
