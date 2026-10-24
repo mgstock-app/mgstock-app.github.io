@@ -93,9 +93,9 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], provHistorial:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, provBusy:false, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
@@ -180,7 +180,7 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
@@ -528,13 +528,13 @@ function proveedorFilas(nombre){
     const sugerido=stored.sugerido ?? (objetivo!=null && stock!=null ? Math.max(0,round(objetivo-stock)):null);
     return {
       id:'c:'+p.id,productoId:p.id,origen:'catalogo',
-      nombre:p.nombre||'',unidad:p.unidad||'unidad',
+      nombre:p.nombre||'',unidad:p.unidad||'unidad',categoria:catOf(p)||'General',
       stockLocal:stock,sugerido,pedir:stored.pedir??0
     };
   });
   for(const x of draft.items||[]){
     if(!x?.id || !x.nombre)continue;
-    filas.push({...x,origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
+    filas.push({...x,origen:'manual',categoria:x.categoria||'General',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
   }
   return filas;
 }
@@ -621,11 +621,12 @@ function agregarProductoProveedor(form){
   if(!canW() || !S.provOpen)return;
   const nombre=form.querySelector('#prov-item-name').value.trim().replace(/\s+/g,' ');
   const unidad=form.querySelector('#prov-item-unit').value.trim().slice(0,30)||'unidad';
+  const categoria=(form.querySelector('#prov-item-category')?.value||'General').trim().slice(0,70)||'General';
   if(!nombre || nombre.length>100){toast('Ingresá un nombre válido de producto.',true);return;}
   if(proveedorFilas(S.provOpen).some(x=>norm(x.nombre)===norm(nombre))){toast('Ese producto ya existe en esta carpeta.',true);return;}
   const id='m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const d=proveedorBase(S.provOpen);
-  d.items.push({id,nombre,unidad,stockLocal:null,pedir:0,sugerido:null});
+  d.items.push({id,nombre,unidad,categoria,stockLocal:null,pedir:0,sugerido:null});
   proveedorGuardarBorrador(S.provOpen);S.provAdding=false;render();toast('Producto agregado al borrador. Guardá la planilla.');
 }
 function quitarProductoProveedor(id){
@@ -655,15 +656,15 @@ function proveedorResumenHTML(nombre){
      <tbody>${rows.map(x=>`<tr><td>${esc(nombre)}</td><td>${esc(x.nombre)}</td><td><b>${fmt(x.pedir)}</b> ${esc(x.unidad)}</td></tr>`).join('')}</tbody>
      </table></div>` :
    '<p class="gl-prov-empty">Todavía no hay productos para pedir. Completá la columna <b>Pedir</b> y aparecerán automáticamente acá.</p>';
-  return `<div class="gl-provider-summary-head"><h3>Pedido listo para compartir</h3>
+  return `<div class="gl-provider-summary-head"><h3>Resumen del pedido</h3>
      <span class="gl-provider-count">${rows.length} ${rows.length===1?'producto':'productos'}</span></div>
-     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar en esta carpeta. Revisalos antes de compartir.' : 'El resumen se arma automáticamente con las cantidades de Pedir.'}</p>
+     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar. Tocá Guardar cuando tu lista esté lista.' : 'Lista guardada. Podés compartir el PDF o consultar el historial.'}</p>
      ${footer}
      <div id="prov-err" class="gl-prov-err" role="status"></div>
      <div class="bar-a">
-       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar lista y pedido</button>`:''}
-       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length?'disabled':''}>${ic('share')}Compartir por WhatsApp</button>`:''}
-       ${rows.length? `<button class="btn" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+       ${canW()? `<button class="btn primary" data-act="prov-save-plan" ${S.offline||S.provBusy?'disabled':''}>${ic('save')}Guardar</button>`:''}
+       ${esTotal()? `<button class="btn" data-act="prov-share" ${!rows.length||draft.dirty||draft.stale||!draft.base?'disabled':''}>${ic('share')}Enviar PDF por WhatsApp</button>`:''}
+       
      </div>
      ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
      ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
