@@ -3246,7 +3246,14 @@ function afterAccess(){
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
-  if (puedeVerDiarioMunro()) window.GestLokMunroDaily?.subscribe(loc,push);
+  if (puedeVerDiarioMunro()) {
+    window.GestLokMunroDaily?.subscribe(loc,push);
+    // El historial del formulario anterior queda disponible en modo consulta; no se borra.
+    push(C('diario').onSnapshot(mine(snap => {
+      S.diarios = snap.docs.map(d => ({id:d.id,...d.data()})).sort((a,b)=>(b.creado||0)-(a.creado||0));
+      if (S.view === 'diario') render();
+    }),errLive));
+  }
   push(C('vencimientos').onSnapshot(mine(snap => {
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
