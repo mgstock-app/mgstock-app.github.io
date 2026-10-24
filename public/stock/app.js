@@ -188,6 +188,7 @@ function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLo
 function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
 function misLocales(){ const e = miEquipo(); const l = e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
+const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
@@ -1149,7 +1150,7 @@ V.inicio = () => {
       </section>
       <section class="card pad"><div class="ch"><h4>Equipo</h4><span class="num">${equipoList().length}${isCreadora() && S.sol.length ? ` · ${S.sol.length} pendientes` : ''}</span></div>
         <div class="eq">${equipoRows(false)}</div>
-        <div class="bar-a" style="margin-top:12px"><button class="btn sm primary" data-act="share">${ic('userplus')}${isCreadora() ? 'Agregar o quitar' : 'Ver equipo'}</button></div>
+        <div class="bar-a" style="margin-top:12px"><button class="btn sm primary" data-act="share">${ic('userplus')}${puedeAdministrarEquipo() ? 'Agregar o quitar' : 'Ver equipo'}</button></div>
       </section>
     </div>
   </div>`;
@@ -1716,7 +1717,7 @@ const rolSelect = (attr, rol) => `<select class="rolsel" ${attr}><option value="
 function equipoRows(actions){
   if (S.db && !S.loaded.e) return `<p class="lead" style="margin:0">Cargando…</p>`;
   return equipoList().map(e => {
-    const r = ROL[ROLN(e.rol)] || ROL.gerente, confirm = actions && S.eqDel === e.id, edita = actions && isCreadora() && !fijo(e) && !e._local, id = esc(e.id);
+    const r = ROL[ROLN(e.rol)] || ROL.gerente, confirm = actions && S.eqDel === e.id, edita = actions && puedeAdministrarEquipo() && !fijo(e) && !e._local, id = esc(e.id);
     const info = edita
       ? `<div class="eq-ed">${rolSelect(`data-rolsel="${id}" aria-label="Rol de ${esc(e.email)}"`, e.rol)}${locChecks(`data-eqloc="${id}"`, e.locales || [], false)}</div>`
       : `<small><span class="pill ${r[1]}">${r[0]}</span><span class="eq-l">${esc(localesTxt(e))}</span></small>`;
@@ -1751,12 +1752,12 @@ async function rechazar(id){
   try { await w(() => S.db.collection('solicitudes').doc(id).delete()); toast(`Pedido de ${x ? x.email : 'acceso'} rechazado`); } catch(e){ fail(e); }
 }
 async function cambiarRol(id, rol){
-  if (!isCreadora()) return;
+  if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
   try { await w(() => S.db.collection('equipo').doc(id).update({rol})); toast(`${e.email}: ${rolLabel(rol)}`); } catch(err){ fail(err); }
 }
 async function cambiarLocales(id){
-  if (!isCreadora()) return;
+  if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
   const locales = checkedLocs(`data-eqloc="${CSS.escape(id)}"`);
   try { await w(() => S.db.collection('equipo').doc(id).update({locales})); toast(locales.length ? `${e.email}: ${locales.map(localNombre).join(' y ')}` : `${e.email} quedó sin local: no va a poder ver ninguna planilla`, !locales.length); } catch(err){ fail(err); }
@@ -1764,7 +1765,7 @@ async function cambiarLocales(id){
 function refreshShare(){ const l = $('#eq-list'); if (l) l.innerHTML = equipoRows(true); const sl = $('#sol-list'); if (sl) sl.innerHTML = solRows(); }
 function openShare(){
   S.panel = 'share'; S.eqDel = null;
-  const adm = isCreadora();
+  const adm = puedeAdministrarEquipo();
   openPanel(`<div class="pn-h"><div><small>GestLok</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
     <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
@@ -1783,7 +1784,7 @@ function openShare(){
 async function addEquipo(email, rol){
   email = email.trim().toLowerCase();
   if (!emailOK(email)){ toast('Revisá el email: falta el @ o el dominio.', true); return; }
-  if (!isCreadora()){ toast('Solo la administradora puede agregar personas al equipo.', true); return; }
+  if (!puedeAdministrarEquipo()){ toast('Solo la creadora o el dueño puede agregar personas al equipo.', true); return; }
   if (equipoList().some(e => String(e.email || '').toLowerCase() === email)){ toast('Ese email ya está en el equipo.'); return; }
   const locales = checkedLocs('data-newloc');
   if (!locales.length){ toast('Elegí al menos un local.', true); return; }
@@ -3117,7 +3118,7 @@ document.addEventListener('click', e => {
     case 'sol-no': rechazar(id); break;
     case 'eq-del': S.eqDel = id; $('#eq-list').innerHTML = equipoRows(true); break;
     case 'eq-del-no': S.eqDel = null; $('#eq-list').innerHTML = equipoRows(true); break;
-    case 'eq-del-ok': (async () => { if (!isCreadora()) return; try { await w(() => S.db.collection('equipo').doc(id).delete()); S.eqDel = null; toast('Quitado del equipo. Ya no puede entrar.'); } catch(err){ fail(err); } })(); break;
+    case 'eq-del-ok': (async () => { if (!puedeAdministrarEquipo()) return; try { await w(() => S.db.collection('equipo').doc(id).delete()); S.eqDel = null; toast('Quitado del equipo. Ya no puede entrar.'); } catch(err){ fail(err); } })(); break;
     case 'aj-tab': S.aj.tab = t.dataset.tab; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; renderAjustesBody(); break;
     case 'aj-edit': S.aj.editId = id; S.aj.delId = null; renderAjustesBody(); setTimeout(() => $('#ae-nombre')?.focus(), 20); break;
     case 'aj-del': S.aj.delId = id; S.aj.editId = null; renderAjustesBody(); break;
