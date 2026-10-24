@@ -341,7 +341,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos">${Math.min(99,S.unreadChat)}</span>` : ''}</button><button data-go="diario">${ic('clip')}<span class="nl">Control diario</span></button><button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${esTotal() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button><button data-go="diario">${ic('clip')}<span class="nl">Control diario</span></button><button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${esTotal() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -957,6 +957,11 @@ V.proveedores = () => {
   </section>`;
 };
 
+const CHAT_RETENTION_MS = 24 * 60 * 60 * 1000;
+const chatRecent = m => {
+  const ts = Number(m?.fecha);
+  return Number.isFinite(ts) && ts > 0 && ts > Date.now() - CHAT_RETENTION_MS;
+};
 const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
 /* Borradores y reintentos separados por cuenta y local. Nunca reenviar automáticamente. */
 const chatDraftKey = () => 'gestlok-chat-draft-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
@@ -970,12 +975,22 @@ function chatPending(){
 }
 function markChatRead(){
   if (!S.local || !S.uid) return;
-  const latest = Math.max(Date.now(),...S.chat.map(m=>Number(m.fecha)||0));
+  const latest = Date.now();
   lsSet(chatSeenKey(),latest);
   S.unreadChat = 0;
 }
+function refreshChatAges(){
+  const current = S.chat.filter(chatRecent);
+  if (current.length !== S.chat.length){
+    S.chat = current;
+    const since = Number(lsGet(chatSeenKey(), 0)) || 0;
+    S.unreadChat = current.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
+    if (S.view === 'chat') render();
+    else renderNav();
+  }
+}
 V.chat = () => {
-  const mensajes = S.chat.map(m => {
+  const mensajes = S.chat.filter(chatRecent).map(m => {
     const own = !!(m.autor && m.autor === S.uid);
     const ts = Number(m.fecha);
     const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
@@ -983,7 +998,7 @@ V.chat = () => {
   }).join('');
   const pending = chatPending();
   const puedeEnviar = canW() && !S.offline;
-  return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes no se mezclan con otros locales.</p>
+  return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes duran 24 horas y se eliminan automáticamente. Podés navegar por otras secciones y volver sin perder la conversación vigente.</p>
     <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
     ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>' : ''}
     ${pending ? '<p class="note warn">No pudimos confirmar el envío anterior. Reintentá el mismo mensaje; no se duplicará.</p>' : ''}
@@ -3246,17 +3261,15 @@ function subscribeLocal(){
     if(S.view === 'proveedores') render();
   }), errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
-    S.chat = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
-    const key = chatSeenKey();
-    const baseline = lsGet(key, null);
-    if (baseline == null) lsSet(key, Date.now());
+    S.chat = snap.docs.map(d => ({id:d.id, ...d.data()}))
+      .filter(chatRecent).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
+    // Lo leído se guarda por usuario y por sucursal, nunca por sección.
+    // La primera vez también debe mostrarse el punto si hay mensajes pendientes.
+    const since = Number(lsGet(chatSeenKey(), 0)) || 0;
     if (S.view === 'chat') markChatRead();
-    else {
-      const since = baseline == null ? Date.now() : baseline;
-      S.unreadChat = S.chat.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
-      renderNav();
-    }
+    else S.unreadChat = S.chat.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
     if (S.view === 'chat') render();
+    else renderNav();
   }), errLive));
   push(C('hojas').onSnapshot(mine(snap => {
     S.hojasDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
@@ -3331,6 +3344,7 @@ start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
   if (!S.panel && S.local) renderSavebar();
+  if (S.local) refreshChatAges();
   const today = window.GestLokUpdates?.todayISO?.() || '';
   if (today && today !== alertDay) {
     alertDay = today;
