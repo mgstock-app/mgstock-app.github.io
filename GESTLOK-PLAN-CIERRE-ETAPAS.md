@@ -50,6 +50,18 @@ Se ejecutan **smoke tests y regresiones en cada PR**, aunque el bloque completo 
 - La guía de ubicación para Claude se integró en [PR #21](https://github.com/mgstock-app/mgstock-app.github.io/pull/21).
 - El repositorio privado de respaldo técnico no es el repositorio para desarrollar la marca comercial. No copiar seeds, usuarios o material privado al código público.
 
+## Auditoría inicial de etapa 2 — sólo lectura (24/10/2026)
+
+Se verificó directamente el proyecto Supabase existente, **sin modificar datos ni permisos**:
+
+- La base pública tiene una sola tabla operativa `public.docs`, con clave compuesta `(col,id)`, contenido `jsonb` y **RLS activado**.
+- Las políticas `docs_leer`, `docs_crear`, `docs_editar`, `docs_borrar` combinan `mi_rol()`, `es_creadora()`, `puede_ver_local()` y `puede_editar_local()` con rutas de sucursal en `col`. **No usan una membresía por empresa o tenant.** Esto confirma que el primer trabajo es la arquitectura y las pruebas de aislamiento, no abrir nuevas cuentas comerciales.
+- El asesor de seguridad señala **10 funciones SECURITY DEFINER ejecutables por usuarios autenticados**; su ejecución puede ser deliberada para las políticas actuales. Revisar cada función, sus privilegios y el impacto antes de revocarlos. [Referencia oficial del aviso](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+- Se indicó también que está desactivada la detección de contraseñas filtradas. [Documentación del control](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+- Estos hallazgos **no prueban una filtración actual**. Sí demuestran que la autorización multiempresa todavía necesita diseño, implementación y pruebas específicas.
+
+**Próximo entregable técnico de etapa 2:** especificación y migración reversible `tenant_id` + `business_memberships` para todo el inventario, sin escritura en producción antes de respaldos y prueba en entorno aislado. Incorporar pruebas negativas por empresa, sucursal, chat y proveedor. No transformar `docs` destructivamente ni asignar todos los usuarios al mismo tenant por defecto.
+
 ## Reglas de implementación
 
 - Cada bloque en **rama nueva desde `main`** y pull request corto, con descripción, rollback, verificación y comparación con pruebas previas.
