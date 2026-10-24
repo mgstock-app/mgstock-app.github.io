@@ -222,6 +222,7 @@
     attach(ctx) { api=ctx; },
     config(data) { cfg=data && typeof data==='object'?data:null; },
     orders(local,rows) {ordersLocal=local;orders=Array.isArray(rows)?rows.slice().sort((a,b)=>(b.fecha||0)-(a.fecha||0)):[];},
-    mode: tipo, online, card, summary, view, etiqueta, configId, renderOwnerBadge
+    mode: tipo, online, card, summary, view, etiqueta, configId, renderOwnerBadge,
+    pendingCount: () => ordersLocal===api?.S?.local ? orders.filter(o=>o.estado==='nuevo'||o.estado==='preparando').length : 0
   });
 })();
