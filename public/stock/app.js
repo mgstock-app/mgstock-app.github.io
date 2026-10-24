@@ -971,7 +971,7 @@ function chatPending(){
   const p = lsGet(chatPendingKey(), null);
   return p && /^[a-z0-9]{10,40}$/.test(String(p.id || '')) &&
     typeof p.texto === 'string' && p.texto.length <= 1000 &&
-    p.autor === S.uid && p.local === S.local ? p : null;
+    p.autor === S.uid && p.local === S.local && chatRecent(p) ? p : null;
 }
 function markChatRead(){
   if (!S.local || !S.uid) return;
