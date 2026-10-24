@@ -23,6 +23,7 @@ export function StockRuntime() {
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
       await load("/stock/auth.js");
+      await load("/stock/gestlok-updates.js");
       await load("/stock/app.js");
     })();
     startup.catch(() => { if (active) setError(true); });
