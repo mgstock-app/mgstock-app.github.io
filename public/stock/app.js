@@ -99,7 +99,7 @@ const S = {
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
-  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false
+  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false
 };
 S.loaded.l = false;
 
@@ -188,6 +188,7 @@ function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLo
 function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
 function misLocales(){ const e = miEquipo(); const l = e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
+const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
@@ -1149,7 +1150,7 @@ V.inicio = () => {
       </section>
       <section class="card pad"><div class="ch"><h4>Equipo</h4><span class="num">${equipoList().length}${isCreadora() && S.sol.length ? ` · ${S.sol.length} pendientes` : ''}</span></div>
         <div class="eq">${equipoRows(false)}</div>
-        <div class="bar-a" style="margin-top:12px"><button class="btn sm primary" data-act="share">${ic('userplus')}${isCreadora() ? 'Agregar o quitar' : 'Ver equipo'}</button></div>
+        <div class="bar-a" style="margin-top:12px"><button class="btn sm primary" data-act="share">${ic('userplus')}${puedeAdministrarEquipo() ? 'Agregar o quitar' : 'Ver equipo'}</button></div>
       </section>
     </div>
   </div>`;
@@ -1716,7 +1717,7 @@ const rolSelect = (attr, rol) => `<select class="rolsel" ${attr}><option value="
 function equipoRows(actions){
   if (S.db && !S.loaded.e) return `<p class="lead" style="margin:0">Cargando…</p>`;
   return equipoList().map(e => {
-    const r = ROL[ROLN(e.rol)] || ROL.gerente, confirm = actions && S.eqDel === e.id, edita = actions && isCreadora() && !fijo(e) && !e._local, id = esc(e.id);
+    const r = ROL[ROLN(e.rol)] || ROL.gerente, confirm = actions && S.eqDel === e.id, edita = actions && puedeAdministrarEquipo() && !fijo(e) && !e._local, id = esc(e.id);
     const info = edita
       ? `<div class="eq-ed">${rolSelect(`data-rolsel="${id}" aria-label="Rol de ${esc(e.email)}"`, e.rol)}${locChecks(`data-eqloc="${id}"`, e.locales || [], false)}</div>`
       : `<small><span class="pill ${r[1]}">${r[0]}</span><span class="eq-l">${esc(localesTxt(e))}</span></small>`;
@@ -1751,12 +1752,12 @@ async function rechazar(id){
   try { await w(() => S.db.collection('solicitudes').doc(id).delete()); toast(`Pedido de ${x ? x.email : 'acceso'} rechazado`); } catch(e){ fail(e); }
 }
 async function cambiarRol(id, rol){
-  if (!isCreadora()) return;
+  if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
   try { await w(() => S.db.collection('equipo').doc(id).update({rol})); toast(`${e.email}: ${rolLabel(rol)}`); } catch(err){ fail(err); }
 }
 async function cambiarLocales(id){
-  if (!isCreadora()) return;
+  if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
   const locales = checkedLocs(`data-eqloc="${CSS.escape(id)}"`);
   try { await w(() => S.db.collection('equipo').doc(id).update({locales})); toast(locales.length ? `${e.email}: ${locales.map(localNombre).join(' y ')}` : `${e.email} quedó sin local: no va a poder ver ninguna planilla`, !locales.length); } catch(err){ fail(err); }
@@ -1764,7 +1765,7 @@ async function cambiarLocales(id){
 function refreshShare(){ const l = $('#eq-list'); if (l) l.innerHTML = equipoRows(true); const sl = $('#sol-list'); if (sl) sl.innerHTML = solRows(); }
 function openShare(){
   S.panel = 'share'; S.eqDel = null;
-  const adm = isCreadora();
+  const adm = puedeAdministrarEquipo();
   openPanel(`<div class="pn-h"><div><small>GestLok</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
     <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
@@ -1783,7 +1784,7 @@ function openShare(){
 async function addEquipo(email, rol){
   email = email.trim().toLowerCase();
   if (!emailOK(email)){ toast('Revisá el email: falta el @ o el dominio.', true); return; }
-  if (!isCreadora()){ toast('Solo la administradora puede agregar personas al equipo.', true); return; }
+  if (!puedeAdministrarEquipo()){ toast('Solo la creadora o el dueño puede agregar personas al equipo.', true); return; }
   if (equipoList().some(e => String(e.email || '').toLowerCase() === email)){ toast('Ese email ya está en el equipo.'); return; }
   const locales = checkedLocs('data-newloc');
   if (!locales.length){ toast('Elegí al menos un local.', true); return; }
@@ -1820,6 +1821,11 @@ function lcard(l){
 function renderHub(){
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  if (adm && listo && S.db && S.creatorSetup) {
+    const creatorHTML=window.GestLokCreator?.view() || '';
+    if(hub._h!==creatorHTML){hub.innerHTML=creatorHTML;hub._h=creatorHTML;}
+    return;
+  }
   if (adm && listo && S.db && S.demoTienda) {
     const demoHTML = window.GestLokDemo?.view() || '';
     if (hub._h !== demoHTML) { hub.innerHTML=demoHTML; hub._h=demoHTML; }
@@ -1869,6 +1875,11 @@ function renderHub(){
           <article><span>${ic('userplus')} Usuarios autorizados</span><strong>${usuarios.length}</strong><small>Miembros del equipo</small></article>
           <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
           <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
+        </section>
+        <section class="gl-admin-card gl-demo-launch" aria-label="Preparar una empresa">
+          <header><h2>Preparar empresa para un cliente</h2><small>Exclusivo de la creadora</small></header>
+          <p>Elegí física, online o mixta y dejá creados el local, las carpetas y el catálogo a partir de un CSV. Todo queda separado de las empresas existentes.</p>
+          <button class="btn primary" data-act="admin-preparar-empresa">Preparar empresa nueva →</button>
         </section>
         <section class="gl-admin-card gl-demo-launch" aria-label="Demo de gestión online">
           <header><h2>Explorar gestión de tienda online</h2><small>Ejemplo independiente · Sin crear empresas</small></header>
@@ -3021,6 +3032,7 @@ document.addEventListener('click', e => {
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
     case 'admin-locales': document.getElementById('gl-admin-locales')?.scrollIntoView({behavior:'smooth',block:'start'}); break;
+    case 'admin-preparar-empresa': if(isCreadora() && !S.local){ S.creatorSetup=true; window.GestLokCreator?.open(); } break;
     case 'admin-demo-online': if(isCreadora() && !S.local){ S.demoTienda=true; window.GestLokDemo?.reset(); renderHub(); window.scrollTo({top:0}); } break;
     case 'admin-demo-close': if(S.demoTienda){ S.demoTienda=false; renderHub(); window.scrollTo({top:0}); } break;
     case 'local': abrirLocal(id); break;
@@ -3106,7 +3118,7 @@ document.addEventListener('click', e => {
     case 'sol-no': rechazar(id); break;
     case 'eq-del': S.eqDel = id; $('#eq-list').innerHTML = equipoRows(true); break;
     case 'eq-del-no': S.eqDel = null; $('#eq-list').innerHTML = equipoRows(true); break;
-    case 'eq-del-ok': (async () => { if (!isCreadora()) return; try { await w(() => S.db.collection('equipo').doc(id).delete()); S.eqDel = null; toast('Quitado del equipo. Ya no puede entrar.'); } catch(err){ fail(err); } })(); break;
+    case 'eq-del-ok': (async () => { if (!puedeAdministrarEquipo()) return; try { await w(() => S.db.collection('equipo').doc(id).delete()); S.eqDel = null; toast('Quitado del equipo. Ya no puede entrar.'); } catch(err){ fail(err); } })(); break;
     case 'aj-tab': S.aj.tab = t.dataset.tab; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; renderAjustesBody(); break;
     case 'aj-edit': S.aj.editId = id; S.aj.delId = null; renderAjustesBody(); setTimeout(() => $('#ae-nombre')?.focus(), 20); break;
     case 'aj-del': S.aj.delId = id; S.aj.editId = null; renderAjustesBody(); break;
@@ -3412,6 +3424,7 @@ window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});
+window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {

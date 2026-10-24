@@ -4,7 +4,7 @@
 (() => {
   'use strict';
   let api = null;
-  const empty = local => ({local,loaded:false,loading:false,saving:false,workspace:null,items:[],editing:null,tab:'resumen',filter:'todos',q:'',error:''});
+  const empty = local => ({local,loaded:false,loading:false,saving:false,workspace:null,items:[],editing:null,tab:'resumen',filter:'todos',q:'',page:0,error:''});
   let state=empty(null);
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n)||0);
@@ -28,9 +28,16 @@
       if(a.error)throw a.error;
       let products=[];
       if(a.data){
-        const b=await sb.from('gestlok_productos_tienda').select('*').eq('tenant_id',tenant).eq('tienda_id',a.data.id).order('nombre');
-        if(b.error)throw b.error;
-        products=b.data||[];
+        // PostgREST limita los resultados de cada consulta. Recuperar por páginas
+        // evita mostrar sólo los primeros 1.000 artículos de una empresa grande.
+        for(let offset=0;offset<10000;offset+=300){
+          const b=await sb.from('gestlok_productos_tienda').select('*')
+            .eq('tenant_id',tenant).eq('tienda_id',a.data.id)
+            .order('nombre').order('id').range(offset,offset+299);
+          if(b.error)throw b.error;
+          products.push(...(b.data||[]));
+          if((b.data||[]).length<300)break;
+        }
       }
       if(local!==state.local)return;
       state.workspace=a.data||null;state.items=products;state.loaded=true;
@@ -59,7 +66,10 @@
     const q=state.q.toLocaleLowerCase('es').trim();
     const rows=state.items.filter(p => (state.filter==='todos'||(state.filter==='alertas' && shortage(p))||(state.filter==='activos'&&p.activo!==false)) &&
       (!q||[p.nombre,p.sku,p.categoria,p.proveedor,p.ubicacion].join(' ').toLocaleLowerCase('es').includes(q)));
-    return rows.length ? rows.map(p=>'<article class="gl-tienda-item">'+
+    const perPage=50, pages=Math.max(1,Math.ceil(rows.length/perPage));
+    state.page=Math.max(0,Math.min(state.page,pages-1));
+    state.visibleCount=rows.length;
+    return rows.length ? rows.slice(state.page*perPage,(state.page+1)*perPage).map(p=>'<article class="gl-tienda-item">'+
       '<span class="gl-tienda-placeholder" aria-hidden="true">📦</span><div><b>'+esc(p.nombre)+'</b><small>'+esc(p.sku||'Sin SKU')+' · '+esc(p.categoria)+' · '+esc(p.proveedor||'Sin proveedor')+'</small>'+
       '<small>Stock: '+esc(p.stock)+' '+esc(p.unidad||'unidad')+' · Mínimo: '+esc(p.minimo??0)+' · Precio ref.: '+money(p.precio)+'</small>'+
       (p.activo===false?'<small>Archivado</small>':shortage(p)?'<small class="gl-demo-critical">Reposición pendiente</small>':'<small>En control</small>')+'</div>'+
@@ -92,6 +102,9 @@
       '<div class="gl-demo-tools"><label>Buscar<input id="gl-tienda-search" type="search" placeholder="Producto, SKU o proveedor" value="'+esc(state.q)+'"></label>'+
       '<label>Ver<select id="gl-tienda-filter"><option value="todos" '+(state.filter==='todos'?'selected':'')+'>Todos</option><option value="activos" '+(state.filter==='activos'?'selected':'')+'>Activos</option><option value="alertas" '+(state.filter==='alertas'?'selected':'')+'>Con alerta</option></select></label></div>'+
       '<div class="gl-tienda-items" id="gl-tienda-list">'+productRows()+'</div>'+
+      '<div class="gl-demo-section-title" style="margin-top:15px"><small>'+state.visibleCount+' productos · Página '+(state.page+1)+' de '+Math.max(1,Math.ceil(state.visibleCount/50))+'</small>'+
+      '<div class="gl-tienda-actions"><button type="button" class="btn sm" data-gl-page="-1" '+(state.page===0?'disabled':'')+'>Anterior</button>'+
+      '<button type="button" class="btn sm" data-gl-page="1" '+((state.page+1)*50>=state.visibleCount?'disabled':'')+'>Siguiente</button></div></div>'+
       '<p class="note">Este stock de control es independiente del stock de las planillas generales. Los cambios se guardan solo en la sucursal autorizada.</p></section>'+
       productForm();
   }
@@ -179,9 +192,10 @@
   }
   document.addEventListener('submit',e=>{if(e.target.id==='gl-tienda-product-form'){e.preventDefault();saveProduct(e.target);}});
   document.addEventListener('click',e=>{
-    const t=e.target.closest('[data-gl-tab],[data-gl-create],[data-gl-refresh],[data-gl-edit],[data-gl-delete],[data-gl-cancel]');
+    const t=e.target.closest('[data-gl-tab],[data-gl-page],[data-gl-create],[data-gl-refresh],[data-gl-edit],[data-gl-delete],[data-gl-cancel]');
     if(!t)return;
     e.preventDefault();
+    if(t.hasAttribute('data-gl-page')){state.page+=Number(t.dataset.glPage)||0;render();return;}
     if(t.hasAttribute('data-gl-create')){createWorkspace();return;}
     if(t.hasAttribute('data-gl-refresh')){state.loaded=false;load(true);return;}
     if(t.hasAttribute('data-gl-delete')){removeProduct(t.dataset.glDelete);return;}
@@ -192,13 +206,13 @@
   });
   document.addEventListener('input',e=>{
     if(e.target.id!=='gl-tienda-search')return;
-    state.q=e.target.value;
+    state.q=e.target.value;state.page=0;
     const list=document.getElementById('gl-tienda-list');
     if(list)list.innerHTML=productRows();
   });
   document.addEventListener('change',e=>{
     if(e.target.id!=='gl-tienda-filter')return;
-    state.filter=e.target.value;render();
+    state.filter=e.target.value;state.page=0;render();
   });
   window.GestLokTienda=Object.freeze({attach(ctx){api=ctx;},view,reset(){state=empty(null);}});
 })();
