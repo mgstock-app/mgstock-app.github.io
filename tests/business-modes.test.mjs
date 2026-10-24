@@ -58,7 +58,7 @@ test('Online y mixta muestran pedidos por sucursal y conservan los registros al 
   api.orders('sucursal-centro',[{id:'p1',cliente:'Cliente ficticio',producto:'Cuaderno',cantidad:2,estado:'nuevo',canal:'web',fecha:1}]);
   assert.match(api.view(),/Cliente ficticio/);
   assert.match(api.summary(),/1 pedidos pendientes/);
-  assert.match(api.view(),/no modifica automáticamente el stock/);
+  assert.match(api.view(),/no descuenta stock automáticamente/);
   api.config({tipo:'fisica'});
   assert.equal(api.online(),false);
   api.config({tipo:'online'});
