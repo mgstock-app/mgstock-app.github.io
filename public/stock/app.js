@@ -481,6 +481,267 @@ async function guardarProveedor(f){
   } catch(e) { fail(e); if(btn.isConnected){btn.disabled=false;btn.textContent='Guardar ficha';} }
 }
 
+
+/* Hoja de proveedores: carpetas por local, borrador por persona y pedido confirmado por la dueña. */
+function proveedorNombres(){
+  const map=new Map(provs());
+  for (const ficha of S.provInfo) if (String(ficha.nombre||'').trim() && !map.has(ficha.nombre)) map.set(ficha.nombre,0);
+  return [...map].sort((a,b)=>a[0].localeCompare(b[0],'es'));
+}
+const proveedorDraftKey = nombre => 'gestlok-prov-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local + ':' + encodeURIComponent(proveedorId(nombre));
+function proveedorBase(nombre){
+  const ficha=proveedorFicha(nombre)||{};
+  const key=proveedorId(nombre);
+  if(!S.provDrafts[key]){
+    const version=Number(ficha.pedidoActualizado)||0;
+    const cached=lsGet(proveedorDraftKey(nombre),null);
+    const draft=cached && cached.base===version ? cached : {
+      base:version, items:Array.isArray(ficha.items)?ficha.items.map(it=>({...it})):[],
+      catalogo:{...(ficha.catalogo||{})},dirty:false,stale:!!(cached && cached.base!==version)
+    };
+    S.provDrafts[key]=draft;
+  }
+  return S.provDrafts[key];
+}
+function proveedorFilas(nombre){
+  const draft=proveedorBase(nombre);
+  const catalogo=S.allProds.filter(p=>provOf(p)===nombre).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  const filas=catalogo.map(p=>{
+    const stored=draft.catalogo[p.id]||{};
+    const stock=stored.stockLocal ?? stockOf(p);
+    const objetivo=sugOf(p) ?? minOf(p);
+    const sugerido=stored.sugerido ?? (objetivo!=null && stock!=null ? Math.max(0,round(objetivo-stock)):null);
+    return {
+      id:'c:'+p.id,productoId:p.id,origen:'catalogo',
+      nombre:p.nombre||'',unidad:p.unidad||'unidad',
+      stockLocal:stock,sugerido,pedir:stored.pedir??0
+    };
+  });
+  for(const x of draft.items||[]){
+    if(!x?.id || !x.nombre)continue;
+    filas.push({...x,origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
+  }
+  return filas;
+}
+const proveedorCantidad = valor => {
+  const txt=String(valor??'').trim();
+  if (!txt) return null;
+  if (!/^\d+(?:[.,]\d{1,2})?$/.test(txt))return NaN;
+  const n=Number(txt.replace(',','.'));
+  return Number.isFinite(n) && n<=1000000 ? n : NaN;
+};
+function proveedorGuardarBorrador(nombre){
+  const d=proveedorBase(nombre);
+  d.dirty=true;
+  lsSet(proveedorDraftKey(nombre),d);
+}
+function abrirCarpetaProveedor(nombre){
+  if(!proveedorNombres().some(([n])=>n===nombre))return;
+  S.provOpen=nombre;S.provAdding=false;
+  proveedorBase(nombre);
+  render();
+  document.querySelector('#prov-carpeta')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function actualizarValorProveedor(input){
+  if(!canW() || !S.provOpen)return;
+  const field=input.dataset.provVal,id=input.dataset.id;
+  if(!['stockLocal','pedir','sugerido'].includes(field))return;
+  const n=proveedorCantidad(input.value);
+  const invalid=Number.isNaN(n);
+  input.classList.toggle('bad',invalid);
+  if(invalid){
+    const error=document.getElementById('prov-err');
+    if(error)error.textContent='Revisá las cantidades: usá números positivos con hasta dos decimales.';
+    return;
+  }
+  const name=S.provOpen,d=proveedorBase(name),row=proveedorFilas(name).find(x=>x.id===id);
+  if(!row)return;
+  if(row.origen==='manual'){
+    const x=d.items.find(x=>x.id===row.id);if(x)x[field]=n;
+  }else{
+    const old=d.catalogo[row.productoId]||{};
+    d.catalogo[row.productoId]={
+      stockLocal:field==='stockLocal'?n:(old.stockLocal??row.stockLocal),
+      sugerido:field==='sugerido'?n:(old.sugerido??row.sugerido),
+      pedir:field==='pedir'?n:(old.pedir??row.pedir)
+    };
+  }
+  proveedorGuardarBorrador(name);
+  mostrarResumenProveedor();
+}
+function usarSugeridoProveedor(id){
+  if(!canW() || !S.provOpen)return;
+  const name=S.provOpen,row=proveedorFilas(name).find(x=>x.id===id);
+  if(!row || row.sugerido==null || Number(row.sugerido)<0)return;
+  const d=proveedorBase(name);
+  if(row.origen==='manual')d.items.find(x=>x.id===id).pedir=row.sugerido;
+  else d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),stockLocal:row.stockLocal,sugerido:row.sugerido,pedir:row.sugerido};
+  proveedorGuardarBorrador(name);render();
+}
+function nuevoProveedor(){
+  if(!canW() || S.offline){toast('Necesitás permiso de edición e internet.',true);return;}
+  S.panel='prov-new';
+  openPanel(`<div class="pn-h"><h3>Nueva carpeta de proveedor</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
+   <div class="pn-b"><form id="prov-create-form" class="frow">
+   <div class="fld"><label for="prov-new-name">Nombre del proveedor</label><input id="prov-new-name" maxlength="90" autocomplete="off" required placeholder="Ej.: Distribuidora Central"></div>
+   <button class="btn primary" type="submit">${ic('plus')}Crear carpeta</button></form></div>`,'dlg');
+}
+async function crearCarpetaProveedor(form){
+  if(!canW() || S.offline || !S.local)return;
+  const nombre=form.querySelector('#prov-new-name').value.trim().replace(/\s+/g,' ');
+  if(!nombre || nombre.length>90){toast('Ingresá un nombre de hasta 90 caracteres.',true);return;}
+  if(proveedorNombres().some(([n])=>proveedorId(n)===proveedorId(nombre))){toast('Ese proveedor ya tiene una carpeta.',true);return;}
+  const btn=form.querySelector('button[type="submit"]');btn.disabled=true;
+  const loc=S.local;
+  try{
+    const doc=C('proveedores').doc(proveedorId(nombre));
+    const check=await doc.get();
+    if(check.exists){toast('Ese proveedor ya existe.',true);return;}
+    await w(()=>doc.set({nombre,contacto:'',telefono:'',entrega:'',nota:'',items:[],catalogo:{},pedidoActualizado:0,actualizado:Date.now()}));
+    if(S.local!==loc)return;
+    closePanel();S.provOpen=nombre;render();toast('Carpeta creada. Agregá los productos.');
+  }catch(e){fail(e);}finally{if(btn.isConnected)btn.disabled=false;}
+}
+function agregarProductoProveedor(form){
+  if(!canW() || !S.provOpen)return;
+  const nombre=form.querySelector('#prov-item-name').value.trim().replace(/\s+/g,' ');
+  const unidad=form.querySelector('#prov-item-unit').value.trim().slice(0,30)||'unidad';
+  if(!nombre || nombre.length>100){toast('Ingresá un nombre válido de producto.',true);return;}
+  if(proveedorFilas(S.provOpen).some(x=>norm(x.nombre)===norm(nombre))){toast('Ese producto ya existe en esta carpeta.',true);return;}
+  const id='m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const d=proveedorBase(S.provOpen);
+  d.items.push({id,nombre,unidad,stockLocal:null,pedir:0,sugerido:null});
+  proveedorGuardarBorrador(S.provOpen);S.provAdding=false;render();toast('Producto agregado al borrador. Guardá la planilla.');
+}
+function quitarProductoProveedor(id){
+  if(!canW() || !S.provOpen)return;
+  const d=proveedorBase(S.provOpen);
+  d.items=d.items.filter(x=>x.id!==id);
+  proveedorGuardarBorrador(S.provOpen);render();
+}
+function proveedorSeleccionados(nombre){
+  return proveedorFilas(nombre).filter(x=>Number(x.pedir)>0 && Number.isFinite(Number(x.pedir)));
+}
+function pedidoProveedorTexto(nombre){
+  const pedidos=proveedorSeleccionados(nombre);
+  return [
+    'GESTLOK · PEDIDO A PROVEEDOR',
+    'Proveedor: '+nombre,'Local: '+localNombre(),'Fecha: '+fechaLarga(),
+    '',...pedidos.map(x=>'• '+x.nombre+' — '+fmt(x.pedir)+' '+x.unidad),
+    '', 'Productos: '+pedidos.length
+  ].join('\n');
+}
+function proveedorResumenHTML(nombre){
+  const rows=proveedorSeleccionados(nombre);
+  const draft=proveedorBase(nombre);
+  const footer=rows.length?
+   `<div class="gl-prov-table-wrap"><table class="gl-prov-summary-table">
+     <thead><tr><th>Proveedor</th><th>Producto</th><th>La dueña va a pedir</th></tr></thead>
+     <tbody>${rows.map(x=>`<tr><td>${esc(nombre)}</td><td>${esc(x.nombre)}</td><td><b>${fmt(x.pedir)}</b> ${esc(x.unidad)}</td></tr>`).join('')}</tbody>
+     </table></div>` :
+   '<p class="gl-prov-empty">Todavía no hay productos para pedir. Completá la columna <b>Pedir</b> y aparecerán automáticamente acá.</p>';
+  return `<div class="gl-provider-summary-head"><h3>Pedido listo para compartir</h3>
+     <span class="gl-provider-count">${rows.length} ${rows.length===1?'producto':'productos'}</span></div>
+     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar en esta carpeta. Revisalos antes de compartir.' : 'El resumen se arma automáticamente con las cantidades de Pedir.'}</p>
+     ${footer}
+     <div id="prov-err" class="gl-prov-err" role="status"></div>
+     <div class="bar-a">
+       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar lista y pedido</button>`:''}
+       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length?'disabled':''}>${ic('share')}Compartir por WhatsApp</button>`:''}
+       ${rows.length? `<button class="btn" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+     </div>
+     ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
+     ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
+}
+function mostrarResumenProveedor(){
+  if(!S.provOpen)return;
+  const wrap=document.getElementById('prov-resumen');
+  if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
+}
+async function guardarPlanProveedor(){
+  if(!canW() || S.offline || !S.db || !S.local || !S.provOpen){toast('Necesitás internet y permiso de edición para guardar.',true);return;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
+  const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
+  const btn=document.querySelector('[data-act="prov-save-plan"]');
+  if(btn)btn.disabled=true;
+  try{
+    const ref=C('proveedores').doc(proveedorId(nombre));
+    const snap=await ref.get();
+    const ver=snap.exists ? Number(snap.data()?.pedidoActualizado)||0 : 0;
+    if(ver!==d.base){
+      d.stale=true;
+      toast('Otra persona cambió este pedido. Copiá tu lista antes de recargar para evitar reemplazar sus datos.',true);
+      return;
+    }
+    const stamp=Date.now();
+    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},pedidoActualizado:stamp,pedidoPor:S.uid};
+    await w(()=>snap.exists ? ref.update(payload) : ref.set({nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''}));
+    if(local!==S.local)return;
+    delete S.provDrafts[proveedorId(nombre)];
+    try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
+    toast('Lista y pedido guardados sin cambiar el stock real.');
+  }catch(e){fail(e);}finally{if(btn?.isConnected)btn.disabled=false;}
+}
+function crearImagenPedido(nombre,productos,pagina,total){
+  const W=1000, H=310+productos.length*64;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)return Promise.reject(new Error('canvas'));
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0c2034';ctx.fillRect(0,0,W,150);
+  ctx.fillStyle='#ffffff';ctx.font='bold 40px Arial, sans-serif';ctx.fillText('GESTLOK',50,75);
+  ctx.font='22px Arial, sans-serif';ctx.fillText('PEDIDO A PROVEEDOR',50,112);
+  ctx.fillStyle='#14354b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText(nombre.slice(0,55),50,205);
+  ctx.font='18px Arial, sans-serif';ctx.fillText('Local: '+localNombre().slice(0,40)+'   |   '+hoyISO()+'   |   Página '+pagina+'/'+total,50,240);
+  ctx.fillStyle='#eff5f7';ctx.fillRect(42,263,W-84,42);
+  ctx.fillStyle='#17394f';ctx.font='bold 19px Arial, sans-serif';ctx.fillText('PRODUCTO',55,290);ctx.fillText('PEDIR',755,290);
+  ctx.font='19px Arial, sans-serif';
+  productos.forEach((p,i)=>{
+    const y=332+i*64;
+    if(i%2===0){ctx.fillStyle='#f6f9fb';ctx.fillRect(42,y-24,W-84,58);}
+    ctx.fillStyle='#1a364b';
+    const product=String(p.nombre).length>53?String(p.nombre).slice(0,50)+'…':String(p.nombre);
+    ctx.fillText(product,55,y,670);
+    ctx.font='bold 19px Arial, sans-serif';
+    ctx.fillText(fmt(p.pedir)+' '+String(p.unidad||'').slice(0,16),755,y,200);
+    ctx.font='19px Arial, sans-serif';
+  });
+  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('imagen')),'image/png'));
+}
+async function compartirPedidoProveedor(){
+  if(!esTotal() || !S.provOpen)return;
+  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
+  if(!rows.length){toast('Completá primero las cantidades de Pedir.',true);return;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de compartir.',true);return;}
+  const texto=pedidoProveedorTexto(nombre),telefono=telWa(proveedorFicha(nombre)?.telefono);
+  const wa='https://wa.me/'+telefono+'?text='+encodeURIComponent(texto);
+  if(!navigator.share){
+    window.open(wa,'_blank','noopener,noreferrer');
+    toast('WhatsApp abierto con el pedido escrito. Confirmá el envío.');
+    return;
+  }
+  const btn=document.querySelector('[data-act="prov-share"]');if(btn)btn.disabled=true;
+  try{
+    const chunks=[];for(let i=0;i<rows.length;i+=28)chunks.push(rows.slice(i,i+28));
+    const archivos=[];
+    for(let i=0;i<chunks.length;i++){
+      const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
+      archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
+    }
+    if(navigator.canShare?.({files:archivos})){
+      await navigator.share({title:'Pedido · '+nombre,text:texto,files:archivos});
+    }else{
+      await navigator.share({title:'Pedido · '+nombre,text:texto});
+      toast('Se compartió el texto. Este dispositivo no permite adjuntar la imagen automáticamente.');
+    }
+  }catch(e){
+    if(e?.name!=='AbortError'){
+      toast('No se pudo abrir Compartir. Usá Copiar pedido o WhatsApp.',true);
+    }
+  }finally{if(btn?.isConnected)btn.disabled=false;}
+}
+
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
    Cada confirmación es un registro nuevo, para conservar revisiones y autoría. */
 const diarioVal = v => {
