@@ -959,11 +959,21 @@ V.proveedores = () => {
   }).join('');
   const nombre=S.provOpen && lista.some(([n])=>n===S.provOpen)?S.provOpen:'';
   const draft=nombre?proveedorBase(nombre):null;
-  const rows=nombre?proveedorFilas(nombre):[];
-  const filaHTML=rows.map(p=>{
+  const rows=nombre?proveedorFilas(nombre).sort((a,b)=>
+    String(a.categoria||'General').localeCompare(String(b.categoria||'General'),'es')||
+    String(a.nombre||'').localeCompare(String(b.nombre||''),'es')):[];
+  const filaHTML=rows.map((p,index)=>{
+    const categoria=p.categoria||'General';
+    const encabezado=index===0||categoria!==(rows[index-1].categoria||'General')
+      ?'<tr class="gl-prov-category"><td colspan="4"><div class="gl-prov-category-head">'+
+        '<b>'+esc(categoria)+'</b>'+
+        (canW()?'<button class="btn sm" type="button" data-act="prov-zero-cat" data-cat="'+esc(categoria)+'">Poner en 0</button>'+
+          '<button class="btn sm" type="button" data-act="prov-save-plan">'+ic('save')+'Guardar</button>':'')+
+        '</div></td></tr>':'';
+
     const disabled=!canW()?'disabled':'';
     const manual=p.origen==='manual';
-    return `<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
+    return encabezado+`<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
         <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
         ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
       </td>
@@ -975,6 +985,16 @@ V.proveedores = () => {
       </td>`).join('')}
     </tr>`;
   }).join('');
+  const historial=nombre?S.provHistorial.filter(h=>h.proveedorId===proveedorId(nombre)).slice(0,60):[];
+  const historialHTML='<section class="gl-prov-history"><h3>Historial de pedidos</h3>'+
+    (historial.length?historial.map(h=>'<details class="gl-prov-history-entry">'+
+      '<summary><b>'+esc(new Date(h.fecha).toLocaleString('es-AR'))+'</b> · '+
+      plural(h.productosTotal||h.productos?.length||0,'producto','productos')+'</summary>'+
+      '<div class="gl-prov-history-body">'+
+      (Array.isArray(h.productos)?h.productos.map(x=>'<p>'+esc(x.nombre)+' · '+fmt(x.pedir)+' '+esc(x.unidad||'unidad')+'</p>').join(''):'')+
+      (esTotal()?'<button class="btn sm" data-act="prov-history-pdf" data-id="'+esc(h.id)+'">Exportar este PDF</button>':'')+
+      '</div></details>').join(''):'<p class="note">No hay pedidos finalizados todavía.</p>')+
+    '</section>';
   const details=nombre?`<section id="prov-carpeta" class="gl-prov-workspace card pad">
     <div class="gl-prov-workspace-head">
       <div><p class="eyebrow">Carpeta abierta · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2>
@@ -997,6 +1017,7 @@ V.proveedores = () => {
        <tbody>${filaHTML}</tbody>
       </table></div>`:'<p class="note">Esta carpeta está vacía. Agregá productos manualmente o asigná este proveedor a productos del catálogo.</p>'}
     <div id="prov-resumen" class="gl-prov-summary">${proveedorResumenHTML(nombre)}</div>
+    ${historialHTML}
     </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
   return `<section class="sheet gl-proveedores">
     <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
