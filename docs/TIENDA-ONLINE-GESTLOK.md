@@ -1,50 +1,45 @@
-# GestLok · tienda física, online o mixta
+# GestLok: organización administrativa para tiendas online y mixtas
 
-Actualizado: 24/10/2026. Alcance: evolución optativa, sin alterar ni copiar información de Mi Gusto/Gisela.
+**Decisión de producto (24/10/2026).** GestLok NO es un e-commerce, no vende productos a consumidores ni ofrece carrito/checkout. Organiza la operación interna de negocios que tienen ventas presenciales, online o mixtas en otras plataformas.
 
-## Reglas innegociables
+## Modalidades por empresa
+- **Física:** productos, stock, conteos, ingresos, proveedores, pedidos e historial de negocio presencial.
+- **Online:** gestión interna de catálogo, SKUs, categorías, stock de control, mínimos, proveedor, ubicación y precios de referencia, además de pedidos recibidos por WhatsApp, Instagram, marketplace o sitio externo.
+- **Mixta:** convivencia de administración presencial y seguimiento de pedidos online. El stock de control online es independiente del stock general por ahora; no prometer sincronización automática.
+- Sólo la dueña o creadora de la empresa cambia la modalidad. Por defecto es física. Los permisos se controlan en Supabase, por tenant y sucursal.
 
-1. La modalidad es **por empresa**: `fisica`, `online` o `mixta`. Solo la creadora o dueña de la empresa puede cambiarla. Valor por defecto: **fisica**; no crear modalidades en la base por cuenta propia.
-2. La configuración de la vidriera se administra **por sucursal**, con `tenant_id`, `local_id` y slug público único. Los productos se agrupan por tienda y tenant. La tabla `docs`, stock, conteos, pedidos a proveedor, historial, roles y todo el sistema anterior siguen intactos.
-3. Una tienda empieza `visible=false`; cada producto empieza `publicado=false`. Para aparecer públicamente se requiere modo `online` o `mixta` y activación explícita por la dueña.
-4. La dueña puede publicar y configurar; gerentes autorizados de la sucursal pueden editar los productos, pero no habilitar la vidriera. Ni usuarios sin autorización ni otras empresas pueden consultar registros privados.
-5. Nunca mostrar el logo privado de Mi Gusto en la tienda de un cliente. No asociar por rol ni copiar registros de Gisela.
-6. La tienda pública no concede lectura de inventario privado y nunca escribe a `docs`. Productos y precios online son independientes: sin descuentos automáticos ni reservas hasta implementar y probar transacciones.
-7. Para las compras por WhatsApp, el visitante revisa y envía manualmente el mensaje. No hay cobro online ni confirmación automática; el comercio confirma disponibilidad y entrega.
+## Demo exclusiva para la creadora
+En **Panel administrativo → Explorar gestión de tienda online → Ver demo de gestión online**.
 
-## Primera fase incluida en el PR
+La demo no crea empresas, sucursales ni productos en Supabase. No tiene llamadas a la base; los registros inventados se guardan solo en memoria de la pestaña mientras la demo está abierta. Se puede cambiar stock, añadir productos ficticios, actualizar estados de pedidos, consultar categorías, proveedores y reportes simulados, reiniciar o volver al panel administrativo. Debe quedar bloqueada para gerentes, dueños de empresas y usuarios sin rol creadora.
 
-- Modalidad física/online/mixta existente y menú condicionado por empresa.
-- Nueva sección **Mi tienda** para cada sucursal online/mixta.
-- Configuración de nombre, descripción, enlace único, WhatsApp y dirección; retiro y envío a coordinar.
-- Catálogo comercial: productos, categorías, SKU, foto por URL HTTPS, descripción, precio, precio anterior, cantidad disponible, destacado, publicado/oculto.
-- Vidriera pública responsive: búsqueda, filtro por categoría, orden por precio, carrito, límite de unidades por stock del catálogo, total estimado.
-- Checkout sin pago: envío voluntario por WhatsApp con detalle y dirección según método de entrega.
-- RLS por tenant/sucursal y separación de políticas anónimas vs. autenticadas.
-- Suite de tests y Cypress sobre datos completamente ficticios.
+## Gestión real para empresas con modalidad online o mixta
+Menú del local → **Mi tienda** (panel interno):
+- Crear **espacio de gestión privado** por sucursal, sin publicar nada.
+- Registrar productos con SKU, nombre, categoría, proveedor, precio de referencia, costo, stock, unidad, ubicación, stock mínimo y notas.
+- Editar, archivar y retirar productos, buscar y filtrar por alertas.
+- Ver indicadores internos y faltantes.
+- Gestionar pedidos que el comercio recibió **por otro canal**, en la hoja **Pedidos online**. El comercio carga y cambia los estados manualmente.
+- RLS por empresa y sucursal. Gerentes autorizados editan productos; dueña/creadora habilita el espacio.
+- No descuenta automáticamente ventas del inventario ni modifica Conteo diario Munro ni su histórico.
 
-## Diferencia importante entre esta fase y una tienda transaccional completa
+## Ventas públicas retiradas
+- Rutas `public/tienda.html` y `public/stock/tienda-publica.js` retiradas.
+- Políticas de lectura pública de `gestlok_tiendas` y `gestlok_productos_tienda` deshabilitadas.
+- Rol anónimo sin permisos de lectura.
+- Restricciones de base de datos impiden `visible=true` y `publicado=true`.
+- La antigua tabla `gestlok_tiendas` pasa a usarse como espacio privado de organización, y `gestlok_productos_tienda` como catálogo privado. No se borran tablas ni registros.
+- Ninguna migración sobrescribe `public.docs`, el equipo, las planillas, el chat o información histórica de Gisela.
+- La cuenta de Gisela sigue con modalidad **física por defecto** mientras no se cambie expresamente.
 
-El checkout público **no crea automáticamente un pedido** en el módulo de pedidos online interno. El dueño debe registrar/confirmar manualmente las ventas recibidas por WhatsApp. La aplicación no descuenta stock físico ni comercial automáticamente, no procesa pagos y no garantiza reserva. No anunciar estas funciones como entregadas.
+## Pruebas de aceptación
+1. La creadora abre demo y cambia cantidades o pedidos; no aparecen escrituras en Supabase ni cambia el conteo de registros reales.
+2. Gerente/lectura no ve el acceso a demo.
+3. La página pública de tienda deja de existir: no hay compras desde GestLok.
+4. La empresa con modalidad online tiene panel de gestión y pedidos, no tienda para compradores.
+5. Dos empresas y sucursales distintas no comparten documentos ni productos; prueba con sesiones reales antes de incorporar clientes.
+6. La dueña Gisela conserva su empresa y todo el stock, Conteo Diario Munro, proveedores, usuarios y registros anteriores.
+7. Validar lint, tests, build, Cypress aislado y comportamiento Android/iPhone; no llamar finalizada la prueba integral general solo por aprobar estos tests.
 
-## Pendientes para una tienda online completa (segunda fase)
-
-1. Pedidos públicos seguros en backend, con protección antiabuso, idempotencia, historial de estados y asignación al local.
-2. Descuento y reserva de stock **transaccionales** para modalidad mixta, control de concurrencia entre ventas físicas y web y política de agotados.
-3. Integración optativa de pagos mediante proveedor elegido por cada dueño (por ejemplo Mercado Pago); webhook firmado en servidor, reembolsos, comprobantes, conciliación y protección de datos. No guardar tarjetas ni secretos en la PWA.
-4. Envíos: zonas, costos, opciones de reparto, retiro, seguimiento y notificaciones al cliente con consentimiento.
-5. Promociones/cupones y políticas comerciales (devoluciones, costos y plazos), con validación por empresa.
-6. Gestión de clientes, búsqueda e historial de órdenes con permisos y minimización de datos.
-7. Panel de ventas, impuestos/comprobantes según obligaciones vigentes, reportes por canal, producto y sucursal.
-8. SEO, identidad de marca de cada tienda, personalización avanzada y dominio propio opcional.
-9. Imágenes con subida segura a Storage, transformación y cuotas por empresa, además de validación de tamaño/tipo.
-10. Pruebas integrales de permisos cruzados reales (dos empresas), responsive Android/iOS, accesibilidad, Cypress, actualizaciones offline/PWA y respaldo de datos; fase 12 final cuando corresponda.
-
-## Pruebas de no regresión
-
-- Mi Gusto sigue en modo `fisica` si la dueña no lo modifica.
-- No hay tiendas comerciales ni productos publicados por defecto.
-- Contador de `public.docs`, productos y conteos histórico antes/después de la migración permanece igual.
-- Usuario de un tenant no puede modificar o ver catálogos privados de otro.
-- Anónimo ve únicamente tiendas visibles y productos publicados cuando empresa está en `online`/`mixta`.
-- Ningún checkout público envía nada sin la intervención de la persona, ni cobra o afecta inventario.
+## Futuras mejoras administrativas (no implementadas)
+Automatizar importación de pedidos desde plataformas externas cuando ellas lo permitan, vincular inventario real y movimientos con auditoría transaccional, gestionar devoluciones, costos y rentabilidad, y exportar informes a Excel/PDF, manteniendo el alcance **solo administrativo**.

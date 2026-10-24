@@ -16,8 +16,7 @@ export default function Home() {
         <a href={`${basePath}/almacenamiento.html`}>Cookies y almacenamiento</a>
       </nav>
       <style>{`
-        .stock-legal-nav { display:none; position:fixed; left:12px; bottom:78px; z-index:55;
-          display:flex; flex-wrap:wrap; gap:12px; padding:7px 10px; max-width:calc(100vw - 24px);
+        .stock-legal-nav { display:none; position:fixed; left:12px; bottom:78px; z-index:55; flex-wrap:wrap; gap:12px; padding:7px 10px; max-width:calc(100vw - 24px);
           border:1px solid #d7dfe9; border-radius:9px; background:rgba(255,255,255,.97);
           box-shadow:0 3px 14px #17243a22; font:500 11px/1.5 system-ui,sans-serif; }
         .stock-legal-nav a { color:#25476b; text-decoration:underline; text-underline-offset:2px; }
