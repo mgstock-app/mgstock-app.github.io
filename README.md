@@ -2,6 +2,8 @@
 
 **Aplicación publicada:** https://mgstock-app.github.io/ — marca pública GestLok. El repositorio conserva un nombre técnico histórico para no romper instalaciones existentes.
 
+**¿Venís de Claude o Codex y buscás GESTLOK, antes MG Stock?** Empezá por [GESTLOK-GUIA-PARA-CLAUDE.md](GESTLOK-GUIA-PARA-CLAUDE.md): URL, rama actual, historial de PR, funciones implementadas y límites de seguridad.
+
 Precauciones del relanzamiento: [GESTLOK-SEGURIDAD-Y-DESPLIEGUE.md](GESTLOK-SEGURIDAD-Y-DESPLIEGUE.md). Estado de publicación y pendientes: [CONTINUAR-PUBLICACION.md](CONTINUAR-PUBLICACION.md). Historial técnico: [ESTADO-MGSTOCK.md](ESTADO-MGSTOCK.md).
 
 ## Ejecutar
