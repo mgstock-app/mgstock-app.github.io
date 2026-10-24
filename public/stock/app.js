@@ -95,7 +95,7 @@ const S = {
   loaded:{p:false, c:false, e:false, f:false, h:false},
   allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
@@ -463,7 +463,7 @@ function editarProveedor(nombre){
 async function guardarProveedor(f){
   if (!S.db || !S.local || !canW() || S.offline){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
   const nombre = f.dataset.name, local = S.local;
-  if (!nombre || !S.allProds.some(p=>provOf(p)===nombre)){toast('El proveedor ya no está asignado a este local.',true);return;}
+  if (!nombre || (!S.allProds.some(p=>provOf(p)===nombre) && !proveedorFicha(nombre))){toast('El proveedor no existe en este local.',true);return;}
   const contacto = f.querySelector('#prov-contact').value.trim();
   const telefono = f.querySelector('#prov-phone').value.trim();
   const entrega = f.querySelector('#prov-delivery').value.trim();
@@ -472,7 +472,10 @@ async function guardarProveedor(f){
   const btn = f.querySelector('button[type="submit"]');
   btn.disabled = true; btn.textContent = 'Guardando…';
   try{
-    await w(() => C('proveedores').doc(proveedorId(nombre)).set({nombre,contacto,telefono,entrega,nota,actualizado:Date.now()}));
+    const ref=C('proveedores').doc(proveedorId(nombre));
+    const snap=await ref.get();
+    const payload={nombre,contacto,telefono,entrega,nota,actualizado:Date.now()};
+    await w(() => snap.exists ? ref.update(payload) : ref.set(payload));
     if (S.local !== local) return;
     closePanel(); toast('Ficha del proveedor guardada');
   } catch(e) { fail(e); if(btn.isConnected){btn.disabled=false;btn.textContent='Guardar ficha';} }
@@ -2013,7 +2016,7 @@ function dragEnd(){
 }
 document.addEventListener('pointerup', dragEnd);
 document.addEventListener('pointercancel', dragEnd);
-document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } });
+document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } if(e.target.matches('[data-prov-val]')) actualizarValorProveedor(e.target); });
 document.addEventListener('keydown', e => {
   const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   e.preventDefault();
@@ -2544,6 +2547,14 @@ document.addEventListener('click', e => {
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
     case 'diario-nuevo': diarioNuevo(); break;
+    case 'prov-new': nuevoProveedor(); break;
+    case 'prov-open': abrirCarpetaProveedor(t.dataset.name); break;
+    case 'prov-close': S.provOpen = ''; S.provAdding = false; render(); break;
+    case 'prov-add-open': S.provAdding = true; render(); break;
+    case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
+    case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
+    case 'prov-save-plan': guardarPlanProveedor(); break;
+    case 'prov-share': compartirPedidoProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo y pegalo en WhatsApp.'); break;
     case 'ajustes': openAjustes(); break;
@@ -2715,7 +2726,9 @@ document.addEventListener('focusout', e => {
 });
 document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
-  if (f.id === 'diario-form') guardarDiario(f);
+  if (f.id === 'prov-create-form') crearCarpetaProveedor(f);
+  else if (f.id === 'prov-add-form') agregarProductoProveedor(f);
+  else if (f.id === 'diario-form') guardarDiario(f);
   else if (f.id === 'prov-form') guardarProveedor(f);
   else if (f.id === 'gestlok-chat-form') sendGestlokChat(f);
   else if (f.id === 'eq-form') addEquipo($('#eq-email').value, $('#eq-rol').value);
@@ -2847,7 +2860,7 @@ function abrirLocal(id){
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.unreadChat = 0;
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
