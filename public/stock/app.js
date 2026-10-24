@@ -937,10 +937,8 @@ V.proveedores = () => {
   const carpetas=lista.map(([nombre])=>{
     const ficha=proveedorFicha(nombre)||{};
     const pendientes=S.allProds.filter(p=>provOf(p)===nombre && alerta(p));
-    const telefono=telWa(ficha.telefono);
     const rows=proveedorFilas(nombre);
     const porPedir=rows.filter(x=>Number(x.pedir)>0).length;
-    const wa=telefono?'https://wa.me/'+telefono+'?text='+encodeURIComponent(porPedir?pedidoProveedorTexto(nombre):'Hola, quisiera hacer un pedido para '+localNombre()):'';
     const meta=[ficha.contacto,ficha.entrega].filter(Boolean);
     const abierto=S.provOpen===nombre;
     return `<article class="card pad gl-provider-card ${abierto?'is-open':''}">
@@ -955,8 +953,6 @@ V.proveedores = () => {
       ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
         <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
-        ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
-        ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
         ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
     </article>`;
@@ -988,11 +984,12 @@ V.proveedores = () => {
     ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
     <div class="gl-prov-toolbar">
       <b>Lista de productos</b>
-      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button>`:''}
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar</button>`:''}
     </div>
     ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
       <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
       <div class="fld"><label for="prov-item-unit">Unidad</label><input id="prov-item-unit" maxlength="30" placeholder="kg, caja, unidad"></div>
+      <div class="fld"><label for="prov-item-category">Categoría</label><input id="prov-item-category" maxlength="70" value="General" placeholder="Ej.: Lácteos"></div>
       <button class="btn primary" type="submit">Agregar a la lista</button>
     </form>`:''}
     ${rows.length?`<div class="gl-prov-table-scroll"><table class="gl-prov-table">
@@ -1003,7 +1000,7 @@ V.proveedores = () => {
     </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
   return `<section class="sheet gl-proveedores">
     <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
-    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y compartilos por WhatsApp como imagen desde tu dispositivo.</p></div>
+    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y guardalos en GestLok y compartí exclusivamente el PDF por WhatsApp.</p></div>
     ${canW()?`<button class="btn primary" data-act="prov-new">${ic('plus')}Crear proveedor</button>`:''}
     </div>
     ${!S.loaded.p?loadingList():`<div class="gl-provider-grid">${carpetas||'<div class="card pad">Todavía no hay proveedores. Creá una carpeta para comenzar.</div>'}</div>`}
@@ -3064,10 +3061,14 @@ document.addEventListener('click', e => {
     case 'prov-add-open': S.provAdding = true; render(); break;
     case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
     case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
-    case 'prov-save-plan': guardarPlanProveedor(); break;
+    case 'prov-save-plan': confirmarGuardarProveedor(); break;
+    case 'prov-save-draft': guardarPlanProveedor(false); break;
+    case 'prov-save-history': guardarPlanProveedor(true); break;
+    case 'prov-zero-cat': ponerEnCeroProveedorCategoria(t.dataset.cat); break;
+    case 'prov-history-pdf': compartirPedidoProveedor(t.dataset.id); break;
+    case 'prov-download-pdf': descargarPdfProveedor(); break;
     case 'prov-share': compartirPedidoProveedor(); break;
     case 'prov-share-ready': enviarProveedorPreparado(); break;
-    case 'prov-copy-image': copiarImagenProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
@@ -3372,6 +3373,10 @@ function subscribeLocal(){
     S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
     if(S.view === 'proveedores') render();
   }), errLive));
+  push(C('proveedores_historial').orderBy('fecha','desc').limit(200).onSnapshot(mine(snap => {
+    S.provHistorial=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(S.view==='proveedores')render();
+  }),errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
     S.chat = snap.docs.map(d => ({id:d.id, ...d.data()}))
       .filter(chatRecent).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
@@ -3418,7 +3423,7 @@ function abrirLocal(id){
     if (S.local) cerrarLocal();
     S.local = id;
     window.GestLokMunroDaily?.reset();
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
