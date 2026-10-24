@@ -1625,3 +1625,6 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
  .gl-home-essential-links{grid-template-columns:1fr}
 }
 @media print{.gl-home-essential-links,.gl-home-essential-settings{display:none!important}}
+
+.gl-home-essential-tools{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0}
+.gl-home-essential-tools .btn{min-height:37px}
