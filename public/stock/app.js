@@ -870,7 +870,7 @@ V.proveedores = () => {
       ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
         <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
-        ${porPedir?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+        ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
         ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
         ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
@@ -2834,6 +2834,8 @@ function backup(){
       ...S.diarios.map(d => [d.dia||'',d.nombre||'',d.unidad||'',n0(d.inicio),n0(d.ingresos),n0(d.ventas),n0(d.consumo),n0(d.merma),n0(d.ajustes),n0(d.esperado),n0(d.final),n0(d.diferencia),d.nota||'',d.autor||'',fechaHora(d.creado)])]},
     {name:'Proveedores', rows:[['Proveedor','Contacto','Teléfono','Entrega','Observaciones'],
       ...S.provInfo.map(p=>[p.nombre||'',p.contacto||'',p.telefono||'',p.entrega||'',p.nota||''])]},
+    {name:'Pedidos por proveedor', rows:[['Proveedor','Producto','Unidad','Stock local (planilla)','Pedir','Sugerido'],
+      ...proveedorNombres().flatMap(([nombre])=>proveedorFilas(nombre).map(p=>[nombre,p.nombre,p.unidad,n0(p.stockLocal),n0(p.pedir),n0(p.sugerido)]))]},
     {name:'Hojas', rows:[['Hoja','Tipo','En el menú','Orden'], ...hojas().map(h => [h.nombre, h.base ? 'Fija' : TIPOS[h.tipo].nombre, h.oculta ? 'No' : 'Sí', h.orden])]},
     {name:'Equipo', rows:[['Email','Acceso'], ...equipoList().map(e => [e.email, (ROL[e.rol] || ROL.editor)[0]])]}
   ]);
