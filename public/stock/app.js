@@ -1189,11 +1189,14 @@ function inicioOperativo(){
     tarjeta('Para pedir',pedidoItems().length,'Productos bajo mínimo',pedidos?'pedido':'proveedores'),
     tarjeta('Sin contar',estados.nc,'Sin cantidad registrada','stock','nc')
   ];
-  const modo=miRol()==='dueno'&&window.GestLokCommerce?.card?.()
-    ? `<details class="gl-home-essential-settings">
-        <summary>Configuración del negocio</summary>
-        ${window.GestLokCommerce.card()}
-       </details>`:'';
+  const opciones=`<details class="gl-home-essential-settings">
+    <summary>Más herramientas</summary>
+    <div class="gl-home-essential-tools">
+      <button class="btn sm" data-act="share">${ic('userplus')}Equipo</button>
+      ${S.dl&&S.db?`<button class="btn sm" data-act="backup">${ic('shield')}Copia de seguridad</button>`:''}
+    </div>
+    ${miRol()==='dueno'?window.GestLokCommerce?.card?.()||'':''}
+  </details>`;
   return `${banners()}
     <div class="gl-home-essential" aria-label="Inicio del local">
       <header class="gl-home-essential-head">
@@ -1221,7 +1224,7 @@ function inicioOperativo(){
             </button>`).join('')}
         </div>
       </section>
-      ${modo}
+      ${opciones}
     </div>`;
 }
 
