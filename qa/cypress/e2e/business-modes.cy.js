@@ -28,6 +28,7 @@ describe('GestLok: tienda física, online y mixta',()=>{
     openLocal('munro');
     cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#gl-store-mode-owner').prev('#live').should('exist');
+    cy.get('#view .gl-home-essential-settings summary').click();
     cy.get('#view .gl-commerce-choice[data-commerce-mode="online"]').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda online');
     cy.get('#snav [data-go="pedidos-online"]').should('exist').click();
@@ -46,9 +47,11 @@ describe('GestLok: tienda física, online y mixta',()=>{
     cy.get('#snav [data-go="pedidos-online"]').click();
     cy.get('#view').should('contain.text','Pedido de prueba');
     cy.get('#snav [data-go="inicio"]').click();
+    cy.get('#view .gl-home-essential-settings summary').click();
     cy.get('#view .gl-commerce-choice[data-commerce-mode="fisica"]').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#snav [data-go="pedidos-online"]').should('not.exist');
+    cy.get('#view .gl-home-essential-settings summary').click();
     cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda mixta');
     cy.get('#snav [data-go="pedidos-online"]').should('exist');
