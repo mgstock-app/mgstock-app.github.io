@@ -14,7 +14,7 @@ test('Conteo diario solo se habilita para la creadora y gerentes de Munro', () =
   assert.match(app, /miRol\(\) === 'gerente' && misLocales\(\)\.includes\('munro'\)/);
   assert.match(app, /\$\{puedeVerDiarioMunro\(\) \? \`<button data-go="diario"/);
   assert.match(app, /v === 'diario' && puedeVerDiarioMunro\(\)/);
-  assert.doesNotMatch(app, /push\(C\('diario'\)\.onSnapshot/);
+  assert.match(app, /if \(puedeVerDiarioMunro\(\)\) \{[\s\S]*push\(C\('diario'\)\.onSnapshot/);
 });
 
 test('Tablero Munro usa datos iniciales de la captura, historial acumulativo y no modifica stock general', () => {
