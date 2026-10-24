@@ -3227,13 +3227,21 @@ function subscribeGlobal(){
     S.localesDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
     S.loaded.l = true; afterAccess(); onSnapRefresh();
   }, errLive);
+  let previousCommerceMode = 'fisica';
   S.db.collection('configuracion_negocio').onSnapshot(snap => {
     const configId = window.GestLokCommerce?.configId();
     const c = configId ? snap.docs.find(d => d.id === configId) : null;
     window.GestLokCommerce?.config(c ? c.data() : null);
-    if ((S.view === 'pedidos-online' && !window.GestLokCommerce?.online()) || (window.GestLokCommerce?.mode() === 'online' && (S.view === 'ingreso' || esFabT(tipoVista(S.view))))) S.view='inicio';
+    const mode = window.GestLokCommerce?.mode() || 'fisica';
+    // The adapter polls periodically: an unchanged result must never erase an active form.
+    if (mode === previousCommerceMode) return;
+    previousCommerceMode = mode;
+    if ((S.view === 'pedidos-online' && mode === 'fisica') || (mode === 'online' && (S.view === 'ingreso' || esFabT(tipoVista(S.view))))) S.view='inicio';
     onSnapRefresh();
-  }, () => { window.GestLokCommerce?.config(null); onSnapRefresh(); });
+  }, () => {
+    window.GestLokCommerce?.config(null);
+    if (previousCommerceMode !== 'fisica') { previousCommerceMode = 'fisica'; onSnapRefresh(); }
+  });
 }
 /* Resumen de cada local para la pantalla Locales */
 function subscribeHub(id){
@@ -3275,8 +3283,14 @@ function subscribeLocal(){
     S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'avisos') render();
   }), () => {}));
+  let lastOnlineOrders = '';
   push(C('pedidos_online').onSnapshot(mine(snap => {
-    window.GestLokCommerce?.orders(loc, snap.docs.map(d => ({id:d.id, ...d.data()})));
+    const rows = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    const signature = JSON.stringify(rows);
+    // No rerender for the same data returned by a periodic Supabase poll.
+    if (signature === lastOnlineOrders) return;
+    lastOnlineOrders = signature;
+    window.GestLokCommerce?.orders(loc, rows);
     if (S.view === 'pedidos-online' || S.view === 'inicio') render();
   }), errLive));
   push(C('proveedores').onSnapshot(mine(snap => {
