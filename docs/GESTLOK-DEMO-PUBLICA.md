@@ -25,3 +25,7 @@
 
 ## Alcances y pendientes
 Esta primera versión reutiliza las pantallas principales y módulos actuales, y simula sus entidades estándar. Algunas operaciones especializadas que dependan de RPCs no simuladas (por ejemplo, importar mercadería del servidor) mostrarán que no están habilitadas. La cobertura funcional se ampliará por módulo, siempre sin crear datos reales.
+
+## Estadísticas de uso (etapa 1, octubre de 2026)
+La persona que visita la demo puede aceptar o rechazar estadísticas opcionales. Si acepta, el único contacto real con Supabase durante su recorrido es una llamada a `gestlok_demo_registrar`, que guarda UUID aleatorio por sesión, roles y tiendas ficticias visitadas. No registra nombres, emails, IP, datos comerciales ni productos. La Creadora consulta `gestlok_demo_resumen`, que retorna solo agregados: sesiones, roles, ambos roles, tiendas y primeros ingresos en los últimos 7 días. El contador es de sesiones voluntariamente registradas, no personas únicas. Rechazar no impide explorar.
+No se habilita aún ninguna captura de datos de contacto; se definirá en una siguiente etapa.
