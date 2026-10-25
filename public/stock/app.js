@@ -1175,7 +1175,7 @@ function resumenHojasInicio(){
 function openOwnerNotifications(){
   if(miRol()!=='dueno'||S.view!=='inicio'||!S.local)return;
   S.panel='owner-notifications';
-  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · Dueña</small><h3 id="gl-owner-notifications-title">Notificaciones</h3></div><button class="ib" data-act="close" aria-label="Cerrar notificaciones">${ic('x')}</button></div><div class="pn-b gl-owner-notif-body"><div class="gl-owner-notif-empty">${ic('bell')}<b>Notificaciones</b><p>Este espacio está preparado. Próximamente vas a poder configurar qué avisos querés recibir.</p></div></div>`,'drawer');
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · Dueña</small><h3 id="gl-owner-notifications-title">Notificaciones</h3></div><button class="ib" data-act="close" aria-label="Cerrar notificaciones">${ic('x')}</button></div><div class="pn-b gl-owner-notif-body"><div class="gl-owner-notif-empty">${ic('bell')}<b>Notificaciones</b><p>Este espacio está preparado para las notificaciones de tu negocio.</p></div>${window.GestLokPush?.drawerContent?.()||''}</div>`,'drawer');
   $('#pn').setAttribute('aria-labelledby','gl-owner-notifications-title');
   $('#pn [data-act="close"]')?.focus({preventScroll:true});
 }
@@ -1241,6 +1241,7 @@ function inicioOperativo(){
           <p>Lo importante para trabajar hoy.</p></div>
         ${miRol()==='dueno'?`<button type="button" class="gl-owner-notif-trigger" data-act="owner-notifications" aria-haspopup="dialog">${ic('bell')}<span>Notificaciones</span>${ic('chev')}</button>`:''}
       </header>
+      ${miRol()==='dueno'?(window.GestLokPush?.homePrompt?.()||''):''}
       ${!S.loaded.p?'<p class="note">Cargando información del local…</p>':''}
       ${S.loaded.p&&!total&&canW()?`<div class="gl-home-essential-setup">
         <span>Este local todavía no tiene productos cargados.</span>
@@ -3643,6 +3644,7 @@ function start(){
   }
 }
 window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
+window.GestLokPush?.attach({S,render,miRol:()=>miRol()});
 window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
