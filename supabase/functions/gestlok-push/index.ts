@@ -98,7 +98,7 @@ async function dispatch(){
    try {
      await webpush.sendNotification({endpoint:device.endpoint,
        keys:{auth:device.auth_key,p256dh:device.p256dh_key}},
-       JSON.stringify({title:evt.title,body:evt.body,path:"/",tag:String(evt.category)+":"+evt.id}),{
+       JSON.stringify({title:evt.title,body:evt.body,path:"/",local:evt.local_id,view:evt.path,tag:String(evt.category)+":"+evt.id}),{
        TTL:3600,urgency:evt.category==="urgent_chat"?"high":"normal"});
      delivered++;
      await admin.from("gestlok_push_deliveries").update({delivered_at:new Date().toISOString(),last_error:null})
