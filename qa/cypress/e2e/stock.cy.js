@@ -45,9 +45,10 @@ describe("MG Stock: navegación, permisos y stock aislados", () => {
   it("el dueño entra a Torcuato y guarda un conteo sin afectar Munro", () => {
     signIn("dueno@example.com");
     cy.get("#hub").should("be.visible");
-    cy.get(".lcard h2").should("contain.text", "Munro");
-    cy.get(".lcard h2").should("contain.text", "Torcuato");
-    cy.get('.lcard [data-act="local"][data-id="torcuato"]').click();
+    cy.get(".gl-owner-business .gl-owner-arrow").click();
+    cy.get("#pn .lcard h2").should("contain.text", "Munro");
+    cy.get("#pn .lcard h2").should("contain.text", "Torcuato");
+    cy.get('#pn .lcard [data-act="local"][data-id="torcuato"]').click();
     cy.get("#brand-local").should("contain.text", "Torcuato");
     cy.get('#snav [data-go="stock"]').click();
     cy.get("#inc-p-002").click();

@@ -1,4 +1,5 @@
 /* global Cypress, describe, it, cy */
+import { abrirLocal } from '../helpers/abrir-local';
 function start(){
  cy.task('mockSupabase').then(mock=>cy.intercept('GET','**/vendor/supabase.js',{
   statusCode:200,headers:{'content-type':'application/javascript'},body:mock
@@ -19,7 +20,7 @@ describe('GestLok · Inicio limpio y esencial',()=>{
  });
  it('Dueño en celular: sólo tres métricas, acciones y herramientas ocultas',()=>{
   cy.viewport(390,844);start();login('dueno@example.com');
-  cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+  abrirLocal('munro');
   cy.get('#view .gl-home-essential').should('be.visible').within(()=>{
    cy.contains('Inicio · Munro').should('be.visible');
    cy.get('.gl-home-essential-stat').should('have.length',3);

@@ -1,4 +1,5 @@
 /* global Cypress, describe, beforeEach, it, cy, expect */
+import { abrirLocal } from '../helpers/abrir-local';
 // Recorrido ampliado de GestLok. Todo el backend se reemplaza por Supabase falso,
 // las pruebas NO consultan ni modifican los locales de producción.
 const login = email => {
@@ -7,7 +8,7 @@ const login = email => {
   cy.get('#au-in button[type="submit"]').click();
 };
 const owner = () => login("dueno@example.com");
-const toLocal = loc => cy.get(`#hub [data-act="local"][data-id="${loc}"]`).first().click();
+const toLocal = loc => abrirLocal(loc);
 
 describe("GestLok: auditoría de recorridos, perfiles y sincronización local", () => {
   Cypress.on("uncaught:exception", error => {

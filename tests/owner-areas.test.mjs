@@ -13,7 +13,7 @@ function load(data=context(),error=null){
 test('Inicio cierra el acceso mientras verifica; solo muestra áreas operativas autorizadas',async()=>{
  const a=load();assert.equal(a.allowed('comercial'),false);await a.refresh();
  const html=a.view([{id:'local-a'},{id:'local-ajeno'}],l=>`<b>${l.id}</b>`);
- assert.match(html,/Administrar <span>mi empresa<\/span>/);assert.match(html,/local-a<\/b>/);
+ assert.match(html,/Administrar <span>mi empresa<\/span>/);
  assert.doesNotMatch(html,/Administrar <span>a los empleados|data-owner-area-staff|Próximamente|local-ajeno/);
  assert.match(html,/Bienvenido\/a a/);assert.match(html,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
 });
@@ -70,6 +70,63 @@ test('Empleados solo aparece cuando el backend lo autoriza y está operativo; lo
  const html=a.view([{id:'local-a'}],l=>`<b>${l.id}</b>`);
  assert.match(html,/Administrar <span>a los empleados<\/span>/);assert.match(html,/data-owner-area-staff/);
  assert.match(html,/Administrar <span>mi empresa<\/span>/);assert.match(html,/img\/mi-gusto-blanco\.png/);
+ assert.match(html,/gl-owner-welcome-logo/);
+ assert.match(a.header(),/Empanadas de verdad/);
+ assert.match(a.header(),/gl-oh-brand-company/);
  const sinLogo=context();sinLogo.modules.recibos_personal={authorized:true,operational:true};
  const b=load(sinLogo);await b.refresh();assert.doesNotMatch(b.view([],()=>''),/mi-gusto/);
+});
+
+function loadUI(data=context(),extra={}){
+ const listeners={},panels=[],nodes={};
+ const pn={innerHTML:'',contains:()=>false,setAttribute(){},querySelector:()=>null};
+ const document={addEventListener(n,f){listeners[n]=f;},getElementById:id=>id==='pn'?pn:null,activeElement:null,baseURI:'https://example.test/stock/'};
+ const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data,error:null})},...(extra.window||{})};
+ vm.runInNewContext(source,{window,document,location:{assign:u=>{nodes.assigned=u;}},URL});
+ const api=window.GestLokOwnerAreas,S={loaded:{e:true},me:{tenant_id:'tenant-a',email:'ana.perez@example.com'},equipo:[{email:'ana.perez@example.com',nombre:'<b>Ana</b> María'}],panel:null};
+ const calls=[];
+ api.attach({role:()=> 'dueno',S,render(){calls.push('render');},openPanel(html,k){panels.push({html,k});},closePanel(){S.panel=null;calls.push('close');},
+  hubStats:id=>({loaded:true,n:10,sin:id==='local-a'?2:0,bajo:1,nc:3,ped:id==='local-a'?3:0,last:null}),ic:n=>'['+n+']',rolLabel:()=> 'Dueño',openShare(){calls.push('share');},openLocal:id=>calls.push('local:'+id),toast:m=>calls.push('toast:'+m),...(extra.ctx||{})});
+ const click=sel=>{const target={closest:q=>q===sel.q?sel.el:null};listeners.click({target,preventDefault(){}});};
+ const nav=k=>listeners.click({target:{closest:q=>q==='[data-owner-nav]'?{dataset:{ownerNav:k}}:null},preventDefault(){}});
+ return {api,S,panels,calls,nav,nodes,listeners,pn};
+}
+test('Cabecera: saludo con el nombre escapado, rol y aviso de stock solo si hay productos para pedir',async()=>{
+ const t=loadUI();await t.api.refresh();t.api.view([{id:'local-a',nombre:'A'},{id:'local-b',nombre:'B'}],()=> '');
+ const h=t.api.header();
+ assert.match(h,/Hola, &lt;b&gt;ana/);assert.doesNotMatch(h,/<b>ana<\/b>/);assert.match(h,/Dueño/);
+ assert.match(h,/data-owner-nav="menu"/);assert.match(h,/data-owner-nav="bell"/);assert.match(h,/gl-oh-dot/);
+ const t2=loadUI(context(),{ctx:{hubStats:()=>({loaded:true,n:5,sin:0,bajo:0,nc:0,ped:0,last:null})}});await t2.api.refresh();t2.api.view([{id:'local-a',nombre:'A'}],()=> '');
+ assert.doesNotMatch(t2.api.header(),/gl-oh-dot/);
+});
+test('Accesos generales: cuatro botones reales y soporte con enlace solo si hay número configurado',async()=>{
+ const t=loadUI();await t.api.refresh();
+ let html=t.api.view([],()=> '');
+ for(const k of ['reports','account','settings','support'])assert.match(html,new RegExp('data-owner-nav="'+k+'"'));
+ const t2=loadUI(context(),{window:{GestLokSupport:{link:()=> 'https://wa.me/5491100000000?text=hola'}}});await t2.api.refresh();
+ html=t2.api.view([],()=> '');assert.match(html,/href="https:\/\/wa\.me\/5491100000000/);assert.match(html,/rel="noopener noreferrer"/);assert.doesNotMatch(html,/data-owner-nav="support"/);
+});
+test('Paneles: el selector y los reportes solo incluyen locales autorizados; los textos se escapan',async()=>{
+ const t=loadUI();await t.api.refresh();
+ t.api.view([{id:'local-a',nombre:'Munro <i>'},{id:'local-ajeno',nombre:'Ajeno'}],l=>'<article data-id="'+l.id+'"></article>');
+ t.nav('reports');const rep=t.panels.at(-1).html;
+ assert.match(rep,/Munro &lt;i&gt;/);assert.doesNotMatch(rep,/Ajeno|<i>/);assert.doesNotMatch(rep,/data-owner-area-staff/);
+ t.nav('business');assert.equal(t.calls.includes('local:local-a'),true,'con un solo local entra directo');
+ const t2=loadUI(context());await t2.api.refresh();
+ const d=context();d.local_ids=['local-a','local-b'];const t3=loadUI(d);await t3.api.refresh();
+ t3.api.view([{id:'local-a',nombre:'A'},{id:'local-b',nombre:'B'},{id:'local-ajeno',nombre:'X'}],l=>'<article data-id="'+l.id+'"></article>');
+ t3.nav('business');const pick=t3.panels.at(-1).html;assert.match(pick,/data-id="local-a"/);assert.match(pick,/data-id="local-b"/);assert.doesNotMatch(pick,/local-ajeno/);
+ t3.nav('account');const acc=t3.panels.at(-1).html;assert.match(acc,/ana\.perez@example\.com/);assert.match(acc,/data-au="out"/);
+ t3.nav('support');assert.ok(t3.calls.some(c=>String(c).startsWith('toast:El soporte')));
+});
+test('Empleados: solo se ofrece y se abre con el módulo autorizado',async()=>{
+ const d=context();d.modules.recibos_personal={authorized:true,operational:true};
+ const t=loadUI(d);await t.api.refresh();
+ const html=t.api.view([],()=> '');assert.match(html,/data-owner-area-staff/);assert.match(html,/Administrar <span>a los empleados<\/span>/);
+ t.nav('staff');assert.match(String(t.nodes.assigned),/empleados\/$/);
+ const off=loadUI();await off.api.refresh();off.nav('staff');assert.equal(off.nodes.assigned,undefined);
+});
+test('Un visitante o gerente no obtiene cabecera ni navegación de dueño',async()=>{
+ const t=loadUI(context(),{ctx:{role:()=> 'gerente'}});await t.api.refresh();
+ assert.equal(t.api.header(),'');t.nav('reports');assert.equal(t.panels.length,0);
 });
