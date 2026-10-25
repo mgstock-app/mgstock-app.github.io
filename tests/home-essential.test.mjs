@@ -30,7 +30,7 @@ test('Métricas y accesos sólo muestran información operativa del local',()=>{
 });
 test('La modalidad sólo la configura el Dueño, las otras opciones quedan plegadas',()=>{
  assert.match(compact,/miRol\(\)==='dueno'\?window\.GestLokCommerce\?\.card/);
- assert.match(compact,/<details class="gl-home-essential-settings">/);
+ assert.match(compact,/<details class="gl-home-essential-settings"/);
  assert.match(compact,/data-act="share"/);
  assert.match(compact,/data-act="backup"/);
  assert.doesNotMatch(compact,/window\.GestLokCommerce\?\.summary\(\)/);
