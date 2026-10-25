@@ -24,6 +24,21 @@
     box.hidden = false; document.documentElement.classList.add('auth-on');
     const m = $('#au-msg'); m.textContent = msg || ''; m.className = 'au-msg' + (err ? ' err' : '') + (msg ? '' : ' empty');
     box.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== mode; });
+    // Visible solo para visitantes que todavía no tienen sesión activa.
+    // No pide correo ni contraseña y nunca se conecta a datos empresariales.
+    if(mode==='in' && !$('#au-demo-link')){
+      const form=$('#au-in');
+      if(form){
+        const link=document.createElement('a');
+        link.id='au-demo-link'; link.className='gl-visitor-entry';
+        link.href=location.pathname+'?demo=1';
+        link.textContent='Explorar demo interactiva · Sin registrarme';
+        const info=document.createElement('small');
+        info.className='gl-visitor-entry-info';
+        info.textContent='Probá Dueña y Gerente en dos tiendas ficticias. Sin modificar datos reales.';
+        form.append(link,info);
+      }
+    }
     const f = box.querySelector(`[data-mode="${mode}"] input`); if (f) setTimeout(() => f.focus(), 30);
   }
   function hide(){ const box = $('#auth'); if (box){ box.hidden = true; } document.documentElement.classList.remove('auth-on'); }
