@@ -1,4 +1,5 @@
 /* global describe, beforeEach, it, cy, Cypress */
+import { abrirLocal } from '../helpers/abrir-local';
 // Ingreso de mercadería con datos y archivos ficticios: el simulador reemplaza a Supabase.
 // Los remitos solo cargan la columna Ingreso de las hojas «Local + Ingreso».
 const SETUP = (w) => {
@@ -55,7 +56,7 @@ describe("MG Stock: Ingreso de mercadería", () => {
 
   it("la dueña ingresa en Torcuato: suma a Ingreso, elige la hoja y no toca otras hojas ni Munro", () => {
     signIn("dueno@example.com");
-    cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+    abrirLocal('munro');
     cy.get('#snav [data-go="ingreso"]').click();
     cy.get("#ing-loc-torcuato").click();
     cy.get("#ing-op-ingreso").click();
@@ -83,7 +84,7 @@ describe("MG Stock: Ingreso de mercadería", () => {
 
   it("avisa si el archivo ya se importó, cancelar no guarda nada y la hoja muestra el stock real", () => {
     signIn("dueno@example.com");
-    cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+    abrirLocal('munro');
     cy.get('#snav [data-go="ingreso"]').click();
     cy.get("#ing-loc-munro").click();
     cy.get("#ing-op-ingreso").click();

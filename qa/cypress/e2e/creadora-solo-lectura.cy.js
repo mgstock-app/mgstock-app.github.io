@@ -1,4 +1,5 @@
 /* global Cypress, cy, describe, it */
+import { abrirLocal } from '../helpers/abrir-local';
 // Panel de creadora: consulta en solo lectura por defecto; la edición se habilita con motivo y por tiempo limitado.
 function login(email) {
   cy.task('mockSupabase').then(body => cy.intercept('GET', '**/vendor/supabase.js', { statusCode: 200, headers: { 'content-type': 'application/javascript' }, body }).as('fake'));
@@ -30,7 +31,7 @@ describe('Creadora: solo lectura por defecto', () => {
   });
   it('la dueña sigue editando como siempre y no ve el aviso de la creadora', () => {
     login('dueno@example.com');
-    cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+    abrirLocal('munro');
     cy.get('#snav').should('be.visible');
     cy.get('.gl-creator-mode').should('not.exist');
     cy.get('#me').should('not.contain.text', 'Solo ver');
