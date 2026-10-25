@@ -56,7 +56,15 @@ async function dispatch(){
   .select("public_key,private_jwk").eq("id",1).single();
  if(keysError||!config?.public_key||!config.private_jwk?.privateKey)
   return json(503,{ok:false,error:"Claves push no configuradas"});
- webpush.setVapidDetails(SITE,config.public_key,String(config.private_jwk.privateKey));
+ // La clave privada se guardó históricamente como JWK JSON, no como d base64url.
+ let privateKey="";
+ try{
+  const raw=String(config.private_jwk.privateKey);
+  privateKey=raw.startsWith("{")?String(JSON.parse(raw).d||""):raw;
+ }catch{return json(503,{ok:false,error:"Clave push inválida"});}
+ if(!/^[A-Za-z0-9_-]{43}$/.test(privateKey))
+  return json(503,{ok:false,error:"Clave push inválida"});
+ webpush.setVapidDetails(SITE,config.public_key,privateKey);
  const {data:events,error:eventsError}=await admin.from("gestlok_push_events")
   .select("id,tenant_id,local_id,category,title,body,path")
   .is("delivered_at",null).not("category","is",null)
