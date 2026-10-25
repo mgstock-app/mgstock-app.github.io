@@ -86,6 +86,7 @@ create function public.gestlok_creator_registration_requests()
 returns jsonb language plpgsql stable security definer set search_path=''
 as $$
 begin
+ perform gestlok_platform.registration_email();
  if auth.uid() is null or not exists(select 1 from gestlok_platform.admins a where a.user_id=auth.uid()) then
   raise exception 'Acceso exclusivo de la creadora' using errcode='42501';
  end if;
@@ -103,6 +104,7 @@ create function public.gestlok_review_registration(p_user uuid,p_status text)
 returns void language plpgsql security definer set search_path=''
 as $$
 begin
+ perform gestlok_platform.registration_email();
  if auth.uid() is null or not exists(select 1 from gestlok_platform.admins a where a.user_id=auth.uid()) then
   raise exception 'Acceso exclusivo de la creadora' using errcode='42501';
  end if;
