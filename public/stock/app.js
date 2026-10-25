@@ -689,44 +689,62 @@ async function guardarPlanProveedor(historico=false){
   const btn=document.querySelector('[data-act="prov-save-draft"],[data-act="prov-save-history"]');
   S.provBusy=true;if(btn)btn.disabled=true;
   try{
-    const ref=C('proveedores').doc(proveedorId(nombre));
-    const snap=await ref.get();
-    const ver=snap.exists?Number(snap.data()?.pedidoActualizado)||0:0;
-    if(ver!==d.base){
-      d.stale=true;
-      toast('Otro usuario cambió el pedido. Copiá tus datos antes de recargar para no pisar sus cambios.',true);
-      return;
-    }
-    const stamp=Date.now();
     const seleccionados=proveedorSeleccionados(nombre).map(x=>({
-      nombre:x.nombre,unidad:x.unidad,categoria:x.categoria||'General',pedir:x.pedir
+      nombre:x.nombre,unidad:x.unidad,categoria:x.categoria||'General',pedir:x.pedir,
+      proveedor:nombre
     }));
     const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},
-      pedidoActualizado:stamp,pedidoPor:S.uid};
-    await w(()=>snap.exists?ref.update(payload):ref.set({
-      nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''
-    }));
-    if(S.local!==local)return;
+      pedidoPor:S.uid};
+    let stamp,historialId='';
+    if(historico && seleccionados.length){
+      // El backend ya dispone de esta RPC. Guarda lista e historial en una única
+      // transacción, con control de versión y las políticas RLS del local/empresa.
+      const sb=window.GestLokSupabase;
+      if(!sb?.rpc)throw new Error('No está disponible el guardado seguro. Actualizá GestLok.');
+      const {data,error}=await sb.rpc('gestlok_proveedor_guardar_historial',{
+        p_local:local,p_proveedor_id:proveedorId(nombre),p_version:Number(d.base)||0,
+        p_items:payload.items,p_catalogo:payload.catalogo,p_productos:seleccionados
+      });
+      if(error)throw error;
+      stamp=Number(data?.pedidoActualizado);
+      historialId=String(data?.historialId||'');
+      if(!Number.isSafeInteger(stamp)||stamp<=0||!historialId)
+        throw new Error('No se pudo verificar la confirmación del historial. Recargá antes de repetir.');
+    }else{
+      // Guardar una lista sin finalizar no agrega pedidos al historial.
+      const ref=C('proveedores').doc(proveedorId(nombre));
+      const snap=await ref.get();
+      const ver=snap.exists?Number(snap.data()?.pedidoActualizado)||0:0;
+      if(ver!==d.base){
+        d.stale=true;
+        toast('Otro usuario cambió el pedido. Copiá tus datos antes de recargar para no pisar sus cambios.',true);
+        return;
+      }
+      stamp=Math.max(Date.now(),d.base+1);
+      await w(()=>snap.exists?ref.update({...payload,pedidoActualizado:stamp}):ref.set({
+        nombre,...payload,pedidoActualizado:stamp,contacto:'',telefono:'',entrega:'',nota:''
+      }));
+    }
+    if(S.local!==local||S.provOpen!==nombre)return;
+    const confirmed={...payload,pedidoActualizado:stamp};
     const ficha=proveedorFicha(nombre);
-    if(ficha)Object.assign(ficha,payload);
-    else S.provInfo.push({id:proveedorId(nombre),nombre,...payload});
+    if(ficha)Object.assign(ficha,confirmed);
+    else S.provInfo.push({id:proveedorId(nombre),nombre,...confirmed});
     d.base=stamp;d.dirty=false;d.stale=false;
     try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
-    if(historico&&seleccionados.length){
-      try{
-        await w(()=>C('proveedores_historial').add({
-          proveedor:nombre,proveedorId:proveedorId(nombre),local,
-          fecha:stamp,autor:S.uid,productos:seleccionados,
-          productosTotal:seleccionados.length,version:stamp
-        }));
-        toast('Pedido guardado en el historial. Podés exportarlo en PDF.');
-      }catch(e){
-        toast('La lista se guardó, pero falló el historial. Comprobá tu conexión antes de repetir.',true);
-      }
+    if(historialId){
+      S.provHistorial=[{
+        id:historialId,proveedor:nombre,proveedorId:proveedorId(nombre),local,
+        fecha:stamp,autor:S.uid,productos:seleccionados,
+        productosTotal:seleccionados.length,version:stamp
+      },...S.provHistorial.filter(x=>x.id!==historialId)];
+      toast('Pedido y lista guardados juntos en el historial. Podés exportar el PDF.');
     }else toast('Lista guardada en GestLok. Podés seguir editándola o exportar su PDF.');
     closePanel();render();
-  }catch(e){fail(e);}
-  finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
+  }catch(e){
+    if(/otro usuario|actualiz[oó]|recarg/i.test(String(e?.message||'')))d.stale=true;
+    fail(e);
+  }finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
 }
 function confirmarGuardarProveedor(){
   if(!canW()||!S.provOpen||S.offline||S.provBusy){
