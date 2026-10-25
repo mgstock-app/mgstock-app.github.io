@@ -18,7 +18,7 @@ const isoAfter=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);
 const money=n=>Math.round(n*100)/100;
 let selectedShop=SHOPS[params.get('shop')]?params.get('shop'):'mercado';
 let selectedRole=roles[params.get('role')]?params.get('role'):'dueno';
-let readOnly=true, ready=false, state, changes=new Map();
+let ready=false, state;
 const email='visitante.'+selectedRole+'@demo.invalid';
 const tenant='demo-empresa-'+selectedShop;
 const teamId=email;
@@ -256,6 +256,29 @@ const sb=Object.freeze({
      map.set(p.categoria,prev);
    }
    return {data:[...map.values()].sort((x,y)=>x.categoria.localeCompare(y.categoria,'es')).slice(0,200),error:null};
+  }
+  if(name==='gestlok_proveedor_guardar_historial'){
+   if(!args||args.p_local!==selectedShop || !String(args.p_proveedor_id||'').startsWith('p-'))
+     return {data:null,error:{message:'Carpeta ficticia inválida'}};
+   const col=selectedShop+'/proveedores',hist=selectedShop+'/proveedores_historial';
+   const entry=collection(col)[args.p_proveedor_id];
+   const current=Number(entry?.pedidoActualizado||0),expected=Number(args.p_version||0);
+   if(current!==expected)return {data:null,error:{message:'La lista ficticia cambió: revisala antes de guardar'}};
+   if(!Array.isArray(args.p_productos)||!args.p_productos.length)
+     return {data:null,error:{message:'No hay productos ficticios seleccionados'}};
+   const version=Math.max(Date.now(),current+1),historialId=uid();
+   collection(col)[args.p_proveedor_id]={
+    ...(entry||{nombre:args.p_productos[0].proveedor||'Proveedor de ejemplo'}),
+    items:clone(args.p_items||[]),catalogo:clone(args.p_catalogo||{}),
+    pedidoActualizado:version,pedidoPor:email
+   };
+   collection(hist)[historialId]={
+    proveedorId:args.p_proveedor_id,proveedor:collection(col)[args.p_proveedor_id].nombre,
+    fecha:version,productos:clone(args.p_productos),productosTotal:args.p_productos.length,
+    local:selectedShop,autor:email
+   };
+   save();notify(col);notify(hist);
+   return {data:{pedidoActualizado:version,historialId},error:null};
   }
   throw Error('El módulo nuevo requiere simulación de datos ficticios');
  }
