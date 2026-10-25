@@ -54,8 +54,11 @@ describe('GestLok: tienda física, online y mixta',()=>{
     cy.get('#view .gl-commerce-choice[data-commerce-mode="fisica"]').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#snav [data-go="pedidos-online"]').should('not.exist');
+    // Tras guardar, el panel se vuelve a renderizar y se pliega: esperar
+    // ese segundo render antes de abrirlo otra vez para cambiar a mixta.
+    cy.get('#view .gl-home-essential-settings').should('not.have.attr','open');
     mostrarHerramientas();
-    cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').click();
+    cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').should('be.visible').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda mixta');
     cy.get('#snav [data-go="pedidos-online"]').should('exist');
     cy.get('#snav [data-go="ingreso"]').should('exist');
