@@ -1,0 +1,22 @@
+"use client";
+import { useGestlokCompany } from "./GestlokContext";
+
+// Barra común de GESTLOK en todas las pantallas del módulo de empleados.
+const home = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
+export function GestlokModuleBar() {
+  const company = useGestlokCompany();
+  return (
+    <header className="gestlok-module-bar">
+      <a className="gestlok-module-brand" href={home} aria-label="Volver al inicio de GESTLOK">
+        <img src={`${home}icons/gestlok.svg`} alt="" width={30} height={30} />
+        <span><b>GEST<em>LOK</em></b><small>Administrar a los empleados</small></span>
+      </a>
+      <div className="gestlok-module-company">
+        {company?.logo_id === "mi-gusto"
+          ? <img src={`${home}img/mi-gusto-blanco.png`} alt={company.company_name} width={562} height={278} />
+          : company ? <b>{company.company_name}</b> : null}
+        <a className="gestlok-module-back" href={home}>← Volver a GESTLOK</a>
+      </div>
+    </header>
+  );
+}

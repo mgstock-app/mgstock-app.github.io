@@ -82,8 +82,12 @@ test('read-only user cannot save through adapter', async () => {
 });
 
 test('administrator creates, renames and removes a custom sheet', async () => {
-  const { db, user } = await session('kmu15lopez@gmail.com');
+  const { db, user, client } = await session('kmu15lopez@gmail.com');
   assert.equal(await user.isOwner(), true);
+  // Consulta de la creadora: solo lectura por defecto; escribe solo tras habilitar la edición con motivo.
+  await assert.rejects(db.collection('munro/hojas').add({ nombre: 'Sin habilitar', tipo: 'stock', orden: 9 }));
+  assert.equal((await client.rpc('gestlok_creator_enable_editing', { p_minutes: 30, p_reason: '' })).error.code, '22023');
+  assert.equal((await client.rpc('gestlok_creator_enable_editing', { p_minutes: 30, p_reason: 'Prueba automática' })).data.active, true);
   const sheet = await db.collection('munro/hojas').add({ nombre: 'Prueba', tipo: 'stock', orden: 10 });
   await sheet.update({ nombre: 'Nueva' });
   assert.equal((await sheet.get()).data().nombre, 'Nueva');

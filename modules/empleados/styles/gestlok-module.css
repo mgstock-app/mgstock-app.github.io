@@ -1,0 +1,51 @@
+/* Barra de GESTLOK en el módulo «Administrar a los empleados». */
+.gestlok-module-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  color: #f8fafc;
+  background: linear-gradient(135deg, #08151f 0%, #0f2430 55%, #1c3a40 100%);
+  box-shadow: 0 6px 18px -12px #04121c;
+}
+.gestlok-module-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+.gestlok-module-brand img { width: 30px; height: 30px; flex: 0 0 auto; }
+.gestlok-module-brand span { display: grid; line-height: 1.1; min-width: 0; }
+.gestlok-module-brand b { font-size: 19px; font-weight: 800; letter-spacing: 0.03em; }
+.gestlok-module-brand em { font-style: normal; color: #22b6b9; }
+.gestlok-module-brand small { font-size: 12px; color: #b9cad4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gestlok-module-company { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.gestlok-module-company img { width: auto; height: 32px; max-width: 90px; object-fit: contain; }
+.gestlok-module-company b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+.gestlok-module-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #ffffff3d;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gestlok-module-back:hover, .gestlok-module-back:focus-visible { background: #ffffff1a; }
+@media (max-width: 520px) {
+  .gestlok-module-bar { padding-left: 12px; padding-right: 12px; }
+  .gestlok-module-brand small { display: none; }
+  .gestlok-module-company img { height: 26px; max-width: 64px; }
+  .gestlok-module-back { padding: 0 10px; font-size: 12px; }
+}

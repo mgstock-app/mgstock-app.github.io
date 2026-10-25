@@ -194,7 +194,9 @@ const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
-const puedeEditarLocal = id => esTotal() || (miRol() === 'gerente' && misLocales().includes(id));
+/* La creadora consulta en solo lectura salvo que haya habilitado la edición (lo hace valer el backend). */
+const creadoraSoloLectura = () => isCreadora() && (window.GestLokCreatorMode ? window.GestLokCreatorMode.readOnly() : true);
+const puedeEditarLocal = id => (esTotal() && !creadoraSoloLectura()) || (miRol() === 'gerente' && misLocales().includes(id));
 const localNombre = id => { const k = id || S.local; const l = S.localesDB.find(x => x.id === k); return (l && l.nombre) || (k ? k.charAt(0).toUpperCase() + k.slice(1) : ''); };
 
 /* ---------- Datos derivados ---------- */
@@ -277,7 +279,7 @@ const canW = () => !!S.db && !S.ro;
 const isCreadora = () => !!(S.me && S.me.isOwner);
 function needWrite(){
   if (!S.db){ toast('Iniciá sesión para guardar.', true); return false; }
-  if (S.ro){ toast(`En ${localNombre()} tu acceso es Solo ver. Pedile a la administradora que te cambie a Gerente.`, true); return false; }
+  if (S.ro){ toast(isCreadora() ? 'Modo consulta: habilitá la edición desde el aviso de arriba para modificar.' : `En ${localNombre()} tu acceso es Solo ver. Pedile a la administradora que te cambie a Gerente.`, true); return false; }
   return true;
 }
 
@@ -439,7 +441,8 @@ function banners(){
   if (S.legacyDraft && canW()) h += '<p class="note warn"><b>Borrador anterior encontrado en este equipo.</b> Si te pertenece, podés recuperarlo antes de cargar un conteo nuevo. <button class="btn sm" data-act="recover-draft">Recuperar borrador anterior</button></p>';
   if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
-  if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
+  if (isCreadora()) h += window.GestLokCreatorMode?.banner() || '';
+  else if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
   if (S.editing && S.view !== 'conteo' && !isCustom(S.view)) h += `<div class="editbar"><span>Estás corrigiendo el conteo del <b>${esc(fechaHora(S.editing.fecha))}</b>.</span><span class="bar-a"><button class="btn sm" data-go="conteo">Ir a Conteo</button><button class="btn sm" data-act="edit-cancel">Cancelar corrección</button></span></div>`;
   return h;
 }
@@ -2130,6 +2133,7 @@ function renderHub(){
   window.GestLokSupport?.render();
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  const ownerHome=miRol()==='dueno'&&listo&&!!S.db;
   if (adm && listo && S.db && S.creatorSetup) {
     const creatorHTML=window.GestLokCreator?.view() || '';
     if(hub._h!==creatorHTML){hub.innerHTML=creatorHTML;hub._h=creatorHTML;}
@@ -2145,6 +2149,11 @@ function renderHub(){
   else if (!S.db) body = `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
+
+  // Fail closed: the backend decides which implemented areas this owner can use.
+  if (ownerHome) {
+    body = window.GestLokOwnerAreas?.view(mios,lcard) || '<p role="status">Comprobando tus áreas autorizadas…</p>';
+  }
 
   // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
   // No es un panel de pagos: GestLok sigue gratuito y todas las altas requieren aprobación.
@@ -2199,6 +2208,7 @@ function renderHub(){
         ${window.GestLokSupport?.adminCard() || ''}
         ${window.GestLokCommerce?.card() || ''}
         <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
+        ${window.GestLokOwnerAreas?.adminView()||''}
         <div class="gl-admin-panels">
           <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
           <section class="gl-admin-card"><header><h2>Acceso y privacidad</h2><small>Protección de información</small></header>
@@ -2217,21 +2227,24 @@ function renderHub(){
     return;
   }
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t"><b>Inventario</b><span>Locales y equipo</span></div></div>
+      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
       <p class="eyebrow">${esc(fechaLarga())}</p>
-      <h1 class="hub-t">Locales</h1>
-      <p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>
+      ${ownerHome?'':'<h1 class="hub-t">Locales</h1><p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>'}
       ${adm && S.sol.length ? `<section class="card pad hub-sol">${solRows()}</section>` : ''}
-      ${window.GestLokCommerce?.card() || ''}
+      ${ownerHome?'':(window.GestLokCommerce?.card() || '')}
       ${body}
       ${S.me && listo ? `<p class="hub-me">Entraste como <b>${esc(S.me.email || '')}</b> · ${esc(rolLabel(miRol()))}</p>` : ''}
     </main>`;
   if (hub._h !== html){
     const ae = document.activeElement, keep = !!(ae && hub.contains(ae) && ae.matches('input,select'));
-    if (!keep){ hub.innerHTML = html; hub._h = html; }
+    if (!keep){
+      const settingsOpen=!!hub.querySelector('.gl-owner-business-settings')?.open;
+      hub.innerHTML = html;hub._h = html;
+      const settings=hub.querySelector('.gl-owner-business-settings');if(settings&&settingsOpen)settings.open=true;
+    }
   }
 }
 
@@ -2864,13 +2877,18 @@ async function ingHist(){
 }
 async function ingArchivo(file){
   const I = S.ing; if (!I || !file) return;
-  I.arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}; I.lineas = []; I.res = null; I.msg = null; I.leyendo = true; render();
+  /* Cada lectura tiene su número: si mientras se lee se elige otro archivo, se cancela o se cambia de
+     sucursal, el resultado viejo se descarta y nunca pisa las decisiones ya tomadas sobre el archivo nuevo. */
+  const arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}, lectura = (I.lectura || 0) + 1;
+  Object.assign(I, {arch, lectura, lineas:[], res:null, msg:null, leyendo:true}); render();
+  const vigente = () => S.ing === I && I.arch === arch && I.lectura === lectura;
   try {
-    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
-    Object.assign(I.arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
+    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { if (!vigente()) return; I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
+    if (!vigente()) return;
+    Object.assign(arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
     I.hojaSel = 0; I.col = r.hojas ? M.columnas(r.hojas[0].filas) : null;
     if (I.datos) ingProcesar();
-  } catch(e){ I.arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
+  } catch(e){ if (!vigente()) return; arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
   I.leyendo = false; I.prog = ''; render();
 }
 function ingProcesar(mantener){
@@ -3005,6 +3023,7 @@ V.ingreso = () => {
 };
 async function ingConfirmar(forzar){
   const I = S.ing; if (!esTotal() || !I || I.busy) return;
+  if (creadoraSoloLectura()){ toast('Modo consulta: habilitá la edición para importar el remito.', true); return; }
   const P = ingPlan(); if (!P.items.length || P.pend.length) return;
   if (!navigator.onLine){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
   if (!I.clave) I.clave = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
@@ -3036,7 +3055,7 @@ async function ingConfirmar(forzar){
 }
 /* Un cambio en la revisión pide una confirmación nueva, salvo que la anterior haya quedado sin respuesta (así un reintento no suma dos veces) */
 function ingCambio(){ const I = S.ing; if (I && !(I.msg && I.msg.t === 'net')) I.clave = ''; }
-function ingQuitar(){ const I = S.ing; I.arch = null; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
+function ingQuitar(){ const I = S.ing; I.arch = null; I.lectura = (I.lectura || 0) + 1; I.leyendo = false; I.prog = ''; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
 
 /* ---------- Editar hojas ---------- */
 function openHojas(add){
@@ -3573,7 +3592,7 @@ const errLive = e => { setLive(e && e.code === 'revoked' ? 'off' : 'err'); };
 function subscribeGlobal(){
   S.db.collection('equipo').onSnapshot(snap => {
     S.equipo = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();
+    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();window.GestLokCreatorMode?.refresh();
   }, errLive);
   S.db.collection('solicitudes').onSnapshot(snap => {
     legacyRequests = snap.docs.map(d => ({id:d.id, ...d.data()}));combineRequests();
@@ -3581,7 +3600,7 @@ function subscribeGlobal(){
   }, () => {});
   S.db.collection('locales').onSnapshot(snap => {
     S.localesDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.l = true; afterAccess(); onSnapRefresh();
+    S.loaded.l = true; afterAccess(); onSnapRefresh();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();
   }, errLive);
   refreshRegistrationRequests();
   setInterval(refreshRegistrationRequests,15000);
@@ -3801,6 +3820,8 @@ window.GestLokDemo?.attach({isCreadora,render});
 window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
+window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub});
+window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {

@@ -270,6 +270,7 @@ const sb=Object.freeze({
    throw Error('La demo no puede consultar tablas externas');return builder(table);},
  async rpc(name,args){
   const a=asRows();
+  if(name==='gestlok_owner_area_context')return {data:{role:selectedRole,tenant_id:tenant,company_name:SHOPS[selectedShop].name,local_ids:[selectedShop],modules:{comercial:{authorized:true,operational:true},recibos_personal:{authorized:false,operational:false}}},error:null};
   if(name==='gestlok_catalogo_pagina')return {data:catalogSearch(args),error:null};
   if(name==='gestlok_catalogo_resumen'){
    const live=a.filter(p=>p.activo);
