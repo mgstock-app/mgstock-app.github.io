@@ -306,9 +306,9 @@ function render(){
   const previousView = $('#view');
   const pendingFields = [...previousView.querySelectorAll('input, textarea, select')].filter(el =>
     !el.disabled && el.type !== 'file' && el.type !== 'password' &&
-    (el.id || el.hasAttribute('data-prov-val'))
+    (el.id || el.hasAttribute('data-prov-val') || el.hasAttribute('data-prov-note'))
   ).map(el => ({
-    id: el.id, provId: el.dataset.id, provField: el.dataset.provVal,
+    id: el.id, provId: el.dataset.id, provField: el.dataset.provVal, provNote: el.dataset.provNote,
     value: el.value, checked: el.checked, type: el.type,
     dirty: el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue
   })).filter(el => el.dirty);
@@ -322,7 +322,7 @@ function render(){
   for (const saved of pendingFields) {
     const field = [...$('#view').querySelectorAll('input, textarea, select')].find(el =>
       saved.id ? el.id === saved.id :
-      el.dataset.id === saved.provId && el.dataset.provVal === saved.provField
+      saved.provNote ? el.dataset.provNote === saved.provNote : (el.dataset.id === saved.provId && el.dataset.provVal === saved.provField)
     );
     if (!field || field.disabled || field.type !== saved.type) continue;
     if (field.type === 'checkbox' || field.type === 'radio') field.checked = saved.checked;
