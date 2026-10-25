@@ -37,11 +37,11 @@ test('Guardar proveedor confirma si finalizó y crea historial separado por loca
   assert.match(app,/¿Terminaste el pedido\?/);
   assert.match(app,/prov-save-history/);
   assert.match(app,/prov-save-draft/);
-  assert.match(app,/C\('proveedores_historial'\)\.add/);
+  assert.match(app,/sb\.rpc\('gestlok_proveedor_guardar_historial'/);
   assert.match(app,/C\('proveedores_historial'\)\.orderBy\('fecha','desc'\)/);
   assert.match(app,/LOCAL_COLS = \[[^\]]*'proveedores_historial'/);
   assert.match(app,/ver!==d\.base/);
-  assert.match(app,/No se pudo registrar el historial|falló el historial/);
+  assert.match(app,/guardado seguro|gestlok_proveedor_guardar_historial/);
 });
 test('Poner en 0 modifica solo Stock local y Pedir, nunca Sugerido',()=>{
   const section=app.slice(app.indexOf('function ponerEnCeroProveedorCategoria('),
@@ -52,4 +52,28 @@ test('Poner en 0 modifica solo Stock local y Pedir, nunca Sugerido',()=>{
   assert.match(app,/data-act="prov-zero-cat"/);
   assert.match(app,/data-act="prov-save-plan"/);
   assert.match(app,/gl-prov-category-head/);
+});
+
+test('La finalización crea lista e historial atómicos por local y rechaza versiones viejas',async()=>{
+  const w={},context={window:w,Date,Promise,JSON,Number,String,Array,
+    setTimeout:()=>0,console};
+  new Script(read('tests/mock_supabase.js')).runInNewContext(context);
+  const sb=w.supabase.createClient();
+  await sb.auth.signInWithPassword({email:'dueno@example.com',password:'secreto1'});
+  const args={p_local:'munro',p_proveedor_id:'p-distribuidora-prueba',
+    p_version:0,p_items:[],p_catalogo:{},
+    p_productos:[{nombre:'Producto ficticio',proveedor:'Distribuidora prueba',unidad:'unidad',pedir:4}]};
+  const initial=w.__rows.filter(x=>x.col==='munro/proveedores_historial').length;
+  const saved=await sb.rpc('gestlok_proveedor_guardar_historial',args);
+  assert.equal(saved.error,null);
+  assert.ok(saved.data.historialId.startsWith('pedido-test-'));
+  assert.equal(w.__rows.filter(x=>x.col==='munro/proveedores_historial').length,initial+1);
+  assert.equal(w.__rows.find(x=>x.col==='munro/proveedores'&&x.id===args.p_proveedor_id).data.pedidoActualizado,saved.data.pedidoActualizado);
+  const conflict=await sb.rpc('gestlok_proveedor_guardar_historial',args);
+  assert.match(conflict.error.message,/Otro usuario/);
+  assert.equal(w.__rows.filter(x=>x.col==='munro/proveedores_historial').length,initial+1);
+  await sb.auth.signInWithPassword({email:'gerente.munro@example.com',password:'secreto1'});
+  const blocked=await sb.rpc('gestlok_proveedor_guardar_historial',{...args,p_local:'torcuato'});
+  assert.equal(blocked.error.code,'42501');
+  assert.equal(w.__rows.filter(x=>x.col==='torcuato/proveedores_historial').length,0);
 });
