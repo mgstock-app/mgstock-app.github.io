@@ -183,5 +183,15 @@ document.addEventListener('click',e=>{
   }).catch(()=>{message='No se pudo consultar el permiso.';ctx.render()});
   ctx.render();
 });
-window.GestLokPush=Object.freeze({attach:x=>{ctx=x;},homePrompt,drawerContent,onOpen:loadPreferences});
+async function onLogout(){
+ if(!owner()||!canPrompt())return;
+ try{
+  const registration=await navigator.serviceWorker.ready;
+  const sub=await registration.pushManager.getSubscription();
+  if(!sub)return;
+  try{await endpoint('unsubscribe',sub.toJSON());}catch{}
+  await sub.unsubscribe();
+ }catch{}
+}
+window.GestLokPush=Object.freeze({attach:x=>{ctx=x;},homePrompt,drawerContent,onOpen:loadPreferences,onLogout});
 })();
