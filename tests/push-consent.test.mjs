@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {Script} from 'node:vm';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const app=read('public/stock/app.js');
+const client=read('public/stock/gestlok-push.js');
+const edge=read('supabase/functions/gestlok-push/index.ts');
+const sw=read('scripts/sw-template.js');
+const runtime=read('components/stock-runtime.tsx');
+const css=read('app/globals.css');
+test('Dueña recibe cartel único y permiso sólo desde un click voluntario',()=>{
+ assert.doesNotThrow(()=>new Script(app));
+ assert.doesNotThrow(()=>new Script(client));
+ assert.match(app,/miRol\(\)==='dueno'\?\(window\.GestLokPush\?\.homePrompt/);
+ assert.match(client,/memoKey/);
+ assert.match(client,/localStorage\.setItem\(memoKey\(\),'consultado'\)/);
+ assert.match(client,/data-gl-push="later"/);
+ assert.match(client,/data-gl-push="allow"/);
+ assert.match(client,/Notification\.requestPermission\(\)/);
+ assert.match(client,/if\(action!=='allow'\|\|!visible\|\|busy\)return/);
+ assert.match(client,/owner\(\).*return/);
+ assert.doesNotMatch(client,/setInterval\(/);
+});
+test('Push exige consentimiento y autenticación en servidor sin activar envíos',()=>{
+ assert.match(edge,/admin\.auth\.getUser\(token\)/);
+ assert.match(edge,/userClient\.rpc\("mi_acceso"\)/);
+ assert.match(edge,/access\?\.rol!=="dueno"/);
+ assert.match(edge,/\.eq\("user_id",identity\.user\.id\)/);
+ assert.match(edge,/\.eq\("tenant_id",access\.tenant_id\)/);
+ assert.match(edge,/deliveryEnabled:false/);
+ assert.doesNotMatch(edge,/sendPush|sendNotification|dispatch|cron\.schedule/i);
+ assert.match(client,/permission==='granted'/);
+ assert.match(client,/userVisibleOnly:true,applicationServerKey/);
+ assert.match(client,/\.auth\.getSession\(\)/);
+});
+test('SW soporta push visible y abre únicamente URLs del propio sitio',()=>{
+ assert.doesNotThrow(()=>new Script(sw));
+ assert.match(sw,/addEventListener\('push'/);
+ assert.match(sw,/showNotification\(title/);
+ assert.match(sw,/addEventListener\('notificationclick'/);
+ assert.match(sw,/url\.origin!==self\.location\.origin/);
+ assert.match(sw,/\/stock\/gestlok-push\.js/);
+ assert.match(runtime,/load\("\/stock\/gestlok-push\.js"\)/);
+ assert.match(css,/\.gl-push-permission/);
+});
