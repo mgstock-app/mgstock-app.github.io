@@ -1937,3 +1937,17 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-demo-analytics-shops span{white-space:nowrap;font-variant-numeric:tabular-nums}
 .gl-demo-analytics .note{margin-top:12px}
 @media(max-width:600px){#gl-demo-consent{padding:10px}#gl-demo-consent button{flex:1 1 120px}}
+
+/* Inicio del dueño: acceso a las dos áreas de GESTLOK. */
+.gl-owner-modules{max-width:1100px;margin:0 auto;padding:clamp(16px,3vw,30px)}
+.gl-owner-modules>header{margin-bottom:24px}
+.gl-owner-modules>header h1{font-size:clamp(25px,3vw,34px);margin:8px 0}
+.gl-owner-modules-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.gl-owner-module{background:var(--surface,#fff);border:1px solid var(--line,#d9e1e7);border-radius:18px;padding:24px;min-width:0;box-shadow:0 8px 30px #071c2c0d}
+.gl-owner-module>span[aria-hidden]{font-size:34px;display:block;margin-bottom:15px}
+.gl-owner-module h2{font-size:clamp(20px,2.3vw,26px);margin:0 0 8px}
+.gl-owner-module>p{color:var(--muted,#64748b);margin:0 0 22px}
+.gl-owner-module-locations{display:grid;gap:12px}
+.gl-owner-module-staff{background:linear-gradient(140deg,#f4f9ff,#e8f1fc);color:#163a55}
+.gl-owner-module-pending{display:inline-block;padding:10px 14px;border:1px solid #bdd0e4;border-radius:10px;font-weight:650;font-size:13px}
+@media(max-width:720px){.gl-owner-modules-grid{grid-template-columns:1fr}.gl-owner-module{padding:18px}}
