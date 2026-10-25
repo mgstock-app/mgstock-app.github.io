@@ -25,9 +25,10 @@ Los productos manuales también aceptan categoría (por defecto «General»).
 - Esta función no envía mensajes automáticamente ni asegura que WhatsApp sea el destino de Web Share. El usuario confirma.
 
 ## Seguridad
-Se reutiliza el aislamiento por tenant/local de \`public.docs\`: carpetas en \`<local>/proveedores\`, historias en \`<local>/proveedores_historial\`, lectura para usuarios con acceso al local, escritura solo para quienes tengan permiso. No requiere migración o traslado de datos anteriores.
+Se reutiliza el aislamiento por tenant/local de \`public.docs\`: carpetas en \`<local>/proveedores\`, historias en \`<local>/proveedores_historial\`, lectura para usuarios con acceso al local, escritura solo para quienes tengan permiso. La finalización utiliza la función SQL `gestlok_proveedor_guardar_historial` ya instalada en Supabase; su definición reproducible está en `supabase/migrations/20261024_gestlok_proveedores_catalogo_auto.sql`. No se trasladan ni eliminan datos anteriores.
 
 ## Verificación
 - Test unitario del archivo PDF real, que cubre varias páginas y confirma que no hay imágenes embebidas ni mensaje adicional.
+- Prueba simulada de guardado atómico (lista e historial juntos), detección de versiones desactualizadas y rechazo de escritura de un gerente fuera de su local.
 - Cypress con Supabase ficticio para completar pedido, poner en 0, guardar historial y abrir la preparación de PDF.
 - Pruebas en Android/iPhone para confirmar la compatibilidad real del menú de compartir.
