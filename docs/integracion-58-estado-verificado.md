@@ -62,3 +62,28 @@ Código revisado: `7af9a92e7e54a8ccab2c4886cb4d0738ed43b052`, PR #62.
 ### Primer paso de la próxima sesión
 
 Reproducir la segunda carga del remito con datos ficticios y observar `#ing-bloqueo`, destinos pendientes y selección de productos durante la actualización asíncrona. Corregir la causa preservando protección contra duplicados e idempotencia; ejecutar nuevamente lint, Node, build y las 93 pruebas Cypress. Solo con resultado íntegro aprobado, fusionar #62 y verificar el despliegue Pages y los archivos servidos. Después continuar con el puente de identidades y los pendientes de integración enumerados arriba. Mantener abierta #58.
+
+## Sesión del 25/10/2026 (tarde) · PR #64
+
+PR #64 reemplaza a #62 y #63 (incluye sus commits y el último `main`).
+
+### Qué quedó implementado
+- **Inicio de dueños con dos carpetas** con el diseño de la referencia de #63 («Bienvenido/a a GESTLOK», «Administrar mi empresa», «Administrar a los empleados»), sobre el contexto verificado en backend de #62. Empleados aparece solo si el backend lo autoriza; no hay carpetas decorativas.
+- **Módulo `/empleados/` dentro de GESTLOK** (`modules/empleados`): cliente de ReciboNet del commit `5db34b8`, exportado como páginas estáticas en la misma dirección e instalación PWA, con barra GESTLOK. Reutiliza el motor original de planillas, liquidaciones, horarios, recibos, PDF/WhatsApp, historial y enlaces. El backend de ReciboNet no cambió: sus RPC y RLS siguen siendo la barrera. Sin migraciones ni documentos internos copiados (tienen datos personales).
+- **Habilitación por empresa** (`gestlok_employee_module_entitlement`, aplicada): `company_modules`, `recibonet_links`, `admin_audit` privados. `gestlok_owner_area_context` autoriza empleados solo con vínculo verificado **y** habilitación de la creadora. Tabla «Módulos autorizados» en el panel de creadora, con confirmación y registro.
+- **Vínculo verificado Mi Gusto ↔ Alessandro 2026002** registrado (`recibonet_links`, auditoría `recibonet_linked`). Evidencia: Martín es dueño de la organización 2026002 en ReciboNet y está preautorizado como dueño de Mi Gusto en GESTLOK; Munro y Torcuato (`dt`) en ambos; 17 planillas. No se renombró ni movió nada: el nombre interno «Alessandro» se muestra como «Mi Gusto» solo en pantalla.
+- **Creadora en solo lectura por defecto** (`gestlok_creator_readonly_default`): disparadores por sentencia bloquean sus escrituras en datos operativos de la empresa (también por funciones privilegiadas como los remitos) salvo que habilite la edición 30 minutos con motivo. Altas y permisos del equipo siguen disponibles y quedan auditados.
+- **Remitos**: una lectura de archivo vieja ya no pisa la revisión del archivo nuevo (causa probable del fallo intermitente de `ingreso.cy.js:100`).
+- Supabase ReciboNet: se agregó `https://mgstock-app.github.io/empleados/**` a Redirect URLs (con autorización de la usuaria). Site URL y proveedores sin cambios.
+
+### Verificaciones con datos reales (solo lectura o revertidas)
+- GESTLOK: huella SHA-256 de los 357 documentos idéntica antes y después de las migraciones y del vínculo.
+- Gerentes reales (3 de Munro, 1 de Torcuato): ven solo su local, no modifican ni insertan en el otro, no obtienen el contexto de dueño ni pueden habilitar módulos.
+- ReciboNet con RLS real: Martín ve las 17 planillas y 223 documentos de 2026002; la Administradora General también; otro dueño y un gerente de otra empresa ven 0.
+
+### Pendiente
+- Primer ingreso de Martín a GESTLOK (Google, batallinim@gmail.com) y luego al módulo con su Google de ReciboNet.
+- Gisela no tiene cuenta en ReciboNet: debe entrar al módulo con una cuenta Google y unirse como dueña con «ID de empresa + código privado» (Empresas → Invitar a otro dueño).
+- Ingreso con dos sesiones (GESTLOK y ReciboNet son proyectos Supabase distintos): una sola vez por dispositivo. Un inicio de sesión único requiere unificar la autenticación de ambos proyectos.
+- Pruebas físicas Android/iPhone de la PWA y del regreso de Google dentro de la app instalada (en iOS el almacenamiento de la PWA es independiente de Safari).
+- Restauración independiente de ReciboNet en un proyecto aislado antes de retirarlo. ReciboNet sigue activo.

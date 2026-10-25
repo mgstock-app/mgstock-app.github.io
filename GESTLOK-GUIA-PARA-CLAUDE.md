@@ -53,6 +53,8 @@ Historial verificable en `main` (de más reciente a más antiguo):
 ## 3. Dónde está el código
 
 - `README.md`: identificación de la marca y guía para iniciar la app.
+- `modules/empleados/`: módulo «Administrar a los empleados» (cliente de ReciboNet integrado, se publica en `/empleados/`; tiene su propio `package.json`, lint, pruebas y build, que corren en los dos flujos de GitHub Actions).
+- `public/stock/gestlok-owner-areas.js`: inicio de dueños con dos carpetas y tabla de módulos de la creadora. `public/stock/gestlok-creator-mode.js`: solo lectura por defecto de la creadora.
 - `public/stock/app.js`: controlador principal: panel, hojas, stock, conteos, proveedores, chat y control diario.
 - `public/stock/auth.js`: adaptación Supabase, autenticación y acceso.
 - `lib/stock/markup.json`: HTML preservado de la aplicación.
