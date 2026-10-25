@@ -1,5 +1,5 @@
 /* global Cypress, describe, it, cy */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 function start(){
  cy.task('mockSupabase').then(mock=>cy.intercept('GET','**/vendor/supabase.js',{
   statusCode:200,headers:{'content-type':'application/javascript'},body:mock

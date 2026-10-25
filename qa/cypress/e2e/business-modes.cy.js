@@ -1,5 +1,5 @@
 /* global Cypress, describe, it, cy, expect */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 // Nunca escribe datos de producción: Supabase falso interceptado antes de cargar GestLok.
 const login = email => {
   cy.get('#au-email').type(email);

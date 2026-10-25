@@ -1,5 +1,5 @@
 /* global Cypress, describe, beforeEach, it, cy, expect */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 // Recorrido ampliado de GestLok. Todo el backend se reemplaza por Supabase falso,
 // las pruebas NO consultan ni modifican los locales de producción.
 const login = email => {

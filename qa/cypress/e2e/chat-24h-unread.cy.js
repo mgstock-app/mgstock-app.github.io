@@ -1,5 +1,5 @@
 /* global Cypress, cy, describe, beforeEach, it */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 describe("GestLok · chat efímero y punto de mensajes nuevos",()=>{
   Cypress.on("uncaught:exception",err=>{
     if(err.message.includes("Minified React error #418"))return false;

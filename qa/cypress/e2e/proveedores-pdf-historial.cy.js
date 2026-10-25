@@ -1,5 +1,5 @@
 /* global Cypress, describe, it, cy, expect */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 // Supabase falso: esta prueba jamás altera proveedores, pedidos o historial reales.
 const login = email => {
   cy.get('#au-email').type(email);

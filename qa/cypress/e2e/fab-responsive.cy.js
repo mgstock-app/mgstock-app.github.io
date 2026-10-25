@@ -1,5 +1,5 @@
 /* global Cypress, describe, it, cy, expect */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 describe('GestLok Stock Local: categorías y planilla responsive',()=>{
   Cypress.on('uncaught:exception',e=>{
     if(e.message.includes('Minified React error #418'))return false;

@@ -1,5 +1,5 @@
 /* global Cypress, cy, describe, it, expect */
-const {abrirLocal}=require('../helpers/abrir-local');
+import { abrirLocal } from '../helpers/abrir-local';
 describe('Observaciones internas de Proveedores · ambos locales',()=>{
   Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
   for(const local of ['munro','torcuato'])it(`muestra, guarda y recupera la observación en ${local}`,()=>{
