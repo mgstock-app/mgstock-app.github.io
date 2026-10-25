@@ -29,4 +29,26 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.get('[aria-label="Empresas registradas"] button,[aria-label="Empresas registradas"] input,[aria-label="Empresas registradas"] select').should('not.exist');
  });
 
+ it('PerCam: dueño de un solo local recibe el inicio universal antes de abrir su negocio',()=>{
+  cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
+  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
+  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
+  cy.window().then(w=>{
+   const local=w.__rows.find(r=>r.col==='locales'&&r.id==='munro');
+   local.data.nombre='PerCam';
+   const second=w.__rows.findIndex(r=>r.col==='locales'&&r.id==='torcuato');
+   if(second!==-1)w.__rows.splice(second,1);
+   const owner=w.__rows.find(r=>r.col==='equipo'&&r.id==='dueno@example.com');
+   owner.data.nombre='Dueño de prueba';
+  });
+  cy.get('#au-email').type('dueno@example.com');cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
+  cy.get('#hub .gl-owner-landing').should('be.visible');
+  cy.get('#app').should('not.be.visible');
+  cy.get('#hub .gl-owner-business').should('contain.text','Administrar mi empresa');
+  cy.get('#hub .gl-owner-quick .gl-owner-tile').should('have.length',4);
+  cy.get('#hub .gl-owner-employees').should('not.exist');
+  cy.get('#hub .gl-owner-business .gl-owner-arrow').click();
+  cy.get('#brand-local').should('contain.text','PerCam');
+ });
+
 });
