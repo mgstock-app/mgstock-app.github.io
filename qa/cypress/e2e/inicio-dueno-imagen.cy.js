@@ -55,7 +55,8 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
     start('nuevo-dueno@example.com', w => {
       w.__rows.push({ col: 'equipo', id: 'nuevo-dueno@example.com', data: { email: 'nuevo-dueno@example.com', rol: 'dueno' } });
     });
-    cy.get('#hub .gl-owner-company-logo').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
+    cy.get('#hub .gl-owner-welcome-logo img').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
+    cy.get('.gl-oh-brand-company img').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
     cy.get('#hub .gl-owner-employees').should('exist');
   });
   it('en celular no hay desbordes horizontales', () => {
