@@ -23,7 +23,7 @@ describe('Permiso push Dueña sin envíos automáticos',()=>{
   cy.get('#view .gl-home-essential').should('be.visible');
   cy.get('#view .gl-owner-notif-trigger').click();
   cy.get('#pn .gl-push-drawer').should('be.visible')
-    .and('contain.text','El envío automático seguirá desactivado');
+    .and('contain.text','Solo recibirás avisos');
   cy.get('#pn [data-act="close"]').click();
   cy.get('#view').then(view=>{
    const banner=view.find('.gl-push-permission');
