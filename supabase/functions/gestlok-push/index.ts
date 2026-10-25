@@ -59,8 +59,12 @@ async function dispatch(){
  // La clave privada se guardó históricamente como JWK JSON, no como d base64url.
  let privateKey="";
  try{
-  const raw=String(config.private_jwk.privateKey);
-  privateKey=raw.startsWith("{")?String(JSON.parse(raw).d||""):raw;
+  const stored=config.private_jwk.privateKey;
+  if(stored && typeof stored==="object")privateKey=String(stored.d||"");
+  else{
+   const raw=String(stored||"");
+   privateKey=raw.startsWith("{")?String(JSON.parse(raw).d||""):raw;
+  }
  }catch{return json(503,{ok:false,error:"Clave push inválida"});}
  if(!/^[A-Za-z0-9_-]{43}$/.test(privateKey))
   return json(503,{ok:false,error:"Clave push inválida"});
