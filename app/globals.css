@@ -1873,7 +1873,7 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-visitor-mode #logout-wrap{display:none!important}
 #gl-visitor-bar{
  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
- position:sticky;top:0;z-index:10050;min-height:60px;
+ position:sticky;top:0;z-index:55;min-height:60px;
  padding:9px clamp(12px,2.6vw,30px);
  background:#0d2838;color:white;border-bottom:3px solid #58d4bd;
  box-shadow:0 2px 16px #091b2440;
