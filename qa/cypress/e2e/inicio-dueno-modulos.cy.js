@@ -10,7 +10,7 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  it('muestra empresa con los dos locales y oculta empleados no habilitado',()=>{
   cy.viewport(390,844);start();
-  cy.get('#hub').should('contain.text','Administrar mi empresa').and('not.contain.text','Administrar empleados').and('not.contain.text','Próximamente');
+  cy.get('#hub').should('contain.text','Administrar mi empresa').and('not.contain.text','Administrar a los empleados').and('not.contain.text','Próximamente');
   cy.get('#hub h1').should('have.length',1);
   cy.get('#hub .gl-commerce-card').should('not.be.visible');
   cy.get('#hub [data-act="local"][data-id="munro"]').should('be.visible');
