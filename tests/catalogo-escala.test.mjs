@@ -73,6 +73,8 @@ test('Simulación con 500.000 productos: solo recupera 50 por página desde el s
   assert.ok(page1,'Se esperaba consulta remota de catálogo');
   assert.equal(page1.args.p_limite,50);
   assert.equal(page1.args.p_cursor_id,null);
+  const tab={dataset:{glTab:'productos'},hasAttribute:()=>false};
+  events.click({target:{closest:()=>tab},preventDefault(){}});
   const html=w.GestLokTienda.view();
   assert.match(html,/500\.000/);
   assert.match(html,/Página 1/);
