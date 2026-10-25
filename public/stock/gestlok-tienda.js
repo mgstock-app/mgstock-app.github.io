@@ -17,7 +17,6 @@
   const isOwner = () => ['creadora','dueno'].includes(api?.miRol?.());
   const canEdit = () => canView() && !!api?.canW?.() && !api.S.offline && !!client();
   const shortage = p => Number(p.minimo)>0 && Number(p.stock)<=Number(p.minimo);
-  const low = () => state.items.filter(p=>p.activo!==false && shortage(p));
   const err = e => String(e?.message || 'No se pudo completar la operación.').slice(0,180);
   function reset(){const loc=api?.S?.local||null;if(state.local!==loc)state=empty(loc);}
   function render(){if(api?.S?.view==='tienda-online')api.render();}
@@ -91,7 +90,7 @@
       });
       if(r.error)throw r.error;
       if(local===state.local){state.categories=Array.isArray(r.data)?r.data:[];state.categoriesLoaded=true;render();}
-    }catch(e){if(local===state.local){state.error='No se pudieron cargar las categorías: '+err(e);render();}}
+    }catch(e){if(local===state.local){state.categoriesLoaded=true;state.error='No se pudieron cargar las categorías: '+err(e);render();}}
   }
 
   function metrics(){
@@ -125,7 +124,8 @@
     return state.items.length?state.items.map(p=>'<article class="gl-tienda-item">'+
       '<span class="gl-tienda-placeholder" aria-hidden="true">📦</span><div><b>'+esc(p.nombre)+'</b>'+
       '<small>'+esc(p.sku||'Sin SKU')+' · '+esc(p.categoria||'Sin categoría')+
-      ' · '+esc(p.proveedor||'Sin proveedor')+'</small>'+
+      ' · '+esc(p.subcategoria||'')+' · '+esc(p.marca||'')+
+      ' · '+esc(p.variante||'')+' · '+esc(p.proveedor||'Sin proveedor')+'</small>'+
       '<small>Ubicación: '+esc(p.ubicacion||'Sin asignar')+' · Stock '+esc(p.stock)+' '+
       esc(p.unidad||'unidad')+' · Mín. '+esc(p.minimo??0)+'</small>'+
       '<small>Precio de referencia: '+money(p.precio)+'</small>'+
@@ -144,6 +144,10 @@
       '<label>Nombre<input name="nombre" required minlength="2" maxlength="140" value="'+val('nombre')+'"></label>'+
       '<label>SKU / Código<input name="sku" maxlength="80" value="'+val('sku')+'"></label>'+
       '<label>Categoría<input name="categoria" required maxlength="80" value="'+val('categoria','General')+'"></label>'+
+      '<label>Subcategoría<input name="subcategoria" maxlength="80" value="'+val('subcategoria')+'"></label>'+
+      '<label>Marca<input name="marca" maxlength="80" value="'+val('marca')+'"></label>'+
+      '<label>Variante (talle / color / modelo)<input name="variante" maxlength="120" value="'+val('variante')+'"></label>'+
+      '<label>Código de barras<input name="codigo_barras" maxlength="80" value="'+val('codigo_barras')+'"></label>'+
       '<label>Proveedor<input name="proveedor" maxlength="120" value="'+val('proveedor')+'"></label>'+
       '<label>Stock de control<input name="stock" type="number" min="0" max="100000000" step="1" required value="'+val('stock',0)+'"></label>'+
       '<label>Stock mínimo<input name="minimo" type="number" min="0" max="100000000" step="1" required value="'+val('minimo',0)+'"></label>'+
@@ -235,7 +239,12 @@
         api.toast('Revisá el nombre, stock, mínimo, precio y costo.',true);return;
       }
     const payload={nombre:get('nombre').slice(0,140),sku:get('sku').slice(0,80),
-      categoria:get('categoria').slice(0,80),proveedor:get('proveedor').slice(0,120),
+      categoria:get('categoria').slice(0,80),
+      subcategoria:get('subcategoria').slice(0,80),
+      marca:get('marca').slice(0,80),
+      variante:get('variante').slice(0,120),
+      codigo_barras:get('codigo_barras').slice(0,80),
+      proveedor:get('proveedor').slice(0,120),
       stock,minimo,unidad:get('unidad').slice(0,30),ubicacion:get('ubicacion').slice(0,120),
       precio,costo,descripcion:get('descripcion').slice(0,1000),activo:f.has('activo'),
       publicado:false,destacado:false,imagen_url:'',precio_anterior:null,
@@ -249,7 +258,7 @@
       state.editing=null;state.editingProduct=null;
       api.toast('Producto guardado en el control interno.');
       resetPage();await Promise.all([loadPage(),loadStats(),loadAlerts()]);
-    }catch(e){api.toast(e?.code==='23505'?'Ese SKU ya existe en este local.': 'No se guardó el producto: '+err(e),true);}
+    }catch(e){api.toast(e?.code==='23505'?'Ese SKU o código de barras ya existe en este local.': 'No se guardó el producto: '+err(e),true);}
     finally{state.saving=false;render();}
   }
   async function archiveProduct(id,nextActive){
@@ -276,7 +285,11 @@
   const filteredReload=()=>{
     clearTimeout(searchDebounce);
     searchDebounce=setTimeout(()=>{
-      if(state.q.trim().length===1||state.q.trim().length===2)return;
+      if(state.q.trim().length===1||state.q.trim().length===2){
+        const list=document.getElementById('gl-tienda-list');
+        if(list)list.innerHTML='<p class="lead">Escribí al menos 3 caracteres o borrá la búsqueda.</p>';
+        return;
+      }
       resetPage();loadPage();
     },300);
   };
