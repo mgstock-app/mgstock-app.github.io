@@ -132,7 +132,7 @@ begin
     into n_today,n_soon
     from public.docs x where x.tenant_id=rec.tenant_id
       and x.col=rec.loc||'/vencimientos' and x.data->>'activo' is distinct from 'false'
-      and x.data->>'fechaVencimiento' ~ '^\\d{4}-\\d{2}-\\d{2}$';
+      and x.data->>'fechaVencimiento' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2};
     if n_today>0 then
       insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path)
       values(rec.tenant_id,rec.loc,'due-today:'||rec.tenant_id||':'||rec.loc||':'||today,
@@ -152,3 +152,60 @@ begin
 end
 $fn$;
 revoke all on function public.gestlok_push_queue_due() from public,anon,authenticated;
+;
+    if n_today>0 then
+      insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path)
+      values(rec.tenant_id,rec.loc,'due-today:'||rec.tenant_id||':'||rec.loc||':'||today,
+        rec.label||' · Vence hoy',n_today||' servicio(s) vencen hoy. Revisalos.','due_today','vencimientos')
+      on conflict(event_key) do nothing;
+      total:=total+1;
+    end if;
+    if n_soon>0 then
+      insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path)
+      values(rec.tenant_id,rec.loc,'due-soon:'||rec.tenant_id||':'||rec.loc||':'||today,
+        rec.label||' · Vencimientos próximos',n_soon||' servicio(s) vencen en los próximos 3 días.','due_soon','vencimientos')
+      on conflict(event_key) do nothing;
+      total:=total+1;
+    end if;
+ end loop;
+ return total;
+end
+$fn$;
+revoke all on function public.gestlok_push_queue_due() from public,anon,authenticated;
+
+-- Cambios de accesos: detectar alta/baja de gerente o modificación de rol.
+create or replace function public.gestlok_push_capture_roles()
+returns trigger language plpgsql security definer set search_path=''
+as $fn$
+declare d public.docs%rowtype; loc record; window_start timestamptz; key_text text;
+begin
+ if tg_op='DELETE' then d:=old; else d:=new; end if;
+ if d.col<>'equipo' or d.tenant_id is null then return coalesce(new,old); end if;
+ if tg_op='UPDATE' and old.data->>'rol' is not distinct from new.data->>'rol'
+  and old.data->'locales' is not distinct from new.data->'locales' then
+    return new;
+ end if;
+ if tg_op='INSERT' and new.data->>'rol'<>'gerente' then return new; end if;
+ if tg_op='DELETE' and old.data->>'rol'<>'gerente' then return old; end if;
+ window_start:=to_timestamp(floor(extract(epoch from now())/1800)*1800);
+ for loc in select id,coalesce(data->>'nombre',id) as label
+   from public.docs where col='locales' and tenant_id=d.tenant_id loop
+   key_text:='changes:'||d.tenant_id||':'||loc.id||':'||
+       to_char(window_start at time zone 'UTC','YYYYMMDDHH24MI');
+   insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path,scheduled_at)
+   values(d.tenant_id,loc.id,key_text,left(loc.label,70)||' · Cambio importante',
+     'Se modificó un acceso o un permiso del equipo.','important_changes','avisos',
+     window_start+interval '30 minutes')
+   on conflict(event_key) do update set
+    grouped_count=public.gestlok_push_events.grouped_count+1,
+    body='Se registraron '||(public.gestlok_push_events.grouped_count+1)||' cambios importantes en el local.'
+   where public.gestlok_push_events.delivered_at is null;
+ end loop;
+ return coalesce(new,old);
+end
+$fn$;
+revoke all on function public.gestlok_push_capture_roles() from public,anon,authenticated;
+drop trigger if exists gestlok_push_capture_roles_docs on public.docs;
+create trigger gestlok_push_capture_roles_docs
+ after insert or update of data or delete on public.docs
+ for each row execute function public.gestlok_push_capture_roles();
