@@ -24,3 +24,10 @@ Recibos, liquidaciones, imágenes y exportación PDF por WhatsApp; horarios sema
 
 ## Condición de salida
 No apagar ReciboNet ni mover datos reales hasta contar con validación funcional, controles de acceso comprobados y procedimiento de reversión.
+
+## Pendiente prioritario: publicación visible de actualizaciones (25/10/2026)
+- La usuaria confirmó en Android que «Guardar stock» aparece, pero «Observación interna» no aparece en las tarjetas de Proveedores.
+- El código de observaciones existe en `public/stock/app.js` y se fusionó un ajuste de versión del controlador en PR #57; falta verificar despliegue y funcionamiento real.
+- Corregir actualización automática de la PWA instalada y web, incluyendo service worker, caché y estado de GitHub Pages; comprobar que no se pierdan datos ni sesiones.
+- No marcar resuelto hasta que la usuaria vea y pueda guardar una observación por producto en la aplicación publicada.
+- Prioridad de trabajo actual: integración de ReciboNet. Este pendiente no debe olvidarse ni confundirse con una tarea completada.
