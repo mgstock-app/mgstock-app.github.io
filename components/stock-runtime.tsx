@@ -22,15 +22,18 @@ export function StockRuntime() {
     startup ??= (async () => {
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
-      await load("/stock/auth.js");
+      // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
+      // autenticación, las claves privilegiadas ni el backend de empresas reales.
+      const visitor = new URLSearchParams(location.search).get("demo") === "1";
+      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js");
       await load("/stock/gestlok-updates.js");
-      await load("/stock/gestlok-push.js");
+      if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-tienda.js");
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-creator.js");
-      await load("/stock/gestlok-support.js");
+      if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       await load("/stock/app.js");
     })();
