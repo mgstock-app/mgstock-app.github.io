@@ -40,3 +40,9 @@ test('Los indicadores llevan a filtros de stock sin perder selección',()=>{
  assert.match(app,/case 'home-stock-filter': go\('stock'\); S\.filtro =/);
  assert.match(app,/render\(\); break/);
 });
+
+test('Mantiene abierto Más herramientas cuando hay una actualización del Inicio',()=>{
+ assert.match(app,/const toolsOpen=S\.view==='inicio'/);
+ assert.match(app,/if\(toolsOpen && S\.view==='inicio'\)/);
+ assert.match(app,/if\(details\)details\.open=true/);
+});
