@@ -1843,3 +1843,18 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
  .gl-push-pref-row small{font-size:11px}
  .gl-push-switch{flex-basis:54px}
 }
+
+/* GestLok · catálogo privado: compacto en pantallas chicas; páginas de 50. */
+.gl-catalog-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px;align-items:end}
+.gl-catalog-filters label{min-width:0}
+.gl-catalog-filters input,.gl-catalog-filters select{min-height:44px}
+.gl-catalog-pagination{gap:12px;flex-wrap:wrap;border-top:1px solid var(--line,#dae5ec);padding-top:14px}
+.gl-catalog-pagination small{font-size:12px;line-height:1.5;color:var(--muted)}
+@media(max-width:620px){
+ .gl-catalog-filters{grid-template-columns:1fr 1fr;gap:10px}
+ .gl-catalog-filters label:first-child{grid-column:1/-1}
+ .gl-catalog-filters label{font-size:12px}
+ .gl-catalog-pagination{align-items:stretch}
+ .gl-catalog-pagination .gl-tienda-actions{width:100%;justify-content:space-between}
+}
+@media(max-width:390px){.gl-catalog-filters{grid-template-columns:1fr}.gl-catalog-filters label:first-child{grid-column:auto}}
