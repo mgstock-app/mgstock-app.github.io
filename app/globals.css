@@ -1763,3 +1763,38 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   }
   .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper input{font-size:14px}
 }
+
+
+/* Inicio Dueña: botón discreto de notificaciones y panel lateral desde la derecha. */
+.gl-owner-notif-trigger{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:44px;padding:9px 13px;border:1px solid var(--line-2);
+  border-radius:11px;background:var(--surface);color:var(--ink);
+  box-shadow:0 2px 7px rgba(15,39,58,.06);font:700 13px var(--f-body);
+  white-space:nowrap;cursor:pointer;flex:none
+}
+.gl-owner-notif-trigger>.i:first-child{width:19px;height:19px;color:var(--accent)}
+.gl-owner-notif-trigger>.i:last-child{width:15px;height:15px;color:var(--muted);margin-left:2px}
+.gl-owner-notif-trigger:hover{background:var(--sunk);border-color:var(--accent-line)}
+.gl-owner-notif-trigger:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.ov.drawer:has(.gl-owner-notif-body) .pn{width:min(440px,100%);max-width:100vw}
+.gl-owner-notif-body{min-height:150px}
+.gl-owner-notif-empty{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;
+ margin:18px auto;padding:26px 16px;max-width:320px;text-align:center;color:var(--ink)
+}
+.gl-owner-notif-empty>.i{width:34px;height:34px;color:var(--muted)}
+.gl-owner-notif-empty b{font-size:15px}
+.gl-owner-notif-empty p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+@media(max-width:640px){
+ .gl-home-essential-head{align-items:flex-start}
+ .gl-owner-notif-trigger{min-height:42px;padding:9px 10px;font-size:12px}
+ .gl-owner-notif-trigger>.i:last-child{display:none}
+}
+@media(max-width:390px){
+ .gl-home-essential-head{flex-wrap:wrap}
+ .gl-owner-notif-trigger{margin-left:auto}
+}
+@media print{
+ .gl-owner-notif-trigger{display:none!important}
+}
