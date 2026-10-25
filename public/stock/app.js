@@ -22,6 +22,7 @@ const TIPOS = {
 const UNIDADES = ['unidad','caja','docena','kg','bolsa','paquete','botella','lata','rollo','balde','pack'];
 const IC = {
   check:'<path d="m5 12 5 5 9-10"/>',
+  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>',
   in:'<path d="M12 3v11m0 0-4-4m4 4 4-4"/><path d="M4 14v5h16v-5"/>',
   msg:'<path d="M4 5h16v11H10l-6 4z"/>',
   box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
@@ -1170,6 +1171,15 @@ function resumenHojasInicio(){
   </section>`;
 }
 
+/* Panel lateral reservado para próximas funciones de notificaciones de Dueña. */
+function openOwnerNotifications(){
+  if(miRol()!=='dueno'||S.view!=='inicio'||!S.local)return;
+  S.panel='owner-notifications';
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · Dueña</small><h3 id="gl-owner-notifications-title">Notificaciones</h3></div><button class="ib" data-act="close" aria-label="Cerrar notificaciones">${ic('x')}</button></div><div class="pn-b gl-owner-notif-body"><div class="gl-owner-notif-empty">${ic('bell')}<b>Notificaciones</b><p>Este espacio está preparado. Próximamente vas a poder configurar qué avisos querés recibir.</p></div></div>`,'drawer');
+  $('#pn').setAttribute('aria-labelledby','gl-owner-notifications-title');
+  $('#pn [data-act="close"]')?.focus({preventScroll:true});
+}
+
 /* Portada operativa breve para Dueño y Gerente.
    Los informes detallados permanecen en sus hojas y no se repiten en Inicio. */
 function inicioOperativo(){
@@ -1229,6 +1239,7 @@ function inicioOperativo(){
         <div><p class="eyebrow">${esc(fechaLarga())}</p>
           <h1>Inicio · ${esc(localNombre())}</h1>
           <p>Lo importante para trabajar hoy.</p></div>
+        ${miRol()==='dueno'?`<button type="button" class="gl-owner-notif-trigger" data-act="owner-notifications" aria-haspopup="dialog">${ic('bell')}<span>Notificaciones</span>${ic('chev')}</button>`:''}
       </header>
       ${!S.loaded.p?'<p class="note">Cargando información del local…</p>':''}
       ${S.loaded.p&&!total&&canW()?`<div class="gl-home-essential-setup">
@@ -3083,7 +3094,7 @@ function openPanel(html, kind){
   $('#pn').innerHTML = html;
 }
 function closePanel(){
-  $('#ov').hidden = true; $('#pn').innerHTML = ''; S.panel = null; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; S.eqDel = null; S.hj.editId = null; S.hj.delId = null; S.hj.add = false;
+  $('#ov').hidden = true; $('#pn').removeAttribute('aria-labelledby'); $('#pn').innerHTML = ''; S.panel = null; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; S.eqDel = null; S.hj.editId = null; S.hj.delId = null; S.hj.add = false;
   S.provEnvio = null;
   if (lastFocus && document.contains(lastFocus)) try { lastFocus.focus({preventScroll:true}); } catch {}
 }
@@ -3208,6 +3219,7 @@ document.addEventListener('click', e => {
     case 'menu-open': $('#app').classList.add('open'); $('#scrim').hidden = false; $('#snav button')?.focus(); break;
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
+    case 'owner-notifications': openOwnerNotifications(); break;
     case 'diario-nuevo': diarioNuevo(); break;
     case 'prov-new': nuevoProveedor(); break;
     case 'prov-open': abrirCarpetaProveedor(t.dataset.name); break;
