@@ -1,11 +1,42 @@
 /* GestLok · DEMO PÚBLICA AISLADA: ninguna escritura/consulta de datos de negocios reales.
  * Reutiliza app.js y sus módulos; sustituye únicamente acceso y almacenamiento
- * por un adaptador local en memoria/sessionStorage. Siempre datos ficticios. */
+ * por un adaptador local en memoria/sessionStorage. Siempre datos ficticios.
+ * La única conexión opcional registra métricas de sesión sin identificar visitantes. */
 (()=>{
 'use strict';
 const params=new URLSearchParams(location.search);
 if(params.get('demo')!=='1')return;
 const SID='gestlok:visitor:demo:v1';
+const STATS_CHOICE='gestlok:demo:stats-choice:v1';
+const STATS_SESSION='gestlok:demo:stats-session:v1';
+let statsClient=null;
+function recordDemoChoice(){
+ if(!statsClient || sessionStorage.getItem(STATS_CHOICE)!=='yes')return;
+ try{
+  let id=sessionStorage.getItem(STATS_SESSION);
+  if(!id){id=crypto.randomUUID();sessionStorage.setItem(STATS_SESSION,id);}
+  // Única excepción deliberada al aislamiento ficticio: registra exclusivamente
+  // sesión aleatoria y rol/tienda visitados; nunca datos de la demo.
+  statsClient.rpc('gestlok_demo_registrar',{
+   p_sesion:id,p_rol:selectedRole,p_tienda:selectedShop
+  }).catch(()=>{});
+ }catch(e){console.warn('Estadísticas opcionales no disponibles');}
+}
+function statsChoice(){
+ const choice=sessionStorage.getItem(STATS_CHOICE);
+ if(choice==='yes'){recordDemoChoice();return;}
+ if(choice==='no')return;
+ if(document.getElementById('gl-demo-consent'))return;
+ const bar=document.getElementById('gl-visitor-bar');if(!bar)return;
+ const el=document.createElement('div');
+ el.id='gl-demo-consent';
+ el.setAttribute('role','group');el.setAttribute('aria-label','Estadísticas opcionales de la demo');
+ el.innerHTML='<span>¿Nos permitís contar esta visita? Solo registramos una sesión aleatoria, el rol y la tienda explorados; sin correo ni datos personales.</span>'+
+ '<button type="button" data-visitor-stats="yes">Permitir estadísticas</button>'+
+ '<button type="button" data-visitor-stats="no">Seguir sin estadísticas</button>';
+ bar.append(el);
+}
+
 const SHOPS={
  mercado:{name:'Mercado Central',type:'fisica',icon:'🏬'},
  nova:{name:'Nova Indumentaria',type:'mixta',icon:'🛍️'}
@@ -316,6 +347,15 @@ function navigate(shop,role){
  const p=new URLSearchParams({demo:'1',shop,role});
  location.href=location.pathname+'?'+p;
 }
+document.addEventListener('click',e=>{
+ const t=e.target.closest?.('[data-visitor-stats]');if(!t)return;
+ const choice=t.dataset.visitorStats;
+ if(choice!=='yes'&&choice!=='no')return;
+ e.preventDefault();
+ sessionStorage.setItem(STATS_CHOICE,choice);
+ document.getElementById('gl-demo-consent')?.remove();
+ if(choice==='yes')recordDemoChoice();
+},true);
 document.addEventListener('change',e=>{
  if(e.target.id==='gl-visitor-shop')navigate(e.target.value,selectedRole);
  if(e.target.id==='gl-visitor-role')navigate(selectedShop,e.target.value);
@@ -368,7 +408,9 @@ window.claude=Object.freeze({async use(name){
   slot().docs.equipo={['visitante-demo']:userEntry};
   ready=true;
   save();
+  statsClient=client;
   addBanner();
+  statsChoice();
   resolved();
  }catch(e){
   console.error('No se pudo abrir la demo:',e);
