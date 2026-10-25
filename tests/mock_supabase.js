@@ -105,6 +105,41 @@
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }
+      if (fn === 'gestlok_proveedor_guardar_historial'){
+        const local=String(args?.p_local||''), id=String(args?.p_proveedor_id||'');
+        const col=local+'/proveedores';
+        if(!a || !canWrite(col))return {data:null,error:{code:'42501',message:'Sin permiso para guardar pedidos.'}};
+        const productos=args?.p_productos,items=args?.p_items,catalogo=args?.p_catalogo;
+        if(!id.startsWith('p-') || !Array.isArray(productos)||!productos.length||
+           !Array.isArray(items)||!catalogo||Array.isArray(catalogo)||typeof catalogo!=='object'||
+           productos.some(p=>!p.nombre||!Number.isFinite(Number(p.pedir))||Number(p.pedir)<=0))
+          return {data:null,error:{message:'Pedido inválido'}};
+        let ficha=rows.find(r=>r.col===col&&r.id===id);
+        if(!ficha){
+          const nombre=String(productos[0]?.proveedor||'').trim();
+          if(Number(args.p_version||0)!==0||nombre.length<2||nombre.length>90)
+            return {data:null,error:{message:'No se encontró la carpeta del proveedor.'}};
+        }
+        const actual=Number(ficha?.data?.pedidoActualizado||0);
+        if(actual!==Number(args.p_version||0))
+          return {data:null,error:{message:'Otro usuario actualizó el pedido. Recargá antes de guardarlo.'}};
+        const stamp=Math.max(Date.now(),actual+1);
+        if(!ficha){
+          ficha={col,id,data:{nombre:productos[0].proveedor,contacto:'',telefono:'',
+            entrega:'',nota:'',items:[],catalogo:{},pedidoActualizado:0}};
+          rows.push(ficha);
+        }
+        ficha.data={...ficha.data,items:JSON.parse(JSON.stringify(items)),
+          catalogo:JSON.parse(JSON.stringify(catalogo)),pedidoActualizado:stamp,pedidoPor:me()};
+        const historialId='pedido-test-'+stamp+'-'+rows.length;
+        rows.push({col:local+'/proveedores_historial',id:historialId,data:{
+          proveedorId:id,proveedor:ficha.data.nombre,productos:JSON.parse(JSON.stringify(productos)),
+          fecha:stamp,autor:me(),version:stamp,local
+        }});
+        window.__log.push(['rpc:proveedores',local,id,historialId]);
+        notify(col);notify(local+'/proveedores_historial');
+        return {data:{pedidoActualizado:stamp,historialId},error:null};
+      }
       if (fn === 'doc_update'){ if (!canWrite(args.p_col)) return {data:0, error:null}; const r = rows.find(x => x.col === args.p_col && x.id === args.p_id); if (!r) return {data:0, error:null}; r.data = keepSug(args.p_col, r.data, {...r.data, ...args.p_patch}); window.__log.push(['update', args.p_col, args.p_id]); notify(args.p_col); return {data:1, error:null}; }
       if (fn === 'importar_mercaderia') return importar(a, args);
       return {data:null, error:null};
