@@ -64,8 +64,11 @@ test('Importación escala a miles de registros, con límite y lotes de 150',()=>
   assert.match(creator,/i\+=150/);
   assert.match(migration,/jsonb_array_length\(p_rows\)>150/);
   assert.match(migration,/10000/);
-  assert.match(catalog,/\.range\(offset,offset\+299\)/);
-  assert.match(catalog,/rows\.slice\(state\.page\*perPage/);
+  // La carga en el frontend fue reemplazada por páginas de 50 con cursor en Postgres.
+  assert.match(catalog,/gestlok_catalogo_pagina/);
+  assert.match(catalog,/p_limite:50/);
+  assert.match(catalog,/p_cursor_nombre/);
+  assert.doesNotMatch(catalog,/offset\s*<\s*10000/);
 });
 test('Sólo se preparan cuentas independientes, creadora no es integrante de cada empresa',()=>{
   assert.match(migration,/not in \('fisica','online','mixta'\)/);
