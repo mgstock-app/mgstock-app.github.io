@@ -59,3 +59,10 @@ test('Notificaciones aparece sólo para Dueña, con panel lateral listo sin dato
  assert.match(css,/\.gl-owner-notif-trigger/);
  assert.match(css,/\.ov\.drawer:has\(\.gl-owner-notif-body\) \.pn/);
 });
+
+test('Todos los dueños, incluso con un único local, ven primero el inicio general',()=>{
+ const access=app.slice(app.indexOf('function afterAccess()'),app.indexOf('function subscribeLocal()',app.indexOf('function afterAccess()')));
+ assert.match(access,/miRol\(\) !== 'dueno' && mios\.length === 1/);
+ assert.match(access,/else mostrarHub\(\)/);
+ assert.match(app,/const ownerHome=miRol\(\)==='dueno'&&listo&&!!S\.db/);
+});

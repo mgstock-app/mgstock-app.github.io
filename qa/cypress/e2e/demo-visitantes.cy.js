@@ -3,6 +3,12 @@ describe('GestLok · demo para visitantes sin registro',()=>{
  Cypress.on('uncaught:exception',e=>{
   if(e.message.includes('Minified React error #418'))return false;
  });
+ const abrirInicioDelDueno=()=>{
+  cy.get('#hub .gl-owner-landing',{timeout:15000}).should('be.visible');
+  cy.get('#hub .gl-owner-quick .gl-owner-tile').should('have.length',4);
+  cy.get('#hub .gl-owner-business .gl-owner-arrow').should('be.visible').click();
+  cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
+ };
  const bootstrap=(route)=>{
   cy.task('mockSupabase').then(fake=>{
     cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,
@@ -18,7 +24,7 @@ describe('GestLok · demo para visitantes sin registro',()=>{
   cy.get('#gl-visitor-bar').should('be.visible').and('contain.text','DEMO');
   cy.get('#gl-visitor-shop').should('have.value','mercado');
   cy.get('#gl-visitor-role').should('have.value','dueno');
-  cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
+  abrirInicioDelDueno();
   cy.get('#view .gl-owner-notif-trigger').click();
   cy.get('#pn .gl-push-settings').should('contain.text','Ajustes simulados');
   cy.get('#pn [data-visitor-notif="due_today"]').click().should('have.attr','aria-checked','false');
@@ -43,7 +49,7 @@ describe('GestLok · demo para visitantes sin registro',()=>{
   cy.get('#view').should('contain.text','500');
   cy.get('#gl-visitor-role').select('dueno');
   cy.get('#gl-visitor-role',{timeout:15000}).should('have.value','dueno');
-  cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
+  abrirInicioDelDueno();
  });
  it('La pantalla de login muestra botón público para entrar a demo',()=>{
   bootstrap('/');
