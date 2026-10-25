@@ -92,9 +92,9 @@
     auth: {
       onAuthStateChange(cb){ listeners.push(cb); setTimeout(() => cb('INITIAL_SESSION', session), 0); return {data:{subscription:{unsubscribe(){}}}}; },
       async getSession(){ return {data:{session}}; },
-      async signInWithPassword({email, password}){ if (password !== 'secreto1') return {error:{message:'Invalid login credentials'}}; session = {user:{email}}; listeners.forEach(cb => cb('SIGNED_IN', session)); return {error:null}; },
+      async signInWithPassword({email, password}){ if (password !== 'secreto1') return {error:{message:'Invalid login credentials'}}; session = {user:{email,user_metadata:window.__signup?.email===email?window.__signup.options.data:{}}}; listeners.forEach(cb => cb('SIGNED_IN', session)); return {error:null}; },
       async signInWithOAuth(o){ window.__oauth = o; return {error:null}; },
-      async signUp(){ return {data:{session:null}, error:null}; },
+      async signUp(args){ window.__signup=args; return {data:{session:null}, error:null}; },
       async resetPasswordForEmail(){ return {error:null}; },
       async updateUser(){ return {error:null}; },
       async signOut(){ session = null; }
@@ -102,6 +102,31 @@
     from(){ return builder(); },
     async rpc(fn, args){
       const a = acc();
+      if (fn === 'gestlok_my_registration'){
+        const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending'}:null,error:null};
+      }
+      if (fn === 'gestlok_request_registration'){
+        if(window.__registrationFail)return {data:null,error:{message:'Sin conexión'}};
+        const kind=args?.p_kind,modules=args?.p_modules;
+        if(!session||a)return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(!['dueno','colaborador'].includes(kind)||!Array.isArray(modules)||new Set(modules).size!==modules.length||modules.length>2||modules.some(m=>!['comercial','recibos_personal'].includes(m))||(kind==='dueno'?!modules.length:!!modules.length))return {data:null,error:{code:'22023',message:'Selección inválida'}};
+        let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        if(!row){row={col:'registration_requests',id:me(),data:{email:me(),fecha:Date.now()}};rows.push(row);}
+        row.data={...row.data,tipoCuenta:kind,modulosSolicitados:[...modules].sort(),status:'pending'};notify('solicitudes');
+        return {data:{kind,modules:[...modules].sort(),status:'pending'},error:null};
+      }
+      if (fn === 'gestlok_creator_registration_requests'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:rows.filter(r=>r.col==='registration_requests'&&(r.data.status||'pending')==='pending').map(r=>({id:'registration-'+r.id,registrationUserId:r.id,...r.data})),error:null};
+      }
+      if (fn === 'gestlok_review_registration'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        const row=rows.find(r=>r.col==='registration_requests'&&r.id===args.p_user);
+        if(!row||!['assigned','rejected'].includes(args.p_status))return {error:{code:'22023',message:'Solicitud inválida'}};
+        if(args.p_status==='assigned'&&!rows.some(r=>r.col==='equipo'&&r.data.email===row.data.email))return {error:{code:'42501',message:'Primero se debe asignar'}};
+        row.data.status=args.p_status;return {data:null,error:null};
+      }
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }
