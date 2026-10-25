@@ -46,3 +46,19 @@ Ese permiso no puede sustituirse por el rol visual de GESTLOK, ni se debe transm
 6. Cypress y vista móvil no equivalen a verificar Android/iPhone físicos. Pendientes dispositivos reales, Safari/iOS, instalación y actualización PWA. Las correcciones publicadas de Proveedores, PDF, historial, sugerido y observaciones deben seguir en la suite integral.
 
 No apagar ni eliminar ReciboNet. No marcar #58 como completada. La publicación de este bloque queda condicionada a lint, Node, build y Cypress aprobados. Reportar el resultado real en #58 y el PR #62.
+
+## Cierre de verificación de esta sesión (25/10/2026)
+
+Código revisado: `7af9a92e7e54a8ccab2c4886cb4d0738ed43b052`, PR #62.
+
+- Lint, 128 pruebas Node y build: aprobados en GitHub Actions. Las huellas SHA-256 ya no fallan.
+- SQL: matriz de permisos con datos ficticios y rollback, respaldos, conservación posterior y Administradora General de origen: aprobados. No equivale a probar todos los roles y recorridos de autenticación reales.
+- Cypress [ejecución 40229110011](https://github.com/mgstock-app/mgstock-app.github.io/actions/runs/40229110011): **92/93 aprobadas**. Las tres pruebas nuevas del inicio y las suites Proveedores/observaciones/PDF/historial/PWA pasaron.
+- Falla pendiente: `qa/cypress/e2e/ingreso.cy.js:100`, escenario «avisa si el archivo ya se importó, cancelar no guarda nada y la hoja muestra el stock real». Después de volver a cargar el CSV y elegir los productos, `#ing-ok` permanece deshabilitado. No se eliminó ni se relajó esa prueba; falta determinar y corregir la causa.
+- El primer fallo de la prueba nueva del inicio era un selector ambiguo (tarjeta y botón); se corrigió el selector y las tres pruebas nuevas ahora pasan.
+- Se intentó instalar Cypress localmente para reproducir el bloqueo; el binario descargado estaba incompleto (ZIP inválido). La ejecución integral válida es la de GitHub, cuyo fallo se conserva.
+- **No fusionar ni desplegar este PR mientras haya un fallo.** Esta etapa no fue publicada; la versión pública sigue siendo la anterior de main. Los cambios de backend de solo lectura, los respaldos privados y la invitación segura sí quedaron aplicados según los apartados anteriores.
+
+### Primer paso de la próxima sesión
+
+Reproducir la segunda carga del remito con datos ficticios y observar `#ing-bloqueo`, destinos pendientes y selección de productos durante la actualización asíncrona. Corregir la causa preservando protección contra duplicados e idempotencia; ejecutar nuevamente lint, Node, build y las 93 pruebas Cypress. Solo con resultado íntegro aprobado, fusionar #62 y verificar el despliegue Pages y los archivos servidos. Después continuar con el puente de identidades y los pendientes de integración enumerados arriba. Mantener abierta #58.
