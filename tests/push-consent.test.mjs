@@ -28,9 +28,11 @@ test('Push exige consentimiento y autenticación en servidor sin activar envíos
  assert.match(edge,/access\?\.rol!=="dueno"/);
  assert.match(edge,/\.eq\("user_id",identity\.user\.id\)/);
  assert.match(edge,/\.eq\("tenant_id",access\.tenant_id\)/);
- assert.match(edge,/deliveryEnabled:false/);
- assert.doesNotMatch(edge,/sendPush|sendNotification|cron\.schedule/i);
- assert.match(edge,/input\.op!=="subscribe"&&input\.op!=="unsubscribe"/);
+ assert.match(edge,/deliveryEnabled:true/);
+ assert.match(edge,/sendNotification/);
+ assert.match(edge,/verifyCron/);
+ assert.match(edge,/gestlok_push_preferences/);
+ assert.match(edge,/data\.op!=="subscribe"&&data\.op!=="unsubscribe"/);
  assert.match(client,/permission==='granted'/);
  assert.match(client,/userVisibleOnly:true,applicationServerKey/);
  assert.match(client,/\.auth\.getSession\(\)/);
