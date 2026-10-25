@@ -42,14 +42,14 @@ test("Vencimientos, Avisos y CSS están integrados en el menú",()=>{
     assert.match(css,new RegExp("\\.gl-exp-state\\."+status));
   }
 });
-test("Los avisos internos permanecen separados de push y sin envíos automáticos",()=>{
+test("Los avisos internos permanecen separados de push y el envío exige permiso",()=>{
   assert.match(sw,/addEventListener\('push'/);
   assert.match(sw,/showNotification/);
   assert.match(app,/GestLokPush\?\.attach/);
   assert.doesNotMatch(source,/push-enable|push-disable/);
   const edge=readFileSync("supabase/functions/gestlok-push/index.ts","utf8");
-  assert.match(edge,/deliveryEnabled:false/);
-  assert.doesNotMatch(edge,/cron\.schedule|sendNotification/);
+  assert.match(edge,/verifyCron/);
+  assert.match(edge,/sendNotification/);
 });
 test("Nunca se precrean vencimientos ficticios en producción",()=>{
   assert.doesNotMatch(source,/C\('vencimientos'\)\.add\(\s*\{\s*nombre:\s*'Fumigación'/);
