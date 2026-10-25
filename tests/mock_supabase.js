@@ -24,6 +24,7 @@
     const err = m => ({data:null, error:{message:'MGS:' + m}});
     const falla = window.__rpcFalla; if (falla === 'antes'){ window.__rpcFalla = null; return {data:null, error:{message:'TypeError: Failed to fetch'}}; }
     if (!a || !total(a)) return err('sin_permiso');
+    if (a.rol === 'creadora' && !window.__creatorEditing) return {data:null, error:{code:'42501', message:'GL:solo_lectura'}};
     if (!rows.some(r => r.col === 'locales' && r.id === x.p_local)) return err('sucursal');
     if (!['ingreso', 'conteo'].includes(x.p_operacion)) return err('operacion');
     if (!/^[A-Za-z0-9-]{8,64}$/.test(x.p_clave || '')) return err('clave');
@@ -63,6 +64,8 @@
   }
   function canWrite(col){
     const a = acc(); if (!a) return false;
+    // Igual que el backend: la creadora consulta en solo lectura salvo edición habilitada.
+    if (a.rol === 'creadora' && (col.includes('/') || col === 'configuracion_negocio') && !window.__creatorEditing) return false;
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';
     if (col === 'configuracion_negocio') return total(a);
     if (!col.includes('/')) return false;
@@ -137,6 +140,21 @@
         const changed=!!window.__staffModule!==!!args.p_enabled;window.__staffModule=!!args.p_enabled;
         if(changed)(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:args.p_enabled?'module_enabled':'module_disabled',tenant_id:args.p_tenant,detail:{module:args.p_module}});
         return {data:{tenant_id:args.p_tenant,module:args.p_module,enabled:!!args.p_enabled,changed},error:null};
+      }
+      if (fn === 'gestlok_creator_editing_state'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:{active:!!window.__creatorEditing,expires_at:window.__creatorEditing?new Date(Date.now()+1800000).toISOString():null},error:null};
+      }
+      if (fn === 'gestlok_creator_enable_editing'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(!(args.p_minutes>=5&&args.p_minutes<=120)||String(args.p_reason||'').trim().length<3)return {data:null,error:{code:'22023',message:'Indicá el motivo de la edición'}};
+        window.__creatorEditing=true;(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:'editing_enabled',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',detail:{minutes:args.p_minutes}});
+        return {data:{active:true,expires_at:new Date(Date.now()+args.p_minutes*60000).toISOString()},error:null};
+      }
+      if (fn === 'gestlok_creator_disable_editing'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(window.__creatorEditing)(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:'editing_disabled',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',detail:{}});
+        window.__creatorEditing=false;return {data:{active:false,expires_at:null},error:null};
       }
       if (fn === 'gestlok_creator_audit'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};

@@ -194,7 +194,9 @@ const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
-const puedeEditarLocal = id => esTotal() || (miRol() === 'gerente' && misLocales().includes(id));
+/* La creadora consulta en solo lectura salvo que haya habilitado la edición (lo hace valer el backend). */
+const creadoraSoloLectura = () => isCreadora() && (window.GestLokCreatorMode ? window.GestLokCreatorMode.readOnly() : true);
+const puedeEditarLocal = id => (esTotal() && !creadoraSoloLectura()) || (miRol() === 'gerente' && misLocales().includes(id));
 const localNombre = id => { const k = id || S.local; const l = S.localesDB.find(x => x.id === k); return (l && l.nombre) || (k ? k.charAt(0).toUpperCase() + k.slice(1) : ''); };
 
 /* ---------- Datos derivados ---------- */
@@ -277,7 +279,7 @@ const canW = () => !!S.db && !S.ro;
 const isCreadora = () => !!(S.me && S.me.isOwner);
 function needWrite(){
   if (!S.db){ toast('Iniciá sesión para guardar.', true); return false; }
-  if (S.ro){ toast(`En ${localNombre()} tu acceso es Solo ver. Pedile a la administradora que te cambie a Gerente.`, true); return false; }
+  if (S.ro){ toast(isCreadora() ? 'Modo consulta: habilitá la edición desde el aviso de arriba para modificar.' : `En ${localNombre()} tu acceso es Solo ver. Pedile a la administradora que te cambie a Gerente.`, true); return false; }
   return true;
 }
 
@@ -439,7 +441,8 @@ function banners(){
   if (S.legacyDraft && canW()) h += '<p class="note warn"><b>Borrador anterior encontrado en este equipo.</b> Si te pertenece, podés recuperarlo antes de cargar un conteo nuevo. <button class="btn sm" data-act="recover-draft">Recuperar borrador anterior</button></p>';
   if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
-  if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
+  if (isCreadora()) h += window.GestLokCreatorMode?.banner() || '';
+  else if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
   if (S.editing && S.view !== 'conteo' && !isCustom(S.view)) h += `<div class="editbar"><span>Estás corrigiendo el conteo del <b>${esc(fechaHora(S.editing.fecha))}</b>.</span><span class="bar-a"><button class="btn sm" data-go="conteo">Ir a Conteo</button><button class="btn sm" data-act="edit-cancel">Cancelar corrección</button></span></div>`;
   return h;
 }
@@ -3020,6 +3023,7 @@ V.ingreso = () => {
 };
 async function ingConfirmar(forzar){
   const I = S.ing; if (!esTotal() || !I || I.busy) return;
+  if (creadoraSoloLectura()){ toast('Modo consulta: habilitá la edición para importar el remito.', true); return; }
   const P = ingPlan(); if (!P.items.length || P.pend.length) return;
   if (!navigator.onLine){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
   if (!I.clave) I.clave = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
@@ -3588,7 +3592,7 @@ const errLive = e => { setLive(e && e.code === 'revoked' ? 'off' : 'err'); };
 function subscribeGlobal(){
   S.db.collection('equipo').onSnapshot(snap => {
     S.equipo = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();
+    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();window.GestLokCreatorMode?.refresh();
   }, errLive);
   S.db.collection('solicitudes').onSnapshot(snap => {
     legacyRequests = snap.docs.map(d => ({id:d.id, ...d.data()}));combineRequests();
@@ -3817,6 +3821,7 @@ window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub});
+window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {

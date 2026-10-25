@@ -33,6 +33,7 @@ export function StockRuntime() {
       await load("/stock/munro-daily.js");
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-owner-areas.js?rev=dos-carpetas-20261025");
+      await load("/stock/gestlok-creator-mode.js?rev=dos-carpetas-20261025");
       await load("/stock/gestlok-tienda.js");
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");
