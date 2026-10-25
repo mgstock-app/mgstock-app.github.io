@@ -3728,6 +3728,14 @@ async function boot(){
 /* ---------- Inicio ---------- */
 function start(){
   applySkin(); render(); renderInstall(); boot();
+  window.GestLokPWAUpdate?.attach(() => !!(
+    S.panel || S.provBusy || S.ing?.busy || S.ing?.arch || S.queued || S.editing ||
+    Object.keys(S.draft).length || Object.keys(S.notas).length || Object.keys(S.fdraft).length ||
+    Object.values(S.provDrafts).some(d => d.dirty) ||
+    document.querySelector('#gestlok-chat-text')?.value?.trim() ||
+    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>
+      el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)
+  ));
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // Keep the existing installed PWA: request SW revalidation on launch and
     // when returning to GestLok. Never force a reload while editing stock.
