@@ -17,7 +17,7 @@ function launch() {
 }
 const openLocal = id => cy.get(`#hub [data-act="local"][data-id="${id}"]`).first().click();
 const mostrarHerramientas = () => cy.get('#view .gl-home-essential-settings').then(el => {
-  if (!el.attr('open')) cy.wrap(el).find('summary').click();
+  if (!el.prop('open')) cy.wrap(el).find('summary').click();
 });
 
 describe('GestLok: tienda física, online y mixta',()=>{
