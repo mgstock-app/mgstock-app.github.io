@@ -836,6 +836,14 @@ function ponerEnCeroProveedorCategoria(categoria){
         stockLocal:0,pedir:0,sugerido:row.sugerido};
     }
   }
+  // This explicit reset supersedes the old typed values preserved by render().
+  // Keep suggested quantities and internal observations untouched.
+  const resetIds=new Set(rows.map(row=>row.id));
+  for(const input of document.querySelectorAll('[data-prov-val]')){
+    if(resetIds.has(input.dataset.id) && ['stockLocal','pedir'].includes(input.dataset.provVal)){
+      input.value='0';input.defaultValue='0';input.classList.remove('bad');
+    }
+  }
   proveedorGuardarBorrador(nombre);render();
   toast('Stock local y Pedir quedaron en 0; Sugerido permanece intacto. Guardá la lista.');
 }
@@ -3728,6 +3736,14 @@ async function boot(){
 /* ---------- Inicio ---------- */
 function start(){
   applySkin(); render(); renderInstall(); boot();
+  window.GestLokPWAUpdate?.attach(() => !!(
+    S.panel || S.provBusy || S.ing?.busy || S.ing?.arch || S.queued || S.editing ||
+    Object.keys(S.draft).length || Object.keys(S.notas).length || Object.keys(S.fdraft).length ||
+    Object.values(S.provDrafts).some(d => d.dirty) ||
+    document.querySelector('#gestlok-chat-text')?.value?.trim() ||
+    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>
+      el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)
+  ));
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // Keep the existing installed PWA: request SW revalidation on launch and
     // when returning to GestLok. Never force a reload while editing stock.

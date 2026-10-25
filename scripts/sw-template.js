@@ -2,11 +2,11 @@
 const BASE = new URL('.', self.location.href).pathname.replace(/\/$/, '');
 const PREFIX = `mgstock:${BASE || '/'}:`;
 const CACHE = PREFIX + '__BUILD_VERSION__';
-const SHELL = ['/', '/stock/app.js', '/stock/gestlok-updates.js', '/stock/gestlok-push.js', '/stock/auth.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png'].map(path => BASE + path);
+const SHELL = ['/', '/stock/app.js', '/stock/gestlok-pwa-update.js', '/stock/gestlok-visitor-demo.js', '/stock/munro-daily.js', '/stock/gestlok-commerce.js', '/stock/gestlok-tienda.js', '/stock/gestlok-demo.js', '/stock/gestlok-demo-metrics.js', '/stock/gestlok-creator.js', '/stock/gestlok-support.js', '/stock/gestlok-provider-pdf.js', '/stock/gestlok-updates.js', '/stock/gestlok-push.js', '/stock/auth.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png'].map(path => BASE + path);
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll(SHELL);
+    await cache.addAll(SHELL.map(path => new Request(path, {cache:'reload'})));
     const html = await (await cache.match(BASE + '/')).text();
     const assets = [...html.matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g)].map(m => m[1].replaceAll('&amp;', '&'));
     await cache.addAll([...new Set(assets)]);
@@ -28,7 +28,7 @@ self.addEventListener('fetch', e => {
       const copy = res.clone(); e.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)));
     }
     return res;
-  }).catch(async () => (await caches.match(req)) || Response.error()));
+  }).catch(async () => (await caches.match(req)) || (same && SHELL.includes(url.pathname) && await caches.match(url.origin + url.pathname)) || Response.error()));
 });
 
 // Recepción preparada. No hay envíos automáticos ni programación activa.

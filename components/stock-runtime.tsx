@@ -20,6 +20,7 @@ export function StockRuntime() {
     let active = true;
     // Prevent duplicate listeners and subscriptions under Strict Mode.
     startup ??= (async () => {
+      await load("/stock/gestlok-pwa-update.js");
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
@@ -37,7 +38,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URL prevents older installed PWAs from reusing a stale supplier UI script.
-      await load("/stock/app.js?rev=provider-internal-observations-20261025");
+      await load("/stock/app.js?rev=provider-internal-observations-20261025-r2");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };
