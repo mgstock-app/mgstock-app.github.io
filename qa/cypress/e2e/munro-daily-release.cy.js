@@ -54,9 +54,9 @@ describe('Munro: cierre diario exclusivo, roles e historial', () => {
     cy.get('#snav [data-go="diario"]').should('exist').click();
     cy.get('.md-grupo').should('have.length',2);
     cy.get('#view').should('contain.text','Empanadas').and('contain.text','Pizzas');
+    cy.get('#diario-fecha').clear().type('2026-10-24').blur();
     cy.get('[data-md-expected="empanadas"]').should('contain.text','2.149');
     cy.get('[data-md-expected="pizza-grande"]').should('contain.text','34');
-    cy.get('#diario-fecha').clear().type('2026-10-24');
     cy.get('[data-md-act="edit"]').click();
     cy.get('[data-md-id="empanadas"][data-md-field="contado"]').clear().type('2147');
     cy.get('[data-md-diff="empanadas"]').should('contain.text','-2');
