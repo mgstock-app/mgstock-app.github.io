@@ -555,7 +555,7 @@ function proveedorFilas(nombre){
     return {
       id:'c:'+p.id,productoId:p.id,origen:'catalogo',
       nombre:p.nombre||'',unidad:p.unidad||'unidad',categoria:catOf(p)||'General',
-      stockLocal:stock,sugerido,pedir:stored.pedir??0
+      stockLocal:stock,sugerido,pedir:stored.pedir??0,observacion:stored.observacion||''
     };
   });
   for(const x of draft.items||[]){
@@ -766,6 +766,40 @@ async function guardarPlanProveedor(historico=false){
     if(/otro usuario|actualiz[oó]|recarg/i.test(String(e?.message||'')))d.stale=true;
     fail(e);
   }finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
+}
+async function guardarStockProveedor(){
+  if(!canW()||S.offline||!S.db||!S.local||!S.provOpen||S.provBusy){
+    toast('Necesitás internet y permiso de edición para guardar stock.',true);return;
+  }
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
+  const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
+  S.provBusy=true;
+  try{
+    const ref=C('proveedores').doc(proveedorId(nombre));
+    const snap=await ref.get(),remote=snap.exists?snap.data():{};
+    const version=Number(remote.pedidoActualizado)||0;
+    if(version!==d.base){d.stale=true;toast('Otro usuario modificó esta carpeta. Recargá antes de guardar.',true);return;}
+    const catalogo={...(remote.catalogo||{})};
+    for(const [id,row] of Object.entries(d.catalogo)){
+      catalogo[id]={...(catalogo[id]||{}),stockLocal:row.stockLocal??null,sugerido:row.sugerido??null,observacion:String(row.observacion||'').slice(0,300)};
+    }
+    const remoteItems=Array.isArray(remote.items)?remote.items:[];
+    const items=d.items.map(row=>{
+      const original=remoteItems.find(x=>x.id===row.id);
+      return {...row,pedir:original?.pedir??0,observacion:String(row.observacion||'').slice(0,300)};
+    });
+    const stamp=Math.max(Date.now(),version+1);
+    const update={catalogo,items,pedidoActualizado:stamp};
+    await w(()=>snap.exists?ref.update(update):ref.set({nombre,contacto:'',telefono:'',entrega:'',nota:'',...update}));
+    if(S.local!==local||S.provOpen!==nombre)return;
+    const ficha=proveedorFicha(nombre);
+    if(ficha)Object.assign(ficha,update);
+    else S.provInfo.push({id:proveedorId(nombre),nombre,...update});
+    d.base=stamp;d.stale=false;
+    proveedorGuardarBorrador(nombre);
+    toast('Stock y observaciones guardados. El pedido sigue pendiente.');
+    render();
+  }catch(e){fail(e);}finally{S.provBusy=false;}
 }
 function confirmarGuardarProveedor(){
   if(!canW()||!S.provOpen||S.offline||S.provBusy){
@@ -1019,6 +1053,7 @@ V.proveedores = () => {
     const manual=p.origen==='manual';
     return encabezado+`<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
         <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
+        <label>Observación interna <input data-prov-note="${esc(p.id)}" maxlength="300" value="${esc(p.observacion||'')}" placeholder="Observación del producto" ${disabled}></label>
         ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
       </td>
       ${['stockLocal','pedir','sugerido'].map(field=>`<td data-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'}">
@@ -1048,7 +1083,7 @@ V.proveedores = () => {
     ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
     <div class="gl-prov-toolbar">
       <b>Lista de productos</b>
-      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar</button>`:''}
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-stock" ${S.offline?'disabled':''}>${ic('save')}Guardar stock</button><button class="btn sm" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar pedido</button>`:''}
     </div>
     ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
       <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
@@ -2712,7 +2747,19 @@ function dragEnd(){
 }
 document.addEventListener('pointerup', dragEnd);
 document.addEventListener('pointercancel', dragEnd);
-document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } if(e.target.matches('[data-prov-val]')) actualizarValorProveedor(e.target); });
+document.addEventListener('input', e => {
+  if(e.target.matches('[data-prov-note]') && canW() && S.provOpen){
+    const id=e.target.dataset.provNote,d=proveedorBase(S.provOpen);
+    const row=proveedorFilas(S.provOpen).find(x=>x.id===id);
+    if(row?.origen==='manual'){
+      const item=d.items.find(x=>x.id===id);
+      if(item)item.observacion=e.target.value.slice(0,300);
+    }else if(row){
+      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),stockLocal:row.stockLocal,sugerido:row.sugerido,pedir:row.pedir,observacion:e.target.value.slice(0,300)};
+    }
+    proveedorGuardarBorrador(S.provOpen);
+  }
+  if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } if(e.target.matches('[data-prov-val]')) actualizarValorProveedor(e.target); });
 document.addEventListener('keydown', e => {
   const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   e.preventDefault();
@@ -3254,6 +3301,7 @@ document.addEventListener('click', e => {
     case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
     case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
     case 'prov-save-plan': confirmarGuardarProveedor(); break;
+    case 'prov-save-stock': guardarStockProveedor(); break;
     case 'prov-save-draft': guardarPlanProveedor(false); break;
     case 'prov-save-history': guardarPlanProveedor(true); break;
     case 'prov-zero-cat': ponerEnCeroProveedorCategoria(t.dataset.cat); break;
