@@ -1090,7 +1090,7 @@ V.chat = () => {
     const own = !!(m.autor && m.autor === S.uid);
     const ts = Number(m.fecha);
     const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
-    return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong><small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
+    return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong>${m.urgente?'<span class="gl-chat-urgent">Urgente</span>':''}<small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
   }).join('');
   const pending = chatPending();
   const puedeEnviar = canW() && !S.offline;
@@ -1100,6 +1100,7 @@ V.chat = () => {
     ${pending ? '<p class="note warn">No pudimos confirmar el envío anterior. Reintentá el mismo mensaje; no se duplicará.</p>' : ''}
     ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
     <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${canW() && !pending ? '' : 'disabled'}>${esc(pending ? pending.texto : chatDraftText())}</textarea>
+      ${miRol()==='gerente'?`<label class="gl-chat-urgent-choice"><input id="gl-chat-urgent-input" type="checkbox" ${pending?.urgente?'checked':''} ${pending?'disabled':''}><span>Enviar como urgente (avisa a Dueña)</span></label>`:''}
       <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>${pending ? 'Reintentar envío' : 'Enviar mensaje'}</button></form>
   </section>`;
 };
@@ -1109,7 +1110,8 @@ async function sendGestlokChat(form){
   const local = S.local, author = S.uid, input = form.querySelector('#gestlok-chat-text');
   const pending = chatPending(), txt = (pending ? pending.texto : input?.value || '').trim();
   if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
-  const payload = pending || {id:rid() + rid(), texto:txt, autor:author, local, nombre:S.me?.name || 'Equipo', fecha:Date.now()};
+  const payload = pending || {id:rid() + rid(), texto:txt, autor:author, local, nombre:S.me?.name || 'Equipo', fecha:Date.now(),
+    urgente:miRol()==='gerente' && !!form.querySelector('#gl-chat-urgent-input')?.checked};
   const pendingKey = chatPendingKey(), draftKey = chatDraftKey();
   // Identificador fijo de mensaje: si la respuesta se pierde, reintentar no crea otro registro.
   try { localStorage.setItem(pendingKey, JSON.stringify(payload)); }
@@ -1119,7 +1121,8 @@ async function sendGestlokChat(form){
   if (input) input.disabled = true;
   try {
     await w(() => S.db.collection(local + '/chat').doc(payload.id).set({
-      texto:payload.texto, autor:payload.autor, nombre:payload.nombre, fecha:payload.fecha
+      texto:payload.texto, autor:payload.autor, nombre:payload.nombre, fecha:payload.fecha,
+      urgente:payload.urgente===true
     }));
     if (lsGet(pendingKey, null)?.id === payload.id) localStorage.removeItem(pendingKey);
     if (lsGet(draftKey, '') === payload.texto || lsGet(draftKey, '') === '') localStorage.removeItem(draftKey);
@@ -1175,8 +1178,9 @@ function resumenHojasInicio(){
 function openOwnerNotifications(){
   if(miRol()!=='dueno'||S.view!=='inicio'||!S.local)return;
   S.panel='owner-notifications';
-  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · Dueña</small><h3 id="gl-owner-notifications-title">Notificaciones</h3></div><button class="ib" data-act="close" aria-label="Cerrar notificaciones">${ic('x')}</button></div><div class="pn-b gl-owner-notif-body"><div class="gl-owner-notif-empty">${ic('bell')}<b>Notificaciones</b><p>Este espacio está preparado para las notificaciones de tu negocio.</p></div>${window.GestLokPush?.drawerContent?.()||''}</div>`,'drawer');
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · Dueña</small><h3 id="gl-owner-notifications-title">Notificaciones</h3></div><button class="ib" data-act="close" aria-label="Cerrar notificaciones">${ic('x')}</button></div><div class="pn-b gl-owner-notif-body"><div class="gl-owner-notif-empty">${ic('bell')}<b>Notificaciones</b><p>Elegí qué avisos querés recibir en tu celular.</p></div>${window.GestLokPush?.drawerContent?.()||''}</div>`,'drawer');
   $('#pn').setAttribute('aria-labelledby','gl-owner-notifications-title');
+  window.GestLokPush?.onOpen?.();
   $('#pn [data-act="close"]')?.focus({preventScroll:true});
 }
 
