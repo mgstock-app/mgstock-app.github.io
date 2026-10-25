@@ -72,7 +72,7 @@
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-au]'); if (!t) return;
     e.preventDefault();
-    if (t.dataset.au === 'out'){ sb && sb.auth.signOut().finally(() => location.reload()); return; }
+    if (t.dataset.au === 'out'){ Promise.resolve(window.GestLokPush?.onLogout?.()).catch(()=>{}).finally(()=>{ sb && sb.auth.signOut().finally(() => location.reload()); }); return; }
     if (t.dataset.au === 'google'){ google(t); return; }
     if (t.dataset.au === 'retry'){ location.reload(); return; }
     show(t.dataset.au, '');

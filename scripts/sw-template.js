@@ -46,7 +46,9 @@ self.addEventListener('push', event => {
       body,icon:BASE+'/icons/gestlok-app-v2-192.png',
       badge:BASE+'/icons/gestlok-favicon-v2-32.png',
       tag:String(payload.tag||'gestlok').slice(0,70),
-      data:{url:BASE+route}
+      data:{url:BASE+route,
+        local:typeof payload.local==='string' && /^[A-Za-z0-9_-]{1,80}$/.test(payload.local)?payload.local:'',
+        view:['chat','proveedores','vencimientos','avisos'].includes(payload.view)?payload.view:'inicio'}
     });
   })());
 });
@@ -57,7 +59,13 @@ self.addEventListener('notificationclick',event=>{
   event.waitUntil((async()=>{
     const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     const opened=windows.find(w=>new URL(w.url).origin===url.origin && new URL(w.url).pathname.startsWith(BASE+'/'));
-    if(opened){await opened.focus();return;}
+    const local=event.notification.data?.local,view=event.notification.data?.view;
+    if(opened){
+      await opened.focus();
+      opened.postMessage({type:'gestlok-push-open',local,view});
+      return;
+    }
+    if(local && view){url.searchParams.set('gl_local',local);url.searchParams.set('gl_view',view);}
     await self.clients.openWindow(url.href);
   })());
 });

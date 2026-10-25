@@ -1816,3 +1816,30 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 @media(max-width:700px){.gl-push-permission{display:grid;padding:13px}
   .gl-push-actions{width:100%;justify-content:flex-start}}
 @media print{.gl-push-permission{display:none!important}}
+
+
+/* Panel Dueña: interruptores accesibles verde/gris al estilo del dispositivo. */
+.gl-push-settings{display:grid;gap:0;border:1px solid #dde7ed;border-radius:13px;background:var(--surface);overflow:hidden}
+.gl-push-settings h4{font-size:15px;margin:0;padding:17px 17px 4px}
+.gl-push-pref-description{font-size:12px;color:var(--muted);margin:0;padding:0 17px 13px}
+.gl-push-pref-row{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:77px;padding:12px 16px;border-top:1px solid #e9eff3}
+.gl-push-pref-row>div{flex:1;min-width:0}
+.gl-push-pref-row b{display:block;font-size:13.5px;line-height:1.35;color:var(--ink)}
+.gl-push-pref-row small{display:block;color:var(--muted);font-size:11.5px;line-height:1.45;margin-top:3px}
+.gl-push-switch{display:inline-flex;align-items:center;justify-content:flex-start;flex:0 0 56px;width:56px;height:33px;padding:3px;
+  border:1px solid #ccd1d8;border-radius:999px;background:#d9dde2;cursor:pointer;transition:background .16s ease}
+.gl-push-switch span{display:block;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #182c3d33;transition:transform .16s ease}
+.gl-push-switch.on{background:#38b86b;border-color:#38b86b}
+.gl-push-switch.on span{transform:translateX(23px)}
+.gl-push-switch:disabled{cursor:not-allowed;opacity:.52}
+.gl-push-switch:focus-visible{outline:3px solid #2e87bd;outline-offset:3px}
+.gl-push-pref-foot{font-size:11px;color:var(--muted);padding:12px 16px;border-top:1px solid #e9eff3}
+.gl-chat-urgent{display:inline-block;margin:0 6px;padding:2px 7px;border-radius:8px;background:#fff0e6;color:#8c390b;font-size:10px;font-weight:800}
+.gl-chat-urgent-choice{display:flex;align-items:center;gap:8px;color:#7a3509;font-weight:700;font-size:13px}
+.gl-chat-urgent-choice input{accent-color:#d75b1b;min-width:19px;min-height:19px}
+@media(max-width:430px){
+ .gl-push-pref-row{min-height:72px;padding:11px 12px;gap:9px}
+ .gl-push-pref-row b{font-size:12.7px}
+ .gl-push-pref-row small{font-size:11px}
+ .gl-push-switch{flex-basis:54px}
+}
