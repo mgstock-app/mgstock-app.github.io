@@ -16,6 +16,9 @@ function launch() {
   cy.get('#au-in').should('be.visible');
 }
 const openLocal = id => cy.get(`#hub [data-act="local"][data-id="${id}"]`).first().click();
+const mostrarHerramientas = () => cy.get('#view .gl-home-essential-settings').then(el => {
+  if (!el.prop('open')) cy.wrap(el).find('summary').click();
+});
 
 describe('GestLok: tienda física, online y mixta',()=>{
   Cypress.on('uncaught:exception',error=>{
@@ -28,6 +31,7 @@ describe('GestLok: tienda física, online y mixta',()=>{
     openLocal('munro');
     cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#gl-store-mode-owner').prev('#live').should('exist');
+    mostrarHerramientas();
     cy.get('#view .gl-commerce-choice[data-commerce-mode="online"]').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda online');
     cy.get('#snav [data-go="pedidos-online"]').should('exist').click();
@@ -46,10 +50,13 @@ describe('GestLok: tienda física, online y mixta',()=>{
     cy.get('#snav [data-go="pedidos-online"]').click();
     cy.get('#view').should('contain.text','Pedido de prueba');
     cy.get('#snav [data-go="inicio"]').click();
+    mostrarHerramientas();
     cy.get('#view .gl-commerce-choice[data-commerce-mode="fisica"]').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#snav [data-go="pedidos-online"]').should('not.exist');
-    cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').click();
+    // El acordeón conserva su estado tras guardar: no exigir que se cierre.
+    mostrarHerramientas();
+    cy.get('#view .gl-commerce-choice[data-commerce-mode="mixta"]').should('be.visible').click();
     cy.get('#gl-store-mode-owner').should('have.text','Tienda mixta');
     cy.get('#snav [data-go="pedidos-online"]').should('exist');
     cy.get('#snav [data-go="ingreso"]').should('exist');

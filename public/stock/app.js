@@ -304,8 +304,13 @@ function render(){
   let sel = null; try { if (fid && ae.selectionStart != null) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
+  const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
   renderChrome();
   $('#view').innerHTML = viewHTML();
+  if(toolsOpen && S.view==='inicio'){
+    const details=$('#view .gl-home-essential-settings');
+    if(details)details.open=true;
+  }
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
 function viewHTML(){
@@ -1147,7 +1152,105 @@ function resumenHojasInicio(){
   </section>`;
 }
 
+/* Portada operativa breve para Dueño y Gerente.
+   Los informes detallados permanecen en sus hojas y no se repiten en Inicio. */
+function inicioOperativo(){
+  const productos=sorted(), total=productos.length;
+  const estados={sin:0,bajo:0,nc:0};
+  for(const p of productos){
+    const e=estado(p);
+    if(e in estados)estados[e]++;
+  }
+  const ver=id=>visibles().some(h=>h.id===id);
+  const online=!!window.GestLokCommerce?.online();
+  const conteo=ver('conteo')?'conteo':ver('stock')?'stock':'';
+  const pedidos=ver('pedido');
+  const pendienteOnline=online?Number(window.GestLokCommerce?.pendingCount?.()||0):0;
+  const vencimientos=window.GestLokUpdates?.homeDueItems?.(S.vencimientos)||[];
+  const vence=vencimientos.length;
+  const acciones=[
+    ...(puedeVerDiarioMunro()?[['diario','Control diario','clock']]:
+      conteo?[[conteo,conteo==='conteo'?'Conteo':'Stock','clip']]:[]),
+    ['proveedores','Proveedores','store'],
+    ...(online?[['pedidos-online','Pedidos online','cart']]:
+       pedidos?[['pedido','Pedidos','cart']]:[]),
+    ...(ver('historial')?[['historial','Historial','clock']]:[]),
+    ...(!conteo&&ver('stock')?[['stock','Stock','box']]:[])
+  ].slice(0,4);
+  const tarjeta=(titulo,cantidad,detalle,act,k)=>{
+    const accion=act? (k?`data-act="home-stock-filter" data-k="${k}"`:`data-go="${act}"`):'';
+    const tag=act?'button':'div';
+    return `<${tag} class="gl-home-essential-stat" ${accion}>
+      <span class="gl-home-essential-stat-label">${esc(titulo)}</span>
+      <b class="gl-home-essential-stat-number">${S.loaded.p?cantidad:'—'}</b>
+      <small>${esc(detalle)}</small>
+    </${tag}>`;
+  };
+  const metricas=online ? [
+    tarjeta('Pedidos pendientes',pendienteOnline,'Por preparar o entregar','pedidos-online'),
+    tarjeta('Productos',total,'En el catálogo del local','stock'),
+    tarjeta('Sin stock',estados.sin,'Revisar existencias','stock','sin')
+  ] : [
+    tarjeta('Sin stock',estados.sin,'Reponer o revisar','stock','sin'),
+    tarjeta('Para pedir',pedidoItems().length,'Productos bajo mínimo',pedidos?'pedido':'proveedores'),
+    tarjeta('Sin contar',estados.nc,'Sin cantidad registrada','stock','nc')
+  ];
+  const herramientasAbiertas=!!document.querySelector('#view .gl-home-essential-settings[open]');
+  const opciones=`<details class="gl-home-essential-settings" ${herramientasAbiertas?'open':''}>
+    <summary>Más herramientas</summary>
+    <div class="gl-home-essential-tools">
+      <button class="btn sm" data-act="share">${ic('userplus')}Equipo</button>
+      ${miRol()==='dueno'&&window.GestLokCommerce?.mode()!=='online'?`<button class="btn sm" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>`:''}
+      ${S.dl&&S.db?`<button class="btn sm" data-act="backup">${ic('shield')}Copia de seguridad</button>`:''}
+    </div>
+    ${miRol()==='dueno'?window.GestLokCommerce?.card?.()||'':''}
+  </details>`;
+  return `${banners()}
+    <div class="gl-home-essential" aria-label="Inicio del local">
+      <header class="gl-home-essential-head">
+        <div><p class="eyebrow">${esc(fechaLarga())}</p>
+          <h1>Inicio · ${esc(localNombre())}</h1>
+          <p>Lo importante para trabajar hoy.</p></div>
+      </header>
+      ${!S.loaded.p?'<p class="note">Cargando información del local…</p>':''}
+      ${S.loaded.p&&!total&&canW()?`<div class="gl-home-essential-setup">
+        <span>Este local todavía no tiene productos cargados.</span>
+        <button class="btn sm primary" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button>
+        </div>`:''}
+      <section class="gl-home-essential-overview" aria-label="Indicadores del local">
+        ${metricas.join('')}
+      </section>
+      ${vence?`<section class="gl-home-essential-alert gl-home-due" aria-label="Vencimientos que requieren atención">
+        <div class="gl-home-essential-due-content">
+          <b>${vence} ${vence===1?'vencimiento':'vencimientos'} · ${esc(localNombre())}</b>
+          <ul class="gl-home-essential-due-items">
+            ${vencimientos.slice(0,2).map(item=>{
+              const dias=item.vencimiento.days;
+              const titulo=esc(item.nombre||'Servicio sin nombre')+
+                (dias<0?': plazo vencido':dias===0?' vence hoy':
+                 dias===1?' vence mañana':' vence en '+dias+' días');
+              return `<li><small class="gl-home-due-status ${esc(item.vencimiento.cls)}">${dias<0?'Vencido':dias===0?'Hoy':'Próximo'}</small>
+                <span>${titulo}</span></li>`;
+            }).join('')}
+            ${vence>2?`<li class="gl-home-essential-due-more">+${vence-2} más en Vencimientos</li>`:''}
+          </ul>
+        </div>
+        <button class="btn sm" data-go="vencimientos">Revisar</button>
+      </section>`:''}
+      <section class="gl-home-essential-actions" aria-label="Accesos rápidos">
+        <h2>Accesos rápidos</h2>
+        <div class="gl-home-essential-links">
+          ${acciones.map(([id,label,icono])=>`<button data-go="${id}">
+              <span aria-hidden="true">${ic(icono)}</span><b>${esc(label)}</b>${ic('chev')}
+            </button>`).join('')}
+        </div>
+      </section>
+      ${opciones}
+    </div>`;
+}
+
 V.inicio = () => {
+  if (['dueno','gerente'].includes(miRol())) return inicioOperativo();
   const ps = sorted(), n = ps.length;
   const cnt = {ok:0, bajo:0, sin:0, nc:0}; ps.forEach(p => cnt[estado(p)]++);
   const ped = pedidoItems().length, last = S.conteos[0] || null, flagged = ps.filter(p => estado(p) === 'sin');
@@ -3146,6 +3249,7 @@ document.addEventListener('click', e => {
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
+    case 'home-stock-filter': go('stock'); S.filtro = ['sin','nc'].includes(t.dataset.k)?t.dataset.k:'todos'; render(); break;
     case 'f-add-dlg': openFAdd(); break;
     case 'ing-local': { const I = S.ing || (S.ing = ingNuevo()); if (I.busy || I.local === id || !localesTodos().some(l => l.id === id)) break; Object.assign(I, {local:id, datos:null, hist:null, res:null, msg:null, clave:'', dec:{}, cant:{}, on:{}, campo:{}}); ingCargar(); break; }
     case 'ing-op': { const I = S.ing; if (!I || I.busy) break; I.op = t.dataset.op === 'conteo' ? 'conteo' : 'ingreso'; ingCambio(); render(); break; }

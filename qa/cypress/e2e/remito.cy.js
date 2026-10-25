@@ -12,6 +12,7 @@ const abrir = () => {
   cy.get("#au-pass").type("secreto1", { log: false });
   cy.get("#au-in button[type=submit]").click();
   cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+  cy.get("#view .gl-home-essential-settings summary").click();
   cy.get("#ini-remito").click();
   cy.get("#ing-loc-munro").click();
   cy.get("#ing-op-ingreso").click();
