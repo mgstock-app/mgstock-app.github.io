@@ -1636,3 +1636,130 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-home-essential-due-items .gl-home-due-status{width:auto;min-width:52px;min-height:20px;padding:3px 6px;font-size:10px;font-weight:650}
 .gl-home-essential-due-more{color:var(--muted)!important}
 @media(max-width:640px){.gl-home-essential-due-items li{align-items:flex-start;flex-wrap:wrap}}
+
+
+/* GestLok · Stock Local / Ingreso: vista compacta tipo planilla en tablet y teléfono.
+   Desktop (>1150px) no se modifica. Las categorías permanecen visibles al desplazarse.
+   Los controles originales siguen siendo inputs/botones reales: no hay duplicación. */
+.gl-bq-count,.gl-bq-toggle{display:none}
+@media screen and (max-width:1150px){
+  .xl{overflow:visible}
+  .xl-top{margin-bottom:12px}
+  .xl-r.xl-bq{
+    display:block;margin:18px 0 0;border:1px solid #b8d0dc;border-bottom:0;
+    border-radius:12px 12px 0 0;box-shadow:0 3px 10px rgba(21,55,73,.05);overflow:hidden
+  }
+  .xl-bq .xbq{
+    display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;
+    min-height:49px;padding:9px 12px;border:0;border-left:5px solid #137985;
+    background:#e8f4f7;color:#153c4f
+  }
+  .xl-bq .xbq b{flex:1;min-width:80px;color:#153c4f;font-size:14px;letter-spacing:.025em}
+  .xl-bq .gl-bq-count{display:inline-flex;align-items:center;padding:3px 7px;
+    border-radius:999px;background:#fff;color:#426377;font:650 11px var(--f-body);white-space:nowrap}
+  .xl-bq .gl-bq-toggle{
+    display:inline-flex;align-items:center;justify-content:center;min-height:34px;
+    padding:0 11px;border:1px solid #afc9d3;border-radius:8px;background:#fff;
+    color:#174a62;font:700 12px var(--f-body);cursor:pointer;touch-action:manipulation
+  }
+  .xl-bq .gl-bq-toggle:hover{background:#d8edf1}
+  .xl-bq .gl-bq-toggle:focus-visible{outline:3px solid #238b93;outline-offset:2px}
+  .xl-r.gl-folded-row{display:none!important}
+  .xl-r:not(.xl-h):not(.xl-bq){
+    margin:0;box-shadow:none;border:1px solid #dce7ee;border-top:0;
+    border-radius:0;background:#fff;overflow:hidden;gap:0
+  }
+  .xl-r:not(.xl-h):not(.xl-bq):has(+ .xl-bq),
+  .xl-r:not(.xl-h):not(.xl-bq):has(+ .xl-add){
+    border-radius:0 0 12px 12px;margin-bottom:10px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>*{min-width:0;min-height:0}
+  .xl-r:not(.xl-h):not(.xl-bq) .xl-mob-label{
+    display:block;text-align:center;color:#4c6878;
+    font:700 10px/1.25 var(--f-body);letter-spacing:.035em;text-transform:uppercase
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xp b{font-size:13.5px;line-height:1.3}
+  .xl-r:not(.xl-h):not(.xl-bq) .xp .addnote{
+    font-size:11.5px;padding:2px 0;margin-top:3px;color:#50718a
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xp .ss input{width:20px;height:20px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper button,
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper input{
+    height:40px;min-height:40px;border-radius:8px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper button{font-size:20px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper input{
+    font-size:15px;min-width:0;background:#fff;border-color:#cedde5
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .fq button{height:29px;font-size:14px}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .fq{border-radius:7px}
+  .xl-add{margin-top:12px;border:1px solid #dce7ee;border-radius:10px;background:#f6fafb}
+}
+@media screen and (min-width:700px) and (max-width:1150px){
+  .xl-r:not(.xl-h):not(.xl-bq){
+    display:grid;grid-template-columns:minmax(170px,1fr) 78px minmax(140px,168px) minmax(140px,168px);
+    grid-template-areas:"product total local factory";align-items:stretch
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xp{
+    grid-area:product;display:flex;align-items:center;gap:9px;
+    padding:10px 12px!important;background:#fff;border-bottom:0
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xt{
+    grid-area:total;min-height:0;display:flex;flex-direction:column;justify-content:center;
+    gap:4px;padding:7px 4px;border-left:1px solid #dce7ee
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xt strong{font-size:18px}
+  .xl-r:not(.xl-h):not(.xl-bq)>.xc.xcl{
+    grid-area:local;border-left:1px solid #dce7ee;border-right:1px solid #dce7ee;
+    padding:8px 7px!important;gap:5px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xc.fab{
+    grid-area:factory;padding:8px 7px!important;gap:5px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper{
+    grid-template-columns:32px minmax(0,1fr) 32px;gap:4px
+  }
+}
+@media screen and (max-width:699px){
+  .xl-r:not(.xl-h):not(.xl-bq){
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-areas:"product product" "local factory";position:relative
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xp{
+    grid-area:product;display:flex;align-items:center;gap:9px;
+    padding:10px 88px 9px 12px!important;background:#fff;
+    min-height:68px;border-bottom:1px solid #e0e9ef
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xt{
+    grid-area:auto;position:absolute;right:9px;top:9px;z-index:1;
+    display:flex;flex-direction:column;justify-content:center;gap:2px;
+    width:72px;min-height:48px;padding:5px 4px;border:1px solid #eedba8;
+    border-radius:9px;background:#fff5d9
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xt strong{font-size:18px}
+  .xl-r:not(.xl-h):not(.xl-bq)>.xc.xcl{
+    grid-area:local;padding:9px 8px!important;gap:5px;border:0
+  }
+  .xl-r:not(.xl-h):not(.xl-bq)>.xc.fab{
+    grid-area:factory;padding:9px 8px!important;gap:5px;
+    border:0;border-left:1px solid #dce7ee
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper{
+    grid-template-columns:34px minmax(0,1fr) 34px;gap:4px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-mob-label{
+    text-align:center;font-size:10.5px
+  }
+  .xl-bq .xbq{padding:9px 10px}
+  .xl-bq .xbq b{font-size:13.5px}
+}
+@media screen and (max-width:365px){
+  .xl-r:not(.xl-h):not(.xl-bq)>.xp{padding-right:79px!important}
+  .xl-r:not(.xl-h):not(.xl-bq)>.xt{width:65px;right:7px}
+  .xl-r:not(.xl-h):not(.xl-bq)>.xc.xcl,
+  .xl-r:not(.xl-h):not(.xl-bq)>.xc.fab{padding:9px 6px!important}
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper{
+    grid-template-columns:30px minmax(0,1fr) 30px;gap:3px
+  }
+  .xl-r:not(.xl-h):not(.xl-bq) .xc .xl-stepper input{font-size:14px}
+}
