@@ -2146,6 +2146,17 @@ function renderHub(){
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
 
+  // Portada de dueño: la administración comercial existente sigue siendo funcional.
+  // El módulo de personal se habilitará únicamente tras integrar ReciboNet y RLS.
+  if (miRol() === 'dueno' && listo && S.db && mios.length) {
+    body = `<section class="gl-owner-landing" aria-label="Inicio de GESTLOK">
+      <header class="gl-owner-welcome"><p>Bienvenido/a a</p><h1>GEST<span>LOK</span></h1><p>Todo lo que necesitás, en un solo lugar.</p></header>
+      <div class="gl-owner-areas">
+        <article class="gl-owner-area gl-owner-business"><div class="gl-owner-area-icon" aria-hidden="true">🏬</div><h2>Administrar<br>mi empresa</h2><p>Productos, stock, proveedores, ventas y más.</p><ul><li>Productos y stock</li><li>Proveedores</li><li>Ventas y reportes</li><li>Tienda online / mixta / física</li><li>Ajustes de la empresa</li></ul><h3>Elegí un local para ingresar</h3><div class="gl-owner-locations">${mios.map(lcard).join('')}</div></article>
+        <article class="gl-owner-area gl-owner-employees"><div class="gl-owner-area-icon" aria-hidden="true">👥</div><h2>Administrar<br>a los empleados</h2><p>Horarios, planillas, recibos y gestión del personal.</p><ul><li>Horarios</li><li>Planillas</li><li>Recibos de sueldo</li><li>Empleados y roles</li><li>Enlaces a Excel</li><li>Reportes</li></ul><p class="gl-owner-awaiting" role="status">Acceso en preparación: requiere integración y permisos verificados.</p></article>
+      </div></section>`;
+  }
+
   // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
   // No es un panel de pagos: GestLok sigue gratuito y todas las altas requieren aprobación.
   if (adm && listo && S.db) {
