@@ -14,7 +14,7 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.get('#hub h1').should('have.length',1);
   cy.get('#hub .gl-commerce-card').should('not.be.visible');
   cy.get('#hub [data-act="local"][data-id="munro"]').should('be.visible');
-  cy.get('#hub [data-act="local"][data-id="torcuato"]').should('be.visible').click();
+  cy.get('#hub button[data-act="local"][data-id="torcuato"]').should('have.length',1).and('be.visible').click();
   cy.get('#snav').should('be.visible');
  });
  it('no ofrece una carpeta si falla la comprobación y permite reintentar',()=>{
