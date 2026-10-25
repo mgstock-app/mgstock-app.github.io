@@ -20,6 +20,7 @@ export function StockRuntime() {
     let active = true;
     // Prevent duplicate listeners and subscriptions under Strict Mode.
     startup ??= (async () => {
+      await load("/stock/gestlok-pwa-update.js");
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
