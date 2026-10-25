@@ -4,7 +4,11 @@
 (() => {
   'use strict';
   let api = null;
-  const empty = local => ({local,loaded:false,loading:false,saving:false,workspace:null,items:[],editing:null,tab:'resumen',filter:'todos',q:'',page:0,error:''});
+  const empty = local => ({local,loaded:false,loading:false,loadingPage:false,saving:false,workspace:null,
+    items:[],alerts:[],stats:{total:0,activos:0,alertas:0,archivados:0,categorias:0},
+    categories:[],categoriesLoaded:false,editing:null,editingProduct:null,
+    tab:'resumen',filter:'activos',q:'',category:'',supplier:'',categoryQuery:'',
+    page:0,cursors:[null],hasMore:false,serial:0,error:''});
   let state=empty(null);
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n)||0);
@@ -19,66 +23,121 @@
   function render(){if(api?.S?.view==='tienda-online')api.render();}
   async function load(force=false){
     reset();
-    if(!canView() || state.loading || (state.loaded&&!force))return;
-    const local=state.local, tenant=api.S.me.tenant_id, sb=client();
-    if(!sb){state.error='No se pudo iniciar el espacio de gestión.';state.loaded=true;return;}
+    if(!canView()||state.loading||(state.loaded&&!force))return;
+    const local=state.local,tenant=api.S.me.tenant_id,sb=client();
+    if(!sb){state.error='No se pudo iniciar el catálogo.';state.loaded=true;return;}
     state.loading=true;state.error='';
     try{
       const a=await sb.from('gestlok_tiendas').select('*').eq('tenant_id',tenant).eq('local_id',local).maybeSingle();
       if(a.error)throw a.error;
-      let products=[];
-      if(a.data){
-        // PostgREST limita los resultados de cada consulta. Recuperar por páginas
-        // evita mostrar sólo los primeros 1.000 artículos de una empresa grande.
-        for(let offset=0;offset<10000;offset+=300){
-          const b=await sb.from('gestlok_productos_tienda').select('*')
-            .eq('tenant_id',tenant).eq('tienda_id',a.data.id)
-            .order('nombre').order('id').range(offset,offset+299);
-          if(b.error)throw b.error;
-          products.push(...(b.data||[]));
-          if((b.data||[]).length<300)break;
-        }
-      }
       if(local!==state.local)return;
-      state.workspace=a.data||null;state.items=products;state.loaded=true;
+      state.workspace=a.data||null;state.loaded=true;
+      if(state.workspace){
+        await Promise.all([loadPage(),loadStats(),loadAlerts()]);
+      }
     }catch(e){if(local===state.local){state.error=err(e);state.loaded=true;}}
     finally{if(local===state.local){state.loading=false;render();}}
   }
+  const resetPage=()=>{state.page=0;state.cursors=[null];state.hasMore=false;};
+  async function loadPage(){
+    if(!state.workspace||!canView())return;
+    const serial=++state.serial,local=state.local;
+    const cursor=state.cursors[state.page]||null;
+    state.loadingPage=true;state.error='';
+    try{
+      const r=await client().rpc('gestlok_catalogo_pagina',{
+        p_tienda:state.workspace.id,p_consulta:state.q.trim(),
+        p_categoria:state.category.trim(),p_proveedor:state.supplier.trim(),
+        p_estado:state.filter,p_cursor_nombre:cursor?.nombre||null,
+        p_cursor_id:cursor?.id||null,p_limite:50
+      });
+      if(r.error)throw r.error;
+      if(serial!==state.serial||local!==state.local)return;
+      state.items=Array.isArray(r.data?.items)?r.data.items:[];
+      state.hasMore=r.data?.hasMore===true;
+      if(state.page>0&&!state.items.length){state.page--;return await loadPage();}
+    }catch(e){if(serial===state.serial&&local===state.local){
+      state.error='No se pudo consultar el catálogo: '+err(e);state.items=[];state.hasMore=false;
+    }}
+    finally{if(serial===state.serial&&local===state.local){state.loadingPage=false;render();}}
+  }
+  async function loadStats(){
+    if(!state.workspace)return;
+    const local=state.local;
+    try{
+      const r=await client().rpc('gestlok_catalogo_resumen',{p_tienda:state.workspace.id});
+      if(r.error)throw r.error;
+      if(local===state.local)state.stats=r.data||state.stats;
+    }catch(e){if(local===state.local)state.error='No se pudo cargar el resumen: '+err(e);}
+  }
+  async function loadAlerts(){
+    if(!state.workspace)return;
+    const local=state.local;
+    try{
+      const r=await client().rpc('gestlok_catalogo_pagina',{
+        p_tienda:state.workspace.id,p_consulta:'',p_categoria:'',p_proveedor:'',
+        p_estado:'alertas',p_cursor_nombre:null,p_cursor_id:null,p_limite:6
+      });
+      if(r.error)throw r.error;
+      if(local===state.local)state.alerts=Array.isArray(r.data?.items)?r.data.items:[];
+    }catch(e){if(local===state.local)state.alerts=[];}
+  }
+  async function loadCategories(){
+    if(!state.workspace)return;
+    const local=state.local;
+    try{
+      const r=await client().rpc('gestlok_catalogo_categorias',{
+        p_tienda:state.workspace.id,p_consulta:state.categoryQuery.trim()
+      });
+      if(r.error)throw r.error;
+      if(local===state.local){state.categories=Array.isArray(r.data)?r.data:[];state.categoriesLoaded=true;render();}
+    }catch(e){if(local===state.local){state.error='No se pudieron cargar las categorías: '+err(e);render();}}
+  }
+
   function metrics(){
-    const live=state.items.filter(p=>p.activo!==false), alert=live.filter(shortage);
-    const categories=new Set(live.map(p=>p.categoria)), suppliers=new Set(live.map(p=>p.proveedor).filter(Boolean));
+    const st=state.stats;
     const cards=[
-      ['Productos registrados',live.length,'Control interno de este local'],
-      ['Alertas de reposición',alert.length,'Stock en mínimo o menor'],
-      ['Categorías',categories.size,'Organización del catálogo'],
-      ['Proveedores asociados',suppliers.size,'Referencia por producto']
+      ['Productos registrados',Number(st.total)||0,'Control interno, sin publicar'],
+      ['Productos activos',Number(st.activos)||0,'Disponibles para organizar'],
+      ['Alertas de reposición',Number(st.alertas)||0,'Bajo el mínimo definido'],
+      ['Categorías',Number(st.categorias)||0,'Grupos de productos']
     ];
-    return '<section class="gl-demo-metrics">'+cards.map(x=>'<article><small>'+x[0]+'</small><strong>'+x[1]+'</strong><span>'+x[2]+'</span></article>').join('')+'</section>';
+    return '<section class="gl-demo-metrics">'+cards.map(x=>
+      '<article><small>'+x[0]+'</small><strong>'+Number(x[1]).toLocaleString('es-AR')+
+      '</strong><span>'+x[2]+'</span></article>').join('')+'</section>';
   }
   function summary(){
-    const items=low();
-    return metrics() + '<div class="gl-demo-two"><section class="card pad"><div class="gl-demo-section-title"><h3>Faltantes para revisar</h3><button class="btn sm" data-gl-tab="productos">Ver productos</button></div>'+
-    (items.length?items.map(p=>'<article class="gl-demo-line"><div><b>'+esc(p.nombre)+'</b><small>'+esc(p.sku||'Sin SKU')+' · Disponible '+esc(p.stock)+' · Mínimo '+esc(p.minimo)+'</small></div><span class="gl-demo-critical">Reponer</span></article>').join(''):'<p class="lead">Sin alertas de reposición.</p>')+
-    '</section><section class="card pad"><h3>Operación de ventas externas</h3><p class="lead">Usá <b>Pedidos online</b> para registrar las órdenes que recibís por WhatsApp, Instagram, marketplace u otros canales.</p><button class="btn primary" data-go="pedidos-online">Gestionar pedidos</button><p class="note">GestLok registra y organiza pedidos; no les vende a tus clientes.</p></section></div>'+
-    '<section class="card pad"><h3>Gestión unificada</h3><p class="lead">Productos, existencias, mínimos y proveedores por sucursal. Los conteos y el stock histórico anterior permanecen separados y disponibles.</p></section>';
+    const items=state.alerts;
+    return metrics()+'<div class="gl-demo-two"><section class="card pad"><div class="gl-demo-section-title"><h3>Faltantes para revisar</h3><button class="btn sm" data-gl-alerts>Ver todos</button></div>'+
+    (items.length?items.map(p=>'<article class="gl-demo-line"><div><b>'+esc(p.nombre)+'</b><small>'+
+      esc(p.sku||'Sin SKU')+' · Stock '+esc(p.stock)+' · Mínimo '+esc(p.minimo)+
+      '</small></div><span class="gl-demo-critical">Reponer</span></article>').join(''):
+      '<p class="lead">Sin alertas registradas.</p>')+
+    '</section><section class="card pad"><h3>Operación de canales externos</h3>'+
+    '<p class="lead">Usá <b>Pedidos online</b> para organizar órdenes recibidas desde Instagram, WhatsApp u otras plataformas.</p>'+
+    '<button class="btn primary" data-go="pedidos-online">Gestionar pedidos</button>'+
+    '<p class="note">GestLok organiza pedidos, no vende al público.</p></section></div>'+
+    '<section class="card pad"><h3>Organización interna</h3><p class="lead">'+
+    'El catálogo funciona por sucursal con búsqueda y paginación en el servidor. No altera las planillas generales.</p></section>';
   }
   function productRows(){
-    const q=state.q.toLocaleLowerCase('es').trim();
-    const rows=state.items.filter(p => (state.filter==='todos'||(state.filter==='alertas' && shortage(p))||(state.filter==='activos'&&p.activo!==false)) &&
-      (!q||[p.nombre,p.sku,p.categoria,p.proveedor,p.ubicacion].join(' ').toLocaleLowerCase('es').includes(q)));
-    const perPage=50, pages=Math.max(1,Math.ceil(rows.length/perPage));
-    state.page=Math.max(0,Math.min(state.page,pages-1));
-    state.visibleCount=rows.length;
-    return rows.length ? rows.slice(state.page*perPage,(state.page+1)*perPage).map(p=>'<article class="gl-tienda-item">'+
-      '<span class="gl-tienda-placeholder" aria-hidden="true">📦</span><div><b>'+esc(p.nombre)+'</b><small>'+esc(p.sku||'Sin SKU')+' · '+esc(p.categoria)+' · '+esc(p.proveedor||'Sin proveedor')+'</small>'+
-      '<small>Stock: '+esc(p.stock)+' '+esc(p.unidad||'unidad')+' · Mínimo: '+esc(p.minimo??0)+' · Precio ref.: '+money(p.precio)+'</small>'+
-      (p.activo===false?'<small>Archivado</small>':shortage(p)?'<small class="gl-demo-critical">Reposición pendiente</small>':'<small>En control</small>')+'</div>'+
-      (canEdit()?'<div class="gl-tienda-actions"><button class="btn sm" data-gl-edit="'+esc(p.id)+'">Editar</button><button class="btn sm" data-gl-delete="'+esc(p.id)+'">Quitar</button></div>':'')+
-      '</article>').join('') : '<p class="lead">No hay productos que coincidan.</p>';
+    if(state.loadingPage)return '<p class="lead" role="status">Buscando productos…</p>';
+    return state.items.length?state.items.map(p=>'<article class="gl-tienda-item">'+
+      '<span class="gl-tienda-placeholder" aria-hidden="true">📦</span><div><b>'+esc(p.nombre)+'</b>'+
+      '<small>'+esc(p.sku||'Sin SKU')+' · '+esc(p.categoria||'Sin categoría')+
+      ' · '+esc(p.proveedor||'Sin proveedor')+'</small>'+
+      '<small>Ubicación: '+esc(p.ubicacion||'Sin asignar')+' · Stock '+esc(p.stock)+' '+
+      esc(p.unidad||'unidad')+' · Mín. '+esc(p.minimo??0)+'</small>'+
+      '<small>Precio de referencia: '+money(p.precio)+'</small>'+
+      (p.activo===false?'<small>Archivado</small>':shortage(p)?'<small class="gl-demo-critical">Reposición pendiente</small>':'<small>En control</small>')+
+      '</div>'+(canEdit()?'<div class="gl-tienda-actions"><button class="btn sm" data-gl-edit="'+esc(p.id)+'">Editar</button>'+
+      '<button class="btn sm" data-gl-archive="'+esc(p.id)+'" data-next-active="'+(p.activo===false?'true':'false')+
+      '">'+(p.activo===false?'Restaurar':'Archivar')+'</button></div>':'')+
+      '</article>').join(''):'<p class="lead">No hay productos con estos filtros.</p>';
   }
   function productForm(){
     if(!canEdit())return '';
-    const p=state.items.find(x=>x.id===state.editing)||{};
+    const p=state.editingProduct||{};
     const val=(k,def='')=>esc(p[k]??def);
     return '<form id="gl-tienda-product-form" class="card pad gl-commerce-order-form"><h3>'+(p.id?'Editar producto':'Agregar producto a la organización')+'</h3>'+
       '<div class="gl-commerce-fields">'+
@@ -98,24 +157,35 @@
       (p.id?'<button type="button" class="btn" data-gl-cancel>Cancelar edición</button>':'')+'</div></form>';
   }
   function products(){
-    return '<section class="card pad"><h3>Productos y stock de control</h3><p class="lead">Organizá lo que administrás en tu negocio online, aunque vendas en una plataforma externa.</p>'+
-      '<div class="gl-demo-tools"><label>Buscar<input id="gl-tienda-search" type="search" placeholder="Producto, SKU o proveedor" value="'+esc(state.q)+'"></label>'+
-      '<label>Ver<select id="gl-tienda-filter"><option value="todos" '+(state.filter==='todos'?'selected':'')+'>Todos</option><option value="activos" '+(state.filter==='activos'?'selected':'')+'>Activos</option><option value="alertas" '+(state.filter==='alertas'?'selected':'')+'>Con alerta</option></select></label></div>'+
+    return '<section class="card pad"><h3>Catálogo interno de productos</h3>'+
+      '<p class="lead">Buscá y organizá tus productos sin cargar todo el catálogo en el dispositivo. Hasta 50 por página.</p>'+
+      '<div class="gl-demo-tools gl-catalog-filters">'+
+      '<label>Buscar por producto, SKU, proveedor o ubicación<input id="gl-tienda-search" type="search" minlength="3" maxlength="80" placeholder="Escribí 3 caracteres o más" value="'+esc(state.q)+'"></label>'+
+      '<label>Categoría exacta<input id="gl-tienda-category" type="search" maxlength="80" placeholder="Todas las categorías" value="'+esc(state.category)+'"></label>'+
+      '<label>Proveedor exacto<input id="gl-tienda-supplier" type="search" maxlength="120" placeholder="Todos los proveedores" value="'+esc(state.supplier)+'"></label>'+
+      '<label>Estado<select id="gl-tienda-filter">'+
+       [['activos','Activos'],['todos','Todos'],['alertas','Para reponer'],['archivados','Archivados']].map(([v,n])=>
+       '<option value="'+v+'" '+(state.filter===v?'selected':'')+'>'+n+'</option>').join('')+
+      '</select></label></div>'+
+      (state.q.trim().length>0&&state.q.trim().length<3?'<p class="note">Ingresá al menos 3 caracteres para buscar.</p>':'')+
       '<div class="gl-tienda-items" id="gl-tienda-list">'+productRows()+'</div>'+
-      '<div class="gl-demo-section-title" style="margin-top:15px"><small>'+state.visibleCount+' productos · Página '+(state.page+1)+' de '+Math.max(1,Math.ceil(state.visibleCount/50))+'</small>'+
-      '<div class="gl-tienda-actions"><button type="button" class="btn sm" data-gl-page="-1" '+(state.page===0?'disabled':'')+'>Anterior</button>'+
-      '<button type="button" class="btn sm" data-gl-page="1" '+((state.page+1)*50>=state.visibleCount?'disabled':'')+'>Siguiente</button></div></div>'+
-      '<p class="note">Este stock de control es independiente del stock de las planillas generales. Los cambios se guardan solo en la sucursal autorizada.</p></section>'+
+      '<div class="gl-demo-section-title gl-catalog-pagination"><small>Página '+(state.page+1)+
+      ' · 50 productos como máximo · Total del catálogo: '+Number(state.stats.total||0).toLocaleString('es-AR')+
+      '</small><div class="gl-tienda-actions">'+
+      '<button class="btn sm" type="button" data-gl-page="-1" '+(state.page===0||state.loadingPage?'disabled':'')+'>Anterior</button>'+
+      '<button class="btn sm" type="button" data-gl-page="1" '+(!state.hasMore||state.loadingPage?'disabled':'')+'>Siguiente</button>'+
+      '</div></div><p class="note">Las cantidades son de control interno. Archivar un producto no borra sus datos.</p></section>'+
       productForm();
   }
   function categories(){
-    const cats=[...new Set(state.items.map(p=>p.categoria))].sort();
-    return '<section class="card pad"><h3>Organización por categoría</h3>'+
-      '<p class="lead">Totales y mínimos registrados para esta sucursal, sin publicar productos ni abrir un comercio público.</p>'+
-      (cats.length?cats.map(cat=>{
-        const rows=state.items.filter(p=>p.categoria===cat && p.activo!==false);
-        return '<article class="gl-demo-line"><div><b>'+esc(cat)+'</b><small>'+rows.length+' productos · '+rows.filter(shortage).length+' con alerta</small></div><strong>'+rows.reduce((n,p)=>n+(Number(p.stock)||0),0)+' unidades</strong></article>';
-      }).join(''):'<p class="lead">Agregá productos y categorías desde la sección Productos.</p>')+'</section>';
+    if(!state.categoriesLoaded)Promise.resolve().then(()=>loadCategories());
+    return '<section class="card pad"><h3>Categorías de productos</h3>'+
+      '<p class="lead">Agrupá el catálogo por categoría para localizar productos. Mostramos hasta 200 categorías por búsqueda; no cargamos todos los artículos.</p>'+
+      '<div class="gl-demo-tools"><label>Buscar categoría<input id="gl-tienda-cat-search" type="search" maxlength="80" placeholder="Ej.: Indumentaria" value="'+esc(state.categoryQuery)+'"></label></div>'+
+      (state.categories.length?state.categories.map(c=>'<article class="gl-demo-line"><div><b>'+esc(c.categoria)+'</b>'+
+      '<small>'+Number(c.productos||0).toLocaleString('es-AR')+' productos · '+Number(c.alertas||0)+' para reponer</small></div>'+
+      '<button class="btn sm" data-gl-open-category="'+esc(c.categoria)+'">Ver productos</button></article>').join(''):
+      '<p class="lead">No hay categorías que coincidan.</p>')+'</section>';
   }
   function workspace(){
     return '<section class="card pad"><h3>Espacio de gestión privado</h3><p class="lead">Nombre: <b>'+esc(state.workspace.nombre)+'</b>. Este espacio no está publicado ni permite vender a clientes desde GestLok.</p>'+
@@ -176,43 +246,91 @@
       const r=id?await sb.from('gestlok_productos_tienda').update(payload).eq('id',id).eq('tienda_id',state.workspace.id).eq('tenant_id',tenant).select('id').single()
         :await sb.from('gestlok_productos_tienda').insert({...payload,tenant_id:tenant,tienda_id:state.workspace.id}).select('id').single();
       if(r.error)throw r.error;
-      state.editing=null;api.toast('Producto guardado en el control interno.');await load(true);
-    }catch(e){api.toast('No se guardó el producto: '+err(e),true);}
+      state.editing=null;state.editingProduct=null;
+      api.toast('Producto guardado en el control interno.');
+      resetPage();await Promise.all([loadPage(),loadStats(),loadAlerts()]);
+    }catch(e){api.toast(e?.code==='23505'?'Ese SKU ya existe en este local.': 'No se guardó el producto: '+err(e),true);}
     finally{state.saving=false;render();}
   }
-  async function removeProduct(id){
-    if(!canEdit()||!state.workspace||state.saving||!state.items.some(p=>p.id===id))return;
-    if(!window.confirm('¿Quitar este producto de la organización online? No modifica las planillas generales.'))return;
+  async function archiveProduct(id,nextActive){
+    if(!canEdit()||!state.workspace||state.saving)return;
+    const p=state.items.find(x=>x.id===id);
+    if(!p)return;
+    if(!window.confirm(nextActive?'¿Restaurar este producto archivado?':
+      '¿Archivar este producto? No se borra ni se modifica el stock de las otras hojas.'))return;
     state.saving=true;
     try{
-      const r=await client().from('gestlok_productos_tienda').delete().eq('id',id).eq('tienda_id',state.workspace.id).eq('tenant_id',api.S.me.tenant_id);
-      if(r.error)throw r.error;api.toast('Producto quitado del control online.');await load(true);
-    }catch(e){api.toast('No se pudo quitar: '+err(e),true);}
+      const r=await client().from('gestlok_productos_tienda').update({
+        activo:nextActive,actualizado:new Date().toISOString()
+      }).eq('id',id).eq('tienda_id',state.workspace.id)
+        .eq('tenant_id',api.S.me.tenant_id).select('id').single();
+      if(r.error)throw r.error;
+      api.toast(nextActive?'Producto restaurado.':'Producto archivado sin borrar datos.');
+      await Promise.all([loadStats(),loadPage(),loadAlerts()]);
+    }catch(e){api.toast('No se pudo actualizar el producto: '+err(e),true);}
     finally{state.saving=false;render();}
   }
+
   document.addEventListener('submit',e=>{if(e.target.id==='gl-tienda-product-form'){e.preventDefault();saveProduct(e.target);}});
+  let searchDebounce=null;
+  const filteredReload=()=>{
+    clearTimeout(searchDebounce);
+    searchDebounce=setTimeout(()=>{
+      if(state.q.trim().length===1||state.q.trim().length===2)return;
+      resetPage();loadPage();
+    },300);
+  };
   document.addEventListener('click',e=>{
-    const t=e.target.closest('[data-gl-tab],[data-gl-page],[data-gl-create],[data-gl-refresh],[data-gl-edit],[data-gl-delete],[data-gl-cancel]');
+    const t=e.target.closest('[data-gl-tab],[data-gl-page],[data-gl-create],[data-gl-refresh],[data-gl-edit],[data-gl-archive],[data-gl-cancel],[data-gl-open-category],[data-gl-alerts]');
     if(!t)return;
     e.preventDefault();
-    if(t.hasAttribute('data-gl-page')){state.page+=Number(t.dataset.glPage)||0;render();return;}
+    if(t.hasAttribute('data-gl-page')){
+      if(state.loadingPage)return;
+      const next=Number(t.dataset.glPage)||0;
+      if(next===1){
+        if(!state.hasMore||!state.items.length)return;
+        const last=state.items[state.items.length-1];
+        state.cursors[state.page+1]={nombre:last.nombre,id:last.id};
+        state.page++;
+      }else if(next===-1&&state.page>0){state.page--;}else return;
+      loadPage();return;
+    }
     if(t.hasAttribute('data-gl-create')){createWorkspace();return;}
     if(t.hasAttribute('data-gl-refresh')){state.loaded=false;load(true);return;}
-    if(t.hasAttribute('data-gl-delete')){removeProduct(t.dataset.glDelete);return;}
-    if(t.hasAttribute('data-gl-edit')){state.editing=t.dataset.glEdit;state.tab='productos';}
-    if(t.hasAttribute('data-gl-cancel'))state.editing=null;
-    if(t.dataset.glTab&&['resumen','productos','categorias'].includes(t.dataset.glTab)){state.tab=t.dataset.glTab;state.editing=null;}
+    if(t.hasAttribute('data-gl-archive')){archiveProduct(t.dataset.glArchive,t.dataset.nextActive==='true');return;}
+    if(t.hasAttribute('data-gl-edit')){
+      state.editing=t.dataset.glEdit;
+      state.editingProduct=state.items.find(p=>p.id===state.editing)||null;
+      state.tab='productos';
+    }
+    if(t.hasAttribute('data-gl-cancel')){state.editing=null;state.editingProduct=null;}
+    if(t.hasAttribute('data-gl-open-category')){
+      state.category=t.dataset.glOpenCategory;
+      state.tab='productos';resetPage();loadPage();
+    }
+    if(t.hasAttribute('data-gl-alerts')){
+      state.tab='productos';state.filter='alertas';resetPage();loadPage();
+    }
+    if(t.dataset.glTab&&['resumen','productos','categorias'].includes(t.dataset.glTab)){
+      state.tab=t.dataset.glTab;state.editing=null;state.editingProduct=null;
+      if(t.dataset.glTab==='categorias')loadCategories();
+    }
     render();
   });
   document.addEventListener('input',e=>{
-    if(e.target.id!=='gl-tienda-search')return;
-    state.q=e.target.value;state.page=0;
-    const list=document.getElementById('gl-tienda-list');
-    if(list)list.innerHTML=productRows();
+    const input=e.target;
+    if(input.id==='gl-tienda-search')state.q=input.value;
+    else if(input.id==='gl-tienda-category')state.category=input.value;
+    else if(input.id==='gl-tienda-supplier')state.supplier=input.value;
+    else if(input.id==='gl-tienda-cat-search'){
+      state.categoryQuery=input.value;state.categoriesLoaded=true;
+      clearTimeout(searchDebounce);searchDebounce=setTimeout(loadCategories,350);return;
+    }else return;
+    filteredReload();
   });
   document.addEventListener('change',e=>{
     if(e.target.id!=='gl-tienda-filter')return;
-    state.filter=e.target.value;state.page=0;render();
+    state.filter=e.target.value;resetPage();loadPage();
   });
   window.GestLokTienda=Object.freeze({attach(ctx){api=ctx;},view,reset(){state=empty(null);}});
 })();
