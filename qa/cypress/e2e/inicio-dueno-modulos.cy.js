@@ -12,9 +12,10 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.viewport(390,844);start();
   cy.get('#hub').should('contain.text','Administrar mi empresa').and('not.contain.text','Administrar a los empleados').and('not.contain.text','Próximamente');
   cy.get('#hub h1').should('have.length',1);
-  cy.get('#hub .gl-commerce-card').should('not.be.visible');
-  cy.get('#hub [data-act="local"][data-id="munro"]').should('be.visible');
-  cy.get('#hub button[data-act="local"][data-id="torcuato"]').should('have.length',1).and('be.visible').click();
+  cy.get('#hub .gl-commerce-card').should('not.exist');
+  cy.get('#hub .gl-owner-business .gl-owner-arrow').should('be.visible').click();
+  cy.get('#pn [data-act="local"][data-id="munro"]').should('be.visible');
+  cy.get('#pn button[data-act="local"][data-id="torcuato"]').should('have.length',1).and('be.visible').click();
   cy.get('#snav').should('be.visible');
  });
  it('no ofrece una carpeta si falla la comprobación y permite reintentar',()=>{

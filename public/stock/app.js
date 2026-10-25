@@ -2134,6 +2134,7 @@ function renderHub(){
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
   const ownerHome=miRol()==='dueno'&&listo&&!!S.db;
+  hub.classList.toggle('gl-oh-hub', false);
   if (adm && listo && S.db && S.creatorSetup) {
     const creatorHTML=window.GestLokCreator?.view() || '';
     if(hub._h!==creatorHTML){hub.innerHTML=creatorHTML;hub._h=creatorHTML;}
@@ -2224,6 +2225,16 @@ function renderHub(){
       </main>
     </div>`;
     if (hub._h !== adminHTML) { hub.innerHTML = adminHTML; hub._h = adminHTML; }
+    return;
+  }
+  hub.classList.toggle('gl-oh-hub', ownerHome);
+  if (ownerHome) {
+    const ownerHTML = `${window.GestLokOwnerAreas?.header() || ''}<main class="hub-in gl-oh-main">${body}</main>`;
+    if (hub._h !== ownerHTML){
+      const ae = document.activeElement, keep = !!(ae && hub.contains(ae) && ae.matches('input,select'));
+      if (!keep){ hub.innerHTML = ownerHTML; hub._h = ownerHTML; }
+    }
+    window.GestLokOwnerAreas?.sync();
     return;
   }
   const html = `<div class="hub-top"><header class="hub-h">
@@ -3820,7 +3831,7 @@ window.GestLokDemo?.attach({isCreadora,render});
 window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
-window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub});
+window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub,openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
