@@ -1937,3 +1937,8 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-demo-analytics-shops span{white-space:nowrap;font-variant-numeric:tabular-nums}
 .gl-demo-analytics .note{margin-top:12px}
 @media(max-width:600px){#gl-demo-consent{padding:10px}#gl-demo-consent button{flex:1 1 120px}}
+
+/* Portada del dueño GESTLOK: módulo comercial real y módulo personal pendiente */
+.gl-owner-landing{padding:clamp(18px,3vw,36px);border-radius:20px;background:linear-gradient(130deg,#091722,#20343b);color:#f8fafc;max-width:1280px;margin:auto}
+.gl-owner-welcome{margin:0 0 26px 10px}.gl-owner-welcome p{font-size:clamp(16px,2vw,23px);margin:5px 0}.gl-owner-welcome h1{font-size:clamp(40px,6vw,70px);letter-spacing:.03em;margin:0;font-weight:800}.gl-owner-welcome h1 span{color:#22b6b9}
+.gl-owner-areas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.gl-owner-area{color:#142033;border-radius:24px;padding:clamp(20px,3vw,36px);background:linear-gradient(140deg,#fff,#e7f8f2);min-width:0;border:2px solid #a7e8d5}.gl-owner-employees{background:linear-gradient(140deg,#fff,#e4efff);border-color:#a5d0ff}.gl-owner-area-icon{font-size:40px;margin-bottom:14px}.gl-owner-area h2{font-size:clamp(25px,3vw,39px);line-height:1.13;margin:0 0 14px}.gl-owner-area>p{font-size:17px;color:#475569}.gl-owner-area ul{background:#ffffff80;padding:24px 22px 24px 43px;border-radius:18px;line-height:2;list-style:disc}.gl-owner-area h3{font-size:16px}.gl-owner-locations{display:grid;gap:10px}.gl-owner-awaiting{font-weight:650;border-radius:12px;background:#dceafa;padding:14px}.gl-owner-area .lcard{color:#142033}@media(max-width:760px){.gl-owner-areas{grid-template-columns:1fr}.gl-owner-landing{padding:15px}.gl-owner-area{padding:20px}}
