@@ -186,7 +186,8 @@ document.addEventListener('click',e=>{
 async function onLogout(){
  if(!owner()||!canPrompt())return;
  try{
-  const registration=await navigator.serviceWorker.ready;
+  const registration=await navigator.serviceWorker.getRegistration();
+  if(!registration)return;
   const sub=await registration.pushManager.getSubscription();
   if(!sub)return;
   try{await endpoint('unsubscribe',sub.toJSON());}catch{}
