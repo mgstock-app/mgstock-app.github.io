@@ -21,6 +21,7 @@
   /* ---------- Pantalla de ingreso ---------- */
   function show(mode, msg, err){
     const box = $('#auth'); if (!box) return;
+    if (mode === 'up') window.GestLokRegistration?.mountSignup();
     box.hidden = false; document.documentElement.classList.add('auth-on');
     const m = $('#au-msg'); m.textContent = msg || ''; m.className = 'au-msg' + (err ? ' err' : '') + (msg ? '' : ' empty');
     box.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== mode; });
@@ -66,8 +67,12 @@
         busy(f, false); if (error) show('in', errTxt(error), true);
       } else if (f.id === 'au-up'){
         if (v('#au-pass2') !== v('#au-pass3')){ show('up', 'Las dos contraseñas no coinciden.', true); return; }
+        let intent;
+        try { intent = window.GestLokRegistration?.read(f); }
+        catch (e) { show('up', e.message, true); return; }
+        if (!intent){ show('up', 'No se pudo cargar la selección de cuenta. Reabrí la aplicación.', true); return; }
         busy(f, true, 'Creando…');
-        const { data, error } = await sb.auth.signUp({ email: v('#au-email2').trim().toLowerCase(), password: v('#au-pass2'), options: { emailRedirectTo: SITE } });
+        const { data, error } = await sb.auth.signUp({ email: v('#au-email2').trim().toLowerCase(), password: v('#au-pass2'), options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice} } } });
         busy(f, false);
         if (error) show('up', errTxt(error), true);
         else if (!data.session) show('in', 'Listo. Te mandamos un email para confirmar la cuenta: abrilo, tocá el enlace y después entrá acá con tu contraseña.');
@@ -123,8 +128,10 @@
     rol = r; locales = ls;
     if (!rol){
       const meta = session.user.user_metadata || {}, prov = (session.user.app_metadata || {}).provider || 'email';
-      try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
-      show('pend', ''); const n = $('#au-pend-email'); if (n) n.textContent = email;
+      if (!window.GestLokRegistration){
+        try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
+      }
+      show('pend', ''); window.GestLokRegistration?.pending(session); const n = $('#au-pend-email'); if (n) n.textContent = email;
       clearInterval(window.__spmPoll);
       window.__spmPoll = setInterval(async () => { try { const { data } = await sb.rpc('mi_rol'); if (data){ clearInterval(window.__spmPoll); location.reload(); } } catch {} }, 10000);
       return;

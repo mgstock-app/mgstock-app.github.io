@@ -12,7 +12,7 @@ const css=read('app/globals.css');
 test('El visitante utiliza los módulos operativos reales con backend de memoria',()=>{
  assert.doesNotThrow(()=>new vm.Script(visitor));
  assert.match(auth,/Explorar demo interactiva · Sin registrarme/);
- assert.match(runtime,/visitor \? "\/stock\/gestlok-visitor-demo\.js" : "\/stock\/auth\.js"/);
+ assert.match(runtime,/visitor \? "\/stock\/gestlok-visitor-demo\.js" : "\/stock\/auth\.js\?rev=[A-Za-z0-9-]+"/);
  assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-push\.js"\)/);
  assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-support\.js"\)/);
  for(const m of ['gestlok-updates','gestlok-commerce','gestlok-tienda',

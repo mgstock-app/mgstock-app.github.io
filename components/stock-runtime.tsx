@@ -26,7 +26,8 @@ export function StockRuntime() {
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
-      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js");
+      if (!visitor) await load("/stock/gestlok-registration.js");
+      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=registration-modules-20261025");
       await load("/stock/gestlok-updates.js");
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
@@ -37,8 +38,8 @@ export function StockRuntime() {
       await load("/stock/gestlok-creator.js");
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
-      // Versioned URL prevents older installed PWAs from reusing a stale supplier UI script.
-      await load("/stock/app.js?rev=provider-internal-observations-20261025-r2");
+      // Versioned URLs prevent installed PWAs from reusing older registration controllers.
+      await load("/stock/app.js?rev=registration-modules-20261025");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };

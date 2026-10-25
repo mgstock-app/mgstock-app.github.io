@@ -2004,31 +2004,60 @@ function equipoRows(actions){
     return `<div class="eq-r ${fijo(e) ? 'creadora' : ''}"><span class="av">${esc((e.email || '?').charAt(0))}</span><div style="min-width:0"><div class="em">${esc(e.email)}</div>${info}</div>${acts}</div>`;
   }).join('');
 }
+let legacyRequests=[],registrationRequests=[],registrationRequestBusy=false;
+function combineRequests(){
+  const newEmails=new Set(registrationRequests.map(x=>String(x.email).toLowerCase()));
+  S.sol=[...legacyRequests.filter(x=>!newEmails.has(String(x.email).toLowerCase())),...registrationRequests]
+    .sort((a,b)=>(b.fecha||0)-(a.fecha||0));
+}
+async function refreshRegistrationRequests(){
+  if(!isCreadora()||!window.GestLokSupabase||registrationRequestBusy)return;
+  registrationRequestBusy=true;
+  try{
+    const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_registration_requests');
+    if(error)throw error;
+    const next=Array.isArray(data)?data:[];
+    if(JSON.stringify(next)===JSON.stringify(registrationRequests))return;
+    registrationRequests=next;combineRequests();
+    if(!S.creatorSetup&&(!S.panel||S.panel==='share'))onSnapRefresh();
+  }catch{}finally{registrationRequestBusy=false;}
+}
 function solRows(){
   if (!isCreadora() || !S.sol.length) return '';
   const solo = localesTodos().length === 1 ? [localesTodos()[0].id] : [];
-  return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>Elegí el rol y el local de cada persona y aprobala.</span></div>
+  return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.</span></div>
   <div class="eq">${S.sol.map(x => { const id = esc(x.id); return `<div class="eq-r sol"><span class="av">${esc((x.email || '?').charAt(0))}</span><div style="min-width:0"><div class="em">${esc(x.email)}</div><small>${x.nombre ? esc(x.nombre) + ' · ' : ''}${x.proveedor === 'google' ? 'Google · ' : ''}${x.fecha ? rel(x.fecha) : ''}</small>
-    <div class="eq-ed">${rolSelect(`id="sol-rol-${id}" aria-label="Rol para ${esc(x.email)}"`, 'gerente')}${locChecks(`data-solloc="${id}"`, solo, false)}</div></div>
-    <div class="eq-a sol-a"><button class="btn sm primary" data-act="sol-ok" data-id="${id}">Aprobar</button><button class="btn sm" data-act="sol-no" data-id="${id}">Rechazar</button></div></div>`; }).join('')}</div>`;
+    ${window.GestLokRegistration?.label(x)?`<p class="note">${esc(window.GestLokRegistration.label(x))}</p>`:''}
+    ${x.tipoCuenta==='dueno'?'<p class="lead">Alta independiente de dueño pendiente de habilitación. No se asigna a los locales de otra empresa.</p>':`<div class="eq-ed">${rolSelect(`id="sol-rol-${id}" aria-label="Rol para ${esc(x.email)}"`, 'gerente')}${locChecks(`data-solloc="${id}"`, solo, false)}</div>`}</div>
+    <div class="eq-a sol-a">${x.tipoCuenta==='dueno'?'<span class="pill">Alta de dueño</span>':`<button class="btn sm primary" data-act="sol-ok" data-id="${id}">Aprobar</button>`}<button class="btn sm" data-act="sol-no" data-id="${id}">Rechazar</button></div></div>`; }).join('')}</div>`;
 }
 const checkedLocs = attr => [...document.querySelectorAll(`[${attr}]:checked`)].map(x => x.dataset.loc);
 async function aprobar(id){
   if (!isCreadora()) return;
   const x = S.sol.find(s => s.id === id); if (!x) return;
+  if (x.tipoCuenta === 'dueno'){ toast('Esta solicitud requiere un alta independiente de dueño y habilitación de módulos.', true); return; }
   const sel = document.getElementById('sol-rol-' + id), rol = sel && sel.value === 'lectura' ? 'lectura' : 'gerente';
   const locales = checkedLocs(`data-solloc="${CSS.escape(id)}"`);
   if (!locales.length){ toast('Elegí al menos un local para esta persona.', true); return; }
   try {
     await w(() => S.db.collection('equipo').doc(docIdFromEmail(x.email)).set({email:x.email, rol, locales, agregado:Date.now(), por:S.uid || null}));
-    await w(() => S.db.collection('solicitudes').doc(id).delete());
+    if(x.registrationUserId){
+      const {error}=await window.GestLokSupabase.rpc('gestlok_review_registration',{p_user:x.registrationUserId,p_status:'assigned'});
+      if(error)throw error;await refreshRegistrationRequests();
+    }else await w(() => S.db.collection('solicitudes').doc(id).delete());
     toast(`${x.email} aprobado: ${rolLabel(rol)} en ${locales.map(localNombre).join(' y ')}`);
   } catch(e){ fail(e); }
 }
 async function rechazar(id){
   if (!isCreadora()) return;
   const x = S.sol.find(s => s.id === id);
-  try { await w(() => S.db.collection('solicitudes').doc(id).delete()); toast(`Pedido de ${x ? x.email : 'acceso'} rechazado`); } catch(e){ fail(e); }
+  try {
+    if(x?.registrationUserId){
+      const {error}=await window.GestLokSupabase.rpc('gestlok_review_registration',{p_user:x.registrationUserId,p_status:'rejected'});
+      if(error)throw error;await refreshRegistrationRequests();
+    }else await w(() => S.db.collection('solicitudes').doc(id).delete());
+    toast(`Pedido de ${x ? x.email : 'acceso'} rechazado`);
+  } catch(e){ fail(e); }
 }
 async function cambiarRol(id, rol){
   if (!puedeAdministrarEquipo()) return;
@@ -3544,16 +3573,18 @@ const errLive = e => { setLive(e && e.code === 'revoked' ? 'off' : 'err'); };
 function subscribeGlobal(){
   S.db.collection('equipo').onSnapshot(snap => {
     S.equipo = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.e = true; afterAccess(); onSnapRefresh();
+    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();
   }, errLive);
   S.db.collection('solicitudes').onSnapshot(snap => {
-    S.sol = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (b.fecha || 0) - (a.fecha || 0));
+    legacyRequests = snap.docs.map(d => ({id:d.id, ...d.data()}));combineRequests();
     onSnapRefresh();
   }, () => {});
   S.db.collection('locales').onSnapshot(snap => {
     S.localesDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
     S.loaded.l = true; afterAccess(); onSnapRefresh();
   }, errLive);
+  refreshRegistrationRequests();
+  setInterval(refreshRegistrationRequests,15000);
   let previousCommerceMode = 'fisica';
   S.db.collection('configuracion_negocio').onSnapshot(snap => {
     const configId = window.GestLokCommerce?.configId();
