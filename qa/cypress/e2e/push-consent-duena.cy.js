@@ -25,9 +25,10 @@ describe('Permiso push Dueña sin envíos automáticos',()=>{
   cy.get('#pn .gl-push-drawer').should('be.visible')
     .and('contain.text','El envío automático seguirá desactivado');
   cy.get('#pn [data-act="close"]').click();
-  cy.get('#view .gl-push-permission').then(el=>{
-   if(el.length){
-    cy.wrap(el).contains('Ahora no').click();
+  cy.get('#view').then(view=>{
+   const banner=view.find('.gl-push-permission');
+   if(banner.length){
+    cy.wrap(banner).contains('Ahora no').click();
     cy.get('#view .gl-push-permission').should('not.exist');
     cy.window().then(w=>{
      const k='gestlok:push-question:v1:'+encodeURIComponent('dueno@example.com');
