@@ -39,10 +39,11 @@ async function auth(req:Request){
  return {user:data.user,tenant_id:String(access.tenant_id)};
 }
 async function prefOf(tenant:string,user:string):Promise<Prefs>{
- const {data}=await admin.from("gestlok_push_preferences").select(
+ const {data,error}=await admin.from("gestlok_push_preferences").select(
   "master,order_ready,due_soon,due_today,urgent_chat,important_changes")
   .eq("tenant_id",tenant).eq("user_id",user).maybeSingle();
- return Object.fromEntries(allowed.map(k=>[k,data?.[k]??true])) as Prefs;
+ if(error)throw Error("Preferencias temporalmente no disponibles");
+ return Object.fromEntries(allowed.map(k=>[k,data?.[k]??defaults[k]])) as Prefs;
 }
 async function verifyCron(token:string){
  if(!/^[a-f0-9]{64}$/i.test(token))return false;
