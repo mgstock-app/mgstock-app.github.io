@@ -132,27 +132,7 @@ begin
     into n_today,n_soon
     from public.docs x where x.tenant_id=rec.tenant_id
       and x.col=rec.loc||'/vencimientos' and x.data->>'activo' is distinct from 'false'
-      and x.data->>'fechaVencimiento' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2};
-    if n_today>0 then
-      insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path)
-      values(rec.tenant_id,rec.loc,'due-today:'||rec.tenant_id||':'||rec.loc||':'||today,
-        rec.label||' · Vence hoy',n_today||' servicio(s) vencen hoy. Revisalos.','due_today','vencimientos')
-      on conflict(event_key) do nothing;
-      total:=total+1;
-    end if;
-    if n_soon>0 then
-      insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path)
-      values(rec.tenant_id,rec.loc,'due-soon:'||rec.tenant_id||':'||rec.loc||':'||today,
-        rec.label||' · Vencimientos próximos',n_soon||' servicio(s) vencen en los próximos 3 días.','due_soon','vencimientos')
-      on conflict(event_key) do nothing;
-      total:=total+1;
-    end if;
- end loop;
- return total;
-end
-$fn$;
-revoke all on function public.gestlok_push_queue_due() from public,anon,authenticated;
-;
+      and x.data->>'fechaVencimiento' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$';
     if n_today>0 then
       insert into public.gestlok_push_events(tenant_id,local_id,event_key,title,body,category,path)
       values(rec.tenant_id,rec.loc,'due-today:'||rec.tenant_id||':'||rec.loc||':'||today,
@@ -173,7 +153,6 @@ end
 $fn$;
 revoke all on function public.gestlok_push_queue_due() from public,anon,authenticated;
 
--- Cambios de accesos: detectar alta/baja de gerente o modificación de rol.
 create or replace function public.gestlok_push_capture_roles()
 returns trigger language plpgsql security definer set search_path=''
 as $fn$
