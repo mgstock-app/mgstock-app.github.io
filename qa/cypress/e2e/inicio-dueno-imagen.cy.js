@@ -60,7 +60,12 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   });
   it('en celular no hay desbordes horizontales', () => {
     cy.viewport(390, 844); start();
-    cy.get('.gl-owner-quick').should('be.visible');
+    cy.get('.gl-owner-quick').should('be.visible').then($row => {
+      const row = $row[0], cards = [...row.querySelectorAll('.gl-owner-tile')];
+      expect(cards).to.have.length(4);
+      expect(cards.every(card => Math.abs(card.offsetTop - cards[0].offsetTop) < 4)).to.equal(true);
+      expect(row.scrollWidth).to.be.greaterThan(row.clientWidth);
+    });
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
 });
