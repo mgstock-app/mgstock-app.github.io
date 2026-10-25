@@ -1,4 +1,5 @@
 /* global Cypress, describe, it, cy, expect */
+const {abrirLocal}=require('../helpers/abrir-local');
 describe('GestLok Stock Local: categorías y planilla responsive',()=>{
   Cypress.on('uncaught:exception',e=>{
     if(e.message.includes('Minified React error #418'))return false;
@@ -17,7 +18,7 @@ describe('GestLok Stock Local: categorías y planilla responsive',()=>{
     cy.get('#au-email').type('dueno@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
-    cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+    abrirLocal('munro');
     cy.get('#snav [data-go="fabrica"]').click();
     cy.viewport(820,1000);
     cy.get('#view .xl-r.xl-bq').should('have.length.greaterThan',1);

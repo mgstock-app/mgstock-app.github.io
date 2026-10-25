@@ -1,4 +1,5 @@
 /* global Cypress, cy, describe, it, expect */
+const {abrirLocal}=require('../helpers/abrir-local');
 describe('Observaciones internas de Proveedores · ambos locales',()=>{
   Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
   for(const local of ['munro','torcuato'])it(`muestra, guarda y recupera la observación en ${local}`,()=>{
@@ -10,7 +11,7 @@ describe('Observaciones internas de Proveedores · ambos locales',()=>{
     cy.get('#au-email').type('dueno@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
-    cy.get(`#hub [data-act="local"][data-id="${local}"]`).first().click();
+    abrirLocal(local);
     cy.get('#snav [data-go="proveedores"]').click();
     cy.get('[data-act="prov-open"][data-name="Proveedor Demo Notas"]').click();
     cy.get('[data-prov-note="c:p-note"]').should('be.visible').type('Mensaje interno ficticio');

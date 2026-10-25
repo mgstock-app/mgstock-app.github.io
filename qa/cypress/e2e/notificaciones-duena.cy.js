@@ -1,4 +1,5 @@
 /* global Cypress, describe, it, cy */
+const {abrirLocal}=require('../helpers/abrir-local');
 const start=(email)=>{
   cy.task('mockSupabase').then(mock=>{
     cy.intercept('GET','**/vendor/supabase.js',{
@@ -12,7 +13,7 @@ const start=(email)=>{
   cy.get('#au-email').type(email);
   cy.get('#au-pass').type('secreto1',{log:false});
   cy.get('#au-in button[type="submit"]').click();
-  if(email==='dueno@example.com')cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+  if(email==='dueno@example.com')abrirLocal('munro');
 };
 describe('GestLok Dueña: Notificaciones lateral',()=>{
   Cypress.on('uncaught:exception',e=>{

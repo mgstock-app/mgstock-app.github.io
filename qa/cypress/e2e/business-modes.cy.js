@@ -1,4 +1,5 @@
 /* global Cypress, describe, it, cy, expect */
+const {abrirLocal}=require('../helpers/abrir-local');
 // Nunca escribe datos de producción: Supabase falso interceptado antes de cargar GestLok.
 const login = email => {
   cy.get('#au-email').type(email);
@@ -15,7 +16,7 @@ function launch() {
   cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
   cy.get('#au-in').should('be.visible');
 }
-const openLocal = id => cy.get(`#hub [data-act="local"][data-id="${id}"]`).first().click();
+const openLocal = id => abrirLocal(id);
 const mostrarHerramientas = () => cy.get('#view .gl-home-essential-settings').then(el => {
   if (!el.prop('open')) cy.wrap(el).find('summary').click();
 });
@@ -27,7 +28,9 @@ describe('GestLok: tienda física, online y mixta',()=>{
   it('la dueña configura online y puede gestionar pedidos, sin mezclarlos entre locales',()=>{
     launch();
     login('dueno@example.com');
-    cy.get('#hub .gl-commerce-choice[data-commerce-mode="fisica"]').should('exist');
+    cy.get('.gl-owner-tile[data-owner-nav="settings"]').click();
+    cy.get('#pn .gl-commerce-choice[data-commerce-mode="fisica"]').should('exist');
+    cy.get('#pn [data-act="close"]').click();
     openLocal('munro');
     cy.get('#gl-store-mode-owner').should('have.text','Tienda física');
     cy.get('#gl-store-mode-owner').prev('#live').should('exist');

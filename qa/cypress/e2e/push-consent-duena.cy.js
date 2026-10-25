@@ -1,4 +1,5 @@
 /* global Cypress, cy, describe, it, expect */
+const {abrirLocal}=require('../helpers/abrir-local');
 const login=(email)=>{
  cy.task('mockSupabase').then(mock=>{
   cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,
@@ -11,7 +12,7 @@ const login=(email)=>{
  cy.get('#au-email').type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
- if(email==='dueno@example.com')cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+ if(email==='dueno@example.com')abrirLocal('munro');
 };
 describe('Permiso push Dueña sin envíos automáticos',()=>{
  Cypress.on('uncaught:exception',e=>{
