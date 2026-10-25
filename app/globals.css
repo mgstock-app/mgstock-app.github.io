@@ -1798,3 +1798,21 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 @media print{
  .gl-owner-notif-trigger{display:none!important}
 }
+
+/* Dueña · consentimiento push no intrusivo (sólo la primera visita). */
+.gl-push-permission{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:15px 17px;border:1px solid #abc8d7;border-left:4px solid #0c7988;
+  border-radius:12px;background:#f2f9fb}
+.gl-push-permission strong{display:block;font-size:14px;color:#143b50}
+.gl-push-permission p{max-width:620px;margin:5px 0 0;font-size:12.5px;line-height:1.5;color:#4b6675}
+.gl-push-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+.gl-push-actions .btn{min-height:40px}
+.gl-push-drawer{display:grid;gap:13px;padding:16px;border:1px solid var(--line);
+  border-radius:11px;background:var(--sunk)}
+.gl-push-drawer p{margin:0;color:var(--ink);font-size:13px;line-height:1.6}
+.gl-push-drawer .btn{justify-self:start}
+.gl-push-drawer small{font-size:12px;line-height:1.5;color:var(--muted)}
+.gl-push-ready{font-size:12px;font-weight:700;color:var(--ok)}
+@media(max-width:700px){.gl-push-permission{display:grid;padding:13px}
+  .gl-push-actions{width:100%;justify-content:flex-start}}
+@media print{.gl-push-permission{display:none!important}}
