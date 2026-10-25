@@ -2874,13 +2874,18 @@ async function ingHist(){
 }
 async function ingArchivo(file){
   const I = S.ing; if (!I || !file) return;
-  I.arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}; I.lineas = []; I.res = null; I.msg = null; I.leyendo = true; render();
+  /* Cada lectura tiene su número: si mientras se lee se elige otro archivo, se cancela o se cambia de
+     sucursal, el resultado viejo se descarta y nunca pisa las decisiones ya tomadas sobre el archivo nuevo. */
+  const arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}, lectura = (I.lectura || 0) + 1;
+  Object.assign(I, {arch, lectura, lineas:[], res:null, msg:null, leyendo:true}); render();
+  const vigente = () => S.ing === I && I.arch === arch && I.lectura === lectura;
   try {
-    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
-    Object.assign(I.arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
+    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { if (!vigente()) return; I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
+    if (!vigente()) return;
+    Object.assign(arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
     I.hojaSel = 0; I.col = r.hojas ? M.columnas(r.hojas[0].filas) : null;
     if (I.datos) ingProcesar();
-  } catch(e){ I.arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
+  } catch(e){ if (!vigente()) return; arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
   I.leyendo = false; I.prog = ''; render();
 }
 function ingProcesar(mantener){
@@ -3046,7 +3051,7 @@ async function ingConfirmar(forzar){
 }
 /* Un cambio en la revisión pide una confirmación nueva, salvo que la anterior haya quedado sin respuesta (así un reintento no suma dos veces) */
 function ingCambio(){ const I = S.ing; if (I && !(I.msg && I.msg.t === 'net')) I.clave = ''; }
-function ingQuitar(){ const I = S.ing; I.arch = null; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
+function ingQuitar(){ const I = S.ing; I.arch = null; I.lectura = (I.lectura || 0) + 1; I.leyendo = false; I.prog = ''; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
 
 /* ---------- Editar hojas ---------- */
 function openHojas(add){
