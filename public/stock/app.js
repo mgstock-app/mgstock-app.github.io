@@ -1195,7 +1195,8 @@ function inicioOperativo(){
     tarjeta('Para pedir',pedidoItems().length,'Productos bajo mínimo',pedidos?'pedido':'proveedores'),
     tarjeta('Sin contar',estados.nc,'Sin cantidad registrada','stock','nc')
   ];
-  const opciones=`<details class="gl-home-essential-settings">
+  const herramientasAbiertas=!!document.querySelector('#view .gl-home-essential-settings[open]');
+  const opciones=`<details class="gl-home-essential-settings" ${herramientasAbiertas?'open':''}>
     <summary>Más herramientas</summary>
     <div class="gl-home-essential-tools">
       <button class="btn sm" data-act="share">${ic('userplus')}Equipo</button>
