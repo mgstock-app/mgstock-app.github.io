@@ -1,6 +1,6 @@
 # Integración del módulo Recibos y Personal en GESTLOK
 
-Estado: planificación técnica inicial. No habilitar a usuarios reales hasta completar seguridad y pruebas.
+Estado: etapa 1 implementada (inventario y reconciliación de respaldos de reportes). Ver `docs/recibonet-inventario-58.md`. No habilitar a usuarios reales hasta completar seguridad y pruebas.
 
 ## Arquitectura
 - GESTLOK es el punto único de entrada y la marca visual.
