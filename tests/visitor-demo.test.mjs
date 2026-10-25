@@ -43,6 +43,7 @@ test('La demo conserva cambios exclusivamente en memoria y simula 2 tiendas y 2 
  };
  const listeners=new Map(),dom={
   getElementById(){return null;},
+  createElement(){return {id:'',setAttribute(){},innerHTML:'',className:''};},
   addEventListener:(k,f)=>listeners.set(k,f),
   documentElement:{classList:{add(){}}},
   body:{prepend(){}}
