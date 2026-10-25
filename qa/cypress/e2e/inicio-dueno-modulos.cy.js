@@ -11,6 +11,8 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
  it('muestra empresa con los dos locales y oculta empleados no habilitado',()=>{
   cy.viewport(390,844);start();
   cy.get('#hub').should('contain.text','Administrar mi empresa').and('not.contain.text','Administrar empleados').and('not.contain.text','Próximamente');
+  cy.get('#hub h1').should('have.length',1);
+  cy.get('#hub .gl-commerce-card').should('not.be.visible');
   cy.get('#hub [data-act="local"][data-id="munro"]').should('be.visible');
   cy.get('#hub [data-act="local"][data-id="torcuato"]').should('be.visible').click();
   cy.get('#snav').should('be.visible');

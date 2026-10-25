@@ -45,10 +45,11 @@
     if(state.status==='error')return '<section class="gl-owner-modules"><p role="alert">No pudimos verificar tus permisos. Revisá la conexión.</p><button class="btn" data-owner-area-retry>Reintentar</button></section>';
     const commerce=allowed('comercial'),staff=allowed('recibos_personal')&&typeof window.GestLokEmployees?.open==='function';
     const visible=locals.filter(l=>state.data.local_ids?.includes(l.id));
+    const settings=commerce&&window.GestLokCommerce?.card?.();
     const brand=state.data.logo_id==='mi-gusto'?'<img class="gl-owner-company-logo" src="img/mi-gusto-negro.png" alt="Mi Gusto">':'';
     return '<section class="gl-owner-modules" aria-label="Áreas de administración"><header>'+brand+
       '<p class="eyebrow">GESTLOK / '+esc(state.data.company_name||'Mi empresa')+'</p><h1>¿Qué querés administrar?</h1><p>Elegí un área para continuar.</p></header><div class="gl-owner-modules-grid">'+
-      (commerce?'<article class="gl-owner-module gl-owner-module-commerce"><span aria-hidden="true">🏬</span><h2>Administrar mi empresa</h2><p>Productos, stock, proveedores, pedidos y reportes.</p><div class="gl-owner-module-locations">'+visible.map(card).join('')+'</div></article>':'')+
+      (commerce?'<article class="gl-owner-module gl-owner-module-commerce"><span aria-hidden="true">🏬</span><h2>Administrar mi empresa</h2><p>Productos, stock, proveedores, pedidos y reportes.</p><div class="gl-owner-module-locations">'+visible.map(card).join('')+'</div>'+(settings?'<details class="gl-owner-business-settings"><summary data-owner-settings>Configurar modalidad de empresa</summary>'+settings+'</details>':'')+'</article>':'')+
       (staff?'<article class="gl-owner-module gl-owner-module-staff"><span aria-hidden="true">👥</span><h2>Administrar empleados</h2><p>Horarios, planillas, recibos, locales y personal.</p><button class="btn primary" data-owner-area-staff>Abrir administración de empleados</button></article>':'')+
       (!commerce&&!staff?'<p class="note">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div></section>';
   }

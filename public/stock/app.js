@@ -2130,6 +2130,7 @@ function renderHub(){
   window.GestLokSupport?.render();
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  const ownerHome=miRol()==='dueno'&&listo&&!!S.db;
   if (adm && listo && S.db && S.creatorSetup) {
     const creatorHTML=window.GestLokCreator?.view() || '';
     if(hub._h!==creatorHTML){hub.innerHTML=creatorHTML;hub._h=creatorHTML;}
@@ -2147,7 +2148,7 @@ function renderHub(){
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
 
   // Fail closed: the backend decides which implemented areas this owner can use.
-  if (miRol() === 'dueno' && listo && S.db) {
+  if (ownerHome) {
     body = window.GestLokOwnerAreas?.view(mios,lcard) || '<p role="status">Comprobando tus áreas autorizadas…</p>';
   }
 
@@ -2223,21 +2224,24 @@ function renderHub(){
     return;
   }
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t"><b>Inventario</b><span>Locales y equipo</span></div></div>
+      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
       <p class="eyebrow">${esc(fechaLarga())}</p>
-      <h1 class="hub-t">Locales</h1>
-      <p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>
+      ${ownerHome?'':'<h1 class="hub-t">Locales</h1><p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>'}
       ${adm && S.sol.length ? `<section class="card pad hub-sol">${solRows()}</section>` : ''}
-      ${window.GestLokCommerce?.card() || ''}
+      ${ownerHome?'':(window.GestLokCommerce?.card() || '')}
       ${body}
       ${S.me && listo ? `<p class="hub-me">Entraste como <b>${esc(S.me.email || '')}</b> · ${esc(rolLabel(miRol()))}</p>` : ''}
     </main>`;
   if (hub._h !== html){
     const ae = document.activeElement, keep = !!(ae && hub.contains(ae) && ae.matches('input,select'));
-    if (!keep){ hub.innerHTML = html; hub._h = html; }
+    if (!keep){
+      const settingsOpen=!!hub.querySelector('.gl-owner-business-settings')?.open;
+      hub.innerHTML = html;hub._h = html;
+      const settings=hub.querySelector('.gl-owner-business-settings');if(settings&&settingsOpen)settings.open=true;
+    }
   }
 }
 
