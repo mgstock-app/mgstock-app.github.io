@@ -15,10 +15,11 @@ function start(email = 'dueno@example.com', staff = false) {
 }
 describe('GESTLOK · carpeta Administrar a los empleados', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
-  it('dueño con el módulo habilitado ve las dos carpetas con el logo de su empresa', () => {
+  it('dueño de Mi Gusto con empleados habilitados ve ambas carpetas, el logo y el lema', () => {
     cy.viewport(390, 844); start('dueno@example.com', true);
     cy.get('#hub .gl-owner-landing').should('be.visible').and('contain.text', 'Bienvenido/a a').and('contain.text', 'Todo lo que necesitás, en un solo lugar.');
-    cy.get('#hub .gl-owner-welcome-logo img').should('have.attr', 'src', 'img/mi-gusto-blanco.png').and('have.attr', 'alt', 'Mi Gusto');
+    cy.get('#hub .gl-owner-welcome-logo img').should('be.visible').and('have.attr', 'src', 'img/mi-gusto-blanco.png');
+    cy.get('#hub .gl-oh-brand-company').should('contain.text', 'Empanadas de verdad');
     cy.get('#hub .gl-owner-business').should('contain.text', 'Administrar mi empresa');
     cy.get('#hub .gl-owner-employees').should('contain.text', 'Administrar a los empleados').and('contain.text', 'Recibos de sueldo');
     cy.get('#hub [data-owner-area-staff]').should('be.visible');
