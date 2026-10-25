@@ -107,7 +107,7 @@
     if(api?.role?.()!=='dueno')return '';
     const n=firstName(),dot=toOrder()>0;
     return '<header class="gl-oh-top"><button class="gl-oh-icon" data-owner-nav="menu" aria-label="Abrir menú" aria-haspopup="dialog">'+svg(I.menu,26)+'</button>'+
-      '<div class="gl-oh-brand"><img src="icons/gestlok.svg" alt="" width="50" height="50"><div><b class="gl-oh-word"><span>GEST</span><span>LOK</span></b><small>ORGANIZA · CONTROLA · HACE CRECER</small></div></div>'+
+      (state.status==='ready'&&state.data?.logo_id==='mi-gusto' ? '<div class="gl-oh-brand gl-oh-brand-company"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"><small>Empanadas de verdad</small></div>' : '<div class="gl-oh-brand"><img src="icons/gestlok.svg" alt="" width="50" height="50"><div><b class="gl-oh-word"><span>GEST</span><span>LOK</span></b><small>ORGANIZA · CONTROLA · HACE CRECER</small></div></div>')+
       '<div class="gl-oh-actions"><button class="gl-oh-icon gl-oh-bell" data-owner-nav="bell" aria-label="Notificaciones y avisos'+(dot?' (hay avisos de stock)':'')+'" aria-haspopup="dialog">'+svg(I.bell,26)+(dot?'<i class="gl-oh-dot" aria-hidden="true"></i>':'')+'</button>'+
       '<div class="gl-oh-userwrap"><button class="gl-oh-user" data-owner-nav="user" aria-haspopup="menu" aria-expanded="'+menuOpen+'"><span class="gl-oh-avatar" aria-hidden="true">'+esc((n||'?').charAt(0).toUpperCase())+'</span><span class="gl-oh-who"><b>Hola'+(n?', '+esc(n):'')+'</b><small>'+esc(roleName())+'</small></span>'+svg(I.down,18)+'</button>'+
       (menuOpen?'<div class="gl-oh-menu" role="menu"><button role="menuitem" data-owner-nav="account">'+svg(I.file,18)+'Mi cuenta</button><button role="menuitem" data-owner-nav="settings">'+svg(I.gear,18)+'Ajustes</button><button role="menuitem" data-owner-nav="team">'+svg(I.team,18)+'Equipo y accesos</button><button role="menuitem" data-au="out">'+svg(I.out,18)+'Salir</button></div>':'')+'</div></div></header>';
@@ -119,15 +119,17 @@
     const commerce=allowed('comercial'),staff=allowed('recibos_personal');
     const name=esc(state.data.company_name||'Mi empresa');
     // El logo de Mi Gusto solo se muestra cuando el backend lo asigna a esta empresa.
-    const company=state.data.logo_id==='mi-gusto'
+    const branded=state.data.logo_id==='mi-gusto';
+    const company=branded
       ?'<img class="gl-owner-company-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto" width="562" height="278">'
       :'<b class="gl-owner-company-name">'+name+'</b>';
     const tile=(k,ic,t)=>'<button class="gl-owner-tile" data-owner-nav="'+k+'"><span>'+svg(I[ic],28)+'</span>'+t+'</button>';
     const sup=supportLink();
     const support=sup?'<a class="gl-owner-tile" href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer"><span>'+svg(I.help,28)+'</span>Soporte</a>':tile('support','help','Soporte');
     return '<section class="gl-owner-landing" aria-label="Inicio de GESTLOK · '+name+'">'+
-      '<header class="gl-owner-welcome"><div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div>'+
-      '<div class="gl-owner-company" aria-label="Empresa">'+company+'</div></header>'+
+      '<header class="gl-owner-welcome">'+(branded
+        ?'<div><p>Bienvenido/a a</p><h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div>'
+        :'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>')+'</header>'+
       '<div class="gl-owner-areas'+(commerce&&staff?'':' gl-owner-areas-one')+'">'+
       (commerce?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir Administrar mi empresa">'+svg(I.right,26)+'</button></div>'+

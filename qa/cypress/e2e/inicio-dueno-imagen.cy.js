@@ -16,9 +16,11 @@ function start(email = 'dueno@example.com', setup) {
 }
 describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
-  it('muestra la cabecera de GESTLOK y los cuatro accesos generales', () => {
+  it('muestra Mi Gusto y los cuatro accesos generales', () => {
     cy.viewport(1280, 900); start();
-    cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'GESTLOK').and('contain.text', 'ORGANIZA · CONTROLA · HACE CRECER');
+    cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'Empanadas de verdad');
+    cy.get('.gl-oh-brand-company img').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
+    cy.get('.gl-owner-welcome-logo img').should('be.visible').and('have.attr', 'alt', 'Mi Gusto');
     cy.get('.gl-oh-top [data-owner-nav="menu"]').should('be.visible');
     cy.get('.gl-oh-top [data-owner-nav="bell"]').should('be.visible');
     cy.get('.gl-oh-who').should('contain.text', 'Hola').and('contain.text', 'Dueño');
@@ -58,7 +60,12 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   });
   it('en celular no hay desbordes horizontales', () => {
     cy.viewport(390, 844); start();
-    cy.get('.gl-owner-quick').should('be.visible');
+    cy.get('.gl-owner-quick').should('be.visible').then($row => {
+      const row = $row[0], cards = [...row.querySelectorAll('.gl-owner-tile')];
+      expect(cards).to.have.length(4);
+      expect(cards.every(card => Math.abs(card.offsetTop - cards[0].offsetTop) < 4)).to.equal(true);
+      expect(row.scrollWidth).to.be.greaterThan(row.clientWidth);
+    });
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
 });
