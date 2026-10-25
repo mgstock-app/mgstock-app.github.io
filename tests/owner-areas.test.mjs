@@ -70,6 +70,9 @@ test('Empleados solo aparece cuando el backend lo autoriza y está operativo; lo
  const html=a.view([{id:'local-a'}],l=>`<b>${l.id}</b>`);
  assert.match(html,/Administrar <span>a los empleados<\/span>/);assert.match(html,/data-owner-area-staff/);
  assert.match(html,/Administrar <span>mi empresa<\/span>/);assert.match(html,/img\/mi-gusto-blanco\.png/);
+ assert.match(html,/gl-owner-welcome-logo/);
+ assert.match(a.header(),/Empanadas de verdad/);
+ assert.match(a.header(),/gl-oh-brand-company/);
  const sinLogo=context();sinLogo.modules.recibos_personal={authorized:true,operational:true};
  const b=load(sinLogo);await b.refresh();assert.doesNotMatch(b.view([],()=>''),/mi-gusto/);
 });
