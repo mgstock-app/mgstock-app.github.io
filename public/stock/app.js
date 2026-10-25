@@ -1648,6 +1648,16 @@ function fabCard(){
       <div class="bar-a" style="margin-top:14px"><button class="btn sm primary" data-go="fabrica">${ic('fab')}Abrir ${esc(hf.nombre)}</button></div></section>`;
   });
 }
+/* Estado visual de categorías: sólo altera la presentación, nunca el conteo guardado. */
+const fabFoldKey = bloque => [S.local || '', fabCtx(), bloque].join('|');
+const fabIsFolded = bloque => !!S.fabFolded?.[fabFoldKey(bloque)];
+function toggleFabBloque(bloque){
+  const n=Number(bloque);
+  if(!Number.isSafeInteger(n)||n<1)return;
+  S.fabFolded ||= {};
+  S.fabFolded[fabFoldKey(n)]=!fabIsFolded(n);
+  render();
+}
 V.fabrica = () => {
   const its = fItems(), lf = lastFab(), d = new Date(), nom = nombreHoja(fabCtx());
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
@@ -1658,9 +1668,11 @@ V.fabrica = () => {
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
+  const porBloque=new Map();
+  for(const it of its)porBloque.set(bloqueOf(it),(porBloque.get(bloqueOf(it))||0)+1);
   for (const it of its){
     const b = bloqueOf(it);
-    if (b !== prev) rows += `<div class="xl-r xl-bq" data-bloque="${b}"><div class="xbq"><b>${esc(bloqueNombre(b))}</b>${canW() ? `<button class="btn sm" data-act="bq-edit" data-b="${b}" id="bq-e-${b}" aria-label="Nombre de ${esc(bloqueNombre(b))}">${ic('edit')}Nombre</button>` : ''}</div></div>`;
+    if (b !== prev) rows += `<div class="xl-r xl-bq" data-bloque="${b}"><div class="xbq"><b>${esc(bloqueNombre(b))}</b><span class="gl-bq-count">${porBloque.get(b)} ${porBloque.get(b)===1?'producto':'productos'}</span><button type="button" class="gl-bq-toggle" data-act="fab-toggle-block" data-b="${b}" aria-expanded="${!fabIsFolded(b)}" aria-label="${fabIsFolded(b)?'Mostrar':'Ocultar'} categoría ${esc(bloqueNombre(b))}">${fabIsFolded(b)?'Mostrar':'Ocultar'}</button>${canW() ? `<button class="btn sm" data-act="bq-edit" data-b="${b}" id="bq-e-${b}" aria-label="Nombre de ${esc(bloqueNombre(b))}">${ic('edit')}Nombre</button>` : ''}</div></div>`;
     prev = b; n++; rows += rowFab(it, n);
   }
   return head + `<div class="xl" role="table" aria-label="${esc(nom)}">
@@ -1673,7 +1685,7 @@ V.fabrica = () => {
 function rowFab(it, n){
   const id = esc(it.id), l = fVal(it, 'l'), f = fVal(it, 'f'), d = S.fdraft[it.id] || {}, dis = canW() ? '' : 'disabled';
   const chgL = has(d, 'l') && d.l !== num(it.local), chgF = has(d, 'f') && d.f !== num(it.fabrica);
-  return `<div class="xl-r ${fSin(it) ? 'sin' : ''}" id="fr-${id}" role="row">
+  return `<div class="xl-r ${fSin(it) ? 'sin' : ''} ${fabIsFolded(bloqueOf(it)) ? 'gl-folded-row' : ''}" id="fr-${id}" role="row">
     <span class="xn">${n}</span>
     <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn">${canW() ? `<button class="xpb" data-act="f-item" data-id="${id}" title="Modificar o eliminar"><b>${esc(it.nombre)}</b></button>` : `<b>${esc(it.nombre)}</b>`}${notaCell(it, 'f')}</span></span>
     <span class="xt"><small class="xl-mob-label">Total</small><strong id="ft-${id}">${fmt(fTot(it))}</strong></span>
@@ -3278,6 +3290,7 @@ document.addEventListener('click', e => {
     case 'ing-confirmar': ingConfirmar(false); break;
     case 'ing-forzar': closePanel(); ingConfirmar(true); break;
     case 'ing-hist': S.ing.histOpen[id] = !S.ing.histOpen[id]; render(); break;
+    case 'fab-toggle-block': toggleFabBloque(t.dataset.b); break;
     case 'f-item': openFEdit(id); break;
     case 'f-del-ask': openFEdit(id, true); break;
     case 'fstep': {
