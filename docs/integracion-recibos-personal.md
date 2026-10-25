@@ -31,3 +31,10 @@ No apagar ReciboNet ni mover datos reales hasta contar con validación funcional
 - Corregir actualización automática de la PWA instalada y web, incluyendo service worker, caché y estado de GitHub Pages; comprobar que no se pierdan datos ni sesiones.
 - No marcar resuelto hasta que la usuaria vea y pueda guardar una observación por producto en la aplicación publicada.
 - Prioridad de trabajo actual: integración de ReciboNet. Este pendiente no debe olvidarse ni confundirse con una tarea completada.
+
+## Identidad de Mi Gusto y coexistencia de dueños (25/10/2026)
+- La empresa visible en GESTLOK se llama **Mi Gusto**; conservar su logo actual, exclusivamente en su cuenta empresarial.
+- Gisela y **batallinim@gmail.com** pertenecen a la MISMA empresa y deben acceder a los mismos locales según autorización. No crear una segunda empresa ni duplicar datos.
+- batallinim@gmail.com ya tiene cuenta en ReciboNet, pero todavía no inició sesión en GESTLOK. Resolver vinculación segura tras autenticación y validación de pertenencia, sin asignar acceso solo por una cadena de email ni copiar contraseñas.
+- ReciboNet registra empresa interna **Alessandro (2026002)**: verificar y documentar mapeo con Mi Gusto antes de migrar; no renombrar ni modificar identificadores de producción a ciegas.
+- Mantener Munro y Torcuato, planillas, recibos, horarios, usuarios, historial y logo. Dos dueños pueden compartir empresa; la autorización de módulos y operaciones debe validarse en backend/RLS.
