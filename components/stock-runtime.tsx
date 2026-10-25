@@ -36,7 +36,8 @@ export function StockRuntime() {
       await load("/stock/gestlok-creator.js");
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
-      await load("/stock/app.js");
+      // Versioned URL prevents older installed PWAs from reusing a stale supplier UI script.
+      await load("/stock/app.js?rev=provider-internal-observations-20261025");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };
