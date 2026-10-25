@@ -23,11 +23,11 @@ test('Dueña recibe cartel único y permiso sólo desde un click voluntario',()=
  assert.doesNotMatch(client,/setInterval\(/);
 });
 test('Push exige consentimiento y autenticación en servidor sin activar envíos',()=>{
- assert.match(edge,/admin\.auth\.getUser\(token\)/);
- assert.match(edge,/userClient\.rpc\("mi_acceso"\)/);
+ assert.match(edge,/admin\.auth\.getUser\(bearer\.slice\(7\)\)/);
+ assert.match(edge,/client\.rpc\("mi_acceso"\)/);
  assert.match(edge,/access\?\.rol!=="dueno"/);
- assert.match(edge,/\.eq\("user_id",identity\.user\.id\)/);
- assert.match(edge,/\.eq\("tenant_id",access\.tenant_id\)/);
+ assert.match(edge,/\.eq\("user_id",account\.user\.id\)/);
+ assert.match(edge,/\.eq\("tenant_id",account\.tenant_id\)/);
  assert.match(edge,/deliveryEnabled:true/);
  assert.match(edge,/sendNotification/);
  assert.match(edge,/verifyCron/);
