@@ -602,6 +602,7 @@ function actualizarValorProveedor(input){
   }else{
     const old=d.catalogo[row.productoId]||{};
     d.catalogo[row.productoId]={
+      ...old,
       stockLocal:field==='stockLocal'?n:(old.stockLocal??row.stockLocal),
       sugerido:field==='sugerido'?n:(old.sugerido??row.sugerido),
       pedir:field==='pedir'?n:(old.pedir??row.pedir)
@@ -2755,7 +2756,7 @@ document.addEventListener('input', e => {
       const item=d.items.find(x=>x.id===id);
       if(item)item.observacion=e.target.value.slice(0,300);
     }else if(row){
-      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),stockLocal:row.stockLocal,sugerido:row.sugerido,pedir:row.pedir,observacion:e.target.value.slice(0,300)};
+      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),observacion:e.target.value.slice(0,300)};
     }
     proveedorGuardarBorrador(S.provOpen);
   }
