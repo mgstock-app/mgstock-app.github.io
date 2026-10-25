@@ -46,6 +46,10 @@ test("La eliminación del servidor afecta solamente chats con más de 24 horas",
   assert.doesNotMatch(sql,/truncate\s+public\.docs/i);
   assert.doesNotMatch(sql,/delete\s+from\s+public\.docs\s*;/i);
 });
-test("Las notificaciones push permanecen desactivadas",()=>{
-  assert.doesNotMatch(app,/Notification\.requestPermission|GestLokPush|pushManager/);
+test("Push requiere consentimiento explícito y no afecta el chat interno",()=>{
+  const push=readFileSync("public/stock/gestlok-push.js","utf8");
+  assert.match(app,/GestLokPush\?\.attach/);
+  assert.match(push,/data-gl-push="allow"/);
+  assert.match(push,/Notification\.requestPermission\(\)/);
+  assert.doesNotMatch(app,/sendNotification\(|pushManager\.subscribe/);
 });
