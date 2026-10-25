@@ -46,3 +46,16 @@ test('Mantiene abierto Más herramientas cuando hay una actualización del Inici
  assert.match(app,/if\(toolsOpen && S\.view==='inicio'\)/);
  assert.match(app,/if\(details\)details\.open=true/);
 });
+
+test('Notificaciones aparece sólo para Dueña, con panel lateral listo sin datos inventados',()=>{
+ assert.match(compact,/miRol\(\)==='dueno'\?\`<button type="button" class="gl-owner-notif-trigger"/);
+ assert.match(compact,/data-act="owner-notifications"/);
+ assert.match(app,/case 'owner-notifications': openOwnerNotifications\(\)/);
+ assert.match(app,/if\(miRol\(\)!=='dueno'\|\|S\.view!=='inicio'\|\|!S\.local\)return/);
+ assert.match(app,/S\.panel='owner-notifications'/);
+ assert.match(app,/openPanel\(.*'drawer'\)/s);
+ assert.match(app,/id="gl-owner-notifications-title"/);
+ assert.match(app,/aria-labelledby','gl-owner-notifications-title'/);
+ assert.match(css,/\.gl-owner-notif-trigger/);
+ assert.match(css,/\.ov\.drawer:has\(\.gl-owner-notif-body\) \.pn/);
+});
