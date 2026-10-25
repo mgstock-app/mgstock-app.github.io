@@ -3670,7 +3670,7 @@ function afterAccess(){
   for (const l of mios) if (!S.hub[l.id]) subscribeHub(l.id);
   if (!S.started){
     S.started = true;
-    if (!isCreadora() && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
+    if (!isCreadora() && miRol() !== 'dueno' && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
     applyPushNavigation();
     return;
   }
