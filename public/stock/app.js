@@ -301,6 +301,17 @@ async function batchRun(items, fn, size=5){ for (let i = 0; i < items.length; i 
 function render(){
   window.GestLokSupport?.render();
   if (!S.local){ renderHub(); return; }
+  // Preserve unsaved form values when live subscriptions redraw the active view.
+  // Never restore fields belonging to a different view or local.
+  const previousView = $('#view');
+  const pendingFields = [...previousView.querySelectorAll('input, textarea, select')].filter(el =>
+    !el.disabled && el.type !== 'file' && el.type !== 'password' &&
+    (el.id || el.hasAttribute('data-prov-val'))
+  ).map(el => ({
+    id: el.id, provId: el.dataset.id, provField: el.dataset.provVal,
+    value: el.value, checked: el.checked, type: el.type,
+    dirty: el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue
+  })).filter(el => el.dirty);
   const ae = document.activeElement; const fid = ae && ae.id && $('#view').contains(ae) ? ae.id : null;
   let sel = null; try { if (fid && ae.selectionStart != null) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
@@ -308,6 +319,15 @@ function render(){
   const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
   renderChrome();
   $('#view').innerHTML = viewHTML();
+  for (const saved of pendingFields) {
+    const field = [...$('#view').querySelectorAll('input, textarea, select')].find(el =>
+      saved.id ? el.id === saved.id :
+      el.dataset.id === saved.provId && el.dataset.provVal === saved.provField
+    );
+    if (!field || field.disabled || field.type !== saved.type) continue;
+    if (field.type === 'checkbox' || field.type === 'radio') field.checked = saved.checked;
+    else field.value = saved.value;
+  }
   if(toolsOpen && S.view==='inicio'){
     const details=$('#view .gl-home-essential-settings');
     if(details)details.open=true;
