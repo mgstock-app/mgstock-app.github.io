@@ -2,7 +2,7 @@
 // Solo servicios de envío confiables. No se exponen claves VAPID privadas.
 import {createClient} from "npm:@supabase/supabase-js@2.118.0";
 import webpush from "npm:web-push@3.6.7";
-const URL=Deno.env.get("SUPABASE_URL")||"";
+const SUPA_URL=Deno.env.get("SUPABASE_URL")||"";
 const ANON=Deno.env.get("SUPABASE_ANON_KEY")||"";
 const SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
 const SITE="https://mgstock-app.github.io";
@@ -14,7 +14,7 @@ const cors={"Access-Control-Allow-Origin":SITE,"Access-Control-Allow-Headers":"a
 "Access-Control-Allow-Methods":"GET,POST,OPTIONS","Vary":"Origin"};
 const json=(code:number,body:unknown)=>new Response(JSON.stringify(body),{status:code,headers:{
   ...cors,"Content-Type":"application/json;charset=utf-8","Cache-Control":"no-store"}});
-const admin=createClient(URL,SERVICE,{auth:{autoRefreshToken:false,persistSession:false}});
+const admin=createClient(SUPA_URL,SERVICE,{auth:{autoRefreshToken:false,persistSession:false}});
 const endpointValid=(s:unknown)=>{
  if(typeof s!=="string"||s.length>2048)return false;
  try{
@@ -32,7 +32,7 @@ async function auth(req:Request){
  if(!/^Bearer [A-Za-z0-9._-]+$/.test(bearer))return null;
  const {data,error}=await admin.auth.getUser(bearer.slice(7));
  if(error||!data.user)return null;
- const client=createClient(URL,ANON,{global:{headers:{Authorization:bearer}},
+ const client=createClient(SUPA_URL,ANON,{global:{headers:{Authorization:bearer}},
   auth:{autoRefreshToken:false,persistSession:false}});
  const {data:access,error:accessError}=await client.rpc("mi_acceso");
  if(accessError||access?.rol!=="dueno"||!access.tenant_id)return null;
@@ -119,7 +119,7 @@ async function dispatch(){
 Deno.serve(async(req:Request)=>{
  if(req.headers.get("origin") && req.headers.get("origin")!==SITE)return json(403,{ok:false,error:"Origen no permitido"});
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
- if(!URL||!SERVICE||!ANON)return json(503,{ok:false,error:"Servicio no configurado"});
+ if(!SUPA_URL||!SERVICE||!ANON)return json(503,{ok:false,error:"Servicio no configurado"});
  const op=new URL(req.url).searchParams.get("op");
  if(req.method==="GET"&&op==="config"){
   const {data,error}=await admin.from("gestlok_push_settings").select("public_key").eq("id",1).single();
