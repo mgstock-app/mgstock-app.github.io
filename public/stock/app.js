@@ -304,8 +304,13 @@ function render(){
   let sel = null; try { if (fid && ae.selectionStart != null) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
+  const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
   renderChrome();
   $('#view').innerHTML = viewHTML();
+  if(toolsOpen && S.view==='inicio'){
+    const details=$('#view .gl-home-essential-settings');
+    if(details)details.open=true;
+  }
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
 function viewHTML(){
