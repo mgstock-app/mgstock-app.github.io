@@ -4,13 +4,25 @@
 create extension if not exists pg_trgm with schema extensions;
 
 alter table public.gestlok_productos_tienda
+  add column if not exists subcategoria text not null default '' check(length(subcategoria)<=80),
+  add column if not exists marca text not null default '' check(length(marca)<=80),
+  add column if not exists variante text not null default '' check(length(variante)<=120),
+  add column if not exists codigo_barras text not null default '' check(length(codigo_barras)<=80);
+
+alter table public.gestlok_productos_tienda
   add column if not exists busqueda text generated always as (
     lower(
       coalesce(nombre,'') || ' ' || coalesce(sku,'') || ' ' ||
       coalesce(categoria,'') || ' ' || coalesce(proveedor,'') || ' ' ||
-      coalesce(ubicacion,'')
+      coalesce(ubicacion,'') || ' ' || coalesce(subcategoria,'') || ' ' ||
+      coalesce(marca,'') || ' ' || coalesce(variante,'') || ' ' ||
+      coalesce(codigo_barras,'')
     )
   ) stored;
+
+create unique index if not exists gl_tienda_barras_unico
+  on public.gestlok_productos_tienda(tenant_id,tienda_id,lower(codigo_barras))
+  where btrim(codigo_barras)<>'';
 
 create index if not exists gl_tienda_buscador_gin
   on public.gestlok_productos_tienda using gin (busqueda extensions.gin_trgm_ops);
