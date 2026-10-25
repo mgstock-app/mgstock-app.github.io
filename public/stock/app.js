@@ -3498,6 +3498,32 @@ function subscribeHub(id){
   S.db.collection(id + '/productos').onSnapshot(snap => { h.prods = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lp = true; if (!S.local) renderHub(); }, () => {});
   S.db.collection(id + '/conteos').orderBy('fecha', 'desc').limit(1).onSnapshot(snap => { h.conteos = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lc = true; if (!S.local) renderHub(); }, () => {});
 }
+/* Una push abre únicamente una sección permitida del local autorizado. */
+let pendingPushNav=(()=>{
+ const query=new URLSearchParams(location.search);
+ const local=query.get('gl_local'),view=query.get('gl_view');
+ if(!local||!view)return null;
+ const clean=new URL(location.href);clean.searchParams.delete('gl_local');clean.searchParams.delete('gl_view');
+ history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
+ return {local,view};
+})();
+function applyPushNavigation(){
+ const p=pendingPushNav;
+ if(!p||!S.started||!S.loaded.e||!S.loaded.l)return;
+ pendingPushNav=null;
+ if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) ||
+   !['chat','proveedores','vencimientos','avisos'].includes(p.view))return;
+ if(!localesMios().some(x=>x.id===p.local))return;
+ abrirLocal(p.local);
+ go(p.view);
+}
+if('serviceWorker' in navigator){
+ navigator.serviceWorker.addEventListener('message',event=>{
+  if(event.data?.type!=='gestlok-push-open')return;
+  pendingPushNav={local:event.data.local,view:event.data.view};
+  applyPushNavigation();
+ });
+}
 /* Qué puede ver cada persona: se decide con su fila del Equipo */
 function afterAccess(){
   if (!S.loaded.e || !S.loaded.l) return;
@@ -3506,12 +3532,14 @@ function afterAccess(){
   if (!S.started){
     S.started = true;
     if (!isCreadora() && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
+    applyPushNavigation();
     return;
   }
   if (S.local){
     if (!mios.some(l => l.id === S.local)){ mostrarHub(); toast('Ya no tenés acceso a ese local.', true); }
     else S.ro = !puedeEditarLocal(S.local);
   }
+  applyPushNavigation();
 }
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
