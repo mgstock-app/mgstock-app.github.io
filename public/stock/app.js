@@ -2146,6 +2146,17 @@ function renderHub(){
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
 
+  // Acceso visual por módulos para dueños. Recibos permanece bloqueado hasta
+  // disponer de autorización por empresa comprobada en backend y RLS.
+  if (miRol() === 'dueno' && listo && S.db && mios.length) {
+    body = `<section class="gl-owner-modules" aria-label="Áreas de administración">
+      <header><p class="eyebrow">GESTLOK / MI EMPRESA</p><h1>¿Qué querés administrar?</h1><p>Elegí un área para continuar.</p></header>
+      <div class="gl-owner-modules-grid">
+        <article class="gl-owner-module gl-owner-module-commerce"><span aria-hidden="true">🏬</span><h2>Administrar mi empresa</h2><p>Productos, stock, proveedores, pedidos y reportes.</p><div class="gl-owner-module-locations">${mios.map(lcard).join('')}</div></article>
+        <article class="gl-owner-module gl-owner-module-staff"><span aria-hidden="true">👥</span><h2>Administrar empleados</h2><p>Horarios, planillas, recibos, locales y personal.</p><span class="gl-owner-module-pending" role="status">Próximamente · Integración segura en preparación</span></article>
+      </div></section>`;
+  }
+
   // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
   // No es un panel de pagos: GestLok sigue gratuito y todas las altas requieren aprobación.
   if (adm && listo && S.db) {
