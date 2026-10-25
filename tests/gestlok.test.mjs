@@ -40,7 +40,7 @@ test("el panel administrativo solo aparece con rol creadora y es gratuito", () =
   assert.match(app, /if \(adm && listo && S\.db\)/);
   assert.match(app, /isCreadora = \(\) => !!\(S\.me && S\.me\.isOwner\)/);
   assert.match(app, /Panel administrativo/);
-  assert.match(app, /if \(!isCreadora\(\) && mios\.length === 1\)/);
+  assert.match(app, /if \(!isCreadora\(\) && miRol\(\) !== 'dueno' && mios\.length === 1\)/);
   assert.match(app, /Las nuevas cuentas solo ingresan cuando las autorizás/);
   assert.doesNotMatch(app.slice(app.indexOf('const adminHTML ='), app.indexOf('if (hub._h !== adminHTML)')), /facturaci[oó]n|ingresos del mes|suscripciones|cobros recurrentes/i);
 });
