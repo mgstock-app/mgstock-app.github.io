@@ -1905,3 +1905,35 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
  #gl-visitor-reset,.gl-visitor-exit{width:100%;min-height:37px}
 }
 @media print{#gl-visitor-bar{display:none!important}}
+
+
+/* GestLok · analíticas privadas de visitas DEMO (solo sesiones opt-in). */
+#gl-demo-consent{
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;width:100%;
+  padding:10px 12px;border:1px solid #7bc8bb;border-radius:9px;
+  background:#214b55;color:#f5fffd
+}
+#gl-demo-consent span{flex:1 1 250px;font-size:12px;line-height:1.45}
+#gl-demo-consent button{
+  min-height:36px;border:1px solid #b4e3db;border-radius:8px;
+  padding:7px 10px;background:#d9f3ee;color:#0b3940;
+  font-size:11.5px;font-weight:750;cursor:pointer
+}
+#gl-demo-consent button[data-visitor-stats="no"]{background:transparent;color:#fff}
+#gl-demo-consent button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.gl-demo-analytics .gl-demo-analytics-stats{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0
+}
+.gl-demo-analytics-stats article{
+ display:flex;flex-direction:column;justify-content:space-between;gap:10px;
+ background:var(--sunk,#f4f7f9);border:1px solid var(--line,#d8e3ea);
+ border-radius:12px;padding:14px
+}
+.gl-demo-analytics-stats small{font-size:12px;color:var(--muted,#607183)}
+.gl-demo-analytics-stats strong{font-size:25px;font-variant-numeric:tabular-nums;color:var(--ink,#0c2433)}
+.gl-demo-analytics-shops{display:flex;flex-wrap:wrap;gap:10px}
+.gl-demo-analytics-shops div{flex:1 1 190px;display:flex;justify-content:space-between;
+ gap:10px;border-bottom:1px solid var(--line,#d8e3ea);padding:9px 0;font-size:12px}
+.gl-demo-analytics-shops span{white-space:nowrap;font-variant-numeric:tabular-nums}
+.gl-demo-analytics .note{margin-top:12px}
+@media(max-width:600px){#gl-demo-consent{padding:10px}#gl-demo-consent button{flex:1 1 120px}}

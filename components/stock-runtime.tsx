@@ -32,6 +32,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-tienda.js");
       await load("/stock/gestlok-demo.js");
+      await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js");
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");

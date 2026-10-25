@@ -2092,6 +2092,7 @@ function renderHub(){
           <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
           <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
         </section>
+        ${window.GestLokDemoMetrics?.view() || ''}
         <section class="gl-admin-card gl-demo-launch" aria-label="Preparar una empresa">
           <header><h2>Preparar empresa para un cliente</h2><small>Exclusivo de la creadora</small></header>
           <p>Elegí física, online o mixta y dejá creados el local, las carpetas y el catálogo a partir de un CSV. Todo queda separado de las empresas existentes.</p>
@@ -3681,6 +3682,7 @@ window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});
+window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 start();
