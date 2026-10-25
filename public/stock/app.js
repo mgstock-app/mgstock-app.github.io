@@ -1054,7 +1054,7 @@ V.proveedores = () => {
     const manual=p.origen==='manual';
     return encabezado+`<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
         <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
-        <label>Observación interna <input data-prov-note="${esc(p.id)}" maxlength="300" value="${esc(p.observacion||'')}" placeholder="Observación del producto" ${disabled}></label>
+        <div class="gl-prov-internal-note" style="display:block;clear:both;width:100%;margin-top:10px;padding:9px;border:1px solid var(--line,#d9dee5);border-radius:8px"><label for="prov-note-${esc(p.id)}" style="display:block;font-weight:600;margin-bottom:5px">📝 Observación interna · Solo para el local</label><textarea id="prov-note-${esc(p.id)}" data-prov-note="${esc(p.id)}" maxlength="300" rows="2" style="display:block;width:100%;min-height:52px;box-sizing:border-box" placeholder="Mensaje interno para la dueña sobre este producto (no aparece en el pedido ni en el PDF)" ${disabled}>${esc(p.observacion||'')}</textarea></div>
         ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
       </td>
       ${['stockLocal','pedir','sugerido'].map(field=>`<td data-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'}">
