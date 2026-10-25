@@ -127,6 +127,15 @@
         if(args.p_status==='assigned'&&!rows.some(r=>r.col==='equipo'&&r.data.email===row.data.email))return {error:{code:'42501',message:'Primero se debe asignar'}};
         row.data.status=args.p_status;return {data:null,error:null};
       }
+      if (fn === 'gestlok_creator_companies_index'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:{scope:'metadata_only',companies:[{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',name:'Empresa ficticia',owners:1,locals:[{id:'munro',name:'Munro'},{id:'torcuato',name:'Torcuato'}]}]},error:null};
+      }
+      if (fn === 'gestlok_owner_area_context'){
+        if(window.__ownerAreaFail)return {data:null,error:{message:'No disponible'}};
+        if(a?.rol!=='dueno')return {data:null,error:{code:'42501',message:'Solo dueños'}};
+        return {data:{role:'dueno',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',company_name:a.logoId==='mi-gusto'?'Mi Gusto':'Empresa de prueba',logo_id:a.logoId==='mi-gusto'?'mi-gusto':null,local_ids:rows.filter(r=>r.col==='locales').map(r=>r.id),modules:{comercial:{authorized:true,operational:true},recibos_personal:{authorized:false,operational:false}}},error:null};
+      }
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }

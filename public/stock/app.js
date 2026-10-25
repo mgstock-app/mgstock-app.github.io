@@ -2146,15 +2146,9 @@ function renderHub(){
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
 
-  // Acceso visual por módulos para dueños. Recibos permanece bloqueado hasta
-  // disponer de autorización por empresa comprobada en backend y RLS.
-  if (miRol() === 'dueno' && listo && S.db && mios.length) {
-    body = `<section class="gl-owner-modules" aria-label="Áreas de administración">
-      <header><p class="eyebrow">GESTLOK / MI EMPRESA</p><h1>¿Qué querés administrar?</h1><p>Elegí un área para continuar.</p></header>
-      <div class="gl-owner-modules-grid">
-        <article class="gl-owner-module gl-owner-module-commerce"><span aria-hidden="true">🏬</span><h2>Administrar mi empresa</h2><p>Productos, stock, proveedores, pedidos y reportes.</p><div class="gl-owner-module-locations">${mios.map(lcard).join('')}</div></article>
-        <article class="gl-owner-module gl-owner-module-staff"><span aria-hidden="true">👥</span><h2>Administrar empleados</h2><p>Horarios, planillas, recibos, locales y personal.</p><span class="gl-owner-module-pending" role="status">Próximamente · Integración segura en preparación</span></article>
-      </div></section>`;
+  // Fail closed: the backend decides which implemented areas this owner can use.
+  if (miRol() === 'dueno' && listo && S.db) {
+    body = window.GestLokOwnerAreas?.view(mios,lcard) || '<p role="status">Comprobando tus áreas autorizadas…</p>';
   }
 
   // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
@@ -2210,6 +2204,7 @@ function renderHub(){
         ${window.GestLokSupport?.adminCard() || ''}
         ${window.GestLokCommerce?.card() || ''}
         <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
+        ${window.GestLokOwnerAreas?.adminView()||''}
         <div class="gl-admin-panels">
           <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
           <section class="gl-admin-card"><header><h2>Acceso y privacidad</h2><small>Protección de información</small></header>
@@ -3584,7 +3579,7 @@ const errLive = e => { setLive(e && e.code === 'revoked' ? 'off' : 'err'); };
 function subscribeGlobal(){
   S.db.collection('equipo').onSnapshot(snap => {
     S.equipo = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();
+    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();
   }, errLive);
   S.db.collection('solicitudes').onSnapshot(snap => {
     legacyRequests = snap.docs.map(d => ({id:d.id, ...d.data()}));combineRequests();
@@ -3592,7 +3587,7 @@ function subscribeGlobal(){
   }, () => {});
   S.db.collection('locales').onSnapshot(snap => {
     S.localesDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.l = true; afterAccess(); onSnapRefresh();
+    S.loaded.l = true; afterAccess(); onSnapRefresh();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();
   }, errLive);
   refreshRegistrationRequests();
   setInterval(refreshRegistrationRequests,15000);
@@ -3812,6 +3807,7 @@ window.GestLokDemo?.attach({isCreadora,render});
 window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
+window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub});
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
