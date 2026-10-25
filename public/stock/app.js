@@ -836,6 +836,14 @@ function ponerEnCeroProveedorCategoria(categoria){
         stockLocal:0,pedir:0,sugerido:row.sugerido};
     }
   }
+  // This explicit reset supersedes the old typed values preserved by render().
+  // Keep suggested quantities and internal observations untouched.
+  const resetIds=new Set(rows.map(row=>row.id));
+  for(const input of document.querySelectorAll('[data-prov-val]')){
+    if(resetIds.has(input.dataset.id) && ['stockLocal','pedir'].includes(input.dataset.provVal)){
+      input.value='0';input.defaultValue='0';input.classList.remove('bad');
+    }
+  }
   proveedorGuardarBorrador(nombre);render();
   toast('Stock local y Pedir quedaron en 0; Sugerido permanece intacto. Guardá la lista.');
 }
