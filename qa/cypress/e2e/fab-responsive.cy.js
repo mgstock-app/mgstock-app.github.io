@@ -10,7 +10,7 @@ describe('GestLok Stock Local: categorías y planilla responsive',()=>{
       }).as('mockSupabase');
     });
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-    cy.viewport(820,1000);
+    cy.viewport(1280,900);
     cy.visit('/');
     cy.wait('@mockSupabase');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
@@ -19,6 +19,7 @@ describe('GestLok Stock Local: categorías y planilla responsive',()=>{
     cy.get('#au-in button[type="submit"]').click();
     cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
     cy.get('#snav [data-go="fabrica"]').click();
+    cy.viewport(820,1000);
     cy.get('#view .xl-r.xl-bq').should('have.length.greaterThan',1);
     cy.get('#view .xl-r.xl-bq').first().should('be.visible');
     cy.get('#view .xl-bq .gl-bq-count').first().should('contain.text','productos');
