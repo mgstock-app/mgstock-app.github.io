@@ -26,15 +26,15 @@ create or replace function public.gestlok_demo_registrar(
 as $$
 begin
  if (select auth.uid()) is not null then return false; end if;
- if p_sesion is null or p_rol not in ('dueno','gerente') or
-   p_tienda not in ('mercado','nova') then return false; end if;
+ if p_sesion is null or p_rol is null or p_tienda is null or
+    p_rol not in ('dueno','gerente') or p_tienda not in ('mercado','nova') then return false; end if;
  insert into gestlok_demo.visitas(sesion_id,roles,tiendas)
  values(p_sesion,array[p_rol],array[p_tienda])
  on conflict(sesion_id) do update set
-  roles=case when gestlok_demo.visitas.roles @> array[excluded.roles[1]]
-    then gestlok_demo.visitas.roles else array_append(gestlok_demo.visitas.roles,excluded.roles[1]) end,
-  tiendas=case when gestlok_demo.visitas.tiendas @> array[excluded.tiendas[1]]
-    then gestlok_demo.visitas.tiendas else array_append(gestlok_demo.visitas.tiendas,excluded.tiendas[1]) end,
+  roles=case when gestlok_demo.visitas.roles @> array[p_rol]
+    then gestlok_demo.visitas.roles else array_append(gestlok_demo.visitas.roles,p_rol) end,
+  tiendas=case when gestlok_demo.visitas.tiendas @> array[p_tienda]
+    then gestlok_demo.visitas.tiendas else array_append(gestlok_demo.visitas.tiendas,p_tienda) end,
   ultima_visita=now();
  return true;
 end;
