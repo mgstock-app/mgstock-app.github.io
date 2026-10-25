@@ -24,6 +24,7 @@ export function StockRuntime() {
       await load("/stock/config.js");
       await load("/stock/auth.js");
       await load("/stock/gestlok-updates.js");
+      await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-tienda.js");

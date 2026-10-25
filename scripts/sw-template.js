@@ -2,7 +2,7 @@
 const BASE = new URL('.', self.location.href).pathname.replace(/\/$/, '');
 const PREFIX = `mgstock:${BASE || '/'}:`;
 const CACHE = PREFIX + '__BUILD_VERSION__';
-const SHELL = ['/', '/stock/app.js', '/stock/gestlok-updates.js', '/stock/auth.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png'].map(path => BASE + path);
+const SHELL = ['/', '/stock/app.js', '/stock/gestlok-updates.js', '/stock/gestlok-push.js', '/stock/auth.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png'].map(path => BASE + path);
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
@@ -29,4 +29,35 @@ self.addEventListener('fetch', e => {
     }
     return res;
   }).catch(async () => (await caches.match(req)) || Response.error()));
+});
+
+// Recepción preparada. No hay envíos automáticos ni programación activa.
+self.addEventListener('push', event => {
+  event.waitUntil((async () => {
+    if (!event.data) return;
+    let payload;
+    try { payload=event.data.json(); } catch { return; }
+    if (!payload || typeof payload !== 'object') return;
+    const title=String(payload.title||'GestLok').slice(0,100);
+    const body=String(payload.body||'').slice(0,240);
+    const route=typeof payload.path==='string' && /^\/(?!\/)[a-zA-Z0-9/_-]{0,120}$/.test(payload.path)
+      ? payload.path : '/';
+    await self.registration.showNotification(title,{
+      body,icon:BASE+'/icons/gestlok-app-v2-192.png',
+      badge:BASE+'/icons/gestlok-favicon-v2-32.png',
+      tag:String(payload.tag||'gestlok').slice(0,70),
+      data:{url:BASE+route}
+    });
+  })());
+});
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  const url=new URL(event.notification.data?.url||BASE+'/',self.location.origin);
+  if(url.origin!==self.location.origin)return;
+  event.waitUntil((async()=>{
+    const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const opened=windows.find(w=>new URL(w.url).origin===url.origin && new URL(w.url).pathname.startsWith(BASE+'/'));
+    if(opened){await opened.focus();return;}
+    await self.clients.openWindow(url.href);
+  })());
 });
