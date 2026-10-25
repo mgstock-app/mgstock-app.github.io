@@ -128,7 +128,9 @@
     rol = r; locales = ls;
     if (!rol){
       const meta = session.user.user_metadata || {}, prov = (session.user.app_metadata || {}).provider || 'email';
-      try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
+      if (!window.GestLokRegistration){
+        try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
+      }
       show('pend', ''); window.GestLokRegistration?.pending(session); const n = $('#au-pend-email'); if (n) n.textContent = email;
       clearInterval(window.__spmPoll);
       window.__spmPoll = setInterval(async () => { try { const { data } = await sb.rpc('mi_rol'); if (data){ clearInterval(window.__spmPoll); location.reload(); } } catch {} }, 10000);
