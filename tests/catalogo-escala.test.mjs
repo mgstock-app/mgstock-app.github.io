@@ -26,7 +26,7 @@ test('Migración contiene búsqueda indexada, SKU/barcode únicos y refuerzo mul
   assert.match(sql,/create unique index if not exists gl_tienda_barras_unico/);
   assert.match(sql,/gestlok_tiendas t[\s\S]*t\.tenant_id=gestlok_productos_tienda\.tenant_id/);
   assert.match(sql,/security invoker/);
-  assert.match(sql,/p_nombre,id/);
+  assert.match(sql,/\(p\.nombre,p\.id\)>\(p_cursor_nombre,p_cursor_id\)/);
   assert.match(sql,/p\.busqueda like/);
   assert.match(sql,/limit p_limite\+1/);
   assert.match(sql,/p\.tenant_id=v_tenant/);
