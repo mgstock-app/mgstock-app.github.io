@@ -68,3 +68,11 @@ Estado más reciente: la usuaria autorizó expresamente unir y publicar. **PR #6
 - Falla cerrada: si la función rechaza o no responde, se muestra el panel anterior. Dueños, gerentes y demás roles nunca ven este panel.
 - No se muestran planes, suscripciones ni precios porque GESTLOK no los tiene (la imagen de ejemplo los traía); en su lugar: personas por rol y módulo Empleados.
 - Verificado: prueba SQL con rollback `supabase/tests/creator-dashboard.sql` (creadora responde; dueña, gerente, token con correo ajeno y anónimo rechazados, sqlstate 42501); `tests/creator-home.test.mjs` (6 pruebas); captura de pantalla en escritorio y celular con los datos reales. No verificado: ingreso real de la creadora en el sitio publicado y en un celular físico.
+
+## Sesión compartida al abrir Empleados (26/10/2026)
+
+- Causa del segundo ingreso: Stock usa el almacenamiento local del SDK y el cliente de Empleados usaba cookies de SSR, aunque ambas aplicaciones se publican como páginas estáticas en el mismo origen.
+- Empleados ahora usa `supabase-js` con la sesión persistente predeterminada del mismo proyecto que GESTLOK y un único cliente por página. Conserva renovación automática, callback PKCE y validación remota `getUser`; las RPC y RLS mantienen los permisos. No se transportan tokens en enlaces ni se cambian cuentas o datos.
+- Alcance: todos los roles, empresas, Munro y Torcuato. Sin sesión válida se sigue mostrando el ingreso. Cerrar sesión en Empleados elimina la misma sesión que usa GESTLOK; no se recupera una identidad de cookies antiguas.
+- Verificación local: lint, suite de Empleados y compilación estática aprobados; pruebas específicas del SDK para sesión existente, renovación, cierre y ausencia de sesión. Se agregan recorridos Cypress del módulo real para Munro/Torcuato (sesión sintética en almacenamiento local, sin cookies, recarga) y visitante sin sesión. Su resultado definitivo se registrará en el PR y workflow de esta corrección.
+- Pendiente: confirmación en el celular real de la usuaria. No se usaron contraseñas ni sesiones reales; no se modificó ReciboNet.
