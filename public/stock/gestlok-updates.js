@@ -115,6 +115,16 @@
       '<button class="btn sm" data-go="vencimientos">Ver vencimientos</button></div>'+
       '<ul class="gl-home-due-list">'+items.map(copy).join('')+'</ul></section>';
   };
+  /* Inicio del gerente: últimas novedades del local (conteos, vencimientos, cambios). Solo lectura. */
+  const homeAlerts = () => {
+    if (!ctx || !ctx.S.local) return '';
+    const when=f=>{ try { return new Date(Number(f)).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}); } catch { return ''; } };
+    const logs=(ctx.S.avisos || []).slice().sort((a,b)=>Number(b.fecha||0)-Number(a.fecha||0)).slice(0,3);
+    return '<section class="gl-home-essential-actions gl-home-avisos" aria-label="Avisos del local"><h2>Avisos del local</h2>'+
+      (logs.length ? '<ul class="gl-home-avisos-list">'+logs.map(a=>'<li><b>'+esc(a.titulo||'Actualización')+'</b><span>'+esc(a.detalle||'')+'</span><small>'+esc(when(a.fecha))+'</small></li>').join('')+'</ul>'
+                   : '<p class="lead">Sin novedades por ahora.</p>')+
+      '<div class="gl-home-essential-links"><button type="button" data-go="avisos"><span aria-hidden="true">🔔</span><b>Ver centro de avisos</b></button></div></section>';
+  };
   const getAlerts = S => {
     const alerts=[];
     const today=todayISO();
@@ -195,7 +205,7 @@
   });
   window.GestLokUpdates={
     attach:function(c){ctx=c;},
-    viewDue,viewAlerts,homeDue,homeDueItems,plusDays,remaining,stateOf,dateAR,todayISO,
+    viewDue,viewAlerts,homeDue,homeAlerts,homeDueItems,plusDays,remaining,stateOf,dateAR,todayISO,
     reset:function(){editing=null;showingHistory='';archivedOpen=false;},
     getAlerts
   };

@@ -189,6 +189,8 @@ function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLo
 function miRol(){ const e = miEquipo(); const real = ROLN(e ? e.rol : S.me && S.me.rol); const pv = real === 'creadora' ? window.GestLokCreatorSupport?.previewRol?.() : ''; return pv || real; }
 function misLocales(){ const e = miEquipo(); const pv = e && e.rol === 'creadora' && window.GestLokCreatorSupport?.previewRol?.(); const l = pv ? S.me && S.me.locales : e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
+/* «Avisos» (actualizaciones del local): creadora, dueño y gerente. El servidor solo entrega los avisos de su propio local. */
+const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
@@ -376,7 +378,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${esTotal() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -1346,6 +1348,7 @@ function inicioOperativo(){
             </button>`).join('')}
         </div>
       </section>
+      ${miRol()==='gerente'?(window.GestLokUpdates?.homeAlerts?.()||''):''}
       ${miRol()==='gerente'?(window.GestLokOwnerAreas?.gerenteCard?.()||''):''}
       ${opciones}
     </div>`;
@@ -3358,7 +3361,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && esTotal()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   if(v === 'inicio') S.creatorBusiness=false;
@@ -3712,9 +3715,12 @@ function subscribeLocal(){
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
   }), errLive));
+  let lastAvisos = '';
   push(C('avisos').orderBy('fecha','desc').limit(100).onSnapshot(mine(snap => {
     S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if (S.view === 'avisos') render();
+    const sig = S.avisos.map(a => a.id + ':' + (a.fecha || '')).join('|'), changed = sig !== lastAvisos; lastAvisos = sig;
+    // En el Inicio del gerente solo se redibuja si cambió la lista: así no interrumpe lo que se está escribiendo.
+    if (S.view === 'avisos' || (changed && S.view === 'inicio' && miRol() === 'gerente')) render();
   }), () => {}));
   let lastOnlineOrders = '';
   push(C('pedidos_online').onSnapshot(mine(snap => {

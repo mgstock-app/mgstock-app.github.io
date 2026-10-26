@@ -2106,5 +2106,10 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 }
 @media (max-width:560px){.gl-ch-kpis{grid-template-columns:1fr}.gl-ch-people{flex-direction:column;align-items:flex-start}}
 
+/* Inicio del gerente: avisos del local */
+.gl-home-avisos-list{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.gl-home-avisos-list li{display:grid;gap:2px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.gl-home-avisos-list span{color:var(--ink)}.gl-home-avisos-list small{color:var(--muted)}
+.gl-home-essential-actions .lead{margin:8px 0 0}
 /* Las áreas de la creadora mantienen contraste y distribución en celular y tablet. */
 .gl-creator-local-home{--gl-teal:#22b6b9;padding:clamp(16px,2.5vw,30px);border-radius:24px;background:radial-gradient(ellipse at top right,#2f6a4a73,transparent 65%),linear-gradient(160deg,#101d29,#060d14);overflow:hidden}
