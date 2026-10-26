@@ -187,6 +187,10 @@ const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
 function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
+// La marca es de Mi Gusto como empresa, no un permiso ni una marca individual.
+// Solo aparece cuando la sesión corresponde a una cuenta aprobada de ese tenant.
+const MI_GUSTO_TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+const miGustoContext = () => S.loaded.e && S.me?.tenant_id === MI_GUSTO_TENANT && !!miEquipo() && (!isCreadora() || !!S.local);
 function misLocales(){ const e = miEquipo(); const l = e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
@@ -362,7 +366,7 @@ function renderChrome(){
   $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
   $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'vencimientos' || S.view === 'avisos';
-  renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
+  renderCompanyIdentity(); renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
 function hojaBadge(h){
@@ -418,6 +422,18 @@ function renderSavebar(){
   $('#sb-desc').hidden = !(pend || cont || ed);
   $('#sb-save').disabled = !canW();
 }
+function renderCompanyIdentity(){
+  const sidebar=$('#side .side-in');
+  if(!sidebar)return;
+  let mark=sidebar.querySelector('.gestlok-company-identity');
+  if(!miGustoContext()){mark?.remove();return;}
+  if(mark)return;
+  mark=document.createElement('div');
+  mark.className='gestlok-company-identity';
+  mark.setAttribute('aria-label','Mi Gusto · Empanadas de Verdad');
+  mark.innerHTML='<img src="img/mi-gusto-blanco.png" alt="Mi Gusto"><small>Empanadas de Verdad</small>';
+  sidebar.querySelector('.side-top')?.insertAdjacentElement('afterend',mark);
+}
 function renderMe(){
   const m = $('#me'); if (!S.me){ m.hidden = true; return; }
   const rol = rolLabel(miRol()) + (S.ro && miRol() !== 'lectura' ? ' · Solo ver' : '');
@@ -425,14 +441,6 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
-  // Marca comercial asignada expresamente a esta cuenta, nunca por rol o email incrustado.
-  const perfil = miEquipo();
-  if (perfil && perfil.logoId === 'mi-gusto') {
-    const p = document.createElement('div');
-    p.className = 'gestlok-tenant-mark';
-    const logo = document.createElement('img'); logo.src = 'img/mi-gusto-negro.png'; logo.alt = 'Mi Gusto';
-    p.append(logo); m.append(p);
-  }
 }
 
 /* ---------- Piezas compartidas ---------- */
@@ -2238,7 +2246,7 @@ function renderHub(){
     return;
   }
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>
+      ${miGustoContext()?'<div class="hub-brand gl-company-hub"><img class="gl-company-hub-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto"><div class="hb-t"><b>Empanadas de Verdad</b><span>Locales y equipo</span></div></div>':`<div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>`}
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
