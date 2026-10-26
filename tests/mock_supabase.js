@@ -146,8 +146,9 @@
       }
       if (fn === 'gestlok_gerente_area_context'){
         if(window.__gerenteFail||a?.rol!=='gerente')return {data:null,error:{code:'42501',message:'Acceso exclusivo de gerentes autorizados'}};
-        // Llega con demora a propósito: la tarjeta debe aparecer igual sin esperar otro cambio en pantalla.
-        return new Promise(r=>setTimeout(()=>r({data:{role:'gerente',horarios:true,tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',local_ids:a.locales||[]},error:null}),1200));
+        const ctx={data:{role:'gerente',horarios:true,tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',local_ids:a.locales||[]},error:null};
+        // Solo con window.__gerenteSlow llega con demora (prueba de «aparece sola»); en las demás pruebas responde al instante para no redibujar mientras se escribe.
+        return window.__gerenteSlow?new Promise(r=>setTimeout(()=>r(ctx),1200)):ctx;
       }
       if (fn === 'gestlok_creator_set_module'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};

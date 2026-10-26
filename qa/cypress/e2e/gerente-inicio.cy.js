@@ -11,7 +11,7 @@ describe('Gerente · tarjeta de Empleados (Horarios) y avisos del local',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  for(const [mail,local] of [['gerente.munro@example.com','Munro'],['gerente.torcuato@example.com','Torcuato']]){
   it('gerente de '+local+': ve avisos, la tarjeta y Horarios en su Inicio sin tocar nada más',()=>{
-   start();login(mail);
+   start();cy.window().then(w=>{w.__gerenteSlow=true;});login(mail);
    cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible').and('contain.text',local);
    cy.get('#view .gl-home-avisos').should('contain.text','Avisos del local');
    // La respuesta del servidor tarda: la tarjeta tiene que aparecer sola, sin otra acción.

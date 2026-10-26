@@ -3715,9 +3715,12 @@ function subscribeLocal(){
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
   }), errLive));
+  let lastAvisos = '';
   push(C('avisos').orderBy('fecha','desc').limit(100).onSnapshot(mine(snap => {
     S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if (S.view === 'avisos' || (S.view === 'inicio' && miRol() === 'gerente')) render();
+    const sig = S.avisos.map(a => a.id + ':' + (a.fecha || '')).join('|'), changed = sig !== lastAvisos; lastAvisos = sig;
+    // En el Inicio del gerente solo se redibuja si cambió la lista: así no interrumpe lo que se está escribiendo.
+    if (S.view === 'avisos' || (changed && S.view === 'inicio' && miRol() === 'gerente')) render();
   }), () => {}));
   let lastOnlineOrders = '';
   push(C('pedidos_online').onSnapshot(mine(snap => {
