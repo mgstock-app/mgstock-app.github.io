@@ -151,16 +151,29 @@
     if (!started){ started = true; resolveAuth(true); }
   }
 
+  // Bootstrap authentication once: INITIAL_SESSION and getSession can both resolve
+  // during PWA startup. Never replace a recovered session with the login screen.
+  let entering = false;
+  function resume(session){
+    if (!session || started || entering || /type=recovery/.test(location.hash)) return;
+    entering = true;
+    Promise.resolve(entered(session)).catch(() => {
+      show('in', 'No se pudo recuperar tu sesión. Revisá la conexión e intentá nuevamente.', true);
+    }).finally(() => { entering = false; });
+  }
   function init(){
-   if (sb){
+    if (!sb){ show('in', 'Falta configurar la conexión con Supabase.', true); return; }
+    const uErr = urlError();
     sb.auth.onAuthStateChange((ev, session) => {
       if (ev === 'PASSWORD_RECOVERY'){ show('np', 'Elegí tu contraseña nueva.'); return; }
-      if (session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED')){ if (!started) entered(session); }
-      if (ev === 'SIGNED_OUT'){ if (started) location.reload(); else show('in', ''); }
+      if (session && ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED','USER_UPDATED'].includes(ev)) resume(session);
+      if (ev === 'SIGNED_OUT'){ if (started) location.reload(); else if (!entering) show('in', ''); }
     });
-    const uErr = urlError();
-    sb.auth.getSession().then(({ data }) => { if (data.session){ if (!/type=recovery/.test(location.hash)) entered(data.session); } else show('in', uErr, !!uErr); });
-   } else show('in', 'Falta configurar la conexión con Supabase.', true);
+    sb.auth.getSession().then(({data,error}) => {
+      if (data?.session) resume(data.session);
+      else if (error) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
+      else if (!started && !entering) show('in', uErr, !!uErr);
+    }).catch(() => show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
