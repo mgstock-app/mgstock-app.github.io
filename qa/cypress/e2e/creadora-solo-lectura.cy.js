@@ -6,28 +6,27 @@ function login(email) {
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
   cy.visit('/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
+  cy.window().then(w=>{w.__dashboard=true;w.__staffModule=true;});
   cy.get('#au-email').type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
 }
-describe('Creadora: solo lectura por defecto', () => {
+describe('Creadora: edición permanente e inicio actualizado', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
-  it('entra a un local en modo consulta y no puede guardar hasta habilitar la edición', () => {
+  for(const local of ['munro','torcuato']) it('tarjetas y edición permanente en '+local, () => {
     login('kmu15lopez@gmail.com');
-    cy.get('#hub .gl-admin', { timeout: 12000 }).should('be.visible');
-    cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
-    cy.get('.gl-creator-mode').should('contain.text', 'Modo consulta: solo lectura');
-    cy.get('#me').should('contain.text', 'Solo ver');
-    cy.window().then(async w => {
-      const r = await w.supabase.createClient().from('docs').upsert({ col: 'munro/productos', id: 'p-001', data: { nombre: 'Intento' } });
-      expect(r.error, 'la base rechaza la escritura en modo consulta').to.not.equal(null);
-    });
-    cy.window().then(w => cy.stub(w, 'prompt').returns('Corrección pedida por la dueña'));
-    cy.get('[data-creator-mode="on"]').click();
-    cy.get('.gl-creator-mode-on').should('contain.text', 'Edición habilitada hasta las');
-    cy.get('#me').should('not.contain.text', 'Solo ver');
-    cy.window().its('__audit').should(a => expect(a.map(x => x.action)).to.include('editing_enabled'));
-    cy.get('[data-creator-mode="off"]').click();
-    cy.get('.gl-creator-mode').should('contain.text', 'Modo consulta: solo lectura');
-    cy.window().its('__audit').should(a => expect(a.map(x => x.action)).to.include('editing_disabled'));
+    cy.get('.gl-ch-nav [data-ch-tab="locales"]').click();
+    cy.get('#hub [data-act="local"][data-id="'+local+'"]').first().click();
+    cy.get('.gl-creator-mode').should('contain.text','Edición sin límite de tiempo');
+    cy.get('#me').should('not.contain.text','Solo ver');
+    cy.get('#view .gl-owner-business').should('be.visible');
+    cy.get('#view [data-owner-area-staff]').should('be.visible');
+    cy.get('[data-creator-mode]').should('not.exist');
+    cy.get('#view [data-owner-nav="business"]').click();
+    cy.get('#view .gl-home-essential').should('be.visible');
+    cy.get('#snav [data-go="inicio"]').click();
+    cy.get('#view .gl-owner-business').should('be.visible');
+    cy.get('#view [data-owner-area-staff]').click();
+    cy.location('pathname').should('eq','/empleados/');
+    cy.get('.gestlok-module-back').should('have.attr','href','/');
   });
   it('la dueña sigue editando como siempre y no ve el aviso de la creadora', () => {
     login('dueno@example.com');

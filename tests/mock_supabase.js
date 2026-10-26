@@ -24,7 +24,6 @@
     const err = m => ({data:null, error:{message:'MGS:' + m}});
     const falla = window.__rpcFalla; if (falla === 'antes'){ window.__rpcFalla = null; return {data:null, error:{message:'TypeError: Failed to fetch'}}; }
     if (!a || !total(a)) return err('sin_permiso');
-    if (a.rol === 'creadora' && !window.__creatorEditing) return {data:null, error:{code:'42501', message:'GL:solo_lectura'}};
     if (!rows.some(r => r.col === 'locales' && r.id === x.p_local)) return err('sucursal');
     if (!['ingreso', 'conteo'].includes(x.p_operacion)) return err('operacion');
     if (!/^[A-Za-z0-9-]{8,64}$/.test(x.p_clave || '')) return err('clave');
@@ -65,7 +64,6 @@
   function canWrite(col){
     const a = acc(); if (!a) return false;
     // Igual que el backend: la creadora consulta en solo lectura salvo edición habilitada.
-    if (a.rol === 'creadora' && (col.includes('/') || col === 'configuracion_negocio') && !window.__creatorEditing) return false;
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';
     if (col === 'configuracion_negocio') return total(a);
     if (!col.includes('/')) return false;
@@ -134,6 +132,24 @@
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
         return {data:{scope:'metadata_only',companies:[{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',name:'Empresa ficticia',owners:1,locals:[{id:'munro',name:'Munro'},{id:'torcuato',name:'Torcuato'}],modules:{comercial:true,recibos_personal:!!window.__staffModule},recibonet:{organization_number:'2099001',verified_at:'2026-10-25T21:00:00Z'}},{tenant_id:'00000000-0000-4000-8000-000000000222',name:'Otra empresa ficticia',owners:1,locals:[{id:'otro',name:'Otro local'}],modules:{comercial:true,recibos_personal:false},recibonet:null}]},error:null};
       }
+      if (fn === 'gestlok_creator_dashboard'){
+        if(!window.__dashboard||a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        const day=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
+        return {data:{scope:'creator_dashboard',generated_at:new Date().toISOString(),
+          totals:{companies:2,companies_new_week:1,users:9,users_with_login:6,users_never:3,users_new_week:9,locals:3,employees:7,employees_new_week:3,employees_pending:0,modules_enabled:1,audit:3},
+          roles:{creadora:1,dueno:3,gerente:4,editor:1,lectura:0},employees_roles:{owner:4,manager:2,employee:0,gestlok_gerentes:5},
+          series:[30,20,10,0].map((n,i)=>({d:day(n),empresas:i>2?2:0,usuarios:i*3,empleados:i*2})),
+          period:{companies:2,users:9,employees:7,modules:1},
+          recent_companies:[{tenant_id:'00000000-0000-4000-8000-000000000222',name:'Otra empresa ficticia',created_at:new Date(Date.now()-3600000).toISOString(),locals:1,people:1,employees_module:false},{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',name:'Empresa ficticia',created_at:new Date(Date.now()-86400000).toISOString(),locals:2,people:8,employees_module:true}],
+          activity:[{at:new Date(Date.now()-600000).toISOString(),kind:'audit',what:'module_enabled',who:null,company:'Empresa ficticia'}],
+          system:{accounts:6,confirmed_accounts:6,verified_links:2,editing_open:false,support_open:false}},error:null};
+      }
+      if (fn === 'gestlok_gerente_area_context'){
+        if(window.__gerenteFail||a?.rol!=='gerente')return {data:null,error:{code:'42501',message:'Acceso exclusivo de gerentes autorizados'}};
+        const ctx={data:{role:'gerente',horarios:true,tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',local_ids:(a.locales||[]).map(id=>id==='torcuato'?'dt':id)},error:null};
+        // Solo con window.__gerenteSlow llega con demora (prueba de «aparece sola»); en las demás pruebas responde al instante para no redibujar mientras se escribe.
+        return window.__gerenteSlow?new Promise(r=>setTimeout(()=>r(ctx),1200)):ctx;
+      }
       if (fn === 'gestlok_creator_set_module'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
         if(args.p_tenant!=='cb0dc04a-9a13-434f-a3d0-47f1d8f39670')return {data:null,error:{code:'22023',message:'La empresa no tiene una organización de ReciboNet vinculada y verificada'}};
@@ -143,7 +159,7 @@
       }
       if (fn === 'gestlok_creator_editing_state'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
-        return {data:{active:!!window.__creatorEditing,expires_at:window.__creatorEditing?new Date(Date.now()+1800000).toISOString():null},error:null};
+        return {data:{active:true,permanent:true,expires_at:null},error:null};
       }
       if (fn === 'gestlok_creator_enable_editing'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};

@@ -8,14 +8,18 @@
   const SITE = location.origin + location.pathname;
 
   let sb = null;
-  try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); }
+  /* Modo sin conexión (gestlok-offline.js): lecturas desde este equipo y cambios en cola que se envían solos. */
+  const OFF = window.GestLokOffline || null;
+  try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true},
+    ...(OFF ? {global:{fetch:window.GestLokOffline.transport(CFG.url, CFG.key)}} : {})}); }
   catch (e) { console.error('Supabase no configurado', e); }
+  if (sb && OFF) window.GestLokOffline.attach(sb, CFG.url, SITE);
 
   // Misma sesión de usuario para el catálogo comercial; RLS sigue siendo la autoridad.
   if (sb) window.GestLokSupabase = sb;
 
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
-  let email = null, rol = null, locales = [], tenantId = null, started = false;
+  let email = null, rol = null, locales = [], tenantId = null, support = false, started = false;
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
 
   /* ---------- Pantalla de ingreso ---------- */
@@ -122,10 +126,16 @@
 
   async function entered(session){
     email = String(session.user.email || '').toLowerCase();
-    let r = null, ls = [];
-    try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; } else throw error; }
-    catch { try { const { data } = await sb.rpc('mi_rol'); r = data || null; } catch {} }
+    let r = null, ls = [], sinRed = false;
+    try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
+    catch (e) { sinRed = navigator.onLine === false || /conexi|fetch|network|GL_OFFLINE/i.test(String((e && (e.message || e.code)) || '')); try { const { data, error } = await sb.rpc('mi_rol'); if (!error) r = data || null; } catch {} }
     rol = r; locales = ls;
+    /* Sin internet y sin una copia de esta cuenta en el equipo: no es un «ingreso pendiente». */
+    if (!rol && sinRed){
+      show('in', 'Sin conexión. Para usar GESTLOK sin internet, abrilo una vez con conexión en este equipo. Se reintenta solo al volver internet.', true);
+      window.addEventListener('online', () => location.reload(), { once: true });
+      return;
+    }
     if (!rol){
       const meta = session.user.user_metadata || {}, prov = (session.user.app_metadata || {}).provider || 'email';
       if (!window.GestLokRegistration){
@@ -163,6 +173,8 @@
   };
   const refreshers = new Map();
   const bump = col => { const s = refreshers.get(col); if (s) s.forEach(fn => fn()); };
+  /* Al enviarse los cambios guardados sin conexión, todas las planillas abiertas se actualizan. */
+  window.addEventListener?.('gestlok-sync-complete', () => { for (const s of refreshers.values()) s.forEach(fn => fn()); });
   const snap = rows => ({ docs: rows, size: rows.length, empty: !rows.length, docChanges: () => [], metadata: { fromCache: false, hasPendingWrites: false } });
   const docSnap = r => ({ id: r.id, exists: true, data: () => r.data || {}, metadata: { fromCache: false, hasPendingWrites: false } });
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -230,6 +242,7 @@
       try { res = await sb.rpc(name, args); } catch (e) { throw { code: 'unavailable', message: 'Sin conexión' }; }
       const { data, error } = res;
       if (error){ const m = String(error.message || ''); if (/^MGS:/.test(m)) throw { code: m.slice(4), message: m }; throw toErr(error); }
+      if (data && data.gl_pending) throw { code: 'pending', message: data.message || 'Guardado en este equipo; se enviará al volver la conexión.' };
       return data;
     }
   });
@@ -238,7 +251,7 @@
   const avatar = (txt, bg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="32" fill="${bg}"/><text x="32" y="41" font-family="Arial" font-size="26" font-weight="700" text-anchor="middle" fill="#fff">${String(txt || '?').charAt(0).toUpperCase()}</text></svg>`);
   const nameOf = e => String(e || '').split('@')[0];
   const user = Object.freeze({
-    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], tenant_id: tenantId, isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
+    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], tenant_id: tenantId, support, isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
     async id(){ return email; },
     async isOwner(){ return rol === 'creadora'; },
     async canEdit(){ return EDITA.includes(rol); },

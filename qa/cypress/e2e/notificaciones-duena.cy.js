@@ -39,7 +39,7 @@ describe('GestLok Dueña: Notificaciones lateral',()=>{
   it('Gerente no recibe el botón exclusivo de Dueña',()=>{
     cy.viewport(1280,900);
     start('gerente.munro@example.com');
-    cy.get('#view .gl-home-essential').should('be.visible');
+    cy.get('#view .gl-manager-landing').should('be.visible');
     cy.get('#view .gl-owner-notif-trigger').should('not.exist');
   });
 });

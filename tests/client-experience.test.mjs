@@ -11,7 +11,7 @@ test("proveedores se guardan por local y se bloquean sin permisos", () => {
   assert.match(app, /C\('proveedores'\)\.doc\(proveedorId\(nombre\)\)/);
   assert.match(app, /snap\.exists \? ref\.update\(payload\) : ref\.set\(payload\)/);
   assert.match(app, /const proveedorDraftKey/);
-  assert.match(app, /!S\.db \|\| !S\.local \|\| !canW\(\) \|\| S\.offline/);
+  assert.match(app, /!S\.db \|\| !S\.local \|\| !canW\(\) \|\| sinRed\(\)/);
   assert.match(app, /S\.provInfo = \[\]/);
 });
 

@@ -42,6 +42,8 @@ describe('GestLok · demo para visitantes sin registro',()=>{
   cy.get('#gl-visitor-bar').should('be.visible');
   cy.get('#gl-visitor-shop').should('have.value','nova');
   cy.get('#gl-visitor-role').should('have.value','gerente');
+  cy.get('#view .gl-manager-landing',{timeout:15000}).should('be.visible');
+  cy.get('#view [data-gerente-business]').click();
   cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
   cy.get('#view .gl-owner-notif-trigger').should('not.exist');
   cy.get('[data-go="tienda-online"]').first().click({force:true});

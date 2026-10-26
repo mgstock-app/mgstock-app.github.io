@@ -8,6 +8,7 @@ import {
   canManage,
   canUseSchedules,
   hasAssignment,
+  isGestlokGerente,
   roleLabels,
 } from "@/utils/permissions";
 export function AppNavbar() {
@@ -22,7 +23,7 @@ export function AppNavbar() {
         <span>
           {brand.name}
           <small>
-            {user?.role ? roleLabels[user.role] : "Acceso a la aplicación"}
+            {user?.role ? roleLabels[user.role] : isGestlokGerente(user) ? "Gerente" : "Acceso a la aplicación"}
           </small>
         </span>
       </Link>
@@ -30,6 +31,11 @@ export function AppNavbar() {
         {hasAssignment(user) && (
           <Link href="/" aria-current={path === "/" ? "page" : undefined}>
             {user?.role === "manager" ? "Inicio" : "Reportes"}
+          </Link>
+        )}
+        {isGestlokGerente(user) && (
+          <Link href="/" aria-current={path === "/" ? "page" : undefined}>
+            Inicio
           </Link>
         )}
         {canManage(user) && (

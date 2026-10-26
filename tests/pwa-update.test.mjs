@@ -45,3 +45,34 @@ test('La PWA puede recuperar app.js versionado sin conexión, sin interceptar da
   assert.equal(await (await result).text(),'controller');
   assert.equal(lookups.length,2);
 });
+
+test('Administrar a los empleados se abre sin conexión desde la copia guardada, también con parámetros', async () => {
+  const handlers = {}, stored = new Map([['https://example.com/empleados/horarios/', 'horarios'], ['https://example.com/empleados/horarios/index.txt', 'rsc']]);
+  vm.runInNewContext(read('scripts/sw-template.js'), {URL, Response, Request, fetch: async () => { throw Error('offline'); }, self: {
+    location: {href: 'https://example.com/sw.js', origin: 'https://example.com'}, addEventListener(n, f) { handlers[n] = f; }
+  }, caches: {match: async (key) => stored.has(String(key)) ? new Response(stored.get(String(key))) : undefined}});
+  const ask = async (url, extra = {}) => { let p; handlers.fetch({request: {url, method: 'GET', mode: extra.mode || 'cors', headers: new Headers(extra.headers || {})}, respondWith(x) { p = x; }, waitUntil() {}}); return p && (await p); };
+  assert.equal(await (await ask('https://example.com/empleados/horarios/?empresa=1', {mode: 'navigate'})).text(), 'horarios');
+  assert.equal(await (await ask('https://example.com/empleados/horarios/index.txt?_rsc=abc', {headers: {RSC: '1'}})).text(), 'rsc');
+  const missing = await ask('https://example.com/empleados/nunca-abierta/', {mode: 'navigate'});
+  assert.match(await missing.text(), /todavía no se descargó/);
+});
+
+test('cada publicación lista las páginas de Empleados en el service worker', async () => {
+  const {mkdtempSync, mkdirSync, writeFileSync, readFileSync: rf} = await import('node:fs');
+  const {join} = await import('node:path');
+  const {tmpdir} = await import('node:os');
+  const {execFileSync} = await import('node:child_process');
+  const out = mkdtempSync(join(tmpdir(), 'gl-sw-'));
+  mkdirSync(join(out, 'empleados/horarios'), {recursive: true});
+  mkdirSync(join(out, 'empleados/_next/static/chunks'), {recursive: true});
+  writeFileSync(join(out, 'empleados/index.html'), '<html></html>');
+  writeFileSync(join(out, 'empleados/horarios/index.html'), '<html></html>');
+  writeFileSync(join(out, 'empleados/horarios/index.txt'), 'rsc');
+  writeFileSync(join(out, 'empleados/_next/static/chunks/a.js'), '1');
+  writeFileSync(join(out, 'sw.js'), read('scripts/sw-template.js'));
+  execFileSync(process.execPath, ['scripts/sw-precache.mjs', out]);
+  const sw = rf(join(out, 'sw.js'), 'utf8');
+  for (const p of ['/empleados/', '/empleados/horarios/', '/empleados/horarios/index.txt', '/empleados/_next/static/chunks/a.js']) assert.ok(sw.includes(JSON.stringify(p)), p);
+  assert.ok(!sw.includes('__EMPLEADOS_PRECACHE__'));
+});

@@ -1,17 +1,20 @@
 "use client";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { GoogleSignIn } from "./GoogleSignIn";
-import { canManage, canUseSchedules, hasAssignment } from "@/utils/permissions";
+import { canManage, canUseSchedules, hasAssignment, isGestlokGerente } from "@/utils/permissions";
 import { RegistrationChoice } from "./RegistrationChoice";
 export function AccessGate({
   children,
   manager = false,
   schedules = false,
+  gerenteHome = false,
 }: {
   children: ReactNode;
   manager?: boolean;
   schedules?: boolean;
+  gerenteHome?: boolean;
 }) {
   const { user, loading, error, refresh } = useAuth();
   if (loading)
@@ -29,6 +32,17 @@ export function AccessGate({
       </div>
     );
   if (!user) return <GoogleSignIn />;
+  // Gerente de GESTLOK: solo Horarios (y su portada). Cualquier otra pantalla queda cerrada.
+  if (isGestlokGerente(user))
+    return schedules || gerenteHome ? (
+      children
+    ) : (
+      <div className="empty-state">
+        <h1>Acceso restringido</h1>
+        <p>Como gerente solo podés usar la carpeta Horarios.</p>
+        <Link href="/horarios">Ir a Horarios</Link>
+      </div>
+    );
   if (!hasAssignment(user) && user.status !== "rejected")
     return <RegistrationChoice />;
   if (!hasAssignment(user))

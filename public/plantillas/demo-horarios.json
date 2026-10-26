@@ -1,0 +1,63 @@
+{
+  "nota": "Datos 100 % ficticios para la demo de GESTLOK. Mismo formato que la plantilla de Horarios.",
+  "local": "Mercado Central",
+  "lunes": "2026-11-23",
+  "equipo": [
+    {"nombre": "Sofía Ríos", "puesto": "Encargada", "cobra": "Turnos", "off": 1, "nota": "Turno mañana"},
+    {"nombre": "Lucas Ferreyra", "puesto": "Encargado", "cobra": "Turnos", "off": 1, "nota": "Turno noche"},
+    {"nombre": "Brenda Quiroga", "puesto": "Encargada", "cobra": "Turnos", "off": 1, "nota": "Mañana y noche"},
+    {"nombre": "Nicolás Paz", "puesto": "Staff", "cobra": "Horas", "off": "4:30", "nota": "Caja"},
+    {"nombre": "Paula Medina", "puesto": "Staff", "cobra": "Horas", "off": "4:30", "nota": "Reposición"},
+    {"nombre": "Tomás Godoy", "puesto": "Staff", "cobra": "Horas", "off": "4:30", "nota": "Depósito"},
+    {"nombre": "Valentina Sosa", "puesto": "Staff", "cobra": "Horas", "off": "4:30", "nota": "Atención al público"},
+    {"nombre": "Rocío Álvarez", "puesto": "Staff", "cobra": "Horas", "off": "4:30", "nota": "Fines de semana"}
+  ],
+  "semana": {
+    "Sofía Ríos": [
+      ["09:00", "15:00", "", "", "Feriado"], ["09:00", "15:00", "", "", ""], ["09:00", "15:00", "", "", ""], ["", "", "", "", "OFF"],
+      ["09:00", "15:00", "", "", ""], ["09:00", "15:00", "", "", ""], ["10:00", "14:00", "", "", ""]
+    ],
+    "Lucas Ferreyra": [
+      ["", "", "", "", "OFF"], ["", "", "18:00", "23:30", ""], ["", "", "18:00", "23:30", ""], ["", "", "18:00", "23:30", ""],
+      ["", "", "18:00", "00:30", ""], ["", "", "18:00", "01:00", ""], ["", "", "18:00", "23:00", ""]
+    ],
+    "Brenda Quiroga": [
+      ["10:00", "14:00", "19:00", "23:30", "Feriado"], ["10:00", "14:00", "", "", ""], ["", "", "", "", "OFF"], ["10:00", "14:00", "19:00", "23:30", ""],
+      ["10:00", "14:00", "", "", ""], ["10:00", "14:00", "19:00", "00:30", ""], ["", "", "19:00", "23:30", ""]
+    ],
+    "Nicolás Paz": [
+      ["10:00", "15:00", "", "", "Feriado"], ["10:00", "15:00", "", "", ""], ["10:00", "15:00", "", "", ""], ["10:00", "15:00", "", "", ""],
+      ["", "", "", "", "OFF"], ["10:00", "15:00", "19:00", "23:00", ""], ["10:00", "14:00", "", "", ""]
+    ],
+    "Paula Medina": [
+      ["", "", "", "", "OFF"], ["08:30", "13:30", "", "", ""], ["08:30", "13:30", "", "", ""], ["", "", "", "", "Ausente justificado"],
+      ["08:30", "13:30", "", "", ""], ["08:30", "14:00", "", "", ""], ["", "", "", "", ""]
+    ],
+    "Tomás Godoy": [
+      ["14:00", "20:00", "", "", "Feriado"], ["14:00", "20:00", "", "", ""], ["14:00", "20:00", "", "", ""], ["", "", "", "", "Ausente"],
+      ["14:00", "20:00", "", "", ""], ["", "", "", "", "OFF"], ["14:00", "19:00", "", "", ""]
+    ],
+    "Valentina Sosa": [
+      ["", "", "18:00", "23:00", "Feriado"], ["", "", "", "", "OFF"], ["", "", "18:00", "23:00", ""], ["", "", "18:00", "23:00", ""],
+      ["", "", "18:00", "23:30", ""], ["", "", "18:00", "00:00", ""], ["", "", "", "", ""]
+    ],
+    "Rocío Álvarez": [
+      ["", "", "", "", "Vacaciones"], ["", "", "", "", "Vacaciones"], ["", "", "", "", "Vacaciones"], ["", "", "", "", "OFF"],
+      ["", "", "", "", ""], ["12:00", "20:00", "", "", ""], ["12:00", "20:00", "", "", ""]
+    ]
+  },
+  "feriados": [
+    ["2026-01-01", "Año Nuevo", "Feriado"], ["2026-02-16", "Carnaval", "Feriado"], ["2026-02-17", "Carnaval", "Feriado"],
+    ["2026-03-23", "Día no laborable con fines turísticos", "No laborable"],
+    ["2026-03-24", "Día Nacional de la Memoria por la Verdad y la Justicia", "Feriado"],
+    ["2026-04-02", "Día del Veterano y de los Caídos en la Guerra de Malvinas", "Feriado"], ["2026-04-03", "Viernes Santo", "Feriado"],
+    ["2026-05-01", "Día del Trabajador", "Feriado"], ["2026-05-25", "Día de la Revolución de Mayo", "Feriado"],
+    ["2026-06-15", "Paso a la Inmortalidad del Gral. Martín Miguel de Güemes (trasladado)", "Feriado"],
+    ["2026-06-20", "Paso a la Inmortalidad del Gral. Manuel Belgrano", "Feriado"], ["2026-07-09", "Día de la Independencia", "Feriado"],
+    ["2026-07-10", "Día no laborable con fines turísticos", "No laborable"],
+    ["2026-08-17", "Paso a la Inmortalidad del Gral. José de San Martín", "Feriado"],
+    ["2026-10-12", "Día del Respeto a la Diversidad Cultural", "Feriado"], ["2026-11-23", "Día de la Soberanía Nacional (trasladado)", "Feriado"],
+    ["2026-12-07", "Día no laborable con fines turísticos", "No laborable"], ["2026-12-08", "Inmaculada Concepción de María", "Feriado"],
+    ["2026-12-25", "Navidad", "Feriado"]
+  ]
+}

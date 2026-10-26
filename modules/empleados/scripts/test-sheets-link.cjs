@@ -51,6 +51,9 @@ async function main() {
   assert(configuredMunro.includes(sheets[0].url) && html.includes(sheets[0].url),"Styling does not alter Google Sheets links");
   const editable = renderToStaticMarkup(React.createElement(mod.exports.ScheduleSheetCard,{url:null,branch:"Nuevo local",localId:"future",canConfigure:true,onUpdated:()=>{}}));
   assert(editable.includes("Configurar enlace"),"Owner can configure a brand-new local");
+  for (const label of ["Plantilla GESTLOK (predeterminada)", "Tu propia planilla", "Descargar plantilla GESTLOK (.xlsx)", "plantillas/GESTLOK-plantilla-horarios.xlsx"])
+    assert(editable.includes(label), "Whoever configures Horarios can choose the GESTLOK template or their own: " + label);
+  assert(!munro.includes("Plantilla GESTLOK") && !html.includes("Tu propia planilla"), "Read-only cards do not offer the configuration choice");
   assert(!munro.includes("Configurar enlace"),"Non-owners cannot see link configuration");
   assert(!html.includes("Configurar enlace"),"Default cards remain read-only");
   const currentOwner = renderToStaticMarkup(React.createElement(mod.exports.ScheduleSheetCard,{url:sheets[0].url,branch:"Torcuato",localId:"dt",canConfigure:true,onUpdated:()=>{}}));

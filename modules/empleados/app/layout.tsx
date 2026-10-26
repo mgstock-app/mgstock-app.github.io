@@ -4,6 +4,7 @@ import { GestlokProvider } from "@/components/gestlok/GestlokContext";
 import { GestlokModuleBar } from "@/components/gestlok/GestlokModuleBar";
 import "@/styles/gestlok-module.css";
 import Link from "next/link";
+import Script from "next/script";
 import "@/styles/management.css";
 import type { Metadata } from "next";
 import { brand } from "@/utils/brand";
@@ -33,6 +34,8 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
+        {/* Modo sin conexión de GESTLOK: se carga antes que la aplicación para que todas las consultas lo usen. */}
+        <Script src={`${process.env.NEXT_PUBLIC_GESTLOK_HOME || "/"}stock/gestlok-offline.js?rev=offline-20261026`} strategy="beforeInteractive" />
         <GestlokProvider>
         <AuthProvider>
           <div className="app-shell">
