@@ -24,7 +24,6 @@
     const err = m => ({data:null, error:{message:'MGS:' + m}});
     const falla = window.__rpcFalla; if (falla === 'antes'){ window.__rpcFalla = null; return {data:null, error:{message:'TypeError: Failed to fetch'}}; }
     if (!a || !total(a)) return err('sin_permiso');
-    if (a.rol === 'creadora' && !window.__creatorEditing) return {data:null, error:{code:'42501', message:'GL:solo_lectura'}};
     if (!rows.some(r => r.col === 'locales' && r.id === x.p_local)) return err('sucursal');
     if (!['ingreso', 'conteo'].includes(x.p_operacion)) return err('operacion');
     if (!/^[A-Za-z0-9-]{8,64}$/.test(x.p_clave || '')) return err('clave');
@@ -65,7 +64,6 @@
   function canWrite(col){
     const a = acc(); if (!a) return false;
     // Igual que el backend: la creadora consulta en solo lectura salvo edición habilitada.
-    if (a.rol === 'creadora' && (col.includes('/') || col === 'configuracion_negocio') && !window.__creatorEditing) return false;
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';
     if (col === 'configuracion_negocio') return total(a);
     if (!col.includes('/')) return false;
@@ -143,7 +141,7 @@
       }
       if (fn === 'gestlok_creator_editing_state'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
-        return {data:{active:!!window.__creatorEditing,expires_at:window.__creatorEditing?new Date(Date.now()+1800000).toISOString():null},error:null};
+        return {data:{active:true,permanent:true,expires_at:null},error:null};
       }
       if (fn === 'gestlok_creator_enable_editing'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
