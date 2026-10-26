@@ -1,0 +1,13 @@
+-- Rollback manual de 20261026210000_gestlok_importar_mercaderia_tenant_guard.sql
+-- (extensión .txt para que ninguna herramienta lo aplique automáticamente).
+-- Vuelve a dejar la función original como pública. Reabre el acceso entre empresas:
+-- usar solo si el control previo bloquea un ingreso legítimo y con autorización.
+begin;
+drop function public.importar_mercaderia(text,text,jsonb,jsonb,text,boolean);
+alter function public.importar_mercaderia_internal(text,text,jsonb,jsonb,text,boolean)
+  rename to importar_mercaderia;
+revoke all on function public.importar_mercaderia(text,text,jsonb,jsonb,text,boolean) from public, anon;
+grant execute on function public.importar_mercaderia(text,text,jsonb,jsonb,text,boolean)
+  to authenticated, service_role;
+notify pgrst, 'reload schema';
+commit;
