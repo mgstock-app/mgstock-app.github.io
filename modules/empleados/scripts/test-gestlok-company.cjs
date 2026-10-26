@@ -17,7 +17,11 @@ function load(options={}){
   const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
   const exports={};
   new Function('require','exports','process','window','fetch',compiled)(
-    name=>{if(name==='react')return {createContext:()=>({}),useContext:()=>null,useEffect(){},useState:x=>[x,()=>{}]};throw new Error(name);},
+    name=>{
+      if(name==='react')return {createContext:()=>({}),useContext:()=>null,useEffect(){},useState:x=>[x,()=>{}]};
+      if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props})};
+      throw new Error(name);
+    },
     exports,{env},win,fetcher);
   return {fetch:()=>exports.loadGestlokCompany(fetcher),requests};
 }
