@@ -19,7 +19,7 @@ describe('Tres codueños: mismas tarjetas y ambos locales',()=>{
   cy.get('#hub .gl-owner-business .gl-owner-arrow').click();
   cy.get('#pn [data-act="local"][data-id="munro"]').should('be.visible');
   cy.get('#pn [data-act="local"][data-id="torcuato"]').should('be.visible');
-  cy.get('#pn [data-act="local"][data-id="'+local+'"]').click();
+  cy.get('#pn [data-act="local"][data-id="'+local+'"]').first().click();
   cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
   cy.get('#brand-local').should('contain.text',local==='munro'?'Munro':'Torcuato');
   cy.get('#view').should('not.contain.text','Modo consulta: solo lectura');
