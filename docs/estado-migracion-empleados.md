@@ -38,3 +38,14 @@
 - Permanecen pendientes celulares físicos, actualización PWA en producción e ingresos reales. Los cuatro respaldos históricos no se copiaron. **PR #67 sigue en borrador: no unido ni publicado.** No se modificaron datos de Gisela/Martín ni el proyecto ReciboNet.
 
 Esta sección reemplaza el estado anterior de pendientes 1, 2 y 5; el punto 4 requiere una comparación nueva al momento de unir.
+
+
+## Publicación autorizada (26/10/2026)
+
+Estado más reciente: la usuaria autorizó expresamente unir y publicar. **PR #67 unido a main**, commit `95a3fb1f74750616d93657ad00bcdaf2a892fb7e`. Las menciones anteriores a borrador corresponden al estado previo.
+
+- Comparación repetida inmediatamente antes de unir: 34 relaciones (32 operativas + auditoría + imágenes), filas y MD5 por fila idénticos; no hubo diferencias que copiar.
+- Publicación automática iniciada: https://github.com/mgstock-app/mgstock-app.github.io/actions/runs/40263398808 . El resultado definitivo consta en ese workflow. Este registro solo cambia documentación; el código es el aprobado por Cypress #276 (106/106).
+- PWA: cada publicación genera una versión nueva de caché mediante `scripts/version-cache.mjs`. La comprobación de archivos servidos se hace al completar el despliegue.
+- Limitación: la sesión del navegador de comprobación no está autenticada. Las vistas por rol están cubiertas por pruebas automáticas y SQL; no equivale a un ingreso real de cada persona ni a una instalación en un celular físico.
+- ReciboNet permanece conservado y sin escrituras; no se borraron proyectos ni se activaron servicios pagos.
