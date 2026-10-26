@@ -1,0 +1,23 @@
+-- Reversión manual (no es una migración): restaura las 4 funciones a su versión anterior.
+create or replace function gestlok_tenancy.current_tenant_id() returns uuid language sql stable security definer set search_path = '' as $$
+  select case when count(distinct d.tenant_id)=1 then (array_agg(d.tenant_id))[1] else null::uuid end
+  from public.docs d where d.col='equipo' and (select auth.uid()) is not null
+    and lower(d.data->>'email')=lower(coalesce((select auth.jwt()->>'email'),''))
+    and d.data->>'rol' in ('creadora','dueno','gerente','editor','lectura'); $$;
+create or replace function public.mi_rol() returns text language sql stable security definer set search_path = '' as $$ select d.data->>'rol' from public.docs d
+ where d.col='equipo' and d.tenant_id=(select gestlok_tenancy.current_tenant_id())
+ and lower(d.data->>'email')=lower(coalesce((select auth.jwt()->>'email'),'')) limit 1 $$;
+create or replace function public.mi_acceso() returns jsonb language sql stable security definer set search_path = '' as $$
+select jsonb_build_object('rol',d.data->>'rol',
+  'locales',case when d.data->>'rol' in ('creadora','dueno') then
+    coalesce((select jsonb_agg(l.id order by l.id) from public.docs l where l.col='locales' and l.tenant_id=d.tenant_id),'[]'::jsonb)
+  else coalesce(d.data->'locales','[]'::jsonb) end,
+  'tenant_id', d.tenant_id)
+from public.docs d where d.col='equipo'
+ and d.tenant_id=(select gestlok_tenancy.current_tenant_id())
+ and lower(d.data->>'email')=lower(coalesce((select auth.jwt()->>'email'),'')) limit 1 $$;
+create or replace function public.puede_ver_local(p text) returns boolean language sql stable security definer set search_path = '' as $$ select exists(select 1 from public.docs l
+ join public.docs e on e.col='equipo' and e.tenant_id=l.tenant_id
+ where l.col='locales' and l.id=p and l.tenant_id=(select gestlok_tenancy.current_tenant_id())
+ and lower(e.data->>'email')=lower(coalesce((select auth.jwt()->>'email'),''))
+ and (e.data->>'rol' in ('creadora','dueno') or coalesce(e.data->'locales','[]'::jsonb) ? p)) $$;
