@@ -6,13 +6,14 @@ function login(email) {
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
   cy.visit('/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
+  cy.window().then(w=>{w.__dashboard=true;w.__staffModule=true;});
   cy.get('#au-email').type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
 }
 describe('Creadora: edición permanente e inicio actualizado', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
   for(const local of ['munro','torcuato']) it('tarjetas y edición permanente en '+local, () => {
     login('kmu15lopez@gmail.com');
-    cy.window().then(w=>{w.__staffModule=true;});
+    cy.get('.gl-ch-nav [data-ch-tab="locales"]').click();
     cy.get('#hub [data-act="local"][data-id="'+local+'"]').first().click();
     cy.get('.gl-creator-mode').should('contain.text','Edición sin límite de tiempo');
     cy.get('#me').should('not.contain.text','Solo ver');
