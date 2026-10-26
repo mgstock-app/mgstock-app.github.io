@@ -45,8 +45,10 @@ export function StockRuntime() {
       await load("/stock/gestlok-creator.js");
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
+      // «Instalar en el celular»: un toque en Android, pasos en iPhone.
+      await load("/stock/gestlok-install.js?rev=instalar-20261026");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=offline-20261026");
+      await load("/stock/app.js?rev=instalar-20261026");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };

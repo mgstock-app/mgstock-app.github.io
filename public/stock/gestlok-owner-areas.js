@@ -143,6 +143,7 @@
     user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
     file:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
     help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/>',
+    phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
     out:'<path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/>', home:'<path d="m4 11 8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>'
   };
   const ICON_STORE='<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M8 20 11 9h26l3 11" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M8 20c0 3 2.4 5 5.3 5S18.7 23 18.7 20c0 3 2.4 5 5.3 5s5.3-2 5.3-5c0 3 2.4 5 5.4 5S40 23 40 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M11 25v14h26V25M20 39v-9h8v9" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>';
@@ -242,7 +243,9 @@
     'owner-menu':()=>{
       const sup=supportLink(),b=(k,ic,t)=>'<button data-owner-nav="'+k+'">'+svg(I[ic],20)+'<span>'+t+'</span></button>';
       return {kind:'drawer',html:head(co(),'Menú','gl-om-t')+'<nav class="pn-b gl-owner-navlist" aria-label="Menú principal">'+b('home','home','Inicio')+(allowed('comercial')?b('business','box','Administrar mi empresa'):'')+(allowed('recibos_personal')?b('staff','team','Administrar a los empleados'):'')+b('reports','pie','Reportes generales')+b('account','file','Mi cuenta')+b('settings','gear','Ajustes')+
-        (sup?'<a href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer">'+svg(I.help,20)+'<span>Soporte</span></a>':b('support','help','Soporte'))+b('team','team','Equipo y accesos')+'<button data-au="out">'+svg(I.out,20)+'<span>Salir</span></button></nav>'};
+        (sup?'<a href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer">'+svg(I.help,20)+'<span>Soporte</span></a>':b('support','help','Soporte'))+b('team','team','Equipo y accesos')+
+        // Mismo botón que en el menú de cada local: en Android instala con un toque, en iPhone muestra los pasos.
+        (window.GestLokInstall?.standalone?.()?'':'<button data-act="install" data-owner-install>'+svg(I.phone,20)+'<span>Instalar en el celular</span></button>')+'<button data-au="out">'+svg(I.out,20)+'<span>Salir</span></button></nav>'};
     }
   };
   function paint(kind,reopen){

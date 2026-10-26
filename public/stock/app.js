@@ -2769,20 +2769,23 @@ function renderAjustesBody(){
 window.addEventListener('beforeprint', () => { const c = $('#crumb'); if (c) c.dataset.pdate = 'Impreso el ' + fechaHora(Date.now()); });
 
 /* ---------- Instalar como app ---------- */
-let installEvt = null;
-const standalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch { return false; } };
+// Android: un toque abre la ventana «Instalar app» del celular. iPhone: pasos de Safari (Apple no deja
+// instalar desde la página). Lógica en stock/gestlok-install.js; el aviso del navegador se guarda al abrir.
+const standalone = () => { try { return window.GestLokInstall?.standalone?.() ?? (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true); } catch { return false; } };
 function renderInstall(){ const b = $('#inst'); if (b) b.hidden = standalone(); }
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; renderInstall(); });
-window.addEventListener('appinstalled', () => { installEvt = null; renderInstall(); toast('App instalada. Ya la tenés en la pantalla de inicio.'); });
+window.addEventListener('gestlok-install-ready', renderInstall);
+window.addEventListener('gestlok-install-done', () => { renderInstall(); toast('App instalada. Ya la tenés en la pantalla de inicio.'); });
 function openInstall(){
   $('#app').classList.remove('open'); $('#scrim').hidden = true;
-  if (installEvt){ const ev = installEvt; ev.prompt(); ev.userChoice.finally(() => { installEvt = null; renderInstall(); }); return; }
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const pIos = `<div class="steps"><b>iPhone o iPad (Safari)</b><ol><li>Tocá el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li><li>Elegí <b>Agregar a pantalla de inicio</b>.</li><li>Tocá <b>Agregar</b>.</li></ol></div>`;
-  const pAnd = `<div class="steps"><b>Android (Chrome)</b><ol><li>Tocá el menú <b>⋮</b> arriba a la derecha.</li><li>Elegí <b>Instalar app</b> o <b>Agregar a pantalla principal</b>.</li><li>Confirmá con <b>Instalar</b>.</li></ol></div>`;
+  const I = window.GestLokInstall;
+  if (I){
+    const r = I.open({openPanel: h => { S.panel = 'install'; openPanel(h, 'dlg'); }, closePanel, toast, copy: t => copyText(t, 'Enlace copiado'), isOpen: () => S.panel === 'install', refresh: renderInstall});
+    if (r === 'prompt' && !$('#ov').hidden) closePanel(); // la ventana del celular queda sola, sin el menú detrás
+    return;
+  }
   S.panel = 'install';
   openPanel(`<div class="pn-h"><div><small>Celular</small><h3>Instalar como app</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-  <div class="pn-b"><p class="lead">Queda el ícono de GestLok en la pantalla de inicio y se abre a pantalla completa, como cualquier app. Se entra con la misma cuenta.</p>${ios ? pIos + pAnd : pAnd + pIos}</div>`, 'dlg');
+  <div class="pn-b"><p class="lead">Queda el ícono de GestLok en la pantalla de inicio y se abre a pantalla completa, como cualquier app.</p><div class="steps"><b>Android (Chrome)</b><ol><li>Tocá el menú <b>⋮</b>.</li><li>Elegí <b>Instalar app</b>.</li></ol></div><div class="steps"><b>iPhone (Safari)</b><ol><li>Tocá <b>Compartir</b>.</li><li>Elegí <b>Agregar a pantalla de inicio</b>.</li></ol></div></div>`, 'dlg');
 }
 
 /* ---------- Ordenar arrastrando (Ajustes) ---------- */
@@ -3848,7 +3851,7 @@ function start(){
     [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>
       el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)
   ));
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     // Keep the existing installed PWA: request SW revalidation on launch and
     // when returning to GestLok. Never force a reload while editing stock.
     navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(reg => {

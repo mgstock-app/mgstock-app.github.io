@@ -384,7 +384,8 @@ document.addEventListener('click',e=>{
 document.addEventListener('click',e=>{
  const t=e.target.closest?.('[data-act]');
  if(!t)return;
- if(['prov-share','prov-share-ready','prov-history-pdf','install','backup'].includes(t.dataset.act)){
+ // «Instalar en el celular» funciona igual que en GestLok: instala la app, no envía datos.
+ if(['prov-share','prov-share-ready','prov-history-pdf','backup'].includes(t.dataset.act)){
   e.preventDefault();e.stopImmediatePropagation();
   alert('Esta acción está deshabilitada en la demostración. No se envían datos ni mensajes reales.');
  }

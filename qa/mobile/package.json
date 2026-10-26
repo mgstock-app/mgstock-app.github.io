@@ -1,0 +1,10 @@
+{
+  "name": "gestlok-mobile-qa",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas en un Android real (emulador con Chrome) y un iPhone real (simulador con Safari). Solo en GitHub Actions.",
+  "dependencies": {
+    "playwright-core": "1.63.0",
+    "webdriverio": "^9.0.0"
+  }
+}

@@ -690,6 +690,18 @@ a.btn{text-decoration:none}
 .inst svg.i{color:var(--accent)}
 .steps{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--sunk)}
 .steps ol{margin:0;padding-left:20px;display:grid;gap:4px;color:var(--ink-2)}
+.gl-inst-now{display:grid;gap:8px;justify-items:stretch;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--sunk)}
+.gl-inst-now[data-gl-install-state="wait"]{grid-template-columns:auto 1fr;align-items:center;justify-items:start;font-weight:600;color:var(--ink-2)}
+.gl-inst-now small{color:var(--muted);font-size:13px;text-align:center}
+.btn.gl-inst-big{width:100%;justify-content:center;min-height:52px;font-size:16px}
+.gl-inst-spin{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:gl-inst-spin .8s linear infinite}
+@keyframes gl-inst-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.gl-inst-spin{animation:none}}
+.gl-inst-more summary{cursor:pointer;font-weight:600;color:var(--ink-2);padding:4px 0}
+.gl-inst-more[open] summary{margin-bottom:8px}
+.gl-inst-note{margin:0;color:var(--muted);font-size:13.5px}
+.gl-inst-alert{margin:0;padding:12px 14px;border-radius:10px;background:var(--sunk);border:1px solid var(--line);font-weight:600}
+.gl-inst-share{width:17px;height:17px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* Botones más grandes para contar en el celular */
 @media (max-width:760px){
   .adj{grid-template-columns:52px 52px}
@@ -1895,7 +1907,7 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   font-size:12px;font-weight:800;text-decoration:none
 }
 .gl-visitor-controls :is(button,a,select):focus-visible{outline:3px solid #84ecdc;outline-offset:2px}
-.gl-visitor-mode #inst{display:none!important}
+/* «Instalar en el celular» también funciona en la demo (instala GestLok; no envía datos). */
 @media(max-width:680px){
  #gl-visitor-bar{align-items:flex-start;gap:9px;padding:9px 12px}
  .gl-visitor-sign{width:100%}

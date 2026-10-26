@@ -1,0 +1,126 @@
+name: Celulares (Android e iPhone)
+# Pruebas en un Android real (emulador con Google Chrome) y en un iPhone real (simulador de iOS con Safari):
+# instalar la app, abrir sin conexión y guardar sin internet. Gratis en repositorios públicos.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: celulares-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sitio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_BASE_PATH: ''
+      NEXT_PUBLIC_SITE_URL: http://localhost:4173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            modules/empleados/package-lock.json
+      - run: npm ci
+      - run: node scripts/vendor-ocr.mjs
+      - run: npm run build
+      - name: Módulo «Administrar a los empleados»
+        run: |
+          npm --prefix modules/empleados ci
+          npm --prefix modules/empleados run build
+          rm -rf out/empleados && cp -r modules/empleados/out out/empleados
+      - run: node scripts/sw-precache.mjs out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sitio-celulares
+          path: out
+          retention-days: 3
+
+  android:
+    needs: sitio
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: sitio-celulares
+          path: out
+      - run: npm --prefix qa/mobile install --no-package-lock --no-audit --no-fund
+      - name: Aceleración del emulador (KVM)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android con Chrome
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: node qa/mobile/android.mjs
+      - name: Resumen
+        if: always()
+        run: cat qa/mobile/out/android-resumen.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-capturas
+          path: qa/mobile/out
+          if-no-files-found: ignore
+
+  iphone:
+    needs: sitio
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: sitio-celulares
+          path: out
+      - run: npm --prefix qa/mobile install --no-package-lock --no-audit --no-fund
+      - name: Appium (controla el simulador de iPhone)
+        run: |
+          npm install -g appium --no-audit --no-fund
+          appium driver install xcuitest
+      - name: Elegir iPhone
+        id: sim
+        run: node qa/mobile/pick-sim.mjs >> "$GITHUB_OUTPUT"
+      - name: Iniciar Appium
+        run: |
+          nohup appium --log /tmp/appium.log --log-level info > /dev/null 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:4723/status > /dev/null && exit 0; sleep 2; done
+          cat /tmp/appium.log; exit 1
+      - name: iPhone con Safari
+        env:
+          SIM_UDID: ${{ steps.sim.outputs.udid }}
+          SIM_NAME: ${{ steps.sim.outputs.name }}
+          SIM_VERSION: ${{ steps.sim.outputs.version }}
+        run: node qa/mobile/ios.mjs
+      - name: Resumen
+        if: always()
+        run: |
+          cat qa/mobile/out/iphone-resumen.md >> "$GITHUB_STEP_SUMMARY" || true
+          cp /tmp/appium.log qa/mobile/out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iphone-capturas
+          path: qa/mobile/out
+          if-no-files-found: ignore
