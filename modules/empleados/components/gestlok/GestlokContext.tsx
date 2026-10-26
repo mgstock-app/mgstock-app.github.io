@@ -38,7 +38,21 @@ export async function loadGestlokCompany(fetcher: typeof fetch = fetch): Promise
       body: "{}",
       cache: "no-store",
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      // Los no dueños no pueden llamar gestlok_owner_area_context. Usar mi_acceso
+      // exclusivamente para comprobar membresía/empresa, nunca para dar permisos de recibos.
+      const access = await fetcher(`${url}/rest/v1/rpc/mi_acceso`, {
+        method: "POST",
+        headers: { apikey: key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: "{}",
+        cache: "no-store",
+      });
+      if (!access.ok) return null;
+      const member = await access.json();
+      if (member?.tenant_id !== "cb0dc04a-9a13-434f-a3d0-47f1d8f39670"
+          || !["gerente", "editor", "lectura"].includes(member?.rol)) return null;
+      return { company_name: "Mi Gusto", logo_id: "mi-gusto", recibonet: null };
+    }
     const data = await response.json();
     if (!data || data.role !== "dueno") return null;
     const link = data.recibonet;
