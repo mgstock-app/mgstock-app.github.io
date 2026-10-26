@@ -3,7 +3,7 @@
 'use strict';
 
 /* ---------- Constantes ---------- */
-const APP_URL = 'https://mgstock-app.github.io/';
+const APP_URL = 'https://gestlok.com.ar/';
 /* Carpeta de los scripts (para cargar el lector de Ingreso de mercadería solo cuando se usa) */
 const JS_BASE = (document.currentScript && document.currentScript.src) || ((document.querySelector('script[src*="stock/app.js"]') || {}).src) || location.href;
 /* Hojas fijas. Se pueden renombrar, ordenar y quitar del menú; las hojas nuevas se guardan en la colección "hojas". */
