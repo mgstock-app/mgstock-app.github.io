@@ -45,8 +45,8 @@ test("pantalla de ingreso y caché públicos no muestran la marca privada", () =
 
 test("Mi Gusto solo se renderiza a integrantes autorizados de la empresa, no por defecto", () => {
   const app = read("public/stock/app.js");
-  assert.match(app, /S\\.me\\?\\.tenant_id === MI_GUSTO_TENANT/);
-  assert.match(app, /!!miEquipo\\(\\)/);
+  assert.match(app, /S\.me\?\.tenant_id === MI_GUSTO_TENANT/);
+  assert.match(app, /!!miEquipo\(\)/);
   assert.match(app, /gestlok-company-identity/);
   assert.match(app, /Empanadas de Verdad/);
   assert.match(app, /img\/mi-gusto-blanco\.png/);
