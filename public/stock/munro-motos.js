@@ -143,9 +143,12 @@
       if (v != null && v !== tarifaEn(actual, clave, semana)) lista.push({desde:semana, valor:v});
       valores[clave] = lista;
     }
+    const data = {valores, autor:api.S.uid, actualizado:Date.now()};
     try {
-      await api.w(() => col().doc('tarifas').set({valores, autor:api.S.uid, actualizado:Date.now()}));
-      tarifasAbiertas = false; api.toast('Valores por hora guardados desde esta semana. Las semanas anteriores conservan los suyos.');
+      await api.w(() => col().doc('tarifas').set(data));
+      const previo = docs.find(d => d.id === 'tarifas');
+      if (previo) previo.data = data; else docs.push({id:'tarifas', data});
+      tarifasAbiertas = false; document.activeElement?.blur?.(); api.render(); api.toast('Valores por hora guardados desde esta semana. Las semanas anteriores conservan los suyos.');
     } catch (e) { api.fail(e); }
   }
 
