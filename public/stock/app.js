@@ -297,7 +297,7 @@ async function w(fn){
 }
 function fail(e){
   const c = e && e.code;
-  if (!navigator.onLine && syncOffline()){ toast('Sin internet: esta parte todavía no se descargó en este equipo. Abrila una vez con conexión.', true); return; }
+  if (!navigator.onLine && syncOffline()){ toast('Sin internet: este cambio necesita conexión (por ejemplo, borrar). Probá de nuevo cuando vuelva internet.', true); return; }
   if (!navigator.onLine){ toast('Sin internet: este cambio no se guardó. Probá de nuevo cuando vuelva la conexión.', true); return; }
   if (c === 'invalid_argument'){ toast('No se pudo guardar: tu usuario no tiene permiso para este cambio. Pedile a la administradora que revise tu acceso en Equipo.', true); return; }
   if (c === 'quota_exceeded'){ toast('La base está llena: borrá conteos viejos o productos que no uses.', true); return; }

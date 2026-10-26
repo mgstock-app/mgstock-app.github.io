@@ -150,3 +150,10 @@ test('las dos áreas cargan el motor sin conexión y el service worker lo guarda
  assert.match(browser,/GestLokOffline/);assert.match(layout,/stock\/gestlok-offline\.js/);
  assert.match(sw,/'\/stock\/gestlok-offline\.js'/);assert.match(sw,/__EMPLEADOS_PRECACHE__/);
 });
+
+test('borrar necesita conexión: sin internet no se encola y avisa', async t => {
+ const h = harness(t); await h.call(productos); h.offline();
+ const r = await h.call('/rest/v1/docs?col=eq.munro%2Fproductos&id=eq.p1', {method: 'DELETE'});
+ assert.equal(r.status, 503); assert.match((await r.json()).message, /borrar necesitás internet/);
+ assert.equal((await h.api.list()).length, 0);
+});

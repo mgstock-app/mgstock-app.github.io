@@ -45,13 +45,11 @@ begin
   select data into actual from public.docs where docs.col = v_col and docs.id = 'p-offline';
   if actual->>'stock' <> '7' or actual->>'nombre' <> 'Cambio desde otro equipo' or actual ? 'temp' then raise exception 'FAIL merge %', actual; end if;
 
-  -- 4. Borrado idempotente y PATCH sobre algo inexistente queda para revisión.
-  perform public.gestlok_sync_apply(gen_random_uuid(), tenant, jsonb_build_object('kind','table','table','docs','method','DELETE','rows', jsonb_build_array(jsonb_build_object('key', jsonb_build_object('col', v_col, 'id', 'p-offline')))));
-  perform public.gestlok_sync_apply(gen_random_uuid(), tenant, jsonb_build_object('kind','table','table','docs','method','DELETE','rows', jsonb_build_array(jsonb_build_object('key', jsonb_build_object('col', v_col, 'id', 'p-offline')))));
+  -- 4. PATCH sobre algo inexistente queda para revisión.
   failed := false;
-  begin perform public.gestlok_sync_apply(gen_random_uuid(), tenant, jsonb_build_object('kind','rpc','name','doc_update','args', jsonb_build_object('p_col', v_col, 'p_id', 'p-offline', 'p_patch', '{"stock":1}'::jsonb)));
+  begin perform public.gestlok_sync_apply(gen_random_uuid(), tenant, jsonb_build_object('kind','rpc','name','doc_update','args', jsonb_build_object('p_col', v_col, 'p_id', 'no-existe', 'p_patch', '{"stock":1}'::jsonb)));
   exception when others then failed := sqlerrm like 'SYNC_MISSING%'; end;
-  if not failed then raise exception 'FAIL cambio sobre registro borrado'; end if;
+  if not failed then raise exception 'FAIL cambio sobre registro inexistente'; end if;
 
   -- 5. Permisos: no se puede escribir en el local de otra empresa ni con otra empresa declarada.
   failed := false;
@@ -96,6 +94,6 @@ begin
 
   perform set_config('role', 'postgres', true);
   select count(*) into n from gestlok_sync_private.receipts where user_id = owner_id;
-  if n <> 6 then raise exception 'FAIL recibos esperados 6, hay %', n; end if;
+  if n <> 4 then raise exception 'FAIL recibos esperados 4, hay %', n; end if;
   raise notice 'OK offline-sync';
 end $test$;

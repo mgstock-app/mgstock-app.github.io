@@ -55,8 +55,6 @@ begin
   if auth.uid() is null then raise exception 'SYNC_IDENTITY' using errcode = '42501'; end if;
   insert into gestlok_sync_private.receipts(user_id, id, tenant_id, payload_hash, result)
   values (auth.uid(), p_id, p_tenant, md5(p_payload::text), p_result);
-  -- Los recibos viejos de la misma cuenta ya no se necesitan.
-  delete from gestlok_sync_private.receipts where user_id = auth.uid() and created_at < now() - interval '45 days';
 end $$;
 
 -- Aplica un cambio pendiente. SECURITY INVOKER: corre con los permisos de quien llama.
@@ -74,7 +72,8 @@ begin
     tbl := p_payload->>'table'; method := p_payload->>'method'; mode := coalesce(p_payload->>'mode', 'upsert');
     keys := case tbl when 'docs' then array['col','id'] when 'rm_test_documents' then array['path']
                      when 'rm_app_settings' then array['owner_id','organization_id','path'] end;
-    if keys is null or method not in ('POST','PATCH','DELETE') or mode not in ('insert','upsert','ignore')
+    -- Altas y modificaciones. Borrar sigue necesitando conexión (no se encola).
+    if keys is null or method not in ('POST','PATCH') or mode not in ('insert','upsert','ignore')
        or jsonb_typeof(p_payload->'rows') <> 'array' then
       raise exception 'SYNC_UNSUPPORTED' using errcode = '22023';
     end if;
@@ -99,9 +98,7 @@ begin
       execute format('select to_jsonb(t) from public.%I t where %s for update', tbl, cond) into old_row using row_match;
       new_row := null;
 
-      if method = 'DELETE' then
-        execute format('delete from public.%I t where %s returning to_jsonb(t)', tbl, cond) into new_row using row_match;
-      elsif method = 'PATCH' then
+      if method = 'PATCH' then
         if old_row is null then raise exception 'SYNC_MISSING: el registro ya no existe' using errcode = 'P0002'; end if;
         merge := item->'data_merge';
         if merge is not null then

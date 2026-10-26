@@ -302,6 +302,8 @@ function create(options={}){
    let body=null;try{body=bodyText?JSON.parse(bodyText):null;}catch{body=null;}
    const read=isUser||method==='GET'||method==='HEAD'||(rpc&&READS.has(name));
    if(read)return readThrough(c,{input,init,url,headers,method,rpc,name,body,isUser,net});
+   /* Borrar necesita conexión: no se deja en cola. */
+   if(method==='DELETE'&&!rpc&&PK[name]&&!online())return json({code:'GL_OFFLINE',message:'Sin conexión: para borrar necesitás internet.',details:null,hint:null},503);
    const payload=await writePayload(c,{rpc,name,method,url,headers,body});
    if(!payload)return net(input,init);
    return writeThrough(c,payload,{input,init,headers,method,rpc,name,net,base,apikey,url});
@@ -363,11 +365,10 @@ function create(options={}){
    if(rows.some(r=>!pkOf(name,r.key)))return null;
    return {kind:'table',table:name,method,mode:prefer.includes('merge-duplicates')?'upsert':prefer.includes('ignore-duplicates')?'ignore':'insert',rows};
   }
-  if(method!=='PATCH'&&method!=='DELETE')return null;
+  if(method!=='PATCH')return null;
   const eq=eqOnly(filtersOf(url));if(!eq)return null;
   const key=Object.fromEntries(keys.map(k=>[k,eq[k]]));if(!pkOf(name,key))return null;
   const constraints=Object.fromEntries(Object.entries(eq).filter(([k])=>!keys.includes(k)));
-  if(method==='DELETE')return {kind:'table',table:name,method,rows:[{key,constraints}]};
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
   const entry={key,constraints,body:{...body}};
   /* Solo viajan los campos que cambiaron dentro de «data», para no pisar otros cambios. */

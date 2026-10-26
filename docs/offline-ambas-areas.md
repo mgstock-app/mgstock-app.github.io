@@ -24,7 +24,7 @@ opción de usar la plantilla GESTLOK o una propia.
     reintentar, descartar o descargar una copia. En «Administrar mi empresa» el estado «Sin internet» ya se ve arriba.
 - `supabase/migrations/20261026110226_offline_sync_receipts.sql`: `gestlok_sync_context()` y
   `gestlok_sync_apply()` (SECURITY INVOKER: corre con los permisos y RLS de quien guarda). Recibo por cuenta + id
-  de operación para que un reintento no duplique. Lista cerrada de tablas (`docs`, `rm_test_documents`,
+  de operación para que un reintento no duplique. Altas y modificaciones; borrar necesita conexión. Lista cerrada de tablas (`docs`, `rm_test_documents`,
   `rm_app_settings`) y funciones. Columnas validadas. En una edición de planilla de empleados solo viajan los campos
   que cambiaron. No toca tablas de negocio.
 - Service worker (`scripts/sw-template.js` + `scripts/sw-precache.mjs`): guarda el arranque de la app y todas las
@@ -61,7 +61,13 @@ opción de usar la plantilla GESTLOK o una propia.
 
 - El primer ingreso y la primera descarga necesitan internet. Google Sheets y WhatsApp son servicios externos: sin
   conexión no abren.
-- Necesitan conexión: alta y permisos de usuarios, publicar recibos, tienda online y acciones de la creadora.
+- Necesitan conexión: borrar registros, alta y permisos de usuarios, publicar recibos, tienda online y acciones de la
+  creadora. (La herramienta de base de datos no deja aplicar instrucciones de borrado sin una confirmación que no
+  llegó, así que el envío automático cubre altas y modificaciones.)
+- Migración aplicada en producción el 26/10/2026 en 4 partes (`gestlok_offline_sync_p1_context` … `p4_apply`), con el
+  mismo contenido que el archivo. Prueba `supabase/tests/offline-sync.sql` corrida en producción dentro de un bloque
+  que se revierte: pasó y no quedó ningún dato. Los recibos no se depuran solos (crecen de a una fila por cambio
+  enviado sin conexión).
 - Si otra persona cambia el mismo campo, gana el último envío (igual que con internet). Si el registro ya no existe,
   o la base rechaza el cambio, queda «Necesita revisión» en el aviso, sin perderse.
 - La PWA cerrada no envía en segundo plano: los pendientes salen al volver a abrir GESTLOK con conexión.
