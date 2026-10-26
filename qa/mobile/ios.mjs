@@ -32,11 +32,9 @@ async function native(regex, { timeout = 8000 } = {}) {
   return null;
 }
 const $web = sel => driver.$(sel);
-let webContext = null;
 
 try {
   // 1) Safari abre la demo.
-  webContext = await driver.getContext();
   await driver.url(DEMO);
   await (await $web('#hub [data-owner-nav="menu"]')).waitForDisplayed({ timeout: 180000 });
   check(true, `GestLok abre en Safari del iPhone (${SIM_NAME} · iOS ${SIM_VERSION})`);
