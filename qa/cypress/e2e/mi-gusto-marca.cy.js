@@ -31,7 +31,7 @@ describe('Identidad Mi Gusto para el equipo autorizado',()=>{
     iniciar('dueno@example.com');
     cy.get('#hub .gl-oh-brand-company').should('contain.text','Empanadas de Verdad');
     cy.get('#hub .gl-owner-welcome-logo img').should('have.attr','alt','Mi Gusto');
-    cy.get('.gl-owner-business .gl-owner-arrow').click();
+    cy.get('#hub .gl-owner-business .gl-owner-arrow').first().click();
     cy.get('#pn [data-act="local"][data-id="torcuato"]').click();
     verificarMarca();
   });
