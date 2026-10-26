@@ -1,4 +1,4 @@
-/* global Cypress, describe, beforeEach, it, cy, expect */
+/* global Cypress, describe, it, cy, expect */
 import { abrirLocal } from '../helpers/abrir-local';
 // Pruebas aisladas: Supabase falso; nunca consultan ni escriben datos reales.
 const TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
