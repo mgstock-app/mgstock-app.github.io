@@ -7,7 +7,7 @@ import { OUT, PORT, DEMO, sleep, check, finish, server } from './common.mjs';
 
 const shot = async (page, name) => { try { await page.screenshot({ path: resolve(OUT, `android-${name}.png`) }); } catch (e) { console.log('captura', name, e.message); } };
 const screen = async (device, name) => { try { await device.screenshot({ path: resolve(OUT, `android-${name}-pantalla.png`) }); } catch (e) { console.log('captura', name, e.message); } };
-const INSTALL = /^(Install|Instalar|Add|Agregar|Añadir)$/i;
+const INSTALL = /^(Install|Instalar|Add|Agregar|Añadir|Install app|Instalar app)$/i;
 
 const web = server();
 await web.start();
@@ -49,6 +49,7 @@ try {
   const guide = await page.waitForSelector('#pn [data-gl-install]', { timeout: 2500 }).then(() => true, () => false);
   check(!guide || !ready, 'un toque: no se mostró la guía, se abrió la instalación directa');
   const dialog = await device.wait({ text: INSTALL }, { timeout: 20000 }).then(() => true, () => false);
+  if (!dialog) console.log('Android: no se detectó el botón de instalación; revisar captura de la pantalla nativa');
   await screen(device, '3-ventana-instalar');
   check(dialog, 'apareció la ventana de Android «Instalar app» con el botón Instalar');
   if (dialog) {
