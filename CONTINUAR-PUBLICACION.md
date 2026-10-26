@@ -73,7 +73,7 @@
 2. Revisar los emails cargados en Equipo: una dirección Gmail con guion bajo (`_`) no puede existir en Gmail, y esa persona no va a poder entrar hasta corregirla.
 3. Recomendar ingreso con Google: los correos de confirmación por email salen por el servidor de Supabase, con límites bajos. Si hace falta, configurar SMTP propio.
 4. Opcional, pago: la pantalla de Google muestra "Ir a vgsepaaewbctjsjcpeta.supabase.co". Para mostrar un nombre propio hace falta un dominio personalizado de Supabase (complemento pago).
-5. Quitar de Equipo el acceso viejo de Gisela con Gmail (`giselaopenheimer@gmail.com`, Editor sin locales); ella entra con Hotmail como dueña. Se puede hacer desde Equipo en la app.
+5. Quitar de Equipo el acceso viejo de Gisela con Gmail (cuenta de Gmail anterior, Editor sin locales); ella entra con Hotmail como dueña. Se puede hacer desde Equipo en la app.
 6. Actualizar el video tutorial: no muestra Stock Sugerido, Estados, Stock Cajas, Observaciones ni Borrar datos.
 7. Conteo Fábrica tiene «Poner todo en 0» y «Borrar datos»; preguntar si se quita el primero.
 8. Al pasar a Supabase Pro: activar la protección contra contraseñas filtradas.
