@@ -11,9 +11,30 @@ import { selectVisibleCompany } from "@/utils/owner-company";
 import { schedulesApi } from "@/features/schedules/api";
 import { useDisplayName } from "@/components/gestlok/GestlokContext";
 import { BranchScheduleLink } from "./BranchScheduleLink";
+import { isGestlokGerente } from "@/utils/permissions";
 import type { Company } from "@/types/access";
 
+// Gerente de GESTLOK: solo las planillas de sus propios locales (el servidor vuelve a comprobarlo).
+function GerenteSchedules() {
+  const { user } = useAuth();
+  const locals = user?.gestlok_gerente?.local_ids ?? [];
+  return (
+    <section className="management-page schedules-page">
+      <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS</span>
+      <h1>📁 Horarios</h1>
+      <p>Planilla de turnos de tu local en Google Sheets.</p>
+      {locals.map((id) => <BranchScheduleLink key={id} local={id} />)}
+    </section>
+  );
+}
+
 function SchedulesContent() {
+  const { user: current } = useAuth();
+  if (isGestlokGerente(current)) return <GerenteSchedules />;
+  return <SchedulesForStaff />;
+}
+
+function SchedulesForStaff() {
   const params = useSearchParams();
   const { user } = useAuth();
   const organizations = useOrganizationData();

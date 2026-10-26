@@ -15,6 +15,8 @@ export interface AppUser {
   invited_company_id?: string | null;
   schedule_permissions?: SchedulePermissions | null;
   account_kind?: "owner" | "collaborator" | null;
+  /** Gerente del equipo de GESTLOK: solo accede a Horarios de sus locales (no es un rol propio de Empleados). */
+  gestlok_gerente?: { local_ids: string[] } | null;
 }
 export interface AppLocal {
   id: string;

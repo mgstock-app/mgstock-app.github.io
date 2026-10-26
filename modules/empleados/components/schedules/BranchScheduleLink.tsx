@@ -3,6 +3,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { rpc } from "@/features/access/api";
 import { ScheduleSheetCard } from "./ScheduleSheetCard";
+import { isGestlokGerente } from "@/utils/permissions";
 import { visibleBranchScheduleCards } from "@/utils/branch-schedule-links";
 import styles from "./ScheduleSheetCard.module.css";
 
@@ -11,7 +12,8 @@ export function BranchScheduleLink({ local, company }: { local?: string; company
   const { user } = useAuth();
   const [result, setResult] = useState<{ key: string; rows: BranchLink[]; failed: boolean } | null>(null);
   const [retry, setRetry] = useState(0);
-  const permitted = user?.role === "admin" || user?.role === "owner" || user?.role === "manager";
+  const gerente = isGestlokGerente(user);
+  const permitted = user?.role === "admin" || user?.role === "owner" || user?.role === "manager" || gerente;
   const key = `${user?.user_id}:${user?.role}:${local || ""}:${company || ""}`;
   useEffect(() => {
     if (!permitted || (!local && !company)) return;
@@ -32,7 +34,7 @@ export function BranchScheduleLink({ local, company }: { local?: string; company
   return <div className="schedule-sheet-links">{visible.map((row, index) =>
     <Fragment key={`${row.local_id}:${row.url || "pending"}`}>
       {index > 0 && <hr className={styles.separator} aria-hidden="true" />}
-      <ScheduleSheetCard url={row.url} branch={row.local_id === "dt" ? "Torcuato" : row.local_name} localId={row.local_id} canConfigure={user?.role === "owner"} onUpdated={() => setRetry(value => value + 1)} />
+      <ScheduleSheetCard url={row.url} branch={row.local_id === "dt" ? "Torcuato" : row.local_name} localId={row.local_id} canConfigure={user?.role === "owner" || gerente} onUpdated={() => setRetry(value => value + 1)} />
     </Fragment>
   )}</div>;
 }
