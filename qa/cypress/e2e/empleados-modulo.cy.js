@@ -43,7 +43,8 @@ describe('GESTLOK · carpeta Administrar a los empleados', () => {
   it('la creadora asigna el módulo por empresa con confirmación y queda registrado', () => {
     start('kmu15lopez@gmail.com', false);
     cy.get('[aria-label="Módulos autorizados"]', { timeout: 12000 }).should('contain.text', 'Empresa ficticia').and('contain.text', 'Sin organización de ReciboNet vinculada');
-    cy.get('[aria-label="Empresas registradas"] button').should('not.exist');
+    // Único botón: consultar la otra empresa en solo lectura; la propia no lo tiene.
+    cy.get('[aria-label="Empresas registradas"] button').should('have.length', 1).and('contain.text', 'Ver en solo lectura');
     cy.on('window:confirm', () => true);
     cy.get('[data-owner-module="cb0dc04a-9a13-434f-a3d0-47f1d8f39670"][data-enable="true"]').click();
     cy.window().its('__staffModule').should('eq', true);
