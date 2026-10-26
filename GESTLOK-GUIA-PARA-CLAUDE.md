@@ -134,4 +134,4 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 
 **PR abiertos que esperan decisión de la usuaria:** #26, #52, #79. También esperan decisión `pedir_acceso`, la propuesta de recibos (`docs/PROPUESTA-RECIBOS-COLABORADORES.md`) y cualquier cambio del historial de Git.
 
-**Pendiente:** el *Site URL* de Supabase Auth sigue en `https://mgstock-app.github.io/` (es el destino por defecto cuando la app no indica uno). Cambiarlo a `https://gestlok.com.ar/` desde el panel de Supabase, en Authentication → URL Configuration, si la usuaria lo aprueba.
+**Site URL de Supabase Auth:** cambiado a `https://gestlok.com.ar/` por la usuaria desde el panel (Authentication → URL Configuration) el 26/10/2026 y verificado. Es el destino por defecto cuando la app no indica uno. Las tres URLs de redirección se mantienen.
