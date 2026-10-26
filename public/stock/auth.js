@@ -15,7 +15,7 @@
   if (sb) window.GestLokSupabase = sb;
 
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
-  let email = null, rol = null, locales = [], tenantId = null, started = false;
+  let email = null, rol = null, locales = [], tenantId = null, support = false, started = false;
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
 
   /* ---------- Pantalla de ingreso ---------- */
@@ -123,7 +123,7 @@
   async function entered(session){
     email = String(session.user.email || '').toLowerCase();
     let r = null, ls = [];
-    try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; } else throw error; }
+    try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
     catch { try { const { data } = await sb.rpc('mi_rol'); r = data || null; } catch {} }
     rol = r; locales = ls;
     if (!rol){
@@ -238,7 +238,7 @@
   const avatar = (txt, bg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="32" fill="${bg}"/><text x="32" y="41" font-family="Arial" font-size="26" font-weight="700" text-anchor="middle" fill="#fff">${String(txt || '?').charAt(0).toUpperCase()}</text></svg>`);
   const nameOf = e => String(e || '').split('@')[0];
   const user = Object.freeze({
-    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], tenant_id: tenantId, isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
+    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], tenant_id: tenantId, support, isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
     async id(){ return email; },
     async isOwner(){ return rol === 'creadora'; },
     async canEdit(){ return EDITA.includes(rol); },

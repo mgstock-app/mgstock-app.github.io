@@ -3,10 +3,30 @@
   'use strict';
   let api,state={status:'loading',data:null},gerente={status:'loading',locals:[]},gerenteBusy=false,busy=false,admin={status:'loading',companies:[]},adminBusy=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  /* Vista previa visual de la creadora como Dueña: arma el contexto con los datos que ya puede consultar.
+     No concede permisos; el backend sigue tratándola como creadora de solo lectura. */
+  async function previewOwner(){
+    const r=await window.GestLokSupabase.rpc('gestlok_creator_companies_index');
+    if(r.error)return {error:r.error};
+    const co=(r.data?.companies||[]).find(c=>c.tenant_id===api.S.me?.tenant_id);
+    if(!co)return {error:Error('Sin empresa')};
+    const branded=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
+    const staff=co.modules?.recibos_personal===true&&!!co.recibonet;
+    return {data:{role:'dueno',tenant_id:co.tenant_id,company_name:co.name||'Mi empresa',logo_id:branded?'mi-gusto':null,
+      local_ids:(co.locals||[]).map(l=>l.id),
+      recibonet:staff?{organization_number:co.recibonet.organization_number,internal_name:''}:null,
+      modules:{comercial:{authorized:true,operational:true},
+        recibos_personal:staff?{authorized:true,operational:true}:{authorized:false,operational:!!co.recibonet,reason:co.recibonet?'module_not_enabled':'company_not_linked'}}}};
+  }
   /* Gerente: solo la carpeta Horarios dentro de Administración de empleados (lo autoriza el servidor). */
   async function refreshGerente(){
     if(!api||api.role()!=='gerente'||!api.S.loaded.e||gerenteBusy)return;
     if(api.S.offline&&gerente.status==='ready')return;
+    if(window.GestLokCreatorSupport?.previewRol?.()==='gerente'){
+      const next={status:'ready',locals:(api.S.me?.locales||[]).slice()};
+      if(JSON.stringify(next)!==JSON.stringify(gerente)){gerente=next;api.render();}
+      return;
+    }
     gerenteBusy=true;
     try{
       const {data,error}=await window.GestLokSupabase.rpc('gestlok_gerente_area_context');
@@ -29,7 +49,7 @@
     if(api.S.offline&&state.status==='ready')return;
     busy=true;
     try{
-      const {data,error}=await window.GestLokSupabase.rpc('gestlok_owner_area_context');
+      const {data,error}=window.GestLokCreatorSupport?.previewRol?.()==='dueno'?await previewOwner():await window.GestLokSupabase.rpc('gestlok_owner_area_context');
       if(error||!data||data.role!=='dueno'||data.tenant_id!==api.S.me?.tenant_id)throw Error('Contexto no autorizado');
       const next={status:'ready',data};
       if(JSON.stringify(next)!==JSON.stringify(state)){state=next;api.render();}
@@ -53,15 +73,15 @@
     }catch{const changed=admin.status!=='error';admin={status:'error',companies:[],audit:[]};if(changed&&!api.S.creatorSetup&&!api.S.panel)api.render();}
     finally{adminBusy=false;}
   }
-  const ACTIONS={module_enabled:'Empleados habilitado',module_disabled:'Empleados deshabilitado',recibonet_linked:'Empresa vinculada con ReciboNet',editing_enabled:'Edición habilitada',editing_disabled:'Edición cerrada'};
+  const ACTIONS={module_enabled:'Empleados habilitado',module_disabled:'Empleados deshabilitado',recibonet_linked:'Empresa vinculada con ReciboNet',editing_enabled:'Edición habilitada',editing_disabled:'Edición cerrada',support_view_opened:'Consulta de empresa abierta (solo lectura)',support_view_closed:'Consulta de empresa cerrada'};
   const when=v=>{try{return new Date(v).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});}catch{return '';}};
   function adminView(){
     if(api?.role()!=='creadora')return '';
     const ready=admin.status==='ready',names=new Map(admin.companies.map(c=>[c.tenant_id,c.name]));
     const registry='<section class="gl-admin-card" aria-label="Empresas registradas"><header><h2>Empresas registradas</h2><small>Consulta de información general · Solo lectura</small></header>'+
-      (ready?'<div class="gl-admin-tablewrap"><table><thead><tr><th>Empresa</th><th>Locales</th><th>Dueños asignados</th></tr></thead><tbody>'+admin.companies.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc((c.locals||[]).map(l=>l.name).join(' · '))+'</td><td>'+esc(c.owners)+'</td></tr>').join('')+'</tbody></table></div>':
+      (ready?'<div class="gl-admin-tablewrap"><table><thead><tr><th>Empresa</th><th>Locales</th><th>Dueños asignados</th><th>Consultar</th></tr></thead><tbody>'+admin.companies.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc((c.locals||[]).map(l=>l.name).join(' · '))+'</td><td>'+esc(c.owners)+'</td><td>'+(window.GestLokCreatorSupport?.openButton?.(c.tenant_id,c.name)||'')+'</td></tr>').join('')+'</tbody></table></div>':
        '<p role="status">'+(admin.status==='error'?'No pudimos consultar el registro autorizado.':'Consultando empresas autorizadas…')+'</p>')+
-      '<p class="lead">Este registro no concede acceso a datos privados de las empresas.</p></section>';
+      '<p class="lead">Para revisar otra empresa usá «Ver en solo lectura»: pide un motivo, dura 30 minutos, no permite cambiar nada y queda registrado.</p></section>';
     if(!ready)return registry;
     // Asignación de módulos: acción explícita, confirmada y auditada en el backend.
     const modules='<section class="gl-admin-card gl-admin-modules" aria-label="Módulos autorizados"><header><h2>Módulos autorizados</h2><small>Administrar mi empresa · Administrar a los empleados</small></header>'+
@@ -73,7 +93,7 @@
       '</tbody></table></div><p class="lead">Habilitar no crea ni copia datos: los recibos y planillas siguen protegidos por los permisos de ReciboNet. <a href="empleados/">Abrir empleados en modo consulta →</a></p>'+
       ((admin.audit||[]).length?'<h3>Últimas acciones administrativas</h3><ul class="gl-admin-audit">'+admin.audit.map(a=>'<li><b>'+esc(ACTIONS[a.action]||a.action)+'</b> · '+esc(names.get(a.tenant_id)||'Plataforma')+' · <small>'+esc(when(a.at))+'</small></li>').join('')+'</ul>':'')+
       '</section>';
-    return registry+modules;
+    return registry+modules+(window.GestLokCreatorSupport?.previewCard?.()||'');
   }
   async function setModule(tenant,enable){
     if(!api||api.role()!=='creadora'||adminBusy)return;
