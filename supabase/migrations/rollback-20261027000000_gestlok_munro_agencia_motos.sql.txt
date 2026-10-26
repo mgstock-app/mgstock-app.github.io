@@ -1,0 +1,9 @@
+-- Reversión de 20261027000000_gestlok_munro_agencia_motos.sql.
+-- Quita las políticas y la función. No borra documentos de munro/agencia_motos:
+-- sin estas políticas quedan alcanzados solo por las reglas generales de docs.
+drop policy if exists gestlok_munro_motos_guard on public.docs;
+drop policy if exists gestlok_munro_motos_gerente_read on public.docs;
+drop policy if exists gestlok_munro_motos_write_insert on public.docs;
+drop policy if exists gestlok_munro_motos_write_update on public.docs;
+drop policy if exists gestlok_munro_motos_write_delete on public.docs;
+drop function if exists public.gestlok_motos_semana_abierta(text);
