@@ -65,7 +65,7 @@
     if(api.S.offline&&state.status==='ready')return;
     busy=true;
     try{
-      const {data,error}=(api.role()==='creadora'||window.GestLokCreatorSupport?.previewRol?.()==='dueno')?await previewOwner():await window.GestLokSupabase.rpc('gestlok_owner_area_context');
+      const {data,error}=api.role()==='creadora' ? await previewOwner() : await window.GestLokSupabase.rpc('gestlok_owner_area_context');
       if(error||!data||data.role!=='dueno'||data.tenant_id!==api.S.me?.tenant_id)throw Error('Contexto no autorizado');
       const next={status:'ready',data};
       if(JSON.stringify(next)!==JSON.stringify(state)){state=next;api.render();}
