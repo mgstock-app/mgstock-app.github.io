@@ -2105,3 +2105,9 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   .gl-ch-date{display:none}.gl-ch-colside{grid-template-columns:1fr}.gl-ch-growth-in,.gl-ch-two{grid-template-columns:1fr}.gl-ch-bigstats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:560px){.gl-ch-kpis{grid-template-columns:1fr}.gl-ch-people{flex-direction:column;align-items:flex-start}}
+
+/* Inicio del gerente: avisos del local */
+.gl-home-avisos-list{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.gl-home-avisos-list li{display:grid;gap:2px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.gl-home-avisos-list span{color:var(--ink)}.gl-home-avisos-list small{color:var(--muted)}
+.gl-home-essential-actions .lead{margin:8px 0 0}

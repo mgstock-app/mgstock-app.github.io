@@ -1,0 +1,35 @@
+/* global Cypress, describe, it, cy */
+function start(){
+ cy.task('mockSupabase').then(mock=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body:mock}).as('mockSupabase'));
+ cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@mockSupabase');
+ cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
+}
+function login(email){
+ cy.get('#au-email').type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
+}
+describe('Gerente · tarjeta de Empleados (Horarios) y avisos del local',()=>{
+ Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
+ for(const [mail,local] of [['gerente.munro@example.com','Munro'],['gerente.torcuato@example.com','Torcuato']]){
+  it('gerente de '+local+': ve avisos, la tarjeta y Horarios en su Inicio sin tocar nada más',()=>{
+   start();login(mail);
+   cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible').and('contain.text',local);
+   cy.get('#view .gl-home-avisos').should('contain.text','Avisos del local');
+   // La respuesta del servidor tarda: la tarjeta tiene que aparecer sola, sin otra acción.
+   cy.get('#view [data-gerente-empleados]',{timeout:15000}).should('be.visible');
+   cy.get('#view').should('contain.text','Administración de empleados').and('contain.text','Horarios');
+   cy.get('#snav [data-go="avisos"]').should('exist');
+   cy.get('#view .gl-home-avisos [data-go="avisos"]').click();
+   cy.get('.gl-exp-page h1').should('contain.text','Centro de avisos');
+  });
+ }
+ it('si el servidor no autoriza, no se ofrece la carpeta Horarios',()=>{
+  start();cy.window().then(w=>{w.__gerenteFail=true;});login('gerente.munro@example.com');
+  cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
+  cy.wait(1800);cy.get('#view [data-gerente-empleados]').should('not.exist');
+ });
+ it('un usuario de solo lectura sigue sin Avisos ni carpeta Horarios',()=>{
+  start();login('lectura@example.com');
+  cy.get('#view',{timeout:15000}).should('be.visible');
+  cy.wait(1800);cy.get('[data-go="avisos"]').should('not.exist');cy.get('[data-gerente-empleados]').should('not.exist');
+ });
+});

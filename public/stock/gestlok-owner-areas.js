@@ -41,7 +41,7 @@
   function gerenteCard(){
     if(gerente.status!=='ready')return '';
     return '<section class="gl-home-essential-actions" aria-label="Administración de empleados"><h2>Administración de empleados</h2><div class="gl-home-essential-links"><button type="button" data-gerente-empleados>'+
-      '<span aria-hidden="true">'+svg('<path d="M4 6h16v13H4zM8 3v6M16 3v6M4 11h16"/>',20)+'</span><b>Horarios</b>'+svg('<path d="m9 6 6 6-6 6"/>',18)+'</button></div></section>';
+      '<span aria-hidden="true">'+svg('<path d="M4 6h16v13H4zM8 3v6M16 3v6M4 11h16"/>',20)+'</span><b>Horarios</b>'+svg('<path d="m9 6 6 6-6 6"/>',18)+'</button></div><p class="lead">Se abre con la misma cuenta de Google que usás en GESTLOK.</p></section>';
   }
   async function refresh(){
     refreshGerente();

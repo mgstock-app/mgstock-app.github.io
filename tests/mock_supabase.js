@@ -146,6 +146,11 @@
           activity:[{at:new Date(Date.now()-600000).toISOString(),kind:'audit',what:'module_enabled',who:null,company:'Empresa ficticia'}],
           system:{accounts:6,confirmed_accounts:6,verified_links:2,editing_open:false,support_open:false}},error:null};
       }
+      if (fn === 'gestlok_gerente_area_context'){
+        if(window.__gerenteFail||a?.rol!=='gerente')return {data:null,error:{code:'42501',message:'Acceso exclusivo de gerentes autorizados'}};
+        // Llega con demora a propósito: la tarjeta debe aparecer igual sin esperar otro cambio en pantalla.
+        return new Promise(r=>setTimeout(()=>r({data:{role:'gerente',horarios:true,tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',local_ids:a.locales||[]},error:null}),1200));
+      }
       if (fn === 'gestlok_creator_set_module'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
         if(args.p_tenant!=='cb0dc04a-9a13-434f-a3d0-47f1d8f39670')return {data:null,error:{code:'22023',message:'La empresa no tiene una organización de ReciboNet vinculada y verificada'}};
