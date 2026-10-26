@@ -4,7 +4,7 @@
 do $t$
 declare
   r text := '';
-  v jsonb; n int; ok boolean;
+  v text[]; n int; ok boolean;
   munro uuid := '35b524bb-bd78-4197-8716-e259de7e0821'; munro_mail text := 'grupointerno.munro@gmail.com';
   torc  uuid := '847334e0-f2a5-4380-aacb-159458872a82'; torc_mail  text := 'interno.torcuato1@gmail.com';
   due   uuid := '85ff3a8f-ddff-417c-8ebc-f2d7b947a19c'; due_mail   text := 'giselaopenheimer@hotmail.com';
@@ -43,7 +43,11 @@ begin
   exception when others then r := r || E'\nOK Munro sin rm_app_users (' || sqlstate || ')'; end;
   r := r || E'\nMunro schedule_permission view/edit empresa: ' || rm_test_private.schedule_permission('539ef513-a865-4f8d-b6ed-160af88a066c', 'view') || '/' || rm_test_private.schedule_permission('539ef513-a865-4f8d-b6ed-160af88a066c', 'edit');
   select count(*) into n from public.rm_test_documents; r := r || E'\nMunro filas visibles en rm_test_documents: ' || n;
-  select count(*) into n from public.rm_app_directory; r := r || E'\nMunro filas visibles en rm_app_directory: ' || n;
+  begin
+    select count(*) into n from public.rm_app_directory;
+    if n <> 0 then raise exception 'Gerente ve directorio de empleados'; end if;
+    r := r || E'\nMunro filas visibles en rm_app_directory: ' || n;
+  exception when insufficient_privilege then r := r || E'\nOK Munro sin acceso directo a rm_app_directory (42501)'; end;
   select count(*) into n from public.rm_schedules; r := r || E'\nMunro filas visibles en rm_schedules: ' || n;
 
   -- Torcuato

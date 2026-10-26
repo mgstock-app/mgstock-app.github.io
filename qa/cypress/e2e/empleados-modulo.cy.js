@@ -25,11 +25,11 @@ describe('GESTLOK · carpeta Administrar a los empleados', () => {
     cy.get('#hub [data-owner-area-staff]').should('be.visible');
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
-  it('sin habilitación de la creadora la carpeta de empleados no existe', () => {
+  it('sin habilitación de la creadora se ve bloqueada y no abre el módulo', () => {
     start('dueno@example.com', false);
     cy.get('#hub .gl-owner-business').should('contain.text', 'Administrar mi empresa');
-    cy.get('#hub .gl-owner-employees').should('not.exist');
-    cy.get('#hub [data-owner-area-staff]').should('not.exist');
+    cy.get('#hub .gl-owner-employees-locked').should('be.visible').and('contain.text','Sin habilitar').and('have.attr','aria-disabled','true');
+    cy.get('#hub [data-owner-area-staff],#hub [data-owner-go="staff"]').should('not.exist');
   });
   it('la carpeta abre el módulo integrado en la misma dirección, con barra GESTLOK y regreso al inicio', () => {
     start('dueno@example.com', true);
@@ -43,7 +43,8 @@ describe('GESTLOK · carpeta Administrar a los empleados', () => {
   it('la creadora asigna el módulo por empresa con confirmación y queda registrado', () => {
     start('kmu15lopez@gmail.com', false);
     cy.get('[aria-label="Módulos autorizados"]', { timeout: 12000 }).should('contain.text', 'Empresa ficticia').and('contain.text', 'Sin organización de ReciboNet vinculada');
-    cy.get('[aria-label="Empresas registradas"] button').should('not.exist');
+    // Único botón: consultar la otra empresa en solo lectura; la propia no lo tiene.
+    cy.get('[aria-label="Empresas registradas"] button').should('have.length', 1).and('contain.text', 'Ver en solo lectura');
     cy.on('window:confirm', () => true);
     cy.get('[data-owner-module="cb0dc04a-9a13-434f-a3d0-47f1d8f39670"][data-enable="true"]').click();
     cy.window().its('__staffModule').should('eq', true);

@@ -171,7 +171,7 @@
       '<header class="gl-owner-welcome">'+(branded
         ?'<div><p>Bienvenido/a a</p><h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div>'
         :'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>')+'</header>'+
-      '<div class="gl-owner-areas'+(commerce&&staff?'':' gl-owner-areas-one')+'">'+
+      '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
       (commerce?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir Administrar mi empresa">'+svg(I.right,26)+'</button></div>'+
         '<p>Productos, stock, proveedores, pedidos y más.</p>'+
@@ -179,7 +179,13 @@
       (staff?'<article class="gl-owner-area gl-owner-employees" data-owner-go="staff" aria-labelledby="gl-owner-staff-t"><div class="gl-owner-area-icon">'+ICON_TEAM+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-staff-t">Administrar <span>a los empleados</span></h2><button class="gl-owner-arrow" data-owner-area-staff aria-label="Ingresar a empleados">'+svg(I.right,26)+'</button></div>'+
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
-        list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+'</article>':'')+
+        list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+'</article>':
+        commerce?'<article class="gl-owner-area gl-owner-employees gl-owner-employees-locked" aria-disabled="true" aria-labelledby="gl-owner-staff-t" style="cursor:default">'+
+        '<div class="gl-owner-area-icon">'+ICON_TEAM+'</div>'+
+        '<div class="gl-owner-area-title"><h2 id="gl-owner-staff-t">Administrar <span>a los empleados</span></h2><span style="border-radius:999px;background:#d6e3f6;color:#123462;padding:8px 12px;font-size:13px;font-weight:700;white-space:nowrap">Sin habilitar</span></div>'+
+        '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
+        list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+
+        '<p style="margin:16px 0 0;font-size:14px"><strong>Este módulo aún no está habilitado para tu empresa.</strong> Solicitá su activación a la administración de GESTLOK.</p></article>':'')+
       (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+
       '<nav class="gl-owner-quick" aria-label="Accesos generales">'+tile('reports','pie','Reportes generales')+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
   }
