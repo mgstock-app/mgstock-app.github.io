@@ -158,12 +158,12 @@ function create(options={}){
   const f=filtersOf(url),eq=eqOnly(f)||{};
   const rows=(Array.isArray(value)?value:value?[value]:[]).map(r=>({...eq,...r}));
   if(!rows.every(r=>pkOf(table,r)))return false;
-  const entries=[];
-  for(const r of rows){const k=rowKey(c,table,r);const old=await store.get(k).catch(()=>null);entries.push(rowRecord(c,table,{...(old&&old.row),...r}));}
-  await store.putMany(entries);
+  /* Una sola lectura del equipo por respuesta (no una por fila). */
+  const before=await cachedRows(c,table,eq).catch(()=>[]),known=new Map(before.map(r=>[pkOf(table,r),r]));
+  await store.putMany(rows.map(r=>rowRecord(c,table,{...(known.get(pkOf(table,r))||{}),...r})));
   if(f&&fullRead(url,headers,rows.length)){
    const keep=new Set(rows.map(r=>pkOf(table,r)));
-   const stale=(await cachedRows(c,table,eq)).filter(r=>matches(r,f)&&!keep.has(pkOf(table,r))).map(r=>rowKey(c,table,r));
+   const stale=before.filter(r=>matches(r,f)&&!keep.has(pkOf(table,r))).map(r=>rowKey(c,table,r));
    await store.removeMany(stale);
    /* Una lectura completa sin filtros cubre la tabla; una colección de docs («col») cubre esa colección. */
    if(!f.length)await store.put('cover|'+scope(c)+'|'+table+'|*',{type:'cover',at:now()});
