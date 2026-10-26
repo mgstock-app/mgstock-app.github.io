@@ -89,7 +89,7 @@
         busy(f, true, 'Guardando…');
         const { error } = await sb.auth.updateUser({ password: v('#au-pass4') });
         busy(f, false);
-        if (error) show('np', errTxt(error), true); else { show('in', 'Contraseña cambiada.'); const s = await sb.auth.getSession(); if (s.data.session) entered(s.data.session); }
+        if (error) show('np', errTxt(error), true); else { recovering = false; show('in', 'Contraseña cambiada.'); const s = await sb.auth.getSession(); if (s.data.session) entered(s.data.session); }
       }
     } catch (err) { busy(f, false); show('in', errTxt(err), true); }
   }, true);
@@ -125,10 +125,12 @@
   }
 
   async function entered(session){
+    const attempt = authGeneration;
     email = String(session.user.email || '').toLowerCase();
     let r = null, ls = [], sinRed = false;
     try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
     catch (e) { sinRed = navigator.onLine === false || /conexi|fetch|network|GL_OFFLINE/i.test(String((e && (e.message || e.code)) || '')); try { const { data, error } = await sb.rpc('mi_rol'); if (!error) r = data || null; } catch {} }
+    if (attempt !== authGeneration) return;
     rol = r; locales = ls;
     /* Sin internet y sin una copia de esta cuenta en el equipo: no es un «ingreso pendiente». */
     if (!rol && sinRed){
@@ -153,27 +155,34 @@
 
   // Bootstrap authentication once: INITIAL_SESSION and getSession can both resolve
   // during PWA startup. Never replace a recovered session with the login screen.
-  let entering = false;
+  let entering = false, authGeneration = 0, recovering = false;
   function resume(session){
-    if (!session || started || entering || /type=recovery/.test(location.hash)) return;
+    if (!session || started || entering || recovering || /type=recovery/.test(location.hash)) return;
     entering = true;
-    Promise.resolve().then(() => entered(session)).catch(() => {
+    const attempt = authGeneration;
+    Promise.resolve().then(() => { if (attempt === authGeneration) return entered(session); }).catch(() => {
+      if (attempt !== authGeneration) return;
       show('in', 'No se pudo recuperar tu sesión. Revisá la conexión e intentá nuevamente.', true);
-    }).finally(() => { entering = false; });
+    }).finally(() => { if (attempt === authGeneration) entering = false; });
   }
   function init(){
     if (!sb){ show('in', 'Falta configurar la conexión con Supabase.', true); return; }
-    const uErr = urlError();
+    const uErr = urlError(), bootstrapGeneration = authGeneration;
     sb.auth.onAuthStateChange((ev, session) => {
-      if (ev === 'PASSWORD_RECOVERY'){ show('np', 'Elegí tu contraseña nueva.'); return; }
+      if (ev === 'PASSWORD_RECOVERY'){ ++authGeneration; entering = false; recovering = true; show('np', 'Elegí tu contraseña nueva.'); return; }
       if (session && ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED','USER_UPDATED'].includes(ev)) resume(session);
-      if (ev === 'SIGNED_OUT'){ if (started) location.reload(); else if (!entering) show('in', ''); }
+      if (ev === 'SIGNED_OUT'){
+        ++authGeneration; entering = false; recovering = false;
+        for (const id of ['#app', '#hub', '#logout-wrap']) { const el = $(id); if (el) el.hidden = true; }
+        if (started) location.reload(); else show('in', '');
+      }
     });
     sb.auth.getSession().then(({data,error}) => {
+      if (bootstrapGeneration !== authGeneration) return;
       if (data?.session) resume(data.session);
-      else if (error && !started && !entering) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
-      else if (!started && !entering) show('in', uErr, !!uErr);
-    }).catch(() => { if (!started && !entering) show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true); });
+      else if (error && !started && !entering && !recovering) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
+      else if (!started && !entering && !recovering) show('in', uErr, !!uErr);
+    }).catch(() => { if (bootstrapGeneration === authGeneration && !started && !entering && !recovering) show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
