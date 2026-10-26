@@ -34,7 +34,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/gestlok-commerce.js");
-      await load("/stock/gestlok-owner-areas.js?rev=offline-20261026");
+      await load("/stock/gestlok-owner-areas.js?rev=branding-20261026");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
       await load("/stock/gestlok-creator-home.js?rev=creadora-permanente-20261026");
@@ -46,7 +46,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=offline-20261026");
+      await load("/stock/app.js?rev=branding-20261026");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };

@@ -15,7 +15,7 @@ describe('Tres codueños: mismas tarjetas y ambos locales',()=>{
   cy.get('#hub .gl-owner-employees').should('be.visible').and('not.have.class','gl-owner-employees-locked');
   cy.get('#hub [data-owner-area-staff]').should('be.visible');
   cy.get('#hub .gl-owner-welcome-logo img').should('have.attr','alt','Mi Gusto');
-  cy.get('#hub').should('contain.text','Empanadas de verdad');
+  cy.get('#hub').should('contain.text','Empanadas de Verdad');
   cy.get('#hub .gl-owner-business .gl-owner-arrow').click();
   cy.get('#pn [data-act="local"][data-id="munro"]').should('be.visible');
   cy.get('#pn [data-act="local"][data-id="torcuato"]').should('be.visible');

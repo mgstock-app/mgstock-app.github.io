@@ -18,7 +18,7 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
   it('muestra Mi Gusto y los cuatro accesos generales', () => {
     cy.viewport(1280, 900); start();
-    cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'Empanadas de verdad');
+    cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'Empanadas de Verdad');
     cy.get('.gl-oh-brand-company img').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
     cy.get('.gl-owner-welcome-logo img').should('be.visible').and('have.attr', 'alt', 'Mi Gusto');
     cy.get('.gl-oh-top [data-owner-nav="menu"]').should('be.visible');
