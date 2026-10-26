@@ -42,10 +42,10 @@ try {
   // 3) Menú › «Instalar en el celular»: la ventana del sistema aparece sin pasar por la guía.
   await page.waitForSelector('#hub [data-owner-nav="menu"]', { state: 'visible', timeout: 60000 });
   await sleep(800);
-  await page.tap('#hub [data-owner-nav="menu"]');
+  await page.click('#hub [data-owner-nav="menu"]');
   await page.waitForSelector('#pn [data-owner-install]', { state: 'visible', timeout: 15000 });
   await shot(page, '2-menu');
-  await page.tap('#pn [data-owner-install]');
+  await page.click('#pn [data-owner-install]');
   const guide = await page.waitForSelector('#pn [data-gl-install]', { timeout: 2500 }).then(() => true, () => false);
   check(!guide || !ready, 'un toque: no se mostró la guía, se abrió la instalación directa');
   const dialog = await device.wait({ text: INSTALL }, { timeout: 20000 }).then(() => true, () => false);
@@ -81,7 +81,7 @@ try {
   await page.goto(DEMO, { timeout: 60000 });
   await page.waitForSelector('#hub [data-owner-area-staff]', { state: 'visible', timeout: 60000 });
   await sleep(800);
-  await page.tap('#hub [data-owner-area-staff]');
+  await page.click('#hub [data-owner-area-staff]');
   await page.waitForSelector('#gl-demo-emp .gl-dh-table', { state: 'visible', timeout: 30000 });
   check((await page.textContent('#gl-demo-emp')).includes('42:30 hs'), 'Horarios de la demo: planilla ficticia con los totales del Excel');
   await ctx.setOffline(true);
