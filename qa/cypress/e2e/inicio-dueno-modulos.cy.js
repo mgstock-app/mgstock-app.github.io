@@ -8,9 +8,11 @@ function start(fail=false,email='dueno@example.com'){
 }
 describe('Inicio de dueño · áreas verificadas por backend',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
- it('muestra empresa con los dos locales y oculta empleados no habilitado',()=>{
+ it('muestra dos tarjetas pero no habilita empleados sin permiso',()=>{
   cy.viewport(390,844);start();
-  cy.get('#hub').should('contain.text','Administrar mi empresa').and('not.contain.text','Administrar a los empleados').and('not.contain.text','Próximamente');
+  cy.get('#hub').should('contain.text','Administrar mi empresa').and('contain.text','Administrar a los empleados').and('not.contain.text','Próximamente');
+  cy.get('#hub .gl-owner-employees-locked').should('contain.text','Sin habilitar').and('have.attr','aria-disabled','true');
+  cy.get('#hub .gl-owner-employees-locked [data-owner-area-staff],#hub .gl-owner-employees-locked [data-owner-go]').should('not.exist');
   cy.get('#hub h1').should('have.length',1);
   cy.get('#hub .gl-commerce-card').should('not.exist');
   cy.get('#hub .gl-owner-business .gl-owner-arrow').should('be.visible').click();
@@ -46,7 +48,8 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.get('#app').should('not.be.visible');
   cy.get('#hub .gl-owner-business').should('contain.text','Administrar mi empresa');
   cy.get('#hub .gl-owner-quick .gl-owner-tile').should('have.length',4);
-  cy.get('#hub .gl-owner-employees').should('not.exist');
+  cy.get('#hub .gl-owner-employees-locked').should('exist').and('contain.text','Sin habilitar');
+  cy.get('#hub [data-owner-area-staff]').should('not.exist');
   cy.get('#hub .gl-owner-business .gl-owner-arrow').click();
   cy.get('#brand-local').should('contain.text','PerCam');
  });

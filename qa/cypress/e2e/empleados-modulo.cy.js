@@ -25,11 +25,11 @@ describe('GESTLOK · carpeta Administrar a los empleados', () => {
     cy.get('#hub [data-owner-area-staff]').should('be.visible');
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
-  it('sin habilitación de la creadora la carpeta de empleados no existe', () => {
+  it('sin habilitación de la creadora se ve bloqueada y no abre el módulo', () => {
     start('dueno@example.com', false);
     cy.get('#hub .gl-owner-business').should('contain.text', 'Administrar mi empresa');
-    cy.get('#hub .gl-owner-employees').should('not.exist');
-    cy.get('#hub [data-owner-area-staff]').should('not.exist');
+    cy.get('#hub .gl-owner-employees-locked').should('be.visible').and('contain.text','Sin habilitar').and('have.attr','aria-disabled','true');
+    cy.get('#hub [data-owner-area-staff],#hub [data-owner-go="staff"]').should('not.exist');
   });
   it('la carpeta abre el módulo integrado en la misma dirección, con barra GESTLOK y regreso al inicio', () => {
     start('dueno@example.com', true);
