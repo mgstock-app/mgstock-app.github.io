@@ -82,7 +82,7 @@ PR #64 reemplaza a #62 y #63 (incluye sus commits y el último `main`).
 - ReciboNet con RLS real: Martín ve las 17 planillas y 223 documentos de 2026002; la Administradora General también; otro dueño y un gerente de otra empresa ven 0.
 
 ### Pendiente
-- Primer ingreso de Martín a GESTLOK (Google, batallinim@gmail.com) y luego al módulo con su Google de ReciboNet.
+- Primer ingreso de Martín a GESTLOK (con su cuenta de Google) y luego al módulo con su Google de ReciboNet.
 - Gisela no tiene cuenta en ReciboNet: debe entrar al módulo con una cuenta Google y unirse como dueña con «ID de empresa + código privado» (Empresas → Invitar a otro dueño).
 - Ingreso con dos sesiones (GESTLOK y ReciboNet son proyectos Supabase distintos): una sola vez por dispositivo. Un inicio de sesión único requiere unificar la autenticación de ambos proyectos.
 - Pruebas físicas Android/iPhone de la PWA y del regreso de Google dentro de la app instalada (en iOS el almacenamiento de la PWA es independiente de Safari).

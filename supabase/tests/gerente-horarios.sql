@@ -1,17 +1,26 @@
 -- Gerente de GESTLOK -> «Horarios» de Administración de empleados.
--- Usa las cuentas reales solo para LEER roles; toda escritura se revierte al final (el bloque termina
+-- Usa las cuentas reales (resueltas por rol, sin datos personales en el repositorio) solo para LEER roles; toda escritura se revierte al final (el bloque termina
 -- con una excepción a propósito que devuelve el informe). No deja datos.
 do $t$
 declare
   r text := '';
   v text[]; n int; ok boolean;
-  munro uuid := '35b524bb-bd78-4197-8716-e259de7e0821'; munro_mail text := 'grupointerno.munro@gmail.com';
-  torc  uuid := '847334e0-f2a5-4380-aacb-159458872a82'; torc_mail  text := 'interno.torcuato1@gmail.com';
-  due   uuid := '85ff3a8f-ddff-417c-8ebc-f2d7b947a19c'; due_mail   text := 'giselaopenheimer@hotmail.com';
-  cre   uuid := 'c684640a-c594-44b7-a41f-bac07eef4c3b'; cre_mail   text := 'kmu15lopez@gmail.com';
-  tenant uuid := 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+  munro uuid; munro_mail text;
+  torc  uuid; torc_mail  text;
+  due   uuid; due_mail   text;
+  cre   uuid; cre_mail   text;
+  tenant uuid;
   good text := 'https://docs.google.com/spreadsheets/d/PRUEBA_ficticia_123/edit?gid=0#gid=0';
 begin
+  -- Cuentas resueltas por rol dentro de la base: el repositorio público no guarda correos ni IDs de personas.
+  tenant := (select id from gestlok_tenancy.tenants where code = 'gestlok-original');
+  select u.id, lower(u.email) into munro, munro_mail from public.docs d join auth.users u on lower(u.email) = lower(d.data->>'email')
+    where d.col = 'equipo' and d.tenant_id = (tenant) and d.data->>'rol' in ('gerente', 'editor') and d.data->'locales' ? 'munro' and not d.data->'locales' ? 'torcuato' and u.email_confirmed_at is not null order by u.created_at limit 1;
+  select u.id, lower(u.email) into torc, torc_mail from public.docs d join auth.users u on lower(u.email) = lower(d.data->>'email')
+    where d.col = 'equipo' and d.tenant_id = (tenant) and d.data->>'rol' in ('gerente', 'editor') and d.data->'locales' ? 'torcuato' and not d.data->'locales' ? 'munro' and u.email_confirmed_at is not null order by u.created_at limit 1;
+  select u.id, lower(u.email) into due, due_mail from public.docs d join auth.users u on lower(u.email) = lower(d.data->>'email')
+    where d.col = 'equipo' and d.tenant_id = (tenant) and d.data->>'rol' = 'dueno' and u.email_confirmed_at is not null order by u.created_at limit 1;
+  select a.user_id, lower(u.email) into cre, cre_mail from gestlok_platform.admins a join auth.users u on u.id = a.user_id where u.email_confirmed_at is not null order by u.created_at limit 1;
   perform set_config('role', 'authenticated', true);
 
   -- helper inline: login como

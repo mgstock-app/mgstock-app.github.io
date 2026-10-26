@@ -1,12 +1,18 @@
--- Inicio de la creadora: la función de resumen solo responde a kmu15lopez@gmail.com verificada.
+-- Inicio de la creadora: la función de resumen solo responde a la administradora registrada y verificada.
 -- Solo lee; el bloque termina con una excepción a propósito que devuelve el informe. No deja datos.
 do $t$
 declare
   r text := ''; v jsonb;
-  cre uuid := 'c684640a-c594-44b7-a41f-bac07eef4c3b'; cre_mail text := 'kmu15lopez@gmail.com';
-  due uuid := '85ff3a8f-ddff-417c-8ebc-f2d7b947a19c'; due_mail text := 'giselaopenheimer@hotmail.com';
-  munro uuid := '35b524bb-bd78-4197-8716-e259de7e0821'; munro_mail text := 'grupointerno.munro@gmail.com';
+  cre uuid; cre_mail text;
+  due uuid; due_mail text;
+  munro uuid; munro_mail text;
 begin
+  -- Cuentas resueltas por rol dentro de la base: el repositorio público no guarda correos ni IDs de personas.
+  select a.user_id, lower(u.email) into cre, cre_mail from gestlok_platform.admins a join auth.users u on u.id = a.user_id where u.email_confirmed_at is not null order by u.created_at limit 1;
+  select u.id, lower(u.email) into due, due_mail from public.docs d join auth.users u on lower(u.email) = lower(d.data->>'email')
+    where d.col = 'equipo' and d.tenant_id = (select id from gestlok_tenancy.tenants where code = 'gestlok-original') and d.data->>'rol' = 'dueno' and u.email_confirmed_at is not null order by u.created_at limit 1;
+  select u.id, lower(u.email) into munro, munro_mail from public.docs d join auth.users u on lower(u.email) = lower(d.data->>'email')
+    where d.col = 'equipo' and d.tenant_id = (select id from gestlok_tenancy.tenants where code = 'gestlok-original') and d.data->>'rol' in ('gerente', 'editor') and d.data->'locales' ? 'munro' and not d.data->'locales' ? 'torcuato' and u.email_confirmed_at is not null order by u.created_at limit 1;
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims', json_build_object('sub', cre, 'email', cre_mail, 'role', 'authenticated')::text, true);
   v := public.gestlok_creator_dashboard();
