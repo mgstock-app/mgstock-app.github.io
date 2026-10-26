@@ -77,7 +77,7 @@ Historial verificable en `main` (de más reciente a más antiguo):
 5. **Proveedores:** carpeta por proveedor, tabla manual de pedido, ficha y exportación/compartir en imagen vía WhatsApp.
 6. **Chat del local:** menú lateral → «Chat del local». Mensajes separados por sucursal. Sólo las cuentas con permisos de edición envían mensajes; los usuarios autorizados de lectura pueden ver el chat del local según RLS.
 7. **Control diario:** registro por fecha, ingresos, salidas, conteo físico y diferencia; no sustituye el stock sin confirmación.
-8. **Uso sin Internet limitado:** interfaz/PWA en caché y borradores locales de conteo o mensajes; se requiere conexión y confirmación explícita para enviarlos o guardarlos en el servidor. NO hay una cola avanzada capaz de sincronizar todo automáticamente sin intervención ni resolución completa de conflictos.
+8. **Uso sin Internet (PR #78, 26/10/2026):** las dos áreas (Administrar mi empresa y Administrar a los empleados) se abren y navegan sin conexión con la copia guardada en el equipo; lo que se guarda sin internet queda en una cola local y se envía solo al volver la conexión, una vez por operación (`gestlok_sync_apply`, con RLS de quien guarda). Detalle y límites en `docs/offline-ambas-areas.md`.
 9. Políticas informativas publicadas: privacidad, términos y almacenamiento.
 
 **Precaución:** las pruebas E2E citadas usan datos simulados, no representan validación completa con múltiples cuentas reales en todos los teléfonos.
@@ -105,4 +105,4 @@ No incluir pagos, suscripciones o servicios de costo sin autorización.
 9. Mantener el identificador técnico de la URL hasta planificar una migración segura de dominio, OAuth, sesiones PWA y caché.
 10. Detener el trabajo antes de agotar límites, dejando SHA de base, rama, PR, pruebas, pendientes e instrucciones de continuación.
 
-**Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://mgstock-app.github.io/`. El chat por local y borradores offline están implementados; multiempresa comercial y sincronización offline avanzada NO. Preservar datos y no tocar ReciboNet».
+**Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://mgstock-app.github.io/`. El chat por local y el modo sin conexión con envío automático (PR #78) están implementados; multiempresa comercial NO. Preservar datos y no tocar ReciboNet».

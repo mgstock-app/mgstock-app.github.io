@@ -286,12 +286,18 @@ function needWrite(){
 }
 
 /* ---------- Escritura ---------- */
+/* Modo sin conexión: con GestLokOffline activo, lo que se guarda sin internet queda en este equipo
+   y se envía solo al volver la conexión (una sola vez, con los mismos permisos). */
+const syncOffline = () => !!window.GestLokOffline?.available?.();
+const sinRed = () => S.offline && !syncOffline();
+const guardadoLocal = () => (S.offline || navigator.onLine === false) && syncOffline();
 async function w(fn){
   try { return await fn(); }
   catch(e){ if (e && e.code === 'unavailable'){ await sleep(400 + Math.random() * 600); return await fn(); } throw e; }
 }
 function fail(e){
   const c = e && e.code;
+  if (!navigator.onLine && syncOffline()){ toast('Sin internet: este cambio necesita conexión (por ejemplo, borrar). Probá de nuevo cuando vuelva internet.', true); return; }
   if (!navigator.onLine){ toast('Sin internet: este cambio no se guardó. Probá de nuevo cuando vuelva la conexión.', true); return; }
   if (c === 'invalid_argument'){ toast('No se pudo guardar: tu usuario no tiene permiso para este cambio. Pedile a la administradora que revise tu acceso en Equipo.', true); return; }
   if (c === 'quota_exceeded'){ toast('La base está llena: borrá conteos viejos o productos que no uses.', true); return; }
@@ -390,7 +396,7 @@ function renderLive(){
   const txt = {wait:'Conectando', on:'En vivo', off:'Sin conexión', err:'Reconectando', net:'Sin internet'}[st];
   const cls = 'dot' + (st === 'on' ? ' on' : (st === 'err' || st === 'off' || st === 'net') ? ' err' : '');
   $('#kdot').className = cls;
-  $('#ktxt').innerHTML = st === 'on' ? `<b>En vivo</b> · todo el equipo ve los cambios` : st === 'net' ? `<b>Sin internet</b> · lo cargado queda en este equipo` : esc(txt);
+  $('#ktxt').innerHTML = st === 'on' ? `<b>En vivo</b> · todo el equipo ve los cambios` : st === 'net' ? (syncOffline() ? `<b>Sin internet</b> · lo que guardes se envía solo al volver` : `<b>Sin internet</b> · lo cargado queda en este equipo`) : esc(txt);
   const l = $('#live'); l.querySelector('.dot').className = cls; l.querySelector('span').textContent = txt;
 }
 function renderSavebar(){
@@ -441,7 +447,8 @@ function renderMe(){
 function banners(){
   let h = '';
   if (S.legacyDraft && canW()) h += '<p class="note warn"><b>Borrador anterior encontrado en este equipo.</b> Si te pertenece, podés recuperarlo antes de cargar un conteo nuevo. <button class="btn sm" data-act="recover-draft">Recuperar borrador anterior</button></p>';
-  if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
+  if (S.offline && syncOffline()) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir usando GESTLOK: lo que guardes queda en este equipo y se envía solo cuando vuelva la conexión.</p>`;
+  else if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   if (isCreadora()) h += window.GestLokCreatorMode?.banner() || '';
   else if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
@@ -507,7 +514,7 @@ function editarProveedor(nombre){
     </form></div>`, 'dlg');
 }
 async function guardarProveedor(f){
-  if (!S.db || !S.local || !canW() || S.offline){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
+  if (!S.db || !S.local || !canW() || sinRed()){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
   const nombre = f.dataset.name, local = S.local;
   if (!nombre || (!S.allProds.some(p=>provOf(p)===nombre) && !proveedorFicha(nombre))){toast('El proveedor no existe en este local.',true);return;}
   const contacto = f.querySelector('#prov-contact').value.trim();
@@ -626,7 +633,7 @@ function usarSugeridoProveedor(id){
   proveedorGuardarBorrador(name);render();
 }
 function nuevoProveedor(){
-  if(!canW() || S.offline){toast('Necesitás permiso de edición e internet.',true);return;}
+  if(!canW() || sinRed()){toast('Necesitás permiso de edición e internet.',true);return;}
   S.panel='prov-new';
   openPanel(`<div class="pn-h"><h3>Nueva carpeta de proveedor</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <div class="pn-b"><form id="prov-create-form" class="frow">
@@ -634,7 +641,7 @@ function nuevoProveedor(){
    <button class="btn primary" type="submit">${ic('plus')}Crear carpeta</button></form></div>`,'dlg');
 }
 async function crearCarpetaProveedor(form){
-  if(!canW() || S.offline || !S.local)return;
+  if(!canW() || sinRed() || !S.local)return;
   const nombre=form.querySelector('#prov-new-name').value.trim().replace(/\s+/g,' ');
   if(!nombre || nombre.length>90){toast('Ingresá un nombre de hasta 90 caracteres.',true);return;}
   if(proveedorNombres().some(([n])=>proveedorId(n)===proveedorId(nombre))){toast('Ese proveedor ya tiene una carpeta.',true);return;}
@@ -694,11 +701,11 @@ function proveedorResumenHTML(nombre){
      ${footer}
      <div id="prov-err" class="gl-prov-err" role="status"></div>
      <div class="bar-a">
-       ${canW()? `<button class="btn primary" data-act="prov-save-plan" ${S.offline||S.provBusy?'disabled':''}>${ic('save')}Guardar</button>`:''}
+       ${canW()? `<button class="btn primary" data-act="prov-save-plan" ${sinRed()||S.provBusy?'disabled':''}>${ic('save')}Guardar</button>`:''}
        ${esTotal()? `<button class="btn" data-act="prov-share" ${!rows.length||draft.dirty||draft.stale||!draft.base?'disabled':''}>${ic('share')}Enviar PDF por WhatsApp</button>`:''}
        
      </div>
-     ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
+     ${S.offline?(syncOffline()?'<p class="note warn">Sin conexión: al guardar, queda en este equipo y se envía solo al volver internet.</p>':'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>'):''}
      ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
 }
 function mostrarResumenProveedor(){
@@ -707,7 +714,7 @@ function mostrarResumenProveedor(){
   if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
 }
 async function guardarPlanProveedor(historico=false){
-  if(!canW()||S.offline||!S.db||!S.local||!S.provOpen){
+  if(!canW()||sinRed()||!S.db||!S.local||!S.provOpen){
     toast('Necesitás internet y permiso de edición para guardar.',true);return;
   }
   if(S.provBusy)return;
@@ -733,6 +740,12 @@ async function guardarPlanProveedor(historico=false){
         p_items:payload.items,p_catalogo:payload.catalogo,p_productos:seleccionados
       });
       if(error)throw error;
+      if(data?.gl_pending){
+        d.dirty=false;
+        try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
+        toast('Sin internet: el pedido quedó guardado en este equipo y se archiva en el historial al volver la conexión.');
+        closePanel();render();return;
+      }
       stamp=Number(data?.pedidoActualizado);
       historialId=String(data?.historialId||'');
       if(!Number.isSafeInteger(stamp)||stamp<=0||!historialId)
@@ -774,7 +787,7 @@ async function guardarPlanProveedor(historico=false){
   }finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
 }
 async function guardarStockProveedor(){
-  if(!canW()||S.offline||!S.db||!S.local||!S.provOpen||S.provBusy){
+  if(!canW()||sinRed()||!S.db||!S.local||!S.provOpen||S.provBusy){
     toast('Necesitás internet y permiso de edición para guardar stock.',true);return;
   }
   if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
@@ -808,7 +821,7 @@ async function guardarStockProveedor(){
   }catch(e){fail(e);}finally{S.provBusy=false;}
 }
 function confirmarGuardarProveedor(){
-  if(!canW()||!S.provOpen||S.offline||S.provBusy){
+  if(!canW()||!S.provOpen||sinRed()||S.provBusy){
     toast('Necesitás internet y permiso de edición para guardar.',true);return;
   }
   if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades antes de guardar.',true);return;}
@@ -969,11 +982,11 @@ V.diario = () => {
           <div class="fld"><label for="diario-producto">Producto</label><select id="diario-producto">${prods.map(x=>`<option value="${esc(x.id)}" ${x.id===p.id?'selected':''}>${esc(x.nombre)} · ${esc(x.unidad||'unidad')}</option>`).join('')}</select></div>
           <p class="lead">${prev ? `Último registro: ${esc(fechaHora(prev.creado))} · ${esc(prev.autor||'equipo')}. Podés agregar una corrección sin borrar el anterior.` : 'Los campos de movimientos vacíos se interpretan como cero. El inicial y el conteo físico son obligatorios.'}</p>
           <form id="diario-form">
-            <div class="gl-daily-fields">${fields.map(([k,label])=>`<div class="fld"><label for="diario-${k}">${label}</label><input id="diario-${k}" data-diario-num="${k}" inputmode="decimal" autocomplete="off" placeholder="${k==='ajustes'?'0 (puede ser negativo)':'0'}" ${!canW() || S.offline ? 'disabled' : ''}></div>`).join('')}</div>
-            <div class="fld"><label for="diario-nota">Observación / motivo</label><textarea id="diario-nota" maxlength="250" rows="2" placeholder="Ej.: consumo de personal, rotura, diferencia de conteo" ${!canW() || S.offline ? 'disabled' : ''}></textarea></div>
+            <div class="gl-daily-fields">${fields.map(([k,label])=>`<div class="fld"><label for="diario-${k}">${label}</label><input id="diario-${k}" data-diario-num="${k}" inputmode="decimal" autocomplete="off" placeholder="${k==='ajustes'?'0 (puede ser negativo)':'0'}" ${!canW() || sinRed() ? 'disabled' : ''}></div>`).join('')}</div>
+            <div class="fld"><label for="diario-nota">Observación / motivo</label><textarea id="diario-nota" maxlength="250" rows="2" placeholder="Ej.: consumo de personal, rotura, diferencia de conteo" ${!canW() || sinRed() ? 'disabled' : ''}></textarea></div>
             <div id="diario-preview" class="gl-daily-result" role="status">Completá el stock inicial y el conteo final para calcular la diferencia.</div>
-            <div class="bar-a"><button class="btn primary" type="submit" ${!canW() || S.offline ? 'disabled' : ''}>${ic('save')}Guardar registro diario</button></div>
-            ${S.offline ? '<p class="note warn">Sin conexión. No se puede guardar este registro; volvé a abrirlo cuando haya internet.</p>' : ''}
+            <div class="bar-a"><button class="btn primary" type="submit" ${!canW() || sinRed() ? 'disabled' : ''}>${ic('save')}Guardar registro diario</button></div>
+            ${S.offline ? (syncOffline() ? '<p class="note warn">Sin conexión: al guardar, el registro queda en este equipo y se envía solo al volver internet.</p>' : '<p class="note warn">Sin conexión. No se puede guardar este registro; volvé a abrirlo cuando haya internet.</p>') : ''}
             ${!canW() ? '<p class="note">Tu cuenta tiene permiso de lectura, no de edición.</p>' : ''}
           </form>
         </section>
@@ -1008,7 +1021,7 @@ function refrescarDiarioPreview(f){
   el.classList.toggle('gl-daily-alert',!result.error && Math.abs(result.diferencia)>0.001);
 }
 async function guardarDiario(f){
-  if(!S.db || !S.local || !canW() || S.offline){toast('Necesitás internet y permiso de edición.',true);return;}
+  if(!S.db || !S.local || !canW() || sinRed()){toast('Necesitás internet y permiso de edición.',true);return;}
   const date=S.diarioDia || hoyISO();
   const prod=S.allProds.find(x=>x.id===S.diarioProd) || S.allProds.filter(x=>!x.hoja)[0];
   const result=diarioCalcularDesdeForm(f);
@@ -1097,7 +1110,7 @@ V.proveedores = () => {
     ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
     <div class="gl-prov-toolbar">
       <b>Lista de productos</b>
-      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-stock" ${S.offline?'disabled':''}>${ic('save')}Guardar stock</button><button class="btn sm" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar pedido</button>`:''}
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-stock" ${sinRed()?'disabled':''}>${ic('save')}Guardar stock</button><button class="btn sm" data-act="prov-save-plan" ${sinRed()?'disabled':''}>${ic('save')}Guardar pedido</button>`:''}
     </div>
     ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
       <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
@@ -1162,10 +1175,10 @@ V.chat = () => {
     return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong>${m.urgente?'<span class="gl-chat-urgent">Urgente</span>':''}<small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
   }).join('');
   const pending = chatPending();
-  const puedeEnviar = canW() && !S.offline;
+  const puedeEnviar = canW() && !sinRed();
   return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes duran 24 horas y se eliminan automáticamente. Podés navegar por otras secciones y volver sin perder la conversación vigente.</p>
     <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
-    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>' : ''}
+    ${S.offline ? (syncOffline() ? '<p class="note warn">Sin conexión. Podés escribir: el mensaje queda en este equipo y se envía solo al volver internet.</p>' : '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>') : ''}
     ${pending ? '<p class="note warn">No pudimos confirmar el envío anterior. Reintentá el mismo mensaje; no se duplicará.</p>' : ''}
     ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
     <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${canW() && !pending ? '' : 'disabled'}>${esc(pending ? pending.texto : chatDraftText())}</textarea>
@@ -1175,7 +1188,7 @@ V.chat = () => {
 };
 
 async function sendGestlokChat(form){
-  if (!S.db || !S.local || S.offline || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
+  if (!S.db || !S.local || sinRed() || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
   const local = S.local, author = S.uid, input = form.querySelector('#gestlok-chat-text');
   const pending = chatPending(), txt = (pending ? pending.texto : input?.value || '').trim();
   if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
@@ -1195,7 +1208,7 @@ async function sendGestlokChat(form){
     }));
     if (lsGet(pendingKey, null)?.id === payload.id) localStorage.removeItem(pendingKey);
     if (lsGet(draftKey, '') === payload.texto || lsGet(draftKey, '') === '') localStorage.removeItem(draftKey);
-    toast('Mensaje enviado');
+    toast(guardadoLocal() ? 'Mensaje guardado en este equipo: se envía solo al volver internet' : 'Mensaje enviado');
   } catch (error){
     if (error?.code === 'invalid_argument') localStorage.removeItem(pendingKey);
     fail(error);
@@ -1384,7 +1397,7 @@ V.inicio = () => {
   ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
   ${resumenHojasInicio()}
   <section class="gl-today card pad" aria-label="Acciones para hoy">
-    <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? 'Sin conexión · los conteos quedan pendientes' : 'Datos actualizados del local'}</small></div>
+    <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? (syncOffline() ? 'Sin conexión · lo que guardes se envía solo al volver' : 'Sin conexión · los conteos quedan pendientes') : 'Datos actualizados del local'}</small></div>
     <div class="gl-today-grid">
       ${cg ? `<button class="gl-today-action" data-go="${cg}">${ic('clip')}<b>${cgL}</b><small>${cnt.nc ? plural(cnt.nc,'producto pendiente','productos pendientes') : 'Revisar cantidades'}</small></button>` : ''}
       ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
@@ -1854,7 +1867,7 @@ function openSaveF(){
   setTimeout(() => $('#sv-ok')?.focus(), 40);
 }
 async function doSaveF(v = S.view){
-  if (S.offline){ queueSave(v, true); return; }
+  if (sinRed()){ queueSave(v, true); return; }
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
   const plan = withCtx(v, () => {
@@ -1868,10 +1881,10 @@ async function doSaveF(v = S.view){
     await w(() => C('conteos').add({tipo:'fabrica', fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:plan.hoja, nombreHoja:plan.nom, filas:plan.filas, cambiadas:plan.n, total:plan.filas.length, sinStock:plan.filas.filter(x => x.sin).map(x => x.nombre)}));
     withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
-    toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}`);
+    toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}${guardadoLocal() ? ' en este equipo · se envía solo al volver internet' : ''}`);
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
-    if (!navigator.onLine){ S.offline = true; queueSave(v, true); } else fail(e);
+    if (!navigator.onLine && !syncOffline()){ S.offline = true; queueSave(v, true); } else fail(e);
   }
 }
 /* Sin internet: conserva el borrador hasta que la persona confirme guardarlo con conexión. */
@@ -1887,10 +1900,13 @@ function onOnline(){
   if (!S.offline) return;
   const q = S.queued;
   S.offline = false; render();
+  /* Un borrador que quedó en espera (versiones anteriores) se guarda solo al volver internet. */
+  if (q && S.db && syncOffline()){ toast('Volvió internet: guardando el conteo pendiente…'); void (q.fab ? doSaveF(q.view) : doSave(q.view)); return; }
   if (q && S.db) toast('Volvió internet. Tu borrador sigue pendiente: revisalo y tocá Guardar conteo.');
-  else toast('Volvió la conexión');
+  else toast(syncOffline() ? 'Volvió la conexión: enviando lo guardado en este equipo' : 'Volvió la conexión');
 }
-function onOffline(){ if (S.offline) return; S.offline = true; render(); toast('Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
+function onOffline(){ if (S.offline) return; S.offline = true; render(); toast(syncOffline() ? 'Sin internet. Podés seguir usando GESTLOK: lo que guardes se envía solo cuando vuelva la conexión.' : 'Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
+window.addEventListener('gestlok-sync-complete', () => { if (S.local) render(); });
 window.addEventListener('online', onOnline);
 window.addEventListener('offline', onOffline);
 window.addEventListener('pagehide', saveDraft);
@@ -2298,7 +2314,7 @@ function openSave(){
   setTimeout(() => $('#sv-ok')?.focus(), 40);
 }
 async function doSave(v = S.view){
-  if (S.offline){ queueSave(v, false); return; }
+  if (sinRed()){ queueSave(v, false); return; }
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
   const entry = c => ({pid:c.p.id, nombre:c.p.nombre || '', cat:catOf(c.p), unidad:c.p.unidad || '', antes:c.antes, despues:c.despues, dif:round(c.despues - (c.antes ?? 0)), nota:c.nota || ''});
@@ -2324,10 +2340,10 @@ async function doSave(v = S.view){
     }
     withCtx(v, clearDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
-    toast(ed ? 'Corrección guardada' : `Conteo guardado${plan.pend.length ? ` · ${plural(plan.pend.length, 'cambio', 'cambios')}` : ''}`);
+    toast((ed ? 'Corrección guardada' : `Conteo guardado${plan.pend.length ? ` · ${plural(plan.pend.length, 'cambio', 'cambios')}` : ''}`) + (guardadoLocal() ? ' en este equipo · se envía solo al volver internet' : ''));
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
-    if (!navigator.onLine){ S.offline = true; queueSave(v, false); } else fail(e);
+    if (!navigator.onLine && !syncOffline()){ S.offline = true; queueSave(v, false); } else fail(e);
   }
 }
 function openConfirm(title, text, okLabel, act, danger){
@@ -3038,7 +3054,7 @@ V.ingreso = () => {
     };
     const pendHTML = P.pend.length ? `<div class="ing-sec" id="ing-pend"><h5>Necesitan tu decisión (${P.pend.length})</h5>${P.pend.map(r => `<div class="ing-d"><div><b>«${esc(String(r.texto || r.nombre).slice(0, 80))}»</b><small>${esc(r.motivo)} · cantidad ${r.cantidad == null ? '—' : fmt(r.cantidad)}</small></div><select data-ingdec="${r.i}" id="ing-dec-${r.i}" aria-label="Destino de ${esc(r.nombre)}"><option value="" disabled selected>Elegí el destino…</option>${ingOpts(r.cands, null, false)}<option value="-">No importar</option></select></div>`).join('')}</div>` : '';
     const ignHTML = P.ign.length ? `<details class="ing-sec" id="ing-ign" ${P.ign.length <= 8 ? 'open' : ''}><summary><h5>Ignorados (${P.ign.length})</h5></summary><p class="lead" style="margin:4px 0 8px">No se importan. Si alguno es un producto que ya existe, elegilo; nunca se crean productos nuevos.</p>${P.ign.map(r => `<div class="ing-d"><div><b>«${esc(String(r.texto || r.nombre).slice(0, 80))}»</b><small>${esc(r.cantidad == null ? 'Sin cantidad' : r.motivo || 'Sin destino')}${r.cantidad != null ? ` · cantidad ${fmt(r.cantidad)}` : ''}</small></div><select data-ingdec="${r.i}" id="ing-dec-${r.i}" aria-label="Asignar ${esc(r.nombre)}">${ingTodos(ingDestino(r))}</select></div>`).join('')}</details>` : '';
-    const n = P.items.length, bloqueo = P.pend.length ? `Elegí el destino de ${plural(P.pend.length, 'renglón', 'renglones')} (o «No importar»).` : !n ? 'Tildá al menos un producto para importar.' : S.offline ? 'Sin internet: conectate para confirmar.' : '';
+    const n = P.items.length, bloqueo = P.pend.length ? `Elegí el destino de ${plural(P.pend.length, 'renglón', 'renglones')} (o «No importar»).` : !n ? 'Tildá al menos un producto para importar.' : sinRed() ? 'Sin internet: conectate para confirmar.' : '';
     const msg = I.msg ? `<div class="note ${I.msg.t === 'ok' ? '' : 'warn'} ing-msg" id="ing-msg"><b>${esc(I.msg.h)}</b> ${I.msg.b}${I.msg.t === 'net' ? `<div class="bar-a" style="margin-top:8px"><button class="btn sm primary" data-act="ing-confirmar" id="ing-retry">Reintentar</button></div>` : ''}</div>` : '';
     paso4 = `<section class="card pad ing-c" id="ing-vista"><div class="ch"><h4>4. Revisar y confirmar</h4><span class="num">${esc(nomLoc)} · ${ING_OP[I.op]}</span></div>
       <p class="lead">${I.op === 'ingreso' ? 'Se <b>suma</b> la cantidad al stock actual.' : 'La cantidad <b>reemplaza</b> el valor actual.'} Podés corregir cantidades y destinos. Solo se guardan los tildados.</p>
@@ -3056,7 +3072,7 @@ async function ingConfirmar(forzar){
   const I = S.ing; if (!esTotal() || !I || I.busy) return;
   if (creadoraSoloLectura()){ toast('Modo consulta: habilitá la edición para importar el remito.', true); return; }
   const P = ingPlan(); if (!P.items.length || P.pend.length) return;
-  if (!navigator.onLine){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
+  if (!navigator.onLine && !syncOffline()){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
   if (!I.clave) I.clave = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
   I.busy = true; I.msg = null; render();
   let r = null;
@@ -3065,6 +3081,7 @@ async function ingConfirmar(forzar){
   } catch(e){
     I.busy = false;
     const c = e && e.code;
+    if (c === 'pending'){ I.msg = {t:'ok', h:'Sin internet: el ingreso quedó guardado en este equipo.', b:'Se envía solo cuando vuelva la conexión. Si algún producto cambió mientras tanto, lo vas a ver en «Cambios pendientes» para revisarlo.'}; render(); return; }
     I.msg = c === 'unavailable' ? {t:'net', h:'No llegó la respuesta.', b:'Puede que se haya guardado o no. Tocá <b>Reintentar</b>: si ya se guardó, no se suma dos veces.'}
       : c === 'sin_permiso' ? {t:'err', h:'Sin permiso.', b:'Solo la dueña o la administradora pueden importar mercadería.'}
       : {t:'err', h:'No se guardó nada.', b:'Revisá los datos y probá de nuevo. ' + esc(c === 'cantidad' ? 'Hay una cantidad inválida.' : c === 'sucursal' ? 'La sucursal no existe.' : '')};

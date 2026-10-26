@@ -15,6 +15,9 @@ function SheetsIcon() {
   </svg>;
 }
 
+// Plantilla predeterminada de GESTLOK (la misma estructura semanal que usa la app: turnos, OFF, feriados y totales).
+const TEMPLATE_URL = `${process.env.NEXT_PUBLIC_GESTLOK_HOME || "/"}plantillas/GESTLOK-plantilla-horarios.xlsx`;
+
 export function ScheduleSheetCard({ url, branch = "Torcuato", localId, canConfigure = false, onUpdated }: { url: string | null; branch?: string; localId?: string; canConfigure?: boolean; onUpdated?: () => void }) {
   const pending = url === null;
   const branchLabel = branch === "Torcuato" ? "Don Torcuato" : branch;
@@ -47,9 +50,12 @@ export function ScheduleSheetCard({ url, branch = "Torcuato", localId, canConfig
     setSaveError("");
     setSaveSuccess("");
     try {
-      await rpc<void>("rm_app_set_branch_schedule_link", {p_local: localId, p_url: next || null});
+      const result = await rpc<unknown>("rm_app_set_branch_schedule_link", {p_local: localId, p_url: next || null});
+      const queued = !!result && typeof result === "object" && "gl_pending" in result;
       setEditing(false);
-      setSaveSuccess(next ? "Enlace guardado correctamente." : "Enlace quitado. Podés agregar otro cuando quieras.");
+      setSaveSuccess(queued
+        ? "Sin conexión: el cambio quedó guardado en este equipo y se envía solo al volver internet."
+        : next ? "Enlace guardado correctamente." : "Enlace quitado. Podés agregar otro cuando quieras.");
       onUpdated?.();
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : "No se pudo guardar el enlace.");
@@ -88,6 +94,17 @@ export function ScheduleSheetCard({ url, branch = "Torcuato", localId, canConfig
       <div className={styles.configurationHead}>
         <div><strong>Enlace de esta sucursal</strong><p>Solo los dueños de esta empresa pueden configurar su Google Sheets.</p></div>
         {!editing && <button className={styles.configureButton} type="button" onClick={() => { setDraftUrl(url || ""); setSaveError(""); setSaveSuccess(""); setEditing(true); }}>{pending ? "Configurar enlace" : "Cambiar enlace"}</button>}
+      </div>
+      <div className={styles.templates} role="group" aria-label="Elegí la planilla de horarios">
+        <div className={styles.templateOption}>
+          <strong>Plantilla GESTLOK (predeterminada)</strong>
+          <p>Planilla semanal lista para usar: entradas y salidas de mañana y noche, turnos, OFF, feriados, ausentes y totales automáticos. Descargala, subila a tu Google Drive, abrila con Google Sheets y pegá acá su enlace.</p>
+          <a className={styles.templateButton} href={TEMPLATE_URL} download="GESTLOK-plantilla-horarios.xlsx">Descargar plantilla GESTLOK (.xlsx)</a>
+        </div>
+        <div className={styles.templateOption}>
+          <strong>Tu propia planilla</strong>
+          <p>¿Ya usás tu propio Excel o Google Sheets? Subilo a Google Drive y pegá su enlace con «{pending ? "Configurar enlace" : "Cambiar enlace"}». Cada local puede usar la plantilla GESTLOK o la suya.</p>
+        </div>
       </div>
       {editing && <form onSubmit={event => void saveLink(event)} className={styles.configurationForm}>
         <label htmlFor={titleId + "-link"}>URL de Google Sheets</label>

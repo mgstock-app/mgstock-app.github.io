@@ -21,18 +21,23 @@ function currentToken(): string | null {
     if (!raw) return null;
     const session = JSON.parse(raw) as { access_token?: string; expires_at?: number };
     if (!session.access_token || !session.expires_at) return null;
-    return session.expires_at * 1000 > Date.now() + 30000 ? session.access_token : null;
+    // Sin conexión alcanza con identificar la cuenta: los datos salen de la copia guardada en este equipo.
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+    return session.expires_at * 1000 > Date.now() + 30000 || offline ? session.access_token : null;
   } catch {
     return null;
   }
 }
 const text = (v: unknown, max = 80) => (typeof v === "string" ? v.slice(0, max) : "");
 
-export async function loadGestlokCompany(fetcher: typeof fetch = fetch): Promise<GestlokCompany | null> {
+type OfflineTransport = { transport: (base: string, apikey: string) => typeof fetch };
+export async function loadGestlokCompany(fetcher?: typeof fetch): Promise<GestlokCompany | null> {
   const token = currentToken();
   if (!token || !url || !key) return null;
+  const offline = typeof window !== "undefined" ? (window as unknown as { GestLokOffline?: OfflineTransport }).GestLokOffline : undefined;
+  const call: typeof fetch = fetcher ?? (offline ? offline.transport(url, key) : fetch);
   try {
-    const response = await fetcher(`${url}/rest/v1/rpc/gestlok_owner_area_context`, {
+    const response = await call(`${url}/rest/v1/rpc/gestlok_owner_area_context`, {
       method: "POST",
       headers: { apikey: key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: "{}",

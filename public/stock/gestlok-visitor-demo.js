@@ -157,16 +157,19 @@ const rowSnaps=(col,options={})=>{
  if(options.limit)rows=rows.slice(0,options.limit);
  return {docs:rows,size:rows.length,empty:rows.length===0,docChanges:()=>[],metadata:{fromCache:true,hasPendingWrites:false}};
 };
+/* Modo sin conexión simulado: sin internet, lo guardado en la demo se marca como pendiente
+   y se «envía» solo al volver la conexión (no existe servidor: todo sigue en esta pestaña). */
+const offlineMark=(col,what)=>{try{if(typeof navigator!=='undefined'&&navigator.onLine===false)window.GestLokOffline?.demoRecord?.(what+' · '+String(col).split('/').pop());}catch{}};
 function documentRef(col,id){
  return {id,path:col+'/'+id,
   async get(){return col in slot().docs && Object.hasOwn(collection(col),id)
    ? itemSnap(id,collection(col)[id]):{id,exists:false,data:()=>undefined};},
-  async set(value){collection(col)[id]=clone(value);save();notify(col);},
+  async set(value){collection(col)[id]=clone(value);save();notify(col);offlineMark(col,'Guardado');},
   async update(patch){
    if(!Object.hasOwn(collection(col),id))throw Error('Documento inexistente en demo');
-   collection(col)[id]={...collection(col)[id],...clone(patch)};save();notify(col);
+   collection(col)[id]={...collection(col)[id],...clone(patch)};save();notify(col);offlineMark(col,'Cambio');
   },
-  async delete(){delete collection(col)[id];save();notify(col);}
+  async delete(){delete collection(col)[id];save();notify(col);offlineMark(col,'Borrado');}
  };
 }
 function query(col,options={}){
@@ -270,7 +273,9 @@ const sb=Object.freeze({
    throw Error('La demo no puede consultar tablas externas');return builder(table);},
  async rpc(name,args){
   const a=asRows();
-  if(name==='gestlok_owner_area_context')return {data:{role:selectedRole,tenant_id:tenant,company_name:SHOPS[selectedShop].name,local_ids:[selectedShop],modules:{comercial:{authorized:true,operational:true},recibos_personal:{authorized:false,operational:false}}},error:null};
+  // Demo: también «Administrar a los empleados» (Horarios con un Excel ficticio, ver gestlok-demo-horarios.js).
+  if(name==='gestlok_owner_area_context')return {data:{role:selectedRole,tenant_id:tenant,company_name:SHOPS[selectedShop].name,local_ids:[selectedShop],modules:{comercial:{authorized:true,operational:true},recibos_personal:{authorized:true,operational:true}}},error:null};
+  if(name==='gestlok_gerente_area_context')return selectedRole==='gerente'?{data:{role:'gerente',tenant_id:tenant,local_ids:[selectedShop]},error:null}:{data:null,error:{message:'Solo gerentes'}};
   if(name==='gestlok_catalogo_pagina')return {data:catalogSearch(args),error:null};
   if(name==='gestlok_catalogo_resumen'){
    const live=a.filter(p=>p.activo);
@@ -309,7 +314,7 @@ const sb=Object.freeze({
     fecha:version,productos:clone(args.p_productos),productosTotal:args.p_productos.length,
     local:selectedShop,autor:email
    };
-   save();notify(col);notify(hist);
+   save();notify(col);notify(hist);offlineMark(hist,'Pedido');
    return {data:{pedidoActualizado:version,historialId},error:null};
   }
   throw Error('El módulo nuevo requiere simulación de datos ficticios');
@@ -409,6 +414,7 @@ window.claude=Object.freeze({async use(name){
   slot().docs.equipo={['visitante-demo']:userEntry};
   ready=true;
   save();
+  try{window.GestLokOffline?.demoAttach?.();}catch{}
   statsClient=client;
   addBanner();
   statsChoice();

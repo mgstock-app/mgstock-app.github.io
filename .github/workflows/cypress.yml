@@ -35,6 +35,8 @@ jobs:
           npm --prefix modules/empleados run build
           rm -rf out/empleados && cp -r modules/empleados/out out/empleados
           test -f out/empleados/index.html
+      - name: Ambas áreas disponibles sin conexión (lista de Empleados en el service worker)
+        run: node scripts/sw-precache.mjs out
       - name: Instalar Cypress aislado
         run: npm --prefix qa install --no-package-lock
       - name: Iniciar servidor de pruebas
