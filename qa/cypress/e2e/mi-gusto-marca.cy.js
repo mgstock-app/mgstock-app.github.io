@@ -32,7 +32,7 @@ describe('Identidad Mi Gusto para el equipo autorizado',()=>{
     cy.get('#hub .gl-oh-brand-company').should('contain.text','Empanadas de Verdad');
     cy.get('#hub .gl-owner-welcome-logo img').should('have.attr','alt','Mi Gusto');
     cy.get('#hub .gl-owner-business .gl-owner-arrow').first().click();
-    cy.get('#pn [data-act="local"][data-id="torcuato"]').click();
+    cy.get('#pn [data-act="local"][data-id="torcuato"]').first().click();
     verificarMarca();
   });
   it('Gerente de Munro ve la marca sin logoId individual',()=>{

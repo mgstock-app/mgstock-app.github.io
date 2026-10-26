@@ -37,3 +37,14 @@ Antes de habilitar a un comercio ajeno:
 
 ## Datos en vivo
 No se ejecutaron migraciones SQL ni escrituras en tablas de negocio durante esta implementación. Solo se consultaron las políticas RLS para revisar la separación.
+
+## Auditoría multiempresa 26/10/2026 (Claude)
+Hay **dos empresas reales** en la base (Mi Gusto con Munro/Torcuato y una segunda con un local y su dueño). Revisión de funciones `SECURITY DEFINER` que escriben en `public.docs` sin filtrar empresa:
+
+| Función | Riesgo | Estado |
+|---|---|---|
+| `importar_mercaderia` | El dueño de otra empresa podía leer cantidades («conflicto») y sumar ingresos en la hoja «Local + Ingreso» de Munro o Torcuato. Comprobado en transacción revertida, sin escribir. | **Corregido** (migración `20261026210000_gestlok_importar_mercaderia_tenant_guard`, aplicada). Prueba `supabase/tests/importar-mercaderia-tenant-guard.sql`: 0 fallas, huella de Munro/Torcuato idéntica. |
+| `pedir_acceso` | No asigna empresa; el disparador `stamp_docs_tenant` rechaza la solicitud de una cuenta nueva (el error se ignora en la interfaz). No expone datos. El alta actual usa `gestlok_request_registration`. | Pendiente de decisión (ver PR #27, `tenant_approval_compat`). |
+| `gestlok_review_registration` | Solo creadora (`gestlok_platform.admins`). | Sin cambios. |
+
+Desfase repositorio ↔ base: `gestlok_billing_foundation_private` (PR #26), `gestlok_tenant_fence` y `gestlok_tenant_safe_lookups` (PR #27) están aplicadas en Supabase pero sus archivos no están en `main`. A la inversa, `20261026032639_empleados_empresas_gestlok` y `20261026035300_creadora_edicion_permanente` están en `main` y sus objetos existen en la base, pero no figuran en el historial de migraciones.
