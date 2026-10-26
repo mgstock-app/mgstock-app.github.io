@@ -887,8 +887,15 @@ html.auth-on body{overflow:hidden}
 .gestlok-chat-form {display:grid;gap:10px}
 .gestlok-chat-form textarea {width:100%;resize:vertical;min-height:84px;border:1px solid var(--line-2);border-radius:10px;padding:12px;background:white}
 .gestlok-chat-form button {justify-self:end}
-.gestlok-tenant-mark {display:inline-flex;gap:8px;align-items:center;margin:8px 0 0;padding:5px 9px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:11px}
-.gestlok-tenant-mark img {width:42px;max-height:28px;object-fit:contain}
+/* Marca privada del negocio, visible para sus integrantes autorizados en el local. */
+.gestlok-company-identity{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 8px;border:1px solid var(--mast-line);border-radius:13px;background:#07131e;color:#fff;text-align:center}
+.gestlok-company-identity img{display:block;width:min(180px,100%);height:64px;object-fit:contain}
+.gestlok-company-identity small{display:block;font-size:12px;line-height:1.3;font-weight:700;letter-spacing:.015em;color:#fff}
+.hub-top .gl-company-hub{min-width:0;gap:16px}
+.hub-top .gl-company-hub-logo{display:block;width:160px;height:74px;max-width:42vw;object-fit:contain}
+.hub-top .gl-company-hub .hb-t b{font-size:17px;color:#fff}
+.hub-top .gl-company-hub .hb-t span{color:#c9dce5}
+@media(max-width:560px){.hub-top .gl-company-hub{gap:8px}.hub-top .gl-company-hub-logo{width:132px;height:62px}.hub-top .gl-company-hub .hb-t b{font-size:13px}.hub-top .gl-company-hub .hb-t span{font-size:11px}}
 @keyframes gestlok-enter {from {opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media (max-width:650px) {
   .au-card {padding:17px}
