@@ -34,6 +34,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-owner-areas.js?rev=inicio-imagen-20261025");
       await load("/stock/gestlok-creator-mode.js?rev=inicio-imagen-20261025");
+      await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
       await load("/stock/gestlok-tienda.js");
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");

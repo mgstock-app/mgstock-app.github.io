@@ -186,8 +186,8 @@ const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name
 
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
-function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
-function misLocales(){ const e = miEquipo(); const l = e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
+function miRol(){ const e = miEquipo(); const real = ROLN(e ? e.rol : S.me && S.me.rol); const pv = real === 'creadora' ? window.GestLokCreatorSupport?.previewRol?.() : ''; return pv || real; }
+function misLocales(){ const e = miEquipo(); const pv = e && e.rol === 'creadora' && window.GestLokCreatorSupport?.previewRol?.(); const l = pv ? S.me && S.me.locales : e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
@@ -3833,6 +3833,8 @@ window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creator
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub,openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
+window.GestLokCreatorSupport?.attach({S,isCreadora,toast});
+window.GestLokCreatorSupport?.refresh();
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
 setInterval(() => {
