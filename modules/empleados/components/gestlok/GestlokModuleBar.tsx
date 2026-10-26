@@ -13,7 +13,10 @@ export function GestlokModuleBar() {
       </a>
       <div className="gestlok-module-company">
         {company?.logo_id === "mi-gusto"
-          ? <img src={`${home}img/mi-gusto-blanco.png`} alt={company.company_name} width={562} height={278} />
+          ? <div className="gestlok-module-company-brand">
+              <img src={`${home}img/mi-gusto-blanco.png`} alt={company.company_name} width={562} height={278} />
+              <small>Empanadas de Verdad</small>
+            </div>
           : company ? <b>{company.company_name}</b> : null}
         <a className="gestlok-module-back" href={home}>← Volver a GESTLOK</a>
       </div>
