@@ -14,7 +14,8 @@ test('Inicio cierra el acceso mientras verifica; solo muestra áreas operativas 
  const a=load();assert.equal(a.allowed('comercial'),false);await a.refresh();
  const html=a.view([{id:'local-a'},{id:'local-ajeno'}],l=>`<b>${l.id}</b>`);
  assert.match(html,/Administrar <span>mi empresa<\/span>/);
- assert.doesNotMatch(html,/Administrar <span>a los empleados|data-owner-area-staff|Próximamente|local-ajeno/);
+ assert.match(html,/gl-owner-employees-locked/);assert.match(html,/aria-disabled="true"/);
+ assert.doesNotMatch(html,/data-owner-area-staff|data-owner-go="staff"|Próximamente|local-ajeno/);
  assert.match(html,/Bienvenido\/a a/);assert.match(html,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
 });
 test('Fallos de backend y contexto de otra empresa no habilitan carpetas',async()=>{
@@ -25,7 +26,8 @@ test('Fallos de backend y contexto de otra empresa no habilitan carpetas',async(
 test('Solicitud o módulo no operativo no habilita empleados; marca se escapa',async()=>{
  const d=context();d.company_name='<img onerror="x">';d.modules.recibos_personal={authorized:true,operational:false};
  const a=load(d);await a.refresh();assert.equal(a.allowed('recibos_personal'),false);
- const html=a.view([],()=> '');assert.doesNotMatch(html,/<img onerror|a los empleados|data-owner-area-staff/);assert.match(html,/&lt;img/);
+ const html=a.view([],()=> '');assert.match(html,/gl-owner-employees-locked/);
+ assert.doesNotMatch(html,/<img onerror|data-owner-area-staff|data-owner-go="staff"/);assert.match(html,/&lt;img/);
 });
 function creator(companies,audit=[]){
  const calls=[];
@@ -64,7 +66,7 @@ test('Un inicio ya verificado conserva la navegación autorizada al volver sin c
  await a.refresh();assert.equal(a.allowed('comercial'),true);
  assert.match(a.view([{id:'local-a'}],l=>l.id),/Administrar <span>mi empresa<\/span>/);
 });
-test('Empleados solo aparece cuando el backend lo autoriza y está operativo; logo Mi Gusto solo por asignación',async()=>{
+test('Empleados solo se habilita cuando el backend lo autoriza y está operativo; logo Mi Gusto solo por asignación',async()=>{
  const d=context();d.modules.recibos_personal={authorized:true,operational:true};d.logo_id='mi-gusto';
  const a=load(d);await a.refresh();assert.equal(a.allowed('recibos_personal'),true);
  const html=a.view([{id:'local-a'}],l=>`<b>${l.id}</b>`);
