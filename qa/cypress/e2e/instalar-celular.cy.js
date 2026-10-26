@@ -1,4 +1,4 @@
-/* global Cypress, describe, it, cy, expect */
+/* global Cypress, describe, it, cy */
 // «Instalar en el celular»: en Android abre la ventana del sistema con un toque; en iPhone muestra los
 // pasos de Safari (Apple no deja instalar desde la página). Funciona igual en la demo.
 describe('GESTLOK · Instalar en el celular', () => {
