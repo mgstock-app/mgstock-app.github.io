@@ -2177,6 +2177,30 @@ function renderHub(){
       <td>${esc(localesTxt(u))}</td>
       <td><span class="gl-admin-good">Autorizado</span></td>
     </tr>`).join('');
+    const prepareCard = `<section class="gl-admin-card gl-demo-launch" aria-label="Preparar una empresa">
+          <header><h2>Preparar empresa para un cliente</h2><small>Exclusivo de la creadora</small></header>
+          <p>Elegí física, online o mixta y dejá creados el local, las carpetas y el catálogo a partir de un CSV. Todo queda separado de las empresas existentes.</p>
+          <button class="btn primary" data-act="admin-preparar-empresa">Preparar empresa nueva →</button>
+        </section>`;
+    const demoCard = `<section class="gl-admin-card gl-demo-launch" aria-label="Demo de gestión online">
+          <header><h2>Explorar gestión de tienda online</h2><small>Ejemplo independiente · Sin crear empresas</small></header>
+          <p>Probá un panel administrativo ficticio con productos, stock mínimo, pedidos, proveedores y reportes. No publica una tienda ni modifica la empresa de Gisela.</p>
+          <button class="btn primary" data-act="admin-demo-online">Ver demo de gestión online →</button>
+        </section>`;
+    const localesCard = `<section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>`;
+    const teamCard = `<section class="gl-admin-card gl-admin-team"><header><h2>Usuarios aprobados</h2><button class="btn" data-act="share">Ver equipo completo</button></header>
+          <div class="gl-admin-tablewrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Locales</th><th>Acceso</th></tr></thead><tbody>${members}</tbody></table></div>
+        </section>`;
+    const noticeCard = `<section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>`;
+    // Inicio de la creadora (solo si el servidor autoriza la función de resumen); si no, se ve el panel anterior.
+    const chMode = window.GestLokCreatorHome?.mode();
+    if (chMode === 'ready' || chMode === 'loading') {
+      const chHTML = window.GestLokCreatorHome.view({pending: S.sol.length, parts: {
+        companies: window.GestLokOwnerAreas?.adminView() || '', prepare: prepareCard, locales: localesCard, users: teamCard + noticeCard,
+        tools: (window.GestLokDemoMetrics?.view() || '') + demoCard + (window.GestLokSupport?.adminCard() || '') + (window.GestLokCommerce?.card() || '')}});
+      if (hub._h !== chHTML) { hub.innerHTML = chHTML; hub._h = chHTML; }
+      return;
+    }
     const adminHTML = `<div class="gl-admin">
       <aside class="gl-admin-sidebar" aria-label="Administración GestLok">
         <div class="gl-admin-logo"><img src="icons/gestlok-wordmark.svg" alt="GestLok" width="170" height="48"><small>Administración privada</small></div>
@@ -2197,31 +2221,21 @@ function renderHub(){
           <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
         </section>
         ${window.GestLokDemoMetrics?.view() || ''}
-        <section class="gl-admin-card gl-demo-launch" aria-label="Preparar una empresa">
-          <header><h2>Preparar empresa para un cliente</h2><small>Exclusivo de la creadora</small></header>
-          <p>Elegí física, online o mixta y dejá creados el local, las carpetas y el catálogo a partir de un CSV. Todo queda separado de las empresas existentes.</p>
-          <button class="btn primary" data-act="admin-preparar-empresa">Preparar empresa nueva →</button>
-        </section>
-        <section class="gl-admin-card gl-demo-launch" aria-label="Demo de gestión online">
-          <header><h2>Explorar gestión de tienda online</h2><small>Ejemplo independiente · Sin crear empresas</small></header>
-          <p>Probá un panel administrativo ficticio con productos, stock mínimo, pedidos, proveedores y reportes. No publica una tienda ni modifica la empresa de Gisela.</p>
-          <button class="btn primary" data-act="admin-demo-online">Ver demo de gestión online →</button>
-        </section>
+        ${prepareCard}
+        ${demoCard}
         ${window.GestLokSupport?.adminCard() || ''}
         ${window.GestLokCommerce?.card() || ''}
-        <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
+        ${noticeCard}
         ${window.GestLokOwnerAreas?.adminView()||''}
         <div class="gl-admin-panels">
-          <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
+          ${localesCard}
           <section class="gl-admin-card"><header><h2>Acceso y privacidad</h2><small>Protección de información</small></header>
             <p>Los registros de Munro y Torcuato se mantienen separados. El ingreso requiere una cuenta aprobada.</p>
             <p>Los datos de cada comercio se mostrarán únicamente a usuarios de ese comercio, tras finalizar la separación multiempresa.</p>
             <button class="btn" data-act="share">Administrar equipo</button>
           </section>
         </div>
-        <section class="gl-admin-card gl-admin-team"><header><h2>Usuarios aprobados</h2><button class="btn" data-act="share">Ver equipo completo</button></header>
-          <div class="gl-admin-tablewrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Locales</th><th>Acceso</th></tr></thead><tbody>${members}</tbody></table></div>
-        </section>
+        ${teamCard}
         <footer class="gl-admin-bottom">GestLok · Panel privado · Sin servicios de pago</footer>
       </main>
     </div>`;
@@ -3834,7 +3848,7 @@ window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creator
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderHub,openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
-window.GestLokCreatorSupport?.attach({S,isCreadora,toast});
+window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub});
 window.GestLokCreatorSupport?.refresh();
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
