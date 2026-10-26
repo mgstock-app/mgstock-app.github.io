@@ -132,3 +132,15 @@ test('Un visitante o gerente no obtiene cabecera ni navegación de dueño',async
  const t=loadUI(context(),{ctx:{role:()=> 'gerente'}});await t.api.refresh();
  assert.equal(t.api.header(),'');t.nav('reports');assert.equal(t.panels.length,0);
 });
+
+test('La creadora conserva su rol y abre ambas áreas dentro del local',async()=>{
+ const listeners={};let opened=0;
+ const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'t-creator',name:'Empresa propia',locals:[{id:'munro'},{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
+ vm.runInNewContext(source,{window,document:{addEventListener(n,f){listeners[n]=f;}}});
+ const a=window.GestLokOwnerAreas;
+ a.attach({role:()=> 'creadora',S:{local:'munro',loaded:{e:true},me:{tenant_id:'t-creator'},equipo:[]},render(){},openBusiness(){opened++;}});
+ await a.refresh();const html=a.view([{id:'munro'},{id:'torcuato'}],()=> '');
+ assert.match(html,/data-owner-nav="business"/);assert.match(html,/data-owner-area-staff/);
+ listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-nav]'?{dataset:{ownerNav:'business'}}:null}});
+ assert.equal(opened,1,'Abre las herramientas del local, sin cambiar al rol Dueño');
+});

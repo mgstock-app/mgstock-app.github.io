@@ -45,11 +45,11 @@
   }
   async function refresh(){
     refreshGerente();
-    if(!api||api.role()!=='dueno'||!api.S.loaded.e||busy)return;
+    if(!api||!['dueno','creadora'].includes(api.role())||!api.S.loaded.e||busy)return;
     if(api.S.offline&&state.status==='ready')return;
     busy=true;
     try{
-      const {data,error}=window.GestLokCreatorSupport?.previewRol?.()==='dueno'?await previewOwner():await window.GestLokSupabase.rpc('gestlok_owner_area_context');
+      const {data,error}=(api.role()==='creadora'||window.GestLokCreatorSupport?.previewRol?.()==='dueno')?await previewOwner():await window.GestLokSupabase.rpc('gestlok_owner_area_context');
       if(error||!data||data.role!=='dueno'||data.tenant_id!==api.S.me?.tenant_id)throw Error('Contexto no autorizado');
       const next={status:'ready',data};
       if(JSON.stringify(next)!==JSON.stringify(state)){state=next;api.render();}
@@ -142,7 +142,7 @@
     const w=raw.split(/[\s._-]+/).filter(Boolean)[0]||'';
     return w?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():'';
   }
-  const roleName=()=>api?.rolLabel?api.rolLabel('dueno'):'Dueño';
+  const roleName=()=>api?.rolLabel?api.rolLabel(api.role()==='creadora'?'creadora':'dueno'):'Dueño';
   const supportLink=()=>{try{return window.GestLokSupport?.link?.()||'';}catch{return '';}};
   function header(){
     if(api?.role?.()!=='dueno')return '';
@@ -246,6 +246,7 @@
   function goBusiness(){
     const ls=visibleLocals();
     if(!allowed('comercial')||!ls.length)return;
+    if(api.role()==='creadora'&&api.S.local&&api.openBusiness){api.openBusiness();return;}
     if(ls.length===1&&api?.openLocal){api.openLocal(ls[0].id);return;}
     paint('owner-picker');
   }
@@ -273,14 +274,14 @@
     const mod=e.target.closest('[data-owner-module]');
     if(mod){e.preventDefault();setModule(mod.dataset.ownerModule,mod.dataset.enable==='true');return;}
     const n=e.target.closest('[data-owner-nav]');
-    if(n&&api?.role?.()==='dueno'){
+    if(n&&['dueno','creadora'].includes(api?.role?.())){
       e.preventDefault();
       if(n.dataset.ownerNav==='user'){menuOpen=!menuOpen;api.render();return;}
       nav(n.dataset.ownerNav);return;
     }
     // La tarjeta completa también abre su área (la flecha es el control accesible).
     const go=e.target.closest('[data-owner-go]');
-    if(go&&!e.target.closest('a,button,input,select,summary')&&api?.role?.()==='dueno'){
+    if(go&&!e.target.closest('a,button,input,select,summary')&&['dueno','creadora'].includes(api?.role?.())){
       if(go.dataset.ownerGo==='business')goBusiness();else if(allowed('recibos_personal'))employees.open();
       return;
     }

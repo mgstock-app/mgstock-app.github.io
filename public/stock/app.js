@@ -1355,7 +1355,8 @@ function inicioOperativo(){
 }
 
 V.inicio = () => {
-  if (['dueno','gerente'].includes(miRol())) return inicioOperativo();
+  if (miRol()==='creadora' && !S.creatorBusiness) return banners()+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.view(localesMios(),lcard) || '<p role="status">Comprobando tus áreas…</p>')+'</div>';
+  if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();
   const ps = sorted(), n = ps.length;
   const cnt = {ok:0, bajo:0, sin:0, nc:0}; ps.forEach(p => cnt[estado(p)]++);
   const ped = pedidoItems().length, last = S.conteos[0] || null, flagged = ps.filter(p => estado(p) === 'sin');
@@ -3363,6 +3364,7 @@ function go(v, silent){
   const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
+  if(v === 'inicio') S.creatorBusiness=false;
   S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
   render(); if (!silent) window.scrollTo({top:0});
 }
@@ -3775,6 +3777,7 @@ function cerrarLocal(){
   window.GestLokTienda?.reset();
 }
 function abrirLocal(id){
+  S.creatorBusiness=false;
   if (!localesMios().some(l => l.id === id)) return;
   if (S.panel) closePanel();
   if (S.local !== id){
@@ -3787,6 +3790,7 @@ function abrirLocal(id){
     restoreDraft(); subscribeLocal();
   }
   S.ro = !puedeEditarLocal(id);
+  window.GestLokOwnerAreas?.refresh();
   $('#hub').hidden = true; $('#app').hidden = false;
   render(); window.scrollTo({top:0});
 }
@@ -3849,9 +3853,7 @@ window.GestLokDemo?.attach({isCreadora,render});
 window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
-// Dentro de un local el Inicio se dibuja con render(); sin local, con renderHub(). Sin esto la tarjeta del gerente no aparecía.
-function renderOwnerAreas(){ if (!S.local) renderHub(); else if (S.view === 'inicio') render(); }
-window.GestLokOwnerAreas?.attach({S,role:miRol,render:renderOwnerAreas,openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
+window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub});
 window.GestLokCreatorSupport?.refresh();

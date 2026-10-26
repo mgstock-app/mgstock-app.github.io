@@ -11,8 +11,7 @@ test('Avisos queda habilitado para creadora, dueño y gerente, y no para otros r
   assert.doesNotMatch(app, /\(v === 'avisos' && esTotal\(\)\)/);
 });
 test('La tarjeta de áreas redibuja el Inicio del local y no solo la lista de locales', () => {
-  assert.match(app, /function renderOwnerAreas\(\)\{ if \(!S\.local\) renderHub\(\); else if \(S\.view === 'inicio'\) render\(\); \}/);
-  assert.match(app, /GestLokOwnerAreas\?\.attach\(\{S,role:miRol,render:renderOwnerAreas,/);
+  assert.match(app, /GestLokOwnerAreas\?\.attach\(\{S,role:miRol,render:\(\)=>S\.local\?render\(\):renderHub\(\),/);
 });
 test('El Inicio del gerente incluye avisos del local y la tarjeta de Empleados', () => {
   assert.match(app, /miRol\(\)==='gerente'\?\(window\.GestLokUpdates\?\.homeAlerts\?\.\(\)\|\|''\):''/);

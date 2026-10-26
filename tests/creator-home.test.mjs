@@ -14,10 +14,10 @@ const DASH = {
   activity: [{at: '2026-10-26T03:31:42Z', kind: 'audit', what: 'employee_space_created', who: null, company: 'Perfumes'}, {at: '2026-10-26T03:22:11Z', kind: 'login', what: 'login', who: 'kmu***@gmail.com', company: 'Mi Gusto'}],
   system: {accounts: 6, confirmed_accounts: 6, verified_links: 2, editing_open: false, support_open: false}
 };
-function load(rpc, {creadora = true} = {}) {
+function load(rpc, {creadora = true, permanent = false} = {}) {
   const listeners = {}, calls = [], store = new Map();
   let renders = 0;
-  const window = {sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)}, scrollTo() {}, GestLokSupabase: {rpc: async fn => { calls.push(fn); return rpc(fn); }}};
+  const window = {GestLokCreatorMode: {state: () => ({permanent})}, sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)}, scrollTo() {}, GestLokSupabase: {rpc: async fn => { calls.push(fn); return rpc(fn); }}};
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
   vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date});
   const h = window.GestLokCreatorHome;
@@ -75,4 +75,12 @@ test('Alertas del estado: edición abierta o consulta abierta se marcan para rev
   r.h.mode(); await tick(); await tick();
   const html = r.h.view({pending: 0, parts: {}});
   assert.ok(html.includes('Para revisar') && html.includes('Edición habilitada') && html.includes('consulta de empresa abierta'));
+});
+
+test('El panel central informa edición permanente sin pedir cerrarla', async () => {
+ const r=load(async()=>({data:DASH,error:null}),{permanent:true});
+ r.h.mode(); await tick(); await tick();
+ const html=r.h.view({pending:0,parts:{}});
+ assert.match(html,/Edición de creadora sin límite de tiempo/);
+ assert.doesNotMatch(html,/Tu cuenta está en solo lectura|cerrala al terminar/);
 });
