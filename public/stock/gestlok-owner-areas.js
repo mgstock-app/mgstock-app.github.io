@@ -31,7 +31,8 @@
     try{
       const {data,error}=await window.GestLokSupabase.rpc('gestlok_gerente_area_context');
       if(error||!data||data.role!=='gerente'||data.tenant_id!==api.S.me?.tenant_id||!Array.isArray(data.local_ids)||!data.local_ids.length)throw Error('Sin autorización');
-      const next={status:'ready',locals:data.local_ids};
+      const locals=data.local_ids.map(id=>id==='dt'&&data.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'?'torcuato':id);
+      const next={status:'ready',locals};
       if(JSON.stringify(next)!==JSON.stringify(gerente)){gerente=next;api.render();}
     }catch{
       const changed=gerente.status!=='none';gerente={status:'none',locals:[]};
@@ -42,6 +43,21 @@
     if(gerente.status!=='ready')return '';
     return '<section class="gl-home-essential-actions" aria-label="Administración de empleados"><h2>Administración de empleados</h2><div class="gl-home-essential-links"><button type="button" data-gerente-empleados>'+
       '<span aria-hidden="true">'+svg('<path d="M4 6h16v13H4zM8 3v6M16 3v6M4 11h16"/>',20)+'</span><b>Horarios</b>'+svg('<path d="m9 6 6 6-6 6"/>',18)+'</button></div><p class="lead">Se abre con la misma cuenta de Google que usás en GESTLOK.</p></section>';
+  }
+  function gerenteHome(){
+    if(api?.role?.()!=='gerente'||!api.S.local)return '';
+    const local=api.S.local, name=(api.S.localesDB||[]).find(l=>l.id===local)?.nombre||'Tu local';
+    const brand=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
+    const staff=gerente.status==='ready'&&gerente.locals.includes(local);
+    const pending=gerente.status==='loading';
+    return '<section class="gl-owner-landing gl-manager-landing" aria-label="Inicio del gerente"><header class="gl-owner-welcome"><div><p>Bienvenido/a · '+esc(name)+'</p>'+
+      (brand?'<h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p>Empanadas de verdad</p>':'<h1><span>GEST</span><span>LOK</span></h1>')+
+      '<p class="gl-owner-tagline">Todo lo que necesitás para tu local.</p></div></header><div class="gl-owner-areas">'+
+      '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
+      list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
+      '<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
+      (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir Horarios de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Horarios y enlaces de turnos de tu propio local.</p>'+list([['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article></div></section>'+
+      (window.GestLokUpdates?.homeAlerts?.()||'')+(window.GestLokUpdates?.homeDue?.()||'');
   }
   async function refresh(){
     refreshGerente();
@@ -269,6 +285,13 @@
   }
   document.addEventListener('click',e=>{
     if(e.target.closest('[data-owner-area-retry]')){e.preventDefault();refresh();}
+    const managerArea=e.target.closest('[data-gerente-area]');
+    if(managerArea&&!e.target.closest('button,a,input')&&api?.role?.()==='gerente'){
+      if(managerArea.dataset.gerenteArea==='business')api.openBusiness?.();
+      else if(gerente.status==='ready'&&gerente.locals.includes(api.S.local))employees.open();
+      return;
+    }
+    if(e.target.closest('[data-gerente-business]')&&api?.role?.()==='gerente'&&api.S.local){e.preventDefault();api.openBusiness?.();return;}
     if(e.target.closest('[data-gerente-empleados]')&&gerente.status==='ready'&&api?.role?.()==='gerente'){e.preventDefault();employees.open();return;}
     if(e.target.closest('[data-owner-area-staff]')&&allowed('recibos_personal')){e.preventDefault();employees.open();return;}
     const mod=e.target.closest('[data-owner-module]');
@@ -292,5 +315,5 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();refreshAdmin();}});
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
-  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,view,header,sync,allowed,refreshAdmin,adminView});
+  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView});
 })();

@@ -34,3 +34,16 @@ test('homeAlerts muestra las 3 novedades más recientes, escapadas, y avisa cuan
   assert.ok(load(ctxMk([])).homeAlerts().includes('Sin novedades por ahora'));
   assert.equal(load({S: {local: '', avisos: []}, localNombre: () => ''}).homeAlerts(), '');
 });
+for(const [local,backend] of [['munro','munro'],['torcuato','dt']])test('Dos tarjetas y Horarios propio para '+local,async()=>{
+ const source=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
+ const listeners={};let business=0;
+ const tenant='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+ const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data:{role:'gerente',tenant_id:tenant,local_ids:[backend]},error:null})}};
+ vm.runInNewContext(source,{window,document:{addEventListener(k,f){listeners[k]=f;}}});
+ const a=window.GestLokOwnerAreas;a.attach({role:()=> 'gerente',S:{loaded:{e:true},local,me:{tenant_id:tenant},localesDB:[{id:local,nombre:local}]},render(){},openBusiness(){business++;}});
+ await a.refresh();const html=a.gerenteHome();
+ assert.match(html,/gl-owner-business/);assert.match(html,/gl-owner-employees/);assert.match(html,/data-gerente-empleados/);
+ assert.doesNotMatch(html,/Recibos de sueldo|Empleados y roles|Tienda física|Tienda mixta/);
+ listeners.click({preventDefault(){},target:{closest:s=>s==='[data-gerente-business]'?{}:null}});
+ assert.equal(business,1);
+});

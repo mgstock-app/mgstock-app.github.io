@@ -12,6 +12,6 @@ export const abrirLocal = id => {
   });
   // La creadora entra por las dos áreas; los recorridos operativos abren la comercial.
   cy.get('#view .gl-owner-business, #view .gl-home-essential, #view .bar', {timeout:15000}).first().then($view => {
-    if ($view.is('.gl-owner-business')) cy.wrap($view).find('[data-owner-nav="business"]').click();
+    if ($view.is('.gl-owner-business')) cy.get('#view [data-owner-nav="business"], #view [data-gerente-business]').click();
   });
 };

@@ -44,7 +44,7 @@ describe('Permiso push Dueña sin envíos automáticos',()=>{
  it('Gerente no recibe cartel ni botón push de Dueña',()=>{
   cy.viewport(1280,900);
   login('gerente.munro@example.com');
-  cy.get('#view .gl-home-essential').should('be.visible');
+  cy.get('#view .gl-manager-landing').should('be.visible');
   cy.get('.gl-push-permission').should('not.exist');
   cy.get('.gl-owner-notif-trigger').should('not.exist');
  });

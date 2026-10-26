@@ -38,6 +38,8 @@ describe('GestLok · Inicio limpio y esencial',()=>{
  });
  it('Gerente en Munro: inicio limpio, sin modalidad, con control diario',()=>{
   start();login('gerente.munro@example.com');
+  cy.get('#view .gl-manager-landing').should('be.visible');
+  cy.get('#view [data-gerente-business]').click();
   cy.get('#view .gl-home-essential').should('be.visible');
   cy.get('#view .gl-home-essential-stat').should('have.length',3);
   cy.get('#view').should('not.contain.text','Tienda mixta');

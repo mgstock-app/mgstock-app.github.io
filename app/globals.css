@@ -2113,3 +2113,6 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-home-essential-actions .lead{margin:8px 0 0}
 /* Las áreas de la creadora mantienen contraste y distribución en celular y tablet. */
 .gl-creator-local-home{--gl-teal:#22b6b9;padding:clamp(16px,2.5vw,30px);border-radius:24px;background:radial-gradient(ellipse at top right,#2f6a4a73,transparent 65%),linear-gradient(160deg,#101d29,#060d14);overflow:hidden}
+
+.gl-creator-local-home>.gl-home-avisos{margin-top:20px;padding:20px;border-radius:20px;background:#fff;color:var(--ink)}
+.gl-creator-local-home>.gl-home-due{margin-top:16px}
