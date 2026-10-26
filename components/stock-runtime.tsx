@@ -32,7 +32,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/gestlok-commerce.js");
-      await load("/stock/gestlok-owner-areas.js?rev=inicio-imagen-20261025");
+      await load("/stock/gestlok-owner-areas.js?rev=mi-gusto-marca-equipo-20261026");
       await load("/stock/gestlok-creator-mode.js?rev=inicio-imagen-20261025");
       await load("/stock/gestlok-tienda.js");
       await load("/stock/gestlok-demo.js");
@@ -41,7 +41,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=inicio-imagen-20261025");
+      await load("/stock/app.js?rev=mi-gusto-marca-equipo-20261026");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };
