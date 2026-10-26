@@ -369,6 +369,8 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
 
   it("inicio: muestra tareas claras para el cliente", () => {
     login("gerente.munro@example.com");
+    cy.get('#view .gl-manager-landing').should('be.visible');
+    cy.get('#view [data-gerente-business]').click();
     cy.get("#view .gl-home-essential").should("be.visible");
     cy.get("#view .gl-home-essential-stat").should("have.length",3);
     cy.get('.gl-home-essential-links [data-go="proveedores"]').click();
