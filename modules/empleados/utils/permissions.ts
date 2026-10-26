@@ -6,6 +6,15 @@ export const roleLabels: Record<Role, string> = {
   employee: "Colaborador/a",
   manager: "Gerente",
 };
+/** Gerente de GESTLOK habilitado por el servidor: solo la carpeta Horarios de sus locales. */
+export function isGestlokGerente(user: AppUser | null) {
+  return (
+    !!user &&
+    user.status === "approved" &&
+    !user.role &&
+    (user.gestlok_gerente?.local_ids?.length ?? 0) > 0
+  );
+}
 export function canManage(user: AppUser | null) {
   return (
     !!user &&
@@ -26,7 +35,11 @@ export function hasAssignment(user: AppUser | null) {
   );
 }
 export function canUseSchedules(user: AppUser | null) {
-  return canManage(user) || (hasAssignment(user) && user?.role === "manager");
+  return (
+    canManage(user) ||
+    (hasAssignment(user) && user?.role === "manager") ||
+    isGestlokGerente(user)
+  );
 }
 export function allowed(role: Role | null, action: string) {
   if (role === "admin") return true;

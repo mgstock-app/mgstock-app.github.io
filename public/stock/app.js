@@ -1346,6 +1346,7 @@ function inicioOperativo(){
             </button>`).join('')}
         </div>
       </section>
+      ${miRol()==='gerente'?(window.GestLokOwnerAreas?.gerenteCard?.()||''):''}
       ${opciones}
     </div>`;
 }

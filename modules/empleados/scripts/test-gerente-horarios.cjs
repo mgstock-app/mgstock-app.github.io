@@ -1,0 +1,21 @@
+// Gerente de GESTLOK: solo la carpeta Horarios; sin rol propio de Empleados.
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const ts = require("typescript");
+const source = fs.readFileSync("utils/permissions.ts", "utf8");
+const out = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const mod = { exports: {} };
+new Function("module", "exports", out)(mod, mod.exports);
+const { isGestlokGerente, canUseSchedules, canManage, hasAssignment } = mod.exports;
+const base = { user_id: "u", email: "g@x", display_name: "G", status: "approved", role: null, organization_id: null };
+const gerente = { ...base, gestlok_gerente: { local_ids: ["munro"] } };
+assert.equal(isGestlokGerente(gerente), true);
+assert.equal(canUseSchedules(gerente), true, "El gerente entra a Horarios");
+assert.equal(canManage(gerente), false, "El gerente no administra");
+assert.equal(hasAssignment(gerente), false, "El gerente no tiene rol de Empleados");
+assert.equal(isGestlokGerente({ ...gerente, status: "pending" }), false);
+assert.equal(isGestlokGerente({ ...gerente, gestlok_gerente: { local_ids: [] } }), false);
+assert.equal(isGestlokGerente({ ...base }), false);
+assert.equal(isGestlokGerente({ ...gerente, role: "employee" }), false, "Un colaborador no pasa por el puente");
+assert.equal(canUseSchedules({ ...base }), false);
+console.log("gerente-horarios: ok");
