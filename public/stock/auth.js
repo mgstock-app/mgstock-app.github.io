@@ -157,7 +157,7 @@
   function resume(session){
     if (!session || started || entering || /type=recovery/.test(location.hash)) return;
     entering = true;
-    Promise.resolve(entered(session)).catch(() => {
+    Promise.resolve().then(() => entered(session)).catch(() => {
       show('in', 'No se pudo recuperar tu sesión. Revisá la conexión e intentá nuevamente.', true);
     }).finally(() => { entering = false; });
   }
@@ -171,9 +171,9 @@
     });
     sb.auth.getSession().then(({data,error}) => {
       if (data?.session) resume(data.session);
-      else if (error) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
+      else if (error && !started && !entering) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
       else if (!started && !entering) show('in', uErr, !!uErr);
-    }).catch(() => show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true));
+    }).catch(() => { if (!started && !entering) show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
