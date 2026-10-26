@@ -42,6 +42,7 @@ describe('Gerente: navegación por las dos áreas',()=>{
   cy.get('#view .gl-manager-landing').should('be.visible');
   cy.get('#view [data-gerente-business]').click();
   cy.get('#view .gl-home-essential').should('be.visible');
+  cy.get('[data-act="menu-open"]').click();
   cy.get('#snav [data-go="inicio"]').click();
   cy.get('#view .gl-manager-landing').should('be.visible');
   cy.get('#view [data-gerente-empleados]').click();
