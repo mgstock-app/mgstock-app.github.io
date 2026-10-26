@@ -106,3 +106,19 @@ No incluir pagos, suscripciones o servicios de costo sin autorización.
 10. Detener el trabajo antes de agotar límites, dejando SHA de base, rama, PR, pruebas, pendientes e instrucciones de continuación.
 
 **Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://mgstock-app.github.io/`. El chat por local y el modo sin conexión con envío automático (PR #78) están implementados; multiempresa comercial NO. Preservar datos y no tocar ReciboNet».
+
+## 7. Traspaso Codex → Claude (26/10/2026)
+
+Base de partida: `main` `a3bfd9d` (#82). Fin de la sesión: `main` `4d48c98` (#69). Web publicada en `gestlok.com.ar` (dominio propio configurado en GitHub Pages).
+
+**Integrados en esta sesión (CI completo en verde antes de unir):**
+- #81 sesión de la PWA: un solo arranque de autenticación; cerrar sesión o recuperar contraseña invalida consultas en curso.
+- #83 seguridad multiempresa: `importar_mercaderia` exige que el local sea de la empresa de la sesión. Migración aplicada en Supabase; prueba `supabase/tests/importar-mercaderia-tenant-guard.sql` con 0 fallas.
+- #84 propuesta (sin implementar) de recibos para colaboradores: `docs/PROPUESTA-RECIBOS-COLABORADORES.md`.
+- #69 marca Mi Gusto para dueños, gerentes y equipo autorizado; se corrigieron dos pruebas Cypress desactualizadas.
+
+**PR abiertos y motivo:** #9 (reemplazado por #13: los borradores ya son por cuenta y local; tiene conflictos), #26 (licencias/pagos: etapa 13 en pausa), #27 (aislamiento: parte aplicada en la base, el resto superado por #83 o pendiente de decisión; Cypress en rojo), #52 (formulario de contacto de la demo: decisión de privacidad), #79 (instalación y pruebas Android/iPhone: plataformas en pausa).
+
+**Limitaciones de las sesiones de Claude:** sin acceso al registro de npm (lint/build/Cypress solo en GitHub Actions; `node --test` sí corre local), sin descarga de logs ni artefactos de Actions, sin acceso a la API de Pages ni a `gestlok.com.ar`, y sin permiso para borrar ramas. Para ver qué prueba Cypress falla, se puede lanzar el workflow «Cypress MG Stock» por `workflow_dispatch` en una rama temporal que imprima los nombres en una anotación (quedó la rama `diag/cypress-69`, que se puede borrar).
+
+**Pendiente de verificar fuera de esta sesión:** HTTPS de `gestlok.com.ar` (el despliegue informa `http://gestlok.com.ar/`), URLs de redirección de Supabase Auth para el dominio nuevo, y `APP_URL`/`NEXT_PUBLIC_SITE_URL`, que siguen apuntando a `mgstock-app.github.io`.
