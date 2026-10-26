@@ -33,18 +33,18 @@ describe('Munro: cierre diario exclusivo, roles e historial', () => {
     login('dueno@example.com');
     openLocal('munro');
     cy.get('#snav [data-go="diario"]').should('not.exist');
-    cy.get('.gl-today-action[data-go="diario"]').should('not.exist');
+    cy.get('#view [data-go="diario"]').should('not.exist');
     cy.get('#snav [data-act="locales"]').click();
     openLocal('torcuato');
     cy.get('#snav [data-go="diario"]').should('not.exist');
-    cy.get('.gl-today-action[data-go="diario"]').should('not.exist');
+    cy.get('#view [data-go="diario"]').should('not.exist');
   });
 
   it('gerente de Torcuato y cuenta de lectura no acceden al cierre de Munro', () => {
     login('gerente.torcuato@example.com');
     cy.get('#brand-local').should('contain.text','Torcuato');
     cy.get('#snav [data-go="diario"]').should('not.exist');
-    cy.get('.gl-today-action[data-go="diario"]').should('not.exist');
+    cy.get('#view [data-go="diario"]').should('not.exist');
     cy.window().its('__rows').should(rows => {
       expect(rows.some(r => r.col === 'torcuato/munro_control')).to.eq(false);
     });
@@ -84,11 +84,11 @@ describe('Munro: cierre diario exclusivo, roles e historial', () => {
     login('kmu15lopez@gmail.com');
     openLocal('munro');
     cy.get('#snav [data-go="diario"]').should('exist');
-    cy.get('.gl-today-action[data-go="diario"]').should('exist');
+    cy.get('#view [data-go="diario"]').should('exist');
     cy.get('#snav [data-act="locales"]').click();
     openLocal('torcuato');
     cy.get('#snav [data-go="diario"]').should('not.exist');
-    cy.get('.gl-today-action[data-go="diario"]').should('not.exist');
+    cy.get('#view [data-go="diario"]').should('not.exist');
   });
 });
 
@@ -101,6 +101,6 @@ describe('Munro: restricción por empresa', () => {
     login('gerente.munro@example.com');
     cy.get('#brand-local').should('contain.text','Munro');
     cy.get('#snav [data-go="diario"]').should('not.exist');
-    cy.get('.gl-today-action[data-go="diario"]').should('not.exist');
+    cy.get('#view [data-go="diario"]').should('not.exist');
   });
 });

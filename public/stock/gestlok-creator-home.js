@@ -147,11 +147,12 @@
       '<div class="gl-ch-duo"><div><span class="gl-ch-ico sm v">' + svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>', 18) + '</span><b>' + num(t.employees) + '</b><small>Personas en Empleados</small></div>' +
       '<div><span class="gl-ch-ico sm g">' + svg('<path d="M12 5v14M5 12h14"/>', 18) + '</span><b>' + num(t.employees_new_week) + '</b><small>Nuevas esta semana</small></div></div>' +
       '<ul class="gl-ch-rows"><li><span>Titulares</span><b>' + num(e.owner) + '</b></li><li><span>Encargados</span><b>' + num(e.manager) + '</b></li><li><span>Empleados</span><b>' + num(e.employee) + '</b></li><li><span>Gerentes y editores de GESTLOK con Horarios</span><b>' + num(e.gestlok_gerentes) + '</b></li></ul></section>';
+    const permanent = window.GestLokCreatorMode?.state?.()?.permanent === true;
     const checks = [
       [true, 'Base de datos conectada'],
       [num(s.confirmed_accounts) === num(s.accounts), num(s.confirmed_accounts) + ' de ' + num(s.accounts) + ' correos confirmados'],
       [num(s.verified_links) >= num(t.companies), 'Empleados vinculado en ' + Math.min(num(s.verified_links), num(t.companies)) + ' de ' + num(t.companies) + ' empresas'],
-      [!s.editing_open, s.editing_open ? 'Edición habilitada (cerrala al terminar)' : 'Tu cuenta está en solo lectura'],
+      [permanent || !s.editing_open, permanent ? 'Edición de creadora sin límite de tiempo' : s.editing_open ? 'Edición habilitada (cerrala al terminar)' : 'Tu cuenta está en solo lectura'],
       [!s.support_open, s.support_open ? 'Hay una consulta de empresa abierta' : 'Sin consultas de empresa abiertas']
     ];
     const allOk = checks.every(c => c[0]);

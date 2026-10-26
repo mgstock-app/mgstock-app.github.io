@@ -2105,3 +2105,6 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   .gl-ch-date{display:none}.gl-ch-colside{grid-template-columns:1fr}.gl-ch-growth-in,.gl-ch-two{grid-template-columns:1fr}.gl-ch-bigstats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:560px){.gl-ch-kpis{grid-template-columns:1fr}.gl-ch-people{flex-direction:column;align-items:flex-start}}
+
+/* Las áreas de la creadora mantienen contraste y distribución en celular y tablet. */
+.gl-creator-local-home{--gl-teal:#22b6b9;padding:clamp(16px,2.5vw,30px);border-radius:24px;background:radial-gradient(ellipse at top right,#2f6a4a73,transparent 65%),linear-gradient(160deg,#101d29,#060d14);overflow:hidden}
