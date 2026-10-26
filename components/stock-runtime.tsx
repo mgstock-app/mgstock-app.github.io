@@ -23,27 +23,30 @@ export function StockRuntime() {
       await load("/stock/gestlok-pwa-update.js");
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
+      // Modo sin conexión de ambas áreas: debe cargarse antes de crear el cliente de Supabase.
+      await load("/stock/gestlok-offline.js?rev=offline-20261026");
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
       if (!visitor) await load("/stock/gestlok-registration.js");
-      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=registration-modules-20261025");
+      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=offline-20261026");
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/gestlok-commerce.js");
-      await load("/stock/gestlok-owner-areas.js?rev=gerente-tarjetas-20261026");
+      await load("/stock/gestlok-owner-areas.js?rev=offline-20261026");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
       await load("/stock/gestlok-creator-home.js?rev=creadora-permanente-20261026");
       await load("/stock/gestlok-tienda.js");
+      if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js");
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=gerente-tarjetas-20261026");
+      await load("/stock/app.js?rev=offline-20261026");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };

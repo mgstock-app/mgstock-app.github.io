@@ -206,7 +206,10 @@
       '<nav class="gl-owner-quick" aria-label="Accesos generales">'+tile('reports','pie','Reportes generales')+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
   }
   // El módulo de empleados vive en la misma aplicación (misma dirección e instalación).
-  const employees=Object.freeze({open(){location.assign(new URL('empleados/',document.baseURI).href);}});
+  const employees=Object.freeze({open(){
+    // Demo pública: Administración de empleados ficticia (Horarios con un Excel de ejemplo), sin datos reales.
+    if(window.GestLokVisitorDemo?.active&&window.GestLokDemoHorarios){window.GestLokDemoHorarios.open();return;}
+    location.assign(new URL('empleados/',document.baseURI).href);}});
   /* Paneles: todo el contenido sale de datos que la app ya cargó (nada nuevo se pide ni se guarda). */
   const head=(small,title,id)=>'<div class="pn-h"><div><small>'+esc(small)+'</small><h3 id="'+id+'">'+title+'</h3></div><button class="ib" data-act="close" aria-label="Cerrar">'+(api?.ic?api.ic('x'):'×')+'</button></div>';
   const co=()=>esc(state.data?.company_name||'Mi empresa');

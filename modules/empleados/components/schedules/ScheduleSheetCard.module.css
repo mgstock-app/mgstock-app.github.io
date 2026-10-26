@@ -89,3 +89,9 @@
 .card.card .configurationActions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 6px; }
 .card.card .configureError { color: #a42c36; font-size: 13px; }
 .card.card .configureSuccess { color: #147348; font-size: 13px; }
+.card.card .templates { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0 4px; }
+.card.card .templateOption { padding: 14px 16px; border: 1px solid #dbe6f3; border-radius: 10px; background: #f8fbff; }
+.card.card .templateOption strong { display: block; margin-bottom: 6px; color: #14233c; font-size: 15px; }
+.card.card .templateOption p { margin: 0 0 10px; color: #56667f; font-size: 13.5px; line-height: 1.55; }
+.card.card .templateButton { display: inline-flex; align-items: center; min-height: 40px; padding: 9px 14px; border-radius: 9px; background: #123462; color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; }
+.card.card .templateButton:hover { background: #0d2749; color: #fff; }
