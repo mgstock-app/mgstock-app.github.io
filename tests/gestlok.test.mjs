@@ -14,7 +14,7 @@ test("la identidad pública es GestLok y no pertenece a ningún comercio", () =>
   assert.match(layout, /title: "GestLok"/);
   assert.match(markup, /gestlok-wordmark\.svg/);
   assert.doesNotMatch(markup, /src="img\/mi-gusto/);
-  assert.match(app, /S\\.me\\?\\.tenant_id === MI_GUSTO_TENANT/);
+  assert.match(app, /S\.me\?\.tenant_id === MI_GUSTO_TENANT/);
   assert.match(app, /img\/mi-gusto-blanco\.png/);
   assert.match(app, /Chat del local/);
 });
