@@ -9,7 +9,7 @@ No hay un repositorio nuevo llamado `gestlok` en la organización conectada: el 
 
 | Elemento | Ubicación |
 |---|---|
-| Aplicación pública instalada / PWA | https://mgstock-app.github.io/ |
+| Aplicación pública instalada / PWA | https://gestlok.com.ar/ (HTTPS forzado; `https://mgstock-app.github.io/` redirige con 301) |
 | Repositorio GitHub **correcto** | https://github.com/mgstock-app/mgstock-app.github.io |
 | Organización | `mgstock-app` |
 | Nombre del repositorio | `mgstock-app.github.io` |
@@ -48,7 +48,7 @@ Historial verificable en `main` (de más reciente a más antiguo):
 | [#10](https://github.com/mgstock-app/mgstock-app.github.io/pull/10) | 23/10/2026 | Cambio inicial de marca, interfaz, chat interno y proveedores | `cab94b6` |
 | [#7](https://github.com/mgstock-app/mgstock-app.github.io/pull/7) | 23/10/2026 | Política de privacidad, condiciones de uso y almacenamiento | `47d0d20` |
 
-**Excepción a examinar:** [PR #9](https://github.com/mgstock-app/mgstock-app.github.io/pull/9), relativo a borradores privados, seguía **abierto** al momento de esta revisión. No fusionarlo sin revisar el diff y contrastarlo con #13 y #20: puede estar parcial o totalmente reemplazado por correcciones posteriores.
+**PR #9 cerrado (26/10/2026):** [PR #9](https://github.com/mgstock-app/mgstock-app.github.io/pull/9), relativo a borradores privados, se cerró sin unir porque lo reemplazó #13.
 
 ## 3. Dónde está el código
 
@@ -105,7 +105,7 @@ No incluir pagos, suscripciones o servicios de costo sin autorización.
 9. Mantener el identificador técnico de la URL hasta planificar una migración segura de dominio, OAuth, sesiones PWA y caché.
 10. Detener el trabajo antes de agotar límites, dejando SHA de base, rama, PR, pruebas, pendientes e instrucciones de continuación.
 
-**Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://mgstock-app.github.io/`. El chat por local y el modo sin conexión con envío automático (PR #78) están implementados; multiempresa comercial NO. Preservar datos y no tocar ReciboNet».
+**Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://gestlok.com.ar/`. El chat por local y el modo sin conexión con envío automático (PR #78) están implementados; multiempresa comercial NO. Preservar datos y no tocar ReciboNet».
 
 ## 7. Traspaso Codex → Claude (26/10/2026)
 
@@ -122,3 +122,16 @@ Base de partida: `main` `a3bfd9d` (#82). Fin de la sesión: `main` `4d48c98` (#6
 **Limitaciones de las sesiones de Claude:** sin acceso al registro de npm (lint/build/Cypress solo en GitHub Actions; `node --test` sí corre local), sin descarga de logs ni artefactos de Actions, sin acceso a la API de Pages ni a `gestlok.com.ar`, y sin permiso para borrar ramas. Para ver qué prueba Cypress falla, se puede lanzar el workflow «Cypress MG Stock» por `workflow_dispatch` en una rama temporal que imprima los nombres en una anotación (quedó la rama `diag/cypress-69`, que se puede borrar).
 
 **Pendiente de verificar fuera de esta sesión:** HTTPS de `gestlok.com.ar` (el despliegue informa `http://gestlok.com.ar/`), URLs de redirección de Supabase Auth para el dominio nuevo, y `APP_URL`/`NEXT_PUBLIC_SITE_URL`, que siguen apuntando a `mgstock-app.github.io`.
+
+## 8. Dominio propio y limpieza (26/10/2026)
+
+Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
+
+- **HTTPS:** certificado Let's Encrypt aprobado para `gestlok.com.ar` y `www.gestlok.com.ar` (vence 24/01/2027). «Enforce HTTPS» activo en GitHub Pages; `http://` responde 301 a `https://`. DNS sin cambios.
+- **Supabase Auth (proyecto `vgsepaaewbctjsjcpeta`):** se agregó `https://gestlok.com.ar/**` a las URLs de redirección; se mantienen `https://mgstock-app.github.io/` y `https://mgstock-app.github.io/**`. Probados desde `https://gestlok.com.ar`: ingreso con Google y enlace del correo de recuperación de contraseña.
+- **#87:** `APP_URL` (`public/stock/app.js`) y `NEXT_PUBLIC_SITE_URL` (`.github/workflows/pages.yml`) pasan a `https://gestlok.com.ar`. CI en verde y despliegue verificado.
+- **Limpieza:** rama `diag/cypress-69` borrada. #9 cerrado (reemplazado por #13). #27 cerrado sin aplicar: está aplicado en parte y su `importar_mercaderia` choca con la de #83.
+
+**PR abiertos que esperan decisión de la usuaria:** #26, #52, #79. También esperan decisión `pedir_acceso`, la propuesta de recibos (`docs/PROPUESTA-RECIBOS-COLABORADORES.md`) y cualquier cambio del historial de Git.
+
+**Pendiente:** el *Site URL* de Supabase Auth sigue en `https://mgstock-app.github.io/` (es el destino por defecto cuando la app no indica uno). Cambiarlo a `https://gestlok.com.ar/` desde el panel de Supabase, en Authentication → URL Configuration, si la usuaria lo aprueba.
