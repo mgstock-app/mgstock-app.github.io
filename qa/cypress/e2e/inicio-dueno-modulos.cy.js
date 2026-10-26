@@ -28,12 +28,8 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
  it('la creadora ve el registro de empresas como información general de solo lectura',()=>{
   start(false,'kmu15lopez@gmail.com');
   cy.get('[aria-label="Empresas registradas"]').should('contain.text','Solo lectura').and('contain.text','Empresa ficticia').and('contain.text','Munro');
-  cy.get('[aria-label="Empresas registradas"] input,[aria-label="Empresas registradas"] select').should('not.exist');
-  // El único control permitido es la consulta de otra empresa en solo lectura (pide motivo y queda auditada).
-  cy.get('[aria-label="Empresas registradas"] button').each($button=>{
-   expect($button.attr('data-support-open')).to.be.a('string').and.not.be.empty;
-   expect($button.text()).to.contain('Ver en solo lectura');
-  });
+  // En su propia empresa no hay consulta de soporte; las demás se abren con «Ver en solo lectura» (motivo + auditoría).
+  cy.get('[aria-label="Empresas registradas"] button,[aria-label="Empresas registradas"] input,[aria-label="Empresas registradas"] select').should('not.exist');
   cy.get('[aria-label="Empresas registradas"]').should('contain.text','Tu empresa');
   cy.get('[aria-label="Vista previa por rol"]').should('contain.text','Ver como Gerente').and('contain.text','Ver como Dueña').and('contain.text','Ver como Solo ver');
  });
