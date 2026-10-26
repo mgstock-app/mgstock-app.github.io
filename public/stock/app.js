@@ -1355,6 +1355,7 @@ function inicioOperativo(){
 }
 
 V.inicio = () => {
+  if (miRol()==='gerente' && !S.creatorBusiness) return banners()+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.gerenteHome?.()||'<p role="status">Comprobando tus áreas…</p>')+'</div>';
   if (miRol()==='creadora' && !S.creatorBusiness) return banners()+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.view(localesMios(),lcard) || '<p role="status">Comprobando tus áreas…</p>')+'</div>';
   if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();
   const ps = sorted(), n = ps.length;
