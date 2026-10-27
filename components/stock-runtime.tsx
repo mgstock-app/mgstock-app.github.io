@@ -24,7 +24,7 @@ export function StockRuntime() {
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
       // Modo sin conexión de ambas áreas: debe cargarse antes de crear el cliente de Supabase.
-      await load("/stock/gestlok-offline.js?rev=offline-20261026");
+      await load("/stock/gestlok-offline.js?rev=offline-20261027");
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
@@ -33,6 +33,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
+      await load("/stock/mi-gusto-resenas.js?rev=resenas-20261027");
       await load("/stock/munro-motos.js?rev=motos-guardar-20261027");
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-owner-areas.js?rev=branding-20261026");
@@ -47,7 +48,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=inicio-20261027");
+      await load("/stock/app.js?rev=inicio-resenas-20261027");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };
