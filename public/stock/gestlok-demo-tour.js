@@ -4,9 +4,7 @@
 if(new URLSearchParams(location.search).get('demo')!=='1')return;
 const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('stock/gestlok-demo-tour.css',document.baseURI).href;document.head.append(style);
 const names=['Inicio','Stock','Proveedores','Personal','Final'];
-let step=0,busy=false,sent=false,client=null;
-const model={rating:0,comment:'',publish_consent:false,contact_consent:false,contact_name:'',contact_value:''};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let step=0;
 function nav(){return '<nav aria-label="Etapas de la demo" class="gl-tour-nav"><button type="button" data-tour="'+(step-1)+'" '+(step===0?'disabled':'')+' aria-label="Etapa anterior">←</button>'+names.map((n,i)=>'<button type="button" data-tour="'+i+'" aria-current="'+(i===step?'step':'false')+'">'+(i+1)+'<span> '+n+'</span></button>').join('')+'<button type="button" data-tour="'+(step+1)+'" '+(step===4?'disabled':'')+' aria-label="Etapa siguiente">→</button></nav><p class="gl-tour-hint">'+['Tocá una tarjeta para descubrir su menú. Deslizá esta barra para cambiar de etapa.','Probá modificar y guardar el stock ficticio.','Armá un pedido con productos de ejemplo.','Editá los horarios y consultá un recibo ficticio.','¡Terminaste el recorrido! Podés volver a explorar las etapas.'][step]+'</p>';}
 function feedback(){return '<section class="gl-tour-end card pad" aria-label="Final de la demo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="240"><p>Organizá tu negocio, simplificá tu día</p><h2>¡Gracias por recorrer GESTLOK!</h2><p>Terminaste las cinco etapas de la demo con datos ficticios. Podés volver a cualquier etapa para seguir explorando.</p><a class="btn primary" href="./">Volver al inicio</a></section>';}
 function paint(){document.getElementById('gl-tour-controls').innerHTML=nav();if(step===4)document.getElementById('gl-tour-final').innerHTML=feedback();}
@@ -25,10 +23,10 @@ async function move(n){
  if(step===3){await window.GestLokDemoHorarios?.open();if(step!==3)window.GestLokDemoHorarios?.close();}
 }
 function init(){
- if(!window.GestLokVisitorDemo?.isReady()||!document.querySelector('.gl-owner-landing,.gl-manager-landing'))return false;
+ if(!window.GestLokVisitorDemo?.isReady()||!document.querySelector('.gl-owner-landing,.gl-manager-landing')||!document.getElementById('gl-visitor-bar'))return false;
  const bar=document.createElement('section');bar.id='gl-tour-controls';document.getElementById('gl-visitor-bar').append(bar);
  const end=document.createElement('div');end.id='gl-tour-final';end.hidden=true;document.body.append(end);
-  new ResizeObserver(()=>document.documentElement.style.setProperty('--gl-tour-header',document.getElementById('gl-visitor-bar').getBoundingClientRect().height+'px')).observe(document.getElementById('gl-visitor-bar'));
+  if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>document.documentElement.style.setProperty('--gl-tour-header',document.getElementById('gl-visitor-bar').getBoundingClientRect().height+'px')).observe(document.getElementById('gl-visitor-bar'));
  paint();return true;
 }
 const timer=setInterval(()=>{if(init())clearInterval(timer);},250);
