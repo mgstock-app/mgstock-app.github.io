@@ -22,9 +22,12 @@ function launch(tenant = TENANT) {
 const lunes = () => cy.window().then(w => w.GestLokMunroMotos._t.semanaActual());
 const hora = (moto, campo, valor) => lunes().then(s =>
   cy.get(`.mo-time[data-moto="${moto}"][data-dia="${s}"][data-campo="${campo}"]`).type(valor).blur());
+// En la fila vacía, cargar un horario redibuja la planilla: no se hace blur sobre el campo reemplazado.
+const horaNueva = valor => lunes().then(s =>
+  cy.get(`.mo-time[data-moto="nuevo"][data-dia="${s}"][data-campo="tm_e"]`).type(valor));
 const docsMotos = rows => rows.filter(r => r.col === 'munro/agencia_motos');
 
-describe('Agencia Motos: exclusiva de Mi Gusto – Munro', () => {
+describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
   Cypress.on('uncaught:exception', error => {
     if (error.message.includes('Minified React error #418')) return false;
   });
@@ -32,14 +35,17 @@ describe('Agencia Motos: exclusiva de Mi Gusto – Munro', () => {
   it('gerente de Munro carga la semana; ve horas pero no importes, valores ni historial', () => {
     launch(); login('gerente.munro@example.com');
     cy.get('#snav [data-go="motos"]').should('exist').click();
-    cy.get('.mo-page h1').should('contain.text', 'Agencia Motos');
+    cy.get('.mo-page h1').should('contain.text', 'Motos Agencia');
+    cy.get('#snav .snav-folder[open] summary').should('contain.text', 'Administración de local');
+    cy.get('#snav .snav-folder [data-go="diario"]').should('exist');
+    cy.get('#crumb').should('contain.text', 'Administración de local');
     for (const n of ['Lucas', 'Alex', 'Aye']) cy.get('.mo-who').should('contain.text', n);
     hora('lucas', 'tm_e', '08:00'); hora('lucas', 'tm_s', '16:30');
     cy.get('[data-mo-tot="lucas"]').first().should('have.text', '8:30');
     cy.get('[data-mo-sem]').first().should('have.text', '8:30');
     cy.get('[data-mo-pago="lucas"]').should('not.exist');
     cy.get('.mo-hist').should('not.exist');
-    cy.get('.mo-rates').should('not.exist');
+    cy.get('[data-mo-act="tarifas"]').should('not.exist');
     cy.get('.mo-nav').should('not.exist');
     lunes().then(s => cy.window().its('__rows').should(rows => {
       const d = docsMotos(rows).find(r => r.id === `d-${s}-lucas-${s}`);
@@ -50,8 +56,16 @@ describe('Agencia Motos: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#mo-ref-form input').type('Nico');
     cy.get('#mo-ref-form').submit();
     cy.get('.mo-who').should('contain.text', 'Nico').and('contain.text', 'Refuerzo 1');
+    // La fila vacía sigue disponible: cargar un horario ahí crea otro refuerzo.
+    horaNueva('10:00');
+    cy.get('.mo-who').should('contain.text', 'Refuerzo 2');
+    horaNueva('12:00');
+    cy.get('.mo-who').should('contain.text', 'Refuerzo 3');
     cy.window().its('__rows').should(rows => {
-      expect(docsMotos(rows).filter(r => r.data.tipo === 'refuerzo')).to.have.length(1);
+      const refs = docsMotos(rows).filter(r => r.data.tipo === 'refuerzo');
+      expect(refs).to.have.length(3);
+      const otro = refs.find(r => r.data.nombre === 'Refuerzo 2');
+      expect(docsMotos(rows).some(r => r.data.moto === otro.data.moto && r.data.tm_e === '10:00')).to.eq(true);
     });
   });
 
@@ -59,10 +73,12 @@ describe('Agencia Motos: exclusiva de Mi Gusto – Munro', () => {
     launch(); login('dueno@example.com'); abrirLocal('munro');
     cy.get('#snav [data-go="motos"]').click();
     cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'Todavía no hay semanas cerradas');
-    cy.get('.mo-rates [data-mo-act="tarifas"]').click();
+    cy.get('#snav .snav-folder [data-go="diario"]').should('not.exist');
+    cy.get('.mo-hist [data-mo-act="tarifas"]').click();
     cy.get('#mo-rates-form input[name="t-aye"]').clear().type('9500');
     cy.get('#mo-rates-form').submit();
-    cy.get('.mo-rates').should('contain.text', '$9.500,00');
+    cy.get('#mo-rates-form').should('not.exist');
+    cy.get('.mo-hist [data-mo-act="tarifas"]').should('have.attr', 'title').and('contain', '$9.500,00');
     hora('aye', 'tt_e', '19:33'); hora('aye', 'tt_s', '00:00');
     cy.get('[data-mo-tot="aye"]').first().should('have.text', '4:27');
     cy.get('[data-mo-pago="aye"]').first().should('have.text', '$42.275,00');
