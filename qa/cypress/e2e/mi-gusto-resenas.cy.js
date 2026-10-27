@@ -60,9 +60,11 @@ describe('Reseñas: Mi Gusto, Munro y Torcuato con datos propios', () => {
     cy.get('.rv-code strong').invoke('text').then(codigo => {
       cy.get('#rv-form input[name="name"]').should('have.attr', 'readonly');
       cy.get('.rv-modal [data-rv="modify"]').click();
-      cy.get('#rv-form input[name="name"]').should('not.have.attr', 'readonly').clear().type('Cliente corregido');
+      cy.get('#rv-form input[name="name"]').should('not.have.attr', 'readonly');
+      cy.get('#rv-form input[name="name"]').clear().type('Cliente corregido');
       cy.get('#rv-form').submit();
-      cy.get('#rv-form input[name="name"]').should('have.value', 'Cliente corregido').and('have.attr', 'readonly');
+      cy.get('#rv-form input[name="name"]').should('have.value', 'Cliente corregido');
+      cy.get('#rv-form input[name="name"]').should('have.attr', 'readonly');
       cy.get('.rv-code strong').should('have.text', codigo);
     });
     // Marcar usado exige confirmar con la tilde; después no se puede volver a usar.
