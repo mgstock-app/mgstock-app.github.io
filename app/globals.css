@@ -2161,3 +2161,17 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 @media(max-width:480px){.gl-demo-feedback{border-radius:15px;margin:25px auto 55px}
   .gl-demo-feedback-interest,.gl-demo-feedback-contact{padding:12px}
   .gl-demo-feedback-actions button{width:100%}}
+
+/* Inicio demo visitante: evitar un lienzo vacío excesivo en pantallas móviles. */
+@media (max-width: 680px) {
+  html.gl-visitor-mode .gl-creator-local-home {
+    min-height: 0;
+    padding-bottom: clamp(20px, 5vw, 36px);
+  }
+  html.gl-visitor-mode .gl-creator-local-home .gl-home-essential {
+    min-height: 0;
+  }
+  html.gl-visitor-mode .gl-creator-local-home .gl-home-essential-actions {
+    margin-bottom: 0;
+  }
+}
