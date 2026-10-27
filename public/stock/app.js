@@ -181,7 +181,7 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control', 'agencia_motos'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
@@ -196,6 +196,8 @@ const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
+/* Agencia Motos: solo Mi Gusto – Munro (dueños, creadora y gerentes de Munro). */
+const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
 /* La creadora consulta en solo lectura salvo que haya habilitado la edición (lo hace valer el backend). */
@@ -354,6 +356,7 @@ function viewHTML(){
   if (S.view === 'pedidos-online') return window.GestLokCommerce?.online() ? window.GestLokCommerce.view() : V.inicio();
   if (S.view === 'tienda-online') return window.GestLokCommerce?.online() ? window.GestLokTienda?.view() : V.inicio();
   if (S.view === 'diario') return puedeVerDiarioMunro() ? window.GestLokMunroDaily.view() : V.inicio();
+  if (S.view === 'motos') return puedeVerMotos() ? window.GestLokMunroMotos.view() : V.inicio();
   if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
   if (S.view === 'avisos') return window.GestLokUpdates.viewAlerts();
   const t = tipoVista(S.view);
@@ -369,9 +372,9 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'motos' ? 'Agencia Motos' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
   $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'vencimientos' || S.view === 'avisos';
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'vencimientos' || S.view === 'avisos';
   renderCompanyIdentity(); renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
@@ -386,7 +389,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}${puedeVerMotos() ? `<button data-go="motos">${ic('clock')}<span class="nl">Agencia Motos</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -1409,6 +1412,7 @@ V.inicio = () => {
       ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
       <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
       ${puedeVerDiarioMunro() ? `<button class="gl-today-action" data-go="diario">${ic('clock')}<b>Control diario</b><small>Ventas, consumo y diferencias</small></button>` : ''}
+      ${puedeVerMotos() ? `<button class="gl-today-action" data-go="motos">${ic('clock')}<b>Agencia Motos</b><small>Horarios semanales de las motos</small></button>` : ''}
     </div>
   </section>
   <div class="kpis${pedV ? '' : ' k3'}">
@@ -3385,7 +3389,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   if(v === 'inicio') S.creatorBusiness=false;
@@ -3735,6 +3739,7 @@ function subscribeLocal(){
       if (S.view === 'diario') render();
     }),errLive));
   }
+  window.GestLokMunroMotos?.subscribe(loc,push);
   push(C('vencimientos').onSnapshot(mine(snap => {
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
@@ -3811,6 +3816,7 @@ function abrirLocal(id){
     if (S.local) cerrarLocal();
     S.local = id;
     window.GestLokMunroDaily?.reset();
+    window.GestLokMunroMotos?.reset();
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
@@ -3874,6 +3880,7 @@ function start(){
 window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 window.GestLokPush?.attach({S,render,miRol:()=>miRol()});
 window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
+window.GestLokMunroMotos?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales});
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});
