@@ -11,6 +11,7 @@
     ['usuarios', 'Usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
+    ['resenas', 'Reseñas y cupones', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
   ]);
   const ACTIONS = Object.freeze({
@@ -21,6 +22,10 @@
     login: ['Ingreso', 'user']
   });
   let api, data = null, status = 'idle', busy = false, timer = 0, tab = 'inicio';
+  let couponRows = {munro:null,torcuato:null}, couponBusy=false, couponError='';
+  async function loadCoupons(){if(!api?.isCreadora?.()||couponBusy||!window.GestLokSupabase)return;couponBusy=true;couponError='';try{for(const loc of ['munro','torcuato']){const {data,error}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:loc});if(error)throw error;couponRows[loc]=Array.isArray(data)?data:[];}}catch{couponError='No se pudieron consultar los cupones. Revisá permisos y conexión.';}finally{couponBusy=false;if(api?.isCreadora?.())api.render();}}
+  function couponView(){if(!couponRows.munro&&!couponRows.torcuato&&!couponBusy)queueMicrotask(loadCoupons);return '<section class="gl-admin-card" aria-label="Cupones de Mi Gusto"><header><h2>Cupones de Mi Gusto</h2><button type="button" data-ch-coupons-refresh>Actualizar</button></header><p>Munro y Torcuato por separado. Beneficio del 10% independiente de publicar reseñas. La emisión y utilización se realizan desde la sección Reseñas de cada sucursal.</p>'+(couponError?'<p role="alert">'+esc(couponError)+'</p>':'')+['munro','torcuato'].map(loc=>{const a=couponRows[loc]||[];const counts={pending:0,used:0,expired:0};a.forEach(r=>{if(r.status in counts)counts[r.status]++;});return '<article style="border-top:1px solid #ddd;padding:12px 0"><h3>'+ (loc==='munro'?'Munro':'Torcuato') +'</h3><p>Total: '+a.length+' · Pendientes: '+counts.pending+' · Usados: '+counts.used+' · Vencidos: '+counts.expired+'</p><div style="overflow-x:auto"><table><thead><tr><th>Cupón</th><th>Cliente</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>'+a.slice(0,50).map(r=>'<tr><td>'+esc(r.code)+'</td><td>'+esc(r.customer_name)+'</td><td>'+esc(r.status)+'</td><td>'+esc(String(r.created_at||'').slice(0,10))+'</td></tr>').join('')+'</tbody></table></div></article>';}).join('')+'</section>';}
+
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
   const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const svg = (d, w = 22) => '<svg viewBox="0 0 24 24" width="' + w + '" height="' + w + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + d + '</svg>';
@@ -175,6 +180,7 @@
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (parts.locales || '') + '</div>';
+    else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + couponView() + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
@@ -205,6 +211,7 @@
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
   document.addEventListener('click', ev => {
+    const refresh = ev.target.closest?.('[data-ch-coupons-refresh]');if(refresh && api?.isCreadora?.()){ev.preventDefault();loadCoupons();return;}
     const b = ev.target.closest && ev.target.closest('[data-ch-tab]');
     if (b) { ev.preventDefault(); goTab(b.dataset.chTab); }
   });
