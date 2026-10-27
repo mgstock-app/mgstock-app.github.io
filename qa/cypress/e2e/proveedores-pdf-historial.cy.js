@@ -1,7 +1,8 @@
 /* global Cypress, describe, it, cy, expect */
+import { abrirLocal } from '../helpers/abrir-local';
 // Supabase falso: esta prueba jamás altera proveedores, pedidos o historial reales.
 const login = email => {
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1',{log:false});
   cy.get('#au-in button[type="submit"]').click();
 };
@@ -31,7 +32,7 @@ describe('GestLok: proveedores, historial y PDF único',()=>{
       }});
     });
     login('dueno@example.com');
-    cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+    abrirLocal('munro');
     cy.get('#snav [data-go="proveedores"]').click();
     cy.get('[data-act="prov-open"][data-name="Distribuidora Demo PDF"]').click();
     cy.get('#prov-carpeta').should('be.visible');

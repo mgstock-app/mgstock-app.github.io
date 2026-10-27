@@ -12,7 +12,7 @@ const css=read('app/globals.css');
 test('El visitante utiliza los módulos operativos reales con backend de memoria',()=>{
  assert.doesNotThrow(()=>new vm.Script(visitor));
  assert.match(auth,/Explorar demo interactiva · Sin registrarme/);
- assert.match(runtime,/visitor \? "\/stock\/gestlok-visitor-demo\.js" : "\/stock\/auth\.js"/);
+ assert.match(runtime,/visitor \? "\/stock\/gestlok-visitor-demo\.js" : "\/stock\/auth\.js\?rev=[A-Za-z0-9-]+"/);
  assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-push\.js"\)/);
  assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-support\.js"\)/);
  for(const m of ['gestlok-updates','gestlok-commerce','gestlok-tienda',
@@ -80,4 +80,23 @@ test('La demo conserva cambios exclusivamente en memoria y simula 2 tiendas y 2 
  const json=store.get('gestlok:visitor:demo:v1');
  assert.ok(!json.includes('supabase.co'));
  assert.ok(JSON.parse(json).mercado.docs['mercado/productos']);
+});
+
+test('Demo · Horarios: el Excel ficticio da los mismos totales en la app que en la planilla', () => {
+  const src = read('public/stock/gestlok-demo-horarios.js');
+  assert.doesNotMatch(src, /supabase|rest\/v1|GestLokSupabase/);
+  const noop = () => {}, window = {addEventListener: noop};
+  vm.runInNewContext(src, {window, location: {search: '?demo=1'}, document: {addEventListener: noop, baseURI: 'https://example.com/'},
+    sessionStorage: {getItem: () => null, setItem: noop}, URLSearchParams, URL, JSON, Math, Number, String, Date, Object, Array, setTimeout, alert: noop});
+  const data = JSON.parse(read('public/plantillas/demo-horarios.json'));
+  window.GestLokDemoHorarios._setData(data);
+  const total = Object.fromEntries(data.equipo.map(p => [p.nombre, window.GestLokDemoHorarios._totals(p).total]));
+  // Valores calculados por la planilla (LibreOffice) en GESTLOK-demo-horarios-ficticio.xlsx › Resumen.
+  assert.deepEqual(total, {'Sofía Ríos': '8 turnos', 'Lucas Ferreyra': '7 turnos', 'Brenda Quiroga': '12 turnos', 'Nicolás Paz': '42:30 hs',
+    'Paula Medina': '25:00 hs', 'Tomás Godoy': '39:30 hs', 'Valentina Sosa': '36:00 hs', 'Rocío Álvarez': '20:30 hs'});
+  for (const p of data.equipo) assert.ok(!/@|\d{8,}/.test(JSON.stringify(p)), 'Sin datos de contacto reales');
+  const runtime = read('components/stock-runtime.tsx'), owner = read('public/stock/gestlok-owner-areas.js');
+  assert.match(runtime, /if \(visitor\) await load\("\/stock\/gestlok-demo-horarios\.js"\)/);
+  assert.match(owner, /GestLokVisitorDemo\?\.active&&window\.GestLokDemoHorarios/);
+  assert.match(read('public/stock/gestlok-visitor-demo.js'), /recibos_personal:\{authorized:true,operational:true\}/);
 });

@@ -1,4 +1,5 @@
 /* global Cypress, cy, beforeEach, describe, it */
+import { abrirLocal } from '../helpers/abrir-local';
 describe("GestLok · avisos de vencimientos por sucursal en Inicio",()=>{
   Cypress.on("uncaught:exception",error=>{
     if(error.message.includes("Minified React error #418")) return false;
@@ -13,7 +14,7 @@ describe("GestLok · avisos de vencimientos por sucursal en Inicio",()=>{
     cy.get(".gl-intro",{timeout:10000}).should("not.be.visible");
   });
   const login=email=>{
-    cy.get("#au-email").type(email);
+    cy.get("#au-email").clear().type(email);
     cy.get("#au-pass").type("secreto1",{log:false});
     cy.get('#au-in button[type="submit"]').click();
   };
@@ -57,13 +58,13 @@ describe("GestLok · avisos de vencimientos por sucursal en Inicio",()=>{
   });
   it("dueña ve alertas del local actual, sin mezclarlas con otras sucursales",()=>{
     login("dueno@example.com");
-    cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+    abrirLocal('munro');
     cy.get("#brand-local").should("contain.text","Munro");
     addService("Análisis de agua",-3,3);
     cy.get('[data-go="inicio"]').click();
     cy.get(".gl-home-due").should("contain.text","Análisis de agua vence hoy");
     cy.get('#snav [data-act="locales"]').click();
-    cy.get('.lcard [data-act="local"][data-id="torcuato"]').click();
+    abrirLocal('torcuato');
     cy.get("#brand-local").should("contain.text","Torcuato");
     cy.get(".gl-home-due").should("not.exist");
     cy.get('#snav [data-go="vencimientos"]').click();

@@ -1,0 +1,25 @@
+/* Inicio de dueños, gerentes y creadora más compacto: en PC entran las tarjetas y los accesos
+   generales (Reportes, Mi cuenta, Ajustes, Soporte) sin desplazarse. Los tamaños se ajustan a la
+   altura de la pantalla; los refinamientos de celular (owner-mobile-refinements.css) siguen rigiendo. */
+.gl-oh-main.hub-in{padding-top:clamp(12px,2.2vh,28px);padding-bottom:24px}
+.gl-owner-welcome{margin-bottom:clamp(10px,1.8vh,22px)}
+.gl-owner-welcome p{font-size:clamp(15px,min(1.6vw,2.4vh),22px)}
+.gl-owner-welcome h1{margin-bottom:4px;font-size:clamp(36px,min(5.4vw,7.6vh),72px)}
+.gl-owner-welcome-logo img{height:clamp(78px,12vh,124px)}
+.gl-owner-welcome .gl-owner-tagline{font-size:clamp(14px,min(1.4vw,2.1vh),19px)}
+.gl-owner-area{padding:clamp(16px,min(2vw,2.6vh),26px);border-radius:22px}
+.gl-owner-area-icon{width:clamp(44px,6vh,56px);height:clamp(44px,6vh,56px);margin-bottom:8px}
+.gl-owner-area-icon svg{width:62%;height:62%}
+.gl-owner-area-title{margin-bottom:4px}
+.gl-owner-area h2{font-size:clamp(22px,min(2.3vw,3.4vh),32px)}
+.gl-owner-arrow{width:46px;height:46px}
+.gl-owner-area>p{margin-bottom:10px;font-size:clamp(14px,min(1.25vw,1.9vh),17px)}
+.gl-owner-area-list{gap:2px;padding:8px 14px;font-size:clamp(14px,min(1.25vw,1.9vh),17px)}
+.gl-owner-area-list li{min-height:clamp(30px,4.2vh,40px);gap:12px}
+.gl-owner-quick{margin-top:clamp(10px,1.8vh,20px)}
+.gl-owner-tile{min-height:clamp(64px,9vh,88px);gap:6px;border-radius:18px}
+/* «Regresar» al inicio: barra superior (en todas las pantallas) y menú lateral. */
+.top-in .back-hub{flex:none;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-weight:600}
+.top-in .back-hub svg.i{width:18px;height:18px}
+.snav .snav-back{font-weight:600;color:var(--mast-ink)}
+@media(max-width:560px){.top-in .back-hub span{display:none}.top-in .back-hub{padding:7px 9px}}

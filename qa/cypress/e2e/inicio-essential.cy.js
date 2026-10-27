@@ -1,4 +1,5 @@
 /* global Cypress, describe, it, cy */
+import { abrirLocal } from '../helpers/abrir-local';
 function start(){
  cy.task('mockSupabase').then(mock=>cy.intercept('GET','**/vendor/supabase.js',{
   statusCode:200,headers:{'content-type':'application/javascript'},body:mock
@@ -9,7 +10,7 @@ function start(){
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
 }
 function login(email){
- cy.get('#au-email').type(email);
+ cy.get('#au-email').clear().type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
 }
@@ -19,7 +20,7 @@ describe('GestLok · Inicio limpio y esencial',()=>{
  });
  it('Dueño en celular: sólo tres métricas, acciones y herramientas ocultas',()=>{
   cy.viewport(390,844);start();login('dueno@example.com');
-  cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+  abrirLocal('munro');
   cy.get('#view .gl-home-essential').should('be.visible').within(()=>{
    cy.contains('Inicio · Munro').should('be.visible');
    cy.get('.gl-home-essential-stat').should('have.length',3);
@@ -37,6 +38,8 @@ describe('GestLok · Inicio limpio y esencial',()=>{
  });
  it('Gerente en Munro: inicio limpio, sin modalidad, con control diario',()=>{
   start();login('gerente.munro@example.com');
+  cy.get('#view .gl-manager-landing').should('be.visible');
+  cy.get('#view [data-gerente-business]').click();
   cy.get('#view .gl-home-essential').should('be.visible');
   cy.get('#view .gl-home-essential-stat').should('have.length',3);
   cy.get('#view').should('not.contain.text','Tienda mixta');

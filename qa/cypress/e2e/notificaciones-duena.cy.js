@@ -1,4 +1,5 @@
 /* global Cypress, describe, it, cy */
+import { abrirLocal } from '../helpers/abrir-local';
 const start=(email)=>{
   cy.task('mockSupabase').then(mock=>{
     cy.intercept('GET','**/vendor/supabase.js',{
@@ -9,10 +10,10 @@ const start=(email)=>{
   cy.visit('/');
   cy.wait('@fakeSupabase');
   cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1',{log:false});
   cy.get('#au-in button[type="submit"]').click();
-  if(email==='dueno@example.com')cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+  if(email==='dueno@example.com')abrirLocal('munro');
 };
 describe('GestLok Dueña: Notificaciones lateral',()=>{
   Cypress.on('uncaught:exception',e=>{
@@ -38,7 +39,7 @@ describe('GestLok Dueña: Notificaciones lateral',()=>{
   it('Gerente no recibe el botón exclusivo de Dueña',()=>{
     cy.viewport(1280,900);
     start('gerente.munro@example.com');
-    cy.get('#view .gl-home-essential').should('be.visible');
+    cy.get('#view .gl-manager-landing').should('be.visible');
     cy.get('#view .gl-owner-notif-trigger').should('not.exist');
   });
 });

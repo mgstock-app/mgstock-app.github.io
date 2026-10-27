@@ -2,14 +2,23 @@
 const BASE = new URL('.', self.location.href).pathname.replace(/\/$/, '');
 const PREFIX = `mgstock:${BASE || '/'}:`;
 const CACHE = PREFIX + '__BUILD_VERSION__';
-const SHELL = ['/', '/stock/app.js', '/stock/gestlok-updates.js', '/stock/gestlok-push.js', '/stock/auth.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png'].map(path => BASE + path);
+const SHELL = ['/', '/stock/gestlok-offline.js', '/stock/app.js', '/stock/gestlok-pwa-update.js', '/stock/gestlok-visitor-demo.js', '/stock/munro-daily.js', '/stock/munro-motos.js', '/stock/mi-gusto-resenas.js', '/stock/gestlok-commerce.js', '/stock/gestlok-tienda.js', '/stock/gestlok-demo.js', '/stock/gestlok-demo-metrics.js', '/stock/gestlok-creator.js', '/stock/gestlok-support.js', '/stock/gestlok-provider-pdf.js', '/stock/gestlok-updates.js', '/stock/gestlok-push.js', '/stock/auth.js', '/stock/gestlok-registration.js', '/stock/gestlok-owner-areas.js', '/stock/gestlok-creator-mode.js', '/stock/gestlok-creator-support.js', '/stock/gestlok-creator-home.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png', '/plantillas/GESTLOK-plantilla-horarios.xlsx', '/plantillas/GESTLOK-demo-horarios-ficticio.xlsx', '/plantillas/demo-horarios.json', '/stock/gestlok-demo-horarios.js'].map(path => BASE + path);
+// Páginas y recursos de «Administrar a los empleados» (/empleados/), listados en cada publicación
+// por scripts/sw-precache.mjs. Así las dos áreas se abren y navegan sin conexión.
+const EMPLEADOS = /*__EMPLEADOS_PRECACHE__*/[];
+const OFFLINE_PAGE = '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GESTLOK · Sin conexión</title><body style="font:16px system-ui;margin:0;display:grid;place-items:center;min-height:100vh;background:#f4f7fb;color:#0f2d44"><main style="max-width:420px;padding:24px;text-align:center"><h1 style="font-size:22px">Sin conexión</h1><p>Esta sección todavía no se descargó en este equipo. Abrila una vez con internet y después vas a poder usarla sin conexión.</p><p><a href="__HOME__" style="color:#0f2d44;font-weight:700">Volver al inicio de GESTLOK</a></p></main></body></html>';
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll(SHELL);
+    await cache.addAll(SHELL.map(path => new Request(path, {cache:'reload'})));
     const html = await (await cache.match(BASE + '/')).text();
     const assets = [...html.matchAll(/(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g)].map(m => m[1].replaceAll('&amp;', '&'));
     await cache.addAll([...new Set(assets)]);
+    // Empleados: de a tandas y sin frenar la instalación si algún archivo falla.
+    const extra = EMPLEADOS.map(path => BASE + path);
+    for (let i = 0; i < extra.length; i += 20) {
+      await Promise.allSettled(extra.slice(i, i + 20).map(u => cache.add(new Request(u, {cache:'reload'}))));
+    }
     await self.skipWaiting();
   })());
 });
@@ -18,9 +27,21 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
-  if (req.method !== 'GET' || req.headers.has('RSC') || url.searchParams.has('_rsc')) return;
+  if (req.method !== 'GET') return;
   const same = url.origin === self.location.origin;
-  const allowed = same && (SHELL.includes(url.pathname) || ['/_next/static/', '/icons/', '/img/'].map(p => BASE + p).some(p => url.pathname.startsWith(p)));
+  // «Administrar a los empleados»: primero la red; sin conexión, la copia guardada (también la navegación interna de Next).
+  if (same && url.pathname.startsWith(BASE + '/empleados/')) {
+    e.respondWith(fetch(req).then(res => {
+      if (res.ok && !url.searchParams.has('_rsc') && !req.headers.has('RSC')) {
+        const copy = res.clone(); e.waitUntil(caches.open(CACHE).then(c => c.put(new Request(url.origin + url.pathname), copy)));
+      }
+      return res;
+    }).catch(async () => (await caches.match(url.origin + url.pathname, {ignoreSearch:true})) ||
+      (req.mode === 'navigate' ? new Response(OFFLINE_PAGE.replace('__HOME__', BASE + '/'), {headers:{'content-type':'text/html; charset=utf-8'}}) : Response.error())));
+    return;
+  }
+  if (req.headers.has('RSC') || url.searchParams.has('_rsc')) return;
+  const allowed = same && (SHELL.includes(url.pathname) || ['/_next/static/', '/icons/', '/img/', '/plantillas/'].map(p => BASE + p).some(p => url.pathname.startsWith(p)));
   const cdn = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname);
   if (!allowed && !cdn) return;
   e.respondWith(fetch(req).then(res => {
@@ -28,7 +49,7 @@ self.addEventListener('fetch', e => {
       const copy = res.clone(); e.waitUntil(caches.open(CACHE).then(c => c.put(req, copy)));
     }
     return res;
-  }).catch(async () => (await caches.match(req)) || Response.error()));
+  }).catch(async () => (await caches.match(req)) || (same && SHELL.includes(url.pathname) && await caches.match(url.origin + url.pathname)) || Response.error()));
 });
 
 // Recepción preparada. No hay envíos automáticos ni programación activa.

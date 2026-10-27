@@ -1,0 +1,4 @@
+-- Reversión de 20261027010000_gestlok_munro_motos_nombres.sql:
+-- volver a aplicar las políticas de 20261027000000_gestlok_munro_agencia_motos.sql
+-- (gestlok_munro_motos_gerente_read, _write_insert, _write_update y _write_delete).
+-- El documento «motos» queda guardado pero los gerentes dejan de leerlo y nadie puede modificarlo.

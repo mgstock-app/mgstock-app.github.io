@@ -63,6 +63,7 @@
   }
   function canWrite(col){
     const a = acc(); if (!a) return false;
+    // Igual que el backend: la creadora consulta en solo lectura salvo edición habilitada.
     if (['equipo', 'solicitudes', 'locales'].includes(col)) return a.rol === 'creadora';
     if (col === 'configuracion_negocio') return total(a);
     if (!col.includes('/')) return false;
@@ -92,9 +93,9 @@
     auth: {
       onAuthStateChange(cb){ listeners.push(cb); setTimeout(() => cb('INITIAL_SESSION', session), 0); return {data:{subscription:{unsubscribe(){}}}}; },
       async getSession(){ return {data:{session}}; },
-      async signInWithPassword({email, password}){ if (password !== 'secreto1') return {error:{message:'Invalid login credentials'}}; session = {user:{email}}; listeners.forEach(cb => cb('SIGNED_IN', session)); return {error:null}; },
+      async signInWithPassword({email, password}){ if (password !== 'secreto1') return {error:{message:'Invalid login credentials'}}; session = {user:{email,user_metadata:window.__signup?.email===email?window.__signup.options.data:{}}}; listeners.forEach(cb => cb('SIGNED_IN', session)); return {error:null}; },
       async signInWithOAuth(o){ window.__oauth = o; return {error:null}; },
-      async signUp(){ return {data:{session:null}, error:null}; },
+      async signUp(args){ window.__signup=args; return {data:{session:null}, error:null}; },
       async resetPasswordForEmail(){ return {error:null}; },
       async updateUser(){ return {error:null}; },
       async signOut(){ session = null; }
@@ -102,6 +103,118 @@
     from(){ return builder(); },
     async rpc(fn, args){
       const a = acc();
+      if (fn === 'gestlok_my_registration'){
+        const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending'}:null,error:null};
+      }
+      if (fn === 'gestlok_request_registration'){
+        if(window.__registrationFail)return {data:null,error:{message:'Sin conexión'}};
+        const kind=args?.p_kind,modules=args?.p_modules;
+        if(!session||a)return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(!['dueno','colaborador'].includes(kind)||!Array.isArray(modules)||new Set(modules).size!==modules.length||modules.length>2||modules.some(m=>!['comercial','recibos_personal'].includes(m))||(kind==='dueno'?!modules.length:!!modules.length))return {data:null,error:{code:'22023',message:'Selección inválida'}};
+        let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        if(!row){row={col:'registration_requests',id:me(),data:{email:me(),fecha:Date.now()}};rows.push(row);}
+        row.data={...row.data,tipoCuenta:kind,modulosSolicitados:[...modules].sort(),status:'pending'};notify('solicitudes');
+        return {data:{kind,modules:[...modules].sort(),status:'pending'},error:null};
+      }
+      if (fn === 'gestlok_creator_registration_requests'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:rows.filter(r=>r.col==='registration_requests'&&(r.data.status||'pending')==='pending').map(r=>({id:'registration-'+r.id,registrationUserId:r.id,...r.data})),error:null};
+      }
+      if (fn === 'gestlok_review_registration'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        const row=rows.find(r=>r.col==='registration_requests'&&r.id===args.p_user);
+        if(!row||!['assigned','rejected'].includes(args.p_status))return {error:{code:'22023',message:'Solicitud inválida'}};
+        if(args.p_status==='assigned'&&!rows.some(r=>r.col==='equipo'&&r.data.email===row.data.email))return {error:{code:'42501',message:'Primero se debe asignar'}};
+        row.data.status=args.p_status;return {data:null,error:null};
+      }
+      if (fn === 'gestlok_creator_companies_index'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:{scope:'metadata_only',companies:[{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',name:'Empresa ficticia',owners:1,locals:[{id:'munro',name:'Munro'},{id:'torcuato',name:'Torcuato'}],modules:{comercial:true,recibos_personal:!!window.__staffModule},recibonet:{organization_number:'2099001',verified_at:'2026-10-25T21:00:00Z'}},{tenant_id:'00000000-0000-4000-8000-000000000222',name:'Otra empresa ficticia',owners:1,locals:[{id:'otro',name:'Otro local'}],modules:{comercial:true,recibos_personal:false},recibonet:null}]},error:null};
+      }
+      if (fn === 'gestlok_creator_dashboard'){
+        if(!window.__dashboard||a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        const day=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
+        return {data:{scope:'creator_dashboard',generated_at:new Date().toISOString(),
+          totals:{companies:2,companies_new_week:1,users:9,users_with_login:6,users_never:3,users_new_week:9,locals:3,employees:7,employees_new_week:3,employees_pending:0,modules_enabled:1,audit:3},
+          roles:{creadora:1,dueno:3,gerente:4,editor:1,lectura:0},employees_roles:{owner:4,manager:2,employee:0,gestlok_gerentes:5},
+          series:[30,20,10,0].map((n,i)=>({d:day(n),empresas:i>2?2:0,usuarios:i*3,empleados:i*2})),
+          period:{companies:2,users:9,employees:7,modules:1},
+          recent_companies:[{tenant_id:'00000000-0000-4000-8000-000000000222',name:'Otra empresa ficticia',created_at:new Date(Date.now()-3600000).toISOString(),locals:1,people:1,employees_module:false},{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',name:'Empresa ficticia',created_at:new Date(Date.now()-86400000).toISOString(),locals:2,people:8,employees_module:true}],
+          activity:[{at:new Date(Date.now()-600000).toISOString(),kind:'audit',what:'module_enabled',who:null,company:'Empresa ficticia'}],
+          system:{accounts:6,confirmed_accounts:6,verified_links:2,editing_open:false,support_open:false}},error:null};
+      }
+      if (fn === 'gestlok_gerente_area_context'){
+        if(window.__gerenteFail||a?.rol!=='gerente')return {data:null,error:{code:'42501',message:'Acceso exclusivo de gerentes autorizados'}};
+        const ctx={data:{role:'gerente',horarios:true,tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',local_ids:(a.locales||[]).map(id=>id==='torcuato'?'dt':id)},error:null};
+        // Solo con window.__gerenteSlow llega con demora (prueba de «aparece sola»); en las demás pruebas responde al instante para no redibujar mientras se escribe.
+        return window.__gerenteSlow?new Promise(r=>setTimeout(()=>r(ctx),1200)):ctx;
+      }
+      if (fn === 'gestlok_creator_set_module'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(args.p_tenant!=='cb0dc04a-9a13-434f-a3d0-47f1d8f39670')return {data:null,error:{code:'22023',message:'La empresa no tiene una organización de ReciboNet vinculada y verificada'}};
+        const changed=!!window.__staffModule!==!!args.p_enabled;window.__staffModule=!!args.p_enabled;
+        if(changed)(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:args.p_enabled?'module_enabled':'module_disabled',tenant_id:args.p_tenant,detail:{module:args.p_module}});
+        return {data:{tenant_id:args.p_tenant,module:args.p_module,enabled:!!args.p_enabled,changed},error:null};
+      }
+      if (fn === 'gestlok_creator_editing_state'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:{active:true,permanent:true,expires_at:null},error:null};
+      }
+      if (fn === 'gestlok_creator_enable_editing'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(!(args.p_minutes>=5&&args.p_minutes<=120)||String(args.p_reason||'').trim().length<3)return {data:null,error:{code:'22023',message:'Indicá el motivo de la edición'}};
+        window.__creatorEditing=true;(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:'editing_enabled',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',detail:{minutes:args.p_minutes}});
+        return {data:{active:true,expires_at:new Date(Date.now()+args.p_minutes*60000).toISOString()},error:null};
+      }
+      if (fn === 'gestlok_creator_disable_editing'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(window.__creatorEditing)(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:'editing_disabled',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',detail:{}});
+        window.__creatorEditing=false;return {data:{active:false,expires_at:null},error:null};
+      }
+      if (fn === 'gestlok_creator_audit'){
+        if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        return {data:window.__audit||[],error:null};
+      }
+      if (fn === 'gestlok_owner_area_context'){
+        if(window.__ownerAreaFail)return {data:null,error:{message:'No disponible'}};
+        if(a?.rol!=='dueno')return {data:null,error:{code:'42501',message:'Solo dueños'}};
+        const brand=a.logoId==='mi-gusto'||rows.some(r=>r.col==='equipo'&&r.data?.rol==='dueno'&&r.data?.logoId==='mi-gusto');return {data:{role:'dueno',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',company_name:brand?'Mi Gusto':'Empresa de prueba',logo_id:brand?'mi-gusto':null,local_ids:rows.filter(r=>r.col==='locales').map(r=>r.id),recibonet:window.__staffModule?{organization_number:'2099001',internal_name:'Fixture interna'}:null,modules:{comercial:{authorized:true,operational:true},recibos_personal:window.__staffModule?{authorized:true,operational:true,authority:'creator_module_grant'}:{authorized:false,operational:true,reason:'module_not_enabled'}}},error:null};
+      }
+      // Reseñas (igual que las RPC gestlok_resenas_*): Munro y Torcuato con datos propios; se registra cualquier día
+      // y se usa del 1 al 12 (después del 12 vale el mes siguiente); uso único; modificar solo pendientes.
+      // window.__resenasDia fija el día (AAAA-MM-DD) para probar vigencia y vencimiento.
+      if (/^gestlok_resenas_(list|create|redeem|update)$/.test(fn)){
+        const loc = args && args.p_local, err = m => ({data:null, error:{message:m}});
+        if (!a || !['munro','torcuato'].includes(loc) || !(total(a) || (a.rol === 'gerente' && (a.locales || []).includes(loc)))) return err('Acceso denegado');
+        const dia = window.__resenasDia || new Date().toISOString().slice(0,10), y = Number(dia.slice(0,4)), m = Number(dia.slice(5,7)), d = Number(dia.slice(8));
+        const per = d <= 12 ? dia.slice(0,8) + '01' : (m === 12 ? (y + 1) + '-01-01' : y + '-' + String(m + 1).padStart(2,'0') + '-01');
+        const st = window.__resenas = window.__resenas || [];
+        const vigente = c => dia >= c.period && dia <= c.period.slice(0,8) + '12';
+        const vencido = c => dia > c.period.slice(0,8) + '12';
+        const pay = c => ({...c, valid_from:c.period, usable:!c.used_at && vigente(c), status: c.used_at ? 'used' : (vencido(c) ? 'expired' : 'pending')});
+        const tel = v => { let t = String(v || '').replace(/\D/g, ''); if (t.startsWith('0054')) t = t.slice(4); else if (t.startsWith('54') && t.length > 11) t = t.slice(2);
+          if (t.length === 11 && t.startsWith('9')) t = t.slice(1); if (t.startsWith('0')) t = t.slice(1); return /^\d{10}$/.test(t) ? t : null; };
+        if (fn === 'gestlok_resenas_list') return {data: st.filter(c => c.local === loc).slice().reverse().map(pay), error:null};
+        if (fn === 'gestlok_resenas_create'){
+          const t = tel(args.p_phone); if (!t || String(args.p_name || '').trim().length < 2) return err('Teléfono argentino inválido');
+          if (st.some(c => c.local === loc && c.phone === t && c.period === per)) return err('El cliente ya tiene cupón para este período en esta sucursal');
+          const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code;
+          do { code = Array.from({length:6}, () => A[Math.floor(Math.random() * 32)]).join(''); } while (st.some(c => c.code === code));
+          const c = {id:'cup-' + (st.length + 1), local:loc, customer_name:String(args.p_name).trim(), phone:t, code, period:per, discount:10, created_at:new Date().toISOString(), used_at:null};
+          st.push(c); return {data:pay(c), error:null};
+        }
+        const c = st.find(x => x.id === args.p_id && x.local === loc);
+        if (fn === 'gestlok_resenas_update'){
+          const t = tel(args.p_phone); if (!t || String(args.p_name || '').trim().length < 2) return err('Nombre inválido');
+          if (!c || c.used_at || vencido(c)) return err('Solo se modifican cupones pendientes de esta sucursal');
+          if (st.some(x => x !== c && x.local === loc && x.phone === t && x.period === c.period)) return err('El cliente ya tiene cupón para este período en esta sucursal');
+          c.customer_name = String(args.p_name).trim(); c.phone = t; return {data:pay(c), error:null};
+        }
+        if (c && !c.used_at && dia < c.period) return err('Todavía no está vigente: se usa del 1 al 12 de ' + c.period.slice(5,7) + '/' + c.period.slice(0,4));
+        if (!c || c.used_at || !vigente(c)) return err('Cupón utilizado, vencido, de otra sucursal o inexistente');
+        c.used_at = new Date().toISOString(); return {data:pay(c), error:null};
+      }
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }

@@ -73,11 +73,12 @@ document.addEventListener('change',event=>{
  const item=event.target;if(!item.closest?.('#gl-demo-feedback-form'))return;
  if(item.name==='interest'){
   model.interest=item.value==='si'?'si':'no';
-  if(model.interest==='no')model.consent=false;
+  if(model.interest==='no'){model.consent=false;model.name='';model.contact='';}
   redraw();
  }else if(item.name==='channel'){
   model.channel=item.value==='email'?'email':'whatsapp';
   model.contact='';
+  model.consent=false;
   redraw();
  }
 });

@@ -1,4 +1,5 @@
 /* global Cypress, cy, beforeEach, describe, it */
+import { abrirLocal } from '../helpers/abrir-local';
 describe("GestLok · Vencimientos y avisos nuevos, datos de prueba solamente",()=>{
   Cypress.on("uncaught:exception", error => {
     if(error.message.includes("Minified React error #418"))return false;
@@ -14,7 +15,7 @@ describe("GestLok · Vencimientos y avisos nuevos, datos de prueba solamente",()
     cy.get("#au-in").should("be.visible");
   });
   const login=email=>{
-    cy.get("#au-email").type(email);
+    cy.get("#au-email").clear().type(email);
     cy.get("#au-pass").type("secreto1",{log:false});
     cy.get('#au-in button[type="submit"]').click();
   };
@@ -49,7 +50,7 @@ describe("GestLok · Vencimientos y avisos nuevos, datos de prueba solamente",()
   });
   it("cuenta dueña puede abrir avisos sin pedir permiso push automáticamente",()=>{
     login("dueno@example.com");
-    cy.get(".lcard [data-id='munro']").click();
+    abrirLocal('munro');
     cy.get('[data-go="avisos"]').click();
     cy.get(".gl-exp-page h1").should("contain.text","Centro de avisos");
     cy.get(".gl-exp-page").should("contain.text","Estos avisos se consultan dentro de GestLok");

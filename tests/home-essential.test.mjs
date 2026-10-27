@@ -7,8 +7,8 @@ const app=read('public/stock/app.js');
 const commerce=read('public/stock/gestlok-commerce.js');
 const css=read('app/globals.css');
 const compact=app.slice(app.indexOf('function inicioOperativo()'),app.indexOf('\nV.inicio = () => {',app.indexOf('function inicioOperativo()')));
-test('Dueño y Gerente reciben Inicio simplificado; creadora mantiene panel propio',()=>{
- assert.match(app,/if \(\['dueno','gerente'\]\.includes\(miRol\(\)\)\) return inicioOperativo\(\)/);
+test('Dueño y Gerente conservan Inicio simplificado; creadora abre las áreas actualizadas',()=>{
+ assert.match(app,/if \(\['creadora','dueno','gerente'\]\.includes\(miRol\(\)\)\) return inicioOperativo\(\)/);
  assert.match(compact,/gl-home-essential/);
  assert.match(compact,/gl-home-essential-overview/);
  assert.match(compact,/gl-home-essential-actions/);
@@ -58,4 +58,11 @@ test('Notificaciones aparece sólo para Dueña, con panel lateral listo sin dato
  assert.match(app,/aria-labelledby','gl-owner-notifications-title'/);
  assert.match(css,/\.gl-owner-notif-trigger/);
  assert.match(css,/\.ov\.drawer:has\(\.gl-owner-notif-body\) \.pn/);
+});
+
+test('Todos los dueños, incluso con un único local, ven primero el inicio general',()=>{
+ const access=app.slice(app.indexOf('function afterAccess()'),app.indexOf('function subscribeLocal()',app.indexOf('function afterAccess()')));
+ assert.match(access,/miRol\(\) !== 'dueno' && mios\.length === 1/);
+ assert.match(access,/else mostrarHub\(\)/);
+ assert.match(app,/const ownerHome=miRol\(\)==='dueno'&&listo&&!!S\.db/);
 });

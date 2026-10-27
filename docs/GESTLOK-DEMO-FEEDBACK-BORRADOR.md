@@ -38,3 +38,6 @@ Contanos qué te gustó o qué mejorarías. Si preferís, dejalo en blanco.
 
 ## Estado técnico
 `public/stock/gestlok-demo-feedback-draft.js` contiene la vista accesible y los controles de estrellas (sin captura ni transmisión de datos). `app/globals.css` incluye los estilos; **no se carga el módulo en `components/stock-runtime.tsx`**. El botón enviar está deshabilitado. Esta rama se conserva para revisión; no fusionar a `main` hasta aprobar texto y protocolo.
+
+## Revisión 27/10/2026
+Actualizado con main. Retirar el interés elimina nombre y contacto de la memoria del borrador; cambiar de canal revoca la casilla de consentimiento. Pruebas de regresión verifican que no se carga en producción, no usa almacenamiento persistente y mantiene el envío deshabilitado. La recopilación sigue pendiente de aprobación.

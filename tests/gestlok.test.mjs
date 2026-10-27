@@ -14,8 +14,8 @@ test("la identidad pública es GestLok y no pertenece a ningún comercio", () =>
   assert.match(layout, /title: "GestLok"/);
   assert.match(markup, /gestlok-wordmark\.svg/);
   assert.doesNotMatch(markup, /src="img\/mi-gusto/);
-  assert.match(app, /perfil\.logoId === 'mi-gusto'/);
-  assert.match(app, /img\/mi-gusto-negro\.png/);
+  assert.match(app, /S\.me\?\.tenant_id === MI_GUSTO_TENANT/);
+  assert.match(app, /img\/mi-gusto-blanco\.png/);
   assert.match(app, /Chat del local/);
 });
 
@@ -24,7 +24,9 @@ test("el chat queda asociado al local autenticado con control de permisos", () =
   assert.match(app, /LOCAL_COLS = \[[^\]]*'chat'/);
   assert.match(app, /C\('chat'\)\.orderBy\('fecha'/);
   assert.ok(app.includes("S.db.collection(local + '/chat').doc(payload.id).set"));
-  assert.match(app, /!S\.local \|\| S\.offline \|\| !canW\(\)/);
+  // Sin conexión el envío solo se bloquea si el modo sin conexión no está disponible.
+  assert.match(app, /!S\.local \|\| sinRed\(\) \|\| !canW\(\)/);
+  assert.match(app, /const sinRed = \(\) => S\.offline && !syncOffline\(\);/);
 });
 
 test("GestLok sigue gratis y exige aprobación de cuentas", () => {
@@ -40,7 +42,7 @@ test("el panel administrativo solo aparece con rol creadora y es gratuito", () =
   assert.match(app, /if \(adm && listo && S\.db\)/);
   assert.match(app, /isCreadora = \(\) => !!\(S\.me && S\.me\.isOwner\)/);
   assert.match(app, /Panel administrativo/);
-  assert.match(app, /if \(!isCreadora\(\) && mios\.length === 1\)/);
+  assert.match(app, /if \(!isCreadora\(\) && miRol\(\) !== 'dueno' && mios\.length === 1\)/);
   assert.match(app, /Las nuevas cuentas solo ingresan cuando las autorizás/);
   assert.doesNotMatch(app.slice(app.indexOf('const adminHTML ='), app.indexOf('if (hub._h !== adminHTML)')), /facturaci[oó]n|ingresos del mes|suscripciones|cobros recurrentes/i);
 });
@@ -56,13 +58,17 @@ test("los mensajes pendientes se recuperan sin duplicar el envío y sin mezclar 
   assert.ok(app.includes('t.id === \'gestlok-chat-text\''));
 });
 
-test("los conteos sin conexión requieren confirmación incluso después de reconectarse", () => {
+test("conteos sin conexión: con el modo sin conexión se guardan y se envían solos; sin él, quedan como borrador", () => {
   const app = read("public/stock/app.js");
   assert.match(app, /const queuedKey =/);
   assert.ok(app.includes('lsSet(queuedKey(), S.queued)'));
   assert.ok(app.includes('S.queued = q && typeof q.view'));
   assert.ok(app.includes('S.offline = false; render();'));
   assert.ok(!app.includes('S.offline = false; S.queued = null'));
+  // Borrador de versiones anteriores: al volver internet se guarda solo si el modo sin conexión está activo.
+  assert.match(app, /if \(q && S\.db && syncOffline\(\)\)\{ toast\('Volvió internet: guardando el conteo pendiente…'\); void \(q\.fab \? doSaveF\(q\.view\) : doSave\(q\.view\)\); return; \}/);
+  assert.match(app, /if \(sinRed\(\)\)\{ queueSave\(v, false\); return; \}/);
+  assert.match(app, /if \(sinRed\(\)\)\{ queueSave\(v, true\); return; \}/);
 });
 
 test("las respuestas viejas de Supabase no sobrescriben las nuevas", () => {

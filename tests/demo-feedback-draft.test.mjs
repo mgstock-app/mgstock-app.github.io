@@ -42,3 +42,22 @@ test('Borrador: calificación 1–5 estrellas y comentario opcional sin publicar
  listeners.submit({target:{id:'gl-demo-feedback-form'},preventDefault(){prevented=true;}});
  assert.equal(prevented,true);
 });
+test('Retirar interés borra el contacto y cambiar de canal exige un nuevo consentimiento',()=>{
+ const listeners={},window={};
+ const document={addEventListener:(name,fn)=>listeners[name]=fn,getElementById:()=>null};
+ new vm.Script(code).runInNewContext({document,window});
+ const field=(name,value,checked=false)=>({name,value,checked,closest:()=>true});
+ const change=(name,value)=>listeners.change({target:field(name,value)});
+ const input=(name,value,checked=false)=>listeners.input({target:field(name,value,checked)});
+ change('interest','si'); input('name','Persona ficticia'); input('contact','test@example.com'); input('consent','',true);
+ change('interest','no'); change('interest','si');
+ let html=window.GestLokDemoFeedbackDraft.view();
+ assert.doesNotMatch(html,/Persona ficticia|test@example.com|name="consent" checked/);
+ input('consent','',true); change('channel','email');
+ html=window.GestLokDemoFeedbackDraft.view();
+ assert.doesNotMatch(html,/name="consent" checked/);
+ assert.match(html,/type="submit" disabled/);
+ assert.doesNotMatch(code,/fetch\(|sendBeacon|localStorage|sessionStorage|indexedDB/);
+ const runtime=readFileSync(new URL('../components/stock-runtime.tsx',import.meta.url),'utf8');
+ assert.doesNotMatch(runtime,/gestlok-demo-feedback-draft/);
+});

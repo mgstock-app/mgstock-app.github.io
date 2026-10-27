@@ -1,4 +1,5 @@
 /* global Cypress, cy, describe, it, expect */
+import { abrirLocal } from '../helpers/abrir-local';
 const login=(email)=>{
  cy.task('mockSupabase').then(mock=>{
   cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,
@@ -8,10 +9,10 @@ const login=(email)=>{
  cy.visit('/');
  cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
- cy.get('#au-email').type(email);
+ cy.get('#au-email').clear().type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
- if(email==='dueno@example.com')cy.get('#hub [data-act="local"][data-id="munro"]').first().click();
+ if(email==='dueno@example.com')abrirLocal('munro');
 };
 describe('Permiso push Dueña sin envíos automáticos',()=>{
  Cypress.on('uncaught:exception',e=>{
@@ -43,7 +44,7 @@ describe('Permiso push Dueña sin envíos automáticos',()=>{
  it('Gerente no recibe cartel ni botón push de Dueña',()=>{
   cy.viewport(1280,900);
   login('gerente.munro@example.com');
-  cy.get('#view .gl-home-essential').should('be.visible');
+  cy.get('#view .gl-manager-landing').should('be.visible');
   cy.get('.gl-push-permission').should('not.exist');
   cy.get('.gl-owner-notif-trigger').should('not.exist');
  });
