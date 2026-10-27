@@ -44,7 +44,7 @@ describe('Reseñas: Mi Gusto, Munro y Torcuato con datos propios', () => {
       cy.get('.rv-badge.pending').should('contain.text', 'Pendiente');
       // Un cupón por teléfono y mes en la sucursal, aunque cambie el formato del número.
       nuevo('Mismo cliente', '011 2233 7788');
-      cy.get('.rv-modal [role="alert"]').should('contain.text', 'ya recibió el beneficio');
+      cy.get('.rv-modal [role="alert"]').should('contain.text', 'ya tiene un cupón para este período');
       cerrar();
       // Buscador por nombre, teléfono o cupón.
       cy.get('#rv-search').type(code);
