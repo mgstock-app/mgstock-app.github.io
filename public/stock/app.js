@@ -198,8 +198,8 @@ const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
-/* Motos Agencia: solo Mi Gusto – Munro (dueños, creadora y gerentes de Munro). */
-const puedeVerResenas = () => !!window.GestLokMunroResenas?.permitido();
+/* Reseñas: Mi Gusto, Munro y Torcuato con datos propios. Motos Agencia: solo Munro. */
+const puedeVerResenas = () => !!window.GestLokResenas?.permitido();
 const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
@@ -359,7 +359,7 @@ function viewHTML(){
   if (S.view === 'pedidos-online') return window.GestLokCommerce?.online() ? window.GestLokCommerce.view() : V.inicio();
   if (S.view === 'tienda-online') return window.GestLokCommerce?.online() ? window.GestLokTienda?.view() : V.inicio();
   if (S.view === 'diario') return puedeVerDiarioMunro() ? window.GestLokMunroDaily.view() : V.inicio();
-  if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokMunroResenas.view() : V.inicio();
+  if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokResenas.view() : V.inicio();
   if (S.view === 'motos') return puedeVerMotos() ? window.GestLokMunroMotos.view() : V.inicio();
   if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
   if (S.view === 'avisos') return window.GestLokUpdates.viewAlerts();
@@ -3732,7 +3732,7 @@ function afterAccess(){
   }
   applyPushNavigation();
 }
-/* Munro: «Administración de local» agrupa Conteo diario y Motos Agencia (diseño aprobado). El resto de los locales no cambia. */
+/* Mi Gusto: «Administración de local» agrupa Conteo diario y Motos Agencia (Munro) y Reseñas (Munro y Torcuato). */
 function navAdmLocal(){
   const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
     (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>` : '') +
@@ -3754,7 +3754,7 @@ function subscribeLocal(){
     }),errLive));
   }
   window.GestLokMunroMotos?.subscribe(loc,push);
-  window.GestLokMunroResenas?.subscribe(loc,push);
+  window.GestLokResenas?.subscribe(loc,push);
   push(C('vencimientos').onSnapshot(mine(snap => {
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
@@ -3832,7 +3832,7 @@ function abrirLocal(id){
     S.local = id;
     window.GestLokMunroDaily?.reset();
     window.GestLokMunroMotos?.reset();
-    window.GestLokMunroResenas?.reset();
+    window.GestLokResenas?.reset();
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
@@ -3897,7 +3897,7 @@ window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()
 window.GestLokPush?.attach({S,render,miRol:()=>miRol()});
 window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
 window.GestLokMunroMotos?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales});
-window.GestLokMunroResenas?.attach({S,render,miRol,misLocales});
+window.GestLokResenas?.attach({S,render,miRol,misLocales});
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});

@@ -13,10 +13,10 @@ window.GestLokSupabase={rpc:async(name,p)=>{
  r.status='used';r.used_at=new Date().toISOString();return {data:r};
 }};
 const S={me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'munro',view:'resenas',offline:false};
-const render=()=>document.getElementById('qa').innerHTML=window.GestLokMunroResenas.view();
-window.GestLokMunroResenas.attach({S,render,miRol:()=> 'gerente',misLocales:()=>['munro']});render();window.GestLokMunroResenas.subscribe('munro',()=>{});
+const render=()=>document.getElementById('qa').innerHTML=window.GestLokResenas.view();
+window.GestLokResenas.attach({S,render,miRol:()=> 'gerente',misLocales:()=>['munro']});render();window.GestLokResenas.subscribe('munro',()=>{});
 </script></html>`;
-const files={'/resenas.js':new URL('../public/stock/munro-resenas.js',import.meta.url),'/resenas.css':new URL('../app/munro-resenas.css',import.meta.url)};
+const files={'/resenas.js':new URL('../public/stock/mi-gusto-resenas.js',import.meta.url),'/resenas.css':new URL('../app/mi-gusto-resenas.css',import.meta.url)};
 createServer((req,res)=>{
  if(req.url==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
  const file=files[req.url];if(!file){res.writeHead(404);res.end();return;}
