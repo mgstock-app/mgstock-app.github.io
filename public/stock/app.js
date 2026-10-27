@@ -52,7 +52,9 @@ const IC = {
   print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   shield:'<path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   grip:'<circle cx="9" cy="6" r=".9"/><circle cx="15" cy="6" r=".9"/><circle cx="9" cy="12" r=".9"/><circle cx="15" cy="12" r=".9"/><circle cx="9" cy="18" r=".9"/><circle cx="15" cy="18" r=".9"/>',
-  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>'
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  moto:'<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h6l3-6h3l1 6M13 7h3l1 4M3 13h6l2 4"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>'
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
 
@@ -196,7 +198,7 @@ const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
-/* Agencia Motos: solo Mi Gusto – Munro (dueños, creadora y gerentes de Munro). */
+/* Motos Agencia: solo Mi Gusto – Munro (dueños, creadora y gerentes de Munro). */
 const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
@@ -372,8 +374,8 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'motos' ? 'Agencia Motos' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
-  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>${S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;
   $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'vencimientos' || S.view === 'avisos';
   renderCompanyIdentity(); renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
 }
@@ -389,7 +391,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}${puedeVerMotos() ? `<button data-go="motos">${ic('clock')}<span class="nl">Agencia Motos</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -1412,7 +1414,7 @@ V.inicio = () => {
       ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
       <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
       ${puedeVerDiarioMunro() ? `<button class="gl-today-action" data-go="diario">${ic('clock')}<b>Control diario</b><small>Ventas, consumo y diferencias</small></button>` : ''}
-      ${puedeVerMotos() ? `<button class="gl-today-action" data-go="motos">${ic('clock')}<b>Agencia Motos</b><small>Horarios semanales de las motos</small></button>` : ''}
+      ${puedeVerMotos() ? `<button class="gl-today-action" data-go="motos">${ic('moto')}<b>Motos Agencia</b><small>Horarios semanales de las motos</small></button>` : ''}
     </div>
   </section>
   <div class="kpis${pedV ? '' : ' k3'}">
@@ -3728,6 +3730,15 @@ function afterAccess(){
   }
   applyPushNavigation();
 }
+/* Munro: «Administración de local» agrupa Conteo diario y Motos Agencia (diseño aprobado). El resto de los locales no cambia. */
+function navAdmLocal(){
+  const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
+    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>` : '');
+  if (!puedeVerMotos()) return items;
+  const open = S.admLocalOpen !== false || S.view === 'diario' || S.view === 'motos';
+  return `<details class="snav-folder"${open ? ' open' : ''}><summary>${ic('gear')}<span class="nl">Administración de local</span>${ic('chev')}</summary><div class="snav-sub">${items}</div></details>`;
+}
+document.addEventListener('toggle', e => { if (e.target.matches?.('.snav-folder')) S.admLocalOpen = e.target.open; }, true);
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };

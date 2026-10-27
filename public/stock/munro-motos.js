@@ -1,4 +1,4 @@
-/* GestLok · Agencia Motos, exclusiva de Mi Gusto – Munro.
+/* GestLok · Motos Agencia, exclusiva de Mi Gusto – Munro.
    Planilla semanal (lunes a domingo) con entrada y salida de dos turnos por moto.
    - Cada celda (semana, moto, día) es un documento propio en «munro/agencia_motos»:
      dos personas cargando a la vez no se pisan y sin conexión queda en la cola local.
@@ -81,6 +81,7 @@
   const refuerzos = semana => docs.filter(d => d.data?.tipo === 'refuerzo' && d.data.semana === semana)
     .map(d => ({id:d.data.moto, nombre:d.data.nombre, moto:d.data.etiqueta || 'Refuerzo', refuerzo:true, doc:d.id, creado:d.data.creado || 0}))
     .sort((a, b) => a.creado - b.creado);
+  const NUEVO = {id:'nuevo', nombre:'Agregar moto de refuerzo', moto:'', nuevo:true};
   const motosDe = semana => [...FIJAS, ...refuerzos(semana)];
   function resumen(semana){
     const dias = diasDe(semana), val = tarifas();
@@ -97,30 +98,46 @@
     .filter(s => s < semanaActual()).sort().reverse();
 
   async function guardarCelda(input){
-    const semana = semanaVista, {moto, dia, campo} = input.dataset;
+    const semana = semanaVista, {dia, campo} = input.dataset;
+    let moto = input.dataset.moto, creado = false;
     if (!editable(semana)) { api.toast('Solo podés cargar la semana en curso.', true); return; }
     const valor = input.value;
     if (valor && !HORA.test(valor)) { api.toast('Usá el formato de hora HH:MM.', true); return; }
+    // Cargar un horario en la fila vacía crea la moto de refuerzo de esta semana.
+    if (moto === NUEVO.id) {
+      if (!valor) return;
+      moto = await crearRefuerzo(semana, 'Refuerzo ' + (refuerzos(semana).length + 1));
+      if (!moto) return;
+      input.dataset.moto = moto;
+      creado = true;
+    }
     const id = idCelda(semana, moto, dia);
     const previo = leer(id) || {};
     const data = {...previo, semana, moto, dia, [campo]:valor || '', autor:api.S.uid, actualizado:Date.now()};
-    pendientes.set(id, data); refrescar();
+    pendientes.set(id, data);
+    if (creado) api.render(); else refrescar();
     try {
       await api.w(() => col().doc(id).set(data));
       if (!navigator.onLine) api.toast('Sin internet: el horario quedó en este equipo y se envía solo al volver la conexión.');
     } catch (e) { pendientes.delete(id); api.fail(e); api.render(); }
+  }
+  async function crearRefuerzo(semana, nombre){
+    const moto = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    const id = 'm-' + semana + '-' + moto;
+    const data = {tipo:'refuerzo', semana, moto, nombre, etiqueta:'Refuerzo ' + (refuerzos(semana).length + 1), autor:api.S.uid, creado:Date.now()};
+    pendientes.set(id, data); docs.push({id, data});
+    try { await api.w(() => col().doc(id).set(data)); return moto; }
+    catch (e) { pendientes.delete(id); docs = docs.filter(d => d.id !== id); api.fail(e); api.render(); return null; }
   }
   async function agregarRefuerzo(form){
     const semana = semanaVista;
     if (!editable(semana)) return;
     const nombre = form.elements.namedItem('nombre').value.trim().slice(0, 40);
     if (!nombre) return;
-    const moto = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-    const id = 'm-' + semana + '-' + moto;
-    const data = {tipo:'refuerzo', semana, moto, nombre, etiqueta:'Refuerzo ' + (refuerzos(semana).length + 1), autor:api.S.uid, creado:Date.now()};
-    pendientes.set(id, data); docs.push({id, data}); agregando = false; api.render();
-    try { await api.w(() => col().doc(id).set(data)); api.toast('Moto de refuerzo agregada a esta semana.'); }
-    catch (e) { pendientes.delete(id); docs = docs.filter(d => d.id !== id); api.fail(e); api.render(); }
+    agregando = false;
+    const moto = crearRefuerzo(semana, nombre);
+    api.render();
+    if (await moto) api.toast('Moto de refuerzo agregada a esta semana.');
   }
   async function quitarRefuerzo(doc){
     const semana = semanaVista, r = refuerzos(semana).find(x => x.doc === doc);
@@ -161,54 +178,51 @@
     return '<input class="mo-time" type="time" step="60" value="' + E(v) + '"' + (puede ? '' : ' disabled') +
       ' data-moto="' + E(m.id) + '" data-dia="' + dia + '" data-campo="' + campo + '" aria-label="' + E(label + ' de ' + m.nombre + ' el ' + corta(dia)) + '">';
   };
-  const tarjetaMoto = m => '<div class="mo-who"><span class="mo-ico">' + ICONO + '</span><div><b>' + E(m.nombre) + '</b><small>' + E(m.moto) + '</small></div>' +
+  const tarjetaMoto = m => m.nuevo ? (agregando
+    ? '<form id="mo-ref-form" class="mo-who mo-ref-form"><input name="nombre" maxlength="40" required placeholder="Nombre del refuerzo" autocomplete="off" aria-label="Nombre del refuerzo">' +
+      '<div><button class="btn sm primary" type="submit">Agregar</button><button class="btn sm" type="button" data-mo-act="cancelar-ref">Cancelar</button></div></form>'
+    : '<button class="mo-add" data-mo-act="agregar"><span>+</span>Agregar moto de refuerzo</button>') :
+    '<div class="mo-who"><span class="mo-ico">' + ICONO + '</span><div><b>' + E(m.nombre) + '</b><small>' + E(m.moto) + '</small></div>' +
     (m.refuerzo && editable(semanaVista) ? '<button class="mo-x" data-mo-act="quitar" data-doc="' + E(m.doc) + '" aria-label="Quitar ' + E(m.nombre) + '">×</button>' : '') + '</div>';
   const totalMoto = (f, dueno) => '<div class="mo-total"><small>Total</small><b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' +
     (dueno ? '<span data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</span>' : '') + '</div>';
-  const formRefuerzo = () => agregando
-    ? '<form id="mo-ref-form" class="mo-ref-form"><label>Nombre del refuerzo<input name="nombre" maxlength="40" required placeholder="Ej.: Nico" autocomplete="off"></label>' +
-      '<div><button class="btn primary" type="submit">Agregar</button><button class="btn" type="button" data-mo-act="cancelar-ref">Cancelar</button></div></form>'
-    : '<button class="mo-add" data-mo-act="agregar"><span>+</span>Agregar moto de refuerzo</button>';
 
+  const vacia = r => ({...NUEVO, porDia:r.dias.map(() => 0), min:0, pago:0});
   function tablaPC(r, puede, dueno){
     const cab = '<div class="mo-row mo-head"><div>Empleado / Moto</div><div></div>' +
       r.dias.map((d, i) => '<div><b>' + DIAS[i] + '</b><small>' + corta(d) + '</small></div>').join('') + '<div>Total semanal</div></div>';
-    const filas = r.filas.map(f => '<div class="mo-row mo-moto">' + tarjetaMoto(f) +
+    const filas = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<div class="mo-row mo-moto' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) +
       '<div class="mo-labels">' + CAMPOS.map(([, l]) => '<span>' + l + '</span>').join('') + '<span class="mo-hd">Horas del día</span></div>' +
       r.dias.map((dia, i) => '<div class="mo-day">' + CAMPOS.map(([k, l]) => celda(r.semana, f, dia, k, l, puede)).join('') +
         '<span class="mo-hd" data-mo-dia="' + E(f.id) + '-' + i + '">' + fmtH(f.porDia[i]) + '</span></div>').join('') +
       totalMoto(f, dueno) + '</div>').join('');
-    const agregar = puede ? '<div class="mo-row mo-moto mo-add-row">' + formRefuerzo() + '</div>' : '';
     const tot = '<div class="mo-row mo-foot"><div class="mo-foot-label"><b>Totales por día</b><small>(todas las motos)</small></div>' +
       r.porDia.map((m, i) => '<div data-mo-col="' + i + '">' + fmtH(m) + '</div>').join('') +
       '<div class="mo-week"><small>Total semanal</small><b data-mo-sem>' + fmtH(r.min) + '</b>' + (dueno ? '<span data-mo-sem-pago>' + fmt$(r.pago) + '</span>' : '') + '</div></div>';
-    return '<div class="mo-scroll"><div class="mo-grid" style="--mo-cols:' + r.dias.length + '">' + cab + filas + agregar + tot + '</div></div>';
+    return '<div class="mo-scroll"><div class="mo-grid" style="--mo-cols:' + r.dias.length + '">' + cab + filas + tot + '</div></div>';
   }
   function tablaMovil(r, puede, dueno){
     if (diaMovil < 0) diaMovil = Math.max(0, r.dias.indexOf(hoyAR()));
     const i = diaMovil, dia = r.dias[i];
     const tabs = '<div class="mo-tabs" role="tablist">' + r.dias.map((d, j) => '<button role="tab" aria-selected="' + (j === i) + '" class="mo-tab' + (j === i ? ' on' : '') +
       '" data-mo-act="dia" data-i="' + j + '"><b>' + DIAS[j] + '</b><small>' + corta(d) + '</small></button>').join('') + '</div>';
-    const cards = r.filas.map(f => '<article class="mo-card">' + tarjetaMoto(f) + '<div class="mo-card-grid">' +
+    const cards = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<article class="mo-card' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) + '<div class="mo-card-grid">' +
       CAMPOS.map(([k, l]) => '<label><span>' + l + '</span>' + celda(r.semana, f, dia, k, l, puede) + '</label>').join('') + '</div>' +
       '<footer><span>Horas del día <b data-mo-dia="' + E(f.id) + '-' + i + '">' + fmtH(f.porDia[i]) + '</b></span>' +
       '<span>Semana <b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' + (dueno ? ' · <b data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</b>' : '') + '</span></footer></article>').join('');
-    return tabs + '<div class="mo-cards">' + cards + (puede ? '<div class="mo-card mo-add-row">' + formRefuerzo() + '</div>' : '') + '</div>' +
+    return tabs + '<div class="mo-cards">' + cards + '</div>' +
       '<div class="mo-foot-m"><span>Total del ' + DIAS[i] + ' <b data-mo-col="' + i + '">' + fmtH(r.porDia[i]) + '</b></span>' +
       '<span class="mo-week">Total semanal <b data-mo-sem>' + fmtH(r.min) + '</b>' + (dueno ? ' <span data-mo-sem-pago>' + fmt$(r.pago) + '</span>' : '') + '</span></div>';
   }
-  function tarifasHTML(){
-    if (!esDueno()) return '';
+  /* Valor por hora: botón discreto junto al historial (solo dueños y creadora). */
+  function tarifasForm(){
+    if (!esDueno() || !api.canW() || !tarifasAbiertas) return '';
     const val = tarifas(), s = semanaActual();
     const items = [...FIJAS.map(m => [m.id, m.nombre]), ['refuerzo', 'Motos de refuerzo']];
-    const resumenT = items.map(([k, n]) => E(n) + ': ' + (tarifaEn(val, k, s) ? fmt$(tarifaEn(val, k, s)) : 'sin valor')).join(' · ');
-    return '<section class="mo-rates"><div><b>Valor por hora</b><small>' + resumenT + '</small></div>' +
-      (api.canW() ? (tarifasAbiertas
-        ? '<form id="mo-rates-form" class="mo-rates-form">' + items.map(([k, n]) => '<label>' + E(n) +
-          '<input name="t-' + k + '" type="number" min="0" step="0.01" inputmode="decimal" value="' + (tarifaEn(val, k, s) || '') + '"></label>').join('') +
-          '<div><button class="btn primary" type="submit">Guardar valores</button><button class="btn" type="button" data-mo-act="tarifas">Cancelar</button></div>' +
-          '<small>Rigen desde la semana en curso; el historial conserva los valores anteriores.</small></form>'
-        : '<button class="btn" data-mo-act="tarifas">Editar valores</button>') : '') + '</section>';
+    return '<form id="mo-rates-form" class="mo-rates-form">' + items.map(([k, n]) => '<label>' + E(n) +
+      '<input name="t-' + k + '" type="number" min="0" step="0.01" inputmode="decimal" value="' + (tarifaEn(val, k, s) || '') + '"></label>').join('') +
+      '<div><button class="btn primary" type="submit">Guardar valores</button><button class="btn" type="button" data-mo-act="tarifas">Cancelar</button></div>' +
+      '<small>Rigen desde la semana en curso; el historial conserva los valores anteriores.</small></form>';
   }
   function historialHTML(){
     if (!esDueno()) return '';
@@ -220,8 +234,14 @@
         '<td>' + fmtH(ref) + '</td><td><b>' + fmtH(r.min) + '</b></td><td><b>' + fmt$(r.pago) + '</b></td>' +
         '<td><button class="mo-link" data-mo-act="ver" data-semana="' + s + '">Ver detalle</button></td></tr>';
     }).join('');
-    return '<section class="mo-hist"><div class="mo-hist-top"><div><b>Historial de semanas</b><small>(visible solo para los dueños)</small></div>' +
-      (semanas.length > 8 ? '<button class="mo-link" data-mo-act="todo">' + (verTodo ? 'Ver menos' : 'Ver historial completo (' + semanas.length + ')') + '</button>' : '') + '</div>' +
+    const val = tarifas(), s = semanaActual();
+    const resumenT = [...FIJAS.map(m => [m.id, m.nombre]), ['refuerzo', 'Refuerzo']]
+      .map(([k, n]) => E(n) + ' ' + (tarifaEn(val, k, s) ? fmt$(tarifaEn(val, k, s)) : 'sin valor')).join(' · ');
+    return '<section class="mo-hist"><div class="mo-hist-top"><span class="mo-hist-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>' +
+      '<div><b>Historial de semanas</b><small>(visible solo para los dueños)</small></div><div class="mo-hist-acts">' +
+      (api.canW() ? '<button class="mo-pill" data-mo-act="tarifas" title="' + resumenT + '">Valor por hora</button>' : '') +
+      (semanas.length > 8 ? '<button class="mo-pill" data-mo-act="todo">' + (verTodo ? 'Ver menos' : 'Ver historial completo →') + '</button>' : '') + '</div></div>' +
+      tarifasForm() +
       (semanas.length ? '<div class="mo-scroll"><table><thead><tr><th>Semana</th><th>Desde</th><th>Hasta</th>' + FIJAS.map(m => '<th>' + E(m.nombre) + '</th>').join('') +
         '<th>Refuerzo</th><th>Total horas</th><th>Total pago</th><th>Acciones</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
         : '<p>Todavía no hay semanas cerradas. El lunes la semana en curso pasa sola al historial.</p>') + '</section>';
@@ -236,12 +256,11 @@
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
       : !api.canW() ? 'Solo lectura' : enCurso ? 'Se guarda al completar cada horario' : 'Semana cerrada · se ve tal como quedó';
     return '<section class="sheet mo-page"><header class="mo-top"><span class="mo-hero">' + ICONO + '</span>' +
-      '<div class="mo-title"><p class="eyebrow">Munro · Administración de local</p><h1>Agencia Motos</h1><h2>Control horario semanal</h2>' +
+      '<div class="mo-title"><h1>Motos Agencia</h1><h2>Control horario semanal</h2>' +
       '<p>Registrá la entrada y salida de cada moto. Al finalizar la semana, los datos se guardan automáticamente en el historial y se reinicia la planilla.</p></div>' +
       '<div class="mo-semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>' +
       '<div><small>' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</small><b>' + DIAS[0] + ' ' + corta(r.dias[0]) + ' – ' + DIAS[6] + ' ' + corta(r.dias[6]) + '</b></div>' + flechas + '</div></header>' +
       (enCurso ? '' : '<p class="mo-aviso">Estás viendo una semana cerrada. <button class="mo-link" data-mo-act="hoy">Volver a la semana actual</button></p>') +
-      tarifasHTML() +
       '<section class="mo-sheet">' + (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
       '<p class="mo-estado">' + E(estado) + '</p>' + historialHTML() + '</section>';
   }

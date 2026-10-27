@@ -10,7 +10,7 @@ function cargar(){
   return ctx.window.GestLokMunroMotos;
 }
 
-test('Agencia Motos: semana de lunes a domingo en hora de Buenos Aires y cierre automático el lunes', () => {
+test('Motos Agencia: semana de lunes a domingo en hora de Buenos Aires y cierre automático el lunes', () => {
   const {_t:t} = cargar();
   assert.equal(t.lunesDe('2026-10-26'), '2026-10-26');
   assert.equal(t.lunesDe('2026-11-01'), '2026-10-26');
@@ -23,7 +23,7 @@ test('Agencia Motos: semana de lunes a domingo en hora de Buenos Aires y cierre 
   assert.equal(t.numeroSemana('2025-12-29'), 1);
 });
 
-test('Agencia Motos: horas por turno, cruce de medianoche, turnos incompletos e importes', () => {
+test('Motos Agencia: horas por turno, cruce de medianoche, turnos incompletos e importes', () => {
   const {_t:t} = cargar();
   assert.equal(t.turno('08:00', '16:30'), 510);
   assert.equal(t.turno('19:33', '00:00'), 267);
@@ -37,7 +37,7 @@ test('Agencia Motos: horas por turno, cruce de medianoche, turnos incompletos e 
   assert.equal(t.importe(510, 0), 0);
 });
 
-test('Agencia Motos: el valor por hora rige desde su semana y no cambia el historial', () => {
+test('Motos Agencia: el valor por hora rige desde su semana y no cambia el historial', () => {
   const {_t:t} = cargar();
   const valores = {lucas:[{desde:'2026-10-19', valor:9000}, {desde:'2026-11-02', valor:9500}]};
   assert.equal(t.tarifaEn(valores, 'lucas', '2026-10-12'), 0);
@@ -46,7 +46,7 @@ test('Agencia Motos: el valor por hora rige desde su semana y no cambia el histo
   assert.equal(t.tarifaEn(valores, 'aye', '2026-11-09'), 0);
 });
 
-test('Agencia Motos: solo Mi Gusto – Munro; dueños con historial, gerentes de Munro cargan la semana', () => {
+test('Motos Agencia: solo Mi Gusto – Munro; dueños con historial, gerentes de Munro cargan la semana', () => {
   const script = file('public/stock/munro-motos.js');
   const app = file('public/stock/app.js');
   assert.match(script, /const TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'/);
@@ -55,16 +55,18 @@ test('Agencia Motos: solo Mi Gusto – Munro; dueños con historial, gerentes de
   assert.match(script, /const esDueno = \(\) => \['creadora','dueno'\]\.includes\(rol\(\)\)/);
   assert.match(script, /esDueno\(\) \|\| semana === semanaActual\(\)/);
   assert.match(script, /function historialHTML\(\)\{\s*if \(!esDueno\(\)\) return ''/);
-  assert.match(script, /function tarifasHTML\(\)\{\s*if \(!esDueno\(\)\) return ''/);
+  assert.match(script, /function tarifasForm\(\)\{\s*if \(!esDueno\(\) \|\| !api\.canW\(\) \|\| !tarifasAbiertas\) return ''/);
   for (const nombre of ['Lucas', 'Alex', 'Aye']) assert.ok(script.includes("nombre:'" + nombre + "'"));
   assert.doesNotMatch(script, /C\('(productos|conteos|hojas|diario|munro_control)'\)/);
   assert.match(app, /'munro_control', 'agencia_motos'\]/);
-  assert.match(app, /\$\{puedeVerMotos\(\) \? `<button data-go="motos">/);
+  assert.match(app, /\(puedeVerMotos\(\) \? `<button data-go="motos">\$\{ic\('moto'\)\}<span class="nl">Motos Agencia<\/span>/);
+  assert.match(app, /<details class="snav-folder"[\s\S]*Administración de local/);
+  assert.match(app, /if \(!puedeVerMotos\(\)\) return items;/);
   assert.match(app, /\(v === 'motos' && puedeVerMotos\(\)\)/);
   assert.match(app, /window\.GestLokMunroMotos\?\.subscribe\(loc,push\)/);
 });
 
-test('Agencia Motos queda disponible sin conexión y el servidor repite los permisos', () => {
+test('Motos Agencia queda disponible sin conexión y el servidor repite los permisos', () => {
   assert.match(file('components/stock-runtime.tsx'), /load\("\/stock\/munro-motos\.js/);
   for (const sw of ['scripts/sw-template.js', 'public/sw.js']) assert.match(file(sw), /'\/stock\/munro-motos\.js'/);
   assert.match(file('app/layout.tsx'), /import "\.\/munro-motos\.css";/);
