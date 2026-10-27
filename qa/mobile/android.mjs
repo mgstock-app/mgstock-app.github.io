@@ -29,6 +29,11 @@ try {
   // 1) Abre la demo en el celular.
   await page.goto(DEMO, { timeout: 120000 });
   await page.waitForSelector('#hub [data-owner-nav="menu"]', { state: 'visible', timeout: 120000 });
+  // Chrome recién instalado puede superponer su invitación a habilitar notificaciones.
+  // Rechazarla no concede permisos y deja visible el diálogo de instalación que vamos a probar.
+  const noThanks = /^(No thanks|No, gracias)$/i;
+  const notificationIntro = await device.wait({ text: noThanks }, { timeout: 5000 }).then(() => true, () => false);
+  if (notificationIntro) await device.tap({ text: noThanks });
   check(true, 'GestLok abre en Chrome de Android (demo de la dueña)');
   await shot(page, '1-inicio');
   const sw = await page.evaluate(() => navigator.serviceWorker.ready.then(r => !!r.active)).catch(() => false);
