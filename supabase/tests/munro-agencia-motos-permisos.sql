@@ -34,6 +34,10 @@ begin
       ('Dueño: semana del id distinta',        due_id, due_mail, 'munro/agencia_motos',    'd-' || lunes || '-aye-' || lunes, '{"semana":"' || vieja || '"}', false),
       ('Dueño: id con otro formato',           due_id, due_mail, 'munro/agencia_motos',    'cualquiera', '{"semana":"' || lunes || '"}', false),
       ('Dueño: Torcuato no tiene Agencia',     due_id, due_mail, 'torcuato/agencia_motos', 'd-' || lunes || '-lucas-' || lunes, '{"semana":"' || lunes || '"}', false),
+      ('Dueño: nombres de las motos',          due_id, due_mail, 'munro/agencia_motos',    'motos', '{"valores":{}}', true),
+      ('Gerente Munro: nombres de las motos',  gm_id,  gm_mail,  'munro/agencia_motos',    'motos', '{"valores":{"lucas":[]}}', true),
+      ('Gerente Munro: nombres sin formato',   gm_id,  gm_mail,  'munro/agencia_motos',    'motos', '{"otro":1}', false),
+      ('Gerente Torcuato: nombres de Munro',   gt_id,  gt_mail,  'munro/agencia_motos',    'motos', '{"valores":{}}', false),
       ('Gerente Munro: semana en curso',       gm_id,  gm_mail,  'munro/agencia_motos',    'd-' || lunes || '-aye-' || lunes, '{"semana":"' || lunes || '"}', true),
       ('Gerente Munro: refuerzo',              gm_id,  gm_mail,  'munro/agencia_motos',    'm-' || lunes || '-rprueba2', '{"semana":"' || lunes || '","tipo":"refuerzo"}', true),
       ('Gerente Munro: semana cerrada',        gm_id,  gm_mail,  'munro/agencia_motos',    'd-' || vieja || '-lucas-' || vieja, '{"semana":"' || vieja || '"}', false),
@@ -65,6 +69,15 @@ begin
     if n = 0 then r := r || E'\nOK Gerente Munro no lee valores por hora'; else fallas := fallas + 1; r := r || E'\nFALLA Gerente Munro lee valores por hora'; end if;
     select count(*) into n from public.docs where col = 'munro/agencia_motos' and id like 'd-' || vieja || '-%';
     if n = 0 then r := r || E'\nOK Gerente Munro no lee semanas cerradas'; else fallas := fallas + 1; r := r || E'\nFALLA Gerente Munro lee semanas cerradas'; end if;
+    select count(*) into n from public.docs where col = 'munro/agencia_motos' and id = 'motos';
+    if n = 1 then r := r || E'
+OK Gerente Munro lee los nombres'; else fallas := fallas + 1; r := r || E'
+FALLA Gerente Munro no lee los nombres'; end if;
+    delete from public.docs where col = 'munro/agencia_motos' and id = 'motos';
+    get diagnostics n = row_count;
+    if n = 0 then r := r || E'
+OK Gerente Munro no borra los nombres'; else fallas := fallas + 1; r := r || E'
+FALLA Gerente Munro borró los nombres'; end if;
     select count(*) into n from public.docs where col = 'munro/agencia_motos' and id like 'd-' || lunes || '-%';
     if n > 0 then r := r || E'\nOK Gerente Munro lee la semana en curso'; else fallas := fallas + 1; r := r || E'\nFALLA Gerente Munro no lee la semana en curso'; end if;
     perform set_config('role', 'postgres', true);
