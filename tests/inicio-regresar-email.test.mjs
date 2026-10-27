@@ -26,3 +26,11 @@ test('Se recuerda el email de la última sesión, nunca la contraseña', () => {
   assert.match(auth, /mail\.value = last/);
   assert.doesNotMatch(auth, /localStorage\.setItem\([^)]*pass/i);
 });
+
+test('«Salir» cierra solo este equipo: la misma cuenta sigue abierta en los demás', () => {
+  for (const path of ['public/stock/auth.js', 'modules/empleados/components/auth/AuthProvider.tsx', 'components/logout-button.tsx']) {
+    const src = file(path);
+    assert.match(src, /auth\.signOut\(\{ scope: ['"]local['"] \}\)/, path);
+    assert.doesNotMatch(src, /auth\.signOut\(\)/, path);
+  }
+});
