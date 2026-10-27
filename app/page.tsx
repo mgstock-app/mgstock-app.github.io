@@ -9,7 +9,7 @@ export default function Home() {
     <>
       <div id="stock-root" dangerouslySetInnerHTML={{ __html: markup }} />
       <GestLokIntro />
-      <a className="gestlok-demo-entry" href={`${basePath}/demo-gestlok.html`}>Probar GESTLOK · Demo</a>
+      <a className="gestlok-demo-entry" href="/?demo=1">Probar GESTLOK · Demo</a>
       <StockRuntime />
       <nav className="stock-legal-nav" aria-label="Información legal de GestLok">
         <a href={`${basePath}/privacidad.html`}>Privacidad</a>
