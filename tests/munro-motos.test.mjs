@@ -77,3 +77,23 @@ test('Motos Agencia queda disponible sin conexión y el servidor repite los perm
   assert.match(sql, /data->>'semana' = substring\(id from 3 for 10\)/);
   assert.doesNotMatch(sql, /\b(delete from|truncate|update public\.docs)\b/i);
 });
+
+test('Motos Agencia: «Modificar» habilita la planilla y «Guardar» envía los cambios; los nombres se editan por tarjeta', () => {
+  const script = file('public/stock/munro-motos.js');
+  assert.match(script, /\(puede && edicion \? '' : ' disabled'\)/);
+  assert.match(script, /data-mo-act="modificar"/);
+  assert.match(script, /data-mo-act="guardar"/);
+  assert.match(script, /data-mo-act="cancelar"/);
+  assert.match(script, /async function cargarCelda\(input\)\{[\s\S]*borrador\.set\(id/);
+  assert.match(script, /async function guardarTodo\(\)\{[\s\S]*col\(\)\.doc\(id\)\.set\(data\)/);
+  assert.match(script, /id="mo-name-form"/);
+  assert.match(script, /col\(\)\.doc\('motos'\)\.set\(data\)/);
+  assert.match(script, /beforeunload/);
+  const {_t:t} = cargar();
+  const valores = {lucas:[{desde:'2026-10-26', nombre:'Lucas P.', etiqueta:'Moto 1'}]};
+  assert.equal(t.nombreEn(valores, 'lucas', '2026-10-19'), null);
+  assert.equal(t.nombreEn(valores, 'lucas', '2026-11-02').nombre, 'Lucas P.');
+  const sql = file('supabase/migrations/20261027010000_gestlok_munro_motos_nombres.sql');
+  assert.match(sql, /id = 'motos' or public\.gestlok_motos_semana_abierta\(id\)/);
+  assert.match(sql, /id not in \('tarifas', 'motos'\)/);
+});

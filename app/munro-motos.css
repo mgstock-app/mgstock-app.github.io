@@ -118,3 +118,14 @@
 .snav-folder:has([aria-current="page"])>summary{color:var(--mast-ink);font-weight:600}
 .snav-sub{display:grid;gap:2px;margin-left:14px;padding-left:10px;border-left:1px solid var(--mast-line)}
 .snav-sub button{font-size:14px;padding:8px 10px}
+/* Modificar / Guardar: barra de la planilla y edición de nombres. */
+.mo-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;padding:4px 4px 10px}
+.mo-pend{margin-right:auto;font-size:13px;color:var(--muted);font-weight:600}
+.mo-sheet.editando{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.mo-sheet.editando .mo-pend{color:var(--accent)}
+.mo-edit{display:inline-block;margin-top:4px;padding:2px 8px;border:1px solid var(--accent-line);border-radius:7px;background:white;color:var(--accent);font-size:11.5px;font-weight:600;cursor:pointer}
+.mo-name-form{display:grid;gap:6px;background:white;border:1.5px solid var(--accent)}
+.mo-name-form label{display:grid;gap:2px;font-size:11px;color:var(--muted)}
+.mo-name-form input{width:100%;padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;font-size:13px}
+.mo-name-form div{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:760px){.mo-toolbar .btn{flex:1}}
