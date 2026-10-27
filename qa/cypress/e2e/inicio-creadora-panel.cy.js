@@ -15,7 +15,8 @@ describe('Inicio de la creadora · panel con resumen de la plataforma',()=>{
    .and('contain.text','Personas por rol').and('contain.text','Estado de la plataforma').and('contain.text','Solo lectura')
    .and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
   cy.get('.gl-ch-chart').should('be.visible');
-  cy.get('.gl-ch-nav button').should('have.length',6);
+  cy.get('.gl-ch-nav button').should('have.length',7);
+  cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
   cy.get('.gl-ch [data-au="out"]').should('be.visible');
  });
  it('las pestañas conservan todas las funciones anteriores (solo lectura de otras empresas incluida)',()=>{
