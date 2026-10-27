@@ -55,23 +55,37 @@ describe('Reseñas: Mi Gusto, Munro y Torcuato con datos propios', () => {
       cy.get('.rv-table tbody').should('contain.text', 'No hay cupones');
       cy.get('#rv-search').clear();
     });
+    // «Modificar» corrige nombre y teléfono; el código no cambia.
+    cy.get('.rv-table [data-rv="edit"]').first().should('have.text', 'Ver / Modificar').click();
+    cy.get('.rv-code strong').invoke('text').then(codigo => {
+      cy.get('#rv-form input[name="name"]').should('have.attr', 'readonly');
+      cy.get('.rv-modal [data-rv="modify"]').click();
+      cy.get('#rv-form input[name="name"]').should('not.have.attr', 'readonly').clear().type('Cliente corregido');
+      cy.get('#rv-form').submit();
+      cy.get('#rv-form input[name="name"]').should('have.value', 'Cliente corregido').and('have.attr', 'readonly');
+      cy.get('.rv-code strong').should('have.text', codigo);
+    });
     // Marcar usado exige confirmar con la tilde; después no se puede volver a usar.
-    cy.get('.rv-table [data-rv="edit"]').first().click();
+    cy.get('.rv-modal [data-rv="redeem"]').click();
+    cy.get('.rv-modal [role="alert"]').should('contain.text', 'Marcá la tilde');
     cy.get('#rv-form input[name="used"]').check();
-    cy.get('#rv-form').submit();
+    cy.get('.rv-modal [data-rv="redeem"]').click();
     cy.get('.rv-modal').should('contain.text', 'Cupón marcado como usado');
+    cy.get('.rv-modal [data-rv="redeem"], .rv-modal [data-rv="modify"]').should('not.exist');
     cy.get('#rv-form button[type="submit"]').should('not.exist');
     cerrar();
     cy.get('.rv-stats .used strong').should('have.text', '1');
     cy.get('.rv-table [data-rv="edit"]').first().should('have.text', 'Ver cupón');
-    // Del 13 en adelante: no se emiten cupones y los pendientes quedan vencidos.
+    // Del 13 en adelante los pendientes del mes vencen, pero se sigue registrando: vale el mes siguiente.
     nuevo('Otro cliente', '1144556677');
     cerrar();
-    dia('2026-11-13');
+    dia('2026-11-27');
     cy.window().trigger('focus');
     cy.get('.rv-badge.expired').should('contain.text', 'Cupón Vencido');
-    nuevo('Fuera de fecha', '1155667788');
-    cy.get('.rv-modal [role="alert"]').should('contain.text', 'fuera de vigencia');
+    nuevo('Registrado el 27', '1155667788');
+    cy.get('.rv-modal').should('contain.text', 'Válido del 1 al 12 de diciembre 2026').and('contain.text', 'todavía no vigente');
+    cy.get('.rv-modal [data-rv="redeem"]').should('not.exist');
+    cy.get('.rv-modal [data-rv="modify"]').should('exist');
   });
 
   it('dueño ve cada sucursal por separado: el cupón de Munro no aparece ni se usa en Torcuato', () => {

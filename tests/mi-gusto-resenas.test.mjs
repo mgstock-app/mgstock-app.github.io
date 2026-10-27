@@ -59,6 +59,7 @@ test('Reseñas SQL: sucursales independientes, código único, vencimiento AR, p
       create function public.mi_rol() returns text language sql stable as $$select current_setting('test.role',true)$$;
       create function public.puede_editar_local(p text) returns boolean language sql stable as $$select p=any(string_to_array(current_setting('test.local',true),','))$$;`);
     await db.exec(root('supabase/migrations/20261027015411_mi_gusto_resenas_cupones.sql'));
+    await db.exec(root('supabase/migrations/20261027030000_mi_gusto_resenas_registro_y_edicion.sql'));
     await db.exec(`create or replace function gestlok_resenas_private.today_ar() returns date language sql stable set search_path='' as $$select current_setting('test.day')::date$$;`);
     const context=async(role='dueno',org=tenant,local='munro,torcuato',day='2026-11-01')=>{
       for(const [key,value] of Object.entries({uid:'11111111-1111-4111-8111-111111111111',role,tenant:org,local,day})) await db.query('select set_config($1,$2,false)',['test.'+key,value]);
@@ -109,15 +110,27 @@ test('Reseñas SQL: sucursales independientes, código único, vencimiento AR, p
     assert.equal(after.find(r=>r.id===last.id).status,'expired');
     assert.equal(after.find(r=>r.id===first.id).status,'used');
     await assert.rejects(()=>redeem('munro',last.id),/vencido/);
-    await assert.rejects(()=>create('torcuato','Fuera de fecha','1188888888'),/vigencia/);
+    await assert.rejects(()=>rpc('select public.gestlok_resenas_update($1,$2,$3,$4) as result',['munro',last.id,'Otro','1199999999']),/pendientes/);
+    // Después del 12 se registra igual: el cupón vale del 1 al 12 del mes siguiente.
+    const tarde=await create('torcuato','Registrado el 13','1188888888');
+    assert.equal(tarde.period,'2026-12-01');assert.equal(tarde.status,'pending');assert.equal(tarde.usable,false);
+    await assert.rejects(()=>redeem('torcuato',tarde.id),/no está vigente/);
+    // Modificar nombre y teléfono de un pendiente (el código no cambia); sin duplicar teléfono del período.
+    const upd=await rpc('select public.gestlok_resenas_update($1,$2,$3,$4) as result',['torcuato',tarde.id,'Nombre corregido','+54 9 11 7777-6666']);
+    assert.equal(upd.customer_name,'Nombre corregido');assert.equal(upd.phone,'1177776666');assert.equal(upd.code,tarde.code);
+    await assert.rejects(()=>rpc('select public.gestlok_resenas_update($1,$2,$3,$4) as result',['munro',tarde.id,'Otra sucursal','1177776666']),/pendientes/);
+    await create('torcuato','Otro cliente','1166665555');
+    await assert.rejects(()=>rpc('select public.gestlok_resenas_update($1,$2,$3,$4) as result',['torcuato',tarde.id,'Duplicado','1166665555']),/ya tiene/);
     await context('dueno',tenant,'munro,torcuato','2026-12-01');
+    assert.equal((await redeem('torcuato',tarde.id)).status,'used');
     const next=await create('munro','Beneficio mes siguiente','1122337788');
     assert.notEqual(next.code,first.code);assert.equal(next.status,'pending');
     assert.equal((await list('munro')).find(r=>r.id===first.id).status,'used');
     await db.exec('reset role; set role anon');
     await assert.rejects(()=>list('munro'),/permission denied/);
     await db.exec('reset role');
-    assert.equal((await db.query("select count(*)::int n from gestlok_resenas_private.events where action='used'")).rows[0].n,1);
+    assert.equal((await db.query("select count(*)::int n from gestlok_resenas_private.events where action='used'")).rows[0].n,2);
+    assert.equal((await db.query("select count(*)::int n from gestlok_resenas_private.events where action='updated'")).rows[0].n,1);
     // Ni con acceso directo se puede registrar un segundo uso del mismo cupón.
     await assert.rejects(()=>db.query("insert into gestlok_resenas_private.events(coupon_id,action,actor) values($1,'used',$2)",[first.id,'11111111-1111-4111-8111-111111111111']),/duplicate key/);
   } finally {await db.close();}

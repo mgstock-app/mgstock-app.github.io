@@ -29,14 +29,19 @@
   const editable = () => allowed() && online() && !!window.GestLokSupabase && !busy;
   const date = value => new Date(value).toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires',dateStyle:'short',timeStyle:'short'});
   const label = status => ({pending:'Pendiente',used:'Usado',expired:'Cupón Vencido'}[status] || 'No disponible');
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  /* «Válido del 1 al 12 de noviembre»: período del cupón (registrado después del 12, vale el mes siguiente). */
+  const vigencia = r => { const [y,m] = String(r?.valid_from || r?.period || '').split('-').map(Number); return y && m ? 'del 1 al 12 de ' + MESES[m-1] + ' ' + y : 'del 1 al 12 del mes que corresponda'; };
   const rpc = async (name, params) => {
     if (!allowed() || !window.GestLokSupabase) throw new Error('Necesitás acceso autorizado para ver los cupones.');
     if (name !== 'gestlok_resenas_list' && !online()) throw new Error('Sin conexión: para emitir o marcar un cupón como usado hace falta internet.');
     const result = await window.GestLokSupabase.rpc(name, {p_local:local(), ...params});
     if (result.error) {
       const text = result.error.message || '';
-      if (/duplicate|unique|ya tiene/i.test(text)) throw new Error('Este teléfono ya recibió el beneficio este mes en esta sucursal.');
-      if (/vigencia|vencido|utilizado|otra sucursal/i.test(text)) throw new Error('El cupón ya se usó, está fuera de vigencia (del 1 al 12) o es de otra sucursal.');
+      if (/duplicate|unique|ya tiene/i.test(text)) throw new Error('Este teléfono ya tiene un cupón para este período en esta sucursal.');
+      if (/todavía no está vigente/i.test(text)) throw new Error('El cupón todavía no está vigente: se usa del 1 al 12 de su mes.');
+      if (/inválido/i.test(text)) throw new Error('Revisá el nombre y el teléfono (10 dígitos: código de área + número, sin 0 ni 15).');
+      if (/vigencia|vencido|utilizado|otra sucursal|pendientes/i.test(text)) throw new Error('El cupón ya se usó, venció o es de otra sucursal.');
       throw new Error('No se pudo completar. Revisá tu conexión y permisos; si falta la actualización de base, consultá a Administración.');
     }
     return result.data;
@@ -58,7 +63,7 @@
       if (document.activeElement?.id === 'rv-search' && box) box.innerHTML = tabla(filter(rows, query)); else api.render();
     }
   }
-  const tabla = selected => `<table><caption>Historial completo de cupones de ${E(LOCALES[local()])} · ${selected.length} registros</caption><thead><tr><th>Cliente</th><th>Teléfono</th><th>Cupón</th><th>Estado</th><th>Creado / Utilizado</th><th>Acción</th></tr></thead><tbody>${selected.map(r=>`<tr><td>${E(r.customer_name)}</td><td>${E(r.phone)}</td><td><b>${E(r.code)}</b></td><td><span class="rv-badge ${r.status}">${label(r.status)}</span></td><td>${E(date(r.created_at))}${r.used_at?`<br>Usado: ${E(date(r.used_at))}`:''}</td><td><button data-rv="edit" data-id="${E(r.id)}">${r.status==='pending'&&editable()?'Marcar utilizado':'Ver cupón'}</button></td></tr>`).join('') || '<tr><td colspan="6">No hay cupones para esta búsqueda.</td></tr>'}</tbody></table>`;
+  const tabla = selected => `<table><caption>Historial completo de cupones de ${E(LOCALES[local()])} · ${selected.length} registros</caption><thead><tr><th>Cliente</th><th>Teléfono</th><th>Cupón</th><th>Estado</th><th>Creado / Utilizado</th><th>Acción</th></tr></thead><tbody>${selected.map(r=>`<tr><td>${E(r.customer_name)}</td><td>${E(r.phone)}</td><td><b>${E(r.code)}</b></td><td><span class="rv-badge ${r.status}">${label(r.status)}</span></td><td>${E(date(r.created_at))}${r.used_at?`<br>Usado: ${E(date(r.used_at))}`:''}</td><td><button data-rv="edit" data-id="${E(r.id)}">${r.status==='pending'&&editable()?'Ver / Modificar':'Ver cupón'}</button></td></tr>`).join('') || '<tr><td colspan="6">No hay cupones para esta búsqueda.</td></tr>'}</tbody></table>`;
   function view() {
     if (!allowed()) return '';
     const counts = {pending:0,used:0,expired:0};
@@ -79,34 +84,49 @@
   }
   function dialog() {
     const r = modal.id ? rows.find(row=>row.id===modal.id) : null;
-    return `<div class="rv-overlay"><section class="rv-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title"><header><h2 id="rv-title">${r?'Editar cupón':'Nuevo cupón'}</h2><button data-rv="close" aria-label="Cerrar cupón" ${busy?'disabled':''}>×</button></header>
-      <form id="rv-form"><label>Nombre del cliente<input name="name" required maxlength="100" value="${E(r?.customer_name || modal.name || '')}" ${r?'readonly':''}></label>
-      <label>Teléfono<input name="phone" type="tel" required maxlength="30" value="${E(r?.phone || modal.phone || '')}" ${r?'readonly':''}></label>
+    const pendiente = r?.status === 'pending', editando = !r || modal.editing;
+    const ro = editando ? '' : 'readonly';
+    const titulo = !r ? 'Nuevo cupón' : modal.editing ? 'Modificar cupón' : 'Cupón';
+    const usable = pendiente && r.usable !== false;
+    return `<div class="rv-overlay"><section class="rv-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title"><header><h2 id="rv-title">${titulo}</h2><button data-rv="close" aria-label="Cerrar cupón" ${busy?'disabled':''}>×</button></header>
+      <form id="rv-form"><label>Nombre del cliente<input name="name" required maxlength="100" value="${E(modal.editing ? modal.name ?? r.customer_name : r?.customer_name || modal.name || '')}" ${ro}></label>
+      <label>Teléfono<input name="phone" type="tel" required maxlength="30" value="${E(modal.editing ? modal.phone ?? r.phone : r?.phone || modal.phone || '')}" ${ro}></label>
       <div class="rv-code"><small>${r?'Cupón · 10% OFF':'Cupón automático · 10% OFF'}</small><strong>${r?E(r.code):'Al guardar'}</strong><small>Código único y aleatorio generado de forma segura</small></div>
-      <p>▣ Válido del 1 al 12 del mes de emisión</p>
-      ${r?`<p class="rv-badge ${r.status}">${label(r.status)}</p>${r.used_at?`<p>✓ Cupón marcado como usado el ${E(date(r.used_at))}</p>`:''}`:''}
-      ${r?.status==='pending'?'<label class="rv-check"><input name="used" type="checkbox" required> Confirmo que el cliente utilizó el cupón</label>':''}
+      <p>▣ ${r ? 'Válido ' + E(vigencia(r)) : 'Se usa del 1 al 12: registrado hasta el 12 vale este mes; después del 12, el mes siguiente.'}</p>
+      ${r?`<p class="rv-badge ${r.status}">${label(r.status)}${pendiente && !usable ? ' · todavía no vigente' : ''}</p>${r.used_at?`<p>✓ Cupón marcado como usado el ${E(date(r.used_at))}</p>`:''}`:''}
       ${modal.error?`<p role="alert">${E(modal.error)}</p>`:''}
-      ${!r || r.status==='pending'?`<button class="rv-new" type="submit" ${editable()?'':'disabled'}>${busy?'Guardando…':r?'Guardar como utilizado':'Guardar cupón'}</button>`:''}
+      ${editando ? `<div class="rv-actions">${r?`<button type="button" data-rv="cancel-edit" ${busy?'disabled':''}>Cancelar</button>`:''}<button class="rv-new" type="submit" ${editable()?'':'disabled'}>${busy?'Guardando…':r?'Guardar cambios':'Guardar cupón'}</button></div>`
+        : pendiente ? `<div class="rv-actions"><button type="button" data-rv="modify" ${editable()?'':'disabled'}>✎ Modificar</button></div>
+          ${usable ? `<label class="rv-check"><input name="used" type="checkbox"> Confirmo que el cliente utilizó el cupón</label>
+          <button class="rv-new" type="button" data-rv="redeem" ${editable()?'':'disabled'}>${busy?'Guardando…':'Marcar como utilizado'}</button>` : ''}` : ''}
       </form></section></div>`;
   }
   function close() { modal = null; api.render(); document.querySelector('.rv-new')?.focus(); }
+  async function run(name, params) {
+    busy = true; modal.error = ''; api.render();
+    try {
+      const r = await rpc(name, params);
+      if (r.local && r.local !== local()) throw new Error('El cupón pertenece a otra sucursal.');
+      rows = [r,...rows.filter(row=>row.id!==r.id)];
+      modal = {id:r.id, saved:true};
+    } catch (cause) { modal.error = cause.message; }
+    finally { busy = false; api.render(); }
+  }
+  /* «Guardar cupón» (alta) y «Guardar cambios» (modificar nombre y teléfono de un pendiente). */
   async function save(form) {
     if (!editable() || !modal) return;
     const values = new FormData(form);
-    const selected = modal.id;
     const name = String(values.get('name') || '').trim(), phone = normalizePhone(values.get('phone'));
     modal.name = name; modal.phone = phone;
-    if (!selected && (name.length < 2 || !/^\d{10}$/.test(phone))) { modal.error = 'Completá nombre y teléfono argentino de 10 dígitos (código de área + número, sin 0 ni 15).'; api.render(); return; }
-    if (selected && values.get('used') !== 'on') return;
-    busy = true; modal.error = ''; api.render();
-    try {
-      const r = await rpc(selected?'gestlok_resenas_redeem':'gestlok_resenas_create',selected?{p_id:selected}:{p_name:name,p_phone:phone});
-      if (r.local && r.local !== local()) throw new Error('El cupón pertenece a otra sucursal.');
-      rows = [r,...rows.filter(row=>row.id!==r.id)];
-      modal = {id:r.id};
-    } catch (cause) { modal.error = cause.message; }
-    finally { busy = false; api.render(); }
+    if (name.length < 2 || !/^\d{10}$/.test(phone)) { modal.error = 'Completá nombre y teléfono argentino de 10 dígitos (código de área + número, sin 0 ni 15).'; api.render(); return; }
+    if (modal.id && !modal.editing) return;
+    await run(modal.id ? 'gestlok_resenas_update' : 'gestlok_resenas_create', modal.id ? {p_id:modal.id, p_name:name, p_phone:phone} : {p_name:name, p_phone:phone});
+  }
+  async function redeem() {
+    if (!editable() || !modal?.id) return;
+    const check = document.querySelector('#rv-form input[name="used"]');
+    if (!check?.checked) { modal.error = 'Marcá la tilde para confirmar que el cliente utilizó el cupón.'; api.render(); return; }
+    await run('gestlok_resenas_redeem', {p_id:modal.id});
   }
   function attach(h) {
     api = h;
@@ -117,6 +137,9 @@
       if (action==='new') modal = {};
       else if (action==='edit') modal = {id:button.dataset.id};
       else if (action==='close') { close(); return; }
+      else if (action==='modify' && modal?.id) { modal = {id:modal.id, editing:true}; }
+      else if (action==='cancel-edit' && modal?.id) { modal = {id:modal.id}; }
+      else if (action==='redeem') { void redeem(); return; }
       else if (action==='reload') { void refresh(); return; }
       else if (action==='history') { document.querySelector('#rv-history')?.scrollIntoView({behavior:'smooth'}); return; }
       api.render(); document.querySelector('.rv-modal input')?.focus();
