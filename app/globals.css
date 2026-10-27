@@ -2199,3 +2199,35 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   .gl-owner-quick { margin-top: 12px; gap: 8px; }
   .gl-owner-tile { min-height: 72px; padding: 9px; gap: 5px; border-radius: 12px; font-size: 11px; }
 }
+
+/* GESTLOK · distribución del inicio en teléfonos altos y tabletas verticales.
+   Mantener ambas áreas y los cuatro accesos visibles sin crear una zona de
+   contenido artificial ni modificar permisos o navegación. */
+@media (max-width: 900px) {
+  .gl-oh-main.hub-in {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 900px;
+    margin-inline: auto;
+  }
+  .gl-owner-landing {
+    width: 100%;
+    max-width: 100%;
+  }
+  .gl-owner-area-list { min-width: 0; }
+  .gl-owner-area-list li { overflow-wrap: anywhere; }
+}
+@media (max-width: 600px) {
+  .gl-owner-areas { grid-template-columns: minmax(0, 1fr); }
+  .gl-owner-quick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    padding-bottom: 0;
+  }
+  .gl-owner-tile { min-width: 0; }
+  .gl-owner-welcome { align-items: flex-start; }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .gl-owner-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gl-owner-area { min-width: 0; }
+}
