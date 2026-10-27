@@ -4,7 +4,7 @@ import { abrirLocal } from '../helpers/abrir-local';
 const TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const OTRA = '00000000-0000-4000-8000-000000000999';
 const login = email => {
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1', {log:false});
   cy.get('#au-in button[type="submit"]').click();
 };
