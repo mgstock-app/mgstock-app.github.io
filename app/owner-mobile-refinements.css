@@ -1,3 +1,71 @@
 /* Owner and manager mobile dashboard refinement. */
 @media(max-width:820px){.gl-oh-hub .gl-oh-top{padding:7px 12px;gap:8px;min-height:58px}.gl-oh-hub .gl-oh-top:has(.gl-oh-brand-company){min-height:78px}.gl-oh-hub .gl-oh-main.hub-in{padding:16px 12px 28px;max-width:100%}.gl-oh-hub .gl-owner-welcome{margin-bottom:14px}.gl-oh-hub .gl-owner-areas{gap:12px}.gl-oh-hub .gl-owner-area{padding:22px 20px}.gl-oh-hub .gl-owner-quick{margin-top:12px}}
 @media(max-width:560px){.gl-oh-hub .gl-oh-top{grid-template-columns:42px minmax(0,1fr) auto}.gl-oh-hub .gl-oh-icon{width:40px;height:40px}.gl-oh-hub .gl-oh-brand{min-width:0}.gl-oh-hub .gl-oh-brand img{width:34px;height:34px}.gl-oh-hub .gl-oh-word{font-size:clamp(19px,5.5vw,26px)}.gl-oh-hub .gl-oh-brand small{font-size:8px;letter-spacing:.12em}.gl-oh-hub .gl-oh-user{min-height:40px;padding:3px 5px}.gl-oh-hub .gl-oh-who{display:none}.gl-oh-hub .gl-owner-area{padding:22px 19px}.gl-oh-hub .gl-owner-area-list{padding:15px 12px}.gl-oh-hub .gl-owner-area-list li{gap:12px}.gl-oh-hub .gl-owner-quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;overflow-x:visible}.gl-oh-hub .gl-owner-tile{min-width:0;padding:10px 3px;font-size:10px;overflow-wrap:anywhere}.gl-oh-hub .gl-owner-tile svg{width:20px;height:20px}}
+
+/* GestLok: mobile-first owner landing. Preserve desktop/tablet two-card layout. */
+@media (max-width: 820px) {
+  .gl-oh-hub .gl-oh-main.hub-in { width:100%; min-width:0; padding:18px clamp(14px,4vw,24px) 34px; }
+  .gl-oh-hub .gl-owner-areas { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .gl-oh-hub .gl-owner-area { width:100%; min-width:0; padding:20px; border-radius:20px; }
+  .gl-oh-hub .gl-owner-area h2 { font-size:clamp(23px,5vw,30px); line-height:1.16; }
+  .gl-oh-hub .gl-owner-area>p { font-size:14px; line-height:1.45; margin-bottom:12px; }
+  .gl-oh-hub .gl-owner-area-list { align-content:start; gap:4px; padding:12px 14px; font-size:14px; }
+  .gl-oh-hub .gl-owner-area-list li { min-height:36px; gap:12px; }
+  .gl-oh-hub .gl-owner-quick { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; overflow:visible; padding-bottom:0; }
+  .gl-oh-hub .gl-owner-tile { min-width:0; min-height:78px; padding:10px 5px; border-radius:14px; font-size:11px; }
+  .gl-oh-hub .gl-owner-welcome { margin-bottom:18px; }
+}
+@media (max-width:560px) {
+  .gl-oh-hub .gl-oh-top { min-height:58px; padding:8px 12px; grid-template-columns:40px minmax(0,1fr) auto; gap:8px; }
+  .gl-oh-hub .gl-oh-brand { overflow:hidden; }
+  .gl-oh-hub .gl-oh-brand .gl-oh-word { font-size:clamp(19px,5vw,24px); }
+  .gl-oh-hub .gl-owner-welcome-logo img { width:min(290px,80vw); height:auto; max-height:84px; }
+  .gl-oh-hub .gl-owner-area { padding:18px 16px; border-radius:18px; }
+  .gl-oh-hub .gl-owner-area-icon { width:46px; height:46px; margin-bottom:10px; }
+  .gl-oh-hub .gl-owner-area-icon svg { width:29px; height:29px; }
+  .gl-oh-hub .gl-owner-arrow { width:42px; height:42px; }
+  .gl-oh-hub .gl-owner-area-list { padding:10px 12px; border-radius:13px; }
+  .gl-oh-hub .gl-owner-area-list li { min-height:34px; }
+  .gl-oh-hub .gl-owner-tile { min-height:76px; }
+}
+@media (max-width:360px) {
+  .gl-oh-hub .gl-owner-quick { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .gl-oh-hub .gl-owner-area h2 { font-size:22px; }
+}
+
+/* Shared responsive refinements for every role: owner, manager, employee, creator.
+   No changes to visibility, role permissions, routing or stored information. */
+@media(max-width:820px) {
+  .gl-home-essential,
+  .gl-creator-local-home { min-width:0; width:100%; }
+  .gl-home-essential { gap:14px; padding-bottom:24px; }
+  .gl-home-essential-head { flex-wrap:wrap; gap:10px; }
+  .gl-home-essential-links { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .gl-home-essential-links button { min-width:0; min-height:48px; overflow-wrap:anywhere; }
+  .gl-creator-local-home { padding:clamp(14px,3vw,22px); border-radius:18px; }
+  .gl-ch-main { min-width:0; width:100%; padding:16px clamp(12px,3vw,22px) 24px; }
+  .gl-ch-grid,.gl-ch-colmain,.gl-ch-colside { min-width:0; }
+  .gl-ch-card { min-width:0; overflow-wrap:anywhere; }
+  .gl-ch-top { align-items:flex-start; }
+  .gl-ch-nav { max-width:100%; }
+}
+@media(max-width:560px) {
+  .gl-home-essential-overview { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+  .gl-home-essential-stat { min-width:0; padding:10px 8px; }
+  .gl-home-essential-stat-number { font-size:clamp(20px,6vw,25px); }
+  .gl-home-essential-stat-label { overflow-wrap:anywhere; }
+  .gl-home-essential-links { grid-template-columns:minmax(0,1fr); }
+  .gl-creator-local-home { border-radius:15px; padding:14px; }
+  .gl-ch-main { padding:14px 12px 22px; gap:12px; }
+  .gl-ch-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .gl-ch-kpi { min-width:0; padding:12px; gap:9px; }
+  .gl-ch-kpi b { font-size:clamp(20px,6vw,27px); }
+  .gl-ch-ico { width:40px; height:40px; }
+  .gl-ch-card { padding:14px; border-radius:14px; }
+  .gl-ch-nav button { min-height:44px; }
+  .top-in .back-hub { min-width:42px; min-height:42px; display:inline-flex; align-items:center; justify-content:center; }
+}
+@media(max-width:360px) {
+  .gl-ch-kpis { grid-template-columns:minmax(0,1fr); }
+  .gl-home-essential-overview { grid-template-columns:minmax(0,1fr); }
+}
