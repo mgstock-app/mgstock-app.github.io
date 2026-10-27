@@ -50,8 +50,15 @@
       if (current !== generation || !allowed()) return;
       rows = data || []; error = '';
     } catch (cause) { if (current === generation) { rows = []; error = cause.message; } }
-    finally { loading = false; if (current === generation && api.S.view === 'resenas') api.render(); }
+    finally {
+      loading = false;
+      if (current !== generation || api.S.view !== 'resenas') return;
+      // Mientras se escribe en el buscador solo se actualiza la tabla, sin reemplazar el campo.
+      const box = document.querySelector('#rv-history');
+      if (document.activeElement?.id === 'rv-search' && box) box.innerHTML = tabla(filter(rows, query)); else api.render();
+    }
   }
+  const tabla = selected => `<table><caption>Historial completo de cupones de ${E(LOCALES[local()])} · ${selected.length} registros</caption><thead><tr><th>Cliente</th><th>Teléfono</th><th>Cupón</th><th>Estado</th><th>Creado / Utilizado</th><th>Acción</th></tr></thead><tbody>${selected.map(r=>`<tr><td>${E(r.customer_name)}</td><td>${E(r.phone)}</td><td><b>${E(r.code)}</b></td><td><span class="rv-badge ${r.status}">${label(r.status)}</span></td><td>${E(date(r.created_at))}${r.used_at?`<br>Usado: ${E(date(r.used_at))}`:''}</td><td><button data-rv="edit" data-id="${E(r.id)}">${r.status==='pending'&&editable()?'Marcar utilizado':'Ver cupón'}</button></td></tr>`).join('') || '<tr><td colspan="6">No hay cupones para esta búsqueda.</td></tr>'}</tbody></table>`;
   function view() {
     if (!allowed()) return '';
     const counts = {pending:0,used:0,expired:0};
@@ -66,7 +73,7 @@
       ${!online()?'<p class="rv-offline" role="status">Sin conexión: podés consultar y buscar la última lista guardada. Para emitir o marcar un cupón como usado hace falta internet.</p>':''}
       ${error?`<p role="alert">${E(error)}</p><button data-rv="reload">Reintentar</button>`:''}
       ${loading && !rows.length?'<p role="status">Cargando cupones…</p>':''}
-      <div class="rv-table" id="rv-history"><table><caption>Historial completo de cupones de ${E(LOCALES[local()])} · ${selected.length} registros</caption><thead><tr><th>Cliente</th><th>Teléfono</th><th>Cupón</th><th>Estado</th><th>Creado / Utilizado</th><th>Acción</th></tr></thead><tbody>${selected.map(r=>`<tr><td>${E(r.customer_name)}</td><td>${E(r.phone)}</td><td><b>${E(r.code)}</b></td><td><span class="rv-badge ${r.status}">${label(r.status)}</span></td><td>${E(date(r.created_at))}${r.used_at?`<br>Usado: ${E(date(r.used_at))}`:''}</td><td><button data-rv="edit" data-id="${E(r.id)}">${r.status==='pending'&&editable()?'Marcar utilizado':'Ver cupón'}</button></td></tr>`).join('') || '<tr><td colspan="6">No hay cupones para esta búsqueda.</td></tr>'}</tbody></table></div>
+      <div class="rv-table" id="rv-history">${tabla(selected)}</div>
       <p class="rv-hint">Los pendientes vencen automáticamente después del día 12. Cada cliente recibe un único beneficio por mes.</p>
       ${modal?dialog():''}</section>`;
   }
@@ -117,7 +124,8 @@
     document.addEventListener('submit', event => { if (event.target.id==='rv-form') { event.preventDefault(); void save(event.target); } });
     document.addEventListener('input', event => {
       if (event.target.id!=='rv-search' || !allowed()) return;
-      query = event.target.value; api.render(); const input=document.querySelector('#rv-search'); input?.focus();
+      // Solo se actualiza la tabla: el campo de búsqueda no se reemplaza mientras se escribe.
+      query = event.target.value; const box=document.querySelector('#rv-history'); if (box) box.innerHTML = tabla(filter(rows, query)); else api.render();
     });
     document.addEventListener('keydown', event => { if (event.key==='Escape' && modal && !busy) close(); });
   }
