@@ -8,7 +8,8 @@ Base: propuesta de Codex en `codex/munro-resenas` (PR #94, solo Munro, nunca apl
 - Nombre y teléfono argentino normalizado (10 dígitos, sin 0 ni 15; acepta +54, +54 9 y 0054). Las variantes del mismo número no permiten repetir el beneficio en la misma sucursal y mes.
 - Código aleatorio de 6 caracteres de un alfabeto de 32 símbolos sin O, 0, I ni 1, generado exclusivamente en PostgreSQL. Único para siempre (índice único, reintento de colisiones); no se recicla.
 - Beneficio fijo 10% OFF, un cupón por teléfono, mes y sucursal. El cupón solo se puede usar en la sucursal que lo emitió.
-- Emisión y uso del 1 al 12 inclusive (America/Argentina/Buenos_Aires). Desde las 00:00 del 13 todo pendiente del mes queda «Cupón Vencido». El estado se calcula en el servidor al consultar; no depende de cron ni del reloj del teléfono.
+- Se registra cualquier día; el cupón se usa del 1 al 12 inclusive (America/Argentina/Buenos_Aires). Registrado hasta el 12 vale ese mes; después del 12, el mes siguiente («todavía no vigente» hasta el día 1). Desde las 00:00 del 13 el pendiente del período queda «Cupón Vencido». El estado se calcula en el servidor; no depende de cron ni del reloj del teléfono.
+- «✎ Modificar» y «Guardar cambios» corrigen nombre y teléfono de un cupón pendiente de la misma sucursal (el código no cambia; queda auditado). Usados y vencidos no se modifican.
 - Estados automáticos: Pendiente, Usado y Cupón Vencido.
 - Marcar utilizado exige confirmar con la tilde, es irreversible, atómico (dos usos simultáneos: uno solo gana) y queda auditado; un índice único impide registrar dos usos del mismo cupón.
 - Buscador por nombre, teléfono o cupón; contadores Total, Pendientes, Usados y Vencidos; historial completo de la sucursal.
