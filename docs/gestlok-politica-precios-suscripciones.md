@@ -19,6 +19,6 @@ Decisión de producto (27 de octubre de 2026): **un precio mensual general en AR
 - Ningún cobro real, credencial productiva o cambio de licencia existente se activa por este documento.
 
 ## Pendiente de decisión
-- Importe mensual general en ARS.
+- **Importe mensual general aprobado: ARS $35.000 por mes** (35.000 pesos argentinos; precio inicial de referencia para nuevas suscripciones).
 - Descuentos específicos y duración (si corresponde).
 - Política comercial de avisos de cambio de precio y cancelación.
