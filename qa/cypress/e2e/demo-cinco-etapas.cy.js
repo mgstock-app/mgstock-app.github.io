@@ -18,6 +18,19 @@ describe('Demo GESTLOK: cinco etapas y reseña independiente',()=>{
   step(0);cy.get('#hub .gl-owner-landing').should('be.visible');
   cy.document().then(d=>{expect(d.documentElement.scrollWidth).to.be.at.most(390);});
  });
+ it('El contacto requiere consentimiento y se borra al retirarlo',()=>{
+  start();step(4);
+  cy.get('[name=contact_consent]').check();
+  cy.get('[name=contact_name]').type('Persona ficticia');
+  cy.get('[name=contact_value]').type('test@example.com');
+  cy.get('[data-rating=3]').click();
+  cy.get('[name=contact_value]').should('have.value','test@example.com');
+  cy.get('[name=contact_consent]').uncheck();
+  cy.get('#gl-tour-contact').should('not.be.visible');
+  cy.get('#gl-tour-review').submit();
+  cy.get('#gl-tour-gift').should('be.visible');
+  cy.window().then(w=>{expect(w.__reviewPayload.contact_name).eq(null);expect(w.__reviewPayload.contact_value).eq(null);});
+ });
  it('Sin regalo ante un error; regalo después del envío incluso con una estrella y sin contacto',()=>{
   start();step(4);
   cy.window().then(w=>{

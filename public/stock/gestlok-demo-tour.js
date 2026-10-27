@@ -54,6 +54,6 @@ document.addEventListener('submit',async e=>{
  busy=false;paint();
 });
 let touch=null;
-document.addEventListener('touchstart',e=>{if(e.target.closest?.('#gl-tour-controls'))touch={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+document.addEventListener('touchstart',e=>{if(!e.target.closest?.('input,textarea,select,a,table,.gl-dh-scroll')&&(!e.target.closest?.('button')||e.target.closest?.('#gl-tour-controls')))touch={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
 document.addEventListener('touchend',e=>{if(!touch)return;const dx=e.changedTouches[0].clientX-touch.x,dy=e.changedTouches[0].clientY-touch.y;touch=null;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)move(step+(dx<0?1:-1));},{passive:true});
 })();

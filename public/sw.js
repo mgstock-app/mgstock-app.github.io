@@ -1,7 +1,7 @@
 /* Generated into public/sw.js before each build. Never clear another app's cache. */
 const BASE = new URL('.', self.location.href).pathname.replace(/\/$/, '');
 const PREFIX = `mgstock:${BASE || '/'}:`;
-const CACHE = PREFIX + '3256bb0cfe060bb3';
+const CACHE = PREFIX + '7ede3a1c463b8595';
 const SHELL = ['/', '/stock/gestlok-offline.js', '/stock/app.js', '/stock/gestlok-pwa-update.js', '/stock/gestlok-visitor-demo.js', '/stock/gestlok-demo-tour.js', '/stock/gestlok-demo-tour.css', '/stock/munro-daily.js', '/stock/munro-motos.js', '/stock/mi-gusto-resenas.js', '/stock/gestlok-commerce.js', '/stock/gestlok-tienda.js', '/stock/gestlok-demo.js', '/stock/gestlok-demo-metrics.js', '/stock/gestlok-creator.js', '/stock/gestlok-support.js', '/stock/gestlok-provider-pdf.js', '/stock/gestlok-updates.js', '/stock/gestlok-push.js', '/stock/auth.js', '/stock/gestlok-registration.js', '/stock/gestlok-owner-areas.js', '/stock/gestlok-creator-mode.js', '/stock/gestlok-creator-support.js', '/stock/gestlok-creator-home.js', '/stock/ingreso.js', '/stock/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/gestlok.svg', '/icons/gestlok-wordmark.svg', '/icons/gestlok-app-v2-192.png', '/icons/gestlok-app-v2-512.png', '/icons/gestlok-maskable-v2-512.png', '/icons/gestlok-apple-v2-180.png', '/icons/gestlok-favicon-v2-32.png', '/plantillas/GESTLOK-plantilla-horarios.xlsx', '/plantillas/GESTLOK-demo-horarios-ficticio.xlsx', '/plantillas/demo-horarios.json', '/stock/gestlok-demo-horarios.js'].map(path => BASE + path);
 // Páginas y recursos de «Administrar a los empleados» (/empleados/), listados en cada publicación
 // por scripts/sw-precache.mjs. Así las dos áreas se abren y navegan sin conexión.
