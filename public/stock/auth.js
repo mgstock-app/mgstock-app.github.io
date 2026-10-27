@@ -8,19 +8,49 @@
   const SITE = location.origin + location.pathname;
 
   let sb = null;
-  try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}}); }
+  /* Modo sin conexión (gestlok-offline.js): lecturas desde este equipo y cambios en cola que se envían solos. */
+  const OFF = window.GestLokOffline || null;
+  try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true},
+    ...(OFF ? {global:{fetch:window.GestLokOffline.transport(CFG.url, CFG.key)}} : {})}); }
   catch (e) { console.error('Supabase no configurado', e); }
+  if (sb && OFF) window.GestLokOffline.attach(sb, CFG.url, SITE);
+
+  // Misma sesión de usuario para el catálogo comercial; RLS sigue siendo la autoridad.
+  if (sb) window.GestLokSupabase = sb;
 
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
-  let email = null, rol = null, locales = [], started = false;
+  let email = null, rol = null, locales = [], tenantId = null, support = false, started = false;
+  const LAST_EMAIL = 'gestlok:ultimo-email';
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
 
   /* ---------- Pantalla de ingreso ---------- */
   function show(mode, msg, err){
     const box = $('#auth'); if (!box) return;
+    if (mode === 'up') window.GestLokRegistration?.mountSignup();
     box.hidden = false; document.documentElement.classList.add('auth-on');
     const m = $('#au-msg'); m.textContent = msg || ''; m.className = 'au-msg' + (err ? ' err' : '') + (msg ? '' : ' empty');
     box.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== mode; });
+    if (mode === 'in'){
+      // Completa el email de la última sesión: solo falta la contraseña.
+      let last = ''; try { last = localStorage.getItem(LAST_EMAIL) || ''; } catch {}
+      const mail = $('#au-email'), pass = $('#au-pass');
+      if (last && mail && !mail.value){ mail.value = last; if (pass && !msg) setTimeout(() => pass.focus(), 0); }
+    }
+    // Visible solo para visitantes que todavía no tienen sesión activa.
+    // No pide correo ni contraseña y nunca se conecta a datos empresariales.
+    if(mode==='in' && !$('#au-demo-link')){
+      const form=$('#au-in');
+      if(form){
+        const link=document.createElement('a');
+        link.id='au-demo-link'; link.className='gl-visitor-entry';
+        link.href=location.pathname+'?demo=1';
+        link.textContent='Explorar demo interactiva · Sin registrarme';
+        const info=document.createElement('small');
+        info.className='gl-visitor-entry-info';
+        info.textContent='Probá Dueña y Gerente en dos tiendas ficticias. Sin modificar datos reales.';
+        form.append(link,info);
+      }
+    }
     const f = box.querySelector(`[data-mode="${mode}"] input`); if (f) setTimeout(() => f.focus(), 30);
   }
   function hide(){ const box = $('#auth'); if (box){ box.hidden = true; } document.documentElement.classList.remove('auth-on'); }
@@ -48,8 +78,12 @@
         busy(f, false); if (error) show('in', errTxt(error), true);
       } else if (f.id === 'au-up'){
         if (v('#au-pass2') !== v('#au-pass3')){ show('up', 'Las dos contraseñas no coinciden.', true); return; }
+        let intent;
+        try { intent = window.GestLokRegistration?.read(f); }
+        catch (e) { show('up', e.message, true); return; }
+        if (!intent){ show('up', 'No se pudo cargar la selección de cuenta. Reabrí la aplicación.', true); return; }
         busy(f, true, 'Creando…');
-        const { data, error } = await sb.auth.signUp({ email: v('#au-email2').trim().toLowerCase(), password: v('#au-pass2'), options: { emailRedirectTo: SITE } });
+        const { data, error } = await sb.auth.signUp({ email: v('#au-email2').trim().toLowerCase(), password: v('#au-pass2'), options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice} } } });
         busy(f, false);
         if (error) show('up', errTxt(error), true);
         else if (!data.session) show('in', 'Listo. Te mandamos un email para confirmar la cuenta: abrilo, tocá el enlace y después entrá acá con tu contraseña.');
@@ -62,14 +96,16 @@
         busy(f, true, 'Guardando…');
         const { error } = await sb.auth.updateUser({ password: v('#au-pass4') });
         busy(f, false);
-        if (error) show('np', errTxt(error), true); else { show('in', 'Contraseña cambiada.'); const s = await sb.auth.getSession(); if (s.data.session) entered(s.data.session); }
+        if (error) show('np', errTxt(error), true); else { recovering = false; show('in', 'Contraseña cambiada.'); const s = await sb.auth.getSession(); if (s.data.session) entered(s.data.session); }
       }
     } catch (err) { busy(f, false); show('in', errTxt(err), true); }
   }, true);
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-au]'); if (!t) return;
     e.preventDefault();
-    if (t.dataset.au === 'out'){ sb && sb.auth.signOut().finally(() => location.reload()); return; }
+    // «Salir» cierra solo este equipo: con el alcance global de Supabase se cerraba la sesión
+    // de la misma cuenta en todos los teléfonos y computadoras (cuentas compartidas incluidas).
+    if (t.dataset.au === 'out'){ Promise.resolve(window.GestLokPush?.onLogout?.()).catch(()=>{}).finally(()=>{ sb && sb.auth.signOut({ scope: 'local' }).finally(() => location.reload()); }); return; }
     if (t.dataset.au === 'google'){ google(t); return; }
     if (t.dataset.au === 'retry'){ location.reload(); return; }
     show(t.dataset.au, '');
@@ -98,15 +134,27 @@
   }
 
   async function entered(session){
+    const attempt = authGeneration;
     email = String(session.user.email || '').toLowerCase();
-    let r = null, ls = [];
-    try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; } else throw error; }
-    catch { try { const { data } = await sb.rpc('mi_rol'); r = data || null; } catch {} }
+    // Recordar solo el email de la última sesión en este equipo (nunca la contraseña).
+    try { if (email) localStorage.setItem(LAST_EMAIL, email); } catch {}
+    let r = null, ls = [], sinRed = false;
+    try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
+    catch (e) { sinRed = navigator.onLine === false || /conexi|fetch|network|GL_OFFLINE/i.test(String((e && (e.message || e.code)) || '')); try { const { data, error } = await sb.rpc('mi_rol'); if (!error) r = data || null; } catch {} }
+    if (attempt !== authGeneration) return;
     rol = r; locales = ls;
+    /* Sin internet y sin una copia de esta cuenta en el equipo: no es un «ingreso pendiente». */
+    if (!rol && sinRed){
+      show('in', 'Sin conexión. Para usar GESTLOK sin internet, abrilo una vez con conexión en este equipo. Se reintenta solo al volver internet.', true);
+      window.addEventListener('online', () => location.reload(), { once: true });
+      return;
+    }
     if (!rol){
       const meta = session.user.user_metadata || {}, prov = (session.user.app_metadata || {}).provider || 'email';
-      try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
-      show('pend', ''); const n = $('#au-pend-email'); if (n) n.textContent = email;
+      if (!window.GestLokRegistration){
+        try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
+      }
+      show('pend', ''); window.GestLokRegistration?.pending(session); const n = $('#au-pend-email'); if (n) n.textContent = email;
       clearInterval(window.__spmPoll);
       window.__spmPoll = setInterval(async () => { try { const { data } = await sb.rpc('mi_rol'); if (data){ clearInterval(window.__spmPoll); location.reload(); } } catch {} }, 10000);
       return;
@@ -116,16 +164,36 @@
     if (!started){ started = true; resolveAuth(true); }
   }
 
+  // Bootstrap authentication once: INITIAL_SESSION and getSession can both resolve
+  // during PWA startup. Never replace a recovered session with the login screen.
+  let entering = false, authGeneration = 0, recovering = false;
+  function resume(session){
+    if (!session || started || entering || recovering || /type=recovery/.test(location.hash)) return;
+    entering = true;
+    const attempt = authGeneration;
+    Promise.resolve().then(() => { if (attempt === authGeneration) return entered(session); }).catch(() => {
+      if (attempt !== authGeneration) return;
+      show('in', 'No se pudo recuperar tu sesión. Revisá la conexión e intentá nuevamente.', true);
+    }).finally(() => { if (attempt === authGeneration) entering = false; });
+  }
   function init(){
-   if (sb){
+    if (!sb){ show('in', 'Falta configurar la conexión con Supabase.', true); return; }
+    const uErr = urlError(), bootstrapGeneration = authGeneration;
     sb.auth.onAuthStateChange((ev, session) => {
-      if (ev === 'PASSWORD_RECOVERY'){ show('np', 'Elegí tu contraseña nueva.'); return; }
-      if (session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED')){ if (!started) entered(session); }
-      if (ev === 'SIGNED_OUT'){ if (started) location.reload(); else show('in', ''); }
+      if (ev === 'PASSWORD_RECOVERY'){ ++authGeneration; entering = false; recovering = true; show('np', 'Elegí tu contraseña nueva.'); return; }
+      if (session && ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED','USER_UPDATED'].includes(ev)) resume(session);
+      if (ev === 'SIGNED_OUT'){
+        ++authGeneration; entering = false; recovering = false;
+        for (const id of ['#app', '#hub', '#logout-wrap']) { const el = $(id); if (el) el.hidden = true; }
+        if (started) location.reload(); else show('in', '');
+      }
     });
-    const uErr = urlError();
-    sb.auth.getSession().then(({ data }) => { if (data.session){ if (!/type=recovery/.test(location.hash)) entered(data.session); } else show('in', uErr, !!uErr); });
-   } else show('in', 'Falta configurar la conexión con Supabase.', true);
+    sb.auth.getSession().then(({data,error}) => {
+      if (bootstrapGeneration !== authGeneration) return;
+      if (data?.session) resume(data.session);
+      else if (error && !started && !entering && !recovering) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
+      else if (!started && !entering && !recovering) show('in', uErr, !!uErr);
+    }).catch(() => { if (bootstrapGeneration === authGeneration && !started && !entering && !recovering) show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
@@ -138,6 +206,8 @@
   };
   const refreshers = new Map();
   const bump = col => { const s = refreshers.get(col); if (s) s.forEach(fn => fn()); };
+  /* Al enviarse los cambios guardados sin conexión, todas las planillas abiertas se actualizan. */
+  window.addEventListener?.('gestlok-sync-complete', () => { for (const s of refreshers.values()) s.forEach(fn => fn()); });
   const snap = rows => ({ docs: rows, size: rows.length, empty: !rows.length, docChanges: () => [], metadata: { fromCache: false, hasPendingWrites: false } });
   const docSnap = r => ({ id: r.id, exists: true, data: () => r.data || {}, metadata: { fromCache: false, hasPendingWrites: false } });
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -205,6 +275,7 @@
       try { res = await sb.rpc(name, args); } catch (e) { throw { code: 'unavailable', message: 'Sin conexión' }; }
       const { data, error } = res;
       if (error){ const m = String(error.message || ''); if (/^MGS:/.test(m)) throw { code: m.slice(4), message: m }; throw toErr(error); }
+      if (data && data.gl_pending) throw { code: 'pending', message: data.message || 'Guardado en este equipo; se enviará al volver la conexión.' };
       return data;
     }
   });
@@ -213,7 +284,7 @@
   const avatar = (txt, bg) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="32" fill="${bg}"/><text x="32" y="41" font-family="Arial" font-size="26" font-weight="700" text-anchor="middle" fill="#fff">${String(txt || '?').charAt(0).toUpperCase()}</text></svg>`);
   const nameOf = e => String(e || '').split('@')[0];
   const user = Object.freeze({
-    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
+    async me(){ return { id: email, name: nameOf(email), avatarUrl: avatar(email, '#1F3A5F'), color: '#1F3A5F', email, rol, locales: [...locales], tenant_id: tenantId, support, isOwner: rol === 'creadora', canEdit: EDITA.includes(rol) }; },
     async id(){ return email; },
     async isOwner(){ return rol === 'creadora'; },
     async canEdit(){ return EDITA.includes(rol); },

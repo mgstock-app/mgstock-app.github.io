@@ -18,12 +18,25 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            modules/empleados/package-lock.json
       - run: npm ci
       - name: Lectores de PDF y fotos (librerías gratuitas desde npm)
         run: node scripts/vendor-ocr.mjs
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Módulo «Administrar a los empleados» (cliente de ReciboNet integrado)
+        run: |
+          npm --prefix modules/empleados ci
+          npm --prefix modules/empleados run lint
+          npm --prefix modules/empleados test
+          npm --prefix modules/empleados run build
+          rm -rf out/empleados && cp -r modules/empleados/out out/empleados
+          test -f out/empleados/index.html
+      - name: Ambas áreas disponibles sin conexión (lista de Empleados en el service worker)
+        run: node scripts/sw-precache.mjs out
       - name: Instalar Cypress aislado
         run: npm --prefix qa install --no-package-lock
       - name: Iniciar servidor de pruebas

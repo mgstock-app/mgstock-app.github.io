@@ -4,6 +4,8 @@
 
 **¿Venís de Claude o Codex y buscás GESTLOK, antes MG Stock?** Empezá por [GESTLOK-GUIA-PARA-CLAUDE.md](GESTLOK-GUIA-PARA-CLAUDE.md): URL, rama actual, historial de PR, funciones implementadas y límites de seguridad.
 
+**Plan de cierre:** [GESTLOK-PLAN-CIERRE-ETAPAS.md](GESTLOK-PLAN-CIERRE-ETAPAS.md) — etapas 1–11 y preparación de 14, sin monetización (13), con testing integral (12) al final. [Seguimiento en GitHub](https://github.com/mgstock-app/mgstock-app.github.io/issues/23).
+
 Precauciones del relanzamiento: [GESTLOK-SEGURIDAD-Y-DESPLIEGUE.md](GESTLOK-SEGURIDAD-Y-DESPLIEGUE.md). Estado de publicación y pendientes: [CONTINUAR-PUBLICACION.md](CONTINUAR-PUBLICACION.md). Historial técnico: [ESTADO-MGSTOCK.md](ESTADO-MGSTOCK.md).
 
 ## Ejecutar

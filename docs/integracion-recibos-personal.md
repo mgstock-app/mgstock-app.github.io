@@ -1,0 +1,40 @@
+# Integración del módulo Recibos y Personal en GESTLOK
+
+Estado: inventario, registro de solicitudes, respaldos lógicos verificados y nuevo inicio comercial autorizado implementados por bloques. La integración funcional de ReciboNet sigue incompleta. Ver `docs/integracion-58-estado-verificado.md` y `docs/recibonet-inventario-58.md`. No habilitar a usuarios reales hasta completar seguridad y pruebas.
+
+## Arquitectura
+- GESTLOK es el punto único de entrada y la marca visual.
+- Módulos por empresa: comercial, recibos_personal. La creadora habilita módulos explícitamente.
+- El menú solo muestra módulos autorizados, pero el backend y RLS deben validar cada operación.
+- ReciboNet conserva su backend protegido durante la transición. GESTLOK se publica como exportación estática: no es seguro copiar directamente rutas de servidor de ReciboNet.
+- No duplicar empresas, locales ni usuarios. Definir un mapeo de identificadores antes de migrar.
+- No exponer credenciales, tokens o información de colaboradores en el repositorio.
+
+## Alcance funcional
+Recibos, liquidaciones, imágenes y exportación PDF por WhatsApp; horarios semanales y mensuales; enlaces Excel/Google Sheets; historial, planillas, locales, roles, aprobaciones, respaldos y botones existentes.
+
+## Secuencia
+1. Inventariar componentes, rutas, RPC y políticas RLS de ambos sistemas.
+2. Crear asignación de módulos por empresa y autorización de creadora, con pruebas de denegación.
+3. Integrar interfaz GESTLOK para Recibos y Personal sin exponer datos ajenos.
+4. Adaptar funciones de ReciboNet al backend protegido, manteniendo exportación y enlaces.
+5. Respaldar y migrar datos de forma idempotente, reconciliando Munro y Torcuato de Alessandro 2026002.
+6. Ejecutar pruebas de permisos cruzados, horarios, Excel, PDF, WhatsApp, sesiones y móviles.
+7. Publicar, verificar y solo después retirar el acceso a la aplicación anterior.
+
+## Condición de salida
+No apagar ReciboNet ni mover datos reales hasta contar con validación funcional, controles de acceso comprobados y procedimiento de reversión.
+
+## Pendiente prioritario: publicación visible de actualizaciones (25/10/2026)
+- La usuaria confirmó en Android que «Guardar stock» aparece, pero «Observación interna» no aparece en las tarjetas de Proveedores.
+- El código de observaciones existe en `public/stock/app.js` y se fusionó un ajuste de versión del controlador en PR #57; falta verificar despliegue y funcionamiento real.
+- Corregir actualización automática de la PWA instalada y web, incluyendo service worker, caché y estado de GitHub Pages; comprobar que no se pierdan datos ni sesiones.
+- No marcar resuelto hasta que la usuaria vea y pueda guardar una observación por producto en la aplicación publicada.
+- Prioridad de trabajo actual: integración de ReciboNet. Este pendiente no debe olvidarse ni confundirse con una tarea completada.
+
+## Identidad de Mi Gusto y coexistencia de dueños (25/10/2026)
+- La empresa visible en GESTLOK se llama **Mi Gusto**; conservar su logo actual, exclusivamente en su cuenta empresarial.
+- Gisela y **el co-dueño autorizado** pertenecen a la MISMA empresa y deben acceder a los mismos locales según autorización. No crear una segunda empresa ni duplicar datos.
+- El co-dueño ya tiene cuenta en ReciboNet, pero todavía no inició sesión en GESTLOK. Resolver vinculación segura tras autenticación y validación de pertenencia, sin asignar acceso solo por una cadena de email ni copiar contraseñas.
+- ReciboNet registra empresa interna **Alessandro (2026002)**: verificar y documentar mapeo con Mi Gusto antes de migrar; no renombrar ni modificar identificadores de producción a ciegas.
+- Mantener Munro y Torcuato, planillas, recibos, horarios, usuarios, historial y logo. Dos dueños pueden compartir empresa; la autorización de módulos y operaciones debe validarse en backend/RLS.

@@ -1,13 +1,14 @@
 /* global Cypress, describe, beforeEach, it, cy, expect */
+import { abrirLocal } from '../helpers/abrir-local';
 // Recorrido ampliado de GestLok. Todo el backend se reemplaza por Supabase falso,
 // las pruebas NO consultan ni modifican los locales de producción.
 const login = email => {
-  cy.get("#au-email").type(email);
+  cy.get("#au-email").clear().type(email);
   cy.get("#au-pass").type("secreto1", {log:false});
   cy.get('#au-in button[type="submit"]').click();
 };
 const owner = () => login("dueno@example.com");
-const toLocal = loc => cy.get(`#hub [data-act="local"][data-id="${loc}"]`).first().click();
+const toLocal = loc => abrirLocal(loc);
 
 describe("GestLok: auditoría de recorridos, perfiles y sincronización local", () => {
   Cypress.on("uncaught:exception", error => {
@@ -90,7 +91,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#view").should("not.contain.text","Proveedor Munro QA");
   });
 
-  it("Inicio resume cada hoja guardada y no mezcla las cantidades entre planillas", () => {
+  it("Inicio operativo no duplica hojas; los registros siguen en sus secciones", () => {
     cy.window().then(w => {
       const fabrica = w.__rows.filter(r => r.col === "munro/fabrica");
       fabrica.forEach(r => { r.data.local = null; r.data.fabrica = null; });
@@ -98,27 +99,22 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
       expect(primera).not.to.equal(undefined);
       primera.data.local = 6;
       primera.data.fabrica = 2;
-      w.__rows.push({col:"munro/hojas", id:"h-qa-cajas-resumen",
-        data:{nombre:"Stock Cajas QA", tipo:"lista", orden:90}});
-      w.__rows.push({col:"munro/productos", id:"p-qa-cajas-resumen",
-        data:{nombre:"Caja de prueba", cat:"Envases QA", hoja:"h-qa-cajas-resumen", stock:12}});
+      w.__rows.push({col:"munro/hojas",id:"h-qa-cajas-resumen",
+        data:{nombre:"Stock Cajas QA",tipo:"lista",orden:90}});
+      w.__rows.push({col:"munro/productos",id:"p-qa-cajas-resumen",
+        data:{nombre:"Caja de prueba",cat:"Envases QA",hoja:"h-qa-cajas-resumen",stock:12}});
     });
     owner();
     toLocal("munro");
-    cy.get('.gl-home-sheet-summaries').should("be.visible");
-    cy.get('.gl-home-sheet-summaries [data-go="fabrica"]')
-      .should("contain.text","Local guardado: 1/")
-      .and("contain.text","Fábrica: 1/");
-    cy.get('.gl-home-sheet-summaries [data-go="h-qa-cajas-resumen"]')
-      .should("contain.text","Stock Cajas QA")
-      .and("contain.text","Con cantidad guardada: 1/1");
-    cy.get('.gl-home-sheet-summaries [data-go="stock"]')
-      .should("not.contain.text","Caja de prueba");
-    cy.get('#view').should("contain.text","Datos guardados");
-    cy.get('.gl-home-sheet-summaries [data-go="h-qa-cajas-resumen"]').click();
-    cy.get('#view').should("contain.text","Caja de prueba");
+    cy.get('.gl-home-essential').should('be.visible');
+    cy.get('.gl-home-essential-stat').should('have.length',3);
+    cy.get('.gl-home-sheet-summaries').should('not.exist');
+    cy.get('#view').should('not.contain.text','Caja de prueba');
+    cy.get('#snav [data-go="h-qa-cajas-resumen"]').should('exist').click();
+    cy.get('#view').should('contain.text','Caja de prueba');
+    cy.get('#snav [data-go="fabrica"]').click();
+    cy.get('#view').should('contain.text','Fábrica');
   });
-
   it("chat de equipo: guarda el mensaje solamente en el local seleccionado", () => {
     owner();
     toLocal("munro");
@@ -236,7 +232,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
   it("gerente de Munro no ve contenido ni acceso de Torcuato", () => {
     login("gerente.munro@example.com");
     cy.get("#brand-local").should("contain.text","Munro");
-    cy.get('#snav [data-act="locales"]').should("not.exist");
+    cy.get('#snav [data-act="locales"] small').should("have.text","Inicio");
     cy.get('#snav [data-go="chat"]').click();
     cy.get("#view").should("not.contain.text","Torcuato");
     cy.get("#hub .gl-admin").should("not.exist");
@@ -352,8 +348,9 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
       expect(p.data.telefono).to.eq("5491123456789");
       expect(rows.filter(r=>r.col==="torcuato/proveedores")).to.have.length(0);
     });
-    cy.get(".gl-provider-card a[href^='https://wa.me/5491123456789']").should("have.attr","target","_blank");
-    cy.get('[data-act="prov-copy"][data-name="Distribuidora QA"]').should("be.visible");
+    cy.get(".gl-provider-card a[href^='https://wa.me/5491123456789']").should("not.exist");
+    cy.get('[data-act="prov-open"][data-name="Distribuidora QA"]').click();
+    cy.get('#prov-carpeta [data-act="prov-save-plan"]').should('be.visible');
     cy.get('#snav [data-act="locales"]').click();
     toLocal("torcuato");
     cy.get('#snav [data-go="proveedores"]').click();
@@ -372,56 +369,60 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
 
   it("inicio: muestra tareas claras para el cliente", () => {
     login("gerente.munro@example.com");
-    cy.get("#view .gl-today").should("be.visible");
-    cy.get("#view .gl-today").should("contain.text","¿Qué necesitás resolver?");
-    cy.get('.gl-today-action[data-go="proveedores"]').click();
+    cy.get('#view .gl-manager-landing').should('be.visible');
+    cy.get('#view [data-gerente-business]').click();
+    cy.get("#view .gl-home-essential").should("be.visible");
+    cy.get("#view .gl-home-essential-stat").should("have.length",3);
+    cy.get('.gl-home-essential-links [data-go="proveedores"]').click();
     cy.get("#view").should("contain.text","Proveedores");
   });
 
-  it("control diario: calcula diferencia, guarda historial sin alterar stock", () => {
+  it("Conteo diario exclusivo: no aparece para dueña en Munro ni Torcuato", () => {
     owner(); toLocal("munro");
-    cy.get('#snav [data-go="diario"]').click();
-    cy.get("#view").should("contain.text","Control diario");
-    cy.get("#diario-inicio").type("10");
-    cy.get("#diario-ingresos").type("5");
-    cy.get("#diario-ventas").type("3");
-    cy.get("#diario-consumo").type("1");
-    cy.get("#diario-final").type("10");
-    cy.get("#diario-preview").should("contain.text","Stock esperado: 11").and("contain.text","Diferencia: −1".replace("−","-"));
-    cy.get('#diario-form button[type="submit"]').click();
-    cy.window().its("__rows").should(rows => {
-      const logs=rows.filter(r=>r.col==="munro/diario");
-      expect(logs).to.have.length(1);
-      expect(logs[0].data.esperado).to.eq(11);
-      expect(logs[0].data.diferencia).to.eq(-1);
-      expect(rows.find(r=>r.col==="munro/productos" && r.id==="p-001").data.stock).to.eq(null);
-      expect(rows.filter(r=>r.col==="torcuato/diario")).to.have.length(0);
-    });
-    cy.get(".gl-daily-list").should("contain.text","Producto de prueba 001");
+    cy.get('#snav [data-go="diario"]').should("not.exist");
     cy.get('#snav [data-act="locales"]').click();
     toLocal("torcuato");
-    cy.get('#snav [data-go="diario"]').click();
-    cy.get("#view").should("contain.text","Todavía no hay registros");
+    cy.get('#snav [data-go="diario"]').should("not.exist");
+    cy.window().its("__rows").should(rows =>
+      expect(rows.filter(r=>r.col==="torcuato/munro_control")).to.have.length(0));
   });
 
-  it("control diario valida cantidades y solo permite edición a personal autorizado", () => {
+  it("gerente Munro: tablero por categorías, diferencia y guardado con historial", () => {
+    login("gerente.munro@example.com");
+    cy.get('#snav [data-go="diario"]').should("be.visible").click();
+    cy.get("#view").should("contain.text", "Conteo diario");
+    cy.get("#view").should("contain.text", "Empanadas");
+    cy.get("#view").should("contain.text", "Pizza Indi");
+    cy.get("#diario-fecha").clear().type("2026-10-24").blur();
+    cy.get('[data-md-expected="empanadas"]').should('contain.text','2.149');
+    cy.get('[data-md-act="edit"]').click();
+    cy.get('[data-md-id="empanadas"][data-md-field="contado"]').clear().type("2147");
+    cy.get('[data-md-diff="empanadas"]').should("contain.text", "-2");
+    cy.get('[data-md-act="save"]').click();
+    cy.window().its("__rows").should(rows => {
+      const logs=rows.filter(r=>r.col==="munro/munro_control" && r.data.tipo==="cierre");
+      expect(logs).to.have.length(1);
+      expect(logs[0].data.filas.find(p=>p.id==="empanadas").contado).to.eq(2147);
+      expect(rows.find(r=>r.col==="munro/productos" && r.id==="p-001").data.stock).to.eq(null);
+      expect(rows.filter(r=>r.col==="torcuato/munro_control")).to.have.length(0);
+    });
+    cy.get(".md-hist").should("contain.text","Historial de guardados");
+  });
+
+  it("Conteo diario exclusivo: solo creadora y gerentes autorizados tienen acceso", () => {
     login("lectura@example.com");
-    cy.get('#snav [data-go="diario"]').click();
-    cy.get("#diario-inicio").should("be.disabled");
-    cy.get('#diario-form button[type="submit"]').should("be.disabled");
-    cy.window().its("__rows").should(rows => expect(rows.filter(r=>r.col==="munro/diario")).to.have.length(0));
+    cy.get('#snav [data-go="diario"]').should("not.exist");
   });
 
-  it("control diario se ve ordenado en tablet", () => {
+  it("Conteo diario Munro conserva el menú en tablet", () => {
     cy.viewport(820,1180);
-    owner();toLocal("munro");
+    login("gerente.munro@example.com");
     cy.get('#app [data-act="menu-open"]').click();
     cy.get('#snav [data-go="diario"]').should("be.visible").click();
-    cy.get(".gl-daily-layout").should("be.visible");
-    cy.get("#diario-producto").should("be.visible");
-    cy.get("#diario-preview").should("be.visible");
+    cy.get(".md-stats").should("exist");
+    cy.get(".md-grupo").should("exist");
+    cy.get('[data-md-act="compare"]').should("exist");
   });
-
 
   it("hoja Proveedores: crea carpeta, agrega productos, completa las tres cantidades y guarda resumen", () => {
     owner(); toLocal("munro");
@@ -434,12 +435,15 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#prov-item-name').type('Leche larga vida');
     cy.get('#prov-item-unit').type('cajas');
     cy.get('#prov-add-form button[type="submit"]').click();
-    cy.get('.gl-prov-table tbody tr').should('have.length',1).and('contain.text','Leche larga vida');
+    cy.get('.gl-prov-table tbody tr[data-prov-row]').should('have.length',1).and('contain.text','Leche larga vida');
+    cy.get('.gl-prov-table .gl-prov-category-head').should('contain.text','General').and('contain.text','Poner en 0');
     cy.get('[data-prov-val="stockLocal"]').clear().type('7');
     cy.get('[data-prov-val="sugerido"]').clear().type('4');
     cy.get('[data-prov-val="pedir"]').clear().type('3');
     cy.get('#prov-resumen').should('contain.text','Cafetería Insumos QA').and('contain.text','Leche larga vida').and('contain.text','3 cajas');
-    cy.get('[data-act="prov-save-plan"]').click();
+    cy.get('#prov-resumen [data-act="prov-save-plan"]').click();
+    cy.get('#pn').should('contain.text','¿Terminaste el pedido?');
+    cy.get('#pn [data-act="prov-save-draft"]').click();
     cy.window().its('__rows').should(rows=>{
       const entry=rows.find(x=>x.col==='munro/proveedores' && x.data.nombre==='Cafetería Insumos QA');
       expect(entry).not.to.equal(undefined);
@@ -466,7 +470,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('[data-act="prov-share"]').should('not.exist');
   });
 
-  it("pedido de proveedor: compartir como imagen PNG usa el menú nativo en tablet", () => {
+  it("pedido de proveedor: comparte únicamente PDF por menú nativo en tablet", () => {
     cy.window().then(w=>{
       const item=w.__rows.find(r=>r.col==='munro/productos' && r.id==='p-001');
       item.data.proveedor='Proveedor para compartir';
@@ -478,15 +482,19 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('[data-act="prov-open"][data-name="Proveedor para compartir"]').click();
     cy.get('[data-prov-val="pedir"]').first().clear().type('2');
     cy.get('#prov-resumen').should('contain.text','2 unidad');
-    cy.get('[data-act="prov-share"]').click();
-    cy.get('[data-act="prov-share-ready"]',{timeout:12000}).should('be.visible').click();
+    cy.get('#prov-resumen [data-act="prov-share"]').should('be.disabled');
+    cy.get('#prov-resumen [data-act="prov-save-plan"]').click();
+    cy.get('#pn [data-act="prov-save-draft"]').click();
+    cy.get('#prov-resumen [data-act="prov-share"]').should('be.enabled').click();
+    cy.get('#pn [data-act="prov-share-ready"]',{timeout:12000}).should('be.visible').click();
     cy.get('@nativeShare',{timeout:12000}).should('have.been.calledOnce');
     cy.get('@nativeShare').then(stub=>{
       const arg=stub.firstCall.args[0];
-      expect(arg.title).to.contain('Proveedor para compartir');
       expect(arg.files).to.have.length(1);
-      expect(arg.files[0].type).eq('image/png');
-      expect(arg.text).to.contain('Producto de prueba 001');
+      expect(arg.files[0].type).eq('application/pdf');
+      expect(arg.files[0].name).to.match(/\.pdf$/);
+      expect(arg.text).to.eq(undefined);
+      expect(arg.title).to.eq(undefined);
     });
   });
 
@@ -497,7 +505,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get('#app [data-act="menu-open"]').click();
     cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
     cy.get('[data-act="prov-open"][data-name="Proveedor vista tablet"]').click();
-    cy.get('.gl-prov-table tbody tr').first().within(()=>{
+    cy.get('.gl-prov-table tbody tr[data-prov-row]').first().within(()=>{
       cy.get('[data-label="Stock local"]').should('be.visible');
       cy.get('[data-label="Pedir"]').should('be.visible');
       cy.get('[data-label="Sugerido"]').should('be.visible');

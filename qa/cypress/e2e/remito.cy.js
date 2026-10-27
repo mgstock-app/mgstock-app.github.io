@@ -1,4 +1,5 @@
 /* global describe, beforeEach, it, cy, Cypress */
+import { abrirLocal } from '../helpers/abrir-local';
 // «Ingresar remito» con los lectores reales (pdf.js y Tesseract.js descargados en el build), datos ficticios.
 const SETUP = (w) => {
   const it = (id, nombre, local, fabrica, orden) => ({ col: "munro/fabrica", id, data: { nombre, bloque: 1, orden, local, fabrica, sinStock: false, resaltar: false, hoja: "h-ing01" } });
@@ -8,10 +9,11 @@ const SETUP = (w) => {
 const F = (rows, id) => rows.find((r) => r.col === "munro/fabrica" && r.id === id).data;
 const abrir = () => {
   cy.window().then(SETUP);
-  cy.get("#au-email").type("dueno@example.com");
+  cy.get("#au-email").clear().type("dueno@example.com");
   cy.get("#au-pass").type("secreto1", { log: false });
   cy.get("#au-in button[type=submit]").click();
-  cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+  abrirLocal('munro');
+  cy.get("#view .gl-home-essential-settings summary").click();
   cy.get("#ini-remito").click();
   cy.get("#ing-loc-munro").click();
   cy.get("#ing-op-ingreso").click();

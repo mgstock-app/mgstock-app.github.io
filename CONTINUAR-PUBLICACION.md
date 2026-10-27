@@ -66,12 +66,14 @@
 - 22/10, 20:30: nombres de bloque en Conteo Fábrica, «Stock» y toda hoja de fábrica (botón «Nombre» en el encabezado de cada bloque; dueña y administradora; vacío vuelve a «Bloque N»). Se guarda en `hojas.bloques` del documento de la hoja y se ve en la planilla, Ajustes, el cuadro de agregar y el texto copiado. Para administradora y dueña, cada agregar, modificar, eliminar producto o nombrar bloque pregunta «¿Aplicar a todos los locales de Gisela?» (Solo este local / Todos los locales / Cancelar). «Todos» busca la misma hoja en el otro local (por tipo y nombre; las fijas por id) y el producto por nombre; nunca copia cantidades. Gerentes no ven la pregunta. En Equipo se cargó `nombre: 'Gisela'` en su acceso Hotmail (solo ese campo). Nueva prueba `tests/test_bloques.py`.
 - 22/10, 23:40: en las hojas «Local + Ingreso» (Stock Local de cada sucursal) el gerente ahora también carga la columna Ingreso a mano (antes solo por remito). «Ingresar remito» con foto o PDF sigue siendo de dueña y administradora. Sin cambios en la base: las reglas ya permitían a los gerentes guardar esas filas de su local. Prueba en `tests/test_ingreso.py`.
 
+- 25/10, tarde (PR #64, reemplaza #62 y #63): inicio de dueños con dos carpetas («Administrar mi empresa» y «Administrar a los empleados»); módulo `/empleados/` con el cliente de ReciboNet integrado (ver `modules/empleados/README.md`); habilitación de empleados por empresa desde el panel de creadora con registro de acciones; vínculo verificado Mi Gusto ↔ Alessandro 2026002; creadora en solo lectura por defecto (habilita edición 30 min con motivo). Estado y pendientes: `docs/integracion-58-estado-verificado.md`.
+
 ## Pendientes
 1. Celulares físicos (iPhone Safari y Android Chrome): instalar, ingresar con Google, cerrar/reabrir, sin conexión y actualización de versión.
 2. Revisar los emails cargados en Equipo: una dirección Gmail con guion bajo (`_`) no puede existir en Gmail, y esa persona no va a poder entrar hasta corregirla.
 3. Recomendar ingreso con Google: los correos de confirmación por email salen por el servidor de Supabase, con límites bajos. Si hace falta, configurar SMTP propio.
 4. Opcional, pago: la pantalla de Google muestra "Ir a vgsepaaewbctjsjcpeta.supabase.co". Para mostrar un nombre propio hace falta un dominio personalizado de Supabase (complemento pago).
-5. Quitar de Equipo el acceso viejo de Gisela con Gmail (`giselaopenheimer@gmail.com`, Editor sin locales); ella entra con Hotmail como dueña. Se puede hacer desde Equipo en la app.
+5. Quitar de Equipo el acceso viejo de Gisela con Gmail (cuenta de Gmail anterior, Editor sin locales); ella entra con Hotmail como dueña. Se puede hacer desde Equipo en la app.
 6. Actualizar el video tutorial: no muestra Stock Sugerido, Estados, Stock Cajas, Observaciones ni Borrar datos.
 7. Conteo Fábrica tiene «Poner todo en 0» y «Borrar datos»; preguntar si se quita el primero.
 8. Al pasar a Supabase Pro: activar la protección contra contraseñas filtradas.

@@ -3,7 +3,7 @@
 'use strict';
 
 /* ---------- Constantes ---------- */
-const APP_URL = 'https://mgstock-app.github.io/';
+const APP_URL = 'https://gestlok.com.ar/';
 /* Carpeta de los scripts (para cargar el lector de Ingreso de mercadería solo cuando se usa) */
 const JS_BASE = (document.currentScript && document.currentScript.src) || ((document.querySelector('script[src*="stock/app.js"]') || {}).src) || location.href;
 /* Hojas fijas. Se pueden renombrar, ordenar y quitar del menú; las hojas nuevas se guardan en la colección "hojas". */
@@ -22,6 +22,7 @@ const TIPOS = {
 const UNIDADES = ['unidad','caja','docena','kg','bolsa','paquete','botella','lata','rollo','balde','pack'];
 const IC = {
   check:'<path d="m5 12 5 5 9-10"/>',
+  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>',
   in:'<path d="M12 3v11m0 0-4-4m4 4 4-4"/><path d="M4 14v5h16v-5"/>',
   msg:'<path d="M4 5h16v11H10l-6 4z"/>',
   box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
@@ -51,7 +52,10 @@ const IC = {
   print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   shield:'<path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   grip:'<circle cx="9" cy="6" r=".9"/><circle cx="15" cy="6" r=".9"/><circle cx="9" cy="12" r=".9"/><circle cx="15" cy="12" r=".9"/><circle cx="9" cy="18" r=".9"/><circle cx="15" cy="18" r=".9"/>',
-  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>'
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  back:'<path d="m14 6-6 6 6 6"/><path d="M8 12h12"/>',
+  moto:'<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h6l3-6h3l1 6M13 7h3l1 4M3 13h6l2 4"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>'
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
 
@@ -93,13 +97,13 @@ const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
 const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
-  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], provInfo:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
+  allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], provHistorial:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
   draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
-  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
+  view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, provBusy:false, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
-  local:null, localesDB:[], hub:{}, unsubs:[], started:false
+  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false
 };
 S.loaded.l = false;
 
@@ -116,7 +120,7 @@ function hojas(){
   }
   return list.sort((a,b) => (a.orden - b.orden) || a.nombre.localeCompare(b.nombre, 'es'));
 }
-const visibles = () => hojas().filter(h => !h.oculta);
+const visibles = () => hojas().filter(h => !h.oculta && !(window.GestLokCommerce?.mode() === 'online' && (h.id === 'fabrica' || h.tipo === 'fabrica' || h.tipo === 'ingreso')));
 const hojaById = id => hojas().find(h => h.id === id) || null;
 function nombreHoja(id){ if (id === 'inicio') return 'Inicio'; const h = hojaById(id); return h ? h.nombre : 'Hoja'; }
 const hojaLabel = (c, def) => (c.hoja === 'inicio' ? 'Inicio' : (c.hoja && hojaById(c.hoja)?.nombre) || c.nombreHoja || def);
@@ -180,16 +184,29 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'diario'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control', 'agencia_motos'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
+
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
-function miRol(){ const e = miEquipo(); return ROLN(e ? e.rol : S.me && S.me.rol); }
-function misLocales(){ const e = miEquipo(); const l = e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
+function miRol(){ const e = miEquipo(); const real = ROLN(e ? e.rol : S.me && S.me.rol); const pv = real === 'creadora' ? window.GestLokCreatorSupport?.previewRol?.() : ''; return pv || real; }
+const MI_GUSTO_TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+const miGustoContext = () => S.loaded.e && S.me?.tenant_id === MI_GUSTO_TENANT && !!miEquipo() && (!isCreadora() || !!S.local);
+function misLocales(){ const e = miEquipo(); const pv = e && e.rol === 'creadora' && window.GestLokCreatorSupport?.previewRol?.(); const l = pv ? S.me && S.me.locales : e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
+/* «Avisos» (actualizaciones del local): creadora, dueño y gerente. El servidor solo entrega los avisos de su propio local. */
+const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
+const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
+/* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
+const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
+/* Reseñas: Mi Gusto, Munro y Torcuato con datos propios. Motos Agencia: solo Munro. */
+const puedeVerResenas = () => !!window.GestLokResenas?.permitido();
+const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
-const puedeEditarLocal = id => esTotal() || (miRol() === 'gerente' && misLocales().includes(id));
+/* La creadora consulta en solo lectura salvo que haya habilitado la edición (lo hace valer el backend). */
+const creadoraSoloLectura = () => isCreadora() && (window.GestLokCreatorMode ? window.GestLokCreatorMode.readOnly() : true);
+const puedeEditarLocal = id => (esTotal() && !creadoraSoloLectura()) || (miRol() === 'gerente' && misLocales().includes(id));
 const localNombre = id => { const k = id || S.local; const l = S.localesDB.find(x => x.id === k); return (l && l.nombre) || (k ? k.charAt(0).toUpperCase() + k.slice(1) : ''); };
 
 /* ---------- Datos derivados ---------- */
@@ -272,17 +289,23 @@ const canW = () => !!S.db && !S.ro;
 const isCreadora = () => !!(S.me && S.me.isOwner);
 function needWrite(){
   if (!S.db){ toast('Iniciá sesión para guardar.', true); return false; }
-  if (S.ro){ toast(`En ${localNombre()} tu acceso es Solo ver. Pedile a la administradora que te cambie a Gerente.`, true); return false; }
+  if (S.ro){ toast(isCreadora() ? 'Modo consulta: habilitá la edición desde el aviso de arriba para modificar.' : `En ${localNombre()} tu acceso es Solo ver. Pedile a la administradora que te cambie a Gerente.`, true); return false; }
   return true;
 }
 
 /* ---------- Escritura ---------- */
+/* Modo sin conexión: con GestLokOffline activo, lo que se guarda sin internet queda en este equipo
+   y se envía solo al volver la conexión (una sola vez, con los mismos permisos). */
+const syncOffline = () => !!window.GestLokOffline?.available?.();
+const sinRed = () => S.offline && !syncOffline();
+const guardadoLocal = () => (S.offline || navigator.onLine === false) && syncOffline();
 async function w(fn){
   try { return await fn(); }
   catch(e){ if (e && e.code === 'unavailable'){ await sleep(400 + Math.random() * 600); return await fn(); } throw e; }
 }
 function fail(e){
   const c = e && e.code;
+  if (!navigator.onLine && syncOffline()){ toast('Sin internet: este cambio necesita conexión (por ejemplo, borrar). Probá de nuevo cuando vuelva internet.', true); return; }
   if (!navigator.onLine){ toast('Sin internet: este cambio no se guardó. Probá de nuevo cuando vuelva la conexión.', true); return; }
   if (c === 'invalid_argument'){ toast('No se pudo guardar: tu usuario no tiene permiso para este cambio. Pedile a la administradora que revise tu acceso en Equipo.', true); return; }
   if (c === 'quota_exceeded'){ toast('La base está llena: borrá conteos viejos o productos que no uses.', true); return; }
@@ -294,20 +317,53 @@ async function batchRun(items, fn, size=5){ for (let i = 0; i < items.length; i 
 
 /* ---------- Render general ---------- */
 function render(){
+  window.GestLokSupport?.render();
   if (!S.local){ renderHub(); return; }
+  // Preserve unsaved form values when live subscriptions redraw the active view.
+  // Never restore fields belonging to a different view or local.
+  const previousView = $('#view');
+  const pendingFields = [...previousView.querySelectorAll('input, textarea, select')].filter(el =>
+    !el.disabled && el.type !== 'file' && el.type !== 'password' &&
+    (el.id || el.hasAttribute('data-prov-val') || el.hasAttribute('data-prov-note'))
+  ).map(el => ({
+    id: el.id, provId: el.dataset.id, provField: el.dataset.provVal, provNote: el.dataset.provNote,
+    value: el.value, checked: el.checked, type: el.type,
+    dirty: el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue
+  })).filter(el => el.dirty);
   const ae = document.activeElement; const fid = ae && ae.id && $('#view').contains(ae) ? ae.id : null;
   let sel = null; try { if (fid && ae.selectionStart != null) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
+  const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
   renderChrome();
   $('#view').innerHTML = viewHTML();
+  for (const saved of pendingFields) {
+    const field = [...$('#view').querySelectorAll('input, textarea, select')].find(el =>
+      saved.id ? el.id === saved.id :
+      saved.provNote ? el.dataset.provNote === saved.provNote : (el.dataset.id === saved.provId && el.dataset.provVal === saved.provField)
+    );
+    if (!field || field.disabled || field.type !== saved.type) continue;
+    if (field.type === 'checkbox' || field.type === 'radio') field.checked = saved.checked;
+    else field.value = saved.value;
+  }
+  if(toolsOpen && S.view==='inicio'){
+    const details=$('#view .gl-home-essential-settings');
+    if(details)details.open=true;
+  }
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
 function viewHTML(){
+  if (window.GestLokCommerce?.mode() === 'online' && (S.view === 'ingreso' || esFabT(tipoVista(S.view)))) return V.inicio();
   if (S.view === 'ingreso') return esTotal() ? V.ingreso() : V.inicio();
   if (S.view === 'chat') return V.chat();
   if (S.view === 'proveedores') return V.proveedores();
-  if (S.view === 'diario') return V.diario();
+  if (S.view === 'pedidos-online') return window.GestLokCommerce?.online() ? window.GestLokCommerce.view() : V.inicio();
+  if (S.view === 'tienda-online') return window.GestLokCommerce?.online() ? window.GestLokTienda?.view() : V.inicio();
+  if (S.view === 'diario') return puedeVerDiarioMunro() ? window.GestLokMunroDaily.view() : V.inicio();
+  if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokResenas.view() : V.inicio();
+  if (S.view === 'motos') return puedeVerMotos() ? window.GestLokMunroMotos.view() : V.inicio();
+  if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
+  if (S.view === 'avisos') return window.GestLokUpdates.viewAlerts();
   const t = tipoVista(S.view);
   if (t === 'stock' || t === 'lista') return V.stock();
   if (esFabT(t)) return V.fabrica();
@@ -321,10 +377,12 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'diario' ? 'Control diario' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
-  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'diario';
-  renderLive(); renderSavebar(); renderMe();
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>${S.view === 'resenas' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'vencimientos' || S.view === 'avisos';
+  // «Regresar» siempre visible en la barra superior (también en el celular, sin abrir el menú).
+  if (!$('#btn-regresar')){ const b = document.createElement('button'); b.id = 'btn-regresar'; b.type = 'button'; b.className = 'btn back-hub'; b.dataset.act = 'locales'; b.setAttribute('aria-label', 'Regresar al inicio'); b.innerHTML = ic('back') + '<span>Regresar</span>'; $('.top-in')?.prepend(b); }
+  renderCompanyIdentity(); renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
 function hojaBadge(h){
@@ -338,8 +396,8 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button><button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos">${Math.min(99,S.unreadChat)}</span>` : ''}</button><button data-go="diario">${ic('clip')}<span class="nl">Control diario</span></button>
-    ${esTotal() ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
+  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+    ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
     ${edit ? `<button class="snav-add" data-act="hoja-new">${ic('plus')}<span class="nl">Agregar hoja</span></button>` : ''}`;
@@ -350,7 +408,7 @@ function renderLive(){
   const txt = {wait:'Conectando', on:'En vivo', off:'Sin conexión', err:'Reconectando', net:'Sin internet'}[st];
   const cls = 'dot' + (st === 'on' ? ' on' : (st === 'err' || st === 'off' || st === 'net') ? ' err' : '');
   $('#kdot').className = cls;
-  $('#ktxt').innerHTML = st === 'on' ? `<b>En vivo</b> · todo el equipo ve los cambios` : st === 'net' ? `<b>Sin internet</b> · lo cargado queda en este equipo` : esc(txt);
+  $('#ktxt').innerHTML = st === 'on' ? `<b>En vivo</b> · todo el equipo ve los cambios` : st === 'net' ? (syncOffline() ? `<b>Sin internet</b> · lo que guardes se envía solo al volver` : `<b>Sin internet</b> · lo cargado queda en este equipo`) : esc(txt);
   const l = $('#live'); l.querySelector('.dot').className = cls; l.querySelector('span').textContent = txt;
 }
 function renderSavebar(){
@@ -380,6 +438,18 @@ function renderSavebar(){
   $('#sb-desc').hidden = !(pend || cont || ed);
   $('#sb-save').disabled = !canW();
 }
+function renderCompanyIdentity(){
+  const sidebar=$('#side .side-in');
+  if(!sidebar)return;
+  let mark=sidebar.querySelector('.gestlok-company-identity');
+  if(!miGustoContext()){mark?.remove();return;}
+  if(mark)return;
+  mark=document.createElement('div');
+  mark.className='gestlok-company-identity';
+  mark.setAttribute('aria-label','Mi Gusto · Empanadas de Verdad');
+  mark.innerHTML='<img src="img/mi-gusto-blanco.png" alt="Mi Gusto"><small>Empanadas de Verdad</small>';
+  sidebar.querySelector('.side-top')?.insertAdjacentElement('afterend',mark);
+}
 function renderMe(){
   const m = $('#me'); if (!S.me){ m.hidden = true; return; }
   const rol = rolLabel(miRol()) + (S.ro && miRol() !== 'lectura' ? ' · Solo ver' : '');
@@ -387,23 +457,17 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
-  // Marca comercial asignada expresamente a esta cuenta, nunca por rol o email incrustado.
-  const perfil = miEquipo();
-  if (perfil && perfil.logoId === 'mi-gusto') {
-    const p = document.createElement('div');
-    p.className = 'gestlok-tenant-mark';
-    const logo = document.createElement('img'); logo.src = 'img/mi-gusto-negro.png'; logo.alt = 'Mi Gusto';
-    p.append(logo); m.append(p);
-  }
 }
 
 /* ---------- Piezas compartidas ---------- */
 function banners(){
   let h = '';
   if (S.legacyDraft && canW()) h += '<p class="note warn"><b>Borrador anterior encontrado en este equipo.</b> Si te pertenece, podés recuperarlo antes de cargar un conteo nuevo. <button class="btn sm" data-act="recover-draft">Recuperar borrador anterior</button></p>';
-  if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
+  if (S.offline && syncOffline()) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir usando GESTLOK: lo que guardes queda en este equipo y se envía solo cuando vuelva la conexión.</p>`;
+  else if (S.offline) h += `<p class="note warn"><b>Sin internet.</b> Podés seguir cargando: lo que cargues queda guardado en este equipo${S.queued ? `; revisá y confirmá el guardado del conteo cuando vuelva la conexión` : '. Cuando vuelva la conexión, tocá Guardar conteo'}.</p>`;
   else if (S.booted && !S.db) h += `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
-  if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
+  if (isCreadora()) h += window.GestLokCreatorMode?.banner() || '';
+  else if (S.ro) h += `<p class="note warn"><b>En ${esc(localNombre())} tu acceso es Solo ver.</b> Para cargar y guardar, pedile a la administradora que te cambie a Gerente.</p>`;
   if (S.editing && S.view !== 'conteo' && !isCustom(S.view)) h += `<div class="editbar"><span>Estás corrigiendo el conteo del <b>${esc(fechaHora(S.editing.fecha))}</b>.</span><span class="bar-a"><button class="btn sm" data-go="conteo">Ir a Conteo</button><button class="btn sm" data-act="edit-cancel">Cancelar corrección</button></span></div>`;
   return h;
 }
@@ -466,7 +530,7 @@ function editarProveedor(nombre){
     </form></div>`, 'dlg');
 }
 async function guardarProveedor(f){
-  if (!S.db || !S.local || !canW() || S.offline){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
+  if (!S.db || !S.local || !canW() || sinRed()){toast('Necesitás acceso de edición e internet para guardar.',true);return;}
   const nombre = f.dataset.name, local = S.local;
   if (!nombre || (!S.allProds.some(p=>provOf(p)===nombre) && !proveedorFicha(nombre))){toast('El proveedor no existe en este local.',true);return;}
   const contacto = f.querySelector('#prov-contact').value.trim();
@@ -518,13 +582,13 @@ function proveedorFilas(nombre){
     const sugerido=stored.sugerido ?? (objetivo!=null && stock!=null ? Math.max(0,round(objetivo-stock)):null);
     return {
       id:'c:'+p.id,productoId:p.id,origen:'catalogo',
-      nombre:p.nombre||'',unidad:p.unidad||'unidad',
-      stockLocal:stock,sugerido,pedir:stored.pedir??0
+      nombre:p.nombre||'',unidad:p.unidad||'unidad',categoria:catOf(p)||'General',
+      stockLocal:stock,sugerido,pedir:stored.pedir??0,observacion:stored.observacion||''
     };
   });
   for(const x of draft.items||[]){
     if(!x?.id || !x.nombre)continue;
-    filas.push({...x,origen:'manual',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
+    filas.push({...x,origen:'manual',categoria:x.categoria||'General',stockLocal:x.stockLocal??null,sugerido:x.sugerido??null,pedir:x.pedir??0});
   }
   return filas;
 }
@@ -566,6 +630,7 @@ function actualizarValorProveedor(input){
   }else{
     const old=d.catalogo[row.productoId]||{};
     d.catalogo[row.productoId]={
+      ...old,
       stockLocal:field==='stockLocal'?n:(old.stockLocal??row.stockLocal),
       sugerido:field==='sugerido'?n:(old.sugerido??row.sugerido),
       pedir:field==='pedir'?n:(old.pedir??row.pedir)
@@ -584,7 +649,7 @@ function usarSugeridoProveedor(id){
   proveedorGuardarBorrador(name);render();
 }
 function nuevoProveedor(){
-  if(!canW() || S.offline){toast('Necesitás permiso de edición e internet.',true);return;}
+  if(!canW() || sinRed()){toast('Necesitás permiso de edición e internet.',true);return;}
   S.panel='prov-new';
   openPanel(`<div class="pn-h"><h3>Nueva carpeta de proveedor</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
    <div class="pn-b"><form id="prov-create-form" class="frow">
@@ -592,7 +657,7 @@ function nuevoProveedor(){
    <button class="btn primary" type="submit">${ic('plus')}Crear carpeta</button></form></div>`,'dlg');
 }
 async function crearCarpetaProveedor(form){
-  if(!canW() || S.offline || !S.local)return;
+  if(!canW() || sinRed() || !S.local)return;
   const nombre=form.querySelector('#prov-new-name').value.trim().replace(/\s+/g,' ');
   if(!nombre || nombre.length>90){toast('Ingresá un nombre de hasta 90 caracteres.',true);return;}
   if(proveedorNombres().some(([n])=>proveedorId(n)===proveedorId(nombre))){toast('Ese proveedor ya tiene una carpeta.',true);return;}
@@ -611,11 +676,12 @@ function agregarProductoProveedor(form){
   if(!canW() || !S.provOpen)return;
   const nombre=form.querySelector('#prov-item-name').value.trim().replace(/\s+/g,' ');
   const unidad=form.querySelector('#prov-item-unit').value.trim().slice(0,30)||'unidad';
+  const categoria=(form.querySelector('#prov-item-category')?.value||'General').trim().slice(0,70)||'General';
   if(!nombre || nombre.length>100){toast('Ingresá un nombre válido de producto.',true);return;}
   if(proveedorFilas(S.provOpen).some(x=>norm(x.nombre)===norm(nombre))){toast('Ese producto ya existe en esta carpeta.',true);return;}
   const id='m-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const d=proveedorBase(S.provOpen);
-  d.items.push({id,nombre,unidad,stockLocal:null,pedir:0,sugerido:null});
+  d.items.push({id,nombre,unidad,categoria,stockLocal:null,pedir:0,sugerido:null});
   proveedorGuardarBorrador(S.provOpen);S.provAdding=false;render();toast('Producto agregado al borrador. Guardá la planilla.');
 }
 function quitarProductoProveedor(id){
@@ -645,17 +711,17 @@ function proveedorResumenHTML(nombre){
      <tbody>${rows.map(x=>`<tr><td>${esc(nombre)}</td><td>${esc(x.nombre)}</td><td><b>${fmt(x.pedir)}</b> ${esc(x.unidad)}</td></tr>`).join('')}</tbody>
      </table></div>` :
    '<p class="gl-prov-empty">Todavía no hay productos para pedir. Completá la columna <b>Pedir</b> y aparecerán automáticamente acá.</p>';
-  return `<div class="gl-provider-summary-head"><h3>Pedido listo para compartir</h3>
+  return `<div class="gl-provider-summary-head"><h3>Resumen del pedido</h3>
      <span class="gl-provider-count">${rows.length} ${rows.length===1?'producto':'productos'}</span></div>
-     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar en esta carpeta. Revisalos antes de compartir.' : 'El resumen se arma automáticamente con las cantidades de Pedir.'}</p>
+     <p class="lead">${draft.dirty ? 'Hay cambios sin guardar. Tocá Guardar cuando tu lista esté lista.' : 'Lista guardada. Podés compartir el PDF o consultar el historial.'}</p>
      ${footer}
      <div id="prov-err" class="gl-prov-err" role="status"></div>
      <div class="bar-a">
-       ${canW()? `<button class="btn" data-act="prov-save-plan" ${S.offline?'disabled':''}>${ic('save')}Guardar lista y pedido</button>`:''}
-       ${esTotal()? `<button class="btn primary" data-act="prov-share" ${!rows.length?'disabled':''}>${ic('share')}Compartir por WhatsApp</button>`:''}
-       ${rows.length? `<button class="btn" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
+       ${canW()? `<button class="btn primary" data-act="prov-save-plan" ${sinRed()||S.provBusy?'disabled':''}>${ic('save')}Guardar</button>`:''}
+       ${esTotal()? `<button class="btn" data-act="prov-share" ${!rows.length||draft.dirty||draft.stale||!draft.base?'disabled':''}>${ic('share')}Enviar PDF por WhatsApp</button>`:''}
+       
      </div>
-     ${S.offline?'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>':''}
+     ${S.offline?(syncOffline()?'<p class="note warn">Sin conexión: al guardar, queda en este equipo y se envía solo al volver internet.</p>':'<p class="note warn">Sin conexión: podés completar el borrador, pero no guardarlo en la nube.</p>'):''}
      ${!esTotal()?'<p class="lead">El envío del pedido está reservado a la dueña o la administradora.</p>':''}`;
 }
 function mostrarResumenProveedor(){
@@ -663,113 +729,225 @@ function mostrarResumenProveedor(){
   const wrap=document.getElementById('prov-resumen');
   if(wrap)wrap.innerHTML=proveedorResumenHTML(S.provOpen);
 }
-async function guardarPlanProveedor(){
-  if(!canW() || S.offline || !S.db || !S.local || !S.provOpen){toast('Necesitás internet y permiso de edición para guardar.',true);return;}
+async function guardarPlanProveedor(historico=false){
+  if(!canW()||sinRed()||!S.db||!S.local||!S.provOpen){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
+  }
+  if(S.provBusy)return;
   if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
   const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
-  const btn=document.querySelector('[data-act="prov-save-plan"]');
-  if(btn)btn.disabled=true;
+  const btn=document.querySelector('[data-act="prov-save-draft"],[data-act="prov-save-history"]');
+  S.provBusy=true;if(btn)btn.disabled=true;
+  try{
+    const seleccionados=proveedorSeleccionados(nombre).map(x=>({
+      nombre:x.nombre,unidad:x.unidad,categoria:x.categoria||'General',pedir:x.pedir,
+      proveedor:nombre
+    }));
+    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},
+      pedidoPor:S.uid};
+    let stamp,historialId='';
+    if(historico && seleccionados.length){
+      // El backend ya dispone de esta RPC. Guarda lista e historial en una única
+      // transacción, con control de versión y las políticas RLS del local/empresa.
+      const sb=window.GestLokSupabase;
+      if(!sb?.rpc)throw new Error('No está disponible el guardado seguro. Actualizá GestLok.');
+      const {data,error}=await sb.rpc('gestlok_proveedor_guardar_historial',{
+        p_local:local,p_proveedor_id:proveedorId(nombre),p_version:Number(d.base)||0,
+        p_items:payload.items,p_catalogo:payload.catalogo,p_productos:seleccionados
+      });
+      if(error)throw error;
+      if(data?.gl_pending){
+        d.dirty=false;
+        try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
+        toast('Sin internet: el pedido quedó guardado en este equipo y se archiva en el historial al volver la conexión.');
+        closePanel();render();return;
+      }
+      stamp=Number(data?.pedidoActualizado);
+      historialId=String(data?.historialId||'');
+      if(!Number.isSafeInteger(stamp)||stamp<=0||!historialId)
+        throw new Error('No se pudo verificar la confirmación del historial. Recargá antes de repetir.');
+    }else{
+      // Guardar una lista sin finalizar no agrega pedidos al historial.
+      const ref=C('proveedores').doc(proveedorId(nombre));
+      const snap=await ref.get();
+      const ver=snap.exists?Number(snap.data()?.pedidoActualizado)||0:0;
+      if(ver!==d.base){
+        d.stale=true;
+        toast('Otro usuario cambió el pedido. Copiá tus datos antes de recargar para no pisar sus cambios.',true);
+        return;
+      }
+      stamp=Math.max(Date.now(),d.base+1);
+      await w(()=>snap.exists?ref.update({...payload,pedidoActualizado:stamp}):ref.set({
+        nombre,...payload,pedidoActualizado:stamp,contacto:'',telefono:'',entrega:'',nota:''
+      }));
+    }
+    if(S.local!==local||S.provOpen!==nombre)return;
+    const confirmed={...payload,pedidoActualizado:stamp};
+    const ficha=proveedorFicha(nombre);
+    if(ficha)Object.assign(ficha,confirmed);
+    else S.provInfo.push({id:proveedorId(nombre),nombre,...confirmed});
+    d.base=stamp;d.dirty=false;d.stale=false;
+    try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
+    if(historialId){
+      S.provHistorial=[{
+        id:historialId,proveedor:nombre,proveedorId:proveedorId(nombre),local,
+        fecha:stamp,autor:S.uid,productos:seleccionados,
+        productosTotal:seleccionados.length,version:stamp
+      },...S.provHistorial.filter(x=>x.id!==historialId)];
+      toast('Pedido y lista guardados juntos en el historial. Podés exportar el PDF.');
+    }else toast('Lista guardada en GestLok. Podés seguir editándola o exportar su PDF.');
+    closePanel();render();
+  }catch(e){
+    if(/otro usuario|actualiz[oó]|recarg/i.test(String(e?.message||'')))d.stale=true;
+    fail(e);
+  }finally{S.provBusy=false;if(btn?.isConnected)btn.disabled=false;}
+}
+async function guardarStockProveedor(){
+  if(!canW()||sinRed()||!S.db||!S.local||!S.provOpen||S.provBusy){
+    toast('Necesitás internet y permiso de edición para guardar stock.',true);return;
+  }
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades marcadas.',true);return;}
+  const nombre=S.provOpen,local=S.local,d=proveedorBase(nombre);
+  S.provBusy=true;
   try{
     const ref=C('proveedores').doc(proveedorId(nombre));
-    const snap=await ref.get();
-    const ver=snap.exists ? Number(snap.data()?.pedidoActualizado)||0 : 0;
-    if(ver!==d.base){
-      d.stale=true;
-      toast('Otra persona cambió este pedido. Copiá tu lista antes de recargar para evitar reemplazar sus datos.',true);
-      return;
+    const snap=await ref.get(),remote=snap.exists?snap.data():{};
+    const version=Number(remote.pedidoActualizado)||0;
+    if(version!==d.base){d.stale=true;toast('Otro usuario modificó esta carpeta. Recargá antes de guardar.',true);return;}
+    const catalogo={...(remote.catalogo||{})};
+    for(const [id,row] of Object.entries(d.catalogo)){
+      catalogo[id]={...(catalogo[id]||{}),stockLocal:row.stockLocal??null,sugerido:row.sugerido??null,observacion:String(row.observacion||'').slice(0,300)};
     }
-    const stamp=Date.now();
-    const payload={items:d.items.map(x=>({...x})),catalogo:{...d.catalogo},pedidoActualizado:stamp,pedidoPor:S.uid};
-    await w(()=>snap.exists ? ref.update(payload) : ref.set({nombre,...payload,contacto:'',telefono:'',entrega:'',nota:''}));
-    if(local!==S.local)return;
-    delete S.provDrafts[proveedorId(nombre)];
-    try{localStorage.removeItem(proveedorDraftKey(nombre));}catch{}
-    toast('Lista y pedido guardados sin cambiar el stock real.');
-  }catch(e){fail(e);}finally{if(btn?.isConnected)btn.disabled=false;}
+    const remoteItems=Array.isArray(remote.items)?remote.items:[];
+    const items=d.items.map(row=>{
+      const original=remoteItems.find(x=>x.id===row.id);
+      return {...row,pedir:original?.pedir??0,observacion:String(row.observacion||'').slice(0,300)};
+    });
+    const stamp=Math.max(Date.now(),version+1);
+    const update={catalogo,items,pedidoActualizado:stamp};
+    await w(()=>snap.exists?ref.update(update):ref.set({nombre,contacto:'',telefono:'',entrega:'',nota:'',...update}));
+    if(S.local!==local||S.provOpen!==nombre)return;
+    const ficha=proveedorFicha(nombre);
+    if(ficha)Object.assign(ficha,update);
+    else S.provInfo.push({id:proveedorId(nombre),nombre,...update});
+    d.base=stamp;d.stale=false;
+    proveedorGuardarBorrador(nombre);
+    toast('Stock y observaciones guardados. El pedido sigue pendiente.');
+    render();
+  }catch(e){fail(e);}finally{S.provBusy=false;}
 }
-function crearImagenPedido(nombre,productos,pagina,total){
-  const W=1000, H=310+productos.length*64;
-  const canvas=document.createElement('canvas');
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  if(!ctx)return Promise.reject(new Error('canvas'));
-  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#0c2034';ctx.fillRect(0,0,W,150);
-  ctx.fillStyle='#ffffff';ctx.font='bold 40px Arial, sans-serif';ctx.fillText('GESTLOK',50,75);
-  ctx.font='22px Arial, sans-serif';ctx.fillText('PEDIDO A PROVEEDOR',50,112);
-  ctx.fillStyle='#14354b';ctx.font='bold 25px Arial, sans-serif';ctx.fillText(nombre.slice(0,55),50,205);
-  ctx.font='18px Arial, sans-serif';ctx.fillText('Local: '+localNombre().slice(0,40)+'   |   '+hoyISO()+'   |   Página '+pagina+'/'+total,50,240);
-  ctx.fillStyle='#eff5f7';ctx.fillRect(42,263,W-84,42);
-  ctx.fillStyle='#17394f';ctx.font='bold 19px Arial, sans-serif';ctx.fillText('PRODUCTO',55,290);ctx.fillText('PEDIR',755,290);
-  ctx.font='19px Arial, sans-serif';
-  productos.forEach((p,i)=>{
-    const y=332+i*64;
-    if(i%2===0){ctx.fillStyle='#f6f9fb';ctx.fillRect(42,y-24,W-84,58);}
-    ctx.fillStyle='#1a364b';
-    const product=String(p.nombre).length>53?String(p.nombre).slice(0,50)+'…':String(p.nombre);
-    ctx.fillText(product,55,y,670);
-    ctx.font='bold 19px Arial, sans-serif';
-    ctx.fillText(fmt(p.pedir)+' '+String(p.unidad||'').slice(0,16),755,y,200);
-    ctx.font='19px Arial, sans-serif';
-  });
-  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('imagen')),'image/png'));
-}
-async function compartirPedidoProveedor(){
-  if(!esTotal() || !S.provOpen)return;
-  const nombre=S.provOpen,rows=proveedorSeleccionados(nombre);
-  if(!rows.length){toast('Completá primero las cantidades de Pedir.',true);return;}
-  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de compartir.',true);return;}
-  const texto=pedidoProveedorTexto(nombre),telefono=telWa(proveedorFicha(nombre)?.telefono);
-  const wa='https://wa.me/'+telefono+'?text='+encodeURIComponent(texto);
-  if(!navigator.share){
-    window.open(wa,'_blank','noopener,noreferrer');
-    toast('WhatsApp abierto con el pedido escrito. Confirmá el envío.');
-    return;
+function confirmarGuardarProveedor(){
+  if(!canW()||!S.provOpen||sinRed()||S.provBusy){
+    toast('Necesitás internet y permiso de edición para guardar.',true);return;
   }
-  const btn=document.querySelector('[data-act="prov-share"]');if(btn)btn.disabled=true;
-  try{
-    const chunks=[];for(let i=0;i<rows.length;i+=28)chunks.push(rows.slice(i,i+28));
-    const archivos=[];
-    for(let i=0;i<chunks.length;i++){
-      const blob=await crearImagenPedido(nombre,chunks[i],i+1,chunks.length);
-      archivos.push(new File([blob],`pedido-${slug(nombre)}-${hoyISO()}-${i+1}.png`,{type:'image/png'}));
-    }
-    if(S.provOpen!==nombre)return;
-    S.provEnvio={nombre,local:S.local,texto,wa,archivos};
-    S.panel='prov-share';
-    const filesAllowed=!!navigator.canShare?.({files:archivos});
-    openPanel(`<div class="pn-h"><h3>Compartir pedido</h3><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
-      <div class="pn-b gl-prov-sharing">
-        <p class="lead"><b>${esc(nombre)}</b> · ${plural(rows.length,'producto','productos')} · ${plural(archivos.length,'imagen preparada','imágenes preparadas')}.</p>
-        <p class="lead">Elegí WhatsApp en el menú de compartir y confirmá el destinatario. GestLok no envía nada sin tu confirmación.</p>
-        <button class="btn primary" type="button" data-act="prov-share-ready">${ic('share')}${filesAllowed?'Enviar imagen por WhatsApp':'Compartir pedido como texto'}</button>
-        ${navigator.clipboard?.write && window.ClipboardItem && archivos.length===1?`<button class="btn" type="button" data-act="prov-copy-image">${ic('copy')}Copiar imagen</button>`:''}
-        <a class="btn" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}Abrir WhatsApp con el pedido escrito</a>
-        <small>Si tu dispositivo no admite adjuntar la imagen, podés compartir el texto completo.</small>
-      </div>`,'dlg');
-  }catch(e){toast('No se pudo generar la imagen. Usá Copiar pedido o WhatsApp.',true);}
-  finally{if(btn?.isConnected)btn.disabled=false;}
+  if(document.querySelector('.gl-prov-table .bad')){toast('Revisá las cantidades antes de guardar.',true);return;}
+  const nombre=S.provOpen,total=proveedorSeleccionados(nombre).length;
+  S.panel='prov-save';
+  openPanel('<div class="pn-h"><h3>¿Terminaste el pedido?</h3>'+
+    '<button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+    '<div class="pn-b gl-prov-sharing">'+
+    '<p class="lead"><b>'+esc(nombre)+'</b> · '+plural(total,'producto para pedir','productos para pedir')+'.</p>'+
+    '<p class="lead">Podés guardar la lista para seguir después o finalizar el pedido y archivarlo en el historial. Ningún pedido anterior se borra.</p>'+
+    '<button class="btn primary" data-act="prov-save-history" '+(total?'':'disabled')+'>'+
+      ic('save')+'Sí, terminé. Guardar en historial</button>'+
+    '<button class="btn" data-act="prov-save-draft">'+ic('save')+'Guardar lista sin finalizar</button>'+
+    '<button class="btn" data-act="close">Cancelar</button></div>','dlg');
 }
-/* El usuario toca una segunda vez: mantiene la activación requerida por Web Share. */
+function ponerEnCeroProveedorCategoria(categoria){
+  if(!canW()||!S.provOpen)return;
+  const nombre=S.provOpen,rows=proveedorFilas(nombre)
+    .filter(x=>(x.categoria||'General')===categoria);
+  if(!rows.length)return;
+  if(!window.confirm('¿Poner en 0 Stock local y Pedir de '+categoria+
+    '? La columna Sugerido quedará intacta. Después tocá Guardar.'))return;
+  const d=proveedorBase(nombre);
+  for(const row of rows){
+    if(row.origen==='manual'){
+      const it=d.items.find(x=>x.id===row.id);
+      if(it){it.stockLocal=0;it.pedir=0;it.sugerido=row.sugerido;}
+    }else{
+      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),
+        stockLocal:0,pedir:0,sugerido:row.sugerido};
+    }
+  }
+  // This explicit reset supersedes the old typed values preserved by render().
+  // Keep suggested quantities and internal observations untouched.
+  const resetIds=new Set(rows.map(row=>row.id));
+  for(const input of document.querySelectorAll('[data-prov-val]')){
+    if(resetIds.has(input.dataset.id) && ['stockLocal','pedir'].includes(input.dataset.provVal)){
+      input.value='0';input.defaultValue='0';input.classList.remove('bad');
+    }
+  }
+  proveedorGuardarBorrador(nombre);render();
+  toast('Stock local y Pedir quedaron en 0; Sugerido permanece intacto. Guardá la lista.');
+}
+/* Solo PDF real. WhatsApp no permite adjuntar archivos mediante enlaces wa.me;
+   Web Share adjunta el PDF si el móvil lo soporta; si no, se descarga para
+   adjuntarlo manualmente. Nunca se envía foto o texto en este flujo. */
+function compartirPedidoProveedor(historialId){
+  if(!esTotal()||!S.provOpen)return;
+  const nombre=S.provOpen;
+  const registro=historialId?S.provHistorial.find(x=>x.id===historialId && x.proveedorId===proveedorId(nombre)):null;
+  if(historialId&&!registro){toast('No se encontró ese pedido en el historial.',true);return;}
+  const d=proveedorBase(nombre);
+  if(!registro&&(d.dirty||d.stale||!d.base)){
+    toast('Primero guardá la lista antes de exportar el PDF.',true);return;
+  }
+  if(document.querySelector('.gl-prov-table .bad')){toast('Corregí las cantidades antes de exportar.',true);return;}
+  const rows=registro?registro.productos:proveedorSeleccionados(nombre);
+  if(!Array.isArray(rows)||!rows.length){toast('No hay productos para exportar.',true);return;}
+  if(!window.GestLokProviderPDF?.createFile){
+    toast('El generador PDF no está disponible. Actualizá la aplicación.',true);return;
+  }
+  try{
+    const file=window.GestLokProviderPDF.createFile({
+      proveedor:nombre,local:localNombre(),
+      fecha:registro?new Date(registro.fecha).toLocaleDateString('es-AR'):hoyISO(),rows
+    });
+    const telefono=telWa(proveedorFicha(nombre)?.telefono);
+    const share=!!navigator.share && !!navigator.canShare?.({files:[file]});
+    S.provEnvio={nombre,local:S.local,archivo:file,telefono,share};
+    S.panel='prov-share';
+    openPanel('<div class="pn-h"><h3>Compartir PDF</h3>'+
+      '<button class="ib" data-act="close" aria-label="Cerrar">'+ic('x')+'</button></div>'+
+      '<div class="pn-b gl-prov-sharing">'+
+      '<p class="lead"><b>'+esc(nombre)+'</b> · '+plural(rows.length,'producto','productos')+
+      ' · PDF de '+Math.max(1,Math.ceil(file.size/1024))+' KB.</p>'+
+      '<p class="lead">Se comparte exclusivamente el archivo PDF, sin fotografía ni texto de pedido. Elegí WhatsApp en el menú y confirmá el destinatario.</p>'+
+      (share?'<button class="btn primary" data-act="prov-share-ready">'+ic('share')+
+        'Compartir PDF (elegir WhatsApp)</button>':'<p class="note warn">Este dispositivo no permite adjuntar el PDF directamente. Descargalo y adjuntalo desde WhatsApp.</p>')+
+      '<button class="btn" data-act="prov-download-pdf">'+ic('save')+'Descargar PDF</button>'+
+      (telefono?'<a class="btn" href="https://wa.me/'+telefono+'" target="_blank" rel="noopener noreferrer">'+ic('msg')+
+        'Abrir chat del proveedor (sin texto)</a>':
+        '<p class="note">Agregá el número de WhatsApp en la ficha del proveedor para abrir directamente su chat.</p>')+
+      '</div>','dlg');
+  }catch(e){toast('No se pudo generar el PDF. Revisá los artículos y volvé a intentar.',true);}
+}
+function descargarPdfProveedor(){
+  const p=S.provEnvio;
+  if(!p||p.local!==S.local||!p.archivo||!esTotal())return;
+  const u=URL.createObjectURL(p.archivo),a=document.createElement('a');
+  a.href=u;a.download=p.archivo.name;document.body.appendChild(a);a.click();a.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(u),15000);
+  toast('PDF descargado. Adjuntá ese archivo desde el chat de WhatsApp.');
+}
 function enviarProveedorPreparado(){
   const p=S.provEnvio;
-  if(!p || p.local!==S.local || !esTotal() || !navigator.share)return;
-  const filesAllowed=!!navigator.canShare?.({files:p.archivos});
-  let promise;
-  try{promise=navigator.share(filesAllowed?{title:'Pedido · '+p.nombre,text:p.texto,files:p.archivos}:{title:'Pedido · '+p.nombre,text:p.texto});}
-  catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);return;}
-  Promise.resolve(promise).then(()=>{
-    if(S.provEnvio===p){closePanel();toast('El pedido se entregó al menú de compartir. Confirmá el envío en WhatsApp.');}
-  }).catch(e=>{if(e?.name!=='AbortError')toast('No se pudo compartir. Usá WhatsApp con el texto.',true);});
+  if(!p||p.local!==S.local||!esTotal()||!p.share||!navigator.share)return;
+  let task;
+  try{
+    // Solo el archivo: nunca text ni imágenes en el payload.
+    task=navigator.share({files:[p.archivo]});
+  }catch(e){
+    if(e?.name!=='AbortError')toast('No se pudo compartir el PDF. Usá Descargar PDF.',true);
+    return;
+  }
+  Promise.resolve(task).then(()=>{
+    if(S.provEnvio===p){closePanel();toast('PDF entregado al menú de compartir. Confirmá el envío en WhatsApp.');}
+  }).catch(e=>{
+    if(e?.name!=='AbortError')toast('El dispositivo no pudo adjuntar el PDF. Usá Descargar PDF.',true);
+  });
 }
-function copiarImagenProveedor(){
-  const p=S.provEnvio;
-  if(!p || p.archivos.length!==1 || !navigator.clipboard?.write || !window.ClipboardItem)return;
-  navigator.clipboard.write([new window.ClipboardItem({'image/png':p.archivos[0]})])
-    .then(()=>toast('Imagen copiada. Abrí WhatsApp y pegala en el chat.'))
-    .catch(()=>toast('Este navegador no permite copiar la imagen.',true));
-}
-
 /* Control diario: registros adicionales por producto, sin modificar el stock operativo.
    Cada confirmación es un registro nuevo, para conservar revisiones y autoría. */
 const diarioVal = v => {
@@ -820,11 +998,11 @@ V.diario = () => {
           <div class="fld"><label for="diario-producto">Producto</label><select id="diario-producto">${prods.map(x=>`<option value="${esc(x.id)}" ${x.id===p.id?'selected':''}>${esc(x.nombre)} · ${esc(x.unidad||'unidad')}</option>`).join('')}</select></div>
           <p class="lead">${prev ? `Último registro: ${esc(fechaHora(prev.creado))} · ${esc(prev.autor||'equipo')}. Podés agregar una corrección sin borrar el anterior.` : 'Los campos de movimientos vacíos se interpretan como cero. El inicial y el conteo físico son obligatorios.'}</p>
           <form id="diario-form">
-            <div class="gl-daily-fields">${fields.map(([k,label])=>`<div class="fld"><label for="diario-${k}">${label}</label><input id="diario-${k}" data-diario-num="${k}" inputmode="decimal" autocomplete="off" placeholder="${k==='ajustes'?'0 (puede ser negativo)':'0'}" ${!canW() || S.offline ? 'disabled' : ''}></div>`).join('')}</div>
-            <div class="fld"><label for="diario-nota">Observación / motivo</label><textarea id="diario-nota" maxlength="250" rows="2" placeholder="Ej.: consumo de personal, rotura, diferencia de conteo" ${!canW() || S.offline ? 'disabled' : ''}></textarea></div>
+            <div class="gl-daily-fields">${fields.map(([k,label])=>`<div class="fld"><label for="diario-${k}">${label}</label><input id="diario-${k}" data-diario-num="${k}" inputmode="decimal" autocomplete="off" placeholder="${k==='ajustes'?'0 (puede ser negativo)':'0'}" ${!canW() || sinRed() ? 'disabled' : ''}></div>`).join('')}</div>
+            <div class="fld"><label for="diario-nota">Observación / motivo</label><textarea id="diario-nota" maxlength="250" rows="2" placeholder="Ej.: consumo de personal, rotura, diferencia de conteo" ${!canW() || sinRed() ? 'disabled' : ''}></textarea></div>
             <div id="diario-preview" class="gl-daily-result" role="status">Completá el stock inicial y el conteo final para calcular la diferencia.</div>
-            <div class="bar-a"><button class="btn primary" type="submit" ${!canW() || S.offline ? 'disabled' : ''}>${ic('save')}Guardar registro diario</button></div>
-            ${S.offline ? '<p class="note warn">Sin conexión. No se puede guardar este registro; volvé a abrirlo cuando haya internet.</p>' : ''}
+            <div class="bar-a"><button class="btn primary" type="submit" ${!canW() || sinRed() ? 'disabled' : ''}>${ic('save')}Guardar registro diario</button></div>
+            ${S.offline ? (syncOffline() ? '<p class="note warn">Sin conexión: al guardar, el registro queda en este equipo y se envía solo al volver internet.</p>' : '<p class="note warn">Sin conexión. No se puede guardar este registro; volvé a abrirlo cuando haya internet.</p>') : ''}
             ${!canW() ? '<p class="note">Tu cuenta tiene permiso de lectura, no de edición.</p>' : ''}
           </form>
         </section>
@@ -859,7 +1037,7 @@ function refrescarDiarioPreview(f){
   el.classList.toggle('gl-daily-alert',!result.error && Math.abs(result.diferencia)>0.001);
 }
 async function guardarDiario(f){
-  if(!S.db || !S.local || !canW() || S.offline){toast('Necesitás internet y permiso de edición.',true);return;}
+  if(!S.db || !S.local || !canW() || sinRed()){toast('Necesitás internet y permiso de edición.',true);return;}
   const date=S.diarioDia || hoyISO();
   const prod=S.allProds.find(x=>x.id===S.diarioProd) || S.allProds.filter(x=>!x.hoja)[0];
   const result=diarioCalcularDesdeForm(f);
@@ -880,10 +1058,8 @@ V.proveedores = () => {
   const carpetas=lista.map(([nombre])=>{
     const ficha=proveedorFicha(nombre)||{};
     const pendientes=S.allProds.filter(p=>provOf(p)===nombre && alerta(p));
-    const telefono=telWa(ficha.telefono);
     const rows=proveedorFilas(nombre);
     const porPedir=rows.filter(x=>Number(x.pedir)>0).length;
-    const wa=telefono?'https://wa.me/'+telefono+'?text='+encodeURIComponent(porPedir?pedidoProveedorTexto(nombre):'Hola, quisiera hacer un pedido para '+localNombre()):'';
     const meta=[ficha.contacto,ficha.entrega].filter(Boolean);
     const abierto=S.provOpen===nombre;
     return `<article class="card pad gl-provider-card ${abierto?'is-open':''}">
@@ -898,20 +1074,29 @@ V.proveedores = () => {
       ${meta.length?`<p class="gl-provider-meta">${meta.map(m=>esc(m)).join(' · ')}</p>`:'<p class="gl-provider-meta">Carpeta para cargar los productos y preparar pedidos.</p>'}
       <div class="bar-a">
         <button class="btn sm ${abierto?'primary':''}" data-act="prov-open" data-name="${esc(nombre)}">${ic('box')}${abierto?'Carpeta abierta':'Abrir carpeta'}</button>
-        ${porPedir || pendientes.length?`<button class="btn sm" data-act="prov-copy" data-name="${esc(nombre)}">${ic('copy')}Copiar pedido</button>`:''}
-        ${wa && esTotal()?`<a class="btn sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('msg')}WhatsApp</a>`:''}
         ${canW()?`<button class="btn sm" data-act="prov-edit" data-name="${esc(nombre)}">${ic('edit')}${ficha.contacto||ficha.telefono?'Editar ficha':'Completar ficha'}</button>`:''}
       </div>
     </article>`;
   }).join('');
   const nombre=S.provOpen && lista.some(([n])=>n===S.provOpen)?S.provOpen:'';
   const draft=nombre?proveedorBase(nombre):null;
-  const rows=nombre?proveedorFilas(nombre):[];
-  const filaHTML=rows.map(p=>{
+  const rows=nombre?proveedorFilas(nombre).sort((a,b)=>
+    String(a.categoria||'General').localeCompare(String(b.categoria||'General'),'es')||
+    String(a.nombre||'').localeCompare(String(b.nombre||''),'es')):[];
+  const filaHTML=rows.map((p,index)=>{
+    const categoria=p.categoria||'General';
+    const encabezado=index===0||categoria!==(rows[index-1].categoria||'General')
+      ?'<tr class="gl-prov-category"><td colspan="4"><div class="gl-prov-category-head">'+
+        '<b>'+esc(categoria)+'</b>'+
+        (canW()?'<button class="btn sm" type="button" data-act="prov-zero-cat" data-cat="'+esc(categoria)+'">Poner en 0</button>'+
+          '<button class="btn sm" type="button" data-act="prov-save-plan">'+ic('save')+'Guardar</button>':'')+
+        '</div></td></tr>':'';
+
     const disabled=!canW()?'disabled':'';
     const manual=p.origen==='manual';
-    return `<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
+    return encabezado+`<tr data-prov-row="${esc(p.id)}"><td class="gl-prov-product">
         <b>${esc(p.nombre)}</b><small>${esc(p.unidad)}</small>
+        <div class="gl-prov-internal-note" style="display:block;clear:both;width:100%;margin-top:10px;padding:9px;border:1px solid var(--line,#d9dee5);border-radius:8px"><label for="prov-note-${esc(p.id)}" style="display:block;font-weight:600;margin-bottom:5px">📝 Observación interna · Solo para el local</label><textarea id="prov-note-${esc(p.id)}" data-prov-note="${esc(p.id)}" maxlength="300" rows="2" style="display:block;width:100%;min-height:52px;box-sizing:border-box" placeholder="Mensaje interno para la dueña sobre este producto (no aparece en el pedido ni en el PDF)" ${disabled}>${esc(p.observacion||'')}</textarea></div>
         ${manual && canW()?`<button class="gl-prov-remove" data-act="prov-del-manual" data-id="${esc(p.id)}" aria-label="Quitar ${esc(p.nombre)} de la carpeta">Quitar</button>`:''}
       </td>
       ${['stockLocal','pedir','sugerido'].map(field=>`<td data-label="${field==='stockLocal'?'Stock local':field==='pedir'?'Pedir':'Sugerido'}">
@@ -922,6 +1107,16 @@ V.proveedores = () => {
       </td>`).join('')}
     </tr>`;
   }).join('');
+  const historial=nombre?S.provHistorial.filter(h=>h.proveedorId===proveedorId(nombre)).slice(0,60):[];
+  const historialHTML='<section class="gl-prov-history"><h3>Historial de pedidos</h3>'+
+    (historial.length?historial.map(h=>'<details class="gl-prov-history-entry">'+
+      '<summary><b>'+esc(new Date(h.fecha).toLocaleString('es-AR'))+'</b> · '+
+      plural(h.productosTotal||h.productos?.length||0,'producto','productos')+'</summary>'+
+      '<div class="gl-prov-history-body">'+
+      (Array.isArray(h.productos)?h.productos.map(x=>'<p>'+esc(x.nombre)+' · '+fmt(x.pedir)+' '+esc(x.unidad||'unidad')+'</p>').join(''):'')+
+      (esTotal()?'<button class="btn sm" data-act="prov-history-pdf" data-id="'+esc(h.id)+'">Exportar este PDF</button>':'')+
+      '</div></details>').join(''):'<p class="note">No hay pedidos finalizados todavía.</p>')+
+    '</section>';
   const details=nombre?`<section id="prov-carpeta" class="gl-prov-workspace card pad">
     <div class="gl-prov-workspace-head">
       <div><p class="eyebrow">Carpeta abierta · ${esc(localNombre())}</p><h2>${esc(nombre)}</h2>
@@ -931,11 +1126,12 @@ V.proveedores = () => {
     ${draft.stale?'<p class="note warn">Encontramos un borrador anterior, pero el pedido de la nube cambió. Los últimos datos de la nube se mantienen para evitar reemplazarlos.</p>':''}
     <div class="gl-prov-toolbar">
       <b>Lista de productos</b>
-      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button>`:''}
+      ${canW()?`<button class="btn sm" data-act="prov-add-open">${ic('plus')}Agregar producto manual</button><button class="btn sm primary" data-act="prov-save-stock" ${sinRed()?'disabled':''}>${ic('save')}Guardar stock</button><button class="btn sm" data-act="prov-save-plan" ${sinRed()?'disabled':''}>${ic('save')}Guardar pedido</button>`:''}
     </div>
     ${S.provAdding && canW()?`<form id="prov-add-form" class="gl-prov-add-form">
       <div class="fld"><label for="prov-item-name">Producto</label><input id="prov-item-name" required maxlength="100" placeholder="Ej.: Café en granos"></div>
       <div class="fld"><label for="prov-item-unit">Unidad</label><input id="prov-item-unit" maxlength="30" placeholder="kg, caja, unidad"></div>
+      <div class="fld"><label for="prov-item-category">Categoría</label><input id="prov-item-category" maxlength="70" value="General" placeholder="Ej.: Lácteos"></div>
       <button class="btn primary" type="submit">Agregar a la lista</button>
     </form>`:''}
     ${rows.length?`<div class="gl-prov-table-scroll"><table class="gl-prov-table">
@@ -943,10 +1139,11 @@ V.proveedores = () => {
        <tbody>${filaHTML}</tbody>
       </table></div>`:'<p class="note">Esta carpeta está vacía. Agregá productos manualmente o asigná este proveedor a productos del catálogo.</p>'}
     <div id="prov-resumen" class="gl-prov-summary">${proveedorResumenHTML(nombre)}</div>
+    ${historialHTML}
     </section>`:'<div class="card pad gl-prov-prompt"><b>Elegí una carpeta</b><p class="lead">Abrí el proveedor para cargar sus cantidades. El pedido aparecerá automáticamente debajo de la lista.</p></div>';
   return `<section class="sheet gl-proveedores">
     <div class="gl-prov-title"><div><p class="eyebrow">Hoja · ${esc(localNombre())}</p><h1>Proveedores</h1>
-    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y compartilos por WhatsApp como imagen desde tu dispositivo.</p></div>
+    <p class="lead">Una carpeta por proveedor. Prepará los pedidos y guardalos en GestLok y compartí exclusivamente el PDF por WhatsApp.</p></div>
     ${canW()?`<button class="btn primary" data-act="prov-new">${ic('plus')}Crear proveedor</button>`:''}
     </div>
     ${!S.loaded.p?loadingList():`<div class="gl-provider-grid">${carpetas||'<div class="card pad">Todavía no hay proveedores. Creá una carpeta para comenzar.</div>'}</div>`}
@@ -954,6 +1151,11 @@ V.proveedores = () => {
   </section>`;
 };
 
+const CHAT_RETENTION_MS = 24 * 60 * 60 * 1000;
+const chatRecent = m => {
+  const ts = Number(m?.fecha);
+  return Number.isFinite(ts) && ts > 0 && ts > Date.now() - CHAT_RETENTION_MS;
+};
 const chatSeenKey = () => 'gestlok-chat-seen:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
 /* Borradores y reintentos separados por cuenta y local. Nunca reenviar automáticamente. */
 const chatDraftKey = () => 'gestlok-chat-draft-v1:' + encodeURIComponent(String(S.uid || S.me?.email || '').toLowerCase()) + ':' + S.local;
@@ -963,39 +1165,51 @@ function chatPending(){
   const p = lsGet(chatPendingKey(), null);
   return p && /^[a-z0-9]{10,40}$/.test(String(p.id || '')) &&
     typeof p.texto === 'string' && p.texto.length <= 1000 &&
-    p.autor === S.uid && p.local === S.local ? p : null;
+    p.autor === S.uid && p.local === S.local && chatRecent(p) ? p : null;
 }
 function markChatRead(){
   if (!S.local || !S.uid) return;
-  const latest = Math.max(Date.now(),...S.chat.map(m=>Number(m.fecha)||0));
+  const latest = Date.now();
   lsSet(chatSeenKey(),latest);
   S.unreadChat = 0;
 }
+function refreshChatAges(){
+  const current = S.chat.filter(chatRecent);
+  if (current.length !== S.chat.length){
+    S.chat = current;
+    const since = Number(lsGet(chatSeenKey(), 0)) || 0;
+    S.unreadChat = current.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
+    if (S.view === 'chat') render();
+    else renderNav();
+  }
+}
 V.chat = () => {
-  const mensajes = S.chat.map(m => {
+  const mensajes = S.chat.filter(chatRecent).map(m => {
     const own = !!(m.autor && m.autor === S.uid);
     const ts = Number(m.fecha);
     const fecha = Number.isFinite(ts) && ts > 0 ? fechaHora(ts) : '';
-    return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong><small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
+    return `<article class="gestlok-chat-message${own ? ' mine' : ''}"><strong>${esc(m.nombre || 'Equipo')}</strong>${m.urgente?'<span class="gl-chat-urgent">Urgente</span>':''}<small>${esc(fecha)}</small><p>${esc(m.texto || '')}</p></article>`;
   }).join('');
   const pending = chatPending();
-  const puedeEnviar = canW() && !S.offline;
-  return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes no se mezclan con otros locales.</p>
+  const puedeEnviar = canW() && !sinRed();
+  return `<section class="sheet gestlok-chat"><p class="eyebrow">Comunicación interna · ${esc(localNombre())}</p><h1>Chat del local</h1><p class="lead">Solo las personas autorizadas para este local pueden leer los mensajes. Los mensajes duran 24 horas y se eliminan automáticamente. Podés navegar por otras secciones y volver sin perder la conversación vigente.</p>
     <div class="gestlok-chat-list" role="log" aria-label="Mensajes del local">${mensajes || '<p class="lead">Todavía no hay mensajes.</p>'}</div>
-    ${S.offline ? '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>' : ''}
+    ${S.offline ? (syncOffline() ? '<p class="note warn">Sin conexión. Podés escribir: el mensaje queda en este equipo y se envía solo al volver internet.</p>' : '<p class="note warn">Sin conexión. Podés leer los mensajes cargados y escribir un borrador, pero necesitás internet para enviarlo.</p>') : ''}
     ${pending ? '<p class="note warn">No pudimos confirmar el envío anterior. Reintentá el mismo mensaje; no se duplicará.</p>' : ''}
     ${!canW() ? '<p class="note warn">Tu acceso es de solo lectura.</p>' : ''}
     <form id="gestlok-chat-form" class="gestlok-chat-form"><label for="gestlok-chat-text">Nuevo mensaje</label><textarea id="gestlok-chat-text" maxlength="1000" required placeholder="Escribí un mensaje para tu equipo…" ${canW() && !pending ? '' : 'disabled'}>${esc(pending ? pending.texto : chatDraftText())}</textarea>
+      ${miRol()==='gerente'?`<label class="gl-chat-urgent-choice"><input id="gl-chat-urgent-input" type="checkbox" ${pending?.urgente?'checked':''} ${pending?'disabled':''}><span>Enviar como urgente (avisa a Dueña)</span></label>`:''}
       <button class="btn primary" type="submit" ${puedeEnviar ? '' : 'disabled'}>${pending ? 'Reintentar envío' : 'Enviar mensaje'}</button></form>
   </section>`;
 };
 
 async function sendGestlokChat(form){
-  if (!S.db || !S.local || S.offline || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
+  if (!S.db || !S.local || sinRed() || !canW()){ toast('Necesitás conexión y permiso de edición para enviar mensajes.', true); return; }
   const local = S.local, author = S.uid, input = form.querySelector('#gestlok-chat-text');
   const pending = chatPending(), txt = (pending ? pending.texto : input?.value || '').trim();
   if (!txt || txt.length > 1000){ toast('Escribí un mensaje de hasta 1000 caracteres.', true); return; }
-  const payload = pending || {id:rid() + rid(), texto:txt, autor:author, local, nombre:S.me?.name || 'Equipo', fecha:Date.now()};
+  const payload = pending || {id:rid() + rid(), texto:txt, autor:author, local, nombre:S.me?.name || 'Equipo', fecha:Date.now(),
+    urgente:miRol()==='gerente' && !!form.querySelector('#gl-chat-urgent-input')?.checked};
   const pendingKey = chatPendingKey(), draftKey = chatDraftKey();
   // Identificador fijo de mensaje: si la respuesta se pierde, reintentar no crea otro registro.
   try { localStorage.setItem(pendingKey, JSON.stringify(payload)); }
@@ -1005,11 +1219,12 @@ async function sendGestlokChat(form){
   if (input) input.disabled = true;
   try {
     await w(() => S.db.collection(local + '/chat').doc(payload.id).set({
-      texto:payload.texto, autor:payload.autor, nombre:payload.nombre, fecha:payload.fecha
+      texto:payload.texto, autor:payload.autor, nombre:payload.nombre, fecha:payload.fecha,
+      urgente:payload.urgente===true
     }));
     if (lsGet(pendingKey, null)?.id === payload.id) localStorage.removeItem(pendingKey);
     if (lsGet(draftKey, '') === payload.texto || lsGet(draftKey, '') === '') localStorage.removeItem(draftKey);
-    toast('Mensaje enviado');
+    toast(guardadoLocal() ? 'Mensaje guardado en este equipo: se envía solo al volver internet' : 'Mensaje enviado');
   } catch (error){
     if (error?.code === 'invalid_argument') localStorage.removeItem(pendingKey);
     fail(error);
@@ -1057,7 +1272,121 @@ function resumenHojasInicio(){
   </section>`;
 }
 
+/* Panel lateral reservado para próximas funciones de notificaciones de Dueña. */
+function openOwnerNotifications(){
+  if(miRol()!=='dueno'||S.view!=='inicio'||!S.local)return;
+  S.panel='owner-notifications';
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · Dueña</small><h3 id="gl-owner-notifications-title">Notificaciones</h3></div><button class="ib" data-act="close" aria-label="Cerrar notificaciones">${ic('x')}</button></div><div class="pn-b gl-owner-notif-body"><div class="gl-owner-notif-empty">${ic('bell')}<b>Notificaciones</b><p>Elegí qué avisos querés recibir en tu celular.</p></div>${window.GestLokPush?.drawerContent?.()||''}</div>`,'drawer');
+  $('#pn').setAttribute('aria-labelledby','gl-owner-notifications-title');
+  window.GestLokPush?.onOpen?.();
+  $('#pn [data-act="close"]')?.focus({preventScroll:true});
+}
+
+/* Portada operativa breve para Dueño y Gerente.
+   Los informes detallados permanecen en sus hojas y no se repiten en Inicio. */
+function inicioOperativo(){
+  const productos=sorted(), total=productos.length;
+  const estados={sin:0,bajo:0,nc:0};
+  for(const p of productos){
+    const e=estado(p);
+    if(e in estados)estados[e]++;
+  }
+  const ver=id=>visibles().some(h=>h.id===id);
+  const online=!!window.GestLokCommerce?.online();
+  const conteo=ver('conteo')?'conteo':ver('stock')?'stock':'';
+  const pedidos=ver('pedido');
+  const pendienteOnline=online?Number(window.GestLokCommerce?.pendingCount?.()||0):0;
+  const vencimientos=window.GestLokUpdates?.homeDueItems?.(S.vencimientos)||[];
+  const vence=vencimientos.length;
+  const acciones=[
+    ...(puedeVerDiarioMunro()?[['diario','Control diario','clock']]:
+      conteo?[[conteo,conteo==='conteo'?'Conteo':'Stock','clip']]:[]),
+    ['proveedores','Proveedores','store'],
+    ...(online?[['pedidos-online','Pedidos online','cart']]:
+       pedidos?[['pedido','Pedidos','cart']]:[]),
+    ...(ver('historial')?[['historial','Historial','clock']]:[]),
+    ...(!conteo&&ver('stock')?[['stock','Stock','box']]:[])
+  ].slice(0,4);
+  const tarjeta=(titulo,cantidad,detalle,act,k)=>{
+    const accion=act? (k?`data-act="home-stock-filter" data-k="${k}"`:`data-go="${act}"`):'';
+    const tag=act?'button':'div';
+    return `<${tag} class="gl-home-essential-stat" ${accion}>
+      <span class="gl-home-essential-stat-label">${esc(titulo)}</span>
+      <b class="gl-home-essential-stat-number">${S.loaded.p?cantidad:'—'}</b>
+      <small>${esc(detalle)}</small>
+    </${tag}>`;
+  };
+  const metricas=online ? [
+    tarjeta('Pedidos pendientes',pendienteOnline,'Por preparar o entregar','pedidos-online'),
+    tarjeta('Productos',total,'En el catálogo del local','stock'),
+    tarjeta('Sin stock',estados.sin,'Revisar existencias','stock','sin')
+  ] : [
+    tarjeta('Sin stock',estados.sin,'Reponer o revisar','stock','sin'),
+    tarjeta('Para pedir',pedidoItems().length,'Productos bajo mínimo',pedidos?'pedido':'proveedores'),
+    tarjeta('Sin contar',estados.nc,'Sin cantidad registrada','stock','nc')
+  ];
+  const herramientasAbiertas=!!document.querySelector('#view .gl-home-essential-settings[open]');
+  const opciones=`<details class="gl-home-essential-settings" ${herramientasAbiertas?'open':''}>
+    <summary>Más herramientas</summary>
+    <div class="gl-home-essential-tools">
+      <button class="btn sm" data-act="share">${ic('userplus')}Equipo</button>
+      ${miRol()==='dueno'&&window.GestLokCommerce?.mode()!=='online'?`<button class="btn sm" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>`:''}
+      ${S.dl&&S.db?`<button class="btn sm" data-act="backup">${ic('shield')}Copia de seguridad</button>`:''}
+    </div>
+    ${miRol()==='dueno'?window.GestLokCommerce?.card?.()||'':''}
+  </details>`;
+  return `${banners()}
+    <div class="gl-home-essential" aria-label="Inicio del local">
+      <header class="gl-home-essential-head">
+        <div><p class="eyebrow">${esc(fechaLarga())}</p>
+          <h1>Inicio · ${esc(localNombre())}</h1>
+          <p>Lo importante para trabajar hoy.</p></div>
+        ${miRol()==='dueno'?`<button type="button" class="gl-owner-notif-trigger" data-act="owner-notifications" aria-haspopup="dialog">${ic('bell')}<span>Notificaciones</span>${ic('chev')}</button>`:''}
+      </header>
+      ${miRol()==='dueno'?(window.GestLokPush?.homePrompt?.()||''):''}
+      ${!S.loaded.p?'<p class="note">Cargando información del local…</p>':''}
+      ${S.loaded.p&&!total&&canW()?`<div class="gl-home-essential-setup">
+        <span>Este local todavía no tiene productos cargados.</span>
+        <button class="btn sm primary" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button>
+        </div>`:''}
+      <section class="gl-home-essential-overview" aria-label="Indicadores del local">
+        ${metricas.join('')}
+      </section>
+      ${vence?`<section class="gl-home-essential-alert gl-home-due" aria-label="Vencimientos que requieren atención">
+        <div class="gl-home-essential-due-content">
+          <b>${vence} ${vence===1?'vencimiento':'vencimientos'} · ${esc(localNombre())}</b>
+          <ul class="gl-home-essential-due-items">
+            ${vencimientos.slice(0,2).map(item=>{
+              const dias=item.vencimiento.days;
+              const titulo=esc(item.nombre||'Servicio sin nombre')+
+                (dias<0?': plazo vencido':dias===0?' vence hoy':
+                 dias===1?' vence mañana':' vence en '+dias+' días');
+              return `<li><small class="gl-home-due-status ${esc(item.vencimiento.cls)}">${dias<0?'Vencido':dias===0?'Hoy':'Próximo'}</small>
+                <span>${titulo}</span></li>`;
+            }).join('')}
+            ${vence>2?`<li class="gl-home-essential-due-more">+${vence-2} más en Vencimientos</li>`:''}
+          </ul>
+        </div>
+        <button class="btn sm" data-go="vencimientos">Revisar</button>
+      </section>`:''}
+      <section class="gl-home-essential-actions" aria-label="Accesos rápidos">
+        <h2>Accesos rápidos</h2>
+        <div class="gl-home-essential-links">
+          ${acciones.map(([id,label,icono])=>`<button data-go="${id}">
+              <span aria-hidden="true">${ic(icono)}</span><b>${esc(label)}</b>${ic('chev')}
+            </button>`).join('')}
+        </div>
+      </section>
+      ${miRol()==='gerente'?(window.GestLokUpdates?.homeAlerts?.()||''):''}
+      ${miRol()==='gerente'?(window.GestLokOwnerAreas?.gerenteCard?.()||''):''}
+      ${opciones}
+    </div>`;
+}
+
 V.inicio = () => {
+  if (miRol()==='gerente' && !S.creatorBusiness) return banners()+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.gerenteHome?.()||'<p role="status">Comprobando tus áreas…</p>')+'</div>';
+  if (miRol()==='creadora' && !S.creatorBusiness) return banners()+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.view(localesMios(),lcard) || '<p role="status">Comprobando tus áreas…</p>')+'</div>';
+  if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();
   const ps = sorted(), n = ps.length;
   const cnt = {ok:0, bajo:0, sin:0, nc:0}; ps.forEach(p => cnt[estado(p)]++);
   const ped = pedidoItems().length, last = S.conteos[0] || null, flagged = ps.filter(p => estado(p) === 'sin');
@@ -1075,18 +1404,22 @@ V.inicio = () => {
   return `${banners()}
   <section class="hello">
     <div><p class="eyebrow">${esc(fechaLarga())}</p><h3 class="h1">Stock de ${esc(localNombre())}</h3><p class="lead">Abajo podés consultar los registros de todas las hojas. Las estadísticas principales corresponden a ${esc(nombreHoja('stock'))}.</p></div>
-    <div class="bar-a">${esTotal() ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
+    <div class="bar-a">${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button class="btn" data-go="ingreso" id="ini-remito">${ic('in')}Ingresar remito</button>` : ''}<button class="btn" data-act="share">${ic('userplus')}Equipo</button>${cgB('btn primary', ic(cg === 'conteo' ? 'clip' : 'box') + cgL)}</div>
   </section>
+  ${window.GestLokCommerce?.card() || ''}
+  ${window.GestLokCommerce?.summary() || ''}
+  ${['creadora','dueno','gerente'].includes(miRol()) ? (window.GestLokUpdates?.homeDue?.() || '') : ''}
   ${isCreadora() && S.sol.length ? `<section class="card pad" style="margin-bottom:16px;display:grid;gap:10px;border-color:var(--warn)">${solRows()}</section>` : ''}
   ${S.loaded.p && !n ? `<section class="onb gl-setup"><p class="eyebrow">Configuración inicial · 1 de 3</p><b>Cargá tus primeros productos</b><span class="lead" style="margin:0">Podés agregarlos uno por uno o pegar la lista entera.</span><div class="bar-a"><button class="btn primary sm" data-act="aj-open" data-tab="agregar">${ic('plus')}Agregar productos</button><button class="btn sm" data-act="aj-open" data-tab="pegar">Pegar lista</button></div><small>Después asigná un proveedor y un mínimo, y realizá tu primer conteo.</small></section>` : ''}
   ${resumenHojasInicio()}
   <section class="gl-today card pad" aria-label="Acciones para hoy">
-    <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? 'Sin conexión · los conteos quedan pendientes' : 'Datos actualizados del local'}</small></div>
+    <div class="gl-today-head"><div><p class="eyebrow">Acciones para hoy</p><h4>¿Qué necesitás resolver?</h4></div><small>${S.offline ? (syncOffline() ? 'Sin conexión · lo que guardes se envía solo al volver' : 'Sin conexión · los conteos quedan pendientes') : 'Datos actualizados del local'}</small></div>
     <div class="gl-today-grid">
       ${cg ? `<button class="gl-today-action" data-go="${cg}">${ic('clip')}<b>${cgL}</b><small>${cnt.nc ? plural(cnt.nc,'producto pendiente','productos pendientes') : 'Revisar cantidades'}</small></button>` : ''}
       ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
       <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
-      <button class="gl-today-action" data-go="diario">${ic('clock')}<b>Control diario</b><small>Ventas, consumo y diferencias</small></button>
+      ${puedeVerDiarioMunro() ? `<button class="gl-today-action" data-go="diario">${ic('clock')}<b>Control diario</b><small>Ventas, consumo y diferencias</small></button>` : ''}
+      ${puedeVerMotos() ? `<button class="gl-today-action" data-go="motos">${ic('moto')}<b>Motos Agencia</b><small>Horarios semanales de las motos</small></button>` : ''}
     </div>
   </section>
   <div class="kpis${pedV ? '' : ' k3'}">
@@ -1123,7 +1456,7 @@ V.inicio = () => {
       </section>
       <section class="card pad"><div class="ch"><h4>Equipo</h4><span class="num">${equipoList().length}${isCreadora() && S.sol.length ? ` · ${S.sol.length} pendientes` : ''}</span></div>
         <div class="eq">${equipoRows(false)}</div>
-        <div class="bar-a" style="margin-top:12px"><button class="btn sm primary" data-act="share">${ic('userplus')}${isCreadora() ? 'Agregar o quitar' : 'Ver equipo'}</button></div>
+        <div class="bar-a" style="margin-top:12px"><button class="btn sm primary" data-act="share">${ic('userplus')}${puedeAdministrarEquipo() ? 'Agregar o quitar' : 'Ver equipo'}</button></div>
       </section>
     </div>
   </div>`;
@@ -1434,6 +1767,16 @@ function fabCard(){
       <div class="bar-a" style="margin-top:14px"><button class="btn sm primary" data-go="fabrica">${ic('fab')}Abrir ${esc(hf.nombre)}</button></div></section>`;
   });
 }
+/* Estado visual de categorías: sólo altera la presentación, nunca el conteo guardado. */
+const fabFoldKey = bloque => [S.local || '', fabCtx(), bloque].join('|');
+const fabIsFolded = bloque => !!S.fabFolded?.[fabFoldKey(bloque)];
+function toggleFabBloque(bloque){
+  const n=Number(bloque);
+  if(!Number.isSafeInteger(n)||n<1)return;
+  S.fabFolded ||= {};
+  S.fabFolded[fabFoldKey(n)]=!fabIsFolded(n);
+  render();
+}
 V.fabrica = () => {
   const its = fItems(), lf = lastFab(), d = new Date(), nom = nombreHoja(fabCtx());
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
@@ -1444,9 +1787,11 @@ V.fabrica = () => {
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
+  const porBloque=new Map();
+  for(const it of its)porBloque.set(bloqueOf(it),(porBloque.get(bloqueOf(it))||0)+1);
   for (const it of its){
     const b = bloqueOf(it);
-    if (b !== prev) rows += `<div class="xl-r xl-bq" data-bloque="${b}"><div class="xbq"><b>${esc(bloqueNombre(b))}</b>${canW() ? `<button class="btn sm" data-act="bq-edit" data-b="${b}" id="bq-e-${b}" aria-label="Nombre de ${esc(bloqueNombre(b))}">${ic('edit')}Nombre</button>` : ''}</div></div>`;
+    if (b !== prev) rows += `<div class="xl-r xl-bq" data-bloque="${b}"><div class="xbq"><b>${esc(bloqueNombre(b))}</b><span class="gl-bq-count">${porBloque.get(b)} ${porBloque.get(b)===1?'producto':'productos'}</span><button type="button" class="gl-bq-toggle" data-act="fab-toggle-block" data-b="${b}" aria-expanded="${!fabIsFolded(b)}" aria-label="${fabIsFolded(b)?'Mostrar':'Ocultar'} categoría ${esc(bloqueNombre(b))}">${fabIsFolded(b)?'Mostrar':'Ocultar'}</button>${canW() ? `<button class="btn sm" data-act="bq-edit" data-b="${b}" id="bq-e-${b}" aria-label="Nombre de ${esc(bloqueNombre(b))}">${ic('edit')}Nombre</button>` : ''}</div></div>`;
     prev = b; n++; rows += rowFab(it, n);
   }
   return head + `<div class="xl" role="table" aria-label="${esc(nom)}">
@@ -1459,7 +1804,7 @@ V.fabrica = () => {
 function rowFab(it, n){
   const id = esc(it.id), l = fVal(it, 'l'), f = fVal(it, 'f'), d = S.fdraft[it.id] || {}, dis = canW() ? '' : 'disabled';
   const chgL = has(d, 'l') && d.l !== num(it.local), chgF = has(d, 'f') && d.f !== num(it.fabrica);
-  return `<div class="xl-r ${fSin(it) ? 'sin' : ''}" id="fr-${id}" role="row">
+  return `<div class="xl-r ${fSin(it) ? 'sin' : ''} ${fabIsFolded(bloqueOf(it)) ? 'gl-folded-row' : ''}" id="fr-${id}" role="row">
     <span class="xn">${n}</span>
     <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn">${canW() ? `<button class="xpb" data-act="f-item" data-id="${id}" title="Modificar o eliminar"><b>${esc(it.nombre)}</b></button>` : `<b>${esc(it.nombre)}</b>`}${notaCell(it, 'f')}</span></span>
     <span class="xt"><small class="xl-mob-label">Total</small><strong id="ft-${id}">${fmt(fTot(it))}</strong></span>
@@ -1539,7 +1884,7 @@ function openSaveF(){
   setTimeout(() => $('#sv-ok')?.focus(), 40);
 }
 async function doSaveF(v = S.view){
-  if (S.offline){ queueSave(v, true); return; }
+  if (sinRed()){ queueSave(v, true); return; }
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
   const plan = withCtx(v, () => {
@@ -1553,10 +1898,10 @@ async function doSaveF(v = S.view){
     await w(() => C('conteos').add({tipo:'fabrica', fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:plan.hoja, nombreHoja:plan.nom, filas:plan.filas, cambiadas:plan.n, total:plan.filas.length, sinStock:plan.filas.filter(x => x.sin).map(x => x.nombre)}));
     withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
-    toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}`);
+    toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}${guardadoLocal() ? ' en este equipo · se envía solo al volver internet' : ''}`);
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
-    if (!navigator.onLine){ S.offline = true; queueSave(v, true); } else fail(e);
+    if (!navigator.onLine && !syncOffline()){ S.offline = true; queueSave(v, true); } else fail(e);
   }
 }
 /* Sin internet: conserva el borrador hasta que la persona confirme guardarlo con conexión. */
@@ -1572,10 +1917,13 @@ function onOnline(){
   if (!S.offline) return;
   const q = S.queued;
   S.offline = false; render();
+  /* Un borrador que quedó en espera (versiones anteriores) se guarda solo al volver internet. */
+  if (q && S.db && syncOffline()){ toast('Volvió internet: guardando el conteo pendiente…'); void (q.fab ? doSaveF(q.view) : doSave(q.view)); return; }
   if (q && S.db) toast('Volvió internet. Tu borrador sigue pendiente: revisalo y tocá Guardar conteo.');
-  else toast('Volvió la conexión');
+  else toast(syncOffline() ? 'Volvió la conexión: enviando lo guardado en este equipo' : 'Volvió la conexión');
 }
-function onOffline(){ if (S.offline) return; S.offline = true; render(); toast('Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
+function onOffline(){ if (S.offline) return; S.offline = true; render(); toast(syncOffline() ? 'Sin internet. Podés seguir usando GESTLOK: lo que guardes se envía solo cuando vuelva la conexión.' : 'Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
+window.addEventListener('gestlok-sync-complete', () => { if (S.local) render(); });
 window.addEventListener('online', onOnline);
 window.addEventListener('offline', onOffline);
 window.addEventListener('pagehide', saveDraft);
@@ -1690,7 +2038,7 @@ const rolSelect = (attr, rol) => `<select class="rolsel" ${attr}><option value="
 function equipoRows(actions){
   if (S.db && !S.loaded.e) return `<p class="lead" style="margin:0">Cargando…</p>`;
   return equipoList().map(e => {
-    const r = ROL[ROLN(e.rol)] || ROL.gerente, confirm = actions && S.eqDel === e.id, edita = actions && isCreadora() && !fijo(e) && !e._local, id = esc(e.id);
+    const r = ROL[ROLN(e.rol)] || ROL.gerente, confirm = actions && S.eqDel === e.id, edita = actions && puedeAdministrarEquipo() && !fijo(e) && !e._local, id = esc(e.id);
     const info = edita
       ? `<div class="eq-ed">${rolSelect(`data-rolsel="${id}" aria-label="Rol de ${esc(e.email)}"`, e.rol)}${locChecks(`data-eqloc="${id}"`, e.locales || [], false)}</div>`
       : `<small><span class="pill ${r[1]}">${r[0]}</span><span class="eq-l">${esc(localesTxt(e))}</span></small>`;
@@ -1698,39 +2046,68 @@ function equipoRows(actions){
     return `<div class="eq-r ${fijo(e) ? 'creadora' : ''}"><span class="av">${esc((e.email || '?').charAt(0))}</span><div style="min-width:0"><div class="em">${esc(e.email)}</div>${info}</div>${acts}</div>`;
   }).join('');
 }
+let legacyRequests=[],registrationRequests=[],registrationRequestBusy=false;
+function combineRequests(){
+  const newEmails=new Set(registrationRequests.map(x=>String(x.email).toLowerCase()));
+  S.sol=[...legacyRequests.filter(x=>!newEmails.has(String(x.email).toLowerCase())),...registrationRequests]
+    .sort((a,b)=>(b.fecha||0)-(a.fecha||0));
+}
+async function refreshRegistrationRequests(){
+  if(!isCreadora()||!window.GestLokSupabase||registrationRequestBusy)return;
+  registrationRequestBusy=true;
+  try{
+    const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_registration_requests');
+    if(error)throw error;
+    const next=Array.isArray(data)?data:[];
+    if(JSON.stringify(next)===JSON.stringify(registrationRequests))return;
+    registrationRequests=next;combineRequests();
+    if(!S.creatorSetup&&(!S.panel||S.panel==='share'))onSnapRefresh();
+  }catch{}finally{registrationRequestBusy=false;}
+}
 function solRows(){
   if (!isCreadora() || !S.sol.length) return '';
   const solo = localesTodos().length === 1 ? [localesTodos()[0].id] : [];
-  return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>Elegí el rol y el local de cada persona y aprobala.</span></div>
+  return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.</span></div>
   <div class="eq">${S.sol.map(x => { const id = esc(x.id); return `<div class="eq-r sol"><span class="av">${esc((x.email || '?').charAt(0))}</span><div style="min-width:0"><div class="em">${esc(x.email)}</div><small>${x.nombre ? esc(x.nombre) + ' · ' : ''}${x.proveedor === 'google' ? 'Google · ' : ''}${x.fecha ? rel(x.fecha) : ''}</small>
-    <div class="eq-ed">${rolSelect(`id="sol-rol-${id}" aria-label="Rol para ${esc(x.email)}"`, 'gerente')}${locChecks(`data-solloc="${id}"`, solo, false)}</div></div>
-    <div class="eq-a sol-a"><button class="btn sm primary" data-act="sol-ok" data-id="${id}">Aprobar</button><button class="btn sm" data-act="sol-no" data-id="${id}">Rechazar</button></div></div>`; }).join('')}</div>`;
+    ${window.GestLokRegistration?.label(x)?`<p class="note">${esc(window.GestLokRegistration.label(x))}</p>`:''}
+    ${x.tipoCuenta==='dueno'?'<p class="lead">Alta independiente de dueño pendiente de habilitación. No se asigna a los locales de otra empresa.</p>':`<div class="eq-ed">${rolSelect(`id="sol-rol-${id}" aria-label="Rol para ${esc(x.email)}"`, 'gerente')}${locChecks(`data-solloc="${id}"`, solo, false)}</div>`}</div>
+    <div class="eq-a sol-a">${x.tipoCuenta==='dueno'?'<span class="pill">Alta de dueño</span>':`<button class="btn sm primary" data-act="sol-ok" data-id="${id}">Aprobar</button>`}<button class="btn sm" data-act="sol-no" data-id="${id}">Rechazar</button></div></div>`; }).join('')}</div>`;
 }
 const checkedLocs = attr => [...document.querySelectorAll(`[${attr}]:checked`)].map(x => x.dataset.loc);
 async function aprobar(id){
   if (!isCreadora()) return;
   const x = S.sol.find(s => s.id === id); if (!x) return;
+  if (x.tipoCuenta === 'dueno'){ toast('Esta solicitud requiere un alta independiente de dueño y habilitación de módulos.', true); return; }
   const sel = document.getElementById('sol-rol-' + id), rol = sel && sel.value === 'lectura' ? 'lectura' : 'gerente';
   const locales = checkedLocs(`data-solloc="${CSS.escape(id)}"`);
   if (!locales.length){ toast('Elegí al menos un local para esta persona.', true); return; }
   try {
     await w(() => S.db.collection('equipo').doc(docIdFromEmail(x.email)).set({email:x.email, rol, locales, agregado:Date.now(), por:S.uid || null}));
-    await w(() => S.db.collection('solicitudes').doc(id).delete());
+    if(x.registrationUserId){
+      const {error}=await window.GestLokSupabase.rpc('gestlok_review_registration',{p_user:x.registrationUserId,p_status:'assigned'});
+      if(error)throw error;await refreshRegistrationRequests();
+    }else await w(() => S.db.collection('solicitudes').doc(id).delete());
     toast(`${x.email} aprobado: ${rolLabel(rol)} en ${locales.map(localNombre).join(' y ')}`);
   } catch(e){ fail(e); }
 }
 async function rechazar(id){
   if (!isCreadora()) return;
   const x = S.sol.find(s => s.id === id);
-  try { await w(() => S.db.collection('solicitudes').doc(id).delete()); toast(`Pedido de ${x ? x.email : 'acceso'} rechazado`); } catch(e){ fail(e); }
+  try {
+    if(x?.registrationUserId){
+      const {error}=await window.GestLokSupabase.rpc('gestlok_review_registration',{p_user:x.registrationUserId,p_status:'rejected'});
+      if(error)throw error;await refreshRegistrationRequests();
+    }else await w(() => S.db.collection('solicitudes').doc(id).delete());
+    toast(`Pedido de ${x ? x.email : 'acceso'} rechazado`);
+  } catch(e){ fail(e); }
 }
 async function cambiarRol(id, rol){
-  if (!isCreadora()) return;
+  if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
   try { await w(() => S.db.collection('equipo').doc(id).update({rol})); toast(`${e.email}: ${rolLabel(rol)}`); } catch(err){ fail(err); }
 }
 async function cambiarLocales(id){
-  if (!isCreadora()) return;
+  if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
   const locales = checkedLocs(`data-eqloc="${CSS.escape(id)}"`);
   try { await w(() => S.db.collection('equipo').doc(id).update({locales})); toast(locales.length ? `${e.email}: ${locales.map(localNombre).join(' y ')}` : `${e.email} quedó sin local: no va a poder ver ninguna planilla`, !locales.length); } catch(err){ fail(err); }
@@ -1738,7 +2115,7 @@ async function cambiarLocales(id){
 function refreshShare(){ const l = $('#eq-list'); if (l) l.innerHTML = equipoRows(true); const sl = $('#sol-list'); if (sl) sl.innerHTML = solRows(); }
 function openShare(){
   S.panel = 'share'; S.eqDel = null;
-  const adm = isCreadora();
+  const adm = puedeAdministrarEquipo();
   openPanel(`<div class="pn-h"><div><small>GestLok</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
     <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
@@ -1757,7 +2134,7 @@ function openShare(){
 async function addEquipo(email, rol){
   email = email.trim().toLowerCase();
   if (!emailOK(email)){ toast('Revisá el email: falta el @ o el dominio.', true); return; }
-  if (!isCreadora()){ toast('Solo la administradora puede agregar personas al equipo.', true); return; }
+  if (!puedeAdministrarEquipo()){ toast('Solo la creadora o el dueño puede agregar personas al equipo.', true); return; }
   if (equipoList().some(e => String(e.email || '').toLowerCase() === email)){ toast('Ese email ya está en el equipo.'); return; }
   const locales = checkedLocs('data-newloc');
   if (!locales.length){ toast('Elegí al menos un local.', true); return; }
@@ -1792,13 +2169,31 @@ function lcard(l){
   </article>`;
 }
 function renderHub(){
+  window.GestLokSupport?.render();
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  const ownerHome=miRol()==='dueno'&&listo&&!!S.db;
+  hub.classList.toggle('gl-oh-hub', false);
+  if (adm && listo && S.db && S.creatorSetup) {
+    const creatorHTML=window.GestLokCreator?.view() || '';
+    if(hub._h!==creatorHTML){hub.innerHTML=creatorHTML;hub._h=creatorHTML;}
+    return;
+  }
+  if (adm && listo && S.db && S.demoTienda) {
+    const demoHTML = window.GestLokDemo?.view() || '';
+    if (hub._h !== demoHTML) { hub.innerHTML=demoHTML; hub._h=demoHTML; }
+    return;
+  }
   let body;
   if (!listo) body = `<div class="lcards">${'<div class="lcard sk-card" aria-hidden="true"></div>'.repeat(2)}</div>`;
   else if (!S.db) body = `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
+
+  // Fail closed: the backend decides which implemented areas this owner can use.
+  if (ownerHome) {
+    body = window.GestLokOwnerAreas?.view(mios,lcard) || '<p role="status">Comprobando tus áreas autorizadas…</p>';
+  }
 
   // Panel privado: únicamente la cuenta con rol creadora concedido por Supabase.
   // No es un panel de pagos: GestLok sigue gratuito y todas las altas requieren aprobación.
@@ -1820,6 +2215,30 @@ function renderHub(){
       <td>${esc(localesTxt(u))}</td>
       <td><span class="gl-admin-good">Autorizado</span></td>
     </tr>`).join('');
+    const prepareCard = `<section class="gl-admin-card gl-demo-launch" aria-label="Preparar una empresa">
+          <header><h2>Preparar empresa para un cliente</h2><small>Exclusivo de la creadora</small></header>
+          <p>Elegí física, online o mixta y dejá creados el local, las carpetas y el catálogo a partir de un CSV. Todo queda separado de las empresas existentes.</p>
+          <button class="btn primary" data-act="admin-preparar-empresa">Preparar empresa nueva →</button>
+        </section>`;
+    const demoCard = `<section class="gl-admin-card gl-demo-launch" aria-label="Demo de gestión online">
+          <header><h2>Explorar gestión de tienda online</h2><small>Ejemplo independiente · Sin crear empresas</small></header>
+          <p>Probá un panel administrativo ficticio con productos, stock mínimo, pedidos, proveedores y reportes. No publica una tienda ni modifica la empresa de Gisela.</p>
+          <button class="btn primary" data-act="admin-demo-online">Ver demo de gestión online →</button>
+        </section>`;
+    const localesCard = `<section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>`;
+    const teamCard = `<section class="gl-admin-card gl-admin-team"><header><h2>Usuarios aprobados</h2><button class="btn" data-act="share">Ver equipo completo</button></header>
+          <div class="gl-admin-tablewrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Locales</th><th>Acceso</th></tr></thead><tbody>${members}</tbody></table></div>
+        </section>`;
+    const noticeCard = `<section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>`;
+    // Inicio de la creadora (solo si el servidor autoriza la función de resumen); si no, se ve el panel anterior.
+    const chMode = window.GestLokCreatorHome?.mode();
+    if (chMode === 'ready' || chMode === 'loading') {
+      const chHTML = window.GestLokCreatorHome.view({pending: S.sol.length, parts: {
+        companies: window.GestLokOwnerAreas?.adminView() || '', prepare: prepareCard, locales: localesCard, users: teamCard + noticeCard,
+        tools: (window.GestLokDemoMetrics?.view() || '') + demoCard + (window.GestLokSupport?.adminCard() || '') + (window.GestLokCommerce?.card() || '')}});
+      if (hub._h !== chHTML) { hub.innerHTML = chHTML; hub._h = chHTML; }
+      return;
+    }
     const adminHTML = `<div class="gl-admin">
       <aside class="gl-admin-sidebar" aria-label="Administración GestLok">
         <div class="gl-admin-logo"><img src="icons/gestlok-wordmark.svg" alt="GestLok" width="170" height="48"><small>Administración privada</small></div>
@@ -1839,39 +2258,57 @@ function renderHub(){
           <article><span>${ic('clock')} Solicitudes pendientes</span><strong>${S.sol.length}</strong><small>Esperando tu autorización</small></article>
           <article><span>${ic('box')} Productos registrados</span><strong>${ready ? totalProductos : '…'}</strong><small>En los locales autorizados</small></article>
         </section>
-        <section class="gl-admin-notice"><div><b>GestLok es gratuito</b><p>Las nuevas cuentas solo ingresan cuando las autorizás. No existen planes de pago, tarjetas ni vencimientos.</p></div><button class="btn primary" data-act="share">Revisar solicitudes ${S.sol.length ? '(' + S.sol.length + ')' : ''}</button></section>
+        ${window.GestLokDemoMetrics?.view() || ''}
+        ${prepareCard}
+        ${demoCard}
+        ${window.GestLokSupport?.adminCard() || ''}
+        ${window.GestLokCommerce?.card() || ''}
+        ${noticeCard}
+        ${window.GestLokOwnerAreas?.adminView()||''}
         <div class="gl-admin-panels">
-          <section class="gl-admin-card" id="gl-admin-locales"><header><h2>Locales autorizados</h2><small>Entrá sin modificar las existencias</small></header>${puestos || '<p class="lead">No hay locales habilitados.</p>'}</section>
+          ${localesCard}
           <section class="gl-admin-card"><header><h2>Acceso y privacidad</h2><small>Protección de información</small></header>
             <p>Los registros de Munro y Torcuato se mantienen separados. El ingreso requiere una cuenta aprobada.</p>
             <p>Los datos de cada comercio se mostrarán únicamente a usuarios de ese comercio, tras finalizar la separación multiempresa.</p>
             <button class="btn" data-act="share">Administrar equipo</button>
           </section>
         </div>
-        <section class="gl-admin-card gl-admin-team"><header><h2>Usuarios aprobados</h2><button class="btn" data-act="share">Ver equipo completo</button></header>
-          <div class="gl-admin-tablewrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Locales</th><th>Acceso</th></tr></thead><tbody>${members}</tbody></table></div>
-        </section>
+        ${teamCard}
         <footer class="gl-admin-bottom">GestLok · Panel privado · Sin servicios de pago</footer>
       </main>
     </div>`;
     if (hub._h !== adminHTML) { hub.innerHTML = adminHTML; hub._h = adminHTML; }
     return;
   }
+  hub.classList.toggle('gl-oh-hub', ownerHome);
+  if (ownerHome) {
+    const ownerHTML = `${window.GestLokOwnerAreas?.header() || ''}<main class="hub-in gl-oh-main">${body}</main>`;
+    if (hub._h !== ownerHTML){
+      const ae = document.activeElement, keep = !!(ae && hub.contains(ae) && ae.matches('input,select'));
+      if (!keep){ hub.innerHTML = ownerHTML; hub._h = ownerHTML; }
+    }
+    window.GestLokOwnerAreas?.sync();
+    return;
+  }
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t"><b>Inventario</b><span>Locales y equipo</span></div></div>
+      ${miGustoContext()?'<div class="hub-brand gl-company-hub"><img class="gl-company-hub-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto"><div class="hb-t"><b>Empanadas de Verdad</b><span>Locales y equipo</span></div></div>':`<div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>`}
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
       <p class="eyebrow">${esc(fechaLarga())}</p>
-      <h1 class="hub-t">Locales</h1>
-      <p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>
+      ${ownerHome?'':'<h1 class="hub-t">Locales</h1><p class="lead hub-lead">Elegí un local para cargar, revisar y guardar el stock, los conteos y los pedidos.</p>'}
       ${adm && S.sol.length ? `<section class="card pad hub-sol">${solRows()}</section>` : ''}
+      ${ownerHome?'':(window.GestLokCommerce?.card() || '')}
       ${body}
       ${S.me && listo ? `<p class="hub-me">Entraste como <b>${esc(S.me.email || '')}</b> · ${esc(rolLabel(miRol()))}</p>` : ''}
     </main>`;
   if (hub._h !== html){
     const ae = document.activeElement, keep = !!(ae && hub.contains(ae) && ae.matches('input,select'));
-    if (!keep){ hub.innerHTML = html; hub._h = html; }
+    if (!keep){
+      const settingsOpen=!!hub.querySelector('.gl-owner-business-settings')?.open;
+      hub.innerHTML = html;hub._h = html;
+      const settings=hub.querySelector('.gl-owner-business-settings');if(settings&&settingsOpen)settings.open=true;
+    }
   }
 }
 
@@ -1894,7 +2331,7 @@ function openSave(){
   setTimeout(() => $('#sv-ok')?.focus(), 40);
 }
 async function doSave(v = S.view){
-  if (S.offline){ queueSave(v, false); return; }
+  if (sinRed()){ queueSave(v, false); return; }
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
   const entry = c => ({pid:c.p.id, nombre:c.p.nombre || '', cat:catOf(c.p), unidad:c.p.unidad || '', antes:c.antes, despues:c.despues, dif:round(c.despues - (c.antes ?? 0)), nota:c.nota || ''});
@@ -1920,10 +2357,10 @@ async function doSave(v = S.view){
     }
     withCtx(v, clearDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save') closePanel(); render();
-    toast(ed ? 'Corrección guardada' : `Conteo guardado${plan.pend.length ? ` · ${plural(plan.pend.length, 'cambio', 'cambios')}` : ''}`);
+    toast((ed ? 'Corrección guardada' : `Conteo guardado${plan.pend.length ? ` · ${plural(plan.pend.length, 'cambio', 'cambios')}` : ''}`) + (guardadoLocal() ? ' en este equipo · se envía solo al volver internet' : ''));
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
-    if (!navigator.onLine){ S.offline = true; queueSave(v, false); } else fail(e);
+    if (!navigator.onLine && !syncOffline()){ S.offline = true; queueSave(v, false); } else fail(e);
   }
 }
 function openConfirm(title, text, okLabel, act, danger){
@@ -2425,7 +2862,19 @@ function dragEnd(){
 }
 document.addEventListener('pointerup', dragEnd);
 document.addEventListener('pointercancel', dragEnd);
-document.addEventListener('input', e => { if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } if(e.target.matches('[data-prov-val]')) actualizarValorProveedor(e.target); });
+document.addEventListener('input', e => {
+  if(e.target.matches('[data-prov-note]') && canW() && S.provOpen){
+    const id=e.target.dataset.provNote,d=proveedorBase(S.provOpen);
+    const row=proveedorFilas(S.provOpen).find(x=>x.id===id);
+    if(row?.origen==='manual'){
+      const item=d.items.find(x=>x.id===id);
+      if(item)item.observacion=e.target.value.slice(0,300);
+    }else if(row){
+      d.catalogo[row.productoId]={...(d.catalogo[row.productoId]||{}),observacion:e.target.value.slice(0,300)};
+    }
+    proveedorGuardarBorrador(S.provOpen);
+  }
+  if(e.target.matches('[data-diario-num]')) { const f=e.target.closest('#diario-form');if(f)refrescarDiarioPreview(f); } if(e.target.matches('[data-prov-val]')) actualizarValorProveedor(e.target); });
 document.addEventListener('keydown', e => {
   const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
   e.preventDefault();
@@ -2492,13 +2941,18 @@ async function ingHist(){
 }
 async function ingArchivo(file){
   const I = S.ing; if (!I || !file) return;
-  I.arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}; I.lineas = []; I.res = null; I.msg = null; I.leyendo = true; render();
+  /* Cada lectura tiene su número: si mientras se lee se elige otro archivo, se cancela o se cambia de
+     sucursal, el resultado viejo se descarta y nunca pisa las decisiones ya tomadas sobre el archivo nuevo. */
+  const arch = {nombre:String(file.name || 'archivo').slice(0, 200), tam:file.size, tipo:String(file.type || '').slice(0, 80)}, lectura = (I.lectura || 0) + 1;
+  Object.assign(I, {arch, lectura, lineas:[], res:null, msg:null, leyendo:true}); render();
+  const vigente = () => S.ing === I && I.arch === arch && I.lectura === lectura;
   try {
-    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
-    Object.assign(I.arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
+    const M = await cargarIngreso(), r = await M.leerArchivo(file, t => { if (!vigente()) return; I.prog = t; const el = document.getElementById('ing-prog'); if (el) el.textContent = t; });
+    if (!vigente()) return;
+    Object.assign(arch, {hash:r.hash, kind:r.tipo, hojas:r.hojas || null, texto:r.texto ?? null, ocr:!!r.ocr});
     I.hojaSel = 0; I.col = r.hojas ? M.columnas(r.hojas[0].filas) : null;
     if (I.datos) ingProcesar();
-  } catch(e){ I.arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
+  } catch(e){ if (!vigente()) return; arch.error = e && e.message ? e.message : 'No se pudo leer el archivo.'; }
   I.leyendo = false; I.prog = ''; render();
 }
 function ingProcesar(mantener){
@@ -2617,7 +3071,7 @@ V.ingreso = () => {
     };
     const pendHTML = P.pend.length ? `<div class="ing-sec" id="ing-pend"><h5>Necesitan tu decisión (${P.pend.length})</h5>${P.pend.map(r => `<div class="ing-d"><div><b>«${esc(String(r.texto || r.nombre).slice(0, 80))}»</b><small>${esc(r.motivo)} · cantidad ${r.cantidad == null ? '—' : fmt(r.cantidad)}</small></div><select data-ingdec="${r.i}" id="ing-dec-${r.i}" aria-label="Destino de ${esc(r.nombre)}"><option value="" disabled selected>Elegí el destino…</option>${ingOpts(r.cands, null, false)}<option value="-">No importar</option></select></div>`).join('')}</div>` : '';
     const ignHTML = P.ign.length ? `<details class="ing-sec" id="ing-ign" ${P.ign.length <= 8 ? 'open' : ''}><summary><h5>Ignorados (${P.ign.length})</h5></summary><p class="lead" style="margin:4px 0 8px">No se importan. Si alguno es un producto que ya existe, elegilo; nunca se crean productos nuevos.</p>${P.ign.map(r => `<div class="ing-d"><div><b>«${esc(String(r.texto || r.nombre).slice(0, 80))}»</b><small>${esc(r.cantidad == null ? 'Sin cantidad' : r.motivo || 'Sin destino')}${r.cantidad != null ? ` · cantidad ${fmt(r.cantidad)}` : ''}</small></div><select data-ingdec="${r.i}" id="ing-dec-${r.i}" aria-label="Asignar ${esc(r.nombre)}">${ingTodos(ingDestino(r))}</select></div>`).join('')}</details>` : '';
-    const n = P.items.length, bloqueo = P.pend.length ? `Elegí el destino de ${plural(P.pend.length, 'renglón', 'renglones')} (o «No importar»).` : !n ? 'Tildá al menos un producto para importar.' : S.offline ? 'Sin internet: conectate para confirmar.' : '';
+    const n = P.items.length, bloqueo = P.pend.length ? `Elegí el destino de ${plural(P.pend.length, 'renglón', 'renglones')} (o «No importar»).` : !n ? 'Tildá al menos un producto para importar.' : sinRed() ? 'Sin internet: conectate para confirmar.' : '';
     const msg = I.msg ? `<div class="note ${I.msg.t === 'ok' ? '' : 'warn'} ing-msg" id="ing-msg"><b>${esc(I.msg.h)}</b> ${I.msg.b}${I.msg.t === 'net' ? `<div class="bar-a" style="margin-top:8px"><button class="btn sm primary" data-act="ing-confirmar" id="ing-retry">Reintentar</button></div>` : ''}</div>` : '';
     paso4 = `<section class="card pad ing-c" id="ing-vista"><div class="ch"><h4>4. Revisar y confirmar</h4><span class="num">${esc(nomLoc)} · ${ING_OP[I.op]}</span></div>
       <p class="lead">${I.op === 'ingreso' ? 'Se <b>suma</b> la cantidad al stock actual.' : 'La cantidad <b>reemplaza</b> el valor actual.'} Podés corregir cantidades y destinos. Solo se guardan los tildados.</p>
@@ -2633,8 +3087,9 @@ V.ingreso = () => {
 };
 async function ingConfirmar(forzar){
   const I = S.ing; if (!esTotal() || !I || I.busy) return;
+  if (creadoraSoloLectura()){ toast('Modo consulta: habilitá la edición para importar el remito.', true); return; }
   const P = ingPlan(); if (!P.items.length || P.pend.length) return;
-  if (!navigator.onLine){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
+  if (!navigator.onLine && !syncOffline()){ I.msg = {t:'net', h:'Sin internet.', b:'Lo revisado sigue en pantalla. Cuando vuelva la conexión, tocá Reintentar.'}; render(); return; }
   if (!I.clave) I.clave = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
   I.busy = true; I.msg = null; render();
   let r = null;
@@ -2643,6 +3098,7 @@ async function ingConfirmar(forzar){
   } catch(e){
     I.busy = false;
     const c = e && e.code;
+    if (c === 'pending'){ I.msg = {t:'ok', h:'Sin internet: el ingreso quedó guardado en este equipo.', b:'Se envía solo cuando vuelva la conexión. Si algún producto cambió mientras tanto, lo vas a ver en «Cambios pendientes» para revisarlo.'}; render(); return; }
     I.msg = c === 'unavailable' ? {t:'net', h:'No llegó la respuesta.', b:'Puede que se haya guardado o no. Tocá <b>Reintentar</b>: si ya se guardó, no se suma dos veces.'}
       : c === 'sin_permiso' ? {t:'err', h:'Sin permiso.', b:'Solo la dueña o la administradora pueden importar mercadería.'}
       : {t:'err', h:'No se guardó nada.', b:'Revisá los datos y probá de nuevo. ' + esc(c === 'cantidad' ? 'Hay una cantidad inválida.' : c === 'sucursal' ? 'La sucursal no existe.' : '')};
@@ -2664,7 +3120,7 @@ async function ingConfirmar(forzar){
 }
 /* Un cambio en la revisión pide una confirmación nueva, salvo que la anterior haya quedado sin respuesta (así un reintento no suma dos veces) */
 function ingCambio(){ const I = S.ing; if (I && !(I.msg && I.msg.t === 'net')) I.clave = ''; }
-function ingQuitar(){ const I = S.ing; I.arch = null; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
+function ingQuitar(){ const I = S.ing; I.arch = null; I.lectura = (I.lectura || 0) + 1; I.leyendo = false; I.prog = ''; I.lineas = []; I.dec = {}; I.cant = {}; I.on = {}; I.campo = {}; I.clave = ''; I.msg = null; I.res = null; render(); }
 
 /* ---------- Editar hojas ---------- */
 function openHojas(add){
@@ -2833,7 +3289,7 @@ function openPanel(html, kind){
   $('#pn').innerHTML = html;
 }
 function closePanel(){
-  $('#ov').hidden = true; $('#pn').innerHTML = ''; S.panel = null; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; S.eqDel = null; S.hj.editId = null; S.hj.delId = null; S.hj.add = false;
+  $('#ov').hidden = true; $('#pn').removeAttribute('aria-labelledby'); $('#pn').innerHTML = ''; S.panel = null; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; S.eqDel = null; S.hj.editId = null; S.hj.delId = null; S.hj.add = false;
   S.provEnvio = null;
   if (lastFocus && document.contains(lastFocus)) try { lastFocus.focus({preventScroll:true}); } catch {}
 }
@@ -2940,9 +3396,10 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || v === 'diario' || (v === 'ingreso' && esTotal()) || isBase(v) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
-  if (!ok) v = 'inicio';
+  const ok = (v === 'resenas' && puedeVerResenas()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
+  if(v === 'inicio') S.creatorBusiness=false;
   S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
   render(); if (!silent) window.scrollTo({top:0});
 }
@@ -2958,6 +3415,7 @@ document.addEventListener('click', e => {
     case 'menu-open': $('#app').classList.add('open'); $('#scrim').hidden = false; $('#snav button')?.focus(); break;
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
+    case 'owner-notifications': openOwnerNotifications(); break;
     case 'diario-nuevo': diarioNuevo(); break;
     case 'prov-new': nuevoProveedor(); break;
     case 'prov-open': abrirCarpetaProveedor(t.dataset.name); break;
@@ -2965,10 +3423,15 @@ document.addEventListener('click', e => {
     case 'prov-add-open': S.provAdding = true; render(); break;
     case 'prov-del-manual': quitarProductoProveedor(t.dataset.id); break;
     case 'prov-use-suggested': usarSugeridoProveedor(t.dataset.id); break;
-    case 'prov-save-plan': guardarPlanProveedor(); break;
+    case 'prov-save-plan': confirmarGuardarProveedor(); break;
+    case 'prov-save-stock': guardarStockProveedor(); break;
+    case 'prov-save-draft': guardarPlanProveedor(false); break;
+    case 'prov-save-history': guardarPlanProveedor(true); break;
+    case 'prov-zero-cat': ponerEnCeroProveedorCategoria(t.dataset.cat); break;
+    case 'prov-history-pdf': compartirPedidoProveedor(t.dataset.id); break;
+    case 'prov-download-pdf': descargarPdfProveedor(); break;
     case 'prov-share': compartirPedidoProveedor(); break;
     case 'prov-share-ready': enviarProveedorPreparado(); break;
-    case 'prov-copy-image': copiarImagenProveedor(); break;
     case 'prov-edit': editarProveedor(t.dataset.name); break;
     case 'prov-copy': copyText(proveedorSeleccionados(t.dataset.name).length ? pedidoProveedorTexto(t.dataset.name) : proveedorPedido(t.dataset.name), 'Pedido copiado. Revisalo antes de enviarlo.'); break;
     case 'ajustes': openAjustes(); break;
@@ -2983,6 +3446,9 @@ document.addEventListener('click', e => {
     case 'aj-item': if (canW()) openAjustes('productos', id); else toast('Para modificar productos necesitás acceso de Editor.'); break;
     case 'share': openShare(); break;
     case 'admin-locales': document.getElementById('gl-admin-locales')?.scrollIntoView({behavior:'smooth',block:'start'}); break;
+    case 'admin-preparar-empresa': if(isCreadora() && !S.local){ S.creatorSetup=true; window.GestLokCreator?.open(); } break;
+    case 'admin-demo-online': if(isCreadora() && !S.local){ S.demoTienda=true; window.GestLokDemo?.reset(); renderHub(); window.scrollTo({top:0}); } break;
+    case 'admin-demo-close': if(S.demoTienda){ S.demoTienda=false; renderHub(); window.scrollTo({top:0}); } break;
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
     case 'guardar': openSave(); break;
@@ -3022,6 +3488,7 @@ document.addEventListener('click', e => {
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
     case 'kpi': S.filtro = t.dataset.k; S.cat = ''; S.q = ''; go('stock'); break;
+    case 'home-stock-filter': go('stock'); S.filtro = ['sin','nc'].includes(t.dataset.k)?t.dataset.k:'todos'; render(); break;
     case 'f-add-dlg': openFAdd(); break;
     case 'ing-local': { const I = S.ing || (S.ing = ingNuevo()); if (I.busy || I.local === id || !localesTodos().some(l => l.id === id)) break; Object.assign(I, {local:id, datos:null, hist:null, res:null, msg:null, clave:'', dec:{}, cant:{}, on:{}, campo:{}}); ingCargar(); break; }
     case 'ing-op': { const I = S.ing; if (!I || I.busy) break; I.op = t.dataset.op === 'conteo' ? 'conteo' : 'ingreso'; ingCambio(); render(); break; }
@@ -3032,6 +3499,7 @@ document.addEventListener('click', e => {
     case 'ing-confirmar': ingConfirmar(false); break;
     case 'ing-forzar': closePanel(); ingConfirmar(true); break;
     case 'ing-hist': S.ing.histOpen[id] = !S.ing.histOpen[id]; render(); break;
+    case 'fab-toggle-block': toggleFabBloque(t.dataset.b); break;
     case 'f-item': openFEdit(id); break;
     case 'f-del-ask': openFEdit(id, true); break;
     case 'fstep': {
@@ -3066,7 +3534,7 @@ document.addEventListener('click', e => {
     case 'sol-no': rechazar(id); break;
     case 'eq-del': S.eqDel = id; $('#eq-list').innerHTML = equipoRows(true); break;
     case 'eq-del-no': S.eqDel = null; $('#eq-list').innerHTML = equipoRows(true); break;
-    case 'eq-del-ok': (async () => { if (!isCreadora()) return; try { await w(() => S.db.collection('equipo').doc(id).delete()); S.eqDel = null; toast('Quitado del equipo. Ya no puede entrar.'); } catch(err){ fail(err); } })(); break;
+    case 'eq-del-ok': (async () => { if (!puedeAdministrarEquipo()) return; try { await w(() => S.db.collection('equipo').doc(id).delete()); S.eqDel = null; toast('Quitado del equipo. Ya no puede entrar.'); } catch(err){ fail(err); } })(); break;
     case 'aj-tab': S.aj.tab = t.dataset.tab; S.aj.editId = null; S.aj.delId = null; S.aj.catEdit = null; renderAjustesBody(); break;
     case 'aj-edit': S.aj.editId = id; S.aj.delId = null; renderAjustesBody(); setTimeout(() => $('#ae-nombre')?.focus(), 20); break;
     case 'aj-del': S.aj.delId = id; S.aj.editId = null; renderAjustesBody(); break;
@@ -3190,22 +3658,65 @@ const errLive = e => { setLive(e && e.code === 'revoked' ? 'off' : 'err'); };
 function subscribeGlobal(){
   S.db.collection('equipo').onSnapshot(snap => {
     S.equipo = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.e = true; afterAccess(); onSnapRefresh();
+    S.loaded.e = true; afterAccess(); onSnapRefresh();refreshRegistrationRequests();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();window.GestLokCreatorMode?.refresh();
   }, errLive);
   S.db.collection('solicitudes').onSnapshot(snap => {
-    S.sol = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (b.fecha || 0) - (a.fecha || 0));
+    legacyRequests = snap.docs.map(d => ({id:d.id, ...d.data()}));combineRequests();
     onSnapRefresh();
   }, () => {});
   S.db.collection('locales').onSnapshot(snap => {
     S.localesDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    S.loaded.l = true; afterAccess(); onSnapRefresh();
+    S.loaded.l = true; afterAccess(); onSnapRefresh();window.GestLokOwnerAreas?.refresh();window.GestLokOwnerAreas?.refreshAdmin();
   }, errLive);
+  refreshRegistrationRequests();
+  setInterval(refreshRegistrationRequests,15000);
+  let previousCommerceMode = 'fisica';
+  S.db.collection('configuracion_negocio').onSnapshot(snap => {
+    const configId = window.GestLokCommerce?.configId();
+    const c = configId ? snap.docs.find(d => d.id === configId) : null;
+    window.GestLokCommerce?.config(c ? c.data() : null);
+    const mode = window.GestLokCommerce?.mode() || 'fisica';
+    // The adapter polls periodically: an unchanged result must never erase an active form.
+    if (mode === previousCommerceMode) return;
+    previousCommerceMode = mode;
+    if (((S.view === 'pedidos-online' || S.view === 'tienda-online') && mode === 'fisica') || (mode === 'online' && (S.view === 'ingreso' || esFabT(tipoVista(S.view))))) S.view='inicio';
+    onSnapRefresh();
+  }, () => {
+    window.GestLokCommerce?.config(null);
+    if (previousCommerceMode !== 'fisica') { previousCommerceMode = 'fisica'; onSnapRefresh(); }
+  });
 }
 /* Resumen de cada local para la pantalla Locales */
 function subscribeHub(id){
   const h = S.hub[id] = {prods:[], conteos:[], lp:false, lc:false};
   S.db.collection(id + '/productos').onSnapshot(snap => { h.prods = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lp = true; if (!S.local) renderHub(); }, () => {});
   S.db.collection(id + '/conteos').orderBy('fecha', 'desc').limit(1).onSnapshot(snap => { h.conteos = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lc = true; if (!S.local) renderHub(); }, () => {});
+}
+/* Una push abre únicamente una sección permitida del local autorizado. */
+let pendingPushNav=(()=>{
+ const query=new URLSearchParams(location.search);
+ const local=query.get('gl_local'),view=query.get('gl_view');
+ if(!local||!view)return null;
+ const clean=new URL(location.href);clean.searchParams.delete('gl_local');clean.searchParams.delete('gl_view');
+ history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
+ return {local,view};
+})();
+function applyPushNavigation(){
+ const p=pendingPushNav;
+ if(!p||!S.started||!S.loaded.e||!S.loaded.l)return;
+ pendingPushNav=null;
+ if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) ||
+   !['chat','proveedores','vencimientos','avisos'].includes(p.view))return;
+ if(!localesMios().some(x=>x.id===p.local))return;
+ abrirLocal(p.local);
+ go(p.view);
+}
+if('serviceWorker' in navigator){
+ navigator.serviceWorker.addEventListener('message',event=>{
+  if(event.data?.type!=='gestlok-push-open')return;
+  pendingPushNav={local:event.data.local,view:event.data.view};
+  applyPushNavigation();
+ });
 }
 /* Qué puede ver cada persona: se decide con su fila del Equipo */
 function afterAccess(){
@@ -3214,37 +3725,78 @@ function afterAccess(){
   for (const l of mios) if (!S.hub[l.id]) subscribeHub(l.id);
   if (!S.started){
     S.started = true;
-    if (!isCreadora() && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
+    if (!isCreadora() && miRol() !== 'dueno' && mios.length === 1) abrirLocal(mios[0].id); else mostrarHub();
+    applyPushNavigation();
     return;
   }
   if (S.local){
     if (!mios.some(l => l.id === S.local)){ mostrarHub(); toast('Ya no tenés acceso a ese local.', true); }
     else S.ro = !puedeEditarLocal(S.local);
   }
+  applyPushNavigation();
 }
+/* Mi Gusto: «Administración de local» agrupa Conteo diario y Motos Agencia (Munro) y Reseñas (Munro y Torcuato). */
+function navAdmLocal(){
+  const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
+    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>` : '') +
+    (puedeVerResenas() ? `<button data-go="resenas">${ic('clip')}<span class="nl">Reseñas</span></button>` : '');
+  if (!puedeVerMotos() && !puedeVerResenas()) return items;
+  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'diario' || S.view === 'motos';
+  return `<details class="snav-folder"${open ? ' open' : ''}><summary>${ic('gear')}<span class="nl">Administración de local</span>${ic('chev')}</summary><div class="snav-sub">${items}</div></details>`;
+}
+document.addEventListener('toggle', e => { if (e.target.matches?.('.snav-folder')) S.admLocalOpen = e.target.open; }, true);
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
-  push(C('diario').onSnapshot(mine(snap => {
-    S.diarios = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (b.creado||0)-(a.creado||0));
-    if(S.view === 'diario') render();
+  if (puedeVerDiarioMunro()) {
+    window.GestLokMunroDaily?.subscribe(loc,push);
+    // El historial del formulario anterior queda disponible en modo consulta; no se borra.
+    push(C('diario').onSnapshot(mine(snap => {
+      S.diarios = snap.docs.map(d => ({id:d.id,...d.data()})).sort((a,b)=>(b.creado||0)-(a.creado||0));
+      if (S.view === 'diario') render();
+    }),errLive));
+  }
+  window.GestLokMunroMotos?.subscribe(loc,push);
+  window.GestLokResenas?.subscribe(loc,push);
+  push(C('vencimientos').onSnapshot(mine(snap => {
+    S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
+  }), errLive));
+  let lastAvisos = '';
+  push(C('avisos').orderBy('fecha','desc').limit(100).onSnapshot(mine(snap => {
+    S.avisos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const sig = S.avisos.map(a => a.id + ':' + (a.fecha || '')).join('|'), changed = sig !== lastAvisos; lastAvisos = sig;
+    // En el Inicio del gerente solo se redibuja si cambió la lista: así no interrumpe lo que se está escribiendo.
+    if (S.view === 'avisos' || (changed && S.view === 'inicio' && miRol() === 'gerente')) render();
+  }), () => {}));
+  let lastOnlineOrders = '';
+  push(C('pedidos_online').onSnapshot(mine(snap => {
+    const rows = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    const signature = JSON.stringify(rows);
+    // No rerender for the same data returned by a periodic Supabase poll.
+    if (signature === lastOnlineOrders) return;
+    lastOnlineOrders = signature;
+    window.GestLokCommerce?.orders(loc, rows);
+    if (S.view === 'pedidos-online' || S.view === 'inicio') render();
   }), errLive));
   push(C('proveedores').onSnapshot(mine(snap => {
     S.provInfo = snap.docs.map(d => ({id:d.id, ...d.data()}));
     if(S.view === 'proveedores') render();
   }), errLive));
+  push(C('proveedores_historial').orderBy('fecha','desc').limit(200).onSnapshot(mine(snap => {
+    S.provHistorial=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(S.view==='proveedores')render();
+  }),errLive));
   push(C('chat').orderBy('fecha', 'desc').limit(150).onSnapshot(mine(snap => {
-    S.chat = snap.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
-    const key = chatSeenKey();
-    const baseline = lsGet(key, null);
-    if (baseline == null) lsSet(key, Date.now());
+    S.chat = snap.docs.map(d => ({id:d.id, ...d.data()}))
+      .filter(chatRecent).sort((a,b) => (a.fecha || 0) - (b.fecha || 0));
+    // Lo leído se guarda por usuario y por sucursal, nunca por sección.
+    // La primera vez también debe mostrarse el punto si hay mensajes pendientes.
+    const since = Number(lsGet(chatSeenKey(), 0)) || 0;
     if (S.view === 'chat') markChatRead();
-    else {
-      const since = baseline == null ? Date.now() : baseline;
-      S.unreadChat = S.chat.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
-      renderNav();
-    }
+    else S.unreadChat = S.chat.filter(m => m.autor !== S.uid && Number(m.fecha) > since).length;
     if (S.view === 'chat') render();
+    else renderNav();
   }), errLive));
   push(C('hojas').onSnapshot(mine(snap => {
     S.hojasDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
@@ -3271,19 +3823,26 @@ function cerrarLocal(){
   saveDraft();
   for (const u of S.unsubs) try { u(); } catch {}
   S.unsubs = []; S.local = null; S.queued = null;
+  window.GestLokCommerce?.orders('',[]);
+  window.GestLokTienda?.reset();
 }
 function abrirLocal(id){
+  S.creatorBusiness=false;
   if (!localesMios().some(l => l.id === id)) return;
   if (S.panel) closePanel();
   if (S.local !== id){
     if (S.local) cerrarLocal();
     S.local = id;
-    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.provInfo = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
+    window.GestLokMunroDaily?.reset();
+    window.GestLokMunroMotos?.reset();
+    window.GestLokResenas?.reset();
+    S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
   }
   S.ro = !puedeEditarLocal(id);
+  window.GestLokOwnerAreas?.refresh();
   $('#hub').hidden = true; $('#app').hidden = false;
   render(); window.scrollTo({top:0});
 }
@@ -3312,8 +3871,55 @@ async function boot(){
 /* ---------- Inicio ---------- */
 function start(){
   applySkin(); render(); renderInstall(); boot();
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  window.GestLokPWAUpdate?.attach(() => !!(
+    S.panel || S.provBusy || S.ing?.busy || S.ing?.arch || S.queued || S.editing ||
+    Object.keys(S.draft).length || Object.keys(S.notas).length || Object.keys(S.fdraft).length ||
+    Object.values(S.provDrafts).some(d => d.dirty) ||
+    document.querySelector('#gestlok-chat-text')?.value?.trim() ||
+    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>
+      el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)
+  ));
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    // Keep the existing installed PWA: request SW revalidation on launch and
+    // when returning to GestLok. Never force a reload while editing stock.
+    navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(reg => {
+      let lastCheck = 0;
+      const refresh = () => {
+        if (document.visibilityState !== 'visible' || navigator.onLine === false) return;
+        if (Date.now() - lastCheck < 30 * 60 * 1000) return;
+        lastCheck = Date.now();
+        reg.update().catch(() => {});
+      };
+      refresh();
+      document.addEventListener('visibilitychange', refresh);
+      window.addEventListener('online', refresh);
+    }).catch(() => {});
+  }
 }
+window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
+window.GestLokPush?.attach({S,render,miRol:()=>miRol()});
+window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
+window.GestLokMunroMotos?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales});
+window.GestLokResenas?.attach({S,render,miRol,misLocales});
+window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
+window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
+window.GestLokDemo?.attach({isCreadora,render});
+window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
+window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
+window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
+window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
+window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
+window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub});
+window.GestLokCreatorSupport?.refresh();
 start();
-setInterval(() => { if (!S.panel && S.local) renderSavebar(); }, 60000);
+let alertDay = window.GestLokUpdates?.todayISO?.() || '';
+setInterval(() => {
+  if (!S.panel && S.local) renderSavebar();
+  if (S.local) refreshChatAges();
+  const today = window.GestLokUpdates?.todayISO?.() || '';
+  if (today && today !== alertDay) {
+    alertDay = today;
+    if (S.local && ['inicio','vencimientos','avisos'].includes(S.view)) render();
+  }
+}, 60000);
 })();

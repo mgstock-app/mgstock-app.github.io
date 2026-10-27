@@ -1,4 +1,5 @@
 /* global describe, beforeEach, it, cy, Cypress */
+import { abrirLocal } from '../helpers/abrir-local';
 // Ingreso de mercadería con datos y archivos ficticios: el simulador reemplaza a Supabase.
 // Los remitos solo cargan la columna Ingreso de las hojas «Local + Ingreso».
 const SETUP = (w) => {
@@ -19,7 +20,7 @@ const CSV = "Producto;Cantidad\nJamon cocido;2\nMuzzarella;3,5\nMuzzarella;1\nCa
 const row = (rows, local, id) => rows.find((r) => r.col === `${local}/fabrica` && r.id === id).data;
 const signIn = (email) => {
   cy.window().then(SETUP);
-  cy.get("#au-email").type(email);
+  cy.get("#au-email").clear().type(email);
   cy.get("#au-pass").type("secreto1", { log: false });
   cy.get("#au-in button[type=submit]").click();
 };
@@ -55,7 +56,7 @@ describe("MG Stock: Ingreso de mercadería", () => {
 
   it("la dueña ingresa en Torcuato: suma a Ingreso, elige la hoja y no toca otras hojas ni Munro", () => {
     signIn("dueno@example.com");
-    cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+    abrirLocal('munro');
     cy.get('#snav [data-go="ingreso"]').click();
     cy.get("#ing-loc-torcuato").click();
     cy.get("#ing-op-ingreso").click();
@@ -83,7 +84,7 @@ describe("MG Stock: Ingreso de mercadería", () => {
 
   it("avisa si el archivo ya se importó, cancelar no guarda nada y la hoja muestra el stock real", () => {
     signIn("dueno@example.com");
-    cy.get('.lcard [data-act="local"][data-id="munro"]').click();
+    abrirLocal('munro');
     cy.get('#snav [data-go="ingreso"]').click();
     cy.get("#ing-loc-munro").click();
     cy.get("#ing-op-ingreso").click();
@@ -94,6 +95,9 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get('[data-act="ing-otro"]').click();
     subir();
     cy.get("#ing-pend select").select("No importar");
+    // Después de volver a leer el archivo, la selección es explícita.
+    // Así el test comprueba el flujo de duplicados sin depender del auto-tildado.
+    cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().check({force:true});
     cy.get("#ing-ok").should("not.be.disabled").click();
     cy.get("#pn").should("contain.text", "ya se importó");
     cy.get('#pn [data-act="close"]').first().click();

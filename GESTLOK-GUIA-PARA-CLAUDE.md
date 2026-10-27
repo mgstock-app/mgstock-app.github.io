@@ -9,7 +9,7 @@ No hay un repositorio nuevo llamado `gestlok` en la organización conectada: el 
 
 | Elemento | Ubicación |
 |---|---|
-| Aplicación pública instalada / PWA | https://mgstock-app.github.io/ |
+| Aplicación pública instalada / PWA | https://gestlok.com.ar/ (HTTPS forzado; `https://mgstock-app.github.io/` redirige con 301) |
 | Repositorio GitHub **correcto** | https://github.com/mgstock-app/mgstock-app.github.io |
 | Organización | `mgstock-app` |
 | Nombre del repositorio | `mgstock-app.github.io` |
@@ -48,11 +48,13 @@ Historial verificable en `main` (de más reciente a más antiguo):
 | [#10](https://github.com/mgstock-app/mgstock-app.github.io/pull/10) | 23/10/2026 | Cambio inicial de marca, interfaz, chat interno y proveedores | `cab94b6` |
 | [#7](https://github.com/mgstock-app/mgstock-app.github.io/pull/7) | 23/10/2026 | Política de privacidad, condiciones de uso y almacenamiento | `47d0d20` |
 
-**Excepción a examinar:** [PR #9](https://github.com/mgstock-app/mgstock-app.github.io/pull/9), relativo a borradores privados, seguía **abierto** al momento de esta revisión. No fusionarlo sin revisar el diff y contrastarlo con #13 y #20: puede estar parcial o totalmente reemplazado por correcciones posteriores.
+**PR #9 cerrado (26/10/2026):** [PR #9](https://github.com/mgstock-app/mgstock-app.github.io/pull/9), relativo a borradores privados, se cerró sin unir porque lo reemplazó #13.
 
 ## 3. Dónde está el código
 
 - `README.md`: identificación de la marca y guía para iniciar la app.
+- `modules/empleados/`: módulo «Administrar a los empleados» (cliente de ReciboNet integrado, se publica en `/empleados/`; tiene su propio `package.json`, lint, pruebas y build, que corren en los dos flujos de GitHub Actions).
+- `public/stock/gestlok-owner-areas.js`: inicio de dueños con dos carpetas y tabla de módulos de la creadora. `public/stock/gestlok-creator-mode.js`: solo lectura por defecto de la creadora.
 - `public/stock/app.js`: controlador principal: panel, hojas, stock, conteos, proveedores, chat y control diario.
 - `public/stock/auth.js`: adaptación Supabase, autenticación y acceso.
 - `lib/stock/markup.json`: HTML preservado de la aplicación.
@@ -75,7 +77,7 @@ Historial verificable en `main` (de más reciente a más antiguo):
 5. **Proveedores:** carpeta por proveedor, tabla manual de pedido, ficha y exportación/compartir en imagen vía WhatsApp.
 6. **Chat del local:** menú lateral → «Chat del local». Mensajes separados por sucursal. Sólo las cuentas con permisos de edición envían mensajes; los usuarios autorizados de lectura pueden ver el chat del local según RLS.
 7. **Control diario:** registro por fecha, ingresos, salidas, conteo físico y diferencia; no sustituye el stock sin confirmación.
-8. **Uso sin Internet limitado:** interfaz/PWA en caché y borradores locales de conteo o mensajes; se requiere conexión y confirmación explícita para enviarlos o guardarlos en el servidor. NO hay una cola avanzada capaz de sincronizar todo automáticamente sin intervención ni resolución completa de conflictos.
+8. **Uso sin Internet (PR #78, 26/10/2026):** las dos áreas (Administrar mi empresa y Administrar a los empleados) se abren y navegan sin conexión con la copia guardada en el equipo; lo que se guarda sin internet queda en una cola local y se envía solo al volver la conexión, una vez por operación (`gestlok_sync_apply`, con RLS de quien guarda). Detalle y límites en `docs/offline-ambas-areas.md`.
 9. Políticas informativas publicadas: privacidad, términos y almacenamiento.
 
 **Precaución:** las pruebas E2E citadas usan datos simulados, no representan validación completa con múltiples cuentas reales en todos los teléfonos.
@@ -103,4 +105,42 @@ No incluir pagos, suscripciones o servicios de costo sin autorización.
 9. Mantener el identificador técnico de la URL hasta planificar una migración segura de dominio, OAuth, sesiones PWA y caché.
 10. Detener el trabajo antes de agotar límites, dejando SHA de base, rama, PR, pruebas, pendientes e instrucciones de continuación.
 
-**Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://mgstock-app.github.io/`. El chat por local y borradores offline están implementados; multiempresa comercial y sincronización offline avanzada NO. Preservar datos y no tocar ReciboNet».
+**Resumen para Claude:** «GESTLOK es la evolución/rebranding de MG Stock, no otro repositorio. Código `mgstock-app/mgstock-app.github.io`, rama `main`, web `https://gestlok.com.ar/`. El chat por local y el modo sin conexión con envío automático (PR #78) están implementados; multiempresa comercial NO. Preservar datos y no tocar ReciboNet».
+
+## 7. Traspaso Codex → Claude (26/10/2026)
+
+Base de partida: `main` `a3bfd9d` (#82). Fin de la sesión: `main` `4d48c98` (#69). Web publicada en `gestlok.com.ar` (dominio propio configurado en GitHub Pages).
+
+**Integrados en esta sesión (CI completo en verde antes de unir):**
+- #81 sesión de la PWA: un solo arranque de autenticación; cerrar sesión o recuperar contraseña invalida consultas en curso.
+- #83 seguridad multiempresa: `importar_mercaderia` exige que el local sea de la empresa de la sesión. Migración aplicada en Supabase; prueba `supabase/tests/importar-mercaderia-tenant-guard.sql` con 0 fallas.
+- #84 propuesta (sin implementar) de recibos para colaboradores: `docs/PROPUESTA-RECIBOS-COLABORADORES.md`.
+- #69 marca Mi Gusto para dueños, gerentes y equipo autorizado; se corrigieron dos pruebas Cypress desactualizadas.
+
+**PR abiertos y motivo:** #9 (reemplazado por #13: los borradores ya son por cuenta y local; tiene conflictos), #26 (licencias/pagos: etapa 13 en pausa), #27 (aislamiento: parte aplicada en la base, el resto superado por #83 o pendiente de decisión; Cypress en rojo), #52 (formulario de contacto de la demo: decisión de privacidad), #79 (instalación y pruebas Android/iPhone: plataformas en pausa).
+
+**Limitaciones de las sesiones de Claude:** sin acceso al registro de npm (lint/build/Cypress solo en GitHub Actions; `node --test` sí corre local), sin descarga de logs ni artefactos de Actions, sin acceso a la API de Pages ni a `gestlok.com.ar`, y sin permiso para borrar ramas. Para ver qué prueba Cypress falla, se puede lanzar el workflow «Cypress MG Stock» por `workflow_dispatch` en una rama temporal que imprima los nombres en una anotación (quedó la rama `diag/cypress-69`, que se puede borrar).
+
+**Pendiente de verificar fuera de esta sesión:** HTTPS de `gestlok.com.ar` (el despliegue informa `http://gestlok.com.ar/`), URLs de redirección de Supabase Auth para el dominio nuevo, y `APP_URL`/`NEXT_PUBLIC_SITE_URL`, que siguen apuntando a `mgstock-app.github.io`.
+
+## 8. Dominio propio y limpieza (26/10/2026)
+
+Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
+
+- **HTTPS:** certificado Let's Encrypt aprobado para `gestlok.com.ar` y `www.gestlok.com.ar` (vence 24/01/2027). «Enforce HTTPS» activo en GitHub Pages; `http://` responde 301 a `https://`. DNS sin cambios.
+- **Supabase Auth (proyecto `vgsepaaewbctjsjcpeta`):** se agregó `https://gestlok.com.ar/**` a las URLs de redirección; se mantienen `https://mgstock-app.github.io/` y `https://mgstock-app.github.io/**`. Probados desde `https://gestlok.com.ar`: ingreso con Google y enlace del correo de recuperación de contraseña.
+- **#87:** `APP_URL` (`public/stock/app.js`) y `NEXT_PUBLIC_SITE_URL` (`.github/workflows/pages.yml`) pasan a `https://gestlok.com.ar`. CI en verde y despliegue verificado.
+- **Limpieza:** rama `diag/cypress-69` borrada. #9 cerrado (reemplazado por #13). #27 cerrado sin aplicar: está aplicado en parte y su `importar_mercaderia` choca con la de #83.
+
+**PR abiertos que esperan decisión de la usuaria:** #26, #52, #79. También esperan decisión `pedir_acceso`, la propuesta de recibos (`docs/PROPUESTA-RECIBOS-COLABORADORES.md`) y cualquier cambio del historial de Git.
+
+**Site URL de Supabase Auth:** cambiado a `https://gestlok.com.ar/` por la usuaria desde el panel (Authentication → URL Configuration) el 26/10/2026 y verificado. Es el destino por defecto cuando la app no indica uno. Las tres URLs de redirección se mantienen.
+
+## 9. Mi Gusto: Motos Agencia, Reseñas y correcciones generales (27/10/2026)
+
+- **#91, #92, #93 · Motos Agencia (solo Munro de Mi Gusto):** carpeta «Administración de local» en el menú de Munro. Planilla semanal lunes a domingo (Lucas, Alex, Aye y refuerzos), «Modificar», «Guardar» y «Cancelar» en horarios y nombres, horas e importes, cierre automático cada lunes (hora de Buenos Aires) e historial. Dueños y creadora: todo; gerentes de Munro: cargan la semana en curso, sin importes ni historial. Colección `munro/agencia_motos`; migraciones `20261027000000_gestlok_munro_agencia_motos.sql` y `20261027010000_gestlok_munro_motos_nombres.sql` aplicadas; prueba `supabase/tests/munro-agencia-motos-permisos.sql` con 0 fallas.
+- **#95 · Reseñas (Munro y Torcuato de Mi Gusto, cada sucursal independiente):** base de Codex (#94, cerrado) ampliada. Cupón 10% OFF de 6 caracteres sin O/0/I/1, único; un cupón por teléfono, mes y sucursal; uso único y solo en la sucursal que lo emitió; emisión y uso del 1 al 12; estados Pendiente, Usado y Cupón Vencido. Dueños: ambas sucursales; gerentes: su sucursal (registran y marcan usados). Sin conexión solo consulta. Esquema privado `gestlok_resenas_private` con RPC `gestlok_resenas_list/create/redeem(p_local, …)`; migración `20261027015411_mi_gusto_resenas_cupones.sql` aplicada y verificada (0 fallas). Detalle en `docs/RESENAS-MI-GUSTO.md`. No depende de publicar reseñas en Google.
+- **#88:** inicio móvil de dueños y gerentes más compacto.
+- **#96 · Todas las empresas:** inicio compacto (entran tarjetas y accesos en PC), botón «Regresar» siempre visible (barra superior y menú lateral) y email de la última sesión completado en el ingreso (nunca la contraseña).
+- **#97 · Sesión que se cerraba sola:** `signOut()` de Supabase cerraba la cuenta en todos los equipos (los registros de Auth mostraban cada `/logout` seguido de «Refresh Token Not Found» en otros equipos, en especial en la cuenta compartida de gerentes de Munro). Ahora «Salir» usa `scope: 'local'` en la app, Empleados y el botón genérico.
+- **Pruebas:** en Cypress los ingresos vacían el email antes de escribir (el email queda recordado). Si hace falta cargar datos ficticios de Reseñas en Cypress, el Supabase falso acepta `window.__resenasDia`.

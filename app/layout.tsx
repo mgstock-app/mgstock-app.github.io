@@ -2,18 +2,23 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./gestlok-intro.css";
+import "./owner-mobile-refinements.css";
+import "./munro-motos.css";
+import "./mi-gusto-resenas.css";
+import "./inicio-compacto.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: "GestLok",
   description: "Productos, proveedores, conteos y movimientos en un espacio seguro por local. Acceso gratuito con autorización.",
-  manifest: `${basePath}/manifest.webmanifest?brand=gestlok-20261024`,
+  // Preserve original manifest URL for installed Android/desktop PWA update tracking.
+  manifest: `${basePath}/manifest.webmanifest`,
   icons: {
     icon: [
-      { url: `${basePath}/icons/gestlok-favicon-v2-32.png`, type: "image/png", sizes: "32x32" },
+      { url: `${basePath}/icons/gestlok-favicon-v2-32.png?rev=gestlok-installed-brand-20261024-r3`, type: "image/png", sizes: "32x32" },
       { url: `${basePath}/icons/gestlok.svg`, type: "image/svg+xml" },
     ],
-    apple: `${basePath}/icons/gestlok-apple-v2-180.png`,
+    apple: `${basePath}/icons/gestlok-apple-v2-180.png?rev=gestlok-installed-brand-20261024-r3`,
   },
   appleWebApp: { capable: true, title: "GestLok", statusBarStyle: "default" },
 };
