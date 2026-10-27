@@ -24,7 +24,7 @@ const hora = (moto, campo, valor) => lunes().then(s =>
   cy.get(`.mo-time[data-moto="${moto}"][data-dia="${s}"][data-campo="${campo}"]`).type(valor).blur());
 // En la fila vacía, cargar un horario redibuja la planilla: no se hace blur sobre el campo reemplazado.
 const horaNueva = valor => lunes().then(s =>
-  cy.get(`.mo-time[data-moto="nuevo"][data-dia="${s}"][data-campo="tm_e"]`).type(valor));
+  cy.get(`.mo-time[data-moto="nuevo"][data-dia="${s}"][data-campo="tm_e"]`).type(valor).trigger('change'));
 const docsMotos = rows => rows.filter(r => r.col === 'munro/agencia_motos');
 
 describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
