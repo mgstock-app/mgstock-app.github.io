@@ -22,7 +22,9 @@
   const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
   let api = null, docs = [], semanaVista = '', diaMovil = -1, verTodo = false, agregando = false, tarifasAbiertas = false;
-  const pendientes = new Map();
+  /* «Modificar» habilita la planilla; los cambios quedan en el borrador hasta «Guardar». */
+  let edicion = false, editNombre = '', guardando = false;
+  const pendientes = new Map(), borrador = new Map();
   const $ = sel => document.querySelector(sel);
   const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -70,7 +72,7 @@
   /* ---------- Datos ---------- */
   const col = () => api.C('agencia_motos');
   const idCelda = (semana, moto, dia) => 'd-' + semana + '-' + moto + '-' + dia;
-  const leer = id => pendientes.get(id) || docs.find(d => d.id === id)?.data || null;
+  const leer = id => borrador.get(id) || pendientes.get(id) || docs.find(d => d.id === id)?.data || null;
   const tarifas = () => docs.find(d => d.id === 'tarifas')?.data?.valores || {};
   /* Valor vigente para la semana: el último cargado desde esa semana o antes. */
   function tarifaEn(valores, clave, semana){
@@ -82,7 +84,14 @@
     .map(d => ({id:d.data.moto, nombre:d.data.nombre, moto:d.data.etiqueta || 'Refuerzo', refuerzo:true, doc:d.id, creado:d.data.creado || 0}))
     .sort((a, b) => a.creado - b.creado);
   const NUEVO = {id:'nuevo', nombre:'Agregar moto de refuerzo', moto:'', nuevo:true};
-  const motosDe = semana => [...FIJAS, ...refuerzos(semana)];
+  /* Nombres de las motos fijas: cada cambio rige desde su semana; el historial conserva los anteriores. */
+  const nombres = () => docs.find(d => d.id === 'motos')?.data?.valores || {};
+  function nombreEn(valores, clave, semana){
+    const lista = Array.isArray(valores?.[clave]) ? valores[clave] : [];
+    return lista.filter(t => t && t.desde <= semana).sort((a, b) => a.desde < b.desde ? -1 : 1).pop() || null;
+  }
+  const fijasDe = semana => FIJAS.map(m => { const n = nombreEn(nombres(), m.id, semana); return n ? {...m, nombre:n.nombre || m.nombre, moto:n.etiqueta || m.moto} : m; });
+  const motosDe = semana => [...fijasDe(semana), ...refuerzos(semana)];
   function resumen(semana){
     const dias = diasDe(semana), val = tarifas();
     const filas = motosDe(semana).map(m => {
@@ -97,10 +106,11 @@
   const semanasConDatos = () => [...new Set(docs.map(d => d.data?.semana).filter(Boolean))]
     .filter(s => s < semanaActual()).sort().reverse();
 
-  async function guardarCelda(input){
+  /* Cada horario cargado va al borrador; recién «Guardar» lo envía (o lo deja en la cola sin conexión). */
+  async function cargarCelda(input){
     const semana = semanaVista, {dia, campo} = input.dataset;
     let moto = input.dataset.moto, creado = false;
-    if (!editable(semana)) { api.toast('Solo podés cargar la semana en curso.', true); return; }
+    if (!edicion || !editable(semana)) return;
     const valor = input.value;
     if (valor && !HORA.test(valor)) { api.toast('Usá el formato de hora HH:MM.', true); return; }
     // Cargar un horario en la fila vacía crea la moto de refuerzo de esta semana.
@@ -113,13 +123,52 @@
     }
     const id = idCelda(semana, moto, dia);
     const previo = leer(id) || {};
-    const data = {...previo, semana, moto, dia, [campo]:valor || '', autor:api.S.uid, actualizado:Date.now()};
-    pendientes.set(id, data);
+    borrador.set(id, {...previo, semana, moto, dia, [campo]:valor || ''});
     if (creado) api.render(); else refrescar();
+  }
+  async function guardarTodo(){
+    if (guardando || !editable(semanaVista)) return;
+    for (const data of borrador.values()) for (const [k] of CAMPOS) {
+      if (data[k] && !HORA.test(data[k])) { api.toast('Revisá los horarios: usá el formato HH:MM.', true); return; }
+    }
+    if (!borrador.size) { edicion = false; api.render(); return; }
+    guardando = true; api.render();
+    let ok = 0;
     try {
-      await api.w(() => col().doc(id).set(data));
-      if (!navigator.onLine) api.toast('Sin internet: el horario quedó en este equipo y se envía solo al volver la conexión.');
-    } catch (e) { pendientes.delete(id); api.fail(e); api.render(); }
+      for (const [id, d] of [...borrador]) {
+        const data = {...d, autor:api.S.uid, actualizado:Date.now()};
+        await api.w(() => col().doc(id).set(data));
+        pendientes.set(id, data); borrador.delete(id); ok++;
+      }
+      edicion = false;
+      api.toast(navigator.onLine === false || api.S.offline
+        ? 'Sin internet: ' + ok + (ok === 1 ? ' horario quedó' : ' horarios quedaron') + ' en este equipo y se envían solos al volver la conexión.'
+        : 'Horarios guardados (' + ok + ').');
+    } catch (e) { api.fail(e); }
+    finally { guardando = false; api.render(); }
+  }
+  async function guardarNombre(form){
+    const semana = semanaVista, clave = form.dataset.moto;
+    if (!editable(semana)) return;
+    const nombre = form.elements.namedItem('nombre').value.trim().slice(0, 40);
+    const etiqueta = form.elements.namedItem('etiqueta').value.trim().slice(0, 30);
+    if (!nombre) { api.toast('Escribí el nombre del colaborador.', true); return; }
+    const ref = refuerzos(semana).find(r => r.id === clave);
+    try {
+      if (ref) {
+        const doc = docs.find(d => d.id === ref.doc), data = {...doc.data, nombre, etiqueta:etiqueta || ref.moto, actualizado:Date.now()};
+        await api.w(() => col().doc(ref.doc).set(data)); doc.data = data;
+      } else if (FIJAS.some(m => m.id === clave)) {
+        const actual = nombres(), valores = {...actual};
+        valores[clave] = [...(Array.isArray(actual[clave]) ? actual[clave].filter(t => t.desde !== semana) : []), {desde:semana, nombre, etiqueta}];
+        const data = {valores, autor:api.S.uid, actualizado:Date.now()};
+        await api.w(() => col().doc('motos').set(data));
+        const previo = docs.find(d => d.id === 'motos');
+        if (previo) previo.data = data; else docs.push({id:'motos', data});
+      } else return;
+      editNombre = ''; document.activeElement?.blur?.(); api.render();
+      api.toast('Nombre guardado. Rige desde esta semana; el historial conserva los anteriores.');
+    } catch (e) { api.fail(e); }
   }
   async function crearRefuerzo(semana, nombre){
     const moto = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -175,15 +224,21 @@
   const mobile = () => !!window.matchMedia?.('(max-width: 760px)').matches;
   const celda = (semana, m, dia, campo, label, puede) => {
     const c = leer(idCelda(semana, m.id, dia)), v = c?.[campo] || '';
-    return '<input class="mo-time" type="time" step="60" value="' + E(v) + '"' + (puede ? '' : ' disabled') +
+    return '<input class="mo-time" type="time" step="60" value="' + E(v) + '"' + (puede && edicion ? '' : ' disabled') +
       ' data-moto="' + E(m.id) + '" data-dia="' + dia + '" data-campo="' + campo + '" aria-label="' + E(label + ' de ' + m.nombre + ' el ' + corta(dia)) + '">';
   };
   const tarjetaMoto = m => m.nuevo ? (agregando
     ? '<form id="mo-ref-form" class="mo-who mo-ref-form"><input name="nombre" maxlength="40" required placeholder="Nombre del refuerzo" autocomplete="off" aria-label="Nombre del refuerzo">' +
       '<div><button class="btn sm primary" type="submit">Agregar</button><button class="btn sm" type="button" data-mo-act="cancelar-ref">Cancelar</button></div></form>'
     : '<button class="mo-add" data-mo-act="agregar"><span>+</span>Agregar moto de refuerzo</button>') :
-    '<div class="mo-who"><span class="mo-ico">' + ICONO + '</span><div><b>' + E(m.nombre) + '</b><small>' + E(m.moto) + '</small></div>' +
-    (m.refuerzo && editable(semanaVista) ? '<button class="mo-x" data-mo-act="quitar" data-doc="' + E(m.doc) + '" aria-label="Quitar ' + E(m.nombre) + '">×</button>' : '') + '</div>';
+    editNombre === m.id && editable(semanaVista)
+    ? '<form id="mo-name-form" class="mo-who mo-name-form" data-moto="' + E(m.id) + '">' +
+      '<label>Colaborador<input name="nombre" maxlength="40" required value="' + E(m.nombre) + '" autocomplete="off"></label>' +
+      '<label>Moto<input name="etiqueta" maxlength="30" value="' + E(m.moto) + '" autocomplete="off"></label>' +
+      '<div><button class="btn sm primary" type="submit">Guardar</button><button class="btn sm" type="button" data-mo-act="cancelar-nombre">Cancelar</button></div></form>'
+    : '<div class="mo-who"><span class="mo-ico">' + ICONO + '</span><div><b>' + E(m.nombre) + '</b><small>' + E(m.moto) + '</small>' +
+      (editable(semanaVista) ? '<button class="mo-edit" data-mo-act="nombre" data-moto="' + E(m.id) + '" aria-label="Modificar ' + E(m.nombre) + '">✎ Modificar</button>' : '') + '</div>' +
+      (m.refuerzo && editable(semanaVista) ? '<button class="mo-x" data-mo-act="quitar" data-doc="' + E(m.doc) + '" aria-label="Quitar ' + E(m.nombre) + '">×</button>' : '') + '</div>';
   const totalMoto = (f, dueno) => '<div class="mo-total"><small>Total</small><b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' +
     (dueno ? '<span data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</span>' : '') + '</div>';
 
@@ -242,10 +297,13 @@
       (api.canW() ? '<button class="mo-pill" data-mo-act="tarifas" title="' + resumenT + '">Valor por hora</button>' : '') +
       (semanas.length > 8 ? '<button class="mo-pill" data-mo-act="todo">' + (verTodo ? 'Ver menos' : 'Ver historial completo →') + '</button>' : '') + '</div></div>' +
       tarifasForm() +
-      (semanas.length ? '<div class="mo-scroll"><table><thead><tr><th>Semana</th><th>Desde</th><th>Hasta</th>' + FIJAS.map(m => '<th>' + E(m.nombre) + '</th>').join('') +
+      (semanas.length ? '<div class="mo-scroll"><table><thead><tr><th>Semana</th><th>Desde</th><th>Hasta</th>' + fijasDe(semanaActual()).map(m => '<th>' + E(m.nombre) + '</th>').join('') +
         '<th>Refuerzo</th><th>Total horas</th><th>Total pago</th><th>Acciones</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
         : '<p>Todavía no hay semanas cerradas. El lunes la semana en curso pasa sola al historial.</p>') + '</section>';
   }
+  const textoPendientes = () => edicion
+    ? (borrador.size ? borrador.size + (borrador.size === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Modo edición')
+    : 'Planilla guardada';
   function view(){
     if (!permitido()) return '<section class="sheet"><p>No tenés acceso a este módulo.</p></section>';
     const actual = semanaActual();
@@ -254,14 +312,18 @@
     const flechas = dueno
       ? '<div class="mo-nav"><button data-mo-act="prev" aria-label="Semana anterior">‹</button><button data-mo-act="next" aria-label="Semana siguiente"' + (enCurso ? ' disabled' : '') + '>›</button></div>' : '';
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
-      : !api.canW() ? 'Solo lectura' : enCurso ? 'Se guarda al completar cada horario' : 'Semana cerrada · se ve tal como quedó';
+      : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada · se ve tal como quedó' + (puede ? '; los dueños pueden corregirla con «Modificar»' : '')
+      : edicion ? 'Cargá los horarios y tocá «Guardar». Hasta guardar, los cambios no se envían.' : 'Tocá «Modificar» para cargar o corregir horarios.';
+    const barra = puede ? '<div class="mo-toolbar"><span class="mo-pend">' + textoPendientes() + '</span>' +
+      (edicion ? '<button class="btn" data-mo-act="cancelar"' + (guardando ? ' disabled' : '') + '>Cancelar</button><button class="btn primary" data-mo-act="guardar"' + (guardando ? ' disabled' : '') + '>' + (guardando ? 'Guardando…' : 'Guardar') + '</button>'
+        : '<button class="btn primary" data-mo-act="modificar">✎ Modificar</button>') + '</div>' : '';
     return '<section class="sheet mo-page"><header class="mo-top"><span class="mo-hero">' + ICONO + '</span>' +
       '<div class="mo-title"><h1>Motos Agencia</h1><h2>Control horario semanal</h2>' +
       '<p>Registrá la entrada y salida de cada moto. Al finalizar la semana, los datos se guardan automáticamente en el historial y se reinicia la planilla.</p></div>' +
       '<div class="mo-semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>' +
       '<div><small>' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</small><b>' + DIAS[0] + ' ' + corta(r.dias[0]) + ' – ' + DIAS[6] + ' ' + corta(r.dias[6]) + '</b></div>' + flechas + '</div></header>' +
       (enCurso ? '' : '<p class="mo-aviso">Estás viendo una semana cerrada. <button class="mo-link" data-mo-act="hoy">Volver a la semana actual</button></p>') +
-      '<section class="mo-sheet">' + (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
+      '<section class="mo-sheet' + (edicion ? ' editando' : '') + '">' + barra + (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
       '<p class="mo-estado">' + E(estado) + '</p>' + historialHTML() + '</section>';
   }
   /* Actualiza totales sin redibujar, para no perder el foco mientras se carga. */
@@ -276,9 +338,10 @@
     }
     r.porDia.forEach((m, i) => set('[data-mo-col="' + i + '"]', fmtH(m)));
     set('[data-mo-sem]', fmtH(r.min));
+    set('.mo-pend', textoPendientes());
     if (dueno) set('[data-mo-sem-pago]', fmt$(r.pago));
   }
-  function reset(){ docs = []; pendientes.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; }
+  function reset(){ docs = []; pendientes.clear(); borrador.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; edicion = false; editNombre = ''; guardando = false; }
   function subscribe(loc, push){
     if (loc !== 'munro' || !permitido()) return;
     push(col().onSnapshot(snap => {
@@ -291,7 +354,7 @@
         else if ((srv.data.actualizado || 0) >= (data.actualizado || 0)) pendientes.delete(id);
       }
       const activo = document.activeElement;
-      if (api.S.view === 'motos' && !(activo && activo.matches?.('.mo-time, #mo-ref-form input, #mo-rates-form input'))) api.render();
+      if (api.S.view === 'motos' && !(activo && activo.matches?.('.mo-time, #mo-ref-form input, #mo-rates-form input, #mo-name-form input'))) api.render();
       else refrescar();
     }, api.fail));
   }
@@ -300,6 +363,8 @@
     document.addEventListener('click', event => {
       const btn = event.target.closest('[data-mo-act]'); if (!btn || !permitido()) return;
       const act = btn.dataset.moAct;
+      if (['prev','next','hoy','ver'].includes(act) && borrador.size) { api.toast('Guardá o cancelá los cambios antes de cambiar de semana.', true); return; }
+      if (['prev','next','hoy','ver'].includes(act)) { edicion = false; editNombre = ''; }
       if (act === 'prev' && esDueno()) { semanaVista = sumar(semanaVista, -7); diaMovil = -1; }
       else if (act === 'next' && esDueno() && semanaVista < semanaActual()) { semanaVista = sumar(semanaVista, 7); diaMovil = -1; }
       else if (act === 'hoy') { semanaVista = semanaActual(); diaMovil = -1; }
@@ -309,24 +374,33 @@
       else if (act === 'cancelar-ref') agregando = false;
       else if (act === 'quitar') { quitarRefuerzo(btn.dataset.doc); return; }
       else if (act === 'tarifas') tarifasAbiertas = !tarifasAbiertas;
+      else if (act === 'modificar' && editable(semanaVista)) edicion = true;
+      else if (act === 'cancelar') { if (borrador.size && !confirm('¿Descartar los cambios sin guardar?')) return; borrador.clear(); edicion = false; }
+      else if (act === 'guardar') { guardarTodo(); return; }
+      else if (act === 'nombre') editNombre = btn.dataset.moto;
+      else if (act === 'cancelar-nombre') editNombre = '';
       else if (act === 'todo') verTodo = !verTodo;
       else return;
       api.render();
       if (act === 'agregar') setTimeout(() => $('#mo-ref-form input')?.focus(), 0);
+      if (act === 'nombre') setTimeout(() => $('#mo-name-form input')?.focus(), 0);
     });
     document.addEventListener('change', event => {
       const el = event.target;
-      if (el.matches?.('.mo-time') && permitido()) guardarCelda(el);
+      if (el.matches?.('.mo-time') && permitido()) cargarCelda(el);
     });
     document.addEventListener('submit', event => {
       if (event.target.id === 'mo-ref-form') { event.preventDefault(); agregarRefuerzo(event.target); }
       if (event.target.id === 'mo-rates-form') { event.preventDefault(); guardarTarifas(event.target); }
+      if (event.target.id === 'mo-name-form') { event.preventDefault(); guardarNombre(event.target); }
     });
+    // Avisar antes de cerrar o recargar con horarios sin guardar.
+    window.addEventListener('beforeunload', event => { if (borrador.size) { event.preventDefault(); event.returnValue = ''; } });
     let antes = mobile();
     window.matchMedia?.('(max-width: 760px)').addEventListener?.('change', () => {
       if (mobile() !== antes && api.S.view === 'motos') { antes = mobile(); api.render(); }
     });
   }
   window.GestLokMunroMotos = {attach, view, reset, subscribe, permitido,
-    _t:{hoyAR, lunesDe, semanaActual, diasDe, numeroSemana, turno, minutosDia, fmtH, importe, tarifaEn}};
+    _t:{hoyAR, lunesDe, semanaActual, diasDe, numeroSemana, turno, minutosDia, fmtH, importe, tarifaEn, nombreEn}};
 })();

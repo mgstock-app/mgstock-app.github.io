@@ -40,9 +40,17 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#snav .snav-folder [data-go="diario"]').should('exist');
     cy.get('#crumb').should('contain.text', 'Administración de local');
     for (const n of ['Lucas', 'Alex', 'Aye']) cy.get('.mo-who').should('contain.text', n);
+    cy.get('.mo-time[data-moto="lucas"]').first().should('be.disabled');
+    cy.get('[data-mo-act="modificar"]').click();
+    cy.get('.mo-sheet.editando').should('exist');
     hora('lucas', 'tm_e', '08:00'); hora('lucas', 'tm_s', '16:30');
     cy.get('[data-mo-tot="lucas"]').first().should('have.text', '8:30');
     cy.get('[data-mo-sem]').first().should('have.text', '8:30');
+    cy.get('.mo-pend').should('contain.text', '1 cambio sin guardar');
+    cy.window().its('__rows').should(rows => expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0));
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('not.exist');
+    cy.get('.mo-pend').should('contain.text', 'Planilla guardada');
     cy.get('[data-mo-pago="lucas"]').should('not.exist');
     cy.get('.mo-hist').should('not.exist');
     cy.get('[data-mo-act="tarifas"]').should('not.exist');
@@ -56,17 +64,29 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#mo-ref-form input').type('Nico');
     cy.get('#mo-ref-form').submit();
     cy.get('.mo-who').should('contain.text', 'Nico').and('contain.text', 'Refuerzo 1');
-    // La fila vacía sigue disponible: cargar un horario ahí crea otro refuerzo.
+    // La fila vacía sigue disponible: con «Modificar», cargar un horario ahí crea otro refuerzo.
+    cy.get('[data-mo-act="modificar"]').click();
     horaNueva('10:00');
     cy.get('.mo-who').should('contain.text', 'Refuerzo 2');
     horaNueva('12:00');
     cy.get('.mo-who').should('contain.text', 'Refuerzo 3');
+    cy.get('[data-mo-act="guardar"]').click();
     cy.window().its('__rows').should(rows => {
       const refs = docsMotos(rows).filter(r => r.data.tipo === 'refuerzo');
       expect(refs).to.have.length(3);
       const otro = refs.find(r => r.data.nombre === 'Refuerzo 2');
       expect(docsMotos(rows).some(r => r.data.moto === otro.data.moto && r.data.tm_e === '10:00')).to.eq(true);
     });
+    cy.get('[data-mo-act="nombre"][data-moto="lucas"]').first().click();
+    cy.get('#mo-name-form input[name="nombre"]').clear().type('Lucas P.');
+    cy.get('#mo-name-form input[name="etiqueta"]').clear().type('Moto 1 (roja)');
+    cy.get('#mo-name-form').submit();
+    cy.get('#mo-name-form').should('not.exist');
+    cy.get('.mo-who').should('contain.text', 'Lucas P.').and('contain.text', 'Moto 1 (roja)');
+    lunes().then(s => cy.window().its('__rows').should(rows => {
+      const n = docsMotos(rows).find(r => r.id === 'motos');
+      expect(n.data.valores.lucas[0]).to.include({desde:s, nombre:'Lucas P.', etiqueta:'Moto 1 (roja)'});
+    }));
   });
 
   it('dueño fija el valor por hora y ve importes, total semanal e historial', () => {
@@ -79,7 +99,9 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#mo-rates-form').submit();
     cy.get('#mo-rates-form').should('not.exist');
     cy.get('.mo-hist [data-mo-act="tarifas"]').should('have.attr', 'title').and('contain', '$9.500,00');
+    cy.get('[data-mo-act="modificar"]').click();
     hora('aye', 'tt_e', '19:33'); hora('aye', 'tt_s', '00:00');
+    cy.get('[data-mo-act="guardar"]').click();
     cy.get('[data-mo-tot="aye"]').first().should('have.text', '4:27');
     cy.get('[data-mo-pago="aye"]').first().should('have.text', '$42.275,00');
     cy.get('[data-mo-sem-pago]').first().should('have.text', '$42.275,00');
@@ -87,6 +109,12 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
       const t = docsMotos(rows).find(r => r.id === 'tarifas');
       expect(t.data.valores.aye[0].valor).to.eq(9500);
     });
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('alex', 'tm_e', '09:00');
+    cy.get('[data-mo-act="prev"]').click();
+    cy.get('.mo-aviso').should('not.exist');
+    cy.on('window:confirm', () => true);
+    cy.get('[data-mo-act="cancelar"]').click();
     cy.get('[data-mo-act="prev"]').click();
     cy.get('.mo-aviso').should('contain.text', 'semana cerrada');
     cy.get('[data-mo-act="hoy"]').click();
