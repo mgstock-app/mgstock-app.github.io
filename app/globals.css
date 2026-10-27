@@ -2123,3 +2123,41 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 
 .gl-creator-local-home>.gl-home-avisos{margin-top:20px;padding:20px;border-radius:20px;background:#fff;color:var(--ink)}
 .gl-creator-local-home>.gl-home-due{margin-top:16px}
+
+
+/* BORRADOR NO PUBLICADO: cuadro de cierre de demo, accesible y responsive. */
+.gl-demo-feedback{width:min(100%,760px);margin:36px auto 70px;padding:clamp(18px,3vw,32px);
+  border:1px solid #d5e5e7;border-radius:20px;background:#fff;box-shadow:0 12px 35px #071e2c0b;color:#14313c}
+.gl-demo-feedback-header{margin-bottom:22px;text-align:center}
+.gl-demo-feedback-header h2{font-size:clamp(21px,3vw,29px);line-height:1.22;margin:8px 0 10px}
+.gl-demo-feedback-header p:last-child{font-size:14px;color:#526876;line-height:1.55}
+.gl-demo-rating,.gl-demo-feedback-interest{border:0;margin:0 0 20px;padding:0}
+.gl-demo-rating legend,.gl-demo-feedback-interest legend{font-weight:750;font-size:14px;margin-bottom:10px}
+.gl-demo-stars{display:flex;justify-content:center;gap:clamp(3px,1vw,10px);padding:4px 0}
+.gl-demo-star{display:grid;place-items:center;width:clamp(42px,9vw,60px);height:clamp(45px,9vw,60px);
+  border:1px solid transparent;border-radius:10px;background:transparent;color:#aab5bd;font-size:39px;
+  cursor:pointer;line-height:1}
+.gl-demo-star.selected{color:#e6a522}
+.gl-demo-star:hover{background:#fff7e5;color:#e6a522}
+.gl-demo-star:focus-visible{outline:3px solid #2c7fa6;outline-offset:2px}
+.gl-demo-rating-caption{margin:7px auto 0;text-align:center;font-size:12px;color:#536a76}
+.gl-demo-feedback-field{display:grid;gap:8px;margin-bottom:19px}
+.gl-demo-feedback-field label{font-size:13px;font-weight:720}
+.gl-demo-feedback-field label small{font-weight:400;color:#63747f}
+.gl-demo-feedback-field :is(input,textarea,select){box-sizing:border-box;display:block;width:100%;min-height:43px;
+  border:1px solid #beced4;border-radius:10px;background:#fff;color:#183642;padding:10px 12px;font:inherit;font-size:14px}
+.gl-demo-feedback-field textarea{resize:vertical;min-height:88px}
+.gl-demo-feedback-field :is(input,textarea,select):focus-visible{outline:3px solid #9bd3dc;outline-offset:1px}
+.gl-demo-feedback-interest{padding:16px;border:1px solid #e1e8eb;border-radius:12px;background:#f7fafb}
+.gl-demo-feedback-interest label{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px;cursor:pointer}
+.gl-demo-feedback-interest input,.gl-demo-marketing input{accent-color:#128571;width:17px;height:17px;flex:0 0 auto}
+.gl-demo-feedback-contact{padding:16px;border-radius:12px;background:#f0faf7;margin:14px 0}
+.gl-demo-feedback-contact>p{font-size:13px;color:#2a5550;margin:0 0 16px;font-weight:650}
+.gl-demo-marketing{display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.5;cursor:pointer}
+.gl-demo-feedback-small{font-size:11.5px;color:#637885;margin:18px 0 12px}
+.gl-demo-feedback-actions{display:grid;justify-items:start;gap:8px}
+.gl-demo-feedback-actions button{min-height:43px}
+.gl-demo-feedback-actions small{font-size:11px;color:#697b86}
+@media(max-width:480px){.gl-demo-feedback{border-radius:15px;margin:25px auto 55px}
+  .gl-demo-feedback-interest,.gl-demo-feedback-contact{padding:12px}
+  .gl-demo-feedback-actions button{width:100%}}
