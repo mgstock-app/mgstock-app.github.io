@@ -127,7 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // Storage can be disabled; authentication still needs to be closed.
       }
-      const { error } = await createClient().auth.signOut();
+      // Solo este equipo: no cerrar la misma cuenta en los demás teléfonos y computadoras.
+      const { error } = await createClient().auth.signOut({ scope: "local" });
       if (error) throw error;
       router.replace("/");
       router.refresh();

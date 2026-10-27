@@ -103,7 +103,9 @@
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-au]'); if (!t) return;
     e.preventDefault();
-    if (t.dataset.au === 'out'){ Promise.resolve(window.GestLokPush?.onLogout?.()).catch(()=>{}).finally(()=>{ sb && sb.auth.signOut().finally(() => location.reload()); }); return; }
+    // «Salir» cierra solo este equipo: con el alcance global de Supabase se cerraba la sesión
+    // de la misma cuenta en todos los teléfonos y computadoras (cuentas compartidas incluidas).
+    if (t.dataset.au === 'out'){ Promise.resolve(window.GestLokPush?.onLogout?.()).catch(()=>{}).finally(()=>{ sb && sb.auth.signOut({ scope: 'local' }).finally(() => location.reload()); }); return; }
     if (t.dataset.au === 'google'){ google(t); return; }
     if (t.dataset.au === 'retry'){ location.reload(); return; }
     show(t.dataset.au, '');
