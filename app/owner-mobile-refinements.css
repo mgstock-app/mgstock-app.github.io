@@ -32,3 +32,40 @@
   .gl-oh-hub .gl-owner-quick { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .gl-oh-hub .gl-owner-area h2 { font-size:22px; }
 }
+
+/* Shared responsive refinements for every role: owner, manager, employee, creator.
+   No changes to visibility, role permissions, routing or stored information. */
+@media(max-width:820px) {
+  .gl-home-essential,
+  .gl-creator-local-home { min-width:0; width:100%; }
+  .gl-home-essential { gap:14px; padding-bottom:24px; }
+  .gl-home-essential-head { flex-wrap:wrap; gap:10px; }
+  .gl-home-essential-links { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .gl-home-essential-links button { min-width:0; min-height:48px; overflow-wrap:anywhere; }
+  .gl-creator-local-home { padding:clamp(14px,3vw,22px); border-radius:18px; }
+  .gl-ch-main { min-width:0; width:100%; padding:16px clamp(12px,3vw,22px) 24px; }
+  .gl-ch-grid,.gl-ch-colmain,.gl-ch-colside { min-width:0; }
+  .gl-ch-card { min-width:0; overflow-wrap:anywhere; }
+  .gl-ch-top { align-items:flex-start; }
+  .gl-ch-nav { max-width:100%; }
+}
+@media(max-width:560px) {
+  .gl-home-essential-overview { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+  .gl-home-essential-stat { min-width:0; padding:10px 8px; }
+  .gl-home-essential-stat-number { font-size:clamp(20px,6vw,25px); }
+  .gl-home-essential-stat-label { overflow-wrap:anywhere; }
+  .gl-home-essential-links { grid-template-columns:minmax(0,1fr); }
+  .gl-creator-local-home { border-radius:15px; padding:14px; }
+  .gl-ch-main { padding:14px 12px 22px; gap:12px; }
+  .gl-ch-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .gl-ch-kpi { min-width:0; padding:12px; gap:9px; }
+  .gl-ch-kpi b { font-size:clamp(20px,6vw,27px); }
+  .gl-ch-ico { width:40px; height:40px; }
+  .gl-ch-card { padding:14px; border-radius:14px; }
+  .gl-ch-nav button { min-height:44px; }
+  .top-in .back-hub { min-width:42px; min-height:42px; display:inline-flex; align-items:center; justify-content:center; }
+}
+@media(max-width:360px) {
+  .gl-ch-kpis { grid-template-columns:minmax(0,1fr); }
+  .gl-home-essential-overview { grid-template-columns:minmax(0,1fr); }
+}
