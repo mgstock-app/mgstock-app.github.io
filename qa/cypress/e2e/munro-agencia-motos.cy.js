@@ -20,11 +20,15 @@ function launch(tenant = TENANT) {
   cy.get('#au-in').should('be.visible');
 }
 const lunes = () => cy.window().then(w => w.GestLokMunroMotos._t.semanaActual());
-const hora = (moto, campo, valor) => lunes().then(s =>
-  cy.get(`.mo-time[data-moto="${moto}"][data-dia="${s}"][data-campo="${campo}"]`).type(valor).blur());
+// Se vuelve a buscar el campo antes de salir: la planilla puede redibujarse entre un paso y otro.
+const hora = (moto, campo, valor) => lunes().then(s => {
+  const sel = `.mo-time[data-moto="${moto}"][data-dia="${s}"][data-campo="${campo}"]`;
+  cy.get(sel).type(valor);
+  cy.get(sel).blur();
+});
 // En la fila vacía, cargar un horario redibuja la planilla: no se hace blur sobre el campo reemplazado.
 const horaNueva = valor => lunes().then(s =>
-  cy.get(`.mo-time[data-moto="nuevo"][data-dia="${s}"][data-campo="tm_e"]`).type(valor).trigger('change'));
+  cy.get(`.mo-time[data-moto="nuevo"][data-dia="${s}"][data-campo="tm_e"]`).type(valor));
 const docsMotos = rows => rows.filter(r => r.col === 'munro/agencia_motos');
 
 describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {

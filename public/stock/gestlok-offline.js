@@ -18,7 +18,8 @@ const READS=new Set(['mi_acceso','mi_rol','rm_app_me','rm_app_organizations','rm
  'rm_app_branch_schedule_links','gestlok_owner_area_context','gestlok_gerente_area_context','gestlok_creator_dashboard',
  'gestlok_creator_editing_state','gestlok_creator_support_state','gestlok_creator_companies_index','gestlok_creator_audit',
  'gestlok_creator_list_companies','gestlok_creator_registration_requests','gestlok_my_registration','gestlok_catalogo_pagina',
- 'gestlok_catalogo_resumen','gestlok_catalogo_categorias','gestlok_support_config']);
+ 'gestlok_catalogo_resumen','gestlok_catalogo_categorias','gestlok_support_config',
+ 'gestlok_resenas_list']);
 /* Funciones que guardan datos y pueden quedar pendientes. */
 const WRITES=new Set(['doc_update','importar_mercaderia','gestlok_proveedor_guardar_historial','rm_app_save_schedule',
  'rm_app_set_branch_schedule_link','rm_app_schedule_comment','rm_app_record_whatsapp']);
