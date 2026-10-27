@@ -1,7 +1,7 @@
 /* global Cypress, cy, describe, it, beforeEach */
 // Comprobaciones con datos ficticios: la marca es del tenant, no de una ficha personal.
 const iniciar=email=>{
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1',{log:false});
   cy.get('#au-in button[type="submit"]').click();
 };
@@ -39,13 +39,13 @@ describe('Identidad Mi Gusto para el equipo autorizado',()=>{
     iniciar('gerente.munro@example.com');
     verificarMarca();
     cy.get('#brand-local').should('contain.text','Munro');
-    cy.get('#snav [data-act="locales"]').should('not.exist');
+    cy.get('#snav [data-act="locales"] small').should('have.text','Inicio');
   });
   it('Gerente de Torcuato ve la misma marca sin acceder al otro local',()=>{
     iniciar('gerente.torcuato@example.com');
     verificarMarca();
     cy.get('#brand-local').should('contain.text','Torcuato');
-    cy.get('#snav [data-act="locales"]').should('not.exist');
+    cy.get('#snav [data-act="locales"] small').should('have.text','Inicio');
   });
   it('Usuario Solo ver de Munro ve el eslogan sin permisos de edición',()=>{
     iniciar('lectura@example.com');

@@ -2,7 +2,7 @@
 import { abrirLocal } from '../helpers/abrir-local';
 // Nunca escribe datos de producción: Supabase falso interceptado antes de cargar GestLok.
 const login = email => {
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1', {log:false});
   cy.get('#au-in button[type="submit"]').click();
 };

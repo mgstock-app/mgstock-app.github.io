@@ -20,6 +20,7 @@
 
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
   let email = null, rol = null, locales = [], tenantId = null, support = false, started = false;
+  const LAST_EMAIL = 'gestlok:ultimo-email';
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
 
   /* ---------- Pantalla de ingreso ---------- */
@@ -29,6 +30,12 @@
     box.hidden = false; document.documentElement.classList.add('auth-on');
     const m = $('#au-msg'); m.textContent = msg || ''; m.className = 'au-msg' + (err ? ' err' : '') + (msg ? '' : ' empty');
     box.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== mode; });
+    if (mode === 'in'){
+      // Completa el email de la última sesión: solo falta la contraseña.
+      let last = ''; try { last = localStorage.getItem(LAST_EMAIL) || ''; } catch {}
+      const mail = $('#au-email'), pass = $('#au-pass');
+      if (last && mail && !mail.value){ mail.value = last; if (pass && !msg) setTimeout(() => pass.focus(), 0); }
+    }
     // Visible solo para visitantes que todavía no tienen sesión activa.
     // No pide correo ni contraseña y nunca se conecta a datos empresariales.
     if(mode==='in' && !$('#au-demo-link')){
@@ -127,6 +134,8 @@
   async function entered(session){
     const attempt = authGeneration;
     email = String(session.user.email || '').toLowerCase();
+    // Recordar solo el email de la última sesión en este equipo (nunca la contraseña).
+    try { if (email) localStorage.setItem(LAST_EMAIL, email); } catch {}
     let r = null, ls = [], sinRed = false;
     try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
     catch (e) { sinRed = navigator.onLine === false || /conexi|fetch|network|GL_OFFLINE/i.test(String((e && (e.message || e.code)) || '')); try { const { data, error } = await sb.rpc('mi_rol'); if (!error) r = data || null; } catch {} }

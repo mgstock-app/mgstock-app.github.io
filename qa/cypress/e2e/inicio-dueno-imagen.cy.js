@@ -12,7 +12,7 @@ function start(email = 'dueno@example.com', setup) {
     if (me) me.data.logoId = 'mi-gusto';
     if (setup) setup(w);
   });
-  cy.get('#au-email').type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
+  cy.get('#au-email').clear().type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
 }
 describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });

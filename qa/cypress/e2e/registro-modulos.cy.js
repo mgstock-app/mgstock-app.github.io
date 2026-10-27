@@ -5,7 +5,7 @@ function launch(){
   cy.visit('/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
 }
-function login(email){cy.get('#au-email').type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();}
+function login(email){cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();}
 describe('Registro por módulos · solicitud sin conceder permisos',()=>{
   Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
   for(const [choice,modules] of Object.entries({empleados:['recibos_personal'],empresa:['comercial'],ambas:['comercial','recibos_personal']})){

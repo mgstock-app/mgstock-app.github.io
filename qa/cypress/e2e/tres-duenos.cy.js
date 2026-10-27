@@ -10,7 +10,7 @@ describe('Tres codueños: mismas tarjetas y ambos locales',()=>{
    w.__staffModule=true;
    for(const [i,mail] of owners.entries())w.__rows.push({col:'equipo',id:mail,data:{email:mail,nombre:'Dueño de prueba '+(i+1),rol:'dueno',logoId:'mi-gusto'}});
   });
-  cy.get('#au-email').type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
+  cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
   cy.get('#hub .gl-owner-business').should('be.visible');
   cy.get('#hub .gl-owner-employees').should('be.visible').and('not.have.class','gl-owner-employees-locked');
   cy.get('#hub [data-owner-area-staff]').should('be.visible');

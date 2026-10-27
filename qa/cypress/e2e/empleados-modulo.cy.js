@@ -11,7 +11,7 @@ function start(email = 'dueno@example.com', staff = false) {
     const me = w.__rows.find(r => r.col === 'equipo' && r.id === 'dueno@example.com');
     if (me) me.data.logoId = 'mi-gusto';
   });
-  cy.get('#au-email').type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
+  cy.get('#au-email').clear().type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
 }
 describe('GESTLOK · carpeta Administrar a los empleados', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });

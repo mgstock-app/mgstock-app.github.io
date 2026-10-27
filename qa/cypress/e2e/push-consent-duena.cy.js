@@ -9,7 +9,7 @@ const login=(email)=>{
  cy.visit('/');
  cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
- cy.get('#au-email').type(email);
+ cy.get('#au-email').clear().type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
  if(email==='dueno@example.com')abrirLocal('munro');
