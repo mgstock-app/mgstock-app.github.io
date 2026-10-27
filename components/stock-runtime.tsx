@@ -49,6 +49,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
       await load("/stock/app.js?rev=inicio-resenas-20261027");
+      if (visitor) await load("/stock/gestlok-demo-tour.js");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };
