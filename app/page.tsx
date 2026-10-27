@@ -1,3 +1,4 @@
+import Link from "next/link";
 import markup from "@/lib/stock/markup.json";
 import { StockRuntime } from "@/components/stock-runtime";
 import { GestLokIntro } from "@/components/gestlok-intro";
@@ -9,7 +10,7 @@ export default function Home() {
     <>
       <div id="stock-root" dangerouslySetInnerHTML={{ __html: markup }} />
       <GestLokIntro />
-      <a className="gestlok-demo-entry" href="/?demo=1">Probar GESTLOK · Demo</a>
+      <Link className="gestlok-demo-entry" href="/?demo=1">Probar GESTLOK · Demo</Link>
       <StockRuntime />
       <nav className="stock-legal-nav" aria-label="Información legal de GestLok">
         <a href={`${basePath}/privacidad.html`}>Privacidad</a>
