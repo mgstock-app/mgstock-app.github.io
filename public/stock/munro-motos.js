@@ -115,8 +115,10 @@
     if (valor && !HORA.test(valor)) { api.toast('Usá el formato de hora HH:MM.', true); return; }
     // Cargar un horario en la fila vacía crea la moto de refuerzo de esta semana.
     if (moto === NUEVO.id) {
-      if (!valor) return;
+      if (!valor || input.dataset.creando) return;
+      input.dataset.creando = '1';
       moto = await crearRefuerzo(semana, 'Refuerzo ' + (refuerzos(semana).length + 1));
+      delete input.dataset.creando;
       if (!moto) return;
       input.dataset.moto = moto;
       creado = true;
@@ -388,6 +390,11 @@
     document.addEventListener('change', event => {
       const el = event.target;
       if (el.matches?.('.mo-time') && permitido()) cargarCelda(el);
+    });
+    // El horario entra al borrador apenas queda completo: un redibujo antes de salir del campo no lo pierde.
+    document.addEventListener('input', event => {
+      const el = event.target;
+      if (el.matches?.('.mo-time') && permitido() && (el.value === '' || HORA.test(el.value))) cargarCelda(el);
     });
     document.addEventListener('submit', event => {
       if (event.target.id === 'mo-ref-form') { event.preventDefault(); agregarRefuerzo(event.target); }
