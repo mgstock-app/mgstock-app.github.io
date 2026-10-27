@@ -20,7 +20,7 @@ const CSV = "Producto;Cantidad\nJamon cocido;2\nMuzzarella;3,5\nMuzzarella;1\nCa
 const row = (rows, local, id) => rows.find((r) => r.col === `${local}/fabrica` && r.id === id).data;
 const signIn = (email) => {
   cy.window().then(SETUP);
-  cy.get("#au-email").type(email);
+  cy.get("#au-email").clear().type(email);
   cy.get("#au-pass").type("secreto1", { log: false });
   cy.get("#au-in button[type=submit]").click();
 };

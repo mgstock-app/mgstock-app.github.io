@@ -29,7 +29,7 @@ export function StockRuntime() {
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
       if (!visitor) await load("/stock/gestlok-registration.js");
-      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=session-20261026");
+      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=email-20261027");
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
@@ -48,7 +48,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-support.js");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=resenas-20261027");
+      await load("/stock/app.js?rev=inicio-resenas-20261027");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };

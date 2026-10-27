@@ -9,7 +9,7 @@ const SETUP = (w) => {
 const F = (rows, id) => rows.find((r) => r.col === "munro/fabrica" && r.id === id).data;
 const abrir = () => {
   cy.window().then(SETUP);
-  cy.get("#au-email").type("dueno@example.com");
+  cy.get("#au-email").clear().type("dueno@example.com");
   cy.get("#au-pass").type("secreto1", { log: false });
   cy.get("#au-in button[type=submit]").click();
   abrirLocal('munro');

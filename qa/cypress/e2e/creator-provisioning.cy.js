@@ -17,7 +17,7 @@ describe('GestLok: asistente exclusivo de preparación',()=>{
   it('creadora configura negocio y 320 productos por lotes ficticios',()=>{
     cy.viewport(390,844);
     launch();
-    cy.get('#au-email').type('kmu15lopez@gmail.com');
+    cy.get('#au-email').clear().type('kmu15lopez@gmail.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
     cy.get('[data-act="admin-preparar-empresa"]').should('be.visible');
@@ -72,7 +72,7 @@ describe('GestLok: asistente exclusivo de preparación',()=>{
   });
   it('gerente no tiene acceso al asistente',()=>{
     launch();
-    cy.get('#au-email').type('gerente.munro@example.com');
+    cy.get('#au-email').clear().type('gerente.munro@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
     cy.get('[data-act="admin-preparar-empresa"]').should('not.exist');

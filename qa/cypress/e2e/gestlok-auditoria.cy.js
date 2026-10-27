@@ -3,7 +3,7 @@ import { abrirLocal } from '../helpers/abrir-local';
 // Recorrido ampliado de GestLok. Todo el backend se reemplaza por Supabase falso,
 // las pruebas NO consultan ni modifican los locales de producción.
 const login = email => {
-  cy.get("#au-email").type(email);
+  cy.get("#au-email").clear().type(email);
   cy.get("#au-pass").type("secreto1", {log:false});
   cy.get('#au-in button[type="submit"]').click();
 };
@@ -232,7 +232,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
   it("gerente de Munro no ve contenido ni acceso de Torcuato", () => {
     login("gerente.munro@example.com");
     cy.get("#brand-local").should("contain.text","Munro");
-    cy.get('#snav [data-act="locales"]').should("not.exist");
+    cy.get('#snav [data-act="locales"] small').should("have.text","Inicio");
     cy.get('#snav [data-go="chat"]').click();
     cy.get("#view").should("not.contain.text","Torcuato");
     cy.get("#hub .gl-admin").should("not.exist");

@@ -10,7 +10,7 @@ function start(){
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
 }
 function login(email){
- cy.get('#au-email').type(email);
+ cy.get('#au-email').clear().type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
 }

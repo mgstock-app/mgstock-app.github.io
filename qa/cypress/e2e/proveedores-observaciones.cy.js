@@ -8,7 +8,7 @@ describe('Observaciones internas de Proveedores · ambos locales',()=>{
     cy.visit('/');cy.wait('@fake');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
     cy.window().then(w=>w.__rows.push({col:local+'/productos',id:'p-note',data:{nombre:'Producto ficticio',proveedor:'Proveedor Demo Notas',cat:'General',stock:5,orden:1000}}));
-    cy.get('#au-email').type('dueno@example.com');
+    cy.get('#au-email').clear().type('dueno@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
     abrirLocal(local);

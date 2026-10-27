@@ -3,7 +3,7 @@ import { abrirLocal } from '../helpers/abrir-local';
 // Pruebas aisladas: Supabase falso; nunca consultan ni escriben datos reales.
 const TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const login = email => {
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1', {log:false});
   cy.get('#au-in button[type="submit"]').click();
 };

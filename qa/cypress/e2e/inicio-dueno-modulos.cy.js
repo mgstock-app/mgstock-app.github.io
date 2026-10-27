@@ -4,7 +4,7 @@ function start(fail=false,email='dueno@example.com'){
  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
  if(fail)cy.window().then(w=>{w.__ownerAreaFail=true;});
- cy.get('#au-email').type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
+ cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
 }
 describe('Inicio de dueño · áreas verificadas por backend',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
@@ -48,7 +48,7 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
    const owner=w.__rows.find(r=>r.col==='equipo'&&r.id==='dueno@example.com');
    owner.data.nombre='Dueño de prueba';
   });
-  cy.get('#au-email').type('dueno@example.com');cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
+  cy.get('#au-email').clear().type('dueno@example.com');cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
   cy.get('#hub .gl-owner-landing').should('be.visible');
   cy.get('#app').should('not.be.visible');
   cy.get('#hub .gl-owner-business').should('contain.text','Administrar mi empresa');
