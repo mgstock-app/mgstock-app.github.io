@@ -33,6 +33,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
+      await load("/stock/munro-resenas.js");
       await load("/stock/munro-motos.js?rev=motos-diseno-20261027");
       await load("/stock/gestlok-commerce.js");
       await load("/stock/gestlok-owner-areas.js?rev=branding-20261026");

@@ -4,6 +4,7 @@ import "./globals.css";
 import "./gestlok-intro.css";
 import "./owner-mobile-refinements.css";
 import "./munro-motos.css";
+import "./munro-resenas.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
