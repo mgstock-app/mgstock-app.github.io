@@ -24,7 +24,13 @@ Mercado Pago ofrece suscripciones y API sin costo de abono mensual obligatorio p
 
 No integrar Stripe o RevenueCat simultáneamente sin necesidad comercial. No se registraron claves de Mercado Pago ni se crearon cargos.
 
-## Bloqueante de seguridad: aislar empresas
+## Estado al 27/10/2026 (cierre del PR #26)
+
+- Estructura privada `gestlok_billing` aplicada y verificada en la base real: 3 tablas con RLS, sin permisos para `anon` ni `authenticated`, y la excepción `complimentary_unlimited` activa y sin vencimiento.
+- Aislamiento por empresa ya incorporado en `public.docs`: columna `tenant_id` asignada por trigger y política restrictiva `gestlok_tenant_fence`; las funciones nuevas (Reseñas, Motos Agencia, `importar_mercaderia`) también controlan la empresa en el servidor. Los puntos 1 y 2 de abajo quedan cubiertos para `docs`; se mantienen como lista de control para tablas nuevas.
+- **Sigue sin haber cobros, planes, pantallas de pago ni integración con Mercado Pago.** Activar pagos reales requiere autorización explícita de la usuaria.
+
+## Bloqueante de seguridad: aislar empresas (lista de control original)
 
 La actual `public.docs` funciona con permisos globales `dueno` y `creadora`, por lo que **NO es seguro dar de alta empresas clientes aún**. Antes de cobrar:
 1. Respaldar los datos existentes e introducir identidad de empresa `tenant_id` en locales, equipo, stock, proveedores, movimientos y chat.
