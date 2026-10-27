@@ -1,6 +1,6 @@
 /* global describe, beforeEach, it, cy */
 const signIn = (email) => {
-  cy.get("#au-email").type(email);
+  cy.get("#au-email").clear().type(email);
   cy.get("#au-pass").type("secreto1", { log: false });
   cy.get("#au-in button[type=submit]").click();
 };
@@ -63,7 +63,7 @@ describe("MG Stock: navegación, permisos y stock aislados", () => {
   it("gerente de Munro no puede cambiar a Torcuato", () => {
     signIn("gerente.munro@example.com");
     cy.get("#brand-local").should("contain.text", "Munro");
-    cy.get('#snav [data-act="locales"]').should("not.exist");
+    cy.get('#snav [data-act="locales"] small').should("have.text","Inicio");
     cy.get('#snav [data-go="stock"]').click();
     cy.get("#inc-p-003").should("be.visible");
   });

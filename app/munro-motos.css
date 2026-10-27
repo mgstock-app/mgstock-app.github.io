@@ -1,0 +1,131 @@
+/* Motos Agencia (Mi Gusto – Munro): PC en grilla, tablet con desplazamiento lateral y celular por día. */
+.mo-page{--mo-blue:#E7F1FC;--mo-blue-2:#D3E5F8;--mo-blue-ink:#123B66;--mo-green:#E2F5DF;--mo-green-ink:#1D5418;--mo-yellow:#FFE45C;--mo-yellow-ink:#3D3000;
+  max-width:1440px;margin:0 auto;padding-bottom:70px;display:grid;gap:14px}
+.mo-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center;background:white;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.mo-hero{width:84px;height:84px;border-radius:16px;background:var(--mo-blue);display:grid;place-items:center;color:var(--mo-blue-ink)}
+.mo-hero svg,.mo-ico svg{width:62%;height:62%;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.mo-title h1{margin:0;font-family:var(--f-display);font-size:30px;line-height:1.1}
+.mo-title h2{margin:2px 0 6px;font-size:17px;font-weight:500;color:var(--muted)}
+.mo-title p:last-child{margin:0;max-width:62ch;font-size:13px;color:var(--muted)}
+.mo-semana{display:flex;align-items:center;gap:12px;background:var(--mo-blue);border-radius:14px;padding:12px 14px;color:var(--mo-blue-ink)}
+.mo-semana>svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8}
+.mo-semana small{display:block;color:var(--muted)}
+.mo-semana b{font-size:19px;white-space:nowrap}
+.mo-nav{display:flex;gap:6px}
+.mo-nav button{width:32px;height:32px;border-radius:8px;border:1px solid var(--accent-line);background:white;font-size:18px;line-height:1;cursor:pointer}
+.mo-nav button:disabled{opacity:.4;cursor:default}
+.mo-aviso{margin:0;padding:10px 14px;border-radius:10px;background:var(--warn-soft);color:var(--warn)}
+.mo-link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline}
+.mo-rates-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;width:100%;margin:0 0 12px;padding:12px;border-radius:12px;background:var(--mo-blue)}
+.mo-rates-form label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.mo-rates-form input{width:140px;padding:8px 10px;border:1px solid var(--line-2);border-radius:8px}
+.mo-rates-form div{display:flex;gap:8px}
+.mo-rates-form>small{width:100%;color:var(--muted)}
+.mo-sheet{background:white;border:1px solid var(--line);border-radius:16px;padding:10px}
+.mo-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mo-grid{min-width:1080px;display:grid;gap:8px}
+.mo-row{display:grid;grid-template-columns:150px 92px repeat(var(--mo-cols),minmax(84px,1fr)) 140px;gap:6px;align-items:stretch}
+.mo-head>div{display:grid;place-items:center;text-align:center;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.mo-head>div:first-child{place-items:center start;font-weight:700;padding-left:8px}
+.mo-head small{color:var(--muted);font-weight:600}
+.mo-moto{padding-bottom:8px;border-bottom:1px solid var(--line)}
+.mo-who{position:relative;display:flex;align-items:center;gap:10px;background:var(--mo-blue);border-radius:12px;padding:12px;color:var(--mo-blue-ink)}
+.mo-who b{display:block;font-size:16px}
+.mo-who small{color:var(--muted)}
+.mo-ico{width:40px;height:40px;flex:none;display:grid;place-items:center}
+.mo-x{position:absolute;top:4px;right:6px;border:0;background:none;font-size:18px;color:var(--muted);cursor:pointer}
+.mo-labels,.mo-day{display:grid;grid-template-rows:repeat(4,30px) 32px;gap:4px;align-items:center}
+.mo-labels span{font-size:11px;color:var(--muted);white-space:nowrap}
+.mo-time{width:100%;min-width:0;height:30px;padding:2px 4px;border:1px solid var(--line-2);border-radius:7px;font-size:12px;background:white;font-variant-numeric:tabular-nums}
+.mo-time:disabled{background:var(--sunk);color:var(--ink-2)}
+.mo-hd{display:grid;place-items:center;height:32px;border-radius:8px;background:var(--mo-blue);font-weight:700;font-size:13px;color:var(--mo-blue-ink)}
+.mo-labels .mo-hd{background:none;font-size:11px;color:var(--ink)}
+.mo-total{display:grid;place-content:center;justify-items:center;gap:2px;background:var(--mo-green);border-radius:12px;color:var(--mo-green-ink)}
+.mo-total small{font-weight:600}
+.mo-total b{font-size:24px;line-height:1.1}
+.mo-total span{font-weight:700;font-size:13px}
+.mo-add-row{display:flex;align-items:center}
+.mo-add{display:flex;align-items:center;gap:10px;width:min(100%,280px);min-height:64px;padding:12px 16px;border:1.5px dashed var(--accent-line);border-radius:12px;background:white;color:var(--accent);font-weight:600;cursor:pointer;text-align:left}
+.mo-add span{font-size:24px;line-height:1}
+.mo-ref-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.mo-ref-form label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.mo-ref-form input{width:220px;padding:8px 10px;border:1px solid var(--line-2);border-radius:8px}
+.mo-ref-form div{display:flex;gap:8px}
+.mo-foot{background:var(--mo-blue);border-radius:12px;padding:8px 0}
+.mo-foot>div{display:grid;place-items:center;font-weight:700;font-size:16px}
+.mo-foot-label{grid-column:span 2;place-items:center start!important;padding-left:14px;font-size:15px!important}
+.mo-foot-label small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.mo-week{background:var(--mo-yellow);color:var(--mo-yellow-ink);border-radius:10px;padding:6px 10px;display:grid;justify-items:center}
+.mo-week small{font-weight:700;font-size:12px}
+.mo-week b{font-size:20px}
+.mo-week span{font-size:12px;font-weight:700}
+.mo-estado{margin:-4px 0 0;font-size:12px;color:var(--muted)}
+.mo-hist{background:white;border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.mo-hist-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.mo-hist-top small{display:block;color:var(--muted)}
+.mo-hist table{width:100%;min-width:820px;border-collapse:collapse;font-size:13px}
+.mo-hist th{text-align:left;font-weight:600;color:var(--muted);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mo-hist td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mo-hist p{margin:0;color:var(--muted)}
+/* Celular: un día por vez, una tarjeta por moto. */
+.mo-tabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:10px}
+.mo-tab{display:grid;justify-items:center;padding:6px 0;border:1px solid var(--line);border-radius:9px;background:white;font-size:12px;cursor:pointer}
+.mo-tab small{font-size:10px;color:var(--muted)}
+.mo-tab.on{background:var(--accent);border-color:var(--accent);color:white}
+.mo-tab.on small{color:rgba(255,255,255,.8)}
+.mo-cards{display:grid;gap:10px}
+.mo-card{border:1px solid var(--line);border-radius:14px;padding:10px;display:grid;gap:10px}
+.mo-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mo-card-grid label{display:grid;gap:3px;font-size:11px;color:var(--muted)}
+.mo-card-grid .mo-time{height:40px;font-size:15px}
+.mo-card footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:13px;padding:8px 10px;border-radius:10px;background:var(--mo-green);color:var(--mo-green-ink)}
+.mo-card.mo-add-row{border:0;padding:0}
+.mo-foot-m{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;padding:10px;border-radius:12px;background:var(--mo-blue);font-size:14px}
+.mo-foot-m .mo-week{display:block}
+@media(max-width:1100px){.mo-top{grid-template-columns:auto minmax(0,1fr)}.mo-semana{grid-column:1/-1}}
+@media(max-width:760px){
+  .mo-top{grid-template-columns:1fr;padding:14px}
+  .mo-hero{display:none}
+  .mo-title h1{font-size:24px}
+  .mo-semana b{font-size:16px}
+  .mo-sheet{padding:8px}
+  .mo-ref-form input,.mo-rates-form input{width:100%}
+  .mo-ref-form label,.mo-rates-form label{flex:1 1 140px}
+}
+@media print{.mo-nav,.mo-add,.mo-pill,.mo-nueva{display:none}}
+/* Fila vacía de refuerzo (como el diseño): cargar un horario crea la moto. */
+.mo-nueva .mo-add{width:100%;height:100%;min-height:0}
+.mo-nueva .mo-total{opacity:.75}
+.mo-who.mo-ref-form{display:grid;gap:8px;background:white;border:1.5px dashed var(--accent-line)}
+.mo-who.mo-ref-form input{width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px}
+.mo-who.mo-ref-form div{display:flex;gap:6px;flex-wrap:wrap}
+.mo-card.mo-nueva>.mo-add{width:100%}
+/* Encabezado del historial con «Valor por hora» y «Ver historial completo». */
+.mo-hist-top{justify-content:flex-start}
+.mo-hist-top>div:nth-child(2){flex:1}
+.mo-hist-ico{width:40px;height:40px;border-radius:10px;background:var(--mo-blue);display:grid;place-items:center;color:var(--mo-blue-ink)}
+.mo-hist-ico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8}
+.mo-hist-acts{display:flex;flex-wrap:wrap;gap:8px}
+.mo-pill{padding:7px 12px;border:1px solid var(--accent-line);border-radius:9px;background:var(--mo-blue);color:var(--mo-blue-ink);font-weight:600;font-size:12.5px;cursor:pointer}
+/* Menú de Munro: carpeta «Administración de local». */
+.snav-folder{display:grid;gap:2px}
+.snav-folder>summary{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;color:var(--mast-muted);font-weight:500;font-size:14.5px;cursor:pointer;list-style:none}
+.snav-folder>summary::-webkit-details-marker{display:none}
+.snav-folder>summary:hover{background:var(--mast-2);color:var(--mast-ink)}
+.snav-folder>summary .nl{flex:1}
+.snav-folder>summary svg:last-child{transition:transform .15s}
+.snav-folder[open]>summary svg:last-child{transform:rotate(90deg)}
+.snav-folder:has([aria-current="page"])>summary{color:var(--mast-ink);font-weight:600}
+.snav-sub{display:grid;gap:2px;margin-left:14px;padding-left:10px;border-left:1px solid var(--mast-line)}
+.snav-sub button{font-size:14px;padding:8px 10px}
+/* Modificar / Guardar: barra de la planilla y edición de nombres. */
+.mo-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;padding:4px 4px 10px}
+.mo-pend{margin-right:auto;font-size:13px;color:var(--muted);font-weight:600}
+.mo-sheet.editando{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.mo-sheet.editando .mo-pend{color:var(--accent)}
+.mo-edit{display:inline-block;margin-top:4px;padding:2px 8px;border:1px solid var(--accent-line);border-radius:7px;background:white;color:var(--accent);font-size:11.5px;font-weight:600;cursor:pointer}
+.mo-name-form{display:grid;gap:6px;background:white;border:1.5px solid var(--accent)}
+.mo-name-form label{display:grid;gap:2px;font-size:11px;color:var(--muted)}
+.mo-name-form input{width:100%;padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;font-size:13px}
+.mo-name-form div{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:760px){.mo-toolbar .btn{flex:1}}

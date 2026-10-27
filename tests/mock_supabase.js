@@ -181,6 +181,40 @@
         if(a?.rol!=='dueno')return {data:null,error:{code:'42501',message:'Solo dueños'}};
         const brand=a.logoId==='mi-gusto'||rows.some(r=>r.col==='equipo'&&r.data?.rol==='dueno'&&r.data?.logoId==='mi-gusto');return {data:{role:'dueno',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',company_name:brand?'Mi Gusto':'Empresa de prueba',logo_id:brand?'mi-gusto':null,local_ids:rows.filter(r=>r.col==='locales').map(r=>r.id),recibonet:window.__staffModule?{organization_number:'2099001',internal_name:'Fixture interna'}:null,modules:{comercial:{authorized:true,operational:true},recibos_personal:window.__staffModule?{authorized:true,operational:true,authority:'creator_module_grant'}:{authorized:false,operational:true,reason:'module_not_enabled'}}},error:null};
       }
+      // Reseñas (igual que las RPC gestlok_resenas_*): Munro y Torcuato con datos propios; se registra cualquier día
+      // y se usa del 1 al 12 (después del 12 vale el mes siguiente); uso único; modificar solo pendientes.
+      // window.__resenasDia fija el día (AAAA-MM-DD) para probar vigencia y vencimiento.
+      if (/^gestlok_resenas_(list|create|redeem|update)$/.test(fn)){
+        const loc = args && args.p_local, err = m => ({data:null, error:{message:m}});
+        if (!a || !['munro','torcuato'].includes(loc) || !(total(a) || (a.rol === 'gerente' && (a.locales || []).includes(loc)))) return err('Acceso denegado');
+        const dia = window.__resenasDia || new Date().toISOString().slice(0,10), y = Number(dia.slice(0,4)), m = Number(dia.slice(5,7)), d = Number(dia.slice(8));
+        const per = d <= 12 ? dia.slice(0,8) + '01' : (m === 12 ? (y + 1) + '-01-01' : y + '-' + String(m + 1).padStart(2,'0') + '-01');
+        const st = window.__resenas = window.__resenas || [];
+        const vigente = c => dia >= c.period && dia <= c.period.slice(0,8) + '12';
+        const vencido = c => dia > c.period.slice(0,8) + '12';
+        const pay = c => ({...c, valid_from:c.period, usable:!c.used_at && vigente(c), status: c.used_at ? 'used' : (vencido(c) ? 'expired' : 'pending')});
+        const tel = v => { let t = String(v || '').replace(/\D/g, ''); if (t.startsWith('0054')) t = t.slice(4); else if (t.startsWith('54') && t.length > 11) t = t.slice(2);
+          if (t.length === 11 && t.startsWith('9')) t = t.slice(1); if (t.startsWith('0')) t = t.slice(1); return /^\d{10}$/.test(t) ? t : null; };
+        if (fn === 'gestlok_resenas_list') return {data: st.filter(c => c.local === loc).slice().reverse().map(pay), error:null};
+        if (fn === 'gestlok_resenas_create'){
+          const t = tel(args.p_phone); if (!t || String(args.p_name || '').trim().length < 2) return err('Teléfono argentino inválido');
+          if (st.some(c => c.local === loc && c.phone === t && c.period === per)) return err('El cliente ya tiene cupón para este período en esta sucursal');
+          const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code;
+          do { code = Array.from({length:6}, () => A[Math.floor(Math.random() * 32)]).join(''); } while (st.some(c => c.code === code));
+          const c = {id:'cup-' + (st.length + 1), local:loc, customer_name:String(args.p_name).trim(), phone:t, code, period:per, discount:10, created_at:new Date().toISOString(), used_at:null};
+          st.push(c); return {data:pay(c), error:null};
+        }
+        const c = st.find(x => x.id === args.p_id && x.local === loc);
+        if (fn === 'gestlok_resenas_update'){
+          const t = tel(args.p_phone); if (!t || String(args.p_name || '').trim().length < 2) return err('Nombre inválido');
+          if (!c || c.used_at || vencido(c)) return err('Solo se modifican cupones pendientes de esta sucursal');
+          if (st.some(x => x !== c && x.local === loc && x.phone === t && x.period === c.period)) return err('El cliente ya tiene cupón para este período en esta sucursal');
+          c.customer_name = String(args.p_name).trim(); c.phone = t; return {data:pay(c), error:null};
+        }
+        if (c && !c.used_at && dia < c.period) return err('Todavía no está vigente: se usa del 1 al 12 de ' + c.period.slice(5,7) + '/' + c.period.slice(0,4));
+        if (!c || c.used_at || !vigente(c)) return err('Cupón utilizado, vencido, de otra sucursal o inexistente');
+        c.used_at = new Date().toISOString(); return {data:pay(c), error:null};
+      }
       if (fn === 'mi_rol') return {data: a ? a.rol : null, error:null};
       if (fn === 'mi_acceso') return {data: a ? {rol:a.rol, locales: total(a) ? rows.filter(r => r.col === 'locales').map(r => r.id) : (a.locales || []), tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'} : null, error:null};
       if (fn === 'pedir_acceso'){ if (a) return {data:a.rol, error:null}; const id = me(); if (!rows.some(r => r.col === 'solicitudes' && r.id === id)) rows.push({col:'solicitudes', id, data:{email:id, nombre:args.p_nombre || '', proveedor:args.p_proveedor || '', fecha:Date.now()}}); notify('solicitudes'); return {data:'pendiente', error:null}; }

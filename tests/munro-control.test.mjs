@@ -12,7 +12,7 @@ test('Conteo diario solo se habilita para la creadora y gerentes de Munro', () =
   assert.match(app, /const puedeVerDiarioMunro = \(\) => S\.me\?\.tenant_id === '[a-f0-9-]+' && S\.local === 'munro'/);
   assert.match(app, /miRol\(\) === 'creadora'/);
   assert.match(app, /miRol\(\) === 'gerente' && misLocales\(\)\.includes\('munro'\)/);
-  assert.match(app, /\$\{puedeVerDiarioMunro\(\) \? \`<button data-go="diario"/);
+  assert.match(app, /\(puedeVerDiarioMunro\(\) \? `<button data-go="diario"/);
   assert.match(app, /v === 'diario' && puedeVerDiarioMunro\(\)/);
   assert.match(app, /if \(puedeVerDiarioMunro\(\)\) \{[\s\S]*push\(C\('diario'\)\.onSnapshot/);
 });

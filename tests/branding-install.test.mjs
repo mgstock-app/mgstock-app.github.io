@@ -43,9 +43,12 @@ test("pantalla de ingreso y caché públicos no muestran la marca privada", () =
   assert.match(page, /<GestLokIntro \/>/);
 });
 
-test("Mi Gusto solo se renderiza tras autorización individual, no por defecto", () => {
+test("Mi Gusto solo se renderiza a integrantes autorizados de la empresa, no por defecto", () => {
   const app = read("public/stock/app.js");
-  assert.match(app, /if \(perfil && perfil\.logoId === 'mi-gusto'\)/);
-  assert.match(app, /img\/mi-gusto-negro\.png/);
+  assert.match(app, /S\.me\?\.tenant_id === MI_GUSTO_TENANT/);
+  assert.match(app, /!!miEquipo\(\)/);
+  assert.match(app, /gestlok-company-identity/);
+  assert.match(app, /Empanadas de Verdad/);
+  assert.match(app, /img\/mi-gusto-blanco\.png/);
   assert.doesNotMatch(JSON.parse(read("lib/stock/markup.json")), /mi-gusto/);
 });

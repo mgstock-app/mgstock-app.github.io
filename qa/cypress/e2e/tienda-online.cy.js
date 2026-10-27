@@ -1,7 +1,7 @@
 /* global Cypress, describe, it, cy, expect */
 // Base de prueba interceptada: la demo se ejecuta sin cambios en producción.
 const login = email => {
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1',{log:false});
   cy.get('#au-in button[type="submit"]').click();
 };

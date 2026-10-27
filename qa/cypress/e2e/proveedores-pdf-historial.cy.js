@@ -2,7 +2,7 @@
 import { abrirLocal } from '../helpers/abrir-local';
 // Supabase falso: esta prueba jamás altera proveedores, pedidos o historial reales.
 const login = email => {
-  cy.get('#au-email').type(email);
+  cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1',{log:false});
   cy.get('#au-in button[type="submit"]').click();
 };

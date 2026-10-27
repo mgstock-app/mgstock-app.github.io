@@ -20,6 +20,7 @@
 
   let resolveAuth; const authReady = new Promise(r => { resolveAuth = r; });
   let email = null, rol = null, locales = [], tenantId = null, support = false, started = false;
+  const LAST_EMAIL = 'gestlok:ultimo-email';
   const EDITA = ['creadora', 'dueno', 'gerente', 'editor'];
 
   /* ---------- Pantalla de ingreso ---------- */
@@ -29,6 +30,12 @@
     box.hidden = false; document.documentElement.classList.add('auth-on');
     const m = $('#au-msg'); m.textContent = msg || ''; m.className = 'au-msg' + (err ? ' err' : '') + (msg ? '' : ' empty');
     box.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== mode; });
+    if (mode === 'in'){
+      // Completa el email de la última sesión: solo falta la contraseña.
+      let last = ''; try { last = localStorage.getItem(LAST_EMAIL) || ''; } catch {}
+      const mail = $('#au-email'), pass = $('#au-pass');
+      if (last && mail && !mail.value){ mail.value = last; if (pass && !msg) setTimeout(() => pass.focus(), 0); }
+    }
     // Visible solo para visitantes que todavía no tienen sesión activa.
     // No pide correo ni contraseña y nunca se conecta a datos empresariales.
     if(mode==='in' && !$('#au-demo-link')){
@@ -89,14 +96,16 @@
         busy(f, true, 'Guardando…');
         const { error } = await sb.auth.updateUser({ password: v('#au-pass4') });
         busy(f, false);
-        if (error) show('np', errTxt(error), true); else { show('in', 'Contraseña cambiada.'); const s = await sb.auth.getSession(); if (s.data.session) entered(s.data.session); }
+        if (error) show('np', errTxt(error), true); else { recovering = false; show('in', 'Contraseña cambiada.'); const s = await sb.auth.getSession(); if (s.data.session) entered(s.data.session); }
       }
     } catch (err) { busy(f, false); show('in', errTxt(err), true); }
   }, true);
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-au]'); if (!t) return;
     e.preventDefault();
-    if (t.dataset.au === 'out'){ Promise.resolve(window.GestLokPush?.onLogout?.()).catch(()=>{}).finally(()=>{ sb && sb.auth.signOut().finally(() => location.reload()); }); return; }
+    // «Salir» cierra solo este equipo: con el alcance global de Supabase se cerraba la sesión
+    // de la misma cuenta en todos los teléfonos y computadoras (cuentas compartidas incluidas).
+    if (t.dataset.au === 'out'){ Promise.resolve(window.GestLokPush?.onLogout?.()).catch(()=>{}).finally(()=>{ sb && sb.auth.signOut({ scope: 'local' }).finally(() => location.reload()); }); return; }
     if (t.dataset.au === 'google'){ google(t); return; }
     if (t.dataset.au === 'retry'){ location.reload(); return; }
     show(t.dataset.au, '');
@@ -125,10 +134,14 @@
   }
 
   async function entered(session){
+    const attempt = authGeneration;
     email = String(session.user.email || '').toLowerCase();
+    // Recordar solo el email de la última sesión en este equipo (nunca la contraseña).
+    try { if (email) localStorage.setItem(LAST_EMAIL, email); } catch {}
     let r = null, ls = [], sinRed = false;
     try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
     catch (e) { sinRed = navigator.onLine === false || /conexi|fetch|network|GL_OFFLINE/i.test(String((e && (e.message || e.code)) || '')); try { const { data, error } = await sb.rpc('mi_rol'); if (!error) r = data || null; } catch {} }
+    if (attempt !== authGeneration) return;
     rol = r; locales = ls;
     /* Sin internet y sin una copia de esta cuenta en el equipo: no es un «ingreso pendiente». */
     if (!rol && sinRed){
@@ -151,16 +164,36 @@
     if (!started){ started = true; resolveAuth(true); }
   }
 
+  // Bootstrap authentication once: INITIAL_SESSION and getSession can both resolve
+  // during PWA startup. Never replace a recovered session with the login screen.
+  let entering = false, authGeneration = 0, recovering = false;
+  function resume(session){
+    if (!session || started || entering || recovering || /type=recovery/.test(location.hash)) return;
+    entering = true;
+    const attempt = authGeneration;
+    Promise.resolve().then(() => { if (attempt === authGeneration) return entered(session); }).catch(() => {
+      if (attempt !== authGeneration) return;
+      show('in', 'No se pudo recuperar tu sesión. Revisá la conexión e intentá nuevamente.', true);
+    }).finally(() => { if (attempt === authGeneration) entering = false; });
+  }
   function init(){
-   if (sb){
+    if (!sb){ show('in', 'Falta configurar la conexión con Supabase.', true); return; }
+    const uErr = urlError(), bootstrapGeneration = authGeneration;
     sb.auth.onAuthStateChange((ev, session) => {
-      if (ev === 'PASSWORD_RECOVERY'){ show('np', 'Elegí tu contraseña nueva.'); return; }
-      if (session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED')){ if (!started) entered(session); }
-      if (ev === 'SIGNED_OUT'){ if (started) location.reload(); else show('in', ''); }
+      if (ev === 'PASSWORD_RECOVERY'){ ++authGeneration; entering = false; recovering = true; show('np', 'Elegí tu contraseña nueva.'); return; }
+      if (session && ['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED','USER_UPDATED'].includes(ev)) resume(session);
+      if (ev === 'SIGNED_OUT'){
+        ++authGeneration; entering = false; recovering = false;
+        for (const id of ['#app', '#hub', '#logout-wrap']) { const el = $(id); if (el) el.hidden = true; }
+        if (started) location.reload(); else show('in', '');
+      }
     });
-    const uErr = urlError();
-    sb.auth.getSession().then(({ data }) => { if (data.session){ if (!/type=recovery/.test(location.hash)) entered(data.session); } else show('in', uErr, !!uErr); });
-   } else show('in', 'Falta configurar la conexión con Supabase.', true);
+    sb.auth.getSession().then(({data,error}) => {
+      if (bootstrapGeneration !== authGeneration) return;
+      if (data?.session) resume(data.session);
+      else if (error && !started && !entering && !recovering) show('in', 'No se pudo recuperar la sesión. Revisá tu conexión.', true);
+      else if (!started && !entering && !recovering) show('in', uErr, !!uErr);
+    }).catch(() => { if (bootstrapGeneration === authGeneration && !started && !entering && !recovering) show('in', 'No se pudo comprobar la sesión. Revisá tu conexión.', true); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 

@@ -123,7 +123,7 @@ declare org public.rm_organizations; company uuid; local_name text;
 begin
  if tg_op='UPDATE' and old.role='owner' then return new; end if;
  if new.role<>'owner' or not exists(select 1 from public.rm_app_directory d
-   where d.user_id=new.user_id and lower(d.email)='batallinim@gmail.com') then return new; end if;
+   where d.user_id=new.user_id and lower(d.email)='<correo-codueno-omitido>' /* referencia: correo real omitido del repositorio público */) then return new; end if;
  select o.* into org from public.rm_organizations o join public.rm_organization_members m on m.organization_id=o.id
  where m.user_id=new.user_id and o.owner_id=new.user_id;
  if org.id is null then return new; end if;

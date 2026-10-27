@@ -28,6 +28,8 @@
 .gestlok-module-brand small { font-size: 12px; color: #b9cad4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gestlok-module-company { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .gestlok-module-company img { width: auto; height: 32px; max-width: 90px; object-fit: contain; }
+.gestlok-module-company-brand { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 0; }
+.gestlok-module-company-brand small { font-size: 11px; font-weight: 700; color: #fff; line-height: 1.25; white-space: nowrap; }
 .gestlok-module-company b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
 .gestlok-module-back {
   display: inline-flex;

@@ -12,13 +12,13 @@ function start(email = 'dueno@example.com', setup) {
     if (me) me.data.logoId = 'mi-gusto';
     if (setup) setup(w);
   });
-  cy.get('#au-email').type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
+  cy.get('#au-email').clear().type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
 }
 describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
   it('muestra Mi Gusto y los cuatro accesos generales', () => {
     cy.viewport(1280, 900); start();
-    cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'Empanadas de verdad');
+    cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'Empanadas de Verdad');
     cy.get('.gl-oh-brand-company img').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
     cy.get('.gl-owner-welcome-logo img').should('be.visible').and('have.attr', 'alt', 'Mi Gusto');
     cy.get('.gl-oh-top [data-owner-nav="menu"]').should('be.visible');
@@ -64,7 +64,7 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
       const row = $row[0], cards = [...row.querySelectorAll('.gl-owner-tile')];
       expect(cards).to.have.length(4);
       expect(cards.every(card => Math.abs(card.offsetTop - cards[0].offsetTop) < 4)).to.equal(true);
-      expect(row.scrollWidth).to.be.greaterThan(row.clientWidth);
+      expect(row.scrollWidth).to.be.at.most(row.clientWidth);
     });
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });

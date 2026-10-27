@@ -3,7 +3,7 @@
 'use strict';
 
 /* ---------- Constantes ---------- */
-const APP_URL = 'https://mgstock-app.github.io/';
+const APP_URL = 'https://gestlok.com.ar/';
 /* Carpeta de los scripts (para cargar el lector de Ingreso de mercadería solo cuando se usa) */
 const JS_BASE = (document.currentScript && document.currentScript.src) || ((document.querySelector('script[src*="stock/app.js"]') || {}).src) || location.href;
 /* Hojas fijas. Se pueden renombrar, ordenar y quitar del menú; las hojas nuevas se guardan en la colección "hojas". */
@@ -52,7 +52,10 @@ const IC = {
   print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   shield:'<path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   grip:'<circle cx="9" cy="6" r=".9"/><circle cx="15" cy="6" r=".9"/><circle cx="9" cy="12" r=".9"/><circle cx="15" cy="12" r=".9"/><circle cx="9" cy="18" r=".9"/><circle cx="15" cy="18" r=".9"/>',
-  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>'
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  back:'<path d="m14 6-6 6 6 6"/><path d="M8 12h12"/>',
+  moto:'<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h6l3-6h3l1 6M13 7h3l1 4M3 13h6l2 4"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>'
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
 
@@ -181,12 +184,14 @@ function recoverLegacyDraft(){
 
 /* ---------- Locales y permisos ---------- */
 /* Cada local guarda sus datos aparte: "munro/productos", "torcuato/conteos", etc. Equipo, pedidos de acceso y locales son comunes. */
-const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control'];
+const LOCAL_COLS = ['productos', 'fabrica', 'conteos', 'hojas', 'chat', 'proveedores', 'proveedores_historial', 'pedidos_online', 'diario', 'vencimientos', 'avisos', 'munro_control', 'agencia_motos'];
 const C = name => S.db.collection(LOCAL_COLS.includes(name) ? `${S.local}/${name}` : name);
 
 const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
 function miRol(){ const e = miEquipo(); const real = ROLN(e ? e.rol : S.me && S.me.rol); const pv = real === 'creadora' ? window.GestLokCreatorSupport?.previewRol?.() : ''; return pv || real; }
+const MI_GUSTO_TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+const miGustoContext = () => S.loaded.e && S.me?.tenant_id === MI_GUSTO_TENANT && !!miEquipo() && (!isCreadora() || !!S.local);
 function misLocales(){ const e = miEquipo(); const pv = e && e.rol === 'creadora' && window.GestLokCreatorSupport?.previewRol?.(); const l = pv ? S.me && S.me.locales : e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
 /* «Avisos» (actualizaciones del local): creadora, dueño y gerente. El servidor solo entrega los avisos de su propio local. */
@@ -194,6 +199,9 @@ const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
 const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
+/* Reseñas: Mi Gusto, Munro y Torcuato con datos propios. Motos Agencia: solo Munro. */
+const puedeVerResenas = () => !!window.GestLokResenas?.permitido();
+const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
 /* La creadora consulta en solo lectura salvo que haya habilitado la edición (lo hace valer el backend). */
@@ -352,6 +360,8 @@ function viewHTML(){
   if (S.view === 'pedidos-online') return window.GestLokCommerce?.online() ? window.GestLokCommerce.view() : V.inicio();
   if (S.view === 'tienda-online') return window.GestLokCommerce?.online() ? window.GestLokTienda?.view() : V.inicio();
   if (S.view === 'diario') return puedeVerDiarioMunro() ? window.GestLokMunroDaily.view() : V.inicio();
+  if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokResenas.view() : V.inicio();
+  if (S.view === 'motos') return puedeVerMotos() ? window.GestLokMunroMotos.view() : V.inicio();
   if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
   if (S.view === 'avisos') return window.GestLokUpdates.viewAlerts();
   const t = tipoVista(S.view);
@@ -367,10 +377,12 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
-  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>Hojas</b>`;
-  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'vencimientos' || S.view === 'avisos';
-  renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>${S.view === 'resenas' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;
+  $('#savebar').hidden = ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'vencimientos' || S.view === 'avisos';
+  // «Regresar» siempre visible en la barra superior (también en el celular, sin abrir el menú).
+  if (!$('#btn-regresar')){ const b = document.createElement('button'); b.id = 'btn-regresar'; b.type = 'button'; b.className = 'btn back-hub'; b.dataset.act = 'locales'; b.setAttribute('aria-label', 'Regresar al inicio'); b.innerHTML = ic('back') + '<span>Regresar</span>'; $('.top-in')?.prepend(b); }
+  renderCompanyIdentity(); renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
 }
 /* Cantidad que se muestra al lado de cada hoja: rojo = sin stock o bajo mínimo, amarillo = cambios sin guardar */
 function hojaBadge(h){
@@ -384,7 +396,7 @@ function hojaBadge(h){
 function renderNav(){
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const html = `${varios ? `<button class="snav-loc" data-act="locales">${ic('store')}<span class="nl">Locales</span><small>Cambiar</small></button>` : ''}<button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : ''}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button><button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${visibles().map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -426,6 +438,18 @@ function renderSavebar(){
   $('#sb-desc').hidden = !(pend || cont || ed);
   $('#sb-save').disabled = !canW();
 }
+function renderCompanyIdentity(){
+  const sidebar=$('#side .side-in');
+  if(!sidebar)return;
+  let mark=sidebar.querySelector('.gestlok-company-identity');
+  if(!miGustoContext()){mark?.remove();return;}
+  if(mark)return;
+  mark=document.createElement('div');
+  mark.className='gestlok-company-identity';
+  mark.setAttribute('aria-label','Mi Gusto · Empanadas de Verdad');
+  mark.innerHTML='<img src="img/mi-gusto-blanco.png" alt="Mi Gusto"><small>Empanadas de Verdad</small>';
+  sidebar.querySelector('.side-top')?.insertAdjacentElement('afterend',mark);
+}
 function renderMe(){
   const m = $('#me'); if (!S.me){ m.hidden = true; return; }
   const rol = rolLabel(miRol()) + (S.ro && miRol() !== 'lectura' ? ' · Solo ver' : '');
@@ -433,14 +457,6 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
-  // Marca comercial asignada expresamente a esta cuenta, nunca por rol o email incrustado.
-  const perfil = miEquipo();
-  if (perfil && perfil.logoId === 'mi-gusto') {
-    const p = document.createElement('div');
-    p.className = 'gestlok-tenant-mark';
-    const logo = document.createElement('img'); logo.src = 'img/mi-gusto-negro.png'; logo.alt = 'Mi Gusto';
-    p.append(logo); m.append(p);
-  }
 }
 
 /* ---------- Piezas compartidas ---------- */
@@ -1403,6 +1419,7 @@ V.inicio = () => {
       ${pedV ? `<button class="gl-today-action" data-go="pedido">${ic('cart')}<b>Revisar faltantes</b><small>${plural(ped,'producto para pedir','productos para pedir')}</small></button>` : ''}
       <button class="gl-today-action" data-go="proveedores">${ic('store')}<b>Proveedores</b><small>Contactos y pedidos</small></button>
       ${puedeVerDiarioMunro() ? `<button class="gl-today-action" data-go="diario">${ic('clock')}<b>Control diario</b><small>Ventas, consumo y diferencias</small></button>` : ''}
+      ${puedeVerMotos() ? `<button class="gl-today-action" data-go="motos">${ic('moto')}<b>Motos Agencia</b><small>Horarios semanales de las motos</small></button>` : ''}
     </div>
   </section>
   <div class="kpis${pedV ? '' : ' k3'}">
@@ -2274,7 +2291,7 @@ function renderHub(){
     return;
   }
   const html = `<div class="hub-top"><header class="hub-h">
-      <div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>
+      ${miGustoContext()?'<div class="hub-brand gl-company-hub"><img class="gl-company-hub-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto"><div class="hb-t"><b>Empanadas de Verdad</b><span>Locales y equipo</span></div></div>':`<div class="hub-brand"><img class="hub-logo" src="icons/gestlok-wordmark.svg" alt="GestLok" width="340" height="76"><div class="hb-t">${ownerHome?'<b>Mi empresa</b><span>Áreas de administración</span>':'<b>Inventario</b><span>Locales y equipo</span>'}</div></div>`}
       <div class="hub-a">${S.db && listo ? `<button class="btn" data-act="share">${ic('userplus')}Equipo${adm && S.sol.length ? `<span class="badge">${S.sol.length}</span>` : ''}</button>` : ''}${S.me ? `<button class="btn" data-au="out">Salir</button>` : ''}</div>
     </header></div>
     <main class="hub-in">
@@ -3382,7 +3399,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = (v === 'resenas' && puedeVerResenas()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   if(v === 'inicio') S.creatorBusiness=false;
@@ -3721,6 +3738,16 @@ function afterAccess(){
   }
   applyPushNavigation();
 }
+/* Mi Gusto: «Administración de local» agrupa Conteo diario y Motos Agencia (Munro) y Reseñas (Munro y Torcuato). */
+function navAdmLocal(){
+  const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
+    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>` : '') +
+    (puedeVerResenas() ? `<button data-go="resenas">${ic('clip')}<span class="nl">Reseñas</span></button>` : '');
+  if (!puedeVerMotos() && !puedeVerResenas()) return items;
+  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'diario' || S.view === 'motos';
+  return `<details class="snav-folder"${open ? ' open' : ''}><summary>${ic('gear')}<span class="nl">Administración de local</span>${ic('chev')}</summary><div class="snav-sub">${items}</div></details>`;
+}
+document.addEventListener('toggle', e => { if (e.target.matches?.('.snav-folder')) S.admLocalOpen = e.target.open; }, true);
 function subscribeLocal(){
   const loc = S.local, mine = fn => snap => { if (S.local === loc) fn(snap); };
   const push = u => { if (typeof u === 'function') S.unsubs.push(u); };
@@ -3732,6 +3759,8 @@ function subscribeLocal(){
       if (S.view === 'diario') render();
     }),errLive));
   }
+  window.GestLokMunroMotos?.subscribe(loc,push);
+  window.GestLokResenas?.subscribe(loc,push);
   push(C('vencimientos').onSnapshot(mine(snap => {
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
     if (S.view === 'inicio' || S.view === 'vencimientos' || S.view === 'avisos') render();
@@ -3808,6 +3837,8 @@ function abrirLocal(id){
     if (S.local) cerrarLocal();
     S.local = id;
     window.GestLokMunroDaily?.reset();
+    window.GestLokMunroMotos?.reset();
+    window.GestLokResenas?.reset();
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
@@ -3871,6 +3902,8 @@ function start(){
 window.GestLokUpdates?.attach({S,C,w,render,canW,toast,fail,localNombre,miRol:()=>miRol()});
 window.GestLokPush?.attach({S,render,miRol:()=>miRol()});
 window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
+window.GestLokMunroMotos?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales});
+window.GestLokResenas?.attach({S,render,miRol,misLocales});
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokDemo?.attach({isCreadora,render});

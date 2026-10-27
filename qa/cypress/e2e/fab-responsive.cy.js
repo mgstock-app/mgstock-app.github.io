@@ -15,7 +15,7 @@ describe('GestLok Stock Local: categorías y planilla responsive',()=>{
     cy.visit('/');
     cy.wait('@mockSupabase');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
-    cy.get('#au-email').type('dueno@example.com');
+    cy.get('#au-email').clear().type('dueno@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
     abrirLocal('munro');
