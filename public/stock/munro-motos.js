@@ -301,6 +301,9 @@
         '<th>Refuerzo</th><th>Total horas</th><th>Total pago</th><th>Acciones</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
         : '<p>Todavía no hay semanas cerradas. El lunes la semana en curso pasa sola al historial.</p>') + '</section>';
   }
+  const textoPendientes = () => edicion
+    ? (borrador.size ? borrador.size + (borrador.size === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Modo edición')
+    : 'Planilla guardada';
   function view(){
     if (!permitido()) return '<section class="sheet"><p>No tenés acceso a este módulo.</p></section>';
     const actual = semanaActual();
@@ -311,8 +314,7 @@
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
       : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada · se ve tal como quedó' + (puede ? '; los dueños pueden corregirla con «Modificar»' : '')
       : edicion ? 'Cargá los horarios y tocá «Guardar». Hasta guardar, los cambios no se envían.' : 'Tocá «Modificar» para cargar o corregir horarios.';
-    const sinGuardar = borrador.size;
-    const barra = puede ? '<div class="mo-toolbar"><span class="mo-pend">' + (edicion ? (sinGuardar ? sinGuardar + (sinGuardar === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Modo edición') : 'Planilla guardada') + '</span>' +
+    const barra = puede ? '<div class="mo-toolbar"><span class="mo-pend">' + textoPendientes() + '</span>' +
       (edicion ? '<button class="btn" data-mo-act="cancelar"' + (guardando ? ' disabled' : '') + '>Cancelar</button><button class="btn primary" data-mo-act="guardar"' + (guardando ? ' disabled' : '') + '>' + (guardando ? 'Guardando…' : 'Guardar') + '</button>'
         : '<button class="btn primary" data-mo-act="modificar">✎ Modificar</button>') + '</div>' : '';
     return '<section class="sheet mo-page"><header class="mo-top"><span class="mo-hero">' + ICONO + '</span>' +
@@ -336,6 +338,7 @@
     }
     r.porDia.forEach((m, i) => set('[data-mo-col="' + i + '"]', fmtH(m)));
     set('[data-mo-sem]', fmtH(r.min));
+    set('.mo-pend', textoPendientes());
     if (dueno) set('[data-mo-sem-pago]', fmt$(r.pago));
   }
   function reset(){ docs = []; pendientes.clear(); borrador.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; edicion = false; editNombre = ''; guardando = false; }
