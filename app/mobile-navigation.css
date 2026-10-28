@@ -61,3 +61,10 @@
  .gl-owner-landing .gl-owner-area{min-height:120px}
 }
 @media print{.gl-mobile-dock,.gl-mobile-sheet{display:none!important}}
+
+/* Accesos rápidos de los gerentes: no se muestran a otros roles. */
+.gl-manager-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-top:14px}
+.gl-manager-quick button{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;min-width:0;min-height:90px;padding:12px 8px;background:#fff;border:1px solid #e0e9f1;border-radius:16px;box-shadow:0 5px 18px #193c4b0b;color:#285875;font:700 12px/1.3 Inter,system-ui;text-align:center;cursor:pointer}
+.gl-manager-quick button svg{color:#147fa2}
+.gl-manager-quick button:focus-visible{outline:3px solid #27a7b8;outline-offset:2px}
+@media(max-width:560px){.gl-manager-quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.gl-manager-quick button{min-height:92px}}
