@@ -29,7 +29,12 @@ export function RoleProfileSwitcher(){
    }catch{setError("No se pudieron consultar tus roles autorizados.");}
    finally{setBusy(false);}
  },[user]);
- useEffect(()=>{if(open && !loaded) void load();},[open,loaded,load]);
+ useEffect(()=>{
+   if(!open || loaded)return;
+   let active=true;
+   queueMicrotask(()=>{if(active)void load();});
+   return ()=>{active=false;};
+ },[open,loaded,load]);
  if(!user||user.status!=="approved")return null;
  const bridge=()=> (window as unknown as {GestLokOffline?:OfflineBridge}).GestLokOffline;
  const switchTo=async(item:Context,localId="")=>{
@@ -59,7 +64,8 @@ export function RoleProfileSwitcher(){
       aria-label="Abrir mi perfil y cambiar empresa o rol" onClick={()=>setOpen(true)}>
       <UserRound size={18}/><span>Mi perfil</span><ChevronDown size={14}/>
    </button>
-   {open&&<div className="module-profile-overlay" onClick={e=>{if(e.target===e.currentTarget)setOpen(false);}}>
+   {open&&<div className="module-profile-overlay">
+     <button type="button" className="module-profile-backdrop" aria-label="Cerrar selección de perfil" onClick={()=>setOpen(false)}/>
      <section role="dialog" aria-modal="true" aria-label="Perfil, empresas y roles"
        className="module-profile-dialog">
        <header><div><small>GESTLOK · MI PERFIL</small><h2>Empresas y roles</h2>
