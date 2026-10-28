@@ -147,6 +147,20 @@ describe('Reseñas: Mi Gusto, Munro y Torcuato con datos propios', () => {
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
 
+  it('el lateral de GESTLOK se contrae y expande en escritorio sin perder Reseñas ni permisos', () => {
+    cy.viewport(1080, 820); launch(); login('gerente.torcuato@example.com');
+    cy.get('#snav [data-go="resenas"]').should('exist');
+    cy.get('#app .gl-sidebar-collapse-button').should('be.visible')
+      .and('have.attr','aria-label','Contraer menú lateral').click();
+    cy.get('#app').should('have.class','gl-sidebar-collapsed');
+    cy.get('#app .gl-sidebar-collapse-button').should('have.attr','aria-label','Expandir menú lateral');
+    cy.get('#snav [data-go="resenas"]').should('exist');
+    cy.get('#app .gl-sidebar-collapse-button').click();
+    cy.get('#app').should('not.have.class','gl-sidebar-collapsed');
+    cy.get('#snav [data-go="resenas"]').click();
+    cy.get('.rv-page').should('contain.text','Sucursal Torcuato');
+  });
+
   it('no aparece para cuentas de solo lectura ni para otras empresas', () => {
     launch(); login('lectura@example.com');
     cy.get('#snav [data-go="resenas"]').should('not.exist');
