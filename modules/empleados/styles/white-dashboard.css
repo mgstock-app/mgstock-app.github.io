@@ -252,3 +252,8 @@
 @media(prefers-reduced-motion:reduce){
  .app-shell .gl-employee-sidebar{transition:none}
 }
+
+.app-shell .gl-employee-sidebar nav button[aria-current="page"]{
+  background:#e8f5fa;color:#136a88;box-shadow:inset 3px 0 #22a5b6}
+.app-shell .gl-employee-sidebar nav button[aria-current="page"]>svg{color:#1584a0}
+.app-shell #mi-recibo,.app-shell #mis-horarios{scroll-margin-top:88px}
