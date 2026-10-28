@@ -295,6 +295,10 @@ function create(options={}){
    const request=new Request(input,init),url=new URL(request.url);
    if(url.origin!==origin)return net(input,init);
    const method=request.method,path=url.pathname,isUser=path==='/auth/v1/user'&&method==='GET';
+   if(path.endsWith('/gestlok_choose_role_context')){
+    // Cambiar de empresa nunca se encola: debe validarlo el servidor en línea.
+    return online()?net(input,init):json({code:'GL_OFFLINE',message:'Conectate a internet para cambiar de empresa.'},503);
+   }
    if(!isUser&&!path.startsWith('/rest/v1/')||path.endsWith('/gestlok_sync_apply')||path.endsWith('/gestlok_sync_context'))return net(input,init);
    const headers=new Headers(request.headers);
    const c=await context(headers,base,net);if(!c)return net(input,init);
@@ -488,6 +492,12 @@ function create(options={}){
  }
 
  const api={transport,attach,prepare,flush,
+  // Solo invalida la selección del servidor; NO borra datos ni operaciones pendientes.
+  async invalidateContext(){
+    const actor=active?.actor;
+    if(actor){contexts.delete(actor);await store.remove('identity|'+actor).catch(()=>{});}
+    active=null;results.clear();await notify();
+  },
   available:()=>demo.on||(!!active&&!unsupported),
   pending:async()=>(await state()).pending,
   subscribe(fn){listeners.add(fn);void notify();return()=>listeners.delete(fn);},
