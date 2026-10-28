@@ -149,3 +149,5 @@
 @media(max-width:370px){.employee-pages__stats{grid-template-columns:minmax(0,1fr)}.employee-pages__receipt-person .employee-pages__pill{display:none}.employee-pages__paper-totals>span{min-width:100%}}
 
 .employee-pages__store-photo{display:block;width:64px;height:46px;object-fit:cover;border-radius:9px;flex-shrink:0;border:1px solid #d6e6f0}
+
+.employee-pages__person-more{display:grid;place-items:center;width:31px;height:33px;flex:0 0 auto;border:1px solid #e1eaf5;border-radius:9px;background:#fff;color:#597a9a;padding:0}
