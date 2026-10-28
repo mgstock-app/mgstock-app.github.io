@@ -1,0 +1,82 @@
+/* GESTLOK · Navegación común en Administración de local para todos los roles.
+   Solo presentación: no altera datos, rutas ni controles de permisos. */
+#app{transition:grid-template-columns .2s ease}
+#app .side{scrollbar-width:thin;scrollbar-color:#54798a transparent;overflow-x:hidden}
+#app .side-in{gap:16px;padding:18px 12px 16px;min-width:0}
+#app .side-top{min-width:0;gap:6px;padding:0 1px 4px}
+#app .side-top .brand{flex:1;gap:9px;min-width:0;align-items:center}
+#app .side-top .brand>div{min-width:0}
+#app .side-top .brand b{font:800 17px/1.2 system-ui,sans-serif;letter-spacing:-.03em;overflow-wrap:anywhere}
+#app .side-top .brand div span{font:650 10px/1.3 system-ui,sans-serif;letter-spacing:.09em;margin-top:3px}
+#app .side-top .mg,#app .side-top .mg img{width:40px;height:40px;flex:none;border-radius:11px;object-fit:contain}
+#app .status{gap:9px;padding:12px;border:1px solid #ffffff20;border-radius:13px;background:#ffffff0c!important;min-width:0}
+#app .status #ktxt{min-width:0;line-height:1.4;font-size:11px;font-weight:550;color:#d4e6ed;overflow-wrap:anywhere}
+#app .status .dot{width:8px;height:8px;flex:none}
+#app .gestlok-company-identity{padding:10px 8px;border:1px solid #ffffff20;background:#0b1b2c;border-radius:15px;min-width:0}
+#app .gestlok-company-identity img{max-width:100%;height:65px}
+#app .gestlok-company-identity small{font-size:10px;letter-spacing:.01em;line-height:1.4}
+#app #snav.snav{display:grid;gap:4px;min-width:0}
+#app #snav :is(button,.snav-folder>summary){min-width:0;min-height:42px;align-items:center;gap:10px;border-radius:11px;color:#d3e4ed;font:600 12.5px/1.35 system-ui,sans-serif;padding:10px 11px;letter-spacing:0;text-align:left;transition:background .15s ease,color .15s ease}
+#app #snav .snav-folder>summary{display:flex;cursor:pointer;list-style:none}
+#app #snav :is(button,.snav-folder>summary) svg.i{width:19px;height:19px;flex:0 0 19px;color:#b4d5df}
+#app #snav :is(button,.snav-folder>summary):hover{background:#ffffff14;color:#fff}
+#app #snav button[aria-current="page"]{background:#e5f5f1!important;color:#155b56!important;box-shadow:inset 3px 0 0 #31b4aa}
+#app #snav button[aria-current="page"] svg.i{color:#198579}
+#app #snav .nl{min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip}
+#app #snav .snav-loc{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:7px;background:#ffffff0f;border:1px solid #ffffff25;color:#eaf9fc}
+#app #snav .snav-loc small{display:block;font-size:10px;font-weight:600;line-height:1.3;color:#c4dee9;margin-left:auto;text-align:right;overflow-wrap:anywhere}
+#app #snav .snav-folder{display:grid;gap:4px;min-width:0}
+#app #snav .snav-folder>summary{color:#e8f4f9;font-weight:720}
+#app #snav .snav-folder>summary .nl{flex:1}
+#app #snav .snav-folder>summary svg:last-child{width:14px;flex:0 0 14px}
+#app #snav .snav-sub{min-width:0;margin-left:17px;padding-left:9px;border-left:1px solid #64819266;gap:3px}
+#app #snav .snav-sub button{min-height:39px;font-size:12px;padding:9px 10px}
+#app #snav .snav-l{color:#8cb6c7;font-size:10px;letter-spacing:.14em;font-weight:760;padding:14px 3px 5px 9px}
+#app #snav .snav-l .snav-e{font-size:10px;letter-spacing:0;min-height:31px;padding:5px 7px;background:#ffffff0c}
+#app .side-f{gap:9px;padding-top:13px;border-top:1px solid #ffffff20}
+#app .side-f .inst,#app .side-f .logout button{border-radius:10px;min-height:38px}
+#app .me{min-width:0}
+#app .me b,#app .me small{white-space:normal;overflow-wrap:anywhere}
+#app .gl-sidebar-collapse-button{width:34px;height:34px;display:grid;place-items:center;flex:0 0 34px;border:1px solid #ffffff38;border-radius:10px;background:#ffffff10;color:#e0f5f9;cursor:pointer}
+#app .gl-sidebar-collapse-button:hover{background:#ffffff24}
+#app .gl-sidebar-collapse-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#app :is(.gl-sidebar-collapse-button,#snav button,#snav summary):focus-visible{outline:2px solid #71dcd8;outline-offset:2px}
+#app .main{min-width:0}
+#app .wrap{max-width:1440px}
+#app .card,#app .lcard{border-color:#dde8ee;border-radius:15px;box-shadow:0 6px 22px #143b540a}
+#app .card:focus-within,#app .lcard:focus-within{box-shadow:0 0 0 2px #55b7aa33,0 6px 22px #143b540a}
+.gl-owner-area,.gi-admin-card,.gi-admin-kpi{transition:box-shadow .16s ease,transform .16s ease}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){.gl-owner-area:hover,.gi-admin-card:hover{box-shadow:0 13px 36px #0a2d3a20;transform:translateY(-1px)}}
+@media(min-width:900px){
+  #app.gl-sidebar-collapsed{--sidew:76px}
+  #app.gl-sidebar-collapsed .side-in{padding-inline:9px;gap:12px}
+  #app.gl-sidebar-collapsed .side-top{flex-direction:column;justify-content:center;gap:7px}
+  #app.gl-sidebar-collapsed .side-top .brand{flex:none;justify-content:center}
+  #app.gl-sidebar-collapsed .side-top .brand>div,
+  #app.gl-sidebar-collapsed .side .gestlok-company-identity small,
+  #app.gl-sidebar-collapsed .side .status #ktxt,
+  #app.gl-sidebar-collapsed #snav .nl,
+  #app.gl-sidebar-collapsed #snav .snav-loc small,
+  #app.gl-sidebar-collapsed #snav .snav-l,
+  #app.gl-sidebar-collapsed #snav .snav-folder>summary svg:last-child,
+  #app.gl-sidebar-collapsed .side-f{display:none!important}
+  #app.gl-sidebar-collapsed .side .gestlok-company-identity{padding:6px 3px;border-radius:10px}
+  #app.gl-sidebar-collapsed .side .gestlok-company-identity img{height:39px;width:100%;object-fit:contain}
+  #app.gl-sidebar-collapsed .side .status{justify-content:center;padding:12px 0}
+  #app.gl-sidebar-collapsed #snav :is(button,.snav-folder>summary){width:100%;min-height:44px;justify-content:center;padding:9px 3px;gap:0}
+  #app.gl-sidebar-collapsed #snav .snav-loc{min-height:42px}
+  #app.gl-sidebar-collapsed #snav .snav-sub{margin:0;padding:0;border:0}
+  #app.gl-sidebar-collapsed #snav .snav-folder{gap:1px}
+  #app.gl-sidebar-collapsed #snav .snav-add{margin-top:3px}
+}
+@media(max-width:899px){
+ #app .side{width:min(300px,87vw);border-right:1px solid #456376;box-shadow:14px 0 50px #02132455}
+ #app .side-in{padding:calc(14px + env(safe-area-inset-top,0px)) 13px calc(16px + env(safe-area-inset-bottom,0px))}
+ #app .gl-sidebar-collapse-button{display:none}
+ #app #snav .snav-loc small{margin-left:auto}
+}
+@media(max-width:480px){
+ #app #snav :is(button,.snav-folder>summary){min-height:46px;font-size:13px}
+ #app .status{padding:10px}
+}
+@media print{#app .gl-sidebar-collapse-button{display:none!important}}

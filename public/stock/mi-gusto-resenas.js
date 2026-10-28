@@ -39,6 +39,7 @@
     if (result.error) {
       const text = result.error.message || '';
       if (/duplicate|unique|ya tiene/i.test(text)) throw new Error('Este teléfono ya tiene un cupón para este período en esta sucursal.');
+      if (/motivo|explicá el motivo/i.test(text)) throw new Error('Indicá el motivo del cambio manual de estado (entre 8 y 300 caracteres).');
       if (/todavía no está vigente/i.test(text)) throw new Error('El cupón todavía no está vigente: se usa del 1 al 12 de su mes.');
       if (/inválido/i.test(text)) throw new Error('Revisá el nombre y el teléfono (10 dígitos: código de área + número, sin 0 ni 15).');
       if (/vigencia|vencido|utilizado|otra sucursal|pendientes/i.test(text)) throw new Error('El cupón ya se usó, venció o es de otra sucursal.');
@@ -63,7 +64,7 @@
       if (document.activeElement?.id === 'rv-search' && box) box.innerHTML = tabla(filter(rows, query)); else api.render();
     }
   }
-  const tabla = selected => `<table><caption>Historial completo de cupones de ${E(LOCALES[local()])} · ${selected.length} registros</caption><thead><tr><th>Cliente</th><th>Teléfono</th><th>Cupón</th><th>Estado</th><th>Creado / Utilizado</th><th>Acción</th></tr></thead><tbody>${selected.map(r=>`<tr><td>${E(r.customer_name)}</td><td>${E(r.phone)}</td><td><b>${E(r.code)}</b></td><td><span class="rv-badge ${r.status}">${label(r.status)}</span></td><td>${E(date(r.created_at))}${r.used_at?`<br>Usado: ${E(date(r.used_at))}`:''}</td><td><button data-rv="edit" data-id="${E(r.id)}">${r.status==='pending'&&editable()?'Ver / Modificar':'Ver cupón'}</button></td></tr>`).join('') || '<tr><td colspan="6">No hay cupones para esta búsqueda.</td></tr>'}</tbody></table>`;
+  const tabla = selected => `<table><caption>Historial completo de cupones de ${E(LOCALES[local()])} · ${selected.length} registros</caption><thead><tr><th>Cliente</th><th>Teléfono</th><th>Cupón</th><th>Estado</th><th>Creado / Utilizado</th><th>Acción</th></tr></thead><tbody>${selected.map(r=>`<tr><td>${E(r.customer_name)}</td><td>${E(r.phone)}</td><td><b>${E(r.code)}</b></td><td><span class="rv-badge ${r.status}">${label(r.status)}</span></td><td>${E(date(r.created_at))}${r.used_at?`<br>Usado: ${E(date(r.used_at))}`:''}</td><td><button data-rv="edit" data-id="${E(r.id)}">${r.status==='pending'&&editable()?'Ver / Modificar':r.status==='expired'&&editable()?'Cambiar estado':'Ver cupón'}</button></td></tr>`).join('') || '<tr><td colspan="6">No hay cupones para esta búsqueda.</td></tr>'}</tbody></table>`;
   function view() {
     if (!allowed()) return '';
     const counts = {pending:0,used:0,expired:0};
@@ -88,6 +89,7 @@
     const ro = editando ? '' : 'readonly';
     const titulo = !r ? 'Nuevo cupón' : modal.editing ? 'Modificar cupón' : 'Cupón';
     const usable = pendiente && r.usable !== false;
+    const manual = !!r && !r.used_at && !usable && (pendiente || r.status === 'expired');
     return `<div class="rv-overlay"><section class="rv-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title"><header><h2 id="rv-title">${titulo}</h2><button data-rv="close" aria-label="Cerrar cupón" ${busy?'disabled':''}>×</button></header>
       <form id="rv-form"><label>Nombre del cliente<input name="name" required maxlength="100" value="${E(modal.editing ? modal.name ?? r.customer_name : r?.customer_name || modal.name || '')}" ${ro}></label>
       <label>Teléfono<input name="phone" type="tel" required maxlength="30" value="${E(modal.editing ? modal.phone ?? r.phone : r?.phone || modal.phone || '')}" ${ro}></label>
@@ -99,6 +101,7 @@
         : pendiente ? `<div class="rv-actions"><button type="button" data-rv="modify" ${editable()?'':'disabled'}>✎ Modificar</button></div>
           ${usable ? `<label class="rv-check"><input name="used" type="checkbox"> Confirmo que el cliente utilizó el cupón</label>
           <button class="rv-new" type="button" data-rv="redeem" ${editable()?'':'disabled'}>${busy?'Guardando…':'Marcar como utilizado'}</button>` : ''}` : ''}
+      ${manual ? `<div class="rv-manual"><p><b>Cambio manual de estado</b> · Este cupón está fuera del período habitual de uso (1 al 12). Registrá el motivo para marcarlo como utilizado sin alterar las fechas originales.</p><label>Motivo de la corrección<input name="reason" maxlength="300" minlength="8" placeholder="Ej.: descuento aplicado en caja" autocomplete="off"></label><label class="rv-check"><input name="manual-used" type="checkbox"> Confirmo que el beneficio se aplicó y que el cambio es definitivo</label><button class="rv-new" type="button" data-rv="manual-redeem" ${editable()?'':'disabled'}>${busy?'Guardando…':'Cambiar estado a Usado'}</button></div>` : ''}
       </form></section></div>`;
   }
   function close() { modal = null; api.render(); document.querySelector('.rv-new')?.focus(); }
@@ -128,6 +131,16 @@
     if (!check?.checked) { modal.error = 'Marcá la tilde para confirmar que el cliente utilizó el cupón.'; api.render(); return; }
     await run('gestlok_resenas_redeem', {p_id:modal.id});
   }
+  async function manualRedeem() {
+    if (!editable() || !modal?.id) return;
+    const motive = String(document.querySelector('#rv-form input[name="reason"]')?.value || '').trim();
+    const checked = document.querySelector('#rv-form input[name="manual-used"]')?.checked === true;
+    if (motive.length < 8 || motive.length > 300 || !checked) {
+      modal.error = 'Escribí el motivo (mínimo 8 caracteres) y marcá la confirmación para cambiar el estado.';
+      api.render(); return;
+    }
+    await run('gestlok_resenas_manual_use', {p_id:modal.id, p_reason:motive});
+  }
   function attach(h) {
     api = h;
     document.addEventListener('click', event => {
@@ -140,6 +153,7 @@
       else if (action==='modify' && modal?.id) { modal = {id:modal.id, editing:true}; }
       else if (action==='cancel-edit' && modal?.id) { modal = {id:modal.id}; }
       else if (action==='redeem') { void redeem(); return; }
+      else if (action==='manual-redeem') { void manualRedeem(); return; }
       else if (action==='reload') { void refresh(); return; }
       else if (action==='history') { document.querySelector('#rv-history')?.scrollIntoView({behavior:'smooth'}); return; }
       api.render(); document.querySelector('.rv-modal input')?.focus();

@@ -70,3 +70,32 @@
 .gi-admin-scrim{display:none}
 @media(max-width:1150px){.gi-admin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.gi-admin-grid{grid-template-columns:1fr}.gi-admin-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:10px}.gi-admin-actions>.gi-admin-card-heading{grid-column:1/-1}}
 @media(max-width:760px){.gi-admin-sidebar{transform:translateX(-100%);transition:transform .2s;width:252px}.gi-admin-sidebar.is-open{transform:translateX(0)}.gi-admin-scrim{display:block;position:fixed;inset:0;background:#0e254b7d;border:0;z-index:31}.gi-admin-content{margin-left:0;padding:20px 13px}.gi-admin-menu-button{display:grid;place-items:center;flex-shrink:0;background:#fff;border:1px solid #dce5f0;color:#264f83;padding:8px}.gi-admin-header{flex-wrap:wrap;gap:10px}.gi-admin-account{margin-left:auto}.gi-admin-account-name{display:none}.gi-admin-header h1{font-size:25px!important}.gi-admin-card{padding:15px}.gi-admin-lookup{flex-direction:column;align-items:stretch}.gi-admin-privacy{max-width:none}.gi-admin-actions{display:block}.gi-admin-kpis{gap:9px}.gi-admin-kpi{padding:12px 9px;gap:8px;min-height:90px}.gi-admin-kpi .gi-admin-icon{width:30px;height:30px}.gi-admin-kpi .gi-admin-icon svg{width:19px}.gi-admin-kpi strong{font-size:23px}.gi-admin-kpi small{font-size:10px}}
+
+
+/* Administración general: navegación moderna, plegable y sin contenido cortado. */
+.gi-admin-sidebar{border-right:1px solid #365775;scrollbar-width:thin;scrollbar-color:#54728f transparent;gap:10px}
+.gi-admin-brand{min-width:0;gap:10px;padding-bottom:16px}
+.gi-admin-brand-text{min-width:0;line-height:1.35;overflow-wrap:anywhere}
+.gi-admin-sidebar nav{gap:4px;min-width:0}
+.gi-admin-sidebar nav>a,.gi-admin-sidebar-bottom>button{min-height:43px;line-height:1.3;border-radius:11px;font:650 12px/1.4 system-ui,sans-serif;transition:background .15s ease}
+.gi-admin-sidebar nav>a>svg,.gi-admin-sidebar-bottom>button>svg{flex:0 0 18px}
+.gi-admin-sidebar nav>a[aria-current=page]{background:#e7f4f2;color:#165a62;font-weight:750}
+.gi-admin-sidebar nav>a:hover:not([aria-current=page]){background:#ffffff18}
+.gi-admin-collapse{display:flex;align-items:center;gap:9px;min-height:40px;margin:0 3px 12px;padding:9px 11px;border:1px solid #ffffff2e;border-radius:10px;background:#ffffff0a;color:#e0f1f8;font:700 11px system-ui,sans-serif;text-align:left}
+.gi-admin-collapse:hover{background:#ffffff22}
+.gi-admin-collapse svg{flex:none}
+.gi-admin-card,.gi-admin-kpi{border-radius:16px;box-shadow:0 7px 22px #102f500d}
+.gi-admin-header h1{font-family:system-ui,'Segoe UI',sans-serif!important;font-weight:800!important;letter-spacing:-.035em}
+@media(min-width:761px){
+ .gi-admin-shell.is-collapsed .gi-admin-sidebar{width:76px;padding:16px 9px}
+ .gi-admin-shell.is-collapsed .gi-admin-content{margin-left:76px}
+ .gi-admin-shell.is-collapsed .gi-admin-brand{justify-content:center;padding:8px 0 13px}
+ .gi-admin-shell.is-collapsed .gi-admin-brand-text,
+ .gi-admin-shell.is-collapsed .gi-admin-nav-label,
+ .gi-admin-shell.is-collapsed .gi-admin-sidebar-bottom p,
+ .gi-admin-shell.is-collapsed .gi-admin-collapse span{display:none}
+ .gi-admin-shell.is-collapsed .gi-admin-collapse{justify-content:center;margin:0 0 12px;padding:12px 0}
+ .gi-admin-shell.is-collapsed .gi-admin-sidebar nav>a,
+ .gi-admin-shell.is-collapsed .gi-admin-sidebar-bottom>button{justify-content:center;padding:12px 0}
+}
+@media(max-width:760px){.gi-admin-collapse{display:none}.gi-admin-sidebar{gap:12px}.gi-admin-sidebar nav>a{min-height:46px}}

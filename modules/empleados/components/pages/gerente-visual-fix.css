@@ -400,3 +400,31 @@
   .app-shell .gl-gerente .mlg-stats {grid-template-columns:repeat(2,minmax(0,1fr))}
   .app-shell .gl-gerente .mlg-person {padding:7px;gap:7px}
 }
+
+
+/* Menú de gerencia 2026: compacto, accesible, plegable; no modifica permisos. */
+.app-shell .gl-gerente .gl-gerente__sidebar{border-right:1px solid #25455b;box-shadow:4px 0 24px #071f3410}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button{min-width:0;min-height:44px;line-height:1.35;border-radius:11px;font-size:12px;transition:background .15s ease}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button>svg{flex:0 0 19px}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active{background:#e5f3ef;color:#175c61}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active svg{color:#178880}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button:not(.active):hover{background:#ffffff15;color:#fff}
+.app-shell .gl-gerente .gl-gerente__brand{min-width:0}
+.app-shell .gl-gerente .gl-gerente__brand>div{min-width:0;overflow-wrap:anywhere}
+.app-shell .gl-gerente .gl-gerente__collapse{display:flex;align-items:center;gap:9px;margin:12px 5px 2px;padding:10px;border:1px solid #ffffff2a;border-radius:10px;background:#ffffff0a;color:#dae9f1;font:700 11px system-ui,sans-serif;text-align:left}
+.app-shell .gl-gerente .gl-gerente__collapse:hover{background:#ffffff20}
+.app-shell .gl-gerente .gl-gerente__collapse svg{flex:none}
+@media(min-width:941px){
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed{width:76px;flex:0 0 76px;padding:15px 9px;overflow:hidden}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__brand{min-height:70px;justify-content:center;padding:0 0 10px}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__brand>div{display:none}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__company-image{max-width:56px;max-height:40px}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__company-letter{flex-basis:42px}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__local-label,
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__security,
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__nav-label,
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__collapse span{display:none}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed .gl-gerente__collapse{justify-content:center;margin:8px 0;padding:12px 0}
+ .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed nav button{justify-content:center;gap:0;padding:12px 0}
+}
+@media(max-width:940px){.app-shell .gl-gerente .gl-gerente__collapse{display:none}}
