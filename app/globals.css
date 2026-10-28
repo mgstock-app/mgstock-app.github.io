@@ -2250,3 +2250,35 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
  .gl-soporte-icon svg{width:18px;height:18px}
 }
 @media print{.gl-soporte-float{display:none!important}}
+
+/* Mi perfil: contextos multiempresa reales, verificados por el servidor. */
+.gl-profile-switch-trigger{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;
+  background:#e7f1f6;color:#164763;border:1px solid #cddfe8;border-radius:10px;
+  padding:9px 12px;font:750 12px/1.3 var(--f-body),system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.gl-profile-switch-trigger:hover,.gl-profile-switch-trigger[aria-expanded="true"]{background:#d6eaf3;color:#11394e}
+.me{flex-wrap:wrap}
+.me>.gl-profile-switch-trigger{flex:1 1 100%;background:#1e4c64;color:#f0faff;border-color:#37657a}
+.gl-profile-switch-trigger--hub{position:fixed;right:max(14px,env(safe-area-inset-right,0px));top:calc(15px + env(safe-area-inset-top,0px));z-index:79;
+  box-shadow:0 4px 18px #042c4623;background:#fff}
+.gl-profile-switch-overlay{position:fixed;inset:0;z-index:1105;background:#061c30a9;display:flex;justify-content:center;align-items:center;padding:15px}
+.gl-profile-switch-dialog{width:min(100%,520px);max-height:90dvh;overflow:auto;background:#fff;border-radius:17px;
+  box-shadow:0 20px 60px #051c334d;color:#15334e;padding:clamp(16px,2.5vw,24px)}
+.gl-profile-switch-dialog header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px solid #e4eaf1;padding-bottom:12px}
+.gl-profile-switch-dialog header small{font:800 10px var(--f-body),system-ui;letter-spacing:.07em;color:#3a829e}
+.gl-profile-switch-dialog h2{font:800 23px/1.2 var(--f-body),system-ui;margin:5px 0;color:#123b53}
+.gl-profile-switch-dialog [data-roles-close]{width:34px;height:34px;border:1px solid #e5eef4;border-radius:9px;background:#f6f9fb;color:#34536c}
+.gl-profile-switch-explain{font-size:12px;line-height:1.55;color:#647e92;margin:13px 0}
+.gl-profile-switch-list{display:grid;gap:9px}
+.gl-profile-switch-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;text-align:left;
+  border:1px solid #dce7ef;background:#fbfdff;color:#163b57;border-radius:11px;padding:12px;cursor:pointer}
+.gl-profile-switch-card strong{font-size:14px;font-weight:800;grid-column:1}
+.gl-profile-switch-card span{font-size:12px;font-weight:750;color:#0d6990;grid-column:1}
+.gl-profile-switch-card small{font-size:11px;color:#6c8498;grid-column:1;overflow-wrap:anywhere}
+.gl-profile-switch-card em{font-style:normal;font-size:11px;font-weight:750;color:#147d5b;grid-column:2;grid-row:1/4;align-self:center}
+.gl-profile-switch-card[aria-current=true]{background:#e7f6f3;border-color:#a7d7ca}
+.gl-profile-switch-card:disabled{cursor:default;opacity:.85}
+.gl-profile-switch-state{font-size:12px;line-height:1.5;color:#a54c32}
+.gl-profile-switch-refresh{border:1px solid #d5e4ee;background:#fff;color:#286a8e;border-radius:9px;padding:10px 12px;font-size:12px;font-weight:700}
+@media(max-width:580px){.gl-profile-switch-trigger--hub{top:calc(11px + env(safe-area-inset-top,0px));padding:8px 10px;font-size:11px}
+ .gl-profile-switch-dialog{padding:15px}}
+@media print{.gl-profile-switch-trigger,.gl-profile-switch-overlay{display:none!important}}
