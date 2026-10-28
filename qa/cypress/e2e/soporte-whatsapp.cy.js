@@ -46,7 +46,7 @@ describe('GestLok · Soporte WhatsApp',()=>{
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should('include','5491144715168');
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
       const decoded=decodeURIComponent(url);
-      expect(decoded).to.include('soy de Munro');
+      expect(decoded).to.include('local Munro');
       expect(decoded).to.include('sector de Inicio');
     });
     cy.get('[data-act="menu-open"]').click();
@@ -74,9 +74,9 @@ describe('GestLok · Soporte WhatsApp',()=>{
     });
     cy.get('#gl-soporte-whatsapp').should('not.exist');
   });
-  it('No aparece para un usuario de Solo ver',()=>{
+  it('Aparece también para colaborador de Solo ver',()=>{
     launch();login('lectura@example.com');
     fakeSupport();
-    cy.get('#gl-soporte-whatsapp').should('not.exist');
+    cy.get('#gl-soporte-whatsapp').should('be.visible');
   });
 });
