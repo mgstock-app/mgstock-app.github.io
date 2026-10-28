@@ -44,6 +44,12 @@ async function main() {
   assert.equal(visible[0].summary.total, 133000);
   assert.equal(visible[0].summary.quantity, "36:00 hs");
   assert.equal(visible[1].localId, "dt");
+  const payrollCtx = {};
+  loadJs("features/reports/payroll.js").registerPayroll({ window: { REPORT_LOCALS: authorized } }, payrollCtx)();
+  assert.equal(payrollCtx.estadoColab({ estadoColab: "descanso" }), "descanso");
+  assert.equal(payrollCtx.estadoColab({ estadoColab: "refuerzo" }), "refuerzo");
+  assert.equal(payrollCtx.estadoColab({ estadoColab: "inactivo" }), "inactivo");
+  assert.equal(payrollCtx.ESTADOS_COLAB.descanso, "En descanso");
   assert.equal(result.projectRows(records, [local("munro")]).length, 1, "Single-store managers must never see other stores");
   assert.equal(result.projectRows(records, [local("otro", "org-b")]).length, 0, "Other-company sheets are excluded");
   const receiptModule = {};
