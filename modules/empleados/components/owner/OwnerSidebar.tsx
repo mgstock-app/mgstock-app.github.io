@@ -27,10 +27,9 @@ export function OwnerSidebar({ open, onClose, currentPath, onLocals, pendingCoun
     return()=>{active=false;};
   },[]);
   const toggleCollapsed=()=>{
-    setCollapsed(v=>{
-      try{window.localStorage.setItem("gestlok:owner-menu-collapsed",v?"no":"yes");}catch{}
-      return !v;
-    });
+    const next=!collapsed;
+    setCollapsed(next);
+    try{window.localStorage.setItem("gestlok:owner-menu-collapsed",next?"yes":"no");}catch{}
   };
   const contextCompany = useGestlokCompany();
   const internalName = contextCompany?.recibonet?.internal_name?.trim().toLocaleLowerCase("es-AR");
