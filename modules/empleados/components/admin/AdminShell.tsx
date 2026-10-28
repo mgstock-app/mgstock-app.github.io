@@ -76,6 +76,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </header>
         <main className="gi-admin-main">{children}</main>
       </div>
+      <nav className="gl-module-dock" aria-label="Navegación móvil de administración general">
+        <Link href="/" aria-current={pathname==="/"?"page":undefined} onClick={()=>setMenuOpen(false)}><LayoutDashboard size={20}/>Inicio</Link>
+        <Link href="/empresas" aria-current={pathname==="/empresas"?"page":undefined} onClick={()=>setMenuOpen(false)}><Building2 size={20}/>Empresas</Link>
+        <Link href="/usuarios" aria-current={pathname==="/usuarios"?"page":undefined} onClick={()=>setMenuOpen(false)}><Users size={20}/>Usuarios</Link>
+        <Link href="/asignaciones" aria-current={pathname==="/asignaciones"?"page":undefined} onClick={()=>setMenuOpen(false)}><ShieldCheck size={20}/>Roles</Link>
+        <button type="button" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={20}/>Más</button>
+      </nav>
     </div>
   );
 }
