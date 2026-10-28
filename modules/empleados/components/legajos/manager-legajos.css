@@ -103,3 +103,11 @@
 @media(max-width:1120px){.mlg-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.mlg-cards{grid-template-columns:repeat(1,minmax(0,1fr))}.mlg-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.mlg-local-head{flex-wrap:wrap}.mlg-add{width:100%}.mlg-filters{flex-wrap:wrap}.mlg-filters label{flex:1 1 100%}.mlg-filters select{flex:1}.mlg-google>div:first-child{flex-wrap:wrap}.mlg-google>div:first-child>span{margin-left:0}.mlg-modal{padding:15px}.mlg-form-grid{grid-template-columns:1fr}.mlg-overlay{padding:10px}.mlg-state-button{font-size:10px;padding:6px}.mlg-local-head strong{font-size:17px}}
 @media(max-width:370px){.mlg-person{gap:6px;padding:7px}.mlg-avatar{width:35px;height:35px;font-size:17px}.mlg-person-name strong{font-size:11px}.mlg-view{padding:7px;font-size:9px}.mlg-stats{grid-template-columns:1fr}}
+
+/* Invitación segura y legajos ingresados automáticamente. */
+.mlg-intro-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.mlg-invite{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;border:1px solid #a7d7d0;background:#e8f8f3;color:#107a60;font-size:12px;font-weight:800;padding:11px 15px;border-radius:10px;white-space:nowrap}
+.mlg-invite:hover:not(:disabled){background:#dcf4ec}
+.mlg-pending{align-self:flex-start;color:#a66a12;background:#fff2dc;border:1px solid #f5dfb6;padding:4px 8px;border-radius:20px;font-weight:750;font-size:9px;white-space:nowrap}
+.mlg-pending-notice{background:#fff8e6;border:1px solid #f0dfb9;border-radius:10px;padding:12px 14px;color:#8b6318;font-size:12px;line-height:1.55}
+@media(max-width:680px){.mlg-intro-actions{width:100%;justify-content:flex-start}.mlg-intro-actions>button{flex:1 1 180px}}
