@@ -1,0 +1,43 @@
+/* GESTLOK · Navegación inferior exclusivamente para celulares del módulo de empleados.
+   Los permisos, consultas y componentes del escritorio no cambian. */
+.app-shell .gl-module-dock{display:none}
+@media(max-width:900px){
+  .app-shell .gl-module-dock{
+    display:flex;position:fixed;z-index:1000;left:0;right:0;bottom:0;
+    min-height:calc(65px + env(safe-area-inset-bottom,0px));
+    padding:6px 6px calc(7px + env(safe-area-inset-bottom,0px));gap:2px;
+    align-items:stretch;justify-content:space-around;
+    border-top:1px solid #dae6ee;background:#fff;box-shadow:0 -6px 22px #112e4220;
+  }
+  .app-shell .gl-module-dock :is(a,button){
+    display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;
+    min-width:0;max-width:120px;gap:4px;text-align:center;text-decoration:none;
+    padding:5px 2px;border:0;border-radius:12px;color:#607a8e;background:transparent;
+    font:650 clamp(9px,2.65vw,11px)/1.15 Inter,system-ui,sans-serif;
+    cursor:pointer;
+  }
+  .app-shell .gl-module-dock :is(a,button):is(.active,[aria-current="page"]){
+    color:#087ba4;background:#e9f6fb;
+  }
+  .app-shell .gl-module-dock svg{width:21px;height:21px;flex:none}
+  .app-shell .gl-module-dock :is(a,button):focus-visible{outline:3px solid #27a0bb;outline-offset:1px}
+  .app-shell :is(.gl-gerente__main,.owner-main,.gl-employee-main,.gi-admin-content){padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+  .app-shell .app-navbar{z-index:900}
+  .app-shell :is(.gl-gerente__sidebar,.owner-sidebar,.gl-employee-sidebar,.gi-admin-sidebar){overflow-y:auto;overscroll-behavior:contain}
+  .app-shell .gl-gerente .gl-gerente__sidebar{background:#fff;color:#1c4258;border-right:1px solid #dce8ee}
+  .app-shell .gl-gerente .gl-gerente__brand{border-bottom:1px solid #e2eaf1}
+  .app-shell .gl-gerente .gl-gerente__brand :is(strong,small){color:#2a536c}
+  .app-shell .gl-gerente .gl-gerente__local-label{color:#638295}
+  .app-shell .gl-gerente .gl-gerente__security{color:#58768b;border-top-color:#dce9ef}
+  .app-shell .gl-gerente .gl-gerente__sidebar nav button{color:#2c566d}
+  .app-shell .gl-gerente .gl-gerente__sidebar nav button.active{color:#0f7594;background:#e9f4f9}
+}
+@media(max-width:550px){
+  .app-shell .gl-gerente__content{padding:12px}
+  .app-shell .mlg-intro h1{font-size:21px}
+  .app-shell .mlg-local{border-radius:15px}
+  .app-shell .gl-module-dock :is(a,button){font-size:10px}
+}
+@media(min-width:901px),print{
+  .app-shell .gl-module-dock{display:none!important}
+}

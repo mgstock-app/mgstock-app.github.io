@@ -18,7 +18,7 @@
       modules:{comercial:{authorized:true,operational:true},
         recibos_personal:staff?{authorized:true,operational:true}:{authorized:false,operational:!!co.recibonet,reason:co.recibonet?'module_not_enabled':'company_not_linked'}}}};
   }
-  /* Gerente: solo la carpeta Horarios dentro de Administración de empleados (lo autoriza el servidor). */
+  /* Gerente: colaboradores y horarios se habilitan únicamente con permisos del servidor. */
   async function refreshGerente(){
     if(!api||api.role()!=='gerente'||!api.S.loaded.e||gerenteBusy)return;
     if(api.S.offline&&gerente.status==='ready')return;
@@ -42,7 +42,7 @@
   function gerenteCard(){
     if(gerente.status!=='ready')return '';
     return '<section class="gl-home-essential-actions" aria-label="Administración de empleados"><h2>Administración de empleados</h2><div class="gl-home-essential-links"><button type="button" data-gerente-empleados>'+
-      '<span aria-hidden="true">'+svg('<path d="M4 6h16v13H4zM8 3v6M16 3v6M4 11h16"/>',20)+'</span><b>Horarios</b>'+svg('<path d="m9 6 6 6-6 6"/>',18)+'</button></div><p class="lead">Se abre con la misma cuenta de Google que usás en GESTLOK.</p></section>';
+      '<span aria-hidden="true">'+svg('<path d="M4 6h16v13H4zM8 3v6M16 3v6M4 11h16"/>',20)+'</span><b>Colaboradores</b>'+svg('<path d="m9 6 6 6-6 6"/>',18)+'</button><button type="button" data-gerente-horarios>'+svg(I.calendar,20)+'<b>Horarios y Google Sheets</b>'+svg(I.right,18)+'</button></div><p class="lead">Legajos de tu local y horarios con la misma cuenta de GESTLOK.</p></section>';
   }
   function gerenteHome(){
     if(api?.role?.()!=='gerente'||!api.S.local)return '';
@@ -56,7 +56,7 @@
       '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
       list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
       '<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
-      (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir Horarios de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Horarios y enlaces de turnos de tu propio local.</p>'+list([['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article></div></section>'+
+      (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir colaboradores de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Colaboradores, legajos y turnos de tu propio local.</p>'+list([['team','Colaboradores y fichas'],['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article></div>'+ (staff ? '<nav class="gl-manager-quick" aria-label="Accesos rápidos del gerente">'+[['proveedores','box','Proveedores'],['vencimientos','calendar','Vencimientos'],['chat','file','Chat del local'],['avisos','bell','Avisos']].map(([k,i,t])=>'<button type="button" data-gerente-quick="'+k+'">'+svg(I[i],23)+'<span>'+t+'</span></button>').join('')+'</nav>' : '')+'</section>'+
       (window.GestLokUpdates?.homeDue?.()||'');
   }
   async function refresh(){
@@ -211,10 +211,10 @@
       '<nav class="gl-owner-quick" aria-label="Accesos generales">'+tile('reports','pie','Reportes generales')+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
   }
   // El módulo de empleados vive en la misma aplicación (misma dirección e instalación).
-  const employees=Object.freeze({open(){
+  const employees=Object.freeze({open(section){
     // Demo pública: Administración de empleados ficticia (Horarios con un Excel de ejemplo), sin datos reales.
     if(window.GestLokVisitorDemo?.active&&window.GestLokDemoHorarios){window.GestLokDemoHorarios.open();return;}
-    location.assign(new URL('empleados/',document.baseURI).href);}});
+    location.assign(new URL(section==='horarios'?'empleados/?seccion=horarios':'empleados/',document.baseURI).href);}});
   /* Paneles: todo el contenido sale de datos que la app ya cargó (nada nuevo se pide ni se guarda). */
   const head=(small,title,id)=>'<div class="pn-h"><div><small>'+esc(small)+'</small><h3 id="'+id+'">'+title+'</h3></div><button class="ib" data-act="close" aria-label="Cerrar">'+(api?.ic?api.ic('x'):'×')+'</button></div>';
   const co=()=>esc(state.data?.company_name||'Mi empresa');
@@ -301,6 +301,15 @@
     }
     if(e.target.closest('[data-gerente-business]')&&api?.role?.()==='gerente'&&api.S.local){e.preventDefault();api.openBusiness?.();return;}
     if(e.target.closest('[data-gerente-empleados]')&&gerente.status==='ready'&&api?.role?.()==='gerente'){e.preventDefault();employees.open();return;}
+    if(e.target.closest('[data-gerente-horarios]')&&gerente.status==='ready'&&api?.role?.()==='gerente'){e.preventDefault();employees.open('horarios');return;}
+    const managerQuick=e.target.closest('[data-gerente-quick]');
+    if(managerQuick&&api?.role?.()==='gerente'&&gerente.status==='ready'&&gerente.locals.includes(api.S.local)){
+      e.preventDefault();const destination=managerQuick.dataset.gerenteQuick;
+      if(!['proveedores','vencimientos','chat','avisos'].includes(destination))return;
+      api.openBusiness?.();
+      queueMicrotask(()=>document.querySelector('#app #snav button[data-go="'+destination+'"]')?.click());
+      return;
+    }
     if(e.target.closest('[data-owner-area-staff]')&&allowed('recibos_personal')){e.preventDefault();employees.open();return;}
     const mod=e.target.closest('[data-owner-module]');
     if(mod){e.preventDefault();setModule(mod.dataset.ownerModule,mod.dataset.enable==='true');return;}

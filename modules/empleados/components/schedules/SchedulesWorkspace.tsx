@@ -110,7 +110,7 @@ export function SchedulesWorkspace() {
   if (user?.role !== "owner") return content;
   return (
     <div className="owner-home">
-      <OwnerSidebar open={open} onClose={() => setOpen(false)} currentPath="/horarios" />
+      <OwnerSidebar open={open} onClose={() => setOpen(false)} onOpen={() => setOpen(true)} currentPath="/horarios" />
       <main className="owner-main">
         <header className="owner-header">
           <button className="owner-mobile" aria-label="Abrir menú" aria-controls="owner-navigation" aria-expanded={open} onClick={() => setOpen(!open)}><Menu /></button>

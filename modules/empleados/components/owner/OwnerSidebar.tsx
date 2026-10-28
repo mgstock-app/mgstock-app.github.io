@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { House, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { House, Menu, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 
 type Area = "inicio" | "empleados" | "recibos" | "planillas";
-export function OwnerSidebar({ open, onClose, currentPath, onLocals, pendingCount = 0, activeSection = "inicio", onSectionChange, companyName = "" }: {
+export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pendingCount = 0, activeSection = "inicio", onSectionChange, companyName = "" }: {
   open: boolean;
   onClose: () => void;
+  onOpen: () => void;
   currentPath: string;
   onLocals?: () => void;
   pendingCount?: number;
@@ -35,7 +36,7 @@ export function OwnerSidebar({ open, onClose, currentPath, onLocals, pendingCoun
   const internalName = contextCompany?.recibonet?.internal_name?.trim().toLocaleLowerCase("es-AR");
   const shownCompany = internalName && internalName === companyName.trim().toLocaleLowerCase("es-AR") ? contextCompany!.company_name : companyName;
   const logoHome = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
-  const change = (section: Area) => { onSectionChange?.(section); onClose(); };
+  const change = (section: Area) => { if (onSectionChange) onSectionChange(section); else window.location.assign("/"); onClose(); };
   const sectionButton = (section: Area, label: string, Icon: typeof House) =>
     <button type="button" key={section} className={activeSection === section ? "active" : ""} title={label}
       aria-current={activeSection === section ? "page" : undefined} onClick={() => change(section)}>
@@ -78,5 +79,12 @@ export function OwnerSidebar({ open, onClose, currentPath, onLocals, pendingCoun
         <p><ShieldCheck size={17}/>Tu información es privada.</p>
       </div>
     </aside>
+    <nav className="gl-module-dock" aria-label="Navegación móvil del dueño">
+      <button type="button" aria-current={activeSection==="inicio"?"page":undefined} onClick={()=>change("inicio")}><House size={20}/>Inicio</button>
+      <button type="button" aria-current={activeSection==="empleados"?"page":undefined} onClick={()=>change("empleados")}><UsersRound size={20}/>Colaboradores</button>
+      <button type="button" aria-current={activeSection==="recibos"?"page":undefined} onClick={()=>change("recibos")}><Wallet size={20}/>Recibos</button>
+      <Link href="/horarios" onClick={onClose}><CalendarDays size={20}/>Horarios</Link>
+      <button type="button" aria-expanded={open} onClick={onOpen}><Menu size={20}/>Más</button>
+    </nav>
   </>;
 }
