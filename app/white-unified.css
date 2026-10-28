@@ -151,3 +151,13 @@ body{background:var(--gestlok-page)}
  .gl-admin-collapse{align-self:flex-start}
  .gl-admin.gl-admin-collapsed .gl-admin-nav{display:none}
 }
+
+/* Logos de empresas: Mi Gusto usa una marca blanca; conservar la
+   legibilidad dentro de una ficha azul marino sobre el nuevo lienzo blanco. */
+#app .side .gestlok-company-identity{background:#122e42!important;border-color:#1b4760!important}
+#app .side .gestlok-company-identity small{color:#f1f7fa!important}
+.gl-oh-brand.gl-oh-brand-company{background:#102f43;border-radius:15px;padding:8px 18px}
+.gl-oh-brand.gl-oh-brand-company small{color:#f5fbfc}
+.gl-owner-welcome .gl-owner-welcome-logo{display:inline-block;background:#102e42;
+  border-radius:17px;padding:12px 18px;max-width:100%}
+.gl-owner-welcome-logo img{max-width:100%}
