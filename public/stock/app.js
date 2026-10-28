@@ -1377,7 +1377,6 @@ function inicioOperativo(){
             </button>`).join('')}
         </div>
       </section>
-      ${miRol()==='gerente'?(window.GestLokUpdates?.homeAlerts?.()||''):''}
       ${miRol()==='gerente'?(window.GestLokOwnerAreas?.gerenteCard?.()||''):''}
       ${opciones}
     </div>`;

@@ -14,7 +14,7 @@ test('La tarjeta de áreas redibuja el Inicio del local y no solo la lista de lo
   assert.match(app, /GestLokOwnerAreas\?\.attach\(\{S,role:miRol,render:\(\)=>S\.local\?render\(\):renderHub\(\),/);
 });
 test('El Inicio del gerente incluye avisos del local y la tarjeta de Empleados', () => {
-  assert.match(app, /miRol\(\)==='gerente'\?\(window\.GestLokUpdates\?\.homeAlerts\?\.\(\)\|\|''\):''/);
+  assert.doesNotMatch(app, /miRol\(\)==='gerente'\?\(window\.GestLokUpdates\?\.homeAlerts/);
   assert.match(app, /miRol\(\)==='gerente'\?\(window\.GestLokOwnerAreas\?\.gerenteCard\?\.\(\)\|\|''\):''/);
   assert.match(app, /S\.view === 'inicio' && miRol\(\) === 'gerente'\)\) render\(\)/);
 });
