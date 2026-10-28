@@ -29,7 +29,8 @@ export function EmployeeDirectory({
   const counts = {
     all: rows.length,
     active: rows.filter(r => r.summary.status === "activo").length,
-    rest: rows.filter(r => r.summary.status === "refuerzo").length,
+    rest: rows.filter(r => r.summary.status === "descanso").length,
+    reinforcement: rows.filter(r => r.summary.status === "refuerzo").length,
     inactive: rows.filter(r => r.summary.status === "inactivo").length,
   };
   const openNew = () => {
@@ -50,8 +51,9 @@ export function EmployeeDirectory({
       {[
         { icon: UsersRound, title: "Total colaboradores", value: counts.all, color: "blue" },
         { icon: UserRoundCheck, title: "Activos", value: counts.active, color: "green" },
-        { icon: Clock3, title: "Refuerzos", value: counts.rest, color: "orange" },
+        { icon: Clock3, title: "En descanso", value: counts.rest, color: "orange" },
         { icon: UserRoundX, title: "Inactivos", value: counts.inactive, color: "red" },
+        ...(counts.reinforcement ? [{ icon: UsersRound, title: "Refuerzos", value: counts.reinforcement, color: "blue" }] : []),
       ].map(metric => <div className="employee-pages__stat" key={metric.title}>
         <span className={"employee-pages__stat-icon employee-pages__stat-icon--" + metric.color}><metric.icon size={23}/></span>
         <div><small>{metric.title}</small><strong>{loading ? "—" : metric.value}</strong></div>
