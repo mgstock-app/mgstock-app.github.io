@@ -57,7 +57,7 @@
       list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
       '<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
       (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir Horarios de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Horarios y enlaces de turnos de tu propio local.</p>'+list([['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article></div></section>'+
-      (window.GestLokUpdates?.homeAlerts?.()||'')+(window.GestLokUpdates?.homeDue?.()||'');
+      (window.GestLokUpdates?.homeDue?.()||'');
   }
   async function refresh(){
     refreshGerente();

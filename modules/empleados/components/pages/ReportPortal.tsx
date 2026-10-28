@@ -9,6 +9,7 @@ import { accessApi } from "@/features/access/api";
 import { useOrganizationData } from "@/hooks/use-organization-data";
 import { ManagerHome } from "@/components/pages/ManagerHome";
 import { SharedOwnerCode } from "@/components/invitations/SharedOwnerCode";
+import { WeeklyScheduleDraft } from "./WeeklyScheduleDraft";
 import type { AppLocal, AppUser } from "@/types/access";
 function ManagerReports({ user }: { user: AppUser }) {
   const spaces = useOrganizationData();
@@ -138,7 +139,25 @@ export function ReportPortal() {
   return (
     <AccessGate>
       {user?.role === "employee" ? (
-        <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
+        <section className="management-page employee-portal" aria-label="Portal del colaborador" style={{maxWidth:1100,margin:"0 auto",padding:"clamp(16px,3vw,32px)"}}>
+          <header style={{background:"#073844",color:"white",padding:"24px",borderRadius:18,marginBottom:20}}>
+            <span style={{color:"#75e3e7",fontWeight:700}}>GESTLOK · MI ESPACIO</span>
+            <h1 style={{color:"white",margin:"8px 0"}}>Portal del colaborador</h1>
+            <p style={{color:"#e3f4f5",margin:0}}>Tu información personal y las novedades de tu equipo, en un solo lugar.</p>
+          </header>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16,marginBottom:20}}>
+            <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
+              <h2>🔒 Mis recibos privados</h2>
+              <p>Solo vos podés consultar tus recibos publicados. Tu empresa administra la publicación.</p>
+            </section>
+            <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
+              <h2>📅 Mis próximos turnos</h2>
+              <p>Planilla visual semanal de turnos futuros y francos. Es independiente del registro de horas trabajadas y de la liquidación de sueldos.</p>
+              <WeeklyScheduleDraft />
+            </section>
+          </div>
+          <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
+        </section>
       ) : user?.role === "manager" ? (
         <ManagerHome />
       ) : user ? (

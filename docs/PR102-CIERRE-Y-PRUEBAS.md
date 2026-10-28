@@ -1,17 +1,9 @@
-# PR #102 — control de cierre y reintentos (27 octubre 2026)
+# PR #102 — reconciliación con lo publicado
 
-## Resultado verificado
-- Cypress browser-e2e: aprobado, workflow run 40546554769, job 122338601060, para commit f70bedf79546872a1c43a3932ce16f3580554b61.
-- Esta prueba no demuestra que la nueva demo esté integrada, ni que el formulario guarde reseñas.
-- No se ha verificado lint, npm test y build de este PR como conjunto.
-- No reactivar el antiguo workflow de pruebas nativas Android/iOS #79, que se dejó pausado.
+La demo integrada y las reseñas ya se incorporaron mediante #105 y #106 y mejoras posteriores. Se preservan los controladores, cupones y navegación de main; no se reintroducen versiones anteriores ni se aplican migraciones duplicadas.
 
-## Bloqueos que deben resolverse antes de fusionar
-1. Integrar prototipo de 5 etapas al inicio real, conservando tarjetas y menú originales.
-2. Implementar persistencia real de reseñas y contacto opcional con consentimiento explícito; nunca compartir tablas ni permisos con reseñas internas Mi Gusto.
-3. Revisar la migración SQL y el acceso de la creadora; comprobar RLS y privacidad, anti-spam y el caso de usuarios no registrados.
-4. Definir y probar beneficios de prueba y descuentos sin emitir cupones por una reseña ficticia ni condicionar valoraciones públicas positivas.
-5. Ejecutar lint, npm test, build y Cypress sobre el código integrado, y probar móvil web y multiempresa.
-6. Fusionar y verificar publicación HTTPS solo con todo aprobado.
+Este cierre agrega el recibo ficticio pendiente de la demo, disponible solo para el rol dueño, el aviso de privacidad de reseñas y pruebas E2E actualizadas para la RPC vigente. Cubre navegación móvil, ausencia de montos para gerentes, consentimiento, borrador, error de envío y regalo después de guardar incluso con una estrella.
 
-**Estado: pendiente de integración. No publicar este PR como está.**
+No modifica datos reales, permisos del servidor ni ReciboNet. Los tres diseños completos del módulo real de empleados y la persistencia compartida de turnos futuros son trabajo separado y no se consideran resueltos por este PR.
+
+Publicar únicamente con CI verde en el commit final.

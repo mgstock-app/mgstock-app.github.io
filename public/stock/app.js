@@ -1377,7 +1377,6 @@ function inicioOperativo(){
             </button>`).join('')}
         </div>
       </section>
-      ${miRol()==='gerente'?(window.GestLokUpdates?.homeAlerts?.()||''):''}
       ${miRol()==='gerente'?(window.GestLokOwnerAreas?.gerenteCard?.()||''):''}
       ${opciones}
     </div>`;
@@ -2172,6 +2171,7 @@ function renderHub(){
   window.GestLokSupport?.render();
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  const cargaFallida = !!S.loadError || (!!S.loadStartedAt && Date.now() - S.loadStartedAt > 12000 && !listo);
   const ownerHome=miRol()==='dueno'&&listo&&!!S.db;
   hub.classList.toggle('gl-oh-hub', false);
   if (adm && listo && S.db && S.creatorSetup) {
@@ -2185,7 +2185,8 @@ function renderHub(){
     return;
   }
   let body;
-  if (!listo) body = `<div class="lcards">${'<div class="lcard sk-card" aria-hidden="true"></div>'.repeat(2)}</div>`;
+  if (cargaFallida) body = `<div class="card pad hub-empty" role="alert"><b>No pudimos cargar los locales</b><p class="lead">Revisá la conexión e intentá nuevamente. Tus datos guardados no se modificaron.</p><button class="btn primary" data-act="retry-locales">Reintentar carga</button></div>`;
+  else if (!listo) body = `<div class="lcards">${'<div class="lcard sk-card" aria-hidden="true"></div>'.repeat(2)}</div>`;
   else if (!S.db) body = `<p class="note warn"><b>Sin conexión con la base.</b> Revisá internet y recargá la página.</p>`;
   else if (!mios.length) body = `<div class="card pad hub-empty"><b>Todavía no tenés un local asignado</b><p class="lead">La administración debe asignarte uno o más locales. Cuando lo haga, aparece acá.</p></div>`;
   else body = `<div class="lcards">${mios.map(lcard).join('')}</div>`;
@@ -3451,6 +3452,7 @@ document.addEventListener('click', e => {
     case 'admin-demo-close': if(S.demoTienda){ S.demoTienda=false; renderHub(); window.scrollTo({top:0}); } break;
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
+    case 'retry-locales': S.loadError = false; S.loadStartedAt = Date.now(); S.booted = false; S.loaded.e = false; S.loaded.l = false; renderHub(); boot(); break;
     case 'guardar': openSave(); break;
     case 'recover-draft': recoverLegacyDraft(); break;
     case 'save-ok': doSave(); break;
@@ -3861,7 +3863,9 @@ async function resolveNames(){
 async function boot(){
   const c = window.claude;
   if (!c || typeof c.use !== 'function'){ S.booted = true; render(); return; }
-  const [db, user, dl] = await Promise.all([c.use('db'), c.use('user'), c.use('downloads')]);
+  let db, user, dl;
+  try { [db, user, dl] = await Promise.all([c.use('db'), c.use('user'), c.use('downloads')]); }
+  catch (e) { S.loadError = true; S.booted = true; render(); return; }
   S.db = db; S.user = user; S.dl = dl; S.booted = true;
   if (user){ try { S.me = await user.me(); S.uid = S.me.id; } catch {} }
   if (!db){ render(); return; }
@@ -3870,6 +3874,8 @@ async function boot(){
 
 /* ---------- Inicio ---------- */
 function start(){
+  S.loadStartedAt = Date.now();
+  setTimeout(() => { if (!S.booted || (S.db && (!S.loaded.e || !S.loaded.l))) renderHub(); }, 12500);
   applySkin(); render(); renderInstall(); boot();
   window.GestLokPWAUpdate?.attach(() => !!(
     S.panel || S.provBusy || S.ing?.busy || S.ing?.arch || S.queued || S.editing ||

@@ -69,3 +69,19 @@
   .gl-ch-kpis { grid-template-columns:minmax(0,1fr); }
   .gl-home-essential-overview { grid-template-columns:minmax(0,1fr); }
 }
+
+/* GESTLOK · tablet portrait: give the two main cards usable room beside the sidebar.
+   Visual-only: no role, data, route or business-logic changes. */
+@media (min-width:821px) and (max-width:1199px) {
+  .gl-oh-hub .gl-oh-main.hub-in {box-sizing:border-box;min-width:0;width:100%;padding:18px clamp(14px,2vw,26px) 28px;}
+  .gl-oh-hub .gl-owner-landing {width:100%;max-width:100%;margin-inline:auto;}
+  .gl-oh-hub .gl-owner-areas {grid-template-columns:minmax(0,1fr);gap:16px;}
+  .gl-oh-hub .gl-owner-area {min-width:0;width:100%;box-sizing:border-box;padding:22px 24px;}
+  .gl-oh-hub .gl-owner-area-list {min-width:0;}
+  .gl-oh-hub .gl-owner-quick {grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+  .gl-oh-hub .gl-owner-tile {min-width:0;overflow-wrap:anywhere;}
+}
+@media (min-width:1200px) {
+  .gl-oh-hub .gl-owner-areas {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .gl-oh-hub .gl-owner-area {min-width:0;}
+}
