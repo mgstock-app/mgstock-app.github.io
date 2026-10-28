@@ -1,33 +1,10 @@
 "use client";
-import { useMemo } from "react";
 import { Clock3, LockKeyhole, ReceiptText, Wallet } from "lucide-react";
-import { summarizeReport } from "@/features/reports/payroll.js";
 import { formatHours } from "@/utils/duration.js";
+import { privateReceiptView, type PrivateReceiptPayload, type PayrollRow } from "@/utils/private-receipt";
+export type { PrivateReceiptPayload } from "@/utils/private-receipt";
 import "./private-receipt-detail.css";
 
-export interface PrivateReceiptPayload {
-  sheet: Record<string, unknown>;
-  show_holidays: boolean;
-  show_vacations: boolean;
-  expires_at: string;
-  server_now: string;
-}
-type PayrollRow = {
-  key: string;
-  label: string;
-  type: "horas" | "turnos" | "dias" | "monto";
-  quantity: number | null;
-  rate: number | null;
-  amount: number | null;
-};
-type PayrollSummary = {
-  name: string;
-  mode: string;
-  period: string;
-  quantity: string;
-  total: number;
-  rows: PayrollRow[];
-};
 const pesos = new Intl.NumberFormat("es-AR", {
   style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2,
 });
@@ -48,19 +25,8 @@ const labelWithRate = (row: PayrollRow, all: PayrollRow[]) => {
  * No local name, employer, bank account, alias, sheet ID or payment method is available.
  */
 export function PrivateReceiptDetail({ receipt }: { receipt: PrivateReceiptPayload }) {
-  const summary = useMemo(() => summarizeReport(
-    receipt.sheet, {
-      id:"__recibo_privado__",
-      name:"",
-      cycle:receipt.sheet.semDesde ? "semanal" : "mensual",
-    },
-  ) as PayrollSummary, [receipt.sheet]);
+  const { summary, rows, matches } = privateReceiptView(receipt);
   const isHourly = summary.mode === "Por horas";
-  const rows = summary.rows.filter(row =>
-    row.key !== "fer" || receipt.show_holidays || nonzero(row))
-    .filter(row => row.key !== "vac" || receipt.show_vacations || nonzero(row));
-  const parts = rows.reduce((sum, row) => sum + (row.amount ?? 0), 0);
-  const matches = Number.isFinite(summary.total) && Math.abs(parts - summary.total) < 0.02;
   return <article className="private-receipt" aria-label="Detalle de mi recibo informal">
     <header className="private-receipt__head">
       <div className="private-receipt__head-icon"><ReceiptText size={24}/></div>
