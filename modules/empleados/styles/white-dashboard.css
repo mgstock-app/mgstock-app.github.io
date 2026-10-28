@@ -259,7 +259,7 @@
 .app-shell #mi-recibo,.app-shell #mis-horarios{scroll-margin-top:88px}
 
 /* El archivo blanco de Mi Gusto requiere contraste sobre blanco. */
-.app-shell .owner-company-image{background:#142f43;border-radius:10px;padding:6px}
-.app-shell .gl-gerente .gl-gerente__company-image{background:#142f43;border-radius:10px;padding:6px}
-.app-shell .gl-employee-company img{background:#142f43;border-radius:10px;padding:5px}
+.app-shell .owner-company-image{background:#080808;border-radius:10px;padding:6px;filter:none;mix-blend-mode:normal;object-fit:contain}
+.app-shell .gl-gerente .gl-gerente__company-image{background:#080808;border-radius:10px;padding:6px;filter:none;mix-blend-mode:normal;object-fit:contain}
+.app-shell .gl-employee-company img{background:#080808;border-radius:10px;padding:5px;filter:none;mix-blend-mode:normal;object-fit:contain}
 .app-shell .gl-gerente .gl-gerente__header{background:#fff!important;color:#1b3c52!important}
