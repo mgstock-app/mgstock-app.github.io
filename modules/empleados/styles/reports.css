@@ -421,3 +421,9 @@
 .report-workspace .toast.err .ico{background:var(--danger)}
 @keyframes entra{from{transform:translateY(10px);opacity:.4}to{transform:translateY(0);opacity:1}}
 @media (prefers-reduced-motion:reduce){.report-workspace .toast{animation:none}.report-workspace .progreso span{transition:none}}
+
+/* Descanso es un estado independiente: no confundir con refuerzo. */
+.report-workspace .dot.descanso{background:#e6a01b;box-shadow:0 0 0 3px color-mix(in srgb,#e6a01b 24%,transparent)}
+.report-workspace .persona .dot.descanso{width:9px;height:9px;margin-right:2px}
+.report-workspace #bDescanso[aria-checked="true"]{background:var(--warn-bg);color:var(--warn);font-weight:600}
+@media(max-width:580px){.report-workspace .est-seg{flex-wrap:wrap}.report-workspace .est-seg button{flex:1 1 47%;border-bottom:1px solid var(--line-2)}}
