@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type Shift = { name: string; days: string[] };
@@ -8,18 +8,18 @@ const empty = (): Shift[] => [{name:"",days:Array(7).fill("")}];
 export function WeeklyScheduleDraft() {
   const { user } = useAuth();
   const key = `gestlok:weekly-draft:${user?.user_id ?? "unknown"}`;
-  const [rows,setRows] = useState<Shift[]>(empty);
-  const [editing,setEditing] = useState(false);
-  const [message,setMessage] = useState("");
-  useEffect(() => {
+  const [rows,setRows] = useState<Shift[]>(() => {
+    if (typeof window === "undefined") return empty();
     try {
       const stored = window.localStorage.getItem(key);
-      if(stored) {
-        const parsed: unknown = JSON.parse(stored);
-        if(Array.isArray(parsed) && parsed.every((r) => typeof r?.name === "string" && Array.isArray(r.days) && r.days.length === 7 && r.days.every((d: unknown) => typeof d === "string"))) setRows(parsed);
-      }
-    } catch { setMessage("No se pudo recuperar el borrador."); }
-  },[key]);
+      if (!stored) return empty();
+      const parsed: unknown = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.every((r) => typeof r?.name === "string" && Array.isArray(r.days) && r.days.length === 7 && r.days.every((d: unknown) => typeof d === "string"))) return parsed;
+    } catch { return empty(); }
+    return empty();
+  });
+  const [editing,setEditing] = useState(false);
+  const [message,setMessage] = useState("");
   const update = (i:number, d:number, value:string) => setRows(prev => prev.map((r,j) => j===i ? {...r,days:r.days.map((v,k)=>k===d?value:v)} : r));
   const canEdit = user?.role === "manager" || user?.role === "owner" || user?.role === "admin";
   return <div>
