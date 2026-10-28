@@ -116,7 +116,7 @@
       </section></div>`;
   }
   const STYLE = `#gl-demo-emp{position:fixed;inset:0;z-index:10500;overflow:auto;background:var(--bg,#f5f7fa);color:var(--ink,#11283c);font-family:var(--f-body,system-ui,sans-serif)}
-  .gl-visitor-mode #gl-demo-emp{top:var(--gl-visitor-h,0px)}
+  .gl-visitor-mode #gl-demo-emp{top:var(--gl-tour-header,var(--gl-visitor-h,0px))}
   #gl-demo-emp .gl-dh-wrap{max-width:1180px;margin:0 auto;padding:16px 16px 140px}
   #gl-demo-emp .gl-dh-top{display:flex;gap:14px;align-items:center;margin-bottom:12px}#gl-demo-emp .gl-dh-top h2{margin:0;font-size:20px}#gl-demo-emp .eyebrow{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#607583)}
   #gl-demo-emp h1{font-size:24px;margin:8px 0 4px}

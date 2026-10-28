@@ -14,9 +14,16 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
     step(2); cy.get('#view').should('contain.text', 'Proveedores');
     step(3); cy.get('[data-dh-receipt]').click();
     cy.get('#gl-demo-receipt').should('contain.text', 'Sin validez legal');
+    cy.get('#gl-demo-emp').then(panel => {
+      cy.get('#gl-visitor-bar').then(bar => {
+        expect(panel[0].getBoundingClientRect().top).to.be.at.least(bar[0].getBoundingClientRect().bottom);
+      });
+    });
     step(4); cy.get('#gl-tour-review-form').should('be.visible');
     cy.get('#gl-tour-gift').should('not.exist');
     step(0); cy.get('#hub .gl-owner-landing').should('be.visible');
+    step(3); cy.get('[data-dh-close]').click();
+    cy.get('#gl-demo-emp').should('not.exist');
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
   it('el gerente no tiene acceso al recibo ni sus montos en la demo', () => {
