@@ -1,0 +1,402 @@
+/* Respaldo visual: si hay portada de gerente, jamás mostrar las dos barras de navegación del módulo por encima. */
+.app-shell:has(> .gl-gerente) > .gestlok-module-bar,
+.app-shell:has(> .gl-gerente) > .app-navbar {
+  display:none;
+}
+/* Portada de gerentes: misma identidad visual de GESTLOK que el panel de dueños.
+   Las reglas van dentro de gl-gerente para no alterar otras pantallas ni los recibos. */
+.app-shell .gl-gerente {
+  --gerente-ink:#17314b;
+  --gerente-muted:#607791;
+  font-family:"Segoe UI",Arial,sans-serif;
+  font-size:14px;
+  line-height:1.45;
+  min-height:calc(100dvh - 72px);
+  background:#f4f7fb;
+  color:var(--gerente-ink);
+}
+.app-shell .gl-gerente h1,
+.app-shell .gl-gerente h2,
+.app-shell .gl-gerente h3 {
+  font-family:"Segoe UI",Arial,sans-serif;
+  letter-spacing:-.025em;
+  color:#122b48;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar {
+  width:222px; flex:0 0 222px;
+  padding:22px 13px;
+  background:linear-gradient(165deg,#0c2943,#10334e);
+}
+.app-shell .gl-gerente .gl-gerente__brand {
+  min-height:91px;
+  padding:3px 5px 20px;
+  gap:12px;
+  justify-content:flex-start;
+}
+.app-shell .gl-gerente .gl-gerente__company-image {
+  flex:0 0 auto;
+  display:block;
+  width:95px;
+  height:59px;
+  object-fit:contain;
+}
+.app-shell .gl-gerente .gl-gerente__company-letter {
+  flex:0 0 42px;
+  display:grid;
+  place-items:center;
+  width:42px;height:42px;
+  background:#206789;color:#e7faff;
+  border-radius:11px;font-size:24px;font-weight:800;
+}
+.app-shell .gl-gerente .gl-gerente__brand strong {
+  display:block;color:#fff;font:700 16px/1.2 "Segoe UI",Arial,sans-serif;
+  overflow-wrap:anywhere;
+}
+.app-shell .gl-gerente .gl-gerente__brand small {
+  display:block;
+  color:#c4d8e8;
+  font:600 10px/1.35 "Segoe UI",Arial,sans-serif;
+  letter-spacing:0;
+  max-width:100%;
+}
+.app-shell .gl-gerente .gl-gerente__local-label {
+  color:#a9c3d8;
+  padding:22px 12px 9px;
+  font-size:10px;
+  line-height:1.6;
+  letter-spacing:.09em;
+}
+.app-shell .gl-gerente .gl-gerente__local-label strong {
+  display:block;margin-top:4px;
+  color:#fff;font-size:15px;letter-spacing:0;font-weight:700;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav {
+  display:flex; flex-direction:column; gap:5px;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button {
+  display:flex;align-items:center;gap:10px;
+  padding:12px 11px;
+  border:0;border-radius:8px;
+  background:transparent;
+  color:#cfdfed;
+  font:600 12px/1.3 "Segoe UI",Arial,sans-serif;
+  text-align:left;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active {
+  background:#1a5b89;color:#fff;
+}
+.app-shell .gl-gerente .gl-gerente__main { min-width:0; }
+.app-shell .gl-gerente .gl-gerente__header {
+  min-height:70px;
+  background:linear-gradient(110deg,#0b273f,#0b4662);
+  padding:12px clamp(16px,2vw,27px);
+  border-bottom:1px solid #ffffff16;
+}
+.app-shell .gl-gerente .gl-gerente__header-brand strong {
+  display:block;
+  color:#fff;
+  font:800 25px/1.1 "Segoe UI",Arial,sans-serif;
+  letter-spacing:-.015em;
+}
+.app-shell .gl-gerente .gl-gerente__header-brand strong span {color:#51b9df}
+.app-shell .gl-gerente .gl-gerente__header-brand small {
+  display:block;
+  color:#bad0e0;
+  font:600 9px/1.45 "Segoe UI",Arial,sans-serif;
+  letter-spacing:.09em;
+  margin-top:3px;
+}
+.app-shell .gl-gerente .gl-gerente__user {font:600 13px/1.25 "Segoe UI",Arial,sans-serif}
+.app-shell .gl-gerente .gl-gerente__user small {font-size:11px}
+.app-shell .gl-gerente .gl-gerente__content {
+  padding:clamp(18px,2.2vw,30px);
+  max-width:1700px;
+  margin:0 auto;
+}
+.app-shell .gl-gerente .mlg-board {
+  min-width:0;
+  color:var(--gerente-ink);
+  font:400 14px/1.4 "Segoe UI",Arial,sans-serif;
+}
+.app-shell .gl-gerente .mlg-intro {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+  padding:0 0 20px;
+}
+.app-shell .gl-gerente .mlg-intro>div {min-width:0;flex:1}
+.app-shell .gl-gerente .mlg-intro h1 {
+  color:#142b48;
+  font:800 clamp(23px,2.25vw,29px)/1.2 "Segoe UI",Arial,sans-serif;
+  letter-spacing:-.035em;
+  margin:4px 0 5px;
+  overflow-wrap:anywhere;
+}
+.app-shell .gl-gerente .mlg-intro>div>small {
+  display:block;
+  color:#3e85ae;
+  font:700 10px/1.35 "Segoe UI",Arial,sans-serif;
+  letter-spacing:.09em;
+}
+.app-shell .gl-gerente .mlg-intro p {
+  font-size:13px;line-height:1.45;
+  margin:4px 0;color:#627993;
+}
+.app-shell .gl-gerente .mlg-stats {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:17px;
+}
+.app-shell .gl-gerente .mlg-stats>div {
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr);
+  align-items:center;
+  min-width:0;
+  column-gap:12px;
+  border:1px solid #e0e8f2;
+  border-radius:12px;
+  padding:14px 12px;
+  background:#fff;
+  box-shadow:0 2px 9px #14345108;
+}
+.app-shell .gl-gerente .mlg-stats svg {
+  grid-row:1/3; width:44px;height:44px;padding:11px;
+}
+.app-shell .gl-gerente .mlg-stats span {
+  font-size:11px;line-height:1.3;color:#667d99;
+}
+.app-shell .gl-gerente .mlg-stats strong {
+  font-size:25px;line-height:1.3;font-weight:800;color:#132d4b;
+}
+.app-shell .gl-gerente .mlg-filters {
+  display:flex;align-items:center;gap:10px;margin:0 0 18px;
+}
+.app-shell .gl-gerente .mlg-filters label {
+  display:flex;flex:1;align-items:center;gap:10px;
+  min-width:0;
+  height:44px;
+  margin:0;padding:0 12px;
+  border:1px solid #dce6f1;border-radius:9px;
+  background:#fff;
+}
+.app-shell .gl-gerente .mlg-filters label input {
+  flex:1; min-width:0;
+  border:0;box-shadow:none;border-radius:0;
+  margin:0;padding:0;
+  background:transparent;
+  color:#173c5b;
+  font:400 13px "Segoe UI",Arial,sans-serif;
+}
+.app-shell .gl-gerente .mlg-filters select {
+  width:auto;min-width:155px;max-width:240px;height:44px;
+  padding:9px 12px;margin:0;
+  border:1px solid #dce6f1;
+  border-radius:9px;
+  background:#fff;color:#173c5b;
+  font-size:12px;
+}
+.app-shell .gl-gerente .mlg-current-local {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:44px;
+  white-space:nowrap;
+  padding:10px 13px;
+  background:#f0f7fc;
+  border:1px solid #dce6f1;
+  border-radius:9px;
+  color:#245a7f;
+  font-size:12px;
+  font-weight:750;
+}
+.app-shell .gl-gerente .mlg-filters>button {
+  flex:0 0 44px;width:44px;height:44px;
+  border:1px solid #dce6f1;border-radius:9px;
+  background:#fff;color:#3f7798;padding:0;
+}
+.app-shell .gl-gerente .mlg-local {
+  border:1px solid #dfe8f1;
+  border-radius:13px;
+  padding:15px;
+  margin-bottom:16px;
+  background:#fff;
+  box-shadow:0 2px 12px #152f4d08;
+}
+.app-shell .gl-gerente .mlg-local-head {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:14px;
+}
+.app-shell .gl-gerente .mlg-local-head>button:first-child {
+  background:transparent;border:0;padding:0;
+  display:flex;align-items:center;gap:12px;
+  min-width:0;color:#142e4c;
+  text-align:left;
+}
+.app-shell .gl-gerente .mlg-local-head strong {
+  font-size:19px;font-weight:750;color:#172f4b;
+  white-space:normal;line-height:1.2;
+}
+.app-shell .gl-gerente .mlg-local-photo--fallback {
+  background:#eaf3fb;color:#397ba6;
+}
+.app-shell .gl-gerente .mlg-local-head .mlg-chevron {transform:rotate(90deg)}
+.app-shell .gl-gerente .mlg-cards {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,295px),1fr));
+  gap:9px;
+}
+.app-shell .gl-gerente .mlg-person {
+  display:flex;align-items:center;gap:9px;
+  min-width:0;
+  border:1px solid #e4eaf2;border-radius:10px;
+  padding:10px;
+  background:#fff;
+}
+.app-shell .gl-gerente .mlg-person-name {min-width:0;flex:1}
+.app-shell .gl-gerente .mlg-person-name strong {
+  display:block;font-size:12px;color:#193250;font-weight:750;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.app-shell .gl-gerente .mlg-status {font-weight:700}
+.app-shell .gl-gerente .mlg-primary {
+  display:inline-flex;justify-content:center;align-items:center;gap:8px;
+  padding:12px 16px;
+  background:#0b4967;color:#fff;
+  border:1px solid #0b4967;border-radius:9px;
+  font:700 12px/1.2 "Segoe UI",Arial,sans-serif;
+  white-space:nowrap;
+}
+.app-shell .gl-gerente .mlg-add,
+.app-shell .gl-gerente .mlg-view {
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid #d8e7f4;border-radius:8px;
+  color:#1d6ba6;
+  background:#f3f8fe;
+  font:700 11px/1.2 "Segoe UI",Arial,sans-serif;
+}
+.app-shell .gl-gerente .mlg-add {padding:10px 14px}
+.app-shell .gl-gerente .mlg-view {padding:9px}
+.app-shell .gl-gerente .mlg-more {
+  display:grid;place-items:center;
+  border:1px solid #e1eaf3;border-radius:8px;
+  background:#fff;color:#60819c;
+  padding:0;
+}
+.app-shell .gl-gerente .mlg-form label {
+  display:flex;
+  margin:0;
+  padding:0;
+  font-size:12px;
+  line-height:1.35;
+}
+.app-shell .gl-gerente .mlg-form input {
+  margin:0;
+  font-size:13px;
+}
+.app-shell .gl-gerente .mlg-form .mlg-date {
+  display:flex;
+  margin:0;
+}
+.app-shell .gl-gerente .mlg-form .mlg-date input {
+  border:0;
+  min-width:0;
+}
+.app-shell .gl-gerente .mlg-state-button {
+  display:flex;justify-content:center;align-items:center;gap:7px;
+  padding:10px;border:1px solid transparent;
+  border-radius:9px;
+  font:700 12px/1.2 "Segoe UI",Arial,sans-serif;
+}
+.app-shell .gl-gerente .mlg-state-button[aria-pressed="true"] {border-color:currentColor}
+.app-shell .gl-gerente .mlg-state-button--activo {background:#e6f8ef;color:#16875a}
+.app-shell .gl-gerente .mlg-state-button--refuerzo {background:#fff0df;color:#b46b08}
+.app-shell .gl-gerente .mlg-state-button--inactivo {background:#ffe9ef;color:#bc3150}
+.app-shell .gl-gerente .mlg-modal {
+  background:#fff;
+}
+.app-shell .gl-gerente .mlg-modal-head h2 {
+  font:750 22px/1.2 "Segoe UI",Arial,sans-serif;
+  margin:5px 0;
+}
+.app-shell .gl-gerente .mlg-tabs button {
+  padding:9px 12px;
+  border:0;border-bottom:3px solid transparent;
+  border-radius:0;
+  background:transparent;
+  color:#627f9c;
+}
+.app-shell .gl-gerente .mlg-tabs button[aria-selected="true"] {
+  border-bottom-color:#2479c2;
+  color:#176bb0;
+}
+.app-shell .gl-gerente .mlg-form-actions .mlg-secondary,
+.app-shell .gl-gerente .mlg-history .mlg-secondary {
+  background:#f5f9fd;color:#356486;
+  border:1px solid #d6e3ef;
+  border-radius:9px;padding:10px 14px;
+}
+.app-shell .gl-gerente .mlg-new-date>button {
+  border:1px solid #ccdfe9;border-radius:9px;
+  background:#e6f1fa;color:#1c689d;
+  padding:11px;
+}
+.app-shell .gl-gerente .mlg-date-tags button {
+  background:transparent;border:0;padding:0;
+}
+.app-shell .gl-gerente .mlg-form input:disabled,
+.app-shell .gl-gerente .mlg-form textarea:disabled {
+  background:#f5f8fc;color:#657b90;
+}
+.app-shell .gl-gerente .mlg-board button:focus-visible {
+  outline:3px solid #4ea4d4;outline-offset:2px;
+}
+@media(max-width:1200px){
+  .app-shell .gl-gerente .gl-gerente__sidebar{width:206px;flex-basis:206px;padding:20px 10px}
+  .app-shell .gl-gerente .mlg-stats{gap:9px}
+  .app-shell .gl-gerente .mlg-stats>div{padding:11px 9px;column-gap:8px}
+}
+@media(max-width:940px){
+  .app-shell .gl-gerente .gl-gerente__sidebar {
+    position:fixed;inset:0 auto 0 0;
+    z-index:1015;
+    transform:translateX(-105%);
+    width:250px;max-width:85vw;
+    transition:transform .18s ease;
+    overflow-y:auto;
+  }
+  .app-shell .gl-gerente .gl-gerente__sidebar.is-open{transform:translateX(0)}
+  .app-shell .gl-gerente .gl-gerente__scrim{
+    display:block;position:fixed;inset:0;z-index:1014;
+    padding:0;border:0;background:#031a2cab;
+  }
+  .app-shell .gl-gerente .gl-gerente__menu {
+    display:grid;place-items:center;
+    border:0;padding:7px;
+    background:transparent;color:#fff;
+  }
+  .app-shell .gl-gerente .gl-gerente__main {width:100%}
+}
+@media(max-width:660px){
+  .app-shell .gl-gerente .gl-gerente__content {padding:15px}
+  .app-shell .gl-gerente .gl-gerente__header {min-height:62px}
+  .app-shell .gl-gerente .gl-gerente__header-brand strong {font-size:21px}
+  .app-shell .gl-gerente .gl-gerente__header-brand small {font-size:8px;letter-spacing:.04em}
+  .app-shell .gl-gerente .mlg-intro h1 {font-size:24px}
+  .app-shell .gl-gerente .mlg-intro .mlg-primary {width:100%}
+  .app-shell .gl-gerente .mlg-stats {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .app-shell .gl-gerente .mlg-stats>div {padding:10px}
+  .app-shell .gl-gerente .mlg-filters label {flex:1 1 100%}
+  .app-shell .gl-gerente .mlg-filters select {flex:1;min-width:0}
+  .app-shell .gl-gerente .mlg-cards {grid-template-columns:minmax(0,1fr)}
+  .app-shell .gl-gerente .mlg-local-head {flex-wrap:wrap}
+  .app-shell .gl-gerente .mlg-local-head .mlg-add {width:100%}
+  .app-shell .gl-gerente .mlg-local-head>button:first-child {flex-wrap:wrap}
+  .app-shell .gl-gerente .mlg-local-head strong {font-size:17px}
+}
+@media(max-width:370px){
+  .app-shell .gl-gerente .gl-gerente__user {font-size:11px}
+  .app-shell .gl-gerente .mlg-stats {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-shell .gl-gerente .mlg-person {padding:7px;gap:7px}
+}

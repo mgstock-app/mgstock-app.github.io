@@ -5,7 +5,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node scripts/test-payroll.cjs && node scripts/test-report-view.cjs && node scripts/test-sharing.cjs && node scripts/test-owner-overview.cjs && node scripts/test-admin-assignment.cjs && node scripts/test-sheets-link.cjs && node scripts/test-legal.cjs && node scripts/test-session-privacy.cjs && node scripts/test-gerente-horarios.cjs && node scripts/test-shared-session.cjs && node scripts/test-gestlok-company.cjs && node scripts/test-employee-overview.cjs && node scripts/test-legajos-gerentes.cjs",
+    "test": "node scripts/test-payroll.cjs && node scripts/test-report-view.cjs && node scripts/test-sharing.cjs && node scripts/test-owner-overview.cjs && node scripts/test-admin-assignment.cjs && node scripts/test-sheets-link.cjs && node scripts/test-legal.cjs && node scripts/test-session-privacy.cjs && node scripts/test-gerente-horarios.cjs && node scripts/test-shared-session.cjs && node scripts/test-gestlok-company.cjs && node scripts/test-employee-overview.cjs && node scripts/test-legajos-gerentes.cjs && node scripts/test-manager-visual.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

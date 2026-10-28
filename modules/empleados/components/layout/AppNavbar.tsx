@@ -15,7 +15,8 @@ export function AppNavbar() {
   const { user, signOut } = useAuth();
   const path = usePathname();
   const pendingCount = usePendingUsersCount(user);
-  if ((user?.role === "owner" && (path === "/" || path === "/horarios")) || user?.role === "admin") return null;
+  if ((user?.role === "owner" && (path === "/" || path === "/horarios")) || user?.role === "admin"
+    || (path === "/" && (user?.role === "manager" || isGestlokGerente(user)))) return null;
   return (
     <header className="app-navbar">
       <Link href="/" className="navbar-brand">

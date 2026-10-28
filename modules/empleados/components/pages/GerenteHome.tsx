@@ -4,17 +4,30 @@ import Link from "next/link";
 import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, X } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
+import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 import "./gerente-home.css";
+import "./gerente-visual-fix.css";
 
 export function GerenteHome() {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [section, setSection] = useState<"legajos" | "horarios">("legajos");
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
+  const company = useGestlokCompany();
+  const companyName = company?.company_name || "Mi empresa";
+  const isMiGusto = company?.logo_id === "mi-gusto";
+  const localId = user?.gestlok_gerente?.local_ids?.length === 1 ? user.gestlok_gerente.local_ids[0] : null;
+  const localName = user?.local_name || (localId === "dt" ? "Don Torcuato" : localId === "munro" ? "Munro" : null);
+  const home = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
   return <div className="gl-gerente">
     <aside className={"gl-gerente__sidebar" + (menuOpen?" is-open":"")} aria-label="Menú del gerente">
-      <div className="gl-gerente__brand"><span>G</span><div><strong>GESTLOK</strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div></div>
-      <div className="gl-gerente__local-label">TU LOCAL · ADMINISTRACIÓN DE EMPLEADOS</div>
+      <div className="gl-gerente__brand">
+        {isMiGusto
+          ? <img className="gl-gerente__company-image" src={home + "img/mi-gusto-blanco.png"} alt="Mi Gusto" width={105} height={66}/>
+          : <span className="gl-gerente__company-letter" aria-hidden="true">{companyName.slice(0,1).toUpperCase()}</span>}
+        <div>{!isMiGusto && <strong>{companyName}</strong>}<small>{isMiGusto ? "Empanadas de Verdad" : "Administración de empleados"}</small></div>
+      </div>
+      <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
       <nav>
         <button type="button" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><House size={19}/> Administrar empleados</button>
         <button type="button" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/> Sector de Google</button>
@@ -25,7 +38,7 @@ export function GerenteHome() {
     <main className="gl-gerente__main">
       <header className="gl-gerente__header">
         <button type="button" className="gl-gerente__menu" aria-label={menuOpen?"Cerrar menú":"Abrir menú"} onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
-        <div><strong>GEST<span>LOK</span></strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div>
+        <div className="gl-gerente__header-brand"><strong>GEST<span>LOK</span></strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div>
         <span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
       </header>
       <div className="gl-gerente__content">

@@ -1,10 +1,17 @@
 "use client";
 import { useGestlokCompany } from "./GestlokContext";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { isGestlokGerente } from "@/utils/permissions";
 
 // Barra común de GESTLOK en todas las pantallas del módulo de empleados.
 const home = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
 export function GestlokModuleBar() {
   const company = useGestlokCompany();
+  const { user } = useAuth();
+  const pathname = usePathname();
+  // La portada de gerentes ya tiene su cabecera propia; evitar barras superpuestas.
+  if (pathname === "/" && (user?.role === "manager" || isGestlokGerente(user))) return null;
   return (
     <header className="gestlok-module-bar">
       <a className="gestlok-module-brand" href={home} aria-label="Volver al inicio de GESTLOK">

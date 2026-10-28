@@ -20,6 +20,9 @@ type StaffCard = {
 };
 const normalized = (s: string) => s.trim().toLocaleLowerCase("es-AR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const fullName = (p: Legajo) => p.first_name + " " + p.last_name;
+const localTitle = (local: AppLocal): string =>
+  local.id === "dt" && /^torcuato$/i.test(local.name.trim())
+    ? "Don Torcuato" : local.name;
 const splitName = (full: string) => {
   const parts = full.trim().split(/\s+/);
   return { first_name: parts.shift() || "", last_name: parts.join(" ") };
@@ -44,7 +47,7 @@ function LocalPortrait({ local }: { local: AppLocal }) {
   const image = local.photo_url || local.image_url || local.logo_url;
   const safe = typeof image === "string" &&
     (/^https:\/\//i.test(image) || /^\/(?!\/)/.test(image)) ? image : "";
-  return safe ? <img className="mlg-local-photo" src={safe} alt={"Foto de " + local.name}/> :
+  return safe ? <img className="mlg-local-photo" src={safe} alt={"Foto de " + localTitle(local)}/> :
     <span className="mlg-local-photo mlg-local-photo--fallback" aria-hidden="true"><Store size={27}/></span>;
 }
 export function ManagerLegajos({ ownerView = false, localScope }: {
@@ -191,7 +194,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
   };
   return <section className={"mlg-board" + (ownerView ? " mlg-board--owner" : "")} aria-label={ownerView ? "Legajos registrados por gerentes" : "Administración de empleados del gerente"}>
     {ownerView ? <div className="mlg-intro mlg-intro--owner"><div><h2>Legajos informados por gerentes</h2><p>Estados, refuerzos y bajas registrados en los locales de tu empresa.</p></div><button type="button" onClick={updateView} aria-label="Actualizar legajos de gerentes"><RotateCw size={17}/> Actualizar</button></div> :
-      <div className="mlg-intro"><div><small>GESTLOK · ADMINISTRACIÓN DE EMPLEADOS</small><h1>Administración de empleados</h1><p>Gestioná los legajos de tus locales autorizados.</p></div>
+      <div className="mlg-intro"><div><small>GESTLOK · {locals.length === 1 ? localTitle(locals[0]).toUpperCase() : "ADMINISTRACIÓN DE EMPLEADOS"}</small><h1>Administración de empleados</h1><p>{locals.length === 1 ? "Legajos y estados del equipo de " + localTitle(locals[0]) + "." : "Gestioná los legajos de tus locales autorizados."}</p></div>
         <button type="button" className="mlg-primary" disabled={loading || !locals.length} onClick={()=>open(locals.find(l=>l.id===localFilter) || locals[0])}><Plus size={18}/> Agregar colaborador</button>
       </div>}
     {!ownerView && <div className="mlg-stats">
@@ -201,9 +204,11 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
       <div><UserRoundX color="#c73b51"/><span>Inactivos</span><strong>{loading?"—":totals.inactive}</strong></div>
     </div>}
     <div className="mlg-filters"><label><Search size={18}/><input type="search" placeholder="Buscar colaborador por nombre…" value={search} onChange={e=>setSearch(e.target.value)} aria-label="Buscar colaborador"/></label>
-      <select aria-label="Filtrar por local" value={localFilter} onChange={e=>setLocalFilter(e.target.value)}>
-        <option value="todos">Todos los locales</option>{locals.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-      </select>
+      {locals.length === 1
+        ? <span className="mlg-current-local"><Store size={16}/>{localTitle(locals[0])}</span>
+        : <select aria-label="Filtrar por local" value={localFilter} onChange={e=>setLocalFilter(e.target.value)}>
+            <option value="todos">Todos los locales</option>{locals.map(l=><option key={l.id} value={l.id}>{localTitle(l)}</option>)}
+          </select>}
       <button type="button" onClick={updateView} aria-label="Actualizar" disabled={loading}><RotateCw size={18}/></button>
     </div>
     {error && <p className="mlg-error" role="alert">{error}</p>}
@@ -212,9 +217,9 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
       locals.filter(l=>localFilter==="todos"||l.id===localFilter).map(local=>{
         const staff = filtered.filter(r=>r.local.id===local.id);
         const closed = collapsed.includes(local.id);
-        return <section key={local.id} className="mlg-local" aria-label={"Colaboradores de "+local.name}>
+        return <section key={local.id} className="mlg-local" aria-label={"Colaboradores de "+localTitle(local)}>
           <div className="mlg-local-head"><button type="button" aria-expanded={!closed} onClick={()=>setCollapsed(a=>closed?a.filter(v=>v!==local.id):[...a,local.id])}>
-            <LocalPortrait local={local}/><strong>{local.name}</strong><span>{staff.length} colaboradores</span><ChevronRight className={closed?"":"mlg-chevron"} size={19}/>
+            <LocalPortrait local={local}/><strong>{localTitle(local)}</strong><span>{staff.length} colaboradores</span><ChevronRight className={closed?"":"mlg-chevron"} size={19}/>
           </button>{!ownerView&&<button type="button" className="mlg-add" onClick={()=>open(local)}><Plus size={17}/> Agregar colaborador</button>}</div>
           {!closed && (staff.length ? <div className="mlg-cards">{staff.map((person,i)=><article className="mlg-person" key={person.key}>
             <span className={"mlg-avatar mlg-avatar--"+i%5} aria-hidden="true">{(person.fullName[0]||"?").toUpperCase()}</span>
@@ -222,12 +227,12 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
             <button type="button" className="mlg-view" onClick={()=>open(local,person)}><FileText size={15}/> Ver legajo</button>
             <button type="button" className="mlg-more" aria-label={"Detalle de "+person.fullName} onClick={()=>open(local,person)}><MoreVertical size={17}/></button>
           </article>)}</div> : <p className="mlg-empty">{search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
-          {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {local.name}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
+          {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}
     {draft && chosenLocal && <div className="mlg-overlay">
-      <section className="mlg-modal" role="dialog" aria-modal="true" aria-label={"Legajo en "+chosenLocal.name}>
-        <div className="mlg-modal-head"><div><small>LEGAJO · {chosenLocal.name.toUpperCase()}</small><h2>{editing?fullName(editing):"Datos del colaborador"}</h2></div><button type="button" aria-label="Cerrar legajo" onClick={close} disabled={saving}><X size={20}/></button></div>
+      <section className="mlg-modal" role="dialog" aria-modal="true" aria-label={"Legajo en "+localTitle(chosenLocal)}>
+        <div className="mlg-modal-head"><div><small>LEGAJO · {localTitle(chosenLocal).toUpperCase()}</small><h2>{editing?fullName(editing):"Datos del colaborador"}</h2></div><button type="button" aria-label="Cerrar legajo" onClick={close} disabled={saving}><X size={20}/></button></div>
         <div className="mlg-tabs" role="tablist" aria-label="Datos e historial del legajo"><button type="button" role="tab" aria-selected={!showHistory} onClick={()=>setShowHistory(false)}>Datos personales</button><button type="button" role="tab" aria-selected={showHistory} disabled={!editing} onClick={()=>void viewHistory()}><History size={16}/> Historial de cambios</button></div>
         {showHistory && editing ? <div className="mlg-history">
           {historyLoading ? <p role="status">Cargando historial…</p> : history.length ? history.map(e=><article key={e.id}><div><strong>{e.action==="alta"?"Alta de colaborador":"Actualización de legajo"}</strong><span>{dateWithTime(e.recorded_at)}</span></div>
@@ -244,7 +249,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
             <label>Teléfono<input type="tel" maxLength={35} value={draft.phone} onChange={e=>update("phone",e.target.value)} disabled={ownerView||saving} placeholder="11 2345-6789"/></label>
             <label>Alias para transferencias<input maxLength={120} value={draft.payment_alias} onChange={e=>update("payment_alias",e.target.value)} disabled={ownerView||saving} placeholder="Alias bancario"/></label>
             <label>Fecha de ingreso (dd/mm/aaaa)<div className="mlg-date"><CalendarDays size={17}/><input inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={startedDate} onChange={e=>setStartedDate(e.target.value)} disabled={ownerView||saving}/></div></label>
-            <label>Local<input value={chosenLocal.name} disabled/></label>
+            <label>Local<input value={localTitle(chosenLocal)} disabled/></label>
           </div>
           <label className="mlg-note-label">Notas (opcional)<textarea rows={2} maxLength={1500} placeholder="Observaciones del colaborador…" value={draft.notes} onChange={e=>update("notes",e.target.value)} disabled={ownerView||saving}/></label>
           <fieldset className="mlg-state"><legend>Estado del colaborador</legend>
