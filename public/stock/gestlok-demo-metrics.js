@@ -6,6 +6,9 @@ let reviews=[],reviewsLoaded=false,reviewsLoading=false,reviewsError='';
 async function loadReviews(){if(!allowed()||reviewsLoading)return;reviewsLoading=true;reviewsError='';try{const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_reviews');if(error)throw error;reviews=Array.isArray(data)?data:[];reviewsLoaded=true;}catch{reviewsLoaded=true;reviewsError='No se pudieron cargar las reseñas. Usá Actualizar para reintentar.';}finally{reviewsLoading=false;if(allowed())api?.renderHub?.();}}
 function reviewView(){if(!reviewsLoaded&&!reviewsLoading)queueMicrotask(loadReviews);return '<section class="gl-admin-card" aria-label="Reseñas de GESTLOK"><header><h2>Reseñas de la demo GESTLOK</h2><button type="button" data-gl-reviews-refresh>Actualizar</button></header><p>Solo creadora · Contactar únicamente a quienes lo autorizaron.</p>'+(reviewsError?'<p>'+esc(reviewsError)+'</p>':reviewsLoading&&!reviewsLoaded?'<p>Cargando reseñas…</p>':reviews.length?reviews.map(r=>'<article style="padding:12px;border-top:1px solid #ddd"><b>'+('★'.repeat(Math.min(5,Math.max(0,Number(r.rating)||0))))+'</b> <small>'+esc(String(r.created_at||'').slice(0,10))+'</small><p>'+esc(r.comment||'Sin comentario')+'</p><small>'+(r.publish_consent?'Autorizó publicar testimonio':'No autorizó publicar testimonio')+'</small>'+(r.contact_consent?'<p>Solicitó contacto: '+esc(r.contact_name||'')+' · '+esc(r.contact_value||'')+'</p>':'')+'</article>').join(''):'<p>Aún no hay reseñas.</p>')+'</section>';}
 
+let coupons=[],couponsLoaded=false,couponsLoading=false,couponsError='';
+async function loadCoupons(){if(!allowed()||couponsLoading)return;couponsLoading=true;couponsError='';try{const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_cupones_demo');if(error)throw error;coupons=Array.isArray(data)?data:[];couponsLoaded=true;}catch{couponsLoaded=true;couponsError='No se pudieron consultar los cupones GESTLOK.';}finally{couponsLoading=false;if(allowed())api?.renderHub?.();}}
+function couponView(){if(!couponsLoaded&&!couponsLoading)queueMicrotask(loadCoupons);const count=status=>coupons.filter(c=>c.estado===status).length;return '<section class="gl-admin-card" aria-label="Cupones GESTLOK"><header><h2>Cupones GESTLOK</h2><button type="button" data-gl-coupons-refresh>Actualizar</button></header><p>Premios exclusivos de la demo. No incluye cupones de Mi Gusto.</p>'+(couponsError?'<p>'+esc(couponsError)+'</p>':couponsLoading&&!couponsLoaded?'<p>Cargando cupones…</p>':'<p><b>Emitidos:</b> '+coupons.length+' · <b>Pendientes:</b> '+count('pendiente')+' · <b>Utilizados:</b> '+count('utilizado')+' · <b>Vencidos:</b> '+count('vencido')+'</p>'+coupons.slice(0,30).map(c=>'<p><strong>'+esc(c.codigo)+'</strong> · '+esc(c.estado)+' · '+esc(String(c.emitido_at||'').slice(0,10))+'</p>').join(''))+'</section>';}
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=x=>Number(x||0).toLocaleString('es-AR');
 function allowed(){return !!api?.isCreadora?.();}
@@ -47,9 +50,10 @@ function view(){
    '<div><b>Nova Indumentaria</b><span>'+(loaded&&!error?fmt(n.nova):'—')+' sesiones</span></div>'+
   '</div>'+
   '<p class="note">Una sesión puede explorar los dos roles y tiendas, por eso los subtotales pueden superar el total. Solo se registran visitas cuando la persona pulsa «Permitir estadísticas» en la demo. Si elige «Seguir sin estadísticas» o no responde, los contadores permanecen sin cambios.</p>'+
- '</section>'+reviewView();
+ '</section>'+reviewView()+couponView();
 }
 document.addEventListener('click',e=>{
+ const coupon=e.target.closest?.('[data-gl-coupons-refresh]');if(coupon&&allowed()){e.preventDefault();loadCoupons();return;}
  const review=e.target.closest?.('[data-gl-reviews-refresh]');if(review&&allowed()){e.preventDefault();loadReviews();return;}
  const b=e.target.closest?.('[data-gl-demo-refresh]');
  if(b && allowed()){e.preventDefault();refresh(true);}
