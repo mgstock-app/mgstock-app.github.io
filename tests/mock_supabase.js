@@ -184,7 +184,7 @@
       // Reseñas (igual que las RPC gestlok_resenas_*): Munro y Torcuato con datos propios; se registra cualquier día
       // y se usa del 1 al 12 (después del 12 vale el mes siguiente); uso único; modificar solo pendientes.
       // window.__resenasDia fija el día (AAAA-MM-DD) para probar vigencia y vencimiento.
-      if (/^gestlok_resenas_(list|create|redeem|update)$/.test(fn)){
+      if (/^gestlok_resenas_(list|create|redeem|update|manual_use)$/.test(fn)){
         const loc = args && args.p_local, err = m => ({data:null, error:{message:m}});
         if (!a || !['munro','torcuato'].includes(loc) || !(total(a) || (a.rol === 'gerente' && (a.locales || []).includes(loc)))) return err('Acceso denegado');
         const dia = window.__resenasDia || new Date().toISOString().slice(0,10), y = Number(dia.slice(0,4)), m = Number(dia.slice(5,7)), d = Number(dia.slice(8));
@@ -210,6 +210,14 @@
           if (!c || c.used_at || vencido(c)) return err('Solo se modifican cupones pendientes de esta sucursal');
           if (st.some(x => x !== c && x.local === loc && x.phone === t && x.period === c.period)) return err('El cliente ya tiene cupón para este período en esta sucursal');
           c.customer_name = String(args.p_name).trim(); c.phone = t; return {data:pay(c), error:null};
+        }
+        if (fn === 'gestlok_resenas_manual_use') {
+          const reason = String(args.p_reason || '').trim();
+          if (reason.length < 8 || reason.length > 300) return err('Explicá el motivo del cambio');
+          if (!c || c.used_at || vigente(c)) return err('Cupón ya utilizado, de otra sucursal o vigente');
+          c.used_at = new Date().toISOString();
+          c.manual_reason = reason;
+          return {data:pay(c), error:null};
         }
         if (c && !c.used_at && dia < c.period) return err('Todavía no está vigente: se usa del 1 al 12 de ' + c.period.slice(5,7) + '/' + c.period.slice(0,4));
         if (!c || c.used_at || !vigente(c)) return err('Cupón utilizado, vencido, de otra sucursal o inexistente');
