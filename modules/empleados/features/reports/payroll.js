@@ -237,7 +237,7 @@ ctx.fmtImporte = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maxi
 ctx.fmtHoras = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
 ctx.fmtEntero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 ctx.LIGADAS = ["off", "fer"];
-ctx.ESTADOS_COLAB = { activo: "Activo", refuerzo: "Refuerzo", inactivo: "Inactivo" };
+ctx.ESTADOS_COLAB = { activo: "Activo", refuerzo: "Refuerzo", descanso: "En descanso", inactivo: "Inactivo" };
 ctx.ESTADOS_EFE = { enviada: "Recibo listo", cargada: "Pendiente de firma", vacia: "Sin cargar" };
 ctx.ITEM_AUS = ctx.ITEMS.filter(function (x) { return x.k === "aus"; })[0];
 };
