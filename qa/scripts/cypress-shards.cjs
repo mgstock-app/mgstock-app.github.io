@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* Cada caso Cypress pertenece a exactamente un grupo. Sin excluir tests. */
 const { readdirSync, statSync } = require("node:fs");
 const { resolve, join } = require("node:path");
