@@ -210,6 +210,8 @@ export function LocalScreen({ scheduleInFolderOnly = false }: { scheduleInFolder
                       <th className="izq">{"Período"}</th>
                       <th>{"Trabajado"}</th>
                       <th>{"$ Trabajado"}</th>
+                      <th>{"Horas extra"}</th>
+                      <th>{"$ Extra"}</th>
                       <th>{"OFF"}</th>
                       <th>{"$ OFF"}</th>
                       <th>{"Feriado"}</th>
