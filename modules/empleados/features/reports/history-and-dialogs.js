@@ -89,6 +89,8 @@ ctx.pintarHistorial = function () {
         ctx.celda(tr, per || "—", "izq");
         ctx.celda(tr, ctx.cantTxt(tt, v("trab", "c")));
         ctx.celda(tr, p("trab"));
+        ctx.celda(tr, d.extras ? ctx.cantTxt("horas", v("extra", "c")) : "—");
+        ctx.celda(tr, d.extras ? p("extra") : "—");
         ctx.celda(tr, ctx.cantTxt(tt, v("off", "c")));
         ctx.celda(tr, p("off"));
         ctx.celda(tr, ctx.cantTxt(tt, v("fer", "c")));
@@ -155,7 +157,7 @@ ctx.registrarHistorialDe = function (id, origen) {
     if (!h)
         return Promise.resolve();
     var reg = { registrado: new Date().toISOString(), fecha: h.fecha || "", periodo: ctx.periodoTxt(h), mes: h.mes || "", anio: h.anio || "", semDesde: h.semDesde || "", semHasta: h.semHasta || "",
-        nombre: h.nombre || "", local: ctx.localDe(h), puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), pago: ctx.pagoDe(h), alias: String(h.alias || "").trim(), firmado: ctx.esEfectivo(h) && ctx.firmaVigente(h), ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "",
+        nombre: h.nombre || "", local: ctx.localDe(h), puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), extras: !!h.extras, pago: ctx.pagoDe(h), alias: String(h.alias || "").trim(), firmado: ctx.esEfectivo(h) && ctx.firmaVigente(h), ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "",
         items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas), total: ctx.totalDe(h), enviadoA: origen || "Guardado sin enviar" };
     return ctx.S.db.collection("hojas/" + id + "/historial").add(reg);
 };
