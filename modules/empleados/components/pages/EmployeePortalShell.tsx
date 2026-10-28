@@ -8,10 +8,10 @@ import { EmployeeScheduleLink } from "@/components/schedules/EmployeeScheduleLin
 
 type Section = "inicio-colaborador" | "mi-recibo" | "mis-horarios";
 
-function Row({title, Icon, children, onClick}: {
-  title:string; Icon:typeof House; children:ReactNode; onClick:()=>void;
+function Row({title, Icon, children, onClick, active=false}: {
+  title:string; Icon:typeof House; children:ReactNode; onClick:()=>void; active?:boolean;
 }) {
-  return <button type="button" title={title} aria-label={title} onClick={onClick}>
+  return <button type="button" title={title} aria-label={title} aria-current={active?"page":undefined} onClick={onClick}>
     <Icon size={19} aria-hidden="true"/><span className="gl-employee-nav__label">{children}</span>
   </button>;
 }
@@ -70,9 +70,9 @@ export function EmployeePortalShell(){
         <div><strong>{companyName}</strong><small>{local} · Colaborador</small></div>
       </div>
       <nav aria-label="Navegación del colaborador">
-        <Row title="Inicio" Icon={House} onClick={()=>go("inicio-colaborador")}>Inicio</Row>
-        <Row title="Mi recibo personal" Icon={ReceiptText} onClick={()=>go("mi-recibo")}>Mi recibo</Row>
-        <Row title="Horarios de mi local" Icon={CalendarDays} onClick={()=>go("mis-horarios")}>Horarios</Row>
+        <Row title="Inicio" Icon={House} active={section==="inicio-colaborador"} onClick={()=>go("inicio-colaborador")}>Inicio</Row>
+        <Row title="Mi recibo personal" Icon={ReceiptText} active={section==="mi-recibo"} onClick={()=>go("mi-recibo")}>Mi recibo</Row>
+        <Row title="Horarios de mi local" Icon={CalendarDays} active={section==="mis-horarios"} onClick={()=>go("mis-horarios")}>Horarios</Row>
       </nav>
       <div className="gl-employee-sidebar__bottom">
         <Row title="Mi perfil y empresas" Icon={UserRound} onClick={openProfile}>Mi perfil</Row>
