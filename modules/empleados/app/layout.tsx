@@ -35,6 +35,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
+      <head><link rel="stylesheet" href={`${process.env.NEXT_PUBLIC_GESTLOK_HOME || "/"}stock/gestlok-white-ui.css?rev=blanco-20261028`} /></head>
       <body>
         {/* Modo sin conexión de GESTLOK: se carga antes que la aplicación para que todas las consultas lo usen. */}
         <Script src={`${process.env.NEXT_PUBLIC_GESTLOK_HOME || "/"}stock/gestlok-offline.js?rev=offline-20261026`} strategy="beforeInteractive" />
