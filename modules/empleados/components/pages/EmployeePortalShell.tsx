@@ -106,5 +106,12 @@ export function EmployeePortalShell(){
         </p>
       </section>
     </main>
+    <nav className="gl-module-dock" aria-label="Navegación móvil del colaborador">
+      <button type="button" aria-current={section==="inicio-colaborador"?"page":undefined} onClick={()=>go("inicio-colaborador")}><House size={20}/>Inicio</button>
+      <button type="button" aria-current={section==="mi-recibo"?"page":undefined} onClick={()=>go("mi-recibo")}><ReceiptText size={20}/>Mi recibo</button>
+      <button type="button" aria-current={section==="mis-horarios"?"page":undefined} onClick={()=>go("mis-horarios")}><CalendarDays size={20}/>Horarios</button>
+      <button type="button" onClick={openProfile}><UserRound size={20}/>Mi perfil</button>
+      <button type="button" aria-expanded={open} onClick={()=>setOpen(true)}><Menu size={20}/>Más</button>
+    </nav>
   </div>;
 }
