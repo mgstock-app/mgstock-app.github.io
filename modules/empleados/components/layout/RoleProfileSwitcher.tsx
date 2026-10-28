@@ -32,16 +32,25 @@ export function RoleProfileSwitcher(){
  useEffect(()=>{if(open && !loaded) void load();},[open,loaded,load]);
  if(!user||user.status!=="approved")return null;
  const bridge=()=> (window as unknown as {GestLokOffline?:OfflineBridge}).GestLokOffline;
- const switchTo=async(item:Context)=>{
-   if(busy||item.active)return;
+ const switchTo=async(item:Context,localId="")=>{
+   if(busy||(item.active&&!localId))return;
    if(!online()){setError("Cambiar de empresa requiere conexión.");return;}
    setBusy(true);setError("");
    try{
      const unsent=await bridge()?.pending?.()||0;
      if(unsent)throw new Error("Tenés cambios pendientes de sincronizar. Guardalos antes de cambiar de empresa.");
-     const accepted=await rpc<{tenant_id:string}>("gestlok_choose_role_context",{p_tenant:item.tenant_id});
-     if(accepted.tenant_id!==item.tenant_id)throw new Error("La selección no fue confirmada.");
-     await bridge()?.invalidateContext?.();
+     if(!item.active){
+       const accepted=await rpc<{tenant_id:string}>("gestlok_choose_role_context",{p_tenant:item.tenant_id});
+       if(accepted.tenant_id!==item.tenant_id)throw new Error("La selección no fue confirmada.");
+       await bridge()?.invalidateContext?.();
+     }
+     if(localId){
+       const known=(item.local_names||[]).some(l=>l.id===localId);
+       if(!known)throw new Error("Ese local no está disponible en tu perfil.");
+       try{sessionStorage.setItem("gestlok:profile-next-local",
+         JSON.stringify({email:String(user?.email||"").toLowerCase(),tenant_id:item.tenant_id,local_id:localId}));}
+       catch{}
+     }
      window.location.assign(process.env.NEXT_PUBLIC_GESTLOK_HOME||"/");
    }catch(e){setError(e instanceof Error?e.message:"No se pudo cambiar de empresa.");setBusy(false);}
  };
@@ -59,15 +68,19 @@ export function RoleProfileSwitcher(){
        </header>
        <p className="module-profile-description">Usá la misma cuenta para trabajar en distintas empresas y locales. Solo se muestran roles que ya tenés autorizados.</p>
        <div className="module-profile-items">
-         {items.map(c=><button type="button" key={c.tenant_id} className="module-profile-context"
-           disabled={busy||c.active} aria-current={c.active?"true":undefined}
-           onClick={()=>void switchTo(c)}>
-             <Building2 size={20}/><span><strong>{c.company_name}</strong>
-               <small>{roles[c.role]||c.role} · {c.local_names?.length
-                  ? c.local_names.map(l=>l.name==="Torcuato"?"Don Torcuato":l.name).join(", ")
-                  :"Locales autorizados"}</small></span>
-             <em>{c.active?"Actual":"Elegir"}</em>
-           </button>)}
+         {items.map(c=><div key={c.tenant_id} className="module-profile-group">
+           <button type="button" className="module-profile-context"
+             disabled={busy||c.active} aria-current={c.active?"true":undefined}
+             onClick={()=>void switchTo(c)}>
+               <Building2 size={20}/><span><strong>{c.company_name}</strong>
+                 <small>{roles[c.role]||c.role}</small></span>
+               <em>{c.active?"Actual":"Elegir"}</em>
+           </button>
+           {Array.isArray(c.local_names)&&c.local_names.length>0&&<div className="module-profile-locals">
+             {c.local_names.map(l=><button type="button" key={l.id} disabled={busy}
+               onClick={()=>void switchTo(c,l.id)}>Abrir {l.name==="Torcuato"?"Don Torcuato":l.name}</button>)}
+           </div>}
+         </div>)}
        </div>
        {busy&&<p role="status">Comprobando permisos…</p>}
        {!busy&&loaded&&items.length===0&&<p className="module-profile-no-switch">Tu acceso actual: {user.role||"Gerente"}. No hay otras empresas habilitadas para cambiar desde este perfil.</p>}
