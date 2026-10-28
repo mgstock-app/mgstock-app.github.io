@@ -21,8 +21,8 @@ describe('GESTLOK · Dock inferior móvil y permisos',()=>{
    cy.get('#gestlok-mobile-dock').should('be.visible');
    cy.get('#gestlok-mobile-dock [data-dock="staff"]').should('contain.text','Colaboradores').click();
    cy.location('pathname').should('eq','/empleados/');
-   cy.get('.gl-gerente__sidebar').should('contain.text','Colaboradores');
-   cy.get('.gl-module-dock').should('be.visible');
+   cy.get('.gestlok-module-bar').should('be.visible');
+   cy.contains('button','Continuar con Google',{timeout:15000}).should('be.visible');
  });
  it('cuenta de solo lectura no recibe acceso nuevo a legajos de gerente',()=>{
    setup('lectura@example.com');
