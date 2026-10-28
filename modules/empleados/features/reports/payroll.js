@@ -160,15 +160,17 @@ ctx.normTarifas = function (t) {
 };
 ctx.hojaVacia = function (nombreHoja, local, puesto) {
     return { nombreHoja: nombreHoja, local: Object.prototype.hasOwnProperty.call(ctx.LOCALES, local) ? local : Object.keys(ctx.LOCALES)[0], puesto: puesto === "encargado" ? "encargado" : "staff", porTurno: false, orden: Date.now(),
-        nombre: "", alias: "", pago: "transferencia", firma: null, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", items: ctx.normItems(null), tarifas: ctx.normTarifas(null),
+        nombre: "", alias: "", pago: "transferencia", firma: null, extras: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", items: ctx.normItems(null), tarifas: ctx.normTarifas(null),
         contacto: null, ultimaExport: null, actualizado: new Date().toISOString() };
 };
 ctx.cantidadTotalTxt = function (h) {
-    var total = ["trab", "off", "fer"].reduce(function (sum, key) {
+    var total = ["trab", "off", "fer"].concat(h && h.extras ? ["extra"] : []).reduce(function (sum, key) {
         var value = Number(h && h.items && h.items[key] && h.items[key].c);
         return sum + (Number.isFinite(value) ? value : 0);
     }, 0);
-    return ctx.cantTxt(ctx.esTurno(h) ? "turnos" : "horas", total);
+    var principal = ctx.cantTxt(ctx.esTurno(h) ? "turnos" : "horas", ctx.esTurno(h) ? total - (h && h.extras ? Number(h.items && h.items.extra && h.items.extra.c) || 0 : 0) : total);
+    var adicionales = h && h.extras && h.items && h.items.extra ? Number(h.items.extra.c) || 0 : 0;
+    return ctx.esTurno(h) && adicionales > 0 ? principal + " · " + ctx.cantTxt("horas", adicionales) + " extra" : principal;
 };
 ctx.totalDe = function (h) {
     var t = 0;
@@ -201,14 +203,15 @@ ctx.estadoHoja = function (h) {
 ctx.camposDe = function (h) {
     h = h || {};
     return { nombre: h.nombre || "", alias: String(h.alias || "").trim(), pago: ctx.pagoDe(h), fecha: h.fecha || "", mes: h.mes || "", anio: h.anio || "", semDesde: h.semDesde || "", semHasta: h.semHasta || "",
-        puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "", items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas),
+        puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), extras: !!h.extras, ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "", items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas),
         contacto: h.contacto && h.contacto.tel ? { nombre: h.contacto.nombre || "", tel: String(h.contacto.tel) } : null };
 };
-ctx.camposPeriodoVacio = function () { return { fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", firma: null, items: ctx.normItems(null) }; };
+ctx.camposPeriodoVacio = function () { return { extras: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", firma: null, items: ctx.normItems(null) }; };
 return () => {
 "use strict";
 ctx.ITEMS = [
     { k: "trab", txt: "Horas trabajadas", tipo: "horas" },
+    { k: "extra", txt: "Horas extra", tipo: "horas", opcional: "extras" },
     { k: "off", txt: "Horas de OFF", tipo: "horas" },
     { k: "fer", txt: "Horas feriado", tipo: "horas" },
     { k: "aus", txt: "Días ausentes", tipo: "dias", opcional: "ausente", resta: true },
@@ -238,4 +241,38 @@ ctx.ESTADOS_COLAB = { activo: "Activo", refuerzo: "Refuerzo", inactivo: "Inactiv
 ctx.ESTADOS_EFE = { enviada: "Recibo listo", cargada: "Pendiente de firma", vacia: "Sin cargar" };
 ctx.ITEM_AUS = ctx.ITEMS.filter(function (x) { return x.k === "aus"; })[0];
 };
+}
+
+/** Read-only projection of the payroll engine for the employee dashboard.
+ * It never writes data and uses the same formulas as PDF and planilla.
+ */
+export function summarizeReport(sheet, local) {
+    const ctx = {};
+    registerPayroll({ window: { REPORT_LOCALS: [local] } }, ctx)();
+    const h = sheet || {};
+    const rows = ctx.ITEMS.filter(function (it) { return ctx.activo(h, it); }).map(function (it) {
+        const field = h.items && h.items[it.k] || {};
+        const descriptor = ctx.defItem(h, it);
+        return {
+            key: it.k,
+            label: descriptor.txt,
+            type: descriptor.tipo,
+            quantity: field.c == null ? null : field.c,
+            rate: descriptor.tipo === "monto" ? null : ctx.tarifaDe(h, it.k),
+            amount: it.k === "aus" && ctx.ausJustificado(h) ? 0 : (typeof field.i === "number" && Number.isFinite(field.i) ? (it.resta ? -Math.abs(field.i) : field.i) : null),
+        };
+    });
+    return {
+        name: ctx.tituloHoja(h),
+        role: ctx.puestoTxt(h),
+        status: ctx.estadoColab(h),
+        mode: ctx.modalidadTxt(h),
+        period: ctx.periodoTxt(h),
+        payment: ctx.pagoTxt(h),
+        quantity: ctx.cantidadTotalTxt(h),
+        total: ctx.totalDe(h),
+        reportStatus: ctx.estadoHoja(h),
+        lastDelivery: h.ultimaExport || null,
+        rows,
+    };
 }

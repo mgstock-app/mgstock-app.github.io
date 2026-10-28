@@ -14,7 +14,37 @@ const initializers = [registerPayroll(scope, ctx), registerNavigation(scope, ctx
 for (const initialize of initializers) initialize();
 return {
     renderImage: (data, name) => ctx.crearImagen(data, name),
-    deliverySaved: (id, data) => { ctx.S.srv[id] = ctx.clon(data); if (ctx.S.activo === id) ctx.suscribirHistorial(); ctx.pintarTodo(); }
+    deliverySaved: (id, data) => { ctx.S.srv[id] = ctx.clon(data); if (ctx.S.activo === id) ctx.suscribirHistorial(); ctx.pintarTodo(); },
+    // The dashboard delegates all navigation and creation to the existing editor.
+    openSheet: (localId, id) => {
+        const sheet = ctx.S.srv[id];
+        if (!ctx.S.cargado || !ctx.S.db || !ctx.LOCALES[localId] || !sheet || ctx.localDe(sheet) !== localId) return false;
+        ctx.salirSiHaceFalta(function () {
+            ctx.S.pantalla = "local";
+            ctx.S.local = localId;
+            ctx.S.carpeta = ctx.puestoDe(sheet);
+            ctx.S.activo = id;
+            ctx.S.ultimo[localId + ":" + ctx.S.carpeta] = id;
+            ctx.guardarPref();
+            ctx.suscribirHistorial();
+            ctx.pintarTodo();
+            window.scrollTo(0, 0);
+        });
+        return true;
+    },
+    addSheet: (localId) => {
+        if (!ctx.S.cargado || !ctx.S.db || ctx.S.soloLectura || !ctx.LOCALES[localId]) return false;
+        ctx.salirSiHaceFalta(function () {
+            ctx.S.pantalla = "local";
+            ctx.S.local = localId;
+            ctx.S.carpeta = "staff";
+            ctx.S.activo = ctx.elegir(localId, "staff");
+            ctx.suscribirHistorial();
+            ctx.pintarTodo();
+            ctx.modalNombreHoja(null);
+        });
+        return true;
+    }
 };
 }
 

@@ -375,6 +375,6 @@ scope.listen(ctx.$("bCancelar"), "click", function () {
     }
     ctx.confirmar({ titulo: "Descartar los cambios", texto: "Se pierde lo que cargaste desde que tocaste Modificar.", boton: "Descartar", peligro: true, ok: function () { ctx.salirEdicion(); ctx.toast("Cambios descartados"); } });
 });
-ctx.OPCIONAL_TXT = { aus: ["Se descuenta del total", "Opcional · desactivado"], vac: ["Incluida en el total", "Opcional · desactivada"], agu: ["Incluido · monto manual", "Opcional · desactivado"] };
+ctx.OPCIONAL_TXT = { extra: ["Horas extra incluidas", "Opcional · desactivadas"], aus: ["Se descuenta del total", "Opcional · desactivado"], vac: ["Incluida en el total", "Opcional · desactivada"], agu: ["Incluido · monto manual", "Opcional · desactivado"] };
 };
 }

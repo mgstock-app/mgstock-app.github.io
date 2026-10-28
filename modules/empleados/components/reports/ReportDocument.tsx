@@ -222,7 +222,7 @@ export function ReportDocument() {
           </h3>
           <p className="doc-sec-ayuda" id="ayudaDetalle">
             {
-              "Con valor unitario cargado, el importe se calcula solo (cantidad × valor). OFF y feriado usan el mismo valor que lo trabajado: se carga una sola vez. Los días ausentes se descuentan del total, salvo que los marques como justificados. Los valores quedan guardados para el próximo período."
+              "Con valor unitario cargado, el importe se calcula solo (cantidad × valor). Las horas extra tienen cantidad y tarifa propias, y se suman al total. OFF y feriado usan el mismo valor que lo trabajado: se carga una sola vez. Los días ausentes se descuentan del total, salvo que los marques como justificados. Los valores quedan guardados para el próximo período."
             }
           </p>
           <table className="tabla">
@@ -244,11 +244,11 @@ export function ReportDocument() {
             <tfoot>
               <tr>
                 <th scope="row">
-                  {"Total"}
+                  {"Total del período"}
                 </th>
-                <td id="tCantidadTotal" aria-label="Cantidad total">{"0:00 hs"}</td>
+                <td id="tCantidadTotal" aria-label="Total de horas o turnos trabajados, OFF y feriados">{"0:00 hs"}</td>
                 <td className="total-unit-empty" aria-hidden="true"></td>
-                <td id="tTotal">{"$ 0,00"}</td>
+                <td id="tTotal" aria-label="Importe total de la liquidación">{"$ 0,00"}</td>
               </tr>
             </tfoot>
           </table>
