@@ -11,7 +11,7 @@ export function GestlokModuleBar() {
   const { user } = useAuth();
   const pathname = usePathname();
   // La portada de gerentes ya tiene su cabecera propia; evitar barras superpuestas.
-  if (pathname === "/" && (user?.role === "manager" || isGestlokGerente(user))) return null;
+  if (pathname === "/" && (user?.role === "employee" || user?.role === "manager" || isGestlokGerente(user))) return null;
   return (
     <header className="gestlok-module-bar">
       <a className="gestlok-module-brand" href={home} aria-label="Volver al inicio de GESTLOK">
