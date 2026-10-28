@@ -1,0 +1,140 @@
+/* GestLok · sistema visual blanco. Aplicado a cualquier empresa/local/rol.
+   Solo CSS: nunca se ocultan permisos ni se cambian rutas o datos. */
+:root{
+ --gl-white:#ffffff;--gl-ink:#17334d;--gl-muted:#647c91;
+ --gl-border:#e1eaf1;--gl-soft:#f4f8fb;--gl-selected:#e4f1fa;
+}
+#app{--sidew:272px}
+#app .side{
+ background:var(--gl-white)!important;color:var(--gl-ink)!important;
+ border-right:1px solid var(--gl-border)!important;
+ box-shadow:5px 0 26px rgba(20,49,75,.045);
+ scrollbar-color:#c7d8e4 transparent;
+}
+#app .side-in{gap:15px;padding:21px 13px 17px}
+#app .side-top{padding:0 5px 10px;border-bottom:1px solid var(--gl-border)}
+#app .side-top .brand b{color:#17334d;font-size:20px;letter-spacing:-.045em}
+#app .side-top .brand div span{color:#6a8194;font-size:10px;letter-spacing:.065em}
+#app .side-top .mg{background:#eaf7fb;border-radius:13px}
+#app .gestlok-company-identity{
+ background:#fff!important;border:1px solid var(--gl-border)!important;
+ border-radius:16px!important;padding:11px!important;
+ box-shadow:0 3px 14px #102f4a08;
+}
+#app .gestlok-company-identity small{color:#536c80!important}
+#app .status{
+ background:#f3f8fb!important;border:1px solid #e2ecf2!important;
+ border-radius:12px;color:#527085!important;
+}
+#app .status #ktxt{color:#46647b!important;font-weight:600}
+#app #snav.snav{gap:5px}
+#app #snav :is(button,.snav-folder>summary){
+ color:#3c5670!important;border-radius:12px!important;
+ min-height:45px;padding:11px 12px;
+ font-size:13px;font-weight:650;
+}
+#app #snav :is(button,.snav-folder>summary) svg.i{color:#5482a5}
+#app #snav :is(button,.snav-folder>summary):hover{
+ background:#f0f6fa!important;color:#164b72!important;
+}
+#app #snav button[aria-current="page"],
+#app #snav .snav-folder>summary[aria-current="page"]{
+ background:var(--gl-selected)!important;color:#15517a!important;
+ box-shadow:inset 3px 0 0 #24a5cc!important;
+}
+#app #snav .snav-l{color:#8599a9!important;letter-spacing:.1em}
+#app #snav .snav-l .snav-e{
+ background:#f7fafc!important;color:#4d7088!important;
+ border-color:#e2eaf1!important;
+}
+#app #snav .snav-loc{
+ background:#f1f7fb!important;border:1px solid #e0ebf3!important;
+ color:#245471!important;border-radius:12px!important;
+}
+#app #snav .snav-loc small{color:#6a8498!important}
+#app #snav .snav-sub{border-left:1px solid #d8e6ef!important;margin-left:17px}
+#app #snav .snav-sub button{font-size:12px;min-height:40px}
+#app .side-f{border-top:1px solid var(--gl-border)!important;padding-top:15px}
+#app .side-f .inst,#app .side-f .logout button{
+ background:#f5f9fc!important;color:#335b78!important;
+ border:1px solid #dfeaf1!important;border-radius:11px!important;
+}
+#app .me{color:#24435e}
+#app .me b,#app .me small{color:#31516a!important}
+#app .me>.gl-profile-switch-trigger{
+ background:#eaf4fa!important;color:#1d5c80!important;
+ border-color:#d7e8f2!important;
+}
+#app .gl-sidebar-collapse-button{
+ background:#f6f9fb!important;color:#35617f!important;
+ border:1px solid #dbe8f0!important;border-radius:11px;
+}
+#app .gl-sidebar-collapse-button:hover{background:#e7f3fa!important}
+#app :is(.gl-sidebar-collapse-button,#snav button,#snav summary):focus-visible{
+ outline:2px solid #2385ad!important;outline-offset:2px;
+}
+#app .card,#app .lcard{
+ border:1px solid #e0eaf2;border-radius:17px;
+ box-shadow:0 5px 20px rgba(21,54,83,.055);
+}
+#app .wrap{max-width:1500px}
+#app .main{background:#f8fafc}
+#app .side .xside{color:#315b78;border-color:#e0eaf2;background:#f5f9fc}
+@media(min-width:900px){
+ #app.gl-sidebar-collapsed{--sidew:78px}
+ #app.gl-sidebar-collapsed .side-in{padding-inline:9px}
+ #app.gl-sidebar-collapsed .side-top{padding-inline:0}
+ #app.gl-sidebar-collapsed #snav :is(button,.snav-folder>summary){padding:10px 4px}
+ #app.gl-sidebar-collapsed .side-f{display:flex!important;flex-direction:column;align-items:center}
+ #app.gl-sidebar-collapsed .side-f .inst,
+ #app.gl-sidebar-collapsed .side-f .me,
+ #app.gl-sidebar-collapsed .side-f .logout{display:none!important}
+}
+@media(max-width:899px){
+ #app .side{background:#fff!important;box-shadow:12px 0 42px #183d6030}
+ #app .side-in{padding-top:calc(18px + env(safe-area-inset-top,0px))}
+}
+@media(prefers-reduced-motion:reduce){#app{transition:none!important}}
+@media print{#app .side{display:none!important}}
+/* RRHH: gerente y colaboradores comparten la misma identidad blanca.
+   Las clases de navegación siguen siendo las mismas y mantienen sus acciones. */
+.app-shell .gl-gerente .gl-gerente__sidebar{
+ background:#fff!important;color:#24435d!important;
+ border-right:1px solid #e0eaf2!important;
+ box-shadow:5px 0 25px #173e5c0b!important;
+}
+.app-shell .gl-gerente .gl-gerente__brand{border-bottom:1px solid #e1eaf1!important}
+.app-shell .gl-gerente .gl-gerente__brand strong,
+.app-shell .gl-gerente .gl-gerente__local-label strong{color:#17334d!important}
+.app-shell .gl-gerente .gl-gerente__brand small,
+.app-shell .gl-gerente .gl-gerente__local-label{color:#6a8396!important}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button{
+ color:#365873!important;border-radius:12px!important;
+ min-height:45px!important;font-size:13px!important;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button:hover{background:#f0f6fa!important}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active{
+ background:#e4f1fa!important;color:#15517a!important;
+ box-shadow:inset 3px 0 0 #24a5cc!important;
+}
+.app-shell .gl-gerente .gl-gerente__security{
+ color:#668094!important;border-top:1px solid #e0eaf2!important;
+}
+.app-shell .gl-gerente .gl-gerente__collapse{
+ color:#2a5979!important;background:#f5f9fc!important;
+ border:1px solid #dfeaf1!important;border-radius:10px!important;
+}
+.app-shell .gl-gerente .gl-gerente__header{
+ background:#fff!important;color:#17334d!important;
+ border-bottom:1px solid #e0eaf2!important;
+}
+.app-shell .gl-gerente .gl-gerente__header-brand strong{color:#17334d!important}
+.app-shell .gl-gerente .gl-gerente__header-brand strong span{color:#168ab2!important}
+.app-shell .gl-gerente .gl-gerente__header-brand small,
+.app-shell .gl-gerente .gl-gerente__user,
+.app-shell .gl-gerente .gl-gerente__user small{color:#57738b!important}
+.app-shell .gl-gerente .gl-gerente__menu{color:#235477!important}
+.app-shell .gl-gerente .gl-gerente__sidebar{overflow-y:auto;scrollbar-width:thin}
+@media(max-width:940px){
+ .app-shell .gl-gerente .gl-gerente__sidebar{box-shadow:12px 0 40px #193b5d30!important}
+}
