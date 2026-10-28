@@ -168,11 +168,15 @@
       '<section class="gl-ch-card" aria-label="Actividad reciente"><header><h2>Actividad reciente</h2></header><ul class="gl-ch-list">' + (act || '<li><small>Sin actividad registrada.</small></li>') + '</ul></section></div></div>' +
       '<div class="gl-ch-colside">' + people + staff + system + '</div></div>';
   }
+  // La preferencia visual es del dispositivo; nunca modifica roles ni alcance.
+  const navPrefKey = 'gestlok:creator-menu-collapsed:v1';
+  let navCollapsed = false;
+  try { navCollapsed = localStorage.getItem(navPrefKey) === 'yes'; } catch {}
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
     const cur = validTab(tab) ? tab : 'inicio';
     const parts = p.parts || {};
-    const nav = TABS.map(t => '<button type="button" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const nav = TABS.map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>').join('');
     const d = today();
     let body;
@@ -186,9 +190,10 @@
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
-    return '<div class="gl-ch">' +
+    return '<div class="gl-ch' + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
-      '<nav class="gl-ch-nav">' + nav + '</nav>' +
+      '<button type="button" class="gl-ch-collapse" data-ch-collapse aria-controls="gl-ch-navigation" aria-expanded="' + (!navCollapsed) + '" title="' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '" aria-label="' + (navCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral') + '">' + svg('<path d="M4 5h16v14H4zM9 5v14M13 9l-3 3 3 3"/>', 20) + '<span>' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '</span></button>' +
+      '<nav class="gl-ch-nav" id="gl-ch-navigation">' + nav + '</nav>' +
       '<div class="gl-ch-me"><span class="gl-ch-av">' + initial + '</span><div><b>Creadora</b><small>' + esc(api.S?.me?.email || '') + '</small><em>ADMINISTRADORA</em></div></div>' +
       '<p class="gl-ch-quote">Gestión simple<br>para negocios reales</p></aside>' +
       '<main class="gl-ch-main"><header class="gl-ch-top"><div><h1>' + esc(title) + (cur === 'inicio' ? ' <span aria-hidden="true">👋</span>' : '') + '</h1><p>' + esc(sub) + '</p></div>' +
@@ -211,6 +216,14 @@
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
   document.addEventListener('click', ev => {
+    const collapse = ev.target.closest?.('[data-ch-collapse]');
+    if (collapse && api?.isCreadora?.()) {
+      ev.preventDefault();
+      navCollapsed = !navCollapsed;
+      try {localStorage.setItem(navPrefKey, navCollapsed ? 'yes' : 'no');} catch {}
+      api.render();
+      return;
+    }
     const refresh = ev.target.closest?.('[data-ch-coupons-refresh]');if(refresh && api?.isCreadora?.()){ev.preventDefault();loadCoupons();return;}
     const b = ev.target.closest && ev.target.closest('[data-ch-tab]');
     if (b) { ev.preventDefault(); goTab(b.dataset.chTab); }
