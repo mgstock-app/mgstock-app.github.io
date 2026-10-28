@@ -8,7 +8,12 @@ permissions:
 jobs:
   browser-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Todos los casos siguen ejecutándose, repartidos en cuatro trabajos.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    timeout-minutes: 30
     env:
       NEXT_PUBLIC_BASE_PATH: ''
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
@@ -48,10 +53,14 @@ jobs:
           done
           cat /tmp/mgstock-cypress.log
           exit 1
-      - name: Cypress E2E
+      - name: Cypress E2E (grupo ${{ matrix.shard }}/4)
+        env:
+          CYPRESS_SHARD_INDEX: ${{ matrix.shard }}
+          CYPRESS_SHARD_TOTAL: 4
         run: |
           set -o pipefail
-          npm --prefix qa test 2>&1 | tee /tmp/cypress.log
+          node qa/scripts/cypress-shards.cjs --verify
+          node qa/scripts/cypress-shards.cjs --run 2>&1 | tee /tmp/cypress.log
       - name: Resumen de fallos
         if: failure()
         run: sed 's/\x1b\[[0-9;]*m//g' /tmp/cypress.log | grep -aE -A8 "CypressError|AssertionError" | head -60 | while IFS= read -r l; do echo "::error::$l"; done
@@ -59,6 +68,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: mgstock-cypress-failures
+          name: mgstock-cypress-failures-${{ matrix.shard }}
           path: qa/cypress/screenshots
           if-no-files-found: ignore
