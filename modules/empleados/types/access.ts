@@ -25,6 +25,10 @@ export interface AppLocal {
   owner_id: string | null;
   organization_id: string;
   company_id: string;
+  /** Optional store image supplied by an authorized company/local configuration. */
+  image_url?: string | null;
+  logo_url?: string | null;
+  photo_url?: string | null;
 }
 export interface Organization {
   id: string;
