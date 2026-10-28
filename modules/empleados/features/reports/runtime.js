@@ -56,9 +56,9 @@ return {
         ctx.S.activo = id;
         ctx.suscribirHistorial();
         ctx.pintarTodo();
-        queueMicrotask(function () {
+        setTimeout(function () {
             if (ctx.S.activo === id) ctx.$("bExportar")?.click();
-        });
+        }, 0);
         return true;
     },
     addSheet: (localId) => {
