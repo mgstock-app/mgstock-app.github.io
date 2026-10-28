@@ -32,7 +32,7 @@ export function AccessGate({
       </div>
     );
   if (!user) return <GoogleSignIn />;
-  // Gerente de GESTLOK: solo Horarios (y su portada). Cualquier otra pantalla queda cerrada.
+  // Gerente de GESTLOK: su portada privada contiene Colaboradores; también se habilita Horarios. El resto sigue restringido.
   if (isGestlokGerente(user))
     return schedules || gerenteHome ? (
       children
