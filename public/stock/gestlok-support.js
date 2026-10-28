@@ -1,4 +1,4 @@
-/* GestLok · Soporte por WhatsApp para Dueño/Gerente.
+/* GestLok · Soporte por WhatsApp para dueños, gerentes y colaboradores.
  * La configuración es global, editada solo por la creadora.
  * No envía mensajes, no escribe chats ni comparte datos de inventario. */
 (() => {
@@ -6,7 +6,7 @@
   let api=null, phone='', loaded=false, loading=false, failure='', busy=false, fetchVersion=0;
   const $=q=>document.querySelector(q);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const allowed=()=>!!(api?.S?.db&&api?.S?.me&&['dueno','gerente'].includes(api.miRol?.()));
+  const allowed=()=>!!(api?.S?.db&&api?.S?.me&&['dueno','gerente','lectura','colaborador'].includes(api.miRol?.()));
   const creator=()=>!!(api?.isCreadora?.()&&api?.S?.me&&api?.S?.db);
   const client=()=>window.GestLokSupabase;
   const valid=s=>/^[1-9][0-9]{7,14}$/.test(s);
@@ -33,20 +33,21 @@
     };
     if(s.view==='proveedores'&&s.provOpen)
       return ('Proveedores / '+s.provOpen).slice(0,140);
-    const name=names[s.view]||api?.nombreHoja?.(s.view)||'Inicio';
+    const name=s.local ? names[s.view]||api?.nombreHoja?.(s.view)||'Inicio' : 'Inicio';
     return String(name).trim().slice(0,140)||'Inicio';
   }
   function message(){
-    return 'Hola soy de '+String(api?.localNombre?.()||'mi local').trim().slice(0,100)+
-      ' de la empresa de '+ownerName()+
-      ' necesito ayuda en el sector de '+sector();
+    const local=api?.S?.local ? String(api?.localNombre?.()||'mi local').trim().slice(0,100) : '';
+    const company=String(api?.S?.companyName||api?.S?.company_name||'mi empresa').trim().slice(0,100);
+    return 'Hola, soy '+(local ? 'del local '+local+' de la empresa de '+ownerName() : 'usuario/a de '+company)+
+      ' y necesito ayuda en el sector de '+sector()+'.';
   }
   function link(){
     return valid(phone)?'https://wa.me/'+phone+'?text='+encodeURIComponent(message()):'';
   }
   function widget(){
     let el=$('#gl-soporte-whatsapp');
-    const visible=allowed()&&!!api?.S?.local&&valid(phone);
+    const visible=allowed()&&valid(phone);
     if(!visible){
       el?.remove();
       return;
@@ -73,7 +74,7 @@
     if(!creator())return '';
     return '<section class="gl-admin-card gl-support-settings" aria-label="Número de WhatsApp de soporte">'+
       '<header><h2>Soporte por WhatsApp</h2><small>Solo la creadora puede editarlo</small></header>'+
-      '<p>El botón Soporte de Dueños y Gerentes abre un chat con el número configurado y escribe automáticamente su local, dueño y sector.</p>'+
+      '<p>El botón Soporte de dueños, gerentes y colaboradores abre un chat con el número configurado y escribe automáticamente su local, dueño y sector.</p>'+
       '<form id="gl-support-form" class="gl-support-form">'+
       '<label for="gl-support-phone">Número de WhatsApp (con código de país)</label>'+
       '<div class="gl-support-fields"><input id="gl-support-phone" name="telefono" type="tel" inputmode="tel" autocomplete="tel" maxlength="25" value="'+esc(phone?('+'+phone):'')+'" placeholder="+54 9 11 4471 5168" required '+(!loaded||busy?'disabled':'')+'>'+
