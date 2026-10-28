@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
 import { ManagerPersonalReceipt } from "@/components/reports/ManagerPersonalReceipt";
@@ -28,6 +28,7 @@ export function GerenteHome() {
     try{localStorage.setItem("gestlok:manager-menu-collapsed",next?"yes":"no");}catch{}
   };
   const [section, setSection] = useState<"legajos" | "horarios" | "recibo">("legajos");
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("seccion") === "horarios") setSection("horarios"); }, []);
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
   const company = useGestlokCompany();
   const companyName = company?.company_name || "Mi empresa";
@@ -46,7 +47,7 @@ export function GerenteHome() {
       <button type="button" className="gl-gerente__collapse" aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menú del gerente" : "Contraer menú del gerente"} onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>{collapsed ? "Expandir" : "Contraer menú"}</span></button>
       <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
       <nav>
-        <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><House size={19}/><span className="gl-gerente__nav-label">Administrar empleados</span></button>
+        <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><UsersRound size={19}/><span className="gl-gerente__nav-label">Colaboradores</span></button>
         <button type="button" title="Sector de Google" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Sector de Google</span></button>
         <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>{setSection("recibo");setMenuOpen(false)}}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
       </nav>
@@ -70,5 +71,12 @@ export function GerenteHome() {
           </section>}
       </div>
     </main>
+    <nav className="gl-module-dock" aria-label="Navegación móvil del gerente">
+      <a href={home}><House size={20}/>Inicio</a>
+      <button type="button" aria-current={section==="legajos"?"page":undefined} onClick={()=>setSection("legajos")}><UsersRound size={20}/>Colaboradores</button>
+      <button type="button" aria-current={section==="horarios"?"page":undefined} onClick={()=>setSection("horarios")}><FileSpreadsheet size={20}/>Horarios</button>
+      <button type="button" aria-current={section==="recibo"?"page":undefined} onClick={()=>setSection("recibo")}><Wallet size={20}/>Mi recibo</button>
+      <button type="button" aria-expanded={menuOpen} aria-label="Más opciones" onClick={()=>setMenuOpen(true)}><Menu size={20}/>Más</button>
+    </nav>
   </div>;
 }
