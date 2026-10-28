@@ -8,7 +8,6 @@ import "./private-receipt-detail.css";
 const pesos = new Intl.NumberFormat("es-AR", {
   style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2,
 });
-const nonzero = (row: PayrollRow) => Math.abs(row.amount ?? 0) > 0 || Math.abs(row.quantity ?? 0) > 0;
 const countText = (row: PayrollRow) => row.quantity == null ? "—"
   : row.type === "horas" ? formatHours(row.quantity) + " hs"
     : row.type === "turnos" ? row.quantity + (row.quantity === 1 ? " turno" : " turnos")
