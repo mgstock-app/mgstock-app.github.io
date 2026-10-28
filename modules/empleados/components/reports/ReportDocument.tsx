@@ -244,11 +244,11 @@ export function ReportDocument() {
             <tfoot>
               <tr>
                 <th scope="row">
-                  {"Total"}
+                  {"Total del período"}
                 </th>
-                <td id="tCantidadTotal" aria-label="Cantidad total">{"0:00 hs"}</td>
+                <td id="tCantidadTotal" aria-label="Total de horas o turnos trabajados, OFF y feriados">{"0:00 hs"}</td>
                 <td className="total-unit-empty" aria-hidden="true"></td>
-                <td id="tTotal">{"$ 0,00"}</td>
+                <td id="tTotal" aria-label="Importe total de la liquidación">{"$ 0,00"}</td>
               </tr>
             </tfoot>
           </table>
