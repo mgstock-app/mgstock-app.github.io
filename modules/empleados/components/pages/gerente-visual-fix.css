@@ -197,6 +197,20 @@
   background:#fff;color:#173c5b;
   font-size:12px;
 }
+.app-shell .gl-gerente .mlg-current-local {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:44px;
+  white-space:nowrap;
+  padding:10px 13px;
+  background:#f0f7fc;
+  border:1px solid #dce6f1;
+  border-radius:9px;
+  color:#245a7f;
+  font-size:12px;
+  font-weight:750;
+}
 .app-shell .gl-gerente .mlg-filters>button {
   flex:0 0 44px;width:44px;height:44px;
   border:1px solid #dce6f1;border-radius:9px;
