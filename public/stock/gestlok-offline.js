@@ -295,7 +295,7 @@ function create(options={}){
    const request=new Request(input,init),url=new URL(request.url);
    if(url.origin!==origin)return net(input,init);
    const method=request.method,path=url.pathname,isUser=path==='/auth/v1/user'&&method==='GET';
-   if(path.endsWith('/gestlok_choose_role_context')){
+   if(path.endsWith('/gestlok_choose_role_context')||path.endsWith('/gestlok_my_role_contexts')){
     // Cambiar de empresa nunca se encola: debe validarlo el servidor en línea.
     return online()?net(input,init):json({code:'GL_OFFLINE',message:'Conectate a internet para cambiar de empresa.'},503);
    }
