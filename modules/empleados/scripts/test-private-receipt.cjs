@@ -31,7 +31,7 @@ const payload={sheet:base,show_holidays:true,show_vacations:true,
 let result=privateReceiptView(payload);
 assert.equal(result.summary.total,163000);
 assert.equal(result.summary.quantity,"38:00 hs");
-assert.equal(result.summary.period,"Semana del 12/10/2026 al 18/10/2026");
+assert.equal(result.summary.period,"Semana del 12/10/26 al 18/10/26");
 assert(result.rows.some(row=>row.key==="fer" && row.amount===14000));
 assert(result.rows.some(row=>row.key==="vac" && row.amount===16000));
 assert(result.matches,"All amounts reconcile to published total");
