@@ -287,8 +287,13 @@ ctx.cambioNumero = function (it0, campo, input) {
         var tocadas = [it.k];
         if (campo === "v") {
             h.tarifas[it.k] = n;
+            if (it.k === "fer") {
+                h.ferTarifaPropia = n != null;
+                if (n == null) h.tarifas.fer = h.tarifas.trab;
+            }
             ctx.recalcular(h, it.k);
             if (it.k === "trab") {
+                if (!h.ferTarifaPropia) { h.tarifas.fer = n; ctx.recalcular(h, "fer"); tocadas.push("fer"); var fv = ctx.$("v_fer"); if (fv) fv.value = n == null ? "" : ctx.fmtImporte.format(n); }
                 ctx.LIGADAS.forEach(function (k) { h.tarifas[k] = n; ctx.recalcular(h, k); tocadas.push(k); var iv = ctx.$("v_" + k); if (iv)
                     iv.value = n == null ? "" : ctx.fmtImporte.format(n); ctx.$("ci_" + k).classList.toggle("auto", n != null); });
             }
