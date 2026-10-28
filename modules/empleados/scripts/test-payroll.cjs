@@ -195,7 +195,7 @@ async function main() {
   scope.window.REPORT_LOCALS = [
     { id: "centro", name: "Centro", cycle: "semanal" },
   ];
-  const register = Object.values(load("features/reports/payroll.js"))[0];
+  const register = load("features/reports/payroll.js").registerPayroll;
   register(scope, dynamic)();
   assert.equal(
     dynamic.hojaVacia("Colaborador", "centro", "staff").local,
