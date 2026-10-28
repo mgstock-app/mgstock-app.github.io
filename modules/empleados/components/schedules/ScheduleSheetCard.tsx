@@ -92,7 +92,7 @@ export function ScheduleSheetCard({ url, branch = "Torcuato", localId, canConfig
     </div>
     {canConfigure && localId && <div className={styles.configuration}>
       <div className={styles.configurationHead}>
-        <div><strong>Enlace de esta sucursal</strong><p>Solo los dueños de esta empresa pueden configurar su Google Sheets.</p></div>
+        <div><strong>Enlace de esta sucursal</strong><p>Solo dueños y gerentes autorizados pueden configurar su Google Sheets. En Google Drive, compartí con los colaboradores como <strong>Lector</strong> y reservá <strong>Editor</strong> para gerentes y dueños: el enlace por sí solo no bloquea ediciones.</p></div>
         {!editing && <button className={styles.configureButton} type="button" onClick={() => { setDraftUrl(url || ""); setSaveError(""); setSaveSuccess(""); setEditing(true); }}>{pending ? "Configurar enlace" : "Cambiar enlace"}</button>}
       </div>
       <div className={styles.templates} role="group" aria-label="Elegí la planilla de horarios">
