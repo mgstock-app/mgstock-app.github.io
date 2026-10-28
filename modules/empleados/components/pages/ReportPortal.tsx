@@ -151,9 +151,16 @@ export function ReportPortal() {
               <Link href="/mi-reporte">Ver mis recibos</Link>
             </section>
             <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
-              <h2>📅 Horario semanal del local</h2>
-              <p>Próximamente vas a poder consultar los turnos y francos de tu equipo desde acá.</p>
-              <p role="status">Pendiente de habilitación segura por empresa y sucursal.</p>
+              <h2>📅 Mis próximos turnos</h2>
+              <p>Planilla visual semanal de turnos futuros y francos. Es independiente del registro de horas trabajadas y de la liquidación de sueldos.</p>
+              <div aria-label="Vista de la semana laboral sin turnos publicados" style={{overflowX:"auto",border:"1px solid #dbe6e9",borderRadius:12}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(56px,1fr))",gap:4,padding:8,minWidth:410}}>
+                  {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((day) => (
+                    <div key={day} style={{textAlign:"center",borderRadius:8,background:"#e5f4f3",padding:"12px 4px",color:"#073844",fontWeight:700}}>{day}</div>
+                  ))}
+                </div>
+              </div>
+              <p role="status">Todavía no hay turnos futuros publicados para mostrar. No se inventan horarios ni se utilizan las horas trabajadas.</p>
             </section>
           </div>
           <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
