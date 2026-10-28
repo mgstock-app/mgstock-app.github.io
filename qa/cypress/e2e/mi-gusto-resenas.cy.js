@@ -90,6 +90,31 @@ describe('Reseñas: Mi Gusto, Munro y Torcuato con datos propios', () => {
     cy.get('.rv-modal [data-rv="modify"]').should('exist');
   });
 
+  it('Torcuato permite marcar manualmente como Usado un cupón aún no vigente, con motivo auditado', () => {
+    launch(); login('gerente.torcuato@example.com'); dia('2026-10-28');
+    cy.get('#snav [data-go="resenas"]').click();
+    nuevo('Canje de prueba', '1122446688');
+    cy.get('.rv-modal').should('contain.text','Válido del 1 al 12 de noviembre 2026');
+    cerrar();
+    cy.get('.rv-stats .pending strong').should('have.text','1');
+    cy.get('.rv-table [data-rv="edit"]').first().click();
+    cy.get('.rv-modal [data-rv="redeem"]').should('not.exist');
+    cy.get('.rv-modal [data-rv="manual-redeem"]').should('be.visible').click();
+    cy.get('.rv-modal [role="alert"]').should('contain.text','motivo');
+    cy.get('.rv-modal input[name="reason"]').type('Descuento aplicado por la encargada');
+    cy.get('.rv-modal input[name="manual-used"]').check();
+    cy.get('.rv-modal [data-rv="manual-redeem"]').click();
+    cy.get('.rv-modal').should('contain.text','Cupón marcado como usado');
+    cy.get('.rv-modal [data-rv="manual-redeem"]').should('not.exist');
+    cerrar();
+    cy.get('.rv-stats .used strong').should('have.text','1');
+    cy.get('.rv-stats .pending strong').should('have.text','0');
+    cy.window().its('__resenas').should(rows => {
+      expect(rows[0].manual_reason).to.equal('Descuento aplicado por la encargada');
+      expect(rows[0].used_at).to.be.a('string');
+    });
+  });
+
   it('dueño ve cada sucursal por separado: el cupón de Munro no aparece ni se usa en Torcuato', () => {
     launch(); login('dueno@example.com'); dia('2026-11-05'); abrirLocal('munro');
     cy.get('#snav [data-go="resenas"]').click();
