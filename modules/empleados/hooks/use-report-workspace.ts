@@ -5,7 +5,15 @@ import { createReportServices } from "@/features/reports/data-service";
 import { createClient } from "@/lib/supabase/browser";
 import { allowed } from "@/utils/permissions";
 import type { AppLocal, AppUser } from "@/types/access";
+type ReportEngine = {
+  renderImage: (data: Record<string, unknown>, name: string) => Promise<Blob>;
+  deliverySaved: (id: string, data: Record<string, unknown>) => void;
+  openSheet: (localId: string, id: string) => boolean;
+  addSheet: (localId: string) => boolean;
+};
 export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
+  const engineRef = useRef<ReportEngine | null>(null);
+  const [ready, setReady] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -68,13 +76,7 @@ export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
       const { data, error } = await client.from("rm_test_documents").select("data").eq("path", `hojas/${id}`).single();
       if (!error && scope.active && engine) engine.deliverySaved(id, data.data);
     }
-    let engine: {
-      renderImage: (
-        data: Record<string, unknown>,
-        name: string,
-      ) => Promise<Blob>;
-      deliverySaved: (id: string, data: Record<string, unknown>) => void;
-    } | null = null;
+    let engine: ReportEngine | null = null;
     window.reportServices = bridge;
     window.REPORT_LOCALS = locals;
     window.REPORT_IS_DEMO = false;
@@ -98,6 +100,8 @@ export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
         if (!scope.active) return;
         window.jspdf = { jsPDF };
         engine = mountReport(scope);
+        engineRef.current = engine;
+        setReady(true);
       })
       .catch(() => {
         if (scope.active)
@@ -107,6 +111,7 @@ export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
       });
     return () => {
       scope.dispose();
+      engineRef.current = null;
       if (window.reportServices === bridge) {
         delete window.reportServices;
         delete window.REPORT_LOCALS;
@@ -115,5 +120,8 @@ export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
       }
     };
   }, [user, locals]);
-  return { root, error };
+  return { root, error, ready,
+    openSheet: (localId: string, id: string) => engineRef.current?.openSheet(localId, id) ?? false,
+    addSheet: (localId: string) => engineRef.current?.addSheet(localId) ?? false,
+  };
 }
