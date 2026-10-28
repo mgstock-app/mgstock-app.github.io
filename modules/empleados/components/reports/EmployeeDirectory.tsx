@@ -91,15 +91,15 @@ export function EmployeeDirectory({
         </section>;
       })
     }
-    {showChooseLocal && <div className="employee-pages__modal-scrim" role="presentation" onClick={() => setShowChooseLocal(false)}>
-      <section className="employee-pages__modal employee-pages__modal--short" role="dialog" aria-modal="true" aria-label="Elegir local para agregar empleado" onClick={e => e.stopPropagation()}>
+    {showChooseLocal && <div className="employee-pages__modal-scrim" role="presentation">
+      <section className="employee-pages__modal employee-pages__modal--short" role="dialog" aria-modal="true" aria-label="Elegir local para agregar empleado">
         <div className="employee-pages__modal-head"><h2>¿A qué local pertenece?</h2><button type="button" aria-label="Cerrar" onClick={() => setShowChooseLocal(false)}><X/></button></div>
         <p>Seleccioná el local antes de crear el legajo. Cada empleado pertenece únicamente a su empresa y local autorizados.</p>
         <div className="employee-pages__local-options">{locals.map(l => <button type="button" key={l.id} onClick={() => { setShowChooseLocal(false); onAdd(l.id); }}><Store size={19}/>{l.name}<ChevronRight size={18}/></button>)}</div>
       </section>
     </div>}
-    {selected && <div className="employee-pages__modal-scrim" role="presentation" onClick={() => setSelectedId(null)}>
-      <section className="employee-pages__modal" role="dialog" aria-modal="true" aria-label={"Legajo de " + selected.summary.name} onClick={e => e.stopPropagation()}>
+    {selected && <div className="employee-pages__modal-scrim" role="presentation">
+      <section className="employee-pages__modal" role="dialog" aria-modal="true" aria-label={"Legajo de " + selected.summary.name}>
         <div className="employee-pages__modal-head"><div><span>Legajo del colaborador</span><h2>{selected.summary.name}</h2></div><button type="button" aria-label="Cerrar legajo" onClick={() => setSelectedId(null)}><X/></button></div>
         <div className="employee-pages__legajo-top"><span className="employee-pages__avatar employee-pages__avatar--1">{(selected.summary.name.trim()[0] || "?").toUpperCase()}</span><div><strong>{selected.summary.name}</strong><small>{selected.local.name} · {selected.summary.role}</small><span className={"employee-pages__pill employee-pages__pill--" + selected.summary.status}>{statusLabel[selected.summary.status]}</span></div></div>
         <dl className="employee-pages__legajo-fields">
