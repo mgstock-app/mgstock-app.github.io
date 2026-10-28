@@ -458,6 +458,7 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
+  window.GestLokRoleSwitcher?.render();
 }
 
 /* ---------- Piezas compartidas ---------- */
