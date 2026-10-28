@@ -72,7 +72,11 @@ assert(!secure.includes("'url', s.url"),"El servidor no puede entregar el enlace
 assert(!secure.includes("grant select on rm_test_private.branch_schedule_links"),"No exponer tabla de enlaces");
 
 const portal=fs.readFileSync("components/pages/ReportPortal.tsx","utf8");
-assert.match(portal,/<EmployeeReport/);
-assert.match(portal,/<EmployeeScheduleLink/);
+assert.match(portal,/<EmployeePortalShell/);
+const employeeShell = fs.readFileSync("components/pages/EmployeePortalShell.tsx","utf8");
+assert.match(employeeShell,/<EmployeeReport/,"El empleado conserva su único recibo privado");
+assert.match(employeeShell,/<EmployeeScheduleLink/,"El empleado conserva la planilla de su local");
+assert.match(employeeShell,/gl-employee-sidebar/,"Menú blanco del colaborador");
+assert.match(employeeShell,/role===\"employee\"/,"La navegación exige rol colaborador");
 assert.doesNotMatch(portal,/<WeeklyScheduleDraft/);
 console.log("PASS: employee assignment search, local-only Sheets RPC, preview URL, and private receipts");
