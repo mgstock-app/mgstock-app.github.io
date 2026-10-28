@@ -9,6 +9,16 @@ const login = email => {
 };
 const owner = () => login("dueno@example.com");
 const toLocal = loc => abrirLocal(loc);
+const contrastOnWhite = value => {
+  const channels = String(value).match(/[0-9.]+/g)?.slice(0,3).map(Number) || [];
+  if (channels.length!==3) throw new Error("Color CSS no reconocido: "+value);
+  const linear=channels.map(v=>{
+    const x=v/255;
+    return x<=0.04045 ? x/12.92 : Math.pow((x+0.055)/1.055,2.4);
+  });
+  const luminance=0.2126*linear[0]+0.7152*linear[1]+0.0722*linear[2];
+  return 1.05/(luminance+0.05);
+};
 
 describe("GestLok: auditoría de recorridos, perfiles y sincronización local", () => {
   Cypress.on("uncaught:exception", error => {
@@ -252,9 +262,13 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get("#app").should("be.visible");
     cy.get("#app .plogo").should("be.visible").and("have.attr", "alt", "GestLok");
     cy.get("#app .top-brand-name").should("be.visible").and("contain.text", "GestLok");
-    cy.get("#app .ham").should("be.visible").and("have.css", "color", "rgb(22, 52, 76)");
-    cy.get("#app #btn-ajustes").should("be.visible").and("have.css", "color", "rgb(23, 59, 85)");
-    cy.get("#app .crumb").should("have.css", "color", "rgb(80, 101, 118)");
+    // En la identidad blanca importa el contraste, no el tono exacto del
+    // menú azul anterior. Exigir al menos 4,5:1 sobre fondo blanco.
+    for (const selector of ["#app .ham","#app #btn-ajustes","#app .crumb"]) {
+      cy.get(selector).should("be.visible").invoke("css","color").then(color=>{
+        expect(contrastOnWhite(color),selector+" debe ser legible sobre blanco").to.be.gte(4.5);
+      });
+    }
     cy.get("#app .ham").click();
     cy.get("#app").should("have.class", "open");
     cy.get("#snav [data-go=chat]").should("be.visible");

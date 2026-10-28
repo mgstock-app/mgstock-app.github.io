@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -14,6 +14,19 @@ export function GerenteHome() {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(()=>{
+    let active=true;
+    queueMicrotask(()=>{
+      if(!active)return;
+      try{setCollapsed(localStorage.getItem("gestlok:manager-menu-collapsed")==="yes");}catch{}
+    });
+    return()=>{active=false;};
+  },[]);
+  const toggleCollapsed=()=>{
+    const next=!collapsed;
+    setCollapsed(next);
+    try{localStorage.setItem("gestlok:manager-menu-collapsed",next?"yes":"no");}catch{}
+  };
   const [section, setSection] = useState<"legajos" | "horarios" | "recibo">("legajos");
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
   const company = useGestlokCompany();
@@ -30,7 +43,7 @@ export function GerenteHome() {
           : <span className="gl-gerente__company-letter" aria-hidden="true">{companyName.slice(0,1).toUpperCase()}</span>}
         <div>{!isMiGusto && <strong>{companyName}</strong>}<small>{isMiGusto ? "Empanadas de Verdad" : "Administración de empleados"}</small></div>
       </div>
-      <button type="button" className="gl-gerente__collapse" aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menú del gerente" : "Contraer menú del gerente"} onClick={() => setCollapsed(v => !v)}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>{collapsed ? "Expandir" : "Contraer menú"}</span></button>
+      <button type="button" className="gl-gerente__collapse" aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menú del gerente" : "Contraer menú del gerente"} onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>{collapsed ? "Expandir" : "Contraer menú"}</span></button>
       <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
       <nav>
         <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><House size={19}/><span className="gl-gerente__nav-label">Administrar empleados</span></button>

@@ -39,7 +39,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-owner-areas.js?rev=branding-20261026");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
-      await load("/stock/gestlok-creator-home.js?rev=creadora-permanente-20261026");
+      await load("/stock/gestlok-creator-home.js?rev=blanca-creadora-20261028");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");
@@ -50,7 +50,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
       await load("/stock/app.js?rev=inicio-resenas-20261027");
-      await load("/stock/gestlok-sidebar-polish.js?rev=menu-20261028");
+      await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       if (visitor) await load("/stock/gestlok-demo-tour.js");
     })();
     startup.catch(() => { if (active) setError(true); });

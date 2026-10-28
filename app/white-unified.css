@@ -1,0 +1,172 @@
+/* GESTLOK · Diseño blanco unificado para todas las empresas, locales y perfiles.
+   Sólo presentación: no modifica permisos, autenticación, rutas ni planillas. */
+:root{
+  --gestlok-white:#fff;
+  --gestlok-page:#f6f8fb;
+  --gestlok-border:#e0e8ef;
+  --gestlok-ink:#18354b;
+  --gestlok-muted:#60788a;
+  --gestlok-aqua:#087f96;
+  --gestlok-selected:#eaf5fa;
+}
+body{background:var(--gestlok-page)}
+#app{--bg:#f6f8fb;--surface:#fff;--line:#e0e8ef;--line-2:#cbdbe6;
+  --sunk:#f6f9fc;--ink:#18354b;--ink-2:#2a455b;--muted:#60788a;--accent:#136b87;
+  --accent-soft:#eaf5fa;--mast:#fff;--mast-2:#eef5f9;--mast-ink:#18354b;--mast-muted:#5d7485;
+  --mast-line:#dce7ef;--sidew:268px;--spark:#18a0ab;--shadow:0 6px 22px #173a4b0a;
+  background:#f6f8fb;color:var(--gestlok-ink)}
+#app .main{background:#f6f8fb}
+#app .top{background:#fff;box-shadow:0 1px 12px #183c4c0b;border-bottom:1px solid var(--gestlok-border)}
+#app .top .crumb,#app .top .crumb b{color:#557186}
+#app .top .tt h2{color:#17364f;font-family:var(--f-body);font-weight:800;letter-spacing:-.035em}
+#app .top .ham{background:#fff;color:#1a506e;border-color:#d3e3ed}
+#app .wrap{max-width:1480px}
+#app :is(.card,.lcard,.panel,.note){border-radius:17px;border-color:#e0e9f0;background:#fff;box-shadow:0 5px 22px #1c43500a}
+#app :is(.card,.lcard):focus-within{box-shadow:0 0 0 2px #44b6ca30,0 8px 24px #1c43500d}
+#app .savebar{background:#fff;border-top:1px solid #dce7ef}
+
+/* Portada de los dueños y gerentes: mismas tarjetas y acciones, nueva luz. */
+.hub.gl-oh-hub{background:linear-gradient(165deg,#f9fbfd 0%,#edf5f9 100%);color:#19364a}
+.gl-oh-top{background:#ffffffed;border-bottom:1px solid #e0e9f0;box-shadow:0 4px 18px #153f500b}
+.gl-oh-icon,.gl-oh-user{color:#1f4b65}
+.gl-oh-icon:hover,.gl-oh-user:hover{background:#e8f4f9}
+.gl-oh-word{color:#18364e}
+.gl-oh-brand small,.gl-oh-who small{color:#607c8d}
+.gl-oh-brand.gl-oh-brand-company small{color:#355469}
+.gl-oh-avatar{background:#dceef7;color:#1c6180}
+.gl-oh-menu{background:#fff;border-color:#dbe7ef;box-shadow:0 18px 44px #15354a21}
+.gl-oh-menu button{color:#2a4a5d}
+.gl-oh-menu button:hover{background:#edf6fa}
+.gl-owner-landing,.gl-owner-landing-wait,.gl-owner-none{color:#1b374d}
+.gl-owner-welcome p,.gl-owner-welcome .gl-owner-tagline{color:#4d6e80}
+.gl-owner-welcome h1{color:#17364e}
+.gl-owner-company{background:#fff;border-color:#dfe9f1;box-shadow:0 3px 15px #14385010}
+.gl-owner-company-name{color:#193e55}
+.gl-owner-area{background:#fff;border:1px solid #dce8ef;border-radius:23px;
+  box-shadow:0 12px 35px #183b4b10;min-height:300px}
+.gl-owner-employees{background:#fff;border-color:#dce8ef}
+.gl-owner-area:hover{box-shadow:0 18px 45px #15384d18;border-color:#a8d7e2}
+.gl-owner-area-icon{background:#e7f7f3;color:#117b73;border-radius:17px}
+.gl-owner-employees .gl-owner-area-icon{background:#eaf2ff;color:#3662a4}
+.gl-owner-arrow{background:#e8f6f2;color:#12685b}
+.gl-owner-employees .gl-owner-arrow{background:#e8efff;color:#335c9d}
+.gl-owner-area-list{background:#f7fafc;border:1px solid #edf1f5;color:#314e60;border-radius:15px}
+.gl-owner-area>p{color:#5d7686}
+.gl-owner-tile{background:#fff;color:#24465b;border-color:#dfebf2;border-radius:17px;
+  box-shadow:0 5px 20px #18374c0a}
+.gl-owner-tile span{color:#197a95}
+.gl-owner-tile:hover{background:#edf7fb;border-color:#bcdce7}
+
+/* Pantalla de creadora de GESTLOK, incluida la cuenta administradora general:
+   no se define ningún correo ni permisos especiales por persona. */
+.gl-ch{--ch-p:#167c9d;--ch-ink:#18344c;--ch-mut:#60788a;--ch-line:#e0e8ef;
+  background:#f5f8fc;color:var(--ch-ink)}
+.gl-ch-side{background:#fff;border-right:1px solid #e0e8ef;box-shadow:3px 0 20px #19384807;
+  overflow-y:auto;scrollbar-width:thin}
+.gl-ch-logo{background:transparent}
+.gl-ch-nav button{color:#355367;border-radius:12px;min-height:44px}
+.gl-ch-nav button:hover{background:#f0f7fb}
+.gl-ch-nav button.on{background:#e7f3f9;color:#116e91;box-shadow:inset 3px 0 #22adbc}
+.gl-ch-card,.gl-ch-kpi{border:1px solid #e1eaf1;background:#fff;border-radius:18px;box-shadow:0 6px 26px #173e4b0b}
+.gl-ch-card h2,.gl-ch-top h1{color:#17384e}
+.gl-ch-summary,.gl-ch-bigstats div{background:#f3f8fc}
+.gl-ch-ico.p{background:#ebefff;color:#526dba}
+.gl-ch-av{background:#e4f4f8;color:#136f8e}
+.gl-ch-out{border-radius:11px}
+
+/* Portada de verificación de empresas de la creadora y paneles compartidos. */
+.gl-admin{background:#f6f8fc}
+.gl-admin-sidebar{background:#fff;color:#1b4359;border-right:1px solid #dce8ee;box-shadow:3px 0 18px #15384508}
+.gl-admin-logo small{color:#537287}
+.gl-admin-logo img{filter:none}
+.gl-admin-nav>span,.gl-admin-nav>button{color:#36596d}
+.gl-admin-nav>span[aria-current],.gl-admin-nav>button[aria-current]{background:#e7f5fa;color:#126782}
+.gl-admin-nav>button:hover{background:#edf7fb}
+.gl-admin-card,.gl-admin-kpi{border:1px solid #e1eaf1;background:#fff;border-radius:18px;box-shadow:0 5px 24px #153a490a}
+.gl-creator-local-home{background:linear-gradient(150deg,#fff,#f1f8fb);border:1px solid #e1ebf1;
+  color:#19384d;border-radius:21px}
+.gl-creator-local-home h1,.gl-creator-local-home h2,.gl-creator-local-home p{color:#25485c}
+.gl-creator-local-home .gl-home-avisos{box-shadow:0 7px 26px #163c4b0c}
+@media(max-width:899px){
+ #app{--sidew:268px}
+ .gl-oh-top{color:#1b4158}
+ .gl-ch-side{box-shadow:none}
+}
+@media(max-width:560px){
+ .gl-owner-area{min-height:0;padding:18px}
+ .gl-owner-tile{min-height:78px}
+ .gl-owner-quick{gap:9px}
+}
+@media(prefers-reduced-motion:reduce){.gl-owner-area{transition:none}}
+
+/* El panel principal de la creadora también se contrae: mantiene iconos
+   y títulos accesibles sin duplicar menús ni exponer otras empresas. */
+.gl-ch-collapse{display:flex;align-items:center;gap:9px;margin:1px 8px 7px;
+  min-height:39px;padding:8px 11px;border:1px solid #deebf2;border-radius:11px;
+  background:#f8fbfd;color:#35657e;font:750 11px/1.2 var(--f-body),system-ui;cursor:pointer}
+.gl-ch-collapse:hover{background:#e8f5fa}
+.gl-ch-collapse svg{flex:0 0 20px;fill:none;stroke:currentColor}
+@media(min-width:900px){
+ .gl-ch.gl-ch-collapsed{grid-template-columns:78px minmax(0,1fr)}
+ .gl-ch.gl-ch-collapsed .gl-ch-side{padding:18px 8px;gap:10px}
+ .gl-ch.gl-ch-collapsed .gl-ch-logo{padding:0 0 9px;justify-items:center}
+ .gl-ch.gl-ch-collapsed .gl-ch-logo img{width:58px;height:35px;object-fit:contain}
+ .gl-ch.gl-ch-collapsed .gl-ch-logo small,
+ .gl-ch.gl-ch-collapsed .gl-ch-me,
+ .gl-ch.gl-ch-collapsed .gl-ch-quote,
+ .gl-ch.gl-ch-collapsed .gl-ch-nav button>span,
+ .gl-ch.gl-ch-collapsed .gl-ch-nav button>b,
+ .gl-ch.gl-ch-collapsed .gl-ch-collapse>span{display:none}
+ .gl-ch.gl-ch-collapsed .gl-ch-collapse{justify-content:center;margin:1px 0 8px;padding:9px 0}
+ .gl-ch.gl-ch-collapsed .gl-ch-nav button{justify-content:center;padding:12px 4px;gap:0}
+}
+@media(max-width:899px){
+ .gl-ch-collapse{align-self:flex-start;margin:0 4px 6px}
+ .gl-ch.gl-ch-collapsed .gl-ch-nav{display:none}
+ .gl-ch.gl-ch-collapsed .gl-ch-side{padding-bottom:10px}
+}
+
+/* Panel clásico de administración: mismo botón contraíble que el panel nuevo. */
+.gl-admin-collapse{display:flex;gap:8px;align-items:center;margin:0 0 12px;
+  border:1px solid #dce9f0;border-radius:10px;background:#f8fbfd;color:#376981;
+  padding:9px 11px;font:750 11px var(--f-body),system-ui;cursor:pointer;text-align:left}
+.gl-admin-collapse:hover{background:#e8f4f9}
+.gl-admin-nav button:focus-visible,.gl-admin-collapse:focus-visible{outline:3px solid #24a1b8;outline-offset:2px}
+@media(min-width:900px){
+ .gl-admin.gl-admin-collapsed{grid-template-columns:78px minmax(0,1fr)}
+ .gl-admin.gl-admin-collapsed .gl-admin-sidebar{padding:18px 8px;gap:12px}
+ .gl-admin.gl-admin-collapsed .gl-admin-logo{padding:0;justify-items:center}
+ .gl-admin.gl-admin-collapsed .gl-admin-logo img{width:50px;height:40px;object-fit:contain}
+ .gl-admin.gl-admin-collapsed .gl-admin-logo small,
+ .gl-admin.gl-admin-collapsed .gl-admin-footer{display:none}
+ .gl-admin.gl-admin-collapsed .gl-admin-nav>span,
+ .gl-admin.gl-admin-collapsed .gl-admin-nav>button{justify-content:center;gap:0;
+   padding:13px 3px;font-size:0;white-space:nowrap}
+ .gl-admin.gl-admin-collapsed .gl-admin-nav svg{flex:none;width:20px;height:20px}
+ .gl-admin.gl-admin-collapsed .gl-admin-nav b{display:none}
+ .gl-admin.gl-admin-collapsed .gl-admin-collapse{justify-content:center;
+   font-size:0;padding:12px 0;overflow:hidden;min-height:39px}
+}
+@media(max-width:899px){
+ .gl-admin-collapse{align-self:flex-start}
+ .gl-admin.gl-admin-collapsed .gl-admin-nav{display:none}
+}
+
+/* Logos de empresas: Mi Gusto usa una marca blanca; conservar la
+   legibilidad dentro de una ficha azul marino sobre el nuevo lienzo blanco. */
+#app .side .gestlok-company-identity{background:#080808!important;border-color:#080808!important}
+#app .side .gestlok-company-identity small{color:#f1f7fa!important}
+.gl-oh-brand.gl-oh-brand-company{background:#080808;border-radius:15px;padding:8px 18px}
+.gl-oh-brand.gl-oh-brand-company small{color:#f5fbfc}
+.gl-owner-welcome .gl-owner-welcome-logo{display:inline-block;background:#080808;
+  border-radius:17px;padding:12px 18px;max-width:100%}
+.gl-owner-welcome-logo img{max-width:100%}
+
+/* Las marcas comerciales conservan el archivo original sin filtros, tintes,
+   inversión ni mezcla. Solo el soporte del logo blanco de Mi Gusto es negro. */
+#app .gestlok-company-identity img,
+.gl-oh-brand.gl-oh-brand-company img,
+.gl-owner-welcome-logo img{
+ filter:none!important;mix-blend-mode:normal!important;opacity:1!important;
+ object-fit:contain;background:transparent!important;
+}

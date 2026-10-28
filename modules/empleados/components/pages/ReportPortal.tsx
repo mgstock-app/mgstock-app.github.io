@@ -3,13 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AccessGate } from "@/components/auth/AccessGate";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { EmployeeReport } from "@/components/reports/EmployeeReport";
 import { ReportWorkspace } from "@/components/reports/ReportWorkspace";
 import { accessApi } from "@/features/access/api";
 import { useOrganizationData } from "@/hooks/use-organization-data";
 import { ManagerHome } from "@/components/pages/ManagerHome";
+import { EmployeePortalShell } from "@/components/pages/EmployeePortalShell";
 import { SharedOwnerCode } from "@/components/invitations/SharedOwnerCode";
-import { EmployeeScheduleLink } from "@/components/schedules/EmployeeScheduleLink";
 import "./employee-portal.css";
 import type { AppLocal, AppUser } from "@/types/access";
 function ManagerReports({ user }: { user: AppUser }) {
@@ -140,23 +139,7 @@ export function ReportPortal() {
   return (
     <AccessGate>
       {user?.role === "employee" ? (
-        <section className="employee-private-portal" aria-label="Mi espacio privado del colaborador">
-          <header className="employee-private-portal__hero">
-            <span>GESTLOK · MI ESPACIO PERSONAL</span>
-            <h1>Hola, {user.display_name?.split(" ")[0] || "colaborador"}</h1>
-            <p>Tu recibo de sueldo y los horarios del local que tenés asignado.</p>
-            <small>Local: {user.local_name || "Pendiente de asignación"}</small>
-          </header>
-          <div className="employee-private-portal__cards">
-            <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
-            <EmployeeScheduleLink key={`${user.user_id}:${user.local_id}`} />
-          </div>
-          <p className="employee-private-portal__privacy">
-            <span aria-hidden="true">🔒</span>
-            Tu recibo es personal y privado. Solo podés consultar el que publica tu empresa para tu cuenta.
-            Los dueños administran las liquidaciones; los horarios de Google Sheets se abren en vista de lectura.
-          </p>
-        </section>
+        <EmployeePortalShell />
       ) : user?.role === "manager" ? (
         <ManagerHome />
       ) : user ? (

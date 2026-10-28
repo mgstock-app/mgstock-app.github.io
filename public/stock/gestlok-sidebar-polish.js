@@ -11,7 +11,7 @@
 
   const stylesheet=document.createElement('link');
   stylesheet.rel='stylesheet';
-  stylesheet.href=new URL('stock/gestlok-sidebar-polish.css?rev=20261028-menu-1',document.baseURI).href;
+  stylesheet.href=new URL('stock/gestlok-sidebar-polish.css?rev=20261028-white-v2',document.baseURI).href;
   document.head.appendChild(stylesheet);
 
   const media=window.matchMedia('(max-width:899px)');
@@ -55,5 +55,48 @@
   observer.observe(nav,{childList:true,subtree:true});
   media.addEventListener?.('change',paint);
   paint();
+  // Portada administrativa clásica: usa el mismo patrón que el panel
+  // moderno de la creadora, sin modificar app.js ni los permisos.
+  const hub=document.getElementById('hub');
+  const adminKey='gestlok:creator-legacy-menu-collapsed:v1';
+  let adminCollapsed=false;
+  try{adminCollapsed=localStorage.getItem(adminKey)==='yes';}catch{}
+  function mountAdminMenu(){
+    const panel=hub?.querySelector('.gl-admin');
+    const sidebar=panel?.querySelector('.gl-admin-sidebar');
+    if(!sidebar)return;
+    panel.classList.toggle('gl-admin-collapsed',adminCollapsed);
+    if(sidebar.querySelector('.gl-admin-collapse'))return;
+    const toggle=document.createElement('button');
+    toggle.type='button';
+    toggle.className='gl-admin-collapse';
+    toggle.setAttribute('aria-controls','gl-admin-nav');
+    const navigation=sidebar.querySelector('.gl-admin-nav');
+    if(navigation)navigation.id='gl-admin-nav';
+    const draw=()=>{
+      toggle.setAttribute('aria-expanded',String(!adminCollapsed));
+      toggle.setAttribute('aria-label',adminCollapsed?'Expandir menú lateral':'Contraer menú lateral');
+      toggle.title=adminCollapsed?'Expandir menú':'Contraer menú';
+      toggle.textContent=adminCollapsed?'⇥  Expandir menú':'⇤  Contraer menú';
+      panel.classList.toggle('gl-admin-collapsed',adminCollapsed);
+    };
+    toggle.addEventListener('click',()=>{
+      adminCollapsed=!adminCollapsed;
+      try{localStorage.setItem(adminKey,adminCollapsed?'yes':'no');}catch{}
+      draw();
+    });
+    sidebar.querySelector('.gl-admin-logo')?.after(toggle);
+    navigation?.querySelectorAll('button,span').forEach(item=>{
+      const label=item.textContent?.replace(/\\s+/g,' ').trim();
+      if(label && !item.hasAttribute('title'))item.title=label;
+      if(label && !item.hasAttribute('aria-label'))item.setAttribute('aria-label',label);
+    });
+    draw();
+  }
+  if(hub){
+    const adminObserver=new MutationObserver(mountAdminMenu);
+    adminObserver.observe(hub,{childList:true});
+    mountAdminMenu();
+  }
   window.GestLokSidebarPolish={collapsed:()=>!media.matches&&collapsed,expand:()=>{collapsed=false;paint();}};
 })();
