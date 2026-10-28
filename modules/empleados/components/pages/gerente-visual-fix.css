@@ -1,3 +1,8 @@
+/* Respaldo visual: si hay portada de gerente, jamás mostrar las dos barras de navegación del módulo por encima. */
+.app-shell:has(> .gl-gerente) > .gestlok-module-bar,
+.app-shell:has(> .gl-gerente) > .app-navbar {
+  display:none;
+}
 /* Portada de gerentes: misma identidad visual de GESTLOK que el panel de dueños.
    Las reglas van dentro de gl-gerente para no alterar otras pantallas ni los recibos. */
 .app-shell .gl-gerente {
