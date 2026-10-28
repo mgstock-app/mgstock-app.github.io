@@ -117,6 +117,36 @@ async function main() {
   assert.equal(hourly.items.trab.i, 583333.33);
   assert.equal(ctx.cantTxt("horas", hourly.items.trab.c), "145:50 hs");
   assert.equal(ctx.leerHoras("1,5"), 1.5);
+  // Hours and shifts must never be mixed silently; overtime keeps its own rate.
+  const overtime = {
+    local: "munro", nombre: "Persona de prueba", extras: true, porTurno: false,
+    items: { trab: { c: 32, i: null }, extra: { c: 4, i: null } },
+    tarifas: { trab: 3500, extra: 5250 },
+  };
+  ctx.recalcular(overtime, "trab");
+  ctx.recalcular(overtime, "extra");
+  assert.equal(overtime.items.trab.i, 112000);
+  assert.equal(overtime.items.extra.i, 21000);
+  assert.equal(ctx.totalDe(overtime), 133000);
+  assert.equal(ctx.cantidadTotalTxt(overtime), "36:00 hs");
+  assert(ctx.ITEMS.some(item => item.k === "extra" && item.opcional === "extras"));
+  const readOnly = load("features/reports/payroll.js").summarizeReport(
+    overtime, { id: "munro", name: "Munro", cycle: "semanal" },
+  );
+  assert.equal(readOnly.total, ctx.totalDe(overtime), "Dashboard and PDF share the payroll formula");
+  assert.equal(readOnly.rows.find(item => item.key === "extra").amount, 21000);
+  const shifts = {
+    ...overtime, porTurno: true,
+    items: { trab: { c: 10, i: 100000 }, extra: { c: 4, i: 21000 } },
+    tarifas: { trab: 10000, extra: 5250 },
+  };
+  assert.equal(ctx.totalDe(shifts), 121000);
+  assert.equal(ctx.cantidadTotalTxt(shifts), "10 turnos · 4:00 hs extra");
+  shifts.extras = false;
+  assert.equal(ctx.totalDe(shifts), 100000, "Disabled overtime is excluded");
+  assert.equal(ctx.cantidadTotalTxt(shifts), "10 turnos");
+  const oldSheet = { items: { trab: { c: 10, i: 100000 } }, porTurno: true };
+  assert.equal(ctx.totalDe(oldSheet), 100000, "Existing records without overtime remain unchanged");
   const totals = { items: { trab: { c: 130.5 }, off: { c: 24 }, fer: { c: 0 }, aus: { c: 2 }, vac: { c: 5 } } };
   assert.equal(ctx.cantidadTotalTxt(totals), "154:30 hs");
   totals.items.fer.c = 50 / 60;
