@@ -3,7 +3,7 @@
 .gl-mobile-dock,.gl-mobile-sheet{display:none}
 @media(max-width:899px){
   .gl-mobile-dock:not([hidden]){
-    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:950;
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;
     justify-content:space-around;align-items:stretch;gap:2px;
     min-height:calc(65px + env(safe-area-inset-bottom,0px));
     padding:6px 6px calc(7px + env(safe-area-inset-bottom,0px));
@@ -52,8 +52,8 @@
  .gl-owner-landing .gl-owner-arrow svg{width:18px;height:18px}
  .gl-owner-landing .gl-owner-area>p{margin:5px 0;font-size:11px;line-height:1.4}
  .gl-owner-landing .gl-owner-area-list{display:none}
- .gl-owner-landing .gl-owner-quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
- .gl-owner-landing .gl-owner-tile{min-height:87px;font-size:12px}
+ .gl-owner-landing .gl-owner-quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+ .gl-owner-landing .gl-owner-tile{min-height:78px;font-size:clamp(9px,2.6vw,11px);padding:8px 3px}
  .gl-owner-landing .gl-owner-welcome{margin-bottom:12px}
 }
 @media(max-width:350px){
