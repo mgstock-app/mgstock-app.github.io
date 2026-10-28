@@ -26,7 +26,7 @@ create index if not exists manager_staff_invites_local_idx
  on rm_test_private.manager_staff_invites(organization_id,local_id,created_at desc);
 
 create or replace function rm_test_private.rm_manager_staff_invite_create(p_local text)
-returns jsonb language plpgsql security definer set search_path=''
+returns jsonb language plpgsql security definer set search_path='pg_catalog,extensions'
 as $manager_invite$
 declare target_local public.rm_app_local; raw_token text; v_id uuid; v_exp timestamptz;
 begin
@@ -52,7 +52,7 @@ begin
      )
   then raise exception 'Solo el gerente autorizado puede invitar en su local' using errcode='42501'; end if;
 
-  raw_token=encode(gen_random_bytes(32),'hex');
+  raw_token=encode(extensions.gen_random_bytes(32),'hex');
   insert into rm_test_private.manager_staff_invites
    (token_hash,organization_id,company_id,local_id,created_by)
   values (encode(sha256(convert_to(raw_token,'UTF8')),'hex'),
