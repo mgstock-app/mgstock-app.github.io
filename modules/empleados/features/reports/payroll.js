@@ -242,3 +242,37 @@ ctx.ESTADOS_EFE = { enviada: "Recibo listo", cargada: "Pendiente de firma", vaci
 ctx.ITEM_AUS = ctx.ITEMS.filter(function (x) { return x.k === "aus"; })[0];
 };
 }
+
+/** Read-only projection of the payroll engine for the employee dashboard.
+ * It never writes data and uses the same formulas as PDF and planilla.
+ */
+export function summarizeReport(sheet, local) {
+    const ctx = {};
+    registerPayroll({ window: { REPORT_LOCALS: [local] } }, ctx)();
+    const h = sheet || {};
+    const rows = ctx.ITEMS.filter(function (it) { return ctx.activo(h, it); }).map(function (it) {
+        const field = h.items && h.items[it.k] || {};
+        const descriptor = ctx.defItem(h, it);
+        return {
+            key: it.k,
+            label: descriptor.txt,
+            type: descriptor.tipo,
+            quantity: field.c == null ? null : field.c,
+            rate: descriptor.tipo === "monto" ? null : ctx.tarifaDe(h, it.k),
+            amount: it.k === "aus" && ctx.ausJustificado(h) ? 0 : (typeof field.i === "number" && Number.isFinite(field.i) ? (it.resta ? -Math.abs(field.i) : field.i) : null),
+        };
+    });
+    return {
+        name: ctx.tituloHoja(h),
+        role: ctx.puestoTxt(h),
+        status: ctx.estadoColab(h),
+        mode: ctx.modalidadTxt(h),
+        period: ctx.periodoTxt(h),
+        payment: ctx.pagoTxt(h),
+        quantity: ctx.cantidadTotalTxt(h),
+        total: ctx.totalDe(h),
+        reportStatus: ctx.estadoHoja(h),
+        lastDelivery: h.ultimaExport || null,
+        rows,
+    };
+}
