@@ -113,20 +113,22 @@ export function ReceiptDashboard({
   onDownload: (row: EmployeeRow) => Promise<void>;
   onShare: (row: EmployeeRow) => void;
 }) {
-  const now = new Date();
-  const [month, setMonth] = useState(() => now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0"));
+  const [todayMonth] = useState(() => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); });
+  const [month, setMonth] = useState("auto");
   const [localFilter, setLocalFilter] = useState("todos");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"actual"|"historial">("actual");
   const [downloading, setDownloading] = useState(false);
-  const months = useMemo(() => [...new Set(rows.map(row => receiptMonth(row.data)).filter((value): value is string => !!value).concat(month))].sort().reverse(), [rows, month]);
+  const availableMonths = useMemo(() => rows.map(row => receiptMonth(row.data)).filter((value): value is string => !!value), [rows]);
+  const months = useMemo(() => [...new Set([...availableMonths, todayMonth])].sort().reverse(), [availableMonths, todayMonth]);
+  const effectiveMonth = month === "auto" ? (availableMonths.includes(todayMonth) ? todayMonth : "todos") : month;
   const filtered = useMemo(() => rows.filter(row =>
     (localFilter === "todos" || row.localId === localFilter) &&
-    (month === "todos" || receiptMonth(row.data) === month) &&
+    (effectiveMonth === "todos" || receiptMonth(row.data) === effectiveMonth) &&
     normalize(row.summary.name + " " + row.local.name).includes(normalize(query.trim()))
-  ), [rows, month, localFilter, query]);
+  ), [rows, effectiveMonth, localFilter, query]);
   const maxPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, maxPage);
   const current = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -149,7 +151,7 @@ export function ReceiptDashboard({
       </div>
       <div className="employee-pages__period-filters">
         <label><CalendarDays size={18}/><span className="sr-only">Período</span>
-          <select value={month} onChange={e => changeMonth(e.target.value)}>
+          <select value={effectiveMonth} onChange={e => changeMonth(e.target.value)}>
             <option value="todos">Todos los períodos</option>
             {months.map(m => <option key={m} value={m}>{monthName(m)}</option>)}
           </select>
@@ -178,7 +180,7 @@ export function ReceiptDashboard({
           current.map((row,i) => <button type="button" key={row.id} onClick={() => show(row.id)} className={"employee-pages__receipt-person" + (active?.id === row.id ? " is-selected" : "")} aria-pressed={active?.id === row.id}>
             <span className={"employee-pages__avatar employee-pages__avatar--" + (i%6)} aria-hidden="true">{(row.summary.name.trim()[0]||"?").toUpperCase()}</span>
             <strong title={row.summary.name}>{row.summary.name}</strong>
-            <small>{row.summary.period || monthName(receiptMonth(row.data) || "")}</small>
+            <small>{row.summary.period || (receiptMonth(row.data) ? monthName(receiptMonth(row.data)!) : "Sin período")}</small>
             <span className={"employee-pages__pill employee-pages__pill--" + row.summary.reportStatus}>{reportLabel[row.summary.reportStatus]}</span>
             <span className="employee-pages__receipt-view"><Eye size={16}/> Ver</span>
           </button>) : <div className="employee-pages__empty">No hay recibos para los filtros elegidos. Probá «Todos los períodos».</div>}
@@ -189,7 +191,7 @@ export function ReceiptDashboard({
       <div className="employee-pages__receipt-detail">
         {!loading && active ? <>
           <div className="employee-pages__receipt-detail-header">
-            <div className="employee-pages__receipt-identity"><span className="employee-pages__avatar employee-pages__avatar--0">{(active.summary.name.trim()[0]||"?").toUpperCase()}</span><div><strong>{active.summary.name}</strong><small>Recibo de sueldo · {monthName(receiptMonth(active.data)||"")}</small></div><span className={"employee-pages__pill employee-pages__pill--"+active.summary.reportStatus}>{reportLabel[active.summary.reportStatus]}</span></div>
+            <div className="employee-pages__receipt-identity"><span className="employee-pages__avatar employee-pages__avatar--0">{(active.summary.name.trim()[0]||"?").toUpperCase()}</span><div><strong>{active.summary.name}</strong><small>Recibo de sueldo · {receiptMonth(active.data) ? monthName(receiptMonth(active.data)!) : "Sin período"}</small></div><span className={"employee-pages__pill employee-pages__pill--"+active.summary.reportStatus}>{reportLabel[active.summary.reportStatus]}</span></div>
             <div className="employee-pages__receipt-actions"><button type="button" disabled={!ready || downloading || tab !== "actual"} onClick={() => void download()}><Download size={17}/>{downloading?"Preparando…":"Descargar PDF"}</button><button type="button" disabled={!ready || tab !== "actual"} onClick={() => onShare(active)}><MessageCircle size={17}/> Enviar por WhatsApp</button></div>
           </div>
           <div className="employee-pages__receipt-tabs" role="tablist" aria-label="Ver recibo o historial"><button type="button" role="tab" aria-selected={tab==="actual"} onClick={()=>setTab("actual")}>Recibo actual</button><button type="button" role="tab" aria-selected={tab==="historial"} onClick={()=>setTab("historial")}>Historial</button></div>
