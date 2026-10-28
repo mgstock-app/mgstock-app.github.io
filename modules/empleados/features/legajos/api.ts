@@ -19,6 +19,8 @@ export type Legajo = {
   updated_at: string;
   created_by: string;
   updated_by: string;
+  /** Registro creado tras la invitación, aún pendiente de los datos que carga el gerente. */
+  needs_completion: boolean;
 };
 export type LegajoInput = Pick<Legajo,
   "organization_id" | "local_id" | "first_name" | "last_name" |
@@ -111,7 +113,7 @@ export async function updateLegajo(original: Legajo, input: LegajoInput): Promis
     throw new Error("No se puede cambiar un legajo de local o empresa.");
   const cleaned = cleanLegajo(input);
   const { data, error } = await createClient().from("rm_employee_profiles")
-    .update(cleaned)
+    .update({ ...cleaned, needs_completion: false })
     .eq("id", original.id)
     .eq("organization_id", original.organization_id)
     .eq("local_id", original.local_id)

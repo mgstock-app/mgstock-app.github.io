@@ -6,6 +6,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { joinApi } from "@/features/onboarding/api";
 import { isInvitationCode, resolveInvitationCode } from "@/utils/invitations";
+import { validManagerStaffInvite } from "@/utils/manager-staff-invite";
+import { JoinStaffInvitation } from "./JoinStaffInvitation";
 function JoinContent() {
   const params = useSearchParams();
   const { user, loading, refresh } = useAuth();
@@ -141,10 +143,35 @@ function JoinContent() {
     </section>
   );
 }
+/** Routes the new auto-assignment flow without changing legacy owner invitations.
+ * Explicit invalid URLs never fall back to a cached, potentially unrelated link.
+ */
+function JoinRouter() {
+  const params = useSearchParams();
+  const [cached, setCached] = useState("");
+  useEffect(() => {
+    try {
+      if (params.has("invitacion")) {
+        const incoming = params.get("invitacion") || "";
+        if (validManagerStaffInvite(incoming)) sessionStorage.setItem("recibonet_staff_invitation",incoming);
+        else sessionStorage.removeItem("recibonet_staff_invitation");
+        queueMicrotask(() => setCached(incoming));
+      } else if (!params.has("codigo")) {
+        const old = sessionStorage.getItem("recibonet_staff_invitation") || "";
+        queueMicrotask(() => setCached(old));
+      } else queueMicrotask(() => setCached(""));
+    } catch {
+      queueMicrotask(() => setCached(""));
+    }
+  },[params]);
+  const explicit = params.get("invitacion");
+  const token = explicit !== null ? explicit : params.has("codigo") ? "" : cached;
+  return explicit !== null || !!token ? <JoinStaffInvitation token={token}/> : <JoinContent/>;
+}
 export function JoinCompany() {
   return (
     <Suspense fallback={<p className="empty-state">Cargando invitación…</p>}>
-      <JoinContent />
+      <JoinRouter />
     </Suspense>
   );
 }

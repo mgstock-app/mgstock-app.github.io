@@ -1,8 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Clock3, ExternalLink, FileText, History, MoreVertical, Plus, RotateCw, Save, Search, Store, UserRoundCheck, UserRoundX, UsersRound, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Clock3, ExternalLink, FileText, History, MoreVertical, Plus, UserRoundPlus, RotateCw, Save, Search, Store, UserRoundCheck, UserRoundX, UsersRound, X } from "lucide-react";
 import type { AppLocal } from "@/types/access";
 import { BranchScheduleLink } from "@/components/schedules/BranchScheduleLink";
+import { ManagerStaffInvite } from "@/components/invitations/ManagerStaffInvite";
 import {
   type Legajo, type LegajoInput, type LegajoHistory, type PreviousEmployee, type LegajoStatus,
   loadLegajoLocals, loadLegajos, loadPreviousEmployees, createLegajo, updateLegajo,
@@ -17,6 +18,7 @@ type StaffCard = {
   status: LegajoStatus;
   profile: Legajo | null;
   previous: PreviousEmployee | null;
+  pending: boolean;
 };
 const normalized = (s: string) => s.trim().toLocaleLowerCase("es-AR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const fullName = (p: Legajo) => p.first_name + " " + p.last_name;
@@ -74,6 +76,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
   const [history, setHistory] = useState<LegajoHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const scopedKey = localScope?.map(l=>l.organization_id+":"+l.id).join("|") || "";
   const updateView = useCallback(() => setReload(k=>k+1), []);
   useEffect(() => {
@@ -106,12 +109,19 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
     window.addEventListener("focus", updateView);
     return () => window.removeEventListener("focus", updateView);
   }, [updateView]);
+  useEffect(() => {
+    if (ownerView) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) updateView();
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [ownerView,updateView]);
   const rows = useMemo<StaffCard[]>(() => {
     const byLocal = new Map(locals.map(l => [l.id, l]));
     const actual = profiles.flatMap(p => {
       const local = byLocal.get(p.local_id);
       return local && local.organization_id === p.organization_id
-        ? [{ key: p.id, local, fullName: fullName(p), status: p.status, profile: p, previous: null }] : [];
+        ? [{ key: p.id, local, fullName: fullName(p), status: p.status, profile: p, previous: null, pending: !!p.needs_completion }] : [];
     });
     const known = new Set(actual.map(p => p.local.id + ":" + normalized(p.fullName)));
     const fromOld = previous.flatMap(p => {
@@ -119,9 +129,9 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
       if (!local || local.organization_id !== p.organization_id ||
           known.has(local.id + ":" + normalized(p.full_name))) return [];
       return [{ key: p.source_id, local, fullName: p.full_name, status: p.status,
-        profile: null, previous: p }];
+        profile: null, previous: p, pending: false }];
     });
-    return [...actual, ...fromOld].sort((a,b)=>a.fullName.localeCompare(b.fullName, "es-AR"));
+    return [...actual, ...fromOld].sort((a,b)=>Number(b.pending)-Number(a.pending)||a.fullName.localeCompare(b.fullName, "es-AR"));
   }, [locals,profiles,previous]);
   const filtered = rows.filter(r =>
     (localFilter === "todos" || r.local.id === localFilter)
@@ -195,7 +205,10 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
   return <section className={"mlg-board" + (ownerView ? " mlg-board--owner" : "")} aria-label={ownerView ? "Legajos registrados por gerentes" : "Administración de empleados del gerente"}>
     {ownerView ? <div className="mlg-intro mlg-intro--owner"><div><h2>Legajos informados por gerentes</h2><p>Estados, refuerzos y bajas registrados en los locales de tu empresa.</p></div><button type="button" onClick={updateView} aria-label="Actualizar legajos de gerentes"><RotateCw size={17}/> Actualizar</button></div> :
       <div className="mlg-intro"><div><small>GESTLOK · {locals.length === 1 ? localTitle(locals[0]).toUpperCase() : "ADMINISTRACIÓN DE EMPLEADOS"}</small><h1>Administración de empleados</h1><p>{locals.length === 1 ? "Legajos y estados del equipo de " + localTitle(locals[0]) + "." : "Gestioná los legajos de tus locales autorizados."}</p></div>
-        <button type="button" className="mlg-primary" disabled={loading || !locals.length} onClick={()=>open(locals.find(l=>l.id===localFilter) || locals[0])}><Plus size={18}/> Agregar colaborador</button>
+        <div className="mlg-intro-actions">
+          <button type="button" className="mlg-invite" disabled={loading || !locals.length} onClick={()=>setShowInvite(true)}><UserRoundPlus size={18}/> Invitar Colaborador</button>
+          <button type="button" className="mlg-primary" disabled={loading || !locals.length} onClick={()=>open(locals.find(l=>l.id===localFilter) || locals[0])}><Plus size={18}/> Agregar colaborador</button>
+        </div>
       </div>}
     {!ownerView && <div className="mlg-stats">
       <div><UsersRound color="#2574d4"/><span>Total colaboradores</span><strong>{loading?"—":totals.all}</strong></div>
@@ -223,13 +236,16 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           </button>{!ownerView&&<button type="button" className="mlg-add" onClick={()=>open(local)}><Plus size={17}/> Agregar colaborador</button>}</div>
           {!closed && (staff.length ? <div className="mlg-cards">{staff.map((person,i)=><article className="mlg-person" key={person.key}>
             <span className={"mlg-avatar mlg-avatar--"+i%5} aria-hidden="true">{(person.fullName[0]||"?").toUpperCase()}</span>
-            <div className="mlg-person-name"><strong>{person.fullName}</strong><span className={"mlg-status mlg-status--"+person.status}>{stateNames[person.status]}</span></div>
+            <div className="mlg-person-name"><strong>{person.fullName}</strong><span className={"mlg-status mlg-status--"+person.status}>{stateNames[person.status]}</span>{person.pending&&<span className="mlg-pending">Pendiente de completar</span>}</div>
             <button type="button" className="mlg-view" onClick={()=>open(local,person)}><FileText size={15}/> Ver legajo</button>
             <button type="button" className="mlg-more" aria-label={"Detalle de "+person.fullName} onClick={()=>open(local,person)}><MoreVertical size={17}/></button>
           </article>)}</div> : <p className="mlg-empty">{search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
           {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}
+    {showInvite && !ownerView && locals.length>0 && <ManagerStaffInvite
+      locals={locals} initialLocal={localFilter==="todos"?"":localFilter}
+      onClose={()=>{setShowInvite(false);updateView();}}/>}
     {draft && chosenLocal && <div className="mlg-overlay">
       <section className="mlg-modal" role="dialog" aria-modal="true" aria-label={"Legajo en "+localTitle(chosenLocal)}>
         <div className="mlg-modal-head"><div><small>LEGAJO · {localTitle(chosenLocal).toUpperCase()}</small><h2>{editing?fullName(editing):"Datos del colaborador"}</h2></div><button type="button" aria-label="Cerrar legajo" onClick={close} disabled={saving}><X size={20}/></button></div>
@@ -243,6 +259,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           <button type="button" className="mlg-secondary" onClick={()=>setShowHistory(false)}><ArrowLeft size={16}/> Volver al legajo</button>
         </div> : <form className="mlg-form" onSubmit={e=>void save(e)}>
           {!editing && ownerView && <p>Este colaborador figura en una planilla anterior, pero todavía no tiene un legajo creado por el gerente.</p>}
+          {editing?.needs_completion && <p className="mlg-pending-notice">Este legajo fue creado automáticamente al aceptar la invitación. Completá los datos del nuevo colaborador y guardá para finalizarlo.</p>}
           <div className="mlg-form-grid">
             <label>Nombre *<input required maxLength={100} value={draft.first_name} onChange={e=>update("first_name",e.target.value)} disabled={ownerView||saving} placeholder="Nombre"/></label>
             <label>Apellido *<input required maxLength={100} value={draft.last_name} onChange={e=>update("last_name",e.target.value)} disabled={ownerView||saving} placeholder="Apellido"/></label>

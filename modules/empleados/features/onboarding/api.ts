@@ -34,3 +34,19 @@ export const joinApi = {
     }>("rm_app_join_preview", { p_token: token }),
   join: (token: string) => rpc<void>("rm_app_join_by_link", { p_token: token }),
 };
+
+/** Only gerentes authorized in a specific local may issue these links.
+ * Acceptance is atomic: verified Google user -> employee role + company/local
+ * + empty private paysheet + manager's pending personnel record.
+ */
+export const managerStaffInviteApi = {
+  create: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string}>(
+    "rm_app_manager_staff_invite_create", {p_local:local}
+  ),
+  preview: (token: string) => rpc<{company_name:string;local_name:string;expires_at:string}>(
+    "rm_app_manager_staff_invite_preview", {p_token:token}
+  ),
+  accept: (token: string) => rpc<{local_id:string;profile_id:string;joined:boolean}>(
+    "rm_app_manager_staff_invite_accept", {p_token:token}
+  ),
+};
