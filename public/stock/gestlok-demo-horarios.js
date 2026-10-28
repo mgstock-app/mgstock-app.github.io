@@ -4,6 +4,7 @@
 (() => {
   'use strict';
   if (new URLSearchParams(location.search).get('demo') !== '1') return;
+  const canSeeReceipt = () => document.getElementById('gl-visitor-role')?.value === 'dueno';
   const KEY = 'gestlok:visitor:horarios:v1';
   const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const ESTADOS = ['', 'OFF', 'Feriado', 'Ausente', 'Ausente justificado', 'Vacaciones'];
@@ -104,7 +105,7 @@
        <p class="lead gl-dh-note">Podés cambiar horarios y estados: los totales se recalculan como en el Excel. En la demo los cambios quedan solo en esta pestaña${offline() ? ' y, sin conexión, se marcan como pendientes hasta que vuelva internet' : ''}.</p>`;
     return `<div class="gl-dh-wrap">
       <header class="gl-dh-top"><button class="btn sm" type="button" data-dh-close>← Volver al inicio</button><div><p class="eyebrow">Administrar a los empleados · DEMO</p><h2>${esc(shop)}</h2></div></header>
-      <nav class="gl-dh-folders" aria-label="Carpetas de empleados"><button class="on" aria-current="page">📁 Horarios</button>${FOLDERS.map(f => `<button disabled title="Incluido en GESTLOK; no disponible en la demo">📁 ${f}</button>`).join('')}</nav>
+      <nav class="gl-dh-folders" aria-label="Carpetas de empleados"><button class="on" aria-current="page">📁 Horarios</button>${FOLDERS.map(f => f === 'Recibos de sueldo' && canSeeReceipt() ? `<button type="button" data-dh-receipt>📁 ${f}</button>` : `<button disabled title="Incluido en GESTLOK; no disponible en la demo">📁 ${f}</button>`).join('')}</nav>
       <section aria-labelledby="gl-dh-title"><h1 id="gl-dh-title">📁 Horarios</h1>
         <p class="lead">Planilla de turnos del local · semana del ${ddmm(fecha(0))} al ${ddmm(fecha(6))}. <b>Todos los datos son ficticios.</b></p>
         <div class="gl-dh-choice" role="radiogroup" aria-label="Planilla de horarios">
@@ -115,7 +116,7 @@
       </section></div>`;
   }
   const STYLE = `#gl-demo-emp{position:fixed;inset:0;z-index:10500;overflow:auto;background:var(--bg,#f5f7fa);color:var(--ink,#11283c);font-family:var(--f-body,system-ui,sans-serif)}
-  .gl-visitor-mode #gl-demo-emp{top:var(--gl-visitor-h,0px)}
+  .gl-visitor-mode #gl-demo-emp{top:var(--gl-tour-header,var(--gl-visitor-h,0px))}
   #gl-demo-emp .gl-dh-wrap{max-width:1180px;margin:0 auto;padding:16px 16px 140px}
   #gl-demo-emp .gl-dh-top{display:flex;gap:14px;align-items:center;margin-bottom:12px}#gl-demo-emp .gl-dh-top h2{margin:0;font-size:20px}#gl-demo-emp .eyebrow{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#607583)}
   #gl-demo-emp h1{font-size:24px;margin:8px 0 4px}
@@ -161,6 +162,7 @@
 
   document.addEventListener('click', e => {
     const box = e.target.closest?.('#gl-demo-emp'); if (!box) return;
+    if (e.target.closest('[data-dh-receipt]')){ if (!canSeeReceipt()) return; const old=box.querySelector('#gl-demo-receipt'); if(old){old.remove();return;} const receipt=document.createElement('section');receipt.id='gl-demo-receipt';receipt.className='card pad';receipt.setAttribute('role','region');receipt.setAttribute('aria-label','Recibo ficticio');receipt.innerHTML='<h3>Recibo de sueldo · Ejemplo ficticio</h3><p>Empleado: Alex Demo · Período: octubre 2026</p><p>Haberes: $900.000 · Descuentos: $153.000 · Neto: $747.000</p><p>Datos ilustrativos. Sin validez legal.</p>';box.querySelector('.gl-dh-folders').after(receipt); return; }
     if (e.target.closest('[data-dh-close]')){ close(); return; }
     const tab = e.target.closest('[data-dh-tab]'); if (tab){ view.tab = tab.dataset.dhTab; paint(); return; }
     const sheet = e.target.closest('[data-dh-sheet]'); if (sheet){ view.ownSheet = +sheet.dataset.dhSheet || 0; paint(); return; }
