@@ -36,7 +36,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
   const internalName = contextCompany?.recibonet?.internal_name?.trim().toLocaleLowerCase("es-AR");
   const shownCompany = internalName && internalName === companyName.trim().toLocaleLowerCase("es-AR") ? contextCompany!.company_name : companyName;
   const logoHome = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
-  const change = (section: Area) => { onSectionChange?.(section); onClose(); };
+  const change = (section: Area) => { if (onSectionChange) onSectionChange(section); else window.location.assign("/"); onClose(); };
   const sectionButton = (section: Area, label: string, Icon: typeof House) =>
     <button type="button" key={section} className={activeSection === section ? "active" : ""} title={label}
       aria-current={activeSection === section ? "page" : undefined} onClick={() => change(section)}>
