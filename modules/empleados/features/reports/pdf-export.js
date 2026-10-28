@@ -31,7 +31,7 @@ ctx.crearPdf = function (h, nombreColab, lienzo) {
     doc.setTextColor.apply(doc, tinta);
     doc.setFont("times", "bold");
     doc.setFontSize(22);
-    var titleLines = doc.splitTextToSize(ctx.LOCALES[ctx.localDe(h)].txt, A * 0.56);
+    var titleLines = doc.splitTextToSize("Recibo de sueldo", A * 0.56);
     titleLines.forEach(function (line, index) { T(line, M, y + 9 + index * 9); });
     var titleBottom = y + 9 + (titleLines.length - 1) * 9;
     doc.setFont("helvetica", "bold");
@@ -177,7 +177,7 @@ ctx.crearPdf = function (h, nombreColab, lienzo) {
     return doc.output("blob");
 };
 ctx.prepararEnvio = function (h, nombre, tel, mensaje) {
-    var per = ctx.periodoTxt(h).replace(/\//g, "-"), base = "Reporte " + ctx.LOCALES[ctx.localDe(h)].txt + " - " + nombre + (per ? " - " + per : " - " + ctx.hoyIso());
+    var per = ctx.periodoTxt(h).replace(/\//g, "-"), base = "Recibo de sueldo - " + nombre + (per ? " - " + per : " - " + ctx.hoyIso());
     return { archivoImg: base + ".png", archivoPdf: base + ".pdf", img: null, msg: mensaje || "", wa: "https://wa.me/" + tel + (mensaje ? "?text=" + encodeURIComponent(mensaje) : "") };
 };
 ctx.registrarEnvio = function (id, nombre, tel) {
