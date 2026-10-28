@@ -284,7 +284,7 @@ ctx.pintarValores = function () {
     ctx.$("bEliminar").hidden = !ctx.S.esDuena;
     ctx.$("panelHoja").hidden = ctx.$("bRenombrar").hidden && ctx.$("bEliminar").hidden;
     var ec = ctx.estadoColab(s), desde = s.estadoDesde || s.inactivoDesde;
-    ["activo", "refuerzo", "inactivo"].forEach(function (e) { var bt = ctx.$("b" + e.charAt(0).toUpperCase() + e.slice(1)); bt.setAttribute("aria-checked", ec === e ? "true" : "false"); bt.disabled = ctx.S.soloLectura || !!ctx.S.cambiandoActivo; });
+    ["activo", "refuerzo", "descanso", "inactivo"].forEach(function (e) { var bt = ctx.$("b" + e.charAt(0).toUpperCase() + e.slice(1)); bt.setAttribute("aria-checked", ec === e ? "true" : "false"); bt.disabled = ctx.S.soloLectura || !!ctx.S.cambiandoActivo; });
     ctx.$("dActivo").textContent = ec === "inactivo" ? ("Inactivo" + (desde ? " desde el " + ctx.fechaTxt(desde) : "") + ": renunció. Punto rojo en la pestaña. No aparece en los reportes.") :
         ec === "refuerzo" ? ("Refuerzo" + (desde ? " desde el " + ctx.fechaTxt(desde) : "") + ": trabaja de forma temporal (días o semanas). Punto amarillo en la pestaña. No aparece en los reportes.") :
             (ctx.S.soloLectura ? "Punto verde en la pestaña." : "Punto verde en la pestaña. Refuerzo (amarillo) si trabaja de forma temporal; Inactivo (rojo) si renunció. No aparece en los reportes.");
@@ -297,6 +297,7 @@ ctx.F = { ctx: null, dibujando: false, trazo: false, activa: false, rehacer: fal
 scope.listen(ctx.$("bRecibo"), "click", function () { ctx.conGuardado(ctx.descargarRecibo); });
 scope.listen(ctx.$("bActivo"), "click", function () { ctx.cambiarEstadoColab("activo"); });
 scope.listen(ctx.$("bRefuerzo"), "click", function () { ctx.cambiarEstadoColab("refuerzo"); });
+scope.listen(ctx.$("bDescanso"), "click", function () { ctx.cambiarEstadoColab("descanso"); });
 scope.listen(ctx.$("bInactivo"), "click", function () { ctx.cambiarEstadoColab("inactivo"); });
 };
 }
