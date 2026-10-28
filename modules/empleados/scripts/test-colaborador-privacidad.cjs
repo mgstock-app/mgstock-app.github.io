@@ -77,6 +77,6 @@ const employeeShell = fs.readFileSync("components/pages/EmployeePortalShell.tsx"
 assert.match(employeeShell,/<EmployeeReport/,"El empleado conserva su único recibo privado");
 assert.match(employeeShell,/<EmployeeScheduleLink/,"El empleado conserva la planilla de su local");
 assert.match(employeeShell,/gl-employee-sidebar/,"Menú blanco del colaborador");
-assert.match(employeeShell,/user\\.role!==\"employee\"/,"La navegación exige rol colaborador");
+assert.match(employeeShell,/user\.role!=="employee"/,"La navegación exige rol colaborador");
 assert.doesNotMatch(portal,/<WeeklyScheduleDraft/);
 console.log("PASS: employee assignment search, local-only Sheets RPC, preview URL, and private receipts");
