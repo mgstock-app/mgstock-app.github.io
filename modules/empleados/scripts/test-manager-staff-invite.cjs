@@ -1,0 +1,63 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const ts = require("typescript");
+const code = ts.transpileModule(fs.readFileSync("utils/manager-staff-invite.ts","utf8"), {
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const mod={};
+new Function("exports","require",code)(mod,()=>{throw Error("Unexpected import")});
+const token = "a".repeat(64);
+assert(mod.validManagerStaffInvite(token));
+for(const value of ["x", "G".repeat(64), "../", "a".repeat(63), token+"a", ""]) {
+  assert(!mod.validManagerStaffInvite(value));
+  assert.throws(()=>mod.managerStaffInviteUrl("https://gestlok.com.ar","/empleados",value));
+}
+assert.equal(mod.managerStaffInviteUrl("https://gestlok.com.ar","/empleados",token),
+  "https://gestlok.com.ar/empleados/unirse/?invitacion="+token);
+assert.throws(()=>mod.managerStaffInviteUrl("http://example.com","/empleados",token),/HTTPS/);
+assert(mod.staffInviteMessage("Don Torcuato","https://gestlok.com.ar/empleados/unirse/?invitacion="+token).includes("WhatsApp")===false);
+assert(mod.staffInviteMessage("Munro","https://gestlok.com.ar").includes("una sola vez"));
+const sql = fs.readFileSync("../../supabase/migrations/20261028183500_invitaciones_gerente_automaticas.sql","utf8");
+for(const required of [
+ "manager_staff_invites enable row level security",
+ "token_hash text not null unique",
+ "sha256(convert_to(raw_token,'UTF8'))",
+ "rm_test_private.rm_employee_profile_scope(target_local.organization_id,target_local.id)",
+ "rm_test_private.app_role()='manager'",
+ "rm_test_private.gestlok_gerente_locals()",
+ "rm_test_private.app_role() in ('admin','owner','employee')",
+ "and mp.can_edit=true",
+ "if invite.redeemed_by is not null",
+ "current_role is not null",
+ "current_org<>invite.organization_id",
+ "status='approved',account_kind='collaborator'",
+ "insert into public.rm_organization_members",
+ "insert into public.rm_test_documents",
+ "insert into public.rm_test_members(user_id,role,sheet_id,local_id)",
+ "insert into public.rm_employee_profiles",
+ "true) returning id into v_profile",
+ "update rm_test_private.manager_staff_invites",
+ "perform pg_advisory_xact_lock(216103)",
+ "where i.token_hash=encode(sha256(convert_to(p_token,'UTF8')),'hex')",
+ "expires_at>clock_timestamp()",
+]) assert(sql.includes(required),"Required SQL security: "+required);
+assert(!sql.includes("on conflict(user_id) do update set role"),"Existing user roles must never be overwritten");
+const manager = fs.readFileSync("components/legajos/ManagerLegajos.tsx","utf8");
+assert(manager.includes('Invitar Colaborador'));
+assert(manager.includes('showInvite && !ownerView'));
+assert(manager.includes('Pendiente de completar'));
+assert(manager.includes('onClose={()=>{setShowInvite(false);updateView();}}'));
+const update = fs.readFileSync("features/legajos/api.ts","utf8");
+assert(update.includes("needs_completion: false"),"Completing an invited profile clears its pending state");
+const flow = fs.readFileSync("components/invitations/JoinStaffInvitation.tsx","utf8");
+assert(flow.includes("await managerStaffInviteApi.accept(token)"));
+assert(flow.includes("await refresh()"));
+assert(flow.includes('router.replace("/")'));
+const router = fs.readFileSync("components/invitations/JoinCompany.tsx","utf8");
+assert(router.includes('params.has("invitacion")'));
+assert(router.includes('params.has("codigo")'));
+assert(router.includes("recibonet_staff_invitation"));
+const invite = fs.readFileSync("components/invitations/ManagerStaffInvite.tsx","utf8");
+assert(invite.includes("https://wa.me/?text="));
+assert(invite.includes("managerStaffInviteApi.create(selectedLocal.id)"));
+console.log("PASS: manager-only one-time invitation, automatic employee role/local, pending personnel record and WhatsApp");
