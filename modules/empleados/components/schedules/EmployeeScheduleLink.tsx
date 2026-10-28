@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, ExternalLink, LockKeyhole, RefreshCcw, Sheet } from "lucide-react";
+import { CalendarDays, ExternalLink, LockKeyhole, RefreshCcw, FileSpreadsheet } from "lucide-react";
 import { rpc } from "@/features/access/api";
 import { employeeSheetPreview } from "@/utils/employee-schedule-preview";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -47,7 +47,7 @@ export function EmployeeScheduleLink() {
       <div><h2>Horarios de mi local</h2><p>{user.local_name || info?.local_name || "Mi local asignado"} · Google Sheets</p></div>
     </div>
     <div className="employee-sheets__intro">
-      <Sheet size={22} aria-hidden="true"/>
+      <FileSpreadsheet size={22} aria-hidden="true"/>
       <div>
         <strong>Planilla de Google Sheets</strong>
         <p>Consultá los horarios del local al que te asignaron. El acceso es para lectura; no podés cargar ni modificar información desde GESTLOK.</p>
