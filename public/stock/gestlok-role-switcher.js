@@ -67,10 +67,31 @@
      card.append(title,role,locals,state);
      card.addEventListener('click',()=>void switchTo(c));
      list.append(card);
+     // Cada local se puede abrir desde el perfil; el controlador vuelve a
+     // comprobar que pertenezca a localesMios() tras el cambio de contexto.
+     const available=Array.isArray(c.local_names)?c.local_names.filter(x=>x&&typeof x.id==='string'):[];
+     if(available.length){
+       const group=document.createElement('div');group.className='gl-profile-local-buttons';
+       for(const loc of available){
+         const button=document.createElement('button');button.type='button';
+         button.textContent='Abrir '+String(loc.name||loc.id);
+         button.disabled=busy;
+         button.addEventListener('click',()=>void switchTo(c,loc.id));
+         group.appendChild(button);
+       }
+       list.appendChild(group);
+     }
    }
  }
- async function switchTo(choice){
-   if(busy || choice.tenant_id===current())return;
+ async function switchTo(choice,localId=''){
+   if(busy)return;
+   if(choice.tenant_id===current()){
+     if(!localId)return;
+     if(api?.openLocal && api?.isMyLocal?.(localId)){
+       open=false;render();api.openLocal(localId);
+     }else {error='No estás autorizado en ese local.';render();}
+     return;
+   }
    if(typeof navigator!=='undefined' && !navigator.onLine){
      error='Para cambiar de empresa necesitás internet.';render();return;
    }
@@ -85,6 +106,11 @@
      const {data,error:failure}=await window.GestLokSupabase.rpc('gestlok_choose_role_context',{p_tenant:choice.tenant_id});
      if(failure||data?.tenant_id!==choice.tenant_id)throw failure||Error('Selección no autorizada');
      await window.GestLokOffline?.invalidateContext?.();
+     if(localId){
+       try{sessionStorage.setItem('gestlok:profile-next-local',
+         JSON.stringify({email:String(api.S.me.email).toLowerCase(),tenant_id:choice.tenant_id,local_id:localId}));}
+       catch{}
+     }
      // Todas las suscripciones y borradores de la vista antigua se descartan del DOM.
      // Las copias sin conexión siguen separadas por tenant en IndexedDB.
      location.reload();
