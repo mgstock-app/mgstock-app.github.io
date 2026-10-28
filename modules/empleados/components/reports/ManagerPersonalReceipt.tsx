@@ -33,8 +33,12 @@ export function ManagerPersonalReceipt() {
       const available=value.filter(l=>authorized.has(l.id));
       setLocals(available);
       setLocal(old=>available.some(l=>l.id===old)?old:available[0]?.id||"");
+      if(!available.length) {
+        setLoading(false);
+        setError("No hay locales con recibos personales habilitados en este contexto.");
+      }
     }).catch(()=>{
-      if(alive) {setLocals([]);setError("No pudimos verificar los locales autorizados.");}
+      if(alive) {setLocals([]);setLoading(false);setError("No pudimos verificar los locales autorizados.");}
     });
     return ()=>{alive=false;};
   // La lista solo depende de los locales aprobados en el backend.
