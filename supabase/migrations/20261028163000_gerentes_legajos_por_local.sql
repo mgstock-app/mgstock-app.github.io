@@ -121,16 +121,16 @@ grant select,insert,update on public.rm_employee_profiles to authenticated;
 grant select on public.rm_employee_profile_history to authenticated;
 -- List only authorized locales for either GESTLOK gerente or ReciboNet manager/owner.
 create or replace function rm_test_private.rm_employee_profile_locals()
-returns jsonb language sql stable security definer set search_path = '' as $
+returns jsonb language sql stable security definer set search_path = '' as $emp$
 select coalesce(jsonb_agg(row_to_json(l) order by l.name),'[]'::jsonb)
 from public.rm_app_local l
 where rm_test_private.rm_employee_profile_scope(l.organization_id,l.id)
-$;
+$emp$;
 revoke all on function rm_test_private.rm_employee_profile_locals() from public,anon;
 grant execute on function rm_test_private.rm_employee_profile_locals() to authenticated;
 create or replace function public.rm_employee_profile_locals()
-returns jsonb language sql stable set search_path = '' as $
+returns jsonb language sql stable set search_path = '' as $emp$
 select rm_test_private.rm_employee_profile_locals()
-$;
+$emp$;
 revoke all on function public.rm_employee_profile_locals() from public,anon;
 grant execute on function public.rm_employee_profile_locals() to authenticated;
