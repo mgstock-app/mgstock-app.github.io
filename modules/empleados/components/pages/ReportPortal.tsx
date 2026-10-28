@@ -148,7 +148,6 @@ export function ReportPortal() {
             <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
               <h2>🔒 Mis recibos privados</h2>
               <p>Solo vos podés consultar tus recibos publicados. Tu empresa administra la publicación.</p>
-              <Link href="/mi-reporte">Ver mis recibos</Link>
             </section>
             <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
               <h2>📅 Mis próximos turnos</h2>
@@ -160,7 +159,7 @@ export function ReportPortal() {
                   ))}
                 </div>
               </div>
-              <p role="status">Todavía no hay turnos futuros publicados para mostrar. No se inventan horarios ni se utilizan las horas trabajadas.</p>
+              <p role="status">Los turnos futuros se mostrarán cuando tu sucursal los publique. Esta vista no contiene horas trabajadas ni datos salariales.</p>
             </section>
           </div>
           <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
