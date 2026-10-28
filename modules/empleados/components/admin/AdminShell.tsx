@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Building2, Users, ShieldCheck, Store, CalendarDays, ClipboardList, UserCheck, Search, LogOut, Menu, X, Bell, LockKeyhole, PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -23,6 +23,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(()=>{
+    let active=true;
+    queueMicrotask(()=>{
+      if(!active)return;
+      try{setCollapsed(localStorage.getItem("gestlok:admin-menu-collapsed")==="yes");}catch{}
+    });
+    return()=>{active=false;};
+  },[]);
+  const toggleCollapsed=()=>{
+    const next=!collapsed;
+    setCollapsed(next);
+    try{localStorage.setItem("gestlok:admin-menu-collapsed",next?"yes":"no");}catch{}
+  };
   if (user?.role !== "admin" || user.status !== "approved") return <>{children}</>;
   const firstName = user.display_name?.trim().split(" ")[0] || "Administradora";
   const section = sections.find((item) => item.href === pathname)?.label || "GESTLOK · Empleados";
@@ -33,7 +46,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <Link href="/" className="gi-admin-brand" onClick={() => setMenuOpen(false)}>
           <span className="gi-admin-logo">GL</span><span className="gi-admin-brand-text">GESTLOK · Empleados<small>Administradora general</small></span>
         </Link>
-        <button type="button" className="gi-admin-collapse" aria-label={collapsed ? "Expandir menú lateral" : "Contraer menú lateral"} aria-expanded={!collapsed} onClick={() => setCollapsed(v => !v)}>{collapsed ? <PanelLeftOpen size={19}/> : <PanelLeftClose size={19}/>}<span>{collapsed ? "Expandir menú" : "Contraer menú"}</span></button>
+        <button type="button" className="gi-admin-collapse" aria-label={collapsed ? "Expandir menú lateral" : "Contraer menú lateral"} aria-expanded={!collapsed} onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen size={19}/> : <PanelLeftClose size={19}/>}<span>{collapsed ? "Expandir menú" : "Contraer menú"}</span></button>
         <nav aria-label="Navegación de administración">
           {sections.map(({ href, label, Icon }) => (
             <Link key={label} href={href} title={label} aria-current={pathname === href ? "page" : undefined} onClick={() => setMenuOpen(false)}>
