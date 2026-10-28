@@ -95,7 +95,7 @@
       last=signature;
       dock.innerHTML=tabs.map(([key,label,ico])=>'<button type="button" data-dock="'+key+'" aria-label="'+label+'"'+(key==='more'?' aria-haspopup="dialog" aria-expanded="false"':'')+'>'+icon(ico)+'<span>'+label+'</span></button>').join('');
     }
-    const active=visible()?({'inicio':'business','vencimientos':'vencimientos','avisos':'avisos'}[current()]||'business'):'home';
+    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'business','vencimientos':'vencimientos','avisos':'avisos'}[current()]||'business')):'home';
     dock.querySelectorAll('button[data-dock]').forEach(b=>{
       if(b.dataset.dock===active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });
