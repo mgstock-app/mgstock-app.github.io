@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { House, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 
 type Area = "inicio" | "empleados" | "recibos" | "planillas";
 export function OwnerSidebar({ open, onClose, currentPath, onLocals, pendingCount = 0, activeSection = "inicio", onSectionChange, companyName = "" }: {
@@ -15,22 +16,26 @@ export function OwnerSidebar({ open, onClose, currentPath, onLocals, pendingCoun
   companyName?: string;
 }) {
   const { signOut } = useAuth();
+  const contextCompany = useGestlokCompany();
+  const internalName = contextCompany?.recibonet?.internal_name?.trim().toLocaleLowerCase("es-AR");
+  const shownCompany = internalName && internalName === companyName.trim().toLocaleLowerCase("es-AR") ? contextCompany!.company_name : companyName;
+  const logoHome = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
   const change = (section: Area) => { onSectionChange?.(section); onClose(); };
   const sectionButton = (section: Area, label: string, Icon: typeof House) =>
     <button type="button" key={section} className={activeSection === section ? "active" : ""}
       aria-current={activeSection === section ? "page" : undefined} onClick={() => change(section)}>
       <Icon size={19}/>{label}
     </button>;
-  const isMiGusto = companyName.trim().toLocaleLowerCase("es-AR") === "mi gusto";
+  const isMiGusto = shownCompany.trim().toLocaleLowerCase("es-AR") === "mi gusto";
   return <>
     {open && <button className="owner-scrim" aria-label="Cerrar menú" onClick={onClose}/>}
     <aside id="owner-navigation" className={"owner-sidebar " + (open ? "is-open" : "")}>
-      <Link className="owner-brand" href="/" onClick={onClose}>
+      <a className="owner-brand" href={logoHome} onClick={onClose}>
         <b>G</b><span>GESTLOK<small>Organizá · Controlá · Hacé crecer</small></span>
-      </Link>
-      {companyName && <div className="owner-company-brand">
-        <span className="owner-company-logo" aria-hidden="true">{companyName.slice(0,2).toUpperCase()}</span>
-        <strong>{companyName}<small>{isMiGusto ? "Empanadas de verdad" : "Tu empresa"}</small></strong>
+      </a>
+      {shownCompany && <div className="owner-company-brand">
+        {isMiGusto ? <img className="owner-company-image" src={logoHome + "img/mi-gusto-blanco.png"} alt="Mi Gusto" width={100} height={60}/> : <span className="owner-company-logo" aria-hidden="true">{shownCompany.slice(0,2).toUpperCase()}</span>}
+        <strong>{shownCompany}<small>{isMiGusto ? "Empanadas de verdad" : "Tu empresa"}</small></strong>
       </div>}
       <p className="owner-caption">TU EMPRESA</p>
       <nav aria-label="Menú del dueño">
