@@ -11,10 +11,10 @@ export function useOrganizationData() {
   const refresh = useCallback(async () => {
     const current = ++sequence.current;
     try {
-      const [orgs, firms] = await Promise.all([
+      const [orgs, firms] = await Promise.race([Promise.all([
         accessApi.organizations(),
         accessApi.companies(),
-      ]);
+      ]), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("La carga de empresas tardó demasiado. Reintentá.")), 12000))]);
       if (current !== sequence.current) return;
       setOrganizations((prev) =>
         JSON.stringify(prev) === JSON.stringify(orgs) ? prev : orgs,
@@ -25,8 +25,6 @@ export function useOrganizationData() {
       setError("");
     } catch (cause) {
       if (current !== sequence.current) return;
-      setOrganizations([]);
-      setCompanies([]);
       setError(
         cause instanceof Error
           ? cause.message
