@@ -23,6 +23,14 @@ const monthName = (value: string) => {
   const match = /^(\d{4})-(\d{2})$/.exec(value);
   return match ? MONTHS[Number(match[2]) - 1] + " " + match[1] : "Todos los períodos";
 };
+const conceptLabel = (concept: Concept, rows: Concept[]) => {
+  const base = rows.find(row => row.key === "trab")?.rate;
+  if (!base || concept.rate == null) return concept.label;
+  const ratio = concept.rate / base;
+  if (concept.key === "extra" && Math.abs(ratio - 1.5) < 0.000001) return concept.label + " (50%)";
+  if (concept.key === "fer" && Math.abs(ratio - 2) < 0.000001) return concept.label + " (100%)";
+  return concept.label;
+};
 const quantity = (concept: Concept) => concept.quantity == null ? "—" :
   concept.type === "horas" ? formatHours(concept.quantity) + " hs" :
   concept.type === "turnos" ? concept.quantity + (concept.quantity === 1 ? " turno" : " turnos") :
@@ -55,7 +63,7 @@ function ReceiptPaper({ row, summary, historical = false }: {
     <div className="employee-pages__paper-table-scroll"><table className="employee-pages__paper-table">
       <thead><tr><th scope="col">Concepto</th><th scope="col">Cantidad</th><th scope="col">Valor unit.</th><th scope="col">Importe</th></tr></thead>
       <tbody>{fixedRows.map(concept => <tr key={concept.key}>
-        <td>{concept.label}</td>
+        <td>{conceptLabel(concept, fixedRows)}</td>
         <td>{quantity(concept)}</td>
         <td>{concept.rate == null ? "—" : currency.format(concept.rate)}</td>
         <td>{concept.amount == null ? "—" : currency.format(concept.amount)}</td>
