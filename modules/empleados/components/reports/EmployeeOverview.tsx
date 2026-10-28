@@ -62,15 +62,12 @@ export function EmployeeOverview({
   const organizationId = locals[0]?.organization_id;
   useEffect(() => {
     let active = true;
-    setRows([]);
-    setLoading(true);
-    setError("");
     if (!organizationId || !locals.length) {
-      setLoading(false);
+      queueMicrotask(() => { if (active) setLoading(false); });
       return () => { active = false; };
     }
     readReportCollection(createClient(), "hojas", organizationId)
-      .then(data => { if (active) setRows(projectRows(data, locals)); })
+      .then(data => { if (active) { setRows(projectRows(data, locals)); setError(""); } })
       .catch(() => {
         if (active) {
           setRows([]);
@@ -107,7 +104,7 @@ export function EmployeeOverview({
         <h2>Tu equipo, en orden.</h2>
         <p>Legajos y recibos de los locales que tenés autorizados.</p>
       </div>
-      <button type="button" className="employee-overview__refresh" onClick={() => setRefreshKey(k => k + 1)} disabled={loading}>Actualizar datos</button>
+      <button type="button" className="employee-overview__refresh" onClick={() => { setRows([]); setError(""); setLoading(true); setRefreshKey(k => k + 1); }} disabled={loading}>Actualizar datos</button>
     </div>
     <div className="employee-overview__stats" aria-label="Resumen de empleados">
       <div><span>Total de legajos</span><strong>{totals.all}</strong></div>
