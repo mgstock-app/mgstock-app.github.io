@@ -19,3 +19,6 @@
 .alessandro-home .alessandro-folder-link:hover{background:#ebf0f6}
 .alessandro-home .alessandro-notice{max-width:700px;margin:40px auto;background:#fff;border:1px solid #dfe7f1;border-radius:10px;padding:22px;color:#193553}
 @media(max-width:720px){.alessandro-home{padding:14px 12px}.alessandro-home .report-workspace .locales{grid-template-columns:minmax(0,1fr);gap:14px}}
+
+/* Keep the owner portal legible on mobile even when embedded in a wide application shell. */
+@media(max-width:680px){.owner-home{width:100%;min-width:0;overflow-x:hidden}.owner-main{width:100%;min-width:0}.owner-header-tools,.owner-panel,.owner-grid,.owner-primary{min-width:0;max-width:100%}.owner-section-heading{flex-wrap:wrap}.owner-section-heading .owner-button{max-width:100%}.owner-locals .report-workspace{max-width:100%;overflow-x:auto}.owner-error button{margin-left:8px;padding:7px 12px;border:1px solid #9bb8d6;border-radius:7px;background:#fff;color:#193553;cursor:pointer}}
