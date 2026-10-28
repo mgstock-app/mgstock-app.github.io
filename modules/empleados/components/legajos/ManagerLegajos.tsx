@@ -228,7 +228,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
     {draft && chosenLocal && <div className="mlg-overlay">
       <section className="mlg-modal" role="dialog" aria-modal="true" aria-label={"Legajo en "+chosenLocal.name}>
         <div className="mlg-modal-head"><div><small>LEGAJO · {chosenLocal.name.toUpperCase()}</small><h2>{editing?fullName(editing):"Datos del colaborador"}</h2></div><button type="button" aria-label="Cerrar legajo" onClick={close} disabled={saving}><X size={20}/></button></div>
-        <div className="mlg-tabs"><button type="button" aria-selected={!showHistory} onClick={()=>setShowHistory(false)}>Datos personales</button><button type="button" aria-selected={showHistory} disabled={!editing} onClick={()=>void viewHistory()}><History size={16}/> Historial de cambios</button></div>
+        <div className="mlg-tabs" role="tablist" aria-label="Datos e historial del legajo"><button type="button" role="tab" aria-selected={!showHistory} onClick={()=>setShowHistory(false)}>Datos personales</button><button type="button" role="tab" aria-selected={showHistory} disabled={!editing} onClick={()=>void viewHistory()}><History size={16}/> Historial de cambios</button></div>
         {showHistory && editing ? <div className="mlg-history">
           {historyLoading ? <p role="status">Cargando historial…</p> : history.length ? history.map(e=><article key={e.id}><div><strong>{e.action==="alta"?"Alta de colaborador":"Actualización de legajo"}</strong><span>{dateWithTime(e.recorded_at)}</span></div>
             <p>{e.previous_status && e.previous_status!==e.status?stateNames[e.previous_status]+" → ":""}<b>{stateNames[e.status]}</b></p>
