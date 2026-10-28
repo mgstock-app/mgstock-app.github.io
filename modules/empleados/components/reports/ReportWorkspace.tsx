@@ -5,53 +5,55 @@ import { ReportMarkup } from "./ReportMarkup";
 import { EmployeeOverview } from "./EmployeeOverview";
 import type { AppLocal, AppUser } from "@/types/access";
 
+export type WorkspaceScreen = "empleados" | "recibos" | "planillas";
 export function ReportWorkspace({
-  user,
-  locals,
-  scheduleInFolderOnly = false,
+  user, locals, scheduleInFolderOnly = false, screen, onScreenChange,
 }: {
   user: AppUser;
   locals: AppLocal[];
   scheduleInFolderOnly?: boolean;
+  screen?: WorkspaceScreen;
+  onScreenChange?: (screen: WorkspaceScreen) => void;
 }) {
-  const { root, error, ready, openSheet, addSheet } = useReportWorkspace(user, locals);
-  const [view, setView] = useState<"resumen" | "planillas">("resumen");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { root, error, ready, openSheet, addSheet, downloadPdf, shareWhatsapp } = useReportWorkspace(user, locals);
+  const [internalScreen, setInternalScreen] = useState<WorkspaceScreen>("empleados");
+  const activeScreen = screen ?? internalScreen;
+  const changeScreen = (next: WorkspaceScreen) => {
+    setInternalScreen(next);
+    onScreenChange?.(next);
+  };
   const showSheet = (localId: string, id: string) => {
     const opened = openSheet(localId, id);
-    if (opened) setView("planillas");
+    if (opened) changeScreen("planillas");
     return opened;
   };
   const createSheet = (localId: string) => {
     const opened = addSheet(localId);
-    if (opened) setView("planillas");
+    if (opened) changeScreen("planillas");
     return opened;
   };
-  return (
-    <div ref={root} className="report-workspace">
-      {error && <p role="alert">{error}</p>}
-      <nav aria-label="Administración de empleados" style={{display:"flex",flexWrap:"wrap",gap:8,margin:"12px 0"}}>
-        <button type="button" aria-current={view === "resumen" ? "page" : undefined}
-          onClick={() => { setView("resumen"); setRefreshKey(k => k + 1); }}
-          style={{padding:"11px 16px",borderRadius:10,border:"1px solid #cce0e8",fontWeight:700,
-            background:view === "resumen" ? "#0b6077" : "white",color:view === "resumen" ? "white" : "#0b6077"}}>
-          Empleados y recibos
-        </button>
-        <button type="button" aria-current={view === "planillas" ? "page" : undefined}
-          onClick={() => setView("planillas")}
-          style={{padding:"11px 16px",borderRadius:10,border:"1px solid #cce0e8",fontWeight:700,
-            background:view === "planillas" ? "#0b6077" : "white",color:view === "planillas" ? "white" : "#0b6077"}}>
-          Planillas, PDF e historial
-        </button>
-      </nav>
-      <div hidden={view !== "resumen"}>
-        <EmployeeOverview key={locals.map(l => l.id).join("|") + ":" + refreshKey}
-          locals={locals} ready={ready} onOpenSheet={showSheet} onAddSheet={createSheet} />
-      </div>
-      {/* The legacy engine remains mounted so changes are never lost on tab switch. */}
-      <div style={{display:view === "planillas" ? "block" : "none"}}>
-        <ReportMarkup scheduleInFolderOnly={scheduleInFolderOnly} />
-      </div>
+  const startShare = (localId: string, id: string) => {
+    const opened = shareWhatsapp(localId, id);
+    if (opened) changeScreen("planillas");
+    return opened;
+  };
+  return <div ref={root} className="report-workspace">
+    {error && <p role="alert">{error}</p>}
+    {!screen && <nav className="employee-pages__nav" aria-label="Administración de empleados">
+      <button type="button" aria-current={activeScreen === "empleados" ? "page" : undefined} onClick={() => changeScreen("empleados")}>Administrar empleados</button>
+      <button type="button" aria-current={activeScreen === "recibos" ? "page" : undefined} onClick={() => changeScreen("recibos")}>Recibos de sueldo</button>
+      <button type="button" aria-current={activeScreen === "planillas" ? "page" : undefined} onClick={() => changeScreen("planillas")}>Enlaces y planillas</button>
+    </nav>}
+    <div style={{display: activeScreen === "planillas" ? "none" : "block"}}>
+      <EmployeeOverview locals={locals} ready={ready}
+        screen={activeScreen === "recibos" ? "recibos" : "empleados"}
+        onOpenSheet={showSheet} onAddSheet={createSheet}
+        onDownloadPdf={downloadPdf} onShareWhatsapp={startShare}/>
     </div>
-  );
+    {/* Don't unmount the existing editor: unsaved changes, PDF, private history and offline queue live here. */}
+    <div style={{display:activeScreen === "planillas" ? "block" : "none"}}>
+      <div className="employee-pages__editor-back"><button type="button" onClick={() => changeScreen("empleados")}>← Volver a empleados</button><button type="button" onClick={() => changeScreen("recibos")}>Ver recibos de sueldo</button></div>
+      <ReportMarkup scheduleInFolderOnly={scheduleInFolderOnly} />
+    </div>
+  </div>;
 }
