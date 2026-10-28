@@ -44,10 +44,10 @@ test('En Munro, el mensaje incluye exactamente el dueño y la hoja abierta',asyn
   const e=environment();
   await e.support.load();
   assert.equal(e.support.message(),
-    'Hola soy de Munro de la empresa de Gisela necesito ayuda en el sector de Stock');
+    'Hola, soy del local Munro de la empresa de Gisela y necesito ayuda en el sector de Stock.');
   e.state.view='h-stock-cajas';
   assert.equal(e.support.message(),
-    'Hola soy de Munro de la empresa de Gisela necesito ayuda en el sector de Stock cajas');
+    'Hola, soy del local Munro de la empresa de Gisela y necesito ayuda en el sector de Stock cajas.');
   assert.equal(e.support.link(),
     'https://wa.me/5491144715168?text='+encodeURIComponent(e.support.message()));
   e.support.render();
@@ -61,12 +61,12 @@ test('Detecta el sector del pedido, chat, carpeta de proveedor y conteo diario',
   assert.equal(e.support.sector(),'Proveedores / Distribuidora Central');
   e.state.view='diario';assert.equal(e.support.sector(),'Conteo Diario');
 });
-test('Dueño y Gerente ven Soporte; la creadora y otros roles no',async()=>{
-  for(const role of ['dueno','gerente','lectura','creadora']){
+test('Dueños, gerentes y colaboradores ven Soporte; la creadora tiene panel de configuración',async()=>{
+  for(const role of ['dueno','gerente','lectura','colaborador','creadora']){
     const e=environment(role);
     await e.support.load();
     e.support.render();
-    assert.equal(!!e.elems['#gl-soporte-whatsapp'],['dueno','gerente'].includes(role));
+    assert.equal(!!e.elems['#gl-soporte-whatsapp'],['dueno','gerente','lectura','colaborador'].includes(role));
     assert.equal(!!e.support.adminCard(),role==='creadora');
   }
 });

@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, X } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, Wallet, X } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
+import { ManagerPersonalReceipt } from "@/components/reports/ManagerPersonalReceipt";
+import { EmployeeReport } from "@/components/reports/EmployeeReport";
 import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 import "./gerente-home.css";
 import "./gerente-visual-fix.css";
@@ -11,7 +13,7 @@ import "./gerente-visual-fix.css";
 export function GerenteHome() {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [section, setSection] = useState<"legajos" | "horarios">("legajos");
+  const [section, setSection] = useState<"legajos" | "horarios" | "recibo">("legajos");
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
   const company = useGestlokCompany();
   const companyName = company?.company_name || "Mi empresa";
@@ -31,6 +33,7 @@ export function GerenteHome() {
       <nav>
         <button type="button" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><House size={19}/> Administrar empleados</button>
         <button type="button" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/> Sector de Google</button>
+        <button type="button" className={section==="recibo"?"active":""} onClick={()=>{setSection("recibo");setMenuOpen(false)}}><Wallet size={19}/> Mi recibo personal</button>
       </nav>
       <p className="gl-gerente__security"><ShieldCheck size={16}/> Solo colaboradores de tus locales autorizados.</p>
     </aside>
@@ -42,7 +45,8 @@ export function GerenteHome() {
         <span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
       </header>
       <div className="gl-gerente__content">
-        {section==="legajos" ? <ManagerLegajos/> :
+        {section==="legajos" ? <ManagerLegajos/> : section==="recibo" ?
+          (user?.role==="manager" && !user.gestlok_gerente?.local_ids?.length ? <EmployeeReport/> : <ManagerPersonalReceipt/>) :
           <section className="gl-gerente__google">
             <h1><FileSpreadsheet size={25}/> Sector de Google</h1>
             <p>Las planillas de Google Sheets se encuentran dentro de cada local, bajo su lista de colaboradores. También podés abrir la carpeta de Horarios.</p>

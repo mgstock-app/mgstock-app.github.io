@@ -54,9 +54,28 @@ export async function loadGestlokCompany(fetcher?: typeof fetch): Promise<Gestlo
       });
       if (!access.ok) return null;
       const member = await access.json();
-      if (member?.tenant_id !== "cb0dc04a-9a13-434f-a3d0-47f1d8f39670"
-          || !["gerente", "editor", "lectura"].includes(member?.rol)) return null;
-      return { company_name: "Mi Gusto", logo_id: "mi-gusto", recibonet: null };
+      if (!member?.tenant_id ||
+          !["gerente", "editor", "lectura", "colaborador", "dueno"].includes(member?.rol)) return null;
+      // Nombre de empresa, también para futuras compañías y managers multirol.
+      let entries: {tenant_id:string;company_name:string}[] = [];
+      try {
+        const choices = await call(`${url}/rest/v1/rpc/gestlok_my_role_contexts`, {
+          method: "POST",
+          headers: { apikey: key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: "{}", cache: "no-store",
+        });
+        if (choices.ok) {
+          const result: unknown = await choices.json();
+          if (Array.isArray(result)) entries = result;
+        }
+      } catch {
+        // Failure to load optional company labels must never hide the manager's
+        // already verified company identity or alter the authorization context.
+      }
+      const active = entries.find(v=>v.tenant_id===member.tenant_id);
+      const miGusto = member.tenant_id === "cb0dc04a-9a13-434f-a3d0-47f1d8f39670";
+      return { company_name: active?.company_name || (miGusto ? "Mi Gusto" : "Mi empresa"),
+               logo_id: miGusto ? "mi-gusto" : null, recibonet: null };
     }
     const data = await response.json();
     if (!data || data.role !== "dueno") return null;

@@ -318,6 +318,7 @@ async function batchRun(items, fn, size=5){ for (let i = 0; i < items.length; i 
 /* ---------- Render general ---------- */
 function render(){
   window.GestLokSupport?.render();
+  window.GestLokRoleSwitcher?.render();
   if (!S.local){ renderHub(); return; }
   // Preserve unsaved form values when live subscriptions redraw the active view.
   // Never restore fields belonging to a different view or local.
@@ -457,6 +458,7 @@ function renderMe(){
   m.innerHTML = `<img alt="" src="${esc(S.me.avatarUrl)}"><div><b></b><small></small></div>`;
   m.querySelector('b').textContent = S.me.name || 'Vos';
   m.querySelector('small').textContent = rol;
+  window.GestLokRoleSwitcher?.render();
 }
 
 /* ---------- Piezas compartidas ---------- */
@@ -2169,8 +2171,23 @@ function lcard(l){
 }
 function renderHub(){
   window.GestLokSupport?.render();
+  window.GestLokRoleSwitcher?.render();
   const hub = $('#hub'); if (!hub || hub.hidden) return;
   const adm = isCreadora(), listo = S.booted && (!S.db || (S.loaded.e && S.loaded.l)), mios = listo ? localesMios() : [];
+  if(listo && S.db && S.me){
+    try{
+      const raw=sessionStorage.getItem('gestlok:profile-next-local');
+      if(raw){
+        sessionStorage.removeItem('gestlok:profile-next-local');
+        const target=JSON.parse(raw);
+        if(target.email===String(S.me.email||'').toLowerCase()
+            && target.tenant_id===S.me.tenant_id
+            && mios.some(l=>l.id===target.local_id)){
+          abrirLocal(target.local_id);return;
+        }
+      }
+    }catch{}
+  }
   const cargaFallida = !!S.loadError || (!!S.loadStartedAt && Date.now() - S.loadStartedAt > 12000 && !listo);
   const ownerHome=miRol()==='dueno'&&listo&&!!S.db;
   hub.classList.toggle('gl-oh-hub', false);
@@ -3913,6 +3930,7 @@ window.GestLokDemo?.attach({isCreadora,render});
 window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
+window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub});

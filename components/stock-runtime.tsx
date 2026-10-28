@@ -46,6 +46,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js");
       if (!visitor) await load("/stock/gestlok-support.js");
+      if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-20261028");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
       await load("/stock/app.js?rev=inicio-resenas-20261027");

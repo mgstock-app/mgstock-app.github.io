@@ -1,0 +1,16 @@
+.manager-personal-receipt{padding:clamp(15px,2.2vw,25px);background:#fff;border:1px solid #dfeaf2;border-radius:15px;color:#173a56;font-family:"Segoe UI",Arial,sans-serif}
+.manager-personal-receipt *{box-sizing:border-box}
+.manager-personal-receipt>header{display:flex;align-items:center;gap:12px;border-bottom:1px solid #e6edf4;padding-bottom:15px}
+.manager-personal-receipt__icon{width:48px;height:48px;flex-shrink:0;border-radius:12px;background:#e8f1fc;color:#2568a2;display:grid;place-items:center}
+.manager-personal-receipt>header small{font-size:10px;color:#3c88a6;font-weight:800;letter-spacing:1px}
+.manager-personal-receipt>header h1{font:800 clamp(20px,2.2vw,26px)/1.25 "Segoe UI",Arial,sans-serif;color:#11344f;margin:4px 0}
+.manager-personal-receipt>header p{font-size:12px;color:#70869b;margin:0}
+.manager-personal-receipt__controls{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:17px 0}
+.manager-personal-receipt__controls label{font-size:12px;color:#5e7892;font-weight:750}
+.manager-personal-receipt__controls strong,.manager-personal-receipt__controls select{padding:10px 13px;border:1px solid #d4e3ef;border-radius:9px;background:#f9fcff;color:#173d5b;font-size:12px}
+.manager-personal-receipt__controls>button{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #d3e3ee;border-radius:9px;color:#27759f;background:#fff;font-size:12px;font-weight:700}
+.manager-personal-receipt__empty{background:#eff6fc;border:1px dashed #cfe2f3;border-radius:10px;padding:17px;color:#5a7690;font-size:13px;line-height:1.55}
+.manager-personal-receipt__error{color:#a43047;background:#ffeff3;border-radius:9px;padding:11px;font-size:12px}
+.manager-personal-receipt__privacy{display:flex;align-items:flex-start;gap:8px;margin-top:16px;color:#6b8498;font-size:11px;line-height:1.5}
+.manager-personal-receipt__privacy svg{flex-shrink:0}
+@media(max-width:630px){.manager-personal-receipt__controls{flex-direction:column;align-items:stretch}.manager-personal-receipt>header{align-items:flex-start}}

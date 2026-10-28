@@ -12,6 +12,7 @@ function load(options={}){
     requests.push({url,config});
     if(url.endsWith('/gestlok_owner_area_context'))return options.owner || {ok:false,status:403};
     if(url.endsWith('/mi_acceso'))return options.member || {ok:false,status:403};
+    if(url.endsWith('/gestlok_my_role_contexts'))return options.contexts || {ok:true,json:async()=>[]};
     throw new Error('Unexpected request');
   };
   const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
@@ -33,11 +34,19 @@ test('el dueño conserva logo verificado por backend y vínculo',async()=>{
 test('el gerente de Mi Gusto obtiene solo el nombre y marca de su empresa',async()=>{
  const x=load({member:{ok:true,json:async()=>({rol:'gerente',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',locales:['munro']})}});
  const v=await x.fetch();assert.deepEqual(v,{company_name:'Mi Gusto',logo_id:'mi-gusto',recibonet:null});
- assert.equal(x.requests.length,2);
+ assert.equal(x.requests.length,3);
  assert.equal(x.requests[1].config.headers.Authorization,'Bearer fixture-token');
+ assert.equal(x.requests[2].config.headers.Authorization,'Bearer fixture-token');
 });
-test('ni otro tenant ni roles sin permiso reciben identidad de Mi Gusto',async()=>{
- for(const m of [{rol:'gerente',tenant_id:'otra-empresa'}, {rol:'anon',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},null]){
+test('una empresa distinta conserva su propia identidad y nunca recibe el logo de Mi Gusto',async()=>{
+ const x=load({
+   member:{ok:true,json:async()=>({rol:'gerente',tenant_id:'otra-empresa'})},
+   contexts:{ok:true,json:async()=>[{tenant_id:'otra-empresa',company_name:'Perfumería'}]}
+ });
+ assert.deepEqual(await x.fetch(),{company_name:'Perfumería',logo_id:null,recibonet:null});
+});
+test('los roles sin permiso no reciben identidad privada de la empresa',async()=>{
+ for(const m of [{rol:'anon',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},null]){
   const x=load({member:{ok:true,json:async()=>m}});assert.equal(await x.fetch(),null);
  }
  const x=load({session:null});assert.equal(await x.fetch(),null);assert.equal(x.requests.length,0);
