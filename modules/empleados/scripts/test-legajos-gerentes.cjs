@@ -27,7 +27,7 @@ assert.equal(active.status,"activo");
 assert.throws(()=>cleanLegajo({...base,status:"refuerzo"}),/fecha trabajada/);
 assert.deepEqual(cleanLegajo({...base,status:"refuerzo",reinforcement_dates:["2026-10-21","2026-10-21","2026-10-20"]}).reinforcement_dates,
   ["2026-10-20","2026-10-21"]);
-assert.throws(()=>cleanLegajo({...base,status:"inactivo"}),/último día/i);
+assert.throws(()=>cleanLegajo({...base,status:"inactivo"}),/hasta qué día trabajó/i);
 assert.equal(cleanLegajo({...base,status:"inactivo",last_worked_on:"2026-10-25"}).last_worked_on,"2026-10-25");
 assert.equal(cleanLegajo({...base,status:"activo",last_worked_on:"2026-10-25"}).last_worked_on,null);
 assert.throws(()=>cleanLegajo({...base,phone:"contraseña<script>"}),/teléfono/);
