@@ -1,18 +1,18 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { PrivateReceiptDetail, type PrivateReceiptPayload } from "./PrivateReceiptDetail";
 import { accessApi } from "@/features/access/api";
 import type { ReportAccess } from "@/types/access";
 export function EmployeeReport() {
   const [access, setAccess] = useState<ReportAccess | null>(null);
-  const [image, setImage] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<PrivateReceiptPayload | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const expiry = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequence = useRef(0);
   const refresh = useCallback(async () => {
     if (document.hidden) {
-      setImage(null);
+      setReceipt(null);
       return;
     }
     const current = ++sequence.current;
@@ -23,10 +23,10 @@ export function EmployeeReport() {
       setAccess(state);
       setMessage("");
       if (state.status !== "active") {
-        setImage(null);
+        setReceipt(null);
         return;
       }
-      const report = await accessApi.image();
+      const report = await accessApi.privateReceipt();
       if (current !== sequence.current) return;
       const remaining =
         new Date(report.expires_at).getTime() -
@@ -34,15 +34,15 @@ export function EmployeeReport() {
         (performance.now() - startedAt);
       if (expiry.current) clearTimeout(expiry.current);
       if (remaining <= 0) {
-        setImage(null);
+        setReceipt(null);
         return;
       }
-      if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(report.image))
-        throw new Error("El reporte no tiene un formato de imagen válido.");
-      setImage(report.image);
+      if (!report.sheet || typeof report.sheet !== "object")
+        throw new Error("El recibo privado no tiene datos válidos.");
+      setReceipt(report);
       expiry.current = setTimeout(() => {
         ++sequence.current;
-        setImage(null);
+        setReceipt(null);
         setAccess((previous) =>
           previous
             ? { ...previous, status: "expired", can_request: true }
@@ -51,7 +51,7 @@ export function EmployeeReport() {
       }, remaining);
     } catch (cause) {
       if (current === sequence.current) {
-        setImage(null);
+        setReceipt(null);
         setAccess(null);
         if (expiry.current) clearTimeout(expiry.current);
         setMessage(
@@ -68,7 +68,7 @@ export function EmployeeReport() {
     const visibility = () => {
       if (document.hidden) {
         ++sequence.current;
-        setImage(null);
+        setReceipt(null);
       } else void refresh();
     };
     document.addEventListener("visibilitychange", visibility);
@@ -97,7 +97,7 @@ export function EmployeeReport() {
       }
       await refresh();
     } catch (cause) {
-      setImage(null);
+      setReceipt(null);
       setMessage(
         cause instanceof Error
           ? cause.message
@@ -150,17 +150,7 @@ export function EmployeeReport() {
         </button>
       </div>
       {message && <p role="status">{message}</p>}
-      {image && (
-        <div className="report-image">
-          <Image
-            unoptimized
-            src={image}
-            width={1260}
-            height={1782}
-            alt="Recibo de sueldo personal publicado por el dueño, en modo solo lectura"
-          />
-        </div>
-      )}
+      {receipt && <PrivateReceiptDetail receipt={receipt} />}
     </section>
   );
 }

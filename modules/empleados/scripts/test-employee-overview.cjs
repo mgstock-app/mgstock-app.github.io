@@ -62,6 +62,7 @@ async function main() {
     if (name === "@/features/reports/payroll.js") return loadJs("features/reports/payroll.js");
     if (name === "@/utils/duration.js") return loadJs("utils/duration.js");
     if (name === "./EmployeeOverview") return result;
+    if (name === "./ReceiptVisibilityControls") return { ReceiptVisibilityControls: () => null };
     if (name === "@/lib/supabase/browser" || name === "@/utils/read-report-collection") return {};
     throw new Error("Unexpected receipt import " + name);
   });

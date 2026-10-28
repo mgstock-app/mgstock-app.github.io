@@ -101,6 +101,10 @@ export const accessApi = {
     rpc<{ image: string; expires_at: string; server_now: string }>(
       "rm_app_report_image",
     ),
+  privateReceipt: () =>
+    rpc<import("@/components/reports/PrivateReceiptDetail").PrivateReceiptPayload>(
+      "rm_app_private_receipt_detail",
+    ),
   request: () => rpc<void>("rm_app_request_access"),
   requests: () => rpc<AccessRequest[]>("rm_app_access_requests"),
   review: (user: string, approve: boolean) =>

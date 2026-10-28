@@ -8,6 +8,7 @@ import { formatHours } from "@/utils/duration.js";
 import type { AppLocal } from "@/types/access";
 import type { Concept, EmployeeRow, Summary } from "./EmployeeOverview";
 import { currency, normalize, reportLabel } from "./EmployeeOverview";
+import { ReceiptVisibilityControls } from "./ReceiptVisibilityControls";
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const PAGE_SIZE = 8;
@@ -49,7 +50,7 @@ function ReceiptPaper({ row, summary, historical = false }: {
   const isHours = summary.mode.toLowerCase().includes("hora");
   return <article className="employee-pages__paper" aria-label="Detalle del recibo">
     <div className="employee-pages__paper-heading">
-      <h3>{row.local.name}</h3>
+      <h3>Recibo de sueldo</h3>
       <div><strong>Liquidación {row.local.cycle === "semanal" ? "semanal" : "mensual"}</strong><span>Período: {summary.period || "Sin completar"}</span><span>{historical ? "Registro histórico" : "Recibo actual"}</span></div>
     </div>
     <h4>DATOS DEL COLABORADOR</h4>
@@ -57,7 +58,6 @@ function ReceiptPaper({ row, summary, historical = false }: {
       <div className="employee-pages__paper-field employee-pages__paper-field--full"><small>Nombre y apellido</small><strong>{summary.name}</strong></div>
       <div className="employee-pages__paper-field"><small>Puesto y modalidad</small><span>{summary.role} · {summary.mode.toLowerCase()}</span></div>
       <div className="employee-pages__paper-field"><small>Período</small><span>{summary.period || "Sin completar"}</span></div>
-      <div className="employee-pages__paper-field employee-pages__paper-field--full"><small>Forma de pago</small><span>{summary.payment}</span></div>
     </div>
     <h4>DETALLE {isHours ? "DE HORAS" : "DE TURNOS"}</h4>
     <div className="employee-pages__paper-table-scroll"><table className="employee-pages__paper-table">
@@ -170,6 +170,7 @@ export function ReceiptDashboard({
         </select></label>
       </div>
     </div>
+    {locals[0]?.organization_id && <ReceiptVisibilityControls organizationId={locals[0].organization_id}/>}
     <div className="employee-pages__stats">
       {[
         {icon: FileText,title:"Total de recibos", value:filtered.length,color:"blue"},
