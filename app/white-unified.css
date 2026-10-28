@@ -98,3 +98,30 @@ body{background:var(--gestlok-page)}
  .gl-owner-quick{gap:9px}
 }
 @media(prefers-reduced-motion:reduce){.gl-owner-area{transition:none}}
+
+/* El panel principal de la creadora también se contrae: mantiene iconos
+   y títulos accesibles sin duplicar menús ni exponer otras empresas. */
+.gl-ch-collapse{display:flex;align-items:center;gap:9px;margin:1px 8px 7px;
+  min-height:39px;padding:8px 11px;border:1px solid #deebf2;border-radius:11px;
+  background:#f8fbfd;color:#35657e;font:750 11px/1.2 var(--f-body),system-ui;cursor:pointer}
+.gl-ch-collapse:hover{background:#e8f5fa}
+.gl-ch-collapse svg{flex:0 0 20px;fill:none;stroke:currentColor}
+@media(min-width:900px){
+ .gl-ch.gl-ch-collapsed{grid-template-columns:78px minmax(0,1fr)}
+ .gl-ch.gl-ch-collapsed .gl-ch-side{padding:18px 8px;gap:10px}
+ .gl-ch.gl-ch-collapsed .gl-ch-logo{padding:0 0 9px;justify-items:center}
+ .gl-ch.gl-ch-collapsed .gl-ch-logo img{width:58px;height:35px;object-fit:contain}
+ .gl-ch.gl-ch-collapsed .gl-ch-logo small,
+ .gl-ch.gl-ch-collapsed .gl-ch-me,
+ .gl-ch.gl-ch-collapsed .gl-ch-quote,
+ .gl-ch.gl-ch-collapsed .gl-ch-nav button>span,
+ .gl-ch.gl-ch-collapsed .gl-ch-nav button>b,
+ .gl-ch.gl-ch-collapsed .gl-ch-collapse>span{display:none}
+ .gl-ch.gl-ch-collapsed .gl-ch-collapse{justify-content:center;margin:1px 0 8px;padding:9px 0}
+ .gl-ch.gl-ch-collapsed .gl-ch-nav button{justify-content:center;padding:12px 4px;gap:0}
+}
+@media(max-width:899px){
+ .gl-ch-collapse{align-self:flex-start;margin:0 4px 6px}
+ .gl-ch.gl-ch-collapsed .gl-ch-nav{display:none}
+ .gl-ch.gl-ch-collapsed .gl-ch-side{padding-bottom:10px}
+}
