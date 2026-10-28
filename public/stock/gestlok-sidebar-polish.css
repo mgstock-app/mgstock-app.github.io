@@ -150,3 +150,7 @@
  #app .top .crumb,#app .top .crumb b{color:#577285}
 }
 @media print{#app .side{box-shadow:none!important}}
+
+/* Marca Mi Gusto en alto contraste; el resto del menú permanece blanco. */
+#app .side .gestlok-company-identity{background:#122e42!important;border-color:#1c4359!important}
+#app .side .gestlok-company-identity small{color:#fff!important}
