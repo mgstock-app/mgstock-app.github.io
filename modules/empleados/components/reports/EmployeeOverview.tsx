@@ -6,6 +6,7 @@ import { resolveOverviewSheetLocal } from "@/utils/overview-sheet-local";
 import { summarizeReport } from "@/features/reports/payroll.js";
 import type { AppLocal } from "@/types/access";
 import { EmployeeDirectory } from "./EmployeeDirectory";
+import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
 import { ReceiptDashboard } from "./ReceiptDashboard";
 import "./employee-pages.css";
 
@@ -117,8 +118,11 @@ export function EmployeeOverview({
   return <section className="employee-pages" aria-label={screen === "empleados" ? "Administración de empleados" : "Recibos de sueldo"}>
     {error && <p role="alert" className="employee-pages__error">{error} <button type="button" onClick={refresh}>Reintentar</button></p>}
     {screen === "empleados"
-      ? <EmployeeDirectory rows={rows} locals={safeLocals} loading={loading} ready={ready}
-          onRefresh={refresh} onAdd={add} onOpen={open} />
+      ? <>
+          <EmployeeDirectory rows={rows} locals={safeLocals} loading={loading} ready={ready}
+            onRefresh={refresh} onAdd={add} onOpen={open} />
+          <ManagerLegajos ownerView localScope={safeLocals}/>
+        </>
       : <ReceiptDashboard rows={rows} locals={safeLocals} loading={loading} ready={ready}
           onRefresh={refresh} onOpen={open} onDownload={download} onShare={share} />}
   </section>;
