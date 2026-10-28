@@ -61,7 +61,7 @@ export function AlessandroOwnerHome({ user }: { user: AppUser }) {
     </p></main>
   );
   return <div className="owner-home owner-home--legacy">
-    <OwnerSidebar open={open} onClose={() => setOpen(false)} currentPath="/"
+    <OwnerSidebar open={open} onClose={() => setOpen(false)} onOpen={() => setOpen(true)} currentPath="/"
       onLocals={() => { setArea("planillas"); setOpen(false); }} activeSection={area}
       onSectionChange={next => { setArea(next); setOpen(false); }} companyName={shown}/>
     <main className="owner-main">
