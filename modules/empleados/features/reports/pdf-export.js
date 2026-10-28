@@ -123,15 +123,22 @@ ctx.crearPdf = function (h, nombreColab, lienzo) {
         i++;
     });
     y += 4;
-    doc.setFillColor.apply(doc, band);
-    doc.roundedRect(M, y, A, 13, 1.5, 1.5, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.setFillColor.apply(doc, tinte);
+    doc.roundedRect(M, y, A, 12, 1.5, 1.5, "F");
+    doc.setTextColor.apply(doc, band);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    T("TOTAL", M + 3.5, y + 8.2);
-    T(ctx.cantidadTotalTxt(h), xC, y + 8.2, { align: "right" });
+    T(ctx.esTurno(h) ? "TOTAL TURNOS / HORAS EXTRA" : "TOTAL HORAS", M + 3.5, y + 7.8);
+    T(ctx.cantidadTotalTxt(h), W - M - 4, y + 7.8, { align: "right" });
+    y += 14;
+    doc.setFillColor.apply(doc, band);
+    doc.roundedRect(M, y, A, 14, 1.5, 1.5, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    T("TOTAL A COBRAR", M + 3.5, y + 9);
     doc.setFontSize(13);
-    T(ctx.pesos(ctx.totalDe(h)), W - M - 4, y + 8.6, { align: "right" });
+    T(ctx.pesos(ctx.totalDe(h)), W - M - 4, y + 9, { align: "right" });
     y += 22;
     if (h.obs) {
         doc.setFont("helvetica", "bold");
