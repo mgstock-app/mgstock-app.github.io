@@ -3452,7 +3452,7 @@ document.addEventListener('click', e => {
     case 'admin-demo-close': if(S.demoTienda){ S.demoTienda=false; renderHub(); window.scrollTo({top:0}); } break;
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
-    case 'retry-locales': window.location.reload(); break;
+    case 'retry-locales': S.loadError = false; S.loadStartedAt = Date.now(); S.booted = false; S.loaded.e = false; S.loaded.l = false; renderHub(); boot(); break;
     case 'guardar': openSave(); break;
     case 'recover-draft': recoverLegacyDraft(); break;
     case 'save-ok': doSave(); break;
