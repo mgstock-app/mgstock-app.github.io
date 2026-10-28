@@ -14,7 +14,7 @@ export type Concept = {
   quantity: number | null; rate: number | null; amount: number | null;
 };
 export type Summary = {
-  name: string; role: string; status: "activo" | "refuerzo" | "inactivo";
+  name: string; role: string; status: "activo" | "refuerzo" | "descanso" | "inactivo";
   mode: string; period: string; payment: string; quantity: string; total: number;
   reportStatus: "enviada" | "cargada" | "vacia";
   lastDelivery: string | null; rows: Concept[];
@@ -29,7 +29,7 @@ export const currency = new Intl.NumberFormat("es-AR", {
 export const normalize = (s: string) =>
   s.toLocaleLowerCase("es-AR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 export const statusLabel: Record<Summary["status"], string> = {
-  activo: "Activo", refuerzo: "Refuerzo", inactivo: "Inactivo",
+  activo: "Activo", refuerzo: "Refuerzo", descanso: "En descanso", inactivo: "Inactivo",
 };
 export const reportLabel: Record<Summary["reportStatus"], string> = {
   enviada: "Enviado", cargada: "Pendiente", vacia: "Sin generar",
