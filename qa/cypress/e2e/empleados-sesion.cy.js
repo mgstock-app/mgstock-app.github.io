@@ -17,7 +17,12 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
   cy.contains('Continuar con Google').should('not.exist');
-  cy.contains('a','📁 Horarios').should('be.visible');
+  // La cabecera anterior «📁 Horarios» ya no existe. La navegación
+  // vigente del gerente es Sector de Google → Horarios.
+  cy.contains('button','Sector de Google').should('exist').click();
+  cy.contains('a','Abrir Google Sheets y horarios').should('be.visible')
+    .and('have.attr','href').and('include','horarios');
+  cy.contains('button','Volver a los legajos').click();
   cy.reload();
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
   cy.contains('Continuar con Google').should('not.exist');
