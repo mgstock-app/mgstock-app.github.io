@@ -1,4 +1,4 @@
 import { UsersTable } from "@/components/users/UsersTable";
 export default function AssignmentsPage() {
-  return <UsersTable pendingOnly />;
+  return <UsersTable assignments />;
 }
