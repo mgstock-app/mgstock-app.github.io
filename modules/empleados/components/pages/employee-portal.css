@@ -1,0 +1,20 @@
+.app-shell .employee-private-portal{width:min(100%,1250px);margin:0 auto;padding:clamp(16px,3vw,30px);color:#18324a;font-family:"Segoe UI",Arial,sans-serif}
+.app-shell .employee-private-portal *{box-sizing:border-box}
+.app-shell .employee-private-portal__hero{background:linear-gradient(118deg,#09283d,#0b6473);border-radius:16px;padding:clamp(18px,3vw,28px);margin-bottom:20px;color:white}
+.app-shell .employee-private-portal__hero>span{display:block;color:#83dbef;font-size:11px;font-weight:800;letter-spacing:.09em}
+.app-shell .employee-private-portal__hero h1{font:800 clamp(24px,3vw,31px)/1.2 "Segoe UI",Arial,sans-serif;color:#fff;margin:10px 0 8px}
+.app-shell .employee-private-portal__hero p{margin:0 0 11px;font:400 14px/1.4 "Segoe UI",Arial,sans-serif;color:#d8eff7}
+.app-shell .employee-private-portal__hero small{display:inline-block;background:#ffffff20;border-radius:16px;padding:5px 11px;font-size:11px;font-weight:700;color:#e6f8fc}
+.app-shell .employee-private-portal__cards{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.9fr);gap:18px;align-items:start}
+.app-shell .employee-private-portal .employee-report{background:#fff;border:1px solid #dbe7ef;border-radius:16px;padding:20px;margin:0;min-width:0;max-width:none;box-shadow:0 3px 10px #143c5709}
+.app-shell .employee-private-portal .employee-report h1{font:750 19px/1.25 "Segoe UI",Arial,sans-serif;color:#15334c;margin:4px 0 8px}
+.app-shell .employee-private-portal .employee-report>p{font:400 12px/1.5 "Segoe UI",Arial,sans-serif;color:#5e7489;margin:7px 0 12px}
+.app-shell .employee-private-portal .employee-report .eyebrow{font-size:10px;color:#138b77;letter-spacing:.08em}
+.app-shell .employee-private-portal .employee-report .row-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.app-shell .employee-private-portal .employee-report .row-actions button{border-radius:9px;padding:10px 14px;border:1px solid #d7e4eb;background:white;color:#285d78;font-size:12px;font-weight:700}
+.app-shell .employee-private-portal .employee-report .row-actions .primary-button{background:#0c6a79;border-color:#0c6a79;color:white}
+.app-shell .employee-private-portal .employee-report .report-image{max-width:100%;padding:8px;background:#f5f8fc;border:1px solid #dae4ed;border-radius:12px;margin:12px 0}
+.app-shell .employee-private-portal .employee-report .report-image img{max-width:100%;height:auto;display:block}
+.app-shell .employee-private-portal__privacy{display:flex;align-items:flex-start;gap:9px;font:400 12px/1.5 "Segoe UI",Arial,sans-serif;color:#6a8096;margin:18px 0}
+@media(max-width:900px){.app-shell .employee-private-portal__cards{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:550px){.app-shell .employee-private-portal{padding:13px}.app-shell .employee-private-portal__hero{padding:19px}.app-shell .employee-private-portal .employee-report{padding:16px}}
