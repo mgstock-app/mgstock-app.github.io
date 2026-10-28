@@ -11,7 +11,7 @@
 
   const stylesheet=document.createElement('link');
   stylesheet.rel='stylesheet';
-  stylesheet.href=new URL('stock/gestlok-sidebar-polish.css?rev=20261028-menu-1',document.baseURI).href;
+  stylesheet.href=new URL('stock/gestlok-sidebar-polish.css?rev=20261028-white-v2',document.baseURI).href;
   document.head.appendChild(stylesheet);
 
   const media=window.matchMedia('(max-width:899px)');
