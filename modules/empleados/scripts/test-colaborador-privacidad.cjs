@@ -15,6 +15,9 @@ assert.equal(employeeSheetPreview("https://docs.google.com/spreadsheets/d/SAFE_1
   "https://docs.google.com/spreadsheets/d/SAFE_123/preview?gid=34");
 assert.equal(employeeSheetPreview("https://docs.google.com/spreadsheets/d/SAFE_123/edit?gid=0"),
   "https://docs.google.com/spreadsheets/d/SAFE_123/preview?gid=0");
+assert.equal(employeeSheetPreview("https://docs.google.com/spreadsheets/d/SAFE_123/preview?gid=0"),
+  "https://docs.google.com/spreadsheets/d/SAFE_123/preview?gid=0",
+  "El enlace devuelto por el servidor ya es de lectura y el cliente no lo modifica");
 for(const bad of [
   "javascript:alert(1)","https://docs.google.com.evil.com/spreadsheets/d/abc/edit",
   "http://docs.google.com/spreadsheets/d/abc/edit",
@@ -52,6 +55,22 @@ assert.match(sql,/l\.id = m\.local_id/);
 assert.match(sql,/l\.organization_id = om\.organization_id/);
 assert.match(sql,/s\.enabled/);
 assert.doesNotMatch(sql,/create policy.*select.*rm_test_documents/i,"Do not weaken private payroll RLS");
+const secure = fs.readFileSync("../../supabase/migrations/20261028205500_colaborador_google_sheets_preview_servidor.sql","utf8");
+for(const required of [
+  "rm_test_private.rm_employee_schedule_view()",
+  "m.user_id = rm_test_private.uid()",
+  "m.role = 'employee'",
+  "rm_test_private.app_role() = 'employee'",
+  "d.status = 'approved'",
+  "rm_test_private.verified_email(d.email)",
+  "l.id = m.local_id",
+  "l.organization_id = om.organization_id",
+  "'/preview'",
+  "'?gid='",
+]) assert(secure.includes(required),"Control de acceso faltante: "+required);
+assert(!secure.includes("'url', s.url"),"El servidor no puede entregar el enlace editable a colaboradores");
+assert(!secure.includes("grant select on rm_test_private.branch_schedule_links"),"No exponer tabla de enlaces");
+
 const portal=fs.readFileSync("components/pages/ReportPortal.tsx","utf8");
 assert.match(portal,/<EmployeeReport/);
 assert.match(portal,/<EmployeeScheduleLink/);
