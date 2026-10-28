@@ -442,3 +442,14 @@
 .invitation-links { margin-top:20px; border-top:1px solid #d9e0e9; padding-top:16px; }
 .invitation-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center; }
 .invitation-row span { width:100%; font-size:12px; }
+
+/* Búsqueda de asignaciones unificada para empresas y locales existentes. */
+.assignment-search-controls{display:grid;grid-template-columns:minmax(240px,1fr) minmax(160px,220px) auto;align-items:end;gap:13px;margin:16px 0 7px}
+.assignment-search-controls>div{min-width:0}
+.assignment-search-controls label{display:block;color:#526a83;font-size:12px;font-weight:700;margin:0 0 6px}
+.assignment-search-controls input[type=search],.assignment-search-controls select{width:100%;min-height:43px;border:1px solid #d3dfe9;background:white;border-radius:9px;padding:10px 12px;color:#143550;font-size:13px}
+.app-shell .assignment-search-controls__pending{display:flex;align-items:center;gap:9px;min-height:43px;padding:0 10px;margin:0;color:#315470;white-space:nowrap;font-size:12px}
+.app-shell .assignment-search-controls__pending input[type=checkbox]{flex:0 0 17px;width:17px;height:17px;margin:0;padding:0;accent-color:#165c89}
+.assignment-search-count{color:#667f96;font-size:12px;margin:5px 0 14px}
+@media(max-width:770px){.assignment-search-controls{grid-template-columns:1fr 1fr}.assignment-search-controls__input{grid-column:1/-1}}
+@media(max-width:475px){.assignment-search-controls{grid-template-columns:minmax(0,1fr)}.assignment-search-controls__input{grid-column:auto}}

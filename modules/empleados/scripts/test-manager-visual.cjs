@@ -7,7 +7,7 @@ const gerente = read("components/pages/GerenteHome.tsx");
 const cards = read("components/legajos/ManagerLegajos.tsx");
 const css = read("components/pages/gerente-visual-fix.css");
 assert.match(navbar,/path === "\/" && \(user\?\.role === "manager" \|\| isGestlokGerente\(user\)\)/);
-assert.match(moduleBar,/pathname === "\/" && \(user\?\.role === "manager" \|\| isGestlokGerente\(user\)\)/);
+assert.match(moduleBar,/pathname === "\/" && \(user\?\.role === "employee" \|\| user\?\.role === "manager" \|\| isGestlokGerente\(user\)\)/);
 assert.match(css,/\.app-shell:has\(> \.gl-gerente\) > \.gestlok-module-bar/);
 assert.match(css,/\.app-shell \.gl-gerente \.mlg-intro h1\s*\{[^}]*font:800/);
 assert.match(css,/\.app-shell \.gl-gerente \.mlg-form label/);

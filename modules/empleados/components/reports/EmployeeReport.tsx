@@ -110,21 +110,21 @@ export function EmployeeReport() {
   return (
     <section className="management-page employee-report">
       <span className="eyebrow">ACCESO PERSONAL · SOLO LECTURA</span>
-      <h1>Mi reporte</h1>
+      <h1>Mi recibo de sueldo</h1>
       <p>
         {access
           ? {
               ready:
-                "Tu reporte está listo para consultar.",
+                "Tu empresa publicó tu recibo. Ya podés abrirlo para verlo.",
               active:
-                "Esta es la imagen preparada por el dueño.",
+                "Tu recibo privado publicado por la empresa. Solo lectura.",
               expired:
-                "Solicitá una nueva habilitación para consultar tu reporte.",
+                "Solicitá una nueva habilitación para ver tu recibo.",
               requested: "Tu solicitud está pendiente de aprobación.",
               unavailable:
-                "El dueño todavía no publicó una imagen de tu reporte.",
+                "El dueño todavía no publicó tu recibo personal.",
             }[access.status]
-          : "Comprobando tu reporte…"}
+          : "Comprobando tu recibo privado…"}
       </p>
       <div className="row-actions">
         {access?.status === "ready" && (
@@ -133,7 +133,7 @@ export function EmployeeReport() {
             disabled={busy}
             onClick={() => void act("open")}
           >
-            Abrir reporte
+            Ver mi recibo
           </button>
         )}
         {access?.status === "expired" && access.can_request && (
@@ -157,7 +157,7 @@ export function EmployeeReport() {
             src={image}
             width={1260}
             height={1782}
-            alt="Imagen de tu reporte mensual o semanal, preparada por el dueño"
+            alt="Recibo de sueldo personal publicado por el dueño, en modo solo lectura"
           />
         </div>
       )}
