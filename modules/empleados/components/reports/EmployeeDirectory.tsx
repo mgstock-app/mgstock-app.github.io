@@ -77,7 +77,7 @@ export function EmployeeDirectory({
         return <section className="employee-pages__location" key={local.id} aria-label={"Colaboradores de " + local.name}>
           <div className="employee-pages__location-head">
             <button type="button" className="employee-pages__location-title" aria-expanded={!hidden} onClick={() => setClosed(old => hidden ? old.filter(id => id !== local.id) : [...old, local.id])}>
-              <span className="employee-pages__store-icon"><Store size={25}/></span>
+              {(() => { const candidate = local.photo_url || local.image_url || local.logo_url; const safe = typeof candidate === "string" && (/^https:\/\//i.test(candidate) || /^\/(?!\/)/.test(candidate)) ? candidate : null; return safe ? <img className="employee-pages__store-photo" src={safe} alt={"Foto de " + local.name} width={64} height={46}/> : <span className="employee-pages__store-icon"><Store size={25}/></span>; })()}
               <strong>{local.name}</strong><span className="employee-pages__count">{employees.length} colaboradores</span>
               <ChevronRight size={20} className={hidden ? "" : "employee-pages__chevron-open"}/>
             </button>
