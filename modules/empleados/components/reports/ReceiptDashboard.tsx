@@ -39,8 +39,6 @@ function ReceiptPaper({ row, summary, historical = false }: {
   const hasVerifiedPayment = original.pagado === true || original.estadoPago === "pagado";
   const fixedRows = summary.rows;
   const isHours = summary.mode.toLowerCase().includes("hora");
-  const alias = typeof original.alias === "string" ? original.alias.trim() : "";
-  const isCash = original.pago === "efectivo";
   return <article className="employee-pages__paper" aria-label="Detalle del recibo">
     <div className="employee-pages__paper-heading">
       <h3>{row.local.name}</h3>
@@ -51,7 +49,7 @@ function ReceiptPaper({ row, summary, historical = false }: {
       <div className="employee-pages__paper-field employee-pages__paper-field--full"><small>Nombre y apellido</small><strong>{summary.name}</strong></div>
       <div className="employee-pages__paper-field"><small>Puesto y modalidad</small><span>{summary.role} · {summary.mode.toLowerCase()}</span></div>
       <div className="employee-pages__paper-field"><small>Período</small><span>{summary.period || "Sin completar"}</span></div>
-      <div className="employee-pages__paper-field employee-pages__paper-field--full"><small>Forma de pago</small><span>{summary.payment}{!historical && alias && !isCash ? " · alias " + alias : ""}</span></div>
+      <div className="employee-pages__paper-field employee-pages__paper-field--full"><small>Forma de pago</small><span>{summary.payment}</span></div>
     </div>
     <h4>DETALLE {isHours ? "DE HORAS" : "DE TURNOS"}</h4>
     <div className="employee-pages__paper-table-scroll"><table className="employee-pages__paper-table">
