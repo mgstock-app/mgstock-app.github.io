@@ -154,7 +154,7 @@ ctx.pintarInicio = function () {
         b.type = "button";
         b.className = "local-card";
         b.innerHTML = '<div class="lc-top"><div><div class="eyebrow">Local</div><div class="lc-nombre"></div><div class="lc-cuenta"></div></div><span class="badge"></span></div>' +
-            '<dl class="lc-stats"><div><dt><i class="dot activo"></i>Activos</dt><dd class="ea"></dd></div><div><dt><i class="dot inactivo"></i>Inactivos</dt><dd class="ei"></dd></div><div><dt><i class="dot refuerzo"></i>Refuerzos</dt><dd class="er"></dd></div>' +
+            '<dl class="lc-stats"><div><dt><i class="dot activo"></i>Activos</dt><dd class="ea"></dd></div><div><dt><i class="dot inactivo"></i>Inactivos</dt><dd class="ei"></dd></div><div><dt><i class="dot refuerzo"></i>Refuerzos</dt><dd class="er"></dd></div><div><dt><i class="dot descanso"></i>En descanso</dt><dd class="ed"></dd></div>' +
             '<div class="lc-env"><dt>Enviados</dt><dd class="cv"></dd></div></dl>' +
             '<div class="lc-pie" style="justify-content:flex-end"><span class="lc-abrir">Abrir local →</span></div>';
         b.querySelector(".lc-nombre").textContent = ctx.LOCALES[l].txt;
@@ -164,6 +164,7 @@ ctx.pintarInicio = function () {
         b.querySelector(".ea").textContent = e.activo;
         b.querySelector(".ei").textContent = e.inactivo;
         b.querySelector(".er").textContent = e.refuerzo;
+        b.querySelector(".ed").textContent = e.descanso;
         b.querySelector(".cv").textContent = m.enviadas + " de " + m.n;
         b.setAttribute("aria-label", "Abrir " + ctx.LOCALES[l].txt + ": " + e.activo + " activos, " + e.inactivo + " inactivos, " + e.refuerzo + " refuerzos, " + m.enviadas + " de " + m.n + " enviados");
         scope.listen(b, "click", function () { ctx.abrirLocal(l); });
