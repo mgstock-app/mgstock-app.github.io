@@ -28,3 +28,10 @@
 .module-profile-refresh{display:inline-flex;align-items:center;gap:8px;border:1px solid #d6e3ed;border-radius:9px;background:#fff;color:#286589;font-weight:700;font-size:12px;padding:10px 13px}
 @media(max-width:560px){.module-profile-button{bottom:calc(20px + env(safe-area-inset-bottom,0px))}}
 @media print{.module-profile-button,.module-profile-overlay{display:none!important}}
+
+.module-profile-group{display:grid;gap:7px}
+.module-profile-locals{display:flex;flex-wrap:wrap;gap:7px;padding:0 4px 8px}
+.module-profile-locals>button{display:inline-flex;align-items:center;border:1px solid #cbe4ef;border-radius:9px;background:#eff7fb;color:#286480;
+ min-height:33px;padding:7px 10px;font:750 11px/1.3 "Segoe UI",Arial,sans-serif;cursor:pointer}
+.module-profile-locals>button:hover:not(:disabled){background:#dff0f9}
+.module-profile-locals>button:disabled{opacity:.55}
