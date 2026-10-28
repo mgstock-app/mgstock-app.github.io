@@ -39,7 +39,7 @@ export function AccessGate({
     ) : (
       <div className="empty-state">
         <h1>Acceso restringido</h1>
-        <p>Como gerente solo podés usar la carpeta Horarios.</p>
+        <p>Como gerente solo podés consultar Colaboradores y Horarios de los locales autorizados.</p>
         <Link href="/horarios">Ir a Horarios</Link>
       </div>
     );
