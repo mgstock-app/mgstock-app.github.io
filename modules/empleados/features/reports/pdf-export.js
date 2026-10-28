@@ -27,7 +27,7 @@ ctx.crearPdf = function (h, nombreColab, lienzo) {
     doc.setTextColor.apply(doc, band);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
-    T("GESTION INTERNA", M, y);
+    T("GESTLOK", M, y);
     doc.setTextColor.apply(doc, tinta);
     doc.setFont("times", "bold");
     doc.setFontSize(22);
