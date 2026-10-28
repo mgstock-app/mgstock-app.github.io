@@ -20,6 +20,7 @@ create table if not exists rm_test_private.manager_staff_invites (
   revoked_at timestamptz,
   constraint manager_staff_invites_token_format check (token_hash ~ '^[a-f0-9]{64}$')
 );
+alter table rm_test_private.manager_staff_invites enable row level security;
 revoke all on rm_test_private.manager_staff_invites from public, anon, authenticated;
 create index if not exists manager_staff_invites_local_idx
  on rm_test_private.manager_staff_invites(organization_id,local_id,created_at desc);
@@ -78,7 +79,7 @@ revoke all on function public.rm_app_manager_staff_invite_create(text) from publ
 grant execute on function public.rm_app_manager_staff_invite_create(text) to authenticated;
 
 create or replace function rm_test_private.rm_manager_staff_invite_preview(p_token text)
-returns jsonb language plpgsql stable security definer set search_path=''
+returns jsonb language plpgsql security definer set search_path=''
 as $preview_staff$
 declare result jsonb;
 begin
@@ -102,7 +103,7 @@ $preview_staff$;
 revoke all on function rm_test_private.rm_manager_staff_invite_preview(text) from public,anon;
 grant execute on function rm_test_private.rm_manager_staff_invite_preview(text) to authenticated;
 create or replace function public.rm_app_manager_staff_invite_preview(p_token text)
-returns jsonb language sql stable set search_path=''
+returns jsonb language sql set search_path=''
 as $preview_staff_api$
  select rm_test_private.rm_manager_staff_invite_preview(p_token)
 $preview_staff_api$;
