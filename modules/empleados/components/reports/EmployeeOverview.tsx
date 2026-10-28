@@ -28,8 +28,8 @@ const quantityText = (row: Concept) =>
     row.type === "horas" ? formatHours(row.quantity) + " hs" :
     row.type === "turnos" ? String(row.quantity) + " turnos" :
     row.type === "dias" ? String(row.quantity) + " días" : "—";
-function projectRows(
-  rows: { path: string; data: Record<string, unknown> }[],
+export function projectRows(
+  rows: { path: string; data: Record<string, unknown>; organization_id?: string }[],
   locals: AppLocal[],
 ): EmployeeRow[] {
   const ids = locals.map(l => l.id);
@@ -38,7 +38,7 @@ function projectRows(
     if (!/^hojas\/[^/]+$/.test(row.path)) return [];
     const localId = resolveOverviewSheetLocal(row, ids);
     const local = localId ? localById.get(localId) : undefined;
-    if (!local) return []; // Nunca mostrar hojas de un local no autorizado.
+    if (!local || (row.organization_id && row.organization_id !== local.organization_id)) return []; // Aislamiento empresa/local incluso si el servidor devuelve datos inesperados.
     return [{ id: row.path.slice("hojas/".length), localId: local.id, local, summary: summarizeReport(row.data, local) as Summary }];
   }).sort((a, b) => a.summary.name.localeCompare(b.summary.name, "es-AR"));
 }
