@@ -138,7 +138,26 @@ export function ReportPortal() {
   return (
     <AccessGate>
       {user?.role === "employee" ? (
-        <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
+        <section className="management-page employee-portal" aria-label="Portal del colaborador" style={{maxWidth:1100,margin:"0 auto",padding:"clamp(16px,3vw,32px)"}}>
+          <header style={{background:"#073844",color:"white",padding:"24px",borderRadius:18,marginBottom:20}}>
+            <span style={{color:"#75e3e7",fontWeight:700}}>GESTLOK · MI ESPACIO</span>
+            <h1 style={{color:"white",margin:"8px 0"}}>Portal del colaborador</h1>
+            <p style={{color:"#e3f4f5",margin:0}}>Tu información personal y las novedades de tu equipo, en un solo lugar.</p>
+          </header>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:16,marginBottom:20}}>
+            <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
+              <h2>🔒 Mis recibos privados</h2>
+              <p>Solo vos podés consultar tus recibos publicados. Tu empresa administra la publicación.</p>
+              <Link href="/mi-reporte">Ver mis recibos</Link>
+            </section>
+            <section style={{background:"white",border:"1px solid #dbe6e9",borderRadius:16,padding:20}}>
+              <h2>📅 Horario semanal del local</h2>
+              <p>Próximamente vas a poder consultar los turnos y francos de tu equipo desde acá.</p>
+              <p role="status">Pendiente de habilitación segura por empresa y sucursal.</p>
+            </section>
+          </div>
+          <EmployeeReport key={`${user.user_id}:${user.sheet_id}`} />
+        </section>
       ) : user?.role === "manager" ? (
         <ManagerHome />
       ) : user ? (
