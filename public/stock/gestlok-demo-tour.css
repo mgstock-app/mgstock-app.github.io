@@ -4,3 +4,9 @@
 /* Keep in-card back/close controls clickable below the visitor navigation. */
 .gl-visitor-mode [data-dh-close]{scroll-margin-top:220px}
 .gl-visitor-mode:has(#gl-demo-emp) #gl-visitor-bar{z-index:100}
+
+/* Cupón emitido: tarjeta tipo premio, legible y adaptable a móviles. */
+.gl-tour-coupon{display:flex;flex-direction:column;align-items:center;gap:12px;margin:18px auto;padding:28px 18px;border:2px dashed #1c927e;border-radius:20px;background:linear-gradient(155deg,#f0fffa,#fff);color:#173e38;text-align:center;max-width:390px;box-shadow:0 8px 24px #0d554019}
+.gl-tour-coupon small{font-size:12px;font-weight:800;letter-spacing:.1em}
+.gl-tour-coupon strong{font-size:clamp(40px,12vw,64px);letter-spacing:.08em;font-weight:900;font-variant-numeric:tabular-nums}
+.gl-tour-coupon span{font-size:13px;line-height:1.5;max-width:290px}
