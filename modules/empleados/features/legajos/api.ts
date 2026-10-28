@@ -131,3 +131,21 @@ export async function loadLegajoHistory(profile: Legajo): Promise<LegajoHistory[
   if (error) throw new Error("No se pudo consultar el historial de cambios.");
   return (data || []) as LegajoHistory[];
 }
+
+export type PreviousEmployee = {
+  organization_id: string;
+  local_id: string;
+  source_id: string;
+  full_name: string;
+  status: LegajoStatus;
+};
+/** Only names and previous status are exposed to the manager; NEVER payroll data. */
+export async function loadPreviousEmployees(locals: AppLocal[]): Promise<PreviousEmployee[]> {
+  if (!locals.length) return [];
+  const { data, error } = await createClient().rpc("rm_employee_profile_roster");
+  if (error || !Array.isArray(data)) throw new Error("No se pudo consultar la nómina anterior.");
+  const keys = new Set(locals.map(l => l.organization_id + ":" + l.id));
+  return (data as PreviousEmployee[]).filter(r =>
+    keys.has(r.organization_id + ":" + r.local_id)
+    && typeof r.full_name === "string" && typeof r.source_id === "string");
+}
