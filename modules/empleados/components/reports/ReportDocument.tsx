@@ -222,7 +222,7 @@ export function ReportDocument() {
           </h3>
           <p className="doc-sec-ayuda" id="ayudaDetalle">
             {
-              "Con valor unitario cargado, el importe se calcula solo (cantidad × valor). Las horas extra tienen cantidad y tarifa propias, y se suman al total. OFF y feriado usan el mismo valor que lo trabajado: se carga una sola vez. Los días ausentes se descuentan del total, salvo que los marques como justificados. Los valores quedan guardados para el próximo período."
+              "Con valor unitario cargado, el importe se calcula solo (cantidad × valor). Las horas extra tienen cantidad y tarifa propias, y se suman al total. OFF usa el valor de lo trabajado. Para feriado podés definir un valor por hora o turno diferente (por ejemplo, doble para un feriado al 100 %); las planillas anteriores conservan su tarifa original. Los días ausentes se descuentan del total, salvo que los marques como justificados. Los valores quedan guardados para el próximo período."
             }
           </p>
           <table className="tabla">

@@ -147,6 +147,21 @@ async function main() {
   assert.equal(ctx.cantidadTotalTxt(shifts), "10 turnos");
   const oldSheet = { items: { trab: { c: 10, i: 100000 } }, porTurno: true };
   assert.equal(ctx.totalDe(oldSheet), 100000, "Existing records without overtime remain unchanged");
+  // Feriados admiten una tarifa independiente sin alterar hojas antiguas.
+  const holiday = {
+    local: "munro", nombre: "Prueba feriado", porTurno: false, ferTarifaPropia: true,
+    items: { trab: { c: 32, i: 112000 }, fer: { c: 2, i: null } },
+    tarifas: { trab: 3500, fer: 7000 },
+  };
+  assert.equal(ctx.tarifaDe(holiday, "fer"), 7000);
+  ctx.recalcular(holiday, "fer");
+  assert.equal(holiday.items.fer.i, 14000);
+  assert.equal(ctx.totalDe(holiday), 126000);
+  assert.equal(ctx.cantidadTotalTxt(holiday), "34:00 hs");
+  assert.equal(ctx.camposDe(holiday).ferTarifaPropia, true);
+  const oldHoliday = { ...holiday, ferTarifaPropia: false, tarifas: { trab: 3500, fer: 7000 } };
+  assert.equal(ctx.tarifaDe(oldHoliday, "fer"), 3500, "Legacy holidays retain their linked hourly rate");
+  assert.equal(ctx.tarifaDe({ tarifas: { trab: 3500 } }, "fer"), 3500);
   const totals = { items: { trab: { c: 130.5 }, off: { c: 24 }, fer: { c: 0 }, aus: { c: 2 }, vac: { c: 5 } } };
   assert.equal(ctx.cantidadTotalTxt(totals), "154:30 hs");
   totals.items.fer.c = 50 / 60;

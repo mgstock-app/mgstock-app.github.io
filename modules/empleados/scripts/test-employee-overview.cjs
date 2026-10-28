@@ -19,6 +19,8 @@ async function main() {
     if (name === "@/utils/overview-sheet-local") return { resolveOverviewSheetLocal: resolve };
     if (name === "@/features/reports/payroll.js") return loadJs("features/reports/payroll.js");
     if (name === "@/utils/duration.js") return loadJs("utils/duration.js");
+    if (name === "./EmployeeDirectory") return { EmployeeDirectory: () => null };
+    if (name === "./ReceiptDashboard") return { ReceiptDashboard: () => null };
     if (name === "@/utils/read-report-collection" || name === "@/lib/supabase/browser") return {};
     if (name.endsWith(".css")) return {};
     throw new Error("Unexpected test import: " + name);
@@ -42,8 +44,31 @@ async function main() {
   assert.equal(visible[0].summary.total, 133000);
   assert.equal(visible[0].summary.quantity, "36:00 hs");
   assert.equal(visible[1].localId, "dt");
+  const payrollCtx = {};
+  loadJs("features/reports/payroll.js").registerPayroll({ window: { REPORT_LOCALS: authorized } }, payrollCtx)();
+  assert.equal(payrollCtx.estadoColab({ estadoColab: "descanso" }), "descanso");
+  assert.equal(payrollCtx.estadoColab({ estadoColab: "refuerzo" }), "refuerzo");
+  assert.equal(payrollCtx.estadoColab({ estadoColab: "inactivo" }), "inactivo");
+  assert.equal(payrollCtx.ESTADOS_COLAB.descanso, "En descanso");
   assert.equal(result.projectRows(records, [local("munro")]).length, 1, "Single-store managers must never see other stores");
   assert.equal(result.projectRows(records, [local("otro", "org-b")]).length, 0, "Other-company sheets are excluded");
-  console.log("PASS: employee dashboard filters local and organization, recognizes legacy sheets and uses payroll totals");
+  const receiptModule = {};
+  const receiptSource = ts.transpileModule(fs.readFileSync("components/reports/ReceiptDashboard.tsx", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  new Function("exports", "require", receiptSource)(receiptModule, name => {
+    if (name === "react" || name === "react/jsx-runtime" || name === "lucide-react") return {};
+    if (name === "@/features/reports/payroll.js") return loadJs("features/reports/payroll.js");
+    if (name === "@/utils/duration.js") return loadJs("utils/duration.js");
+    if (name === "./EmployeeOverview") return result;
+    if (name === "@/lib/supabase/browser" || name === "@/utils/read-report-collection") return {};
+    throw new Error("Unexpected receipt import " + name);
+  });
+  assert.equal(receiptModule.receiptMonth({semDesde:"2026-10-12",semHasta:"2026-10-18"}), "2026-10");
+  assert.equal(receiptModule.receiptMonth({mes:"Octubre",anio:"2026"}), "2026-10");
+  assert.equal(receiptModule.receiptMonth({mes:"Noviembre",anio:"2026"}), "2026-11");
+  assert.equal(receiptModule.receiptMonth({}), null);
+  assert.equal(receiptModule.receiptMonth({mes:"Mes inválido",anio:"2026"}), null);
+  console.log("PASS: employee directory and receipt dashboard preserve local, organization, pay totals and periods");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

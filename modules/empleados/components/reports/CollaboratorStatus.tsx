@@ -24,6 +24,15 @@ export function CollaboratorStatus() {
           <button
             type="button"
             role="radio"
+            id="bDescanso"
+            aria-checked="false"
+          >
+            <i className="dot descanso" aria-hidden="true"></i>
+            {"En descanso"}
+          </button>
+          <button
+            type="button"
+            role="radio"
             id="bInactivo"
             aria-checked="false"
           >

@@ -97,7 +97,7 @@ ctx.defItem = function (h, it) {
         return { k: "fer", txt: turno ? "Turnos feriado" : "Horas feriado", tipo: turno ? "turnos" : "horas" };
     return it;
 };
-ctx.tarifaDe = function (h, k) { var t = ctx.normTarifas(h && h.tarifas); return ctx.LIGADAS.indexOf(k) > -1 ? t.trab : t[k]; };
+ctx.tarifaDe = function (h, k) { var t = ctx.normTarifas(h && h.tarifas); return k === "fer" && !(h && h.ferTarifaPropia) ? t.trab : (ctx.LIGADAS.indexOf(k) > -1 ? t.trab : t[k]); };
 ctx.puestoTxt = function (h) { return ctx.puestoDe(h) === "encargado" ? "Encargado" : "Staff"; };
 ctx.nombreColab = function (h) { return String(h && h.nombre || "").trim(); };
 ctx.tituloHoja = function (h) { return ctx.nombreColab(h) || (h && h.nombreHoja) || "Sin nombre"; };
@@ -155,12 +155,13 @@ ctx.normTarifas = function (t) {
     var r = {};
     ctx.ITEMS.forEach(function (it) { if (it.tipo === "monto")
         return; var v = t && t[it.k]; r[it.k] = (typeof v === "number" && isFinite(v)) ? v : null; });
-    r.off = r.fer = r.trab;
+    r.off = r.trab;
+    if (r.fer == null) r.fer = r.trab;
     return r;
 };
 ctx.hojaVacia = function (nombreHoja, local, puesto) {
     return { nombreHoja: nombreHoja, local: Object.prototype.hasOwnProperty.call(ctx.LOCALES, local) ? local : Object.keys(ctx.LOCALES)[0], puesto: puesto === "encargado" ? "encargado" : "staff", porTurno: false, orden: Date.now(),
-        nombre: "", alias: "", pago: "transferencia", firma: null, extras: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", items: ctx.normItems(null), tarifas: ctx.normTarifas(null),
+        nombre: "", alias: "", pago: "transferencia", firma: null, extras: false, ferTarifaPropia: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", items: ctx.normItems(null), tarifas: ctx.normTarifas(null),
         contacto: null, ultimaExport: null, actualizado: new Date().toISOString() };
 };
 ctx.cantidadTotalTxt = function (h) {
@@ -203,7 +204,7 @@ ctx.estadoHoja = function (h) {
 ctx.camposDe = function (h) {
     h = h || {};
     return { nombre: h.nombre || "", alias: String(h.alias || "").trim(), pago: ctx.pagoDe(h), fecha: h.fecha || "", mes: h.mes || "", anio: h.anio || "", semDesde: h.semDesde || "", semHasta: h.semHasta || "",
-        puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), extras: !!h.extras, ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "", items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas),
+        puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), extras: !!h.extras, ferTarifaPropia: !!h.ferTarifaPropia, ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "", items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas),
         contacto: h.contacto && h.contacto.tel ? { nombre: h.contacto.nombre || "", tel: String(h.contacto.tel) } : null };
 };
 ctx.camposPeriodoVacio = function () { return { extras: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", firma: null, items: ctx.normItems(null) }; };
@@ -236,8 +237,8 @@ ctx.fmtMoneda = new Intl.NumberFormat("es-AR", { style: "currency", currency: "A
 ctx.fmtImporte = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 ctx.fmtHoras = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
 ctx.fmtEntero = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
-ctx.LIGADAS = ["off", "fer"];
-ctx.ESTADOS_COLAB = { activo: "Activo", refuerzo: "Refuerzo", inactivo: "Inactivo" };
+ctx.LIGADAS = ["off"];
+ctx.ESTADOS_COLAB = { activo: "Activo", refuerzo: "Refuerzo", descanso: "En descanso", inactivo: "Inactivo" };
 ctx.ESTADOS_EFE = { enviada: "Recibo listo", cargada: "Pendiente de firma", vacia: "Sin cargar" };
 ctx.ITEM_AUS = ctx.ITEMS.filter(function (x) { return x.k === "aus"; })[0];
 };

@@ -32,6 +32,35 @@ return {
         });
         return true;
     },
+    // Same private PDF generator already used by the current employee sheets.
+    downloadPdf: async (localId, id) => {
+        const h = ctx.S.srv[id];
+        if (!h || ctx.localDe(h) !== localId || !ctx.S.downloads || !ctx.S.cargado ||
+            !window.REPORT_PERMISSIONS?.allowed('export_reports')) {
+            throw new Error("El recibo no está disponible o no tenés permiso para descargarlo.");
+        }
+        const nombre = ctx.nombreColab(h) || ctx.tituloHoja(h);
+        const archivo = ("Recibo " + nombre + " " + ctx.periodoTxt(h) + ".pdf")
+            .replace(/[\\/:*?"<>|]/g, "-").slice(0, 180);
+        await ctx.S.downloads.save({ filename: archivo, data: ctx.crearPdf(h, nombre) });
+    },
+    // Opens the existing WhatsApp flow, including confirmation and private history.
+    shareWhatsapp: (localId, id) => {
+        const h = ctx.S.srv[id];
+        if (!h || ctx.localDe(h) !== localId || !ctx.S.cargado || !ctx.S.db ||
+            ctx.S.soloLectura || ctx.S.editando || ctx.S.guardando ||
+            !window.REPORT_PERMISSIONS?.allowed('export_reports')) return false;
+        ctx.S.pantalla = "local";
+        ctx.S.local = localId;
+        ctx.S.carpeta = ctx.puestoDe(h);
+        ctx.S.activo = id;
+        ctx.suscribirHistorial();
+        ctx.pintarTodo();
+        setTimeout(function () {
+            if (ctx.S.activo === id) ctx.$("bExportar")?.click();
+        }, 0);
+        return true;
+    },
     addSheet: (localId) => {
         if (!ctx.S.cargado || !ctx.S.db || ctx.S.soloLectura || !ctx.LOCALES[localId]) return false;
         ctx.salirSiHaceFalta(function () {
