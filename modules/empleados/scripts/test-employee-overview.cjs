@@ -20,6 +20,7 @@ async function main() {
     if (name === "@/features/reports/payroll.js") return loadJs("features/reports/payroll.js");
     if (name === "@/utils/duration.js") return loadJs("utils/duration.js");
     if (name === "./EmployeeDirectory") return { EmployeeDirectory: () => null };
+    if (name === "@/components/legajos/ManagerLegajos") return { ManagerLegajos: () => null };
     if (name === "./ReceiptDashboard") return { ReceiptDashboard: () => null };
     if (name === "@/utils/read-report-collection" || name === "@/lib/supabase/browser") return {};
     if (name.endsWith(".css")) return {};

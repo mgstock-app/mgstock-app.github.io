@@ -1,0 +1,29 @@
+.gl-gerente{display:flex;min-height:calc(100vh - 70px);background:#f5f8fd;color:#19334b;font-family:Arial,"Segoe UI",sans-serif}
+.gl-gerente *{box-sizing:border-box}
+.gl-gerente__sidebar{width:254px;flex:0 0 254px;background:linear-gradient(165deg,#061f37,#082d43);color:#fff;padding:24px 13px;position:relative;z-index:101}
+.gl-gerente__brand{display:flex;gap:10px;align-items:center;padding:8px 8px 22px;border-bottom:1px solid #345168}
+.gl-gerente__brand>span{display:grid;place-items:center;width:49px;height:49px;border-radius:16px;background:#126f8b;color:#ccf7ff;font-size:30px;font-weight:900}
+.gl-gerente__brand strong{display:block;font-size:23px;letter-spacing:-.8px;color:#fff}
+.gl-gerente__brand small{display:block;font-size:8px;letter-spacing:.8px;margin-top:4px;color:#b8dae8}
+.gl-gerente__local-label{padding:25px 11px 10px;font-size:10px;font-weight:800;letter-spacing:1px;color:#a4c4da;line-height:1.5}
+.gl-gerente__sidebar nav{display:grid;gap:7px}
+.gl-gerente__sidebar nav button{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:#d4e6f1;text-align:left;padding:13px 11px;border-radius:10px;font-size:12px;font-weight:650;cursor:pointer}
+.gl-gerente__sidebar nav button.active{background:#0e5487;color:#fff}
+.gl-gerente__security{display:flex;align-items:flex-start;gap:8px;border-top:1px solid #31526a;padding:17px 6px;margin-top:26px;color:#c2dae8;font-size:10px;line-height:1.4}
+.gl-gerente__main{flex:1;min-width:0}
+.gl-gerente__header{background:linear-gradient(110deg,#071f35,#07516d);min-height:77px;padding:14px 25px;display:flex;align-items:center;gap:18px;color:white}
+.gl-gerente__header>div strong{display:block;font-size:27px;font-weight:800;line-height:1}
+.gl-gerente__header>div strong span{color:#36add3}
+.gl-gerente__header>div small{display:block;letter-spacing:1.3px;font-size:8px;margin-top:7px;color:#a9d1e3}
+.gl-gerente__user{margin-left:auto;color:#fff;font-size:13px}
+.gl-gerente__user small{display:block;color:#b3d6e8;font-size:10px;margin-top:5px}
+.gl-gerente__menu{display:none;background:transparent;color:white;border:0;cursor:pointer}
+.gl-gerente__content{padding:clamp(16px,3vw,30px);min-width:0}
+.gl-gerente__google{padding:22px;border-radius:14px;border:1px solid #e2eaf4;background:white}
+.gl-gerente__google h1{display:flex;align-items:center;gap:11px;color:#143b55;font-size:24px}
+.gl-gerente__google p{color:#6d8497;font-size:13px;line-height:1.6;max-width:670px}
+.gl-gerente__google-link{display:inline-flex;align-items:center;gap:10px;background:#11638a;color:white;padding:12px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:12px;margin:10px 0}
+.gl-gerente__google>button{display:block;background:white;color:#32628a;border:1px solid #d5e4ee;border-radius:8px;padding:10px 13px;margin-top:9px;font-size:12px}
+.gl-gerente__scrim{display:none}
+@media(max-width:1050px){.gl-gerente__sidebar{width:208px;flex-basis:208px;padding:15px 8px}.gl-gerente__brand strong{font-size:19px}.gl-gerente__brand>span{width:40px;height:40px;font-size:24px}.gl-gerente__sidebar nav button{font-size:11px}}
+@media(max-width:770px){.gl-gerente__sidebar{position:fixed;left:0;top:0;bottom:0;z-index:1015;transform:translateX(-105%);width:258px;transition:transform .18s ease;box-shadow:0 8px 30px #051b3375}.gl-gerente__sidebar.is-open{transform:translateX(0)}.gl-gerente__scrim{display:block;position:fixed;inset:0;z-index:1014;border:0;background:#031a2cab}.gl-gerente__menu{display:grid;place-items:center}.gl-gerente__header{min-height:69px;padding:13px 16px}.gl-gerente__header>div strong{font-size:23px}.gl-gerente__content{padding:14px}}
