@@ -35,6 +35,9 @@
      document.body.appendChild(el);
    }
    const hub=$('#hub'),hubOn=hub&&!hub.hidden;
+   const me=$('#me');
+   if(hubOn && el.parentNode!==document.body) document.body.appendChild(el);
+   else if(!hubOn && me && !me.hidden && el.parentNode!==me) me.appendChild(el);
    el.classList.toggle('gl-profile-switch-trigger--hub',!!hubOn);
    el.setAttribute('aria-expanded',String(open));
  }
