@@ -63,7 +63,7 @@ export function cleanLegajo(input: LegajoInput): LegajoInput {
   const notes = input.notes.trim();
   if (!first_name || first_name.length > 100 || !last_name || last_name.length > 100)
     throw new Error("Ingresá nombre y apellido (máximo 100 caracteres cada uno).");
-  if (phone.length > 35 || (phone && !/^[+\d\s()\-]+$/.test(phone)))
+  if (phone.length > 35 || (phone && !/^[+\d\s()-]+$/.test(phone)))
     throw new Error("Revisá el teléfono; debe contener solo números, espacios, +, - o paréntesis.");
   if (payment_alias.length > 120 || notes.length > 1500)
     throw new Error("El alias o las observaciones superan el largo permitido.");
