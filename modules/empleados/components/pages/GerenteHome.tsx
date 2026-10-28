@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, Wallet, X } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, House, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
 import { ManagerPersonalReceipt } from "@/components/reports/ManagerPersonalReceipt";
@@ -13,6 +13,7 @@ import "./gerente-visual-fix.css";
 export function GerenteHome() {
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [section, setSection] = useState<"legajos" | "horarios" | "recibo">("legajos");
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
   const company = useGestlokCompany();
@@ -22,18 +23,19 @@ export function GerenteHome() {
   const localName = user?.local_name || (localId === "dt" ? "Don Torcuato" : localId === "munro" ? "Munro" : null);
   const home = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
   return <div className="gl-gerente">
-    <aside className={"gl-gerente__sidebar" + (menuOpen?" is-open":"")} aria-label="Menú del gerente">
+    <aside className={"gl-gerente__sidebar" + (menuOpen?" is-open":"") + (collapsed?" is-collapsed":"")} aria-label="Menú del gerente">
       <div className="gl-gerente__brand">
         {isMiGusto
           ? <img className="gl-gerente__company-image" src={home + "img/mi-gusto-blanco.png"} alt="Mi Gusto" width={105} height={66}/>
           : <span className="gl-gerente__company-letter" aria-hidden="true">{companyName.slice(0,1).toUpperCase()}</span>}
         <div>{!isMiGusto && <strong>{companyName}</strong>}<small>{isMiGusto ? "Empanadas de Verdad" : "Administración de empleados"}</small></div>
       </div>
+      <button type="button" className="gl-gerente__collapse" aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menú del gerente" : "Contraer menú del gerente"} onClick={() => setCollapsed(v => !v)}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>{collapsed ? "Expandir" : "Contraer menú"}</span></button>
       <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
       <nav>
-        <button type="button" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><House size={19}/> Administrar empleados</button>
-        <button type="button" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/> Sector de Google</button>
-        <button type="button" className={section==="recibo"?"active":""} onClick={()=>{setSection("recibo");setMenuOpen(false)}}><Wallet size={19}/> Mi recibo personal</button>
+        <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><House size={19}/><span className="gl-gerente__nav-label">Administrar empleados</span></button>
+        <button type="button" title="Sector de Google" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Sector de Google</span></button>
+        <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>{setSection("recibo");setMenuOpen(false)}}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
       </nav>
       <p className="gl-gerente__security"><ShieldCheck size={16}/> Solo colaboradores de tus locales autorizados.</p>
     </aside>
