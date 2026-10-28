@@ -80,3 +80,73 @@
  #app .status{padding:10px}
 }
 @media print{#app .gl-sidebar-collapse-button{display:none!important}}
+
+/* 28/10 · Menú blanco profesional: mismo componente para creadora, dueño,
+   gerente y colaborador; sin conceder funciones ni alterar navegación. */
+#app .side{background:#fff!important;color:#193a50!important;border-right:1px solid #dce7ef;
+  box-shadow:4px 0 22px #17384c09;scrollbar-color:#c4d5e0 transparent}
+#app .side-in{gap:13px;padding:18px 13px 20px}
+#app .side-top{min-height:57px;border-bottom:1px solid #e6edf3;padding:0 3px 14px;align-items:center}
+#app .side-top .brand{gap:10px}
+#app .side-top .brand b{color:#153d55;font-size:18px;letter-spacing:-.04em}
+#app .side-top .brand div span{color:#638196}
+#app .side-top .mg,#app .side-top .mg img{width:43px;height:43px}
+#app .side .gestlok-company-identity{background:#fff!important;border:1px solid #e4e8e9;
+  border-radius:14px;padding:11px 7px;box-shadow:0 5px 19px #173e4b10}
+#app .side .gestlok-company-identity small{color:#54382d;font-weight:800}
+#app .side .status{background:#f1f8fa!important;border-color:#deebf0;border-radius:12px;
+  color:#42677d;padding:10px 12px}
+#app .side .status #ktxt,#app .side .status b{color:#375a70}
+#app #snav.snav{gap:4px}
+#app #snav :is(button,.snav-folder>summary){
+  color:#35586d;background:transparent;border-radius:11px;
+  font:650 13px/1.4 var(--f-body),system-ui,sans-serif;
+  min-height:44px;padding:10px 12px}
+#app #snav :is(button,.snav-folder>summary) svg.i{color:#278ca0}
+#app #snav :is(button,.snav-folder>summary):hover{background:#eef6fa;color:#174e68}
+#app #snav button[aria-current="page"]{background:#e5f3fa!important;color:#145e7d!important;
+  box-shadow:inset 3px 0 #20adba}
+#app #snav button[aria-current="page"] svg.i{color:#177fa1}
+#app #snav .snav-loc{background:#f6fafd;border:1px solid #dce9f1;color:#244c66;
+  margin:0 0 8px;box-shadow:none}
+#app #snav .snav-loc small{color:#6d8798;white-space:normal;overflow-wrap:break-word}
+#app #snav .snav-folder>summary{background:#f6f9fc;color:#254b64;border:1px solid #e4edf3}
+#app #snav .snav-folder[open]>summary{background:#edf7fa;border-color:#cce5ea;color:#155a73}
+#app #snav .snav-sub{border-left:1px solid #d7e6ef;margin-left:17px;padding-left:10px}
+#app #snav .snav-sub button{color:#547184;min-height:40px;font-size:12px}
+#app #snav .snav-l{color:#7991a3;font-size:10px;padding-top:13px}
+#app #snav .snav-l .snav-e{border-color:#dce9f1;color:#226680;background:#fff}
+#app .side-f{border-top:1px solid #e1e9f0;color:#43677d}
+#app .side-f :is(.inst,.logout button){border:1px solid #d8e6ef;background:#f8fbfd;
+  color:#285a74;border-radius:10px}
+#app .side-f :is(.inst,.logout button):hover{background:#edf7fb;color:#174d6c}
+#app .side-f :is(.me b,.me small){color:#244961}
+#app .side-f .gl-profile-switch-trigger{background:#eaf5fa;border-color:#d1e6ed;color:#20617c}
+#app .side-f .gl-profile-switch-trigger:hover{background:#dff0f6}
+#app .gl-sidebar-collapse-button{background:#f5fafc;border:1px solid #dae7ef;color:#295d78;
+  border-radius:11px;width:36px;height:36px}
+#app .gl-sidebar-collapse-button:hover{background:#e9f4fa}
+#app :is(.gl-sidebar-collapse-button,#snav button,#snav summary):focus-visible{
+  outline:3px solid #36a4b4;outline-offset:2px}
+#app .side .brand,#app .side .gestlok-company-identity,#app #snav>*{max-width:100%}
+#app #snav .nl{overflow-wrap:anywhere;white-space:normal;text-overflow:clip}
+#app .side :is(.badge,.gl-chat-badge){max-width:100%}
+@media(min-width:900px){
+ #app.gl-sidebar-collapsed{--sidew:78px}
+ #app.gl-sidebar-collapsed .side-in{padding-inline:10px}
+ #app.gl-sidebar-collapsed .side-top{padding-bottom:10px}
+ #app.gl-sidebar-collapsed .side .gestlok-company-identity{padding:6px;border-radius:11px}
+ #app.gl-sidebar-collapsed #snav .snav-loc{min-height:44px}
+ #app.gl-sidebar-collapsed #snav .snav-folder>summary{border-color:transparent;background:transparent}
+ #app.gl-sidebar-collapsed #snav .snav-sub{margin:0;padding:0;border:none}
+ #app.gl-sidebar-collapsed #snav button,
+ #app.gl-sidebar-collapsed #snav .snav-folder>summary{justify-content:center;padding:9px 5px}
+}
+@media(max-width:899px){
+ #app .side{width:min(300px,88vw);box-shadow:10px 0 35px #16334828}
+ #app .side-in{padding-top:calc(17px + env(safe-area-inset-top,0px))}
+ #app .xside{border-color:#d7e7ef;color:#295d76;background:#f8fbfc}
+ #app .top .ham{color:#1c526e;background:#fff;border-color:#d7e5ee}
+ #app .top .crumb,#app .top .crumb b{color:#577285}
+}
+@media print{#app .side{box-shadow:none!important}}
