@@ -33,3 +33,19 @@ test("menús plegables reales, persistentes, con navegación privada preservada"
  assert.match(read("modules/empleados/components/pages/ReportPortal.tsx"),/<EmployeePortalShell/);
  assert.match(read("modules/empleados/components/layout/AppNavbar.tsx"),/user\?\.role === "employee" && path === "\/"/);
 });
+
+test("la interfaz blanca conserva el logo original de Mi Gusto con fondo negro",()=>{
+ const root=read("app/white-unified.css");
+ const module=read("modules/empleados/styles/white-dashboard.css");
+ const side=read("public/stock/gestlok-sidebar-polish.css");
+ const brand=read("modules/empleados/components/owner/OwnerSidebar.tsx");
+ const employee=read("modules/empleados/components/pages/EmployeePortalShell.tsx");
+ for(const source of [brand,employee]){
+   assert(source.includes("img/mi-gusto-blanco.png"),"Debe conservarse el asset original");
+ }
+ for(const [where,source] of [["local",root],["empleados",module],["menú",side]]){
+   assert(source.includes("#080808"),where+" no preserva el soporte negro de Mi Gusto");
+ }
+ assert.match(root,/mix-blend-mode:normal!important/,"No se debe mezclar el color original del logo");
+ assert.match(root,/filter:none!important/,"No se debe recolorear el logo subido");
+});
