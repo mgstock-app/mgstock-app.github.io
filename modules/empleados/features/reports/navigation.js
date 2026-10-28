@@ -139,7 +139,7 @@ ctx.metricasLocal = function (l) {
     return { n: ids.length, total: ctx.r2(total), enviadas: env, pendientes: pend };
 };
 ctx.cuentaEstados = function (l) {
-    var r = { activo: 0, refuerzo: 0, inactivo: 0 };
+    var r = { activo: 0, refuerzo: 0, descanso: 0, inactivo: 0 };
     ctx.hojasLocal(l).forEach(function (id) { r[ctx.estadoColab(ctx.S.srv[id])]++; });
     return r;
 };
