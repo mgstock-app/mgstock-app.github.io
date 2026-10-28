@@ -11,7 +11,7 @@
     ['usuarios', 'Usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
-    ['resenas', 'Reseñas y cupones', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
+    ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
   ]);
   const ACTIONS = Object.freeze({
@@ -180,7 +180,7 @@
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (parts.locales || '') + '</div>';
-    else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + couponView() + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
+    else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
