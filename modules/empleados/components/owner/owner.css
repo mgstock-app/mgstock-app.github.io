@@ -53,3 +53,13 @@
 @media(max-width:1200px){.owner-header--management{margin:-24px -24px 20px}}
 @media(max-width:980px){.owner-header--management{margin:-20px -20px 20px}}
 @media(max-width:680px){.owner-header--management{margin:-20px -14px 15px;padding:14px 14px;border-radius:0}.owner-header--management .owner-header-brand strong{font-size:23px}.owner-header--management .owner-header-tools{max-width:100%;gap:9px}.owner-header--management .owner-user{max-width:80px}.owner-header--management .owner-user>span{width:35px;height:35px}.owner-sidebar{width:258px}.owner-main{overflow-x:clip}.owner-management{min-width:0}.owner-management .report-workspace{min-width:0;width:100%}}
+
+/* One application header on owner employee screens; preserve module header on other roles. */
+body:has(.owner-home) .gestlok-module-bar{display:none}
+.owner-company-image{display:block;object-fit:contain;width:88px;height:57px;max-width:100%;flex:0 0 auto}
+.owner-home--legacy .owner-header--management{top:0}
+.owner-legacy-home{max-width:850px}
+.owner-legacy-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.owner-legacy-actions button{border:1px solid #dbe6f1;border-radius:12px;padding:19px 12px;background:#f5f9ff;color:#195b8a;display:flex;justify-content:center;align-items:center;gap:10px;font-size:12px;font-weight:700;cursor:pointer}
+.owner-legacy-actions button:hover{background:#e7f3ff}
+@media(max-width:680px){.owner-company-image{width:77px;height:50px}.owner-legacy-actions{grid-template-columns:minmax(0,1fr)}}
