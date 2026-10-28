@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { UsersRound, UserRoundCheck, UserRoundX, Clock3, Search, Plus, Store, ChevronRight, FileText, X, RotateCw, ArrowLeft, Pencil } from "lucide-react";
+import { UsersRound, UserRoundCheck, UserRoundX, Clock3, Search, Plus, Store, ChevronRight, FileText, X, RotateCw, ArrowLeft, Pencil, MoreVertical } from "lucide-react";
 import type { AppLocal } from "@/types/access";
 import type { EmployeeRow } from "./EmployeeOverview";
 import { normalize, statusLabel } from "./EmployeeOverview";
@@ -87,7 +87,7 @@ export function EmployeeDirectory({
             ? <div className="employee-pages__people-grid">{employees.map((row, i) => <article className="employee-pages__person" key={row.id}>
                 <span className={"employee-pages__avatar employee-pages__avatar--" + (i % 6)} aria-hidden="true">{(row.summary.name.trim()[0] || "?").toUpperCase()}</span>
                 <div className="employee-pages__person-copy"><strong title={row.summary.name}>{row.summary.name}</strong><span className={"employee-pages__pill employee-pages__pill--" + row.summary.status}>{statusLabel[row.summary.status]}</span></div>
-                <button type="button" className="employee-pages__small-action" onClick={() => setSelectedId(row.id)}><FileText size={14}/> Ver legajo</button>
+                <button type="button" className="employee-pages__small-action" onClick={() => setSelectedId(row.id)}><FileText size={14}/> Ver legajo</button><button type="button" className="employee-pages__person-more" aria-label={"Más opciones de " + row.summary.name} onClick={() => setSelectedId(row.id)}><MoreVertical size={17}/></button>
               </article>)}</div>
             : <p className="employee-pages__empty-small">{query ? "No se encontraron colaboradores con esa búsqueda." : "Este local aún no tiene legajos cargados."}</p>)}
         </section>;
