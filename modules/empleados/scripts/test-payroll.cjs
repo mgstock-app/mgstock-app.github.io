@@ -182,20 +182,19 @@ async function main() {
     return doc;
   }
   const previousLocalName = ctx.LOCALES.munro.txt;
-  const longLocalName = "Local semanal ficticio CamPrueba sucursal de nombre extenso";
+  const longLocalName = "Nombre privado del local, que jamás debe aparecer en el recibo";
   ctx.LOCALES.munro.txt = longLocalName;
   scope.window.jspdf.jsPDF = CapturedPdf;
-  ctx.crearPdf({ ...sample, local: "munro", semDesde: "2026-10-19", semHasta: "2026-10-25" }, sample.nombre);
+  ctx.crearPdf({ ...sample, local:"munro", semDesde:"2026-10-19", semHasta:"2026-10-25" }, sample.nombre);
   scope.window.jspdf.jsPDF = jsPDF;
   ctx.LOCALES.munro.txt = previousLocalName;
-  const titleLines = captured.text.filter(line => line.x === 20 && line.size === 22);
-  assert(titleLines.length > 1, "Long local names wrap instead of overlapping the period");
-  assert.equal(titleLines.map(line => line.value).join(" "), longLocalName);
-  assert(titleLines.every(line => line.width <= 95.3), "Local title stays inside its own column");
+  assert(captured.text.some(line => line.value === "Recibo de sueldo"), "PDF uses a generic title");
+  assert(!captured.text.some(line => line.value.includes(longLocalName)), "PDF must not include the workplace");
+  assert(captured.text.some(line => line.value === "TOTAL HORAS"), "PDF includes a separate total of hours");
+  assert(captured.text.some(line => line.value === "TOTAL A COBRAR"), "PDF labels the payable amount");
   const headerMetadata = captured.text.filter(line => line.align === "right" && line.y < captured.lines[0].y1);
-  assert(headerMetadata.every(line => line.width <= 74), "Period and date stay in their own column");
-  assert(captured.lines[0].y1 > Math.max(...titleLines.map(line => line.y), ...headerMetadata.map(line => line.y)), "Header separator clears both columns");
-  console.log("PASS: long local names and weekly periods fit separate PDF header columns");
+  assert(headerMetadata.every(line => line.width <= 74), "Period and date stay inside their column");
+  console.log("PASS: informal PDF shows totals and no local or employer metadata");
   for (const payment of ["efectivo", "transferencia"]) {
     const privateSample = { ...sample, pago: payment, alias: "PRIVATE_ALIAS_739", obs: "" };
     const rendered = await ctx.crearPdf(privateSample, privateSample.nombre).text();
