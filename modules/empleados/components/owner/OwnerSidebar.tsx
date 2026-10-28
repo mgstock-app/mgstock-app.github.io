@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { House, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { House, Menu, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 
@@ -84,7 +84,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
       <button type="button" aria-current={activeSection==="empleados"?"page":undefined} onClick={()=>change("empleados")}><UsersRound size={20}/>Colaboradores</button>
       <button type="button" aria-current={activeSection==="recibos"?"page":undefined} onClick={()=>change("recibos")}><Wallet size={20}/>Recibos</button>
       <Link href="/horarios" onClick={onClose}><CalendarDays size={20}/>Horarios</Link>
-      <button type="button" aria-expanded={open} onClick={onOpen}><House size={20}/>Más</button>
+      <button type="button" aria-expanded={open} onClick={onOpen}><Menu size={20}/>Más</button>
     </nav>
   </>;
 }
