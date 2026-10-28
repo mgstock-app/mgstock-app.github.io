@@ -10,6 +10,8 @@ type ReportEngine = {
   deliverySaved: (id: string, data: Record<string, unknown>) => void;
   openSheet: (localId: string, id: string) => boolean;
   addSheet: (localId: string) => boolean;
+  downloadPdf: (localId: string, id: string) => Promise<void>;
+  shareWhatsapp: (localId: string, id: string) => boolean;
 };
 export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
   const engineRef = useRef<ReportEngine | null>(null);
@@ -123,5 +125,7 @@ export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
   return { root, error, ready,
     openSheet: (localId: string, id: string) => engineRef.current?.openSheet(localId, id) ?? false,
     addSheet: (localId: string) => engineRef.current?.addSheet(localId) ?? false,
+    downloadPdf: (localId: string, id: string) => engineRef.current?.downloadPdf(localId, id) ?? Promise.reject(new Error("La planilla todavía está cargando.")),
+    shareWhatsapp: (localId: string, id: string) => engineRef.current?.shareWhatsapp(localId, id) ?? false,
   };
 }
