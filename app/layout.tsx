@@ -24,5 +24,5 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#11283c" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="es-AR"><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap" /></head><body>{children}</body></html>;
+  return <html lang="es-AR"><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap" /><link rel="stylesheet" href={`${basePath}/stock/gestlok-white-ui.css?rev=blanco-20261028`} /></head><body>{children}</body></html>;
 }
