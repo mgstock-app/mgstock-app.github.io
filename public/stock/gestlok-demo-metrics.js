@@ -46,7 +46,7 @@ function view(){
    '<div><b>Mercado Central</b><span>'+(loaded&&!error?fmt(n.mercado):'—')+' sesiones</span></div>'+
    '<div><b>Nova Indumentaria</b><span>'+(loaded&&!error?fmt(n.nova):'—')+' sesiones</span></div>'+
   '</div>'+
-  '<p class="note">Una sesión puede explorar los dos roles y tiendas, por eso los subtotales pueden superar el total. No contamos a quienes rechazan estadísticas.</p>'+
+  '<p class="note">Una sesión puede explorar los dos roles y tiendas, por eso los subtotales pueden superar el total. Solo se registran visitas cuando la persona pulsa «Permitir estadísticas» en la demo. Si elige «Seguir sin estadísticas» o no responde, los contadores permanecen sin cambios.</p>'+
  '</section>'+reviewView();
 }
 document.addEventListener('click',e=>{
