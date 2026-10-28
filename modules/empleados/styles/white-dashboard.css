@@ -1,0 +1,254 @@
+/* GESTLOK · Interfaz blanca para el módulo de empleados.
+   Un único lenguaje visual para dueños, gerentes, colaboradores y administración.
+   Respeta roles, RLS, recibos y configuraciones de cada empresa. */
+.app-shell{--g-white:#fff;--g-paper:#f6f9fc;--g-border:#e0e9f0;--g-ink:#17384f;
+  --g-muted:#667f90;--g-blue:#167492;--g-selected:#e8f5fa;
+  background:var(--g-paper);color:var(--g-ink);font-family:Inter,"Segoe UI",Arial,sans-serif}
+.app-shell :focus-visible{outline:3px solid #39a2b9;outline-offset:2px}
+.app-shell .app-navbar{background:#fff;color:#23465d;border-bottom:1px solid var(--g-border);
+  box-shadow:0 3px 15px #132f4308}
+.app-shell .app-navbar nav a[aria-current="page"]{background:#eaf5fa;color:#116f8f}
+.app-shell .app-navbar nav button{border-color:#dce8ef;color:#315971}
+.app-shell .app-navbar .brand-mark{background:#e9f6fa;border-color:#cfe8ef;color:#127894}
+.app-shell :is(.management-page,.organization-home,.owner-stat,.owner-panel,.gi-admin-card,.gi-admin-kpi){
+  border-radius:16px;border-color:#e1eaf0;box-shadow:0 7px 25px #1637480d}
+.app-shell .organization-home{background:#fff}
+.app-shell :is(.owner-panel,.gi-admin-card){background:#fff}
+.app-shell :is(.owner-action,.gi-admin-action){border-radius:12px}
+.app-shell :is(.owner-action,.gi-admin-action):hover{background:#f3f9fc;border-color:#c9e3ed}
+
+/* Dueños: idéntica navegación funcional, blanco y tarjetas claras. */
+.app-shell .owner-home{background:#f6f9fc;color:#1a3a50}
+.app-shell .owner-sidebar{background:#fff!important;color:#27475d!important;
+  border-right:1px solid #e0e8ef;box-shadow:4px 0 22px #123b4f0a;
+  scrollbar-width:thin;scrollbar-color:#c9dbe6 transparent;gap:2px}
+.app-shell .owner-brand{padding:0 6px 20px;color:#173d53;min-width:0}
+.app-shell .owner-brand b{background:linear-gradient(145deg,#0f829c,#0c5f8e);
+  border:0;color:#fff;border-radius:13px;font-family:Inter,system-ui,sans-serif}
+.app-shell .owner-brand small{color:#6c8799;line-height:1.2}
+.app-shell .owner-company-brand{margin:0 0 16px;background:#f8fbfc;
+  border:1px solid #e2eaf0;border-radius:13px;padding:10px 8px;min-width:0}
+.app-shell .owner-company-brand strong{font:750 14px/1.35 Inter,system-ui,sans-serif;
+  color:#23495f;overflow-wrap:anywhere;min-width:0}
+.app-shell .owner-company-brand small{color:#758b9a}
+.app-shell .owner-company-logo{background:#e4f2f7;color:#206b83;border:0}
+.app-shell .owner-sidebar .owner-caption{color:#8297a6;font-size:10px;letter-spacing:.11em}
+.app-shell .owner-sidebar nav{gap:4px;min-width:0}
+.app-shell .owner-sidebar :is(nav a,nav button,.owner-bottom>a,.owner-bottom>button){
+  min-width:0;min-height:44px;display:flex;align-items:center;gap:12px;
+  color:#3a5a70;border-radius:11px;white-space:normal;overflow-wrap:anywhere;
+  font:650 12.5px/1.35 Inter,system-ui,sans-serif;padding:11px 12px}
+.app-shell .owner-sidebar :is(nav a,nav button,.owner-bottom>a,.owner-bottom>button)>svg{
+  flex:0 0 19px;color:#2686a1}
+.app-shell .owner-sidebar nav .active{background:#e7f4fa;color:#126685;
+  box-shadow:inset 3px 0 #1fa0b3}
+.app-shell .owner-sidebar :is(nav a,nav button,.owner-bottom>a,.owner-bottom>button):hover{
+  background:#edf7fb;color:#145e78}
+.app-shell .owner-sidebar__group{border-top:1px solid #e1eaf0}
+.app-shell .owner-bottom>a{border-top:1px solid #e1eaf0}
+.app-shell .owner-bottom p{color:#7190a0}
+.app-shell .owner-sidebar__collapse{display:flex;align-items:center;gap:9px;min-height:38px;
+  margin:0 0 12px;padding:9px 11px;background:#f8fbfd;color:#41677e;
+  border:1px solid #dceaf2;border-radius:10px;font:700 11px Inter,system-ui,sans-serif}
+.app-shell .owner-sidebar__collapse:hover{background:#e9f5fa}
+.app-shell .owner-sidebar__collapse svg{flex:none}
+.app-shell .owner-main{background:transparent}
+.app-shell .owner-header--management{background:#fff;color:#1b3d53;
+  border-bottom:1px solid #e1eaf0;box-shadow:0 5px 20px #193b5009;border-radius:0 0 14px 14px}
+.app-shell .owner-header--management .owner-header-brand strong{color:#1a3f58}
+.app-shell .owner-header--management .owner-header-brand strong span{color:#169bb3}
+.app-shell .owner-header--management .owner-header-brand small{color:#7c90a0}
+.app-shell .owner-header--management .owner-header-tools>label{background:#f5f9fb;
+  border-color:#dbe8f0;color:#527388}
+.app-shell .owner-header--management .owner-header select{color:#214a62}
+.app-shell .owner-header--management .owner-bell{color:#246481}
+.app-shell .owner-header--management .owner-user{color:#234f68;border-color:#deebf2}
+.app-shell .owner-header--management .owner-user small{color:#6a8294}
+.app-shell .owner-header--management .owner-mobile{color:#23627e;background:#fff;border-color:#dce9f0}
+.app-shell .owner-panel,.app-shell .owner-stat{background:#fff;border-radius:17px}
+.app-shell .owner-legacy-actions button{background:#f7fafc;border-color:#dfe8ef;border-radius:12px}
+.app-shell .owner-legacy-actions button:hover{background:#eaf5fa}
+@media(min-width:681px){
+ .app-shell .owner-home:has(> .owner-sidebar.is-collapsed)>.owner-main{margin-left:76px}
+ .app-shell .owner-sidebar.is-collapsed{width:76px;padding:16px 10px}
+ .app-shell .owner-sidebar.is-collapsed .owner-brand{justify-content:center;padding:0 0 10px}
+ .app-shell .owner-sidebar.is-collapsed .owner-brand>span,
+ .app-shell .owner-sidebar.is-collapsed .owner-company-brand>strong,
+ .app-shell .owner-sidebar.is-collapsed .owner-sidebar__label,
+ .app-shell .owner-sidebar.is-collapsed .owner-caption,
+ .app-shell .owner-sidebar.is-collapsed .owner-bottom p,
+ .app-shell .owner-sidebar.is-collapsed .owner-badge{display:none}
+ .app-shell .owner-sidebar.is-collapsed .owner-company-brand{justify-content:center;padding:8px 3px;margin:0 0 12px}
+ .app-shell .owner-sidebar.is-collapsed .owner-company-image{max-width:44px;max-height:35px}
+ .app-shell .owner-sidebar.is-collapsed :is(nav a,nav button,.owner-bottom>a,.owner-bottom>button){
+   justify-content:center;padding:12px 3px;font-size:0;gap:0}
+ .app-shell .owner-sidebar.is-collapsed .owner-sidebar__collapse{
+   justify-content:center;padding:9px 0;font-size:0}
+}
+@media(max-width:680px){
+ .app-shell .owner-sidebar{width:min(290px,86vw);z-index:1015}
+ .app-shell .owner-sidebar__collapse{display:none}
+ .app-shell .owner-main{margin-left:0}
+}
+
+/* Gerentes: el mismo menú claro con cierre lateral, local y recibo propio. */
+.app-shell .gl-gerente{background:#f6f9fc;color:#19384d}
+.app-shell .gl-gerente .gl-gerente__sidebar{
+  background:#fff!important;color:#2c4b62!important;
+  border-right:1px solid #e0eaf0;box-shadow:4px 0 22px #143a4c0a;
+  scrollbar-width:thin;scrollbar-color:#c9dbe6 transparent}
+.app-shell .gl-gerente .gl-gerente__brand{border-bottom:1px solid #e1e9f0;gap:10px}
+.app-shell .gl-gerente .gl-gerente__brand strong{color:#173f55}
+.app-shell .gl-gerente .gl-gerente__brand small{color:#657e90;letter-spacing:.02em}
+.app-shell .gl-gerente .gl-gerente__company-letter{
+  background:#e5f4f8;color:#177a99}
+.app-shell .gl-gerente .gl-gerente__local-label{background:#f6fafc;color:#5a778b;
+  border:1px solid #e4edf1;border-radius:11px;padding:12px}
+.app-shell .gl-gerente .gl-gerente__local-label strong{color:#214b63}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button{
+  color:#375a6c;border-radius:11px;padding:12px;min-height:44px;
+  font:650 12.5px/1.4 Inter,system-ui,sans-serif}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button>svg{color:#258ba1}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active{
+  background:#e7f4fa;color:#116781;box-shadow:inset 3px 0 #22a8b5}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button:not(.active):hover{
+  background:#edf7fb;color:#1b607d}
+.app-shell .gl-gerente .gl-gerente__security{color:#66859a;border-top:1px solid #e5edf2}
+.app-shell .gl-gerente .gl-gerente__collapse{background:#f9fbfd;color:#335e77;
+  border:1px solid #dceaf1;border-radius:11px}
+.app-shell .gl-gerente .gl-gerente__collapse:hover{background:#eaf5fa}
+.app-shell .gl-gerente .gl-gerente__header{
+  background:#fff;color:#1b3c52;border-bottom:1px solid #e0e9ef;box-shadow:0 3px 15px #12374b09}
+.app-shell .gl-gerente .gl-gerente__header-brand strong{color:#153b54}
+.app-shell .gl-gerente .gl-gerente__header-brand strong span{color:#1599b5}
+.app-shell .gl-gerente .gl-gerente__header-brand small{color:#748d9c}
+.app-shell .gl-gerente .gl-gerente__user{color:#244c63}
+.app-shell .gl-gerente .gl-gerente__user small{color:#7590a1}
+.app-shell .gl-gerente .gl-gerente__menu{color:#25647e}
+.app-shell .gl-gerente :is(.mlg-local,.mlg-person,.mlg-stats>div,.gl-gerente__google){
+  border-radius:16px;border:1px solid #e0eaf1;background:#fff;box-shadow:0 5px 23px #183b4a0b}
+@media(max-width:940px){
+ .app-shell .gl-gerente .gl-gerente__menu{display:grid;place-items:center;color:#26617c;background:#fff}
+ .app-shell .gl-gerente .gl-gerente__sidebar{width:min(290px,86vw);z-index:1015}
+}
+
+/* Administración general: también blanca, sin ruta o rol especial por correo. */
+.app-shell .gi-admin-shell{background:#f5f9fc;color:#1d3c54}
+.app-shell .gi-admin-shell .gi-admin-sidebar{
+  background:#fff;color:#23485f;border-right:1px solid #e0eaf0;
+  box-shadow:4px 0 22px #18394d0a;scrollbar-color:#cbdce6 transparent}
+.app-shell .gi-admin-shell .gi-admin-brand{color:#1a435c}
+.app-shell .gi-admin-shell .gi-admin-brand small{color:#7890a2}
+.app-shell .gi-admin-shell .gi-admin-logo{background:linear-gradient(135deg,#0d8aa4,#1b648f)}
+.app-shell .gi-admin-shell .gi-admin-sidebar :is(nav>a,.gi-admin-sidebar-bottom>button){
+  color:#35566d;border-radius:11px;min-height:44px;padding:12px;
+  font:650 12.5px/1.35 Inter,system-ui,sans-serif}
+.app-shell .gi-admin-shell .gi-admin-sidebar :is(nav>a,.gi-admin-sidebar-bottom>button) svg{color:#2184a0}
+.app-shell .gi-admin-shell .gi-admin-sidebar nav>a[aria-current="page"]{
+  background:#e7f4fa;color:#146a88;box-shadow:inset 3px 0 #22a3b7}
+.app-shell .gi-admin-shell .gi-admin-sidebar nav>a:hover:not([aria-current="page"]){
+  background:#eef7fb;color:#1b5e79}
+.app-shell .gi-admin-shell .gi-admin-sidebar-bottom{border-top:1px solid #e1eaf0}
+.app-shell .gi-admin-shell .gi-admin-sidebar-bottom p{color:#748da0}
+.app-shell .gi-admin-shell .gi-admin-collapse{
+  background:#f8fbfd;color:#3b647e;border:1px solid #dce9f1;border-radius:11px}
+.app-shell .gi-admin-shell .gi-admin-collapse:hover{background:#ebf6fa}
+.app-shell .gi-admin-shell .gi-admin-content{background:#f5f9fc}
+.app-shell .gi-admin-shell .gi-admin-header h1{font-family:Inter,system-ui,sans-serif;
+  letter-spacing:-.04em;color:#173a52}
+.app-shell .gi-admin-shell .gi-admin-card h2{font-family:Inter,system-ui,sans-serif;color:#1b3e55}
+.app-shell .gi-admin-shell .gi-admin-avatar{background:#e4f2fa;color:#1a6384}
+.app-shell .gi-admin-shell .gi-admin-kpi,
+.app-shell .gi-admin-shell .gi-admin-card{border-color:#e0e9f0;border-radius:17px;
+  box-shadow:0 7px 25px #143a4a0b}
+@media(max-width:760px){
+ .app-shell .gi-admin-shell .gi-admin-sidebar{width:min(288px,86vw)}
+ .app-shell .gi-admin-shell .gi-admin-menu-button{color:#265c76;background:#fff;border:1px solid #d7e7ef}
+}
+
+/* Colaboradores: lectura y navegación compacta sin formularios de edición. */
+.app-shell .gl-employee-shell{display:flex;min-height:calc(100dvh - 48px);background:#f6f9fc;position:relative}
+.app-shell .gl-employee-sidebar{width:254px;flex:0 0 254px;position:relative;
+  background:#fff;border-right:1px solid #e0e9f0;box-shadow:3px 0 18px #11354808;
+  padding:19px 13px 22px;display:flex;flex-direction:column;gap:12px;
+  color:#1b3c52;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#cbdfe9 transparent;z-index:30}
+.app-shell .gl-employee-brand{display:flex;align-items:center;gap:10px;
+  padding:4px 7px 14px;border-bottom:1px solid #e6edf2;min-width:0}
+.app-shell .gl-employee-brand img{flex:0 0 43px}
+.app-shell .gl-employee-brand div{min-width:0}
+.app-shell .gl-employee-brand strong{font:850 18px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.04em}
+.app-shell .gl-employee-brand small{display:block;margin-top:4px;color:#738d9d;
+  font:550 10px/1.35 Inter,system-ui,sans-serif}
+.app-shell .gl-employee-company{display:flex;align-items:center;gap:9px;
+  padding:11px 8px;background:#f7fafc;border:1px solid #e2eaf0;border-radius:12px;min-width:0}
+.app-shell .gl-employee-company img{object-fit:contain;width:80px;height:48px;flex:none}
+.app-shell .gl-employee-company>div{min-width:0}
+.app-shell .gl-employee-company strong{display:block;font:750 12px Inter,system-ui,sans-serif;overflow-wrap:anywhere}
+.app-shell .gl-employee-company small{display:block;margin-top:3px;font:600 10px Inter,system-ui,sans-serif;color:#7892a3}
+.app-shell .gl-employee-company__initial{display:grid;place-items:center;flex:0 0 41px;height:41px;
+  border-radius:10px;background:#e5f3f9;color:#177d98;font-size:19px;font-weight:850}
+.app-shell .gl-employee-sidebar nav{display:grid;gap:5px}
+.app-shell .gl-employee-sidebar :is(nav button,.gl-employee-sidebar__bottom>button){
+  display:flex;align-items:center;gap:11px;min-height:45px;width:100%;
+  padding:11px 12px;border:0;border-radius:11px;background:transparent;
+  color:#365970;text-align:left;font:650 12.5px Inter,system-ui,sans-serif}
+.app-shell .gl-employee-sidebar :is(nav button,.gl-employee-sidebar__bottom>button)>svg{
+  flex:0 0 19px;color:#228ca6}
+.app-shell .gl-employee-sidebar :is(nav button,.gl-employee-sidebar__bottom>button):hover{
+  background:#eaf6fb;color:#146b86}
+.app-shell .gl-employee-sidebar__bottom{margin-top:auto;display:grid;gap:4px;
+  padding-top:12px;border-top:1px solid #e1ebf2}
+.app-shell .gl-employee-sidebar__bottom p{display:flex;gap:8px;align-items:center;
+  color:#6e8a9c;font-size:10.5px;margin:10px 6px}
+.app-shell .gl-employee-collapse{display:flex;align-items:center;gap:8px;min-height:38px;
+  border:1px solid #dfebf2;border-radius:10px;padding:9px 10px;background:#f9fbfd;
+  color:#38677e;font:750 11px Inter,system-ui,sans-serif}
+.app-shell .gl-employee-collapse:hover{background:#edf7fb}
+.app-shell .gl-employee-main{flex:1;min-width:0}
+.app-shell .gl-employee-top{display:flex;align-items:center;gap:12px;min-height:67px;
+  padding:12px 22px;background:#fff;border-bottom:1px solid #e1eaf1;color:#1b3c56}
+.app-shell .gl-employee-top>span{font:850 22px/1 Inter,system-ui,sans-serif;letter-spacing:-.04em}
+.app-shell .gl-employee-top>span span{color:#159ab4}
+.app-shell .gl-employee-top>small{margin-left:auto;font:750 10px Inter,system-ui,sans-serif;color:#6b8598}
+.app-shell .gl-employee-menu{display:none}
+.app-shell .employee-private-portal__hero{background:#fff;color:#193e56;border:1px solid #e0ebf1;
+  border-radius:18px;box-shadow:0 5px 25px #143a4b0b}
+.app-shell .employee-private-portal__hero>span{color:#20899f}
+.app-shell .employee-private-portal__hero h1{color:#173a54}
+.app-shell .employee-private-portal__hero p{color:#587487}
+.app-shell .employee-private-portal__hero small{background:#e9f5fa;color:#26677e}
+.app-shell .employee-private-portal__cards>div{min-width:0;scroll-margin-top:85px}
+.app-shell .employee-private-portal .employee-report,
+.app-shell .employee-sheets{border-radius:17px;border-color:#e0eaf0;
+  box-shadow:0 6px 25px #143a4b0b}
+@media(min-width:901px){
+ .app-shell .gl-employee-shell.is-collapsed .gl-employee-sidebar{width:76px;flex-basis:76px;padding:14px 9px}
+ .app-shell .gl-employee-shell.is-collapsed :is(.gl-employee-brand>div,.gl-employee-company>div,
+   .gl-employee-nav__label,.gl-employee-sidebar__bottom p){display:none}
+ .app-shell .gl-employee-shell.is-collapsed .gl-employee-brand{justify-content:center;padding-inline:0}
+ .app-shell .gl-employee-shell.is-collapsed .gl-employee-company{justify-content:center;padding:8px 2px}
+ .app-shell .gl-employee-shell.is-collapsed .gl-employee-company img{width:45px;height:36px}
+ .app-shell .gl-employee-shell.is-collapsed .gl-employee-collapse{justify-content:center;padding:10px 0}
+ .app-shell .gl-employee-shell.is-collapsed .gl-employee-sidebar :is(nav button,.gl-employee-sidebar__bottom>button){
+   justify-content:center;gap:0;padding:11px 3px}
+}
+@media(max-width:900px){
+ .app-shell .gl-employee-sidebar{position:fixed;inset:0 auto 0 0;z-index:1020;
+   width:min(290px,86vw);height:100dvh;transform:translateX(-105%);
+   transition:transform .2s ease;box-shadow:12px 0 35px #1437492e}
+ .app-shell .gl-employee-sidebar.is-open{transform:none}
+ .app-shell .gl-employee-scrim{position:fixed;inset:0;z-index:1019;border:0;
+   background:#122b4077}
+ .app-shell .gl-employee-collapse{display:none}
+ .app-shell .gl-employee-menu{display:grid;place-items:center;background:#fff;
+   border:1px solid #dfeaf1;color:#265f79;padding:8px}
+ .app-shell .gl-employee-main{width:100%}
+}
+@media(max-width:550px){
+ .app-shell .gl-employee-top{padding:11px 14px}
+ .app-shell .gl-employee-top>small{font-size:9px}
+ .app-shell .employee-private-portal{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ .app-shell .gl-employee-sidebar{transition:none}
+}
