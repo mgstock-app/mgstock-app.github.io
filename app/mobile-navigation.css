@@ -1,0 +1,63 @@
+/* GESTLOK · Dock solo en teléfono, sin tocar el diseño desktop.
+   Respeta los logos originales (el fondo negro de Mi Gusto no se fuerza a blanco). */
+.gl-mobile-dock,.gl-mobile-sheet{display:none}
+@media(max-width:899px){
+  .gl-mobile-dock:not([hidden]){
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:950;
+    justify-content:space-around;align-items:stretch;gap:2px;
+    min-height:calc(65px + env(safe-area-inset-bottom,0px));
+    padding:6px 6px calc(7px + env(safe-area-inset-bottom,0px));
+    background:#fff;border-top:1px solid #dce7ef;
+    box-shadow:0 -6px 20px #163a5020;
+  }
+  .gl-mobile-dock button{
+    display:flex;flex:1 1 0;min-width:0;max-width:110px;flex-direction:column;
+    align-items:center;justify-content:center;gap:4px;padding:5px 2px;
+    border:0;border-radius:12px;background:transparent;color:#62788b;
+    font:650 clamp(9px,2.6vw,11px)/1.15 Inter,system-ui,sans-serif;
+    cursor:pointer;touch-action:manipulation;
+  }
+  .gl-mobile-dock button svg{flex:none}
+  .gl-mobile-dock button[aria-current="page"]{color:#087ea6;background:#e8f5fb}
+  .gl-mobile-dock button:focus-visible,.gl-mobile-sheet button:focus-visible{outline:3px solid #33a4be;outline-offset:1px}
+  html.gl-mobile-dock-present #hub:not([hidden]){padding-bottom:calc(93px + env(safe-area-inset-bottom,0px))}
+  html.gl-mobile-dock-present #app:not([hidden]) .main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+  html.gl-mobile-dock-present #app:not([hidden]) .savebar{bottom:calc(65px + env(safe-area-inset-bottom,0px))}
+  .gl-mobile-sheet:not([hidden]){display:block;position:fixed;inset:0;z-index:1050}
+  .gl-mobile-sheet__scrim{position:absolute;inset:0;border:0;background:#122a4159;width:100%;height:100%}
+  .gl-mobile-sheet__panel{
+    position:absolute;bottom:0;left:0;right:0;max-height:min(79dvh,660px);
+    overflow:auto;background:#fff;border-radius:21px 21px 0 0;
+    padding:17px 16px calc(20px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -10px 42px #152d4740;color:#1c4158;
+  }
+  .gl-mobile-sheet__panel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .gl-mobile-sheet__panel header strong{font:800 17px Inter,system-ui}
+  .gl-mobile-sheet__panel header button{border:0;background:#f1f7fa;border-radius:11px;font-size:26px;width:42px;height:42px;color:#23475a}
+  .gl-mobile-sheet__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .gl-mobile-sheet__links button{min-height:46px;border:1px solid #e0eaf0;border-radius:11px;background:#f8fbfd;color:#27516c;font:700 12px Inter,system-ui;text-align:left;padding:11px}
+}
+/* Portadas móviles: tarjetas más compactas, blancas y fáciles de recorrer. */
+@media(max-width:560px){
+ .gl-oh-hub .gl-oh-main.hub-in{padding:13px 12px 93px}
+ .gl-oh-hub .gl-owner-landing,.gl-manager-landing{max-width:100%}
+ .gl-owner-landing .gl-owner-areas{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .gl-owner-landing .gl-owner-areas-one{grid-template-columns:1fr}
+ .gl-owner-landing .gl-owner-area{min-height:168px;padding:14px 11px;border:1px solid #dce8f0;border-radius:16px;box-shadow:0 4px 14px #193c4d0b}
+ .gl-owner-landing .gl-owner-area-icon{width:42px;height:42px;margin-bottom:10px;border-radius:12px}
+ .gl-owner-landing .gl-owner-area-icon svg{width:26px;height:26px}
+ .gl-owner-landing .gl-owner-area-title{align-items:start;gap:4px;min-height:46px}
+ .gl-owner-landing .gl-owner-area h2{font-size:clamp(14px,3.8vw,18px);line-height:1.2;letter-spacing:-.02em}
+ .gl-owner-landing .gl-owner-arrow{width:30px;height:30px;min-width:30px;border-radius:10px}
+ .gl-owner-landing .gl-owner-arrow svg{width:18px;height:18px}
+ .gl-owner-landing .gl-owner-area>p{margin:5px 0;font-size:11px;line-height:1.4}
+ .gl-owner-landing .gl-owner-area-list{display:none}
+ .gl-owner-landing .gl-owner-quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .gl-owner-landing .gl-owner-tile{min-height:87px;font-size:12px}
+ .gl-owner-landing .gl-owner-welcome{margin-bottom:12px}
+}
+@media(max-width:350px){
+ .gl-owner-landing .gl-owner-areas{grid-template-columns:1fr}
+ .gl-owner-landing .gl-owner-area{min-height:120px}
+}
+@media print{.gl-mobile-dock,.gl-mobile-sheet{display:none!important}}
