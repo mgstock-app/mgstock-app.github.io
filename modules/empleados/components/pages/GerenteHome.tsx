@@ -28,7 +28,7 @@ export function GerenteHome() {
     try{localStorage.setItem("gestlok:manager-menu-collapsed",next?"yes":"no");}catch{}
   };
   const [section, setSection] = useState<"legajos" | "horarios" | "recibo">("legajos");
-  useEffect(() => { if (new URLSearchParams(window.location.search).get("seccion") === "horarios") setSection("horarios"); }, []);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("seccion") !== "horarios") return; let active=true; queueMicrotask(()=>{if(active)setSection("horarios");}); return ()=>{active=false;}; }, []);
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
   const company = useGestlokCompany();
   const companyName = company?.company_name || "Mi empresa";
