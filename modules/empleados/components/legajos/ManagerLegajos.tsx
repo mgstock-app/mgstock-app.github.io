@@ -204,9 +204,11 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
       <div><UserRoundX color="#c73b51"/><span>Inactivos</span><strong>{loading?"—":totals.inactive}</strong></div>
     </div>}
     <div className="mlg-filters"><label><Search size={18}/><input type="search" placeholder="Buscar colaborador por nombre…" value={search} onChange={e=>setSearch(e.target.value)} aria-label="Buscar colaborador"/></label>
-      <select aria-label="Filtrar por local" value={localFilter} onChange={e=>setLocalFilter(e.target.value)}>
-        <option value="todos">Todos los locales</option>{locals.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-      </select>
+      {locals.length === 1
+        ? <span className="mlg-current-local"><Store size={16}/>{localTitle(locals[0])}</span>
+        : <select aria-label="Filtrar por local" value={localFilter} onChange={e=>setLocalFilter(e.target.value)}>
+            <option value="todos">Todos los locales</option>{locals.map(l=><option key={l.id} value={l.id}>{localTitle(l)}</option>)}
+          </select>}
       <button type="button" onClick={updateView} aria-label="Actualizar" disabled={loading}><RotateCw size={18}/></button>
     </div>
     {error && <p className="mlg-error" role="alert">{error}</p>}
