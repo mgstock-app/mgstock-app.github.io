@@ -7,9 +7,9 @@ const js=read('public/stock/gestlok-demo-tour.js');
 const css=read('public/stock/gestlok-demo-showcase.css');
 const runtime=read('components/stock-runtime.tsx');
 const sw=read('scripts/sw-template.js');
-test('Tour en web real conserva scripts de negocio con backend ficticio y 9 etapas manuales',()=>{
+test('Tour en web real conserva scripts de negocio con backend ficticio y 10 etapas manuales',()=>{
  assert.doesNotThrow(()=>new vm.Script(js));
- for(const title of ["Inicio","Empresa","Proveedores","Colaboradores","Precios","Stock","Pedidos","Vencimientos","Final"])
+ for(const title of ["Inicio","Empresa","Proveedores","Colaboradores","Precios","Stock","Pedidos","Vencimientos","Pagos Online","Final"])
   assert.match(js,new RegExp("name:'"+title+"'"));
  assert.match(js,/document\.getElementById\('hub'\)/);
  assert.match(js,/document\.getElementById\('app'\)/);
@@ -50,6 +50,6 @@ test('Estilos aislados únicamente en demo; escritorio y móvil adaptables',()=>
 
  assert.match(css,/gl-tour-phone-screen/);
  assert.match(css,/gl-tour-sandbox/);
- assert.match(runtime,/gestlok-demo-tour\.js\?rev=explorar-atajos-20261029/);
+ assert.match(runtime,/gestlok-demo-tour\.js\?rev=pagos-online-20261029/);
  assert.match(sw,/gestlok-demo-showcase\.css/);
 });
