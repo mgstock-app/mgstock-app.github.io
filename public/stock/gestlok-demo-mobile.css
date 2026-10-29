@@ -139,4 +139,15 @@ html.gl-visitor-mode {
  .gl-visitor-mode #gl-demo-emp .gl-dh-mobile-dock{left:50%;right:auto;transform:translateX(-50%);width:min(420px,100%)}
  .gl-visitor-mode #gl-tour-final{width:min(440px,100%);margin:12px auto}
 }
+/* Mantener paneles por debajo de la barra del tour, incluso con safe-area,
+   zoom o barras del navegador desplazadas. */
+@media(max-width:899px){
+ .gl-visitor-mode #gl-demo-emp{top:calc(var(--gl-tour-header,210px) + 26px)!important}
+}
+@media(min-width:900px){
+ /* En vista teléfono sobre PC, la barra no debe superponerse a los botones
+    de la maqueta cuando el navegador hace scroll para interactuar. */
+ .gl-visitor-mode #gl-visitor-bar{position:relative!important;top:auto!important}
+ .gl-visitor-mode #gl-demo-emp{top:calc(var(--gl-tour-header,170px) + 12px)!important}
+}
 @media(prefers-reduced-motion:reduce){.gl-visitor-mode *{scroll-behavior:auto!important}}
