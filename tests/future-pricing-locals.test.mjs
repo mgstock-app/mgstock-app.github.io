@@ -1,0 +1,48 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const ui=read('public/stock/gestlok-future-pricing.js');
+const sql=read('supabase/migrations/20261029123500_precios_stock_locales_futuros.sql');
+test('Nuevo módulo mantiene identidad, precio y UI para cada local',()=>{
+ const root={document:{addEventListener:()=>{},querySelector:()=>null},window:{},Intl,Date};
+ vm.runInNewContext(ui,root);
+ const module=root.window.GestLokFuturePricing;
+ assert.ok(module);
+ assert.equal(module.price(10000,70),17000);
+ assert.equal(module.price(25000,20),30000);
+ assert.equal(module.price(19000,0),19000);
+ assert.deepEqual(Array.from(module.localIds()),[]);
+ assert.match(ui,/gestlok_future_pricing_scope/);
+ assert.match(ui,/gestlok_future_local_prices_stock/);
+ assert.match(ui,/getUser\(\)/);
+ assert.match(ui,/\.eq\('tenant_id',tenant\)\.eq\('local_id',local\)/);
+ assert.match(ui,/No tenés acceso a este local/);
+ assert.doesNotMatch(ui,/@gmail\.com/);
+});
+test('Mi Gusto actual y futuro queda excluido en el servidor, y Belisa conserva su piloto',()=>{
+ assert.match(sql,/cb0dc04a-9a13-434f-a3d0-47f1d8f39670/);
+ assert.match(sql,/mi-gusto/);
+ assert.match(sql,/company_name/);
+ assert.match(sql,/2a97bf8d-7d08-4aa7-b051-5d1a4dc80103/);
+ assert.match(sql,/loc-2a97bf8d7d084aa7b051/);
+ assert.match(sql,/public\.gestlok_owner_area_context\(\)/);
+ assert.match(sql,/gestlok_tenancy\.current_tenant_id\(\)/);
+ assert.match(sql,/public\.mi_rol\(\)/);
+ assert.match(sql,/security invoker/);
+ assert.match(sql,/enable row level security/);
+ assert.match(sql,/created_by=\(select auth\.uid\(\)\)/);
+ assert.match(sql,/with check/);
+ assert.doesNotMatch(sql,/(alter table public\.docs|delete from public\.docs|drop table public\.docs|truncate)/i);
+ assert.doesNotMatch(sql,/grant (?:select|insert|update) on public\.gestlok_future_local_prices_stock to anon/i);
+});
+test('La instalación PWA incluye el módulo privado, sin cambiar ReciboNet',()=>{
+ const runtime=read('components/stock-runtime.tsx'),sw=read('scripts/sw-template.js'),owner=read('public/stock/gestlok-owner-areas.js'),layout=read('app/layout.tsx');
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-future-pricing\.js/);
+ assert.match(sw,/'\/stock\/gestlok-future-pricing\.js'/);
+ assert.match(owner,/GestLokFuturePricing\?\.refresh\?\.\(data,api\)/);
+ assert.match(owner,/GestLokFuturePricing\?\.homeTile\?\.\(state\.data,api\)/);
+ assert.match(layout,/gestlok-future-pricing\.css/);
+ assert.match(ui,/render\(\)/);
+});
