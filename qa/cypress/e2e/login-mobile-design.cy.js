@@ -14,7 +14,7 @@ describe('GESTLOK: ingreso móvil aprobado',()=>{
   };
   it('celular: logo grande, acceso claro, sin cuadro diminuto ni desborde',()=>{
     cy.viewport(390,844);open();
-    cy.get('#auth .au-cover img').should('be.visible').and('have.attr','src','icons/gestlok.svg');
+    cy.get('#auth .au-cover img').should('be.visible').and('have.attr','src','icons/gestlok-wordmark.svg');
     cy.get('#auth .au-cover').should('contain.text','Tu negocio, en orden.');
     cy.get('#au-in h1').should('have.text','Bienvenido a GestLok');
     cy.get('#au-in .gbtn').should('be.visible');
