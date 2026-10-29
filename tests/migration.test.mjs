@@ -13,6 +13,13 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     // Preserve the original stock fingerprint. Remove only precisely reviewed
     // additive hooks: changes to existing auth, screens or stock logic still fail.
     if (path === 'public/stock/app.js') {
+      // Revertir exclusivamente los hooks revisados del módulo Pagos Online.
+      // El hash original de stock sigue siendo la autoridad; no se cambia la huella.
+      const pagosHooks=JSON.parse(read('tests/mi-gusto-pagos-online-hooks.json')).hooks;
+      for(const {actual,original} of pagosHooks){
+        assert.equal(content.split(actual).length-1,1,'Un solo hook controlado de Pagos Online');
+        content=content.replace(actual,original);
+      }
       const hook = '  window.GestLokRoleSwitcher?.render();\n';
       assert.equal(content.split(hook).length - 1, 3, 'Exactly three profile render hooks');
       content = content.replaceAll(hook, '');
