@@ -3,12 +3,19 @@
 html.gl-visitor-mode {
  --gl-demo-navy:#142f46;--gl-demo-blue:#0879b7;--gl-demo-line:#e0eaf2;
 }
+.gl-visitor-mode #gl-visitor-bar{background:#fff;color:#142f46;border-bottom:1px solid #dbe8f1;box-shadow:0 3px 16px #173e5210}
+.gl-visitor-mode #gl-visitor-bar .gl-visitor-sign small{color:#5d7688}
+.gl-visitor-mode #gl-visitor-bar .gl-visitor-controls label{color:#38596f}
+.gl-visitor-mode #gl-visitor-bar .gl-visitor-controls select{border-color:#d2e1ed;color:#142f46;background:#f9fcfe}
+.gl-visitor-mode #gl-visitor-reset{background:#fff;color:#24526f;border:1px solid #d4e5ef}
+.gl-visitor-mode #gl-visitor-reset:hover{background:#eef7fc}
+.gl-visitor-mode .gl-visitor-exit{background:#e6f4fb;color:#0a618c}
 .gl-visitor-mode #gl-tour-controls{color:#23455d}
 .gl-visitor-mode .gl-tour-nav{overflow-x:auto;justify-content:flex-start;padding:3px 0 6px;scrollbar-width:thin}
 .gl-visitor-mode .gl-tour-nav button{flex:0 0 auto;min-width:38px;min-height:37px;
  background:#fff;color:#25465e;border:1px solid #dce8f0;box-shadow:none;font-weight:700}
 .gl-visitor-mode .gl-tour-nav button[aria-current="step"]{background:#e7f4fc;color:#075d94;border-color:#b9dbec}
-.gl-visitor-mode .gl-tour-hint{color:#deecf4;line-height:1.4}
+.gl-visitor-mode .gl-tour-hint{color:#5c768c;line-height:1.4}
 .gl-visitor-mode .gl-tour-end{background:#fff!important;border-color:#e0eaf2;color:#142f46;border-radius:18px}
 .gl-visitor-mode .gl-tour-end h2{color:#142f46;font-weight:800}
 .gl-visitor-mode .gl-tour-end .btn.primary{background:#0879b7;color:#fff;border-color:#0879b7}
