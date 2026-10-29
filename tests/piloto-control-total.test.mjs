@@ -13,7 +13,7 @@ test("Centro piloto tiene 21 áreas incluyendo Pedidos, sin ampliar roles del re
  assert.ok(mod);
  assert.equal(mod.modules.length,21);
  assert.ok(mod.modules.includes('pedidos'));
- assert.equal(new Set(mod.modules).size,20);
+ assert.equal(new Set(mod.modules).size,21);
  assert.equal(mod.homeTile({tenant_id:"10d56b45-fda2-44a9-a48a-6ad262aaf78a",role:"dueno"},{S:{me:{tenant_id:"10d56b45-fda2-44a9-a48a-6ad262aaf78a",email:"otro@example.com"}},role:()=>"dueno"}),"");
  assert.match(ui,/data-pilot-open/);
  assert.match(ui,/data-pilot-orders/);
