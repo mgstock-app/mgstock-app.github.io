@@ -1,5 +1,9 @@
 name: GESTLOK · Auditoría visual del sitio publicado
 on:
+  # Auditar la web REAL después de una publicación correcta, no antes.
+  workflow_run:
+    workflows: ["Publish mgstock"]
+    types: [completed]
   pull_request:
     paths:
       - scripts/audit-live-responsive.mjs
@@ -11,6 +15,8 @@ permissions:
 
 jobs:
   live-visual:
+    # Si falló el despliegue, no analizar una versión anterior como si fuera la nueva.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
