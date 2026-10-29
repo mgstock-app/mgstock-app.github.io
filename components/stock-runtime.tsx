@@ -34,7 +34,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
-      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=pagos-online-20261029");
+      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=historial-dia-turno-20261029");
       await load("/stock/munro-motos.js?rev=motos-guardar-20261027");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=piloto-perfumes-20261029");

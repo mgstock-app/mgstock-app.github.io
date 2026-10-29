@@ -47,6 +47,33 @@ test('Pagos Online: switches APP, fórmulas y RLS/flujo de componentes',()=>{
  assert.match(read('components/stock-runtime.tsx'),/if \(!visitor\) await load\("\/stock\/mi-gusto-cierre-online\.js/);
  assert.match(read('app/mi-gusto-pagos-online.css'),/grid-template-columns:1fr 1fr/);
 });
+test('Historial del día agrupa mañana y tarde, y conserva totales sin repetir APP',()=>{
+ const m=client();
+ const rows=[
+  {id:'m1',day:'2026-10-29',turno:'manana',total_ventas:1000,total_app:200,online_local:800,transferencia:600,getnet:300,mercado_pago:100,comandas:3},
+  {id:'t1',day:'2026-10-29',turno:'tarde',total_ventas:2500,total_app:500,online_local:2000,transferencia:1000,getnet:1000,mercado_pago:500,comandas:4},
+  {id:'m2',day:'2026-10-28',turno:'manana',total_ventas:400,total_app:0,online_local:400,transferencia:400,getnet:0,mercado_pago:0,comandas:1},
+ ];
+ const groups=m._test.historyGroups(rows);
+ assert.equal(groups.length,2);
+ assert.equal(groups[0].day,'2026-10-29');
+ assert.equal(groups[0].shifts.length,2);
+ assert.equal(groups[0].total_ventas,3500);
+ assert.equal(groups[0].total_app,700);
+ assert.equal(groups[0].online_local,2800);
+ assert.equal(groups[0].transferencia,1600);
+ assert.equal(groups[0].getnet,1300);
+ assert.equal(groups[0].mercado_pago,600);
+ assert.equal(groups[0].comandas,7);
+ assert.equal(groups[1].online_local,400);
+ const script=read('public/stock/mi-gusto-cierre-online.js');
+ assert.match(script,/id="mg-on-history-view"/);
+ assert.match(script,/id="mg-on-turn-filter"/);
+ assert.match(script,/id="mg-on-date-filter"/);
+ assert.match(script,/data-mgon-clear-filters/);
+ assert.match(script,/shiftHistoryCard\(s\)/);
+ assert.match(script,/oldRows\(s\)/);
+});
 test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento',async()=>{
  const db=new PGlite();
  try{
