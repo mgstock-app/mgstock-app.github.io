@@ -94,7 +94,8 @@ describe('DEMO web · carrusel manual de 10 etapas + teléfono interactivo',()=>
  it('móvil aprovecha el espacio con accesos directos a etapas ficticias y los oculta al finalizar',()=>{
   start(390);
   cy.get('#gl-tour-discover').should('be.visible');
-  cy.get('#gl-tour-discover .gl-tour-discover-card').should('have.length',6);
+  cy.get('#gl-tour-discover .gl-tour-discover-card').should('have.length',7);
+  cy.get('#gl-tour-discover [data-tour="8"]').should('contain.text','Pagos Online');
   cy.get('#gl-tour-discover [data-tour="4"]').click();
   cy.get('#gl-tour-sandbox').should('be.visible').and('contain.text','Precios');
   cy.get('.gl-tour-nav [aria-current="step"]').should('have.attr','data-tour','4');
