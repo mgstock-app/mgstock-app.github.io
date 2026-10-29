@@ -10,7 +10,6 @@ const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',max
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
 const shiftName=x=>x==='manana'?'Mañana':'Tarde';
 let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', gen=0;
-let nextTick=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local())));
@@ -45,15 +44,15 @@ function status(){
 function currentHead(){
  const s=snapshot?.active;
  return '<div class="mg-on-head"><div><small>MI GUSTO · '+esc(LOCALS[local()]||'')+'</small>'+
- '<h2>Cierre online</h2><p>Movimientos por turno y forma de pago. Montos cargados manualmente.</p></div>'+
+ '<h2>Pagos Online</h2><p>Control de comandas y cierres por turno, separado por sucursal.</p></div>'+
  '<div class="mg-on-period"><span>Fecha <strong>'+date(s?.day)+'</strong></span>'+
  '<span>Turno <strong>'+esc(shiftName(s?.turno||'manana'))+'</strong></span>'+
  '<span class="mg-on-open">● Abierto</span></div></div>';
 }
 function nav(){
- return '<nav class="mg-on-tabs" aria-label="Cierre online"><button type="button" data-mgon-tab="resumen" aria-current="'+(tab==='resumen'?'page':'false')+'">Resumen diario</button>'+
- '<button type="button" data-mgon-tab="movimientos" aria-current="'+(tab==='movimientos'?'page':'false')+'">Movimientos</button>'+
- '<button type="button" data-mgon-tab="historial" aria-current="'+(tab==='historial'?'page':'false')+'">Historial</button></nav>';
+ return '<nav class="mg-on-tabs" aria-label="Pagos Online">'+
+ '<button type="button" data-mgon-tab="resumen" aria-current="'+(tab==='resumen'?'page':'false')+'">Resumen del turno e historial</button>'+
+ '<button type="button" data-mgon-tab="movimientos" aria-current="'+(tab==='movimientos'?'page':'false')+'">Carga de pedidos</button></nav>';
 }
 function movementList(){
  const rows=snapshot?.active?.movements||[];
@@ -76,7 +75,7 @@ function entry(){
  (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
 }
 function movements(){
- return '<div class="mg-on-section"><header><h3>Movimientos del turno</h3><p>Registrá cada comanda y activá APP únicamente cuando corresponda.</p></header>'+
+ return '<div class="mg-on-section"><header><h3>Carga manual de pedidos</h3><p>Cargá cada pedido individualmente con su comanda, monto, pago y switch APP.</p></header>'+
  entry()+movementList()+'</div>'+status()+
  '<div class="mg-on-close"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
  '<button type="button" data-mgon-close '+(!writable()?'disabled':'')+'>Cerrar turno →</button></div>';
@@ -98,7 +97,7 @@ function summary(){
  '<div class="mg-on-shifts">'+shiftCard(morning)+shiftCard(afternoon)+'</div>'+
  '<p class="mg-on-note">Total APP = suma de comandas con APP activado. Online Local = Total ventas − Total APP.</p>'+
  '<div class="mg-on-actions"><button type="button" data-mgon-tab="movimientos" class="mg-on-primary">Cargar comandas</button>'+
- '<button type="button" data-mgon-tab="historial">Ver historial</button></div></section>';
+ '<button type="button" data-mgon-jump-history>Ver historial</button></div>'+history()+'</section>';
 }
 function oldRows(s){
  return '<div class="mg-on-detail"><h4>Movimientos individuales · '+esc(shiftName(s.turno))+'</h4>'+
@@ -108,7 +107,7 @@ function oldRows(s){
 }
 function history(){
  const entries=(snapshot?.history||[]).filter(s=>!filter||String(s.day).includes(filter));
- return '<section class="mg-on-section"><header><h3>Historial de cierres</h3><p>Detalle guardado por día, turno y sucursal. Los cierres no se pueden modificar.</p></header>'+
+ return '<section class="mg-on-history-embedded"><header><h3>Historial de cierres</h3><p>Detalle guardado por día, turno y sucursal. Los cierres no se pueden modificar.</p></header>'+
  '<label class="mg-on-filter">Filtrar por fecha <input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+
  (entries.length?'<div class="mg-on-history">'+entries.map(s=>
  '<article class="mg-on-history-card"><header><div><strong>'+date(s.day)+' · '+esc(shiftName(s.turno))+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas</small></div>'+
@@ -123,7 +122,7 @@ function view(){
  return '<div class="mg-on-page">'+currentHead()+nav()+
  (error?'<p class="mg-on-error" role="alert">'+esc(error)+'</p>':'')+
  (!online()?'<p class="mg-on-offline">Sin conexión: esta sección solo permite registrar y cerrar turnos con internet.</p>':'')+
- (!snapshot?'<p role="status">Cargando cierre online autorizado…</p>':tab==='movimientos'?movements():tab==='historial'?history():summary())+
+ (!snapshot?'<p role="status">Cargando pagos online autorizados…</p>':tab==='movimientos'?movements():summary())+
  '</div>';
 }
 async function action(name,args,notify){
@@ -131,7 +130,7 @@ async function action(name,args,notify){
  saving=true;error='';
  try{await rpc(name,args);editing=null;await rpcRefresh();if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
- finally{saving=false;}
+ finally{saving=false;if(allowed()&&api?.S?.view==='cierre-online')api.render();}
 }
 async function rpcRefresh(){
  const current=local(),value=await rpc('gestlok_mg_online_state');if(current!==local())return;
@@ -142,6 +141,8 @@ function attach(h){
  api=h;
  document.addEventListener('click',e=>{
   if(!allowed())return;
+  const jump=e.target.closest('[data-mgon-jump-history]');
+  if(jump){document.querySelector('.mg-on-history-embedded')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const tabButton=e.target.closest('[data-mgon-tab]');
   if(tabButton){tab=tabButton.dataset.mgonTab;error='';api.render();return;}
   const cancel=e.target.closest('[data-mgon-cancel]');
