@@ -135,3 +135,6 @@ html.gl-tour-layout-active body{overflow-x:clip}
  .gl-tour-layout-active #gl-visitor-bar{flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){.gl-tour-layout-active *{scroll-behavior:auto!important;transition:none!important}}
+
+/* El encabezado interno no puede tapar tarjetas al desplazarse dentro del teléfono. */
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-oh-top{position:relative!important;top:auto!important;z-index:1!important}
