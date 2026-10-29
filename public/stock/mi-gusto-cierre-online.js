@@ -8,7 +8,7 @@ const METHODS={transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Merca
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
-const shiftName=x=>x==='manana'?'Mañana':'Tarde';
+const shiftName=x=>x==='manana'?'Mañana':'Noche';
 const SCALE_KEY='gestlok:pagos-online:escala-v1';
 const clampScale=x=>Math.min(110,Math.max(85,Math.round(Number(x)/5)*5));
 let pageScale=null;
@@ -32,13 +32,13 @@ function changeScale(delta){
  if(minus)minus.disabled=pageScale<=85;
  if(plus)plus.disabled=pageScale>=110;
 }
-let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', gen=0;
+let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, photoUrls={}, photoError='', gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local())));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-function reset(){++gen;snapshot=null;tab='resumen';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';}
+function reset(){++gen;snapshot=null;tab='resumen';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;photoUrls={};photoError='';}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -114,12 +114,62 @@ function movements(){
  '<div class="mg-on-close"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
  '<button type="button" data-mgon-close '+(!writable()?'disabled':'')+'>Cerrar turno →</button></div>';
 }
+function photoControl(s){
+ if(!s||s.status!=='cerrado')return '';
+ if(s.photo_path)return '<button type="button" class="mg-on-photo-btn" data-mgon-view-photo="'+esc(s.id)+'">📷 Ver foto del cierre</button>';
+ return '<label class="mg-on-photo-upload '+(uploading===s.id?'mg-on-busy':'')+'">📷 '+(uploading===s.id?'Subiendo foto…':'Subir foto')+
+  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!online()||uploading?'disabled':'')+'></label>';
+}
+async function compressPhoto(file){
+ if(!file||!file.type.startsWith('image/')||file.size>15*1024*1024)throw Error('Elegí una imagen de hasta 15 MB.');
+ const bmp=await createImageBitmap(file);
+ const max=1500,factor=Math.min(1,max/Math.max(bmp.width,bmp.height));
+ const canvas=document.createElement('canvas');canvas.width=Math.round(bmp.width*factor);canvas.height=Math.round(bmp.height*factor);
+ const ctx=canvas.getContext('2d');
+ if(!ctx)throw Error('No se pudo preparar la imagen.');
+ ctx.drawImage(bmp,0,0,canvas.width,canvas.height);bmp.close?.();
+ const exportBlob=q=>new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',q));
+ let blob=await exportBlob(.79);
+ if(blob?.size>2800000)blob=await exportBlob(.57);
+ if(!blob||!blob.size||blob.size>3000000)throw Error('La foto es demasiado grande. Probá con otra.');
+ return new File([blob],'cierre.jpg',{type:'image/jpeg'});
+}
+async function photoRequest(body){
+ const result=await window.GestLokSupabase.functions.invoke('mg-online-closure-photo',{body});
+ if(result.error)throw Error(result.data?.error||'No pudimos procesar la fotografía. Revisá tu conexión.');
+ if(result.data?.error)throw Error(result.data.error);
+ return result.data;
+}
+async function uploadPhoto(id,file){
+ if(!writable()||uploading||!file)return;
+ const shift=[snapshot?.active,...(snapshot?.history||[])].find(x=>x?.id===id&&x.status==='cerrado');
+ if(!shift)return;
+ uploading=id;photoError='';api.render();
+ try{
+  const jpg=await compressPhoto(file);
+  const form=new FormData();form.set('action','upload');form.set('local',local());form.set('shift_id',id);form.set('photo',jpg);
+  const result=await photoRequest(form);
+  if(!result?.ok)throw Error('No se pudo completar la carga.');
+  modalDay=shift.day;modalTab=shift.turno;
+  await rpcRefresh();
+  api.toast?.('Foto asociada al cierre de '+shiftName(shift.turno)+'.');
+ }catch(e){photoError=e.message||'No se pudo subir la foto';api.render();}
+ finally{uploading=null;api.render();}
+}
+async function showPhoto(id){
+ if(!allowed()||!online())return;
+ if(photoUrls[id]){photoUrls[id]=null;api.render();return;}
+ try{
+  const data=await photoRequest({action:'get',local:local(),shift_id:id});
+  photoUrls[id]=data.signedUrl;photoError='';api.render();
+ }catch(e){photoError=e.message||'No se pudo abrir la foto';api.render();}
+}
 function shiftCard(s){
- if(!s)return '<article class="mg-on-shift"><h3>Sin movimientos</h3><p>Este turno todavía no tiene registros guardados.</p></article>';
+ if(!s)return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(arguments[1]||'tarde'))+'</h3><span class="mg-on-pending">Próximo turno</span></header><p class="mg-on-empty">Sin movimientos. Este turno todavía no tiene registros guardados.</p></article>';
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
  [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['total_app','Total APP'],['total_ventas','Total ventas'],['online_local','Online Local']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
- '<small>'+Number(s.comandas||0)+' comandas registradas</small></article>';
+ '<small>'+Number(s.comandas||0)+' comandas registradas</small>'+photoControl(s)+'</article>';
 }
 function summary(){
  const curr=snapshot?.active, all=[curr,...(snapshot?.history||[])].filter(Boolean).filter(s=>s.day===curr?.day);
@@ -128,7 +178,7 @@ function summary(){
  const onlineLocal=Number(morning?.online_local||0)+Number(afternoon?.online_local||0);
  return '<section class="mg-on-dashboard"><h3>Resumen diario · '+date(curr?.day)+'</h3>'+
  '<div class="mg-on-hero"><div><span>Total ventas del día</span><strong>'+cash(total)+'</strong></div><div><span>Online Local</span><strong>'+cash(onlineLocal)+'</strong></div></div>'+
- '<div class="mg-on-shifts">'+shiftCard(morning)+shiftCard(afternoon)+'</div>'+
+ '<div class="mg-on-shifts">'+shiftCard(morning,'manana')+shiftCard(afternoon,'tarde')+'</div>'+
  '<p class="mg-on-note">Total APP = suma de comandas con APP activado. Online Local = Total ventas − Total APP.</p>'+
  '<div class="mg-on-actions"><button type="button" data-mgon-tab="movimientos" class="mg-on-primary">Cargar comandas</button>'+
  '<button type="button" data-mgon-jump-history>Ver historial</button></div>'+history()+'</section>';
@@ -164,34 +214,55 @@ function shiftHistoryCard(s){
   historyTotals(s)+(opened===s.id?oldRows(s):'')+'</article>';
 }
 function dayHistoryCard(d){
- return '<article class="mg-on-history-day"><header><div><small>RESUMEN DEL DÍA</small><h4>'+
- date(d.day)+'</h4><p>'+d.shifts.length+' '+(d.shifts.length===1?'turno cerrado':'turnos cerrados')+
- ' · '+d.comandas+' comandas</p></div><span class="mg-on-closed">✓ Guardado</span></header>'+
- historyTotals(d)+'<div class="mg-on-history-day-shifts">'+
- d.shifts.slice().sort((a,b)=>a.turno==='manana'?-1:1).map(shiftHistoryCard).join('')+
- '</div></article>';
+ return '<article class="mg-on-history-day mg-on-day-row"><div class="mg-on-day-info">'+
+  '<strong>'+date(d.day)+'</strong>'+
+  '<small>'+d.shifts.length+' de 2 turnos cerrados · '+d.comandas+' comandas</small></div>'+
+  '<div class="mg-on-day-amount"><small>Total ventas</small><strong>'+cash(d.total_ventas)+'</strong></div>'+
+  '<div class="mg-on-day-amount"><small>Online Local</small><strong>'+cash(d.online_local)+'</strong></div>'+
+  '<button type="button" class="mg-on-day-open" data-mgon-open-day="'+esc(d.day)+'">Ver detalle</button></article>';
+}
+function reportTurn(s,turno){
+ if(!s)return '<div class="mg-on-report-turn"><h3>'+esc(shiftName(turno))+'</h3><p class="mg-on-empty">Sin cierre registrado para este turno.</p></div>';
+ return '<section class="mg-on-report-turn"><header><h3>'+esc(shiftName(turno))+'</h3>'+
+ '<span class="mg-on-closed">✓ Cerrado</span></header>'+
+ historyTotals(s)+
+ '<h4>Movimientos individuales</h4>'+
+ '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
+ (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
+ '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
+ '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+
+ (photoUrls[s.id]?'<div class="mg-on-photo-preview"><img alt="Foto del cierre '+esc(shiftName(s.turno))+'" src="'+esc(photoUrls[s.id])+'"></div>':'')+
+ '</div></section>';
+}
+function historyModal(){
+ if(!modalDay)return '';
+ const d=historyGroups(snapshot?.history||[]).find(x=>x.day===modalDay);
+ if(!d)return '';
+ const morning=d.shifts.find(x=>x.turno==='manana');
+ const night=d.shifts.find(x=>x.turno==='tarde');
+ const tabs=[['dia','Día Completo'],['manana','Mañana'],['tarde','Noche']];
+ return '<div class="mg-on-modal-backdrop" data-mgon-modal-backdrop>'+
+ '<section role="dialog" aria-modal="true" aria-labelledby="mg-on-modal-title" class="mg-on-modal">'+
+ '<header class="mg-on-modal-header"><div><small>MI GUSTO · '+esc(LOCALS[local()]||'')+'</small>'+
+ '<h2 id="mg-on-modal-title">Reporte del '+date(d.day)+'</h2>'+
+ '<p>Detalle de pagos y evidencias del día seleccionado.</p></div>'+
+ '<button type="button" data-mgon-modal-close aria-label="Cerrar reporte" class="mg-on-modal-close">×</button></header>'+
+ '<nav class="mg-on-modal-tabs" aria-label="Ver el reporte">'+tabs.map(([key,label])=>
+ '<button type="button" data-mgon-modal-tab="'+key+'" aria-current="'+(modalTab===key?'page':'false')+'">'+label+'</button>').join('')+'</nav>'+
+ '<div class="mg-on-modal-content">'+(photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
+ (modalTab==='dia'?'<section class="mg-on-day-total"><h3>Día Completo</h3>'+historyTotals(d)+'</section>'+
+ reportTurn(morning,'manana')+reportTurn(night,'tarde'):
+ reportTurn(modalTab==='manana'?morning:night,modalTab))+'</div></section></div>';
 }
 function history(){
  const rows=(snapshot?.history||[]).filter(s=>!filter||s.day===filter);
  const days=historyGroups(rows);
- const shifts=rows.filter(s=>shiftFilter==='todos'||s.turno===shiftFilter);
- const controls='<div class="mg-on-history-filters" role="group" aria-label="Consultar historial">'+
-  '<label>Ver historial por<select id="mg-on-history-view">'+
-  '<option value="dia" '+(viewMode==='dia'?'selected':'')+'>Por día</option>'+
-  '<option value="turno" '+(viewMode==='turno'?'selected':'')+'>Por turno</option></select></label>'+
-  '<label>Fecha<input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+
-  (viewMode==='turno'?'<label>Turno<select id="mg-on-turn-filter">'+
-   '<option value="todos" '+(shiftFilter==='todos'?'selected':'')+'>Todos los turnos</option>'+
-   '<option value="manana" '+(shiftFilter==='manana'?'selected':'')+'>Mañana</option>'+
-   '<option value="tarde" '+(shiftFilter==='tarde'?'selected':'')+'>Tarde</option></select></label>':'')+
-  '<button type="button" data-mgon-clear-filters>Ver todo el historial</button></div>';
- const content=viewMode==='dia'
-   ?days.map(dayHistoryCard).join('')
-   :shifts.map(shiftHistoryCard).join('');
- return '<section class="mg-on-history-embedded" id="mg-on-history"><header><h3>Historial de pagos online</h3>'+
- '<p>Consultá un día completo o cada turno. Abrí cualquier cierre para ver las comandas individuales y la forma de pago.</p></header>'+
- controls+(content?'<div class="mg-on-history" aria-live="polite">'+content+'</div>':
- '<p class="mg-on-empty">No se encontraron cierres con esos filtros.</p>')+'</section>';
+ return '<section class="mg-on-history-embedded" id="mg-on-history"><header><h3>Historial por día</h3>'+
+ '<p>Elegí una fecha para abrir el reporte completo, separado en Mañana, Noche y Día Completo.</p></header>'+
+ '<div class="mg-on-history-filters"><label>Buscar fecha<input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+
+ '<button type="button" data-mgon-clear-filters>Ver todos los días</button></div>'+
+ (days.length?'<div class="mg-on-history-list">'+days.map(dayHistoryCard).join('')+'</div>':
+ '<p class="mg-on-empty">Todavía no hay cierres con ese filtro.</p>')+'</section>';
 }
 function view(){
  if(!allowed())return '';
@@ -199,13 +270,15 @@ function view(){
  return '<div class="mg-on-page" style="zoom:'+getScale()/100+'">'+currentHead()+scaleBar()+nav()+
  (error?'<p class="mg-on-error" role="alert">'+esc(error)+'</p>':'')+
  (!online()?'<p class="mg-on-offline">Sin conexión: esta sección solo permite registrar y cerrar turnos con internet.</p>':'')+
- (!snapshot?'<p role="status">Cargando pagos online autorizados…</p>':tab==='movimientos'?movements():summary())+
+ (!snapshot?'<p role="status">Cargando pagos online autorizados…</p>':tab==='movimientos'?movements():summary())+historyModal()+
  '</div>';
 }
 async function action(name,args,notify){
  if(!writable())return;
  saving=true;error='';
- try{await rpc(name,args);editing=null;await rpcRefresh();if(notify)api.toast?.(notify);}
+ try{const result=await rpc(name,args);editing=null;
+  if(name==='gestlok_mg_online_close'&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
+  await rpcRefresh();if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
  finally{saving=false;if(allowed()&&api?.S?.view==='cierre-online')api.render();}
 }
@@ -228,6 +301,14 @@ function attach(h){
   if(cancel){editing=null;api.render();return;}
   const clear=e.target.closest('[data-mgon-clear-filters]');
   if(clear){filter='';shiftFilter='todos';opened=null;api.render();return;}
+  const day=e.target.closest('[data-mgon-open-day]');
+  if(day){modalDay=day.dataset.mgonOpenDay;modalTab='dia';photoError='';api.render();document.querySelector('[data-mgon-modal-close]')?.focus();return;}
+  if(e.target.closest('[data-mgon-modal-close]')||e.target.hasAttribute?.('data-mgon-modal-backdrop')){
+   const prior=modalDay;modalDay=null;photoError='';api.render();document.querySelector('[data-mgon-open-day="'+prior+'"]')?.focus();return;}
+  const modalTabButton=e.target.closest('[data-mgon-modal-tab]');
+  if(modalTabButton){modalTab=modalTabButton.dataset.mgonModalTab;photoError='';api.render();return;}
+  const photoView=e.target.closest('[data-mgon-view-photo]');
+  if(photoView){void showPhoto(photoView.dataset.mgonViewPhoto);return;}
   const detail=e.target.closest('[data-mgon-detail]');
   if(detail){opened=opened===detail.dataset.mgonDetail?null:detail.dataset.mgonDetail;api.render();return;}
   const edit=e.target.closest('[data-mgon-edit]');
@@ -254,8 +335,12 @@ function attach(h){
   void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:editing,
    p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion},'Movimiento guardado.');
  });
+ document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&modalDay){modalDay=null;photoError='';api.render();}
+ });
  document.addEventListener('change',e=>{
   if(!allowed())return;
+  if(e.target.matches?.('[data-mgon-photo]')){const file=e.target.files?.[0];if(file)void uploadPhoto(e.target.dataset.mgonPhoto,file);return;}
   if(e.target.id==='mg-on-date-filter'){filter=e.target.value;opened=null;api.render();}
   if(e.target.id==='mg-on-history-view'){viewMode=e.target.value==='turno'?'turno':'dia';opened=null;api.render();}
   if(e.target.id==='mg-on-turn-filter'){shiftFilter=['manana','tarde'].includes(e.target.value)?e.target.value:'todos';opened=null;api.render();}
