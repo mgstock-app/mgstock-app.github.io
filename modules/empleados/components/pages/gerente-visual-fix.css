@@ -408,11 +408,11 @@
 .app-shell .gl-gerente .gl-gerente__sidebar nav button>svg{flex:0 0 19px}
 .app-shell .gl-gerente .gl-gerente__sidebar nav button.active{background:#e5f3ef;color:#175c61}
 .app-shell .gl-gerente .gl-gerente__sidebar nav button.active svg{color:#178880}
-.app-shell .gl-gerente .gl-gerente__sidebar nav button:not(.active):hover{background:#ffffff15;color:#fff}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button:not(.active):hover{background:#edf7fb;color:#185675}
 .app-shell .gl-gerente .gl-gerente__brand{min-width:0}
 .app-shell .gl-gerente .gl-gerente__brand>div{min-width:0;overflow-wrap:anywhere}
-.app-shell .gl-gerente .gl-gerente__collapse{display:flex;align-items:center;gap:9px;margin:12px 5px 2px;padding:10px;border:1px solid #ffffff2a;border-radius:10px;background:#ffffff0a;color:#dae9f1;font:700 11px system-ui,sans-serif;text-align:left}
-.app-shell .gl-gerente .gl-gerente__collapse:hover{background:#ffffff20}
+.app-shell .gl-gerente .gl-gerente__collapse{display:flex;align-items:center;gap:9px;margin:12px 5px 2px;padding:10px;border:1px solid #dce9f0;border-radius:10px;background:#f6fafc;color:#315c74;font:700 11px system-ui,sans-serif;text-align:left}
+.app-shell .gl-gerente .gl-gerente__collapse:hover{background:#eaf5fa}
 .app-shell .gl-gerente .gl-gerente__collapse svg{flex:none}
 @media(min-width:941px){
  .app-shell .gl-gerente .gl-gerente__sidebar.is-collapsed{width:76px;flex:0 0 76px;padding:15px 9px;overflow:hidden}

@@ -16,4 +16,22 @@ assert.match(css,/@media\(max-width:660px\)/);
 assert.match(gerente,/gl-gerente__company-image/);
 assert.match(cards,/localTitle\(local\)/);
 assert.match(cards,/Don Torcuato/);
-console.log("PASS: una cabecera de gerentes, tipografía GESTLOK y tarjetas responsive por local");
+// Regresión reportada en PC: "GEST" invisible, navegación descolorida y legajos apretados.
+const clarity=read("styles/gerente-desktop-clarity.css");
+const layout=read("app/layout.tsx");
+assert(layout.includes('import "@/styles/gerente-desktop-clarity.css";'));
+assert(layout.indexOf("mobile-navigation.css") < layout.indexOf("gerente-desktop-clarity.css"),
+  "El tema claro de PC debe ir después del tema compartido y del menú móvil.");
+assert.match(gerente,/gl-gerente__brand--mi-gusto/);
+assert.match(gerente,/gl-gerente__header-gest/);
+assert.match(gerente,/gl-gerente__header-lok/);
+assert.match(clarity,/\.gl-gerente__header-gest[^{]*\{[^}]*color:#193b55!important/);
+assert.match(clarity,/\.gl-gerente__sidebar nav button\{[^}]*color:#26495f!important/);
+assert.match(clarity,/\.gl-gerente__sidebar nav button:not\(\.active\):hover\{[^}]*color:#185675!important/);
+assert.match(clarity,/\.gl-gerente__brand--mi-gusto \.gl-gerente__company-image\{/);
+assert.match(clarity,/background:#080808!important/);
+assert.match(clarity,/min-width:350px|350px/);
+assert.match(clarity,/@media\(min-width:941px\)/);
+assert(!clarity.includes("kmu15lopez@gmail.com"), "El arreglo es por rol y no por usuario");
+assert(!clarity.includes("display:none!important"), "No ocultar secciones para simular corrección");
+console.log("PASS: escritorio gerente legible, GESTLOK completo y tarjetas accesibles");

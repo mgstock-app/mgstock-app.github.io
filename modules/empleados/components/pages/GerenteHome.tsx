@@ -38,7 +38,7 @@ export function GerenteHome() {
   const home = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
   return <div className="gl-gerente">
     <aside className={"gl-gerente__sidebar" + (menuOpen?" is-open":"") + (collapsed?" is-collapsed":"")} aria-label="Menú del gerente">
-      <div className="gl-gerente__brand">
+      <div className={"gl-gerente__brand" + (isMiGusto ? " gl-gerente__brand--mi-gusto" : "")}>
         {isMiGusto
           ? <img className="gl-gerente__company-image" src={home + "img/mi-gusto-blanco.png"} alt="Mi Gusto" width={105} height={66}/>
           : <span className="gl-gerente__company-letter" aria-hidden="true">{companyName.slice(0,1).toUpperCase()}</span>}
@@ -57,7 +57,7 @@ export function GerenteHome() {
     <main className="gl-gerente__main">
       <header className="gl-gerente__header">
         <button type="button" className="gl-gerente__menu" aria-label={menuOpen?"Cerrar menú":"Abrir menú"} onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
-        <div className="gl-gerente__header-brand"><strong>GEST<span>LOK</span></strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div>
+        <div className="gl-gerente__header-brand" aria-label="GESTLOK"><strong><span className="gl-gerente__header-gest">GEST</span><span className="gl-gerente__header-lok">LOK</span></strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div>
         <span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
       </header>
       <div className="gl-gerente__content">
