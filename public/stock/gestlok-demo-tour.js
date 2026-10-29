@@ -4,7 +4,7 @@
 if(new URLSearchParams(location.search).get('demo')!=='1')return;
 const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('stock/gestlok-demo-tour.css',document.baseURI).href;document.head.append(style);
  const mobileStyle=document.createElement('link');mobileStyle.rel='stylesheet';mobileStyle.href=new URL('stock/gestlok-demo-mobile.css',document.baseURI).href;document.head.append(mobileStyle);
-const showcaseStyle=document.createElement('link');showcaseStyle.rel='stylesheet';showcaseStyle.href=new URL('stock/gestlok-demo-showcase.css?rev=espacio-util-20261029',document.baseURI).href;document.head.append(showcaseStyle);
+const showcaseStyle=document.createElement('link');showcaseStyle.rel='stylesheet';showcaseStyle.href=new URL('stock/gestlok-demo-showcase.css?rev=explorar-atajos-20261029',document.baseURI).href;document.head.append(showcaseStyle);
 const stages=[
  {name:'Inicio',title:'Un negocio, todo en orden',desc:'Explorá el inicio actualizado de GESTLOK. Abrí las tarjetas de administración y conocé los accesos del dueño o gerente.',hint:'Tocá una tarjeta y recorré el inicio.'},
  {name:'Empresa',title:'Administrá cada producto',desc:'Entrá al stock real de la demo y probá las cantidades y los datos ficticios. Tu información comercial nunca se modifica.',hint:'Probá el stock y el catálogo de ejemplo.'},
@@ -135,6 +135,24 @@ function init(){
  layout.id='gl-tour-layout';layout.setAttribute('aria-label','Recorrido interactivo GESTLOK');
  const storyEl=document.createElement('aside');storyEl.id='gl-tour-story';
  storyEl.innerHTML='<div id="gl-tour-story-content"></div><div id="gl-tour-controls"></div>';
+ // Atajos útiles en el espacio inferior de la demo, sin inventar funcionalidades.
+ const discover=document.createElement('section');
+ discover.id='gl-tour-discover';
+ discover.setAttribute('aria-label','Elegí una función para probar');
+ const shortcuts=[
+  {step:3,title:'Colaboradores',detail:'Legajos y horarios',symbol:'👥'},
+  {step:4,title:'Precios',detail:'Costos y recargos',symbol:'%'},
+  {step:5,title:'Stock',detail:'Cantidades y mínimos',symbol:'▤'},
+  {step:6,title:'Pedidos',detail:'Estados y preparación',symbol:'📦'},
+  {step:7,title:'Vencimientos',detail:'Fechas y alertas',symbol:'◷'},
+  {step:8,title:'Tu opinión',detail:'Reseña al finalizar',symbol:'★'}
+ ];
+ discover.innerHTML='<div class="gl-tour-discover-heading"><span>SEGUÍ EXPLORANDO</span><h2>Probá otras herramientas</h2><p>Elegí una función para ir directamente a su etapa. Todo es ficticio.</p></div>'+
+  '<div class="gl-tour-discover-grid">'+shortcuts.map(item=>
+   '<button type="button" data-tour="'+item.step+'" aria-label="Ir a '+item.title+'" class="gl-tour-discover-card"><span class="gl-tour-discover-symbol" aria-hidden="true">'+item.symbol+'</span>'+
+   '<span><strong>'+item.title+'</strong><small>'+item.detail+'</small></span><span class="gl-tour-discover-arrow" aria-hidden="true">›</span></button>'
+  ).join('')+'</div><p class="gl-tour-discover-footer">GESTLOK · Todo tu negocio, en orden</p>';
+ storyEl.append(discover);
  const shell=document.createElement('div');shell.id='gl-tour-phone';
  shell.innerHTML='<div class="gl-tour-phone-frame"><div class="gl-tour-phone-notch" aria-hidden="true"></div>'+
   '<div class="gl-tour-phone-screen" id="gl-tour-phone-screen"></div></div>'+
@@ -164,7 +182,7 @@ function init(){
 const timer=setInterval(()=>{if(init())clearInterval(timer);},250);
 document.addEventListener('click',e=>{
  const copy=e.target.closest?.('[data-coupon-copy]');if(copy&&couponCode){navigator.clipboard?.writeText(couponCode).then(()=>{copy.textContent='¡Copiado!';}).catch(()=>{copy.textContent=couponCode;});return;} const star=e.target.closest?.('[data-review-star]');if(star){rating=Number(star.dataset.reviewStar);document.querySelectorAll('[data-review-star]').forEach(el=>{const n=Number(el.dataset.reviewStar);el.textContent=n<=rating?'★':'☆';el.setAttribute('aria-pressed',String(n===rating));});return;}
- const b=e.target.closest?.('[data-tour]');if(b){move(Number(b.dataset.tour));return;}
+ const b=e.target.closest?.('[data-tour]');if(b){const shortcut=!!b.closest('#gl-tour-discover');move(Number(b.dataset.tour)).then(()=>{if(shortcut)document.getElementById('gl-tour-phone')?.scrollIntoView({block:'start',behavior:'smooth'});});return;}
 });
 document.addEventListener('submit',async e=>{if(e.target.id!=='gl-tour-review-form')return;e.preventDefault();if(saving)return;const form=e.target,status=document.getElementById('gl-tour-review-status');if(!rating){status.textContent='Elegí entre 1 y 5 estrellas.';return;}const data=new FormData(form),wantContact=data.has('contact_consent'),contact=String(data.get('contact_value')||'').trim();if(wantContact&&!contact){status.textContent='Para recibir información, ingresá un email o teléfono.';return;}if(wantContact&&!/^(?:[^\s@]+@[^\s@]+\.[^\s@]+|\+?[0-9 ()-]{7,25})$/.test(contact)){status.textContent='Ingresá un email o teléfono válido.';return;}saving=true;form.querySelector('[type=submit]').disabled=true;status.textContent='Guardando reseña…';try{const client=window.supabase.createClient(window.SPM_CONFIG.url,window.SPM_CONFIG.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});const payload={rating,comment:String(data.get('comment')||'').trim()||null,publish_consent:data.has('publish_consent'),contact_consent:wantContact,contact_name:wantContact?String(data.get('contact_name')||'').trim()||null:null,contact_value:wantContact?contact:null};const {data:code,error}=await client.rpc('gestlok_demo_enviar_resena_cupon',{p_rating:payload.rating,p_comment:payload.comment,p_publish_consent:payload.publish_consent,p_contact_consent:payload.contact_consent,p_contact_name:payload.contact_name,p_contact_value:payload.contact_value});if(error)throw error;if(!/^G-[0-9]{3}$/.test(code))throw Error('Cupón inválido');couponCode=code;sent=true;paint();}catch(err){status.textContent='No pudimos guardar la reseña. Intentá nuevamente.';form.querySelector('[type=submit]').disabled=false;console.warn('Reseña no guardada',err?.message);}finally{saving=false;} });
 // Solo navegación manual. No hay temporizadores que avancen el carrusel.
