@@ -1,0 +1,58 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+
+const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const ui=read('public/stock/gestlok-precios-stock.js');
+const pilot=read('public/stock/gestlok-pilot.js');
+const orders=read('public/stock/gestlok-pedidos.js');
+const migration=read('supabase/migrations/20261029115000_piloto_precios_stock_cami.sql');
+test('Precios: recargo sobre costo, venta y ganancia bruta correctos',()=>{
+ const root={window:{},document:{addEventListener:()=>{},querySelector:()=>null},Intl,Date};
+ vm.runInNewContext(ui,root);
+ const api=root.window.GestLokPreciosStock;
+ assert.equal(api.price(10000,70),17000);
+ assert.equal(api.profit(10000,70),7000);
+ assert.equal(api.price(19000,0),19000);
+ assert.equal(api.profit(19000,0),0);
+ assert.equal(api.price(100,25.5),125.5);
+ assert.match(api.render(),/Precios/);
+ assert.doesNotMatch(ui,/@gmail\.com/);
+ assert.match(ui,/GestLokPilot\?\.authorized/);
+ assert.match(ui,/getUser\(\)/);
+});
+test('Precios y Stock aparecen solo en el centro autorizado de Perfumes',()=>{
+ assert.match(pilot,/context\.tenant_id===TENANT/);
+ assert.match(pilot,/host\?\.role\?\.\(\)==='dueno'/);
+ assert.match(pilot,/data-pilot-prices/);
+ assert.match(pilot,/data-pilot-stock/);
+ assert.match(pilot,/active==='precios'\|\|active==='stock'/);
+ assert.match(pilot,/switchSection/);
+ assert.match(ui,/stock_quantity/);
+ assert.match(ui,/stock_minimum/);
+ assert.match(ui,/Otro dispositivo actualizó el producto/);
+});
+test('Stock: contador manual, cálculo de inventario estimado, no modifica Pedidos',()=>{
+ const root={window:{},document:{addEventListener:()=>{},querySelector:()=>null},Intl,Date};
+ vm.runInNewContext(ui,root);
+ assert.deepEqual(JSON.parse(JSON.stringify(root.window.GestLokPreciosStock.inventoryTotals())),{products:0,cost:0,sale:0});
+ assert.match(ui,/Los pedidos no descuentan stock automáticamente/);
+ assert.match(ui,/Ganancia bruta potencial/);
+ assert.match(orders,/stock_quantity/);
+ assert.match(orders,/data-orders-go-prices/);
+ assert.match(orders,/data-orders-go-stock/);
+ const runtime=read('components/stock-runtime.tsx'),sw=read('scripts/sw-template.js'),layout=read('app/layout.tsx');
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-precios-stock\.js/);
+ assert.match(sw,/'\/stock\/gestlok-precios-stock\.js'/);
+ assert.match(layout,/gestlok-precios-stock\.css/);
+});
+test('SQL calcula precio sin confiar en navegador, conserva RLS e integridad de otros negocios',()=>{
+ assert.match(migration,/alter table public\.gestlok_pilot_products/);
+ assert.match(migration,/new\.unit_price:=round\(new\.cost_price \* \(1 \+ new\.markup_percent \/ 100\), 2\)/);
+ assert.match(migration,/new\.in_stock:=\(new\.stock_quantity > 0\)/);
+ assert.match(migration,/security invoker/);
+ assert.match(migration,/2a97bf8d-7d08-4aa7-b051-5d1a4dc80103/);
+ assert.doesNotMatch(migration,/\b(?:delete from|truncate|drop table|alter table public\.docs|disable row level security)\b/i);
+ assert.match(migration,/stock_quantity is null/);
+});
