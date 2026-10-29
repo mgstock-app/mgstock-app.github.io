@@ -137,5 +137,5 @@ function handleSubmit(e){
  }
  return false;
 }
-window.GestLokDemoPagos=Object.freeze({view,handleClick,handleSubmit,_test:{totals,labelTurn},reset:()=>{section='resumen';modalDay=null;}});
+window.GestLokDemoPagos=Object.freeze({view,handleClick,handleSubmit,_test:{totals,labelTurn},reset:()=>{section='carga';modalDay=null;}});
 })();
