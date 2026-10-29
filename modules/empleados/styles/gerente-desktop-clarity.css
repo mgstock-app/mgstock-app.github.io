@@ -1,0 +1,210 @@
+/* GESTLOK · Corrección de contraste para escritorio / vista de gerente.
+   Afecta solo a la pantalla del gerente, sin editar datos, permisos ni la barra móvil.
+   CSS independiente y al final del layout para impedir reglas oscuras heredadas. */
+.app-shell .gl-gerente{
+  --gerente-ink:#17354a;
+  --gerente-muted:#4c6476;
+  color:var(--gerente-ink);
+}
+.app-shell .gl-gerente .gl-gerente__sidebar{
+  background:#fff!important;
+  color:#173b52!important;
+  border-right:1px solid #d8e5ed!important;
+  box-shadow:3px 0 20px rgba(23,57,79,.06);
+}
+.app-shell .gl-gerente .gl-gerente__brand{
+  min-width:0;
+  border-bottom:1px solid #e1eaf1;
+}
+.app-shell .gl-gerente .gl-gerente__brand--mi-gusto{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  padding:12px 6px 18px;
+}
+.app-shell .gl-gerente .gl-gerente__brand--mi-gusto .gl-gerente__company-image{
+  width:min(100%,186px);
+  max-width:100%;
+  height:94px;
+  max-height:94px;
+  display:block;
+  flex:0 1 auto;
+  padding:5px;
+  border-radius:13px;
+  object-fit:contain;
+  background:#080808!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+}
+.app-shell .gl-gerente .gl-gerente__brand--mi-gusto>div{
+  width:100%;
+  text-align:center;
+}
+.app-shell .gl-gerente .gl-gerente__brand--mi-gusto small{
+  display:block;
+  color:#2b5069!important;
+  font:700 11px/1.35 Inter,"Segoe UI",Arial,sans-serif;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__brand:not(.gl-gerente__brand--mi-gusto) strong{
+  color:#163a51!important;
+}
+.app-shell .gl-gerente .gl-gerente__brand:not(.gl-gerente__brand--mi-gusto) small{
+  color:#4d677b!important;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__local-label{
+  color:#3d6179!important;
+  background:#f5f9fc;
+  border:1px solid #dfe9f0;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__local-label strong{
+  display:block;
+  color:#183c53!important;
+  font-size:14px;
+  font-weight:800;
+  margin-top:4px;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:47px;
+  width:100%;
+  border-radius:12px;
+  background:transparent;
+  color:#26495f!important;
+  opacity:1;
+  font:700 13px/1.35 Inter,"Segoe UI",Arial,sans-serif;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button svg{
+  color:#167d9b!important;
+  flex:0 0 20px;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar:not(.is-collapsed) .gl-gerente__nav-label{
+  display:inline;
+  color:inherit;
+  opacity:1;
+  visibility:visible;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active{
+  background:#e7f4fa!important;
+  color:#075d7b!important;
+  box-shadow:inset 3px 0 #139ab1;
+}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button.active svg{color:#086e91!important}
+.app-shell .gl-gerente .gl-gerente__sidebar nav button:not(.active):hover{
+  background:#eff8fc!important;
+  color:#185675!important;
+}
+.app-shell .gl-gerente .gl-gerente__collapse{
+  background:#f4f9fc!important;
+  color:#264d65!important;
+  border:1px solid #dbe7ef!important;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__collapse:hover{
+  background:#e8f3f8!important;
+  color:#145873!important;
+}
+.app-shell .gl-gerente .gl-gerente__security{
+  color:#47667b!important;
+  border-top:1px solid #e1eaf0;
+  font-size:11px;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__security svg{color:#247b94}
+.app-shell .gl-gerente .gl-gerente__header{
+  background:#fff!important;
+  border-bottom:1px solid #dce7ee;
+  color:#173b52!important;
+}
+.app-shell .gl-gerente .gl-gerente__header .gl-gerente__header-brand{
+  display:block;
+  min-width:0;
+}
+.app-shell .gl-gerente .gl-gerente__header .gl-gerente__header-brand strong{
+  display:block;
+  color:#193b55!important;
+  font:850 clamp(23px,2.35vw,30px)/1.1 Inter,"Segoe UI",Arial,sans-serif;
+  white-space:nowrap;
+  letter-spacing:-.045em;
+  opacity:1!important;
+  -webkit-text-fill-color:currentColor;
+  background:none;
+}
+.app-shell .gl-gerente .gl-gerente__header .gl-gerente__header-brand .gl-gerente__header-gest{
+  color:#193b55!important;
+  -webkit-text-fill-color:#193b55!important;
+}
+.app-shell .gl-gerente .gl-gerente__header .gl-gerente__header-brand .gl-gerente__header-lok{
+  color:#087fa8!important;
+  -webkit-text-fill-color:#087fa8!important;
+}
+.app-shell .gl-gerente .gl-gerente__header .gl-gerente__header-brand small{
+  display:block;
+  color:#536f81!important;
+  font-weight:750;
+  letter-spacing:.06em;
+  opacity:1;
+}
+.app-shell .gl-gerente .gl-gerente__user,
+.app-shell .gl-gerente .gl-gerente__user small{
+  color:#294d64!important;
+  opacity:1;
+}
+.app-shell .gl-gerente .mlg-board{color:#203e54}
+.app-shell .gl-gerente .mlg-intro small{color:#256a8c}
+.app-shell .gl-gerente .mlg-intro p{color:#466178}
+.app-shell .gl-gerente .mlg-stats span{color:#47647a}
+.app-shell .gl-gerente .mlg-stats strong{color:#173850}
+.app-shell .gl-gerente .mlg-filters input{color:#23445d}
+.app-shell .gl-gerente .mlg-filters input::placeholder{
+  color:#546f83;opacity:1;
+}
+.app-shell .gl-gerente .mlg-person-name strong{color:#183750}
+.app-shell .gl-gerente .mlg-person{
+  min-width:0;
+  min-height:72px;
+}
+.app-shell .gl-gerente .mlg-person-name{min-width:0}
+.app-shell .gl-gerente .mlg-view{
+  flex:0 0 auto;
+  color:#135e87;
+  background:#eef6fd;
+  border-color:#cfdfeb;
+}
+.app-shell .gl-gerente .mlg-more{flex:0 0 auto;color:#3c607a}
+.app-shell .gl-gerente .mlg-cards{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));
+  gap:12px;
+}
+@media(min-width:941px){
+  .app-shell .gl-gerente .gl-gerente__sidebar:not(.is-collapsed){
+    width:248px;
+    flex:0 0 248px;
+    padding:20px 13px 22px;
+  }
+  .app-shell .gl-gerente .gl-gerente__content{padding:22px clamp(18px,2.2vw,32px)}
+}
+@media(min-width:941px) and (max-width:1100px){
+  .app-shell .gl-gerente .gl-gerente__sidebar:not(.is-collapsed){
+    width:230px;flex-basis:230px;padding-inline:10px;
+  }
+}
+@media(max-width:800px){
+  .app-shell .gl-gerente .mlg-cards{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:940px){
+  .app-shell .gl-gerente .gl-gerente__sidebar{
+    max-width:86vw;
+    overflow-y:auto;
+  }
+  .app-shell .gl-gerente .gl-gerente__brand--mi-gusto .gl-gerente__company-image{
+    height:78px;max-height:78px;
+  }
+}
