@@ -37,7 +37,10 @@ test('Pagos Online: switches APP, fórmulas y RLS/flujo de componentes',()=>{
  assert.match(js,/role="switch" aria-label="APP de comanda/);
  assert.match(js,/p_app:!m\.app/);
  assert.match(js,/data-mgon-jump-history/);
- assert.doesNotMatch(js,/\blocalStorage\b|\bindexedDB\b/);
+ // Solo se guarda la escala de presentación por dispositivo: nunca comandas, montos ni históricos.
+ assert.doesNotMatch(js,/\bindexedDB\b/);
+ assert.match(js,/localStorage\.setItem\(SCALE_KEY,String\(pageScale\)\)/);
+ assert.doesNotMatch(js,/localStorage\.(?:setItem|getItem)\(\s*['"](?:movimientos|comandas|pagos|turnos|historial)/);
  assert.match(sql,/sum\(m\.amount\) filter\(where m\.app\)/);
  assert.match(sql,/'online_local',z\.total_ventas-z\.total_app/);
  assert.match(sql,/next_turno:=case when s\.turno='manana' then 'tarde' else 'manana' end/);

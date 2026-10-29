@@ -9,6 +9,29 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
 const shiftName=x=>x==='manana'?'Mañana':'Tarde';
+const SCALE_KEY='gestlok:pagos-online:escala-v1';
+const clampScale=x=>Math.min(110,Math.max(85,Math.round(Number(x)/5)*5));
+let pageScale=null;
+function getScale(){
+ if(pageScale!==null)return pageScale;
+ const mobile=typeof window!=='undefined'&&typeof window.matchMedia==='function'&&window.matchMedia('(max-width: 600px)').matches;
+ const initial=mobile?100:95;
+ try{const saved=localStorage.getItem(SCALE_KEY);pageScale=saved&&/^\d{2,3}$/.test(saved)?clampScale(saved):initial;}
+ catch{pageScale=initial;}
+ return pageScale;
+}
+function changeScale(delta){
+ const before=getScale();pageScale=clampScale(before+delta);
+ if(pageScale===before)return;
+ try{localStorage.setItem(SCALE_KEY,String(pageScale));}catch{}
+ const page=document.querySelector('.mg-on-page');
+ if(page)page.style.zoom=String(pageScale/100);
+ const value=document.querySelector('#mg-on-scale-value');
+ if(value)value.textContent=pageScale+'%';
+ const minus=document.querySelector('[data-mgon-scale="down"]'),plus=document.querySelector('[data-mgon-scale="up"]');
+ if(minus)minus.disabled=pageScale<=85;
+ if(plus)plus.disabled=pageScale>=110;
+}
 let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
@@ -49,6 +72,14 @@ function currentHead(){
  '<span>Turno <strong>'+esc(shiftName(s?.turno||'manana'))+'</strong></span>'+
  '<span class="mg-on-open">● Abierto</span></div></div>';
 }
+function scaleBar(){
+ const v=getScale();
+ return '<div class="mg-on-scale" role="group" aria-label="Tamaño de Pagos Online">'+
+  '<span>Tamaño de letra</span>'+
+  '<button type="button" data-mgon-scale="down" aria-label="Reducir tamaño de letra" '+(v<=85?'disabled':'')+'>−</button>'+
+  '<output id="mg-on-scale-value" aria-live="polite">'+v+'%</output>'+
+  '<button type="button" data-mgon-scale="up" aria-label="Aumentar tamaño de letra" '+(v>=110?'disabled':'')+'>+</button></div>';
+}
 function nav(){
  return '<nav class="mg-on-tabs" aria-label="Pagos Online">'+
  '<button type="button" data-mgon-tab="resumen" aria-current="'+(tab==='resumen'?'page':'false')+'">Resumen del turno e historial</button>'+
@@ -57,9 +88,10 @@ function nav(){
 function movementList(){
  const rows=snapshot?.active?.movements||[];
  if(!rows.length)return '<p class="mg-on-empty">Todavía no hay comandas cargadas en este turno.</p>';
- return '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Forma de pago</th><th>Monto</th><th>APP</th><th>Acciones</th></tr></thead><tbody>'+
+ return '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Forma de pago</th><th>Monto</th><th>APP</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>'+
  rows.map(r=>'<tr><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+esc(METHODS[r.method]||r.method)+'</td>'+
  '<td>'+cash(r.amount)+'</td><td><button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+'" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>'+(r.app?'APP':'—')+'</b></button></td>'+
+ '<td class="mg-on-observation-cell">'+(r.observacion?'<span title="'+esc(r.observacion)+'">'+esc(r.observacion)+'</span>':'<small>—</small>')+'</td>'+
  '<td><div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
  '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div></td></tr>').join('')+
  '</tbody></table></div>';
@@ -71,6 +103,8 @@ function entry(){
  '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.amount||'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
+ '<label class="mg-on-observation">Observaciones <small>(opcional · máximo 300 caracteres)</small>'+
+ '<textarea name="observacion" maxlength="300" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label>'+
  '<div class="mg-on-actions"><button class="mg-on-primary" type="submit" '+(!writable()?'disabled':'')+'>'+(r?'Guardar cambios':'Guardar movimiento')+'</button>'+
  (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
 }
@@ -101,8 +135,8 @@ function summary(){
 }
 function oldRows(s){
  return '<div class="mg-on-detail"><h4>Movimientos individuales · '+esc(shiftName(s.turno))+'</h4>'+
- '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Importe</th><th>APP</th></tr></thead><tbody>'+
- (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td></tr>').join('')+
+ '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Importe</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
+ (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
  '</tbody></table></div>'+shiftCard(s)+'</div>';
 }
 /* El servidor devuelve cierres definitivos por sucursal.
@@ -162,7 +196,7 @@ function history(){
 function view(){
  if(!allowed())return '';
  if(!snapshot&&!loading&&online())queueMicrotask(refresh);
- return '<div class="mg-on-page">'+currentHead()+nav()+
+ return '<div class="mg-on-page" style="zoom:'+getScale()/100+'">'+currentHead()+scaleBar()+nav()+
  (error?'<p class="mg-on-error" role="alert">'+esc(error)+'</p>':'')+
  (!online()?'<p class="mg-on-offline">Sin conexión: esta sección solo permite registrar y cerrar turnos con internet.</p>':'')+
  (!snapshot?'<p role="status">Cargando pagos online autorizados…</p>':tab==='movimientos'?movements():summary())+
@@ -184,6 +218,8 @@ function attach(h){
  api=h;
  document.addEventListener('click',e=>{
   if(!allowed())return;
+  const size=e.target.closest('[data-mgon-scale]');
+  if(size){changeScale(size.dataset.mgonScale==='up'?5:-5);return;}
   const jump=e.target.closest('[data-mgon-jump-history]');
   if(jump){document.querySelector('.mg-on-history-embedded')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const tabButton=e.target.closest('[data-mgon-tab]');
@@ -202,8 +238,8 @@ function attach(h){
   const toggle=e.target.closest('[data-mgon-app]');
   if(toggle&&writable()){
    const m=snapshot?.active?.movements?.find(x=>x.id===toggle.dataset.mgonApp);
-   if(m)void action('gestlok_mg_online_save',{p_shift:snapshot.active.id,p_id:m.id,
-     p_comanda:m.comanda,p_method:m.method,p_amount:m.amount,p_app:!m.app},'APP actualizado.');return;}
+   if(m)void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:m.id,
+     p_comanda:m.comanda,p_method:m.method,p_amount:m.amount,p_app:!m.app,p_observacion:m.observacion||''},'APP actualizado.');return;}
   const close=e.target.closest('[data-mgon-close]');
   if(close&&writable()&&window.confirm('¿Cerrar el turno '+shiftName(snapshot.active.turno)+'? Se guardará en el historial y se abrirá el siguiente turno.')){
    void action('gestlok_mg_online_close',{p_shift:snapshot.active.id},'Turno cerrado. Se abrió el siguiente.');tab='resumen';return;}
@@ -211,11 +247,12 @@ function attach(h){
  document.addEventListener('submit',e=>{
   if(e.target.id!=='mg-online-form'||!writable())return;
   e.preventDefault();const d=new FormData(e.target),comanda=String(d.get('comanda')||'').trim(),
-   amount=Number(d.get('amount')),method=String(d.get('method')||''),app=d.has('app');
-  if(!/^[0-9]{1,10}$/.test(comanda)||!Number.isFinite(amount)||amount<=0||!(method in METHODS)){
+   amount=Number(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),
+   observacion=String(d.get('observacion')||'').trim();
+  if(!/^[0-9]{1,10}$/.test(comanda)||!Number.isFinite(amount)||amount<=0||!(method in METHODS)||observacion.length>300){
     error='Completá una comanda numérica, un monto positivo y la forma de pago.';api.render();return;}
-  void action('gestlok_mg_online_save',{p_shift:snapshot.active.id,p_id:editing,
-   p_comanda:comanda,p_method:method,p_amount:amount,p_app:app},'Movimiento guardado.');
+  void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:editing,
+   p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion},'Movimiento guardado.');
  });
  document.addEventListener('change',e=>{
   if(!allowed())return;
@@ -232,5 +269,5 @@ function subscribe(loc,push){
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
-window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{date,shiftName,historyGroups}});
+window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{date,shiftName,historyGroups,clampScale,getScale}});
 })();
