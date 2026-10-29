@@ -19,7 +19,7 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
         expect(panel[0].getBoundingClientRect().top).to.be.at.least(bar[0].getBoundingClientRect().bottom);
       });
     });
-    step(8); cy.get('#gl-tour-review-form').should('be.visible');
+    step(9); cy.get('#gl-tour-review-form').should('be.visible');
     cy.get('#gl-tour-gift').should('not.exist');
     step(0); cy.get('#hub .gl-owner-landing').should('be.visible');
     step(3); cy.get('#gl-demo-emp .gl-dh-top [data-dh-close]').click();
@@ -34,7 +34,7 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
     cy.get('#gl-demo-emp').should('not.contain.text', '900.000');
   });
   it('conserva borrador, omite contacto sin consentimiento y entrega regalo solo al guardar', () => {
-    start(); step(8);
+    start(); step(9);
     cy.get('#gl-tour-review-form').submit();
     cy.get('#gl-tour-review-status').should('contain.text', 'Elegí');
     cy.get('[data-review-star="1"]').click();
@@ -44,7 +44,7 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
     cy.get('#gl-tour-review-status').should('contain.text', 'email o teléfono');
     cy.get('[name=contact_name]').type('Persona ficticia');
     cy.get('[name=contact_value]').type('prueba@example.com');
-    step(0); step(8);
+    step(0); step(9);
     cy.get('[name=comment]').should('have.value', 'Opinión ficticia');
     cy.get('[name=contact_value]').should('have.value', 'prueba@example.com');
     cy.get('[name=contact_consent]').uncheck();
