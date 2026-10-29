@@ -164,8 +164,8 @@ async function showPhoto(id){
   photoUrls[id]=data.signedUrl;photoError='';api.render();
  }catch(e){photoError=e.message||'No se pudo abrir la foto';api.render();}
 }
-function shiftCard(s){
- if(!s)return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(arguments[1]||'tarde'))+'</h3><span class="mg-on-pending">Próximo turno</span></header><p class="mg-on-empty">Sin movimientos. Este turno todavía no tiene registros guardados.</p></article>';
+function shiftCard(s,turnoHint='tarde'){
+ if(!s)return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(turnoHint))+'</h3><span class="mg-on-pending">Próximo turno</span></header><p class="mg-on-empty">Sin movimientos. Este turno todavía no tiene registros guardados.</p></article>';
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
  [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['total_app','Total APP'],['total_ventas','Total ventas'],['online_local','Online Local']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
@@ -308,7 +308,12 @@ function attach(h){
   const modalTabButton=e.target.closest('[data-mgon-modal-tab]');
   if(modalTabButton){modalTab=modalTabButton.dataset.mgonModalTab;photoError='';api.render();return;}
   const photoView=e.target.closest('[data-mgon-view-photo]');
-  if(photoView){void showPhoto(photoView.dataset.mgonViewPhoto);return;}
+  if(photoView){
+   const id=photoView.dataset.mgonViewPhoto;
+   const shift=[snapshot?.active,...(snapshot?.history||[])].find(x=>x?.id===id);
+   if(shift&&!modalDay){modalDay=shift.day;modalTab=shift.turno;}
+   void showPhoto(id);return;
+  }
   const detail=e.target.closest('[data-mgon-detail]');
   if(detail){opened=opened===detail.dataset.mgonDetail?null:detail.dataset.mgonDetail;api.render();return;}
   const edit=e.target.closest('[data-mgon-edit]');
