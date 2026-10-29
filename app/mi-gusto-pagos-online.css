@@ -154,3 +154,55 @@
  .mg-on-scale button{width:44px;height:44px}
  .mg-on-observation-cell{min-width:110px;max-width:190px}
 }
+
+
+/* Mi Gusto · Reporte diario en ventana y evidencia de cierre. */
+.mg-on-pending{padding:6px 10px;border-radius:9px;background:#edf3f8;color:#496a7b;font-size:11px;font-weight:800}
+.mg-on-photo-btn,.mg-on-photo-upload{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:10px 14px;margin-top:12px;border:1px solid #b9d6e3;background:#edf8fb;color:#0e526c;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer}
+.mg-on-photo-btn:hover,.mg-on-photo-upload:hover{background:#e2f2f8}
+.mg-on-photo-upload{position:relative}
+.mg-on-photo-upload input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.mg-on-photo-upload:focus-within{outline:3px solid #20a1b9;outline-offset:3px}
+.mg-on-photo-upload.mg-on-busy{opacity:.65;cursor:wait}
+.mg-on-photo-preview{background:#f4f8fb;margin-top:12px;border:1px solid #d2e3eb;border-radius:12px;overflow:hidden;padding:10px}
+.mg-on-photo-preview img{display:block;width:100%;max-height:400px;object-fit:contain;border-radius:8px}
+.mg-on-history-list{display:grid;gap:9px}
+.mg-on-day-row{display:grid;grid-template-columns:minmax(130px,1fr) minmax(120px,1fr) minmax(120px,1fr) auto;align-items:center;gap:14px;padding:15px 18px;background:#fff}
+.mg-on-day-row .mg-on-day-info{display:grid;gap:5px}
+.mg-on-day-row .mg-on-day-info strong{font-size:18px;color:#133f58}
+.mg-on-day-row small{font-size:12px;color:#668194}
+.mg-on-day-row .mg-on-day-amount{display:grid;gap:5px}
+.mg-on-day-row .mg-on-day-amount strong{font-size:16px;color:#123e57}
+.mg-on-day-open{min-height:44px;border:1px solid #bed4e4;background:#eaf5fa;color:#145473;border-radius:10px;padding:10px 15px;font-size:13px;font-weight:800}
+.mg-on-day-open:hover{background:#dceef7}
+.mg-on-modal-backdrop{position:fixed;inset:0;z-index:30000;display:flex;justify-content:center;align-items:center;padding:clamp(8px,2vw,24px);background:#061a2bc7}
+.mg-on-modal{display:flex;flex-direction:column;width:min(100%,1020px);max-height:min(90dvh,900px);background:#f7fbfd;color:#173d54;border-radius:18px;box-shadow:0 20px 75px #00162666;overflow:hidden}
+.mg-on-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:clamp(15px,2vw,25px);background:#fff;border-bottom:1px solid #dce8ef}
+.mg-on-modal-header small{color:#12819b;font-size:10px;letter-spacing:.13em;font-weight:850}
+.mg-on-modal-header h2{font-size:clamp(20px,2.3vw,28px);margin:7px 0 5px;color:#123c57}
+.mg-on-modal-header p{margin:0;color:#648093;font-size:13px}
+.mg-on-modal-close{min-width:44px;min-height:44px;border:1px solid #d7e5ed;border-radius:12px;background:#f2f7fa;color:#31576e;font-size:29px}
+.mg-on-modal-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:10px 20px;background:#fff;border-bottom:1px solid #e2ecf2}
+.mg-on-modal-tabs button{min-height:44px;padding:11px 7px;border:1px solid transparent;border-radius:10px;background:#eef4f7;color:#315e76;font-weight:800;font-size:13px}
+.mg-on-modal-tabs button[aria-current=page]{background:#104e70;color:#fff}
+.mg-on-modal-content{overflow:auto;overscroll-behavior:contain;min-height:0;padding:clamp(12px,2vw,23px)}
+.mg-on-day-total{border:1px solid #bcddeb;background:#ecf6fc;border-radius:14px;padding:14px;margin-bottom:15px}
+.mg-on-day-total h3{margin:0 0 9px;color:#0f4b69;font-size:18px}
+.mg-on-report-turn{border:1px solid #dfebf1;background:#fff;border-radius:13px;padding:clamp(12px,2vw,20px);margin:0 0 15px}
+.mg-on-report-turn>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mg-on-report-turn h3{color:#133d55;font-size:20px;margin:0 0 10px}
+.mg-on-report-turn h4{font-size:14px;margin:17px 0 11px;color:#355e72}
+.mg-on-photo-area{margin-top:14px;padding-top:8px;border-top:1px dashed #d4e5ee}
+.mg-on-modal .mg-on-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){.mg-on-day-row{grid-template-columns:1fr 1fr}.mg-on-day-open{grid-column:1/-1}}
+@media(max-width:520px){
+ .mg-on-day-row{padding:12px;gap:12px}
+ .mg-on-day-amount strong{font-size:14px!important}
+ .mg-on-modal-backdrop{padding:0}
+ .mg-on-modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+ .mg-on-modal-header{padding:13px}
+ .mg-on-modal-tabs{gap:5px;padding:7px}
+ .mg-on-modal-tabs button{font-size:12px}
+ .mg-on-modal .mg-on-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mg-on-modal-content{padding:12px}
+}
