@@ -14,6 +14,19 @@ export async function rpc<T>(
 ): Promise<T> {
   const { data, error } = await createClient().rpc(name, args);
   if (error) {
+    // La invitación es personal: si la cuenta ya tiene otro rol, no modificarlo.
+    // Mostrar la causa real sin exponer datos de otras empresas o usuarios.
+    if (name === "rm_app_manager_staff_invite_accept" && error.code === "42501") {
+      const detail = error.message || "";
+      if (detail.includes("otra asignación") || detail.includes("no está habilitada"))
+        throw new Error("Esta cuenta de Google ya tiene un rol asignado o no está habilitada. Ingresá con tu cuenta personal de colaborador; si ya tenés otra asignación, pedile a la administración que revise tu acceso.");
+      if (detail.includes("ya fue utilizado"))
+        throw new Error("Esta invitación ya fue utilizada. Pedile al responsable una nueva.");
+      if (detail.includes("venció") || detail.includes("revocada"))
+        throw new Error("Esta invitación venció o fue anulada. Pedile al responsable otra.");
+      if (detail.includes("correo Google") || detail.includes("identidad no está verificada"))
+        throw new Error("Verificá tu cuenta de Google e intentá nuevamente.");
+    }
     if (["42501", "PGRST301"].includes(error.code))
       throw new Error(
         "Tu cuenta no tiene permiso para esta acción. Actualizá tu sesión.",

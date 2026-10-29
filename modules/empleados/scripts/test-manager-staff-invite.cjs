@@ -44,14 +44,26 @@ for(const required of [
 assert(!sql.includes("on conflict(user_id) do update set role"),"Existing user roles must never be overwritten");
 const manager = fs.readFileSync("components/legajos/ManagerLegajos.tsx","utf8");
 assert(manager.includes('Invitar Colaborador'));
-assert(manager.includes('showInvite && !ownerView'));
+assert(manager.includes('showInvite && locals.length>0'));
+assert(manager.includes('Invitar colaborador'),"Los dueños también pueden invitar sin editar legajos");
 assert(manager.includes('Pendiente de completar'));
 assert(manager.includes('onClose={()=>{setShowInvite(false);updateView();}}'));
 const update = fs.readFileSync("features/legajos/api.ts","utf8");
 assert(update.includes("needs_completion: false"),"Completing an invited profile clears its pending state");
+const authorization = fs.readFileSync("features/access/api.ts","utf8");
+assert(authorization.includes("rm_app_manager_staff_invite_accept"));
+assert(authorization.includes("Cambiar cuenta") === false); // La explicación vive en el formulario.
+const upgrade = fs.readFileSync("../../supabase/migrations/20261029030000_invitaciones_gerente_dueno_multiempresa.sql","utf8");
+assert(upgrade.includes("rm_test_private.manages_organization(target_local.organization_id)"));
+assert(upgrade.includes("rm_test_private.app_role()='owner'"));
+assert(upgrade.includes("rm_test_private.app_role()='manager'"));
+assert(upgrade.includes("rm_employee_profile_scope(target_local.organization_id,target_local.id)"));
+assert(upgrade.includes("p_local=any(rm_test_private.gestlok_gerente_locals())"));
 const flow = fs.readFileSync("components/invitations/JoinStaffInvitation.tsx","utf8");
 assert(flow.includes("await managerStaffInviteApi.accept(token)"));
 assert(flow.includes("await refresh()"));
+assert(flow.includes("Cambiar cuenta de Google"));
+assert(flow.includes("signOut({ scope: \"local\" })"));
 assert(flow.includes('router.replace("/")'));
 const router = fs.readFileSync("components/invitations/JoinCompany.tsx","utf8");
 assert(router.includes('params.has("invitacion")'));

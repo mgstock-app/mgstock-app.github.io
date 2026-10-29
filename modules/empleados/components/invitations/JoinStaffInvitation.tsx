@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, LockKeyhole, UserRoundCheck } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
+import { createClient } from "@/lib/supabase/browser";
 import { managerStaffInviteApi } from "@/features/onboarding/api";
 import { validManagerStaffInvite } from "@/utils/manager-staff-invite";
 import "./join-staff-invitation.css";
@@ -15,6 +16,20 @@ export function JoinStaffInvitation({token}:{token:string}) {
   const [message,setMessage] = useState("");
   const [localName,setLocalName] = useState("");
   const [attempt,setAttempt] = useState(0);
+  const [changingAccount,setChangingAccount] = useState(false);
+  const alreadyAssigned = message.startsWith("Esta cuenta de Google ya tiene un rol asignado");
+  const changeAccount = async () => {
+    setChangingAccount(true);
+    try {
+      const { error } = await createClient().auth.signOut({ scope: "local" });
+      if (error) throw error;
+      // Conservar el vínculo individual para que el usuario elija su propia cuenta.
+      router.replace("/unirse/?invitacion=" + encodeURIComponent(token));
+      router.refresh();
+    } catch {
+      setMessage("No se pudo cerrar esta sesión. Salí de GESTLOK y volvé a abrir la invitación con tu cuenta personal.");
+    } finally { setChangingAccount(false); }
+  };
   const tried = useRef("");
   useEffect(()=>{
     if (loading || !user || !validManagerStaffInvite(token)) return;
@@ -67,7 +82,10 @@ export function JoinStaffInvitation({token}:{token:string}) {
     {state==="checking"&&<p role="status">Verificando tu invitación y asignando el local de forma segura…</p>}
     {state==="success"&&<p role="status" className="jsi-success"><CheckCircle2 size={20}/> Tu cuenta ya tiene el rol de colaborador{localName ? " en " + localName : ""}. El gerente podrá completar tu legajo.</p>}
     {state==="error"&&<><p role="alert">{message}</p>
-      <button type="button" className="jsi-retry" onClick={()=>setAttempt(n=>n+1)}>Reintentar incorporación</button>
+      <div className="jsi-actions">
+        {alreadyAssigned && <button type="button" className="jsi-retry" disabled={changingAccount} onClick={()=>void changeAccount()}>{changingAccount?"Cambiando cuenta…":"Cambiar cuenta de Google"}</button>}
+        <button type="button" className="jsi-retry jsi-retry--secondary" disabled={changingAccount} onClick={()=>setAttempt(n=>n+1)}>Reintentar incorporación</button>
+      </div>
     </>}
     <p className="jsi-security"><UserRoundCheck size={16}/> El enlace nunca permite obtener permisos de dueño o gerente.</p>
   </section>;

@@ -8,3 +8,7 @@
 .jsi-security svg,.jsi-success svg{flex-shrink:0}
 .jsi-card .jsi-success{display:flex;gap:9px;align-items:center;color:#12784f;background:#e8f8ef;border-radius:9px;padding:12px}
 .jsi-retry{background:#074b69;color:white;padding:11px 15px;border:0;border-radius:9px;font-size:12px;font-weight:750;cursor:pointer}
+
+.jsi-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.jsi-retry--secondary{background:#fff;color:#074b69;border:1px solid #bcd3e2}
+.jsi-retry:disabled{opacity:.65;cursor:wait}
