@@ -1,5 +1,5 @@
 /* global describe,it,cy,Cypress,expect */
-describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
+describe('DEMO web · carrusel manual de 10 etapas + teléfono interactivo',()=>{
  Cypress.on('uncaught:exception',e=>e.message.includes('Minified React error #418')?false:undefined);
  const start=(width=1280,role='dueno')=>{
   cy.viewport(width,width<500?844:900);
@@ -20,7 +20,7 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
   cy.get('#gl-tour-phone').then(phone=>{
    cy.get('#gl-tour-story').then(story=>expect(story[0].getBoundingClientRect().right).to.be.lessThan(phone[0].getBoundingClientRect().left));
   });
-  cy.get('.gl-tour-nav [data-tour]').should('have.length',11);
+  cy.get('.gl-tour-nav [data-tour]').should('have.length',12);
   cy.get('.gl-tour-nav [aria-current="step"]').should('have.attr','data-tour','0');
   stage(4);
   cy.get('#gl-tour-sandbox').should('be.visible').and('contain.text','Precios');
@@ -59,7 +59,7 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
    const keys=Object.keys(w.sessionStorage);
    expect(keys.some(k=>k.includes('gestlok:guided:products:'))).to.eq(true);
   });
-  stage(8);
+  stage(9);
   cy.get('#gl-tour-review-form').should('be.visible');
   cy.get('#gl-tour-gift').should('not.exist');
   cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(391));
@@ -94,18 +94,19 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
  it('móvil aprovecha el espacio con accesos directos a etapas ficticias y los oculta al finalizar',()=>{
   start(390);
   cy.get('#gl-tour-discover').should('be.visible');
-  cy.get('#gl-tour-discover .gl-tour-discover-card').should('have.length',6);
+  cy.get('#gl-tour-discover .gl-tour-discover-card').should('have.length',7);
+  cy.get('#gl-tour-discover [data-tour="8"]').should('contain.text','Pagos Online');
   cy.get('#gl-tour-discover [data-tour="4"]').click();
   cy.get('#gl-tour-sandbox').should('be.visible').and('contain.text','Precios');
   cy.get('.gl-tour-nav [aria-current="step"]').should('have.attr','data-tour','4');
-  stage(8);
+  stage(9);
   cy.get('#gl-tour-discover').should('not.be.visible');
   cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(391));
  });
  it('en PC no aparecen atajos duplicados y se conserva el recorrido',()=>{
   start(1280);
   cy.get('#gl-tour-discover').should('not.be.visible');
-  cy.get('.gl-tour-nav [data-tour]').should('have.length',11);
+  cy.get('.gl-tour-nav [data-tour]').should('have.length',12);
  });
  it('gerente conserva Colaboradores sin montos, navega manualmente y finaliza con reseña',()=>{
   start(390,'gerente');
@@ -115,7 +116,7 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
   cy.get('#gl-tour-phone-screen #gl-demo-emp').should('exist');
   stage(7);
   cy.get('#gl-tour-story').should('contain.text','vencimientos');
-  stage(8);
+  stage(9);
   cy.get('#gl-tour-review-form').should('be.visible');
   cy.get('#gl-tour-gift').should('not.exist');
  });

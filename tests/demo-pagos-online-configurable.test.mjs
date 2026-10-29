@@ -1,0 +1,44 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+test('Demo Pagos Online: datos ficticios y métodos manuales, sin leer empresas reales',()=>{
+ const source=read('public/stock/gestlok-demo-pagos.js'),window={};
+ runInNewContext(source,{window,Intl,Date,console});
+ const d=window.GestLokDemoPagos;
+ assert(d);
+ assert.match(d.view(),/DEMO SIN DATOS REALES/);
+ assert.match(d.view(),/Pagos Online/);
+ assert.match(d.view(),/Resumen e historial/);
+ assert.match(d.view(),/data-dp-tab="carga" aria-current="page"/);
+ assert.match(d.view(),/Carga de pedidos/);
+ assert.match(d.view(),/Mañana/);
+ // Los dos turnos se muestran en Resumen; la entrada comienza en Carga.
+ assert(d.handleClick({target:{closest:()=>({dataset:{dpTab:'resumen'}})}}));
+ assert.match(d.view(),/Noche/);
+ assert.match(source,/Formas de pago \(agregar manualmente\)/);
+ assert.match(source,/Día Completo/);
+ assert.match(source,/Simular foto/);
+ assert.match(source,/data-dp-close/);
+ assert.match(source,/name="note"/);
+ assert.match(source,/name="app"/);
+ assert.match(source,/data-dp-add-method|gl-dp-add-method/);
+ assert.doesNotMatch(source,/GestLokSupabase|\.rpc\(|\.storage\.|\.functions\.|fetch\(|service_role/i);
+ const summary=d._test.totals([{movements:[{method:'Transferencia',amount:1000,app:true},{method:'Tarjeta',amount:400,app:false}]}]);
+ assert.equal(summary.total,1400);assert.equal(summary.app,1000);assert.equal(summary.online,400);
+ assert.equal(d._test.labelTurn('noche'),'Noche');
+ const button=attr=>({target:{closest:selector=>selector.includes('data-dp-tab')?{dataset:{dpTab:attr}}:null}});
+ assert(d.handleClick(button('carga')));
+ assert.match(d.view(),/Nuevo medio|Formas de pago/);
+});
+test('Etapa de demo adicional usa carrusel manual y mantiene final reseñas',()=>{
+ const tour=read('public/stock/gestlok-demo-tour.js'),runtime=read('components/stock-runtime.tsx');
+ assert.match(tour,/name:'Pagos Online',title:'Cada pago, organizado por turno'/);
+ assert.match(tour,/step===8\?window\.GestLokDemoPagos/);
+ assert.match(tour,/data-tour/);
+ assert.match(tour,/data-tour="|data-tour=/);
+ assert.match(tour,/name:'Final'/);
+ assert.match(runtime,/if \(visitor\) await load\("\/stock\/gestlok-demo-pagos\.js/);
+ assert.doesNotMatch(read('public/stock/gestlok-demo-pagos.js'),/getUser|auth\.getSession/);
+});
