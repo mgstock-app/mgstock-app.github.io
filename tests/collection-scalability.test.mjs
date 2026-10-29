@@ -11,7 +11,7 @@ test("múltiples vistas comparten la descarga de una colección, con páginas de
   const end = auth.indexOf("  const db = Object.freeze({",begin);
   assert.ok(begin > 0 && end > begin, "Tramo de lectura de GESTLOK detectado");
   const section = auth.slice(begin,end);
-  const all = Array.from({length:1450},(_,n)=>({id:String(n).padStart(5,"0"),data:{stock:n}}));
+  const all = Array.from({length:10050},(_,n)=>({id:String(n).padStart(5,"0"),data:{stock:n}}));
   let calls = 0;
   const sb = {from(name){
     assert.equal(name,"docs");
@@ -37,14 +37,14 @@ test("múltiples vistas comparten la descarga de una colección, con páginas de
     sandbox.api.fetchCol("munro/productos"),
     sandbox.api.fetchCol("munro/productos")
   ]);
-  assert.equal(calls,2,"Una consulta por página, no una por cada componente");
-  assert.equal(first.length,1450);
-  assert.equal(second.length,1450);
+  assert.equal(calls,11,"Una consulta por página, no una por cada componente");
+  assert.equal(first.length,10050);
+  assert.equal(second.length,10050);
   assert.equal(first[0].id,"00000");
-  assert.equal(first.at(-1).id,"01449");
+  assert.equal(first.at(-1).id,"10049");
   sandbox.api.collectionRevisions.set("munro/productos",1);
   await sandbox.api.fetchCol("munro/productos");
-  assert.equal(calls,4,"Un cambio solicita una nueva lectura; no queda cacheado");
+  assert.equal(calls,22,"Un cambio solicita una nueva lectura; no queda cacheado");
 });
 
 test("el respaldo no consulta planillas completas con pestaña oculta",()=>{
