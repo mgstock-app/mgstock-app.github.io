@@ -1,0 +1,172 @@
+/* GESTLOK · Tarjeta Administración de empleados, edición escritorio 29/10.
+   Look unificado con Administración de la empresa; todas las empresas.
+   No cambia permisos, datos ni navegación de celulares. */
+@media screen and (min-width:901px){
+ .app-shell{
+  --gestlok-desk-ink:#142f46;--gestlok-desk-blue:#086bba;
+  --gestlok-desk-muted:#536a7e;--gestlok-desk-line:#e1eaf2;
+  --gestlok-desk-active:#e9f4fd;
+  background:#fff;color:var(--gestlok-desk-ink);
+ }
+ .app-shell :is(.owner-home,.gl-gerente,.gi-admin-shell,.gl-employee-shell,.alessandro-home){
+  background:#fff;color:#142f46;
+ }
+ /* Dueño y gerente: encabezado azul oscuro sobre blanco. */
+ .app-shell .owner-main,.app-shell .gl-gerente__main,.app-shell .gi-admin-content,
+ .app-shell .gl-employee-main{background:#fff;color:#142f46;min-width:0}
+ .app-shell .owner-header--management,.app-shell .gl-gerente .gl-gerente__header,
+ .app-shell .gl-employee-top{
+  background:#fff!important;border-bottom:1px solid #e1eaf2;
+  color:#142f46!important;box-shadow:0 3px 16px #173b5208;
+ }
+ .app-shell .owner-header--management .owner-header-brand strong,
+ .app-shell .gl-gerente .gl-gerente__header-brand strong,
+ .app-shell .gl-employee-top>span{
+  color:#142f46!important;
+ }
+ .app-shell .owner-header--management .owner-header-brand strong span,
+ .app-shell .gl-gerente .gl-gerente__header-lok,
+ .app-shell .gl-employee-top>span span{color:#087aa9!important}
+ .app-shell :is(.owner-home,.gl-gerente,.gi-admin-shell,.gl-employee-shell)
+ :is(h1,h2,h3){color:#142f46}
+ /* Menú lateral profesional para todos los roles en PC. */
+ .app-shell :is(.owner-sidebar,.gl-gerente__sidebar,.gl-employee-sidebar,.gi-admin-sidebar){
+  background:#fff!important;color:#142f46!important;
+  border-right:1px solid #e1eaf2!important;
+  box-shadow:3px 0 19px #163b5209;
+ }
+ .app-shell .owner-sidebar :is(nav a,nav button,.owner-bottom>a,.owner-bottom>button),
+ .app-shell .gl-gerente .gl-gerente__sidebar nav button,
+ .app-shell .gl-employee-sidebar :is(nav button,.gl-employee-sidebar__bottom>button),
+ .app-shell .gi-admin-sidebar :is(nav>a,.gi-admin-sidebar-bottom>button){
+  color:#24435b!important;
+  font-weight:700;min-height:45px;border-radius:11px;
+ }
+ .app-shell .owner-sidebar :is(nav a,nav button,.owner-bottom>a,.owner-bottom>button)>svg,
+ .app-shell .gl-gerente .gl-gerente__sidebar nav button>svg,
+ .app-shell .gl-employee-sidebar nav button>svg,
+ .app-shell .gi-admin-sidebar nav>a svg{color:#147fae}
+ .app-shell .owner-sidebar nav .active,
+ .app-shell .gl-gerente .gl-gerente__sidebar nav button.active,
+ .app-shell .gl-employee-sidebar nav button[aria-current="page"],
+ .app-shell .gi-admin-sidebar nav>a[aria-current="page"]{
+  background:#e9f4fd!important;color:#075d99!important;
+  box-shadow:inset 3px 0 #087ab9;
+ }
+ .app-shell .owner-sidebar :is(nav a,nav button):hover,
+ .app-shell .gl-gerente .gl-gerente__sidebar nav button:not(.active):hover,
+ .app-shell .gl-employee-sidebar nav button:hover,
+ .app-shell .gi-admin-sidebar nav>a:hover{background:#eff7fc!important;color:#155b8d!important}
+ .app-shell .owner-caption,.app-shell .gl-gerente__local-label,
+ .app-shell .gl-employee-company small{color:#536a7e}
+ /* Tarjetas interiores: efecto suave, sin apagar la tipografía. */
+ .app-shell .owner-stat,.app-shell .owner-panel,
+ .app-shell .gl-gerente :is(.mlg-local,.mlg-stats>div,.gl-gerente__google),
+ .app-shell .gi-admin-card,.app-shell .gi-admin-kpi,
+ .app-shell .employee-private-portal__hero,
+ .app-shell .employee-private-portal .employee-report{
+  background:#fff;border:1px solid #e1eaf2;border-radius:16px;
+  box-shadow:0 5px 24px #16384f09;color:#142f46;
+ }
+ .app-shell .owner-header h1,.app-shell .owner-panel h2,
+ .app-shell .gl-gerente .mlg-intro h1{color:#142f46}
+ .app-shell .owner-stat strong,.app-shell .owner-action strong,
+ .app-shell .gl-gerente .mlg-stats strong{color:#142f46}
+ .app-shell .owner-stat small,.app-shell .owner-action small,
+ .app-shell .gl-gerente .mlg-stats span{color:#536a7e}
+ .app-shell .owner-action{background:#fff;border-color:#e1eaf2;color:#24435b}
+ .app-shell .owner-action:hover{background:#eff7fc;border-color:#c6dbe9}
+ .app-shell .owner-button:not(.secondary),
+ .app-shell .gl-gerente .mlg-primary{background:#086bba;color:#fff;border-color:#086bba}
+ .app-shell .owner-button:not(.secondary):hover,
+ .app-shell .gl-gerente .mlg-primary:hover{background:#07558f}
+ .app-shell .owner-header--management .owner-header-tools>label,
+ .app-shell .gl-gerente :is(.mlg-filters label,.mlg-filters select){
+  background:#fff;border-color:#d9e5ed;color:#244761;
+ }
+ .app-shell .gl-gerente .mlg-filters input{color:#142f46}
+ .app-shell .gl-gerente .mlg-filters input::placeholder{color:#617b8f;opacity:1}
+ /* Colaboradores: una línea amplia por persona, como la maqueta elegida.
+    No agregamos campos que no estén disponibles para el rol. */
+ .app-shell .gl-gerente .mlg-board,
+ .app-shell .owner-home .mlg-board{max-width:100%;min-width:0}
+ .app-shell .gl-gerente .mlg-local,
+ .app-shell .owner-home .mlg-local{overflow:hidden}
+ .app-shell .gl-gerente .mlg-cards,
+ .app-shell .owner-home .mlg-cards{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:0;
+  border:1px solid #e1eaf2;border-radius:13px;overflow:hidden;
+ }
+ .app-shell .gl-gerente .mlg-directory-head,
+ .app-shell .owner-home .mlg-directory-head{
+  display:grid;grid-template-columns:44px minmax(0,1fr) 136px 142px 34px;
+  align-items:center;gap:12px;
+  background:#f8fbfe;border:1px solid #e1eaf2;
+  border-bottom:0;border-radius:13px 13px 0 0;
+  padding:11px 15px;color:#4d677d;
+  font:750 10px/1.3 Inter,system-ui,sans-serif;
+  text-transform:uppercase;letter-spacing:.06em;
+ }
+ .app-shell .gl-gerente .mlg-directory-head + .mlg-cards,
+ .app-shell .owner-home .mlg-directory-head + .mlg-cards{
+  border-radius:0 0 13px 13px;
+ }
+ .app-shell .gl-gerente .mlg-directory-head .mlg-dir-name,
+ .app-shell .owner-home .mlg-directory-head .mlg-dir-name{grid-column:2}
+ .app-shell .gl-gerente .mlg-directory-head .mlg-dir-status,
+ .app-shell .owner-home .mlg-directory-head .mlg-dir-status{grid-column:3}
+ .app-shell .gl-gerente .mlg-directory-head .mlg-dir-actions,
+ .app-shell .owner-home .mlg-directory-head .mlg-dir-actions{grid-column:4}
+ .app-shell .gl-gerente .mlg-person,
+ .app-shell .owner-home .mlg-person{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 136px 142px 34px;
+  align-items:center;gap:12px;
+  min-height:64px;padding:9px 15px;
+  margin:0;border:0;border-bottom:1px solid #e8eef4;
+  border-radius:0;background:#fff;box-shadow:none;
+ }
+ .app-shell .gl-gerente .mlg-person:last-child,
+ .app-shell .owner-home .mlg-person:last-child{border-bottom:0}
+ .app-shell .gl-gerente .mlg-person:hover,
+ .app-shell .owner-home .mlg-person:hover{background:#f9fcff}
+ .app-shell .gl-gerente .mlg-person .mlg-avatar,
+ .app-shell .owner-home .mlg-person .mlg-avatar{
+  width:40px;height:40px;font-size:19px;
+ }
+ .app-shell .gl-gerente .mlg-person .mlg-person-name,
+ .app-shell .owner-home .mlg-person .mlg-person-name{display:contents}
+ .app-shell .gl-gerente .mlg-person .mlg-person-name strong,
+ .app-shell .owner-home .mlg-person .mlg-person-name strong{
+  grid-column:2;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:#142f46;font-size:13px;font-weight:750;
+ }
+ .app-shell .gl-gerente .mlg-person .mlg-status,
+ .app-shell .owner-home .mlg-person .mlg-status{
+  grid-column:3;justify-self:start;align-self:center;color:#126b48;
+ }
+ .app-shell .gl-gerente .mlg-person .mlg-pending,
+ .app-shell .owner-home .mlg-person .mlg-pending{
+  grid-column:2;grid-row:2;justify-self:start;
+ }
+ .app-shell .gl-gerente .mlg-person .mlg-view,
+ .app-shell .owner-home .mlg-person .mlg-view{
+  grid-column:4;justify-self:stretch;min-height:35px;
+  background:#eff6fd;color:#075e9b;border:1px solid #d6e6f2;
+  font-size:11px;border-radius:9px;
+ }
+ .app-shell .gl-gerente .mlg-person .mlg-more,
+ .app-shell .owner-home .mlg-person .mlg-more{
+  grid-column:5;justify-self:end;color:#365b73;
+ }
+ .app-shell .gl-gerente .mlg-status--refuerzo,
+ .app-shell .owner-home .mlg-status--refuerzo{color:#a96605}
+ .app-shell .gl-gerente .mlg-status--inactivo,
+ .app-shell .owner-home .mlg-status--inactivo{color:#bb2847}
+ .app-shell .gl-gerente .mlg-modal,
+ .app-shell .owner-home .mlg-modal{color:#142f46;border-radius:16px}
+ /* Los logos, especialmente Mi Gusto sobre negro, no se recolorean. */
+ .app-shell :is(.owner-company-image,.gl-gerente__company-image,.gl-employee-company img){
+  filter:none!important;mix-blend-mode:normal!important;object-fit:contain;
+ }
+}
