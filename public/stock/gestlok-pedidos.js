@@ -31,7 +31,7 @@
    const from=shift(currentDate(),-45);
    const [p,o,c]=await Promise.all([
     db().from('gestlok_pilot_products')
-      .select('id,name,category,sku,unit_price,in_stock,active').eq('tenant_id',TENANT)
+      .select('id,name,category,sku,unit_price,in_stock,active,stock_quantity').eq('tenant_id',TENANT)
       .order('name',{ascending:true}).limit(500),
     db().from('gestlok_pilot_orders')
       .select('id,day,customer,reference,status,reason,notes,items,created_at,updated_at')
@@ -151,7 +151,7 @@
   return '<ol class="gl-order-ranking">'+rows.map((r,i)=>'<li><span>'+esc(r.name)+'</span><b>'+r.quantity+' u.</b></li>').join('')+'</ol>';
  }
  function catalog(){
-  return '<div class="gl-order-caption"><h2>Catálogo de Cami</h2><p>Ingresá solamente tus productos reales. Los nombres, categorías y precios son configurables.</p></div>'+
+  return '<div class="gl-order-caption"><h2>Catálogo de Cami</h2><p>El catálogo se comparte con Precios y Stock. Para calcular precios y llevar cantidades, usá esas secciones.</p><div class="gl-order-catalog-links"><button type="button" data-orders-go-prices>Precios</button><button type="button" data-orders-go-stock>Stock</button></div></div>'+
    '<form id="gl-orders-product" class="gl-order-catalog-form">'+
     '<label>Producto<input required minlength="2" maxlength="140" name="name" placeholder="Nombre del perfume o producto"></label>'+
     '<label>Categoría<input name="category" maxlength="80" placeholder="Categoría"></label>'+
@@ -163,8 +163,9 @@
     '<div class="gl-order-list">'+products.filter(x=>x.active).map(x=>
      '<div class="gl-order-item gl-order-catalog-item"><div><b>'+esc(x.name)+'</b><small>'+esc(x.category||'Sin categoría')+
      (x.sku?' · '+esc(x.sku):'')+' · '+(x.unit_price==null?'Sin precio':fmt(x.unit_price))+'</small></div>'+
-     '<button type="button" data-orders-stock="'+x.id+'" '+(busy?'disabled':'')+'>'+
-      (x.in_stock?'Marcar sin stock':'Marcar disponible')+'</button></div>').join('')+'</div>');
+     (x.stock_quantity!=null?'<small>Stock: '+x.stock_quantity+' u. · Gestionar en Stock</small>':
+      '<button type="button" data-orders-stock="'+x.id+'" '+(busy?'disabled':'')+'>'+
+      (x.in_stock?'Marcar sin stock':'Marcar disponible')+'</button>')+'</div>').join('')+'</div>');
  }
  function historyUI(){
   const history=Array.from({length:historyDays},(_,i)=>shift(currentDate(),-i));
@@ -255,7 +256,7 @@
      .eq('tenant_id',TENANT).eq('id',id),'Estado del pedido actualizado.');
  }
  async function toggleStock(id){
-  const p=products.find(x=>x.id===id&&x.active);if(!p)return;
+  const p=products.find(x=>x.id===id&&x.active);if(!p||p.stock_quantity!=null)return;
   await execute(()=>db().from('gestlok_pilot_products').update({in_stock:!p.in_stock})
    .eq('tenant_id',TENANT).eq('id',id),'Disponibilidad actualizada.');
  }
@@ -271,6 +272,8 @@
  }
  document.addEventListener('click',e=>{
   if(!$('#gl-pilot-panel'))return;
+  if(e.target.closest('[data-orders-go-prices]')){void window.GestLokPilot?.switchSection?.('precios');return;}
+  if(e.target.closest('[data-orders-go-stock]')){void window.GestLokPilot?.switchSection?.('stock');return;}
   const t=e.target.closest('[data-orders-tab]');if(t){tab=t.dataset.ordersTab;error='';notice='';renderParent();return;}
   if(e.target.closest('[data-orders-prev]')){day=shift(day,-1);notice='';error='';renderParent();return;}
   if(e.target.closest('[data-orders-next]')){day=shift(day,1);notice='';error='';renderParent();return;}
