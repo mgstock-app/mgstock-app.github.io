@@ -61,7 +61,7 @@ test('Motos Agencia: solo Mi Gusto – Munro; dueños con historial, gerentes de
   assert.match(app, /'munro_control', 'agencia_motos'\]/);
   assert.match(app, /\(puedeVerMotos\(\) \? `<button data-go="motos">\$\{ic\('moto'\)\}<span class="nl">Motos Agencia<\/span>/);
   assert.match(app, /<details class="snav-folder"[\s\S]*Administración de local/);
-  assert.match(app, /if \(!puedeVerMotos\(\) && !puedeVerResenas\(\)\) return items;/);
+  assert.match(app, /if \(!puedeVerMotos\(\) && !puedeVerResenas\(\) && !puedeVerPagosOnline\(\)\) return items;/);
   assert.match(app, /\(v === 'motos' && puedeVerMotos\(\)\)/);
   assert.match(app, /window\.GestLokMunroMotos\?\.subscribe\(loc,push\)/);
 });
