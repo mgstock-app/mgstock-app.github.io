@@ -15,7 +15,7 @@ begin
    or v->>'tenant_id' is distinct from gestlok_tenancy.current_tenant_id()::text
    or v->>'tenant_id' = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'
    or coalesce(v->>'logo_id','')='mi-gusto'
-   or lower(btrim(coalesce(v->>'company_name','')))='mi gusto'
+   or lower(btrim(coalesce(v->>'company_name',''))) like 'mi gusto%'
   then return jsonb_build_object('enabled',false,'local_ids','[]'::jsonb); end if;
   -- No habilitar esta nueva pantalla sobre el local piloto preexistente de Cami.
   -- Todos los otros locales nuevos habilitados por su membresía serán incluidos.
