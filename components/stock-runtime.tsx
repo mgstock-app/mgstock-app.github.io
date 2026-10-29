@@ -57,7 +57,8 @@ export function StockRuntime() {
       await load("/stock/app.js?rev=diario-oculto-20261029");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=mobile-20261028-v1");
-      if (visitor) await load("/stock/gestlok-demo-tour.js?rev=explorar-atajos-20261029");
+      if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
+      if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();
     startup.catch(() => { if (active) setError(true); });
     return () => { active = false; };
