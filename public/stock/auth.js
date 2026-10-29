@@ -34,7 +34,7 @@
       // Completa el email de la última sesión: solo falta la contraseña.
       let last = ''; try { last = localStorage.getItem(LAST_EMAIL) || ''; } catch {}
       const mail = $('#au-email'), pass = $('#au-pass');
-      if (last && mail && !mail.value){ mail.value = last; if (pass && !msg) setTimeout(() => pass.focus(), 0); }
+      if (last && mail && !mail.value) mail.value = last;
     }
     // Visible solo para visitantes que todavía no tienen sesión activa.
     // No pide correo ni contraseña y nunca se conecta a datos empresariales.
@@ -51,7 +51,7 @@
         form.append(link,info);
       }
     }
-    const f = box.querySelector(`[data-mode="${mode}"] input`); if (f) setTimeout(() => f.focus(), 30);
+    const f = box.querySelector(`[data-mode="${mode}"] input`); if (f && mode !== "in") setTimeout(() => f.focus(), 30);
   }
   function hide(){ const box = $('#auth'); if (box){ box.hidden = true; } document.documentElement.classList.remove('auth-on'); }
   function busy(form, on, label){ const b = form.querySelector('button[type="submit"]'); if (!b) return; if (on){ b.dataset.l = b.textContent; b.textContent = label || 'Un momento…'; b.disabled = true; } else { b.textContent = b.dataset.l || b.textContent; b.disabled = false; } }
@@ -101,6 +101,18 @@
     } catch (err) { busy(f, false); show('in', errTxt(err), true); }
   }, true);
   document.addEventListener('click', e => {
+    const toggle = e.target.closest('[data-au-password-toggle]');
+    if (toggle){
+      e.preventDefault();
+      const input = $('#au-pass');
+      if (input){
+        const visible = input.type === 'password';
+        input.type = visible ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', String(visible));
+        toggle.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+      }
+      return;
+    }
     const t = e.target.closest('[data-au]'); if (!t) return;
     e.preventDefault();
     // «Salir» cierra solo este equipo: con el alcance global de Supabase se cerraba la sesión
