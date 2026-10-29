@@ -14,7 +14,7 @@
  }
  function shift(date,days){const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
  function dayLabel(date){return new Intl.DateTimeFormat('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));}
- let day=currentDate(),tab='cargar',products=[],orders=[],closures=[],draft={},search='',busy=false,loading=false,error='',notice='',ready=false,historyDays=7;
+ let day=currentDate(),tab='cargar',products=[],orders=[],closures=[],draft={},draftMeta={customer:'',reference:'',notes:''},search='',busy=false,loading=false,error='',notice='',ready=false,historyDays=7;
  const statuses={pendiente:'Pendiente',preparado:'Preparado',entregado:'Entregado',sin_realizar:'Sin realizar',cancelado:'Cancelado'};
  function db(){return window.GestLokSupabase;}
  function authorized(){return window.GestLokPilot?.authorized?.()===true;}
@@ -107,9 +107,9 @@
  function orderForm(){
   const count=Object.values(draft).reduce((s,x)=>s+x,0);
   return '<div class="gl-order-caption"><h2>Armar un pedido</h2><p>Agregá productos con + y −. Cada pedido queda guardado con fecha y cantidades.</p></div>'+
-   '<form id="gl-orders-create"><div class="gl-order-fields"><label>Cliente (opcional)<input name="customer" maxlength="120" placeholder="Nombre o referencia"></label>'+
-   '<label>N.º de pedido externo (opcional)<input name="reference" maxlength="100" placeholder="Ej.: número de Tiendanube"></label></div>'+
-   '<label>Notas (opcional)<textarea name="notes" rows="2" maxlength="800" placeholder="Detalle de entrega o preparación"></textarea></label>'+
+   '<form id="gl-orders-create"><div class="gl-order-fields"><label>Cliente (opcional)<input name="customer" maxlength="120" value="'+esc(draftMeta.customer)+'" placeholder="Nombre o referencia"></label>'+
+   '<label>N.º de pedido externo (opcional)<input name="reference" maxlength="100" value="'+esc(draftMeta.reference)+'" placeholder="Ej.: número de Tiendanube"></label></div>'+
+   '<label>Notas (opcional)<textarea name="notes" rows="2" maxlength="800" placeholder="Detalle de entrega o preparación">'+esc(draftMeta.notes)+'</textarea></label>'+
    productsUI()+
    '<div class="gl-order-actionbar"><div><strong>'+count+' unidades seleccionadas</strong><small>Los precios son opcionales. No se genera una venta automáticamente.</small></div>'+
    '<button type="submit" '+(!count||busy||statusDay()?'disabled':'')+'>Guardar pedido preparado</button>'+
@@ -197,7 +197,7 @@
       tab==='sin_realizar'?notDone():tab==='cierre'?closeUI():tab==='historial'?historyUI():catalog())
     )+'</section>';
  }
- async function open(){tab='cargar';draft={};notice='';await load();}
+ async function open(){tab='cargar';draft={};draftMeta={customer:'',reference:'',notes:''};notice='';await load();}
  async function execute(request,success){
   if(busy)return;
   busy=true;error='';notice='';renderParent();
@@ -215,7 +215,7 @@
    reference:String(fields.reference||'').trim(),notes:String(fields.notes||'').trim(),
    items,status
   }),status==='preparado'?'Pedido preparado guardado.':'Pedido pendiente guardado.');
-  if(!error)draft={};
+  if(!error){draft={};draftMeta={customer:'',reference:'',notes:''};}
  }
  async function noOrder(form){
   const d=Object.fromEntries(new FormData(form).entries());
@@ -251,9 +251,10 @@
   if(day>currentDate()){error='No se puede cerrar una fecha futura.';renderParent();return;}
   if(!confirm('¿Finalizar el día '+dayLabel(day)+'? Los pedidos quedarán bloqueados.'))return;
   if(!confirm('Confirmación final: ¿guardar el cierre y abrir el próximo día?'))return;
+  const closingDay=day;
   await execute(()=>db().from('gestlok_pilot_order_closures').insert({tenant_id:TENANT,day}),
     'Jornada finalizada. El historial quedó conservado.');
-  if(!error){day=shift(day,1);tab='cargar';draft={};renderParent();}
+  if(!error){day=shift(closingDay,1);tab='cargar';draft={};draftMeta={customer:'',reference:'',notes:''};renderParent();}
  }
  document.addEventListener('click',e=>{
   if(!$('#gl-pilot-panel'))return;
@@ -271,6 +272,7 @@
   if(e.target.closest('[data-orders-refresh]')){void load();}
  });
  document.addEventListener('input',e=>{
+  if(e.target.closest('#gl-orders-create')&&e.target.name in draftMeta){draftMeta[e.target.name]=e.target.value;return;}
   if(!e.target.matches('[data-orders-search]'))return;
   search=e.target.value.toLowerCase().trim();
   document.querySelectorAll('#gl-pilot-panel [data-orders-product]').forEach(node=>{
