@@ -1,0 +1,160 @@
+/* Tour GESTLOK 2026 · mismo blanco y azul marino de la app móvil.
+   SOLO se activa en ?demo=1; ninguna regla afecta a empresas reales. */
+html.gl-visitor-mode {
+ --gl-demo-navy:#142f46;--gl-demo-blue:#0879b7;--gl-demo-line:#e0eaf2;
+}
+.gl-visitor-mode #gl-visitor-bar{background:#fff;color:#142f46;border-bottom:1px solid #dbe8f1;box-shadow:0 3px 16px #173e5210}
+.gl-visitor-mode #gl-visitor-bar .gl-visitor-sign small{color:#5d7688}
+.gl-visitor-mode #gl-visitor-bar .gl-visitor-controls label{color:#38596f}
+.gl-visitor-mode #gl-visitor-bar .gl-visitor-controls select{border-color:#d2e1ed;color:#142f46;background:#f9fcfe}
+.gl-visitor-mode #gl-visitor-reset{background:#fff;color:#24526f;border:1px solid #d4e5ef}
+.gl-visitor-mode #gl-visitor-reset:hover{background:#eef7fc}
+.gl-visitor-mode .gl-visitor-exit{background:#e6f4fb;color:#0a618c}
+.gl-tour-finished .gl-mobile-dock{display:none!important}
+.gl-visitor-mode #gl-tour-controls{color:#23455d}
+.gl-visitor-mode .gl-tour-nav{overflow-x:auto;justify-content:flex-start;padding:3px 0 6px;scrollbar-width:thin}
+.gl-visitor-mode .gl-tour-nav button{flex:0 0 auto;min-width:38px;min-height:37px;
+ background:#fff;color:#25465e;border:1px solid #dce8f0;box-shadow:none;font-weight:700}
+.gl-visitor-mode .gl-tour-nav button[aria-current="step"]{background:#e7f4fc;color:#075d94;border-color:#b9dbec}
+.gl-visitor-mode .gl-tour-hint{color:#5c768c;line-height:1.4}
+.gl-visitor-mode .gl-tour-end{background:#fff!important;border-color:#e0eaf2;color:#142f46;border-radius:18px}
+.gl-visitor-mode .gl-tour-end h2{color:#142f46;font-weight:800}
+.gl-visitor-mode .gl-tour-end .btn.primary{background:#0879b7;color:#fff;border-color:#0879b7}
+.gl-visitor-mode #gl-tour-final{width:100%;max-width:470px;margin:auto}
+
+/* Empleados: vista móvil real de Colaboradores, sin exponer legajos de producción. */
+.gl-visitor-mode #gl-demo-emp{background:#f8fbfe!important;color:#142f46!important}
+#gl-demo-emp .gl-dh-top{background:#fff;border:1px solid #e0eaf2;border-radius:15px;padding:12px;box-shadow:0 4px 14px #153e5309}
+#gl-demo-emp .gl-dh-top h2,#gl-demo-emp h1{color:#142f46;line-height:1.16;letter-spacing:-.025em;font-weight:850}
+#gl-demo-emp .gl-dh-folders{gap:7px;scrollbar-width:thin}
+#gl-demo-emp .gl-dh-folders button{background:#fff;border-color:#dae6ee;color:#24526e;font-weight:700;border-radius:11px}
+#gl-demo-emp .gl-dh-folders .on{background:#e7f4fc;color:#075f96;border:1px solid #b9deed}
+#gl-demo-emp .gl-dh-directory{display:grid;gap:13px;min-width:0}
+#gl-demo-emp .gl-dh-intro{margin:4px 0 -6px;color:#1774a2;letter-spacing:.08em;font-weight:800;font-size:10px}
+#gl-demo-emp .gl-dh-directory h1{margin:0;font-size:clamp(23px,5.7vw,31px)}
+#gl-demo-emp .gl-dh-directory>.lead{margin:0;color:#5b7386;font-size:13px}
+#gl-demo-emp .gl-dh-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#gl-demo-emp .gl-dh-summary>div{display:flex;flex-direction:column;justify-content:center;gap:4px;
+ padding:13px;background:#fff;border:1px solid #e0eaf2;border-radius:13px;min-width:0;box-shadow:0 3px 15px #16395108}
+#gl-demo-emp .gl-dh-summary span{font-size:11px;color:#557188;font-weight:650}
+#gl-demo-emp .gl-dh-summary strong{font-size:25px;color:#142f46;line-height:1.1;font-weight:900}
+#gl-demo-emp .gl-dh-search{display:grid;gap:6px;font-size:12px;font-weight:700;color:#355770}
+#gl-demo-emp .gl-dh-search input{width:100%;height:43px;border:1px solid #d5e4ee;background:#fff;
+ border-radius:11px;padding:10px 12px;color:#142f46;font-size:14px;outline-offset:2px}
+#gl-demo-emp .gl-dh-search input::placeholder{color:#718799}
+#gl-demo-emp .gl-dh-directory-card{background:#fff;border:1px solid #e0eaf2;border-radius:16px;overflow:hidden;box-shadow:0 5px 20px #1739530b}
+#gl-demo-emp .gl-dh-directory-card>header{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:15px 13px;border-bottom:1px solid #e7eef4}
+#gl-demo-emp .gl-dh-directory-card>header strong{font-weight:850;font-size:16px;color:#142f46;overflow-wrap:anywhere}
+#gl-demo-emp .gl-dh-directory-card>header span{font-size:11px;color:#617b8c;white-space:nowrap}
+#gl-demo-emp .gl-dh-person{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:7px 10px;
+ padding:12px;border-bottom:1px solid #edf1f5;min-width:0}
+#gl-demo-emp .gl-dh-person:last-child{border-bottom:0}
+#gl-demo-emp .gl-dh-person[hidden]{display:none!important}
+#gl-demo-emp .gl-dh-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;
+ background:#e5f0fa;color:#1972aa;font-size:18px;font-weight:800}
+#gl-demo-emp .gl-dh-person:nth-child(3n+2) .gl-dh-avatar{background:#f4eafb;color:#9160aa}
+#gl-demo-emp .gl-dh-person:nth-child(3n+3) .gl-dh-avatar{background:#e4f8ed;color:#147a58}
+#gl-demo-emp .gl-dh-person-info{min-width:0;display:grid;gap:4px}
+#gl-demo-emp .gl-dh-person-info strong{font-size:13px;color:#17334e;overflow-wrap:anywhere}
+#gl-demo-emp .gl-dh-person-info small{font-size:10px;color:#5b7689}
+#gl-demo-emp .gl-dh-status{grid-column:3;justify-self:end;font-size:10px;border-radius:30px;
+ background:#e6f9ef;color:#087449;padding:5px 8px;font-weight:800}
+#gl-demo-emp .gl-dh-status--inactivo{background:#fbe9ee;color:#a62c4f}
+#gl-demo-emp .gl-dh-status--refuerzo{background:#fff4df;color:#8d5b0d}
+#gl-demo-emp .gl-dh-view{grid-column:2/4;justify-self:end;min-height:32px;padding:7px 12px;background:#f1f8fd;
+ border:1px solid #d6e8f3;border-radius:9px;color:#126ba1;font-weight:800;font-size:11px}
+#gl-demo-emp .gl-dh-view:hover{background:#e3f2fc}
+#gl-demo-emp .gl-dh-empty{padding:13px;color:#607a8d}
+#gl-demo-emp .gl-dh-detail{background:#fff;border:1px solid #d9e6ee;border-radius:16px;padding:17px;box-shadow:0 5px 22px #19364d0b}
+#gl-demo-emp .gl-dh-detail header{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:14px}
+#gl-demo-emp .gl-dh-detail header small{color:#1774a1;font-size:11px;letter-spacing:.08em;font-weight:800}
+#gl-demo-emp .gl-dh-detail h2{color:#142f46;font-size:22px;margin:4px 0 0}
+#gl-demo-emp .gl-dh-detail header button{width:34px;height:34px;border-radius:9px;border:1px solid #d9e8f1;background:#fff;color:#345b75;font-size:22px}
+#gl-demo-emp .gl-dh-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 15px}
+#gl-demo-emp .gl-dh-detail dl div{border:1px solid #e6edf2;border-radius:10px;padding:10px;min-width:0}
+#gl-demo-emp .gl-dh-detail dt{font-size:11px;color:#657d8e}
+#gl-demo-emp .gl-dh-detail dd{margin:5px 0 0;font-weight:800;color:#173c57;overflow-wrap:anywhere}
+#gl-demo-emp .gl-dh-detail label{display:block;color:#365b73;font-size:12px;font-weight:750;margin-bottom:5px}
+#gl-demo-emp .gl-dh-detail select{width:100%;min-height:42px;background:#fff;color:#173c57;border:1px solid #ccdfea;border-radius:11px;padding:9px}
+#gl-demo-emp .gl-dh-note{font-size:11px;color:#60798c}
+#gl-demo-emp .gl-dh-mobile-dock{display:flex;position:fixed;z-index:10501;bottom:0;left:0;right:0;justify-content:space-around;
+ gap:3px;background:#fff;border-top:1px solid #dce8f0;padding:7px 7px calc(8px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 25px #163c5220}
+#gl-demo-emp .gl-dh-mobile-dock button{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+ max-width:105px;min-height:49px;padding:5px 2px;border:0;border-radius:11px;background:transparent;color:#637f91;font-weight:700;font-size:16px}
+#gl-demo-emp .gl-dh-mobile-dock button span{font-size:10px}
+#gl-demo-emp .gl-dh-mobile-dock button[aria-current="page"]{background:#e9f5fc;color:#0b76a9}
+#gl-demo-emp .gl-dh-mobile-dock button:focus-visible{outline:2px solid #1989b9;outline-offset:1px}
+#gl-demo-emp .gl-dh-wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+@media(max-width:600px){
+ #gl-demo-emp .gl-dh-wrap{padding:12px 12px calc(105px + env(safe-area-inset-bottom,0px))}
+ #gl-demo-emp .gl-dh-top{padding:10px}
+ #gl-demo-emp .gl-dh-top .btn{font-size:11px}
+ #gl-demo-emp .gl-dh-person{grid-template-columns:36px minmax(0,1fr) auto}
+ #gl-demo-emp .gl-dh-directory h1{font-size:25px}
+}
+@media(min-width:900px){
+ /* El visitante de escritorio ve una simulación vertical del teléfono.
+    No altera ninguna pantalla de trabajo en PC. */
+ .gl-visitor-mode body{background:#f3f7fb}
+ .gl-visitor-mode #hub:not([hidden]),.gl-visitor-mode #app:not([hidden]){
+  display:block;width:min(420px,100%);max-width:420px;margin:16px auto 96px;
+  border:1px solid #dbe8f0;border-radius:24px;background:#fff;box-shadow:0 22px 60px #15374b25;
+  overflow:hidden;min-height:680px;
+ }
+ .gl-visitor-mode #app .side{position:fixed;left:calc(50% - 210px);top:0;bottom:0;width:300px;height:100vh;
+  transform:translateX(-200vw);z-index:1051}
+ .gl-visitor-mode #app.open .side{transform:none}
+ .gl-visitor-mode #app .main{min-height:650px}
+ .gl-visitor-mode #app .wrap{padding:15px 14px 110px}
+ .gl-visitor-mode #app .top-in{padding:11px 12px}
+ .gl-visitor-mode #app .tt h2{font-size:19px}
+ .gl-visitor-mode #app .top .ham{display:grid;place-items:center}
+ .gl-visitor-mode #app .savebar{padding-bottom:65px}
+ .gl-visitor-mode #hub .gl-oh-main.hub-in{padding:14px 12px 105px}
+ .gl-visitor-mode #hub .gl-owner-areas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ /* El gerente necesita el ancho completo para que la flecha no se superponga
+    con el texto de la segunda tarjeta en vista teléfono de PC. */
+ .gl-visitor-mode #view .gl-manager-landing .gl-owner-areas{grid-template-columns:minmax(0,1fr)!important;gap:10px}
+ .gl-visitor-mode #view .gl-manager-landing .gl-owner-area{min-height:165px;overflow:hidden}
+ .gl-visitor-mode #view .gl-manager-landing .gl-owner-area-title{display:flex;align-items:center;gap:9px;min-width:0}
+ .gl-visitor-mode #view .gl-manager-landing .gl-owner-area-title h2{font-size:18px;min-width:0;overflow-wrap:anywhere;flex:1}
+ .gl-visitor-mode #view .gl-manager-landing .gl-owner-arrow{width:40px;height:40px;flex:0 0 40px;position:relative;z-index:1}
+ .gl-visitor-mode #hub .gl-owner-area{min-height:155px;padding:14px 10px;border-radius:15px}
+ .gl-visitor-mode #hub .gl-owner-area h2{font-size:15px}
+ .gl-visitor-mode #hub .gl-owner-area-list{display:none}
+ .gl-visitor-mode #hub .gl-owner-quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+ .gl-visitor-mode #hub .gl-owner-tile{font-size:10px;padding:6px 2px;min-height:65px}
+ .gl-visitor-mode .gl-mobile-dock:not([hidden]){
+  display:flex;position:fixed;bottom:0;left:50%;right:auto;transform:translateX(-50%);width:min(420px,100%);
+  min-height:67px;padding:6px 7px;background:#fff;border:1px solid #dae8f0;border-radius:16px 16px 0 0;
+  z-index:70;justify-content:space-around;box-shadow:0 -5px 20px #17384f1c;
+ }
+ .gl-visitor-mode .gl-mobile-dock button{display:flex;flex:1;min-width:0;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;border:0;border-radius:10px;background:transparent;color:#5c7688;font-size:11px;font-weight:700}
+ .gl-visitor-mode .gl-mobile-dock button[aria-current="page"]{color:#087ea6;background:#e8f5fb}
+ .gl-visitor-mode .gl-mobile-sheet:not([hidden]){display:block;position:fixed;inset:0;z-index:1052}
+ .gl-visitor-mode .gl-mobile-sheet__scrim{position:absolute;inset:0;width:100%;height:100%;border:0;background:#172f4469}
+ .gl-visitor-mode .gl-mobile-sheet__panel{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:min(420px,100%);max-height:75dvh;overflow:auto;background:#fff;padding:17px;border-radius:20px 20px 0 0}
+ .gl-visitor-mode .gl-mobile-sheet__panel header{display:flex;justify-content:space-between}
+ .gl-visitor-mode .gl-mobile-sheet__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .gl-visitor-mode .gl-mobile-sheet__links button{padding:12px;border:1px solid #dfeaf2;border-radius:10px;color:#23465e;background:#f8fbfd}
+ .gl-visitor-mode #gl-demo-emp{
+  left:50%;right:auto;width:min(420px,100%);transform:translateX(-50%);top:var(--gl-tour-header,170px);
+  box-shadow:0 16px 55px #17364d28;border-left:1px solid #dbe8f0;border-right:1px solid #dbe8f0;
+ }
+ .gl-visitor-mode #gl-demo-emp .gl-dh-mobile-dock{left:50%;right:auto;transform:translateX(-50%);width:min(420px,100%)}
+ .gl-visitor-mode #gl-tour-final{width:min(440px,100%);margin:12px auto}
+}
+/* Mantener paneles por debajo de la barra del tour, incluso con safe-area,
+   zoom o barras del navegador desplazadas. */
+@media(max-width:899px){
+ .gl-visitor-mode #gl-demo-emp{top:calc(var(--gl-tour-header,210px) + 26px)!important}
+}
+@media(min-width:900px){
+ /* En vista teléfono sobre PC, la barra no debe superponerse a los botones
+    de la maqueta cuando el navegador hace scroll para interactuar. */
+ .gl-visitor-mode #gl-visitor-bar{position:relative!important;top:auto!important}
+ .gl-visitor-mode #gl-demo-emp{top:calc(var(--gl-tour-header,170px) + 12px)!important}
+}
+@media(prefers-reduced-motion:reduce){.gl-visitor-mode *{scroll-behavior:auto!important}}

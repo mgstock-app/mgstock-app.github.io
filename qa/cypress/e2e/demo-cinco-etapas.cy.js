@@ -12,7 +12,7 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
     cy.viewport(390, 844); start();
     step(1); cy.get('#view').should('contain.text', 'Stock');
     step(2); cy.get('#view').should('contain.text', 'Proveedores');
-    step(3); cy.get('[data-dh-receipt]').click();
+    step(3); cy.get('#gl-demo-emp .gl-dh-folders [data-dh-receipt]').click();
     cy.get('#gl-demo-receipt').should('contain.text', 'Sin validez legal');
     cy.get('#gl-demo-emp').then(panel => {
       cy.get('#gl-visitor-bar').then(bar => {
@@ -22,7 +22,7 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
     step(4); cy.get('#gl-tour-review-form').should('be.visible');
     cy.get('#gl-tour-gift').should('not.exist');
     step(0); cy.get('#hub .gl-owner-landing').should('be.visible');
-    step(3); cy.get('[data-dh-close]').click();
+    step(3); cy.get('#gl-demo-emp .gl-dh-top [data-dh-close]').click();
     cy.get('#gl-demo-emp').should('not.exist');
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });

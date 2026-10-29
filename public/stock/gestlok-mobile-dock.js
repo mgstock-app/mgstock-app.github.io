@@ -86,7 +86,7 @@
     sheet.querySelector('.gl-mobile-sheet__panel button')?.focus();
   }
   function sync(){
-    const show=max.matches && !document.documentElement.classList.contains('auth-on') && (!hub.hidden || !app.hidden);
+    const show=(max.matches || document.documentElement.classList.contains('gl-visitor-mode')) && !document.documentElement.classList.contains('auth-on') && (!hub.hidden || !app.hidden);
     dock.hidden=!show;
     document.documentElement.classList.toggle('gl-mobile-dock-present',show);
     if(!show){closeSheet();return;}

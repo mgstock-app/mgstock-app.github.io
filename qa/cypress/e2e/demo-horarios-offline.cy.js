@@ -37,7 +37,7 @@ describe('GESTLOK · demo de Horarios y modo sin conexión', () => {
     cy.get('#gl-dh-url').type('https://docs.google.com/spreadsheets/d/EJEMPLO_123/edit');
     cy.get('#gl-dh-link button[type=submit]').click();
     cy.get('#gl-demo-emp').should('contain.text', 'Enlace guardado en esta demo');
-    cy.get('#gl-demo-emp [data-dh-close]').click();
+    cy.get('#gl-demo-emp .gl-dh-top [data-dh-close]').click();
     cy.get('#gl-demo-emp').should('not.exist');
   });
 
