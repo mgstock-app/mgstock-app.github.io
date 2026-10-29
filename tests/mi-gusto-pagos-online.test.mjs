@@ -70,8 +70,9 @@ test('Historial del día agrupa mañana y tarde, y conserva totales sin repetir 
  assert.equal(groups[0].comandas,7);
  assert.equal(groups[1].online_local,400);
  const script=read('public/stock/mi-gusto-cierre-online.js');
- assert.match(script,/id="mg-on-history-view"/);
- assert.match(script,/id="mg-on-turn-filter"/);
+ assert.match(script,/data-mgon-open-day/);
+ assert.match(script,/role="dialog"/);
+ assert.match(script,/data-mgon-modal-tab/);
  assert.match(script,/id="mg-on-date-filter"/);
  assert.match(script,/data-mgon-clear-filters/);
  assert.match(script,/shiftHistoryCard\(s\)/);
