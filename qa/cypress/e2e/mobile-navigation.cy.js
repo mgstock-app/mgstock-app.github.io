@@ -43,7 +43,9 @@ describe('GESTLOK · Dock inferior móvil y permisos',()=>{
    setup('gerente.torcuato@example.com');
    cy.get('#ttl',{timeout:15000}).should('have.text','Panel del local');
    cy.get('#savebar').should('not.be.visible');
-   cy.get('#snav [data-go="stock"]').click();
+   // En teléfono, el menú lateral está cerrado hasta tocar el botón hamburguesa.
+   cy.get('.ham[data-act="menu-open"]').click();
+   cy.get('#snav [data-go="stock"]').should('be.visible').click();
    cy.get('#savebar').should('be.visible');
    cy.get('#sb-save').should('be.visible');
  });
