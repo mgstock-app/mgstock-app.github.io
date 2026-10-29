@@ -134,7 +134,7 @@
          <input id="gl-dh-search" type="search" placeholder="Buscar colaborador…" autocomplete="off" value="${esc(view.employeeSearch)}">
        </label>
        <section class="gl-dh-directory-card" aria-label="Listado de colaboradores">
-         <header><strong>${esc(shop)}</strong><span>${staff.length} colaboradores</span></header>
+         <header><strong>${esc(shop)}</strong><span data-dh-match-count>${staff.length} colaboradores</span></header>
          <div class="gl-dh-person-list">${list || '<p class="gl-dh-empty">Sin colaboradores con ese nombre.</p>'}</div>
        </section>
        ${detail}
@@ -272,10 +272,14 @@
     if(e.target?.id!=='gl-dh-search')return;
     view.employeeSearch=e.target.value;
     const q=view.employeeSearch.trim().toLocaleLowerCase('es');
+    let matches=0;
     document.querySelectorAll('#gl-demo-emp [data-dh-person]').forEach(row=>{
       const person=row.querySelector('.gl-dh-person-info')?.textContent||'';
       row.hidden=!person.toLocaleLowerCase('es').includes(q);
+      if(!row.hidden)matches++;
     });
+    const counter=document.querySelector('#gl-demo-emp [data-dh-match-count]');
+    if(counter)counter.textContent=matches+' colaboradores';
   });
   document.addEventListener('submit', e => {
     if (e.target.id !== 'gl-dh-link') return;
