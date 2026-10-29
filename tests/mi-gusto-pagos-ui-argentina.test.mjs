@@ -8,7 +8,12 @@ const source = read('public/stock/mi-gusto-cierre-online.js');
 const styles = read('app/mi-gusto-pagos-online.css');
 
 test('Pagos Online muestra tarjeta de carga, lista responsive y confirmación real',()=>{
- assert.match(source,/Carga manual de pedidos/);
+ assert.match(source,/Cargar pedido/);
+ assert.match(source,/data-mgon-tab="movimientos"/);
+ assert.match(source,/data-mgon-tab="resumen"/);
+ assert.match(source,/data-mgon-tab="historial"/);
+ assert.match(source,/data-mgon-recent-all/);
+ assert.match(source,/mg-on-observation-details/);
  assert.match(source,/Guardar movimiento/);
  assert.match(source,/Últimos movimientos/);
  assert.match(source,/mg-on-recent-desktop/);
@@ -27,7 +32,7 @@ test('Pagos Online muestra tarjeta de carga, lista responsive y confirmación re
  assert.match(styles,/\.mg-on-fields\{grid-template-columns:minmax\(0,1fr\)/);
  assert.match(styles,/font-size:16px/);
  assert.match(styles,/\.mg-on-success/);
- assert.match(read('components/stock-runtime.tsx'),/pagos-recientes-ar-20261029/);
+ assert.match(read('components/stock-runtime.tsx'),/pagos-carga-primero-20261029/);
 });
 
 test('Fecha y hora son Argentina incluso en el cambio de día UTC',()=>{
@@ -57,4 +62,29 @@ test('Fecha y hora son Argentina incluso en el cambio de día UTC',()=>{
  });
  assert.match(mod.view(),/Hoy en Argentina <strong>29\/10\/2026/);
  assert.match(mod.view(),/Fecha del turno/);
+});
+
+test('Alta demanda: acceso inicial a Cargar pedidos y regreso desde Historial',()=>{
+ const listeners={},window={};
+ const document={querySelector:()=>null,addEventListener:(name,fn)=>listeners[name]=fn};
+ runInNewContext(source,{
+  window,document,Intl,Date,String,Number,Array,Object,console,
+  navigator:{onLine:true},queueMicrotask:()=>{}
+ });
+ const m=window.GestLokMiGustoOnline;
+ let renders=0;
+ m.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'munro',offline:false,view:'cierre-online'},
+   miRol:()=> 'gerente',misLocales:()=>['munro'],render:()=>{renders++}});
+ assert.match(m.view(),/data-mgon-tab="movimientos" aria-current="page">Cargar pedidos/);
+ const clickTab=name=>listeners.click({target:{closest:q=>q==='[data-mgon-tab]'?{dataset:{mgonTab:name}}:null}});
+ clickTab('historial');
+ assert.match(m.view(),/data-mgon-tab="historial" aria-current="page">Historial/);
+ clickTab('resumen');
+ assert.match(m.view(),/data-mgon-tab="resumen" aria-current="page">Resumen/);
+ m.openForEntry();
+ assert.match(m.view(),/data-mgon-tab="movimientos" aria-current="page">Cargar pedidos/);
+ assert.ok(renders>=2);
+ assert.match(styles,/\.mg-on-workbar/);
+ assert.match(styles,/\.mg-on-observation-details/);
+ assert.match(styles,/\.mg-on-more/);
 });
