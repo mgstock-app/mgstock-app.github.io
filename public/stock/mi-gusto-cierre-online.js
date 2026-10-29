@@ -13,7 +13,7 @@ const todayArgentina=()=>new Intl.DateTimeFormat('es-AR',{
  timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',year:'numeric'
 }).format(new Date());
 const timeOf=x=>{const t=new Date(x);return x&&Number.isFinite(t.getTime())?
- new Intl.DateTimeFormat('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}).format(t):'—';};
+ new Intl.DateTimeFormat('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Argentina/Buenos_Aires'}).format(t):'—';};
 const SCALE_KEY='gestlok:pagos-online:escala-v1';
 const clampScale=x=>Math.min(110,Math.max(85,Math.round(Number(x)/5)*5));
 let pageScale=null;
@@ -107,7 +107,7 @@ function movementList(){
  const desktop='<div class="mg-on-recent-desktop"><div class="mg-on-tablewrap"><table><thead><tr>'+
   '<th>Hora</th><th>Comanda</th><th>Monto</th><th>Forma de pago</th><th>APP</th><th>Acciones</th></tr></thead><tbody>'+
   rows.map(r=>'<tr><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong>'+
-   (r.observacion?'<small class="mg-on-recent-note" title="'+esc(r.observacion)+'">'+esc(r.observacion)+'</small>':'')+'</td>'+
+   (r.observacion?'<span title="'+esc(r.observacion)+'" class="mg-on-recent-note">'+esc(r.observacion)+'</span>':'')+'</td>'+
    '<td><strong>'+cash(r.amount)+'</strong></td><td>'+method(r)+'</td><td>'+appControl(r)+'</td><td>'+actions(r)+'</td></tr>').join('')+
   '</tbody></table></div></div>';
  const mobile='<div class="mg-on-recent-mobile">'+rows.map(r=>'<article class="mg-on-recent-card">'+
