@@ -13,7 +13,7 @@ let shifts=[{id:1,day:today,turn:'manana',closed:false,photo:false,movements:[
  {id:1,num:'24',method:'Tarjeta',amount:10900,app:true,note:'Entrega coordinada'},
  {id:2,num:'36',method:'Transferencia',amount:15900,app:false,note:''}
 ]}];
-let section='resumen',methodOpen=false,modalDay=null,modalTab='dia',error='',nextId=3;
+let section='carga',methodOpen=false,modalDay=null,modalTab='dia',error='',nextId=3;
 const totals=arr=>{
  const out={total:0,app:0,online:0,count:0,methods:{}};
  for(const s of arr){for(const m of s?.movements||[]){
