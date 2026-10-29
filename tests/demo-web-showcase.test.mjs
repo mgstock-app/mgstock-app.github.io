@@ -16,6 +16,9 @@ test('Tour en web real conserva scripts de negocio con backend ficticio y 9 etap
  assert.match(js,/screen\.append\(hub,app,fake,end\)/);
  assert.match(js,/GestLokDemoHorarios\?\.open/);
  assert.match(js,/Math\.abs\(dx\)>70/);
+ assert.match(js,/storyEl\.append\(discover\)/);
+ assert.match(js,/data-tour/);
+ assert.match(js,/Probá otras herramientas/);
  assert.doesNotMatch(js,/setInterval\(\s*\(\)\s*=>\s*move/);
 });
 test('Extensiones de precios, inventario, pedidos son ficticias, no tocan tablas reales',()=>{
@@ -40,8 +43,13 @@ test('Estilos aislados únicamente en demo; escritorio y móvil adaptables',()=>
  assert.ok(css.includes('max-width:680px;'));
  assert.ok(css.includes('height:min(80dvh,860px)'));
  assert.ok(css.includes('#gl-tour-story h1{display:none'));
+ assert.ok(css.includes('#gl-tour-discover{display:none}'));
+ assert.ok(css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
+ assert.ok(css.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
+ assert.ok(css.includes('.gl-tour-finished #gl-tour-discover{display:none'));
+
  assert.match(css,/gl-tour-phone-screen/);
  assert.match(css,/gl-tour-sandbox/);
- assert.match(runtime,/gestlok-demo-tour\.js\?rev=espacio-util-20261029/);
+ assert.match(runtime,/gestlok-demo-tour\.js\?rev=explorar-atajos-20261029/);
  assert.match(sw,/gestlok-demo-showcase\.css/);
 });
