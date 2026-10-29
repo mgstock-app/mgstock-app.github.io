@@ -36,7 +36,7 @@ describe('GestLok · Inicio limpio y esencial',()=>{
   cy.get('#view .gl-home-essential-links [data-go="proveedores"]').click();
   cy.get('#view').should('contain.text','Proveedores');
  });
- it('Gerente en Munro: inicio limpio, sin modalidad, con control diario',()=>{
+ it('Gerente en Munro: inicio limpio y Conteo diario visualmente oculto',()=>{
   start();login('gerente.munro@example.com');
   cy.get('#view .gl-manager-landing').should('be.visible');
   cy.get('#view [data-gerente-business]').click();
@@ -44,8 +44,8 @@ describe('GestLok · Inicio limpio y esencial',()=>{
   cy.get('#view .gl-home-essential-stat').should('have.length',3);
   cy.get('#view').should('not.contain.text','Tienda mixta');
   cy.get('#view .gl-commerce-choice').should('not.exist');
-  cy.get('#view .gl-home-essential-links [data-go="diario"]').should('exist').click();
-  cy.get('#view').should('contain.text','Conteo diario');
+  cy.get('#view .gl-home-essential-links [data-go="diario"]').should('not.exist');
+  cy.get('#snav [data-go="diario"]').should('not.exist');
  });
  it('Creadora conserva su panel administrativo, sin cambios',()=>{
   start();login('kmu15lopez@gmail.com');

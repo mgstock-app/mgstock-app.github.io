@@ -23,6 +23,62 @@
   });
   let api, data = null, status = 'idle', busy = false, timer = 0, tab = 'inicio';
   let couponRows = {munro:null,torcuato:null}, couponBusy=false, couponError='', couponAttempted=false;
+  // Preferencia global, persistida en base y controlada por la creadora.
+  // Predeterminado: oculto. Nunca se guarda como una preferencia de navegador.
+  let diarioVisible=false, diarioLoaded=false, diarioLoading=false, diarioBusy=false;
+  let diarioError='', diarioUser='';
+  function dailyVisible(){return diarioLoaded && diarioVisible;}
+  async function refreshDaily(force=false){
+    const id=String(api?.S?.uid||api?.S?.me?.id||'');
+    if(!id || !window.GestLokSupabase?.rpc)return;
+    if(id!==diarioUser){
+      diarioUser=id;diarioVisible=false;diarioLoaded=false;
+    }
+    if(diarioLoading||diarioBusy||(!force&&diarioLoaded))return;
+    diarioLoading=true;
+    try {
+      const res=await window.GestLokSupabase.rpc('gestlok_mi_gusto_daily_visibility');
+      if(res.error)throw res.error;
+      if(diarioUser!==id)return;
+      diarioVisible=res.data===true;diarioLoaded=true;diarioError='';
+    } catch(e){
+      if(diarioUser!==id)return;
+      diarioVisible=false;diarioLoaded=true;
+      diarioError='No se pudo consultar el estado. Conteo diario continúa oculto.';
+    } finally {
+      diarioLoading=false;
+      if(diarioUser===id){api?.renderLocal?.();api?.render?.();}
+    }
+  }
+  function dailySettingsView(){
+    if(!api?.isCreadora?.())return '';
+    if(!diarioLoaded&&!diarioLoading)queueMicrotask(()=>refreshDaily());
+    return '<section class="gl-admin-card gl-daily-visibility" aria-label="Visibilidad del Conteo diario de Mi Gusto">'+
+      '<header><h2>Mi Gusto · Conteo diario</h2><small>Solo la creadora</small></header>'+
+      '<p>La planilla y su historial se conservan. Mientras permanezca oculto, no aparece en el menú ni en el inicio de Munro.</p>'+
+      '<div class="gl-daily-visibility-row"><span>Mostrar Conteo diario en Munro</span>'+
+      '<button type="button" role="switch" data-ch-diario-visibility aria-label="Mostrar Conteo diario en Munro" aria-checked="'+dailyVisible()+'" '+
+        ((!diarioLoaded||diarioBusy||diarioLoading)?'disabled':'')+
+        '><span aria-hidden="true"></span><b>'+(dailyVisible()?'Visible':'Oculto')+'</b></button></div>'+
+      (diarioLoading?'<p role="status">Consultando configuración…</p>':'')+
+      (diarioError?'<p role="alert">'+esc(diarioError)+'</p>':'')+
+      '<small>La restauración de la pestaña solo puede autorizarse desde esta cuenta de Creadora.</small></section>';
+  }
+  async function toggleDailyVisibility(){
+    if(!api?.isCreadora?.()||!diarioLoaded||diarioBusy)return;
+    const next=!diarioVisible;
+    if(!window.confirm(next?'¿Restablecer la visualización de Conteo diario en Mi Gusto Munro?':'¿Ocultar Conteo diario sin borrar ningún dato?'))return;
+    diarioBusy=true;diarioError='';api?.render?.();
+    try {
+      const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_set_mi_gusto_daily_visibility',{p_visible:next});
+      if(error)throw error;
+      diarioVisible=data===true;
+      diarioLoaded=true;
+      api?.toast?.(diarioVisible?'Conteo diario visible nuevamente.':'Conteo diario oculto. Los datos se conservaron.');
+    } catch(e){
+      diarioError='No se pudo actualizar la visibilidad. '+String(e?.message||'');
+    } finally {diarioBusy=false;api?.renderLocal?.();api?.render?.();}
+  }
   async function loadCoupons(){if(!api?.isCreadora?.()||couponBusy||!window.GestLokSupabase)return;couponBusy=true;couponAttempted=true;couponError='';try{for(const loc of ['munro','torcuato']){const {data,error}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:loc});if(error)throw error;couponRows[loc]=Array.isArray(data)?data:[];}}catch{couponError='No se pudieron consultar los cupones. Revisá permisos y conexión.';}finally{couponBusy=false;if(api?.isCreadora?.())api.render();}}
   function couponView(){if(!couponAttempted&&!couponBusy)queueMicrotask(loadCoupons);return '<section class="gl-admin-card" aria-label="Cupones de Mi Gusto"><header><h2>Cupones de Mi Gusto</h2><button type="button" data-ch-coupons-refresh>Actualizar</button></header><p>Munro y Torcuato por separado. Beneficio del 10% independiente de publicar reseñas. La emisión y utilización se realizan desde la sección Reseñas de cada sucursal.</p>'+(couponError?'<p role="alert">'+esc(couponError)+'</p>':'')+['munro','torcuato'].map(loc=>{const a=couponRows[loc]||[];const counts={pending:0,used:0,expired:0};a.forEach(r=>{if(r.status in counts)counts[r.status]++;});return '<article style="border-top:1px solid #ddd;padding:12px 0"><h3>'+ (loc==='munro'?'Munro':'Torcuato') +'</h3><p>Total: '+a.length+' · Pendientes: '+counts.pending+' · Usados: '+counts.used+' · Vencidos: '+counts.expired+'</p><div style="overflow-x:auto"><table><thead><tr><th>Cupón</th><th>Cliente</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>'+a.slice(0,50).map(r=>'<tr><td>'+esc(r.code)+'</td><td>'+esc(r.customer_name)+'</td><td>'+esc(r.status)+'</td><td>'+esc(String(r.created_at||'').slice(0,10))+'</td></tr>').join('')+'</tbody></table></div></article>';}).join('')+'</section>';}
 
@@ -185,7 +241,7 @@
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (parts.locales || '') + '</div>';
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
-    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + (parts.tools || '') + '</div>';
+    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' : 'Administración de GESTLOK';
@@ -224,13 +280,16 @@
       api.render();
       return;
     }
+    const dailyToggle=ev.target.closest?.('[data-ch-diario-visibility]');
+    if(dailyToggle&&api?.isCreadora?.()){ev.preventDefault();void toggleDailyVisibility();return;}
     const refresh = ev.target.closest?.('[data-ch-coupons-refresh]');if(refresh && api?.isCreadora?.()){ev.preventDefault();loadCoupons();return;}
     const b = ev.target.closest && ev.target.closest('[data-ch-tab]');
     if (b) { ev.preventDefault(); goTab(b.dataset.chTab); }
   });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') load(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
     attach(ctx) { api = ctx; const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
-    mode, view, refresh: load, tab: () => tab, setTab: goTab
+    mode, view, refresh: load, tab: () => tab, setTab: goTab,
+    dailyVisible, refreshDaily, dailySettingsView
   });
 })();

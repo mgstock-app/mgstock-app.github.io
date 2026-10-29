@@ -27,7 +27,13 @@ describe('Munro: cierre diario exclusivo, roles e historial', () => {
   Cypress.on('uncaught:exception', error => {
     if (error.message.includes('Minified React error #418')) return false;
   });
-  beforeEach(() => launch());
+  // Fixture con visibilidad restablecida: conserva pruebas del módulo y del historial legado.
+  beforeEach(() => {
+    launch();
+    cy.window().then(w=>{
+      w.GestLokCreatorHome={...w.GestLokCreatorHome,dailyVisible:()=>true,refreshDaily:()=>{}};
+    });
+  });
 
   it('la dueña no ve Conteo diario ni en Munro ni en Torcuato, tampoco en Inicio', () => {
     login('dueno@example.com');

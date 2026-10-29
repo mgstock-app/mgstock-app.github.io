@@ -2282,3 +2282,16 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 @media(max-width:580px){.gl-profile-switch-trigger--hub{top:calc(11px + env(safe-area-inset-top,0px));padding:8px 10px;font-size:11px}
  .gl-profile-switch-dialog{padding:15px}}
 @media print{.gl-profile-switch-trigger,.gl-profile-switch-overlay{display:none!important}}
+
+/* Mi Gusto · visibilidad de Conteo diario controlada desde Creadora → Herramientas. */
+.gl-daily-visibility{border:1px solid #dce8ef;border-radius:16px;padding:20px;background:#fff}
+.gl-daily-visibility p{max-width:720px;font-size:14px;line-height:1.5;color:#526f81}
+.gl-daily-visibility-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:14px 16px;background:#f5f9fc;border:1px solid #dfebf1;border-radius:12px;font-weight:700;color:#133f58}
+.gl-daily-visibility-row button[role="switch"]{border:0;background:transparent;display:flex;align-items:center;gap:10px;min-height:44px;color:#496a7d;cursor:pointer}
+.gl-daily-visibility-row button[role="switch"]>span{position:relative;width:46px;height:26px;border-radius:20px;background:#afc1ce;transition:background .2s}
+.gl-daily-visibility-row button[role="switch"]>span:after{position:absolute;content:"";left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:white;box-shadow:0 1px 4px #0002;transition:transform .2s}
+.gl-daily-visibility-row button[role="switch"][aria-checked="true"]>span{background:#168a82}
+.gl-daily-visibility-row button[role="switch"][aria-checked="true"]>span:after{transform:translateX(20px)}
+.gl-daily-visibility-row button[role="switch"]:disabled{opacity:.55;cursor:not-allowed}
+.gl-daily-visibility-row button[role="switch"]:focus-visible{outline:3px solid #24a8b6;outline-offset:3px}
+@media(max-width:520px){.gl-daily-visibility{padding:14px}.gl-daily-visibility-row{align-items:flex-start}.gl-daily-visibility-row>span{flex:1 1 160px}}

@@ -35,6 +35,10 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.wait("@fakeSupabase");
     cy.get(".gl-intro", {timeout:12000}).should("not.be.visible");
     cy.get("#au-in").should("be.visible");
+    // Los tests históricos de la planilla prueban el estado restaurado sin tocar producción.
+    cy.window().then(w=>{
+      w.GestLokCreatorHome={...w.GestLokCreatorHome,dailyVisible:()=>true,refreshDaily:()=>{}};
+    });
   });
 
   it("intro, marca y acceso: no muestra Mi Gusto en la portada general", () => {

@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const creator='11111111-1111-4111-8111-111111111111';
+const manager='22222222-2222-4222-8222-222222222222';
+test('Conteo diario: oculto inicialmente y solo creadora validada puede reactivarlo',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(`create role authenticated;create role anon;
+   create schema auth;create schema gestlok_platform;
+   create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
+   create table gestlok_platform.admin_audit(actor uuid,action text,tenant_id uuid,detail jsonb,at timestamptz default now());
+   create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('t.uid',true),'')::uuid$$;
+   create function auth.jwt() returns jsonb language sql stable as $$select jsonb_build_object('email',current_setting('t.email',true))$$;
+   create function gestlok_platform.require_admin() returns uuid language plpgsql security definer set search_path='' as $$
+   begin if auth.uid()='11111111-1111-4111-8111-111111111111'::uuid then return auth.uid();
+   else raise exception 'Solo administradora' using errcode='42501';end if;end $$;`);
+  await db.query('insert into auth.users values($1,$2,now()),($3,$4,now())',[creator,'kmu15lopez@gmail.com',manager,'gerente@example.com']);
+  await db.exec(read('supabase/migrations/20261029184500_mi_gusto_daily_visibility.sql'));
+  const identity=async(uid,email)=>{await db.query('select set_config($1,$2,false)',['t.uid',uid]);await db.query('select set_config($1,$2,false)',['t.email',email]);};
+  await identity(manager,'gerente@example.com');
+  await db.exec('set role authenticated');
+  const state=async()=> (await db.query('select public.gestlok_mi_gusto_daily_visibility() as visible')).rows[0].visible;
+  const set=async value=> (await db.query('select public.gestlok_creator_set_mi_gusto_daily_visibility($1) as visible',[value])).rows[0].visible;
+  assert.equal(await state(),false,'Oculto por defecto sin actualizar registros');
+  await assert.rejects(()=>set(true),/Solo administradora/);
+  await db.exec('reset role');
+  await identity(creator,'correo-falso@example.com');
+  await db.exec('set role authenticated');
+  await assert.rejects(()=>set(true),/Solo la creadora verificada/);
+  await db.exec('reset role');
+  await identity(creator,'kmu15lopez@gmail.com');
+  await db.exec('set role authenticated');
+  assert.equal(await set(true),true);
+  assert.equal(await state(),true);
+  assert.equal(await set(false),false);
+  assert.equal(await state(),false);
+  await assert.rejects(()=>db.query('select * from gestlok_platform.mi_gusto_daily_visibility'),/permission denied/);
+  await db.exec('reset role;set role anon');
+  await assert.rejects(()=>state(),/permission denied/);
+  await assert.rejects(()=>set(true),/permission denied/);
+  await db.exec('reset role');
+  const count=(await db.query('select count(*)::int as n from gestlok_platform.admin_audit where action=$1',['mi_gusto_diario_visibility'])).rows[0].n;
+  assert.equal(count,2);
+ }finally{await db.close();}
+});
+test('Conteo diario: rutas y configuraciones quedan ocultas sin borrar la implementación',()=>{
+ const app=read('public/stock/app.js'),home=read('public/stock/gestlok-creator-home.js'),sql=read('supabase/migrations/20261029184500_mi_gusto_daily_visibility.sql');
+ assert.match(app,/GestLokCreatorHome\?\.dailyVisible\?\.\(\)/);
+ assert.match(app,/puedeVerDiarioMunro\(\) \? `<button data-go="diario"/);
+ assert.match(app,/\(v === 'diario' && puedeVerDiarioMunro\(\)\)/);
+ assert.match(home,/data-ch-diario-visibility/);
+ assert.match(home,/data\-ch\-tab/);
+ assert.match(home,/cur === 'herramientas'/);
+ assert.match(home,/gestlok_creator_set_mi_gusto_daily_visibility/);
+ assert.match(sql,/alter table gestlok_platform\.mi_gusto_daily_visibility enable row level security/);
+ assert.doesNotMatch(sql,/drop table|delete from public\.docs|truncate /i);
+ assert.match(read('public/stock/munro-daily.js'),/Conteo diario/);
+});

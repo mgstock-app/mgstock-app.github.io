@@ -41,7 +41,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#snav [data-go="motos"]').should('exist').click();
     cy.get('.mo-page h1').should('contain.text', 'Motos Agencia');
     cy.get('#snav .snav-folder[open] summary').should('contain.text', 'Administración de local');
-    cy.get('#snav .snav-folder [data-go="diario"]').should('exist');
+    cy.get('#snav .snav-folder [data-go="diario"]').should('not.exist');
     cy.get('#crumb').should('contain.text', 'Administración de local');
     for (const n of ['Lucas', 'Alex', 'Aye']) cy.get('.mo-who').should('contain.text', n);
     cy.get('.mo-time[data-moto="lucas"]').first().should('be.disabled');

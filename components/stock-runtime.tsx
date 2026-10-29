@@ -44,7 +44,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-owner-areas.js?rev=branding-20261026");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
-      await load("/stock/gestlok-creator-home.js?rev=blanca-creadora-20261028");
+      await load("/stock/gestlok-creator-home.js?rev=ocultar-diario-20261029");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");
@@ -54,7 +54,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-20261028");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=pagos-online-20261029");
+      await load("/stock/app.js?rev=diario-oculto-20261029");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=mobile-20261028-v1");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=explorar-atajos-20261029");
