@@ -29,6 +29,15 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
  });
  it('móvil permite modificar precios, stock y pedidos ficticios dentro del teléfono',()=>{
   start(390);
+  cy.get('#gl-tour-phone').then($phone=>{
+   cy.get('#gl-tour-story').then($story=>{
+    const phone=$phone[0].getBoundingClientRect();
+    const story=$story[0].getBoundingClientRect();
+    expect(phone.bottom).to.be.lessThan(story.top + 1);
+    expect(Math.abs(phone.left + phone.width/2 - window.innerWidth/2)).to.be.lessThan(16);
+    expect(phone.width).to.be.at.most(window.innerWidth - 10);
+   });
+  });
   stage(4);
   cy.get('#gl-tour-price-form [name="cost"]').clear().type('10000');
   cy.get('#gl-tour-price-form [name="markup"]').clear().type('70');
@@ -54,6 +63,17 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
   cy.get('#gl-tour-review-form').should('be.visible');
   cy.get('#gl-tour-gift').should('not.exist');
   cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(391));
+ });
+ it('tablet táctil y móvil mantienen el teléfono centrado por delante de la narrativa',()=>{
+  start(768);
+  cy.get('#gl-tour-phone').then($phone=>{
+   cy.get('#gl-tour-story').then($story=>{
+    const phone=$phone[0].getBoundingClientRect();
+    const story=$story[0].getBoundingClientRect();
+    expect(phone.bottom).to.be.lessThan(story.top + 1);
+    expect(Math.abs(phone.left + phone.width/2 - 384)).to.be.lessThan(16);
+   });
+  });
  });
  it('gerente conserva Colaboradores sin montos, navega manualmente y finaliza con reseña',()=>{
   start(390,'gerente');
