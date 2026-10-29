@@ -46,8 +46,15 @@ html.gl-tour-layout-active body{overflow-x:clip}
  margin:0!important;min-height:100%!important;border:0!important;border-radius:0!important;
  box-shadow:none!important;background:#fff}
 .gl-tour-layout-active #gl-tour-phone-screen #hub .gl-oh-main.hub-in{padding:16px 13px 92px}
-.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-areas{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area{min-width:0;min-height:180px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-areas{grid-template-columns:minmax(0,1fr)!important;gap:12px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area{min-width:0;min-height:175px;max-width:100%;padding:17px 15px;border-radius:18px;box-sizing:border-box}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area-title{min-width:0;gap:8px;flex-wrap:wrap}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area h2{min-width:0;flex:1 1 160px;font-size:clamp(22px,2vw,27px)!important;line-height:1.14;overflow-wrap:anywhere}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area .gl-owner-arrow{position:relative;z-index:2;flex:0 0 44px;width:44px;height:44px;min-width:44px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area>p{font-size:13px;line-height:1.42}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area-list{font-size:13px;padding:10px 12px;gap:4px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area-icon{width:44px;height:44px;margin-bottom:9px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area-icon svg{width:28px;height:28px}
 .gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-quick{grid-template-columns:repeat(2,minmax(0,1fr))}
 .gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-tile{font-size:12px;min-height:72px}
 .gl-tour-layout-active #gl-tour-phone-screen #app .side{position:absolute!important;left:0!important;top:0!important;
