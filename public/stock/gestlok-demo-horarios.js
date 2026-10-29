@@ -8,14 +8,14 @@
   const KEY = 'gestlok:visitor:horarios:v1';
   const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const ESTADOS = ['', 'OFF', 'Feriado', 'Ausente', 'Ausente justificado', 'Vacaciones'];
-  const FOLDERS = ['Planillas', 'Recibos de sueldo', 'Empleados y roles', 'Reportes'];
+  // Menú de empleados: el demo reutiliza la planilla ficticia y suma los legajos actuales.
   const url = p => new URL(p, document.baseURI).href;
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const sheetsOk = u => /^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit(?:[?#].*)?$/.test(u);
-  let base = null, data = null, view = {source:'gestlok', tab:'semana', own:null, link:'', error:''};
+  let base = null, data = null, employeeStates = {}, view = {source:'gestlok', tab:'semana', section:'horarios', employeeSearch:'', selectedPerson:-1, own:null, link:'', error:''};
 
   const load = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch { return null; } };
-  const keep = () => { try { sessionStorage.setItem(KEY, JSON.stringify({data, source:view.source, link:view.link})); } catch {} };
+  const keep = () => { try { sessionStorage.setItem(KEY, JSON.stringify({data, employeeStates, source:view.source, link:view.link})); } catch {} };
   const offline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
   async function ready(){
     if (data) return;
@@ -26,7 +26,7 @@
       base = await r.json();
     }
     data = saved?.data || JSON.parse(JSON.stringify(base));
-    if (saved){ view.source = saved.source === 'propio' ? 'propio' : 'gestlok'; view.link = saved.link || ''; }
+    if (saved){ view.source = saved.source === 'propio' ? 'propio' : 'gestlok'; view.link = saved.link || ''; employeeStates = saved.employeeStates && typeof saved.employeeStates === 'object' ? saved.employeeStates : {}; }
   }
 
   /* ---------- Mismos cálculos que la planilla Excel ---------- */
@@ -95,9 +95,56 @@
         ${view.link ? `<p class="gl-dh-ok">✓ Enlace guardado en esta demo · <a href="${esc(view.link)}" target="_blank" rel="noopener noreferrer">Abrir planilla</a></p>` : ''}
       </div></div>`;
   }
+  /* Legajos exclusivamente ficticios, iguales para los dos roles. No se consultan usuarios reales.
+     El gerente puede consultar el estado, nunca importes del recibo. */
+  const statusOf = p => ['activo','refuerzo','inactivo'].includes(employeeStates[p.nombre]) ? employeeStates[p.nombre] : 'activo';
+  const statusText = v => ({activo:'Activo',refuerzo:'Refuerzo',inactivo:'Inactivo'}[v] || 'Activo');
+  function collaborators(shop){
+    const q = view.employeeSearch.trim().toLocaleLowerCase('es');
+    const staff = data.equipo.map((p,i)=>({...p,i})).filter(p=>p.nombre.toLocaleLowerCase('es').includes(q)||p.puesto.toLocaleLowerCase('es').includes(q));
+    const activos=data.equipo.filter(p=>statusOf(p)==='activo').length;
+    const refuerzos=data.equipo.filter(p=>statusOf(p)==='refuerzo').length;
+    const inactivos=data.equipo.filter(p=>statusOf(p)==='inactivo').length;
+    const list=staff.map(p=>`<article class="gl-dh-person" data-dh-person>
+       <span class="gl-dh-avatar" aria-hidden="true">${esc(p.nombre.slice(0,1).toUpperCase())}</span>
+       <div class="gl-dh-person-info"><strong>${esc(p.nombre)}</strong><small>${esc(p.puesto)} · ${esc(shop)}</small></div>
+       <span class="gl-dh-status gl-dh-status--${statusOf(p)}">${statusText(statusOf(p))}</span>
+       <button type="button" class="gl-dh-view" data-dh-legajo="${p.i}">Ver legajo</button>
+     </article>`).join('');
+    const selected=data.equipo[view.selectedPerson];
+    const detail=selected ? `<div class="gl-dh-detail" id="gl-dh-legajo" role="region" aria-label="Legajo ficticio">
+       <header><div><small>LEGAJO DE DEMOSTRACIÓN</small><h2>${esc(selected.nombre)}</h2></div><button type="button" data-dh-detail-close aria-label="Cerrar legajo">×</button></header>
+       <dl><div><dt>Local</dt><dd>${esc(shop)}</dd></div><div><dt>Colaborador</dt><dd>${esc(selected.nombre)}</dd></div><div><dt>Puesto</dt><dd>${esc(selected.puesto)}</dd></div><div><dt>Estado</dt><dd>${statusText(statusOf(selected))}</dd></div></dl>
+       <label for="gl-dh-status">Cambiar estado ficticio</label>
+       <select id="gl-dh-status" data-dh-status="${view.selectedPerson}">${['activo','refuerzo','inactivo'].map(x=>`<option value="${x}" ${x===statusOf(selected)?'selected':''}>${statusText(x)}</option>`).join('')}</select>
+       <p class="gl-dh-note">Solo datos ficticios. El estado de este ejemplo se guarda en esta pestaña; no modifica legajos reales.</p>
+       <button type="button" class="btn" data-dh-detail-close>← Volver a Colaboradores</button>
+       </div>`:'';
+    return `<section class="gl-dh-directory" aria-label="Colaboradores ficticios">
+       <p class="gl-dh-intro">GESTLOK · ${esc(shop).toUpperCase()}</p>
+       <h1 id="gl-dh-title">Administración de empleados</h1>
+       <p class="lead">Explorá el equipo y sus legajos con el nuevo diseño móvil de GESTLOK. No se usan datos personales reales.</p>
+       <div class="gl-dh-summary" aria-label="Resumen de colaboradores">
+         <div><span>Total colaboradores</span><strong>${data.equipo.length}</strong></div>
+         <div><span>Activos</span><strong>${activos}</strong></div>
+         <div><span>Refuerzos</span><strong>${refuerzos}</strong></div>
+         <div><span>Inactivos</span><strong>${inactivos}</strong></div>
+       </div>
+       <label class="gl-dh-search">Buscar colaborador o puesto
+         <input id="gl-dh-search" type="search" placeholder="Buscar colaborador…" autocomplete="off" value="${esc(view.employeeSearch)}">
+       </label>
+       <section class="gl-dh-directory-card" aria-label="Listado de colaboradores">
+         <header><strong>${esc(shop)}</strong><span>${staff.length} colaboradores</span></header>
+         <div class="gl-dh-person-list">${list || '<p class="gl-dh-empty">Sin colaboradores con ese nombre.</p>'}</div>
+       </section>
+       ${detail}
+       <p class="gl-dh-note">Los horarios permanecen disponibles en su carpeta, sin agregar una tabla individual de horarios.</p>
+      </section>`;
+  }
   function html(){
     const shop = document.querySelector('#gl-visitor-shop option:checked')?.textContent?.replace(/^\S+\s/, '') || data.local;
     const tabs = [['semana', 'Semana'], ['resumen', 'Resumen'], ['equipo', 'Equipo'], ['feriados', 'Feriados'], ['como', 'Cómo usar']];
+    const section = view.section === 'colaboradores' ? 'colaboradores' : 'horarios';
     const body = view.source === 'propio' ? propio() :
       `<div class="gl-dh-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" aria-selected="${view.tab === k}" data-dh-tab="${k}">${n}</button>`).join('')}</div>
        ${view.tab === 'semana' ? semana() : view.tab === 'resumen' ? resumen() : view.tab === 'equipo' ? equipo() : view.tab === 'feriados' ? feriados() : comoUsar()}
@@ -105,15 +152,25 @@
        <p class="lead gl-dh-note">Podés cambiar horarios y estados: los totales se recalculan como en el Excel. En la demo los cambios quedan solo en esta pestaña${offline() ? ' y, sin conexión, se marcan como pendientes hasta que vuelva internet' : ''}.</p>`;
     return `<div class="gl-dh-wrap">
       <header class="gl-dh-top"><button class="btn sm" type="button" data-dh-close>← Volver al inicio</button><div><p class="eyebrow">Administrar a los empleados · DEMO</p><h2>${esc(shop)}</h2></div></header>
-      <nav class="gl-dh-folders" aria-label="Carpetas de empleados"><button class="on" aria-current="page">📁 Horarios</button>${FOLDERS.map(f => f === 'Recibos de sueldo' && canSeeReceipt() ? `<button type="button" data-dh-receipt>📁 ${f}</button>` : `<button disabled title="Incluido en GESTLOK; no disponible en la demo">📁 ${f}</button>`).join('')}</nav>
-      <section aria-labelledby="gl-dh-title"><h1 id="gl-dh-title">📁 Horarios</h1>
+      <nav class="gl-dh-folders" aria-label="Carpetas de empleados">
+        <button type="button" data-dh-section="colaboradores" class="${section === 'colaboradores' ? 'on' : ''}" aria-current="${section === 'colaboradores' ? 'page' : 'false'}">👥 Colaboradores</button>
+        <button type="button" data-dh-section="horarios" class="${section === 'horarios' ? 'on' : ''}" aria-current="${section === 'horarios' ? 'page' : 'false'}">📁 Horarios</button>
+        ${canSeeReceipt() ? '<button type="button" data-dh-receipt>📄 Recibos</button>' : ''}
+      </nav>
+      ${section === 'colaboradores' ? collaborators(shop) : `<section aria-labelledby="gl-dh-title"><h1 id="gl-dh-title">📁 Horarios</h1>
         <p class="lead">Planilla de turnos del local · semana del ${ddmm(fecha(0))} al ${ddmm(fecha(6))}. <b>Todos los datos son ficticios.</b></p>
         <div class="gl-dh-choice" role="radiogroup" aria-label="Planilla de horarios">
           <label class="${view.source === 'gestlok' ? 'on' : ''}"><input type="radio" name="gl-dh-src" value="gestlok" ${view.source === 'gestlok' ? 'checked' : ''}><b>Plantilla GESTLOK (predeterminada)</b><small>Entradas y salidas de mañana y noche, turnos, OFF, feriados, ausentes y totales automáticos.</small></label>
           <label class="${view.source === 'propio' ? 'on' : ''}"><input type="radio" name="gl-dh-src" value="propio" ${view.source === 'propio' ? 'checked' : ''}><b>Mi propio Excel o Google Sheets</b><small>Si ya tenés tu planilla, usala: cada local elige la de GESTLOK o la suya.</small></label>
         </div>
         ${body}
-      </section></div>`;
+      </section>`}
+      <nav class="gl-dh-mobile-dock" aria-label="Navegación inferior de empleados">
+        <button type="button" data-dh-close aria-label="Volver al inicio">⌂<span>Inicio</span></button>
+        <button type="button" data-dh-section="colaboradores" aria-current="${section === 'colaboradores' ? 'page' : 'false'}">♙<span>Colaboradores</span></button>
+        <button type="button" data-dh-section="horarios" aria-current="${section === 'horarios' ? 'page' : 'false'}">▦<span>Horarios</span></button>
+        ${canSeeReceipt() ? '<button type="button" data-dh-receipt>▤<span>Recibos</span></button>' : ''}
+      </nav></div>`;
   }
   const STYLE = `#gl-demo-emp{position:fixed;inset:0;z-index:10500;overflow:auto;background:var(--bg,#f5f7fa);color:var(--ink,#11283c);font-family:var(--f-body,system-ui,sans-serif)}
   .gl-visitor-mode #gl-demo-emp{top:var(--gl-tour-header,var(--gl-visitor-h,0px))}
@@ -153,8 +210,10 @@
     if (focus) box.querySelector(focus)?.focus();
   }
   function record(label){ if (offline()) window.GestLokOffline?.demoRecord?.(label); }
-  async function open(){
-    try { await ready(); } catch { alert('No se pudo abrir la planilla de ejemplo. Probá de nuevo con conexión.'); return; }
+  async function open(options={}){
+    try { await ready(); } catch { alert('No se pudo abrir el ejemplo ficticio. Probá de nuevo con conexión.'); return; }
+    view.section = options.section === 'colaboradores' ? 'colaboradores' : 'horarios';
+    view.selectedPerson = -1;
     paint(); document.documentElement.classList.add('gl-demo-emp-open');
     document.getElementById('gl-demo-emp')?.querySelector('[data-dh-close]')?.focus();
   }
@@ -164,6 +223,11 @@
     const box = e.target.closest?.('#gl-demo-emp'); if (!box) return;
     if (e.target.closest('[data-dh-receipt]')){ if (!canSeeReceipt()) return; const old=box.querySelector('#gl-demo-receipt'); if(old){old.remove();return;} const receipt=document.createElement('section');receipt.id='gl-demo-receipt';receipt.className='card pad';receipt.setAttribute('role','region');receipt.setAttribute('aria-label','Recibo ficticio');receipt.innerHTML='<h3>Recibo de sueldo · Ejemplo ficticio</h3><p>Empleado: Alex Demo · Período: octubre 2026</p><p>Haberes: $900.000 · Descuentos: $153.000 · Neto: $747.000</p><p>Datos ilustrativos. Sin validez legal.</p>';box.querySelector('.gl-dh-folders').after(receipt); return; }
     if (e.target.closest('[data-dh-close]')){ close(); return; }
+    const sectionButton = e.target.closest('[data-dh-section]');
+    if(sectionButton){ view.section=sectionButton.dataset.dhSection==='colaboradores'?'colaboradores':'horarios';view.selectedPerson=-1;paint();return; }
+    const detailButton=e.target.closest('[data-dh-legajo]');
+    if(detailButton){ view.selectedPerson=Number(detailButton.dataset.dhLegajo);paint();document.getElementById('gl-dh-legajo')?.scrollIntoView({block:'nearest'});return; }
+    if(e.target.closest('[data-dh-detail-close]')){view.selectedPerson=-1;paint();return;}
     const tab = e.target.closest('[data-dh-tab]'); if (tab){ view.tab = tab.dataset.dhTab; paint(); return; }
     const sheet = e.target.closest('[data-dh-sheet]'); if (sheet){ view.ownSheet = +sheet.dataset.dhSheet || 0; paint(); return; }
     if (e.target.closest('[data-dh-reset]')){ if (confirm('¿Volver al Excel de ejemplo original? Se pierden los cambios de esta pestaña.')){ data = JSON.parse(JSON.stringify(base)); keep(); paint(); } }
@@ -171,6 +235,11 @@
   document.addEventListener('change', async e => {
     if (!e.target.closest?.('#gl-demo-emp')) return;
     const t = e.target;
+    if (t.dataset?.dhStatus != null){
+      const p=data.equipo[Number(t.dataset.dhStatus)];
+      if(p && ['activo','refuerzo','inactivo'].includes(t.value)){employeeStates[p.nombre]=t.value;keep();record('Estado ficticio de '+p.nombre);paint();}
+      return;
+    }
     if (t.name === 'gl-dh-src'){ view.source = t.value === 'propio' ? 'propio' : 'gestlok'; view.error = ''; keep(); record('Planilla de Horarios elegida'); paint(); return; }
     if (t.dataset.dhP != null){
       const p = data.equipo[+t.dataset.dhP]; if (!p) return;
@@ -198,6 +267,15 @@
       } catch (err){ view.error = err?.message || 'No se pudo leer el archivo.'; }
       paint();
     }
+  });
+  document.addEventListener('input', e => {
+    if(e.target?.id!=='gl-dh-search')return;
+    view.employeeSearch=e.target.value;
+    const q=view.employeeSearch.trim().toLocaleLowerCase('es');
+    document.querySelectorAll('#gl-demo-emp [data-dh-person]').forEach(row=>{
+      const person=row.querySelector('.gl-dh-person-info')?.textContent||'';
+      row.hidden=!person.toLocaleLowerCase('es').includes(q);
+    });
   });
   document.addEventListener('submit', e => {
     if (e.target.id !== 'gl-dh-link') return;
