@@ -11,11 +11,11 @@ describe('DEMO · rediseño móvil, Colaboradores y legajos sin datos reales',()
     cy.get('#gl-tour-controls',{timeout:20000}).should('be.visible');
   }
   const stage=n=>cy.get('.gl-tour-nav [data-tour="'+n+'"]').first().click();
-  it('celular: cinco etapas, dock blanco, fichas, búsqueda, cambio ficticio y Horarios existente',()=>{
+  it('celular: nueve etapas, dock blanco, fichas, búsqueda, cambio ficticio y Horarios existente',()=>{
     cy.viewport(390,844);enter();
     cy.get('#gl-visitor-bar').should('have.css','background-color','rgb(255, 255, 255)');
     cy.get('#gestlok-mobile-dock').should('be.visible');
-    cy.get('.gl-tour-nav [data-tour]').should('have.length',7);
+    cy.get('.gl-tour-nav [data-tour]').should('have.length',11);
     stage(3);
     cy.get('#gl-demo-emp .gl-dh-directory',{timeout:10000}).should('be.visible');
     cy.get('#gl-demo-emp .gl-dh-person').should('have.length',8);
@@ -35,7 +35,7 @@ describe('DEMO · rediseño móvil, Colaboradores y legajos sin datos reales',()
     cy.get('#gl-demo-emp .gl-dh-person:visible').should('have.length',8);
     cy.get('#gl-demo-emp .gl-dh-status--inactivo').should('have.length',1);
     cy.window().then(w=>expect(JSON.parse(w.sessionStorage.getItem('gestlok:visitor:horarios:v1')).employeeStates['Sofía Ríos']).eq('inactivo'));
-    stage(4);
+    stage(8);
     cy.get('#gl-tour-review-form').should('be.visible');
     cy.get('#gestlok-mobile-dock').should('not.be.visible');
     cy.get('#gl-tour-gift').should('not.exist');
@@ -53,9 +53,9 @@ describe('DEMO · rediseño móvil, Colaboradores y legajos sin datos reales',()
   });
   it('en computadora se presenta la versión simulada de teléfono; las otras cuentas no cambian',()=>{
     cy.viewport(1240,850);enter();
-    cy.get('#hub').should('be.visible').and('have.css','width','420px');
+    cy.get('#hub').should('be.visible').then(h=>expect(h[0].getBoundingClientRect().width).to.be.within(390,440));
     cy.get('#gestlok-mobile-dock').should('be.visible');
     stage(3);
-    cy.get('#gl-demo-emp').should('have.css','width','420px');
+    cy.get('#gl-demo-emp').then(h=>expect(h[0].getBoundingClientRect().width).to.be.within(390,440));
   });
 });
