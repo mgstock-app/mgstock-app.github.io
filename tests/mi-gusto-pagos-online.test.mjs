@@ -19,9 +19,9 @@ test('Pagos Online: exclusivamente Mi Gusto, dueño y gerente autorizado',()=>{
  for(const loc of ['munro','torcuato'])for(const role of ['dueno','gerente']){
   const m=client(role,loc);assert(m.permitido());
   const html=m.view();assert.match(html,/Pagos Online/);
-  assert.match(html,/Resumen del turno e historial/);
-  assert.match(html,/Carga de pedidos/);
-  assert.doesNotMatch(html,/data-mgon-tab="historial"/);
+  assert.match(html,/data-mgon-tab="movimientos" aria-current="page">Cargar pedidos/);
+  assert.match(html,/data-mgon-tab="resumen" aria-current="false">Resumen/);
+  assert.match(html,/data-mgon-tab="historial" aria-current="false">Historial/);
  }
  for(const role of ['creadora','colaborador','lectura','editor',null])assert(!client(role).permitido());
  assert(!client('gerente','munro',TENANT,['torcuato']).permitido());
