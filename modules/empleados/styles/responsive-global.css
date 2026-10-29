@@ -1,0 +1,85 @@
+/* GESTLOK Empleados · mobile-first para Dueño, Gerente, Colaborador y Creadora.
+   Capa de presentación al final de las hojas: mantiene RLS, recibos, logos e invitaciones. */
+.app-shell{--gl-page-gutter:clamp(16px,3vw,30px);min-width:0}
+.app-shell :is(.owner-main,.gl-gerente__main,.gl-employee-main,.gi-admin-content,.management-page){
+ min-width:0;
+}
+.app-shell :is(.employee-report,.employee-sheets,.owner-panel,.gi-admin-card){max-width:100%;min-width:0}
+.app-shell :is(.employee-report,.employee-sheets,.schedule-grid,.assignment-table-wrap){
+ overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+.app-shell .schedule-grid .schedule-table{width:max(100%,1270px)}
+.app-shell img{max-width:100%;object-fit:contain}
+/* Páginas de acceso e invitación deben tener tamaño de app, no de escritorio achicado. */
+@media screen and (max-width:767px){
+ .app-shell .gestlok-module-bar{padding-inline:clamp(12px,4vw,18px);gap:8px}
+ .app-shell .gestlok-module-back{min-height:44px;font-size:12px}
+ .app-shell .gestlok-module-brand b{font-size:19px}
+ .app-shell .management-page{
+  box-sizing:border-box;width:calc(100% - 32px);max-width:none;
+  margin:16px auto;padding:20px 18px;border-radius:15px;
+ }
+ .app-shell .login-card,.app-shell .empty-state{
+  box-sizing:border-box;width:calc(100% - 32px);max-width:540px;
+  margin:20px auto;padding:24px 20px;
+ }
+ .app-shell .login-card h1{font-size:clamp(25px,6.6vw,32px)}
+ .app-shell .app-navbar{min-width:0;padding-inline:12px}
+ .app-shell :is(.owner-home,.gl-gerente,.gl-employee-shell,.gi-admin-shell){min-width:0}
+ .app-shell :is(.owner-main,.gl-gerente__main,.gl-employee-main,.gi-admin-content){
+  box-sizing:border-box;min-width:0;width:100%;
+  padding-bottom:calc(92px + env(safe-area-inset-bottom,0px));
+ }
+ .app-shell :is(.gl-gerente__content,.owner-content,.gi-admin-content,.employee-private-portal){
+  box-sizing:border-box;min-width:0;width:100%;
+  padding-left:16px;padding-right:16px;
+ }
+ .app-shell :is(.owner-panel,.owner-stat,.gi-admin-card,.gi-admin-kpi){
+  padding:clamp(14px,4vw,20px);border-radius:15px;overflow-wrap:anywhere;
+ }
+ .app-shell :is(.owner-actions,.owner-cards,.gi-admin-grid,.gi-admin-kpis){
+  min-width:0;
+ }
+ .app-shell :is(.employee-private-portal__cards,.owner-dashboard-grid,.gi-admin-grid){
+  grid-template-columns:minmax(0,1fr);
+ }
+ .app-shell :is(.schedule-filters,.assignment-search-controls){
+  display:grid;grid-template-columns:minmax(0,1fr);gap:12px;
+ }
+ .app-shell :is(.schedule-filters,.assignment-search-controls) >*{min-width:0}
+ .app-shell :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+  max-width:100%;font-size:16px;
+ }
+ .app-shell :is(.owner-action,.gi-admin-action,.owner-mobile,.gi-admin-menu-button,.gl-employee-menu,.gl-gerente__sidebar nav button){
+  min-height:48px;
+ }
+ .app-shell .gl-module-dock :is(a,button){min-height:48px;font-size:clamp(10px,2.8vw,12px)}
+ .app-shell .jsi-page{min-width:0;padding:24px 16px 46px}
+ .app-shell .jsi-card{width:100%;max-width:540px;padding:26px 22px}
+ .app-shell .jsi-card h1{font-size:clamp(26px,7vw,34px)}
+ .app-shell .jsi-google-button{width:100%;min-height:54px}
+ /* No comprimir columnas de horarios ni de recibos: scroll horizontal localizado. */
+ .app-shell .schedule-grid{width:100%;max-width:100%;overflow-x:auto}
+ .app-shell .schedule-grid .schedule-table{min-width:1100px}
+}
+@media screen and (max-width:359px){
+ .app-shell .management-page,
+ .app-shell .login-card{width:calc(100% - 24px);padding:18px 14px}
+ .app-shell :is(.gl-gerente__content,.owner-content,.gi-admin-content,.employee-private-portal){
+  padding-inline:12px;
+ }
+ .app-shell .jsi-page{padding-inline:12px}
+ .app-shell .jsi-card{padding:23px 18px}
+}
+@media screen and (min-width:768px) and (max-width:1023px){
+ .app-shell .management-page{width:calc(100% - 48px);margin-inline:auto}
+ .app-shell .login-card{max-width:600px;margin-inline:auto}
+ .app-shell :is(.owner-main,.gl-gerente__main,.gi-admin-content){min-width:0}
+ .app-shell .gi-admin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .app-shell .schedule-grid{max-width:100%;overflow-x:auto}
+}
+@media screen and (min-width:1024px){
+ .app-shell .management-page{width:min(100% - 64px,1200px);margin-inline:auto}
+ .app-shell .login-card{width:min(100% - 40px,580px)}
+ .app-shell .gi-admin-content,.app-shell .owner-main{min-width:0}
+}
