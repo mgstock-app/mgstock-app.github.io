@@ -63,6 +63,18 @@ const flow = fs.readFileSync("components/invitations/JoinStaffInvitation.tsx","u
 assert(flow.includes("await managerStaffInviteApi.accept(token)"));
 assert(flow.includes("await refresh()"));
 assert(flow.includes("Cambiar cuenta de Google"));
+assert(flow.includes('<GoogleSignIn returnTo="/unirse" compact />'),"Invitación debe tener un único acceso Google");
+assert(flow.includes('className="jsi-page"'),"Pantalla móvil integrada");
+assert(!flow.includes("¡Te invitaron a un equipo!"),"No repetir bienvenidas genéricas");
+const google = fs.readFileSync("components/auth/GoogleSignIn.tsx","utf8");
+assert(google.includes("compact = false"),"Login habitual conserva su diseño");
+assert(google.includes("if (compact) return"),"Login compacto sin segunda tarjeta");
+const navbar = fs.readFileSync("components/layout/AppNavbar.tsx","utf8");
+assert(navbar.includes('path === "/unirse"'),"No se muestran dos cabeceras en invitaciones");
+const inviteStyle = fs.readFileSync("components/invitations/join-staff-invitation.css","utf8");
+assert(inviteStyle.includes("color-scheme:light"),"Invitación blanca incluso con teléfono oscuro");
+assert(inviteStyle.includes("min-height:52px"),"Acceso táctil cómodo");
+
 assert(flow.includes("signOut({ scope: \"local\" })"));
 assert(flow.includes('router.replace("/")'));
 const router = fs.readFileSync("components/invitations/JoinCompany.tsx","utf8");

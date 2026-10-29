@@ -3,7 +3,7 @@ import { useState } from "react";
 import { brand } from "@/utils/brand";
 import { createClient } from "@/lib/supabase/browser";
 import { reportConfig } from "@/utils/report-config";
-export function GoogleSignIn({ returnTo }: { returnTo?: "/unirse" } = {}) {
+export function GoogleSignIn({ returnTo, compact = false }: { returnTo?: "/unirse"; compact?: boolean } = {}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function login() {
@@ -45,19 +45,29 @@ export function GoogleSignIn({ returnTo }: { returnTo?: "/unirse" } = {}) {
       setBusy(false);
     }
   }
+  const signInButton = (
+    <button
+      type="button"
+      className={compact ? "jsi-google-button" : "primary-button google-button"}
+      onClick={login}
+      disabled={busy}
+    >
+      <span aria-hidden="true" className="google-signin-g">G</span>
+      {busy ? "Conectando con Google…" : "Continuar con Google"}
+    </button>
+  );
+  if (compact) return (
+    <div className="jsi-auth-action">
+      {signInButton}
+      {error && <p role="alert" className="jsi-auth-error">{error}</p>}
+    </div>
+  );
   return (
     <main className="login-card">
       <span className="eyebrow">{brand.name}</span>
       <h1>Tu cuenta, tus reportes</h1>
       <p>Ingresá o registrate con la cuenta de Google de tu dispositivo.</p>
-      <button
-        className="primary-button google-button"
-        onClick={login}
-        disabled={busy}
-      >
-        <span aria-hidden="true">G</span>
-        {busy ? "Conectando con Google…" : "Continuar con Google"}
-      </button>
+      {signInButton}
       <p className="hint">
         Al registrarte podrás elegir dueño o colaborador. Los dueños necesitan
         un correo autorizado; los colaboradores ingresan con la invitación de su
