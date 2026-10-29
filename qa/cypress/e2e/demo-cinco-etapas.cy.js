@@ -12,7 +12,7 @@ describe('Demo GESTLOK: navegación, privacidad y envío', () => {
     cy.viewport(390, 844); start();
     step(1); cy.get('#view').should('contain.text', 'Stock');
     step(2); cy.get('#view').should('contain.text', 'Proveedores');
-    step(3); cy.get('[data-dh-receipt]').click();
+    step(3); cy.get('#gl-demo-emp .gl-dh-folders [data-dh-receipt]').click();
     cy.get('#gl-demo-receipt').should('contain.text', 'Sin validez legal');
     cy.get('#gl-demo-emp').then(panel => {
       cy.get('#gl-visitor-bar').then(bar => {
