@@ -1,0 +1,145 @@
+/* GESTLOK · Capa responsive compartida.
+   Se importa ÚLTIMA para unificar reglas heredadas de varias pantallas.
+   Solo presentación: no toca marcas originales, roles, RLS, navegación ni datos. */
+:root{
+ --gl-screen-padding:clamp(16px,3vw,32px);
+ --gl-touch-target:48px;
+}
+html,body{max-width:100%;overflow-x:clip}
+#app,#hub,#view,#pn,.main,.gl-ch-main,.gl-ch-colmain,.gl-ch-colside{min-width:0}
+#app img,#hub img{max-width:100%;height:auto}
+
+/* La portada no es una tarjeta de escritorio reducida: ocupa todo el ancho útil. */
+@media screen and (max-width:767px){
+ html.auth-on .auth{
+  box-sizing:border-box;display:flex;flex-direction:column;
+  justify-content:flex-start;align-items:stretch;
+  width:100%;max-width:none;
+  min-height:100dvh;
+  padding:clamp(18px,4dvh,38px) max(16px,env(safe-area-inset-right,0px))
+    calc(32px + env(safe-area-inset-bottom,0px))
+    max(16px,env(safe-area-inset-left,0px));
+  overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:none; /* conservar scroll sin perder 15px de ancho en Chrome */
+ }
+ html.auth-on .auth::-webkit-scrollbar{display:none}
+ html.auth-on .auth .au-card,
+ html.auth-on .auth:has([data-mode="in"]:not([hidden])) .au-card{
+  box-sizing:border-box;flex:0 0 auto;
+  width:100%;max-width:540px;min-width:0;
+  margin:0 auto;
+ }
+ html.auth-on .auth:has([data-mode="in"]:not([hidden])) .au-card{padding:0}
+ html.auth-on .auth .au-cover{width:100%;max-width:none;gap:7px}
+ html.auth-on .auth .au-cover::before{width:76px;height:76px;margin-bottom:5px}
+ html.auth-on .auth .au-cover img{width:clamp(205px,58vw,258px);max-width:85%;height:auto}
+ html.auth-on .auth .au-cover b{font-size:16px;line-height:1.4}
+ html.auth-on .auth .au-cover span{font-size:12px;line-height:1.5}
+ html.auth-on .auth #au-in{width:100%;gap:14px}
+ html.auth-on .auth #au-in .au-intro{margin:clamp(18px,4dvh,32px) 0 18px}
+ html.auth-on .auth #au-in .au-intro h1{font-size:clamp(28px,7vw,35px);line-height:1.18}
+ html.auth-on .auth #au-in .au-intro p{font-size:15px;line-height:1.45}
+ html.auth-on .auth #au-in .fld label{font-size:14px}
+ html.auth-on .auth #au-in .au-input-wrap{min-height:54px;border-radius:13px}
+ html.auth-on .auth #au-in .au-input-wrap input{min-height:52px;font-size:16px}
+ html.auth-on .auth #au-in .gbtn,
+ html.auth-on .auth #au-in .btn.primary[type="submit"]{min-height:54px;width:100%;font-size:16px}
+ html.auth-on .auth #au-in .gl-visitor-entry{min-height:56px;font-size:14px}
+ html.auth-on .auth #au-in .au-links{font-size:14px;gap:12px}
+ html.auth-on .auth #au-in .gl-visitor-entry-info{font-size:12px;line-height:1.5}
+ /* Dueño y gerente: dos carpetas principales grandes, apiladas en celular. */
+ .gl-oh-hub .gl-oh-main.hub-in{
+  box-sizing:border-box;width:100%;max-width:none;min-width:0;
+  padding:18px 16px calc(96px + env(safe-area-inset-bottom,0px));
+ }
+ .gl-oh-hub .gl-owner-landing,.gl-oh-hub .gl-manager-landing{width:100%;max-width:none;min-width:0}
+ .gl-oh-hub .gl-owner-landing .gl-owner-areas,
+ .gl-manager-landing .gl-owner-areas{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:14px;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-area,
+ .gl-manager-landing .gl-owner-area{
+  box-sizing:border-box;width:100%;min-width:0;min-height:174px;
+  padding:20px 18px;border-radius:18px;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-area h2,
+ .gl-manager-landing .gl-owner-area h2{
+  font-size:clamp(23px,6vw,29px);line-height:1.19;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-area>p,
+ .gl-manager-landing .gl-owner-area>p{
+  font-size:14px;line-height:1.48;margin:8px 0 11px;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-area-icon,
+ .gl-manager-landing .gl-owner-area-icon{
+  width:46px;height:46px;margin-bottom:10px;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-arrow,
+ .gl-manager-landing .gl-owner-arrow{
+  width:44px;height:44px;min-width:44px;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-area-list{
+  display:grid;gap:4px;padding:10px 12px;
+  font-size:13px;line-height:1.35;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-area-list li{min-height:31px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-quick{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  overflow:visible;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-tile{
+  min-width:0;min-height:72px;padding:10px 8px;
+  font-size:13px;line-height:1.3;border-radius:14px;
+ }
+ .gl-oh-hub .gl-owner-landing .gl-owner-tile svg{width:23px;height:23px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-welcome{margin-bottom:16px}
+ .gl-manager-quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gl-manager-quick button{min-height:96px;font-size:13px}
+ .gl-home-essential-links{grid-template-columns:minmax(0,1fr);gap:10px}
+ .gl-home-essential-links button{min-height:50px;font-size:14px}
+ .gl-ch-main{box-sizing:border-box;width:100%;max-width:none;padding:18px 16px 90px}
+ .gl-ch-top{gap:12px;flex-wrap:wrap}
+ .gl-ch-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .gl-ch-kpi{min-width:0;padding:14px}
+ .gl-ch-card{min-width:0;padding:16px}
+ /* Formularios y filtros públicos: no forzar zoom de Safari en inputs. */
+ #app :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+ #hub :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+  min-width:0;max-width:100%;font-size:16px;
+ }
+ #app :is(.btn,.gl-owner-arrow,.gl-owner-tile),
+ #hub :is(.gl-owner-arrow,.gl-owner-tile){
+  touch-action:manipulation;
+ }
+ #app .sheet{max-width:100%;overflow-x:auto}
+ /* En tablas, desbordar solo la hoja y no todo el teléfono. */
+ #app :is(.gl-ch-card,.gl-admin-main,.gl-ch-colmain){min-width:0}
+ .gl-mobile-dock:not([hidden]){min-height:calc(66px + env(safe-area-inset-bottom,0px))}
+ .gl-mobile-dock button{min-height:48px;font-size:clamp(10px,2.8vw,12px)}
+}
+@media screen and (max-width:359px){
+ .gl-oh-hub .gl-oh-main.hub-in{padding-inline:12px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-area{padding:16px 14px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-area h2{font-size:22px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-quick{grid-template-columns:minmax(0,1fr)}
+ .gl-ch-kpis{grid-template-columns:minmax(0,1fr)}
+}
+/* Tablet: dos columnas únicamente cuando tienen espacio suficiente. */
+@media screen and (min-width:768px) and (max-width:1023px){
+ html.auth-on .auth .au-card{width:min(100%,560px);max-width:560px}
+ .gl-oh-hub .gl-oh-main.hub-in{box-sizing:border-box;width:100%;max-width:100%;padding:22px 24px 40px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-areas{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-area{min-width:0;padding:20px}
+ .gl-oh-hub .gl-owner-landing .gl-owner-area h2{font-size:clamp(22px,3vw,29px)}
+ .gl-oh-hub .gl-owner-landing .gl-owner-area>p{font-size:14px}
+ .gl-ch-main{width:100%;min-width:0;padding:20px}
+ .gl-ch-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* PC: contenido centrado y legible, sin estirarlo indefinidamente. */
+@media screen and (min-width:1024px){
+ html.auth-on .auth{display:flex;align-items:flex-start;justify-content:center;padding-top:clamp(48px,8vh,94px)}
+ html.auth-on .auth .au-card{width:min(100%,540px);max-width:540px}
+ .gl-oh-hub .gl-oh-main.hub-in{width:100%;max-width:1440px;margin-inline:auto;padding-inline:clamp(24px,3vw,44px)}
+ .gl-oh-hub .gl-owner-landing .gl-owner-areas{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gl-ch-main{max-width:1480px;margin-inline:auto}
+}

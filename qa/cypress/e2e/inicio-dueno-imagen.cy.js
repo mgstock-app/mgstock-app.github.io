@@ -65,7 +65,11 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
     cy.get('.gl-owner-quick').should('be.visible').then($row => {
       const row = $row[0], cards = [...row.querySelectorAll('.gl-owner-tile')];
       expect(cards).to.have.length(4);
-      expect(cards.every(card => Math.abs(card.offsetTop - cards[0].offsetTop) < 4)).to.equal(true);
+      // En móvil los cuatro accesos usan 2 columnas legibles, no 4 mini botones.
+      expect(Math.abs(cards[0].offsetTop-cards[1].offsetTop)).to.be.lessThan(4);
+      expect(cards[2].offsetTop).to.be.greaterThan(cards[0].offsetTop);
+      expect(Math.abs(cards[2].offsetTop-cards[3].offsetTop)).to.be.lessThan(4);
+      cards.forEach(card => expect(card.getBoundingClientRect().width).to.be.greaterThan(145));
       expect(row.scrollWidth).to.be.at.most(row.clientWidth);
     });
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
