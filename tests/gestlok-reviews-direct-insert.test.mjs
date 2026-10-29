@@ -17,7 +17,7 @@ test('SQL de validación de privilegios no escribe datos reales',()=>{
  const sql=get('supabase/tests/gestlok_reviews_rpc_only.sql');
  assert.match(sql,/begin read only;/i);
  assert.match(sql,/has_table_privilege\('anon','public.gestlok_app_reviews','INSERT'\)/);
- assert.match(sql,/has_function_privilege\('anon','public.gestlok_demo_enviar_resena_cupon/);
+ assert.match(sql,/has_function_privilege\(\s*'anon',\s*'public\.gestlok_demo_enviar_resena_cupon/);
  assert.match(sql,/rollback;/i);
  assert.doesNotMatch(sql,/(insert into|delete from|truncate|update public\.)/i);
 });
