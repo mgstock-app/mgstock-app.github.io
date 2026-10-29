@@ -39,6 +39,19 @@ describe('GESTLOK · Dock inferior móvil y permisos',()=>{
    cy.get('#gestlok-mobile-dock [data-dock="business"]').click();
    cy.get('#pn [data-act="local"]').should('exist');
  });
+ it('Torcuato: el panel de inicio no muestra Sin cambios / Guardar conteo; dentro de Stock sí',()=>{
+   setup('gerente.torcuato@example.com');
+   cy.get('#ttl',{timeout:15000}).should('have.text','Panel del local');
+   cy.get('#savebar').should('not.be.visible');
+   cy.get('#snav [data-go="stock"]').click();
+   cy.get('#savebar').should('be.visible');
+   cy.get('#sb-save').should('be.visible');
+ });
+ it('Munro: el inicio tampoco muestra la barra de conteo',()=>{
+   setup('gerente.munro@example.com');
+   cy.get('#ttl',{timeout:15000}).should('have.text','Panel del local');
+   cy.get('#savebar').should('not.be.visible');
+ });
  it('en PC permanece la navegación de escritorio sin dock móvil',()=>{
    setup('gerente.munro@example.com',1280);
    cy.get('#app').should('be.visible');
