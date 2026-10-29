@@ -247,7 +247,11 @@
           try { const rows = await fetchCol(col); if (alive && current === generation) next(snap(shape(rows))); }
           catch (e) { if (alive && current === generation && e && e.code === 'invalid_argument' && onErr) onErr(e); }
         };
-        const later = () => { clearTimeout(t); t = setTimeout(refresh, 120); };
+        const later = () => {
+          // Si llega un cambio durante una descarga, la próxima lectura debe ser nueva.
+          collectionRevisions.set(col, (collectionRevisions.get(col) || 0) + 1);
+          clearTimeout(t); t = setTimeout(refresh, 120);
+        };
         if (!refreshers.has(col)) refreshers.set(col, new Set());
         refreshers.get(col).add(later);
         refresh();
@@ -275,9 +279,16 @@
   // Una colección = una sola descarga a la vez, aunque varias vistas la pidan.
   // Evita consultas duplicadas cuando tablero, planilla y suscripciones coinciden.
   const pendingCollections = new Map();
+  const collectionRevisions = new Map();
   async function fetchCol(col){
+    const revision = collectionRevisions.get(col) || 0;
     const pending = pendingCollections.get(col);
-    if (pending) return pending;
+    if (pending){
+      if (pending.revision === revision) return pending.request;
+      // La consulta anterior empezó antes del cambio: esperar y traer datos frescos.
+      try { await pending.request; } catch {}
+      return fetchCol(col);
+    }
     const request = (async () => {
       const out = []; let from = 0;
       for (;;){
@@ -290,9 +301,9 @@
       }
       return out;
     })();
-    pendingCollections.set(col, request);
+    pendingCollections.set(col, { revision, request });
     try { return await request; }
-    finally { if (pendingCollections.get(col) === request) pendingCollections.delete(col); }
+    finally { if (pendingCollections.get(col)?.request === request) pendingCollections.delete(col); }
   }
   const db = Object.freeze({
     collection(col){ const q = query(col, {}); return Object.assign(Object.create(q), q, { path: col, doc: id => docRef(col, id || uid()), async add(d){ const r = docRef(col, uid()); await r.set(d); return r; } }); },
