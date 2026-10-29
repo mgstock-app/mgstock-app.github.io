@@ -19,7 +19,8 @@ export function managerStaffInviteUrl(origin: string, moduleBase: string, token:
 export function staffInviteMessage(localName: string, url: string): string {
   return "Hola! Te invito a registrarte en GESTLOK como colaborador/a de " +
     localName + ". Entrá con tu cuenta de Google desde este enlace individual: " + url +
-    "\nEl enlace se puede usar una sola vez y vence a los 7 días.";
+    "\nEl enlace se puede usar una sola vez y vence a los 7 días." +
+    "\nSi se abre dentro de WhatsApp, elegí Abrir en Google Chrome para usar tu cuenta guardada.";
 }
 
 /**
