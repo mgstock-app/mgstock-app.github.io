@@ -234,12 +234,12 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           <div className="mlg-local-head"><button type="button" aria-expanded={!closed} onClick={()=>setCollapsed(a=>closed?a.filter(v=>v!==local.id):[...a,local.id])}>
             <LocalPortrait local={local}/><strong>{localTitle(local)}</strong><span>{staff.length} colaboradores</span><ChevronRight className={closed?"":"mlg-chevron"} size={19}/>
           </button>{!ownerView&&<button type="button" className="mlg-add" onClick={()=>open(local)}><Plus size={17}/> Agregar colaborador</button>}</div>
-          {!closed && (staff.length ? <div className="mlg-cards">{staff.map((person,i)=><article className="mlg-person" key={person.key}>
+          {!closed && (staff.length ? <div className="mlg-directory"><div className="mlg-directory-head" aria-hidden="true"><span className="mlg-dir-name">Colaborador</span><span className="mlg-dir-status">Estado</span><span className="mlg-dir-actions">Acciones</span></div><div className="mlg-cards">{staff.map((person,i)=><article className="mlg-person" key={person.key}>
             <span className={"mlg-avatar mlg-avatar--"+i%5} aria-hidden="true">{(person.fullName[0]||"?").toUpperCase()}</span>
             <div className="mlg-person-name"><strong>{person.fullName}</strong><span className={"mlg-status mlg-status--"+person.status}>{stateNames[person.status]}</span>{person.pending&&<span className="mlg-pending">Pendiente de completar</span>}</div>
             <button type="button" className="mlg-view" onClick={()=>open(local,person)}><FileText size={15}/> Ver legajo</button>
             <button type="button" className="mlg-more" aria-label={"Detalle de "+person.fullName} onClick={()=>open(local,person)}><MoreVertical size={17}/></button>
-          </article>)}</div> : <p className="mlg-empty">{search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
+          </article>)}</div></div> : <p className="mlg-empty">{search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
           {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}

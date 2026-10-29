@@ -111,3 +111,6 @@
 .mlg-pending{align-self:flex-start;color:#a66a12;background:#fff2dc;border:1px solid #f5dfb6;padding:4px 8px;border-radius:20px;font-weight:750;font-size:9px;white-space:nowrap}
 .mlg-pending-notice{background:#fff8e6;border:1px solid #f0dfb9;border-radius:10px;padding:12px 14px;color:#8b6318;font-size:12px;line-height:1.55}
 @media(max-width:680px){.mlg-intro-actions{width:100%;justify-content:flex-start}.mlg-intro-actions>button{flex:1 1 180px}}
+
+/* El encabezado de la lista solo aparece en PC; en móvil se conserva el diseño de fichas. */
+.mlg-directory-head{display:none}

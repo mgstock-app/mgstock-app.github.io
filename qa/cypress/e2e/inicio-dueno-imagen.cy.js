@@ -24,6 +24,8 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
     cy.get('.gl-oh-top [data-owner-nav="menu"]').should('be.visible');
     cy.get('.gl-oh-top [data-owner-nav="bell"]').should('be.visible');
     cy.get('.gl-oh-who').should('contain.text', 'Hola').and('contain.text', 'Dueño');
+    cy.get('.gl-owner-areas .gl-owner-area').first().should('have.css','background-color','rgb(255, 255, 255)');
+    cy.get('.gl-owner-areas .gl-owner-area h2').first().should('have.css','color','rgb(20, 47, 70)');
     cy.get('.gl-owner-quick .gl-owner-tile').should('have.length', 4);
     cy.get('.gl-owner-quick').should('contain.text', 'Reportes generales').and('contain.text', 'Mi cuenta').and('contain.text', 'Ajustes').and('contain.text', 'Soporte');
   });

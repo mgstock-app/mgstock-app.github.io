@@ -17,6 +17,7 @@ import "@/styles/schedules.css";
 import "@/styles/white-dashboard.css";
 import "@/styles/mobile-navigation.css";
 import "@/styles/gerente-desktop-clarity.css";
+import "@/styles/desktop-gestlok.css";
 export const metadata: Metadata = {
   title: { default: brand.name, template: `%s | ${brand.name}` },
   applicationName: brand.name,

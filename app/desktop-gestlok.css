@@ -1,0 +1,92 @@
+/* GESTLOK escritorio · Diseño elegido 29/10/2026.
+   SOLO presentación de PC (desde 901px), compartida por empresas y roles.
+   Respeta logos originales, colores semánticos, datos, PWA y navegación móvil. */
+@media screen and (min-width:901px){
+ :root{
+  --gestlok-desktop-navy:#142f46;
+  --gestlok-desktop-muted:#536a7e;
+  --gestlok-desktop-blue:#086bba;
+  --gestlok-desktop-line:#e1eaf2;
+  --gestlok-desktop-bg:#fff;
+  --gestlok-desktop-subtle:#f8fbfe;
+  --gestlok-desktop-active:#e9f4fd;
+ }
+ body{background:var(--gestlok-desktop-bg);color:var(--gestlok-desktop-navy)}
+ /* Tarjeta 1: administración de la empresa, todas las empresas/locales. */
+ #app{
+  --bg:#fff;--surface:#fff;--sunk:#f8fbfe;
+  --ink:#142f46;--ink-2:#2a475f;--muted:#536a7e;
+  --line:#e1eaf2;--line-2:#cdddea;--accent:#086bba;
+  --accent-soft:#e9f4fd;--mast:#fff;--mast-2:#f8fbfe;
+  --mast-ink:#142f46;--mast-muted:#536a7e;--mast-line:#e1eaf2;
+  --shadow:0 5px 24px #1638500a;
+  background:#fff;color:var(--gestlok-desktop-navy);
+ }
+ #app .main{background:#fff;color:var(--gestlok-desktop-navy)}
+ #app .side{background:#fff!important;color:#142f46!important;border-color:var(--gestlok-desktop-line)}
+ #app .side-top .brand b,#app .side .me b{color:#142f46}
+ #app #snav :is(button,.snav-folder>summary){color:#243f58;font-weight:650}
+ #app #snav :is(button,.snav-folder>summary) svg.i{color:#177fbd}
+ #app #snav :is(button,.snav-folder>summary):hover{color:#145886;background:#f0f7fc}
+ #app #snav button[aria-current="page"]{
+  background:var(--gestlok-desktop-active)!important;
+  color:#075b99!important;box-shadow:inset 3px 0 #087ab9;
+ }
+ #app #snav button[aria-current="page"] svg.i{color:#075b99}
+ #app #snav .snav-folder>summary{color:#173f5c;background:#f7fbfe}
+ #app #snav .snav-loc,#app .side .status{background:#f8fbfe!important;color:#294b65;border-color:#dce9f1}
+ #app .top{background:#fff!important;border-bottom:1px solid var(--gestlok-desktop-line)}
+ #app .top .tt h2,#app .h1,#app :is(h1,h2,h3,h4){color:#142f46}
+ #app .wrap{max-width:1600px;padding-inline:clamp(18px,2.4vw,38px)}
+ #app :is(.card,.lcard,.panel,.note){
+  background:#fff;border:1px solid var(--gestlok-desktop-line);
+  border-radius:15px;box-shadow:0 5px 25px #173b5209;
+ }
+ #app :is(.btn,.search input,.chip,select,input:not([type="checkbox"]),textarea){
+  border-radius:10px;
+ }
+ #app :is(input,select,textarea){color:#142f46}
+ #app :is(input,textarea)::placeholder{color:#60798d;opacity:1}
+ #app .btn.primary{background:#086bba;border-color:#086bba;color:#fff}
+ #app .btn.primary:hover{background:#075993}
+ #app .btn:not(.primary){color:#23445c}
+ #app .sh-h{background:#f8fbfe;color:#49647b}
+ #app .side .gestlok-company-identity{border-radius:14px;box-shadow:0 4px 16px #122a3b0c}
+ /* Portada dueños/gerentes: las DOS tarjetas en un mismo lenguaje. */
+ .hub.gl-oh-hub{background:#fff;color:var(--gestlok-desktop-navy)}
+ .gl-oh-top{background:#fff;border-bottom:1px solid var(--gestlok-desktop-line)}
+ .gl-oh-word,.gl-owner-welcome h1,.gl-owner-company-name{color:#142f46}
+ .gl-owner-landing{max-width:1600px}
+ .gl-owner-areas{gap:18px}
+ .gl-owner-area{
+  min-height:285px;border:1px solid var(--gestlok-desktop-line);
+  border-radius:17px;background:#fff;
+  box-shadow:0 6px 26px #16384f0b;
+ }
+ .gl-owner-area:hover{border-color:#c5ddeb;box-shadow:0 13px 30px #17384f12}
+ .gl-owner-area h2,.gl-owner-area h2 span{color:#142f46}
+ .gl-owner-area>p{color:#526e83}
+ .gl-owner-area-icon{background:#e9f4fd;color:#0871a8}
+ .gl-owner-employees .gl-owner-area-icon{background:#e9f4fd;color:#0871a8}
+ .gl-owner-arrow,.gl-owner-employees .gl-owner-arrow{background:#e8f4fb;color:#0c6b9f}
+ .gl-owner-area-list{background:#f9fbfe;border-color:#e5edf3;color:#344e64}
+ .gl-owner-tile{color:#233e57;background:#fff;border-color:#e1eaf2}
+ .gl-owner-tile:hover{background:#f1f8fc}
+ /* Creadora: empresa y empleados comparten el mismo lienzo. */
+ .gl-ch,.gl-admin{background:#fff;color:#142f46}
+ .gl-ch-side,.gl-admin-sidebar{background:#fff;border-right:1px solid #e1eaf2}
+ .gl-ch-card,.gl-ch-kpi,.gl-admin-card,.gl-admin-kpi{
+  background:#fff;border:1px solid #e1eaf2;border-radius:16px;
+  box-shadow:0 5px 24px #17384f0a;
+ }
+ .gl-ch-card h2,.gl-ch-top h1,.gl-admin-card h2{color:#142f46}
+ .gl-ch-nav button,.gl-admin-nav>button,.gl-admin-nav>span{color:#243f58}
+ .gl-ch-nav button.on,.gl-admin-nav>[aria-current]{background:#e9f4fd;color:#085e9d}
+ /* Mantener siempre cada logo tal como fue subido, sin tintes ni inversión. */
+ #app .gestlok-company-identity img,.gl-oh-brand-company img,
+ .gl-owner-welcome-logo img,.gl-admin-logo img,.gl-ch-logo img{
+  filter:none!important;mix-blend-mode:normal!important;opacity:1!important;object-fit:contain;
+ }
+ #app .side .gestlok-company-identity{background:#080808!important;border-color:#080808!important}
+ .gl-oh-brand.gl-oh-brand-company,.gl-owner-welcome-logo{background:#080808}
+}
