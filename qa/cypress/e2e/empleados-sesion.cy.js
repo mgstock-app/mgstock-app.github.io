@@ -17,6 +17,19 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
   cy.contains('Continuar con Google').should('not.exist');
+  // En escritorio el menú del gerente y la palabra completa GESTLOK deben contrastar sobre blanco.
+  cy.viewport(1240,820);
+  cy.get('.gl-gerente__header-brand .gl-gerente__header-gest')
+    .should('be.visible').and('have.css','color','rgb(25, 59, 85)');
+  cy.get('.gl-gerente__header-brand .gl-gerente__header-lok')
+    .should('be.visible').and('have.css','color','rgb(8, 127, 168)');
+  cy.get('.gl-gerente__sidebar').should('be.visible')
+    .and('have.css','background-color','rgb(255, 255, 255)');
+  cy.get('.gl-gerente__sidebar nav button').first()
+    .should('contain.text','Colaboradores').and('be.visible');
+  cy.get('.gl-gerente__sidebar nav button').eq(1)
+    .should('contain.text','Sector de Google').and('be.visible');
+  cy.get('.gl-module-dock').should('not.be.visible');
   // La cabecera anterior «📁 Horarios» ya no existe. La navegación
   // vigente del gerente es Sector de Google → Horarios.
   cy.contains('button','Sector de Google').should('exist').click();
