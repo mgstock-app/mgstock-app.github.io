@@ -5,16 +5,18 @@ import vm from "node:vm";
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const ui=read("public/stock/gestlok-pilot.js");
 const sql=read("supabase/migrations/20261029053000_piloto_control_total_perfumes.sql");
-test("Centro piloto tiene exactamente 20 áreas, sin ampliar roles del resto",()=>{
+test("Centro piloto tiene 21 áreas incluyendo Pedidos, sin ampliar roles del resto",()=>{
  const listeners={};
  const context={window:{},document:{addEventListener:(key,fn)=>listeners[key]=fn},console};
  vm.runInNewContext(ui,context);
  const mod=context.window.GestLokPilot;
  assert.ok(mod);
- assert.equal(mod.modules.length,20);
+ assert.equal(mod.modules.length,21);
+ assert.ok(mod.modules.includes('pedidos'));
  assert.equal(new Set(mod.modules).size,20);
  assert.equal(mod.homeTile({tenant_id:"10d56b45-fda2-44a9-a48a-6ad262aaf78a",role:"dueno"},{S:{me:{tenant_id:"10d56b45-fda2-44a9-a48a-6ad262aaf78a",email:"otro@example.com"}},role:()=>"dueno"}),"");
  assert.match(ui,/data-pilot-open/);
+ assert.match(ui,/data-pilot-orders/);
  assert.match(ui,/getUser\(\)/);
  assert.match(ui,/owner_uid/);
  assert.match(ui,/Sin movimientos automáticos en sistemas externos/);
@@ -39,6 +41,8 @@ test("Se carga únicamente en sesiones privadas, no en demo ni se expone a empre
  assert.match(owners,/window\.GestLokPilot\?\.refresh\?\.\(data,api\)/);
  assert.match(owners,/window\.GestLokPilot\?\.homeTile\?\.\(state\.data,api\)/);
  assert.match(layout,/gestlok-pilot\.css/);
+ assert.match(layout,/gestlok-orders\.css/);
+ assert.match(runtime,/gestlok-pedidos\.js/);
  assert.match(ui,/context\.tenant_id===TENANT/);
  assert.match(ui,/host\?\.role\?\.\(\)==='dueno'/);
  assert.match(ui,/data\.owner_uid===identity\.data\.user\.id/);
