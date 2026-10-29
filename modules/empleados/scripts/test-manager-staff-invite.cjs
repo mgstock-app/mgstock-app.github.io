@@ -32,7 +32,7 @@ for(const bad of [
   "https://gestlok.com.ar/otra/?invitacion="+token
 ]) assert.throws(()=>mod.chromeInviteUrl(bad,"android"),/inválido/);
 
-assert(mod.staffInviteMessage("Don Torcuato","https://gestlok.com.ar/empleados/unirse/?invitacion="+token).includes("WhatsApp")===false);
+assert(mod.staffInviteMessage("Don Torcuato","https://gestlok.com.ar/empleados/unirse/?invitacion="+token).includes("Abrir en Google Chrome"),"El mensaje explica cómo salir de WhatsApp");
 assert(mod.staffInviteMessage("Munro","https://gestlok.com.ar").includes("una sola vez"));
 const sql = fs.readFileSync("../../supabase/migrations/20261028183500_invitaciones_gerente_automaticas.sql","utf8");
 for(const required of [
