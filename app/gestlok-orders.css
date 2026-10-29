@@ -1,0 +1,106 @@
+/* GestLok · Pedidos privados (Perfumes). Estilos encapsulados en el centro piloto. */
+.gl-pilot-entry-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+.gl-pilot-entry-actions button{min-height:48px;border:1px solid #184768;border-radius:11px;background:#153e60;color:#fff;padding:13px 17px;font:700 13px/1.3 Inter,system-ui,sans-serif}
+.gl-pilot-entry-actions button:first-child{background:#e3f1fc;color:#124d7e;border-color:#bfd7e9}
+#gl-pilot-panel .gl-orders{color:#1a3d55}
+#gl-pilot-panel .gl-order-header{display:flex;justify-content:space-between;align-items:center;gap:16px;background:#fff;border:1px solid #e0eaf1;border-radius:17px;padding:22px;margin-bottom:14px}
+#gl-pilot-panel .gl-order-header h2{font-size:28px;margin:4px 0 2px;color:#153b5e}
+#gl-pilot-panel .gl-order-header small{color:#2479a6;font-size:10px;font-weight:800;letter-spacing:.11em}
+#gl-pilot-panel .gl-order-header p{margin:0;font-size:13px;color:#698298}
+#gl-pilot-panel .gl-order-date{display:flex;gap:12px;align-items:center;text-align:center;font-size:13px;color:#25628a}
+#gl-pilot-panel .gl-order-date strong{min-width:190px}
+#gl-pilot-panel .gl-order-date button{width:40px;height:40px;border:1px solid #bed6e5;border-radius:11px;background:#f8fbff;color:#1a638d;font-size:25px}
+#gl-pilot-panel .gl-order-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+#gl-pilot-panel .gl-order-stats>div{border:1px solid #dfebf2;border-radius:13px;padding:14px;background:#fff;min-width:0}
+#gl-pilot-panel .gl-order-stats small{color:#678298;display:block;min-height:35px;font-size:11px;line-height:1.35}
+#gl-pilot-panel .gl-order-stats strong{display:block;font-size:25px;color:#1b547a;font-weight:850}
+#gl-pilot-panel .gl-order-stats>div:nth-child(3) strong{color:#b03e38}
+#gl-pilot-panel .gl-order-tabs{display:flex;gap:4px;background:#e9f0f5;padding:5px;border-radius:12px;margin:16px 0;overflow-x:auto}
+#gl-pilot-panel .gl-order-tabs button{flex:1;min-width:max-content;padding:11px 13px;border:0;border-radius:9px;background:transparent;color:#57778d;font-weight:750;font-size:12px}
+#gl-pilot-panel .gl-order-tabs button[aria-current=page]{background:#fff;color:#14567d;box-shadow:0 3px 10px #11355016}
+#gl-pilot-panel .gl-order-caption{margin:20px 0}
+#gl-pilot-panel .gl-order-caption h2{margin-bottom:6px;font-size:22px}
+#gl-pilot-panel .gl-order-caption p{margin:0;color:#647d8f;font-size:13px}
+#gl-pilot-panel .gl-orders form{background:#fff;border:1px solid #dce7f0;border-radius:14px;padding:18px;display:grid;gap:15px}
+#gl-pilot-panel .gl-orders label{font-size:12px;color:#496982;font-weight:700;display:grid;gap:7px;min-width:0}
+#gl-pilot-panel .gl-orders input,#gl-pilot-panel .gl-orders textarea{font:400 15px/1.4 Inter,system-ui,sans-serif;background:#fcfeff;border:1px solid #cbdde9;border-radius:10px;min-height:44px;width:100%;padding:10px 12px;box-sizing:border-box;color:#1d445f;min-width:0}
+#gl-pilot-panel .gl-orders input:focus,#gl-pilot-panel .gl-orders textarea:focus{outline:2px solid #9dcae8;outline-offset:1px}
+#gl-pilot-panel .gl-order-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#gl-pilot-panel .gl-order-product-group{background:#f7fafc;border:1px solid #dfe9ee;border-radius:12px;margin:10px 0;overflow:hidden}
+#gl-pilot-panel .gl-order-product-group h3{padding:11px 14px;margin:0;color:#31546b;font-size:12px;letter-spacing:.045em;text-transform:uppercase;background:#e6edf1}
+#gl-pilot-panel .gl-order-product{background:#fff;border-bottom:1px solid #e8eef2;padding:12px 15px;display:flex;justify-content:space-between;gap:15px;align-items:center;min-height:70px}
+#gl-pilot-panel .gl-order-product[hidden]{display:none}
+#gl-pilot-panel .gl-order-product:last-child{border-bottom:0}
+#gl-pilot-panel .gl-order-product strong{display:block;font-weight:750;color:#1a3c54;font-size:14px}
+#gl-pilot-panel .gl-order-product small{display:block;color:#7890a1;margin-top:3px;font-size:11px}
+#gl-pilot-panel .gl-order-qty{display:grid;grid-template-columns:40px 42px 40px;align-items:center;border:1px solid #bdd4df;border-radius:10px;overflow:hidden;flex:none;background:#f7fbff;text-align:center}
+#gl-pilot-panel .gl-order-qty button{border:0;background:#eef7fc;color:#0f6985;font-size:26px;font-weight:700;min-height:42px}
+#gl-pilot-panel .gl-order-qty output{font-weight:750;color:#1a5877}
+#gl-pilot-panel .gl-order-no-stock{color:#b83e3a;font-size:11px;text-transform:uppercase;font-weight:800}
+#gl-pilot-panel .gl-order-actionbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #e5eef3;padding-top:16px}
+#gl-pilot-panel .gl-order-actionbar>div{margin-right:auto;max-width:230px}
+#gl-pilot-panel .gl-order-actionbar strong{display:block;font-size:13px}
+#gl-pilot-panel .gl-order-actionbar small{display:block;font-size:11px;color:#7890a2}
+#gl-pilot-panel .gl-orders form button[type=submit],#gl-pilot-panel .gl-order-actionbar button,#gl-pilot-panel .gl-order-finalize button{background:#1b5479;color:#fff;border:0;border-radius:10px;min-height:44px;padding:12px 15px;font:750 12px/1.3 Inter,system-ui,sans-serif}
+#gl-pilot-panel .gl-orders form button:disabled,#gl-pilot-panel .gl-order-finalize button:disabled{opacity:.48;cursor:not-allowed}
+#gl-pilot-panel .gl-order-actionbar button[data-orders-save-pending]{background:#e8f3f9;color:#215b78}
+#gl-pilot-panel .gl-order-empty{padding:22px;background:#fff;border:1px solid #e1eaf1;color:#71879a;border-radius:12px;font-size:13px;line-height:1.55;margin:9px 0}
+#gl-pilot-panel .gl-order-empty p{margin:4px 0}
+#gl-pilot-panel .gl-order-empty button{display:block;padding:9px 15px;background:#e5f4ff;color:#17587a;border:0;border-radius:9px;margin-top:10px}
+#gl-pilot-panel .gl-order-list{display:grid;gap:8px;margin:12px 0 22px}
+#gl-pilot-panel .gl-order-item{display:block;background:#fff;border:1px solid #e2e9f0;border-radius:12px;padding:14px 16px}
+#gl-pilot-panel .gl-order-item-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+#gl-pilot-panel .gl-order-item p{font-size:13px;color:#435c70;margin:5px 0}
+#gl-pilot-panel .gl-order-item small{display:block;font-size:11px;color:#748ca1;margin-top:4px;overflow-wrap:anywhere}
+#gl-pilot-panel .gl-order-item-actions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+#gl-pilot-panel .gl-order-item-actions button{border:1px solid #c9dce7;background:#f3f9ff;color:#245c7a;border-radius:8px;padding:8px 11px;font-weight:700;font-size:11px}
+#gl-pilot-panel .gl-order-item-actions button:last-child{color:#a53e39}
+#gl-pilot-panel .gl-order-status{display:inline-block;padding:4px 8px;border-radius:6px;background:#edf4f8;color:#36627f;font-size:10px;font-weight:750}
+#gl-pilot-panel .gl-order-status-entregado{background:#e0f6e7;color:#21704b}
+#gl-pilot-panel .gl-order-status-preparado{background:#e4f4f7;color:#1a7180}
+#gl-pilot-panel .gl-order-status-cancelado,#gl-pilot-panel .gl-order-status-sin_realizar{background:#fff0ed;color:#a84336}
+#gl-pilot-panel .gl-order-not-done{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#gl-pilot-panel .gl-order-not-done button{grid-column:1/-1}
+#gl-pilot-panel .gl-order-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#gl-pilot-panel .gl-order-summary>div{background:#fff;padding:14px;border:1px solid #e0e9f0;border-radius:12px}
+#gl-pilot-panel .gl-order-summary small{display:block;color:#718498}
+#gl-pilot-panel .gl-order-summary strong{font-size:25px;color:#1d6c62}
+#gl-pilot-panel .gl-order-chart{background:white;border:1px solid #e1e9f1;border-radius:12px;padding:18px;margin:15px 0}
+#gl-pilot-panel .gl-order-chart h3{font-size:15px;margin:10px 0 12px}
+#gl-pilot-panel .gl-order-chart p{font-size:13px}
+#gl-pilot-panel .gl-order-chart>small{font-size:11px;color:#778c9f}
+#gl-pilot-panel .gl-order-ranking{padding:0;margin:8px 0 20px;list-style:none;display:grid;gap:5px;counter-reset:rank}
+#gl-pilot-panel .gl-order-ranking li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:#f4f9fc;border-radius:8px;font-size:13px;counter-increment:rank}
+#gl-pilot-panel .gl-order-ranking li span::before{content:counter(rank) ". ";color:#4e809a;font-weight:750;margin-right:9px}
+#gl-pilot-panel .gl-order-ranking li b{font-size:13px;color:#1a5678}
+#gl-pilot-panel .gl-order-red{float:right;color:#c03e37;font-size:12px}
+#gl-pilot-panel .gl-order-finalize{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;padding:14px;background:#f2f7fb;border-radius:12px}
+#gl-pilot-panel .gl-order-finalize p{margin:0;color:#61798e;font-size:12px}
+#gl-pilot-panel .gl-order-finalize button{flex:none;background:#163955}
+#gl-pilot-panel .gl-order-finalized{padding:13px 15px;margin:10px 0;border:1px solid #c9e6d1;border-radius:9px;background:#ecf9ef;color:#1e6a46;font-size:12px;font-weight:700}
+#gl-pilot-panel .gl-order-history-choices{display:flex;gap:8px;margin:12px 0}
+#gl-pilot-panel .gl-order-history-choices button{padding:9px 15px;border:1px solid #ccdeea;border-radius:10px;background:#fff;color:#28688e}
+#gl-pilot-panel .gl-order-history-choices button[aria-pressed=true]{background:#155c80;color:#fff}
+#gl-pilot-panel .gl-order-day{border:1px solid #dfe9f1;border-radius:10px;background:white;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px;width:100%;text-align:left;font-size:13px;color:#25536d}
+#gl-pilot-panel .gl-order-day span{color:#71899b;font-size:12px}
+#gl-pilot-panel .gl-order-catalog-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#gl-pilot-panel .gl-order-catalog-form button{grid-column:1/-1}
+#gl-pilot-panel .gl-order-catalog-item{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#gl-pilot-panel .gl-order-catalog-item button{background:#eaf5fb;color:#1c668a;padding:9px 12px;border:1px solid #bdd7e5;border-radius:9px;font-weight:750;font-size:11px}
+#gl-pilot-panel .gl-order-error{background:#fff1f1;border:1px solid #edc5c5;color:#9d3535;padding:12px;border-radius:9px}
+#gl-pilot-panel .gl-order-notice{background:#eaf7ed;border:1px solid #c5e3cc;color:#216b46;padding:12px;border-radius:9px}
+@media(max-width:740px){
+.gl-pilot-entry-actions{width:100%;justify-content:stretch}.gl-pilot-entry-actions button{flex:1}
+#gl-pilot-panel .gl-order-header{flex-direction:column;align-items:stretch;padding:16px}
+#gl-pilot-panel .gl-order-date{justify-content:space-between}#gl-pilot-panel .gl-order-date strong{min-width:0;font-size:12px}
+#gl-pilot-panel .gl-order-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+#gl-pilot-panel .gl-order-fields{grid-template-columns:1fr}
+#gl-pilot-panel .gl-order-catalog-form{grid-template-columns:1fr}
+#gl-pilot-panel .gl-order-qty{grid-template-columns:35px 35px 35px}
+#gl-pilot-panel .gl-order-actionbar{flex-direction:column;align-items:stretch}
+#gl-pilot-panel .gl-order-actionbar>div{max-width:none}
+#gl-pilot-panel .gl-order-finalize{flex-direction:column;align-items:stretch}
+#gl-pilot-panel .gl-order-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+#gl-pilot-panel .gl-order-summary strong{font-size:19px}
+#gl-pilot-panel .gl-order-day{flex-direction:column;align-items:flex-start}
+}
