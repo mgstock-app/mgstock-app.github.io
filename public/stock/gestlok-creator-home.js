@@ -43,7 +43,7 @@
       diarioVisible=res.data===true;diarioLoaded=true;diarioError='';
     } catch(e){
       if(diarioUser!==id)return;
-      diarioVisible=false;diarioLoaded=false;
+      diarioVisible=false;diarioLoaded=true;
       diarioError='No se pudo consultar el estado. Conteo diario continúa oculto.';
     } finally {
       diarioLoading=false;
