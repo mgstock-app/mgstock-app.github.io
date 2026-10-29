@@ -166,7 +166,7 @@ function JoinRouter() {
   },[params]);
   const explicit = params.get("invitacion");
   const token = explicit !== null ? explicit : params.has("codigo") ? "" : cached;
-  return explicit !== null || !!token ? <JoinStaffInvitation token={token}/> : <JoinContent/>;
+  return explicit !== null || !!token ? <JoinStaffInvitation token={token} localHint={params.get("local") || ""}/> : <JoinContent/>;
 }
 export function JoinCompany() {
   return (

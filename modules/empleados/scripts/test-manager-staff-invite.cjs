@@ -15,7 +15,24 @@ for(const value of ["x", "G".repeat(64), "../", "a".repeat(63), token+"a", ""]) 
 assert.equal(mod.managerStaffInviteUrl("https://gestlok.com.ar","/empleados",token),
   "https://gestlok.com.ar/empleados/unirse/?invitacion="+token);
 assert.throws(()=>mod.managerStaffInviteUrl("http://example.com","/empleados",token),/HTTPS/);
-assert(mod.staffInviteMessage("Don Torcuato","https://gestlok.com.ar/empleados/unirse/?invitacion="+token).includes("WhatsApp")===false);
+const namedLink = mod.managerStaffInviteUrl("https://gestlok.com.ar","/empleados",token,"Don Torcuato");
+assert.equal(new URL(namedLink).searchParams.get("local"),"Don Torcuato");
+assert.equal(new URL(namedLink).searchParams.get("invitacion"),token);
+assert.equal(new URL(mod.managerStaffInviteUrl("https://gestlok.com.ar","/empleados",token,"Munro")).searchParams.get("local"),"Munro");
+const androidLink = mod.chromeInviteUrl(namedLink,"android");
+assert(androidLink.startsWith("intent://gestlok.com.ar/empleados/unirse/?"));
+assert(androidLink.includes("package=com.android.chrome"));
+assert(androidLink.includes("S.browser_fallback_url="));
+assert(androidLink.includes(encodeURIComponent(namedLink)));
+assert(mod.chromeInviteUrl(namedLink,"ios").startsWith("googlechromes://gestlok.com.ar/empleados/unirse/?"));
+for(const bad of [
+  "http://gestlok.com.ar/empleados/unirse/?invitacion="+token,
+  "https://bad.example/empleados/unirse/?invitacion="+token,
+  "https://gestlok.com.ar/empleados/unirse/?invitacion=invalid",
+  "https://gestlok.com.ar/otra/?invitacion="+token
+]) assert.throws(()=>mod.chromeInviteUrl(bad,"android"),/inválido/);
+
+assert(mod.staffInviteMessage("Don Torcuato","https://gestlok.com.ar/empleados/unirse/?invitacion="+token).includes("Abrir en Google Chrome"),"El mensaje explica cómo salir de WhatsApp");
 assert(mod.staffInviteMessage("Munro","https://gestlok.com.ar").includes("una sola vez"));
 const sql = fs.readFileSync("../../supabase/migrations/20261028183500_invitaciones_gerente_automaticas.sql","utf8");
 for(const required of [
@@ -63,6 +80,12 @@ const flow = fs.readFileSync("components/invitations/JoinStaffInvitation.tsx","u
 assert(flow.includes("await managerStaffInviteApi.accept(token)"));
 assert(flow.includes("await refresh()"));
 assert(flow.includes("Cambiar cuenta de Google"));
+assert(flow.includes("Bienvenido a GESTLOK"),"Bienvenida por local");
+assert(flow.includes("local {displayLocal}"),"Nombre de local parametrizado");
+assert(flow.includes("Abrir en Google Chrome"),"Salida a Chrome con gesto explícito");
+assert(flow.includes('href={chromeLink}'),"Enlace real y funcional, sin temporizadores");
+assert(flow.includes("copyInvite"),"Alternativa para navegadores que bloquean intents");
+assert(flow.includes("googlechromes://") === false,"Deep link seguro se construye en utils");
 assert(flow.includes('<GoogleSignIn returnTo="/unirse" compact />'),"Invitación debe tener un único acceso Google");
 assert(flow.includes('className="jsi-page"'),"Pantalla móvil integrada");
 assert(!flow.includes("¡Te invitaron a un equipo!"),"No repetir bienvenidas genéricas");

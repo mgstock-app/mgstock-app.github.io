@@ -1,15 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, LockKeyhole, UserRoundCheck } from "lucide-react";
+import { CheckCircle2, LockKeyhole, UserRoundCheck, UsersRound, Plus, ExternalLink, Copy } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { createClient } from "@/lib/supabase/browser";
 import { managerStaffInviteApi } from "@/features/onboarding/api";
-import { validManagerStaffInvite } from "@/utils/manager-staff-invite";
+import { chromeInviteUrl, validManagerStaffInvite } from "@/utils/manager-staff-invite";
 import "./join-staff-invitation.css";
 
-export function JoinStaffInvitation({token}:{token:string}) {
+export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint?:string}) {
   const {user,loading,refresh} = useAuth();
   const router = useRouter();
   const [state,setState] = useState<"checking"|"success"|"error">("checking");
@@ -17,6 +17,41 @@ export function JoinStaffInvitation({token}:{token:string}) {
   const [localName,setLocalName] = useState("");
   const [attempt,setAttempt] = useState(0);
   const [changingAccount,setChangingAccount] = useState(false);
+  const [chromeLink,setChromeLink] = useState("");
+  const [inviteLink,setInviteLink] = useState("");
+  const [copied,setCopied] = useState(false);
+  const [embeddedBrowser,setEmbeddedBrowser] = useState(false);
+  // The invite may be opened from WhatsApp's embedded webview.
+  // Browsers require a user tap to open another app; do not auto-redirect.
+  useEffect(()=>{
+    if (!validManagerStaffInvite(token)) return;
+    const ua = navigator.userAgent;
+    const android = /Android/i.test(ua);
+    const ios = /iPhone|iPad|iPod/i.test(ua);
+    const embedded = ua.includes("; wv)") || ua.includes(" wv ") || /WhatsApp|FBAN|FBAV|Instagram|Line/i.test(ua);
+    const isChrome = (ua.includes("Chrome/") || ua.includes("CriOS/")) && !embedded;
+    const href = new URL(window.location.href);
+    href.searchParams.set("invitacion",token);
+    href.searchParams.delete("codigo");
+    href.hash = "";
+    let target = "";
+    if ((android || ios) && !isChrome) {
+      try { target = chromeInviteUrl(href.toString(),android ? "android" : "ios"); } catch {}
+    }
+    queueMicrotask(()=>{
+      setChromeLink(target);
+      setInviteLink(href.toString());
+      setEmbeddedBrowser(embedded);
+    });
+  },[token]);
+  const cleanHint = localHint.trim().split("").filter(char => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127).join("").slice(0,80);
+  const displayLocal = localName || cleanHint;
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+    } catch { setCopied(false); }
+  };
   const alreadyAssigned = message.startsWith("Esta cuenta de Google ya tiene un rol asignado");
   const changeAccount = async () => {
     setChangingAccount(true);
@@ -24,7 +59,7 @@ export function JoinStaffInvitation({token}:{token:string}) {
       const { error } = await createClient().auth.signOut({ scope: "local" });
       if (error) throw error;
       // Conservar el vínculo individual para que el usuario elija su propia cuenta.
-      router.replace("/unirse/?invitacion=" + encodeURIComponent(token));
+      router.replace("/unirse/?invitacion=" + encodeURIComponent(token) + (cleanHint ? "&local=" + encodeURIComponent(cleanHint) : ""));
       router.refresh();
     } catch {
       setMessage("No se pudo cerrar esta sesión. Salí de GESTLOK y volvé a abrir la invitación con tu cuenta personal.");
@@ -72,6 +107,10 @@ export function JoinStaffInvitation({token}:{token:string}) {
           <span className="jsi-icon" aria-hidden="true"><UserRoundCheck size={25} strokeWidth={1.8}/></span>
           <span className="jsi-eyebrow">GESTLOK · COLABORADORES</span>
         </div>
+        <div className="jsi-illustration" aria-hidden="true">
+          <UsersRound size={61} strokeWidth={1.65}/>
+          <span className="jsi-plus"><Plus size={23} strokeWidth={2.6}/></span>
+        </div>
         {!valid ? (
           <>
             <h1 id="jsi-title">Enlace no válido</h1>
@@ -84,16 +123,19 @@ export function JoinStaffInvitation({token}:{token:string}) {
           </>
         ) : !user ? (
           <>
-            <h1 id="jsi-title">Accedé a tu equipo</h1>
-            <p className="jsi-lead">Ingresá con tu cuenta de Google para confirmar la invitación y sumarte al local que te invitó.</p>
+            <h1 id="jsi-title">Bienvenido a GESTLOK{displayLocal && <span>local {displayLocal}</span>}</h1>
+            <p className="jsi-lead">Accedé con tu cuenta de Google para continuar de forma segura.</p>
+            {chromeLink && <div className="jsi-chrome">
+              <a className="jsi-chrome-action" href={chromeLink} rel="noreferrer"><ExternalLink size={18} aria-hidden="true"/> Abrir en Google Chrome</a>
+              <p>{embeddedBrowser ? "Usá Chrome para aprovechar las cuentas de Google guardadas en tu teléfono." : "Podés abrir la invitación en Chrome y usar tu cuenta guardada."}</p>
+              <button type="button" className="jsi-copy" onClick={()=>void copyInvite()}><Copy size={14} aria-hidden="true"/>{copied ? "Enlace copiado" : "¿No se abrió Chrome? Copiar enlace"}</button>
+            </div>}
             <GoogleSignIn returnTo="/unirse" compact />
-            <div className="jsi-divider" />
-            <p className="jsi-helper">Una vez registrado, vas a poder consultar tu recibo personal cuando esté publicado y los horarios habilitados en modo lectura.</p>
             <p className="jsi-security"><LockKeyhole size={16} aria-hidden="true"/> Invitación privada y de un solo uso.</p>
           </>
         ) : (
           <>
-            <h1 id="jsi-title">{state === "success" ? "Ya sos parte del equipo" : "Confirmando tu invitación"}</h1>
+            <h1 id="jsi-title">{state === "success" ? "Ya sos parte del equipo" : "Confirmando tu invitación"}{displayLocal && <span>local {displayLocal}</span>}</h1>
             {state === "checking" && <p className="jsi-lead" role="status">Estamos verificando tu identidad y el local asignado…</p>}
             {state === "success" && (
               <p className="jsi-success" role="status"><CheckCircle2 size={20} aria-hidden="true"/>
