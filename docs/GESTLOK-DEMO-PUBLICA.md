@@ -29,3 +29,13 @@ Esta primera versión reutiliza las pantallas principales y módulos actuales, y
 ## Estadísticas de uso (etapa 1, octubre de 2026)
 La persona que visita la demo puede aceptar o rechazar estadísticas opcionales. Si acepta, el único contacto real con Supabase durante su recorrido es una llamada a `gestlok_demo_registrar`, que guarda UUID aleatorio por sesión, roles y tiendas ficticias visitadas. No registra nombres, emails, IP, datos comerciales ni productos. La Creadora consulta `gestlok_demo_resumen`, que retorna solo agregados: sesiones, roles, ambos roles, tiendas y primeros ingresos en los últimos 7 días. El contador es de sesiones voluntariamente registradas, no personas únicas. Rechazar no impide explorar.
 No se habilita aún ninguna captura de datos de contacto; se definirá en una siguiente etapa.
+
+## Rediseño interactivo de 9 etapas (octubre 2026)
+- En la web, desktop: columna izquierda explica las capacidades de cada etapa; columna derecha muestra las **pantallas interactivas de GESTLOK dentro de un marco de teléfono**, no imágenes ni capturas estáticas.
+- En celular: contenido apilado a ancho útil; navegación manual mediante botones del carrusel y deslizamiento horizontal. No hay autoplay.
+- Etapas: Inicio, Empresa/stock operativo, Proveedores, Colaboradores/legajos, Precios, Stock por producto, Pedidos, Vencimientos y Final.
+- Las primeras cuatro etapas y Vencimientos reutilizan la aplicación de la demo con su backend ficticio original; Empleados conserva Horarios y las restricciones de Gerente.
+- Las etapas nuevas Precios, Stock y Pedidos son módulos de **práctica funcional**, con artículos y operaciones ficticias guardados exclusivamente en sessionStorage de la pestaña. Cálculo de recargo sobre costo, cantidades ±, pedidos con estados.
+- El último paso conserva reseñas, consentimiento, contacto opcional y emisión del cupón exclusivamente tras confirmación del servidor. No cambiar la política de premios vigente ni realizar entregas simuladas.
+- Nunca se consultan empresas ni catálogos privados para esas etapas; las únicas operaciones opcionales externas continúan siendo el conteo de visita autorizado y el envío explícito de una reseña.
+- La demo representa tanto negocios nuevos como módulos disponibles, pero **no concede funciones exclusivas de Cami a usuarios reales ajenos**. Es material de demostración.
