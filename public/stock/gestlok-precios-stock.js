@@ -53,6 +53,14 @@
    ['Stock bajo',withCount.filter(p=>p.stock_quantity>0&&p.stock_quantity<=p.stock_minimum).length]
   ];
  }
+ function inventoryTotals(){
+  const counted=rows.filter(x=>x.active&&x.stock_quantity!=null&&x.cost_price!=null&&x.unit_price!=null);
+  return {
+   products:counted.length,
+   cost:counted.reduce((a,p)=>a+Number(p.cost_price)*p.stock_quantity,0),
+   sale:counted.reduce((a,p)=>a+Number(p.unit_price)*p.stock_quantity,0)
+  };
+ }
  function rowCard(p){
   const calculated=p.cost_price!=null&&p.markup_percent!=null;
   const cost=calculated?money(p.cost_price):'Sin cargar';
@@ -108,6 +116,10 @@
    (loading?'<p role="status">Cargando productos de tu empresa…</p>':
     !ready?'<p>No se pudo acceder a la información. Usá Actualizar.</p>':
     '<div class="gl-ps-stats">'+countStats().map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+value+'</strong></div>').join('')+'</div>'+
+    (!pricing?'<div class="gl-ps-inventory-summary"><div><small>Inversión en stock registrado</small><strong>'+money(inventoryTotals().cost)+'</strong></div>'+
+     '<div><small>Valor potencial de venta</small><strong>'+money(inventoryTotals().sale)+'</strong></div>'+
+     '<div><small>Ganancia bruta potencial</small><strong>'+money(inventoryTotals().sale-inventoryTotals().cost)+'</strong></div></div>'+
+     '<p class="gl-ps-help">Calculado solo con productos que tienen costo, precio y cantidad cargados. No representa dinero ganado ni ventas realizadas.</p>':'')+
     '<div class="gl-ps-toolbar"><label>Buscar producto<input type="search" data-ps-search placeholder="Nombre, categoría o código" value="'+esc(search)+'"></label>'+
      (pricing?'<button type="button" data-ps-new>+ Agregar producto</button>':
      '<button type="button" data-ps-new>+ Nuevo producto en Precios</button>')+'</div>'+
@@ -200,5 +212,5 @@
   if(e.target.id==='gl-ps-price-form'){e.preventDefault();void savePrice(e.target);}
   if(e.target.id==='gl-ps-stock-form'){e.preventDefault();void saveStock(e.target);}
  });
- window.GestLokPreciosStock=Object.freeze({render,open,price,profit,refresh});
+ window.GestLokPreciosStock=Object.freeze({render,open,price,profit,inventoryTotals,refresh});
 })();
