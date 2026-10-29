@@ -23,6 +23,7 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
     .should('be.visible').and('have.css','color','rgb(25, 59, 85)');
   cy.get('.gl-gerente__header-brand .gl-gerente__header-lok')
     .should('be.visible').and('have.css','color','rgb(8, 127, 168)');
+  cy.get('.gl-gerente__main').should('have.css','background-color','rgb(255, 255, 255)');
   cy.get('.gl-gerente__sidebar').should('be.visible')
     .and('have.css','background-color','rgb(255, 255, 255)');
   cy.get('.gl-gerente__sidebar nav button').first()
