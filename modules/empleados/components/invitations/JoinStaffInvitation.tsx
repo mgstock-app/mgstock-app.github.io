@@ -64,29 +64,61 @@ export function JoinStaffInvitation({token}:{token:string}) {
     })();
     return ()=>{active=false;};
   },[token,user?.user_id,loading,attempt,refresh,router]);
-  if (!validManagerStaffInvite(token)) return <section className="jsi-card" role="alert"><h1>Enlace inválido</h1><p>Pedile a tu gerente una invitación nueva.</p></section>;
-  if (loading) return <div className="jsi-card" role="status">Comprobando tu acceso…</div>;
-  if (!user) return <div className="jsi-join">
-    <section className="jsi-card">
-      <span className="jsi-eyebrow">GESTLOK · INVITACIÓN PERSONAL</span>
-      <h1>¡Te invitaron a un equipo!</h1>
-      <p>Ingresá con tu cuenta de Google. Cuando se verifique tu identidad, GESTLOK te registrará automáticamente como <strong>colaborador</strong> del local indicado en la invitación.</p>
-      <p>Vas a poder consultar tu recibo personal cuando el dueño lo publique y el Google Sheets asignado en modo de lectura. No necesitás esperar una aprobación manual.</p>
-      <p className="jsi-security"><LockKeyhole size={16}/> Este enlace es individual y se utiliza una sola vez.</p>
-    </section>
-    <GoogleSignIn returnTo="/unirse"/>
-  </div>;
-  return <section className="jsi-card">
-    <span className="jsi-eyebrow">GESTLOK · INVITACIÓN DE COLABORADOR</span>
-    <h1>{state==="success"?"¡Ya formás parte del equipo!":"Incorporación automática"}</h1>
-    {state==="checking"&&<p role="status">Verificando tu invitación y asignando el local de forma segura…</p>}
-    {state==="success"&&<p role="status" className="jsi-success"><CheckCircle2 size={20}/> Tu cuenta ya tiene el rol de colaborador{localName ? " en " + localName : ""}. El gerente podrá completar tu legajo.</p>}
-    {state==="error"&&<><p role="alert">{message}</p>
-      <div className="jsi-actions">
-        {alreadyAssigned && <button type="button" className="jsi-retry" disabled={changingAccount} onClick={()=>void changeAccount()}>{changingAccount?"Cambiando cuenta…":"Cambiar cuenta de Google"}</button>}
-        <button type="button" className="jsi-retry jsi-retry--secondary" disabled={changingAccount} onClick={()=>setAttempt(n=>n+1)}>Reintentar incorporación</button>
-      </div>
-    </>}
-    <p className="jsi-security"><UserRoundCheck size={16}/> El enlace nunca permite obtener permisos de dueño o gerente.</p>
-  </section>;
+  const valid = validManagerStaffInvite(token);
+  return (
+    <main className="jsi-page" aria-label="Acceso de colaboradores">
+      <section className="jsi-card" aria-labelledby="jsi-title">
+        <div className="jsi-card-top">
+          <span className="jsi-icon" aria-hidden="true"><UserRoundCheck size={25} strokeWidth={1.8}/></span>
+          <span className="jsi-eyebrow">GESTLOK · COLABORADORES</span>
+        </div>
+        {!valid ? (
+          <>
+            <h1 id="jsi-title">Enlace no válido</h1>
+            <p className="jsi-lead">Solicitá una nueva invitación al responsable de tu local.</p>
+          </>
+        ) : loading ? (
+          <>
+            <h1 id="jsi-title">Verificando tu acceso</h1>
+            <p className="jsi-lead" role="status">Estamos comprobando tu sesión de forma segura…</p>
+          </>
+        ) : !user ? (
+          <>
+            <h1 id="jsi-title">Accedé a tu equipo</h1>
+            <p className="jsi-lead">Ingresá con tu cuenta de Google para confirmar la invitación y sumarte al local que te invitó.</p>
+            <GoogleSignIn returnTo="/unirse" compact />
+            <div className="jsi-divider" />
+            <p className="jsi-helper">Una vez registrado, vas a poder consultar tu recibo personal cuando esté publicado y los horarios habilitados en modo lectura.</p>
+            <p className="jsi-security"><LockKeyhole size={16} aria-hidden="true"/> Invitación privada y de un solo uso.</p>
+          </>
+        ) : (
+          <>
+            <h1 id="jsi-title">{state === "success" ? "Ya sos parte del equipo" : "Confirmando tu invitación"}</h1>
+            {state === "checking" && <p className="jsi-lead" role="status">Estamos verificando tu identidad y el local asignado…</p>}
+            {state === "success" && (
+              <p className="jsi-success" role="status"><CheckCircle2 size={20} aria-hidden="true"/>
+                Tu acceso como colaborador{localName ? " de " + localName : ""} fue confirmado. Tu gerente podrá completar el legajo.
+              </p>
+            )}
+            {state === "error" && (
+              <>
+                <p className="jsi-error" role="alert">{message}</p>
+                <div className="jsi-actions">
+                  {alreadyAssigned && (
+                    <button type="button" className="jsi-retry" disabled={changingAccount} onClick={()=>void changeAccount()}>
+                      {changingAccount ? "Cambiando cuenta…" : "Cambiar cuenta de Google"}
+                    </button>
+                  )}
+                  <button type="button" className="jsi-retry jsi-retry--secondary" disabled={changingAccount} onClick={()=>setAttempt(n=>n+1)}>
+                    Reintentar incorporación
+                  </button>
+                </div>
+              </>
+            )}
+            <p className="jsi-security"><LockKeyhole size={16} aria-hidden="true"/> Acceso personal y protegido.</p>
+          </>
+        )}
+      </section>
+    </main>
+  );
 }
