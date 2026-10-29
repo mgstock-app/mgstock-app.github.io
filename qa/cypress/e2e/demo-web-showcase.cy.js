@@ -91,6 +91,22 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
   });
   cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(833));
  });
+ it('móvil aprovecha el espacio con accesos directos a etapas ficticias y los oculta al finalizar',()=>{
+  start(390);
+  cy.get('#gl-tour-discover').should('be.visible');
+  cy.get('#gl-tour-discover .gl-tour-discover-card').should('have.length',6);
+  cy.get('#gl-tour-discover [data-tour="4"]').click();
+  cy.get('#gl-tour-sandbox').should('be.visible').and('contain.text','Precios');
+  cy.get('.gl-tour-nav [aria-current="step"]').should('have.attr','data-tour','4');
+  stage(8);
+  cy.get('#gl-tour-discover').should('not.be.visible');
+  cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(391));
+ });
+ it('en PC no aparecen atajos duplicados y se conserva el recorrido',()=>{
+  start(1280);
+  cy.get('#gl-tour-discover').should('not.be.visible');
+  cy.get('.gl-tour-nav [data-tour]').should('have.length',11);
+ });
  it('gerente conserva Colaboradores sin montos, navega manualmente y finaliza con reseña',()=>{
   start(390,'gerente');
   stage(3);
