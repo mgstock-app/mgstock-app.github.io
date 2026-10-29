@@ -203,7 +203,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
     finally { setHistoryLoading(false); }
   };
   return <section className={"mlg-board" + (ownerView ? " mlg-board--owner" : "")} aria-label={ownerView ? "Legajos registrados por gerentes" : "Administración de empleados del gerente"}>
-    {ownerView ? <div className="mlg-intro mlg-intro--owner"><div><h2>Legajos informados por gerentes</h2><p>Estados, refuerzos y bajas registrados en los locales de tu empresa.</p></div><button type="button" onClick={updateView} aria-label="Actualizar legajos de gerentes"><RotateCw size={17}/> Actualizar</button></div> :
+    {ownerView ? <div className="mlg-intro mlg-intro--owner"><div><h2>Legajos informados por gerentes</h2><p>Estados, refuerzos y bajas registrados en los locales de tu empresa.</p></div><div className="mlg-intro-actions"><button type="button" className="mlg-invite" disabled={loading || !locals.length} onClick={()=>setShowInvite(true)}><UserRoundPlus size={18}/> Invitar colaborador</button><button type="button" onClick={updateView} aria-label="Actualizar legajos de gerentes"><RotateCw size={17}/> Actualizar</button></div></div> :
       <div className="mlg-intro"><div><small>GESTLOK · {locals.length === 1 ? localTitle(locals[0]).toUpperCase() : "ADMINISTRACIÓN DE EMPLEADOS"}</small><h1>Administración de empleados</h1><p>{locals.length === 1 ? "Legajos y estados del equipo de " + localTitle(locals[0]) + "." : "Gestioná los legajos de tus locales autorizados."}</p></div>
         <div className="mlg-intro-actions">
           <button type="button" className="mlg-invite" disabled={loading || !locals.length} onClick={()=>setShowInvite(true)}><UserRoundPlus size={18}/> Invitar Colaborador</button>
@@ -243,7 +243,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}
-    {showInvite && !ownerView && locals.length>0 && <ManagerStaffInvite
+    {showInvite && locals.length>0 && <ManagerStaffInvite
       locals={locals} initialLocal={localFilter==="todos"?"":localFilter}
       onClose={()=>{setShowInvite(false);updateView();}}/>}
     {draft && chosenLocal && <div className="mlg-overlay">
