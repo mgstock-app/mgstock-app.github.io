@@ -33,7 +33,9 @@ test('Extensiones de precios, inventario, pedidos son ficticias, no tocan tablas
 test('Estilos aislados únicamente en demo; escritorio y móvil adaptables',()=>{
  assert.match(css,/gl-tour-layout-active/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\) minmax\(0,440px\)/);
- assert.match(css,/@media\(max-width:899px\)/);
+ assert.match(css,/@media\\s*\\(max-width:899px\\),\\s*\\(hover:none\\) and \\(pointer:coarse\\)/);
+ assert.match(css,/#gl-tour-phone\\{\\s*order:0/);
+ assert.match(css,/#gl-tour-story\\{\\s*order:1/);
  assert.match(css,/gl-tour-phone-screen/);
  assert.match(css,/gl-tour-sandbox/);
  assert.match(runtime,/gestlok-demo-tour\.js\?rev=carrusel-nueve-20261029/);
