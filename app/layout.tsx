@@ -13,6 +13,7 @@ import "./login-welcome.css";
 import "./gestlok-pilot.css";
 import "./gestlok-orders.css";
 import "./responsive-global.css";
+import "./gestlok-precios-stock.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
