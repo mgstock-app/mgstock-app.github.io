@@ -9,13 +9,13 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
 const shiftName=x=>x==='manana'?'Mañana':'Tarde';
-let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', gen=0;
+let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local())));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-function reset(){++gen;snapshot=null;tab='resumen';error='';loading=false;saving=false;editing=null;opened=null;filter='';}
+function reset(){++gen;snapshot=null;tab='resumen';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -105,16 +105,59 @@ function oldRows(s){
  (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td></tr>').join('')+
  '</tbody></table></div>'+shiftCard(s)+'</div>';
 }
+/* El servidor devuelve cierres definitivos por sucursal.
+   Agrupar solamente en la presentación preserva detalle y cálculo histórico. */
+function historyGroups(rows){
+ const days=new Map();
+ for(const s of rows||[]){
+  if(!days.has(s.day))days.set(s.day,{day:s.day,shifts:[],transferencia:0,getnet:0,mercado_pago:0,total_app:0,total_ventas:0,online_local:0,comandas:0});
+  const d=days.get(s.day);d.shifts.push(s);
+  for(const key of ['transferencia','getnet','mercado_pago','total_app','total_ventas','online_local','comandas'])d[key]+=Number(s[key]||0);
+ }
+ return [...days.values()].sort((a,b)=>String(b.day).localeCompare(String(a.day)));
+}
+function historyTotals(model){
+ return '<div class="mg-on-kpis">'+
+  [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],
+   ['total_ventas','Total ventas'],['total_app','Total APP'],['online_local','Online Local']].map(([key,label])=>
+    '<span>'+label+' <strong>'+cash(model[key])+'</strong></span>').join('')+'</div>';
+}
+function shiftHistoryCard(s){
+ return '<article class="mg-on-history-card"><header><div><strong>'+
+  esc(shiftName(s.turno))+' · '+date(s.day)+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas</small></div>'+
+  '<button type="button" data-mgon-detail="'+esc(s.id)+'" aria-expanded="'+(opened===s.id)+'">'+
+  (opened===s.id?'Ocultar detalle':'Ver pedidos')+'</button></header>'+
+  historyTotals(s)+(opened===s.id?oldRows(s):'')+'</article>';
+}
+function dayHistoryCard(d){
+ return '<article class="mg-on-history-day"><header><div><small>RESUMEN DEL DÍA</small><h4>'+
+ date(d.day)+'</h4><p>'+d.shifts.length+' '+(d.shifts.length===1?'turno cerrado':'turnos cerrados')+
+ ' · '+d.comandas+' comandas</p></div><span class="mg-on-closed">✓ Guardado</span></header>'+
+ historyTotals(d)+'<div class="mg-on-history-day-shifts">'+
+ d.shifts.slice().sort((a,b)=>a.turno==='manana'?-1:1).map(shiftHistoryCard).join('')+
+ '</div></article>';
+}
 function history(){
- const entries=(snapshot?.history||[]).filter(s=>!filter||String(s.day).includes(filter));
- return '<section class="mg-on-history-embedded"><header><h3>Historial de cierres</h3><p>Detalle guardado por día, turno y sucursal. Los cierres no se pueden modificar.</p></header>'+
- '<label class="mg-on-filter">Filtrar por fecha <input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+
- (entries.length?'<div class="mg-on-history">'+entries.map(s=>
- '<article class="mg-on-history-card"><header><div><strong>'+date(s.day)+' · '+esc(shiftName(s.turno))+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas</small></div>'+
- '<button type="button" data-mgon-detail="'+esc(s.id)+'" aria-expanded="'+(opened===s.id)+'">'+(opened===s.id?'Ocultar':'Ver detalle')+'</button></header>'+
- '<div class="mg-on-kpis"><span>Transferencia <strong>'+cash(s.transferencia)+'</strong></span><span>Getnet <strong>'+cash(s.getnet)+'</strong></span><span>Mercado Pago <strong>'+cash(s.mercado_pago)+'</strong></span>'+
- '<span>Total ventas <strong>'+cash(s.total_ventas)+'</strong></span><span>APP <strong>'+cash(s.total_app)+'</strong></span><span>Online Local <strong>'+cash(s.online_local)+'</strong></span></div>'+
- (opened===s.id?oldRows(s):'')+'</article>').join('')+'</div>':'<p class="mg-on-empty">No hay cierres para esa fecha.</p>')+'</section>';
+ const rows=(snapshot?.history||[]).filter(s=>!filter||s.day===filter);
+ const days=historyGroups(rows);
+ const shifts=rows.filter(s=>shiftFilter==='todos'||s.turno===shiftFilter);
+ const controls='<div class="mg-on-history-filters" role="group" aria-label="Consultar historial">'+
+  '<label>Ver historial por<select id="mg-on-history-view">'+
+  '<option value="dia" '+(viewMode==='dia'?'selected':'')+'>Por día</option>'+
+  '<option value="turno" '+(viewMode==='turno'?'selected':'')+'>Por turno</option></select></label>'+
+  '<label>Fecha<input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+
+  (viewMode==='turno'?'<label>Turno<select id="mg-on-turn-filter">'+
+   '<option value="todos" '+(shiftFilter==='todos'?'selected':'')+'>Todos los turnos</option>'+
+   '<option value="manana" '+(shiftFilter==='manana'?'selected':'')+'>Mañana</option>'+
+   '<option value="tarde" '+(shiftFilter==='tarde'?'selected':'')+'>Tarde</option></select></label>':'')+
+  '<button type="button" data-mgon-clear-filters>Ver todo el historial</button></div>';
+ const content=viewMode==='dia'
+   ?days.map(dayHistoryCard).join('')
+   :shifts.map(shiftHistoryCard).join('');
+ return '<section class="mg-on-history-embedded" id="mg-on-history"><header><h3>Historial de pagos online</h3>'+
+ '<p>Consultá un día completo o cada turno. Abrí cualquier cierre para ver las comandas individuales y la forma de pago.</p></header>'+
+ controls+(content?'<div class="mg-on-history" aria-live="polite">'+content+'</div>':
+ '<p class="mg-on-empty">No se encontraron cierres con esos filtros.</p>')+'</section>';
 }
 function view(){
  if(!allowed())return '';
@@ -147,6 +190,8 @@ function attach(h){
   if(tabButton){tab=tabButton.dataset.mgonTab;error='';api.render();return;}
   const cancel=e.target.closest('[data-mgon-cancel]');
   if(cancel){editing=null;api.render();return;}
+  const clear=e.target.closest('[data-mgon-clear-filters]');
+  if(clear){filter='';shiftFilter='todos';opened=null;api.render();return;}
   const detail=e.target.closest('[data-mgon-detail]');
   if(detail){opened=opened===detail.dataset.mgonDetail?null:detail.dataset.mgonDetail;api.render();return;}
   const edit=e.target.closest('[data-mgon-edit]');
@@ -173,7 +218,10 @@ function attach(h){
    p_comanda:comanda,p_method:method,p_amount:amount,p_app:app},'Movimiento guardado.');
  });
  document.addEventListener('change',e=>{
-  if(e.target.id==='mg-on-date-filter'&&allowed()){filter=e.target.value;api.render();}
+  if(!allowed())return;
+  if(e.target.id==='mg-on-date-filter'){filter=e.target.value;opened=null;api.render();}
+  if(e.target.id==='mg-on-history-view'){viewMode=e.target.value==='turno'?'turno':'dia';opened=null;api.render();}
+  if(e.target.id==='mg-on-turn-filter'){shiftFilter=['manana','tarde'].includes(e.target.value)?e.target.value:'todos';opened=null;api.render();}
  });
 }
 function subscribe(loc,push){
@@ -184,5 +232,5 @@ function subscribe(loc,push){
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
-window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{date,shiftName}});
+window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{date,shiftName,historyGroups}});
 })();
