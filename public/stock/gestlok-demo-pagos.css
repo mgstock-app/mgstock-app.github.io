@@ -1,0 +1,66 @@
+/* Demo de Pagos Online, datos ficticios y métodos configurables. */
+.gl-dp-root{padding:14px 10px 25px;background:#f8fbfd;min-height:500px;color:#173b54;font-family:inherit}
+.gl-dp-root *{box-sizing:border-box}
+.gl-dp-root>small{font-size:9px;font-weight:850;color:#16849a;letter-spacing:.07em}
+.gl-dp-root h2{font-size:24px;font-weight:850;margin:6px 0}
+.gl-dp-root h3{font-size:16px;margin:17px 0 8px;color:#143e59}
+.gl-dp-root p{font-size:12px;line-height:1.5;color:#607e91;margin:4px 0 12px}
+.gl-dp-root button,.gl-dp-root input,.gl-dp-root select,.gl-dp-root textarea{font:inherit}
+.gl-dp-root button{cursor:pointer}
+.gl-dp-root button:disabled{opacity:.5;cursor:default}
+.gl-dp-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#e9f1f6;margin:12px 0}
+.gl-dp-tabs button{min-height:43px;padding:8px 4px;background:transparent;border:0;border-radius:9px;color:#3b647e;font-size:11px;font-weight:800}
+.gl-dp-tabs button[aria-current=page]{background:#104e70;color:#fff}
+.gl-dp-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.gl-dp-metrics div{min-width:0;background:#e9f4fb;border:1px solid #d4e6f1;border-radius:10px;padding:10px}
+.gl-dp-metrics div+div{background:#e8f7ee}
+.gl-dp-metrics span,.gl-dp-numbers span{display:block;font-size:10px;color:#5a7c90}
+.gl-dp-metrics strong{display:block;margin-top:5px;font-size:17px;color:#11445f;overflow-wrap:anywhere}
+.gl-dp-shifts{display:grid;gap:9px;margin-top:12px}
+.gl-dp-shift{padding:11px;background:#fff;border:1px solid #dbe7ef;border-radius:12px;min-width:0}
+.gl-dp-shift header{display:flex;justify-content:space-between;align-items:center}
+.gl-dp-shift h3{margin:0;font-size:16px}
+.gl-dp-shift small{font-size:10px;color:#1b805b}
+.gl-dp-numbers{display:grid;gap:7px;margin:10px 0}
+.gl-dp-numbers>div{display:flex;justify-content:space-between;gap:7px;align-items:center;padding:5px 4px;border-bottom:1px solid #e5edf2}
+.gl-dp-numbers>div strong{font-size:12px;color:#1a465e;overflow-wrap:anywhere}
+.gl-dp-numbers .gl-dp-local{background:#e8f6ee;border-radius:8px;padding:8px;border:0}
+.gl-dp-shift button,.gl-dp-proof button{width:100%;min-height:38px;border:1px solid #cee1eb;background:#f2f9fc;border-radius:8px;color:#175474;font-size:11px;font-weight:800}
+.gl-dp-day{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:5px;padding:10px;background:#fff;border:1px solid #e0ebf2;border-radius:9px;margin:8px 0}
+.gl-dp-day b,.gl-dp-day span{font-size:12px}
+.gl-dp-day button{background:#104e70;color:white;border:0;border-radius:8px;min-height:34px;padding:6px;font-size:11px}
+.gl-dp-form{display:grid;grid-template-columns:1fr 1fr;gap:9px;background:#fff;border:1px solid #deebf3;border-radius:12px;padding:11px}
+.gl-dp-form label,.gl-dp-method-box label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#365d71;min-width:0}
+.gl-dp-form input,.gl-dp-form select,.gl-dp-form textarea,.gl-dp-method-box input{width:100%;min-height:39px;border:1px solid #cbdfe9;border-radius:8px;padding:8px;color:#143e59;background:white;font-size:12px}
+.gl-dp-form .gl-dp-wide{grid-column:1/-1}
+.gl-dp-form label.gl-dp-app{display:flex;align-items:center;gap:6px}
+.gl-dp-app input{width:20px;height:20px}
+.gl-dp-form button,.gl-dp-close{grid-column:1/-1;background:#104e70;border:0;border-radius:9px;min-height:42px;color:white;font-size:12px;font-weight:800;padding:10px}
+.gl-dp-method-trigger{margin:12px 0 0;padding:10px;min-height:42px;width:100%;border:1px solid #cbdfe9;border-radius:9px;background:#edf7fb;color:#125777;font-size:11px;font-weight:800}
+.gl-dp-method-box{border:1px solid #d6e7f0;padding:11px;background:white;border-radius:10px}
+.gl-dp-method-box form{display:grid;grid-template-columns:1fr auto;align-items:end;gap:8px;margin-bottom:9px}
+.gl-dp-method-box form button{min-height:39px;background:#10536f;border:0;color:white;border-radius:8px;padding:8px}
+.gl-dp-method-box>div{display:flex;justify-content:space-between;align-items:center;padding:7px;border-bottom:1px solid #e8eff4;font-size:12px}
+.gl-dp-method-box>div button{border:0;background:none;color:#ba4954;font-size:12px}
+.gl-dp-receipt{display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:center;background:white;border:1px solid #e0e9ef;border-radius:9px;padding:9px;margin:6px 0;font-size:11px}
+.gl-dp-receipt>div{min-width:0;overflow-wrap:anywhere}
+.gl-dp-receipt small{display:block;margin-top:4px;color:#6d889a}
+.gl-dp-receipt strong{font-size:11px;white-space:nowrap}
+.gl-dp-close{width:100%;margin-top:13px}
+.gl-dp-disclaimer{font-size:10px!important;background:#f0f8fa;border:1px solid #deedf2;border-radius:9px;padding:9px;margin-top:15px!important}
+.gl-dp-error{background:#ffedea;padding:9px;border-radius:9px;color:#a63a36!important}
+.gl-dp-overlay{position:absolute;inset:0;z-index:15;display:flex;align-items:stretch;background:#06253fc9;padding:8px}
+.gl-dp-modal{position:relative;display:flex;flex-direction:column;width:100%;max-height:100%;background:#fff;border-radius:12px;overflow:hidden}
+.gl-dp-modal>header{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:12px 10px;border-bottom:1px solid #dceaf2}
+.gl-dp-modal>header small{font-size:9px;font-weight:800;color:#19859a}
+.gl-dp-modal>header h3{margin:3px 0}
+.gl-dp-modal>header button{min-width:35px;min-height:35px;background:#eef5f8;color:#173c53;border:0;border-radius:8px;font-size:22px}
+.gl-dp-modal>nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:6px}
+.gl-dp-modal>nav button{min-height:38px;border:0;border-radius:7px;background:#eaf3f6;color:#35657e;font-weight:750;font-size:10px}
+.gl-dp-modal>nav button[aria-current=page]{background:#104e70;color:white}
+.gl-dp-modal-scroll{overflow:auto;min-height:0;padding:9px}
+.gl-dp-modal-scroll h4{margin:14px 0 8px;font-size:12px}
+.gl-dp-proof{padding:10px 0;display:grid;gap:8px}
+.gl-dp-proof>div{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;border:1px solid #dce9f0;border-radius:9px;font-size:11px}
+.gl-dp-proof>div button{grid-column:1/-1}
+.gl-tour-phone-screen{position:relative}
