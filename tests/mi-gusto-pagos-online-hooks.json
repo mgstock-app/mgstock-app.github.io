@@ -1,0 +1,37 @@
+{
+  "description": "Exact additive hooks for Mi Gusto Pagos Online. Each reviewed replacement must match once, preserving stock SHA-256 baseline.",
+  "hooks": [
+    {
+      "actual": "const puedeVerPagosOnline = () => !!window.GestLokMiGustoOnline?.permitido();\n",
+      "original": ""
+    },
+    {
+      "actual": "  if (S.view === 'cierre-online') return puedeVerPagosOnline() ? window.GestLokMiGustoOnline.view() : V.inicio();\n",
+      "original": ""
+    },
+    {
+      "actual": "  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);\n  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden=\"true\">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class=\"cm\">${ln} <span aria-hidden=\"true\">/</span></span> <b>${S.view === 'resenas' || S.view === 'cierre-online' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;\n  $('#savebar').hidden = S.view === 'inicio' || ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'cierre-online' || S.view === 'vencimientos' || S.view === 'avisos';\n",
+      "original": "  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);\n  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden=\"true\">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class=\"cm\">${ln} <span aria-hidden=\"true\">/</span></span> <b>${S.view === 'resenas' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;\n  $('#savebar').hidden = S.view === 'inicio' || ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'vencimientos' || S.view === 'avisos';\n"
+    },
+    {
+      "actual": "  const ok = (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'resenas' && puedeVerResenas()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));\n",
+      "original": "  const ok = (v === 'resenas' && puedeVerResenas()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));\n"
+    },
+    {
+      "actual": "    (puedeVerResenas() ? `<button data-go=\"resenas\">${ic('clip')}<span class=\"nl\">Reseñas</span></button>` : '') +\n    (puedeVerPagosOnline() ? `<button data-go=\"cierre-online\">${ic('clip')}<span class=\"nl\">Pagos Online</span></button>` : '');\n  if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline()) return items;\n  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'diario' || S.view === 'motos' || S.view === 'cierre-online';\n",
+      "original": "    (puedeVerResenas() ? `<button data-go=\"resenas\">${ic('clip')}<span class=\"nl\">Reseñas</span></button>` : '');\n  if (!puedeVerMotos() && !puedeVerResenas()) return items;\n  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'diario' || S.view === 'motos';\n"
+    },
+    {
+      "actual": "  window.GestLokMiGustoOnline?.subscribe(loc,push);\n",
+      "original": ""
+    },
+    {
+      "actual": "    window.GestLokMiGustoOnline?.reset();\n",
+      "original": ""
+    },
+    {
+      "actual": "window.GestLokMiGustoOnline?.attach({S,render,miRol,misLocales,toast});\n",
+      "original": ""
+    }
+  ]
+}
