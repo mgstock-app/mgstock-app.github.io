@@ -8,7 +8,7 @@
 
 ## Qué funciona en esta primera etapa
 - Acceso desde una tarjeta adicional que solo ve la cuenta dueña del tenant piloto.
-- 20 áreas organizadas: tablero de métricas manuales, auditoría automática de movimientos del piloto, y 18 espacios con registros editables (descripción, estado, responsable, importe opcional, fechas y observaciones).
+- 21 áreas organizadas: Pedidos, tablero de métricas manuales, auditoría automática de movimientos del piloto, y 18 espacios con registros editables (descripción, estado, responsable, importe opcional, fechas y observaciones).
 - Agregar, editar y eliminar registros; marcar estados; consultar los últimos cambios.
 - El tablero resume únicamente los importes marcados como ingresos y egresos de **Finanzas**. No se presenta como rentabilidad real ni se suma dinero externo.
 - Pantalla adaptada a celulares y PC.
@@ -41,3 +41,15 @@ Los apartados de Integraciones, Resguardos y otros sirven para **seguimiento man
 
 ## Medición y expansión
 Recoger comentarios y medir uso, errores y rendimiento con registros ficticios. Habilitar un nuevo tenant únicamente tras pruebas de aislamiento y aprobación expresa. No copiar permisos de Perfumes a otras empresas.
+
+## Pedidos (módulo añadido a la prueba de Cami)
+- Acceso directo **Pedidos** desde el inicio de Perfumes, además de su pestaña en el Centro de control.
+- Catálogo independiente, sin productos ni precios precargados; cargar manualmente solo artículos reales. Los cambios de disponibilidad son manuales, **no descuentan automáticamente el stock del negocio**.
+- Pedidos por fecha, cliente opcional, referencia, productos y cantidades con + y −.
+- Estados: pendiente, preparado, entregado, sin realizar y cancelado. Preparados no se contabilizan como ventas entregadas.
+- Cierre con doble confirmación, sin borrar pedidos ni reiniciar información histórica. El día siguiente se abre vacío por fecha.
+- Historial 7/30 días y rankings: productos preparados vs. entregados. Importes solamente cuando los productos entregados tienen precio.
+- Los precios unitarios del pedido se guardan como instantáneas al crear; modificar precios del catálogo no cambia importes históricos.
+- No hay sincronización automática con Tiendanube, pasarelas de pago, facturación, ventas, ni movimientos de inventario.
+- RLS y triggers impiden que otro tenant use o modifique pedidos de Cami. Ni Mi Gusto ni sus locales reciben esta interfaz.
+- Esta primera versión requiere conexión para guardar pedidos; no promete cola offline para este módulo.
