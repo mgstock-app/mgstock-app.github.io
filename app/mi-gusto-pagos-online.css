@@ -206,3 +206,74 @@
  .mg-on-modal .mg-on-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
  .mg-on-modal-content{padding:12px}
 }
+
+
+/* Pagos Online · carga y movimientos recientes, diseño web / celular.
+   Presentación exclusivamente: no altera comandas, foto de lote ni permisos. */
+.mg-on-section{display:grid;gap:15px}
+.mg-on-section>header{margin-bottom:-4px}
+.mg-on-section>.mg-on-entry{margin:0}
+.mg-on-entry{background:#fff;border-color:#dce7f1;box-shadow:0 3px 13px #153a6108}
+.mg-on-entry-head,.mg-on-recent-title{display:flex;align-items:center;gap:11px;min-width:0}
+.mg-on-entry-head{margin-bottom:15px}
+.mg-on-entry-head h3,.mg-on-recent-title h3{margin:0;color:#112e59;font-size:clamp(17px,2vw,21px);line-height:1.3}
+.mg-on-entry-icon,.mg-on-recent-icon{width:42px;height:42px;border-radius:12px;display:inline-grid;place-items:center;flex:none;background:#eaf3ff;color:#1259aa;font-size:23px;font-weight:800}
+.mg-on-page .mg-on-save{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:12px 20px;background:linear-gradient(115deg,#2c85ef,#1263cb)!important;box-shadow:0 3px 9px #166dcc26;min-height:48px;color:#fff}
+.mg-on-page .mg-on-save:hover:not(:disabled){background:linear-gradient(115deg,#2078df,#0c55b9)!important}
+.mg-on-page .mg-on-save span{font-size:18px;font-weight:850}
+.mg-on-success{display:flex;align-items:flex-start;gap:12px;border:1px solid #c7ead4;background:#e9f9ef;border-radius:13px;padding:13px 16px;color:#125f39}
+.mg-on-success>span{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:#14794a;color:white;flex:none;font-size:18px;font-weight:800}
+.mg-on-success strong{display:block;font-size:14px}
+.mg-on-success small{display:block;font-size:12px;line-height:1.45;margin-top:3px;color:#357654}
+.mg-on-recent{border:1px solid #dfe9f2;background:#fff;border-radius:16px;padding:clamp(12px,1.6vw,19px);min-width:0;box-shadow:0 3px 12px #1c3a5d08}
+.mg-on-recent-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.mg-on-recent-count{padding:7px 11px;border-radius:999px;background:#f0f5fc;color:#42688c;font-weight:800;font-size:12px}
+.mg-on-recent-tags{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.mg-on-recent-tags span{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid #d9e5f3;border-radius:999px;background:#f6faff;font-size:12px;font-weight:700;color:#31557d}
+.mg-on-recent-desktop .mg-on-tablewrap{border-radius:12px}
+.mg-on-recent-desktop .mg-on-tablewrap table{min-width:720px}
+.mg-on-recent-desktop .mg-on-tablewrap th{background:#f0f6fc;color:#3c5c83}
+.mg-on-recent-desktop .mg-on-tablewrap tr:hover td{background:#f9fcff}
+.mg-on-recent-desktop td strong{font-weight:800;color:#1a3655}
+.mg-on-recent-note{display:block;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#6c8299;margin-top:4px}
+.mg-on-method{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:750;color:#254766;white-space:nowrap}
+.mg-on-method-mark{width:28px;height:28px;flex:none;border-radius:9px;display:inline-grid;place-items:center;background:#e7f0ff;color:#1855af;font-size:11px;font-weight:900}
+.mg-on-method-getnet{color:#c62426;background:#fff0f0}
+.mg-on-method-transferencia{color:#284b79;background:#edf2fa}
+.mg-on-recent-mobile{display:none}
+.mg-on-recent .mg-on-switch[aria-checked=true] span{background:#2379e8}
+.mg-on-recent .mg-on-switch[aria-checked=true] b{color:#155aac}
+.mg-on-recent .mg-on-rowbuttons button{min-height:39px}
+.mg-on-fields input:focus-visible,.mg-on-fields select:focus-visible,.mg-on-entry textarea:focus-visible{outline:3px solid #7ab4ff;outline-offset:1px}
+@media(max-width:760px){
+ .mg-on-section{gap:12px}
+ .mg-on-recent-mobile{display:grid;gap:9px}
+ .mg-on-recent-desktop{display:none}
+ .mg-on-recent-card{border:1px solid #deebf5;background:#fcfeff;padding:13px;border-radius:13px;min-width:0}
+ .mg-on-recent-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+ .mg-on-recent-card-top>div{display:grid;gap:5px;min-width:0}
+ .mg-on-recent-card-top small{font-size:12px;color:#65829c}
+ .mg-on-recent-card-top strong{font-size:clamp(17px,4.6vw,21px);color:#113d64;overflow-wrap:anywhere}
+ .mg-on-recent-card-method{padding:10px 0 12px}
+ .mg-on-recent-card-note{border-left:3px solid #d5e7f7;padding-left:9px;color:#56738a;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+ .mg-on-recent-card .mg-on-rowbuttons{gap:8px;padding-top:4px}
+ .mg-on-recent-card .mg-on-rowbuttons button{flex:1}
+}
+@media(max-width:520px){
+ .mg-on-fields{grid-template-columns:minmax(0,1fr);gap:13px}
+ .mg-on-fields .mg-on-check{justify-content:space-between;padding:12px 14px}
+ .mg-on-fields input:not([type=checkbox]),.mg-on-fields select,.mg-on-observation textarea{font-size:16px;min-height:48px}
+ .mg-on-entry,.mg-on-recent{padding:14px;border-radius:15px}
+ .mg-on-save-actions .mg-on-save{width:100%;min-height:50px}
+ .mg-on-recent-head{align-items:center}
+ .mg-on-recent-count{font-size:11px}
+ .mg-on-recent-tags{gap:6px}
+ .mg-on-recent-tags span{font-size:11px;padding:7px 9px}
+ .mg-on-period>span{flex:1 1 130px}
+ .mg-on-period{align-items:stretch}
+ .mg-on-period span{font-size:12px}
+ .mg-on-period strong{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ .mg-on-page .mg-on-save{transition:none}
+}
