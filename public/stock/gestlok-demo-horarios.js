@@ -101,11 +101,12 @@
   const statusText = v => ({activo:'Activo',refuerzo:'Refuerzo',inactivo:'Inactivo'}[v] || 'Activo');
   function collaborators(shop){
     const q = view.employeeSearch.trim().toLocaleLowerCase('es');
-    const staff = data.equipo.map((p,i)=>({...p,i})).filter(p=>p.nombre.toLocaleLowerCase('es').includes(q)||p.puesto.toLocaleLowerCase('es').includes(q));
+    const staff = data.equipo.map((p,i)=>({...p,i}));
+    const shown = staff.filter(p=>p.nombre.toLocaleLowerCase('es').includes(q)||p.puesto.toLocaleLowerCase('es').includes(q));
     const activos=data.equipo.filter(p=>statusOf(p)==='activo').length;
     const refuerzos=data.equipo.filter(p=>statusOf(p)==='refuerzo').length;
     const inactivos=data.equipo.filter(p=>statusOf(p)==='inactivo').length;
-    const list=staff.map(p=>`<article class="gl-dh-person" data-dh-person>
+    const list=staff.map(p=>`<article class="gl-dh-person" data-dh-person ${p.nombre.toLocaleLowerCase('es').includes(q)||p.puesto.toLocaleLowerCase('es').includes(q) ? '' : 'hidden'}>
        <span class="gl-dh-avatar" aria-hidden="true">${esc(p.nombre.slice(0,1).toUpperCase())}</span>
        <div class="gl-dh-person-info"><strong>${esc(p.nombre)}</strong><small>${esc(p.puesto)} · ${esc(shop)}</small></div>
        <span class="gl-dh-status gl-dh-status--${statusOf(p)}">${statusText(statusOf(p))}</span>
@@ -134,7 +135,7 @@
          <input id="gl-dh-search" type="search" placeholder="Buscar colaborador…" autocomplete="off" value="${esc(view.employeeSearch)}">
        </label>
        <section class="gl-dh-directory-card" aria-label="Listado de colaboradores">
-         <header><strong>${esc(shop)}</strong><span data-dh-match-count>${staff.length} colaboradores</span></header>
+         <header><strong>${esc(shop)}</strong><span data-dh-match-count>${shown.length} colaboradores</span></header>
          <div class="gl-dh-person-list">${list || '<p class="gl-dh-empty">Sin colaboradores con ese nombre.</p>'}</div>
        </section>
        ${detail}
