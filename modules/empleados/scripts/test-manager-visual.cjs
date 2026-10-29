@@ -19,7 +19,7 @@ assert.match(cards,/Don Torcuato/);
 // Regresión reportada en PC: "GEST" invisible, navegación descolorida y legajos apretados.
 const clarity=read("styles/gerente-desktop-clarity.css");
 const layout=read("app/layout.tsx");
-assert.match(layout,/import "@\\/styles\\/gerente-desktop-clarity\\.css"/);
+assert(layout.includes('import "@/styles/gerente-desktop-clarity.css";'));
 assert(layout.indexOf("mobile-navigation.css") < layout.indexOf("gerente-desktop-clarity.css"),
   "El tema claro de PC debe ir después del tema compartido y del menú móvil.");
 assert.match(gerente,/gl-gerente__brand--mi-gusto/);
