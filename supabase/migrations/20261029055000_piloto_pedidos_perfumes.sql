@@ -138,6 +138,20 @@ begin
   where c.tenant_id=new.tenant_id and c.day=new.day
  ) then raise exception 'El día está cerrado; no se pueden agregar pedidos.';
  end if;
+ if tg_op='UPDATE' then
+  if new.tenant_id is distinct from old.tenant_id or
+     new.owner_uid is distinct from old.owner_uid or new.day is distinct from old.day then
+   raise exception 'No se puede trasladar un pedido a otro día o cuenta.';
+  end if;
+  -- Cambiar solo el estado NO debe alterar precios históricos ni cantidades.
+  if new.items=old.items then
+   new.updated_at:=now();
+   return new;
+  end if;
+  if old.status in ('entregado','cancelado') then
+   raise exception 'No se puede modificar el contenido de un pedido ya entregado o cancelado.';
+  end if;
+ end if;
  if new.owner_uid is distinct from auth.uid() then
   raise exception 'Sin permiso para modificar pedidos.';
  end if;
