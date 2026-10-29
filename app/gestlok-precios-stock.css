@@ -1,0 +1,71 @@
+/* GESTLOK · Precios & Stock manual de Perfumes. Encapsulado al centro piloto. */
+#gl-pilot-panel .gl-ps{max-width:1180px;margin:0 auto;color:#183953;font-size:14px}
+#gl-pilot-panel .gl-ps-head{display:flex;justify-content:space-between;gap:16px;align-items:start;margin-bottom:17px}
+#gl-pilot-panel .gl-ps-head small{font-size:11px;font-weight:800;letter-spacing:.09em;color:#267795}
+#gl-pilot-panel .gl-ps-head h2{margin:5px 0;font-weight:800;font-size:clamp(27px,3vw,35px)}
+#gl-pilot-panel .gl-ps-head p{font-size:13px;line-height:1.6;margin:3px 0}
+#gl-pilot-panel .gl-ps-head button,#gl-pilot-panel .gl-ps-toolbar button,#gl-pilot-panel .gl-ps-empty button{border:0;border-radius:12px;background:#143f60;color:white;font-weight:750;font-size:13px;min-height:48px;padding:12px 18px;flex:none}
+#gl-pilot-panel .gl-ps-head button{background:#e8f2f8;border:1px solid #cde1ed;color:#225472}
+#gl-pilot-panel .gl-ps-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+#gl-pilot-panel .gl-ps-stats>div{background:white;border:1px solid #dfe9f1;border-radius:13px;padding:16px 17px;min-width:0}
+#gl-pilot-panel .gl-ps-stats small{display:block;color:#688096;font-size:12px;min-height:33px;line-height:1.4}
+#gl-pilot-panel .gl-ps-stats strong{font-size:27px;color:#143c5b;line-height:1.3}
+#gl-pilot-panel .gl-ps-toolbar{display:flex;align-items:end;gap:12px;justify-content:space-between;margin:20px 0 14px}
+#gl-pilot-panel .gl-ps-toolbar label{display:grid;gap:7px;max-width:510px;flex:1;min-width:0;color:#416179;font-weight:700;font-size:12px}
+#gl-pilot-panel .gl-ps :is(input,select,textarea){box-sizing:border-box;background:#fff;color:#123d59;border:1px solid #cbdce9;border-radius:10px;font-size:16px;min-height:48px;padding:11px 13px;width:100%;max-width:100%}
+#gl-pilot-panel .gl-ps :is(input,select,textarea):focus-visible{outline:3px solid #bddfe9;outline-offset:1px}
+#gl-pilot-panel .gl-ps-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#gl-pilot-panel .gl-ps-item{min-width:0;background:#fff;border:1px solid #dce6ef;border-radius:15px;padding:17px;display:flex;flex-direction:column;gap:14px}
+#gl-pilot-panel .gl-ps-item[hidden]{display:none}
+#gl-pilot-panel .gl-ps-item header{display:flex;justify-content:space-between;align-items:start;gap:10px}
+#gl-pilot-panel .gl-ps-item header b{display:block;font-size:17px;line-height:1.27;overflow-wrap:anywhere;color:#133d5a}
+#gl-pilot-panel .gl-ps-item header small{display:block;color:#738b9d;font-size:12px;margin-top:4px}
+#gl-pilot-panel .gl-ps-badge{font-size:11px;font-weight:700;white-space:nowrap;padding:5px 9px;border-radius:7px;color:#335d7c;background:#edf3f7}
+#gl-pilot-panel .gl-ps-badge.is-ok{color:#177550;background:#e4f5ed}
+#gl-pilot-panel .gl-ps-badge.is-low{color:#a06316;background:#fff5dd}
+#gl-pilot-panel .gl-ps-badge.is-zero{color:#ab3d36;background:#fff0ed}
+#gl-pilot-panel .gl-ps-cell-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#gl-pilot-panel .gl-ps-cell-grid>div{min-width:0;padding:9px 11px;background:#f6fafc;border-radius:10px;display:grid;gap:5px}
+#gl-pilot-panel .gl-ps-cell-grid small{font-size:11px;color:#71869a}
+#gl-pilot-panel .gl-ps-cell-grid strong{font-size:clamp(13px,2vw,17px);color:#1a4b68;overflow-wrap:anywhere}
+#gl-pilot-panel .gl-ps-stock-grid strong{font-size:24px}
+#gl-pilot-panel .gl-ps-item footer{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:auto}
+#gl-pilot-panel .gl-ps-item footer small{font-size:11px;color:#8596a5}
+#gl-pilot-panel .gl-ps-item footer button{min-height:43px;padding:10px 13px;background:#e8f3fb;border:1px solid #c7ddeb;border-radius:9px;color:#1d648a;font-weight:750;font-size:12px}
+#gl-pilot-panel .gl-ps-form{background:#fff;border:1px solid #bed7e7;border-radius:15px;padding:22px;margin:15px 0 20px;display:grid;gap:14px;box-shadow:0 10px 30px #11406412}
+#gl-pilot-panel .gl-ps-form-title{display:flex;justify-content:space-between;gap:12px;align-items:start}
+#gl-pilot-panel .gl-ps-form-title h3{font-size:19px;margin:0}
+#gl-pilot-panel .gl-ps-form-title button{font-size:12px;background:#f4f7fa;color:#46677e;border:1px solid #dae4ec;border-radius:8px;padding:8px 12px}
+#gl-pilot-panel .gl-ps-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#gl-pilot-panel .gl-ps-fields label{display:grid;gap:7px;color:#3c5d76;font-size:12px;font-weight:750;min-width:0}
+#gl-pilot-panel .gl-ps-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:11px;border-radius:12px;background:#e9f6f8}
+#gl-pilot-panel .gl-ps-preview>div{padding:10px 12px;min-width:0}
+#gl-pilot-panel .gl-ps-preview small{display:block;font-size:12px;color:#376b77;margin-bottom:5px}
+#gl-pilot-panel .gl-ps-preview strong{display:block;font-size:clamp(19px,3vw,27px);overflow-wrap:anywhere;color:#125d67}
+#gl-pilot-panel .gl-ps-form>button[type=submit]{background:#123e60;color:#fff;border:0;border-radius:10px;min-height:50px;font-size:15px;font-weight:750;padding:12px 18px}
+#gl-pilot-panel .gl-ps-form button:disabled{opacity:.5;cursor:wait}
+#gl-pilot-panel .gl-ps-help{font-size:12px;line-height:1.55;color:#778b9c;margin:0}
+#gl-pilot-panel .gl-ps-end{margin:19px 0}
+#gl-pilot-panel .gl-ps-error,#gl-pilot-panel .gl-ps-success{font-size:13px;padding:12px 14px;border-radius:9px;margin-bottom:12px}
+#gl-pilot-panel .gl-ps-error{color:#a43f39;background:#fff1ee;border:1px solid #edccc8}
+#gl-pilot-panel .gl-ps-success{color:#236e53;background:#ecf8f2;border:1px solid #cce9d9}
+#gl-pilot-panel .gl-ps-empty{text-align:center;border:1px solid #dbe8ef;background:#fff;padding:35px 20px;border-radius:15px}
+#gl-pilot-panel .gl-ps-empty h3{font-size:20px;margin:0}
+#gl-pilot-panel .gl-ps-empty p{margin:9px 0 16px;font-size:13px}
+@media(max-width:767px){
+ #gl-pilot-panel .gl-ps-head{align-items:start}
+ #gl-pilot-panel .gl-ps-head h2{font-size:28px}
+ #gl-pilot-panel .gl-ps-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ #gl-pilot-panel .gl-ps-stats>div{padding:13px}
+ #gl-pilot-panel .gl-ps-stats strong{font-size:23px}
+ #gl-pilot-panel .gl-ps-toolbar{align-items:stretch;flex-direction:column}
+ #gl-pilot-panel .gl-ps-toolbar label{max-width:none;width:100%}
+ #gl-pilot-panel .gl-ps-toolbar button{width:100%}
+ #gl-pilot-panel .gl-ps-items{grid-template-columns:minmax(0,1fr)}
+ #gl-pilot-panel .gl-ps-form{padding:16px}
+ #gl-pilot-panel .gl-ps-fields{grid-template-columns:minmax(0,1fr)}
+ #gl-pilot-panel .gl-ps-cell-grid strong{font-size:17px}
+}
+@media(min-width:768px) and (max-width:1023px){
+ #gl-pilot-panel .gl-ps-items{grid-template-columns:minmax(0,1fr)}
+}
