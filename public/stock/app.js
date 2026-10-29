@@ -198,7 +198,7 @@ const esTotal = () => ['creadora', 'dueno'].includes(miRol());
 const puedeVerAvisos = () => esTotal() || miRol() === 'gerente';
 const puedeAdministrarEquipo = () => ['creadora', 'dueno'].includes(miRol());
 /* Aislado para el conteo especial de Munro. No se habilita para Torcuato ni otras empresas. */
-const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
+const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && !!window.GestLokCreatorHome?.dailyVisible?.() && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));
 /* Reseñas: Mi Gusto, Munro y Torcuato con datos propios. Motos Agencia: solo Munro. */
 const puedeVerResenas = () => !!window.GestLokResenas?.permitido();
 const puedeVerPagosOnline = () => !!window.GestLokMiGustoOnline?.permitido();
@@ -3742,6 +3742,7 @@ if('serviceWorker' in navigator){
 /* Qué puede ver cada persona: se decide con su fila del Equipo */
 function afterAccess(){
   if (!S.loaded.e || !S.loaded.l) return;
+  void window.GestLokCreatorHome?.refreshDaily?.();
   const mios = localesMios();
   for (const l of mios) if (!S.hub[l.id]) subscribeHub(l.id);
   if (!S.started){
@@ -3864,6 +3865,7 @@ function abrirLocal(id){
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
+    void window.GestLokCreatorHome?.refreshDaily?.(true);
   }
   S.ro = !puedeEditarLocal(id);
   window.GestLokOwnerAreas?.refresh();
@@ -3939,7 +3941,7 @@ window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderH
 window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
-window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub});
+window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub,renderLocal:render,toast});
 window.GestLokCreatorSupport?.refresh();
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
