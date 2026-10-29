@@ -19,7 +19,7 @@ export function ManagerStaffInvite({
   const link = useMemo(()=>{
     if (!invite || typeof window==="undefined") return "";
     try {return managerStaffInviteUrl(window.location.origin,
-      process.env.NEXT_PUBLIC_MODULE_BASE || "/empleados",invite.token);}
+      process.env.NEXT_PUBLIC_MODULE_BASE || "/empleados",invite.token,invite.local_name);}
     catch {return "";}
   },[invite]);
   const whatsapp = link && selectedLocal
