@@ -10,6 +10,7 @@ html.gl-visitor-mode {
 .gl-visitor-mode #gl-visitor-reset{background:#fff;color:#24526f;border:1px solid #d4e5ef}
 .gl-visitor-mode #gl-visitor-reset:hover{background:#eef7fc}
 .gl-visitor-mode .gl-visitor-exit{background:#e6f4fb;color:#0a618c}
+.gl-tour-finished .gl-mobile-dock{display:none!important}
 .gl-visitor-mode #gl-tour-controls{color:#23455d}
 .gl-visitor-mode .gl-tour-nav{overflow-x:auto;justify-content:flex-start;padding:3px 0 6px;scrollbar-width:thin}
 .gl-visitor-mode .gl-tour-nav button{flex:0 0 auto;min-width:38px;min-height:37px;
