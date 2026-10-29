@@ -1,14 +1,81 @@
-.jsi-join{width:min(100%,650px);margin:30px auto;display:grid;gap:16px;padding:0 14px}
-.jsi-card{width:min(100%,650px);margin:30px auto;border:1px solid #deebf4;border-radius:16px;background:#fff;box-shadow:0 4px 22px #08283a0d;padding:clamp(18px,3vw,30px);font-family:"Segoe UI",Arial,sans-serif;color:#1c3a54}
-.jsi-join .jsi-card{margin:0}
-.jsi-eyebrow{display:block;color:#1783a4;font-size:10px;font-weight:800;letter-spacing:1px}
-.jsi-card h1{font-size:clamp(22px,3vw,29px);font-weight:800;color:#112e4b;line-height:1.2;margin:9px 0 12px}
-.jsi-card p{font-size:13px;line-height:1.65;color:#637d90;margin:10px 0}
-.jsi-card .jsi-security{display:flex;align-items:flex-start;gap:8px;background:#eff6fb;border-radius:9px;padding:12px;color:#3b7291;font-size:11px}
-.jsi-security svg,.jsi-success svg{flex-shrink:0}
-.jsi-card .jsi-success{display:flex;gap:9px;align-items:center;color:#12784f;background:#e8f8ef;border-radius:9px;padding:12px}
-.jsi-retry{background:#074b69;color:white;padding:11px 15px;border:0;border-radius:9px;font-size:12px;font-weight:750;cursor:pointer}
-
-.jsi-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.jsi-retry--secondary{background:#fff;color:#074b69;border:1px solid #bcd3e2}
-.jsi-retry:disabled{opacity:.65;cursor:wait}
+/* Invitaciones GESTLOK: una sola tarjeta, identidad blanca y azul para todos los locales. */
+.app-shell:has(.jsi-page){background:#f5f8fc;color-scheme:light}
+.app-shell .jsi-page{
+  min-height:calc(100dvh - 175px);
+  padding:clamp(26px,6vh,64px) 16px 64px;
+  display:flex;align-items:flex-start;justify-content:center;
+  background:#f5f8fc;color:#173650;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+}
+.app-shell .jsi-card{
+  box-sizing:border-box;
+  width:min(100%,500px);margin:0;
+  padding:clamp(26px,5vw,40px);
+  border:1px solid #e0e9f1;
+  border-radius:19px;
+  background:#fff;
+  color:#173650;
+  box-shadow:0 15px 45px rgba(18,52,83,.07);
+}
+.app-shell .jsi-card-top{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.app-shell .jsi-icon{
+  width:50px;height:50px;flex:0 0 50px;display:grid;place-items:center;
+  border-radius:14px;background:#e9f3fa;border:1px solid #d2e6f3;color:#164c79;
+}
+.app-shell .jsi-eyebrow{
+  color:#365d7e;font-size:11px;font-weight:800;line-height:1.5;
+  letter-spacing:.09em;text-transform:uppercase;
+}
+.app-shell .jsi-card h1{
+  color:#112e4c;font:750 clamp(25px,3.7vw,32px)/1.16 Inter,"Segoe UI",Arial,sans-serif;
+  letter-spacing:-.028em;margin:0 0 14px;
+}
+.app-shell .jsi-card .jsi-lead{
+  margin:0;color:#536c81;font-size:15px;line-height:1.6;font-weight:400;
+}
+.app-shell .jsi-auth-action{margin:26px 0 0}
+.app-shell .jsi-google-button{
+  display:flex;width:100%;min-height:52px;justify-content:center;align-items:center;
+  gap:13px;padding:13px 18px;
+  border:1px solid #123c66;border-radius:12px;background:#153f6a;color:#fff;
+  font:700 15px/1.3 Inter,"Segoe UI",Arial,sans-serif;
+  box-shadow:0 4px 10px #153f6a13;
+  transition:background .15s,box-shadow .15s;
+}
+.app-shell .jsi-google-button:hover{background:#0e3459;box-shadow:0 6px 15px #153f6a20}
+.app-shell .jsi-google-button:disabled{opacity:.65;cursor:wait}
+.app-shell .jsi-google-button .google-signin-g{
+  display:grid;place-items:center;width:24px;height:24px;
+  border-radius:50%;background:#fff;color:#2264b4;font-size:15px;font-weight:800;
+}
+.app-shell .jsi-divider{height:1px;background:#e8eef3;margin:26px 0 20px}
+.app-shell .jsi-card .jsi-helper{margin:0;color:#5c7285;font-size:13px;line-height:1.65}
+.app-shell .jsi-card .jsi-security{
+  display:flex;align-items:center;gap:9px;
+  margin:20px 0 0;color:#44697f;font-size:12px;font-weight:600;line-height:1.4;
+}
+.app-shell .jsi-security svg,.app-shell .jsi-success svg{flex:none}
+.app-shell .jsi-card .jsi-success{
+  display:flex;gap:10px;align-items:flex-start;
+  color:#1b714c;background:#eef9f2;border:1px solid #d7efe0;
+  border-radius:12px;padding:15px;font-size:14px;line-height:1.55;
+}
+.app-shell .jsi-card .jsi-error,.app-shell .jsi-auth-error{
+  color:#972c35;background:#fff3f3;border:1px solid #f4d6d8;
+  border-radius:12px;padding:14px;font-size:14px;line-height:1.5;
+  overflow-wrap:anywhere;
+}
+.app-shell .jsi-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.app-shell .jsi-retry{
+  min-height:46px;border:1px solid #153f6a;border-radius:10px;
+  padding:11px 15px;background:#153f6a;color:#fff;font-size:14px;font-weight:700;
+}
+.app-shell .jsi-retry--secondary{background:#fff;color:#153f6a;border-color:#c9d9e8}
+.app-shell .jsi-retry:disabled{opacity:.6;cursor:wait}
+@media(max-width:540px){
+  .app-shell .jsi-page{min-height:calc(100dvh - 140px);padding:28px 14px 46px}
+  .app-shell .jsi-card{border-radius:16px;padding:26px 22px;box-shadow:0 10px 28px #1234530c}
+  .app-shell .jsi-card-top{margin-bottom:22px}
+  .app-shell .jsi-card h1{font-size:27px}
+}
+@media(prefers-reduced-motion:reduce){.app-shell .jsi-google-button{transition:none}}
