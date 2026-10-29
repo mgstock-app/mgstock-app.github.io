@@ -73,7 +73,8 @@
     const st = {f:[]}; const b = {
       select(){ st.op = st.op || 'select'; return b; },
       eq(k,v){ st.f.push([k,v]); return b; },
-      range(){ return b; },
+      order(k,{ascending=true}={}){ st.sort={k,ascending}; return b; },
+      range(from,to){ st.window=[from,to]; return b; },
       maybeSingle(){ st.single = true; return b; },
       upsert(r){ st.op = 'upsert'; st.row = r; return b; },
       delete(){ st.op = 'delete'; return b; },
@@ -82,7 +83,15 @@
     const match = r => st.f.every(([k,v]) => r[k] === v);
     const colOf = () => (st.f.find(x => x[0] === 'col') || [])[1];
     function run(){
-      if (st.op === 'select'){ const d = rows.filter(match).filter(r => canView(r.col, r.id, r.data)).map(r => ({id:r.id, data:JSON.parse(JSON.stringify(r.data))})); return {data: st.single ? (d[0] || null) : d, error:null}; }
+      if (st.op === 'select'){
+        let d = rows.filter(match).filter(r => canView(r.col, r.id, r.data)).map(r => ({id:r.id, data:JSON.parse(JSON.stringify(r.data))}));
+        if(st.sort){
+          const {k,ascending}=st.sort;
+          d.sort((a,b)=>String(a[k]??'').localeCompare(String(b[k]??''))*(ascending?1:-1));
+        }
+        if(st.window)d=d.slice(st.window[0],st.window[1]+1);
+        return {data: st.single ? (d[0] || null) : d, error:null};
+      }
       if (st.op === 'upsert'){ if (st.row.col === 'configuracion_negocio' && (st.row.id !== 'empresa-cb0dc04a-9a13-434f-a3d0-47f1d8f39670' || !['fisica','online','mixta'].includes(st.row.data.tipo))) return {error:{code:'42501',message:'Configuración inválida'}}; if (!canWrite(st.row.col)) return {error:{code:'42501', message:'new row violates row-level security policy'}}; const i = rows.findIndex(r => r.col === st.row.col && r.id === st.row.id); const nr = {col:st.row.col, id:st.row.id, data:keepSug(st.row.col, i >= 0 ? rows[i].data : null, st.row.data)}; if (i >= 0) rows[i] = nr; else rows.push(nr); window.__log.push(['set', st.row.col, st.row.id]); notify(st.row.col); return {error:null}; }
       if (st.op === 'delete'){ const c = colOf(); if (!canWrite(c)) return {error:null}; for (let i = rows.length - 1; i >= 0; i--) if (match(rows[i])) rows.splice(i, 1); window.__log.push(['delete', c]); notify(c); return {error:null}; }
     }

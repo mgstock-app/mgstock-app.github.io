@@ -247,14 +247,22 @@
           try { const rows = await fetchCol(col); if (alive && current === generation) next(snap(shape(rows))); }
           catch (e) { if (alive && current === generation && e && e.code === 'invalid_argument' && onErr) onErr(e); }
         };
-        const later = () => { clearTimeout(t); t = setTimeout(refresh, 120); };
+        const later = () => {
+          // Si llega un cambio durante una descarga, la próxima lectura debe ser nueva.
+          collectionRevisions.set(col, (collectionRevisions.get(col) || 0) + 1);
+          clearTimeout(t); t = setTimeout(refresh, 120);
+        };
         if (!refreshers.has(col)) refreshers.set(col, new Set());
         refreshers.get(col).add(later);
         refresh();
         const ch = sb.channel('spm-' + col + '-' + uid())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'docs', filter: 'col=eq.' + col }, later)
           .subscribe();
-        const poll = setInterval(refresh, 30000);
+        // Realtime avisa cambios al instante; el sondeo es solo red de seguridad.
+        // Pestañas ocultas o sin conexión no descargan colecciones completas.
+        const poll = setInterval(() => {
+          if (document.visibilityState === 'visible' && navigator.onLine !== false) refresh();
+        }, 90000);
         const vis = () => { if (document.visibilityState === 'visible') refresh(); };
         document.addEventListener('visibilitychange', vis);
         return () => { alive = false; clearInterval(poll); refreshers.get(col).delete(later); document.removeEventListener('visibilitychange', vis); sb.removeChannel(ch); };
@@ -268,14 +276,34 @@
     }
     return q;
   }
+  // Una colección = una sola descarga a la vez, aunque varias vistas la pidan.
+  // Evita consultas duplicadas cuando tablero, planilla y suscripciones coinciden.
+  const pendingCollections = new Map();
+  const collectionRevisions = new Map();
   async function fetchCol(col){
-    const out = []; let from = 0;
-    for (;;){
-      const { data, error } = await sb.from('docs').select('id,data').eq('col', col).range(from, from + 999);
-      if (error) throw toErr(error);
-      out.push(...data); if (data.length < 1000) break; from += 1000;
+    const revision = collectionRevisions.get(col) || 0;
+    const pending = pendingCollections.get(col);
+    if (pending){
+      if (pending.revision === revision) return pending.request;
+      // La consulta anterior empezó antes del cambio: esperar y traer datos frescos.
+      try { await pending.request; } catch {}
+      return fetchCol(col);
     }
-    return out;
+    const request = (async () => {
+      const out = []; let from = 0;
+      for (;;){
+        const { data, error } = await sb.from('docs').select('id,data')
+          .eq('col', col).order('id', { ascending: true }).range(from, from + 999);
+        if (error) throw toErr(error);
+        out.push(...data);
+        if (data.length < 1000) break;
+        from += 1000;
+      }
+      return out;
+    })();
+    pendingCollections.set(col, { revision, request });
+    try { return await request; }
+    finally { if (pendingCollections.get(col)?.request === request) pendingCollections.delete(col); }
   }
   const db = Object.freeze({
     collection(col){ const q = query(col, {}); return Object.assign(Object.create(q), q, { path: col, doc: id => docRef(col, id || uid()), async add(d){ const r = docRef(col, uid()); await r.set(d); return r; } }); },
