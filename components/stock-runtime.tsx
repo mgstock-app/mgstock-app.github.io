@@ -34,6 +34,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
+      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=pagos-online-20261029");
       await load("/stock/munro-motos.js?rev=motos-guardar-20261027");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=piloto-perfumes-20261029");
@@ -53,7 +54,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-20261028");
       await load("/stock/gestlok-provider-pdf.js");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=inicio-resenas-20261027");
+      await load("/stock/app.js?rev=pagos-online-20261029");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=mobile-20261028-v1");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=explorar-atajos-20261029");
