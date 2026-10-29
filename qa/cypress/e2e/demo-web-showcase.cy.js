@@ -34,8 +34,8 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
     const phone=$phone[0].getBoundingClientRect();
     const story=$story[0].getBoundingClientRect();
     expect(phone.bottom).to.be.lessThan(story.top + 1);
-    expect(Math.abs(phone.left + phone.width/2 - window.innerWidth/2)).to.be.lessThan(16);
-    expect(phone.width).to.be.at.most(window.innerWidth - 10);
+    expect(Math.abs(phone.left + phone.width/2 - 390/2)).to.be.lessThan(16);
+    expect(phone.width).to.be.at.most(390 - 10);
    });
   });
   stage(4);
