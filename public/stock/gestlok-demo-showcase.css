@@ -1,0 +1,137 @@
+/* GESTLOK demo pública: carrusel manual con interfaz viva dentro de teléfono.
+   Solo activo en ?demo=1: no afecta a los roles privados. */
+html.gl-tour-layout-active,html.gl-tour-layout-active body{background:#07172c!important;color:#f4f8ff}
+html.gl-tour-layout-active body{overflow-x:clip}
+.gl-tour-layout-active #gl-visitor-bar{position:relative!important;top:auto!important;z-index:80!important;box-sizing:border-box;
+ width:100%;padding:12px clamp(16px,3vw,40px);background:#fff!important;color:#142f46!important}
+.gl-tour-layout-active #stock-root{max-width:none!important;width:100%;min-width:0}
+.gl-tour-layout-active #gl-tour-layout{width:min(1190px,calc(100% - 44px));margin:35px auto 65px;display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(0,440px);align-items:center;gap:clamp(30px,5vw,100px);
+ min-width:0}
+.gl-tour-layout-active #gl-tour-story{min-width:0;padding:20px 0;color:#fff;align-self:center}
+.gl-tour-layout-active #gl-tour-story-content{max-width:510px}
+.gl-tour-layout-active .gl-tour-story-kicker{display:inline-block;padding:10px 18px;border-radius:40px;
+ font-size:12px;letter-spacing:.2em;color:#4bdaea;border:1px solid #087ab1;font-weight:800}
+.gl-tour-layout-active #gl-tour-story h1{font-size:clamp(34px,4vw,58px);letter-spacing:-.045em;line-height:1.07;margin:22px 0;color:#fff}
+.gl-tour-layout-active #gl-tour-story h1 span{display:block;background:linear-gradient(95deg,#4db5ff,#07e2db);
+ background-clip:text;-webkit-background-clip:text;color:transparent}
+.gl-tour-layout-active .gl-tour-story-rule{width:65px;height:4px;background:#1dcbe0;margin:28px 0 26px}
+.gl-tour-layout-active .gl-tour-story-label{display:inline-block;padding:7px 13px;border-radius:9px;
+ background:#123958;color:#9fe5f7;font-size:12px;font-weight:800;letter-spacing:.09em}
+.gl-tour-layout-active #gl-tour-story h2{font-size:clamp(27px,3vw,44px);letter-spacing:-.025em;line-height:1.13;margin:14px 0;color:#fff}
+.gl-tour-layout-active .gl-tour-story-description{color:#c3d2e2;font-size:clamp(16px,1.7vw,20px);line-height:1.68;margin:0 0 23px}
+.gl-tour-layout-active .gl-tour-story-note{font-size:13px;line-height:1.6;color:#8bcde5;margin:21px 0}
+.gl-tour-layout-active .gl-tour-story-note span{font-size:25px;margin-right:8px;vertical-align:middle;color:#23c7dd}
+.gl-tour-layout-active #gl-tour-controls{max-width:540px;min-width:0}
+.gl-tour-layout-active .gl-tour-nav{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start;overflow:visible;padding:0}
+.gl-tour-layout-active .gl-tour-nav button{border:1px solid #275274;background:#0f2c49;color:#c0dcf1;
+ flex:0 0 auto;min-height:42px;min-width:38px;border-radius:10px;font-weight:750;cursor:pointer}
+.gl-tour-layout-active .gl-tour-nav button[aria-current=step]{background:#29aede;color:#082235;border-color:#29aede}
+.gl-tour-layout-active .gl-tour-nav button:disabled{opacity:.33;cursor:not-allowed}
+.gl-tour-layout-active .gl-tour-nav button span{display:none}
+.gl-tour-layout-active .gl-tour-hint{color:#a6cce0;text-align:left;font-size:13px;line-height:1.55;margin:10px 0 0}
+.gl-tour-layout-active #gl-tour-phone{min-width:0;width:100%;max-width:440px;justify-self:center}
+.gl-tour-layout-active .gl-tour-phone-frame{box-sizing:border-box;position:relative;width:100%;
+ border:8px solid #0b1422;border-radius:43px;overflow:hidden;background:#fff;
+ box-shadow:0 22px 65px #0009,0 0 0 1px #52718b,0 0 50px #13bbff22}
+.gl-tour-layout-active .gl-tour-phone-notch{position:absolute;left:50%;top:0;transform:translateX(-50%);
+ height:20px;width:32%;border-radius:0 0 14px 14px;background:#0b1422;z-index:50;pointer-events:none}
+.gl-tour-layout-active .gl-tour-phone-screen{position:relative;height:710px;max-height:min(79dvh,710px);
+ padding-top:23px;background:#f7fafc;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ scrollbar-width:thin;scrollbar-color:#bfd5e4 transparent;box-sizing:border-box}
+.gl-tour-layout-active .gl-tour-phone-caption{text-align:center;font-size:11px;letter-spacing:.13em;
+ font-weight:750;color:#7cbad4;margin:14px 0}
+.gl-tour-layout-active #gl-tour-phone-screen #hub:not([hidden]),.gl-tour-layout-active #gl-tour-phone-screen #app:not([hidden]){
+ box-sizing:border-box;width:100%!important;max-width:none!important;min-width:0!important;
+ margin:0!important;min-height:100%!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;background:#fff}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-oh-main.hub-in{padding:16px 13px 92px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-areas{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-area{min-width:0;min-height:180px}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-tile{font-size:12px;min-height:72px}
+.gl-tour-layout-active #gl-tour-phone-screen #app .side{position:absolute!important;left:0!important;top:0!important;
+ bottom:0!important;height:100%!important;max-height:100%!important;z-index:60!important}
+.gl-tour-layout-active #gl-tour-phone-screen #app .main{min-height:100%}
+.gl-tour-layout-active #gl-tour-phone-screen #app .wrap{padding:15px 13px 105px}
+.gl-tour-layout-active #gestlok-mobile-dock:not([hidden]){display:flex!important;position:absolute!important;
+ bottom:0!important;top:auto!important;left:0!important;right:0!important;transform:none!important;
+ box-sizing:border-box;width:100%!important;max-width:none!important;min-height:64px;
+ padding:5px 6px;background:#fff;border-top:1px solid #dce8f0;border-radius:0!important;
+ z-index:48;box-shadow:0 -4px 14px #142e4b17}
+.gl-tour-layout-active #gestlok-mobile-dock button{font-size:11px}
+.gl-tour-layout-active #gestlok-mobile-sheet:not([hidden]){position:absolute!important;inset:0!important;z-index:68}
+.gl-tour-layout-active #gestlok-mobile-sheet .gl-mobile-sheet__panel{position:absolute!important;
+ bottom:0!important;left:0!important;right:0!important;transform:none!important;width:100%!important}
+.gl-tour-layout-active #gl-demo-emp{position:absolute!important;inset:0!important;top:0!important;
+ left:0!important;right:0!important;bottom:0!important;transform:none!important;
+ box-sizing:border-box;width:100%!important;max-width:none!important;max-height:100%!important;
+ z-index:63!important;overflow:auto}
+.gl-tour-layout-active #gl-demo-emp .gl-dh-mobile-dock{position:sticky!important;left:0!important;
+ right:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:none!important}
+.gl-tour-layout-active.gl-tour-sandbox-active #gl-tour-phone-screen #hub,
+.gl-tour-layout-active.gl-tour-sandbox-active #gl-tour-phone-screen #app,
+.gl-tour-layout-active.gl-tour-sandbox-active #gestlok-mobile-dock{display:none!important}
+.gl-tour-layout-active #gl-tour-sandbox[hidden],.gl-tour-layout-active #gl-tour-final[hidden]{display:none!important}
+.gl-tour-layout-active #gl-tour-sandbox{background:#f6f9fc;min-height:100%;padding:18px 12px 35px;color:#193f5b;box-sizing:border-box}
+.gl-tour-layout-active .gl-tour-demo-view{min-width:0;display:grid;gap:13px}
+.gl-tour-layout-active .gl-tour-demo-view>small{font-size:10px;letter-spacing:.11em;font-weight:800;color:#1a789a}
+.gl-tour-layout-active .gl-tour-demo-view h2{color:#123959;font-size:25px;margin:0;line-height:1.2}
+.gl-tour-layout-active .gl-tour-demo-view>p{color:#648097;font-size:13px;margin:0}
+.gl-tour-layout-active .gl-tour-demo-products,.gl-tour-layout-active .gl-tour-demo-orders{display:grid;gap:7px}
+.gl-tour-layout-active .gl-tour-demo-item,.gl-tour-layout-active .gl-tour-demo-orders>div{display:flex;
+ justify-content:space-between;align-items:center;gap:9px;padding:12px 11px;border:1px solid #dbe6ee;
+ border-radius:12px;background:white;color:#183c58}
+.gl-tour-layout-active .gl-tour-demo-item strong,.gl-tour-layout-active .gl-tour-demo-orders strong{display:block;font-size:13px}
+.gl-tour-layout-active .gl-tour-demo-item small,.gl-tour-layout-active .gl-tour-demo-orders small{display:block;font-size:11px;color:#6a8597;margin-top:3px}
+.gl-tour-layout-active .gl-tour-demo-item>span{font-size:13px;font-weight:800;color:#176b8b}
+.gl-tour-layout-active .gl-tour-demo-form{padding:14px;background:#fff;border:1px solid #dce7ef;border-radius:13px;display:grid;gap:12px}
+.gl-tour-layout-active .gl-tour-demo-form label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#375d77}
+.gl-tour-layout-active .gl-tour-demo-form input,.gl-tour-layout-active .gl-tour-demo-form select{box-sizing:border-box;
+ width:100%;min-width:0;min-height:43px;border:1px solid #ccdfec;border-radius:9px;
+ padding:8px 10px;color:#143d5c;background:#fff;font-size:16px}
+.gl-tour-layout-active .gl-tour-demo-form>button{border:0;border-radius:10px;min-height:45px;
+ background:#154a70;color:#fff;font-size:13px;font-weight:800}
+.gl-tour-layout-active .gl-tour-demo-math{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gl-tour-layout-active .gl-tour-demo-math span{display:grid;gap:6px;padding:10px;border-radius:9px;background:#e9f6fb;
+ font-size:11px;color:#50738b}
+.gl-tour-layout-active .gl-tour-demo-math strong{font-size:15px;color:#125a79}
+.gl-tour-layout-active .gl-tour-demo-count{display:flex;align-items:center;border:1px solid #c6dce9;border-radius:9px;overflow:hidden}
+.gl-tour-layout-active .gl-tour-demo-count button{min-width:36px;min-height:40px;border:0;background:#e6f3fa;color:#126287;font-size:21px}
+.gl-tour-layout-active .gl-tour-demo-count output{min-width:32px;text-align:center;font-weight:800}
+.gl-tour-layout-active .gl-tour-demo-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gl-tour-layout-active .gl-tour-demo-kpis div{display:grid;gap:5px;background:#fff;border:1px solid #d9e7ee;
+ border-radius:10px;padding:13px;font-size:11px;color:#648194}
+.gl-tour-layout-active .gl-tour-demo-kpis b{font-size:26px;color:#164663}
+.gl-tour-layout-active .gl-tour-demo-note{font-size:12px!important;line-height:1.5}
+.gl-tour-layout-active .gl-tour-demo-orders button{border:0;background:#e5f3fa;color:#12577b;border-radius:8px;
+ font-size:11px;font-weight:750;min-height:38px;padding:8px 10px}
+.gl-tour-layout-active.gl-tour-finished #hub,.gl-tour-layout-active.gl-tour-finished #app,
+.gl-tour-layout-active.gl-tour-finished #gestlok-mobile-dock{display:none!important}
+.gl-tour-layout-active #gl-tour-final{box-sizing:border-box;padding:12px;width:100%;max-width:none;background:#f7fafc;color:#163851}
+.gl-tour-layout-active #gl-tour-final .gl-tour-end{box-sizing:border-box;width:100%;max-width:none;margin:0;padding:16px}
+.gl-tour-layout-active #gl-tour-final .gl-tour-end h2{font-size:20px}
+.gl-tour-layout-active #gl-tour-final .gl-tour-end input,.gl-tour-layout-active #gl-tour-final .gl-tour-end textarea{font-size:16px}
+.gl-tour-layout-active #gl-tour-final .gl-tour-coupon strong{font-size:39px}
+@media(max-width:899px){
+ .gl-tour-layout-active #gl-tour-layout{width:min(100% - 24px,540px);display:flex;flex-direction:column;gap:12px;margin:16px auto 32px}
+ .gl-tour-layout-active #gl-tour-story{width:100%;padding:0}
+ .gl-tour-layout-active #gl-tour-story h1{font-size:32px;margin:12px 0}
+ .gl-tour-layout-active #gl-tour-story h1 span{display:inline}
+ .gl-tour-layout-active .gl-tour-story-rule{margin:15px 0;width:45px}
+ .gl-tour-layout-active #gl-tour-story h2{font-size:25px;margin:8px 0}
+ .gl-tour-layout-active .gl-tour-story-description{font-size:14px;line-height:1.55;margin:0}
+ .gl-tour-layout-active .gl-tour-story-note{display:none}
+ .gl-tour-layout-active .gl-tour-story-label{font-size:10px;margin:10px 0 0}
+ .gl-tour-layout-active .gl-tour-story-kicker{font-size:10px;padding:6px 10px}
+ .gl-tour-layout-active #gl-tour-controls{margin:11px 0 4px}
+ .gl-tour-layout-active .gl-tour-nav{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:thin}
+ .gl-tour-layout-active .gl-tour-nav button{min-width:41px;min-height:42px}
+ .gl-tour-layout-active .gl-tour-hint{font-size:11px}
+ .gl-tour-layout-active #gl-tour-phone{max-width:450px}
+ .gl-tour-layout-active .gl-tour-phone-frame{border-radius:26px;border-width:5px}
+ .gl-tour-layout-active .gl-tour-phone-notch{height:13px}
+ .gl-tour-layout-active .gl-tour-phone-screen{height:min(650px,68dvh);max-height:none;padding-top:14px}
+ .gl-tour-layout-active #gl-visitor-bar{flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){.gl-tour-layout-active *{scroll-behavior:auto!important;transition:none!important}}
