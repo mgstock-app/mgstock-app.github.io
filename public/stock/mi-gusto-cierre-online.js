@@ -9,6 +9,9 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
 const shiftName=x=>x==='manana'?'Mañana':'Noche';
+const todayArgentina=()=>new Intl.DateTimeFormat('es-AR',{
+ timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',year:'numeric'
+}).format(new Date());
 const timeOf=x=>{const t=new Date(x);return x&&Number.isFinite(t.getTime())?
  new Intl.DateTimeFormat('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}).format(t):'—';};
 const SCALE_KEY='gestlok:pagos-online:escala-v1';
@@ -70,7 +73,8 @@ function currentHead(){
  const s=snapshot?.active;
  return '<div class="mg-on-head"><div><small>MI GUSTO · '+esc(LOCALS[local()]||'')+'</small>'+
  '<h2>Pagos Online</h2><p>Control de comandas y cierres por turno, separado por sucursal.</p></div>'+
- '<div class="mg-on-period"><span>Fecha <strong>'+date(s?.day)+'</strong></span>'+
+ '<div class="mg-on-period"><span>Hoy en Argentina <strong>'+todayArgentina()+'</strong></span>'+
+ '<span>Fecha del turno <strong>'+date(s?.day)+'</strong></span>'+
  '<span>Turno <strong>'+esc(shiftName(s?.turno||'manana'))+'</strong></span>'+
  '<span class="mg-on-open">● Abierto</span></div></div>';
 }
@@ -379,5 +383,5 @@ function subscribe(loc,push){
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
-window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{date,shiftName,historyGroups,clampScale,getScale}});
+window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf}});
 })();
