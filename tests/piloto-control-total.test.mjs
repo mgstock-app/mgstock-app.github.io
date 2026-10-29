@@ -41,5 +41,6 @@ test("Se carga únicamente en sesiones privadas, no en demo ni se expone a empre
  assert.match(layout,/gestlok-pilot\.css/);
  assert.match(ui,/context\.tenant_id===TENANT/);
  assert.match(ui,/host\?\.role\?\.\(\)==='dueno'/);
- assert.match(ui,/String\(host\?\.S\?\.me\?\.email\|\|''\)\.toLowerCase\(\)===USER/);
+ assert.match(ui,/data\.owner_uid===identity\.data\.user\.id/);
+ assert.doesNotMatch(ui,/@gmail\.com/);
 });
