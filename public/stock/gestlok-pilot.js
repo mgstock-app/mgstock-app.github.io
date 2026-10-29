@@ -81,7 +81,7 @@
   records=r.data||[];audit=a.data||[];
  }
  function close(){
-  const p=document.querySelector('#gl-pilot-panel');p?.remove();
+  const p=document.querySelector('#gl-pilot-panel');p?.remove();document.body.classList.remove('gl-pilot-open');
   displayed=false;active='tablero';error='';editing='';
  }
  function sectionTitle(key){return DICTIONARY[key]?.title||'Gestión';}
@@ -183,7 +183,7 @@
   if(busy)return;
   busy=true;error='';
   const data=Object.fromEntries(new FormData(form).entries());
-  if(!DICTIONARY[data.module]||['tablero','auditoria'].includes(data.module)||data.module!==active) return;
+  if(!DICTIONARY[data.module]||['tablero','auditoria'].includes(data.module)||data.module!==active){busy=false;return;}
   const title=String(data.title||'').trim(), note=String(data.note||'').trim();
   const amount=String(data.amount||'').trim()?Number(data.amount):null;
   if(title.length<2||title.length>160||note.length>2000||amount!==null&&(!Number.isFinite(amount)||amount<0||amount>999999999999)){
@@ -202,7 +202,7 @@
    if(result.error)throw result.error;
    editing='';await load();render();
   }catch(e){error=e.message||'No se pudo guardar.';render();}
-  finally{busy=false;}
+  finally{busy=false;render();}
  }
  async function remove(id){
   const item=records.find(x=>x.id===id&&x.module===active);
