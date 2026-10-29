@@ -75,6 +75,22 @@ describe('DEMO web · carrusel manual de 9 etapas + teléfono interactivo',()=>{
    });
   });
  });
+ it('móvil ancho usa más espacio útil sin desbordar y simplifica el texto repetido',()=>{
+  start(832);
+  cy.get('#gl-tour-phone').then($phone=>{
+   const phone=$phone[0].getBoundingClientRect();
+   expect(phone.width).to.be.at.least(600);
+   expect(Math.abs(phone.left+phone.width/2-416)).to.be.lessThan(16);
+  });
+  cy.get('#gl-tour-story h1').should('not.be.visible');
+  cy.get('#gl-tour-story h2').should('be.visible');
+  cy.get('#gl-visitor-bar').then($bar=>{
+   const bar=$bar[0].getBoundingClientRect();
+   expect(bar.left).to.be.at.least(-1);
+   expect(bar.right).to.be.at.most(833);
+  });
+  cy.document().then(d=>expect(d.documentElement.scrollWidth).to.be.at.most(833));
+ });
  it('gerente conserva Colaboradores sin montos, navega manualmente y finaliza con reseña',()=>{
   start(390,'gerente');
   stage(3);

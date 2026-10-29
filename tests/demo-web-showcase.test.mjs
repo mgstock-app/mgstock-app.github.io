@@ -36,8 +36,12 @@ test('Estilos aislados únicamente en demo; escritorio y móvil adaptables',()=>
  assert.ok(css.includes('@media (max-width:899px), (hover:none) and (pointer:coarse)'));
  assert.ok(css.includes('order:0;'));
  assert.ok(css.includes('order:1;'));
+ assert.ok(css.includes('max-width:700px;'));
+ assert.ok(css.includes('max-width:680px;'));
+ assert.ok(css.includes('height:min(80dvh,860px)'));
+ assert.ok(css.includes('#gl-tour-story h1{display:none'));
  assert.match(css,/gl-tour-phone-screen/);
  assert.match(css,/gl-tour-sandbox/);
- assert.match(runtime,/gestlok-demo-tour\.js\?rev=mobile-centrado-20261029/);
+ assert.match(runtime,/gestlok-demo-tour\.js\?rev=espacio-util-20261029/);
  assert.match(sw,/gestlok-demo-showcase\.css/);
 });

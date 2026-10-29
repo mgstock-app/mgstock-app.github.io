@@ -4,7 +4,7 @@
 if(new URLSearchParams(location.search).get('demo')!=='1')return;
 const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('stock/gestlok-demo-tour.css',document.baseURI).href;document.head.append(style);
  const mobileStyle=document.createElement('link');mobileStyle.rel='stylesheet';mobileStyle.href=new URL('stock/gestlok-demo-mobile.css',document.baseURI).href;document.head.append(mobileStyle);
-const showcaseStyle=document.createElement('link');showcaseStyle.rel='stylesheet';showcaseStyle.href=new URL('stock/gestlok-demo-showcase.css?rev=mobile-centrado-20261029',document.baseURI).href;document.head.append(showcaseStyle);
+const showcaseStyle=document.createElement('link');showcaseStyle.rel='stylesheet';showcaseStyle.href=new URL('stock/gestlok-demo-showcase.css?rev=espacio-util-20261029',document.baseURI).href;document.head.append(showcaseStyle);
 const stages=[
  {name:'Inicio',title:'Un negocio, todo en orden',desc:'Explorá el inicio actualizado de GESTLOK. Abrí las tarjetas de administración y conocé los accesos del dueño o gerente.',hint:'Tocá una tarjeta y recorré el inicio.'},
  {name:'Empresa',title:'Administrá cada producto',desc:'Entrá al stock real de la demo y probá las cantidades y los datos ficticios. Tu información comercial nunca se modifica.',hint:'Probá el stock y el catálogo de ejemplo.'},
