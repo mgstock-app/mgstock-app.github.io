@@ -12,7 +12,7 @@ export function managerStaffInviteUrl(origin: string, moduleBase: string, token:
   const prefix = "/" + moduleBase.split("/").filter(Boolean).join("/");
   const link = new URL(prefix + "/unirse/?invitacion=" + token, base.origin);
   // El nombre es informativo. El servidor sigue siendo quien asigna el local al validar el token.
-  const cleanName = localName?.trim().replace(/[\\u0000-\\u001f\\u007f]/g, "").slice(0, 80);
+  const cleanName = localName?.trim().replace(/[\x00-\x1f\x7f]/g, "").slice(0, 80);
   if (cleanName) link.searchParams.set("local", cleanName);
   return link.toString();
 }
