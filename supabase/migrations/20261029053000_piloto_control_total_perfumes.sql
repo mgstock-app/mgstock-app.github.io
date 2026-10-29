@@ -27,6 +27,7 @@ create table if not exists public.gestlok_pilot_records (
   title text not null check (char_length(trim(title)) between 2 and 160),
   note text not null default '' check (char_length(note)<=2000),
   amount numeric(14,2) check (amount is null or (amount>=0 and amount<=999999999999)),
+  direction text not null default 'otro' check (direction in ('ingreso','egreso','otro')),
   status text not null default 'pendiente' check (status in ('pendiente','en_curso','completado','cancelado')),
   due_on date,
   occurred_on date not null default current_date,
