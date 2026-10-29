@@ -143,6 +143,21 @@ begin
      new.owner_uid is distinct from old.owner_uid or new.day is distinct from old.day then
    raise exception 'No se puede trasladar un pedido a otro día o cuenta.';
   end if;
+  -- No permitir revivir pedidos cancelados/sin realizar, ni borrar el
+  -- motivo de una anulación de venta entregada.
+  if old.status in ('cancelado','sin_realizar')
+     and new.status is distinct from old.status then
+   raise exception 'No se puede reabrir este pedido.';
+  end if;
+  if old.status='entregado' and new.status is distinct from old.status then
+   if new.status<>'cancelado' or char_length(btrim(new.reason))<3 then
+    raise exception 'Para anular una entrega necesitás indicar un motivo.';
+   end if;
+  end if;
+  if new.status in ('pendiente','preparado','entregado')
+     and jsonb_array_length(new.items)=0 then
+   raise exception 'Seleccioná productos antes de preparar o entregar.';
+  end if;
   -- Cambiar solo el estado NO debe alterar precios históricos ni cantidades.
   if new.items=old.items then
    new.updated_at:=now();
