@@ -15,7 +15,7 @@ describe('DEMO · rediseño móvil, Colaboradores y legajos sin datos reales',()
     cy.viewport(390,844);enter();
     cy.get('#gl-visitor-bar').should('have.css','background-color','rgb(255, 255, 255)');
     cy.get('#gestlok-mobile-dock').should('be.visible');
-    cy.get('.gl-tour-nav [data-tour]').should('have.length',11);
+    cy.get('.gl-tour-nav [data-tour]').should('have.length',12);
     stage(3);
     cy.get('#gl-demo-emp .gl-dh-directory',{timeout:10000}).should('be.visible');
     cy.get('#gl-demo-emp .gl-dh-person').should('have.length',8);
@@ -35,7 +35,7 @@ describe('DEMO · rediseño móvil, Colaboradores y legajos sin datos reales',()
     cy.get('#gl-demo-emp .gl-dh-person:visible').should('have.length',8);
     cy.get('#gl-demo-emp .gl-dh-status--inactivo').should('have.length',1);
     cy.window().then(w=>expect(JSON.parse(w.sessionStorage.getItem('gestlok:visitor:horarios:v1')).employeeStates['Sofía Ríos']).eq('inactivo'));
-    stage(8);
+    stage(9);
     cy.get('#gl-tour-review-form').should('be.visible');
     cy.get('#gestlok-mobile-dock').should('not.be.visible');
     cy.get('#gl-tour-gift').should('not.exist');
