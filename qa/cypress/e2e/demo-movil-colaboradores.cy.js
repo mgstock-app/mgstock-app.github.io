@@ -31,6 +31,8 @@ describe('DEMO · rediseño móvil, Colaboradores y legajos sin datos reales',()
     cy.get('#gl-demo-emp .gl-dh-folders [data-dh-section="horarios"]').click();
     cy.get('#gl-demo-emp').should('contain.text','Plantilla GESTLOK (predeterminada)');
     cy.get('#gl-demo-emp .gl-dh-folders [data-dh-section="colaboradores"]').click();
+    cy.get('#gl-dh-search').clear();
+    cy.get('#gl-demo-emp .gl-dh-person:visible').should('have.length',8);
     cy.get('#gl-demo-emp .gl-dh-status--inactivo').should('have.length',1);
     cy.window().then(w=>expect(JSON.parse(w.sessionStorage.getItem('gestlok:visitor:horarios:v1')).employeeStates['Sofía Ríos']).eq('inactivo'));
     stage(4);
