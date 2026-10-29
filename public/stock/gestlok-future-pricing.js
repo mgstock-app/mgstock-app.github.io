@@ -8,9 +8,9 @@
  const price=(c,p)=>Math.round((Number(c)*(1+Number(p)/100)+Number.EPSILON)*100)/100;
  const money=v=>v==null?'':String(v);
  const $=s=>document.querySelector(s);
- let scope=null,host=null,tenant='',checked=false,busy=false,openPanel=false,mode='precios',local='',rows=[],error='',notice='',loading=false,editing='',search='',fetchNonce=0;
+ let scope=null,host=null,tenant='',contextSignature='',checked=false,busy=false,openPanel=false,mode='precios',local='',rows=[],error='',notice='',loading=false,editing='',search='',fetchNonce=0;
  function reset(){
-  scope=null;host=null;tenant='';checked=false;busy=false;openPanel=false;local='';rows=[];error='';notice='';editing='';fetchNonce++;
+  scope=null;host=null;tenant='';contextSignature='';checked=false;busy=false;openPanel=false;local='';rows=[];error='';notice='';editing='';fetchNonce++;
   $('#gl-future-panel')?.remove();document.body.classList.remove('gl-future-open');
  }
  function allowedIds(){return Array.isArray(scope?.local_ids)?scope.local_ids:[];}
@@ -19,8 +19,9 @@
  async function refresh(context,api){
   if(!context||context.role!=='dueno'||api?.role?.()!=='dueno'||context.tenant_id!==api?.S?.me?.tenant_id){reset();return;}
   const newTenant=context.tenant_id;
-  if(checked&&tenant===newTenant&&host===api)return;
-  tenant=newTenant;host=api;checked=true;scope=null;
+  const signature=JSON.stringify([context.tenant_id,context.local_ids,context.logo_id,context.company_name]);
+  if(checked&&tenant===newTenant&&host===api&&contextSignature===signature)return;
+  contextSignature=signature;tenant=newTenant;host=api;checked=true;scope=null;
   try{
    const {data,error:e}=await window.GestLokSupabase.rpc('gestlok_future_pricing_scope');
    if(e)throw e;
