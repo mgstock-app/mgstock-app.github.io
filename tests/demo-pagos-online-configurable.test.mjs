@@ -11,6 +11,7 @@ test('Demo Pagos Online: datos ficticios y métodos manuales, sin leer empresas 
  assert.match(d.view(),/DEMO SIN DATOS REALES/);
  assert.match(d.view(),/Pagos Online/);
  assert.match(d.view(),/Resumen e historial/);
+ assert.match(d.view(),/data-dp-tab="carga" aria-current="page"/);
  assert.match(d.view(),/Carga de pedidos/);
  assert.match(d.view(),/Mañana/);
  assert.match(d.view(),/Noche/);
