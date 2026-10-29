@@ -14,6 +14,8 @@ test('Demo Pagos Online: datos ficticios y métodos manuales, sin leer empresas 
  assert.match(d.view(),/data-dp-tab="carga" aria-current="page"/);
  assert.match(d.view(),/Carga de pedidos/);
  assert.match(d.view(),/Mañana/);
+ // Los dos turnos se muestran en Resumen; la entrada comienza en Carga.
+ assert(d.handleClick({target:{closest:()=>({dataset:{dpTab:'resumen'}})}}));
  assert.match(d.view(),/Noche/);
  assert.match(source,/Formas de pago \(agregar manualmente\)/);
  assert.match(source,/Día Completo/);
