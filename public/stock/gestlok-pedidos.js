@@ -83,6 +83,7 @@
     (o.status==='pendiente'?'<button data-orders-status="preparado" data-orders-id="'+o.id+'">Preparado</button>':'')+
     (o.status==='preparado'?'<button data-orders-status="entregado" data-orders-id="'+o.id+'">Entregado</button>':'')+
     (['pendiente','preparado'].includes(o.status)?'<button data-orders-status="sin_realizar" data-orders-id="'+o.id+'">Sin realizar</button><button data-orders-status="cancelado" data-orders-id="'+o.id+'">Anular</button>':'')+
+    (o.status==='entregado'?'<button data-orders-status="cancelado" data-orders-id="'+o.id+'">Anular entrega</button>':'')+
     '</div>':'')+'</article>';
   }).join('')+'</div>';
  }
@@ -234,12 +235,24 @@
  }
  async function updateOrder(id,status){
   if(statusDay()||!statuses[status])return;
-  if(status==='cancelado'&&!confirm('¿Anular este pedido? No contará como realizado ni vendido.'))return;
   const o=orders.find(x=>x.id===id&&x.day===day);
   if(!o)return;
-  if(!(['pendiente','preparado'].includes(o.status)))return;
-  await execute(()=>db().from('gestlok_pilot_orders').update({status}).eq('tenant_id',TENANT).eq('id',id),
-    'Estado del pedido actualizado.');
+  const valid={pendiente:['preparado','sin_realizar','cancelado'],
+    preparado:['entregado','sin_realizar','cancelado'],
+    entregado:['cancelado']};
+  if(!valid[o.status]?.includes(status))return;
+  let reason=o.reason||'';
+  if(status==='cancelado'){
+   if(!confirm('¿Anular este pedido? Dejará de contar como realizado o vendido.'))return;
+   if(o.status==='entregado'){
+    const reply=prompt('Motivo de anulación de la entrega:');
+    if(reply===null)return;
+    reason=reply.trim();
+    if(reason.length<3){error='Indicá un motivo de al menos 3 caracteres.';renderParent();return;}
+   }
+  }
+  await execute(()=>db().from('gestlok_pilot_orders').update({status,reason})
+     .eq('tenant_id',TENANT).eq('id',id),'Estado del pedido actualizado.');
  }
  async function toggleStock(id){
   const p=products.find(x=>x.id===id&&x.active);if(!p)return;
