@@ -6,6 +6,7 @@
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
  const MODULES=[
   ['tablero','Panel del dueño','Resumen de los registros cargados en el piloto.','general'],
+  ['pedidos','Pedidos','Preparar, controlar y cerrar pedidos de Cami por día.','general'],
   ['finanzas','Ingresos y egresos','Movimientos manuales de dinero, pendientes y saldos.','economia'],
   ['ventas','Ventas y resultados','Registrar ventas y analizar ingresos registrados.','economia'],
   ['compras','Compras y proveedores','Seguir órdenes, entregas y pagos de proveedores.','operaciones'],
@@ -58,8 +59,8 @@
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
   return '<div class="gl-pilot-entry"><div><small>PILOTO PRIVADO · SOLO TU EMPRESA</small><h2>Centro de control total</h2>'+
-   '<p>20 áreas para evaluar tu negocio. Los nuevos registros son privados y no modifican las planillas existentes.</p></div>'+
-   '<button type="button" data-pilot-open>Explorar los 20 módulos <span aria-hidden="true">→</span></button></div>';
+   '<p>21 áreas para evaluar tu negocio. Los nuevos registros son privados y no modifican las planillas existentes.</p></div>'+
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-orders>Pedidos</button><button type="button" data-pilot-open>Centro de control <span aria-hidden="true">→</span></button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -87,7 +88,7 @@
  function card(key){const v=DICTIONARY[key],total=records.filter(x=>x.module===key).length;
   return '<button class="gl-pilot-module" type="button" data-pilot-tab="'+attr(key)+'">'+
     '<span class="gl-pilot-module-name">'+esc(v.title)+'</span><span>'+esc(v.detail)+'</span>'+
-    (key==='tablero'||key==='auditoria'?'<small>Consulta</small>':'<small>'+total+' registros · Carga manual</small>')+'</button>';
+    (key==='tablero'||key==='auditoria'?'<small>Consulta</small>':key==='pedidos'?'<small>Gestión de pedidos y cierre diario</small>':'<small>'+total+' registros · Carga manual</small>')+'</button>';
  }
  function sidebar(){
   const groups=[['general','Resumen'],['economia','Economía'],['operaciones','Operaciones'],['equipo','Personas'],['sistema','Herramientas']];
@@ -150,6 +151,7 @@
  }
  function current(){
   if(active==='tablero')return dashboard();
+  if(active==='pedidos')return window.GestLokPedidos?.render?.()||'<p>No se pudo cargar el módulo Pedidos.</p>';
   if(active==='auditoria')return '<h2>Auditoría de este piloto</h2><p>Registro automático de altas, cambios y eliminaciones realizados acá. No reemplaza la auditoría completa de GESTLOK.</p>'+activity();
   const m=DICTIONARY[active];
   return '<header class="gl-pilot-section-head"><div><h2>'+esc(m.title)+'</h2><p>'+esc(m.detail)+'</p>'+
@@ -165,7 +167,7 @@
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
     '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Centro de control total</h1>'+
-    '<span>Empresa Perfumes · 20 áreas de gestión</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
+    '<span>Empresa Perfumes · 21 áreas de gestión</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
@@ -177,6 +179,13 @@
   displayed=true;active='tablero';loading=true;render();
   try{await load();error='';}catch(e){error=e.message||'No se pudo cargar';}
   finally{loading=false;render();}
+ }
+ async function openOrders(){
+  if(!enabled)return;
+  if(!displayed)await open();
+  if(!displayed)return;
+  active='pedidos';error='';editing='';render();
+  await window.GestLokPedidos?.open?.();
  }
  async function save(form){
   if(busy)return;
@@ -217,11 +226,12 @@
   finally{busy=false;render();}
  }
  document.addEventListener('click',e=>{
-  if(e.target.closest('[data-pilot-open]')){e.preventDefault();open();return;}
+  if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
+  if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(!displayed)return;
   if(e.target.closest('[data-pilot-close]')){close();document.body.classList.remove('gl-pilot-open');return;}
   const t=e.target.closest('[data-pilot-tab]');
-  if(t){active=t.dataset.pilotTab;editing='';error='';render();return;}
+  if(t){active=t.dataset.pilotTab;editing='';error='';render();if(active==='pedidos')void window.GestLokPedidos?.open?.();return;}
   if(e.target.closest('[data-pilot-new]')){
    editing='';render();
    document.querySelector('#gl-pilot-content .gl-pilot-form-slot')?.insertAdjacentHTML('afterbegin',form(active));
@@ -236,5 +246,7 @@
   if(e.target.id!=='gl-pilot-form')return;e.preventDefault();void save(e.target);
  });
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){close();document.body.classList.remove('gl-pilot-open');}});
- window.GestLokPilot=Object.freeze({refresh,homeTile,open,reset,modules:MODULES.map(([id])=>id)});
+ window.GestLokPilot=Object.freeze({refresh,homeTile,open,openOrders,reset,
+  authorized:()=>!!enabled&&ownerUid!==''&&api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='dueno',
+  rerender:render,modules:MODULES.map(([id])=>id)});
 })();
