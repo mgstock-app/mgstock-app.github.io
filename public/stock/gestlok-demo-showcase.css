@@ -117,36 +117,43 @@ html.gl-tour-layout-active body{overflow-x:clip}
    La experiencia real de escritorio (mouse/trackpad) conserva dos columnas. */
 @media (max-width:899px), (hover:none) and (pointer:coarse){
  .gl-tour-layout-active #gl-tour-layout{
-  box-sizing:border-box;width:calc(100% - 24px);max-width:460px;
-  display:flex;flex-direction:column;align-items:center;gap:18px;
-  margin:16px auto 36px;min-width:0;
+  box-sizing:border-box;width:calc(100% - 24px);max-width:700px;
+  display:flex;flex-direction:column;align-items:center;gap:13px;
+  margin:12px auto 24px;min-width:0;
  }
  /* La pantalla interactiva aparece siempre antes de la explicación. */
  .gl-tour-layout-active #gl-tour-phone{
-  order:0;box-sizing:border-box;width:100%;max-width:440px;
+  order:0;box-sizing:border-box;width:100%;max-width:680px;
   margin-inline:auto;justify-self:auto;min-width:0;
  }
  .gl-tour-layout-active #gl-tour-story{
-  order:1;box-sizing:border-box;width:100%;max-width:440px;
-  margin:0 auto;padding:0 2px;align-self:center;min-width:0;
+  order:1;box-sizing:border-box;width:100%;max-width:680px;
+  margin:0 auto;padding:0 4px;align-self:center;min-width:0;
  }
  .gl-tour-layout-active #gl-tour-story-content,
  .gl-tour-layout-active #gl-tour-controls{max-width:100%;min-width:0;}
- .gl-tour-layout-active #gl-tour-story h1{font-size:clamp(29px,7vw,35px);margin:12px 0}
- .gl-tour-layout-active #gl-tour-story h1 span{display:inline}
- .gl-tour-layout-active .gl-tour-story-rule{margin:15px 0;width:45px}
- .gl-tour-layout-active #gl-tour-story h2{font-size:clamp(24px,5.5vw,29px);margin:8px 0}
+ .gl-tour-layout-active #gl-tour-story h1{display:none}
+
+ .gl-tour-layout-active .gl-tour-story-rule{display:none}
+ .gl-tour-layout-active #gl-tour-story h2{font-size:clamp(25px,4.7vw,32px);margin:8px 0}
  .gl-tour-layout-active .gl-tour-story-description{font-size:15px;line-height:1.55;margin:0}
  .gl-tour-layout-active .gl-tour-story-note{display:none}
- .gl-tour-layout-active .gl-tour-story-label{font-size:10px;margin:10px 0 0}
- .gl-tour-layout-active .gl-tour-story-kicker{font-size:10px;padding:6px 10px}
- .gl-tour-layout-active #gl-tour-controls{width:100%;margin:14px 0 4px}
- .gl-tour-layout-active .gl-tour-nav{display:flex;flex-wrap:wrap;overflow:visible;justify-content:center;gap:7px}
+ .gl-tour-layout-active .gl-tour-story-label{font-size:11px;margin:9px 0 0}
+ .gl-tour-layout-active .gl-tour-story-kicker{font-size:11px;padding:7px 12px}
+ .gl-tour-layout-active #gl-tour-controls{width:100%;margin:10px 0 4px}
+ .gl-tour-layout-active .gl-tour-nav{display:flex;flex-wrap:wrap;overflow:visible;justify-content:center;gap:6px}
  .gl-tour-layout-active .gl-tour-nav button{min-width:40px;min-height:44px;flex:0 0 auto}
  .gl-tour-layout-active .gl-tour-hint{font-size:12px;text-align:center}
  .gl-tour-layout-active .gl-tour-phone-frame{width:100%;max-width:100%;border-radius:28px;border-width:5px}
  .gl-tour-layout-active .gl-tour-phone-notch{height:13px}
- .gl-tour-layout-active .gl-tour-phone-screen{height:min(650px,72dvh);max-height:none;padding-top:14px}
+ .gl-tour-layout-active .gl-tour-phone-screen{height:min(80dvh,860px);min-height:min(560px,74dvh);max-height:none;padding-top:14px}
+ /* Encabezado completo y sin recortes en navegadores móviles con viewport ancho. */
+ .gl-tour-layout-active #gl-visitor-bar{box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+  margin:0;padding:10px 16px;gap:10px;justify-content:center;overflow-wrap:anywhere}
+ .gl-tour-layout-active #gl-visitor-bar .gl-visitor-sign{min-width:0;max-width:100%;flex:0 1 240px}
+ .gl-tour-layout-active #gl-visitor-bar .gl-visitor-controls{min-width:0;max-width:100%;flex:1 1 320px;justify-content:center}
+ .gl-tour-layout-active #gl-visitor-bar .gl-visitor-controls label{min-width:0}
+ .gl-tour-layout-active #gl-demo-consent{box-sizing:border-box;max-width:100%;min-width:0}
  .gl-tour-layout-active #gl-visitor-bar{flex-wrap:wrap}
 }
 @media(max-width:390px){
