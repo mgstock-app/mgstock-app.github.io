@@ -21,7 +21,8 @@ describe('GESTLOK: navegación blanca compartida y plegable sin alterar permisos
    cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
  });
  const revisarLocal=()=>{
-   cy.get('#app').should('be.visible');
+   cy.get('#app').should('be.visible').and('have.css','background-color','rgb(255, 255, 255)');
+   cy.get('#app .main').should('have.css','background-color','rgb(255, 255, 255)');
    cy.get('#side').should('have.css','background-color','rgb(255, 255, 255)');
    cy.get('.gl-sidebar-collapse-button').should('be.visible').click();
    cy.get('#app').should('have.class','gl-sidebar-collapsed');
