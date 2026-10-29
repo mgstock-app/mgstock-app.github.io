@@ -4,8 +4,6 @@
 (() => {
  'use strict';
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
- const USER='camilab.lopez99@gmail.com';
- const UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const MODULES=[
   ['tablero','Panel del dueño','Resumen de los registros cargados en el piloto.','general'],
   ['finanzas','Ingresos y egresos','Movimientos manuales de dinero, pendientes y saldos.','economia'],
@@ -33,13 +31,12 @@
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const attr=esc;
  const today=()=>new Date().toLocaleDateString('en-CA');
- let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false;
+ let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='';
  function eligible(context,host){
   return !!context && context.tenant_id===TENANT && context.role==='dueno'
-    && host?.role?.()==='dueno' && String(host?.S?.me?.email||'').toLowerCase()===USER
-    && host?.S?.me?.tenant_id===TENANT;
+    && host?.role?.()==='dueno' && host?.S?.me?.tenant_id===TENANT;
  }
- function reset(){enabled=false;verified=false;checking=false;api=null;close();}
+ function reset(){enabled=false;verified=false;checking=false;api=null;ownerUid='';close();}
  async function refresh(context,host){
   if(!eligible(context,host)){reset();return;}
   api=host;
@@ -49,7 +46,9 @@
    const {data,error:err}=await window.GestLokSupabase.from('gestlok_pilot_access')
     .select('enabled,owner_uid').eq('tenant_id',TENANT).maybeSingle();
    if(err)throw err;
-   enabled=data?.enabled===true&&data.owner_uid===UID;
+   const identity=await window.GestLokSupabase.auth.getUser();
+   enabled=!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
+   ownerUid=enabled?identity.data.user.id:'';
   }catch{enabled=false;}
   finally{
    checking=false;verified=true;
@@ -65,7 +64,7 @@
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
   const {data,error:err}=await window.GestLokSupabase.auth.getUser();
-  if(err||!data.user||data.user.id!==UID||String(data.user.email||'').toLowerCase()!==USER)throw Error('Iniciá sesión con la cuenta dueña autorizada.');
+  if(err||!data.user||!ownerUid||data.user.id!==ownerUid)throw Error('Iniciá sesión con la cuenta dueña autorizada.');
   return true;
  }
  async function load(){
