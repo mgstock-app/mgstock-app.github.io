@@ -138,3 +138,24 @@ html.gl-tour-layout-active body{overflow-x:clip}
 
 /* El encabezado interno no puede tapar tarjetas al desplazarse dentro del teléfono. */
 .gl-tour-layout-active #gl-tour-phone-screen #hub .gl-oh-top{position:relative!important;top:auto!important;z-index:1!important}
+
+/* Layout mobile-first del teléfono incluso cuando la demo se ve en PC.
+   Evita que dos carpetas angostas invadan el área clickeable de la otra. */
+.gl-tour-layout-active #gl-tour-phone-screen #hub .gl-owner-areas,
+.gl-tour-layout-active #gl-tour-phone-screen #view .gl-owner-areas{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;
+}
+.gl-tour-layout-active #gl-tour-phone-screen .gl-owner-area{
+ box-sizing:border-box!important;width:100%!important;min-width:0!important;
+ min-height:155px!important;padding:17px 15px!important;overflow:visible;
+}
+.gl-tour-layout-active #gl-tour-phone-screen .gl-owner-area-title{
+ display:flex;align-items:center;gap:10px;min-width:0;
+}
+.gl-tour-layout-active #gl-tour-phone-screen .gl-owner-area-title h2{
+ font-size:19px!important;line-height:1.2;overflow-wrap:anywhere;flex:1;min-width:0;
+}
+.gl-tour-layout-active #gl-tour-phone-screen .gl-owner-arrow{
+ flex:0 0 44px!important;min-height:44px;min-width:44px;
+ position:relative;z-index:3;
+}
