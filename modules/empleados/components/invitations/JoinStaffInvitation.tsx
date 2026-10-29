@@ -28,8 +28,8 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
     const ua = navigator.userAgent;
     const android = /Android/i.test(ua);
     const ios = /iPhone|iPad|iPod/i.test(ua);
-    const embedded = /; wv\\)|\\bwv\\b|WhatsApp|FBAN|FBAV|Instagram|Line\\//i.test(ua);
-    const isChrome = /Chrome\\/|CriOS\\//i.test(ua) && !embedded;
+    const embedded = ua.includes("; wv)") || ua.includes(" wv ") || /WhatsApp|FBAN|FBAV|Instagram|Line/i.test(ua);
+    const isChrome = (ua.includes("Chrome/") || ua.includes("CriOS/")) && !embedded;
     const href = new URL(window.location.href);
     href.searchParams.set("invitacion",token);
     href.searchParams.delete("codigo");
@@ -59,7 +59,7 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
       const { error } = await createClient().auth.signOut({ scope: "local" });
       if (error) throw error;
       // Conservar el vínculo individual para que el usuario elija su propia cuenta.
-      router.replace("/unirse/?invitacion=" + encodeURIComponent(token));
+      router.replace("/unirse/?invitacion=" + encodeURIComponent(token) + (cleanHint ? "&local=" + encodeURIComponent(cleanHint) : ""));
       router.refresh();
     } catch {
       setMessage("No se pudo cerrar esta sesión. Salí de GESTLOK y volvé a abrir la invitación con tu cuenta personal.");
