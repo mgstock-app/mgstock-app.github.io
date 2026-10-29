@@ -1,0 +1,21 @@
+{
+  "description": "Reviewed reversible menu visibility hooks only, preserving original stock fingerprints",
+  "hooks": [
+    {
+      "actual": "const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && !!window.GestLokCreatorHome?.dailyVisible?.() && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));\n",
+      "original": "const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670' && S.local === 'munro' && (miRol() === 'creadora' || (miRol() === 'gerente' && misLocales().includes('munro')));\n"
+    },
+    {
+      "actual": "  void window.GestLokCreatorHome?.refreshDaily?.();\n",
+      "original": ""
+    },
+    {
+      "actual": "    void window.GestLokCreatorHome?.refreshDaily?.(true);\n",
+      "original": ""
+    },
+    {
+      "actual": "window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub,renderLocal:render,toast});\n",
+      "original": "window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub});\n"
+    }
+  ]
+}
