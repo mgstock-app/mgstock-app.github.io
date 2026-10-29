@@ -13,6 +13,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     // Preserve the original stock fingerprint. Remove only precisely reviewed
     // additive hooks: changes to existing auth, screens or stock logic still fail.
     if (path === 'public/stock/app.js') {
+      // Ocultamiento visual Mi Gusto: normalizar sólo cuatro hooks controlados.
+      const diarioHooks=JSON.parse(read('tests/mi-gusto-diario-visibility-hooks.json')).hooks;
+      for(const {actual,original} of diarioHooks){
+        assert.equal(content.split(actual).length-1,1,'Un hook revisado de visibilidad');
+        content=content.replace(actual,original);
+      }
       // Revertir exclusivamente los hooks revisados del módulo Pagos Online.
       // El hash original de stock sigue siendo la autoridad; no se cambia la huella.
       const pagosHooks=JSON.parse(read('tests/mi-gusto-pagos-online-hooks.json')).hooks;
