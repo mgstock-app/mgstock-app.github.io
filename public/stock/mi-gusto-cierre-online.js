@@ -9,6 +9,8 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
 const shiftName=x=>x==='manana'?'Mañana':'Noche';
+const timeOf=x=>{const t=new Date(x);return x&&Number.isFinite(t.getTime())?
+ new Intl.DateTimeFormat('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}).format(t):'—';};
 const SCALE_KEY='gestlok:pagos-online:escala-v1';
 const clampScale=x=>Math.min(110,Math.max(85,Math.round(Number(x)/5)*5));
 let pageScale=null;
@@ -32,13 +34,13 @@ function changeScale(delta){
  if(minus)minus.disabled=pageScale<=85;
  if(plus)plus.disabled=pageScale>=110;
 }
-let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, photoUrls={}, photoError='', gen=0;
+let api=null, snapshot=null, tab='resumen', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, photoUrls={}, photoError='', saveNotice=false, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local())));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-function reset(){++gen;snapshot=null;tab='resumen';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;photoUrls={};photoError='';}
+function reset(){++gen;snapshot=null;tab='resumen';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;photoUrls={};photoError='';saveNotice=false;}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -86,31 +88,49 @@ function nav(){
  '<button type="button" data-mgon-tab="movimientos" aria-current="'+(tab==='movimientos'?'page':'false')+'">Carga de pedidos</button></nav>';
 }
 function movementList(){
- const rows=snapshot?.active?.movements||[];
- if(!rows.length)return '<p class="mg-on-empty">Todavía no hay comandas cargadas en este turno.</p>';
- return '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Forma de pago</th><th>Monto</th><th>APP</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>'+
- rows.map(r=>'<tr><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+esc(METHODS[r.method]||r.method)+'</td>'+
- '<td>'+cash(r.amount)+'</td><td><button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+'" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>'+(r.app?'APP':'—')+'</b></button></td>'+
- '<td class="mg-on-observation-cell">'+(r.observacion?'<span title="'+esc(r.observacion)+'">'+esc(r.observacion)+'</span>':'<small>—</small>')+'</td>'+
- '<td><div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
- '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div></td></tr>').join('')+
- '</tbody></table></div>';
+ const rows=[...(snapshot?.active?.movements||[])].reverse();
+ const heading='<header class="mg-on-recent-head"><div class="mg-on-recent-title"><span class="mg-on-recent-icon" aria-hidden="true">☷</span><h3>Últimos movimientos</h3></div>'+
+  '<span class="mg-on-recent-count">'+rows.length+' '+(rows.length===1?'comanda':'comandas')+'</span></header>';
+ const tags='<div class="mg-on-recent-tags" aria-label="Datos del turno"><span>'+date(snapshot?.active?.day)+'</span><span>Turno '+esc(shiftName(snapshot?.active?.turno))+'</span><span>'+esc(LOCALS[local()]||'')+'</span></div>';
+ if(!rows.length)return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+
+   '<p class="mg-on-empty">Todavía no hay comandas cargadas en este turno.</p></section>';
+ const method=r=>'<span class="mg-on-method"><span class="mg-on-method-mark mg-on-method-'+esc(r.method)+'" aria-hidden="true">'+
+  esc(({transferencia:'T',getnet:'G',mercado_pago:'MP'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
+ const appControl=r=>'<button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+
+   '" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>'+(r.app?'APP':'—')+'</b></button>';
+ const actions=r=>'<div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
+   '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div>';
+ const desktop='<div class="mg-on-recent-desktop"><div class="mg-on-tablewrap"><table><thead><tr>'+
+  '<th>Hora</th><th>Comanda</th><th>Monto</th><th>Forma de pago</th><th>APP</th><th>Acciones</th></tr></thead><tbody>'+
+  rows.map(r=>'<tr><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong>'+
+   (r.observacion?'<small class="mg-on-recent-note" title="'+esc(r.observacion)+'">'+esc(r.observacion)+'</small>':'')+'</td>'+
+   '<td><strong>'+cash(r.amount)+'</strong></td><td>'+method(r)+'</td><td>'+appControl(r)+'</td><td>'+actions(r)+'</td></tr>').join('')+
+  '</tbody></table></div></div>';
+ const mobile='<div class="mg-on-recent-mobile">'+rows.map(r=>'<article class="mg-on-recent-card">'+
+  '<div class="mg-on-recent-card-top"><div><small>'+timeOf(r.created_at)+' · Comanda #'+esc(r.comanda)+'</small>'+
+  '<strong>'+cash(r.amount)+'</strong></div>'+appControl(r)+'</div>'+
+  '<div class="mg-on-recent-card-method">'+method(r)+'</div>'+
+  (r.observacion?'<p class="mg-on-recent-card-note">'+esc(r.observacion)+'</p>':'')+actions(r)+'</article>').join('')+'</div>';
+ return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+desktop+mobile+'</section>';
 }
 function entry(){
  const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
- return '<form id="mg-online-form" class="mg-on-entry"><h3>'+(r?'Editar comanda':'Agregar movimiento')+'</h3>'+
+ return '<form id="mg-online-form" class="mg-on-entry"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
+  '<h3>'+(r?'Editar comanda':'Carga manual de pedidos')+'</h3></div>'+
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
  '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.amount||'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
  '<label class="mg-on-observation">Observaciones <small>(opcional · máximo 300 caracteres)</small>'+
  '<textarea name="observacion" maxlength="300" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label>'+
- '<div class="mg-on-actions"><button class="mg-on-primary" type="submit" '+(!writable()?'disabled':'')+'>'+(r?'Guardar cambios':'Guardar movimiento')+'</button>'+
+ '<div class="mg-on-actions mg-on-save-actions"><button class="mg-on-primary mg-on-save" type="submit" '+(!writable()?'disabled':'')+'>'+
+  '<span aria-hidden="true">✓</span> '+(r?'Guardar cambios':'Guardar movimiento')+'</button>'+
  (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
 }
 function movements(){
  return '<div class="mg-on-section"><header><h3>Carga manual de pedidos</h3><p>Cargá cada pedido individualmente con su comanda, monto, pago y switch APP.</p></header>'+
- entry()+movementList()+'</div>'+status()+
+ entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
+  movementList()+'</div>'+status()+
  '<div class="mg-on-close"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
  '<button type="button" data-mgon-close '+(!writable()?'disabled':'')+'>Cerrar turno →</button></div>';
 }
@@ -275,10 +295,10 @@ function view(){
 }
 async function action(name,args,notify){
  if(!writable())return;
- saving=true;error='';
+ saving=true;error='';saveNotice=false;
  try{const result=await rpc(name,args);editing=null;
   if(name==='gestlok_mg_online_close'&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
-  await rpcRefresh();if(notify)api.toast?.(notify);}
+  await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
  finally{saving=false;if(allowed()&&api?.S?.view==='cierre-online')api.render();}
 }
@@ -296,7 +316,7 @@ function attach(h){
   const jump=e.target.closest('[data-mgon-jump-history]');
   if(jump){document.querySelector('.mg-on-history-embedded')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   const tabButton=e.target.closest('[data-mgon-tab]');
-  if(tabButton){tab=tabButton.dataset.mgonTab;error='';api.render();return;}
+  if(tabButton){tab=tabButton.dataset.mgonTab;error='';saveNotice=false;api.render();return;}
   const cancel=e.target.closest('[data-mgon-cancel]');
   if(cancel){editing=null;api.render();return;}
   const clear=e.target.closest('[data-mgon-clear-filters]');
@@ -317,7 +337,7 @@ function attach(h){
   const detail=e.target.closest('[data-mgon-detail]');
   if(detail){opened=opened===detail.dataset.mgonDetail?null:detail.dataset.mgonDetail;api.render();return;}
   const edit=e.target.closest('[data-mgon-edit]');
-  if(edit){editing=edit.dataset.mgonEdit;api.render();document.querySelector('#mg-online-form input[name="comanda"]')?.focus();return;}
+  if(edit){editing=edit.dataset.mgonEdit;saveNotice=false;api.render();document.querySelector('#mg-online-form input[name="comanda"]')?.focus();return;}
   const remove=e.target.closest('[data-mgon-delete]');
   if(remove&&writable()&&window.confirm('¿Quitar esta comanda del turno abierto? El movimiento quedará en la auditoría.')){
     void action('gestlok_mg_online_delete',{p_shift:snapshot.active.id,p_id:remove.dataset.mgonDelete},'Movimiento eliminado.');return;}
