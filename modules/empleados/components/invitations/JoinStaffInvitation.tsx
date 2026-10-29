@@ -44,7 +44,7 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
       setEmbeddedBrowser(embedded);
     });
   },[token]);
-  const cleanHint = localHint.trim().replace(/[\\u0000-\\u001f\\u007f]/g,"").slice(0,80);
+  const cleanHint = localHint.trim().replace(/[\x00-\x1f\x7f]/g,"").slice(0,80);
   const displayLocal = localName || cleanHint;
   const copyInvite = async () => {
     try {
