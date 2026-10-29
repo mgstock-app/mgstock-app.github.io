@@ -113,26 +113,47 @@ html.gl-tour-layout-active body{overflow-x:clip}
 .gl-tour-layout-active #gl-tour-final .gl-tour-end h2{font-size:20px}
 .gl-tour-layout-active #gl-tour-final .gl-tour-end input,.gl-tour-layout-active #gl-tour-final .gl-tour-end textarea{font-size:16px}
 .gl-tour-layout-active #gl-tour-final .gl-tour-coupon strong{font-size:39px}
-@media(max-width:899px){
- .gl-tour-layout-active #gl-tour-layout{width:min(100% - 24px,540px);display:flex;flex-direction:column;gap:12px;margin:16px auto 32px}
- .gl-tour-layout-active #gl-tour-story{width:100%;padding:0}
- .gl-tour-layout-active #gl-tour-story h1{font-size:32px;margin:12px 0}
+/* Phone-first en viewport móvil y en navegadores Android que piden sitio de escritorio.
+   La experiencia real de escritorio (mouse/trackpad) conserva dos columnas. */
+@media (max-width:899px), (hover:none) and (pointer:coarse){
+ .gl-tour-layout-active #gl-tour-layout{
+  box-sizing:border-box;width:calc(100% - 24px);max-width:460px;
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  margin:16px auto 36px;min-width:0;
+ }
+ /* La pantalla interactiva aparece siempre antes de la explicación. */
+ .gl-tour-layout-active #gl-tour-phone{
+  order:0;box-sizing:border-box;width:100%;max-width:440px;
+  margin-inline:auto;justify-self:auto;min-width:0;
+ }
+ .gl-tour-layout-active #gl-tour-story{
+  order:1;box-sizing:border-box;width:100%;max-width:440px;
+  margin:0 auto;padding:0 2px;align-self:center;min-width:0;
+ }
+ .gl-tour-layout-active #gl-tour-story-content,
+ .gl-tour-layout-active #gl-tour-controls{max-width:100%;min-width:0;}
+ .gl-tour-layout-active #gl-tour-story h1{font-size:clamp(29px,7vw,35px);margin:12px 0}
  .gl-tour-layout-active #gl-tour-story h1 span{display:inline}
  .gl-tour-layout-active .gl-tour-story-rule{margin:15px 0;width:45px}
- .gl-tour-layout-active #gl-tour-story h2{font-size:25px;margin:8px 0}
- .gl-tour-layout-active .gl-tour-story-description{font-size:14px;line-height:1.55;margin:0}
+ .gl-tour-layout-active #gl-tour-story h2{font-size:clamp(24px,5.5vw,29px);margin:8px 0}
+ .gl-tour-layout-active .gl-tour-story-description{font-size:15px;line-height:1.55;margin:0}
  .gl-tour-layout-active .gl-tour-story-note{display:none}
  .gl-tour-layout-active .gl-tour-story-label{font-size:10px;margin:10px 0 0}
  .gl-tour-layout-active .gl-tour-story-kicker{font-size:10px;padding:6px 10px}
- .gl-tour-layout-active #gl-tour-controls{margin:11px 0 4px}
- .gl-tour-layout-active .gl-tour-nav{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:thin}
- .gl-tour-layout-active .gl-tour-nav button{min-width:41px;min-height:42px}
- .gl-tour-layout-active .gl-tour-hint{font-size:11px}
- .gl-tour-layout-active #gl-tour-phone{max-width:450px}
- .gl-tour-layout-active .gl-tour-phone-frame{border-radius:26px;border-width:5px}
+ .gl-tour-layout-active #gl-tour-controls{width:100%;margin:14px 0 4px}
+ .gl-tour-layout-active .gl-tour-nav{display:flex;flex-wrap:wrap;overflow:visible;justify-content:center;gap:7px}
+ .gl-tour-layout-active .gl-tour-nav button{min-width:40px;min-height:44px;flex:0 0 auto}
+ .gl-tour-layout-active .gl-tour-hint{font-size:12px;text-align:center}
+ .gl-tour-layout-active .gl-tour-phone-frame{width:100%;max-width:100%;border-radius:28px;border-width:5px}
  .gl-tour-layout-active .gl-tour-phone-notch{height:13px}
- .gl-tour-layout-active .gl-tour-phone-screen{height:min(650px,68dvh);max-height:none;padding-top:14px}
+ .gl-tour-layout-active .gl-tour-phone-screen{height:min(650px,72dvh);max-height:none;padding-top:14px}
  .gl-tour-layout-active #gl-visitor-bar{flex-wrap:wrap}
+}
+@media(max-width:390px){
+ .gl-tour-layout-active #gl-tour-layout{width:calc(100% - 18px);gap:15px}
+ .gl-tour-layout-active .gl-tour-nav{gap:5px}
+ .gl-tour-layout-active .gl-tour-nav button{min-width:36px;min-height:44px}
+ .gl-tour-layout-active .gl-tour-phone-frame{border-width:4px;border-radius:24px}
 }
 @media(prefers-reduced-motion:reduce){.gl-tour-layout-active *{scroll-behavior:auto!important;transition:none!important}}
 
