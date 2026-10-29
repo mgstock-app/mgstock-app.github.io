@@ -4,6 +4,7 @@
 if(new URLSearchParams(location.search).get('demo')!=='1')return;
 const style=document.createElement('link');style.rel='stylesheet';style.href=new URL('stock/gestlok-demo-tour.css',document.baseURI).href;document.head.append(style);
  const mobileStyle=document.createElement('link');mobileStyle.rel='stylesheet';mobileStyle.href=new URL('stock/gestlok-demo-mobile.css',document.baseURI).href;document.head.append(mobileStyle);
+const pagosStyle=document.createElement('link');pagosStyle.rel='stylesheet';pagosStyle.href=new URL('stock/gestlok-demo-pagos.css?rev=pagos-online-20261029',document.baseURI).href;document.head.append(pagosStyle);
 const showcaseStyle=document.createElement('link');showcaseStyle.rel='stylesheet';showcaseStyle.href=new URL('stock/gestlok-demo-showcase.css?rev=explorar-atajos-20261029',document.baseURI).href;document.head.append(showcaseStyle);
 const stages=[
  {name:'Inicio',title:'Un negocio, todo en orden',desc:'Explorá el inicio actualizado de GESTLOK. Abrí las tarjetas de administración y conocé los accesos del dueño o gerente.',hint:'Tocá una tarjeta y recorré el inicio.'},
@@ -14,6 +15,7 @@ const stages=[
  {name:'Stock',title:'Conocé tus existencias',desc:'Llevá un conteo por producto, fijá mínimos y detectá faltantes. Esta etapa simula el nuevo control de stock.',hint:'Sumá o restá unidades de los artículos ficticios.'},
  {name:'Pedidos',title:'Registrá pedidos del día',desc:'Armá un pedido y cambialo de pendiente a preparado o entregado. Descubrí qué productos se mueven más.',hint:'Guardá un pedido ficticio y avanzá su estado.'},
  {name:'Vencimientos',title:'Anticipate a los vencimientos',desc:'Revisá fechas próximas y tareas de mantenimiento desde la aplicación. Probá los registros de ejemplo.',hint:'Entrá a Vencimientos y explorá las fechas de ejemplo.'},
+ {name:'Pagos Online',title:'Cada pago, organizado por turno',desc:'Registrá comandas, activá APP y agregá manualmente los medios de pago que usa cada negocio. Cerrá Mañana o Noche y abrí el reporte del Día Completo. Todo es ficticio.',hint:'Probá un pedido, agregá una forma de pago y cerrá un turno.'},
  {name:'Final',title:'¿Qué te pareció GESTLOK?',desc:'Terminaste el recorrido. Tu reseña es bienvenida y podés dejar un contacto opcional. El cupón aparece únicamente después de enviar la reseña.',hint:'Calificá la demo o volvé a explorar sus etapas.'}
 ];
 const names=stages.map(s=>s.name),last=stages.length-1;
@@ -100,7 +102,7 @@ function paint(){
  const narrative=document.getElementById('gl-tour-story-content');
  if(narrative)narrative.innerHTML=story();
  const fake=document.getElementById('gl-tour-sandbox');
- if(fake){fake.hidden=![4,5,6].includes(step);if(!fake.hidden)fake.innerHTML=sandbox();}
+ if(fake){fake.hidden=![4,5,6,8].includes(step);if(!fake.hidden)fake.innerHTML=step===8?window.GestLokDemoPagos?.view()||'':sandbox();}
  const end=document.getElementById('gl-tour-final');
  if(step===last&&end){
   end.innerHTML=feedback();
@@ -115,7 +117,7 @@ async function move(n){
  window.GestLokDemoHorarios?.close();
  document.getElementById('gl-tour-final').hidden=step!==last;
  document.documentElement.classList.toggle('gl-tour-finished',step===last);
- document.documentElement.classList.toggle('gl-tour-sandbox-active',[4,5,6].includes(step));
+ document.documentElement.classList.toggle('gl-tour-sandbox-active',[4,5,6,8].includes(step));
  paint();
  if(step===0)document.querySelector('#snav [data-act="locales"]')?.click();
  if([1,2,7].includes(step)){
@@ -145,7 +147,8 @@ function init(){
   {step:5,title:'Stock',detail:'Cantidades y mínimos',symbol:'▤'},
   {step:6,title:'Pedidos',detail:'Estados y preparación',symbol:'📦'},
   {step:7,title:'Vencimientos',detail:'Fechas y alertas',symbol:'◷'},
-  {step:8,title:'Tu opinión',detail:'Reseña al finalizar',symbol:'★'}
+  {step:8,title:'Pagos Online',detail:'Turnos y reportes',symbol:'💳'},
+  {step:9,title:'Tu opinión',detail:'Reseña al finalizar',symbol:'★'}
  ];
  discover.innerHTML='<div class="gl-tour-discover-heading"><span>SEGUÍ EXPLORANDO</span><h2>Probá otras herramientas</h2><p>Elegí una función para ir directamente a su etapa. Todo es ficticio.</p></div>'+
   '<div class="gl-tour-discover-grid">'+shortcuts.map(item=>
@@ -207,6 +210,7 @@ document.addEventListener('input',e=>{
  f.querySelector('[data-practice-profit]').textContent=money(sale-cost);
 });
 document.addEventListener('click',e=>{
+ if(step===8&&window.GestLokDemoPagos?.handleClick(e)){paint();return;}
  const adjust=e.target.closest?.('[data-practice-adjust]');
  if(adjust){
   const [id,delta]=adjust.dataset.practiceAdjust.split(':').map(Number);
@@ -221,6 +225,7 @@ document.addEventListener('click',e=>{
  }
 });
 document.addEventListener('submit',e=>{
+ if(step===8&&window.GestLokDemoPagos?.handleSubmit(e)){paint();return;}
  if(e.target.id==='gl-tour-price-form'){
   e.preventDefault();const f=e.target;
   const p=practice.items.find(x=>x.id===Number(f.elements.product.value));
