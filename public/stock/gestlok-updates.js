@@ -47,7 +47,7 @@
     const counts = {valid:0,soon:0,today:0,expired:0};
     active.forEach(i => {const s = stateOf(i.fechaVencimiento).cls;if (counts[s] != null) counts[s]++;});
     const fields = editing !== null ? (
-      '<form class="gl-exp-form card pad" id="gl-exp-form">' +
+      '<form class="gl-exp-form card pad" id="gl-exp-form" data-draft-key="' + esc(editing === '' ? 'nuevo' : editing) + '">' +
        '<div class="gl-exp-form-title"><h2>' + (editingItem ? 'Actualizar servicio' : 'Agregar servicio') + '</h2><button type="button" class="btn sm" data-up-action="cancel">Cancelar</button></div>' +
        '<div class="gl-exp-form-grid"><div class="fld"><label for="gl-exp-name">Servicio o control</label><input required maxlength="100" id="gl-exp-name" placeholder="Ej.: Fumigación" value="' + esc(editingItem?.nombre || '') + '"></div>' +
        '<div class="fld"><label for="gl-exp-done">Fecha de realización</label><input required type="date" id="gl-exp-done" value="' + esc(editingItem?.fechaRealizacion || todayISO()) + '"></div>' +

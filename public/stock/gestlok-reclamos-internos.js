@@ -66,7 +66,7 @@
   return '<div class="ri-overlay"><section class="ri-dialog" role="dialog" aria-modal="true" aria-labelledby="ri-dialog-title">'+
     '<header><div><small>'+E(original?.code||'RECLAMO INTERNO')+'</small><h3 id="ri-dialog-title">'+(isUsed?'Cupón utilizado':!original?'Nuevo cupón':editing?'Editar reclamo':'Detalle del cupón')+'</h3></div>'+
     '<button type="button" data-ri="close" aria-label="Cerrar" '+(busy?'disabled':'')+'>×</button></header>'+
-    '<form id="ri-form">'+
+    '<form id="ri-form" data-draft-key="'+E(modal?.id||'nuevo')+'">'+
     '<div class="ri-fields"><label>Nombre del cliente<input name="name" required maxlength="100" value="'+E(value('customer_name'))+'" '+read+'></label>'+
     '<label>Teléfono del cliente<input type="tel" name="phone" required maxlength="25" value="'+E(value('phone'))+'" '+read+'></label>'+
     '<label>Descuento (%)<input type="text" inputmode="decimal" name="discount" required value="'+E(value('discount_percent'))+'" placeholder="Ej. 15" '+read+'></label>'+
