@@ -1,0 +1,53 @@
+{
+  "description": "Reclamos Internos: hooks estrictamente aditivos para conservar SHA original de app.js",
+  "hooks": [
+    {
+      "actual": "const puedeVerPagosOnline = () => !!window.GestLokMiGustoOnline?.permitido();\nconst puedeVerReclamos = () => !!window.GestLokReclamosInternos?.permitido();\n",
+      "original": "const puedeVerPagosOnline = () => !!window.GestLokMiGustoOnline?.permitido();\n"
+    },
+    {
+      "actual": "  if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokResenas.view() : V.inicio();\n  if (S.view === 'reclamos-internos') return puedeVerReclamos() ? window.GestLokReclamosInternos.view() : V.inicio();\n",
+      "original": "  if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokResenas.view() : V.inicio();\n"
+    },
+    {
+      "actual": "  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'reclamos-internos' ? 'Reclamos Internos' : S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);\n",
+      "original": "  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);\n"
+    },
+    {
+      "actual": "  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden=\"true\">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class=\"cm\">${ln} <span aria-hidden=\"true\">/</span></span> <b>${S.view === 'resenas' || S.view === 'reclamos-internos' || S.view === 'cierre-online' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;\n",
+      "original": "  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden=\"true\">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class=\"cm\">${ln} <span aria-hidden=\"true\">/</span></span> <b>${S.view === 'resenas' || S.view === 'cierre-online' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;\n"
+    },
+    {
+      "actual": "  $('#savebar').hidden = S.view === 'inicio' || ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'reclamos-internos' || S.view === 'cierre-online' || S.view === 'vencimientos' || S.view === 'avisos';\n",
+      "original": "  $('#savebar').hidden = S.view === 'inicio' || ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'cierre-online' || S.view === 'vencimientos' || S.view === 'avisos';\n"
+    },
+    {
+      "actual": "  const ok = (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'resenas' && puedeVerResenas()) || (v === 'reclamos-internos' && puedeVerReclamos()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));\n",
+      "original": "  const ok = (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'resenas' && puedeVerResenas()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));\n"
+    },
+    {
+      "actual": "    (puedeVerResenas() ? `<button data-go=\"resenas\">${ic('clip')}<span class=\"nl\">Reseñas</span></button>` : '') +\n    (puedeVerReclamos() ? `<button data-go=\"reclamos-internos\">${ic('clip')}<span class=\"nl\">Reclamos Internos</span></button>` : '') +\n",
+      "original": "    (puedeVerResenas() ? `<button data-go=\"resenas\">${ic('clip')}<span class=\"nl\">Reseñas</span></button>` : '') +\n"
+    },
+    {
+      "actual": "  if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline() && !puedeVerReclamos()) return items;\n",
+      "original": "  if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline()) return items;\n"
+    },
+    {
+      "actual": "  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'reclamos-internos' || S.view === 'diario' || S.view === 'motos' || S.view === 'cierre-online';\n",
+      "original": "  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'diario' || S.view === 'motos' || S.view === 'cierre-online';\n"
+    },
+    {
+      "actual": "  window.GestLokResenas?.subscribe(loc,push);\n  window.GestLokReclamosInternos?.subscribe(loc,push);\n",
+      "original": "  window.GestLokResenas?.subscribe(loc,push);\n"
+    },
+    {
+      "actual": "    window.GestLokResenas?.reset();\n    window.GestLokReclamosInternos?.reset();\n",
+      "original": "    window.GestLokResenas?.reset();\n"
+    },
+    {
+      "actual": "window.GestLokResenas?.attach({S,render,miRol,misLocales});\nwindow.GestLokReclamosInternos?.attach({S,render,miRol,misLocales});\n",
+      "original": "window.GestLokResenas?.attach({S,render,miRol,misLocales});\n"
+    }
+  ]
+}

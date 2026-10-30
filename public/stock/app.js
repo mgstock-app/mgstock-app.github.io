@@ -202,6 +202,7 @@ const puedeVerDiarioMunro = () => S.me?.tenant_id === 'cb0dc04a-9a13-434f-a3d0-4
 /* Reseñas: Mi Gusto, Munro y Torcuato con datos propios. Motos Agencia: solo Munro. */
 const puedeVerResenas = () => !!window.GestLokResenas?.permitido();
 const puedeVerPagosOnline = () => !!window.GestLokMiGustoOnline?.permitido();
+const puedeVerReclamos = () => !!window.GestLokReclamosInternos?.permitido();
 const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
@@ -363,6 +364,7 @@ function viewHTML(){
   if (S.view === 'tienda-online') return window.GestLokCommerce?.online() ? window.GestLokTienda?.view() : V.inicio();
   if (S.view === 'diario') return puedeVerDiarioMunro() ? window.GestLokMunroDaily.view() : V.inicio();
   if (S.view === 'resenas') return puedeVerResenas() ? window.GestLokResenas.view() : V.inicio();
+  if (S.view === 'reclamos-internos') return puedeVerReclamos() ? window.GestLokReclamosInternos.view() : V.inicio();
   if (S.view === 'cierre-online') return puedeVerPagosOnline() ? window.GestLokMiGustoOnline.view() : V.inicio();
   if (S.view === 'motos') return puedeVerMotos() ? window.GestLokMunroMotos.view() : V.inicio();
   if (S.view === 'vencimientos') return window.GestLokUpdates.viewDue();
@@ -380,9 +382,9 @@ function renderChrome(){
   const ln = esc(localNombre());
   $('#brand-local').textContent = localNombre();
   const ing = S.view === 'ingreso', chat = S.view === 'chat';
-  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
-  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>${S.view === 'resenas' || S.view === 'cierre-online' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;
-  $('#savebar').hidden = S.view === 'inicio' || ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'cierre-online' || S.view === 'vencimientos' || S.view === 'avisos';
+  $('#ttl').textContent = S.view === 'inicio' ? 'Panel del local' : chat ? 'Chat del local' : S.view === 'proveedores' ? 'Proveedores' : S.view === 'pedidos-online' ? 'Pedidos online' : S.view === 'tienda-online' ? 'Mi tienda' : S.view === 'diario' ? 'Conteo diario' : S.view === 'resenas' ? 'Reseñas' : S.view === 'reclamos-internos' ? 'Reclamos Internos' : S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'motos' ? 'Motos Agencia' : S.view === 'vencimientos' ? 'Vencimientos' : S.view === 'avisos' ? 'Avisos' : ing ? 'Ingreso de mercadería' : nombreHoja(S.view);
+  $('#crumb').innerHTML = S.view === 'inicio' ? `${ln} <span aria-hidden="true">/</span> <b>Inicio</b>` : ing ? `<b>Dueña</b>` : `<span class="cm">${ln} <span aria-hidden="true">/</span></span> <b>${S.view === 'resenas' || S.view === 'reclamos-internos' || S.view === 'cierre-online' || S.view === 'motos' || S.view === 'diario' ? 'Administración de local' : 'Hojas'}</b>`;
+  $('#savebar').hidden = S.view === 'inicio' || ing || chat || S.view === 'proveedores' || S.view === 'pedidos-online' || S.view === 'tienda-online' || S.view === 'diario' || S.view === 'motos' || S.view === 'resenas' || S.view === 'reclamos-internos' || S.view === 'cierre-online' || S.view === 'vencimientos' || S.view === 'avisos';
   // «Regresar» siempre visible en la barra superior (también en el celular, sin abrir el menú).
   if (!$('#btn-regresar')){ const b = document.createElement('button'); b.id = 'btn-regresar'; b.type = 'button'; b.className = 'btn back-hub'; b.dataset.act = 'locales'; b.setAttribute('aria-label', 'Regresar al inicio'); b.innerHTML = ic('back') + '<span>Regresar</span>'; $('.top-in')?.prepend(b); }
   renderCompanyIdentity(); renderLive(); window.GestLokCommerce?.renderOwnerBadge(); renderSavebar(); renderMe();
@@ -3416,7 +3418,7 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
-  const ok = (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'resenas' && puedeVerResenas()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
+  const ok = (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'resenas' && puedeVerResenas()) || (v === 'reclamos-internos' && puedeVerReclamos()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   if(v === 'inicio') S.creatorBusiness=false;
@@ -3762,9 +3764,10 @@ function navAdmLocal(){
   const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
     (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>` : '') +
     (puedeVerResenas() ? `<button data-go="resenas">${ic('clip')}<span class="nl">Reseñas</span></button>` : '') +
+    (puedeVerReclamos() ? `<button data-go="reclamos-internos">${ic('clip')}<span class="nl">Reclamos Internos</span></button>` : '') +
     (puedeVerPagosOnline() ? `<button data-go="cierre-online">${ic('clip')}<span class="nl">Pagos Online</span></button>` : '');
-  if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline()) return items;
-  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'diario' || S.view === 'motos' || S.view === 'cierre-online';
+  if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline() && !puedeVerReclamos()) return items;
+  const open = S.admLocalOpen !== false || S.view === 'resenas' || S.view === 'reclamos-internos' || S.view === 'diario' || S.view === 'motos' || S.view === 'cierre-online';
   return `<details class="snav-folder"${open ? ' open' : ''}><summary>${ic('gear')}<span class="nl">Administración de local</span>${ic('chev')}</summary><div class="snav-sub">${items}</div></details>`;
 }
 document.addEventListener('toggle', e => { if (e.target.matches?.('.snav-folder')) S.admLocalOpen = e.target.open; }, true);
@@ -3781,6 +3784,7 @@ function subscribeLocal(){
   }
   window.GestLokMunroMotos?.subscribe(loc,push);
   window.GestLokResenas?.subscribe(loc,push);
+  window.GestLokReclamosInternos?.subscribe(loc,push);
   window.GestLokMiGustoOnline?.subscribe(loc,push);
   push(C('vencimientos').onSnapshot(mine(snap => {
     S.vencimientos = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -3860,6 +3864,7 @@ function abrirLocal(id){
     window.GestLokMunroDaily?.reset();
     window.GestLokMunroMotos?.reset();
     window.GestLokResenas?.reset();
+    window.GestLokReclamosInternos?.reset();
     window.GestLokMiGustoOnline?.reset();
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
@@ -3931,6 +3936,7 @@ window.GestLokPush?.attach({S,render,miRol:()=>miRol()});
 window.GestLokMunroDaily?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales,hoyISO});
 window.GestLokMunroMotos?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales});
 window.GestLokResenas?.attach({S,render,miRol,misLocales});
+window.GestLokReclamosInternos?.attach({S,render,miRol,misLocales});
 window.GestLokMiGustoOnline?.attach({S,render,miRol,misLocales,toast});
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
