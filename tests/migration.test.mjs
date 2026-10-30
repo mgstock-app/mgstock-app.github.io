@@ -13,6 +13,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     // Preserve the original stock fingerprint. Remove only precisely reviewed
     // additive hooks: changes to existing auth, screens or stock logic still fail.
     if (path === 'public/stock/app.js') {
+      // Normalizar únicamente el render de formulario revisado, sin cambiar SHA base.
+      const formHooks=JSON.parse(read('tests/gestlok-form-draft-hooks.json')).hooks;
+      for(const {actual,original} of formHooks){
+        assert.equal(content.split(actual).length-1,1,'Un hook de formulario controlado');
+        content=content.replace(actual,original);
+      }
       // Únicamente los hooks aditivos de Reclamos Internos: restaurar la fuente base antes de validar SHA.
       const reclamosHooks=JSON.parse(read('tests/gestlok-reclamos-hooks.json')).hooks;
       for(const {actual,original} of reclamosHooks){
