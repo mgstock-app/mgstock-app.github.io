@@ -8,7 +8,7 @@ import { isGestlokGerente } from "@/utils/permissions";
 const home = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
 export function GestlokModuleBar() {
   const company = useGestlokCompany();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const pathname = usePathname();
   // La portada de gerentes ya tiene su cabecera propia; evitar barras superpuestas.
   if (pathname === "/" && (user?.role === "employee" || user?.role === "manager" || isGestlokGerente(user))) return null;
@@ -25,7 +25,7 @@ export function GestlokModuleBar() {
               <small>Empanadas de Verdad</small>
             </div>
           : company ? <b>{company.company_name}</b> : null}
-        <a className="gestlok-module-back" href={home}>← Volver a GESTLOK</a>
+        <a className="gestlok-module-back" href={home}>← Volver a GESTLOK</a><button type="button" className="gestlok-module-back" onClick={()=>void signOut()}>Cerrar sesión</button>
       </div>
     </header>
   );

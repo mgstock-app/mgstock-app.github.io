@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardList, FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
 import { ManagerPersonalReceipt } from "@/components/reports/ManagerPersonalReceipt";
@@ -11,7 +11,7 @@ import "./gerente-home.css";
 import "./gerente-visual-fix.css";
 
 export function GerenteHome() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   useEffect(()=>{
@@ -51,14 +51,14 @@ export function GerenteHome() {
         <button type="button" title="Sector de Google" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Sector de Google</span></button>
         <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>{setSection("recibo");setMenuOpen(false)}}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
       </nav>
-      <p className="gl-gerente__security"><ShieldCheck size={16}/> Solo colaboradores de tus locales autorizados.</p>
+      <div className="gl-gerente__module-actions"><a href={home}><ArrowLeft size={18}/> Volver a GESTLOK</a><button type="button" onClick={()=>void signOut()}><LogOut size={18}/> Cerrar sesión</button></div><p className="gl-gerente__security"><ShieldCheck size={16}/> Solo colaboradores de tus locales autorizados.</p>
     </aside>
     {menuOpen&&<button type="button" className="gl-gerente__scrim" aria-label="Cerrar menú" onClick={()=>setMenuOpen(false)}/>}
     <main className="gl-gerente__main">
       <header className="gl-gerente__header">
         <button type="button" className="gl-gerente__menu" aria-label={menuOpen?"Cerrar menú":"Abrir menú"} onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X size={22}/>:<Menu size={22}/>}</button>
         <div className="gl-gerente__header-brand" aria-label="GESTLOK"><strong><span className="gl-gerente__header-gest">GEST</span><span className="gl-gerente__header-lok">LOK</span></strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div>
-        <span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
+        <a className="gl-gerente__back-home" href={home}><ArrowLeft size={17}/> Volver a GESTLOK</a><span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
       </header>
       <div className="gl-gerente__content">
         {section==="legajos" ? <ManagerLegajos/> : section==="recibo" ?

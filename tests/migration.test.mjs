@@ -13,6 +13,11 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     // Preserve the original stock fingerprint. Remove only precisely reviewed
     // additive hooks: changes to existing auth, screens or stock logic still fail.
     if (path === 'public/stock/app.js') {
+      const navigationHooks=JSON.parse(read('tests/gestlok-navigation-hooks.json')).hooks;
+      for(const {actual,original} of navigationHooks){
+        assert.equal(content.split(actual).length-1,1,'Único hook controlado para menú');
+        content=content.replace(actual,original);
+      }
       // Normalizar únicamente el render de formulario revisado, sin cambiar SHA base.
       const formHooks=JSON.parse(read('tests/gestlok-form-draft-hooks.json')).hooks;
       for(const {actual,original} of formHooks){

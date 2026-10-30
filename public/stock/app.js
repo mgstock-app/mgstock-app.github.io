@@ -3968,6 +3968,7 @@ window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});
+window.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCreadora()});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub,renderLocal:render,toast});

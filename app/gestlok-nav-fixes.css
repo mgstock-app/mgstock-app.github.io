@@ -1,0 +1,26 @@
+/* Menú global GESTLOK; el encabezado Hojas se oculta, no se borran hojas. */
+#snav .gl-nav-shortcut{font-weight:600}
+#snav #gl-edit-menu{font-weight:750;min-height:43px;margin:10px 8px;border:1px dashed #a9bccd;border-radius:11px;background:#f2f7fc;color:#20486b}
+#side .side-f #gl-nav-logout{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px solid #ccd8e3;border-radius:11px;background:#fff;color:#1c4362;font-weight:750;font-size:14px;width:100%;cursor:pointer}
+#side .side-f #gl-nav-logout:hover{background:#e9f3fc}
+.gl-nav-modal{position:fixed;inset:0;z-index:10050;background:#081c31a8;display:grid;place-items:center;padding:12px}
+.gl-nav-dialog{background:#fff;border:1px solid #dae4ee;border-radius:18px;color:#153d5d;max-height:calc(100dvh - 24px);overflow-y:auto;width:min(100%,570px);padding:clamp(17px,3vw,25px);box-shadow:0 22px 65px #06192c40;display:grid;gap:15px}
+.gl-nav-dialog header{display:flex;align-items:center;justify-content:space-between}
+.gl-nav-dialog header h2{font-size:21px;margin:0;font-weight:820}
+.gl-nav-dialog header button{border:0;background:transparent;font-size:23px}
+.gl-nav-dialog p{font-size:13px;line-height:1.5;margin:0;color:#627e92}
+#gl-nav-rows{display:grid;gap:9px}
+.gl-nav-item{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px auto;gap:7px;align-items:center}
+.gl-nav-item input,.gl-nav-add input,.gl-nav-add select{width:100%;min-width:0;min-height:44px;padding:9px 11px;font-size:15px;color:#214766;border:1px solid #cad8e6;border-radius:9px;background:#fff}
+.gl-nav-item button,.gl-nav-add button,.gl-nav-dialog footer button{border:1px solid #d0deeb;border-radius:9px;background:#f5f9fd;color:#194162;min-height:43px;padding:6px 10px;font-size:13px;cursor:pointer}
+.gl-nav-item button:disabled{opacity:.4;cursor:default}
+.gl-nav-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.7fr) auto;gap:7px}
+.gl-nav-dialog footer{display:flex;justify-content:flex-end;gap:9px}
+.gl-nav-dialog footer .gl-nav-save{background:#153f6d;color:#fff;border-color:#153f6d;font-weight:750}
+.gl-nav-dialog #gl-nav-err{color:#a32020;min-height:1em}
+.gl-nav-dialog button:focus-visible,.gl-nav-dialog input:focus-visible,.gl-nav-dialog select:focus-visible{outline:3px solid #7fb8f3;outline-offset:2px}
+.gl-gerente__back-home{display:inline-flex;align-items:center;gap:7px;text-decoration:none;border:1px solid #cbdde9;padding:8px 12px;border-radius:9px;background:#fff;color:#1a4a70;font-size:13px;font-weight:750}
+.gl-gerente__module-actions{display:grid;gap:8px;padding:12px}
+.gl-gerente__module-actions a,.gl-gerente__module-actions button{display:flex;align-items:center;gap:9px;background:#fff;color:#214b6b;border:1px solid #d2e1ed;border-radius:10px;text-decoration:none;font-size:13px;padding:11px;cursor:pointer}
+.module-profile-signout{display:flex;align-items:center;justify-content:center;gap:9px;min-height:43px;margin-top:9px;border:1px solid #cedde9;border-radius:10px;background:#fff;color:#1b4569;font-weight:750;cursor:pointer}
+@media(max-width:720px){.gl-nav-add{grid-template-columns:1fr}.gl-gerente__back-home{font-size:12px;padding:7px}.gl-nav-dialog{padding:14px}}
