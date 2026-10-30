@@ -15,15 +15,16 @@ function client(role='gerente',local='munro',tenant=TENANT,locals=[local]){
  mod.attach({S:{me:{tenant_id:tenant},local,offline:false,view:'cierre-online'},miRol:()=>role,misLocales:()=>locals,render:()=>{}});
  return mod;
 }
-test('Pagos Online: exclusivamente Mi Gusto, dueño y gerente autorizado',()=>{
- for(const loc of ['munro','torcuato'])for(const role of ['dueno','gerente']){
+test('Pagos Online: exclusivamente Mi Gusto, dueño, gerente y administración autorizados',()=>{
+ for(const loc of ['munro','torcuato'])for(const role of ['dueno','gerente','creadora']){
   const m=client(role,loc);assert(m.permitido());
   const html=m.view();assert.match(html,/Pagos Online/);
   assert.match(html,/data-mgon-tab="movimientos" aria-current="page">Cargar pedidos/);
   assert.match(html,/data-mgon-tab="resumen" aria-current="false">Resumen/);
   assert.match(html,/data-mgon-tab="historial" aria-current="false">Historial/);
  }
- for(const role of ['creadora','colaborador','lectura','editor',null])assert(!client(role).permitido());
+ for(const role of ['colaborador','lectura','editor',null])assert(!client(role).permitido());
+ assert(!client('creadora','munro',TENANT,[]).permitido());
  assert(!client('gerente','munro',TENANT,['torcuato']).permitido());
  assert(!client('gerente','torcuato',TENANT,['munro']).permitido());
  assert(!client('dueno','munro','aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa').permitido());
