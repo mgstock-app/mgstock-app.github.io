@@ -141,6 +141,7 @@ function entry(){
  (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
 }
 function movements(){
+ const s=snapshot?.active;
  return '<div class="mg-on-section">'+entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
   movementList()+'</div>'+status()+
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
