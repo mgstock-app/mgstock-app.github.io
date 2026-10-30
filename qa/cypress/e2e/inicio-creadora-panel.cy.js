@@ -17,7 +17,7 @@ describe('Inicio de la creadora · panel con resumen de la plataforma',()=>{
   cy.get('.gl-ch-chart').should('be.visible');
   cy.get('.gl-ch-nav button').should('have.length',7);
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
-  cy.get('.gl-ch [data-au="out"]').should('be.visible');
+  cy.get('.gl-ch .gl-ch-logout').should('be.visible').and('contain.text','Cerrar sesión');
  });
  it('las pestañas conservan todas las funciones anteriores (solo lectura de otras empresas incluida)',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
@@ -35,6 +35,14 @@ describe('Inicio de la creadora · panel con resumen de la plataforma',()=>{
  it('en celular el menú queda arriba y el contenido sin desbordes',()=>{
   cy.viewport(390,844);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch-nav',{timeout:12000}).should('be.visible');
+  cy.get('.gl-ch-side .gl-ch-logout').should('be.visible').and('contain.text','Cerrar sesión')
+   .and('have.attr','data-au','out');
+  cy.get('.gl-ch-main h1').should('be.visible');
+  cy.get('.gl-ch').then($root=>{
+   const r=$root[0].getBoundingClientRect();
+   expect(r.left).to.be.at.least(0);
+   expect(r.width).to.be.at.most(391);
+  });
   cy.document().then(d=>{expect(d.documentElement.scrollWidth).to.be.at.most(392);});
  });
  it('si el servidor no autoriza el resumen se ve el panel administrativo anterior',()=>{
