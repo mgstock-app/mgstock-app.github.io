@@ -26,7 +26,8 @@ function setup({role='gerente',tenant='tenant-a',local='munro',assigned=['munro'
  return {mod,win,S,listeners,renders:()=>renders};
 }
 test('Categoría global abajo de Reseñas, accesible desde los locales actuales y futuros',()=>{
- assert.match(app,/function navAdmLocal\(\)[\s\S]*data-go="resenas"[\s\S]*data-go="reclamos-internos"/);\n assert.match(app,/pagosDiarios \? `<button data-go="cierre-online"/);
+ assert.match(app,/function navAdmLocal\(\)[\s\S]*data-go="resenas"[\s\S]*data-go="reclamos-internos"/);
+ assert.match(app,/pagosDiarios \? `<button data-go="cierre-online"/);
  assert.match(app,/'reclamos-internos' && puedeVerReclamos/);
  assert.match(app,/window\.GestLokReclamosInternos\?\.subscribe\(loc,push\)/);
  assert.match(app,/window\.GestLokReclamosInternos\?\.reset\(\)/);
