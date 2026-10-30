@@ -17,7 +17,9 @@
    return hostKey(host(el))+'|'+identity+(el.type==='radio'?'|radio:'+el.value:'');
  };
  const baseline=el=>(el.type==='checkbox'||el.type==='radio')?
-   String(Boolean(el.defaultChecked)):String(el.defaultValue??'');
+   String(Boolean(el.defaultChecked)):
+   (el.tagName==='SELECT' ? String(Array.from(el.options||[]).find(x=>x.defaultSelected)?.value??el.options?.[0]?.value??'') :
+    String(el.defaultValue??''));
  function capture(root,context,active){
    if(!root||!context)return null;
    const items=new Map(),occurrences=new Map();
@@ -28,7 +30,7 @@
     const index=occurrences.get(key)||0;occurrences.set(key,index+1);
     const uid=key+'|'+index,base=baseline(el);
     const checked=el.type==='checkbox'||el.type==='radio';
-    const changed=checked?el.checked!==el.defaultChecked:el.value!==el.defaultValue;
+    const changed=checked?el.checked!==el.defaultChecked:String(el.value)!==base;
     if(changed)items.set(uid,{type:el.type,base,value:el.value,checked:el.checked});
     if(active===el){
       let start=null,end=null;
