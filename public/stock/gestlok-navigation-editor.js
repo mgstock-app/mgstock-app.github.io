@@ -12,7 +12,7 @@ let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick
 const ctx=()=>window.GestLokNavContext?.()||null;
 const idOf=el=>el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'';
 const nameOf=el=>el.querySelector?.('.nl')?.textContent?.trim()||el.textContent?.trim()||'';
-const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')&&!el.hasAttribute('data-daily-shortcut')).map(el=>[idOf(el),el]).filter(([id])=>permitted.includes(id)));
+const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')&&!el.hasAttribute('data-daily-shortcut')).map(el=>[(/^(stock local|stock)$/i.test(nameOf(el))?'stock':idOf(el)),el]).filter(([id])=>permitted.includes(id)));
 const trim=s=>String(s||'').trim().replace(/\s+/g,' ').slice(0,45);
 function baseline(){
  const known=nodes(),ids=[...new Set([...preferred,...known.keys()])].filter(id=>known.has(id));
@@ -42,6 +42,13 @@ function draw(){
  nav.querySelector('.snav-l')?.remove();
  // Las hojas siguen accesibles: se elimina solo el título, jamás su botón de alta.
  const known=nodes(),order=shown(),back=nav.querySelector('[data-act="locales"]');
+ // Stock Local es una hoja real: mantener su data-go y reemplazar solo el ícono.
+ const stock=known.get('stock');
+ if(stock){
+  const productIcon=nav.querySelector('button[data-go="proveedores"] svg');
+  const oldIcon=stock.querySelector('svg');
+  if(productIcon&&oldIcon&&oldIcon.outerHTML!==productIcon.outerHTML)oldIcon.replaceWith(productIcon.cloneNode(true));
+ }
  // Pagos Online solo se fija cuando el sistema original lo permite en este local.
  // La entrada interna sigue disponible y mantiene las mismas validaciones de go().
  const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
