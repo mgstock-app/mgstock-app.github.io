@@ -122,7 +122,8 @@ export function ReceiptDashboard({
   onShare: (row: EmployeeRow) => void;
 }) {
   const [todayMonth] = useState(() => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); });
-  const [month, setMonth] = useState("auto");
+  // Mostrar la nómina completa: el filtro automático ocultaba recibos anteriores.
+  const [month, setMonth] = useState("todos");
   const [localFilter, setLocalFilter] = useState("todos");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -208,6 +209,6 @@ export function ReceiptDashboard({
         </> : <div className="employee-pages__empty">Elegí un colaborador de la lista para visualizar su recibo.</div>}
       </div>
     </div>
-    <p className="employee-pages__privacy">Los estados «Enviado» y «Pendiente» corresponden a la entrega del recibo. No implican que el sueldo haya sido pagado. El acceso al historial y a las descargas está limitado a los usuarios autorizados.</p>
+    <p className="employee-pages__privacy"><strong>Privacidad:</strong> solo el Dueño y los usuarios autorizados administran los recibos. Cada colaborador ve únicamente el suyo. Antes de compartir por WhatsApp, comprobá el nombre y teléfono del destinatario; nunca envíes un recibo a un grupo. Los estados «Enviado» y «Pendiente» corresponden a la entrega del recibo. No implican que el sueldo haya sido pagado. El acceso al historial y a las descargas está limitado a los usuarios autorizados.</p>
   </>;
 }
