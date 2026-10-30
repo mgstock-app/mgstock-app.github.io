@@ -121,3 +121,82 @@
   #app :is(.card,.panel,.lcard,.note),#hub .gl-owner-area,#view .gl-owner-area,
   #view .gl-home-essential-links button{transition:none!important;transform:none!important}
 }
+
+
+/* Creadora · salida visible debajo del perfil, en todos los dispositivos.
+   Reutiliza data-au="out" y la sesión local del mismo dispositivo. */
+#hub .gl-ch .gl-ch-logout{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:calc(100% - 20px);min-height:48px;
+  margin:-5px 10px 8px;padding:10px 13px;
+  border:1px solid #cddde8;border-radius:12px;
+  background:#fff;color:#153f5d;font:750 14px/1.3 "Inter",system-ui,sans-serif;
+  box-shadow:0 2px 8px rgba(21,54,80,.05);
+  cursor:pointer;touch-action:manipulation;
+}
+#hub .gl-ch .gl-ch-logout svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#hub .gl-ch .gl-ch-logout:hover{background:#ecf5fb;border-color:#b7d4e7}
+#hub .gl-ch .gl-ch-logout:focus-visible{outline:3px solid #3c96c4;outline-offset:3px}
+@media(min-width:900px){
+  #hub .gl-ch.gl-ch-collapsed .gl-ch-logout{
+    margin-top:auto;margin-inline:2px;width:calc(100% - 4px);padding:11px 4px;
+  }
+  #hub .gl-ch.gl-ch-collapsed .gl-ch-logout span{display:none}
+}
+/* En teléfonos y tablets verticales el panel debe ocupar UNA columna.
+   El contenido no puede quedar a la derecha de una barra de 248 px. */
+@media(max-width:899px), (max-width:1100px) and (orientation:portrait){
+  #hub .gl-ch{
+    display:flex!important;flex-direction:column;
+    width:100%;max-width:100%;min-width:0;
+    grid-template-columns:minmax(0,1fr)!important;
+    overflow-x:clip;box-sizing:border-box;
+  }
+  #hub .gl-ch>.gl-ch-side{
+    position:static!important;top:auto;height:auto!important;
+    box-sizing:border-box;display:flex;flex-direction:column;
+    flex:none;width:100%;max-width:100%;min-width:0;
+    gap:8px;padding:12px 14px 14px;
+    overflow:visible;border-right:0;border-bottom:1px solid #dfe8f0;
+    box-shadow:none;
+  }
+  #hub .gl-ch .gl-ch-logo{min-width:0}
+  #hub .gl-ch .gl-ch-nav{
+    display:flex;gap:6px;min-width:0;max-width:100%;width:100%;
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;padding:3px 0 9px;
+  }
+  #hub .gl-ch .gl-ch-nav button{flex:0 0 auto;min-height:44px;white-space:nowrap}
+  #hub .gl-ch.gl-ch-collapsed .gl-ch-nav{display:none}
+  #hub .gl-ch .gl-ch-me{
+    display:flex!important;margin-top:3px;padding:10px 2px 5px;
+    min-width:0;border-top:1px solid #e1eaf1;
+  }
+  #hub .gl-ch .gl-ch-me div{min-width:0}
+  #hub .gl-ch .gl-ch-me small{overflow:hidden;text-overflow:ellipsis}
+  #hub .gl-ch .gl-ch-logout{
+    width:100%;margin:0;min-height:49px;justify-content:flex-start;
+    padding:12px 15px;font-size:14px;
+  }
+  #hub .gl-ch .gl-ch-quote{display:none}
+  #hub .gl-ch>.gl-ch-main{
+    box-sizing:border-box;width:100%;max-width:100%;min-width:0;
+    overflow-x:clip;padding:16px clamp(14px,3vw,24px) 32px;
+  }
+  #hub .gl-ch .gl-ch-top,
+  #hub .gl-ch .gl-ch-topr,
+  #hub .gl-ch .gl-ch-grid,
+  #hub .gl-ch .gl-ch-colmain,
+  #hub .gl-ch .gl-ch-colside,
+  #hub .gl-ch .gl-ch-card,
+  #hub .gl-ch .gl-ch-people{max-width:100%;min-width:0}
+  #hub .gl-ch .gl-ch-grid{grid-template-columns:minmax(0,1fr)}
+  #hub .gl-ch .gl-ch-card{overflow-wrap:anywhere}
+  #hub .gl-ch .gl-ch-chart{max-width:100%;height:auto}
+  #hub .gl-ch .gl-ch-topr>.gl-ch-out{display:none}
+}
+@media(max-width:560px){
+  #hub .gl-ch .gl-ch-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #hub .gl-ch .gl-ch-people{flex-wrap:wrap}
+  #hub .gl-ch .gl-ch-rolelist{min-width:0}
+}
