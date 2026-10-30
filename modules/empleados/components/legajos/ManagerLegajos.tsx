@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Check, ChevronRight, Clock3, ExternalLink, Fil
 import type { AppLocal } from "@/types/access";
 import { BranchScheduleLink } from "@/components/schedules/BranchScheduleLink";
 import { ManagerStaffInvite } from "@/components/invitations/ManagerStaffInvite";
+import { managerStaffInviteApi } from "@/features/onboarding/api";
 import {
   type Legajo, type LegajoInput, type LegajoHistory, type PreviousEmployee, type LegajoStatus,
   loadLegajoLocals, loadLegajos, loadPreviousEmployees, createLegajo, updateLegajo,
@@ -11,6 +12,8 @@ import {
 } from "@/features/legajos/api";
 import "./manager-legajos.css";
 
+type InviteStatus = Awaited<ReturnType<typeof managerStaffInviteApi.status>>;
+const inviteKey = (l:AppLocal) => l.organization_id+":"+l.id;
 type StaffCard = {
   key: string;
   local: AppLocal;
@@ -52,23 +55,27 @@ function LocalPortrait({ local }: { local: AppLocal }) {
   return safe ? <img className="mlg-local-photo" src={safe} alt={"Foto de " + localTitle(local)}/> :
     <span className="mlg-local-photo mlg-local-photo--fallback" aria-hidden="true"><Store size={27}/></span>;
 }
-export function ManagerLegajos({ ownerView = false, localScope }: {
+export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }: {
   ownerView?: boolean;
   localScope?: AppLocal[];
+  onDirtyChange?: (dirty:boolean)=>void;
 }) {
   const [locals, setLocals] = useState<AppLocal[]>([]);
   const [profiles, setProfiles] = useState<Legajo[]>([]);
   const [previous, setPrevious] = useState<PreviousEmployee[]>([]);
+  const [inviteStats, setInviteStats] = useState<Record<string,InviteStatus|null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [reload, setReload] = useState(0);
   const [search, setSearch] = useState("");
+  const [pendingOnly, setPendingOnly] = useState(false);
   const [localFilter, setLocalFilter] = useState("todos");
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [chosenLocal, setChosenLocal] = useState<AppLocal | null>(null);
   const [editing, setEditing] = useState<Legajo | null>(null);
   const [draft, setDraft] = useState<LegajoInput | null>(null);
+  const [draftDirty, setDraftDirty] = useState(false);
   const [newDate, setNewDate] = useState("");
   const [lastDate, setLastDate] = useState("");
   const [startedDate, setStartedDate] = useState("");
@@ -96,6 +103,15 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
         ]);
         if (!alive) return;
         setLocals(visible);
+        // Solo estados agregados por local autorizado, sin consultar tokens ni correos.
+        setInviteStats({});
+        // El resumen es secundario: nunca bloquear la pantalla ni la edición.
+        void Promise.all(visible.map(async local => {
+          try {return [inviteKey(local),await managerStaffInviteApi.status(local.id)] as const;}
+          catch {return [inviteKey(local),null] as const;}
+        })).then(inviteResponses=>{
+          if(alive)setInviteStats(Object.fromEntries(inviteResponses));
+        });
         setProfiles(peopleResult.status === "fulfilled" ? peopleResult.value : []);
         setPrevious(previousResult.status === "fulfilled" ? previousResult.value : []);
         setError(peopleResult.status === "rejected"
@@ -103,7 +119,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           : "");
       } catch(cause) {
         if (alive) {
-          setLocals([]); setProfiles([]); setPrevious([]);
+          setLocals([]); setProfiles([]); setPrevious([]); setInviteStats({});
           setError(cause instanceof Error ? cause.message : "No se pudieron cargar los legajos.");
         }
       } finally { if (alive) setLoading(false); }
@@ -138,18 +154,41 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
     });
     return [...actual, ...fromOld].sort((a,b)=>Number(b.pending)-Number(a.pending)||a.fullName.localeCompare(b.fullName, "es-AR"));
   }, [locals,profiles,previous]);
-  const filtered = rows.filter(r =>
+  const scopedRows = rows.filter(r =>
     (localFilter === "todos" || r.local.id === localFilter)
     && normalized(r.fullName).includes(normalized(search))
   );
+  const filtered = pendingOnly ? scopedRows.filter(r=>r.pending) : scopedRows;
   const totals = {
-    all: filtered.length,
-    active: filtered.filter(r=>r.status==="activo").length,
-    reinforcement: filtered.filter(r=>r.status==="refuerzo").length,
-    inactive: filtered.filter(r=>r.status==="inactivo").length,
+    all: scopedRows.length,
+    active: scopedRows.filter(r=>r.status==="activo").length,
+    reinforcement: scopedRows.filter(r=>r.status==="refuerzo").length,
+    inactive: scopedRows.filter(r=>r.status==="inactivo").length,
   };
+  const incomplete = scopedRows.filter(r=>r.pending).length;
+  const showingInvites = locals.filter(l=>localFilter==="todos"||l.id===localFilter);
+  const inviteTotals = showingInvites.length && showingInvites.every(l=>inviteStats[inviteKey(l)]!=null)
+    ? showingInvites.reduce((totals,local)=>{
+        const stats=inviteStats[inviteKey(local)]!;
+        return {pending:totals.pending+stats.pending,accepted:totals.accepted+stats.accepted,
+          expired:totals.expired+stats.expired};
+      },{pending:0,accepted:0,expired:0})
+    : null;
+  const isDirty = Boolean(draft&&draftDirty);
+  useEffect(()=>{
+    onDirtyChange?.(isDirty);
+    return ()=>onDirtyChange?.(false);
+  },[isDirty,onDirtyChange]);
+  useEffect(()=>{
+    if(!draft||!draftDirty)return;
+    const preventExit=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+    window.addEventListener("beforeunload",preventExit);
+    return ()=>window.removeEventListener("beforeunload",preventExit);
+  },[draft,draftDirty]);
   const close = () => {
     if (saving) return;
+    if (draftDirty && !window.confirm("Tenés cambios sin guardar en este legajo. ¿Salir y descartarlos?")) return;
+    setDraftDirty(false);
     setDraft(null); setEditing(null); setChosenLocal(null);
     setShowHistory(false); setHistory([]); setNewDate("");
   };
@@ -163,12 +202,14 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
       next.status = record.status === "refuerzo" || record.status === "inactivo" ? "activo" : record.status;
     }
     setChosenLocal(local); setEditing(existing); setDraft(next);
-    setNewDate(""); setLastDate(dateToDisplay(next.last_worked_on));
+    setNewDate(""); setDraftDirty(false); setLastDate(dateToDisplay(next.last_worked_on));
     setStartedDate(dateToDisplay(next.started_on));
     setShowHistory(false); setHistory([]); setError(""); setInfo("");
   };
-  const update = <K extends keyof LegajoInput>(key: K, value: LegajoInput[K]) =>
+  const update = <K extends keyof LegajoInput>(key: K, value: LegajoInput[K]) => {
+    setDraftDirty(true);
     setDraft(current => current ? { ...current, [key]: value } : current);
+  };
   const addDate = () => {
     if (!draft) return;
     const date = dateToIso(newDate);
@@ -190,7 +231,8 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
     try {
       const saved = editing ? await updateLegajo(editing, input) : await createLegajo(input);
       setProfiles(list => [...list.filter(p=>p.id!==saved.id),saved]);
-      setInfo("Legajo guardado. Ya puede consultarlo la administración de esta empresa.");
+      setInfo("Legajo guardado correctamente. El historial privado quedó actualizado.");
+      setDraftDirty(false);
       closeAfterSave();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo guardar el legajo.");
@@ -198,7 +240,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
   };
   const closeAfterSave = () => {
     setDraft(null); setEditing(null); setChosenLocal(null);
-    setShowHistory(false); setHistory([]); setNewDate("");
+    setShowHistory(false); setHistory([]); setNewDate(""); setDraftDirty(false);
   };
   const viewHistory = async () => {
     if (!editing) return;
@@ -221,6 +263,13 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
       <div><Clock3 color="#db840f"/><span>Refuerzos</span><strong>{loading?"—":totals.reinforcement}</strong></div>
       <div><UserRoundX color="#c73b51"/><span>Inactivos</span><strong>{loading?"—":totals.inactive}</strong></div>
     </div>}
+    <div className="mlg-invite-overview" role="status" aria-label="Resumen de invitaciones del local">
+      <div><small>Invitaciones por enlace</small><strong>Estado de ingresos</strong></div>
+      <span><b>{inviteTotals?.pending ?? "—"}</b> Pendientes</span>
+      <span><b>{inviteTotals?.accepted ?? "—"}</b> Aceptadas</span>
+      <span><b>{inviteTotals?.expired ?? "—"}</b> Vencidas</span>
+      {inviteTotals===null&&<small>El resumen no está disponible. Podés seguir gestionando legajos.</small>}
+    </div>
     <div className="mlg-filters"><label><Search size={18}/><input type="search" placeholder="Buscar colaborador por nombre…" value={search} onChange={e=>setSearch(e.target.value)} aria-label="Buscar colaborador"/></label>
       {locals.length === 1
         ? <span className="mlg-current-local"><Store size={16}/>{localTitle(locals[0])}</span>
@@ -229,6 +278,8 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           </select>}
       <button type="button" onClick={updateView} aria-label="Actualizar" disabled={loading}><RotateCw size={18}/></button>
     </div>
+    <button type="button" className="mlg-pending-filter" aria-pressed={pendingOnly}
+      onClick={()=>setPendingOnly(v=>!v)}>Pendientes de completar <strong>{loading?"—":incomplete}</strong></button>
     {error && <p className="mlg-error" role="alert">{error}</p>}
     {info && <p className="mlg-success" role="status">{info}</p>}
     {loading ? <p className="mlg-empty" role="status">Cargando legajos autorizados…</p> : !locals.length ? <div className="mlg-empty" role="status"><p>No hay locales de empleados habilitados para esta cuenta. Si ya sos gerente, revisá que el local esté asignado a tu cuenta de Google.</p><button type="button" onClick={updateView}>Volver a comprobar el acceso</button></div> :
@@ -244,7 +295,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
             <div className="mlg-person-name"><strong>{person.fullName}</strong><span className={"mlg-status mlg-status--"+person.status}>{stateNames[person.status]}</span>{person.pending&&<span className="mlg-pending">Pendiente de completar</span>}</div>
             <button type="button" className="mlg-view" onClick={()=>open(local,person)}><FileText size={15}/> Ver legajo</button>
             <button type="button" className="mlg-more" aria-label={"Detalle de "+person.fullName} onClick={()=>open(local,person)}><MoreVertical size={17}/></button>
-          </article>)}</div></div> : <p className="mlg-empty">{search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
+          </article>)}</div></div> : <p className="mlg-empty">{pendingOnly?"No hay legajos pendientes de completar en este local.":search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
           {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}
@@ -270,7 +321,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
             <label>Apellido *<input required maxLength={100} value={draft.last_name} onChange={e=>update("last_name",e.target.value)} disabled={ownerView||saving} placeholder="Apellido"/></label>
             <label>Teléfono<input type="tel" maxLength={35} value={draft.phone} onChange={e=>update("phone",e.target.value)} disabled={ownerView||saving} placeholder="11 2345-6789"/></label>
             <label>Alias para transferencias<input maxLength={120} value={draft.payment_alias} onChange={e=>update("payment_alias",e.target.value)} disabled={ownerView||saving} placeholder="Alias bancario"/></label>
-            <label>Fecha de ingreso (dd/mm/aaaa)<div className="mlg-date"><CalendarDays size={17}/><input inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={startedDate} onChange={e=>setStartedDate(e.target.value)} disabled={ownerView||saving}/></div></label>
+            <label>Fecha de ingreso (dd/mm/aaaa)<div className="mlg-date"><CalendarDays size={17}/><input inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={startedDate} onChange={e=>{setDraftDirty(true);setStartedDate(e.target.value);}} disabled={ownerView||saving}/></div></label>
             <label>Local<input value={localTitle(chosenLocal)} disabled/></label>
           </div>
           <label className="mlg-note-label">Notas (opcional)<textarea rows={2} maxLength={1500} placeholder="Observaciones del colaborador…" value={draft.notes} onChange={e=>update("notes",e.target.value)} disabled={ownerView||saving}/></label>
@@ -280,12 +331,12 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
               {stateNames[st]}</button>)}
           </fieldset>
           {draft.status==="refuerzo"&&<div className="mlg-conditional"><strong>Fechas de refuerzo</strong><p>Registrá cada día que trabajó como refuerzo (dd/mm/aaaa).</p>
-            <div className="mlg-new-date"><label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" aria-label="Fecha de refuerzo" inputMode="numeric" maxLength={10} value={newDate} onChange={e=>setNewDate(e.target.value)} disabled={ownerView||saving}/></label>
+            <div className="mlg-new-date"><label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" aria-label="Fecha de refuerzo" inputMode="numeric" maxLength={10} value={newDate} onChange={e=>{setDraftDirty(true);setNewDate(e.target.value);}} disabled={ownerView||saving}/></label>
               {!ownerView&&<button type="button" onClick={addDate} disabled={saving}><Plus size={17}/> Agregar fecha</button>}</div>
             <div className="mlg-date-tags">{draft.reinforcement_dates.map(date=><span key={date}>{dateToDisplay(date)} {!ownerView&&<button type="button" aria-label={"Quitar "+dateToDisplay(date)} onClick={()=>update("reinforcement_dates",draft.reinforcement_dates.filter(v=>v!==date))} disabled={saving}><X size={14}/></button>}</span>)}</div>
           </div>}
           {draft.status==="inactivo"&&<div className="mlg-conditional"><strong>Último día trabajado *</strong><p>Indicá hasta qué fecha trabajó en este local (dd/mm/aaaa).</p>
-            <label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" inputMode="numeric" maxLength={10} value={lastDate} onChange={e=>setLastDate(e.target.value)} disabled={ownerView||saving} aria-label="Último día trabajado" required/></label>
+            <label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" inputMode="numeric" maxLength={10} value={lastDate} onChange={e=>{setDraftDirty(true);setLastDate(e.target.value);}} disabled={ownerView||saving} aria-label="Último día trabajado" required/></label>
           </div>}
           {draft.status!=="refuerzo"&&draft.reinforcement_dates.length>0&&<p className="mlg-previous">Refuerzos registrados anteriormente: {draft.reinforcement_dates.map(dateToDisplay).join(", ")}</p>}
           <p className="mlg-small-notice">Los cambios quedan registrados en el historial privado y pueden ser consultados por los dueños autorizados.</p>

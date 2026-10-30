@@ -1,0 +1,83 @@
+/* GESTLOK · Empleados: la misma identidad blanca y azul, sin modificar permisos. */
+.gl-gerente,.gl-gerente__main,.app-shell{color:#173650}
+.gl-gerente__sidebar{background:#fff;border-right:1px solid #dce7f0}
+.gl-gerente__header{background:#fff;border-bottom:1px solid #e0e9f1}
+.gl-gerente__sidebar nav button,.gl-gerente__module-actions :is(a,button){
+ border-radius:11px;min-height:46px;
+}
+.gl-gerente__sidebar nav button.active{background:#eaf4fc;color:#155e87}
+.gl-gerente__collapse{border-radius:11px}
+.gl-gerente__content{max-width:1660px;margin-inline:auto;width:100%}
+.mlg-board{font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;color:#193a55}
+.mlg-intro h1,.mlg-intro h2{color:#153650;letter-spacing:-.035em}
+.mlg-intro p{font-size:14px;color:#5c7285}
+.mlg-stats>div,.mlg-local,.mlg-person,.mlg-modal{
+ border:1px solid #dfe8f0;
+ border-radius:17px;
+ box-shadow:0 4px 20px #17374d0b;
+}
+.mlg-stats>div{padding:15px;min-height:100px}
+.mlg-stats span{font-size:12px}
+.mlg-local-head>button:first-child{min-height:54px}
+.mlg-local-head strong{color:#173650}
+.mlg-person-name strong{font-size:13px;color:#1c3e56}
+.mlg-person{min-height:72px;padding:11px}
+.mlg-filters label{min-height:50px;border-radius:12px}
+.mlg-filters label input{font-size:15px}
+.mlg-filters select{min-height:50px;border-radius:12px;font-size:14px}
+.mlg-form label,.mlg-note-label{font-size:13px;line-height:1.45}
+.mlg-form input,.mlg-form textarea{font:400 15px/1.45 "Inter",system-ui,sans-serif;min-height:46px}
+.mlg-form :is(input,textarea):focus-visible{outline:3px solid #5899bc;outline-offset:2px}
+.mlg-primary,.mlg-secondary,.mlg-invite{min-height:47px;font-size:13px;border-radius:11px}
+.mlg-tabs button{min-height:47px;font-size:13px}
+.mlg-form-actions{position:sticky;bottom:-24px;padding:13px 0 6px;
+ background:#fff;border-top:1px solid #e4ebf1;z-index:2}
+.mlg-success{font-size:13px;color:#0b684e;border-color:#b7dfd1}
+.mlg-error{font-size:13px;color:#952f42}
+.mlg-invite-overview{
+ display:grid;grid-template-columns:minmax(170px,1.5fr) repeat(3,minmax(100px,1fr));
+ gap:10px;align-items:stretch;margin:0 0 17px;
+}
+.mlg-invite-overview>div,.mlg-invite-overview>span{
+ background:#fff;border:1px solid #dfe8f0;border-radius:14px;
+ box-shadow:0 3px 13px #17365008;
+ padding:13px 15px;min-width:0;
+}
+.mlg-invite-overview>div{display:flex;flex-direction:column;justify-content:center;gap:4px}
+.mlg-invite-overview>div small{color:#5c788d;font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:700}
+.mlg-invite-overview>div strong{font-size:16px;color:#16384f;letter-spacing:-.02em}
+.mlg-invite-overview>span{display:flex;align-items:center;gap:10px;font-size:12px;color:#5b7284;font-weight:650}
+.mlg-invite-overview>span b{font-size:25px;color:#174a70}
+.mlg-invite-overview>small{grid-column:1/-1;font-size:12px;color:#617689}
+.mlg-pending-filter{
+ display:inline-flex;align-items:center;gap:9px;margin:0 0 16px;
+ border:1px solid #e9d8b2;border-radius:12px;
+ min-height:42px;padding:8px 13px;background:#fffaf0;color:#805b22;
+ font:700 13px "Inter",system-ui,sans-serif;
+}
+.mlg-pending-filter strong{display:inline-grid;place-items:center;
+ min-width:29px;height:26px;padding:1px 8px;border-radius:10px;
+ background:#fff2d8;color:#895616}
+.mlg-pending-filter[aria-pressed=true]{box-shadow:0 0 0 2px #e7c789;color:#70451c;background:#fff0d1}
+.msi-dialog{border-radius:20px;border:1px solid #e0e8f0;box-shadow:0 25px 70px #071e3040}
+.msi-dialog :is(button,input,select){min-height:46px}
+.msi-dialog :is(input,select){font-size:15px}
+@media(max-width:930px){.mlg-invite-overview{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .mlg-invite-overview>div{grid-column:1/-1}
+}
+@media(max-width:720px){
+ .mlg-intro-actions>button{min-height:50px}
+ .mlg-invite-overview>span{display:flex;flex-direction:column;align-items:flex-start;
+  padding:12px 10px;gap:3px;font-size:11px}
+ .mlg-invite-overview>span b{font-size:21px}
+ .mlg-form-actions{bottom:-15px;padding:11px 0 4px}
+ .mlg-stats strong{font-size:24px}
+ .mlg-stats svg{width:40px;height:40px}
+ .mlg-person-name strong{font-size:13px}
+}
+@media(max-width:390px){
+ .mlg-invite-overview{gap:6px}
+ .mlg-invite-overview>span{padding:10px 7px}
+ .mlg-pending-filter{width:100%;justify-content:space-between}
+ .mlg-view{min-height:40px}
+}

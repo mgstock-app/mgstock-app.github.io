@@ -43,6 +43,9 @@ export const managerStaffInviteApi = {
   create: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string}>(
     "rm_app_manager_staff_invite_create", {p_local:local}
   ),
+  status: (local: string) => rpc<{local_id:string;pending:number;accepted:number;expired:number;revoked:number}>(
+    "rm_app_manager_staff_invite_status", {p_local:local}
+  ),
   preview: (token: string) => rpc<{company_name:string;local_name:string;expires_at:string}>(
     "rm_app_manager_staff_invite_preview", {p_token:token}
   ),
