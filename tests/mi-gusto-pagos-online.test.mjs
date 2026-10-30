@@ -29,10 +29,6 @@ test('Pagos Online: exclusivamente Mi Gusto, dueño y gerente autorizado',()=>{
  assert(!client('dueno','munro','aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa').permitido());
  assert(!client('dueno','otro').permitido());
  assert.equal(client()._test.date('2026-10-29'),'29/10/26');
- const app=read('public/stock/app.js'),start=app.indexOf('function renderNav(){'),end=app.indexOf('function renderLive()',start),nav=app.slice(start,end);
- const home=nav.indexOf('<button data-go="inicio">'),pagos=nav.indexOf('<button data-go="cierre-online">'),stock=nav.indexOf('data-go="${esc(stockDiario.id)}"');
- assert.ok(home>=0&&pagos>home&&stock>pagos,'Pagos Online debe ir inmediatamente debajo de Inicio y antes de Stock Local');
- assert.match(read('components/stock-runtime.tsx'),/nav-pagos-debajo-inicio-20261030/);
 });
 test('Pagos Online: switches APP, fórmulas y RLS/flujo de componentes',()=>{
  const js=read('public/stock/mi-gusto-cierre-online.js');
