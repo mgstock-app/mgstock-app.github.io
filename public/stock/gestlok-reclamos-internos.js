@@ -36,7 +36,7 @@
   try{
    const data=await apiCall('gestlok_reclamos_list');
    if(id!==serial||loc!==local()||tenant!==api.S.me?.tenant_id)return;
-   rows=Array.isArray(data)?data:[];error='';
+   rows=Array.isArray(data)?data:[];scope=String(tenant)+'/'+loc;error='';
   }catch(e){if(id===serial)error=e.message;}
   finally{
    loading=false;
@@ -88,9 +88,10 @@
  function view(){
   if(!canSee()){rows=[];modal=null;scope='';return '';}
   const activeScope=String(api.S.me.tenant_id)+'/'+local();
-  if(scope!==activeScope){
-   serial++;rows=[];term='';error='';notice='';modal=null;busy=false;loading=false;scope=activeScope;
+  if(scope && scope!==activeScope){
+   serial++;rows=[];term='';error='';notice='';modal=null;busy=false;loading=false;
   }
+  scope=activeScope;
   const pending=rows.filter(r=>r.status==='pending').length,used=rows.length-pending;
   return '<section class="ri-page" aria-label="Reclamos Internos">'+
    '<header class="ri-head"><div><small>GESTLOK · GESTIÓN INTERNA</small><h2>Reclamos Internos</h2>'+
