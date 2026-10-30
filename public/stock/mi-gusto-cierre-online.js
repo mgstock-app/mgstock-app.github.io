@@ -143,13 +143,16 @@ function entry(){
 function movements(){
  return '<div class="mg-on-section">'+entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
   movementList()+'</div>'+status()+
- '<div class="mg-on-close"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
- '<button type="button" data-mgon-close '+(!writable()?'disabled':'')+'>Cerrar turno →</button></div>';
+ '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
+ '<p class="mg-on-photo-reminder" role="status">'+(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Antes de cerrar el turno, el gerente debe subir la foto. El cierre se habilitará cuando termine la carga.')+'</p></div>'+
+ '<div class="mg-on-close-controls">'+photoControl(s)+
+ '<button type="button" data-mgon-close '+(!writable()||!s?.photo_path?'disabled':'')+'>Cerrar turno →</button></div></div>';
 }
+const cameraIcon='<svg class="mg-on-camera" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';
 function photoControl(s){
  if(!s)return '';
- if(s.photo_path)return '<button type="button" class="mg-on-photo-btn" data-mgon-view-photo="'+esc(s.id)+'">📷 Ver foto del cierre</button>';
- return '<label class="mg-on-photo-upload '+(uploading===s.id?'mg-on-busy':'')+'">📷 '+(uploading===s.id?'Subiendo foto…':'Subir foto')+
+ if(s.photo_path)return '<button type="button" class="mg-on-photo-btn" data-mgon-view-photo="'+esc(s.id)+'">'+cameraIcon+' Ver foto del cierre</button>';
+ return '<label class="mg-on-photo-upload '+(uploading===s.id?'mg-on-busy':'')+'">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Subir foto')+
   '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>';
 }
 async function compressPhoto(file){
