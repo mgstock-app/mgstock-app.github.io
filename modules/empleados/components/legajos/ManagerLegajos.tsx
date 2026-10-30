@@ -55,9 +55,10 @@ function LocalPortrait({ local }: { local: AppLocal }) {
   return safe ? <img className="mlg-local-photo" src={safe} alt={"Foto de " + localTitle(local)}/> :
     <span className="mlg-local-photo mlg-local-photo--fallback" aria-hidden="true"><Store size={27}/></span>;
 }
-export function ManagerLegajos({ ownerView = false, localScope }: {
+export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }: {
   ownerView?: boolean;
   localScope?: AppLocal[];
+  onDirtyChange?: (dirty:boolean)=>void;
 }) {
   const [locals, setLocals] = useState<AppLocal[]>([]);
   const [profiles, setProfiles] = useState<Legajo[]>([]);
@@ -103,12 +104,14 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
         if (!alive) return;
         setLocals(visible);
         // Solo estados agregados por local autorizado, sin consultar tokens ni correos.
-        const inviteResponses = await Promise.all(visible.map(async local => {
+        setInviteStats({});
+        // El resumen es secundario: nunca bloquear la pantalla ni la edición.
+        void Promise.all(visible.map(async local => {
           try {return [inviteKey(local),await managerStaffInviteApi.status(local.id)] as const;}
           catch {return [inviteKey(local),null] as const;}
-        }));
-        if (!alive) return;
-        setInviteStats(Object.fromEntries(inviteResponses));
+        })).then(inviteResponses=>{
+          if(alive)setInviteStats(Object.fromEntries(inviteResponses));
+        });
         setProfiles(peopleResult.status === "fulfilled" ? peopleResult.value : []);
         setPrevious(previousResult.status === "fulfilled" ? previousResult.value : []);
         setError(peopleResult.status === "rejected"
@@ -171,6 +174,10 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
           expired:totals.expired+stats.expired};
       },{pending:0,accepted:0,expired:0})
     : null;
+  useEffect(()=>{
+    onDirtyChange?.(Boolean(draft&&draftDirty));
+    return ()=>onDirtyChange?.(false);
+  },[draft,draftDirty,onDirtyChange]);
   useEffect(()=>{
     if(!draft||!draftDirty)return;
     const preventExit=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
