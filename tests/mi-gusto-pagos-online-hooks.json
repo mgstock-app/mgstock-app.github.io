@@ -32,6 +32,22 @@
     {
       "actual": "window.GestLokMiGustoOnline?.attach({S,render,miRol,misLocales,toast});\n",
       "original": ""
+    },
+    {
+      "actual": "  const pagosDiarios = puedeVerPagosOnline();\n",
+      "original": ""
+    },
+    {
+      "actual": "${pagosDiarios ? `<button data-go=\"cierre-online\">${ic('clip')}<span class=\"nl\">Pagos Online</span></button>` : ''}",
+      "original": ""
+    },
+    {
+      "actual": "!pagosDiarios && puedeVerAvisos()",
+      "original": "puedeVerAvisos()"
+    },
+    {
+      "actual": "!pagosDiarios && esTotal()",
+      "original": "esTotal()"
     }
   ]
 }
