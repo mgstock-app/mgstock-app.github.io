@@ -29,7 +29,7 @@ function widget(role='gerente',branch='munro'){
  return {view:()=>window.GestLokResenas.view(),handlers,calls,notices,module:window.GestLokResenasComunicaciones,window};
 }
 
-test('La invitación seleccionada se copia por separado y usa link Google SOLO para Munro',()=>{
+test('El mensaje de agradecimiento y cupón combina datos correctos sin mezclas de sucursales',()=>{
  const m=widget();
  assert.match(m.view(),/Mensaje para clientes/);
  assert.match(m.view(),/Copiar mensaje para Mariana/);
@@ -39,13 +39,47 @@ test('La invitación seleccionada se copia por separado y usa link Google SOLO p
  assert.match(m.view(),/más de 6 unidades/);
  assert.match(m.view(),/No acumulable con otras promociones/);
  assert.match(m.view(),/Copiar cupón con condiciones/);
- assert.match(m.module.defaultMessage('munro'),/https:\/\/g.page\/r\/CZKKTkNsZpoiEBM\/review/);
- assert.doesNotMatch(m.module.defaultMessage('torcuato'),/CZKKTkNsZpoiEBM/);
+ assert.match(m.module.defaultMessage('munro'),/¡Hola, \{nombre\}!/);
+ assert.doesNotMatch(m.module.defaultMessage('munro'),/g\.page/);
+ assert.equal(m.module.couponValidity({period:'2026-11-01'}),'del 1 al 12 de noviembre 2026');
+ const one=m.module.messageForCoupon({id:'1',local:'munro',customer_name:'Mariana Díaz',code:'ABC234',period:'2026-11-01',status:'pending'});
+ assert.match(one,/¡Hola, Mariana Díaz!/);
+ assert.match(one,/ABC234 — 10% OFF/);
+ assert.match(one,/del 1 al 12 de noviembre 2026/);
+ assert.match(one,/lunes a jueves/);
+ assert.match(one,/7 unidades o más/);
+ assert.match(one,/Exclusivo en \*Mi Gusto Munro\*/);
+ assert.match(one,/No acumulable/);
+ assert.doesNotMatch(one,/\{nombre\}/);
+ assert.equal(m.module.messageForCoupon({local:'torcuato',code:'ABC234'}),'');
  assert.equal(m.module.phoneNumber('1122337788'),'5491122337788');
  assert.match(m.module.couponText('ABC234','del 1 al 12 de noviembre 2026'),/Exclusivo para Mi Gusto Munro/);
  const torcuato=widget('gerente','torcuato');
  assert.match(torcuato.view(),/10% OFF · Mi Gusto Torcuato/);
  assert.match(torcuato.module.couponText('XYZ999','del 1 al 12 de diciembre 2026'),/Exclusivo para Mi Gusto Torcuato/);
+ const two=torcuato.module.messageForCoupon({local:'torcuato',customer_name:'Estela',code:'XYZ999',period:'2026-12-01'});
+ assert.match(two,/Mi Gusto Torcuato/);
+ assert.match(two,/del 1 al 12 de diciembre 2026/);
+ assert.doesNotMatch(two,/Mi Gusto Munro/);
+});
+
+
+test('El portapapeles obtiene el código de la base y no copia cupones usados',async()=>{
+ const m=widget();
+ m.window.GestLokSupabase.rpc=async(fn,args)=>{
+   assert.equal(fn,'gestlok_resenas_list');
+   assert.equal(args.p_local,'munro');
+   return {data:[{id:'1',local:'munro',customer_name:'Mariana Díaz',code:'ABC234',valid_from:'2026-11-01',status:'pending'}],error:null};
+ };
+ const event={target:{closest:()=>({dataset:{glRv:'copy-message',id:'1'}})},preventDefault(){},stopImmediatePropagation(){}};
+ m.handlers.click(event);
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert(m.notices.some(n=>n[0]==='copied'&&n[1].includes('ABC234')&&n[1].includes('Mariana Díaz')&&n[1].includes('noviembre 2026')));
+ m.notices.length=0;
+ m.window.GestLokSupabase.rpc=async()=>({data:[{id:'1',local:'munro',customer_name:'Mariana Díaz',code:'ABC234',period:'2026-11-01',status:'used'}],error:null});
+ m.handlers.click(event);
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert(!m.notices.some(n=>n[0]==='copied'));
 });
 
 test('Los roles sin autorización no acceden al panel de contacto',()=>{
