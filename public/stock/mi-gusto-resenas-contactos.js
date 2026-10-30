@@ -8,8 +8,8 @@
   const E=original._t.E;
   const LOC={munro:'Munro',torcuato:'Torcuato'};
   const DEFAULT={
-    munro:"🥟 ¡Hola, {nombre}! 🖤\\n\\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\\n\\nTe compartimos tu cupón de cortesía:",
-    torcuato:"🥟 ¡Hola, {nombre}! 🖤\\n\\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\\n\\nTe compartimos tu cupón de cortesía:"
+    munro:"🥟 ¡Hola, {nombre}! 🖤\n\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\n\nTe compartimos tu cupón de cortesía:",
+    torcuato:"🥟 ¡Hola, {nombre}! 🖤\n\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\n\nTe compartimos tu cupón de cortesía:"
   };
   let api=null, messages=Object.create(null),loaded=Object.create(null),generation=0;
   let editing=false,draft=null,busy=false,error='',notice='',lastLocal='';
@@ -46,7 +46,13 @@
       const {data,error:e}=await window.GestLokSupabase.rpc('gestlok_resenas_message_get',{p_local:loc});
       if(e)throw e;
       if(g!==generation||loc!==local()||!allowed())return;
-      if(data?.body) messages[loc]=data.body;
+      if(data?.body){
+        if(/https?:\/\/[^\s]*(?:g\.page|google\.com\/maps)/i.test(data.body)){
+          // Una invitación previa a reseñas no debe acompañar la entrega de un descuento.
+          messages[loc]=DEFAULT[loc];
+          error='Había un mensaje anterior de reseñas: revisá el saludo nuevo antes de guardarlo.';
+        } else messages[loc]=data.body;
+      }
       error='';
     }catch{
       if(g===generation) {loaded[loc]=false;error='No se pudo consultar el mensaje. Se muestra la versión sugerida.';}
@@ -66,7 +72,7 @@
         '<textarea name="message" minlength="30" maxlength="2000" required rows="7">'+E(draft===null?current():draft)+'</textarea></label>'+
         '<div class="rv-message-controls"><button class="rv-message-save" type="submit" '+(busy?'disabled':'')+'>Guardar mensaje</button>'+
         '<button type="button" data-gl-rv="cancel-message" '+(busy?'disabled':'')+'>Cancelar</button></div></form>':
-        '<p class="rv-message-preview">'+E(current().replace(/\\{nombre\\}/g,'[nombre del cliente]'))+'</p>'+
+        '<p class="rv-message-preview">'+E(current().replace(/\{nombre\}/g,'[nombre del cliente]'))+'</p>'+
         '<p class="rv-message-info">Este texto es editable. Al tocar el portapapeles, GESTLOK agrega automáticamente el nombre del cliente, el código real, la vigencia, la sucursal y las condiciones. El beneficio es independiente de dejar una reseña.</p>')+
       '</section>';
   }
@@ -91,20 +97,20 @@
   }
   function couponValidity(row){
     const raw=String(row?.valid_from||row?.period||'');
-    const match=/^(\\d{4})-(\\d{2})-\\d{2}/.exec(raw);
+    const match=/^(\d{4})-(\d{2})-\d{2}/.exec(raw);
     if(!match)return 'del 1 al 12 del mes indicado';
     const month=Number(match[2]),year=Number(match[1]);
     return month>=1&&month<=12?'del 1 al 12 de '+MONTHS[month-1]+' '+year:'del 1 al 12 del mes indicado';
   }
   function messageForCoupon(row){
     if(!row || row.local!==local() || !/^[A-HJ-NP-Z2-9]{6}$/.test(String(row.code||'')))return '';
-    const greeting=current().replace(/\\{nombre\\}/g,String(row.customer_name||'').trim());
-    return greeting+'\\n\\n🎟️ *'+row.code+' — 10% OFF*\\n'+
-      '📅 Válido '+couponValidity(row)+', de lunes a jueves.\\n'+
-      '🥟 Para compras de *7 unidades o más*.\\n'+
-      '📍 Exclusivo en *Mi Gusto '+LOC[local()]+'*.\\n'+
-      '🚫 No acumulable con otras promociones de la marca.\\n'+
-      '🔒 De un solo uso.\\n\\n¡Gracias por acompañarnos! ¡Te esperamos! 🖤';
+    const greeting=current().replace(/\{nombre\}/g,String(row.customer_name||'').trim());
+    return greeting+'\n\n🎟️ *'+row.code+' — 10% OFF*\n'+
+      '📅 Válido '+couponValidity(row)+', de lunes a jueves.\n'+
+      '🥟 Para compras de *7 unidades o más*.\n'+
+      '📍 Exclusivo en *Mi Gusto '+LOC[local()]+'*.\n'+
+      '🚫 No acumulable con otras promociones de la marca.\n'+
+      '🔒 De un solo uso.\n\n¡Gracias por acompañarnos! ¡Te esperamos! 🖤';
   }
   async function copyForClient(id){
     if(!editable()) {api?.toast?.('Necesitás conexión para comprobar el cupón antes de copiarlo.',true);return;}
