@@ -44,6 +44,16 @@ assert.match(patch,/auth\.uid\(\) is null/);
 assert.match(patch,/rm_test_private\.rm_employee_profile_scope\(new\.organization_id,new\.local_id\)/);
 assert.match(patch,/l\.id=new\.local_id and l\.organization_id=new\.organization_id/);
 assert.match(patch,/new\.created_by is distinct from auth\.uid\(\)/);
+assert.match(patch,/v_invited_staff/);
+assert.match(patch,/rm_test_private\.manager_staff_invites/);
+assert.match(patch,/new\.needs_completion is true/);
+assert.match(patch,/i\.created_by=new\.created_by/);
+assert.match(patch,/i\.redeemed_by is null/);
+assert.match(patch,/i\.expires_at>clock_timestamp\(\)/);
+assert.match(patch,/m\.role='employee'/);
+assert.match(patch,/om\.user_id=auth\.uid\(\)/);
+assert.match(patch,/not v_invited_staff/);
+
 assert.match(patch,/new\.organization_id<>old\.organization_id/);
 assert.match(patch,/new\.local_id<>old\.local_id/);
 assert.match(patch,/revoke all on function rm_test_private\.rm_employee_profile_touch\(\) from public, anon, authenticated/);
