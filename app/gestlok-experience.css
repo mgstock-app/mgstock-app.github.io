@@ -1,0 +1,123 @@
+/* GESTLOK · Refinamiento integral: presentación coherente sin alterar datos,
+   controles de autorización, contenidos, logos ni colores de estados críticos. */
+:root{
+  --gl-pro-navy:#153650;
+  --gl-pro-blue:#166996;
+  --gl-pro-muted:#587287;
+  --gl-pro-line:#dfe8f0;
+  --gl-pro-paper:#fff;
+  --gl-pro-canvas:#f7f9fc;
+  --gl-pro-shadow:0 6px 26px rgba(21,54,80,.075);
+}
+#app,#hub,.gl-ch,.gl-admin{font-family:"Inter",system-ui,-apple-system,sans-serif}
+#app :is(.card,.lcard,.panel,.note),
+#hub :is(.gl-owner-area,.gl-owner-company,.gl-owner-tile),
+.gl-ch :is(.gl-ch-card,.gl-ch-kpi),
+.gl-admin :is(.gl-admin-card,.gl-admin-kpi){
+  border:1px solid var(--gl-pro-line);
+  box-shadow:var(--gl-pro-shadow);
+  border-radius:18px;
+}
+#app :is(.card,.lcard,.panel,.note){transition:border-color .18s ease,box-shadow .18s ease}
+#app :is(.card,.lcard,.panel,.note):focus-within{border-color:#91bad5;box-shadow:0 0 0 3px #16699618,var(--gl-pro-shadow)}
+/* Tarjetas principales: mismo lenguaje, sin cambiar textos ni acciones. */
+#hub .gl-owner-areas,#view .gl-owner-areas{gap:clamp(12px,2vw,22px)}
+#hub .gl-owner-area,#view .gl-owner-area{
+  border-radius:20px;
+  transition:box-shadow .2s ease,transform .2s ease,border-color .2s ease;
+}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+  #hub .gl-owner-area:hover,#view .gl-owner-area:hover{transform:translateY(-2px)}
+}
+#hub .gl-owner-area:focus-within,#view .gl-owner-area:focus-within{
+  border-color:#8dbbd9;box-shadow:0 0 0 3px #1a6c9918,0 12px 30px #1536501a;
+}
+/* Inicio: datos y accesos reales del local, legibles, sin cifras simuladas. */
+#view .gl-home-essential{max-width:1500px;margin-inline:auto}
+#view .gl-home-essential-stat{
+  min-height:102px;
+  border:1px solid var(--gl-pro-line);
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 4px 15px #15365009;
+}
+#view .gl-home-essential-stat-label{color:var(--gl-pro-muted);font-size:13px}
+#view .gl-home-essential-actions{
+  border-radius:17px;
+  border-color:var(--gl-pro-line);
+  background:#fff;
+}
+#view .gl-home-essential-links button{
+  min-height:55px;
+  border:1px solid #dce7ef;
+  border-radius:13px;
+  background:#f9fbfe;
+  font-size:14px;
+  font-weight:700;
+  text-align:left;
+  transition:background .15s ease,border-color .15s ease;
+}
+#view .gl-home-essential-links button:hover{background:#ecf5fb;border-color:#b7d3e5}
+#view .gl-home-essential-actions h2{color:var(--gl-pro-navy);font-weight:800;letter-spacing:-.025em}
+#view .gl-home-avisos-list li{border-radius:12px;border-color:var(--gl-pro-line)}
+/* Navegación: contraste y foco uniforme, plegado existente y accesos diarios visibles. */
+#app #snav button,#app #snav .snav-folder>summary{
+  min-height:44px;border-radius:11px;
+}
+#app #snav button[aria-current=page]{font-weight:800}
+#app #snav button[data-go=stock],
+#app #snav .gl-daily-shortcut{
+  min-height:49px;
+  color:#174865;
+  border:1px solid #d5e7f2;
+  background:#eef6fc;
+}
+#app #snav :is(button,.snav-folder>summary):focus-visible,
+.gl-mobile-dock button:focus-visible,
+#hub button:focus-visible,
+#view button:focus-visible{
+  outline:3px solid #4f9ec5;
+  outline-offset:2px;
+}
+/* Formularios, tablas y pestañas: mayor ancho útil y jerarquía estable. */
+#app :is(.card,.panel) :is(input:not([type=checkbox]):not([type=radio]),select,textarea),
+.gl-ch :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
+  min-height:44px;border-radius:11px;
+  border-color:#cbdce8;
+}
+#app :is(input,select,textarea):focus-visible,
+.gl-ch :is(input,select,textarea):focus-visible{
+  outline:2px solid #3287b5;outline-offset:2px;
+}
+#app :is(.sheet,.tbl-wrap,.table-wrap){max-width:100%;overflow-x:auto}
+#app :is(.sheet,.tbl-wrap,.table-wrap) table{font-variant-numeric:tabular-nums}
+#app :is(.btn,.chip),.gl-ch button,.gl-admin button{touch-action:manipulation}
+#app :is(.btn,.chip):disabled,.gl-ch button:disabled{cursor:not-allowed}
+#app .savebar{box-shadow:0 -5px 20px #1739500c}
+#app .savebar .btn.primary{min-height:46px;font-weight:800}
+/* Señales visuales de estado: no reemplazan mensajes reales del servidor. */
+#app [role=status],#hub [role=status]{overflow-wrap:anywhere}
+#app [role=alert],#hub [role=alert]{overflow-wrap:anywhere}
+#hub :is(.gl-oh-brand-company img,.gl-owner-welcome-logo img),
+#app .gestlok-company-identity img,.gl-admin-logo img,.gl-ch-logo img{
+  filter:none!important;mix-blend-mode:normal!important;opacity:1!important;
+  object-fit:contain;
+}
+@media(max-width:899px){
+  #app .wrap{width:100%;max-width:none;padding-inline:clamp(14px,3.5vw,22px)}
+  #view .gl-home-essential-actions{padding:clamp(13px,3vw,19px)}
+  #view .gl-home-essential-links{gap:9px}
+  #view .gl-home-essential-links button{min-height:52px;font-size:14px}
+  .gl-mobile-dock:not([hidden]){min-height:calc(60px + env(safe-area-inset-bottom,0px));padding:4px 5px calc(5px + env(safe-area-inset-bottom,0px))}
+  .gl-mobile-dock button{border-radius:10px}
+  #app :is(button,.btn){max-width:100%}
+}
+@media(max-width:520px){
+  #hub .gl-owner-area,#view .gl-owner-area{border-radius:17px}
+  #view .gl-home-essential-stat{min-height:87px;padding:13px}
+  #app :is(.btn,.savebar button){min-height:45px}
+}
+@media(prefers-reduced-motion:reduce){
+  #app :is(.card,.panel,.lcard,.note),#hub .gl-owner-area,#view .gl-owner-area,
+  #view .gl-home-essential-links button{transition:none!important;transform:none!important}
+}
