@@ -5,25 +5,26 @@ import {runInNewContext} from 'node:vm';
 import {PGlite} from '@electric-sql/pglite';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
-function client(role='gerente',local='munro',tenant=TENANT,locals=[local]){
+function client(role='gerente',local='munro',tenant=TENANT,locals=[local],ro=false){
  const document={querySelector:()=>null,addEventListener:()=>{}};
  const window={};
  runInNewContext(read('public/stock/mi-gusto-cierre-online.js'),{
   document,window,Intl,Date,String,Number,Array,Object,console,navigator:{onLine:true},queueMicrotask:()=>{}
  });
  const mod=window.GestLokMiGustoOnline;
- mod.attach({S:{me:{tenant_id:tenant},local,offline:false,view:'cierre-online'},miRol:()=>role,misLocales:()=>locals,render:()=>{}});
+ mod.attach({S:{me:{tenant_id:tenant},local,ro,offline:false,view:'cierre-online'},miRol:()=>role,misLocales:()=>locals,render:()=>{}});
  return mod;
 }
-test('Pagos Online: exclusivamente Mi Gusto, dueño y gerente autorizado',()=>{
- for(const loc of ['munro','torcuato'])for(const role of ['dueno','gerente']){
+test('Pagos Online: Mi Gusto para administradora, dueño y gerente autorizados',()=>{
+ for(const loc of ['munro','torcuato'])for(const role of ['dueno','gerente','creadora']){
   const m=client(role,loc);assert(m.permitido());
   const html=m.view();assert.match(html,/Pagos Online/);
   assert.match(html,/data-mgon-tab="movimientos" aria-current="page">Cargar pedidos/);
   assert.match(html,/data-mgon-tab="resumen" aria-current="false">Resumen/);
   assert.match(html,/data-mgon-tab="historial" aria-current="false">Historial/);
  }
- for(const role of ['creadora','colaborador','lectura','editor',null])assert(!client(role).permitido());
+ for(const role of ['colaborador','lectura','editor',null])assert(!client(role).permitido());
+ assert(!client('creadora','munro',TENANT,['munro'],true).permitido()); // Modo solo lectura
  assert(!client('gerente','munro',TENANT,['torcuato']).permitido());
  assert(!client('gerente','torcuato',TENANT,['munro']).permitido());
  assert(!client('dueno','munro','aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa').permitido());
@@ -83,15 +84,17 @@ test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento'
  try{
   await db.exec([
    'create role anon; create role authenticated;',
-   'create schema auth; create schema gestlok_tenancy;',
+   'create schema auth; create schema gestlok_tenancy; create schema gestlok_platform;',
    "create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid',true),'')::uuid $$;",
    "create function gestlok_tenancy.current_tenant_id() returns uuid language sql stable as $$ select nullif(current_setting('test.tenant',true),'')::uuid $$;",
    "create function public.mi_rol() returns text language sql stable as $$ select current_setting('test.role',true) $$;",
-   "create function public.puede_editar_local(p text) returns boolean language sql stable as $$ select p=any(string_to_array(current_setting('test.local',true),',')) $$;"
+   "create function public.puede_editar_local(p text) returns boolean language sql stable as $$ select p=any(string_to_array(current_setting('test.local',true),',')) $$;",
+   "create function gestlok_platform.require_admin() returns uuid language plpgsql stable security definer as $$ begin if current_setting('test.admin',true)='true' then return auth.uid(); else raise exception 'No es administrador'; end if; end $$;"
   ].join('\n'));
   await db.exec(read('supabase/migrations/20261029150000_mi_gusto_cierre_online.sql'));
-  async function context(role='dueno',tenant=TENANT,locals='munro,torcuato'){
-   for(const [k,v] of Object.entries({uid:'11111111-1111-4111-8111-111111111111',role,tenant,local:locals}))
+  await db.exec(read('supabase/migrations/20261030195500_mi_gusto_pagos_admin_menu.sql'));
+  async function context(role='dueno',tenant=TENANT,locals='munro,torcuato',admin='true'){
+   for(const [k,v] of Object.entries({uid:'11111111-1111-4111-8111-111111111111',role,tenant,local:locals,admin}))
     await db.query('select set_config($1,$2,false)',['test.'+k,v]);
   }
   await context();
@@ -132,6 +135,11 @@ test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento'
   await assert.rejects(()=>state('torcuato'),/permiso/);
   await context('gerente',TENANT,'torcuato');
   await assert.rejects(()=>state('munro'),/permiso/);
+  await context('creadora',TENANT,'munro,torcuato','true');
+  assert.equal((await state('munro')).active.local,'munro');
+  assert.equal((await state('torcuato')).active.local,'torcuato');
+  await context('creadora',TENANT,'munro,torcuato','false');
+  await assert.rejects(()=>state('munro'),/No es administrador/);
   await context('dueno','22222222-2222-4222-8222-222222222222');
   await assert.rejects(()=>state('munro'),/permiso/);
   await context('lectura');

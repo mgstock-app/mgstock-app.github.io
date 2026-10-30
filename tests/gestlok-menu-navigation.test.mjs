@@ -6,7 +6,7 @@ const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('menú global conserva todas las hojas, prioriza Stock Local y elimina solo Hojas',()=>{
  const s=file('public/stock/gestlok-navigation-editor.js');
  new Script(s);
- assert.match(s,/preferred=\['inicio','stock','proveedores'/);
+ assert.match(s,/preferred=\['inicio','cierre-online','stock','proveedores'/);
  assert.match(s,/id==='stock'\?'Stock Local'/);
  assert.match(s,/nav\.querySelector\('\.snav-l'\)\?\.remove\(\)/);
  assert.doesNotMatch(s,/nav\.querySelector\('\.snav-add'\)\?\.remove\(\)/);
@@ -50,17 +50,19 @@ test('integración Next, PWA y contexto tenant',()=>{
   assert.match(file(name),/'\/stock\/gestlok-navigation-editor\.js'/);
 });
 
-test('Stock Local y Pagos Online quedan primeros y son accesos diarios autorizados',()=>{
+test('Inicio, Pagos Online y Stock Local en ese orden son accesos diarios autorizados',()=>{
  const nav=file('public/stock/gestlok-navigation-editor.js');
  const mobile=file('public/stock/gestlok-mobile-dock.js');
  new Script(mobile);
- assert.match(nav,/const pinned=\['inicio','stock'\]/);
- assert.match(nav,/originalPayment=nav\.querySelector\('\.snav-sub button\[data-go="cierre-online"\]'\)/);
- assert.match(nav,/payment\.dataset\.go='cierre-online'/);
- assert.match(nav,/last=payment/);
- assert.match(nav,/payment\?\.remove\(\)/);
+ assert.match(nav,/isMiGusto=c=>/);
+ assert.match(nav,/\['inicio','cierre-online','stock'\]/);
+ assert.match(nav,/const directPayment=nav\.querySelector/);
+ assert.match(nav,/const nestedPayment=nav\.querySelector/);
+ assert.match(nav,/payment\.nextElementSibling!==stockLocal/);
+ assert.match(nav,/gestlok_navigation_save/);
  assert.match(mobile,/\['stock','Stock Local','stock',!!stock\(\)\]/);
  assert.match(mobile,/\['pagos','Pagos Online','payment',!!pagos\(\)\]/);
+ assert.ok(mobile.indexOf("['pagos','Pagos Online'")<mobile.indexOf("['stock','Stock Local'"),'Dock: Pagos Online antes de Stock Local');
  assert.match(mobile,/if\(k==='stock'\)/);
  assert.match(mobile,/if\(k==='pagos'\)/);
  assert.match(mobile,/const stock=\(\)=>localNav\('stock'\)/);

@@ -40,7 +40,9 @@ function changeScale(delta){
 let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
-  (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local())));
+  !window.GestLokCreatorSupport?.previewRol?.() &&
+  (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local()))||
+   (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;error='';}

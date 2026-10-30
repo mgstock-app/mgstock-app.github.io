@@ -6,8 +6,9 @@ if(!nav||!side)return;
 const html=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const permitted=['inicio','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso','pedido','conteo','fabrica','historial','motos','resenas','reclamos-internos','cierre-online','pedidos-online','tienda-online'];
 const targets=['stock','proveedores','chat','vencimientos','avisos','pedido','conteo','historial'];
-const preferred=['inicio','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
-const pinned=['inicio','stock']; // Accesos diarios al comienzo, aunque la creadora reordene otros.
+const preferred=['inicio','cierre-online','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
+const isMiGusto=c=>c?.tenant==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'&&['munro','torcuato'].includes(c?.local);
+const pinned=()=>isMiGusto(ctx())?['inicio','cierre-online','stock']:['inicio','stock']; // Siempre priorizar accesos diarios, sin alterar otros negocios.
 let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick=false;
 const ctx=()=>window.GestLokNavContext?.()||null;
 const idOf=el=>el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'';
@@ -28,7 +29,7 @@ function shown(){
  }
  for(const x of base)if(!out.some(y=>y.id===x.id))out.push(x);
  // Inicio y Stock Local no se pueden perder debajo de otras categorías.
- return [...pinned.flatMap(id=>out.filter(x=>x.id===id)),...out.filter(x=>!pinned.includes(x.id))];
+ const fixed=pinned();return [...fixed.flatMap(id=>out.filter(x=>x.id===id)),...out.filter(x=>!fixed.includes(x.id))];
 }
 function draw(){
  const c=ctx();if(!c?.tenant||!c.local)return;
@@ -49,21 +50,28 @@ function draw(){
   const oldIcon=stock.querySelector('svg');
   if(productIcon&&oldIcon&&oldIcon.outerHTML!==productIcon.outerHTML)oldIcon.replaceWith(productIcon.cloneNode(true));
  }
- // Pagos Online solo se fija cuando el sistema original lo permite en este local.
- // La entrada interna sigue disponible y mantiene las mismas validaciones de go().
- const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
- if(originalPayment){originalPayment.hidden=true;originalPayment.style.setProperty('display','none','important');}
- let payment=nav.querySelector('[data-daily-shortcut="pagos"]');
- if(!originalPayment){payment?.remove();payment=null;}
- else{
-  if(!payment){
-   payment=document.createElement('button');payment.type='button';
-   payment.dataset.go='cierre-online';payment.dataset.dailyShortcut='pagos';
-   payment.className='gl-daily-shortcut';
+ // Reutilizar SIEMPRE el botón autorizado generado por app.js.
+ // Solo para versiones antiguas con el botón anidado, crear un acceso directo.
+ const directPayment=nav.querySelector(':scope > button[data-go="cierre-online"]:not([data-daily-shortcut])');
+ const nestedPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
+ let shortcut=nav.querySelector('[data-daily-shortcut="pagos"]');
+ let payment=directPayment||null;
+ if(directPayment){
+  shortcut?.remove();
+  if(directPayment.hidden)directPayment.hidden=false;
+  if(directPayment.style.getPropertyValue('display'))directPayment.style.removeProperty('display');
+ }else if(nestedPayment){
+  if(!nestedPayment.hidden)nestedPayment.hidden=true;
+  if(nestedPayment.style.getPropertyValue('display')!=='none')nestedPayment.style.setProperty('display','none','important');
+  if(!shortcut){
+   shortcut=document.createElement('button');shortcut.type='button';
+   shortcut.dataset.go='cierre-online';shortcut.dataset.dailyShortcut='pagos';
+   shortcut.className='gl-daily-shortcut';
   }
-  if(payment.innerHTML!==originalPayment.innerHTML)payment.innerHTML=originalPayment.innerHTML;
-  const name=payment.querySelector('.nl');if(name&&name.textContent!=='Pagos Online')name.textContent='Pagos Online';
- }
+  if(shortcut.innerHTML!==nestedPayment.innerHTML)shortcut.innerHTML=nestedPayment.innerHTML;
+  const name=shortcut.querySelector('.nl');if(name&&name.textContent!=='Pagos Online')name.textContent='Pagos Online';
+  payment=shortcut;
+ }else shortcut?.remove();
  let last=back;
  const existing=new Map([...nav.querySelectorAll('[data-nav-custom]')].map(x=>[x.dataset.navCustom,x]));
  for(const item of order){
@@ -79,17 +87,16 @@ function draw(){
   }
   if(last?.nextElementSibling!==n)nav.insertBefore(n,last?.nextElementSibling||null);
   last=n;
-  if(payment&&(item.id==='stock'||(item.id==='inicio'&&!known.has('stock')))){
-   if(payment.parentNode!==nav||last.nextElementSibling!==payment)nav.insertBefore(payment,last.nextElementSibling);
-   last=payment;
-  }
  }
- // El acceso a Stock Local debe quedar justo después de Inicio, incluso si
- // una disposición guardada lo colocó al final de las hojas.
- const inicio=known.get('inicio');
- const stockLocal=known.get('stock');
- if(inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,inicio.nextElementSibling);
- if(payment&&stockLocal&&stockLocal.nextElementSibling!==payment)nav.insertBefore(payment,stockLocal.nextElementSibling);
+ // Munro y Don Torcuato: Inicio → Pagos Online → Stock Local.
+ // Respeta los permisos existentes y prevalece sobre órdenes antiguos guardados.
+ const inicio=known.get('inicio'),stockLocal=known.get('stock');
+ if(isMiGusto(c)&&inicio&&payment){
+  if(inicio.nextElementSibling!==payment)nav.insertBefore(payment,inicio.nextElementSibling);
+  if(stockLocal&&payment.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,payment.nextElementSibling);
+ }else if(inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal){
+  nav.insertBefore(stockLocal,inicio.nextElementSibling);
+ }
  for(const [id,b] of existing)if(!order.some(x=>x.id===id))b.remove();
  const can=!!c.creator;
  let edit=nav.querySelector('#gl-edit-menu');
@@ -143,8 +150,8 @@ function paint(){
  if(!overlay)return;
  const rows=overlay.querySelector('#gl-nav-rows');
  rows.innerHTML=draft.map((x,i)=>'<div class="gl-nav-item"><input maxlength="45" data-nav-name data-index="'+i+'" aria-label="Nombre de categoría" value="'+html(x.label)+'">'+
- '<button type="button" data-nav-up="'+i+'" '+(i<=1?'disabled':'')+' aria-label="Subir categoría">↑</button>'+
- '<button type="button" data-nav-down="'+i+'" '+(i===draft.length-1||i<2?'disabled':'')+' aria-label="Bajar categoría">↓</button>'+
+ '<button type="button" data-nav-up="'+i+'" '+(i<pinned().length?'disabled':'')+' aria-label="Subir categoría">↑</button>'+
+ '<button type="button" data-nav-down="'+i+'" '+(i===draft.length-1||i<pinned().length?'disabled':'')+' aria-label="Bajar categoría">↓</button>'+
  (x.id.startsWith('custom-')?'<button type="button" data-nav-remove="'+i+'" aria-label="Eliminar acceso">×</button>':'')+'</div>').join('');
  const known=nodes();
  overlay.querySelector('select').innerHTML=targets.filter(x=>known.has(x)).map(x=>'<option value="'+x+'">'+html(nameOf(known.get(x)))+'</option>').join('');
@@ -156,7 +163,7 @@ function actions(e){
  const b=e.target.closest('button');if(!b)return;
  if(b.hasAttribute('data-nav-up')||b.hasAttribute('data-nav-down')){
   const up=b.hasAttribute('data-nav-up'),i=Number(b.dataset[up?'navUp':'navDown']),j=i+(up?-1:1);
-  if(i>=2&&j>=2&&j<draft.length)[draft[i],draft[j]]=[draft[j],draft[i]];
+  if(i>=pinned().length&&j>=pinned().length&&j<draft.length)[draft[i],draft[j]]=[draft[j],draft[i]];
   paint();return;
  }
  if(b.hasAttribute('data-nav-remove')){draft.splice(Number(b.dataset.navRemove),1);paint();return;}
