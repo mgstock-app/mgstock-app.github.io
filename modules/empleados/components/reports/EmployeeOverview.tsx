@@ -111,7 +111,17 @@ export function EmployeeOverview({
   const activeIds = useMemo(() => new Set(roster?.active_sheet_ids ?? []), [roster]);
   const currentRows = hasProtectedRoster ? rows.filter(row => activeIds.has(row.id)) : rows;
   const historicalRows = hasProtectedRoster ? rows.filter(row => !activeIds.has(row.id)) : [];
-    const refresh = () => {
+    // La lista se actualiza sola cuando alguien termina su legajo desde otro teléfono.
+  useEffect(() => {
+    if (!hasProtectedRoster) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible" && navigator.onLine !== false)
+        setReload(value => value + 1);
+    }, 45000);
+    return () => window.clearInterval(timer);
+  }, [hasProtectedRoster]);
+
+  const refresh = () => {
     setLoading(true); setError(""); setReload(k => k + 1);
   };
   const open = (row: EmployeeRow) => {
