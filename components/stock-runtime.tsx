@@ -35,7 +35,7 @@ export function StockRuntime() {
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
-      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=fotos-camara-refresh-20261030");
+      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=admin-mi-gusto-pagos-20261030");
       await load("/stock/munro-motos.js?rev=motos-guardar-20261027");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=piloto-perfumes-20261029");
@@ -59,8 +59,8 @@ export function StockRuntime() {
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
       await load("/stock/app.js?rev=nav-pagos-debajo-inicio-20261030");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
-      await load("/stock/gestlok-mobile-dock.js?rev=accesos-diarios-20261030");
-      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=stock-menu-fix-ff0917e-20261030");
+      await load("/stock/gestlok-mobile-dock.js?rev=mi-gusto-menu-pagos-primero-20261030");
+      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=mi-gusto-menu-pagos-primero-20261030");
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();
