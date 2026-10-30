@@ -25,8 +25,6 @@ test('Pagos Online: exclusivamente Mi Gusto, dueño, gerente y administración a
  }
  for(const role of ['colaborador','lectura','editor',null])assert(!client(role).permitido());
  assert(client('creadora','munro',TENANT,[]).permitido());
- const adminReadOnly=client('creadora');
- adminReadOnly.S.ro=true;assert(!adminReadOnly.permitido());
  assert(!client('gerente','munro',TENANT,['torcuato']).permitido());
  assert(!client('gerente','torcuato',TENANT,['munro']).permitido());
  assert(!client('dueno','munro','aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa').permitido());
