@@ -50,8 +50,8 @@ export const managerStaffInviteApi = {
     "rm_app_manager_staff_invite_status", {p_local:local}
   ),
   preview: async (token: string): Promise<{company_name:string;local_name:string;expires_at:string;group_shared?:boolean}> => {
-    try {return await rpc("rm_app_manager_staff_group_preview", {p_token:token});}
-    catch {return rpc("rm_app_manager_staff_invite_preview", {p_token:token});}
+    try {return await rpc<{company_name:string;local_name:string;expires_at:string;group_shared:boolean}>("rm_app_manager_staff_group_preview", {p_token:token});}
+    catch {return rpc<{company_name:string;local_name:string;expires_at:string}>("rm_app_manager_staff_invite_preview", {p_token:token});}
   },
   accept: (token: string, isGeneral = false) => rpc<{local_id:string;profile_id:string;joined:boolean}>(
     isGeneral ? "rm_app_manager_staff_group_accept" : "rm_app_manager_staff_invite_accept",
