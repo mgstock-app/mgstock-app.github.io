@@ -327,7 +327,7 @@ function render(){
   // No incluye claves, archivos ni datos de otra cuenta.
   const formScope=[S.me?.tenant_id||'',S.me?.id||S.me?.email||'',S.local,S.view].join('|');
   const formGuard=window.GestLokFormDraftGuard;
-  const preserved=renderedFormScope===formScope?formGuard?.capture($('#view'),formScope,document.activeElement):null;
+  const preserved=renderedFormScope===formScope?formGuard?.capture($('#view'),formScope,document.activeElement,{legacy:S.view==='ingreso'}):null;
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
   const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
