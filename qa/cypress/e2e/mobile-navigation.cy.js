@@ -59,8 +59,8 @@ describe('GESTLOK · Dock inferior móvil y permisos',()=>{
    cy.get('#gestlok-mobile-dock [data-dock="stock"]',{timeout:15000}).should('be.visible').and('contain.text','Stock Local');
    cy.get('#snav > button[data-go="stock"]').should('exist');
    // Si la sucursal tiene Pagos Online habilitado, ambos accesos deben corresponder a la misma vista autorizada.
-   cy.get('#snav .snav-sub [data-go="cierre-online"]').then($original=>{
-    if($original.length){
+   cy.get('#snav').then($nav=>{
+    if($nav.find('.snav-sub [data-go="cierre-online"]').length){
      cy.get('#snav > button[data-daily-shortcut="pagos"]').should('exist');
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
