@@ -60,7 +60,14 @@ for(const required of [
 ]) assert(sql.includes(required),"Required SQL security: "+required);
 assert(!sql.includes("on conflict(user_id) do update set role"),"Existing user roles must never be overwritten");
 const immediate = fs.readFileSync("../../supabase/migrations/20261030040000_invitaciones_gerentes_acceso_inmediato_colaborador.sql","utf8");
-const fn = immediate.slice(immediate.indexOf("create or replace function"),immediate.indexOf("revoke all on function"));
+const create = immediate.slice(immediate.indexOf("-- GESTLOK: ruta para crear enlaces de gerentes"),immediate.indexOf("create or replace function rm_test_private.rm_manager_staff_invite_accept"));
+assert(create.includes("rm_test_private.app_role()=''"),"Gerentes nativos GESTLOK deben tener ruta propia");
+assert(create.includes("p_local=any(rm_test_private.gestlok_gerente_locals())"),"Local debe ser del gerente");
+assert(create.includes("e.data->>'rol'='gerente'"),"No permitir invitaciones de editores");
+assert(create.includes("e.tenant_id=(select gestlok_tenancy.current_tenant_id())"),"Restringir tenant");
+assert(create.includes("case s.id when 'torcuato' then 'dt' else s.id end = p_local"),"Restringir sucursal de la misma asignación");
+assert(create.includes("rm_test_private.rm_employee_profile_scope(target_local.organization_id,target_local.id)"));
+const fn = immediate.slice(immediate.indexOf("create or replace function rm_test_private.rm_manager_staff_invite_accept"),immediate.indexOf("revoke all on function"));
 assert.match(fn, /v_member_role text/,"No usar current_role: palabra reservada PostgreSQL");
 assert.match(fn, /select role into v_member_role/);
 assert.match(fn, /v_member_role is not null/);
