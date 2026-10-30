@@ -23,8 +23,18 @@ import "./gestlok-ios-install.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://gestlok.com.ar"),
-  title: "GestLok",
-  description: "Productos, proveedores, conteos y movimientos en un espacio seguro por local. Acceso gratuito con autorización.",
+  title: "GESTLOK | Software de gestión de negocios y locales",
+  description: "GESTLOK: todo tu negocio, en orden. Organizá stock, proveedores, operaciones y sucursales desde una plataforma web. Conocé sus funciones y probá la demo.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "GESTLOK | Todo tu negocio, en orden",
+    description: "Plataforma web para organizar stock, proveedores y equipos de tus negocios y sucursales.",
+    url: "https://gestlok.com.ar/",
+    siteName: "GESTLOK",
+    locale: "es_AR",
+    type: "website",
+  },
+  twitter: { card: "summary", title: "GESTLOK", description: "Todo tu negocio, en orden." },
   // Preserve original manifest URL for installed Android/desktop PWA update tracking.
   manifest: `${basePath}/manifest.webmanifest`,
   icons: {
