@@ -342,3 +342,19 @@
  .mg-on-observation-details{margin-top:9px}
  .mg-on-page .mg-on-save{width:100%;min-width:0}
 }
+
+
+/* Pagos Online: foto requerida antes del cierre del turno. */
+.mg-on-close-copy{flex:1;min-width:220px}
+.mg-on-close-copy>p{max-width:660px}
+.mg-on-photo-reminder{margin-top:8px!important;padding:9px 11px;border:1px solid #f0d99f;border-radius:10px;background:#fff8e7;color:#75591d!important;font-weight:750}
+.mg-on-close-controls{display:flex;align-items:center;gap:9px;flex:none}
+.mg-on-close-controls .mg-on-photo-btn,.mg-on-close-controls .mg-on-photo-upload{margin:0;white-space:nowrap}
+.mg-on-camera{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mg-on-photo-reminder.mg-on-photo-ready{background:#e9f9ef;border-color:#c7ead4;color:#125f39!important}
+@media(max-width:520px){
+ .mg-on-close-copy{width:100%;min-width:0}
+ .mg-on-close-controls{width:100%;flex-direction:column;align-items:stretch}
+ .mg-on-close-controls .mg-on-photo-btn,.mg-on-close-controls .mg-on-photo-upload{width:100%;justify-content:center}
+ .mg-on-close-controls .mg-on-photo-btn,.mg-on-close-controls .mg-on-photo-upload,.mg-on-close-controls>button{min-height:48px}
+}
