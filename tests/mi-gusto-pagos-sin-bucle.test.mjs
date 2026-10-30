@@ -33,3 +33,22 @@ test('Pagos Online no repite infinitamente la carga cuando falla el servidor', a
  mod.view();
  assert.equal(pending.length,1);
 });
+
+test('Pagos Online no entra en bucle si la RPC responde null sin error',async()=>{
+ const source=readFileSync(new URL('../public/stock/mi-gusto-cierre-online.js',import.meta.url),'utf8');
+ const pending=[];
+ const window={GestLokSupabase:{rpc:async()=>({data:null,error:null})}};
+ const document={querySelector:()=>null,addEventListener:()=>{}};
+ runInNewContext(source,{window,document,Intl,Date,String,Number,Array,Object,console,
+  navigator:{onLine:true},queueMicrotask:callback=>pending.push(callback)});
+ const mod=window.GestLokMiGustoOnline;
+ let renders=0;
+ mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'munro',offline:false,view:'cierre-online'},
+  miRol:()=>'gerente',misLocales:()=>['munro'],render:()=>{renders++;mod.view();}});
+ mod.view();assert.equal(pending.length,1);
+ await pending.shift()();
+ assert.equal(renders,1);
+ assert.equal(pending.length,0,'Una respuesta vacía no debe iniciar cargas infinitas');
+ assert.match(mod.view(),/No recibimos datos válidos de Pagos Online/);
+ assert.equal(pending.length,0);
+});
