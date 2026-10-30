@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const sql=read('supabase/migrations/20261030224511_gestlok_shared_local_invites_self_legajo.sql');
+const saved=read('supabase/migrations/20261030224723_gestlok_reusable_group_invite_retrieve.sql');
 const panel=read('modules/empleados/components/invitations/ManagerStaffInvite.tsx');
 const join=read('modules/empleados/components/invitations/JoinStaffInvitation.tsx');
 const onboard=read('modules/empleados/features/onboarding/api.ts');
@@ -76,4 +77,20 @@ test('Las funciones privadas no se exponen sin inicio de sesión',()=>{
     assert.ok(sql.includes('revoke all on function rm_test_private.'+f+'(text) from public,anon,authenticated'),f);
   for(const f of ['rm_app_staff_self_profile()','rm_app_staff_self_profile_save(text,text,text,text,date)'])
     assert.ok(sql.includes('revoke all on function public.'+f),f);
+});
+
+test('Al reabrir invitaciones se recupera el MISMO enlace general solo para el dueño/gerente del local',()=>{
+  assert.match(saved,/create table if not exists rm_test_private.manager_staff_group_secrets/);
+  assert.match(saved,/enable row level security/);
+  assert.match(saved,/revoke all on rm_test_private.manager_staff_group_secrets from public,anon,authenticated/);
+  assert.match(saved,/rm_manager_staff_group_create_saved\(p_local\)/);
+  assert.match(saved,/rm_manager_staff_group_get\(p_local\)/);
+  assert.match(saved,/rm_manager_staff_invite_status\(p_local\)/);
+  assert.match(saved,/rm_employee_profile_scope\(v_local.organization_id,v_local.id\)/);
+  assert.match(saved,/mp.can_edit=true/);
+  assert.match(saved,/i.group_shared and i.revoked_at is null/);
+  assert.match(saved,/i.expires_at>clock_timestamp\(\)/);
+  assert.match(onboard,/rm_app_manager_staff_group_get/);
+  assert.match(panel,/managerStaffInviteApi.getGeneral\(localId\)/);
+  assert.match(panel,/window.confirm\("¿Renovar el enlace general\?/);
 });
