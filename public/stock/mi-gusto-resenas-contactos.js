@@ -12,7 +12,7 @@
     torcuato:'🥟 ¡Gracias por elegir Mi Gusto! 🖤\n\nNos encanta saber qué te pareció tu experiencia. Si tenés un minutito, nos ayudaría mucho que nos dejes tu opinión en Google. ⭐\n\n¡Y si querés compartirnos una captura por acá, nos encantaría leerte! 😊\n\n¡Gracias por acompañarnos!'
   };
   let api=null, messages=Object.create(null),loaded=Object.create(null),generation=0;
-  let editing=false,draft=null,busy=false,error='',notice='';
+  let editing=false,draft=null,busy=false,error='',notice='',lastLocal='';
   const local=()=>api?.S?.local;
   const allowed=()=>original.permitido?.()===true && local() in LOC;
   const editable=()=>allowed() && !api.S.offline && navigator.onLine!==false && !busy;
@@ -99,6 +99,7 @@
   const viewOriginal=original.view;
   original.view=function(){
     let html=viewOriginal();
+    if(local()!==lastLocal){lastLocal=local();editing=false;draft=null;error='';notice='';}
     if(!allowed()||!html)return html;
     html=html.replace('<button class="rv-new" data-rv="new"',panel()+'<button class="rv-new" data-rv="new"');
     html=rowButtons(html);
@@ -117,7 +118,7 @@
   const resetOriginal=original.reset;
   original.reset=function(){
     generation++;messages=Object.create(null);loaded=Object.create(null);
-    editing=false;draft=null;busy=false;error='';notice='';resetOriginal();
+    editing=false;draft=null;busy=false;error='';notice='';lastLocal='';resetOriginal();
   };
   async function saveMessage(form){
     if(!editable())return;
@@ -148,6 +149,7 @@
     if(action==='edit-message'&&editable()){editing=true;draft=current();notice='';error='';redraw();return;}
     if(action==='cancel-message'&&!busy){editing=false;draft=null;error='';redraw();}
   },true);
+  document.addEventListener('input',e=>{if(e.target?.name==='message'&&e.target?.form?.id==='rv-message-template-form')draft=e.target.value;},true);
   document.addEventListener('submit',e=>{
     if(e.target?.id!=='rv-message-template-form')return;
     e.preventDefault();e.stopImmediatePropagation();
