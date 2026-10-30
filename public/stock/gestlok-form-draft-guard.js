@@ -20,18 +20,18 @@
    String(Boolean(el.defaultChecked)):
    (el.tagName==='SELECT' ? String(Array.from(el.options||[]).find(x=>x.defaultSelected)?.value??el.options?.[0]?.value??'') :
     String(el.defaultValue??''));
- function capture(root,context,active){
+ function capture(root,context,active,options={}){
    if(!root||!context)return null;
    const items=new Map(),occurrences=new Map();
    let focus=null;
    for(const el of controls(root)){
     if(!eligible(el))continue;
-    const key=fieldKey(el);if(!key)continue;
+    const key=fieldKey(el);if(!key||(options.legacy&&!el.id&&!el.dataset?.provVal&&!el.dataset?.provNote))continue;
     const index=occurrences.get(key)||0;occurrences.set(key,index+1);
     const uid=key+'|'+index,base=baseline(el);
     const checked=el.type==='checkbox'||el.type==='radio';
-    const changed=checked?el.checked!==el.defaultChecked:String(el.value)!==base;
-    if(changed)items.set(uid,{type:el.type,base,value:el.value,checked:el.checked});
+    const changed=checked?el.checked!==el.defaultChecked:(options.legacy?el.value!==el.defaultValue:String(el.value)!==base);
+    if(changed)items.set(uid,{type:el.type,base,value:el.value,checked:el.checked,legacy:!!options.legacy});
     if(active===el){
       let start=null,end=null;
       try{start=el.selectionStart;end=el.selectionEnd;}catch{}
@@ -51,7 +51,7 @@
      fields.set(uid,el);
      const saved=snapshot.items.get(uid);
      // Diferente registro o valor que cambió en el servidor: no inyectar borradores viejos.
-     if(!saved||saved.type!==el.type||saved.base!==baseline(el))continue;
+     if(!saved||saved.type!==el.type||(!saved.legacy&&saved.base!==baseline(el)))continue;
      if(el.type==='checkbox'||el.type==='radio')el.checked=saved.checked;
      else el.value=saved.value;
    }
