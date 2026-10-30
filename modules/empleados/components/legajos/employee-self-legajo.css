@@ -1,0 +1,22 @@
+.esl-card{max-width:980px;margin:20px auto;padding:23px;border-radius:19px;background:white;color:#183c59;border:1px solid #dbe5ed;box-shadow:0 7px 24px #14384c0e;scroll-margin-top:95px}
+.esl-head{display:flex;align-items:start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.esl-eyebrow{font-size:11px;font-weight:800;letter-spacing:.07em;color:#477e9c;display:inline-flex;align-items:center;gap:7px}
+.esl-head h2{font-size:21px;color:#153553;margin:7px 0}
+.esl-head p{font-size:13px;color:#59748b;margin:0 0 10px}
+.esl-edit{background:#eaf5fb;color:#155277;border:1px solid #c9e2f1;padding:10px 16px;border-radius:10px;font-weight:750;min-height:45px}
+.esl-form{display:grid;gap:19px;margin-top:19px}
+.esl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.esl-grid label{display:grid;gap:7px;font-size:13px;font-weight:700;color:#34556f;min-width:0}
+.esl-grid label small{font-size:12px;font-weight:500;color:#698599}
+.esl-grid input{width:100%;box-sizing:border-box;background:#fff;border:1px solid #cddfea;color:#16364e;border-radius:11px;padding:12px 14px;min-height:49px;font-size:16px}
+.esl-grid input:focus{outline:2px solid #70bad8;outline-offset:1px}
+.esl-actions{display:flex;gap:9px;flex-wrap:wrap}
+.esl-actions button{min-height:46px;border-radius:10px;padding:10px 18px;font-weight:750}
+.esl-save{background:#184970;color:#fff;border:0;display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.esl-privacy{font-size:12px;line-height:1.55;color:#6c8093;margin:0}
+.esl-error{background:#fff1f2;color:#ad3434;border-radius:9px;padding:12px;font-size:13px}
+.esl-success{display:flex;align-items:center;gap:8px;color:#166e51;font-size:13px}
+.esl-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:18px 0 0}
+.esl-summary div{padding:12px;border:1px solid #e0e8ee;border-radius:10px;min-width:0}
+.esl-summary dt{font-size:12px;color:#6a8192}.esl-summary dd{font-weight:700;color:#244660;margin:3px 0;overflow-wrap:anywhere}
+@media(max-width:620px){.esl-card{padding:17px;margin:13px auto}.esl-grid,.esl-summary{grid-template-columns:1fr}.esl-head h2{font-size:20px}.esl-actions button{flex:1}}
