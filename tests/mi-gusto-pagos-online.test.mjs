@@ -88,8 +88,8 @@ test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento'
    "create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid',true),'')::uuid $$;",
    "create function gestlok_tenancy.current_tenant_id() returns uuid language sql stable as $$ select nullif(current_setting('test.tenant',true),'')::uuid $$;",
    "create function public.mi_rol() returns text language sql stable as $$ select current_setting('test.role',true) $$;",
-   "create function public.puede_editar_local(p text) returns boolean language sql stable as $ select p=any(string_to_array(current_setting('test.local',true),',')) $;",
-   "create function gestlok_platform.require_admin() returns uuid language plpgsql stable security definer as $ begin if current_setting('test.admin',true)='true' then return auth.uid(); else raise exception 'No es administrador'; end if; end $;"
+   "create function public.puede_editar_local(p text) returns boolean language sql stable as $$ select p=any(string_to_array(current_setting('test.local',true),',')) $$;",
+   "create function gestlok_platform.require_admin() returns uuid language plpgsql stable security definer as $$ begin if current_setting('test.admin',true)='true' then return auth.uid(); else raise exception 'No es administrador'; end if; end $$;"
   ].join('\n'));
   await db.exec(read('supabase/migrations/20261029150000_mi_gusto_cierre_online.sql'));
   await db.exec(read('supabase/migrations/20261030195500_mi_gusto_pagos_admin_menu.sql'));
