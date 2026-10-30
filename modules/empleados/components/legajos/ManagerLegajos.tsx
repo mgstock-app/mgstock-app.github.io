@@ -87,15 +87,20 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
         if (!alive) return;
         const selected = localScope ? new Set(localScope.map(l=>l.organization_id+":"+l.id)) : null;
         const visible = selected ? permitted.filter(l=>selected.has(l.organization_id+":"+l.id)) : permitted;
-        const [people, legacy] = await Promise.all([
+        // La nómina histórica es opcional: no debe bloquear el alta de legajos.
+        // Si falla, el gerente conserva su local autorizado y puede completar
+        // perfiles existentes, incluso con ese origen temporalmente sin conexión.
+        const [peopleResult, previousResult] = await Promise.allSettled([
           loadLegajos(visible),
           ownerView ? Promise.resolve([] as PreviousEmployee[]) : loadPreviousEmployees(visible),
         ]);
         if (!alive) return;
         setLocals(visible);
-        setProfiles(people);
-        setPrevious(legacy);
-        setError("");
+        setProfiles(peopleResult.status === "fulfilled" ? peopleResult.value : []);
+        setPrevious(previousResult.status === "fulfilled" ? previousResult.value : []);
+        setError(peopleResult.status === "rejected"
+          ? "No se pudo consultar el listado de legajos. Podés agregar uno nuevo en tu local autorizado y volver a actualizar."
+          : "");
       } catch(cause) {
         if (alive) {
           setLocals([]); setProfiles([]); setPrevious([]);
@@ -226,7 +231,7 @@ export function ManagerLegajos({ ownerView = false, localScope }: {
     </div>
     {error && <p className="mlg-error" role="alert">{error}</p>}
     {info && <p className="mlg-success" role="status">{info}</p>}
-    {loading ? <p className="mlg-empty" role="status">Cargando legajos autorizados…</p> : !locals.length ? <p className="mlg-empty">No hay locales de empleados habilitados para esta cuenta.</p> :
+    {loading ? <p className="mlg-empty" role="status">Cargando legajos autorizados…</p> : !locals.length ? <div className="mlg-empty" role="status"><p>No hay locales de empleados habilitados para esta cuenta. Si ya sos gerente, revisá que el local esté asignado a tu cuenta de Google.</p><button type="button" onClick={updateView}>Volver a comprobar el acceso</button></div> :
       locals.filter(l=>localFilter==="todos"||l.id===localFilter).map(local=>{
         const staff = filtered.filter(r=>r.local.id===local.id);
         const closed = collapsed.includes(local.id);
