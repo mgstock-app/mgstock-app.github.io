@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+# Áreas de personal: no son páginas comerciales públicas.
+Disallow: /empleados/
+Sitemap: https://gestlok.com.ar/sitemap.xml
