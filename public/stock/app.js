@@ -318,42 +318,27 @@ function fail(e){
 async function batchRun(items, fn, size=5){ for (let i = 0; i < items.length; i += size){ await Promise.all(items.slice(i, i + size).map(x => w(() => fn(x)))); } }
 
 /* ---------- Render general ---------- */
+let renderedFormScope='';
 function render(){
   window.GestLokSupport?.render();
   window.GestLokRoleSwitcher?.render();
   if (!S.local){ renderHub(); return; }
-  // Preserve unsaved form values when live subscriptions redraw the active view.
-  // Never restore fields belonging to a different view or local.
-  const previousView = $('#view');
-  const pendingFields = [...previousView.querySelectorAll('input, textarea, select')].filter(el =>
-    !el.disabled && el.type !== 'file' && el.type !== 'password' &&
-    (el.id || el.hasAttribute('data-prov-val') || el.hasAttribute('data-prov-note'))
-  ).map(el => ({
-    id: el.id, provId: el.dataset.id, provField: el.dataset.provVal, provNote: el.dataset.provNote,
-    value: el.value, checked: el.checked, type: el.type,
-    dirty: el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue
-  })).filter(el => el.dirty);
-  const ae = document.activeElement; const fid = ae && ae.id && $('#view').contains(ae) ? ae.id : null;
-  let sel = null; try { if (fid && ae.selectionStart != null) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
+  // Conservar borradores solamente mientras seguimos en la misma empresa, local y categoría.
+  // No incluye claves, archivos ni datos de otra cuenta.
+  const formScope=[S.me?.tenant_id||'',S.local,S.view].join('|');
+  const formGuard=window.GestLokFormDraftGuard;
+  const preserved=renderedFormScope===formScope?formGuard?.capture($('#view'),formScope,document.activeElement):null;
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
   const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
   renderChrome();
   $('#view').innerHTML = viewHTML();
-  for (const saved of pendingFields) {
-    const field = [...$('#view').querySelectorAll('input, textarea, select')].find(el =>
-      saved.id ? el.id === saved.id :
-      saved.provNote ? el.dataset.provNote === saved.provNote : (el.dataset.id === saved.provId && el.dataset.provVal === saved.provField)
-    );
-    if (!field || field.disabled || field.type !== saved.type) continue;
-    if (field.type === 'checkbox' || field.type === 'radio') field.checked = saved.checked;
-    else field.value = saved.value;
-  }
+  formGuard?.restore($('#view'),preserved,formScope);
+  renderedFormScope=formScope;
   if(toolsOpen && S.view==='inicio'){
     const details=$('#view .gl-home-essential-settings');
     if(details)details.open=true;
   }
-  if (fid){ const el = document.getElementById(fid); if (el){ el.focus({preventScroll:true}); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
 function viewHTML(){
   if (window.GestLokCommerce?.mode() === 'online' && (S.view === 'ingreso' || esFabT(tipoVista(S.view)))) return V.inicio();
