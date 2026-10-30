@@ -28,6 +28,7 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
      cy.get('#snav > button[data-daily-shortcut="pagos"]').should('exist');
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
+     cy.get('.mg-on-summary',{timeout:15000}).should('be.visible');
      cy.get('#gestlok-mobile-dock [data-dock="stock"]').click();
      cy.get('#ttl').should('not.contain.text','Pagos Online');
     }
