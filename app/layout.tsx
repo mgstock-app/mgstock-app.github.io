@@ -26,6 +26,8 @@ export const metadata: Metadata = {
   title: "GESTLOK | Software de gestión de negocios y locales",
   description: "GESTLOK: todo tu negocio, en orden. Organizá stock, proveedores, operaciones y sucursales desde una plataforma web. Conocé sus funciones y probá la demo.",
   alternates: { canonical: "/" },
+  // Google Search Console: verification for the https://gestlok.com.ar/ URL-prefix property.
+  verification: { google: "AUtQ56Jt0oBiuGWVHklpmNKiJxpkSpRiF6OZbHLHCoM" },
   openGraph: {
     title: "GESTLOK | Todo tu negocio, en orden",
     description: "Plataforma web para organizar stock, proveedores y equipos de tus negocios y sucursales.",
