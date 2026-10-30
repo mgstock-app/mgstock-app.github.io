@@ -34,6 +34,7 @@ test("Fotos de cierre: autenticación, local, historia y datos previos",async()=
   await db.exec("reset role");
   await db.exec(read("supabase/migrations/20261029193500_mi_gusto_pagos_fotos_cierres.sql"));
   await db.exec(read("supabase/migrations/20261030120000_mi_gusto_foto_obligatoria_antes_cierre.sql"));
+  await db.exec(read("supabase/migrations/20261030193000_mi_gusto_foto_turnos_abiertos_cerrados.sql"));
   await db.exec("set role authenticated");
   const openAccess=await rpc("photo_access","munro",active.id);
   assert.equal(openAccess.status,"abierto");
@@ -54,6 +55,13 @@ test("Fotos de cierre: autenticación, local, historia y datos previos",async()=
   assert.equal(closed.closed.photo_path,path);
   assert.equal((await rpc("photo_access","munro",id)).photo_path,path);
   assert.equal((await rpc("photo_register","munro",id)).photo_path,path);
+  // Simular un cierre histórico sin foto: se debe poder completar la evidencia después.
+  await db.exec("reset role");
+  await db.query("update gestlok_mg_online_private.shifts set photo_path=null,photo_at=null where id=$1",[id]);
+  await db.exec("set role authenticated");
+  const backfilled=await rpc("photo_register","munro",id);
+  assert.equal(backfilled.status,"cerrado");
+  assert.equal(backfilled.photo_path,path);
   await assert.rejects(()=>rpc("photo_access","torcuato",id),/turnos cerrados|acceso/);
   await context("gerente","torcuato");
   await assert.rejects(()=>rpc("photo_access","munro",id),/Sin acceso/);
