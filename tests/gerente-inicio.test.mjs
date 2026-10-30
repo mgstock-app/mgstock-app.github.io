@@ -6,7 +6,7 @@ const app = readFileSync('public/stock/app.js', 'utf8');
 const updates = readFileSync('public/stock/gestlok-updates.js', 'utf8');
 test('Avisos queda habilitado para creadora, dueño y gerente, y no para otros roles', () => {
   assert.match(app, /const puedeVerAvisos = \(\) => esTotal\(\) \|\| miRol\(\) === 'gerente';/);
-  assert.match(app, /\$\{puedeVerAvisos\(\) \? `<button data-go="avisos">/);
+  assert.match(app, /\$\{!pagosDiarios && puedeVerAvisos\(\) \? `<button data-go="avisos">/);
   assert.match(app, /\(v === 'avisos' && puedeVerAvisos\(\)\)/);
   assert.doesNotMatch(app, /\(v === 'avisos' && esTotal\(\)\)/);
 });
