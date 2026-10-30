@@ -59,6 +59,27 @@ for(const required of [
  "expires_at>clock_timestamp()",
 ]) assert(sql.includes(required),"Required SQL security: "+required);
 assert(!sql.includes("on conflict(user_id) do update set role"),"Existing user roles must never be overwritten");
+const immediate = fs.readFileSync("../../supabase/migrations/20261030040000_invitaciones_gerentes_acceso_inmediato_colaborador.sql","utf8");
+const create = immediate.slice(immediate.indexOf("-- GESTLOK: ruta para crear enlaces de gerentes"),immediate.indexOf("create or replace function rm_test_private.rm_manager_staff_invite_accept"));
+assert(create.includes("rm_test_private.app_role()=''"),"Gerentes nativos GESTLOK deben tener ruta propia");
+assert(create.includes("p_local=any(rm_test_private.gestlok_gerente_locals())"),"Local debe ser del gerente");
+assert(create.includes("e.data->>'rol'='gerente'"),"No permitir invitaciones de editores");
+assert(create.includes("e.tenant_id=(select gestlok_tenancy.current_tenant_id())"),"Restringir tenant");
+assert(create.includes("case s.id when 'torcuato' then 'dt' else s.id end = p_local"),"Restringir sucursal de la misma asignación");
+assert(create.includes("rm_test_private.rm_employee_profile_scope(target_local.organization_id,target_local.id)"));
+const fn = immediate.slice(immediate.indexOf("create or replace function rm_test_private.rm_manager_staff_invite_accept"),immediate.indexOf("revoke all on function"));
+assert.match(fn, /v_member_role text/,"No usar current_role: palabra reservada PostgreSQL");
+assert.match(fn, /select role into v_member_role/);
+assert.match(fn, /v_member_role is not null/);
+assert.doesNotMatch(fn, /\bcurrent_role\b/);
+assert.match(fn, /status='approved',account_kind='collaborator'/,"El alta no necesita aprobación");
+assert.match(fn, /insert into public.rm_test_members\(user_id,role,sheet_id,local_id\)/,"Asignación automática al local");
+assert.match(fn, /insert into public.rm_employee_profiles/,"Legajo pendiente de completar");
+assert.match(fn, /if invite.redeemed_by=v_uid and invite.profile_id is not null/,"Repetir callback OAuth no duplica");
+assert.match(fn, /invite.revoked_at is not null or invite.expires_at<=clock_timestamp\(\)/,"Invitación caducada/revocada se rechaza");
+assert.match(fn, /current_org<>invite.organization_id/,"No admitir cambios de empresa");
+assert.match(fn, /where u.id=auth.uid\(\)/,"Google confirmado");
+
 const manager = fs.readFileSync("components/legajos/ManagerLegajos.tsx","utf8");
 assert(manager.includes('Invitar Colaborador'));
 assert(manager.includes('showInvite && locals.length>0'));
