@@ -146,6 +146,7 @@ function movements(){
   movementList()+'</div>'+status()+
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
  '<p class="mg-on-photo-reminder '+(s?.photo_path?'mg-on-photo-ready':'')+'" role="status">'+(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Antes de cerrar el turno, el gerente debe subir la foto. El cierre se habilitará cuando termine la carga.')+'</p></div>'+
+ (photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
  '<div class="mg-on-close-controls">'+photoControl(s)+
  '<button type="button" data-mgon-close '+(!writable()||!s?.photo_path?'disabled':'')+'>Cerrar turno →</button></div></div>';
 }
@@ -158,7 +159,19 @@ function photoControl(s){
 }
 async function compressPhoto(file){
  if(!file||!file.type.startsWith('image/')||file.size>15*1024*1024)throw Error('Elegí una imagen de hasta 15 MB.');
- const bmp=await createImageBitmap(file);
+ let bmp;
+ try{if(typeof createImageBitmap==='function')bmp=await createImageBitmap(file);}catch{}
+ if(!bmp){
+  const url=URL.createObjectURL(file);
+  try{
+   bmp=await new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(Error('No se pudo leer esta imagen. Probá tomar otra foto o elegir un JPG o PNG.'));
+    img.src=url;
+   });
+  }finally{URL.revokeObjectURL(url);}
+ }
  const max=1500,factor=Math.min(1,max/Math.max(bmp.width,bmp.height));
  const canvas=document.createElement('canvas');canvas.width=Math.round(bmp.width*factor);canvas.height=Math.round(bmp.height*factor);
  const ctx=canvas.getContext('2d');
@@ -172,7 +185,13 @@ async function compressPhoto(file){
 }
 async function photoRequest(body){
  const result=await window.GestLokSupabase.functions.invoke('mg-online-closure-photo',{body});
- if(result.error)throw Error(result.data?.error||'No pudimos procesar la fotografía. Revisá tu conexión.');
+ if(result.error){
+  let message=result.data?.error;
+  if(!message&&result.error.context?.json){
+   try{message=(await result.error.context.json())?.error;}catch{}
+  }
+  throw Error(message||'No pudimos enviar la foto. Revisá tu conexión y volvé a intentar.');
+ }
  if(result.data?.error)throw Error(result.data.error);
  return result.data;
 }
