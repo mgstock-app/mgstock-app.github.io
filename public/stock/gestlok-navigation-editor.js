@@ -58,10 +58,15 @@ function draw(){
   if(edit.parentNode!==nav)nav.append(edit);
  }else edit?.remove();
  const footer=side.querySelector('.side-f');
- if(footer&&!footer.querySelector('#gl-nav-logout')){
-  const button=document.createElement('button');button.id='gl-nav-logout';button.type='button';
-  button.dataset.au='out';button.textContent='↪ Cerrar sesión';
-  footer.append(button);
+ if(footer){
+  // Reutilizar el cierre de sesión original: evita dos botones y mantiene
+  // la salida local segura de Supabase, sin desconectar otros dispositivos.
+  const logout=footer.querySelector('#logout-wrap');
+  const button=logout?.querySelector('[data-au="out"]');
+  if(button){
+   button.id='gl-nav-logout';button.textContent='↪ Cerrar sesión';
+   logout.hidden=false;
+  }
  }
 }
 function scopeCheck(){
