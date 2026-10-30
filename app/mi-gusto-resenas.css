@@ -35,3 +35,27 @@
 .rv-modal .rv-manual .rv-new{margin:0;width:100%}
 @media(max-width:800px){.rv-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.rv-stats article{min-height:90px;padding:13px}.rv-page> .rv-new{width:100%}}
 @media(max-width:460px){.rv-page>header{gap:8px}.rv-page>header h2{font-size:25px}.rv-modal{padding:15px}.rv-table{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.rv-page table{min-width:630px}}
+
+/* Mi Gusto · Comunicación con clientes y tarjeta de condiciones del cupón. */
+.rv-message-panel{margin:12px 0 20px;background:#fff;border:1px solid #dfe8f1;border-radius:15px;padding:18px;box-shadow:0 3px 14px #193d5709}
+.rv-message-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rv-message-head h3{margin:0 0 3px;font-size:17px;font-weight:800;color:#123754}
+.rv-message-head small{font-size:12px;color:#64788b}
+.rv-message-head button{font-weight:750;background:#eff7fc;color:#154c6a;border-color:#d6e9f4;min-height:39px}
+.rv-message-preview{white-space:pre-line;max-height:92px;overflow:auto;font-size:13px;line-height:1.55;color:#445b6b!important;overflow-wrap:anywhere;margin:12px 0 8px}
+.rv-message-info{font-size:12px;color:#697f8f!important;margin:10px 0 0}
+.rv-message-panel form{display:grid;gap:12px;margin-top:13px}
+.rv-message-panel label{display:grid;gap:7px;font-size:13px;font-weight:700;color:#244457}
+.rv-message-panel textarea{display:block;box-sizing:border-box;width:100%;max-width:100%;min-height:180px;border:1px solid #cbdbe8;border-radius:11px;padding:13px;font:inherit;font-size:14px;line-height:1.5;color:#183c55;background:#fff;resize:vertical}
+.rv-message-controls{display:flex;gap:9px;flex-wrap:wrap}
+.rv-page .rv-message-save{padding:10px 16px;background:#12405f;color:#fff;font-weight:700;min-height:42px;border:0}
+.rv-contact-actions,.rv-row-actions{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.rv-page .rv-clip,.rv-page .rv-whatsapp{width:40px;min-width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #d9e3e9;background:#fff;color:#174968;border-radius:10px;padding:0;text-decoration:none}
+.rv-page .rv-clip:hover{background:#e9f4fa}
+.rv-page .rv-whatsapp:hover{background:#e9f8ef}
+.rv-no-whatsapp{opacity:.5;font-size:11px}
+.rv-benefit-terms{background:#f5f9fd;border:1px solid #d9e7ef;border-radius:11px;padding:12px 14px;text-align:center}
+.rv-benefit-terms strong{font-size:16px;color:#123b56}
+.rv-benefit-terms p{margin:8px 0 0;font-size:12px;line-height:1.55;color:#36556b!important}
+.rv-page .rv-copy-coupon{display:flex;align-items:center;justify-content:center;gap:7px;font-weight:700;background:#eef7fd;color:#164c6b;border-radius:10px;min-height:42px}
+@media(max-width:680px){.rv-message-panel{padding:13px}.rv-contact-actions,.rv-row-actions{gap:4px}.rv-page .rv-clip,.rv-page .rv-whatsapp{width:38px;min-width:38px;height:38px}.rv-table td:last-child{min-width:185px}}
