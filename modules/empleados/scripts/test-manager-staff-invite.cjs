@@ -33,7 +33,7 @@ for(const bad of [
 ]) assert.throws(()=>mod.chromeInviteUrl(bad,"android"),/inválido/);
 
 assert(mod.staffInviteMessage("Don Torcuato","https://gestlok.com.ar/empleados/unirse/?invitacion="+token).includes("Abrir en Google Chrome"),"El mensaje explica cómo salir de WhatsApp");
-assert(mod.staffInviteMessage("Munro","https://gestlok.com.ar").includes("una sola vez"));
+assert(mod.staffInviteMessage("Munro","https://gestlok.com.ar").includes("Cada persona"));
 const sql = fs.readFileSync("../../supabase/migrations/20261028183500_invitaciones_gerente_automaticas.sql","utf8");
 for(const required of [
  "manager_staff_invites enable row level security",
@@ -127,5 +127,5 @@ assert(router.includes('params.has("codigo")'));
 assert(router.includes("recibonet_staff_invitation"));
 const invite = fs.readFileSync("components/invitations/ManagerStaffInvite.tsx","utf8");
 assert(invite.includes("https://wa.me/?text="));
-assert(invite.includes("managerStaffInviteApi.create(selectedLocal.id)"));
+assert(invite.includes("managerStaffInviteApi.createGeneral(selectedLocal.id)"));
 console.log("PASS: manager-only one-time invitation, automatic employee role/local, pending personnel record and WhatsApp");
