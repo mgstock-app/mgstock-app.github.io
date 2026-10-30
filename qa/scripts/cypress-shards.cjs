@@ -15,11 +15,22 @@ const files = readdirSync(directory)
   .sort((a,b) => b.size - a.size || a.name.localeCompare(b.name));
 assert(files.length > 0, "No se encontraron casos Cypress");
 const groups = Array.from({length:count}, () => ({size:0,names:[]}));
+// Con cinco grupos, aislar la prueba de accesos móviles que estresaba Chrome
+// al ejecutarse detrás de muchas specs. No se omite ningún escenario.
+const isolatedName = "mobile-navigation-shortcuts.cy.js";
+const isolated = count === 5 ? files.find(file => file.name === isolatedName) : null;
+if (count === 5) {
+  assert(isolated, "Falta la especificación aislada de accesos móviles");
+  groups[4].names.push(isolated.name);
+  groups[4].size += isolated.size;
+}
 for(const file of files) {
+  if (isolated && file.name === isolatedName) continue;
   // Distribución por tamaño de especificación. Determinista, exhaustiva.
-  const destination = groups.reduce((min,current) =>
+  const candidates = isolated ? groups.slice(0, 4) : groups;
+  const destination = candidates.reduce((min,current) =>
     current.size < min.size || (current.size === min.size && current.names.length < min.names.length)
-      ? current : min, groups[0]);
+      ? current : min, candidates[0]);
   destination.names.push(file.name);
   destination.size += file.size;
 }
