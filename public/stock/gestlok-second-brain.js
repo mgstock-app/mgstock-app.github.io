@@ -108,6 +108,7 @@
     if(payload.p_title.length<3||payload.p_body.length<3||payload.p_topic.length<2||!statusList.includes(payload.p_status)){
       error='Revisá el título, la categoría y la descripción.';redraw();return;
     }
+    draft = {...draft,title:payload.p_title,body:payload.p_body,topic:payload.p_topic,status:payload.p_status};
     busy = true; error = ''; notice = '';
     try {
       const {data,error:e} = await db().rpc('gestlok_creator_ideas_save',payload);
