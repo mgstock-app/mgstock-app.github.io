@@ -295,7 +295,7 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
             <div className="mlg-person-name"><strong>{person.fullName}</strong><span className={"mlg-status mlg-status--"+person.status}>{stateNames[person.status]}</span>{person.pending&&<span className="mlg-pending">Pendiente de completar</span>}</div>
             <button type="button" className="mlg-view" onClick={()=>open(local,person)}><FileText size={15}/> Ver legajo</button>
             <button type="button" className="mlg-more" aria-label={"Detalle de "+person.fullName} onClick={()=>open(local,person)}><MoreVertical size={17}/></button>
-          </article>)}</div></div> : <p className="mlg-empty">{search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
+          </article>)}</div></div> : <p className="mlg-empty">{pendingOnly?"No hay legajos pendientes de completar en este local.":search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
           {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}
