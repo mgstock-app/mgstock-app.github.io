@@ -60,6 +60,7 @@ export function StockRuntime() {
       await load("/stock/app.js?rev=formularios-20261030");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=mobile-20261028-v1");
+      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-20261030");
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();
