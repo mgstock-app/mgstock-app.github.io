@@ -53,7 +53,6 @@
           error='Había un mensaje anterior de reseñas: revisá el saludo nuevo antes de guardarlo.';
         } else messages[loc]=data.body;
       }
-      error='';
     }catch{
       if(g===generation) {loaded[loc]=false;error='No se pudo consultar el mensaje. Se muestra la versión sugerida.';}
     }finally{
@@ -78,7 +77,7 @@
   }
   function couponRule(){
     return '<div class="rv-benefit-terms"><strong>10% OFF · Mi Gusto '+E(LOC[local()])+'</strong>'+
-      '<p>Válido de lunes a jueves, en compras de <b>más de 6 unidades</b> (7 o más).</p>'+
+      '<p>Válido de lunes a jueves, en compras de <b>6 unidades o más</b>.</p>'+
       '<p>Uso exclusivo en la sucursal '+E(LOC[local()])+'. No acumulable con otras promociones de la marca.</p></div>';
   }
   function rowButtons(html){
@@ -102,12 +101,17 @@
     const month=Number(match[2]),year=Number(match[1]);
     return month>=1&&month<=12?'del 1 al 12 de '+MONTHS[month-1]+' '+year:'del 1 al 12 del mes indicado';
   }
+  // El texto libre es un saludo editable, nunca un canje por valoración ni un link a reseñas.
+  function safeGreeting(value){
+    const content=String(value||'').trim();
+    return /https?:\/\/[^\s]*(?:g\.page|google\.com\/maps)/i.test(content)?DEFAULT[local()]:content;
+  }
   function messageForCoupon(row){
     if(!row || row.local!==local() || !/^[A-HJ-NP-Z2-9]{6}$/.test(String(row.code||'')))return '';
-    const greeting=current().replace(/\{nombre\}/g,String(row.customer_name||'').trim());
+    const greeting=safeGreeting(current()).replace(/\{nombre\}/g,String(row.customer_name||'').trim());
     return greeting+'\n\n🎟️ *'+row.code+' — 10% OFF*\n'+
       '📅 Válido '+couponValidity(row)+', de lunes a jueves.\n'+
-      '🥟 Para compras de *7 unidades o más*.\n'+
+      '🥟 Para compras de *6 unidades o más*.\n'+
       '📍 Exclusivo en *Mi Gusto '+LOC[local()]+'*.\n'+
       '🚫 No acumulable con otras promociones de la marca.\n'+
       '🔒 De un solo uso.\n\n¡Gracias por acompañarnos! ¡Te esperamos! 🖤';
@@ -130,7 +134,7 @@
   function couponText(code,valid){
     return '🥟 MI GUSTO · '+LOC[local()]+'\n🎟️ CUPÓN '+code+' · 10% OFF\n'+
       '📅 '+(valid||'Válido del 1 al 12 del mes indicado')+' · Lunes a jueves.\n'+
-      '🛍️ En compras de más de 6 unidades (7 o más).\n'+
+      '🛍️ En compras de 6 unidades o más.\n'+
       '📍 Exclusivo para Mi Gusto '+LOC[local()]+'.\n'+
       '🚫 No acumulable con otras promociones de la marca.\n'+
       '🔒 De un solo uso.\n\n¡Te esperamos! 🖤';
