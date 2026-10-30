@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Building2, ChevronDown, LockKeyhole, RefreshCcw, UserRound, X } from "lucide-react";
+import { Building2, ChevronDown, LockKeyhole, RefreshCcw, UserRound, X, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { rpc } from "@/features/access/api";
 import "./role-profile-switcher.css";
@@ -12,7 +12,7 @@ const roles:Record<string,string>={dueno:"Dueño/a",gerente:"Gerente",creadora:"
   colaborador:"Colaborador/a",lectura:"Colaborador/a"};
 type OfflineBridge={pending?:()=>Promise<number>;invalidateContext?:()=>Promise<void>};
 export function RoleProfileSwitcher(){
- const {user} = useAuth();
+ const {user,signOut} = useAuth();
  const [open,setOpen]=useState(false);
  const [items,setItems]=useState<Context[]>([]);
  const [busy,setBusy]=useState(false);
@@ -92,7 +92,7 @@ export function RoleProfileSwitcher(){
        {!busy&&loaded&&items.length===0&&<p className="module-profile-no-switch">Tu acceso actual: {user.role||"Gerente"}. No hay otras empresas habilitadas para cambiar desde este perfil.</p>}
        {error&&<p role="alert" className="module-profile-error">{error}</p>}
        <p className="module-profile-security"><LockKeyhole size={15}/> Cambiar de empresa nunca agrega permisos ni habilita recibos de otros colaboradores.</p>
-       <button type="button" className="module-profile-refresh" onClick={()=>void load()} disabled={busy}><RefreshCcw size={16}/> Actualizar mis empresas</button>
+       <button type="button" className="module-profile-refresh" onClick={()=>void load()} disabled={busy}><RefreshCcw size={16}/> Actualizar mis empresas</button><button type="button" className="module-profile-signout" onClick={()=>void signOut()} disabled={busy}><LogOut size={16}/> Cerrar sesión</button>
      </section>
    </div>}
  </>;
