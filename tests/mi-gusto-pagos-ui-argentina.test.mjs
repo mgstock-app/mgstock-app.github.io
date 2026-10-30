@@ -32,7 +32,7 @@ test('Pagos Online muestra tarjeta de carga, lista responsive y confirmación re
  assert.match(styles,/\.mg-on-fields\{grid-template-columns:minmax\(0,1fr\)/);
  assert.match(styles,/font-size:16px/);
  assert.match(styles,/\.mg-on-success/);
- assert.match(read('components/stock-runtime.tsx'),/mi-gusto-cierre-online\.js\?rev=fotos-movil-20261030/);
+ assert.match(read('components/stock-runtime.tsx'),/mi-gusto-cierre-online\.js\?rev=fotos-camara-refresh-20261030/);
 });
 
 test('Fecha y hora son Argentina incluso en el cambio de día UTC',()=>{
@@ -87,4 +87,33 @@ test('Alta demanda: acceso inicial a Cargar pedidos y regreso desde Historial',(
  assert.match(styles,/\.mg-on-workbar/);
  assert.match(styles,/\.mg-on-observation-details/);
  assert.match(styles,/\.mg-on-more/);
+});
+
+test('Cámara: no refresca la pantalla mientras se elige una foto',async()=>{
+ const listeners={};let requests=0;
+ const window={
+  GestLokSupabase:{rpc:async()=>{requests++;return {data:{active:{id:'test-shift',day:'2026-10-30',turno:'manana',status:'abierto',movements:[]},history:[]}};}},
+  addEventListener:(type,fn)=>listeners['window:'+type]=fn,
+  removeEventListener:()=>{}
+ };
+ const document={
+  hidden:false,activeElement:null,
+  addEventListener:(type,fn)=>listeners['document:'+type]=fn
+ };
+ runInNewContext(source,{window,document,Intl,Date,String,Number,Array,Object,console,
+  navigator:{onLine:true},queueMicrotask,setInterval:()=>1,clearInterval:()=>{}});
+ const m=window.GestLokMiGustoOnline;
+ m.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'torcuato',offline:false,view:'cierre-online'},
+  miRol:()=> 'gerente',misLocales:()=>['torcuato'],render:()=>{}});
+ m.subscribe('torcuato',()=>{});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(requests,1);
+ listeners['document:click']({target:{closest:sel=>sel==='.mg-on-photo-upload'?{}:null}});
+ listeners['window:focus']();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(requests,1,'La vuelta de la cámara no debe reemplazar el input de imagen');
+ listeners['document:cancel']({target:{matches:sel=>sel==='[data-mgon-photo]'}});
+ listeners['window:focus']();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(requests,2,'Al cancelar se reactivan los refrescos');
 });
