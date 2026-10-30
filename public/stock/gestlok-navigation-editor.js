@@ -18,18 +18,20 @@ function baseline(){
  return ids.map(id=>({id,label:id==='stock'?'Stock Local':nameOf(known.get(id))}));
 }
 function shown(){
- const base=baseline(),byId=new Map(base.map(x=>[x.id,x]));
- const active=data.filter(x=>x&&typeof x.id==='string');
- const arr=active.filter(x=>byId.has(x.id)).map(x=>({id:x.id,label:trim(x.label)||byId.get(x.id).label}));
- for(const x of base)if(!arr.some(y=>y.id===x.id))arr.push(x);
- for(const x of active)if(x.id.startsWith('custom-')&&targets.includes(x.target))
-  arr.push({id:x.id,label:trim(x.label),target:x.target});
- return arr;
+ const base=baseline(),byId=new Map(base.map(x=>[x.id,x])),out=[];
+ for(const x of data){
+  if(!x||typeof x.id!=='string'||out.some(y=>y.id===x.id))continue;
+  if(byId.has(x.id))out.push({id:x.id,label:trim(x.label)||byId.get(x.id).label});
+  else if(x.id.startsWith('custom-')&&targets.includes(x.target)&&trim(x.label))
+   out.push({id:x.id,label:trim(x.label),target:x.target});
+ }
+ for(const x of base)if(!out.some(y=>y.id===x.id))out.push(x);
+ return out;
 }
 function draw(){
  const c=ctx();if(!c?.tenant||!c.local)return;
  nav.querySelector('.snav-l')?.remove();
- nav.querySelector('.snav-add')?.remove();
+ // Las hojas siguen accesibles: se elimina solo el título, jamás su botón de alta.
  const known=nodes(),order=shown(),back=nav.querySelector('[data-act="locales"]');
  let last=back;
  const existing=new Map([...nav.querySelectorAll('[data-nav-custom]')].map(x=>[x.dataset.navCustom,x]));
