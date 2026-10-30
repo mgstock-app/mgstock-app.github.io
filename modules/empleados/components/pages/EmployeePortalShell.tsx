@@ -88,7 +88,7 @@ export function EmployeePortalShell(){
         <button type="button" className="gl-employee-menu" aria-label="Abrir menú" aria-expanded={open}
           onClick={()=>setOpen(!open)}>{open?<X size={22}/>:<Menu size={22}/>}</button>
         <span>GEST<span>LOK</span></span>
-        <small>MI ESPACIO · SOLO LECTURA</small>
+        <small>MI ESPACIO · ACCESO PERSONAL</small>
       </header>
       <section className="employee-private-portal" aria-label="Mi espacio privado del colaborador">
         <header className="employee-private-portal__hero">
