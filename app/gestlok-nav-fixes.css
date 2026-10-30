@@ -24,3 +24,9 @@
 .gl-gerente__module-actions a,.gl-gerente__module-actions button{display:flex;align-items:center;gap:9px;background:#fff;color:#214b6b;border:1px solid #d2e1ed;border-radius:10px;text-decoration:none;font-size:13px;padding:11px;cursor:pointer}
 .module-profile-signout{display:flex;align-items:center;justify-content:center;gap:9px;min-height:43px;margin-top:9px;border:1px solid #cedde9;border-radius:10px;background:#fff;color:#1b4569;font-weight:750;cursor:pointer}
 @media(max-width:720px){.gl-nav-add{grid-template-columns:1fr}.gl-gerente__back-home{font-size:12px;padding:7px}.gl-nav-dialog{padding:14px}}
+
+/* Accesos diarios: visibles arriba sin cambiar permisos. */
+#snav > button[data-go="stock"],#snav > button.gl-daily-shortcut{min-height:45px;font-weight:750;border-radius:10px;background:#eff6fc;color:#194669}
+#snav > button.gl-daily-shortcut:hover,#snav > button[data-go="stock"]:hover{background:#e0f0fb}
+#snav > button.gl-daily-shortcut[aria-current="page"],#snav > button[data-go="stock"][aria-current="page"]{background:#d9ebfb;color:#103d66}
+@media(max-width:420px){#gestlok-mobile-dock button span{font-size:10px;line-height:1.15}}

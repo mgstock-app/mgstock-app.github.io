@@ -7,11 +7,12 @@ const html=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 const permitted=['inicio','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso','pedido','conteo','fabrica','historial','motos','resenas','reclamos-internos','cierre-online','pedidos-online','tienda-online'];
 const targets=['stock','proveedores','chat','vencimientos','avisos','pedido','conteo','historial'];
 const preferred=['inicio','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
+const pinned=['inicio','stock']; // Accesos diarios al comienzo, aunque la creadora reordene otros.
 let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick=false;
 const ctx=()=>window.GestLokNavContext?.()||null;
 const idOf=el=>el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'';
 const nameOf=el=>el.querySelector?.('.nl')?.textContent?.trim()||el.textContent?.trim()||'';
-const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')).map(el=>[idOf(el),el]).filter(([id])=>permitted.includes(id)));
+const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')&&!el.hasAttribute('data-daily-shortcut')).map(el=>[idOf(el),el]).filter(([id])=>permitted.includes(id)));
 const trim=s=>String(s||'').trim().replace(/\s+/g,' ').slice(0,45);
 function baseline(){
  const known=nodes(),ids=[...new Set([...preferred,...known.keys()])].filter(id=>known.has(id));
@@ -26,13 +27,28 @@ function shown(){
    out.push({id:x.id,label:trim(x.label),target:x.target});
  }
  for(const x of base)if(!out.some(y=>y.id===x.id))out.push(x);
- return out;
+ // Inicio y Stock Local no se pueden perder debajo de otras categorías.
+ return [...pinned.flatMap(id=>out.filter(x=>x.id===id)),...out.filter(x=>!pinned.includes(x.id))];
 }
 function draw(){
  const c=ctx();if(!c?.tenant||!c.local)return;
  nav.querySelector('.snav-l')?.remove();
  // Las hojas siguen accesibles: se elimina solo el título, jamás su botón de alta.
  const known=nodes(),order=shown(),back=nav.querySelector('[data-act="locales"]');
+ // Pagos Online solo se fija cuando el sistema original lo permite en este local.
+ // La entrada interna sigue disponible y mantiene las mismas validaciones de go().
+ const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
+ let payment=nav.querySelector('[data-daily-shortcut="pagos"]');
+ if(!originalPayment){payment?.remove();payment=null;}
+ else{
+  if(!payment){
+   payment=document.createElement('button');payment.type='button';
+   payment.dataset.go='cierre-online';payment.dataset.dailyShortcut='pagos';
+   payment.className='gl-daily-shortcut';
+  }
+  if(payment.innerHTML!==originalPayment.innerHTML)payment.innerHTML=originalPayment.innerHTML;
+  const name=payment.querySelector('.nl');if(name&&name.textContent!=='Pagos Online')name.textContent='Pagos Online';
+ }
  let last=back;
  const existing=new Map([...nav.querySelectorAll('[data-nav-custom]')].map(x=>[x.dataset.navCustom,x]));
  for(const item of order){
@@ -48,6 +64,10 @@ function draw(){
   }
   if(last?.nextElementSibling!==n)nav.insertBefore(n,last?.nextElementSibling||null);
   last=n;
+  if(payment&&(item.id==='stock'||(item.id==='inicio'&&!known.has('stock')))){
+   if(payment.parentNode!==nav||last.nextElementSibling!==payment)nav.insertBefore(payment,last.nextElementSibling);
+   last=payment;
+  }
  }
  for(const [id,b] of existing)if(!order.some(x=>x.id===id))b.remove();
  const can=!!c.creator;
@@ -102,8 +122,8 @@ function paint(){
  if(!overlay)return;
  const rows=overlay.querySelector('#gl-nav-rows');
  rows.innerHTML=draft.map((x,i)=>'<div class="gl-nav-item"><input maxlength="45" data-nav-name data-index="'+i+'" aria-label="Nombre de categoría" value="'+html(x.label)+'">'+
- '<button type="button" data-nav-up="'+i+'" '+(i===0?'disabled':'')+' aria-label="Subir categoría">↑</button>'+
- '<button type="button" data-nav-down="'+i+'" '+(i===draft.length-1?'disabled':'')+' aria-label="Bajar categoría">↓</button>'+
+ '<button type="button" data-nav-up="'+i+'" '+(i<=1?'disabled':'')+' aria-label="Subir categoría">↑</button>'+
+ '<button type="button" data-nav-down="'+i+'" '+(i===draft.length-1||i<2?'disabled':'')+' aria-label="Bajar categoría">↓</button>'+
  (x.id.startsWith('custom-')?'<button type="button" data-nav-remove="'+i+'" aria-label="Eliminar acceso">×</button>':'')+'</div>').join('');
  const known=nodes();
  overlay.querySelector('select').innerHTML=targets.filter(x=>known.has(x)).map(x=>'<option value="'+x+'">'+html(nameOf(known.get(x)))+'</option>').join('');
@@ -115,7 +135,7 @@ function actions(e){
  const b=e.target.closest('button');if(!b)return;
  if(b.hasAttribute('data-nav-up')||b.hasAttribute('data-nav-down')){
   const up=b.hasAttribute('data-nav-up'),i=Number(b.dataset[up?'navUp':'navDown']),j=i+(up?-1:1);
-  if(j>=0&&j<draft.length)[draft[i],draft[j]]=[draft[j],draft[i]];
+  if(i>=2&&j>=2&&j<draft.length)[draft[i],draft[j]]=[draft[j],draft[i]];
   paint();return;
  }
  if(b.hasAttribute('data-nav-remove')){draft.splice(Number(b.dataset.navRemove),1);paint();return;}
