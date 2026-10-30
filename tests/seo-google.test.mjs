@@ -34,3 +34,9 @@ test('Página de presentación SEO pública no da acceso a módulos protegidos',
   assert.doesNotMatch(page,/supabase|service_role|auth\.getSession|private_key|password|token/i);
   assert.doesNotMatch(page,/reviewRating|aggregateRating|offers:/i);
 });
+
+test('Google Search Console encuentra token de propiedad en la metadata de la página inicial',()=>{
+  const layout=read('app/layout.tsx');
+  assert.match(layout,/verification:\s*\{ google: "AUtQ56Jt0oBiuGWVHklpmNKiJxpkSpRiF6OZbHLHCoM" \}/);
+  assert.match(layout,/alternates:\s*\{ canonical: "\/" \}/);
+});
