@@ -156,7 +156,7 @@
     if(allowed())void saveMessage(e.target);
   },true);
   window.GestLokResenasComunicaciones=Object.freeze({
-    permitted:allowed,phoneNumber,couponText,defaultMessage:loc=>DEFAULT[loc],reset:()=>original.reset()
+    permitted:allowed,phoneNumber,couponText,decorateRows:rowButtons,defaultMessage:loc=>DEFAULT[loc],reset:()=>original.reset()
   });
   original.__communications=true;
 })();
