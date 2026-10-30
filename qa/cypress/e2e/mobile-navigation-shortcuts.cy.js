@@ -18,14 +18,22 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
  // Mantener la excepción de hidratación #418 que ya tenía la spec original antes de dividirla.
  // Cualquier otro error de aplicación sigue fallando la prueba.
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
-  it('Munro: Stock Local y Pagos Online siempre visibles en dock, con permisos existentes',()=>{
+  it('Munro: Inicio, Pagos Online y Stock Local al comienzo con permisos existentes',()=>{
    setup('gerente.munro@example.com');
    cy.get('#gestlok-mobile-dock [data-dock="stock"]',{timeout:15000}).should('be.visible').and('contain.text','Stock Local');
    cy.get('#snav > button[data-go="stock"]').should('exist');
    // Si la sucursal tiene Pagos Online habilitado, ambos accesos deben corresponder a la misma vista autorizada.
    cy.get('#snav').then($nav=>{
-    if($nav.find('.snav-sub [data-go="cierre-online"]').length){
-     cy.get('#snav > button[data-daily-shortcut="pagos"]').should('exist');
+    if($nav.find('[data-go="cierre-online"]').length){
+     cy.get('#snav > button[data-go="cierre-online"]').should('have.length',1);
+     cy.get('#snav > button[data-go]').then($buttons=>{
+       const ids=[...$buttons].map(b=>b.getAttribute('data-go'));
+       expect(ids.slice(0,3)).to.deep.equal(['inicio','cierre-online','stock']);
+     });
+     cy.get('#gestlok-mobile-dock [data-dock]').then($buttons=>{
+       const ids=[...$buttons].map(b=>b.getAttribute('data-dock'));
+       expect(ids.slice(0,3)).to.deep.equal(['home','pagos','stock']);
+     });
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
      cy.get('.mg-on-summary',{timeout:15000}).should('be.visible');
