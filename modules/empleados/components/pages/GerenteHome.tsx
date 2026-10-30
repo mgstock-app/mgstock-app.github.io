@@ -28,6 +28,13 @@ export function GerenteHome() {
     try{localStorage.setItem("gestlok:manager-menu-collapsed",next?"yes":"no");}catch{}
   };
   const [section, setSection] = useState<"legajos" | "horarios" | "recibo">("legajos");
+  const [hasDraft, setHasDraft] = useState(false);
+  const navigateTo = (next: "legajos"|"horarios"|"recibo") => {
+    if(hasDraft && section==="legajos" && next!==section &&
+      !window.confirm("Hay cambios sin guardar en un legajo. ¿Salir y descartarlos?")) return;
+    setSection(next);
+    setMenuOpen(false);
+  };
   useEffect(() => { if (new URLSearchParams(window.location.search).get("seccion") !== "horarios") return; let active=true; queueMicrotask(()=>{if(active)setSection("horarios");}); return ()=>{active=false;}; }, []);
   const firstName = user?.display_name?.split(" ")[0] || "Gerente";
   const company = useGestlokCompany();
@@ -47,9 +54,9 @@ export function GerenteHome() {
       <button type="button" className="gl-gerente__collapse" aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menú del gerente" : "Contraer menú del gerente"} onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>{collapsed ? "Expandir" : "Contraer menú"}</span></button>
       <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
       <nav>
-        <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>{setSection("legajos");setMenuOpen(false)}}><UsersRound size={19}/><span className="gl-gerente__nav-label">Colaboradores</span></button>
-        <button type="button" title="Sector de Google" className={section==="horarios"?"active":""} onClick={()=>{setSection("horarios");setMenuOpen(false)}}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Sector de Google</span></button>
-        <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>{setSection("recibo");setMenuOpen(false)}}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
+        <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>navigateTo("legajos")}><UsersRound size={19}/><span className="gl-gerente__nav-label">Colaboradores</span></button>
+        <button type="button" title="Sector de Google" className={section==="horarios"?"active":""} onClick={()=>navigateTo("horarios")}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Sector de Google</span></button>
+        <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>navigateTo("recibo")}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
       </nav>
       <div className="gl-gerente__module-actions"><a href={home}><ArrowLeft size={18}/> Volver a GESTLOK</a><button type="button" onClick={()=>void signOut()}><LogOut size={18}/> Cerrar sesión</button></div><p className="gl-gerente__security"><ShieldCheck size={16}/> Solo colaboradores de tus locales autorizados.</p>
     </aside>
@@ -61,21 +68,21 @@ export function GerenteHome() {
         <a className="gl-gerente__back-home" href={home}><ArrowLeft size={17}/> Volver a GESTLOK</a><span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
       </header>
       <div className="gl-gerente__content">
-        {section==="legajos" ? <ManagerLegajos/> : section==="recibo" ?
+        {section==="legajos" ? <ManagerLegajos onDirtyChange={setHasDraft}/> : section==="recibo" ?
           (user?.role==="manager" && !user.gestlok_gerente?.local_ids?.length ? <EmployeeReport/> : <ManagerPersonalReceipt/>) :
           <section className="gl-gerente__google">
             <h1><FileSpreadsheet size={25}/> Sector de Google</h1>
             <p>Las planillas de Google Sheets se encuentran dentro de cada local, bajo su lista de colaboradores. También podés abrir la carpeta de Horarios.</p>
             <Link href="/horarios" className="gl-gerente__google-link"><ClipboardList size={19}/> Abrir Google Sheets y horarios</Link>
-            <button type="button" onClick={()=>setSection("legajos")}>Volver a los legajos</button>
+            <button type="button" onClick={()=>navigateTo("legajos")}>Volver a los legajos</button>
           </section>}
       </div>
     </main>
     <nav className="gl-module-dock" aria-label="Navegación móvil del gerente">
       <a href={home}><House size={20}/>Inicio</a>
-      <button type="button" aria-current={section==="legajos"?"page":undefined} onClick={()=>setSection("legajos")}><UsersRound size={20}/>Colaboradores</button>
-      <button type="button" aria-current={section==="horarios"?"page":undefined} onClick={()=>setSection("horarios")}><FileSpreadsheet size={20}/>Horarios</button>
-      <button type="button" aria-current={section==="recibo"?"page":undefined} onClick={()=>setSection("recibo")}><Wallet size={20}/>Mi recibo</button>
+      <button type="button" aria-current={section==="legajos"?"page":undefined} onClick={()=>navigateTo("legajos")}><UsersRound size={20}/>Colaboradores</button>
+      <button type="button" aria-current={section==="horarios"?"page":undefined} onClick={()=>navigateTo("horarios")}><FileSpreadsheet size={20}/>Horarios</button>
+      <button type="button" aria-current={section==="recibo"?"page":undefined} onClick={()=>navigateTo("recibo")}><Wallet size={20}/>Mi recibo</button>
       <button type="button" aria-expanded={menuOpen} aria-label="Más opciones" onClick={()=>setMenuOpen(true)}><Menu size={20}/>Más</button>
     </nav>
   </div>;
