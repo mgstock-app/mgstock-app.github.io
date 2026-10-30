@@ -42,8 +42,8 @@
     const inLocal=visible();
     const tabs=inLocal?[
       ['home','Inicio','home',true],
-      ['stock','Stock Local','stock',!!stock()],
       ['pagos','Pagos Online','payment',!!pagos()],
+      ['stock','Stock Local','stock',!!stock()],
       ['staff','Colaboradores','people',!!staff()],
       ['more','Más','more',true]
     ].filter(t=>t[3]):[
@@ -65,6 +65,9 @@
     closeSheet();
     if(k==='home'){
       if(visible()){
+        // Inicio del local, sin abandonar Munro/Don Torcuato.
+        const home=localNav('inicio');
+        if(home){home.click();return;}
         const back=app.querySelector('[data-act="locales"]');
         if(back){back.click();return;}
       }
