@@ -1,6 +1,6 @@
 -- GESTLOK · Segundo cerebro privado de la Creadora.
 -- No contiene las ideas: el contenido se guarda SOLO en la base privada.
--- No implementa funciones en revisión como GESTLOK Club.
+-- No implementa ninguna funcionalidad guardada como idea.
 create table if not exists gestlok_platform.creator_ideas (
   id uuid primary key default gen_random_uuid(),
   title text not null check (char_length(btrim(title)) between 3 and 160),
