@@ -1,6 +1,6 @@
 -- GESTLOK: mantener planillas vacías/invisibles hasta completar el legajo.
 -- Los recibos anteriores se conservan SIN BORRAR NI LIMPIAR fórmulas, horas, importes o historial.
--- Restringido a empresa Mi Gusto con locales Munro (munro) y Torcuato (dt).
+-- Restringido al módulo de nómina de Mi Gusto registrado como Alessandro con locales Munro (munro) y Torcuato (dt).
 
 create table if not exists rm_test_private.owner_roster_settings (
   organization_id uuid primary key references public.rm_organizations(id),
@@ -22,7 +22,7 @@ revoke all on rm_test_private.owner_roster_settings,rm_test_private.owner_roster
 -- quedan habilitados cuando su dueño complete sus datos personales.
 insert into rm_test_private.owner_roster_settings(organization_id)
 select distinct c.organization_id from public.rm_companies c
-where lower(btrim(c.name))='mi gusto'
+where lower(btrim(c.name))='alessandro'
   and exists(select 1 from public.rm_app_local l
       where l.organization_id=c.organization_id and l.company_id=c.id and l.id='munro')
   and exists(select 1 from public.rm_app_local l
