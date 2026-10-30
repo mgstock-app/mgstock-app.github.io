@@ -49,3 +49,20 @@ test('integración Next, PWA y contexto tenant',()=>{
  for(const name of ['scripts/sw-template.js','public/sw.js'])
   assert.match(file(name),/'\/stock\/gestlok-navigation-editor\.js'/);
 });
+
+test('Stock Local y Pagos Online quedan primeros y son accesos diarios autorizados',()=>{
+ const nav=file('public/stock/gestlok-navigation-editor.js');
+ const mobile=file('public/stock/gestlok-mobile-dock.js');
+ new Script(mobile);
+ assert.match(nav,/const pinned=\['inicio','stock'\]/);
+ assert.match(nav,/originalPayment=nav\.querySelector\('\.snav-sub button\[data-go="cierre-online"\]'\)/);
+ assert.match(nav,/payment\.dataset\.go='cierre-online'/);
+ assert.match(nav,/last=payment/);
+ assert.match(nav,/payment\?\.remove\(\)/);
+ assert.match(mobile,/\['stock','Stock Local','stock',!!stock\(\)\]/);
+ assert.match(mobile,/\['pagos','Pagos Online','payment',!!pagos\(\)\]/);
+ assert.match(mobile,/if\(k==='stock'\)/);
+ assert.match(mobile,/if\(k==='pagos'\)/);
+ assert.match(mobile,/const stock=\(\)=>localNav\('stock'\)/);
+ assert.match(mobile,/const pagos=\(\)=>localNav\('cierre-online'\)/);
+});
