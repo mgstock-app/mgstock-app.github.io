@@ -52,6 +52,7 @@ function draw(){
  // Pagos Online solo se fija cuando el sistema original lo permite en este local.
  // La entrada interna sigue disponible y mantiene las mismas validaciones de go().
  const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
+ if(originalPayment)originalPayment.hidden=true;
  let payment=nav.querySelector('[data-daily-shortcut="pagos"]');
  if(!originalPayment){payment?.remove();payment=null;}
  else{
@@ -83,6 +84,12 @@ function draw(){
    last=payment;
   }
  }
+ // El acceso a Stock Local debe quedar justo después de Inicio, incluso si
+ // una disposición guardada lo colocó al final de las hojas.
+ const inicio=known.get('inicio');
+ const stockLocal=known.get('stock');
+ if(inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,inicio.nextElementSibling);
+ if(payment&&stockLocal&&stockLocal.nextElementSibling!==payment)nav.insertBefore(payment,stockLocal.nextElementSibling);
  for(const [id,b] of existing)if(!order.some(x=>x.id===id))b.remove();
  const can=!!c.creator;
  let edit=nav.querySelector('#gl-edit-menu');
