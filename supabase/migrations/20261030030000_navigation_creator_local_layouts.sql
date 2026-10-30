@@ -33,7 +33,7 @@ begin
    raise exception 'Local inexistente' using errcode='22023';end if;
  for v in select value from jsonb_array_elements(p_items) loop
    v_id:=v->>'id';v_name:=btrim(coalesce(v->>'label',''));v_target:=v->>'target';
-   if v_id is null or (v_id<>all(v_seen)) is false or
+   if v_id is null or v_id=any(v_seen) or
     char_length(v_name) not between 2 and 45 or
     v_name ~ '[<>]' or
     v_id !~ '^(inicio|stock|proveedores|chat|vencimientos|avisos|motos|resenas|reclamos-internos|cierre-online|pedidos-online|tienda-online|adm-local|pedido|conteo|fabrica|historial|ingreso|custom-[a-z0-9-]{1,36})$'
