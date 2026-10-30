@@ -117,3 +117,15 @@ test('Integración en todas las categorías sin cambiar lógica ni datos',()=>{
  assert.ok(runtime.indexOf('gestlok-form-draft-guard.js')<runtime.indexOf('/stock/app.js?rev'));
  for(const sw of ['scripts/sw-template.js','public/sw.js'])assert.match(read(sw),/'\/stock\/gestlok-form-draft-guard\.js'/);
 });
+
+test('Ingreso de mercadería: conservar destino seleccionado en la edición histórica',()=>{
+ const g=setup(),p=form('ingreso-qa');
+ const selected=field({id:'ing-dec-7',tagName:'SELECT',type:'select-one',value:'f:i-5',form:p,
+  options:[{value:'',defaultSelected:true},{value:'f:i-5',defaultSelected:false}]});
+ const snap=g.capture(root([selected]),'T|U|L|ingreso',selected,{legacy:true});
+ const next=field({id:'ing-dec-7',tagName:'SELECT',type:'select-one',value:'',form:p,
+  options:[{value:'',defaultSelected:true},{value:'f:i-5',defaultSelected:false}]});
+ g.restore(root([next]),snap,'T|U|L|ingreso');
+ assert.equal(next.value,'f:i-5');
+ assert.match(read('public/stock/app.js'),/legacy:S\.view==='ingreso'/);
+});
