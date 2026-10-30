@@ -54,6 +54,21 @@ describe('GESTLOK · Dock inferior móvil y permisos',()=>{
    cy.get('#ttl',{timeout:15000}).should('have.text','Panel del local');
    cy.get('#savebar').should('not.be.visible');
  });
+  it('Munro: Stock Local y Pagos Online siempre visibles en dock, con permisos existentes',()=>{
+   setup('gerente.munro@example.com');
+   cy.get('#gestlok-mobile-dock [data-dock="stock"]',{timeout:15000}).should('be.visible').and('contain.text','Stock Local');
+   cy.get('#snav > button[data-go="stock"]').should('exist');
+   // Si la sucursal tiene Pagos Online habilitado, ambos accesos deben corresponder a la misma vista autorizada.
+   cy.get('#snav .snav-sub [data-go="cierre-online"]').then($original=>{
+    if($original.length){
+     cy.get('#snav > button[data-daily-shortcut="pagos"]').should('exist');
+     cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
+     cy.get('#ttl').should('contain.text','Pagos Online');
+     cy.get('#gestlok-mobile-dock [data-dock="stock"]').click();
+     cy.get('#ttl').should('not.contain.text','Pagos Online');
+    }
+   });
+ });
  it('en PC permanece la navegación de escritorio sin dock móvil',()=>{
    setup('gerente.munro@example.com',1280);
    cy.get('#app').should('be.visible');
