@@ -322,10 +322,10 @@ let renderedFormScope='';
 function render(){
   window.GestLokSupport?.render();
   window.GestLokRoleSwitcher?.render();
-  if (!S.local){ renderHub(); return; }
+  if (!S.local){ renderedFormScope=''; renderHub(); return; }
   // Conservar borradores solamente mientras seguimos en la misma empresa, local y categoría.
   // No incluye claves, archivos ni datos de otra cuenta.
-  const formScope=[S.me?.tenant_id||'',S.local,S.view].join('|');
+  const formScope=[S.me?.tenant_id||'',S.me?.id||S.me?.email||'',S.local,S.view].join('|');
   const formGuard=window.GestLokFormDraftGuard;
   const preserved=renderedFormScope===formScope?formGuard?.capture($('#view'),formScope,document.activeElement):null;
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
