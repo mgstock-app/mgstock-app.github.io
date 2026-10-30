@@ -154,18 +154,18 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
     });
     return [...actual, ...fromOld].sort((a,b)=>Number(b.pending)-Number(a.pending)||a.fullName.localeCompare(b.fullName, "es-AR"));
   }, [locals,profiles,previous]);
-  const filtered = rows.filter(r =>
+  const scopedRows = rows.filter(r =>
     (localFilter === "todos" || r.local.id === localFilter)
     && normalized(r.fullName).includes(normalized(search))
-    && (!pendingOnly || r.pending)
   );
+  const filtered = pendingOnly ? scopedRows.filter(r=>r.pending) : scopedRows;
   const totals = {
-    all: filtered.length,
-    active: filtered.filter(r=>r.status==="activo").length,
-    reinforcement: filtered.filter(r=>r.status==="refuerzo").length,
-    inactive: filtered.filter(r=>r.status==="inactivo").length,
+    all: scopedRows.length,
+    active: scopedRows.filter(r=>r.status==="activo").length,
+    reinforcement: scopedRows.filter(r=>r.status==="refuerzo").length,
+    inactive: scopedRows.filter(r=>r.status==="inactivo").length,
   };
-  const incomplete = rows.filter(r=>r.pending && (localFilter==="todos"||r.local.id===localFilter)).length;
+  const incomplete = scopedRows.filter(r=>r.pending).length;
   const showingInvites = locals.filter(l=>localFilter==="todos"||l.id===localFilter);
   const inviteTotals = showingInvites.length && showingInvites.every(l=>inviteStats[inviteKey(l)]!=null)
     ? showingInvites.reduce((totals,local)=>{
@@ -174,10 +174,11 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
           expired:totals.expired+stats.expired};
       },{pending:0,accepted:0,expired:0})
     : null;
+  const isDirty = Boolean(draft&&draftDirty);
   useEffect(()=>{
-    onDirtyChange?.(Boolean(draft&&draftDirty));
+    onDirtyChange?.(isDirty);
     return ()=>onDirtyChange?.(false);
-  },[draft,draftDirty,onDirtyChange]);
+  },[isDirty,onDirtyChange]);
   useEffect(()=>{
     if(!draft||!draftDirty)return;
     const preventExit=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
