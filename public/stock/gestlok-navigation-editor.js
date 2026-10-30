@@ -34,7 +34,7 @@ function draw(){
  const c=ctx();if(!c?.tenant||!c.local)return;
  // Mi Gusto: retirar únicamente accesos del menú, sin borrar datos ni servicios.
  // La identificación de Mi Gusto se toma del módulo de pagos autorizado.
- const miGusto=!!nav.querySelector('.snav-sub button[data-go="cierre-online"]');
+ const miGusto=!!(nav.querySelector('.snav-sub button[data-go="cierre-online"]')||nav.querySelector('#snav > button[data-go="cierre-online"]'));
  for(const id of ['ingreso','avisos']){
   const button=[...nav.children].find(el=>el.dataset?.go===id);
   if(button){button.hidden=miGusto;if(miGusto)button.style.setProperty('display','none','important');else button.style.removeProperty('display');}
@@ -51,7 +51,7 @@ function draw(){
  }
  // Pagos Online solo se fija cuando el sistema original lo permite en este local.
  // La entrada interna sigue disponible y mantiene las mismas validaciones de go().
- const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
+ const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]')||nav.querySelector('#snav > button[data-go="cierre-online"]');
  if(originalPayment){originalPayment.hidden=true;originalPayment.style.setProperty('display','none','important');}
  let payment=nav.querySelector('[data-daily-shortcut="pagos"]');
  if(!originalPayment){payment?.remove();payment=null;}
@@ -79,17 +79,18 @@ function draw(){
   }
   if(last?.nextElementSibling!==n)nav.insertBefore(n,last?.nextElementSibling||null);
   last=n;
-  if(payment&&(item.id==='stock'||(item.id==='inicio'&&!known.has('stock')))){
+  if(payment&&item.id==='inicio'){
    if(payment.parentNode!==nav||last.nextElementSibling!==payment)nav.insertBefore(payment,last.nextElementSibling);
    last=payment;
   }
  }
- // El acceso a Stock Local debe quedar justo después de Inicio, incluso si
- // una disposición guardada lo colocó al final de las hojas.
+ // Orden fijo de accesos diarios Mi Gusto: Inicio, Pagos Online y Stock Local.
+ // Se aplica al menú principal incluso si una disposición guardada los reordenó.
  const inicio=known.get('inicio');
  const stockLocal=known.get('stock');
- if(inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,inicio.nextElementSibling);
- if(payment&&stockLocal&&stockLocal.nextElementSibling!==payment)nav.insertBefore(payment,stockLocal.nextElementSibling);
+ if(inicio&&payment&&inicio.nextElementSibling!==payment)nav.insertBefore(payment,inicio.nextElementSibling);
+ if(payment&&stockLocal&&payment.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,payment.nextElementSibling);
+ else if(!payment&&inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,inicio.nextElementSibling);
  for(const [id,b] of existing)if(!order.some(x=>x.id===id))b.remove();
  const can=!!c.creator;
  let edit=nav.querySelector('#gl-edit-menu');
