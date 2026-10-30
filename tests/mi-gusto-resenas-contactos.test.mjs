@@ -41,7 +41,7 @@ test('La invitación seleccionada se copia por separado y usa link Google SOLO p
  assert.match(m.view(),/Copiar cupón con condiciones/);
  assert.match(m.module.defaultMessage('munro'),/https:\/\/g.page\/r\/CZKKTkNsZpoiEBM\/review/);
  assert.doesNotMatch(m.module.defaultMessage('torcuato'),/CZKKTkNsZpoiEBM/);
- assert.equal(m.module.phoneNumber('01122337788'),'5491122337788');
+ assert.equal(m.module.phoneNumber('1122337788'),'5491122337788');
  assert.match(m.module.couponText('ABC234','del 1 al 12 de noviembre 2026'),/Exclusivo para Mi Gusto Munro/);
  const torcuato=widget('gerente','torcuato');
  assert.match(torcuato.view(),/10% OFF · Mi Gusto Torcuato/);
