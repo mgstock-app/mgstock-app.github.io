@@ -13,6 +13,8 @@
     clock:'<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4M8 15h3"/>',
     bell:'<path d="M18 8a6 6 0 0 0-12 0c0 6-3 7-3 9h18c0-2-3-3-3-9M10 21h4"/>',
     chat:'<path d="M4 4h16v13H8l-4 3zM8 9h8M8 13h5"/>',
+    stock:'<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 14h8"/>',
+    payment:'<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h5"/>',
     more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'
   };
   const icon=k=>'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+glyphs[k]+'</svg>';
@@ -32,18 +34,23 @@
   const business=()=>actionable('[data-gerente-business], [data-owner-nav="business"], [data-owner-go="business"]');
   const bell=()=>localNav('avisos') || actionable('[data-owner-nav="bell"]');
   const current=()=>app.querySelector('#snav button[aria-current="page"]')?.dataset.go || '';
+  // Solo accesos autorizados que existen en el menú real del local.
+  const stock=()=>localNav('stock');
+  const pagos=()=>localNav('cierre-online');
   let last='',open=false;
   const read=()=>{
     const inLocal=visible();
-    const tabs=[
+    const tabs=inLocal?[
       ['home','Inicio','home',true],
-      ['business','Empresa','shop',!!(business()||inLocal)],
+      ['stock','Stock Local','stock',!!stock()],
+      ['pagos','Pagos Online','payment',!!pagos()],
+      ['staff','Equipo','people',!!staff()],
+      ['more','Más','more',true]
+    ].filter(t=>t[3]):[
+      ['home','Inicio','home',true],
+      ['business','Empresa','shop',!!business()],
       ['staff','Colaboradores','people',!!staff()],
-      ...(inLocal?[
-        ['vencimientos','Vencimientos','clock',!!localNav('vencimientos')]
-      ]:[
-        ['avisos','Avisos','bell',!!bell()]
-      ]),
+      ['avisos','Avisos','bell',!!bell()],
       ['more','Más','more',true]
     ].filter(t=>t[3]);
     // Evitar que un botón no autorizado aparezca o se vuelva un enlace público.
@@ -67,6 +74,8 @@
       if(visible() && localNav('inicio')){localNav('inicio').click();return;}
       const control=business();if(control)control.click();return;
     }
+    if(k==='stock'){stock()?.click();return;}
+    if(k==='pagos'){pagos()?.click();return;}
     if(k==='staff'){staff()?.click();return;}
     if(k==='avisos'){bell()?.click();return;}
     if(k==='vencimientos'){localNav('vencimientos')?.click();}
@@ -79,7 +88,7 @@
       ['avisos','Avisos'],
       ['vencimientos','Vencimientos']
     ].filter(([k])=>k==='home'||(k==='business'&&business())||(k==='staff'&&staff())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
-    const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
+    const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
     sheet.innerHTML='<button type="button" class="gl-mobile-sheet__scrim" data-close-sheet aria-label="Cerrar más opciones"></button><section class="gl-mobile-sheet__panel" role="dialog" aria-modal="true" aria-label="Más opciones de GESTLOK"><header><strong>Más opciones</strong><button type="button" data-close-sheet aria-label="Cerrar">×</button></header><div class="gl-mobile-sheet__links">'+entries.map(([k,t])=>'<button type="button" data-sheet-action="'+k+'">'+t+'</button>').join('')+extra.map(b=>'<button type="button" data-sheet-go="'+String(b.dataset.go).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">'+(b.querySelector('.nl')?.textContent||b.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+'</div></section>';
     sheet.hidden=false;open=true;
     dock.querySelector('[data-dock="more"]')?.setAttribute('aria-expanded','true');
@@ -95,7 +104,7 @@
       last=signature;
       dock.innerHTML=tabs.map(([key,label,ico])=>'<button type="button" data-dock="'+key+'" aria-label="'+label+'"'+(key==='more'?' aria-haspopup="dialog" aria-expanded="false"':'')+'>'+icon(ico)+'<span>'+label+'</span></button>').join('');
     }
-    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'business','vencimientos':'vencimientos','avisos':'avisos'}[current()]||'business')):'home';
+    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'home','stock':'stock','cierre-online':'pagos','vencimientos':'more','avisos':'more'}[current()]||'more')):'home';
     dock.querySelectorAll('button[data-dock]').forEach(b=>{
       if(b.dataset.dock===active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });
