@@ -1,4 +1,4 @@
-/* global describe, it, cy */
+/* global Cypress, describe, it, cy */
 // Solo datos ficticios: controla que las acciones móviles respeten los permisos.
 const setup=(email,width=390)=>{
  cy.viewport(width,844);
@@ -15,6 +15,9 @@ const setup=(email,width=390)=>{
 // Aislado para evitar bloqueo del runner de Chrome tras múltiples sesiones en una misma spec.
 // No se omite ninguna prueba: todos los escenarios se siguen ejecutando.
 describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
+ // Mantener la excepción de hidratación #418 que ya tenía la spec original antes de dividirla.
+ // Cualquier otro error de aplicación sigue fallando la prueba.
+ Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
   it('Munro: Stock Local y Pagos Online siempre visibles en dock, con permisos existentes',()=>{
    setup('gerente.munro@example.com');
    cy.get('#gestlok-mobile-dock [data-dock="stock"]',{timeout:15000}).should('be.visible').and('contain.text','Stock Local');
