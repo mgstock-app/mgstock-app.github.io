@@ -82,6 +82,7 @@ test('Las plantillas de cada sucursal solo están accesibles con RLS y funciones
 });
 
 test('La integración carga el complemento y lo agrega a la caché PWA',()=>{
+ assert.match(read('public/stock/mi-gusto-resenas.js'),/GestLokResenasComunicaciones\?\.decorateRows/);
  assert.match(read('components/stock-runtime.tsx'),/load\("\/stock\/mi-gusto-resenas-contactos\.js/);
  assert.match(read('scripts/sw-template.js'),/'\/stock\/mi-gusto-resenas-contactos\.js'/);
  assert.match(moduleCode,/gestlok_resenas_message_get/);
