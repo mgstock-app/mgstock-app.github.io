@@ -39,6 +39,7 @@ describe('GestLok: formularios no se borran mientras el gerente escribe',()=>{
   }))cy.get('#ri-form [name="'+field+'"]').should('have.value',value);
   cy.focused().should('have.attr','name','observation');
   // El cambio de local nunca debe conservar los datos de la sucursal anterior.
+  cy.get('.ri-dialog [data-ri="close"]').click();
   cy.get('#snav [data-act="locales"]').click();
   abrirLocal('torcuato');
   cy.get('#snav [data-go="reclamos-internos"]').click();
