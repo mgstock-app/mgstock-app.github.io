@@ -37,7 +37,7 @@ function draw(){
  const miGusto=!!nav.querySelector('.snav-sub button[data-go="cierre-online"]');
  for(const id of ['ingreso','avisos']){
   const button=[...nav.children].find(el=>el.dataset?.go===id);
-  if(button)button.hidden=miGusto;
+  if(button){button.hidden=miGusto;if(miGusto)button.style.setProperty('display','none','important');else button.style.removeProperty('display');}
  }
  nav.querySelector('.snav-l')?.remove();
  // Las hojas siguen accesibles: se elimina solo el título, jamás su botón de alta.
@@ -52,7 +52,7 @@ function draw(){
  // Pagos Online solo se fija cuando el sistema original lo permite en este local.
  // La entrada interna sigue disponible y mantiene las mismas validaciones de go().
  const originalPayment=nav.querySelector('.snav-sub button[data-go="cierre-online"]');
- if(originalPayment)originalPayment.hidden=true;
+ if(originalPayment){originalPayment.hidden=true;originalPayment.style.setProperty('display','none','important');}
  let payment=nav.querySelector('[data-daily-shortcut="pagos"]');
  if(!originalPayment){payment?.remove();payment=null;}
  else{
