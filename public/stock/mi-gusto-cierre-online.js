@@ -147,10 +147,10 @@ function movements(){
  '<button type="button" data-mgon-close '+(!writable()?'disabled':'')+'>Cerrar turno →</button></div>';
 }
 function photoControl(s){
- if(!s||s.status!=='cerrado')return '';
+ if(!s)return '';
  if(s.photo_path)return '<button type="button" class="mg-on-photo-btn" data-mgon-view-photo="'+esc(s.id)+'">📷 Ver foto del cierre</button>';
  return '<label class="mg-on-photo-upload '+(uploading===s.id?'mg-on-busy':'')+'">📷 '+(uploading===s.id?'Subiendo foto…':'Subir foto')+
-  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!online()||uploading?'disabled':'')+'></label>';
+  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>';
 }
 async function compressPhoto(file){
  if(!file||!file.type.startsWith('image/')||file.size>15*1024*1024)throw Error('Elegí una imagen de hasta 15 MB.');
@@ -173,8 +173,8 @@ async function photoRequest(body){
  return result.data;
 }
 async function uploadPhoto(id,file){
- if(!writable()||uploading||!file)return;
- const shift=[snapshot?.active,...(snapshot?.history||[])].find(x=>x?.id===id&&x.status==='cerrado');
+ if(!allowed()||!online()||saving||uploading||!file)return;
+ const shift=[snapshot?.active,...(snapshot?.history||[])].find(x=>x?.id===id);
  if(!shift)return;
  uploading=id;photoError='';api.render();
  try{
