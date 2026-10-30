@@ -98,7 +98,7 @@ assert(upgrade.includes("rm_test_private.app_role()='manager'"));
 assert(upgrade.includes("rm_employee_profile_scope(target_local.organization_id,target_local.id)"));
 assert(upgrade.includes("p_local=any(rm_test_private.gestlok_gerente_locals())"));
 const flow = fs.readFileSync("components/invitations/JoinStaffInvitation.tsx","utf8");
-assert(flow.includes("await managerStaffInviteApi.accept(token)"));
+assert(flow.includes("await managerStaffInviteApi.accept(token,preview.group_shared===true)"));
 assert(flow.includes("await refresh()"));
 assert(flow.includes("Cambiar cuenta de Google"));
 assert(flow.includes("Bienvenido a GESTLOK"),"Bienvenida por local");
