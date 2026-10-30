@@ -34,6 +34,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
+      if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=pagos-carga-primero-20261029");
       await load("/stock/munro-motos.js?rev=motos-guardar-20261027");
       await load("/stock/gestlok-commerce.js");
