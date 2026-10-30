@@ -52,7 +52,11 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       const localNavigation = "  if(listo && S.db && S.me){\n    try{\n      const raw=sessionStorage.getItem('gestlok:profile-next-local');\n      if(raw){\n        sessionStorage.removeItem('gestlok:profile-next-local');\n        const target=JSON.parse(raw);\n        if(target.email===String(S.me.email||'').toLowerCase()\n            && target.tenant_id===S.me.tenant_id\n            && mios.some(l=>l.id===target.local_id)){\n          abrirLocal(target.local_id);return;\n        }\n      }\n    }catch{}\n  }\n";
       assert.ok(content.includes(localNavigation), 'Known single-local navigation hook');
       content = content.replace(localNavigation, '');
-      // Segundo cerebro: una sola conexión aditiva, sin modificar la lógica original de stock.\n      const brainAttach = 'window.GestLokSecondBrain?.attach({S,isCreadora,render:renderHub,toast});\\n';\n      assert.equal(content.split(brainAttach).length - 1, 1, 'Un único hook privado del Segundo cerebro');\n      content = content.replace(brainAttach, '');\n      // Cambio UI revisado: en Inicio no debe aparecer el botón Guardar conteo.
+      // Segundo cerebro: un solo enlace aditivo; la lógica original sigue intacta.
+      const brainAttach = 'window.GestLokSecondBrain?.attach({S,isCreadora,render:renderHub,toast});\n';
+      assert.equal(content.split(brainAttach).length - 1, 1, 'Un único hook privado del Segundo cerebro');
+      content = content.replace(brainAttach, '');
+      // Cambio UI revisado: en Inicio no debe aparecer el botón Guardar conteo.
       // Se normaliza solo esta condición exacta; el resto del código conserva su huella.
       const homeBar = "  $('#savebar').hidden = S.view === 'inicio' || ing || chat ||";
       assert.equal(content.split(homeBar).length - 1, 1, 'Una regla única oculta la barra en Inicio');
