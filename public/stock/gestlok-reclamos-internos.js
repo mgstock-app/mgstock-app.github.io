@@ -3,7 +3,7 @@
    Reseñas de Mi Gusto y GESTLOK mantienen tablas y cupones independientes. */
 (()=>{
  'use strict';
- let api=null,rows=[],term='',error='',notice='',modal=null,busy=false,loading=false,serial=0;
+ let api=null,rows=[],term='',error='',notice='',modal=null,busy=false,loading=false,serial=0,scope='';
  const E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  const normalizePhone=x=>String(x||'').replace(/[^0-9]/g,'');
  const percent=x=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(x)||0)+'%';
@@ -86,7 +86,11 @@
     )+'</form></section></div>';
  }
  function view(){
-  if(!canSee())return '';
+  if(!canSee()){rows=[];modal=null;scope='';return '';}
+  const activeScope=String(api.S.me.tenant_id)+'/'+local();
+  if(scope!==activeScope){
+   serial++;rows=[];term='';error='';notice='';modal=null;busy=false;loading=false;scope=activeScope;
+  }
   const pending=rows.filter(r=>r.status==='pending').length,used=rows.length-pending;
   return '<section class="ri-page" aria-label="Reclamos Internos">'+
    '<header class="ri-head"><div><small>GESTLOK · GESTIÓN INTERNA</small><h2>Reclamos Internos</h2>'+
@@ -173,7 +177,7 @@
   window.addEventListener('focus',focus);
   push(()=>{clearInterval(interval);window.removeEventListener('focus',focus);});
  }
- function reset(){serial++;rows=[];term='';error='';notice='';modal=null;busy=false;loading=false;}
+ function reset(){serial++;rows=[];term='';error='';notice='';modal=null;busy=false;loading=false;scope='';}
  window.GestLokReclamosInternos={attach,view,subscribe,reset,permitido:canSee,
   _test:{normalizePhone,percent,arDate}};
 })();
