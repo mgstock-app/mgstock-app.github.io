@@ -91,7 +91,7 @@ test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento'
    "create function public.puede_editar_local(p text) returns boolean language sql stable as $$ select p=any(string_to_array(current_setting('test.local',true),',')) $$;"
   ].join('\n'));
   await db.exec(read('supabase/migrations/20261029150000_mi_gusto_cierre_online.sql'));
-  await db.exec(read('supabase/migrations/20261030170000_mi_gusto_pagos_admin.sql'));
+  await db.exec(read('supabase/migrations/20261030201000_mi_gusto_pagos_admin.sql'));
   async function context(role='dueno',tenant=TENANT,locals='munro,torcuato'){
    for(const [k,v] of Object.entries({uid:'11111111-1111-4111-8111-111111111111',role,tenant,local:locals}))
     await db.query('select set_config($1,$2,false)',['test.'+k,v]);
