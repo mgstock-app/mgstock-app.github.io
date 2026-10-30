@@ -36,9 +36,9 @@ begin
    if v_id is null or (v_id<>all(v_seen)) is false or
     char_length(v_name) not between 2 and 45 or
     v_name ~ '[<>]' or
-    v_id !~ '^(inicio|stock|proveedores|chat|vencimientos|avisos|motos|resenas|reclamos-internos|cierre-online|pedidos-online|tienda-online|pedido|conteo|fabrica|historial|ingreso|custom-[a-z0-9-]{1,36})$'
+    v_id !~ '^(inicio|stock|proveedores|chat|vencimientos|avisos|motos|resenas|reclamos-internos|cierre-online|pedidos-online|tienda-online|adm-local|pedido|conteo|fabrica|historial|ingreso|custom-[a-z0-9-]{1,36})$'
    then raise exception 'Categoría duplicada o inválida' using errcode='22023';end if;
-   if v_id like 'custom-%' and v_target not in ('stock','proveedores','chat','vencimientos','avisos','pedido','conteo','historial') then
+   if v_id like 'custom-%' and (v_target is null or v_target not in ('stock','proveedores','chat','vencimientos','avisos','pedido','conteo','historial')) then
      raise exception 'Un acceso nuevo debe abrir una pantalla existente y autorizada' using errcode='22023';end if;
    v_seen:=array_append(v_seen,v_id);
  end loop;
