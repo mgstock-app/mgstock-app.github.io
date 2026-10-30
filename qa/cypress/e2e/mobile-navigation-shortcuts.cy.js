@@ -1,4 +1,4 @@
-/* global Cypress, describe, it, cy */
+/* global describe, it, cy */
 // Solo datos ficticios: controla que las acciones móviles respeten los permisos.
 const setup=(email,width=390)=>{
  cy.viewport(width,844);
