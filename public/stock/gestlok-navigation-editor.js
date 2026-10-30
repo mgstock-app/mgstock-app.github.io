@@ -11,7 +11,7 @@ let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick
 const ctx=()=>window.GestLokNavContext?.()||null;
 const idOf=el=>el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'';
 const nameOf=el=>el.querySelector?.('.nl')?.textContent?.trim()||el.textContent?.trim()||'';
-const nodes=()=>new Map([...nav.children].map(el=>[idOf(el),el]).filter(([id])=>permitted.includes(id)));
+const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')).map(el=>[idOf(el),el]).filter(([id])=>permitted.includes(id)));
 const trim=s=>String(s||'').trim().replace(/\s+/g,' ').slice(0,45);
 function baseline(){
  const known=nodes(),ids=[...new Set([...preferred,...known.keys()])].filter(id=>known.has(id));
