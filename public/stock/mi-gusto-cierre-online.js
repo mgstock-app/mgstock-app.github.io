@@ -145,7 +145,7 @@ function movements(){
  return '<div class="mg-on-section">'+entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
   movementList()+'</div>'+status()+
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
- '<p class="mg-on-photo-reminder" role="status">'+(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Antes de cerrar el turno, el gerente debe subir la foto. El cierre se habilitará cuando termine la carga.')+'</p></div>'+
+ '<p class="mg-on-photo-reminder '+(s?.photo_path?'mg-on-photo-ready':'')+'" role="status">'+(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Antes de cerrar el turno, el gerente debe subir la foto. El cierre se habilitará cuando termine la carga.')+'</p></div>'+
  '<div class="mg-on-close-controls">'+photoControl(s)+
  '<button type="button" data-mgon-close '+(!writable()||!s?.photo_path?'disabled':'')+'>Cerrar turno →</button></div></div>';
 }
