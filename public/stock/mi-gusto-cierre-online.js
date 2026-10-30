@@ -295,7 +295,7 @@ function history(){
 }
 function view(){
  if(!allowed())return '';
- if(!snapshot&&!loading&&online())queueMicrotask(refresh);
+ if(!snapshot&&!loading&&!error&&online())queueMicrotask(refresh);
  return '<div class="mg-on-page" style="zoom:'+getScale()/100+'">'+currentHead()+
   '<div class="mg-on-workbar">'+nav()+scaleBar()+'</div>'+
  (error?'<p class="mg-on-error" role="alert">'+esc(error)+'</p>':'')+
