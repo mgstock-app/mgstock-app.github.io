@@ -20,3 +20,44 @@
 .esl-summary div{padding:12px;border:1px solid #e0e8ee;border-radius:10px;min-width:0}
 .esl-summary dt{font-size:12px;color:#6a8192}.esl-summary dd{font-weight:700;color:#244660;margin:3px 0;overflow-wrap:anywhere}
 @media(max-width:620px){.esl-card{padding:17px;margin:13px auto}.esl-grid,.esl-summary{grid-template-columns:1fr}.esl-head h2{font-size:20px}.esl-actions button{flex:1}}
+
+/* En teléfonos la barra inferior fija de GESTLOK tapaba el botón natural al
+   final del formulario. Mostrar Guardar arriba de ella mientras el usuario edita,
+   sin superponerlo con Mi recibo / Horarios / Mi perfil. */
+@media screen and (max-width:900px){
+ .app-shell .esl-form{padding-bottom:calc(95px + env(safe-area-inset-bottom,0px))}
+ .app-shell .esl-actions{
+   position:fixed;
+   bottom:calc(83px + env(safe-area-inset-bottom,0px));
+   left:50%;
+   transform:translateX(-50%);
+   z-index:1001;
+   box-sizing:border-box;
+   width:min(calc(100vw - 24px),540px);
+   min-height:65px;
+   padding:9px;
+   display:flex;
+   flex-wrap:nowrap;
+   align-items:center;
+   gap:8px;
+   border:1px solid #d9e5ef;
+   border-radius:15px;
+   background:#fff;
+   box-shadow:0 6px 28px #0d35513b;
+ }
+ .app-shell .esl-actions .esl-save{
+   flex:1 1 auto;
+   min-width:0;
+   min-height:49px;
+   background:#134d77;
+   color:#fff;
+   font-size:15px;
+   font-weight:800;
+   box-shadow:0 2px 5px #12334b19;
+ }
+ .app-shell .esl-actions button:not(.esl-save){flex:0 0 auto;min-height:49px}
+ .app-shell .esl-actions button:focus-visible{outline:3px solid #42b0d1;outline-offset:2px}
+}
+@media print{
+ .app-shell .esl-actions{position:static!important;transform:none!important}
+}
