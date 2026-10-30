@@ -22,7 +22,7 @@ import "./gestlok-experience.css";
 import "./gestlok-ios-install.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://gestlok.com.ar"),
   title: "GestLok",
   description: "Productos, proveedores, conteos y movimientos en un espacio seguro por local. Acceso gratuito con autorización.",
   // Preserve original manifest URL for installed Android/desktop PWA update tracking.
