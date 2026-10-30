@@ -32,6 +32,13 @@ function shown(){
 }
 function draw(){
  const c=ctx();if(!c?.tenant||!c.local)return;
+ // Mi Gusto: retirar únicamente accesos del menú, sin borrar datos ni servicios.
+ // La identificación de Mi Gusto se toma del módulo de pagos autorizado.
+ const miGusto=!!nav.querySelector('.snav-sub button[data-go="cierre-online"]');
+ for(const id of ['ingreso','avisos']){
+  const button=[...nav.children].find(el=>el.dataset?.go===id);
+  if(button)button.hidden=miGusto;
+ }
  nav.querySelector('.snav-l')?.remove();
  // Las hojas siguen accesibles: se elimina solo el título, jamás su botón de alta.
  const known=nodes(),order=shown(),back=nav.querySelector('[data-act="locales"]');
