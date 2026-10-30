@@ -6,7 +6,7 @@ import {PGlite} from '@electric-sql/pglite';
 
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const moduleCode=read('public/stock/mi-gusto-resenas-contactos.js');
-const migration=read('supabase/migrations/20261030211800_mi_gusto_resenas_mensajes_whatsapp.sql');
+const migration=read('supabase/migrations/20261030212421_mi_gusto_resenas_mensajes_whatsapp.sql');
 
 function widget(role='gerente',branch='munro'){
  const handlers={}; const calls=[]; const notices=[];
