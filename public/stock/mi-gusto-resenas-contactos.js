@@ -8,11 +8,12 @@
   const E=original._t.E;
   const LOC={munro:'Munro',torcuato:'Torcuato'};
   const DEFAULT={
-    munro:'🥟 ¡Gracias por elegir Mi Gusto! 🖤\n\nNos encanta saber qué te pareció tu experiencia. Si tenés un minutito, nos ayudaría mucho que nos dejes tu opinión en Google. ⭐\n\n🔗 https://g.page/r/CZKKTkNsZpoiEBM/review\n\n¡Y si querés compartirnos una captura por acá, nos encantaría leerte! 😊\n\n¡Gracias por acompañarnos!',
-    torcuato:'🥟 ¡Gracias por elegir Mi Gusto! 🖤\n\nNos encanta saber qué te pareció tu experiencia. Si tenés un minutito, nos ayudaría mucho que nos dejes tu opinión en Google. ⭐\n\n¡Y si querés compartirnos una captura por acá, nos encantaría leerte! 😊\n\n¡Gracias por acompañarnos!'
+    munro:"🥟 ¡Hola, {nombre}! 🖤\\n\\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\\n\\nTe compartimos tu cupón de cortesía:",
+    torcuato:"🥟 ¡Hola, {nombre}! 🖤\\n\\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\\n\\nTe compartimos tu cupón de cortesía:"
   };
   let api=null, messages=Object.create(null),loaded=Object.create(null),generation=0;
   let editing=false,draft=null,busy=false,error='',notice='',lastLocal='';
+  const MONTHS=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const local=()=>api?.S?.local;
   const allowed=()=>original.permitido?.()===true && local() in LOC;
   const editable=()=>allowed() && !api.S.offline && navigator.onLine!==false && !busy;
@@ -57,7 +58,7 @@
     if(!allowed())return '';
     const edit=editing;
     return '<section class="rv-message-panel" aria-label="Mensaje para clientes">'+
-      '<div class="rv-message-head"><div><h3>Mensaje para clientes</h3><small>'+E(LOC[local()])+' · Invitación voluntaria, sin condición de cupón</small></div>'+
+      '<div class="rv-message-head"><div><h3>Agradecimiento y cupón</h3><small>'+E(LOC[local()])+' · Mensaje editable para enviar el beneficio</small></div>'+
       (!edit?'<button type="button" data-gl-rv="edit-message" '+(editable()?'':'disabled')+'>✎ Editar mensaje</button>':'')+'</div>'+
       (error?'<p role="alert">'+E(error)+'</p>':'')+
       (notice?'<p role="status">'+E(notice)+'</p>':'')+
@@ -65,8 +66,8 @@
         '<textarea name="message" minlength="30" maxlength="2000" required rows="7">'+E(draft===null?current():draft)+'</textarea></label>'+
         '<div class="rv-message-controls"><button class="rv-message-save" type="submit" '+(busy?'disabled':'')+'>Guardar mensaje</button>'+
         '<button type="button" data-gl-rv="cancel-message" '+(busy?'disabled':'')+'>Cancelar</button></div></form>':
-        '<p class="rv-message-preview">'+E(current())+'</p>'+
-        '<p class="rv-message-info">Copiá este mensaje con el ícono de portapapeles junto al cliente. Después abrí su WhatsApp. El cupón es independiente de publicar reseñas.</p>')+
+        '<p class="rv-message-preview">'+E(current().replace(/\\{nombre\\}/g,'[nombre del cliente]'))+'</p>'+
+        '<p class="rv-message-info">Este texto es editable. Al tocar el portapapeles, GESTLOK agrega automáticamente el nombre del cliente, el código real, la vigencia, la sucursal y las condiciones. El beneficio es independiente de dejar una reseña.</p>')+
       '</section>';
   }
   function couponRule(){
@@ -80,13 +81,45 @@
         const number=phoneNumber(phone);
         const m=whole.match(/data-rv="edit" data-id="([^"]+)"/);
         if(!m)return whole;
-        const invite='<button type="button" data-gl-rv="copy-message" title="Copiar mensaje para '+E(name)+'" aria-label="Copiar mensaje para '+E(name)+'" class="rv-clip">'+clipboardIcon+'</button>';
+        const invite='<button type="button" data-gl-rv="copy-message" data-id="'+E(m[1])+'" title="Copiar mensaje para '+E(name)+'" aria-label="Copiar mensaje para '+E(name)+'" class="rv-clip">'+clipboardIcon+'</button>';
         const wa=number?
           '<a href="https://wa.me/'+number+'" target="_blank" rel="noopener noreferrer" class="rv-whatsapp" title="Abrir WhatsApp de '+E(name)+'" aria-label="Abrir WhatsApp de '+E(name)+'">'+whatsappIcon+'</a>':
           '<span class="rv-no-whatsapp" title="Número inválido">WA</span>';
         return whole.replace(/(<button data-rv="edit" data-id="[^"]+">[^<]*<\/button>)(<\/td><\/tr>)/,
           (match,button,end)=>'<span class="rv-row-actions">'+button+invite+wa+'</span>'+end);
       });
+  }
+  function couponValidity(row){
+    const raw=String(row?.valid_from||row?.period||'');
+    const match=/^(\\d{4})-(\\d{2})-\\d{2}/.exec(raw);
+    if(!match)return 'del 1 al 12 del mes indicado';
+    const month=Number(match[2]),year=Number(match[1]);
+    return month>=1&&month<=12?'del 1 al 12 de '+MONTHS[month-1]+' '+year:'del 1 al 12 del mes indicado';
+  }
+  function messageForCoupon(row){
+    if(!row || row.local!==local() || !/^[A-HJ-NP-Z2-9]{6}$/.test(String(row.code||'')))return '';
+    const greeting=current().replace(/\\{nombre\\}/g,String(row.customer_name||'').trim());
+    return greeting+'\\n\\n🎟️ *'+row.code+' — 10% OFF*\\n'+
+      '📅 Válido '+couponValidity(row)+', de lunes a jueves.\\n'+
+      '🥟 Para compras de *7 unidades o más*.\\n'+
+      '📍 Exclusivo en *Mi Gusto '+LOC[local()]+'*.\\n'+
+      '🚫 No acumulable con otras promociones de la marca.\\n'+
+      '🔒 De un solo uso.\\n\\n¡Gracias por acompañarnos! ¡Te esperamos! 🖤';
+  }
+  async function copyForClient(id){
+    if(!editable()) {api?.toast?.('Necesitás conexión para comprobar el cupón antes de copiarlo.',true);return;}
+    const branch=local(),g=generation;
+    try{
+      const {data,error:e}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:branch});
+      if(e||!Array.isArray(data))throw e||Error('No se pudo consultar el cupón');
+      if(g!==generation||branch!==local()||!allowed())return;
+      const row=data.find(r=>r.id===id&&r.local===branch);
+      if(!row){api.toast?.('No encontramos este cupón en la sucursal actual.',true);return;}
+      if(row.status!=='pending'){api.toast?.('El cupón está usado o vencido. No se puede enviar.',true);return;}
+      const message=messageForCoupon(row);
+      if(!message)throw Error('Código inválido');
+      await copy(message,'Mensaje y cupón '+row.code+' copiados. Abrí WhatsApp para enviarlos.');
+    }catch{if(g===generation)api?.toast?.('No se pudo verificar el cupón. Reintentá con conexión.',true);}
   }
   function couponText(code,valid){
     return '🥟 MI GUSTO · '+LOC[local()]+'\n🎟️ CUPÓN '+code+' · 10% OFF\n'+
@@ -144,7 +177,7 @@
     e.preventDefault();e.stopImmediatePropagation();
     if(!allowed())return;
     const action=el.dataset.glRv;
-    if(action==='copy-message') {void copy(current(),'Invitación copiada.');return;}
+    if(action==='copy-message') {void copyForClient(el.dataset.id);return;}
     if(action==='copy-coupon'){void copy(couponText(el.dataset.code,el.dataset.valid),'Cupón y condiciones copiados.');return;}
     if(action==='edit-message'&&editable()){editing=true;draft=current();notice='';error='';redraw();return;}
     if(action==='cancel-message'&&!busy){editing=false;draft=null;error='';redraw();}
@@ -156,7 +189,7 @@
     if(allowed())void saveMessage(e.target);
   },true);
   window.GestLokResenasComunicaciones=Object.freeze({
-    permitted:allowed,phoneNumber,couponText,decorateRows:rowButtons,defaultMessage:loc=>DEFAULT[loc],reset:()=>original.reset()
+    permitted:allowed,phoneNumber,couponText,decorateRows:rowButtons,defaultMessage:loc=>DEFAULT[loc],messageForCoupon,couponValidity,reset:()=>original.reset()
   });
   original.__communications=true;
 })();
