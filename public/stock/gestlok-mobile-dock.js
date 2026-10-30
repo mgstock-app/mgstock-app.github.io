@@ -44,7 +44,7 @@
       ['home','Inicio','home',true],
       ['stock','Stock Local','stock',!!stock()],
       ['pagos','Pagos Online','payment',!!pagos()],
-      ['staff','Equipo','people',!!staff()],
+      ['staff','Colaboradores','people',!!staff()],
       ['more','Más','more',true]
     ].filter(t=>t[3]):[
       ['home','Inicio','home',true],

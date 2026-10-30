@@ -58,6 +58,9 @@ async function refresh(){
  loading=true;
  try{const value=await rpc('gestlok_mg_online_state');
    if(loc!==local()||token!==gen)return;
+   // Un estado vacío sin error no debe disparar un ciclo infinito de recargas.
+   if(!value||typeof value!=='object'||!value.active||!Array.isArray(value.history))
+     throw Error('No recibimos datos válidos de Pagos Online. Volvé a ingresar para reintentar.');
    snapshot=value;error='';
  }catch(e){if(token===gen)error=e.message||'No pudimos consultar los cierres';}
  finally{loading=false;if(token===gen&&api?.S?.view==='cierre-online')api.render();}
@@ -295,7 +298,7 @@ function history(){
 }
 function view(){
  if(!allowed())return '';
- if(!snapshot&&!loading&&online())queueMicrotask(refresh);
+ if(!snapshot&&!loading&&!error&&online())queueMicrotask(refresh);
  return '<div class="mg-on-page" style="zoom:'+getScale()/100+'">'+currentHead()+
   '<div class="mg-on-workbar">'+nav()+scaleBar()+'</div>'+
  (error?'<p class="mg-on-error" role="alert">'+esc(error)+'</p>':'')+

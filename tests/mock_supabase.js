@@ -112,6 +112,13 @@
     from(){ return builder(); },
     async rpc(fn, args){
       const a = acc();
+      // Estado ficticio para probar Pagos Online sin consultar datos de Mi Gusto.
+      if (fn === 'gestlok_mg_online_state'){
+        const loc=args?.p_local;
+        if(!a||!['munro','torcuato'].includes(loc)||!(total(a)||(a.rol==='gerente'&&(a.locales||[]).includes(loc))))
+          return {data:null,error:{code:'42501',message:'Sin permiso para el local'}};
+        return {data:{active:{id:'turno-ficticio-'+loc,day:new Date().toISOString().slice(0,10),turno:'manana',status:'abierto',movements:[],transferencia:0,getnet:0,mercado_pago:0,total_app:0,total_ventas:0,online_local:0,comandas:0},history:[]},error:null};
+      }
       if (fn === 'gestlok_my_registration'){
         const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
         return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending'}:null,error:null};
