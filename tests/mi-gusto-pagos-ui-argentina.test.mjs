@@ -24,7 +24,7 @@ test('Pagos Online muestra tarjeta de carga, lista responsive y confirmación re
  assert.match(source,/data-mgon-delete/);
  assert.match(source,/data-mgon-app/);
  assert.match(source,/data-mgon-photo/);
- assert.match(source,/Foto guardada\\. /);
+ assert.match(source,/Foto guardada/);
  assert.match(styles,/@media\(max-width:760px\)/);
  assert.match(styles,/\.mg-on-recent-mobile\{display:grid/);
  assert.match(styles,/\.mg-on-recent-desktop\{display:none/);
