@@ -43,6 +43,9 @@ export const managerStaffInviteApi = {
   create: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string}>(
     "rm_app_manager_staff_invite_create", {p_local:local}
   ),
+  getGeneral: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string;group_shared:boolean}|null>(
+    "rm_app_manager_staff_group_get", {p_local:local}
+  ),
   createGeneral: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string;group_shared:boolean}>(
     "rm_app_manager_staff_group_create", {p_local:local}
   ),
