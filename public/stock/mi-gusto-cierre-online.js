@@ -37,14 +37,14 @@ function changeScale(delta){
  if(minus)minus.disabled=pageScale<=85;
  if(plus)plus.disabled=pageScale>=110;
 }
-let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, gen=0;
+let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local())));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;error='';}
-function reset(){++gen;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;}
+function reset(){++gen;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -53,7 +53,7 @@ async function rpc(name,args={}){
  return a.data;
 }
 async function refresh(){
- if(!allowed()||loading||saving||!online())return;
+ if(!allowed()||loading||saving||uploading||choosingPhoto||!online())return;
  const loc=local(),token=gen;
  loading=true;
  try{const value=await rpc('gestlok_mg_online_state');
@@ -62,8 +62,8 @@ async function refresh(){
    if(!value||typeof value!=='object'||!value.active||!Array.isArray(value.history))
      throw Error('No recibimos datos válidos de Pagos Online. Volvé a ingresar para reintentar.');
    snapshot=value;error='';
- }catch(e){if(token===gen)error=e.message||'No pudimos consultar los cierres';}
- finally{loading=false;if(token===gen&&api?.S?.view==='cierre-online')api.render();}
+ }catch(e){if(token===gen&&!choosingPhoto&&!uploading)error=e.message||'No pudimos consultar los cierres';}
+ finally{loading=false;if(token===gen&&!choosingPhoto&&!uploading&&api?.S?.view==='cierre-online')api.render();}
 }
 function status(){
  const s=snapshot?.active;
@@ -197,6 +197,7 @@ async function photoRequest(body){
 }
 async function uploadPhoto(id,file){
  if(!allowed()||!online()||saving||uploading||!file)return;
+ choosingPhoto=false;
  const shift=[snapshot?.active,...(snapshot?.history||[])].find(x=>x?.id===id);
  if(!shift)return;
  uploading=id;photoError='';api.render();
@@ -205,10 +206,13 @@ async function uploadPhoto(id,file){
   const form=new FormData();form.set('action','upload');form.set('local',local());form.set('shift_id',id);form.set('photo',jpg);
   const result=await photoRequest(form);
   if(!result?.ok)throw Error('No se pudo completar la carga.');
-  modalDay=shift.day;modalTab=shift.turno;
+  // La carga del turno activo no debe abrir un modal que tape «Cerrar turno».
+  if(shift.status==='cerrado'&&modalDay){modalDay=shift.day;modalTab=shift.turno;}
   await rpcRefresh();
-  api.toast?.('Foto asociada al cierre de '+shiftName(shift.turno)+'.');
- }catch(e){photoError=e.message||'No se pudo subir la foto';api.render();}
+  const saved=[snapshot?.active,...(snapshot?.history||[])].find(x=>x?.id===id);
+  if(!saved?.photo_path)throw Error('La foto se recibió, pero no figura guardada en este turno. Volvé a intentar.');
+  api.toast?.('Foto guardada. '+(shift.status==='abierto'?'Ya podés cerrar el turno.':'Quedó asociada al cierre.'));
+ }catch(e){photoError=e.message||'No se pudo subir la foto';api.toast?.(photoError);api.render();}
  finally{uploading=null;api.render();}
 }
 async function showPhoto(id){
@@ -354,6 +358,8 @@ function attach(h){
  if(api)return;
  api=h;
  document.addEventListener('click',e=>{
+  // Evitar que una actualización del estado desmonte el selector nativo de fotos.
+  if(e.target.closest?.('.mg-on-photo-upload')){choosingPhoto=true;return;}
   // Al volver a ingresar desde el menú, la pantalla principal siempre es Cargar pedidos.
   if(e.target.closest?.('[data-go="cierre-online"]'))openForEntry();
   if(!allowed())return;
@@ -413,17 +419,19 @@ function attach(h){
  });
  document.addEventListener('change',e=>{
   if(!allowed())return;
-  if(e.target.matches?.('[data-mgon-photo]')){const file=e.target.files?.[0];if(file)void uploadPhoto(e.target.dataset.mgonPhoto,file);return;}
+  if(e.target.matches?.('[data-mgon-photo]')){const file=e.target.files?.[0];choosingPhoto=false;if(file)void uploadPhoto(e.target.dataset.mgonPhoto,file);return;}
   if(e.target.id==='mg-on-date-filter'){filter=e.target.value;opened=null;api.render();}
   if(e.target.id==='mg-on-history-view'){viewMode=e.target.value==='turno'?'turno':'dia';opened=null;api.render();}
   if(e.target.id==='mg-on-turn-filter'){shiftFilter=['manana','tarde'].includes(e.target.value)?e.target.value:'todos';opened=null;api.render();}
  });
+ // Cuando el usuario cancela la cámara/galería, restaurar los refrescos normales.
+ document.addEventListener('cancel',e=>{if(e.target.matches?.('[data-mgon-photo]'))choosingPhoto=false;},true);
 }
 function subscribe(loc,push){
  if(!allowed()||!(loc in LOCALS))return;
  void refresh();
- const timer=setInterval(()=>{if(api?.S?.view==='cierre-online'&&!document.hidden&&!document.activeElement?.closest('#mg-online-form'))void refresh();},30000);
- const focus=()=>{if(api?.S?.view==='cierre-online')void refresh();};
+ const timer=setInterval(()=>{if(api?.S?.view==='cierre-online'&&!choosingPhoto&&!uploading&&!document.hidden&&!document.activeElement?.closest('#mg-online-form'))void refresh();},30000);
+ const focus=()=>{if(api?.S?.view==='cierre-online'&&!choosingPhoto&&!uploading)void refresh();};
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
