@@ -5,8 +5,9 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 import { EmployeeReport } from "@/components/reports/EmployeeReport";
 import { EmployeeScheduleLink } from "@/components/schedules/EmployeeScheduleLink";
+import { EmployeeSelfLegajo } from "@/components/legajos/EmployeeSelfLegajo";
 
-type Section = "inicio-colaborador" | "mi-recibo" | "mis-horarios";
+type Section = "inicio-colaborador" | "mi-legajo" | "mi-recibo" | "mis-horarios";
 
 function Row({title, Icon, children, onClick, active=false}: {
   title:string; Icon:typeof House; children:ReactNode; onClick:()=>void; active?:boolean;
@@ -71,6 +72,7 @@ export function EmployeePortalShell(){
       </div>
       <nav aria-label="Navegación del colaborador">
         <Row title="Inicio" Icon={House} active={section==="inicio-colaborador"} onClick={()=>go("inicio-colaborador")}>Inicio</Row>
+        <Row title="Mi legajo personal" Icon={UserRound} active={section==="mi-legajo"} onClick={()=>go("mi-legajo")}>Mi legajo</Row>
         <Row title="Mi recibo personal" Icon={ReceiptText} active={section==="mi-recibo"} onClick={()=>go("mi-recibo")}>Mi recibo</Row>
         <Row title="Horarios de mi local" Icon={CalendarDays} active={section==="mis-horarios"} onClick={()=>go("mis-horarios")}>Horarios</Row>
       </nav>
@@ -95,6 +97,7 @@ export function EmployeePortalShell(){
           <p>Tu recibo de sueldo y los horarios del local que tenés asignado.</p>
           <small>Local: {local}</small>
         </header>
+        <EmployeeSelfLegajo key={user.user_id+":"+user.local_id} userId={user.user_id} localId={user.local_id}/>
         <div className="employee-private-portal__cards">
           <div id="mi-recibo"><EmployeeReport key={user.user_id+":"+user.sheet_id}/></div>
           <div id="mis-horarios"><EmployeeScheduleLink key={user.user_id+":"+user.local_id}/></div>
@@ -108,6 +111,7 @@ export function EmployeePortalShell(){
     </main>
     <nav className="gl-module-dock" aria-label="Navegación móvil del colaborador">
       <button type="button" aria-current={section==="inicio-colaborador"?"page":undefined} onClick={()=>go("inicio-colaborador")}><House size={20}/>Inicio</button>
+      <button type="button" aria-current={section==="mi-legajo"?"page":undefined} onClick={()=>go("mi-legajo")}><UserRound size={20}/>Mi legajo</button>
       <button type="button" aria-current={section==="mi-recibo"?"page":undefined} onClick={()=>go("mi-recibo")}><ReceiptText size={20}/>Mi recibo</button>
       <button type="button" aria-current={section==="mis-horarios"?"page":undefined} onClick={()=>go("mis-horarios")}><CalendarDays size={20}/>Horarios</button>
       <button type="button" onClick={openProfile}><UserRound size={20}/>Mi perfil</button>
