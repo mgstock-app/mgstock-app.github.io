@@ -31,12 +31,12 @@ function widget(role='gerente',branch='munro'){
 
 test('El mensaje de agradecimiento y cupón combina datos correctos sin mezclas de sucursales',()=>{
  const m=widget();
- assert.match(m.view(),/Mensaje para clientes/);
+ assert.match(m.view(),/Agradecimiento y cupón/);
  assert.match(m.view(),/Copiar mensaje para Mariana/);
  assert.match(m.view(),/https:\/\/wa.me\/5491122337788/);
  assert.match(m.view(),/10% OFF · Mi Gusto Munro/);
  assert.match(m.view(),/de lunes a jueves/);
- assert.match(m.view(),/más de 6 unidades/);
+ assert.match(m.view(),/6 unidades o más/);
  assert.match(m.view(),/No acumulable con otras promociones/);
  assert.match(m.view(),/Copiar cupón con condiciones/);
  assert.match(m.module.defaultMessage('munro'),/¡Hola, \{nombre\}!/);
@@ -47,9 +47,11 @@ test('El mensaje de agradecimiento y cupón combina datos correctos sin mezclas 
  assert.match(one,/ABC234 — 10% OFF/);
  assert.match(one,/del 1 al 12 de noviembre 2026/);
  assert.match(one,/lunes a jueves/);
- assert.match(one,/7 unidades o más/);
+ assert.match(one,/6 unidades o más/);
  assert.match(one,/Exclusivo en \*Mi Gusto Munro\*/);
  assert.match(one,/No acumulable/);
+ assert.doesNotMatch(one,/g\.page|google\.com\/maps/);
+ assert.doesNotMatch(one,/7 unidades o más/);
  assert.doesNotMatch(one,/\{nombre\}/);
  assert.equal(m.module.messageForCoupon({local:'torcuato',code:'ABC234'}),'');
  assert.equal(m.module.phoneNumber('1122337788'),'5491122337788');
