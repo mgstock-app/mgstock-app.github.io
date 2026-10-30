@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-const sql=read('supabase/migrations/20261031014500_gestlok_enlace_general_legajo_propio.sql');
+const sql=read('supabase/migrations/20261030224511_gestlok_shared_local_invites_self_legajo.sql');
 const panel=read('modules/empleados/components/invitations/ManagerStaffInvite.tsx');
 const join=read('modules/empleados/components/invitations/JoinStaffInvitation.tsx');
 const onboard=read('modules/empleados/features/onboarding/api.ts');
