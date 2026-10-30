@@ -43,13 +43,21 @@ export const managerStaffInviteApi = {
   create: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string}>(
     "rm_app_manager_staff_invite_create", {p_local:local}
   ),
+  getGeneral: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string;group_shared:boolean}|null>(
+    "rm_app_manager_staff_group_get", {p_local:local}
+  ),
+  createGeneral: (local: string) => rpc<{token:string;local_id:string;local_name:string;expires_at:string;group_shared:boolean}>(
+    "rm_app_manager_staff_group_create", {p_local:local}
+  ),
   status: (local: string) => rpc<{local_id:string;pending:number;accepted:number;expired:number;revoked:number}>(
     "rm_app_manager_staff_invite_status", {p_local:local}
   ),
-  preview: (token: string) => rpc<{company_name:string;local_name:string;expires_at:string}>(
-    "rm_app_manager_staff_invite_preview", {p_token:token}
-  ),
-  accept: (token: string) => rpc<{local_id:string;profile_id:string;joined:boolean}>(
-    "rm_app_manager_staff_invite_accept", {p_token:token}
+  preview: async (token: string): Promise<{company_name:string;local_name:string;expires_at:string;group_shared?:boolean}> => {
+    try {return await rpc<{company_name:string;local_name:string;expires_at:string;group_shared:boolean}>("rm_app_manager_staff_group_preview", {p_token:token});}
+    catch {return rpc<{company_name:string;local_name:string;expires_at:string}>("rm_app_manager_staff_invite_preview", {p_token:token});}
+  },
+  accept: (token: string, isGeneral = false) => rpc<{local_id:string;profile_id:string;joined:boolean}>(
+    isGeneral ? "rm_app_manager_staff_group_accept" : "rm_app_manager_staff_invite_accept",
+    {p_token:token}
   ),
 };
