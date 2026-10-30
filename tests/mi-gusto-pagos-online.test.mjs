@@ -91,6 +91,7 @@ test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento'
    "create function public.puede_editar_local(p text) returns boolean language sql stable as $$ select p=any(string_to_array(current_setting('test.local',true),',')) $$;"
   ].join('\n'));
   await db.exec(read('supabase/migrations/20261029150000_mi_gusto_cierre_online.sql'));
+  await db.exec(read('supabase/migrations/20261030170000_mi_gusto_pagos_admin.sql'));
   async function context(role='dueno',tenant=TENANT,locals='munro,torcuato'){
    for(const [k,v] of Object.entries({uid:'11111111-1111-4111-8111-111111111111',role,tenant,local:locals}))
     await db.query('select set_config($1,$2,false)',['test.'+k,v]);
@@ -132,6 +133,11 @@ test('Base aislada: total 3 medios menos APP, cierres encadenados y aislamiento'
   await context('gerente',TENANT,'munro');
   await assert.rejects(()=>state('torcuato'),/permiso/);
   await context('gerente',TENANT,'torcuato');
+  await assert.rejects(()=>state('munro'),/permiso/);
+  await context('creadora',TENANT,'munro,torcuato');
+  assert.equal((await state('munro')).active.local,'munro');
+  assert.equal((await state('torcuato')).active.local,'torcuato');
+  await context('creadora',TENANT,'');
   await assert.rejects(()=>state('munro'),/permiso/);
   await context('dueno','22222222-2222-4222-8222-222222222222');
   await assert.rejects(()=>state('munro'),/permiso/);
