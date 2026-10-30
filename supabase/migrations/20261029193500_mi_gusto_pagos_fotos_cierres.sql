@@ -43,8 +43,8 @@ begin
  end if;
  select * into s from gestlok_mg_online_private.shifts
   where id=p_shift and local=p_local;
- if s.id is null or s.status<>'cerrado' then
-  raise exception 'Solo puede acceder a fotos de turnos cerrados de su local' using errcode='42501';
+ if s.id is null then
+  raise exception 'Turno inexistente en este local' using errcode='42501';
  end if;
  return jsonb_build_object(
   'id',s.id,'day',s.day,'turno',s.turno,'status',s.status,
@@ -62,8 +62,8 @@ begin
  end if;
  select * into s from gestlok_mg_online_private.shifts
   where id=p_shift and local=p_local for update;
- if s.id is null or s.status<>'cerrado' then
-  raise exception 'El turno debe estar cerrado' using errcode='42501';
+ if s.id is null then
+  raise exception 'Turno inexistente en este local' using errcode='42501';
  end if;
  path:=p_local||'/'||s.id::text||'/cierre.jpg';
  if s.photo_path is not null then
