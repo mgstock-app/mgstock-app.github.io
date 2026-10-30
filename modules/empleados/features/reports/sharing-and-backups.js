@@ -12,6 +12,7 @@ ctx.exportarDatos = function () {
         '<p class="hint" id="eTelHint"></p>' +
         '<label class="t" for="eMsg">Saludo</label><textarea id="eMsg" rows="2"></textarea>' +
         '<p class="hint">El reporte va como imagen. Este saludo acompaña el envío; si lo borrás, se abre el chat sin texto.</p>' +
+        '<label class="t"><input type="checkbox" id="eDestinatarioConfirmado"> Confirmo que el nombre y teléfono corresponden exclusivamente al colaborador de este recibo. No enviar a grupos ni a terceros.</label>' +
         '<p class="err-txt" id="eErr"></p>' +
         '<div class="m-acc"><button type="button" class="btn sec" data-cerrar>Cancelar</button><button type="button" class="btn prim" id="eSig">Generar imagen</button></div>');
     ctx.$("mSub").textContent = ctx.LOCALES[ctx.localDe(h)].txt + " · " + ctx.tituloHoja(h) + " · Total " + ctx.pesos(ctx.totalDe(h));
@@ -35,6 +36,11 @@ ctx.exportarDatos = function () {
         if (!tel) {
             ctx.$("eErr").textContent = "El teléfono no parece válido. Escribilo con código de área, sin 0 ni 15 (ej: 11 1234 5678).";
             ctx.$("eTel").focus();
+            return;
+        }
+        if (!ctx.$("eDestinatarioConfirmado").checked) {
+            ctx.$("eErr").textContent = "Antes de generar el recibo, confirmá que el destinatario es el colaborador correcto.";
+            ctx.$("eDestinatarioConfirmado").focus();
             return;
         }
         var id = ctx.S.activo, msg = ctx.$("eMsg").value.trim();
@@ -64,8 +70,9 @@ ctx.mostrarListo = function (h, nombre, tel, env, okHist) {
         '<p class="hint" id="lHist"></p>' +
         '<div class="m-acc"><button type="button" class="btn sec" data-cerrar>Listo</button></div>');
     ctx.$("lPara").textContent = "Para " + nombre + " · el número queda guardado en la hoja";
+    ctx.$("lHist").textContent = "CONFIDENCIAL: verificá el chat antes de adjuntar el recibo. No lo envíes a un grupo ni a otra persona.";
     ctx.$("lTel").textContent = ctx.telTxt(tel);
-    ctx.$("lHist").textContent = okHist ? "El reporte quedó guardado en el historial de la hoja." : "Al compartir se registra Enviado y se guarda una copia en tu historial privado.";
+    ctx.$("lHist").textContent += " " + (okHist ? "El reporte quedó guardado en el historial de la hoja." : "Al compartir se registra Enviado y se guarda una copia en tu historial privado.");
     if (env.img) {
         try {
             ctx.$("lVista").src = URL.createObjectURL(env.img);
