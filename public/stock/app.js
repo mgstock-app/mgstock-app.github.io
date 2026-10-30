@@ -3975,6 +3975,7 @@ window.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCr
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub,renderLocal:render,toast});
+window.GestLokSecondBrain?.attach({S,isCreadora,render:renderHub,toast});
 window.GestLokCreatorSupport?.refresh();
 start();
 let alertDay = window.GestLokUpdates?.todayISO?.() || '';
