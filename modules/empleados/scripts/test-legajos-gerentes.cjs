@@ -36,4 +36,30 @@ assert(migration.includes("enable row level security"));
 assert(migration.includes("rm_employee_profile_history_read"));
 assert(migration.includes("rm_employee_profile_scope"));
 assert(migration.includes("rm_employee_profile_audit"));
-console.log("PASS: legajos de gerentes, fechas dd/mm/aaaa, estados y políticas privadas");
+
+const patch = fs.readFileSync("../../supabase/migrations/20261030023000_gerentes_legajos_local_trigger_scope.sql","utf8");
+assert.match(patch,/create or replace function rm_test_private\.rm_employee_profile_touch\(\)/);
+assert.match(patch,/security definer/i);
+assert.match(patch,/auth\.uid\(\) is null/);
+assert.match(patch,/rm_test_private\.rm_employee_profile_scope\(new\.organization_id,new\.local_id\)/);
+assert.match(patch,/l\.id=new\.local_id and l\.organization_id=new\.organization_id/);
+assert.match(patch,/new\.created_by is distinct from auth\.uid\(\)/);
+assert.match(patch,/new\.organization_id<>old\.organization_id/);
+assert.match(patch,/new\.local_id<>old\.local_id/);
+assert.match(patch,/revoke all on function rm_test_private\.rm_employee_profile_touch\(\) from public, anon, authenticated/);
+assert(!/disable row level security|grant all|drop table|truncate table/i.test(patch),"No debilitar RLS ni borrar legajos");
+
+const legajosUI=fs.readFileSync("components/legajos/ManagerLegajos.tsx","utf8");
+assert(legajosUI.includes("await Promise.allSettled(["));
+assert(legajosUI.includes("setLocals(visible);"),"La lista de locales autorizados no depende del historial");
+assert(legajosUI.includes('loadPreviousEmployees(visible)'));
+assert(legajosUI.includes('loadLegajos(visible)'));
+assert(legajosUI.includes("Agregar colaborador"));
+assert(legajosUI.includes("Invitar Colaborador"));
+assert(legajosUI.includes("needs_completion"));
+assert(legajosUI.includes("Volver a comprobar el acceso"));
+assert(legajosUI.includes("createLegajo(input)"));
+assert(legajosUI.includes("updateLegajo(editing, input)"));
+assert(!legajosUI.includes("salary_amount"),"El gerente no administra montos salariales desde los legajos");
+
+console.log("PASS: alta y edición de legajos por gerente, autorización RLS estricta y UI resiliente");
