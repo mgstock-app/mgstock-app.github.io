@@ -25,15 +25,11 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.window().then(w=>{w.__ownerAreaFail=false;});cy.get('[data-owner-area-retry]').click();
   cy.get('#hub').should('contain.text','Administrar mi empresa');
  });
- it('la creadora ve el registro de empresas como información general de solo lectura',()=>{
+ it('la creadora encuentra empresas y acceso a locales en el registro',()=>{
   start(false,'kmu15lopez@gmail.com');
-  cy.get('[aria-label="Empresas registradas"]').should('contain.text','Solo lectura').and('contain.text','Empresa ficticia').and('contain.text','Munro');
-  // Único control permitido: consultar OTRA empresa en solo lectura (pide motivo y queda auditado).
-  cy.get('[aria-label="Empresas registradas"] input,[aria-label="Empresas registradas"] select').should('not.exist');
-  cy.get('[aria-label="Empresas registradas"] button').should('have.length',1).and('have.attr','data-support-open').and('not.be.empty');
-  cy.get('[aria-label="Empresas registradas"] button').should('contain.text','Ver en solo lectura');
-  cy.get('[aria-label="Empresas registradas"]').should('contain.text','Tu empresa');
-  cy.get('[aria-label="Vista previa por rol"]').should('contain.text','Ver como Gerente').and('contain.text','Ver como Dueña').and('contain.text','Ver como Solo ver');
+  cy.get('[aria-label="Empresas registradas"]').should('contain.text','Empresa ficticia').and('contain.text','Munro');
+  cy.get('[aria-label="Empresas registradas"]').should('contain.text','Abrir empresa').and('contain.text','Locales');
+  cy.get('[aria-label="Empresas registradas"] button').should('have.length',1).and('contain.text','Abrir empresa');
  });
 
  it('PerCam: dueño de un solo local recibe el inicio universal antes de abrir su negocio',()=>{
