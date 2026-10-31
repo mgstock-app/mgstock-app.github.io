@@ -3,6 +3,14 @@
     {
       "actual": "window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});\nwindow.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCreadora()});\n",
       "original": "window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});\n"
+    },
+    {
+      "actual": "  if(v === 'inicio') S.creatorBusiness=!!(S.local && isCreadora());",
+      "original": "  if(v === 'inicio') S.creatorBusiness=false;"
+    },
+    {
+      "actual": "function abrirLocal(id){\n  if (!localesMios().some(l => l.id === id)) { toast('Este local no está disponible para tu cuenta. Actualizá los locales o revisá tus permisos.', true); return; }\n  // La Creadora debe ingresar al inicio operativo del local, igual que el Dueño.\n  // En false, V.inicio muestra nuevamente el selector de áreas en vez del local.\n  S.creatorBusiness=isCreadora();",
+      "original": "function abrirLocal(id){\n  S.creatorBusiness=false;\n  if (!localesMios().some(l => l.id === id)) return;"
     }
   ]
 }
