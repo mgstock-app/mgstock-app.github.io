@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const sql=readFileSync(new URL('../supabase/migrations/20261030235859_staff_draft_contact_resync.sql',import.meta.url),'utf8');
+const sql=readFileSync(new URL('../supabase/migrations/20261031000017_gestlok_employee_receipt_draft_contact_sync.sql',import.meta.url),'utf8');
 
 test('Only the identity of the invited employee in their exact local can update a draft sheet',()=>{
   assert.match(sql,/i\.profile_id=new\.id/);
