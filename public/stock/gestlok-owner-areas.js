@@ -223,6 +223,13 @@
   const employees=Object.freeze({open(section){
     // Demo pública: Administración de empleados ficticia (Horarios con un Excel de ejemplo), sin datos reales.
     if(window.GestLokVisitorDemo?.active&&window.GestLokDemoHorarios){window.GestLokDemoHorarios.open();return;}
+    if(api?.role()==='creadora'){
+      const destination=new URL('empleados/personal/',document.baseURI);
+      const organization=state.data?.recibonet?.organization_number;
+      if(organization)destination.searchParams.set('espacio',organization);
+      if(api.S.local)destination.searchParams.set('local',api.S.local);
+      location.assign(destination.href);return;
+    }
     location.assign(new URL(section==='horarios'?'empleados/?seccion=horarios':'empleados/',document.baseURI).href);}});
   /* Paneles: todo el contenido sale de datos que la app ya cargó (nada nuevo se pide ni se guarda). */
   const head=(small,title,id)=>'<div class="pn-h"><div><small>'+esc(small)+'</small><h3 id="'+id+'">'+title+'</h3></div><button class="ib" data-act="close" aria-label="Cerrar">'+(api?.ic?api.ic('x'):'×')+'</button></div>';

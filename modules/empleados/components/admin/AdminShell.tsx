@@ -9,7 +9,10 @@ import "./admin.css";
 const sections = [
   { href: "/", label: "Inicio", Icon: LayoutDashboard },
   { href: "/empresas", label: "Dueños y empresas", Icon: Building2 },
-  { href: "/usuarios", label: "Usuarios", Icon: Users },
+  { href: "/personal", label: "Colaboradores", Icon: Users },
+  { href: "/personal?seccion=recibos", label: "Recibos", Icon: ClipboardList },
+  { href: "/personal?seccion=legajos", label: "Legajos", Icon: UserCheck },
+  { href: "/usuarios", label: "Cuentas y permisos", Icon: Users },
   { href: "/asignaciones", label: "Roles y asignaciones", Icon: ShieldCheck },
   { href: "/locales", label: "Locales", Icon: Store },
   { href: "/horarios", label: "Horarios", Icon: CalendarDays },
@@ -79,7 +82,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <nav className="gl-module-dock" aria-label="Navegación móvil de administración general">
         <Link href="/" aria-current={pathname==="/"?"page":undefined} onClick={()=>setMenuOpen(false)}><LayoutDashboard size={20}/>Inicio</Link>
         <Link href="/empresas" aria-current={pathname==="/empresas"?"page":undefined} onClick={()=>setMenuOpen(false)}><Building2 size={20}/>Empresas</Link>
-        <Link href="/usuarios" aria-current={pathname==="/usuarios"?"page":undefined} onClick={()=>setMenuOpen(false)}><Users size={20}/>Usuarios</Link>
+        <Link href="/personal" onClick={()=>setMenuOpen(false)}><Users size={20}/>Personal</Link>
         <Link href="/asignaciones" aria-current={pathname==="/asignaciones"?"page":undefined} onClick={()=>setMenuOpen(false)}><ShieldCheck size={20}/>Roles</Link>
         <button type="button" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={20}/>Más</button>
       </nav>
