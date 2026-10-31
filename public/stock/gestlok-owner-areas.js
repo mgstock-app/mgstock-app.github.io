@@ -65,12 +65,9 @@
     if(api.S.offline&&state.status==='ready')return;
     busy=true;
     try{
-      const inSupport=window.GestLokCreatorSupport?.state?.()?.active===true;
-      const {data,error}=inSupport
-        ? await window.GestLokSupabase.rpc('gestlok_owner_area_context')
-        : (api.role()==='creadora'||window.GestLokCreatorSupport?.previewRol?.()==='dueno')
-          ? await previewOwner()
-          : await window.GestLokSupabase.rpc('gestlok_owner_area_context');
+      const {data,error}=(api.role()==='creadora'||window.GestLokCreatorSupport?.previewRol?.()==='dueno')
+        ? await previewOwner()
+        : await window.GestLokSupabase.rpc('gestlok_owner_area_context');
       if(error||!data||data.role!=='dueno'||data.tenant_id!==api.S.me?.tenant_id)throw Error('Contexto no autorizado');
       window.GestLokPilot?.refresh?.(data,api);
       window.GestLokFuturePricing?.refresh?.(data,api);
