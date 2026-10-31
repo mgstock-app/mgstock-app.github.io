@@ -224,8 +224,8 @@
     // Demo pública: Administración de empleados ficticia (Horarios con un Excel de ejemplo), sin datos reales.
     if(window.GestLokVisitorDemo?.active&&window.GestLokDemoHorarios){window.GestLokDemoHorarios.open();return;}
     if(api?.role()==='creadora'){
-      const destination=new URL('empleados/personal/',document.baseURI);
       const organization=state.data?.recibonet?.organization_number;
+      const destination=new URL(String(organization)==='2026002'?'empleados/vista-dueno/':'empleados/personal/',document.baseURI);
       if(organization)destination.searchParams.set('espacio',organization);
       if(api.S.local)destination.searchParams.set('local',api.S.local);
       location.assign(destination.href);return;
