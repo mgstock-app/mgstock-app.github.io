@@ -41,7 +41,7 @@ test("Solo el dueño ve nómina activa y el archivo privado, sin duplicar carpet
  const workspace=read("modules/empleados/components/reports/ReportWorkspace.tsx");
  const overview=read("modules/empleados/components/reports/EmployeeOverview.tsx");
  const list=read("modules/empleados/components/reports/EmployeeDirectory.tsx");
- assert.match(workspace,/ownerRostering=\{user\.role === "owner"\}/);
+ assert.match(workspace,/ownerRostering=\{user\.role === "owner" \|\| user\.role === "admin"\}/);
  assert.match(overview,/rm_app_owner_roster_state/);
  assert.match(overview,/Promise\.all/);
  assert.match(overview,/new Set\(roster\?\.active_sheet_ids/);

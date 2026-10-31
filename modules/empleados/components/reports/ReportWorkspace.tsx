@@ -45,7 +45,7 @@ export function ReportWorkspace({
       <button type="button" aria-current={activeScreen === "planillas" ? "page" : undefined} onClick={() => changeScreen("planillas")}>Enlaces y planillas</button>
     </nav>}
     <div style={{display: activeScreen === "planillas" ? "none" : "block"}}>
-      <EmployeeOverview locals={locals} ready={ready} ownerRostering={user.role === "owner"}
+      <EmployeeOverview locals={locals} ready={ready} ownerRostering={user.role === "owner" || user.role === "admin"}
         screen={activeScreen === "recibos" ? "recibos" : "empleados"}
         onOpenSheet={showSheet} onAddSheet={createSheet}
         onDownloadPdf={downloadPdf} onShareWhatsapp={startShare}/>
