@@ -1,4 +1,5 @@
 /* global Cypress, cy, describe, it */
+// Validación CI posterior a PR #196: acceso actual de Creadora sin modificar permisos.
 // «Administrar a los empleados»: la carpeta solo aparece con autorización del backend y abre el módulo
 // integrado en la misma aplicación. Sin datos reales: Supabase simulado y conexiones externas bloqueadas.
 function start(email = 'dueno@example.com', staff = false) {
