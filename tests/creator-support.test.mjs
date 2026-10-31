@@ -52,3 +52,11 @@ test('Un estado de soporte que falla deja la pantalla normal',async()=>{
  const {s}=load(async()=>({data:null,error:{message:'x'}}),{me:{tenant_id:'own',support:true}});
  await s.refresh();assert.equal(s.state().active,false);
 });
+
+test('Abrir un local de otra empresa conserva destino y cuenta antes de recargar',async()=>{
+ const {calls,listeners,reloads,store}=load(async()=>({data:{},error:null}),{me:{tenant_id:'own',email:'Admin@Example.com'}});
+ listeners.click(target('[data-company-local]',{companyTenant:'other',companyLocal:'munro',companyName:'Otra empresa'}));await tick();await tick();
+ assert.equal(calls[0][0],'gestlok_creator_open_company');assert.equal(calls[0][1].p_tenant,'other');
+ assert.deepEqual(JSON.parse(store.get('gestlok:profile-next-local')),{email:'admin@example.com',tenant_id:'other',local_id:'munro'});
+ assert.equal(store.get('gestlok-admin-tab'),'locales');assert.equal(reloads(),1);
+});

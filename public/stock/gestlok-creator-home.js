@@ -243,7 +243,7 @@
     if (cur === 'inicio') body = home(p);
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
-    else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (parts.locales || '') + '</div>';
+    else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';

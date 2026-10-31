@@ -98,13 +98,21 @@
   }
   const ACTIONS={module_enabled:'Empleados habilitado',module_disabled:'Empleados deshabilitado',recibonet_linked:'Empresa vinculada con ReciboNet',editing_enabled:'Edición habilitada',editing_disabled:'Edición cerrada',support_view_opened:'Consulta de empresa abierta (solo lectura)',support_view_closed:'Consulta de empresa cerrada'};
   const when=v=>{try{return new Date(v).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});}catch{return '';}};
+  function companyFolders(){
+    if(api?.role()!=='creadora')return '';
+    if(admin.status!=='ready')return '<p role="status">'+(admin.status==='error'?'No pudimos cargar las empresas. Volvé a intentarlo.':'Cargando empresas…')+'</p>';
+    return '<section class="gl-admin-card" aria-label="Empresas y locales"><header><h2>Locales</h2><small>Elegí una empresa y después un local</small></header><div class="gl-company-folders">'+admin.companies.map(c=>
+      '<details class="gl-company-folder"><summary><span aria-hidden="true">📁</span> <b>'+esc(c.name)+'</b><small>'+esc((c.locals||[]).length)+' locales</small></summary><div class="gl-company-locals">'+
+      ((c.locals||[]).map(l=>'<button type="button" class="btn" '+(c.tenant_id===api.S.me?.tenant_id?'data-act="local" data-id="'+esc(l.id)+'"':'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"')+'><span>'+esc(l.name||l.id)+'</span><span aria-hidden="true">→</span></button>').join('')||'<p>Esta empresa todavía no tiene locales creados.</p>')+
+      '</div></details>').join('')+'</div></section>';
+  }
   function adminView(){
     if(api?.role()!=='creadora')return '';
     const ready=admin.status==='ready',names=new Map(admin.companies.map(c=>[c.tenant_id,c.name]));
-    const registry='<section class="gl-admin-card" aria-label="Empresas registradas"><header><h2>Empresas registradas</h2><small>Consulta de información general · Solo lectura</small></header>'+
+    const registry='<section class="gl-admin-card" aria-label="Empresas registradas"><header><h2>Empresas registradas</h2><small>Registro de empresas</small></header>'+
       (ready?'<div class="gl-admin-tablewrap"><table><thead><tr><th>Empresa</th><th>Locales</th><th>Dueños asignados</th><th>Consultar</th></tr></thead><tbody>'+admin.companies.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc((c.locals||[]).map(l=>l.name).join(' · '))+'</td><td>'+esc(c.owners)+'</td><td>'+(window.GestLokCreatorSupport?.openButton?.(c.tenant_id,c.name)||'')+'</td></tr>').join('')+'</tbody></table></div>':
        '<p role="status">'+(admin.status==='error'?'No pudimos consultar el registro autorizado.':'Consultando empresas autorizadas…')+'</p>')+
-      '<p class="lead">Para revisar otra empresa usá «Ver en solo lectura»: pide un motivo, dura 30 minutos, no permite cambiar nada y queda registrado.</p></section>';
+      '<p class="lead">Para entrar a las empresas y operar sus locales, abrí la sección «Locales».</p></section>';
     if(!ready)return registry;
     // Asignación de módulos: acción explícita, confirmada y auditada en el backend.
     const modules='<section class="gl-admin-card gl-admin-modules" aria-label="Módulos autorizados"><header><h2>Módulos autorizados</h2><small>Administrar mi empresa · Administrar a los empleados</small></header>'+
@@ -336,5 +344,5 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();refreshAdmin();}});
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
-  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView});
+  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders});
 })();
