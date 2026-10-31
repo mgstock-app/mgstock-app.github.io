@@ -33,7 +33,7 @@ test('One-time backfill is limited to draft sheets in Munro/Torcuato, no cross-c
   assert.match(sql,/lower\(btrim\(c\.name\)\)='alessandro'/);
   assert.match(sql,/l\.id in \('munro','dt'\)/);
   assert.match(sql,/p\.needs_completion=false/);
-  assert.match(sql,/and d\.path='hojas\/'\|\|p\.sheet_id/);
+  assert.match(sql,/where d\.path='hojas\/'\|\|p\.sheet_id/);
   assert.match(sql,/d\.organization_id=p\.organization_id/);
   assert.match(sql,/and coalesce\(d\.data->'items','\{\}'::jsonb\)='\{\}'::jsonb/);
   assert.match(sql,/and coalesce\(d\.data->'tarifas','\{\}'::jsonb\)='\{\}'::jsonb/);
