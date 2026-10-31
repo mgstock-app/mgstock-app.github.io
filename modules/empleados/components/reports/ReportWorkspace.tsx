@@ -42,7 +42,7 @@ export function ReportWorkspace({
     {!screen && <nav className="employee-pages__nav" aria-label="Administración de empleados">
       <button type="button" aria-current={activeScreen === "empleados" ? "page" : undefined} onClick={() => changeScreen("empleados")}>Administrar empleados</button>
       <button type="button" aria-current={activeScreen === "recibos" ? "page" : undefined} onClick={() => changeScreen("recibos")}>Recibos de sueldo</button>
-      <button type="button" aria-current={activeScreen === "planillas" ? "page" : undefined} onClick={() => changeScreen("planillas")}>Enlaces y planillas</button>
+      <button type="button" aria-current={activeScreen === "planillas" ? "page" : undefined} onClick={() => changeScreen("planillas")}>Carga individual de recibos</button>
     </nav>}
     <div style={{display: activeScreen === "planillas" ? "none" : "block"}}>
       <EmployeeOverview locals={locals} ready={ready} ownerRostering={user.role === "owner" || user.role === "admin"}

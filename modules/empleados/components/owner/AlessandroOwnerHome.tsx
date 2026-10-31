@@ -81,10 +81,12 @@ export function AlessandroOwnerHome({ user, initialLocal = "", initialArea = "em
         {error || spaces.error || "Falta acceso a uno de los locales. Revisá los permisos de Munro y Don Torcuato."}
       </p>}
       <nav className="employee-pages__nav" aria-label="Recibos por local">
+        <button type="button" aria-current={area === "planillas" ? "page" : undefined} onClick={() => setArea("planillas")}>Carga individual de recibos</button>
         {companyLocals.map(local => <button key={local.id} type="button" aria-current={area === "recibos" && selectedLocal === local.id ? "page" : undefined} onClick={() => {setSelectedLocal(local.id);setArea("recibos");}}>Recibos · {local.name}</button>)}
         <button type="button" onClick={() => setSelectedLocal("")}>Todos los locales</button>
       </nav>
       <section className="owner-management" hidden={area === "inicio"}>
+        {area === "planillas" && <header className="employee-pages__heading"><div><h1>Carga individual de recibos</h1><p>Elegí el local y la planilla del colaborador para cargar horas o turnos, valores, guardar y compartir su recibo.</p></div></header>}
         <ReportWorkspace key={selectedLocal} user={user} locals={workspaceLocals} scheduleInFolderOnly
           screen={area === "inicio" ? "empleados" : area} onScreenChange={setArea}/>
       </section>
@@ -94,7 +96,7 @@ export function AlessandroOwnerHome({ user, initialLocal = "", initialArea = "em
         <div className="owner-legacy-actions">
           <button type="button" onClick={() => setArea("empleados")}><UsersRound size={20}/> Administrar empleados</button>
           <button type="button" onClick={() => setArea("recibos")}><Wallet size={20}/> Recibos de sueldo</button>
-          <button type="button" onClick={() => setArea("planillas")}><FileSpreadsheet size={20}/> Enlaces y planillas</button>
+          <button type="button" onClick={() => setArea("planillas")}><FileSpreadsheet size={20}/> Carga individual de recibos</button>
         </div>
         <p className="owner-security"><ShieldCheck size={18}/>Solo se muestran los locales y recibos autorizados.</p>
       </section>
