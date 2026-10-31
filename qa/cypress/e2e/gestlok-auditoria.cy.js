@@ -42,7 +42,7 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
   });
 
   it("intro, marca y acceso: no muestra Mi Gusto en la portada general", () => {
-    cy.get("head title").should("contain.text", "GestLok");
+    cy.title().should("eq", "GESTLOK | Software de gestión de negocios y locales");
     cy.get("#auth .au-cover").should("contain.text","Tu negocio, en orden.");
     cy.get("#auth .au-cover img").should("have.attr","alt","GestLok");
     cy.get("#auth .au-cover img").should("not.have.attr","src","img/mi-gusto-blanco.png");

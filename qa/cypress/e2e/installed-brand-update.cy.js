@@ -6,7 +6,7 @@ describe("GestLok · actualización de marca sin reinstalar la PWA",()=>{
   it("mantiene el enlace original al manifest para instalaciones existentes",()=>{
     cy.visit("/");
     cy.get('link[rel="manifest"]').should("have.attr","href","/manifest.webmanifest");
-    cy.title().should("eq","GestLok");
+    cy.title().should("eq","GESTLOK | Software de gestión de negocios y locales");
     cy.get('link[rel="apple-touch-icon"]').should("have.attr","href").and("include","gestlok-apple-v2-180.png");
   });
   it("publica el nombre GestLok y conserva el ID y la ruta de inicio",()=>{
