@@ -44,7 +44,7 @@ test('Registro de creadora consulta metadatos sin ofrecer acciones de escritura'
  const {a}=creator([{tenant_id:'t-a',name:'Empresa ficticia',owners:2,locals:[{name:'Munro'},{name:'Torcuato'}],modules:{comercial:true,recibos_personal:false},recibonet:null}]);
  await a.refreshAdmin();
  const html=a.adminView();const registry=html.split('aria-label="Módulos autorizados"')[0];
- assert.match(registry,/Empresa ficticia|Munro/);assert.match(registry,/Solo lectura/);
+ assert.match(registry,/Empresa ficticia|Munro/);assert.match(registry,/Registro de empresas/);
  assert.doesNotMatch(registry,/data-act=|<button|recibo|salario/);
  assert.doesNotMatch(html,/@|salario|sueldo/);
  assert.doesNotMatch(html,/data-owner-module="t-a"/,'Sin vínculo verificado no se ofrece habilitar empleados');

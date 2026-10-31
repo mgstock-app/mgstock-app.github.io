@@ -170,3 +170,12 @@ body{background:var(--gestlok-page)}
  filter:none!important;mix-blend-mode:normal!important;opacity:1!important;
  object-fit:contain;background:transparent!important;
 }
+
+/* Directorio de empresas de la Administradora General, en Locales. */
+.gl-company-folders{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.gl-company-folder{min-width:0;border:1px solid #dce7ef;border-radius:16px;background:#fff;overflow:hidden}
+.gl-company-folder summary{display:flex;align-items:center;gap:10px;min-height:72px;padding:16px;cursor:pointer;color:#1f3a5f}
+.gl-company-folder summary b{overflow-wrap:anywhere;flex:1}
+.gl-company-folder summary small{white-space:nowrap}
+.gl-company-locals{display:grid;gap:10px;padding:0 16px 16px}
+.gl-company-locals .btn{display:flex;justify-content:space-between;min-height:48px;width:100%;white-space:normal;text-align:left}
