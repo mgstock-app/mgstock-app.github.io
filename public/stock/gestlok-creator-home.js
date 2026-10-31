@@ -219,7 +219,11 @@
     const allOk = checks.every(c => c[0]);
     const system = '<section class="gl-ch-card" aria-label="Estado de la plataforma"><header><h2>Estado de la plataforma</h2><span class="gl-ch-pill ' + (allOk ? 'ok' : 'warn') + '">' + (allOk ? 'Todo en orden' : 'Para revisar') + '</span></header>' +
       '<ul class="gl-ch-checks">' + checks.map(c => '<li class="' + (c[0] ? 'ok' : 'warn') + '"><span aria-hidden="true">' + (c[0] ? '✓' : '!') + '</span>' + esc(c[1]) + '</li>').join('') + '</ul></section>';
-    return kpis + '<div class="gl-ch-grid"><div class="gl-ch-colmain">' + growth +
+    const quickLocals = '<section class="gl-ch-card gl-ch-quick-locals" aria-label="Acceso rápido a locales">' +
+      '<header><h2>Acceso rápido a locales</h2><button type="button" class="gl-ch-link" data-ch-tab="locales">Ver todos los locales →</button></header>' +
+      '<p>Entrá directamente a las sucursales de Mi Gusto. Los permisos de tu cuenta se mantienen.</p>' +
+      '<div class="gl-ch-quick-grid">' + (p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>';
+    return quickLocals + kpis + '<div class="gl-ch-grid"><div class="gl-ch-colmain">' + growth +
       '<div class="gl-ch-two"><section class="gl-ch-card" aria-label="Empresas recientes"><header><h2>Empresas recientes</h2><button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header><ul class="gl-ch-list">' + (recent || '<li><small>Todavía no hay empresas.</small></li>') + '</ul></section>' +
       '<section class="gl-ch-card" aria-label="Actividad reciente"><header><h2>Actividad reciente</h2></header><ul class="gl-ch-list">' + (act || '<li><small>Sin actividad registrada.</small></li>') + '</ul></section></div></div>' +
       '<div class="gl-ch-colside">' + people + staff + system + '</div></div>';
