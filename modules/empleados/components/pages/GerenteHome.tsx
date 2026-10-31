@@ -55,7 +55,7 @@ export function GerenteHome() {
       <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
       <nav>
         <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>navigateTo("legajos")}><UsersRound size={19}/><span className="gl-gerente__nav-label">Colaboradores</span></button>
-        <button type="button" title="Sector de Google" className={section==="horarios"?"active":""} onClick={()=>navigateTo("horarios")}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Sector de Google</span></button>
+        <button type="button" title="Horarios" className={section==="horarios"?"active":""} onClick={()=>navigateTo("horarios")}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Horarios</span></button>
         <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>navigateTo("recibo")}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
       </nav>
       <div className="gl-gerente__module-actions"><a href={home}><ArrowLeft size={18}/> Volver a GESTLOK</a><button type="button" onClick={()=>void signOut()}><LogOut size={18}/> Cerrar sesión</button></div><p className="gl-gerente__security"><ShieldCheck size={16}/> Solo colaboradores de tus locales autorizados.</p>
@@ -71,7 +71,7 @@ export function GerenteHome() {
         {section==="legajos" ? <ManagerLegajos onDirtyChange={setHasDraft}/> : section==="recibo" ?
           (user?.role==="manager" && !user.gestlok_gerente?.local_ids?.length ? <EmployeeReport/> : <ManagerPersonalReceipt/>) :
           <section className="gl-gerente__google">
-            <h1><FileSpreadsheet size={25}/> Sector de Google</h1>
+            <h1><FileSpreadsheet size={25}/> Horarios</h1>
             <p>Las planillas de Google Sheets se encuentran dentro de cada local, bajo su lista de colaboradores. También podés abrir la carpeta de Horarios.</p>
             <Link href="/horarios" className="gl-gerente__google-link"><ClipboardList size={19}/> Abrir Google Sheets y horarios</Link>
             <button type="button" onClick={()=>navigateTo("legajos")}>Volver a los legajos</button>
