@@ -179,3 +179,8 @@ body{background:var(--gestlok-page)}
 .gl-company-folder summary small{white-space:nowrap}
 .gl-company-locals{display:grid;gap:10px;padding:0 16px 16px}
 .gl-company-locals .btn{display:flex;justify-content:space-between;min-height:48px;width:100%;white-space:normal;text-align:left}
+
+/* La administradora encuentra primero empresas/locales y accesos diarios. */
+#snav.gl-admin-simple:not(.gl-admin-tools-open)>:not(.gl-admin-essential){display:none!important}
+#snav.gl-admin-simple>[data-admin-tools]{margin-top:12px;border-top:1px solid #dce7ef;min-height:48px}
+#snav.gl-admin-simple>.snav-back{background:#e6f3f8;border:1px solid #b9dce9;color:#1f3a5f;font-weight:700}

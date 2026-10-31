@@ -105,6 +105,22 @@ function draw(){
    edit.textContent='⚙ Editar categorías';edit.addEventListener('click',open);}
   if(edit.parentNode!==nav)nav.append(edit);
  }else edit?.remove();
+ // Menú operativo simple para la Administradora General.
+ nav.classList.toggle('gl-admin-simple',can);
+ if(can){
+  if(back){
+   const label=back.querySelector('.nl');if(label&&label.textContent!=='Locales')label.textContent='Locales';
+   const hint=back.querySelector('small');if(hint&&hint.textContent!=='Empresas y sucursales')hint.textContent='Empresas y sucursales';
+   if(back.getAttribute('aria-label')!=='Locales: empresas y sucursales')back.setAttribute('aria-label','Locales: empresas y sucursales');
+  }
+  const essentials=new Set([back,inicio,payment,stockLocal]);
+  for(const node of nav.children)node.classList.toggle('gl-admin-essential',essentials.has(node));
+  let more=nav.querySelector('[data-admin-tools]');
+  if(!more){more=document.createElement('button');more.type='button';more.dataset.adminTools='';more.className='gl-admin-essential';more.textContent='Más herramientas';nav.append(more);}
+  more.classList.add('gl-admin-essential');
+  const expanded=nav.classList.contains('gl-admin-tools-open');
+  if(more.getAttribute('aria-expanded')!==String(expanded))more.setAttribute('aria-expanded',String(expanded));
+ }
  const footer=side.querySelector('.side-f');
  if(footer){
   // Reutilizar el cierre de sesión original: evita dos botones y mantiene
@@ -187,6 +203,12 @@ async function save(){
   data=items;close();refresh();
  }catch(e){error=e?.message||'No se pudo guardar.';}finally{busy=false;paint();}
 }
+nav.addEventListener('click',e=>{
+ if(e.target.closest('[data-admin-tools]')&&ctx()?.creator){nav.classList.toggle('gl-admin-tools-open');refresh();}
+});
+document.addEventListener('click',e=>{
+ if(ctx()?.creator&&e.target.closest('[data-act="locales"]'))window.GestLokCreatorHome?.setTab?.('locales');
+},true);
 const observer=new MutationObserver(()=>refresh());
 observer.observe(nav,{childList:true,subtree:true,characterData:true});
 setTimeout(refresh,0);
