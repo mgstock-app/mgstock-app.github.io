@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Abriendo…</title>
+<style>
+html,body{height:100%;margin:0}
+body{display:flex;align-items:center;justify-content:center;background:#f7f5f1;color:#1f1d1b;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:320px;padding:24px;text-align:center}
+.spin{width:28px;height:28px;margin:0 auto 14px;border:3px solid #d9d4cc;border-top-color:#1f1d1b;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+button{font:inherit;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid #1f1d1b;background:#1f1d1b;color:#fff}
+a{color:#1f1d1b}
+</style>
+<!-- NFC y QR de GESTLOK: cada placa trae un código fijo; la base devuelve su destino actual. -->
+<script src="../stock/config.js"></script>
+</head>
+<body>
+<main>
+  <div class="spin" id="spin" aria-hidden="true"></div>
+  <p id="msg" role="status">Abriendo…</p>
+  <p id="manual" hidden><a id="go" href="#" rel="noreferrer">Tocá acá si no se abre solo</a></p>
+  <p id="retry" hidden><button type="button" id="again">Volver a intentar</button></p>
+  <noscript><p>Para abrir este enlace activá JavaScript en el navegador.</p></noscript>
+</main>
+<script>
+(function () {
+  'use strict';
+  var URL_RE = /^https?:\/\/[^\s<>"]+$/i;
+  var raw = location.search.slice(1).split('&')[0] || location.hash.slice(1) || '';
+  try { raw = decodeURIComponent(raw); } catch (e) { /* código tal cual */ }
+  var code = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  var cfg = window.SPM_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var done = false;
+
+  function fail() {
+    if (done) return;
+    done = true;
+    $('spin').hidden = true;
+    $('msg').textContent = 'No pudimos abrir el enlace. Revisá la conexión y probá de nuevo.';
+    $('retry').hidden = false;
+  }
+  function go(url) {
+    if (done) return;
+    if (typeof url !== 'string' || !URL_RE.test(url)) { fail(); return; }
+    done = true;
+    $('go').href = url;
+    setTimeout(function () { $('manual').hidden = false; }, 2500);
+    location.replace(url);
+  }
+  $('again').addEventListener('click', function () { location.reload(); });
+
+  if (!cfg.url || !cfg.key || !window.fetch) { fail(); return; }
+  var timer = setTimeout(fail, 10000);
+  fetch(cfg.url + '/rest/v1/rpc/gestlok_nfc_resolve', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_code: code })
+  }).then(function (res) {
+    return res.ok ? res.json() : null;
+  }).then(function (url) {
+    clearTimeout(timer);
+    go(url);
+  }, function () {
+    clearTimeout(timer);
+    fail();
+  });
+})();
+</script>
+</body>
+</html>

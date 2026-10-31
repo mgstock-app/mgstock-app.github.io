@@ -20,6 +20,7 @@ import "./gestlok-precios-stock.css";
 import "./gestlok-future-pricing.css";
 import "./gestlok-experience.css";
 import "./gestlok-ios-install.css";
+import "./gestlok-nfc-qr.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://gestlok.com.ar"),
