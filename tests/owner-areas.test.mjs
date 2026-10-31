@@ -144,3 +144,13 @@ test('La creadora conserva su rol y abre ambas áreas dentro del local',async()=
  listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-nav]'?{dataset:{ownerNav:'business'}}:null}});
  assert.equal(opened,1,'Abre las herramientas del local, sin cambiar al rol Dueño');
 });
+
+test('La tarjeta de empleados lleva a la administradora al personal de la empresa y local elegidos',async()=>{
+ const listeners={};let destination='';
+ const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'own',name:'Empresa',locals:[{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
+ vm.runInNewContext(source,{window,URL,location:{assign(url){destination=url;}},document:{baseURI:'https://gestlok.example/',addEventListener(n,f){listeners[n]=f;}}});
+ const a=window.GestLokOwnerAreas;a.attach({role:()=> 'creadora',S:{local:'torcuato',loaded:{e:true},me:{tenant_id:'own'},equipo:[]},render(){}});
+ await a.refresh();
+ listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-area-staff]'?{}:null}});
+ const url=new URL(destination);assert.equal(url.pathname,'/empleados/personal/');assert.equal(url.searchParams.get('espacio'),'2026002');assert.equal(url.searchParams.get('local'),'torcuato');
+});

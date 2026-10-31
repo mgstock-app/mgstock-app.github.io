@@ -87,7 +87,7 @@ export function AdminHome() {
           {users.filter((u) => u.status === "pending").slice(0,5).map((u) => <div className="gi-admin-simple-row" key={u.user_id}><span className="gi-admin-icon orange"><Users size={17}/></span><span><strong>{u.display_name || "Usuario pendiente"}</strong><small>Pendiente de asignación</small></span></div>)}
           {!users.some((u) => u.status === "pending") && <p className="gi-admin-none">No hay usuarios pendientes visibles.</p>}
         </section>
-        <section className="gi-admin-card"><h2>Supervisión y privacidad</h2><p>Consultá la vista de un dueño autorizado para comprobar sus locales y funcionalidades, y administrá sus liquidaciones, colaboradores y horarios.</p>
+        <section className="gi-admin-card"><h2>Personal de los locales</h2><p><Link href="/personal">Colaboradores</Link> · <Link href="/personal?seccion=recibos">Recibos</Link> · <Link href="/personal?seccion=legajos">Legajos</Link></p><p>Consultá la vista de un dueño autorizado para comprobar sus locales y funcionalidades, y administrá sus liquidaciones, colaboradores y horarios.</p>
           <p className="gi-admin-security"><ShieldCheck size={19}/> Los accesos siguen protegidos por los permisos de Supabase.</p>
           <Link href="/empresas" className="gi-admin-subtle-link">Gestionar autorizaciones <ArrowRight size={15}/></Link>
         </section>
