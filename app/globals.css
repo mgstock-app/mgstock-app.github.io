@@ -2295,3 +2295,16 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-daily-visibility-row button[role="switch"]:disabled{opacity:.55;cursor:not-allowed}
 .gl-daily-visibility-row button[role="switch"]:focus-visible{outline:3px solid #24a8b6;outline-offset:3px}
 @media(max-width:520px){.gl-daily-visibility{padding:14px}.gl-daily-visibility-row{align-items:flex-start}.gl-daily-visibility-row>span{flex:1 1 160px}}
+
+/* Creadora: accesos visibles a locales antes de métricas */
+.gl-ch-quick-locals{margin-bottom:16px}
+.gl-ch-quick-locals>p{margin:0 0 14px;color:#667b93}
+.gl-ch-quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.gl-ch-quick-local{display:flex;align-items:center;gap:13px;width:100%;min-height:86px;padding:17px;border:1px solid #d8e6f1;border-radius:15px;background:#f7fbff;color:#163453;text-align:left;cursor:pointer;font:inherit;box-shadow:0 2px 8px #1736570b}
+.gl-ch-quick-local:hover,.gl-ch-quick-local:focus-visible{background:#eaf5ff;border-color:#39b6d4;outline:2px solid transparent;box-shadow:0 0 0 2px #39b6d466}
+.gl-ch-quick-local .gl-ch-quick-icon{display:grid;place-items:center;flex:0 0 45px;height:45px;border-radius:13px;background:#e2f2fb;color:#087da5}
+.gl-ch-quick-local>span:nth-child(2){display:grid;gap:4px;flex:1;min-width:0}
+.gl-ch-quick-local b{font-size:1.05rem}
+.gl-ch-quick-local small{font-size:.82rem;color:#627b94}
+.gl-ch-quick-local>span:last-child{font-size:1.4rem;color:#087da5}
+@media(max-width:600px){.gl-ch-quick-grid{grid-template-columns:1fr}.gl-ch-quick-local{min-height:76px;padding:13px}}
