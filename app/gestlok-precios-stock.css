@@ -87,3 +87,10 @@
 @media(max-width:360px){
  .gl-pilot-entry-actions{grid-template-columns:minmax(0,1fr)}
 }
+
+#gl-pilot-panel .gl-ps-suggestion{display:flex;align-items:center;gap:14px;padding:16px;background:#f6f4ec;border:1px solid #e4dcc0;border-radius:12px;min-width:0}
+#gl-pilot-panel .gl-ps-suggestion>div{flex:1;min-width:0}
+#gl-pilot-panel .gl-ps-suggestion small{display:block;color:#586474;font-size:13px}
+#gl-pilot-panel .gl-ps-suggestion strong{display:block;font-size:24px;margin:5px 0;overflow-wrap:anywhere}
+#gl-pilot-panel .gl-ps-suggestion button{min-height:48px;padding:10px 14px;border:1px solid #c5d7e1;border-radius:10px;background:white;color:#143f60;font-weight:700}
+@media(max-width:767px){#gl-pilot-panel .gl-ps-suggestion{flex-direction:column;align-items:stretch}}
