@@ -12,6 +12,7 @@
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
+    ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
     ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
   ]);
   const ACTIONS = Object.freeze({
@@ -245,6 +246,7 @@
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
+    else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
@@ -295,7 +297,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; window.GestLokNfcQr?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
