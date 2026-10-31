@@ -3449,7 +3449,7 @@ function go(v, silent){
   const ok = (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'resenas' && puedeVerResenas()) || (v === 'reclamos-internos' && puedeVerReclamos()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
-  if(v === 'inicio') S.creatorBusiness=false;
+  if(v === 'inicio') S.creatorBusiness=!!(S.local && isCreadora());
   S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
   render(); if (!silent) window.scrollTo({top:0});
 }
@@ -3883,8 +3883,10 @@ function cerrarLocal(){
   window.GestLokTienda?.reset();
 }
 function abrirLocal(id){
-  S.creatorBusiness=false;
-  if (!localesMios().some(l => l.id === id)) return;
+  if (!localesMios().some(l => l.id === id)) { toast('Este local no está disponible para tu cuenta. Actualizá los locales o revisá tus permisos.', true); return; }
+  // La Creadora debe ingresar al inicio operativo del local, igual que el Dueño.
+  // En false, V.inicio muestra nuevamente el selector de áreas en vez del local.
+  S.creatorBusiness=isCreadora();
   if (S.panel) closePanel();
   if (S.local !== id){
     if (S.local) cerrarLocal();
