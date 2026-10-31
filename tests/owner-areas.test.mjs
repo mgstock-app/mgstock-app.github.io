@@ -152,5 +152,5 @@ test('La tarjeta de empleados lleva a la administradora al personal de la empres
  const a=window.GestLokOwnerAreas;a.attach({role:()=> 'creadora',S:{local:'torcuato',loaded:{e:true},me:{tenant_id:'own'},equipo:[]},render(){}});
  await a.refresh();
  listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-area-staff]'?{}:null}});
- const url=new URL(destination);assert.equal(url.pathname,'/empleados/personal/');assert.equal(url.searchParams.get('espacio'),'2026002');assert.equal(url.searchParams.get('local'),'torcuato');
+ const url=new URL(destination);assert.equal(url.pathname,'/empleados/vista-dueno/');assert.equal(url.searchParams.get('espacio'),'2026002');assert.equal(url.searchParams.get('local'),'torcuato');
 });

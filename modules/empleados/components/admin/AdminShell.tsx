@@ -8,6 +8,7 @@ import "./admin.css";
 
 const sections = [
   { href: "/", label: "Inicio", Icon: LayoutDashboard },
+  { href: "/vista-dueno", label: "Panel Mi Gusto", Icon: Store },
   { href: "/empresas", label: "Dueños y empresas", Icon: Building2 },
   { href: "/personal", label: "Colaboradores", Icon: Users },
   { href: "/personal?seccion=recibos", label: "Recibos", Icon: ClipboardList },
