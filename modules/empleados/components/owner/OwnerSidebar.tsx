@@ -69,7 +69,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
         <p className="owner-caption owner-sidebar__group">EMPLEADOS</p>
         {sectionButton("empleados", "Administrar empleados", UsersRound)}
         {sectionButton("recibos", "Recibos de sueldo", Wallet)}
-        {sectionButton("planillas", "Enlaces y planillas", FileSpreadsheet)}
+        {sectionButton("planillas", "Carga individual de recibos", FileSpreadsheet)}
         <Link href="/usuarios" onClick={onClose}><UsersRound size={19}/><span className="owner-sidebar__label">Cuentas y permisos</span></Link>
         <Link href="/solicitudes" onClick={onClose}><Inbox size={19}/><span className="owner-sidebar__label">Solicitudes</span> {pendingCount>0 && <b className="owner-badge">{pendingCount}</b>}</Link>
       </nav>
