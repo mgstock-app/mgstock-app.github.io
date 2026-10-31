@@ -135,7 +135,7 @@ test('Un visitante o gerente no obtiene cabecera ni navegación de dueño',async
 
 test('La creadora conserva su rol y abre ambas áreas dentro del local',async()=>{
  const listeners={};let opened=0;
- const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'t-creator',name:'Empresa propia',locals:[{id:'munro'},{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
+ const window={addEventListener(){},GestLokCreatorSupport:{state:()=>({active:true})},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'t-creator',name:'Empresa propia',locals:[{id:'munro'},{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
  vm.runInNewContext(source,{window,document:{addEventListener(n,f){listeners[n]=f;}}});
  const a=window.GestLokOwnerAreas;
  a.attach({role:()=> 'creadora',S:{local:'munro',loaded:{e:true},me:{tenant_id:'t-creator'},equipo:[]},render(){},openBusiness(){opened++;}});
