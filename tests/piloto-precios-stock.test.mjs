@@ -56,3 +56,28 @@ test('SQL calcula precio sin confiar en navegador, conserva RLS e integridad de 
  assert.doesNotMatch(migration,/\b(?:delete from|truncate|drop table|alter table public\.docs|disable row level security)\b/i);
  assert.match(migration,/stock_quantity is null/);
 });
+test('Sugerido: costo válido, actualización en vivo y aplicación voluntaria sin guardar',()=>{
+ const listeners={};
+ const root={window:{GestLokPilot:{authorized:()=>true}},document:{addEventListener:(type,fn)=>{listeners[type]=fn;},querySelector:()=>({})},Intl,Date,Event};
+ vm.runInNewContext(ui,root);
+ const api=root.window.GestLokPreciosStock;
+ assert.equal(api.suggestedPrice(8500),14450);
+ assert.equal(api.suggestedPrice('10.50'),17.85);
+ for(const cost of ['',null,undefined,'abc',-1,0,Infinity,9999999999.99])assert.equal(api.suggestedPrice(cost),null);
+ const fields={cost_price:{value:'8500'},markup_percent:{value:''}};
+ const nodes=Object.fromEntries(['data-ps-sale','data-ps-profit','data-ps-suggested','data-ps-use-suggested'].map(key=>['['+key+']',{}]));
+ const form={elements:{namedItem:name=>fields[name]},querySelector:key=>nodes[key]};
+ const input={name:'cost_price',form,matches:()=>false,closest:()=>form};
+ fields.markup_percent.dispatchEvent=()=>listeners.input({target:input});
+ listeners.input({target:input});
+ assert.equal(nodes['[data-ps-suggested]'].textContent,new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(14450));
+ assert.equal(nodes['[data-ps-sale]'].textContent,'—');
+ assert.equal(fields.markup_percent.value,'');
+ const button={matches:selector=>selector==='[data-ps-use-suggested]',closest:()=>form};
+ listeners.click({target:{closest:()=>button}});
+ assert.equal(fields.markup_percent.value,'70');
+ assert.equal(nodes['[data-ps-sale]'].textContent,nodes['[data-ps-suggested]'].textContent);
+ fields.cost_price.value='';listeners.input({target:input});
+ assert.equal(nodes['[data-ps-use-suggested]'].disabled,true);
+ assert.equal(nodes['[data-ps-sale]'].textContent,'—');
+});
