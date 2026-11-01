@@ -1,6 +1,6 @@
 # Caja diaria — empresa de la cuenta solicitante (issue #200)
 
-Estado: **implementado** (especificación original: PR #201). Publicación y verificación: ver «Despliegue».
+Estado: **publicado y verificado el 01/11/2026** (PR #206, commit `17286c2`; especificación original: PR #201).
 
 ## Empresa
 - Se resolvió con la membresía autenticada de la cuenta solicitante (dueña, email verificado): empresa **Perfumes**, tenant `2a97bf8d-7d08-4aa7-b051-5d1a4dc80103`, local `loc-2a97bf8d7d084aa7b051` (Percam). El email no autoriza: la empresa queda habilitada en `gestlok_caja_private.empresas` y cada acción vuelve a comprobar membresía, rol y empresa en la base.
@@ -41,4 +41,11 @@ Estado: **implementado** (especificación original: PR #201). Publicación y ver
 - [x] Historial y totales diarios correctos.
 - [x] Ningún cambio visible ni funcional en Mi Gusto.
 - [x] Pruebas de RLS negativas y Cypress exitosas.
-- [ ] Migración aplicada y despliegue verificado (se completa al publicar).
+- [x] Migración aplicada y despliegue verificado.
+
+## Despliegue (01/11/2026)
+- Migración aplicada en Supabase (`gestlok_caja_diaria_empresa`). Empresas habilitadas: solo Perfumes. pg_cron `gestlok-caja-diaria-cierre-2359-ar` activo (`59 * * * *`).
+- `supabase/tests/caja-diaria-empresa.sql` sobre la base real después de aplicar: **39/39 OK**, sin dejar datos (0 cajas, 0 ventas, 0 registros). Asesor de seguridad: solo los avisos esperados de RPC SECURITY DEFINER para usuarios con sesión.
+- CI del PR: `npm test` (343 pruebas), «Caja diaria · PostgreSQL» y Cypress (5 grupos, incluidos los 5 casos de la caja) en verde.
+- gestlok.com.ar: publicación correcta y auditoría del sitio 5/5; `stock/gestlok-caja-diaria.js`, `stock/gestlok-owner-areas.js` y `stock/mi-gusto-cierre-online.js` idénticos al commit publicado.
+- Pendiente fuera de la sesión: primera prueba de la dueña con su cuenta real en el celular (abrir caja, un pago y cerrar) y confirmar el primer cierre automático de las 23:59.
