@@ -60,7 +60,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-20261028");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.
-      await load("/stock/gestlok-form-draft-guard.js?rev=inputs-20261030");
+      await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
       await load("/stock/app.js?rev=nav-pagos-debajo-inicio-20261030");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");

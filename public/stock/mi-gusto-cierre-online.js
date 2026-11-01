@@ -341,6 +341,7 @@ function view(){
 // el monto y la observación anteriores quedaban cargados después de guardar.
 function clearEntryForm(){
  const form=document.querySelector('#mg-online-form');if(!form)return;
+ window.GestLokFormDraftGuard?.saved?.(form);
  for(const name of ['comanda','amount','observacion']){const field=form.elements.namedItem(name);if(field)field.value='';}
  const method=form.elements.namedItem('method');if(method)method.value='transferencia';
  const app=form.elements.namedItem('app');if(app)app.checked=false;

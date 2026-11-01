@@ -44,6 +44,8 @@ export default function RootLayout({
       <body>
         {/* Modo sin conexión de GESTLOK: se carga antes que la aplicación para que todas las consultas lo usen. */}
         <Script src={`${process.env.NEXT_PUBLIC_GESTLOK_HOME || "/"}stock/gestlok-offline.js?rev=offline-20261026`} strategy="beforeInteractive" />
+        {/* Sin listas de sugerencias del navegador (comandas, montos, teléfonos anteriores), igual que en «Administrar mi empresa». */}
+        <Script src={`${process.env.NEXT_PUBLIC_GESTLOK_HOME || "/"}stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101`} strategy="afterInteractive" />
         <GestlokProvider>
         <AuthProvider>
           <div className="app-shell">
