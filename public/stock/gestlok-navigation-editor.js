@@ -13,7 +13,18 @@ let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick
 const ctx=()=>window.GestLokNavContext?.()||null;
 const idOf=el=>el.dataset?.navBuiltin||(el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'');
 const nameOf=el=>el.querySelector?.('.nl')?.textContent?.trim()||el.textContent?.trim()||'';
-const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')&&!el.hasAttribute('data-daily-shortcut')).map(el=>[(/^(stock local|stock)$/i.test(nameOf(el))?'stock':/^stock cajas$/i.test(nameOf(el))?'stock-cajas':idOf(el)),el]).filter(([id])=>permitted.includes(id)));
+// Cada categoría se asocia a UN solo botón: el primero del menú. Si un local tiene
+// otra hoja llamada «Stock» (o «Stock Cajas»), antes los dos botones se turnaban
+// como «Stock Local» y el menú se reordenaba sin fin hasta congelar la página.
+const nodes=()=>{
+ const found=new Map();
+ for(const el of nav.children){
+  if(el.hasAttribute('data-nav-custom')||el.hasAttribute('data-daily-shortcut'))continue;
+  const name=nameOf(el),id=/^(stock local|stock)$/i.test(name)?'stock':/^stock cajas$/i.test(name)?'stock-cajas':idOf(el);
+  if(permitted.includes(id)&&!found.has(id))found.set(id,el);
+ }
+ return found;
+};
 const trim=s=>String(s||'').trim().replace(/\s+/g,' ').slice(0,45);
 function baseline(){
  const known=nodes(),ids=[...new Set([...preferred,...known.keys()])].filter(id=>known.has(id));
@@ -147,7 +158,15 @@ async function fetchLayout(c,seq){
   if(seq===sequence&&!result?.error&&Array.isArray(result?.data))data=result.data;
  }catch{}finally{refresh();}
 }
-function refresh(){if(tick)return;tick=true;queueMicrotask(()=>{tick=false;scopeCheck();draw();});}
+// Defensa adicional: si el menú se redibujara muchas veces seguidas en la misma
+// tarea, ceder el hilo para que la app siga respondiendo.
+let burst=0,burstReset=false;
+function refresh(){
+ if(tick)return;tick=true;
+ if(!burstReset){burstReset=true;setTimeout(()=>{burst=0;burstReset=false;},0);}
+ const run=()=>{tick=false;scopeCheck();draw();};
+ if(++burst>20)setTimeout(run,100);else queueMicrotask(run);
+}
 function close(){overlay?.remove();overlay=null;error='';}
 function open(){
  if(!ctx()?.creator)return;
