@@ -27,7 +27,7 @@ test('Pagos Online: sin sugerencias del navegador en comanda, monto ni observaci
  assert.match(s,/<form id="mg-online-form" class="mg-on-entry" autocomplete="off">/);
  assert.match(s,/name="comanda" autocomplete="off"/);
  assert.match(s,/name="amount" autocomplete="off"/);
- assert.match(s,/<textarea name="observacion" autocomplete="off"/);
+ assert.match(s,/<textarea name="observacion" maxlength="300" autocomplete="off"/);
 });
 
 test('Pagos Online: prueba Cypress en Munro y Torcuato con datos ficticios',()=>{

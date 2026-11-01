@@ -137,7 +137,7 @@ function entry(){
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
  '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
  '<label class="mg-on-observation">Detalle de la observación <small>(máximo 300 caracteres)</small>'+
- '<textarea name="observacion" autocomplete="off" maxlength="300" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
+ '<textarea name="observacion" maxlength="300" autocomplete="off" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
  '<div class="mg-on-actions mg-on-save-actions"><button class="mg-on-primary mg-on-save" type="submit" '+(!writable()?'disabled':'')+'>'+
   '<span aria-hidden="true">✓</span> '+(r?'Guardar cambios':'Guardar movimiento')+'</button>'+
  (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
