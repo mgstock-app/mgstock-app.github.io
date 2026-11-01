@@ -346,7 +346,7 @@ async function action(name,args,notify){
   saving=false;
   if(allowed()&&api?.S?.view==='cierre-online'){
    api.render();
-   // En PC, después de guardar una comanda, dejar listo el siguiente número.
+   // Limpiar los campos únicamente después de confirmar el guardado exitoso.\n   // El render puede conservar valores del DOM en formularios reutilizados.\n   if(saveNotice&&tab==='movimientos'){\n    const form=document.querySelector('#mg-online-form');\n    if(form){\n     form.reset();\n     for(const name of ['comanda','amount','observacion']){const field=form.elements.namedItem(name);if(field)field.value='';}\n     const method=form.elements.namedItem('method');if(method)method.value='transferencia';\n     const app=form.elements.namedItem('app');if(app)app.checked=false;\n     const details=form.querySelector('.mg-on-observation-details');if(details)details.open=false;\n    }\n   }\n   // En PC, después de guardar una comanda, dejar listo el siguiente número.
    if(saveNotice&&tab==='movimientos'&&window.matchMedia?.('(pointer:fine)').matches)
     document.querySelector('#mg-online-form input[name="comanda"]')?.focus({preventScroll:true});
   }
