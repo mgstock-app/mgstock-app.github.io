@@ -28,7 +28,8 @@ describe('Creadora: edición permanente e inicio actualizado', () => {
     cy.get('#snav [data-go="inicio"]').click();
     cy.get('#view .gl-owner-business').should('be.visible');
     cy.get('#view [data-owner-area-staff]').click();
-    cy.location('pathname').should('eq','/empleados/');
+    // La creadora entra al área de personal de la empresa (gestlok-owner-areas.js); dueños y gerentes van a /empleados/.
+    cy.location('pathname',{timeout:15000}).should('match',/^\/empleados\/(personal|vista-dueno)\/$/);
     cy.get('.gestlok-module-back').should('have.attr','href','/');
   });
   it('la dueña sigue editando como siempre y no ve el aviso de la creadora', () => {
