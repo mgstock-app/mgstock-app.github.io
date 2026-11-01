@@ -98,3 +98,25 @@ try{
 const failures=report.cases.filter(c=>c.status!=='passed');
 console.log('AUDIT_RESULT '+JSON.stringify({total:report.cases.length,passed:report.cases.length-failures.length,failed:failures.length,htmlOrigin:origin}));
 if(failures.length)process.exitCode=1;
+// Versión publicada: después de un despliegue, los scripts que sirve gestlok.com.ar deben ser
+// idénticos a los del commit publicado. En un PR todavía no están publicados, así que no se compara.
+if(process.env.GITHUB_EVENT_NAME!=='pull_request'){
+ const {readFile}=await import('node:fs/promises');
+ const {createHash}=await import('node:crypto');
+ const files=['stock/app.js','stock/mi-gusto-cierre-online.js','stock/gestlok-form-draft-guard.js','stock/gestlok-navigation-editor.js','stock/gestlok-owner-areas.js'];
+ const hash=b=>createHash('sha256').update(b).digest('hex').slice(0,16);
+ const release=[];
+ for(const file of files){
+  const local=hash(await readFile(new URL('../public/'+file,import.meta.url)));
+  let remote='',status=0;
+  // La red de distribución puede tardar unos minutos en servir la versión nueva.
+  for(let attempt=0;attempt<6;attempt++){
+   try{const r=await fetch(origin+file+'?v='+(process.env.GITHUB_SHA||Date.now())+'-'+attempt,{cache:'no-store'});status=r.status;remote=r.ok?hash(Buffer.from(await r.arrayBuffer())):'';}catch{}
+   if(remote===local)break;
+   await new Promise(done=>setTimeout(done,15000));
+  }
+  release.push({file,status,match:remote===local});
+ }
+ console.log('AUDIT_RELEASE '+JSON.stringify({commit:process.env.GITHUB_SHA||'',files:release}));
+ if(release.some(r=>!r.match))process.exitCode=1;
+}

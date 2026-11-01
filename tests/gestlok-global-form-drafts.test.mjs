@@ -129,3 +129,89 @@ test('Ingreso de mercadería: conservar destino seleccionado en la edición hist
  assert.equal(next.value,'f:i-5');
  assert.match(read('public/stock/app.js'),/legacy:S\.view==='ingreso'/);
 });
+
+// ---- Todo GESTLOK: después de guardar, casillas vacías; sin listas de sugerencias del navegador ----
+function setupDom(){
+ const handlers={};
+ const window={};
+ const document={
+  addEventListener:(type,fn)=>{handlers[type]=fn;},
+  body:{querySelectorAll:()=>[]},
+  getElementById:()=>null
+ };
+ class MutationObserver{observe(){}}
+ runInNewContext(read('public/stock/gestlok-form-draft-guard.js'),{window,document,MutationObserver});
+ return {g:window.GestLokFormDraftGuard,submit:f=>handlers.submit({target:f})};
+}
+const viewForm=(id,fields=[])=>({id,getAttribute:()=>null,closest:s=>s==='#view'?{}:null,querySelector:()=>null,querySelectorAll:()=>fields,reset(){this.wasReset=true;}});
+const alertRoot=(arr,error)=>({querySelectorAll:()=>arr,querySelector:s=>error&&s.includes('role="alert"')?{}:null});
+test('Todo GESTLOK: lo guardado no vuelve a aparecer en el formulario siguiente',()=>{
+ const {g,submit}=setupDom();
+ const f=viewForm('mg-online-form');
+ const sent=[field({name:'comanda',value:'36',form:f}),field({name:'amount',type:'number',value:'1500',form:f})];
+ f.querySelectorAll=()=>sent;
+ submit(f);
+ const snap=g.capture(alertRoot(sent,false),'t|u|munro|cierre-online',null);
+ const next=sent.map(o=>field({name:o.name,type:o.type,form:f}));
+ g.restore(alertRoot(next,false),snap,'t|u|munro|cierre-online');
+ assert.deepEqual(next.map(x=>x.value),['','']);
+});
+test('Todo GESTLOK: si el guardado falla, lo escrito se repone y no se pierde',()=>{
+ const {g,submit}=setupDom();
+ const f=viewForm('ri-form');
+ const sent=[field({name:'name',value:'Mariana Díaz',form:f}),field({name:'phone',type:'tel',value:'1122337788',form:f})];
+ f.querySelectorAll=()=>sent;
+ submit(f);
+ const snap=g.capture(alertRoot(sent,false),'t|u|munro|reclamos-internos',null);
+ const next=sent.map(o=>field({name:o.name,type:o.type,form:f}));
+ g.restore(alertRoot(next,true),snap,'t|u|munro|reclamos-internos');
+ assert.deepEqual(next.map(x=>x.value),['Mariana Díaz','1122337788']);
+ // Una vez repuesto, los renders siguientes conservan el borrador como siempre.
+ const again=g.capture(alertRoot(next,true),'t|u|munro|reclamos-internos',null);
+ const third=sent.map(o=>field({name:o.name,type:o.type,form:f}));
+ g.restore(alertRoot(third,false),again,'t|u|munro|reclamos-internos');
+ assert.deepEqual(third.map(x=>x.value),['Mariana Díaz','1122337788']);
+});
+test('Todo GESTLOK: lo que se escribe después de enviar sí se conserva',()=>{
+ const {g,submit}=setupDom();
+ const f=viewForm('gl-exp-form');
+ const el=field({id:'gl-exp-name',value:'Fumigación',form:f});
+ f.querySelectorAll=()=>[el];
+ submit(f);
+ el.value='Desinfección';
+ const snap=g.capture(alertRoot([el],false),'t|u|munro|vencimientos',null);
+ const next=field({id:'gl-exp-name',form:f});
+ g.restore(alertRoot([next],false),snap,'t|u|munro|vencimientos');
+ assert.equal(next.value,'Desinfección');
+});
+test('Todo GESTLOK: en formularios de edición se mantiene el comportamiento anterior',()=>{
+ const {g,submit}=setupDom();
+ const f=viewForm('mo-name-form');
+ const el=field({name:'nombre',value:'Lucas R.',original:'Lucas',form:f});
+ f.querySelectorAll=()=>[el];
+ submit(f);
+ const snap=g.capture(alertRoot([el],false),'t|u|munro|motos',null);
+ const next=field({name:'nombre',value:'Lucas',original:'Lucas',form:f});
+ g.restore(alertRoot([next],false),snap,'t|u|munro|motos');
+ assert.equal(next.value,'Lucas R.');
+});
+test('Todo GESTLOK: sin sugerencias del navegador, salvo email y contraseñas de ingreso',()=>{
+ const {g}=setupDom();
+ const attrs=(tag,type,auto)=>{const a=new Map(auto?[['autocomplete',auto]]:[]);return {tagName:tag,type,
+  getAttribute:k=>a.get(k)??null,setAttribute:(k,v)=>a.set(k,v),closest:()=>null,querySelector:()=>null,a};};
+ const comanda=attrs('INPUT','text'),nota=attrs('TEXTAREA','textarea'),monto=attrs('INPUT','number');
+ const email=attrs('INPUT','email','email'),pass=attrs('INPUT','password','current-password'),check=attrs('INPUT','checkbox');
+ const form={...attrs('FORM'),querySelector:()=>null};
+ const list=[form,comanda,nota,monto,email,pass,check];
+ g.noSuggestions({querySelectorAll:()=>list,matches:()=>false});
+ for(const el of [form,comanda,nota,monto])assert.equal(el.a.get('autocomplete'),'off');
+ assert.equal(email.a.get('autocomplete'),'email');
+ assert.equal(pass.a.get('autocomplete'),'current-password');
+ assert.equal(check.a.get('autocomplete'),undefined);
+ // Pagos Online avisa que ya vació su formulario.
+ const f=viewForm('mg-online-form');g.saved(f);assert.equal(f.wasReset,true);
+});
+test('El guardián de formularios se carga en las dos áreas de GESTLOK',()=>{
+ assert.match(read('components/stock-runtime.tsx'),/gestlok-form-draft-guard\.js\?rev=sin-sugerencias-20261101/);
+ assert.match(read('modules/empleados/app/layout.tsx'),/stock\/gestlok-form-draft-guard\.js\?rev=sin-sugerencias-20261101`\} strategy="afterInteractive"/);
+});
