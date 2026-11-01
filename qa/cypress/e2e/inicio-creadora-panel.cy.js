@@ -15,9 +15,10 @@ describe('Inicio de la creadora · panel con resumen de la plataforma',()=>{
    .and('contain.text','Personas por rol').and('contain.text','Estado de la plataforma').and('contain.text','Solo lectura')
    .and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
   cy.get('.gl-ch-chart').should('be.visible');
-  // Ocho pestañas: se sumó «NFC y QR» (#199) a las siete anteriores.
-  cy.get('.gl-ch-nav button').should('have.length',8);
+  // Nueve pestañas: «NFC y QR» (#199) y «Segundo cerebro» (#171) se sumaron a las siete anteriores.
+  cy.get('.gl-ch-nav button').should('have.length',9);
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
+  cy.get('.gl-ch-nav [data-ch-tab="ideas"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="nfc"]').should('exist');
   cy.get('.gl-ch .gl-ch-logout').should('be.visible').and('contain.text','Cerrar sesión');
  });
