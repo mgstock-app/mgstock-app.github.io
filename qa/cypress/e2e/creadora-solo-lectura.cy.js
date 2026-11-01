@@ -14,7 +14,10 @@ describe('Creadora: edición permanente e inicio actualizado', () => {
   for(const local of ['munro','torcuato']) it('tarjetas y edición permanente en '+local, () => {
     login('kmu15lopez@gmail.com');
     cy.get('.gl-ch-nav [data-ch-tab="locales"]').click();
-    cy.get('#hub [data-act="local"][data-id="'+local+'"]').first().click();
+    // «Locales» agrupa los locales en carpetas por empresa: abrir la carpeta que contiene el local.
+    cy.get('#hub .gl-company-folder').filter((_,folder)=>!!folder.querySelector('[data-act="local"][data-id="'+local+'"]')).first().as('folder');
+    cy.get('@folder').find('summary').click();
+    cy.get('@folder').find('[data-act="local"][data-id="'+local+'"]').should('be.visible').click();
     cy.get('.gl-creator-mode').should('contain.text','Edición sin límite de tiempo');
     cy.get('#me').should('not.contain.text','Solo ver');
     cy.get('#view .gl-owner-business').should('be.visible');
