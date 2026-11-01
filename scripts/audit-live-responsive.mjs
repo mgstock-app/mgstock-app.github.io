@@ -103,7 +103,7 @@ if(failures.length)process.exitCode=1;
 if(process.env.GITHUB_EVENT_NAME!=='pull_request'){
  const {readFile}=await import('node:fs/promises');
  const {createHash}=await import('node:crypto');
- const files=['stock/app.js','stock/mi-gusto-cierre-online.js','stock/gestlok-form-draft-guard.js','stock/gestlok-navigation-editor.js','stock/gestlok-owner-areas.js'];
+ const files=['stock/app.js','stock/mi-gusto-cierre-online.js','stock/gestlok-form-draft-guard.js','stock/gestlok-navigation-editor.js','stock/gestlok-owner-areas.js','stock/gestlok-caja-diaria.js'];
  const hash=b=>createHash('sha256').update(b).digest('hex').slice(0,16);
  const release=[];
  for(const file of files){

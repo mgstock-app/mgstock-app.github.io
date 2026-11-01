@@ -97,6 +97,78 @@
     }
     return b;
   }
+  function cajaRpc(fn, x, a){
+    const err = (m, code) => ({data:null, error:{code:code || '22023', message:m}});
+    const TEN = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+    const ok = !!a && ['dueno','gerente','editor'].includes(a.rol) && (window.__cajaHabilitada || []).includes(me());
+    (window.__cajaLlamadas = window.__cajaLlamadas || []).push([fn, me()]);
+    const hoy = window.__cajaDia || new Intl.DateTimeFormat('en-CA', {timeZone:'America/Argentina/Buenos_Aires'}).format(new Date());
+    if (fn === 'gestlok_caja_acceso') return {data: ok ? {habilitada:true, tenant_id:TEN, hoy} : {habilitada:false}, error:null};
+    if (!ok) return err('Sin permiso para la caja de esta empresa', '42501');
+    const st = window.__caja = window.__caja || {turnos:[], auditoria:[]};
+    const cerrar = (t, tipo, resp) => {
+      const vivos = t.movimientos.filter(m => !m.anulado);
+      const suma = k => Math.round(vivos.filter(m => m.metodo === k).reduce((v, m) => v + m.monto, 0) * 100) / 100;
+      Object.assign(t, {estado:'cerrado', tipo_cierre:tipo, cerrado_at:new Date().toISOString(), cerrado_por:tipo === 'manual' ? me() : null,
+        responsable:resp || t.responsable, efectivo:suma('efectivo'), transferencia:suma('transferencia'), ventas:vivos.length});
+      t.total = Math.round((t.efectivo + t.transferencia) * 100) / 100;
+      st.auditoria.push({accion:tipo === 'manual' ? 'cierre_manual' : 'cierre_automatico', turno:t.id});
+    };
+    window.__cajaCron = () => { const d = window.__cajaDia || hoy; let n = 0; for (const t of st.turnos) if (t.estado === 'abierto' && t.dia <= d) { cerrar(t, 'automatico'); n++; } return n; };
+    for (const t of st.turnos) if (t.estado === 'abierto' && t.dia < hoy) cerrar(t, 'automatico');
+    const pay = t => {
+      if (!t) return null;
+      if (t.estado === 'cerrado') return JSON.parse(JSON.stringify(t));
+      const vivos = t.movimientos.filter(m => !m.anulado), suma = k => Math.round(vivos.filter(m => m.metodo === k).reduce((v, m) => v + m.monto, 0) * 100) / 100;
+      return JSON.parse(JSON.stringify({...t, efectivo:suma('efectivo'), transferencia:suma('transferencia'), total:Math.round((suma('efectivo') + suma('transferencia')) * 100) / 100, ventas:vivos.length}));
+    };
+    const deHoy = st.turnos.find(t => t.dia === hoy);
+    const turno = st.turnos.find(t => t.id === x.p_turno);
+    const resp = String(x.p_responsable || '').trim();
+    if (fn === 'gestlok_caja_estado')
+      return {data:{tenant_id:TEN, hoy, ahora:new Date().toISOString(), limite:hoy + 'T23:59:00-03:00', puede_abrir:!deHoy, turno:pay(deHoy),
+        historial:st.turnos.filter(t => t.estado === 'cerrado').sort((p, q) => q.dia.localeCompare(p.dia)).map(t => { const c = pay(t); delete c.movimientos; return c; })}, error:null};
+    if (fn === 'gestlok_caja_abrir'){
+      if (resp.length < 2 || resp.length > 80) return err('Escribí el nombre de la persona responsable de la caja');
+      if (deHoy) return {data:{nuevo:false, turno:pay(deHoy)}, error:null};
+      const t = {id:'caja-' + hoy, dia:hoy, estado:'abierto', responsable:resp, abierto_at:new Date().toISOString(), abierto_por:me(), cerrado_at:null, cerrado_por:null, tipo_cierre:null, movimientos:[]};
+      st.turnos.push(t); st.auditoria.push({accion:'apertura', turno:t.id});
+      return {data:{nuevo:true, turno:pay(t)}, error:null};
+    }
+    if (!turno) return err('La caja no corresponde a tu empresa', '42501');
+    if (fn === 'gestlok_caja_detalle') return {data:pay(turno), error:null};
+    if (fn === 'gestlok_caja_cerrar'){
+      if (resp.length < 2 || resp.length > 80) return err('Escribí el nombre de la persona responsable del cierre');
+      if (turno.estado === 'cerrado') return {data:{ya_cerrado:true, turno:pay(turno)}, error:null};
+      cerrar(turno, 'manual', resp); return {data:{ya_cerrado:false, turno:pay(turno)}, error:null};
+    }
+    if (fn === 'gestlok_caja_registrar'){
+      const monto = Number(x.p_monto);
+      if (!['efectivo','transferencia'].includes(x.p_metodo) || !(monto > 0) || monto >= 1e10 || Math.round(monto * 100) !== monto * 100 || !x.p_operacion)
+        return err('Revisá el medio de pago y el importe (mayor a 0, hasta 2 decimales)');
+      const prev = turno.movimientos.find(m => m.operacion === x.p_operacion);
+      if (prev) return {data:{repetida:true, movimiento_id:prev.id, turno:pay(turno)}, error:null};
+      if (turno.estado !== 'abierto' || turno.dia !== hoy) return err('La caja de ese día ya está cerrada');
+      if (window.__cajaFalla){ window.__cajaFalla = false; return err('TypeError: Failed to fetch', ''); }
+      const m = {id:'venta-' + (turno.movimientos.length + 1), operacion:x.p_operacion, metodo:x.p_metodo, monto, nota:String(x.p_nota || '').trim(), registrado_at:new Date().toISOString(), registrado_por:me(), anulado:false};
+      turno.movimientos.push(m); st.auditoria.push({accion:'venta', turno:turno.id});
+      return {data:{repetida:false, movimiento_id:m.id, turno:pay(turno)}, error:null};
+    }
+    if (fn === 'gestlok_caja_anular'){
+      const m = turno.movimientos.find(v => v.id === x.p_movimiento);
+      if (!m) return err('La venta no existe en esta caja');
+      if (m.anulado) return {data:{repetida:true, turno:pay(turno)}, error:null};
+      if (turno.estado !== 'abierto') return err('La caja de ese día ya está cerrada');
+      m.anulado = true; m.anulado_at = new Date().toISOString(); st.auditoria.push({accion:'anulacion', turno:turno.id});
+      return {data:{repetida:false, turno:pay(turno)}, error:null};
+    }
+    if (fn === 'gestlok_caja_responsable'){
+      if (resp.length < 2 || resp.length > 80) return err('Escribí el nombre de la persona responsable de la caja');
+      if (turno.estado !== 'abierto') return err('La caja de ese día ya está cerrada');
+      turno.responsable = resp; return {data:{turno:pay(turno)}, error:null};
+    }
+    return err('Operación desconocida');
+  }
   function notify(col){ setTimeout(() => subs.filter(s => s.col === col).forEach(s => s.cb({})), 20); }
   window.supabase = { createClient(){ const listeners = []; return {
     auth: {
@@ -112,6 +184,10 @@
     from(){ return builder(); },
     async rpc(fn, args){
       const a = acc();
+      // Caja diaria (como las RPC gestlok_caja_*): solo las cuentas de window.__cajaHabilitada (dueño, gerente o editor).
+      // Una caja por día de Argentina (window.__cajaDia la fija), idempotencia por operación, cierre idempotente,
+      // sin reapertura y window.__cajaCron() simula el cierre automático de las 23:59 del servidor.
+      if (/^gestlok_caja_/.test(fn)) return cajaRpc(fn, args || {}, a);
       // Estado ficticio para probar Pagos Online sin consultar datos de Mi Gusto.
       if (fn === 'gestlok_mg_online_state'){
         const loc=args?.p_local;
