@@ -219,7 +219,7 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
   };
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!draft || !chosenLocal || ownerView || saving) return;
+    if (!draft || !chosenLocal || saving) return;
     if (draft.organization_id !== chosenLocal.organization_id || draft.local_id !== chosenLocal.id) return;
     if (lastDate && !dateToIso(lastDate)) { setError("Ingresá una fecha de baja válida (dd/mm/aaaa)."); return; }
     if (startedDate && !dateToIso(startedDate)) { setError("Ingresá una fecha de ingreso válida (dd/mm/aaaa)."); return; }
@@ -250,7 +250,7 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
     finally { setHistoryLoading(false); }
   };
   return <section className={"mlg-board" + (ownerView ? " mlg-board--owner" : "")} aria-label={ownerView ? "Legajos registrados por gerentes" : "Administración de empleados del gerente"}>
-    {ownerView ? <div className="mlg-intro mlg-intro--owner"><div><h2>Legajos informados por gerentes</h2><p>Estados, refuerzos y bajas registrados en los locales de tu empresa.</p></div><div className="mlg-intro-actions"><button type="button" className="mlg-invite" disabled={loading || !locals.length} onClick={()=>setShowInvite(true)}><UserRoundPlus size={18}/> Invitar colaborador</button><button type="button" onClick={updateView} aria-label="Actualizar legajos de gerentes"><RotateCw size={17}/> Actualizar</button></div></div> :
+    {ownerView ? <div className="mlg-intro mlg-intro--owner"><div><h2>Legajos de colaboradores</h2><p>Estados, refuerzos y bajas registrados en los locales de tu empresa.</p></div><div className="mlg-intro-actions"><button type="button" className="mlg-invite" disabled={loading || !locals.length} onClick={()=>setShowInvite(true)}><UserRoundPlus size={18}/> Invitar colaborador</button><button type="button" className="mlg-primary" disabled={loading || !locals.length} onClick={()=>open(locals.find(l=>l.id===localFilter) || locals[0])}><Plus size={18}/> Agregar colaborador</button><button type="button" onClick={updateView} aria-label="Actualizar legajos de gerentes"><RotateCw size={17}/> Actualizar</button></div></div> :
       <div className="mlg-intro"><div><small>GESTLOK · {locals.length === 1 ? localTitle(locals[0]).toUpperCase() : "ADMINISTRACIÓN DE EMPLEADOS"}</small><h1>Administración de empleados</h1><p>{locals.length === 1 ? "Legajos y estados del equipo de " + localTitle(locals[0]) + "." : "Gestioná los legajos de tus locales autorizados."}</p></div>
         <div className="mlg-intro-actions">
           <button type="button" className="mlg-invite" disabled={loading || !locals.length} onClick={()=>setShowInvite(true)}><UserRoundPlus size={18}/> Invitar Colaborador</button>
@@ -289,7 +289,7 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
         return <section key={local.id} className="mlg-local" aria-label={"Colaboradores de "+localTitle(local)}>
           <div className="mlg-local-head"><button type="button" aria-expanded={!closed} onClick={()=>setCollapsed(a=>closed?a.filter(v=>v!==local.id):[...a,local.id])}>
             <LocalPortrait local={local}/><strong>{localTitle(local)}</strong><span>{staff.length} colaboradores</span><ChevronRight className={closed?"":"mlg-chevron"} size={19}/>
-          </button>{!ownerView&&<button type="button" className="mlg-add" onClick={()=>open(local)}><Plus size={17}/> Agregar colaborador</button>}</div>
+          </button><button type="button" className="mlg-add" onClick={()=>open(local)}><Plus size={17}/> Agregar colaborador</button></div>
           {!closed && (staff.length ? <div className="mlg-directory"><div className="mlg-directory-head" aria-hidden="true"><span className="mlg-dir-name">Colaborador</span><span className="mlg-dir-status">Estado</span><span className="mlg-dir-actions">Acciones</span></div><div className="mlg-cards">{staff.map((person,i)=><article className="mlg-person" key={person.key}>
             <span className={"mlg-avatar mlg-avatar--"+i%5} aria-hidden="true">{(person.fullName[0]||"?").toUpperCase()}</span>
             <div className="mlg-person-name"><strong>{person.fullName}</strong><span className={"mlg-status mlg-status--"+person.status}>{stateNames[person.status]}</span>{person.pending&&<span className="mlg-pending">Pendiente de completar</span>}</div>
@@ -314,33 +314,33 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
           </article>) : <p>Sin cambios registrados todavía.</p>}
           <button type="button" className="mlg-secondary" onClick={()=>setShowHistory(false)}><ArrowLeft size={16}/> Volver al legajo</button>
         </div> : <form className="mlg-form" onSubmit={e=>void save(e)}>
-          {!editing && ownerView && <p>Este colaborador figura en una planilla anterior, pero todavía no tiene un legajo creado por el gerente.</p>}
+          {!editing && ownerView && <p>Este colaborador figura en una planilla anterior y todavía no tiene un legajo registrado.</p>}
           {editing?.needs_completion && <p className="mlg-pending-notice">Este legajo fue creado automáticamente al aceptar la invitación. Completá los datos del nuevo colaborador y guardá para finalizarlo.</p>}
           <div className="mlg-form-grid">
-            <label>Nombre *<input required maxLength={100} value={draft.first_name} onChange={e=>update("first_name",e.target.value)} disabled={ownerView||saving} placeholder="Nombre"/></label>
-            <label>Apellido *<input required maxLength={100} value={draft.last_name} onChange={e=>update("last_name",e.target.value)} disabled={ownerView||saving} placeholder="Apellido"/></label>
-            <label>Teléfono<input type="tel" maxLength={35} value={draft.phone} onChange={e=>update("phone",e.target.value)} disabled={ownerView||saving} placeholder="11 2345-6789"/></label>
-            <label>Alias para transferencias<input maxLength={120} value={draft.payment_alias} onChange={e=>update("payment_alias",e.target.value)} disabled={ownerView||saving} placeholder="Alias bancario"/></label>
-            <label>Fecha de ingreso (dd/mm/aaaa)<div className="mlg-date"><CalendarDays size={17}/><input inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={startedDate} onChange={e=>{setDraftDirty(true);setStartedDate(e.target.value);}} disabled={ownerView||saving}/></div></label>
+            <label>Nombre *<input required maxLength={100} value={draft.first_name} onChange={e=>update("first_name",e.target.value)} disabled={saving} placeholder="Nombre"/></label>
+            <label>Apellido *<input required maxLength={100} value={draft.last_name} onChange={e=>update("last_name",e.target.value)} disabled={saving} placeholder="Apellido"/></label>
+            <label>Teléfono<input type="tel" maxLength={35} value={draft.phone} onChange={e=>update("phone",e.target.value)} disabled={saving} placeholder="11 2345-6789"/></label>
+            <label>Alias para transferencias<input maxLength={120} value={draft.payment_alias} onChange={e=>update("payment_alias",e.target.value)} disabled={saving} placeholder="Alias bancario"/></label>
+            <label>Fecha de ingreso (dd/mm/aaaa)<div className="mlg-date"><CalendarDays size={17}/><input inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={startedDate} onChange={e=>{setDraftDirty(true);setStartedDate(e.target.value);}} disabled={saving}/></div></label>
             <label>Local<input value={localTitle(chosenLocal)} disabled/></label>
           </div>
-          <label className="mlg-note-label">Notas (opcional)<textarea rows={2} maxLength={1500} placeholder="Observaciones del colaborador…" value={draft.notes} onChange={e=>update("notes",e.target.value)} disabled={ownerView||saving}/></label>
+          <label className="mlg-note-label">Notas (opcional)<textarea rows={2} maxLength={1500} placeholder="Observaciones del colaborador…" value={draft.notes} onChange={e=>update("notes",e.target.value)} disabled={saving}/></label>
           <fieldset className="mlg-state"><legend>Estado del colaborador</legend>
-            {(["activo","refuerzo","inactivo"] as const).map(st=><button type="button" aria-pressed={draft.status===st} className={"mlg-state-button mlg-state-button--"+st} key={st} onClick={()=>update("status",st)} disabled={ownerView||saving}>
+            {(["activo","refuerzo","inactivo"] as const).map(st=><button type="button" aria-pressed={draft.status===st} className={"mlg-state-button mlg-state-button--"+st} key={st} onClick={()=>update("status",st)} disabled={saving}>
               {draft.status===st?<Check size={17}/>:st==="activo"?<UserRoundCheck size={17}/>:st==="refuerzo"?<UsersRound size={17}/>:<UserRoundX size={17}/>}
               {stateNames[st]}</button>)}
           </fieldset>
           {draft.status==="refuerzo"&&<div className="mlg-conditional"><strong>Fechas de refuerzo</strong><p>Registrá cada día que trabajó como refuerzo (dd/mm/aaaa).</p>
-            <div className="mlg-new-date"><label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" aria-label="Fecha de refuerzo" inputMode="numeric" maxLength={10} value={newDate} onChange={e=>{setDraftDirty(true);setNewDate(e.target.value);}} disabled={ownerView||saving}/></label>
-              {!ownerView&&<button type="button" onClick={addDate} disabled={saving}><Plus size={17}/> Agregar fecha</button>}</div>
-            <div className="mlg-date-tags">{draft.reinforcement_dates.map(date=><span key={date}>{dateToDisplay(date)} {!ownerView&&<button type="button" aria-label={"Quitar "+dateToDisplay(date)} onClick={()=>update("reinforcement_dates",draft.reinforcement_dates.filter(v=>v!==date))} disabled={saving}><X size={14}/></button>}</span>)}</div>
+            <div className="mlg-new-date"><label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" aria-label="Fecha de refuerzo" inputMode="numeric" maxLength={10} value={newDate} onChange={e=>{setDraftDirty(true);setNewDate(e.target.value);}} disabled={saving}/></label>
+              <button type="button" onClick={addDate} disabled={saving}><Plus size={17}/> Agregar fecha</button></div>
+            <div className="mlg-date-tags">{draft.reinforcement_dates.map(date=><span key={date}>{dateToDisplay(date)} <button type="button" aria-label={"Quitar "+dateToDisplay(date)} onClick={()=>update("reinforcement_dates",draft.reinforcement_dates.filter(v=>v!==date))} disabled={saving}><X size={14}/></button></span>)}</div>
           </div>}
           {draft.status==="inactivo"&&<div className="mlg-conditional"><strong>Último día trabajado *</strong><p>Indicá hasta qué fecha trabajó en este local (dd/mm/aaaa).</p>
-            <label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" inputMode="numeric" maxLength={10} value={lastDate} onChange={e=>{setDraftDirty(true);setLastDate(e.target.value);}} disabled={ownerView||saving} aria-label="Último día trabajado" required/></label>
+            <label className="mlg-date"><CalendarDays size={17}/><input placeholder="dd/mm/aaaa" inputMode="numeric" maxLength={10} value={lastDate} onChange={e=>{setDraftDirty(true);setLastDate(e.target.value);}} disabled={saving} aria-label="Último día trabajado" required/></label>
           </div>}
           {draft.status!=="refuerzo"&&draft.reinforcement_dates.length>0&&<p className="mlg-previous">Refuerzos registrados anteriormente: {draft.reinforcement_dates.map(dateToDisplay).join(", ")}</p>}
           <p className="mlg-small-notice">Los cambios quedan registrados en el historial privado y pueden ser consultados por los dueños autorizados.</p>
-          <div className="mlg-form-actions"><button type="button" className="mlg-secondary" disabled={saving} onClick={close}>Volver</button>{!ownerView&&<button type="submit" className="mlg-primary" disabled={saving}><Save size={17}/>{saving?"Guardando…":"Guardar legajo"}</button>}</div>
+          <div className="mlg-form-actions"><button type="button" className="mlg-secondary" disabled={saving} onClick={close}>Volver</button><button type="submit" className="mlg-primary" disabled={saving}><Save size={17}/>{saving?"Guardando…":"Guardar legajo"}</button></div>
         </form>}
       </section>
     </div>}
