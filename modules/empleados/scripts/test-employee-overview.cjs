@@ -15,8 +15,9 @@ async function main() {
   }).outputText;
   const result = {};
   new Function("exports", "require", moduleSource)(result, name => {
-    if (name === "react" || name === "react/jsx-runtime") return {};
+    if (name === "react" || name === "react/jsx-runtime" || name === "lucide-react") return {};
     if (name === "@/utils/overview-sheet-local") return { resolveOverviewSheetLocal: resolve };
+    if (name === "@/features/access/api") return { rpc: () => Promise.reject(new Error("Not used in projectRows unit test")) };
     if (name === "@/features/reports/payroll.js") return loadJs("features/reports/payroll.js");
     if (name === "@/utils/duration.js") return loadJs("utils/duration.js");
     if (name === "./EmployeeDirectory") return { EmployeeDirectory: () => null };

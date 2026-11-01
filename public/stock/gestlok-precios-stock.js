@@ -10,6 +10,8 @@
  const amount=v=>v==null?'':String(v);
  const price=(cost,percentage)=>Math.round((Number(cost)*(1+Number(percentage)/100)+Number.EPSILON)*100)/100;
  const profit=(cost,percentage)=>Math.round((price(cost,percentage)-Number(cost)+Number.EPSILON)*100)/100;
+ const SUGGESTED_MARKUP=70;
+ const suggestedPrice=cost=>validMoney(cost,0.01,9999999999.99)&&price(cost,SUGGESTED_MARKUP)<=9999999999.99?price(cost,SUGGESTED_MARKUP):null;
  const db=()=>window.GestLokSupabase;
  let mode='precios',rows=[],busy=false,loading=false,ready=false,error='',notice='',editing='',stockEditing='',search='';
  function permitted(){return window.GestLokPilot?.authorized?.()===true;}
@@ -73,7 +75,9 @@
    (mode==='precios'?'<div class="gl-ps-cell-grid"><div><small>Costo</small><strong>'+cost+'</strong></div>'+
      '<div><small>Recargo</small><strong>'+(p.markup_percent==null?'—':esc(p.markup_percent)+'%')+'</strong></div>'+
      '<div><small>Precio a vender</small><strong>'+sale+'</strong></div>'+
-     '<div><small>Ganancia bruta / u.</small><strong>'+gain+'</strong></div></div>':
+     '<div><small>Ganancia bruta / u.</small><strong>'+gain+'</strong></div>'+
+     '<div><small>Precio de venta sugerido · 70%</small><strong>'+(suggestedPrice(p.cost_price)==null?'Cargá el costo':money(suggestedPrice(p.cost_price)))+'</strong></div></div>'+
+     '<p class="gl-ps-help">Referencia sobre costo con 70% de recargo. No es un precio de mercado.</p>':
      '<div class="gl-ps-cell-grid gl-ps-stock-grid"><div><small>Unidades disponibles</small><strong>'+(p.stock_quantity==null?'Sin contar':esc(p.stock_quantity))+'</strong></div>'+
      '<div><small>Aviso de stock bajo</small><strong>'+esc(p.stock_minimum)+'</strong></div></div>')+
    '<footer><small>Actualizado '+esc(new Date(p.updated_at).toLocaleDateString('es-AR'))+'</small>'+
@@ -91,6 +95,10 @@
    '<label>Código (opcional)<input name="sku" maxlength="80" value="'+input('sku')+'" placeholder="SKU"></label>'+
    '<label>Precio costo (ARS)<input name="cost_price" type="number" inputmode="decimal" min="0" max="9999999999.99" step="0.01" required value="'+input('cost_price')+'" placeholder="0.00"></label>'+
    '<label>Porcentaje de recargo (%)<input name="markup_percent" type="number" inputmode="decimal" min="0" max="5000" step="0.01" required value="'+input('markup_percent')+'" placeholder="Ej.: 70"></label></div>'+
+   '<div class="gl-ps-suggestion" aria-live="polite"><div><small>Precio de venta sugerido</small>'+
+   '<strong data-ps-suggested>'+(suggestedPrice(p?.cost_price)==null?'Cargá el costo':money(suggestedPrice(p.cost_price)))+'</strong>'+
+   '<p class="gl-ps-help">Referencia inicial: costo + 70% de recargo. Podés cambiar el porcentaje. No es un precio de mercado y no incluye impuestos, comisiones ni otros gastos.</p></div>'+
+   '<button type="button" data-ps-use-suggested '+(suggestedPrice(p?.cost_price)==null?'disabled':'')+'>Usar sugerido (70%)</button></div>'+
    '<div class="gl-ps-preview" aria-live="polite"><div><small>Precio a vender</small><strong data-ps-sale>'+a+'</strong></div>'+
    '<div><small>Ganancia bruta por unidad</small><strong data-ps-profit>'+b+'</strong></div></div>'+
    '<p class="gl-ps-help">El porcentaje se suma al costo. Ejemplo: $10.000 + 70% = $17.000 de venta y $7.000 de ganancia bruta. No descuenta impuestos, comisiones ni otros gastos.</p>'+
@@ -177,8 +185,14 @@
  }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
-  const el=e.target.closest('[data-ps-edit],[data-ps-new],[data-ps-cancel],[data-ps-refresh]');
+  const el=e.target.closest('[data-ps-edit],[data-ps-new],[data-ps-cancel],[data-ps-refresh],[data-ps-use-suggested]');
   if(!el)return;
+  if(el.matches('[data-ps-use-suggested]')){
+   const form=el.closest('#gl-ps-price-form');
+   if(!form||suggestedPrice(form.elements.namedItem('cost_price').value)==null)return;
+   const input=form.elements.namedItem('markup_percent');
+   input.value=String(SUGGESTED_MARKUP);input.dispatchEvent(new Event('input',{bubbles:true}));return;
+  }
   if(el.matches('[data-ps-refresh]')){void refresh();return;}
   if(el.matches('[data-ps-cancel]')){editing='';stockEditing='';error='';update();return;}
   if(el.matches('[data-ps-new]')){
@@ -203,6 +217,10 @@
    const form=e.target.form;
    const c=form.elements.namedItem('cost_price').value,p=form.elements.namedItem('markup_percent').value;
    const ready=validMoney(c,0,9999999999.99)&&validMoney(p,0,5000)&&price(c,p)<=9999999999.99;
+   const suggestion=suggestedPrice(c);
+   const suggested=form.querySelector('[data-ps-suggested]'),apply=form.querySelector('[data-ps-use-suggested]');
+   if(suggested)suggested.textContent=suggestion==null?'Cargá un costo válido':money(suggestion);
+   if(apply)apply.disabled=suggestion==null;
    const sale=form.querySelector('[data-ps-sale]'),gain=form.querySelector('[data-ps-profit]');
    if(sale)sale.textContent=ready?money(price(c,p)):'—';
    if(gain)gain.textContent=ready?money(profit(c,p)):'—';
@@ -212,5 +230,5 @@
   if(e.target.id==='gl-ps-price-form'){e.preventDefault();void savePrice(e.target);}
   if(e.target.id==='gl-ps-stock-form'){e.preventDefault();void saveStock(e.target);}
  });
- window.GestLokPreciosStock=Object.freeze({render,open,price,profit,inventoryTotals,refresh});
+ window.GestLokPreciosStock=Object.freeze({render,open,price,profit,suggestedPrice,inventoryTotals,refresh});
 })();

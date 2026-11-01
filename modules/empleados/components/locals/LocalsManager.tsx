@@ -4,9 +4,11 @@ import { useManagementData } from "@/hooks/use-management-data";
 import { useOrganizationData } from "@/hooks/use-organization-data";
 import Link from "next/link";
 import { accessApi } from "@/features/access/api";
+import { useAuth } from "@/components/auth/AuthProvider";
 import type { AppLocal } from "@/types/access";
 export function LocalsManager() {
   const organizations = useOrganizationData();
+  const { user } = useAuth();
   const data = useManagementData();
   const [name, setName] = useState("");
   const [cycle, setCycle] = useState<AppLocal["cycle"]>("mensual");
@@ -60,6 +62,7 @@ export function LocalsManager() {
                 )?.name
               }
             </small>
+            {user?.role === "admin" && <p><Link className="primary-button" href={{pathname: organizations.organizations.find(o=>o.id===item.organization_id)?.owner_public_id === "2026002" ? "/vista-dueno" : "/personal",query:{local:item.id,seccion:"recibos",espacio:organizations.organizations.find(o=>o.id===item.organization_id)?.owner_public_id||""}}}>Abrir recibos de {item.name}</Link></p>}
           </article>
         ))}
       </div>

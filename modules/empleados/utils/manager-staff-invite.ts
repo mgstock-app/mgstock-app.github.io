@@ -1,4 +1,4 @@
-/** Only one-time hexadecimal tokens from the server may become invitation links. */
+/** Only 256-bit hexadecimal invitation tokens from the server may become links. */
 export function validManagerStaffInvite(token: string): boolean {
   return /^[a-f0-9]{64}$/.test(token);
 }
@@ -17,10 +17,10 @@ export function managerStaffInviteUrl(origin: string, moduleBase: string, token:
   return link.toString();
 }
 export function staffInviteMessage(localName: string, url: string): string {
-  return "Hola! Te invito a registrarte en GESTLOK como colaborador/a de " +
-    localName + ". Entrá con tu cuenta de Google desde este enlace individual: " + url +
-    "\nEl enlace se puede usar una sola vez y vence a los 7 días." +
-    "\nSi se abre dentro de WhatsApp, elegí Abrir en Google Chrome para usar tu cuenta guardada.";
+  return "¡Hola! 🖤 Te compartimos el enlace general de GESTLOK para colaboradores del local " +
+    localName + ". Cada persona debe abrirlo e ingresar con su propia cuenta de Google:\n" + url +
+    "\nCuando ingreses, completá tu legajo (nombre, apellido, teléfono y alias). La fecha de ingreso es opcional." +
+    "\nEl acceso queda asignado únicamente a este local. Si se abre dentro de WhatsApp, elegí Abrir en Google Chrome.";
 }
 
 /**

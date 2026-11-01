@@ -6,7 +6,7 @@ const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('menú global conserva todas las hojas, prioriza Stock Local y elimina solo Hojas',()=>{
  const s=file('public/stock/gestlok-navigation-editor.js');
  new Script(s);
- assert.match(s,/preferred=\['inicio','cierre-online','stock','proveedores'/);
+ assert.match(s,/preferred=\['inicio','cierre-online','stock','stock-cajas','proveedores'/);
  assert.match(s,/id==='stock'\?'Stock Local'/);
  assert.match(s,/nav\.querySelector\('\.snav-l'\)\?\.remove\(\)/);
  assert.doesNotMatch(s,/nav\.querySelector\('\.snav-add'\)\?\.remove\(\)/);
@@ -55,7 +55,7 @@ test('Inicio, Pagos Online y Stock Local en ese orden son accesos diarios autori
  const mobile=file('public/stock/gestlok-mobile-dock.js');
  new Script(mobile);
  assert.match(nav,/isMiGusto=c=>/);
- assert.match(nav,/\['inicio','cierre-online','stock'\]/);
+ assert.match(nav,/\['inicio','cierre-online','stock','stock-cajas'\]/);
  assert.match(nav,/const directPayment=nav\.querySelector/);
  assert.match(nav,/const nestedPayment=nav\.querySelector/);
  assert.match(nav,/payment\.nextElementSibling!==stockLocal/);
@@ -67,4 +67,17 @@ test('Inicio, Pagos Online y Stock Local en ese orden son accesos diarios autori
  assert.match(mobile,/if\(k==='pagos'\)/);
  assert.match(mobile,/const stock=\(\)=>localNav\('stock'\)/);
  assert.match(mobile,/const pagos=\(\)=>localNav\('cierre-online'\)/);
+});
+
+test('una hoja llamada «Stock» no congela el menú: un solo botón por categoría y el hilo se libera',()=>{
+ const nav=file('public/stock/gestlok-navigation-editor.js');
+ new Script(nav);
+ // El primer botón «Stock»/«Stock Local» (el acceso diario) gana; otra hoja con el mismo nombre conserva su lugar y su nombre.
+ assert.match(nav,/if\(permitted\.includes\(id\)&&!found\.has\(id\)\)found\.set\(id,el\)/);
+ assert.doesNotMatch(nav,/const nodes=\(\)=>new Map\(/);
+ // Si el menú se redibuja demasiadas veces seguidas, se cede el hilo en vez de encadenar microtareas sin fin.
+ assert.match(nav,/if\(\+\+burst>20\)setTimeout\(run,100\);else queueMicrotask\(run\);/);
+ // Las pruebas Cypress de ingreso y remito usan justamente una hoja «Stock» de tipo ingreso.
+ for(const spec of ['qa/cypress/e2e/ingreso.cy.js','qa/cypress/e2e/remito.cy.js'])
+  assert.match(file(spec),/nombre: "Stock", tipo: "ingreso"/);
 });

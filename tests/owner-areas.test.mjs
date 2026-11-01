@@ -44,7 +44,7 @@ test('Registro de creadora consulta metadatos sin ofrecer acciones de escritura'
  const {a}=creator([{tenant_id:'t-a',name:'Empresa ficticia',owners:2,locals:[{name:'Munro'},{name:'Torcuato'}],modules:{comercial:true,recibos_personal:false},recibonet:null}]);
  await a.refreshAdmin();
  const html=a.adminView();const registry=html.split('aria-label="Módulos autorizados"')[0];
- assert.match(registry,/Empresa ficticia|Munro/);assert.match(registry,/Solo lectura/);
+ assert.match(registry,/Empresa ficticia|Munro/);assert.match(registry,/Registro de empresas/);
  assert.doesNotMatch(registry,/data-act=|<button|recibo|salario/);
  assert.doesNotMatch(html,/@|salario|sueldo/);
  assert.doesNotMatch(html,/data-owner-module="t-a"/,'Sin vínculo verificado no se ofrece habilitar empleados');
@@ -135,7 +135,7 @@ test('Un visitante o gerente no obtiene cabecera ni navegación de dueño',async
 
 test('La creadora conserva su rol y abre ambas áreas dentro del local',async()=>{
  const listeners={};let opened=0;
- const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'t-creator',name:'Empresa propia',locals:[{id:'munro'},{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
+ const window={addEventListener(){},GestLokCreatorSupport:{state:()=>({active:true})},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'t-creator',name:'Empresa propia',locals:[{id:'munro'},{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
  vm.runInNewContext(source,{window,document:{addEventListener(n,f){listeners[n]=f;}}});
  const a=window.GestLokOwnerAreas;
  a.attach({role:()=> 'creadora',S:{local:'munro',loaded:{e:true},me:{tenant_id:'t-creator'},equipo:[]},render(){},openBusiness(){opened++;}});
@@ -143,4 +143,14 @@ test('La creadora conserva su rol y abre ambas áreas dentro del local',async()=
  assert.match(html,/data-owner-nav="business"/);assert.match(html,/data-owner-area-staff/);
  listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-nav]'?{dataset:{ownerNav:'business'}}:null}});
  assert.equal(opened,1,'Abre las herramientas del local, sin cambiar al rol Dueño');
+});
+
+test('La tarjeta de empleados lleva a la administradora al personal de la empresa y local elegidos',async()=>{
+ const listeners={};let destination='';
+ const window={addEventListener(){},GestLokSupabase:{rpc:async()=>({data:{scope:'metadata_only',companies:[{tenant_id:'own',name:'Empresa',locals:[{id:'torcuato'}],modules:{recibos_personal:true},recibonet:{organization_number:'2026002'}}]},error:null})}};
+ vm.runInNewContext(source,{window,URL,location:{assign(url){destination=url;}},document:{baseURI:'https://gestlok.example/',addEventListener(n,f){listeners[n]=f;}}});
+ const a=window.GestLokOwnerAreas;a.attach({role:()=> 'creadora',S:{local:'torcuato',loaded:{e:true},me:{tenant_id:'own'},equipo:[]},render(){}});
+ await a.refresh();
+ listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-area-staff]'?{}:null}});
+ const url=new URL(destination);assert.equal(url.pathname,'/empleados/vista-dueno/');assert.equal(url.searchParams.get('espacio'),'2026002');assert.equal(url.searchParams.get('local'),'torcuato');
 });

@@ -1,0 +1,31 @@
+/* Guía de instalación iOS discreta: nunca tapa ni cambia el inicio de sesión. */
+.gl-ios-install-guide{display:none}
+html.auth-on #auth:not([hidden]) .gl-ios-install-guide{
+  display:block;box-sizing:border-box;width:100%;max-width:520px;margin:4px auto 0;
+  border:1px solid #dce8f0;border-radius:14px;background:#f8fbff;color:#183d5a;
+  font-family:Inter,system-ui,sans-serif;
+}
+.gl-ios-install-guide summary{
+  display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;
+  font-size:13px;font-weight:750;line-height:1.45;min-height:48px;padding:10px 14px;
+}
+.gl-ios-install-guide summary::-webkit-details-marker{display:none}
+.gl-ios-install-guide summary:focus-visible{outline:3px solid #138cbe;outline-offset:2px;border-radius:12px}
+.gl-ios-install-guide .gl-ios-chevron{margin-left:auto;font-size:20px;transition:transform .2s}
+.gl-ios-install-guide[open] .gl-ios-chevron{transform:rotate(180deg)}
+.gl-ios-install-body{padding:0 16px 16px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.gl-ios-install-body p{margin:6px 0 10px;color:#385971}
+.gl-ios-install-body ol{margin:10px 0;padding-left:22px;display:grid;gap:8px}
+.gl-ios-install-body li{padding-left:1px}
+.gl-ios-install-body small{color:#5b7384;display:block;font-size:12px;line-height:1.5}
+@media(max-width:767px){
+  html.auth-on .auth .gl-ios-install-guide{margin:4px auto 18px;max-width:540px}
+  /* Safari iOS amplía automáticamente la pantalla cuando un control usa menos de 16 px. */
+  @supports (-webkit-touch-callout:none){
+    #auth :is(input,select,textarea),
+    #app input:not([type=checkbox]):not([type=radio]):not([type=range]),
+    #app select,#app textarea,#hub input,#hub select,#hub textarea{
+      font-size:16px;
+    }
+  }
+}

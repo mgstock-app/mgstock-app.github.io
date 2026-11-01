@@ -18,6 +18,10 @@
     return valid(digits)?digits:'';
   }
   function ownerName(){
+    // Mi Gusto tiene varios dueños autorizados; el nombre comercial de referencia es Gisela.
+    // No depende del orden de integrantes del equipo ni altera sus permisos.
+    const company=String(api?.S?.companyName||api?.S?.company_name||'').trim();
+    if(company.toLocaleLowerCase('es-AR')==='mi gusto')return 'Gisela';
     const own=api?.S?.equipo?.find(e=>e.rol==='dueno');
     const value=String(own?.nombre||own?.name||
       (api?.miRol?.()==='dueno'?api?.S?.me?.name:'')||'').trim();

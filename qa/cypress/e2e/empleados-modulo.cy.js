@@ -40,15 +40,10 @@ describe('GESTLOK · carpeta Administrar a los empleados', () => {
     cy.contains('button', 'Continuar con Google', { timeout: 15000 }).should('be.visible');
     cy.get('footer[aria-label="Documentos legales de GESTLOK Empleados"]').should('exist');
   });
-  it('la creadora asigna el módulo por empresa con confirmación y queda registrado', () => {
+  it('la creadora encuentra el acceso a locales sin exponer recibos en el registro', () => {
     start('kmu15lopez@gmail.com', false);
-    cy.get('[aria-label="Módulos autorizados"]', { timeout: 12000 }).should('contain.text', 'Empresa ficticia').and('contain.text', 'Sin organización de ReciboNet vinculada');
-    // Único botón: consultar la otra empresa en solo lectura; la propia no lo tiene.
-    cy.get('[aria-label="Empresas registradas"] button').should('have.length', 1).and('contain.text', 'Ver en solo lectura');
-    cy.on('window:confirm', () => true);
-    cy.get('[data-owner-module="cb0dc04a-9a13-434f-a3d0-47f1d8f39670"][data-enable="true"]').click();
-    cy.window().its('__staffModule').should('eq', true);
-    cy.get('[aria-label="Módulos autorizados"]').should('contain.text', 'Empleados habilitado');
-    cy.get('[data-owner-module="cb0dc04a-9a13-434f-a3d0-47f1d8f39670"][data-enable="false"]').should('contain.text', 'Deshabilitar');
+    cy.get('[aria-label="Empresas registradas"]').should('contain.text', 'Empresa ficticia').and('contain.text', 'Abrir empresa');
+    cy.get('[aria-label="Empresas registradas"] button').should('have.length', 1).and('contain.text', 'Abrir empresa');
+    cy.get('[aria-label="Empresas registradas"]').should('not.contain.text', 'Recibo personal');
   });
 });

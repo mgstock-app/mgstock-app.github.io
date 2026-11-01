@@ -146,3 +146,23 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Pruebas:** en Cypress los ingresos vacían el email antes de escribir (el email queda recordado). Si hace falta cargar datos ficticios de Reseñas en Cypress, el Supabase falso acepta `window.__resenasDia`.
 
 **Pendientes al cierre (27/10/2026):** decisiones de la usuaria sobre #26 (licencias/pagos), #52 (contacto de la demo) y #79 (Android/iPhone, plataformas en pausa); `pedir_acceso`, la propuesta de recibos y el historial de Git. Sin verificar en celulares reales: Motos Agencia y Reseñas con cuentas de gerente y dueño. Datos que carga la usuaria: valores por hora de Motos Agencia. Ajuste del panel de Supabase sugerido por el asesor de seguridad: activar la protección de contraseñas filtradas (Authentication → Policies).
+
+## 10. NFC y QR de la creadora (31/10/2026)
+
+- **Qué es:** pestaña «NFC y QR» en el inicio de la creadora (solo `kmu15lopez@gmail.com` verificada). Placas reutilizables: cada una tiene un código fijo de 6 caracteres (sin O/0/I/1) y su link `https://gestlok.com.ar/r/?CODIGO` va en el QR y en el chip NFC. El destino se cambia desde la pestaña sin reimprimir ni regrabar. No pertenece a ninguna empresa ni local: no toca Mi Gusto, Munro ni Torcuato.
+- **Base:** esquema privado `gestlok_nfc_private` (`placas`, `escaneos`, `ajustes`). RPC de la creadora: `gestlok_nfc_list`, `gestlok_nfc_create(p_cantidad)`, `gestlok_nfc_update(p_code, p_cliente, p_destino, p_nota, p_activa)`, `gestlok_nfc_set_fallback(p_destino)`. Pública (anon): `gestlok_nfc_resolve(p_code)`, que solo devuelve un link y suma el escaneo. Migración `20261031163500_gestlok_nfc_qr_placas.sql` aplicada; prueba `supabase/tests/nfc-qr-permisos.sql` con 0 fallas.
+- **Front:** `public/stock/gestlok-nfc-qr.js` (panel), `public/r/index.html` (redirección pública, sin scripts de la app), `public/vendor/qrcode-generator.js` (MIT, QR generado en el equipo), `app/gestlok-nfc-qr.css`. «Grabar NFC» usa Web NFC (Chrome en Android); en iPhone se copia el link y se graba con NFC Tools.
+- **Placas sin activar:** llevan al link de `ajustes.destino_sin_activar` (por defecto la Tiendanube de Belisa), editable desde la pestaña.
+
+## 11. Legajos, Pagos Online, formularios y Cypress estable (01/11/2026)
+
+- **#202 · Legajos:** dueños y gerentes crean y editan legajos (alta, estado, refuerzos, baja) en `modules/empleados/components/legajos/ManagerLegajos.tsx`. Sin cambios en la base: la RLS `rm_employee_profile_scope` ya limita cada cuenta a los locales de su empresa. Se verificó en la base real con simulaciones de solo lectura, sin escribir datos: dueña de Mi Gusto solo Munro y Torcuato; gerentes solo su local; dueña de otra empresa 0 locales ajenos; sin sesión, sin permisos.
+- **#203 · Pagos Online:** el formulario queda vacío después de guardar (`clearEntryForm()`, antes de redibujar) y sin sugerencias del navegador. Prueba `qa/cypress/e2e/pagos-online-formulario.cy.js` en Munro y Torcuato. El simulador acepta `gestlok_mg_online_save_note` y `window.__mgOnlineSaveFail`.
+- **#204 · Todo GESTLOK:** `public/stock/gestlok-form-draft-guard.js`, cargado en las dos áreas.
+  - `autocomplete="off"` en todos los formularios, salvo email y contraseñas de ingreso.
+  - En formularios de carga nueva de `#view`, lo enviado no se copia al formulario siguiente y se repone si aparece un error (`role="alert"` o aviso rojo).
+  - Los formularios de edición no cambian.
+- **Cypress estable:** los grupos 0 y 3 se cancelaban a los 30 min por un bucle infinito del editor del menú (`gestlok-navigation-editor.js`) cuando un local tenía otra hoja llamada «Stock». Corregido: un botón por categoría, y se cede el hilo si redibuja más de 20 veces seguidas. Se actualizaron pruebas de la creadora que nunca llegaban a correr y se estabilizó `ingreso.cy.js`.
+- **Auditoría del sitio publicado:** después de cada despliegue, `scripts/audit-live-responsive.mjs` compara (sha256) los scripts que sirve gestlok.com.ar con los del commit publicado (línea `AUDIT_RELEASE`).
+- **Sesiones de Claude:** los logs de Actions se pueden leer con `gh api repos/{o}/{r}/actions/jobs/{id}/logs`. Los artefactos, npm y gestlok.com.ar no son accesibles desde la sesión; verificar con la auditoría.
+- **Cuentas:** la cuenta de creadora y la de dueña de otra empresa se mantienen separadas a propósito, por el aislamiento entre empresas.

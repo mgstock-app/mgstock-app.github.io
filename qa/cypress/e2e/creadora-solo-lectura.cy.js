@@ -14,7 +14,10 @@ describe('Creadora: edición permanente e inicio actualizado', () => {
   for(const local of ['munro','torcuato']) it('tarjetas y edición permanente en '+local, () => {
     login('kmu15lopez@gmail.com');
     cy.get('.gl-ch-nav [data-ch-tab="locales"]').click();
-    cy.get('#hub [data-act="local"][data-id="'+local+'"]').first().click();
+    // «Locales» agrupa los locales en carpetas por empresa: abrir la carpeta que contiene el local.
+    cy.get('#hub .gl-company-folder').filter((_,folder)=>!!folder.querySelector('[data-act="local"][data-id="'+local+'"]')).first().as('folder');
+    cy.get('@folder').find('summary').click();
+    cy.get('@folder').find('[data-act="local"][data-id="'+local+'"]').should('be.visible').click();
     cy.get('.gl-creator-mode').should('contain.text','Edición sin límite de tiempo');
     cy.get('#me').should('not.contain.text','Solo ver');
     cy.get('#view .gl-owner-business').should('be.visible');
@@ -25,7 +28,8 @@ describe('Creadora: edición permanente e inicio actualizado', () => {
     cy.get('#snav [data-go="inicio"]').click();
     cy.get('#view .gl-owner-business').should('be.visible');
     cy.get('#view [data-owner-area-staff]').click();
-    cy.location('pathname').should('eq','/empleados/');
+    // La creadora entra al área de personal de la empresa (gestlok-owner-areas.js); dueños y gerentes van a /empleados/.
+    cy.location('pathname',{timeout:15000}).should('match',/^\/empleados\/(personal|vista-dueno)\/$/);
     cy.get('.gestlok-module-back').should('have.attr','href','/');
   });
   it('la dueña sigue editando como siempre y no ve el aviso de la creadora', () => {

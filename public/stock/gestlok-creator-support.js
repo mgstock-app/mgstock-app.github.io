@@ -22,7 +22,7 @@
     let el = document.getElementById('gl-support-bar');
     const pv = previewRol();
     let html = '';
-    if (support.active) html = `<b>Modo soporte · ${esc(support.name)}</b> · Solo lectura hasta las ${esc(hora(support.expires))} <button type="button" class="btn sm" data-support-close>Salir</button>`;
+    if (support.active) html = `<b>Modo soporte · ${esc(support.name)}</b> · Acceso de Administradora General hasta las ${esc(hora(support.expires))} <button type="button" class="btn sm" data-support-close>Salir</button>`;
     else if (pv) html = `<b>Vista previa como ${esc(PREVIEW_ROLES[pv])}</b> · Solo para revisar el diseño; no cambia permisos <button type="button" class="btn sm" data-preview-rol="">Salir de la vista previa</button>`;
     if (!html){ if (el) el.remove(); return; }
     if (!el){
@@ -63,6 +63,18 @@
       location.reload();
     } catch (e) { api.toast((e && e.message) || 'No se pudo abrir la empresa.', true); busy = false; }
   }
+  async function openLocal(tenant, local, name){
+    if(!api?.isCreadora?.() || busy || !tenant || !local)return;
+    busy=true;
+    try{
+      const {error}=await window.GestLokSupabase.rpc('gestlok_creator_open_company',{p_tenant:tenant,p_reason:'Administración de local desde Locales',p_minutes:60});
+      if(error)throw error;
+      store.set('');
+      window.sessionStorage.setItem('gestlok-admin-tab','locales');
+      window.sessionStorage.setItem('gestlok:profile-next-local',JSON.stringify({email:String(api.S.me.email||'').toLowerCase(),tenant_id:tenant,local_id:local}));
+      location.reload();
+    }catch(e){api.toast(e?.message||'No se pudo abrir el local.',true);busy=false;}
+  }
   async function close(){
     if (busy) return;
     busy = true;
@@ -73,16 +85,18 @@
   // Botón por empresa en la tabla de empresas registradas.
   function openButton(tenantId, name){
     if (!api || tenantId === api.S?.me?.tenant_id) return '<small>Tu empresa</small>';
-    return '<button type="button" class="btn sm" data-support-open="' + esc(tenantId) + '" data-support-name="' + esc(name) + '">Ver en solo lectura</button>';
+    return '<button type="button" class="btn sm" data-support-open="' + esc(tenantId) + '" data-support-name="' + esc(name) + '">Abrir empresa</button>';
   }
   function previewCard(){
     if (!api?.isCreadora?.() || support.active) return '';
     const cur = store.get();
     return '<section class="gl-admin-card" aria-label="Vista previa por rol"><header><h2>Vista previa por rol</h2><small>Solo para revisar el diseño</small></header><div class="gl-home-essential-tools">' +
       Object.entries(PREVIEW_ROLES).map(([k, label]) => '<button type="button" class="btn sm' + (cur === k ? ' primary' : '') + '" data-preview-rol="' + k + '">Ver como ' + esc(label) + '</button>').join('') +
-      '</div><p class="lead">No cambia permisos ni datos: tu cuenta sigue en solo lectura. Para revisar otra empresa, usá «Ver en solo lectura» en la tabla de empresas.</p></section>';
+      '</div><p class="lead">No cambia permisos ni datos: tu cuenta conserva sus permisos. Para operar otra empresa, elegí su carpeta en «Locales».</p></section>';
   }
   document.addEventListener('click', e => {
+    const local=e.target.closest('[data-company-local]');
+    if(local){e.preventDefault();openLocal(local.dataset.companyTenant,local.dataset.companyLocal,local.dataset.companyName);return;}
     const o = e.target.closest('[data-support-open]');
     if (o){ e.preventDefault(); open(o.dataset.supportOpen, o.dataset.supportName); return; }
     if (e.target.closest('[data-support-close]')){ e.preventDefault(); close(); return; }

@@ -1,0 +1,52 @@
+/* NFC y QR · pestaña de la creadora. Clases propias gl-nfc-* para no tocar otros paneles. */
+.gl-nfc header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.gl-nfc header h2{margin:0}
+.gl-nfc p{margin:6px 0}
+.gl-nfc .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.gl-nfc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.gl-nfc-stats div{border:1px solid #e1e8ee;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.gl-nfc-stats b{font-size:1.6rem;line-height:1.1;color:#142f46}
+.gl-nfc-stats small{color:#4f6475}
+.gl-nfc-create{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.gl-nfc-create label,.gl-nfc-form label{display:flex;flex-direction:column;gap:4px;font-weight:600;color:#142f46}
+.gl-nfc-create input{width:120px}
+.gl-nfc input:not([type=checkbox]){min-height:44px;padding:8px 12px;border:1px solid #c7d3dc;border-radius:10px;font:inherit;background:#fff;color:#14212b;box-sizing:border-box;max-width:100%}
+.gl-nfc .btn{min-height:44px;display:inline-flex;align-items:center;gap:6px}
+.gl-nfc-fallback{margin-top:14px;padding-top:12px;border-top:1px solid #e1e8ee}
+.gl-nfc-fallback a,.gl-nfc-dest a,.gl-nfc-dest em,.gl-nfc-qrbox code{overflow-wrap:anywhere;word-break:break-word}
+.gl-nfc-tools{display:flex;gap:8px;flex-wrap:wrap}
+.gl-nfc-filters{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
+.gl-nfc-filters button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid #c7d3dc;background:#fff;color:#14212b;font:inherit;cursor:pointer}
+.gl-nfc-filters button.on{background:#142f46;border-color:#142f46;color:#fff}
+.gl-nfc-search{display:block;margin-bottom:12px}
+.gl-nfc-search input{width:100%}
+.gl-nfc-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.gl-nfc-item{border:1px solid #e1e8ee;border-radius:14px;padding:14px;background:#fff;display:flex;flex-direction:column;gap:4px;min-width:0}
+.gl-nfc-item.on{border-color:#9fd3b4}
+.gl-nfc-item header{margin:0}
+.gl-nfc-id{display:flex;align-items:baseline;gap:10px}
+.gl-nfc-id b{font-size:1.05rem;color:#142f46}
+.gl-nfc-id code{font-size:1rem;letter-spacing:.08em;color:#14212b}
+.gl-nfc-pill{font-size:.8rem;font-weight:700;padding:4px 10px;border-radius:999px}
+.gl-nfc-pill.on{background:#e3f4ea;color:#17633a}
+.gl-nfc-pill.off{background:#f1f3f5;color:#4a5560}
+.gl-nfc-client{font-weight:600;color:#14212b}
+.gl-nfc-client span,.gl-nfc-dest span,.gl-nfc-dest small,.gl-nfc-meta{color:#4f6475}
+.gl-nfc-note{font-style:italic;color:#4f6475}
+.gl-nfc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.gl-nfc-form{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.gl-nfc-form input:not([type=checkbox]){width:100%}
+.gl-nfc-form small{color:#4f6475;margin-top:-4px}
+.gl-nfc-form .gl-nfc-check{flex-direction:row;align-items:center;gap:10px;font-weight:500}
+.gl-nfc-check input{width:22px;height:22px}
+.gl-nfc-qrbox{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e1e8ee}
+.gl-nfc-qrbox svg{flex:0 0 auto;border:1px solid #e1e8ee;border-radius:8px}
+.gl-nfc-qrbox div{flex:1 1 160px;min-width:0}
+.gl-nfc-empty{color:#4f6475}
+.gl-nfc-help summary{cursor:pointer;font-weight:700;color:#142f46;min-height:32px}
+.gl-nfc-help ol{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:640px){
+  .gl-nfc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gl-nfc-list{grid-template-columns:1fr}
+  .gl-nfc-tools{width:100%}
+}

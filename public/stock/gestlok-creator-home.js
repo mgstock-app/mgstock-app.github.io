@@ -13,6 +13,7 @@
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['ideas', 'Segundo cerebro', '<path d="M4 5h16v14H4zM8 9h8M8 13h6M8 17h5"/>'],
+    ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
     ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
   ]);
   const ACTIONS = Object.freeze({
@@ -220,7 +221,11 @@
     const allOk = checks.every(c => c[0]);
     const system = '<section class="gl-ch-card" aria-label="Estado de la plataforma"><header><h2>Estado de la plataforma</h2><span class="gl-ch-pill ' + (allOk ? 'ok' : 'warn') + '">' + (allOk ? 'Todo en orden' : 'Para revisar') + '</span></header>' +
       '<ul class="gl-ch-checks">' + checks.map(c => '<li class="' + (c[0] ? 'ok' : 'warn') + '"><span aria-hidden="true">' + (c[0] ? '✓' : '!') + '</span>' + esc(c[1]) + '</li>').join('') + '</ul></section>';
-    return kpis + '<div class="gl-ch-grid"><div class="gl-ch-colmain">' + growth +
+    const quickLocals = '<section class="gl-ch-card gl-ch-quick-locals" aria-label="Acceso rápido a locales">' +
+      '<header><h2>Acceso rápido a locales</h2><button type="button" class="gl-ch-link" data-ch-tab="locales">Ver todos los locales →</button></header>' +
+      '<p>Entrá directamente a las sucursales de Mi Gusto. Los permisos de tu cuenta se mantienen.</p>' +
+      '<div class="gl-ch-quick-grid">' + (p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>';
+    return quickLocals + kpis + '<div class="gl-ch-grid"><div class="gl-ch-colmain">' + growth +
       '<div class="gl-ch-two"><section class="gl-ch-card" aria-label="Empresas recientes"><header><h2>Empresas recientes</h2><button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header><ul class="gl-ch-list">' + (recent || '<li><small>Todavía no hay empresas.</small></li>') + '</ul></section>' +
       '<section class="gl-ch-card" aria-label="Actividad reciente"><header><h2>Actividad reciente</h2></header><ul class="gl-ch-list">' + (act || '<li><small>Sin actividad registrada.</small></li>') + '</ul></section></div></div>' +
       '<div class="gl-ch-colside">' + people + staff + system + '</div></div>';
@@ -240,9 +245,10 @@
     if (cur === 'inicio') body = home(p);
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
-    else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (parts.locales || '') + '</div>';
+    else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'ideas') body = '<div class="gl-ch-stack">' + (window.GestLokSecondBrain?.view?.() || '<p>El Segundo cerebro no está disponible.</p>') + '</div>';
+    else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
@@ -293,7 +299,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; window.GestLokNfcQr?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });

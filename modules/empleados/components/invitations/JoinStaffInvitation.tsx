@@ -58,7 +58,7 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
     try {
       const { error } = await createClient().auth.signOut({ scope: "local" });
       if (error) throw error;
-      // Conservar el vínculo individual para que el usuario elija su propia cuenta.
+      // Conservar el enlace del local mientras la persona elige su propia cuenta.
       router.replace("/unirse/?invitacion=" + encodeURIComponent(token) + (cleanHint ? "&local=" + encodeURIComponent(cleanHint) : ""));
       router.refresh();
     } catch {
@@ -80,7 +80,7 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
         const preview = await managerStaffInviteApi.preview(token);
         if (!active) return;
         setLocalName(preview.local_name);
-        const result = await managerStaffInviteApi.accept(token);
+        const result = await managerStaffInviteApi.accept(token,preview.group_shared===true);
         if (!active) return;
         if (!result.joined) throw new Error("No pudimos completar tu incorporación.");
         setState("success");
@@ -131,7 +131,7 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
               <button type="button" className="jsi-copy" onClick={()=>void copyInvite()}><Copy size={14} aria-hidden="true"/>{copied ? "Enlace copiado" : "¿No se abrió Chrome? Copiar enlace"}</button>
             </div>}
             <GoogleSignIn returnTo="/unirse" compact />
-            <p className="jsi-security"><LockKeyhole size={16} aria-hidden="true"/> Invitación privada y de un solo uso.</p>
+            <p className="jsi-security"><LockKeyhole size={16} aria-hidden="true"/> Invitación exclusiva del local. Ingresá con tu cuenta personal.</p>
           </>
         ) : (
           <>
@@ -139,7 +139,7 @@ export function JoinStaffInvitation({token,localHint=""}:{token:string;localHint
             {state === "checking" && <p className="jsi-lead" role="status">Estamos verificando tu identidad y el local asignado…</p>}
             {state === "success" && (
               <p className="jsi-success" role="status"><CheckCircle2 size={20} aria-hidden="true"/>
-                Tu acceso como colaborador{localName ? " de " + localName : ""} fue confirmado. Tu gerente podrá completar el legajo.
+                Tu acceso como colaborador{localName ? " de " + localName : ""} fue confirmado. Completá tu legajo en Mi espacio.
               </p>
             )}
             {state === "error" && (

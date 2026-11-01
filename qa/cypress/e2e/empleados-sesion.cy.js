@@ -29,11 +29,10 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.get('.gl-gerente__sidebar nav button').first()
     .should('contain.text','Colaboradores').and('be.visible');
   cy.get('.gl-gerente__sidebar nav button').eq(1)
-    .should('contain.text','Sector de Google').and('be.visible');
+    .should('contain.text','Horarios').and('be.visible');
   cy.get('.gl-module-dock').should('not.be.visible');
-  // La cabecera anterior «📁 Horarios» ya no existe. La navegación
-  // vigente del gerente es Sector de Google → Horarios.
-  cy.contains('button','Sector de Google').should('exist').click();
+  // La navegación vigente abre las planillas desde Horarios.
+  cy.get('.gl-gerente__sidebar').contains('button','Horarios').click();
   cy.contains('a','Abrir Google Sheets y horarios').should('be.visible')
     .and('have.attr','href').and('include','horarios');
   cy.contains('button','Volver a los legajos').click();

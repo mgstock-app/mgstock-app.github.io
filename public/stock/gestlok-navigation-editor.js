@@ -4,16 +4,27 @@
 const nav=document.getElementById('snav'),side=document.getElementById('side');
 if(!nav||!side)return;
 const html=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const permitted=['inicio','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso','pedido','conteo','fabrica','historial','motos','resenas','reclamos-internos','cierre-online','pedidos-online','tienda-online'];
+const permitted=['inicio','stock','stock-cajas','proveedores','chat','adm-local','vencimientos','avisos','ingreso','pedido','conteo','fabrica','historial','motos','resenas','reclamos-internos','cierre-online','pedidos-online','tienda-online'];
 const targets=['stock','proveedores','chat','vencimientos','avisos','pedido','conteo','historial'];
-const preferred=['inicio','cierre-online','stock','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
+const preferred=['inicio','cierre-online','stock','stock-cajas','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
 const isMiGusto=c=>c?.tenant==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'&&['munro','torcuato'].includes(c?.local);
-const pinned=()=>isMiGusto(ctx())?['inicio','cierre-online','stock']:['inicio','stock']; // Siempre priorizar accesos diarios, sin alterar otros negocios.
+const pinned=()=>isMiGusto(ctx())?['inicio','cierre-online','stock','stock-cajas']:['inicio','stock']; // Siempre priorizar accesos diarios, sin alterar otros negocios.
 let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick=false;
 const ctx=()=>window.GestLokNavContext?.()||null;
-const idOf=el=>el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'';
+const idOf=el=>el.dataset?.navBuiltin||(el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'');
 const nameOf=el=>el.querySelector?.('.nl')?.textContent?.trim()||el.textContent?.trim()||'';
-const nodes=()=>new Map([...nav.children].filter(el=>!el.hasAttribute('data-nav-custom')&&!el.hasAttribute('data-daily-shortcut')).map(el=>[(/^(stock local|stock)$/i.test(nameOf(el))?'stock':idOf(el)),el]).filter(([id])=>permitted.includes(id)));
+// Cada categoría se asocia a UN solo botón: el primero del menú. Si un local tiene
+// otra hoja llamada «Stock» (o «Stock Cajas»), antes los dos botones se turnaban
+// como «Stock Local» y el menú se reordenaba sin fin hasta congelar la página.
+const nodes=()=>{
+ const found=new Map();
+ for(const el of nav.children){
+  if(el.hasAttribute('data-nav-custom')||el.hasAttribute('data-daily-shortcut'))continue;
+  const name=nameOf(el),id=/^(stock local|stock)$/i.test(name)?'stock':/^stock cajas$/i.test(name)?'stock-cajas':idOf(el);
+  if(permitted.includes(id)&&!found.has(id))found.set(id,el);
+ }
+ return found;
+};
 const trim=s=>String(s||'').trim().replace(/\s+/g,' ').slice(0,45);
 function baseline(){
  const known=nodes(),ids=[...new Set([...preferred,...known.keys()])].filter(id=>known.has(id));
@@ -90,13 +101,15 @@ function draw(){
  }
  // Munro y Don Torcuato: Inicio → Pagos Online → Stock Local.
  // Respeta los permisos existentes y prevalece sobre órdenes antiguos guardados.
- const inicio=known.get('inicio'),stockLocal=known.get('stock');
+ const inicio=known.get('inicio'),stockLocal=known.get('stock'),stockCajas=known.get('stock-cajas');
+ if(stockCajas)stockCajas.dataset.navBuiltin='stock-cajas';
  if(isMiGusto(c)&&inicio&&payment){
   if(inicio.nextElementSibling!==payment)nav.insertBefore(payment,inicio.nextElementSibling);
   if(stockLocal&&payment.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,payment.nextElementSibling);
  }else if(inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal){
   nav.insertBefore(stockLocal,inicio.nextElementSibling);
  }
+ if(isMiGusto(c)&&stockLocal&&stockCajas&&stockLocal.nextElementSibling!==stockCajas)nav.insertBefore(stockCajas,stockLocal.nextElementSibling);
  for(const [id,b] of existing)if(!order.some(x=>x.id===id))b.remove();
  const can=!!c.creator;
  let edit=nav.querySelector('#gl-edit-menu');
@@ -105,6 +118,22 @@ function draw(){
    edit.textContent='⚙ Editar categorías';edit.addEventListener('click',open);}
   if(edit.parentNode!==nav)nav.append(edit);
  }else edit?.remove();
+ // Menú operativo simple para la Administradora General.
+ nav.classList.toggle('gl-admin-simple',can);
+ if(can){
+  if(back){
+   const label=back.querySelector('.nl');if(label&&label.textContent!=='Locales')label.textContent='Locales';
+   const hint=back.querySelector('small');if(hint&&hint.textContent!=='Empresas y sucursales')hint.textContent='Empresas y sucursales';
+   if(back.getAttribute('aria-label')!=='Locales: empresas y sucursales')back.setAttribute('aria-label','Locales: empresas y sucursales');
+  }
+  const essentials=new Set([back,inicio,payment,stockLocal,stockCajas]);
+  for(const node of nav.children)node.classList.toggle('gl-admin-essential',essentials.has(node));
+  let more=nav.querySelector('[data-admin-tools]');
+  if(!more){more=document.createElement('button');more.type='button';more.dataset.adminTools='';more.className='gl-admin-essential';more.textContent='Más herramientas';nav.append(more);}
+  more.classList.add('gl-admin-essential');
+  const expanded=nav.classList.contains('gl-admin-tools-open');
+  if(more.getAttribute('aria-expanded')!==String(expanded))more.setAttribute('aria-expanded',String(expanded));
+ }
  const footer=side.querySelector('.side-f');
  if(footer){
   // Reutilizar el cierre de sesión original: evita dos botones y mantiene
@@ -129,7 +158,15 @@ async function fetchLayout(c,seq){
   if(seq===sequence&&!result?.error&&Array.isArray(result?.data))data=result.data;
  }catch{}finally{refresh();}
 }
-function refresh(){if(tick)return;tick=true;queueMicrotask(()=>{tick=false;scopeCheck();draw();});}
+// Defensa adicional: si el menú se redibujara muchas veces seguidas en la misma
+// tarea, ceder el hilo para que la app siga respondiendo.
+let burst=0,burstReset=false;
+function refresh(){
+ if(tick)return;tick=true;
+ if(!burstReset){burstReset=true;setTimeout(()=>{burst=0;burstReset=false;},0);}
+ const run=()=>{tick=false;scopeCheck();draw();};
+ if(++burst>20)setTimeout(run,100);else queueMicrotask(run);
+}
 function close(){overlay?.remove();overlay=null;error='';}
 function open(){
  if(!ctx()?.creator)return;
@@ -187,6 +224,12 @@ async function save(){
   data=items;close();refresh();
  }catch(e){error=e?.message||'No se pudo guardar.';}finally{busy=false;paint();}
 }
+nav.addEventListener('click',e=>{
+ if(e.target.closest('[data-admin-tools]')&&ctx()?.creator){nav.classList.toggle('gl-admin-tools-open');refresh();}
+});
+document.addEventListener('click',e=>{
+ if(ctx()?.creator&&e.target.closest('[data-act="locales"]'))window.GestLokCreatorHome?.setTab?.('locales');
+},true);
 const observer=new MutationObserver(()=>refresh());
 observer.observe(nav,{childList:true,subtree:true,characterData:true});
 setTimeout(refresh,0);
