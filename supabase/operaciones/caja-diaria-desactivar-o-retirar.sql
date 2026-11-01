@@ -1,0 +1,24 @@
+-- Caja diaria (pedido #200): reversión SIN borrar datos. Todo está comentado a propósito:
+-- ejecutar solo la opción elegida y solo con autorización de la usuaria.
+--
+-- Opción A · Ocultar y bloquear la caja para la empresa (inmediato, reversible).
+--   La tarjeta desaparece en la próxima carga y las RPC responden «sin permiso».
+--   Los días, ventas y cierres quedan guardados.
+-- update gestlok_caja_private.empresas set habilitada = false
+--   where tenant_id = '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
+--
+-- Para volver a habilitarla:
+-- update gestlok_caja_private.empresas set habilitada = true
+--   where tenant_id = '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
+--
+-- Opción B · Retirar el cierre automático y las funciones públicas (las tablas y su historial quedan).
+-- select cron.unschedule('gestlok-caja-diaria-cierre-2359-ar');
+-- drop function if exists public.gestlok_caja_acceso(), public.gestlok_caja_estado(),
+--   public.gestlok_caja_abrir(text), public.gestlok_caja_responsable(uuid, text),
+--   public.gestlok_caja_registrar(uuid, text, numeric, text, uuid), public.gestlok_caja_anular(uuid, uuid),
+--   public.gestlok_caja_cerrar(uuid, text), public.gestlok_caja_detalle(uuid);
+--
+-- No usar DROP SCHEMA gestlok_caja_private: borraría el historial de cierres.
+--
+-- Habilitar otra empresa (solo con pedido y pruebas de aislamiento):
+-- insert into gestlok_caja_private.empresas (tenant_id, nota) values ('<tenant_id>', '<motivo>');

@@ -57,9 +57,12 @@
       list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
       '<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
       (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir colaboradores de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Colaboradores, legajos y turnos de tu propio local.</p>'+list([['team','Colaboradores y fichas'],['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article></div>'+ (staff ? '<nav class="gl-manager-quick" aria-label="Accesos rápidos del gerente">'+[['proveedores','box','Proveedores'],['vencimientos','calendar','Vencimientos'],['chat','file','Chat del local'],['avisos','bell','Avisos']].map(([k,i,t])=>'<button type="button" data-gerente-quick="'+k+'">'+svg(I[i],23)+'<span>'+t+'</span></button>').join('')+'</nav>' : '')+'</section>'+
+      (window.GestLokCajaDiaria?.homeTile?.()||'')+
       (window.GestLokUpdates?.homeDue?.()||'');
   }
   async function refresh(){
+    // Caja diaria (pedido #200): solo aparece si el servidor la habilita para la empresa de la sesión.
+    window.GestLokCajaDiaria?.refresh?.(api);
     refreshGerente();
     if(!api||!['dueno','creadora'].includes(api.role())||!api.S.loaded.e||busy)return;
     if(api.S.offline&&state.status==='ready')return;
@@ -193,6 +196,7 @@
       ?'<img class="gl-owner-company-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto" width="562" height="278">'
       :'<b class="gl-owner-company-name">'+name+'</b>';
     const tile=(k,ic,t)=>'<button class="gl-owner-tile" data-owner-nav="'+k+'"><span>'+svg(I[ic],28)+'</span>'+t+'</button>';
+    const caja=window.GestLokCajaDiaria?.homeTile?.()||'';
     const pilot=window.GestLokPilot?.homeTile?.(state.data,api)||'';
     const futurePrices=window.GestLokFuturePricing?.homeTile?.(state.data,api)||'';
     const sup=supportLink();
@@ -216,7 +220,7 @@
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+
         '<p style="margin:16px 0 0;font-size:14px"><strong>Este módulo aún no está habilitado para tu empresa.</strong> Solicitá su activación a la administración de GESTLOK.</p></article>':'')+
-      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+pilot+futurePrices+
+      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+caja+pilot+futurePrices+
       '<nav class="gl-owner-quick" aria-label="Accesos generales">'+tile('reports','pie','Reportes generales')+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
   }
   // El módulo de empleados vive en la misma aplicación (misma dirección e instalación).
