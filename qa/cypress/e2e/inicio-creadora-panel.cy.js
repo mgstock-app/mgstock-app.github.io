@@ -15,15 +15,18 @@ describe('Inicio de la creadora · panel con resumen de la plataforma',()=>{
    .and('contain.text','Personas por rol').and('contain.text','Estado de la plataforma').and('contain.text','Solo lectura')
    .and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
   cy.get('.gl-ch-chart').should('be.visible');
-  cy.get('.gl-ch-nav button').should('have.length',7);
+  // Ocho pestañas: se sumó «NFC y QR» (#199) a las siete anteriores.
+  cy.get('.gl-ch-nav button').should('have.length',8);
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
+  cy.get('.gl-ch-nav [data-ch-tab="nfc"]').should('exist');
   cy.get('.gl-ch .gl-ch-logout').should('be.visible').and('contain.text','Cerrar sesión');
  });
- it('las pestañas conservan todas las funciones anteriores (solo lectura de otras empresas incluida)',()=>{
+ it('las pestañas conservan todas las funciones anteriores (acceso a otras empresas incluido)',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch-nav [data-ch-tab="empresas"]',{timeout:12000}).click();
   cy.get('[aria-label="Empresas registradas"]').should('contain.text','Empresa ficticia');
-  cy.get('[aria-label="Empresas registradas"] button').should('have.length',1).and('contain.text','Ver en solo lectura');
+  // Mismo texto que validan empleados-modulo.cy.js e inicio-dueno-modulos.cy.js.
+  cy.get('[aria-label="Empresas registradas"] button').should('have.length',1).and('contain.text','Abrir empresa');
   cy.get('[aria-label="Vista previa por rol"]').should('contain.text','Ver como Gerente');
   cy.get('.gl-ch-nav [data-ch-tab="usuarios"]').click();
   cy.get('.gl-ch').should('contain.text','Usuarios aprobados');
