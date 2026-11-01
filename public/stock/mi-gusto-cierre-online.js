@@ -132,12 +132,12 @@ function entry(){
  return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
   '<h3>'+(r?'Editar comanda':'Cargar pedido')+'</h3></div>'+
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
- '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.amount||'')+'" placeholder="0,00" required></label>'+
+ '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" autocomplete="off" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.amount||'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
  '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
  '<label class="mg-on-observation">Detalle de la observación <small>(máximo 300 caracteres)</small>'+
- '<textarea name="observacion" maxlength="300" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
+ '<textarea name="observacion" autocomplete="off" maxlength="300" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
  '<div class="mg-on-actions mg-on-save-actions"><button class="mg-on-primary mg-on-save" type="submit" '+(!writable()?'disabled':'')+'>'+
   '<span aria-hidden="true">✓</span> '+(r?'Guardar cambios':'Guardar movimiento')+'</button>'+
  (r?'<button type="button" data-mgon-cancel>Cancelar edición</button>':'')+'</div></form>';
@@ -335,10 +335,21 @@ function view(){
  (!snapshot?'<p role="status">Cargando pagos online autorizados…</p>':tab==='movimientos'?movements():tab==='historial'?history():summary())+historyModal()+
  '</div>';
 }
+// Vaciar el formulario de carga. Se usa solo después de que el servidor confirmó el guardado.
+// Debe correr ANTES de redibujar: el preservador global de formularios (GestLokFormDraftGuard)
+// copia lo escrito en el DOM y lo vuelve a poner en el formulario nuevo; por eso la comanda,
+// el monto y la observación anteriores quedaban cargados después de guardar.
+function clearEntryForm(){
+ const form=document.querySelector('#mg-online-form');if(!form)return;
+ for(const name of ['comanda','amount','observacion']){const field=form.elements.namedItem(name);if(field)field.value='';}
+ const method=form.elements.namedItem('method');if(method)method.value='transferencia';
+ const app=form.elements.namedItem('app');if(app)app.checked=false;
+ const details=form.querySelector('.mg-on-observation-details');if(details)details.open=false;
+}
 async function action(name,args,notify){
  if(!writable())return;
  saving=true;error='';saveNotice=false;
- try{const result=await rpc(name,args);editing=null;
+ try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();editing=null;
   if(name==='gestlok_mg_online_close'&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
   await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
@@ -346,7 +357,9 @@ async function action(name,args,notify){
   saving=false;
   if(allowed()&&api?.S?.view==='cierre-online'){
    api.render();
-   // Limpiar los campos únicamente después de confirmar el guardado exitoso.\n   // El render puede conservar valores del DOM en formularios reutilizados.\n   if(saveNotice&&tab==='movimientos'){\n    const form=document.querySelector('#mg-online-form');\n    if(form){\n     form.reset();\n     for(const name of ['comanda','amount','observacion']){const field=form.elements.namedItem(name);if(field)field.value='';}\n     const method=form.elements.namedItem('method');if(method)method.value='transferencia';\n     const app=form.elements.namedItem('app');if(app)app.checked=false;\n     const details=form.querySelector('.mg-on-observation-details');if(details)details.open=false;\n    }\n   }\n   // En PC, después de guardar una comanda, dejar listo el siguiente número.
+   // Red de seguridad: dejar el formulario vacío también después del último render.
+   if(saveNotice&&tab==='movimientos')clearEntryForm();
+   // En PC, después de guardar una comanda, dejar listo el siguiente número.
    if(saveNotice&&tab==='movimientos'&&window.matchMedia?.('(pointer:fine)').matches)
     document.querySelector('#mg-online-form input[name="comanda"]')?.focus({preventScroll:true});
   }

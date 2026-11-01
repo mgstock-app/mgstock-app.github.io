@@ -117,7 +117,20 @@
         const loc=args?.p_local;
         if(!a||!['munro','torcuato'].includes(loc)||!(total(a)||(a.rol==='gerente'&&(a.locales||[]).includes(loc))))
           return {data:null,error:{code:'42501',message:'Sin permiso para el local'}};
-        return {data:{active:{id:'turno-ficticio-'+loc,day:new Date().toISOString().slice(0,10),turno:'manana',status:'abierto',movements:[],transferencia:0,getnet:0,mercado_pago:0,total_app:0,total_ventas:0,online_local:0,comandas:0},history:[]},error:null};
+        const moves=(window.__mgOnlineSaved||[]).filter(m=>m.local===loc);
+        return {data:{active:{id:'turno-ficticio-'+loc,day:new Date().toISOString().slice(0,10),turno:'manana',status:'abierto',movements:moves,transferencia:0,getnet:0,mercado_pago:0,total_app:0,total_ventas:0,online_local:0,comandas:0},history:[]},error:null};
+      }
+      // Guardado ficticio de una comanda de Pagos Online: solo en memoria del navegador de prueba.
+      if (fn === 'gestlok_mg_online_save_note'){
+        const loc=args?.p_local;
+        if(!a||!['munro','torcuato'].includes(loc)||!(total(a)||(a.rol==='gerente'&&(a.locales||[]).includes(loc))))
+          return {data:null,error:{code:'42501',message:'Sin permiso para el local'}};
+        if(window.__mgOnlineSaveFail)return {data:null,error:{message:'No se pudo guardar el cambio'}};
+        const list=window.__mgOnlineSaved=window.__mgOnlineSaved||[];
+        const id=args.p_id||('mov-'+(list.length+1));
+        const row={id,local:loc,comanda:String(args.p_comanda),amount:Number(args.p_amount),method:args.p_method,app:!!args.p_app,observacion:args.p_observacion||'',created_at:new Date().toISOString()};
+        const i=list.findIndex(m=>m.id===id);if(i>=0)list[i]=row;else list.push(row);
+        return {data:{id},error:null};
       }
       if (fn === 'gestlok_my_registration'){
         const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
