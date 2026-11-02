@@ -46,7 +46,7 @@ test('Motos Agencia: el valor por hora rige desde su semana y no cambia el histo
   assert.equal(t.tarifaEn(valores, 'aye', '2026-11-09'), 0);
 });
 
-test('Motos Agencia: solo Mi Gusto – Munro; dueños con historial, gerentes de Munro cargan la semana', () => {
+test('Motos Agencia: solo Mi Gusto – Munro; dueños con importes, gerentes de Munro cargan la semana y ven el historial', () => {
   const script = file('public/stock/munro-motos.js');
   const app = file('public/stock/app.js');
   assert.match(script, /const TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'/);
@@ -54,7 +54,9 @@ test('Motos Agencia: solo Mi Gusto – Munro; dueños con historial, gerentes de
   assert.match(script, /rol\(\) === 'gerente' && api\.misLocales\(\)\.includes\('munro'\)/);
   assert.match(script, /const esDueno = \(\) => \['creadora','dueno'\]\.includes\(rol\(\)\)/);
   assert.match(script, /esDueno\(\) \|\| semana === semanaActual\(\)/);
-  assert.match(script, /function historialHTML\(\)\{\s*if \(!esDueno\(\)\) return ''/);
+  assert.match(script, /function historialHTML\(\)\{\s*if \(!permitido\(\)\) return '';\s*const dueno = esDueno\(\);/);
+  assert.match(script, /\(dueno \? '<th>Total pago<\/th>' : ''\)/);
+  assert.match(script, /\(dueno && api\.canW\(\) \? '<button class="mo-pill" data-mo-act="tarifas"/);
   assert.match(script, /function tarifasForm\(\)\{\s*if \(!esDueno\(\) \|\| !api\.canW\(\) \|\| !tarifasAbiertas\) return ''/);
   for (const nombre of ['Lucas', 'Alex', 'Aye']) assert.ok(script.includes("nombre:'" + nombre + "'"));
   assert.doesNotMatch(script, /C\('(productos|conteos|hojas|diario|munro_control)'\)/);
@@ -76,6 +78,13 @@ test('Motos Agencia queda disponible sin conexión y el servidor repite los perm
   assert.match(sql, /id = 'tarifas' and public\.mi_rol\(\) in \('creadora', 'dueno'\)/);
   assert.match(sql, /data->>'semana' = substring\(id from 3 for 10\)/);
   assert.doesNotMatch(sql, /\b(delete from|truncate|update public\.docs)\b/i);
+});
+
+test('Motos Agencia: los gerentes de Munro leen el historial pero no el valor por hora', () => {
+  const sql = file('supabase/migrations/20261102160000_gestlok_munro_motos_historial_gerentes.sql');
+  assert.match(sql, /alter policy gestlok_munro_motos_gerente_read on public\.docs/);
+  assert.match(sql, /public\.mi_rol\(\) not in \('creadora', 'dueno'\)\s+then id <> 'tarifas'/);
+  assert.doesNotMatch(sql, /\b(drop |delete from|truncate|update public\.docs)/i);
 });
 
 test('Motos Agencia: «Modificar» habilita la planilla y «Guardar» envía los cambios; los nombres se editan por tarjeta', () => {

@@ -61,14 +61,14 @@ begin
     perform set_config('role', 'postgres', true);
   end loop;
 
-  -- Lecturas del gerente de Munro: ve la semana en curso, no los valores ni semanas cerradas.
+  -- Lecturas del gerente de Munro: ve la semana en curso y el historial (semanas cerradas), no los valores por hora.
   if gm_id is not null then
     perform set_config('request.jwt.claims', json_build_object('sub', gm_id, 'email', gm_mail, 'role', 'authenticated')::text, true);
     perform set_config('role', 'authenticated', true);
     select count(*) into n from public.docs where col = 'munro/agencia_motos' and id = 'tarifas';
     if n = 0 then r := r || E'\nOK Gerente Munro no lee valores por hora'; else fallas := fallas + 1; r := r || E'\nFALLA Gerente Munro lee valores por hora'; end if;
     select count(*) into n from public.docs where col = 'munro/agencia_motos' and id like 'd-' || vieja || '-%';
-    if n = 0 then r := r || E'\nOK Gerente Munro no lee semanas cerradas'; else fallas := fallas + 1; r := r || E'\nFALLA Gerente Munro lee semanas cerradas'; end if;
+    if n > 0 then r := r || E'\nOK Gerente Munro lee semanas cerradas (historial)'; else fallas := fallas + 1; r := r || E'\nFALLA Gerente Munro no lee semanas cerradas'; end if;
     select count(*) into n from public.docs where col = 'munro/agencia_motos' and id = 'motos';
     if n = 1 then r := r || E'
 OK Gerente Munro lee los nombres'; else fallas := fallas + 1; r := r || E'
