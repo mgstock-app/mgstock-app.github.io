@@ -113,7 +113,7 @@
     const greeting=safeGreeting(current()).replace(/\{nombre\}/g,String(row.customer_name||'').trim());
     return greeting+'\n\n*'+row.code+' — 10% OFF*\n\n*Condiciones de uso:*\n'+
       '- Válido '+couponValidity(row)+', de lunes a jueves.\n'+
-      '- Compra mínima de 6 unidades.\n'+
+      '- Para compras de 6 unidades o más.\n'+
       '- Exclusivo de Mi Gusto '+LOC[local()]+'.\n'+
       '- No acumulable con otras promociones.\n'+
       '- Cupón de un solo uso.\n\n¡Gracias por elegirnos! Esperamos verte pronto.\n\n*Mi Gusto | Empanadas de verdad.*';
@@ -136,7 +136,7 @@
   function couponText(code,valid){
     return 'MI GUSTO · '+LOC[local()]+'\nCUPÓN '+code+' · 10% OFF\n\nCondiciones de uso:\n'+
       '- '+(valid||'Válido del 1 al 12 del mes indicado')+', de lunes a jueves.\n'+
-      '- Compra mínima de 6 unidades.\n'+
+      '- Para compras de 6 unidades o más.\n'+
       '- Exclusivo de Mi Gusto '+LOC[local()]+'.\n'+
       '- No acumulable con otras promociones.\n'+
       '- Cupón de un solo uso.\n\n¡Te esperamos!';
