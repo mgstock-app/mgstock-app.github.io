@@ -104,6 +104,11 @@
     (window.__cajaLlamadas = window.__cajaLlamadas || []).push([fn, me()]);
     const hoy = window.__cajaDia || new Intl.DateTimeFormat('en-CA', {timeZone:'America/Argentina/Buenos_Aires'}).format(new Date());
     if (fn === 'gestlok_caja_acceso') return {data: ok ? {habilitada:true, tenant_id:TEN, hoy} : {habilitada:false}, error:null};
+    // GESTLOK Caja (app completa en /caja/): solo las cuentas de window.__cajaAppHabilitada (como Perfumes en el servidor).
+    if (fn === 'gestlok_caja_app_acceso') {
+      const app = !!a && ['dueno','gerente','editor'].includes(a.rol) && (window.__cajaAppHabilitada || []).includes(me());
+      return {data: app ? {habilitada:true, tenant_id:TEN, url:'/caja/', locales:['Belisa Parfum'], yo:'Camila'} : {habilitada:false}, error:null};
+    }
     if (!ok) return err('Sin permiso para la caja de esta empresa', '42501');
     const st = window.__caja = window.__caja || {turnos:[], auditoria:[]};
     const cerrar = (t, tipo, resp) => {

@@ -141,6 +141,7 @@ tbody tr.clic:hover { background: var(--suave2); }
 .enlaces { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .opcion { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--linea2); border-radius: var(--radio); background: #fff; text-align: left; margin-bottom: 10px; }
 .opcion:hover { background: var(--suave2); }
+a.opcion { text-decoration: none; color: var(--tinta); }
 .opcion small { display: block; color: var(--gris); }
 
 /* ---------- PIN ---------- */

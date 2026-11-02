@@ -174,3 +174,20 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Front:** `public/stock/gestlok-caja-diaria.js`, `app/gestlok-caja-diaria.css`; ganchos opcionales en `gestlok-owner-areas.js` (no dibujan nada sin habilitación del servidor).
 - **Pruebas:** `tests/caja-diaria-empresa.test.mjs` (PGlite), flujo «Caja diaria · PostgreSQL» (`tests/db/`, concurrencia real con sesiones simultáneas), `supabase/tests/caja-diaria-empresa.sql` (base real, se deshace), Cypress `caja-diaria-empresa.cy.js`. En la sesión de Claude hay PostgreSQL 16 local (`/usr/lib/postgresql/16/bin`) y Chrome para probar sin npm.
 - **Publicado 01/11/2026:** PR #206 (`17286c2`), migración aplicada, prueba real 39/39, auditoría de gestlok.com.ar 5/5 con el script de la caja idéntico al commit. PR #201 cerrado (reemplazado). Pendiente: prueba de la dueña en su celular y ver el primer cierre automático.
+
+## 13. GESTLOK Caja (02/11/2026)
+- **Qué es:** la app de caja completa en `public/caja/` (https://gestlok.com.ar/caja/), base en el esquema `caja_app`
+  (código y pruebas en `caja-app/`). Caja inicial, cobros por medio de pago, gastos, ingresos, retiros, arqueo y
+  cierre; PIN por persona; teléfono y PC. Decisión de la usuaria: va bajo la marca y el dominio de GESTLOK (no
+  nombre propio). Los módulos sueltos más económicos (Caja, Empleados, Proveedores y stock) son una idea en estudio.
+- **Perfumes · Belisa Parfum** (tenant `2a97bf8d…`): se apagó la Caja diaria (#200, sin datos) y se habilitó GESTLOK
+  Caja (`supabase/operaciones/gestlok-caja-app-perfumes.sql`). En su inicio de GESTLOK aparece «Abrir GESTLOK Caja»
+  → `/caja/?desde=gestlok&comercio=…&local=…&yo=…` (alta precargada). **Mi Gusto no cambia** (Munro y Torcuato).
+- **Base:** migración `20261102130000_gestlok_caja_app_por_empresa.sql` (tabla `gestlok_caja_private.caja_app_empresas`
+  y RPC `gestlok_caja_app_acceso`, mismo control de acceso que la caja diaria). Pruebas: `tests/fixtures/caja-diaria/caja-app.sql`
+  (flujo «Caja diaria · PostgreSQL»), `tests/caja-diaria-empresa.test.mjs` y Cypress `caja-diaria-empresa.cy.js`.
+- **Sesión aparte:** la caja usa su propia sesión (`storageKey: caja-app-auth`), así un celular del local abierto en
+  la caja no queda con GESTLOK abierto. La primera vez en cada equipo se entra con la misma cuenta.
+- **Supabase:** `caja_app` aplicada en partes (p1…p7). Faltan `caja_app_entrar` y `caja_app_salir`
+  (`caja-app/supabase/pendiente-entrar-salir.sql`): la confirmación de Supabase se cancela sola en la app de la usuaria
+  porque tienen `delete` de sesiones vencidas. No esquivarla: lo aplica ella o se aprueba desde la compu.

@@ -68,6 +68,22 @@
   const esPC = () => S.medio === 'pc';
   const nombreMedio = (m) => (m === 'pc' ? 'PC' : 'teléfono');
 
+  // ---------------- llegada desde GESTLOK ----------------
+  // GESTLOK abre /caja/?desde=gestlok&comercio=…&local=…&yo=… para precargar el alta. Se guarda en la pestaña
+  // para que no se pierda si la persona entra con Google (vuelve a /caja/ sin esos datos).
+  const PRE = (() => {
+    const q = new URLSearchParams(location.search), limpio = (v, n) => String(v || '').trim().slice(0, n);
+    let p = null;
+    if (q.get('desde') === 'gestlok') {
+      p = { comercio: limpio(q.get('comercio'), 80), local: limpio(q.get('local'), 60), yo: limpio(q.get('yo'), 60) };
+      try { sessionStorage.setItem('caja.desde', JSON.stringify(p)); } catch (e) { /* sin almacenamiento */ }
+    } else {
+      try { p = JSON.parse(sessionStorage.getItem('caja.desde') || 'null'); } catch (e) { p = null; }
+    }
+    return p;
+  })();
+  const volverGestlok = (clase) => PRE ? '<a class="' + (clase || 'btn texto chico') + '" href="../">← Volver a GESTLOK</a>' : '';
+
   // ---------------- estado ----------------
   const S = {
     medio: null, user: null, comercios: [], comercio: null, local: null,
@@ -181,7 +197,7 @@
   }
 
   function marca(sub) {
-    return '<div class="marca"><div class="logo">$</div><div><b>Caja</b><small>' + h(sub || 'Control de medios de pago') + '</small></div></div>';
+    return '<div class="marca"><img class="logo" src="../icons/gestlok.svg" alt="" width="36" height="36"><div><b>GESTLOK Caja</b><small>' + h(sub || 'Control de medios de pago') + '</small></div></div>';
   }
 
   // Marco común: en PC barra lateral; en teléfono barra arriba (+ pestañas del panel).
@@ -193,7 +209,7 @@
       (n[0] !== 'caja' && !panelHabilitado() ? '<small>PIN dueño</small>' : '') + '</button>').join('');
     const lateral = '<aside class="lateral">' + marca(S.comercio.nombre) + '<nav aria-label="Secciones">' + nav + '</nav>' +
       '<div class="bloque"><small>Local de este equipo</small><b>' + h(S.local.nombre) + '</b></div>' +
-      '<div class="abajo">' +
+      '<div class="abajo">' + (PRE ? '<div class="bloque">' + volverGestlok() + '</div>' : '') +
       (p ? '<div class="bloque"><small>Cargando como</small><b>' + h(p.nombre) + '</b> · ' + h(ROL[p.rol] || '') +
         '<div class="fila" style="margin-top:8px"><button class="btn chico" data-act="cambiarPersona">Cambiar de persona</button></div></div>' : '') +
       '<div class="bloque"><small>Abierta en ' + nombreMedio(S.medio) + (leer('caja.vista') ? ' (elegido a mano)' : ' (detectado)') + '</small>' +
@@ -214,7 +230,7 @@
     const m = S.acceso;
     let f = '';
     if (m === 'entrar') {
-      f = '<form data-form="entrar"><h1>Entrar</h1><p class="sub" style="margin:6px 0 18px">Con la cuenta del comercio. En el local, la abre el dueño o el encargado una vez y después cada persona entra con su PIN.</p>' +
+      f = '<form data-form="entrar"><h1>Entrar</h1><p class="sub" style="margin:6px 0 18px">Con la cuenta del comercio (la misma de GESTLOK). En el local, la abre el dueño o el encargado una vez y después cada persona entra con su PIN.</p>' +
         '<div class="error"></div>' +
         '<label class="campo"><span>Email</span><input name="email" type="email" autocomplete="username" required></label>' +
         '<label class="campo"><span>Contraseña</span><input name="clave" type="password" autocomplete="current-password" required></label>' +
@@ -235,7 +251,7 @@
     } else {
       f = '<div class="ok-msg">' + h(m) + '</div><button class="btn ancho" data-act="acceso" data-modo="entrar">Volver a entrar</button>';
     }
-    app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() + f + '</div></div>';
+    app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() + f + (PRE ? '<p class="enlaces">' + volverGestlok() + '</p>' : '') + '</div></div>';
   }
   function pantallaNuevaClave() {
     app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() +
@@ -249,13 +265,13 @@
     app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() +
       '<form data-form="crearComercio"><h1>' + (S.comercios.length ? 'Otro comercio' : 'Tu comercio') + '</h1>' +
       '<p class="sub" style="margin:6px 0 18px">Lo podés cambiar después en Configuración.</p><div class="error"></div>' +
-      '<label class="campo"><span>Nombre del comercio</span><input name="nombre" maxlength="80" required placeholder="Ej.: Almacén La Esquina"></label>' +
-      '<label class="campo"><span>Primer local</span><input name="local" maxlength="60" required placeholder="Ej.: Centro"></label>' +
-      '<label class="campo"><span>Tu nombre</span><input name="yo" maxlength="60" required placeholder="Como te van a ver en la caja"></label>' +
+      '<label class="campo"><span>Nombre del comercio</span><input name="nombre" maxlength="80" required placeholder="Ej.: Almacén La Esquina" value="' + h(PRE && !S.comercios.length ? PRE.comercio : '') + '"></label>' +
+      '<label class="campo"><span>Primer local</span><input name="local" maxlength="60" required placeholder="Ej.: Centro" value="' + h(PRE && !S.comercios.length ? PRE.local : '') + '"></label>' +
+      '<label class="campo"><span>Tu nombre</span><input name="yo" maxlength="60" required placeholder="Como te van a ver en la caja" value="' + h(PRE && !S.comercios.length ? PRE.yo : '') + '"></label>' +
       '<div class="dos"><label class="campo"><span>Tu PIN (4 números)</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required></label>' +
       '<label class="campo"><span>Repetí el PIN</span><input name="pin2" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required></label></div>' +
       '<button class="btn prim ancho">Crear y empezar</button></form>' +
-      '<div class="enlaces">' + (S.comercios.length ? '<button class="btn texto" data-act="cancelarCrear">Volver</button>' : '') +
+      '<div class="enlaces">' + volverGestlok() + (S.comercios.length ? '<button class="btn texto" data-act="cancelarCrear">Volver</button>' : '') +
       '<button class="btn texto" data-act="salirCuenta">Cerrar sesión (' + h(S.user.email || '') + ')</button></div></div></div>';
   }
 
@@ -272,7 +288,7 @@
         (S.comercios.length > 1 ? '<button class="btn texto" data-act="elegirComercio" data-id="">← Otro comercio</button>' : '');
     }
     app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() + cuerpo +
-      '<div class="enlaces"><button class="btn texto" data-act="salirCuenta">Cerrar sesión</button></div></div></div>';
+      '<div class="enlaces">' + volverGestlok() + '<button class="btn texto" data-act="salirCuenta">Cerrar sesión</button></div></div></div>';
   }
 
   // ---------------- PIN ----------------
@@ -780,6 +796,7 @@
       items.push('<button class="opcion" data-act="ir" data-vista="historial"><span><b>Historial</b><small>Cierres anteriores y descarga para Excel</small></span><span>›</span></button>');
       items.push('<button class="opcion" data-act="ir" data-vista="config"><span><b>Configuración</b><small>Medios, personas, locales</small></span><span>›</span></button>');
     }
+    if (PRE) items.push('<a class="opcion" href="../"><span><b>Volver a GESTLOK</b><small>El inicio de tu empresa</small></span><span>›</span></a>');
     items.push('<button class="opcion" data-act="menuVista"><span><b>Vista</b><small>' + h(nombreMedio(S.medio)) + (leer('caja.vista') ? ' (elegida a mano)' : ' (detectada sola)') + '</small></span><span>›</span></button>');
     abrirHoja('Menú', items.join(''));
   }

@@ -2,7 +2,7 @@
 // Caja diaria exclusiva por empresa (pedido #200) con datos ficticios: el simulador reemplaza a Supabase.
 // Solo la cuenta de window.__cajaHabilitada (como la empresa habilitada en el servidor) ve la caja.
 const DUENA = 'duena.caja@example.com';
-const iniciar = (email, {habilitada = true, viewport = [390, 844]} = {}) => {
+const iniciar = (email, {habilitada = true, cajaApp = false, viewport = [390, 844]} = {}) => {
   cy.viewport(viewport[0], viewport[1]);
   cy.task('mockSupabase').then((fake) => {
     cy.intercept('GET', '**/vendor/supabase.js', {statusCode: 200, headers: {'content-type': 'application/javascript'}, body: fake}).as('mock');
@@ -15,6 +15,7 @@ const iniciar = (email, {habilitada = true, viewport = [390, 844]} = {}) => {
     if (!w.__rows.some((r) => r.col === 'equipo' && r.id === DUENA))
       w.__rows.push({col: 'equipo', id: DUENA, data: {email: DUENA, rol: 'dueno', nombre: 'Camila'}});
     w.__cajaHabilitada = habilitada ? [DUENA] : [];
+    w.__cajaAppHabilitada = cajaApp ? [DUENA] : [];
   });
   cy.get('#au-email').clear().type(email);
   cy.get('#au-pass').type('secreto1', {log: false});
@@ -131,15 +132,24 @@ describe('GESTLOK · Caja diaria exclusiva de la empresa habilitada', () => {
     cy.window().its('__caja.turnos.0.movimientos').should('have.length', 1);
   });
 
+  it('Perfumes con GESTLOK Caja: en lugar de la caja diaria aparece el acceso a la caja completa', () => {
+    iniciar(DUENA, {habilitada: false, cajaApp: true});
+    cy.get('#hub .gl-caja-entry [data-caja-app]', {timeout: 15000}).should('be.visible')
+      .and('have.attr', 'href').and('match', /^\/caja\/\?desde=gestlok&comercio=Belisa%20Parfum&local=Belisa%20Parfum&yo=Camila$/);
+    cy.get('#hub [data-caja-open]').should('not.exist');
+    cy.get('#hub .gl-caja-entry').should('contain.text', 'GESTLOK CAJA');
+  });
+
   for (const email of ['dueno@example.com', 'gerente.munro@example.com']) {
     it(`${email}: Mi Gusto no ve la caja ni puede usarla`, () => {
       iniciar(email);
       cy.get('#hub, #view', {timeout: 15000}).should('exist');
       cy.wait(1500);
       cy.get('.gl-caja-entry, #gl-caja-panel').should('not.exist');
+      cy.get('[data-caja-app]').should('not.exist');
       cy.window().then(async (w) => {
         // La app solo consultó el permiso; nunca intentó leer ni escribir la caja.
-        expect((w.__cajaLlamadas || []).every(([fn]) => fn === 'gestlok_caja_acceso')).to.equal(true);
+        expect((w.__cajaLlamadas || []).every(([fn]) => ['gestlok_caja_acceso', 'gestlok_caja_app_acceso'].includes(fn))).to.equal(true);
         const {error} = await w.GestLokSupabase.rpc('gestlok_caja_estado');
         expect(error.code).to.equal('42501');
       });

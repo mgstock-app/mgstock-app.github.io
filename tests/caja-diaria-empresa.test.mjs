@@ -92,6 +92,71 @@ test('Pantalla: solo aparece cuando el servidor habilita la empresa de la sesió
   assert.match(ger.mod.homeTile(), /Caja diaria|CAJA DIARIA/);
 });
 
+test('GESTLOK Caja: reemplaza la caja diaria solo donde el servidor la habilita', async () => {
+  // Perfumes: caja diaria apagada y GESTLOK Caja habilitada → acceso a /caja/ con el alta precargada.
+  const calls = [];
+  const app = client({rpc: async name => {
+    calls.push(name);
+    return name === 'gestlok_caja_app_acceso'
+      ? {data: {habilitada: true, tenant_id: PERF, url: '/caja/', locales: ['Belisa Parfum'], yo: 'Camila'}, error: null}
+      : {data: {habilitada: false}, error: null};
+  }});
+  await app.mod.refresh(app.host);
+  assert.deepEqual(calls, ['gestlok_caja_acceso', 'gestlok_caja_app_acceso']);
+  const tile = app.mod.homeTile();
+  assert.match(tile, /GESTLOK CAJA/);
+  assert.match(tile, /href="\/caja\/\?desde=gestlok&amp;comercio=Belisa%20Parfum&amp;local=Belisa%20Parfum&amp;yo=Camila"/);
+  assert.doesNotMatch(tile, /data-caja-open/, 'No muestra la caja diaria');
+  assert(app.mod.appPermitida());
+  assert(!app.mod.permitido());
+  await app.mod.refresh(app.host);
+  assert.equal(calls.length, 2, 'No repite las consultas para la misma empresa y rol');
+
+  // Si la empresa sigue con la caja diaria, no se pregunta por GESTLOK Caja.
+  const diaria = [];
+  const d = client({rpc: async name => { diaria.push(name); return {data: {habilitada: true, tenant_id: PERF}, error: null}; }});
+  await d.mod.refresh(d.host);
+  assert.deepEqual(diaria, ['gestlok_caja_acceso']);
+  assert.match(d.mod.homeTile(), /data-caja-open/);
+
+  // Mi Gusto (ambas dicen que no), otra empresa en la respuesta, errores y roles sin caja: nada visible.
+  const mg = client({tenant: MG});
+  await mg.mod.refresh(mg.host);
+  assert.equal(mg.mod.homeTile(), '');
+  const otra = client({rpc: async name => ({data: name === 'gestlok_caja_app_acceso' ? {habilitada: true, tenant_id: MG} : {habilitada: false}, error: null})});
+  await otra.mod.refresh(otra.host);
+  assert.equal(otra.mod.homeTile(), '');
+  const roto = client({rpc: async name => (name === 'gestlok_caja_app_acceso' ? {data: null, error: {code: '42501', message: 'Sin permiso'}} : {data: {habilitada: false}, error: null})});
+  await roto.mod.refresh(roto.host);
+  assert.equal(roto.mod.homeTile(), '');
+  for (const role of ['lectura', 'colaborador', '']) {
+    const c = client({role, rpc: async () => ({data: {habilitada: true, tenant_id: PERF}, error: null})});
+    await c.mod.refresh(c.host);
+    assert.equal(c.mod.homeTile(), '', role);
+  }
+  // Nombres raros no rompen el enlace.
+  const raro = client({rpc: async name => ({data: name === 'gestlok_caja_app_acceso' ? {habilitada: true, tenant_id: PERF, locales: ['Local "1" & <b>'], yo: 'Ana'} : {habilitada: false}, error: null})});
+  await raro.mod.refresh(raro.host);
+  assert.doesNotMatch(raro.mod.homeTile(), /<b>|"1"/);
+});
+
+test('GESTLOK Caja: migración sin permisos anónimos, sin tocar Mi Gusto y sin habilitar a nadie por sí sola', () => {
+  const sql = read('supabase/migrations/20261102130000_gestlok_caja_app_por_empresa.sql');
+  assert.doesNotMatch(sql, /\bgrant\b[^;]*\bto\s+anon\b/i);
+  assert.match(sql, /revoke all on function public\.gestlok_caja_app_acceso\(\) from public, anon;/);
+  assert.match(sql, /revoke all on table gestlok_caja_private\.caja_app_empresas from public, anon, authenticated;/);
+  assert.doesNotMatch(sql, /^\s*(insert|update|delete)\b/im, 'La migración no cambia datos');
+  assert.doesNotMatch(sql, /(alter|drop)\s+(table|function)\s+(public\.docs|gestlok_caja_private\.empresas|public\.gestlok_caja_(acceso|estado|abrir))/i);
+  assert.doesNotMatch(sql, new RegExp(MG));
+  assert.doesNotMatch(sql, /gestlok_mg_online|mi_gusto/i);
+  for (const fn of sql.match(/create function [\s\S]*?\$\$;/g)) assert.match(fn, /set search_path = ''/, fn.slice(0, 80));
+  const op = read('supabase/operaciones/gestlok-caja-app-perfumes.sql');
+  assert.doesNotMatch(op, /delete|drop|truncate/i, 'La operación no borra nada');
+  assert.doesNotMatch(op, new RegExp(MG));
+  assert.equal((op.match(/2a97bf8d-7d08-4aa7-b051-5d1a4dc80103/g) || []).length >= 2, true);
+  assert.doesNotMatch(sql + op, /camilab\.lopez99|@gmail\.com/i);
+});
+
 test('Importes en formato argentino y fechas sin corrimiento de zona', () => {
   const {mod} = client();
   const p = mod._test.parseMonto;
@@ -138,7 +203,7 @@ test('Vista del día: abierta, cerrada sin reabrir y sin foto', async () => {
 
 test('Conexión con la app sin afectar a otras empresas', () => {
   const runtime = read('components/stock-runtime.tsx'), owner = read('public/stock/gestlok-owner-areas.js');
-  assert.match(runtime, /if \(!visitor\) await load\("\/stock\/gestlok-caja-diaria\.js\?rev=caja-diaria-20261101"\)/);
+  assert.match(runtime, /if \(!visitor\) await load\("\/stock\/gestlok-caja-diaria\.js\?rev=caja-app-20261102"\)/);
   assert.match(owner, /window\.GestLokCajaDiaria\?\.refresh\?\.\(api\)/);
   assert.match(owner, /const caja=window\.GestLokCajaDiaria\?\.homeTile\?\.\(\)\|\|''/);
   assert.match(owner, /'<\/div>'\+caja\+pilot\+futurePrices\+/);

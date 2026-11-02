@@ -5,6 +5,8 @@
 .gl-caja-entry p{margin:0;color:#4b6b5b;font-size:13px;line-height:1.6;max-width:500px}
 .gl-caja-entry>button{flex:none;border:0;border-radius:12px;background:#17603e;color:#fff;font-size:14px;font-weight:750;padding:14px 18px;min-height:48px}
 .gl-caja-entry>button:hover{background:#0f4a2f}
+.gl-caja-entry>a[data-caja-app]{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;background:#17603e;color:#fff;font-size:14px;font-weight:750;padding:14px 18px;min-height:48px;text-decoration:none}
+.gl-caja-entry>a[data-caja-app]:hover{background:#0f4a2f;color:#fff}
 body.gl-caja-open{overflow:hidden}
 #gl-caja-panel{position:fixed;inset:0;z-index:100001;display:flex;justify-content:center;background:#0b2a1d80;color:#17352a;font:400 14px/1.5 Inter,system-ui,sans-serif}
 #gl-caja-panel .gl-caja-shell{height:100%;height:100dvh;width:100%;max-width:980px;background:#f6f9f7;display:flex;flex-direction:column;box-shadow:0 15px 100px #04201433}
