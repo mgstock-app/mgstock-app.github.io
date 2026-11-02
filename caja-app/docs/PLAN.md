@@ -11,8 +11,8 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
 - **Movimientos**: cobro (por medio de pago), gasto (con categoría y de dónde sale la plata), ingreso y **retiro**
   (no es gasto). Cada envío lleva una clave: si se repite, no se duplica.
 - **Corregir/anular** con motivo: nada se borra; queda tachado con quién, cuándo y por qué.
-- **PIN** por persona en celulares compartidos (5 intentos fallidos → 10 minutos bloqueado). Cada movimiento queda
-  a nombre de quien lo cargó. Los cajeros pueden tener tope de gasto.
+- **Sin PIN** (decisión de la usuaria, 02/11): cada persona entra con su propia cuenta. Cada movimiento queda a
+  nombre de quien lo cargó. (El PIN por persona en celulares compartidos quedó descartado.)
 - **Dos formas de cargar ventas**: cobro por cobro, o **totales al cierre** (venta del sistema + otros medios), como la
   planilla de la usuaria. Saldo teórico = caja inicial + ventas en efectivo + ingresos − gastos − retiros (todo en efectivo).
   Diferencia = arqueo − saldo (positivo sobrante, negativo faltante).
@@ -24,13 +24,12 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
 ## Etapas
 1. **Base de datos** — HECHO (02/11). Migración `20261102050000_caja_app_base.sql`; pruebas de reglas, seguridad,
    aislamiento entre comercios, RLS y concurrencia.
-   Aplicada en Supabase el 02/11 en 7 partes (mismo contenido, verificado con huellas). **Faltan
-   `caja_app_entrar` y `caja_app_salir`**: `supabase/pendiente-entrar-salir.sql`, lo aprueba la dueña (la
-   confirmación de Supabase se cancela sola en su app). Sin esas dos no se puede entrar con PIN.
+   Aplicada en Supabase el 02/11 en 7 partes (mismo contenido, verificado con huellas), sin `caja_app_entrar`
+   (PIN). Sin PIN: `20261102170000_caja_app_sin_pin.sql` (aplicada) con `caja_app_entrar_cuenta` y `caja_app_salir`.
 2. **App para teléfono y PC** — HECHO (02/11). `public/caja/` (HTML + CSS + JS sin compilación, cliente de
    Supabase de `/vendor/`, sesión propia `storageKey: caja-app-auth`). Detecta si se abre en teléfono o en PC y
    cambia el armado; la vista se puede fijar a mano por equipo. Acceso con la cuenta (email/contraseña, Google,
-   crear cuenta, recuperar), alta del comercio, elegir local del equipo, PIN, abrir (sugerida / otro monto),
+   crear cuenta, recuperar), alta del comercio, elegir local del equipo, entrada con la cuenta (sin PIN), abrir (sugerida / otro monto),
    cobro/gasto/ingreso/retiro, corregir, anular, cierre en 4 pasos (cobro por cobro o totales al cierre),
    caja cerrada. Recorrido con navegador en CI (trabajo `web`).
 3. **Fotos** — PENDIENTE. Bucket privado de Storage `caja-app-fotos` con políticas por comercio
@@ -38,11 +37,9 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
    migración pueda crear políticas sobre `storage.objects`.
 4. **Panel del dueño** — HECHO lo básico (02/11): Hoy en todos los locales, cierres automáticos sin arqueo
    (arqueo tardío), Historial con descarga para Excel (CSV con `;`), Configuración (comercio, forma de carga, hora,
-   caja inicial habitual, medios, categorías, locales, personas con PIN y tope, este equipo). Falta: fotos y avisos.
-   **Seguridad a mejorar:** el panel se abre en la app con el PIN de un dueño, pero el servidor lo autoriza por la
-   cuenta con la que está abierto el equipo. Si el equipo del local queda con la cuenta del dueño, alguien con
-   conocimientos técnicos podría llamar al panel sin PIN. Solución prevista: cuentas de encargado para los equipos
-   del local (etapa 6) o exigir el token de un PIN de dueño en las funciones del panel (migración nueva).
+   caja inicial habitual, medios, categorías, locales, este equipo). Falta: fotos y avisos.
+   El panel lo ve la cuenta dueña del comercio (sin PIN). Si otra persona carga en la caja, necesita su propia
+   cuenta: falta invitar cuentas de encargado (etapa 6).
 5. **Sin conexión** — PENDIENTE. Cola en el celular (IndexedDB) que reenvía con la misma clave al volver la señal.
 6. **Alta de comercios y venta** — PENDIENTE (decisión de la usuaria): alta abierta o con aprobación, prueba gratis,
    precio, avisos por WhatsApp/email, cuentas de encargado (invitaciones).
