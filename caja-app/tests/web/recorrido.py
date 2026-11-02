@@ -157,6 +157,7 @@ with sync_playwright() as p:
     page.wait_for_selector('h1:has-text("Caja cerrada")')
     expect(page.locator('.caja-dif')).to_contain_text('Faltante')
     expect(page.locator('.tarjeta', has_text='Queda para mañana')).to_contain_text('$ 2.850')
+    expect(page.locator('.renglon', has_text='Saldo teórico')).to_contain_text('$ 5.900')
     foto(page, 'tel-05-cerrada')
     # Menú del teléfono
     page.locator('.quien').click()
@@ -182,11 +183,13 @@ with sync_playwright() as p:
     foto(page, 'pc-01-cerrada')
     page.locator('.lateral nav button', has_text='Hoy en los locales').click()
     page.wait_for_selector('h1:has-text("Hoy en los locales")')
+    expect(page.locator('.panel-grid .tarjeta', has_text='Centro')).to_contain_text('$ 5.900')
     foto(page, 'pc-02-hoy')
     page.locator('.lateral nav button', has_text='Historial').click()
     page.wait_for_selector('table')
     expect(page.locator('tbody tr')).to_have_count(1)
     expect(page.locator('tbody tr')).to_contain_text('−$ 50')
+    expect(page.locator('tbody tr')).to_contain_text('$ 5.900')
     foto(page, 'pc-03-historial')
     page.locator('tbody tr').click()
     expect(hoja(page)).to_contain_text('Faltante')
@@ -194,7 +197,7 @@ with sync_playwright() as p:
     with page.expect_download() as dl:
         page.click('text=Descargar para Excel')
     contenido = open(dl.value.path(), encoding='utf-8-sig').read()
-    assert 'Centro' in contenido and '-50' in contenido, contenido
+    assert 'Centro' in contenido and '-50' in contenido and '"5900"' in contenido, contenido
     # Configuración
     page.locator('.lateral nav button', has_text='Configuración').click()
     page.wait_for_selector('h1:has-text("Configuración")')

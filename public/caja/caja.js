@@ -447,13 +447,14 @@
       renglon('Caja inicial', c.caja_inicial) + renglon(c.modo_carga === 'totales' ? 'Venta total del sistema' : 'Cobrado', t.total_cobrado) +
       renglon('Ventas en efectivo', t.efectivo_ventas) + renglon('Ingresos en efectivo', t.ingresos_efectivo) +
       renglon('Gastos en efectivo', t.gastos_efectivo == null ? null : -t.gastos_efectivo) + renglon('Retiros en efectivo', t.retiros_efectivo == null ? null : -t.retiros_efectivo) +
-      renglon('Saldo teórico', c.saldo_teorico, true) + renglon('Arqueo (contado)', c.arqueo) +
+      renglon('Saldo teórico', saldoDe(c), true) + renglon('Arqueo (contado)', c.arqueo) +
       (c.arqueo != null ? renglon('Retiro al cierre' + (c.retiro_destino ? ' · ' + c.retiro_destino : ''), c.retiro_cierre == null ? null : -c.retiro_cierre) + renglon('Queda para mañana', c.queda_para_manana, true) : '') +
       '</div>' + (c.observacion ? '<p class="sub" style="margin-top:10px">Observación: ' + h(c.observacion) + '</p>' : '') +
       (c.arqueo_tardio ? '<p class="sub" style="margin-top:6px">Arqueo cargado después por ' + h(c.arqueo_por || 'el dueño') + '.</p>' : '') + '</div>' +
       (conLista && c.movimientos ? '<div><p class="titulo-seccion">Movimientos del día</p><div class="tarjeta" style="padding:2px 16px">' + (c.movimientos.length ? c.movimientos.map((m) => filaMov(m, false)).join('') : '<p class="vacio">Sin movimientos.</p>') + '</div></div>' : '') +
       '</div>';
   }
+  const saldoDe = (c) => (c.saldo_teorico != null ? c.saldo_teorico : (c.totales || {}).saldo_teorico);
   function renglon(txt, v, total) { return '<div class="renglon' + (total ? ' total' : '') + '"><span>' + h(txt) + '</span><span class="monto">' + plata(v) + '</span></div>'; }
 
   // ---------------- movimientos ----------------
@@ -647,7 +648,7 @@
       } else if (c) {
         const dd = c.diferencia;
         est = '<span class="estado' + (c.arqueo == null ? ' alerta' : '') + '">' + (c.tipo_cierre === 'automatico' ? 'Se cerró sola' : 'Cerrada') + ' · ' + hora(c.cerrada_at) + '</span>';
-        cuerpo = renglon('Saldo teórico', c.saldo_teorico) + renglon('Arqueo', c.arqueo) +
+        cuerpo = renglon('Saldo teórico', saldoDe(c)) + renglon('Arqueo', c.arqueo) +
           '<div class="renglon total"><span>Diferencia</span><span class="monto ' + (dd == null ? '' : dd < 0 ? 'dif-faltante' : dd > 0 ? 'dif-sobrante' : 'dif-justo') + '">' + (dd == null ? '—' : plata(dd)) + '</span></div>' +
           '<button class="btn chico" data-act="verCaja" data-id="' + h(c.id) + '" style="margin-top:8px">Ver detalle</button>';
       }
@@ -656,7 +657,7 @@
     const pend = d.pendientes.length ? '<p class="titulo-seccion">Para revisar</p>' + d.pendientes.map((p) => '<div class="tarjeta"><div class="fila entre envuelve"><div><b>' + h(p.local) + ' · ' + h(fecha(p.dia, true)) + '</b><p class="sub">Se cerró sola y nadie contó el efectivo.</p></div>' +
       '<button class="btn chico prim" data-act="arqueoTardio" data-id="' + h(p.caja_id) + '">Cargar arqueo</button></div></div>').join('') : '';
     const movs = '<p class="titulo-seccion">Últimos movimientos de hoy</p><div class="tarjeta" style="padding:2px 16px">' +
-      (d.movimientos.length ? d.movimientos.map((m) => { const t = TIPO[m.tipo]; return '<div class="mov' + (m.anulado ? ' anulado' : '') + '"><span class="hora">' + hora(m.registrado_at) + '</span><span class="que"><b>' + h(t.t) + ' · ' + h(m.medio) + '</b><small>' + h([m.local, m.categoria, m.registrado_por].filter(Boolean).join(' · ')) + '</small></span><span class="monto">' + plata(t.s * m.monto) + '</span></div>'; }).join('') : '<p class="vacio">Sin movimientos hoy.</p>') + '</div>';
+      (d.movimientos.length ? d.movimientos.map((m) => { const t = TIPO[m.tipo]; return '<div class="mov' + (m.anulado ? ' anulado' : '') + '"><span class="hora">' + hora(m.registrado_at) + '</span><span class="que"><b>' + h(m.tipo === 'cobro' ? t.t + ' · ' + m.medio : t.t + (m.categoria ? ' · ' + m.categoria : '')) + '</b><small>' + h([m.local, m.tipo === 'cobro' ? '' : m.medio, m.registrado_por].filter(Boolean).join(' · ')) + '</small></span><span class="monto">' + plata(t.s * m.monto) + '</span></div>'; }).join('') : '<p class="vacio">Sin movimientos hoy.</p>') + '</div>';
     return '<div class="encabezado"><div><h1>Hoy en los locales</h1><p class="sub">' + h(fecha(d.hoy, true)) + ' · actualizado ' + hora(d.ahora) + '</p></div><button class="btn chico" data-act="reintentar">Actualizar</button></div>' +
       '<div class="panel-grid">' + cards + '</div>' + pend + movs;
   }
@@ -673,7 +674,7 @@
     else {
       const suma = lista.reduce((a, c) => a + Number(c.diferencia || 0), 0);
       cuerpo = '<div class="tabla-env"><table><thead><tr><th>Día</th><th>Local</th><th class="n">Venta</th><th class="n">Saldo teórico</th><th class="n">Arqueo</th><th class="n">Diferencia</th><th>Cerró</th></tr></thead><tbody>' +
-        lista.map((c) => { const d = c.diferencia; return '<tr class="clic" data-act="verCaja" data-id="' + h(c.id) + '"><td>' + h(fecha(c.dia)) + '</td><td>' + h(c.local) + '</td><td class="n">' + plata((c.totales || {}).total_cobrado) + '</td><td class="n">' + plata(c.saldo_teorico) + '</td><td class="n">' + plata(c.arqueo) + '</td>' +
+        lista.map((c) => { const d = c.diferencia; return '<tr class="clic" data-act="verCaja" data-id="' + h(c.id) + '"><td>' + h(fecha(c.dia)) + '</td><td>' + h(c.local) + '</td><td class="n">' + plata((c.totales || {}).total_cobrado) + '</td><td class="n">' + plata(saldoDe(c)) + '</td><td class="n">' + plata(c.arqueo) + '</td>' +
           '<td class="n ' + (d == null ? '' : d < 0 ? 'dif-faltante' : d > 0 ? 'dif-sobrante' : 'dif-justo') + '">' + (d == null ? 'Sin arqueo' : plata(d)) + '</td><td>' + h(c.tipo_cierre === 'automatico' ? 'Automático' : (c.cerrada_por || '')) + '</td></tr>'; }).join('') +
         '</tbody></table></div><p class="sub" style="margin-top:10px">' + lista.length + ' cierres · diferencia acumulada <b class="' + (suma < 0 ? 'dif-faltante' : suma > 0 ? 'dif-sobrante' : '') + '">' + plata(redondo(suma)) + '</b></p>';
     }
@@ -684,7 +685,7 @@
     const n = (v) => (v == null || v === '' ? '' : String(v).replace('.', ','));
     const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     const filas = [['Día', 'Local', 'Forma de carga', 'Caja inicial', 'Venta / cobrado', 'Ventas en efectivo', 'Ingresos efectivo', 'Gastos efectivo', 'Retiros efectivo', 'Saldo teórico', 'Arqueo', 'Diferencia', 'Retiro al cierre', 'Destino', 'Queda para mañana', 'Cerró', 'Tipo de cierre', 'Observación']];
-    lista.forEach((c) => { const t = c.totales || {}; filas.push([c.dia, c.local, c.modo_carga === 'totales' ? 'Totales al cierre' : 'Cobro por cobro', n(c.caja_inicial), n(t.total_cobrado), n(t.efectivo_ventas), n(t.ingresos_efectivo), n(t.gastos_efectivo), n(t.retiros_efectivo), n(c.saldo_teorico), n(c.arqueo), n(c.diferencia), n(c.retiro_cierre), c.retiro_destino || '', n(c.queda_para_manana), c.cerrada_por || '', c.tipo_cierre === 'automatico' ? 'Automático' : 'Manual', c.observacion || '']); });
+    lista.forEach((c) => { const t = c.totales || {}; filas.push([c.dia, c.local, c.modo_carga === 'totales' ? 'Totales al cierre' : 'Cobro por cobro', n(c.caja_inicial), n(t.total_cobrado), n(t.efectivo_ventas), n(t.ingresos_efectivo), n(t.gastos_efectivo), n(t.retiros_efectivo), n(saldoDe(c)), n(c.arqueo), n(c.diferencia), n(c.retiro_cierre), c.retiro_destino || '', n(c.queda_para_manana), c.cerrada_por || '', c.tipo_cierre === 'automatico' ? 'Automático' : 'Manual', c.observacion || '']); });
     const csv = '﻿' + filas.map((f) => f.map(q).join(';')).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
