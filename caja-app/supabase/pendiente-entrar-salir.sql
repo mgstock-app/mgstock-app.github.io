@@ -1,3 +1,6 @@
+-- YA NO HACE FALTA (02/11/2026): la usuaria pidió GESTLOK Caja sin PIN. Lo reemplaza
+-- supabase/migrations/20261102170000_caja_app_sin_pin.sql (caja_app_entrar_cuenta y caja_app_salir sin borrar).
+-- No aplicar. Se deja como registro.
 -- Caja app · las 2 funciones que faltan en Supabase (entrar con PIN y salir).
 -- Mismo contenido que en 20261102050000_caja_app_base.sql. Solo crea estas dos funciones: no borra ni cambia datos.
 -- (Adentro tienen «delete» de sesiones vencidas del PIN; por eso Supabase pide confirmación.)

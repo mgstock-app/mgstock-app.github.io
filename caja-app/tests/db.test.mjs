@@ -22,6 +22,7 @@ function fresh() {
   psql(MAINT(), ['-c', `drop database if exists ${DB} with (force)`, '-c', `create database ${DB}`]);
   psql(DB, ['-f', 'tests/fixtures/base.sql']);
   psql(DB, ['-f', 'supabase/migrations/20261102050000_caja_app_base.sql']);
+  psql(DB, ['-f', 'supabase/migrations/20261102170000_caja_app_sin_pin.sql']);
 }
 function session(q) {
   return new Promise(resolve => {
@@ -55,13 +56,18 @@ test('Caja app en PostgreSQL real', {skip}, async t => {
 
     fresh();
     const alta = JSON.parse(sql(`select prueba.como('duena.a@example.com'); select public.caja_app_crear_comercio('Comercio', 'Centro', 'Sofía', '1234')::text;`).split('\n').at(-1));
-    const tokens = [];
-    for (let i = 0; i < 8; i++) {
-      const r = JSON.parse(sql(`select prueba.como('duena.a@example.com'); select public.caja_app_entrar('${alta.local_id}', '${alta.persona_id}', '1234')::text;`).split('\n').at(-1));
-      tokens.push(r.token);
-    }
-    // Cada ingreso invalida la sesión anterior de la misma persona en la misma cuenta: queda vigente la última.
-    const token = tokens.at(-1);
+    // GESTLOK Caja entra con la cuenta, sin PIN. Varios equipos de la misma cuenta entran a la vez:
+    // todos usan la misma persona (la dueña del alta) y cada uno recibe su propia sesión.
+    await t.test('varios equipos entran a la vez con la misma cuenta: una sola persona', async () => {
+      const res = await together(Array.from({length: 8}, () => asA(`public.caja_app_entrar_cuenta('${alta.local_id}')`)));
+      assert(res.every(r => r.ok), JSON.stringify(res));
+      const vals = res.map(r => JSON.parse(r.value));
+      assert(vals.every(v => v.ok && v.persona.id === alta.persona_id), JSON.stringify(vals));
+      assert.equal(new Set(vals.map(v => v.token)).size, 8);
+      assert.equal(sql(`select count(*) from caja_app.personas where user_id is not null`), '1');
+      assert.equal(sql(`select count(*) from caja_app.personas`), '1');
+    });
+    const token = JSON.parse(sql(`select prueba.como('duena.a@example.com'); select public.caja_app_entrar_cuenta('${alta.local_id}')::text;`).split('\n').at(-1)).token;
 
     await t.test('varios celulares abren a la vez: una sola caja', async () => {
       const res = await together(Array.from({length: 8}, () => asA(`public.caja_app_abrir('${token}', 20000, true)`)));

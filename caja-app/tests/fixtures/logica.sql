@@ -248,4 +248,53 @@ begin
   end;
 end $$;
 
+-- 9) Sin PIN (GESTLOK Caja): cada cuenta entra con su usuario.
+do $$
+declare cb uuid := current_setting('prueba.cb'); percam uuid := current_setting('prueba.percam');
+  centro uuid := current_setting('prueba.centro'); v jsonb; w jsonb; t text; otro uuid; enc uuid;
+begin
+  perform prueba.como('duena.b@example.com');
+  v := public.caja_app_entrar_cuenta(percam);
+  assert (v->>'ok')::boolean and length(v->>'token') = 48, 'Entra con su cuenta, sin PIN';
+  assert v->'persona'->>'id' = current_setting('prueba.cami') and v->'persona'->>'rol' = 'dueno', 'Usa la persona dueña del alta';
+  w := public.caja_app_entrar_cuenta(percam);
+  assert w->'persona'->>'id' = v->'persona'->>'id' and w->>'token' <> v->>'token', 'Misma persona; una sesión por equipo';
+  t := v->>'token';
+  assert public.caja_app_estado(t)->'persona'->>'nombre' = 'Cami', 'Estado con la sesión de la cuenta';
+  perform public.caja_app_salir(t);
+  assert prueba.error_de(format('select public.caja_app_estado(%L)', t)) like '42501%Volvé a entrar%', 'Salir vence esa sesión (sin hablar de PIN)';
+  assert prueba.error_de(format('select public.caja_app_estado(%L)', w->>'token')) is null, 'Salir en un equipo no cierra el otro';
+  assert prueba.error_de(format('select public.caja_app_entrar_cuenta(%L)', centro)) like '42501%', 'No entra a un local ajeno';
+  perform prueba.como('intruso@example.com');
+  assert prueba.error_de(format('select public.caja_app_entrar_cuenta(%L)', percam)) like '42501%', 'Cuenta sin acceso no entra';
+  perform prueba.como(null);
+  assert prueba.error_de(format('select public.caja_app_entrar_cuenta(%L)', percam)) like '42501%', 'Sin sesión no entra';
+
+  -- Otra cuenta con acceso al comercio (encargada): recibe su propia persona, sin panel del dueño.
+  perform prueba.como('duena.b@example.com');
+  v := public.caja_app_guardar_persona(cb, null, 'intruso', 'cajero', null, '1111', true, null);
+  v := public.caja_app_guardar_local(cb, null, 'Segundo', true);
+  otro := (select (x->>'id')::uuid from jsonb_array_elements(v->'locales') x where x->>'nombre' = 'Segundo');
+  perform set_config('role', 'postgres', true);
+  insert into caja_app.miembros (comercio_id, user_id, rol) values (cb, 'c1000000-0000-4000-8000-000000000001', 'encargado');
+  perform prueba.como('intruso@example.com');
+  v := public.caja_app_entrar_cuenta(percam);
+  enc := (v->'persona'->>'id')::uuid;
+  assert v->'persona'->>'nombre' = 'intruso 2' and v->'persona'->>'rol' = 'encargado', 'Persona propia con nombre libre y rol de la cuenta';
+  assert (public.caja_app_entrar_cuenta(percam)->'persona'->>'id')::uuid = enc, 'La segunda vez usa la misma persona';
+  assert prueba.error_de(format('select public.caja_app_hoy(%L)', cb)) like '42501%', 'Encargada sin panel del dueño';
+  perform prueba.como('duena.b@example.com');
+  perform public.caja_app_guardar_persona(cb, enc, 'intruso 2', 'encargado', array[otro], null, true, null);
+  perform prueba.como('intruso@example.com');
+  assert prueba.error_de(format('select public.caja_app_entrar_cuenta(%L)', percam)) like '42501%no trabaja%', 'Respeta los locales de la persona';
+  assert (public.caja_app_entrar_cuenta(otro)->'persona'->>'id')::uuid = enc, 'Entra a su local';
+  perform prueba.como('duena.b@example.com');
+  perform public.caja_app_guardar_persona(cb, enc, 'intruso 2', 'encargado', null, null, false, null);
+  perform prueba.como('intruso@example.com');
+  assert prueba.error_de(format('select public.caja_app_entrar_cuenta(%L)', otro)) like '42501%desactivado%', 'Persona desactivada no entra';
+  perform set_config('role', 'postgres', true);
+  assert (select count(*) from caja_app.personas where comercio_id = cb and user_id is not null) = 2, 'Una persona por cuenta';
+  assert (select count(*) from caja_app.auditoria where comercio_id = cb and accion = 'persona_cuenta') = 1, 'Queda auditado';
+end $$;
+
 select 'CAJA APP: OK' as resultado;

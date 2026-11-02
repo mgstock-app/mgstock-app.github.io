@@ -1,7 +1,8 @@
 """Recorrido completo de la caja app en TELÉFONO y en PC contra el servidor de prueba (servidor.py).
 Uso: python3 recorrido.py http://127.0.0.1:8765 carpeta_capturas
-Comprueba: detección del medio, alta, PIN, apertura, cobros/gastos/ingresos/retiros, corregir, anular,
-cierre cobro por cobro, panel del dueño, configuración, tope de gasto, atajos de teclado y cierre con totales (planilla 22/8)."""
+Comprueba: detección del medio, alta, entrada con la cuenta SIN PIN, apertura, cobros/gastos/ingresos/retiros, corregir,
+anular, cierre cobro por cobro, panel del dueño sin PIN, configuración, sesión vencida que se renueva sola, atajos de
+teclado y cierre con totales (planilla 22/8)."""
 import base64
 import json
 import os
@@ -39,7 +40,7 @@ def contexto(p, nav, telefono):
     ctx.add_init_script("if(!localStorage.getItem('caja-app-auth'))localStorage.setItem('caja-app-auth',%s);" % json.dumps(json.dumps(sesion())))
     page = ctx.new_page()
     page.on('pageerror', lambda e: errores.append('pageerror: %s' % e))
-    # Los 4xx esperables (PIN de cajera con tope, validaciones) y las fuentes externas bloqueadas no cuentan: sí cualquier error de JavaScript.
+    # Los 4xx esperables (validaciones, sesión vencida que se renueva sola) y las fuentes externas bloqueadas no cuentan: sí cualquier error de JavaScript.
     page.on('console', lambda m: errores.append('console: %s' % m.text) if m.type == 'error' and not m.text.startswith('Failed to load resource') else None)
     return ctx, page
 
@@ -94,14 +95,15 @@ with sync_playwright() as p:
     expect(page.locator('input[name=local]')).to_have_value('Belisa Parfum')
     expect(page.locator('input[name=yo]')).to_have_value('Camila')
     expect(page.locator('a[href="../"]', has_text='Volver a GESTLOK')).to_be_visible()
+    # Sin PIN: el alta no pide PIN y la caja entra sola con la cuenta.
+    expect(page.locator('input[name=pin]')).to_have_count(0)
     foto(page, 'tel-00-alta')
     page.fill('input[name=nombre]', 'Almacén La Esquina')
     page.fill('input[name=local]', 'Centro')
     page.fill('input[name=yo]', 'Sofía')
-    page.fill('input[name=pin]', '1234')
-    page.fill('input[name=pin2]', '1234')
     page.click('text=Crear y empezar')
     page.wait_for_selector('text=Abrir la caja de hoy')
+    expect(page.locator('.teclado')).to_have_count(0)
     foto(page, 'tel-01-abrir')
     page.click('text=Sí, hay')
     page.wait_for_selector('h1:text-is("Caja de hoy")')
@@ -176,6 +178,9 @@ with sync_playwright() as p:
     page.locator('.quien').click()
     expect(hoja(page)).to_contain_text('Hoy en los locales')
     expect(hoja(page).locator('a.opcion[href="../"]')).to_contain_text('Volver a GESTLOK')
+    expect(hoja(page)).to_contain_text('Cerrar sesión')
+    expect(hoja(page)).not_to_contain_text('Cambiar de persona')
+    expect(hoja(page)).not_to_contain_text('PIN')
     foto(page, 'tel-06-menu')
     hoja(page).locator('.opcion', has_text='Hoy en los locales').click()
     page.wait_for_selector('h1:has-text("Hoy en los locales")')
@@ -185,15 +190,14 @@ with sync_playwright() as p:
     # ================= PC =================
     ctx, page = contexto(p, nav, False)
     page.goto(BASE + '/caja/')
-    page.wait_for_selector('h1:has-text("¿Quién está en la caja?")')
+    # Otro equipo de la misma cuenta: entra directo a la caja, sin elegir persona ni PIN.
+    page.wait_for_selector('h1:has-text("Caja cerrada")')
     assert page.evaluate('document.documentElement.dataset.medio') == 'pc', 'la PC no se detectó'
     expect(page.locator('.lateral')).to_be_visible()
-    foto(page, 'pc-00-pin')
-    page.locator('.persona', has_text='Sofía').click()
-    page.keyboard.type('9999')
-    expect(page.locator('#error-pin')).to_contain_text('PIN incorrecto')
-    page.keyboard.type('1234')
-    page.wait_for_selector('h1:has-text("Caja cerrada")')
+    expect(page.locator('.lateral')).to_contain_text('Cargando como')
+    expect(page.locator('.lateral')).to_contain_text('Sofía')
+    expect(page.locator('.lateral')).not_to_contain_text('PIN')
+    expect(page.locator('.teclado')).to_have_count(0)
     foto(page, 'pc-01-cerrada')
     page.locator('.lateral nav button', has_text='Hoy en los locales').click()
     page.wait_for_selector('h1:has-text("Hoy en los locales")')
@@ -216,15 +220,8 @@ with sync_playwright() as p:
     page.locator('.lateral nav button', has_text='Configuración').click()
     page.wait_for_selector('h1:has-text("Configuración")')
     foto(page, 'pc-04-config')
-    page.locator('[data-act=editarPersona][data-id=""]').click()
-    h = hoja(page)
-    h.locator('input[name=nombre]').fill('Lucía Gómez')
-    h.locator('select[name=rol]').select_option('cajero')
-    h.locator('input[name=pin]').fill('1111')
-    h.locator('input[name=tope]').fill('5.000')
-    h.locator('button.prim').click()
-    esperar_sin_hoja(page)
-    expect(page.locator('.lista li', has_text='Lucía Gómez')).to_contain_text('tope $ 5.000')
+    expect(page.locator('[data-act=editarPersona]')).to_have_count(0)
+    expect(page.locator('.contenido')).not_to_contain_text('PIN')
     page.locator('[data-act=editarLocal][data-id=""]').click()
     hoja(page).locator('input[name=nombre]').fill('Norte')
     hoja(page).locator('button.prim').click()
@@ -250,23 +247,14 @@ with sync_playwright() as p:
     page.locator('select[data-act-change=cambiarLocal]').select_option(label='Norte')
     expect(page.locator('#aviso')).to_contain_text('Norte')
     page.locator('.lateral nav button', has_text='Caja de hoy').click()
-    page.wait_for_selector('h1:has-text("¿Quién está en la caja?")')
-    page.locator('.persona', has_text='Lucía').click()
-    page.keyboard.type('1111')
     page.wait_for_selector('text=Abrir la caja de hoy')
     page.click('text=No, hay otro monto')
     page.fill('#abrir-otro input[name=monto]', '981.200')
     page.keyboard.press('Enter')
     page.wait_for_selector('h1:text-is("Caja de hoy")')
     expect(page.locator('.acciones-caja [data-tipo=cobro]')).to_have_count(0)
-    # Tope de gasto de la cajera (atajo G)
-    mov(page, 'gasto', '890.260', chip='Proveedores', por_atajo='g')
-    expect(hoja(page).locator('.error')).to_contain_text('supera tu límite')
-    page.keyboard.press('Escape')
-    page.locator('.lateral [data-act=cambiarPersona]').click()
-    page.locator('.persona', has_text='Sofía').click()
-    page.keyboard.type('1234')
-    page.wait_for_selector('h1:text-is("Caja de hoy")')
+    # La sesión de caja venció (pasan 14 horas): la app vuelve a entrar sola con la cuenta y guarda igual.
+    page.evaluate("window.__caja.S.op.token = 'vencido'")
     mov(page, 'gasto', '890.260', chip='Proveedores', por_atajo='g')
     esperar_sin_hoja(page)
     mov(page, 'retiro', '36.000', chip='Adelanto a empleado', por_atajo='r')
