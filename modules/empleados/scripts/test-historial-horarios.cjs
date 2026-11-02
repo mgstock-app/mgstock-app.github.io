@@ -5,7 +5,8 @@ const ts = require("typescript");
 const out = ts.transpileModule(fs.readFileSync("utils/schedule-history.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const mod = { exports: {} };
 new Function("module", "exports", out)(mod, mod.exports);
-const { fechaCorta, rangoSemana, celda, estaPagado, pendientes, semanaPagada, scriptParaSheets, COLUMNAS } = mod.exports;
+const { fechaCorta, rangoSemana, celda, estaPagado, pendientes, semanaPagada, scriptParaSheets, COLUMNAS, RESUMEN_COLUMNAS, fechaLarga, rangoLargo,
+  normalizar, nombreMes, mesesDe, mesesDisponibles, buscarSemanas, filasQueCoinciden, apariciones } = mod.exports;
 
 const fila = (colaborador, total) => ({ colaborador, puesto: "", cobra_por: "", trabajado: "", off: "", feriado: "", ausentes: "", vacaciones: "", total, observaciones: "" });
 const s1 = { desde: "2026-10-19", hasta: "2026-10-25", filas: [fila("Juli", "6"), fila("Kati", "43:30")], recibido_at: "2026-10-26T10:00:00Z", actualizaciones: 2, pagos: { Kati: { pagado: true, marcado_at: "x" } } };
@@ -24,13 +25,36 @@ assert.equal(semanaPagada({ ...s1, pagos: { Juli: { pagado: true }, Kati: { paga
 assert.equal(semanaPagada({ ...s1, filas: [] }), false, "Una semana vacía no figura como pagada");
 assert.equal(COLUMNAS.at(-1)[0], "total");
 
+// Copia exacta del Resumen: mismas columnas y títulos, en el mismo orden que la planilla.
+assert.deepEqual(RESUMEN_COLUMNAS.map(([, t]) => t), ["Colaborador", "Puesto", "Cobra por", "Trabajado", "OFF", "Feriado", "Ausentes", "Vacaciones", "Total a liquidar", "Observaciones"]);
+assert.equal(fechaLarga("2026-10-19"), "19/10/2026");
+assert.equal(rangoLargo(s1), "19/10/2026 al 25/10/2026");
+// Búsqueda: por colaborador (sin tildes ni mayúsculas), por fecha, por mes y con filtro de mes.
+const s3 = { desde: "2026-09-28", hasta: "2026-10-04", filas: [fila("Martín", "40:00")], recibido_at: "", actualizaciones: 1, pagos: {} };
+assert.equal(normalizar("  Martín "), "martin");
+assert.equal(nombreMes("2026-10"), "Octubre 2026");
+assert.deepEqual(mesesDe(s3), ["2026-09", "2026-10"], "Una semana entre dos meses figura en los dos");
+assert.deepEqual(mesesDisponibles([s2, s1, s3]), ["2026-11", "2026-10", "2026-09"]);
+const todas = [s2, s1, s3];
+assert.deepEqual(buscarSemanas(todas, "kati", "").map((s) => s.desde), ["2026-10-19"]);
+assert.deepEqual(buscarSemanas(todas, "MARTIN", "").map((s) => s.desde), ["2026-09-28"]);
+assert.deepEqual(buscarSemanas(todas, "19/10", "").map((s) => s.desde), ["2026-10-19"]);
+assert.deepEqual(buscarSemanas(todas, "01/11/2026", "").map((s) => s.desde), ["2026-10-26"]);
+assert.deepEqual(buscarSemanas(todas, "septiembre", "").map((s) => s.desde), ["2026-09-28"]);
+assert.deepEqual(buscarSemanas(todas, "", "2026-10").map((s) => s.desde), ["2026-10-26", "2026-10-19", "2026-09-28"]);
+assert.deepEqual(buscarSemanas(todas, "juli", "2026-11").map((s) => s.desde), ["2026-10-26"]);
+assert.deepEqual(buscarSemanas(todas, "nadie", ""), []);
+assert.deepEqual(filasQueCoinciden(s1, "").map((f) => f.colaborador), [], "Sin texto no resalta a nadie");
+assert.deepEqual(apariciones(todas, "juli").map((a) => a.semana.desde + " " + a.fila.total), ["2026-10-26 7", "2026-10-19 6"]);
+
 const script = scriptParaSheets("abc123", "https://x.supabase.co/", "sb_publishable_k'y");
 assert.match(script, /var GESTLOK_URL = 'https:\/\/x\.supabase\.co';/, "Sin barra final");
 assert.match(script, /var GESTLOK_CODIGO = 'abc123';/);
 assert.match(script, /var GESTLOK_CLAVE = 'sb_publishable_k\\'y';/, "Comillas escapadas");
 assert.match(script, /getSheetByName\('Resumen'\)/);
 assert.match(script, /getRange\('B2'\)[\s\S]*getRange\('D2'\)/, "Semana desde y hasta del Resumen");
-assert.match(script, /getRange\('A5:J14'\)/, "Solo los 10 lugares de colaboradores (debajo hay un HISTORIAL manual)");
+assert.match(script, /getRange\('K5:K64'\)/, "Cuenta los lugares de colaboradores de la plantilla (columna K)");
+assert.match(script, /getRange\('A5:J' \+ \(4 \+ Math\.max\(10, lugares\)\)\)\.getDisplayValues\(\)/, "Copia tal como se ve, desde la fila 5, columnas A a J");
 assert.doesNotMatch(script, /getLastRow/, "No lee hasta la última fila");
 assert.match(script, /\/rest\/v1\/rpc\/rm_horarios_recibir/);
 assert.match(script, /onEdit\(\)\.create\(\)/);

@@ -1,14 +1,21 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck2, CheckCircle2, Circle, Copy, History, KeyRound, Link2 } from "lucide-react";
+import { CheckCircle2, Circle, Copy, History, KeyRound, Link2, Search, X } from "lucide-react";
 import { horariosHistoryApi } from "@/features/schedules/history-api";
 import {
-  COLUMNAS,
+  RESUMEN_COLUMNAS,
+  apariciones,
+  buscarSemanas,
   celda,
   estaPagado,
   fechaHora,
+  fechaLarga,
+  filasQueCoinciden,
+  mesesDisponibles,
+  nombreMes,
+  normalizar,
   pendientes,
-  rangoSemana,
+  rangoLargo,
   scriptParaSheets,
   semanaPagada,
   type HorarioLocal,
@@ -30,8 +37,11 @@ export function ScheduleHistory() {
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState("");
-  const [verTodas, setVerTodas] = useState(false);
   const [codigo, setCodigo] = useState("");
+  // Búsqueda del historial: texto (colaborador, fecha o mes), mes y semana elegida.
+  const [texto, setTexto] = useState("");
+  const [mes, setMes] = useState("");
+  const [elegida, setElegida] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -71,12 +81,26 @@ export function ScheduleHistory() {
   }, [localId]);
 
   const local = useMemo(() => locales?.find((l) => l.local_id === localId) ?? null, [locales, localId]);
+  // «Pago» y «por pagar» son un control interno del dueño (y la creadora): los gerentes no los ven.
+  const admin = local?.puede_administrar === true;
   const porPagar = useMemo(() => pendientes(semanas ?? []), [semanas]);
+  const meses = useMemo(() => mesesDisponibles(semanas ?? []), [semanas]);
+  const filtradas = useMemo(() => buscarSemanas(semanas ?? [], texto, mes), [semanas, texto, mes]);
+  const persona = useMemo(
+    () => (normalizar(texto) ? apariciones(filtradas, texto) : []),
+    [filtradas, texto],
+  );
+  // La semana que se muestra: la elegida si sigue en la búsqueda; si no, la más nueva que coincide.
+  const semana = useMemo(() => filtradas.find((s) => s.desde === elegida) ?? filtradas[0] ?? null, [filtradas, elegida]);
+  const resaltadas = useMemo(
+    () => new Set(semana ? filasQueCoinciden(semana, texto).map((f) => f.colaborador) : []),
+    [semana, texto],
+  );
   const script = useMemo(() => (codigo ? scriptParaSheets(codigo, SUPABASE_URL, SUPABASE_KEY) : ""), [codigo]);
 
   async function marcar(semana: HorarioSemana, nombre: string, pagado: boolean) {
     if (!local) return;
-    if (!pagado && !window.confirm(`¿Volver a dejar pendiente a ${nombre} en la semana del ${rangoSemana(semana)}?`)) return;
+    if (!pagado && !window.confirm(`¿Volver a dejar pendiente a ${nombre} en la semana del ${rangoLargo(semana)}?`)) return;
     setOcupado(semana.desde + "|" + nombre);
     setError("");
     try {
@@ -87,7 +111,7 @@ export function ScheduleHistory() {
           ? prev.map((s) => (s.desde === semana.desde ? { ...s, pagos: { ...s.pagos, [nombre]: { pagado, marcado_at } } } : s))
           : prev,
       );
-      setAviso(pagado ? `${nombre}: semana del ${rangoSemana(semana)} pagada.` : `${nombre} quedó pendiente.`);
+      setAviso(pagado ? `${nombre}: semana del ${rangoLargo(semana)} pagada.` : `${nombre} quedó pendiente.`);
     } catch (e) {
       setError(mensaje(e, "No se pudo guardar el pago."));
     } finally {
@@ -120,10 +144,9 @@ export function ScheduleHistory() {
     }
   }
 
+  // Solo para el dueño y la creadora (admin).
   function pago(semana: HorarioSemana, nombre: string) {
     const pagado = estaPagado(semana, nombre);
-    if (!local?.puede_administrar)
-      return <span className={pagado ? styles.chipOk : styles.chipPend}>{pagado ? "Pagado" : "Pendiente"}</span>;
     return (
       <button
         type="button"
@@ -147,20 +170,16 @@ export function ScheduleHistory() {
       </section>
     );
 
-  const lista = semanas ? (verTodas ? semanas : semanas.slice(0, 6)) : [];
-  const tabs: Array<[Tab, string]> = [
-    ["semanas", `Semanas${semanas ? ` (${semanas.length})` : ""}`],
-    ["pendientes", `Pendientes de pago (${porPagar.length})`],
-  ];
-  if (local?.puede_administrar) tabs.push(["conexion", "Conexión con Google Sheets"]);
+  const tabs: Array<[Tab, string]> = [["semanas", `Semanas${semanas ? ` (${semanas.length})` : ""}`]];
+  if (admin) tabs.push(["pendientes", `Pendientes de pago (${porPagar.length})`], ["conexion", "Conexión con Google Sheets"]);
 
   return (
     <section className={styles.page}>
       <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS · HORARIOS</span>
       <h1 className={styles.title}><History size={26} aria-hidden="true" /> Historial horarios</h1>
       <p className={styles.lead}>
-        Una copia por semana de la planilla de Google Sheets del local. Cada lunes podés cargar la semana nueva en la planilla:
-        la anterior queda guardada acá hasta que la pagues.
+        Copia exacta de la pestaña «Resumen» de la planilla de Google Sheets del local, una por semana. Cada lunes podés
+        cargar la semana nueva en la planilla: la anterior queda guardada acá. Buscá por colaborador, fecha o mes.
       </p>
       {locales.length > 1 && (
         <label className={styles.localSelect}>
@@ -190,13 +209,15 @@ export function ScheduleHistory() {
               : "la planilla todavía no está conectada"}
         </p>
       )}
-      <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
-        {tabs.map(([id, texto]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
-            {texto}
-          </button>
-        ))}
-      </div>
+      {tabs.length > 1 && (
+        <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
+          {tabs.map(([id, texto]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
+              {texto}
+            </button>
+          ))}
+        </div>
+      )}
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {aviso && <p role="status" className={styles.aviso}>{aviso}</p>}
 
@@ -209,58 +230,170 @@ export function ScheduleHistory() {
           </p>
         ) : (
           <>
-            {lista.map((semana) => {
-              const faltan = semana.filas.filter((f) => !estaPagado(semana, f.colaborador)).length;
-              return (
-                <article key={semana.desde} className={styles.semana}>
-                  <header>
-                    <div>
-                      <h2><CalendarCheck2 size={19} aria-hidden="true" /> Semana del {rangoSemana(semana)}</h2>
-                      <small>Última actualización {fechaHora(semana.recibido_at)}</small>
-                    </div>
-                    <span className={semanaPagada(semana) ? styles.chipOk : styles.chipPend}>
-                      {semanaPagada(semana) ? "Todo pagado" : `${faltan} por pagar`}
-                    </span>
-                  </header>
-                  <div className={styles.tabla}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Colaborador</th>
-                          {COLUMNAS.map(([clave, titulo]) => (
-                            <th key={clave}>{titulo}</th>
-                          ))}
-                          <th>Pago</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {semana.filas.map((fila) => (
-                          <tr key={fila.colaborador}>
-                            <td>
-                              <b>{fila.colaborador}</b>
-                              {fila.observaciones && <small>{fila.observaciones}</small>}
-                            </td>
-                            {COLUMNAS.map(([clave]) => (
-                              <td key={clave} className={clave === "total" ? styles.total : undefined}>{celda(fila[clave])}</td>
+            <div className={styles.buscador}>
+              <label className={styles.buscar}>
+                <Search size={17} aria-hidden="true" />
+                <span className={styles.oculto}>Buscar en el historial</span>
+                <input
+                  type="search"
+                  value={texto}
+                  placeholder="Buscar colaborador o fecha (ej.: Kati, 19/10, octubre)"
+                  onChange={(event) => setTexto(event.target.value)}
+                />
+                {texto && (
+                  <button type="button" className={styles.limpiar} aria-label="Borrar búsqueda" onClick={() => setTexto("")}>
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                )}
+              </label>
+              <label className={styles.mes}>
+                <span className={styles.oculto}>Mes</span>
+                <select value={mes} onChange={(event) => setMes(event.target.value)}>
+                  <option value="">Todos los meses</option>
+                  {meses.map((m) => (
+                    <option key={m} value={m}>{nombreMes(m)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className={styles.cuenta} role="status">
+              {filtradas.length === semanas.length
+                ? `${semanas.length} ${semanas.length === 1 ? "semana guardada" : "semanas guardadas"}`
+                : `${filtradas.length} de ${semanas.length} semanas`}
+            </p>
+
+            {!filtradas.length ? (
+              <p className={styles.empty}>No hay semanas que coincidan con la búsqueda.</p>
+            ) : (
+              <div className={styles.historial}>
+                <nav className={styles.indice} aria-label="Semanas guardadas">
+                  {filtradas.map((s) => {
+                    const faltan = s.filas.filter((f) => !estaPagado(s, f.colaborador)).length;
+                    return (
+                      <button
+                        key={s.desde}
+                        type="button"
+                        aria-current={semana?.desde === s.desde ? "true" : undefined}
+                        onClick={() => setElegida(s.desde)}
+                      >
+                        <b>{rangoLargo(s)}</b>
+                        <small>
+                          {s.filas.length} colaboradores
+                          {admin && (
+                            <>
+                              {" · "}
+                              <span className={semanaPagada(s) ? styles.okTexto : styles.pendTexto}>
+                                {semanaPagada(s) ? "todo pagado" : `${faltan} por pagar`}
+                              </span>
+                            </>
+                          )}
+                        </small>
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                <div className={styles.detalle}>
+                  {persona.length > 0 && (
+                    <section className={styles.persona} aria-label="Resultados por colaborador">
+                      <h2>
+                        «{texto.trim()}» en {new Set(persona.map((x) => x.semana.desde)).size}{" "}
+                        {new Set(persona.map((x) => x.semana.desde)).size === 1 ? "semana" : "semanas"}
+                      </h2>
+                      <div className={styles.tabla}>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Colaborador</th>
+                              <th>Semana</th>
+                              <th>Trabajado</th>
+                              <th>OFF</th>
+                              <th>Total a liquidar</th>
+                              {admin && <th>Pago</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {persona.map(({ semana: s, fila }) => (
+                              <tr key={s.desde + "|" + fila.colaborador}>
+                                <td><b>{fila.colaborador}</b></td>
+                                <td>
+                                  <button type="button" className={styles.linkSemana} onClick={() => setElegida(s.desde)}>
+                                    {rangoLargo(s)}
+                                  </button>
+                                </td>
+                                <td>{celda(fila.trabajado)}</td>
+                                <td>{celda(fila.off)}</td>
+                                <td className={styles.total}>{celda(fila.total)}</td>
+                                {admin && <td>{pago(s, fila.colaborador)}</td>}
+                              </tr>
                             ))}
-                            <td>{pago(semana, fila.colaborador)}</td>
-                          </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  )}
+
+                  {semana && (
+                    <article className={styles.resumen} aria-label={`Resumen de la semana del ${rangoLargo(semana)}`}>
+                      {/* Copia exacta de la pestaña «Resumen» de la planilla. Los pagos van aparte, debajo. */}
+                      <div className={styles.rTitulo}>Resumen de la semana</div>
+                      <div className={styles.rSemana}>
+                        <span>Semana</span>
+                        <b>{fechaLarga(semana.desde)}</b>
+                        <span>al</span>
+                        <b>{fechaLarga(semana.hasta)}</b>
+                      </div>
+                      <div className={styles.tabla}>
+                        <table className={styles.rTabla}>
+                          <thead>
+                            <tr>
+                              {RESUMEN_COLUMNAS.map(([clave, titulo]) => (
+                                <th key={clave}>{titulo}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {semana.filas.map((fila) => (
+                              <tr key={fila.colaborador} className={resaltadas.has(fila.colaborador) ? styles.rResaltada : undefined}>
+                                {RESUMEN_COLUMNAS.map(([clave]) => (
+                                  <td key={clave}>{fila[clave]}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className={styles.rPie}>
+                        <span className={styles.deslizar}>Deslizá la tabla para ver todas las columnas · </span>
+                        Copia guardada de la planilla · última actualización {fechaHora(semana.recibido_at)}
+                        {semana.actualizaciones > 1 ? ` · ${semana.actualizaciones} versiones` : ""}
+                      </p>
+                    </article>
+                  )}
+
+                  {admin && semana && semana.filas.length > 0 && (
+                    <section className={styles.pagos} aria-label={`Pagos de la semana del ${rangoLargo(semana)}`}>
+                      <h2>Pagos de la semana del {rangoLargo(semana)}</h2>
+                      <ul>
+                        {semana.filas.map((fila) => (
+                          <li key={fila.colaborador} className={resaltadas.has(fila.colaborador) ? styles.pagoResaltado : undefined}>
+                            <span>
+                              <b>{fila.colaborador}</b>
+                              <small>Total a liquidar {celda(fila.total)}</small>
+                            </span>
+                            {pago(semana, fila.colaborador)}
+                          </li>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
-              );
-            })}
-            {semanas.length > 6 && (
-              <button type="button" className={styles.verMas} onClick={() => setVerTodas(!verTodas)}>
-                {verTodas ? "Ver menos" : `Ver las ${semanas.length - 6} semanas anteriores`}
-              </button>
+                      </ul>
+                    </section>
+                  )}
+                </div>
+              </div>
             )}
           </>
         ))}
 
-      {tab === "pendientes" &&
+      {tab === "pendientes" && admin &&
         (!porPagar.length ? (
           <p className={styles.empty}>No hay pagos pendientes.</p>
         ) : (
@@ -278,7 +411,7 @@ export function ScheduleHistory() {
               <tbody>
                 {porPagar.map(({ semana, fila }) => (
                   <tr key={semana.desde + "|" + fila.colaborador}>
-                    <td>{rangoSemana(semana)}</td>
+                    <td>{rangoLargo(semana)}</td>
                     <td><b>{fila.colaborador}</b></td>
                     <td>{celda(fila.cobra_por)}</td>
                     <td className={styles.total}>{celda(fila.total)}</td>
