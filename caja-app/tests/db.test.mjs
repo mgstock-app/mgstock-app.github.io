@@ -1,6 +1,6 @@
 // Caja app sobre PostgreSQL real: reglas y seguridad (fixtures/logica.sql) y CONCURRENCIA con varias
 // sesiones a la vez (como varios celulares). Necesita psql y CAJA_PG_URL, por ejemplo
-//   CAJA_PG_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres node --test caja-app/tests/
+//   CAJA_PG_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres node --test caja-app/tests/*.test.mjs*.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn, spawnSync} from 'node:child_process';

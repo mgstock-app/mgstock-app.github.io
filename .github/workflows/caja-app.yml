@@ -34,4 +34,4 @@ jobs:
       - name: Base de datos (reglas, seguridad y concurrencia)
         env:
           CAJA_PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-        run: node --test caja-app/tests/
+        run: node --test caja-app/tests/*.test.mjs

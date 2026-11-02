@@ -16,6 +16,6 @@ ingresos, retiros, fotos antes del cierre y arqueo. **No factura ni es un sistem
 
 ## Probar
 ```
-CAJA_PG_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres node --test caja-app/tests/
+CAJA_PG_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres node --test caja-app/tests/*.test.mjs
 ```
 En GitHub corre solo el flujo «Caja app · pruebas».
