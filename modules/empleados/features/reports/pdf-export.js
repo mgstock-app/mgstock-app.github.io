@@ -92,10 +92,8 @@ ctx.crearPdf = function (h, nombreColab, lienzo) {
     T("IMPORTE", xI, y + 5.8, { align: "right" });
     y += fh;
     var i = 0;
-    ctx.ITEMS.forEach(function (it0) {
-        if (!ctx.activo(h, it0))
-            return;
-        var it = ctx.defItem(h, it0), v = (h.items && h.items[it.k]) || {}, t = tar[it.k];
+    ctx.filasDe(h).forEach(function (fila) {
+        var it = fila.it, v = fila.v, t = fila.cat ? null : tar[it.k];
         if (i % 2 === 1) {
             doc.setFillColor.apply(doc, zebra);
             doc.rect(M, y, A, fh, "F");

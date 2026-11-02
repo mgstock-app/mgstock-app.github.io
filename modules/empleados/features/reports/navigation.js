@@ -321,7 +321,7 @@ ctx.pintarPersonas = function () {
     }
 };
 return () => {
-ctx.S = { db: null, downloads: null, orden: [], srv: {}, pantalla: "inicio", local: "dt", carpeta: "resumen", activo: null, ultimo: {},
+ctx.S = { db: null, downloads: null, orden: [], srv: {}, cfgLiq: {}, pantalla: "inicio", local: "dt", carpeta: "resumen", activo: null, ultimo: {},
     editando: false, borrador: null, hist: [], unsubHist: null, cargado: false, soloLectura: false, esDuena: true, tema: { tono: "marino", modo: "auto" }, guardando: false };
 ctx.errores = {};
 try {

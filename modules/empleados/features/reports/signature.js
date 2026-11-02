@@ -223,6 +223,7 @@ ctx.pintarValores = function () {
     ["bPagoTr", "bPagoEf", "fNombre", "fTel", "fAlias", "fMes", "fAnio", "fSemana", "fPuesto", "bPorHoras", "bPorTurnos", "fObs"].forEach(function (id) { ctx.$(id).disabled = !ed; });
     ctx.ITEMS.forEach(function (it0) {
         var it = ctx.defItem(h, it0), v = (h.items && h.items[it.k]) || {}, ii = ctx.$("i_" + it.k), on = ctx.activo(h, it0);
+        ctx.$("fila_" + it.k).hidden = !ctx.itemVisible(h, it0);
         if (!it0.opcional)
             ctx.$("lbl_" + it.k).textContent = it.txt;
         if (it.tipo !== "monto") {
@@ -270,6 +271,7 @@ ctx.pintarValores = function () {
             }
         }
     });
+    ctx.pintarCats(h, ed);
     ctx.$("tTotal").textContent = ctx.pesos(ctx.totalDe(h));
     ctx.$("tCantidadTotal").textContent = ctx.cantidadTotalTxt(h);
     var s = ctx.S.srv[ctx.S.activo] || {}, c = s.contacto;

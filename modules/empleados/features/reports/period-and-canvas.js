@@ -46,10 +46,8 @@ ctx.textoDetalle = function (h, nombre) {
         l.push("Período: " + ctx.periodoTxt(h));
     l.push("");
     var tar = ctx.normTarifas(h.tarifas);
-    ctx.ITEMS.forEach(function (it0) {
-        if (!ctx.activo(h, it0))
-            return;
-        var it = ctx.defItem(h, it0), v = (h.items && h.items[it.k]) || {}, t = it.tipo === "monto" ? null : tar[it.k];
+    ctx.filasDe(h).forEach(function (fila) {
+        var it = fila.it, v = fila.v, t = it.tipo === "monto" ? null : tar[it.k];
         if (it.k === "aus" && ctx.ausJustificado(h)) {
             l.push("• " + it.txt + " (justificado): " + ctx.cantTxt(it.tipo, v.c) + " · sin descuento");
             return;
@@ -183,7 +181,7 @@ scope.listen(ctx.$("bLimpiar"), "click", function () {
         var limpiar = function (antes) {
             ctx.$("mSolo").disabled = ctx.$("mGuardar").disabled = true;
             var id = ctx.S.activo, p = antes ? ctx.registrarHistorialDe(id, "Guardado al limpiar") : Promise.resolve();
-            var vacio = ctx.camposPeriodoVacio();
+            var vacio = ctx.camposPeriodoVacio(ctx.S.srv[ctx.S.activo]);
             p.then(function () { var u = ctx.clon(vacio); u.actualizado = new Date().toISOString(); return ctx.S.db.doc("hojas/" + id).update(u); })
                 .then(function () { var h = ctx.S.srv[id]; if (h) {
                 Object.keys(vacio).forEach(function (k) { h[k] = ctx.clon(vacio[k]); });
@@ -245,7 +243,7 @@ scope.listen(ctx.$("bCerrar"), "click", function () {
                     var yaReg = !!(h.ultimaExport && h.ultimaExport >= (h.actualizado || ""));
                     var antes = ctx.tieneDatos(h) && !yaReg ? ctx.registrarHistorialDe(id, "Cierre de período (sin enviar)") : Promise.resolve();
                     return antes.then(function () {
-                        var u = ctx.camposPeriodoVacio();
+                        var u = ctx.camposPeriodoVacio(h);
                         if (preparar)
                             Object.keys(sig.campos).forEach(function (k) { u[k] = sig.campos[k]; });
                         u.actualizado = ahora;
