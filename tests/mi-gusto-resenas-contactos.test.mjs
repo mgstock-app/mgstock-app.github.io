@@ -33,7 +33,7 @@ test('El mensaje de agradecimiento y cupón combina datos correctos sin mezclas 
  const m=widget();
  assert.match(m.view(),/Agradecimiento y cupón/);
  assert.match(m.view(),/Copiar mensaje para Mariana/);
- assert.match(m.view(),/https:\/\/wa.me\/5491122337788/);
+ assert.match(m.view(),/data-gl-rv="whatsapp-message" data-phone="5491122337788"/);
  assert.match(m.view(),/10% OFF · Mi Gusto Munro/);
  assert.match(m.view(),/de lunes a jueves/);
  assert.match(m.view(),/6 unidades o más/);
@@ -55,10 +55,10 @@ test('El mensaje de agradecimiento y cupón combina datos correctos sin mezclas 
  assert.doesNotMatch(one,/\{nombre\}/);
  assert.equal(m.module.messageForCoupon({local:'torcuato',code:'ABC234'}),'');
  assert.equal(m.module.phoneNumber('1122337788'),'5491122337788');
- assert.match(m.module.couponText('ABC234','del 1 al 12 de noviembre 2026'),/Exclusivo para Mi Gusto Munro/);
+ assert.match(m.module.couponText('ABC234','del 1 al 12 de noviembre 2026'),/Exclusivo de Mi Gusto Munro/);
  const torcuato=widget('gerente','torcuato');
  assert.match(torcuato.view(),/10% OFF · Mi Gusto Torcuato/);
- assert.match(torcuato.module.couponText('XYZ999','del 1 al 12 de diciembre 2026'),/Exclusivo para Mi Gusto Torcuato/);
+ assert.match(torcuato.module.couponText('XYZ999','del 1 al 12 de diciembre 2026'),/Exclusivo de Mi Gusto Torcuato/);
  const two=torcuato.module.messageForCoupon({local:'torcuato',customer_name:'Estela',code:'XYZ999',period:'2026-12-01'});
  assert.match(two,/Mi Gusto Torcuato/);
  assert.match(two,/del 1 al 12 de diciembre 2026/);
@@ -87,7 +87,7 @@ test('El portapapeles obtiene el código de la base y no copia cupones usados',a
 test('Los roles sin autorización no acceden al panel de contacto',()=>{
  const m=widget('colaborador');
  assert.doesNotMatch(m.view(),/Mensaje para clientes/);
- assert.doesNotMatch(m.view(),/https:\/\/wa.me/);
+ assert.doesNotMatch(m.view(),/data-gl-rv="whatsapp-message"/);
  assert.equal(m.module.permitted(),false);
 });
 
