@@ -19,11 +19,7 @@
 .gl-gerente__user small{display:block;color:#b3d6e8;font-size:10px;margin-top:5px}
 .gl-gerente__menu{display:none;background:transparent;color:white;border:0;cursor:pointer}
 .gl-gerente__content{padding:clamp(16px,3vw,30px);min-width:0}
-.gl-gerente__google{padding:22px;border-radius:14px;border:1px solid #e2eaf4;background:white}
-.gl-gerente__google h1{display:flex;align-items:center;gap:11px;color:#143b55;font-size:24px}
-.gl-gerente__google p{color:#6d8497;font-size:13px;line-height:1.6;max-width:670px}
-.gl-gerente__google-link{display:inline-flex;align-items:center;gap:10px;background:#11638a;color:white;padding:12px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:12px;margin:10px 0}
-.gl-gerente__google>button{display:block;background:white;color:#32628a;border:1px solid #d5e4ee;border-radius:8px;padding:10px 13px;margin-top:9px;font-size:12px}
+.gl-gerente__horarios{padding:4px 2px}
 .gl-gerente__scrim{display:none}
 @media(max-width:1050px){.gl-gerente__sidebar{width:208px;flex-basis:208px;padding:15px 8px}.gl-gerente__brand strong{font-size:19px}.gl-gerente__brand>span{width:40px;height:40px;font-size:24px}.gl-gerente__sidebar nav button{font-size:11px}}
 @media(max-width:770px){.gl-gerente__sidebar{position:fixed;left:0;top:0;bottom:0;z-index:1015;transform:translateX(-105%);width:258px;transition:transform .18s ease;box-shadow:0 8px 30px #051b3375}.gl-gerente__sidebar.is-open{transform:translateX(0)}.gl-gerente__scrim{display:block;position:fixed;inset:0;z-index:1014;border:0;background:#031a2cab}.gl-gerente__menu{display:grid;place-items:center}.gl-gerente__header{min-height:69px;padding:13px 16px}.gl-gerente__header>div strong{font-size:23px}.gl-gerente__content{padding:14px}}

@@ -6,6 +6,10 @@ function setup(local){
  cy.intercept('**/*.supabase.co/**', req=>{
   if(req.url.includes('/auth/v1/user')){expect(req.headers.authorization).to.eq('Bearer '+token);req.reply(user);return;}
   if(req.url.includes('/rest/v1/rpc/rm_app_me')){expect(req.headers.authorization).to.eq('Bearer '+token);req.reply({...user,user_id:user.id,display_name:'Gerente de prueba',status:'approved',role:null,gestlok_gerente:{local_ids:[local]}});return;}
+  // Horarios en un solo lugar: planilla del local y (solo Munro) historial de semanas, sin pagos para el gerente.
+  if(req.url.includes('/rest/v1/rpc/rm_app_branch_schedule_links')){req.reply([{local_id:local,local_name:local==='dt'?'Torcuato':'Munro',url:'https://docs.google.com/spreadsheets/d/planilla-de-prueba/edit'}]);return;}
+  if(req.url.includes('/rest/v1/rpc/rm_horarios_locales')){req.reply(local==='munro'?[{local_id:'munro',local_name:'Munro',conectado:true,ultimo_envio_at:'2026-11-02T15:19:00Z',codigo_at:null,puede_administrar:false}]:[]);return;}
+  if(req.url.includes('/rest/v1/rpc/rm_horarios_historial')){req.reply([{desde:'2026-10-19',hasta:'2026-10-25',filas:[{colaborador:'Kati',puesto:'Staff',cobra_por:'Horas',trabajado:'39:00',off:'4:30',feriado:'–',ausentes:'–',vacaciones:'–',total:'43:30',observaciones:''}],recibido_at:'2026-11-02T15:06:00Z',actualizaciones:1,pagos:{}}]);return;}
   req.reply({statusCode:200,body:[]});
  });
 }
@@ -31,11 +35,25 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.get('.gl-gerente__sidebar nav button').eq(1)
     .should('contain.text','Horarios').and('be.visible');
   cy.get('.gl-module-dock').should('not.be.visible');
-  // La navegación vigente abre las planillas desde Horarios.
+  // Horarios en un solo lugar: la planilla se abre directo y el historial está debajo (sin pantallas intermedias).
   cy.get('.gl-gerente__sidebar').contains('button','Horarios').click();
-  cy.contains('a','Abrir Google Sheets y horarios').should('be.visible')
-    .and('have.attr','href').and('include','horarios');
-  cy.contains('button','Volver a los legajos').click();
+  cy.get('.horarios-hub h1').should('contain.text','Horarios');
+  cy.contains('Abrir Google Sheets y horarios').should('not.exist');
+  cy.contains('a','Abrir planilla').should('be.visible')
+    .and('have.attr','href','https://docs.google.com/spreadsheets/d/planilla-de-prueba/edit');
+  cy.contains('a','Abrir planilla').should('have.attr','target','_blank');
+  if(local==='munro'){
+   cy.contains('h2','Historial de semanas').should('be.visible');
+   cy.contains('Resumen de la semana').should('be.visible');
+   cy.contains('td','Kati').should('be.visible');
+   // Pagos: control interno del dueño; el gerente no los ve.
+   cy.contains('Pendientes de pago').should('not.exist');
+   cy.contains('por pagar').should('not.exist');
+   cy.contains('Marcar pagado').should('not.exist');
+  } else {
+   cy.contains('Historial de semanas').should('not.exist');
+  }
+  cy.get('.gl-gerente__sidebar').contains('button','Colaboradores').click();
   cy.reload();
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
   cy.contains('Continuar con Google').should('not.exist');

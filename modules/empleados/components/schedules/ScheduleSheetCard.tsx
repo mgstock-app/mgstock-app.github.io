@@ -7,7 +7,7 @@ import { Clock3, CircleHelp, ExternalLink, Link2, Copy, Check, Info, FileText, L
 import { copyBranchScheduleLink } from "@/utils/branch-schedule-links";
 import styles from "./ScheduleSheetCard.module.css";
 
-function SheetsIcon() {
+export function SheetsIcon() {
   return <svg viewBox="0 0 64 80" aria-hidden="true" className={styles.sheetsIcon}>
     <path fill="#0f9d58" d="M8 0h33l23 23v49a8 8 0 0 1-8 8H8a8 8 0 0 1-8-8V8a8 8 0 0 1 8-8Z"/>
     <path fill="#87ceac" d="M41 0v23h23Z"/>

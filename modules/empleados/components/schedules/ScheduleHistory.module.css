@@ -1,5 +1,7 @@
 /* Historial horarios: tarjetas por semana, ordenadas y legibles en teléfono y PC. */
 .page { display: grid; gap: 14px; max-width: 1180px; }
+.pageEmbebida { display: grid; gap: 14px; max-width: 1180px; margin-top: 22px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+.subtitulo { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 21px; color: #14233c; }
 .title { display: flex; align-items: center; gap: 10px; margin: 0; }
 .lead { margin: 0; color: #4b5563; max-width: 760px; line-height: 1.55; }
 .localSelect { display: grid; gap: 6px; max-width: 320px; font-weight: 600; font-size: 14px; }

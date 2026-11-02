@@ -10,27 +10,18 @@ import { useOrganizationData } from "@/hooks/use-organization-data";
 import { selectVisibleCompany } from "@/utils/owner-company";
 import { schedulesApi } from "@/features/schedules/api";
 import { useDisplayName } from "@/components/gestlok/GestlokContext";
-import { BranchScheduleLink } from "./BranchScheduleLink";
-import { HorariosHistoryLink } from "./HorariosHistoryLink";
+import { HorariosHub } from "./HorariosHub";
 import { isGestlokGerente } from "@/utils/permissions";
 import type { Company } from "@/types/access";
 
 // Gerente de GESTLOK: solo las planillas de sus propios locales (el servidor vuelve a comprobarlo).
 function GerenteSchedules() {
   const { user } = useAuth();
-  const locals = user?.gestlok_gerente?.local_ids ?? [];
-  return (
-    <section className="management-page schedules-page">
-      <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS</span>
-      <h1>📁 Horarios</h1>
-      <p>Planilla de turnos de tu local en Google Sheets.</p>
-      <HorariosHistoryLink />
-      {locals.map((id) => <BranchScheduleLink key={id} local={id} />)}
-    </section>
-  );
+  return <HorariosHub locales={user?.gestlok_gerente?.local_ids ?? []} />;
 }
 
-function SchedulesContent() {
+// Horarios en un solo lugar (planilla e historial). Lo usan /horarios y la portada del gerente.
+export function SchedulesContent() {
   const { user: current } = useAuth();
   if (isGestlokGerente(current)) return <GerenteSchedules />;
   return <SchedulesForStaff />;
@@ -64,11 +55,7 @@ function SchedulesForStaff() {
   }, []);
 
   return (
-    <section className="management-page schedules-page">
-      <span className="eyebrow">EMPRESA · SUCURSALES</span>
-      <h1>📁 Horarios</h1>
-      <p>Accedé a las planillas de cada sucursal en Google Sheets.</p>
-      <HorariosHistoryLink />
+    <HorariosHub company={loading ? undefined : selected?.id} lead="Accedé a las planillas de cada sucursal en Google Sheets. Debajo, el historial de semanas.">
       {error && <p role="alert">{error}</p>}
       {loading ? (
         <p role="status">Cargando empresas…</p>
@@ -94,10 +81,9 @@ function SchedulesForStaff() {
               </div>
             </div>
           )}
-          <BranchScheduleLink key={selected.id} company={selected.id} />
         </>
       )}
-    </section>
+    </HorariosHub>
   );
 }
 

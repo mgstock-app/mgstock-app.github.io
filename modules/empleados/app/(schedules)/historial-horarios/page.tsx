@@ -1,13 +1,11 @@
-import { Suspense } from "react";
-import { AccessGate } from "@/components/auth/AccessGate";
-import { ScheduleHistoryWorkspace } from "@/components/schedules/ScheduleHistoryWorkspace";
-// Historial horarios: AccessGate deja pasar a quien usa Horarios; la base decide qué locales ve cada uno.
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+// El historial ahora está dentro de Horarios (un solo lugar). Esta dirección queda para enlaces guardados.
 export default function ScheduleHistoryPage() {
-  return (
-    <Suspense fallback={<p className="empty-state">Comprobando permisos…</p>}>
-      <AccessGate schedules>
-        <ScheduleHistoryWorkspace />
-      </AccessGate>
-    </Suspense>
-  );
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/horarios");
+  }, [router]);
+  return <p className="empty-state">El historial ahora está dentro de Horarios…</p>;
 }

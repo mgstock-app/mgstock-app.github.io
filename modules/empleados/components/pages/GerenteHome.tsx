@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { HorariosHistoryLink } from "@/components/schedules/HorariosHistoryLink";
-import Link from "next/link";
-import { ClipboardList, FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
+import { SchedulesContent } from "@/components/schedules/SchedulesWorkspace";
+import { FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
 import { ManagerPersonalReceipt } from "@/components/reports/ManagerPersonalReceipt";
@@ -71,13 +70,8 @@ export function GerenteHome() {
       <div className="gl-gerente__content">
         {section==="legajos" ? <ManagerLegajos onDirtyChange={setHasDraft}/> : section==="recibo" ?
           (user?.role==="manager" && !user.gestlok_gerente?.local_ids?.length ? <EmployeeReport/> : <ManagerPersonalReceipt/>) :
-          <section className="gl-gerente__google">
-            <h1><FileSpreadsheet size={25}/> Horarios</h1>
-            <p>Las planillas de Google Sheets se encuentran dentro de cada local, bajo su lista de colaboradores. También podés abrir la carpeta de Horarios.</p>
-            <Link href="/horarios" className="gl-gerente__google-link"><ClipboardList size={19}/> Abrir Google Sheets y horarios</Link>
-            <HorariosHistoryLink className="gl-gerente__google-link" />
-            <button type="button" onClick={()=>navigateTo("legajos")}>Volver a los legajos</button>
-          </section>}
+          // Horarios en un solo lugar: planilla del local e historial, sin pantallas intermedias.
+          <div className="gl-gerente__horarios"><Suspense fallback={<p role="status">Cargando Horarios…</p>}><SchedulesContent/></Suspense></div>}
       </div>
     </main>
     <nav className="gl-module-dock" aria-label="Navegación móvil del gerente">

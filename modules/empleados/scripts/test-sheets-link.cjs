@@ -64,7 +64,16 @@ async function main() {
   assert(!company.includes("<BranchScheduleLink"),"Schedule cards must not render directly on the company screen");
   assert(company.includes('href={`/horarios?empresa=${companyId}`}'),"Company Horarios folder must remain linked");
   const schedules = fs.readFileSync(path.join("components","schedules","SchedulesWorkspace.tsx"),"utf8");
-  assert(schedules.includes("<BranchScheduleLink key={selected.id} company={selected.id} />"),"Horarios route should contain the Sheets shortcut");
+  assert(schedules.includes("<HorariosHub company={loading ? undefined : selected?.id}"),"Horarios route should contain the Sheets shortcut");
+  const hub = fs.readFileSync(path.join("components","schedules","HorariosHub.tsx"),"utf8");
+  assert(hub.includes("<BranchScheduleLink key={company} company={company} compact />"),"Horarios shows each branch sheet as one compact row");
+  assert(hub.includes("<ScheduleHistory embebido />"),"El historial de semanas está dentro de Horarios (un solo lugar)");
+  const gerenteHome = fs.readFileSync(path.join("components","pages","GerenteHome.tsx"),"utf8");
+  assert(gerenteHome.includes("<SchedulesContent/>") && !gerenteHome.includes("Abrir Google Sheets y horarios"),"El gerente ve Horarios directo, sin pantalla intermedia");
+  const legajos = fs.readFileSync(path.join("components","legajos","ManagerLegajos.tsx"),"utf8");
+  assert(!legajos.includes("<BranchScheduleLink"),"La planilla se abre solo desde Horarios");
+  const row = fs.readFileSync(path.join("components","schedules","ScheduleSheetRow.tsx"),"utf8");
+  assert(row.includes('target="_blank" rel="noopener noreferrer"') && row.includes("Abrir planilla"),"Abrir planilla en una pestaña nueva y segura");
   assert(!schedules.includes("ScheduleEditor") && !schedules.includes("useSchedule"),
     "Horarios must not render the internal schedule editor or load its saved sessions");
   for (const obsolete of ["Actualizar planilla", "schedule-period", "schedule-start", "schedule-history",

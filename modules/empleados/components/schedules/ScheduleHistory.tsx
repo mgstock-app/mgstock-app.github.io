@@ -29,7 +29,8 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
 const mensaje = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 // Historial horarios: una copia por semana del Resumen del Google Sheets del local, con Pagado / Pendiente.
-export function ScheduleHistory() {
+// embebido: va dentro de Horarios (sin título de página) y no aparece si la persona no ve ningún local con historial.
+export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
   const [locales, setLocales] = useState<HorarioLocal[] | null>(null);
   const [localId, setLocalId] = useState("");
   const [semanas, setSemanas] = useState<HorarioSemana[] | null>(null);
@@ -161,7 +162,8 @@ export function ScheduleHistory() {
     );
   }
 
-  if (locales === null) return <p role="status">Cargando historial de horarios…</p>;
+  if (locales === null) return embebido ? null : <p role="status">Cargando historial de horarios…</p>;
+  if (!locales.length && embebido) return null;
   if (!locales.length)
     return (
       <section className={styles.page}>
@@ -174,12 +176,18 @@ export function ScheduleHistory() {
   if (admin) tabs.push(["pendientes", `Pendientes de pago (${porPagar.length})`], ["conexion", "Conexión con Google Sheets"]);
 
   return (
-    <section className={styles.page}>
-      <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS · HORARIOS</span>
-      <h1 className={styles.title}><History size={26} aria-hidden="true" /> Historial horarios</h1>
+    <section className={embebido ? styles.pageEmbebida : styles.page} aria-label="Historial de semanas">
+      {embebido ? (
+        <h2 className={styles.subtitulo}><History size={21} aria-hidden="true" /> Historial de semanas</h2>
+      ) : (
+        <>
+          <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS · HORARIOS</span>
+          <h1 className={styles.title}><History size={26} aria-hidden="true" /> Historial horarios</h1>
+        </>
+      )}
       <p className={styles.lead}>
-        Copia exacta de la pestaña «Resumen» de la planilla de Google Sheets del local, una por semana. Cada lunes podés
-        cargar la semana nueva en la planilla: la anterior queda guardada acá. Buscá por colaborador, fecha o mes.
+        Copia exacta de la pestaña «Resumen» de la planilla, una por semana. Cada lunes podés cargar la semana nueva en la
+        planilla: la anterior queda guardada acá. Buscá por colaborador, fecha o mes.
       </p>
       {locales.length > 1 && (
         <label className={styles.localSelect}>
