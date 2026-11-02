@@ -164,19 +164,8 @@
 }
 
 /* Acceso a «Historial horarios» desde la carpeta Horarios (solo si la base lo habilita para el local). */
-.schedule-history-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  min-height: 42px;
-  margin: 4px 0 12px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #111827;
-  font-weight: 650;
-  text-decoration: none;
-}
-.schedule-history-link:hover { background: #f9fafb; }
+/* Horarios en un solo lugar: planilla del local arriba, historial de semanas debajo. */
+.horarios-hub { display: grid; gap: 12px; max-width: 1180px; }
+.horarios-hub > h1 { display: flex; align-items: center; gap: 10px; margin: 0; }
+.horarios-hub__lead { margin: 0; color: #4b5563; line-height: 1.55; max-width: 760px; }
+.horarios-sheets { display: grid; gap: 10px; margin-top: 4px; }

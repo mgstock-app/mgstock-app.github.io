@@ -214,4 +214,10 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Pagos solo para el dueño (02/11, pedido de la usuaria):** «Pago», «por pagar» y la pestaña «Pendientes de pago» los
   ven y marcan solo dueño y creadora (control interno). Los gerentes ven la copia del Resumen y el buscador, sin pagos;
   la base ya no les manda los pagos (migración `20261102190000_empleados_historial_horarios_pagos_dueno.sql`, aplicada).
+- **Horarios en un solo lugar (02/11, pedido de la usuaria: «tiene muchas carpetas… mi jefe se va a marear»):**
+  Administración de empleados → Horarios muestra arriba la planilla de cada local en una fila («Abrir planilla»,
+  «Copiar enlace», «Cambiar enlace» que despliega la tarjeta completa) y debajo el historial de semanas (solo donde la
+  base lo habilita). El gerente lo ve directo en su sección Horarios (sin la pantalla intermedia ni «Volver a los
+  legajos»). Se quitaron «Historial horarios» de los menús y la planilla de la lista de colaboradores;
+  `/historial-horarios` redirige a `/horarios`. Componentes: `HorariosHub`, `ScheduleSheetRow`, `ScheduleHistory embebido`.
 - **Motos Agencia para gerentes (02/11/2026, pedido «los historiales deben verlo los gerentes»):** los gerentes de Munro también ven la pestaña Historial y pueden mirar semanas cerradas, en solo lectura y sin importes ni valor por hora. Migración `20261102160000_gestlok_munro_motos_historial_gerentes.sql` (solo `alter policy` de lectura; escritura sin cambios; vuelta atrás en `rollback-…sql.txt`).

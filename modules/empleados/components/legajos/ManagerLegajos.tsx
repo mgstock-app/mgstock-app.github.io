@@ -1,8 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Clock3, ExternalLink, FileText, History, MoreVertical, Plus, UserRoundPlus, RotateCw, Save, Search, Store, UserRoundCheck, UserRoundX, UsersRound, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Clock3, FileText, History, MoreVertical, Plus, UserRoundPlus, RotateCw, Save, Search, Store, UserRoundCheck, UserRoundX, UsersRound, X } from "lucide-react";
 import type { AppLocal } from "@/types/access";
-import { BranchScheduleLink } from "@/components/schedules/BranchScheduleLink";
 import { ManagerStaffInvite } from "@/components/invitations/ManagerStaffInvite";
 import { managerStaffInviteApi } from "@/features/onboarding/api";
 import {
@@ -296,7 +295,6 @@ export function ManagerLegajos({ ownerView = false, localScope, onDirtyChange }:
             <button type="button" className="mlg-view" onClick={()=>open(local,person)}><FileText size={15}/> Ver legajo</button>
             <button type="button" className="mlg-more" aria-label={"Detalle de "+person.fullName} onClick={()=>open(local,person)}><MoreVertical size={17}/></button>
           </article>)}</div></div> : <p className="mlg-empty">{pendingOnly?"No hay legajos pendientes de completar en este local.":search?"Sin resultados con ese nombre.":"Todavía no hay colaboradores registrados en este local."}</p>)}
-          {!ownerView && !closed && <div className="mlg-google"><div><ExternalLink size={19}/><strong>Google Sheets · {localTitle(local)}</strong><span>Horarios y planillas del local</span></div><BranchScheduleLink local={local.id}/></div>}
         </section>;
       })}
     {showInvite && locals.length>0 && <ManagerStaffInvite

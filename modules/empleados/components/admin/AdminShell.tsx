@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, ShieldCheck, Store, CalendarDays, ClipboardList, UserCheck, Search, LogOut, Menu, X, Bell, LockKeyhole, PanelLeftClose, PanelLeftOpen, History } from "lucide-react";
+import { LayoutDashboard, Building2, Users, ShieldCheck, Store, CalendarDays, ClipboardList, UserCheck, Search, LogOut, Menu, X, Bell, LockKeyhole, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import "./admin.css";
 
@@ -13,7 +13,6 @@ const sections = [
   { href: "/personal", label: "Colaboradores", Icon: Users },
   { href: "/personal?seccion=legajos", label: "Legajos", Icon: UserCheck },
   { href: "/horarios", label: "Horarios", Icon: CalendarDays },
-  { href: "/historial-horarios", label: "Historial horarios", Icon: History },
   { href: "/personal?seccion=recibos", label: "Recibos", Icon: ClipboardList },
   { href: "/usuarios", label: "Cuentas y permisos", Icon: Users },
   { href: "/asignaciones", label: "Roles y asignaciones", Icon: ShieldCheck },
