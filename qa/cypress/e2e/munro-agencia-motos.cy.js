@@ -57,6 +57,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('.mo-pend').should('contain.text', 'Planilla guardada');
     cy.get('[data-mo-pago="lucas"]').should('not.exist');
     cy.get('.mo-hist').should('not.exist');
+    cy.get('[data-mo-act="pestana"]').should('not.exist');
     cy.get('[data-mo-act="tarifas"]').should('not.exist');
     cy.get('.mo-nav').should('not.exist');
     lunes().then(s => cy.window().its('__rows').should(rows => {
@@ -96,6 +97,10 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
   it('dueño fija el valor por hora y ve importes, total semanal e historial', () => {
     launch(); login('dueno@example.com'); abrirLocal('munro');
     cy.get('#snav [data-go="motos"]').click();
+    // El historial está en su propia pestaña, arriba de todo.
+    cy.get('.mo-hist').should('not.exist');
+    cy.get('[data-mo-act="pestana"][data-p="historial"]').should('be.visible').click();
+    cy.get('.mo-sheet').should('not.exist');
     cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'Todavía no hay semanas cerradas');
     cy.get('#snav .snav-folder [data-go="diario"]').should('not.exist');
     cy.get('.mo-hist [data-mo-act="tarifas"]').click();
@@ -103,6 +108,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#mo-rates-form').submit();
     cy.get('#mo-rates-form').should('not.exist');
     cy.get('.mo-hist [data-mo-act="tarifas"]').should('have.attr', 'title').and('contain', '$9.500,00');
+    cy.get('[data-mo-act="pestana"][data-p="semana"]').click();
     cy.get('[data-mo-act="modificar"]').click();
     hora('aye', 'tt_e', '19:33'); hora('aye', 'tt_s', '00:00');
     cy.get('[data-mo-act="guardar"]').click();
