@@ -46,8 +46,9 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
 5. **Sin conexión** — PENDIENTE. Cola en el celular (IndexedDB) que reenvía con la misma clave al volver la señal.
 6. **Alta de comercios y venta** — PENDIENTE (decisión de la usuaria): alta abierta o con aprobación, prueba gratis,
    precio, avisos por WhatsApp/email, cuentas de encargado (invitaciones).
-7. **Mudanza** — cuando haya nombre: repositorio propio (agregarlo a la app de Claude en GitHub), dominio, y
-   publicar desde ahí.
+7. **Marca y dominio** — DECIDIDO (02/11): va bajo GESTLOK como «GESTLOK Caja» en `gestlok.com.ar/caja/` (no hace
+   falta repositorio ni dominio propios). Primera empresa: Perfumes · Belisa Parfum (reemplaza su Caja diaria #200).
+   Idea en estudio: vender módulos sueltos más económicos (Caja, Empleados, Proveedores y stock) y GESTLOK completo.
 
 ## Segunda etapa del producto (después de vender)
 Conteo por billetes, pago dividido, vuelto por transferencia, devoluciones, entrega de caja entre turnos,

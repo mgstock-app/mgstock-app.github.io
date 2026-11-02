@@ -10,6 +10,9 @@ import time
 
 from playwright.sync_api import sync_playwright, expect
 
+# Margen para equipos lentos (CI): cada servidor de prueba abre psql por pedido.
+expect.set_options(timeout=10_000)
+
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8765'
 FOTOS = sys.argv[2] if len(sys.argv) > 2 else '/tmp/caja-capturas'
 os.makedirs(FOTOS, exist_ok=True)
@@ -78,9 +81,15 @@ with sync_playwright() as p:
 
     # ================= TELÉFONO =================
     ctx, page = contexto(p, nav, True)
-    page.goto(BASE + '/caja/')
+    # Llega desde el inicio de GESTLOK con el alta precargada.
+    page.goto(BASE + '/caja/?desde=gestlok&comercio=Belisa%20Parfum&local=Belisa%20Parfum&yo=Camila')
     page.wait_for_selector('form[data-form=crearComercio]')
     assert page.evaluate('document.documentElement.dataset.medio') == 'telefono', 'el teléfono no se detectó'
+    expect(page.locator('.marca')).to_contain_text('GESTLOK Caja')
+    expect(page.locator('input[name=nombre]')).to_have_value('Belisa Parfum')
+    expect(page.locator('input[name=local]')).to_have_value('Belisa Parfum')
+    expect(page.locator('input[name=yo]')).to_have_value('Camila')
+    expect(page.locator('a[href="../"]', has_text='Volver a GESTLOK')).to_be_visible()
     foto(page, 'tel-00-alta')
     page.fill('input[name=nombre]', 'Almacén La Esquina')
     page.fill('input[name=local]', 'Centro')
@@ -162,6 +171,7 @@ with sync_playwright() as p:
     # Menú del teléfono
     page.locator('.quien').click()
     expect(hoja(page)).to_contain_text('Hoy en los locales')
+    expect(hoja(page).locator('a.opcion[href="../"]')).to_contain_text('Volver a GESTLOK')
     foto(page, 'tel-06-menu')
     hoja(page).locator('.opcion', has_text='Hoy en los locales').click()
     page.wait_for_selector('h1:has-text("Hoy en los locales")')

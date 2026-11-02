@@ -56,6 +56,7 @@ function fresh() {
   psqlSync(MAINTENANCE(), ['-c', `drop database if exists ${DB} with (force)`, '-c', `create database ${DB}`]);
   psqlSync(DB, ['-f', 'tests/fixtures/caja-diaria/base.sql']);
   psqlSync(DB, ['-f', 'supabase/migrations/20261101190000_gestlok_caja_diaria_empresa.sql']);
+  psqlSync(DB, ['-f', 'supabase/migrations/20261102130000_gestlok_caja_app_por_empresa.sql']);
 }
 
 test('Caja diaria en PostgreSQL real', {skip}, async t => {
@@ -63,6 +64,12 @@ test('Caja diaria en PostgreSQL real', {skip}, async t => {
     await t.test('reglas de negocio y seguridad (cada sentencia en su transacción)', () => {
       fresh();
       assert.match(psqlSync(DB, ['-f', 'tests/fixtures/caja-diaria/logica.sql']), /CAJA DIARIA: OK/);
+    });
+
+    await t.test('GESTLOK Caja por empresa: Perfumes la ve, Mi Gusto y el resto no', () => {
+      fresh();
+      psqlSync(DB, ['-f', 'supabase/operaciones/gestlok-caja-app-perfumes.sql']);
+      assert.match(psqlSync(DB, ['-f', 'tests/fixtures/caja-diaria/caja-app.sql']), /GESTLOK CAJA: OK/);
     });
 
     // Base limpia para la concurrencia, con una segunda empresa habilitada.

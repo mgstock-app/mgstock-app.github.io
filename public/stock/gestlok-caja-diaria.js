@@ -7,7 +7,7 @@
  'use strict';
  const TZ='America/Argentina/Buenos_Aires';
  const ROLES=['dueno','gerente','editor'];
- let host=null,acceso=null,checking=false,checkedKey='';
+ let host=null,acceso=null,cajaApp=null,checking=false,checkedKey='';
  let displayed=false,loading=false,busy=false,error='',aviso='',estado=null,tab='hoy',confirmando=false,editResp=false,detalle=null,op=newOp(),timer=0;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0));
@@ -44,30 +44,46 @@
  const tenant=()=>host?.S?.me?.tenant_id||'';
  const role=()=>host?.role?.()||'';
  function permitido(){return !!acceso&&acceso.tenant===tenant()&&ROLES.includes(role());}
+ // GESTLOK Caja (app completa en /caja/): empresas que la usan en lugar de la caja diaria (Perfumes desde el 02/11/2026).
+ function appPermitida(){return !permitido()&&!!cajaApp&&cajaApp.tenant===tenant()&&ROLES.includes(role());}
  // Consulta liviana al servidor. Para Mi Gusto y el resto devuelve habilitada:false y no se muestra nada.
  async function refresh(h){
   if(h)host=h;
   const key=tenant()+'|'+role();
   if(!tenant()||!ROLES.includes(role())||window.GestLokVisitorDemo?.active){
    checkedKey='';
-   if(acceso){acceso=null;close();host?.render?.();}
+   if(acceso||cajaApp){acceso=null;cajaApp=null;close();host?.render?.();}
    return;
   }
   if(key===checkedKey||checking||host?.S?.offline||!db()?.rpc)return;
   checking=true;
-  let next=null;
+  let next=null,app=null;
   try{
    const {data,error:err}=await db().rpc('gestlok_caja_acceso');
    if(!err&&data?.habilitada===true&&data.tenant_id===tenant())next={tenant:data.tenant_id};
+   // Solo si la empresa no usa la caja diaria se pregunta por GESTLOK Caja (para Mi Gusto ambas dicen que no).
+   if(!next){
+    const r=await db().rpc('gestlok_caja_app_acceso');
+    const d=r?.data;
+    if(!r?.error&&d?.habilitada===true&&d.tenant_id===tenant())
+     app={tenant:d.tenant_id,locales:Array.isArray(d.locales)?d.locales.filter(x=>typeof x==='string'&&x):[],yo:typeof d.yo==='string'?d.yo:''};
+   }
    checkedKey=key;
-  }catch{next=null;}
+  }catch{next=null;app=null;}
   finally{checking=false;}
-  const changed=!!acceso!==!!next;
-  acceso=next;
+  const changed=!!acceso!==!!next||!!cajaApp!==!!app;
+  acceso=next;cajaApp=app;
   if(!acceso)close();
   if(changed)host?.render?.();
  }
  function homeTile(){
+  if(appPermitida()){
+   const loc=cajaApp.locales[0]||'';
+   const q='desde=gestlok'+(loc?'&comercio='+encodeURIComponent(loc)+'&local='+encodeURIComponent(loc):'')+(cajaApp.yo?'&yo='+encodeURIComponent(cajaApp.yo):'');
+   return '<section class="gl-caja-entry gl-caja-app-entry" aria-label="GESTLOK Caja"><div><small>GESTLOK CAJA · SOLO TU EMPRESA</small><h2>Caja del local</h2>'+
+    '<p>Caja inicial, cobros por medio de pago, gastos, ingresos, retiros, arqueo y cierre. Cada persona entra con su PIN. Funciona en el teléfono y en la PC.</p></div>'+
+    '<a href="/caja/?'+esc(q)+'" data-caja-app>Abrir GESTLOK Caja <span aria-hidden="true">→</span></a></section>';
+  }
   if(!permitido())return '';
   return '<section class="gl-caja-entry" aria-label="Caja diaria"><div><small>CAJA DIARIA · SOLO TU EMPRESA</small><h2>Pagos del día</h2>'+
    '<p>Efectivo y transferencia, responsable de caja, «Cerrar día» e historial. Si nadie la cierra, se cierra sola a las 23:59.</p></div>'+
@@ -299,6 +315,6 @@
  });
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){if(confirmando){confirmando=false;render();}else close();}});
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&displayed)void reload(true);});
- window.GestLokCajaDiaria=Object.freeze({refresh,homeTile,open,close,permitido,
-  _test:Object.freeze({parseMonto,fecha,money,newOp,vistaHoy:()=>vistaHoy(),setEstado:v=>{estado=v;},setAcceso:v=>{acceso=v;}})});
+ window.GestLokCajaDiaria=Object.freeze({refresh,homeTile,open,close,permitido,appPermitida,
+  _test:Object.freeze({parseMonto,fecha,money,newOp,vistaHoy:()=>vistaHoy(),setEstado:v=>{estado=v;},setAcceso:v=>{acceso=v;},setCajaApp:v=>{cajaApp=v;}})});
 })();

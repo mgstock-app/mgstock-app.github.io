@@ -1,13 +1,14 @@
-# Caja app (nombre comercial pendiente)
+# GESTLOK Caja
 
 Micro app para que **cualquier comercio controle su caja**: medios de pago, caja inicial, gastos,
 ingresos, retiros, fotos antes del cierre y arqueo. **No factura ni es un sistema de ventas.**
 
-- Es una app **propia, separada de GESTLOK** (plan B del 02/11/2026). Vive en este repositorio solo hasta tener
-  repositorio y dominio propios: no comparte código con GESTLOK.
+- Va **bajo la marca y el dominio de GESTLOK** (decisión del 02/11/2026), con base y código propios (no comparte
+  código con el resto de GESTLOK). Las empresas de GESTLOK la abren desde su inicio si la tienen habilitada
+  (`gestlok_caja_app_acceso`; primera: Perfumes · Belisa Parfum).
 - Base: esquema `caja_app` en el mismo proyecto de Supabase que GESTLOK, sin tocar nada de GESTLOK.
   Multiempresa desde el primer día (cada comercio ve solo lo suyo).
-- App web: **`public/caja/`** → se publica en **https://gestlok.com.ar/caja/** (dirección provisoria).
+- App web: **`public/caja/`** → se publica en **https://gestlok.com.ar/caja/**.
   Una sola app para **teléfono y PC**: detecta desde dónde se abre (`<html data-medio="telefono|pc">`) y cambia
   el armado (teléfono: una columna, botones grandes abajo, hojas desde abajo; PC: menú lateral, dos columnas,
   diálogos y atajos C/G/I/R). La vista se puede fijar a mano por equipo.

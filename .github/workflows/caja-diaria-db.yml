@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/20261101190000_gestlok_caja_diaria_empresa.sql'
+      - 'supabase/migrations/20261102130000_gestlok_caja_app_por_empresa.sql'
+      - 'supabase/operaciones/gestlok-caja-app-perfumes.sql'
       - 'tests/fixtures/caja-diaria/**'
       - 'tests/db/**'
       - '.github/workflows/caja-diaria-db.yml'
@@ -13,6 +15,8 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/20261101190000_gestlok_caja_diaria_empresa.sql'
+      - 'supabase/migrations/20261102130000_gestlok_caja_app_por_empresa.sql'
+      - 'supabase/operaciones/gestlok-caja-app-perfumes.sql'
       - 'tests/fixtures/caja-diaria/**'
       - 'tests/db/**'
       - '.github/workflows/caja-diaria-db.yml'
