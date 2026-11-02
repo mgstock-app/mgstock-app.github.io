@@ -204,3 +204,9 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Pantalla:** `/empleados/historial-horarios` (pestañas Semanas, Pendientes de pago, Conexión). Acceso desde el menú
   de la creadora y del dueño, la carpeta Horarios y la portada del gerente (solo si la base habilita algún local).
 - **Motos Agencia:** el historial ya existía al final de la página; ahora tiene pestaña propia arriba (dueños y creadora).
+- **Copia exacta del Resumen (02/11, pedido de la usuaria):** cada semana se ve igual que la pestaña «Resumen» de
+  «Horarios Munro» (título, «Semana dd/mm/aaaa al dd/mm/aaaa» y las 10 columnas en el mismo orden, valores tal cual).
+  Los pagos van aparte, debajo. Buscador por colaborador (sin tildes), fecha o mes, filtro de mes e índice de semanas;
+  al buscar un nombre se ve esa persona en todas las semanas. `rm_horarios_historial` devuelve hasta 520 semanas
+  (migración `20261102180000_empleados_historial_horarios_largo.sql`, aplicada). El script lee A5:J14 (o más lugares si
+  la columna K «Fila en Semana» los tiene). Primera semana (19/10 al 25/10/2026) copiada a mano desde la planilla.
