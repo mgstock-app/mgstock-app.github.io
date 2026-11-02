@@ -48,7 +48,7 @@ test('El mensaje de agradecimiento y cupón combina datos correctos sin mezclas 
  assert.match(one,/del 1 al 12 de noviembre 2026/);
  assert.match(one,/lunes a jueves/);
  assert.match(one,/6 unidades o más/);
- assert.match(one,/Exclusivo en \*Mi Gusto Munro\*/);
+ assert.match(one,/Exclusivo de Mi Gusto Munro/);
  assert.match(one,/No acumulable/);
  assert.doesNotMatch(one,/g\.page|google\.com\/maps/);
  assert.doesNotMatch(one,/7 unidades o más/);
@@ -123,6 +123,6 @@ test('La integración carga el complemento y lo agrega a la caché PWA',()=>{
  assert.match(read('scripts/sw-template.js'),/'\/stock\/mi-gusto-resenas-contactos\.js'/);
  assert.match(moduleCode,/gestlok_resenas_message_get/);
  assert.match(moduleCode,/gestlok_resenas_message_save/);
- assert.match(moduleCode,/rel="noopener noreferrer"/);
+ assert.match(moduleCode,/noopener,noreferrer/);
  assert.doesNotMatch(moduleCode,/localStorage|sessionStorage/);
 });
