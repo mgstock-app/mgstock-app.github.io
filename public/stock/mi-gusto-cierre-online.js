@@ -155,9 +155,12 @@ function movements(){
 const cameraIcon='<svg class="mg-on-camera" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';
 function photoControl(s){
  if(!s)return '';
- if(s.photo_path)return '<button type="button" class="mg-on-photo-btn" data-mgon-view-photo="'+esc(s.id)+'">'+cameraIcon+' Ver foto del cierre</button>';
- return '<label class="mg-on-photo-upload '+(uploading===s.id?'mg-on-busy':'')+'">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Subir foto')+
-  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>';
+ return '<div class="mg-on-photo-area"><label class="mg-on-photo-upload">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Agregar foto')+
+ '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
+ '<button type="button" data-mgon-view-photo="'+esc(s.id)+'">Ver fotos del turno</button>'+
+ (photoUrls[s.id]?'<div class="mg-on-photo-preview">'+photoUrls[s.id].map((url,i)=>'<img alt="Foto '+(i+1)+' del cierre" src="'+esc(url)+'">').join('')+'</div>':'')+
+ '<label>Observaciones del cierre (opcional)<textarea data-mgon-close-note="'+esc(s.id)+'" maxlength="2000" rows="2" placeholder="Escribí una observación">'+esc(s.cierre_observacion||'')+'</textarea></label>'+
+ '<button type="button" data-mgon-save-note="'+esc(s.id)+'" '+(!writable()?'disabled':'')+'>Guardar observación</button></div>';
 }
 async function compressPhoto(file){
  if(!file||!file.type.startsWith('image/')||file.size>15*1024*1024)throw Error('Elegí una imagen de hasta 15 MB.');
@@ -221,8 +224,9 @@ async function showPhoto(id){
  if(!allowed()||!online())return;
  if(photoUrls[id]){photoUrls[id]=null;api.render();return;}
  try{
-  const data=await photoRequest({action:'get',local:local(),shift_id:id});
-  photoUrls[id]=data.signedUrl;photoError='';api.render();
+  const photos=await rpc('gestlok_mg_online_photo_list',{p_shift:id});
+  const data=await Promise.all(photos.map(p=>photoRequest({action:'get',local:local(),shift_id:id,path:p.path})));
+  photoUrls[id]=data.map(x=>x.signedUrl);photoError='';api.render();
  }catch(e){photoError=e.message||'No se pudo abrir la foto';api.render();}
 }
 function shiftCard(s,turnoHint='tarde'){
@@ -292,7 +296,7 @@ function reportTurn(s,turno){
  (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
  '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
  '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+
- (photoUrls[s.id]?'<div class="mg-on-photo-preview"><img alt="Foto del cierre '+esc(shiftName(s.turno))+'" src="'+esc(photoUrls[s.id])+'"></div>':'')+
+ +
  '</div></section>';
 }
 function historyModal(){
@@ -381,6 +385,16 @@ function attach(h){
   if(!allowed())return;
   const size=e.target.closest('[data-mgon-scale]');
   if(size){changeScale(size.dataset.mgonScale==='up'?5:-5);return;}
+  const noteSave=e.target.closest('[data-mgon-save-note]');
+  if(noteSave){
+   const id=noteSave.dataset.mgonSaveNote;
+   const input=[...document.querySelectorAll('[data-mgon-close-note]')].find(el=>el.dataset.mgonCloseNote===id);
+   if(input){void (async()=>{try{
+    await rpc('gestlok_mg_online_close_note',{p_shift:id,p_note:input.value});
+    await rpcRefresh();api.toast?.('Observación del cierre guardada.');
+   }catch(err){photoError=err.message||'No se pudo guardar la observación';api.toast?.(photoError);}})();}
+   return;
+  }
   const jump=e.target.closest('[data-mgon-jump-history]');
   if(jump){tab='historial';api.render();document.querySelector('.mg-on-history-embedded')?.scrollIntoView({block:'start'});return;}
   const tabButton=e.target.closest('[data-mgon-tab]');
