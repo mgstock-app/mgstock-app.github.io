@@ -19,7 +19,7 @@ ingresos, retiros, fotos antes del cierre y arqueo. **No factura ni es un sistem
 - `supabase/migrations/` — base de datos.
 - `tests/` — pruebas de la base: `fixtures/logica.sql` (reglas y seguridad) y `db.test.mjs` (lo mismo + varios celulares a la vez).
 - `tests/web/` — recorrido de la app con navegador en teléfono y PC: `servidor.py` imita la API de Supabase sobre
-  un Postgres local con la migración real; `recorrido.py` (Playwright) hace alta, PIN, apertura, movimientos,
+  un Postgres local con la migración real; `recorrido.py` (Playwright) hace alta, entrada con la cuenta (sin PIN), apertura, movimientos,
   corregir, anular, cierre en los dos modos, panel del dueño y configuración, y guarda capturas.
 
 ## Probar
@@ -34,6 +34,12 @@ En GitHub corre solo el flujo «Caja app · pruebas» (trabajos `base` y `web`).
 ## En Supabase
 La migración se aplicó en partes (`caja_app_base_p1_tablas` … `p7_movimientos_y_cierre`), con el mismo contenido
 que `20261102050000_caja_app_base.sql` (verificado con huellas md5 de columnas, funciones, restricciones,
-índices, disparadores, políticas y permisos). **Pendiente de aprobación de la dueña:** `caja_app_entrar` y
-`caja_app_salir` (ver `supabase/pendiente-entrar-salir.sql`): la confirmación de Supabase se cancela sola en su
-app porque esas dos funciones borran sesiones vencidas. Hasta aplicarlas no se puede entrar con PIN.
+índices, disparadores, políticas y permisos), salvo `caja_app_entrar` (PIN), que nunca se aplicó.
+
+**Sin PIN (02/11, pedido de la usuaria: «No ponerle pin a Gestlok!!»):** migración
+`20261102170000_caja_app_sin_pin.sql`, aplicada. Cada persona entra con su propia cuenta: `caja_app_entrar_cuenta(local)`
+abre la sesión de caja sin elegir persona ni PIN (quien creó el comercio usa la persona dueña del alta; otra cuenta con
+acceso recibe su propia persona). `caja_app_salir` solo vence la sesión (no borra). Si la sesión de 14 h vence, la app
+vuelve a entrar sola y reintenta. El panel (Hoy, Historial, Configuración) lo ve la cuenta dueña. La app ya no muestra
+teclado de PIN, «Cambiar de persona» ni «Personas y PIN». `caja_app_entrar` (PIN) queda solo en la migración base y en
+las pruebas; `supabase/pendiente-entrar-salir.sql` ya no hace falta.

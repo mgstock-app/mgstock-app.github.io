@@ -1,0 +1,5 @@
+-- Vuelve a la regla anterior: los gerentes de Munro leen solo la semana abierta y los nombres de las motos.
+alter policy gestlok_munro_motos_gerente_read on public.docs
+  using (case when col = 'munro/agencia_motos' and public.mi_rol() not in ('creadora', 'dueno')
+              then id = 'motos' or public.gestlok_motos_semana_abierta(id)
+              else true end);

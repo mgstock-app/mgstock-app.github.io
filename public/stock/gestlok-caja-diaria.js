@@ -81,7 +81,7 @@
    const loc=cajaApp.locales[0]||'';
    const q='desde=gestlok'+(loc?'&comercio='+encodeURIComponent(loc)+'&local='+encodeURIComponent(loc):'')+(cajaApp.yo?'&yo='+encodeURIComponent(cajaApp.yo):'');
    return '<section class="gl-caja-entry gl-caja-app-entry" aria-label="GESTLOK Caja"><div><small>GESTLOK CAJA · SOLO TU EMPRESA</small><h2>Caja del local</h2>'+
-    '<p>Caja inicial, cobros por medio de pago, gastos, ingresos, retiros, arqueo y cierre. Cada persona entra con su PIN. Funciona en el teléfono y en la PC.</p></div>'+
+    '<p>Caja inicial, cobros por medio de pago, gastos, ingresos, retiros, arqueo y cierre. Cada persona entra con su propia cuenta, sin PIN. Funciona en el teléfono y en la PC.</p></div>'+
     '<a href="/caja/?'+esc(q)+'" data-caja-app>Abrir GESTLOK Caja <span aria-hidden="true">→</span></a></section>';
   }
   if(!permitido())return '';

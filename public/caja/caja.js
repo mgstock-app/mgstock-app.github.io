@@ -87,7 +87,7 @@
   // ---------------- estado ----------------
   const S = {
     medio: null, user: null, comercios: [], comercio: null, local: null,
-    op: leer('caja.op'), estado: null, personas: null, pinPersona: null, pin: '', pinModo: 'caja',
+    op: leer('caja.op'), estado: null,
     vista: 'caja', panel: null, cfg: null, hoy: null, hist: null, histFiltro: null,
     acceso: 'entrar', recuperar: false, cierre: null, listaCompleta: false, ocupado: false,
   };
@@ -103,7 +103,8 @@
     return;
   }
 
-  async function rpc(fn, args) {
+  // Sin PIN: si la sesión de caja venció, se vuelve a entrar sola con la cuenta y se reintenta una vez.
+  async function rpc(fn, args, reintento) {
     let r;
     try { r = await sb.rpc('caja_app_' + fn, args || {}); } catch (e) { throw Object.assign(new Error('Sin conexión. Revisá internet y probá de nuevo.'), { red: true }); }
     if (r.error) {
@@ -114,6 +115,11 @@
       err.code = r.error.code;
       if (/sesión de caja venció/i.test(msg)) err.sesion = true;
       if (/JWT|not authenticated|Iniciá sesión/i.test(msg)) err.cuenta = true;
+      if (err.sesion && !reintento && args && 'p_token' in args && S.local && S.user) {
+        S.op = null; guardar('caja.op', null);
+        await entrarConCuenta();
+        return rpc(fn, Object.assign({}, args, { p_token: S.op.token }), true);
+      }
       throw err;
     }
     return r.data;
@@ -137,7 +143,6 @@
   function cerrarHoja() {
     hoja.hidden = true; hoja.innerHTML = '';
     document.body.classList.remove('con-hoja');
-    if (S.pinModo === 'panel') { S.pinModo = 'caja'; S.pin = ''; S.pinPersona = null; }
   }
   const hojaAbierta = () => !hoja.hidden;
 
@@ -175,13 +180,9 @@
   }
 
   // ---------------- enrutado ----------------
-  const esDuenoCuenta = () => S.comercio && S.comercio.rol === 'dueno';
-  function panelHabilitado() {
-    if (!esDuenoCuenta()) return false;
-    if (S.op && S.op.persona && S.op.persona.rol === 'dueno') return true;
-    return !!(S.panel && Date.now() < S.panel.hasta);
-  }
-  function tocarPanel() { if (S.panel) S.panel.hasta = Date.now() + 15 * 60e3; }
+  // Sin PIN: el panel (Hoy, Historial, Configuración) lo ve la cuenta dueña del comercio.
+  const esDuenoCuenta = () => !!(S.comercio && S.comercio.rol === 'dueno');
+  const panelHabilitado = esDuenoCuenta;
 
   // Cada pintada tiene un número: una carga en segundo plano que termina tarde no pisa una pantalla más nueva.
   let vez = 0;
@@ -192,10 +193,11 @@
     if (!S.comercios.length || S.creando) return pantallaCrearComercio();
     if (!S.comercio || !S.local) return pantallaElegir();
     if (S.vista !== 'caja') {
-      if (panelHabilitado()) { tocarPanel(); return pantallaPanel(); }
+      if (panelHabilitado()) return pantallaPanel();
       S.vista = 'caja';
     }
-    if (!S.op) return pantallaPin();
+    if (S.op && S.op.local_id !== S.local.id) olvidarOp();
+    if (!S.op) return pantallaEntrando();
     return pantallaCaja();
   }
 
@@ -208,13 +210,12 @@
     const p = S.op && S.op.persona;
     const navItems = [['caja', 'Caja de hoy', 'C']];
     if (esDuenoCuenta()) navItems.push(['hoy', 'Hoy en los locales', ''], ['historial', 'Historial', ''], ['config', 'Configuración', '']);
-    const nav = navItems.map((n) => '<button data-act="ir" data-vista="' + n[0] + '"' + (S.vista === n[0] ? ' aria-current="page"' : '') + '>' + h(n[1]) +
-      (n[0] !== 'caja' && !panelHabilitado() ? '<small>PIN dueño</small>' : '') + '</button>').join('');
+    const nav = navItems.map((n) => '<button data-act="ir" data-vista="' + n[0] + '"' + (S.vista === n[0] ? ' aria-current="page"' : '') + '>' + h(n[1]) + '</button>').join('');
     const lateral = '<aside class="lateral">' + marca(S.comercio.nombre) + '<nav aria-label="Secciones">' + nav + '</nav>' +
       '<div class="bloque"><small>Local de este equipo</small><b>' + h(S.local.nombre) + '</b></div>' +
       '<div class="abajo">' + (PRE ? '<div class="bloque">' + volverGestlok() + '</div>' : '') +
-      (p ? '<div class="bloque"><small>Cargando como</small><b>' + h(p.nombre) + '</b> · ' + h(ROL[p.rol] || '') +
-        '<div class="fila" style="margin-top:8px"><button class="btn chico" data-act="cambiarPersona">Cambiar de persona</button></div></div>' : '') +
+      '<div class="bloque"><small>Cargando como</small><b>' + h(p ? p.nombre : (S.user && S.user.email) || '') + '</b>' + (p ? ' · ' + h(ROL[p.rol] || '') : '') +
+        '<div class="fila" style="margin-top:8px"><button class="btn chico" data-act="salirCuenta">Cerrar sesión</button></div></div>' +
       '<div class="bloque"><small>Abierta en ' + nombreMedio(S.medio) + (leer('caja.vista') ? ' (elegido a mano)' : ' (detectado)') + '</small>' +
       '<button class="btn texto chico" data-act="menuVista">Cambiar vista</button></div></div></aside>';
     const barra = '<header class="barra"><div class="donde"><b>' + h(S.comercio.nombre) + '</b><small>' + h(S.local.nombre) + '</small></div>' +
@@ -233,7 +234,7 @@
     const m = S.acceso;
     let f = '';
     if (m === 'entrar') {
-      f = '<form data-form="entrar"><h1>Entrar</h1><p class="sub" style="margin:6px 0 18px">Con la cuenta del comercio (la misma de GESTLOK). En el local, la abre el dueño o el encargado una vez y después cada persona entra con su PIN.</p>' +
+      f = '<form data-form="entrar"><h1>Entrar</h1><p class="sub" style="margin:6px 0 18px">Con tu cuenta de GESTLOK. Cada persona entra con la suya, sin PIN.</p>' +
         '<div class="error"></div>' +
         '<label class="campo"><span>Email</span><input name="email" type="email" autocomplete="username" required></label>' +
         '<label class="campo"><span>Contraseña</span><input name="clave" type="password" autocomplete="current-password" required></label>' +
@@ -271,8 +272,6 @@
       '<label class="campo"><span>Nombre del comercio</span><input name="nombre" maxlength="80" required placeholder="Ej.: Almacén La Esquina" value="' + h(PRE && !S.comercios.length ? PRE.comercio : '') + '"></label>' +
       '<label class="campo"><span>Primer local</span><input name="local" maxlength="60" required placeholder="Ej.: Centro" value="' + h(PRE && !S.comercios.length ? PRE.local : '') + '"></label>' +
       '<label class="campo"><span>Tu nombre</span><input name="yo" maxlength="60" required placeholder="Como te van a ver en la caja" value="' + h(PRE && !S.comercios.length ? PRE.yo : '') + '"></label>' +
-      '<div class="dos"><label class="campo"><span>Tu PIN (4 números)</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required></label>' +
-      '<label class="campo"><span>Repetí el PIN</span><input name="pin2" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required></label></div>' +
       '<button class="btn prim ancho">Crear y empezar</button></form>' +
       '<div class="enlaces">' + volverGestlok() + (S.comercios.length ? '<button class="btn texto" data-act="cancelarCrear">Volver</button>' : '') +
       '<button class="btn texto" data-act="salirCuenta">Cerrar sesión (' + h(S.user.email || '') + ')</button></div></div></div>';
@@ -294,90 +293,28 @@
       '<div class="enlaces">' + volverGestlok() + '<button class="btn texto" data-act="salirCuenta">Cerrar sesión</button></div></div></div>';
   }
 
-  // ---------------- PIN ----------------
-  async function cargarPersonas() {
-    S.personas = await rpc('personas_local', { p_local: S.local.id });
-    return S.personas;
-  }
-  function teclado() {
-    const t = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
-    return '<div class="puntos" id="puntos">' + [0, 1, 2, 3].map((i) => '<i class="' + (i < S.pin.length ? 'lleno' : '') + '"></i>').join('') + '</div>' +
-      '<div class="teclado">' + t.map((k) => k === '' ? '<button class="vacia" tabindex="-1" aria-hidden="true"></button>'
-        : '<button type="button" data-act="tecla" data-k="' + k + '" aria-label="' + (k === '⌫' ? 'Borrar' : k) + '">' + k + '</button>').join('') + '</div>' +
-      '<p class="error" id="error-pin" style="margin-top:14px"></p>' + (esPC() ? '<p class="ayuda" style="text-align:center">También podés escribir el PIN con el teclado.</p>' : '');
-  }
-  function personasHtml(lista) {
-    return '<div class="personas">' + lista.map((p) => '<button class="persona" data-act="elegirPersona" data-id="' + h(p.id) + '" aria-pressed="' + (S.pinPersona && S.pinPersona.id === p.id) + '">' +
-      '<span class="inicial">' + inicial(p.nombre) + '</span><b>' + h(p.nombre) + '</b><small>' + h(ROL[p.rol] || '') + '</small></button>').join('') + '</div>';
-  }
-  async function pantallaPin() {
-    const mia = vez;
-    S.pinModo = 'caja';
-    if (!S.personas) {
-      app.innerHTML = marco('<p class="cargando">Cargando personas…</p>');
-      try { await cargarPersonas(); } catch (e) { if (mia === vez) app.innerHTML = marco('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>'); return; }
-      if (mia !== vez) return;
+  // ---------------- entrada con la cuenta (sin PIN) ----------------
+  // Cada persona usa su propia cuenta: al elegir el local, la caja abre su sesión sola.
+  const pinAlAzar = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, '0');
+  let entrando = null;
+  function entrarConCuenta() {
+    if (!entrando) {
+      const local = S.local, comercio = S.comercio, user = S.user;
+      entrando = rpc('entrar_cuenta', { p_local: local.id }).then((r) => {
+        S.op = { token: r.token, persona: r.persona, local_id: local.id, comercio_id: comercio.id, user_id: user.id, hasta: Date.now() + 13.5 * 3600e3 };
+        guardar('caja.op', S.op);
+        return S.op;
+      }).finally(() => { entrando = null; });
     }
-    const lista = S.personas || [];
-    let cuerpo = '<div class="encabezado"><div><h1>¿Quién está en la caja?</h1><p class="sub">' + h(S.local.nombre) + ' · ' + h(fecha(diaAR(), true)) + '</p></div></div>';
-    if (!lista.length) cuerpo += '<p class="vacio">No hay personas habilitadas para este local. El dueño las agrega en Configuración.</p>';
-    else if (!S.pinPersona) cuerpo += personasHtml(lista);
-    else cuerpo += '<div class="tarjeta" style="max-width:420px;margin:0 auto"><div class="fila entre"><div class="fila"><span class="inicial">' + inicial(S.pinPersona.nombre) + '</span><div><b>' + h(S.pinPersona.nombre) + '</b><div class="sub">Ingresá tu PIN</div></div></div>' +
-      '<button class="btn chico" data-act="otraPersona">Cambiar</button></div>' + teclado() + '</div>';
-    app.innerHTML = marco(cuerpo);
+    return entrando;
   }
-  // El teclado activo es el de la hoja (PIN del dueño) si está abierta; si no, el de la pantalla.
-  const raizPin = () => (hojaAbierta() ? hoja : app);
-  function pintarPuntos(error) {
-    const pts = raizPin().querySelector('#puntos');
-    if (!pts) return;
-    pts.innerHTML = [0, 1, 2, 3].map((i) => '<i class="' + (i < S.pin.length ? 'lleno' : '') + '"></i>').join('');
-    pts.classList.toggle('error-pin', !!error);
-    const e = raizPin().querySelector('#error-pin');
-    if (e) e.textContent = error || '';
-  }
-  async function tecla(k) {
-    if (S.ocupado || !S.pinPersona) return;
-    if (k === '⌫') { S.pin = S.pin.slice(0, -1); return pintarPuntos(); }
-    if (!/^[0-9]$/.test(k) || S.pin.length >= 4) return;
-    S.pin += k; pintarPuntos();
-    if (S.pin.length < 4) return;
-    S.ocupado = true;
-    const pin = S.pin;
-    try {
-      const r = await rpc('entrar', { p_local: S.local.id, p_persona: S.pinPersona.id, p_pin: pin });
-      if (!r || !r.ok) { S.pin = ''; pintarPuntos((r && r.mensaje) || 'PIN incorrecto'); return; }
-      if (S.pinModo === 'panel') {
-        if (r.persona.rol !== 'dueno') { S.pin = ''; pintarPuntos('Ese PIN no es de un dueño'); rpc('salir', { p_token: r.token }).catch(() => {}); return; }
-        S.panel = { persona: r.persona, hasta: Date.now() + 15 * 60e3 };
-        rpc('salir', { p_token: r.token }).catch(() => {});
-        const destino = S.panelDestino || 'hoy';
-        cerrarHoja(); S.vista = destino; pintar();
-        return;
-      }
-      S.op = { token: r.token, persona: r.persona, local_id: S.local.id, comercio_id: S.comercio.id, user_id: S.user.id, hasta: Date.now() + 13.5 * 3600e3 };
-      guardar('caja.op', S.op);
-      S.pin = ''; S.pinPersona = null;
-      await cargarEstado();
-      pintar();
-    } catch (e) {
-      S.pin = ''; pintarPuntos(e.message);
-    } finally { S.ocupado = false; }
-  }
-  async function pedirPinDueno(destino) {
-    S.panelDestino = destino;
-    try { if (!S.personas) await cargarPersonas(); } catch (e) { return avisar(e.message); }
-    const duenos = (S.personas || []).filter((p) => p.rol === 'dueno');
-    S.pinModo = 'panel'; S.pin = '';
-    S.pinPersona = duenos.length === 1 ? duenos[0] : null;
-    pintarHojaPin(duenos);
-  }
-  function pintarHojaPin(duenos) {
-    const cuerpo = '<p class="sub" style="margin-bottom:14px">El panel muestra los números de todos los locales: lo abre solo un dueño con su PIN.</p>' +
-      (!duenos.length ? '<p class="vacio">No hay dueños con PIN en este local.</p>'
-        : !S.pinPersona ? personasHtml(duenos) : '<p style="text-align:center"><b>' + h(S.pinPersona.nombre) + '</b></p>' + teclado());
-    abrirHoja('PIN del dueño', cuerpo);
-    S.pinModo = 'panel';
+  function pantallaEntrando() {
+    const mia = vez;
+    app.innerHTML = marco('<p class="cargando">Entrando a la caja…</p>');
+    entrarConCuenta().then(() => cargarEstado()).then(() => { if (mia === vez) pintar(); }, (e) => {
+      if (mia !== vez) return;
+      app.innerHTML = marco('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>');
+    });
   }
 
   // ---------------- caja del día ----------------
@@ -765,11 +702,8 @@
       '<button class="btn prim">Guardar listas</button></form>';
     const locales = '<div class="tarjeta"><div class="fila entre"><h2>Locales</h2><button class="btn chico" data-act="editarLocal" data-id="">+ Agregar</button></div><ul class="lista" style="margin-top:6px">' +
       c.locales.map((l) => '<li><span><b>' + h(l.nombre) + '</b>' + (l.activo ? '' : ' <span class="estado">Inactivo</span>') + '</span><button class="btn chico" data-act="editarLocal" data-id="' + h(l.id) + '">Editar</button></li>').join('') + '</ul></div>';
-    const nombresLocal = (ids) => !ids || !ids.length ? 'Todos los locales' : ids.map((id) => (c.locales.find((l) => l.id === id) || {}).nombre).filter(Boolean).join(', ');
-    const personas = '<div class="tarjeta"><div class="fila entre"><h2>Personas y PIN</h2><button class="btn chico" data-act="editarPersona" data-id="">+ Agregar</button></div><ul class="lista" style="margin-top:6px">' +
-      c.personas.map((p) => '<li><span><b>' + h(p.nombre) + '</b>' + (p.activo ? '' : ' <span class="estado">Inactiva</span>') + '<br><span class="sub">' + h(ROL[p.rol] || '') + ' · ' + h(nombresLocal(p.locales)) + (p.gasto_maximo != null ? ' · tope ' + plata(p.gasto_maximo) : '') + '</span></span><button class="btn chico" data-act="editarPersona" data-id="' + h(p.id) + '">Editar</button></li>').join('') + '</ul></div>';
     const fotos = '<div class="tarjeta suave"><h2>Fotos antes del cierre</h2><p class="sub" style="margin-top:6px">Próximamente: pedir fotos del efectivo contado y de los comprobantes, y bloquear el cierre si faltan.</p></div>';
-    return '<div class="encabezado"><div><h1>Configuración</h1><p class="sub">' + h(c.nombre) + '</p></div></div><div class="config-grid"><div>' + general + listas + '</div><div>' + personas + locales + disp + fotos + '</div></div>';
+    return '<div class="encabezado"><div><h1>Configuración</h1><p class="sub">' + h(c.nombre) + '</p></div></div><div class="config-grid"><div>' + general + listas + '</div><div>' + locales + disp + fotos + '</div></div>';
   }
   function hojaLocal(id) {
     const l = id ? S.cfg.locales.find((x) => x.id === id) : null;
@@ -778,31 +712,17 @@
       (l ? '<label class="check" style="margin-bottom:14px"><input type="checkbox" name="activo"' + (l.activo ? ' checked' : '') + '><span>Activo (se puede abrir caja)</span></label>' : '') +
       '<button class="btn prim ancho">Guardar</button></form>');
   }
-  function hojaPersona(id) {
-    const p = id ? S.cfg.personas.find((x) => x.id === id) : null;
-    const locs = S.cfg.locales.filter((l) => l.activo);
-    abrirHoja(p ? 'Editar persona' : 'Nueva persona', '<form data-form="persona" data-id="' + h(id || '') + '"><div class="error"></div>' +
-      '<label class="campo"><span>Nombre</span><input name="nombre" maxlength="60" value="' + h(p ? p.nombre : '') + '" required autofocus></label>' +
-      '<label class="campo"><span>Rol</span><select name="rol">' + ['cajero', 'encargado', 'dueno'].map((r) => '<option value="' + r + '"' + ((p ? p.rol : 'cajero') === r ? ' selected' : '') + '>' + ROL[r] + '</option>').join('') + '</select></label>' +
-      '<span class="etiqueta">Locales donde trabaja</span><p class="ayuda">Sin marcar ninguno = todos.</p><div class="pila" style="margin:6px 0 14px">' +
-      locs.map((l) => '<label class="check"><input type="checkbox" name="loc" value="' + h(l.id) + '"' + (p && p.locales.indexOf(l.id) >= 0 ? ' checked' : '') + '><span>' + h(l.nombre) + '</span></label>').join('') + '</div>' +
-      '<div class="dos"><label class="campo"><span>' + (p ? 'PIN nuevo' : 'PIN') + ' (4 números)</span><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off"' + (p ? ' placeholder="Sin cambios"' : ' required') + '></label>' +
-      '<label class="campo"><span>Tope por gasto</span><input name="tope" inputmode="decimal" value="' + h(p && p.gasto_maximo != null ? montoTexto(p.gasto_maximo) : '') + '" placeholder="Sin tope"><small>Solo para cajeros.</small></label></div>' +
-      (p ? '<label class="check" style="margin-bottom:14px"><input type="checkbox" name="activo"' + (p.activo ? ' checked' : '') + '><span>Activa (puede entrar con su PIN)</span></label>' : '') +
-      '<button class="btn prim ancho">Guardar</button></form>');
-  }
-
   // ---------------- menús ----------------
   function hojaMenu() {
     const p = S.op && S.op.persona;
     const items = [];
-    if (p) items.push('<button class="opcion" data-act="cambiarPersona"><span><b>Cambiar de persona</b><small>Ahora: ' + h(p.nombre) + '</small></span><span>›</span></button>');
     if (esDuenoCuenta()) {
-      items.push('<button class="opcion" data-act="ir" data-vista="hoy"><span><b>Hoy en los locales</b><small>Panel del dueño' + (panelHabilitado() ? '' : ' · pide PIN') + '</small></span><span>›</span></button>');
+      items.push('<button class="opcion" data-act="ir" data-vista="hoy"><span><b>Hoy en los locales</b><small>Panel del dueño</small></span><span>›</span></button>');
       items.push('<button class="opcion" data-act="ir" data-vista="historial"><span><b>Historial</b><small>Cierres anteriores y descarga para Excel</small></span><span>›</span></button>');
-      items.push('<button class="opcion" data-act="ir" data-vista="config"><span><b>Configuración</b><small>Medios, personas, locales</small></span><span>›</span></button>');
+      items.push('<button class="opcion" data-act="ir" data-vista="config"><span><b>Configuración</b><small>Medios, categorías y locales</small></span><span>›</span></button>');
     }
     if (PRE) items.push('<a class="opcion" href="../"><span><b>Volver a GESTLOK</b><small>El inicio de tu empresa</small></span><span>›</span></a>');
+    items.push('<button class="opcion" data-act="salirCuenta"><span><b>Cerrar sesión</b><small>' + h((p && p.nombre) || '') + (S.user && S.user.email ? ' · ' + h(S.user.email) : '') + '</small></span><span>›</span></button>');
     items.push('<button class="opcion" data-act="menuVista"><span><b>Vista</b><small>' + h(nombreMedio(S.medio)) + (leer('caja.vista') ? ' (elegida a mano)' : ' (detectada sola)') + '</small></span><span>›</span></button>');
     abrirHoja('Menú', items.join(''));
   }
@@ -817,24 +737,17 @@
   // ---------------- acciones (clics) ----------------
   const A = {
     cerrarHoja: () => cerrarHoja(),
-    reintentar: () => { S.personas = null; if (S.vista === 'config') S.cfg = null; arrancar(); },
+    reintentar: () => { if (S.vista === 'config') S.cfg = null; arrancar(); },
     acceso: (b) => { S.acceso = b.dataset.modo; pintar(); },
     google: async () => {
       const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: SITE, queryParams: { prompt: 'select_account' } } });
       if (error) avisar(/not enabled/i.test(error.message) ? 'El ingreso con Google no está activado. Entrá con email y contraseña.' : 'No se pudo entrar con Google.');
     },
-    salirCuenta: async () => { await salirOp(); S.panel = null; S.personas = null; S.cfg = null; guardar('caja.dispositivo', null); await sb.auth.signOut(); cerrarHoja(); S.acceso = 'entrar'; arrancar(); },
+    salirCuenta: async () => { await salirOp(); S.cfg = null; guardar('caja.dispositivo', null); await sb.auth.signOut(); cerrarHoja(); S.acceso = 'entrar'; arrancar(); },
     nuevoComercio: () => { S.creando = true; pintar(); },
     cancelarCrear: () => { S.creando = false; pintar(); },
-    elegirComercio: (b) => { S.comercio = S.comercios.find((c) => c.id === b.dataset.id) || null; S.local = S.comercio && S.comercio.locales.length === 1 ? S.comercio.locales[0] : null; if (S.comercio && S.local) guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: S.local.id }); S.personas = null; pintar(); },
-    elegirLocal: (b) => { S.local = S.comercio.locales.find((l) => l.id === b.dataset.id); guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: S.local.id }); S.personas = null; pintar(); },
-    elegirPersona: (b) => {
-      S.pinPersona = (S.personas || []).find((p) => p.id === b.dataset.id); S.pin = '';
-      if (S.pinModo === 'panel') pintarHojaPin((S.personas || []).filter((p) => p.rol === 'dueno')); else pintar();
-    },
-    otraPersona: () => { S.pinPersona = null; S.pin = ''; pintar(); },
-    tecla: (b) => tecla(b.dataset.k),
-    cambiarPersona: async () => { cerrarHoja(); await salirOp(); S.personas = null; S.vista = 'caja'; pintar(); },
+    elegirComercio: (b) => { S.comercio = S.comercios.find((c) => c.id === b.dataset.id) || null; S.local = S.comercio && S.comercio.locales.length === 1 ? S.comercio.locales[0] : null; if (S.comercio && S.local) guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: S.local.id }); pintar(); },
+    elegirLocal: (b) => { S.local = S.comercio.locales.find((l) => l.id === b.dataset.id); guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: S.local.id }); salirOp(); pintar(); },
     menu: () => hojaMenu(),
     menuVista: () => hojaVista(),
     fijarVista: (b) => { guardar('caja.vista', b.dataset.valor || null); cerrarHoja(); aplicarMedio(); pintar(); avisar('Vista: ' + nombreMedio(S.medio)); },
@@ -842,7 +755,7 @@
       const v = b.dataset.vista;
       cerrarHoja();
       if (v === 'caja') { S.vista = 'caja'; if (S.op) cargarEstado().then(pintar, pintar); return pintar(); }
-      if (!panelHabilitado()) return pedirPinDueno(v);
+      if (!panelHabilitado()) return;
       S.vista = v; window.scrollTo(0, 0); pintar();
     },
     abrirOtro: () => { const d = document.getElementById('abrir-otro'); d.classList.remove('oculto'); d.querySelector('input').focus(); },
@@ -869,7 +782,6 @@
       inp.value = ''; inp.focus();
     },
     editarLocal: (b) => hojaLocal(b.dataset.id),
-    editarPersona: (b) => hojaPersona(b.dataset.id),
   };
 
   // ---------------- formularios ----------------
@@ -896,16 +808,11 @@
       S.recuperar = false; avisar('Contraseña actualizada.'); await arrancar();
     },
     crearComercio: async (f) => {
-      if (f.pin.value !== f.pin2.value) throw new Error('Los dos PIN no coinciden.');
-      const r = await rpc('crear_comercio', { p_nombre: f.nombre.value.trim(), p_local: f.local.value.trim(), p_mi_nombre: f.yo.value.trim(), p_mi_pin: f.pin.value });
+      // Sin PIN: el servidor todavía pide uno para la persona dueña del alta; va uno al azar que nadie usa.
+      const r = await rpc('crear_comercio', { p_nombre: f.nombre.value.trim(), p_local: f.local.value.trim(), p_mi_nombre: f.yo.value.trim(), p_mi_pin: pinAlAzar() });
       guardar('caja.dispositivo', { comercio_id: r.comercio_id, local_id: r.local_id });
-      S.creando = false; S.personas = null;
-      const pin = f.pin.value;
+      S.creando = false;
       await arrancar();
-      try {
-        const e = await rpc('entrar', { p_local: r.local_id, p_persona: r.persona_id, p_pin: pin });
-        if (e && e.ok) { S.op = { token: e.token, persona: e.persona, local_id: r.local_id, comercio_id: r.comercio_id, user_id: S.user.id, hasta: Date.now() + 13.5 * 3600e3 }; guardar('caja.op', S.op); await cargarEstado(); pintar(); }
-      } catch (x) { /* entra con el PIN desde la pantalla */ }
     },
     abrir: async (f) => abrirCaja(Number(f.dataset.monto || 0), true),
     abrirOtro: async (f) => {
@@ -939,7 +846,7 @@
     filtroHist: async (f) => {
       if (f.hasta.value < f.desde.value) throw new Error('La fecha «hasta» es anterior a «desde».');
       S.histFiltro = { desde: f.desde.value, hasta: f.hasta.value, local: f.local.value };
-      tocarPanel(); await pantallaPanel();
+      await pantallaPanel();
     },
     arqueoTardio: async (f) => {
       const arqueo = parseMonto(f.arqueo.value), queda = parseMonto(f.queda.value);
@@ -951,31 +858,23 @@
         f.querySelectorAll('[name="otro"]').forEach((i) => { const v = parseMonto(i.value); if (!isNaN(v) && v > 0) otros[i.dataset.medio] = v; });
       }
       await rpc('completar_arqueo', { p_comercio: S.comercio.id, p_caja: f.dataset.id, p_arqueo: arqueo, p_venta_total: venta, p_otros: otros, p_queda: queda });
-      cerrarHoja(); avisar('Arqueo guardado.'); tocarPanel(); await pantallaPanel();
+      cerrarHoja(); avisar('Arqueo guardado.'); await pantallaPanel();
     },
     configGeneral: async (f) => {
       const habitual = f.habitual.value.trim() === '' ? 0 : parseMonto(f.habitual.value);
       if (isNaN(habitual)) throw new Error('Revisá la caja inicial habitual.');
       S.cfg = await rpc('guardar_config', { p_comercio: S.comercio.id, p_config: { nombre: f.nombre.value.trim(), modo_carga: f.modo.value, hora_cierre: f.hora.value.slice(0, 5), caja_inicial_habitual: habitual, inicial_desde_cierre: f.desdeCierre.checked } });
-      S.comercio.nombre = S.cfg.nombre; tocarPanel(); app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Guardado.');
+      S.comercio.nombre = S.cfg.nombre; app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Guardado.');
     },
     configListas: async (f) => {
       const lista = (k) => [...f.querySelectorAll('[data-lista="' + k + '"] [data-valor]')].map((x) => x.dataset.valor);
       S.cfg = await rpc('guardar_config', { p_comercio: S.comercio.id, p_config: { medios: ['Efectivo'].concat(lista('medios')), categorias_gasto: lista('categorias_gasto'), tipos_retiro: lista('tipos_retiro'), categorias_ingreso: lista('categorias_ingreso') } });
-      tocarPanel(); app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Listas guardadas.');
+      app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Listas guardadas.');
     },
     local: async (f) => {
       S.cfg = await rpc('guardar_local', { p_comercio: S.comercio.id, p_id: f.dataset.id || null, p_nombre: f.nombre.value.trim(), p_activo: f.activo ? f.activo.checked : true });
       S.comercios = (await rpc('mis_comercios')) || S.comercios; S.comercio = S.comercios.find((c) => c.id === S.comercio.id) || S.comercio;
-      cerrarHoja(); tocarPanel(); app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Local guardado.');
-    },
-    persona: async (f) => {
-      const pin = f.pin.value.trim(), tope = f.tope.value.trim() === '' ? null : parseMonto(f.tope.value);
-      if (pin && !/^[0-9]{4}$/.test(pin)) throw new Error('El PIN tiene que tener 4 números.');
-      if (tope != null && isNaN(tope)) throw new Error('Revisá el tope de gasto.');
-      S.cfg = await rpc('guardar_persona', { p_comercio: S.comercio.id, p_id: f.dataset.id || null, p_nombre: f.nombre.value.trim(), p_rol: f.rol.value,
-        p_locales: [...f.querySelectorAll('[name="loc"]:checked')].map((x) => x.value), p_pin: pin || null, p_activo: f.activo ? f.activo.checked : true, p_gasto_maximo: tope });
-      S.personas = null; cerrarHoja(); tocarPanel(); app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Persona guardada.');
+      cerrarHoja(); app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Local guardado.');
     },
   };
   async function abrirCaja(monto, coincide) {
@@ -1031,17 +930,12 @@
       const l = S.comercio.locales.find((x) => x.id === t.value);
       if (!l) return;
       S.local = l; guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: l.id });
-      salirOp(); S.personas = null; avisar('Este equipo ahora es del local ' + l.nombre + '.');
+      salirOp(); avisar('Este equipo ahora es del local ' + l.nombre + '.');
     }
   });
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && hojaAbierta()) { cerrarHoja(); return; }
     const enCampo = /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
-    // PIN con el teclado físico (pantalla o hoja de PIN del dueño)
-    if (!enCampo && S.pinPersona && raizPin().querySelector('#puntos')) {
-      if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); tecla(ev.key); return; }
-      if (ev.key === 'Backspace') { ev.preventDefault(); tecla('⌫'); return; }
-    }
     if (enCampo && ev.key === 'Enter' && S.cierre && document.activeElement.dataset.cierre && document.activeElement.tagName === 'INPUT') { ev.preventDefault(); cierreSigue(); return; }
     // Atajos en PC con la caja abierta
     if (enCampo || hojaAbierta() || ev.ctrlKey || ev.metaKey || ev.altKey || S.cierre || S.vista !== 'caja') return;

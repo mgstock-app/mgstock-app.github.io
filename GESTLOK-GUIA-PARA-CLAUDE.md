@@ -178,7 +178,7 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 ## 13. GESTLOK Caja (02/11/2026)
 - **Qué es:** la app de caja completa en `public/caja/` (https://gestlok.com.ar/caja/), base en el esquema `caja_app`
   (código y pruebas en `caja-app/`). Caja inicial, cobros por medio de pago, gastos, ingresos, retiros, arqueo y
-  cierre; PIN por persona; teléfono y PC. Decisión de la usuaria: va bajo la marca y el dominio de GESTLOK (no
+  cierre; cada persona entra con su propia cuenta, **sin PIN** (pedido de la usuaria 02/11); teléfono y PC. Decisión de la usuaria: va bajo la marca y el dominio de GESTLOK (no
   nombre propio). Los módulos sueltos más económicos (Caja, Empleados, Proveedores y stock) son una idea en estudio.
 - **Perfumes · Belisa Parfum** (tenant `2a97bf8d…`): se apagó la Caja diaria (#200, sin datos) y se habilitó GESTLOK
   Caja (`supabase/operaciones/gestlok-caja-app-perfumes.sql`). En su inicio de GESTLOK aparece «Abrir GESTLOK Caja»
@@ -188,9 +188,10 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
   (flujo «Caja diaria · PostgreSQL»), `tests/caja-diaria-empresa.test.mjs` y Cypress `caja-diaria-empresa.cy.js`.
 - **Sesión aparte:** la caja usa su propia sesión (`storageKey: caja-app-auth`), así un celular del local abierto en
   la caja no queda con GESTLOK abierto. La primera vez en cada equipo se entra con la misma cuenta.
-- **Supabase:** `caja_app` aplicada en partes (p1…p7). Faltan `caja_app_entrar` y `caja_app_salir`
-  (`caja-app/supabase/pendiente-entrar-salir.sql`): la confirmación de Supabase se cancela sola en la app de la usuaria
-  porque tienen `delete` de sesiones vencidas. No esquivarla: lo aplica ella o se aprueba desde la compu.
+- **Supabase:** `caja_app` aplicada en partes (p1…p7), sin `caja_app_entrar` (PIN). **Sin PIN (02/11):** migración
+  `caja-app/supabase/migrations/20261102170000_caja_app_sin_pin.sql` aplicada: `caja_app_entrar_cuenta(local)` abre la
+  sesión con la cuenta y `caja_app_salir` solo la vence (sin `delete`). La app no muestra PIN, «Cambiar de persona» ni
+  «Personas y PIN»; el panel lo ve la cuenta dueña. Para que otra persona cargue hace falta invitar su cuenta (pendiente).
 
 ## 14. Historial horarios de Munro y pestaña Historial de Motos Agencia (02/11/2026)
 - **Pedido:** solo Munro (Torcuato queda como está, lo pidió la usuaria). Visible para dueño, creadora y gerente de Munro.
@@ -213,3 +214,4 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Pagos solo para el dueño (02/11, pedido de la usuaria):** «Pago», «por pagar» y la pestaña «Pendientes de pago» los
   ven y marcan solo dueño y creadora (control interno). Los gerentes ven la copia del Resumen y el buscador, sin pagos;
   la base ya no les manda los pagos (migración `20261102190000_empleados_historial_horarios_pagos_dueno.sql`, aplicada).
+- **Motos Agencia para gerentes (02/11/2026, pedido «los historiales deben verlo los gerentes»):** los gerentes de Munro también ven la pestaña Historial y pueden mirar semanas cerradas, en solo lectura y sin importes ni valor por hora. Migración `20261102160000_gestlok_munro_motos_historial_gerentes.sql` (solo `alter policy` de lectura; escritura sin cambios; vuelta atrás en `rollback-…sql.txt`).
