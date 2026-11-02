@@ -73,7 +73,11 @@ def mov(page, tipo, monto, chip=None, medio=None, detalle=None, por_atajo=None):
 
 
 def esperar_sin_hoja(page):
-    expect(page.locator('#hoja')).to_be_hidden()
+    try:
+        expect(page.locator('#hoja')).to_be_hidden()
+    except AssertionError:
+        print('HOJA ABIERTA:', page.evaluate("(() => { const e = document.querySelector('#hoja .error'); return (e && e.textContent) || document.querySelector('#hoja').innerText.slice(0, 300); })()"))
+        raise
 
 
 with sync_playwright() as p:
