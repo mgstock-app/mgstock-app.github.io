@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { GestlokDock, GestlokLocalNav } from "@/components/gestlok/GestlokNav";
 import { LayoutDashboard, Building2, Users, ShieldCheck, Store, CalendarDays, ClipboardList, UserCheck, Search, LogOut, Menu, X, Bell, LockKeyhole, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import "./admin.css";
@@ -25,6 +26,7 @@ const sections = [
 export function AdminShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   useEffect(()=>{
@@ -51,6 +53,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <span className="gi-admin-logo">GL</span><span className="gi-admin-brand-text">GESTLOK · Empleados<small>Administradora general</small></span>
         </Link>
         <button type="button" className="gi-admin-collapse" aria-label={collapsed ? "Expandir menú lateral" : "Contraer menú lateral"} aria-expanded={!collapsed} onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen size={19}/> : <PanelLeftClose size={19}/>}<span>{collapsed ? "Expandir menú" : "Contraer menú"}</span></button>
+        <GestlokLocalNav labelClassName="gi-admin-nav-label"/>
         <nav aria-label="Navegación de administración">
           {sections.map(({ href, label, Icon }) => (
             <Link key={label} href={href} title={label} aria-current={pathname === href ? "page" : undefined} onClick={() => setMenuOpen(false)}>
@@ -80,13 +83,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </header>
         <main className="gi-admin-main">{children}</main>
       </div>
-      <nav className="gl-module-dock" aria-label="Navegación móvil de administración general">
-        <Link href="/" aria-current={pathname==="/"?"page":undefined} onClick={()=>setMenuOpen(false)}><LayoutDashboard size={20}/>Inicio</Link>
-        <Link href="/empresas" aria-current={pathname==="/empresas"?"page":undefined} onClick={()=>setMenuOpen(false)}><Building2 size={20}/>Empresas</Link>
-        <Link href="/personal" onClick={()=>setMenuOpen(false)}><Users size={20}/>Personal</Link>
-        <Link href="/asignaciones" aria-current={pathname==="/asignaciones"?"page":undefined} onClick={()=>setMenuOpen(false)}><ShieldCheck size={20}/>Roles</Link>
-        <button type="button" aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><Menu size={20}/>Más</button>
-      </nav>
+      {/* Misma barra de abajo que GESTLOK; las secciones de administración están en «Más». */}
+      <GestlokDock titulo="Administración general" secciones={sections.slice(0, 8).map(({ href, label, Icon }) => ({
+        id: href, label, actual: pathname === href, onSelect: () => router.push(href), icon: <Icon size={18} aria-hidden="true" />,
+      })).concat([{ id: "menu", label: "Todo el menú", actual: false, onSelect: () => setMenuOpen(true), icon: <Menu size={18} aria-hidden="true" /> }])} />
     </div>
   );
 }

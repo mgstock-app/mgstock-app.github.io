@@ -18,9 +18,31 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
  for(const local of ['munro','dt'])it('sesión existente de '+local+': entra y recarga sin Google ni cookies',()=>{
   setup(local);
   cy.clearCookies();
-  cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
+  // Menú de GESTLOK que la app principal guardó para esta cuenta (solo nombres y secciones del local).
+  const nav={v:1,uid:user.id,local,localName:local==='dt'?'Don Torcuato':'Munro',at:Date.now(),
+   dock:[['home','Inicio'],['pagos','Pagos Online'],['stock','Stock Local'],['staff','Colaboradores'],['more','Más']],
+   side:[{go:'inicio',label:'Inicio',folder:false},{go:'cierre-online',label:'Pagos Online',folder:false},{go:'stock',label:'Stock Local',folder:false},{go:'proveedores',label:'Proveedores',folder:false}]};
+  cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));w.localStorage.setItem('gestlok:nav',JSON.stringify(nav));}});
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
   cy.contains('Continuar con Google').should('not.exist');
+  // PC: las secciones del local de GESTLOK siguen en el menú lateral.
+  cy.viewport(1240,820);
+  cy.get('.gl-gerente__sidebar .gl-gestlok-localnav').should('be.visible')
+    .and('contain.text','Stock Local').and('contain.text','Proveedores');
+  cy.get('.gl-gerente__sidebar .gl-gestlok-localnav a').contains('Stock Local')
+    .should('have.attr','href').and('include','gl_local='+local).and('include','gl_view=stock');
+  // Celular: la misma barra de abajo que GESTLOK, con Colaboradores marcado.
+  cy.viewport(390,844);
+  cy.get('.gl-gestlok-dock').should('be.visible')
+    .and('contain.text','Inicio').and('contain.text','Pagos Online').and('contain.text','Stock Local').and('contain.text','Más');
+  cy.get('.gl-gestlok-dock [aria-current="page"]').should('contain.text','Colaboradores');
+  cy.get('.gl-gestlok-dock').contains('a','Pagos Online').should('have.attr','href').and('include','gl_view=cierre-online');
+  cy.get('.gl-gestlok-dock button[aria-haspopup="dialog"]').click();
+  cy.get('.gl-gestlok-sheet__panel').should('be.visible').and('contain.text','Horarios').and('contain.text','Proveedores');
+  cy.get('.gl-gestlok-sheet__panel').contains('button','Horarios').click();
+  cy.get('.gl-gestlok-sheet').should('not.exist');
+  cy.get('.gl-modulo-tabs [aria-current="page"]').should('contain.text','Horarios');
+  cy.get('.gl-modulo-tabs').contains('button','Colaboradores').click();
   // En escritorio el menú del gerente y la palabra completa GESTLOK deben contrastar sobre blanco.
   cy.viewport(1240,820);
   cy.get('.gl-gerente__header-brand .gl-gerente__header-gest')

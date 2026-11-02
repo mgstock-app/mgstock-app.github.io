@@ -3743,7 +3743,8 @@ function subscribeHub(id){
   S.db.collection(id + '/productos').onSnapshot(snap => { h.prods = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lp = true; if (!S.local) renderHub(); }, () => {});
   S.db.collection(id + '/conteos').orderBy('fecha', 'desc').limit(1).onSnapshot(snap => { h.conteos = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lc = true; if (!S.local) renderHub(); }, () => {});
 }
-/* Una push abre únicamente una sección permitida del local autorizado. */
+/* Una push (o el menú de GESTLOK dentro de Administración de empleados) abre una sección del local autorizado.
+   go() vuelve a comprobar el permiso de cada sección; si no corresponde, queda en Inicio del local. */
 let pendingPushNav=(()=>{
  const query=new URLSearchParams(location.search);
  const local=query.get('gl_local'),view=query.get('gl_view');
@@ -3756,8 +3757,7 @@ function applyPushNavigation(){
  const p=pendingPushNav;
  if(!p||!S.started||!S.loaded.e||!S.loaded.l)return;
  pendingPushNav=null;
- if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) ||
-   !['chat','proveedores','vencimientos','avisos'].includes(p.view))return;
+ if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) || !/^[A-Za-z0-9_-]{1,80}$/.test(p.view))return;
  if(!localesMios().some(x=>x.id===p.local))return;
  abrirLocal(p.local);
  go(p.view);
@@ -3975,7 +3975,7 @@ window.GestLokDemoMetrics?.attach({isCreadora,renderHub});
 window.GestLokCreator?.attach({isCreadora,renderHub,toast,onClose:()=>{S.creatorSetup=false;renderHub();}});
 window.GestLokSupport?.attach({S,miRol,isCreadora,localNombre,nombreHoja,renderHub,toast});
 window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});
-window.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCreadora()});
+window.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCreadora(),uid:S.uid||null});
 window.GestLokOwnerAreas?.attach({S,role:miRol,render:()=>S.local?render():renderHub(),openBusiness:()=>{S.creatorBusiness=true;render();},openPanel,closePanel,hubStats,ic,rolLabel,openShare,openLocal:id=>abrirLocal(id),toast});
 window.GestLokCreatorMode?.attach({isCreadora,toast,onChange:()=>{if(S.local)S.ro=!puedeEditarLocal(S.local);render();renderHub();}});
 window.GestLokCreatorSupport?.attach({S,isCreadora,toast}); window.GestLokCreatorHome?.attach({S,isCreadora,render:renderHub,renderLocal:render,toast});

@@ -1,7 +1,8 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import { SchedulesContent } from "@/components/schedules/SchedulesWorkspace";
-import { FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from "lucide-react";
+import { GestlokDock, GestlokLocalNav } from "@/components/gestlok/GestlokNav";
+import { FileSpreadsheet, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ManagerLegajos } from "@/components/legajos/ManagerLegajos";
 import { ManagerPersonalReceipt } from "@/components/reports/ManagerPersonalReceipt";
@@ -53,7 +54,9 @@ export function GerenteHome() {
       </div>
       <button type="button" className="gl-gerente__collapse" aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menú del gerente" : "Contraer menú del gerente"} onClick={toggleCollapsed}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}<span>{collapsed ? "Expandir" : "Contraer menú"}</span></button>
       <div className="gl-gerente__local-label">TU LOCAL{localName ? <strong>{localName}</strong> : <strong>Administración de empleados</strong>}</div>
-      <nav>
+      <GestlokLocalNav labelClassName="gl-gerente__nav-label"/>
+      <p className="gl-gestlok-localnav__titulo">Administración de empleados</p>
+      <nav aria-label="Administración de empleados">
         <button type="button" title="Administrar empleados" className={section==="legajos"?"active":""} onClick={()=>navigateTo("legajos")}><UsersRound size={19}/><span className="gl-gerente__nav-label">Colaboradores</span></button>
         <button type="button" title="Horarios" className={section==="horarios"?"active":""} onClick={()=>navigateTo("horarios")}><FileSpreadsheet size={19}/><span className="gl-gerente__nav-label">Horarios</span></button>
         <button type="button" title="Mi recibo personal" className={section==="recibo"?"active":""} onClick={()=>navigateTo("recibo")}><Wallet size={19}/><span className="gl-gerente__nav-label">Mi recibo personal</span></button>
@@ -67,6 +70,12 @@ export function GerenteHome() {
         <div className="gl-gerente__header-brand" aria-label="GESTLOK"><strong><span className="gl-gerente__header-gest">GEST</span><span className="gl-gerente__header-lok">LOK</span></strong><small>ORGANIZÁ · CONTROLÁ · HACÉ CRECER</small></div>
         <a className="gl-gerente__back-home" href={home}><ArrowLeft size={17}/> Volver a GESTLOK</a><span className="gl-gerente__user">Hola, {firstName}<small>Gerente</small></span>
       </header>
+      {/* En el celular, las secciones de empleados quedan a mano arriba (la barra de abajo es la de GESTLOK). */}
+      <nav className="gl-modulo-tabs" aria-label="Secciones de Administración de empleados">
+        <button type="button" aria-current={section==="legajos"?"page":undefined} onClick={()=>navigateTo("legajos")}>Colaboradores</button>
+        <button type="button" aria-current={section==="horarios"?"page":undefined} onClick={()=>navigateTo("horarios")}>Horarios</button>
+        <button type="button" aria-current={section==="recibo"?"page":undefined} onClick={()=>navigateTo("recibo")}>Mi recibo</button>
+      </nav>
       <div className="gl-gerente__content">
         {section==="legajos" ? <ManagerLegajos onDirtyChange={setHasDraft}/> : section==="recibo" ?
           (user?.role==="manager" && !user.gestlok_gerente?.local_ids?.length ? <EmployeeReport/> : <ManagerPersonalReceipt/>) :
@@ -74,12 +83,11 @@ export function GerenteHome() {
           <div className="gl-gerente__horarios"><Suspense fallback={<p role="status">Cargando Horarios…</p>}><SchedulesContent/></Suspense></div>}
       </div>
     </main>
-    <nav className="gl-module-dock" aria-label="Navegación móvil del gerente">
-      <a href={home}><House size={20}/>Inicio</a>
-      <button type="button" aria-current={section==="legajos"?"page":undefined} onClick={()=>navigateTo("legajos")}><UsersRound size={20}/>Colaboradores</button>
-      <button type="button" aria-current={section==="horarios"?"page":undefined} onClick={()=>navigateTo("horarios")}><FileSpreadsheet size={20}/>Horarios</button>
-      <button type="button" aria-current={section==="recibo"?"page":undefined} onClick={()=>navigateTo("recibo")}><Wallet size={20}/>Mi recibo</button>
-      <button type="button" aria-expanded={menuOpen} aria-label="Más opciones" onClick={()=>setMenuOpen(true)}><Menu size={20}/>Más</button>
-    </nav>
+    {/* Misma barra de abajo que GESTLOK; las secciones de empleados están en «Más» y arriba, en las pestañas. */}
+    <GestlokDock secciones={[
+      {id:"legajos",label:"Colaboradores",actual:section==="legajos",onSelect:()=>navigateTo("legajos"),icon:<UsersRound size={18}/>},
+      {id:"horarios",label:"Horarios",actual:section==="horarios",onSelect:()=>navigateTo("horarios"),icon:<FileSpreadsheet size={18}/>},
+      {id:"recibo",label:"Mi recibo personal",actual:section==="recibo",onSelect:()=>navigateTo("recibo"),icon:<Wallet size={18}/>},
+    ]}/>
   </div>;
 }
