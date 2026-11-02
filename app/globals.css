@@ -2331,3 +2331,11 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   #hub .gl-ch-quick-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
   #hub .gl-ch-quick-local {min-width:0}
 }
+
+/* Perfil en móvil: dejar libre la barra inferior fija para todos los roles. */
+@media screen and (max-width: 767px) {
+  #app .side-f .me > .gl-profile-switch-trigger,
+  #app .me > .gl-profile-switch-trigger {
+    margin-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+}
