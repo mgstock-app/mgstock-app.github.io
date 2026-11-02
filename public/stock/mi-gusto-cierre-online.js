@@ -296,7 +296,7 @@ function reportTurn(s,turno){
  (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
  '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
  '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+
- (photoUrls[s.id]?'<div class="mg-on-photo-preview"><img alt="Foto del cierre '+esc(shiftName(s.turno))+'" src="'+esc(photoUrls[s.id])+'"></div>':'')+
+ +
  '</div></section>';
 }
 function historyModal(){
@@ -385,6 +385,16 @@ function attach(h){
   if(!allowed())return;
   const size=e.target.closest('[data-mgon-scale]');
   if(size){changeScale(size.dataset.mgonScale==='up'?5:-5);return;}
+  const noteSave=e.target.closest('[data-mgon-save-note]');
+  if(noteSave){
+   const id=noteSave.dataset.mgonSaveNote;
+   const input=[...document.querySelectorAll('[data-mgon-close-note]')].find(el=>el.dataset.mgonCloseNote===id);
+   if(input){void (async()=>{try{
+    await rpc('gestlok_mg_online_close_note',{p_shift:id,p_note:input.value});
+    await rpcRefresh();api.toast?.('Observación del cierre guardada.');
+   }catch(err){photoError=err.message||'No se pudo guardar la observación';api.toast?.(photoError);}})();}
+   return;
+  }
   const jump=e.target.closest('[data-mgon-jump-history]');
   if(jump){tab='historial';api.render();document.querySelector('.mg-on-history-embedded')?.scrollIntoView({block:'start'});return;}
   const tabButton=e.target.closest('[data-mgon-tab]');
