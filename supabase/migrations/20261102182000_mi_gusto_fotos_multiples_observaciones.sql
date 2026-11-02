@@ -19,7 +19,7 @@ begin
  end if;
  select * into s from gestlok_mg_online_private.shifts where id=p_shift and local=p_local for update;
  if s.id is null then raise exception 'Turno no autorizado' using errcode='42501'; end if;
- if p_path !~ ('^'||p_local||'/'||p_shift::text||'/cierre-[0-9a-f-]{36}\\.jpg$') then
+ if p_path !~ ('^'||p_local||'/'||p_shift::text||'/cierre-[0-9a-f-]{36}[.]jpg$') then
   raise exception 'Ruta inválida' using errcode='22023';
  end if;
  if not exists(select 1 from storage.objects where bucket_id='mg-online-closures' and name=p_path) then
