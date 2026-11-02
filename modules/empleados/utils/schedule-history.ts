@@ -92,7 +92,7 @@ export function mesesDe(s: Pick<HorarioSemana, "desde" | "hasta">): string[] {
 }
 // Meses con semanas guardadas, del más nuevo al más viejo.
 export function mesesDisponibles(semanas: HorarioSemana[]): string[] {
-  return [...new Set(semanas.flatMap(mesesDe))].filter(Boolean).sort().reverse();
+  return Array.from(new Set(semanas.flatMap(mesesDe))).filter(Boolean).sort().reverse();
 }
 // Colaboradores de una semana que coinciden con lo buscado (por nombre).
 export function filasQueCoinciden(s: HorarioSemana, texto: string): HorarioFila[] {
