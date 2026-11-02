@@ -8,8 +8,8 @@
   const E=original._t.E;
   const LOC={munro:'Munro',torcuato:'Torcuato'};
   const DEFAULT={
-    munro:"🥟 ¡Hola, {nombre}! 🖤\n\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\n\nTe compartimos tu cupón de cortesía:",
-    torcuato:"🥟 ¡Hola, {nombre}! 🖤\n\n¡Gracias por compartir tu experiencia con Mi Gusto! Nos encanta conocer tu opinión. 😊\n\nTe compartimos tu cupón de cortesía:"
+    munro:"¡Hola, {nombre}!\n\nGracias por compartir tu experiencia con nosotros. Nos alegra conocer tu opinión.\n\nComo agradecimiento, queremos obsequiarte un cupón de cortesía:",
+    torcuato:"¡Hola, {nombre}!\n\nGracias por compartir tu experiencia con nosotros. Nos alegra conocer tu opinión.\n\nComo agradecimiento, queremos obsequiarte un cupón de cortesía:"
   };
   let api=null, messages=Object.create(null),loaded=Object.create(null),generation=0;
   let editing=false,draft=null,busy=false,error='',notice='',lastLocal='';
@@ -51,6 +51,8 @@
           // Una invitación previa a reseñas no debe acompañar la entrega de un descuento.
           messages[loc]=DEFAULT[loc];
           error='Había un mensaje anterior de reseñas: revisá el saludo nuevo antes de guardarlo.';
+        } else if(data.body.includes('🥟 ¡Hola, {nombre}! 🖤') && data.body.includes('Te compartimos tu cupón de cortesía:')) {
+          messages[loc]=DEFAULT[loc];
         } else messages[loc]=data.body;
       }
     }catch{
@@ -88,7 +90,7 @@
         if(!m)return whole;
         const invite='<button type="button" data-gl-rv="copy-message" data-id="'+E(m[1])+'" title="Copiar mensaje para '+E(name)+'" aria-label="Copiar mensaje para '+E(name)+'" class="rv-clip">'+clipboardIcon+'</button>';
         const wa=number?
-          '<a href="https://wa.me/'+number+'" target="_blank" rel="noopener noreferrer" class="rv-whatsapp" title="Abrir WhatsApp de '+E(name)+'" aria-label="Abrir WhatsApp de '+E(name)+'">'+whatsappIcon+'</a>':
+          '<button type="button" data-gl-rv="whatsapp-message" data-phone="'+E(number)+'" data-id="'+E(m[1])+'" class="rv-whatsapp" title="Preparar WhatsApp para '+E(name)+'" aria-label="Preparar WhatsApp para '+E(name)+'">'+whatsappIcon+'</button>':
           '<span class="rv-no-whatsapp" title="Número inválido">WA</span>';
         return whole.replace(/(<button data-rv="edit" data-id="[^"]+">[^<]*<\/button>)(<\/td><\/tr>)/,
           (match,button,end)=>'<span class="rv-row-actions">'+button+invite+wa+'</span>'+end);
@@ -109,14 +111,14 @@
   function messageForCoupon(row){
     if(!row || row.local!==local() || !/^[A-HJ-NP-Z2-9]{6}$/.test(String(row.code||'')))return '';
     const greeting=safeGreeting(current()).replace(/\{nombre\}/g,String(row.customer_name||'').trim());
-    return greeting+'\n\n🎟️ *'+row.code+' — 10% OFF*\n'+
-      '📅 Válido '+couponValidity(row)+', de lunes a jueves.\n'+
-      '🥟 Para compras de *6 unidades o más*.\n'+
-      '📍 Exclusivo en *Mi Gusto '+LOC[local()]+'*.\n'+
-      '🚫 No acumulable con otras promociones de la marca.\n'+
-      '🔒 De un solo uso.\n\n¡Gracias por acompañarnos! ¡Te esperamos! 🖤';
+    return greeting+'\n\n*'+row.code+' — 10% OFF*\n\n*Condiciones de uso:*\n'+
+      '- Válido '+couponValidity(row)+', de lunes a jueves.\n'+
+      '- Para compras de 6 unidades o más.\n'+
+      '- Exclusivo de Mi Gusto '+LOC[local()]+'.\n'+
+      '- No acumulable con otras promociones.\n'+
+      '- Cupón de un solo uso.\n\n¡Gracias por elegirnos! Esperamos verte pronto.\n\n*Mi Gusto | Empanadas de verdad.*';
   }
-  async function copyForClient(id){
+  async function copyForClient(id,sendWhatsApp=false,verifiedPhone=''){
     if(!editable()) {api?.toast?.('Necesitás conexión para comprobar el cupón antes de copiarlo.',true);return;}
     const branch=local(),g=generation;
     try{
@@ -128,16 +130,20 @@
       if(row.status!=='pending'){api.toast?.('El cupón está usado o vencido. No se puede enviar.',true);return;}
       const message=messageForCoupon(row);
       if(!message)throw Error('Código inválido');
-      await copy(message,'Mensaje y cupón '+row.code+' copiados. Abrí WhatsApp para enviarlos.');
+      if(sendWhatsApp){
+        const number=verifiedPhone || phoneNumber(row.phone||row.customer_phone||'');
+        if(!number){api.toast?.('El cliente no tiene un teléfono válido.',true);return;}
+        window.open('https://wa.me/'+number+'?text='+encodeURIComponent(message),'_blank','noopener,noreferrer');
+      }else await copy(message,'Mensaje y cupón '+row.code+' copiados. Abrí WhatsApp para enviarlos.');
     }catch{if(g===generation)api?.toast?.('No se pudo verificar el cupón. Reintentá con conexión.',true);}
   }
   function couponText(code,valid){
-    return '🥟 MI GUSTO · '+LOC[local()]+'\n🎟️ CUPÓN '+code+' · 10% OFF\n'+
-      '📅 '+(valid||'Válido del 1 al 12 del mes indicado')+' · Lunes a jueves.\n'+
-      '🛍️ En compras de 6 unidades o más.\n'+
-      '📍 Exclusivo para Mi Gusto '+LOC[local()]+'.\n'+
-      '🚫 No acumulable con otras promociones de la marca.\n'+
-      '🔒 De un solo uso.\n\n¡Te esperamos! 🖤';
+    return 'MI GUSTO · '+LOC[local()]+'\nCUPÓN '+code+' · 10% OFF\n\nCondiciones de uso:\n'+
+      '- '+(valid||'Válido del 1 al 12 del mes indicado')+', de lunes a jueves.\n'+
+      '- Para compras de 6 unidades o más.\n'+
+      '- Exclusivo de Mi Gusto '+LOC[local()]+'.\n'+
+      '- No acumulable con otras promociones.\n'+
+      '- Cupón de un solo uso.\n\n¡Te esperamos!';
   }
   const viewOriginal=original.view;
   original.view=function(){
@@ -188,6 +194,7 @@
     if(!allowed())return;
     const action=el.dataset.glRv;
     if(action==='copy-message') {void copyForClient(el.dataset.id);return;}
+    if(action==='whatsapp-message') {void copyForClient(el.dataset.id,true,el.dataset.phone);return;}
     if(action==='copy-coupon'){void copy(couponText(el.dataset.code,el.dataset.valid),'Cupón y condiciones copiados.');return;}
     if(action==='edit-message'&&editable()){editing=true;draft=current();notice='';error='';redraw();return;}
     if(action==='cancel-message'&&!busy){editing=false;draft=null;error='';redraw();}
