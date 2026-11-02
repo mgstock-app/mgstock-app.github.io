@@ -162,3 +162,21 @@
 @media (max-width: 640px) {
   .schedule-sheet-entry, .schedule-sheet-button { width: 100%; }
 }
+
+/* Acceso a «Historial horarios» desde la carpeta Horarios (solo si la base lo habilita para el local). */
+.schedule-history-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 42px;
+  margin: 4px 0 12px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  font-weight: 650;
+  text-decoration: none;
+}
+.schedule-history-link:hover { background: #f9fafb; }

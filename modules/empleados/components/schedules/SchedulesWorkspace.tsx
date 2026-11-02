@@ -11,6 +11,7 @@ import { selectVisibleCompany } from "@/utils/owner-company";
 import { schedulesApi } from "@/features/schedules/api";
 import { useDisplayName } from "@/components/gestlok/GestlokContext";
 import { BranchScheduleLink } from "./BranchScheduleLink";
+import { HorariosHistoryLink } from "./HorariosHistoryLink";
 import { isGestlokGerente } from "@/utils/permissions";
 import type { Company } from "@/types/access";
 
@@ -23,6 +24,7 @@ function GerenteSchedules() {
       <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS</span>
       <h1>📁 Horarios</h1>
       <p>Planilla de turnos de tu local en Google Sheets.</p>
+      <HorariosHistoryLink />
       {locals.map((id) => <BranchScheduleLink key={id} local={id} />)}
     </section>
   );
@@ -66,6 +68,7 @@ function SchedulesForStaff() {
       <span className="eyebrow">EMPRESA · SUCURSALES</span>
       <h1>📁 Horarios</h1>
       <p>Accedé a las planillas de cada sucursal en Google Sheets.</p>
+      <HorariosHistoryLink />
       {error && <p role="alert">{error}</p>}
       {loading ? (
         <p role="status">Cargando empresas…</p>
