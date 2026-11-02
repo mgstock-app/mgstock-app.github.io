@@ -51,6 +51,8 @@
           // Una invitación previa a reseñas no debe acompañar la entrega de un descuento.
           messages[loc]=DEFAULT[loc];
           error='Había un mensaje anterior de reseñas: revisá el saludo nuevo antes de guardarlo.';
+        } else if(data.body.includes('🥟 ¡Hola, {nombre}! 🖤') && data.body.includes('Te compartimos tu cupón de cortesía:')) {
+          messages[loc]=DEFAULT[loc];
         } else messages[loc]=data.body;
       }
     }catch{
