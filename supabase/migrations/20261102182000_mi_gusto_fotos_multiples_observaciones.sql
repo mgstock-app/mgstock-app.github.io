@@ -46,3 +46,18 @@ begin
 end $$;
 revoke all on function public.gestlok_mg_online_photo_add(text,uuid,text),public.gestlok_mg_online_close_note(text,uuid,text) from public,anon;
 grant execute on function public.gestlok_mg_online_photo_add(text,uuid,text),public.gestlok_mg_online_close_note(text,uuid,text) to authenticated;
+
+create or replace function public.gestlok_mg_online_photo_list(p_local text,p_shift uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare s gestlok_mg_online_private.shifts;
+begin
+ if not gestlok_mg_online_private.authorized(p_local) then raise exception 'Sin acceso' using errcode='42501'; end if;
+ select * into s from gestlok_mg_online_private.shifts where id=p_shift and local=p_local;
+ if s.id is null then raise exception 'Turno inexistente' using errcode='42501'; end if;
+ return (select coalesce(jsonb_agg(jsonb_build_object('path',p.path,'created_at',p.created_at) order by p.created_at),'[]'::jsonb)
+ from (select path,created_at from gestlok_mg_online_private.shift_photos where shift_id=s.id
+ union all select s.photo_path,s.photo_at where s.photo_path is not null and not exists
+ (select 1 from gestlok_mg_online_private.shift_photos where shift_id=s.id and path=s.photo_path)) p);
+end $$;
+revoke all on function public.gestlok_mg_online_photo_list(text,uuid) from public,anon;
+grant execute on function public.gestlok_mg_online_photo_list(text,uuid) to authenticated;
