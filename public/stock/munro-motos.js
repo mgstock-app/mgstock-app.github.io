@@ -24,6 +24,8 @@
   let api = null, docs = [], semanaVista = '', diaMovil = -1, verTodo = false, agregando = false, tarifasAbiertas = false;
   /* «Modificar» habilita la planilla; los cambios quedan en el borrador hasta «Guardar». */
   let edicion = false, editNombre = '', guardando = false;
+  /* Pestañas de los dueños: «Semana» (planilla) o «Historial» (semanas cerradas e importes). */
+  let pestana = 'semana';
   const pendientes = new Map(), borrador = new Map();
   const $ = sel => document.querySelector(sel);
   const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -310,7 +312,13 @@
     if (!permitido()) return '<section class="sheet"><p>No tenés acceso a este módulo.</p></section>';
     const actual = semanaActual();
     if (!semanaVista || (!esDueno() && semanaVista !== actual)) semanaVista = actual;
+    if (!esDueno()) pestana = 'semana';
     const r = resumen(semanaVista), dueno = esDueno(), puede = editable(semanaVista), enCurso = semanaVista === actual;
+    const cerradas = dueno ? semanasConDatos().length : 0;
+    const pestanas = dueno ? '<nav class="mo-pestanas" role="tablist" aria-label="Motos Agencia">' +
+      '<button role="tab" data-mo-act="pestana" data-p="semana" aria-selected="' + (pestana === 'semana') + '">' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</button>' +
+      '<button role="tab" data-mo-act="pestana" data-p="historial" aria-selected="' + (pestana === 'historial') + '">Historial' +
+      (cerradas ? ' <span class="mo-cuenta">' + cerradas + '</span>' : '') + '</button></nav>' : '';
     const flechas = dueno
       ? '<div class="mo-nav"><button data-mo-act="prev" aria-label="Semana anterior">‹</button><button data-mo-act="next" aria-label="Semana siguiente"' + (enCurso ? ' disabled' : '') + '>›</button></div>' : '';
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
@@ -324,9 +332,10 @@
       '<p>Registrá la entrada y salida de cada moto. Al finalizar la semana, los datos se guardan automáticamente en el historial y se reinicia la planilla.</p></div>' +
       '<div class="mo-semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>' +
       '<div><small>' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</small><b>' + DIAS[0] + ' ' + corta(r.dias[0]) + ' – ' + DIAS[6] + ' ' + corta(r.dias[6]) + '</b></div>' + flechas + '</div></header>' +
+      pestanas + (dueno && pestana === 'historial' ? historialHTML() :
       (enCurso ? '' : '<p class="mo-aviso">Estás viendo una semana cerrada. <button class="mo-link" data-mo-act="hoy">Volver a la semana actual</button></p>') +
       '<section class="mo-sheet' + (edicion ? ' editando' : '') + '">' + barra + (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
-      '<p class="mo-estado">' + E(estado) + '</p>' + historialHTML() + '</section>';
+      '<p class="mo-estado">' + E(estado) + '</p>') + '</section>';
   }
   /* Actualiza totales sin redibujar, para no perder el foco mientras se carga. */
   function refrescar(){
@@ -365,12 +374,13 @@
     document.addEventListener('click', event => {
       const btn = event.target.closest('[data-mo-act]'); if (!btn || !permitido()) return;
       const act = btn.dataset.moAct;
-      if (['prev','next','hoy','ver'].includes(act) && borrador.size) { api.toast('Guardá o cancelá los cambios antes de cambiar de semana.', true); return; }
+      if (['prev','next','hoy','ver','pestana'].includes(act) && borrador.size) { api.toast('Guardá o cancelá los cambios antes de cambiar de semana.', true); return; }
       if (['prev','next','hoy','ver'].includes(act)) { edicion = false; editNombre = ''; }
       if (act === 'prev' && esDueno()) { semanaVista = sumar(semanaVista, -7); diaMovil = -1; }
       else if (act === 'next' && esDueno() && semanaVista < semanaActual()) { semanaVista = sumar(semanaVista, 7); diaMovil = -1; }
       else if (act === 'hoy') { semanaVista = semanaActual(); diaMovil = -1; }
-      else if (act === 'ver' && esDueno()) { semanaVista = btn.dataset.semana; diaMovil = -1; window.scrollTo?.({top:0, behavior:'smooth'}); }
+      else if (act === 'ver' && esDueno()) { semanaVista = btn.dataset.semana; diaMovil = -1; pestana = 'semana'; window.scrollTo?.({top:0, behavior:'smooth'}); }
+      else if (act === 'pestana' && esDueno()) { pestana = btn.dataset.p === 'historial' ? 'historial' : 'semana'; edicion = false; }
       else if (act === 'dia') diaMovil = Number(btn.dataset.i);
       else if (act === 'agregar') agregando = true;
       else if (act === 'cancelar-ref') agregando = false;

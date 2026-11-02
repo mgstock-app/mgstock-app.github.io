@@ -129,3 +129,8 @@
 .mo-name-form input{width:100%;padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;font-size:13px}
 .mo-name-form div{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:760px){.mo-toolbar .btn{flex:1}}
+.mo-pestanas{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap}
+.mo-pestanas button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 18px;border-radius:999px;border:1px solid var(--line);background:white;font-weight:650;cursor:pointer;color:inherit}
+.mo-pestanas button[aria-selected="true"]{background:var(--mo-blue-ink);border-color:var(--mo-blue-ink);color:white}
+.mo-cuenta{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--mo-blue);color:var(--mo-blue-ink);font-size:12px}
+.mo-pestanas button[aria-selected="true"] .mo-cuenta{background:white}
