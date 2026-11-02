@@ -36,7 +36,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     if (error.message.includes('Minified React error #418')) return false;
   });
 
-  it('gerente de Munro carga la semana; ve horas pero no importes, valores ni historial', () => {
+  it('gerente de Munro carga la semana y ve el historial con horas, sin importes ni valores', () => {
     launch(); login('gerente.munro@example.com');
     cy.get('#snav [data-go="motos"]').should('exist').click();
     cy.get('.mo-page h1').should('contain.text', 'Motos Agencia');
@@ -56,10 +56,23 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('.mo-sheet.editando').should('not.exist');
     cy.get('.mo-pend').should('contain.text', 'Planilla guardada');
     cy.get('[data-mo-pago="lucas"]').should('not.exist');
+    cy.get('[data-mo-sem-pago]').should('not.exist');
+    // Historial: los gerentes de Munro también lo ven, en solo lectura y sin importes.
     cy.get('.mo-hist').should('not.exist');
-    cy.get('[data-mo-act="pestana"]').should('not.exist');
+    cy.get('[data-mo-act="pestana"][data-p="historial"]').should('be.visible').click();
+    cy.get('.mo-sheet').should('not.exist');
+    cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'solo lectura')
+      .and('contain.text', 'Todavía no hay semanas cerradas').and('not.contain.text', 'Total pago');
     cy.get('[data-mo-act="tarifas"]').should('not.exist');
-    cy.get('.mo-nav').should('not.exist');
+    cy.get('[data-mo-act="pestana"][data-p="semana"]').click();
+    cy.get('.mo-sheet').should('exist');
+    // Puede mirar la semana anterior, pero no modificarla.
+    cy.get('[data-mo-act="prev"]').click();
+    cy.get('.mo-aviso').should('contain.text', 'semana cerrada');
+    cy.get('[data-mo-act="modificar"]').should('not.exist');
+    cy.get('.mo-estado').should('contain.text', 'solo lectura');
+    cy.get('[data-mo-act="hoy"]').click();
+    cy.get('.mo-aviso').should('not.exist');
     lunes().then(s => cy.window().its('__rows').should(rows => {
       const d = docsMotos(rows).find(r => r.id === `d-${s}-lucas-${s}`);
       expect(d.data).to.include({semana:s, moto:'lucas', dia:s, tm_e:'08:00', tm_s:'16:30'});

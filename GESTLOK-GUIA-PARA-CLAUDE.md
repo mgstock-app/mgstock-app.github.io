@@ -204,3 +204,4 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Pantalla:** `/empleados/historial-horarios` (pestañas Semanas, Pendientes de pago, Conexión). Acceso desde el menú
   de la creadora y del dueño, la carpeta Horarios y la portada del gerente (solo si la base habilita algún local).
 - **Motos Agencia:** el historial ya existía al final de la página; ahora tiene pestaña propia arriba (dueños y creadora).
+- **Motos Agencia para gerentes (02/11/2026, pedido «los historiales deben verlo los gerentes»):** los gerentes de Munro también ven la pestaña Historial y pueden mirar semanas cerradas, en solo lectura y sin importes ni valor por hora. Migración `20261102160000_gestlok_munro_motos_historial_gerentes.sql` (solo `alter policy` de lectura; escritura sin cambios; vuelta atrás en `rollback-…sql.txt`).
