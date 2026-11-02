@@ -183,7 +183,10 @@
   }
   function tocarPanel() { if (S.panel) S.panel.hasta = Date.now() + 15 * 60e3; }
 
+  // Cada pintada tiene un número: una carga en segundo plano que termina tarde no pisa una pantalla más nueva.
+  let vez = 0;
   function pintar() {
+    vez += 1;
     if (S.recuperar) return pantallaNuevaClave();
     if (!S.user) return pantallaAcceso();
     if (!S.comercios.length || S.creando) return pantallaCrearComercio();
@@ -308,10 +311,12 @@
       '<span class="inicial">' + inicial(p.nombre) + '</span><b>' + h(p.nombre) + '</b><small>' + h(ROL[p.rol] || '') + '</small></button>').join('') + '</div>';
   }
   async function pantallaPin() {
+    const mia = vez;
     S.pinModo = 'caja';
     if (!S.personas) {
       app.innerHTML = marco('<p class="cargando">Cargando personas…</p>');
-      try { await cargarPersonas(); } catch (e) { app.innerHTML = marco('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>'); return; }
+      try { await cargarPersonas(); } catch (e) { if (mia === vez) app.innerHTML = marco('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>'); return; }
+      if (mia !== vez) return;
     }
     const lista = S.personas || [];
     let cuerpo = '<div class="encabezado"><div><h1>¿Quién está en la caja?</h1><p class="sub">' + h(S.local.nombre) + ' · ' + h(fecha(diaAR(), true)) + '</p></div></div>';
@@ -378,7 +383,7 @@
   // ---------------- caja del día ----------------
   function pantallaCaja() {
     const e = S.estado;
-    if (!e) { app.innerHTML = marco('<p class="cargando">Cargando la caja…</p>'); cargarEstado().then(pintar, (x) => { if (!S.op) pintar(); else app.innerHTML = marco('<p class="error">' + h(x.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>'); }); return; }
+    if (!e) { const mia = vez; app.innerHTML = marco('<p class="cargando">Cargando la caja…</p>'); cargarEstado().then(() => { if (mia === vez) pintar(); }, (x) => { if (mia !== vez) return; if (!S.op) pintar(); else app.innerHTML = marco('<p class="error">' + h(x.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>'); }); return; }
     if (S.cierre && e.caja && e.caja.estado === 'abierta') return pantallaCierre();
     S.cierre = null;
     if (!e.caja) return app.innerHTML = marco(e.puede_abrir ? vistaAbrir(e) : vistaFueraDeHora(e));
@@ -638,19 +643,20 @@
 
   // ---------------- panel del dueño ----------------
   async function pantallaPanel() {
-    const v = S.vista;
+    const v = S.vista, mia = vez;
+    const poner = (html) => { if (mia === vez && S.vista === v) app.innerHTML = marco(html); };
     try {
-      if (v === 'hoy') { app.innerHTML = marco('<p class="cargando">Cargando…</p>'); S.hoy = await rpc('hoy', { p_comercio: S.comercio.id }); return (app.innerHTML = marco(vistaHoy(S.hoy))); }
+      if (v === 'hoy') { poner('<p class="cargando">Cargando…</p>'); S.hoy = await rpc('hoy', { p_comercio: S.comercio.id }); return poner(vistaHoy(S.hoy)); }
       if (v === 'historial') {
         if (!S.histFiltro) S.histFiltro = { desde: diaAR(-30), hasta: diaAR(), local: '' };
         if (!S.cfg) S.cfg = await rpc('config', { p_comercio: S.comercio.id });
-        app.innerHTML = marco(vistaHistorial(null));
+        poner(vistaHistorial(null));
         S.hist = await rpc('historial', { p_comercio: S.comercio.id, p_local: S.histFiltro.local || null, p_desde: S.histFiltro.desde, p_hasta: S.histFiltro.hasta });
-        return (app.innerHTML = marco(vistaHistorial(S.hist)));
+        return poner(vistaHistorial(S.hist));
       }
-      if (v === 'config') { if (!S.cfg) { app.innerHTML = marco('<p class="cargando">Cargando…</p>'); S.cfg = await rpc('config', { p_comercio: S.comercio.id }); } return (app.innerHTML = marco(vistaConfig(S.cfg))); }
+      if (v === 'config') { if (!S.cfg) { poner('<p class="cargando">Cargando…</p>'); S.cfg = await rpc('config', { p_comercio: S.comercio.id }); } return poner(vistaConfig(S.cfg)); }
     } catch (e) {
-      app.innerHTML = marco('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>');
+      poner('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>');
     }
   }
   function vistaHoy(d) {
