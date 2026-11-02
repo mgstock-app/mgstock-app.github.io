@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es-AR" data-medio="telefono">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex">
+<meta name="description" content="Control de caja del comercio: caja inicial, cobros por medio de pago, gastos, retiros, arqueo y cierre.">
+<title>Caja · control de medios de pago</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="caja.css?v=20261102">
+</head>
+<body>
+<div id="app"><p class="cargando">Cargando…</p></div>
+<div id="hoja" class="hoja" hidden></div>
+<div id="aviso" class="aviso" role="status" aria-live="polite" hidden></div>
+<noscript><p class="cargando">Para usar la caja activá JavaScript en el navegador.</p></noscript>
+<script src="../vendor/supabase.js"></script>
+<script src="config.js?v=20261102"></script>
+<script src="caja.js?v=20261102"></script>
+</body>
+</html>
