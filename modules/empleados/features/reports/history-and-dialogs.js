@@ -61,6 +61,9 @@ ctx.pintarHistorial = function () {
     tb.textContent = "";
     ctx.$("hVacio").hidden = ctx.S.hist.length > 0;
     ctx.$("histWrap").hidden = !ctx.S.hist.length;
+    var propia = ctx.liqPropia(ctx.S.srv[ctx.S.activo] || { local: ctx.S.local });
+    ["hThPremio", "hThOtros"].forEach(function (id) { if (ctx.$(id))
+        ctx.$(id).hidden = !propia; });
     ctx.S.hist.forEach(function (r) {
         var d = r.d, it = d.items || {}, tr = document.createElement("tr"), tt = ctx.esTurno(d) ? "turnos" : "horas";
         var v = function (k, c) { return it[k] ? it[k][c] : null; }, p = function (k) { return v(k, "i") == null ? "—" : ctx.pesos(v(k, "i")); };
@@ -105,6 +108,11 @@ ctx.pintarHistorial = function () {
         }
         ctx.celda(tr, d.vac ? p("vac") : "—");
         ctx.celda(tr, d.agu ? p("agu") : "—");
+        if (propia) {
+            ctx.celda(tr, ctx.activo(d, ctx.ITEM_PREMIO) && v("premio", "i") != null ? p("premio") : "—");
+            var otros = ctx.normCats(d.cats).filter(function (c) { return c.i != null; });
+            ctx.celda(tr, otros.length ? ctx.pesos(otros.reduce(function (s, c) { return s + (c.signo === "resta" ? -c.i : c.i); }, 0)) : "—");
+        }
         ctx.celda(tr, ctx.pesos(d.total), "tot");
         ctx.celda(tr, d.enviadoA || "—", "izq");
         tb.appendChild(tr);
@@ -159,6 +167,11 @@ ctx.registrarHistorialDe = function (id, origen) {
     var reg = { registrado: new Date().toISOString(), fecha: h.fecha || "", periodo: ctx.periodoTxt(h), mes: h.mes || "", anio: h.anio || "", semDesde: h.semDesde || "", semHasta: h.semHasta || "",
         nombre: h.nombre || "", local: ctx.localDe(h), puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), extras: !!h.extras, ferTarifaPropia: !!h.ferTarifaPropia, pago: ctx.pagoDe(h), alias: String(h.alias || "").trim(), firmado: ctx.esEfectivo(h) && ctx.firmaVigente(h), ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "",
         items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas), total: ctx.totalDe(h), enviadoA: origen || "Guardado sin enviar" };
+    if (ctx.liqPropia(h)) {
+        reg.premio = ctx.activo(h, ctx.ITEM_PREMIO);
+        reg.cats = ctx.normCats(h.cats).filter(function (c) { return c.i != null; });
+        reg.ordenFilas = ctx.ordenDe(h).slice();
+    }
     return ctx.S.db.collection("hojas/" + id + "/historial").add(reg);
 };
 ctx.abrirModal = function (html) {

@@ -58,6 +58,19 @@ ctx.iniciar = function () {
                 if (ctx.S.cargado && ctx.S.pantalla === "inicio")
                     ctx.pintarCopia();
             }, function () { });
+            /* Conceptos y orden de la liquidación propia del local (Munro): un documento por local, compartido por dueño y creadora. */
+            ctx.LIQ_PROPIA.forEach(function (l) {
+                if (!ctx.LOCALES[l])
+                    return;
+                db.doc("liquidacion/" + l).onSnapshot(function (d) {
+                    var cfg = d.exists ? ctx.normCfgLiq(d.data()) : null;
+                    if (JSON.stringify(ctx.S.cfgLiq[l] || null) === JSON.stringify(cfg))
+                        return;
+                    ctx.S.cfgLiq[l] = cfg;
+                    if (ctx.S.cargado && (ctx.$("overlay").hidden || !ctx.S.editando))
+                        ctx.pintarTodo();
+                }, function () { });
+            });
             db.collection("hojas").orderBy("orden").onSnapshot(function (snap) {
                 if (snap.metadata.fromCache && snap.empty && !ctx.S.cargado)
                     return;

@@ -302,6 +302,15 @@
 .report-workspace .opt-cel{display:flex;align-items:center;gap:10px}
 .report-workspace .opc{display:block;font-size:11px;color:var(--muted);font-weight:400}
 .report-workspace .opc.resta{color:var(--danger)}
+/* Liquidación propia del local (Munro): conceptos agregados por el dueño y orden común */
+.report-workspace .cat-cel{display:flex;flex-direction:column}
+.report-workspace .liq-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.report-workspace .liq-bar .hint{flex:1 1 220px;margin:0;font-size:var(--fs-xs);color:var(--muted)}
+.report-workspace .orden-lista{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto}
+.report-workspace .orden-lista li{display:flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:var(--r-sm);padding:6px 8px}
+.report-workspace .orden-lista .orden-nom{flex:1;min-width:0;overflow-wrap:anywhere}
+.report-workspace .orden-lista .orden-btn{min-width:40px;padding:6px 10px}
+.report-workspace .modal .segmento{margin-top:4px}
 .report-workspace .just{display:flex;align-items:flex-start;gap:7px;margin:8px 0 0 46px;font-size:12.5px;font-weight:500;color:var(--ink-2);cursor:pointer;line-height:1.35}
 .report-workspace .just input{width:16px;height:16px;margin:0;flex:none;accent-color:var(--band);cursor:pointer}
 .report-workspace .just small{display:block;font-size:11px;color:var(--muted);font-weight:400}

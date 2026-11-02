@@ -79,6 +79,9 @@ ctx.activo = function (h, it) {
     if (!it.opcional)
         return true;
     var v = h && h[it.opcional];
+    /* Premio: viene incluido salvo que el dueño lo desactive (y sin importe no figura en el recibo) */
+    if (v == null && it.porDefecto)
+        return true;
     /* Hojas anteriores a que ausentes fuera opcional: queda activo si ya tenía datos cargados */
     if (v == null && it.opcional === "ausente") {
         var a = h && h.items && h.items.aus;
@@ -96,6 +99,70 @@ ctx.defItem = function (h, it) {
     if (it.k === "fer")
         return { k: "fer", txt: turno ? "Turnos feriado" : "Horas feriado", tipo: turno ? "turnos" : "horas" };
     return it;
+};
+/* Liquidación propia del local (pedido 02/11/2026, solo Munro): Premio, conceptos del local que suman o restan
+   y un orden de conceptos común a todos los colaboradores. Torcuato queda como estaba. */
+ctx.LIQ_PROPIA = ["munro"];
+ctx.liqPropia = function (h) { return ctx.LIQ_PROPIA.indexOf(ctx.localDe(h)) > -1; };
+ctx.liqPropiaLocal = function (l) { return ctx.LIQ_PROPIA.indexOf(l) > -1; };
+ctx.itemVisible = function (h, it) { return !it.soloLiqPropia || ctx.liqPropia(h); };
+ctx.claveCat = function (id) { return "cat:" + id; };
+ctx.esNumero = function (v) { return typeof v === "number" && isFinite(v); };
+ctx.normCats = function (cats) {
+    var vistos = {};
+    return (Array.isArray(cats) ? cats : []).filter(function (c) {
+        if (!c || typeof c.id !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(c.id) || vistos[c.id])
+            return false;
+        vistos[c.id] = true;
+        return true;
+    }).map(function (c) {
+        return { id: c.id, txt: String(c.txt || "").trim().slice(0, 60) || "Concepto", signo: c.signo === "resta" ? "resta" : "suma", i: ctx.esNumero(c.i) ? Math.abs(c.i) : null };
+    });
+};
+ctx.normCfgLiq = function (d) {
+    d = d || {};
+    return { cats: ctx.normCats(d.cats).map(function (c) { return { id: c.id, txt: c.txt, signo: c.signo }; }),
+        orden: (Array.isArray(d.orden) ? d.orden : []).filter(function (k) { return typeof k === "string" && k.length <= 60; }) };
+};
+/* Orden completo: respeta el orden guardado; lo que no figura (conceptos nuevos) va al final, en el orden de siempre. */
+ctx.ordenCompleto = function (orden, claves) {
+    var r = [];
+    (orden || []).forEach(function (k) { if (claves.indexOf(k) > -1 && r.indexOf(k) === -1)
+        r.push(k); });
+    claves.forEach(function (k) { if (r.indexOf(k) === -1)
+        r.push(k); });
+    return r;
+};
+ctx.cfgLiqDe = function (h) { var l = ctx.localDe(h); return ctx.S && ctx.S.cfgLiq && ctx.liqPropiaLocal(l) ? ctx.S.cfgLiq[l] || null : null; };
+/* En la planilla manda el orden del local (igual para todos); fuera de ella, el que quedó guardado en la hoja. */
+ctx.ordenDe = function (h) {
+    var cfg = ctx.cfgLiqDe(h);
+    if (cfg && cfg.orden.length)
+        return cfg.orden;
+    return Array.isArray(h && h.ordenFilas) ? h.ordenFilas : [];
+};
+ctx.ordenarFilas = function (filas, orden) {
+    var claves = filas.map(function (f) { return f.k; }), o = ctx.ordenCompleto(orden, claves);
+    return filas.slice().sort(function (a, b) { return o.indexOf(a.k) - o.indexOf(b.k); });
+};
+/* Filas del recibo (imagen, PDF, WhatsApp, recibo privado e historial), ya ordenadas. */
+ctx.filasDe = function (h) {
+    var filas = [];
+    ctx.ITEMS.forEach(function (it0) {
+        if (!ctx.activo(h, it0))
+            return;
+        var v = (h && h.items && h.items[it0.k]) || {};
+        if (it0.soloConImporte && !ctx.esNumero(v.i))
+            return;
+        filas.push({ k: it0.k, it0: it0, it: ctx.defItem(h, it0), v: v });
+    });
+    ctx.normCats(h && h.cats).forEach(function (c) {
+        if (c.i == null)
+            return;
+        var k = ctx.claveCat(c.id);
+        filas.push({ k: k, cat: c, it: { k: k, txt: c.txt, tipo: "monto", resta: c.signo === "resta" }, v: { c: null, i: c.i } });
+    });
+    return ctx.ordenarFilas(filas, ctx.ordenDe(h));
 };
 ctx.tarifaDe = function (h, k) { var t = ctx.normTarifas(h && h.tarifas); return k === "fer" && !(h && h.ferTarifaPropia) ? t.trab : (ctx.LIGADAS.indexOf(k) > -1 ? t.trab : t[k]); };
 ctx.puestoTxt = function (h) { return ctx.puestoDe(h) === "encargado" ? "Encargado" : "Staff"; };
@@ -148,7 +215,12 @@ ctx.periodoTxt = function (h) {
 };
 ctx.normItems = function (items) {
     var r = {};
-    ctx.ITEMS.forEach(function (it) { var v = (items && items[it.k]) || {}; r[it.k] = { c: v.c == null ? null : v.c, i: v.i == null ? null : v.i }; });
+    ctx.ITEMS.forEach(function (it) {
+        /* Los conceptos propios de un local (Premio) solo se guardan en las hojas que ya los tienen: Torcuato no cambia */
+        if (it.soloLiqPropia && !(items && items[it.k]))
+            return;
+        var v = (items && items[it.k]) || {}; r[it.k] = { c: v.c == null ? null : v.c, i: v.i == null ? null : v.i };
+    });
     return r;
 };
 ctx.normTarifas = function (t) {
@@ -184,6 +256,8 @@ ctx.totalDe = function (h) {
         if (typeof v === "number" && isFinite(v))
             t += it.resta ? -Math.abs(v) : v;
     });
+    ctx.normCats(h && h.cats).forEach(function (c) { if (c.i != null)
+        t += c.signo === "resta" ? -c.i : c.i; });
     return ctx.r2(t);
 };
 ctx.importeTxt = function (it, v, vacio, menos) {
@@ -203,17 +277,35 @@ ctx.estadoHoja = function (h) {
 };
 ctx.camposDe = function (h) {
     h = h || {};
-    return { nombre: h.nombre || "", alias: String(h.alias || "").trim(), pago: ctx.pagoDe(h), fecha: h.fecha || "", mes: h.mes || "", anio: h.anio || "", semDesde: h.semDesde || "", semHasta: h.semHasta || "",
+    var r = { nombre: h.nombre || "", alias: String(h.alias || "").trim(), pago: ctx.pagoDe(h), fecha: h.fecha || "", mes: h.mes || "", anio: h.anio || "", semDesde: h.semDesde || "", semHasta: h.semHasta || "",
         puesto: ctx.puestoDe(h), porTurno: ctx.esTurno(h), extras: !!h.extras, ferTarifaPropia: !!h.ferTarifaPropia, ausente: ctx.activo(h, ctx.ITEM_AUS), ausJust: ctx.ausJustificado(h), vac: !!h.vac, agu: !!h.agu, obs: h.obs || "", items: ctx.normItems(h.items), tarifas: ctx.normTarifas(h.tarifas),
         contacto: h.contacto && h.contacto.tel ? { nombre: h.contacto.nombre || "", tel: String(h.contacto.tel) } : null };
+    if (ctx.liqPropia(h)) {
+        /* Cada recibo guarda sus conceptos (nombre, suma o resta e importe) y el orden vigente al guardarlo:
+           así el historial y el recibo del colaborador se ven igual aunque después cambien los conceptos del local. */
+        r.premio = ctx.activo(h, ctx.ITEM_PREMIO);
+        if (!r.items.premio)
+            r.items.premio = { c: null, i: null };
+        r.cats = ctx.normCats(h.cats).filter(function (c) { return c.i != null; });
+        var orden = ctx.ordenDe(h);
+        if (orden.length)
+            r.ordenFilas = orden.slice();
+    }
+    return r;
 };
-ctx.camposPeriodoVacio = function () { return { extras: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", firma: null, items: ctx.normItems(null) }; };
+ctx.camposPeriodoVacio = function (h) {
+    var r = { extras: false, fecha: "", mes: "", anio: "", semDesde: "", semHasta: "", ausente: false, ausJust: false, vac: false, agu: false, obs: "", firma: null, items: ctx.normItems(null) };
+    if (h && Array.isArray(h.cats))
+        r.cats = [];
+    return r;
+};
 return () => {
 "use strict";
 ctx.ITEMS = [
     { k: "trab", txt: "Horas trabajadas", tipo: "horas" },
     { k: "extra", txt: "Horas extra", tipo: "horas", opcional: "extras" },
     { k: "off", txt: "Horas de OFF", tipo: "horas" },
+    { k: "premio", txt: "Premio", tipo: "monto", opcional: "premio", porDefecto: true, soloLiqPropia: true, soloConImporte: true },
     { k: "fer", txt: "Horas feriado", tipo: "horas" },
     { k: "aus", txt: "Días ausentes", tipo: "dias", opcional: "ausente", resta: true },
     { k: "vac", txt: "Vacaciones", tipo: "dias", opcional: "vac" },
@@ -241,6 +333,7 @@ ctx.LIGADAS = ["off"];
 ctx.ESTADOS_COLAB = { activo: "Activo", refuerzo: "Refuerzo", descanso: "En descanso", inactivo: "Inactivo" };
 ctx.ESTADOS_EFE = { enviada: "Recibo listo", cargada: "Pendiente de firma", vacia: "Sin cargar" };
 ctx.ITEM_AUS = ctx.ITEMS.filter(function (x) { return x.k === "aus"; })[0];
+ctx.ITEM_PREMIO = ctx.ITEMS.filter(function (x) { return x.k === "premio"; })[0];
 };
 }
 
@@ -251,16 +344,16 @@ export function summarizeReport(sheet, local) {
     const ctx = {};
     registerPayroll({ window: { REPORT_LOCALS: [local] } }, ctx)();
     const h = sheet || {};
-    const rows = ctx.ITEMS.filter(function (it) { return ctx.activo(h, it); }).map(function (it) {
-        const field = h.items && h.items[it.k] || {};
-        const descriptor = ctx.defItem(h, it);
+    const rows = ctx.filasDe(h).map(function (fila) {
+        const field = fila.v || {};
+        const descriptor = fila.it;
         return {
-            key: it.k,
+            key: fila.k,
             label: descriptor.txt,
             type: descriptor.tipo,
             quantity: field.c == null ? null : field.c,
-            rate: descriptor.tipo === "monto" ? null : ctx.tarifaDe(h, it.k),
-            amount: it.k === "aus" && ctx.ausJustificado(h) ? 0 : (typeof field.i === "number" && Number.isFinite(field.i) ? (it.resta ? -Math.abs(field.i) : field.i) : null),
+            rate: descriptor.tipo === "monto" ? null : ctx.tarifaDe(h, fila.k),
+            amount: fila.k === "aus" && ctx.ausJustificado(h) ? 0 : (typeof field.i === "number" && Number.isFinite(field.i) ? (descriptor.resta ? -Math.abs(field.i) : field.i) : null),
         };
     });
     return {

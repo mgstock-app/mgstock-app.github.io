@@ -11,6 +11,12 @@ ctx.entrarEdicion = function () {
     ctx.S.borrador.ausente = ctx.activo(h, ctx.ITEM_AUS);
     ctx.S.borrador.ausJust = ctx.ausJustificado(h);
     ctx.S.borrador._tel = h.contacto && h.contacto.tel ? ctx.telTxt(h.contacto.tel) : "";
+    if (ctx.liqPropia(h)) {
+        if (!ctx.S.borrador.items.premio)
+            ctx.S.borrador.items.premio = { c: null, i: null };
+        ctx.S.borrador.premio = ctx.activo(h, ctx.ITEM_PREMIO);
+        ctx.S.borrador.cats = ctx.normCats(h.cats);
+    }
     ctx.S.borrador.fecha = ctx.hoyIso();
     ctx.S.editando = true;
     ctx.limpiarErrores();
@@ -179,6 +185,16 @@ ctx.construirTabla = function () {
                 ctx.pintarValores();
             });
     });
+    /* Munro: botones para sumar conceptos propios del local y ordenar los conceptos (iguales para todos los colaboradores). */
+    var barra = document.createElement("div");
+    barra.id = "liqBar";
+    barra.className = "liq-bar";
+    barra.hidden = true;
+    barra.innerHTML = '<button type="button" class="btn sec" id="bAgregarCat">+ Agregar categoría</button><button type="button" class="btn sec" id="bOrdenCats">Ordenar conceptos</button>' +
+        '<span class="hint">Valen para todos los colaboradores del local. El importe de cada uno se carga en su recibo.</span>';
+    ctx.$("errTabla").parentNode.insertBefore(barra, ctx.$("errTabla"));
+    scope.listen(ctx.$("bAgregarCat"), "click", function () { ctx.modalAgregarCat(); });
+    scope.listen(ctx.$("bOrdenCats"), "click", function () { ctx.modalOrdenCats(); });
     scope.listen(ctx.$("fNombre"), "input", function (e) { if (ctx.S.editando)
         ctx.S.borrador.nombre = e.target.value; });
     scope.listen(ctx.$("fObs"), "input", function (e) { if (ctx.S.editando)
@@ -264,6 +280,197 @@ ctx.limpiarErrores = function () {
     ctx.$("fTel").classList.remove("mal");
     ctx.ITEMS.forEach(function (it) { ["cc_", "cv_", "ci_"].forEach(function (p) { if (ctx.$(p + it.k))
         ctx.$(p + it.k).classList.remove("mal"); }); });
+    Object.keys(ctx.filasCat || {}).forEach(function (id) { var caja = ctx.$("ci_cat_" + id); if (caja)
+        caja.classList.remove("mal"); });
+};
+/* ---------- Conceptos propios del local (Munro) ---------- */
+ctx.filasCat = {};
+ctx.puedeConfigLiq = function () {
+    return !!ctx.S.db && !ctx.S.soloLectura && ctx.S.esDuena && !(window.REPORT_PERMISSIONS && !window.REPORT_PERMISSIONS.allowed("edit_reports"));
+};
+/* Conceptos que muestra la planilla: los del local (con el importe de esta hoja) y los que la hoja ya tenía cargados. */
+ctx.catsVista = function (h) {
+    var cfg = ctx.cfgLiqDe(h), propias = ctx.normCats(h.cats), porId = {}, r = [];
+    propias.forEach(function (c) { porId[c.id] = c; });
+    (cfg ? cfg.cats : []).forEach(function (c) { var p = porId[c.id]; r.push({ id: c.id, txt: c.txt, signo: c.signo, i: p ? p.i : null }); delete porId[c.id]; });
+    propias.forEach(function (c) { if (porId[c.id] && c.i != null)
+        r.push(c); });
+    return r;
+};
+ctx.cambioCat = function (c, input) {
+    if (!ctx.S.editando)
+        return;
+    var h = ctx.S.borrador, n = ctx.leerNumero(input.value), clave = "icat:" + c.id, caja = ctx.$("ci_cat_" + c.id);
+    if (n !== null && isNaN(n)) {
+        ctx.errores[clave] = "Revisá " + c.txt.toLowerCase() + ": escribí solo números.";
+        caja.classList.add("mal");
+    }
+    else {
+        delete ctx.errores[clave];
+        caja.classList.remove("mal");
+        if (!Array.isArray(h.cats))
+            h.cats = [];
+        var e = h.cats.filter(function (x) { return x.id === c.id; })[0];
+        if (!e) {
+            e = { id: c.id, txt: c.txt, signo: c.signo, i: null };
+            h.cats.push(e);
+        }
+        e.txt = c.txt;
+        e.signo = c.signo;
+        e.i = n == null ? null : Math.abs(n);
+    }
+    var k = Object.keys(ctx.errores).filter(function (x) { return x !== "tel"; });
+    ctx.$("errTabla").textContent = k.length ? ctx.errores[k[0]] : "";
+    ctx.$("tTotal").textContent = ctx.pesos(ctx.totalDe(h));
+};
+ctx.filaCat = function (c) {
+    var tr = ctx.filasCat[c.id];
+    if (tr)
+        return tr;
+    tr = document.createElement("tr");
+    tr.id = "fila_cat_" + c.id;
+    tr.className = "fila-cat";
+    tr.innerHTML = '<th scope="row"><span class="cat-cel"><span class="cat-nom"></span><span class="opc cat-signo"></span></span></th>' +
+        '<td colspan="2" class="span2"><span class="sin-cant">Monto fijo</span></td>' +
+        '<td class="imp" data-lab="Importe"><div class="campo" id="ci_cat_' + c.id + '"><span class="pre">$</span><input id="i_cat_' + c.id + '" inputmode="decimal" autocomplete="off"></div></td>';
+    var input = tr.querySelector("input");
+    scope.listen(input, "input", function (e) { var actual = ctx.catsVista(ctx.S.borrador || {}).filter(function (x) { return x.id === c.id; })[0] || c; ctx.cambioCat(actual, e.target); });
+    scope.listen(input, "blur", ctx.pintarValores);
+    ctx.filasCat[c.id] = tr;
+    return tr;
+};
+ctx.pintarCats = function (h, ed) {
+    var propia = ctx.liqPropia(h), lista = propia ? ctx.catsVista(h) : [], ids = {};
+    lista.forEach(function (c) {
+        ids[c.id] = true;
+        var tr = ctx.filaCat(c), input = ctx.$("i_cat_" + c.id) || tr.querySelector("input"), caja = tr.querySelector(".campo"), resta = c.signo === "resta";
+        tr.querySelector(".cat-nom").textContent = c.txt;
+        tr.querySelector(".cat-signo").textContent = resta ? "Resta del total" : "Suma al total";
+        tr.querySelector(".cat-signo").classList.toggle("resta", resta);
+        caja.classList.toggle("resta", resta);
+        caja.querySelector(".pre").innerHTML = resta ? "−&nbsp;$" : "$";
+        input.setAttribute("aria-label", "Importe de " + c.txt.toLowerCase());
+        if (document.activeElement !== input && !ctx.errores["icat:" + c.id])
+            input.value = c.i == null ? "" : ctx.fmtImporte.format(c.i);
+        input.placeholder = ed ? "0,00" : "—";
+        input.disabled = !ed;
+    });
+    Object.keys(ctx.filasCat).forEach(function (id) {
+        if (ids[id])
+            return;
+        var tr = ctx.filasCat[id];
+        if (tr.parentNode)
+            tr.parentNode.removeChild(tr);
+        delete ctx.filasCat[id];
+        delete ctx.errores["icat:" + id];
+    });
+    /* Orden común del local: se reacomodan las filas solo si cambió, para no perder el foco al escribir. */
+    var tb = ctx.$("tCuerpo"), claves = ctx.ITEMS.map(function (it) { return it.k; }).concat(lista.map(function (c) { return ctx.claveCat(c.id); }));
+    var deseadas = ctx.ordenCompleto(ctx.ordenDe(h), claves).map(function (k) { return k.indexOf("cat:") === 0 ? ctx.filasCat[k.slice(4)] : ctx.$("fila_" + k); }).filter(Boolean);
+    var actuales = Array.prototype.filter.call(tb.children, function (el) { return el.tagName === "TR"; });
+    if (deseadas.length !== actuales.length || deseadas.some(function (tr, i) { return actuales[i] !== tr; }))
+        deseadas.forEach(function (tr) { tb.appendChild(tr); });
+    ctx.$("liqBar").hidden = !(propia && ctx.puedeConfigLiq());
+};
+ctx.guardarCfgLiq = function (l, cfg) {
+    var datos = ctx.normCfgLiq(cfg);
+    datos.actualizado = new Date().toISOString();
+    return ctx.S.db.doc("liquidacion/" + l).set(datos).then(function () {
+        ctx.S.cfgLiq[l] = ctx.normCfgLiq(datos);
+        ctx.pintarTodo();
+    });
+};
+ctx.localLiqActivo = function () {
+    var h = ctx.S.srv[ctx.S.activo];
+    var l = h ? ctx.localDe(h) : ctx.S.local;
+    return ctx.liqPropiaLocal(l) && ctx.puedeConfigLiq() ? l : null;
+};
+ctx.clavesLocal = function (l) {
+    var cfg = ctx.S.cfgLiq[l] || { cats: [], orden: [] };
+    return ctx.ITEMS.map(function (it) { return it.k; }).concat(cfg.cats.map(function (c) { return ctx.claveCat(c.id); }));
+};
+ctx.modalAgregarCat = function () {
+    var l = ctx.localLiqActivo();
+    if (!l)
+        return;
+    ctx.abrirModal('<h2 id="mTitulo">Agregar categoría</h2><p class="m-sub" id="mSubCat"></p>' +
+        '<label class="t" for="mCatNom">Nombre del concepto</label><input type="text" id="mCatNom" maxlength="60" autocomplete="off" placeholder="Ej: Adelanto, Bono por presentismo">' +
+        '<span class="t" id="lCatSigno">En el total</span><div class="segmento" role="radiogroup" aria-labelledby="lCatSigno"><button type="button" role="radio" id="mCatSuma" aria-checked="true">Suma</button><button type="button" role="radio" id="mCatResta" aria-checked="false">Resta</button></div>' +
+        '<p class="hint">Aparece en el recibo de todos los colaboradores del local. El importe se carga a mano en cada recibo; si queda vacío, no figura.</p>' +
+        '<p class="err-txt" id="mErr"></p><div class="m-acc"><button type="button" class="btn sec" data-cerrar>Cancelar</button><button type="button" class="btn prim" id="mOk">Agregar</button></div>');
+    ctx.$("mSubCat").textContent = ctx.LOCALES[l].txt;
+    var signo = "suma";
+    var marcar = function (s) { signo = s; ctx.$("mCatSuma").setAttribute("aria-checked", s === "suma" ? "true" : "false"); ctx.$("mCatResta").setAttribute("aria-checked", s === "resta" ? "true" : "false"); };
+    scope.listen(ctx.$("mCatSuma"), "click", function () { marcar("suma"); });
+    scope.listen(ctx.$("mCatResta"), "click", function () { marcar("resta"); });
+    var ok = function () {
+        var txt = ctx.$("mCatNom").value.trim().replace(/\s+/g, " "), cfg = ctx.S.cfgLiq[l] || { cats: [], orden: [] };
+        if (!txt) {
+            ctx.$("mErr").textContent = "Escribí el nombre del concepto.";
+            return;
+        }
+        var fijos = ctx.ITEMS.map(function (it) { return it.txt.toLowerCase(); });
+        if (fijos.indexOf(txt.toLowerCase()) > -1 || cfg.cats.some(function (c) { return c.txt.toLowerCase() === txt.toLowerCase(); })) {
+            ctx.$("mErr").textContent = "Ya hay un concepto con ese nombre.";
+            return;
+        }
+        var id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        var nuevo = { cats: cfg.cats.concat([{ id: id, txt: txt, signo: signo }]), orden: ctx.ordenCompleto(cfg.orden, ctx.clavesLocal(l)).concat([ctx.claveCat(id)]) };
+        ctx.$("mOk").disabled = true;
+        ctx.guardarCfgLiq(l, nuevo).then(function () { ctx.cerrarModal(); ctx.toast("Categoría «" + txt + "» agregada para " + ctx.LOCALES[l].txt); }, function (e) { ctx.$("mOk").disabled = false; ctx.$("mErr").textContent = ctx.msgError(e); });
+    };
+    scope.listen(ctx.$("mOk"), "click", ok);
+    scope.listen(ctx.$("mCatNom"), "keydown", function (e) { if (e.key === "Enter")
+        ok(); });
+};
+ctx.modalOrdenCats = function () {
+    var l = ctx.localLiqActivo();
+    if (!l)
+        return;
+    var cfg = ctx.S.cfgLiq[l] || { cats: [], orden: [] }, cats = cfg.cats.slice(), orden = ctx.ordenCompleto(cfg.orden, ctx.clavesLocal(l));
+    ctx.abrirModal('<h2 id="mTitulo">Ordenar conceptos</h2><p class="m-sub" id="mSubOrden"></p>' +
+        '<ol class="orden-lista" id="mOrden"></ol>' +
+        '<p class="hint">El orden es el mismo para todos los colaboradores del local. Cada recibo lo toma al guardarlo. Quitar una categoría no borra los importes ya cargados.</p>' +
+        '<p class="err-txt" id="mErr"></p><div class="m-acc"><button type="button" class="btn sec" data-cerrar>Cancelar</button><button type="button" class="btn prim" id="mOk">Guardar orden</button></div>');
+    ctx.$("mSubOrden").textContent = ctx.LOCALES[l].txt + " · tocá las flechas para subir o bajar";
+    var nombre = function (k) {
+        if (k.indexOf("cat:") === 0) {
+            var c = cats.filter(function (x) { return ctx.claveCat(x.id) === k; })[0];
+            return c ? c.txt + (c.signo === "resta" ? " (resta)" : " (suma)") : k;
+        }
+        var it = ctx.ITEMS.filter(function (x) { return x.k === k; })[0];
+        return it ? it.txt : k;
+    };
+    var pintar = function () {
+        var ol = ctx.$("mOrden");
+        ol.textContent = "";
+        orden.forEach(function (k, i) {
+            var li = document.createElement("li"), t = document.createElement("span");
+            t.className = "orden-nom";
+            t.textContent = nombre(k);
+            li.appendChild(t);
+            var boton = function (txt, etiqueta, fn, deshab) {
+                var b = document.createElement("button");
+                b.type = "button";
+                b.className = "btn sec orden-btn";
+                b.textContent = txt;
+                b.setAttribute("aria-label", etiqueta + " " + nombre(k));
+                b.disabled = !!deshab;
+                scope.listen(b, "click", fn);
+                li.appendChild(b);
+            };
+            boton("↑", "Subir", function () { orden.splice(i - 1, 0, orden.splice(i, 1)[0]); pintar(); }, i === 0);
+            boton("↓", "Bajar", function () { orden.splice(i + 1, 0, orden.splice(i, 1)[0]); pintar(); }, i === orden.length - 1);
+            if (k.indexOf("cat:") === 0)
+                boton("Quitar", "Quitar", function () { cats = cats.filter(function (c) { return ctx.claveCat(c.id) !== k; }); orden.splice(i, 1); pintar(); });
+            ol.appendChild(li);
+        });
+    };
+    pintar();
+    scope.listen(ctx.$("mOk"), "click", function () {
+        ctx.$("mOk").disabled = true;
+        ctx.guardarCfgLiq(l, { cats: cats, orden: orden }).then(function () { ctx.cerrarModal(); ctx.toast("Orden de conceptos guardado para " + ctx.LOCALES[l].txt); }, function (e) { ctx.$("mOk").disabled = false; ctx.$("mErr").textContent = ctx.msgError(e); });
+    });
 };
 ctx.cambioNumero = function (it0, campo, input) {
     if (!ctx.S.editando)
@@ -380,6 +587,6 @@ scope.listen(ctx.$("bCancelar"), "click", function () {
     }
     ctx.confirmar({ titulo: "Descartar los cambios", texto: "Se pierde lo que cargaste desde que tocaste Modificar.", boton: "Descartar", peligro: true, ok: function () { ctx.salirEdicion(); ctx.toast("Cambios descartados"); } });
 });
-ctx.OPCIONAL_TXT = { extra: ["Horas extra incluidas", "Opcional · desactivadas"], aus: ["Se descuenta del total", "Opcional · desactivado"], vac: ["Incluida en el total", "Opcional · desactivada"], agu: ["Incluido · monto manual", "Opcional · desactivado"] };
+ctx.OPCIONAL_TXT = { extra: ["Horas extra incluidas", "Opcional · desactivadas"], aus: ["Se descuenta del total", "Opcional · desactivado"], vac: ["Incluida en el total", "Opcional · desactivada"], agu: ["Incluido · monto manual", "Opcional · desactivado"], premio: ["Lo carga el dueño · suma al total", "Desactivado · no se paga"] };
 };
 }
