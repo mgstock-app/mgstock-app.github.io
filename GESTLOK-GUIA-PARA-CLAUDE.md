@@ -191,3 +191,16 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Supabase:** `caja_app` aplicada en partes (p1…p7). Faltan `caja_app_entrar` y `caja_app_salir`
   (`caja-app/supabase/pendiente-entrar-salir.sql`): la confirmación de Supabase se cancela sola en la app de la usuaria
   porque tienen `delete` de sesiones vencidas. No esquivarla: lo aplica ella o se aprueba desde la compu.
+
+## 14. Historial horarios de Munro y pestaña Historial de Motos Agencia (02/11/2026)
+- **Pedido:** solo Munro (Torcuato queda como está, lo pidió la usuaria). Visible para dueño, creadora y gerente de Munro.
+- **Cómo funciona:** los horarios se siguen cargando en el Google Sheets «Horarios Munro» (plantilla GESTLOK). Un script
+  de Apps Script (lo genera la dueña desde Administración de empleados → Historial horarios → «Conexión con Google
+  Sheets») manda la pestaña «Resumen» con un código a `rm_horarios_recibir` en cada cambio y una vez por hora. GESTLOK
+  guarda una copia por semana (`rm_test_private.horarios_semanas`) y la dueña marca Pagado/Pendiente por colaborador.
+- **Base:** migración `20261102150000_empleados_historial_horarios.sql` (aplicada). Permisos probados en la base real
+  con bloques que se deshacen: creadora y dueño ven y administran; gerente de Munro solo ve; gerente de Torcuato,
+  Camila y visitantes no ven nada; Torcuato no está habilitado.
+- **Pantalla:** `/empleados/historial-horarios` (pestañas Semanas, Pendientes de pago, Conexión). Acceso desde el menú
+  de la creadora y del dueño, la carpeta Horarios y la portada del gerente (solo si la base habilita algún local).
+- **Motos Agencia:** el historial ya existía al final de la página; ahora tiene pestaña propia arriba (dueños y creadora).

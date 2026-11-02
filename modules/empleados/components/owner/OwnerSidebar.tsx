@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { House, Menu, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { House, Menu, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, History } from "lucide-react";
+import { useHorariosHistoryVisible } from "@/components/schedules/HorariosHistoryLink";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 
@@ -18,6 +19,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
   companyName?: string;
 }) {
   const { signOut } = useAuth();
+  const historialHorarios = useHorariosHistoryVisible();
   const [collapsed,setCollapsed] = useState(false);
   useEffect(()=>{
     let active=true;
@@ -66,6 +68,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
         <Link href="/empresas" onClick={onClose} className={currentPath === "/empresas" ? "active" : ""}><Building2 size={19}/><span className="owner-sidebar__label">Mis empresas</span></Link>
         {onLocals ? <button type="button" onClick={() => { onLocals(); onClose(); }}><Store size={19}/><span className="owner-sidebar__label">Locales</span></button> : <Link href="/locales" onClick={onClose}><Store size={19}/><span className="owner-sidebar__label">Locales</span></Link>}
         <Link href="/horarios" onClick={onClose}><CalendarDays size={19}/><span className="owner-sidebar__label">Horarios</span></Link>
+        {historialHorarios && <Link href="/historial-horarios" onClick={onClose} className={currentPath === "/historial-horarios" ? "active" : ""}><History size={19}/><span className="owner-sidebar__label">Historial horarios</span></Link>}
         <p className="owner-caption owner-sidebar__group">EMPLEADOS</p>
         {sectionButton("empleados", "Administrar empleados", UsersRound)}
         {sectionButton("recibos", "Recibos de sueldo", Wallet)}

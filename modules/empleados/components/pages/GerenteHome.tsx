@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { HorariosHistoryLink } from "@/components/schedules/HorariosHistoryLink";
 import Link from "next/link";
 import { ClipboardList, FileSpreadsheet, House, UsersRound, Menu, ShieldCheck, Wallet, X, PanelLeftClose, PanelLeftOpen, LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -74,6 +75,7 @@ export function GerenteHome() {
             <h1><FileSpreadsheet size={25}/> Horarios</h1>
             <p>Las planillas de Google Sheets se encuentran dentro de cada local, bajo su lista de colaboradores. También podés abrir la carpeta de Horarios.</p>
             <Link href="/horarios" className="gl-gerente__google-link"><ClipboardList size={19}/> Abrir Google Sheets y horarios</Link>
+            <HorariosHistoryLink className="gl-gerente__google-link" />
             <button type="button" onClick={()=>navigateTo("legajos")}>Volver a los legajos</button>
           </section>}
       </div>
