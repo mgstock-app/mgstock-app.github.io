@@ -149,14 +149,13 @@ function movements(){
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
  '<p class="mg-on-photo-reminder '+(s?.photo_path?'mg-on-photo-ready':'')+'" role="status">'+(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Antes de cerrar el turno, el gerente debe subir la foto. El cierre se habilitará cuando termine la carga.')+'</p></div>'+
  (photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
- '<div class="mg-on-close-controls">'+photoControl(s)+
- '<button type="button" data-mgon-close '+(!writable()||!s?.photo_path?'disabled':'')+'>Cerrar turno →</button></div></div>';
+ '<div class="mg-on-close-controls">'+'<button type="button" class="mg-on-close-primary" data-mgon-close '+(!writable()||!s?.photo_path?'disabled':'')+'>Cerrar turno →</button>'+photoControl(s)+'</div></div>';
 }
 const cameraIcon='<svg class="mg-on-camera" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';
 function photoControl(s){
  if(!s)return '';
- return '<div class="mg-on-photo-area"><label class="mg-on-photo-upload">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Agregar foto')+
- '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
+ return '<div class="mg-on-photo-area"><label class="mg-on-photo-upload">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Elegir foto de galería')+
+ '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
  '<button type="button" data-mgon-view-photo="'+esc(s.id)+'">Ver fotos del turno</button>'+
  (photoUrls[s.id]?'<div class="mg-on-photo-preview">'+photoUrls[s.id].map((url,i)=>'<img alt="Foto '+(i+1)+' del cierre" src="'+esc(url)+'">').join('')+'</div>':'')+
  '<label>Observaciones del cierre (opcional)<textarea data-mgon-close-note="'+esc(s.id)+'" maxlength="2000" rows="2" placeholder="Escribí una observación">'+esc(s.cierre_observacion||'')+'</textarea></label>'+
