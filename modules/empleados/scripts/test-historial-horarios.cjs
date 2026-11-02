@@ -30,6 +30,8 @@ assert.match(script, /var GESTLOK_CODIGO = 'abc123';/);
 assert.match(script, /var GESTLOK_CLAVE = 'sb_publishable_k\\'y';/, "Comillas escapadas");
 assert.match(script, /getSheetByName\('Resumen'\)/);
 assert.match(script, /getRange\('B2'\)[\s\S]*getRange\('D2'\)/, "Semana desde y hasta del Resumen");
+assert.match(script, /getRange\('A5:J14'\)/, "Solo los 10 lugares de colaboradores (debajo hay un HISTORIAL manual)");
+assert.doesNotMatch(script, /getLastRow/, "No lee hasta la última fila");
 assert.match(script, /\/rest\/v1\/rpc\/rm_horarios_recibir/);
 assert.match(script, /onEdit\(\)\.create\(\)/);
 assert.match(script, /everyHours\(1\)/);

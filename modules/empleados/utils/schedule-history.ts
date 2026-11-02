@@ -80,7 +80,8 @@ export function semanaPagada(s: HorarioSemana): boolean {
 }
 
 // Script de Apps Script que se pega en el Google Sheets del local. Lee la pestaña «Resumen» (plantilla GESTLOK:
-// B2 desde, D2 hasta, colaboradores desde la fila 5) y la manda con el código de conexión.
+// B2 desde, D2 hasta, colaboradores en A5:J14) y la manda con el código de conexión. En Munro, debajo del bloque
+// hay un «HISTORIAL» manual: por eso el rango es fijo y no llega hasta la última fila.
 export function scriptParaSheets(codigo: string, url: string, clave: string): string {
   const q = (v: string) => "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
   return [
@@ -102,8 +103,8 @@ export function scriptParaSheets(codigo: string, url: string, clave: string): st
     "  if (!hoja) throw new Error('No encuentro la pestaña Resumen.');",
     "  var desde = hoja.getRange('B2').getDisplayValue();",
     "  var hasta = hoja.getRange('D2').getDisplayValue();",
-    "  var ultima = Math.max(hoja.getLastRow(), 5);",
-    "  var datos = hoja.getRange(5, 1, ultima - 4, 10).getDisplayValues();",
+    "  // Solo los 10 lugares de colaboradores de la plantilla (filas 5 a 14). Lo que haya más abajo no se envía.",
+    "  var datos = hoja.getRange('A5:J14').getDisplayValues();",
     "  var filas = [];",
     "  datos.forEach(function (r) {",
     "    if (String(r[0]).trim()) filas.push({colaborador: r[0], puesto: r[1], cobra_por: r[2], trabajado: r[3], off: r[4],",
