@@ -25,12 +25,12 @@ const sinStaff = leerNavGestlok(JSON.stringify({ ...guardado, dock: [["home", "I
 assert.deepEqual(sinStaff.dock.map((d) => d[0]), ["home", "staff", "more"], "Colaboradores siempre figura (es donde está)");
 
 const home = "/";
-assert.equal(enlaceDock(home, nav, "home"), "/?gl_local=munro&gl_view=inicio");
-assert.equal(enlaceDock(home, nav, "pagos"), "/?gl_local=munro&gl_view=cierre-online");
-assert.equal(enlaceDock(home, nav, "stock"), "/?gl_local=munro&gl_view=stock");
+assert.equal(enlaceDock(home, nav, "home"), "/?gl_ir_local=munro&gl_ir=inicio");
+assert.equal(enlaceDock(home, nav, "pagos"), "/?gl_ir_local=munro&gl_ir=cierre-online");
+assert.equal(enlaceDock(home, nav, "stock"), "/?gl_ir_local=munro&gl_ir=stock");
 assert.equal(enlaceDock(home, nav, "staff"), null);
 assert.equal(enlaceDock(home, nav, "more"), null);
-assert.equal(enlaceVista(home, nav, "motos"), "/?gl_local=munro&gl_view=motos");
+assert.equal(enlaceVista(home, nav, "motos"), "/?gl_ir_local=munro&gl_ir=motos");
 assert.equal(enlaceVista(home, nav, "a b"), "/", "Sección inválida: al inicio");
 const hub = leerNavGestlok(JSON.stringify({ ...guardado, local: null, dock: [["home", "Inicio"], ["business", "Empresa"], ["staff", "Colaboradores"], ["avisos", "Avisos"], ["more", "Más"]] }), "u1");
 assert.equal(hub.side.length, 0, "Sin local no hay secciones de local");

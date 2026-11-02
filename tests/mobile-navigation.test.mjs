@@ -49,9 +49,10 @@ test("El menú de GESTLOK sigue dentro de Administración de empleados (celular 
  assert.match(dock,/uid:String\(ctx\.uid\)/);
  assert.match(dock,/#snav button\[data-go\]/);
  assert.match(app,/window\.GestLokNavContext=\(\)=>\(\{[^}]*uid:S\.uid\|\|null/);
- // Volver: el local tiene que ser de la persona y go() vuelve a comprobar cada sección.
- assert.match(app,/if\(!localesMios\(\)\.some\(x=>x\.id===p\.local\)\)return;/);
- assert.match(app,/const ok = \(v === 'cierre-online' && puedeVerPagosOnline\(\)\)/);
+ // Volver: solo con los botones reales de GESTLOK (entrar al local y abrir la sección del menú).
+ assert.match(dock,/\[data-act="local"\]\[data-id="'\+p\.local\+'"\]/);
+ assert.match(dock,/#snav button\[data-go="'\+p\.view\+'"\]/);
+ assert.match(app,/!\['chat','proveedores','vencimientos','avisos'\]\.includes\(p\.view\)/,"Las push siguen limitadas");
  assert.match(dock,/\['business','avisos'\]\.includes\(h\)/);
  // Empleados: barra de abajo y menú lateral con los mismos accesos.
  assert.match(nav,/export function GestlokDock/);

@@ -3743,8 +3743,7 @@ function subscribeHub(id){
   S.db.collection(id + '/productos').onSnapshot(snap => { h.prods = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lp = true; if (!S.local) renderHub(); }, () => {});
   S.db.collection(id + '/conteos').orderBy('fecha', 'desc').limit(1).onSnapshot(snap => { h.conteos = snap.docs.map(d => ({id:d.id, ...d.data()})); h.lc = true; if (!S.local) renderHub(); }, () => {});
 }
-/* Una push (o el menú de GESTLOK dentro de Administración de empleados) abre una sección del local autorizado.
-   go() vuelve a comprobar el permiso de cada sección; si no corresponde, queda en Inicio del local. */
+/* Una push abre únicamente una sección permitida del local autorizado. */
 let pendingPushNav=(()=>{
  const query=new URLSearchParams(location.search);
  const local=query.get('gl_local'),view=query.get('gl_view');
@@ -3757,7 +3756,8 @@ function applyPushNavigation(){
  const p=pendingPushNav;
  if(!p||!S.started||!S.loaded.e||!S.loaded.l)return;
  pendingPushNav=null;
- if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) || !/^[A-Za-z0-9_-]{1,80}$/.test(p.view))return;
+ if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) ||
+   !['chat','proveedores','vencimientos','avisos'].includes(p.view))return;
  if(!localesMios().some(x=>x.id===p.local))return;
  abrirLocal(p.local);
  go(p.view);

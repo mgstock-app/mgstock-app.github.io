@@ -44,7 +44,7 @@ export function leerNavGestlok(raw: string | null | undefined, uid: string | nul
 // Enlace a una sección del local en GESTLOK (sin local: el inicio de GESTLOK).
 export function enlaceVista(home: string, nav: NavGestlok, go: string): string {
   if (!nav.local || !CLAVE.test(go)) return home;
-  return `${home}?gl_local=${encodeURIComponent(nav.local)}&gl_view=${encodeURIComponent(go)}`;
+  return `${home}?gl_ir_local=${encodeURIComponent(nav.local)}&gl_ir=${encodeURIComponent(go)}`;
 }
 
 // Cada botón de la barra de abajo, igual que en GESTLOK. «Colaboradores» es esta misma sección y «Más» abre la hoja.

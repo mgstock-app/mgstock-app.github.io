@@ -30,13 +30,13 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.get('.gl-gerente__sidebar .gl-gestlok-localnav').should('be.visible')
     .and('contain.text','Stock Local').and('contain.text','Proveedores');
   cy.get('.gl-gerente__sidebar .gl-gestlok-localnav a').contains('Stock Local')
-    .should('have.attr','href').and('include','gl_local='+local).and('include','gl_view=stock');
+    .should('have.attr','href').and('include','gl_ir_local='+local).and('include','gl_ir=stock');
   // Celular: la misma barra de abajo que GESTLOK, con Colaboradores marcado.
   cy.viewport(390,844);
   cy.get('.gl-gestlok-dock').should('be.visible')
     .and('contain.text','Inicio').and('contain.text','Pagos Online').and('contain.text','Stock Local').and('contain.text','Más');
   cy.get('.gl-gestlok-dock [aria-current="page"]').should('contain.text','Colaboradores');
-  cy.get('.gl-gestlok-dock').contains('a','Pagos Online').should('have.attr','href').and('include','gl_view=cierre-online');
+  cy.get('.gl-gestlok-dock').contains('a','Pagos Online').should('have.attr','href').and('include','gl_ir=cierre-online');
   cy.get('.gl-gestlok-dock button[aria-haspopup="dialog"]').click();
   cy.get('.gl-gestlok-sheet__panel').should('be.visible').and('contain.text','Horarios').and('contain.text','Proveedores');
   cy.get('.gl-gestlok-sheet__panel').contains('button','Horarios').click();
