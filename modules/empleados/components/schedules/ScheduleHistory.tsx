@@ -190,13 +190,13 @@ export function ScheduleHistory() {
               : "la planilla todavía no está conectada"}
         </p>
       )}
-      <nav className={styles.tabs} role="tablist" aria-label="Historial horarios">
+      <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
         {tabs.map(([id, texto]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
             {texto}
           </button>
         ))}
-      </nav>
+      </div>
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {aviso && <p role="status" className={styles.aviso}>{aviso}</p>}
 
