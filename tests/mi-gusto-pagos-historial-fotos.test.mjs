@@ -94,7 +94,7 @@ test("Historial por día, ventana con Mañana/Noche/Día Completo y foto privada
  assert.match(edge,/allowOrigins/);
  assert.match(edge,/getUser\(token\)/);
  assert.match(edge,/gestlok_mg_online_photo_access/);
- assert.match(edge,/gestlok_mg_online_photo_register/);
+ assert.match(edge,/gestlok_mg_online_photo_add/);
  assert.match(edge,/public:false/);
  assert.match(edge,/upsert:false/);
  assert.doesNotMatch(edge,/getPublicUrl/);
