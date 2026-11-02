@@ -221,3 +221,16 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
   legajos»). Se quitaron «Historial horarios» de los menús y la planilla de la lista de colaboradores;
   `/historial-horarios` redirige a `/horarios`. Componentes: `HorariosHub`, `ScheduleSheetRow`, `ScheduleHistory embebido`.
 - **Motos Agencia para gerentes (02/11/2026, pedido «los historiales deben verlo los gerentes»):** los gerentes de Munro también ven la pestaña Historial y pueden mirar semanas cerradas, en solo lectura y sin importes ni valor por hora. Migración `20261102160000_gestlok_munro_motos_historial_gerentes.sql` (solo `alter policy` de lectura; escritura sin cambios; vuelta atrás en `rollback-…sql.txt`).
+
+## 15. Menú de GESTLOK dentro de Administración de empleados (02/11/2026)
+- **Pedido:** «siento que salimos de la app… dejó de tener visible nuestro menú abajo y sus atajos» (celular y PC).
+- **GESTLOK** (`public/stock/gestlok-mobile-dock.js`) guarda en `localStorage['gestlok:nav']` el menú que ve la cuenta
+  (uid, local, barra de abajo y secciones de `#snav`; solo nombres). `app.js`: `GestLokNavContext` incluye `uid` (hook revisado en
+  `tests/gestlok-navigation-hooks.json`). Los enlaces de vuelta `?gl_ir_local=…&gl_ir=…` los resuelve el dock tocando
+  los botones reales (entrar al local y la sección de `#snav`): si no existen para esa persona, no hace nada. Las push
+  (`gl_local`/`gl_view`) siguen limitadas a chat, proveedores, vencimientos y avisos. `?gl_hub=business|avisos` abre Empresa/Avisos del dueño si ese acceso existe.
+- **Empleados** (`components/gestlok/GestlokNav.tsx`, `utils/gestlok-nav.ts`): `GestlokDock` = misma barra de abajo
+  (Colaboradores marcado; «Más» con las secciones de empleados y del local) en gerente, dueño y creadora;
+  `GestlokLocalNav` = secciones del local en el menú lateral. Gerente en el celular: pestañas arriba (Colaboradores,
+  Horarios, Mi recibo). Sin datos del menú (o de otra cuenta): Inicio, Colaboradores, Más.
+

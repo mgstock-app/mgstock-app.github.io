@@ -41,3 +41,34 @@
 @media(min-width:901px),print{
   .app-shell .gl-module-dock{display:none!important}
 }
+
+/* Menú de GESTLOK dentro de Administración de empleados (para no sentir que se sale de la app). */
+/* PC y menú desplegable: secciones del local de GESTLOK en el menú lateral. */
+.app-shell .gl-gestlok-localnav{display:grid;gap:2px;margin:6px 0 4px}
+.app-shell .gl-gestlok-localnav a{display:flex;align-items:center;gap:11px;min-height:38px;padding:7px 11px;border-radius:10px;color:inherit;text-decoration:none;font-weight:600;font-size:14px;line-height:1.2}
+.app-shell .gl-gestlok-localnav a:hover{background:#eef6fa}
+.app-shell .gl-gestlok-localnav a:focus-visible{outline:3px solid #27a0bb;outline-offset:1px}
+.app-shell .gl-gestlok-localnav a svg{flex:none}
+.app-shell .gl-gestlok-localnav .gl-gestlok-localnav__sub{padding-left:26px}
+.app-shell .gl-gestlok-localnav__titulo{margin:12px 12px 4px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b8193}
+.app-shell .is-collapsed .gl-gestlok-localnav__titulo{display:none}
+.app-shell .is-collapsed .gl-gestlok-localnav a{justify-content:center}
+/* Pestañas de empleados arriba: solo en el celular (en la PC están en el menú lateral). */
+.app-shell .gl-modulo-tabs{display:none}
+@media(max-width:900px){
+  .app-shell .gl-modulo-tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 4px;position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e3edf3}
+  .app-shell .gl-modulo-tabs button{flex:0 0 auto;min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid #d6e3ec;background:#fff;color:#28516a;font:700 13px Inter,system-ui,sans-serif;cursor:pointer}
+  .app-shell .gl-modulo-tabs button[aria-current="page"]{background:#087ba4;border-color:#087ba4;color:#fff}
+  /* Hoja «Más» igual que en GESTLOK */
+  .gl-gestlok-sheet{position:fixed;inset:0;z-index:1050}
+  .gl-gestlok-sheet__scrim{position:absolute;inset:0;border:0;background:#122a4159;width:100%;height:100%}
+  .gl-gestlok-sheet__panel{position:absolute;bottom:0;left:0;right:0;max-height:min(79dvh,660px);overflow:auto;background:#fff;border-radius:21px 21px 0 0;padding:17px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 42px #152d4740;color:#1c4158}
+  .gl-gestlok-sheet__panel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .gl-gestlok-sheet__panel header strong{font:800 17px Inter,system-ui}
+  .gl-gestlok-sheet__panel header button{display:grid;place-items:center;border:0;background:#f1f7fa;border-radius:11px;width:42px;height:42px;color:#23475a;cursor:pointer}
+  .gl-gestlok-sheet__grupo{margin:12px 2px 8px;font:800 11px Inter,system-ui;letter-spacing:.08em;text-transform:uppercase;color:#6b8193}
+  .gl-gestlok-sheet__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .gl-gestlok-sheet__links :is(a,button){display:flex;align-items:center;gap:8px;min-height:46px;border:1px solid #e0eaf0;border-radius:11px;background:#f8fbfd;color:#27516c;font:700 12px Inter,system-ui;text-align:left;padding:11px;text-decoration:none;cursor:pointer}
+  .gl-gestlok-sheet__links :is(a,button)[aria-current="page"]{border-color:#087ba4;background:#e9f6fb;color:#087ba4}
+}
+@media(min-width:901px),print{.gl-gestlok-sheet{display:none!important}}

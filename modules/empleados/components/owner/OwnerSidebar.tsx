@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { House, Menu, Building2, Store, UsersRound, Wallet, CalendarDays, Inbox, Settings, LogOut, ShieldCheck, FileSpreadsheet, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useRouter } from "next/navigation";
+import { GestlokDock, GestlokLocalNav } from "@/components/gestlok/GestlokNav";
 import { useGestlokCompany } from "@/components/gestlok/GestlokContext";
 
 type Area = "inicio" | "empleados" | "recibos" | "planillas";
@@ -18,6 +20,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
   companyName?: string;
 }) {
   const { signOut } = useAuth();
+  const router = useRouter();
   const [collapsed,setCollapsed] = useState(false);
   useEffect(()=>{
     let active=true;
@@ -61,6 +64,7 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
         <strong>{shownCompany}<small>{isMiGusto ? "Empanadas de verdad" : "Tu empresa"}</small></strong>
       </div>}
       <p className="owner-caption">TU EMPRESA</p>
+      <GestlokLocalNav labelClassName="owner-sidebar__label"/>
       <nav aria-label="Menú del dueño">
         {sectionButton("inicio", "Inicio", House)}
         <Link href="/empresas" onClick={onClose} className={currentPath === "/empresas" ? "active" : ""}><Building2 size={19}/><span className="owner-sidebar__label">Mis empresas</span></Link>
@@ -79,12 +83,13 @@ export function OwnerSidebar({ open, onClose, onOpen, currentPath, onLocals, pen
         <p><ShieldCheck size={17}/>Tu información es privada.</p>
       </div>
     </aside>
-    <nav className="gl-module-dock" aria-label="Navegación móvil del dueño">
-      <button type="button" aria-current={activeSection==="inicio"?"page":undefined} onClick={()=>change("inicio")}><House size={20}/>Inicio</button>
-      <button type="button" aria-current={activeSection==="empleados"?"page":undefined} onClick={()=>change("empleados")}><UsersRound size={20}/>Colaboradores</button>
-      <button type="button" aria-current={activeSection==="recibos"?"page":undefined} onClick={()=>change("recibos")}><Wallet size={20}/>Recibos</button>
-      <Link href="/horarios" onClick={onClose}><CalendarDays size={20}/>Horarios</Link>
-      <button type="button" aria-expanded={open} onClick={onOpen}><Menu size={20}/>Más</button>
-    </nav>
+    {/* Misma barra de abajo que GESTLOK; las secciones de empleados están en «Más». */}
+    <GestlokDock secciones={[
+      {id:"inicio",label:"Inicio de empleados",actual:currentPath==="/"&&activeSection==="inicio",onSelect:()=>change("inicio"),icon:<House size={18}/>},
+      {id:"empleados",label:"Colaboradores",actual:activeSection==="empleados",onSelect:()=>change("empleados"),icon:<UsersRound size={18}/>},
+      {id:"recibos",label:"Recibos",actual:activeSection==="recibos",onSelect:()=>change("recibos"),icon:<Wallet size={18}/>},
+      {id:"horarios",label:"Horarios",actual:currentPath==="/horarios",onSelect:()=>router.push("/horarios"),icon:<CalendarDays size={18}/>},
+      {id:"menu",label:"Todo el menú",onSelect:onOpen,icon:<Menu size={18}/>},
+    ]}/>
   </>;
 }

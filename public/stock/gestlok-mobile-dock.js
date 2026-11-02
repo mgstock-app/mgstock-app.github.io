@@ -37,7 +37,65 @@
   // Solo accesos autorizados que existen en el menú real del local.
   const stock=()=>localNav('stock');
   const pagos=()=>localNav('cierre-online');
-  let last='',open=false;
+  let last='',open=false,lastSnap='';
+  // Administración de empleados (misma dirección) muestra este mismo menú: barra de abajo en el celular y menú
+  // del local en la PC. Se guardan solo nombres y secciones visibles; al volver, GESTLOK comprueba los permisos.
+  function saveSnapshot(){
+    try{
+      const ctx=window.GestLokNavContext?.()||{};
+      if(!ctx.uid)return;
+      const inLocal=visible()&&!!ctx.local;
+      const side=inLocal?[...app.querySelectorAll('#snav button[data-go]')].map(b=>({go:String(b.dataset.go||''),label:(b.querySelector('.nl')?.textContent||'').trim(),folder:!!b.closest('.snav-folder')})).filter(x=>x.go&&x.label).slice(0,40):[];
+      const data={v:1,uid:String(ctx.uid),local:inLocal?String(ctx.local):null,localName:inLocal?(document.getElementById('brand-local')?.textContent||'').trim().slice(0,60):'',dock:read().map(t=>[t[0],t[1]]),side};
+      const sig=JSON.stringify(data);
+      if(sig===lastSnap)return;
+      lastSnap=sig;
+      localStorage.setItem('gestlok:nav',JSON.stringify({...data,at:Date.now()}));
+    }catch{}
+  }
+  // Volver desde Administración de empleados a «Empresa» o «Avisos» del dueño (solo si ese acceso existe).
+  let pendingHub=(()=>{
+    try{
+      const q=new URLSearchParams(location.search),h=q.get('gl_hub');
+      if(!h)return '';
+      const clean=new URL(location.href);clean.searchParams.delete('gl_hub');
+      history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
+      return ['business','avisos'].includes(h)?h:'';
+    }catch{return '';}
+  })();
+  // Volver desde Administración de empleados a una sección del local («Stock Local», «Proveedores»…):
+  // entra al local con su botón y abre la sección con su botón del menú. Si no existen, no hace nada.
+  let pendingGo=(()=>{
+    try{
+      const q=new URLSearchParams(location.search),local=q.get('gl_ir_local'),view=q.get('gl_ir');
+      if(!local&&!view)return null;
+      const clean=new URL(location.href);clean.searchParams.delete('gl_ir_local');clean.searchParams.delete('gl_ir');
+      history.replaceState(null,'',clean.pathname+clean.search+clean.hash);
+      const ok=v=>/^[A-Za-z0-9_-]{1,80}$/.test(String(v||''));
+      return ok(local)&&ok(view)?{local,view,until:Date.now()+20000,entered:false}:null;
+    }catch{return null;}
+  })();
+  function applyGo(){
+    const p=pendingGo;
+    if(!p)return;
+    if(Date.now()>p.until){pendingGo=null;return;}
+    const ctx=window.GestLokNavContext?.()||{};
+    if(visible()&&ctx.local===p.local){
+      const target=app.querySelector('#snav button[data-go="'+p.view+'"]');
+      if(target){pendingGo=null;if(target.getAttribute('aria-current')!=='page')target.click();}
+      return;
+    }
+    if(p.entered)return;
+    const enter=document.querySelector('[data-act="local"][data-id="'+p.local+'"]');
+    if(enter){p.entered=true;enter.click();}
+  }
+  function applyHub(){
+    if(!pendingHub)return;
+    const control=pendingHub==='business'?business():bell();
+    if(!control)return;
+    pendingHub='';
+    control.click();
+  }
   const read=()=>{
     const inLocal=visible();
     if(window.GestLokNavContext?.()?.creator)return [
@@ -110,6 +168,9 @@
     sheet.querySelector('.gl-mobile-sheet__panel button')?.focus();
   }
   function sync(){
+    saveSnapshot();
+    applyHub();
+    applyGo();
     const show=(max.matches || document.documentElement.classList.contains('gl-visitor-mode')) && !document.documentElement.classList.contains('auth-on') && (!hub.hidden || !app.hidden);
     dock.hidden=!show;
     document.documentElement.classList.toggle('gl-mobile-dock-present',show);

@@ -1,7 +1,7 @@
 {
   "hooks": [
     {
-      "actual": "window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});\nwindow.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCreadora()});\n",
+      "actual": "window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});\nwindow.GestLokNavContext=()=>({tenant:S.me?.tenant_id,local:S.local,creator:isCreadora(),uid:S.uid||null});\n",
       "original": "window.GestLokRoleSwitcher?.attach({S,miRol,openLocal:id=>abrirLocal(id),isMyLocal:id=>localesMios().some(l=>l.id===id)});\n"
     },
     {
