@@ -29,7 +29,7 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.viewport(1240,820);
   cy.get('.gl-gerente__sidebar .gl-gestlok-localnav').should('be.visible')
     .and('contain.text','Stock Local').and('contain.text','Proveedores');
-  cy.get('.gl-gerente__sidebar .gl-gestlok-localnav a').contains('Stock Local')
+  cy.get('.gl-gerente__sidebar .gl-gestlok-localnav').contains('a','Stock Local')
     .should('have.attr','href').and('include','gl_ir_local='+local).and('include','gl_ir=stock');
   // Celular: la misma barra de abajo que GESTLOK, con Colaboradores marcado.
   cy.viewport(390,844);
