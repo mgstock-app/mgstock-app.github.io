@@ -90,7 +90,7 @@
         if(!m)return whole;
         const invite='<button type="button" data-gl-rv="copy-message" data-id="'+E(m[1])+'" title="Copiar mensaje para '+E(name)+'" aria-label="Copiar mensaje para '+E(name)+'" class="rv-clip">'+clipboardIcon+'</button>';
         const wa=number?
-          '<button type="button" data-gl-rv="whatsapp-message" data-id="'+E(m[1])+'" class="rv-whatsapp" title="Preparar WhatsApp para '+E(name)+'" aria-label="Preparar WhatsApp para '+E(name)+'">'+whatsappIcon+'</button>':
+          '<button type="button" data-gl-rv="whatsapp-message" data-phone="'+E(number)+'" data-id="'+E(m[1])+'" class="rv-whatsapp" title="Preparar WhatsApp para '+E(name)+'" aria-label="Preparar WhatsApp para '+E(name)+'">'+whatsappIcon+'</button>':
           '<span class="rv-no-whatsapp" title="Número inválido">WA</span>';
         return whole.replace(/(<button data-rv="edit" data-id="[^"]+">[^<]*<\/button>)(<\/td><\/tr>)/,
           (match,button,end)=>'<span class="rv-row-actions">'+button+invite+wa+'</span>'+end);
@@ -118,7 +118,7 @@
       '- No acumulable con otras promociones.\n'+
       '- Cupón de un solo uso.\n\n¡Gracias por elegirnos! Esperamos verte pronto.\n\n*Mi Gusto | Empanadas de verdad.*';
   }
-  async function copyForClient(id,sendWhatsApp=false){
+  async function copyForClient(id,sendWhatsApp=false,verifiedPhone=''){
     if(!editable()) {api?.toast?.('Necesitás conexión para comprobar el cupón antes de copiarlo.',true);return;}
     const branch=local(),g=generation;
     try{
@@ -131,7 +131,7 @@
       const message=messageForCoupon(row);
       if(!message)throw Error('Código inválido');
       if(sendWhatsApp){
-        const number=phoneNumber(row.phone||row.customer_phone||'');
+        const number=verifiedPhone || phoneNumber(row.phone||row.customer_phone||'');
         if(!number){api.toast?.('El cliente no tiene un teléfono válido.',true);return;}
         window.open('https://wa.me/'+number+'?text='+encodeURIComponent(message),'_blank','noopener,noreferrer');
       }else await copy(message,'Mensaje y cupón '+row.code+' copiados. Abrí WhatsApp para enviarlos.');
@@ -194,7 +194,7 @@
     if(!allowed())return;
     const action=el.dataset.glRv;
     if(action==='copy-message') {void copyForClient(el.dataset.id);return;}
-    if(action==='whatsapp-message') {void copyForClient(el.dataset.id,true);return;}
+    if(action==='whatsapp-message') {void copyForClient(el.dataset.id,true,el.dataset.phone);return;}
     if(action==='copy-coupon'){void copy(couponText(el.dataset.code,el.dataset.valid),'Cupón y condiciones copiados.');return;}
     if(action==='edit-message'&&editable()){editing=true;draft=current();notice='';error='';redraw();return;}
     if(action==='cancel-message'&&!busy){editing=false;draft=null;error='';redraw();}
