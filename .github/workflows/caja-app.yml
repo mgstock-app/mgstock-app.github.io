@@ -4,10 +4,10 @@ name: Caja app · pruebas
 on:
   pull_request:
     branches: [main]
-    paths: ['caja-app/**', '.github/workflows/caja-app.yml']
+    paths: ['caja-app/**', 'public/caja/**', '.github/workflows/caja-app.yml']
   push:
     branches: [main]
-    paths: ['caja-app/**', '.github/workflows/caja-app.yml']
+    paths: ['caja-app/**', 'public/caja/**', '.github/workflows/caja-app.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,3 +35,44 @@ jobs:
         env:
           CAJA_PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: node --test caja-app/tests/*.test.mjs
+  web:
+    # La app (public/caja/) recorrida con un navegador en vista TELÉFONO y PC, contra una base local
+    # con la migración real (servidor de prueba que imita la API de Supabase). Sin servicios pagos.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Navegador de prueba (Playwright)
+        run: |
+          pip install playwright==1.48.0
+          python -m playwright install --with-deps chromium
+      - name: Recorrido de la app en teléfono y PC
+        env:
+          CAJA_PG: -h 127.0.0.1 -p 5432 -U postgres
+          PGPASSWORD: postgres
+        run: |
+          sh caja-app/tests/web/reiniciar-base.sh
+          python caja-app/tests/web/servidor.py 8765 &
+          sleep 2
+          python caja-app/tests/web/recorrido.py http://127.0.0.1:8765 capturas
+      - name: Capturas del recorrido
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caja-app-capturas
+          path: capturas
+          if-no-files-found: ignore

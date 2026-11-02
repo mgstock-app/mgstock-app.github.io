@@ -24,15 +24,25 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
 ## Etapas
 1. **Base de datos** — HECHO (02/11). Migración `20261102050000_caja_app_base.sql`; pruebas de reglas, seguridad,
    aislamiento entre comercios, RLS y concurrencia.
-2. **App del celular (empleado)** — PENDIENTE. HTML + JS sin compilación (como el resto del entorno, sin npm
-   en la sesión), Supabase JS. Pantallas 0 a 10 del lienzo: PIN, abrir, caja abierta, cobro/gasto/ingreso/retiro,
-   corregir, fotos, arqueo (dos modos), retiro y mañana, cerrada. Sesión de Supabase con `storageKey` propio
-   (no mezclar con GESTLOK).
+   Aplicada en Supabase el 02/11 en 7 partes (mismo contenido, verificado con huellas). **Faltan
+   `caja_app_entrar` y `caja_app_salir`**: `supabase/pendiente-entrar-salir.sql`, lo aprueba la dueña (la
+   confirmación de Supabase se cancela sola en su app). Sin esas dos no se puede entrar con PIN.
+2. **App para teléfono y PC** — HECHO (02/11). `public/caja/` (HTML + CSS + JS sin compilación, cliente de
+   Supabase de `/vendor/`, sesión propia `storageKey: caja-app-auth`). Detecta si se abre en teléfono o en PC y
+   cambia el armado; la vista se puede fijar a mano por equipo. Acceso con la cuenta (email/contraseña, Google,
+   crear cuenta, recuperar), alta del comercio, elegir local del equipo, PIN, abrir (sugerida / otro monto),
+   cobro/gasto/ingreso/retiro, corregir, anular, cierre en 4 pasos (cobro por cobro o totales al cierre),
+   caja cerrada. Recorrido con navegador en CI (trabajo `web`).
 3. **Fotos** — PENDIENTE. Bucket privado de Storage `caja-app-fotos` con políticas por comercio
    (`<comercio>/<caja>/<archivo>`). Hoy no hay buckets ni políticas en el proyecto: probar primero que la
    migración pueda crear políticas sobre `storage.objects`.
-4. **Panel del dueño** — PENDIENTE. Pantallas 11 a 13: Hoy en todos los locales, Historial (exportar a Excel),
-   Configuración (locales, medios, forma de carga, fotos, categorías, personas y PIN, avisos), arqueo tardío.
+4. **Panel del dueño** — HECHO lo básico (02/11): Hoy en todos los locales, cierres automáticos sin arqueo
+   (arqueo tardío), Historial con descarga para Excel (CSV con `;`), Configuración (comercio, forma de carga, hora,
+   caja inicial habitual, medios, categorías, locales, personas con PIN y tope, este equipo). Falta: fotos y avisos.
+   **Seguridad a mejorar:** el panel se abre en la app con el PIN de un dueño, pero el servidor lo autoriza por la
+   cuenta con la que está abierto el equipo. Si el equipo del local queda con la cuenta del dueño, alguien con
+   conocimientos técnicos podría llamar al panel sin PIN. Solución prevista: cuentas de encargado para los equipos
+   del local (etapa 6) o exigir el token de un PIN de dueño en las funciones del panel (migración nueva).
 5. **Sin conexión** — PENDIENTE. Cola en el celular (IndexedDB) que reenvía con la misma clave al volver la señal.
 6. **Alta de comercios y venta** — PENDIENTE (decisión de la usuaria): alta abierta o con aprobación, prueba gratis,
    precio, avisos por WhatsApp/email, cuentas de encargado (invitaciones).
