@@ -45,14 +45,16 @@ Deno.serve(async req=>{
   const access=await userClient.rpc("gestlok_mg_online_photo_access",{p_local:loc,p_shift:shiftId});
   if(access.error||!access.data)return response({error:"Sin permiso para acceder al cierre"},403);
   const admin=createClient(supabaseUrl,secretKey,{auth:{persistSession:false,autoRefreshToken:false}});
-  const path=loc+"/"+shiftId+"/cierre.jpg";
+  const path=loc+"/"+shiftId+"/cierre-"+crypto.randomUUID()+".jpg";
   if(action==="get"){
-   if(access.data.photo_path!==path)return response({error:"Este turno no tiene foto"},404);
-   const signed=await admin.storage.from(BUCKET).createSignedUrl(path,120);
+   const requested=String(body.path||access.data.photo_path||"");
+   if(!requested.startsWith(loc+"/"+shiftId+"/")||!/^cierre(?:-[0-9a-f-]{36})?\.jpg$/.test(requested.split("/").pop()||""))return response({error:"Ruta inválida"},400);
+   const allowed=await userClient.rpc("gestlok_mg_online_photo_list",{p_local:loc,p_shift:shiftId});
+   if(allowed.error||!Array.isArray(allowed.data)||!allowed.data.some((item:{path:string})=>item.path===requested))return response({error:"Foto no autorizada"},403);
+   const signed=await admin.storage.from(BUCKET).createSignedUrl(requested,120);
    if(signed.error)return response({error:"No se pudo abrir la foto"},404);
    return response({signedUrl:signed.data.signedUrl,expiresIn:120});
   }
-  if(access.data.photo_path)return response({error:"Este cierre ya tiene fotografía"},409);
   if(!isForm)return response({error:"Se requiere imagen"},400);
   const file=body.get("photo");
   if(!(file instanceof File)||file.type!=="image/jpeg"||file.size===0||file.size>MAX_BYTES)
@@ -61,7 +63,7 @@ Deno.serve(async req=>{
   const magic=new Uint8Array(buffer.slice(0,3));
   if(magic[0]!==0xff||magic[1]!==0xd8||magic[2]!==0xff)
    return response({error:"El archivo no es una imagen JPG válida"},400);
-  // Una sola imagen por turno: ruta determinística, sin sobrescritura.
+  // Cada imagen tiene ruta única, sin sobrescribir las fotos anteriores.
   const existing=await admin.storage.getBucket(BUCKET);
   if(existing.data?.public===true)return response({error:"Configuración de almacenamiento insegura"},503);
   if(existing.error){
@@ -78,12 +80,12 @@ Deno.serve(async req=>{
    contentType:"image/jpeg",cacheControl:"120",upsert:false
   });
   if(upload.error)return response({error:"Este cierre ya tiene una foto o no se pudo guardar"},409);
-  const linked=await userClient.rpc("gestlok_mg_online_photo_register",{p_local:loc,p_shift:shiftId});
+  const linked=await userClient.rpc("gestlok_mg_online_photo_add",{p_local:loc,p_shift:shiftId,p_path:path});
   if(linked.error){
    await admin.storage.from(BUCKET).remove([path]);
    return response({error:"No se pudo vincular la fotografía al cierre"},409);
   }
-  return response({ok:true,photo_at:linked.data?.photo_at||null});
+  return response({ok:true,path});
  }catch(err){
   console.error("mg-online-closure-photo:",err instanceof Error?err.message:"unknown");
   return response({error:"No se pudo procesar la fotografía"},500);
