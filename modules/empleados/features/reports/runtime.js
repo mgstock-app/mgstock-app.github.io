@@ -14,6 +14,9 @@ const initializers = [registerPayroll(scope, ctx), registerNavigation(scope, ctx
 for (const initialize of initializers) initialize();
 return {
     renderImage: (data, name) => ctx.crearImagen(data, name),
+    // Recibos arranca en el menú de locales (o en el resumen del único local disponible).
+    goHome: () => { ctx.irInicio(); return true; },
+    openLocal: (localId) => { if (!ctx.LOCALES[localId]) return false; ctx.abrirLocal(localId); return true; },
     deliverySaved: (id, data) => { ctx.S.srv[id] = ctx.clon(data); if (ctx.S.activo === id) ctx.suscribirHistorial(); ctx.pintarTodo(); },
     // The dashboard delegates all navigation and creation to the existing editor.
     openSheet: (localId, id) => {
