@@ -210,3 +210,6 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
   al buscar un nombre se ve esa persona en todas las semanas. `rm_horarios_historial` devuelve hasta 520 semanas
   (migración `20261102180000_empleados_historial_horarios_largo.sql`, aplicada). El script lee A5:J14 (o más lugares si
   la columna K «Fila en Semana» los tiene). Primera semana (19/10 al 25/10/2026) copiada a mano desde la planilla.
+- **Pagos solo para el dueño (02/11, pedido de la usuaria):** «Pago», «por pagar» y la pestaña «Pendientes de pago» los
+  ven y marcan solo dueño y creadora (control interno). Los gerentes ven la copia del Resumen y el buscador, sin pagos;
+  la base ya no les manda los pagos (migración `20261102190000_empleados_historial_horarios_pagos_dueno.sql`, aplicada).

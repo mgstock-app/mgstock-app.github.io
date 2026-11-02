@@ -81,6 +81,8 @@ export function ScheduleHistory() {
   }, [localId]);
 
   const local = useMemo(() => locales?.find((l) => l.local_id === localId) ?? null, [locales, localId]);
+  // «Pago» y «por pagar» son un control interno del dueño (y la creadora): los gerentes no los ven.
+  const admin = local?.puede_administrar === true;
   const porPagar = useMemo(() => pendientes(semanas ?? []), [semanas]);
   const meses = useMemo(() => mesesDisponibles(semanas ?? []), [semanas]);
   const filtradas = useMemo(() => buscarSemanas(semanas ?? [], texto, mes), [semanas, texto, mes]);
@@ -142,10 +144,9 @@ export function ScheduleHistory() {
     }
   }
 
+  // Solo para el dueño y la creadora (admin).
   function pago(semana: HorarioSemana, nombre: string) {
     const pagado = estaPagado(semana, nombre);
-    if (!local?.puede_administrar)
-      return <span className={pagado ? styles.chipOk : styles.chipPend}>{pagado ? "Pagado" : "Pendiente"}</span>;
     return (
       <button
         type="button"
@@ -169,11 +170,8 @@ export function ScheduleHistory() {
       </section>
     );
 
-  const tabs: Array<[Tab, string]> = [
-    ["semanas", `Semanas${semanas ? ` (${semanas.length})` : ""}`],
-    ["pendientes", `Pendientes de pago (${porPagar.length})`],
-  ];
-  if (local?.puede_administrar) tabs.push(["conexion", "Conexión con Google Sheets"]);
+  const tabs: Array<[Tab, string]> = [["semanas", `Semanas${semanas ? ` (${semanas.length})` : ""}`]];
+  if (admin) tabs.push(["pendientes", `Pendientes de pago (${porPagar.length})`], ["conexion", "Conexión con Google Sheets"]);
 
   return (
     <section className={styles.page}>
@@ -211,13 +209,15 @@ export function ScheduleHistory() {
               : "la planilla todavía no está conectada"}
         </p>
       )}
-      <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
-        {tabs.map(([id, texto]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
-            {texto}
-          </button>
-        ))}
-      </div>
+      {tabs.length > 1 && (
+        <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
+          {tabs.map(([id, texto]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
+              {texto}
+            </button>
+          ))}
+        </div>
+      )}
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {aviso && <p role="status" className={styles.aviso}>{aviso}</p>}
 
@@ -278,10 +278,15 @@ export function ScheduleHistory() {
                       >
                         <b>{rangoLargo(s)}</b>
                         <small>
-                          {s.filas.length} colaboradores ·{" "}
-                          <span className={semanaPagada(s) ? styles.okTexto : styles.pendTexto}>
-                            {semanaPagada(s) ? "todo pagado" : `${faltan} por pagar`}
-                          </span>
+                          {s.filas.length} colaboradores
+                          {admin && (
+                            <>
+                              {" · "}
+                              <span className={semanaPagada(s) ? styles.okTexto : styles.pendTexto}>
+                                {semanaPagada(s) ? "todo pagado" : `${faltan} por pagar`}
+                              </span>
+                            </>
+                          )}
                         </small>
                       </button>
                     );
@@ -304,7 +309,7 @@ export function ScheduleHistory() {
                               <th>Trabajado</th>
                               <th>OFF</th>
                               <th>Total a liquidar</th>
-                              <th>Pago</th>
+                              {admin && <th>Pago</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -319,7 +324,7 @@ export function ScheduleHistory() {
                                 <td>{celda(fila.trabajado)}</td>
                                 <td>{celda(fila.off)}</td>
                                 <td className={styles.total}>{celda(fila.total)}</td>
-                                <td>{pago(s, fila.colaborador)}</td>
+                                {admin && <td>{pago(s, fila.colaborador)}</td>}
                               </tr>
                             ))}
                           </tbody>
@@ -366,7 +371,7 @@ export function ScheduleHistory() {
                     </article>
                   )}
 
-                  {semana && semana.filas.length > 0 && (
+                  {admin && semana && semana.filas.length > 0 && (
                     <section className={styles.pagos} aria-label={`Pagos de la semana del ${rangoLargo(semana)}`}>
                       <h2>Pagos de la semana del {rangoLargo(semana)}</h2>
                       <ul>
@@ -388,7 +393,7 @@ export function ScheduleHistory() {
           </>
         ))}
 
-      {tab === "pendientes" &&
+      {tab === "pendientes" && admin &&
         (!porPagar.length ? (
           <p className={styles.empty}>No hay pagos pendientes.</p>
         ) : (
