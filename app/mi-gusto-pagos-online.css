@@ -369,4 +369,4 @@
 @media(max-width:900px){.mg-on-close{flex-direction:column}.mg-on-close-copy,.mg-on-close-controls{width:100%;flex-basis:auto}.mg-on-photo-area>button,.mg-on-photo-area>.mg-on-photo-upload{max-width:100%;white-space:normal}}
 
 /* Acción principal centrada, entre los montos y las fotografías. */
-.mg-on-close-controls>.mg-on-close-primary{display:block;width:min(100%,320px);align-self:center;min-height:48px;text-align:center;margin:4px auto 10px}
+.mg-on-close .mg-on-close-controls>button.mg-on-close-primary[data-mgon-close]{display:block;width:min(100%,320px);align-self:center;min-height:48px;text-align:center;margin:4px auto 10px}
