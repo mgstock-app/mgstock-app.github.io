@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useReportWorkspace } from "@/hooks/use-report-workspace";
 import { ReportMarkup } from "./ReportMarkup";
 import { EmployeeOverview } from "./EmployeeOverview";
@@ -15,9 +15,17 @@ export function ReportWorkspace({
   screen?: WorkspaceScreen;
   onScreenChange?: (screen: WorkspaceScreen) => void;
 }) {
-  const { root, error, ready, openSheet, addSheet, downloadPdf, shareWhatsapp } = useReportWorkspace(user, locals);
+  const { root, error, ready, openSheet, addSheet, downloadPdf, shareWhatsapp, goHome, openLocal } = useReportWorkspace(user, locals);
   const [internalScreen, setInternalScreen] = useState<WorkspaceScreen>("empleados");
   const activeScreen = screen ?? internalScreen;
+  // Recibos usa la planilla de siempre: menú de locales → resumen del local → recibo del colaborador con su historial.
+  const engineVisible = activeScreen === "planillas" || activeScreen === "recibos";
+  const singleLocal = locals.length === 1 ? locals[0].id : "";
+  useEffect(() => {
+    if (activeScreen !== "recibos" || !ready) return;
+    if (singleLocal) openLocal(singleLocal);
+    else goHome();
+  }, [activeScreen, ready, singleLocal, openLocal, goHome]);
   const changeScreen = (next: WorkspaceScreen) => {
     setInternalScreen(next);
     onScreenChange?.(next);
@@ -44,15 +52,15 @@ export function ReportWorkspace({
       <button type="button" aria-current={activeScreen === "recibos" ? "page" : undefined} onClick={() => changeScreen("recibos")}>Recibos de sueldo</button>
       <button type="button" aria-current={activeScreen === "planillas" ? "page" : undefined} onClick={() => changeScreen("planillas")}>Carga individual de recibos</button>
     </nav>}
-    <div style={{display: activeScreen === "planillas" ? "none" : "block"}}>
+    <div style={{display: engineVisible ? "none" : "block"}}>
       <EmployeeOverview locals={locals} ready={ready} ownerRostering={user.role === "owner" || user.role === "admin"}
-        screen={activeScreen === "recibos" ? "recibos" : "empleados"}
+        screen="empleados"
         onOpenSheet={showSheet} onAddSheet={createSheet}
         onDownloadPdf={downloadPdf} onShareWhatsapp={startShare}/>
     </div>
     {/* Don't unmount the existing editor: unsaved changes, PDF, private history and offline queue live here. */}
-    <div style={{display:activeScreen === "planillas" ? "block" : "none"}}>
-      <div className="employee-pages__editor-back"><button type="button" onClick={() => changeScreen("empleados")}>← Volver a empleados</button><button type="button" onClick={() => changeScreen("recibos")}>Ver recibos de sueldo</button></div>
+    <div style={{display: engineVisible ? "block" : "none"}}>
+      <div className="employee-pages__editor-back"><button type="button" onClick={() => changeScreen("empleados")}>← Volver a empleados</button>{activeScreen === "planillas" && <button type="button" onClick={() => changeScreen("recibos")}>Ver recibos de sueldo</button>}</div>
       <ReportMarkup scheduleInFolderOnly={scheduleInFolderOnly} />
     </div>
   </div>;

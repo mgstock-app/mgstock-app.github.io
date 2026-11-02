@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createBrowserScope } from "@/utils/browser-scope";
 import { createReportServices } from "@/features/reports/data-service";
 import { createClient } from "@/lib/supabase/browser";
@@ -12,6 +12,8 @@ type ReportEngine = {
   addSheet: (localId: string) => boolean;
   downloadPdf: (localId: string, id: string) => Promise<void>;
   shareWhatsapp: (localId: string, id: string) => boolean;
+  goHome: () => boolean;
+  openLocal: (localId: string) => boolean;
 };
 export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
   const engineRef = useRef<ReportEngine | null>(null);
@@ -122,7 +124,10 @@ export function useReportWorkspace(user: AppUser, locals: AppLocal[]) {
       }
     };
   }, [user, locals]);
-  return { root, error, ready,
+  // Stable callbacks: they only read the mounted engine, so effects can depend on them safely.
+  const goHome = useCallback(() => engineRef.current?.goHome() ?? false, []);
+  const openLocal = useCallback((localId: string) => engineRef.current?.openLocal(localId) ?? false, []);
+  return { root, error, ready, goHome, openLocal,
     openSheet: (localId: string, id: string) => engineRef.current?.openSheet(localId, id) ?? false,
     addSheet: (localId: string) => engineRef.current?.addSheet(localId) ?? false,
     downloadPdf: (localId: string, id: string) => engineRef.current?.downloadPdf(localId, id) ?? Promise.reject(new Error("La planilla todavía está cargando.")),
