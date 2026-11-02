@@ -34,7 +34,7 @@ export function leerNavGestlok(raw: string | null | undefined, uid: string | nul
   if (!dock.some(([k]) => k === "staff")) dock.splice(Math.max(0, dock.length - 1), 0, ["staff", "Colaboradores"]);
   if (!dock.some(([k]) => k === "more")) dock.push(["more", "Más"]);
   const side = (Array.isArray(o.side) ? o.side : [])
-    .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {}))
+    .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>) : ({} as Record<string, unknown>)))
     .filter((x) => typeof x.go === "string" && CLAVE.test(x.go) && texto(x.label, 40) !== "")
     .map((x) => ({ go: x.go as string, label: texto(x.label, 40), folder: x.folder === true }))
     .slice(0, 40);

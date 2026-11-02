@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GestlokDock, GestlokLocalNav } from "@/components/gestlok/GestlokNav";
+import { GestlokDock, GestlokLocalNav, type SeccionModulo } from "@/components/gestlok/GestlokNav";
 import { LayoutDashboard, Building2, Users, ShieldCheck, Store, CalendarDays, ClipboardList, UserCheck, Search, LogOut, Menu, X, Bell, LockKeyhole, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import "./admin.css";
@@ -84,9 +84,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main className="gi-admin-main">{children}</main>
       </div>
       {/* Misma barra de abajo que GESTLOK; las secciones de administración están en «Más». */}
-      <GestlokDock titulo="Administración general" secciones={sections.slice(0, 8).map(({ href, label, Icon }) => ({
-        id: href, label, actual: pathname === href, onSelect: () => router.push(href), icon: <Icon size={18} aria-hidden="true" />,
-      })).concat([{ id: "menu", label: "Todo el menú", actual: false, onSelect: () => setMenuOpen(true), icon: <Menu size={18} aria-hidden="true" /> }])} />
+      <GestlokDock titulo="Administración general" secciones={[
+        ...sections.slice(0, 8).map(({ href, label, Icon }): SeccionModulo => ({
+          id: href, label, actual: pathname === href, onSelect: () => router.push(href), icon: <Icon size={18} aria-hidden="true" />,
+        })),
+        { id: "menu", label: "Todo el menú", onSelect: () => setMenuOpen(true), icon: <Menu size={18} aria-hidden="true" /> },
+      ]} />
     </div>
   );
 }
