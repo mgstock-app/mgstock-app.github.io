@@ -194,7 +194,7 @@
   active='pedidos';error='';editing='';render();
   await window.GestLokPedidos?.open?.();
  }
- const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','pos-preview.js'];
+ const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','checkout-client.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
    const src='/stock/sistema-venta/'+file;
@@ -217,7 +217,7 @@
    if(result.error)throw result.error;
    if(!displayed||active!=='sistema_venta')return;
    const mount=document.querySelector('#gl-pos-preview-mount');
-   if(mount)window.GestLokPosPreview.render(mount,result.data||[]);
+   if(mount)window.GestLokPosPreview.render(mount,result.data||[],{checkoutEnabled:false});
   }catch(e){
    const mount=document.querySelector('#gl-pos-preview-mount');
    if(mount)mount.textContent=e.message||'No se pudo iniciar el escáner.';
