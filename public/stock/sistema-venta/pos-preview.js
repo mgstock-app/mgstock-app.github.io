@@ -3,7 +3,10 @@
 'use strict';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n);
+let activeCleanup=null;
+function dispose(){activeCleanup?.();activeCleanup=null;}
 function render(container,products){
+ dispose();
  if(!container)throw Error('Contenedor requerido');
  const catalog=root.GestLokPosCatalog?.catalog(products)||[];
  const cart=new Map();
@@ -46,6 +49,7 @@ function render(container,products){
   }catch(e){finishScan();message.textContent=e.message||'No se pudo abrir la cámara.';}
  });
  stopButton.addEventListener('click',finishScan);
+ activeCleanup=finishScan;
 
  function paint(){
   const q=search.value.toLocaleLowerCase('es-AR').trim();
@@ -63,5 +67,5 @@ function render(container,products){
  });
  paint();
 }
-root.GestLokPosPreview=Object.freeze({render});
+root.GestLokPosPreview=Object.freeze({render,dispose});
 })(typeof window!=='undefined'?window:globalThis);
