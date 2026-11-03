@@ -156,6 +156,8 @@ function photoControl(s){
  if(!s)return '';
  return '<div class="mg-on-photo-area"><label class="mg-on-photo-upload">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Elegir foto de galería')+
  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
+ '<label class="mg-on-photo-upload">'+cameraIcon+' Sacar foto'+
+ '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
  '<button type="button" data-mgon-view-photo="'+esc(s.id)+'">Ver fotos del turno</button>'+
  (photoUrls[s.id]?'<div class="mg-on-photo-preview">'+photoUrls[s.id].map((url,i)=>'<img alt="Foto '+(i+1)+' del cierre" src="'+esc(url)+'">').join('')+'</div>':'')+
  '<label>Observaciones del cierre (opcional)<textarea data-mgon-close-note="'+esc(s.id)+'" maxlength="2000" rows="2" placeholder="Escribí una observación">'+esc(s.cierre_observacion||'')+'</textarea></label>'+
