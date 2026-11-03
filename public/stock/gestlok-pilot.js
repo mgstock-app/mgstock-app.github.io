@@ -266,6 +266,8 @@
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
   if(e.target.closest('[data-pilot-stock]')){e.preventDefault();void switchSection('stock');return;}
+  const homeTab=e.target.closest('.gl-pilot-entry [data-pilot-tab]');
+  if(homeTab){e.preventDefault();void switchSection(homeTab.dataset.pilotTab);return;}
   if(!displayed)return;
   if(e.target.closest('[data-pilot-close]')){close();document.body.classList.remove('gl-pilot-open');return;}
   const t=e.target.closest('[data-pilot-tab]');
