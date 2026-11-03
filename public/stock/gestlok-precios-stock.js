@@ -202,7 +202,15 @@
    const ctx=canvas.getContext('2d');
    if(!ctx)throw Error('El navegador no permite generar la etiqueta.');
    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-   ctx.drawImage(img,0,0,canvas.width,canvas.height);
+   // 30 x 12 mm: reserve a slim title band, leaving the bars unobstructed.
+   const rawName=String(p.name||'Producto').trim().replace(/\\s+/g,' ');
+   const title=rawName.length>32?rawName.slice(0,31)+'…':rawName;
+   ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
+   let fontSize=57;
+   do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=850)break;fontSize-=2;}while(fontSize>24);
+   ctx.fillText(title,460,48,850);
+   // Keep the full barcode, including its printed EAN-13 digits, in the remaining space.
+   ctx.drawImage(img,22,92,876,448);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    const pngUrl=URL.createObjectURL(png);
    const a=document.createElement('a');a.href=pngUrl;a.download='etiqueta-'+p.sku+'-30x12mm.png';document.body.append(a);a.click();a.remove();
