@@ -10,7 +10,7 @@ function render(container,products,{checkoutEnabled=false,onSale}={}){
  if(!container)throw Error('Contenedor requerido');
  const catalog=root.GestLokPosCatalog?.catalog(products)||[];
  const cart=new Map();
- container.innerHTML='<section class="gl-pos"><h2>Sistema de venta</h2><p>Modo prueba · no registra ventas ni descuenta stock</p><label>Buscar código o producto<input id="gl-pos-search" type="search" autocomplete="off" placeholder="Código de barras o nombre"></label><button type="button" id="gl-pos-camera">Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total"></p><label>Forma de pago<select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></label><button type="button" id="gl-pos-checkout" '+(checkoutEnabled?'':'disabled')+'>Confirmar venta</button><p id="gl-pos-sale-message" role="status"></p></section>';
+ container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2></div><span class="gl-pos-mode">Modo prueba</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button></div><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><button type="button" id="gl-pos-checkout" '+(checkoutEnabled?'':'disabled')+'>Confirmar venta</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">La prueba no registra ventas ni descuenta stock.</small></div></div></section>';
  const search=container.querySelector('#gl-pos-search');
  const results=container.querySelector('#gl-pos-results');
  const cartBox=container.querySelector('#gl-pos-cart');
@@ -72,15 +72,17 @@ function render(container,products,{checkoutEnabled=false,onSale}={}){
 
  function paint(){
   const q=search.value.toLocaleLowerCase('es-AR').trim();
-  results.innerHTML=catalog.filter(p=>!q||(p.name+' '+p.barcode).toLocaleLowerCase('es-AR').includes(q)).slice(0,30).map(p=>'<article><strong>'+esc(p.name)+'</strong> · '+(p.price===null?'Sin precio':money(p.price))+' · Stock '+(p.stock??'Sin contar')+' <button type="button" data-add="'+esc(p.id)+'" '+(p.price===null||Number.isInteger(p.stock)&&p.stock<1?'disabled':'')+'>Agregar</button></article>').join('');
+  results.innerHTML=catalog.filter(p=>!q||(p.name+' '+p.barcode).toLocaleLowerCase('es-AR').includes(q)).slice(0,30).map(p=>'<article class="gl-pos-product"><div><strong>'+esc(p.name)+'</strong><small>Stock: '+esc(p.stock??'Sin contar')+'</small></div><strong>'+(p.price===null?'Sin precio':money(p.price))+'</strong><button type="button" data-add="'+esc(p.id)+'" '+(p.price===null||Number.isInteger(p.stock)&&p.stock<1?'disabled':'')+'>Agregar</button></article>').join('');
   const lines=[...cart].map(([id,qty])=>({p:catalog.find(p=>p.id===id),qty}));
-  cartBox.innerHTML=lines.map(({p,qty})=>'<p>'+esc(p.name)+' × '+qty+' · '+money(p.price*qty)+' <button type="button" data-remove="'+esc(p.id)+'">Quitar</button></p>').join('')||'<p>Sin productos</p>';
+  cartBox.innerHTML=lines.map(({p,qty})=>'<div class="gl-pos-cart-line"><div><strong>'+esc(p.name)+'</strong><small>'+money(p.price*qty)+'</small></div><div class="gl-pos-quantity"><button type="button" data-decrease="'+esc(p.id)+'" aria-label="Restar una unidad de '+esc(p.name)+'">−</button><span>'+qty+'</span><button type="button" data-increase="'+esc(p.id)+'" aria-label="Sumar una unidad de '+esc(p.name)+'" '+(Number.isInteger(p.stock)&&qty>=p.stock?'disabled':'')+'>+</button><button type="button" data-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">×</button></div></div>').join('')||'<p class="gl-pos-empty">Todavía no agregaste productos.</p>';
   total.textContent='Total estimado: '+money(lines.reduce((s,{p,qty})=>s+p.price*qty,0));
  }
  search.addEventListener('input',paint);
  container.addEventListener('click',e=>{
-  const add=e.target.closest('[data-add]'),remove=e.target.closest('[data-remove]');
+  const add=e.target.closest('[data-add]'),remove=e.target.closest('[data-remove]'),increase=e.target.closest('[data-increase]'),decrease=e.target.closest('[data-decrease]');
   if(add){const p=catalog.find(p=>p.id===add.dataset.add);if(p&&p.price!==null&&(!Number.isInteger(p.stock)||p.stock>(cart.get(p.id)||0)))cart.set(p.id,(cart.get(p.id)||0)+1);}
+  if(increase){const p=catalog.find(p=>p.id===increase.dataset.increase);if(p&&(!Number.isInteger(p.stock)||p.stock>(cart.get(p.id)||0)))cart.set(p.id,(cart.get(p.id)||0)+1);}
+  if(decrease){const id=decrease.dataset.decrease,qty=cart.get(id)||0;if(qty<=1)cart.delete(id);else cart.set(id,qty-1);}
   if(remove)cart.delete(remove.dataset.remove);
   paint();
  });
