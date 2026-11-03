@@ -7,7 +7,7 @@ language plpgsql security definer set search_path = ''
 as $$
 declare
  v_tenant constant uuid := '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
- v_owner uuid := auth.uid();
+ v_owner uuid := (select auth.uid());
  v_line record;
  v_price numeric;
  v_stock integer;
@@ -18,7 +18,7 @@ begin
   select 1 from public.gestlok_pilot_access
   where tenant_id=v_tenant and owner_uid=v_owner and enabled
  ) then raise exception 'Acceso denegado'; end if;
- if p_request is null or p_payment not in ('efectivo','transferencia')
+ if p_request is null or p_payment is null or p_payment not in ('efectivo','transferencia')
  or jsonb_typeof(p_lines) is distinct from 'array'
  or jsonb_array_length(p_lines) not between 1 and 100
  then raise exception 'Venta inválida'; end if;
@@ -29,7 +29,7 @@ begin
  for v_line in
   select (value->>'product_id')::uuid product_id,
          sum((value->>'quantity')::integer) quantity
-  from jsonb_array_elements(p_lines)
+  from pg_catalog.jsonb_array_elements(p_lines)
   group by (value->>'product_id')::uuid
   order by (value->>'product_id')::uuid
  loop
