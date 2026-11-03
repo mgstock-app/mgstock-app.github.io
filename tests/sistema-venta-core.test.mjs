@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {prepareSale}=require('../public/stock/sistema-venta/pos-core.js');
+test('descuenta unidades sin mutar stock original',()=>{const stock={a:10};const result=prepareSale([{id:'a',quantity:2,price:20000}],stock);assert.equal(result.totalCents,4000000);assert.equal(result.remaining.a,8);assert.equal(stock.a,10)});
+test('acumula cantidades de un mismo producto',()=>{assert.equal(prepareSale([{id:'a',quantity:2,price:10},{id:'a',quantity:3,price:10}],{a:5}).remaining.a,0)});
+test('impide stock insuficiente',()=>{assert.throws(()=>prepareSale([{id:'a',quantity:2,price:10}],{a:1}),/Stock insuficiente/)});
+test('impide cantidades negativas',()=>{assert.throws(()=>prepareSale([{id:'a',quantity:-1,price:10}],{a:5}),/inválida/)});
+test('impide venta vacía',()=>{assert.throws(()=>prepareSale([],{a:5}),/vacía/)});
