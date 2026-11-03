@@ -6,7 +6,7 @@
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
  const MODULES=[
   ['tablero','Panel del dueño','Resumen de los registros cargados en el piloto.','general'],
-  ['sistema_venta','Sistema de venta · Escáner','Escanear productos con la cámara o un lector y preparar un carrito de prueba.','general'],
+  ['sistema_venta','🛒 Sistema de Ventas','Escanear productos con la cámara o un lector y preparar un carrito de prueba.','general'],
   ['pedidos','Pedidos','Preparar, controlar y cerrar pedidos de Cami por día.','general'],
   ['precios','Precios','Calcular precios de venta y ganancias por producto.','economia'],
   ['stock','Stock','Registrar unidades actuales y faltantes de cada producto.','operaciones'],
