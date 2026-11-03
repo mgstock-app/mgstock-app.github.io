@@ -1,0 +1,48 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,readdirSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+test('Archivo horarios: dos PDF atómicos, limpieza segura, pagos intactos y acceso por local',async()=>{
+ const db=new PGlite();
+ try {
+ await db.exec(`create role anon; create role authenticated; create schema rm_test_private; create schema extensions;
+ create function extensions.digest(text,text) returns bytea language sql immutable as $$select decode(md5($1),'hex')$$;
+ create function rm_test_private.horarios_fecha(text) returns date language sql immutable as $$select to_date($1,'YYYY-MM-DD')$$;
+ create function rm_test_private.horarios_puede_ver(text) returns boolean language sql stable as $$select $1=current_setting('t.local',true)$$;
+ create function rm_test_private.horarios_puede_administrar(text) returns boolean language sql stable as $$select $1=current_setting('t.local',true) and current_setting('t.admin',true)='yes'$$;
+ create table rm_test_private.horarios_conexiones(local_id text primary key,token_hash text,ultimo_envio_at timestamptz,envios int default 0);
+ create table rm_test_private.horarios_semanas(local_id text,semana_desde date,semana_hasta date,filas jsonb,recibido_at timestamptz default now(),actualizaciones int default 1,primary key(local_id,semana_desde), constraint horarios_semanas_check check(extract(isodow from semana_desde)=1 and semana_hasta=semana_desde+6));
+ create table rm_test_private.horarios_pagos(local_id text,semana_desde date,colaborador text,pagado boolean,marcado_at timestamptz default now());
+ insert into rm_test_private.horarios_conexiones(local_id,token_hash) values('munro',encode(extensions.digest('test-code','sha256'),'hex'));`);
+ const migration=readdirSync(new URL('../supabase/migrations/',import.meta.url)).find(p=>p.endsWith('_horarios_archivos_pdf.sql'));
+ await db.exec(read('supabase/migrations/'+migration));
+ const pdf=Buffer.from('%PDF-1.4\nsynthetic fixture\n%%EOF').toString('base64');
+ const rows=JSON.stringify([{colaborador:'Persona ficticia',total:'40'}]);
+ const rpc=async(name,args)=>(await db.query(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) r`,args)).rows[0].r;
+ const args=['test-code','2026-10-02','2026-10-08',rows,pdf,pdf];
+ await assert.rejects(()=>rpc('rm_horarios_archivar',['bad',...args.slice(1)]),/Código/);
+ await assert.rejects(()=>rpc('rm_horarios_archivar',[...args.slice(0,5),null]),/dos PDF/);
+ assert.equal((await db.query('select count(*) n from rm_test_private.horarios_semanas')).rows[0].n,0);
+ const saved=await rpc('rm_horarios_archivar',args);
+ assert.equal(saved.ok,true);
+ await db.query("insert into rm_test_private.horarios_pagos(local_id,semana_desde,colaborador,pagado) values('munro','2026-10-02','Persona ficticia',true)");
+ const empty=await rpc('rm_horarios_recibir',['test-code','2026-10-02','2026-10-08','[]']);
+ assert.equal(empty.archivada,true);
+ assert.equal((await db.query('select filas from rm_test_private.horarios_semanas')).rows[0].filas[0].total,'40');
+ assert.equal((await rpc('rm_horarios_archivar',args)).archivo_id,saved.archivo_id,'Reintento idéntico sin duplicar PDF');
+ const pdf2=Buffer.from('%PDF-1.4\nsecond synthetic fixture\n%%EOF').toString('base64');
+ await rpc('rm_horarios_archivar',[...args.slice(0,4),pdf2,pdf2]);
+ assert.equal((await db.query('select count(*) n from rm_test_private.horarios_archivos')).rows[0].n,2,'Versiones previas conservadas');
+ assert.equal((await db.query('select pagado from rm_test_private.horarios_pagos')).rows[0].pagado,true);
+ await db.exec("set t.local='munro'; set t.admin='yes'; set role authenticated");
+ assert.equal(Buffer.from((await rpc('rm_horarios_archivo',['munro',saved.archivo_id,'Semana'])).pdf,'base64').toString(),Buffer.from(pdf,'base64').toString());
+ await assert.rejects(()=>rpc('rm_horarios_archivo',['torcuato',saved.archivo_id,'Semana']),/Sin acceso/);
+ await assert.rejects(()=>db.query('select * from rm_test_private.horarios_archivos'),/permission denied/);
+ assert.equal((await rpc('rm_horarios_historial',['munro']))[0].pagos['Persona ficticia'].pagado,true);
+ await db.exec("set t.admin='no'");
+ assert.deepEqual((await rpc('rm_horarios_historial',['munro']))[0].pagos,{});
+ await db.exec('reset role; set role anon');
+ await assert.rejects(()=>rpc('rm_horarios_archivo',['munro',saved.archivo_id,'Semana']),/permission denied/);
+ } finally {await db.close();}
+});

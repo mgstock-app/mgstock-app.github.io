@@ -22,6 +22,7 @@ import {
   type HorarioSemana,
 } from "@/utils/schedule-history";
 import styles from "./ScheduleHistory.module.css";
+import { ScheduleArchive } from "./ScheduleArchive";
 
 type Tab = "semanas" | "pendientes" | "conexion";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -186,8 +187,8 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
         </>
       )}
       <p className={styles.lead}>
-        Copia exacta de la pestaña «Resumen» de la planilla, una por semana. Cada lunes podés cargar la semana nueva en la
-        planilla: la anterior queda guardada acá. Buscá por colaborador, fecha o mes.
+        Resumen y Semana por fecha. Los PDF archivados se conservan aunque se limpie la planilla.
+        Buscá por colaborador, fecha o mes.
       </p>
       {locales.length > 1 && (
         <label className={styles.localSelect}>
@@ -341,7 +342,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
                     </section>
                   )}
 
-                  {semana && (
+                  {semana && !semana.archivo_id && (
                     <article className={styles.resumen} aria-label={`Resumen de la semana del ${rangoLargo(semana)}`}>
                       {/* Copia exacta de la pestaña «Resumen» de la planilla. Los pagos van aparte, debajo. */}
                       <div className={styles.rTitulo}>Resumen de la semana</div>
@@ -379,9 +380,12 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
                     </article>
                   )}
 
+                  {semana?.archivo_id && <ScheduleArchive key={localId + semana.archivo_id + "Resumen"} local={localId} archivo={semana.archivo_id} hoja="Resumen" desde={semana.desde} />}
+                  {semana && <ScheduleArchive key={localId + semana.desde + (semana.archivo_id ?? "") + "Semana"} local={localId} archivo={semana.archivo_id} hoja="Semana" desde={semana.desde} />}
+
                   {admin && semana && semana.filas.length > 0 && (
-                    <section className={styles.pagos} aria-label={`Pagos de la semana del ${rangoLargo(semana)}`}>
-                      <h2>Pagos de la semana del {rangoLargo(semana)}</h2>
+                    <details key={localId + semana.desde} className={styles.pagos} aria-label={`Pagos de la semana del ${rangoLargo(semana)}`}>
+                      <summary>Pagos de la semana del {rangoLargo(semana)}</summary>
                       <ul>
                         {semana.filas.map((fila) => (
                           <li key={fila.colaborador} className={resaltadas.has(fila.colaborador) ? styles.pagoResaltado : undefined}>
@@ -393,7 +397,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
                           </li>
                         ))}
                       </ul>
-                    </section>
+                    </details>
                   )}
                 </div>
               </div>
@@ -436,9 +440,9 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           <h2><Link2 size={19} aria-hidden="true" /> Conexión con Google Sheets</h2>
           <ol>
             <li>Tocá «Generar código». Si ya había uno, el anterior deja de funcionar.</li>
-            <li>Abrí la planilla de horarios de {local.local_name} → Extensiones → Apps Script. Borrá lo que haya, pegá el código y guardá.</li>
+            <li>Abrí la planilla de horarios de {local.local_name} → Extensiones → Apps Script. Conservá una copia del código existente antes de incorporar este código y guardá.</li>
             <li>Recargá la planilla. En el menú «GESTLOK» elegí «Conectar con GESTLOK (una sola vez)» y aceptá los permisos de Google.</li>
-            <li>Listo: cada cambio de la planilla se guarda acá y, además, una vez por hora. También podés usar «Enviar la semana ahora».</li>
+            <li>Se archivan ambas hojas los lunes a partir de las 08:00 (Argentina), con reintentos si Google demora. Antes de limpiar o cambiar fechas, también podés elegir «GESTLOK → Guardar semana en historial»: guarda los PDF completos de Semana y Resumen. Esperá la confirmación y verificá ambos acá.</li>
           </ol>
           <button type="button" className={styles.btnPrincipal} disabled={ocupado === "codigo"} onClick={() => void generar()}>
             <KeyRound size={17} aria-hidden="true" /> {local.conectado ? "Generar un código nuevo" : "Generar código"}

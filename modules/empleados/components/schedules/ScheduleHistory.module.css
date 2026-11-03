@@ -74,7 +74,9 @@
 .deslizar { display: none; }
 /* Pagos (lo único que agrega GESTLOK), aparte de la copia de la planilla */
 .pagos { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; padding: 12px 14px; display: grid; gap: 10px; }
-.pagos h2 { margin: 0; font-size: 15px; }
+.pagos summary { cursor: pointer; font-size: 15px; font-weight: 700; padding: 4px 0; }
+.pagos[open] summary { margin-bottom: 12px; }
+.pdf { width: 100%; height: 640px; border: 0; display: block; }
 .pagos ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
 .pagos li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #eef1f5; border-radius: 10px; }
 .pagos li span { display: grid; gap: 2px; min-width: 0; }
