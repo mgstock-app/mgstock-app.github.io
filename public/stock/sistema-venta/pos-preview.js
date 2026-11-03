@@ -16,6 +16,8 @@ function render(container,products){
  const camera=container.querySelector('#gl-pos-camera');
  const stopButton=container.querySelector('#gl-pos-stop');
  const message=container.querySelector('#gl-pos-scan-message');
+ search.setAttribute('aria-label','Código de barras o nombre del producto');
+ camera.setAttribute('aria-label','Abrir cámara para escanear código de barras');
  let stopScan=null;
  function finishScan(){
   stopScan?.();stopScan=null;
