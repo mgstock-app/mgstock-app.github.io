@@ -81,6 +81,7 @@
      '<div class="gl-ps-cell-grid gl-ps-stock-grid"><div><small>Unidades disponibles</small><strong>'+(p.stock_quantity==null?'Sin contar':esc(p.stock_quantity))+'</strong></div>'+
      '<div><small>Aviso de stock bajo</small><strong>'+esc(p.stock_minimum)+'</strong></div></div>')+
    '<footer><small>Actualizado '+esc(new Date(p.updated_at).toLocaleDateString('es-AR'))+'</small>'+
+   '<button type="button" data-ps-label="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Ver / descargar etiqueta</button>'+ 
    '<button type="button" data-ps-edit="'+id+'">'+(mode==='precios'?'Editar precios':'Actualizar stock')+'</button></footer></article>';
  }
  function priceForm(){
@@ -183,8 +184,21 @@
   }catch(e){error=e.message||'No pudimos guardar stock.';}
   finally{busy=false;update();}
  }
+ async function downloadLabel(id){
+  await assertAccess();
+  const p=rows.find(x=>x.id===id&&x.active);
+  if(!p||!/^\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
+  if(!window.GestLokPosEAN13){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/stock/sistema-venta/ean13-label.js';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar la etiqueta.'));document.head.append(script);});}
+  const svg=window.GestLokPosEAN13.svg(p.sku);
+  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='etiqueta-'+p.sku+'.svg';document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
+  const label=e.target.closest('[data-ps-label]');
+  if(label){e.preventDefault();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
   const el=e.target.closest('[data-ps-edit],[data-ps-new],[data-ps-cancel],[data-ps-refresh],[data-ps-use-suggested]');
   if(!el)return;
   if(el.matches('[data-ps-use-suggested]')){
