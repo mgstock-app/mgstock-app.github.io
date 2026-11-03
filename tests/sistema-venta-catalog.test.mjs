@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {catalog,lookup}=require('../public/stock/sistema-venta/catalog-adapter.js');
+const rows=[{id:'p1',name:'Perfume',sku:'779123',unit_price:20000,stock_quantity:4,active:true},{id:'p2',name:'Oculto',sku:'000',unit_price:100,stock_quantity:1,active:false}];
+test('lee precio y cantidad del stock existente',()=>assert.deepEqual(catalog(rows),[{id:'p1',name:'Perfume',barcode:'779123',price:20000,stock:4}]));
+test('busca por código exacto',()=>assert.equal(lookup(rows,'779123').id,'p1'));
+test('no muestra productos inactivos',()=>assert.equal(lookup(rows,'000'),null));
+test('no inventa stock cuando falta conteo',()=>assert.equal(catalog([{id:'x',name:'X',sku:'x',unit_price:null,stock_quantity:null,active:true}])[0].stock,null));
