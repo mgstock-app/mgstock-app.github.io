@@ -63,7 +63,7 @@
 /* Copia exacta de la pestaña «Resumen» de la planilla (mismos títulos, colores y orden). */
 .resumen { border: 1px solid #cfd6e2; border-radius: 12px; overflow: hidden; background: #fff; font-family: Arial, Helvetica, sans-serif; }
 .rTitulo { background: #1e2f52; color: #fff; font-weight: 700; font-size: 18px; text-align: center; padding: 10px 12px; }
-.resumen .rTitulo { color: #fff; margin: 0; }
+.detalle .resumen .rTitulo { color: #fff; margin: 0; }
 .rSemana { display: grid; grid-template-columns: auto auto auto auto; justify-content: start; gap: 4px 28px; align-items: center; background: #dfe5ee; color: #1f2937; padding: 8px 18px; font-size: 16px; }
 .rSemana b { font-weight: 700; }
 .rTabla { min-width: 860px; font-size: 15px; }
