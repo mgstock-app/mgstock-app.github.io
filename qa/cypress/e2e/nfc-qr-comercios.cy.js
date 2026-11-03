@@ -62,6 +62,9 @@ describe('NFC y QR · comercios, sucursales y placas de la creadora',()=>{
    card(codes[0]).should('contain.text','Activa').and('contain.text','https://example.com/cafe-centro-2');
 
    // Reasignar a un comercio sin link: queda desactivada y en el comercio nuevo.
+   // (La lista quedó filtrada en «Café de Prueba · Centro» al crear las placas: se ven todas para seguirla.)
+   cy.get('select[data-nfc-sel="fcom"]').select('Todos los comercios');
+   cy.get('.gl-nfc-item').should('have.length',3);
    card(codes[1]).contains('button','Reasignar').click();
    cy.get('form[data-nfc-form="reasign"] select[data-nfc-sel="rcom"]').select('Heladería de Prueba');
    cy.get('form[data-nfc-form="reasign"] button[type="submit"]').click();
