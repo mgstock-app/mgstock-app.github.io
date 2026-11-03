@@ -4,7 +4,7 @@
 (function(root){
 'use strict';
 function cents(value){
- if(typeof value!=='number'||!Number.isFinite(value)||value<0||Math.round(value*100)!==value*100)
+ if(typeof value!=='number'||!Number.isFinite(value)||value<0||Math.abs(Math.round(value*100)-value*100)>1e-7)
   throw Error('Importe inválido');
  return Math.round(value*100);
 }
