@@ -84,6 +84,7 @@
   records=r.data||[];audit=a.data||[];
  }
  function close(){
+  window.GestLokPosPreview?.dispose?.();
   const p=document.querySelector('#gl-pilot-panel');p?.remove();document.body.classList.remove('gl-pilot-open');
   displayed=false;active='tablero';error='';editing='';
  }
@@ -168,6 +169,7 @@
  }
  function render(){
   if(!displayed)return;
+  window.GestLokPosPreview?.dispose?.();
   let root=document.querySelector('#gl-pilot-panel');
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
