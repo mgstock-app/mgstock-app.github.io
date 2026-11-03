@@ -89,7 +89,8 @@ test("Historial por día, ventana con Mañana/Noche/Día Completo y foto privada
  assert.match(js,/photoUrls/);
  assert.match(js,/mg-online-closure-photo/);
  assert.match(js,/compressPhoto/);
- assert.doesNotMatch(js,/capture="environment"/);
+ assert.match(js,/capture="environment"/);
+ assert.match(js,/Sacar foto/);
  assert.match(js,/Elegir foto de galería/);
  assert.match(css,/\.mg-on-modal-backdrop/);
  assert.match(edge,/allowOrigins/);
