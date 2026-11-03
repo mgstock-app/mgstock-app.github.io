@@ -30,6 +30,8 @@
   ['resguardos','Plan de respaldos','Checklist y registro de verificaciones; no ejecuta backups.','sistema'],
   ['metas','Objetivos y planificación','Registrar metas y revisar su progreso.','economia']
  ];
+ const HOME_MODULES=['apertura_cierre','sistema_venta','finanzas','stock','precios'];
+ const HOME_LABELS={apertura_cierre:['Caja','Control de apertura y cierre. Los cobros reales aún no están habilitados.'],sistema_venta:['Sistema de ventas','Escanear artículos y preparar el carrito. Cobro real pendiente.'],finanzas:['Movimientos y ganancias','Registrar ingresos, gastos y reposición; consultar el saldo manual.'],stock:['Stock','Cantidades, códigos de barras y etiquetas para imprimir.'],precios:['Precios','Costos, recargos y precios de venta.']};
  const DICTIONARY=Object.fromEntries(MODULES.map(([id,title,detail,group])=>[id,{title,detail,group}]));
  const fmtMoney=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(v||0));
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -61,9 +63,9 @@
  }
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
-  return '<div class="gl-pilot-entry"><div><small>PILOTO PRIVADO · SOLO TU EMPRESA</small><h2>Centro de control total</h2>'+
-   '<p>24 áreas para evaluar tu negocio. Precios, Stock y Pedidos comparten tu catálogo privado.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-pos>Sistema de venta · Escanear</button><button type="button" data-pilot-orders>Pedidos</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-open>Centro de control <span aria-hidden="true">→</span></button></div></div>';
+  return '<div class="gl-pilot-entry"><div><small>GESTIÓN DE TU LOCAL · ACCESO PRIVADO</small><h2>Tu negocio, en orden</h2>'+
+   '<p>Caja, ventas, movimientos, stock y precios. Todo en un solo lugar.</p></div>'+
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-tab="apertura_cierre">Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-tab="finanzas">Movimientos y ganancias</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -95,30 +97,18 @@
     (key==='tablero'||key==='auditoria'?'<small>Consulta</small>':['pedidos','precios','stock'].includes(key)?'<small>Gestión integrada con tu catálogo</small>':'<small>'+total+' registros · Carga manual</small>')+'</button>';
  }
  function sidebar(){
-  const groups=[['general','Resumen'],['economia','Economía'],['operaciones','Operaciones'],['equipo','Personas'],['sistema','Herramientas']];
-  return '<nav class="gl-pilot-nav" aria-label="Módulos del piloto">'+groups.map(([group,label])=>
-    '<div><span class="gl-pilot-group">'+label+'</span>'+
-    MODULES.filter(([, , ,g])=>g===group).map(([id,title])=>
-      '<button type="button" data-pilot-tab="'+id+'" class="'+(active===id?'is-active':'')+'">'+esc(title)+'</button>').join('')+'</div>').join('')+'</nav>';
+  return '<nav class="gl-pilot-nav" aria-label="Secciones de tu negocio"><div><span class="gl-pilot-group">Mi local</span>'+
+   '<button type="button" data-pilot-tab="tablero" class="'+(active==='tablero'?'is-active':'')+'">Inicio</button>'+
+   HOME_MODULES.map(id=>'<button type="button" data-pilot-tab="'+id+'" class="'+(active===id?'is-active':'')+'">'+esc(HOME_LABELS[id][0])+'</button>').join('')+'</div></nav>';
  }
  function dashboard(){
-  const by=m=>records.filter(r=>r.module===m);
-  const fin=by('finanzas');
+  const fin=records.filter(r=>r.module==='finanzas');
   const entradas=fin.filter(x=>x.direction==='ingreso').reduce((v,x)=>v+Number(x.amount||0),0);
   const salidas=fin.filter(x=>x.direction==='egreso').reduce((v,x)=>v+Number(x.amount||0),0);
-  const task=by('tareas').filter(x=>x.status!=='completado'&&x.status!=='cancelado');
-  const alerts=by('alertas').filter(x=>x.status!=='completado'&&x.status!=='cancelado');
-  return '<div class="gl-pilot-hero"><small>INFORMACIÓN DEL PILOTO</small><h2>Tu negocio, en una sola vista</h2>'+
-   '<p>Los valores se calculan únicamente con registros cargados en este centro. No son ventas o movimientos contables sincronizados.</p></div>'+
-   '<div class="gl-pilot-kpis">'+[
-     ['Ingresos registrados',fmtMoney(entradas)],
-     ['Egresos registrados',fmtMoney(salidas)],
-     ['Saldo de registros',fmtMoney(entradas-salidas)],
-     ['Tareas pendientes',task.length],
-     ['Alertas abiertas',alerts.length],
-     ['Registros de prueba',records.length]
-   ].map(([a,b])=>'<div><span>'+esc(a)+'</span><strong>'+esc(b)+'</strong></div>').join('')+'</div>'+
-   '<h3>Tus áreas de gestión</h3><div class="gl-pilot-grid">'+MODULES.filter(([k])=>k!=='tablero').map(([k])=>card(k)).join('')+'</div>';
+  return '<div class="gl-pilot-hero"><small>RESUMEN DEL LOCAL</small><h2>Tu negocio, en una sola vista</h2>'+
+   '<p>Resumen basado únicamente en movimientos manuales registrados. No representa ventas cobradas ni ganancia neta real.</p></div>'+
+   '<div class="gl-pilot-kpis">'+[['Ingresos registrados',fmtMoney(entradas)],['Gastos registrados',fmtMoney(salidas)],['Saldo de movimientos',fmtMoney(entradas-salidas)]].map(([a,b])=>'<div><span>'+esc(a)+'</span><strong>'+esc(b)+'</strong></div>').join('')+'</div>'+
+   '<h3>Administrar mi local</h3><div class="gl-pilot-grid">'+HOME_MODULES.map(id=>'<button class="gl-pilot-module" type="button" data-pilot-tab="'+id+'"><span class="gl-pilot-module-name">'+esc(HOME_LABELS[id][0])+'</span><span>'+esc(HOME_LABELS[id][1])+'</span></button>').join('')+'</div>';
  }
  function tableRows(key){
   const list=records.filter(x=>x.module===key);
@@ -173,8 +163,8 @@
   let root=document.querySelector('#gl-pilot-panel');
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
-    '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Centro de control total</h1>'+
-    '<span>Empresa Perfumes · 23 áreas de gestión</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
+    '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
+    '<span>5 secciones para administrar tu negocio</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
