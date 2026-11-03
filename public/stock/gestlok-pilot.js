@@ -63,7 +63,7 @@
   if(!enabled||!eligible(context,host))return '';
   return '<div class="gl-pilot-entry"><div><small>PILOTO PRIVADO · SOLO TU EMPRESA</small><h2>Centro de control total</h2>'+
    '<p>23 áreas para evaluar tu negocio. Precios, Stock y Pedidos comparten tu catálogo privado.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-orders>Pedidos</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-open>Centro de control <span aria-hidden="true">→</span></button></div></div>';
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-pos>Sistema de venta · Escanear</button><button type="button" data-pilot-orders>Pedidos</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-open>Centro de control <span aria-hidden="true">→</span></button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -272,6 +272,7 @@
  }
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
+  if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
   if(e.target.closest('[data-pilot-stock]')){e.preventDefault();void switchSection('stock');return;}
