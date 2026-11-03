@@ -21,7 +21,7 @@ function render(container,products){
  const message=container.querySelector('#gl-pos-scan-message');
  search.setAttribute('aria-label','Código de barras o nombre del producto');
  camera.setAttribute('aria-label','Abrir cámara para escanear código de barras');
- let stopScan=null;
+ let stopScan=null,disposed=false;
  function finishScan(){
   stopScan?.();stopScan=null;
   video.style.display='none';stopButton.hidden=true;camera.disabled=false;
@@ -44,12 +44,12 @@ function render(container,products){
   }
   camera.disabled=true;video.style.display='block';stopButton.hidden=false;
   try{
-   const stop=await root.GestLokPosScanner.scan(video,code=>{finishScan();acceptCode(code);});
-   if(stopButton.hidden)stop();else stopScan=stop;
+   const stop=await root.GestLokPosScanner.scan(video,code=>{if(disposed)return;finishScan();acceptCode(code);});
+   if(disposed||stopButton.hidden)stop();else stopScan=stop;
   }catch(e){finishScan();message.textContent=e.message||'No se pudo abrir la cámara.';}
  });
  stopButton.addEventListener('click',finishScan);
- activeCleanup=finishScan;
+ activeCleanup=()=>{disposed=true;finishScan();};
 
  function paint(){
   const q=search.value.toLocaleLowerCase('es-AR').trim();
