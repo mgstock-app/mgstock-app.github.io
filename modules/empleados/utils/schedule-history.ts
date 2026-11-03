@@ -13,6 +13,8 @@ export type HorarioFila = {
 };
 export type HorarioPago = { pagado: boolean; marcado_at: string };
 export type HorarioSemana = {
+  archivo_id?: string;
+  archivado_at?: string;
   desde: string;
   hasta: string;
   filas: HorarioFila[];
@@ -161,6 +163,8 @@ export function scriptParaSheets(codigo: string, url: string, clave: string): st
     "  SpreadsheetApp.getUi().createMenu('GESTLOK')",
     "    .addItem('Conectar con GESTLOK (una sola vez)', 'conectarGestlok')",
     "    .addItem('Enviar la semana ahora', 'enviarAhora')",
+    "    .addItem('Guardar semana en historial', 'archivarGestlok')",
+    "    .addItem('Activar archivo lunes 08:00 Argentina', 'instalarArchivoGestlok')",
     "    .addToUi();",
     "}",
     "",
@@ -202,8 +206,85 @@ export function scriptParaSheets(codigo: string, url: string, clave: string): st
     "  });",
     "  ScriptApp.newTrigger('alCambiar').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();",
     "  ScriptApp.newTrigger('alCambiar').timeBased().everyHours(1).create();",
+    "  instalarArchivoGestlok();",
     "  enviarAhora();",
     "}",
     "",
-  ].join("\n");
+  ].join("\n") + "\n" + ARCHIVO_SCRIPT;
 }
+
+
+// Exportación de ambas hojas originales; nunca borra, limpia ni modifica la planilla.
+const ARCHIVO_SCRIPT = String.raw`
+function pdfGestlok(ss, hoja) {
+  var values = hoja.getDataRange().getDisplayValues();
+  var columns = hoja.getName() === 'Resumen' ? 10 : hoja.getLastColumn();
+  var rows = values.length;
+  while (rows > 1 && !values[rows - 1].slice(0, columns).some(function(v) { return String(v).trim(); })) rows--;
+  var endpoint = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=pdf&gid=' + hoja.getSheetId()
+    + '&size=A3&portrait=false&fitw=true&sheetnames=false&printtitle=false&pagenum=UNDEFINED&gridlines=false&fzr=true'
+    + '&r1=0&c1=0&r2=' + rows + '&c2=' + columns;
+  var response = UrlFetchApp.fetch(endpoint, {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}});
+  var bytes = response.getBlob().getBytes();
+  if (bytes.length > 3000000 || response.getBlob().getContentType().indexOf('pdf') < 0) throw new Error('No se pudo exportar el PDF completo de ' + hoja.getName());
+  return Utilities.base64Encode(bytes);
+}
+function archivarGestlok() {
+  var r = guardarArchivoGestlok(SpreadsheetApp.getActive());
+  SpreadsheetApp.getUi().alert('Semana y Resumen guardados en GESTLOK del ' + r.semana + '. Verificá ambos PDF en Historial antes de limpiar la planilla.');
+}
+function guardarArchivoGestlok(ss) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    SpreadsheetApp.flush();
+    var resumen = ss.getSheetByName('Resumen'), semana = ss.getSheetByName('Semana');
+    if (!resumen || !semana) throw new Error('Se necesitan las hojas Semana y Resumen.');
+    var antes = JSON.stringify([resumen.getDataRange().getDisplayValues(), semana.getDataRange().getDisplayValues()]);
+    var desde = resumen.getRange('B2').getDisplayValue(), hasta = resumen.getRange('D2').getDisplayValue();
+    var k = resumen.getRange('K5:K64').getDisplayValues(), lugares = 0;
+    while (lugares < k.length && String(k[lugares][0]).trim()) lugares++;
+    var filas = resumen.getRange('A5:J' + (4 + Math.max(10, lugares))).getDisplayValues().filter(function(r) { return String(r[0]).trim(); }).map(function(r) {
+      return {colaborador:r[0], puesto:r[1], cobra_por:r[2], trabajado:r[3], off:r[4], feriado:r[5], ausentes:r[6], vacaciones:r[7], total:r[8], observaciones:r[9]};
+    });
+    if (!filas.length) throw new Error('El Resumen está vacío. No se archivó ni se borró nada.');
+    var resumenPdf = pdfGestlok(ss, resumen), semanaPdf = pdfGestlok(ss, semana);
+    SpreadsheetApp.flush();
+    if (antes !== JSON.stringify([resumen.getDataRange().getDisplayValues(), semana.getDataRange().getDisplayValues()])) throw new Error('La planilla cambió durante la exportación. Volvé a guardar sin editar mientras se generan los PDF.');
+    var res = UrlFetchApp.fetch(GESTLOK_URL + '/rest/v1/rpc/rm_horarios_archivar', {
+      method:'post', contentType:'application/json', muteHttpExceptions:true,
+      headers: GESTLOK_CLAVE.indexOf('eyJ') === 0 ? {apikey:GESTLOK_CLAVE, Authorization:'Bearer ' + GESTLOK_CLAVE} : {apikey:GESTLOK_CLAVE},
+      payload:JSON.stringify({p_codigo:GESTLOK_CODIGO,p_desde:desde,p_hasta:hasta,p_filas:filas,p_resumen:resumenPdf,p_semana:semanaPdf})
+    });
+    if (res.getResponseCode() >= 300) throw new Error('No se archivó: ' + res.getContentText());
+    var r = JSON.parse(res.getContentText());
+    if (!r.ok || !r.archivo_id) throw new Error('No se confirmó el archivo. No limpies la planilla.');
+    return r;
+  } finally { lock.releaseLock(); }
+}
+function instalarArchivoGestlok() {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('GESTLOK_PLANILLA', SpreadsheetApp.getActive().getId());
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'archivoProgramadoGestlok') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('archivoProgramadoGestlok').timeBased().everyMinutes(1).create();
+  props.setProperty('GESTLOK_HORARIO', 'Lunes 08:00 America/Argentina/Buenos_Aires');
+}
+function archivoProgramadoGestlok() {
+  return ejecutarArchivoProgramadoGestlok(new Date());
+}
+function ejecutarArchivoProgramadoGestlok(ahora) {
+  var zona = 'America/Argentina/Buenos_Aires';
+  var dia = Utilities.formatDate(ahora, zona, 'u');
+  var hora = Number(Utilities.formatDate(ahora, zona, 'HHmm'));
+  if (dia !== '1' || hora < 800) return;
+  var lunes = Utilities.formatDate(ahora, zona, 'yyyy-MM-dd');
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('GESTLOK_ULTIMO_LUNES') === lunes) return;
+  var id = props.getProperty('GESTLOK_PLANILLA');
+  if (!id) throw new Error('Falta activar el archivo automático desde el menú GESTLOK.');
+  var r = guardarArchivoGestlok(SpreadsheetApp.openById(id));
+  props.setProperties({GESTLOK_ULTIMO_LUNES:lunes, GESTLOK_ULTIMO_ARCHIVO:r.archivo_id});
+}
+`;
