@@ -51,7 +51,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
-      if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-qr-20261031");
+      if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
       await load("/stock/gestlok-creator-home.js?rev=nfc-qr-20261031");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");

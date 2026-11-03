@@ -97,6 +97,99 @@
     }
     return b;
   }
+  // --- NFC y QR ficticio (ver gestlok_nfc_* en supabase/migrations/*nfc*) ---
+  function nfcRpc(fn, x, a){
+    const err = (m, code) => ({data:null, error:{code:code||'22023', message:m}});
+    if (a?.rol !== 'creadora' || me() !== 'kmu15lopez@gmail.com') return err('Acceso exclusivo de la creadora', '42501');
+    const st = window.__nfc = window.__nfc || {comercios:[], placas:[], hist:[], fb:'https://belisaparfum.mitiendanube.com/', seq:0};
+    const URL_OK = /^https?:\/\/[^\s<>"]+$/i, now = () => new Date().toISOString();
+    const url = v => { const s = String(v ?? '').trim(); if (!s) return null; if (!URL_OK.test(s)) throw 'El destino tiene que ser un link completo que empiece con https://'; return s; };
+    const com = id => st.comercios.find(c => c.id === id), suc = id => { for (const c of st.comercios) { const s = c.sucursales.find(y => y.id === id); if (s) return s; } return null; };
+    const place = (c, s) => c ? (com(c)?.nombre || '') + (s ? ' · ' + (suc(s)?.nombre || '') : '') : 'Sin comercio';
+    const ef = p => p.destino ? {url:p.destino, origen:'placa'} : (p.sucursal_id && suc(p.sucursal_id)?.destino) ? {url:suc(p.sucursal_id).destino, origen:'sucursal'} : (p.comercio_id && com(p.comercio_id)?.destino) ? {url:com(p.comercio_id).destino, origen:'comercio'} : {url:null, origen:null};
+    const pj = p => ({...p, etiqueta:p.cliente, destino_efectivo:ef(p).url, origen:ef(p).origen, escaneos_30d:p.escaneos});
+    const log = (accion, code, c, s, detalle) => st.hist.unshift({at:now(), accion, code, comercio_id:c||null, sucursal_id:s||null, detalle});
+    const check = (c, s) => { if (s && !c) throw 'Elegí el comercio de la sucursal'; if (c && !com(c)) throw 'El comercio no existe'; if (s && !com(c).sucursales.some(y => y.id === s)) throw 'La sucursal no es de ese comercio'; };
+    const cj = c => JSON.parse(JSON.stringify(c));
+    try {
+      if (fn === 'gestlok_nfc_list') return {data:{scope:'nfc_list', version:2, generated_at:now(), destino_sin_activar:st.fb, comercios:st.comercios.map(cj), placas:st.placas.map(pj)}, error:null};
+      if (fn === 'gestlok_nfc_comercio_guardar'){
+        const nombre = String(x.p_nombre || '').trim(), destino = url(x.p_destino);
+        if (!nombre) throw 'El nombre de el comercio tiene que tener entre 1 y 80 caracteres';
+        if (st.comercios.some(c => c.id !== x.p_id && c.nombre.toLowerCase() === nombre.toLowerCase())) return err('Ya existe un comercio llamado «' + nombre + '»', '23505');
+        if (!x.p_id){ const c = {id:'com-' + (++st.seq), nombre, destino, nota:x.p_nota || '', sucursales:[]}; st.comercios.push(c); log('comercio_creado', null, c.id, null, 'Comercio creado: ' + nombre); return {data:cj(c), error:null}; }
+        const c = com(x.p_id); if (!c) throw 'El comercio no existe';
+        if (!destino && c.destino && st.placas.some(p => p.comercio_id === c.id && p.activa && !p.destino && !(p.sucursal_id && suc(p.sucursal_id)?.destino))) throw 'Hay placas activas que usan el link del comercio. Desactivalas o cargá otro link.';
+        if (c.destino !== destino) log('comercio_editado', null, c.id, null, 'Link: ' + (c.destino || 'sin link') + ' → ' + (destino || 'sin link'));
+        Object.assign(c, {nombre, destino, nota:x.p_nota || ''}); return {data:cj(c), error:null};
+      }
+      if (fn === 'gestlok_nfc_sucursal_guardar'){
+        const nombre = String(x.p_nombre || '').trim(), destino = url(x.p_destino);
+        if (!nombre) throw 'El nombre de la sucursal tiene que tener entre 1 y 80 caracteres';
+        if (!x.p_id){ const c = com(x.p_comercio); if (!c) throw 'El comercio no existe'; if (c.sucursales.some(y => y.nombre.toLowerCase() === nombre.toLowerCase())) return err('Ese comercio ya tiene una sucursal llamada «' + nombre + '»', '23505');
+          const s = {id:'suc-' + (++st.seq), nombre, destino}; c.sucursales.push(s); log('sucursal_creada', null, c.id, s.id, 'Sucursal creada: ' + nombre); return {data:{...s, comercio_id:c.id}, error:null}; }
+        const s = suc(x.p_id); if (!s) throw 'La sucursal no existe';
+        const c = st.comercios.find(k => k.sucursales.includes(s));
+        if (!destino && s.destino && st.placas.some(p => p.sucursal_id === s.id && p.activa && !p.destino && !c.destino)) throw 'Hay placas activas que usan el link de esta sucursal. Desactivalas o cargá otro link.';
+        if (s.destino !== destino) log('sucursal_editada', null, c.id, s.id, 'Link: ' + (s.destino || 'sin link') + ' → ' + (destino || 'sin link'));
+        Object.assign(s, {nombre, destino}); return {data:{...s, comercio_id:c.id}, error:null};
+      }
+      if (fn === 'gestlok_nfc_crear_placas' || fn === 'gestlok_nfc_create'){
+        const k = Number(x.p_cantidad), c = x.p_comercio || null, s = x.p_sucursal || null, act = !!x.p_activar;
+        if (!(k >= 1 && k <= 200)) throw 'Podés crear entre 1 y 200 placas por vez';
+        check(c, s);
+        if (act && !((s && suc(s)?.destino) || (c && com(c)?.destino))) throw 'Para crearlas activas, cargá antes el link de la sucursal o del comercio';
+        const desde = st.placas.reduce((m, p) => Math.max(m, p.numero), 0) + 1, codes = [];
+        for (let i = 0; i < k; i++){
+          let code; do { code = Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join(''); } while (st.placas.some(p => p.code === code));
+          st.placas.push({code, numero:desde + i, cliente:'', destino:null, nota:'', activa:act, escaneos:0, ultimo_escaneo:null, comercio_id:c, sucursal_id:s});
+          codes.push(code); log('placa_creada', code, c, s, 'Placa N° ' + String(desde + i).padStart(3, '0') + ' creada en ' + place(c, s));
+        }
+        return {data:{creadas:k, desde, hasta:desde + k - 1, codes}, error:null};
+      }
+      if (fn === 'gestlok_nfc_update'){
+        const p = st.placas.find(y => y.code === String(x.p_code || '').toUpperCase()); if (!p) throw 'La placa no existe';
+        const destino = url(x.p_destino), next = {...p, destino};
+        if (x.p_activa && !ef(next).url) throw 'Para activar la placa cargá el link de destino';
+        if (p.destino !== destino) log('placa_editada', p.code, p.comercio_id, p.sucursal_id, 'Link propio: ' + (p.destino || 'ninguno') + ' → ' + (destino || 'ninguno'));
+        if (p.activa !== !!x.p_activa) log(x.p_activa ? 'placa_activada' : 'placa_desactivada', p.code, p.comercio_id, p.sucursal_id, x.p_activa ? 'Activada' : 'Desactivada');
+        Object.assign(p, {cliente:String(x.p_cliente || '').trim(), destino, nota:String(x.p_nota || '').trim(), activa:!!x.p_activa});
+        return {data:pj(p), error:null};
+      }
+      if (fn === 'gestlok_nfc_activar'){
+        const codes = [...new Set((x.p_codes || []).map(c => String(c).toUpperCase()))]; if (!codes.length) throw 'Elegí al menos una placa';
+        let n = 0; const sin = [];
+        for (const p of st.placas.filter(y => codes.includes(y.code))){
+          if (p.activa === !!x.p_activa) continue;
+          if (x.p_activa && !ef(p).url){ sin.push(p.code); continue; }
+          p.activa = !!x.p_activa; n++; log(p.activa ? 'placa_activada' : 'placa_desactivada', p.code, p.comercio_id, p.sucursal_id, p.activa ? 'Activada' : 'Desactivada');
+        }
+        return {data:{cambiadas:n, sin_link:sin, no_existen:[]}, error:null};
+      }
+      if (fn === 'gestlok_nfc_reasignar'){
+        const c = x.p_comercio || null, s = x.p_sucursal || null; check(c, s);
+        const codes = (x.p_codes || []).map(v => String(v).toUpperCase()); if (!codes.length) throw 'Elegí al menos una placa';
+        let n = 0, off = 0;
+        for (const p of st.placas.filter(y => codes.includes(y.code))){
+          if (p.comercio_id === c && p.sucursal_id === s) continue;
+          const de = place(p.comercio_id, p.sucursal_id);
+          if (p.comercio_id !== c) p.cliente = '';
+          Object.assign(p, {comercio_id:c, sucursal_id:s, destino:null});
+          log('placa_reasignada', p.code, c, s, 'Reasignada de ' + de + ' a ' + place(c, s));
+          if (p.activa && !ef(p).url){ p.activa = false; off++; log('placa_desactivada', p.code, c, s, 'Desactivada al reasignar'); }
+          n++;
+        }
+        return {data:{movidas:n, desactivadas:off, no_existen:[]}, error:null};
+      }
+      if (fn === 'gestlok_nfc_historial'){
+        const code = x.p_code ? String(x.p_code).toUpperCase() : null;
+        return {data:st.hist.filter(h => (!code || h.code === code) && (!x.p_comercio || h.comercio_id === x.p_comercio)).slice(0, x.p_limit || 100)
+          .map(h => ({...h, numero:h.code ? st.placas.find(p => p.code === h.code)?.numero : null})), error:null};
+      }
+      if (fn === 'gestlok_nfc_set_fallback'){ st.fb = url(x.p_destino); log('ajuste_editado', null, null, null, 'Link de placas sin comercio: ' + (st.fb || 'ninguno')); return {data:st.fb, error:null}; }
+      return err('Función desconocida', '42883');
+    } catch (e) { return err(typeof e === 'string' ? e : 'Error'); }
+  }
   function cajaRpc(fn, x, a){
     const err = (m, code) => ({data:null, error:{code:code || '22023', message:m}});
     const TEN = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
@@ -193,6 +286,9 @@
       // Una caja por día de Argentina (window.__cajaDia la fija), idempotencia por operación, cierre idempotente,
       // sin reapertura y window.__cajaCron() simula el cierre automático de las 23:59 del servidor.
       if (/^gestlok_caja_/.test(fn)) return cajaRpc(fn, args || {}, a);
+      // NFC y QR (como las RPC gestlok_nfc_*): solo la creadora; comercios y sucursales con link propio,
+      // placas que usan su link, el de la sucursal o el del comercio; activar, reasignar e historial en memoria.
+      if (/^gestlok_nfc_/.test(fn)) return nfcRpc(fn, args || {}, a);
       // Estado ficticio para probar Pagos Online sin consultar datos de Mi Gusto.
       if (fn === 'gestlok_mg_online_state'){
         const loc=args?.p_local;

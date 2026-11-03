@@ -3,14 +3,14 @@
 .gl-nfc header h2{margin:0}
 .gl-nfc p{margin:6px 0}
 .gl-nfc .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.gl-nfc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.gl-nfc-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
 .gl-nfc-stats div{border:1px solid #e1e8ee;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px}
 .gl-nfc-stats b{font-size:1.6rem;line-height:1.1;color:#142f46}
 .gl-nfc-stats small{color:#4f6475}
 .gl-nfc-create{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
 .gl-nfc-create label,.gl-nfc-form label{display:flex;flex-direction:column;gap:4px;font-weight:600;color:#142f46}
 .gl-nfc-create input{width:120px}
-.gl-nfc input:not([type=checkbox]){min-height:44px;padding:8px 12px;border:1px solid #c7d3dc;border-radius:10px;font:inherit;background:#fff;color:#14212b;box-sizing:border-box;max-width:100%}
+.gl-nfc input:not([type=checkbox]),.gl-nfc select{min-height:44px;padding:8px 12px;border:1px solid #c7d3dc;border-radius:10px;font:inherit;background:#fff;color:#14212b;box-sizing:border-box;max-width:100%}
 .gl-nfc .btn{min-height:44px;display:inline-flex;align-items:center;gap:6px}
 .gl-nfc-fallback{margin-top:14px;padding-top:12px;border-top:1px solid #e1e8ee}
 .gl-nfc-fallback a,.gl-nfc-dest a,.gl-nfc-dest em,.gl-nfc-qrbox code{overflow-wrap:anywhere;word-break:break-word}
@@ -45,7 +45,39 @@
 .gl-nfc-empty{color:#4f6475}
 .gl-nfc-help summary{cursor:pointer;font-weight:700;color:#142f46;min-height:32px}
 .gl-nfc-help ol{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+/* Comercios, sucursales, acciones en grupo e historial (02/11/2026) */
+.gl-nfc h3{margin:0;font-size:1.05rem;color:#142f46;overflow-wrap:anywhere}
+.gl-nfc select{min-width:0;cursor:pointer}
+.gl-nfc select:disabled{opacity:.55;cursor:not-allowed}
+.gl-nfc-create select{width:220px}
+.gl-nfc-create .gl-nfc-check{flex-direction:row;align-items:center;gap:8px;font-weight:500;min-height:44px}
+.gl-nfc-coms{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.gl-nfc-com{border:1px solid #e1e8ee;border-radius:14px;padding:14px;background:#fff;display:flex;flex-direction:column;gap:6px;min-width:0}
+.gl-nfc-com.sel{border-color:#142f46;box-shadow:0 0 0 1px #142f46}
+.gl-nfc-com header{margin:0}
+.gl-nfc-com header small,.gl-nfc-sucs small{color:#4f6475;display:block}
+.gl-nfc-sucs{list-style:none;margin:4px 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.gl-nfc-sucs li{border-top:1px solid #e1e8ee;padding-top:8px;min-width:0}
+.gl-nfc-sucs li>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.gl-nfc-sucs p{margin:4px 0;overflow-wrap:anywhere}
+.gl-nfc-sucs p span{color:#4f6475}
+.gl-nfc-sucs .gl-nfc-actions{margin-top:4px}
+.gl-nfc-box{border:1px dashed #c7d3dc;border-radius:12px;padding:12px;background:#f8fafb}
+.gl-nfc-scope{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 8px}
+.gl-nfc-scope select{flex:1 1 200px;max-width:340px}
+.gl-nfc-bulk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#f1f5f8}
+.gl-nfc-bulk span{color:#14212b;margin-right:4px}
+.gl-nfc-place{font-size:.92rem;color:#142f46;font-weight:600;overflow-wrap:anywhere}
+.gl-nfc-dest em{color:#4f6475}
+.gl-nfc-hist{margin-top:10px;padding-top:10px;border-top:1px solid #e1e8ee;color:#14212b}
+.gl-nfc-hist ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto}
+.gl-nfc-hist li{overflow-wrap:anywhere;line-height:1.35}
+.gl-nfc-hist time{display:block;font-size:.8rem;color:#4f6475;font-variant-numeric:tabular-nums}
+@media (max-width:900px){.gl-nfc-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:640px){
+  .gl-nfc-coms{grid-template-columns:1fr}
+  .gl-nfc-create label,.gl-nfc-create select,.gl-nfc-create input{width:100%}
+  .gl-nfc-scope select{max-width:none}
   .gl-nfc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .gl-nfc-list{grid-template-columns:1fr}
   .gl-nfc-tools{width:100%}
