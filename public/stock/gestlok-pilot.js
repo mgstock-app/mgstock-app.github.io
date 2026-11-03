@@ -6,6 +6,7 @@
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
  const MODULES=[
   ['tablero','Panel del dueño','Resumen de los registros cargados en el piloto.','general'],
+  ['sistema_venta','Sistema de venta · Escáner','Escanear productos con la cámara o un lector y preparar un carrito de prueba.','general'],
   ['pedidos','Pedidos','Preparar, controlar y cerrar pedidos de Cami por día.','general'],
   ['precios','Precios','Calcular precios de venta y ganancias por producto.','economia'],
   ['stock','Stock','Registrar unidades actuales y faltantes de cada producto.','operaciones'],
@@ -153,6 +154,7 @@
  }
  function current(){
   if(active==='tablero')return dashboard();
+  if(active==='sistema_venta')return '<div id="gl-pos-preview-mount"><p>Cargando escáner…</p></div>';
   if(active==='pedidos')return window.GestLokPedidos?.render?.()||'<p>No se pudo cargar el módulo Pedidos.</p>';
   if(active==='precios'||active==='stock')return window.GestLokPreciosStock?.render?.()||'<p>No se pudo cargar Precios y Stock.</p>';
   if(active==='auditoria')return '<h2>Auditoría de este piloto</h2><p>Registro automático de altas, cambios y eliminaciones realizados acá. No reemplaza la auditoría completa de GESTLOK.</p>'+activity();
@@ -190,11 +192,41 @@
   active='pedidos';error='';editing='';render();
   await window.GestLokPedidos?.open?.();
  }
+ const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','pos-preview.js'];
+ async function loadPosScripts(){
+  for(const file of POS_SCRIPTS){
+   const src='/stock/sistema-venta/'+file;
+   if(document.querySelector('script[data-pos-src="'+file+'"]'))continue;
+   await new Promise((resolve,reject)=>{
+    const el=document.createElement('script');
+    el.src=src;el.dataset.posSrc=file;
+    el.onload=resolve;el.onerror=()=>{el.remove();reject(Error('No se pudo cargar '+file));};
+    document.head.append(el);
+   });
+  }
+ }
+ async function openPosPreview(){
+  try{
+   await assertAccess();
+   await loadPosScripts();
+   const result=await window.GestLokSupabase.from('gestlok_pilot_products')
+    .select('id,name,sku,unit_price,stock_quantity,active')
+    .eq('tenant_id',TENANT).eq('active',true).order('name').limit(500);
+   if(result.error)throw result.error;
+   if(!displayed||active!=='sistema_venta')return;
+   const mount=document.querySelector('#gl-pos-preview-mount');
+   if(mount)window.GestLokPosPreview.render(mount,result.data||[]);
+  }catch(e){
+   const mount=document.querySelector('#gl-pos-preview-mount');
+   if(mount)mount.textContent=e.message||'No se pudo iniciar el escáner.';
+  }
+ }
  async function switchSection(section){
   if(!DICTIONARY[section]||!enabled)return;
   if(!displayed)await open();
   if(!displayed)return;
   active=section;editing='';error='';render();
+  if(section==='sistema_venta')await openPosPreview();
   if(section==='pedidos')await window.GestLokPedidos?.open?.();
   if(section==='precios'||section==='stock')await window.GestLokPreciosStock?.open?.(section);
  }
