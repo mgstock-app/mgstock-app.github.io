@@ -229,6 +229,11 @@ function tablaGestlok(hoja) {
   var values = range.getDisplayValues();
   var columns = hoja.getName() === 'Resumen' ? 10 : hoja.getLastColumn();
   var rows = values.length;
+  if (hoja.getName() === 'Resumen') {
+    var slots = hoja.getRange('K5:K64').getDisplayValues(), count = 0;
+    while (count < slots.length && String(slots[count][0]).trim()) count++;
+    rows = Math.min(rows, 4 + Math.max(10, count));
+  }
   while (rows > 1 && !values[rows - 1].slice(0, columns).some(function(v) { return String(v).trim(); })) rows--;
   if (rows > 1000 || columns > 100) throw new Error('La tabla excede el tamaño admitido. No se archivó nada.');
   var cut = function(matrix) { return matrix.slice(0, rows).map(function(row) { return row.slice(0, columns); }); };
