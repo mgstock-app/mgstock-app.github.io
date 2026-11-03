@@ -187,7 +187,7 @@
  async function downloadLabel(id){
   await assertAccess();
   const p=rows.find(x=>x.id===id&&x.active);
-  if(!p||!/^\\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
+  if(!p||!/^\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
   if(!window.GestLokPosEAN13){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/stock/sistema-venta/ean13-label.js';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar la etiqueta.'));document.head.append(script);});}
   const svg=window.GestLokPosEAN13.svg(p.sku);
   // NIIMBOT accepts image imports more reliably than SVG. Rasterize locally,
