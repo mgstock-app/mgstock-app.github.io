@@ -5,8 +5,8 @@ function catalog(rows){
  if(!Array.isArray(rows))throw Error('Catálogo inválido');
  return rows.filter(p=>p&&p.active===true).map(p=>({
   id:String(p.id),name:String(p.name||''),barcode:String(p.sku||''),
-  price:p.unit_price===null?null:Number(p.unit_price),
-  stock:p.stock_quantity===null?null:Number(p.stock_quantity)
+  price:p.unit_price==null||p.unit_price===''?null:Number(p.unit_price),
+  stock:p.stock_quantity==null||p.stock_quantity===''?null:Number(p.stock_quantity)
  }));
 }
 function lookup(rows,code){
