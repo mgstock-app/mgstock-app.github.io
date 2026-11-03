@@ -187,13 +187,27 @@
  async function downloadLabel(id){
   await assertAccess();
   const p=rows.find(x=>x.id===id&&x.active);
-  if(!p||!/^\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
+  if(!p||!/^\\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
   if(!window.GestLokPosEAN13){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/stock/sistema-venta/ean13-label.js';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar la etiqueta.'));document.head.append(script);});}
   const svg=window.GestLokPosEAN13.svg(p.sku);
+  // NIIMBOT accepts image imports more reliably than SVG. Rasterize locally,
+  // preserving a white background and the original barcode proportions.
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='etiqueta-'+p.sku+'.svg';document.body.append(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  try{
+   const img=new Image();
+   await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('No se pudo preparar la imagen de la etiqueta.'));img.src=url;});
+   const canvas=document.createElement('canvas');
+   canvas.width=920;canvas.height=560;
+   const ctx=canvas.getContext('2d');
+   if(!ctx)throw Error('El navegador no permite generar la etiqueta.');
+   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.drawImage(img,0,0,canvas.width,canvas.height);
+   const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
+   const pngUrl=URL.createObjectURL(png);
+   const a=document.createElement('a');a.href=pngUrl;a.download='etiqueta-'+p.sku+'-30x12mm.png';document.body.append(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(pngUrl),30000);
+  }finally{URL.revokeObjectURL(url);}
  }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
