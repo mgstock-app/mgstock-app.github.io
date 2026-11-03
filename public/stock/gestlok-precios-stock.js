@@ -198,7 +198,7 @@
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
   const label=e.target.closest('[data-ps-label]');
-  if(label){e.preventDefault?.();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
+  if(label?.matches?.('[data-ps-label]')){e.preventDefault?.();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
   const el=e.target.closest('[data-ps-edit],[data-ps-new],[data-ps-cancel],[data-ps-refresh],[data-ps-use-suggested]');
   if(!el)return;
   if(el.matches('[data-ps-use-suggested]')){
