@@ -7,11 +7,44 @@ function render(container,products){
  if(!container)throw Error('Contenedor requerido');
  const catalog=root.GestLokPosCatalog?.catalog(products)||[];
  const cart=new Map();
- container.innerHTML='<section class="gl-pos"><h2>Sistema de venta</h2><p>Vista previa · sin cobros habilitados</p><label>Buscar código o producto<input id="gl-pos-search" type="search" autocomplete="off" placeholder="Código de barras o nombre"></label><div id="gl-pos-results"></div><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total"></p><button type="button" disabled>Confirmar venta (pendiente)</button></section>';
+ container.innerHTML='<section class="gl-pos"><h2>Sistema de venta</h2><p>Vista previa · sin cobros habilitados</p><label>Buscar código o producto<input id="gl-pos-search" type="search" autocomplete="off" placeholder="Código de barras o nombre"></label><button type="button" id="gl-pos-camera">Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total"></p><button type="button" disabled>Confirmar venta (pendiente)</button></section>';
  const search=container.querySelector('#gl-pos-search');
  const results=container.querySelector('#gl-pos-results');
  const cartBox=container.querySelector('#gl-pos-cart');
  const total=container.querySelector('#gl-pos-total');
+ const video=container.querySelector('#gl-pos-video');
+ const camera=container.querySelector('#gl-pos-camera');
+ const stopButton=container.querySelector('#gl-pos-stop');
+ const message=container.querySelector('#gl-pos-scan-message');
+ let stopScan=null;
+ function finishScan(){
+  stopScan?.();stopScan=null;
+  video.style.display='none';stopButton.hidden=true;camera.disabled=false;
+ }
+ function acceptCode(code){
+  const product=catalog.find(p=>p.barcode===code);
+  search.value=code;paint();
+  if(!product){message.textContent='Código no encontrado: '+code;return;}
+  message.textContent='Detectado: '+product.name;
+  if(product.price!==null&&Number.isInteger(product.stock)&&product.stock>(cart.get(product.id)||0)){
+   cart.set(product.id,(cart.get(product.id)||0)+1);paint();
+  }else message.textContent='Producto sin precio o stock disponible.';
+ }
+ search.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();acceptCode(search.value.trim());}
+ });
+ camera.addEventListener('click',async()=>{
+  if(!root.GestLokPosScanner?.supported?.()){
+   message.textContent='Cámara no disponible. Ingresá el código manualmente o con lector Bluetooth.';return;
+  }
+  camera.disabled=true;video.style.display='block';stopButton.hidden=false;
+  try{
+   const stop=await root.GestLokPosScanner.scan(video,code=>{finishScan();acceptCode(code);});
+   if(stopButton.hidden)stop();else stopScan=stop;
+  }catch(e){finishScan();message.textContent=e.message||'No se pudo abrir la cámara.';}
+ });
+ stopButton.addEventListener('click',finishScan);
+
  function paint(){
   const q=search.value.toLocaleLowerCase('es-AR').trim();
   results.innerHTML=catalog.filter(p=>!q||(p.name+' '+p.barcode).toLocaleLowerCase('es-AR').includes(q)).slice(0,30).map(p=>'<article><strong>'+esc(p.name)+'</strong> · '+(p.price===null?'Sin precio':money(p.price))+' · Stock '+(p.stock??'Sin contar')+' <button type="button" data-add="'+esc(p.id)+'" '+(p.price===null||!Number.isInteger(p.stock)||p.stock<1?'disabled':'')+'>Agregar</button></article>').join('');
