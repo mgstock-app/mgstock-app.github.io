@@ -6,6 +6,9 @@ create table rm_test_private.horarios_archivos (
  id uuid primary key default gen_random_uuid(),
  local_id text not null,
  semana_desde date not null,
+ semana_hasta date not null,
+ filas jsonb not null,
+ filas_anteriores jsonb,
  resumen bytea not null check(octet_length(resumen) between 16 and 3000000),
  semana bytea not null check(octet_length(semana) between 16 and 3000000),
  archivado_at timestamptz not null default clock_timestamp(),
@@ -75,7 +78,7 @@ begin
 end $$;
 create function public.rm_horarios_archivar(p_codigo text,p_desde text,p_hasta text,p_filas jsonb,p_resumen text,p_semana text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare v_local text; v_id uuid; v_result jsonb; v_resumen bytea; v_semana bytea;
+declare v_local text; v_id uuid; v_result jsonb; v_resumen bytea; v_semana bytea; v_anteriores jsonb;
 begin
  select local_id into v_local from rm_test_private.horarios_conexiones
  where token_hash=encode(extensions.digest(coalesce(p_codigo,''),'sha256'),'hex') for update;
@@ -87,12 +90,14 @@ begin
  raise exception 'Los archivos deben ser PDF' using errcode='22023'; end if;
  if jsonb_typeof(p_filas) is distinct from 'array' or jsonb_array_length(p_filas)=0 then
  raise exception 'Resumen vacío: no se archivó nada' using errcode='22023'; end if;
+ select filas into v_anteriores from rm_test_private.horarios_semanas where local_id=v_local and semana_desde=rm_test_private.horarios_fecha(p_desde);
  v_result:=rm_test_private.horarios_recibir_base(p_codigo,p_desde,p_hasta,p_filas);
+ if (v_result->>'colaboradores')::integer=0 then raise exception 'Resumen sin colaboradores válidos' using errcode='22023'; end if;
  select id into v_id from rm_test_private.horarios_archivos where local_id=v_local
- and semana_desde=rm_test_private.horarios_fecha(p_desde) and resumen=v_resumen and semana=v_semana limit 1;
+ and semana_desde=rm_test_private.horarios_fecha(p_desde) and resumen=v_resumen and semana=v_semana and filas=p_filas limit 1;
  if v_id is null then
- insert into rm_test_private.horarios_archivos(local_id,semana_desde,resumen,semana)
- values(v_local,rm_test_private.horarios_fecha(p_desde),v_resumen,v_semana) returning id into v_id;
+ insert into rm_test_private.horarios_archivos(local_id,semana_desde,semana_hasta,filas,filas_anteriores,resumen,semana)
+ values(v_local,rm_test_private.horarios_fecha(p_desde),rm_test_private.horarios_fecha(p_hasta),p_filas,v_anteriores,v_resumen,v_semana) returning id into v_id;
  end if;
  return v_result || jsonb_build_object('archivo_id',v_id);
 end $$;
