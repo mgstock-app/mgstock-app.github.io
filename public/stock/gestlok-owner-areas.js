@@ -1,6 +1,8 @@
 /* Owner entry: capabilities come from the authenticated backend, never signup metadata. */
 (() => {
   'use strict';
+  const SOLO_OWNER_TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
+  const isSoloOwner=()=>api?.role?.()==='dueno'&&api?.S?.me?.tenant_id===SOLO_OWNER_TENANT&&state.data?.tenant_id===SOLO_OWNER_TENANT;
   let api,state={status:'loading',data:null},gerente={status:'loading',locals:[]},gerenteBusy=false,busy=false,admin={status:'loading',companies:[]},adminBusy=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   /* Vista previa visual de la creadora como Dueña: arma el contexto con los datos que ya puede consultar.
@@ -182,13 +184,13 @@
       (state.status==='ready'&&state.data?.logo_id==='mi-gusto' ? '<div class="gl-oh-brand gl-oh-brand-company"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"><small>Empanadas de Verdad</small></div>' : '<div class="gl-oh-brand"><img src="icons/gestlok.svg" alt="" width="50" height="50"><div><b class="gl-oh-word"><span>GEST</span><span>LOK</span></b><small>ORGANIZA · CONTROLA · HACE CRECER</small></div></div>')+
       '<div class="gl-oh-actions"><button class="gl-oh-icon gl-oh-bell" data-owner-nav="bell" aria-label="Notificaciones y avisos'+(dot?' (hay avisos de stock)':'')+'" aria-haspopup="dialog">'+svg(I.bell,26)+(dot?'<i class="gl-oh-dot" aria-hidden="true"></i>':'')+'</button>'+
       '<div class="gl-oh-userwrap"><button class="gl-oh-user" data-owner-nav="user" aria-haspopup="menu" aria-expanded="'+menuOpen+'"><span class="gl-oh-avatar" aria-hidden="true">'+esc((n||'?').charAt(0).toUpperCase())+'</span><span class="gl-oh-who"><b>Hola'+(n?', '+esc(n):'')+'</b><small>'+esc(roleName())+'</small></span>'+svg(I.down,18)+'</button>'+
-      (menuOpen?'<div class="gl-oh-menu" role="menu"><button role="menuitem" data-owner-nav="account">'+svg(I.file,18)+'Mi cuenta</button><button role="menuitem" data-owner-nav="settings">'+svg(I.gear,18)+'Ajustes</button><button role="menuitem" data-owner-nav="team">'+svg(I.team,18)+'Equipo y accesos</button><button role="menuitem" data-au="out">'+svg(I.out,18)+'Salir</button></div>':'')+'</div></div></header>';
+      (menuOpen?'<div class="gl-oh-menu" role="menu"><button role="menuitem" data-owner-nav="account">'+svg(I.file,18)+'Mi cuenta</button><button role="menuitem" data-owner-nav="settings">'+svg(I.gear,18)+'Ajustes</button>'+(isSoloOwner()?'':'<button role="menuitem" data-owner-nav="team">'+svg(I.team,18)+'Equipo y accesos</button>')+'<button role="menuitem" data-au="out">'+svg(I.out,18)+'Salir</button></div>':'')+'</div></div></header>';
   }
   function view(locals,card){
     shown={locals:locals||[],card:card||(()=>'')};
     if(state.status==='loading')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="status">Comprobando tus áreas autorizadas…</p></section>';
     if(state.status==='error')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="alert">No pudimos verificar tus permisos. Revisá la conexión.</p><button class="btn" data-owner-area-retry>Reintentar</button></section>';
-    const commerce=allowed('comercial'),staff=allowed('recibos_personal');
+    const commerce=allowed('comercial'),staff=allowed('recibos_personal')&&!isSoloOwner();
     const name=esc(state.data.company_name||'Mi empresa');
     // El logo de Mi Gusto solo se muestra cuando el backend lo asigna a esta empresa.
     const branded=state.data.logo_id==='mi-gusto';
@@ -210,7 +212,7 @@
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir Administrar mi empresa">'+svg(I.right,26)+'</button></div>'+
         '<p>Productos, stock, proveedores, pedidos y más.</p>'+
         list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['bars','Reportes e historial'],['cart','Tienda online / mixta / física'],['gear','Ajustes de la empresa']])+'</article>':'')+
-      (staff?'<article class="gl-owner-area gl-owner-employees" data-owner-go="staff" aria-labelledby="gl-owner-staff-t"><div class="gl-owner-area-icon">'+ICON_TEAM+'</div>'+
+      (isSoloOwner()?'':staff?'<article class="gl-owner-area gl-owner-employees" data-owner-go="staff" aria-labelledby="gl-owner-staff-t"><div class="gl-owner-area-icon">'+ICON_TEAM+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-staff-t">Administrar <span>a los empleados</span></h2><button class="gl-owner-arrow" data-owner-area-staff aria-label="Ingresar a empleados">'+svg(I.right,26)+'</button></div>'+
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+'</article>':
