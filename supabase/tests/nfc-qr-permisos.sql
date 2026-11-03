@@ -1,4 +1,4 @@
--- NFC y QR: solo la creadora verificada lista, crea y edita placas; cualquiera puede resolver un código.
+-- NFC y QR (31/10/2026, actualizado 02/11/2026): solo la creadora verificada lista, crea y edita placas; cualquiera puede resolver un código.
 -- El bloque termina con una excepción a propósito que devuelve el informe: no deja placas ni escaneos.
 do $t$
 declare
@@ -44,9 +44,10 @@ begin
   d := public.gestlok_nfc_resolve(c1);
   r := r || E'\nAnónimo resuelve activa -> ' || (d = 'https://example.com/resenas')::text;
   d := public.gestlok_nfc_resolve(c2);
-  r := r || E'\nAnónimo resuelve sin activar -> respaldo ' || (d = fb)::text;
+  r := r || E'\nAnónimo resuelve sin activar (sin comercio) -> link general ' || (d is not distinct from fb)::text;
+  -- Desde el 02/11/2026 un código inválido o inexistente ya no va al link general: la página /r/ muestra «no existe».
   d := public.gestlok_nfc_resolve('<script>');
-  r := r || E'\nCódigo inválido -> respaldo ' || (d = fb)::text;
+  r := r || E'\nCódigo inválido -> sin link ' || (d is null)::text;
 
   perform set_config('role', 'postgres', true);
   select p.escaneos::text into d from gestlok_nfc_private.placas p where p.code = c1;

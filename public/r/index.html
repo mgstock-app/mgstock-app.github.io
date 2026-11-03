@@ -15,8 +15,10 @@ main{max-width:320px;padding:24px;text-align:center}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
 button{font:inherit;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid #1f1d1b;background:#1f1d1b;color:#fff}
 a{color:#1f1d1b}
+h1{font-size:1.25rem;margin:0 0 8px}
 </style>
-<!-- NFC y QR de GESTLOK: cada placa trae un código fijo; la base devuelve su destino actual. -->
+<!-- NFC y QR de GESTLOK: cada placa trae un código fijo; la base devuelve su destino actual.
+     Placas desactivadas o códigos que no existen muestran un aviso (nunca otro comercio). -->
 <script src="../stock/config.js"></script>
 </head>
 <body>
@@ -25,6 +27,7 @@ a{color:#1f1d1b}
   <p id="msg" role="status">Abriendo…</p>
   <p id="manual" hidden><a id="go" href="#" rel="noreferrer">Tocá acá si no se abre solo</a></p>
   <p id="retry" hidden><button type="button" id="again">Volver a intentar</button></p>
+  <div id="off" hidden><h1 id="off-title">Esta placa no está activa</h1><p id="off-text">Por el momento no lleva a ningún sitio.</p></div>
   <noscript><p>Para abrir este enlace activá JavaScript en el navegador.</p></noscript>
 </main>
 <script>
@@ -55,18 +58,41 @@ a{color:#1f1d1b}
   }
   $('again').addEventListener('click', function () { location.reload(); });
 
+  function off(kind) {
+    if (done) return;
+    done = true;
+    $('spin').hidden = true;
+    $('msg').hidden = true;
+    if (kind === 'no_existe') {
+      $('off-title').textContent = 'Este código no corresponde a ninguna placa';
+      $('off-text').textContent = 'Revisá que el link esté completo.';
+    }
+    $('off').hidden = false;
+    document.title = 'Placa no activa';
+  }
+  function rpc(fn) {
+    return fetch(cfg.url + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_code: code })
+    });
+  }
+
   if (!cfg.url || !cfg.key || !window.fetch) { fail(); return; }
   var timer = setTimeout(fail, 10000);
-  fetch(cfg.url + '/rest/v1/rpc/gestlok_nfc_resolve', {
-    method: 'POST',
-    cache: 'no-store',
-    headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_code: code })
-  }).then(function (res) {
-    return res.ok ? res.json() : null;
-  }).then(function (url) {
+  rpc('gestlok_nfc_abrir').then(function (res) {
+    if (res.ok) return res.json();
+    // Si la base todavía no tiene la función nueva, usa la anterior (solo devuelve el link).
+    if (res.status === 404) return rpc('gestlok_nfc_resolve').then(function (r) { return r.ok ? r.json() : null; }).then(function (u) {
+      return typeof u === 'string' ? { estado: 'ok', url: u } : { estado: 'inactiva' };
+    });
+    return null;
+  }).then(function (r) {
     clearTimeout(timer);
-    go(url);
+    if (r && r.estado === 'ok') go(r.url);
+    else if (r && (r.estado === 'inactiva' || r.estado === 'no_existe')) off(r.estado);
+    else fail();
   }, function () {
     clearTimeout(timer);
     fail();
