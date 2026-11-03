@@ -93,7 +93,7 @@
     '<button type="button" data-ps-cancel aria-label="Cerrar formulario">Cerrar ×</button></div>'+
    '<div class="gl-ps-fields"><label>Nombre del producto<input name="name" value="'+input('name')+'" minlength="2" maxlength="140" required placeholder="Ej.: perfume o tratamiento"></label>'+
    '<label>Categoría (opcional)<input name="category" maxlength="80" value="'+input('category')+'" placeholder="Perfumes / Cuidado capilar"></label>'+
-   '<label>Código (opcional)<input name="sku" maxlength="80" value="'+input('sku')+'" placeholder="SKU"></label>'+
+   '<label>Código de barras (automático)<input name="sku" readonly value="'+(p?input('sku'):'Se genera al guardar')+'" aria-label="Código de barras generado automáticamente"></label>'+
    '<label>Precio costo (ARS)<input name="cost_price" type="number" inputmode="decimal" min="0" max="9999999999.99" step="0.01" required value="'+input('cost_price')+'" placeholder="0.00"></label>'+
    '<label>Porcentaje de recargo (%)<input name="markup_percent" type="number" inputmode="decimal" min="0" max="5000" step="0.01" required value="'+input('markup_percent')+'" placeholder="Ej.: 70"></label></div>'+
    '<div class="gl-ps-suggestion" aria-live="polite"><div><small>Precio de venta sugerido</small>'+
@@ -150,7 +150,7 @@
   if(name.length<2||name.length>140||!validMoney(c,0,9999999999.99)||!validMoney(pct,0,5000)||price(c,pct)>9999999999.99){
     error='Comprobá el nombre, el costo y el porcentaje de recargo.';update();return;
   }
-  const fields={name,category:String(d.category||'').trim(),sku:String(d.sku||'').trim(),
+  const fields={name,category:String(d.category||'').trim(),
    cost_price:Number(c),markup_percent:Number(pct)};
   busy=true;error='';notice='';update();
   try{
