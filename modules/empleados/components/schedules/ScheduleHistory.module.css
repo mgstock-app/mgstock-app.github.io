@@ -103,3 +103,12 @@
   .semana > header { align-items: flex-start; }
   .tabs button { flex: 1 1 auto; }
 }
+
+/* Tablas archivadas de Munro: descarga accesible sin visor incrustado. */
+.archiveHeader { display: flex; align-items: center; justify-content: space-between; background: #1e2f52; }
+.archiveHeader .rTitulo { flex: 1; }
+.archiveHeader .download { display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; margin: 4px 8px; border: 1px solid #ffffff66; border-radius: 8px; background: transparent; color: #fff; cursor: pointer; }
+.download:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.download:disabled { opacity: .5; cursor: wait; }
+.archiveHeader ~ .tabla td { background: #fff; }
+.archiveHeader ~ .tabla { max-width: 100%; }
