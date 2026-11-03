@@ -66,7 +66,10 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.contains('a','Abrir planilla').should('have.attr','target','_blank');
   if(local==='munro'){
    cy.contains('h2','Historial de semanas').should('be.visible');
-   cy.contains('Resumen de la semana').should('be.visible');
+   cy.get('section[aria-label="Hoja Resumen archivada"]').should('be.visible').within(()=>{
+    cy.get('table[aria-label^="Resumen del"]').should('be.visible');
+    cy.contains('td','Kati').should('be.visible');
+   });
    cy.contains('td','Kati').should('be.visible');
    // Pagos: control interno del dueño; el gerente no los ve.
    cy.contains('Pendientes de pago').should('not.exist');
