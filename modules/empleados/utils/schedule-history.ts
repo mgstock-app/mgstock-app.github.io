@@ -11,6 +11,13 @@ export type HorarioFila = {
   total: string;
   observaciones: string;
 };
+export type HojaArchivada = {
+  values: string[][];
+  backgrounds: string[][];
+  colors: string[][];
+  headerRows: number;
+  merges: Array<{ row: number; col: number; rows: number; cols: number }>;
+};
 export type HorarioPago = { pagado: boolean; marcado_at: string };
 export type HorarioSemana = {
   archivo_id?: string;
@@ -150,11 +157,12 @@ export function semanaPagada(s: HorarioSemana): boolean {
 // (plantilla GESTLOK: B2 desde, D2 hasta, colaboradores desde la fila 5, columnas A a J) y la manda con el código de
 // conexión. Lee los lugares de colaboradores de la plantilla (10, o más si la columna K «Fila en Semana» tiene más) y
 // nunca hasta la última fila: lo que se escriba más abajo de la planilla no se envía.
-export function scriptParaSheets(codigo: string, url: string, clave: string): string {
+export function scriptParaSheets(codigo: string, url: string, clave: string, tablas = false): string {
   const q = (v: string) => "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
   return [
     "// GESTLOK · Historial horarios. Pegalo en Extensiones → Apps Script de la planilla del local.",
     "// Manda el Resumen de la semana a GESTLOK cada vez que cambia algo y una vez por hora.",
+    "var GESTLOK_TABLAS = " + (tablas ? "true" : "false") + ";",
     "var GESTLOK_URL = " + q(url.replace(/\/+$/, "")) + ";",
     "var GESTLOK_CLAVE = " + q(clave) + ";",
     "var GESTLOK_CODIGO = " + q(codigo) + ";",
@@ -216,6 +224,28 @@ export function scriptParaSheets(codigo: string, url: string, clave: string): st
 
 // Exportación de ambas hojas originales; nunca borra, limpia ni modifica la planilla.
 const ARCHIVO_SCRIPT = String.raw`
+function tablaGestlok(hoja) {
+  var range = hoja.getDataRange();
+  var values = range.getDisplayValues();
+  var columns = hoja.getName() === 'Resumen' ? 10 : hoja.getLastColumn();
+  var rows = values.length;
+  if (hoja.getName() === 'Resumen') {
+    var slots = hoja.getRange('K5:K64').getDisplayValues(), count = 0;
+    while (count < slots.length && String(slots[count][0]).trim()) count++;
+    rows = Math.min(rows, 4 + Math.max(10, count));
+  }
+  while (rows > 1 && !values[rows - 1].slice(0, columns).some(function(v) { return String(v).trim(); })) rows--;
+  if (rows > 1000 || columns > 100) throw new Error('La tabla excede el tamaño admitido. No se archivó nada.');
+  var cut = function(matrix) { return matrix.slice(0, rows).map(function(row) { return row.slice(0, columns); }); };
+  var headers = Math.min(rows, Math.max(1, hoja.getFrozenRows()));
+  values.slice(0, 10).forEach(function(row, i) {
+    if (row.some(function(v) { return String(v).trim().toLowerCase() === 'colaborador'; })) headers = Math.max(headers, i + 1);
+  });
+  return {values:cut(values), backgrounds:cut(range.getBackgrounds()), colors:cut(range.getFontColors()),
+    headerRows:headers, merges:range.getMergedRanges().map(function(m) {
+      return {row:m.getRow()-1,col:m.getColumn()-1,rows:m.getNumRows(),cols:m.getNumColumns()};
+    }).filter(function(m) { return m.row+m.rows<=rows && m.col+m.cols<=columns; })};
+}
 function pdfGestlok(ss, hoja) {
   var values = hoja.getDataRange().getDisplayValues();
   var columns = hoja.getName() === 'Resumen' ? 10 : hoja.getLastColumn();
@@ -240,7 +270,8 @@ function guardarArchivoGestlok(ss) {
     SpreadsheetApp.flush();
     var resumen = ss.getSheetByName('Resumen'), semana = ss.getSheetByName('Semana');
     if (!resumen || !semana) throw new Error('Se necesitan las hojas Semana y Resumen.');
-    var antes = JSON.stringify([resumen.getDataRange().getDisplayValues(), semana.getDataRange().getDisplayValues()]);
+    var tablas = GESTLOK_TABLAS ? {Resumen: tablaGestlok(resumen), Semana: tablaGestlok(semana)} : null;
+    var antes = JSON.stringify([resumen.getDataRange().getDisplayValues(), semana.getDataRange().getDisplayValues(), tablas]);
     var desde = resumen.getRange('B2').getDisplayValue(), hasta = resumen.getRange('D2').getDisplayValue();
     var k = resumen.getRange('K5:K64').getDisplayValues(), lugares = 0;
     while (lugares < k.length && String(k[lugares][0]).trim()) lugares++;
@@ -250,11 +281,11 @@ function guardarArchivoGestlok(ss) {
     if (!filas.length) throw new Error('El Resumen está vacío. No se archivó ni se borró nada.');
     var resumenPdf = pdfGestlok(ss, resumen), semanaPdf = pdfGestlok(ss, semana);
     SpreadsheetApp.flush();
-    if (antes !== JSON.stringify([resumen.getDataRange().getDisplayValues(), semana.getDataRange().getDisplayValues()])) throw new Error('La planilla cambió durante la exportación. Volvé a guardar sin editar mientras se generan los PDF.');
-    var res = UrlFetchApp.fetch(GESTLOK_URL + '/rest/v1/rpc/rm_horarios_archivar', {
+    if (antes !== JSON.stringify([resumen.getDataRange().getDisplayValues(), semana.getDataRange().getDisplayValues(), GESTLOK_TABLAS ? {Resumen: tablaGestlok(resumen), Semana: tablaGestlok(semana)} : null])) throw new Error('La planilla cambió durante la exportación. Volvé a guardar sin editar mientras se generan los PDF.');
+    var res = UrlFetchApp.fetch(GESTLOK_URL + '/rest/v1/rpc/' + (GESTLOK_TABLAS ? 'rm_horarios_archivar_tablas' : 'rm_horarios_archivar'), {
       method:'post', contentType:'application/json', muteHttpExceptions:true,
       headers: GESTLOK_CLAVE.indexOf('eyJ') === 0 ? {apikey:GESTLOK_CLAVE, Authorization:'Bearer ' + GESTLOK_CLAVE} : {apikey:GESTLOK_CLAVE},
-      payload:JSON.stringify({p_codigo:GESTLOK_CODIGO,p_desde:desde,p_hasta:hasta,p_filas:filas,p_resumen:resumenPdf,p_semana:semanaPdf})
+      payload:JSON.stringify({p_codigo:GESTLOK_CODIGO,p_desde:desde,p_hasta:hasta,p_filas:filas,p_resumen:resumenPdf,p_semana:semanaPdf, ...(GESTLOK_TABLAS ? {p_tablas:tablas} : {})})
     });
     if (res.getResponseCode() >= 300) throw new Error('No se archivó: ' + res.getContentText());
     var r = JSON.parse(res.getContentText());

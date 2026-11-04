@@ -1,9 +1,11 @@
 import { rpc } from "@/features/access/api";
-import type { HorarioLocal, HorarioSemana } from "@/utils/schedule-history";
+import type { HorarioLocal, HorarioSemana, HorarioFila, HojaArchivada } from "@/utils/schedule-history";
 
 // Historial horarios: cada RPC vuelve a comprobar en la base quién puede ver (dueño, creadora, gerente del local)
 // y quién puede marcar pagos o conectar la planilla (dueño y creadora).
 export const horariosHistoryApi = {
+  tabla: (local: string, archivo: string, hoja: "Resumen" | "Semana") =>
+    rpc<{ tabla: HojaArchivada | null; filas: HorarioFila[] }>("rm_horarios_tabla", { p_local: local, p_archivo: archivo, p_hoja: hoja }),
   archivo: (local: string, archivo: string, hoja: "Resumen" | "Semana") =>
     rpc<{ pdf: string }>("rm_horarios_archivo", { p_local: local, p_archivo: archivo, p_hoja: hoja }),
   locales: () => rpc<HorarioLocal[]>("rm_horarios_locales"),

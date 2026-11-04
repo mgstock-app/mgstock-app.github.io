@@ -55,3 +55,32 @@ test('PDF: exporta hasta la última fila visible con contenido, no corta la hoja
  fail=true;assert.throws(()=>context.guardarArchivoGestlok(ss),/no disponible/);
  assert.equal(posted,1,'No envía archivo incompleto');assert.equal(released,2);
 });
+
+test('Munro: archiva valores mostrados, colores y celdas combinadas; rechaza cambios durante la exportación',()=>{
+ const tabScript=mod.exports.scriptParaSheets('synthetic-code','https://example.supabase.co','public-test',true);
+ const values=[['Colaborador','Lunes'],['Persona ficticia','18:00–23:30']];
+ let background='#fff2cc', mutate=false, payload, posts=0;
+ const range={getDisplayValues:()=>values,getBackgrounds:()=>[['#1e2f52','#1e2f52'],['#ffffff',background]],
+  getFontColors:()=>[['#ffffff','#ffffff'],['#111827','#111827']],getMergedRanges:()=>[]};
+ const sheet=name=>({getName:()=>name,getLastColumn:()=>2,getFrozenRows:()=>1,getSheetId:()=>name==='Semana'?0:1,getDataRange:()=>range,
+  getRange:r=>({getDisplayValue:()=>r==='B2'?'02/10/2026':'08/10/2026',getDisplayValues:()=>r==='K5:K64'?[['7']]:[['Persona ficticia','','','','','','','','40','']]})});
+ const context={Error,JSON,String,Number,Math,LockService:{getScriptLock:()=>({waitLock:()=>{},releaseLock:()=>{}})},
+  SpreadsheetApp:{flush:()=>{}},ScriptApp:{getOAuthToken:()=> 'synthetic'},Utilities:{base64Encode:b=>Buffer.from(b).toString('base64')},
+  UrlFetchApp:{fetch:(url,opts)=>{
+   if(url.includes('/export?')){if(mutate)background='#ff0000';return {getBlob:()=>({getBytes:()=>Array.from(Buffer.from('%PDF-1.4 synthetic fixture')),getContentType:()=> 'application/pdf'})};}
+   assert.match(url,/rm_horarios_archivar_tablas$/);
+   posts++;payload=JSON.parse(opts.payload);
+   return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({ok:true,archivo_id:'archive'})};
+  }}};
+ vm.createContext(context);vm.runInContext(tabScript,context);
+ const ss={getId:()=> 'synthetic-sheet',getSheetByName:sheet};
+ context.guardarArchivoGestlok(ss);
+ assert.equal(payload.p_tablas.Semana.values[1][1],'18:00–23:30');
+ assert.equal(payload.p_tablas.Semana.backgrounds[1][1],'#fff2cc');
+ assert.equal(payload.p_tablas.Semana.headerRows,1);
+ values[1][1]='OFF';
+ assert.equal(payload.p_tablas.Semana.values[1][1],'18:00–23:30','La copia enviada no depende de cambios posteriores');
+ mutate=true;
+ assert.throws(()=>context.guardarArchivoGestlok(ss),/cambió durante/);
+ assert.equal(posts,1);
+});

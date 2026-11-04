@@ -74,7 +74,7 @@ test('Sugerido: costo válido, actualización en vivo y aplicación voluntaria s
  assert.equal(nodes['[data-ps-sale]'].textContent,'—');
  assert.equal(fields.markup_percent.value,'');
  const button={matches:selector=>selector==='[data-ps-use-suggested]',closest:()=>form};
- listeners.click({target:{closest:()=>button}});
+ listeners.click({target:{closest:selector=>selector.includes('[data-ps-use-suggested]')?button:null},preventDefault:()=>{}});
  assert.equal(fields.markup_percent.value,'70');
  assert.equal(nodes['[data-ps-sale]'].textContent,nodes['[data-ps-suggested]'].textContent);
  fields.cost_price.value='';listeners.input({target:input});

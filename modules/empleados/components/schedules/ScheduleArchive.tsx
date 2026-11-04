@@ -1,9 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { horariosHistoryApi } from "@/features/schedules/history-api";
+import { ScheduleArchiveTable } from "./ScheduleArchiveTable";
+import type { HorarioFila } from "@/utils/schedule-history";
 import styles from "./ScheduleHistory.module.css";
 
-export function ScheduleArchive({ local, archivo, hoja, desde }: {
+export function ScheduleArchive(props: { local: string; archivo?: string; hoja: "Resumen" | "Semana"; desde: string; filas?: HorarioFila[] }) {
+  return props.local === "munro" ? <ScheduleArchiveTable {...props} filas={props.filas ?? []} /> : <LegacyArchive {...props} />;
+}
+
+function LegacyArchive({ local, archivo, hoja, desde }: {
   local: string; archivo?: string; hoja: "Resumen" | "Semana"; desde: string;
 }) {
   const [url, setUrl] = useState("");

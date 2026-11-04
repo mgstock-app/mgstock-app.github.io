@@ -98,7 +98,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
     () => new Set(semana ? filasQueCoinciden(semana, texto).map((f) => f.colaborador) : []),
     [semana, texto],
   );
-  const script = useMemo(() => (codigo ? scriptParaSheets(codigo, SUPABASE_URL, SUPABASE_KEY) : ""), [codigo]);
+  const script = useMemo(() => (codigo ? scriptParaSheets(codigo, SUPABASE_URL, SUPABASE_KEY, localId === "munro") : ""), [codigo, localId]);
 
   async function marcar(semana: HorarioSemana, nombre: string, pagado: boolean) {
     if (!local) return;
@@ -342,7 +342,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
                     </section>
                   )}
 
-                  {semana && !semana.archivo_id && (
+                  {semana && localId !== "munro" && !semana.archivo_id && (
                     <article className={styles.resumen} aria-label={`Resumen de la semana del ${rangoLargo(semana)}`}>
                       {/* Copia exacta de la pestaña «Resumen» de la planilla. Los pagos van aparte, debajo. */}
                       <div className={styles.rTitulo}>Resumen de la semana</div>
@@ -380,8 +380,8 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
                     </article>
                   )}
 
-                  {semana?.archivo_id && <ScheduleArchive key={localId + semana.archivo_id + "Resumen"} local={localId} archivo={semana.archivo_id} hoja="Resumen" desde={semana.desde} />}
-                  {semana && <ScheduleArchive key={localId + semana.desde + (semana.archivo_id ?? "") + "Semana"} local={localId} archivo={semana.archivo_id} hoja="Semana" desde={semana.desde} />}
+                  {semana && (localId === "munro" || semana.archivo_id) && <ScheduleArchive key={localId + semana.archivo_id + "Resumen"} local={localId} archivo={semana.archivo_id} hoja="Resumen" desde={semana.desde} filas={semana.filas} />}
+                  {semana && <ScheduleArchive key={localId + semana.desde + (semana.archivo_id ?? "") + "Semana"} local={localId} archivo={semana.archivo_id} hoja="Semana" desde={semana.desde} filas={semana.filas} />}
 
                   {admin && semana && semana.filas.length > 0 && (
                     <details key={localId + semana.desde} className={styles.pagos} aria-label={`Pagos de la semana del ${rangoLargo(semana)}`}>
