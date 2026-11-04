@@ -11,7 +11,7 @@ concurrency:
 jobs:
   build:
     if: github.repository == 'mgstock-app/mgstock-app.github.io'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_BASE_PATH: ''
       NEXT_PUBLIC_SITE_URL: https://gestlok.com.ar
@@ -45,7 +45,7 @@ jobs:
           path: out
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
@@ -53,6 +53,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
