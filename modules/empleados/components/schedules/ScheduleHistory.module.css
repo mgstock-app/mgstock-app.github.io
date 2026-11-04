@@ -156,3 +156,36 @@
   .semanaScrollable .rTabla th,
   .semanaScrollable .rTabla td { padding: 4px 6px; }
 }
+
+/* Semana debe permanecer dentro de un rectángulo, nunca crecer con todas las filas.
+   overflow-y: scroll reserva siempre el carril vertical, incluso en Windows. */
+.tabla.semanaScrollable {
+  display: block;
+  box-sizing: border-box;
+  height: 480px;
+  max-height: 480px;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: auto;
+  position: relative;
+  isolation: isolate;
+}
+.tabla.semanaScrollable .rTabla {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+}
+.tabla.semanaScrollable .rTabla th,
+.tabla.semanaScrollable .rTabla td {
+  white-space: nowrap !important;
+  padding: 4px 8px;
+  line-height: 1.25;
+}
+@media (max-width: 640px) {
+  .tabla.semanaScrollable {
+    height: 380px;
+    max-height: 380px;
+  }
+}
