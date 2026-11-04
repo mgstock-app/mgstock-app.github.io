@@ -211,14 +211,20 @@
    let fontSize=18;
    do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=232)break;fontSize--;}while(fontSize>8);
    ctx.fillText(title,120,11,234);
-   // Scanner-first EAN-13: exact 2-dot modules and 10-dot quiet zones.
-   // Avoid nonuniform rounding of 230/95 that distorts bar/space ratios.
+   // Widen the complete EAN-13 proportionally while preserving quiet zones.
+   // Draw at native 2-dot modules, then stretch the raster with nearest-neighbor
+   // so thin bars stay crisp rather than becoming grey from antialiasing.
    const bits=window.GestLokPosEAN13.bits(p.sku);
-   const modulePx=2, left=25;
+   const barCanvas=document.createElement('canvas');
+   barCanvas.width=190;barCanvas.height=61;
+   const barCtx=barCanvas.getContext('2d');
    for(let i=0;i<bits.length;i++){
-    if(bits[i]==='1')ctx.fillRect(left+i*modulePx,22,modulePx,61);
+    if(bits[i]==='1')barCtx.fillRect(i*2,0,2,61);
    }
-   // Preserve 25px clear margins on both sides of the 190px barcode.
+   ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(barCanvas,0,0,190,61,15,22,210,61);
+   ctx.imageSmoothingEnabled=true;
+   // Keep 15px white quiet zones on both sides of the wider barcode.
    ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,91,190);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
