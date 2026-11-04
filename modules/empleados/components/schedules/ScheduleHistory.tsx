@@ -23,6 +23,7 @@ import {
 } from "@/utils/schedule-history";
 import styles from "./ScheduleHistory.module.css";
 import { ScheduleArchive } from "./ScheduleArchive";
+import { ScheduleLive } from "./ScheduleLive";
 
 type Tab = "semanas" | "pendientes" | "conexion";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -218,6 +219,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
               : "la planilla todavía no está conectada"}
         </p>
       )}
+      {localId === "munro" && tab === "semanas" && <ScheduleLive local={localId} />}
       {tabs.length > 1 && (
         <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
           {tabs.map(([id, texto]) => (
