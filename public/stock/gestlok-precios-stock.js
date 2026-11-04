@@ -204,7 +204,7 @@
    if(!ctx)throw Error('El navegador no permite generar la etiqueta.');
    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
    // 30 x 12 mm: reserve a slim title band, leaving the bars unobstructed.
-   const rawName=String(p.name||'Producto').trim().replace(/\\s+/g,' ');
+   const rawName=String(p.name||'Producto').trim().replace(/\s+/g,' ');
    const title=rawName.length>32?rawName.slice(0,31)+'…':rawName;
    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
    let fontSize=57;
@@ -215,11 +215,14 @@
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
     const dataUrl=canvas.toDataURL('image/png');
-    const doc=printWindow.document;
+    const doc=printWindow.contentDocument;
+    if(!doc)throw Error('No se pudo abrir la vista de impresión.');
     doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta de producto</title><style>@page{size:30mm 12mm;margin:0}html,body{margin:0;padding:0;width:30mm;height:12mm}img{display:block;width:30mm;height:12mm}</style></head><body><img alt="Etiqueta" src="'+dataUrl+'"></body></html>');doc.close();
     const image=doc.querySelector('img');
-    image.onload=()=>{printWindow.focus();printWindow.print();};
-    if(image.complete){printWindow.focus();printWindow.print();}
+    let printed=false;
+    const runPrint=()=>{if(printed)return;printed=true;const frameWindow=printWindow.contentWindow;if(!frameWindow)return;frameWindow.focus();frameWindow.print();setTimeout(()=>printWindow.remove(),60000);};
+    image.onload=runPrint;
+    if(image.complete)runPrint();
     return;
    }
    const pngUrl=URL.createObjectURL(png);
@@ -232,10 +235,11 @@
   const print=e.target.closest('[data-ps-print]');
   if(print?.matches?.('[data-ps-print]')){
    e.preventDefault?.();
-   const win=window.open('','_blank','width=700,height=400');
-   if(!win){error='El navegador bloqueó la ventana de impresión. Permití ventanas emergentes para GESTLOK.';update();return;}
-   win.document.write('<p>Preparando etiqueta para imprimir…</p>');
-   void downloadLabel(print.dataset.psPrint,win).catch(err=>{win.close();error=err.message||'No se pudo imprimir la etiqueta.';update();});return;
+   const frame=document.createElement('iframe');
+   frame.setAttribute('title','Impresión de etiqueta');
+   frame.style.cssText='position:fixed;left:-10000px;top:0;width:30mm;height:12mm;border:0';
+   document.body.append(frame);
+   void downloadLabel(print.dataset.psPrint,frame).catch(err=>{frame.remove();error=err.message||'No se pudo imprimir la etiqueta.';update();});return;
   }
   const label=e.target.closest('[data-ps-label]');
   if(label?.matches?.('[data-ps-label]')){e.preventDefault?.();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
