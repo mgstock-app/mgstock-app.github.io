@@ -332,7 +332,14 @@ function ejecutarArchivoProgramadoGestlok(ahora) {
   if (props.getProperty('GESTLOK_ULTIMO_LUNES') === lunes) return;
   var id = props.getProperty('GESTLOK_PLANILLA');
   if (!id) throw new Error('Falta activar el archivo automático desde el menú GESTLOK.');
-  var r = guardarArchivoGestlok(SpreadsheetApp.openById(id));
+  var ss = SpreadsheetApp.openById(id);
+  var inicio = ss.getSheetByName('Resumen').getRange('B2').getDisplayValue();
+  var fechaAnterior = new Date(ahora.getTime() - 7*24*60*60*1000);
+  var anterior = Utilities.formatDate(fechaAnterior, zona, 'dd/MM/yyyy');
+  var anteriorISO = Utilities.formatDate(fechaAnterior, zona, 'yyyy-MM-dd');
+  if (String(inicio).trim() !== anterior && String(inicio).trim() !== anteriorISO)
+    throw new Error('No se archivó: la hoja ya no corresponde a la semana anterior ('+anterior+'). Revisá la planilla y usá el archivo manual si corresponde.');
+  var r = guardarArchivoGestlok(ss);
   props.setProperties({GESTLOK_ULTIMO_LUNES:lunes, GESTLOK_ULTIMO_ARCHIVO:r.archivo_id});
 }
 `;
