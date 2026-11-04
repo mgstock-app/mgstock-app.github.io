@@ -82,7 +82,7 @@
      '<div><small>Aviso de stock bajo</small><strong>'+esc(p.stock_minimum)+'</strong></div></div>')+
    '<footer><small>Actualizado '+esc(new Date(p.updated_at).toLocaleDateString('es-AR'))+'</small>'+
    '<button type="button" data-ps-label="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Descargar etiqueta</button>'+ 
-   '<button type="button" data-ps-print="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Imprimir etiqueta</button>'+ 
+   '<button type="button" data-ps-print="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Imprimir etiqueta</button>'+ '<button type="button" data-ps-name-print="'+id+'">Etiqueta para muestra</button>'+  
    '<button type="button" data-ps-edit="'+id+'">'+(mode==='precios'?'Editar precios':'Actualizar stock')+'</button></footer></article>';
  }
  function priceForm(){
@@ -185,19 +185,19 @@
   }catch(e){error=e.message||'No pudimos guardar stock.';}
   finally{busy=false;update();}
  }
- async function downloadLabel(id,printWindow){
+ async function downloadLabel(id,printWindow,nameOnly=false){
   await assertAccess();
   const p=rows.find(x=>x.id===id&&x.active);
-  if(!p||!/^\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
-  if(!window.GestLokPosEAN13){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/stock/sistema-venta/ean13-label.js';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar la etiqueta.'));document.head.append(script);});}
-  const svg=window.GestLokPosEAN13.svg(p.sku);
+  if(!p)throw Error('No se encontró el producto.');
+  if(!nameOnly&&!/^\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
+  if(!nameOnly&&!window.GestLokPosEAN13){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/stock/sistema-venta/ean13-label.js';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar la etiqueta.'));document.head.append(script);});}
+  const svg=nameOnly?'':window.GestLokPosEAN13.svg(p.sku);
   // NIIMBOT accepts image imports more reliably than SVG. Rasterize locally,
   // preserving a white background and the original barcode proportions.
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
+  const url=nameOnly?null:URL.createObjectURL(blob);
   try{
-   const img=new Image();
-   await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('No se pudo preparar la imagen de la etiqueta.'));img.src=url;});
+   if(!nameOnly){const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('No se pudo preparar la imagen de la etiqueta.'));img.src=url;});}
    const canvas=document.createElement('canvas');
    // Full-bleed D110_M label: 240px along feed × 96px across head.
    canvas.width=240;canvas.height=96;
@@ -210,6 +210,16 @@
    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
    let fontSize=18;
    do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=232)break;fontSize--;}while(fontSize>8);
+   if(nameOnly){
+    const words=rawName.split(' '),lines=[];let line='';ctx.font='bold 26px Arial, sans-serif';
+    for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>220&&line){lines.push(line);line=word;}else line=next;}
+    if(line)lines.push(line);
+    const visible=lines.length>3?[lines[0],lines[1],lines.slice(2).join(' ')]:lines;
+    let size=visible.length===1?30:visible.length===2?24:19;
+    while(size>12){ctx.font='bold '+size+'px Arial, sans-serif';if(visible.every(s=>ctx.measureText(s).width<=220))break;size--;}
+    ctx.font='bold '+size+'px Arial, sans-serif';const step=size+5,start=48-(visible.length-1)*step/2;
+    visible.forEach((s,i)=>ctx.fillText(s,120,start+i*step,220));
+   }else{
    ctx.fillText(title,120,11,234);
    // Widen the complete EAN-13 proportionally while preserving quiet zones.
    // Draw at native 2-dot modules, then stretch the raster with nearest-neighbor
@@ -226,6 +236,7 @@
    ctx.imageSmoothingEnabled=true;
    // Keep 15px white quiet zones on both sides of the wider barcode.
    ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,91,190);
+   }
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
     const dataUrl=canvas.toDataURL('image/png');
@@ -252,7 +263,7 @@
    const pngUrl=URL.createObjectURL(png);
    const a=document.createElement('a');a.href=pngUrl;a.download='etiqueta-'+p.sku+'-30x12mm.png';document.body.append(a);a.click();a.remove();
    setTimeout(()=>URL.revokeObjectURL(pngUrl),30000);
-  }finally{URL.revokeObjectURL(url);}
+  }finally{if(url)URL.revokeObjectURL(url);}
  }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
@@ -275,7 +286,7 @@
   }
   if(e.target.closest('[data-ps-close-print]')){e.preventDefault?.();document.querySelector('[data-ps-print-preview]')?.remove();return;}
   if(e.target.closest('[data-ps-confirm-print]')){e.preventDefault?.();const frame=document.querySelector('[data-ps-print-preview] iframe');if(frame?.contentWindow){frame.contentWindow.focus();frame.contentWindow.print();}return;}
-  const print=e.target.closest('[data-ps-print]');
+  const print=e.target.closest('[data-ps-print],[data-ps-name-print]');
   if(print?.matches?.('[data-ps-print]')){
    e.preventDefault?.();
    document.querySelector('[data-ps-print-preview]')?.remove();
@@ -290,7 +301,7 @@
    const enableBluetooth=()=>{btButton.disabled=false;btButton.textContent=window.Niimbot?.isSupported?.()?'Imprimir con NIIMBOT D110_M':'Bluetooth web no disponible';};
    if(window.Niimbot)enableBluetooth();
    else{const script=document.createElement('script');script.src='/stock/sistema-venta/niimbot-driver.js';script.onload=enableBluetooth;script.onerror=()=>{btButton.textContent='No se pudo cargar Bluetooth';};document.head.append(script);}
-   void downloadLabel(print.dataset.psPrint,frame).catch(err=>{modal.querySelector('p').textContent=err.message||'No se pudo preparar la etiqueta.';modal.querySelector('[data-ps-confirm-print]').textContent='Error de impresión';});return;
+   void downloadLabel(print.dataset.psPrint||print.dataset.psNamePrint,frame,print.hasAttribute('data-ps-name-print')).catch(err=>{modal.querySelector('p').textContent=err.message||'No se pudo preparar la etiqueta.';modal.querySelector('[data-ps-confirm-print]').textContent='Error de impresión';});return;
   }
   const label=e.target.closest('[data-ps-label]');
   if(label?.matches?.('[data-ps-label]')){e.preventDefault?.();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
