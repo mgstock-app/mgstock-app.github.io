@@ -97,6 +97,7 @@
     control.click();
   }
   const read=()=>{
+    if(window.GestLokPilot?.scanner?.())return [['home','Inicio','home',true],['scanner-caja','Caja','payment',true],['scanner-pos','Sistema de ventas','shop',true],['scanner-stock','Stock','stock',true],['scanner-prices','Precios','payment',true]];
     const inLocal=visible();
     if(window.GestLokNavContext?.()?.creator)return [
       ['locales','Locales','shop',true],
@@ -128,6 +129,11 @@
   function act(k){
     if(k==='more'){open?closeSheet():openSheet();return;}
     closeSheet();
+    if(window.GestLokPilot?.scanner?.()){
+      const selector=({'home':'[data-pilot-close]','scanner-caja':'[data-pilot-caja]','scanner-pos':'[data-pilot-pos]','scanner-stock':'[data-pilot-stock]','scanner-prices':'[data-pilot-prices]'})[k];
+      if(selector)document.querySelector(selector)?.click();
+      return;
+    }
     if(k==='locales'){
       window.GestLokCreatorHome?.setTab?.('locales');
       if(visible())app.querySelector('[data-act="locales"]')?.click();

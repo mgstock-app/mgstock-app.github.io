@@ -3,7 +3,7 @@
    ni modificación de Mi Gusto, otros tenants o su inventario. */
 (() => {
  'use strict';
- const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
+ const tenant=()=>window.GestLokPilot?.tenantId?.()||'';
  const sel=s=>document.querySelector(s);
  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n));
@@ -23,13 +23,15 @@
  }
  function update(){window.GestLokPilot?.rerender?.();}
  async function refresh(){
-  loading=true;error='';update();
+  const queryTenant=tenant();
+  rows=[];ready=false;loading=true;error='';update();
   try{
    await assertAccess();
    const {data,error:e}=await db().from('gestlok_pilot_products')
     .select('id,name,category,sku,cost_price,markup_percent,unit_price,stock_quantity,stock_minimum,in_stock,active,updated_at')
-    .eq('tenant_id',TENANT).eq('active',true).order('name',{ascending:true}).limit(500);
+    .eq('tenant_id',queryTenant).eq('active',true).order('name',{ascending:true}).limit(500);
    if(e)throw e;
+   if(queryTenant!==tenant()||!permitted())return;
    rows=data||[];ready=true;
   }catch(e){ready=false;error=e.message||'Error al leer el catálogo privado.';}
   finally{loading=false;update();}
@@ -157,8 +159,8 @@
   try{
    await assertAccess();
    let query=p
-    ?db().from('gestlok_pilot_products').update(fields).eq('id',p.id).eq('tenant_id',TENANT).eq('updated_at',p.updated_at)
-    :db().from('gestlok_pilot_products').insert({tenant_id:TENANT,...fields});
+    ?db().from('gestlok_pilot_products').update(fields).eq('id',p.id).eq('tenant_id',tenant()).eq('updated_at',p.updated_at)
+    :db().from('gestlok_pilot_products').insert({tenant_id:tenant(),...fields});
    const {data,error:e}=await query.select('id').maybeSingle();
    if(e)throw e;
    if(!data)throw Error('Otro dispositivo actualizó el producto. Actualizá antes de guardar.');
@@ -178,7 +180,7 @@
    await assertAccess();
    const {data,error:e}=await db().from('gestlok_pilot_products')
      .update({stock_quantity:Number(d.stock_quantity),stock_minimum:Number(d.stock_minimum)})
-     .eq('tenant_id',TENANT).eq('id',p.id).eq('updated_at',p.updated_at).select('id').maybeSingle();
+     .eq('tenant_id',tenant()).eq('id',p.id).eq('updated_at',p.updated_at).select('id').maybeSingle();
    if(e)throw e;
    if(!data)throw Error('El stock cambió en otro dispositivo. Actualizá antes de guardar.');
    stockEditing='';await refresh();notice='Stock guardado correctamente.';

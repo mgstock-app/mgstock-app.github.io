@@ -1,8 +1,7 @@
 /* Owner entry: capabilities come from the authenticated backend, never signup metadata. */
 (() => {
   'use strict';
-  const SOLO_OWNER_TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
-  const isSoloOwner=()=>api?.role?.()==='dueno'&&api?.S?.me?.tenant_id===SOLO_OWNER_TENANT&&state.data?.tenant_id===SOLO_OWNER_TENANT;
+  const isSoloOwner=()=>api?.role?.()==='dueno'&&window.GestLokPilot?.scanner?.()===true;
   let api,state={status:'loading',data:null},gerente={status:'loading',locals:[]},gerenteBusy=false,busy=false,admin={status:'loading',companies:[]},adminBusy=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   /* Vista previa visual de la creadora como Dueña: arma el contexto con los datos que ya puede consultar.
@@ -74,7 +73,7 @@
         ? await previewOwner()
         : await window.GestLokSupabase.rpc('gestlok_owner_area_context');
       if(error||!data||data.role!=='dueno'||data.tenant_id!==api.S.me?.tenant_id)throw Error('Contexto no autorizado');
-      window.GestLokPilot?.refresh?.(data,api);
+      await window.GestLokPilot?.refresh?.(data,api);
       window.GestLokFuturePricing?.refresh?.(data,api);
       const next={status:'ready',data};
       if(JSON.stringify(next)!==JSON.stringify(state)){state=next;api.render();}
@@ -200,7 +199,7 @@
     const tile=(k,ic,t)=>'<button class="gl-owner-tile" data-owner-nav="'+k+'"><span>'+svg(I[ic],28)+'</span>'+t+'</button>';
     const caja=window.GestLokCajaDiaria?.homeTile?.()||'';
     const pilot=window.GestLokPilot?.homeTile?.(state.data,api)||'';
-    const futurePrices=window.GestLokFuturePricing?.homeTile?.(state.data,api)||'';
+    const futurePrices=isSoloOwner()?'':window.GestLokFuturePricing?.homeTile?.(state.data,api)||'';
     const sup=supportLink();
     const support=sup?'<a class="gl-owner-tile" href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer"><span>'+svg(I.help,28)+'</span>Soporte</a>':tile('support','help','Soporte');
     return '<section class="gl-owner-landing" aria-label="Inicio de GESTLOK · '+name+'">'+
@@ -223,7 +222,7 @@
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+
         '<p style="margin:16px 0 0;font-size:14px"><strong>Este módulo aún no está habilitado para tu empresa.</strong> Solicitá su activación a la administración de GESTLOK.</p></article>':'')+
       (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+futurePrices+
-      '<nav class="gl-owner-quick" aria-label="Accesos generales">'+(isSoloOwner()?'':tile('reports','pie','Reportes generales'))+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
+      '<nav class="gl-owner-quick" aria-label="Accesos generales"'+(isSoloOwner()?' hidden':'')+'>'+(isSoloOwner()?'':tile('reports','pie','Reportes generales'))+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
   }
   // El módulo de empleados vive en la misma aplicación (misma dirección e instalación).
   const employees=Object.freeze({open(section){
@@ -267,6 +266,7 @@
       return {kind:'drawer',html:head(co(),'Avisos y notificaciones','gl-ob-t')+'<div class="pn-b"><section class="gl-owner-alerts"><h4>Stock de tus locales</h4><ul>'+(lines||'<li>No hay locales para mostrar.</li>')+'</ul></section>'+(window.GestLokPush?.drawerContent?.()||'')+'</div>'};
     },
     'owner-menu':()=>{
+      if(isSoloOwner())return {kind:'drawer',html:head(co(),'Mi local','gl-om-t')+'<nav class="pn-b gl-owner-navlist" aria-label="Menú principal"><button data-owner-nav="home">Inicio</button><button data-pilot-caja>Caja</button><button data-pilot-pos>Sistema de ventas</button><button data-pilot-stock>Stock</button><button data-pilot-prices>Precios</button></nav>'};
       const sup=supportLink(),b=(k,ic,t)=>'<button data-owner-nav="'+k+'">'+svg(I[ic],20)+'<span>'+t+'</span></button>';
       return {kind:'drawer',html:head(co(),'Menú','gl-om-t')+'<nav class="pn-b gl-owner-navlist" aria-label="Menú principal">'+b('home','home','Inicio')+(allowed('comercial')?b('business','box','Administrar mi empresa'):'')+(allowed('recibos_personal')?b('staff','team','Administrar a los empleados'):'')+b('reports','pie','Reportes generales')+b('account','file','Mi cuenta')+b('settings','gear','Ajustes')+
         (sup?'<a href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer">'+svg(I.help,20)+'<span>Soporte</span></a>':b('support','help','Soporte'))+b('team','team','Equipo y accesos')+'<button data-au="out">'+svg(I.out,20)+'<span>Salir</span></button></nav>'};
@@ -281,6 +281,7 @@
       panelHtml=p.html;pn.innerHTML=p.html;return;
     }
     api.S.panel=kind;panelKind=kind;panelHtml=p.html;api.openPanel(p.html,p.kind);
+    if(isSoloOwner()&&!window.history?.state?.glOwnerPanel)window.history?.pushState({...window.history.state,glOwnerPanel:true},'');
     const pn=document.getElementById('pn');pn?.setAttribute('aria-labelledby',p.html.match(/<h3 id="([^"]+)"/)?.[1]||'');
     if(kind==='owner-bell')window.GestLokPush?.onOpen?.();
     pn?.querySelector('[data-act="close"]')?.focus({preventScroll:true});
@@ -297,6 +298,7 @@
     paint('owner-picker');
   }
   function nav(k){
+    if(isSoloOwner()&&!['menu','home','user'].includes(k))return;
     menuOpen=false;
     const close=()=>{if(api?.S?.panel&&api.closePanel)api.closePanel();};
     switch(k){
@@ -313,7 +315,11 @@
     }
     api?.render?.();
   }
+  window.addEventListener?.('popstate',()=>{
+    if(isSoloOwner()&&api.S.panel?.startsWith('owner-')&&!window.history?.state?.glOwnerPanel){api.closePanel?.();panelKind='';}
+  });
   document.addEventListener('click',e=>{
+    if(isSoloOwner()&&window.history?.state?.glOwnerPanel&&(e.target.closest('#pn [data-act="close"]')||e.target.id==='ov'))window.history.back();
     if(e.target.closest('[data-owner-area-retry]')){e.preventDefault();refresh();}
     const managerArea=e.target.closest('[data-gerente-area]');
     if(managerArea&&!e.target.closest('button,a,input')&&api?.role?.()==='gerente'){
@@ -336,6 +342,7 @@
     const mod=e.target.closest('[data-owner-module]');
     if(mod){e.preventDefault();setModule(mod.dataset.ownerModule,mod.dataset.enable==='true');return;}
     const n=e.target.closest('[data-owner-nav]');
+    if(e.target.closest('[data-pilot-caja],[data-pilot-pos],[data-pilot-stock],[data-pilot-prices]')&&isSoloOwner()&&api?.S?.panel){api.closePanel?.();panelKind='';}
     if(n&&['dueno','creadora'].includes(api?.role?.())){
       e.preventDefault();
       if(n.dataset.ownerNav==='user'){menuOpen=!menuOpen;api.render();return;}
@@ -351,7 +358,7 @@
     if(e.target.closest('#pn [data-act="local"]')&&PANELS[panelKind])panelKind='';
     if(menuOpen&&!e.target.closest('.gl-oh-userwrap')){menuOpen=false;api?.render?.();}
   });
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&isSoloOwner()&&window.history?.state?.glOwnerPanel)window.history.back();if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();refreshAdmin();}});
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
   window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders});
