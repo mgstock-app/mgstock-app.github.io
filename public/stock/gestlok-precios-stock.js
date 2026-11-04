@@ -219,10 +219,9 @@
     if(!doc)throw Error('No se pudo abrir la vista de impresión.');
     doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta de producto</title><style>@page{size:30mm 12mm;margin:0}html,body{margin:0;padding:0;width:30mm;height:12mm}img{display:block;width:30mm;height:12mm}</style></head><body><img alt="Etiqueta" src="'+dataUrl+'"></body></html>');doc.close();
     const image=doc.querySelector('img');
-    let printed=false;
-    const runPrint=()=>{if(printed)return;printed=true;const frameWindow=printWindow.contentWindow;if(!frameWindow)return;frameWindow.focus();frameWindow.print();setTimeout(()=>printWindow.remove(),60000);};
-    image.onload=runPrint;
-    if(image.complete)runPrint();
+    const modal=printWindow.closest('[data-ps-print-preview]');
+    const readyButton=modal?.querySelector('[data-ps-confirm-print]');
+    if(readyButton){readyButton.disabled=false;readyButton.textContent='Imprimir ahora';}
     return;
    }
    const pngUrl=URL.createObjectURL(png);
@@ -232,14 +231,20 @@
  }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
+  if(e.target.closest('[data-ps-close-print]')){e.preventDefault?.();document.querySelector('[data-ps-print-preview]')?.remove();return;}
+  if(e.target.closest('[data-ps-confirm-print]')){e.preventDefault?.();const frame=document.querySelector('[data-ps-print-preview] iframe');if(frame?.contentWindow){frame.contentWindow.focus();frame.contentWindow.print();}return;}
   const print=e.target.closest('[data-ps-print]');
   if(print?.matches?.('[data-ps-print]')){
    e.preventDefault?.();
-   const frame=document.createElement('iframe');
-   frame.setAttribute('title','Impresión de etiqueta');
-   frame.style.cssText='position:fixed;left:-10000px;top:0;width:30mm;height:12mm;border:0';
-   document.body.append(frame);
-   void downloadLabel(print.dataset.psPrint,frame).catch(err=>{frame.remove();error=err.message||'No se pudo imprimir la etiqueta.';update();});return;
+   document.querySelector('[data-ps-print-preview]')?.remove();
+   const modal=document.createElement('div');
+   modal.dataset.psPrintPreview='true';
+   modal.setAttribute('role','dialog');modal.setAttribute('aria-label','Vista previa de etiqueta');
+   modal.style.cssText='position:fixed;z-index:2147483647;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px';
+   modal.innerHTML='<div style="background:white;color:#172a42;padding:20px;border-radius:12px;max-width:95vw;width:420px;box-shadow:0 12px 40px #0005"><h3>Imprimir etiqueta</h3><p>Vista previa de 30 × 12 mm. No se descargará ningún archivo.</p><iframe title="Etiqueta lista para imprimir" style="width:300px;max-width:100%;height:120px;border:1px solid #ccc;background:white"></iframe><p style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" data-ps-confirm-print disabled>Preparando etiqueta…</button><button type="button" data-ps-close-print>Cerrar</button></p></div>';
+   document.body.append(modal);
+   const frame=modal.querySelector('iframe');
+   void downloadLabel(print.dataset.psPrint,frame).catch(err=>{modal.querySelector('p').textContent=err.message||'No se pudo preparar la etiqueta.';modal.querySelector('[data-ps-confirm-print]').textContent='Error de impresión';});return;
   }
   const label=e.target.closest('[data-ps-label]');
   if(label?.matches?.('[data-ps-label]')){e.preventDefault?.();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
