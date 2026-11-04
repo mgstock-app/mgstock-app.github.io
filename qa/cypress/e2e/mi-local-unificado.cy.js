@@ -2,7 +2,7 @@
 const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
 describe('Mi local · inicio único de Perfumes',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
- it('conserva Caja real, catálogo, proveedores y reportes sin tarjetas repetidas',()=>{
+ it('conserva Caja real, stock y reportes sin mostrar proveedores en Plan Scanner',()=>{
   cy.viewport(390,844);
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{
    headers:{'content-type':'application/javascript'},
@@ -28,6 +28,8 @@ describe('Mi local · inicio único de Perfumes',()=>{
   cy.get('#hub .gl-owner-business,#hub .gl-caja-entry,#hub .gl-owner-employees').should('not.exist');
   cy.get('#hub').should('not.contain.text','GESTIÓN DE TU LOCAL');
   cy.get('#hub [data-pilot-caja]').should('contain.text','Caja');
+  cy.get('#hub .gl-pilot-entry').should('not.contain.text','Proveedores y pedidos');
+  cy.get('#hub .gl-pilot-entry [data-owner-nav="business"]').should('not.exist');
   cy.window().then(w=>expect(w.GestLokCajaDiaria.entryUrl()).to.include('/caja/?desde=gestlok'));
   cy.get('#hub [data-pilot-stock]').click();
   cy.get('#gl-pilot-panel').should('contain.text','Stock');
@@ -37,7 +39,5 @@ describe('Mi local · inicio único de Perfumes',()=>{
   cy.get('#gl-pilot-panel').should('not.exist');
   cy.get('#pn').should('contain.text','Reportes generales');
   cy.get('#pn [data-act="close"]').click();
-  cy.get('#hub [data-owner-nav="business"]').click();
-  cy.get('#pn [data-act="local"][data-id="munro"]').should('be.visible');
  });
 });
