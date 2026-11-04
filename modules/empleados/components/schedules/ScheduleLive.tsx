@@ -1,4 +1,6 @@
 "use client";
+/* Scrollable table regions must be focusable for keyboard scrolling. */
+/* eslint-disable jsx-a11y/no-noninteractive-tabindex */
 import { useEffect, useState } from "react";
 import { horariosHistoryApi } from "@/features/schedules/history-api";
 import { Grid } from "./ScheduleArchiveTable";
