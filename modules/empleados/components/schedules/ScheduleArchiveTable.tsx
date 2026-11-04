@@ -31,7 +31,10 @@ export function Grid({ hoja, nombre }: { hoja: HojaArchivada; nombre: string }) 
         }}>{value}</Cell>;
     })}</tr>
   ));
-  return <table className={styles.rTabla} aria-label={nombre}>
+  const esSemana = nombre.startsWith("Semana");
+  const columnas = Math.max(hoja.values.reduce((max, row) => Math.max(max, row.length), 0), 1);
+  return <table className={styles.rTabla} aria-label={nombre}
+    style={esSemana ? { width: `${columnas * 96}px`, minWidth: `${columnas * 96}px`, tableLayout: "fixed" } : undefined}>
     <thead>{rows.slice(0, hoja.headerRows)}</thead><tbody>{rows.slice(hoja.headerRows)}</tbody>
   </table>;
 }
