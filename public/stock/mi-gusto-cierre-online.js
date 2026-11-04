@@ -127,13 +127,16 @@ function movementList(){
  (all.length>6?'<button type="button" class="mg-on-more" data-mgon-recent-all aria-expanded="'+showAllMoves+'">'+
  (showAllMoves?'Mostrar solo los últimos 6':'Ver los '+all.length+' movimientos del turno')+'</button>':'')+'</section>';
 }
-function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=Number(f.elements.amount?.value||0);if(f.elements.method?.value!=='efectivo'||!gross){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Efectivo · Bruto '+cash(gross)+' − 10% ('+cash(discount)+') = A cobrar '+cash(gross-discount);}
+function parseAmountInput(value){const raw=String(value??'').trim().replace(/\s/g,'');if(!/^\d{1,11}(?:\.\d{3})*(?:,\d{0,2})?$/.test(raw)&&!/^\d{1,11}(?:,\d{0,2})?$/.test(raw))return NaN;return Number(raw.replace(/\./g,'').replace(',','.'));}
+function formatAmountInput(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
+function formatAmountTyping(value){const cleaned=String(value??'').replace(/[^0-9,]/g,'');const comma=cleaned.indexOf(',');const integer=(comma<0?cleaned:cleaned.slice(0,comma)).slice(0,11);const cents=comma<0?'':','+cleaned.slice(comma+1).replace(/,/g,'').slice(0,2);return integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+cents;}
+function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.method?.value!=='efectivo'||!gross){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Efectivo · Bruto '+cash(gross)+' − 10% ('+cash(discount)+') = A cobrar '+cash(gross-discount);}
 function entry(){
  const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
  return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
   '<h3>'+(r?'Editar comanda':'Cargar pedido')+'</h3></div>'+
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
- '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" autocomplete="off" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.gross_amount??r?.amount??'')+'" placeholder="0,00" required></label>'+
+ '<label>Monto ($)<input type="text" inputmode="decimal" name="amount" autocomplete="off" maxlength="18" value="'+esc(r?.gross_amount!=null?formatAmountInput(r.gross_amount):'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
  '<p class="mg-on-cash-preview" id="mg-on-cash-preview" aria-live="polite"></p>'+ '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
@@ -439,7 +442,7 @@ function attach(h){
  document.addEventListener('submit',e=>{
   if(e.target.id!=='mg-online-form'||!writable())return;
   e.preventDefault();const d=new FormData(e.target),comanda=String(d.get('comanda')||'').trim(),
-   amount=Number(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),
+   amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),
    observacion=String(d.get('observacion')||'').trim();
   if(!/^[0-9]{1,10}$/.test(comanda)||!Number.isFinite(amount)||amount<=0||!(method in METHODS)||observacion.length>300){
     error='Completá una comanda numérica, un monto positivo y la forma de pago.';api.render();return;}
@@ -467,7 +470,7 @@ function subscribe(loc,push){
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
-document.addEventListener('input',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
+document.addEventListener('input',e=>{if(e.target?.matches?.('#mg-online-form [name=amount]')){const field=e.target;const before=field.value;const cursor=field.selectionStart??before.length;const digitsBefore=before.slice(0,cursor).replace(/[^0-9,]/g,'').length;const formatted=formatAmountTyping(before);field.value=formatted;let pos=0,seen=0;while(pos<formatted.length&&seen<digitsBefore){if(/[0-9,]/.test(formatted[pos]))seen++;pos++;}field.setSelectionRange(pos,pos);}if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
 document.addEventListener('change',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
 window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf}});
 })();
