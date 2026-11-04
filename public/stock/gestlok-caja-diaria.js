@@ -76,6 +76,12 @@
   if(!acceso)close();
   if(changed)host?.render?.();
  }
+ function entryUrl(){
+  if(!appPermitida())return '';
+  const loc=cajaApp.locales[0]||'';
+  const q='desde=gestlok'+(loc?'&comercio='+encodeURIComponent(loc)+'&local='+encodeURIComponent(loc):'')+(cajaApp.yo?'&yo='+encodeURIComponent(cajaApp.yo):'');
+  return '/caja/?'+q;
+ }
  function homeTile(){
   if(appPermitida()){
    const loc=cajaApp.locales[0]||'';
@@ -315,6 +321,6 @@
  });
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){if(confirmando){confirmando=false;render();}else close();}});
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&displayed)void reload(true);});
- window.GestLokCajaDiaria=Object.freeze({refresh,homeTile,open,close,permitido,appPermitida,
+ window.GestLokCajaDiaria=Object.freeze({refresh,homeTile,entryUrl,open,close,permitido,appPermitida,
   _test:Object.freeze({parseMonto,fecha,money,newOp,vistaHoy:()=>vistaHoy(),setEstado:v=>{estado=v;},setAcceso:v=>{acceso=v;},setCajaApp:v=>{cajaApp=v;}})});
 })();

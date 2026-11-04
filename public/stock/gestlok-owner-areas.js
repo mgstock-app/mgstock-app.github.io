@@ -208,7 +208,7 @@
         ?'<div><p>Bienvenido/a a</p><h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div>'
         :'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>')+'</header>'+
       '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
-      (commerce?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
+      (commerce&&!isSoloOwner()?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir Administrar mi empresa">'+svg(I.right,26)+'</button></div>'+
         '<p>Productos, stock, proveedores, pedidos y más.</p>'+
         list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['bars','Reportes e historial'],['cart','Tienda online / mixta / física'],['gear','Ajustes de la empresa']])+'</article>':'')+
@@ -222,7 +222,7 @@
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+
         '<p style="margin:16px 0 0;font-size:14px"><strong>Este módulo aún no está habilitado para tu empresa.</strong> Solicitá su activación a la administración de GESTLOK.</p></article>':'')+
-      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+caja+pilot+futurePrices+
+      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+futurePrices+
       '<nav class="gl-owner-quick" aria-label="Accesos generales">'+tile('reports','pie','Reportes generales')+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
   }
   // El módulo de empleados vive en la misma aplicación (misma dirección e instalación).
