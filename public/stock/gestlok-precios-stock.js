@@ -207,18 +207,18 @@
    const rawName=String(p.name||'Producto').trim().replace(/\s+/g,' ');
    const title=rawName.length>38?rawName.slice(0,37)+'…':rawName;
    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
-   let fontSize=16;
+   let fontSize=18;
    do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=232)break;fontSize--;}while(fontSize>8);
-   ctx.fillText(title,120,10,232);
+   ctx.fillText(title,120,11,234);
    // Draw the 95 EAN modules directly: no SVG whitespace or tiny scaled text.
    const bits=window.GestLokPosEAN13.bits(p.sku);
-   const left=3,unit=234/95;
+   const left=5,unit=230/95;
    for(let i=0;i<bits.length;i++){
     if(bits[i]!=='1')continue;
     const x=Math.round(left+i*unit),next=Math.round(left+(i+1)*unit);
-    ctx.fillRect(x,21,Math.max(1,next-x),59);
+    ctx.fillRect(x,23,Math.max(1,next-x),60);
    }
-   ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,89,230);
+   ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,90,234);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
     const dataUrl=canvas.toDataURL('image/png');
@@ -232,6 +232,10 @@
     portraitCtx.fillStyle='#fff';portraitCtx.fillRect(0,0,96,240);
     portraitCtx.translate(96,0);portraitCtx.rotate(Math.PI/2);
     portraitCtx.drawImage(canvas,0,0,240,96);
+    // Keep the actual 30×12 mm preview centered and scaled to the available area.
+    const previewStyle=doc.createElement('style');
+    previewStyle.textContent='@media screen{html,body{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f5f5f5}img{width:calc(min(94vw, 280px));height:auto;aspect-ratio:2.5;object-fit:fill}}';
+    doc.head.append(previewStyle);
     printWindow.closest('[data-ps-print-preview]').dataset.niimbotImage=portrait.toDataURL('image/png');
     const modal=printWindow.closest('[data-ps-print-preview]');
     const readyButton=modal?.querySelector('[data-ps-confirm-print]');
