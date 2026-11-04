@@ -81,7 +81,7 @@ export function ScheduleArchiveTable({ local, archivo, hoja, desde, filas }: {
     </header>
     {error && <p role="alert" className={styles.rPie}>{error}</p>}
     {archivo && !data && !error ? <p role="status" className={styles.rPie}>Cargando tabla guardada…</p>
-      : data?.tabla ? <div className={styles.tabla} tabIndex={0} role="region" aria-label={`Tabla de ${hoja}; desplazamiento horizontal`}>
+      : data?.tabla ? <div className={hoja === "Semana" ? `${styles.tabla} ${styles.semanaScrollable}` : styles.tabla} tabIndex={0} role="region" aria-label={`Tabla de ${hoja}; desplazamiento vertical y horizontal`}>
           <Grid hoja={data.tabla} nombre={`${hoja} del ${desde}`} />
         </div>
       : hoja === "Resumen" ? <div className={styles.tabla} tabIndex={0} role="region" aria-label="Tabla de Resumen; desplazamiento horizontal">
