@@ -14,6 +14,7 @@
  const suggestedPrice=cost=>validMoney(cost,0.01,9999999999.99)&&price(cost,SUGGESTED_MARKUP)<=9999999999.99?price(cost,SUGGESTED_MARKUP):null;
  const db=()=>window.GestLokSupabase;
  let mode='precios',rows=[],busy=false,loading=false,ready=false,error='',notice='',editing='',stockEditing='',search='';
+ function reset(){rows=[];ready=false;editing='';stockEditing='';search='';error='';notice='';}
  function permitted(){return window.GestLokPilot?.authorized?.()===true;}
  async function assertAccess(){
   if(!permitted())throw Error('No tenés permiso para este espacio privado.');
@@ -352,5 +353,5 @@
   if(e.target.id==='gl-ps-price-form'){e.preventDefault();void savePrice(e.target);}
   if(e.target.id==='gl-ps-stock-form'){e.preventDefault();void saveStock(e.target);}
  });
- window.GestLokPreciosStock=Object.freeze({render,open,price,profit,suggestedPrice,inventoryTotals,refresh});
+ window.GestLokPreciosStock=Object.freeze({render,open,price,profit,suggestedPrice,inventoryTotals,refresh,reset});
 })();

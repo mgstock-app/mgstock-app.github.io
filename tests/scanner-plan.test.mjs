@@ -24,3 +24,14 @@ test('Scanner: precios funcionan para clientes actuales y futuros y rechazan otr
   assert.equal((await db.query('select count(*)::int as n from public.gestlok_pilot_products')).rows[0].n,2);
  }finally{await db.close();}
 });
+
+test('Scanner limpia el catálogo anterior al cerrar o cambiar de empresa',async()=>{
+ const {runInNewContext}=await import('node:vm');
+ const q={select:()=>q,eq:()=>q,order:()=>q,limit:()=>Promise.resolve({data:[{id:'p1',name:'Solo empresa anterior',active:true,stock_quantity:1}],error:null})};
+ const window={GestLokPilot:{authorized:()=>true,tenantId:()=> 'tenant-a',rerender(){}},GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'a'}}})},from:()=>q}};
+ runInNewContext(readFileSync('public/stock/gestlok-precios-stock.js','utf8'),{window,document:{addEventListener(){},querySelector(){return null;}},Intl,Date});
+ await window.GestLokPreciosStock.open('stock');
+ assert.match(window.GestLokPreciosStock.render(),/Solo empresa anterior/);
+ window.GestLokPreciosStock.reset();
+ assert.doesNotMatch(window.GestLokPreciosStock.render(),/Solo empresa anterior/);
+});

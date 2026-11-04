@@ -43,7 +43,7 @@
   return !!context && context.tenant_id===TENANT && context.role==='dueno'
     && host?.role?.()==='dueno' && host?.S?.me?.tenant_id===TENANT;
  }
- function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';close();}
+ function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';records=[];audit=[];window.GestLokPreciosStock?.reset?.();close();}
  async function refresh(context,host){
   if(!context?.tenant_id||context.tenant_id!==host?.S?.me?.tenant_id||context.role!=='dueno'||host?.role?.()!=='dueno'||context.logo_id==='mi-gusto'||context.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'){reset();return;}
   if(TENANT!==context.tenant_id){reset();TENANT=context.tenant_id;}
@@ -79,6 +79,7 @@
   return true;
  }
  async function load(){
+  const epoch=accessEpoch;
   await assertAccess();
   const db=window.GestLokSupabase;
   const [r,a]=await Promise.all([
@@ -88,6 +89,7 @@
   ]);
   if(r.error)throw r.error;
   if(a.error)throw a.error;
+  if(epoch!==accessEpoch)return;
   records=r.data||[];audit=a.data||[];
  }
  function close(back=true){
