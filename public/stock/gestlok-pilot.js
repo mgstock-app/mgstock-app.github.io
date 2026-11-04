@@ -64,8 +64,8 @@
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
   return '<div class="gl-pilot-entry"><div><small>GESTLOK</small><h2>Mi local</h2>'+
-   '<p>Caja, ventas, stock, precios, proveedores y reportes. Todo en un solo lugar.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-owner-nav="reports">Reportes</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
+   '<p>Caja, ventas, stock, precios y reportes. Todo en un solo lugar.</p></div>'+
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-owner-nav="reports">Reportes</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
