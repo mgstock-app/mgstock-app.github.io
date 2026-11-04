@@ -30,7 +30,7 @@
   ['resguardos','Plan de respaldos','Checklist y registro de verificaciones; no ejecuta backups.','sistema'],
   ['metas','Objetivos y planificación','Registrar metas y revisar su progreso.','economia']
  ];
- const HOME_MODULES=['apertura_cierre','sistema_venta','stock','precios'];
+ const HOME_MODULES=['sistema_venta','stock','precios'];
  const HOME_LABELS={apertura_cierre:['Caja y Finanzas','Caja, movimientos y ganancias en un mismo lugar.'],sistema_venta:['Sistema de ventas','Escanear artículos y preparar el carrito. Cobro real pendiente.'],finanzas:['Movimientos y ganancias','Registrar ingresos, gastos y reposición; consultar el saldo manual.'],stock:['Stock','Cantidades, códigos de barras y etiquetas para imprimir.'],precios:['Precios','Costos, recargos y precios de venta.']};
  const DICTIONARY=Object.fromEntries(MODULES.map(([id,title,detail,group])=>[id,{title,detail,group}]));
  const fmtMoney=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(v||0));
@@ -65,7 +65,7 @@
   if(!enabled||!eligible(context,host))return '';
   return '<div class="gl-pilot-entry"><div><small>GESTIÓN DE TU LOCAL · ACCESO PRIVADO</small><h2>Tu negocio, en orden</h2>'+
    '<p>Caja y finanzas, ventas, stock y precios. Todo en un solo lugar.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-tab="apertura_cierre">Caja y Finanzas</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja y Finanzas</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -167,7 +167,7 @@
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
     '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
-    '<span>4 secciones para administrar tu negocio</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
+    '<span>3 secciones de gestión y acceso a Caja real</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
@@ -265,6 +265,7 @@
  }
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
+  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();const url=window.GestLokCajaDiaria?.entryUrl?.();if(url){location.assign(url);}else{void switchSection('apertura_cierre');}return;}
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
