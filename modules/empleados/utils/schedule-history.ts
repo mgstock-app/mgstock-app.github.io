@@ -200,7 +200,7 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "}",
     "",
     "function alCambiar() {",
-    "  try { enviarSemana(); } catch (e) { console.warn(e); }",
+    "  try { enviarSemana(); if (GESTLOK_TABLAS) enviarEnVivoGestlok(); } catch (e) { console.warn(e); }",
     "}",
     "",
     "function enviarAhora() {",
@@ -213,9 +213,10 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "    if (t.getHandlerFunction() === 'alCambiar') ScriptApp.deleteTrigger(t);",
     "  });",
     "  ScriptApp.newTrigger('alCambiar').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();",
-    "  ScriptApp.newTrigger('alCambiar').timeBased().everyHours(1).create();",
+    "  ScriptApp.newTrigger('alCambiar').timeBased().everyMinutes(5).create();",
     "  instalarArchivoGestlok();",
     "  enviarAhora();",
+    "  if (GESTLOK_TABLAS) enviarEnVivoGestlok();",
     "}",
     "",
   ].join("\n") + "\n" + ARCHIVO_SCRIPT;
@@ -224,6 +225,21 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
 
 // Exportación de ambas hojas originales; nunca borra, limpia ni modifica la planilla.
 const ARCHIVO_SCRIPT = String.raw`
+function enviarEnVivoGestlok() {
+  if (!GESTLOK_TABLAS) return;
+  var ss = SpreadsheetApp.getActive();
+  var resumen = ss.getSheetByName("Resumen"), semana = ss.getSheetByName("Semana");
+  if (!resumen || !semana) throw new Error("Faltan hojas Resumen o Semana.");
+  var desde = resumen.getRange("B2").getDisplayValue(), hasta = resumen.getRange("D2").getDisplayValue();
+  var response = UrlFetchApp.fetch(GESTLOK_URL + "/rest/v1/rpc/rm_horarios_en_vivo_recibir", {
+    method:"post",contentType:"application/json",muteHttpExceptions:true,
+    headers: GESTLOK_CLAVE.indexOf("eyJ") === 0 ? {apikey:GESTLOK_CLAVE,Authorization:"Bearer "+GESTLOK_CLAVE} : {apikey:GESTLOK_CLAVE},
+    payload:JSON.stringify({p_codigo:GESTLOK_CODIGO,p_desde:desde,p_hasta:hasta,
+      p_tablas:{Resumen:tablaGestlok(resumen),Semana:tablaGestlok(semana)}})
+  });
+  if (response.getResponseCode() >= 300) throw new Error("No se pudo sincronizar Semana y Resumen: "+response.getContentText());
+}
+
 function tablaGestlok(hoja) {
   var range = hoja.getDataRange();
   var values = range.getDisplayValues();
