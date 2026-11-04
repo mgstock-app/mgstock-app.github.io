@@ -45,7 +45,7 @@ export function ScheduleLive({local}: {local:string}) {
       <p className={styles.rPie}>Semana {live.desde} al {live.hasta} · Última sincronización: {new Date(live.actualizado_at).toLocaleString("es-AR",{timeZone:"America/Argentina/Buenos_Aires"})}</p>
       {(["Resumen","Semana"] as const).map(hoja => <section key={hoja} aria-label={hoja+" en vivo"}>
         <h3 className={styles.rTitulo}>{hoja}</h3>
-        <div className={styles.tabla} role="region" tabIndex={0} aria-label={"Tabla "+hoja+" en vivo, desplazamiento horizontal"}>
+        <div className={hoja === "Semana" ? `${styles.tabla} ${styles.semanaScrollable}` : styles.tabla} role="region" tabIndex={0} aria-label={"Tabla "+hoja+" en vivo, desplazamiento vertical y horizontal"}>
           <Grid hoja={live.tablas[hoja]} nombre={hoja+" en vivo"} />
         </div>
       </section>)}
