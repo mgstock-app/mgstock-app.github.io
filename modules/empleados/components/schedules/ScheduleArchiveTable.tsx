@@ -7,7 +7,7 @@ import { horariosHistoryApi } from "@/features/schedules/history-api";
 import { RESUMEN_COLUMNAS, type HorarioFila, type HojaArchivada } from "@/utils/schedule-history";
 import styles from "./ScheduleHistory.module.css";
 
-function Grid({ hoja, nombre }: { hoja: HojaArchivada; nombre: string }) {
+export function Grid({ hoja, nombre }: { hoja: HojaArchivada; nombre: string }) {
   const covered = new Set<string>();
   const spans = new Map<string, { rows: number; cols: number }>();
   for (const m of hoja.merges) {
