@@ -30,8 +30,8 @@
   ['resguardos','Plan de respaldos','Checklist y registro de verificaciones; no ejecuta backups.','sistema'],
   ['metas','Objetivos y planificación','Registrar metas y revisar su progreso.','economia']
  ];
- const HOME_MODULES=['apertura_cierre','sistema_venta','finanzas','stock','precios'];
- const HOME_LABELS={apertura_cierre:['Caja','Control de apertura y cierre. Los cobros reales aún no están habilitados.'],sistema_venta:['Sistema de ventas','Escanear artículos y preparar el carrito. Cobro real pendiente.'],finanzas:['Movimientos y ganancias','Registrar ingresos, gastos y reposición; consultar el saldo manual.'],stock:['Stock','Cantidades, códigos de barras y etiquetas para imprimir.'],precios:['Precios','Costos, recargos y precios de venta.']};
+ const HOME_MODULES=['apertura_cierre','sistema_venta','stock','precios'];
+ const HOME_LABELS={apertura_cierre:['Caja y Finanzas','Caja, movimientos y ganancias en un mismo lugar.'],sistema_venta:['Sistema de ventas','Escanear artículos y preparar el carrito. Cobro real pendiente.'],finanzas:['Movimientos y ganancias','Registrar ingresos, gastos y reposición; consultar el saldo manual.'],stock:['Stock','Cantidades, códigos de barras y etiquetas para imprimir.'],precios:['Precios','Costos, recargos y precios de venta.']};
  const DICTIONARY=Object.fromEntries(MODULES.map(([id,title,detail,group])=>[id,{title,detail,group}]));
  const fmtMoney=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(v||0));
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -64,8 +64,8 @@
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
   return '<div class="gl-pilot-entry"><div><small>GESTIÓN DE TU LOCAL · ACCESO PRIVADO</small><h2>Tu negocio, en orden</h2>'+
-   '<p>Caja, ventas, movimientos, stock y precios. Todo en un solo lugar.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-tab="apertura_cierre">Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-tab="finanzas">Movimientos y ganancias</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
+   '<p>Caja y finanzas, ventas, stock y precios. Todo en un solo lugar.</p></div>'+
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-tab="apertura_cierre">Caja y Finanzas</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -150,7 +150,10 @@
   if(active==='precios'||active==='stock')return window.GestLokPreciosStock?.render?.()||'<p>No se pudo cargar Precios y Stock.</p>';
   if(active==='auditoria')return '<h2>Auditoría de este piloto</h2><p>Registro automático de altas, cambios y eliminaciones realizados acá. No reemplaza la auditoría completa de GESTLOK.</p>'+activity();
   const m=DICTIONARY[active];
-  return '<header class="gl-pilot-section-head"><div><h2>'+esc(m.title)+'</h2><p>'+esc(m.detail)+'</p>'+
+  const financeNav=(active==='apertura_cierre'||active==='finanzas')
+   ?'<nav class="gl-pilot-finance-tabs" aria-label="Caja y Finanzas" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"><button type="button" data-pilot-tab="apertura_cierre" aria-current="'+(active==='apertura_cierre'?'page':'false')+'">Caja</button><button type="button" data-pilot-tab="finanzas" aria-current="'+(active==='finanzas'?'page':'false')+'">Movimientos y ganancias</button></nav>'
+   :'';
+  return financeNav+'<header class="gl-pilot-section-head"><div><h2>'+esc(m.title)+'</h2><p>'+esc(m.detail)+'</p>'+
    '<small>Registro manual privado · Sin movimientos automáticos en sistemas externos.</small></div>'+
    '<button type="button" data-pilot-new>Nuevo registro</button></header>'+
    (editing?'': '<div class="gl-pilot-form-slot" hidden></div>')+
@@ -164,7 +167,7 @@
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
     '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
-    '<span>5 secciones para administrar tu negocio</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
+    '<span>4 secciones para administrar tu negocio</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
