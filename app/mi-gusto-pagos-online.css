@@ -370,3 +370,11 @@
 
 /* Acción principal centrada, entre los montos y las fotografías. */
 .mg-on-close .mg-on-close-controls>button.mg-on-close-primary[data-mgon-close]{display:block;width:min(100%,320px);align-self:center;min-height:48px;text-align:center;margin:4px auto 10px}
+
+/* #243: efectivo Mi Gusto, identificación visual y descuento. */
+.mg-on-cash-row td,.mg-on-recent-desktop .mg-on-tablewrap .mg-on-cash-row:hover td{background:#fff4c9!important}
+.mg-on-recent-card.mg-on-cash-row{background:#fff4c9;border-color:#e9d68a}
+.mg-on-method-efectivo{background:#f7e5a0;color:#6c5100}
+.mg-on-cash-detail{display:block;font-size:11px;color:#775b19;margin-top:4px}
+.mg-on-cash-preview:not(:empty){padding:12px;border-radius:10px;background:#fff4c9;color:#644d0e;font-weight:800;font-size:13px}
+.mg-on-cash-preview:empty{display:none}
