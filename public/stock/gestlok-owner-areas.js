@@ -281,6 +281,7 @@
       panelHtml=p.html;pn.innerHTML=p.html;return;
     }
     api.S.panel=kind;panelKind=kind;panelHtml=p.html;api.openPanel(p.html,p.kind);
+    if(isSoloOwner()&&!window.history?.state?.glOwnerPanel)window.history?.pushState({...window.history.state,glOwnerPanel:true},'');
     const pn=document.getElementById('pn');pn?.setAttribute('aria-labelledby',p.html.match(/<h3 id="([^"]+)"/)?.[1]||'');
     if(kind==='owner-bell')window.GestLokPush?.onOpen?.();
     pn?.querySelector('[data-act="close"]')?.focus({preventScroll:true});
@@ -313,7 +314,11 @@
     }
     api?.render?.();
   }
+  window.addEventListener?.('popstate',()=>{
+    if(isSoloOwner()&&api.S.panel?.startsWith('owner-')&&!window.history?.state?.glOwnerPanel){api.closePanel?.();panelKind='';}
+  });
   document.addEventListener('click',e=>{
+    if(isSoloOwner()&&window.history?.state?.glOwnerPanel&&(e.target.closest('#pn [data-act="close"]')||e.target.id==='ov'))window.history.back();
     if(e.target.closest('[data-owner-area-retry]')){e.preventDefault();refresh();}
     const managerArea=e.target.closest('[data-gerente-area]');
     if(managerArea&&!e.target.closest('button,a,input')&&api?.role?.()==='gerente'){
@@ -351,7 +356,7 @@
     if(e.target.closest('#pn [data-act="local"]')&&PANELS[panelKind])panelKind='';
     if(menuOpen&&!e.target.closest('.gl-oh-userwrap')){menuOpen=false;api?.render?.();}
   });
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&isSoloOwner()&&window.history?.state?.glOwnerPanel)window.history.back();if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();refreshAdmin();}});
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
   window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders});

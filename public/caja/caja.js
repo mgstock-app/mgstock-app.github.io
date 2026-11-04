@@ -82,7 +82,8 @@
     }
     return p;
   })();
-  const volverGestlok = (clase) => PRE ? '<a class="' + (clase || 'btn texto chico') + '" href="../">← Volver a GESTLOK</a>' : '';
+  const integrado = (() => { try { return new URLSearchParams(location.search).get('integrado') === '1' && window.parent !== window && window.parent.location.origin === location.origin; } catch { return false; } })();
+  const volverGestlok = (clase) => PRE ? '<a class="' + (clase || 'btn texto chico') + '" href="../" data-caja-volver>← Volver a GESTLOK</a>' : '';
 
   // ---------------- estado ----------------
   const S = {
@@ -95,7 +96,7 @@
   // ---------------- Supabase ----------------
   let sb = null;
   try {
-    sb = window.supabase.createClient(CFG.url, CFG.key, {
+    sb = integrado && window.parent.GestLokSupabase ? window.parent.GestLokSupabase : window.supabase.createClient(CFG.url, CFG.key, {
       auth: { storageKey: 'caja-app-auth', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
   } catch (e) {
@@ -721,7 +722,7 @@
       items.push('<button class="opcion" data-act="ir" data-vista="historial"><span><b>Historial</b><small>Cierres anteriores y descarga para Excel</small></span><span>›</span></button>');
       items.push('<button class="opcion" data-act="ir" data-vista="config"><span><b>Configuración</b><small>Medios, categorías y locales</small></span><span>›</span></button>');
     }
-    if (PRE) items.push('<a class="opcion" href="../"><span><b>Volver a GESTLOK</b><small>El inicio de tu empresa</small></span><span>›</span></a>');
+    if (PRE) items.push('<a class="opcion" href="../" data-caja-volver><span><b>Volver a GESTLOK</b><small>El inicio de tu empresa</small></span><span>›</span></a>');
     items.push('<button class="opcion" data-act="salirCuenta"><span><b>Cerrar sesión</b><small>' + h((p && p.nombre) || '') + (S.user && S.user.email ? ' · ' + h(S.user.email) : '') + '</small></span><span>›</span></button>');
     items.push('<button class="opcion" data-act="menuVista"><span><b>Vista</b><small>' + h(nombreMedio(S.medio)) + (leer('caja.vista') ? ' (elegida a mano)' : ' (detectada sola)') + '</small></span><span>›</span></button>');
     abrirHoja('Menú', items.join(''));
@@ -899,6 +900,9 @@
 
   // ---------------- eventos ----------------
   document.addEventListener('click', (ev) => {
+    if(integrado && ev.target.closest('[data-caja-volver]')){
+      ev.preventDefault();window.parent.postMessage({type:'gestlok-caja-volver'},location.origin);return;
+    }
     const b = ev.target.closest('[data-act]');
     if (!b || b.disabled) return;
     const fn = A[b.dataset.act];

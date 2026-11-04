@@ -40,13 +40,13 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=formulario-limpio-20261101");
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
-      if (!visitor) await load("/stock/gestlok-pilot.js?rev=mi-local-20261104");
+      if (!visitor) await load("/stock/gestlok-pilot.js?rev=navegacion-local-20261104");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=precios-stock-cami-20261029");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
-      if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-mi-local-20261104");
-      await load("/stock/gestlok-owner-areas.js?rev=mi-local-20261104");
+      if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
+      await load("/stock/gestlok-owner-areas.js?rev=navegacion-local-20261104");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.

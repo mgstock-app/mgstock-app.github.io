@@ -7,7 +7,7 @@
  'use strict';
  const TZ='America/Argentina/Buenos_Aires';
  const ROLES=['dueno','gerente','editor'];
- let host=null,acceso=null,cajaApp=null,checking=false,checkedKey='';
+ let host=null,acceso=null,cajaApp=null,checking=false,checkedKey='',appRoot=null,appIdentity='',appFocus=null;
  let displayed=false,loading=false,busy=false,error='',aviso='',estado=null,tab='hoy',confirmando=false,editResp=false,detalle=null,op=newOp(),timer=0;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0));
@@ -52,7 +52,7 @@
   const key=tenant()+'|'+role();
   if(!tenant()||!ROLES.includes(role())||window.GestLokVisitorDemo?.active){
    checkedKey='';
-   if(acceso||cajaApp){acceso=null;cajaApp=null;close();host?.render?.();}
+   if(acceso||cajaApp){acceso=null;cajaApp=null;close();closeApp(false,true);host?.render?.();}
    return;
   }
   if(key===checkedKey||checking||host?.S?.offline||!db()?.rpc)return;
@@ -74,6 +74,7 @@
   const changed=!!acceso!==!!next||!!cajaApp!==!!app;
   acceso=next;cajaApp=app;
   if(!acceso)close();
+  if(!appPermitida())closeApp(false,true);
   if(changed)host?.render?.();
  }
  function entryUrl(){
@@ -82,6 +83,36 @@
   const q='desde=gestlok'+(loc?'&comercio='+encodeURIComponent(loc)+'&local='+encodeURIComponent(loc):'')+(cajaApp.yo?'&yo='+encodeURIComponent(cajaApp.yo):'');
   return '/caja/?'+q;
  }
+ // Mantener Caja dentro de la misma aplicación y conservar su estado al volver.
+ function closeApp(back=true,destroy=false){
+  if(appRoot)appRoot.hidden=true;
+  document.body?.classList.remove('gl-caja-app-open');
+  appFocus?.focus?.({preventScroll:true});
+  if(destroy){appRoot?.remove();appRoot=null;appIdentity='';}
+  if(back&&window.history?.state?.glCajaApp)window.history.back();
+ }
+ function openApp(){
+  const url=entryUrl();
+  if(!url)return false;
+  const identity=tenant()+'|'+(host?.S?.me?.email||'');
+  if(appRoot&&appIdentity!==identity)closeApp(false,true);
+  appFocus=document.activeElement;
+  if(!appRoot){
+   appRoot=document.createElement('section');appRoot.id='gl-caja-app-panel';
+   appRoot.setAttribute('role','dialog');appRoot.setAttribute('aria-modal','true');appRoot.setAttribute('aria-label','Mi local · Caja');
+   appRoot.innerHTML='<header><strong>Mi local · Caja</strong><button type="button" data-caja-app-back>← Volver a Mi local</button></header><iframe title="Caja de mi local" src="'+esc(url+'&integrado=1&v=navegacion-20261104')+'"></iframe>';
+   document.body.append(appRoot);appIdentity=identity;
+  }
+  appRoot.hidden=false;document.body.classList.add('gl-caja-app-open');
+  if(!window.history?.state?.glCajaApp)window.history?.pushState({...window.history.state,glCajaApp:true},'');
+  appRoot.querySelector('[data-caja-app-back]')?.focus();
+  return true;
+ }
+ window.addEventListener?.('popstate',()=>{if(appRoot&&!appRoot.hidden&&!window.history?.state?.glCajaApp)closeApp(false);});
+ window.addEventListener?.('message',event=>{
+  const frame=appRoot?.querySelector('iframe');
+  if(event.origin===window.location.origin&&event.source===frame?.contentWindow&&event.data?.type==='gestlok-caja-volver')closeApp();
+ });
  function homeTile(){
   if(appPermitida()){
    const loc=cajaApp.locales[0]||'';
@@ -297,6 +328,8 @@
   document.querySelector('#gl-caja-panel .gl-caja-main')?.scrollTo?.({top:0,behavior:'smooth'});
  }
  document.addEventListener('click',e=>{
+  if(e.target.closest('[data-caja-app]')){e.preventDefault();openApp();return;}
+  if(e.target.closest('[data-caja-app-back]')){e.preventDefault();closeApp();return;}
   if(e.target.closest('[data-caja-open]')){e.preventDefault();void open();return;}
   if(!displayed)return;
   if(e.target.closest('[data-caja-close]')){close();return;}
@@ -321,6 +354,6 @@
  });
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){if(confirmando){confirmando=false;render();}else close();}});
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&displayed)void reload(true);});
- window.GestLokCajaDiaria=Object.freeze({refresh,homeTile,entryUrl,open,close,permitido,appPermitida,
+ window.GestLokCajaDiaria=Object.freeze({refresh,homeTile,entryUrl,openApp,closeApp,open,close,permitido,appPermitida,
   _test:Object.freeze({parseMonto,fecha,money,newOp,vistaHoy:()=>vistaHoy(),setEstado:v=>{estado=v;},setAcceso:v=>{acceso=v;},setCajaApp:v=>{cajaApp=v;}})});
 })();

@@ -85,10 +85,11 @@
   if(a.error)throw a.error;
   records=r.data||[];audit=a.data||[];
  }
- function close(){
+ function close(back=true){
   window.GestLokPosPreview?.dispose?.();
   const p=document.querySelector('#gl-pilot-panel');p?.remove();document.body.classList.remove('gl-pilot-open');
   displayed=false;active='tablero';error='';editing='';
+  if(window.history?.state?.glPilot){if(back)window.history.back();else window.history.replaceState({...window.history.state,glPilot:false},'');}
  }
  function sectionTitle(key){return DICTIONARY[key]?.title||'Gestión';}
  function card(key){const v=DICTIONARY[key],total=records.filter(x=>x.module===key).length;
@@ -168,7 +169,7 @@
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
     '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
-    '<span>Caja, ventas, stock, precios, proveedores y reportes</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
+    '<span>Caja, ventas, stock, precios, proveedores y reportes</span></div><button type="button" data-pilot-close aria-label="Volver a Mi local">← Volver a Mi local</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
@@ -177,7 +178,9 @@
  }
  async function open(){
   if(displayed||!enabled)return;
-  displayed=true;active='tablero';loading=true;render();
+  displayed=true;active='tablero';loading=true;
+  window.history?.pushState({...window.history.state,glPilot:true},'');
+  render();
   try{await load();error='';}catch(e){error=e.message||'No se pudo cargar';}
   finally{loading=false;render();}
  }
@@ -265,9 +268,9 @@
   finally{busy=false;render();}
  }
  document.addEventListener('click',e=>{
-  if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close();return;}
+  if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close(false);return;}
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
-  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();const url=window.GestLokCajaDiaria?.entryUrl?.();if(url){location.assign(url);}else{api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
+  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
@@ -295,6 +298,7 @@
  document.addEventListener('submit',e=>{
   if(e.target.id!=='gl-pilot-form')return;e.preventDefault();void save(e.target);
  });
+ window.addEventListener?.('popstate',()=>{if(displayed&&!window.history?.state?.glPilot)close(false);});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){close();document.body.classList.remove('gl-pilot-open');}});
  window.GestLokPilot=Object.freeze({refresh,homeTile,open,openOrders,reset,
   authorized:()=>!!enabled&&ownerUid!==''&&api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='dueno',
