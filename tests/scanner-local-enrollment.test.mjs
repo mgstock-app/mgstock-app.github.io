@@ -1,25 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+const read = path => readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const sql=read('supabase/migrations/20261104221000_scanner_new_stock_tenant_enrollment.sql');
+const ui=read('public/stock/gestlok-pilot.js');
+const retired=read('supabase/migrations/20261104213000_scanner_local_enrollment_draft.sql');
 
-const sql = readFileSync(new URL('../supabase/migrations/20261104213000_scanner_local_enrollment_draft.sql', import.meta.url), 'utf8');
-
-test('Scanner: enrollment only for newly inserted locals in explicitly opted-in organizations', () => {
-  assert.match(sql, /auto_enroll_new_locals boolean not null default false/i);
-  assert.match(sql, /after insert on public\.rm_app_local/i);
-  assert.match(sql, /p\.organization_id = new\.organization_id and p\.auto_enroll_new_locals/i);
-  assert.doesNotMatch(sql, /insert\s+into\s+public\.gestlok_scanner_local_enrollment\s+select/i);
+test('only newly provisioned stock companies receive enrollment marker',()=>{
+ assert.match(sql,/after insert on gestlok_platform\.companies/i);
+ assert.match(sql,/new\.tenant_id/);
+ assert.doesNotMatch(sql,/insert\s+into\s+gestlok_platform\.scanner_new_tenant_enrollment\s+select/i);
+ assert.doesNotMatch(retired,/create trigger/i);
 });
-
-test('Scanner: unique tenant per branch and no direct client access to enrollment', () => {
-  assert.match(sql, /local_id text primary key/i);
-  assert.match(sql, /scanner_tenant_id uuid not null unique default gen_random_uuid\(\)/i);
-  assert.match(sql, /alter table public\.gestlok_scanner_local_enrollment enable row level security/i);
-  assert.match(sql, /revoke all on public\.gestlok_scanner_local_enrollment from anon, authenticated/i);
+test('verified matching owner must claim tenant with authorized membership',()=>{
+ assert.match(sql,/u\.email_confirmed_at is not null/i);
+ assert.match(sql,/auth\.jwt\(\)->>'email'/i);
+ assert.match(sql,/d\.tenant_id=p_tenant and d\.col='equipo'/i);
+ assert.match(sql,/d\.data->>'rol'='dueno'/i);
+ assert.match(sql,/a\.owner_uid<>v_uid/i);
+ assert.match(sql,/on conflict\(tenant_id\) do nothing/i);
 });
-
-test('Scanner: current branch enrollment is not yet wired into active Scanner access', () => {
-  const ui = readFileSync(new URL('../public/stock/gestlok-pilot.js', import.meta.url), 'utf8');
-  assert.match(ui, /from\('gestlok_pilot_access'\)/);
-  assert.doesNotMatch(ui, /gestlok_scanner_local_enrollment/);
+test('Scanner refresh claims before checking server-managed access',()=>{
+ const claim=ui.indexOf("rpc('gestlok_scanner_claim_new_company'");
+ const access=ui.indexOf("from('gestlok_pilot_access')");
+ assert.ok(claim>0&&access>claim);
+ assert.match(ui,/context\.logo_id==='mi-gusto'/);
 });
