@@ -199,21 +199,26 @@
    const img=new Image();
    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('No se pudo preparar la imagen de la etiqueta.'));img.src=url;});
    const canvas=document.createElement('canvas');
-   // Render at the printer's exact landscape resolution (30 × 12 mm at 203 dpi).
-   // D110_M feeds the narrow 12 mm edge first; the Bluetooth bitmap is rotated below.
+   // Full-bleed D110_M label: 240px along feed × 96px across head.
    canvas.width=240;canvas.height=96;
    const ctx=canvas.getContext('2d');
    if(!ctx)throw Error('El navegador no permite generar la etiqueta.');
    ctx.fillStyle='#fff';ctx.fillRect(0,0,240,96);
-   const rawName=String(p.name||'Producto').trim().replace(/\\s+/g,' ');
+   const rawName=String(p.name||'Producto').trim().replace(/\s+/g,' ');
    const title=rawName.length>38?rawName.slice(0,37)+'…':rawName;
    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
-   let fontSize=14;
-   do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=228)break;fontSize--;}while(fontSize>8);
-   ctx.fillText(title,120,12,228);
-   // Use the full printable width: bars and EAN-13 digits stay legible.
-   ctx.imageSmoothingEnabled=false;
-   ctx.drawImage(img,4,22,232,72);
+   let fontSize=16;
+   do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=232)break;fontSize--;}while(fontSize>8);
+   ctx.fillText(title,120,10,232);
+   // Draw the 95 EAN modules directly: no SVG whitespace or tiny scaled text.
+   const bits=window.GestLokPosEAN13.bits(p.sku);
+   const left=3,unit=234/95;
+   for(let i=0;i<bits.length;i++){
+    if(bits[i]!=='1')continue;
+    const x=Math.round(left+i*unit),next=Math.round(left+(i+1)*unit);
+    ctx.fillRect(x,21,Math.max(1,next-x),59);
+   }
+   ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,89,230);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
     const dataUrl=canvas.toDataURL('image/png');
