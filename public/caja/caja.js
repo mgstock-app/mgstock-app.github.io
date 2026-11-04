@@ -211,7 +211,7 @@
   function marco(cuerpo) {
     const p = S.op && S.op.persona;
     const navItems = [['caja', 'Caja de hoy', 'C']];
-    if (esDuenoCuenta()) navItems.push(['hoy', 'Hoy en los locales', ''], ['historial', 'Historial', ''], ['config', 'Configuración', '']);
+    if (esDuenoCuenta()) navItems.push(['historial', 'Historial', ''], ['config', 'Configuración', '']);
     const nav = navItems.map((n) => '<button data-act="ir" data-vista="' + n[0] + '"' + (S.vista === n[0] ? ' aria-current="page"' : '') + '>' + h(n[1]) + '</button>').join('');
     const lateral = '<aside class="lateral">' + marca(S.comercio.nombre) + '<nav aria-label="Secciones">' + nav + '</nav>' +
       '<div class="bloque"><small>Local de este equipo</small><b>' + h(S.local.nombre) + '</b></div>' +
@@ -224,7 +224,7 @@
       '<button class="quien" data-act="menu">' + (p ? '<span class="inicial">' + inicial(p.nombre) + '</span>' + h(p.nombre.split(' ')[0]) : '<span class="inicial">☰</span>Menú') + '</button></header>';
     let pest = '';
     if (S.vista !== 'caja') {
-      pest = '<div class="pestanas">' + [['caja', '← Caja'], ['hoy', 'Hoy'], ['historial', 'Historial'], ['config', 'Configuración']]
+      pest = '<div class="pestanas">' + [['caja', '← Caja'], ['historial', 'Historial'], ['config', 'Configuración']]
         .map((n) => '<button data-act="ir" data-vista="' + n[0] + '"' + (S.vista === n[0] ? ' aria-current="page"' : '') + '>' + n[1] + '</button>').join('') + '</div>';
     }
     return '<div class="marco">' + lateral + '<div>' + barra + '<main class="contenido">' + pest + cuerpo +
@@ -585,12 +585,13 @@
     const v = S.vista, mia = vez;
     const poner = (html) => { if (mia === vez && S.vista === v) app.innerHTML = marco(html); };
     try {
-      if (v === 'hoy') { poner('<p class="cargando">Cargando…</p>'); S.hoy = await rpc('hoy', { p_comercio: S.comercio.id }); return poner(vistaHoy(S.hoy)); }
+      if (v === 'hoy') { S.vista = 'caja'; return pintar(); }
       if (v === 'historial') {
-        if (!S.histFiltro) S.histFiltro = { desde: diaAR(-30), hasta: diaAR(), local: '' };
+        if (!S.histFiltro) S.histFiltro = { desde: diaAR(-30), hasta: diaAR(), local: S.local.id };
+        S.histFiltro.local = S.local.id;
         if (!S.cfg) S.cfg = await rpc('config', { p_comercio: S.comercio.id });
         poner(vistaHistorial(null));
-        S.hist = await rpc('historial', { p_comercio: S.comercio.id, p_local: S.histFiltro.local || null, p_desde: S.histFiltro.desde, p_hasta: S.histFiltro.hasta });
+        S.hist = await rpc('historial', { p_comercio: S.comercio.id, p_local: S.local.id, p_desde: S.histFiltro.desde, p_hasta: S.histFiltro.hasta });
         return poner(vistaHistorial(S.hist));
       }
       if (v === 'config') { if (!S.cfg) { poner('<p class="cargando">Cargando…</p>'); S.cfg = await rpc('config', { p_comercio: S.comercio.id }); } return poner(vistaConfig(S.cfg)); }
@@ -627,7 +628,7 @@
     const filtros = '<form data-form="filtroHist" class="fila envuelve" style="align-items:flex-end;margin-bottom:14px">' +
       '<label class="campo" style="margin:0"><span>Desde</span><input type="date" name="desde" value="' + h(f.desde) + '" required></label>' +
       '<label class="campo" style="margin:0"><span>Hasta</span><input type="date" name="hasta" value="' + h(f.hasta) + '" required></label>' +
-      '<label class="campo" style="margin:0"><span>Local</span><select name="local"><option value="">Todos</option>' + locales.map((l) => '<option value="' + h(l.id) + '"' + (f.local === l.id ? ' selected' : '') + '>' + h(l.nombre) + '</option>').join('') + '</select></label>' +
+      '<span class="campo"><span>Local</span><strong>' + h(S.local.nombre) + '</strong></span>' +
       '<button class="btn">Ver</button>' + (lista && lista.length ? '<button type="button" class="btn" data-act="exportar">Descargar para Excel</button>' : '') + '</form>';
     let cuerpo;
     if (!lista) cuerpo = '<p class="cargando">Cargando…</p>';
@@ -758,7 +759,7 @@
       cerrarHoja();
       if (v === 'caja') { S.vista = 'caja'; if (S.op) cargarEstado().then(pintar, pintar); return pintar(); }
       if (!panelHabilitado()) return;
-      S.vista = v; window.scrollTo(0, 0); pintar();
+      S.vista = v === 'hoy' ? 'caja' : v; window.scrollTo(0, 0); pintar();
     },
     abrirOtro: () => { const d = document.getElementById('abrir-otro'); d.classList.remove('oculto'); d.querySelector('input').focus(); },
     nuevoMov: (b) => hojaMovimiento(b.dataset.tipo),
