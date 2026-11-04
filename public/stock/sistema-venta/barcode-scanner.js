@@ -6,7 +6,7 @@ async function scan(video,onCode,{signal}={}){
  if(!supported())throw Error('Este navegador no permite escanear. Ingresá el código manualmente.');
  if(!video||typeof onCode!=='function')throw Error('Falta la vista de cámara o el receptor del código.');
  if(signal?.aborted)throw Error('Escaneo cancelado.');
- const detector=new root.BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e','qr_code']});
+ const detector=new root.BarcodeDetector({formats:['ean_13']});
  const stream=await root.navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
  let stopped=false,frame=0;
  function stop(){
@@ -28,7 +28,8 @@ async function scan(video,onCode,{signal}={}){
    if(stopped)return;
    try{
     const codes=await detector.detect(video);
-    const code=codes.find(x=>typeof x.rawValue==='string'&&x.rawValue.trim());
+    const valid=s=>/^\d{13}$/.test(s)&&((10-[...s.slice(0,12)].reduce((sum,d,i)=>sum+Number(d)*(i%2?3:1),0)%10)%10===Number(s[12]));
+    const code=codes.find(x=>typeof x.rawValue==='string'&&valid(x.rawValue.trim()));
     if(code){stop();onCode(code.rawValue.trim());return;}
    }catch(_e){/* Some frames are not decodable; keep scanning. */}
    if(!stopped)frame=root.requestAnimationFrame(tick);
