@@ -63,9 +63,9 @@
  }
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
-  return '<div class="gl-pilot-entry"><div><small>GESTIÓN DE TU LOCAL · ACCESO PRIVADO</small><h2>Tu negocio, en orden</h2>'+
-   '<p>Caja y finanzas, ventas, stock y precios. Todo en un solo lugar.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja y Finanzas</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
+  return '<div class="gl-pilot-entry"><div><small>GESTLOK</small><h2>Mi local</h2>'+
+   '<p>Caja, ventas, stock, precios, proveedores y reportes. Todo en un solo lugar.</p></div>'+
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-owner-nav="reports">Reportes</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -99,6 +99,7 @@
  function sidebar(){
   return '<nav class="gl-pilot-nav" aria-label="Secciones de tu negocio"><div><span class="gl-pilot-group">Mi local</span>'+
    '<button type="button" data-pilot-tab="tablero" class="'+(active==='tablero'?'is-active':'')+'">Inicio</button>'+
+   '<button type="button" data-pilot-caja>Caja</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-owner-nav="reports">Reportes</button>'+
    HOME_MODULES.map(id=>'<button type="button" data-pilot-tab="'+id+'" class="'+(active===id?'is-active':'')+'">'+esc(HOME_LABELS[id][0])+'</button>').join('')+'</div></nav>';
  }
  function dashboard(){
@@ -167,7 +168,7 @@
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
     '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
-    '<span>3 secciones de gestión y acceso a Caja real</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
+    '<span>Caja, ventas, stock, precios, proveedores y reportes</span></div><button type="button" data-pilot-close aria-label="Cerrar centro piloto">Cerrar ×</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
@@ -264,8 +265,9 @@
   finally{busy=false;render();}
  }
  document.addEventListener('click',e=>{
+  if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close();return;}
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
-  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();const url=window.GestLokCajaDiaria?.entryUrl?.();if(url){location.assign(url);}else{void switchSection('apertura_cierre');}return;}
+  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();const url=window.GestLokCajaDiaria?.entryUrl?.();if(url){location.assign(url);}else{api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
