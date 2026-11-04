@@ -199,19 +199,21 @@
    const img=new Image();
    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error('No se pudo preparar la imagen de la etiqueta.'));img.src=url;});
    const canvas=document.createElement('canvas');
-   canvas.width=920;canvas.height=560;
+   // Render at the printer's exact landscape resolution (30 × 12 mm at 203 dpi).
+   // D110_M feeds the narrow 12 mm edge first; the Bluetooth bitmap is rotated below.
+   canvas.width=240;canvas.height=96;
    const ctx=canvas.getContext('2d');
    if(!ctx)throw Error('El navegador no permite generar la etiqueta.');
-   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-   // 30 x 12 mm: reserve a slim title band, leaving the bars unobstructed.
-   const rawName=String(p.name||'Producto').trim().replace(/\s+/g,' ');
-   const title=rawName.length>32?rawName.slice(0,31)+'…':rawName;
+   ctx.fillStyle='#fff';ctx.fillRect(0,0,240,96);
+   const rawName=String(p.name||'Producto').trim().replace(/\\s+/g,' ');
+   const title=rawName.length>38?rawName.slice(0,37)+'…':rawName;
    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
-   let fontSize=57;
-   do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=850)break;fontSize-=2;}while(fontSize>24);
-   ctx.fillText(title,460,48,850);
-   // Keep the full barcode, including its printed EAN-13 digits, in the remaining space.
-   ctx.drawImage(img,22,92,876,448);
+   let fontSize=14;
+   do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=228)break;fontSize--;}while(fontSize>8);
+   ctx.fillText(title,120,12,228);
+   // Use the full printable width: bars and EAN-13 digits stay legible.
+   ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(img,4,22,232,72);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
     const dataUrl=canvas.toDataURL('image/png');
