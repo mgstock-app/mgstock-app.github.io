@@ -210,15 +210,15 @@
    let fontSize=18;
    do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=232)break;fontSize--;}while(fontSize>8);
    ctx.fillText(title,120,11,234);
-   // Draw the 95 EAN modules directly: no SVG whitespace or tiny scaled text.
+   // Scanner-first EAN-13: exact 2-dot modules and 10-dot quiet zones.
+   // Avoid nonuniform rounding of 230/95 that distorts bar/space ratios.
    const bits=window.GestLokPosEAN13.bits(p.sku);
-   const left=5,unit=230/95;
+   const modulePx=2, left=25;
    for(let i=0;i<bits.length;i++){
-    if(bits[i]!=='1')continue;
-    const x=Math.round(left+i*unit),next=Math.round(left+(i+1)*unit);
-    ctx.fillRect(x,23,Math.max(1,next-x),60);
+    if(bits[i]==='1')ctx.fillRect(left+i*modulePx,22,modulePx,61);
    }
-   ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,90,234);
+   // Preserve 25px clear margins on both sides of the 190px barcode.
+   ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(p.sku,120,91,190);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
    if(printWindow){
     const dataUrl=canvas.toDataURL('image/png');
