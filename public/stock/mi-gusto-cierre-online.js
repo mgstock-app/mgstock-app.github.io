@@ -4,7 +4,7 @@
 'use strict';
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
-const METHODS={transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago'};
+const METHODS={transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',efectivo:'Efectivo'};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
@@ -70,9 +70,9 @@ async function refresh(){
 function status(){
  const s=snapshot?.active;
  return '<div class="mg-on-summary">'+
- ['transferencia','getnet','mercado_pago','total_app','total_ventas','online_local'].map((key,i)=>
+ ['transferencia','getnet','mercado_pago','efectivo','total_app','total_ventas','online_local'].map((key,i)=>
   '<div class="mg-on-summary-item '+(key==='online_local'?'mg-on-local':key==='total_ventas'?'mg-on-total':'')+'"><span>'+esc({
- transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',total_app:'Total APP',
+ transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',efectivo:'Efectivo',total_app:'Total APP',
  total_ventas:'Total ventas',online_local:'Online Local'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div>';
 }
 function currentHead(){
@@ -107,35 +107,36 @@ function movementList(){
  if(!all.length)return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+
    '<p class="mg-on-empty">Todavía no hay comandas cargadas en este turno.</p></section>';
  const method=r=>'<span class="mg-on-method"><span class="mg-on-method-mark mg-on-method-'+esc(r.method)+'" aria-hidden="true">'+
-  esc(({transferencia:'T',getnet:'G',mercado_pago:'MP'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
+  esc(({transferencia:'T',getnet:'G',mercado_pago:'MP',efectivo:'E'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
  const appControl=r=>'<button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+
    '" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>'+(r.app?'APP':'—')+'</b></button>';
  const actions=r=>'<div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
    '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div>';
  const desktop='<div class="mg-on-recent-desktop"><div class="mg-on-tablewrap"><table><thead><tr>'+
   '<th>Hora</th><th>Comanda</th><th>Monto</th><th>Forma de pago</th><th>APP</th><th>Acciones</th></tr></thead><tbody>'+
-  rows.map(r=>'<tr><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong>'+
+  rows.map(r=>'<tr class="'+(r.method==='efectivo'?'mg-on-cash-row':'')+'"><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong>'+
    (r.observacion?'<span title="'+esc(r.observacion)+'" class="mg-on-recent-note">'+esc(r.observacion)+'</span>':'')+'</td>'+
-   '<td><strong>'+cash(r.amount)+'</strong></td><td>'+method(r)+'</td><td>'+appControl(r)+'</td><td>'+actions(r)+'</td></tr>').join('')+
+   '<td><strong>'+cash(r.amount)+'</strong>'+(r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</td><td>'+method(r)+'</td><td>'+appControl(r)+'</td><td>'+actions(r)+'</td></tr>').join('')+
   '</tbody></table></div></div>';
- const mobile='<div class="mg-on-recent-mobile">'+rows.map(r=>'<article class="mg-on-recent-card">'+
+ const mobile='<div class="mg-on-recent-mobile">'+rows.map(r=>'<article class="mg-on-recent-card '+(r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
   '<div class="mg-on-recent-card-top"><div><small>'+timeOf(r.created_at)+' · Comanda #'+esc(r.comanda)+'</small>'+
-  '<strong>'+cash(r.amount)+'</strong></div>'+appControl(r)+'</div>'+
+  '<strong>'+cash(r.amount)+'</strong>'+(r.method==='efectivo'?'<small>Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</div>'+appControl(r)+'</div>'+
   '<div class="mg-on-recent-card-method">'+method(r)+'</div>'+
   (r.observacion?'<p class="mg-on-recent-card-note">'+esc(r.observacion)+'</p>':'')+actions(r)+'</article>').join('')+'</div>';
  return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+desktop+mobile+
  (all.length>6?'<button type="button" class="mg-on-more" data-mgon-recent-all aria-expanded="'+showAllMoves+'">'+
  (showAllMoves?'Mostrar solo los últimos 6':'Ver los '+all.length+' movimientos del turno')+'</button>':'')+'</section>';
 }
+function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=Number(f.elements.amount?.value||0);if(f.elements.method?.value!=='efectivo'||!gross){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Efectivo · Bruto '+cash(gross)+' − 10% ('+cash(discount)+') = A cobrar '+cash(gross-discount);}
 function entry(){
  const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
  return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
   '<h3>'+(r?'Editar comanda':'Cargar pedido')+'</h3></div>'+
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
- '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" autocomplete="off" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.amount||'')+'" placeholder="0,00" required></label>'+
+ '<label>Monto ($)<input type="number" inputmode="decimal" name="amount" autocomplete="off" min="0.01" max="99999999999" step="0.01" value="'+esc(r?.gross_amount??r?.amount??'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
  '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
- '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
+ '<p class="mg-on-cash-preview" id="mg-on-cash-preview" aria-live="polite"></p>'+ '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
  '<label class="mg-on-observation">Detalle de la observación <small>(máximo 300 caracteres)</small>'+
  '<textarea name="observacion" maxlength="300" autocomplete="off" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
  '<div class="mg-on-actions mg-on-save-actions"><button class="mg-on-primary mg-on-save" type="submit" '+(!writable()?'disabled':'')+'>'+
@@ -233,7 +234,7 @@ async function showPhoto(id){
 function shiftCard(s,turnoHint='tarde'){
  if(!s)return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(turnoHint))+'</h3><span class="mg-on-pending">Próximo turno</span></header><p class="mg-on-empty">Sin movimientos. Este turno todavía no tiene registros guardados.</p></article>';
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
- [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['total_app','Total APP'],['total_ventas','Total ventas'],['online_local','Online Local']].map(([key,label])=>
+ [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas'],['online_local','Online Local']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
  '<small>'+Number(s.comandas||0)+' comandas registradas</small>'+photoControl(s)+'</article>';
 }
@@ -466,5 +467,7 @@ function subscribe(loc,push){
  window.addEventListener('focus',focus);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focus);});
 }
+document.addEventListener('input',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
+document.addEventListener('change',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
 window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf}});
 })();
