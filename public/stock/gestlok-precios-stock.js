@@ -219,6 +219,13 @@
     if(!doc)throw Error('No se pudo abrir la vista de impresión.');
     doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta de producto</title><style>@page{size:30mm 12mm;margin:0}html,body{margin:0;padding:0;width:30mm;height:12mm}img{display:block;width:30mm;height:12mm}</style></head><body><img alt="Etiqueta" src="'+dataUrl+'"></body></html>');doc.close();
     const image=doc.querySelector('img');
+    const portrait=document.createElement('canvas');
+    portrait.width=96;portrait.height=240;
+    const portraitCtx=portrait.getContext('2d');
+    portraitCtx.fillStyle='#fff';portraitCtx.fillRect(0,0,96,240);
+    portraitCtx.translate(96,0);portraitCtx.rotate(Math.PI/2);
+    portraitCtx.drawImage(canvas,0,0,240,96);
+    printWindow.closest('[data-ps-print-preview]').dataset.niimbotImage=portrait.toDataURL('image/png');
     const modal=printWindow.closest('[data-ps-print-preview]');
     const readyButton=modal?.querySelector('[data-ps-confirm-print]');
     if(readyButton){readyButton.disabled=false;readyButton.textContent='Imprimir ahora';}
@@ -231,6 +238,23 @@
  }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
+  if(e.target.closest('[data-ps-niimbot-print]')){
+   e.preventDefault();
+   const modal=document.querySelector('[data-ps-print-preview]');
+   const btn=modal?.querySelector('[data-ps-niimbot-print]');
+   const image=modal?.dataset.niimbotImage;
+   if(!window.Niimbot?.isSupported?.()){modal.querySelector('p').textContent='Abrí GESTLOK en Chrome para Android y activá Bluetooth.';return;}
+   if(!image){modal.querySelector('p').textContent='Todavía se está preparando la etiqueta.';return;}
+   btn.disabled=true;btn.textContent='Conectando e imprimiendo…';
+   const model={id:2320,label:'Niimbot D110_M',name_prefixes:['D110'],task:'v4',protocol:'v4',dpi:203,density:3,label_type:1,speed:1};
+   const size={w_px:96,h_px:240,offset_y_px:0};
+   void window.Niimbot.printImage(image,{model,size,density:3}).then(()=>{
+    modal.querySelector('p').textContent='Etiqueta enviada a NIIMBOT D110_M.';
+   }).catch(err=>{
+    modal.querySelector('p').textContent='Error Bluetooth: '+(err?.message||'No se pudo imprimir.');
+   }).finally(()=>{btn.disabled=false;btn.textContent='Imprimir con NIIMBOT D110_M';});
+   return;
+  }
   if(e.target.closest('[data-ps-close-print]')){e.preventDefault?.();document.querySelector('[data-ps-print-preview]')?.remove();return;}
   if(e.target.closest('[data-ps-confirm-print]')){e.preventDefault?.();const frame=document.querySelector('[data-ps-print-preview] iframe');if(frame?.contentWindow){frame.contentWindow.focus();frame.contentWindow.print();}return;}
   const print=e.target.closest('[data-ps-print]');
@@ -241,9 +265,13 @@
    modal.dataset.psPrintPreview='true';
    modal.setAttribute('role','dialog');modal.setAttribute('aria-label','Vista previa de etiqueta');
    modal.style.cssText='position:fixed;z-index:2147483647;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px';
-   modal.innerHTML='<div style="background:white;color:#172a42;padding:20px;border-radius:12px;max-width:95vw;width:420px;box-shadow:0 12px 40px #0005"><h3>Imprimir etiqueta</h3><p>Vista previa de 30 × 12 mm. No se descargará ningún archivo.</p><iframe title="Etiqueta lista para imprimir" style="width:300px;max-width:100%;height:120px;border:1px solid #ccc;background:white"></iframe><p style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" data-ps-confirm-print disabled>Preparando etiqueta…</button><button type="button" data-ps-close-print>Cerrar</button></p></div>';
+   modal.innerHTML='<div style="background:white;color:#172a42;padding:20px;border-radius:12px;max-width:95vw;width:420px;box-shadow:0 12px 40px #0005"><h3>Imprimir etiqueta</h3><p>Vista previa de 30 × 12 mm. No se descargará ningún archivo.</p><iframe title="Etiqueta lista para imprimir" style="width:300px;max-width:100%;height:120px;border:1px solid #ccc;background:white"></iframe><p style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" data-ps-niimbot-print disabled>Preparando Bluetooth…</button><button type="button" data-ps-confirm-print disabled>Imprimir con sistema</button><button type="button" data-ps-close-print>Cerrar</button></p></div>';
    document.body.append(modal);
    const frame=modal.querySelector('iframe');
+   const btButton=modal.querySelector('[data-ps-niimbot-print]');
+   const enableBluetooth=()=>{btButton.disabled=false;btButton.textContent=window.Niimbot?.isSupported?.()?'Imprimir con NIIMBOT D110_M':'Bluetooth web no disponible';};
+   if(window.Niimbot)enableBluetooth();
+   else{const script=document.createElement('script');script.src='/stock/sistema-venta/niimbot-driver.js';script.onload=enableBluetooth;script.onerror=()=>{btButton.textContent='No se pudo cargar Bluetooth';};document.head.append(script);}
    void downloadLabel(print.dataset.psPrint,frame).catch(err=>{modal.querySelector('p').textContent=err.message||'No se pudo preparar la etiqueta.';modal.querySelector('[data-ps-confirm-print]').textContent='Error de impresión';});return;
   }
   const label=e.target.closest('[data-ps-label]');
