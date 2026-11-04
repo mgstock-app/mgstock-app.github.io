@@ -112,3 +112,47 @@
 .download:disabled { opacity: .5; cursor: wait; }
 .archiveHeader ~ .tabla td { background: #fff; }
 .archiveHeader ~ .tabla { max-width: 100%; }
+
+/* Munro · Semana: cuadro de altura fija, scroll en ambos ejes y celdas compactas.
+   Resumen conserva su diseño actual. El contenido archivado no se modifica. */
+.semanaScrollable {
+  width: 100%;
+  max-width: 100%;
+  height: min(560px, 65vh);
+  min-height: 260px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border-top: 1px solid #e5e7eb;
+}
+.semanaScrollable .rTabla {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+  font-size: 12px;
+}
+.semanaScrollable .rTabla th,
+.semanaScrollable .rTabla td {
+  padding: 5px 8px;
+  line-height: 1.35;
+  white-space: nowrap;
+  vertical-align: middle;
+  min-width: 54px;
+  border-right: 1px solid #edf0f4;
+}
+.semanaScrollable .rTabla th {
+  padding: 7px 8px;
+  font-size: 12px;
+}
+.semanaScrollable .rTabla td:first-child {
+  min-width: 85px;
+}
+.semanaScrollable:focus-visible {
+  outline: 2px solid #1e2f52;
+  outline-offset: -2px;
+}
+@media (max-width: 640px) {
+  .semanaScrollable { height: min(480px, 60vh); }
+  .semanaScrollable .rTabla th,
+  .semanaScrollable .rTabla td { padding: 4px 6px; }
+}
