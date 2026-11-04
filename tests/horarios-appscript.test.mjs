@@ -15,8 +15,8 @@ test('Archivo automático: lunes 08 Argentina, una vez tras confirmar, reintenta
   Utilities:{formatDate:(date,zone,fmt)=>{
    assert.equal(zone,'America/Argentina/Buenos_Aires');
    const local=new Date(date.getTime()-3*3600000);
-   return fmt==='u'?String(local.getUTCDay()||7):fmt==='HHmm'?local.toISOString().slice(11,16).replace(':',''):local.toISOString().slice(0,10);
-  }},SpreadsheetApp:{openById:id=>{assert.equal(id,'synthetic-sheet');return {};}}};
+   return fmt==='u'?String(local.getUTCDay()||7):fmt==='HHmm'?local.toISOString().slice(11,16).replace(':',''):fmt==='dd/MM/yyyy'?local.toISOString().slice(0,10).split('-').reverse().join('/'):local.toISOString().slice(0,10);
+  }},SpreadsheetApp:{openById:id=>{assert.equal(id,'synthetic-sheet');return {getSheetByName:name=>({getRange:cell=>({getDisplayValue:()=>{assert.equal(name,'Resumen');assert.equal(cell,'B2');return '02/11/2026';}})})};}}};
  vm.createContext(context);vm.runInContext(script,context);
  context.guardarArchivoGestlok=()=>{saves++;if(fail)throw Error('Exportación fallida');return {archivo_id:'synthetic-archive'};};
  const run=d=>context.ejecutarArchivoProgramadoGestlok(new Date(d));
@@ -26,8 +26,8 @@ test('Archivo automático: lunes 08 Argentina, una vez tras confirmar, reintenta
  fail=false;run('2026-11-09T11:01:00Z');assert.equal(saves,2);
  run('2026-11-09T11:02:00Z');assert.equal(saves,2);
  run('2026-11-10T11:00:00Z');assert.equal(saves,2);
- run('2026-11-16T11:00:00Z');assert.equal(saves,3);
- assert.equal(properties.GESTLOK_ULTIMO_LUNES,'2026-11-16');
+ assert.throws(()=>run('2026-11-16T11:00:00Z'),/semana anterior/);assert.equal(saves,2);
+ assert.equal(properties.GESTLOK_ULTIMO_LUNES,'2026-11-09');
 });
 test('PDF: exporta hasta la última fila visible con contenido, no corta la hoja Semana ni envía si falla una exportación',()=>{
  let released=0,posted=0,fail=false;

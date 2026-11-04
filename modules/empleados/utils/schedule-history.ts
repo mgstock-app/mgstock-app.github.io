@@ -201,10 +201,12 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "",
     "function alCambiar() {",
     "  try { enviarSemana(); } catch (e) { console.warn(e); }",
+    "  if (GESTLOK_TABLAS) try { enviarEnVivoGestlok(); } catch (e) { console.warn(e); }",
     "}",
     "",
     "function enviarAhora() {",
     "  var r = enviarSemana();",
+    "  if (GESTLOK_TABLAS) enviarEnVivoGestlok();",
     "  SpreadsheetApp.getUi().alert('Listo: GESTLOK guardó la semana del ' + r.semana + ' (' + r.colaboradores + ' colaboradores).');",
     "}",
     "",
@@ -213,7 +215,7 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "    if (t.getHandlerFunction() === 'alCambiar') ScriptApp.deleteTrigger(t);",
     "  });",
     "  ScriptApp.newTrigger('alCambiar').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();",
-    "  ScriptApp.newTrigger('alCambiar').timeBased().everyHours(1).create();",
+    "  ScriptApp.newTrigger('alCambiar').timeBased()" + (tablas ? ".everyMinutes(5)" : ".everyHours(1)") + ".create();",
     "  instalarArchivoGestlok();",
     "  enviarAhora();",
     "}",
@@ -224,6 +226,21 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
 
 // Exportación de ambas hojas originales; nunca borra, limpia ni modifica la planilla.
 const ARCHIVO_SCRIPT = String.raw`
+function enviarEnVivoGestlok() {
+  if (!GESTLOK_TABLAS) return;
+  var ss = SpreadsheetApp.getActive();
+  var resumen = ss.getSheetByName("Resumen"), semana = ss.getSheetByName("Semana");
+  if (!resumen || !semana) throw new Error("Faltan hojas Resumen o Semana.");
+  var desde = resumen.getRange("B2").getDisplayValue(), hasta = resumen.getRange("D2").getDisplayValue();
+  var response = UrlFetchApp.fetch(GESTLOK_URL + "/rest/v1/rpc/rm_horarios_en_vivo_recibir", {
+    method:"post",contentType:"application/json",muteHttpExceptions:true,
+    headers: GESTLOK_CLAVE.indexOf("eyJ") === 0 ? {apikey:GESTLOK_CLAVE,Authorization:"Bearer "+GESTLOK_CLAVE} : {apikey:GESTLOK_CLAVE},
+    payload:JSON.stringify({p_codigo:GESTLOK_CODIGO,p_desde:desde,p_hasta:hasta,
+      p_tablas:{Resumen:tablaGestlok(resumen),Semana:tablaGestlok(semana)}})
+  });
+  if (response.getResponseCode() >= 300) throw new Error("No se pudo sincronizar Semana y Resumen: "+response.getContentText());
+}
+
 function tablaGestlok(hoja) {
   var range = hoja.getDataRange();
   var values = range.getDisplayValues();
@@ -315,7 +332,14 @@ function ejecutarArchivoProgramadoGestlok(ahora) {
   if (props.getProperty('GESTLOK_ULTIMO_LUNES') === lunes) return;
   var id = props.getProperty('GESTLOK_PLANILLA');
   if (!id) throw new Error('Falta activar el archivo automático desde el menú GESTLOK.');
-  var r = guardarArchivoGestlok(SpreadsheetApp.openById(id));
+  var ss = SpreadsheetApp.openById(id);
+  var inicio = ss.getSheetByName('Resumen').getRange('B2').getDisplayValue();
+  var fechaAnterior = new Date(ahora.getTime() - 7*24*60*60*1000);
+  var anterior = Utilities.formatDate(fechaAnterior, zona, 'dd/MM/yyyy');
+  var anteriorISO = Utilities.formatDate(fechaAnterior, zona, 'yyyy-MM-dd');
+  if (String(inicio).trim() !== anterior && String(inicio).trim() !== anteriorISO)
+    throw new Error('No se archivó: la hoja ya no corresponde a la semana anterior ('+anterior+'). Revisá la planilla y usá el archivo manual si corresponde.');
+  var r = guardarArchivoGestlok(ss);
   props.setProperties({GESTLOK_ULTIMO_LUNES:lunes, GESTLOK_ULTIMO_ARCHIVO:r.archivo_id});
 }
 `;
