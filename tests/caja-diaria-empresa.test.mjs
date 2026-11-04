@@ -203,7 +203,7 @@ test('Vista del día: abierta, cerrada sin reabrir y sin foto', async () => {
 
 test('Conexión con la app sin afectar a otras empresas', () => {
   const runtime = read('components/stock-runtime.tsx'), owner = read('public/stock/gestlok-owner-areas.js');
-  assert.match(runtime, /if \(!visitor\) await load\("\/stock\/gestlok-caja-diaria\.js\?rev=caja-mi-local-20261104"\)/);
+  assert.match(runtime, /if \(!visitor\) await load\("\/stock\/gestlok-caja-diaria\.js\?rev=caja-integrada-20261104"\)/);
   assert.match(owner, /window\.GestLokCajaDiaria\?\.refresh\?\.\(api\)/);
   assert.match(owner, /const caja=window\.GestLokCajaDiaria\?\.homeTile\?\.\(\)\|\|''/);
   assert.match(owner, /'<\/div>'\+\(isSoloOwner\(\)\?'':caja\)\+pilot\+futurePrices\+/);
