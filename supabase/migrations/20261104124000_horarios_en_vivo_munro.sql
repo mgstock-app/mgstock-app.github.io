@@ -24,8 +24,8 @@ begin
     or v_desde > (timezone('America/Argentina/Buenos_Aires',now())::date + 7)
     or v_desde < (timezone('America/Argentina/Buenos_Aires',now())::date - 14)
  then raise exception 'Fechas de semana inválidas' using errcode='22023'; end if;
- if not rm_test_private.horarios_validar_tabla(p_tablas->'Resumen')
-    or not rm_test_private.horarios_validar_tabla(p_tablas->'Semana')
+ if rm_test_private.horarios_validar_tabla(p_tablas->'Resumen') is not true
+    or rm_test_private.horarios_validar_tabla(p_tablas->'Semana') is not true
  then raise exception 'Tablas incompletas' using errcode='22023'; end if;
  if exists(select 1 from rm_test_private.horarios_archivos where local_id='munro' and semana_desde=v_desde) then
    return jsonb_build_object('ok',true,'archivada',true);
