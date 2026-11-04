@@ -82,7 +82,8 @@
     }
     return p;
   })();
-  const integrado = (() => { try { return new URLSearchParams(location.search).get('integrado') === '1' && window.parent !== window && window.parent.location.origin === location.origin; } catch { return false; } })();
+  const anfitrion = (() => { try { return new URLSearchParams(location.search).get('integrado') === '1' && window.frameElement?.id === 'gl-caja-app-frame' ? window.frameElement.ownerDocument.defaultView : null; } catch { return null; } })();
+  const integrado = !!anfitrion;
   const volverGestlok = (clase) => PRE ? '<a class="' + (clase || 'btn texto chico') + '" href="../" data-caja-volver>← Volver a GESTLOK</a>' : '';
 
   // ---------------- estado ----------------
@@ -96,7 +97,7 @@
   // ---------------- Supabase ----------------
   let sb = null;
   try {
-    sb = integrado && window.parent.GestLokSupabase ? window.parent.GestLokSupabase : window.supabase.createClient(CFG.url, CFG.key, {
+    sb = integrado && anfitrion.GestLokSupabase ? anfitrion.GestLokSupabase : window.supabase.createClient(CFG.url, CFG.key, {
       auth: { storageKey: 'caja-app-auth', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
   } catch (e) {
@@ -901,7 +902,7 @@
   // ---------------- eventos ----------------
   document.addEventListener('click', (ev) => {
     if(integrado && ev.target.closest('[data-caja-volver]')){
-      ev.preventDefault();window.parent.postMessage({type:'gestlok-caja-volver'},location.origin);return;
+      ev.preventDefault();anfitrion.postMessage({type:'gestlok-caja-volver'},location.origin);return;
     }
     const b = ev.target.closest('[data-act]');
     if (!b || b.disabled) return;

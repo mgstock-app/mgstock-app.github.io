@@ -100,7 +100,7 @@
   if(!appRoot){
    appRoot=document.createElement('section');appRoot.id='gl-caja-app-panel';
    appRoot.setAttribute('role','dialog');appRoot.setAttribute('aria-modal','true');appRoot.setAttribute('aria-label','Mi local · Caja');
-   appRoot.innerHTML='<header><strong>Mi local · Caja</strong><button type="button" data-caja-app-back>← Volver a Mi local</button></header><iframe title="Caja de mi local" src="'+esc(url+'&integrado=1&v=navegacion-20261104')+'"></iframe>';
+   appRoot.innerHTML='<header><strong>Mi local · Caja</strong><button type="button" data-caja-app-back>← Volver a Mi local</button></header><iframe id="gl-caja-app-frame" title="Caja de mi local" src="'+esc(url+'&integrado=1&v=navegacion-20261104')+'"></iframe>';
    document.body.append(appRoot);appIdentity=identity;
   }
   appRoot.hidden=false;document.body.classList.add('gl-caja-app-open');
