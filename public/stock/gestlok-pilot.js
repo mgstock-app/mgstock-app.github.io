@@ -277,8 +277,12 @@
   if(t){void switchSection(t.dataset.pilotTab);return;}
   if(e.target.closest('[data-pilot-new]')){
    editing='';render();
-   document.querySelector('#gl-pilot-content .gl-pilot-form-slot')?.insertAdjacentHTML('afterbegin',form(active));
-   document.querySelector('#gl-pilot-form input[name="title"]')?.focus();
+   const slot=document.querySelector('#gl-pilot-content .gl-pilot-form-slot:not([hidden])');
+   if(slot){
+    slot.insertAdjacentHTML('afterbegin',form(active));
+    slot.scrollIntoView({behavior:'smooth',block:'start'});
+    document.querySelector('#gl-pilot-form input[name="title"]')?.focus({preventScroll:true});
+   }
   }
   const edit=e.target.closest('[data-pilot-edit]');
   if(edit){editing=edit.dataset.pilotEdit;error='';render();document.querySelector('#gl-pilot-form')?.scrollIntoView({behavior:'smooth',block:'nearest'});}
