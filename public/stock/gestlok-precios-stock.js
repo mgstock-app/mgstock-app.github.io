@@ -82,7 +82,7 @@
      '<div><small>Aviso de stock bajo</small><strong>'+esc(p.stock_minimum)+'</strong></div></div>')+
    '<footer><small>Actualizado '+esc(new Date(p.updated_at).toLocaleDateString('es-AR'))+'</small>'+
    '<button type="button" data-ps-label="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Descargar etiqueta</button>'+ 
-   '<button type="button" data-ps-print="'+id+'" '+(!/^\\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Imprimir etiqueta</button>'+ 
+   '<button type="button" data-ps-print="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Imprimir etiqueta</button>'+ 
    '<button type="button" data-ps-edit="'+id+'">'+(mode==='precios'?'Editar precios':'Actualizar stock')+'</button></footer></article>';
  }
  function priceForm(){
