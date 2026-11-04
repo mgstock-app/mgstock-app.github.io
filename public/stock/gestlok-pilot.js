@@ -63,7 +63,6 @@
    const {data,error:err}=await window.GestLokSupabase.from('gestlok_pilot_access')
     .select('enabled,owner_uid,plan_code').eq('tenant_id',TENANT).maybeSingle();
    if(err)throw err;
-   const identity=await window.GestLokSupabase.auth.getUser();
    if(epoch!==accessEpoch)return;
    enabled=data?.plan_code==='scanner'&&!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
    ownerUid=enabled?identity.data.user.id:'';
