@@ -206,9 +206,7 @@
    ctx.fillStyle='#fff';ctx.fillRect(0,0,240,96);
    const rawName=String(p.name||'Producto').trim().replace(/\s+/g,' ');
    const title=rawName.length>38?rawName.slice(0,37)+'…':rawName;
-   // Compensate the D110_M feed alignment while keeping the EAN bars unchanged.
-   // Shift the whole design toward the physical label center without altering EAN module widths.
-   ctx.translate(18,0);
+   // Center on the full 240px feed axis. Never translate the raster: it clips EAN bars.
    ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
    let fontSize=18;
    do{ctx.font='bold '+fontSize+'px Arial, sans-serif';if(ctx.measureText(title).width<=232)break;fontSize--;}while(fontSize>8);
