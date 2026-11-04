@@ -1,9 +1,10 @@
-/* GESTLOK | Centro de control piloto exclusivo de la empresa Perfumes.
+/* GESTLOK | Navegación compartida del Plan Scanner, habilitada por registro privado.
  * Todas las lecturas/escrituras están protegidas adicionalmente por RLS en Supabase.
  * No es un sistema de facturación, un conector externo ni una copia de seguridad real. */
 (() => {
  'use strict';
- const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
+ let TENANT='';
+ const SCANNER_MODULES=['tablero','sistema_venta','stock','precios'];
  const MODULES=[
   ['tablero','Panel del dueño','Resumen de los registros cargados en el piloto.','general'],
   ['sistema_venta','🛒 Sistema de Ventas','Escanear productos con la cámara o un lector y preparar un carrito de prueba.','general'],
@@ -37,26 +38,30 @@
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const attr=esc;
  const today=()=>new Date().toLocaleDateString('en-CA');
- let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='';
+ let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='',accessEpoch=0;
  function eligible(context,host){
   return !!context && context.tenant_id===TENANT && context.role==='dueno'
     && host?.role?.()==='dueno' && host?.S?.me?.tenant_id===TENANT;
  }
- function reset(){enabled=false;verified=false;checking=false;api=null;ownerUid='';close();}
+ function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';records=[];audit=[];window.GestLokPreciosStock?.reset?.();close();}
  async function refresh(context,host){
-  if(!eligible(context,host)){reset();return;}
+  if(!context?.tenant_id||context.tenant_id!==host?.S?.me?.tenant_id||context.role!=='dueno'||host?.role?.()!=='dueno'||context.logo_id==='mi-gusto'||context.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'){reset();return;}
+  if(TENANT!==context.tenant_id){reset();TENANT=context.tenant_id;}
   api=host;
   if(verified||checking)return;
   checking=true;
+  const epoch=accessEpoch;
   try{
    const {data,error:err}=await window.GestLokSupabase.from('gestlok_pilot_access')
-    .select('enabled,owner_uid').eq('tenant_id',TENANT).maybeSingle();
+    .select('enabled,owner_uid,plan_code').eq('tenant_id',TENANT).maybeSingle();
    if(err)throw err;
    const identity=await window.GestLokSupabase.auth.getUser();
-   enabled=!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
+   if(epoch!==accessEpoch)return;
+   enabled=data?.plan_code==='scanner'&&!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
    ownerUid=enabled?identity.data.user.id:'';
-  }catch{enabled=false;}
+  }catch{if(epoch===accessEpoch)enabled=false;}
   finally{
+   if(epoch!==accessEpoch)return;
    checking=false;verified=true;
    if(api?.S?.me?.tenant_id===TENANT)api.render?.();
   }
@@ -64,8 +69,8 @@
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
   return '<div class="gl-pilot-entry"><div><small>GESTLOK</small><h2>Mi local</h2>'+
-   '<p>Caja, ventas, stock, precios, proveedores y reportes. Todo en un solo lugar.</p></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-owner-nav="reports">Reportes</button><button type="button" data-pilot-open>Ver resumen</button></div></div>';
+   '<p>Caja, ventas, stock y precios. Todo en un solo lugar.</p></div>'+
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Inicio</button></div></div>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
@@ -74,6 +79,7 @@
   return true;
  }
  async function load(){
+  const epoch=accessEpoch;
   await assertAccess();
   const db=window.GestLokSupabase;
   const [r,a]=await Promise.all([
@@ -83,6 +89,7 @@
   ]);
   if(r.error)throw r.error;
   if(a.error)throw a.error;
+  if(epoch!==accessEpoch)return;
   records=r.data||[];audit=a.data||[];
  }
  function close(back=true){
@@ -100,7 +107,7 @@
  function sidebar(){
   return '<nav class="gl-pilot-nav" aria-label="Secciones de tu negocio"><div><span class="gl-pilot-group">Mi local</span>'+
    '<button type="button" data-pilot-tab="tablero" class="'+(active==='tablero'?'is-active':'')+'">Inicio</button>'+
-   '<button type="button" data-pilot-caja>Caja</button><button type="button" data-owner-nav="business">Proveedores y pedidos</button><button type="button" data-owner-nav="reports">Reportes</button>'+
+   '<button type="button" data-pilot-caja>Caja</button>'+
    HOME_MODULES.map(id=>'<button type="button" data-pilot-tab="'+id+'" class="'+(active===id?'is-active':'')+'">'+esc(HOME_LABELS[id][0])+'</button>').join('')+'</div></nav>';
  }
  function dashboard(){
@@ -169,7 +176,7 @@
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
     '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
-    '<span>Caja, ventas, stock, precios, proveedores y reportes</span></div><button type="button" data-pilot-close aria-label="Volver a Mi local">← Volver a Mi local</button></header>'+
+    '<span>Caja, ventas, stock y precios</span></div><button type="button" data-pilot-close aria-label="Volver a Mi local">← Volver a Mi local</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
@@ -184,13 +191,7 @@
   try{await load();error='';}catch(e){error=e.message||'No se pudo cargar';}
   finally{loading=false;render();}
  }
- async function openOrders(){
-  if(!enabled)return;
-  if(!displayed)await open();
-  if(!displayed)return;
-  active='pedidos';error='';editing='';render();
-  await window.GestLokPedidos?.open?.();
- }
+ async function openOrders(){return;}
  const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','checkout-client.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
@@ -221,7 +222,7 @@
   }
  }
  async function switchSection(section){
-  if(!DICTIONARY[section]||!enabled)return;
+  if(!SCANNER_MODULES.includes(section)||!enabled)return;
   if(!displayed)await open();
   if(!displayed)return;
   active=section;editing='';error='';render();
@@ -270,7 +271,7 @@
  document.addEventListener('click',e=>{
   if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close(false);return;}
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
-  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
+  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();if(displayed)close(false);const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
@@ -302,5 +303,5 @@
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){close();document.body.classList.remove('gl-pilot-open');}});
  window.GestLokPilot=Object.freeze({refresh,homeTile,open,openOrders,reset,
   authorized:()=>!!enabled&&ownerUid!==''&&api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='dueno',
-  switchSection,rerender:render,modules:MODULES.map(([id])=>id)});
+  tenantId:()=>TENANT,scanner:()=>enabled&&api?.role?.()==='dueno'&&api?.S?.me?.tenant_id===TENANT,switchSection,rerender:render,modules:MODULES.map(([id])=>id)});
 })();
