@@ -215,7 +215,7 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "    if (t.getHandlerFunction() === 'alCambiar') ScriptApp.deleteTrigger(t);",
     "  });",
     "  ScriptApp.newTrigger('alCambiar').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();",
-    "  ScriptApp.newTrigger('alCambiar').timeBased().everyMinutes(5).create();",
+    "  ScriptApp.newTrigger('alCambiar').timeBased()" + (GESTLOK_TABLAS ? ".everyMinutes(5)" : ".everyHours(1)") + ".create();",
     "  instalarArchivoGestlok();",
     "  enviarAhora();",
     "}",
