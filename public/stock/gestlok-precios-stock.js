@@ -81,7 +81,8 @@
      '<div class="gl-ps-cell-grid gl-ps-stock-grid"><div><small>Unidades disponibles</small><strong>'+(p.stock_quantity==null?'Sin contar':esc(p.stock_quantity))+'</strong></div>'+
      '<div><small>Aviso de stock bajo</small><strong>'+esc(p.stock_minimum)+'</strong></div></div>')+
    '<footer><small>Actualizado '+esc(new Date(p.updated_at).toLocaleDateString('es-AR'))+'</small>'+
-   '<button type="button" data-ps-label="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Ver / descargar etiqueta</button>'+ 
+   '<button type="button" data-ps-label="'+id+'" '+(!/^\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Descargar etiqueta</button>'+ 
+   '<button type="button" data-ps-print="'+id+'" '+(!/^\\d{13}$/.test(String(p.sku||''))?'disabled title="Código EAN-13 pendiente"':'')+'>Imprimir etiqueta</button>'+ 
    '<button type="button" data-ps-edit="'+id+'">'+(mode==='precios'?'Editar precios':'Actualizar stock')+'</button></footer></article>';
  }
  function priceForm(){
@@ -184,7 +185,7 @@
   }catch(e){error=e.message||'No pudimos guardar stock.';}
   finally{busy=false;update();}
  }
- async function downloadLabel(id){
+ async function downloadLabel(id,printWindow){
   await assertAccess();
   const p=rows.find(x=>x.id===id&&x.active);
   if(!p||!/^\d{13}$/.test(String(p.sku||'')))throw Error('Este producto todavía no tiene código EAN-13.');
@@ -212,6 +213,15 @@
    // Keep the full barcode, including its printed EAN-13 digits, in the remaining space.
    ctx.drawImage(img,22,92,876,448);
    const png=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(Error('No se pudo exportar PNG.')),'image/png'));
+   if(printWindow){
+    const dataUrl=canvas.toDataURL('image/png');
+    const doc=printWindow.document;
+    doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta de producto</title><style>@page{size:30mm 12mm;margin:0}html,body{margin:0;padding:0;width:30mm;height:12mm}img{display:block;width:30mm;height:12mm}</style></head><body><img alt="Etiqueta" src="'+dataUrl+'"></body></html>');doc.close();
+    const image=doc.querySelector('img');
+    image.onload=()=>{printWindow.focus();printWindow.print();};
+    if(image.complete){printWindow.focus();printWindow.print();}
+    return;
+   }
    const pngUrl=URL.createObjectURL(png);
    const a=document.createElement('a');a.href=pngUrl;a.download='etiqueta-'+p.sku+'-30x12mm.png';document.body.append(a);a.click();a.remove();
    setTimeout(()=>URL.revokeObjectURL(pngUrl),30000);
@@ -219,6 +229,14 @@
  }
  document.addEventListener('click',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
+  const print=e.target.closest('[data-ps-print]');
+  if(print?.matches?.('[data-ps-print]')){
+   e.preventDefault?.();
+   const win=window.open('','_blank','width=700,height=400');
+   if(!win){error='El navegador bloqueó la ventana de impresión. Permití ventanas emergentes para GESTLOK.';update();return;}
+   win.document.write('<p>Preparando etiqueta para imprimir…</p>');
+   void downloadLabel(print.dataset.psPrint,win).catch(err=>{win.close();error=err.message||'No se pudo imprimir la etiqueta.';update();});return;
+  }
   const label=e.target.closest('[data-ps-label]');
   if(label?.matches?.('[data-ps-label]')){e.preventDefault?.();void downloadLabel(label.dataset.psLabel).catch(err=>{error=err.message||'No se pudo generar la etiqueta.';update();});return;}
   const el=e.target.closest('[data-ps-edit],[data-ps-new],[data-ps-cancel],[data-ps-refresh],[data-ps-use-suggested]');
