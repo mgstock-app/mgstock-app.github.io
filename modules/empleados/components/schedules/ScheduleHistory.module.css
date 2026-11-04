@@ -189,3 +189,25 @@
     max-height: 380px;
   }
 }
+
+/* Evitar que los encabezados fusionados de Sheets agranden todas las columnas.
+   Anchos calculados por cantidad de columnas, no por el texto de un merge. */
+.tabla.semanaScrollable .rTabla {
+  table-layout: fixed;
+  max-width: none;
+}
+.tabla.semanaScrollable .rTabla th,
+.tabla.semanaScrollable .rTabla td {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: none;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal !important;
+  padding: 5px 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+.tabla.semanaScrollable .rTabla th {
+  line-height: 1.3;
+}
