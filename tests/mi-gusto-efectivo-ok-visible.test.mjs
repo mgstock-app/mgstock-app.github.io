@@ -11,7 +11,7 @@ test('Mi Gusto: OK es la primera columna visible y persiste por movimiento',()=>
  const runtime=read('components/stock-runtime.tsx');
  const sql=read('supabase/migrations/20261105010500_mi_gusto_efectivo_ok.sql');
  new Script(js);
- const begin=js.indexOf('function cashMovementDetail()');
+ const begin=js.indexOf('function cashMovementDetail(');
  const end=js.indexOf('function parseAmountInput(',begin);
  assert.ok(begin>0 && end>begin);
  const section=js.slice(begin,end);
