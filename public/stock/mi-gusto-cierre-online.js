@@ -73,7 +73,7 @@ function status(){
  ['transferencia','getnet','mercado_pago','efectivo','total_app','total_ventas','online_local'].map((key,i)=>
   '<div class="mg-on-summary-item '+(key==='online_local'?'mg-on-local':key==='total_ventas'?'mg-on-total':'')+'"><span>'+esc({
  transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',efectivo:'Efectivo',total_app:'Total APP',
- total_ventas:'Total ventas',online_local:'Online Local'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div>';
+ total_ventas:'Total ventas online',online_local:'Online Local'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div><p class="mg-on-online-help">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla aparte.</p>';
 }
 function currentHead(){
  const s=snapshot?.active;
@@ -262,7 +262,7 @@ function summary(){
  return '<section class="mg-on-dashboard"><h3>Resumen diario · '+date(curr?.day)+'</h3>'+
  '<div class="mg-on-hero"><div><span>Total ventas del día</span><strong>'+cash(total)+'</strong></div><div><span>Online Local</span><strong>'+cash(onlineLocal)+'</strong></div></div>'+
  '<div class="mg-on-shifts">'+shiftCard(morning,'manana')+shiftCard(afternoon,'tarde')+'</div>'+
- '<p class="mg-on-note">Total APP = suma de comandas con APP activado. Online Local = Total ventas − Total APP.</p>'+
+ '<p class="mg-on-note">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla por separado y no se suma al online.</p>'+
  '<div class="mg-on-actions"><button type="button" data-mgon-tab="movimientos" class="mg-on-primary">Cargar comandas</button>'+
  '<button type="button" data-mgon-jump-history>Ver historial</button></div></section>';
 }
