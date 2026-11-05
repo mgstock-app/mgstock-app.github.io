@@ -71,5 +71,5 @@ test('Integración: activar hardware solo en Scanner y conservar ticket al refre
  assert.match(pos,/receiptButton\.hidden=false/);
  assert.match(pos,/GestLokPosDevices\?\.bindKeyboard/);
  assert.match(css,/\.gl-pos-device-grid/);
- assert.match(runtime,/scanner-resumen-20261105/);
+ assert.match(runtime,/scanner-devices-receipts-20261105/);
 });
