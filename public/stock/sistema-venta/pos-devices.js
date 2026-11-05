@@ -4,7 +4,7 @@
 (function(root){
 'use strict';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(n)||0);
 const defaults=()=>({readerEnabled:false,printerEnabled:false,paper:'58mm'});
 function key(tenant){if(!UUID.test(String(tenant||'')))throw Error('Empresa Scanner inválida.');return 'gestlok:scanner:devices:v1:'+tenant;}
