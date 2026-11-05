@@ -396,7 +396,7 @@ function attach(h){
  // Recalcular después de cada render: el guardado de borradores restaura el monto,
  // pero el aviso de efectivo debe reconstruirse sobre el formulario recién insertado.
  // Observar solo hijos directos de #view evita reaccionar al texto del aviso.
- const root=document.getElementById('view');
+ const root=document.getElementById?.('view');
  if(root&&typeof MutationObserver!=='undefined'){
   new MutationObserver(()=>{if(api?.S?.view==='cierre-online')updateCashPreview();}).observe(root,{childList:true});
  }
