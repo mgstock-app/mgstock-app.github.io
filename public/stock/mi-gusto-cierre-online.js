@@ -127,16 +127,17 @@ function movementList(){
  (all.length>6?'<button type="button" class="mg-on-more" data-mgon-recent-all aria-expanded="'+showAllMoves+'">'+
  (showAllMoves?'Mostrar solo los últimos 6':'Ver los '+all.length+' movimientos del turno')+'</button>':'')+'</section>';
 }
-function cashMovementDetail(){
- const s=snapshot?.active;
+function cashMovementDetail(s=snapshot?.active){
+ const closed=s?.status==='cerrado';
  const rows=[...(s?.movements||[])].filter(r=>r.method==='efectivo').reverse();
  const total=rows.reduce((v,r)=>v+(Number(r.amount)||0),0);
- const title='<header class="mg-on-cash-head"><div><h3>Detalle de efectivo del turno</h3><p>'+date(s?.day)+' · Turno '+esc(shiftName(s?.turno))+' · '+esc(LOCALS[local()]||'')+'</p></div><div class="mg-on-cash-total"><span>Total efectivo</span><strong>'+cash(total)+'</strong><small>'+rows.length+' movimientos</small></div></header>';
+ if(closed&&!rows.length)return '';
+ const title='<header class="mg-on-cash-head"><div><h3>Detalle de efectivo del turno</h3><p>'+date(s?.day)+' · Turno '+esc(shiftName(s?.turno))+' · '+esc(LOCALS[local()]||'')+(closed?' · Cerrado':'')+'</p></div><div class="mg-on-cash-total"><span>Total efectivo</span><strong>'+cash(total)+'</strong><small>'+rows.length+' movimientos</small></div></header>';
  if(!rows.length)return '<section class="mg-on-cash-detail-section">'+title+'<p class="mg-on-empty">Todavía no se registraron pagos en efectivo en este turno.</p></section>';
  const table='<div class="mg-on-cash-scroll" tabindex="0" aria-label="Detalle de pagos en efectivo"><table><thead><tr><th scope="col">OK</th><th scope="col">Comanda</th><th scope="col">Hora</th><th scope="col">Importe bruto</th><th scope="col">Descuento</th><th scope="col">Efectivo cobrado</th><th scope="col">Observación</th></tr></thead><tbody>'+
- rows.map(r=>'<tr class="'+(r.ok?'mg-on-cash-reviewed':'')+'"><td><label class="mg-on-ok-label"><input type="checkbox" data-mgon-cash-ok="'+esc(r.id)+'" '+(r.ok?'checked':'')+' '+(!writable()?'disabled':'')+' aria-label="OK comanda '+esc(r.comanda)+'"><span>OK</span></label></td><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+timeOf(r.created_at)+'</td><td>'+cash(r.gross_amount??r.amount)+'</td><td>'+cash(r.discount_amount||0)+'</td><td><strong>'+cash(r.amount)+'</strong></td><td>'+esc(r.observacion||'—')+'</td></tr>').join('')+
+ rows.map(r=>'<tr class="'+(r.ok?'mg-on-cash-reviewed':'')+'"><td><label class="mg-on-ok-label"><input type="checkbox" data-mgon-cash-ok="'+esc(r.id)+'" '+(r.ok?'checked':'')+' '+(closed||!writable()?'disabled':'')+' aria-label="OK comanda '+esc(r.comanda)+'"><span>OK</span></label></td><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+timeOf(r.created_at)+'</td><td>'+cash(r.gross_amount??r.amount)+'</td><td>'+cash(r.discount_amount||0)+'</td><td><strong>'+cash(r.amount)+'</strong></td><td>'+esc(r.observacion||'—')+'</td></tr>').join('')+
  '</tbody><tfoot><tr><td colspan="5">TOTAL EFECTIVO DEL TURNO</td><td>'+cash(total)+'</td><td>'+rows.length+' movimientos · '+rows.filter(r=>r.ok).length+' OK</td></tr></tfoot></table></div>';
- return '<section class="mg-on-cash-detail-section" aria-label="Detalle de efectivo del turno">'+title+table+'</section>';
+ return '<section class="mg-on-cash-detail-section'+(closed?' mg-on-cash-history':'')+'" aria-label="Detalle de efectivo del turno">'+title+table+'</section>';
 }
 function parseAmountInput(value){const raw=String(value??'').trim().replace(/\s/g,'');if(!/^\d{1,11}(?:\.\d{3})*(?:,\d{0,2})?$/.test(raw)&&!/^\d{1,11}(?:,\d{0,2})?$/.test(raw))return NaN;return Number(raw.replace(/\./g,'').replace(',','.'));}
 function formatAmountInput(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
@@ -268,7 +269,7 @@ function oldRows(s){
  return '<div class="mg-on-detail"><h4>Movimientos individuales · '+esc(shiftName(s.turno))+'</h4>'+
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Importe</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
  (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
- '</tbody></table></div>'+shiftCard(s)+'</div>';
+ '</tbody></table></div>'+shiftCard(s)+cashMovementDetail(s)+'</div>';
 }
 /* El servidor devuelve cierres definitivos por sucursal.
    Agrupar solamente en la presentación preserva detalle y cálculo histórico. */
@@ -311,9 +312,7 @@ function reportTurn(s,turno){
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
  (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
  '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
- '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+
- +
- '</div></section>';
+ '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+'</div>'+cashMovementDetail(s)+'</section>';
 }
 function historyModal(){
  if(!modalDay)return '';

@@ -407,3 +407,8 @@
 .mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td:first-child{background:#e5f4eb}
 .mg-on-cash-scroll tbody tr.mg-on-cash-reviewed .mg-on-ok-label{color:#126b3f}
 .mg-on-cash-scroll .mg-on-ok-label input{min-width:20px;min-height:20px}
+
+/* El detalle archivado conserva las tildes OK y no permite editar movimientos cerrados. */
+.mg-on-cash-history{margin-top:18px}
+.mg-on-cash-history .mg-on-ok-label{cursor:default}
+.mg-on-cash-history .mg-on-ok-label input:disabled{opacity:1;cursor:default}
