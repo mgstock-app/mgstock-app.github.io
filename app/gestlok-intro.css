@@ -72,3 +72,6 @@
   .gl-intro {animation:gl-intro-dismiss .2s ease 3.1s forwards}
   .gl-intro-progress > span {transform:none}
 }
+
+/* Keep the element mounted for legacy navigation checks, without replaying it. */
+.gl-intro.gl-intro-skipped { display:none !important; animation:none !important; }
