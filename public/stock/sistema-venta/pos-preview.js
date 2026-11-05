@@ -152,9 +152,10 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
    if(disposed)return;
    // El ticket se genera solo con importes confirmados por el servidor.
    lastReceipt=null;receiptButton.hidden=true;
-   const saved=await root.GestLokSupabase.from('gestlok_pilot_pos_sales')
+   let saved={data:null,error:true};
+   try{saved=await root.GestLokSupabase.from('gestlok_pilot_pos_sales')
     .select('id,total,items,payment_method,payment_breakdown,created_at')
-    .eq('tenant_id',result.tenantId).eq('id',result.saleId).single();
+    .eq('tenant_id',result.tenantId).eq('id',result.saleId).single();}catch(_){}
    if(!saved.error&&saved.data&&Array.isArray(saved.data.items)){
     const sale=saved.data;
     const breakdown=sale.payment_breakdown&&typeof sale.payment_breakdown==='object'
