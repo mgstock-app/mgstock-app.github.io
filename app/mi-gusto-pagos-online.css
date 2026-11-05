@@ -386,8 +386,8 @@
 .mg-on-cash-head p{margin:0;color:#627d91;font-size:12px}
 .mg-on-cash-metrics{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
 .mg-on-cash-metrics .mg-on-cash-total{min-width:175px}
-.mg-on-cash-discounts{background:#fff8ea;border-color:#efdbae}
-.mg-on-cash-discounts strong{color:#755119}
+.mg-on-cash-total.mg-on-cash-discounts{background:#fff8ea;border-color:#efdbae}
+.mg-on-cash-total.mg-on-cash-discounts strong{color:#755119}
 .mg-on-cash-total{display:grid;gap:3px;background:#e9f3fc;border:1px solid #d1e3f2;border-radius:12px;padding:11px 18px;text-align:right}
 .mg-on-cash-total span,.mg-on-cash-total small{color:#50728b;font-size:12px}
 .mg-on-cash-total strong{font-size:23px;color:#0e3c62;font-variant-numeric:tabular-nums}
