@@ -16,9 +16,8 @@ export function GestLokIntro() {
     }
     setVisible(true);
   }, []);
-  if (!visible) return null;
   return (
-    <div className="gl-intro" aria-hidden="true">
+    <div className={visible ? "gl-intro" : "gl-intro gl-intro-skipped"} aria-hidden="true">
       <span className="gl-intro-ring gl-intro-ring-one" />
       <span className="gl-intro-ring gl-intro-ring-two" />
       <div className="gl-intro-content">
