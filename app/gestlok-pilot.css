@@ -132,3 +132,23 @@ body.gl-pilot-open{overflow:hidden}
 #gl-pilot-panel .gl-pos-reconcile-grid strong{display:block;font-size:clamp(17px,2.2vw,22px);font-weight:800;color:#12345a;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 #gl-pilot-panel .gl-pos-reconcile-help{margin:12px 1px 0;color:#647e98;font-size:12px;line-height:1.55}
 @media(max-width:800px){#gl-pilot-panel .gl-pos-reconcile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#gl-pilot-panel .gl-pos-reconcile{padding:14px}}
+
+
+/* Plan Scanner · dispositivos opcionales por empresa/equipo */
+#gl-pilot-panel .gl-pos-devices-link{margin-top:10px;min-height:40px;border:1px solid #bfd0e2;background:#f6f9fd;color:#153a60;border-radius:9px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
+#gl-pilot-panel .gl-pos-devices{max-width:1050px;margin:auto}
+#gl-pilot-panel .gl-pos-devices>header h2{font-size:24px;color:#12345a;margin:0 0 8px}
+#gl-pilot-panel .gl-pos-devices>header p{color:#58728b;line-height:1.5}
+#gl-pilot-panel .gl-pos-device-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+#gl-pilot-panel .gl-pos-device-card{background:#fff;border:1px solid #d9e6f1;border-radius:15px;padding:20px;display:grid;align-content:start;gap:14px;min-width:0}
+#gl-pilot-panel .gl-pos-device-card h3{font-size:18px;color:#153b5f;margin:0}
+#gl-pilot-panel .gl-pos-device-card p{margin:0;color:#607991;line-height:1.5}
+#gl-pilot-panel .gl-pos-device-card label{display:grid;gap:7px;color:#244969;font-weight:700}
+#gl-pilot-panel .gl-pos-device-card input[type="text"],#gl-pilot-panel .gl-pos-device-card select{width:100%;min-height:44px;background:#fff;color:#173b60;border:1px solid #bdcedc;border-radius:9px;padding:8px 10px;font-size:16px}
+#gl-pilot-panel .gl-pos-device-card .gl-pos-device-toggle{display:flex;align-items:center;gap:10px;background:#f2f7fc;border-radius:9px;padding:12px;font-weight:750;line-height:1.4}
+#gl-pilot-panel .gl-pos-device-card .gl-pos-device-toggle input{width:22px;height:22px;accent-color:#12345a;flex:none}
+#gl-pilot-panel .gl-pos-device-card button{min-height:44px;padding:10px 15px;border:0;border-radius:9px;background:#12345a;color:#fff;font:inherit;font-weight:750;cursor:pointer}
+#gl-pilot-panel .gl-pos-device-card small,#gl-pilot-panel .gl-pos-device-help{color:#5f7690;line-height:1.5}
+#gl-pilot-panel .gl-pos-device-card [role="status"]{font-weight:700;color:#174a6d;overflow-wrap:anywhere}
+#gl-pilot-panel .gl-pos-device-help{margin-top:14px;font-size:13px}
+@media(max-width:700px){#gl-pilot-panel .gl-pos-device-grid{grid-template-columns:1fr}#gl-pilot-panel .gl-pos-device-card{padding:15px}}
