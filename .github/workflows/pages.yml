@@ -5,9 +5,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Un despliegue de GitHub Pages puede quedar esperando una aprobación obsoleta.
+# Usar un grupo nuevo libera la cola anterior; futuras publicaciones reemplazan las viejas.
 concurrency:
-  group: mgstock-pages
-  cancel-in-progress: false
+  group: mgstock-pages-recovered-20261105
+  cancel-in-progress: true
 jobs:
   build:
     if: github.repository == 'mgstock-app/mgstock-app.github.io'
