@@ -339,6 +339,7 @@
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
   if(e.target.closest('[data-pilot-caja]')){e.preventDefault();if(displayed)close(false);const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
+  if(e.target.closest('[data-pilot-devices]')){e.preventDefault();void switchSection('dispositivos');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
   if(e.target.closest('[data-pilot-stock]')){e.preventDefault();void switchSection('stock');return;}
