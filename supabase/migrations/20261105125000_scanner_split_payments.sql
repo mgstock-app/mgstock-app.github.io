@@ -71,9 +71,9 @@ begin
   end if;
 
   if jsonb_typeof(p_payments) is distinct from 'array'
-    or jsonb_array_length(p_payments) not between 1 and 20
+    or case when jsonb_typeof(p_payments)='array' then jsonb_array_length(p_payments) not between 1 and 20 else true end
     or jsonb_typeof(p_lines) is distinct from 'array'
-    or jsonb_array_length(p_lines) not between 1 and 100
+    or case when jsonb_typeof(p_lines)='array' then jsonb_array_length(p_lines) not between 1 and 100 else true end
   then
     raise exception 'Venta invalida' using errcode='22023';
   end if;
