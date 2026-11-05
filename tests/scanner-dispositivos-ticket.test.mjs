@@ -34,7 +34,7 @@ test('Lector USB/Bluetooth tipo teclado: añade lectura rápida solo fuera de fo
  for(const key of '7791234567895')event(key,{tagName:'INPUT'});
  event('Enter',{tagName:'INPUT'});
  assert.equal(accepted.length,1,'No interceptar escritura en campos');
- event('7');now+=250;for(const key of '791234567895')event(key);
+ for(const key of '7791234567895'){now+=200;event(key);}
  event('Enter');
  assert.equal(accepted.length,1,'No convertir tecleo lento en escaneo automático');
  stop();assert.ok(removed);
