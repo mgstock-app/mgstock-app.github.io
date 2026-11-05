@@ -378,3 +378,21 @@
 .mg-on-cash-detail{display:block;font-size:11px;color:#775b19;margin-top:4px}
 .mg-on-cash-preview:not(:empty){padding:12px;border-radius:10px;background:#fff4c9;color:#644d0e;font-weight:800;font-size:13px}
 .mg-on-cash-preview:empty{display:none}
+
+/* Mi Gusto · seguimiento detallado de efectivo por turno (Munro / Torcuato) */
+.mg-on-cash-detail-section{margin:20px 0 0;padding:clamp(14px,2vw,20px);border:1px solid #bfd3e6;border-radius:16px;background:#fff;box-shadow:0 4px 15px #173e6409}
+.mg-on-cash-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:15px}
+.mg-on-cash-head h3{margin:0 0 5px!important;color:#123451;font-size:19px}
+.mg-on-cash-head p{margin:0;color:#627d91;font-size:12px}
+.mg-on-cash-total{display:grid;gap:3px;background:#e9f3fc;border:1px solid #d1e3f2;border-radius:12px;padding:11px 18px;text-align:right}
+.mg-on-cash-total span,.mg-on-cash-total small{color:#50728b;font-size:12px}
+.mg-on-cash-total strong{font-size:23px;color:#0e3c62;font-variant-numeric:tabular-nums}
+.mg-on-cash-scroll{max-width:100%;overflow:auto;border:1px solid #dce7ef;border-radius:12px}
+.mg-on-cash-scroll table{border-collapse:collapse;width:100%;min-width:680px;font-size:13px}
+.mg-on-cash-scroll th{background:#13375b;color:#fff;text-align:left;font-weight:750;padding:13px 12px;white-space:nowrap}
+.mg-on-cash-scroll td{padding:12px;border-bottom:1px solid #e7eef4;color:#294c65}
+.mg-on-cash-scroll tbody tr:nth-child(even){background:#f6f9fc}
+.mg-on-cash-scroll tbody td:nth-child(5){font-weight:800;color:#123d61}
+.mg-on-cash-scroll tfoot{background:#e5f1fd;font-weight:850;color:#12395c}
+.mg-on-cash-scroll tfoot td{padding:15px 12px;border-top:2px solid #bed5e9}
+@media(max-width:520px){.mg-on-cash-head{align-items:stretch}.mg-on-cash-total{text-align:left}.mg-on-cash-detail-section{padding:12px}}
