@@ -6,15 +6,14 @@ function start(email,dashboard=true){
  cy.window().then(w=>{w.__dashboard=dashboard;});
  cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
 }
-describe('Inicio de la creadora · panel con resumen de la plataforma',()=>{
+describe('Inicio independiente de la creadora',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  it('la creadora ve el resumen con datos reales y sin planes ni suscripciones inventados',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch h1',{timeout:12000}).should('contain.text','¡Hola!');
-  cy.get('.gl-ch').should('contain.text','Empresas activas').and('contain.text','Usuarios totales').and('contain.text','Crecimiento de GESTLOK')
-   .and('contain.text','Personas por rol').and('contain.text','Estado de la plataforma').and('contain.text','Solo lectura')
+  cy.get('.gl-ch').should('contain.text','Mis empresas').and('contain.text','Mis locales').and('contain.text','Administración y herramientas').and('contain.text','Solo lectura')
    .and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
-  cy.get('.gl-ch-chart').should('be.visible');
+  cy.get('.gl-ch-shortcuts [data-ch-tab="usuarios"]').should('be.visible');
   // Ocho pestañas: se sumó «NFC y QR» (#199) a las siete anteriores.
   cy.get('.gl-ch-nav button').should('have.length',8);
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');

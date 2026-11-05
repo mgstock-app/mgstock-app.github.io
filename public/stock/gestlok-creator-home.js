@@ -169,65 +169,38 @@
   }
   const kpi = (icon, cls, label, value, foot) => '<article class="gl-ch-kpi"><span class="gl-ch-ico ' + cls + '">' + svg(icon, 26) + '</span><div><small>' + esc(label) + '</small><b>' + esc(value) + '</b><em>' + foot + '</em></div></article>';
   const up = t => '<i aria-hidden="true">↑</i> ' + esc(t);
+  // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
+  // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
-    const t = data.totals, r = data.roles, e = data.employees_roles, s = data.system, per = data.period;
-    const kpis = '<section class="gl-ch-kpis" aria-label="Resumen de la plataforma">' +
-      kpi('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>', 'p', 'Empresas activas', t.companies, up(num(t.companies_new_week) + (num(t.companies_new_week) === 1 ? ' nueva esta semana' : ' nuevas esta semana'))) +
-      kpi('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', 'b', 'Usuarios totales', t.users, esc(num(t.users_with_login) + ' ya ingresaron · ' + num(t.users_never) + ' sin ingresar')) +
-      kpi('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>', 'v', 'Personas en Empleados', t.employees, up(num(t.employees_new_week) + (num(t.employees_new_week) === 1 ? ' nueva esta semana' : ' nuevas esta semana'))) +
-      kpi('<path d="M5 12l4 4L19 7"/>', 'o', 'Módulo Empleados', num(t.modules_enabled) + ' de ' + num(t.companies), 'empresas con el módulo habilitado') + '</section>';
-    const sum = [
-      ['p', '+' + num(per.companies), 'Empresas nuevas', '<path d="M4 20V8l8-4 8 4v12"/>'],
-      ['b', '+' + num(per.users), 'Usuarios agregados', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
-      ['v', '+' + num(per.employees), 'Personas en Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/>'],
-      ['o', '+' + num(per.modules), 'Módulos activados', '<path d="M5 12l4 4L19 7"/>']
-    ].map(x => '<li><span class="gl-ch-ico sm ' + x[0] + '">' + svg(x[3], 18) + '</span><div><b>' + x[1] + '</b><small>' + x[2] + '</small></div></li>').join('');
-    const growth = '<section class="gl-ch-card gl-ch-growth" aria-label="Crecimiento"><header><h2>Crecimiento de GESTLOK</h2><span class="gl-ch-chip">Últimos 30 días</span></header>' +
-      '<div class="gl-ch-growth-in"><div class="gl-ch-chartwrap"><ul class="gl-ch-legend"><li><i style="background:#7c4dff"></i>Empresas</li><li><i style="background:#2f7bf5"></i>Usuarios</li><li><i style="background:#27ae60"></i>Personas en Empleados</li></ul>' + chart(data.series) + '</div>' +
-      '<aside class="gl-ch-summary"><h3>Resumen del período</h3><ul>' + sum + '</ul></aside></div></section>';
-    const recent = (data.recent_companies || []).map(c => {
+    const companies = (data.recent_companies || []).map(c => {
       const own = c.tenant_id === api.S?.me?.tenant_id;
-      const action = own ? '<span class="gl-ch-pill ok">Tu empresa</span>' : (window.GestLokCreatorSupport?.openButton?.(c.tenant_id, c.name) || '<span class="gl-ch-pill ok">Activa</span>');
-      return '<li><span class="gl-ch-ico sm p">' + svg('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>', 18) + '</span><div><b>' + esc(c.name) + '</b><small>Registrada ' + esc(ago2(c.created_at)) + ' · ' + num(c.locals) + (num(c.locals) === 1 ? ' local' : ' locales') + ' · ' + num(c.people) + (num(c.people) === 1 ? ' persona' : ' personas') + '</small></div>' + action + '</li>';
+      const action = own
+        ? '<span class="gl-ch-pill ok">Tu empresa</span>'
+        : (window.GestLokCreatorSupport?.openButton?.(c.tenant_id, c.name) || '<span class="gl-ch-pill ok">Registrada</span>');
+      return '<article class="gl-ch-company-card"><span class="gl-ch-ico p">' +
+        svg('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>', 24) +
+        '</span><div><h3>' + esc(c.name) + '</h3><p>' + num(c.locals) +
+        (num(c.locals) === 1 ? ' local' : ' locales') + ' · ' + num(c.people) +
+        (num(c.people) === 1 ? ' persona' : ' personas') + '</p></div>' + action + '</article>';
     }).join('');
-    const act = (data.activity || []).map(a => {
-      const meta = ACTIONS[a.what] || [String(a.what || 'Actividad'), 'info'];
-      const title = a.kind === 'login' ? (a.who && a.who === maskMail(api.S?.me?.email) ? 'Ingresaste vos' : 'Ingreso de ' + (a.who || 'una persona')) : meta[0];
-      const icon = a.kind === 'login' ? '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>' : '<path d="M5 12l4 4L19 7"/>';
-      return '<li><span class="gl-ch-ico sm ' + (a.kind === 'login' ? 'b' : meta[1] === 'warn' ? 'o' : 'v') + '">' + svg(icon, 18) + '</span><div><b>' + esc(title) + '</b><small>' + esc(a.company || 'Plataforma') + '</small></div><time>' + esc(ago(a.at)) + '</time></li>';
-    }).join('');
-    const rolesParts = [
-      {n: num(r.dueno), c: '#7c4dff', l: 'Dueños'}, {n: num(r.gerente), c: '#2f7bf5', l: 'Gerentes'},
-      {n: num(r.editor) + num(r.lectura), c: '#27ae60', l: 'Editores y solo ver'}, {n: num(r.creadora), c: '#f5a524', l: 'Creadora'}
-    ];
-    const totalRoles = rolesParts.reduce((n, x) => n + x.n, 0);
-    const never = num(t.users_never);
-    const people = '<section class="gl-ch-card" aria-label="Personas por rol"><header><h2>Personas por rol</h2><button type="button" class="gl-ch-link" data-ch-tab="usuarios">Ver todas →</button></header>' +
-      '<div class="gl-ch-people">' + donut(rolesParts, totalRoles) + '<ul class="gl-ch-rolelist">' + rolesParts.map(x => '<li><i style="background:' + x.c + '"></i><span>' + x.l + '</span><b>' + x.n + '</b></li>').join('') + '</ul></div>' +
-      (never ? '<button type="button" class="gl-ch-banner" data-ch-tab="usuarios"><span class="gl-ch-ico sm o">' + svg('<path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/>', 18) + '</span><span><b>' + never + (never === 1 ? ' invitación sin ingresar' : ' invitaciones sin ingresar') + '</b><small>Todavía no entraron a GESTLOK por primera vez</small></span><span aria-hidden="true">›</span></button>' : '') + '</section>';
-    const staff = '<section class="gl-ch-card" aria-label="Administración de empleados"><header><h2>Administración de empleados</h2><button type="button" class="gl-ch-link" data-ch-tab="empleados">Ver detalle →</button></header>' +
-      '<div class="gl-ch-duo"><div><span class="gl-ch-ico sm v">' + svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>', 18) + '</span><b>' + num(t.employees) + '</b><small>Personas en Empleados</small></div>' +
-      '<div><span class="gl-ch-ico sm g">' + svg('<path d="M12 5v14M5 12h14"/>', 18) + '</span><b>' + num(t.employees_new_week) + '</b><small>Nuevas esta semana</small></div></div>' +
-      '<ul class="gl-ch-rows"><li><span>Titulares</span><b>' + num(e.owner) + '</b></li><li><span>Encargados</span><b>' + num(e.manager) + '</b></li><li><span>Empleados</span><b>' + num(e.employee) + '</b></li><li><span>Gerentes y editores de GESTLOK con Horarios</span><b>' + num(e.gestlok_gerentes) + '</b></li></ul></section>';
-    const permanent = window.GestLokCreatorMode?.state?.()?.permanent === true;
-    const checks = [
-      [true, 'Base de datos conectada'],
-      [num(s.confirmed_accounts) === num(s.accounts), num(s.confirmed_accounts) + ' de ' + num(s.accounts) + ' correos confirmados'],
-      [num(s.verified_links) >= num(t.companies), 'Empleados vinculado en ' + Math.min(num(s.verified_links), num(t.companies)) + ' de ' + num(t.companies) + ' empresas'],
-      [permanent || !s.editing_open, permanent ? 'Edición de creadora sin límite de tiempo' : s.editing_open ? 'Edición habilitada (cerrala al terminar)' : 'Tu cuenta está en solo lectura'],
-      [!s.support_open, s.support_open ? 'Hay una consulta de empresa abierta' : 'Sin consultas de empresa abiertas']
-    ];
-    const allOk = checks.every(c => c[0]);
-    const system = '<section class="gl-ch-card" aria-label="Estado de la plataforma"><header><h2>Estado de la plataforma</h2><span class="gl-ch-pill ' + (allOk ? 'ok' : 'warn') + '">' + (allOk ? 'Todo en orden' : 'Para revisar') + '</span></header>' +
-      '<ul class="gl-ch-checks">' + checks.map(c => '<li class="' + (c[0] ? 'ok' : 'warn') + '"><span aria-hidden="true">' + (c[0] ? '✓' : '!') + '</span>' + esc(c[1]) + '</li>').join('') + '</ul></section>';
-    const quickLocals = '<section class="gl-ch-card gl-ch-quick-locals" aria-label="Acceso rápido a locales">' +
-      '<header><h2>Acceso rápido a locales</h2><button type="button" class="gl-ch-link" data-ch-tab="locales">Ver todos los locales →</button></header>' +
-      '<p>Entrá directamente a las sucursales de Mi Gusto. Los permisos de tu cuenta se mantienen.</p>' +
-      '<div class="gl-ch-quick-grid">' + (p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>';
-    return quickLocals + kpis + '<div class="gl-ch-grid"><div class="gl-ch-colmain">' + growth +
-      '<div class="gl-ch-two"><section class="gl-ch-card" aria-label="Empresas recientes"><header><h2>Empresas recientes</h2><button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header><ul class="gl-ch-list">' + (recent || '<li><small>Todavía no hay empresas.</small></li>') + '</ul></section>' +
-      '<section class="gl-ch-card" aria-label="Actividad reciente"><header><h2>Actividad reciente</h2></header><ul class="gl-ch-list">' + (act || '<li><small>Sin actividad registrada.</small></li>') + '</ul></section></div></div>' +
-      '<div class="gl-ch-colside">' + people + staff + system + '</div></div>';
+    const shortcuts = [
+      ['Empresas y locales', 'empresas', '<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>'],
+      ['Usuarios y accesos', 'usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
+      ['Empleados y horarios', 'empleados', '<path d="M3 20c0-4 4-7 9-7s9 3 9 7"/><circle cx="12" cy="7" r="4"/>'],
+      ['Locales', 'locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9"/>'],
+      ['Herramientas', 'herramientas', '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>'],
+      ['Reseñas', 'resenas', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>']
+    ].map(([name,id,icon]) => '<button type="button" class="gl-ch-shortcut" data-ch-tab="' + id + '">' +
+      '<span class="gl-ch-ico b">' + svg(icon, 22) + '</span><b>' + name + '</b><span aria-hidden="true">›</span></button>').join('');
+    return '<div class="gl-ch-creator-start">' +
+      '<section class="gl-ch-card"><header><h2>Mis empresas</h2><button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header>' +
+      '<p>Consultá las empresas registradas y entrá a los locales que administrás.</p>' +
+      '<div class="gl-ch-company-grid">' + (companies || '<p>Consultá el listado completo desde Empresas.</p>') + '</div></section>' +
+      '<section class="gl-ch-card gl-ch-quick-locals" aria-label="Acceso a mis locales"><header><h2>Mis locales</h2><button type="button" class="gl-ch-link" data-ch-tab="locales">Ver locales →</button></header>' +
+      '<div class="gl-ch-quick-grid">' + (p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>' +
+      '<section class="gl-ch-card"><header><h2>Administración y herramientas</h2></header>' +
+      '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
+      '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
   }
   // La preferencia visual es del dispositivo; nunca modifica roles ni alcance.
   const navPrefKey = 'gestlok:creator-menu-collapsed:v1';

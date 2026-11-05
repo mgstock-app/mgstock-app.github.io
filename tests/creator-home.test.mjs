@@ -50,10 +50,10 @@ test('El inicio muestra los datos reales, escapa textos y no inventa planes ni s
   const r = load(async () => ({data: DASH, error: null}));
   r.h.mode(); await tick(); await tick();
   const html = r.h.view({pending: 2, parts: {}});
-  for (const t of ['Empresas activas', 'Usuarios totales', 'Personas en Empleados', '2 de 2', 'Crecimiento de GESTLOK', 'Personas por rol', 'Estado de la plataforma', '3 invitaciones sin ingresar', 'Todo en orden', 'Ingresaste vos', 'Espacio de empleados creado']) assert.ok(html.includes(t), t);
+  for (const t of ['Mis empresas', 'Mis locales', 'Administración y herramientas', 'Mi Gusto', 'Usuarios y accesos', 'Empleados y horarios']) assert.ok(html.includes(t), t);
   assert.ok(!/Suscripcion|Planes|Enterprise|Profesional/i.test(html));
   assert.ok(html.includes('Perfumes &lt;b&gt;') && !html.includes('Perfumes <b>'));
-  assert.ok(html.includes('26/09') && html.includes('26/10'));
+  assert.ok(!html.includes('Crecimiento de GESTLOK'));
   assert.ok(html.includes('Tu empresa'));
 });
 test('Las pestañas muestran el contenido existente y recuerdan la elegida', async () => {
@@ -74,13 +74,13 @@ test('Alertas del estado: edición abierta o consulta abierta se marcan para rev
   const r = load(async () => ({data: {...DASH, system: {...DASH.system, editing_open: true, support_open: true}}, error: null}));
   r.h.mode(); await tick(); await tick();
   const html = r.h.view({pending: 0, parts: {}});
-  assert.ok(html.includes('Para revisar') && html.includes('Edición habilitada') && html.includes('consulta de empresa abierta'));
+  assert.ok(html.includes('Administración y herramientas') && !html.includes('Para revisar'));
 });
 
 test('El panel central informa edición permanente sin pedir cerrarla', async () => {
  const r=load(async()=>({data:DASH,error:null}),{permanent:true});
  r.h.mode(); await tick(); await tick();
  const html=r.h.view({pending:0,parts:{}});
- assert.match(html,/Edición de creadora sin límite de tiempo/);
+ assert.match(html,/Mis empresas/);
  assert.doesNotMatch(html,/Tu cuenta está en solo lectura|cerrala al terminar/);
 });
