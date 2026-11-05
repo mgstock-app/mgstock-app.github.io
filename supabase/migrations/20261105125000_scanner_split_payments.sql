@@ -30,7 +30,7 @@ create or replace function public.gestlok_pos_checkout_split(
   p_tenant uuid, p_request uuid, p_payments jsonb, p_lines jsonb
 ) returns uuid
 language plpgsql security definer set search_path = ''
-as $$
+as $scanner_body$
 declare
   v_user uuid := (select auth.uid());
   v_item jsonb;
@@ -181,7 +181,7 @@ begin
     v_total, v_canonical, v_details
   ) returning id into v_existing;
   return v_existing;
-end; $$;
+end; $scanner_body$;
 
 revoke all on function public.gestlok_pos_checkout_split(uuid,uuid,jsonb,jsonb) from public,anon;
 grant execute on function public.gestlok_pos_checkout_split(uuid,uuid,jsonb,jsonb) to authenticated;
