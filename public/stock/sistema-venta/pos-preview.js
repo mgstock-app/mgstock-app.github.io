@@ -13,10 +13,10 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
  const stockInfo=(p,qty=0)=>{if(!Number.isInteger(p.stock))return '<span style="color:#64748b">Stock sin contar · cargá unidades antes de vender</span>';const left=p.stock-qty,color=left<=0?'#b91c1c':left<=3?'#a16207':'#15803d';const label=left<=0?'Sin stock':left<=3?'Últimas '+left+' unidades':left+' unidades disponibles';return '<span style="font-size:12px;color:'+color+';font-weight:600">▣ '+label+'</span>';};
  const reportHtml=r=>{
   if(!r)return '<p>Sin resumen disponible.</p>';
+  const methods=r.methods&&typeof r.methods==='object'?Object.entries(r.methods):[['efectivo',r.efectivo||0],['transferencia',r.transferencia||0]];
   return '<div class="gl-pos-reconcile-grid">'+[
    ['Ventas',String(Number(r.sales||0))],
-   ['Efectivo',money(Number(r.efectivo||0))],
-   ['Transferencia',money(Number(r.transferencia||0))],
+   ...methods.map(([id,amount])=>[paymentMethods.find(m=>m.id===id)?.label||id,money(Number(amount))]),
    ['Total del Scanner',money(Number(r.total||0))]
   ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')+'</div>';
  };
