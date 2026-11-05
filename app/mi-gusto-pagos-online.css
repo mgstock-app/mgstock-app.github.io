@@ -412,3 +412,51 @@
 .mg-on-cash-history{margin-top:18px}
 .mg-on-cash-history .mg-on-ok-label{cursor:default}
 .mg-on-cash-history .mg-on-ok-label input:disabled{opacity:1;cursor:default}
+
+/* Mi Gusto · comandas claras, diseño GESTLOK: número → monto → APP → hora/pago → acciones. */
+.mg-on-recent-stack{display:grid;gap:9px}
+.mg-on-recent .mg-on-recent-card{min-width:0;background:#fff;border:1px solid #dbe5f1;border-radius:13px;padding:12px 14px;box-shadow:0 2px 6px #14385e08}
+.mg-on-recent .mg-on-recent-card.mg-on-cash-row{background:#fffaf0;border-color:#eadfae}
+.mg-on-recent-row-main{display:grid;grid-template-columns:minmax(82px,112px) minmax(128px,1.1fr) minmax(86px,.65fr) minmax(128px,1fr) auto;align-items:center;column-gap:clamp(8px,1.4vw,18px);row-gap:9px;min-width:0}
+.mg-on-recent-order{display:grid;place-items:center;min-height:65px;min-width:0;padding:7px 10px;border-radius:10px;background:#e8f1fd;color:#0b2b5a;font-size:clamp(27px,2.6vw,35px);font-weight:900;line-height:1.15;letter-spacing:-.035em;overflow-wrap:anywhere}
+.mg-on-recent-amount{min-width:0;display:grid;gap:4px}
+.mg-on-recent-amount>strong{display:block;color:#0d294f;font-size:clamp(20px,2.1vw,27px);font-weight:900;letter-spacing:-.035em;font-variant-numeric:tabular-nums;line-height:1.17;overflow-wrap:anywhere}
+.mg-on-recent-amount .mg-on-cash-detail{margin:0;color:#8a6d26;line-height:1.3}
+.mg-on-recent-app{display:flex;align-items:center;min-width:0}
+.mg-on-recent-app .mg-on-switch{color:#153d69;font-weight:800;padding:5px 0}
+.mg-on-recent-app .mg-on-switch[aria-checked=false] b{color:#5a7190}
+.mg-on-recent-meta{display:grid;gap:6px;min-width:0}
+.mg-on-recent-time{font-size:14px;font-weight:850;font-variant-numeric:tabular-nums;color:#273b56}
+.mg-on-recent-meta .mg-on-method{white-space:normal;line-height:1.25;font-size:12px;color:#45627d}
+.mg-on-recent-meta .mg-on-method-mark{width:23px;height:23px;border-radius:7px}
+.mg-on-recent-commands .mg-on-rowbuttons{display:grid;gap:3px;justify-items:stretch}
+.mg-on-recent-commands .mg-on-rowbuttons button{min-height:39px;font-weight:800;border:0;background:transparent;padding:7px 10px;white-space:nowrap}
+.mg-on-recent-commands [data-mgon-edit]{color:#145ec2}
+.mg-on-recent-commands [data-mgon-delete]{color:#b43f43}
+.mg-on-recent-commands .mg-on-rowbuttons button:hover:not(:disabled){background:#f0f5fd}
+.mg-on-recent .mg-on-recent-card-note{margin:9px 0 0;padding:8px 0 0;border-left:0;border-top:1px solid #e8edf3;font-size:12px;line-height:1.45;color:#576f85;overflow-wrap:anywhere}
+.mg-on-recent-card-note span{font-weight:800;color:#344f6e}
+@media (min-width:761px) and (max-width:1100px){
+ .mg-on-recent-row-main{grid-template-columns:minmax(76px,95px) minmax(105px,1fr) minmax(70px,95px) minmax(118px,.9fr);column-gap:11px}
+ .mg-on-recent-commands{grid-column:1/-1;justify-self:end}
+ .mg-on-recent-commands .mg-on-rowbuttons{display:flex;gap:5px}
+}
+@media (max-width:760px){
+ .mg-on-recent-mobile{display:grid;gap:9px}
+ .mg-on-recent-desktop{display:none}
+ .mg-on-recent-row-main{grid-template-columns:minmax(72px,92px) minmax(0,1fr);grid-template-areas:"order amount" "app meta" "commands commands";column-gap:13px;row-gap:12px}
+ .mg-on-recent-order{grid-area:order;min-height:68px;font-size:clamp(26px,7vw,32px)}
+ .mg-on-recent-amount{grid-area:amount}
+ .mg-on-recent-amount>strong{font-size:clamp(20px,5.5vw,25px)}
+ .mg-on-recent-app{grid-area:app;justify-content:center}
+ .mg-on-recent-meta{grid-area:meta;gap:4px}
+ .mg-on-recent-commands{grid-area:commands;padding-top:8px;border-top:1px solid #e6edf5}
+ .mg-on-recent-commands .mg-on-rowbuttons{display:flex;gap:8px}
+ .mg-on-recent-commands .mg-on-rowbuttons button{flex:1;min-height:42px;border:1px solid #e0e9f2;border-radius:9px;background:#fff}
+ .mg-on-recent .mg-on-recent-card{padding:12px}
+}
+@media (max-width:360px){
+ .mg-on-recent-row-main{grid-template-columns:70px minmax(0,1fr);column-gap:9px}
+ .mg-on-recent-amount>strong{font-size:19px}
+ .mg-on-recent-app .mg-on-switch{gap:4px}
+}
