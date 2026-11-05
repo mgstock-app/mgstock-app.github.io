@@ -47,6 +47,12 @@ describe('Mi local · inicio único de Perfumes',()=>{
   cy.get('#gestlok-mobile-dock button').should('have.length',5);
   cy.get('#hub [data-pilot-pos]').click();
   cy.get('#gl-pos-search').should('be.visible');
+  cy.get('#gl-pilot-panel [data-pilot-devices]').click();
+  cy.get('#gl-pilot-panel .gl-pos-device-card').should('have.length',2);
+  cy.get('#gl-pilot-panel [data-scanner-reader]').check();
+  cy.get('#gl-pilot-panel [data-scanner-printer]').check();
+  cy.get('#gl-pilot-panel [data-scanner-paper]').select('80mm');
+  cy.window().then(w=>{expect(w.GestLokPosDevices.load(tenant)).to.include({readerEnabled:true,printerEnabled:true,paper:'80mm'});});
   cy.get('#gl-pilot-panel [data-pilot-close]').click();
   cy.get('#hub [data-pilot-stock]').click();
   cy.get('#gl-pilot-panel').should('contain.text','Stock');
@@ -57,7 +63,7 @@ describe('Mi local · inicio único de Perfumes',()=>{
   cy.get('#hub .gl-pilot-entry').should('be.visible');
   cy.get('#hub [data-pilot-prices]').click();
   cy.get('#gl-pilot-panel').should('contain.text','Precios');
-  cy.get('#gl-pilot-panel .gl-pilot-nav button').should('have.length',5);
+  cy.get('#gl-pilot-panel .gl-pilot-nav button').should('have.length',6);
   cy.get('#gl-pilot-panel .gl-pilot-nav').should('not.contain.text','Reportes').and('not.contain.text','Proveedores');
   cy.window().then(async w=>{await w.GestLokPilot.switchSection('compras');await w.GestLokPilot.switchSection('pedidos');});
   cy.get('#gl-pilot-panel .gl-pilot-nav .is-active').should('contain.text','Precios');
