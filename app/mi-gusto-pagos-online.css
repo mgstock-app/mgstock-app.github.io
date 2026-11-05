@@ -396,3 +396,5 @@
 .mg-on-cash-scroll tfoot{background:#e5f1fd;font-weight:850;color:#12395c}
 .mg-on-cash-scroll tfoot td{padding:15px 12px;border-top:2px solid #bed5e9}
 @media(max-width:520px){.mg-on-cash-head{align-items:stretch}.mg-on-cash-total{text-align:left}.mg-on-cash-detail-section{padding:12px}}
+
+.mg-on-ok-label{display:inline-flex;align-items:center;gap:7px;font-weight:700;cursor:pointer;white-space:nowrap}.mg-on-ok-label input{width:19px;height:19px;accent-color:#17385b;cursor:pointer}.mg-on-ok-label input:disabled{cursor:default;opacity:.6}
