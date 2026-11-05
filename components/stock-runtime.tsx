@@ -40,7 +40,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=comandas-claras-20261105");
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
-      if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-venta-20261105");
+      if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-resumen-20261105");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=precios-stock-cami-20261029");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");

@@ -195,7 +195,7 @@
  const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','checkout-client.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
-   const src='/stock/sistema-venta/'+file+'?rev=scanner-venta-20261105';
+   const src='/stock/sistema-venta/'+file+'?rev=scanner-resumen-20261105';
    if(document.querySelector('script[data-pos-src="'+file+'"]'))continue;
    await new Promise((resolve,reject)=>{
     const el=document.createElement('script');
@@ -223,12 +223,35 @@
     ?await db.from('gestlok_pilot_pos_sales').select('id,total,payment_method,created_at')
      .eq('tenant_id',TENANT).order('created_at',{ascending:false}).limit(8)
     :{data:[],error:null};
+   const scannerDay=()=>{
+    const parts=new Intl.DateTimeFormat('en-US',{
+     timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'
+    }).formatToParts(new Date());
+    const value=type=>parts.find(p=>p.type===type)?.value||'';
+    return value('year')+'-'+value('month')+'-'+value('day');
+   };
+   const day=scannerDay();
+   const report=checkoutEnabled
+    ?await db.rpc('gestlok_scanner_pos_resumen',{p_tenant:TENANT,p_day:day})
+    :{data:null,error:null};
    if(sales.error)throw sales.error;
+   if(report.error)throw report.error;
    if(!displayed||active!=='sistema_venta'||!enabled||api?.S?.me?.tenant_id!==TENANT)return;
    const mount=document.querySelector('#gl-pos-preview-mount');
    if(mount)window.GestLokPosPreview.render(mount,result.data||[],{
     checkoutEnabled,
     recentSales:sales.data||[],
+    report:report.data||null,
+    onReportDay:async selectedDay=>{
+     if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(selectedDay)||!enabled||api?.S?.me?.tenant_id!==TENANT)
+      throw Error('Fecha o local inválido.');
+     await assertAccess();
+     const res=await window.GestLokSupabase.rpc('gestlok_scanner_pos_resumen',{
+      p_tenant:TENANT,p_day:selectedDay
+     });
+     if(res.error)throw res.error;
+     return res.data;
+    },
     onSale:async result=>{
      window.GestLokPreciosStock?.reset?.();
      if(displayed&&active==='sistema_venta'){
