@@ -143,7 +143,7 @@ function cashMovementDetail(s=snapshot?.active){
 function parseAmountInput(value){const raw=String(value??'').trim().replace(/\s/g,'');if(!/^\d{1,11}(?:\.\d{3})*(?:,\d{0,2})?$/.test(raw)&&!/^\d{1,11}(?:,\d{0,2})?$/.test(raw))return NaN;return Number(raw.replace(/\./g,'').replace(',','.'));}
 function formatAmountInput(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
 function formatAmountTyping(value){const cleaned=String(value??'').replace(/[^0-9,]/g,'');const comma=cleaned.indexOf(',');const integer=(comma<0?cleaned:cleaned.slice(0,comma)).slice(0,11);const cents=comma<0?'':','+cleaned.slice(comma+1).replace(/,/g,'').slice(0,2);return integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+cents;}
-function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.method?.value!=='efectivo'||!gross){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Efectivo · Bruto '+cash(gross)+' − 10% ('+cash(discount)+') = A cobrar '+cash(gross-discount);}
+function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
 function entry(){
  const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
  return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
@@ -393,6 +393,13 @@ async function rpcRefresh(){
 function attach(h){
  if(api)return;
  api=h;
+ // Recalcular después de cada render: el guardado de borradores restaura el monto,
+ // pero el aviso de efectivo debe reconstruirse sobre el formulario recién insertado.
+ // Observar solo hijos directos de #view evita reaccionar al texto del aviso.
+ const root=document.getElementById?.('view');
+ if(root&&typeof MutationObserver!=='undefined'){
+  new MutationObserver(()=>{if(api?.S?.view==='cierre-online')updateCashPreview();}).observe(root,{childList:true});
+ }
  document.addEventListener('click',e=>{
   // Evitar que una actualización del estado desmonte el selector nativo de fotos.
   if(e.target.closest?.('.mg-on-photo-upload')){choosingPhoto=true;return;}
@@ -494,5 +501,5 @@ function subscribe(loc,push){
 }
 document.addEventListener('input',e=>{if(e.target?.matches?.('#mg-online-form [name=amount]')){const field=e.target;const before=field.value;const cursor=field.selectionStart??before.length;const digitsBefore=before.slice(0,cursor).replace(/[^0-9,]/g,'').length;const formatted=formatAmountTyping(before);field.value=formatted;let pos=0,seen=0;while(pos<formatted.length&&seen<digitsBefore){if(/[0-9,]/.test(formatted[pos]))seen++;pos++;}field.setSelectionRange(pos,pos);}if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
 document.addEventListener('change',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
-window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf}});
+window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,syncCashPreview:updateCashPreview,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf}});
 })();
