@@ -195,7 +195,7 @@
  const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','checkout-client.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
-   const src='/stock/sistema-venta/'+file;
+   const src='/stock/sistema-venta/'+file+'?rev=scanner-venta-20261105';
    if(document.querySelector('script[data-pos-src="'+file+'"]'))continue;
    await new Promise((resolve,reject)=>{
     const el=document.createElement('script');
