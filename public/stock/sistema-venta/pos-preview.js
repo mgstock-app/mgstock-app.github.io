@@ -31,6 +31,17 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
  const message=container.querySelector('#gl-pos-scan-message');
  const confirm=container.querySelector('#gl-pos-checkout');
  const saleMessage=container.querySelector('#gl-pos-sale-message');
+ const receiptButton=root.document.createElement('button');
+ receiptButton.type='button';receiptButton.textContent='Imprimir ticket';receiptButton.hidden=true;
+ saleMessage.insertAdjacentElement('afterend',receiptButton);
+ receiptButton.addEventListener('click',()=>{
+  if(!lastReceipt)return;
+  const paper=root.confirm?.('¿Ticket de 80 mm? Aceptar: 80 mm. Cancelar: 58 mm.')?'80mm':'58mm';
+  const w=root.open?.('','_blank');
+  if(!w){saleMessage.textContent='Permití las ventanas emergentes para imprimir el ticket.';return;}
+  const lines=lastReceipt.lines.map(x=>'<tr><td>'+esc(x.name)+' × '+x.quantity+'</td><td style="text-align:right">'+esc(money(x.price*x.quantity))+'</td></tr>').join('');
+  w.document.open();w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket GESTLOK</title><style>@page{size:'+paper+' auto;margin:3mm}body{font:12px monospace;margin:0;color:#000}h2{text-align:center;font-size:15px}table{width:100%;border-collapse:collapse}td{padding:4px 0;border-bottom:1px dashed #999}strong{display:block;margin-top:12px;text-align:right}</style></head><body><h2>GESTLOK · COMPROBANTE</h2><p>'+esc(lastReceipt.date)+'<br>N.º '+esc(lastReceipt.id)+'</p><table>'+lines+'</table><strong>Total: '+esc(money(lastReceipt.total))+'</strong><p>Pago: '+esc(lastReceipt.payment)+'</p><script>window.onload=()=>window.print()<\/script></body></html>');w.document.close();
+ });
  const reportDay=container.querySelector('#gl-pos-report-day');
  const reportBody=container.querySelector('#gl-pos-reconcile-body');
  reportDay?.addEventListener('change',async()=>{
@@ -45,7 +56,7 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
    if(!disposed)reportBody.textContent=e.message||'No se pudo consultar este día.';
   }finally{if(!disposed)reportDay.disabled=false;}
  });
- let submitting=false,pendingRequestId=null,uncertain=false;
+ let submitting=false,pendingRequestId=null,uncertain=false,lastReceipt=null;
  search.setAttribute('aria-label','Código de barras o nombre del producto');
  camera.setAttribute('aria-label','Abrir cámara para escanear código de barras');
  let stopScan=null,disposed=false;
@@ -94,6 +105,8 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
    });
    pendingRequestId=null;uncertain=false;
    if(disposed)return;
+   lastReceipt={id:result.saleId,date:new Date().toLocaleString('es-AR'),payment,lines:lines.map(line=>{const p=catalog.find(p=>p.id===line.product_id);return {name:p.name,quantity:line.quantity,price:p.price};}),total:estimated};
+   receiptButton.hidden=false;
    catalog=catalog.map(p=>({...p,stock:Number.isInteger(p.stock)?p.stock-(cart.get(p.id)||0):p.stock}));
    cart.clear();paint();
    saleMessage.textContent='✓ Venta registrada correctamente. Comprobante '+result.saleId.slice(0,8)+'.';
