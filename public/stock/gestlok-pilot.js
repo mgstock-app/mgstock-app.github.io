@@ -192,7 +192,7 @@
   finally{loading=false;render();}
  }
  async function openOrders(){return;}
- const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','checkout-client.js','pos-preview.js'];
+ const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','payment-split.js','checkout-client.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
    const src='/stock/sistema-venta/'+file+'?rev=scanner-resumen-20261105';
@@ -210,14 +210,17 @@
    await assertAccess();
    await loadPosScripts();
    const db=window.GestLokSupabase;
-   const [result,plan]=await Promise.all([
+   const [result,plan,methodResult]=await Promise.all([
     db.from('gestlok_pilot_products').select('id,name,sku,unit_price,stock_quantity,active')
      .eq('tenant_id',TENANT).eq('active',true).order('name').limit(500),
     db.from('gestlok_pilot_access').select('pos_live_enabled,enabled,plan_code')
-     .eq('tenant_id',TENANT).maybeSingle()
+     .eq('tenant_id',TENANT).maybeSingle(),
+    db.from('gestlok_scanner_payment_methods').select('method_id,label,enabled')
+     .eq('tenant_id',TENANT).eq('enabled',true)
    ]);
    if(result.error)throw result.error;
    if(plan.error)throw plan.error;
+   if(methodResult.error)throw methodResult.error;
    const checkoutEnabled=plan.data?.enabled===true&&plan.data?.plan_code==='scanner'&&plan.data?.pos_live_enabled===true;
    const sales=checkoutEnabled
     ?await db.from('gestlok_pilot_pos_sales').select('id,total,payment_method,created_at')
@@ -240,6 +243,7 @@
    const mount=document.querySelector('#gl-pos-preview-mount');
    if(mount)window.GestLokPosPreview.render(mount,result.data||[],{
     checkoutEnabled,
+    paymentMethods:(methodResult.data||[]).map(m=>({id:m.method_id,label:m.label,enabled:m.enabled})),
     recentSales:sales.data||[],
     report:report.data||null,
     onReportDay:async selectedDay=>{
