@@ -460,3 +460,6 @@
  .mg-on-recent-amount>strong{font-size:19px}
  .mg-on-recent-app .mg-on-switch{gap:4px}
 }
+
+/* Mi Gusto · aclaración de cálculo de Online Local, efectivo siempre separado. */
+.mg-on-online-help{margin:4px 0 12px;color:#526e86;font-size:12px;line-height:1.5}
