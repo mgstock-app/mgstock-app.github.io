@@ -243,7 +243,7 @@
     recentSales:sales.data||[],
     report:report.data||null,
     onReportDay:async selectedDay=>{
-     if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(selectedDay)||!enabled||api?.S?.me?.tenant_id!==TENANT)
+     if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(selectedDay)||!enabled||api?.S?.me?.tenant_id!==TENANT)
       throw Error('Fecha o local inválido.');
      await assertAccess();
      const res=await window.GestLokSupabase.rpc('gestlok_scanner_pos_resumen',{
