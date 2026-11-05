@@ -70,11 +70,10 @@ begin
     raise exception 'Ventas reales no habilitadas para este local' using errcode='42501';
   end if;
 
-  if jsonb_typeof(p_payments) is distinct from 'array'
-    or case when jsonb_typeof(p_payments)='array' then jsonb_array_length(p_payments) not between 1 and 20 else true end
-    or jsonb_typeof(p_lines) is distinct from 'array'
-    or case when jsonb_typeof(p_lines)='array' then jsonb_array_length(p_lines) not between 1 and 100 else true end
-  then
+  if jsonb_typeof(p_payments) is distinct from 'array' or jsonb_typeof(p_lines) is distinct from 'array' then
+    raise exception 'Venta invalida' using errcode='22023';
+  end if;
+  if jsonb_array_length(p_payments) not between 1 and 20 or jsonb_array_length(p_lines) not between 1 and 100 then
     raise exception 'Venta invalida' using errcode='22023';
   end if;
 
