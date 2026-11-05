@@ -372,6 +372,8 @@ function render(){
   renderChrome();
   $('#view').innerHTML = viewHTML();
   formGuard?.restore($('#view'),preserved,formScope);
+  // El total con 10% de descuento debe recalcularse después de restaurar el borrador.
+  if(S.view==='cierre-online')window.GestLokMiGustoOnline?.syncCashPreview?.();
   renderedFormScope=formScope;
   if(toolsOpen && S.view==='inicio'){
     const details=$('#view .gl-home-essential-settings');
