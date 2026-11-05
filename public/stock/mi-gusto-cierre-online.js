@@ -250,7 +250,7 @@ async function showPhoto(id){
 function shiftCard(s,turnoHint='tarde'){
  if(!s)return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(turnoHint))+'</h3><span class="mg-on-pending">Próximo turno</span></header><p class="mg-on-empty">Sin movimientos. Este turno todavía no tiene registros guardados.</p></article>';
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
- [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas'],['online_local','Online Local']].map(([key,label])=>
+ [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas online'],['online_local','Online Local']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
  '<small>'+Number(s.comandas||0)+' comandas registradas</small>'+photoControl(s)+'</article>';
 }
@@ -260,7 +260,7 @@ function summary(){
  const total=Number(morning?.total_ventas||0)+Number(afternoon?.total_ventas||0);
  const onlineLocal=Number(morning?.online_local||0)+Number(afternoon?.online_local||0);
  return '<section class="mg-on-dashboard"><h3>Resumen diario · '+date(curr?.day)+'</h3>'+
- '<div class="mg-on-hero"><div><span>Total ventas del día</span><strong>'+cash(total)+'</strong></div><div><span>Online Local</span><strong>'+cash(onlineLocal)+'</strong></div></div>'+
+ '<div class="mg-on-hero"><div><span>Total ventas online del día</span><strong>'+cash(total)+'</strong></div><div><span>Online Local</span><strong>'+cash(onlineLocal)+'</strong></div></div>'+
  '<div class="mg-on-shifts">'+shiftCard(morning,'manana')+shiftCard(afternoon,'tarde')+'</div>'+
  '<p class="mg-on-note">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla por separado y no se suma al online.</p>'+
  '<div class="mg-on-actions"><button type="button" data-mgon-tab="movimientos" class="mg-on-primary">Cargar comandas</button>'+
@@ -286,7 +286,7 @@ function historyGroups(rows){
 function historyTotals(model){
  return '<div class="mg-on-kpis">'+
   [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],
-   ['total_ventas','Total ventas'],['total_app','Total APP'],['online_local','Online Local']].map(([key,label])=>
+   ['total_ventas','Total ventas online'],['total_app','Total APP'],['online_local','Online Local']].map(([key,label])=>
     '<span>'+label+' <strong>'+cash(model[key])+'</strong></span>').join('')+'</div>';
 }
 function shiftHistoryCard(s){
@@ -300,7 +300,7 @@ function dayHistoryCard(d){
  return '<article class="mg-on-history-day mg-on-day-row"><div class="mg-on-day-info">'+
   '<strong>'+date(d.day)+'</strong>'+
   '<small>'+d.shifts.length+' de 2 turnos cerrados · '+d.comandas+' comandas</small></div>'+
-  '<div class="mg-on-day-amount"><small>Total ventas</small><strong>'+cash(d.total_ventas)+'</strong></div>'+
+  '<div class="mg-on-day-amount"><small>Total ventas online</small><strong>'+cash(d.total_ventas)+'</strong></div>'+
   '<div class="mg-on-day-amount"><small>Online Local</small><strong>'+cash(d.online_local)+'</strong></div>'+
   '<button type="button" class="mg-on-day-open" data-mgon-open-day="'+esc(d.day)+'">Ver detalle</button></article>';
 }
