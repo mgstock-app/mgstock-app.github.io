@@ -21,7 +21,7 @@ describe('GESTLOK: ingreso móvil aprobado',()=>{
     cy.get('#au-email').should('be.visible').and('have.attr','autocomplete','email');
     cy.get('#au-pass').should('be.visible').and('have.attr','type','password');
     cy.get('#au-in button[type="submit"]').should('be.visible');
-    cy.get('#au-demo-link').should('be.visible').and('have.attr','href','/?demo=1');
+    cy.get('#au-demo-link').should('be.visible').and('have.attr','href','/conocer/#video').and('contain.text','Plan Scanner');
     cy.get('#auth .au-card').then(el=>{
       const bounds=el[0].getBoundingClientRect();
       expect(bounds.width).to.be.greaterThan(315);
