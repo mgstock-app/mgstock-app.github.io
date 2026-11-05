@@ -1,12 +1,15 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { AdminHomeOverview } from "./AdminHomeOverview";
 import { Building2, Users, ClipboardList, ShieldCheck, Search, ArrowRight, UserRoundPlus, Store, Eye, KeyRound, CircleCheck, LockKeyhole } from "lucide-react";
 import { accessApi } from "@/features/access/api";
 import { useOrganizationData } from "@/hooks/use-organization-data";
 import type { AppLocal, AppUser, AccessRequest } from "@/types/access";
 
 export function AdminHome() {
+  const { user } = useAuth();
   const spaces = useOrganizationData();
   const [locals, setLocals] = useState<AppLocal[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -40,6 +43,8 @@ export function AdminHome() {
     const found = spaces.organizations.find((o) => o.id.toLowerCase() === value || o.owner_public_id?.toLowerCase() === value);
     setSelectedId(found?.id || "");
   }
+
+  if (user?.email?.toLowerCase() === "kmu15lopez@gmail.com") return <AdminHomeOverview />;
 
   return (
     <div className="gi-admin-dashboard">
