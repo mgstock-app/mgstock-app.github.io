@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo } from "react";
-import { Building2, Store, ArrowRight, Plus, ShoppingCart, Package, Tags, ScanBarcode, CalendarDays, Users, Settings2, ShieldCheck, CreditCard, Search } from "lucide-react";
+import { Building2, Store, ArrowRight, Plus, Package, Tags, ScanBarcode, CalendarDays, Users, Settings2, ShieldCheck, CreditCard, Search } from "lucide-react";
 import { useOrganizationData } from "@/hooks/use-organization-data";
 import { useEffect, useState } from "react";
 import { accessApi } from "@/features/access/api";
