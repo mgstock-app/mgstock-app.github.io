@@ -5,7 +5,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n);
 let activeCleanup=null;
 function dispose(){activeCleanup?.();activeCleanup=null;}
-function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],report=null,onReportDay}={}){
+function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSale,recentSales=[],report=null,onReportDay}={}){
  dispose();
  if(!container)throw Error('Contenedor requerido');
  let catalog=root.GestLokPosCatalog?.catalog(products)||[];
@@ -13,14 +13,14 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
  const stockInfo=(p,qty=0)=>{if(!Number.isInteger(p.stock))return '<span style="color:#64748b">Stock sin contar · cargá unidades antes de vender</span>';const left=p.stock-qty,color=left<=0?'#b91c1c':left<=3?'#a16207':'#15803d';const label=left<=0?'Sin stock':left<=3?'Últimas '+left+' unidades':left+' unidades disponibles';return '<span style="font-size:12px;color:'+color+';font-weight:600">▣ '+label+'</span>';};
  const reportHtml=r=>{
   if(!r)return '<p>Sin resumen disponible.</p>';
+  const methods=r.methods&&typeof r.methods==='object'?Object.entries(r.methods):[['efectivo',r.efectivo||0],['transferencia',r.transferencia||0]];
   return '<div class="gl-pos-reconcile-grid">'+[
    ['Ventas',String(Number(r.sales||0))],
-   ['Efectivo',money(Number(r.efectivo||0))],
-   ['Transferencia',money(Number(r.transferencia||0))],
+   ...methods.map(([id,amount])=>[paymentMethods.find(m=>m.id===id)?.label||id,money(Number(amount))]),
    ['Total del Scanner',money(Number(r.total||0))]
   ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')+'</div>';
  };
- container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2></div><span class="gl-pos-mode">'+(checkoutEnabled?'Ventas habilitadas':'Modo prueba')+'</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button></div><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><button type="button" id="gl-pos-checkout" disabled>'+(checkoutEnabled?'Registrar venta cobrada':'Confirmar venta')+'</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">'+(checkoutEnabled?'Confirmá únicamente pagos recibidos. Se guarda la venta y se descuenta stock en una sola operación.':'La prueba no registra ventas ni descuenta stock.')+'</small></div></div>'+(checkoutEnabled?'<section class="gl-pos-reconcile" aria-label="Resumen de cobros del Scanner"><header><h3>Resumen de ventas · Scanner</h3><label for="gl-pos-report-day">Fecha <input id="gl-pos-report-day" type="date" value="'+esc(String(report?.day||''))+'"></label></header><div id="gl-pos-reconcile-body" aria-live="polite">'+reportHtml(report)+'</div><p class="gl-pos-reconcile-help">Fuente: ventas registradas en el Plan Scanner. Este resumen todavía no se suma automáticamente a GESTLOK Caja. Conciliá los cobros antes de cargarlos allí para evitar duplicados.</p></section>':'')+(checkoutEnabled?'<section class="gl-pos-sales" aria-label="Últimas ventas confirmadas"><h3>Últimas ventas registradas</h3><div class="gl-pos-sales-list">'+(recentSales.length?recentSales.slice(0,8).map(s=>'<div class="gl-pos-sale"><span>'+esc(new Date(s.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+' · '+esc(s.payment_method==='efectivo'?'Efectivo':'Transferencia')+'</span><strong>'+money(Number(s.total))+'</strong></div>').join(''):'<p>No hay ventas registradas todavía.</p>')+'</div></section>':'')+'</section>';
+ container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2></div><span class="gl-pos-mode">'+(checkoutEnabled?'Ventas habilitadas':'Modo prueba')+'</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button></div><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><div id="gl-pos-split"><label><input id="gl-pos-split-enabled" type="checkbox"> Combinar medios de pago</label><div id="gl-pos-split-lines" hidden></div></div><button type="button" id="gl-pos-checkout" disabled>'+(checkoutEnabled?'Registrar venta cobrada':'Confirmar venta')+'</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">'+(checkoutEnabled?'Confirmá únicamente pagos recibidos. Se guarda la venta y se descuenta stock en una sola operación.':'La prueba no registra ventas ni descuenta stock.')+'</small></div></div>'+(checkoutEnabled?'<section class="gl-pos-reconcile" aria-label="Resumen de cobros del Scanner"><header><h3>Resumen de ventas · Scanner</h3><label for="gl-pos-report-day">Fecha <input id="gl-pos-report-day" type="date" value="'+esc(String(report?.day||''))+'"></label></header><div id="gl-pos-reconcile-body" aria-live="polite">'+reportHtml(report)+'</div><p class="gl-pos-reconcile-help">Fuente: ventas registradas en el Plan Scanner. Este resumen todavía no se suma automáticamente a GESTLOK Caja. Conciliá los cobros antes de cargarlos allí para evitar duplicados.</p></section>':'')+(checkoutEnabled?'<section class="gl-pos-sales" aria-label="Últimas ventas confirmadas"><h3>Últimas ventas registradas</h3><div class="gl-pos-sales-list">'+(recentSales.length?recentSales.slice(0,8).map(s=>'<div class="gl-pos-sale"><span>'+esc(new Date(s.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+' · '+esc(s.payment_method==='combinado'?'Combinado':paymentMethods.find(m=>m.id===s.payment_method)?.label||s.payment_method)+'</span><strong>'+money(Number(s.total))+'</strong></div>').join(''):'<p>No hay ventas registradas todavía.</p>')+'</div></section>':'')+'</section>';
  const search=container.querySelector('#gl-pos-search');
  const results=container.querySelector('#gl-pos-results');
  const cartBox=container.querySelector('#gl-pos-cart');
@@ -31,6 +31,54 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
  const message=container.querySelector('#gl-pos-scan-message');
  const confirm=container.querySelector('#gl-pos-checkout');
  const saleMessage=container.querySelector('#gl-pos-sale-message');
+ const paymentSelect=container.querySelector('#gl-pos-payment');
+ const splitEnabled=container.querySelector('#gl-pos-split-enabled');
+ const splitLines=container.querySelector('#gl-pos-split-lines');
+ const availableMethods=(root.GestLokPosPayments?.normalizeMethods&&paymentMethods.length)?root.GestLokPosPayments.normalizeMethods(paymentMethods):[];
+ paymentSelect.innerHTML=availableMethods.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.label)+'</option>').join('');
+ if(!availableMethods.length){splitEnabled.disabled=true;paymentSelect.disabled=true;confirm.disabled=true;saleMessage.textContent='No hay medios de pago habilitados para este local.';}
+ function drawSplit(){
+  const active=splitEnabled.checked;
+  paymentSelect.hidden=active;splitLines.hidden=!active;
+  if(!active)return;
+  if(!splitLines.children.length){
+   splitLines.innerHTML='<div class="gl-pos-split-row"><select aria-label="Primer medio de pago"></select><input aria-label="Primer importe" type="number" min="0.01" step="0.01" placeholder="Importe"></div><div class="gl-pos-split-row"><select aria-label="Segundo medio de pago"></select><input aria-label="Segundo importe" type="number" min="0.01" step="0.01" placeholder="Importe"></div><button type="button" id="gl-pos-add-payment">Agregar otro medio</button>';
+   splitLines.querySelectorAll('select').forEach((select,i)=>{select.innerHTML=paymentSelect.innerHTML;select.selectedIndex=Math.min(i,availableMethods.length-1);});
+   splitLines.querySelector('#gl-pos-add-payment').addEventListener('click',()=>{
+    if(splitLines.querySelectorAll('.gl-pos-split-row').length>=20)return;
+    const row=root.document.createElement('div');row.className='gl-pos-split-row';
+    row.innerHTML='<select aria-label="Medio de pago"></select><input aria-label="Importe" type="number" min="0.01" step="0.01" placeholder="Importe">';
+    row.querySelector('select').innerHTML=paymentSelect.innerHTML;
+    splitLines.insertBefore(row,splitLines.lastElementChild);
+   });
+  }
+ }
+ splitEnabled.addEventListener('change',drawSplit);
+
+ const receiptButton=root.document.createElement('button');
+ receiptButton.type='button';receiptButton.textContent='Imprimir ticket';receiptButton.hidden=true;
+ const paperLabel=root.document.createElement('label');
+ paperLabel.textContent='Ancho del ticket: ';
+ const paperSelect=root.document.createElement('select');
+ paperSelect.setAttribute('aria-label','Ancho del ticket térmico');
+ [['58mm','58 mm'],['80mm','80 mm']].forEach(([value,label])=>{const option=root.document.createElement('option');option.value=value;option.textContent=label;paperSelect.appendChild(option);});
+ paperLabel.appendChild(paperSelect);
+ const printerSettings=root.document.createElement('div');
+ printerSettings.appendChild(paperLabel);
+ saleMessage.insertAdjacentElement('afterend',printerSettings);
+ printerSettings.insertAdjacentElement('afterend',receiptButton);
+ const tenantKey=String(root.GestLokPilot?.tenantId?.()||'').trim();
+ const paperKey=tenantKey?'gestlok:scanner:paper:'+tenantKey:null;
+ try{const saved=paperKey&&root.localStorage?.getItem(paperKey);if(saved==='80mm'||saved==='58mm')paperSelect.value=saved;}catch(_){}
+ paperSelect.addEventListener('change',()=>{try{if(paperKey)root.localStorage?.setItem(paperKey,paperSelect.value);}catch(_){}});
+ receiptButton.addEventListener('click',()=>{
+  if(!lastReceipt)return;
+  const paper=paperSelect.value;
+  const w=root.open?.('','_blank');
+  if(!w){saleMessage.textContent='Permití las ventanas emergentes para imprimir el ticket.';return;}
+  const lines=lastReceipt.lines.map(x=>'<tr><td>'+esc(x.name)+' × '+x.quantity+'</td><td style="text-align:right">'+esc(money(x.price*x.quantity))+'</td></tr>').join('');
+  w.document.open();w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket GESTLOK</title><style>@page{size:'+paper+' auto;margin:3mm}body{font:12px monospace;margin:0;color:#000}h2{text-align:center;font-size:15px}table{width:100%;border-collapse:collapse}td{padding:4px 0;border-bottom:1px dashed #999}strong{display:block;margin-top:12px;text-align:right}</style></head><body><h2>GESTLOK · COMPROBANTE</h2><p>'+esc(lastReceipt.date)+'<br>N.º '+esc(lastReceipt.id)+'</p><table>'+lines+'</table><strong>Total: '+esc(money(lastReceipt.total))+'</strong><p>Pago: '+esc(lastReceipt.payment)+'</p><script>window.onload=()=>window.print()<\/script></body></html>');w.document.close();
+ });
  const reportDay=container.querySelector('#gl-pos-report-day');
  const reportBody=container.querySelector('#gl-pos-reconcile-body');
  reportDay?.addEventListener('change',async()=>{
@@ -45,7 +93,7 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
    if(!disposed)reportBody.textContent=e.message||'No se pudo consultar este día.';
   }finally{if(!disposed)reportDay.disabled=false;}
  });
- let submitting=false,pendingRequestId=null,uncertain=false;
+ let submitting=false,pendingRequestId=null,uncertain=false,lastReceipt=null,pendingPayment=null;
  search.setAttribute('aria-label','Código de barras o nombre del producto');
  camera.setAttribute('aria-label','Abrir cámara para escanear código de barras');
  let stopScan=null,disposed=false;
@@ -80,20 +128,49 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
  stopButton.addEventListener('click',finishScan);
  activeCleanup=()=>{disposed=true;finishScan();};
  confirm.addEventListener('click',async()=>{
-  if(submitting||!checkoutEnabled||!cart.size)return;
+  if(submitting||!checkoutEnabled||!cart.size||!availableMethods.length)return;
   const lines=[...cart].map(([product_id,quantity])=>({product_id,quantity}));
-  const payment=container.querySelector('#gl-pos-payment').value;
+  const payment=paymentSelect.value;
   const estimated=lines.reduce((sum,line)=>sum+(catalog.find(p=>p.id===line.product_id)?.price||0)*line.quantity,0);
-  if(!pendingRequestId&&root.confirm&&!root.confirm('¿Ya recibiste '+money(estimated)+' por '+(payment==='efectivo'?'efectivo':'transferencia')+'? Se guardará la venta y se descontará stock.'))return;
+  let payments=null;
+  try{
+   if(splitEnabled.checked){
+    const parts=[...splitLines.querySelectorAll('.gl-pos-split-row')].map(row=>({method:row.querySelector('select').value,amount:row.querySelector('input').value}));
+    payments=root.GestLokPosPayments.validateSplit({total:estimated,parts,methods:availableMethods});
+   }else if(!availableMethods.some(m=>m.id===payment))throw Error('Medio de pago no habilitado.');
+   else payments=root.GestLokPosPayments.validateSplit({total:estimated,parts:[{method:payment,amount:estimated}],methods:availableMethods});
+  }catch(e){saleMessage.textContent=e.message;return;}
+  const paymentLabel=payments?payments.map(p=>p.method+': '+money(p.amount)).join(', '):payment;
+  if(uncertain&&pendingPayment!==JSON.stringify({payment,payments,estimated})){
+   saleMessage.textContent='No cambies los importes ni el medio de pago mientras se verifica una venta pendiente.';return;
+  }
+  if(!pendingRequestId&&root.confirm&&!root.confirm('¿Ya recibiste '+money(estimated)+' por '+paymentLabel+'? Se guardará la venta y se descontará stock.'))return;
   pendingRequestId ||= root.crypto?.randomUUID();
+  if(!pendingPayment)pendingPayment=JSON.stringify({payment,payments,estimated});
   if(!pendingRequestId){saleMessage.textContent='No se pudo generar un identificador de venta seguro.';return;}
   submitting=true;confirm.disabled=true;saleMessage.textContent='Registrando venta…';
   try{
    const result=await root.GestLokPosCheckout.checkout({
-    db:root.GestLokSupabase,lines,payment,requestId:pendingRequestId
+    db:root.GestLokSupabase,lines,payment,payments,methods:availableMethods,total:estimated,requestId:pendingRequestId
    });
-   pendingRequestId=null;uncertain=false;
+   pendingRequestId=null;pendingPayment=null;uncertain=false;
    if(disposed)return;
+   // El ticket se genera solo con importes confirmados por el servidor.
+   lastReceipt=null;receiptButton.hidden=true;
+   let saved={data:null,error:true};
+   try{saved=await root.GestLokSupabase.from('gestlok_pilot_pos_sales')
+    .select('id,total,items,payment_method,payment_breakdown,created_at')
+    .eq('tenant_id',result.tenantId).eq('id',result.saleId).single();}catch(_){}
+   if(!saved.error&&saved.data&&Array.isArray(saved.data.items)){
+    const sale=saved.data;
+    const breakdown=sale.payment_breakdown&&typeof sale.payment_breakdown==='object'
+     ?Object.entries(sale.payment_breakdown).map(([method,amount])=>method+': '+money(Number(amount))).join(', ')
+     :sale.payment_method;
+    lastReceipt={id:sale.id,date:new Date(sale.created_at).toLocaleString('es-AR'),
+     payment:breakdown,lines:sale.items.map(item=>({name:item.name,quantity:Number(item.quantity),price:Number(item.unit_price)})),
+     total:Number(sale.total)};
+    receiptButton.hidden=false;
+   }
    catalog=catalog.map(p=>({...p,stock:Number.isInteger(p.stock)?p.stock-(cart.get(p.id)||0):p.stock}));
    cart.clear();paint();
    saleMessage.textContent='✓ Venta registrada correctamente. Comprobante '+result.saleId.slice(0,8)+'.';
@@ -101,7 +178,7 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
     try{await onSale(result);}catch{if(!disposed)saleMessage.textContent+=' Actualizá la pantalla para consultar el stock.';}
    }
   }catch(e){
-   if(['22023','42501'].includes(e.code)){pendingRequestId=null;uncertain=false;}
+   if(['22023','42501'].includes(e.code)){pendingRequestId=null;pendingPayment=null;uncertain=false;}
    else uncertain=true;
    if(!disposed)saleMessage.textContent=(e.message||'No se pudo confirmar la venta.')+(uncertain?' Reintentá sin modificar el carrito para evitar duplicados.':'');
   }finally{if(!disposed){submitting=false;paint();}}
@@ -109,11 +186,13 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
 
  function paint(){
   const q=search.value.toLocaleLowerCase('es-AR').trim();
-  confirm.disabled=!checkoutEnabled||!cart.size||submitting;
+  confirm.disabled=!checkoutEnabled||!cart.size||submitting||!availableMethods.length;
   confirm.textContent=!checkoutEnabled?'Confirmar venta':uncertain?'Reintentar la misma venta':'Registrar venta cobrada';
   search.disabled=uncertain||submitting;
   const paymentSelect=container.querySelector('#gl-pos-payment');
-  if(paymentSelect)paymentSelect.disabled=uncertain||submitting;
+  if(paymentSelect)paymentSelect.disabled=uncertain||submitting||!availableMethods.length;
+  splitEnabled.disabled=uncertain||submitting||!availableMethods.length;
+  splitLines.querySelectorAll('select,input,button').forEach(el=>{el.disabled=uncertain||submitting;});
   results.innerHTML=(q?catalog.filter(p=>(p.name+' '+p.barcode).toLocaleLowerCase('es-AR').includes(q)).slice(0,30):[]).map(p=>'<article class="gl-pos-product"><div><strong>'+esc(p.name)+'</strong><small style="display:block;margin-top:4px">'+stockInfo(p,cart.get(p.id)||0)+'</small></div><strong>'+(p.price===null?'Sin precio':money(p.price))+'</strong><button type="button" data-add="'+esc(p.id)+'" '+(p.price===null||!Number.isInteger(p.stock)||p.stock<=(cart.get(p.id)||0)||uncertain?'disabled':'')+'>Agregar</button></article>').join('');
   const lines=[...cart].map(([id,qty])=>({p:catalog.find(p=>p.id===id),qty}));
   cartBox.innerHTML=lines.map(({p,qty})=>'<div class="gl-pos-cart-line"><div><strong>'+esc(p.name)+'</strong><small style="display:block">'+money(p.price*qty)+'</small><small style="display:block;margin-top:3px">'+stockInfo(p,qty)+'</small></div><div class="gl-pos-quantity"><button type="button" data-decrease="'+esc(p.id)+'" aria-label="Restar una unidad de '+esc(p.name)+'">−</button><span>'+qty+'</span><button type="button" data-increase="'+esc(p.id)+'" aria-label="Sumar una unidad de '+esc(p.name)+'" '+(!Number.isInteger(p.stock)||qty>=p.stock||uncertain?'disabled':'')+'>+</button><button type="button" data-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">×</button></div></div>').join('')||'<p class="gl-pos-empty">Todavía no agregaste productos.</p>';
