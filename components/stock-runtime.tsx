@@ -37,7 +37,7 @@ export function StockRuntime() {
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
-      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=formulario-limpio-20261101");
+      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=efectivo-ok-visible-20261105");
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=navegacion-local-20261104");

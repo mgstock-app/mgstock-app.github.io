@@ -392,9 +392,18 @@
 .mg-on-cash-scroll th{background:#13375b;color:#fff;text-align:left;font-weight:750;padding:13px 12px;white-space:nowrap}
 .mg-on-cash-scroll td{padding:12px;border-bottom:1px solid #e7eef4;color:#294c65}
 .mg-on-cash-scroll tbody tr:nth-child(even){background:#f6f9fc}
-.mg-on-cash-scroll tbody td:nth-child(5){font-weight:800;color:#123d61}
+.mg-on-cash-scroll tbody td:nth-child(6){font-weight:800;color:#123d61}
 .mg-on-cash-scroll tfoot{background:#e5f1fd;font-weight:850;color:#12395c}
 .mg-on-cash-scroll tfoot td{padding:15px 12px;border-top:2px solid #bed5e9}
 @media(max-width:520px){.mg-on-cash-head{align-items:stretch}.mg-on-cash-total{text-align:left}.mg-on-cash-detail-section{padding:12px}}
 
 .mg-on-ok-label{display:inline-flex;align-items:center;gap:7px;font-weight:700;cursor:pointer;white-space:nowrap}.mg-on-ok-label input{width:19px;height:19px;accent-color:#17385b;cursor:pointer}.mg-on-ok-label input:disabled{cursor:default;opacity:.6}
+
+/* Casilla OK siempre a la vista en celulares y al desplazar importes. */
+.mg-on-cash-scroll thead th:first-child{position:sticky;left:0;z-index:3;min-width:80px;box-shadow:2px 0 5px #0b2d4a26}
+.mg-on-cash-scroll tbody td:first-child{position:sticky;left:0;z-index:2;min-width:80px;background:#fff;box-shadow:2px 0 5px #0b2d4a13}
+.mg-on-cash-scroll tbody tr:nth-child(even) td:first-child{background:#f6f9fc}
+.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td{background:#f0f8f4}
+.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td:first-child{background:#e5f4eb}
+.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed .mg-on-ok-label{color:#126b3f}
+.mg-on-cash-scroll .mg-on-ok-label input{min-width:20px;min-height:20px}
