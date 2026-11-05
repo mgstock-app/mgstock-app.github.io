@@ -20,6 +20,9 @@ cross join (values ('efectivo','Efectivo'),('transferencia','Transferencia')) m(
 where a.enabled and a.plan_code='scanner'
 on conflict do nothing;
 alter table public.gestlok_pilot_pos_sales add column if not exists payment_breakdown jsonb;
+-- Conservar compatibilidad de reintentos de ventas individuales previas.
+update public.gestlok_pilot_pos_sales set payment_breakdown=jsonb_build_object(payment_method,total)
+where payment_breakdown is null and payment_method in ('efectivo','transferencia');
 alter table public.gestlok_pilot_pos_sales drop constraint if exists gestlok_pilot_pos_sales_payment_method_check;
 alter table public.gestlok_pilot_pos_sales add constraint gestlok_pilot_pos_sales_payment_method_check
  check (payment_method ~ '^[a-z][a-z0-9_-]{1,39}$');
@@ -44,7 +47,6 @@ declare
   v_details jsonb := '[]'::jsonb;
   v_existing uuid;
   v_old_lines jsonb;
-  v_old_payment text;
   v_old_payments jsonb;
   v_payment jsonb;
   v_method text;
@@ -100,7 +102,10 @@ begin
       or v_amount <> (v_payment->>'amount')::numeric then
       raise exception 'Importe inválido' using errcode='22023';
     end if;
-    v_paid := v_paid + v_amount;
+    if v_paid + v_amount > 999999999999.99 then
+    raise exception 'Importe fuera de rango' using errcode='22023';
+  end if;
+  v_paid := v_paid + v_amount;
     v_split := jsonb_set(v_split,array[v_method],to_jsonb(coalesce((v_split->>v_method)::numeric,0)+v_amount),true);
   end loop;
 
@@ -128,7 +133,7 @@ begin
 
   -- Mismo comprobante reintentado: nunca se descuentan dos veces las unidades.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(p_tenant::text || ':' || p_request::text));
-  select s.id,s.request_lines,s.payment_method,s.payment_breakdown into v_existing,v_old_lines,v_old_payment,v_old_payments
+  select s.id,s.request_lines,s.payment_breakdown into v_existing,v_old_lines,v_old_payments
     from public.gestlok_pilot_pos_sales s
     where s.tenant_id = p_tenant and s.request_id = p_request;
   if found then
