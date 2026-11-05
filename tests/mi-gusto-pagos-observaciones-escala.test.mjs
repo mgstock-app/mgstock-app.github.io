@@ -73,7 +73,7 @@ test('Interfaz: observación opcional en carga e historial y escala de 85–110%
  assert.match(js,/name="observacion" maxlength="300"/);
  assert.match(js,/r\?\.observacion\|\|''/);
  assert.match(js,/m\.observacion\|\|'—'/);
- assert.match(js,/r\.observacion\?'<span title=/);
+ assert.match(js,/r\.observacion\?'<p class="mg-on-recent-card-note"/);
  assert.match(js,/p_observacion:m\.observacion\|\|''/);
  assert.match(js,/p_observacion:observacion/);
  assert.match(js,/gestlok_mg_online_save_note/);
