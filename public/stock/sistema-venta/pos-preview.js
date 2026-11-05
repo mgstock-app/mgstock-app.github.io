@@ -167,11 +167,11 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
 
  function paint(){
   const q=search.value.toLocaleLowerCase('es-AR').trim();
-  confirm.disabled=!checkoutEnabled||!cart.size||submitting;
+  confirm.disabled=!checkoutEnabled||!cart.size||submitting||!availableMethods.length;
   confirm.textContent=!checkoutEnabled?'Confirmar venta':uncertain?'Reintentar la misma venta':'Registrar venta cobrada';
   search.disabled=uncertain||submitting;
   const paymentSelect=container.querySelector('#gl-pos-payment');
-  if(paymentSelect)paymentSelect.disabled=uncertain||submitting;
+  if(paymentSelect)paymentSelect.disabled=uncertain||submitting||!availableMethods.length;
   results.innerHTML=(q?catalog.filter(p=>(p.name+' '+p.barcode).toLocaleLowerCase('es-AR').includes(q)).slice(0,30):[]).map(p=>'<article class="gl-pos-product"><div><strong>'+esc(p.name)+'</strong><small style="display:block;margin-top:4px">'+stockInfo(p,cart.get(p.id)||0)+'</small></div><strong>'+(p.price===null?'Sin precio':money(p.price))+'</strong><button type="button" data-add="'+esc(p.id)+'" '+(p.price===null||!Number.isInteger(p.stock)||p.stock<=(cart.get(p.id)||0)||uncertain?'disabled':'')+'>Agregar</button></article>').join('');
   const lines=[...cart].map(([id,qty])=>({p:catalog.find(p=>p.id===id),qty}));
   cartBox.innerHTML=lines.map(({p,qty})=>'<div class="gl-pos-cart-line"><div><strong>'+esc(p.name)+'</strong><small style="display:block">'+money(p.price*qty)+'</small><small style="display:block;margin-top:3px">'+stockInfo(p,qty)+'</small></div><div class="gl-pos-quantity"><button type="button" data-decrease="'+esc(p.id)+'" aria-label="Restar una unidad de '+esc(p.name)+'">−</button><span>'+qty+'</span><button type="button" data-increase="'+esc(p.id)+'" aria-label="Sumar una unidad de '+esc(p.name)+'" '+(!Number.isInteger(p.stock)||qty>=p.stock||uncertain?'disabled':'')+'>+</button><button type="button" data-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">×</button></div></div>').join('')||'<p class="gl-pos-empty">Todavía no agregaste productos.</p>';
