@@ -12,6 +12,19 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     let content = path === 'markup' ? JSON.parse(read('lib/stock/markup.json')) : read(path);
     // Preserve the original stock fingerprint. Remove only precisely reviewed
     // additive hooks: changes to existing auth, screens or stock logic still fail.
+    // Únicamente los tres textos de entrada al video comercial en el acceso público.
+    // La autenticación original sigue verificándose contra su huella histórica.
+    if (path === 'public/stock/auth.js') {
+      const publicVideoHooks = [
+        ["link.href='/conocer/#video';", "link.href=location.pathname+'?demo=1';"],
+        ["link.textContent='Mirá Plan Scanner en video · 30 segundos';", "link.textContent='Explorar demo interactiva · Sin registrarme';"],
+        ["info.textContent='Conocé las ventas, el escaneo con celular, el stock y los precios de GESTLOK.';", "info.textContent='Probá Dueña y Gerente en dos tiendas ficticias. Sin modificar datos reales.';"]
+      ];
+      for (const [updated, original] of publicVideoHooks) {
+        assert.equal(content.split(updated).length - 1, 1, 'Cambio público y único del enlace a video');
+        content = content.replace(updated, original);
+      }
+    }
     if (path === 'public/stock/app.js') {
       const navigationHooks=JSON.parse(read('tests/gestlok-navigation-hooks.json')).hooks;
       for(const {actual,original} of navigationHooks){

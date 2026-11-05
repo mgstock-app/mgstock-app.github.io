@@ -53,9 +53,9 @@ describe('GestLok · demo para visitantes sin registro',()=>{
   cy.get('#gl-visitor-role',{timeout:15000}).should('have.value','dueno');
   abrirInicioDelDueno();
  });
- it('La pantalla de login muestra botón público para entrar a demo',()=>{
+ it('La pantalla de login dirige al video comercial en lugar de la demo',()=>{
   bootstrap('/');
   cy.get('#au-in').should('be.visible');
-  cy.get('#au-demo-link').should('be.visible').and('have.attr','href','/?demo=1');
+  cy.get('#au-demo-link').should('be.visible').and('have.attr','href','/conocer/#video').and('contain.text','Plan Scanner');
  });
 });
