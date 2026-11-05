@@ -49,3 +49,18 @@ test('El cuadro del turno abierto sigue mostrándose para registrar movimientos'
  assert.match(html,/Detalle de efectivo del turno/);
  assert.doesNotMatch(html,/mg-on-cash-history/);
 });
+
+test('Total descuentos: suma solamente la columna Descuento de pagos en efectivo, sin incluir transferencias',()=>{
+ const segundo={...cashMovement,id:'33333333-3333-4333-8333-333333333333',comanda:'32',gross_amount:19600,discount_amount:1960,amount:17640,ok:false};
+ const transferencia={...transferMovement,discount_amount:5000};
+ const turno={...closed,status:'abierto',movements:[cashMovement,segundo,transferencia]};
+ const html=window.__test.cashMovementDetail(turno);
+ const m=html.match(/data-mgon-total-discounts>([^<]+)<\/strong>/);
+ assert.ok(m,'El resumen Total descuentos debe mostrarse sobre la tabla');
+ assert.equal(m[1].replace(/\s/g,''),'$2.060,00');
+ assert.match(html,/Solo pagos en efectivo/);
+ const archivado=window.__test.reportTurn({...turno,status:'cerrado'},'manana');
+ const totalArchivado=archivado.match(/data-mgon-total-discounts>([^<]+)<\/strong>/);
+ assert.ok(totalArchivado);
+ assert.equal(totalArchivado[1].replace(/\s/g,''),'$2.060,00');
+});
