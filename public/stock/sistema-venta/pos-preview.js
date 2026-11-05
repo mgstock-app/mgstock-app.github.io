@@ -93,7 +93,7 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
    if(!disposed)reportBody.textContent=e.message||'No se pudo consultar este día.';
   }finally{if(!disposed)reportDay.disabled=false;}
  });
- let submitting=false,pendingRequestId=null,uncertain=false,lastReceipt=null;
+ let submitting=false,pendingRequestId=null,uncertain=false,lastReceipt=null,pendingPayment=null;
  search.setAttribute('aria-label','Código de barras o nombre del producto');
  camera.setAttribute('aria-label','Abrir cámara para escanear código de barras');
  let stopScan=null,disposed=false;
@@ -140,15 +140,19 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
    }else if(!availableMethods.some(m=>m.id===payment))throw Error('Medio de pago no habilitado.');
   }catch(e){saleMessage.textContent=e.message;return;}
   const paymentLabel=payments?payments.map(p=>p.method+': '+money(p.amount)).join(', '):payment;
+  if(uncertain&&pendingPayment!==JSON.stringify({payment,payments,estimated})){
+   saleMessage.textContent='No cambies los importes ni el medio de pago mientras se verifica una venta pendiente.';return;
+  }
   if(!pendingRequestId&&root.confirm&&!root.confirm('¿Ya recibiste '+money(estimated)+' por '+paymentLabel+'? Se guardará la venta y se descontará stock.'))return;
   pendingRequestId ||= root.crypto?.randomUUID();
+  if(!pendingPayment)pendingPayment=JSON.stringify({payment,payments,estimated});
   if(!pendingRequestId){saleMessage.textContent='No se pudo generar un identificador de venta seguro.';return;}
   submitting=true;confirm.disabled=true;saleMessage.textContent='Registrando venta…';
   try{
    const result=await root.GestLokPosCheckout.checkout({
     db:root.GestLokSupabase,lines,payment,payments,methods:availableMethods,total:estimated,requestId:pendingRequestId
    });
-   pendingRequestId=null;uncertain=false;
+   pendingRequestId=null;pendingPayment=null;uncertain=false;
    if(disposed)return;
    // El ticket se genera solo con importes confirmados por el servidor.
    lastReceipt=null;receiptButton.hidden=true;
@@ -173,7 +177,7 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
     try{await onSale(result);}catch{if(!disposed)saleMessage.textContent+=' Actualizá la pantalla para consultar el stock.';}
    }
   }catch(e){
-   if(['22023','42501'].includes(e.code)){pendingRequestId=null;uncertain=false;}
+   if(['22023','42501'].includes(e.code)){pendingRequestId=null;pendingPayment=null;uncertain=false;}
    else uncertain=true;
    if(!disposed)saleMessage.textContent=(e.message||'No se pudo confirmar la venta.')+(uncertain?' Reintentá sin modificar el carrito para evitar duplicados.':'');
   }finally{if(!disposed){submitting=false;paint();}}
@@ -186,6 +190,8 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
   search.disabled=uncertain||submitting;
   const paymentSelect=container.querySelector('#gl-pos-payment');
   if(paymentSelect)paymentSelect.disabled=uncertain||submitting||!availableMethods.length;
+  splitEnabled.disabled=uncertain||submitting||!availableMethods.length;
+  splitLines.querySelectorAll('select,input,button').forEach(el=>{el.disabled=uncertain||submitting;});
   results.innerHTML=(q?catalog.filter(p=>(p.name+' '+p.barcode).toLocaleLowerCase('es-AR').includes(q)).slice(0,30):[]).map(p=>'<article class="gl-pos-product"><div><strong>'+esc(p.name)+'</strong><small style="display:block;margin-top:4px">'+stockInfo(p,cart.get(p.id)||0)+'</small></div><strong>'+(p.price===null?'Sin precio':money(p.price))+'</strong><button type="button" data-add="'+esc(p.id)+'" '+(p.price===null||!Number.isInteger(p.stock)||p.stock<=(cart.get(p.id)||0)||uncertain?'disabled':'')+'>Agregar</button></article>').join('');
   const lines=[...cart].map(([id,qty])=>({p:catalog.find(p=>p.id===id),qty}));
   cartBox.innerHTML=lines.map(({p,qty})=>'<div class="gl-pos-cart-line"><div><strong>'+esc(p.name)+'</strong><small style="display:block">'+money(p.price*qty)+'</small><small style="display:block;margin-top:3px">'+stockInfo(p,qty)+'</small></div><div class="gl-pos-quantity"><button type="button" data-decrease="'+esc(p.id)+'" aria-label="Restar una unidad de '+esc(p.name)+'">−</button><span>'+qty+'</span><button type="button" data-increase="'+esc(p.id)+'" aria-label="Sumar una unidad de '+esc(p.name)+'" '+(!Number.isInteger(p.stock)||qty>=p.stock||uncertain?'disabled':'')+'>+</button><button type="button" data-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">×</button></div></div>').join('')||'<p class="gl-pos-empty">Todavía no agregaste productos.</p>';
