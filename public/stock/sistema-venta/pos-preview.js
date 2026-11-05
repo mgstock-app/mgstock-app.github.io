@@ -150,8 +150,21 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
    });
    pendingRequestId=null;uncertain=false;
    if(disposed)return;
-   lastReceipt={id:result.saleId,date:new Date().toLocaleString('es-AR'),payment:paymentLabel,lines:lines.map(line=>{const p=catalog.find(p=>p.id===line.product_id);return {name:p.name,quantity:line.quantity,price:p.price};}),total:estimated};
-   receiptButton.hidden=false;
+   // El ticket se genera solo con importes confirmados por el servidor.
+   lastReceipt=null;receiptButton.hidden=true;
+   const saved=await root.GestLokSupabase.from('gestlok_pilot_pos_sales')
+    .select('id,total,items,payment_method,payment_breakdown,created_at')
+    .eq('tenant_id',result.tenantId).eq('id',result.saleId).single();
+   if(!saved.error&&saved.data&&Array.isArray(saved.data.items)){
+    const sale=saved.data;
+    const breakdown=sale.payment_breakdown&&typeof sale.payment_breakdown==='object'
+     ?Object.entries(sale.payment_breakdown).map(([method,amount])=>method+': '+money(Number(amount))).join(', ')
+     :sale.payment_method;
+    lastReceipt={id:sale.id,date:new Date(sale.created_at).toLocaleString('es-AR'),
+     payment:breakdown,lines:sale.items.map(item=>({name:item.name,quantity:Number(item.quantity),price:Number(item.unit_price)})),
+     total:Number(sale.total)};
+    receiptButton.hidden=false;
+   }
    catalog=catalog.map(p=>({...p,stock:Number.isInteger(p.stock)?p.stock-(cart.get(p.id)||0):p.stock}));
    cart.clear();paint();
    saleMessage.textContent='✓ Venta registrada correctamente. Comprobante '+result.saleId.slice(0,8)+'.';
