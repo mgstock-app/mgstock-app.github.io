@@ -10,7 +10,7 @@ export default function Home() {
     <>
       <div id="stock-root" dangerouslySetInnerHTML={{ __html: markup }} />
       <GestLokIntro />
-      <Link className="gestlok-demo-entry" href="/?demo=1">Probar GESTLOK · Demo</Link>
+      <Link className="gestlok-demo-entry" href="/conocer/#video">Ver video de Plan Scanner · 30 segundos</Link>
       <Link className="gestlok-public-about-entry" href="/conocer/">Conocé GESTLOK y sus funciones</Link>
       <StockRuntime />
       <nav className="stock-legal-nav" aria-label="Información legal de GestLok">

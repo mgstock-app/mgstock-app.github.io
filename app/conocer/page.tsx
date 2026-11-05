@@ -4,7 +4,7 @@ import "./conocer.css";
 
 export const metadata: Metadata = {
   title: "Conocé GESTLOK | Gestión de negocios y locales",
-  description: "Conocé GESTLOK: una plataforma para organizar stock, proveedores y la gestión de empresas y sucursales. Explorá la demo e ingresá a tu cuenta.",
+  description: "Conocé GESTLOK y mirá el video de Plan Scanner: escaneá productos desde tu celular, registrá ventas, actualizá stock y administrá precios.",
   alternates: { canonical: "/conocer/" },
   openGraph: {
     title: "GESTLOK | Todo tu negocio, en orden",
@@ -46,7 +46,7 @@ export default function ConocerGestlok() {
           <span>GESTLOK</span>
         </Link>
         <nav aria-label="Navegación pública">
-          <Link href="/?demo=1">Probar la demo</Link>
+          <Link href="#video">Ver video</Link>
           <Link className="gl-public-header-cta" href="/">Ingresar</Link>
         </nav>
       </header>
@@ -55,12 +55,36 @@ export default function ConocerGestlok() {
         <section className="gl-public-hero">
           <span className="gl-public-eyebrow">GESTIÓN PARA COMERCIOS</span>
           <h1>Todo tu negocio, en orden.</h1>
-          <p className="gl-public-lead">GESTLOK reúne herramientas para organizar el trabajo diario de tu negocio: productos, stock, proveedores, personal y sucursales, desde un mismo lugar.</p>
+          <p className="gl-public-lead">GESTLOK reúne las herramientas de tu negocio en un solo lugar. Con Plan Scanner, escaneás productos con la cámara del celular, registrás ventas y mantenés el stock y los precios al día.</p>
           <div className="gl-public-actions">
-            <Link className="gl-public-primary" href="/?demo=1">Explorar demo interactiva</Link>
+            <Link className="gl-public-primary" href="#video">Ver Plan Scanner en acción</Link>
             <Link className="gl-public-secondary" href="/">Entrar a GESTLOK</Link>
           </div>
           <p className="gl-public-caption">Accedé desde el navegador de tu computadora o celular. Las funciones disponibles dependen de los permisos y módulos habilitados.</p>
+        </section>
+
+        <section className="gl-public-video-section" id="video" aria-labelledby="gl-public-video-title">
+          <div className="gl-public-video-copy">
+            <span className="gl-public-eyebrow">PLAN SCANNER · VIDEO DE 30 SEGUNDOS</span>
+            <h2 id="gl-public-video-title">Escaneá. Vendé. Controlá.</h2>
+            <p>Conocé el recorrido completo: leé códigos de barras con la cámara del celular, prepará el carrito, confirmá el cobro y mirá cómo se actualizan las unidades. Todo junto con costos, márgenes y precios de venta.</p>
+            <p className="gl-public-video-caption">Video ilustrativo con productos y valores ficticios. Reproducilo con sonido.</p>
+            <Link className="gl-public-primary" href="/">Ingresar a GESTLOK</Link>
+          </div>
+          <div className="gl-public-video-frame">
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              poster="/videos/gestlok-plan-scanner-cover.jpg"
+              width={720}
+              height={1280}
+              aria-label="Publicidad GESTLOK Plan Scanner, 30 segundos"
+            >
+              <source src="/videos/gestlok-plan-scanner-30s.mp4" type="video/mp4" />
+              Tu navegador no admite este video. <a href="/videos/gestlok-plan-scanner-30s.mp4">Ver el video</a>.
+            </video>
+          </div>
         </section>
 
         <section className="gl-public-features" aria-labelledby="gl-public-features-heading">
@@ -90,8 +114,8 @@ export default function ConocerGestlok() {
 
         <section className="gl-public-final">
           <h2>¿Querés conocer cómo funciona?</h2>
-          <p>Explorá una demostración con ejemplos ficticios, sin acceder a datos de negocios reales.</p>
-          <Link className="gl-public-primary" href="/?demo=1">Probar GESTLOK</Link>
+          <p>Descubrí cómo funciona Plan Scanner en el video y conocé las herramientas de GESTLOK.</p>
+          <Link className="gl-public-primary" href="#video">Ver el video</Link>
         </section>
       </div>
       <footer className="gl-public-footer">
