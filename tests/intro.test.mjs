@@ -22,5 +22,7 @@ test("la introducción respeta movimiento reducido y no interrumpe al volver a l
   const css = read("app/gestlok-intro.css");
   assert.doesNotMatch(splash, /visibilitychange|setOpening|REPLAY_AFTER_BACKGROUND_MS/);
   assert.match(css, /prefers-reduced-motion:reduce/);
-  assert.doesNotMatch(splash, /supabase|localStorage|sessionStorage|fetch\(/i);
+  assert.doesNotMatch(splash, /supabase|localStorage|fetch\(/i);
+  assert.match(splash, /sessionStorage\.getItem\(KEY\)/);
+  assert.match(splash, /sessionStorage\.setItem\(KEY, "1"\)/);
 });
