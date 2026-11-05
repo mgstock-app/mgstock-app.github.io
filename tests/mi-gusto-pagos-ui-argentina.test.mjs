@@ -32,7 +32,7 @@ test('Pagos Online muestra tarjeta de carga, lista responsive y confirmación re
  assert.match(styles,/\.mg-on-fields\{grid-template-columns:minmax\(0,1fr\)/);
  assert.match(styles,/font-size:16px/);
  assert.match(styles,/\.mg-on-success/);
- assert.match(read('components/stock-runtime.tsx'),/mi-gusto-cierre-online\.js\?rev=formulario-limpio-20261101/);
+ assert.match(read('components/stock-runtime.tsx'),/mi-gusto-cierre-online\.js\?rev=efectivo-ok-visible-20261105/);
 });
 
 test('Fecha y hora son Argentina incluso en el cambio de día UTC',()=>{
