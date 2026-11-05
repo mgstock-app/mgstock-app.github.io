@@ -109,20 +109,21 @@ function movementList(){
  const method=r=>'<span class="mg-on-method"><span class="mg-on-method-mark mg-on-method-'+esc(r.method)+'" aria-hidden="true">'+
   esc(({transferencia:'T',getnet:'G',mercado_pago:'MP',efectivo:'E'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
  const appControl=r=>'<button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+
-   '" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>'+(r.app?'APP':'—')+'</b></button>';
+   '" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>APP</b></button>';
  const actions=r=>'<div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
    '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div>';
- const desktop='<div class="mg-on-recent-desktop"><div class="mg-on-tablewrap"><table><thead><tr>'+
-  '<th>Hora</th><th>Comanda</th><th>Monto</th><th>Forma de pago</th><th>APP</th><th>Acciones</th></tr></thead><tbody>'+
-  rows.map(r=>'<tr class="'+(r.method==='efectivo'?'mg-on-cash-row':'')+'"><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong>'+
-   (r.observacion?'<span title="'+esc(r.observacion)+'" class="mg-on-recent-note">'+esc(r.observacion)+'</span>':'')+'</td>'+
-   '<td><strong>'+cash(r.amount)+'</strong>'+(r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</td><td>'+method(r)+'</td><td>'+appControl(r)+'</td><td>'+actions(r)+'</td></tr>').join('')+
-  '</tbody></table></div></div>';
- const mobile='<div class="mg-on-recent-mobile">'+rows.map(r=>'<article class="mg-on-recent-card '+(r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
-  '<div class="mg-on-recent-card-top"><div><small>'+timeOf(r.created_at)+' · Comanda #'+esc(r.comanda)+'</small>'+
-  '<strong>'+cash(r.amount)+'</strong>'+(r.method==='efectivo'?'<small>Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</div>'+appControl(r)+'</div>'+
-  '<div class="mg-on-recent-card-method">'+method(r)+'</div>'+
-  (r.observacion?'<p class="mg-on-recent-card-note">'+esc(r.observacion)+'</p>':'')+actions(r)+'</article>').join('')+'</div>';
+ const card=r=>'<article class="mg-on-recent-card '+(r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
+  '<div class="mg-on-recent-row-main">'+
+  '<strong class="mg-on-recent-order" aria-label="Comanda número '+esc(r.comanda)+'">#'+esc(r.comanda)+'</strong>'+
+  '<div class="mg-on-recent-amount"><strong>'+cash(r.amount)+'</strong>'+
+   (r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</div>'+
+  '<div class="mg-on-recent-app">'+appControl(r)+'</div>'+
+  '<div class="mg-on-recent-meta"><span class="mg-on-recent-time">'+timeOf(r.created_at)+'</span>'+method(r)+'</div>'+
+  '<div class="mg-on-recent-commands">'+actions(r)+'</div></div>'+
+  (r.observacion?'<p class="mg-on-recent-card-note"><span>Observación: </span>'+esc(r.observacion)+'</p>':'')+
+  '</article>';
+ const desktop='<div class="mg-on-recent-desktop"><div class="mg-on-recent-stack">'+rows.map(card).join('')+'</div></div>';
+ const mobile='<div class="mg-on-recent-mobile">'+rows.map(card).join('')+'</div>';
  return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+desktop+mobile+
  (all.length>6?'<button type="button" class="mg-on-more" data-mgon-recent-all aria-expanded="'+showAllMoves+'">'+
  (showAllMoves?'Mostrar solo los últimos 6':'Ver los '+all.length+' movimientos del turno')+'</button>':'')+'</section>';
