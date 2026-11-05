@@ -33,10 +33,23 @@ function render(container,products,{checkoutEnabled=false,onSale,recentSales=[],
  const saleMessage=container.querySelector('#gl-pos-sale-message');
  const receiptButton=root.document.createElement('button');
  receiptButton.type='button';receiptButton.textContent='Imprimir ticket';receiptButton.hidden=true;
- saleMessage.insertAdjacentElement('afterend',receiptButton);
+ const paperLabel=root.document.createElement('label');
+ paperLabel.textContent='Ancho del ticket: ';
+ const paperSelect=root.document.createElement('select');
+ paperSelect.setAttribute('aria-label','Ancho del ticket térmico');
+ [['58mm','58 mm'],['80mm','80 mm']].forEach(([value,label])=>{const option=root.document.createElement('option');option.value=value;option.textContent=label;paperSelect.appendChild(option);});
+ paperLabel.appendChild(paperSelect);
+ const printerSettings=root.document.createElement('div');
+ printerSettings.appendChild(paperLabel);
+ saleMessage.insertAdjacentElement('afterend',printerSettings);
+ printerSettings.insertAdjacentElement('afterend',receiptButton);
+ const tenantKey=String(root.GestLokPilot?.tenantId?.()||'').trim();
+ const paperKey=tenantKey?'gestlok:scanner:paper:'+tenantKey:null;
+ try{const saved=paperKey&&root.localStorage?.getItem(paperKey);if(saved==='80mm'||saved==='58mm')paperSelect.value=saved;}catch(_){}
+ paperSelect.addEventListener('change',()=>{try{if(paperKey)root.localStorage?.setItem(paperKey,paperSelect.value);}catch(_){}});
  receiptButton.addEventListener('click',()=>{
   if(!lastReceipt)return;
-  const paper=root.confirm?.('¿Ticket de 80 mm? Aceptar: 80 mm. Cancelar: 58 mm.')?'80mm':'58mm';
+  const paper=paperSelect.value;
   const w=root.open?.('','_blank');
   if(!w){saleMessage.textContent='Permití las ventanas emergentes para imprimir el ticket.';return;}
   const lines=lastReceipt.lines.map(x=>'<tr><td>'+esc(x.name)+' × '+x.quantity+'</td><td style="text-align:right">'+esc(money(x.price*x.quantity))+'</td></tr>').join('');
