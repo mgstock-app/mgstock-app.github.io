@@ -393,6 +393,13 @@ async function rpcRefresh(){
 function attach(h){
  if(api)return;
  api=h;
+ // Recalcular después de cada render: el guardado de borradores restaura el monto,
+ // pero el aviso de efectivo debe reconstruirse sobre el formulario recién insertado.
+ // Observar solo hijos directos de #view evita reaccionar al texto del aviso.
+ const root=document.getElementById('view');
+ if(root&&typeof MutationObserver!=='undefined'){
+  new MutationObserver(()=>{if(api?.S?.view==='cierre-online')updateCashPreview();}).observe(root,{childList:true});
+ }
  document.addEventListener('click',e=>{
   // Evitar que una actualización del estado desmonte el selector nativo de fotos.
   if(e.target.closest?.('.mg-on-photo-upload')){choosingPhoto=true;return;}
