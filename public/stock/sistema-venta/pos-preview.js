@@ -138,6 +138,7 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
     const parts=[...splitLines.querySelectorAll('.gl-pos-split-row')].map(row=>({method:row.querySelector('select').value,amount:row.querySelector('input').value}));
     payments=root.GestLokPosPayments.validateSplit({total:estimated,parts,methods:availableMethods});
    }else if(!availableMethods.some(m=>m.id===payment))throw Error('Medio de pago no habilitado.');
+   else payments=root.GestLokPosPayments.validateSplit({total:estimated,parts:[{method:payment,amount:estimated}],methods:availableMethods});
   }catch(e){saleMessage.textContent=e.message;return;}
   const paymentLabel=payments?payments.map(p=>p.method+': '+money(p.amount)).join(', '):payment;
   if(uncertain&&pendingPayment!==JSON.stringify({payment,payments,estimated})){
