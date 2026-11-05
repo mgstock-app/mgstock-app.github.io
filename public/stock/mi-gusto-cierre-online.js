@@ -133,8 +133,8 @@ function cashMovementDetail(){
  const total=rows.reduce((v,r)=>v+(Number(r.amount)||0),0);
  const title='<header class="mg-on-cash-head"><div><h3>Detalle de efectivo del turno</h3><p>'+date(s?.day)+' · Turno '+esc(shiftName(s?.turno))+' · '+esc(LOCALS[local()]||'')+'</p></div><div class="mg-on-cash-total"><span>Total efectivo</span><strong>'+cash(total)+'</strong><small>'+rows.length+' movimientos</small></div></header>';
  if(!rows.length)return '<section class="mg-on-cash-detail-section">'+title+'<p class="mg-on-empty">Todavía no se registraron pagos en efectivo en este turno.</p></section>';
- const table='<div class="mg-on-cash-scroll" tabindex="0" aria-label="Detalle de pagos en efectivo"><table><thead><tr><th>Hora</th><th>Comanda</th><th>Importe bruto</th><th>Descuento</th><th>Efectivo cobrado</th><th>Observación</th></tr></thead><tbody>'+
- rows.map(r=>'<tr><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+cash(r.gross_amount??r.amount)+'</td><td>'+cash(r.discount_amount||0)+'</td><td><strong>'+cash(r.amount)+'</strong></td><td>'+esc(r.observacion||'—')+'</td></tr>').join('')+
+ const table='<div class="mg-on-cash-scroll" tabindex="0" aria-label="Detalle de pagos en efectivo"><table><thead><tr><th>Hora</th><th>Comanda</th><th>Importe bruto</th><th>Descuento</th><th>Efectivo cobrado</th><th>Observación</th><th>OK</th></tr></thead><tbody>'+
+ rows.map(r=>'<tr><td>'+timeOf(r.created_at)+'</td><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+cash(r.gross_amount??r.amount)+'</td><td>'+cash(r.discount_amount||0)+'</td><td><strong>'+cash(r.amount)+'</strong></td><td>'+esc(r.observacion||'—')+'</td><td><label class="mg-on-ok-label"><input type="checkbox" data-mgon-cash-ok="'+esc(r.id)+'" '+(r.ok?'checked':'')+' '+(!writable()?'disabled':'')+' aria-label="OK comanda '+esc(r.comanda)+'"><span>OK</span></label></td></tr>').join('')+
  '</tbody><tfoot><tr><td colspan="4">TOTAL EFECTIVO DEL TURNO</td><td>'+cash(total)+'</td><td>'+rows.length+' movimientos</td></tr></tfoot></table></div>';
  return '<section class="mg-on-cash-detail-section" aria-label="Detalle de efectivo del turno">'+title+table+'</section>';
 }
@@ -415,6 +415,17 @@ function attach(h){
   if(jump){tab='historial';api.render();document.querySelector('.mg-on-history-embedded')?.scrollIntoView({block:'start'});return;}
   const tabButton=e.target.closest('[data-mgon-tab]');
   if(tabButton){tab=tabButton.dataset.mgonTab;error='';saveNotice=false;api.render();return;}
+  const cashOk=e.target.closest('[data-mgon-cash-ok]');
+  if(cashOk){
+   if(!writable()){cashOk.checked=!cashOk.checked;return;}
+   const checked=cashOk.checked,id=cashOk.dataset.mgonCashOk,shift=snapshot?.active?.id;
+   cashOk.disabled=true;
+   void (async()=>{try{
+    await rpc('gestlok_mg_online_cash_ok',{p_shift:shift,p_id:id,p_ok:checked});
+    await rpcRefresh();
+   }catch(err){cashOk.checked=!checked;cashOk.disabled=false;api.toast?.(err.message||'No se pudo guardar OK');}})();
+   return;
+  }
   const recentAll=e.target.closest('[data-mgon-recent-all]');
   if(recentAll){showAllMoves=!showAllMoves;api.render();return;}
   const cancel=e.target.closest('[data-mgon-cancel]');
