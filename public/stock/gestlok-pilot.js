@@ -180,7 +180,7 @@
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
-    '<footer class="gl-pilot-footer">Piloto exclusivo. Tus registros no modifican Mi Gusto ni están conectados con ventas, pagos o respaldos reales.</footer></div>';
+    '<footer class="gl-pilot-footer">Plan Scanner privado: las ventas solo se registran cuando el dueño tiene habilitada la operación. No modifica datos de Mi Gusto ni de otras empresas.</footer></div>';
   document.body.classList.add('gl-pilot-open');
  }
  async function open(){
@@ -195,7 +195,7 @@
  const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','checkout-client.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
-   const src='/stock/sistema-venta/'+file;
+   const src='/stock/sistema-venta/'+file+'?rev=scanner-venta-20261105';
    if(document.querySelector('script[data-pos-src="'+file+'"]'))continue;
    await new Promise((resolve,reject)=>{
     const el=document.createElement('script');
@@ -209,13 +209,34 @@
   try{
    await assertAccess();
    await loadPosScripts();
-   const result=await window.GestLokSupabase.from('gestlok_pilot_products')
-    .select('id,name,sku,unit_price,stock_quantity,active')
-    .eq('tenant_id',TENANT).eq('active',true).order('name').limit(500);
+   const db=window.GestLokSupabase;
+   const [result,plan]=await Promise.all([
+    db.from('gestlok_pilot_products').select('id,name,sku,unit_price,stock_quantity,active')
+     .eq('tenant_id',TENANT).eq('active',true).order('name').limit(500),
+    db.from('gestlok_pilot_access').select('pos_live_enabled,enabled,plan_code')
+     .eq('tenant_id',TENANT).maybeSingle()
+   ]);
    if(result.error)throw result.error;
-   if(!displayed||active!=='sistema_venta')return;
+   if(plan.error)throw plan.error;
+   const checkoutEnabled=plan.data?.enabled===true&&plan.data?.plan_code==='scanner'&&plan.data?.pos_live_enabled===true;
+   const sales=checkoutEnabled
+    ?await db.from('gestlok_pilot_pos_sales').select('id,total,payment_method,created_at')
+     .eq('tenant_id',TENANT).order('created_at',{ascending:false}).limit(8)
+    :{data:[],error:null};
+   if(sales.error)throw sales.error;
+   if(!displayed||active!=='sistema_venta'||!enabled||api?.S?.me?.tenant_id!==TENANT)return;
    const mount=document.querySelector('#gl-pos-preview-mount');
-   if(mount)window.GestLokPosPreview.render(mount,result.data||[],{checkoutEnabled:false});
+   if(mount)window.GestLokPosPreview.render(mount,result.data||[],{
+    checkoutEnabled,
+    recentSales:sales.data||[],
+    onSale:async result=>{
+     window.GestLokPreciosStock?.reset?.();
+     if(displayed&&active==='sistema_venta'){
+      await openPosPreview();
+      api?.toast?.('Venta guardada correctamente. Comprobante '+result.saleId.slice(0,8)+'.');
+     }
+    }
+   });
   }catch(e){
    const mount=document.querySelector('#gl-pos-preview-mount');
    if(mount)mount.textContent=e.message||'No se pudo iniciar el escáner.';

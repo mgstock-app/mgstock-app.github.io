@@ -109,3 +109,13 @@ body.gl-pilot-open{overflow:hidden}
 #gl-pilot-panel #gl-pos-checkout{width:100%;margin-top:16px;min-height:48px}
 #gl-pilot-panel .gl-pos-note{display:block;color:#73889b;margin-top:12px}
 @media(max-width:800px){#gl-pilot-panel .gl-pos-layout{grid-template-columns:1fr}#gl-pilot-panel .gl-pos-card{padding:16px}#gl-pilot-panel .gl-pos-product{flex-wrap:wrap}#gl-pilot-panel .gl-pos-heading h2{font-size:23px}}
+
+/* Plan Scanner: historial compacto de ventas registradas, en azul GESTLOK. */
+#gl-pilot-panel .gl-pos-sales{margin-top:17px;background:#fff;border:1px solid #dce6f0;border-radius:16px;padding:18px}
+#gl-pilot-panel .gl-pos-sales h3{color:#173b5f;margin:0 0 12px;font-size:17px}
+#gl-pilot-panel .gl-pos-sales-list{display:grid;gap:6px}
+#gl-pilot-panel .gl-pos-sale{display:flex;gap:14px;justify-content:space-between;align-items:center;padding:12px 3px;border-bottom:1px solid #e6edf3;font-size:14px}
+#gl-pilot-panel .gl-pos-sale:last-child{border-bottom:0}
+#gl-pilot-panel .gl-pos-sale span{color:#627b94}
+#gl-pilot-panel .gl-pos-sale strong{color:#12385b;font-size:16px;font-variant-numeric:tabular-nums}
+#gl-pilot-panel #gl-pos-sale-message{font-weight:700;line-height:1.5}
