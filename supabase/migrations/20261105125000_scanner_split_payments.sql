@@ -98,7 +98,7 @@ begin
     exception when others then
       raise exception 'Importe inválido' using errcode='22023';
     end;
-    if v_amount <= 0 or v_amount > 999999999999.99
+    if v_amount is null or v_amount <= 0 or v_amount > 999999999999.99
       or v_amount <> (v_payment->>'amount')::numeric then
       raise exception 'Importe inválido' using errcode='22023';
     end if;
