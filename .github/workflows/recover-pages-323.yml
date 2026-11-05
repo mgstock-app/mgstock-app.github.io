@@ -1,0 +1,26 @@
+name: Recover stuck Pages run 323
+on:
+  push:
+    branches: [ops/recover-pages-run-323]
+    paths: [.github/workflows/recover-pages-323.yml]
+permissions:
+  actions: write
+jobs:
+  cancel-stuck-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Verify target and force cancel only obsolete run 323
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=repos/mgstock-app/mgstock-app.github.io/actions/runs/42069044381
+          gh api "$target" > /tmp/target-run.json
+          jq -e '.run_number == 323 and .head_sha == "02c3af67b3fa4738ecdc8ca2fc608cbdf2769c57" and .path == ".github/workflows/pages.yml"' /tmp/target-run.json
+          if jq -e '.status == "completed"' /tmp/target-run.json; then
+            echo 'Run already completed; no action needed.'
+            exit 0
+          fi
+          gh api --method POST "$target/force-cancel"
