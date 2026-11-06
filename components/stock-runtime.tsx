@@ -14,12 +14,38 @@ function load(src: string) {
     document.body.appendChild(script);
   });
 }
+// Fetch independent, frequently used scripts in parallel while preserving their
+// existing sequential execution order and module initialization dependencies.
+function preloadStartupScripts(visitor: boolean) {
+  const common = [
+    "/vendor/supabase.js", "/stock/config.js",
+    "/stock/gestlok-offline.js?rev=offline-20261027",
+    "/stock/gestlok-commerce.js",
+    "/stock/gestlok-owner-areas.js?rev=navegacion-local-20261104",
+    "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
+    "/stock/app.js?rev=menu-en-empleados-20261102",
+  ];
+  const privateScripts = [
+    "/stock/gestlok-registration.js",
+    "/stock/auth.js?rev=salir-local-20261027",
+    "/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106",
+    "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
+  ];
+  for (const src of visitor ? common : [...common, ...privateScripts]) {
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "script";
+    link.href = basePath + src;
+    document.head.appendChild(link);
+  }
+}
+
 export function StockRuntime() {
   const [error, setError] = useState(false);
   useEffect(() => {
     let active = true;
     // Prevent duplicate listeners and subscriptions under Strict Mode.
-    startup ??= (async () => {
+    startup ??= (async () => {\n      preloadStartupScripts(new URLSearchParams(location.search).get("demo") === "1");
       await load("/stock/gestlok-pwa-update.js");
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
@@ -73,7 +99,7 @@ export function StockRuntime() {
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();
-    startup.catch(() => { if (active) setError(true); });
+    startup.catch(() => { startup = undefined; if (active) setError(true); });
     return () => { active = false; };
   }, []);
   return error ? (
