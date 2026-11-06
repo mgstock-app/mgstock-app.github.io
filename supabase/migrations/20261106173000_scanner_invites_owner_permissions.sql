@@ -32,6 +32,6 @@ create policy scanner_invites_owner_insert on public.gestlok_scanner_invites for
  with check (owner_uid=(select auth.uid()) and status='draft' and invited_uid is null and exists(select 1 from public.gestlok_pilot_access a where a.tenant_id=gestlok_scanner_invites.tenant_id and a.owner_uid=(select auth.uid()) and a.enabled and a.plan_code='scanner'));
 create policy scanner_invites_owner_update on public.gestlok_scanner_invites for update to authenticated
  using (owner_uid=(select auth.uid()) and exists(select 1 from public.gestlok_pilot_access a where a.tenant_id=gestlok_scanner_invites.tenant_id and a.owner_uid=(select auth.uid()) and a.enabled and a.plan_code='scanner'))
- with check (owner_uid=(select auth.uid()) and exists(select 1 from public.gestlok_pilot_access a where a.tenant_id=gestlok_scanner_invites.tenant_id and a.owner_uid=(select auth.uid()) and a.enabled and a.plan_code='scanner'));
+ with check (owner_uid=(select auth.uid()) and status in ('draft','revoked') and invited_uid is null and exists(select 1 from public.gestlok_pilot_access a where a.tenant_id=gestlok_scanner_invites.tenant_id and a.owner_uid=(select auth.uid()) and a.enabled and a.plan_code='scanner'));
 create policy scanner_invites_owner_delete on public.gestlok_scanner_invites for delete to authenticated
  using (owner_uid=(select auth.uid()) and status='draft' and exists(select 1 from public.gestlok_pilot_access a where a.tenant_id=gestlok_scanner_invites.tenant_id and a.owner_uid=(select auth.uid()) and a.enabled and a.plan_code='scanner'));
