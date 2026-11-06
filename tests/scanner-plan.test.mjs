@@ -35,3 +35,71 @@ test('Scanner limpia el catálogo anterior al cerrar o cambiar de empresa',async
  window.GestLokPreciosStock.reset();
  assert.doesNotMatch(window.GestLokPreciosStock.render(),/Solo empresa anterior/);
 });
+
+test('Scanner: Etiqueta para muestra abre impresión de nombre sin código de barras', async()=>{
+ const {runInNewContext}=await import('node:vm');
+ let clickHandler,openedModal,printDocument='';
+ const writtenText=[];
+ const ctx={
+  fillRect(){},drawImage(){},translate(){},rotate(){},
+  measureText(value){return {width:String(value).length*11};},
+  fillText(value){writtenText.push(value);}
+ };
+ const canvas=()=>({
+  width:0,height:0,getContext:()=>ctx,
+  toBlob(callback){callback(new Blob(['png'],{type:'image/png'}));},
+  toDataURL:()=> 'data:image/png;base64,cG5n'
+ });
+ const confirmButton={disabled:true,textContent:''};
+ const bluetoothButton={disabled:true,textContent:''};
+ const printDoc={
+  open(){},write(value){printDocument=value;},close(){},
+  querySelector:()=>({}),createElement:()=>({textContent:''}),
+  head:{append(){}}
+ };
+ let modal;
+ const frame={contentDocument:printDoc,closest:()=>modal};
+ modal={
+  dataset:{},style:{},setAttribute(){},
+  querySelector(selector){
+   if(selector==='iframe')return frame;
+   if(selector==='[data-ps-niimbot-print]')return bluetoothButton;
+   if(selector==='[data-ps-confirm-print]')return confirmButton;
+   return null;
+  }
+ };
+ const document={
+  querySelector(selector){return selector==='#gl-pilot-panel'?{}:null;},
+  addEventListener(type,handler){if(type==='click')clickHandler=handler;},
+  createElement(type){return type==='div'?modal:type==='canvas'?canvas():{onload:null,onerror:null};},
+  body:{append(element){openedModal=element;}}
+ };
+ const q={select:()=>q,eq:()=>q,order:()=>q,limit:()=>Promise.resolve({data:[{
+  id:'p1',name:'Tester 60ml',sku:'',category:'Perfumes',
+  active:true,stock_quantity:20,stock_minimum:5,
+  cost_price:8500,markup_percent:50,unit_price:12750,updated_at:'2026-11-06'
+ }],error:null})};
+ const window={
+  Niimbot:{isSupported:()=>false},
+  GestLokPilot:{authorized:()=>true,tenantId:()=> 'tenant-perfumeria',rerender(){}},
+  GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'a'}}})},from:()=>q}
+ };
+ runInNewContext(readFileSync('public/stock/gestlok-precios-stock.js','utf8'),{window,document,Intl,Date,Blob});
+ await window.GestLokPreciosStock.open('stock');
+ assert.match(window.GestLokPreciosStock.render(),/data-ps-name-print="p1"/);
+ const nameButton={
+  dataset:{psNamePrint:'p1'},
+  hasAttribute:attribute=>attribute==='data-ps-name-print'
+ };
+ clickHandler({
+  preventDefault(){},
+  target:{closest:selector=>selector==='[data-ps-print],[data-ps-name-print]'?nameButton:null}
+ });
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(openedModal,modal,'el clic debe abrir el modal');
+ assert.match(modal.innerHTML,/Etiqueta para muestra/);
+ assert.deepEqual(writtenText,['Tester 60ml'],'solo se imprime el nombre, sin EAN');
+ assert.equal(confirmButton.disabled,false,'la vista previa debe habilitar la impresión');
+ assert.match(modal.dataset.niimbotImage,/^data:image\/png/);
+ assert.match(printDocument,/@page\{size:30mm 12mm/);
+});
