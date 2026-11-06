@@ -22,6 +22,6 @@ test('Mi Gusto: OK es la primera columna visible y persiste por movimiento',()=>
  assert.match(js, /gestlok_mg_online_cash_ok/);
  assert.match(css, /\.mg-on-cash-scroll thead th:first-child\{position:sticky;left:0/);
  assert.match(css, /\.mg-on-cash-scroll tbody td:first-child\{position:sticky;left:0/);
- assert.match(runtime, /mi-gusto-cierre-online\.js\?rev=descuentos-sin-ok-20261105/);
+ assert.match(runtime, /mi-gusto-cierre-online\.js\?rev=ok-preservar-filas-20261105/);
  assert.match(sql, /cash_checked/);
 });
