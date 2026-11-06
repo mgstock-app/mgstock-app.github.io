@@ -184,13 +184,14 @@ function view(){
  (error?'<p role="alert" class="mgp-error">'+esc(error)+'</p>':'')+
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
  (!online()?'<p role="status" class="mgp-error">Sin conexión: los pedidos solo se consultan y confirman online.</p>':'')+
- config+catalogPanel+manual+
+ catalogPanel+
  '<nav class="mgp-tabs" aria-label="Filtrar pedidos de WhatsApp">'+
  '<button type="button" data-mgp-tab="todos" aria-current="'+(tab==='todos'?'page':'false')+'">Todos ('+items.length+')</button>'+
  '<button type="button" data-mgp-tab="pendientes" aria-current="'+(tab==='pendientes'?'page':'false')+'">Pendientes ('+pending.length+')</button>'+
  '<button type="button" data-mgp-tab="realizados" aria-current="'+(tab==='realizados'?'page':'false')+'">Realizados ('+done.length+')</button></nav>'+
  (loading?'<p role="status">Cargando pedidos…</p>':
  '<div class="mgp-list">'+(selected.length?selected.map(orderCard).join(''):'<p class="mgp-empty">'+(tab==='todos'?'Todavía no hay pedidos registrados.':tab==='pendientes'?'No hay pedidos pendientes.':'Todavía no hay pedidos marcados como realizados.')+'</p>')+'</div>')+
+ manual+config+
  '<p class="mgp-footnote">El OK significa que el dueño o gerente vio la comanda, no que se preparó o entregó. No registra cobros ni modifica Caja, Stock o Pagos Online.</p></section>';
 }
 async function action(method,args,success){
