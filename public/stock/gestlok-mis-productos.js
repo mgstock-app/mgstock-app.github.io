@@ -73,7 +73,7 @@
  async function loadItems(){
   const ticket=epoch,selected=tabId;
   if(!selected){items=[];render();return;}
-  const next=await allRows(ITEMS,'id,tab_id,product,liked,note,position,created_at','position',{key:'tab_id',value:selected});
+  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,position,created_at','position',{key:'tab_id',value:selected});
   if(ticket!==epoch||tabId!==selected||!visible)return;
   items=next;render();
  }
@@ -81,8 +81,9 @@
   const isSelected=value===selected;
   return '<button type="button" data-mp-like="'+esc(id)+'" data-value="'+(value?'yes':'no')+'" class="gl-mp-vote '+(isSelected?(value?'is-yes':'is-no'):'')+'" aria-pressed="'+isSelected+'">'+(value?'✓ Me gustó':'✕ No me gustó')+'</button>';
  }
+ function fragranceSelect(item){return '<select class="gl-mp-fragrance" data-mp-fragrance="'+esc(item.id)+'" aria-label="Tipo de fragancia de '+esc(item.product)+'"><option value="" '+(!item.fragrance_type?'selected':'')+'>Elegir tipo</option>'+[['fem','Fem'],['hombre','Hombre'],['unisex','Unisex']].map(([v,t])=>'<option value="'+v+'" '+(item.fragrance_type===v?'selected':'')+'>'+t+'</option>').join('')+'</select>';}
  function row(item){
-  return '<tr><td class="gl-mp-product">'+esc(item.product)+'</td><td><div class="gl-mp-votes">'+
+  return '<tr><td class="gl-mp-product">'+esc(item.product)+'</td><td>'+fragranceSelect(item)+'</td><td><div class="gl-mp-votes">'+
     status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+
     '</div></td><td class="gl-mp-note">'+(item.note?esc(item.note):'<span class="gl-mp-muted">Sin nota</span>')+'</td>'+
     '<td><div class="gl-mp-actions"><button type="button" data-mp-print="'+esc(item.id)+'" aria-label="Imprimir nombre de '+esc(item.product)+' en NIIMBOT D110">Imprimir nombre</button><button type="button" data-mp-edit="'+esc(item.id)+'" aria-label="Editar '+esc(item.product)+'">Editar</button>'+
@@ -92,6 +93,7 @@
   const item=items.find(x=>x.id===editing);
   return '<form id="gl-mp-form" class="gl-mp-form"><h3>'+(item?'Editar producto':'Agregar producto')+'</h3>'+
    '<label>Producto<input name="product" required maxlength="160" placeholder="Ej.: perfume, marca y tamaño" value="'+esc(item?.product||'')+'"></label>'+
+   '<label>Tipo de fragancia<select name="fragrance_type"><option value="">Sin clasificar</option>'+[['fem','Fem'],['hombre','Hombre'],['unisex','Unisex']].map(([v,t])=>'<option value="'+v+'" '+(item?.fragrance_type===v?'selected':'')+'>'+t+'</option>').join('')+'</select></label>'+ 
    '<label>Resultado<select name="liked"><option value="" '+(item?.liked==null?'selected':'')+'>Sin evaluar</option>'+
     '<option value="yes" '+(item?.liked===true?'selected':'')+'>Me gustó</option>'+
     '<option value="no" '+(item?.liked===false?'selected':'')+'>No me gustó</option></select></label>'+
@@ -121,8 +123,8 @@
       '<div class="gl-mp-tab-actions"><button type="button" data-mp-rename>Renombrar pestaña</button><button type="button" data-mp-remove-tab class="is-danger">Eliminar pestaña</button></div></header>'+
       '<div class="gl-mp-list-controls"><button type="button" class="gl-mp-primary" data-mp-new>+ Agregar producto</button></div>'+
       (itemForm?form():'')+
-      '<div class="gl-mp-scroll"><table class="gl-mp-table"><thead><tr><th>Producto</th><th>Me gustó / No me gustó</th><th>Nota</th><th>Acciones</th></tr></thead>'+
-      '<tbody>'+(items.length?items.map(row).join(''):'<tr><td colspan="4" class="gl-mp-empty">Tu hoja está vacía. Agregá el primer producto.</td></tr>')+'</tbody></table></div>'+
+      '<div class="gl-mp-scroll"><table class="gl-mp-table"><thead><tr><th>Producto</th><th>Tipo de fragancia</th><th>Me gustó / No me gustó</th><th>Nota</th><th>Acciones</th></tr></thead>'+
+      '<tbody>'+(items.length?items.map(row).join(''):'<tr><td colspan="5" class="gl-mp-empty">Tu hoja está vacía. Agregá el primer producto.</td></tr>')+'</tbody></table></div>'+
       '<p class="gl-mp-hint">Podés agregar todos los productos que necesites. Cada pestaña conserva su propia lista.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
@@ -187,14 +189,23 @@
   const note=String(values.note||'').trim();
   if(!product||product.length>160||note.length>2000){error='Revisá el producto y la nota.';render();return;}
   const liked=values.liked==='yes'?true:values.liked==='no'?false:null;
+  const fragrance_type=['fem','hombre','unisex'].includes(values.fragrance_type)?values.fragrance_type:null;
   await run(async()=>{
-   const fields={product,liked,note,updated_at:new Date().toISOString()};
+   const fields={product,fragrance_type,liked,note,updated_at:new Date().toISOString()};
    const q=editing
     ? db().from(ITEMS).update(fields).eq('id',editing).eq('tenant_id',TENANT).eq('tab_id',tabId)
     : db().from(ITEMS).insert({...fields,tab_id:tabId,tenant_id:TENANT,position:items.length});
    const r=await q.select('id').single();if(r.error)throw r.error;
    editing='';itemForm=false;await loadItems();
   },'Producto guardado.');
+ }
+ async function changeFragrance(id,value){
+  if(!items.some(x=>x.id===id)||!['','fem','hombre','unisex'].includes(value))return;
+  await run(async()=>{
+   const r=await db().from(ITEMS).update({fragrance_type:value||null,updated_at:new Date().toISOString()}).eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
+   if(r.error)throw r.error;
+   await loadItems();
+  },'Tipo de fragancia guardado.');
  }
  async function vote(id,value){
   const item=items.find(x=>x.id===id);
@@ -220,9 +231,10 @@
  // Impresión de nombre únicamente; el cuaderno no depende del catálogo del Scanner.
  // NIIMBOT D110_M: 30 × 12 mm = 240 × 96 px a 203 dpi, giro a 96 × 240 para Bluetooth.
  function removePrintModal(){document.querySelector('[data-mp-label-modal]')?.remove();}
- function labelArtwork(value){
+ function labelArtwork(value,fragranceType){
   const name=String(value||'').trim().replace(/\s+/g,' ');
   if(!name)throw Error('Escribí un nombre para la etiqueta.');
+  const typeName={fem:'FEM',hombre:'HOMBRE',unisex:'UNISEX'}[fragranceType]||'';
   const canvas=document.createElement('canvas');
   canvas.width=240;canvas.height=96;
   const ctx=canvas.getContext('2d');
@@ -232,7 +244,7 @@
   // Georgia seminegrita: serif sobria, con trazos visibles en impresión térmica.
   // Ajuste automático, con margen a ambos lados; nunca recortar silenciosamente.
   let chosen=null;
-  for(const size of [29,27,25,23,21,19,17,15]){
+  for(const size of (typeName?[24,22,20,18,16,14,12]:[29,27,25,23,21,19,17,15])){
    ctx.font='600 '+size+'px Georgia, "Times New Roman", serif';
    const lines=[];let line='';
    for(const word of name.split(' ')){
@@ -249,12 +261,13 @@
    }
    if(line)lines.push(line);
    const step=Math.ceil(size*1.18);
-   if(lines.length<=4&&lines.length*step<=84){chosen={lines,size,step};break;}
+   if(lines.length<=(typeName?2:4)&&lines.length*step<=(typeName?54:84)){chosen={lines,size,step};break;}
   }
   if(!chosen)throw Error('El nombre es muy largo para imprimirse con claridad. Acortá el texto de la etiqueta (no cambia el producto guardado).');
   ctx.font='600 '+chosen.size+'px Georgia, "Times New Roman", serif';
-  const start=48-(chosen.lines.length-1)*chosen.step/2;
+  const start=(typeName?34:48)-(chosen.lines.length-1)*chosen.step/2;
   chosen.lines.forEach((line,i)=>ctx.fillText(line,120,start+i*chosen.step,224));
+  if(typeName){ctx.fillRect(26,69,188,1);ctx.font='600 15px Arial, sans-serif';ctx.fillText(typeName,120,83,220);}
   const portrait=document.createElement('canvas');
   portrait.width=96;portrait.height=240;
   const rotated=portrait.getContext('2d');
@@ -272,7 +285,7 @@
   bt.disabled=true;system.disabled=true;
   modal.dataset.printImage='';
   try{
-   const artwork=labelArtwork(modal.querySelector('[data-mp-label-text]').value);
+   const artwork=labelArtwork(modal.querySelector('[data-mp-label-text]').value,modal.dataset.fragranceType);
    modal.dataset.printImage=artwork.printer;
    modal.querySelector('[data-mp-label-preview]').src=artwork.screen;
    const frame=modal.querySelector('[data-mp-label-frame]');
@@ -284,7 +297,7 @@
    doc.close();
    system.disabled=false;
    bt.disabled=!window.Niimbot?.isSupported?.();
-   status.textContent='Vista previa lista · 30 × 12 mm. Se imprime solamente el nombre.';
+   status.textContent='Vista previa lista · 30 × 12 mm. Se imprime el nombre y, si está seleccionado, el tipo de fragancia.';
   }catch(err){
    modal.querySelector('[data-mp-label-preview]').removeAttribute('src');
    status.textContent=err.message||'No se pudo preparar la etiqueta.';
@@ -316,10 +329,11 @@
    removePrintModal();
    const modal=document.createElement('div');
    modal.dataset.mpLabelModal='true';
+   modal.dataset.fragranceType=item.fragrance_type||'';
    modal.setAttribute('role','presentation');
    modal.innerHTML='<div class="gl-mp-label-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-label-title">'+
     '<header><h2 id="gl-mp-label-title">Etiqueta para NIIMBOT D110</h2><button type="button" data-mp-label-close aria-label="Cerrar etiqueta">✕</button></header>'+
-    '<p>Nombre centrado, tipografía elegante, sin código de barras.</p>'+
+    '<p>Nombre y tipo de fragancia centrados, sin código de barras.</p>'+
     '<label>Nombre que se imprimirá<input type="text" data-mp-label-text maxlength="160" value="'+esc(item.product)+'"></label>'+
     '<div class="gl-mp-label-display"><img data-mp-label-preview alt="Vista previa de nombre para etiqueta 30 por 12 milímetros"></div>'+
     '<p class="gl-mp-label-status" data-mp-label-message role="status">Preparando etiqueta…</p>'+
@@ -400,6 +414,10 @@
   const field=e.target.closest('[data-mp-label-text]');
   const modal=field?.closest('[data-mp-label-modal]');
   if(modal)updateLabelPreview(modal);
+ });
+ document.addEventListener('change',e=>{
+  const select=e.target.closest('[data-mp-fragrance]');
+  if(select&&visible){void changeFragrance(select.dataset.mpFragrance,select.value);}
  });
  document.addEventListener('submit',e=>{
   if(e.target.id!=='gl-mp-form')return;

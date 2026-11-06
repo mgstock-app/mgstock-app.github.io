@@ -83,3 +83,11 @@ body.gl-mp-open{overflow:hidden}
 [data-mp-label-modal] small{display:block;font-size:12px;line-height:1.5;color:#617488}
 [data-mp-label-modal] [data-mp-label-frame]{position:absolute;left:-10000px;width:30mm;height:12mm;border:0}
 @media(max-width:550px){[data-mp-label-modal] .gl-mp-label-card{padding:18px}[data-mp-label-modal] .gl-mp-label-buttons button{flex:1 1 auto}}
+
+/* Selector de tipo de fragancia: solo Mis Productos (cuaderno privado). */
+.gl-mp-table .gl-mp-fragrance{min-width:132px;width:100%;max-width:175px;border:1px solid #b9cfe7;border-radius:24px;background:#f0f6fc;color:#143d6e;padding:9px 12px;font:inherit;font-weight:650;cursor:pointer}
+.gl-mp-table .gl-mp-fragrance:focus-visible{outline:3px solid #63a7ff;outline-offset:2px}
+.gl-mp-table{min-width:980px}
+.gl-mp-form{grid-template-columns:minmax(160px,1fr) minmax(130px,170px) minmax(125px,180px) minmax(190px,1.5fr)}
+@media(max-width:850px){.gl-mp-form{grid-template-columns:1fr 1fr}.gl-mp-form label:last-of-type{grid-column:1/-1}}
+@media(max-width:550px){.gl-mp-form{display:flex;flex-direction:column;align-items:stretch}.gl-mp-table{min-width:980px}}

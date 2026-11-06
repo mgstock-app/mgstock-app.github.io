@@ -89,7 +89,7 @@ test('Vista previa usa exclusivamente PNG, papel 30×12 mm y permite abreviar si
  assert.doesNotMatch(html,/Idôle|<svg|barcode|ean13/i);
  assert.equal(bt.disabled,false);
  assert.equal(system.disabled,false);
- assert.match(status.textContent,/solamente el nombre/);
+ assert.match(status.textContent,/nombre y, si está seleccionado, el tipo de fragancia/);
 });
 test('Impresión Bluetooth D110 sin esperar otro clic, y sistema como alternativa',async()=>{
  const h=harness();
@@ -113,4 +113,14 @@ test('Impresión Bluetooth D110 sin esperar otro clic, y sistema como alternativ
  h.window.__d110.printSystem(modal);
  assert.equal(focused,true);
  assert.equal(opened,true);
+});
+
+test('Etiqueta D110 incluye tipo de fragancia cuando se selecciona, sin código de barras',()=>{
+ const h=harness();
+ h.window.__d110.labelArtwork('Hawas Ice','hombre');
+ const texts=h.ctxs[0].ctx.calls.filter(x=>x[0]==='text').map(x=>x[1]);
+ assert.ok(texts.includes('HOMBRE'));
+ assert.ok(texts.includes('Hawas Ice'));
+ assert.match(h.window.__d110.row({id:'p2',product:'Hawas Ice',fragrance_type:'hombre',liked:true,note:''}),/data-mp-fragrance="p2"/);
+ assert.match(source,/fragrance_type:value\|\|null/);
 });
