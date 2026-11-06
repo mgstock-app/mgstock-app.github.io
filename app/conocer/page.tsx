@@ -65,7 +65,7 @@ export default function ConocerGestlok() {
 
         <section className="gl-public-video-section" id="video" aria-labelledby="gl-public-video-title">
           <div className="gl-public-video-copy">
-            <span className="gl-public-eyebrow">PLAN SCANNER · VIDEO DE 30 SEGUNDOS</span>
+            <span className="gl-public-eyebrow">PLAN SCANNER · VIDEO DE 32 SEGUNDOS</span>
             <h2 id="gl-public-video-title">Escaneá. Vendé. Controlá.</h2>
             <p>Conocé el recorrido completo: leé códigos de barras con la cámara del celular, prepará el carrito, confirmá el cobro y mirá cómo se actualizan las unidades. Todo junto con costos, márgenes y precios de venta.</p>
             <p className="gl-public-video-caption">Video ilustrativo con productos y valores ficticios. Reproducilo con sonido.</p>
@@ -76,13 +76,13 @@ export default function ConocerGestlok() {
               controls
               playsInline
               preload="metadata"
-              poster="/videos/gestlok-plan-scanner-cover.jpg"
+              poster="/videos/gestlok-plan-scanner-sobrio-cover.jpg"
               width={720}
               height={1280}
-              aria-label="Publicidad GESTLOK Plan Scanner, 30 segundos"
+              aria-label="Publicidad GESTLOK Plan Scanner, 32 segundos"
             >
-              <source src="/videos/gestlok-plan-scanner-30s.mp4" type="video/mp4" />
-              Tu navegador no admite este video. <a href="/videos/gestlok-plan-scanner-30s.mp4">Ver el video</a>.
+              <source src="/videos/gestlok-plan-scanner-sobrio-32s.mp4" type="video/mp4" />
+              Tu navegador no admite este video. <a href="/videos/gestlok-plan-scanner-sobrio-32s.mp4">Ver el video</a>.
             </video>
           </div>
         </section>
