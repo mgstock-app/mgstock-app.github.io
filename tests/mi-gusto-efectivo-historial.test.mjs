@@ -96,11 +96,11 @@ test('Mi Gusto: 5 comandas sin OK suman $16.460, cada tilde resta su descuento y
  const turno={...closed,status:'abierto',movements};
  const amounts=(rows)=>{
   const html=window.__test.cashMovementDetail({...turno,movements:rows});
-  const top=html.match(/data-mgon-total-discounts>([^<]+)<\\/strong>/)?.[1];
-  const bottom=html.match(/data-mgon-total-discounts-footer>([^<]+)<\\/strong>/)?.[1];
+  const top=html.match(/data-mgon-total-discounts>([^<]+)<\/strong>/)?.[1];
+  const bottom=html.match(/data-mgon-total-discounts-footer>([^<]+)<\/strong>/)?.[1];
   assert.equal(top,bottom,'Los totales superior e inferior deben coincidir');
-  assert.match(html,/mg-on-cash-amount-footer[^>]*>\\$\\s*176\\.490,00/,'El efectivo cobrado no cambia por los OK');
-  return top.replace(/\\s/g,'');
+  assert.match(html,/mg-on-cash-amount-footer[^>]*>\$\s*176\.490,00/,'El efectivo cobrado no cambia por los OK');
+  return top.replace(/\s/g,'');
  };
  assert.equal(amounts(movements),'$16.460,00');
  const conOtroOk=movements.map(r=>r.id==='2'?{...r,ok:true}:r);
