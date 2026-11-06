@@ -209,7 +209,7 @@
     return '<section class="gl-owner-landing" aria-label="Inicio de GESTLOK · '+name+'">'+
       '<header class="gl-owner-welcome">'+(branded
         ?'<div><p>Bienvenido/a a</p><h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div>'
-        :'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>')+'</header>'+
+        :(isSoloOwner()?'<div><p>Bienvenido/a</p><h1>Mi local</h1><p class="gl-owner-tagline">Todo tu negocio, en orden.</p></div>':'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>'))+'</header>'+
       '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
       (commerce&&!isSoloOwner()?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir Administrar mi empresa">'+svg(I.right,26)+'</button></div>'+
