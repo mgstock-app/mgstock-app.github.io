@@ -117,6 +117,8 @@ test('OK con tilde marca solo pedido visto por gerente autorizado y no registra 
  assert.equal(s.data.munro.orders[0].status,'recibido');
  assert.equal(s.data.torcuato.orders[0].status,'nuevo');
  assert.equal(s.calls.filter(c=>c.method==='gestlok_mg_orders_receive').length,1);
+ // El pedido deja Pendientes al marcarlo. Está en Realizados y Todos.
+ s.handlers.click({target:{closest:q=>q==='[data-mgp-tab]'?{dataset:{mgpTab:'realizados'}}:null}});
  assert.match(s.orders.view(),/✓ OK · Realizado/);
  assert.match(s.orders.view(),/Visto:/);
  assert.doesNotMatch(s.orders.view(),/data-mgp-receive="first"/);
