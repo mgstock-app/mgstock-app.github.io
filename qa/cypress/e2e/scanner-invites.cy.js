@@ -35,7 +35,7 @@ describe('Scanner · invitaciones',()=>{
   cy.get('#au-email').type('dueno@example.com');cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
   cy.contains('#hub button','Invitar personas').click();
   cy.get('dialog[open]').should('contain.text','Nuevo invitado');
-  for(const [name,permission] of [['Ana','stock'],['Luis','ventas']]){
+  for(const name of ['Ana','Luis']){
    cy.get('dialog [data-invite-profile][data-id=""]').within(()=>{
     cy.get('[name=first]').type(name);cy.get('[name=last]').type('Prueba');cy.get('[name=phone]').type('+5491100000000');cy.get('[name=email]').type(name.toLowerCase()+'@example.com');
     cy.get('[role=switch]').should('have.length',6);cy.get('[role=switch]').should('be.disabled');cy.contains('button','Enviar invitación por WhatsApp').click();
