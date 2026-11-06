@@ -6,8 +6,8 @@
       "count": 2
     },
     {
-      "actual": "if (['creadora','dueno','gerente'].includes(miRol())) return (window.GestLokMiGustoOrders?.quickAccess?.()||'')+inicioOperativo();",
-      "original": "if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();"
+      "actual": "return `${banners()}${window.GestLokMiGustoOrders?.quickAccess?.()||''}\n    <div class=\"gl-home-essential\"",
+      "original": "return `${banners()}\n    <div class=\"gl-home-essential\""
     },
     {
       "actual": "\nconst puedeVerPedidosClientes = () => !!window.GestLokMiGustoOrders?.permitido();",
