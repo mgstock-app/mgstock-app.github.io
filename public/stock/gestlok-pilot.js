@@ -69,7 +69,7 @@
  }
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
-  return '<div class="gl-pilot-entry"><div><small>GESTLOK</small><h2>Mi local</h2>'+
+  return '<div class="gl-pilot-entry"><div><small>ESPACIO DE TRABAJO</small><h2>Mi local</h2>'+
    '<p>Caja, ventas, stock y precios. Todo en un solo lugar.</p></div>'+
    '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Inicio</button></div></div>';
  }
