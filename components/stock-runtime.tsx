@@ -23,7 +23,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-commerce.js",
     "/stock/gestlok-owner-areas.js?rev=navegacion-local-20261104",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=menu-en-empleados-20261102",
+    "/stock/app.js?rev=whatsapp-alerta-turno-20261106",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
@@ -65,7 +65,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=ok-preservar-filas-20261105");
-      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=pedidos-migusto-sucursales-20261106");
+      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-alerta-turno-20261106");
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106");
@@ -95,9 +95,9 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=menu-en-empleados-20261102");
+      await load("/stock/app.js?rev=whatsapp-alerta-turno-20261106");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
-      await load("/stock/gestlok-mobile-dock.js?rev=menu-en-empleados-20261102");
+      await load("/stock/gestlok-mobile-dock.js?rev=whatsapp-alerta-turno-20261106");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-sin-bucle-20261101");
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
