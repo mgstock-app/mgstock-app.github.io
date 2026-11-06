@@ -84,9 +84,12 @@ begin
    'local',p_local,
    'whatsapp_number',(select whatsapp_number from gestlok_mg_orders_private.channels where local=p_local),
    'orders',coalesce((
-     select jsonb_agg(gestlok_mg_orders_private.details(q) order by q.created_at desc, q.id desc)
-     from (select * from gestlok_mg_orders_private.orders where local=p_local
-           order by created_at desc,id desc limit 400) q
+     select jsonb_agg(gestlok_mg_orders_private.details(o) order by o.created_at desc, o.id desc)
+     from gestlok_mg_orders_private.orders o
+     where o.local=p_local and o.id in (
+       select limited.id from gestlok_mg_orders_private.orders limited
+       where limited.local=p_local order by limited.created_at desc,limited.id desc limit 400
+     )
    ),'[]'::jsonb)
  );
 end $$;
