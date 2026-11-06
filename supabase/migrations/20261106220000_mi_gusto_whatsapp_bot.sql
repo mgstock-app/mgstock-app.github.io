@@ -180,7 +180,7 @@ begin
      v_out:=jsonb_build_object('type','quantity','name',v_item.name);
    end if;
  elsif v.stage='quantity' then
-   if (case when v_msg ~ '^[0-9]{1,2}
+   if (case when v_msg ~ '^[0-9]{1,2}$' then v_msg::integer else 0 end) not between 1 and 50 then
      v_out:=jsonb_build_object('type','invalid_quantity');
    else
      select * into v_item from gestlok_mg_orders_private.menu_items
@@ -193,109 +193,6 @@ begin
        if jsonb_array_length(v.cart)<8 then
          v.cart:=v.cart || jsonb_build_array(jsonb_build_object('id',v_item.id,'name',v_item.name,'price',v_item.price,'quantity',v_qty));
        end if;
-       v.stage:='cart';v.selected_id:=null;
-       select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
-       from jsonb_array_elements(v.cart) a;
-       v_out:=jsonb_build_object('type','cart','cart',v.cart,'total',v_total);
-     end if;
-   end if;
- elsif v_cmd='mi:finish' and v.stage='cart' then
-   if jsonb_array_length(v.cart)>0 then
-     v.stage:='name';v_out:=jsonb_build_object('type','ask_name');
-   else
-     v.stage:='catalog';v_out:=jsonb_build_object('type','catalog','catalog',v_cat,'page',0,'local',p_local);
-   end if;
- elsif v.stage='name' then
-   if length(v_msg) not between 2 and 100 then
-     v_out:=jsonb_build_object('type','invalid_name');
-   else
-     v.customer_name:=v_msg;v.stage:='review';
-     select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
-       from jsonb_array_elements(v.cart) a;
-     v_out:=jsonb_build_object('type','review','cart',v.cart,'total',v_total,'name',v.customer_name);
-   end if;
- elsif v_cmd='mi:edit' and v.stage='review' then
-   v.stage:='cart';
-   select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
-       from jsonb_array_elements(v.cart) a;
-   v_out:=jsonb_build_object('type','cart','cart',v.cart,'total',v_total);
- elsif v_cmd='mi:confirm' and v.stage='review' then
-   select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
-     from jsonb_array_elements(v.cart) a;
-   if v_total<=0 or length(v.customer_name)<2 then
-     v.stage:='start';v_out:=jsonb_build_object('type','welcome','local',p_local);
-   else
-     for v_row in select value from jsonb_array_elements(v.cart) loop
-       v_line:=(v_row->>'quantity')||' × '||(v_row->>'name')||' · $'||(v_row->>'price');
-       v_lines:=v_lines||case when v_lines='' then '' else E'\n' end||v_line;
-     end loop;
-     -- El id del mensaje de confirmación es exclusivo, y el evento está serializado.
-     insert into gestlok_mg_orders_private.orders(
-        local,customer_name,customer_phone,items_detail,total,payment_method,
-        source,external_message_id,notes,created_by
-     ) values(
-        p_local,v.customer_name,p_sender,v_lines,v_total,'efectivo',
-        'whatsapp',p_message_id,'',null
-     ) returning * into v_order;
-     insert into gestlok_mg_orders_private.events(order_id,local,event,actor)
-     values(v_order.id,p_local,'created',null);
-     v_out:=jsonb_build_object('type','confirmed','order_id',v_order.id,'total',v_total,'local',p_local);
-     v.stage:='start';v.cart:='[]'::jsonb;v.customer_name:='';v.selected_id:=null;v.page:=0;
-   end if;
- elsif v.stage='start' then
-   v_out:=jsonb_build_object('type','welcome','local',p_local);
- elsif v.stage='catalog' then
-   v_out:=jsonb_build_object('type','catalog','catalog',v_cat,'page',v.page,'local',p_local);
- elsif v.stage='cart' then
-   select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
-     from jsonb_array_elements(v.cart) a;
-   v_out:=jsonb_build_object('type','cart','cart',v.cart,'total',v_total);
- elsif v.stage='review' then
-   select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
-     from jsonb_array_elements(v.cart) a;
-   v_out:=jsonb_build_object('type','review','cart',v.cart,'total',v_total,'name',v.customer_name);
- else
-   v_out:=jsonb_build_object('type','welcome','local',p_local);
- end if;
-
- update gestlok_mg_orders_private.whatsapp_sessions set
-  stage=v.stage,selected_id=v.selected_id,cart=v.cart,customer_name=v.customer_name,
-  page=v.page,updated_at=now() where local=p_local and sender=p_sender;
- update gestlok_mg_orders_private.whatsapp_inbox set response=v_out
- where local=p_local and message_id=p_message_id;
- return v_out || jsonb_build_object('duplicate',false,'sent',false);
-end $$;
-
-create or replace function public.gestlok_mg_whatsapp_sent(p_local text,p_message_id text)
-returns boolean language plpgsql security definer set search_path='' as $$
-begin
- update gestlok_mg_orders_private.whatsapp_inbox
- set sent_at=coalesce(sent_at,now())
- where local=p_local and message_id=p_message_id;
- return found;
-end $$;
-
-revoke all on function public.gestlok_mg_orders_catalog(text),
- public.gestlok_mg_orders_catalog_save(text,text,numeric,uuid),
- public.gestlok_mg_orders_catalog_disable(text,uuid),
- public.gestlok_mg_whatsapp_turn(text,text,text,text,text),
- public.gestlok_mg_whatsapp_sent(text,text)
- from public,anon,authenticated;
-grant execute on function public.gestlok_mg_orders_catalog(text),
- public.gestlok_mg_orders_catalog_save(text,text,numeric,uuid),
- public.gestlok_mg_orders_catalog_disable(text,uuid) to authenticated;
-grant execute on function public.gestlok_mg_whatsapp_turn(text,text,text,text,text),
- public.gestlok_mg_whatsapp_sent(text,text) to service_role;
- then v_msg::integer else 0 end) not between 1 and 50 then
-     v_out:=jsonb_build_object('type','invalid_quantity');
-   else
-     select * into v_item from gestlok_mg_orders_private.menu_items
-       where id=v.selected_id and local=p_local and active=true;
-     if not found then
-       v.stage:='catalog';v_out:=jsonb_build_object('type','catalog','catalog',v_cat,'page',0,'local',p_local);
-     else
-       v_qty:=v_msg::integer;
-       v.cart:=v.cart || jsonb_build_array(jsonb_build_object('id',v_item.id,'name',v_item.name,'price',v_item.price,'quantity',v_qty));
        v.stage:='cart';v.selected_id:=null;
        select coalesce(sum((a->>'quantity')::numeric*(a->>'price')::numeric),0) into v_total
        from jsonb_array_elements(v.cart) a;
