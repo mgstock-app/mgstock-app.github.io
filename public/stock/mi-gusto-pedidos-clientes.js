@@ -138,14 +138,17 @@ async function refresh(){
  finally{if(request===epoch){loading=false;update();}}
 }
 function orderCard(o){
- const done=o.status==='recibido';
- return '<article class="mgp-card"><div class="mgp-card-head"><div><strong>'+esc(o.customer_name)+'</strong><small>'+date(o.created_at)+' · '+(o.source==='whatsapp'?'WhatsApp':'Carga interna')+'</small></div>'+
- '<span class="mgp-state '+(done?'done':'pending')+'">'+(done?'✓ OK · Realizado':'Pendiente')+'</span></div>'+
- '<div class="mgp-detail">'+escapeLines(o.items_detail)+'</div>'+
- (o.notes?'<p class="mgp-note">Nota: '+escapeLines(o.notes)+'</p>':'')+
- '<div class="mgp-card-bottom"><span><b>'+pesos(o.total)+'</b><small>Solo efectivo · '+esc(o.customer_phone)+'</small></span>'+
- (done?'<span class="mgp-received">✓ Visto: '+date(o.received_at)+'</span>':
- '<button type="button" class="mgp-button mgp-ok" aria-label="Marcar OK: comanda vista por el local" data-mgp-receive="'+esc(o.id)+'" '+(!canEdit()?'disabled':'')+'>✓ OK · Vista</button>')+'</div></article>';
+ const done=o.status==='recibido',isWA=o.source==='whatsapp';
+ return '<article class="mgp-card"><div class="mgp-card-head">'+
+  '<span class="mgp-avatar">'+userIcon+'</span><div class="mgp-customer"><strong>'+esc(o.customer_name)+'</strong>'+
+  '<small>'+esc(o.customer_phone)+'</small><small>'+date(o.created_at)+'</small></div>'+
+  '<span class="mgp-source '+(isWA?'mgp-source-wa':'mgp-source-manual')+'">'+(isWA?waIcon+' WhatsApp':'Carga interna')+'</span></div>'+
+  '<div class="mgp-detail">'+escapeLines(o.items_detail)+'</div>'+
+  (o.notes?'<p class="mgp-note">Nota: '+escapeLines(o.notes)+'</p>':'')+
+  '<div class="mgp-card-bottom"><span><b>Total: '+pesos(o.total)+'</b><small>Pago únicamente en efectivo</small>'+
+  '<small class="mgp-state '+(done?'done':'pending')+'">'+(done?'✓ OK · Realizado':'Pendiente')+'</small></span>'+
+  (done?'<span class="mgp-received">✓ Visto: '+date(o.received_at)+'</span>':
+  '<button type="button" class="mgp-button mgp-ok" aria-label="Marcar OK: comanda vista por el local" data-mgp-receive="'+esc(o.id)+'" '+(!canEdit()?'disabled':'')+'>✓ OK · Vista</button>')+'</div></article>';
 }
 function view(){
  if(!allowed())return '<p class="lead">No tenés acceso a los pedidos de esta sucursal.</p>';
@@ -155,13 +158,15 @@ function view(){
   '<p>Esta sucursal tendrá su propio número y sus pedidos separados. La automatización requiere conectar después la API oficial de Meta.</p>'+
   '<form id="mgp-number-form"><label>Número con código de país (ej.: 54911... )<input name="number" inputmode="tel" autocomplete="tel" required minlength="10" maxlength="24" value="'+esc(phone)+'" placeholder="54911..." '+(!canEdit()?'disabled':'')+'></label>'+
   '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar número</button></form></details>':'';
- const catalogPanel='<details class="mgp-config" id="mgp-catalog"><summary>Carta y precios para WhatsApp ('+catalog.filter(x=>x.active).length+')</summary>'+
-  '<p>Solo los productos activos y sus precios se enviarán por WhatsApp. Cada sucursal administra su propia carta. No se modifica Stock Local.</p>'+
-  '<div class="mgp-menu-list">'+(catalog.length?catalog.map(x=>'<div class="mgp-menu-item"><div><strong>'+esc(x.name)+'</strong><small>'+pesos(x.price)+(x.active?'':' · Oculto')+'</small></div>'+
-    (canSetNumber()?'<div class="mgp-menu-actions"><button type="button" data-mgp-edit="'+esc(x.id)+'">Editar</button>'+(x.active?'<button type="button" data-mgp-disable="'+esc(x.id)+'">Ocultar</button>':'')+'</div>':'')+'</div>').join(''):'<p class="mgp-empty">Todavía no se cargaron productos ni precios.</p>')+'</div>'+
-  (canSetNumber()?'<form id="mgp-catalog-form" class="mgp-form"><input type="hidden" name="id" value=""><label>Producto<input name="name" minlength="2" maxlength="120" required placeholder="Ej.: Empanada de carne" '+(!canEdit()?'disabled':'')+'></label>'+
+ const catalogPanel='<section class="mgp-catalog-card" aria-label="Carta y precios de WhatsApp">'+
+  '<header class="mgp-catalog-head"><span class="mgp-catalog-icon" aria-hidden="true">♜</span><div><strong>Carta y precios para WhatsApp</strong><small>'+catalog.filter(x=>x.active).length+' productos activos en '+esc(LOCALS[local()])+'</small></div></header>'+
+  '<div class="mgp-menu-list">'+(catalog.length?catalog.map(x=>'<div class="mgp-menu-item"><div class="mgp-menu-name"><span class="mgp-menu-empanada" aria-hidden="true">◡</span><span><strong>'+esc(x.name)+'</strong>'+(!x.active?'<small>Oculto de WhatsApp</small>':'')+'</span></div><span class="mgp-menu-price">'+pesos(x.price)+'</span>'+
+    (canSetNumber()?'<div class="mgp-menu-actions"><button type="button" data-mgp-edit="'+esc(x.id)+'">Editar</button>'+(x.active?'<button type="button" data-mgp-disable="'+esc(x.id)+'">Ocultar</button>':'')+'</div>':'')+'</div>').join(''):'<p class="mgp-catalog-empty">Todavía no hay productos cargados. Agregá la carta y precios de esta sucursal.</p>')+'</div>'+
+  (canSetNumber()?'<details class="mgp-config mgp-catalog-editor" id="mgp-catalog"><summary>+ Agregar producto / Editar carta</summary>'+
+    '<p>Los precios son independientes por sucursal. No se modifica Stock Local.</p>'+
+    '<form id="mgp-catalog-form" class="mgp-form"><input type="hidden" name="id" value=""><label>Producto<input name="name" minlength="2" maxlength="120" required placeholder="Ej.: Empanada de carne" '+(!canEdit()?'disabled':'')+'></label>'+
     '<label>Precio final en pesos<input name="price" type="number" min="0.01" max="999999.99" step="0.01" required inputmode="decimal" placeholder="0" '+(!canEdit()?'disabled':'')+'></label>'+
-    '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar en la carta</button></form>':'')+'</details>';
+    '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar en la carta</button></form></details>':'')+'</section>';
  const manual='<details class="mgp-config" id="mgp-add-details"><summary>Registrar pedido manualmente (para control interno)</summary>'+
  '<form id="mgp-order-form" class="mgp-form"><label>Nombre del cliente<input name="customer" required minlength="2" maxlength="120" autocomplete="off" placeholder="Nombre y apellido" '+(!canEdit()?'disabled':'')+'></label>'+
  '<label>Teléfono<input name="phone" inputmode="tel" required maxlength="25" autocomplete="off" placeholder="11..." '+(!canEdit()?'disabled':'')+'></label>'+
@@ -169,11 +174,12 @@ function view(){
  '<label>Total en efectivo ($)<input name="total" type="number" required min="0.01" step="0.01" inputmode="decimal" placeholder="0" '+(!canEdit()?'disabled':'')+'></label>'+
  '<label>Observaciones (opcional)<textarea name="notes" maxlength="1000" rows="2" '+(!canEdit()?'disabled':'')+'></textarea></label>'+
  '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar pedido</button></form></details>';
- return '<section class="mgp-page" aria-label="Pedidos de clientes de Mi Gusto"><header class="mgp-head"><div><small>Mi Gusto · '+esc(LOCALS[local()])+'</small>'+
- '<h2>Pedidos WhatsApp</h2><p>Control interno de comandas: marcá OK cuando el local vea el pedido. Pago únicamente en efectivo.</p></div>'+
+ return '<section class="mgp-page" aria-label="Pedidos WhatsApp de Mi Gusto"><header class="mgp-head"><div><small>Mi Gusto · '+esc(LOCALS[local()])+'</small>'+
+ '<h2><span class="mgp-title-icon">'+waIcon+'</span> Pedidos WhatsApp</h2><p>Pedidos confirmados por WhatsApp. Pago únicamente en efectivo.</p></div>'+
  '<button type="button" class="mgp-reload" data-mgp-reload '+(!online()?'disabled':'')+'>Actualizar</button></header>'+
- '<div class="mgp-status"><span>WhatsApp del local</span><strong>'+(phone?'+'+esc(phone):'Pendiente de configurar')+'</strong>'+
- '<small>'+(phone?'Número guardado · conexión automática pendiente':'Cada sucursal utiliza su propio número')+'</small></div>'+
+ '<div class="mgp-status"><span class="mgp-phone-icon">'+waIcon+'</span><div class="mgp-phone-detail"><span>WhatsApp del local</span><strong>'+esc(formatPhone(phone))+'</strong>'+
+ '<small>'+(phone?'Número configurado para '+esc(LOCALS[local()])+' · conexión con Meta pendiente':'Cada sucursal utiliza su propio número')+'</small></div>'+
+ (phone?'<a class="mgp-phone-open" href="https://wa.me/'+esc(phone.replace(/[^0-9]/g,''))+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del local">↗</a>':'')+'</div>'+
  (error?'<p role="alert" class="mgp-error">'+esc(error)+'</p>':'')+
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
  (!online()?'<p role="status" class="mgp-error">Sin conexión: los pedidos solo se consultan y confirman online.</p>':'')+
