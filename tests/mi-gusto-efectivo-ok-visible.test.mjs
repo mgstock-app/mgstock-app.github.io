@@ -18,10 +18,10 @@ test('Mi Gusto: OK es la primera columna visible y persiste por movimiento',()=>
  assert.ok(section.indexOf('<th scope="col">OK</th>') < section.indexOf('<th scope="col">Comanda</th>'));
  assert.match(section, /rows\.map\(r=>'<tr class=/);
  assert.match(section, /<td><label class="mg-on-ok-label"><input type="checkbox" data-mgon-cash-ok=/);
- assert.match(section, /<td colspan="5">TOTAL EFECTIVO DEL TURNO/);
+ assert.match(section, /<td colspan="4">TOTAL EFECTIVO DEL TURNO/);
  assert.match(js, /gestlok_mg_online_cash_ok/);
  assert.match(css, /\.mg-on-cash-scroll thead th:first-child\{position:sticky;left:0/);
  assert.match(css, /\.mg-on-cash-scroll tbody td:first-child\{position:sticky;left:0/);
- assert.match(runtime, /mi-gusto-cierre-online\.js\?rev=total-descuentos-20261105/);
+ assert.match(runtime, /mi-gusto-cierre-online\.js\?rev=total-descuentos-fila-20261105/);
  assert.match(sql, /cash_checked/);
 });

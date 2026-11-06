@@ -64,3 +64,23 @@ test('Total descuentos: suma solamente la columna Descuento de pagos en efectivo
  assert.ok(totalArchivado);
  assert.equal(totalArchivado[1].replace(/\s/g,''),'$2.060,00');
 });
+
+test('La fila de totales suma todos los descuentos del turno de Munro solo en su columna',()=>{
+ const descuentos=[6040,2080,1090,5290,1960];
+ const cobrados=[54360,18720,9810,47610,17640];
+ const movements=descuentos.map((discount_amount,i)=>({
+  ...cashMovement,id:String(i+1),comanda:String(i+1),discount_amount,amount:cobrados[i],gross_amount:cobrados[i]+discount_amount
+ }));
+ const turno={...closed,status:'abierto',movements};
+ const html=window.__test.cashMovementDetail(turno);
+ const footer=html.match(/<tfoot><tr>(.*?)<\/tr><\/tfoot>/);
+ assert.ok(footer,'Se debe mostrar la fila de totales dentro de la tabla');
+ assert.match(footer[1],/<td colspan="4">TOTAL EFECTIVO DEL TURNO<\/td>/);
+ const discountCell=footer[1].match(/<td class="mg-on-cash-discount-footer">(.*?)<\/td>/);
+ assert.ok(discountCell,'Total descuentos debe estar debajo de su propia columna');
+ assert.match(discountCell[1],/Total descuentos/);
+ assert.match(discountCell[1],/\$\s*16\.460,00/);
+ assert.match(footer[1],/mg-on-cash-amount-footer[^>]*>\$\s*148\.140,00/);
+ const archived=window.__test.cashMovementDetail({...turno,status:'cerrado'});
+ assert.match(archived,/data-mgon-total-discounts-footer[^>]*>\$\s*16\.460,00/);
+});
