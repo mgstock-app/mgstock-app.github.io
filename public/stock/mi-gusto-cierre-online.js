@@ -37,6 +37,7 @@ function changeScale(delta){
  if(minus)minus.disabled=pageScale<=85;
  if(plus)plus.disabled=pageScale>=110;
 }
+let cashOkSaving=false;
 let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
@@ -46,7 +47,7 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;error='';}
-function reset(){++gen;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;}
+function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -54,16 +55,31 @@ async function rpc(name,args={}){
  if(a.error)throw Error(a.error.message||'No se pudo guardar el cambio');
  return a.data;
 }
+function safeShiftState(value,allowEmpty=false){
+ if(!value||typeof value!=='object'||!value.active||!Array.isArray(value.active.movements)||!Array.isArray(value.history))
+  throw Error('No recibimos datos válidos de Pagos Online. Se mantiene la última lista visible.');
+ // No vaciar el detalle por una lectura atrasada después de marcar OK.
+ // Una eliminación solicitada desde la propia pantalla sí puede dejar el turno vacío.
+ const before=snapshot?.active,after=value.active;
+ if(!allowEmpty&&before?.id===after.id&&Array.isArray(before.movements)&&before.movements.length>0&&after.movements.length===0)
+  throw Error('No se pudo confirmar el listado actualizado. Se conservan las comandas visibles.');
+ return value;
+}
+function stateAfterCashOk(before,result,shift,id,checked){
+ const prev=before?.active?.movements,next=result?.movements;
+ if(before?.active?.id!==shift||result?.id!==shift||!Array.isArray(prev)||!Array.isArray(next)||
+  prev.some(m=>!next.some(n=>n.id===m.id))||
+  !next.some(m=>m.id===id&&m.method==='efectivo'&&m.ok===checked))
+  throw Error('La respuesta del OK no confirmó todas las comandas. La tabla se conserva; revisá el estado antes de continuar.');
+ return {...before,active:result};
+}
 async function refresh(){
- if(!allowed()||loading||saving||uploading||choosingPhoto||!online())return;
+ if(!allowed()||loading||saving||cashOkSaving||uploading||choosingPhoto||!online())return;
  const loc=local(),token=gen;
  loading=true;
  try{const value=await rpc('gestlok_mg_online_state');
    if(loc!==local()||token!==gen)return;
-   // Un estado vacío sin error no debe disparar un ciclo infinito de recargas.
-   if(!value||typeof value!=='object'||!value.active||!Array.isArray(value.history))
-     throw Error('No recibimos datos válidos de Pagos Online. Volvé a ingresar para reintentar.');
-   snapshot=value;error='';
+   snapshot=safeShiftState(value);error='';
  }catch(e){if(token===gen&&!choosingPhoto&&!uploading)error=e.message||'No pudimos consultar los cierres';}
  finally{loading=false;if(token===gen&&!choosingPhoto&&!uploading&&api?.S?.view==='cierre-online')api.render();}
 }
@@ -373,7 +389,7 @@ async function action(name,args,notify){
  saving=true;error='';saveNotice=false;
  try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();editing=null;
   if(name==='gestlok_mg_online_close'&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
-  await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
+  if(name==='gestlok_mg_online_delete')await rpcRefresh(true);else await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
  finally{
   saving=false;
@@ -387,9 +403,9 @@ async function action(name,args,notify){
   }
  }
 }
-async function rpcRefresh(){
+async function rpcRefresh(allowEmpty=false){
  const current=local(),value=await rpc('gestlok_mg_online_state');if(current!==local())return;
- snapshot=value;error='';api.render();
+ snapshot=safeShiftState(value,allowEmpty);error='';api.render();
 }
 function attach(h){
  if(api)return;
@@ -425,13 +441,24 @@ function attach(h){
   if(tabButton){tab=tabButton.dataset.mgonTab;error='';saveNotice=false;api.render();return;}
   const cashOk=e.target.closest('[data-mgon-cash-ok]');
   if(cashOk){
-   if(!writable()){cashOk.checked=!cashOk.checked;return;}
+   if(!writable()||cashOkSaving){cashOk.checked=!cashOk.checked;return;}
    const checked=cashOk.checked,id=cashOk.dataset.mgonCashOk,shift=snapshot?.active?.id;
+   const loc=local(),token=++gen;
+   cashOkSaving=true;
    cashOk.disabled=true;
    void (async()=>{try{
-    await rpc('gestlok_mg_online_cash_ok',{p_shift:shift,p_id:id,p_ok:checked});
-    await rpcRefresh();
-   }catch(err){cashOk.checked=!checked;cashOk.disabled=false;api.toast?.(err.message||'No se pudo guardar OK');}})();
+    // Esta RPC actualiza únicamente la tilde y devuelve el turno con TODAS las comandas.
+    // Evitar el segundo request de estado: una respuesta atrasada podía vaciar el cuadro.
+    const result=await rpc('gestlok_mg_online_cash_ok',{p_shift:shift,p_id:id,p_ok:checked});
+    if(token!==gen||loc!==local())return;
+    snapshot=stateAfterCashOk(snapshot,result,shift,id,checked);
+    error='';
+    api.render();
+   }catch(err){
+    if(token!==gen||loc!==local())return;
+    cashOk.checked=!checked;cashOk.disabled=false;
+    api.toast?.(err.message||'No se pudo guardar OK');
+   }finally{if(token===gen)cashOkSaving=false;}})();
    return;
   }
   const recentAll=e.target.closest('[data-mgon-recent-all]');
@@ -502,5 +529,5 @@ function subscribe(loc,push){
 }
 document.addEventListener('input',e=>{if(e.target?.matches?.('#mg-online-form [name=amount]')){const field=e.target;const before=field.value;const cursor=field.selectionStart??before.length;const digitsBefore=before.slice(0,cursor).replace(/[^0-9,]/g,'').length;const formatted=formatAmountTyping(before);field.value=formatted;let pos=0,seen=0;while(pos<formatted.length&&seen<digitsBefore){if(/[0-9,]/.test(formatted[pos]))seen++;pos++;}field.setSelectionRange(pos,pos);}if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
 document.addEventListener('change',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
-window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,syncCashPreview:updateCashPreview,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf}});
+window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,syncCashPreview:updateCashPreview,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf,safeShiftState,stateAfterCashOk}});
 })();

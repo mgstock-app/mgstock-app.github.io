@@ -411,8 +411,8 @@
 .mg-on-cash-scroll thead th:first-child{position:sticky;left:0;z-index:3;min-width:80px;box-shadow:2px 0 5px #0b2d4a26}
 .mg-on-cash-scroll tbody td:first-child{position:sticky;left:0;z-index:2;min-width:80px;background:#fff;box-shadow:2px 0 5px #0b2d4a13}
 .mg-on-cash-scroll tbody tr:nth-child(even) td:first-child{background:#f6f9fc}
-.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td{background:#f0f8f4}
-.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td:first-child{background:#e5f4eb}
+.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td{background:#e5f6e9!important;border-top:1px solid #abdabc;border-bottom:1px solid #abdabc}
+.mg-on-cash-scroll tbody tr.mg-on-cash-reviewed td:first-child{background:#d6f0df!important;box-shadow:inset 4px 0 #309966,2px 0 5px #0b2d4a13}
 .mg-on-cash-scroll tbody tr.mg-on-cash-reviewed .mg-on-ok-label{color:#126b3f}
 .mg-on-cash-scroll .mg-on-ok-label input{min-width:20px;min-height:20px}
 

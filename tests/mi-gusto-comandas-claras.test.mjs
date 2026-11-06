@@ -50,5 +50,5 @@ test('Mi Gusto: comandas visibles en PC y celular sin afectar historial ni caja'
  assert.match(js,/function cashMovementDetail\(s=snapshot\?\.active\)/);
  assert.match(js,/function reportTurn\(s,turno\)/);
  assert.match(js,/gestlok_mg_online_cash_ok/);
- assert.match(read('components/stock-runtime.tsx'),/mi-gusto-cierre-online\.js\?rev=descuentos-sin-ok-20261105/);
+ assert.match(read('components/stock-runtime.tsx'),/mi-gusto-cierre-online\.js\?rev=ok-preservar-filas-20261105/);
 });
