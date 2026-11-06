@@ -96,6 +96,19 @@
       if(module==='ventas'){
         window.GestLokPosPreview.render(content,data.products,{guest:true,checkoutEnabled:data.live,paymentMethods:data.methods.map(m=>({id:m.method_id,label:m.label})),
           getReceipt:result=>db.rpc('gestlok_scanner_guest_receipt',{p_tenant:tenant,p_sale:result.saleId})});
+        const settingsButton=document.createElement('button');
+        settingsButton.type='button';settingsButton.textContent='Configurar lector e impresora';
+        settingsButton.addEventListener('click',()=>{
+          if(request!==generation || context?.permissions?.ventas!==true)return;
+          window.GestLokPosPreview?.dispose();
+          content.innerHTML=window.GestLokPosDevices.renderSettings(tenant);
+          const back=document.createElement('button');
+          back.type='button';back.textContent='Volver a Ventas';
+          back.addEventListener('click',()=>void open('ventas'));
+          content.prepend(back);
+          window.GestLokPosDevices.mountSettings(content,tenant);
+        });
+        content.prepend(settingsButton);
       }else renderRows(module,data);
     } catch(error){if(request===generation)content.textContent=error.message||'No se pudo abrir el módulo.';}
   }
