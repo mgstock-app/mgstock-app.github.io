@@ -98,7 +98,7 @@ export function StockRuntime() {
       await load("/stock/app.js?rev=whatsapp-alerta-turno-20261106");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=whatsapp-alerta-turno-20261106");
-      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-sin-bucle-20261101");
+      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-whatsapp-prioritario-20261106");
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();
