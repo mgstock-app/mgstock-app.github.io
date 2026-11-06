@@ -5,7 +5,7 @@
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103', UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3', EMAIL='camilab.lopez99@gmail.com', TABLE='gestlok_cami_monthly_movements';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(v||0);
- const monthNow=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}).slice(0,7);
+ const monthNow=()=>(()=>{const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit'}).formatToParts(new Date());return p.find(x=>x.type==='year').value+'-'+p.find(x=>x.type==='month').value;})();
  let host=null,context=null,allowed=false,visible=false,month=monthNow(),rows=[],error='',busy=false;
  const db=()=>window.GestLokSupabase;
  const valid=(ctx,h)=>ctx?.tenant_id===TENANT&&ctx?.role==='dueno'&&h?.role?.()==='dueno'&&h?.S?.me?.tenant_id===TENANT&&String(h?.S?.me?.email||'').toLowerCase()===EMAIL;
