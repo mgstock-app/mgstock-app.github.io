@@ -70,7 +70,7 @@ test('Precio final manual: guardado envía modo correcto, sin modificar otros te
  runInNewContext(ui,root);
  // Simulate first pressing "Agregar producto" (editing='new').
  const add={matches:q=>q==='[data-ps-new]',dataset:{}};
- listeners.click({target:{closest:()=>add},preventDefault(){}});
+ listeners.click({target:{closest:selector=>selector.includes('[data-ps-edit]')?add:null},preventDefault(){}});
  const makeForm=values=>({id:'gl-ps-price-form',values});
  const values={name:'Perfume de muestra',category:'Perfumes',cost_price:'7625',
   markup_percent:'96.72',manual_sale_price:'15000',pricing_mode:'manual'};
