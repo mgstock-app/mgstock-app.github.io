@@ -44,7 +44,7 @@
         const link=document.createElement('a');
         link.id='au-demo-link'; link.className='gl-visitor-entry';
         link.href='/conocer/#video';
-        link.textContent='Mirá Plan Scanner en video · 30 segundos';
+        link.textContent='Mirá Plan Scanner en video · 32 segundos';
         const info=document.createElement('small');
         info.className='gl-visitor-entry-info';
         info.textContent='Conocé las ventas, el escaneo con celular, el stock y los precios de GESTLOK.';
