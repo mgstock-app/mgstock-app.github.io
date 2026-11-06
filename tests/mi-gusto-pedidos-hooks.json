@@ -9,7 +9,7 @@
       "original": ""
     },
     {
-      "actual": "S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'pedidos-clientes' ? 'Pedidos' :",
+      "actual": "S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'pedidos-clientes' ? 'Pedidos WhatsApp' :",
       "original": "S.view === 'cierre-online' ? 'Pagos Online' :"
     },
     {
@@ -18,7 +18,7 @@
       "count": 2
     },
     {
-      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Pedidos de clientes</span></button>` : ''}",
+      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Pedidos WhatsApp</span></button>` : ''}",
       "original": ""
     },
     {

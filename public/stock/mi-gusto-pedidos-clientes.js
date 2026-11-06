@@ -8,7 +8,7 @@ const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pesos=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',dateStyle:'short',timeStyle:'short'}).format(new Date(x)):'—';
-let api=null,items=[],catalog=[],phone='',tab='nuevos',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
+let api=null,items=[],catalog=[],phone='',tab='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
   !window.GestLokCreatorSupport?.previewRol?.() &&
@@ -60,17 +60,17 @@ async function refresh(){
 function orderCard(o){
  const done=o.status==='recibido';
  return '<article class="mgp-card"><div class="mgp-card-head"><div><strong>'+esc(o.customer_name)+'</strong><small>'+date(o.created_at)+' · '+(o.source==='whatsapp'?'WhatsApp':'Carga interna')+'</small></div>'+
- '<span class="mgp-state '+(done?'done':'pending')+'">'+(done?'✓ Recibido':'Nuevo')+'</span></div>'+
+ '<span class="mgp-state '+(done?'done':'pending')+'">'+(done?'✓ OK · Realizado':'Pendiente')+'</span></div>'+
  '<div class="mgp-detail">'+escapeLines(o.items_detail)+'</div>'+
  (o.notes?'<p class="mgp-note">Nota: '+escapeLines(o.notes)+'</p>':'')+
  '<div class="mgp-card-bottom"><span><b>'+pesos(o.total)+'</b><small>Solo efectivo · '+esc(o.customer_phone)+'</small></span>'+
- (done?'<span class="mgp-received">✓ Marcado '+date(o.received_at)+'</span>':
- '<button type="button" class="mgp-button" data-mgp-receive="'+esc(o.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Marcar recibido</button>')+'</div></article>';
+ (done?'<span class="mgp-received">✓ Visto: '+date(o.received_at)+'</span>':
+ '<button type="button" class="mgp-button mgp-ok" aria-label="Marcar OK: comanda vista por el local" data-mgp-receive="'+esc(o.id)+'" '+(!canEdit()?'disabled':'')+'>✓ OK · Vista</button>')+'</div></article>';
 }
 function view(){
  if(!allowed())return '<p class="lead">No tenés acceso a los pedidos de esta sucursal.</p>';
  const pending=items.filter(x=>x.status==='nuevo'),done=items.filter(x=>x.status==='recibido');
- const selected=tab==='recibidos'?done:pending;
+ const selected=tab==='todos'?items:tab==='realizados'?done:pending;
  const config=canSetNumber()?'<details class="mgp-config"><summary>Configurar WhatsApp de '+esc(LOCALS[local()])+'</summary>'+
   '<p>Esta sucursal tendrá su propio número y sus pedidos separados. La automatización requiere conectar después la API oficial de Meta.</p>'+
   '<form id="mgp-number-form"><label>Número con código de país (ej.: 54911... )<input name="number" inputmode="tel" autocomplete="tel" required minlength="10" maxlength="24" value="'+esc(phone)+'" placeholder="54911..." '+(!canEdit()?'disabled':'')+'></label>'+
@@ -90,7 +90,7 @@ function view(){
  '<label>Observaciones (opcional)<textarea name="notes" maxlength="1000" rows="2" '+(!canEdit()?'disabled':'')+'></textarea></label>'+
  '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar pedido</button></form></details>';
  return '<section class="mgp-page" aria-label="Pedidos de clientes de Mi Gusto"><header class="mgp-head"><div><small>Mi Gusto · '+esc(LOCALS[local()])+'</small>'+
- '<h2>Pedidos de clientes</h2><p>Pedidos confirmados, control de recepción e historial. Pago únicamente en efectivo.</p></div>'+
+ '<h2>Pedidos WhatsApp</h2><p>Control interno de comandas: marcá OK cuando el local vea el pedido. Pago únicamente en efectivo.</p></div>'+
  '<button type="button" class="mgp-reload" data-mgp-reload '+(!online()?'disabled':'')+'>Actualizar</button></header>'+
  '<div class="mgp-status"><span>WhatsApp del local</span><strong>'+(phone?'+'+esc(phone):'Pendiente de configurar')+'</strong>'+
  '<small>'+(phone?'Número guardado · conexión automática pendiente':'Cada sucursal utiliza su propio número')+'</small></div>'+
@@ -98,11 +98,13 @@ function view(){
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
  (!online()?'<p role="status" class="mgp-error">Sin conexión: los pedidos solo se consultan y confirman online.</p>':'')+
  config+catalogPanel+manual+
- '<nav class="mgp-tabs" aria-label="Estados de los pedidos"><button type="button" data-mgp-tab="nuevos" aria-current="'+(tab==='nuevos'?'page':'false')+'">Nuevos ('+pending.length+')</button>'+
- '<button type="button" data-mgp-tab="recibidos" aria-current="'+(tab==='recibidos'?'page':'false')+'">Recibidos ('+done.length+')</button></nav>'+
+ '<nav class="mgp-tabs" aria-label="Filtrar pedidos de WhatsApp">'+
+ '<button type="button" data-mgp-tab="todos" aria-current="'+(tab==='todos'?'page':'false')+'">Todos ('+items.length+')</button>'+
+ '<button type="button" data-mgp-tab="pendientes" aria-current="'+(tab==='pendientes'?'page':'false')+'">Pendientes ('+pending.length+')</button>'+
+ '<button type="button" data-mgp-tab="realizados" aria-current="'+(tab==='realizados'?'page':'false')+'">Realizados ('+done.length+')</button></nav>'+
  (loading?'<p role="status">Cargando pedidos…</p>':
- '<div class="mgp-list">'+(selected.length?selected.map(orderCard).join(''):'<p class="mgp-empty">'+(tab==='nuevos'?'No hay pedidos nuevos.':'Todavía no hay pedidos recibidos.')+'</p>')+'</div>')+
- '<p class="mgp-footnote">Este módulo no registra cobros, no descuenta stock y no modifica Caja ni Pagos Online.</p></section>';
+ '<div class="mgp-list">'+(selected.length?selected.map(orderCard).join(''):'<p class="mgp-empty">'+(tab==='todos'?'Todavía no hay pedidos registrados.':tab==='pendientes'?'No hay pedidos pendientes.':'Todavía no hay pedidos marcados como realizados.')+'</p>')+'</div>')+
+ '<p class="mgp-footnote">El OK significa que el dueño o gerente vio la comanda, no que se preparó o entregó. No registra cobros ni modifica Caja, Stock o Pagos Online.</p></section>';
 }
 async function action(method,args,success){
  if(!canEdit())return;
@@ -132,7 +134,7 @@ function attach(h){
  document.addEventListener('click',e=>{
   if(api?.S.view!=='pedidos-clientes'||!allowed())return;
   const tabBtn=e.target.closest('[data-mgp-tab]');
-  if(tabBtn){tab=tabBtn.dataset.mgpTab;notice='';update();return;}
+  if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
   const edit=e.target.closest('[data-mgp-edit]');
   if(edit&&canSetNumber()&&canEdit()){
@@ -155,8 +157,8 @@ function attach(h){
   }
   const button=e.target.closest('[data-mgp-receive]');
   if(button&&canEdit()){
-   if(!window.confirm('¿Confirmás que el local recibió este pedido?'))return;
-   void action('gestlok_mg_orders_receive',{p_id:button.dataset.mgpReceive},'Pedido marcado como recibido.');
+   if(!window.confirm('¿Confirmás que el local ya vio esta comanda? Se marcará como Realizado (OK) solo para control interno.'))return;
+   void action('gestlok_mg_orders_receive',{p_id:button.dataset.mgpReceive},'✓ OK registrado: comanda vista por el local.');
   }
  });
  document.addEventListener('submit',e=>{
@@ -171,7 +173,7 @@ function attach(h){
      p_customer_phone:String(values.get('phone')||''),
      p_items_detail:String(values.get('items')||''),
      p_total:total,p_notes:String(values.get('notes')||'')
-   },'Pedido registrado.').then(()=>{if(!error){tab='nuevos';update(true,false);}});
+   },'Pedido registrado.').then(()=>{if(!error){tab='pendientes';update(true,false);}});
   }
   if(e.target.id==='mgp-catalog-form'){
    e.preventDefault();if(!canEdit()||!canSetNumber())return;
@@ -197,6 +199,6 @@ function subscribe(loc,push){
  window.addEventListener('focus',focused);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);});
 }
-function reset(){epoch++;items=[];catalog=[];phone='';tab='nuevos';loading=false;busy=false;error='';notice='';loaded=false;}
+function reset(){epoch++;items=[];catalog=[];phone='';tab='pendientes';loading=false;busy=false;error='';notice='';loaded=false;}
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,_test:{esc,pesos,orderCard}});
 })();

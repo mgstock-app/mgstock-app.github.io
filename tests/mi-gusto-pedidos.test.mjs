@@ -17,8 +17,15 @@ function setup({tenant=MG,role='gerente',local='munro',locals=['munro']}={}){
   }]}};
   const S={me:{tenant_id:tenant},local,view:'pedidos-clientes',ro:false,offline:false};
   const api={S,miRol:()=>role,misLocales:()=>locals,render:()=>{},toast:()=>{}};
-  const window={GestLokSupabase:{rpc:async(method,args)=>{
+  const window={confirm:()=>true,GestLokSupabase:{rpc:async(method,args)=>{
     calls.push({method,...args});
+    if(method==='gestlok_mg_orders_catalog')return {data:[],error:null};
+    if(method==='gestlok_mg_orders_receive'){
+      const item=data[args.p_local]?.orders.find(o=>o.id===args.p_id&&o.status==='nuevo');
+      if(!item)return {data:null,error:{message:'Pedido no encontrado o ya realizado.'}};
+      item.status='recibido';item.received_at='2026-11-06T21:00:00Z';
+      return {data:item,error:null};
+    }
     return {data:data[args.p_local],error:null};
   }},GestLokCreatorSupport:{previewRol:()=>null},addEventListener:()=>{},removeEventListener:()=>{}};
   const document={addEventListener:(type,fn)=>{handlers[type]=fn;},hidden:false,activeElement:null};
@@ -72,4 +79,58 @@ test('servidor preserva efectivo, validación de sucursal y recibidos irreversib
  assert.match(sql,/unique\(local,source,external_message_id\)/);
  assert.match(sql,/revoke all on gestlok_mg_orders_private\.orders from public, anon, authenticated/);
  assert.match(sql,/p_local text,p_id uuid/);
+});
+
+test('Pedidos WhatsApp muestra Todos, Pendientes y Realizados sin mezclar estados',async()=>{
+ const s=setup();
+ s.data.munro.orders.push({
+   id:'ok-2',local:'munro',customer_name:'Cliente realizado',customer_phone:'1133344455',
+   items_detail:'1 docena',total:24000,payment_method:'efectivo',source:'whatsapp',
+   status:'recibido',created_at:'2026-11-06T19:00:00Z',received_at:'2026-11-06T20:00:00Z'
+ });
+ s.orders.subscribe('munro',()=>{});await tick();
+ const initial=s.orders.view();
+ assert.match(initial,/Pedidos WhatsApp/);
+ assert.match(initial,/Todos \(2\)/);
+ assert.match(initial,/Pendientes \(1\)/);
+ assert.match(initial,/Realizados \(1\)/);
+ assert.match(initial,/Cliente Munro/);
+ assert.doesNotMatch(initial,/Cliente realizado/);
+ const clickTab=value=>s.handlers.click({target:{closest:q=>q==='[data-mgp-tab]'?{dataset:{mgpTab:value}}:null}});
+ clickTab('todos');
+ assert.match(s.orders.view(),/Cliente Munro/);
+ assert.match(s.orders.view(),/Cliente realizado/);
+ clickTab('realizados');
+ assert.doesNotMatch(s.orders.view(),/Cliente Munro/);
+ assert.match(s.orders.view(),/Cliente realizado/);
+ clickTab('pendientes');
+ assert.match(s.orders.view(),/Cliente Munro/);
+ assert.doesNotMatch(s.orders.view(),/Cliente realizado/);
+});
+
+test('OK con tilde marca solo pedido visto por gerente autorizado y no registra cobro',async()=>{
+ const s=setup({role:'gerente',local:'munro',locals:['munro']});
+ s.orders.subscribe('munro',()=>{});await tick();
+ assert.match(s.orders.view(),/OK · Vista/);
+ s.handlers.click({target:{closest:q=>q==='[data-mgp-receive]'?{dataset:{mgpReceive:'first'}}:null}});
+ await tick();await tick();
+ assert.equal(s.data.munro.orders[0].status,'recibido');
+ assert.equal(s.data.torcuato.orders[0].status,'nuevo');
+ assert.equal(s.calls.filter(c=>c.method==='gestlok_mg_orders_receive').length,1);
+ // El pedido deja Pendientes al marcarlo. Está en Realizados y Todos.
+ s.handlers.click({target:{closest:q=>q==='[data-mgp-tab]'?{dataset:{mgpTab:'realizados'}}:null}});
+ assert.match(s.orders.view(),/✓ OK · Realizado/);
+ assert.match(s.orders.view(),/Visto:/);
+ assert.doesNotMatch(s.orders.view(),/data-mgp-receive="first"/);
+ assert.doesNotMatch(moduleSource,/gestlok_mg_online_save|stock_quantity|caja_register|pos_checkout/);
+});
+
+test('dueño puede marcar OK y colaborador o gerente sin sucursal no puede',()=>{
+ const owner=setup({role:'dueno'});
+ assert.match(owner.orders._test.orderCard({id:'a',status:'nuevo',customer_name:'Cliente',
+    customer_phone:'111',items_detail:'1 producto',total:100,source:'whatsapp'}),/data-mgp-receive="a"/);
+ const collaborator=setup({role:'colaborador'});
+ assert.equal(collaborator.orders.permitido(),false);
+ const managerOther=setup({role:'gerente',local:'torcuato',locals:['munro']});
+ assert.equal(managerOther.orders.permitido(),false);
 });
