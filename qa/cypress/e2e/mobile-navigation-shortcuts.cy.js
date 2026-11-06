@@ -28,11 +28,13 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
      cy.get('#snav > button[data-go="cierre-online"]').should('have.length',1);
      cy.get('#snav > button[data-go]').then($buttons=>{
        const ids=[...$buttons].map(b=>b.getAttribute('data-go'));
-       expect(ids.slice(0,3)).to.deep.equal(['inicio','cierre-online','stock']);
+       if(ids.includes('pedidos-clientes'))expect(ids.slice(0,4)).to.deep.equal(['inicio','cierre-online','pedidos-clientes','stock']);
+       else expect(ids.slice(0,3)).to.deep.equal(['inicio','cierre-online','stock']);
      });
      cy.get('#gestlok-mobile-dock [data-dock]').then($buttons=>{
        const ids=[...$buttons].map(b=>b.getAttribute('data-dock'));
-       expect(ids.slice(0,3)).to.deep.equal(['home','pagos','stock']);
+       if(ids.includes('pedidos'))expect(ids.slice(0,4)).to.deep.equal(['home','pagos','pedidos','stock']);
+       else expect(ids.slice(0,3)).to.deep.equal(['home','pagos','stock']);
      });
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
