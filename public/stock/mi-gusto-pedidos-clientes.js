@@ -13,6 +13,7 @@ let polling=false,firstSnapshot=true,knownOrderIds=new Set(),lastNewOrderId='',l
 const PAUSE_MS=12000;
 const waIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M21 11.5a9.1 9.1 0 0 1-13.3 8L3 21l1.5-4.7A9.1 9.1 0 1 1 21 11.5Z"/><path d="M8 8.6c0 3 4.4 7.3 7.2 7.3.5 0 1.4-.5 1.6-1.1l-2-1.1-1.2 1c-1.8-.8-2.7-1.7-3.5-3.5l1-1.2-1.1-2c-.6.2-2 1-2 2.7Z"/></svg>';
 const userIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4.2"/><path d="M3.5 21c.1-4.3 3.4-7 8.5-7s8.4 2.7 8.5 7Z"/></svg>';
+const cutleryIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M16 3c-2 3-3 6-3 10h5V3M18 13v8"/></svg>';
 const local=()=>api?.S?.local;
 const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
   !window.GestLokCreatorSupport?.previewRol?.() &&
@@ -159,7 +160,7 @@ function view(){
   '<form id="mgp-number-form"><label>Número con código de país (ej.: 54911... )<input name="number" inputmode="tel" autocomplete="tel" required minlength="10" maxlength="24" value="'+esc(phone)+'" placeholder="54911..." '+(!canEdit()?'disabled':'')+'></label>'+
   '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar número</button></form></details>':'';
  const catalogPanel='<section class="mgp-catalog-card" aria-label="Carta y precios de WhatsApp">'+
-  '<header class="mgp-catalog-head"><span class="mgp-catalog-icon" aria-hidden="true">♜</span><div><strong>Carta y precios para WhatsApp</strong><small>'+catalog.filter(x=>x.active).length+' productos activos en '+esc(LOCALS[local()])+'</small></div></header>'+
+  '<header class="mgp-catalog-head"><span class="mgp-catalog-icon">'+cutleryIcon+'</span><div><strong>Carta y precios para WhatsApp</strong><small>'+catalog.filter(x=>x.active).length+' productos activos en '+esc(LOCALS[local()])+'</small></div></header>'+
   '<div class="mgp-menu-list">'+(catalog.length?catalog.map(x=>'<div class="mgp-menu-item"><div class="mgp-menu-name"><span class="mgp-menu-empanada" aria-hidden="true">◡</span><span><strong>'+esc(x.name)+'</strong>'+(!x.active?'<small>Oculto de WhatsApp</small>':'')+'</span></div><span class="mgp-menu-price">'+pesos(x.price)+'</span>'+
     (canSetNumber()?'<div class="mgp-menu-actions"><button type="button" data-mgp-edit="'+esc(x.id)+'">Editar</button>'+(x.active?'<button type="button" data-mgp-disable="'+esc(x.id)+'">Ocultar</button>':'')+'</div>':'')+'</div>').join(''):'<p class="mgp-catalog-empty">Todavía no hay productos cargados. Agregá la carta y precios de esta sucursal.</p>')+'</div>'+
   (canSetNumber()?'<details class="mgp-config mgp-catalog-editor" id="mgp-catalog"><summary>+ Agregar producto / Editar carta</summary>'+
