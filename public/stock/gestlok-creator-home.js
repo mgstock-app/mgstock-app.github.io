@@ -172,17 +172,47 @@
   // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
   // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
-    const companies = (data.recent_companies || []).map(c => {
+    const indexed = Array.isArray(p.companies) ? p.companies : [];
+    const companyRows = indexed.length ? indexed : (data.recent_companies || []);
+    const companies = companyRows.map(c => {
       const own = c.tenant_id === api.S?.me?.tenant_id;
+      const locals = Array.isArray(c.locals) ? c.locals.length : num(c.locals);
       const action = own
         ? '<span class="gl-ch-pill ok">Tu empresa</span>'
         : (window.GestLokCreatorSupport?.openButton?.(c.tenant_id, c.name) || '<span class="gl-ch-pill ok">Registrada</span>');
       return '<article class="gl-ch-company-card"><span class="gl-ch-ico p">' +
         svg('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>', 24) +
-        '</span><div><h3>' + esc(c.name) + '</h3><p>' + num(c.locals) +
-        (num(c.locals) === 1 ? ' local' : ' locales') + ' · ' + num(c.people) +
-        (num(c.people) === 1 ? ' persona' : ' personas') + '</p></div>' + action + '</article>';
+        '</span><div><h3>' + esc(c.name) + '</h3><p>' + locals +
+        (locals === 1 ? ' local' : ' locales') +
+        (c.people == null ? '' : ' · ' + num(c.people) + (num(c.people) === 1 ? ' persona' : ' personas')) +
+        '</p><button type="button" class="gl-ch-company-open" data-ch-tab="locales">Ver locales →</button></div>' + action + '</article>';
     }).join('');
+    // Los locales ajenos usan la misma apertura de soporte auditada que «Locales».
+    // No se cambia el tenant desde la interfaz ni se conceden permisos nuevos.
+    const allLocals = indexed.flatMap(c => (Array.isArray(c.locals) ? c.locals : []).map(l => ({
+      ...l, tenant_id:c.tenant_id, company:c.name
+    })));
+    const localButtons = allLocals.map(l => {
+      const own = l.tenant_id === api.S?.me?.tenant_id;
+      const attrs = own
+        ? 'data-act="local" data-id="' + esc(l.id) + '"'
+        : 'data-company-local="' + esc(l.id) + '" data-company-tenant="' + esc(l.tenant_id) + '" data-company-name="' + esc(l.company) + '"';
+      return '<button type="button" class="gl-ch-quick-local" ' + attrs +
+        ' aria-label="Abrir el local ' + esc(l.name || l.id) + ' de ' + esc(l.company) + '">' +
+        '<span class="gl-ch-quick-icon">' + svg('<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>',22) +
+        '</span><span><b>' + esc(l.name || l.id) + '</b><small>' + esc(l.company) +
+        ' · ' + (own ? 'Abrir local' : 'Ingreso autorizado') + '</small></span><span aria-hidden="true">→</span></button>';
+    }).join('');
+    // Una microapp se abre DENTRO de un local autorizado. El acceso empieza por su selector.
+    const microapps = [
+      ['Caja', 'Caja y movimientos diarios'],
+      ['Stock Local', 'Productos y existencias'],
+      ['Precios', 'Costos, márgenes y precios de venta'],
+      ['Sistema de Ventas', 'Escáner y registro de cobros'],
+      ['Horarios', 'Turnos y planillas'],
+      ['Empleados', 'Legajos y recibos autorizados']
+    ].map(([name,detail]) => '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
+      '<b>' + name + '</b><small>' + detail + '</small><span>Elegir local →</span></button>').join('');
     const shortcuts = [
       ['Empresas y locales', 'empresas', '<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>'],
       ['Usuarios y accesos', 'usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
@@ -197,7 +227,10 @@
       '<p>Consultá las empresas registradas y entrá a los locales que administrás.</p>' +
       '<div class="gl-ch-company-grid">' + (companies || '<p>Consultá el listado completo desde Empresas.</p>') + '</div></section>' +
       '<section class="gl-ch-card gl-ch-quick-locals" aria-label="Acceso a mis locales"><header><h2>Mis locales</h2><button type="button" class="gl-ch-link" data-ch-tab="locales">Ver locales →</button></header>' +
-      '<div class="gl-ch-quick-grid">' + (p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>' +
+      '<div class="gl-ch-quick-grid">' + (localButtons || p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>' +
+      '<section class="gl-ch-card" aria-label="Mis microapps"><header><h2>Mis microapps</h2></header>' +
+      '<p>Primero elegí la empresa y el local. Cada herramienta respeta sus permisos.</p>' +
+      '<div class="gl-ch-microapps">' + microapps + '</div></section>' +
       '<section class="gl-ch-card"><header><h2>Administración y herramientas</h2></header>' +
       '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
       '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
@@ -238,7 +271,7 @@
       '<div class="gl-ch-topr"><div class="gl-ch-date"><span>' + esc(d.date) + '</span><span>' + esc(d.time) + '</span></div>' +
       '<button type="button" class="gl-ch-bell" data-act="share" aria-label="Solicitudes pendientes: ' + num(p.pending) + '">' + svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>', 22) + (p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>' +
       '<button type="button" class="gl-ch-out" data-au="out">Salir</button></div></header>' + body +
-      '<footer class="gl-ch-foot">GESTLOK · Panel privado de la creadora · Solo lectura · Datos al ' + esc(dmy(data.generated_at)) + ' ' + esc(new Date(data.generated_at).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})) + '</footer></main></div>';
+      '<footer class="gl-ch-foot">GESTLOK · Panel privado de la creadora · Accesos protegidos · Datos al ' + esc(dmy(data.generated_at)) + ' ' + esc(new Date(data.generated_at).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})) + '</footer></main></div>';
   }
   function empleados(p) {
     const t = data.totals, e = data.employees_roles;
