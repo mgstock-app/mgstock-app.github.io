@@ -98,13 +98,15 @@ function view(){
 }
 async function action(method,args,success){
  if(!canEdit())return;
+ const targetLocal=local();
  busy=true;error='';notice='';update();
  let saved=false;
  try{
   await rpc(method,args);
+  if(local()!==targetLocal)return;
   saved=true;notice=success;await refreshAfterSave();
  }catch(e){error=e.message||'No se pudo guardar.';}
- finally{busy=false;update(true,!saved);}
+ finally{if(local()===targetLocal){busy=false;update(true,!saved);}}
 }
 async function refreshAfterSave(){
  const request=++epoch,loc=local();
@@ -141,7 +143,7 @@ function attach(h){
      p_customer_phone:String(values.get('phone')||''),
      p_items_detail:String(values.get('items')||''),
      p_total:total,p_notes:String(values.get('notes')||'')
-   },'Pedido registrado.').then(()=>{if(!error)tab='nuevos';});
+   },'Pedido registrado.').then(()=>{if(!error){tab='nuevos';update(true,false);}});
   }
   if(e.target.id==='mgp-number-form'){
    e.preventDefault();if(!canEdit()||!canSetNumber())return;
