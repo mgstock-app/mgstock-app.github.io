@@ -84,3 +84,27 @@ test('El panel central informa edición permanente sin pedir cerrarla', async ()
  assert.match(html,/Mis empresas/);
  assert.doesNotMatch(html,/Tu cuenta está en solo lectura|cerrala al terminar/);
 });
+
+test('Inicio multiempresa: todas las empresas y sus locales se muestran con el acceso autorizado correcto', async () => {
+ const r=load(async()=>({data:DASH,error:null}));
+ r.h.mode();await tick();await tick();
+ const companies=[
+  {tenant_id:'t-1',name:'Mi Gusto',locals:[{id:'munro',name:'Munro'},{id:'torcuato',name:'Don Torcuato'}]},
+  {tenant_id:'t-2',name:'Perfumes',locals:[{id:'l-per',name:'Belisa Parfum'}]},
+  {tenant_id:'t-3',name:'Empresa <script>',locals:[{id:'l-3',name:'Local <externo>'}]},
+ ];
+ const html=r.h.view({pending:0,parts:{},companies,quickLocals:'SOLO MI GUSTO'});
+ for (const name of ['Mis empresas','Mis locales','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Horarios','Empleados']) {
+  assert.ok(html.includes(name),name);
+ }
+ assert.ok(html.includes('data-act="local" data-id="munro"'));
+ assert.ok(html.includes('data-act="local" data-id="torcuato"'));
+ assert.ok(html.includes('data-company-local="l-per" data-company-tenant="t-2"'));
+ assert.ok(html.includes('data-company-local="l-3" data-company-tenant="t-3"'));
+ assert.ok(html.includes('Empresa &lt;script&gt;')&&!html.includes('Empresa <script>'));
+ assert.ok(html.includes('Local &lt;externo&gt;'));
+ assert.ok(!html.includes('SOLO MI GUSTO'),'El índice completo sustituye los dos locales actuales');
+ assert.equal((html.match(/class="gl-ch-quick-local"/g)||[]).length,4);
+ assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,6);
+ assert.equal((html.match(/data-ch-tab="locales"/g)||[]).length>=7,true);
+});
