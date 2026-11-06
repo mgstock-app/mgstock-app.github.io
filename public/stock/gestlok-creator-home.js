@@ -172,7 +172,7 @@
   // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
   // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
-    const indexed = Array.isArray(p.companies) ? p.companies : [];
+    const indexed = Array.isArray(p.companies) ? p.companies : (window.GestLokOwnerAreas?.creatorCompanies?.() || []);
     const companyRows = indexed.length ? indexed : (data.recent_companies || []);
     const companies = companyRows.map(c => {
       const own = c.tenant_id === api.S?.me?.tenant_id;
