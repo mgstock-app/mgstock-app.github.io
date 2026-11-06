@@ -64,7 +64,7 @@ test('Sugerido: costo válido, actualización en vivo y aplicación voluntaria s
  assert.equal(api.suggestedPrice(8500),14450);
  assert.equal(api.suggestedPrice('10.50'),17.85);
  for(const cost of ['',null,undefined,'abc',-1,0,Infinity,9999999999.99])assert.equal(api.suggestedPrice(cost),null);
- const fields={cost_price:{value:'8500'},markup_percent:{value:''}};
+ const fields={cost_price:{value:'8500'},markup_percent:{value:''},manual_sale_price:{value:''},pricing_mode:{value:'percentage'}};
  const nodes=Object.fromEntries(['data-ps-sale','data-ps-profit','data-ps-suggested','data-ps-use-suggested'].map(key=>['['+key+']',{}]));
  const form={elements:{namedItem:name=>fields[name]},querySelector:key=>nodes[key]};
  const input={name:'cost_price',form,matches:()=>false,closest:()=>form};
@@ -76,6 +76,8 @@ test('Sugerido: costo válido, actualización en vivo y aplicación voluntaria s
  const button={matches:selector=>selector==='[data-ps-use-suggested]',closest:()=>form};
  listeners.click({target:{closest:selector=>selector.includes('[data-ps-use-suggested]')?button:null},preventDefault:()=>{}});
  assert.equal(fields.markup_percent.value,'70');
+ assert.equal(fields.pricing_mode.value,'percentage');
+ assert.equal(fields.manual_sale_price.value,'14450');
  assert.equal(nodes['[data-ps-sale]'].textContent,nodes['[data-ps-suggested]'].textContent);
  fields.cost_price.value='';listeners.input({target:input});
  assert.equal(nodes['[data-ps-use-suggested]'].disabled,true);

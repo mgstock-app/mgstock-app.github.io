@@ -42,7 +42,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-devices-receipts-20261105");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
-      if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=precios-stock-cami-20261029");
+      if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=scanner-precio-manual-20261106");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
