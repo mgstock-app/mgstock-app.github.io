@@ -69,10 +69,8 @@
  }
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
-  return '<section class="gl-pilot-entry" aria-label="Accesos de Mi local"><div class="gl-pilot-entry-info"><small>TU ESPACIO DE TRABAJO</small><h2>Mi local</h2>'+
-   '<p>Caja, ventas, stock y precios. Todo en un solo lugar.</p>'+
-   '<div class="gl-pilot-entry-note"><strong>Administrá tu negocio de forma simple</strong><span>Accedé rápidamente a las herramientas de tu local.</span></div></div>'+
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Sistema de ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button><button type="button" data-pilot-open>Inicio</button></div></section>';
+  return '<section class="gl-pilot-entry" aria-label="Herramientas comerciales"><div class="gl-pilot-entry-info"><small>OPERACIONES</small><h2>Accesos rápidos</h2></div>'+ 
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button></div></section>';
  }
  async function assertAccess(){
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
