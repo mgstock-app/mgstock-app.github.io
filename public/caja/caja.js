@@ -84,6 +84,7 @@
   })();
   const anfitrion = (() => { try { return new URLSearchParams(location.search).get('integrado') === '1' && window.frameElement?.id === 'gl-caja-app-frame' ? window.frameElement.ownerDocument.defaultView : null; } catch { return null; } })();
   const integrado = !!anfitrion;
+  const scannerGuestCaja = integrado && new URLSearchParams(location.search).get('scanner_comercio');
   const volverGestlok = (clase) => PRE ? '<a class="' + (clase || 'btn texto chico') + '" href="../" data-caja-volver>← Volver a GESTLOK</a>' : '';
 
   // ---------------- estado ----------------
@@ -154,7 +155,7 @@
     S.user = data && data.session ? data.session.user : null;
     if (S.recuperar) return pintar();
     if (!S.user) { S.comercios = []; S.comercio = null; S.local = null; return pintar(); }
-    try { S.comercios = (await rpc('mis_comercios')) || []; }
+    try { S.comercios = (await rpc('mis_comercios')) || []; if(scannerGuestCaja)S.comercios=S.comercios.filter(c=>c.id===scannerGuestCaja); }
     catch (e) { return pintarFalla(e); }
     const disp = leer('caja.dispositivo') || {};
     S.comercio = S.comercios.find((c) => c.id === disp.comercio_id) || (S.comercios.length === 1 ? S.comercios[0] : null);
@@ -192,6 +193,7 @@
     vez += 1;
     if (S.recuperar) return pantallaNuevaClave();
     if (!S.user) return pantallaAcceso();
+    if(scannerGuestCaja&&!S.comercios.length){app.innerHTML='<p role="alert">Caja no disponible.</p>'+volverGestlok();return;}
     if (!S.comercios.length || S.creando) return pantallaCrearComercio();
     if (!S.comercio || !S.local) return pantallaElegir();
     if (S.vista !== 'caja') {
