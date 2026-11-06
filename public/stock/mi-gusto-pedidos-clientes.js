@@ -63,7 +63,7 @@ function indicators(){
  if(sig===lastAlertSig)return;
  lastAlertSig=sig;
  banner.classList.toggle('mgp-global-alert-new',!!latest);
- const title=latest?'¡Nueva comanda por WhatsApp!':'Pedidos WhatsApp pendientes';
+ const title=latest?(latest.source==='whatsapp'?'¡Nueva comanda por WhatsApp!':'¡Nueva comanda pendiente!'):'Pedidos WhatsApp pendientes';
  const desc=latest?esc(latest.customer_name)+' · '+count+' pendiente'+(count===1?'':'s')+' de OK':count+' pedido'+(count===1?'':'s')+' por revisar en '+esc(LOCALS[local()]);
  banner.innerHTML='<span class="mgp-alert-icon">'+waIcon+'</span><div class="mgp-alert-copy"><strong>'+title+'</strong><small>'+desc+'</small></div>'+
   '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedidos</button>';
