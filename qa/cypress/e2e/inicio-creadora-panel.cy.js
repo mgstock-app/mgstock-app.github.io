@@ -11,9 +11,13 @@ describe('Inicio independiente de la creadora',()=>{
  it('la creadora ve el resumen con datos reales y sin planes ni suscripciones inventados',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch h1',{timeout:12000}).should('contain.text','¡Hola!');
-  cy.get('.gl-ch').should('contain.text','Mis empresas').and('contain.text','Mis locales').and('contain.text','Administración y herramientas').and('contain.text','Solo lectura')
-   .and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
+  cy.get('.gl-ch').should('contain.text','Mis empresas').and('contain.text','Mis locales').and('contain.text','Administración y herramientas').and('contain.text','Accesos protegidos')
+   .and('contain.text','Mis microapps').and('not.contain.text','Suscripciones').and('not.contain.text','Planes');
   cy.get('.gl-ch-shortcuts [data-ch-tab="usuarios"]').should('be.visible');
+  cy.get('.gl-ch-microapp').should('have.length',6);
+  cy.get('.gl-ch-microapp').first().click();
+  cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
+  cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
   // Ocho pestañas: se sumó «NFC y QR» (#199) a las siete anteriores.
   cy.get('.gl-ch-nav button').should('have.length',8);
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');

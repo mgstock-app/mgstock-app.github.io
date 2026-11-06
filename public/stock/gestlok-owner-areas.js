@@ -361,5 +361,6 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&isSoloOwner()&&window.history?.state?.glOwnerPanel)window.history.back();if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();refreshAdmin();}});
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
-  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders});
+  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders,
+    creatorCompanies:()=>api?.role?.()==='creadora'&&admin.status==='ready'?admin.companies.map(c=>({...c,locals:(c.locals||[]).map(l=>({...l}))})):[]});
 })();

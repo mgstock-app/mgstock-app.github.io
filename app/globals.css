@@ -2339,3 +2339,14 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
     margin-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Inicio independiente de la Administradora General: microapps por local autorizado. */
+#hub .gl-ch-microapps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#hub .gl-ch-microapp{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;text-align:left;background:#f8fbff;border:1px solid #dae6f0;border-radius:15px;padding:18px;color:#153a60;font:inherit;cursor:pointer}
+#hub .gl-ch-microapp b{font-size:16px}
+#hub .gl-ch-microapp small{font-size:13px;color:#60768b;line-height:1.45;flex:1}
+#hub .gl-ch-microapp span{color:#126386;font-size:13px;font-weight:750}
+#hub .gl-ch-microapp:hover,#hub .gl-ch-microapp:focus-visible{background:#eaf6ff;border-color:#2c94bf;outline:2px solid transparent;box-shadow:0 0 0 2px #2c94bf22}
+#hub .gl-ch-company-open{margin-top:6px;background:transparent;color:#13688e;border:0;padding:4px 0;text-align:left;font-weight:750;cursor:pointer}
+@media(max-width:900px){#hub .gl-ch-microapps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){#hub .gl-ch-microapps{grid-template-columns:1fr}#hub .gl-ch-microapp{padding:14px;min-height:84px}}
