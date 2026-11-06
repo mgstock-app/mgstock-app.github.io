@@ -10,6 +10,11 @@
  const amount=v=>v==null?'':String(v);
  const price=(cost,percentage)=>Math.round((Number(cost)*(1+Number(percentage)/100)+Number.EPSILON)*100)/100;
  const profit=(cost,percentage)=>Math.round((price(cost,percentage)-Number(cost)+Number.EPSILON)*100)/100;
+ const percentForSale=(cost,sale)=>{
+  if(!validMoney(cost,0.01,9999999999.99)||!validMoney(sale,0,9999999999.99))return null;
+  const pct=Math.round((Number(sale)/Number(cost)-1)*10000)/100;
+  return Number.isFinite(pct)&&pct>=-100&&pct<=5000?pct:null;
+ };
  const SUGGESTED_MARKUP=70;
  const suggestedPrice=cost=>validMoney(cost,0.01,9999999999.99)&&price(cost,SUGGESTED_MARKUP)<=9999999999.99?price(cost,SUGGESTED_MARKUP):null;
  const db=()=>window.GestLokSupabase;
@@ -29,7 +34,7 @@
   try{
    await assertAccess();
    const {data,error:e}=await db().from('gestlok_pilot_products')
-    .select('id,name,category,sku,cost_price,markup_percent,unit_price,stock_quantity,stock_minimum,in_stock,active,updated_at')
+    .select('id,name,category,sku,cost_price,markup_percent,manual_sale_price,unit_price,stock_quantity,stock_minimum,in_stock,active,updated_at')
     .eq('tenant_id',queryTenant).eq('active',true).order('name',{ascending:true}).limit(500);
    if(e)throw e;
    if(queryTenant!==tenant()||!permitted())return;
@@ -49,7 +54,7 @@
   return '<span class="gl-ps-badge is-ok">Disponible</span>';
  }
  function countStats(){
-  const priced=rows.filter(p=>p.cost_price!=null&&p.markup_percent!=null);
+  const priced=rows.filter(p=>p.cost_price!=null&&p.unit_price!=null);
   const withCount=rows.filter(p=>p.stock_quantity!=null);
   return [
    ['Productos',rows.length],
@@ -67,7 +72,7 @@
   };
  }
  function rowCard(p){
-  const calculated=p.cost_price!=null&&p.markup_percent!=null;
+  const calculated=p.cost_price!=null&&p.unit_price!=null;
   const cost=calculated?money(p.cost_price):'Sin cargar';
   const sale=p.unit_price!=null?money(p.unit_price):'Sin calcular';
   const gain=calculated?money(Number(p.unit_price)-Number(p.cost_price)):'Sin calcular';
@@ -90,23 +95,27 @@
  }
  function priceForm(){
   const p=rows.find(x=>x.id===editing);
-  const input=(key)=>esc(amount(p?.[key]));
-  const current=p?.cost_price!=null&&p?.markup_percent!=null;
-  const a=current?money(p.unit_price):'—',b=current?money(Number(p.unit_price)-Number(p.cost_price)):'—';
+  const input=key=>esc(amount(p?.[key]));
+  const current=p?.cost_price!=null&&p?.unit_price!=null;
+  const manual=p?.manual_sale_price!=null;
+  const sale=current?money(p.unit_price):'—',gain=current?money(Number(p.unit_price)-Number(p.cost_price)):'—';
   return '<form id="gl-ps-price-form" class="gl-ps-form"><div class="gl-ps-form-title"><h3>'+(p?'Editar precios':'Nuevo producto')+'</h3>'+
     '<button type="button" data-ps-cancel aria-label="Cerrar formulario">Cerrar ×</button></div>'+
    '<div class="gl-ps-fields"><label>Nombre del producto<input name="name" value="'+input('name')+'" minlength="2" maxlength="140" required placeholder="Ej.: perfume o tratamiento"></label>'+
    '<label>Categoría (opcional)<input name="category" maxlength="80" value="'+input('category')+'" placeholder="Perfumes / Cuidado capilar"></label>'+
    '<label>Código de barras (automático)<input name="sku" readonly value="'+(p?input('sku'):'Se genera al guardar')+'" aria-label="Código de barras generado automáticamente"></label>'+
-   '<label>Precio costo (ARS)<input name="cost_price" type="number" inputmode="decimal" min="0" max="9999999999.99" step="0.01" required value="'+input('cost_price')+'" placeholder="0.00"></label>'+
-   '<label>Porcentaje de recargo (%)<input name="markup_percent" type="number" inputmode="decimal" min="0" max="5000" step="0.01" required value="'+input('markup_percent')+'" placeholder="Ej.: 70"></label></div>'+
+   '<label>Precio costo (ARS)<input name="cost_price" type="number" inputmode="decimal" min="0" max="9999999999.99" step="0.01" required value="'+input('cost_price')+'" placeholder="0,00"></label>'+
+   '<label>Porcentaje de recargo (%) · opcional<input name="markup_percent" type="number" inputmode="decimal" min="-100" max="5000" step="0.01" value="'+input('markup_percent')+'" placeholder="Ej.: 70"></label>'+
+   '<label>Precio de venta final (ARS) · opcional<input name="manual_sale_price" type="number" inputmode="decimal" min="0" max="9999999999.99" step="0.01" value="'+(current?esc(amount(p.unit_price)):'')+'" placeholder="Ej.: 15000"></label></div>'+
+   '<input type="hidden" name="pricing_mode" value="'+(manual?'manual':'percentage')+'">'+
+   '<p class="gl-ps-help" data-ps-mode-hint>Podés ingresar un porcentaje o directamente el precio final. El último campo que modificás determina cómo se guarda; el otro se calcula automáticamente.</p>'+
    '<div class="gl-ps-suggestion" aria-live="polite"><div><small>Precio de venta sugerido</small>'+
    '<strong data-ps-suggested>'+(suggestedPrice(p?.cost_price)==null?'Cargá el costo':money(suggestedPrice(p.cost_price)))+'</strong>'+
    '<p class="gl-ps-help">Referencia inicial: costo + 70% de recargo. Podés cambiar el porcentaje. No es un precio de mercado y no incluye impuestos, comisiones ni otros gastos.</p></div>'+
    '<button type="button" data-ps-use-suggested '+(suggestedPrice(p?.cost_price)==null?'disabled':'')+'>Usar sugerido (70%)</button></div>'+
-   '<div class="gl-ps-preview" aria-live="polite"><div><small>Precio a vender</small><strong data-ps-sale>'+a+'</strong></div>'+
-   '<div><small>Ganancia bruta por unidad</small><strong data-ps-profit>'+b+'</strong></div></div>'+
-   '<p class="gl-ps-help">El porcentaje se suma al costo. Ejemplo: $10.000 + 70% = $17.000 de venta y $7.000 de ganancia bruta. No descuenta impuestos, comisiones ni otros gastos.</p>'+
+   '<div class="gl-ps-preview" aria-live="polite"><div><small>Precio a vender</small><strong data-ps-sale>'+sale+'</strong></div>'+
+   '<div><small>Ganancia bruta por unidad</small><strong data-ps-profit>'+gain+'</strong></div></div>'+
+   '<p class="gl-ps-help">Ganancia bruta = precio de venta − costo. No descuenta impuestos, comisiones ni otros gastos.</p>'+
    '<button type="submit" '+(busy?'disabled':'')+'>'+(busy?'Guardando…':'Guardar producto y precios')+'</button></form>';
  }
  function stockForm(){
@@ -149,13 +158,20 @@
   if(busy)return;
   const p=rows.find(x=>x.id===editing);
   const d=Object.fromEntries(new FormData(form).entries());
-  const name=String(d.name||'').trim();
-  const c=String(d.cost_price||'').trim(),pct=String(d.markup_percent||'').trim();
-  if(name.length<2||name.length>140||!validMoney(c,0,9999999999.99)||!validMoney(pct,0,5000)||price(c,pct)>9999999999.99){
-    error='Comprobá el nombre, el costo y el porcentaje de recargo.';update();return;
+  const name=String(d.name||'').trim(),cost=String(d.cost_price||'').trim();
+  const pct=String(d.markup_percent||'').trim(),finalPrice=String(d.manual_sale_price||'').trim();
+  const manual=d.pricing_mode==='manual';
+  const validCost=validMoney(cost,0,9999999999.99);
+  const validManual=validMoney(finalPrice,0,9999999999.99)&&
+    (Number(cost)===0||percentForSale(cost,finalPrice)!==null);
+  const validPct=validMoney(pct,-100,5000)&&price(cost,pct)>=0&&price(cost,pct)<=9999999999.99;
+  if(name.length<2||name.length>140||!validCost||!(manual?validManual:validPct)){
+    error='Revisá el nombre, el costo y el precio final o porcentaje de recargo.';update();return;
   }
-  const fields={name,category:String(d.category||'').trim(),
-   cost_price:Number(c),markup_percent:Number(pct)};
+  // El servidor conserva el precio final exacto en modo manual. Nunca confiar
+  // en un porcentaje redondeado para reconstruir el monto que ingresó el usuario.
+  const fields={name,category:String(d.category||'').trim(),cost_price:Number(cost),
+   markup_percent:manual?null:Number(pct),manual_sale_price:manual?Number(finalPrice):null};
   busy=true;error='';notice='';update();
   try{
    await assertAccess();
@@ -328,6 +344,38 @@
   else{stockEditing=id;editing='';}
   error='';update();
  });
+ function updatePricePreview(form,changed){
+  const costField=form.elements.namedItem('cost_price');
+  const percentField=form.elements.namedItem('markup_percent');
+  const finalField=form.elements.namedItem('manual_sale_price');
+  const modeField=form.elements.namedItem('pricing_mode');
+  if(!costField||!percentField||!finalField||!modeField)return;
+  if(changed==='markup_percent')modeField.value='percentage';
+  if(changed==='manual_sale_price')modeField.value='manual';
+  const cost=costField.value,percent=percentField.value,finalPrice=finalField.value;
+  const validCost=validMoney(cost,0,9999999999.99);
+  let sale=null;
+  if(modeField.value==='manual'){
+   if(validCost&&validMoney(finalPrice,0,9999999999.99)){
+    const derived=Number(cost)>0?percentForSale(cost,finalPrice):null;
+    percentField.value=derived===null?'':String(derived);
+    if(Number(cost)===0||derived!==null)sale=Number(finalPrice);
+   }else if(changed==='manual_sale_price'){percentField.value='';}
+  }else if(validCost&&validMoney(percent,-100,5000)){
+   const computed=price(cost,percent);
+   if(computed>=0&&computed<=9999999999.99){
+    sale=computed;
+    finalField.value=String(computed);
+   }else{finalField.value='';}
+  }else{finalField.value='';}
+  const suggestion=suggestedPrice(cost);
+  const suggested=form.querySelector('[data-ps-suggested]'),apply=form.querySelector('[data-ps-use-suggested]');
+  if(suggested)suggested.textContent=suggestion==null?'Cargá un costo válido':money(suggestion);
+  if(apply)apply.disabled=suggestion==null;
+  const saleText=form.querySelector('[data-ps-sale]'),gainText=form.querySelector('[data-ps-profit]');
+  if(saleText)saleText.textContent=sale===null?'—':money(sale);
+  if(gainText)gainText.textContent=sale===null?'—':money(sale-Number(cost));
+ }
  document.addEventListener('input',e=>{
   if(!sel('#gl-pilot-panel')||!permitted())return;
   if(e.target.matches('[data-ps-search]')){
@@ -336,22 +384,13 @@
     node.hidden=!node.dataset.psSearch.includes(search);
    });
   }
-  if(e.target.closest('#gl-ps-price-form')&&['cost_price','markup_percent'].includes(e.target.name)){
-   const form=e.target.form;
-   const c=form.elements.namedItem('cost_price').value,p=form.elements.namedItem('markup_percent').value;
-   const ready=validMoney(c,0,9999999999.99)&&validMoney(p,0,5000)&&price(c,p)<=9999999999.99;
-   const suggestion=suggestedPrice(c);
-   const suggested=form.querySelector('[data-ps-suggested]'),apply=form.querySelector('[data-ps-use-suggested]');
-   if(suggested)suggested.textContent=suggestion==null?'Cargá un costo válido':money(suggestion);
-   if(apply)apply.disabled=suggestion==null;
-   const sale=form.querySelector('[data-ps-sale]'),gain=form.querySelector('[data-ps-profit]');
-   if(sale)sale.textContent=ready?money(price(c,p)):'—';
-   if(gain)gain.textContent=ready?money(profit(c,p)):'—';
+  if(e.target.closest('#gl-ps-price-form')&&['cost_price','markup_percent','manual_sale_price'].includes(e.target.name)){
+   updatePricePreview(e.target.form,e.target.name);
   }
  });
  document.addEventListener('submit',e=>{
   if(e.target.id==='gl-ps-price-form'){e.preventDefault();void savePrice(e.target);}
   if(e.target.id==='gl-ps-stock-form'){e.preventDefault();void saveStock(e.target);}
  });
- window.GestLokPreciosStock=Object.freeze({render,open,price,profit,suggestedPrice,inventoryTotals,refresh,reset});
+ window.GestLokPreciosStock=Object.freeze({render,open,price,profit,percentForSale,suggestedPrice,inventoryTotals,refresh,reset});
 })();
