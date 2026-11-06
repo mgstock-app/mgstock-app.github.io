@@ -85,7 +85,7 @@
   return '<tr><td class="gl-mp-product">'+esc(item.product)+'</td><td><div class="gl-mp-votes">'+
     status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+
     '</div></td><td class="gl-mp-note">'+(item.note?esc(item.note):'<span class="gl-mp-muted">Sin nota</span>')+'</td>'+
-    '<td><div class="gl-mp-actions"><button type="button" data-mp-edit="'+esc(item.id)+'" aria-label="Editar '+esc(item.product)+'">Editar</button>'+
+    '<td><div class="gl-mp-actions"><button type="button" data-mp-print="'+esc(item.id)+'" aria-label="Imprimir nombre de '+esc(item.product)+' en NIIMBOT D110">Imprimir nombre</button><button type="button" data-mp-edit="'+esc(item.id)+'" aria-label="Editar '+esc(item.product)+'">Editar</button>'+
     '<button type="button" data-mp-delete="'+esc(item.id)+'" class="is-danger" aria-label="Eliminar '+esc(item.product)+'">Eliminar</button></div></td></tr>';
  }
  function form(){
@@ -137,6 +137,7 @@
   finally{loading=false;render();}
  }
  function close(back=true){
+  removePrintModal();
   if(!visible)return;
   visible=false;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
@@ -146,6 +147,7 @@
  }
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
+  removePrintModal();
   tabId=id;itemForm=false;editing='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
@@ -214,10 +216,166 @@
    await loadItems();
   },'Producto eliminado.');
  }
+
+ // Impresión de nombre únicamente; el cuaderno no depende del catálogo del Scanner.
+ // NIIMBOT D110_M: 30 × 12 mm = 240 × 96 px a 203 dpi, giro a 96 × 240 para Bluetooth.
+ function removePrintModal(){document.querySelector('[data-mp-label-modal]')?.remove();}
+ function labelArtwork(value){
+  const name=String(value||'').trim().replace(/\s+/g,' ');
+  if(!name)throw Error('Escribí un nombre para la etiqueta.');
+  const canvas=document.createElement('canvas');
+  canvas.width=240;canvas.height=96;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw Error('No se pudo generar la imagen de la etiqueta.');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,240,96);
+  ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='middle';
+  // Georgia seminegrita: serif sobria, con trazos visibles en impresión térmica.
+  // Ajuste automático, con margen a ambos lados; nunca recortar silenciosamente.
+  let chosen=null;
+  for(const size of [29,27,25,23,21,19,17,15]){
+   ctx.font='600 '+size+'px Georgia, "Times New Roman", serif';
+   const lines=[];let line='';
+   for(const word of name.split(' ')){
+    const next=line?line+' '+word:word;
+    if(ctx.measureText(next).width<=224){line=next;continue;}
+    if(line){lines.push(line);line='';}
+    if(ctx.measureText(word).width<=224){line=word;continue;}
+    let part='';
+    for(const ch of word){
+     if(ctx.measureText(part+ch).width>224&&part){lines.push(part);part=ch;}
+     else part+=ch;
+    }
+    line=part;
+   }
+   if(line)lines.push(line);
+   const step=Math.ceil(size*1.18);
+   if(lines.length<=4&&lines.length*step<=84){chosen={lines,size,step};break;}
+  }
+  if(!chosen)throw Error('El nombre es muy largo para imprimirse con claridad. Acortá el texto de la etiqueta (no cambia el producto guardado).');
+  ctx.font='600 '+chosen.size+'px Georgia, "Times New Roman", serif';
+  const start=48-(chosen.lines.length-1)*chosen.step/2;
+  chosen.lines.forEach((line,i)=>ctx.fillText(line,120,start+i*chosen.step,224));
+  const portrait=document.createElement('canvas');
+  portrait.width=96;portrait.height=240;
+  const rotated=portrait.getContext('2d');
+  if(!rotated)throw Error('No se pudo preparar la etiqueta para D110.');
+  rotated.fillStyle='#fff';rotated.fillRect(0,0,96,240);
+  rotated.translate(96,0);rotated.rotate(Math.PI/2);
+  rotated.imageSmoothingEnabled=false;
+  rotated.drawImage(canvas,0,0,240,96);
+  return {screen:canvas.toDataURL('image/png'),printer:portrait.toDataURL('image/png'),lines:chosen.lines};
+ }
+ function updateLabelPreview(modal){
+  const status=modal.querySelector('[data-mp-label-message]');
+  const bt=modal.querySelector('[data-mp-label-bluetooth]');
+  const system=modal.querySelector('[data-mp-label-system]');
+  bt.disabled=true;system.disabled=true;
+  modal.dataset.printImage='';
+  try{
+   const artwork=labelArtwork(modal.querySelector('[data-mp-label-text]').value);
+   modal.dataset.printImage=artwork.printer;
+   modal.querySelector('[data-mp-label-preview]').src=artwork.screen;
+   const frame=modal.querySelector('[data-mp-label-frame]');
+   const doc=frame.contentDocument;
+   if(!doc)throw Error('No se pudo preparar la impresión desde el navegador.');
+   // Imagen PNG local: sin contenido de texto inyectado ni datos de ventas.
+   doc.open();
+   doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Nombre de producto</title><style>@page{size:30mm 12mm;margin:0}html,body{width:30mm;height:12mm;margin:0;padding:0}img{display:block;width:30mm;height:12mm}</style></head><body><img src="'+artwork.screen+'" alt="Etiqueta"></body></html>');
+   doc.close();
+   system.disabled=false;
+   bt.disabled=!window.Niimbot?.isSupported?.();
+   status.textContent='Vista previa lista · 30 × 12 mm. Se imprime solamente el nombre.';
+  }catch(err){
+   modal.querySelector('[data-mp-label-preview]').removeAttribute('src');
+   status.textContent=err.message||'No se pudo preparar la etiqueta.';
+  }
+ }
+ function prepareBluetooth(modal){
+  const button=modal.querySelector('[data-mp-label-bluetooth]');
+  const refresh=()=>{
+   if(!modal.isConnected)return;
+   const supported=!!window.Niimbot?.isSupported?.();
+   button.disabled=!supported||!modal.dataset.printImage;
+   button.textContent=supported?'Imprimir con NIIMBOT D110':'Bluetooth no disponible';
+  };
+  if(window.Niimbot){refresh();return;}
+  button.disabled=true;button.textContent='Preparando Bluetooth…';
+  const script=document.createElement('script');
+  script.src='/stock/sistema-venta/niimbot-driver.js';
+  script.onload=refresh;
+  script.onerror=()=>{
+   if(modal.isConnected)modal.querySelector('[data-mp-label-message]').textContent='No se pudo cargar la conexión Bluetooth. Podés usar la impresión del sistema.';
+   button.textContent='Bluetooth no disponible';
+  };
+  document.head.append(script);
+ }
+ async function openLabel(item){
+  try{
+   await assertAccess();
+   if(!visible||!items.some(x=>x.id===item.id))return;
+   removePrintModal();
+   const modal=document.createElement('div');
+   modal.dataset.mpLabelModal='true';
+   modal.setAttribute('role','presentation');
+   modal.innerHTML='<div class="gl-mp-label-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-label-title">'+
+    '<header><h2 id="gl-mp-label-title">Etiqueta para NIIMBOT D110</h2><button type="button" data-mp-label-close aria-label="Cerrar etiqueta">✕</button></header>'+
+    '<p>Nombre centrado, tipografía elegante, sin código de barras.</p>'+
+    '<label>Nombre que se imprimirá<input type="text" data-mp-label-text maxlength="160" value="'+esc(item.product)+'"></label>'+
+    '<div class="gl-mp-label-display"><img data-mp-label-preview alt="Vista previa de nombre para etiqueta 30 por 12 milímetros"></div>'+
+    '<p class="gl-mp-label-status" data-mp-label-message role="status">Preparando etiqueta…</p>'+
+    '<div class="gl-mp-label-buttons"><button type="button" data-mp-label-bluetooth disabled>Imprimir con NIIMBOT D110</button>'+
+    '<button type="button" data-mp-label-system disabled>Imprimir desde sistema</button>'+
+    '<button type="button" data-mp-label-close>Cerrar</button></div>'+
+    '<small>Usá etiquetas de 30 × 12 mm. Si tu navegador no admite Bluetooth, elegí la impresión del sistema. Cambiar este nombre no modifica tu lista.</small>'+
+    '<iframe data-mp-label-frame title="Documento de impresión" tabindex="-1" aria-hidden="true"></iframe></div>';
+   document.body.append(modal);
+   updateLabelPreview(modal);
+   prepareBluetooth(modal);
+   modal.querySelector('[data-mp-label-text]')?.focus({preventScroll:true});
+  }catch(err){error=err.message||'No se pudo abrir la impresión.';render();}
+ }
+ function printBluetooth(modal){
+  const btn=modal.querySelector('[data-mp-label-bluetooth]');
+  const status=modal.querySelector('[data-mp-label-message]');
+  if(btn.disabled||!modal.dataset.printImage)return;
+  if(!window.Niimbot?.isSupported?.()){status.textContent='Bluetooth no disponible. Probá con Chrome en Android o usá impresión del sistema.';return;}
+  const model={id:2320,label:'Niimbot D110_M',name_prefixes:['D110'],task:'v4',protocol:'v4',dpi:203,density:3,label_type:1,speed:1};
+  const size={w_px:96,h_px:240,offset_y_px:0};
+  btn.disabled=true;btn.textContent='Conectando e imprimiendo…';
+  // Mantener esta llamada dentro del clic directo: Web Bluetooth requiere gesto del usuario.
+  void window.Niimbot.printImage(modal.dataset.printImage,{model,size,density:3}).then(()=>{
+   if(modal.isConnected)status.textContent='La impresora confirmó la etiqueta.';
+  }).catch(err=>{
+   if(modal.isConnected)status.textContent='Error Bluetooth: '+(err?.message||'Revisá la conexión y el papel.');
+  }).finally(()=>{
+   if(modal.isConnected){btn.disabled=false;btn.textContent='Imprimir con NIIMBOT D110';}
+  });
+ }
+ function printSystem(modal){
+  const frame=modal.querySelector('[data-mp-label-frame]');
+  if(!modal.dataset.printImage||!frame?.contentWindow)return;
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+ }
+
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-mp-open]')){e.preventDefault();api?.closePanel?.();void open();return;}
+  const modal=e.target.closest('[data-mp-label-modal]');
+  if(modal){
+   if(e.target.closest('[data-mp-label-close]')){e.preventDefault();removePrintModal();return;}
+   if(e.target.closest('[data-mp-label-bluetooth]')){e.preventDefault();printBluetooth(modal);return;}
+   if(e.target.closest('[data-mp-label-system]')){e.preventDefault();printSystem(modal);return;}
+   return;
+  }
   if(!visible||!e.target.closest('#gl-mp-panel'))return;
   const el=e.target;
+  const print=el.closest('[data-mp-print]');
+  if(print){
+   e.preventDefault();
+   const item=items.find(x=>x.id===print.dataset.mpPrint);
+   if(item)void openLabel(item);
+   return;
+  }
   if(el.closest('[data-mp-close]')){e.preventDefault();close();return;}
   const t=el.closest('[data-mp-tab]');if(t){void changeTab(t.dataset.mpTab);return;}
   if(el.closest('[data-mp-new-tab]')){
@@ -237,6 +395,11 @@
   if(edit){editing=edit.dataset.mpEdit;itemForm=true;notice='';render();$('#gl-mp-form input[name="product"]')?.focus();return;}
   const del=el.closest('[data-mp-delete]');if(del){void deleteItem(del.dataset.mpDelete);return;}
   const like=el.closest('[data-mp-like]');if(like){void vote(like.dataset.mpLike,like.dataset.value==='yes');return;}
+ });
+ document.addEventListener('input',e=>{
+  const field=e.target.closest('[data-mp-label-text]');
+  const modal=field?.closest('[data-mp-label-modal]');
+  if(modal)updateLabelPreview(modal);
  });
  document.addEventListener('submit',e=>{
   if(e.target.id!=='gl-mp-form')return;
