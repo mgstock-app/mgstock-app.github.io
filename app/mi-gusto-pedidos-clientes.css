@@ -169,3 +169,10 @@
 }
 @media(prefers-reduced-motion:reduce){.mgp-global-alert-new{animation:none}}
 @media print{.mgp-global-alert,.mgp-shift-quick{display:none!important}}
+
+/* Mantener el acceso a Colaboradores en el dock de gerente: seis accesos compactos. */
+@media(max-width:899px){
+ #gestlok-mobile-dock:has([data-dock="pedidos"]) button{max-width:none;padding:5px 1px;gap:3px;font-size:clamp(8px,2.25vw,10px);line-height:1.18}
+ #gestlok-mobile-dock:has([data-dock="pedidos"]) button svg{width:21px;height:21px}
+ #gestlok-mobile-dock:has([data-dock="pedidos"]) button span{overflow-wrap:anywhere;text-align:center}
+}
