@@ -306,14 +306,14 @@
   if(e.target.closest('[data-ps-close-print]')){e.preventDefault?.();document.querySelector('[data-ps-print-preview]')?.remove();return;}
   if(e.target.closest('[data-ps-confirm-print]')){e.preventDefault?.();const frame=document.querySelector('[data-ps-print-preview] iframe');if(frame?.contentWindow){frame.contentWindow.focus();frame.contentWindow.print();}return;}
   const print=e.target.closest('[data-ps-print],[data-ps-name-print]');
-  if(print?.matches?.('[data-ps-print]')){
+  if(print){
    e.preventDefault?.();
    document.querySelector('[data-ps-print-preview]')?.remove();
    const modal=document.createElement('div');
    modal.dataset.psPrintPreview='true';
    modal.setAttribute('role','dialog');modal.setAttribute('aria-label','Vista previa de etiqueta');
    modal.style.cssText='position:fixed;z-index:2147483647;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px';
-   modal.innerHTML='<div style="background:white;color:#172a42;padding:20px;border-radius:12px;max-width:95vw;width:420px;box-shadow:0 12px 40px #0005"><h3>Imprimir etiqueta</h3><p>Vista previa de 30 × 12 mm. No se descargará ningún archivo.</p><iframe title="Etiqueta lista para imprimir" style="width:300px;max-width:100%;height:120px;border:1px solid #ccc;background:white"></iframe><p style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" data-ps-niimbot-print disabled>Preparando Bluetooth…</button><button type="button" data-ps-confirm-print disabled>Imprimir con sistema</button><button type="button" data-ps-close-print>Cerrar</button></p></div>';
+   modal.innerHTML='<div style="background:white;color:#172a42;padding:20px;border-radius:12px;max-width:95vw;width:420px;box-shadow:0 12px 40px #0005"><h3>'+(print.hasAttribute('data-ps-name-print')?'Etiqueta para muestra':'Imprimir etiqueta')+'</h3><p>Vista previa de 30 × 12 mm. No se descargará ningún archivo.</p><iframe title="Etiqueta lista para imprimir" style="width:300px;max-width:100%;height:120px;border:1px solid #ccc;background:white"></iframe><p style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" data-ps-niimbot-print disabled>Preparando Bluetooth…</button><button type="button" data-ps-confirm-print disabled>Imprimir con sistema</button><button type="button" data-ps-close-print>Cerrar</button></p></div>';
    document.body.append(modal);
    const frame=modal.querySelector('iframe');
    const btButton=modal.querySelector('[data-ps-niimbot-print]');
