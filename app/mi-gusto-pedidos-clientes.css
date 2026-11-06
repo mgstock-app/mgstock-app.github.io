@@ -53,3 +53,14 @@
 .mgp-menu-actions button{border:1px solid #ced9e6;border-radius:8px;padding:7px 11px;background:#f9fafc;color:#12345a;font-size:12px;font-weight:650}
 .mgp-menu-actions button:focus-visible{outline:2px solid #12345a}
 @media(max-width:600px){.mgp-menu-item{align-items:flex-start;flex-direction:column}.mgp-menu-actions{width:100%}.mgp-menu-actions button{flex:1}}
+
+/* Pedidos WhatsApp · tres filtros compactos y OK visible, como el control de efectivo. */
+.mgp-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border:1px solid #dce4eb;border-radius:12px;background:#f4f6fa}
+.mgp-tabs button{min-width:0;border:0;border-radius:9px;background:transparent;color:#53657b;padding:12px 8px;font-size:13px;font-weight:700;white-space:nowrap}
+.mgp-tabs button[aria-current="page"]{border-color:transparent;background:#12345a;color:#fff;box-shadow:0 1px 4px rgba(18,52,90,.14)}
+.mgp-tabs button:focus-visible{outline:2px solid #12345a;outline-offset:2px}
+.mgp-ok{min-width:144px;min-height:42px;letter-spacing:.01em}
+.mgp-ok:hover:not(:disabled){background:#1a497a}
+.mgp-state.done{background:#e8f5ef;color:#176e43}
+.mgp-state.pending{background:#fff5e4;color:#895e18}
+@media(max-width:640px){.mgp-tabs button{padding:11px 4px;font-size:12px}.mgp-card-bottom .mgp-ok{width:100%}}
