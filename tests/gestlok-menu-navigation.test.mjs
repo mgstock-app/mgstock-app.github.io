@@ -6,7 +6,7 @@ const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('menú global conserva todas las hojas, prioriza Stock Local y elimina solo Hojas',()=>{
  const s=file('public/stock/gestlok-navigation-editor.js');
  new Script(s);
- assert.match(s,/preferred=\['inicio','cierre-online','stock','stock-cajas','proveedores'/);
+ assert.match(s,/preferred=\['inicio','cierre-online','pedidos-clientes','stock','stock-cajas','proveedores'/);
  assert.match(s,/id==='stock'\?'Stock Local'/);
  assert.match(s,/nav\.querySelector\('\.snav-l'\)\?\.remove\(\)/);
  assert.doesNotMatch(s,/nav\.querySelector\('\.snav-add'\)\?\.remove\(\)/);
@@ -55,11 +55,14 @@ test('Inicio, Pagos Online y Stock Local en ese orden son accesos diarios autori
  const mobile=file('public/stock/gestlok-mobile-dock.js');
  new Script(mobile);
  assert.match(nav,/isMiGusto=c=>/);
- assert.match(nav,/\['inicio','cierre-online','stock','stock-cajas'\]/);
+ assert.match(nav,/\['inicio','cierre-online','pedidos-clientes','stock','stock-cajas'\]/);
  assert.match(nav,/const directPayment=nav\.querySelector/);
  assert.match(nav,/const nestedPayment=nav\.querySelector/);
- assert.match(nav,/payment\.nextElementSibling!==stockLocal/);
+ assert.match(nav,/afterPayment\.nextElementSibling!==stockLocal/);
  assert.match(nav,/gestlok_navigation_save/);
+ assert.match(nav,/const afterPayment=whatsapp\|\|payment/);
+ assert.match(nav,/payment\.nextElementSibling!==whatsapp/);
+ assert.match(nav,/permitted=\[[^\n]*'pedidos-clientes'/);
  assert.match(mobile,/\['stock','Stock Local','stock',!!stock\(\)\]/);
  assert.match(mobile,/\['pagos','Pagos Online','payment',!!pagos\(\)\]/);
  assert.ok(mobile.indexOf("['pagos','Pagos Online'")<mobile.indexOf("['stock','Stock Local'"),'Dock: Pagos Online antes de Stock Local');

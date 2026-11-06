@@ -10,6 +10,19 @@ const MG='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 function setup({tenant=MG,role='gerente',local='munro',locals=['munro']}={}){
   const handlers={};
   const calls=[];
+  const elements=new Map();
+  const createElement=tag=>{
+    const classes=new Set();
+    return {
+      tagName:tag.toUpperCase(),className:'',id:'',textContent:'',innerHTML:'',dataset:{},
+      attrs:{},classes,
+      classList:{toggle(name,enabled){if(enabled)classes.add(name);else classes.delete(name);}},
+      setAttribute(name,value){this.attrs[name]=value;},
+      querySelector(){return null;},
+      appendChild(){},
+      remove(){elements.delete(this.id);}
+    };
+  };
   const data={munro:{local:'munro',whatsapp_number:'5491111111111',orders:[{
     id:'first',local:'munro',customer_name:'Cliente Munro',customer_phone:'11111111',items_detail:'6 carne',total:15000,payment_method:'efectivo',source:'manual',status:'nuevo',created_at:'2026-11-06T20:00:00Z'
   }]},torcuato:{local:'torcuato',whatsapp_number:'5491122222222',orders:[{
@@ -28,12 +41,20 @@ function setup({tenant=MG,role='gerente',local='munro',locals=['munro']}={}){
     }
     return {data:data[args.p_local],error:null};
   }},GestLokCreatorSupport:{previewRol:()=>null},addEventListener:()=>{},removeEventListener:()=>{}};
-  const document={addEventListener:(type,fn)=>{handlers[type]=fn;},hidden:false,activeElement:null};
+  const document={
+    addEventListener:(type,fn)=>{handlers[type]=fn;},
+    removeEventListener:()=>{},
+    hidden:false,activeElement:null,
+    body:{appendChild(el){elements.set(el.id,el);}},
+    getElementById:id=>elements.get(id)||null,
+    createElement,
+    querySelector:()=>null,querySelectorAll:()=>[]
+  };
   const sandbox={window,document,navigator:{onLine:true},setInterval:()=>1,clearInterval:()=>{},Intl,Date,console};
   vm.runInNewContext(moduleSource,sandbox,{filename:'mi-gusto-pedidos-clientes.js'});
   const orders=window.GestLokMiGustoOrders;
   orders.attach(api);
-  return {orders,api,S,data,calls,handlers};
+  return {orders,api,S,data,calls,handlers,document,elements};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
@@ -133,4 +154,57 @@ test('dueño puede marcar OK y colaborador o gerente sin sucursal no puede',()=>
  assert.equal(collaborator.orders.permitido(),false);
  const managerOther=setup({role:'gerente',local:'torcuato',locals:['munro']});
  assert.equal(managerOther.orders.permitido(),false);
+});
+
+test('aviso visible fuera de Pedidos, incluso en Pagos Online, sin redibujar formularios ajenos',async()=>{
+ const s=setup({local:'munro',locals:['munro']});
+ let renders=0;s.api.render=()=>{renders++;};
+ s.S.view='cierre-online';
+ s.orders.subscribe('munro',()=>{});
+ await tick();await tick();
+ assert.equal(s.S.view,'cierre-online');
+ assert.match(s.document.getElementById('mgp-global-alert').innerHTML,/1 pedido por revisar en Munro/);
+ const initial=renders;
+ s.data.munro.orders.unshift({
+   id:'wa-2',local:'munro',customer_name:'Nuevo WhatsApp',
+   customer_phone:'5491122233344',items_detail:'2 de carne',total:5000,
+   payment_method:'efectivo',source:'whatsapp',status:'nuevo',created_at:'2026-11-06T22:05:00Z'
+ });
+ await s.orders._test.checkIncoming();
+ assert.equal(s.S.view,'cierre-online');
+ assert.equal(renders,initial,'no debe interrumpir Pagos Online al entrar una comanda');
+ assert.match(s.document.getElementById('mgp-global-alert').innerHTML,/¡Nueva comanda por WhatsApp!/);
+ assert.match(s.document.getElementById('mgp-global-alert').innerHTML,/Nuevo WhatsApp/);
+ assert.equal(s.orders.pendingCount(),2);
+ s.data.munro.orders.forEach(x=>{x.status='recibido';x.received_at='2026-11-06T22:10:00Z';});
+ await s.orders._test.checkIncoming();
+ assert.equal(s.document.getElementById('mgp-global-alert'),null,'sin pendientes no debe tapar la pantalla');
+ assert.equal(s.orders.pendingCount(),0);
+});
+
+test('alertas no cruzan sucursales ni otras empresas; al salir se eliminan',async()=>{
+ const s=setup({locals:['munro','torcuato']});
+ s.orders.subscribe('munro',()=>{});await tick();
+ assert.match(s.document.getElementById('mgp-global-alert').innerHTML,/Munro/);
+ s.S.local='torcuato';s.orders.reset();
+ assert.equal(s.document.getElementById('mgp-global-alert'),null);
+ s.orders.subscribe('torcuato',()=>{});await tick();
+ assert.match(s.document.getElementById('mgp-global-alert').innerHTML,/Torcuato/);
+ assert.doesNotMatch(s.document.getElementById('mgp-global-alert').innerHTML,/Munro/);
+ const outsider=setup({tenant:'00000000-0000-0000-0000-000000000999'});
+ outsider.orders.subscribe('munro',()=>{});await tick();
+ assert.equal(outsider.document.getElementById('mgp-global-alert'),null);
+});
+
+test('atajos de turno y barra inferior priorizan Pedidos WhatsApp junto a Pagos Online',()=>{
+ const s=setup();
+ assert.match(s.orders.quickAccess(),/Pagos Online/);
+ assert.match(s.orders.quickAccess(),/Pedidos WhatsApp/);
+ assert.match(s.orders.quickAccess(),/data-go="pedidos-clientes"/);
+ const dock=fs.readFileSync(new URL('../public/stock/gestlok-mobile-dock.js',import.meta.url),'utf8');
+ assert.match(dock,/if\(inLocal&&pagos\(\)&&pedidos\(\)\)/);
+ assert.match(dock,/\['pedidos','Pedidos WhatsApp'/);
+ assert.match(dock,/if\(k==='pedidos'\)\{pedidos\(\)\?\.click\(\)/);
+ assert.match(mainSource,/GestLokMiGustoOrders\?\.quickAccess/);
+ assert.match(mainSource,/GestLokMiGustoOrders\?\.navBadge/);
 });

@@ -37,6 +37,8 @@
   // Solo accesos autorizados que existen en el menú real del local.
   const stock=()=>localNav('stock');
   const pagos=()=>localNav('cierre-online');
+  const pedidos=()=>localNav('pedidos-clientes');
+  const pedidosPendientes=()=>Number(window.GestLokMiGustoOrders?.pendingCount?.()||0);
   let last='',open=false,lastSnap='';
   // Administración de empleados (misma dirección) muestra este mismo menú: barra de abajo en el celular y menú
   // del local en la PC. Se guardan solo nombres y secciones visibles; al volver, GESTLOK comprueba los permisos.
@@ -99,6 +101,16 @@
   const read=()=>{
     if(window.GestLokPilot?.scanner?.())return [['home','Inicio','home',true],['scanner-caja','Caja','payment',true],['scanner-pos','Sistema de ventas','shop',true],['scanner-stock','Stock','stock',true],['scanner-prices','Precios','payment',true]];
     const inLocal=visible();
+    // Mi Gusto: las dos herramientas principales del turno quedan juntas
+    // en el menú inferior. Sin cambios en el Plan Scanner ni en otras empresas.
+    if(inLocal&&pagos()&&pedidos())return [
+      ['home','Inicio','home',true],
+      ['pagos','Pagos Online','payment',true],
+      ['pedidos','Pedidos WhatsApp','chat',true],
+      ['stock','Stock Local','stock',!!stock()],
+      ['staff','Colaboradores','people',!!staff()],
+      ['more','Más','more',true]
+    ].filter(t=>t[3]);
     if(window.GestLokNavContext?.()?.creator)return [
       ['locales','Locales','shop',true],
       ['home','Inicio','home',true],
@@ -155,6 +167,7 @@
     }
     if(k==='stock'){stock()?.click();return;}
     if(k==='pagos'){pagos()?.click();return;}
+    if(k==='pedidos'){pedidos()?.click();return;}
     if(k==='staff'){staff()?.click();return;}
     if(k==='avisos'){bell()?.click();return;}
     if(k==='vencimientos'){localNav('vencimientos')?.click();}
@@ -167,7 +180,7 @@
       ['avisos','Avisos'],
       ['vencimientos','Vencimientos']
     ].filter(([k])=>k==='home'||(k==='business'&&business())||(k==='staff'&&staff())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
-    const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
+    const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','pedidos-clientes','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
     sheet.innerHTML='<button type="button" class="gl-mobile-sheet__scrim" data-close-sheet aria-label="Cerrar más opciones"></button><section class="gl-mobile-sheet__panel" role="dialog" aria-modal="true" aria-label="Más opciones de GESTLOK"><header><strong>Más opciones</strong><button type="button" data-close-sheet aria-label="Cerrar">×</button></header><div class="gl-mobile-sheet__links">'+entries.map(([k,t])=>'<button type="button" data-sheet-action="'+k+'">'+t+'</button>').join('')+extra.map(b=>'<button type="button" data-sheet-go="'+String(b.dataset.go).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">'+(b.querySelector('.nl')?.textContent||b.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+'</div></section>';
     sheet.hidden=false;open=true;
     dock.querySelector('[data-dock="more"]')?.setAttribute('aria-expanded','true');
@@ -181,12 +194,12 @@
     dock.hidden=!show;
     document.documentElement.classList.toggle('gl-mobile-dock-present',show);
     if(!show){closeSheet();return;}
-    const tabs=read(),signature=tabs.map(t=>t[0]+':'+t[1]).join('|');
+    const tabs=read(),pending=pedidosPendientes(),signature=tabs.map(t=>t[0]+':'+t[1]).join('|')+'|pendientes:'+pending;
     if(signature!==last){
       last=signature;
-      dock.innerHTML=tabs.map(([key,label,ico])=>'<button type="button" data-dock="'+key+'" aria-label="'+label+'"'+(key==='more'?' aria-haspopup="dialog" aria-expanded="false"':'')+'>'+icon(ico)+'<span>'+label+'</span></button>').join('');
+      dock.innerHTML=tabs.map(([key,label,ico])=>'<button type="button" data-dock="'+key+'" aria-label="'+label+(key==='pedidos'&&pending?' · '+pending+' pendientes':'')+'"'+(key==='more'?' aria-haspopup="dialog" aria-expanded="false"':'')+'>'+icon(ico)+'<span>'+label+'</span>'+(key==='pedidos'&&pending?'<b class="mgp-dock-count" aria-hidden="true">'+Math.min(99,pending)+'</b>':'')+'</button>').join('');
     }
-    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'home','stock':'stock','cierre-online':'pagos','vencimientos':'more','avisos':'more'}[current()]||'more')):'home';
+    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'home','stock':'stock','cierre-online':'pagos','pedidos-clientes':'pedidos','vencimientos':'more','avisos':'more'}[current()]||'more')):'home';
     dock.querySelectorAll('button[data-dock]').forEach(b=>{
       if(b.dataset.dock===active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });

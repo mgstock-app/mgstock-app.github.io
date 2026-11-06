@@ -4,11 +4,11 @@
 const nav=document.getElementById('snav'),side=document.getElementById('side');
 if(!nav||!side)return;
 const html=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const permitted=['inicio','stock','stock-cajas','proveedores','chat','adm-local','vencimientos','avisos','ingreso','pedido','conteo','fabrica','historial','motos','resenas','reclamos-internos','cierre-online','pedidos-online','tienda-online'];
+const permitted=['inicio','stock','stock-cajas','proveedores','chat','adm-local','vencimientos','avisos','ingreso','pedido','conteo','fabrica','historial','motos','resenas','reclamos-internos','cierre-online','pedidos-clientes','pedidos-online','tienda-online'];
 const targets=['stock','proveedores','chat','vencimientos','avisos','pedido','conteo','historial'];
-const preferred=['inicio','cierre-online','stock','stock-cajas','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
+const preferred=['inicio','cierre-online','pedidos-clientes','stock','stock-cajas','proveedores','chat','adm-local','vencimientos','avisos','ingreso'];
 const isMiGusto=c=>c?.tenant==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'&&['munro','torcuato'].includes(c?.local);
-const pinned=()=>isMiGusto(ctx())?['inicio','cierre-online','stock','stock-cajas']:['inicio','stock']; // Siempre priorizar accesos diarios, sin alterar otros negocios.
+const pinned=()=>isMiGusto(ctx())?['inicio','cierre-online','pedidos-clientes','stock','stock-cajas']:['inicio','stock']; // Siempre priorizar accesos diarios, sin alterar otros negocios.
 let current='',data=[],draft=[],overlay=null,busy=false,error='',sequence=0,tick=false;
 const ctx=()=>window.GestLokNavContext?.()||null;
 const idOf=el=>el.dataset?.navBuiltin||(el.matches?.('.snav-folder')?'adm-local':el.getAttribute?.('data-go')||'');
@@ -99,13 +99,15 @@ function draw(){
   if(last?.nextElementSibling!==n)nav.insertBefore(n,last?.nextElementSibling||null);
   last=n;
  }
- // Munro y Don Torcuato: Inicio → Pagos Online → Stock Local.
+ // Munro y Don Torcuato: Inicio → Pagos Online → Pedidos WhatsApp → Stock Local.
  // Respeta los permisos existentes y prevalece sobre órdenes antiguos guardados.
- const inicio=known.get('inicio'),stockLocal=known.get('stock'),stockCajas=known.get('stock-cajas');
+ const inicio=known.get('inicio'),whatsapp=known.get('pedidos-clientes'),stockLocal=known.get('stock'),stockCajas=known.get('stock-cajas');
  if(stockCajas)stockCajas.dataset.navBuiltin='stock-cajas';
  if(isMiGusto(c)&&inicio&&payment){
   if(inicio.nextElementSibling!==payment)nav.insertBefore(payment,inicio.nextElementSibling);
-  if(stockLocal&&payment.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,payment.nextElementSibling);
+  if(whatsapp&&payment.nextElementSibling!==whatsapp)nav.insertBefore(whatsapp,payment.nextElementSibling);
+  const afterPayment=whatsapp||payment;
+  if(stockLocal&&afterPayment.nextElementSibling!==stockLocal)nav.insertBefore(stockLocal,afterPayment.nextElementSibling);
  }else if(inicio&&stockLocal&&inicio.nextElementSibling!==stockLocal){
   nav.insertBefore(stockLocal,inicio.nextElementSibling);
  }
@@ -126,7 +128,7 @@ function draw(){
    const hint=back.querySelector('small');if(hint&&hint.textContent!=='Empresas y sucursales')hint.textContent='Empresas y sucursales';
    if(back.getAttribute('aria-label')!=='Locales: empresas y sucursales')back.setAttribute('aria-label','Locales: empresas y sucursales');
   }
-  const essentials=new Set([back,inicio,payment,stockLocal,stockCajas]);
+  const essentials=new Set([back,inicio,payment,whatsapp,stockLocal,stockCajas]);
   for(const node of nav.children)node.classList.toggle('gl-admin-essential',essentials.has(node));
   let more=nav.querySelector('[data-admin-tools]');
   if(!more){more=document.createElement('button');more.type='button';more.dataset.adminTools='';more.className='gl-admin-essential';more.textContent='Más herramientas';nav.append(more);}
@@ -214,7 +216,9 @@ function actions(e){
 }
 async function save(){
  const c=ctx();if(!c?.creator||busy)return;
- const items=draft.map(x=>({id:x.id,label:trim(x.label),...(x.target?{target:x.target}:{})}));
+ // Pedidos WhatsApp es un acceso fijo del turno; el backend de personalización
+ // todavía guarda el resto de categorías. No enviar este ID nuevo al guardado legado.
+ const items=draft.filter(x=>x.id!=='pedidos-clientes').map(x=>({id:x.id,label:trim(x.label),...(x.target?{target:x.target}:{})}));
  if(items.some(x=>x.label.length<2||x.label.length>45)){error='Cada nombre debe tener entre 2 y 45 caracteres.';paint();return;}
  busy=true;paint();
  try{

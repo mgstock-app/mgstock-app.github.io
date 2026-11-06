@@ -64,3 +64,115 @@
 .mgp-state.done{background:#e8f5ef;color:#176e43}
 .mgp-state.pending{background:#fff5e4;color:#895e18}
 @media(max-width:640px){.mgp-tabs button{padding:11px 4px;font-size:12px}.mgp-card-bottom .mgp-ok{width:100%}}
+
+
+/* Mi Gusto · Pedidos WhatsApp / referencia visual aprobada: marino, blanco y verde suave. */
+.mgp-page{color:#152d4b;gap:15px;font-family:Inter,system-ui,-apple-system,sans-serif}
+.mgp-head{border-color:#dce2eb;box-shadow:0 2px 9px rgba(17,46,78,.035);background:#fff}
+.mgp-head h2{display:flex;align-items:center;gap:10px;color:#081d37;font-size:clamp(21px,3.5vw,28px);line-height:1.25}
+.mgp-title-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;color:#169746}
+.mgp-title-icon svg{width:30px;height:30px}
+.mgp-head p{font-size:13px;color:#5c6c7c}
+.mgp-status{display:flex;align-items:center;gap:15px;padding:15px 18px;background:#fff;border:1px solid #d8e0e9;border-radius:14px;min-width:0}
+.mgp-phone-icon{display:flex;align-items:center;justify-content:center;flex:none;width:56px;height:56px;border-radius:13px;background:#e7f8ee;color:#13943e}
+.mgp-phone-icon svg{width:32px;height:32px}
+.mgp-phone-detail{display:grid;gap:4px;min-width:0;flex:1}
+.mgp-phone-detail>span{color:#172943;font-size:14px;font-weight:800}
+.mgp-phone-detail>strong{font-size:clamp(17px,3vw,21px);font-weight:800;color:#147238}
+.mgp-phone-detail>small{line-height:1.45;color:#6c7783}
+.mgp-phone-open{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid #d9e3ea;border-radius:9px;font-size:22px;color:#173454;text-decoration:none}
+.mgp-phone-open:focus-visible{outline:2px solid #12345a;outline-offset:2px}
+.mgp-catalog-card{border:1px solid #d8e0e9;border-radius:14px;background:#fff;overflow:hidden;padding:16px 16px 13px;box-shadow:0 2px 9px rgba(17,46,78,.03)}
+.mgp-catalog-head{display:flex;align-items:center;gap:13px;padding:0 0 11px}
+.mgp-catalog-head strong{display:block;font-size:16px;font-weight:800;color:#112844;line-height:1.3}
+.mgp-catalog-head small{display:block;margin-top:4px;font-size:11px;color:#7a8793}
+.mgp-catalog-icon{display:flex;width:28px;height:28px;color:#12345a;flex:none}
+.mgp-catalog-icon svg{width:100%;height:100%}
+.mgp-catalog-card .mgp-menu-list{border:0;border-radius:0;margin:0 0 12px;gap:0;overflow:visible}
+.mgp-catalog-card .mgp-menu-item{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:11px 3px;background:#fff;border-bottom:1px solid #e8edf1;box-shadow:none}
+.mgp-menu-name{display:flex;align-items:center;gap:10px;flex:1 1 160px;min-width:0}
+.mgp-menu-name>span:last-child{min-width:0}
+.mgp-menu-name strong{font-size:13px;font-weight:650;line-height:1.4}
+.mgp-menu-empanada{display:inline-flex;align-items:center;justify-content:center;flex:none;width:25px;height:25px;color:#24384e;font-size:24px;font-weight:800}
+.mgp-menu-price{margin-left:auto;white-space:nowrap;color:#172943;font-weight:750;font-size:13px}
+.mgp-catalog-card .mgp-menu-actions{width:100%;flex:0 0 100%;justify-content:flex-end}
+.mgp-catalog-card .mgp-menu-actions button{padding:5px 11px;font-size:11px;background:#f5f8fc}
+.mgp-catalog-empty{background:#f8fafc;border:1px dashed #d3e0eb;border-radius:10px;padding:14px;color:#687a8c;font-size:13px;line-height:1.5;text-align:center}
+.mgp-catalog-editor{margin-top:12px;border:0;border-radius:0}
+.mgp-catalog-editor summary{display:inline-flex;align-items:center;border:1px solid #ccd9e5;background:#f5f8fc;border-radius:9px;padding:9px 15px;color:#15395d;font-size:13px;font-weight:750}
+.mgp-catalog-editor[open] summary{margin-bottom:14px}
+.mgp-catalog-editor>p{padding:0;margin:0 0 13px;font-size:12px}
+.mgp-catalog-editor form{padding:0 0 4px}
+.mgp-card{background:#fff;border:1px solid #dbe2ea;box-shadow:0 2px 10px rgba(18,50,82,.045)}
+.mgp-card-head{display:flex;align-items:flex-start;justify-content:flex-start;gap:11px}
+.mgp-avatar{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#f0f3f8;color:#12345a}
+.mgp-avatar svg{width:23px;height:23px}
+.mgp-customer{flex:1;min-width:0;display:grid;gap:3px}
+.mgp-customer strong{color:#101f37;font-size:16px;font-weight:800;overflow-wrap:anywhere}
+.mgp-customer small{color:#607080;font-size:12px;line-height:1.3}
+.mgp-source{flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:9px;padding:6px 9px;font-size:11px;font-weight:750;white-space:nowrap}
+.mgp-source svg{width:15px;height:15px}
+.mgp-source-wa{background:#e7f8ea;color:#13813b}
+.mgp-source-manual{background:#eff3f7;color:#4b657d}
+.mgp-detail{padding:13px 0;color:#32465b;font-size:14px;font-weight:600;line-height:1.55}
+.mgp-card-bottom{align-items:center;border-color:#e9edf2}
+.mgp-card-bottom b{color:#142c4e;font-size:16px}
+.mgp-card-bottom small{line-height:1.5}
+.mgp-card-bottom .mgp-state{display:inline-flex;margin-top:7px;padding:4px 9px;line-height:1.3}
+.mgp-ok{background:#12345a;color:#fff;border-color:#12345a;min-width:130px}
+.mgp-received{max-width:200px;font-size:12px}
+.mgp-tabs{border-color:#d7e1ea;background:#f1f4f8}
+.mgp-tabs button[aria-current="page"]{background:#12345a;color:#fff;box-shadow:0 1px 3px rgba(20,44,77,.19)}
+.mgp-nav-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;margin-left:auto;padding:0 5px;border-radius:20px;background:#e0f6e7;color:#0a7b30;font-size:11px;font-weight:800;line-height:1}
+.mgp-shift-quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 16px;max-width:940px}
+.mgp-shift-button{display:flex;align-items:center;gap:11px;min-width:0;min-height:70px;text-align:left;padding:13px;border:1px solid #d9e4ed;border-radius:15px;background:#fff;color:#12345a;box-shadow:0 2px 10px rgba(17,49,79,.06);cursor:pointer}
+.mgp-shift-button:hover{border-color:#8eacc5;background:#f7fafd}
+.mgp-shift-button:focus-visible{outline:3px solid #91badc;outline-offset:2px}
+.mgp-shift-button .mgp-shift-symbol{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:#ecf1f8;color:#12345a;font-size:25px;font-weight:800;flex:none}
+.mgp-shift-button>svg{flex:none;width:40px;height:40px;padding:8px;border-radius:10px;background:#e8f7ed;color:#14833d}
+.mgp-shift-button strong{display:block;font-size:14px;font-weight:800;line-height:1.3}
+.mgp-shift-button small{display:block;margin-top:4px;font-size:11px;color:#687d90;line-height:1.4}
+.mgp-global-alert{position:fixed;z-index:69;bottom:calc(20px + env(safe-area-inset-bottom,0px));right:18px;width:min(460px,calc(100vw - 36px));display:flex;align-items:center;gap:12px;padding:14px;border-radius:15px;border:1px solid rgba(255,255,255,.18);border-left:5px solid #2abc68;background:#12345a;color:#fff;box-shadow:0 12px 30px rgba(9,26,47,.29);font-family:Inter,system-ui,-apple-system,sans-serif}
+.mgp-global-alert-new{border-left-color:#36d77c;animation:mgp-arrived 850ms ease-out 2}
+.mgp-alert-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;background:#e9f8ee;border-radius:11px;color:#168340}
+.mgp-alert-icon svg{width:26px;height:26px}
+.mgp-alert-copy{flex:1;min-width:0}
+.mgp-alert-copy strong{display:block;color:#fff;font-size:14px;font-weight:800;line-height:1.35}
+.mgp-alert-copy small{display:block;margin-top:4px;font-size:12px;line-height:1.45;color:#e7eef5;overflow-wrap:anywhere}
+.mgp-alert-open{flex:none;min-height:37px;padding:9px 11px;border:1px solid #88cc9d;border-radius:9px;background:#e7f8ee;color:#115f2c;font-size:12px;font-weight:800;cursor:pointer}
+.mgp-alert-open:focus-visible{outline:3px solid #9deeb4;outline-offset:2px}
+@keyframes mgp-arrived{0%{box-shadow:0 0 0 0 rgba(40,188,104,.65)}70%{box-shadow:0 0 0 9px rgba(40,188,104,0)}100%{box-shadow:0 0 0 0 rgba(40,188,104,0)}}
+#gestlok-mobile-dock button[data-dock="pedidos"]{position:relative}
+#gestlok-mobile-dock button[data-dock="pedidos"][aria-current="page"]{background:#e8f7ee;color:#12773d}
+.mgp-dock-count{position:absolute;top:2px;right:calc(50% - 24px);display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 3px;border-radius:12px;background:#e46b42;color:#fff;font-size:10px;font-weight:800}
+@media(max-width:899px){
+ .mgp-global-alert{left:10px;right:10px;bottom:calc(78px + env(safe-area-inset-bottom,0px));width:auto;max-width:none;z-index:69}
+ .mgp-shift-quick{margin-bottom:14px}
+}
+@media(max-width:540px){
+ .mgp-shift-button{padding:10px;gap:7px;min-height:64px}
+ .mgp-shift-button strong{font-size:12px}
+ .mgp-shift-button small{font-size:10px}
+ .mgp-shift-button .mgp-shift-symbol,.mgp-shift-button>svg{width:33px;height:33px}
+ .mgp-page .mgp-head{padding:15px}
+ .mgp-head h2{font-size:21px}
+ .mgp-status{padding:12px;gap:9px}
+ .mgp-phone-icon{width:43px;height:43px}
+ .mgp-phone-icon svg{width:25px;height:25px}
+ .mgp-phone-detail>strong{font-size:17px}
+ .mgp-catalog-card{padding:13px}
+ .mgp-card-head{gap:8px;flex-wrap:wrap}
+ .mgp-source{margin-left:auto}
+ .mgp-card-bottom{width:100%}
+ .mgp-global-alert{padding:11px;gap:9px;border-radius:12px}
+ .mgp-alert-open{font-size:11px;min-height:36px;padding:8px}
+}
+@media(prefers-reduced-motion:reduce){.mgp-global-alert-new{animation:none}}
+@media print{.mgp-global-alert,.mgp-shift-quick{display:none!important}}
+
+/* Mantener el acceso a Colaboradores en el dock de gerente: seis accesos compactos. */
+@media(max-width:899px){
+ #gestlok-mobile-dock:has([data-dock="pedidos"]) button{max-width:none;padding:5px 1px;gap:3px;font-size:clamp(8px,2.25vw,10px);line-height:1.18}
+ #gestlok-mobile-dock:has([data-dock="pedidos"]) button svg{width:21px;height:21px}
+ #gestlok-mobile-dock:has([data-dock="pedidos"]) button span{overflow-wrap:anywhere;text-align:center}
+}
