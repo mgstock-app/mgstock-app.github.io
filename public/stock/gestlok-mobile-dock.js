@@ -108,6 +108,7 @@
       ['pagos','Pagos Online','payment',true],
       ['pedidos','Pedidos WhatsApp','chat',true],
       ['stock','Stock Local','stock',!!stock()],
+      ['staff','Colaboradores','people',!!staff()],
       ['more','Más','more',true]
     ].filter(t=>t[3]);
     if(window.GestLokNavContext?.()?.creator)return [
