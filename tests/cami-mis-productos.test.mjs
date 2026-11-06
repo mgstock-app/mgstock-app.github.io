@@ -36,7 +36,7 @@ test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
  assert.match(sql,/owner_uid=\(select auth\.uid\(\)\)/);
  assert.match(sql,/foreign key\(tab_id,owner_uid,tenant_id\)/);
  assert.match(sql,/revoke all on public\.gestlok_cami_product_tabs from public,anon,authenticated/);
- assert.doesNotMatch(sql,/gestlok_pilot_access\.enabled|plan_code|\bdrop table\b|\bdelete from public\.docs\b|\bto anon\b/i);
+ assert.doesNotMatch(sql.replace(/^--.*$/gm,''),/gestlok_pilot_access\.enabled|plan_code|\bdrop table\b|\bdelete from public\.docs\b|\bto anon\b/i);
  assert.match(sql,/Perfume Fem/);
  assert.match(sql,/Perfume Masc/);
  assert.match(sql,/Body Splash/);
