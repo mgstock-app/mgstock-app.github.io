@@ -18,6 +18,7 @@ import "./gestlok-orders.css";
 import "./responsive-global.css";
 import "./gestlok-precios-stock.css";
 import "./gestlok-mis-productos.css";
+import "./gestlok-cami-monthly.css";
 import "./gestlok-future-pricing.css";
 import "./gestlok-experience.css";
 import "./gestlok-ios-install.css";
