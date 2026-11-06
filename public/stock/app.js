@@ -1369,7 +1369,7 @@ function inicioOperativo(){
     </div>
     ${miRol()==='dueno'?window.GestLokCommerce?.card?.()||'':''}
   </details>`;
-  return `${banners()}
+  return `${banners()}${window.GestLokMiGustoOrders?.quickAccess?.()||''}
     <div class="gl-home-essential" aria-label="Inicio del local">
       <header class="gl-home-essential-head">
         <div><p class="eyebrow">${esc(fechaLarga())}</p>
@@ -1419,7 +1419,7 @@ function inicioOperativo(){
 V.inicio = () => {
   if (miRol()==='gerente' && !S.creatorBusiness) return banners()+(window.GestLokMiGustoOrders?.quickAccess?.()||'')+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.gerenteHome?.()||'<p role="status">Comprobando tus áreas…</p>')+'</div>';
   if (miRol()==='creadora' && !S.creatorBusiness) return banners()+(window.GestLokMiGustoOrders?.quickAccess?.()||'')+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.view(localesMios(),lcard) || '<p role="status">Comprobando tus áreas…</p>')+'</div>';
-  if (['creadora','dueno','gerente'].includes(miRol())) return (window.GestLokMiGustoOrders?.quickAccess?.()||'')+inicioOperativo();
+  if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();
   const ps = sorted(), n = ps.length;
   const cnt = {ok:0, bajo:0, sin:0, nc:0}; ps.forEach(p => cnt[estado(p)]++);
   const ped = pedidoItems().length, last = S.conteos[0] || null, flagged = ps.filter(p => estado(p) === 'sin');
