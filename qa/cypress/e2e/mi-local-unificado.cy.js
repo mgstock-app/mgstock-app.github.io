@@ -2,7 +2,7 @@
 const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
 describe('Mi local · inicio único de Perfumes',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
- for(const tenant of [TENANT,'11111111-2222-4333-8444-555555555555'])it('Scanner comparte cinco accesos y vuelve a Mi local: '+tenant,()=>{
+ for(const tenant of [TENANT,'11111111-2222-4333-8444-555555555555'])it('Scanner presenta cuatro accesos y vuelve al panel: '+tenant,()=>{
   cy.viewport(390,844);
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{
    headers:{'content-type':'application/javascript'},
@@ -24,11 +24,11 @@ describe('Mi local · inicio único de Perfumes',()=>{
   });
   cy.get('#au-email').clear().type('dueno@example.com');
   cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
-  cy.get('#hub .gl-pilot-entry').should('have.length',1).and('contain.text','Mi local');
+  cy.get('#hub .gl-pilot-entry').should('have.length',1).and('contain.text','Accesos rápidos');
   cy.get('#hub .gl-owner-business,#hub .gl-caja-entry,#hub .gl-owner-employees').should('not.exist');
   cy.get('#hub').should('not.contain.text','GESTIÓN DE TU LOCAL');
   cy.get('#hub [data-pilot-caja]').should('contain.text','Caja');
-  cy.get('#hub .gl-pilot-entry-actions button').should('have.length',5);
+  cy.get('#hub .gl-pilot-entry-actions button').should('have.length',4);
   cy.get('#hub .gl-pilot-entry').should('not.contain.text','Reportes').and('not.contain.text','Proveedores');
   cy.get('#hub [data-owner-nav="menu"]').click();
   cy.get('#pn [aria-label="Menú principal"] button').should('have.length',5);
