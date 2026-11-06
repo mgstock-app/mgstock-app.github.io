@@ -1,6 +1,15 @@
 {
   "hooks": [
     {
+      "actual": "return banners()+(window.GestLokMiGustoOrders?.quickAccess?.()||'')+'<div class=\"gl-creator-local-home\">'",
+      "original": "return banners()+'<div class=\"gl-creator-local-home\">'",
+      "count": 2
+    },
+    {
+      "actual": "if (['creadora','dueno','gerente'].includes(miRol())) return (window.GestLokMiGustoOrders?.quickAccess?.()||'')+inicioOperativo();",
+      "original": "if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();"
+    },
+    {
       "actual": "\nconst puedeVerPedidosClientes = () => !!window.GestLokMiGustoOrders?.permitido();",
       "original": ""
     },
@@ -18,7 +27,7 @@
       "count": 2
     },
     {
-      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Pedidos WhatsApp</span></button>` : ''}",
+      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Pedidos WhatsApp</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}",
       "original": ""
     },
     {
