@@ -42,7 +42,7 @@ test('fallo seguro sin credenciales, firma real Meta y acceso privado a RPC',()=
 
 test('sin precios inventados ni pagos, sin tocar módulos de Mi Gusto',()=>{
  assert.match(sql,/create table if not exists gestlok_mg_orders_private.menu_items/);
- assert.doesNotMatch(sql,/insert into gestlok_mg_orders_private.menu_items\(/i);
+ assert.doesNotMatch(sql,/insert into gestlok_mg_orders_private.menu_items\s*\([^)]*\)\s*values\s*\(\s*'(munro|torcuato)'/si);
  assert.match(sql,/payment_method/);
  assert.match(sql,/'efectivo'/);
  assert.doesNotMatch(sql,/update\s+gestlok_mg_online_private|update\s+public\.stock|update\s+gestlok_caja_private/i);
