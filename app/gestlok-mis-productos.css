@@ -61,3 +61,25 @@ body.gl-mp-open{overflow:hidden}
 #gl-mp-panel button:focus-visible,#gl-mp-panel input:focus-visible,#gl-mp-panel select:focus-visible,#gl-mp-panel textarea:focus-visible{outline:3px solid #63a7ff;outline-offset:2px}
 @media(max-width:850px){.gl-mp-body{display:block}.gl-mp-side{display:none}.gl-mp-form{grid-template-columns:1fr 1fr}.gl-mp-form label:last-of-type{grid-column:1/-1}.gl-mp-entry{flex-direction:column;align-items:flex-start}.gl-mp-sheet{padding:13px}}
 @media(max-width:550px){.gl-mp-header{padding:18px;align-items:flex-start}.gl-mp-back{font-size:12px;padding:9px}.gl-mp-toolbar h2{font-size:23px}.gl-mp-form{display:flex;flex-direction:column;align-items:stretch}.gl-mp-table{min-width:710px}.gl-mp-listhead{align-items:flex-start}.gl-mp-entry h2{font-size:21px}}
+
+/* Etiqueta de nombre 30 × 12 mm · D110. Estilo de pantalla; jamás llega al papel. */
+#gl-mp-panel .gl-mp-actions [data-mp-print]{background:#103763;color:#fff;border-color:#103763;font-weight:700}
+[data-mp-label-modal]{position:fixed;z-index:2147482002;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,23,39,.72);padding:16px;overflow:auto;font-family:Inter,system-ui,sans-serif}
+[data-mp-label-modal] *{box-sizing:border-box}
+[data-mp-label-modal] .gl-mp-label-card{position:relative;max-width:480px;width:100%;max-height:calc(100vh - 32px);overflow:auto;background:white;color:#152d46;border-radius:15px;padding:24px;box-shadow:0 20px 60px #061b3280}
+[data-mp-label-modal] header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin:0 0 10px}
+[data-mp-label-modal] h2{margin:0;color:#112d50;font-weight:750;font-size:21px;line-height:1.3}
+[data-mp-label-modal] header button{border:1px solid #ccd7e2;border-radius:8px;background:white;color:#163552;font-size:17px;padding:6px 10px;cursor:pointer}
+[data-mp-label-modal] p{color:#566e83;font-size:13px;line-height:1.5}
+[data-mp-label-modal] label{display:flex;flex-direction:column;gap:8px;font-weight:650;color:#15385b;font-size:14px;margin:18px 0}
+[data-mp-label-modal] input{display:block;width:100%;font:inherit;font-weight:500;border:1px solid #bdcfe1;border-radius:9px;padding:12px 13px;background:white;color:#152c47}
+[data-mp-label-modal] .gl-mp-label-display{border:1px solid #ccd7e2;min-height:155px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;padding:20px}
+[data-mp-label-modal] [data-mp-label-preview]{width:min(100%,360px);aspect-ratio:2.5;object-fit:fill;background:white;border:1px solid #d0d0d0;box-shadow:0 4px 10px #152d4726}
+[data-mp-label-modal] .gl-mp-label-status{min-height:24px;color:#254866;font-weight:650}
+[data-mp-label-modal] .gl-mp-label-buttons{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0}
+[data-mp-label-modal] .gl-mp-label-buttons button{border:1px solid #c3d0dd;padding:11px 14px;border-radius:9px;background:#fff;color:#123b63;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+[data-mp-label-modal] [data-mp-label-bluetooth]{background:#103763!important;color:#fff!important;border-color:#103763!important}
+[data-mp-label-modal] button:disabled{opacity:.55;cursor:not-allowed}
+[data-mp-label-modal] small{display:block;font-size:12px;line-height:1.5;color:#617488}
+[data-mp-label-modal] [data-mp-label-frame]{position:absolute;left:-10000px;width:30mm;height:12mm;border:0}
+@media(max-width:550px){[data-mp-label-modal] .gl-mp-label-card{padding:18px}[data-mp-label-modal] .gl-mp-label-buttons button{flex:1 1 auto}}
