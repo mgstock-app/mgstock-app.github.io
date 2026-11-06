@@ -57,7 +57,7 @@ async function rpc(name,args={}){
 }
 function safeShiftState(value,allowEmpty=false){
  if(!value||typeof value!=='object'||!value.active||!Array.isArray(value.active.movements)||!Array.isArray(value.history))
-  throw Error('El servidor devolvió un estado incompleto. Se mantiene la última lista visible.');
+  throw Error('No recibimos datos válidos de Pagos Online. Se mantiene la última lista visible.');
  // No vaciar el detalle por una lectura atrasada después de marcar OK.
  // Una eliminación solicitada desde la propia pantalla sí puede dejar el turno vacío.
  const before=snapshot?.active,after=value.active;
@@ -389,7 +389,7 @@ async function action(name,args,notify){
  saving=true;error='';saveNotice=false;
  try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();editing=null;
   if(name==='gestlok_mg_online_close'&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
-  await rpcRefresh(name==='gestlok_mg_online_delete');saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
+  if(name==='gestlok_mg_online_delete')await rpcRefresh(true);else await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
  finally{
   saving=false;
