@@ -14,8 +14,8 @@
       <label>Apellido <input name="last" required maxlength="80" value="${esc(person.last_name)}"></label>
       <label>Teléfono con código de país <input name="phone" type="tel" required maxlength="25" placeholder="+54…" value="${esc(person.phone)}"></label>
       <label>Correo de acceso <input name="email" type="email" maxlength="254" required ${person.status && person.status !== 'draft' ? 'readonly':''} value="${esc(person.invited_email)}"></label>
-      <fieldset><legend>Permisos</legend>${Object.entries(labels).map(([id,label]) => `<label><input role="switch" name="${id}" type="checkbox" ${person.permissions?.[id]?'checked':''}> ${label}</label>`).join('')}</fieldset>
-      <button type="submit">Guardar perfil</button>
+      <fieldset ${person.id ? "" : "disabled"}><legend>Permisos ${person.id ? "" : "· disponibles al crear el perfil"}</legend>${Object.entries(labels).map(([id,label]) => `<label><input role="switch" name="${id}" type="checkbox" ${person.permissions?.[id]?'checked':''}> ${label}</label>`).join('')}</fieldset>
+      ${person.id ? '<button type="submit">Guardar perfil</button>' : '<button type="submit" value="issue">Enviar invitación por WhatsApp</button>'}
       ${person.id && ['draft','pending'].includes(person.status) ? '<button type="submit" value="issue">Preparar WhatsApp</button>' : ''}
       ${person.id && !locked ? '<button type="button" data-invite-revoke>Revocar acceso</button>' : ''}
       </fieldset></form></details>`;
@@ -80,18 +80,23 @@
     const issue=e.submitter?.value==='issue';
     const data=new FormData(form);
     const phone=String(data.get('phone')).replace(/[\s().-]/g,'');
+    // Open a tab synchronously from the user gesture; browsers block async popups.
+    const whatsappTab=issue ? window.open('about:blank','_blank') : null;
     void run(async () => {
-      const id=await rpc('save',{p_tenant:pilot().tenantId(),p_id:form.dataset.id||null,p_first:data.get('first'),p_last:data.get('last'),p_phone:phone,p_email:data.get('email'),p_permissions:Object.fromEntries(Object.keys(labels).map(k=>[k,data.has(k)]))});
+      try {
+      const id=await rpc('save',{p_tenant:pilot().tenantId(),p_id:form.dataset.id||null,p_first:data.get('first'),p_last:data.get('last'),p_phone:phone,p_email:data.get('email'),p_permissions:Object.fromEntries(Object.keys(labels).map(k=>[k,form.dataset.id ? data.has(k) : false]))});
       if(issue){
         const token=await rpc('issue',{p_id:id});
         const invite=new URL('/scanner-invitado/',location.origin);
         invite.hash=token;
-        const whatsapp=new URL('https://wa.me/'+phone.slice(1));
+        const whatsapp=new URL('https://wa.me/');
         whatsapp.searchParams.set('text',`Te invitaron al Plan Scanner de GESTLOK. Abrí el enlace con el correo indicado por quien te invitó. Vence en 48 horas. ${invite}`);
-        const link=document.createElement('a');link.href=whatsapp.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Abrir WhatsApp para enviar';
+        if(whatsappTab && !whatsappTab.closed) whatsappTab.location.replace(whatsapp.href);
+        const link=document.createElement('a');link.href=whatsapp.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Abrir WhatsApp para compartir';
         panel?.querySelector('[data-invite-share]').replaceChildren(link);
       }
-      await load();status(issue?'Enlace preparado. Abrí WhatsApp para enviar la invitación.':'Perfil guardado.');
+      await load();status(issue?'Se preparó el enlace. Elegí el contacto y enviá la invitación desde WhatsApp.':'Perfil guardado.');
+      } catch(error) { if(whatsappTab && !whatsappTab.closed) whatsappTab.close(); throw error; }
     });
   });
 })();
