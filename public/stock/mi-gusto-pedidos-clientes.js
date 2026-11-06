@@ -8,7 +8,7 @@ const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pesos=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',dateStyle:'short',timeStyle:'short'}).format(new Date(x)):'—';
-let api=null,items=[],phone='',tab='nuevos',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
+let api=null,items=[],catalog=[],phone='',tab='nuevos',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
   !window.GestLokCreatorSupport?.previewRol?.() &&
@@ -21,8 +21,8 @@ const escapeLines=x=>esc(x).replace(/\n/g,'<br>');
 function update(force=false,preserve=true){
  if(api?.S.view!=='pedidos-clientes'||!allowed())return;
  // El refresco periódico no debe cortar la escritura de un pedido.
- if(!force&&document.activeElement?.closest?.('#mgp-order-form,#mgp-number-form'))return;
- const forms=preserve?Array.from(document.querySelectorAll?.('#mgp-order-form,#mgp-number-form')||[]).map(f=>({
+ if(!force&&document.activeElement?.closest?.('#mgp-order-form,#mgp-number-form,#mgp-catalog-form'))return;
+ const forms=preserve?Array.from(document.querySelectorAll?.('#mgp-order-form,#mgp-number-form,#mgp-catalog-form')||[]).map(f=>({
   id:f.id,open:!!f.closest('details')?.open,
   fields:Array.from(f.elements).filter(el=>el.name&&'value' in el).map(el=>({name:el.name,value:el.value}))
  })):[];
@@ -49,8 +49,9 @@ async function refresh(){
  const request=++epoch,loc=local();
  loading=!loaded;update();
  try{
-  const result=await rpc('gestlok_mg_orders_state');
+  const [result,prices]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog')]);
   if(request!==epoch||loc!==local())return;
+  catalog=Array.isArray(prices)?prices:[];
   items=Array.isArray(result?.orders)?result.orders.filter(x=>x.local===loc):[];
   phone=String(result?.whatsapp_number||'');loaded=true;error='';
  }catch(e){if(request===epoch&&loc===local())error=e.message||'No pudimos consultar los pedidos.';}
@@ -74,6 +75,13 @@ function view(){
   '<p>Esta sucursal tendrá su propio número y sus pedidos separados. La automatización requiere conectar después la API oficial de Meta.</p>'+
   '<form id="mgp-number-form"><label>Número con código de país (ej.: 54911... )<input name="number" inputmode="tel" autocomplete="tel" required minlength="10" maxlength="24" value="'+esc(phone)+'" placeholder="54911..." '+(!canEdit()?'disabled':'')+'></label>'+
   '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar número</button></form></details>':'';
+ const catalogPanel='<details class="mgp-config" id="mgp-catalog"><summary>Carta y precios para WhatsApp ('+catalog.filter(x=>x.active).length+')</summary>'+
+  '<p>Solo los productos activos y sus precios se enviarán por WhatsApp. Cada sucursal administra su propia carta. No se modifica Stock Local.</p>'+
+  '<div class="mgp-menu-list">'+(catalog.length?catalog.map(x=>'<div class="mgp-menu-item"><div><strong>'+esc(x.name)+'</strong><small>'+pesos(x.price)+(x.active?'':' · Oculto')+'</small></div>'+
+    (canSetNumber()?'<div class="mgp-menu-actions"><button type="button" data-mgp-edit="'+esc(x.id)+'">Editar</button>'+(x.active?'<button type="button" data-mgp-disable="'+esc(x.id)+'">Ocultar</button>':'')+'</div>':'')+'</div>').join(''):'<p class="mgp-empty">Todavía no se cargaron productos ni precios.</p>')+'</div>'+
+  (canSetNumber()?'<form id="mgp-catalog-form" class="mgp-form"><input type="hidden" name="id" value=""><label>Producto<input name="name" minlength="2" maxlength="120" required placeholder="Ej.: Empanada de carne" '+(!canEdit()?'disabled':'')+'></label>'+
+    '<label>Precio final en pesos<input name="price" type="number" min="0.01" max="999999.99" step="0.01" required inputmode="decimal" placeholder="0" '+(!canEdit()?'disabled':'')+'></label>'+
+    '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar en la carta</button></form>':'')+'</details>';
  const manual='<details class="mgp-config" id="mgp-add-details"><summary>Registrar pedido manualmente (para control interno)</summary>'+
  '<form id="mgp-order-form" class="mgp-form"><label>Nombre del cliente<input name="customer" required minlength="2" maxlength="120" autocomplete="off" placeholder="Nombre y apellido" '+(!canEdit()?'disabled':'')+'></label>'+
  '<label>Teléfono<input name="phone" inputmode="tel" required maxlength="25" autocomplete="off" placeholder="11..." '+(!canEdit()?'disabled':'')+'></label>'+
@@ -89,7 +97,7 @@ function view(){
  (error?'<p role="alert" class="mgp-error">'+esc(error)+'</p>':'')+
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
  (!online()?'<p role="status" class="mgp-error">Sin conexión: los pedidos solo se consultan y confirman online.</p>':'')+
- config+manual+
+ config+catalogPanel+manual+
  '<nav class="mgp-tabs" aria-label="Estados de los pedidos"><button type="button" data-mgp-tab="nuevos" aria-current="'+(tab==='nuevos'?'page':'false')+'">Nuevos ('+pending.length+')</button>'+
  '<button type="button" data-mgp-tab="recibidos" aria-current="'+(tab==='recibidos'?'page':'false')+'">Recibidos ('+done.length+')</button></nav>'+
  (loading?'<p role="status">Cargando pedidos…</p>':
@@ -111,8 +119,9 @@ async function action(method,args,success){
 async function refreshAfterSave(){
  const request=++epoch,loc=local();
  try{
-  const result=await rpc('gestlok_mg_orders_state');
+  const [result,prices]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog')]);
   if(request===epoch&&loc===local()){
+   catalog=Array.isArray(prices)?prices:[];
    items=Array.isArray(result?.orders)?result.orders.filter(x=>x.local===loc):[];
    phone=String(result?.whatsapp_number||'');loaded=true;
   }
@@ -125,6 +134,25 @@ function attach(h){
   const tabBtn=e.target.closest('[data-mgp-tab]');
   if(tabBtn){tab=tabBtn.dataset.mgpTab;notice='';update();return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
+  const edit=e.target.closest('[data-mgp-edit]');
+  if(edit&&canSetNumber()&&canEdit()){
+   const found=catalog.find(x=>x.id===edit.dataset.mgpEdit);
+   const form=document.getElementById('mgp-catalog-form');
+   if(found&&form){
+     form.elements.namedItem('id').value=found.id;
+     form.elements.namedItem('name').value=found.name;
+     form.elements.namedItem('price').value=found.price;
+     const details=form.closest('details');if(details)details.open=true;
+     form.elements.namedItem('name').focus();
+   }
+   return;
+  }
+  const disable=e.target.closest('[data-mgp-disable]');
+  if(disable&&canEdit()&&canSetNumber()){
+    if(window.confirm('¿Ocultar este producto de la carta de WhatsApp?'))
+      void action('gestlok_mg_orders_catalog_disable',{p_id:disable.dataset.mgpDisable},'Producto oculto de WhatsApp.');
+    return;
+  }
   const button=e.target.closest('[data-mgp-receive]');
   if(button&&canEdit()){
    if(!window.confirm('¿Confirmás que el local recibió este pedido?'))return;
@@ -145,6 +173,15 @@ function attach(h){
      p_total:total,p_notes:String(values.get('notes')||'')
    },'Pedido registrado.').then(()=>{if(!error){tab='nuevos';update(true,false);}});
   }
+  if(e.target.id==='mgp-catalog-form'){
+   e.preventDefault();if(!canEdit()||!canSetNumber())return;
+   const values=new FormData(e.target), id=String(values.get('id')||'');
+   const price=Number(values.get('price'));
+   if(!Number.isFinite(price)||price<=0){error='Ingresá un precio válido.';update();return;}
+   void action('gestlok_mg_orders_catalog_save',{
+     p_id:id||null,p_name:String(values.get('name')||''),p_price:price
+   },'Carta de WhatsApp actualizada.');
+  }
   if(e.target.id==='mgp-number-form'){
    e.preventDefault();if(!canEdit()||!canSetNumber())return;
    const number=String(new FormData(e.target).get('number')||'');
@@ -160,6 +197,6 @@ function subscribe(loc,push){
  window.addEventListener('focus',focused);
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);});
 }
-function reset(){epoch++;items=[];phone='';tab='nuevos';loading=false;busy=false;error='';notice='';loaded=false;}
+function reset(){epoch++;items=[];catalog=[];phone='';tab='nuevos';loading=false;busy=false;error='';notice='';loaded=false;}
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,_test:{esc,pesos,orderCard}});
 })();
