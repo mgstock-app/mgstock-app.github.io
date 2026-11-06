@@ -2281,9 +2281,10 @@ function renderHub(){
     // Inicio de la creadora (solo si el servidor autoriza la función de resumen); si no, se ve el panel anterior.
     const chMode = window.GestLokCreatorHome?.mode();
     if (chMode === 'ready' || chMode === 'loading') {
+      // Fallback mientras carga el índice multiempresa; evita identificar erróneamente cualquier local como Mi Gusto.
       const quickLocals = mios.map(l => '<button type="button" class="gl-ch-quick-local" data-act="local" data-id="' + esc(l.id) + '" aria-label="Entrar al local ' + esc(l.nombre) + '">' +
-        '<span class="gl-ch-quick-icon">' + ic('store') + '</span><span><b>' + esc(l.nombre) + '</b><small>Mi Gusto · Abrir local</small></span><span aria-hidden="true">→</span></button>').join('');
-      const chHTML = window.GestLokCreatorHome.view({pending: S.sol.length, quickLocals, parts: {
+        '<span class="gl-ch-quick-icon">' + ic('store') + '</span><span><b>' + esc(l.nombre) + '</b><small>Local autorizado · Abrir</small></span><span aria-hidden="true">→</span></button>').join('');
+      const chHTML = window.GestLokCreatorHome.view({pending: S.sol.length, quickLocals, companies:window.GestLokOwnerAreas?.creatorCompanies?.()||[], parts: {
         companies: window.GestLokOwnerAreas?.adminView() || '', prepare: prepareCard, locales: localesCard, users: teamCard + noticeCard,
         tools: (window.GestLokDemoMetrics?.view() || '') + demoCard + (window.GestLokSupport?.adminCard() || '') + (window.GestLokCommerce?.card() || '')}});
       if (hub._h !== chHTML) { hub.innerHTML = chHTML; hub._h = chHTML; }
