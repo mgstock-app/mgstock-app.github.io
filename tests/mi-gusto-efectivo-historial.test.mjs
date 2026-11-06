@@ -50,26 +50,26 @@ test('El cuadro del turno abierto sigue mostrándose para registrar movimientos'
  assert.doesNotMatch(html,/mg-on-cash-history/);
 });
 
-test('Total descuentos: suma solamente la columna Descuento de pagos en efectivo, sin incluir transferencias',()=>{
+test('Total descuentos pendientes: suma solo efectivo sin OK, sin incluir transferencias',()=>{
  const segundo={...cashMovement,id:'33333333-3333-4333-8333-333333333333',comanda:'32',gross_amount:19600,discount_amount:1960,amount:17640,ok:false};
  const transferencia={...transferMovement,discount_amount:5000};
  const turno={...closed,status:'abierto',movements:[cashMovement,segundo,transferencia]};
  const html=window.__test.cashMovementDetail(turno);
  const m=html.match(/data-mgon-total-discounts>([^<]+)<\/strong>/);
  assert.ok(m,'El resumen Total descuentos debe mostrarse sobre la tabla');
- assert.equal(m[1].replace(/\s/g,''),'$2.060,00');
+ assert.equal(m[1].replace(/\s/g,''),'$1.960,00');
  assert.match(html,/Solo pagos en efectivo/);
  const archivado=window.__test.reportTurn({...turno,status:'cerrado'},'manana');
  const totalArchivado=archivado.match(/data-mgon-total-discounts>([^<]+)<\/strong>/);
  assert.ok(totalArchivado);
- assert.equal(totalArchivado[1].replace(/\s/g,''),'$2.060,00');
+ assert.equal(totalArchivado[1].replace(/\s/g,''),'$1.960,00');
 });
 
-test('La fila de totales suma todos los descuentos del turno de Munro solo en su columna',()=>{
+test('La fila de totales suma descuentos sin OK del turno de Munro solo en su columna',()=>{
  const descuentos=[6040,2080,1090,5290,1960];
  const cobrados=[54360,18720,9810,47610,17640];
  const movements=descuentos.map((discount_amount,i)=>({
-  ...cashMovement,id:String(i+1),comanda:String(i+1),discount_amount,amount:cobrados[i],gross_amount:cobrados[i]+discount_amount
+  ...cashMovement,id:String(i+1),comanda:String(i+1),ok:false,discount_amount,amount:cobrados[i],gross_amount:cobrados[i]+discount_amount
  }));
  const turno={...closed,status:'abierto',movements};
  const html=window.__test.cashMovementDetail(turno);
@@ -83,4 +83,28 @@ test('La fila de totales suma todos los descuentos del turno de Munro solo en su
  assert.match(footer[1],/mg-on-cash-amount-footer[^>]*>\$\s*148\.140,00/);
  const archived=window.__test.cashMovementDetail({...turno,status:'cerrado'});
  assert.match(archived,/data-mgon-total-discounts-footer[^>]*>\$\s*16\.460,00/);
+});
+
+
+test('Mi Gusto: 5 comandas sin OK suman $16.460, cada tilde resta su descuento y al desmarcar vuelve a sumar',()=>{
+ const descuentos=[3150,6040,2080,1090,5290,1960];
+ const cobrados=[28350,54360,18720,9810,47610,17640];
+ const movements=descuentos.map((discount_amount,i)=>({
+  ...cashMovement,id:String(i+1),comanda:String(i+1),ok:i===0,
+  discount_amount,amount:cobrados[i],gross_amount:cobrados[i]+discount_amount
+ }));
+ const turno={...closed,status:'abierto',movements};
+ const amounts=(rows)=>{
+  const html=window.__test.cashMovementDetail({...turno,movements:rows});
+  const top=html.match(/data-mgon-total-discounts>([^<]+)<\/strong>/)?.[1];
+  const bottom=html.match(/data-mgon-total-discounts-footer>([^<]+)<\/strong>/)?.[1];
+  assert.equal(top,bottom,'Los totales superior e inferior deben coincidir');
+  assert.match(html,/mg-on-cash-amount-footer[^>]*>\$\s*176\.490,00/,'El efectivo cobrado no cambia por los OK');
+  return top.replace(/\s/g,'');
+ };
+ assert.equal(amounts(movements),'$16.460,00');
+ const conOtroOk=movements.map(r=>r.id==='2'?{...r,ok:true}:r);
+ assert.equal(amounts(conOtroOk),'$10.420,00');
+ assert.equal(amounts(movements),'$16.460,00','Al desmarcar debe volver a sumar');
+ assert.equal(amounts(movements.map(r=>({...r,ok:true}))),'$0,00');
 });
