@@ -1,0 +1,41 @@
+{
+  "hooks": [
+    {
+      "actual": "\nconst puedeVerPedidosClientes = () => !!window.GestLokMiGustoOrders?.permitido();",
+      "original": ""
+    },
+    {
+      "actual": "\n  if (S.view === 'pedidos-clientes') return puedeVerPedidosClientes() ? window.GestLokMiGustoOrders.view() : V.inicio();",
+      "original": ""
+    },
+    {
+      "actual": "S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'pedidos-clientes' ? 'Pedidos' :",
+      "original": "S.view === 'cierre-online' ? 'Pagos Online' :"
+    },
+    {
+      "actual": "S.view === 'cierre-online' || S.view === 'pedidos-clientes' ||",
+      "original": "S.view === 'cierre-online' ||",
+      "count": 2
+    },
+    {
+      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Pedidos de clientes</span></button>` : ''}",
+      "original": ""
+    },
+    {
+      "actual": "(v === 'pedidos-clientes' && puedeVerPedidosClientes()) || ",
+      "original": ""
+    },
+    {
+      "actual": "\n  window.GestLokMiGustoOrders?.subscribe(loc,push);",
+      "original": ""
+    },
+    {
+      "actual": "\n    window.GestLokMiGustoOrders?.reset();",
+      "original": ""
+    },
+    {
+      "actual": "\nwindow.GestLokMiGustoOrders?.attach({S,render,miRol,misLocales,toast});",
+      "original": ""
+    }
+  ]
+}

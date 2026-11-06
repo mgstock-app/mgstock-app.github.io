@@ -5,6 +5,7 @@ import "./gestlok-intro.css";
 import "./owner-mobile-refinements.css";
 import "./munro-motos.css";
 import "./mi-gusto-resenas.css";
+import "./mi-gusto-pedidos-clientes.css";
 import "./gestlok-reclamos-internos.css";
 import "./gestlok-nav-fixes.css";
 import "./mi-gusto-pagos-online.css";

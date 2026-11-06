@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const moduleSource=fs.readFileSync(new URL('../public/stock/mi-gusto-pedidos-clientes.js',import.meta.url),'utf8');
+const mainSource=fs.readFileSync(new URL('../public/stock/app.js',import.meta.url),'utf8');
+const sql=fs.readFileSync(new URL('../supabase/migrations/20261106204500_mi_gusto_pedidos_clientes_sucursales.sql',import.meta.url),'utf8');
+const MG='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+function setup({tenant=MG,role='gerente',local='munro',locals=['munro']}={}){
+  const handlers={};
+  const calls=[];
+  const data={munro:{local:'munro',whatsapp_number:'5491111111111',orders:[{
+    id:'first',local:'munro',customer_name:'Cliente Munro',customer_phone:'11111111',items_detail:'6 carne',total:15000,payment_method:'efectivo',source:'manual',status:'nuevo',created_at:'2026-11-06T20:00:00Z'
+  }]},torcuato:{local:'torcuato',whatsapp_number:'5491122222222',orders:[{
+    id:'second',local:'torcuato',customer_name:'Cliente Torcuato',customer_phone:'22222222',items_detail:'6 pollo',total:16000,payment_method:'efectivo',source:'manual',status:'nuevo',created_at:'2026-11-06T20:00:00Z'
+  }]}};
+  const S={me:{tenant_id:tenant},local,view:'pedidos-clientes',ro:false,offline:false};
+  const api={S,miRol:()=>role,misLocales:()=>locals,render:()=>{},toast:()=>{}};
+  const window={GestLokSupabase:{rpc:async(method,args)=>{
+    calls.push({method,...args});
+    return {data:data[args.p_local],error:null};
+  }},GestLokCreatorSupport:{previewRol:()=>null},addEventListener:()=>{},removeEventListener:()=>{}};
+  const document={addEventListener:(type,fn)=>{handlers[type]=fn;},hidden:false,activeElement:null};
+  const sandbox={window,document,navigator:{onLine:true},setInterval:()=>1,clearInterval:()=>{},Intl,Date,console};
+  vm.runInNewContext(moduleSource,sandbox,{filename:'mi-gusto-pedidos-clientes.js'});
+  const orders=window.GestLokMiGustoOrders;
+  orders.attach(api);
+  return {orders,api,S,data,calls,handlers};
+}
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+test('módulo aislado: nunca habilita otras empresas ni colaboradores',()=>{
+ const other=setup({tenant:'00000000-0000-0000-0000-000000000999'});
+ assert.equal(other.orders.permitido(),false);
+ const collaborator=setup({role:'colaborador'});
+ assert.equal(collaborator.orders.permitido(),false);
+ const manager=setup({role:'gerente',local:'torcuato',locals:['munro']});
+ assert.equal(manager.orders.permitido(),false);
+ assert.equal(setup().orders.permitido(),true);
+});
+test('números y pedidos distintos al cambiar de sucursal',async()=>{
+ const s=setup({locals:['munro','torcuato']});
+ s.orders.subscribe('munro',()=>{});
+ await tick();
+ assert.match(s.orders.view(),/Cliente Munro/);
+ assert.match(s.orders.view(),/5491111111111/);
+ assert.doesNotMatch(s.orders.view(),/Cliente Torcuato/);
+ s.S.local='torcuato';
+ s.orders.reset();
+ s.orders.subscribe('torcuato',()=>{});
+ await tick();
+ assert.match(s.orders.view(),/Cliente Torcuato/);
+ assert.match(s.orders.view(),/5491122222222/);
+ assert.doesNotMatch(s.orders.view(),/Cliente Munro/);
+ assert.deepEqual(s.calls.map(c=>c.p_local),['munro','torcuato']);
+});
+test('escapa HTML aportado por clientes y no crea cobros automáticos',()=>{
+ const s=setup();
+ const card=s.orders._test.orderCard({id:'x',customer_name:'<img src=x onerror=alert(1)>',customer_phone:'123',items_detail:'<script>x</script>',notes:'<b>x</b>',total:1000,source:'manual',status:'nuevo',created_at:'2026-11-06T20:00:00Z'});
+ assert.doesNotMatch(card,/<script>|<img|<b>x<\/b>/);
+ assert.match(card,/&lt;script&gt;/);
+ assert.match(mainSource,/puedeVerPedidosClientes/);
+ assert.match(mainSource,/data-go="pedidos-clientes"/);
+ assert.doesNotMatch(moduleSource,/gestlok_mg_online_save|stock_quantity|caja_register|pos_checkout/);
+});
+test('servidor preserva efectivo, validación de sucursal y recibidos irreversibles',()=>{
+ assert.match(sql,/check\(payment_method='efectivo'\)/);
+ assert.match(sql,/gestlok_mg_online_private\.authorized\(p_local\)/);
+ assert.match(sql,/where id=p_id and local=p_local and status='nuevo'/);
+ assert.match(sql,/unique\(local,source,external_message_id\)/);
+ assert.match(sql,/revoke all on gestlok_mg_orders_private\.orders from public, anon, authenticated/);
+ assert.match(sql,/p_local text,p_id uuid/);
+});
