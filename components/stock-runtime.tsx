@@ -45,7 +45,8 @@ export function StockRuntime() {
   useEffect(() => {
     let active = true;
     // Prevent duplicate listeners and subscriptions under Strict Mode.
-    startup ??= (async () => {\n      preloadStartupScripts(new URLSearchParams(location.search).get("demo") === "1");
+    startup ??= (async () => {
+      preloadStartupScripts(new URLSearchParams(location.search).get("demo") === "1");
       await load("/stock/gestlok-pwa-update.js");
       await load("/vendor/supabase.js");
       await load("/stock/config.js");
