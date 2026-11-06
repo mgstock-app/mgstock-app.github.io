@@ -38,23 +38,23 @@ describe('Scanner · invitaciones',()=>{
   for(const [name,permission] of [['Ana','stock'],['Luis','ventas']]){
    cy.get('dialog [data-invite-profile][data-id=""]').within(()=>{
     cy.get('[name=first]').type(name);cy.get('[name=last]').type('Prueba');cy.get('[name=phone]').type('+5491100000000');cy.get('[name=email]').type(name.toLowerCase()+'@example.com');
-    cy.get('[role=switch]').should('have.length',6);cy.get(`[name=${permission}]`).check();cy.contains('button','Guardar perfil').click();
+    cy.get('[role=switch]').should('have.length',6);cy.get('[role=switch]').should('be.disabled');cy.contains('button','Enviar invitación por WhatsApp').click();
    });
    cy.contains('dialog summary',name+' Prueba').should('exist');
   }
-  cy.contains('dialog summary','Ana Prueba').click();
+  cy.contains('dialog summary','Ana Prueba · Pendiente').click();
   cy.get('[data-invite-profile][data-id="1"]').within(()=>{
-   cy.get('[name=stock]').should('be.checked');cy.get('[name=ventas]').should('not.be.checked');
-   cy.contains('button','Preparar WhatsApp').click();
+   cy.get('[name=stock]').check();cy.get('[name=ventas]').should('not.be.checked');
+   cy.contains('button','Guardar perfil').click();
   });
-  cy.contains('dialog a','Abrir WhatsApp para enviar').should('have.attr','href').then(href=>{
-   const url=new URL(href);expect(url.origin).to.equal('https://wa.me');expect(url.pathname).to.equal('/5491100000000');expect(url.searchParams.get('text')).to.include('/scanner-invitado/#'+token);
+  cy.contains('dialog a','Abrir WhatsApp para compartir').should('have.attr','href').then(href=>{
+   const url=new URL(href);expect(url.origin).to.equal('https://wa.me');expect(url.pathname).to.equal('/');expect(url.searchParams.get('text')).to.include('/scanner-invitado/#'+token);
   });
   cy.contains('dialog summary','Ana Prueba · Pendiente').click();
   cy.get('[data-invite-profile][data-id="1"] [data-invite-revoke]').click();
   cy.contains('dialog summary','Ana Prueba · Revocado').should('exist');
   cy.contains('dialog summary','Luis Prueba').click();
-  cy.get('[data-invite-profile][data-id="2"] [name=ventas]').should('be.checked');
+  cy.get('[data-invite-profile][data-id="2"] [name=ventas]').should('not.be.checked');
   cy.get('[data-invite-profile][data-id="2"] [name=stock]').should('not.be.checked');
  });
  it('canjea al entrar y muestra únicamente los módulos concedidos',()=>{
