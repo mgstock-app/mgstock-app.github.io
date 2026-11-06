@@ -10,8 +10,8 @@ describe('Scanner · invitaciones',()=>{
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
   cy.visit('/');
   cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
-  cy.window().then(w=>{
-   const db=w.GestLokSupabase,from=db.from.bind(db),rpc=db.rpc.bind(db);
+  cy.window().its('GestLokSupabase',{timeout:15000}).should('exist').then(db=>{
+   const from=db.from.bind(db),rpc=db.rpc.bind(db);
    db.auth.getUser=async()=>({data:{user:{id:'dueno-prueba'}},error:null});
    db.from=table=>{
     if(!['gestlok_pilot_access','gestlok_scanner_invites'].includes(table))return from(table);
