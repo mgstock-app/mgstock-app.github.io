@@ -216,7 +216,9 @@ function actions(e){
 }
 async function save(){
  const c=ctx();if(!c?.creator||busy)return;
- const items=draft.map(x=>({id:x.id,label:trim(x.label),...(x.target?{target:x.target}:{})}));
+ // Pedidos WhatsApp es un acceso fijo del turno; el backend de personalización
+ // todavía guarda el resto de categorías. No enviar este ID nuevo al guardado legado.
+ const items=draft.filter(x=>x.id!=='pedidos-clientes').map(x=>({id:x.id,label:trim(x.label),...(x.target?{target:x.target}:{})}));
  if(items.some(x=>x.label.length<2||x.label.length>45)){error='Cada nombre debe tener entre 2 y 45 caracteres.';paint();return;}
  busy=true;paint();
  try{
