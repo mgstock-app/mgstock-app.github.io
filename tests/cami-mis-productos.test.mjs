@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const script=readFileSync('public/stock/gestlok-mis-productos.js','utf8');
-const sql=readFileSync('supabase/migrations/20261106053500_cami_mis_productos_privados.sql','utf8');
+const sql=readFileSync('supabase/migrations/20261106052349_cami_mis_productos_privados.sql','utf8');
 const runtime=readFileSync('components/stock-runtime.tsx','utf8');
 const owner=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
 const layout=readFileSync('app/layout.tsx','utf8');
