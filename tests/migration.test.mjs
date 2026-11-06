@@ -26,6 +26,13 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Normalizar primero los cambios exclusivos de Pedidos de Mi Gusto para que
+      // los hooks originales de navegación y Reclamos conserven su forma exacta.
+      const pedidosHooks=JSON.parse(read('tests/mi-gusto-pedidos-hooks.json')).hooks;
+      for(const {actual,original,count=1} of pedidosHooks){
+        assert.equal(content.split(actual).length-1,count,'Hook revisado de Pedidos Mi Gusto');
+        content=content.split(actual).join(original);
+      }
       const navigationHooks=JSON.parse(read('tests/gestlok-navigation-hooks.json')).hooks;
       for(const {actual,original} of navigationHooks){
         assert.equal(content.split(actual).length-1,1,'Único hook controlado para menú');
