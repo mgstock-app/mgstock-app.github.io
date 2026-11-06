@@ -3,14 +3,15 @@
 'use strict';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n);
-let activeCleanup=null;
-function dispose(){activeCleanup?.();activeCleanup=null;}
+let activeCleanup=null,activeUpdate=null;
+function dispose(){activeCleanup?.();activeCleanup=null;activeUpdate=null;}
 function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSale,recentSales=[],report=null,onReportDay}={}){
  dispose();
  if(!container)throw Error('Contenedor requerido');
  let catalog=root.GestLokPosCatalog?.catalog(products)||[];
  const cart=new Map();
  const stockInfo=(p,qty=0)=>{if(!Number.isInteger(p.stock))return '<span style="color:#64748b">Stock sin contar · cargá unidades antes de vender</span>';const left=p.stock-qty,color=left<=0?'#b91c1c':left<=3?'#a16207':'#15803d';const label=left<=0?'Sin stock':left<=3?'Últimas '+left+' unidades':left+' unidades disponibles';return '<span style="font-size:12px;color:'+color+';font-weight:600">▣ '+label+'</span>';};
+ const salesHtml=list=>list.length?list.slice(0,8).map(s=>'<div class="gl-pos-sale"><span>'+esc(new Date(s.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+' · '+esc(s.payment_method==='combinado'?'Combinado':paymentMethods.find(m=>m.id===s.payment_method)?.label||s.payment_method)+'</span><strong>'+money(Number(s.total))+'</strong></div>').join(''):'<p>No hay ventas registradas todavía.</p>';
  const reportHtml=r=>{
   if(!r)return '<p>Sin resumen disponible.</p>';
   const methods=r.methods&&typeof r.methods==='object'?Object.entries(r.methods):[['efectivo',r.efectivo||0],['transferencia',r.transferencia||0]];
@@ -20,7 +21,7 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
    ['Total del Scanner',money(Number(r.total||0))]
   ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')+'</div>';
  };
- container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2></div><span class="gl-pos-mode">'+(checkoutEnabled?'Ventas habilitadas':'Modo prueba')+'</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button></div><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><div id="gl-pos-split"><label><input id="gl-pos-split-enabled" type="checkbox"> Combinar medios de pago</label><div id="gl-pos-split-lines" hidden></div></div><button type="button" id="gl-pos-checkout" disabled>'+(checkoutEnabled?'Registrar venta cobrada':'Confirmar venta')+'</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">'+(checkoutEnabled?'Confirmá únicamente pagos recibidos. Se guarda la venta y se descuenta stock en una sola operación.':'La prueba no registra ventas ni descuenta stock.')+'</small></div></div>'+(checkoutEnabled?'<section class="gl-pos-reconcile" aria-label="Resumen de cobros del Scanner"><header><h3>Resumen de ventas · Scanner</h3><label for="gl-pos-report-day">Fecha <input id="gl-pos-report-day" type="date" value="'+esc(String(report?.day||''))+'"></label></header><div id="gl-pos-reconcile-body" aria-live="polite">'+reportHtml(report)+'</div><p class="gl-pos-reconcile-help">Fuente: ventas registradas en el Plan Scanner. Este resumen todavía no se suma automáticamente a GESTLOK Caja. Conciliá los cobros antes de cargarlos allí para evitar duplicados.</p></section>':'')+(checkoutEnabled?'<section class="gl-pos-sales" aria-label="Últimas ventas confirmadas"><h3>Últimas ventas registradas</h3><div class="gl-pos-sales-list">'+(recentSales.length?recentSales.slice(0,8).map(s=>'<div class="gl-pos-sale"><span>'+esc(new Date(s.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+' · '+esc(s.payment_method==='combinado'?'Combinado':paymentMethods.find(m=>m.id===s.payment_method)?.label||s.payment_method)+'</span><strong>'+money(Number(s.total))+'</strong></div>').join(''):'<p>No hay ventas registradas todavía.</p>')+'</div></section>':'')+'</section>';
+ container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2><button type="button" data-pilot-devices class="gl-pos-devices-link">Configurar dispositivos</button></div><span class="gl-pos-mode">'+(checkoutEnabled?'Ventas habilitadas':'Modo prueba')+'</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button></div><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><div id="gl-pos-split"><label><input id="gl-pos-split-enabled" type="checkbox"> Combinar medios de pago</label><div id="gl-pos-split-lines" hidden></div></div><button type="button" id="gl-pos-checkout" disabled>'+(checkoutEnabled?'Registrar venta cobrada':'Confirmar venta')+'</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">'+(checkoutEnabled?'Confirmá únicamente pagos recibidos. Se guarda la venta y se descuenta stock en una sola operación.':'La prueba no registra ventas ni descuenta stock.')+'</small></div></div>'+(checkoutEnabled?'<section class="gl-pos-reconcile" aria-label="Resumen de cobros del Scanner"><header><h3>Resumen de ventas · Scanner</h3><label for="gl-pos-report-day">Fecha <input id="gl-pos-report-day" type="date" value="'+esc(String(report?.day||''))+'"></label></header><div id="gl-pos-reconcile-body" aria-live="polite">'+reportHtml(report)+'</div><p class="gl-pos-reconcile-help">Fuente: ventas registradas en el Plan Scanner. Este resumen todavía no se suma automáticamente a GESTLOK Caja. Conciliá los cobros antes de cargarlos allí para evitar duplicados.</p></section>':'')+(checkoutEnabled?'<section class="gl-pos-sales" aria-label="Últimas ventas confirmadas"><h3>Últimas ventas registradas</h3><div class="gl-pos-sales-list">'+salesHtml(recentSales)+'</div></section>':'')+'</section>';
  const search=container.querySelector('#gl-pos-search');
  const results=container.querySelector('#gl-pos-results');
  const cartBox=container.querySelector('#gl-pos-cart');
@@ -68,16 +69,15 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
  saleMessage.insertAdjacentElement('afterend',printerSettings);
  printerSettings.insertAdjacentElement('afterend',receiptButton);
  const tenantKey=String(root.GestLokPilot?.tenantId?.()||'').trim();
- const paperKey=tenantKey?'gestlok:scanner:paper:'+tenantKey:null;
- try{const saved=paperKey&&root.localStorage?.getItem(paperKey);if(saved==='80mm'||saved==='58mm')paperSelect.value=saved;}catch(_){}
- paperSelect.addEventListener('change',()=>{try{if(paperKey)root.localStorage?.setItem(paperKey,paperSelect.value);}catch(_){}});
+ const hardware=root.GestLokPosDevices;
+ if(hardware)paperSelect.value=hardware.load(tenantKey).paper;
+ paperSelect.addEventListener('change',()=>{try{hardware?.save(tenantKey,{paper:paperSelect.value});}catch(_){}});
  receiptButton.addEventListener('click',()=>{
   if(!lastReceipt)return;
-  const paper=paperSelect.value;
-  const w=root.open?.('','_blank');
-  if(!w){saleMessage.textContent='Permití las ventanas emergentes para imprimir el ticket.';return;}
-  const lines=lastReceipt.lines.map(x=>'<tr><td>'+esc(x.name)+' × '+x.quantity+'</td><td style="text-align:right">'+esc(money(x.price*x.quantity))+'</td></tr>').join('');
-  w.document.open();w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket GESTLOK</title><style>@page{size:'+paper+' auto;margin:3mm}body{font:12px monospace;margin:0;color:#000}h2{text-align:center;font-size:15px}table{width:100%;border-collapse:collapse}td{padding:4px 0;border-bottom:1px dashed #999}strong{display:block;margin-top:12px;text-align:right}</style></head><body><h2>GESTLOK · COMPROBANTE</h2><p>'+esc(lastReceipt.date)+'<br>N.º '+esc(lastReceipt.id)+'</p><table>'+lines+'</table><strong>Total: '+esc(money(lastReceipt.total))+'</strong><p>Pago: '+esc(lastReceipt.payment)+'</p><script>window.onload=()=>window.print()<\/script></body></html>');w.document.close();
+  try{
+   if(!hardware?.load(tenantKey).printerEnabled)throw Error('Habilitá la impresora en Dispositivos para imprimir el ticket.');
+   hardware.printTicket(lastReceipt,paperSelect.value);
+  }catch(e){saleMessage.textContent=e.message||'No se pudo imprimir el comprobante.';}
  });
  const reportDay=container.querySelector('#gl-pos-report-day');
  const reportBody=container.querySelector('#gl-pos-reconcile-body');
@@ -126,7 +126,8 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
   }catch(e){finishScan();message.textContent=e.message||'No se pudo abrir la cámara.';}
  });
  stopButton.addEventListener('click',finishScan);
- activeCleanup=()=>{disposed=true;finishScan();};
+ const stopReader=root.GestLokPosDevices?.bindKeyboard(tenantKey,code=>{if(!disposed)acceptCode(code);})||(()=>{});
+ activeCleanup=()=>{disposed=true;finishScan();stopReader();};
  confirm.addEventListener('click',async()=>{
   if(submitting||!checkoutEnabled||!cart.size||!availableMethods.length)return;
   const lines=[...cart].map(([product_id,quantity])=>({product_id,quantity}));
@@ -209,6 +210,17 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
   paint();
  });
  paint();
+ activeUpdate=({products:newProducts,recentSales:newSales,report:newReport,reportDay:newDay}={})=>{
+  if(disposed)return;
+  if(Array.isArray(newProducts))catalog=root.GestLokPosCatalog?.catalog(newProducts)||[];
+  if(Array.isArray(newSales)){
+   const list=container.querySelector('.gl-pos-sales-list');
+   if(list)list.innerHTML=salesHtml(newSales);
+  }
+  if(newReport&&reportBody&&reportDay?.value===newDay)reportBody.innerHTML=reportHtml(newReport);
+  paint();
+ };
 }
-root.GestLokPosPreview=Object.freeze({render,dispose});
+function update(values){activeUpdate?.(values);}
+root.GestLokPosPreview=Object.freeze({render,dispose,update});
 })(typeof window!=='undefined'?window:globalThis);

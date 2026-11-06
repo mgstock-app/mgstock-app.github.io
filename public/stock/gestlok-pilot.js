@@ -4,10 +4,11 @@
 (() => {
  'use strict';
  let TENANT='';
- const SCANNER_MODULES=['tablero','sistema_venta','stock','precios'];
+ const SCANNER_MODULES=['tablero','sistema_venta','stock','precios','dispositivos'];
  const MODULES=[
   ['tablero','Panel del dueño','Resumen de los registros cargados en el piloto.','general'],
-  ['sistema_venta','🛒 Sistema de Ventas','Escanear productos con la cámara o un lector y preparar un carrito de prueba.','general'],
+  ['sistema_venta','🛒 Sistema de Ventas','Escanear productos, cobrar y generar tickets.','general'],
+  ['dispositivos','Dispositivos','Lectores USB/Bluetooth e impresoras térmicas para este equipo.','sistema'],
   ['pedidos','Pedidos','Preparar, controlar y cerrar pedidos de Cami por día.','general'],
   ['precios','Precios','Calcular precios de venta y ganancias por producto.','economia'],
   ['stock','Stock','Registrar unidades actuales y faltantes de cada producto.','operaciones'],
@@ -31,8 +32,8 @@
   ['resguardos','Plan de respaldos','Checklist y registro de verificaciones; no ejecuta backups.','sistema'],
   ['metas','Objetivos y planificación','Registrar metas y revisar su progreso.','economia']
  ];
- const HOME_MODULES=['sistema_venta','stock','precios'];
- const HOME_LABELS={apertura_cierre:['Caja y Finanzas','Caja, movimientos y ganancias en un mismo lugar.'],sistema_venta:['Sistema de ventas','Escanear artículos y preparar el carrito. Cobro real pendiente.'],finanzas:['Movimientos y ganancias','Registrar ingresos, gastos y reposición; consultar el saldo manual.'],stock:['Stock','Cantidades, códigos de barras y etiquetas para imprimir.'],precios:['Precios','Costos, recargos y precios de venta.']};
+ const HOME_MODULES=['sistema_venta','stock','precios','dispositivos'];
+ const HOME_LABELS={apertura_cierre:['Caja y Finanzas','Caja, movimientos y ganancias en un mismo lugar.'],sistema_venta:['Sistema de ventas','Escanear productos, cobrar y emitir tickets térmicos.'],finanzas:['Movimientos y ganancias','Registrar ingresos, gastos y reposición; consultar el saldo manual.'],stock:['Stock','Cantidades, códigos de barras y etiquetas para imprimir.'],precios:['Precios','Costos, recargos y precios de venta.'],dispositivos:['Dispositivos','Lector USB/Bluetooth e impresora 58/80 mm.']};
  const DICTIONARY=Object.fromEntries(MODULES.map(([id,title,detail,group])=>[id,{title,detail,group}]));
  const fmtMoney=v=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(v||0));
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -155,6 +156,7 @@
  function current(){
   if(active==='tablero')return dashboard();
   if(active==='sistema_venta')return '<div id="gl-pos-preview-mount"><p>Cargando escáner…</p></div>';
+  if(active==='dispositivos')return window.GestLokPosDevices?.renderSettings?.(TENANT)||'<p>Cargando configuración de dispositivos…</p>';
   if(active==='pedidos')return window.GestLokPedidos?.render?.()||'<p>No se pudo cargar el módulo Pedidos.</p>';
   if(active==='precios'||active==='stock')return window.GestLokPreciosStock?.render?.()||'<p>No se pudo cargar Precios y Stock.</p>';
   if(active==='auditoria')return '<h2>Auditoría de este piloto</h2><p>Registro automático de altas, cambios y eliminaciones realizados acá. No reemplaza la auditoría completa de GESTLOK.</p>'+activity();
@@ -182,6 +184,7 @@
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
     '<footer class="gl-pilot-footer">Plan Scanner privado: las ventas solo se registran cuando el dueño tiene habilitada la operación. No modifica datos de Mi Gusto ni de otras empresas.</footer></div>';
   document.body.classList.add('gl-pilot-open');
+  if(active==='dispositivos')window.GestLokPosDevices?.mountSettings?.(root.querySelector('#gl-pilot-content'),TENANT);
  }
  async function open(){
   if(displayed||!enabled)return;
@@ -192,10 +195,10 @@
   finally{loading=false;render();}
  }
  async function openOrders(){return;}
- const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','payment-split.js','checkout-client.js','pos-preview.js'];
+ const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','payment-split.js','checkout-client.js','pos-devices.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
-   const src='/stock/sistema-venta/'+file+'?rev=scanner-resumen-20261105';
+   const src='/stock/sistema-venta/'+file+'?rev=scanner-devices-receipts-20261105';
    if(document.querySelector('script[data-pos-src="'+file+'"]'))continue;
    await new Promise((resolve,reject)=>{
     const el=document.createElement('script');
@@ -256,11 +259,23 @@
      if(res.error)throw res.error;
      return res.data;
     },
-    onSale:async result=>{
+    onSale:async()=>{
      window.GestLokPreciosStock?.reset?.();
-     if(displayed&&active==='sistema_venta'){
-      await openPosPreview();
-      api?.toast?.('Venta guardada correctamente. Comprobante '+result.saleId.slice(0,8)+'.');
+     if(!displayed||active!=='sistema_venta'||api?.S?.me?.tenant_id!==TENANT)return;
+     await assertAccess();
+     const [freshProducts,freshSales,freshReport]=await Promise.all([
+      db.from('gestlok_pilot_products').select('id,name,sku,unit_price,stock_quantity,active')
+       .eq('tenant_id',TENANT).eq('active',true).order('name').limit(500),
+      db.from('gestlok_pilot_pos_sales').select('id,total,payment_method,created_at')
+       .eq('tenant_id',TENANT).order('created_at',{ascending:false}).limit(8),
+      db.rpc('gestlok_scanner_pos_resumen',{p_tenant:TENANT,p_day:scannerDay()})
+     ]);
+     if(freshProducts.error||freshSales.error||freshReport.error)throw freshProducts.error||freshSales.error||freshReport.error;
+     if(displayed&&active==='sistema_venta'&&api?.S?.me?.tenant_id===TENANT){
+      window.GestLokPosPreview?.update?.({
+       products:freshProducts.data||[],recentSales:freshSales.data||[],
+       report:freshReport.data||null,reportDay:scannerDay()
+      });
      }
     }
    });
@@ -273,7 +288,10 @@
   if(!SCANNER_MODULES.includes(section)||!enabled)return;
   if(!displayed)await open();
   if(!displayed)return;
-  active=section;editing='';error='';render();
+  if(section==='dispositivos'){
+   try{await assertAccess();await loadPosScripts();}catch(e){error=e.message||'No se pudieron cargar los dispositivos.';}
+  }
+  active=section;editing='';render();
   if(section==='sistema_venta')await openPosPreview();
   if(section==='pedidos')await window.GestLokPedidos?.open?.();
   if(section==='precios'||section==='stock')await window.GestLokPreciosStock?.open?.(section);
@@ -321,6 +339,7 @@
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
   if(e.target.closest('[data-pilot-caja]')){e.preventDefault();if(displayed)close(false);const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
+  if(e.target.closest('[data-pilot-devices]')){e.preventDefault();void switchSection('dispositivos');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
   if(e.target.closest('[data-pilot-prices]')){e.preventDefault();void switchSection('precios');return;}
   if(e.target.closest('[data-pilot-stock]')){e.preventDefault();void switchSection('stock');return;}
