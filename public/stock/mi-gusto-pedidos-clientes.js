@@ -1,5 +1,5 @@
-/* Mi Gusto: Pedidos de clientes. No se conecta a WhatsApp hasta configurar Meta.
- * Cada sucursal tiene su propio número y sus propios pedidos en servidor.
+/* Mi Gusto: Pedidos WhatsApp por sucursal. El bot requiere activación de Meta.
+ * Visualización y alertas de comandas nuevas también fuera de la pantalla Pedidos.
  * Caja, Pagos Online, Stock y pedidos de proveedores permanecen independientes. */
 (()=>{
 'use strict';
@@ -9,6 +9,10 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const pesos=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',dateStyle:'short',timeStyle:'short'}).format(new Date(x)):'—';
 let api=null,items=[],catalog=[],phone='',tab='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
+let polling=false,firstSnapshot=true,knownOrderIds=new Set(),lastNewOrderId='',lastUiSig='',lastAlertSig='';
+const PAUSE_MS=12000;
+const waIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M21 11.5a9.1 9.1 0 0 1-13.3 8L3 21l1.5-4.7A9.1 9.1 0 1 1 21 11.5Z"/><path d="M8 8.6c0 3 4.4 7.3 7.2 7.3.5 0 1.4-.5 1.6-1.1l-2-1.1-1.2 1c-1.8-.8-2.7-1.7-3.5-3.5l1-1.2-1.1-2c-.6.2-2 1-2 2.7Z"/></svg>';
+const userIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4.2"/><path d="M3.5 21c.1-4.3 3.4-7 8.5-7s8.4 2.7 8.5 7Z"/></svg>';
 const local=()=>api?.S?.local;
 const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
   !window.GestLokCreatorSupport?.previewRol?.() &&
@@ -18,6 +22,82 @@ const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
 const canEdit=()=>allowed()&&online()&&!busy&&!!window.GestLokSupabase;
 const canSetNumber=()=>allowed()&&['dueno','creadora'].includes(api.miRol());
 const escapeLines=x=>esc(x).replace(/\n/g,'<br>');
+const formatPhone=x=>{const v=String(x||'').replace(/[^0-9]/g,'');return /^5411[0-9]{8}$/.test(v)?'+54 11 '+v.slice(4,8)+'-'+v.slice(8):v?'+'+v:'Pendiente de configurar';};
+const pendingOrders=()=>items.filter(x=>x.status==='nuevo');
+const pendingCount=()=>allowed()?pendingOrders().length:0;
+const navBadge=()=>pendingCount()?'<span class="mgp-nav-count" data-mgp-nav-count aria-label="'+pendingCount()+' pedidos pendientes">'+Math.min(99,pendingCount())+(pendingCount()>99?'+':'')+'</span>':'';
+function quickAccess(){
+ if(!allowed())return '';
+ return '<nav class="mgp-shift-quick" aria-label="Atajos de turno de Mi Gusto">'+
+  '<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button mgp-shift-whatsapp">'+waIcon+'<span><strong>Pedidos WhatsApp</strong><small><span data-mgp-quick-count>'+pendingCount()+'</span> pendientes de OK</small></span></button>'+
+ '</nav>';
+}
+const signature=rows=>rows.map(x=>[x.id,x.status,x.created_at,x.received_at].join(':')).join('|');
+function indicators(){
+ if(!allowed())return hideAlert();
+ const count=pendingCount(),pending=pendingOrders();
+ // Contadores visibles tanto en el menú lateral como en el atajo del Inicio.
+ const nav=document.querySelector?.('#snav button[data-go="pedidos-clientes"]');
+ if(nav&&document.createElement){
+   let badge=nav.querySelector('[data-mgp-nav-count]');
+   if(count){
+     if(!badge){badge=document.createElement('span');badge.className='mgp-nav-count';badge.dataset.mgpNavCount='';nav.appendChild(badge);}
+     badge.textContent=String(Math.min(99,count))+(count>99?'+':'');
+     badge.setAttribute('aria-label',count+' pedidos pendientes');
+   }else badge?.remove();
+ }
+ document.querySelectorAll?.('[data-mgp-quick-count]')?.forEach(el=>{el.textContent=String(count);});
+ window.GestLokMobileDock?.refresh?.();
+ let banner=document.getElementById?.('mgp-global-alert');
+ if(!count){banner?.remove();lastAlertSig='';lastNewOrderId='';return;}
+ if(!banner){
+   if(!document.createElement||!document.body)return;
+   banner=document.createElement('aside');banner.id='mgp-global-alert';banner.className='mgp-global-alert';
+   banner.setAttribute('role','status');banner.setAttribute('aria-live','polite');
+   document.body.appendChild(banner);
+ }
+ const latest=pending.find(o=>o.id===lastNewOrderId);
+ const sig=[local(),count,lastNewOrderId,latest?.customer_name,online()].join('|');
+ if(sig===lastAlertSig)return;
+ lastAlertSig=sig;
+ banner.classList.toggle('mgp-global-alert-new',!!latest);
+ const title=latest?'¡Nueva comanda por WhatsApp!':'Pedidos WhatsApp pendientes';
+ const desc=latest?esc(latest.customer_name)+' · '+count+' pendiente'+(count===1?'':'s')+' de OK':count+' pedido'+(count===1?'':'s')+' por revisar en '+esc(LOCALS[local()]);
+ banner.innerHTML='<span class="mgp-alert-icon">'+waIcon+'</span><div class="mgp-alert-copy"><strong>'+title+'</strong><small>'+desc+'</small></div>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedidos</button>';
+}
+function hideAlert(){
+ document.getElementById?.('mgp-global-alert')?.remove();
+ lastAlertSig='';
+}
+function acceptOrders(rows,loc){
+ if(loc!==local()||!allowed())return false;
+ const next=Array.isArray(rows)?rows.filter(x=>x.local===loc):[];
+ const nextSig=signature(next),was=lastUiSig;
+ if(!firstSnapshot){
+   const fresh=next.find(x=>x.status==='nuevo'&&!knownOrderIds.has(String(x.id)));
+   if(fresh)lastNewOrderId=fresh.id;
+ }
+ for(const item of next)knownOrderIds.add(String(item.id));
+ firstSnapshot=false;items=next;lastUiSig=nextSig;
+ if(lastNewOrderId&&!next.some(x=>x.id===lastNewOrderId&&x.status==='nuevo'))lastNewOrderId='';
+ indicators();
+ return nextSig!==was;
+}
+async function checkIncoming(){
+ if(!allowed()||!online()||polling||busy||loading)return;
+ const request=epoch,loc=local();polling=true;
+ try{
+  const state=await rpc('gestlok_mg_orders_state');
+  if(request!==epoch||loc!==local()||!allowed())return;
+  const changed=acceptOrders(state?.orders,loc);
+  if(changed&&api?.S.view==='pedidos-clientes')update();
+ }catch(e){
+  // No se ocultan comandas previamente recibidas por un corte momentáneo.
+  if(loc===local()&&api?.S.view==='pedidos-clientes')error=e.message||'No se pudieron actualizar los pedidos.';
+ }finally{polling=false;}
+}
 function update(force=false,preserve=true){
  if(api?.S.view!=='pedidos-clientes'||!allowed())return;
  // El refresco periódico no debe cortar la escritura de un pedido.
@@ -52,7 +132,7 @@ async function refresh(){
   const [result,prices]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog')]);
   if(request!==epoch||loc!==local())return;
   catalog=Array.isArray(prices)?prices:[];
-  items=Array.isArray(result?.orders)?result.orders.filter(x=>x.local===loc):[];
+  acceptOrders(result?.orders,loc);
   phone=String(result?.whatsapp_number||'');loaded=true;error='';
  }catch(e){if(request===epoch&&loc===local())error=e.message||'No pudimos consultar los pedidos.';}
  finally{if(request===epoch){loading=false;update();}}
@@ -124,7 +204,7 @@ async function refreshAfterSave(){
   const [result,prices]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog')]);
   if(request===epoch&&loc===local()){
    catalog=Array.isArray(prices)?prices:[];
-   items=Array.isArray(result?.orders)?result.orders.filter(x=>x.local===loc):[];
+   acceptOrders(result?.orders,loc);
    phone=String(result?.whatsapp_number||'');loaded=true;
   }
  }catch(e){error='Guardado, pero no se pudo actualizar la lista: '+(e.message||'');}
@@ -194,11 +274,19 @@ function attach(h){
 function subscribe(loc,push){
  if(!allowed()||!(loc in LOCALS))return;
  void refresh();
- const timer=setInterval(()=>{if(api?.S.view==='pedidos-clientes'&&!document.hidden&&!busy)void refresh();},20000);
- const focused=()=>{if(api?.S.view==='pedidos-clientes')void refresh();};
+ // La alerta se consulta durante cualquier pantalla, incluso Pagos Online.
+ // Se evita redibujar formularios ajenos: solo se actualizan el aviso flotante y los contadores.
+ const timer=setInterval(()=>{if(!document.hidden)void checkIncoming();},PAUSE_MS);
+ const focused=()=>{void checkIncoming();};
+ const visible=()=>{if(!document.hidden)void checkIncoming();};
  window.addEventListener('focus',focused);
- push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);});
+ document.addEventListener('visibilitychange',visible);
+ push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);document.removeEventListener('visibilitychange',visible);hideAlert();});
 }
-function reset(){epoch++;items=[];catalog=[];phone='';tab='pendientes';loading=false;busy=false;error='';notice='';loaded=false;}
-window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,_test:{esc,pesos,orderCard}});
+function reset(){
+ epoch++;items=[];catalog=[];phone='';tab='pendientes';loading=false;busy=false;polling=false;
+ error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
+}
+window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
+ _test:{esc,pesos,orderCard,acceptOrders,indicators,formatPhone,checkIncoming}});
 })();
