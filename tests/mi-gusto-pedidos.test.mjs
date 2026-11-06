@@ -53,7 +53,8 @@ test('números y pedidos distintos al cambiar de sucursal',async()=>{
  assert.match(s.orders.view(),/Cliente Torcuato/);
  assert.match(s.orders.view(),/5491122222222/);
  assert.doesNotMatch(s.orders.view(),/Cliente Munro/);
- assert.deepEqual(s.calls.map(c=>c.p_local),['munro','torcuato']);
+ assert.deepEqual(s.calls.filter(c=>c.method==='gestlok_mg_orders_state').map(c=>c.p_local),['munro','torcuato']);
+ assert.deepEqual(s.calls.filter(c=>c.method==='gestlok_mg_orders_catalog').map(c=>c.p_local),['munro','torcuato']);
 });
 test('escapa HTML aportado por clientes y no crea cobros automáticos',()=>{
  const s=setup();

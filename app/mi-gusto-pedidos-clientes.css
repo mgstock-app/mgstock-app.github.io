@@ -42,3 +42,14 @@
 .mgp-empty{border:1px dashed #d3dee9;border-radius:12px;background:#fbfcfe;padding:28px;text-align:center;color:#67788a}
 .mgp-footnote{margin:0;font-size:12px;line-height:1.5;color:#7c8795}
 @media(max-width:640px){.mgp-head{padding:16px;flex-direction:column}.mgp-head h2{font-size:22px}.mgp-form{grid-template-columns:1fr}.mgp-form label:nth-child(n){grid-column:1/-1}.mgp-card{padding:14px}.mgp-card-bottom{align-items:flex-start;flex-direction:column}.mgp-button{white-space:normal;max-width:100%}.mgp-tabs button{padding:10px 12px;font-size:13px}}
+
+/* Carta para el bot: solo dentro del módulo Mi Gusto. */
+.mgp-menu-list{display:grid;gap:0;margin:0 16px 14px;border:1px solid #e0e7ef;border-radius:11px;overflow:hidden}
+.mgp-menu-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;background:#fff;border-bottom:1px solid #edf0f3}
+.mgp-menu-item:last-child{border-bottom:0}
+.mgp-menu-item strong{display:block;font-size:13px;font-weight:650;color:#20334a;overflow-wrap:anywhere}
+.mgp-menu-item small{display:block;margin-top:4px;color:#65758a}
+.mgp-menu-actions{display:flex;gap:8px;flex:0 0 auto}
+.mgp-menu-actions button{border:1px solid #ced9e6;border-radius:8px;padding:7px 11px;background:#f9fafc;color:#12345a;font-size:12px;font-weight:650}
+.mgp-menu-actions button:focus-visible{outline:2px solid #12345a}
+@media(max-width:600px){.mgp-menu-item{align-items:flex-start;flex-direction:column}.mgp-menu-actions{width:100%}.mgp-menu-actions button{flex:1}}
