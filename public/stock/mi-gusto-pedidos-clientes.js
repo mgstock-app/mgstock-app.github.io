@@ -18,7 +18,25 @@ const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
 const canEdit=()=>allowed()&&online()&&!busy&&!!window.GestLokSupabase;
 const canSetNumber=()=>allowed()&&['dueno','creadora'].includes(api.miRol());
 const escapeLines=x=>esc(x).replace(/\n/g,'<br>');
-function update(){if(api?.S.view==='pedidos-clientes'&&allowed())api.render();}
+function update(force=false,preserve=true){
+ if(api?.S.view!=='pedidos-clientes'||!allowed())return;
+ // El refresco periódico no debe cortar la escritura de un pedido.
+ if(!force&&document.activeElement?.closest?.('#mgp-order-form,#mgp-number-form'))return;
+ const forms=preserve?Array.from(document.querySelectorAll?.('#mgp-order-form,#mgp-number-form')||[]).map(f=>({
+  id:f.id,open:!!f.closest('details')?.open,
+  fields:Array.from(f.elements).filter(el=>el.name&&'value' in el).map(el=>({name:el.name,value:el.value}))
+ })):[];
+ api.render();
+ for(const snapshot of forms){
+  const form=document.getElementById?.(snapshot.id);
+  if(!form)continue;
+  const details=form.closest('details');if(details)details.open=snapshot.open;
+  for(const field of snapshot.fields){
+   const el=form.elements.namedItem(field.name);
+   if(el&&'value' in el)el.value=field.value;
+  }
+ }
+}
 async function rpc(method,args={}){
  if(!allowed()||!window.GestLokSupabase)throw new Error('No tenés acceso a los pedidos de esta sucursal.');
  if(!online())throw new Error('Para actualizar Pedidos necesitás conexión.');
@@ -81,11 +99,12 @@ function view(){
 async function action(method,args,success){
  if(!canEdit())return;
  busy=true;error='';notice='';update();
+ let saved=false;
  try{
   await rpc(method,args);
-  notice=success;await refreshAfterSave();
+  saved=true;notice=success;await refreshAfterSave();
  }catch(e){error=e.message||'No se pudo guardar.';}
- finally{busy=false;update();}
+ finally{busy=false;update(true,!saved);}
 }
 async function refreshAfterSave(){
  const request=++epoch,loc=local();
