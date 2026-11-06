@@ -40,7 +40,7 @@ test('módulo aislado: nunca habilita otras empresas ni colaboradores',()=>{
  assert.equal(setup().orders.permitido(),true);
 });
 test('números y pedidos distintos al cambiar de sucursal',async()=>{
- const s=setup();
+ const s=setup({locals:['munro','torcuato']});
  s.orders.subscribe('munro',()=>{});
  await tick();
  assert.match(s.orders.view(),/Cliente Munro/);
