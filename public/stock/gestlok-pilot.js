@@ -53,10 +53,17 @@
   checking=true;
   const epoch=accessEpoch;
   try{
+   // A new Stock tenant can be claimed only by its verified, registered owner.
+   // Existing tenants have no enrollment record; the RPC returns false without changes.
+   const identity=await window.GestLokSupabase.auth.getUser();
+   if(epoch!==accessEpoch)return;
+   if(identity.data?.user?.id){
+    const claim=await window.GestLokSupabase.rpc('gestlok_scanner_claim_new_company',{p_tenant:TENANT});
+    if(claim.error && claim.error.code!=='PGRST202')throw claim.error;
+   }
    const {data,error:err}=await window.GestLokSupabase.from('gestlok_pilot_access')
     .select('enabled,owner_uid,plan_code').eq('tenant_id',TENANT).maybeSingle();
    if(err)throw err;
-   const identity=await window.GestLokSupabase.auth.getUser();
    if(epoch!==accessEpoch)return;
    enabled=data?.plan_code==='scanner'&&!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
    ownerUid=enabled?identity.data.user.id:'';

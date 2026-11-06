@@ -1,0 +1,2 @@
+-- Superseded: rm_app_local is not the Stock runtime local table.
+-- Kept as a no-op for migration history; see the Stock tenant enrollment migration.
