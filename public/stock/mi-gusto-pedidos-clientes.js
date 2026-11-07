@@ -164,7 +164,9 @@ async function refresh(){
 function itemsHtml(o){
  const rows=Array.isArray(o.items)?o.items:[];
  if(!rows.length)return escapeLines(o.items_detail);
- return '<ul class="mgp-items">'+rows.map(r=>'<li><span><b>'+esc(r.quantity)+' ×</b> '+esc(r.name)+'</span><span>'+pesos(Number(r.quantity)*Number(r.price))+'</span></li>').join('')+'</ul>';
+ return '<ul class="mgp-items">'+rows.map(r=>'<li><span><b>'+esc(r.quantity)+' ×</b> '+esc(r.name)+
+  (r.details?'<br><small>'+esc(r.details)+'</small>':'')+
+  '</span><span>'+pesos(Number(r.quantity)*Number(r.price))+'</span></li>').join('')+'</ul>';
 }
 function orderCard(o){
  const done=o.status==='recibido',isWA=o.source==='whatsapp';
