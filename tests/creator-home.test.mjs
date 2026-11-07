@@ -50,11 +50,12 @@ test('El inicio muestra los datos reales, escapa textos y no inventa planes ni s
   const r = load(async () => ({data: DASH, error: null}));
   r.h.mode(); await tick(); await tick();
   const html = r.h.view({pending: 2, parts: {}});
-  for (const t of ['Mis empresas', 'Mis locales', 'Administración y herramientas', 'Mi Gusto', 'Usuarios y accesos', 'Empleados y horarios']) assert.ok(html.includes(t), t);
+  for (const t of ['Empresas activas', 'Administración y herramientas', 'Mi Gusto', 'Usuarios y accesos', 'Empleados y horarios']) assert.ok(html.includes(t), t);
   assert.ok(!/Suscripcion|Planes|Enterprise|Profesional/i.test(html));
   assert.ok(html.includes('Perfumes &lt;b&gt;') && !html.includes('Perfumes <b>'));
   assert.ok(!html.includes('Crecimiento de GESTLOK'));
-  assert.ok(html.includes('Tu empresa'));
+  assert.ok(!html.includes('<h2>Mis empresas</h2>') && !html.includes('<h2>Mis locales</h2>'));
+  assert.ok(!html.includes('Tu empresa'));
 });
 test('Las pestañas muestran el contenido existente y recuerdan la elegida', async () => {
   const r = load(async () => ({data: DASH, error: null}));
@@ -81,7 +82,7 @@ test('El panel central informa edición permanente sin pedir cerrarla', async ()
  const r=load(async()=>({data:DASH,error:null}),{permanent:true});
  r.h.mode(); await tick(); await tick();
  const html=r.h.view({pending:0,parts:{}});
- assert.match(html,/Mis empresas/);
+ assert.match(html,/Empresas activas/);
  assert.doesNotMatch(html,/Tu cuenta está en solo lectura|cerrala al terminar/);
 });
 
@@ -94,7 +95,7 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
   {tenant_id:'t-3',name:'Empresa <script>',locals:[{id:'l-3',name:'Local <externo>'}]},
  ];
  const html=r.h.view({pending:0,parts:{},companies,quickLocals:'SOLO MI GUSTO'});
- for (const name of ['Mis empresas','Mis locales','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Horarios','Empleados']) {
+ for (const name of ['Empresas activas','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Horarios','Empleados']) {
   assert.ok(html.includes(name),name);
  }
  assert.ok(html.includes('data-act="local" data-id="munro"'));
@@ -103,8 +104,47 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
  assert.ok(html.includes('data-company-local="l-3" data-company-tenant="t-3"'));
  assert.ok(html.includes('Empresa &lt;script&gt;')&&!html.includes('Empresa <script>'));
  assert.ok(html.includes('Local &lt;externo&gt;'));
- assert.ok(!html.includes('SOLO MI GUSTO'),'El índice completo sustituye los dos locales actuales');
- assert.equal((html.match(/class="gl-ch-quick-local"/g)||[]).length,4);
+ assert.ok(!html.includes('SOLO MI GUSTO'),'No existe una sección separada de Mis locales');
+ assert.ok(!html.includes('<h2>Mis locales</h2>'));
+ assert.ok(!html.includes('<h2>Mis empresas</h2>'));
+ assert.equal((html.match(/class="gl-ch-company-card"/g)||[]).length,3,'Una tarjeta por empresa');
+ assert.equal((html.match(/class="gl-ch-company-locals"/g)||[]).length,3,'Cada empresa contiene sus locales');
+ assert.equal((html.match(/class="gl-ch-company-local-grid"/g)||[]).length,3);
+ assert.equal((html.match(/data-creator-company=/g)||[]).length,3);
+ assert.equal((html.match(/class="gl-ch-quick-local gl-ch-company-local"/g)||[]).length,4,'Cada local tiene tarjeta y apertura propia');
  assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,6);
- assert.equal((html.match(/data-ch-tab="locales"/g)||[]).length>=7,true);
+ assert.ok(html.includes('data-ch-tab="locales"'),'Se conserva la navegación de Locales');
+});
+
+
+test('Solo creadora: empresa nueva genera automáticamente una tarjeta separada, sin cambiar otros paneles',async()=>{
+ const r=load(async()=>({data:DASH,error:null}));
+ r.h.mode();await tick();await tick();
+ const companies=[
+  {tenant_id:'t-1',name:'Mi Gusto',locals:[{id:'munro',name:'Munro'}]},
+  {tenant_id:'t-2',name:'Perfumes',locals:[{id:'perfumes',name:'Tienda'}]},
+  {tenant_id:'t-3',name:'El Molino Café',locals:[{id:'acassuso',name:'Acassuso'},{id:'sanisidro',name:'San Isidro'}]},
+  {tenant_id:'t-4',name:'Empresa nueva',locals:[{id:'nuevo',name:'Sucursal nueva'}]}
+ ];
+ const html=r.h.view({pending:0,parts:{},companies});
+ for(const c of companies){
+   assert.ok(html.includes('data-creator-company="'+c.tenant_id+'"'),'Falta tarjeta: '+c.name);
+   assert.ok(html.includes(c.name));
+ }
+ assert.equal((html.match(/class="gl-ch-company-card"/g)||[]).length,4);
+ assert.equal((html.match(/class="gl-ch-quick-local gl-ch-company-local"/g)||[]).length,5);
+ assert.ok(html.includes('data-company-local="nuevo" data-company-tenant="t-4"'));
+ assert.ok(html.includes('data-act="local" data-id="munro"'));
+ assert.doesNotMatch(html,/<h2>Mis locales<\/h2>|<h2>Mis empresas<\/h2>|Tu empresa/);
+ assert.match(html,/<h2>Empresas activas<\/h2>/);
+ assert.match(html,/class="gl-ch-company-grid"/);
+});
+
+test('El índice de empresas mantiene accesos correctos cuando no se cargó el detalle de locales',async()=>{
+ const r=load(async()=>({data:DASH,error:null}));
+ r.h.mode();await tick();await tick();
+ const html=r.h.view({pending:0,parts:{},companies:[{tenant_id:'x',name:'Local en preparación',locals:2}]});
+ assert.ok(html.includes('Local en preparación'));
+ assert.ok(html.includes('data-ch-tab="locales"'));
+ assert.ok(!html.includes('Sin locales registrados'));
 });
