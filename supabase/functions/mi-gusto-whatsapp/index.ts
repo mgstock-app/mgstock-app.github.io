@@ -145,8 +145,10 @@ async function send(c:ReturnType<typeof config>,loc:Local,to:string,phoneId:stri
 }
 Deno.serve(async(req:Request)=>{
  const c=config();
- if(!ready(c))return json(503,{ok:false,error:"Integración sin habilitar"});
+ // Meta puede verificar el callback antes de activar el bot. No requiere
+ // credenciales de envío ni permite procesar mensajes entrantes con el bot apagado.
  if(req.method==="GET"){
+  if(!c.verify)return json(503,{ok:false,error:"Verificación de Meta sin configurar"});
   const url=new URL(req.url);
   const mode=url.searchParams.get("hub.mode"),token=url.searchParams.get("hub.verify_token");
   const challenge=url.searchParams.get("hub.challenge")||"";
@@ -154,6 +156,7 @@ Deno.serve(async(req:Request)=>{
    return json(403,{ok:false,error:"Verificación no autorizada"});
   return new Response(challenge,{status:200,headers:{"Content-Type":"text/plain","Cache-Control":"no-store"}});
  }
+ if(!ready(c))return json(503,{ok:false,error:"Integración sin habilitar"});
  if(req.method!=="POST")return json(405,{ok:false,error:"Método inválido"});
  if(Number(req.headers.get("content-length")||0)>1024*1024)return json(413,{ok:false,error:"Body muy grande"});
  let raw:Uint8Array;
