@@ -41,6 +41,7 @@ function update(session){
  node.hidden=!visible;
  node.disabled=false;
  node.removeAttribute('aria-busy');
+ const label=node.querySelector('span');if(label)label.textContent='Cerrar sesión';
  document.documentElement.classList.toggle('gl-universal-logout-ready',visible);
 }
 sb.auth.onAuthStateChange((event,session)=>{
