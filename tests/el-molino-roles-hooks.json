@@ -1,0 +1,33 @@
+{
+  "comment": "Reversible, scoped El Molino role changes. Original stock fingerprint must remain unchanged.",
+  "hooks": [
+    {
+      "actual": "// En El Molino Café, Dueño se incorpora luego desde administración con\n// su correo real. El único rol asignable desde el equipo es Gerente.\nconst molinoRoles = () => S.me?.tenant_id === '6c8717ea-5f78-426b-9458-74a5dcac6e4e';\nconst rolSelect = (attr, rol) => molinoRoles()\n  ? `<select class=\"rolsel\" ${attr}><option value=\"gerente\" selected>Gerente</option></select>`\n  : `<select class=\"rolsel\" ${attr}><option value=\"gerente\" ${ROLN(rol) !== 'lectura' ? 'selected' : ''}>Gerente</option><option value=\"lectura\" ${ROLN(rol) === 'lectura' ? 'selected' : ''}>Solo ver</option></select>`;\n",
+      "original": "const rolSelect = (attr, rol) => `<select class=\"rolsel\" ${attr}><option value=\"gerente\" ${ROLN(rol) !== 'lectura' ? 'selected' : ''}>Gerente</option><option value=\"lectura\" ${ROLN(rol) === 'lectura' ? 'selected' : ''}>Solo ver</option></select>`;\n"
+    },
+    {
+      "actual": "  return `<div class=\"note warn\" style=\"margin:0;display:grid;gap:4px\"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>${molinoRoles()?'Revisá las solicitudes. Los dueños se incorporan desde Administración y los gerentes reciben sus locales autorizados.':'Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.'}</span></div>\n",
+      "original": "  return `<div class=\"note warn\" style=\"margin:0;display:grid;gap:4px\"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.</span></div>\n"
+    },
+    {
+      "actual": "  const sel = document.getElementById('sol-rol-' + id), rol = !molinoRoles() && sel && sel.value === 'lectura' ? 'lectura' : 'gerente';\n",
+      "original": "  const sel = document.getElementById('sol-rol-' + id), rol = sel && sel.value === 'lectura' ? 'lectura' : 'gerente';\n"
+    },
+    {
+      "actual": "  if(molinoRoles() && rol !== 'gerente'){ toast('El Molino Café solo permite Dueño y Gerente. El dueño se asignará desde Administración.',true); return; }\n",
+      "original": "\n"
+    },
+    {
+      "actual": "    <p class=\"lead\">${molinoRoles() ? 'El Molino Café tiene únicamente dos roles de trabajo: <b>Dueño</b> (acceso a ambas sucursales; pendiente de su correo) y <b>Gerente</b> (acceso a los locales asignados). Tu cuenta es la Administradora General encargada de preparar la tienda. No hay colaboradores ni accesos de solo lectura.' : `Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : 'La lista la maneja la administradora.'}`}</p>\n",
+      "original": "    <p class=\"lead\">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>\n"
+    },
+    {
+      "actual": "      <div class=\"fld\"><label for=\"eq-rol\">Rol</label><select id=\"eq-rol\"><option value=\"gerente\">Gerente</option>${molinoRoles()?'':'<option value=\"lectura\">Solo ver</option>'}</select></div></div>\n",
+      "original": "      <div class=\"fld\"><label for=\"eq-rol\">Rol</label><select id=\"eq-rol\"><option value=\"gerente\">Gerente</option><option value=\"lectura\">Solo ver</option></select></div></div>\n"
+    },
+    {
+      "actual": "  rol = !molinoRoles() && rol === 'lectura' ? 'lectura' : 'gerente';\n",
+      "original": "  rol = rol === 'lectura' ? 'lectura' : 'gerente';\n"
+    }
+  ]
+}
