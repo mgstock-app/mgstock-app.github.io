@@ -93,3 +93,10 @@
  .gl-invite-review-actions{flex-direction:column}
  .gl-invite-review-actions button{width:100%}
 }
+
+/* Los nuevos invitados ingresan únicamente con Google. No afecta cuentas
+   históricas con contraseña mientras sus accesos se migran. */
+#au-in.gl-invite-google-only .au-or,
+#au-in.gl-invite-google-only .fld,
+#au-in.gl-invite-google-only > button[type="submit"],
+#au-in.gl-invite-google-only .au-links{display:none!important}
