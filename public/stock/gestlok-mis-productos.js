@@ -11,7 +11,7 @@
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
- let visible=false,tabs=[],items=[],tabId='',loading=false,busy=false,error='',notice='',editing='',itemForm=false;
+ let visible=false,tabs=[],items=[],tabId='',loading=false,busy=false,error='',notice='',editing='',itemForm=false,searchTerm='';
  const db=()=>window.GestLokSupabase;
  const validContext=(ctx,host)=>ctx?.tenant_id===TENANT&&ctx?.role==='dueno'&&host?.role?.()==='dueno'
   &&host?.S?.me?.tenant_id===TENANT&&String(host.S.me.email||'').toLowerCase()===EMAIL;
@@ -24,7 +24,7 @@
  }
  function reset(){
   epoch++;allowed=false;checked=false;checking=false;context=null;api=null;
-  tabs=[];items=[];tabId='';editing='';itemForm=false;error='';notice='';
+  tabs=[];items=[];tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
   close(false);
  }
  async function refresh(ctx,host){
@@ -75,7 +75,10 @@
   if(!selected){items=[];render();return;}
   const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,position,created_at','position',{key:'tab_id',value:selected});
   if(ticket!==epoch||tabId!==selected||!visible)return;
-  items=next;render();
+  // Fecha de alta, no fecha de edición: las preferencias no alteran el orden.
+  items=next.sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)
+   ||(Number(b.position)||0)-(Number(a.position)||0)||String(b.id).localeCompare(String(a.id)));
+  render();
  }
  function status(value,selected,id,label){
   const isSelected=value===selected;
@@ -89,6 +92,18 @@
     '<td><div class="gl-mp-actions"><button type="button" data-mp-print="'+esc(item.id)+'" aria-label="Imprimir nombre de '+esc(item.product)+' en NIIMBOT D110">Imprimir nombre</button><button type="button" data-mp-edit="'+esc(item.id)+'" aria-label="Editar '+esc(item.product)+'">Editar</button>'+
     '<button type="button" data-mp-delete="'+esc(item.id)+'" class="is-danger" aria-label="Eliminar '+esc(item.product)+'">Eliminar</button></div></td></tr>';
  }
+ function matchesSearch(item){
+  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es').trim();
+  return norm(item.product).includes(norm(searchTerm));
+ }
+ function matchingItems(){return searchTerm.trim()?items.filter(matchesSearch):items;}
+ function rowsHtml(){
+  const found=matchingItems();
+  return found.length?found.map(row).join(''):items.length
+   ?'<tr><td colspan="5" class="gl-mp-empty">No encontramos productos con ese nombre.</td></tr>'
+   :'<tr><td colspan="5" class="gl-mp-empty">Tu hoja está vacía. Agregá el primer producto.</td></tr>';
+ }
+ function resultLabel(){return searchTerm.trim()?matchingItems().length+' de '+items.length+' productos':'Más recientes primero';}
  function form(){
   const item=items.find(x=>x.id===editing);
   return '<form id="gl-mp-form" class="gl-mp-form"><h3>'+(item?'Editar producto':'Agregar producto')+'</h3>'+
@@ -121,10 +136,12 @@
    (loading?'<p role="status">Cargando tu lista privada…</p>':!current?'<div class="gl-mp-empty"><p>Todavía no tenés pestañas. Creá una para empezar.</p></div>':
     '<section class="gl-mp-sheet"><header class="gl-mp-listhead"><div><h3>'+esc(current.name)+'</h3><small>'+items.length+' productos</small></div>'+
       '<div class="gl-mp-tab-actions"><button type="button" data-mp-rename>Renombrar pestaña</button><button type="button" data-mp-remove-tab class="is-danger">Eliminar pestaña</button></div></header>'+
-      '<div class="gl-mp-list-controls"><button type="button" class="gl-mp-primary" data-mp-new>+ Agregar producto</button></div>'+
+      '<div class="gl-mp-list-controls"><button type="button" class="gl-mp-primary" data-mp-new>+ Agregar producto</button>'+
+      '<label class="gl-mp-search" for="gl-mp-search"><span>Buscar producto</span><input id="gl-mp-search" type="search" data-mp-search placeholder="Buscar por nombre…" autocomplete="off" value="'+esc(searchTerm)+'"></label>'+
+      '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
       '<div class="gl-mp-scroll"><table class="gl-mp-table"><thead><tr><th>Producto</th><th>Tipo de fragancia</th><th>Me gustó / No me gustó</th><th>Nota</th><th>Acciones</th></tr></thead>'+
-      '<tbody>'+(items.length?items.map(row).join(''):'<tr><td colspan="5" class="gl-mp-empty">Tu hoja está vacía. Agregá el primer producto.</td></tr>')+'</tbody></table></div>'+
+      '<tbody>'+rowsHtml()+'</tbody></table></div>'+
       '<p class="gl-mp-hint">Podés agregar todos los productos que necesites. Cada pestaña conserva su propia lista.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
@@ -132,7 +149,7 @@
  async function open(){
   if(visible)return;
   if(!allowed||!validContext(context,api))return;
-  visible=true;loading=true;error='';notice='';
+  visible=true;loading=true;searchTerm='';error='';notice='';
   window.history?.pushState({...window.history.state,glMisProductos:true},'');
   render();
   try{await load();}catch(err){error=err.message||'No pudimos cargar tus productos.';}
@@ -141,7 +158,7 @@
  function close(back=true){
   removePrintModal();
   if(!visible)return;
-  visible=false;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
+  visible=false;searchTerm='';$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
    if(back)window.history.back();
    else window.history.replaceState({...window.history.state,glMisProductos:false},'');
@@ -150,7 +167,7 @@
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
   removePrintModal();
-  tabId=id;itemForm=false;editing='';error='';notice='';loading=true;render();
+  tabId=id;itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
  }
@@ -169,7 +186,7 @@
    const q=old?db().from(TABS).update({name}).eq('id',old).eq('tenant_id',TENANT)
     :db().from(TABS).insert({name,tenant_id:TENANT,position:tabs.length});
    const r=await q.select('id').single();if(r.error)throw r.error;
-   tabId=old||r.data.id;await load();
+   tabId=old||r.data.id;if(!old)searchTerm='';await load();
   },'Pestaña guardada.');
  }
  async function deleteTab(){
@@ -411,6 +428,16 @@
   const like=el.closest('[data-mp-like]');if(like){void vote(like.dataset.mpLike,like.dataset.value==='yes');return;}
  });
  document.addEventListener('input',e=>{
+  const search=e.target.closest('[data-mp-search]');
+  if(search&&visible){
+   searchTerm=search.value;
+   // Filtrar solo las filas: el input mantiene el foco en Android.
+   const tbody=$('#gl-mp-panel .gl-mp-table tbody');
+   const count=$('#gl-mp-panel [data-mp-count]');
+   if(tbody)tbody.innerHTML=rowsHtml();
+   if(count)count.textContent=resultLabel();
+   return;
+  }
   const field=e.target.closest('[data-mp-label-text]');
   const modal=field?.closest('[data-mp-label-modal]');
   if(modal)updateLabelPreview(modal);
