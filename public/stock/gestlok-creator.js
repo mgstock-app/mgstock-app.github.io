@@ -143,7 +143,7 @@
   function list(){
     return '<section class="card pad"><div class="gl-demo-section-title"><h3>Empresas que preparaste</h3><button class="btn sm" data-creator-refresh>Actualizar lista</button></div>'+
     (s.companies.length?s.companies.map(c=>'<article class="gl-demo-line"><div><b>'+esc(c.nombre)+'</b><small>'+esc(c.local)+' · '+esc(modeName[c.modalidad]||c.modalidad)+
-      ' · '+esc(c.correo_dueno)+'</small></div><span class="gl-demo-chip">'+esc(c.productos)+' productos</span></article>').join(''):'<p class="lead">Todavía no hay empresas nuevas preparadas.</p>')+
+      ' · '+esc(c.correo_dueno||'Dueño pendiente')+'</small></div><span class="gl-demo-chip">'+esc(c.productos)+' productos</span></article>').join(''):'<p class="lead">Todavía no hay empresas nuevas preparadas.</p>')+
     '</section>';
   }
   function view(){
