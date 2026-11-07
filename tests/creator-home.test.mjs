@@ -14,15 +14,25 @@ const DASH = {
   activity: [{at: '2026-10-26T03:31:42Z', kind: 'audit', what: 'employee_space_created', who: null, company: 'Perfumes'}, {at: '2026-10-26T03:22:11Z', kind: 'login', what: 'login', who: 'kmu***@gmail.com', company: 'Mi Gusto'}],
   system: {accounts: 6, confirmed_accounts: 6, verified_links: 2, editing_open: false, support_open: false}
 };
-function load(rpc, {creadora = true, permanent = false} = {}) {
-  const listeners = {}, calls = [], store = new Map();
-  let renders = 0;
-  const window = {GestLokCreatorMode: {state: () => ({permanent})}, sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)}, scrollTo() {}, GestLokSupabase: {rpc: async fn => { calls.push(fn); return rpc(fn); }}};
+function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen} = {}) {
+  const listeners = {}, calls = [], argsLog = [], store = existingStore || new Map(), notices = [], opened = [];
+  let renders = 0, reloads = 0, invalidations = 0;
+  const window = {
+    GestLokCreatorMode: {state: () => ({permanent})},
+    GestLokMolino: {open: tab => { opened.push(tab); molinoOpen?.(tab); }},
+    GestLokOffline: {pending: async () => 0, invalidateContext: async () => { invalidations++; }},
+    location: {reload(){reloads++;}},
+    sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)},
+    scrollTo() {},
+    GestLokSupabase: {rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
+  };
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
-  vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date});
+  vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask});
   const h = window.GestLokCreatorHome;
-  h.attach({S: {me: {email: 'kmu15lopez@gmail.com', tenant_id: 't-1'}}, isCreadora: () => creadora, render: () => { renders++; }});
-  return {h, calls, listeners, renders: () => renders, store};
+  h.attach({S: {me: {email: 'kmu15lopez@gmail.com', tenant_id: tenant}}, isCreadora: () => creadora,
+    render: () => { renders++; }, toast: (msg,bad) => { notices.push({msg,bad}); }});
+  return {h, calls, argsLog, listeners, renders: () => renders, store, window, notices,
+    opened, reloads: () => reloads, invalidations: () => invalidations};
 }
 const tick = () => new Promise(r => setTimeout(r, 0));
 test('Quien no es creadora nunca consulta el resumen ni ve el panel', async () => {
@@ -112,7 +122,12 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
  assert.equal((html.match(/class="gl-ch-company-local-grid"/g)||[]).length,3);
  assert.equal((html.match(/data-creator-company=/g)||[]).length,3);
  assert.equal((html.match(/class="gl-ch-quick-local gl-ch-company-local"/g)||[]).length,4,'Cada local tiene tarjeta y apertura propia');
- assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,7);
+ assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,11);
+ assert.match(html,/<h2>Operaciones entre sucursales<\/h2>/);
+ for (const operation of ['precios','envios','devoluciones','historial']) {
+  assert.ok(html.includes('data-ch-molino="'+operation+'"'),'Falta operación '+operation);
+ }
+ assert.ok(html.includes('El Molino Café') && html.includes('San Isidro y Acassuso'));
  assert.ok(html.includes('data-ch-tab="locales"'),'Se conserva la navegación de Locales');
  assert.ok(html.includes('aria-label="Elegir local para Plan Scanner"'),'Scanner solicita local autorizado');
  assert.ok(!html.includes('class="gl-ch-logout"')&&!html.includes('class="gl-ch-out"'),'Cerrar sesión solo desde Mi perfil');
@@ -149,4 +164,59 @@ test('El índice de empresas mantiene accesos correctos cuando no se cargó el d
  assert.ok(html.includes('Local en preparación'));
  assert.ok(html.includes('data-ch-tab="locales"'));
  assert.ok(!html.includes('Sin locales registrados'));
+});
+
+const MOLINO = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
+const clickMolino = (r, section) => r.listeners.click({
+  preventDefault(){},
+  target:{closest:sel=>sel==='[data-ch-molino]'?{dataset:{chMolino:section}}:null}
+});
+test('Operaciones entre sucursales abre la pestaña exacta sin cambiar empresa si ya es El Molino Café',async()=>{
+ const r=load(async fn=>fn==='gestlok_creator_dashboard'?{data:DASH,error:null}:{error:{message:'No esperado'}},{tenant:MOLINO});
+ r.h.mode();await tick();await tick();
+ clickMolino(r,'envios');
+ assert.deepEqual(r.opened,['envios']);
+ assert.equal(r.reloads(),0);
+ assert.deepEqual(r.calls,['gestlok_creator_dashboard']);
+});
+test('Desde la creadora se cambia de empresa solo con rol autorizado y se recupera la sección solicitada',async()=>{
+ const authorized=async(fn,args)=>{
+   if(fn==='gestlok_creator_dashboard')return {data:DASH,error:null};
+   if(fn==='gestlok_my_role_contexts')return {data:[{tenant_id:MOLINO,role:'creadora'}],error:null};
+   if(fn==='gestlok_choose_role_context')return {data:{tenant_id:MOLINO,role:'creadora'},error:null};
+   return {error:{message:'Inesperado: '+fn}};
+ };
+ const r=load(authorized);
+ r.h.mode();await tick();await tick();
+ clickMolino(r,'devoluciones');await tick();await tick();
+ assert.equal(r.reloads(),1);
+ assert.equal(r.invalidations(),1);
+ assert.equal(r.calls.includes('gestlok_my_role_contexts'),true);
+ assert.equal(r.calls.includes('gestlok_choose_role_context'),true);
+ assert.equal(r.argsLog[r.calls.indexOf('gestlok_choose_role_context')].p_tenant,MOLINO);
+ assert.equal(r.store.get('gestlok-admin-tab'),'inicio');
+ assert.equal(JSON.parse(r.store.get('gestlok:creator-molino-microapp:v1')).section,'devoluciones');
+ const next=load(authorized,{tenant:MOLINO,existingStore:r.store});
+ next.h.mode();await tick();await tick();
+ next.h.view({pending:0,parts:{}});await tick();
+ assert.deepEqual(next.opened,['devoluciones']);
+ assert.equal(next.store.has('gestlok:creator-molino-microapp:v1'),false);
+});
+test('No se concede acceso a otras empresas, ni se abren enlaces no autorizados',async()=>{
+ const r=load(async fn=>{
+   if(fn==='gestlok_creator_dashboard')return {data:DASH,error:null};
+   if(fn==='gestlok_my_role_contexts')return {data:[{tenant_id:MOLINO,role:'gerente'}],error:null};
+   throw Error('No se debe elegir otro tenant');
+ });
+ r.h.mode();await tick();await tick();
+ clickMolino(r,'precios');await tick();await tick();
+ assert.equal(r.reloads(),0);
+ assert.equal(r.invalidations(),0);
+ assert.equal(r.calls.includes('gestlok_choose_role_context'),false);
+ assert.ok(r.notices.some(x=>x.bad&&x.msg.includes('no tiene habilitado')));
+ clickMolino(r,'funcion-inventada');await tick();
+ assert.equal(r.calls.includes('gestlok_choose_role_context'),false);
+ const other=load(async()=>({data:DASH,error:null}),{creadora:false,tenant:MOLINO});
+ clickMolino(other,'envios');await tick();
+ assert.deepEqual(other.opened,[]);
 });

@@ -17,7 +17,12 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-quick-locals').should('not.exist');
   cy.get('.gl-ch-company-area>header h2').should('have.text','Empresas activas');
   cy.get('.gl-ch-shortcuts [data-ch-tab="usuarios"]').should('be.visible');
-  cy.get('.gl-ch-microapp').should('have.length',7);
+  cy.get('.gl-ch-microapp').should('have.length',11);
+  cy.get('[aria-label="Operaciones entre sucursales"]').should('contain.text','El Molino Café');
+  cy.get('[data-ch-molino="precios"]').should('be.visible');
+  cy.get('[data-ch-molino="envios"]').should('be.visible');
+  cy.get('[data-ch-molino="devoluciones"]').should('be.visible');
+  cy.get('[data-ch-molino="historial"]').should('be.visible');
   cy.get('.gl-ch-microapp').contains('Plan Scanner').should('be.visible').click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();

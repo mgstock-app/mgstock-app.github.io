@@ -15,6 +15,14 @@
     ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
     ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
   ]);
+  const MOLINO_TENANT = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
+  const MOLINO_NEXT = 'gestlok:creator-molino-microapp:v1';
+  const MOLINO_TOOLS = Object.freeze([
+    ['precios', 'Precios', 'Valores compartidos entre las dos sucursales'],
+    ['envios', 'Productos enviados', 'Envíos de San Isidro a Acassuso'],
+    ['devoluciones', 'Devoluciones', 'Productos devueltos y confirmación de recepción'],
+    ['historial', 'Historial', 'Archivo diario de movimientos y precios']
+  ]);
   const ACTIONS = Object.freeze({
     module_enabled: ['Empleados habilitado', 'ok'], module_disabled: ['Empleados deshabilitado', 'warn'],
     recibonet_linked: ['Empresa vinculada con Empleados', 'ok'], employee_space_created: ['Espacio de empleados creado', 'ok'],
@@ -22,7 +30,7 @@
     support_view_opened: ['Consulta de empresa abierta', 'info'], support_view_closed: ['Consulta de empresa cerrada', 'info'],
     login: ['Ingreso', 'user']
   });
-  let api, data = null, status = 'idle', busy = false, timer = 0, tab = 'inicio';
+  let api, data = null, status = 'idle', busy = false, timer = 0, tab = 'inicio', molinoBusy = false;
   let couponRows = {munro:null,torcuato:null}, couponBusy=false, couponError='', couponAttempted=false;
   // Preferencia global, persistida en base y controlada por la creadora.
   // Predeterminado: oculto. Nunca se guarda como una preferencia de navegador.
@@ -212,6 +220,13 @@
       ['Empleados', 'Legajos y recibos autorizados']
     ].map(([name,detail]) => '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
       '<b>' + name + '</b><small>' + detail + '</small><span>Elegir local →</span></button>').join('');
+    // Catálogo de herramientas compartidas de El Molino Café. No habilita estas
+    // funciones para otras empresas: el servidor comprueba cada acceso.
+    const molinoTools = MOLINO_TOOLS.map(([id,name,detail]) =>
+      '<button type="button" class="gl-ch-microapp" data-ch-molino="'+id+'"'+
+      ' aria-label="Abrir '+esc(name)+' de El Molino Café">'+
+      '<b>'+esc(name)+'</b><small>'+esc(detail)+'</small><span>Abrir El Molino Café →</span></button>'
+    ).join('');
     const shortcuts = [
       ['Empresas y locales', 'empresas', '<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>'],
       ['Usuarios y accesos', 'usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
@@ -230,9 +245,72 @@
       '<section class="gl-ch-card" aria-label="Mis microapps"><header><h2>Mis microapps</h2></header>' +
       '<p>Primero elegí la empresa y el local. Cada herramienta respeta sus permisos.</p>' +
       '<div class="gl-ch-microapps">' + microapps + '</div></section>' +
+      '<section class="gl-ch-card gl-ch-branch-tools" aria-label="Operaciones entre sucursales">' +
+      '<header><h2>Operaciones entre sucursales</h2></header>' +
+      '<p><b>El Molino Café</b> · San Isidro y Acassuso. Las funciones están protegidas por los permisos de cada local.</p>' +
+      '<div class="gl-ch-microapps">' + molinoTools + '</div></section>' +
       '<section class="gl-ch-card"><header><h2>Administración y herramientas</h2></header>' +
       '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
       '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
+  }
+  // No inventar permisos: solo gestlok_my_role_contexts + elección autorizada
+  // permiten pasar al tenant de El Molino Café. Los movimientos siguen por RPC/RLS.
+  async function openMolinoTool(id) {
+    if (!api?.isCreadora?.() || molinoBusy || !MOLINO_TOOLS.some(x => x[0] === id)) return;
+    if (api.S?.me?.tenant_id === MOLINO_TENANT) {
+      if (window.GestLokMolino?.open) window.GestLokMolino.open(id);
+      else api.toast?.('No se pudo abrir la herramienta. Volvé a cargar GESTLOK.', true);
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      api.toast?.('Necesitás internet para ingresar a El Molino Café.', true); return;
+    }
+    molinoBusy = true;
+    try {
+      const pending = await window.GestLokOffline?.pending?.();
+      if (pending) throw Error('Tenés cambios pendientes de sincronizar. Guardalos antes de cambiar de empresa.');
+      const sb = window.GestLokSupabase;
+      if (!sb?.rpc) throw Error('No hay conexión con el sistema de permisos.');
+      const contexts = await sb.rpc('gestlok_my_role_contexts');
+      if (contexts.error || !Array.isArray(contexts.data) ||
+          !contexts.data.some(c => c?.tenant_id === MOLINO_TENANT && c.role === 'creadora'))
+        throw Error('Tu cuenta no tiene habilitado el acceso a El Molino Café.');
+      if (window.GestLokCreatorSupport?.state?.().active) {
+        const close = await sb.rpc('gestlok_creator_close_company');
+        if (close.error) throw close.error;
+      }
+      const result = await sb.rpc('gestlok_choose_role_context', {p_tenant:MOLINO_TENANT});
+      if (result.error || result.data?.tenant_id !== MOLINO_TENANT ||
+          result.data?.role !== 'creadora') throw Error('El servidor no autorizó el cambio de empresa.');
+      await window.GestLokOffline?.invalidateContext?.();
+      window.sessionStorage.setItem(MOLINO_NEXT, JSON.stringify({
+        email:String(api.S.me.email || '').toLowerCase(),tenant_id:MOLINO_TENANT,
+        section:id,created_at:Date.now()
+      }));
+      window.sessionStorage.setItem(TAB_KEY, 'inicio');
+      window.location.reload();
+    } catch (e) {
+      api.toast?.(String(e?.message || 'No se pudo abrir El Molino Café.'), true);
+    } finally { molinoBusy = false; }
+  }
+  function resumeMolinoTool() {
+    if (!api?.isCreadora?.() || api.S?.me?.tenant_id !== MOLINO_TENANT) return;
+    let next;
+    try {
+      const raw = window.sessionStorage.getItem(MOLINO_NEXT);
+      if (!raw) return;
+      window.sessionStorage.removeItem(MOLINO_NEXT);
+      next = JSON.parse(raw);
+    } catch { return; }
+    if (next?.tenant_id !== MOLINO_TENANT ||
+        next.email !== String(api.S?.me?.email || '').toLowerCase() ||
+        !MOLINO_TOOLS.some(x => x[0] === next.section) ||
+        !Number.isFinite(next.created_at) || Date.now() - next.created_at > 300000 ||
+        Date.now() < next.created_at) return;
+    queueMicrotask(() => {
+      if (api?.isCreadora?.() && api.S?.me?.tenant_id === MOLINO_TENANT)
+        window.GestLokMolino?.open?.(next.section);
+    });
   }
   // La preferencia visual es del dispositivo; nunca modifica roles ni alcance.
   const navPrefKey = 'gestlok:creator-menu-collapsed:v1';
@@ -241,6 +319,7 @@
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
     const cur = validTab(tab) ? tab : 'inicio';
+    resumeMolinoTool();
     const parts = p.parts || {};
     const nav = TABS.map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>').join('');
@@ -294,6 +373,10 @@
     const dailyToggle=ev.target.closest?.('[data-ch-diario-visibility]');
     if(dailyToggle&&api?.isCreadora?.()){ev.preventDefault();void toggleDailyVisibility();return;}
     const refresh = ev.target.closest?.('[data-ch-coupons-refresh]');if(refresh && api?.isCreadora?.()){ev.preventDefault();loadCoupons();return;}
+    const molino = ev.target.closest?.('[data-ch-molino]');
+    if (molino && api?.isCreadora?.()) {
+      ev.preventDefault(); void openMolinoTool(molino.dataset.chMolino); return;
+    }
     const b = ev.target.closest && ev.target.closest('[data-ch-tab]');
     if (b) { ev.preventDefault(); goTab(b.dataset.chTab); }
   });
