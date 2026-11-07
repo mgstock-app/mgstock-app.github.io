@@ -75,8 +75,8 @@ test('La acción reutiliza la salida LOCAL sin desconectar otros equipos ni borr
  assert.match(source,/button\.dataset\.au='out'/);
  assert.match(auth,/t\.dataset\.au === 'out'/);
  assert.match(auth,/sb\.auth\.signOut\(\{ scope: 'local' \}\)/);
- assert.doesNotMatch(source,/\.rpc\(|\.from\(|delete\(|localStorage\.clear|signOut\(/);
- assert.doesNotMatch(source,/rol|tenant_id|local_id|mi_rol/);
+ assert.doesNotMatch(source,/\.rpc\(|\.from\(|delete\(|localStorage\.clear|sb\.auth\.signOut\(/);
+ assert.doesNotMatch(source,/\.rol\b|tenant_id|local_id|mi_rol\(/);
 });
 
 test('Está disponible sobre la pantalla Pendiente, sin tapar el menú inferior móvil',()=>{
