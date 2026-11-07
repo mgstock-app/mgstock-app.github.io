@@ -172,36 +172,34 @@
   // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
   // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
-    const indexed = Array.isArray(p.companies) ? p.companies : (window.GestLokOwnerAreas?.creatorCompanies?.() || []);
-    const companyRows = indexed.length ? indexed : (data.recent_companies || []);
-    const companies = companyRows.map(c => {
-      const own = c.tenant_id === api.S?.me?.tenant_id;
-      const locals = Array.isArray(c.locals) ? c.locals.length : num(c.locals);
-      const action = own
-        ? '<span class="gl-ch-pill ok">Tu empresa</span>'
-        : (window.GestLokCreatorSupport?.openButton?.(c.tenant_id, c.name) || '<span class="gl-ch-pill ok">Registrada</span>');
-      return '<article class="gl-ch-company-card"><span class="gl-ch-ico p">' +
-        svg('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>', 24) +
-        '</span><div><h3>' + esc(c.name) + '</h3><p>' + locals +
-        (locals === 1 ? ' local' : ' locales') +
-        (c.people == null ? '' : ' · ' + num(c.people) + (num(c.people) === 1 ? ' persona' : ' personas')) +
-        '</p><button type="button" class="gl-ch-company-open" data-ch-tab="locales">Ver locales →</button></div>' + action + '</article>';
-    }).join('');
-    // Los locales ajenos usan la misma apertura de soporte auditada que «Locales».
-    // No se cambia el tenant desde la interfaz ni se conceden permisos nuevos.
-    const allLocals = indexed.flatMap(c => (Array.isArray(c.locals) ? c.locals : []).map(l => ({
-      ...l, tenant_id:c.tenant_id, company:c.name
-    })));
-    const localButtons = allLocals.map(l => {
-      const own = l.tenant_id === api.S?.me?.tenant_id;
-      const attrs = own
-        ? 'data-act="local" data-id="' + esc(l.id) + '"'
-        : 'data-company-local="' + esc(l.id) + '" data-company-tenant="' + esc(l.tenant_id) + '" data-company-name="' + esc(l.company) + '"';
-      return '<button type="button" class="gl-ch-quick-local" ' + attrs +
-        ' aria-label="Abrir el local ' + esc(l.name || l.id) + ' de ' + esc(l.company) + '">' +
-        '<span class="gl-ch-quick-icon">' + svg('<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>',22) +
-        '</span><span><b>' + esc(l.name || l.id) + '</b><small>' + esc(l.company) +
-        ' · ' + (own ? 'Abrir local' : 'Ingreso autorizado') + '</small></span><span aria-hidden="true">→</span></button>';
+    const indexed=Array.isArray(p.companies)?p.companies:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
+    const companyRows=indexed.length?indexed:(data.recent_companies||[]);
+    // Un registro crea una tarjeta independiente, también para empresas futuras.
+    // Los locales se agrupan dentro de su empresa y conservan la apertura autorizada.
+    const companies=companyRows.map(c=>{
+      const own=c.tenant_id===api.S?.me?.tenant_id;
+      const localRows=Array.isArray(c.locals)?c.locals:[];
+      const n=Array.isArray(c.locals)?localRows.length:num(c.locals);
+      const localCards=localRows.map(l=>{
+        const attrs=own?'data-act="local" data-id="'+esc(l.id)+'"':
+          'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
+        return '<button type="button" class="gl-ch-quick-local gl-ch-company-local" '+attrs+
+          ' aria-label="Abrir el local '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
+          '<span class="gl-ch-quick-icon">'+svg('<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>',22)+
+          '</span><span><b>'+esc(l.name||l.id)+'</b><small>Ingresar al local</small></span>'+
+          '<span aria-hidden="true">→</span></button>';
+      }).join('');
+      const access=localRows.length?'<details class="gl-ch-company-locals"><summary>Ver locales'+
+        '<span aria-hidden="true">⌄</span></summary><div class="gl-ch-company-local-grid">'+localCards+'</div></details>':
+        n===0?'<span class="gl-ch-company-empty">Sin locales registrados</span>':
+        '<button type="button" class="gl-ch-company-open" data-ch-tab="locales">Ver locales →</button>';
+      const support=own?'':(window.GestLokCreatorSupport?.openButton?.(c.tenant_id,c.name)||'');
+      return '<article class="gl-ch-company-card" data-creator-company="'+esc(c.tenant_id)+'">'+
+        '<div class="gl-ch-company-top"><span class="gl-ch-ico p" aria-hidden="true">'+
+        svg('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>',24)+
+        '</span><div class="gl-ch-company-info"><h3>'+esc(c.name)+'</h3><p>'+
+        n+(n===1?' local':' locales')+'</p></div></div>'+
+        '<div class="gl-ch-company-actions">'+access+support+'</div></article>';
     }).join('');
     // Una microapp se abre DENTRO de un local autorizado. El acceso empieza por su selector.
     const microapps = [
@@ -223,11 +221,11 @@
     ].map(([name,id,icon]) => '<button type="button" class="gl-ch-shortcut" data-ch-tab="' + id + '">' +
       '<span class="gl-ch-ico b">' + svg(icon, 22) + '</span><b>' + name + '</b><span aria-hidden="true">›</span></button>').join('');
     return '<div class="gl-ch-creator-start">' +
-      '<section class="gl-ch-card"><header><h2>Mis empresas</h2><button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header>' +
-      '<p>Consultá las empresas registradas y entrá a los locales que administrás.</p>' +
-      '<div class="gl-ch-company-grid">' + (companies || '<p>Consultá el listado completo desde Empresas.</p>') + '</div></section>' +
-      '<section class="gl-ch-card gl-ch-quick-locals" aria-label="Acceso a mis locales"><header><h2>Mis locales</h2><button type="button" class="gl-ch-link" data-ch-tab="locales">Ver locales →</button></header>' +
-      '<div class="gl-ch-quick-grid">' + (localButtons || p.quickLocals || '<p>Los locales aparecerán cuando estén disponibles.</p>') + '</div></section>' +
+      '<section class="gl-ch-company-area" aria-label="Empresas activas">' +
+      '<header class="gl-ch-company-area-head"><h2>Empresas activas</h2>' +
+      '<button type="button" class="gl-ch-link" data-ch-tab="empresas">Ver todas →</button></header>' +
+      '<p class="gl-ch-company-intro">Elegí una empresa para consultar sus locales.</p>' +
+      '<div class="gl-ch-company-grid">' + (companies || '<p class="gl-ch-company-empty">No hay empresas disponibles.</p>') + '</div></section>' +
       '<section class="gl-ch-card" aria-label="Mis microapps"><header><h2>Mis microapps</h2></header>' +
       '<p>Primero elegí la empresa y el local. Cada herramienta respeta sus permisos.</p>' +
       '<div class="gl-ch-microapps">' + microapps + '</div></section>' +
