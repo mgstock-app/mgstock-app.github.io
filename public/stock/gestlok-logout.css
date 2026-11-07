@@ -1,0 +1,38 @@
+/* Acción de sesión siempre visible, sin depender del menú o el rol. */
+#gl-universal-logout.gl-universal-logout{
+ position:fixed;top:max(74px,env(safe-area-inset-top,0px) + 64px);
+ right:max(12px,env(safe-area-inset-right,0px) + 12px);
+ z-index:350;
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;
+ min-height:42px;min-width:138px;padding:9px 13px;
+ border:1px solid #b6cbdf;border-radius:999px;
+ background:#fff;color:#183d62;
+ box-shadow:0 3px 15px rgba(13,46,73,.14);
+ font:700 13px/1.2 Inter,system-ui,sans-serif;
+ cursor:pointer;touch-action:manipulation;
+}
+#gl-universal-logout.gl-universal-logout svg{flex:none}
+#gl-universal-logout.gl-universal-logout:hover{background:#eef5fd;border-color:#8eb3d6}
+#gl-universal-logout.gl-universal-logout:focus-visible{outline:3px solid #1978bf;outline-offset:3px}
+#gl-universal-logout.gl-universal-logout[hidden]{display:none!important}
+#gl-universal-logout.gl-universal-logout[aria-busy="true"]{opacity:.75;cursor:wait}
+html.auth-on #gl-universal-logout.gl-universal-logout{
+ top:max(12px,env(safe-area-inset-top,0px) + 12px);
+}
+@media(max-width:899px){
+ #gl-universal-logout.gl-universal-logout{
+  /* Sobre el dock inferior, sin tapar la botonera ni el WhatsApp derecho. */
+  top:auto;right:auto;
+  bottom:max(85px,env(safe-area-inset-bottom,0px) + 78px);
+  left:max(10px,env(safe-area-inset-left,0px) + 10px);
+  min-height:44px;min-width:130px;padding:10px 12px;
+ }
+ html.auth-on #gl-universal-logout.gl-universal-logout{
+  top:max(12px,env(safe-area-inset-top,0px) + 12px);
+  right:max(12px,env(safe-area-inset-right,0px) + 12px);
+  bottom:auto;left:auto;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #gl-universal-logout.gl-universal-logout{transition:none}
+}
