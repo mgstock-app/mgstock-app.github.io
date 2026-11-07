@@ -16,10 +16,11 @@ function fixture(){
  const made=[], events={}, flags={};
  let callback=null,resolveSession;
  const initialSession=new Promise(resolve=>{resolveSession=resolve;});
+ function connected(node,value){node.isConnected=value;node.children.forEach(child=>connected(child,value));}
  function el(tag){
    const node={tag,id:'',hidden:false,isConnected:false,attrs:{},dataset:{},
      children:[],events:{},classList:{toggle(){}},
-     append(...items){this.children.push(...items);items.forEach(x=>{x.parent=this;x.isConnected=this.isConnected;});},
+     append(...items){this.children.push(...items);items.forEach(x=>{x.parent=this;connected(x,this.isConnected);});},
      appendChild(item){this.append(item);return item;},
      setAttribute(k,v){this.attrs[k]=String(v);},
      addEventListener(k,fn){this.events[k]=fn;},
