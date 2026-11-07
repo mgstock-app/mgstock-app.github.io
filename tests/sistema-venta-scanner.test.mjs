@@ -37,7 +37,7 @@ test('lector de cámara permite mantener la sesión hasta cierre explícito',asy
   Date,
   document:{createElement:()=>({})}
  };
- const api=runInContext(src+';GestLokPosScanner',createContext({window:fakeRoot,globalThis:fakeRoot}));
+ const api=runInContext(src+';window.GestLokPosScanner',createContext({window:fakeRoot,globalThis:fakeRoot}));
  assert.equal(requested,0,'no abre cámara automáticamente al importar');
  assert.equal(api.supported(),true);
  const video={srcObject:null,muted:false,setAttribute:()=>{},play:async()=>{},pause:()=>{}};
@@ -59,7 +59,7 @@ test('solicitud denegada explica permiso y libera cámara',async()=>{
   BarcodeDetector:class{detect=async()=>[];},
   document:{createElement:()=>({})}
  };
- const api=runInContext(src+';GestLokPosScanner',createContext({window:fakeRoot,globalThis:fakeRoot}));
+ const api=runInContext(src+';window.GestLokPosScanner',createContext({window:fakeRoot,globalThis:fakeRoot}));
  const video={setAttribute:()=>{},pause:()=>{},srcObject:null};
  await assert.rejects(api.scan(video,()=>{}),/Permití el acceso a la cámara/);
 });
