@@ -96,3 +96,24 @@ test('Se carga para todos los usuarios autenticados y nunca en la demo',()=>{
  assert.match(sw,/'\/stock\/gestlok-logout\.js'/);
  assert.match(sw,/'\/stock\/gestlok-logout\.css'/);
 });
+
+
+test('Empleados: salida disponible en Dueño, Gerente, Colaborador y Creadora',()=>{
+ const component=read('modules/empleados/components/layout/GlobalLogout.tsx');
+ const moduleLayout=read('modules/empleados/app/layout.tsx');
+ const moduleCSS=read('modules/empleados/styles/global-logout.css');
+ const provider=read('modules/empleados/components/auth/AuthProvider.tsx');
+ assert.match(moduleLayout,/import \{ GlobalLogout \} from "@\/components\/layout\/GlobalLogout"/);
+ assert.match(moduleLayout,/<GlobalLogout \/>/);
+ assert.match(moduleLayout,/import "@\/styles\/global-logout\.css"/);
+ assert.match(component,/const \{ user, signOut \} = useAuth\(\)/);
+ assert.match(component,/onAuthStateChange/);
+ assert.match(component,/client\.auth\.getSession\(\)/);
+ assert.match(component,/if \(!user && !sessionActive\) return null/);
+ assert.match(component,/onClick=\{\(\) => void signOut\(\)\}/);
+ assert.match(component,/<span>Cerrar sesión<\/span>/);
+ assert.match(moduleCSS,/@media\(max-width:899px\)/);
+ assert.match(moduleCSS,/min-height:44px/);
+ assert.match(provider,/auth\.signOut\(\{ scope: "local" \}\)/);
+ assert.doesNotMatch(component,/\bmanager\b|\bowner\b|\bemployee\b|\badmin\b/);
+});
