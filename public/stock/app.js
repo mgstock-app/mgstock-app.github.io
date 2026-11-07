@@ -2067,7 +2067,12 @@ const localesTxt = e => fijo(e) ? 'Todos los locales' : ((e.locales || []).filte
 function locChecks(attr, sel, dis){
   return `<div class="lchk" role="group" aria-label="Locales">${localesTodos().map(l => `<label><input type="checkbox" ${attr} data-loc="${esc(l.id)}" ${sel.includes(l.id) ? 'checked' : ''} ${dis ? 'disabled' : ''}><span>${esc(l.nombre)}</span></label>`).join('')}</div>`;
 }
-const rolSelect = (attr, rol) => `<select class="rolsel" ${attr}><option value="gerente" ${ROLN(rol) !== 'lectura' ? 'selected' : ''}>Gerente</option><option value="lectura" ${ROLN(rol) === 'lectura' ? 'selected' : ''}>Solo ver</option></select>`;
+// En El Molino Café, Dueño se incorpora luego desde administración con
+// su correo real. El único rol asignable desde el equipo es Gerente.
+const molinoRoles = () => S.me?.tenant_id === '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
+const rolSelect = (attr, rol) => molinoRoles()
+  ? `<select class="rolsel" ${attr}><option value="gerente" selected>Gerente</option></select>`
+  : `<select class="rolsel" ${attr}><option value="gerente" ${ROLN(rol) !== 'lectura' ? 'selected' : ''}>Gerente</option><option value="lectura" ${ROLN(rol) === 'lectura' ? 'selected' : ''}>Solo ver</option></select>`;
 function equipoRows(actions){
   if (S.db && !S.loaded.e) return `<p class="lead" style="margin:0">Cargando…</p>`;
   return equipoList().map(e => {
@@ -2100,7 +2105,7 @@ async function refreshRegistrationRequests(){
 function solRows(){
   if (!isCreadora() || !S.sol.length) return '';
   const solo = localesTodos().length === 1 ? [localesTodos()[0].id] : [];
-  return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.</span></div>
+  return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>${molinoRoles()?'Revisá las solicitudes. Los dueños se incorporan desde Administración y los gerentes reciben sus locales autorizados.':'Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.'}</span></div>
   <div class="eq">${S.sol.map(x => { const id = esc(x.id); return `<div class="eq-r sol"><span class="av">${esc((x.email || '?').charAt(0))}</span><div style="min-width:0"><div class="em">${esc(x.email)}</div><small>${x.nombre ? esc(x.nombre) + ' · ' : ''}${x.proveedor === 'google' ? 'Google · ' : ''}${x.fecha ? rel(x.fecha) : ''}</small>
     ${window.GestLokRegistration?.label(x)?`<p class="note">${esc(window.GestLokRegistration.label(x))}</p>`:''}
     ${x.tipoCuenta==='dueno'?'<p class="lead">Alta independiente de dueño pendiente de habilitación. No se asigna a los locales de otra empresa.</p>':`<div class="eq-ed">${rolSelect(`id="sol-rol-${id}" aria-label="Rol para ${esc(x.email)}"`, 'gerente')}${locChecks(`data-solloc="${id}"`, solo, false)}</div>`}</div>
@@ -2111,7 +2116,7 @@ async function aprobar(id){
   if (!isCreadora()) return;
   const x = S.sol.find(s => s.id === id); if (!x) return;
   if (x.tipoCuenta === 'dueno'){ toast('Esta solicitud requiere un alta independiente de dueño y habilitación de módulos.', true); return; }
-  const sel = document.getElementById('sol-rol-' + id), rol = sel && sel.value === 'lectura' ? 'lectura' : 'gerente';
+  const sel = document.getElementById('sol-rol-' + id), rol = !molinoRoles() && sel && sel.value === 'lectura' ? 'lectura' : 'gerente';
   const locales = checkedLocs(`data-solloc="${CSS.escape(id)}"`);
   if (!locales.length){ toast('Elegí al menos un local para esta persona.', true); return; }
   try {
@@ -2137,6 +2142,7 @@ async function rechazar(id){
 async function cambiarRol(id, rol){
   if (!puedeAdministrarEquipo()) return;
   const e = S.equipo.find(x => x.id === id); if (!e || fijo(e)) return;
+  if(molinoRoles() && rol !== 'gerente'){ toast('El Molino Café solo permite Dueño y Gerente. El dueño se asignará desde Administración.',true); return; }
   try { await w(() => S.db.collection('equipo').doc(id).update({rol})); toast(`${e.email}: ${rolLabel(rol)}`); } catch(err){ fail(err); }
 }
 async function cambiarLocales(id){
@@ -2151,10 +2157,10 @@ function openShare(){
   const adm = puedeAdministrarEquipo();
   openPanel(`<div class="pn-h"><div><small>GestLok</small><h3>Equipo</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="pn-b">
-    <p class="lead">Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : `La lista la maneja la administradora.`}</p>
+    <p class="lead">${molinoRoles() ? 'El Molino Café tiene únicamente dos roles de trabajo: <b>Dueño</b> (acceso a ambas sucursales; pendiente de su correo) y <b>Gerente</b> (acceso a los locales asignados). Tu cuenta es la Administradora General encargada de preparar la tienda. No hay colaboradores ni accesos de solo lectura.' : `Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : 'La lista la maneja la administradora.'}`}</p>
     ${adm ? `<form id="eq-form" class="eq-add" novalidate>
       <div class="frow"><div class="fld wide"><label for="eq-email">Email</label><input id="eq-email" type="email" inputmode="email" autocomplete="email" placeholder="nombre@gmail.com" required></div>
-      <div class="fld"><label for="eq-rol">Rol</label><select id="eq-rol"><option value="gerente">Gerente</option><option value="lectura">Solo ver</option></select></div></div>
+      <div class="fld"><label for="eq-rol">Rol</label><select id="eq-rol"><option value="gerente">Gerente</option>${molinoRoles()?'':'<option value="lectura">Solo ver</option>'}</select></div></div>
       <div class="fld"><label>Local</label>${locChecks('data-newloc', localesTodos().length === 1 ? [localesTodos()[0].id] : [], false)}</div>
       <div class="bar-a" style="justify-content:flex-end"><button class="btn primary" type="submit">${ic('userplus')}Agregar al equipo</button></div>
     </form>` : ''}
@@ -2171,7 +2177,7 @@ async function addEquipo(email, rol){
   if (equipoList().some(e => String(e.email || '').toLowerCase() === email)){ toast('Ese email ya está en el equipo.'); return; }
   const locales = checkedLocs('data-newloc');
   if (!locales.length){ toast('Elegí al menos un local.', true); return; }
-  rol = rol === 'lectura' ? 'lectura' : 'gerente';
+  rol = !molinoRoles() && rol === 'lectura' ? 'lectura' : 'gerente';
   try {
     await w(() => S.db.collection('equipo').doc(docIdFromEmail(email)).set({email, rol, locales, agregado:Date.now(), por:S.uid || null}));
     $('#eq-email').value = ''; document.querySelectorAll('[data-newloc]').forEach(x => { x.checked = false; });

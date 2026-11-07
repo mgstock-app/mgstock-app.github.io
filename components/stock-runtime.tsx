@@ -21,9 +21,9 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=molino-tienda-20261107",
+    "/stock/gestlok-owner-areas.js?rev=molino-roles-20261107",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=whatsapp-alerta-turno-20261106",
+    "/stock/app.js?rev=molino-roles-20261107",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
@@ -95,7 +95,7 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=whatsapp-alerta-turno-20261106");
+      await load("/stock/app.js?rev=molino-roles-20261107");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=whatsapp-alerta-turno-20261106");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-whatsapp-prioritario-20261106");
