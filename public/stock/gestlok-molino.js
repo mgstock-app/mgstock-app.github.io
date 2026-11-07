@@ -124,7 +124,7 @@ function movementForm(kind){
  const p=editMove?(state?.[kind==='envio'?'envios':'devoluciones']||[]).find(x=>x.id===editMove):null;
  const isReturn=kind==='devolucion';
  return '<form id="gl-molino-movement-form-'+kind+'" data-mol-movement-form data-kind="'+kind+'" class="gl-molino-form">'+
- '<label>Producto<input name="product" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
+ '<label>Producto<input name="product" list="gl-molino-products" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
  '<label>Cantidad<input type="number" name="quantity" min=".01" max="999999" step=".01" inputmode="decimal" placeholder="0" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
  (isReturn?'<label class="gl-molino-full">Observación opcional<textarea name="note" maxlength="1000" rows="2" placeholder="Estado del producto, motivo, etc.">'+escapeHTML(p?.note||'')+'</textarea></label>':'')+
  '<button type="submit" class="gl-molino-main-btn">'+(p?'Guardar cambio':isReturn?'Agregar devolución':'Agregar envío')+'</button>'+
@@ -187,7 +187,7 @@ function render(){
   '<div class="gl-molino-main"><div class="gl-molino-alert" id="gl-molino-updated" '+(!stale?'hidden':'')+'><span>Hay cambios nuevos en el otro local.</span><button type="button" data-mol-refresh>Actualizar</button></div>'+
   (warning?'<div class="gl-molino-error" role="alert">'+escapeHTML(warning)+'</div>':'')+
   (message?'<div class="gl-molino-success" role="status">'+escapeHTML(message)+'</div>':'')+
-  panel+'</div><footer class="gl-molino-foot">Sincronizado entre San Isidro y Acassuso · '+(state?.closed?'Día cerrado':'Cierre diario 23:59 hs (Argentina)')+'</footer></div>';
+  panel+'<datalist id="gl-molino-products">'+(state?.prices||[]).map(p=>'<option value="'+escapeHTML(p.product)+'"></option>').join('')+'</datalist></div><footer class="gl-molino-foot">Sincronizado entre San Isidro y Acassuso · '+(state?.closed?'Día cerrado':'Cierre diario 23:59 hs (Argentina)')+'</footer></div>';
 }
 async function save(fn,args,done){
  if(busy)return;
