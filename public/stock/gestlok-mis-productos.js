@@ -242,6 +242,64 @@
    editing='';itemForm=false;await loadItems();
   },'Producto guardado.');
  }
+
+ function compressPhoto(file){
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Elegí una imagen JPG, PNG o WebP.');
+  if(file.size>20*1024*1024)throw Error('La foto es demasiado grande. Elegí una de hasta 20 MB.');
+  return new Promise((resolve,reject)=>{
+   const url=URL.createObjectURL(file),image=new Image();
+   image.onload=()=>{
+    URL.revokeObjectURL(url);
+    try{
+     const factor=Math.min(1,1200/Math.max(image.naturalWidth,image.naturalHeight));
+     const canvas=document.createElement('canvas');
+     canvas.width=Math.max(1,Math.round(image.naturalWidth*factor));
+     canvas.height=Math.max(1,Math.round(image.naturalHeight*factor));
+     const ctx=canvas.getContext('2d');
+     if(!ctx)throw Error('No se pudo preparar la imagen.');
+     ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+     ctx.drawImage(image,0,0,canvas.width,canvas.height);
+     canvas.toBlob(blob=>{
+      if(!blob)return reject(Error('No se pudo preparar la foto.'));
+      if(blob.size>3*1024*1024)return reject(Error('La foto comprimida supera 3 MB.'));
+      resolve(blob);
+     },'image/jpeg',0.78);
+    }catch(e){reject(e);}
+   };
+   image.onerror=()=>{URL.revokeObjectURL(url);reject(Error('No se pudo abrir la foto. Probá con JPG o PNG.'));};
+   image.src=url;
+  });
+ }
+ async function uploadPhoto(id,file){
+  const item=items.find(x=>x.id===id);
+  if(!item||!file||busy)return;
+  await run(async()=>{
+   const user=await assertAccess();
+   const blob=await compressPhoto(file);
+   const path=user.id+'/'+item.id+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   const storage=db().storage.from(PHOTO_BUCKET);
+   const upload=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+   if(upload.error)throw upload.error;
+   const saved=await db().from(ITEMS).update({photo_path:path,updated_at:new Date().toISOString()})
+    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
+   if(saved.error){await storage.remove([path]);throw saved.error;}
+   const oldPath=item.photo_path;
+   if(oldPath&&oldPath!==path)await storage.remove([oldPath]);
+   await loadItems();
+  },'Foto guardada.');
+ }
+ async function removePhoto(id){
+  const item=items.find(x=>x.id===id);
+  if(!item?.photo_path||!window.confirm('¿Quitar la foto de «'+item.product+'»?'))return;
+  await run(async()=>{
+   const oldPath=item.photo_path;
+   const saved=await db().from(ITEMS).update({photo_path:null,updated_at:new Date().toISOString()})
+    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
+   if(saved.error)throw saved.error;
+   await db().storage.from(PHOTO_BUCKET).remove([oldPath]);
+   await loadItems();
+  },'Foto eliminada.');
+ }
  async function changeFragrance(id,value){
   if(!items.some(x=>x.id===id)||!['','fem','hombre','unisex'].includes(value))return;
   await run(async()=>{
@@ -267,6 +325,7 @@
   await run(async()=>{
    const r=await db().from(ITEMS).delete().eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT);
    if(r.error)throw r.error;
+   if(item.photo_path)await db().storage.from(PHOTO_BUCKET).remove([item.photo_path]);
    await loadItems();
   },'Producto eliminado.');
  }
@@ -427,6 +486,10 @@
   if(!visible||!e.target.closest('#gl-mp-panel'))return;
   const el=e.target;
   const print=el.closest('[data-mp-print]');
+  const photo=el.closest('[data-mp-photo-btn]');
+  if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
+  const remove=el.closest('[data-mp-photo-remove]');
+  if(remove){e.preventDefault();void removePhoto(remove.dataset.mpPhotoRemove);return;}
   if(print){
    e.preventDefault();
    const item=items.find(x=>x.id===print.dataset.mpPrint);
@@ -468,6 +531,12 @@
   if(modal)updateLabelPreview(modal);
  });
  document.addEventListener('change',e=>{
+  const photo=e.target.closest('[data-mp-photo-input]');
+  if(photo&&visible){
+   const file=photo.files?.[0];
+   if(file)void uploadPhoto(photo.dataset.mpPhotoInput,file);
+   return;
+  }
   const select=e.target.closest('[data-mp-fragrance]');
   if(select&&visible){void changeFragrance(select.dataset.mpFragrance,select.value);}
  });
