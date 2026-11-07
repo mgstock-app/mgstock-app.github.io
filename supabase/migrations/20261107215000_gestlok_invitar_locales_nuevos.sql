@@ -149,10 +149,10 @@ begin
    raise exception 'La sucursal no está disponible' using errcode='22023';
  end if;
  insert into gestlok_platform.local_invite_links(tenant_id,local_id,token,created_by)
- values(p_tenant,p_local,encode(gen_random_bytes(32),'hex'),auth.uid())
+ values(p_tenant,p_local,(replace(gen_random_uuid()::text,'-','')||replace(gen_random_uuid()::text,'-','')),auth.uid())
  on conflict(tenant_id,local_id) do nothing;
  if p_rotate then
-   update gestlok_platform.local_invite_links set token=encode(gen_random_bytes(32),'hex'),
+   update gestlok_platform.local_invite_links set token=(replace(gen_random_uuid()::text,'-','')||replace(gen_random_uuid()::text,'-','')),
      rotated_at=now(),created_by=auth.uid(),active=true
     where tenant_id=p_tenant and local_id=p_local;
  end if;
