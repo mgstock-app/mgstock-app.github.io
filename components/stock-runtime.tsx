@@ -88,7 +88,7 @@ export function StockRuntime() {
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");
-      await load("/stock/gestlok-creator.js");
+      await load("/stock/gestlok-creator.js?rev=el-molino-pendiente-20261107");
       if (!visitor) await load("/stock/gestlok-support.js");
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-20261028");
       await load("/stock/gestlok-provider-pdf.js");
