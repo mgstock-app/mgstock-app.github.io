@@ -8,6 +8,7 @@
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
  const EMAIL='camilab.lopez99@gmail.com';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
+ const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map();
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -24,7 +25,7 @@
  }
  function reset(){
   epoch++;allowed=false;checked=false;checking=false;context=null;api=null;
-  tabs=[];items=[];tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
+  tabs=[];items=[];photoUrls.clear();tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
   close(false);
  }
  async function refresh(ctx,host){
@@ -73,12 +74,26 @@
  async function loadItems(){
   const ticket=epoch,selected=tabId;
   if(!selected){items=[];render();return;}
-  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,position,created_at','position',{key:'tab_id',value:selected});
+  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,photo_path,position,created_at','position',{key:'tab_id',value:selected});
   if(ticket!==epoch||tabId!==selected||!visible)return;
   // Fecha de alta, no fecha de edición: las preferencias no alteran el orden.
   items=next.sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)
    ||(Number(b.position)||0)-(Number(a.position)||0)||String(b.id).localeCompare(String(a.id)));
-  render();
+  photoUrls.clear();render();
+  const paths=items.filter(x=>x.photo_path).map(x=>x.photo_path);
+  if(!paths.length)return;
+  try{
+   const signed=await db().storage.from(PHOTO_BUCKET).createSignedUrls(paths,3600);
+   if(signed.error)throw signed.error;
+   if(ticket!==epoch||tabId!==selected||!visible)return;
+   for(const entry of signed.data||[]){
+    if(entry.signedUrl&&!entry.error){
+     const item=items.find(x=>x.photo_path===entry.path);
+     if(item)photoUrls.set(item.id,entry.signedUrl);
+    }
+   }
+   updateCards();
+  }catch(err){console.warn('No se pudieron mostrar algunas fotos privadas.',err);}
  }
  function status(value,selected,id,label){
   const isSelected=value===selected;
@@ -86,12 +101,24 @@
  }
  function fragranceSelect(item){return '<select class="gl-mp-fragrance" data-mp-fragrance="'+esc(item.id)+'" aria-label="Tipo de fragancia de '+esc(item.product)+'"><option value="" '+(!item.fragrance_type?'selected':'')+'>Elegir tipo</option>'+[['fem','Fem'],['hombre','Hombre'],['unisex','Unisex']].map(([v,t])=>'<option value="'+v+'" '+(item.fragrance_type===v?'selected':'')+'>'+t+'</option>').join('')+'</select>';}
  function row(item){
-  return '<tr><td class="gl-mp-product">'+esc(item.product)+'</td><td>'+fragranceSelect(item)+'</td><td><div class="gl-mp-votes">'+
-    status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+
-    '</div></td><td class="gl-mp-note">'+(item.note?esc(item.note):'<span class="gl-mp-muted">Sin nota</span>')+'</td>'+
-    '<td><div class="gl-mp-actions"><button type="button" data-mp-print="'+esc(item.id)+'" aria-label="Imprimir nombre de '+esc(item.product)+' en NIIMBOT D110">Imprimir nombre</button><button type="button" data-mp-edit="'+esc(item.id)+'" aria-label="Editar '+esc(item.product)+'">Editar</button>'+
-    '<button type="button" data-mp-delete="'+esc(item.id)+'" class="is-danger" aria-label="Eliminar '+esc(item.product)+'">Eliminar</button></div></td></tr>';
+  const id=esc(item.id),name=esc(item.product),photo=photoUrls.get(item.id);
+  return '<article class="gl-mp-card" data-mp-item="'+id+'">'+
+   '<div class="gl-mp-card-top"><div class="gl-mp-photo">'+
+   (photo?'<img src="'+esc(photo)+'" loading="lazy" alt="Foto de '+name+'">':
+    '<div class="gl-mp-no-photo" aria-hidden="true"><span>▧</span><small>Sin foto</small></div>')+
+   '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'+ Agregar foto')+'</button>'+
+   '<input type="file" hidden data-mp-photo-input="'+id+'" aria-label="Elegir foto de '+name+'" accept="image/jpeg,image/png,image/webp"></div>'+
+   '<div class="gl-mp-card-info"><h4 title="'+name+'">'+name+'</h4>'+
+   '<div class="gl-mp-card-attributes"><span>Fragancia</span>'+fragranceSelect(item)+'</div>'+
+   '<div class="gl-mp-votes">'+status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+'</div>'+
+   (item.note?'<p class="gl-mp-card-note"><b>Nota:</b> '+esc(item.note)+'</p>':'')+
+   '</div></div><div class="gl-mp-actions">'+
+   '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
+   '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
+   (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
+   '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
+ function updateCards(){const list=$('#gl-mp-panel [data-mp-cards]');if(list)list.innerHTML=rowsHtml();}
  function matchesSearch(item){
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es').trim();
   return norm(item.product).includes(norm(searchTerm));
@@ -100,8 +127,8 @@
  function rowsHtml(){
   const found=matchingItems();
   return found.length?found.map(row).join(''):items.length
-   ?'<tr><td colspan="5" class="gl-mp-empty">No encontramos productos con ese nombre.</td></tr>'
-   :'<tr><td colspan="5" class="gl-mp-empty">Tu hoja está vacía. Agregá el primer producto.</td></tr>';
+   ?'<div class="gl-mp-empty">No encontramos productos con ese nombre.</div>'
+   :'<div class="gl-mp-empty">Tu hoja está vacía. Agregá el primer producto.</div>';
  }
  function resultLabel(){return searchTerm.trim()?matchingItems().length+' de '+items.length+' productos':'Más recientes primero';}
  function form(){
@@ -140,8 +167,7 @@
       '<label class="gl-mp-search" for="gl-mp-search"><span>Buscar producto</span><input id="gl-mp-search" type="search" data-mp-search placeholder="Buscar por nombre…" autocomplete="off" value="'+esc(searchTerm)+'"></label>'+
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
-      '<div class="gl-mp-scroll"><table class="gl-mp-table"><thead><tr><th>Producto</th><th>Tipo de fragancia</th><th>Me gustó / No me gustó</th><th>Nota</th><th>Acciones</th></tr></thead>'+
-      '<tbody>'+rowsHtml()+'</tbody></table></div>'+
+      '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
       '<p class="gl-mp-hint">Podés agregar todos los productos que necesites. Cada pestaña conserva su propia lista.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
@@ -158,7 +184,7 @@
  function close(back=true){
   removePrintModal();
   if(!visible)return;
-  visible=false;searchTerm='';$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
+  visible=false;searchTerm='';photoUrls.clear();$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
    if(back)window.history.back();
    else window.history.replaceState({...window.history.state,glMisProductos:false},'');
@@ -167,7 +193,7 @@
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
   removePrintModal();
-  tabId=id;itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
+  tabId=id;photoUrls.clear();itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
  }
@@ -432,9 +458,8 @@
   if(search&&visible){
    searchTerm=search.value;
    // Filtrar solo las filas: el input mantiene el foco en Android.
-   const tbody=$('#gl-mp-panel .gl-mp-table tbody');
    const count=$('#gl-mp-panel [data-mp-count]');
-   if(tbody)tbody.innerHTML=rowsHtml();
+   updateCards();
    if(count)count.textContent=resultLabel();
    return;
   }
