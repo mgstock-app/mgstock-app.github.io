@@ -201,6 +201,8 @@ declare v_scope text:=public.gestlok_molino_scope();
         v_product text:=btrim(coalesce(p_product,''));
 begin
  if v_scope not in ('admin','dueno','san_isidro') then raise exception 'Solo San Isidro puede modificar Precios' using errcode='42501'; end if;
+ if to_char(now() at time zone 'America/Argentina/Buenos_Aires','HH24:MI')>='23:59'
+ then raise exception 'El día ya cerró a las 23:59' using errcode='22023'; end if;
  if length(v_product) not between 1 and 140 or p_amount is null or p_amount<0 or p_amount>999999999
  then raise exception 'Completá producto y monto válido' using errcode='22023'; end if;
  if p_id is null then
@@ -228,6 +230,8 @@ declare v_scope text:=public.gestlok_molino_scope();
         v_row public.gestlok_molino_prices%rowtype;
 begin
  if v_scope not in ('admin','dueno','san_isidro') then raise exception 'Sin permiso para eliminar precios' using errcode='42501'; end if;
+ if to_char(now() at time zone 'America/Argentina/Buenos_Aires','HH24:MI')>='23:59'
+ then raise exception 'El día ya cerró a las 23:59' using errcode='22023'; end if;
  update public.gestlok_molino_prices set active=false,updated_at=now(),updated_by=auth.uid()
  where id=p_id and active returning * into v_row;
  if not found then raise exception 'Producto no encontrado' using errcode='22023'; end if;
