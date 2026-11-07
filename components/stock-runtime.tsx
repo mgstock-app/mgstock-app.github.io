@@ -81,7 +81,7 @@ export function StockRuntime() {
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=molino-vinculo-20261107");
+      await load("/stock/gestlok-owner-areas.js?rev=invitar-whatsapp-20261107");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=molino-locales-20261107");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
