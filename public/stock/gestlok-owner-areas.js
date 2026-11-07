@@ -22,6 +22,11 @@
   /* Gerente: colaboradores y horarios se habilitan únicamente con permisos del servidor. */
   async function refreshGerente(){
     if(!api||api.role()!=='gerente'||!api.S.loaded.e||gerenteBusy)return;
+    // El Molino es exclusivamente comercial; el módulo de personal no se oferta.
+    if(api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e'){
+      if(gerente.status!=='none'){gerente={status:'none',locals:[]};api.render();}
+      return;
+    }
     if(api.S.offline&&gerente.status==='ready')return;
     if(window.GestLokCreatorSupport?.previewRol?.()==='gerente'){
       const next={status:'ready',locals:(api.S.me?.locales||[]).slice()};
@@ -41,6 +46,7 @@
     }finally{gerenteBusy=false;}
   }
   function gerenteCard(){
+    if(api?.S?.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e')return '';
     if(gerente.status!=='ready')return '';
     return '<section class="gl-home-essential-actions" aria-label="Administración de empleados"><h2>Administración de empleados</h2><div class="gl-home-essential-links"><button type="button" data-gerente-empleados>'+
       '<span aria-hidden="true">'+svg('<path d="M4 6h16v13H4zM8 3v6M16 3v6M4 11h16"/>',20)+'</span><b>Colaboradores</b>'+svg('<path d="m9 6 6 6-6 6"/>',18)+'</button><button type="button" data-gerente-horarios>'+svg(I.calendar,20)+'<b>Horarios y Google Sheets</b>'+svg(I.right,18)+'</button></div><p class="lead">Legajos de tu local y horarios con la misma cuenta de GESTLOK.</p></section>';
@@ -49,15 +55,16 @@
     if(api?.role?.()!=='gerente'||!api.S.local)return '';
     const local=api.S.local, name=(api.S.localesDB||[]).find(l=>l.id===local)?.nombre||'Tu local';
     const brand=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
-    const staff=gerente.status==='ready'&&gerente.locals.includes(local);
-    const pending=gerente.status==='loading';
+    const soloTienda=api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
+    const staff=!soloTienda&&gerente.status==='ready'&&gerente.locals.includes(local);
+    const pending=!soloTienda&&gerente.status==='loading';
     return '<section class="gl-owner-landing gl-manager-landing" aria-label="Inicio del gerente"><header class="gl-owner-welcome"><div><p>Bienvenido/a · '+esc(name)+'</p>'+
       (brand?'<h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p>Empanadas de Verdad</p>':'<h1><span>GEST</span><span>LOK</span></h1>')+
       '<p class="gl-owner-tagline">Todo lo que necesitás para tu local.</p></div></header><div class="gl-owner-areas">'+
-      '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
+      '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>'+(soloTienda?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
       list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
-      '<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
-      (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir colaboradores de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Colaboradores, legajos y turnos de tu propio local.</p>'+list([['team','Colaboradores y fichas'],['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article></div>'+ (staff ? '<nav class="gl-manager-quick" aria-label="Accesos rápidos del gerente">'+[['proveedores','box','Proveedores'],['vencimientos','calendar','Vencimientos'],['chat','file','Chat del local'],['avisos','bell','Avisos']].map(([k,i,t])=>'<button type="button" data-gerente-quick="'+k+'">'+svg(I[i],23)+'<span>'+t+'</span></button>').join('')+'</nav>' : '')+'</section>'+
+      (soloTienda?'':'<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
+      (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir colaboradores de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Colaboradores, legajos y turnos de tu propio local.</p>'+list([['team','Colaboradores y fichas'],['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article>')+'</div>'+ (staff ? '<nav class="gl-manager-quick" aria-label="Accesos rápidos del gerente">'+[['proveedores','box','Proveedores'],['vencimientos','calendar','Vencimientos'],['chat','file','Chat del local'],['avisos','bell','Avisos']].map(([k,i,t])=>'<button type="button" data-gerente-quick="'+k+'">'+svg(I[i],23)+'<span>'+t+'</span></button>').join('')+'</nav>' : '')+'</section>'+
       (window.GestLokCajaDiaria?.homeTile?.()||'')+
       (window.GestLokUpdates?.homeDue?.()||'');
   }
@@ -196,7 +203,7 @@
     // de RR.HH. mientras la creadora define las necesidades del cliente.
     // El permiso real de Empleados continúa cerrado en el backend.
     const commercialPrepOnly=api?.S?.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e' &&
-      api?.role?.()==='creadora' && commerce && !staff;
+      ['creadora','dueno'].includes(api?.role?.()) && commerce && !staff;
     const name=esc(state.data.company_name||'Mi empresa');
     // El logo de Mi Gusto solo se muestra cuando el backend lo asigna a esta empresa.
     const branded=state.data.logo_id==='mi-gusto';
