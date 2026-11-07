@@ -112,7 +112,12 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
  assert.equal((html.match(/class="gl-ch-company-local-grid"/g)||[]).length,3);
  assert.equal((html.match(/data-creator-company=/g)||[]).length,3);
  assert.equal((html.match(/class="gl-ch-quick-local gl-ch-company-local"/g)||[]).length,4,'Cada local tiene tarjeta y apertura propia');
- assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,7);
+ assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,11);
+ assert.match(html,/<h2>Operaciones entre sucursales<\/h2>/);
+ for (const operation of ['precios','envios','devoluciones','historial']) {
+  assert.ok(html.includes('data-ch-molino="'+operation+'"'),'Falta operación '+operation);
+ }
+ assert.ok(html.includes('El Molino Café') && html.includes('San Isidro y Acassuso'));
  assert.ok(html.includes('data-ch-tab="locales"'),'Se conserva la navegación de Locales');
  assert.ok(html.includes('aria-label="Elegir local para Plan Scanner"'),'Scanner solicita local autorizado');
  assert.ok(!html.includes('class="gl-ch-logout"')&&!html.includes('class="gl-ch-out"'),'Cerrar sesión solo desde Mi perfil');
