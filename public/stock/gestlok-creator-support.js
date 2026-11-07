@@ -65,13 +65,38 @@
   }
   async function openLocal(tenant, local, name){
     if(!api?.isCreadora?.() || busy || !tenant || !local)return;
+    if(typeof navigator!=='undefined' && navigator.onLine===false){
+      api.toast('Conectate a internet para cambiar de empresa.',true);return;
+    }
     busy=true;
     try{
-      const {error}=await window.GestLokSupabase.rpc('gestlok_creator_open_company',{p_tenant:tenant,p_reason:'Administración de local desde Locales',p_minutes:60});
-      if(error)throw error;
+      // La creadora puede ingresar a un local de una empresa a la que está
+      // vinculada expresamente, con autorización verificada por el servidor.
+      // Para las demás empresas se conserva el modo soporte auditado.
+      const pending=await window.GestLokOffline?.pending?.().catch(()=>0);
+      if(pending)throw Error('Tenés cambios pendientes de sincronizar. Guardalos antes de cambiar de empresa.');
+      const {data:contexts,error:contextError}=await window.GestLokSupabase.rpc('gestlok_my_role_contexts');
+      if(contextError || !Array.isArray(contexts))throw contextError || Error('No pudimos verificar tus permisos.');
+      const direct=contexts.some(c=>c?.tenant_id===tenant && c.role==='creadora' &&
+        Array.isArray(c.local_names) && c.local_names.some(l=>l.id===local));
+      if(direct){
+        if(support.active){
+          const closed=await window.GestLokSupabase.rpc('gestlok_creator_close_company');
+          if(closed.error)throw closed.error;
+        }
+        const {data, error}=await window.GestLokSupabase.rpc('gestlok_choose_role_context',{p_tenant:tenant});
+        if(error || data?.tenant_id!==tenant || data?.role!=='creadora')
+          throw error || Error('No estás autorizada a administrar este local.');
+        await window.GestLokOffline?.invalidateContext?.();
+      }else{
+        const {error}=await window.GestLokSupabase.rpc('gestlok_creator_open_company',
+          {p_tenant:tenant,p_reason:'Administración de local desde Locales',p_minutes:60});
+        if(error)throw error;
+      }
       store.set('');
       window.sessionStorage.setItem('gestlok-admin-tab','locales');
-      window.sessionStorage.setItem('gestlok:profile-next-local',JSON.stringify({email:String(api.S.me.email||'').toLowerCase(),tenant_id:tenant,local_id:local}));
+      window.sessionStorage.setItem('gestlok:profile-next-local',
+        JSON.stringify({email:String(api.S.me.email||'').toLowerCase(),tenant_id:tenant,local_id:local}));
       location.reload();
     }catch(e){api.toast(e?.message||'No se pudo abrir el local.',true);busy=false;}
   }
