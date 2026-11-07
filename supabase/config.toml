@@ -1,4 +1,5 @@
 # Webhook de Meta: autentica por firma X-Hub-Signature-256, no por JWT de Supabase.
-# No habilita mensajes hasta configurar MG_WA_ENABLED y las credenciales de ambos números.
+# No habilita mensajes hasta configurar MG_WA_ENABLED y las credenciales de al menos un número autorizado.
+# Munro se puede habilitar independientemente de Don Torcuato.
 [functions.mi-gusto-whatsapp]
 verify_jwt = false
