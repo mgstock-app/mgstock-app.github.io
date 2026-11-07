@@ -1,0 +1,20 @@
+/* Módulo Empleados: el mismo control visible que en GESTLOK principal. */
+#gl-empleados-universal-logout.gl-empleados-universal-logout{
+ position:fixed;z-index:350;display:flex;align-items:center;justify-content:center;gap:8px;
+ top:max(74px,calc(env(safe-area-inset-top,0px) + 64px));
+ right:max(12px,calc(env(safe-area-inset-right,0px) + 12px));
+ padding:9px 13px;min-height:42px;min-width:138px;
+ background:white;color:#183d62;border:1px solid #b6cbdf;border-radius:999px;
+ box-shadow:0 3px 15px #0d2e4924;font:700 13px/1.2 Inter,system-ui,sans-serif;
+ cursor:pointer;touch-action:manipulation;
+}
+#gl-empleados-universal-logout.gl-empleados-universal-logout:hover{background:#eef5fd;border-color:#8eb3d6}
+#gl-empleados-universal-logout.gl-empleados-universal-logout:focus-visible{outline:3px solid #1978bf;outline-offset:3px}
+@media(max-width:899px){
+ #gl-empleados-universal-logout.gl-empleados-universal-logout{
+  top:auto;right:auto;
+  bottom:max(85px,calc(env(safe-area-inset-bottom,0px) + 78px));
+  left:max(10px,calc(env(safe-area-inset-left,0px) + 10px));
+  min-height:44px;min-width:130px;
+ }
+}
