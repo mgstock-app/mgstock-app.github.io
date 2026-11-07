@@ -63,7 +63,9 @@ function summary(rows:unknown):string{
  const a=Array.isArray(rows)?rows.slice(0,25):[];
  return a.map(p=>{
   const item=p as Json;
-  return text(item.quantity,3)+" × "+text(item.name,90)+" · "+money(Number(item.quantity)*Number(item.price));
+  const choices=text(item.choices,100);
+  return text(item.quantity,3)+" × "+text(item.name,90)+" · "+money(Number(item.quantity)*Number(item.price))+
+   (choices?"\n  Gustos / salsas: "+choices:"");
  }).join("\n");
 }
 function answer(to:string,local:Local,result:Json):Json|null {
@@ -90,6 +92,19 @@ function answer(to:string,local:Local,result:Json):Json|null {
   if(cat.length>(page+1)*perPage)rows.push({id:"mi:next",title:"Ver más opciones",description:"Siguiente página"});
   return listMessage(to,"Elegí un producto de Mi Gusto "+name+". Después elegís la cantidad.","Ver carta","Productos y precios",rows);
  }
+ if(t==="pack"){
+  const flavors=Array.isArray(result.flavors)?result.flavors:[];
+  const sauces=Array.isArray(result.sauces)?result.sauces:[];
+  const empanadaCount=Number(result.empanada_count),sauceCount=Number(result.sauce_count);
+  const numbered=(options:unknown[])=>options.map((option,i)=>(i+1)+". "+text(option,100)).join("\n");
+  const example=Array(empanadaCount).fill(1).join(" ")+(sauceCount?" / "+Array(sauceCount).fill(1).join(" "):"");
+  return plain(to,(result.invalid===true?"Revisá las cantidades y los números elegidos.\n\n":"")+
+   text(result.name,120)+" · "+money(result.price)+"\n\nElegí "+empanadaCount+
+   " empanadas. Podés repetir gustos.\n"+numbered(flavors)+
+   (sauceCount?"\n\nElegí "+sauceCount+" salsa(s).\n"+numbered(sauces):"")+
+   "\n\nEscribí los números separados por espacios"+
+   (sauceCount?" y separá los gustos de las salsas con /":"")+". Ejemplo: "+example);
+ }
  if(t==="quantity")return listMessage(to,
   "Elegiste "+text(result.name,100)+(result.price!=null?" ("+money(result.price)+" c/u)":"")+".\n¿Cuántas unidades querés? Elegí una opción o escribí otra cantidad del 1 al 50.",
   "Elegir cantidad","Cantidad",QUANTITIES.map(q=>({id:"mi:qty:"+q,title:q+(q===1?" unidad":" unidades")})));
@@ -105,7 +120,7 @@ function answer(to:string,local:Local,result:Json):Json|null {
   const head=custom?custom.review_text:"Confirmá tu pedido, "+text(result.name,90)+":";
   const notes=text(result.notes,300).trim();
   return buttons(to,
-   head+"\n"+summary(result.cart)+"\n\nTotal: "+money(result.total)+"\nPAGO SOLO EN EFECTIVO"+
+   head+"\n\nTotal: "+money(result.total)+"\nPAGO SOLO EN EFECTIVO\n\n"+summary(result.cart)+
    "\nA nombre de: "+text(result.name,90)+(notes?"\nObservaciones: "+notes:"")+
    "\nAl confirmar, llega al local "+name+".",
    REVIEW_BUTTONS);
