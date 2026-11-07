@@ -30,6 +30,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/auth.js?rev=salir-local-20261027",
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
+    "/stock/gestlok-molino.js?rev=molino-live-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
@@ -74,10 +75,11 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=scanner-precio-manual-20261106");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
+      if (!visitor) await load("/stock/gestlok-molino.js?rev=molino-live-20261107");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=scanner-invitados-20261106");
+      await load("/stock/gestlok-owner-areas.js?rev=molino-vinculo-20261107");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=molino-locales-20261107");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
