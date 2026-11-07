@@ -207,7 +207,7 @@ test('Conexión con la app sin afectar a otras empresas', () => {
   assert.match(owner, /window\.GestLokCajaDiaria\?\.refresh\?\.\(api\)/);
   assert.match(owner, /const caja=window\.GestLokCajaDiaria\?\.homeTile\?\.\(\)\|\|''/);
   assert.match(owner, /'<\/div>'\+\(isSoloOwner\(\)\?'':caja\)\+pilot\+futurePrices\+/);
-  assert.match(owner, /\(window\.GestLokCajaDiaria\?\.homeTile\?\.\(\)\|\|''\)\+\s*\(window\.GestLokMolino\?\.homeTile\?\.\(\)\|\|''\)\+\s*\(window\.GestLokUpdates/);
+  assert.match(owner, /\(window\.GestLokCajaDiaria\?\.homeTile\?\.\(\)\|\|''\)\+\s*\(window\.GestLokMolino\?\.homeTile\?\.\(\)\|\|''\)\+\s*\(window\.GestLokInvites\?\.homeTile\?\.\(\)\|\|''\)\+\s*\(window\.GestLokUpdates/);
   assert.match(read('app/layout.tsx'), /import "\.\/gestlok-caja-diaria\.css";/);
   assert.match(read('scripts/sw-template.js'), /'\/stock\/gestlok-caja-diaria\.js'/);
   assert.match(read('scripts/audit-live-responsive.mjs'), /'stock\/gestlok-caja-diaria\.js'/);
