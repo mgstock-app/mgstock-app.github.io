@@ -4,6 +4,7 @@ import { GestlokProvider } from "@/components/gestlok/GestlokContext";
 import { GestlokModuleBar } from "@/components/gestlok/GestlokModuleBar";
 import { SupportWhatsApp } from "@/components/layout/SupportWhatsApp";
 import { RoleProfileSwitcher } from "@/components/layout/RoleProfileSwitcher";
+import { GlobalLogout } from "@/components/layout/GlobalLogout";
 import "@/styles/gestlok-module.css";
 import Link from "next/link";
 import Script from "next/script";
@@ -20,6 +21,7 @@ import "@/styles/gerente-desktop-clarity.css";
 import "@/styles/desktop-gestlok.css";
 import "@/styles/responsive-global.css";
 import "@/styles/gestlok-experience.css";
+import "@/styles/global-logout.css";
 export const metadata: Metadata = {
   title: { default: brand.name, template: `%s | ${brand.name}` },
   applicationName: brand.name,
@@ -54,6 +56,7 @@ export default function RootLayout({
             {children}
             <RoleProfileSwitcher />
             <SupportWhatsApp />
+            <GlobalLogout />
             <footer aria-label="Documentos legales de GESTLOK Empleados" style={{
               borderTop: "1px solid #dfe6ee", padding: "14px 16px 22px",
               display: "flex", justifyContent: "center", flexWrap: "wrap",
