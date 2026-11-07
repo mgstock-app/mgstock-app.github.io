@@ -85,7 +85,8 @@ function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true,seed
  };
  const host={S:{me:{email:userEmail,tenant_id:tenant}},role:()=>role,render(){},closePanel(){}};
  const ctx={role,tenant_id:tenant};
- const window={GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'owner',email:userEmail}},error:null})},from},
+ const window={GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'owner',email:userEmail}},error:null})},from,
+  storage:{from:()=>({createSignedUrls:async paths=>({data:paths.map(path=>({path,signedUrl:'https://signed.example/'+encodeURIComponent(path)})),error:null})})}},
   history:{state:{},pushState(){},replaceState(){},back(){}},
   addEventListener(){},confirm:()=>true};
  runInNewContext(script,{window,document:d,Date,FormData,console});
@@ -131,6 +132,17 @@ test('Busca al escribir sin perder el foco y ordena por fecha de ALTA descendent
  sendSearch('');
  assert.ok(a.cards.innerHTML.indexOf('Arabia Tonka')<a.cards.innerHTML.indexOf('Hawás Ice'));
  assert.equal(a.count.textContent,'Más recientes primero');
+});
+test('Las imágenes de las tarjetas usan URLs firmadas del almacenamiento privado',async()=>{
+ const entries=[{id:'e1',tab_id:'t1',product:'Perfume con foto',liked:true,note:'',position:0,
+  created_at:'2026-11-07T12:00:00Z',photo_path:'owner/e1/1234-foto.jpg'}];
+ const a=launch(email,'dueno',TENANT,true,entries);
+ await a.mod.refresh(a.ctx,a.host);
+ await a.mod.open();
+ assert.match(a.cards.innerHTML,/img src="https:\/\/signed\.example\//);
+ assert.match(a.cards.innerHTML,/Cambiar foto/);
+ assert.match(a.cards.innerHTML,/Quitar foto/);
+ assert.doesNotMatch(a.cards.innerHTML,/storage\/v1\/object\/public/);
 });
 test('Ni otra cuenta ni Mi Gusto pueden ver ni abrir el cuaderno',async()=>{
  for(const [mail,role,tenant] of [
