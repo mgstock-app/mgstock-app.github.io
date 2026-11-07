@@ -94,9 +94,15 @@ const config = () => ({
  ids:{munro:env("MG_WA_PHONE_ID_MUNRO"),torcuato:env("MG_WA_PHONE_ID_TORCUATO")},
  tokens:{munro:env("MG_WA_TOKEN_MUNRO"),torcuato:env("MG_WA_TOKEN_TORCUATO")}
 });
+// Permitir activar una sola sucursal (primero Munro) sin exigir las credenciales
+// de Don Torcuato. Nunca usar un número que no tenga ID Y token configurados.
+function configured(c:ReturnType<typeof config>,loc:Local):boolean{
+ return Boolean(c.ids[loc]&&c.tokens[loc]);
+}
 function ready(c:ReturnType<typeof config>):boolean{
- return c.enabled&&Boolean(c.secret&&c.verify&&c.url&&c.service&&c.ids.munro&&c.ids.torcuato&&
- c.ids.munro!==c.ids.torcuato&&c.tokens.munro&&c.tokens.torcuato);
+ const munro=configured(c,"munro"),torcuato=configured(c,"torcuato");
+ return c.enabled&&Boolean(c.secret&&c.verify&&c.url&&c.service)&&
+  (munro||torcuato)&&(!munro||!torcuato||c.ids.munro!==c.ids.torcuato);
 }
 function json(status:number,body:Json):Response{
  return new Response(JSON.stringify(body),{status,headers:{
@@ -169,7 +175,7 @@ Deno.serve(async(req:Request)=>{
     if(change.field!=="messages")continue;
     const value=change.value as Json|undefined;
     const phoneId=text((value?.metadata as Json|undefined)?.phone_number_id,80);
-    const loc=(Object.keys(c.ids) as Local[]).find(k=>c.ids[k]===phoneId);
+    const loc=(Object.keys(c.ids) as Local[]).find(k=>configured(c,k)&&c.ids[k]===phoneId);
     if(!loc)continue;
     for(const m of (Array.isArray(value?.messages)?value?.messages as Json[]:[]).slice(0,15)){
      const id=text(m.id,250),from=text(m.from,20),cmd=parseMessage(m);
