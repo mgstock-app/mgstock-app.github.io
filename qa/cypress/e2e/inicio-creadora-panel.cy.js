@@ -17,7 +17,10 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-quick-locals').should('not.exist');
   cy.get('.gl-ch-company-area>header h2').should('have.text','Empresas activas');
   cy.get('.gl-ch-shortcuts [data-ch-tab="usuarios"]').should('be.visible');
-  cy.get('.gl-ch-microapp').should('have.length',6);
+  cy.get('.gl-ch-microapp').should('have.length',7);
+  cy.get('.gl-ch-microapp').contains('Plan Scanner').should('be.visible').click();
+  cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
+  cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
@@ -25,7 +28,10 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav button').should('have.length',8);
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="nfc"]').should('exist');
-  cy.get('.gl-ch .gl-ch-logout').should('be.visible').and('contain.text','Cerrar sesión');
+  cy.get('.gl-ch .gl-ch-logout').should('not.exist');
+  cy.get('#gl-profile-switch-trigger').click();
+  cy.get('.gl-profile-switch-logout').should('be.visible').and('contain.text','Cerrar sesión');
+  cy.get('[data-roles-close]').click();
  });
  it('las pestañas conservan todas las funciones anteriores (acceso a otras empresas incluido)',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
@@ -44,8 +50,10 @@ describe('Inicio independiente de la creadora',()=>{
  it('en celular el menú queda arriba y el contenido sin desbordes',()=>{
   cy.viewport(390,844);start('kmu15lopez@gmail.com');
   cy.get('.gl-ch-nav',{timeout:12000}).should('be.visible');
-  cy.get('.gl-ch-side .gl-ch-logout').should('be.visible').and('contain.text','Cerrar sesión')
-   .and('have.attr','data-au','out');
+  cy.get('.gl-ch-side .gl-ch-logout').should('not.exist');
+  cy.get('#gl-profile-switch-trigger').click();
+  cy.get('.gl-profile-switch-logout').should('be.visible');
+  cy.get('[data-roles-close]').click();
   cy.get('.gl-ch-main h1').should('be.visible');
   cy.get('.gl-ch').then($root=>{
    const r=$root[0].getBoundingClientRect();

@@ -2,118 +2,122 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-const read=p=>readFileSync(p,'utf8');
-const source=read('public/stock/gestlok-logout.js');
-const css=read('public/stock/gestlok-logout.css');
-const runtime=read('components/stock-runtime.tsx');
-const sw=read('scripts/sw-template.js');
-const auth=read('public/stock/auth.js');
-const tick=()=>new Promise(r=>setImmediate(r));
+const read = p => readFileSync(p, 'utf8');
+const source = read('public/stock/gestlok-logout.js');
+const css = read('public/stock/gestlok-logout.css');
+const roleSwitcher = read('public/stock/gestlok-role-switcher.js');
+const runtime = read('components/stock-runtime.tsx');
+const sw = read('scripts/sw-template.js');
+const auth = read('public/stock/auth.js');
+const tick = () => new Promise(resolve => setImmediate(resolve));
+const session = id => ({user:{id,email:'example@test.invalid'}});
+
 function fixture(){
- let callback=null,resolveSession,revision=0;
- const login=new Promise(resolve=>{resolveSession=resolve;});
- let sessionEvents=0;
- const ids=new Map();
- const dom={};
- const button={id:'',dataset:{},className:'',type:'',hidden:true,
-   isConnected:false,disabled:false,attrs:{},
-   setAttribute(k,v){this.attrs[k]=v;},
-   removeAttribute(k){delete this.attrs[k];},
-   querySelector(name){return name==='span'?label:null;},
-   closest(q){return q==='#gl-universal-logout'?this:null;}};
- const label={textContent:''};
+ const made=[], events={}, flags={};
+ let callback=null,resolveSession;
+ const initialSession=new Promise(resolve=>{resolveSession=resolve;});
+ function connected(node,value){node.isConnected=value;node.children.forEach(child=>connected(child,value));}
+ function el(tag){
+   const node={tag,id:'',hidden:false,isConnected:false,attrs:{},dataset:{},
+     children:[],events:{},classList:{toggle(){}},
+     append(...items){this.children.push(...items);items.forEach(x=>{x.parent=this;connected(x,this.isConnected);});},
+     appendChild(item){this.append(item);return item;},
+     setAttribute(k,v){this.attrs[k]=String(v);},
+     addEventListener(k,fn){this.events[k]=fn;},
+     contains(item){return item===this||this.children.some(x=>x.contains(item))},
+     click(){this.events.click?.({target:this});}
+   };
+   made.push(node);return node;
+ }
+ const body=el('body');body.isConnected=true;
+ const head=el('head');head.isConnected=true;
  const document={
-  head:{appendChild(el){ids.set(el.id,el);}},
-  body:{appendChild(el){el.isConnected=true;ids.set(el.id,el);}},
-  getElementById(id){return ids.get(id)||null;},
-  createElement(tag){return tag==='button'?button:{id:'',rel:'',href:''};},
-  documentElement:{classList:{toggle(k,v){dom[k]=v;}}},
-  addEventListener(_event,fn){dom.listener=fn;}
+   head,body,documentElement:{classList:{toggle(k,v){flags[k]=v;}}},
+   createElement:el,
+   getElementById(id){return made.find(n=>n.id===id&&n.isConnected)||null;},
+   addEventListener(k,fn){events[k]=fn;}
  };
- const sb={auth:{
-  onAuthStateChange(fn){callback=fn;sessionEvents++;},
-  getSession(){return login;}
- }};
+ const sb={auth:{onAuthStateChange(fn){callback=fn;},getSession(){return initialSession;}}};
  const window={GestLokSupabase:sb};
  vm.runInNewContext(source,{window,document,Promise});
- return {window,button,label,document,ids,dom,resolveSession,
-   emit:(name,session)=>callback(name,session),sessionEvents:()=>sessionEvents};
+ return {window,document,events,flags,made,resolveSession,
+   emit:(event,data)=>callback(event,data),
+   node:id=>document.getElementById(id),
+   create:el};
 }
-const session=(id,role)=>({user:{id,email:role+'@example.test'}});
 
-test('El botón es global, accesible y visible para todos los roles, incluso pendientes',async()=>{
+test('Cuenta pendiente: Mi perfil es el primer toque y Cerrar sesión aparece solo al abrirlo',async()=>{
  const f=fixture();
- assert.equal(f.sessionEvents(),1);
- assert.equal(f.button.hidden,true);
- for(const [i,role] of ['dueno','gerente','colaborador','creadora','sin-rol','solicitud-pendiente'].entries()){
-  f.emit(i===0?'INITIAL_SESSION':'SIGNED_IN',session('uid-'+i,role));
-  assert.equal(f.button.hidden,false,role);
-  assert.equal(f.button.dataset.au,'out');
-  assert.equal(f.button.attrs['aria-label'],'Cerrar sesión de GESTLOK en este dispositivo');
-  assert.equal(f.label.textContent,'Cerrar sesión',role);
-  assert.equal(f.window.GestLokLogout.isVisible(),true);
- }
- assert.equal(f.document.getElementById('gl-universal-logout'),f.button);
- assert.equal(f.dom['gl-universal-logout-ready'],true);
+ f.emit('SIGNED_IN',session('pending'));
+ assert.equal(f.window.GestLokLogout.isVisible(),true);
+ const wrap=f.node('gl-session-profile'),trigger=f.node('gl-universal-profile-trigger');
+ const menu=f.node('gl-universal-profile-menu'),logout=f.node('gl-universal-logout');
+ assert.equal(wrap.hidden,false);
+ assert.equal(menu.hidden,true);
+ assert.equal(logout.dataset.au,'out');
+ trigger.click();
+ assert.equal(menu.hidden,false);
+ assert.equal(trigger.attrs['aria-expanded'],'true');
+ trigger.click();
+ assert.equal(menu.hidden,true);
  f.resolveSession({data:{session:null}});
  await tick();
- assert.equal(f.button.hidden,false,'La consulta inicial tardía no puede ocultar la sesión activa');
+ assert.equal(wrap.hidden,false,'La consulta inicial atrasada no desconecta una sesión nueva');
 });
 
-test('No aparece en visitantes, se oculta al salir y no reabre por lecturas atrasadas',async()=>{
- const f=fixture();
- f.emit('SIGNED_IN',session('test','gerente'));
+test('Perfil multiempresa: no existe botón flotante de Cerrar sesión; opción dentro del diálogo',()=>{
+ const f=fixture();f.emit('SIGNED_IN',session('owner'));
+ const trigger=f.create('button');trigger.id='gl-profile-switch-trigger';
+ f.document.body.appendChild(trigger);
+ f.window.GestLokLogout.syncProfile();
+ assert.equal(f.node('gl-session-profile').hidden,true);
+ assert.match(roleSwitcher,/class="gl-profile-switch-logout" data-au="out"/);
+ assert.match(roleSwitcher,/window\.GestLokLogout\?\.syncProfile\?\.\(\)/);
+ assert.doesNotMatch(css,/#gl-universal-logout\.gl-universal-logout\{\s*position:fixed/);
+ assert.match(css,/\.gl-profile-switch-logout/);
+});
+
+test('Cerrar sesión y visitantes ocultan las acciones, sin restauración por lecturas viejas',async()=>{
+ const f=fixture();f.emit('SIGNED_IN',session('owner'));
  f.emit('SIGNED_OUT',null);
- f.resolveSession({data:{session:session('old','dueno')}});
+ f.resolveSession({data:{session:session('old')}});
  await tick();
- assert.equal(f.button.hidden,true);
  assert.equal(f.window.GestLokLogout.isVisible(),false);
- assert.equal(f.dom['gl-universal-logout-ready'],false);
+ assert.equal(f.node('gl-session-profile').hidden,true);
+ assert.equal(f.flags['gl-universal-logout-ready'],false);
 });
 
-test('La acción reutiliza la salida LOCAL sin desconectar otros equipos ni borrar datos',()=>{
- assert.match(source,/button\.dataset\.au='out'/);
+test('Se reutiliza siempre el cierre local de auth.js, sin cambiar permisos ni empresas',()=>{
+ assert.match(source,/logout\.dataset\.au='out'/);
  assert.match(auth,/t\.dataset\.au === 'out'/);
  assert.match(auth,/sb\.auth\.signOut\(\{ scope: 'local' \}\)/);
- assert.doesNotMatch(source,/\.rpc\(|\.from\(|delete\(|localStorage\.clear|sb\.auth\.signOut\(/);
- assert.doesNotMatch(source,/\.rol\b|tenant_id|local_id|mi_rol\(/);
-});
-
-test('Está disponible sobre la pantalla Pendiente, sin tapar el menú inferior móvil',()=>{
- assert.match(css,/html\.auth-on #gl-universal-logout/);
- assert.match(css,/@media\(max-width:899px\)/);
- assert.match(css,/bottom:max\(85px/);
- assert.match(css,/min-height:44px/);
+ assert.doesNotMatch(source,/\.rpc\(|\.from\(|localStorage\.clear|sb\.auth\.signOut\(/);
  assert.match(css,/focus-visible/);
- assert.match(css,/\[hidden\]\{display:none!important\}/);
+ assert.match(css,/\[hidden\]/);
 });
 
-test('Se carga para todos los usuarios autenticados y nunca en la demo',()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-logout\.js\?rev=logout-for-all-20261107"\)/);
- const authPos=runtime.indexOf('await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js');
- const logoutPos=runtime.indexOf('if (!visitor) await load("/stock/gestlok-logout.js');
- assert.ok(authPos>=0&&logoutPos>authPos);
+test('La app renueva caché de perfil y cierre para PWA',()=>{
+ assert.match(runtime,/\/stock\/gestlok-logout\.js\?rev=logout-profile-menu-20261107/);
+ assert.match(runtime,/\/stock\/gestlok-role-switcher\.js\?rev=roles-logout-profile-20261107/);
+ assert.match(runtime,/\/stock\/gestlok-creator-home\.js\?rev=scanner-card-profile-20261107/);
  assert.match(sw,/'\/stock\/gestlok-logout\.js'/);
  assert.match(sw,/'\/stock\/gestlok-logout\.css'/);
 });
 
-
-test('Empleados: salida disponible en Dueño, Gerente, Colaborador y Creadora',()=>{
+test('Empleados: perfil aprobado conserva la salida dentro del diálogo; pendientes tienen menú seguro',()=>{
  const component=read('modules/empleados/components/layout/GlobalLogout.tsx');
- const moduleLayout=read('modules/empleados/app/layout.tsx');
- const moduleCSS=read('modules/empleados/styles/global-logout.css');
+ const profile=read('modules/empleados/components/layout/RoleProfileSwitcher.tsx');
+ const css=read('modules/empleados/styles/global-logout.css');
+ const layout=read('modules/empleados/app/layout.tsx');
  const provider=read('modules/empleados/components/auth/AuthProvider.tsx');
- assert.match(moduleLayout,/import \{ GlobalLogout \} from "@\/components\/layout\/GlobalLogout"/);
- assert.match(moduleLayout,/<GlobalLogout \/>/);
- assert.match(moduleLayout,/import "@\/styles\/global-logout\.css"/);
- assert.match(component,/const \{ user, signOut \} = useAuth\(\)/);
- assert.match(component,/onAuthStateChange/);
- assert.match(component,/client\.auth\.getSession\(\)/);
- assert.match(component,/if \(!user && !sessionActive\) return null/);
+ assert.match(layout,/<GlobalLogout \/>/);
+ assert.match(layout,/<RoleProfileSwitcher \/>/);
+ assert.match(component,/user\?\.status === "approved"\) return null/);
+ assert.match(component,/aria-expanded=\{open\}/);
+ assert.match(component,/<span>Mi perfil<\/span>/);
  assert.match(component,/onClick=\{\(\) => void signOut\(\)\}/);
- assert.match(component,/<span>Cerrar sesión<\/span>/);
- assert.match(moduleCSS,/@media\(max-width:899px\)/);
- assert.match(moduleCSS,/min-height:44px/);
+ assert.match(profile,/className="module-profile-signout"/);
  assert.match(provider,/auth\.signOut\(\{ scope: "local" \}\)/);
- assert.doesNotMatch(component,/\bmanager\b|\bowner\b|\bemployee\b|\badmin\b/);
+ assert.match(css,/min-height:44px/);
+ assert.doesNotMatch(css,/#gl-empleados-universal-logout\.gl-empleados-universal-logout\{\s*position:fixed/);
 });

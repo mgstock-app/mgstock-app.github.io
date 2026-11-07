@@ -28,7 +28,7 @@ function preloadStartupScripts(visitor: boolean) {
   const privateScripts = [
     "/stock/gestlok-registration.js",
     "/stock/auth.js?rev=auth-invites-google-20261107",
-    "/stock/gestlok-logout.js?rev=logout-for-all-20261107",
+    "/stock/gestlok-logout.js?rev=logout-profile-menu-20261107",
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
@@ -61,8 +61,8 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-registration.js");
       if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
       await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=auth-invites-google-20261107");
-      // Fijo y visible también para solicitudes pendientes o vistas sin menú.
-      if (!visitor) await load("/stock/gestlok-logout.js?rev=logout-for-all-20261107");
+      // Perfil seguro: salida dentro de Mi perfil, también accesible para cuentas pendientes.
+      if (!visitor) await load("/stock/gestlok-logout.js?rev=logout-profile-menu-20261107");
       if (!visitor) await load("/stock/gestlok-ios-install.js?rev=ios-home-screen-20261030");
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
       if (!visitor) await load("/stock/gestlok-push.js");
@@ -90,14 +90,14 @@ export function StockRuntime() {
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
-      await load("/stock/gestlok-creator-home.js?rev=empresas-activas-cards-20261107");
+      await load("/stock/gestlok-creator-home.js?rev=scanner-card-profile-20261107");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js?rev=el-molino-pendiente-20261107");
       if (!visitor) await load("/stock/gestlok-support.js");
-      if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-20261028");
+      if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
