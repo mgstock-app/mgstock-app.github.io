@@ -123,7 +123,7 @@ function movementForm(kind){
  if(!canEdit(kind))return '<p class="gl-molino-tip">'+(kind==='envio'?'Acassuso visualiza los envíos y confirma cada producto recibido.':'San Isidro ve las devoluciones y confirma cada producto recibido.')+'</p>';
  const p=editMove?(state?.[kind==='envio'?'envios':'devoluciones']||[]).find(x=>x.id===editMove):null;
  const isReturn=kind==='devolucion';
- return '<form id="gl-molino-movement-form" data-kind="'+kind+'" class="gl-molino-form">'+
+ return '<form id="gl-molino-movement-form-'+kind+'" data-mol-movement-form data-kind="'+kind+'" class="gl-molino-form">'+
  '<label>Producto<input name="product" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
  '<label>Cantidad<input type="number" name="quantity" min=".01" max="999999" step=".01" inputmode="decimal" placeholder="0" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
  (isReturn?'<label class="gl-molino-full">Observación opcional<textarea name="note" maxlength="1000" rows="2" placeholder="Estado del producto, motivo, etc.">'+escapeHTML(p?.note||'')+'</textarea></label>':'')+
@@ -177,7 +177,7 @@ function render(){
  mount();
  const root=$('#gl-molino-panel');if(!root)return;
  const active=!!state;
- const panel=active?(section==='precios'?prices():section==='envios'?movements('envio'):section==='devoluciones'?movements('devolucion'):history()):
+ const panel=active?(section==='precios'?prices():section==='envios'?movements('envio')+'<section class="gl-molino-return-panel"><p class="gl-molino-return-label">DEVOLUCIONES VINCULADAS A ESTE ENVÍO DIARIO</p>'+movements('devolucion')+'</section>':section==='devoluciones'?movements('devolucion'):history()):
  '<p class="gl-molino-empty">Verificando permisos y cargando el vínculo entre sucursales…</p>';
  root.innerHTML='<div class="gl-molino-screen" role="dialog" aria-modal="true" aria-labelledby="gl-molino-title">'+
   '<header class="gl-molino-header"><div><small>GESTLOK · EL MOLINO CAFÉ</small><h2 id="gl-molino-title">Vínculo entre sucursales</h2>'+
@@ -221,7 +221,7 @@ document.addEventListener('click',e=>{
      void save('gestlok_molino_remove_price',{p_id:pm.dataset.molPriceRemove},'Producto retirado de la lista.');
    return;
  }
- const me=e.target.closest('[data-mol-move-edit]');if(me){section=me.dataset.kind==='envio'?'envios':'devoluciones';editMove=me.dataset.molMoveEdit;render();$('#gl-molino-movement-form [name="product"]')?.focus();return;}
+ const me=e.target.closest('[data-mol-move-edit]');if(me){if(section!=='envios')section=me.dataset.kind==='envio'?'envios':'devoluciones';editMove=me.dataset.molMoveEdit;render();$('#gl-molino-movement-form-'+me.dataset.kind+' [name="product"]')?.focus();return;}
  const c=e.target.closest('[data-mol-cancel]');if(c){editPrice=null;editMove=null;render();return;}
  const ack=e.target.closest('[data-mol-ack]');
  if(ack){
@@ -242,7 +242,7 @@ document.addEventListener('submit',e=>{
   },'Precio guardado y compartido.');
   return;
  }
- const move=e.target.closest('#gl-molino-movement-form');
+ const move=e.target.closest('form[data-mol-movement-form]');
  if(move){
   e.preventDefault();if(busy)return;
   const d=new FormData(move);
