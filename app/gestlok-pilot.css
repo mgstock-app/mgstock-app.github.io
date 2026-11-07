@@ -194,3 +194,86 @@ body.gl-pilot-open{overflow:hidden}
 .gl-scanner-invites [role=switch]:checked{background:#276b83}
 .gl-scanner-invites [role=switch]:checked::before{left:19px}
 .gl-scanner-invites button,.gl-scanner-invites a{display:inline-block;margin:4px 6px 4px 0;padding:8px 12px}
+
+
+/* Plan Scanner · lector de cámara profesional, a pantalla completa.
+ * Fuera del árbol del POS: conserva el carrito y no afecta otros locales.
+ */
+.gl-pos-scanning{overflow:hidden!important}
+.gl-pos-scan-modal{
+ position:fixed;inset:0;z-index:2147483000;display:flex;justify-content:center;
+ background:#071422;color:#fff;font:inherit;overscroll-behavior:contain;
+ box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)
+}
+.gl-pos-scan-modal *{box-sizing:border-box}
+.gl-pos-scan-shell{
+ width:min(100%,720px);height:100%;max-height:100dvh;
+ display:flex;flex-direction:column;min-height:0;background:#0a1b2d
+}
+.gl-pos-scan-header{
+ flex:none;display:flex;align-items:center;justify-content:space-between;
+ gap:16px;padding:17px 20px 15px;border-bottom:1px solid #294359
+}
+.gl-pos-scan-header div{display:grid;gap:3px}
+.gl-pos-scan-header small{color:#9ebad1;font-size:10px;font-weight:700;letter-spacing:.13em}
+.gl-pos-scan-header strong{font-size:19px;line-height:1.25;font-weight:750}
+.gl-pos-scan-modal button{
+ border:1px solid #5c7588;background:#1b3450;color:#fff;
+ border-radius:11px;min-height:43px;padding:10px 15px;
+ font:inherit;font-weight:700;cursor:pointer
+}
+.gl-pos-scan-modal button:focus-visible{outline:3px solid #65d3f6;outline-offset:3px}
+.gl-pos-scan-header button{border-radius:50%;width:44px;height:44px;padding:0;font-size:21px;flex:none}
+.gl-pos-scan-stage{
+ flex:1;position:relative;min-height:200px;overflow:hidden;background:#020b11;
+ display:flex;align-items:center;justify-content:center
+}
+.gl-pos-scan-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#020b11}
+.gl-pos-scan-stage::before{
+ content:"";position:absolute;inset:0;z-index:1;
+ background:linear-gradient(0deg,#04111d91 0%,transparent 30%,transparent 70%,#04111d91 100%);
+ pointer-events:none
+}
+.gl-pos-scan-reticle{
+ position:relative;z-index:2;width:min(84%,490px);height:clamp(140px,27vh,230px);
+ border:2px solid #b6e9f5;border-radius:22px;
+ box-shadow:0 0 0 100vmax #0715232e,0 0 25px #52cdf54a,inset 0 0 25px #122c3f66;
+ pointer-events:none
+}
+.gl-pos-scan-reticle::before,.gl-pos-scan-reticle::after{
+ content:"";position:absolute;width:38px;height:38px;
+ border:5px solid #65d5f6;pointer-events:none
+}
+.gl-pos-scan-reticle::before{top:-4px;left:-4px;border-right:0;border-bottom:0;border-top-left-radius:19px}
+.gl-pos-scan-reticle::after{bottom:-4px;right:-4px;border-left:0;border-top:0;border-bottom-right-radius:19px}
+.gl-pos-scan-beam{
+ position:absolute;left:8%;right:8%;top:50%;height:2px;
+ background:#5ee0ff;box-shadow:0 0 12px 3px #68e4ff99;
+ animation:gl-pos-beam 2.6s ease-in-out infinite
+}
+@keyframes gl-pos-beam{0%,100%{transform:translateY(-48px)}50%{transform:translateY(48px)}}
+.gl-pos-scan-guide{
+ position:absolute;z-index:2;bottom:18px;left:16px;right:16px;
+ text-align:center;color:#f7fcff;font-weight:650;font-size:14px;
+ text-shadow:0 2px 10px #000;margin:0
+}
+.gl-pos-scan-bottom{flex:none;padding:14px 17px 20px;display:grid;gap:12px}
+.gl-pos-scan-feedback{
+ border:1px solid #36556c;background:#102940;border-radius:12px;padding:12px 14px;
+ color:#d7e8f3;line-height:1.45;min-height:48px;text-align:center;
+ font-weight:650;overflow-wrap:anywhere
+}
+.gl-pos-scan-feedback.is-good{background:#0c4037;border-color:#36ad82;color:#e5fff4}
+.gl-pos-scan-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gl-pos-scan-actions [data-scan-close]{background:#e9f6fd;color:#0a2d4b;border-color:#e9f6fd}
+@media(min-width:721px){
+ .gl-pos-scan-shell{border-left:1px solid #36556b;border-right:1px solid #36556b;box-shadow:0 16px 50px #0009}
+}
+@media(max-width:440px){
+ .gl-pos-scan-header{padding:12px 15px}
+ .gl-pos-scan-bottom{padding:12px 14px 17px}
+ .gl-pos-scan-actions button{font-size:13px;padding:8px 9px}
+ .gl-pos-scan-reticle{height:clamp(120px,24vh,180px)}
+ .gl-pos-scan-guide{bottom:13px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){.gl-pos-scan-beam{animation:none}}

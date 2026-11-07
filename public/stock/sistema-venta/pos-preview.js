@@ -21,15 +21,13 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
    ['Total del Scanner',money(Number(r.total||0))]
   ].map(([label,value])=>'<div><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>').join('')+'</div>';
  };
- container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2><button type="button" data-pilot-devices class="gl-pos-devices-link">Configurar dispositivos</button></div><span class="gl-pos-mode">'+(checkoutEnabled?'Ventas habilitadas':'Modo prueba')+'</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Escanear con cámara</button><button type="button" id="gl-pos-stop" hidden>Detener cámara</button></div><video id="gl-pos-video" playsinline muted style="display:none;width:100%;max-height:260px"></video><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><div id="gl-pos-split"><label><input id="gl-pos-split-enabled" type="checkbox"> Combinar medios de pago</label><div id="gl-pos-split-lines" hidden></div></div><button type="button" id="gl-pos-checkout" disabled>'+(checkoutEnabled?'Registrar venta cobrada':'Confirmar venta')+'</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">'+(checkoutEnabled?'Confirmá únicamente pagos recibidos. Se guarda la venta y se descuenta stock en una sola operación.':'La prueba no registra ventas ni descuenta stock.')+'</small></div></div>'+(checkoutEnabled&&!guest?'<section class="gl-pos-reconcile" aria-label="Resumen de cobros del Scanner"><header><h3>Resumen de ventas · Scanner</h3><label for="gl-pos-report-day">Fecha <input id="gl-pos-report-day" type="date" value="'+esc(String(report?.day||''))+'"></label></header><div id="gl-pos-reconcile-body" aria-live="polite">'+reportHtml(report)+'</div><p class="gl-pos-reconcile-help">Fuente: ventas registradas en el Plan Scanner. Este resumen todavía no se suma automáticamente a GESTLOK Caja. Conciliá los cobros antes de cargarlos allí para evitar duplicados.</p></section>':'')+(checkoutEnabled&&!guest?'<section class="gl-pos-sales" aria-label="Últimas ventas confirmadas"><h3>Últimas ventas registradas</h3><div class="gl-pos-sales-list">'+salesHtml(recentSales)+'</div></section>':'')+'</section>';
+ container.innerHTML='<section class="gl-pos"><header class="gl-pos-heading"><div><small>GESTLOK · PUNTO DE VENTA</small><h2>Nueva venta</h2><button type="button" data-pilot-devices class="gl-pos-devices-link">Configurar dispositivos</button></div><span class="gl-pos-mode">'+(checkoutEnabled?'Ventas habilitadas':'Modo prueba')+'</span></header><div class="gl-pos-layout"><div class="gl-pos-card"><h3>Buscar o escanear producto</h3><label for="gl-pos-search">Código de barras o nombre</label><input id="gl-pos-search" type="search" autocomplete="off" placeholder="Buscar producto..."><div class="gl-pos-camera-actions"><button type="button" id="gl-pos-camera">📷 Abrir escáner de cámara</button></div><p id="gl-pos-scan-message" role="status"></p><div id="gl-pos-results"></div></div><div class="gl-pos-card"><h3>Carrito</h3><div id="gl-pos-cart"></div><p id="gl-pos-total" class="gl-pos-total"></p><label for="gl-pos-payment">Medio de pago</label><select id="gl-pos-payment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select><div id="gl-pos-split"><label><input id="gl-pos-split-enabled" type="checkbox"> Combinar medios de pago</label><div id="gl-pos-split-lines" hidden></div></div><button type="button" id="gl-pos-checkout" disabled>'+(checkoutEnabled?'Registrar venta cobrada':'Confirmar venta')+'</button><p id="gl-pos-sale-message" role="status"></p><small class="gl-pos-note">'+(checkoutEnabled?'Confirmá únicamente pagos recibidos. Se guarda la venta y se descuenta stock en una sola operación.':'La prueba no registra ventas ni descuenta stock.')+'</small></div></div>'+(checkoutEnabled&&!guest?'<section class="gl-pos-reconcile" aria-label="Resumen de cobros del Scanner"><header><h3>Resumen de ventas · Scanner</h3><label for="gl-pos-report-day">Fecha <input id="gl-pos-report-day" type="date" value="'+esc(String(report?.day||''))+'"></label></header><div id="gl-pos-reconcile-body" aria-live="polite">'+reportHtml(report)+'</div><p class="gl-pos-reconcile-help">Fuente: ventas registradas en el Plan Scanner. Este resumen todavía no se suma automáticamente a GESTLOK Caja. Conciliá los cobros antes de cargarlos allí para evitar duplicados.</p></section>':'')+(checkoutEnabled&&!guest?'<section class="gl-pos-sales" aria-label="Últimas ventas confirmadas"><h3>Últimas ventas registradas</h3><div class="gl-pos-sales-list">'+salesHtml(recentSales)+'</div></section>':'')+'</section>';
  if(guest)container.querySelector('[data-pilot-devices]')?.remove();
  const search=container.querySelector('#gl-pos-search');
  const results=container.querySelector('#gl-pos-results');
  const cartBox=container.querySelector('#gl-pos-cart');
  const total=container.querySelector('#gl-pos-total');
- const video=container.querySelector('#gl-pos-video');
  const camera=container.querySelector('#gl-pos-camera');
- const stopButton=container.querySelector('#gl-pos-stop');
  const message=container.querySelector('#gl-pos-scan-message');
  const confirm=container.querySelector('#gl-pos-checkout');
  const saleMessage=container.querySelector('#gl-pos-sale-message');
@@ -97,36 +95,114 @@ function render(container,products,{checkoutEnabled=false,paymentMethods=[],onSa
  let submitting=false,pendingRequestId=null,uncertain=false,lastReceipt=null,pendingPayment=null;
  search.setAttribute('aria-label','Código de barras o nombre del producto');
  camera.setAttribute('aria-label','Abrir cámara para escanear código de barras');
- let stopScan=null,disposed=false;
+ let stopScan=null,disposed=false,scanModal=null,scanAttempt=0,sound=true,audio=null,scannedCount=0;
+ const scanKeydown=e=>{if(e.key==='Escape'&&scanModal){e.preventDefault();finishScan();}};
+ const scanVisibility=()=>{if(root.document.hidden&&scanModal)finishScan();};
  function finishScan(){
+  scanAttempt++;
   stopScan?.();stopScan=null;
-  video.style.display='none';stopButton.hidden=true;camera.disabled=false;
+  if(scanModal){scanModal.remove();scanModal=null;}
+  root.document.body.classList.remove('gl-pos-scanning');
+  root.document.removeEventListener('keydown',scanKeydown);
+  root.document.removeEventListener('visibilitychange',scanVisibility);
+  try{audio?.close?.();}catch(_){}
+  audio=null;
+  if(!disposed){camera.disabled=false;camera.focus?.();}
+ }
+ function beep(){
+  if(!sound||!audio)return;
+  try{
+   if(audio.state==='suspended')void audio.resume();
+   const start=audio.currentTime+0.01;
+   [980,1280].forEach((frequency,i)=>{
+    const osc=audio.createOscillator(),gain=audio.createGain();
+    osc.type='sine';osc.frequency.value=frequency;
+    const at=start+i*.085;
+    gain.gain.setValueAtTime(0,at);
+    gain.gain.linearRampToValueAtTime(.16,at+.012);
+    gain.gain.exponentialRampToValueAtTime(.001,at+.072);
+    osc.connect(gain);gain.connect(audio.destination);
+    osc.start(at);osc.stop(at+.085);
+   });
+  }catch(_){/* Algunos teléfonos bloquean audio en modo silencio. */}
+  try{root.navigator?.vibrate?.(75);}catch(_){}
  }
  function acceptCode(code){
-  if(uncertain||submitting)return;
+  if(uncertain||submitting)return false;
   const product=catalog.find(p=>p.barcode===code);
   search.value=code;paint();
-  if(!product){message.textContent='Código no encontrado: '+code;return;}
-  message.textContent='Detectado: '+product.name;
+  if(!product){message.textContent='Código no encontrado: '+code;return false;}
   if(product.price!==null&&Number.isInteger(product.stock)&&product.stock>(cart.get(product.id)||0)){
-   cart.set(product.id,(cart.get(product.id)||0)+1);paint();
-  }else message.textContent='Producto sin precio o sin unidades disponibles.';
+   cart.set(product.id,(cart.get(product.id)||0)+1);
+   message.textContent='✓ '+product.name+' agregado al carrito.';
+   paint();return product.name;
+  }
+  message.textContent='Producto sin precio o sin unidades disponibles.';
+  return false;
  }
  search.addEventListener('keydown',e=>{
   if(uncertain)return;
   if(e.key==='Enter'){e.preventDefault();acceptCode(search.value.trim());}
  });
  camera.addEventListener('click',async()=>{
+  if(disposed||scanModal)return;
   if(!root.GestLokPosScanner?.supported?.()){
-   message.textContent='Cámara no disponible. Ingresá el código manualmente o con lector Bluetooth.';return;
+   message.textContent='Cámara no disponible en este equipo. Usá el celular, un lector Bluetooth o ingresá el código.';return;
   }
-  camera.disabled=true;video.style.display='block';stopButton.hidden=false;
+  camera.disabled=true;scannedCount=0;
+  const modal=root.document.createElement('div');
+  modal.className='gl-pos-scan-modal';
+  modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
+  modal.setAttribute('aria-label','Escáner de productos con cámara');
+  modal.innerHTML='<div class="gl-pos-scan-shell"><header class="gl-pos-scan-header">'+
+   '<div><small>GESTLOK · PLAN SCANNER</small><strong>Escanear productos</strong></div>'+
+   '<button type="button" data-scan-close aria-label="Cerrar escáner">✕</button></header>'+
+   '<div class="gl-pos-scan-stage"><video class="gl-pos-scan-video" playsinline muted autoplay></video>'+
+   '<div class="gl-pos-scan-reticle" aria-hidden="true"><span class="gl-pos-scan-beam"></span></div>'+
+   '<p class="gl-pos-scan-guide">Centrá el código de barras dentro del recuadro</p></div>'+
+   '<div class="gl-pos-scan-bottom"><div class="gl-pos-scan-feedback" role="status" aria-live="polite">Activando cámara…</div>'+
+   '<div class="gl-pos-scan-actions"><button type="button" data-scan-sound>🔊 Sonido activado</button>'+
+   '<button type="button" data-scan-close>Volver al carrito</button></div></div></div>';
+  modal.querySelectorAll('[data-scan-close]').forEach(b=>b.addEventListener('click',finishScan));
+  modal.querySelector('[data-scan-sound]').addEventListener('click',e=>{
+   sound=!sound;e.currentTarget.textContent=sound?'🔊 Sonido activado':'🔇 Sonido desactivado';
+   e.currentTarget.setAttribute('aria-pressed',String(!sound));
+  });
+  scanModal=modal;
+  root.document.body.appendChild(modal);
+  root.document.body.classList.add('gl-pos-scanning');
+  root.document.addEventListener('keydown',scanKeydown);
+  root.document.addEventListener('visibilitychange',scanVisibility);
+  modal.querySelector('[data-scan-close]')?.focus();
+  // AudioContext se crea en el toque del usuario para respetar las políticas móviles.
   try{
-   const stop=await root.GestLokPosScanner.scan(video,code=>{if(disposed)return;finishScan();acceptCode(code);});
-   if(disposed||stopButton.hidden)stop();else stopScan=stop;
-  }catch(e){finishScan();message.textContent=e.message||'No se pudo abrir la cámara.';}
+   const Ctx=root.AudioContext||root.webkitAudioContext;
+   if(Ctx){audio=new Ctx();void audio.resume?.().catch?.(()=>{});}
+  }catch(_){}
+  const attempt=++scanAttempt;
+  const video=modal.querySelector('video'),feedback=modal.querySelector('.gl-pos-scan-feedback');
+  try{
+   const stop=await root.GestLokPosScanner.scan(video,code=>{
+    if(disposed||scanModal!==modal)return;
+    const productName=acceptCode(code);
+    if(productName){
+     scannedCount++;
+     feedback.textContent='✓ '+productName+' agregado · '+scannedCount+' escaneado'+(scannedCount===1?'':'s');
+     feedback.classList.add('is-good');
+     beep();
+    }else{
+     feedback.textContent=message.textContent||'No se pudo agregar el producto.';
+     feedback.classList.remove('is-good');
+    }
+   },{continuous:true});
+   if(disposed||attempt!==scanAttempt||scanModal!==modal)stop();
+   else{stopScan=stop;feedback.textContent='Cámara activa · apuntá al código de barras';}
+  }catch(e){
+   if(attempt===scanAttempt&&!disposed){
+    finishScan();message.textContent=e.message||'No se pudo abrir la cámara.';
+   }
+  }
  });
- stopButton.addEventListener('click',finishScan);
  const stopReader=root.GestLokPosDevices?.bindKeyboard(tenantKey,code=>{if(!disposed)acceptCode(code);})||(()=>{});
  activeCleanup=()=>{disposed=true;finishScan();stopReader();};
  confirm.addEventListener('click',async()=>{

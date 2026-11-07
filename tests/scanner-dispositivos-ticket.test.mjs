@@ -71,5 +71,5 @@ test('Integración: activar hardware solo en Scanner y conservar ticket al refre
  assert.match(pos,/receiptButton\.hidden=false/);
  assert.match(pos,/GestLokPosDevices\?\.bindKeyboard/);
  assert.match(css,/\.gl-pos-device-grid/);
- assert.ok(runtime.includes('/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106'));
+ assert.ok(runtime.includes('/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107'));
 });

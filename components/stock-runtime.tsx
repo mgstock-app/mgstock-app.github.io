@@ -28,7 +28,7 @@ function preloadStartupScripts(visitor: boolean) {
   const privateScripts = [
     "/stock/gestlok-registration.js",
     "/stock/auth.js?rev=salir-local-20261027",
-    "/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106",
+    "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -68,7 +68,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-munro-meta-20261107");
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
-      if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106");
+      if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107");
       if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-tarjetas-fotos-20261107");
       if (!visitor) await load("/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
