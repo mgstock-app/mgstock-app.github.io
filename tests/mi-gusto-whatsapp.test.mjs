@@ -85,3 +85,13 @@ test('habilitación por etapas: Munro funciona solo y Torcuato continúa aislado
  assert.equal(evaluate({MG_WA_PHONE_ID_MUNRO:'',MG_WA_TOKEN_MUNRO:'',MG_WA_PHONE_ID_TORCUATO:'222222222222222',MG_WA_TOKEN_TORCUATO:'test-token-torcuato'}).ready,true,'Torcuato también puede configurarse por separado');
  assert.match(source,/configured\(c,k\)&&c\.ids\[k\]===phoneId/,'nunca aceptar eventos de una sucursal sin token autorizado');
 });
+
+test('Meta verifica el webhook antes de activar mensajes sin exponer datos',()=>{
+ const get=source.indexOf('if(req.method==="GET"){');
+ const ready=source.indexOf('if(!ready(c))return json(503');
+ const post=source.indexOf('if(req.method!=="POST")');
+ assert.ok(get>=0&&ready>get&&post>ready,'el bot no tiene que estar habilitado para verificar el webhook');
+ assert.match(source,/if\(!c\.verify\)return json\(503/);
+ assert.match(source,/token!==c.verify/);
+ assert.match(source,/if\(!await signed\(req,c.secret,raw\)\)return json\(403/);
+});
