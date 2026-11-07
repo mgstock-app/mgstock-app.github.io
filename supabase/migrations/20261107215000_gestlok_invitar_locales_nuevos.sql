@@ -145,6 +145,12 @@ begin
  select coalesce(l.data->>'nombre',l.id) into v_local_name
  from public.docs l where l.col='locales' and l.tenant_id=p_tenant and l.id=p_local;
  select name into v_company from gestlok_platform.companies c where c.tenant_id=p_tenant limit 1;
+ -- Compatibilidad con empresas heredadas como Mi Gusto (sin fila companies).
+ if v_company is null then
+   select case when exists(select 1 from public.docs e where e.tenant_id=p_tenant
+        and e.col='equipo' and e.data->>'logoId'='mi-gusto')
+      then 'Mi Gusto' else 'Tu empresa' end into v_company;
+ end if;
  if v_local_name is null or v_company is null then
    raise exception 'La sucursal no está disponible' using errcode='22023';
  end if;
@@ -172,11 +178,13 @@ begin
  perform gestlok_platform.registration_email();
  if length(coalesce(p_token,''))<>64 then
    raise exception 'Invitación inválida' using errcode='22023';end if;
- select c.name,coalesce(d.data->>'nombre',d.id)
+ select coalesce(c.name,case when exists(select 1 from public.docs e where e.tenant_id=x.tenant_id
+      and e.col='equipo' and e.data->>'logoId'='mi-gusto') then 'Mi Gusto' else 'Tu empresa' end),
+      coalesce(d.data->>'nombre',d.id)
  into v_company,v_local
  from gestlok_platform.local_invite_links x
  join public.docs d on d.tenant_id=x.tenant_id and d.id=x.local_id and d.col='locales'
- join gestlok_platform.companies c on c.tenant_id=x.tenant_id
+ left join gestlok_platform.companies c on c.tenant_id=x.tenant_id
  where x.token=p_token and x.active;
  if v_company is null then raise exception 'Este enlace dejó de estar disponible' using errcode='22023';end if;
  return jsonb_build_object('empresa',v_company,'local',v_local);
@@ -235,11 +243,11 @@ as $$
 begin
  perform gestlok_platform.registration_email();
  return coalesce((select jsonb_agg(jsonb_build_object(
-     'status',r.status,'empresa',c.name,
+     'status',r.status,'empresa',coalesce(c.name,'Tu empresa'),
      'local',coalesce(l.data->>'nombre',r.local_id),'requested_at',r.requested_at)
    order by r.requested_at desc)
    from gestlok_platform.local_join_requests r
-   join gestlok_platform.companies c on c.tenant_id=r.tenant_id
+   left join gestlok_platform.companies c on c.tenant_id=r.tenant_id
    join public.docs l on l.tenant_id=r.tenant_id and l.col='locales' and l.id=r.local_id
    where r.user_id=auth.uid()),'[]'::jsonb);
 end;
