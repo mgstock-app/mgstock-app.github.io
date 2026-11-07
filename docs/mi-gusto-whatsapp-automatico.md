@@ -1,64 +1,78 @@
-# Mi Gusto · WhatsApp automático (Munro + Don Torcuato)
+# Mi Gusto · WhatsApp automático → GESTLOK (Munro primero)
 
-## Alcance
-Un mismo código; dos números, catálogos, conversaciones, pedidos y controles independientes.
-Nunca utiliza los pedidos de proveedores ni altera Caja, Pagos Online, Stock o legajos.
-Pago exclusivamente en efectivo. El cliente confirma el total antes de que se guarde en
-`Pedidos WhatsApp`. El equipo marca **✓ OK** dentro de GESTLOK.
+## Qué hace
+El cliente escribe al WhatsApp de Munro (+54 11 7144-6654) → recibe la bienvenida con 3 opciones →
+elige productos y cantidades → ve el resumen con el total y «pago solo en efectivo» → deja su nombre
+y observaciones → confirma → el pedido entra solo a **GESTLOK → Mi Gusto → Munro → Pedidos WhatsApp**
+con su número (MG-001, MG-002…). GESTLOK avisa aunque estén en Pagos Online. El dueño o gerente
+marca **✓ OK** (solo «visto»: no cobra, no toca Caja, Stock ni Pagos Online).
 
-## Habilitación: no se hace solo con el número
-Antes de activar, cada responsable del negocio debe completar el alta autorizada en
-Meta Business / WhatsApp Business Platform y revisar si el número de WhatsApp Business
-actual admite **coexistencia**. **No borrar ni migrar cuentas existentes a ciegas.**
-La configuración inicial no borra chats ni envía mensajes.
+- **Munro no tiene carga manual de pedidos** (la base lo rechaza). Los pedidos históricos no se tocan.
+- **Don Torcuato no cambia** hasta que se habilite (conserva su pantalla y su carga interna).
+- Mensajes editables desde GESTLOK (dueño o administradora): bienvenida, las 3 opciones,
+  resumen antes de confirmar, pedido confirmado y «Hablar con el local».
+- Carta y precios por sucursal; productos visibles u ocultos. El bot nunca inventa precios.
+- «Hablar con el local»: el bot se calla y el local responde desde la app del teléfono. Después
+  de 3 horas sin mensajes (o si el cliente escribe MENU) vuelve el menú automático.
+- Pedido repetido por reintentos de Meta: no se duplica (cada mensaje se procesa una sola vez).
 
-1. Cargar en GESTLOK, por sucursal, productos reales y su precio final en
-   `Pedidos WhatsApp → Carta y precios para WhatsApp`.
-   Sin productos activos, el bot deriva a atención humana. Nunca inventa precios.
-2. Configurar en Meta el webhook HTTPS de la Edge Function y suscribir
-   el evento `messages`. Asociar cada Phone Number ID a su número correspondiente.
-3. Guardar en **Supabase Edge Function Secrets**, nunca en GitHub ni en el frontend:
-   - `MG_WA_APP_SECRET`: App Secret de la aplicación Meta.
-   - `MG_WA_VERIFY_TOKEN`: token de verificación elegido por la empresa.
-   - `MG_WA_PHONE_ID_MUNRO`: ID del teléfono de Munro asignado por Meta, **no** número visible.
-   - `MG_WA_TOKEN_MUNRO`: token API autorizado para Munro.
-   - `MG_WA_PHONE_ID_TORCUATO` y `MG_WA_TOKEN_TORCUATO`: **opcionales** hasta activar Don Torcuato; nunca copiar credenciales de Munro a otra sucursal.
-   - `MG_WA_GRAPH_VERSION`: opcional, versión válida de Graph API (por defecto `v27.0`).
-   - `MG_WA_ENABLED=true` **solo después** de verificar la firma, la configuración oficial del número y los mensajes de prueba en la primera sucursal habilitada. Puede probarse Munro sin activar Torcuato.
-4. Verificar firma `X-Hub-Signature-256`, suscripción y test con mensaje entrante
-   desde un teléfono controlado. Probar confirmación repetida, otra sucursal,
-   edición de precios, un catálogo vacío y cobro en efectivo.
-5. Recién después habilitar servicio real. Si falta cualquier credencial o
-   `MG_WA_ENABLED=true`, el webhook responde 503 sin procesar mensajes.
+## Cómo se conecta con Meta (gratis, sin plataformas pagas)
+Se usa la **API oficial de WhatsApp Cloud** con «coexistencia»: el número sigue funcionando en la
+app WhatsApp Business del teléfono y los chats se conservan. Meta solo ofrece la coexistencia a
+través del «Registro insertado» (Embedded Signup) de una app con rol de **proveedor de tecnología**
+(Tech Provider). GESTLOK ya tiene el botón; falta que una persona autorizada haga lo de Meta.
 
-## Flujo de cliente
-Bienvenida → Hacer pedido / Ver precios / Hablar con local → elegir producto
-de lista → cantidad → agregar otro o finalizar → nombre → confirmar total y
-pago efectivo → pedido nuevo en su sucursal. Sin cocina, reparto, cobros ni stock.
+Las respuestas a clientes que escriben (mensajes de servicio) no tienen costo en Meta.
+Los mensajes que el local manda desde la app siguen siendo gratis.
 
-Los pedidos se guardan solo por mensaje entrante confirmado de Meta y no se repiten
-si Meta reenvía el mismo evento. La sucursal se determina por el **Phone Number ID
-verificado**, jamás por el texto del cliente ni el número del remitente.
-No se envían mensajes proactivos: solo respuesta a conversaciones iniciadas por el cliente.
+### Pasos de la persona autorizada (administradora del portafolio de Mi Gusto en Meta)
+1. **Teléfono del local**: actualizar WhatsApp Business (versión 2.24.17 o más nueva).
+2. **business.facebook.com**: tener el portafolio comercial de Mi Gusto (crearlo si no existe).
+3. **developers.facebook.com → Mis apps → Crear app**: caso de uso de WhatsApp, tipo Empresa,
+   vinculada al portafolio de Mi Gusto.
+4. En la app: **Casos de uso → WhatsApp → Personalizar → Incorporación de proveedor de tecnología**
+   y completar los pasos que muestra (si pide verificar el negocio, completarlo).
+5. **Configuración de la app → Básica**: copiar el **App ID** y el **App Secret** («Mostrar»).
+   Cargar la política de privacidad `https://gestlok.com.ar/privacidad.html` y el dominio `gestlok.com.ar`.
+6. **Inicio de sesión con Facebook para empresas → Configuración**: activar inicio de sesión OAuth
+   del cliente y web, «Forzar HTTPS» y «Iniciar sesión con el SDK de JavaScript». En dominios
+   permitidos y URI de redireccionamiento válidos: `https://gestlok.com.ar/`.
+7. **Inicio de sesión con Facebook para empresas → Configuraciones → Crear**: variante
+   «Registro insertado de WhatsApp», producto WhatsApp Cloud API, permisos
+   `whatsapp_business_management` y `whatsapp_business_messaging`. Copiar el **ID de configuración**.
+8. **WhatsApp → Configuración → Webhook**: pegar la URL y el token de verificación que muestra
+   GESTLOK (Pedidos WhatsApp → Conexión con WhatsApp Business) → «Verificar y guardar».
+   Suscribir: `messages`, `account_update`, `history`, `smb_app_state_sync`, `smb_message_echoes`.
+9. Pasar la app a modo **Activo** (publicada).
+10. **GESTLOK** (dueño o administradora con edición habilitada) → Munro → Pedidos WhatsApp →
+    Conexión: pegar App ID, ID de configuración y App Secret → «Guardar datos de Meta».
+11. Desde una computadora, con el celular del local a mano: **«Conectar WhatsApp de Munro»** →
+    entrar con Facebook → conectar la cuenta existente de WhatsApp Business → número del local →
+    escanear el QR con la app del teléfono → compartir chats (opcional) → Terminar.
+    GESTLOK guarda el permiso de Meta cifrado y muestra «✓ Conectado».
+    Meta desvincula WhatsApp Web y otros dispositivos vinculados: hay que volver a vincularlos.
+12. Cargar la carta real con precios en «Carta y precios para WhatsApp».
+13. **«Activar respuestas automáticas»**.
+14. **Prueba real**: desde otro celular escribir «hola» al +54 11 7144-6654, hacer un pedido,
+    confirmarlo, verlo en GESTLOK y marcar ✓ OK.
 
-## Privacidad
-El webhook conserva el número y el nombre necesarios para el pedido, un registro de
-eventos de WhatsApp para deduplicación y una conversación activa por sucursal.
-La clave de servicio Supabase y credenciales Meta no deben aparecer en ningún navegador.
-La desactivación de un producto no borra pedidos históricos.
+Si Meta muestra error de permisos al conectar, pedir «acceso avanzado» para
+`whatsapp_business_management` y `whatsapp_business_messaging` en Revisión de la app.
+Si Meta pide un método de pago, se carga en WhatsApp Manager (las respuestas a clientes no se cobran).
 
-## Pendientes de Meta
-- Verificar que Munro y Torcuato puedan vincularse sin perder el WhatsApp Business.
-- Administrador autorizado debe completar Embedded Signup / Meta Business.
-- Cargar precios reales por local y probar la experiencia con el personal.
+## Seguridad
+- Webhook firmado: sin la firma `X-Hub-Signature-256` correcta no se procesa nada.
+- App Secret y token de Meta: en Supabase Vault (o en los secretos de la función). Nunca en el
+  navegador ni en GitHub. Las funciones que los leen son solo del servidor (`service_role`).
+- Cada Phone Number ID pertenece a una sola sucursal. La conexión solo acepta el número de Munro.
+- Solo dueño o administradora configuran mensajes y conexión; gerentes ven y marcan OK.
+- Bot apagado: Meta recibe 200 y el local atiende desde el teléfono (no se acumulan reintentos).
 
-## Etapa actual · alta de Munro sin pagar terceros
-
-- Entrar a https://business.facebook.com/ y crear/seleccionar el portafolio comercial autorizado de Mi Gusto.
-- Ir a https://developers.facebook.com/apps/ y crear una app con el caso de uso de WhatsApp Business Platform / Cloud API. Meta ofrece números de prueba gratuitos para desarrolladores.
-- Si el mismo número **+54 11 7144-6654** ya utiliza WhatsApp Business, **no migrarlo ni desconectarlo**. Comprobar que el onboarding concreto ofrezca coexistencia con la aplicación móvil. No asumir que todos los flujos de alta la ofrecen.
-- En WhatsApp > Configuración de Meta, el webhook de GESTLOK es `https://vgsepaaewbctjsjcpeta.supabase.co/functions/v1/mi-gusto-whatsapp`.
-- Elegir un `MG_WA_VERIFY_TOKEN` aleatorio distinto del token de API y guardar el mismo valor en los secretos seguros de Supabase y la pantalla de webhook de Meta. No copiar secretos por chat ni al repositorio. **Meta puede verificar el webhook por GET sin encender el bot** (`MG_WA_ENABLED` permanece desactivado).
-- La suscripción a webhooks debe incluir el campo `messages`. Guardar `MG_WA_APP_SECRET`, el ID real de Munro y un token **válido** de Meta en Supabase; sin este paso el webhook continúa deshabilitado (503).
-- **No habilitar `MG_WA_ENABLED=true`** hasta completar el alta, revisar precios de Munro y hacer pruebas controladas. La sucursal Torcuato sigue desactivada si no tiene ID/token propios.
-- La API directa de Meta no requiere pagar un proveedor de automatización, pero los mensajes reales pueden generar cargos según la categoría y cantidad. En noviembre de 2026 se publican 1.000 mensajes de servicio gratuitos por número y mes; revisar tarifas vigentes antes de activar envío en producción.
+## Datos técnicos
+- Edge Function: `mi-gusto-whatsapp` (`verify_jwt = false`, autentica por firma de Meta; la acción
+  de conexión exige la sesión de GESTLOK). URL: `https://vgsepaaewbctjsjcpeta.supabase.co/functions/v1/mi-gusto-whatsapp`.
+- Graph API `v25.0` (se cambia con el secreto opcional `MG_WA_GRAPH_VERSION`).
+- Migraciones: `20261106204500_mi_gusto_pedidos_clientes_sucursales`, `20261106220000_mi_gusto_whatsapp_bot`,
+  `20261107020000_mi_gusto_whatsapp_munro_conexion`.
+- Secretos opcionales (alternativa a GESTLOK): `MG_WA_APP_SECRET`, `MG_WA_VERIFY_TOKEN`, `MG_WA_APP_ID`,
+  `MG_WA_PHONE_ID_MUNRO`, `MG_WA_TOKEN_MUNRO`, `MG_WA_ENABLED`.
