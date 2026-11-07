@@ -69,7 +69,7 @@ export function StockRuntime() {
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106");
-      if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-label-d110-20261106");
+      if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-busqueda-recientes-20261107");
       if (!visitor) await load("/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=scanner-precio-manual-20261106");

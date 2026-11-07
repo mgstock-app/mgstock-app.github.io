@@ -91,3 +91,11 @@ body.gl-mp-open{overflow:hidden}
 .gl-mp-form{grid-template-columns:minmax(160px,1fr) minmax(130px,170px) minmax(125px,180px) minmax(190px,1.5fr)}
 @media(max-width:850px){.gl-mp-form{grid-template-columns:1fr 1fr}.gl-mp-form label:last-of-type{grid-column:1/-1}}
 @media(max-width:550px){.gl-mp-form{display:flex;flex-direction:column;align-items:stretch}.gl-mp-table{min-width:980px}}
+
+/* Buscador de Mis Productos (cuaderno privado) */
+.gl-mp-list-controls{align-items:flex-end;gap:13px}
+.gl-mp-search{display:flex;flex-direction:column;gap:5px;min-width:190px;flex:1 1 230px;max-width:390px;color:#254566;font-size:13px;font-weight:700}
+.gl-mp-search input{width:100%;min-height:44px;border:1px solid #b9cbe1;border-radius:9px;background:#fff;color:#153a60;font:inherit;font-size:15px;font-weight:400;padding:10px 13px;outline-offset:3px}
+.gl-mp-search input::placeholder{color:#7b8998}
+.gl-mp-result-count{color:#61758d;font-size:12px;padding:10px 0}
+@media(max-width:550px){.gl-mp-list-controls{align-items:stretch}.gl-mp-search{min-width:100%;max-width:100%}.gl-mp-result-count{padding:0 2px 4px}}

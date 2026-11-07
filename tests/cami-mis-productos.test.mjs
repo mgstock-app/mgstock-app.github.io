@@ -26,6 +26,8 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/Me gustó/);
  assert.match(script,/No me gustó/);
  assert.match(script,/data-mp-new/);
+ assert.match(script,/data-mp-search/);
+ assert.match(runtime,/cami-busqueda-recientes-20261107/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -42,18 +44,19 @@ test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
  assert.match(sql,/Body Splash/);
 });
 
-function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true){
+function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true,seedEntries){
  const listeners={};
  const root={id:'gl-mp-panel',innerHTML:''};
+ const tbody={innerHTML:''},count={textContent:''};
  let rendered=false,fromCalls=[];
  const d={
-  querySelector:s=>s==='#gl-mp-panel'&&rendered?root:null,
+  querySelector:s=>!rendered?null:s==='#gl-mp-panel'?root:s==='#gl-mp-panel .gl-mp-table tbody'?tbody:s==='#gl-mp-panel [data-mp-count]'?count:null,
   createElement:()=>root,
   body:{append:()=>{rendered=true;},classList:{add(){},remove(){}}},
   addEventListener:(name,fn)=>{listeners[name]=fn;}
  };
  const t=[{id:'t1',name:'Perfume Fem',position:0}];
- const entries=[{id:'e1',tab_id:'t1',product:'Tester 60ml',liked:true,note:'Buen aroma',position:0}];
+ const entries=seedEntries||[{id:'e1',tab_id:'t1',product:'Tester 60ml',liked:true,note:'Buen aroma',position:0}];
  const from=(name)=>{
   fromCalls.push(name);
   const q={select(){return q;},eq(){return q;},order(){return q;},
@@ -68,7 +71,7 @@ function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true){
   history:{state:{},pushState(){},replaceState(){},back(){}},
   addEventListener(){},confirm:()=>true};
  runInNewContext(script,{window,document:d,Date,FormData,console});
- return {mod:window.GestLokMisProductos,ctx,host,root,fromCalls,listeners};
+ return {mod:window.GestLokMisProductos,ctx,host,root,tbody,count,fromCalls,listeners};
 }
 test('La vista privada presenta hoja y preferencias sin editar stock',async()=>{
  const a=launch();
@@ -84,6 +87,29 @@ test('La vista privada presenta hoja y preferencias sin editar stock',async()=>{
  assert.deepEqual(a.fromCalls,[
   'gestlok_cami_product_tabs','gestlok_cami_product_tabs','gestlok_cami_product_items'
  ]);
+});
+test('Busca al escribir sin perder el foco y ordena por fecha de ALTA descendente',async()=>{
+ const entries=[
+  {id:'old',tab_id:'t1',product:'Hawás Ice',note:'',position:0,created_at:'2026-11-01T09:00:00Z',updated_at:'2026-11-09T09:00:00Z'},
+  {id:'new',tab_id:'t1',product:'Marshmallow Blush',note:'',position:1,created_at:'2026-11-07T09:00:00Z'},
+  {id:'newer',tab_id:'t1',product:'Arabia Tonka',note:'',position:2,created_at:'2026-11-07T12:00:00Z'}
+ ];
+ const a=launch(email,'dueno',TENANT,true,entries);
+ await a.mod.refresh(a.ctx,a.host);
+ await a.mod.open();
+ assert.match(a.root.innerHTML,/Buscar por nombre/);
+ assert.ok(a.root.innerHTML.indexOf('Arabia Tonka')<a.root.innerHTML.indexOf('Marshmallow Blush'));
+ assert.ok(a.root.innerHTML.indexOf('Marshmallow Blush')<a.root.innerHTML.indexOf('Hawás Ice'));
+ const sendSearch=value=>a.listeners.input({target:{closest:selector=>selector==='[data-mp-search]'?{value}:null}});
+ sendSearch('hawas');
+ assert.match(a.tbody.innerHTML,/Hawás Ice/,'La búsqueda ignora acentos');
+ assert.doesNotMatch(a.tbody.innerHTML,/Marshmallow Blush|Arabia Tonka/);
+ assert.equal(a.count.textContent,'1 de 3 productos');
+ sendSearch('nada');
+ assert.match(a.tbody.innerHTML,/No encontramos productos con ese nombre/);
+ sendSearch('');
+ assert.ok(a.tbody.innerHTML.indexOf('Arabia Tonka')<a.tbody.innerHTML.indexOf('Hawás Ice'));
+ assert.equal(a.count.textContent,'Más recientes primero');
 });
 test('Ni otra cuenta ni Mi Gusto pueden ver ni abrir el cuaderno',async()=>{
  for(const [mail,role,tenant] of [
