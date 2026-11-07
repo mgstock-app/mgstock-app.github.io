@@ -150,6 +150,21 @@ test('botones y listas de WhatsApp llegan como comandos; cantidad con lista',asy
  assert.equal(state.turns[1].p_text,'mi:confirm');
 });
 
+test('pack de Munro muestra el precio fijo y recibe la selección de gustos y salsas',async()=>{
+ const {handler,state,calls}=load({nextTurn:()=>({
+  type:'pack',name:'6 empanadas + 2 salsas',price:31500,
+  empanada_count:6,sauce_count:2,flavors:['Big Burger','Pollo'],sauces:['Barbacoa','chimi']
+ })});
+ await handler(metaPost(inbound({type:'text',text:{body:'1 1 2 2 2 2 / 1 2'}})));
+ assert.equal(state.turns[0].p_text,'1 1 2 2 2 2 / 1 2');
+ const body=calls.fetch.at(-1).body.text.body;
+ assert.match(body,/31\.500/);
+ assert.match(body,/Elegí 6 empanadas/);
+ assert.match(body,/1\. Big Burger/);
+ assert.match(body,/Elegí 2 salsa/);
+ assert.match(body,/2\. chimi/);
+});
+
 test('resumen y confirmación: total, solo efectivo, observaciones y N.º MG-001',async()=>{
  const cart=[{id:'1',name:'Carne suave',price:2000,quantity:6},{id:'2',name:'Jamón y queso',price:2000,quantity:6}];
  const review=load({nextTurn:()=>({type:'review',cart,total:24000,name:'María G.',notes:'Sin cebolla',texts:TEXTS})});
