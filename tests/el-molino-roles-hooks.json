@@ -15,7 +15,7 @@
     },
     {
       "actual": "  if(molinoRoles() && rol !== 'gerente'){ toast('El Molino Café solo permite Dueño y Gerente. El dueño se asignará desde Administración.',true); return; }\n",
-      "original": "\n"
+      "original": ""
     },
     {
       "actual": "    <p class=\"lead\">${molinoRoles() ? 'El Molino Café tiene únicamente dos roles de trabajo: <b>Dueño</b> (acceso a ambas sucursales; pendiente de su correo) y <b>Gerente</b> (acceso a los locales asignados). Tu cuenta es la Administradora General encargada de preparar la tienda. No hay colaboradores ni accesos de solo lectura.' : `Solo entran los emails de esta lista. El <b>Dueño</b> ve y edita todos los locales. Cada <b>Gerente</b> carga y guarda en los locales que tenga asignados; <b>Solo ver</b> mira sin cambiar nada. ${adm ? 'Quien entra y no está en la lista queda <b>Pendiente</b> hasta que lo apruebes acá con su rol y su local.' : 'La lista la maneja la administradora.'}`}</p>\n",
