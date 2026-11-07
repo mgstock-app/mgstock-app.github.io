@@ -65,7 +65,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=ok-preservar-filas-20261105");
-      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-alerta-turno-20261106");
+      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-munro-meta-20261107");
       await load("/stock/munro-motos.js?rev=motos-historial-gerentes-20261102");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=scanner-inicio-visual-20261106");
