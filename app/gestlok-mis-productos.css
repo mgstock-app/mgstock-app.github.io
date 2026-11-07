@@ -99,3 +99,37 @@ body.gl-mp-open{overflow:hidden}
 .gl-mp-search input::placeholder{color:#7b8998}
 .gl-mp-result-count{color:#61758d;font-size:12px;padding:10px 0}
 @media(max-width:550px){.gl-mp-list-controls{align-items:stretch}.gl-mp-search{min-width:100%;max-width:100%}.gl-mp-result-count{padding:0 2px 4px}}
+
+/* Mis Productos · tarjetas de catálogo con fotos manuales. */
+.gl-mp-cards{display:flex;flex-direction:column;gap:13px;margin:17px 0}
+#gl-mp-panel .gl-mp-card{background:#fff;border:1px solid #d3dee9;border-radius:15px;padding:14px 16px;box-shadow:0 3px 12px rgba(13,43,74,.06);min-width:0}
+.gl-mp-card-top{display:grid;grid-template-columns:134px minmax(0,1fr);gap:18px;align-items:start}
+.gl-mp-photo{min-width:0;display:flex;flex-direction:column;gap:7px}
+.gl-mp-photo img,.gl-mp-no-photo{display:block;width:100%;height:122px;object-fit:cover;object-position:center;border-radius:11px;border:1px solid #e1e7ef;background:#f0f3f7}
+.gl-mp-no-photo{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;color:#8495a9}
+.gl-mp-no-photo span{font-size:28px;line-height:1}.gl-mp-no-photo small{font-size:11px}
+#gl-mp-panel .gl-mp-photo-edit{border:1px solid #b9cce0;border-radius:8px;color:#113c68;background:#f4f8fc;min-height:32px;padding:5px 6px;font-size:12px;font-weight:700;cursor:pointer}
+.gl-mp-card-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+.gl-mp-card-info h4{font-size:clamp(17px,1.7vw,21px);font-weight:700;line-height:1.25;color:#142f4e;margin:0;overflow-wrap:anywhere}
+.gl-mp-card-attributes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#61778d;font-size:12px;font-weight:600}
+#gl-mp-panel .gl-mp-card-attributes .gl-mp-fragrance{width:auto;min-width:105px;max-width:180px;border:1px solid #cbd8e7;border-radius:8px;padding:6px 9px;background:#f2f6fb;color:#1f476e;font-size:12px;font-weight:700}
+.gl-mp-card .gl-mp-votes{min-width:0;gap:7px}
+#gl-mp-panel .gl-mp-card .gl-mp-vote{font-size:12px;padding:7px 10px}
+.gl-mp-card-note{margin:0;color:#566b80;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.gl-mp-card-note b{color:#284969}
+#gl-mp-panel .gl-mp-card .gl-mp-actions{justify-content:flex-end;gap:6px;border-top:1px solid #eff2f6;padding-top:11px;margin-top:11px;flex-wrap:wrap}
+#gl-mp-panel .gl-mp-card .gl-mp-actions button{font-size:11px;line-height:1.2;padding:7px 9px;min-height:32px;border-radius:7px}
+#gl-mp-panel .gl-mp-card .gl-mp-actions [data-mp-print]{background:#123c69;color:#fff;border:1px solid #123c69}
+@media(max-width:550px){
+ #gl-mp-panel .gl-mp-card{padding:11px;border-radius:13px}
+ .gl-mp-card-top{grid-template-columns:104px minmax(0,1fr);gap:12px}
+ .gl-mp-photo img,.gl-mp-no-photo{height:105px}
+ .gl-mp-card-info{gap:7px}
+ .gl-mp-card-info h4{font-size:16px}
+ .gl-mp-card-attributes{gap:4px;font-size:11px}
+ #gl-mp-panel .gl-mp-card-attributes .gl-mp-fragrance{font-size:11px;min-width:96px;padding:5px 7px}
+ #gl-mp-panel .gl-mp-card .gl-mp-vote{font-size:10px;padding:6px 8px}
+ .gl-mp-card-note{font-size:12px}
+ #gl-mp-panel .gl-mp-card .gl-mp-actions{justify-content:flex-start}
+ #gl-mp-panel .gl-mp-card .gl-mp-actions button{font-size:11px}
+}
