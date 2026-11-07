@@ -5,6 +5,8 @@ import {runInNewContext} from 'node:vm';
 
 const script=readFileSync('public/stock/gestlok-mis-productos.js','utf8');
 const sql=readFileSync('supabase/migrations/20261106052349_cami_mis_productos_privados.sql','utf8');
+const photoSql=readFileSync('supabase/migrations/20261107133000_cami_mis_productos_fotos_privadas.sql','utf8');
+const css=readFileSync('app/gestlok-mis-productos.css','utf8');
 const runtime=readFileSync('components/stock-runtime.tsx','utf8');
 const owner=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
 const layout=readFileSync('app/layout.tsx','utf8');
@@ -27,7 +29,12 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/No me gustó/);
  assert.match(script,/data-mp-new/);
  assert.match(script,/data-mp-search/);
- assert.match(runtime,/cami-busqueda-recientes-20261107/);
+ assert.match(script,/data-mp-cards/);
+ assert.match(script,/data-mp-photo-input/);
+ assert.match(script,/data-mp-photo-remove/);
+ assert.match(css,/gl-mp-card-top/);
+ assert.doesNotMatch(script,/getPublicUrl\(/);
+ assert.match(runtime,/cami-tarjetas-fotos-20261107/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -44,13 +51,24 @@ test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
  assert.match(sql,/Body Splash/);
 });
 
+test('Las fotos se guardan en un bucket privado con políticas restringidas al UID de la perfumería',()=>{
+ assert.match(photoSql,/add column if not exists photo_path text/);
+ assert.match(photoSql,/gestlok_cami_items_photo_path_check/);
+ assert.match(photoSql,/storage\.buckets/);
+ assert.match(photoSql,/false,3145728/);
+ assert.equal((photoSql.match(/create policy gl_cami_product_photos_/g)||[]).length,3);
+ assert.match(photoSql,/auth\.uid\(\)/);
+ assert.match(photoSql,/storage\.foldername\(name\)/);
+ assert.doesNotMatch(photoSql,/drop table|delete from public\.docs|\bto anon\b/i);
+});
+
 function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true,seedEntries){
  const listeners={};
  const root={id:'gl-mp-panel',innerHTML:''};
- const tbody={innerHTML:''},count={textContent:''};
+ const cards={innerHTML:''},count={textContent:''};
  let rendered=false,fromCalls=[];
  const d={
-  querySelector:s=>!rendered?null:s==='#gl-mp-panel'?root:s==='#gl-mp-panel .gl-mp-table tbody'?tbody:s==='#gl-mp-panel [data-mp-count]'?count:null,
+  querySelector:s=>!rendered?null:s==='#gl-mp-panel'?root:s==='#gl-mp-panel [data-mp-cards]'?cards:s==='#gl-mp-panel [data-mp-count]'?count:null,
   createElement:()=>root,
   body:{append:()=>{rendered=true;},classList:{add(){},remove(){}}},
   addEventListener:(name,fn)=>{listeners[name]=fn;}
@@ -67,11 +85,12 @@ function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true,seed
  };
  const host={S:{me:{email:userEmail,tenant_id:tenant}},role:()=>role,render(){},closePanel(){}};
  const ctx={role,tenant_id:tenant};
- const window={GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'owner',email:userEmail}},error:null})},from},
+ const window={GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'owner',email:userEmail}},error:null})},from,
+  storage:{from:()=>({createSignedUrls:async paths=>({data:paths.map(path=>({path,signedUrl:'https://signed.example/'+encodeURIComponent(path)})),error:null})})}},
   history:{state:{},pushState(){},replaceState(){},back(){}},
   addEventListener(){},confirm:()=>true};
  runInNewContext(script,{window,document:d,Date,FormData,console});
- return {mod:window.GestLokMisProductos,ctx,host,root,tbody,count,fromCalls,listeners};
+ return {mod:window.GestLokMisProductos,ctx,host,root,cards,count,fromCalls,listeners};
 }
 test('La vista privada presenta hoja y preferencias sin editar stock',async()=>{
  const a=launch();
@@ -84,6 +103,9 @@ test('La vista privada presenta hoja y preferencias sin editar stock',async()=>{
  assert.match(a.root.innerHTML,/Buen aroma/);
  assert.match(a.root.innerHTML,/Me gustó/);
  assert.match(a.root.innerHTML,/No me gustó/);
+ assert.match(a.root.innerHTML,/gl-mp-card/);
+ assert.match(a.root.innerHTML,/Agregar foto/);
+ assert.match(a.root.innerHTML,/Imprimir nombre/);
  assert.deepEqual(a.fromCalls,[
   'gestlok_cami_product_tabs','gestlok_cami_product_tabs','gestlok_cami_product_items'
  ]);
@@ -102,14 +124,25 @@ test('Busca al escribir sin perder el foco y ordena por fecha de ALTA descendent
  assert.ok(a.root.innerHTML.indexOf('Marshmallow Blush')<a.root.innerHTML.indexOf('Hawás Ice'));
  const sendSearch=value=>a.listeners.input({target:{closest:selector=>selector==='[data-mp-search]'?{value}:null}});
  sendSearch('hawas');
- assert.match(a.tbody.innerHTML,/Hawás Ice/,'La búsqueda ignora acentos');
- assert.doesNotMatch(a.tbody.innerHTML,/Marshmallow Blush|Arabia Tonka/);
+ assert.match(a.cards.innerHTML,/Hawás Ice/,'La búsqueda ignora acentos');
+ assert.doesNotMatch(a.cards.innerHTML,/Marshmallow Blush|Arabia Tonka/);
  assert.equal(a.count.textContent,'1 de 3 productos');
  sendSearch('nada');
- assert.match(a.tbody.innerHTML,/No encontramos productos con ese nombre/);
+ assert.match(a.cards.innerHTML,/No encontramos productos con ese nombre/);
  sendSearch('');
- assert.ok(a.tbody.innerHTML.indexOf('Arabia Tonka')<a.tbody.innerHTML.indexOf('Hawás Ice'));
+ assert.ok(a.cards.innerHTML.indexOf('Arabia Tonka')<a.cards.innerHTML.indexOf('Hawás Ice'));
  assert.equal(a.count.textContent,'Más recientes primero');
+});
+test('Las imágenes de las tarjetas usan URLs firmadas del almacenamiento privado',async()=>{
+ const entries=[{id:'e1',tab_id:'t1',product:'Perfume con foto',liked:true,note:'',position:0,
+  created_at:'2026-11-07T12:00:00Z',photo_path:'owner/e1/1234-foto.jpg'}];
+ const a=launch(email,'dueno',TENANT,true,entries);
+ await a.mod.refresh(a.ctx,a.host);
+ await a.mod.open();
+ assert.match(a.cards.innerHTML,/img src="https:\/\/signed\.example\//);
+ assert.match(a.cards.innerHTML,/Cambiar foto/);
+ assert.match(a.cards.innerHTML,/Quitar foto/);
+ assert.doesNotMatch(a.cards.innerHTML,/storage\/v1\/object\/public/);
 });
 test('Ni otra cuenta ni Mi Gusto pueden ver ni abrir el cuaderno',async()=>{
  for(const [mail,role,tenant] of [
