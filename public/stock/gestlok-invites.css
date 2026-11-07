@@ -1,0 +1,102 @@
+/* Invitaciones GESTLOK: integración aislada, accesible y responsive. */
+.gl-invite-home{margin:16px 0;padding:19px 20px;background:#fff;color:#193652;
+ border:1px solid #d5e3ef;border-radius:15px;box-shadow:0 5px 20px #102f5010;display:flex;
+ align-items:center;justify-content:space-between;gap:20px}
+.gl-invite-home-intro{display:flex;align-items:center;gap:15px}
+.gl-invite-home-intro h2{font-size:19px;font-weight:800;line-height:1.25;margin:0 0 5px;color:#122d4a}
+.gl-invite-home-intro p{font-size:13px;line-height:1.55;color:#587087;margin:0;max-width:550px}
+.gl-invite-whatsapp{display:grid;place-items:center;background:#e7f7eb;color:#168244;
+ border-radius:12px;height:50px;width:50px;flex-shrink:0}
+.gl-invite-whatsapp svg{width:27px;height:27px}
+.gl-invite-cta,.gl-invite-whatsapp-button{display:inline-flex;align-items:center;
+ justify-content:center;gap:10px;border:1px solid #08763a;border-radius:11px;background:#158548;
+ color:#fff;padding:12px 18px;font-size:14px;font-weight:800;line-height:1.3;cursor:pointer;
+ text-decoration:none;white-space:nowrap}
+.gl-invite-cta svg,.gl-invite-whatsapp-button svg{height:19px;width:19px}
+.gl-invite-cta:hover,.gl-invite-whatsapp-button:hover{background:#0a6937;color:white}
+.gl-invite-modal{position:fixed;inset:auto;margin:auto;width:min(96vw,700px);
+ max-height:88dvh;overflow:hidden;box-sizing:border-box;box-shadow:0 25px 65px #07182d6b;
+ padding:0;background:#fff;color:#17324b;border:1px solid #ccdae9;border-radius:16px;
+ font-family:inherit}
+.gl-invite-modal::backdrop{background:#0b182b9e}
+.gl-invite-modal-head{display:flex;justify-content:space-between;align-items:center;
+ gap:15px;padding:18px 22px;border-bottom:1px solid #e0e8f0;background:#fff}
+.gl-invite-modal-head h2{color:#112e4b;font-size:22px;margin:0}
+.gl-invite-modal-head button{background:#f6f9fc;border:1px solid #d6e1ec;
+ border-radius:9px;color:#35516d;font-size:24px;width:38px;height:38px;cursor:pointer}
+.gl-invite-modal-body{overflow:auto;max-height:calc(88dvh - 78px);padding:21px 22px}
+.gl-invite-note{font-size:13px;line-height:1.6;color:#56728d;background:#f4f8fc;
+ border:1px solid #deebf5;border-radius:10px;padding:12px 14px;margin:0 0 16px}
+.gl-invite-link-label{display:grid;gap:8px;font-size:12px;font-weight:800;color:#28496a}
+.gl-invite-link-label input,.gl-invite-modal input,.gl-invite-modal select{background:#fff;
+ box-sizing:border-box;width:100%;padding:11px 12px;min-height:42px;border:1px solid #bdd0e1;
+ border-radius:9px;color:#183553;font-size:14px;font-family:inherit}
+.gl-invite-actions{display:flex;flex-wrap:wrap;align-items:center;gap:11px;margin:15px 0}
+.gl-invite-actions button,.gl-invite-modal form button,.gl-invite-rotate button,
+.gl-invite-done button{cursor:pointer;padding:11px 15px;border:1px solid #c8d8e6;
+ border-radius:9px;font:700 13px inherit;font-size:13px;font-weight:800;
+ background:#f6f9fc;color:#285078}
+.gl-invite-actions button:hover,.gl-invite-rotate button:hover{background:#eaf2fb}
+.gl-invite-modal .gl-invite-whatsapp-button{background:#168346;color:#fff;border-color:#168346}
+.gl-invite-modal .gl-invite-whatsapp-button:hover{background:#0a6837}
+.gl-invite-modal form{display:grid;gap:13px}
+.gl-invite-modal form>label,.gl-invite-modal .gl-invite-choices label{font-size:13px;
+ font-weight:700;color:#32546f;display:grid;gap:6px}
+.gl-invite-modal form .gl-invite-submit,.gl-invite-modal form button.primary{color:white;
+ background:#164f83;border-color:#164f83}
+.gl-invite-rotate{border-top:1px solid #e3ebf2;margin:16px 0;padding-top:10px}
+.gl-invite-rotate summary{cursor:pointer;font-size:13px;color:#476781;font-weight:700}
+.gl-invite-rotate p{font-size:13px;color:#5e738a;line-height:1.5}
+.gl-invite-reviews{border-top:1px solid #dce7f1;padding-top:15px;margin-top:17px}
+.gl-invite-reviews h3{font-size:18px;color:#163752;margin:4px 0}
+.gl-invite-reviews>p{font-size:13px;color:#667e94;line-height:1.5}
+.gl-invite-counters{display:flex;gap:15px;align-items:center;flex-wrap:wrap;
+ font-size:12px;color:#556f89;margin:14px 0}
+.gl-invite-counters strong{color:#244e7c}
+.gl-invite-request{border:1px solid #d3dfeb;border-radius:12px;padding:14px;margin:10px 0;
+ background:#fff}
+.gl-invite-request header{display:flex;justify-content:space-between;align-items:start;gap:9px}
+.gl-invite-request header strong{color:#193756;font-size:15px}
+.gl-invite-request header small{display:block;color:#59748d;margin:4px 0 0;font-size:12px}
+.gl-invite-status{border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;white-space:nowrap}
+.gl-invite-status.pending{background:#fff1d3;color:#8b5b19}
+.gl-invite-status.approved{background:#e2f5e8;color:#176b40}
+.gl-invite-status.rejected{background:#f3ecec;color:#8a4848}
+.gl-invite-request dl{margin:12px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.gl-invite-request dt{font-size:10px;text-transform:uppercase;color:#668099;letter-spacing:.05em}
+.gl-invite-request dd{margin:3px 0 0;font-size:13px;color:#284763;overflow-wrap:anywhere}
+.gl-invite-request fieldset{border:1px solid #dbe6f1;border-radius:10px;padding:11px}
+.gl-invite-request legend{font-size:12px;font-weight:700;color:#345672;padding:0 5px}
+.gl-invite-choice{display:flex;gap:7px;align-items:center;font-size:13px;color:#315573;margin:7px 0}
+.gl-invite-choice input{width:17px!important;height:17px;min-height:0}
+.gl-invite-review-actions{display:flex;gap:10px;flex-wrap:wrap}
+.gl-invite-history{margin-top:19px;border-top:1px solid #dce6f0;padding-top:12px}
+.gl-invite-history summary{cursor:pointer;font-weight:800;color:#275277}
+.gl-invite-approved-note{font-size:12px;color:#59718b}
+.gl-invite-error,.gl-invite-success{padding:11px 13px;border-radius:9px;font-size:13px;line-height:1.5}
+.gl-invite-error{background:#fff1ef;border:1px solid #e9c0bd;color:#993c39}
+.gl-invite-success{background:#eaf8ed;border:1px solid #b9dfc6;color:#226e41}
+.gl-invite-done{text-align:center;padding:16px}
+.gl-invite-done strong{display:block;color:#1c7041;font-size:21px}
+.gl-invite-done p{color:#57718b;font-size:14px;line-height:1.6}
+@media(max-width:700px){
+ .gl-invite-home{align-items:stretch;flex-direction:column;padding:15px;border-radius:12px}
+ .gl-invite-home-intro h2{font-size:17px}
+ .gl-invite-cta{width:100%}
+ .gl-invite-modal{width:100vw;max-height:100dvh;border-radius:0;height:100dvh}
+ .gl-invite-modal-body{max-height:calc(100dvh - 78px);padding:16px}
+ .gl-invite-modal-head{padding:14px 15px}
+ .gl-invite-modal-head h2{font-size:19px}
+ .gl-invite-actions{flex-direction:column;align-items:stretch}
+ .gl-invite-actions button,.gl-invite-whatsapp-button{width:100%}
+ .gl-invite-request dl{grid-template-columns:1fr 1fr}
+ .gl-invite-review-actions{flex-direction:column}
+ .gl-invite-review-actions button{width:100%}
+}
+
+/* Los nuevos invitados ingresan únicamente con Google. No afecta cuentas
+   históricas con contraseña mientras sus accesos se migran. */
+#au-in.gl-invite-google-only .au-or,
+#au-in.gl-invite-google-only .fld,
+#au-in.gl-invite-google-only > button[type="submit"],
+#au-in.gl-invite-google-only .au-links{display:none!important}

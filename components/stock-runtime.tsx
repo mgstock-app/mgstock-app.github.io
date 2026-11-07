@@ -27,9 +27,10 @@ function preloadStartupScripts(visitor: boolean) {
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
-    "/stock/auth.js?rev=salir-local-20261027",
+    "/stock/auth.js?rev=auth-invites-google-20261107",
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
+    "/stock/gestlok-invites.js?rev=invite-google-20261107",
     "/stock/gestlok-molino.js?rev=molino-live-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -57,7 +58,8 @@ export function StockRuntime() {
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
       if (!visitor) await load("/stock/gestlok-registration.js");
-      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=salir-local-20261027");
+      if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
+      await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=auth-invites-google-20261107");
       if (!visitor) await load("/stock/gestlok-ios-install.js?rev=ios-home-screen-20261030");
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
       if (!visitor) await load("/stock/gestlok-push.js");
@@ -79,7 +81,7 @@ export function StockRuntime() {
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=molino-vinculo-20261107");
+      await load("/stock/gestlok-owner-areas.js?rev=invitar-whatsapp-20261107");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=molino-locales-20261107");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.

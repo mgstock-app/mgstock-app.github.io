@@ -31,6 +31,13 @@
     const m = $('#au-msg'); m.textContent = msg || ''; m.className = 'au-msg' + (err ? ' err' : '') + (msg ? '' : ' empty');
     box.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== mode; });
     if (mode === 'in'){
+      // Toda invitación nueva requiere Google. Las cuentas anteriores
+      // conservan un acceso de continuidad hasta completar la migración.
+      const inviteFlow=window.GestLokInvites?.hasPendingToken?.()===true;
+      const login=$('#au-in');login?.classList.toggle('gl-invite-google-only',inviteFlow);
+      const intro=login?.querySelector('.au-intro p');if(intro)intro.textContent=inviteFlow
+        ? 'Para aceptar tu invitación ingresá con Google.'
+        : 'Iniciá sesión con Google para continuar.';
       // Completa el email de la última sesión: solo falta la contraseña.
       let last = ''; try { last = localStorage.getItem(LAST_EMAIL) || ''; } catch {}
       const mail = $('#au-email'), pass = $('#au-pass');
@@ -154,6 +161,11 @@
     try { const { data, error } = await sb.rpc('mi_acceso'); if (!error && data){ r = data.rol || null; ls = Array.isArray(data.locales) ? data.locales : []; tenantId = data.tenant_id || null; support = data.support === true; } else throw error; }
     catch (e) { sinRed = navigator.onLine === false || /conexi|fetch|network|GL_OFFLINE/i.test(String((e && (e.message || e.code)) || '')); try { const { data, error } = await sb.rpc('mi_rol'); if (!error) r = data || null; } catch {} }
     if (attempt !== authGeneration) return;
+    // Después del OAuth Google, el enlace recupera el legajo y queda pendiente.
+    // Una invitación nunca sustituye a mi_acceso ni concede un rol automáticamente.
+    let inviteFlow=false;
+    try { inviteFlow=await window.GestLokInvites?.afterLogin?.(session)===true; } catch {}
+    if(attempt!==authGeneration)return;
     rol = r; locales = ls;
     /* Sin internet y sin una copia de esta cuenta en el equipo: no es un «ingreso pendiente». */
     if (!rol && sinRed){
@@ -166,7 +178,10 @@
       if (!window.GestLokRegistration){
         try { await sb.rpc('pedir_acceso', { p_nombre: meta.full_name || meta.name || '', p_proveedor: prov }); } catch {}
       }
-      show('pend', ''); window.GestLokRegistration?.pending(session); const n = $('#au-pend-email'); if (n) n.textContent = email;
+      show('pend', '');
+      if(!inviteFlow)window.GestLokRegistration?.pending(session);
+      else $('#gl-registration-request')?.remove();
+      const n = $('#au-pend-email'); if (n) n.textContent = email;
       clearInterval(window.__spmPoll);
       window.__spmPoll = setInterval(async () => { try { const { data } = await sb.rpc('mi_rol'); if (data){ clearInterval(window.__spmPoll); location.reload(); } } catch {} }, 10000);
       return;

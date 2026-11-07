@@ -1,0 +1,17 @@
+{
+  "comment": "Conserva la huella de autenticación; solo se normalizan los tres hooks de invitación revisados.",
+  "hooks": [
+    {
+      "actual": "    if (mode === 'in'){\n      // Toda invitación nueva requiere Google. Las cuentas anteriores\n      // conservan un acceso de continuidad hasta completar la migración.\n      const inviteFlow=window.GestLokInvites?.hasPendingToken?.()===true;\n      const login=$('#au-in');login?.classList.toggle('gl-invite-google-only',inviteFlow);\n      const intro=login?.querySelector('.au-intro p');if(intro)intro.textContent=inviteFlow\n        ? 'Para aceptar tu invitación ingresá con Google.'\n        : 'Iniciá sesión con Google para continuar.';\n      // Completa el email de la última sesión: solo falta la contraseña.",
+      "original": "    if (mode === 'in'){\n      // Completa el email de la última sesión: solo falta la contraseña."
+    },
+    {
+      "actual": "    if (attempt !== authGeneration) return;\n    // Después del OAuth Google, el enlace recupera el legajo y queda pendiente.\n    // Una invitación nunca sustituye a mi_acceso ni concede un rol automáticamente.\n    let inviteFlow=false;\n    try { inviteFlow=await window.GestLokInvites?.afterLogin?.(session)===true; } catch {}\n    if(attempt!==authGeneration)return;\n    rol = r; locales = ls;",
+      "original": "    if (attempt !== authGeneration) return;\n    rol = r; locales = ls;"
+    },
+    {
+      "actual": "      show('pend', '');\n      if(!inviteFlow)window.GestLokRegistration?.pending(session);\n      else $('#gl-registration-request')?.remove();\n      const n = $('#au-pend-email'); if (n) n.textContent = email;",
+      "original": "      show('pend', ''); window.GestLokRegistration?.pending(session); const n = $('#au-pend-email'); if (n) n.textContent = email;"
+    }
+  ]
+}
