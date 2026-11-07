@@ -143,7 +143,7 @@ function movementItem(m,kind,fromHistory=false){
  (m.note?'<p class="gl-molino-comment"><b>Observación de Acassuso:</b> '+escapeHTML(m.note)+'</p>':'')+
  (m.acknowledgement_note?'<p class="gl-molino-comment"><b>Observación al recibir:</b> '+escapeHTML(m.acknowledgement_note)+'</p>':'')+
  (canChange?'<button type="button" class="gl-molino-inline" data-mol-move-edit="'+escapeHTML(m.id)+'" data-kind="'+kind+'">Editar detalle</button>':'')+
- (canAck?'<div class="gl-molino-ack"><label>Observación al recibir (opcional)<input data-mol-ack-note="'+escapeHTML(m.id)+'" maxlength="1000" placeholder="Escribí una observación si necesitás"></label><button type="button" class="gl-molino-ack-btn" data-mol-ack="'+escapeHTML(m.id)+'">✓ Marcar OK</button></div>':'')+
+ (canAck?'<div class="gl-molino-ack"><label>Observación al recibir (opcional)<input data-mol-ack-note="'+escapeHTML(m.id)+'" maxlength="1000" placeholder="Escribí una observación si necesitás" value="'+escapeHTML(m.acknowledgement_note||'')+'"></label><div class="gl-molino-ack-actions">'+(isSent?'<button type="button" class="gl-molino-note-btn" data-mol-note="'+escapeHTML(m.id)+'">Guardar observación</button>':'')+'<button type="button" class="gl-molino-ack-btn" data-mol-ack="'+escapeHTML(m.id)+'">✓ Marcar OK</button></div></div>':'')+
  (ok?'<p class="gl-molino-confirmed-note">Confirmación registrada y compartida en ambos locales.</p>':'')+
  '</article>';
 }
@@ -223,6 +223,13 @@ document.addEventListener('click',e=>{
  }
  const me=e.target.closest('[data-mol-move-edit]');if(me){if(section!=='envios')section=me.dataset.kind==='envio'?'envios':'devoluciones';editMove=me.dataset.molMoveEdit;render();$('#gl-molino-movement-form-'+me.dataset.kind+' [name="product"]')?.focus();return;}
  const c=e.target.closest('[data-mol-cancel]');if(c){editPrice=null;editMove=null;render();return;}
+ const noteButton=e.target.closest('[data-mol-note]');
+ if(noteButton){
+   const id=noteButton.dataset.molNote;
+   const note=$('#gl-molino-panel input[data-mol-ack-note="'+id+'"]')?.value||'';
+   void save('gestlok_molino_save_observation',{p_id:id,p_note:note},'Observación compartida con San Isidro; el producto sigue pendiente de OK.');
+   return;
+ }
  const ack=e.target.closest('[data-mol-ack]');
  if(ack){
    const id=ack.dataset.molAck;
