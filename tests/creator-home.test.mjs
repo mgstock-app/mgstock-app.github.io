@@ -95,7 +95,7 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
   {tenant_id:'t-3',name:'Empresa <script>',locals:[{id:'l-3',name:'Local <externo>'}]},
  ];
  const html=r.h.view({pending:0,parts:{},companies,quickLocals:'SOLO MI GUSTO'});
- for (const name of ['Empresas activas','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Horarios','Empleados']) {
+ for (const name of ['Empresas activas','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Plan Scanner','Horarios','Empleados']) {
   assert.ok(html.includes(name),name);
  }
  assert.ok(html.includes('data-act="local" data-id="munro"'));
@@ -112,8 +112,10 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
  assert.equal((html.match(/class="gl-ch-company-local-grid"/g)||[]).length,3);
  assert.equal((html.match(/data-creator-company=/g)||[]).length,3);
  assert.equal((html.match(/class="gl-ch-quick-local gl-ch-company-local"/g)||[]).length,4,'Cada local tiene tarjeta y apertura propia');
- assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,6);
+ assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,7);
  assert.ok(html.includes('data-ch-tab="locales"'),'Se conserva la navegación de Locales');
+ assert.ok(html.includes('aria-label="Elegir local para Plan Scanner"'),'Scanner solicita local autorizado');
+ assert.ok(!html.includes('class="gl-ch-logout"')&&!html.includes('class="gl-ch-out"'),'Cerrar sesión solo desde Mi perfil');
 });
 
 
