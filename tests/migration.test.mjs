@@ -26,6 +26,13 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // El Molino modifica solo los controles de roles dentro de esta empresa.
+      // Revertir esos fragmentos revisados ANTES de comparar con el SHA histórico.
+      const molinoHooks=JSON.parse(read('tests/el-molino-roles-hooks.json')).hooks;
+      for(const {actual,original,count=1} of molinoHooks){
+        assert.equal(content.split(actual).length-1,count,'Un único hook de roles de El Molino');
+        content=content.split(actual).join(original);
+      }
       // Normalizar primero los cambios exclusivos de Pedidos de Mi Gusto para que
       // los hooks originales de navegación y Reclamos conserven su forma exacta.
       const pedidosHooks=JSON.parse(read('tests/mi-gusto-pedidos-hooks.json')).hooks;
