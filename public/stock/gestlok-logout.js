@@ -1,76 +1,84 @@
-/* GESTLOK | Salida visible para cualquier cuenta autenticada.
- * Independiente de rol, tenant, local y estado de aprobación.
- * Reutiliza el handler de auth.js: signOut({scope:'local'}), nunca global.
+/* GESTLOK | Cerrar sesión dentro de Mi perfil.
+ * Para cuentas aprobadas se usa la opción de salida del perfil multiempresa.
+ * Cuentas pendientes conservan acceso mediante un menú Mi perfil propio.
+ * La salida sigue a cargo de auth.js con scope: 'local'.
  */
 (()=>{
 'use strict';
 if(window.GestLokLogout)return;
 const sb=window.GestLokSupabase;
 if(!sb?.auth)return;
-let button=null,revision=0,visible=false;
-const ID='gl-universal-logout';
+let revision=0,visible=false,expanded=false,wrap=null,trigger=null,menu=null;
 function ensureStyles(){
  if(document.getElementById('gl-universal-logout-style'))return;
  const style=document.createElement('link');
  style.id='gl-universal-logout-style';
  style.rel='stylesheet';
- style.href='/stock/gestlok-logout.css?rev=logout-for-all-20261107';
+ style.href='/stock/gestlok-logout.css?rev=logout-profile-menu-20261107';
  document.head.appendChild(style);
 }
-function ensureButton(){
- if(button?.isConnected)return button;
- button=document.getElementById(ID);
- if(!button){
-  button=document.createElement('button');
-  button.id=ID;
-  button.type='button';
-  button.className='gl-universal-logout';
-  button.dataset.au='out';
-  button.setAttribute('aria-label','Cerrar sesión de GESTLOK en este dispositivo');
-  button.setAttribute('title','Cerrar sesión solo en este dispositivo');
-  button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg><span>Cerrar sesión</span>';
-  button.hidden=true;
-  document.body.appendChild(button);
- }
- return button;
+function showMenu(next){
+ expanded=Boolean(next);
+ if(menu)menu.hidden=!expanded;
+ if(trigger)trigger.setAttribute('aria-expanded',String(expanded));
+}
+function ensureFallback(){
+ if(wrap?.isConnected)return;
+ wrap=document.createElement('div');
+ wrap.id='gl-session-profile';
+ wrap.className='gl-session-profile';
+ trigger=document.createElement('button');
+ trigger.id='gl-universal-profile-trigger';
+ trigger.className='gl-universal-profile-trigger';
+ trigger.type='button';
+ trigger.textContent='◉ Mi perfil';
+ trigger.setAttribute('aria-label','Mi perfil: opciones de cuenta');
+ trigger.setAttribute('aria-expanded','false');
+ trigger.setAttribute('aria-controls','gl-universal-profile-menu');
+ menu=document.createElement('div');
+ menu.id='gl-universal-profile-menu';
+ menu.className='gl-universal-profile-menu';
+ menu.hidden=true;
+ const logout=document.createElement('button');
+ logout.id='gl-universal-logout';
+ logout.className='gl-universal-logout';
+ logout.type='button';
+ logout.dataset.au='out';
+ logout.textContent='Cerrar sesión';
+ logout.setAttribute('aria-label','Cerrar sesión de GESTLOK en este dispositivo');
+ logout.setAttribute('title','Cerrar sesión solo en este dispositivo');
+ menu.appendChild(logout);
+ wrap.append(trigger,menu);
+ document.body.appendChild(wrap);
+ trigger.addEventListener('click',()=>showMenu(!expanded));
+}
+function syncProfile(){
+ if(!visible){if(wrap)wrap.hidden=true;showMenu(false);return;}
+ ensureStyles();ensureFallback();
+ // La opción de salida aprobada está dentro del diálogo de Mi perfil.
+ const profilePresent=Boolean(document.getElementById('gl-profile-switch-trigger'));
+ wrap.hidden=profilePresent;
+ if(profilePresent)showMenu(false);
 }
 function update(session){
  visible=Boolean(session?.user?.id);
- if(visible)ensureStyles();
- const node=ensureButton();
- node.hidden=!visible;
- node.disabled=false;
- node.removeAttribute('aria-busy');
- const label=node.querySelector('span');if(label)label.textContent='Cerrar sesión';
  document.documentElement.classList.toggle('gl-universal-logout-ready',visible);
+ syncProfile();
 }
 sb.auth.onAuthStateChange((event,session)=>{
- // La consulta inicial no puede restaurar el botón tras una salida posterior.
  revision++;
  if(event==='SIGNED_OUT'){update(null);return;}
- if(['INITIAL_SESSION','SIGNED_IN','TOKEN_REFRESHED','USER_UPDATED'].includes(event)){
-  update(session);
- }
+ if(['INITIAL_SESSION','SIGNED_IN','TOKEN_REFRESHED','USER_UPDATED'].includes(event))update(session);
 });
 const initialRevision=revision;
 Promise.resolve(sb.auth.getSession()).then(({data})=>{
  if(revision===initialRevision)update(data?.session||null);
-}).catch(()=>{
- if(revision===initialRevision)update(null);
+}).catch(()=>{if(revision===initialRevision)update(null);});
+document.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&expanded)showMenu(false);
 });
-// El handler existente recibe data-au=out y ejecuta la salida local.
-// Solo actualizamos el estado visual una vez despachado el click.
 document.addEventListener('click',event=>{
- const target=event.target?.closest?.('#'+ID);
- if(!target||!visible)return;
- Promise.resolve().then(()=>{
-  if(visible&&button===target){
-   button.disabled=true;
-   button.setAttribute('aria-busy','true');
-   const label=button.querySelector('span');
-   if(label)label.textContent='Cerrando sesión…';
-  }
- });
-},true);
-window.GestLokLogout=Object.freeze({isVisible:()=>visible,selector:'#'+ID});
+ if(expanded&&wrap&&!wrap.contains(event.target))showMenu(false);
+});
+window.GestLokLogout=Object.freeze({isVisible:()=>visible,syncProfile,selector:'#gl-universal-logout'});
 })();
