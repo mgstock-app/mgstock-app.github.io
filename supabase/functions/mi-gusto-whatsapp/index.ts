@@ -94,9 +94,15 @@ const config = () => ({
  ids:{munro:env("MG_WA_PHONE_ID_MUNRO"),torcuato:env("MG_WA_PHONE_ID_TORCUATO")},
  tokens:{munro:env("MG_WA_TOKEN_MUNRO"),torcuato:env("MG_WA_TOKEN_TORCUATO")}
 });
+// Permitir activar una sola sucursal (primero Munro) sin exigir las credenciales
+// de Don Torcuato. Nunca usar un número que no tenga ID Y token configurados.
+function configured(c:ReturnType<typeof config>,loc:Local):boolean{
+ return Boolean(c.ids[loc]&&c.tokens[loc]);
+}
 function ready(c:ReturnType<typeof config>):boolean{
- return c.enabled&&Boolean(c.secret&&c.verify&&c.url&&c.service&&c.ids.munro&&c.ids.torcuato&&
- c.ids.munro!==c.ids.torcuato&&c.tokens.munro&&c.tokens.torcuato);
+ const munro=configured(c,"munro"),torcuato=configured(c,"torcuato");
+ return c.enabled&&Boolean(c.secret&&c.verify&&c.url&&c.service)&&
+  (munro||torcuato)&&(!munro||!torcuato||c.ids.munro!==c.ids.torcuato);
 }
 function json(status:number,body:Json):Response{
  return new Response(JSON.stringify(body),{status,headers:{
@@ -139,8 +145,10 @@ async function send(c:ReturnType<typeof config>,loc:Local,to:string,phoneId:stri
 }
 Deno.serve(async(req:Request)=>{
  const c=config();
- if(!ready(c))return json(503,{ok:false,error:"Integración sin habilitar"});
+ // Meta puede verificar el callback antes de activar el bot. No requiere
+ // credenciales de envío ni permite procesar mensajes entrantes con el bot apagado.
  if(req.method==="GET"){
+  if(!c.verify)return json(503,{ok:false,error:"Verificación de Meta sin configurar"});
   const url=new URL(req.url);
   const mode=url.searchParams.get("hub.mode"),token=url.searchParams.get("hub.verify_token");
   const challenge=url.searchParams.get("hub.challenge")||"";
@@ -148,6 +156,7 @@ Deno.serve(async(req:Request)=>{
    return json(403,{ok:false,error:"Verificación no autorizada"});
   return new Response(challenge,{status:200,headers:{"Content-Type":"text/plain","Cache-Control":"no-store"}});
  }
+ if(!ready(c))return json(503,{ok:false,error:"Integración sin habilitar"});
  if(req.method!=="POST")return json(405,{ok:false,error:"Método inválido"});
  if(Number(req.headers.get("content-length")||0)>1024*1024)return json(413,{ok:false,error:"Body muy grande"});
  let raw:Uint8Array;
@@ -169,7 +178,7 @@ Deno.serve(async(req:Request)=>{
     if(change.field!=="messages")continue;
     const value=change.value as Json|undefined;
     const phoneId=text((value?.metadata as Json|undefined)?.phone_number_id,80);
-    const loc=(Object.keys(c.ids) as Local[]).find(k=>c.ids[k]===phoneId);
+    const loc=(Object.keys(c.ids) as Local[]).find(k=>configured(c,k)&&c.ids[k]===phoneId);
     if(!loc)continue;
     for(const m of (Array.isArray(value?.messages)?value?.messages as Json[]:[]).slice(0,15)){
      const id=text(m.id,250),from=text(m.from,20),cmd=parseMessage(m);
