@@ -68,7 +68,7 @@ async function scan(video,onCode,{signal,continuous=false}={}){
  function deliver(raw){
   if(stopped)return;
   const code=String(raw||'').trim(),now=Date.now();
-  if(!validCode(code)||code===lastCode||now-lastAt<350)return;
+  if(!validCode(code)||code===lastCode)return;
   lastCode=code;lastAt=now;
   if(!continuous)stop();
   try{onCode(code);}catch(_){/* El carrito maneja su propio error. */}
