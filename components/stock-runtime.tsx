@@ -30,6 +30,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/auth.js?rev=salir-local-20261027",
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
+    "/stock/gestlok-invites.js?rev=invite-google-20261107",
     "/stock/gestlok-molino.js?rev=molino-live-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -57,6 +58,7 @@ export function StockRuntime() {
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
       if (!visitor) await load("/stock/gestlok-registration.js");
+      if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
       await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=salir-local-20261027");
       if (!visitor) await load("/stock/gestlok-ios-install.js?rev=ios-home-screen-20261030");
       await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
