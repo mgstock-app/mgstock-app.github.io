@@ -56,7 +56,37 @@ test('Un estado de soporte que falla deja la pantalla normal',async()=>{
 test('Abrir un local de otra empresa conserva destino y cuenta antes de recargar',async()=>{
  const {calls,listeners,reloads,store}=load(async()=>({data:{},error:null}),{me:{tenant_id:'own',email:'Admin@Example.com'}});
  listeners.click(target('[data-company-local]',{companyTenant:'other',companyLocal:'munro',companyName:'Otra empresa'}));await tick();await tick();
- assert.equal(calls[0][0],'gestlok_creator_open_company');assert.equal(calls[0][1].p_tenant,'other');
+ assert.ok(calls.some(c=>c[0]==='gestlok_my_role_contexts'));
+ const supportCall=calls.find(c=>c[0]==='gestlok_creator_open_company');
+ assert.ok(supportCall);assert.equal(supportCall[1].p_tenant,'other');
  assert.deepEqual(JSON.parse(store.get('gestlok:profile-next-local')),{email:'admin@example.com',tenant_id:'other',local_id:'munro'});
  assert.equal(store.get('gestlok-admin-tab'),'locales');assert.equal(reloads(),1);
+});
+
+test('Un local propio de la creadora abre su contexto comercial sin modo soporte',async()=>{
+ const {calls,listeners,reloads,store}=load(async(fn,args)=>{
+   if(fn==='gestlok_my_role_contexts')return {data:[
+     {tenant_id:'molino',role:'creadora',local_names:[{id:'acassuso',name:'Acassuso'},{id:'san-isidro',name:'San Isidro'}]}],error:null};
+   if(fn==='gestlok_choose_role_context')return {data:{tenant_id:args.p_tenant,role:'creadora'},error:null};
+   throw Error('No debe abrir soporte para un local propio');
+ },{me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'}});
+ listeners.click(target('[data-company-local]',{companyTenant:'molino',companyLocal:'san-isidro',companyName:'El Molino Café'}));
+ await tick();await tick();
+ const chosen=calls.find(c=>c[0]==='gestlok_choose_role_context');
+ assert.equal(chosen?.[1]?.p_tenant,'molino');
+ assert.ok(!calls.some(c=>c[0]==='gestlok_creator_open_company'));
+ assert.equal(JSON.parse(store.get('gestlok:profile-next-local')).local_id,'san-isidro');
+ assert.equal(reloads(),1);
+});
+
+test('Un usuario sin membresía explícita conserva apertura auditada de soporte',async()=>{
+ const {calls,listeners,reloads}=load(async(fn)=>{
+   if(fn==='gestlok_my_role_contexts')return {data:[{tenant_id:'other',role:'lectura',local_names:[{id:'x'}]}],error:null};
+   return {data:{},error:null};
+ },{me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'}});
+ listeners.click(target('[data-company-local]',{companyTenant:'other',companyLocal:'x',companyName:'Terceros'}));
+ await tick();await tick();
+ assert.ok(calls.some(c=>c[0]==='gestlok_creator_open_company'));
+ assert.ok(!calls.some(c=>c[0]==='gestlok_choose_role_context'));
+ assert.equal(reloads(),1);
 });
