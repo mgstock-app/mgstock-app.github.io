@@ -207,6 +207,7 @@
       ['Stock Local', 'Productos y existencias'],
       ['Precios', 'Costos, márgenes y precios de venta'],
       ['Sistema de Ventas', 'Escáner y registro de cobros'],
+      ['Plan Scanner', 'Escaneo con cámara, ventas y control de stock'],
       ['Horarios', 'Turnos y planillas'],
       ['Empleados', 'Legajos y recibos autorizados']
     ].map(([name,detail]) => '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
@@ -261,14 +262,11 @@
       '<button type="button" class="gl-ch-collapse" data-ch-collapse aria-controls="gl-ch-navigation" aria-expanded="' + (!navCollapsed) + '" title="' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '" aria-label="' + (navCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral') + '">' + svg('<path d="M4 5h16v14H4zM9 5v14M13 9l-3 3 3 3"/>', 20) + '<span>' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '</span></button>' +
       '<nav class="gl-ch-nav" id="gl-ch-navigation">' + nav + '</nav>' +
       '<div class="gl-ch-me"><span class="gl-ch-av">' + initial + '</span><div><b>Creadora</b><small>' + esc(api.S?.me?.email || '') + '</small><em>ADMINISTRADORA</em></div></div>' +
-      '<button type="button" class="gl-ch-logout" data-au="out" aria-label="Cerrar sesión" title="Cerrar sesión">' +
-      svg('<path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M16 17l5-5-5-5M21 12H9"/>', 20) +
-      '<span>Cerrar sesión</span></button>' +
       '<p class="gl-ch-quote">Gestión simple<br>para negocios reales</p></aside>' +
       '<main class="gl-ch-main"><header class="gl-ch-top"><div><h1>' + esc(title) + (cur === 'inicio' ? ' <span aria-hidden="true">👋</span>' : '') + '</h1><p>' + esc(sub) + '</p></div>' +
       '<div class="gl-ch-topr"><div class="gl-ch-date"><span>' + esc(d.date) + '</span><span>' + esc(d.time) + '</span></div>' +
       '<button type="button" class="gl-ch-bell" data-act="share" aria-label="Solicitudes pendientes: ' + num(p.pending) + '">' + svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>', 22) + (p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>' +
-      '<button type="button" class="gl-ch-out" data-au="out">Salir</button></div></header>' + body +
+      '</div></header>' + body +
       '<footer class="gl-ch-foot">GESTLOK · Panel privado de la creadora · Accesos protegidos · Datos al ' + esc(dmy(data.generated_at)) + ' ' + esc(new Date(data.generated_at).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})) + '</footer></main></div>';
   }
   function empleados(p) {
