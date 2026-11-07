@@ -15,6 +15,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     // Únicamente los tres textos de entrada al video comercial en el acceso público.
     // La autenticación original sigue verificándose contra su huella histórica.
     if (path === 'public/stock/auth.js') {
+      // Revertir únicamente los tres hooks de invitación auditados antes de la huella histórica.
+      const invites=JSON.parse(read('tests/gestlok-newlocal-auth-hooks.json')).hooks;
+      for(const {actual,original} of invites){
+        assert.equal(content.split(actual).length-1,1,'Hook de invitación autenticada revisado');
+        content=content.replace(actual,original);
+      }
       const publicVideoHooks = [
         ["link.href='/conocer/#video';", "link.href=location.pathname+'?demo=1';"],
         ["link.textContent='Mirá Plan Scanner en video · 30 segundos';", "link.textContent='Explorar demo interactiva · Sin registrarme';"],
