@@ -86,3 +86,14 @@ test('Sincronización en vivo con Realtime y refresco seguro, sin interrumpir fo
  assert.match(css,/@media\(max-width:740px\)/);
  assert.match(sql,/alter publication supabase_realtime add table/);
 });
+
+
+test('Acassuso puede guardar observación del envío sin marcar OK',()=>{
+ assert.match(sql,/function public\.gestlok_molino_save_observation/);
+ assert.match(sql,/v_scope not in \('admin','dueno','acassuso'\)/);
+ assert.match(sql,/and kind='envio' and acknowledged_at is null/);
+ assert.match(js,/data-mol-note/);
+ assert.match(js,/gestlok_molino_save_observation/);
+ assert.match(js,/el producto sigue pendiente de OK/);
+ assert.match(css,/\.gl-molino-note-btn/);
+});
