@@ -334,3 +334,30 @@ end; $$;
 -- A las 02:59 UTC son las 23:59 en Buenos Aires. Backup cada 15 minutos.
 select cron.schedule('molino-cierre-2359-ar','59 2 * * *','select gestlok_platform.molino_archive_due();');
 select cron.schedule('molino-cierre-respaldo','*/15 * * * *','select gestlok_platform.molino_archive_due();');
+
+
+-- Una observación de recepción puede guardarse POR PRODUCTO sin marcar OK;
+-- Acassuso informa faltantes/detalles y San Isidro los ve al instante.
+-- Esto NO autoriza modificar ni producto ni cantidad enviados.
+create or replace function public.gestlok_molino_save_observation(
+ p_id uuid,p_note text default '')
+returns jsonb language plpgsql security definer set search_path=''
+as $$
+declare v_scope text:=public.gestlok_molino_scope();
+        v_day date:=(now() at time zone 'America/Argentina/Buenos_Aires')::date;
+        v_row public.gestlok_molino_movements%rowtype;
+begin
+ if v_scope not in ('admin','dueno','acassuso') then raise exception 'Solo Acassuso puede observar un envío' using errcode='42501'; end if;
+ if length(coalesce(p_note,''))>1000 then raise exception 'Observación demasiado larga' using errcode='22023'; end if;
+ if to_char(now() at time zone 'America/Argentina/Buenos_Aires','HH24:MI')>='23:59'
+ then raise exception 'El día ya cerró a las 23:59' using errcode='22023'; end if;
+ update public.gestlok_molino_movements
+  set acknowledgement_note=coalesce(p_note,''),updated_at=now(),updated_by=auth.uid()
+  where id=p_id and day=v_day and kind='envio' and acknowledged_at is null
+  returning * into v_row;
+ if not found then raise exception 'No se puede observar ese producto' using errcode='22023'; end if;
+ return to_jsonb(v_row)-'tenant_id';
+end;
+$$;
+revoke all on function public.gestlok_molino_save_observation(uuid,text) from public,anon;
+grant execute on function public.gestlok_molino_save_observation(uuid,text) to authenticated;
