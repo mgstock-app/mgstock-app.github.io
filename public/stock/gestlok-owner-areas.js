@@ -192,6 +192,11 @@
     if(state.status==='loading')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="status">Comprobando tus áreas autorizadas…</p></section>';
     if(state.status==='error')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="alert">No pudimos verificar tus permisos. Revisá la conexión.</p><button class="btn" data-owner-area-retry>Reintentar</button></section>';
     const commerce=allowed('comercial'),staff=allowed('recibos_personal')&&!isSoloOwner();
+    // El Molino es una empresa en preparación comercial. No mostrar tarjetas
+    // de RR.HH. mientras la creadora define las necesidades del cliente.
+    // El permiso real de Empleados continúa cerrado en el backend.
+    const commercialPrepOnly=api?.S?.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e' &&
+      api?.role?.()==='creadora' && commerce && !staff;
     const name=esc(state.data.company_name||'Mi empresa');
     // El logo de Mi Gusto solo se muestra cuando el backend lo asigna a esta empresa.
     const branded=state.data.logo_id==='mi-gusto';
@@ -212,14 +217,14 @@
         :(isSoloOwner()?'<div><h1>Panel principal</h1><p class="gl-owner-tagline">Accedé a tus herramientas y registros.</p><button class="btn" type="button" data-scanner-invite-open>Invitar personas</button></div>':'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>'))+'</header>'+
       '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
       (commerce&&!isSoloOwner()?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
-        '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>mi empresa</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir Administrar mi empresa">'+svg(I.right,26)+'</button></div>'+
+        '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>'+(commercialPrepOnly?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir administración comercial">'+svg(I.right,26)+'</button></div>'+
         '<p>Productos, stock, proveedores, pedidos y más.</p>'+
         list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['bars','Reportes e historial'],['cart','Tienda online / mixta / física'],['gear','Ajustes de la empresa']])+'</article>':'')+
       (isSoloOwner()?'':staff?'<article class="gl-owner-area gl-owner-employees" data-owner-go="staff" aria-labelledby="gl-owner-staff-t"><div class="gl-owner-area-icon">'+ICON_TEAM+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-staff-t">Administrar <span>a los empleados</span></h2><button class="gl-owner-arrow" data-owner-area-staff aria-label="Ingresar a empleados">'+svg(I.right,26)+'</button></div>'+
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+'</article>':
-        commerce?'<article class="gl-owner-area gl-owner-employees gl-owner-employees-locked" aria-disabled="true" aria-labelledby="gl-owner-staff-t" style="cursor:default">'+
+        commerce&&!commercialPrepOnly?'<article class="gl-owner-area gl-owner-employees gl-owner-employees-locked" aria-disabled="true" aria-labelledby="gl-owner-staff-t" style="cursor:default">'+
         '<div class="gl-owner-area-icon">'+ICON_TEAM+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-staff-t">Administrar <span>a los empleados</span></h2><span style="border-radius:999px;background:#d6e3f6;color:#123462;padding:8px 12px;font-size:13px;font-weight:700;white-space:nowrap">Sin habilitar</span></div>'+
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
