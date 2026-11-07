@@ -320,10 +320,10 @@ begin
    and d.col='equipo' and lower(d.data->>'email')=v_email)
  then raise exception 'Este usuario ya tiene un rol. Revisá su perfil antes de modificarlo.' using errcode='22023';end if;
 
+ -- El perfil personal queda SOLO en la tabla privada de solicitudes/legajos.
+ -- La membresía operativa no publica teléfono, nombre ni quién revisó.
  v_profile:=jsonb_build_object('email',v_email,'rol',p_role,
-  'nombre',v_row.first_name||' '||v_row.last_name,
-  'locales',v_locals,'agregado',(extract(epoch from now())*1000)::bigint,
-  'por',gestlok_platform.registration_email());
+  'locales',v_locals,'agregado',(extract(epoch from now())*1000)::bigint);
  v_member_id:='invite-'||replace(v_row.tenant_id::text,'-','')||'-'||replace(v_row.user_id::text,'-','');
  insert into public.docs(tenant_id,col,id,data,updated_by)
  values(v_row.tenant_id,'equipo',v_member_id,v_profile,
