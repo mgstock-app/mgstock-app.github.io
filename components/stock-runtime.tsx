@@ -21,7 +21,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=navegacion-local-20261104",
+    "/stock/gestlok-owner-areas.js?rev=molino-tienda-20261107",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
     "/stock/app.js?rev=whatsapp-alerta-turno-20261106",
   ];
@@ -79,7 +79,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
       await load("/stock/gestlok-owner-areas.js?rev=scanner-invitados-20261106");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
-      await load("/stock/gestlok-creator-support.js?rev=soporte-20261026");
+      await load("/stock/gestlok-creator-support.js?rev=molino-locales-20261107");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
