@@ -1,10 +1,11 @@
--- Mi Gusto · Munro · WhatsApp definitivo (aditiva).
--- - Mensajes del bot editables desde GESTLOK (solo Munro; Don Torcuato sigue con los textos de siempre).
+-- Mi Gusto · Munro y Don Torcuato · WhatsApp definitivo (aditiva).
+-- Cada sucursal trabaja por separado: su número, su conexión con Meta, su carta, sus mensajes y sus pedidos.
+-- - Mensajes del bot editables desde GESTLOK por sucursal.
 -- - N.º de pedido por sucursal (MG-001), observaciones del cliente, ítems estructurados.
 -- - Cantidades desde una lista, mismo producto suma cantidades, conversación vencida vuelve al inicio.
 -- - Conexión con Meta (coexistencia con la app del teléfono): App ID, configuración, token y
 --   App Secret guardados en Supabase Vault. Nunca se devuelven al navegador.
--- - Munro sin carga manual de pedidos (solo WhatsApp). Pedidos históricos intactos.
+-- - Sin carga manual de pedidos en Mi Gusto (solo WhatsApp). Pedidos históricos intactos.
 -- No toca Caja, Stock, Pagos Online, Plan Scanner ni otras empresas.
 
 -- 1) Columnas nuevas ---------------------------------------------------------------
@@ -49,7 +50,7 @@ create table if not exists gestlok_mg_orders_private.whatsapp_settings (
 alter table gestlok_mg_orders_private.whatsapp_settings enable row level security;
 revoke all on gestlok_mg_orders_private.whatsapp_settings from public, anon, authenticated;
 
--- Textos iniciales de Munro: los pedidos por la usuaria. Se editan desde GESTLOK.
+-- Textos iniciales (los pedidos por la usuaria). Cada sucursal los edita por separado desde GESTLOK.
 insert into gestlok_mg_orders_private.whatsapp_settings(
   local,welcome_text,option_order,option_prices,option_human,human_text,review_text,confirmed_text
 ) values (
@@ -59,6 +60,16 @@ insert into gestlok_mg_orders_private.whatsapp_settings(
   'Perfecto. Alguien de Mi Gusto Munro te responde por acá en un momento. Para volver al menú automático, escribí MENU.',
   'Revisá tu pedido antes de confirmarlo:',
   '✅ ¡Pedido confirmado! Ya lo recibió Mi Gusto Munro.'
+) on conflict (local) do nothing;
+insert into gestlok_mg_orders_private.whatsapp_settings(
+  local,welcome_text,option_order,option_prices,option_human,human_text,review_text,confirmed_text
+) values (
+  'torcuato',
+  E'¡Bienvenido a Mi Gusto! 🥟\n\n¿Cómo podemos ayudarte?',
+  'Hacer un pedido','Ver carta y precios','Hablar con el local',
+  'Perfecto. Alguien de Mi Gusto Don Torcuato te responde por acá en un momento. Para volver al menú automático, escribí MENU.',
+  'Revisá tu pedido antes de confirmarlo:',
+  '✅ ¡Pedido confirmado! Ya lo recibió Mi Gusto Don Torcuato.'
 ) on conflict (local) do nothing;
 
 -- 3) Conexión con Meta ------------------------------------------------------------
@@ -99,8 +110,8 @@ revoke all on gestlok_mg_orders_private.whatsapp_connections from public, anon, 
 create or replace function gestlok_mg_orders_private.can_configure(p_local text)
 returns boolean language plpgsql stable security definer set search_path='' as $$
 begin
- -- Implementación exclusiva para Munro. Don Torcuato se habilita más adelante.
- return p_local='munro'
+ -- Munro y Don Torcuato, cada una con sus propios datos.
+ return p_local in ('munro','torcuato')
    and coalesce(gestlok_mg_orders_private.allowed(p_local),false)
    and public.mi_rol() in ('dueno','creadora');
 end $$;
@@ -125,7 +136,7 @@ returns jsonb language sql stable set search_path='' as $$
            from jsonb_array_elements(coalesce(o.items,'[]'::jsonb)) a))
 $$;
 
--- 5) Munro: sin carga manual (Don Torcuato sin cambios) ---------------------------
+-- 5) Sin carga manual: los pedidos de Mi Gusto entran solo desde WhatsApp ----------
 create or replace function public.gestlok_mg_orders_add(
  p_local text,p_customer_name text,p_customer_phone text,
  p_items_detail text,p_total numeric,p_notes text default ''
@@ -134,8 +145,8 @@ returns jsonb language plpgsql security definer set search_path='' as $$
 declare v_order gestlok_mg_orders_private.orders;
         v_phone text:=regexp_replace(coalesce(p_customer_phone,''),'[^0-9]','','g');
 begin
- if p_local='munro' then
-   raise exception 'En Munro los pedidos ingresan solamente desde WhatsApp' using errcode='42501';
+ if p_local in ('munro','torcuato') then
+   raise exception 'Los pedidos de Mi Gusto ingresan solamente desde WhatsApp' using errcode='42501';
  end if;
  if not gestlok_mg_orders_private.allowed(p_local) then
    raise exception 'Acceso denegado al local' using errcode='42501';
@@ -194,7 +205,7 @@ declare
  f text;
 begin
  if not gestlok_mg_orders_private.can_configure(p_local) then
-   raise exception 'Solo el dueño o la administradora configuran los mensajes de Munro' using errcode='42501';
+   raise exception 'Solo el dueño o la administradora configuran los mensajes de WhatsApp' using errcode='42501';
  end if;
  foreach f in array array['welcome_text','option_order','option_prices','option_human','human_text','review_text','confirmed_text'] loop
    if jsonb_typeof(v->f) is distinct from 'string' then
@@ -259,7 +270,7 @@ begin
  update gestlok_mg_orders_private.whatsapp_connections
  set bot_enabled=coalesce(p_enabled,false) where local=p_local;
  if not found then
-   raise exception 'Primero conectá el WhatsApp de Munro con Meta' using errcode='22023';
+   raise exception 'Primero conectá el WhatsApp de esta sucursal con Meta' using errcode='22023';
  end if;
  return public.gestlok_mg_whatsapp_settings(p_local);
 end $$;
@@ -309,8 +320,8 @@ create or replace function public.gestlok_mg_whatsapp_connection_save(
 ) returns jsonb language plpgsql security definer set search_path='' as $$
 declare v_old gestlok_mg_orders_private.whatsapp_connections; v_secret uuid;
 begin
- if p_local<>'munro' then
-   raise exception 'Conexión habilitada solo para Munro' using errcode='42501';
+ if p_local not in ('munro','torcuato') then
+   raise exception 'Sucursal inválida' using errcode='42501';
  end if;
  if coalesce(p_waba_id,'') !~ '^[0-9]{5,25}$' or coalesce(p_phone_number_id,'') !~ '^[0-9]{5,25}$'
     or length(coalesce(p_token,'')) not between 20 and 2000 then

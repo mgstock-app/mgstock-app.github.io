@@ -7,7 +7,7 @@ import * as nodeModule from 'node:module';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const source=read('supabase/functions/mi-gusto-whatsapp/index.ts');
 const sql=read('supabase/migrations/20261106220000_mi_gusto_whatsapp_bot.sql');
-const sqlMunro=read('supabase/migrations/20261107020000_mi_gusto_whatsapp_munro_conexion.sql');
+const sqlMunro=read('supabase/migrations/20261107020000_mi_gusto_whatsapp_conexion_sucursales.sql');
 const ui=read('public/stock/mi-gusto-pedidos-clientes.js');
 async function toJs(src){
  if(typeof nodeModule.stripTypeScriptTypes==='function'){process.removeAllListeners('warning');return nodeModule.stripTypeScriptTypes(src);}
@@ -90,7 +90,7 @@ test('habilitación por etapas: Munro funciona solo y Torcuato continúa aislado
  assert.equal(evaluate({MG_WA_PHONE_ID_TORCUATO:'222222222222222',MG_WA_TOKEN_TORCUATO:'t'}).valid,true,'ambas sucursales son independientes');
  assert.equal(evaluate({MG_WA_PHONE_ID_TORCUATO:'111111111111111',MG_WA_TOKEN_TORCUATO:'t'}).valid,false,'un Phone Number ID nunca se comparte');
  assert.match(source,/configured\(c,k\)&&c\.ids\[k\]===phoneId/,'nunca aceptar eventos de una sucursal sin token autorizado');
- assert.match(sqlMunro,/if p_local<>'munro' then\s+raise exception 'Conexión habilitada solo para Munro'/);
+ assert.match(sqlMunro,/if p_local not in \('munro','torcuato'\) then\s+raise exception 'Sucursal inválida'/);
 });
 
 test('Meta verifica el webhook antes de activar mensajes sin exponer datos',()=>{
@@ -103,12 +103,14 @@ test('Meta verifica el webhook antes de activar mensajes sin exponer datos',()=>
  assert.match(sqlMunro,/verify_token text not null default encode\(extensions\.gen_random_bytes/);
 });
 
-test('Munro: sin carga manual, número de pedido, observaciones y textos editables',()=>{
- assert.match(sqlMunro,/if p_local='munro' then\s+raise exception 'En Munro los pedidos ingresan solamente desde WhatsApp'/);
+test('Munro y Don Torcuato: sin carga manual, número de pedido, observaciones y textos editables por sucursal',()=>{
+ assert.match(sqlMunro,/if p_local in \('munro','torcuato'\) then\s+raise exception 'Los pedidos de Mi Gusto ingresan solamente desde WhatsApp'/);
+ assert.match(sqlMunro,/'torcuato',\s+E'¡Bienvenido a Mi Gusto! 🥟/);
+ assert.match(sqlMunro,/Ya lo recibió Mi Gusto Don Torcuato/);
  assert.match(sqlMunro,/'MG-'\|\|lpad\(p_number::text,3,'0'\)/);
  assert.match(sqlMunro,/stage in \('start','catalog','quantity','cart','name','notes','review','human'\)/);
  assert.match(sqlMunro,/¡Bienvenido a Mi Gusto! 🥟/);
  assert.match(sqlMunro,/'Hacer un pedido','Ver carta y precios','Hablar con el local'/);
- assert.match(sqlMunro,/return p_local='munro'\s+and coalesce\(gestlok_mg_orders_private\.allowed\(p_local\),false\)\s+and public\.mi_rol\(\) in \('dueno','creadora'\)/);
+ assert.match(sqlMunro,/return p_local in \('munro','torcuato'\)\s+and coalesce\(gestlok_mg_orders_private\.allowed\(p_local\),false\)\s+and public\.mi_rol\(\) in \('dueno','creadora'\)/);
  assert.doesNotMatch(sqlMunro,/drop table|delete from gestlok_mg_orders_private\.orders|truncate/i,'no borra pedidos históricos');
 });

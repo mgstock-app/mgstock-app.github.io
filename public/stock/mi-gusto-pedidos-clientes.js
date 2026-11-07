@@ -1,6 +1,6 @@
 /* Mi Gusto: Pedidos WhatsApp por sucursal. Los pedidos entran solo desde WhatsApp (API oficial de Meta).
- * Munro: sin carga manual, mensajes del bot editables y conexión con Meta (coexistencia con la app del teléfono).
- * Don Torcuato conserva su pantalla hasta que se habilite.
+ * Munro y Don Torcuato trabajan por separado: número, conexión con Meta (coexistencia con la app del
+ * teléfono), carta, mensajes y pedidos propios. Sin carga manual.
  * Visualización y alertas de comandas nuevas también fuera de la pantalla Pedidos.
  * Caja, Pagos Online, Stock y pedidos de proveedores permanecen independientes. */
 (()=>{
@@ -30,8 +30,9 @@ const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
 const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
 const canEdit=()=>allowed()&&online()&&!busy&&!!window.GestLokSupabase;
 const canSetNumber=()=>allowed()&&['dueno','creadora'].includes(api.miRol());
-const isMunro=()=>local()==='munro';
-const canConfigure=()=>isMunro()&&canSetNumber()&&settings?.can_configure===true;
+const metaLocal=()=>local() in LOCALS;
+const localName=()=>LOCALS[local()]||'';
+const canConfigure=()=>metaLocal()&&canSetNumber()&&settings?.can_configure===true;
 const webhookUrl=()=>String(window.SPM_CONFIG?.url||'https://vgsepaaewbctjsjcpeta.supabase.co').replace(/\/$/,'')+'/functions/v1/mi-gusto-whatsapp';
 const customerPhone=x=>{const v=String(x||'').replace(/[^0-9]/g,'');
  if(/^549(11|15)[0-9]{8}$/.test(v))return '+54 9 '+v.slice(3,5)+' '+v.slice(5,9)+'-'+v.slice(9);
@@ -140,10 +141,11 @@ async function rpc(method,args={}){
  if(e)throw new Error(e.message||'No se pudo completar la operación.');
  return data;
 }
-// Munro: mensajes del bot y estado de la conexión. Un error acá no oculta los pedidos.
+// Mensajes del bot y estado de la conexión de la sucursal. Un error acá no oculta los pedidos.
 async function loadSettings(){
- if(!isMunro())return null;
- try{const d=await rpc('gestlok_mg_whatsapp_settings');return d&&typeof d==='object'&&d.local==='munro'?d:null;}
+ if(!metaLocal())return null;
+ const loc=local();
+ try{const d=await rpc('gestlok_mg_whatsapp_settings');return d&&typeof d==='object'&&d.local===loc?d:null;}
  catch{return settings;}
 }
 async function refresh(){
@@ -194,7 +196,7 @@ function messagesPanel(){
   '<textarea name="'+k+'" maxlength="'+max+'" rows="'+(k==='welcome_text'?4:2)+'" required '+(!canEdit()?'disabled':'')+'>'+esc(v[k]||'')+'</textarea>':
   '<input name="'+k+'" maxlength="'+max+'" minlength="2" required value="'+esc(v[k]||'')+'" '+(!canEdit()?'disabled':'')+'>')+'</label>';
  return '<details class="mgp-config mgp-messages" id="mgp-messages"><summary>Mensajes automáticos de WhatsApp</summary>'+
-  '<p>Lo que recibe el cliente al escribir a Munro. Las opciones son botones de WhatsApp: hasta 20 letras cada una.</p>'+
+  '<p>Lo que recibe el cliente al escribir a '+esc(localName())+'. Las opciones son botones de WhatsApp: hasta 20 letras cada una.</p>'+
   '<div class="mgp-wa-preview" aria-label="Vista previa de la bienvenida"><div class="mgp-wa-bubble" data-mgp-preview="welcome_text">'+escapeLines(v.welcome_text||'')+'</div>'+
   ['option_order','option_prices','option_human'].map((k,i)=>'<div class="mgp-wa-option"><span>'+(i+1)+'.</span> <span data-mgp-preview="'+k+'">'+esc(v[k]||'')+'</span></div>').join('')+'</div>'+
   '<form id="mgp-messages-form" class="mgp-form mgp-messages-form">'+MSG_FIELDS.map(field).join('')+
@@ -218,9 +220,9 @@ function metaPanel(){
    '<label>ID de configuración (Inicio de sesión para empresas)<input name="config_id" inputmode="numeric" pattern="[0-9]{5,25}" required value="'+esc(m.config_id||'')+'" '+(!canEdit()?'disabled':'')+'></label>'+
    '<label>App Secret '+(m.has_app_secret?'<small>(guardado ✓ · dejalo vacío para no cambiarlo)</small>':'')+'<input name="app_secret" type="password" autocomplete="off" spellcheck="false" maxlength="64" '+(m.has_app_secret?'':'required ')+(!canEdit()?'disabled':'')+'></label>'+
    '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar datos de Meta</button></form></li>'+
-  '<li><strong>Conectar el número de Munro</strong><span>Se abre Meta: elegí conectar tu cuenta existente de WhatsApp Business, ingresá el número del local y escaneá el código QR desde la app del teléfono. Los chats del teléfono se conservan.</span>'+
+  '<li><strong>Conectar el número de '+esc(localName())+'</strong><span>Se abre Meta: elegí conectar tu cuenta existente de WhatsApp Business, ingresá el número del local y escaneá el código QR desde la app del teléfono. Los chats del teléfono se conservan.</span>'+
    (c?'<small class="mgp-ok-text">✓ Conectado: '+esc(c.display_phone||'')+(c.verified_name?' · '+esc(c.verified_name):'')+' · '+date(c.connected_at)+'</small>':'')+
-   '<button type="button" class="mgp-button mgp-connect" data-mgp-connect '+(!ready||!canEdit()?'disabled':'')+'>'+(c?'Volver a conectar':'Conectar WhatsApp de Munro')+'</button>'+
+   '<button type="button" class="mgp-button mgp-connect" data-mgp-connect '+(!ready||!canEdit()?'disabled':'')+'>'+(c?'Volver a conectar':'Conectar WhatsApp de '+esc(localName()))+'</button>'+
    (!ready?'<small class="mgp-wait-text">Primero guardá App ID, ID de configuración y App Secret.</small>':'')+'</li>'+
   '<li><strong>Respuestas automáticas</strong><span>Con la carta cargada, activalas para que el bot tome los pedidos. Apagadas, el local atiende todo desde el teléfono.</span>'+
    '<button type="button" class="mgp-button '+(c?.bot_enabled?'mgp-bot-off':'mgp-bot-on')+'" data-mgp-bot="'+(c?.bot_enabled?'off':'on')+'" '+(!c||!canEdit()?'disabled':'')+'>'+(c?.bot_enabled?'Desactivar respuestas automáticas':'Activar respuestas automáticas')+'</button></li>'+
@@ -230,8 +232,8 @@ function view(){
  if(!allowed())return '<p class="lead">No tenés acceso a los pedidos de esta sucursal.</p>';
  const pending=items.filter(x=>x.status==='nuevo'),done=items.filter(x=>x.status==='recibido');
  const selected=tab==='todos'?items:tab==='realizados'?done:pending;
- const config=canSetNumber()?'<details class="mgp-config"><summary>'+(isMunro()?'Número de WhatsApp de ':'Configurar WhatsApp de ')+esc(LOCALS[local()])+'</summary>'+
-  '<p>'+(isMunro()?'Número del local. Al conectar con Meta se comprueba que sea este mismo.':'Esta sucursal tendrá su propio número y sus pedidos separados. La automatización requiere conectar después la API oficial de Meta.')+'</p>'+
+ const config=canSetNumber()?'<details class="mgp-config"><summary>Número de WhatsApp de '+esc(LOCALS[local()])+'</summary>'+
+  '<p>Número propio de esta sucursal. Al conectar con Meta se comprueba que sea este mismo.</p>'+
   '<form id="mgp-number-form"><label>Número con código de país (ej.: 54911... )<input name="number" inputmode="tel" autocomplete="tel" required minlength="10" maxlength="24" value="'+esc(phone)+'" placeholder="54911..." '+(!canEdit()?'disabled':'')+'></label>'+
   '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar número</button></form></details>':'';
  const catalogPanel='<section class="mgp-catalog-card" aria-label="Carta y precios de WhatsApp">'+
@@ -243,8 +245,8 @@ function view(){
     '<form id="mgp-catalog-form" class="mgp-form"><input type="hidden" name="id" value=""><label>Producto<input name="name" minlength="2" maxlength="120" required placeholder="Ej.: Empanada de carne" '+(!canEdit()?'disabled':'')+'></label>'+
     '<label>Precio final en pesos<input name="price" type="number" min="0.01" max="999999.99" step="0.01" required inputmode="decimal" placeholder="0" '+(!canEdit()?'disabled':'')+'></label>'+
     '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar en la carta</button></form></details>':'')+'</section>';
- // Munro: los pedidos entran solo desde WhatsApp. Don Torcuato conserva su carga interna.
- const manual=isMunro()?'':'<details class="mgp-config" id="mgp-add-details"><summary>Registrar pedido manualmente (para control interno)</summary>'+
+ // Los pedidos entran solo desde WhatsApp: sin carga manual en ninguna sucursal de Mi Gusto.
+ const manual=metaLocal()?'':'<details class="mgp-config" id="mgp-add-details"><summary>Registrar pedido manualmente (para control interno)</summary>'+
  '<form id="mgp-order-form" class="mgp-form"><label>Nombre del cliente<input name="customer" required minlength="2" maxlength="120" autocomplete="off" placeholder="Nombre y apellido" '+(!canEdit()?'disabled':'')+'></label>'+
  '<label>Teléfono<input name="phone" inputmode="tel" required maxlength="25" autocomplete="off" placeholder="11..." '+(!canEdit()?'disabled':'')+'></label>'+
  '<label>Pedido y cantidades<textarea name="items" required minlength="2" maxlength="4000" rows="3" placeholder="Ej.: 6 carne, 6 jamón y queso" '+(!canEdit()?'disabled':'')+'></textarea></label>'+
@@ -255,7 +257,7 @@ function view(){
  '<h2><span class="mgp-title-icon">'+waIcon+'</span> Pedidos WhatsApp</h2><p>Pedidos confirmados por WhatsApp. Pago únicamente en efectivo.</p></div>'+
  '<button type="button" class="mgp-reload" data-mgp-reload '+(!online()?'disabled':'')+'>Actualizar</button></header>'+
  '<div class="mgp-status"><span class="mgp-phone-icon">'+waIcon+'</span><div class="mgp-phone-detail"><span>WhatsApp del local</span><strong>'+esc(formatPhone(phone))+'</strong>'+
- (isMunro()?connectionStatus():'<small>'+(phone?'Número configurado para '+esc(LOCALS[local()])+' · conexión con Meta pendiente':'Cada sucursal utiliza su propio número')+'</small>')+'</div>'+
+ (metaLocal()?connectionStatus():'<small>'+(phone?'Número configurado para '+esc(LOCALS[local()])+' · conexión con Meta pendiente':'Cada sucursal utiliza su propio número')+'</small>')+'</div>'+
  (phone?'<a class="mgp-phone-open" href="https://wa.me/'+esc(phone.replace(/[^0-9]/g,''))+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del local">↗</a>':'')+'</div>'+
  (error?'<p role="alert" class="mgp-error">'+esc(error)+'</p>':'')+
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
@@ -312,12 +314,12 @@ function onMetaMessage(event){
  if(data?.type!=='WA_EMBEDDED_SIGNUP')return;
  if(String(data.event||'').startsWith('FINISH'))signupInfo={waba_id:String(data.data?.waba_id||''),phone_number_id:String(data.data?.phone_number_id||'')};
 }
-async function finishConnection(code){
+async function finishConnection(code,targetLocal){
  for(let i=0;i<30&&!signupInfo?.waba_id;i++)await new Promise(r=>setTimeout(r,200));
  if(!signupInfo?.waba_id)throw new Error('Meta no informó la cuenta de WhatsApp. Tocá «Conectar» de nuevo.');
  const {data,error:e}=await window.GestLokSupabase.functions.invoke('mi-gusto-whatsapp',{
   headers:{'x-gestlok-action':'connect'},
-  body:{local:'munro',code,waba_id:signupInfo.waba_id,phone_number_id:signupInfo.phone_number_id||''}
+  body:{local:targetLocal,code,waba_id:signupInfo.waba_id,phone_number_id:signupInfo.phone_number_id||''}
  });
  if(e){let msg=e.message||'No se pudo completar la conexión.';try{const b=await e.context?.json?.();if(b?.error)msg=b.error;}catch{/* sin detalle */}throw new Error(msg);}
  if(!data?.ok)throw new Error(data?.error||'No se pudo completar la conexión.');
@@ -330,18 +332,19 @@ function connectMeta(){
  // FB.login tiene que abrirse en el mismo toque para que el navegador no bloquee la ventana de Meta.
  if(!window.FB){
   notice='Preparando Meta…';update(true);
-  loadFacebook(m.app_id).then(()=>{notice='Listo. Tocá «Conectar WhatsApp de Munro» otra vez.';update(true);})
+  loadFacebook(m.app_id).then(()=>{notice='Listo. Tocá «Conectar WhatsApp de '+localName()+'» otra vez.';update(true);})
    .catch(e=>{error=e.message;notice='';update(true);});
   return;
  }
  if(fbAppId!==m.app_id){window.FB.init({appId:m.app_id,autoLogAppEvents:true,xfbml:false,version:GRAPH_VERSION});fbAppId=m.app_id;}
+ const targetLocal=local(),targetName=localName();
  signupInfo=null;error='';notice='Completá los pasos en la ventana de Meta…';busy=true;update(true);
  window.FB.login(response=>{
   const code=response?.authResponse?.code;
   if(!code){busy=false;notice='';error='La conexión con Meta se canceló. No se cambió nada.';update(true);return;}
   notice='Guardando la conexión…';update(true);
-  finishConnection(code).then(d=>{
-   notice='✓ WhatsApp de Munro conectado: '+(d.display_phone||'')+(d.is_on_biz_app?' · sigue funcionando en la app del teléfono.':'.');
+  finishConnection(code,targetLocal).then(d=>{
+   notice='✓ WhatsApp de '+targetName+' conectado: '+(d.display_phone||'')+(d.is_on_biz_app?' · sigue funcionando en la app del teléfono.':'.');
   }).catch(e=>{error=e.message||'No se pudo completar la conexión.';notice='';})
    .finally(()=>{busy=false;void refreshAfterSave().then(()=>update(true,false));});
  },{config_id:m.config_id,response_type:'code',override_default_response_type:true,
@@ -380,7 +383,7 @@ function attach(h){
   if(bot&&canConfigure()&&canEdit()){
    const on=bot.dataset.mgpBot==='on';
    if(on&&!catalog.some(x=>x.active)){error='Cargá al menos un producto con precio en la carta antes de activar las respuestas automáticas.';update(true);return;}
-   if(window.confirm(on?'¿Activar las respuestas automáticas en el WhatsApp de Munro? Los clientes van a recibir la bienvenida y podrán hacer pedidos.':'¿Desactivar las respuestas automáticas? El local atiende todo desde el teléfono.'))
+   if(window.confirm(on?'¿Activar las respuestas automáticas en el WhatsApp de '+localName()+'? Los clientes van a recibir la bienvenida y podrán hacer pedidos.':'¿Desactivar las respuestas automáticas de '+localName()+'? El local atiende todo desde el teléfono.'))
     void action('gestlok_mg_whatsapp_set_bot',{p_enabled:on},on?'Respuestas automáticas activadas.':'Respuestas automáticas desactivadas.');
    return;
   }

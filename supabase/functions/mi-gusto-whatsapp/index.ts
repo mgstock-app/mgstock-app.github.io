@@ -1,6 +1,6 @@
 /* Mi Gusto · WhatsApp Cloud API (oficial de Meta) → GESTLOK · Pedidos WhatsApp.
  * - Webhook firmado con el App Secret (X-Hub-Signature-256). Sin firma válida no se procesa nada.
- * - Cada Phone Number ID apunta a una única sucursal. Hoy solo Munro se conecta desde GESTLOK.
+ * - Cada Phone Number ID apunta a una única sucursal (Munro y Don Torcuato trabajan por separado).
  * - Conexión «coexistencia»: el número sigue funcionando en la app WhatsApp Business del teléfono.
  * - Token de Meta y App Secret viven en Supabase Vault o en los secretos de la función; nunca en el navegador.
  * - El bot no modifica Caja, Stock, Pagos Online ni registra cobros. Solo responde a quien escribe.
@@ -241,7 +241,7 @@ async function handleConnect(req:Request,c:Config):Promise<Response>{
  const local=body.local,code=text(body.code,3000);
  const wabaId=text(body.waba_id,30);
  let phoneId=text(body.phone_number_id,30);
- if(local!=="munro")return json(403,{ok:false,error:"Por ahora solo se conecta Munro"},h);
+ if(!isLocal(local))return json(403,{ok:false,error:"Sucursal inválida"},h);
  if(code.length<10||!/^[A-Za-z0-9._#-]+$/.test(code))return json(400,{ok:false,error:"Meta no devolvió el código de autorización"},h);
  if(!/^[0-9]{5,25}$/.test(wabaId))return json(400,{ok:false,error:"Meta no devolvió la cuenta de WhatsApp. Repetí la conexión."},h);
  if(phoneId&&!/^[0-9]{5,25}$/.test(phoneId))return json(400,{ok:false,error:"Número de Meta inválido"},h);
@@ -261,11 +261,11 @@ async function handleConnect(req:Request,c:Config):Promise<Response>{
    const list=await graph("GET","/"+wabaId+"/phone_numbers?fields=id,display_phone_number",token);
    const found=(Array.isArray(list.data)?list.data as Json[]:[]).find(p=>phoneKey(p.display_phone_number)===phoneKey(expected));
    phoneId=text(found?.id,30);
-   if(!/^[0-9]{5,25}$/.test(phoneId))return json(409,{ok:false,error:"La cuenta conectada no tiene el número de Munro"},h);
+   if(!/^[0-9]{5,25}$/.test(phoneId))return json(409,{ok:false,error:"La cuenta conectada no tiene el número de "+locals[local]},h);
   }
   const info=await graph("GET","/"+phoneId+"?fields=display_phone_number,verified_name,is_on_biz_app,platform_type,code_verification_status",token);
   if(!expected||phoneKey(info.display_phone_number)!==phoneKey(expected))
-   return json(409,{ok:false,error:"El número conectado ("+text(info.display_phone_number,30)+") no es el de Munro. No se guardó nada."},h);
+   return json(409,{ok:false,error:"El número conectado ("+text(info.display_phone_number,30)+") no es el de "+locals[local]+". No se guardó nada."},h);
   await graph("POST","/"+wabaId+"/subscribed_apps",token,{});
   const sync:Json={};
   if(info.is_on_biz_app===true){

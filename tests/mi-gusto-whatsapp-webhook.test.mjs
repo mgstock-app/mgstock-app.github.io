@@ -43,7 +43,7 @@ function load(over={}){
    case 'gestlok_mg_whatsapp_turn':state.turns.push(args);return {data:state.nextTurn(args),error:null};
    case 'gestlok_mg_whatsapp_sent':state.sent.push(args);return {data:true,error:null};
    case 'gestlok_mg_whatsapp_can_connect':
-    return key==='anon-key'&&auth==='Bearer '+JWT?{data:{ok:true,expected_number:'541171446654',user_id:'u1'},error:null}:{data:null,error:{message:'denied'}};
+    return key==='anon-key'&&auth==='Bearer '+JWT?{data:{ok:true,expected_number:args.p_local==='torcuato'?'541176617182':'541171446654',user_id:'u1'},error:null}:{data:null,error:{message:'denied'}};
    case 'gestlok_mg_whatsapp_connection_save':state.saved=args;return {data:{ok:true},error:null};
    default:return {data:null,error:{message:'rpc desconocida '+name}};
   }
@@ -186,7 +186,7 @@ test('si Meta rechaza el envío se pide reintento (503) sin exponer el token',as
  assert.equal(errors.length,0);
 });
 
-test('conexión desde GESTLOK: solo dueño/administradora, número de Munro y token guardado en Vault',async()=>{
+test('conexión desde GESTLOK: solo dueño/administradora, número propio de cada sucursal y token en Vault',async()=>{
  const connect=(body,{origin='https://gestlok.com.ar',jwt=JWT}={})=>new Request(URL_FN,{method:'POST',headers:{
   origin,'content-type':'application/json','x-gestlok-action':'connect',authorization:'Bearer '+jwt,apikey:'anon-key'},
   body:JSON.stringify(body)});
@@ -195,7 +195,16 @@ test('conexión desde GESTLOK: solo dueño/administradora, número de Munro y to
  const opt=await pre.handler(new Request(URL_FN,{method:'OPTIONS',headers:{origin:'https://gestlok.com.ar'}}));
  assert.equal(opt.status,204);assert.equal(opt.headers.get('access-control-allow-origin'),'https://gestlok.com.ar');
  assert.equal((await pre.handler(connect(good,{origin:'https://otro.com'}))).status,403);
- assert.equal((await pre.handler(connect({...good,local:'torcuato'}))).status,403,'Don Torcuato no se conecta todavía');
+ assert.equal((await pre.handler(connect({...good,local:'palermo'}))).status,403,'solo sucursales de Mi Gusto');
+ const cross=load();
+ const x=await cross.handler(connect({...good,local:'torcuato'}));
+ assert.equal(x.status,409,'el número de Munro no se puede conectar en Don Torcuato');
+ assert.match((await x.json()).error,/no es el de Don Torcuato/);
+ assert.equal(cross.state.saved,null);
+ const tor=load({display:'+54 9 11 7661-7182'});
+ const tr=await tor.handler(connect({...good,local:'torcuato'}));
+ assert.equal(tr.status,200,'Don Torcuato se conecta con su propio número');
+ assert.equal(tor.state.saved.p_local,'torcuato');
  const denied=load();
  assert.equal((await denied.handler(connect(good,{jwt:'eyJhbGciOiJIUzI1NiJ9.otro.usuario-sin-permiso'}))).status,403);
  assert.equal(denied.state.saved,null);

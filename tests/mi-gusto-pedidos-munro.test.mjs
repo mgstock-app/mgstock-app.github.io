@@ -1,5 +1,5 @@
-// Munro · Pedidos WhatsApp: sin carga manual, comanda completa, mensajes editables y conexión con Meta.
-// Don Torcuato conserva su pantalla (carga interna incluida) hasta que se habilite.
+// Mi Gusto · Pedidos WhatsApp en Munro y Don Torcuato: sin carga manual, comanda completa,
+// mensajes editables y conexión con Meta, cada sucursal con sus propios datos.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,7 +25,7 @@ function setup({role='dueno',local='munro',locals=['munro'],settings=SETTINGS,ca
   GestLokSupabase:{rpc:async(method,args)=>{
    calls.push({method,...args});
    if(method==='gestlok_mg_orders_catalog')return {data:catalog,error:null};
-   if(method==='gestlok_mg_whatsapp_settings')return args.p_local==='munro'?{data:settings,error:null}:{data:null,error:{message:'no'}};
+   if(method==='gestlok_mg_whatsapp_settings')return {data:{...settings,local:args.p_local},error:null};
    if(method==='gestlok_mg_whatsapp_set_bot')return {data:{...settings,connection:{...settings.connection,bot_enabled:args.p_enabled}},error:null};
    if(method==='gestlok_mg_orders_state')return {data:data[args.p_local],error:null};
    return {data:null,error:null};
@@ -40,13 +40,20 @@ function setup({role='dueno',local='munro',locals=['munro'],settings=SETTINGS,ca
 const tick=()=>new Promise(r=>setImmediate(r));
 const click=(s,attr,value)=>s.handlers.click({target:{closest:q=>q==='['+attr+']'?{dataset:{[attr.replace(/^data-/,'').replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]:value}}:null}});
 
-test('Munro no tiene carga manual de pedidos; Don Torcuato sin cambios',async()=>{
+test('Munro y Don Torcuato: sin carga manual y cada una con su propia configuración',async()=>{
  const m=setup();m.orders.subscribe('munro',()=>{});await tick();await tick();
  assert.doesNotMatch(m.orders.view(),/Registrar pedido manualmente|mgp-order-form/);
+ assert.match(m.orders.view(),/Conectar WhatsApp de Munro/);
  const t=setup({local:'torcuato',locals:['torcuato']});t.orders.subscribe('torcuato',()=>{});await tick();await tick();
- assert.match(t.orders.view(),/Registrar pedido manualmente/);
- assert.doesNotMatch(t.orders.view(),/Mensajes automáticos de WhatsApp|Conexión con WhatsApp Business/);
- assert.equal(t.calls.filter(c=>c.method==='gestlok_mg_whatsapp_settings').length,0,'Torcuato no consulta la configuración nueva');
+ const th=t.orders.view();
+ assert.doesNotMatch(th,/Registrar pedido manualmente|mgp-order-form/);
+ assert.match(th,/Mensajes automáticos de WhatsApp/);
+ assert.match(th,/al escribir a Don Torcuato/);
+ assert.match(th,/Conectar WhatsApp de Don Torcuato/);
+ assert.match(th,/\+54 11 7661-7182/);
+ assert.doesNotMatch(th,/María G\./,'los pedidos de Munro no aparecen en Torcuato');
+ assert.deepEqual(t.calls.filter(c=>c.method==='gestlok_mg_whatsapp_settings').map(c=>c.p_local),['torcuato']);
+ assert.deepEqual(m.calls.filter(c=>c.method==='gestlok_mg_whatsapp_settings').map(c=>c.p_local),['munro']);
 });
 
 test('la comanda muestra N.º, cliente, teléfono, fecha, productos, cantidades, observaciones y total',async()=>{
