@@ -46,7 +46,7 @@
    if(!open || !authenticated()){el?.remove();return;}
    if(!el){
      el=document.createElement('div');el.id='gl-profile-switch-modal';el.className='gl-profile-switch-overlay';
-     el.innerHTML='<section class="gl-profile-switch-dialog" role="dialog" aria-modal="true" aria-label="Mi perfil y roles"><header><div><small>GESTLOK · MI PERFIL</small><h2>Empresas y roles</h2></div><button type="button" data-roles-close aria-label="Cerrar perfil">✕</button></header><p class="gl-profile-switch-explain">Elegí la empresa en la que vas a trabajar. GESTLOK verifica tus permisos de forma independiente en cada negocio.</p><div class="gl-profile-switch-list" role="list"></div><p class="gl-profile-switch-state" role="status"></p><button type="button" class="gl-profile-switch-refresh">Actualizar empresas</button></section>';
+     el.innerHTML='<section class="gl-profile-switch-dialog" role="dialog" aria-modal="true" aria-label="Mi perfil y roles"><header><div><small>GESTLOK · MI PERFIL</small><h2>Empresas y roles</h2></div><button type="button" data-roles-close aria-label="Cerrar perfil">✕</button></header><p class="gl-profile-switch-explain">Elegí la empresa en la que vas a trabajar. GESTLOK verifica tus permisos de forma independiente en cada negocio.</p><div class="gl-profile-switch-list" role="list"></div><p class="gl-profile-switch-state" role="status"></p><div class="gl-profile-switch-actions"><button type="button" class="gl-profile-switch-refresh">Actualizar empresas</button><button type="button" class="gl-profile-switch-logout" data-au="out" title="Cerrar sesión en este dispositivo">Cerrar sesión</button></div></section>';
      el.addEventListener('click',event=>{if(event.target===el || event.target.closest('[data-roles-close]')){open=false;render();}});
      el.querySelector('.gl-profile-switch-refresh').addEventListener('click',()=>void load(true));
      document.body.appendChild(el);
@@ -119,7 +119,7 @@
      busy=false;render();
    }
  }
- function render(){trigger();modal();}
+ function render(){trigger();modal();window.GestLokLogout?.syncProfile?.();}
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&open){open=false;render();}});
  window.GestLokRoleSwitcher=Object.freeze({
    attach(context){api=context;},render,load,labels
