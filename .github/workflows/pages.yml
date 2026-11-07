@@ -8,7 +8,7 @@ permissions:
 # Un despliegue de GitHub Pages puede quedar esperando una aprobación obsoleta.
 # Usar un grupo nuevo libera la cola anterior; futuras publicaciones reemplazan las viejas.
 concurrency:
-  group: gestlok-pages-publish-20261106-281
+  group: gestlok-pages-publish-20261107-recovery-365
   cancel-in-progress: true
 jobs:
   build:
@@ -60,3 +60,5 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 1200000
