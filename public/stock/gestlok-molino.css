@@ -1,0 +1,110 @@
+/* El Molino Café: interfaz comercial de los dos locales; sin estilos globales. */
+.gl-molino-home{padding:19px 20px;margin:16px 0;border:1px solid #cfddec;border-radius:16px;background:#fff;box-shadow:0 3px 18px #102d5210;color:#152b4a}
+.gl-molino-home-head{display:flex;align-items:flex-start;gap:14px}
+.gl-molino-home-symbol{background:#e9f2fc;border:1px solid #d0e4fa;color:#164e89;border-radius:12px;font-size:28px;font-weight:700;width:47px;height:47px;display:grid;place-items:center;flex-shrink:0}
+.gl-molino-home small,.gl-molino-header small{letter-spacing:.095em;text-transform:uppercase;color:#526b88;font-size:11px;font-weight:800}
+.gl-molino-home h2{font-size:20px;margin:4px 0 5px;line-height:1.24;color:#112849}
+.gl-molino-home p{margin:0;font-size:13px;color:#536a84;line-height:1.6}
+.gl-molino-home-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
+.gl-molino-home-actions button{appearance:none;border:1px solid #bed2e6;background:#f9fcff;color:#14436f;padding:11px 15px;border-radius:10px;display:inline-flex;align-items:center;gap:8px;font:700 13px inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
+.gl-molino-home-actions button:hover{background:#e8f2fe;border-color:#6e9bc8}
+.gl-molino-backdrop{position:fixed;inset:0;background:#0c1d35a8;z-index:100100;display:grid;place-items:center;padding:15px;font-family:inherit}
+body.gl-molino-open{overflow:hidden}
+.gl-molino-screen{background:#fff;color:#17283f;width:min(1090px,100%);height:min(93dvh,850px);display:flex;flex-direction:column;box-shadow:0 15px 60px #06183150;border-radius:17px;overflow:hidden;border:1px solid #dae5f0}
+.gl-molino-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:19px 23px 16px;border-bottom:1px solid #dce7f1;flex-shrink:0}
+.gl-molino-header h2{font-size:23px;line-height:1.18;color:#132d4e;margin:4px 0}
+.gl-molino-header p{margin:0;color:#56708a;font-size:13px}
+#gl-molino-close{border:1px solid #d1dcea;background:#fff;color:#324f6e;border-radius:10px;height:40px;width:40px;font-size:25px;cursor:pointer;flex-shrink:0}
+#gl-molino-close:hover{background:#f1f5fb}
+.gl-molino-tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid #dbe5ef;padding:0 17px;flex-shrink:0;scrollbar-width:thin;background:#fbfdff}
+.gl-molino-tabs button{appearance:none;background:transparent;border:0;border-bottom:3px solid transparent;white-space:nowrap;cursor:pointer;color:#4d637c;font-size:13px;font-weight:700;padding:14px 16px}
+.gl-molino-tabs button:hover{color:#0d477a}
+.gl-molino-tabs button.active{color:#0f4b85;border-bottom-color:#2468ac}
+.gl-molino-main{padding:22px 25px;overflow:auto;flex:1;min-height:0}
+.gl-molino-section-title h3{font-size:21px;color:#173353;line-height:1.3;margin:0 0 6px}
+.gl-molino-section-title p{margin:0 0 15px;color:#526d87;font-size:14px;line-height:1.5}
+.gl-molino-form{display:grid;grid-template-columns:minmax(170px,2fr) minmax(120px,1fr) auto auto;align-items:end;gap:11px;padding:17px;border:1px solid #dbe6f1;background:#f7fafe;border-radius:13px;margin:15px 0}
+.gl-molino-form label,.gl-molino-ack label{display:flex;flex-direction:column;gap:6px;color:#365671;font-size:12px;font-weight:700;min-width:0}
+.gl-molino-form input,.gl-molino-form textarea,.gl-molino-ack input{font-family:inherit;border:1px solid #bdcedf;background:white;border-radius:8px;padding:10px 11px;font-size:14px;color:#17314e;outline-offset:2px;min-height:40px;width:100%;box-sizing:border-box}
+.gl-molino-form textarea{resize:vertical;min-height:50px}
+.gl-molino-full{grid-column:1 / -1}
+.gl-molino-main-btn{background:#164d83;color:#fff;border:1px solid #164d83;border-radius:9px;padding:11px 16px;min-height:40px;white-space:nowrap;font-size:13px;font-weight:700;cursor:pointer}
+.gl-molino-main-btn:hover{background:#103b65}
+.gl-molino-cancel{background:#fff;border:1px solid #c5d7e7;color:#315578;border-radius:9px;padding:11px 12px;cursor:pointer}
+.gl-molino-tablewrap{border:1px solid #d9e5f0;border-radius:12px;overflow:auto}
+.gl-molino-table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}
+.gl-molino-table th{padding:12px 14px;background:#eff5fb;color:#4c6682;font-weight:800;white-space:nowrap}
+.gl-molino-table td{padding:13px 14px;border-top:1px solid #e6edf5;color:#29455f}
+.gl-molino-money{font-variant-numeric:tabular-nums;font-weight:800;color:#163d66!important;white-space:nowrap}
+.gl-molino-count{font-size:12px;font-weight:700;color:#57718a;margin:14px 0 8px}
+.gl-molino-row-actions{display:flex;gap:7px}
+.gl-molino-row-actions button,.gl-molino-inline{background:white;border:1px solid #c9d7e5;border-radius:7px;padding:7px 10px;font-weight:700;color:#285685;font-size:12px;cursor:pointer}
+.gl-molino-row-actions .warn{color:#a13a39;border-color:#eacac8}
+.gl-molino-tip,.gl-molino-empty,.gl-molino-note{padding:16px;border-radius:11px;background:#f2f6fb;border:1px solid #dce7f1;color:#4c647e;font-size:13px;line-height:1.55;margin:14px 0}
+.gl-molino-dailybar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;background:#edf4fc;color:#194d7b;border-radius:9px;padding:11px 15px;font-size:13px;margin:14px 0;font-variant-numeric:tabular-nums}
+.gl-molino-items{display:grid;gap:11px;margin-top:14px}
+.gl-molino-item{background:white;border:1px solid #d7e1ed;border-left:4px solid #c6d8e8;border-radius:11px;padding:16px 18px;transition:background .15s}
+.gl-molino-item.is-confirmed{background:#f0faf3;border-color:#a5d6b2;border-left-color:#25804a}
+.gl-molino-item-top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:9px}
+.gl-molino-item-top strong{display:block;color:#153355;font-size:16px;line-height:1.35}
+.gl-molino-item-top small{display:block;font-size:13px;color:#56708a;margin:5px 0 0}
+.gl-molino-status{border-radius:999px;display:inline-flex;align-items:center;padding:7px 10px;font-size:12px;font-weight:800;white-space:normal;line-height:1.3}
+.gl-molino-status.pending{background:#fff6df;color:#7c571d}
+.gl-molino-status.ok{background:#d6f2dd;color:#146839}
+.gl-molino-comment{background:#f5f8fb;border-radius:8px;padding:9px 11px;color:#405a73;font-size:12px;margin:12px 0 0;line-height:1.5}
+.gl-molino-item.is-confirmed .gl-molino-comment{background:#e9f7ed}
+.gl-molino-confirmed-note{font-size:12px;color:#276746;margin:12px 0 0;font-weight:700}
+.gl-molino-inline{margin-top:12px}
+.gl-molino-ack{margin-top:13px;display:grid;grid-template-columns:minmax(160px,1fr) auto;align-items:end;gap:12px}
+.gl-molino-ack-btn{border:1px solid #217747;border-radius:8px;background:#218347;color:#fff;font-size:13px;font-weight:800;min-height:40px;padding:10px 15px;cursor:pointer}
+.gl-molino-ack-btn:hover{background:#156a38}
+.gl-molino-history-list{display:flex;gap:8px;overflow-x:auto;padding:2px 0 13px}
+.gl-molino-history-list button{border:1px solid #cfdfef;background:#fff;border-radius:10px;text-align:left;padding:11px 13px;display:flex;flex-direction:column;gap:5px;min-width:190px;color:#23476a;cursor:pointer}
+.gl-molino-history-list button.active{background:#ebf4fe;border-color:#2b71b2}
+.gl-molino-history-list small{color:#56718d;font-size:11px;line-height:1.4}
+.gl-molino-history-detail{padding-top:8px;border-top:1px solid #e1eaf2}
+.gl-molino-history-detail h4{font-size:18px;color:#173857;margin:15px 0}
+.gl-molino-history-detail h5{font-size:14px;color:#234a70;margin:18px 0 9px}
+.gl-molino-history-detail .gl-molino-item{margin:8px 0}
+.gl-molino-price-history{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #e4ebf3;padding:9px 0;font-size:13px}
+.gl-molino-price-history span{color:#2b4b6a}
+.gl-molino-alert,.gl-molino-error,.gl-molino-success{padding:11px 14px;border-radius:9px;margin:0 0 12px;font-size:13px}
+.gl-molino-alert{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff5dc;color:#6e521c}
+.gl-molino-alert[hidden]{display:none}
+.gl-molino-alert button{border:1px solid #c9a76d;background:white;border-radius:6px;padding:6px 10px;cursor:pointer}
+.gl-molino-error{background:#fff1f0;border:1px solid #e9c3c2;color:#992c2b}
+.gl-molino-success{background:#edf8f0;border:1px solid #b6dac4;color:#256d41}
+.gl-molino-foot{padding:11px 22px;border-top:1px solid #e0e8f1;font-size:12px;text-align:center;color:#647b92;flex-shrink:0;background:#fafcfe}
+@media(max-width:740px){
+ .gl-molino-home{padding:15px 14px;border-radius:13px}
+ .gl-molino-home h2{font-size:17px}
+ .gl-molino-home-actions{display:grid;grid-template-columns:1fr 1fr}
+ .gl-molino-home-actions button{justify-content:center;padding:11px 7px}
+ .gl-molino-backdrop{padding:0;place-items:stretch}
+ .gl-molino-screen{height:100dvh;width:100%;border-radius:0;border:0;max-height:none}
+ .gl-molino-header{padding:14px 16px}
+ .gl-molino-header h2{font-size:19px}
+ .gl-molino-header p{font-size:12px}
+ .gl-molino-tabs{padding:0 5px}
+ .gl-molino-tabs button{padding:12px 12px;font-size:12px}
+ .gl-molino-main{padding:17px 13px}
+ .gl-molino-form{grid-template-columns:1fr 1fr;padding:12px;gap:10px}
+ .gl-molino-form label:first-child{grid-column:1/-1}
+ .gl-molino-form .gl-molino-main-btn{grid-column:1/-1}
+ .gl-molino-form .gl-molino-cancel{grid-column:1/-1}
+ .gl-molino-item{padding:13px}
+ .gl-molino-ack{grid-template-columns:1fr}
+ .gl-molino-ack-btn{width:100%}
+ .gl-molino-foot{padding:10px 9px;font-size:11px}
+ .gl-molino-price-history{flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){.gl-molino-home-actions button,.gl-molino-item{transition:none}}
+
+.gl-molino-return-panel{margin-top:24px;padding-top:22px;border-top:2px solid #dce9f6}
+.gl-molino-return-label{font-size:11px;font-weight:800;letter-spacing:.06em;color:#467399;margin:0 0 11px}
+
+
+.gl-molino-ack-actions{display:flex;flex-wrap:wrap;gap:8px}
+.gl-molino-note-btn{border:1px solid #a8bfd9;border-radius:8px;color:#26517c;background:#eef5fd;font-weight:700;font-size:12px;padding:10px 12px;cursor:pointer;min-height:40px}
+.gl-molino-note-btn:hover{background:#dfedfa}
+@media(max-width:740px){.gl-molino-ack-actions{flex-direction:column}.gl-molino-note-btn{width:100%}}
