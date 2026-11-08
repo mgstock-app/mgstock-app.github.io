@@ -61,6 +61,12 @@
     form.querySelector('.fld').before(fields('gl-signup'));
     form.querySelector('h1').textContent='Registrá tu negocio';
     form.querySelector('p').textContent='Completá los datos una sola vez. La administradora revisará el alta y después podrás ingresar con Google.';
+    if(!form.querySelector('[data-registration-terms]')){
+      const terms=document.createElement('label');
+      terms.className='gl-registration-terms';terms.dataset.registrationTerms='';
+      terms.innerHTML='<input type="checkbox" required name="terms"> <span>Leí y acepto los <a href="/terminos.html" target="_blank" rel="noopener noreferrer">Términos de uso</a> y la <a href="/privacidad.html" target="_blank" rel="noopener noreferrer">Política de privacidad</a>.</span>';
+      form.querySelector('button[type="submit"]').before(terms);
+    }
   }
   function message(form,text,error=false){
     const output=form.querySelector('[data-registration-status]');output.textContent=text;
