@@ -4,7 +4,7 @@
 (() => {
   'use strict';
   const SUPPORT_PHONE='5491144715168';
-  let api=null, phone=SUPPORT_PHONE, loaded=true, loading=false, failure='', busy=false, fetchVersion=0;
+  let api=null, phone=SUPPORT_PHONE, loaded=false, loading=false, failure='', busy=false, fetchVersion=0;
   const $=q=>document.querySelector(q);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const allowed=()=>!!(api?.S?.db&&api?.S?.me);
@@ -124,7 +124,7 @@
     if(!creator()||busy||!loaded)return;
     const num=normalized(new FormData(form).get('telefono'));
     if(!num){api.toast('Ingresá un número válido con código internacional.',true);return;}
-    busy=true;++fetchVersion;syncCard();
+    busy=true;loading=false;++fetchVersion;syncCard();
     try{
       const {data,error}=await client().rpc('gestlok_support_set_phone',{p_phone:num});
       if(error)throw error;
