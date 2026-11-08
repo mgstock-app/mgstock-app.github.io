@@ -2244,12 +2244,21 @@ function renderHub(){
     try{
       const raw=sessionStorage.getItem('gestlok:profile-next-local');
       if(raw){
-        sessionStorage.removeItem('gestlok:profile-next-local');
         const target=JSON.parse(raw);
-        if(target.email===String(S.me.email||'').toLowerCase()
-            && target.tenant_id===S.me.tenant_id
-            && mios.some(l=>l.id===target.local_id)){
-          abrirLocal(target.local_id);return;
+        const sameAccount=target.email===String(S.me.email||'').toLowerCase();
+        const expired=Number.isFinite(target.created_at) &&
+          (Date.now()-target.created_at>300000 || target.created_at>Date.now()+30000);
+        if(!sameAccount || expired || !target.tenant_id || !target.local_id){
+          sessionStorage.removeItem('gestlok:profile-next-local');
+        }else if(target.tenant_id===S.me.tenant_id){
+          // Al inicio puede renderizarse una copia del tenant anterior: NO
+          // consumir el destino hasta cargar el contexto correcto del servidor.
+          if(mios.some(l=>l.id===target.local_id)){
+            sessionStorage.removeItem('gestlok:profile-next-local');
+            abrirLocal(target.local_id);return;
+          }
+          // El servidor ya eligió la empresa pero aún puede estar cargando
+          // el equipo/locales. Conservar el destino hasta que se sincronicen.
         }
       }
     }catch{}
