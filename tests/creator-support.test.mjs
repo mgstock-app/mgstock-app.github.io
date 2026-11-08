@@ -15,17 +15,28 @@ function load(rpc,{creadora=true,reason='Revisión visual',preview='',me={tenant
 }
 const tick=()=>new Promise(r=>setTimeout(r,0));
 const target=(attr,dataset)=>({preventDefault(){},target:{closest:sel=>sel===attr?{dataset}:null}});
-test('Abrir otra empresa pide motivo, dura 30 minutos y recarga',async()=>{
- const {s,calls,listeners,reloads}=load(async()=>({data:{active:true,name:'Perfumes',expires_at:new Date(Date.now()+1800000).toISOString()},error:null}));
+test('Abrir otra empresa sin ventana emergente valida acceso, registra motivo y recarga',async()=>{
+ const {s,calls,listeners,reloads}=load(async(fn,args)=>({
+   data:fn==='gestlok_my_role_contexts'?[]:{
+     active:true,tenant_id:args?.p_tenant||'t-2',name:'Perfumes',
+     expires_at:new Date(Date.now()+1800000).toISOString()
+   },error:null
+ }));
  listeners.click(target('[data-support-open]',{supportOpen:'t-2',supportName:'Perfumes'}));await tick();await tick();
  const c=calls.find(x=>x[0]==='gestlok_creator_open_company');
- assert.equal(c[1].p_tenant,'t-2');assert.equal(c[1].p_minutes,30);assert.equal(c[1].p_reason,'Revisión visual');
- assert.equal(reloads(),1);assert.equal(s.state().active,true);
+ assert.equal(c[1].p_tenant,'t-2');assert.equal(c[1].p_minutes,60);
+ assert.match(c[1].p_reason,/Revisión administrativa/);
+ assert.equal(reloads(),1);
 });
-test('Sin motivo no se abre nada, y quien no es creadora no puede abrir',async()=>{
- let r=load(async()=>({data:{},error:null}),{reason:''});
- r.listeners.click(target('[data-support-open]',{supportOpen:'t-2'}));await tick();
- assert.equal(r.calls.length,0);
+test('No depender del motivo manual: el botón no pide prompt; solo creadora puede abrir',async()=>{
+ let r=load(async(fn,args)=>({
+   data:fn==='gestlok_my_role_contexts'?[]:{
+     tenant_id:args?.p_tenant||'t-2',active:true,name:'Empresa',
+     expires_at:new Date(Date.now()+1800000).toISOString()
+   },error:null
+ }),{reason:''});
+ r.listeners.click(target('[data-support-open]',{supportOpen:'t-2'}));await tick();await tick();
+ assert.equal(r.reloads(),1);
  r=load(async()=>({data:{},error:null}),{creadora:false});
  r.listeners.click(target('[data-support-open]',{supportOpen:'t-2'}));await tick();
  assert.equal(r.calls.length,0);
@@ -55,12 +66,19 @@ test('Un estado de soporte que falla deja la pantalla normal',async()=>{
 });
 
 test('Abrir un local de otra empresa conserva destino y cuenta antes de recargar',async()=>{
- const {calls,listeners,reloads,store}=load(async(fn)=>({data:fn==='gestlok_my_role_contexts'?[]:{},error:null}),{me:{tenant_id:'own',email:'Admin@Example.com'}});
+ const {calls,listeners,reloads,store}=load(async(fn,args)=>({
+   data:fn==='gestlok_my_role_contexts'?[]:
+     {tenant_id:args?.p_tenant||'other',active:true},error:null
+ }),{me:{tenant_id:'own',email:'Admin@Example.com'}});
  listeners.click(target('[data-company-local]',{companyTenant:'other',companyLocal:'munro',companyName:'Otra empresa'}));await tick();await tick();
  assert.ok(calls.some(c=>c[0]==='gestlok_my_role_contexts'));
  const supportCall=calls.find(c=>c[0]==='gestlok_creator_open_company');
  assert.ok(supportCall);assert.equal(supportCall[1].p_tenant,'other');
- assert.deepEqual(JSON.parse(store.get('gestlok:profile-next-local')),{email:'admin@example.com',tenant_id:'other',local_id:'munro'});
+ const target=JSON.parse(store.get('gestlok:profile-next-local'));
+ assert.equal(target.email,'admin@example.com');
+ assert.equal(target.tenant_id,'other');
+ assert.equal(target.local_id,'munro');
+ assert.equal(Number.isFinite(target.created_at),true);
  assert.equal(store.get('gestlok-admin-tab'),'locales');assert.equal(reloads(),1);
 });
 
@@ -83,7 +101,7 @@ test('Un local propio de la creadora abre su contexto comercial sin modo soporte
 test('Un usuario sin membresía explícita conserva apertura auditada de soporte',async()=>{
  const {calls,listeners,reloads}=load(async(fn)=>{
    if(fn==='gestlok_my_role_contexts')return {data:[{tenant_id:'other',role:'lectura',local_names:[{id:'x'}]}],error:null};
-   return {data:{},error:null};
+   return {data:{tenant_id:'other',active:true},error:null};
  },{me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'}});
  listeners.click(target('[data-company-local]',{companyTenant:'other',companyLocal:'x',companyName:'Terceros'}));
  await tick();await tick();
@@ -127,4 +145,35 @@ test('Tras elegir El Molino se recarga aunque falle el almacenamiento móvil',as
  assert.ok(t.calls.some(([fn])=>fn==='gestlok_choose_role_context'));
  assert.ok(!t.calls.some(([fn])=>fn==='gestlok_creator_open_company'));
  assert.equal(t.reloads(),1);
+});
+
+test('Cierra sesión de soporte previa desde el servidor antes de entrar a una empresa propia',async()=>{
+ const t=load(async(fn,args)=>{
+   if(fn==='gestlok_my_role_contexts')return {data:[{
+     tenant_id:'molino',role:'creadora',local_names:[{id:'acassuso'}]
+   }],error:null};
+   if(fn==='gestlok_creator_support_state')return {data:{active:true,tenant_id:'perfumes'},error:null};
+   if(fn==='gestlok_creator_close_company')return {data:{active:false},error:null};
+   if(fn==='gestlok_choose_role_context')return {data:{tenant_id:args.p_tenant,role:'creadora'},error:null};
+   throw Error('RPC inesperado '+fn);
+ },{me:{tenant_id:'perfumes',email:'kmu15lopez@gmail.com',support:true}});
+ t.listeners.click(target('[data-company-local]',{companyTenant:'molino',companyLocal:'acassuso',companyName:'El Molino Café'}));
+ await tick();await tick();
+ assert.deepEqual(t.calls.slice(0,4).map(x=>x[0]),[
+   'gestlok_my_role_contexts','gestlok_creator_support_state',
+   'gestlok_creator_close_company','gestlok_choose_role_context'
+ ]);
+ assert.equal(t.reloads(),1);
+ assert.equal(JSON.parse(t.store.get('gestlok:profile-next-local')).local_id,'acassuso');
+});
+
+test('Rechaza redirección si RPC de soporte devuelve una empresa distinta',async()=>{
+ const t=load(async(fn,args)=>{
+   if(fn==='gestlok_my_role_contexts')return {data:[],error:null};
+   return {data:{active:true,tenant_id:'un-tenant-distinto'},error:null};
+ },{me:{tenant_id:'own',email:'kmu15lopez@gmail.com'}});
+ t.listeners.click(target('[data-company-local]',{companyTenant:'perfumes',companyLocal:'un-local',companyName:'Perfumes'}));
+ await tick();await tick();
+ assert.equal(t.reloads(),0);
+ assert.ok(t.toasts.some(([message,isError])=>isError&&message.includes('no autorizó')));
 });
