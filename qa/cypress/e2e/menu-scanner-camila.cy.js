@@ -8,8 +8,39 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
  });
  it('al entrar como creadora muestra solo las microapps del Plan Scanner, sin menú de Mi Gusto',()=>{
   cy.viewport(1280,900);
+  // Ampliar solamente esta prueba con RLS Scanner simulado (sin datos reales).
+  // El mock general documenta otros locales; acá verificamos las 6 secciones.
+  const scannerMock=\`
+;(function(){
+ const old=window.supabase.createClient.bind(window.supabase);
+ window.supabase.createClient=function(){
+  const client=old(...arguments),from=client.from.bind(client);
+  const owner='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
+  const fixtures={
+   gestlok_pilot_access:[{enabled:true,owner_uid:owner,plan_code:'scanner',pos_live_enabled:true}],
+   gestlok_pilot_products:[{id:'p1',name:'Perfume de muestra',category:'Unisex',sku:'Z1',cost_price:3000,markup_percent:80,unit_price:7000,manual_sale_price:7500,stock_quantity:5,active:true,in_stock:true}],
+   gestlok_pilot_pos_sales:[{id:'s1',total:7500,payment_method:'transferencia',created_at:'2026-11-08T15:00:00Z'}],
+   gestlok_pilot_orders:[{id:'o1',day:'2026-11-08',customer:'Cliente ficticio',status:'pendiente',items:[]}],
+   gestlok_pilot_order_closures:[],gestlok_pilot_records:[],
+   gestlok_scanner_payment_methods:[{method_id:'transferencia',label:'Transferencia',enabled:true}],
+   gestlok_pilot_audit:[]
+  };
+  client.auth.getUser=async()=>({data:{user:{id:'c684640a-c594-44b7-a41f-bac07eef4c3b',email:'kmu15lopez@gmail.com'}},error:null});
+  client.from=function(table){
+   if(!(table in fixtures))return from(table);
+   const st={single:false};
+   const b={select(){return b;},eq(){return b;},order(){return b;},limit(){return b;},
+     maybeSingle(){st.single=true;return b;},
+     then(res,rej){const data=st.single?(fixtures[table][0]||null):fixtures[table];return Promise.resolve({data,error:null}).then(res,rej);}
+   };
+   return b;
+  };
+  return client;
+ };
+})();
+\`;
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{
-   statusCode:200,headers:{'content-type':'application/javascript'},body
+   statusCode:200,headers:{'content-type':'application/javascript'},body:body+scannerMock
   }).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
   cy.visit('/');cy.wait('@fake');
@@ -28,7 +59,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   cy.get('@cami').find('summary').click();
   cy.get('@cami').find('[data-act="local"][data-id="munro"]').click();
   cy.get('#snav',{timeout:18000}).should('be.visible');
-  cy.get('#snav [data-scanner-section="ventas"]').should('be.visible').and('be.disabled');
+  cy.get('#snav [data-scanner-section="ventas"]').should('be.visible').and('not.be.disabled').and('have.attr','data-scanner-readonly','ventas');
   cy.get('#snav [data-scanner-section="stock"]').should('be.visible');
   cy.get('#snav').should('contain.text','Precios').and('contain.text','Sistema de ventas');
   cy.get('#snav').should('not.contain.text','Proveedores')
@@ -40,7 +71,14 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
     .and('contain.text','Plan Scanner').and('contain.text','ZAYRO');
   cy.get('#view').should('not.contain.text','Administrar a los empleados')
     .and('not.contain.text','Administrar mi empresa');
-  cy.get('#view .gl-scanner-private-card').should('have.length',6).and('be.disabled');
+  cy.get('#view .gl-scanner-private-card').should('have.length',6).and('not.be.disabled');
+  cy.get('#snav [data-scanner-readonly="ventas"]').click();
+  cy.get('#gl-pilot-panel').should('be.visible').and('contain.text','Solo lectura');
+  cy.get('#gl-pilot-panel [data-pilot-readonly-tab]').should('have.length',6);
+  cy.get('#gl-pilot-panel [data-pilot-readonly-tab="stock"]').click();
+  cy.get('#gl-pilot-panel').should('contain.text','Perfume de muestra');
+  cy.get('#gl-pilot-panel [data-pilot-new],#gl-pilot-panel [data-pilot-delete],#gl-pilot-panel [data-pilot-caja]').should('not.exist');
+  cy.get('#gl-pilot-panel [data-pilot-close]').click();
   cy.get('#view a[href="/zayro/"]').should('have.attr','target','_blank');
   cy.get('#gl-edit-menu').should('not.exist');
   cy.get('#btn-ajustes').should('not.be.visible');
