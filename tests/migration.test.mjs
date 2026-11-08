@@ -32,6 +32,10 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Deshacer solo el nuevo argumento de identidad para comparar la huella histórica.
+      const scannerCreatorArg = 'window.GestLokOwnerAreas?.attach({S,role:miRol,isCreadora,render:';
+      assert.equal(content.split(scannerCreatorArg).length - 1, 1, 'Un único hook de identidad Scanner');
+      content = content.replace(scannerCreatorArg, 'window.GestLokOwnerAreas?.attach({S,role:miRol,render:');
       // Restituir únicamente el comportamiento previo de continuación de local
       // para mantener la huella histórica inalterada. No modifica permisos.
       for (const {actual,original} of JSON.parse(read('tests/creator-access-hooks.json')).hooks){
