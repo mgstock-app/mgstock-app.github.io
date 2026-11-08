@@ -20,11 +20,11 @@ function creadoraEntra(local) {
   cy.get('@folder').find('summary').click();
   cy.get('@folder').find('[data-act="local"][data-id="' + local + '"]').should('be.visible').click();
 }
-const NO_MOLINO = ['Stock Local', 'Proveedores', 'Chat del local', 'Vencimientos', 'Avisos', 'Ingreso de mercadería', 'Agregar hoja', 'Conteo', 'Pedido', 'Administración de local', 'Reclamos Internos', 'Editar categorías', 'Más herramientas'];
+const NO_MOLINO = ['Stock Local', 'Proveedores', 'Chat del local', 'Vencimientos', 'Avisos', 'Ingreso de mercadería', 'Agregar hoja', 'Conteo', 'Pedidos WhatsApp', 'Administración de local', 'Reclamos Internos', 'Editar categorías', 'Más herramientas'];
 function menuSoloMolino() {
   cy.get('#snav').should('be.visible');
   cy.get('#snav').should('contain.text', 'Inicio').and('contain.text', 'Vínculo entre sucursales');
-  for (const k of ['precios', 'envios', 'devoluciones', 'historial']) cy.get('#snav [data-mol-nav="' + k + '"]').should('be.visible');
+  for (const k of ['precios', 'pedidos', 'envios', 'devoluciones', 'historial']) cy.get('#snav [data-mol-nav="' + k + '"]').should('be.visible');
   cy.get('#snav [data-go]').should('have.length', 1).and('have.attr', 'data-go', 'inicio');
   for (const t of NO_MOLINO) cy.get('#snav').should('not.contain.text', t);
   cy.get('#gl-edit-menu').should('not.exist');
@@ -77,6 +77,7 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#pn [data-act="local"][data-id="munro"]').first().click();
     cy.get('#gestlok-mobile-dock').should('be.visible');
     cy.get('#gestlok-mobile-dock [data-dock="mol-precios"]').should('be.visible');
+    cy.get('#gestlok-mobile-dock [data-dock="mol-pedidos"]').should('be.visible');
     cy.get('#gestlok-mobile-dock [data-dock="mol-envios"]').should('be.visible');
     cy.get('#gestlok-mobile-dock [data-dock="stock"], #gestlok-mobile-dock [data-dock="pagos"]').should('not.exist');
     cy.get('#gestlok-mobile-dock [data-dock="mol-envios"]').click();
