@@ -113,6 +113,7 @@
         ['locales','Locales','shop',creator],
         ['home','Inicio','home',true],
         ['mol-precios','Precios','tag',true],
+        ['mol-pedidos','Pedidos','chat',true],
         ['mol-envios','Enviados','truck',true],
         ['mol-devoluciones','Devoluciones','back',!creator],
         ['mol-historial','Historial','history',!creator],
