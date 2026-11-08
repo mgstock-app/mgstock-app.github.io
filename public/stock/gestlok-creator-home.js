@@ -19,6 +19,7 @@
   const MOLINO_NEXT = 'gestlok:creator-molino-microapp:v1';
   const MOLINO_TOOLS = Object.freeze([
     ['precios', 'Precios', 'Valores compartidos entre las dos sucursales'],
+    ['pedidos', 'Pedidos', 'Acassuso realiza pedidos y San Isidro confirma con OK'],
     ['envios', 'Productos enviados', 'Envíos de San Isidro a Acassuso'],
     ['devoluciones', 'Devoluciones', 'Productos devueltos y confirmación de recepción'],
     ['historial', 'Historial', 'Archivo diario de movimientos y precios']

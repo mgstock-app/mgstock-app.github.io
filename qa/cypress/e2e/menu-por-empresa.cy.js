@@ -20,11 +20,11 @@ function creadoraEntra(local) {
   cy.get('@folder').find('summary').click();
   cy.get('@folder').find('[data-act="local"][data-id="' + local + '"]').should('be.visible').click();
 }
-const NO_MOLINO = ['Stock Local', 'Proveedores', 'Chat del local', 'Vencimientos', 'Avisos', 'Ingreso de mercadería', 'Agregar hoja', 'Conteo', 'Pedido', 'Administración de local', 'Reclamos Internos', 'Editar categorías', 'Más herramientas'];
+const NO_MOLINO = ['Stock Local', 'Proveedores', 'Chat del local', 'Vencimientos', 'Avisos', 'Ingreso de mercadería', 'Agregar hoja', 'Conteo', 'Pedidos WhatsApp', 'Administración de local', 'Reclamos Internos', 'Editar categorías', 'Más herramientas'];
 function menuSoloMolino() {
   cy.get('#snav').should('be.visible');
   cy.get('#snav').should('contain.text', 'Inicio').and('contain.text', 'Vínculo entre sucursales');
-  for (const k of ['precios', 'envios', 'devoluciones', 'historial']) cy.get('#snav [data-mol-nav="' + k + '"]').should('be.visible');
+  for (const k of ['precios', 'pedidos', 'envios', 'devoluciones', 'historial']) cy.get('#snav [data-mol-nav="' + k + '"]').should('be.visible');
   cy.get('#snav [data-go]').should('have.length', 1).and('have.attr', 'data-go', 'inicio');
   for (const t of NO_MOLINO) cy.get('#snav').should('not.contain.text', t);
   cy.get('#gl-edit-menu').should('not.exist');
@@ -77,6 +77,7 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#pn [data-act="local"][data-id="munro"]').first().click();
     cy.get('#gestlok-mobile-dock').should('be.visible');
     cy.get('#gestlok-mobile-dock [data-dock="mol-precios"]').should('be.visible');
+    cy.get('#gestlok-mobile-dock [data-dock="mol-pedidos"]').should('be.visible');
     cy.get('#gestlok-mobile-dock [data-dock="mol-envios"]').should('be.visible');
     cy.get('#gestlok-mobile-dock [data-dock="stock"], #gestlok-mobile-dock [data-dock="pagos"]').should('not.exist');
     cy.get('#gestlok-mobile-dock [data-dock="mol-envios"]').click();
@@ -96,5 +97,34 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#snav [data-admin-tools]').should('not.exist');
     cy.get('#gl-edit-menu').should('exist');
     cy.get('#btn-ajustes').should('be.visible');
+  });
+
+  it('Pedidos móvil: Acassuso prepara dos productos, San Isidro confirma cada uno por separado',()=>{
+    cy.viewport(390,844);
+    login('dueno@example.com',true);
+    cy.get('.gl-oh-top [data-owner-nav="menu"]',{timeout:15000}).click();
+    cy.get('#pn [data-owner-nav="business"]').click();
+    cy.get('#pn [data-act="local"][data-id="munro"]').first().click();
+    cy.get('#gestlok-mobile-dock [data-dock="mol-pedidos"]').should('be.visible').click();
+    cy.get('#gl-molino-panel').should('be.visible').and('contain.text','Pedidos · Acassuso');
+    cy.get('#gl-molino-panel [data-mol-order-mode="realizar"]').should('be.visible');
+    cy.get('#gl-molino-order-form [name="product"]').type('Medialunas');
+    cy.get('#gl-molino-order-form [name="quantity"]').type('24');
+    cy.get('#gl-molino-order-form button[type="submit"]').click();
+    cy.get('#gl-molino-panel').should('contain.text','Pedido en preparación');
+    cy.get('#gl-molino-order-form [name="product"]').type('Café');
+    cy.get('#gl-molino-order-form [name="quantity"]').type('2');
+    cy.get('#gl-molino-order-form button[type="submit"]').click();
+    cy.get('[data-mol-order-send]').should('be.visible').click();
+    cy.get('#gl-molino-panel').should('contain.text','Pendiente de OK');
+    cy.get('#gl-molino-panel .gl-molino-order-group').should('have.length',1)
+      .and('contain.text','Medialunas').and('contain.text','Café');
+    cy.get('#gl-molino-panel [data-mol-order-ack]').should('have.length',2);
+    cy.get('#gl-molino-panel [data-mol-order-ack]').first().click();
+    cy.get('#gl-molino-panel .gl-molino-order-group').should('contain.text','1 de 2 vistos');
+    cy.get('#gl-molino-panel [data-mol-tab="precios"]').click();
+    cy.get('#gl-molino-panel').should('contain.text','Precios compartidos');
+    cy.get('#gl-molino-panel').should('not.contain.text','Pedido en preparación');
+    cy.document().then(d=>{if(d.documentElement.scrollWidth>392)throw Error('Desborde horizontal en Pedidos');});
   });
 });

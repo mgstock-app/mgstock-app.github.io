@@ -26,10 +26,10 @@ function loadModule(tenant=TENANT,role='creadora'){
  return {api,listeners};
 }
 
-test('El tablero tiene las cuatro pestañas y sólo aparece en El Molino',()=>{
+test('El tablero tiene cinco pestañas y sólo aparece en El Molino',()=>{
  const a=loadModule();
  const html=a.api.homeTile();
- for(const tab of ['precios','envios','devoluciones','historial'])assert.match(html,new RegExp('data-mol-open="'+tab+'"'));
+ for(const tab of ['precios','pedidos','envios','devoluciones','historial'])assert.match(html,new RegExp('data-mol-open="'+tab+'"'));
  assert.match(html,/Vínculo entre sucursales/);
  assert.equal(loadModule('cb0dc04a-9a13-434f-a3d0-47f1d8f39670').api.homeTile(),'');
  assert.equal(loadModule(TENANT,'lectura').api.homeTile(),'');
@@ -72,7 +72,7 @@ test('El historial diario es inmutable, guarda observaciones y precios; cierre 2
  assert.match(sql,/'cambios_precios'/);
  assert.match(sql,/'envios'/);
  assert.match(sql,/'devoluciones'/);
- assert.match(runtime,/await load\("\/stock\/gestlok-molino\.js\?rev=menu-empresa-20261108"\)/);
+ assert.match(runtime,/await load\("\/stock\/gestlok-molino\.js\?rev=pedidos-molino-20261108"\)/);
  assert.match(owner,/GestLokMolino\?\.homeTile\?\.\(\)/);
  assert.match(owner,/GestLokMolino\?\.attach\?\.\(ctx\)/);
 });

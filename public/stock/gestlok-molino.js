@@ -9,7 +9,7 @@ const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmtDate=s=>{if(!s)return '';const a=String(s).slice(0,10).split('-');return a.length===3?a.reverse().join('/'):String(s);};
 const fmtQty=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(n||0));
 const localDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-let api=null,opened=false,section='precios',state=null,historyData=null,selectedDay='',busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
+let api=null,opened=false,section='precios',state=null,historyData=null,orderState=null,orderMode='realizar',orderDraft=[],selectedDay='',busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
 const $=s=>document.querySelector(s);
 const hasTenant=()=>api?.S?.me?.tenant_id===TENANT;
 const role=()=>state?.scope||'none';
@@ -28,11 +28,13 @@ const canSend=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch(
 const canReturn=()=>['admin','dueno','acassuso'].includes(role())&&activeBranch()!=='san_isidro';
 const canAckSent=()=>['admin','dueno','acassuso'].includes(role());
 const canAckReturned=()=>['admin','dueno','san_isidro'].includes(role());
+const canOrder=()=>['admin','dueno','acassuso'].includes(role())&&activeBranch()!=='san_isidro';
+const canOrderAck=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()!=='acassuso';
 const canEdit=k=>k==='envio'?canSend():canReturn();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=menu-empresa-20261108';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=pedidos-molino-20261108';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -41,6 +43,7 @@ function homeTile(){
   '<p>San Isidro envía, Acassuso recibe. Todo queda registrado y actualizado en vivo.</p></div></div>'+
   '<div class="gl-molino-home-actions">'+
   '<button type="button" data-mol-open="precios">◈ <span>Precios</span></button>'+
+  '<button type="button" data-mol-open="pedidos">▤ <span>Pedidos</span></button>'+ 
   '<button type="button" data-mol-open="envios">▣ <span>Productos enviados</span></button>'+
   '<button type="button" data-mol-open="devoluciones">↩ <span>Devoluciones</span></button>'+
   '<button type="button" data-mol-open="historial">▤ <span>Historial</span></button>'+
@@ -50,6 +53,7 @@ function homeTile(){
 // Dueño, gerentes y creadora ven las mismas entradas; cada acción se valida en el servidor.
 const NAV=[
  ['precios','Precios','<path d="M20 12 12 20 4 12V4h8z"/><circle cx="8.5" cy="8.5" r="1.5"/>'],
+ ['pedidos','Pedidos','<path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/>'],
  ['envios','Productos enviados','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'],
  ['devoluciones','Devoluciones','<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>'],
  ['historial','Historial','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>']
@@ -68,7 +72,7 @@ function mount(){
  document.body.appendChild(node);document.body.classList.add('gl-molino-open');
 }
 function unmount(){
- opened=false;state=null;historyData=null;editPrice=null;editMove=null;stale=false;
+ opened=false;state=null;historyData=null;orderState=null;orderDraft=[];editPrice=null;editMove=null;stale=false;
  if(timer){clearInterval(timer);timer=null;}
  if(channel&&window.GestLokSupabase?.removeChannel)try{window.GestLokSupabase.removeChannel(channel);}catch{}
  channel=null;$('#gl-molino-panel')?.remove();document.body.classList.remove('gl-molino-open');
@@ -86,13 +90,14 @@ async function reload(silent=false){
  fetching=true;if(!silent)warning='';
  try{
   const result=await rpc('gestlok_molino_state');
+  const nextOrders=section==='pedidos'?await rpc('gestlok_molino_orders_state'):orderState;
   if(!opened)return;
   if(!result||!['admin','dueno','san_isidro','acassuso'].includes(result.scope))throw Error('Sin autorización.');
   // Nunca interrumpir los formularios mientras el gerente está escribiendo.
   if(silent&&$('#gl-molino-panel form:focus-within, #gl-molino-panel input[data-mol-ack-note]:focus, #gl-molino-panel textarea[data-mol-ack-note]:focus')){
     stale=true;const b=$('#gl-molino-updated');if(b)b.hidden=false;return;
   }
-  state=result;stale=false;render();
+  state=result;orderState=nextOrders;stale=false;render();
  }catch(e){if(opened){warning=e?.message||'No se pudieron cargar los datos.';render();}}
  finally{fetching=false;}
 }
@@ -106,19 +111,20 @@ function watch(){
     .on('postgres_changes',{event:'*',schema:'public',table:'gestlok_molino_prices'},()=>void reload(true))
     .on('postgres_changes',{event:'*',schema:'public',table:'gestlok_molino_movements'},()=>void reload(true))
     .on('postgres_changes',{event:'*',schema:'public',table:'gestlok_molino_daily_archive'},()=>void reload(true))
+    .on('postgres_changes',{event:'*',schema:'public',table:'gestlok_molino_orders'},()=>void reload(true))
     .subscribe();
  }catch{channel=null;}
 }
 function begin(tab){
  if(!hasTenant())return;
  priorFocus=document.activeElement;
- opened=true;section=['precios','envios','devoluciones','historial'].includes(tab)?tab:'precios';
- warning='';message='';state=null;historyData=null;editPrice=null;editMove=null;
+ opened=true;section=['precios','pedidos','envios','devoluciones','historial'].includes(tab)?tab:'precios';
+ warning='';message='';state=null;historyData=null;orderState=null;orderMode='realizar';orderDraft=[];editPrice=null;editMove=null;
  mount();render();void reload();watch();window.GestLokSupport?.render?.();
  setTimeout(()=>$('#gl-molino-close')?.focus(),0);
 }
 function tabs(){
- return [['precios','Precios'],['envios','Productos enviados'],['devoluciones','Devoluciones'],['historial','Historial']].map(x=>
+ return [['precios','Precios'],['pedidos','Pedidos'],['envios','Productos enviados'],['devoluciones','Devoluciones'],['historial','Historial']].map(x=>
   '<button type="button" role="tab" aria-selected="'+(section===x[0])+'" class="'+(section===x[0]?'active':'')+'" data-mol-tab="'+x[0]+'">'+x[1]+'</button>'
  ).join('');
 }
@@ -180,6 +186,71 @@ function movements(kind){
  movementForm(kind)+
  (records.length?'<div class="gl-molino-items">'+records.map(x=>movementItem(x,kind)).join('')+'</div>':'<p class="gl-molino-empty">Sin '+(sent?'envíos':'devoluciones')+' registrados hoy.</p>');
 }
+
+function orderGroups(){
+ const groups=new Map();
+ for(const item of orderState?.orders||[]){
+  const id=String(item.request_id||item.id);
+  if(!groups.has(id))groups.set(id,[]);
+  groups.get(id).push(item);
+ }
+ return [...groups.values()];
+}
+function ordersView(){
+ if(!orderState)return '<p class="gl-molino-empty" role="status">Consultando los pedidos de Acassuso a San Isidro…</p>';
+ const sender=canOrder(),receiver=canOrderAck();
+ const subnav='<div class="gl-molino-order-tabs" role="tablist" aria-label="Pedidos entre sucursales">'+
+  [['realizar','Realizar pedido'],['seguimiento','Seguimiento']].map(([id,label])=>
+   '<button type="button" role="tab" aria-selected="'+(orderMode===id)+'" class="'+(orderMode===id?'active':'')+'" data-mol-order-mode="'+id+'">'+label+'</button>').join('')+'</div>';
+ const draft=orderDraft.length?'<section class="gl-molino-order-draft" aria-label="Pedido en preparación"><h4>Pedido en preparación · '+orderDraft.length+' productos</h4>'+
+  orderDraft.map((item,i)=>'<div class="gl-molino-order-draft-row"><span><b>'+escapeHTML(item.product)+'</b> · '+fmtQty(item.quantity)+
+   (item.note?'<small>'+escapeHTML(item.note)+'</small>':'')+'</span><button type="button" data-mol-order-remove="'+i+'" aria-label="Quitar '+escapeHTML(item.product)+'">Quitar</button></div>').join('')+
+  '<button type="button" class="gl-molino-main-btn" data-mol-order-send '+(busy?'disabled':'')+'>Enviar pedido a San Isidro</button></section>':'';
+ const form=sender?'<form id="gl-molino-order-form" class="gl-molino-form gl-molino-order-form">'+
+  '<label>Producto<input name="product" list="gl-molino-products" placeholder="Nombre del producto" maxlength="140" autocomplete="off" required></label>'+
+  '<label>Cantidad<input name="quantity" type="number" min=".01" max="999999" step=".01" inputmode="decimal" required></label>'+
+  '<label class="gl-molino-full">Observación (opcional)<textarea name="note" maxlength="500" rows="2" placeholder="Indicaciones para San Isidro"></textarea></label>'+
+  '<button type="submit" class="gl-molino-main-btn" '+(busy?'disabled':'')+'>Agregar producto al pedido</button></form>'+draft:
+  '<p class="gl-molino-tip">Los pedidos se realizan desde Acassuso. San Isidro puede consultarlos y marcar OK cuando los ve; no puede cambiar productos ni cantidades.</p>';
+ const groups=orderGroups();
+ const results=groups.length?'<div class="gl-molino-order-groups">'+groups.map(items=>{
+  const completed=items.filter(x=>x.seen_at).length;
+  return '<section class="gl-molino-order-group"><header><strong>Pedido del '+fmtDate(items[0].day)+'</strong>'+
+   '<span class="gl-molino-status '+(completed===items.length?'ok':'pending')+'">'+completed+' de '+items.length+' vistos</span></header>'+
+   items.map(item=>'<article class="gl-molino-item'+(item.seen_at?' is-confirmed':'')+'"><div class="gl-molino-item-top"><div><strong>'+escapeHTML(item.product)+'</strong>'+
+    '<small>Cantidad solicitada: <b>'+fmtQty(item.quantity)+'</b></small></div>'+
+    '<span class="gl-molino-status '+(item.seen_at?'ok':'pending')+'">'+(item.seen_at?'✓ OK · Visto por San Isidro':'Pendiente de OK')+'</span></div>'+
+    (item.note?'<p class="gl-molino-comment">'+escapeHTML(item.note)+'</p>':'')+
+    (receiver&&!item.seen_at?'<button type="button" class="gl-molino-ack-btn gl-molino-order-ack" data-mol-order-ack="'+escapeHTML(item.id)+'" '+(busy?'disabled':'')+'>✓ Marcar OK</button>':'')+
+    (item.seen_at?'<p class="gl-molino-confirmed-note">Confirmado '+escapeHTML(fmtDate(item.seen_at))+' · Visible en ambas sucursales.</p>':'')+'</article>').join('')+
+   '</section>';
+ }).join('')+'</div>':'<p class="gl-molino-empty">Todavía no hay pedidos enviados de Acassuso a San Isidro.</p>';
+ return '<div class="gl-molino-section-title"><h3>Pedidos · Acassuso → San Isidro</h3>'+
+  '<p>Acassuso envía la solicitud. San Isidro ve el detalle y confirma con OK cada producto, sin modificar el pedido.</p></div>'+
+  subnav+(orderMode==='realizar'?form:'<p class="gl-molino-tip">Seguimiento de los pedidos enviados y de sus confirmaciones de lectura.</p>')+
+  '<div class="gl-molino-dailybar"><span>'+groups.length+' pedidos registrados</span><span>'+ (orderState.orders||[]).filter(x=>!x.seen_at).length+' productos pendientes de OK</span></div>'+results;
+}
+async function sendOrder(){
+ if(busy||!canOrder()||!orderDraft.length)return;
+ busy=true;warning='';message='';
+ try{
+  await rpc('gestlok_molino_order_create',{p_items:orderDraft});
+  orderDraft=[];orderState=await rpc('gestlok_molino_orders_state');
+  message='Pedido enviado a San Isidro. Cada producto quedará pendiente hasta su OK.';
+ }catch(e){warning=e?.message||'No se pudo enviar el pedido.';}
+ finally{busy=false;render();}
+}
+async function ackOrder(id){
+ if(busy||!canOrderAck())return;
+ busy=true;warning='';message='';
+ try{
+  await rpc('gestlok_molino_order_ack',{p_id:id});
+  orderState=await rpc('gestlok_molino_orders_state');
+  message='OK registrado y compartido con Acassuso.';
+ }catch(e){warning=e?.message||'No se pudo marcar OK.';}
+ finally{busy=false;render();}
+}
+
 function history(){
  const dates=state?.history||[];
  let body='<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Todos los movimientos quedan guardados por fecha. Incluye el OK individual, observaciones y cambios de precios.</p></div>';
@@ -201,7 +272,7 @@ function render(){
  mount();
  const root=$('#gl-molino-panel');if(!root)return;
  const active=!!state;
- const panel=active?(section==='precios'?prices():section==='envios'?movements('envio')+'<section class="gl-molino-return-panel"><p class="gl-molino-return-label">DEVOLUCIONES VINCULADAS A ESTE ENVÍO DIARIO</p>'+movements('devolucion')+'</section>':section==='devoluciones'?movements('devolucion'):history()):
+ const panel=active?(section==='precios'?prices():section==='pedidos'?ordersView():section==='envios'?movements('envio')+'<section class="gl-molino-return-panel"><p class="gl-molino-return-label">DEVOLUCIONES VINCULADAS A ESTE ENVÍO DIARIO</p>'+movements('devolucion')+'</section>':section==='devoluciones'?movements('devolucion'):history()):
  '<p class="gl-molino-empty">Verificando permisos y cargando el vínculo entre sucursales…</p>';
  root.innerHTML='<div class="gl-molino-screen" role="dialog" aria-modal="true" aria-labelledby="gl-molino-title">'+
   '<header class="gl-molino-header"><div><small>GESTLOK · EL MOLINO CAFÉ</small><h2 id="gl-molino-title">Vínculo entre sucursales</h2>'+
@@ -241,8 +312,16 @@ document.addEventListener('click',e=>{
  if(!opened)return;
  if(e.target.closest('[data-mol-close]')||e.target.id==='gl-molino-panel'){e.preventDefault();unmount();return;}
  const tab=e.target.closest('[data-mol-tab]');
- if(tab){section=tab.dataset.molTab;editPrice=null;editMove=null;warning='';message='';render();return;}
+ if(tab){section=tab.dataset.molTab;editPrice=null;editMove=null;warning='';message='';if(section==='pedidos'){orderState=null;render();void reload();}else render();return;}
  if(e.target.closest('[data-mol-refresh]')){stale=false;void reload();return;}
+
+ const orderTab=e.target.closest('[data-mol-order-mode]');
+ if(orderTab&&section==='pedidos'){orderMode=orderTab.dataset.molOrderMode==='seguimiento'?'seguimiento':'realizar';render();return;}
+ const orderRemove=e.target.closest('[data-mol-order-remove]');
+ if(orderRemove&&section==='pedidos'&&canOrder()){const i=Number(orderRemove.dataset.molOrderRemove);if(Number.isInteger(i)&&i>=0&&i<orderDraft.length){orderDraft.splice(i,1);render();}return;}
+ if(e.target.closest('[data-mol-order-send]')&&section==='pedidos'){void sendOrder();return;}
+ const orderAck=e.target.closest('[data-mol-order-ack]');
+ if(orderAck&&section==='pedidos'){void ackOrder(orderAck.dataset.molOrderAck);return;}
  const hi=e.target.closest('[data-mol-history]');if(hi){void loadHistory(hi.dataset.molHistory);return;}
  const pe=e.target.closest('[data-mol-price-edit]');if(pe&&canPrices()){editPrice=pe.dataset.molPriceEdit;render();$('#gl-molino-price-form [name="product"]')?.focus();return;}
  const pm=e.target.closest('[data-mol-price-remove]');if(pm){
@@ -269,6 +348,21 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
  if(!opened)return;
+
+ const order=e.target.closest('#gl-molino-order-form');
+ if(order){
+  e.preventDefault();
+  if(busy||section!=='pedidos'||!canOrder()||orderDraft.length>=40)return;
+  const data=new FormData(order);
+  const product=String(data.get('product')||'').trim();
+  const quantity=Number(data.get('quantity'));
+  const note=String(data.get('note')||'').trim();
+  if(!product||product.length>140||!Number.isFinite(quantity)||quantity<=0||quantity>999999||Math.abs(Math.round(quantity*100)-quantity*100)>1e-6||note.length>500){
+   warning='Revisá producto, cantidad y observación.';render();return;
+  }
+  orderDraft.push({product,quantity,note});
+  warning='';render();return;
+ }
  const price=e.target.closest('#gl-molino-price-form');
  if(price){
   e.preventDefault();if(busy||!canPrices())return;
