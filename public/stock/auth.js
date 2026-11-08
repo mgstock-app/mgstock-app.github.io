@@ -90,7 +90,7 @@
         catch (e) { show('up', e.message, true); return; }
         if (!intent){ show('up', 'No se pudo cargar la selección de cuenta. Reabrí la aplicación.', true); return; }
         busy(f, true, 'Creando…');
-        const { data, error } = await sb.auth.signUp({ email: v('#au-email2').trim().toLowerCase(), password: v('#au-pass2'), options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice} } } });
+        const { data, error } = await sb.auth.signUp({ email: v('#au-email2').trim().toLowerCase(), password: v('#au-pass2'), options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice}, ...(intent.business ? {gestlok_business:intent.business} : {}) } } });
         busy(f, false);
         if (error) show('up', errTxt(error), true);
         else if (!data.session) show('in', 'Listo. Te mandamos un email para confirmar la cuenta: abrilo, tocá el enlace y después entrá acá con tu contraseña.');
