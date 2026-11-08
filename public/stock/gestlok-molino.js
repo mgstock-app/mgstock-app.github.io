@@ -32,7 +32,7 @@ const canEdit=k=>k==='envio'?canSend():canReturn();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=molino-live-20261107';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=menu-empresa-20261108';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -46,6 +46,20 @@ function homeTile(){
   '<button type="button" data-mol-open="historial">▤ <span>Historial</span></button>'+
   '</div></section>';
 }
+// Menú lateral de El Molino Café: solo su microapp (pedido 08/11/2026).
+// Dueño, gerentes y creadora ven las mismas entradas; cada acción se valida en el servidor.
+const NAV=[
+ ['precios','Precios','<path d="M20 12 12 20 4 12V4h8z"/><circle cx="8.5" cy="8.5" r="1.5"/>'],
+ ['envios','Productos enviados','<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'],
+ ['devoluciones','Devoluciones','<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>'],
+ ['historial','Historial','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>']
+];
+function navHTML(){
+ if(!hasTenant())return '';
+ return '<p class="snav-group gl-molino-navgroup">Vínculo entre sucursales</p>'+
+  NAV.map(([id,label,d])=>'<button type="button" data-mol-open="'+id+'" data-mol-nav="'+id+'"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg><span class="nl">'+label+'</span></button>').join('');
+}
+const sectionName=()=>opened?(NAV.find(x=>x[0]===section)||[])[1]||'':'';
 function mount(){
  css();
  if($('#gl-molino-panel'))return;
@@ -100,7 +114,7 @@ function begin(tab){
  priorFocus=document.activeElement;
  opened=true;section=['precios','envios','devoluciones','historial'].includes(tab)?tab:'precios';
  warning='';message='';state=null;historyData=null;editPrice=null;editMove=null;
- mount();render();void reload();watch();
+ mount();render();void reload();watch();window.GestLokSupport?.render?.();
  setTimeout(()=>$('#gl-molino-close')?.focus(),0);
 }
 function tabs(){
@@ -218,7 +232,12 @@ async function loadHistory(day){
  catch(e){warning=e?.message||'No se pudo abrir el archivo.';render();}
 }
 document.addEventListener('click',e=>{
- const op=e.target.closest('[data-mol-open]');if(op){e.preventDefault();begin(op.dataset.molOpen);return;}
+ const op=e.target.closest('[data-mol-open]');if(op){
+   e.preventDefault();
+   // Desde el menú del celular: cerrar el menú lateral antes de abrir la sección.
+   if(op.closest('#snav')){document.getElementById('app')?.classList.remove('open');const scrim=document.getElementById('scrim');if(scrim)scrim.hidden=true;}
+   begin(op.dataset.molOpen);return;
+ }
  if(!opened)return;
  if(e.target.closest('[data-mol-close]')||e.target.id==='gl-molino-panel'){e.preventDefault();unmount();return;}
  const tab=e.target.closest('[data-mol-tab]');
@@ -273,5 +292,5 @@ document.addEventListener('submit',e=>{
  }
 });
 document.addEventListener('keydown',e=>{if(opened&&e.key==='Escape'){e.preventDefault();unmount();}});
-window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,open:begin,close:unmount});
+window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,navHTML,sectionName,open:begin,close:unmount});
 })();

@@ -23,7 +23,8 @@
   function renderOwnerBadge(){
     const live=$('#live');
     if(!live || !api?.S)return;
-    const show=api.miRol?.()==='dueno' && !!api.S.local;
+    // Empresas con menú propio (El Molino Café): sin indicador de modalidad, igual que la creadora.
+    const show=api.miRol?.()==='dueno' && !!api.S.local && !window.GestLokMenuEmpresa?.();
     let stack=$('#gl-store-mode-stack');
     if(!show){
       if(stack){

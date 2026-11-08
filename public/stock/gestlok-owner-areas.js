@@ -103,7 +103,7 @@
       (window.GestLokCajaDiaria?.homeTile?.()||'')+
       (window.GestLokMolino?.homeTile?.()||'')+
       (window.GestLokInvites?.homeTile?.()||'')+
-      (window.GestLokUpdates?.homeDue?.()||'');
+      (window.GestLokMenuEmpresa?.()?'':(window.GestLokUpdates?.homeDue?.()||''));
   }
   async function refresh(){
     // Caja diaria (pedido #200): solo aparece si el servidor la habilita para la empresa de la sesión.
@@ -223,7 +223,6 @@
     return w?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():'';
   }
   const roleName=()=>api?.rolLabel?api.rolLabel(api.role()==='creadora'?'creadora':'dueno'):'Dueño';
-  const supportLink=()=>{try{return window.GestLokSupport?.link?.()||'';}catch{return '';}};
   function header(){
     if(api?.role?.()!=='dueno')return '';
     const n=firstName(),dot=toOrder()>0;
@@ -246,14 +245,11 @@
     const name=esc(state.data.company_name||'Mi empresa');
     // Nunca asumir un logo que el servidor no haya asignado.
     const branded=state.data.logo_id==='mi-gusto';
-    const tile=(k,ic,t)=>'<button class="gl-owner-tile" data-owner-nav="'+k+'"><span>'+svg(I[ic],28)+'</span>'+t+'</button>';
     const caja=window.GestLokCajaDiaria?.homeTile?.()||'';
     const pilot=window.GestLokPilot?.homeTile?.(state.data,api)||'';
     const myProducts=window.GestLokMisProductos?.homeTile?.()||'';
     const monthly=window.GestLokCamiMonthly?.homeTile?.()||'';
     const futurePrices=isSoloOwner()?'':window.GestLokFuturePricing?.homeTile?.(state.data,api)||'';
-    const sup=supportLink();
-    const support=sup?'<a class="gl-owner-tile" href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer"><span>'+svg(I.help,28)+'</span>Soporte</a>':tile('support','help','Soporte');
     return '<section class="gl-owner-landing" aria-label="Inicio del negocio · '+name+'">'+
       businessWelcome(state.data.company_name,branded,isSoloOwner())+
       '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
@@ -274,7 +270,9 @@
       (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+futurePrices+monthly+myProducts+
       (window.GestLokMolino?.homeTile?.()||'')+
       (window.GestLokInvites?.homeTile?.()||'')+
-      '<nav class="gl-owner-quick" aria-label="Accesos generales"'+(isSoloOwner()?' hidden':'')+'>'+(isSoloOwner()?'':tile('reports','pie','Reportes generales'))+tile('account','file','Mi cuenta')+tile('settings','gear','Ajustes')+support+'</nav></section>';
+      // Sin tarjetas Reportes generales, Mi cuenta, Ajustes ni Soporte (08/11/2026):
+      // el soporte queda en el botón flotante de WhatsApp y la cuenta en Mi perfil.
+      '</section>';
   }
   // El módulo de empleados vive en la misma aplicación (misma dirección e instalación).
   const employees=Object.freeze({open(section){
@@ -319,9 +317,8 @@
     },
     'owner-menu':()=>{
       if(isSoloOwner())return {kind:'drawer',html:head(co(),'Mi local','gl-om-t')+'<nav class="pn-b gl-owner-navlist" aria-label="Menú principal"><button data-owner-nav="home">Inicio</button><button data-pilot-caja>Caja</button><button data-pilot-pos>Sistema de ventas</button><button data-pilot-stock>Stock</button><button data-pilot-prices>Precios</button>'+(window.GestLokCamiMonthly?.authorized?.()?'<button data-cm-open>Resumen Mensual</button>':'')+(window.GestLokMisProductos?.authorized?.()?'<button data-mp-open>Mis Productos</button>':'')+'</nav>'};
-      const sup=supportLink(),b=(k,ic,t)=>'<button data-owner-nav="'+k+'">'+svg(I[ic],20)+'<span>'+t+'</span></button>';
-      return {kind:'drawer',html:head(co(),'Menú','gl-om-t')+'<nav class="pn-b gl-owner-navlist" aria-label="Menú principal">'+b('home','home','Inicio')+(allowed('comercial')?b('business','box','Administrar mi empresa'):'')+(allowed('recibos_personal')?b('staff','team','Administrar a los empleados'):'')+b('reports','pie','Reportes generales')+b('account','file','Mi cuenta')+b('settings','gear','Ajustes')+
-        (sup?'<a href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer">'+svg(I.help,20)+'<span>Soporte</span></a>':b('support','help','Soporte'))+b('team','team','Equipo y accesos')+'<button data-au="out">'+svg(I.out,20)+'<span>Salir</span></button></nav>'};
+      const b=(k,ic,t)=>'<button data-owner-nav="'+k+'">'+svg(I[ic],20)+'<span>'+t+'</span></button>';
+      return {kind:'drawer',html:head(co(),'Menú','gl-om-t')+'<nav class="pn-b gl-owner-navlist" aria-label="Menú principal">'+b('home','home','Inicio')+(allowed('comercial')?b('business','box','Administrar mi empresa'):'')+(allowed('recibos_personal')?b('staff','team','Administrar a los empleados'):'')+b('reports','pie','Reportes generales')+b('account','file','Mi cuenta')+b('settings','gear','Ajustes')+b('team','team','Equipo y accesos')+'<button data-au="out">'+svg(I.out,20)+'<span>Salir</span></button></nav>'};
     }
   };
   function paint(kind,reopen){
@@ -413,6 +410,8 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&isSoloOwner()&&window.history?.state?.glOwnerPanel)window.history.back();if(e.key==='Escape'&&menuOpen){menuOpen=false;api?.render?.();}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refresh();refreshAdmin();}});
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
-  window.GestLokOwnerAreas=Object.freeze({attach(ctx){api=ctx;window.GestLokMolino?.attach?.(ctx);window.GestLokInvites?.attach?.(ctx);},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders,
+  const companyName=()=>String((state.status==='ready'&&state.data?.tenant_id===api?.S?.me?.tenant_id?state.data.company_name:'')||
+    (gerenteMarca.tenant===api?.S?.me?.tenant_id?gerenteMarca.name:'')||'').trim();
+  window.GestLokOwnerAreas=Object.freeze({companyName,attach(ctx){api=ctx;window.GestLokMolino?.attach?.(ctx);window.GestLokInvites?.attach?.(ctx);},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders,
     creatorCompanies:()=>api?.role?.()==='creadora'&&admin.status==='ready'?admin.companies.map(c=>({...c,locals:(c.locals||[]).map(l=>({...l}))})):[]});
 })();

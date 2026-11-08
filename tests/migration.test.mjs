@@ -32,6 +32,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Menú e Inicio por empresa: inserciones revisadas que se revierten primero.
+      const menuEmpresaHooks=JSON.parse(read('tests/gestlok-menu-empresa-hooks.json')).hooks;
+      for(const {actual,original} of menuEmpresaHooks){
+        assert.equal(content.split(actual).length-1,1,'Un único hook de menú por empresa');
+        content=content.replace(actual,original);
+      }
       // El Molino modifica solo los controles de roles dentro de esta empresa.
       // Revertir esos fragmentos revisados ANTES de comparar con el SHA histórico.
       const molinoHooks=JSON.parse(read('tests/el-molino-roles-hooks.json')).hooks;
