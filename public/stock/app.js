@@ -191,6 +191,25 @@ const ROLN = r => r === 'editor' ? 'gerente' : (r || null);
 function miEquipo(){ const em = String((S.me && S.me.email) || S.uid || '').toLowerCase(); return S.equipo.find(e => String(e.email || '').toLowerCase() === em) || null; }
 function miRol(){ const e = miEquipo(); const real = ROLN(e ? e.rol : S.me && S.me.rol); const pv = real === 'creadora' ? window.GestLokCreatorSupport?.previewRol?.() : ''; return pv || real; }
 const MI_GUSTO_TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+/* Menú por empresa (08/11/2026): cada empresa ve solo las microapps que tiene habilitadas.
+   Sin perfil, el menú de siempre (Mi Gusto y el resto no cambian). Dueño, gerente y creadora
+   ven el mismo menú y el mismo Inicio; los permisos reales los sigue validando el servidor. */
+const MENU_EMPRESAS = Object.freeze({
+  '6c8717ea-5f78-426b-9458-74a5dcac6e4e': Object.freeze({microapps:Object.freeze(['molino'])})
+});
+const menuEmpresa = () => { const t = String(S.me?.tenant_id || ''); return t && Object.prototype.hasOwnProperty.call(MENU_EMPRESAS, t) ? MENU_EMPRESAS[t] : null; };
+window.GestLokMenuEmpresa = () => !!menuEmpresa();
+function renderNavEmpresa(){
+  const nav = $('#snav'), varios = localesMios().length > 1;
+  const apps = menuEmpresa().microapps.map(id => id === 'molino' ? (window.GestLokMolino?.navHTML?.() || '') : '').join('');
+  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>${apps}`;
+  if (nav._h !== html){ nav.innerHTML = html; nav._h = html; }
+}
+function inicioEmpresa(){
+  const areas = window.GestLokOwnerAreas;
+  const home = ['creadora', 'dueno'].includes(miRol()) ? areas?.view(localesMios(), lcard) : areas?.gerenteHome?.();
+  return banners() + '<div class="gl-creator-local-home gl-empresa-home">' + (home || '<p role="status">Comprobando tus áreas…</p>') + '</div>';
+}
 const miGustoContext = () => S.loaded.e && S.me?.tenant_id === MI_GUSTO_TENANT && !!miEquipo() && (!isCreadora() || !!S.local);
 function misLocales(){ const e = miEquipo(); const pv = e && e.rol === 'creadora' && window.GestLokCreatorSupport?.previewRol?.(); const l = pv ? S.me && S.me.locales : e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
@@ -324,6 +343,8 @@ function render(){
   window.GestLokSupport?.render();
   window.GestLokRoleSwitcher?.render();
   if (!S.local){ renderedFormScope=''; renderHub(); return; }
+  if (menuEmpresa() && S.view !== 'inicio') S.view = 'inicio';
+  if ($('#btn-ajustes')) $('#btn-ajustes').hidden = !!menuEmpresa();
   // Ingreso de mercadería conserva el flujo histórico exacto (remitos, destinos y tilde).
   // Este asistente ya mantiene su propio estado; no intervenir en sus decisiones.
   if(S.view==='ingreso'){
@@ -424,6 +445,7 @@ function hojaBadge(h){
   return n ? `<span class="badge${acc ? ' acc' : ''}">${n}</span>` : '';
 }
 function renderNav(){
+  if (menuEmpresa()){ renderNavEmpresa(); return; }
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
   const hojasMenu = visibles();
@@ -1417,6 +1439,7 @@ function inicioOperativo(){
 }
 
 V.inicio = () => {
+  if (menuEmpresa()) return inicioEmpresa();
   if (miRol()==='gerente' && !S.creatorBusiness) return banners()+(window.GestLokMiGustoOrders?.quickAccess?.()||'')+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.gerenteHome?.()||'<p role="status">Comprobando tus áreas…</p>')+'</div>';
   if (miRol()==='creadora' && !S.creatorBusiness) return banners()+(window.GestLokMiGustoOrders?.quickAccess?.()||'')+'<div class="gl-creator-local-home">'+(window.GestLokOwnerAreas?.view(localesMios(),lcard) || '<p role="status">Comprobando tus áreas…</p>')+'</div>';
   if (['creadora','dueno','gerente'].includes(miRol())) return inicioOperativo();

@@ -36,6 +36,8 @@
       diario:'Conteo Diario',vencimientos:'Vencimientos',avisos:'Avisos',
       ingreso:'Ingreso de mercadería'
     };
+    const molino=window.GestLokMolino?.sectionName?.();
+    if(molino)return ('Vínculo entre sucursales / '+molino).slice(0,140);
     if(s.view==='proveedores'&&s.provOpen)
       return ('Proveedores / '+s.provOpen).slice(0,140);
     const name=s.local ? names[s.view]||api?.nombreHoja?.(s.view)||'Inicio' : 'Inicio';
@@ -43,7 +45,8 @@
   }
   function message(){
     const local=String(api?.localNombre?.()||api?.S?.localName||api?.S?.local||'Local').trim().slice(0,100);
-    const company=String(api?.S?.companyName||api?.S?.company_name||'Empresa').trim().slice(0,100);
+    let authorized='';try{authorized=window.GestLokOwnerAreas?.companyName?.()||'';}catch{}
+    const company=String(api?.S?.companyName||api?.S?.company_name||authorized||'Empresa').trim().slice(0,100);
     return 'Hola, soy de '+company+' - '+local+'. Necesito soporte en '+sector()+'.';
   }
   function link(){

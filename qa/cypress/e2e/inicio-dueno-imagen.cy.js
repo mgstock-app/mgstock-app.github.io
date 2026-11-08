@@ -1,5 +1,5 @@
 /* global Cypress, cy, describe, it */
-// Inicio del dueño según la referencia aprobada: cabecera, dos carpetas y accesos generales, todos con función real.
+// Inicio del dueño: cabecera, dos carpetas y soporte solo por el botón flotante de WhatsApp (08/11/2026).
 // Sin datos reales: Supabase simulado y conexiones externas bloqueadas.
 function start(email = 'dueno@example.com', setup) {
   cy.task('mockSupabase').then(body => cy.intercept('GET', '**/vendor/supabase.js', { statusCode: 200, headers: { 'content-type': 'application/javascript' }, body }).as('fake'));
@@ -14,9 +14,9 @@ function start(email = 'dueno@example.com', setup) {
   });
   cy.get('#au-email').clear().type(email); cy.get('#au-pass').type('secreto1', { log: false }); cy.get('#au-in button[type="submit"]').click();
 }
-describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
+describe('Inicio del dueño · cabecera, carpetas y soporte por WhatsApp', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
-  it('muestra Mi Gusto y los cuatro accesos generales', () => {
+  it('muestra Mi Gusto sin las tarjetas Reportes generales, Mi cuenta, Ajustes ni Soporte', () => {
     cy.viewport(1280, 900); start();
     cy.get('.gl-oh-top').should('be.visible').and('contain.text', 'Empanadas de Verdad');
     cy.get('.gl-oh-brand-company img').should('have.attr', 'src', 'img/mi-gusto-blanco.png');
@@ -26,12 +26,15 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
     cy.get('.gl-oh-who').should('contain.text', 'Hola').and('contain.text', 'Dueño');
     cy.get('.gl-owner-areas .gl-owner-area').first().should('have.css','background-color','rgb(255, 255, 255)');
     cy.get('.gl-owner-areas .gl-owner-area h2').first().should('have.css','color','rgb(20, 47, 70)');
-    cy.get('.gl-owner-quick .gl-owner-tile').should('have.length', 4);
-    cy.get('.gl-owner-quick').should('contain.text', 'Reportes generales').and('contain.text', 'Mi cuenta').and('contain.text', 'Ajustes').and('contain.text', 'Soporte');
+    cy.get('.gl-owner-quick').should('not.exist');
+    cy.get('.gl-owner-tile').should('not.exist');
+    cy.get('#hub .gl-owner-landing').should('not.contain.text', 'Reportes generales').and('not.contain.text', 'Mi cuenta');
+    cy.get('#gl-soporte-whatsapp').should('be.visible').and('have.attr', 'href').and('match', /^https:\/\/wa\.me\//);
   });
   it('Reportes generales resume los dos locales y permite abrir cada uno', () => {
     start();
-    cy.get('.gl-owner-tile[data-owner-nav="reports"]').click();
+    cy.get('.gl-oh-top [data-owner-nav="menu"]').click();
+    cy.get('#pn [data-owner-nav="reports"]').click();
     cy.get('#pn table').should('contain.text', 'Munro').and('contain.text', 'Torcuato').and('contain.text', 'A pedir');
     cy.get('#pn [data-act="local"][data-id="torcuato"]').click();
     cy.get('#snav').should('be.visible');
@@ -40,20 +43,19 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
     start();
     cy.get('.gl-oh-user').click();
     cy.get('.gl-oh-menu').should('be.visible'); cy.get('body').type('{esc}'); cy.get('.gl-oh-menu').should('not.exist');
-    cy.get('.gl-owner-tile[data-owner-nav="account"]').click();
+    cy.get('.gl-oh-user').click(); cy.get('.gl-oh-menu [data-owner-nav="account"]').click();
     cy.get('#pn').should('contain.text', 'dueno@example.com').and('contain.text', 'Munro'); cy.get('#pn [data-act="close"]').click();
-    cy.get('.gl-owner-tile[data-owner-nav="settings"]').click();
+    cy.get('.gl-oh-user').click(); cy.get('.gl-oh-menu [data-owner-nav="settings"]').click();
     cy.get('#pn').should('contain.text', 'Equipo y accesos').and('contain.text', 'Modalidad').and('contain.text', 'Notificaciones');
     cy.get('#pn [data-owner-nav="bell"]').click(); cy.get('#pn').should('contain.text', 'Stock de tus locales');
   });
-  it('el menú lateral lista las áreas y Soporte avisa si aún no hay número configurado', () => {
+  it('el menú lateral lista las áreas y el soporte queda solo en el botón flotante de WhatsApp', () => {
     start();
     cy.get('.gl-oh-top [data-owner-nav="menu"]').click();
     cy.get('#pn').should('contain.text', 'Administrar mi empresa').and('contain.text', 'Administrar a los empleados').and('contain.text', 'Salir');
+    cy.get('#pn .gl-owner-navlist').should('not.contain.text', 'Soporte');
     cy.get('#pn [data-owner-nav="home"]').click(); cy.get('#pn .gl-owner-navlist').should('not.exist');
-    // Con número configurado, Soporte es un enlace directo y no un panel con aviso.
-    cy.get('.gl-owner-quick a.gl-owner-tile[href^="https://wa.me/"]').should('contain.text','Soporte')
-      .and('have.attr','target','_blank').and('have.attr','rel','noopener noreferrer');
+    cy.get('#gl-soporte-whatsapp').should('be.visible').and('have.attr', 'target', '_blank');
   });
   it('un dueño nuevo de la misma empresa ve el logo y el nombre de la empresa', () => {
     start('nuevo-dueno@example.com', w => {
@@ -64,16 +66,9 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
   });
   it('en celular no hay desbordes horizontales', () => {
     cy.viewport(390, 844); start();
-    cy.get('.gl-owner-quick').should('be.visible').then($row => {
-      const row = $row[0], cards = [...row.querySelectorAll('.gl-owner-tile')];
-      expect(cards).to.have.length(4);
-      // En móvil los cuatro accesos usan 2 columnas legibles, no 4 mini botones.
-      expect(Math.abs(cards[0].offsetTop-cards[1].offsetTop)).to.be.lessThan(4);
-      expect(cards[2].offsetTop).to.be.greaterThan(cards[0].offsetTop);
-      expect(Math.abs(cards[2].offsetTop-cards[3].offsetTop)).to.be.lessThan(4);
-      cards.forEach(card => expect(card.getBoundingClientRect().width).to.be.greaterThan(145));
-      expect(row.scrollWidth).to.be.at.most(row.clientWidth);
-    });
+    cy.get('#hub .gl-owner-areas').should('be.visible');
+    cy.get('.gl-owner-quick').should('not.exist');
+    cy.get('#gl-soporte-whatsapp').should('be.visible');
     cy.document().then(d => expect(d.documentElement.scrollWidth).to.be.at.most(390));
   });
 });

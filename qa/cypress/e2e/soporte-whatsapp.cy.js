@@ -46,18 +46,19 @@ describe('GestLok · Soporte WhatsApp',()=>{
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should('include','5491144715168');
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
       const decoded=decodeURIComponent(url);
-      expect(decoded).to.include('Hola, soy de Empresa - Munro.');
-      expect(decoded).to.include('Necesito soporte en Inicio.');
+      // Plantilla aprobada: «Hola, soy de <empresa> - <local>. Necesito soporte en <sector>.»
+      expect(decoded).to.include(' - Munro.');
+      expect(decoded).to.include('Necesito soporte en Inicio');
     });
     cy.get('[data-act="menu-open"]').click();
     cy.get('#snav [data-go="stock"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
-      expect(decodeURIComponent(url)).to.include('Necesito soporte en Stock.');
+      expect(decodeURIComponent(url)).to.include('Necesito soporte en Stock');
     });
     cy.get('[data-act="menu-open"]').click();
     cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
-      expect(decodeURIComponent(url)).to.include('Necesito soporte en Proveedores.');
+      expect(decodeURIComponent(url)).to.include('Necesito soporte en Proveedores');
     });
     cy.get('#gl-support-form').should('not.exist');
   });

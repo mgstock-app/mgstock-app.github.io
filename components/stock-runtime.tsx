@@ -21,9 +21,9 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=molino-inicio-20261108",
+    "/stock/gestlok-owner-areas.js?rev=menu-empresa-20261108",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=microapps-onboarding-20261108",
+    "/stock/app.js?rev=menu-empresa-registro-20261108",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js?rev=microapps-onboarding-20261108",
@@ -32,7 +32,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
-    "/stock/gestlok-molino.js?rev=molino-acassuso-readonly-20261108",
+    "/stock/gestlok-molino.js?rev=menu-empresa-20261108",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
@@ -80,11 +80,11 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=scanner-precio-manual-20261106");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
-      if (!visitor) await load("/stock/gestlok-molino.js?rev=molino-live-20261107");
+      if (!visitor) await load("/stock/gestlok-molino.js?rev=menu-empresa-20261108");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=invitar-whatsapp-20261107");
+      await load("/stock/gestlok-owner-areas.js?rev=menu-empresa-20261108");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=molino-acceso-directo-20261108");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
@@ -96,16 +96,16 @@ export function StockRuntime() {
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js?rev=el-molino-pendiente-20261107");
-      if (!visitor) await load("/stock/gestlok-support.js?rev=soporte-config-20261108");
+      if (!visitor) await load("/stock/gestlok-support.js?rev=menu-empresa-registro-20261108");
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=microapps-onboarding-20261108");
+      await load("/stock/app.js?rev=menu-empresa-registro-20261108");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
-      await load("/stock/gestlok-mobile-dock.js?rev=whatsapp-alerta-turno-20261106");
-      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-whatsapp-prioritario-20261106");
+      await load("/stock/gestlok-mobile-dock.js?rev=menu-empresa-20261108");
+      if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-empresa-20261108");
       if (visitor) await load("/stock/gestlok-demo-pagos.js?rev=pagos-online-20261029");
       if (visitor) await load("/stock/gestlok-demo-tour.js?rev=pagos-online-20261029");
     })();

@@ -2412,3 +2412,8 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 #gestlok-chat-form.gestlok-chat-form{padding-right:clamp(78px,8vw,96px);box-sizing:border-box}
 body:has(#gl-support-form) .gl-soporte-float{display:none!important}
 @media(max-width:480px){#gestlok-chat-form.gestlok-chat-form{padding-right:75px}}
+/* Botón flotante de Soporte (08/11/2026): espacio al final de cada sección para que nunca
+   tape botones como «Enviar» del chat; el contenido siempre puede desplazarse por encima. */
+@media(min-width:900px){
+ html:has(#gl-soporte-whatsapp) #app .wrap{padding-bottom:max(36px,calc(130px + env(safe-area-inset-bottom,0px)))}
+}

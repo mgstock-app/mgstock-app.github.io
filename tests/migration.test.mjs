@@ -38,6 +38,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Menú e Inicio por empresa: inserciones revisadas que se revierten primero.
+      const menuEmpresaHooks=JSON.parse(read('tests/gestlok-menu-empresa-hooks.json')).hooks;
+      for(const {actual,original} of menuEmpresaHooks){
+        assert.equal(content.split(actual).length-1,1,'Un único hook de menú por empresa');
+        content=content.replace(actual,original);
+      }
       // Ficha de alta de empresa: se revierte solo el helper y su llamada exacta.
       const businessAppHooks=JSON.parse(read('tests/business-registration-hooks.json')).app;
       for(const {actual,original} of businessAppHooks){

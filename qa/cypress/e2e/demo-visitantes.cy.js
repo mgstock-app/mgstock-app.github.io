@@ -5,7 +5,7 @@ describe('GestLok · demo para visitantes sin registro',()=>{
  });
  const abrirInicioDelDueno=()=>{
   cy.get('#hub .gl-owner-landing',{timeout:15000}).should('be.visible');
-  cy.get('#hub .gl-owner-quick .gl-owner-tile').should('have.length',4);
+  cy.get('#hub .gl-owner-quick').should('not.exist');
   cy.get('#hub .gl-owner-business .gl-owner-arrow').should('be.visible').click();
   cy.get('#view .gl-home-essential',{timeout:15000}).should('be.visible');
  };

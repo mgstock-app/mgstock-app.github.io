@@ -102,12 +102,16 @@ test('Cabecera: saludo con el nombre escapado, rol y aviso de stock solo si hay 
  const t2=loadUI(context(),{ctx:{hubStats:()=>({loaded:true,n:5,sin:0,bajo:0,nc:0,ped:0,last:null})}});await t2.api.refresh();t2.api.view([{id:'local-a',nombre:'A'}],()=> '');
  assert.doesNotMatch(t2.api.header(),/gl-oh-dot/);
 });
-test('Accesos generales: cuatro botones reales y soporte con enlace solo si hay número configurado',async()=>{
- const t=loadUI();await t.api.refresh();
- let html=t.api.view([],()=> '');
- for(const k of ['reports','account','settings','support'])assert.match(html,new RegExp('data-owner-nav="'+k+'"'));
- const t2=loadUI(context(),{window:{GestLokSupport:{link:()=> 'https://wa.me/5491100000000?text=hola'}}});await t2.api.refresh();
- html=t2.api.view([],()=> '');assert.match(html,/href="https:\/\/wa\.me\/5491100000000/);assert.match(html,/rel="noopener noreferrer"/);assert.doesNotMatch(html,/data-owner-nav="support"/);
+test('Inicio sin tarjetas Reportes generales, Mi cuenta, Ajustes ni Soporte; la cuenta sigue en el menú del perfil',async()=>{
+ const t=loadUI(context(),{window:{GestLokSupport:{link:()=> 'https://wa.me/5491100000000?text=hola'}}});await t.api.refresh();
+ const html=t.api.view([],()=> '');
+ assert.doesNotMatch(html,/gl-owner-quick|gl-owner-tile|Reportes generales|Mi cuenta|wa\.me/);
+ for(const k of ['reports','account','settings','support'])assert.doesNotMatch(html,new RegExp('data-owner-nav="'+k+'"'));
+ // Soporte solo por el botón flotante de WhatsApp: el menú lateral del dueño no lo duplica.
+ t.nav('menu');const menu=t.panels.at(-1).html;
+ assert.match(menu,/Reportes generales/);assert.match(menu,/data-owner-nav="account"/);assert.match(menu,/data-au="out"/);
+ assert.doesNotMatch(menu,/Soporte|wa\.me/);
+ assert.equal(t.api.companyName(),'Empresa ficticia');
 });
 test('Paneles: el selector y los reportes solo incluyen locales autorizados; los textos se escapan',async()=>{
  const t=loadUI();await t.api.refresh();
