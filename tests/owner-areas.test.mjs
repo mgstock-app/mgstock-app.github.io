@@ -195,7 +195,7 @@ test('El inicio de gerentes también destaca nombre de empresa y sucursal verifi
  const h=a.gerenteHome();
  assert.match(h,/<h1 class="gl-business-name">El Molino Café<\/h1>/);
  assert.match(h,/gl-business-branch"><strong>Acassuso<\/strong>/);
- assert.match(h,/Administrar <span>mi tienda<\/span>/);
+ assert.doesNotMatch(h,/Administrar <span>mi tienda<\/span>/);
  assert.doesNotMatch(h,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
  assert.equal(calls,1,'El nombre del gerente se consulta una vez por empresa');
 });
