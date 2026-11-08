@@ -65,3 +65,15 @@ test("El render de la vidriera se inicia en el navegador sin provocar hidrataciÃ
   assert.ok(shell.includes("ssr: false"));
   assert.ok(shell.includes("Preparando la tienda ZAYRO"));
 });
+
+test("Camila ve su vista previa privada y puede abrir la tienda pÃºblica",()=>{
+  assert.match(js,/Vista previa privada/);
+  assert.match(js,/data-zayro-preview-toggle/);
+  assert.match(js,/publicProducts=products\.filter\(p=>p\.published===true/);
+  assert.match(js,/data-zayro-open/);
+  assert.match(js,/href="\/zayro\//);
+  assert.match(js,/gestlok_zayro_admin_catalog/);
+  assert.match(js,/gestlok_zayro_admin_product/);
+  assert.match(js,/gestlok_zayro_admin_settings/);
+  assert.match(js,/preview=!preview;render\(\)/);
+});
