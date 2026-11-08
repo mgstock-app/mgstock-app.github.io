@@ -120,6 +120,12 @@
     }
   }
   function open(tenant,name){
+    // El Molino conserva su entrada por membresía y tarjeta de sucursal.
+    // No habilitar un atajo de soporte hacia esa empresa.
+    if(tenant===MOLINO_TENANT){
+      api?.toast?.('Para ingresar a El Molino Café, elegí Acassuso o San Isidro desde Ver locales.',true);
+      return;
+    }
     // El botón de empresa abre directamente; no se pierde por ventanas
     // emergentes canceladas. El backend sigue registrando el acceso.
     return switchCompany(tenant,'',name);
