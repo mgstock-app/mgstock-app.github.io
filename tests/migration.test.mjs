@@ -15,6 +15,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     // Únicamente los tres textos de entrada al video comercial en el acceso público.
     // La autenticación original sigue verificándose contra su huella histórica.
     if (path === 'public/stock/auth.js') {
+      // Solo el campo de metadatos del nuevo registro comercial; el resto conserva su huella base.
+      const businessAuthHooks=JSON.parse(read('tests/business-registration-hooks.json')).auth;
+      for(const {actual,original} of businessAuthHooks){
+        assert.equal(content.split(actual).length-1,1,'Hook de registro comercial auditado');
+        content=content.replace(actual,original);
+      }
       // Revertir únicamente los tres hooks de invitación auditados antes de la huella histórica.
       const invites=JSON.parse(read('tests/gestlok-newlocal-auth-hooks.json')).hooks;
       for(const {actual,original} of invites){
@@ -36,6 +42,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       const menuEmpresaHooks=JSON.parse(read('tests/gestlok-menu-empresa-hooks.json')).hooks;
       for(const {actual,original} of menuEmpresaHooks){
         assert.equal(content.split(actual).length-1,1,'Un único hook de menú por empresa');
+        content=content.replace(actual,original);
+      }
+      // Ficha de alta de empresa: se revierte solo el helper y su llamada exacta.
+      const businessAppHooks=JSON.parse(read('tests/business-registration-hooks.json')).app;
+      for(const {actual,original} of businessAppHooks){
+        assert.equal(content.split(actual).length-1,1,'Hook de ficha comercial auditado');
         content=content.replace(actual,original);
       }
       // El Molino modifica solo los controles de roles dentro de esta empresa.

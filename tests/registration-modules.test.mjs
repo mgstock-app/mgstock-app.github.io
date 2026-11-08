@@ -21,3 +21,24 @@ test('El panel administrativo distingue preferencias de concesión de acceso',()
   const app=readFileSync('public/stock/app.js','utf8');
   assert.match(app,/if \(x.tipoCuenta === 'dueno'\).*alta independiente/s);
 });
+
+test('El catálogo permite combinar microapps y traduce la selección a áreas solicitadas',()=>{
+  const g=load();
+  assert.equal(g.microappLabel('scanner'),'Plan Scanner');
+  assert.equal(g.microappLabel('empleados'),'Personal y recibos');
+  assert.equal(g.choiceForApps(['scanner','stock','precios']),'empresa');
+  assert.equal(g.choiceForApps(['empleados']),'empleados');
+  assert.equal(g.choiceForApps(['scanner','empleados']),'ambas');
+  assert.equal(g.choiceForApps([]),'');
+});
+test('La base guarda una solicitud de microapps, no permisos de empresa',()=>{
+  const sql=readFileSync('supabase/migrations/20261108160000_gestlok_microapp_catalog_requests.sql','utf8');
+  assert.match(sql,/microapps text\[\]/);
+  assert.match(sql,/customization_notes text/);
+  assert.match(sql,/gestlok_request_business_registration_v2/);
+  assert.match(sql,/auth\.uid\(\)/);
+  assert.match(sql,/gestlok_platform\.admins/);
+  assert.match(sql,/cardinality\(p_microapps\) not between 1 and 7/);
+  assert.match(sql,/revoke all on function public\.gestlok_request_business_registration_v2/);
+  assert.doesNotMatch(sql,/\btruncate\b|\bdrop\s+table\b/i);
+});

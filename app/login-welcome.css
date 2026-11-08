@@ -171,3 +171,166 @@ html.auth-on .gestlok-demo-entry {display:none!important}
 @media (prefers-reduced-motion:reduce){
   html.auth-on .auth #au-in .au-input-wrap{transition:none}
 }
+
+
+/* Alta comercial: inspiración de formularios SaaS, identidad visual propia de GESTLOK.
+   Los colaboradores conservan su alta original y la información del dueño es privada. */
+html.auth-on .auth #au-up{display:grid;gap:15px;min-width:0}
+html.auth-on .auth #au-up h1{font-size:clamp(23px,5vw,29px);margin:0;color:#102c48;letter-spacing:-.025em}
+html.auth-on .auth #au-up>p{color:#58728a;font-size:13px;line-height:1.55;margin:0}
+html.auth-on .auth #au-up .gl-registration-fields{display:grid;gap:14px}
+html.auth-on .auth #au-up .fld,
+html.auth-on .auth #gl-registration-request .fld{display:grid;gap:7px;margin:0}
+html.auth-on .auth #au-up label,
+html.auth-on .auth #gl-registration-request label{color:#314b64;font-weight:650;font-size:13px}
+html.auth-on .auth #au-up input,
+html.auth-on .auth #au-up select,
+html.auth-on .auth #gl-registration-request input,
+html.auth-on .auth #gl-registration-request select{
+  box-sizing:border-box;width:100%;min-height:47px;border:1px solid #c9d7e4;
+  border-radius:10px;background:#fff;color:#193b59;font:500 15px/1.3 Inter,system-ui,sans-serif;
+  padding:10px 12px;
+}
+html.auth-on .auth #au-up input:focus,
+html.auth-on .auth #au-up select:focus,
+html.auth-on .auth #gl-registration-request input:focus{
+  border-color:#326e9f;outline:3px solid rgba(50,110,159,.16);outline-offset:0;
+}
+html.auth-on .auth .gl-registration-business{
+  box-sizing:border-box;display:grid;gap:12px;min-width:0;
+  margin:1px 0 0;padding:17px;border:1px solid #dce5ef;
+  border-radius:14px;background:#f8fbfe;
+}
+html.auth-on .auth .gl-registration-business[hidden]{display:none}
+html.auth-on .auth .gl-registration-business legend{
+  padding:0 6px;font-size:15px;font-weight:750;color:#103a5a;
+}
+html.auth-on .auth .gl-registration-business>p{margin:0 0 3px;font:500 12px/1.5 Inter,system-ui,sans-serif;color:#5b7286}
+html.auth-on .auth #au-up .btn.primary{min-height:48px;border-radius:11px;background:#153c5b}
+html.auth-on .auth #au-up .au-links{margin:0}
+.gl-business-registration-card{
+  margin:10px 0;padding:0;border:1px solid #c9d9e8;border-radius:13px;
+  background:#f6faff;color:#153c5b;overflow:hidden;
+}
+.gl-business-registration-card summary{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;cursor:pointer;
+  list-style:revert;padding:12px;font-size:14px;
+}
+.gl-business-registration-card summary small{display:block;flex-basis:100%;padding-left:24px;color:#64788a}
+.gl-business-registration-card dl{display:grid;gap:9px;margin:0;padding:0 14px 13px}
+.gl-business-registration-card dl>div{display:grid;grid-template-columns:minmax(105px,36%) 1fr;gap:8px}
+.gl-business-registration-card dt{font-size:12px;color:#617990}
+.gl-business-registration-card dd{margin:0;font-size:13px;font-weight:650;overflow-wrap:anywhere}
+.gl-business-registration-card p{margin:0;padding:9px 14px 13px;font-size:12px;color:#587187;border-top:1px solid #dce6ef}
+@media(max-width:500px){
+  html.auth-on .auth #au-up .gl-registration-business{padding:13px}
+  .gl-business-registration-card dl>div{grid-template-columns:1fr;gap:2px}
+}
+
+
+html.auth-on .auth #au-up .gl-registration-terms{
+  display:flex;align-items:flex-start;gap:9px;padding:0 2px;font:500 12px/1.5 Inter,system-ui,sans-serif;
+}
+html.auth-on .auth #au-up .gl-registration-terms input{
+  width:18px;height:18px;min-height:18px;margin:1px 0 0;flex:none;accent-color:#153c5b;
+}
+html.auth-on .auth #au-up .gl-registration-terms a{color:#17609d;text-decoration:underline}
+
+
+/* Selector de microapps del registro: independiente del sistema de cada local. */
+html.auth-on .auth .gl-registration-microapps{
+  display:grid;gap:12px;min-width:0;margin:0;padding:17px 14px 15px;
+  border:1px solid #d5e0eb;border-radius:14px;background:#f8fbff;
+}
+html.auth-on .auth .gl-registration-microapps[hidden]{display:none}
+html.auth-on .auth .gl-registration-microapps legend{
+  padding:0 6px;color:#173c5c;font:750 16px Inter,system-ui,sans-serif;
+}
+html.auth-on .auth .gl-microapps-intro,
+html.auth-on .auth .gl-microapps-disclaimer{
+  color:#516b80;font-size:13px;line-height:1.5;margin:0;
+}
+html.auth-on .auth .gl-microapps-intro b{color:#123b5d}
+html.auth-on .auth .gl-microapps-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+html.auth-on .auth .gl-microapp-card{
+  border:1px solid #d9e3ec;border-radius:12px;background:#fff;
+  padding:12px;display:grid;gap:9px;min-width:0;
+}
+html.auth-on .auth .gl-microapp-card:has(input:checked){
+  border-color:#2e739f;box-shadow:0 0 0 2px rgba(46,115,159,.12);
+}
+html.auth-on .auth .gl-microapp-card label{
+  display:flex;gap:10px;align-items:flex-start;cursor:pointer;color:#173c5c;
+  font-size:14px;font-weight:750;
+}
+html.auth-on .auth .gl-microapp-card input[type="checkbox"]{
+  margin:2px 0 0;width:19px;height:19px;min-height:19px;flex:none;
+  accent-color:#19456a;cursor:pointer;
+}
+html.auth-on .auth .gl-microapp-card-text{display:grid;gap:4px;min-width:0}
+html.auth-on .auth .gl-microapp-card-text small{
+  color:#657b8f;font-size:12px;font-weight:450;line-height:1.4;
+}
+html.auth-on .auth .gl-microapp-card button,
+html.auth-on .auth .gl-microapp-demo-actions button,
+html.auth-on .auth [data-demo-close]{
+  min-height:38px;font:650 12px Inter,system-ui,sans-serif;cursor:pointer;
+}
+html.auth-on .auth .gl-microapp-card button{
+  width:max-content;max-width:100%;padding:7px 11px;border:1px solid #c8d9e7;
+  border-radius:8px;background:#f0f7fc;color:#15527e;
+}
+html.auth-on .auth .gl-microapps-selection{
+  border-radius:10px;background:#e8f2fa;color:#133b59;padding:10px;
+  font:650 12px/1.45 Inter,system-ui,sans-serif;
+}
+html.auth-on .auth .gl-microapp-preview{
+  padding:13px;display:grid;gap:10px;background:#fff;border:1px solid #bed6e8;
+  border-radius:12px;
+}
+html.auth-on .auth .gl-microapp-preview[hidden]{display:none}
+html.auth-on .auth .gl-microapp-demo-title{
+  display:flex;justify-content:space-between;gap:10px;align-items:start;
+}
+html.auth-on .auth .gl-microapp-demo-title small{color:#688094;font-size:11px}
+html.auth-on .auth .gl-microapp-demo-title h3{
+  color:#123b5d;font-size:16px;margin:3px 0 0;
+}
+html.auth-on .auth [data-demo-close]{
+  border:1px solid #d2dfeb;background:#fff;color:#173c5c;
+  border-radius:8px;min-width:38px;
+}
+html.auth-on .auth .gl-microapp-demo-caption{
+  color:#546d80;margin:0;font-size:12px;
+}
+html.auth-on .auth .gl-microapp-demo-display{
+  border-radius:10px;border:1px solid #d9e7f1;background:#f2f7fb;
+  padding:13px;min-height:28px;color:#123d5b;font-size:13px;line-height:1.4;
+}
+html.auth-on .auth .gl-microapp-demo-actions{display:flex;flex-wrap:wrap;gap:8px}
+html.auth-on .auth .gl-microapp-demo-actions button{
+  padding:9px 12px;border-radius:8px;
+}
+html.auth-on .auth .gl-microapp-preview>small{color:#708496;font-size:11px}
+html.auth-on .auth .gl-registration-microapps textarea{
+  width:100%;max-width:100%;min-height:96px;box-sizing:border-box;
+  padding:12px;border-radius:10px;border:1px solid #cbd9e4;
+  background:#fff;color:#183b59;font:500 14px/1.5 Inter,system-ui,sans-serif;
+}
+html.auth-on .auth .gl-registration-microapps textarea:focus{
+  outline:3px solid rgba(50,110,159,.15);border-color:#326e9f;
+}
+.gl-company-microapps{
+  border-block:1px solid #dbe7f1;padding:12px 14px;
+}
+.gl-company-microapps h4{margin:4px 0 8px;font-size:13px;color:#133c5b}
+.gl-company-microapps p{
+  margin:2px 0 11px;white-space:pre-wrap;overflow-wrap:anywhere;
+  color:#415d73;font-size:13px;
+}
+.gl-company-microapp-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.gl-company-microapp-tags span{
+  padding:6px 9px;border-radius:999px;background:#e8f3fc;
+  color:#184d77;font-size:12px;font-weight:650;
+}
+.gl-company-microapps>small{display:block;color:#617991;line-height:1.4}

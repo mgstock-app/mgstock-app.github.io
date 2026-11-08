@@ -4,7 +4,7 @@
 (() => {
   'use strict';
   const SUPPORT_PHONE='5491144715168';
-  let api=null, phone=SUPPORT_PHONE, loaded=true, loading=false, failure='', busy=false, fetchVersion=0;
+  let api=null, phone=SUPPORT_PHONE, loaded=false, loading=false, failure='', busy=false, fetchVersion=0;
   const $=q=>document.querySelector(q);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const allowed=()=>!!(api?.S?.db&&api?.S?.me);
@@ -50,7 +50,7 @@
     return 'Hola, soy de '+company+' - '+local+'. Necesito soporte en '+sector()+'.';
   }
   function link(){
-    return 'https://wa.me/'+SUPPORT_PHONE+'?text='+encodeURIComponent(message());
+    return 'https://wa.me/'+phone+'?text='+encodeURIComponent(message());
   }
   function widget(){
     let el=$('#gl-soporte-whatsapp');
@@ -100,13 +100,35 @@
     const submit=$('#gl-support-form button[type="submit"]');
     if(submit)submit.disabled=!loaded||busy;
   }
-  async function load(){phone=SUPPORT_PHONE;loaded=true;loading=false;failure='';widget();syncCard();}
+  async function load(force=false){
+    if(loading&&!force)return;
+    const version=++fetchVersion;
+    loading=true;
+    try{
+      const db=client();
+      if(!db?.from)throw Error('Supabase no disponible');
+      const {data,error}=await db.from('gestlok_support_settings')
+        .select('whatsapp').eq('id','global').single();
+      if(error)throw error;
+      const value=normalized(data?.whatsapp);
+      if(!value)throw Error('Número de soporte inválido');
+      if(version!==fetchVersion)return;
+      phone=value;loaded=true;failure='';
+    }catch{
+      if(version!==fetchVersion)return;
+      // En caso de fallo se conserva el último número válido mostrado.
+      // Nunca se borra la configuración ni se escribe en la base por un error de lectura.
+      loaded=true; // Evita lecturas en bucle; habrá un nuevo intento al volver a la aplicación.
+      failure=creator()?'No se pudo consultar el número. Se utiliza el número de respaldo hasta recuperar la conexión.':'';
+    }finally{
+      if(version===fetchVersion){loading=false;widget();syncCard();}
+    }
+  }
   async function save(form){
     if(!creator()||busy||!loaded)return;
     const num=normalized(new FormData(form).get('telefono'));
     if(!num){api.toast('Ingresá un número válido con código internacional.',true);return;}
-    api.toast('El número de soporte es fijo para todos los locales.',true);return;
-    busy=true;syncCard();
+    busy=true;loading=false;++fetchVersion;syncCard();
     try{
       const {data,error}=await client().rpc('gestlok_support_set_phone',{p_phone:num});
       if(error)throw error;

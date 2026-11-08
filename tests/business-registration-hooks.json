@@ -1,0 +1,18 @@
+{
+  "auth": [
+    {
+      "actual": "options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice}, ...(intent.business ? {gestlok_business:intent.business} : {}) } }",
+      "original": "options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice} } }"
+    }
+  ],
+  "app": [
+    {
+      "actual": "function businessRegistrationFolder(x){\n  if(x.tipoCuenta!=='dueno'||!x.empresa)return '';\n  const fields=[\n    ['Persona encargada',x.responsable],['Teléfono de contacto',x.telefono],\n    ['Email registrado',x.email],['Dirección / referencia',x.direccion||'Sin dirección fija']\n  ];\n  const apps=Array.isArray(x.microapps)?x.microapps:[];\n  const appLabels=apps.map(id=>window.GestLokRegistration?.microappLabel?.(id)||id).filter(Boolean);\n  const notes=String(x.personalizacion||'').trim();\n  return '<details class=\"gl-business-registration-card\"><summary><span aria-hidden=\"true\">▣</span> <b>'+\n    esc(x.empresa)+'</b><small>Ficha del negocio · Pendiente de autorización</small></summary>'+\n    '<dl>'+fields.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('')+'</dl>'+\n    '<section class=\"gl-company-microapps\"><h4>Microapps solicitadas</h4>'+\n      (appLabels.length?'<div class=\"gl-company-microapp-tags\">'+appLabels.map(label=>'<span>'+esc(label)+'</span>').join('')+'</div>':'<p>Selección de microapps pendiente.</p>')+\n      '<h4>Personalización que necesita</h4><p>'+esc(notes||'Todavía no indicó cambios particulares.')+'</p>'+\n      '<small>Las microapps pueden combinarse y adaptarse; esta lista no habilita módulos automáticamente.</small></section>'+\n    '<p>Esta ficha no crea permisos ni locales. Prepará la empresa desde Administración y asigná el acceso autorizado.</p></details>';\n}\n",
+      "original": ""
+    },
+    {
+      "actual": "\n    ${businessRegistrationFolder(x)}",
+      "original": ""
+    }
+  ]
+}

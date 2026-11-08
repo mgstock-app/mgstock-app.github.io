@@ -34,3 +34,22 @@ Stock reservado, movimientos auditados con transacciones, devoluciones, importac
 
 ## Testing
 Lint, pruebas, build y Cypress con mocks; después probar cuentas reales de dos empresas y roles Dueño/Gerente antes de ofrecer comercialmente el servicio. La etapa 12 integral final sigue separada.
+
+## Alta comercial inicial (propuesta 08/11/2026)
+- La pantalla de **Crear mi cuenta** conserva la elección Dueño/a o Colaborador/a. Solo Dueño/a ve el formulario inspirado en flujos de alta de comercios: nombre del negocio, nombre y apellido de responsable, teléfono, dirección/referencia opcional, email, contraseña y aceptación de términos.
+- El nombre y la dirección se escriben manualmente. No se usa Google Maps ni se comunica la información a servicios externos.
+- La solicitud no llega al panel hasta que la persona confirme su email y guarde los datos mediante una RPC autenticada. El servidor valida cada campo y toma el email de la identidad verificada, no de la petición.
+- La **creadora** recibe una ficha/carpeta por negocio en **Revisar solicitudes**, con empresa, responsable, teléfono, correo, dirección y módulos solicitados. Solo la creadora puede consultar esa información.
+- Esta carpeta representa una **solicitud pendiente**, no un tenant habilitado. El alta comercial en el sistema queda sujeta al procedimiento existente de **Preparar empresa nueva**; no se conceden permisos, locales ni accesos cruzados a empresas existentes.
+- Los accesos existentes con Google, los registros de colaboradores, las empresas activas y el catálogo de cada local se mantienen sin cambios.
+- Implementación en la rama: migración `20261108150000_gestlok_business_signup_profiles.sql`, cliente `gestlok-registration.js`, pantalla de ingreso `auth.js`, panel `app.js` y pruebas de registro.
+- **Despliegue:** aplicar y verificar la migración **antes** de publicar los archivos cliente. Revalidar con cuentas nuevas de dueño, colaborador y creadora. No desplegar si hay errores en Cypress o falta confirmar el vínculo con Google mediante correo verificado.
+
+## Catálogo de microapps y demos (08/11/2026)
+- El alta de dueños permite elegir **una o varias microapps**: Plan Scanner, Stock y proveedores, Precios y márgenes, Caja y pagos online, Control de vencimientos, Personal y recibos, Pedidos y clientes.
+- Cada tarjeta tiene una demo **interactiva, aislada y ficticia** con dos acciones. No toca ventas, caja, productos, WhatsApp ni bases reales. No es una promesa de que todas las integraciones estén ya activas.
+- El cliente puede combinar varias microapps bajo la misma empresa y escribir qué necesita personalizar (hasta 600 caracteres). Se aclara que la elección solicita configuración, pero **no crea cargos, licencias ni permisos**.
+- Los módulos amplios `comercial` y `recibos_personal` se deducen automáticamente de la combinación; no se pregunta dos veces.
+- El servidor valida una lista cerrada y coherente con esos módulos mediante la función autenticada `gestlok_request_business_registration_v2`. Los nuevos campos quedan en `gestlok_platform.registration_requests` y solo la creadora los ve en la ficha de la solicitud (microapps elegidas y nota de personalización).
+- Migración adicional `20261108160000_gestlok_microapp_catalog_requests.sql`: ejecutar después de `20261108150000_gestlok_business_signup_profiles.sql`, **antes del frontend**. Conserva las RPC anteriores para compatibilidad con caché.
+- El ingreso de colaboradores, las empresas ya existentes y las asignaciones reales de módulos no cambian. Pruebas: `tests/registration-modules.test.mjs`, `qa/cypress/e2e/registro-modulos.cy.js`.

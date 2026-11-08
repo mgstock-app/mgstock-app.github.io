@@ -62,18 +62,19 @@ describe('GestLok · Soporte WhatsApp',()=>{
     });
     cy.get('#gl-support-form').should('not.exist');
   });
-  it('El número de soporte es fijo y el botón flotante también está en el panel de la creadora',()=>{
+  it('Creadora edita el WhatsApp desde su panel sin enviar mensajes',()=>{
     launch();login('kmu15lopez@gmail.com');
     fakeSupport();
-    cy.get('#gl-soporte-whatsapp').should('be.visible')
-      .invoke('attr','href').should('include','wa.me/5491144715168');
-    cy.window().then(w=>w.GestLokSupport.adminCard()).then(html=>{
-      if(!html)return;
-      expect(html).to.include('5491144715168');
-    });
+    cy.get('#gl-support-form').should('be.visible');
+    cy.get('#gl-support-phone').clear().type('+54 9 11 5555 1234');
+    cy.get('#gl-support-form button[type="submit"]').click();
+    cy.get('#gl-support-current').should('contain.text','5491155551234');
     cy.window().its('__fakeSupport').should(state=>{
-      expect(state.calls).to.have.length(0);
+      expect(state.phone).to.eq('5491155551234');
+      expect(state.calls).to.have.length(1);
     });
+    // En configuración el FAB se oculta visualmente para no tapar el formulario.
+    cy.get('#gl-soporte-whatsapp').should('not.be.visible');
   });
   it('Aparece también para colaborador de Solo ver',()=>{
     launch();login('lectura@example.com');

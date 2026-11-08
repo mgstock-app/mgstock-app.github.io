@@ -96,3 +96,12 @@ test('Formulario solo disponible a la creadora; seguridad en SQL',()=>{
   assert.match(read('components/stock-runtime.tsx'),/gestlok-support\.js/);
   assert.doesNotMatch(migration,/\btruncate\b|\bdrop\s+table\b/i);
 });
+
+test('El enlace de Soporte adopta el teléfono global guardado al cargarlo', async()=>{
+  const e=environment();
+  e.data.whatsapp='5491166601111';
+  await e.support.load();
+  assert.match(e.support.link(),/^https:\/\/wa\.me\/5491166601111\?/);
+  e.support.render();
+  assert.match(e.elems['#gl-soporte-whatsapp'].href,/5491166601111/);
+});
