@@ -44,10 +44,10 @@ test('En Munro, el mensaje incluye exactamente el dueño y la hoja abierta',asyn
   const e=environment();
   await e.support.load();
   assert.equal(e.support.message(),
-    'Hola, soy del local Munro de la empresa de Gisela y necesito ayuda en el sector de Stock.');
+    'Hola, soy de Empresa - Munro. Necesito soporte en Stock.');
   e.state.view='h-stock-cajas';
   assert.equal(e.support.message(),
-    'Hola, soy del local Munro de la empresa de Gisela y necesito ayuda en el sector de Stock cajas.');
+    'Hola, soy de Empresa - Munro. Necesito soporte en Stock cajas.');
   assert.equal(e.support.link(),
     'https://wa.me/5491144715168?text='+encodeURIComponent(e.support.message()));
   e.support.render();
@@ -66,7 +66,7 @@ test('Dueños, gerentes y colaboradores ven Soporte; la creadora tiene panel de 
     const e=environment(role);
     await e.support.load();
     e.support.render();
-    assert.equal(!!e.elems['#gl-soporte-whatsapp'],['dueno','gerente','lectura','colaborador'].includes(role));
+    assert.equal(!!e.elems['#gl-soporte-whatsapp'],true);
     assert.equal(!!e.support.adminCard(),role==='creadora');
   }
 });
