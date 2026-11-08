@@ -9,9 +9,9 @@ const owner=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
 const runtime=readFileSync('components/stock-runtime.tsx','utf8');
 const sw=readFileSync('scripts/sw-template.js','utf8');
 const CAMI='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
-function setup(authorized=true){
+function setup(authorized=true,checked=false){
   const window={
-    GestLokPilot:{authorized:()=>authorized,creatorMode:()=>authorized},
+    GestLokPilot:{authorized:()=>authorized,creatorMode:()=>authorized,accessChecked:()=>checked},
     GestLokZayroAdmin:{homeTile:()=>'<section>Tienda Online · ZAYRO · ADMINISTRAR</section>'},
     GestLokMisProductos:{homeTile:()=>'<section>Mis Productos</section>'},
     GestLokCamiMonthly:{homeTile:()=>'<section>Resumen Mensual</section>'}
@@ -85,4 +85,11 @@ test('Antes de elegir local se conserva el selector autorizado y no se abre Caja
  assert.match(html,/data-act="local"/);
  assert.doesNotMatch(html,/data-pilot-pos/);
  assert.doesNotMatch(html,/data-pilot-caja/);
+});
+
+test('Un acceso denegado muestra explicación visible, nunca controles ni espera infinita',()=>{
+  const menu=setup(false,true),h=host(CAMI,'creadora',true);
+  assert.match(menu.home(ctx(CAMI),h),/no tiene autorizado/);
+  assert.match(menu.navHTML(h),/Consultá soporte/);
+  assert.doesNotMatch(menu.navHTML(h),/data-pilot-pos|data-pilot-stock|data-zayro-open/);
 });
