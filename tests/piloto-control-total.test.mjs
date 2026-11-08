@@ -50,6 +50,8 @@ test("Se carga únicamente en sesiones privadas, no en demo ni se expone a empre
  assert.match(runtime,/gestlok-pedidos\.js/);
  assert.match(ui,/context\.tenant_id===TENANT/);
  assert.match(ui,/host\?\.role\?\.\(\)==='dueno'/);
- assert.match(ui,/data\.owner_uid===identity\.data\.user\.id/);
+ assert.match(ui,/data\.owner_uid!==identity\.user\.id/);
+ assert.match(ui,/gestlok_creator_editing_state/);
+ assert.match(ui,/context\.tenant_id===TENANT/);
  assert.doesNotMatch(ui,/@gmail\.com/);
 });
