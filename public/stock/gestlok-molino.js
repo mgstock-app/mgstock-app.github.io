@@ -7,9 +7,9 @@ const TENANT='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n||0));
 const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate=s=>{if(!s)return '';const a=String(s).slice(0,10).split('-');return a.length===3?a.reverse().join('/'):String(s);};
-const fmtQty=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(n||0));
+const fmtQty=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:3}).format(Number(n||0));
 const localDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-let api=null,opened=false,section='precios',state=null,historyData=null,orderState=null,orderMode='realizar',orderDraft=[],selectedDay='',busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
+let api=null,opened=false,section='precios',state=null,historyData=null,orderState=null,orderMode='realizar',orderDraft=[],selectedDay='',historyMode='diario',monthlyData=null,selectedMonth=localDay().slice(0,7),busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
 const $=s=>document.querySelector(s);
 const hasTenant=()=>api?.S?.me?.tenant_id===TENANT;
 const role=()=>state?.scope||'none';
@@ -34,7 +34,7 @@ const canEdit=k=>k==='envio'?canSend():canReturn();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=pedidos-molino-20261108';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=devoluciones33-20261108';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -72,7 +72,7 @@ function mount(){
  document.body.appendChild(node);document.body.classList.add('gl-molino-open');
 }
 function unmount(){
- opened=false;state=null;historyData=null;orderState=null;orderDraft=[];editPrice=null;editMove=null;stale=false;
+ opened=false;state=null;historyData=null;monthlyData=null;orderState=null;orderDraft=[];editPrice=null;editMove=null;stale=false;
  if(timer){clearInterval(timer);timer=null;}
  if(channel&&window.GestLokSupabase?.removeChannel)try{window.GestLokSupabase.removeChannel(channel);}catch{}
  channel=null;$('#gl-molino-panel')?.remove();document.body.classList.remove('gl-molino-open');
@@ -118,7 +118,7 @@ function watch(){
 function begin(tab){
  if(!hasTenant())return;
  priorFocus=document.activeElement;
- opened=true;section=['precios','pedidos','envios','devoluciones','historial'].includes(tab)?tab:'precios';
+ opened=true;historyMode='diario';monthlyData=null;selectedMonth=localDay().slice(0,7);section=['precios','pedidos','envios','devoluciones','historial'].includes(tab)?tab:'precios';
  warning='';message='';state=null;historyData=null;orderState=null;orderMode='realizar';orderDraft=[];editPrice=null;editMove=null;
  mount();render();void reload();watch();window.GestLokSupport?.render?.();
  setTimeout(()=>$('#gl-molino-close')?.focus(),0);
@@ -133,7 +133,8 @@ function priceForm(){
  const p=editPrice?(state?.prices||[]).find(x=>x.id===editPrice):null;
  return '<form id="gl-molino-price-form" class="gl-molino-form">'+
   '<label>Producto<input name="product" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
-  '<label>Precio ($)<input name="amount" type="number" min="0" max="999999999" step=".01" inputmode="decimal" value="'+escapeHTML(p?.amount??'')+'" placeholder="0,00" required></label>'+
+  '<label>Precio venta ($)<input name="amount" type="number" min="0" max="999999999" step=".01" inputmode="decimal" value="'+escapeHTML(p?.amount??'')+'" placeholder="0,00" required></label>'+
+  '<label>Precio por<select name="basis" aria-label="Base de precio"><option value="unidad" '+((p?.price_basis||'unidad')==='unidad'?'selected':'')+'>Unidad</option><option value="kg" '+(p?.price_basis==='kg'?'selected':'')+'>Kilo (kg)</option></select></label>'+
   '<button type="submit" class="gl-molino-main-btn">'+(p?'Guardar cambio':'Agregar precio')+'</button>'+
   (p?'<button type="button" data-mol-cancel="price" class="gl-molino-cancel">Cancelar</button>':'')+
   '</form>';
@@ -144,7 +145,7 @@ function prices(){
  priceForm()+
  '<div class="gl-molino-count">'+records.length+' productos en la lista</div>'+
  (records.length?'<div class="gl-molino-tablewrap"><table class="gl-molino-table"><thead><tr><th>Producto</th><th>Precio</th><th>Último cambio</th>'+(canPrices()?'<th>Acciones</th>':'')+'</tr></thead><tbody>'+
- records.map(p=>'<tr><td><strong>'+escapeHTML(p.product)+'</strong></td><td class="gl-molino-money">'+money(p.amount)+'</td><td>'+fmtDate(p.updated_at)+'</td>'+
+ records.map(p=>'<tr><td><strong>'+escapeHTML(p.product)+'</strong></td><td class="gl-molino-money">'+money(p.amount)+' / '+(p.price_basis==='kg'?'kg':'unidad')+'</td><td>'+fmtDate(p.updated_at)+'</td>'+
  (canPrices()?'<td><div class="gl-molino-row-actions"><button type="button" data-mol-price-edit="'+escapeHTML(p.id)+'">Editar</button><button type="button" class="warn" data-mol-price-remove="'+escapeHTML(p.id)+'" data-name="'+escapeHTML(p.product)+'">Quitar</button></div></td>':'')+
  '</tr>').join('')+'</tbody></table></div>':'<p class="gl-molino-empty">Todavía no se cargaron productos ni precios.</p>');
 }
@@ -155,7 +156,8 @@ function movementForm(kind){
  const isReturn=kind==='devolucion';
  return '<form id="gl-molino-movement-form-'+kind+'" data-mol-movement-form data-kind="'+kind+'" class="gl-molino-form">'+
  '<label>Producto<input name="product" list="gl-molino-products" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
- '<label>Cantidad<input type="number" name="quantity" min=".01" max="999999" step=".01" inputmode="decimal" placeholder="0" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
+ '<label>Cantidad<input type="number" name="quantity" min=".001" max="999999" step="'+(isReturn?'.001':'.01')+'" inputmode="decimal" placeholder="'+(isReturn?'Ej. 9.500':'0')+'" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
+ (isReturn?'<label>Unidad<select name="unit" aria-label="Unidad de devolución"><option value="unidad" '+((p?.unit||'unidad')==='unidad'?'selected':'')+'>Unidades</option><option value="kg" '+(p?.unit==='kg'?'selected':'')+'>Kilos (kg)</option><option value="g" '+(p?.unit==='g'?'selected':'')+'>Gramos (g)</option></select></label>':'')+
  (isReturn?'<label class="gl-molino-full">Observación opcional<textarea name="note" maxlength="1000" rows="2" placeholder="Estado del producto, motivo, etc.">'+escapeHTML(p?.note||'')+'</textarea></label>':'')+
  '<button type="submit" class="gl-molino-main-btn">'+(p?'Guardar cambio':isReturn?'Agregar devolución':'Agregar envío')+'</button>'+
  (p?'<button type="button" data-mol-cancel="movement" class="gl-molino-cancel">Cancelar</button>':'')+
@@ -168,8 +170,9 @@ function movementItem(m,kind,fromHistory=false){
  const canChange=canEdit(kind)&&!fromHistory&&!state?.closed&&!ok;
  const label=isSent?'Recibido por Acassuso':'Recibido por San Isidro';
  return '<article class="gl-molino-item'+(ok?' is-confirmed':'')+'">'+
- '<div class="gl-molino-item-top"><div><strong>'+escapeHTML(m.product)+'</strong><small>Cantidad: <b>'+fmtQty(m.quantity)+'</b></small></div>'+
+ '<div class="gl-molino-item-top"><div><strong>'+escapeHTML(m.product)+'</strong><small>Cantidad: <b>'+fmtQty(m.quantity)+' '+(kind==='devolucion'?(m.unit==='g'?'g':m.unit==='kg'?'kg':'unidades'):'')+'</b></small></div>'+
  '<span class="gl-molino-status '+(ok?'ok':'pending')+'">'+(ok?'✓ OK · '+label:'Pendiente de recepción')+'</span></div>'+
+ (kind==='devolucion'&&m.net_total!=null?'<div class="gl-molino-return-metrics"><span>Precio: <b>'+money(m.unit_price)+' / '+(m.price_basis==='kg'?'kg':'unidad')+'</b></span><span>Venta: <b>'+money(m.gross_total)+'</b></span><span>Desc. 33%: <b>−'+money(m.discount_amount)+'</b></span><span>Resultante: <b>'+money(m.net_total)+'</b></span></div>':'')+
  (m.note?'<p class="gl-molino-comment"><b>Observación de Acassuso:</b> '+escapeHTML(m.note)+'</p>':'')+
  (m.acknowledgement_note?'<p class="gl-molino-comment"><b>Observación al recibir:</b> '+escapeHTML(m.acknowledgement_note)+'</p>':'')+
  (canChange?'<button type="button" class="gl-molino-inline" data-mol-move-edit="'+escapeHTML(m.id)+'" data-kind="'+kind+'">Editar detalle</button>':'')+
@@ -367,9 +370,9 @@ document.addEventListener('submit',e=>{
  if(price){
   e.preventDefault();if(busy||!canPrices())return;
   const d=new FormData(price);
-  void save('gestlok_molino_save_price',{
+  void save('gestlok_molino_save_price_basis',{
     p_id:editPrice||null,p_product:String(d.get('product')||'').trim(),
-    p_amount:Number(d.get('amount'))
+    p_amount:Number(d.get('amount')),p_basis:String(d.get('basis')||'unidad')
   },'Precio guardado y compartido.');
   return;
  }
@@ -377,8 +380,8 @@ document.addEventListener('submit',e=>{
  if(move){
   e.preventDefault();if(busy||!canEdit(move.dataset.kind))return;
   const d=new FormData(move);
-  void save('gestlok_molino_save_movement',{
-    p_kind:move.dataset.kind,p_id:editMove||null,
+  void save(move.dataset.kind==='devolucion'?'gestlok_molino_save_return':'gestlok_molino_save_movement',{
+    ...(move.dataset.kind==='devolucion'?{p_unit:String(d.get('unit')||'unidad')}:{p_kind:'envio'}),p_id:editMove||null,
     p_product:String(d.get('product')||'').trim(),
     p_quantity:Number(d.get('quantity')),
     p_note:move.dataset.kind==='devolucion'?String(d.get('note')||'').trim():''
