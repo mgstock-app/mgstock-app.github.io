@@ -322,7 +322,7 @@
         const phone=String(args?.p_contact_phone||'').trim();
         const address=String(args?.p_business_address||'').trim();
         if(!Array.isArray(modules)||!modules.length||modules.some(m=>!['comercial','recibos_personal'].includes(m))||
-           name.length<2||responsible.length<3||phone.replace(/\\D/g,'').length<10)
+           name.length<2||responsible.length<3||phone.replace(/\D/g,'').length<10)
           return {data:null,error:{code:'22023',message:'Datos comerciales incompletos'}};
         let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
         if(!row){row={col:'registration_requests',id:me(),data:{email:me(),fecha:Date.now()}};rows.push(row);}
