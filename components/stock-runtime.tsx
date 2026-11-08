@@ -21,7 +21,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=molino-roles-20261107",
+    "/stock/gestlok-owner-areas.js?rev=molino-inicio-20261108",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
     "/stock/app.js?rev=molino-roles-20261107",
   ];
