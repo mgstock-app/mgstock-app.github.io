@@ -272,6 +272,11 @@
     auth: {
       onAuthStateChange(cb){ listeners.push(cb); setTimeout(() => cb('INITIAL_SESSION', session), 0); return {data:{subscription:{unsubscribe(){}}}}; },
       async getSession(){ return {data:{session}}; },
+      async getUser(){
+        if(!session?.user)return {data:{user:null},error:{message:'Sin sesión'}};
+        const user=session.user;
+        return {data:{user:{...user,id:user.email==='kmu15lopez@gmail.com'?'creadora-fixture-uid':'duena-fixture-uid'}},error:null};
+      },
       async signInWithPassword({email, password}){ if (password !== 'secreto1') return {error:{message:'Invalid login credentials'}}; session = {user:{email,user_metadata:window.__signup?.email===email?window.__signup.options.data:{}}}; listeners.forEach(cb => cb('SIGNED_IN', session)); return {error:null}; },
       async signInWithOAuth(o){ window.__oauth = o; return {error:null}; },
       async signUp(args){ window.__signup=args; return {data:{session:null}, error:null}; },
@@ -279,7 +284,21 @@
       async updateUser(){ return {error:null}; },
       async signOut(){ session = null; }
     },
-    from(){ return builder(); },
+    from(table){
+      // Solo para la prueba de navegación privada del Scanner de ZAYRO.
+      // No modifica permisos simulados de otras empresas ni datos de producción.
+      if(table==='gestlok_pilot_access'){
+        const b={select(){return b;},eq(){return b;},maybeSingle(){
+          if(window.__tenantOverride!=='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103' || !session?.user)
+            return Promise.resolve({data:null,error:null});
+          const role=acc()?.rol;
+          if(!['creadora','dueno'].includes(role))return Promise.resolve({data:null,error:null});
+          return Promise.resolve({data:{enabled:true,plan_code:'scanner',owner_uid:'duena-fixture-uid'},error:null});
+        }};
+        return b;
+      }
+      return builder();
+    },
     async rpc(fn, args){
       const a = acc();
       // Caja diaria (como las RPC gestlok_caja_*): solo las cuentas de window.__cajaHabilitada (dueño, gerente o editor).
