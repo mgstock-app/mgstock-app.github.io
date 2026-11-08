@@ -114,3 +114,29 @@ body.gl-molino-open{overflow:hidden}
 /* El botón de Soporte por WhatsApp sigue disponible dentro del Vínculo entre sucursales. */
 body.gl-molino-open .gl-soporte-float{z-index:100101}
 @media(max-width:740px){body.gl-molino-open .gl-soporte-float{bottom:calc(16px + env(safe-area-inset-bottom,0px))}}
+
+
+/* Pedidos Acassuso → San Isidro. El mismo diseño sobrio del vínculo entre sucursales. */
+.gl-molino-order-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
+.gl-molino-order-tabs button{appearance:none;border:1px solid #ccdaeb;background:#fff;color:#325675;border-radius:9px;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer}
+.gl-molino-order-tabs button.active{background:#e8f2fd;border-color:#6d9bc7;color:#174b7c}
+.gl-molino-order-form{margin:0 0 14px}
+.gl-molino-order-draft,.gl-molino-order-group{border:1px solid #d6e4ef;border-radius:13px;background:#fff;padding:16px;margin:12px 0}
+.gl-molino-order-draft h4{margin:0 0 10px;font-size:15px;color:#173857}
+.gl-molino-order-draft-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #e5ecf4;padding:10px 0;font-size:13px}
+.gl-molino-order-draft-row span{min-width:0;overflow-wrap:anywhere}
+.gl-molino-order-draft-row small{display:block;color:#586d80;margin-top:3px}
+.gl-molino-order-draft-row button{border:1px solid #d9bcc0;color:#873c45;background:#fff;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
+.gl-molino-order-groups{display:grid;gap:12px}
+.gl-molino-order-group>header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:0 0 12px;color:#244360}
+.gl-molino-order-group>.gl-molino-item{margin:8px 0 0}
+.gl-molino-order-ack{margin-top:12px}
+@media(max-width:740px){
+ .gl-molino-order-tabs{display:grid;grid-template-columns:1fr 1fr}
+ .gl-molino-order-tabs button{padding:12px 7px}
+ .gl-molino-order-form{grid-template-columns:1fr}
+ .gl-molino-order-form label:first-child,.gl-molino-order-form .gl-molino-main-btn{grid-column:auto}
+ .gl-molino-order-draft,.gl-molino-order-group{padding:12px}
+ .gl-molino-order-draft-row{align-items:flex-start}
+ .gl-molino-order-ack{width:100%}
+}
