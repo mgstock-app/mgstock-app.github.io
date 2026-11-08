@@ -96,7 +96,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-demo.js");
       await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js?rev=el-molino-pendiente-20261107");
-      if (!visitor) await load("/stock/gestlok-support.js");
+      if (!visitor) await load("/stock/gestlok-support.js?rev=soporte-fijo-20261108");
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.
