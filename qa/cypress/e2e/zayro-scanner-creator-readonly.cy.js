@@ -2,7 +2,7 @@
 /* Visor real en navegador con datos ficticios. No toca la base de producción. */
 const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
 const sections=[
- ['caja','Caja','transferencia'],
+ ['caja','caja','Caja'],
  ['ventas','sistema_venta','Sistema de ventas'],
  ['stock','stock','Stock de productos'],
  ['precios','precios','Precios'],
