@@ -59,6 +59,13 @@ export default function ZayroStore() {
   const [sort, setSort] = useState("nombre");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
+  // En Next, los componentes cliente también generan HTML del lado del servidor.
+  // El escaparate depende de un catálogo cargado en el navegador: renderizamos
+  // el mismo marcador en SSR y en el primer render del cliente para hidratar sin diferencias.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   useEffect(() => {
     let active = true;
     getConfig().then(fetchCatalog).then(data => {
@@ -93,6 +100,9 @@ export default function ZayroStore() {
     "", "Total estimado: " + money(total), "¿Me confirmás disponibilidad, forma de pago y entrega?"].join("\n");
   const wa = isReady && count > 0
     ? "https://wa.me/" + catalog.sales_whatsapp + "?text=" + encodeURIComponent(message) : "";
+  if (!mounted) {
+    return <div className="zayro"><div className="zayro-state" role="status">Cargando tienda ZAYRO…</div></div>;
+  }
   return (
     <div className="zayro">
       <div className="zayro-topnote">ZAYRO · Fragancias y cuidado personal</div>
