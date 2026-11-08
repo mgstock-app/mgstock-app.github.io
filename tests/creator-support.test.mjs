@@ -98,6 +98,14 @@ test('El Molino no muestra Abrir empresa por soporte auditado',()=>{
  assert.equal(s.openButton(MOLINO,'El Molino Café'),'');
  assert.match(s.openButton('otro-tenant','Empresa ajena'),/data-support-open/);
 });
+test('El Molino no abre soporte auditado tampoco por botones secundarios',async()=>{
+ const t=load(async()=>{throw Error('No debe invocar RPC de soporte');});
+ t.listeners.click(target('[data-support-open]',{supportOpen:MOLINO,supportName:'El Molino Café'}));
+ await tick();
+ assert.equal(t.calls.length,0);
+ assert.equal(t.reloads(),0);
+ assert.ok(t.toasts.some(([message,error])=>error && message.includes('Ver locales')));
+});
 test('El Molino nunca abre una auditoría de soporte sin membresía verificada',async()=>{
  const t=load(async(fn)=>({data:fn==='gestlok_my_role_contexts'?[]:{},error:null}),
    {me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'}});
