@@ -195,13 +195,18 @@ const MI_GUSTO_TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
    Sin perfil, el menú de siempre (Mi Gusto y el resto no cambian). Dueño, gerente y creadora
    ven el mismo menú y el mismo Inicio; los permisos reales los sigue validando el servidor. */
 const MENU_EMPRESAS = Object.freeze({
-  '6c8717ea-5f78-426b-9458-74a5dcac6e4e': Object.freeze({microapps:Object.freeze(['molino'])})
+  '6c8717ea-5f78-426b-9458-74a5dcac6e4e': Object.freeze({microapps:Object.freeze(['molino'])}),
+  // Cuenta perfumería de Camila: exclusivamente Plan Scanner y Tienda ZAYRO.
+  '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103': Object.freeze({microapps:Object.freeze(['scanner'])})
 });
 const menuEmpresa = () => { const t = String(S.me?.tenant_id || ''); return t && Object.prototype.hasOwnProperty.call(MENU_EMPRESAS, t) ? MENU_EMPRESAS[t] : null; };
 window.GestLokMenuEmpresa = () => !!menuEmpresa();
 function renderNavEmpresa(){
   const nav = $('#snav'), varios = localesMios().length > 1;
-  const apps = menuEmpresa().microapps.map(id => id === 'molino' ? (window.GestLokMolino?.navHTML?.() || '') : '').join('');
+  const apps = menuEmpresa().microapps.map(id =>
+    id === 'molino' ? (window.GestLokMolino?.navHTML?.() || '') :
+    id === 'scanner' ? (window.GestLokScannerMenu?.navHTML?.({S,role:miRol,isCreadora}) || '') : ''
+  ).join('');
   const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>${apps}`;
   if (nav._h !== html){ nav.innerHTML = html; nav._h = html; }
 }
