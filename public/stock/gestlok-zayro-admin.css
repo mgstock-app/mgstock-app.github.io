@@ -1,0 +1,74 @@
+/* Microapp privada ZAYRO: diseño corporativo, sin alterar estilos de otras empresas */
+.gl-zayro-entry{
+ display:flex;align-items:center;justify-content:space-between;gap:15px;
+ background:linear-gradient(118deg,#fffcf7,#f2e8da);border:1px solid #e9dccc;
+ padding:21px;border-radius:16px;margin:18px 0;color:#342821;
+}
+.gl-zayro-entry-copy{min-width:0}
+.gl-zayro-entry-copy small{display:block;letter-spacing:.1em;color:#96784a;font-weight:800;font-size:10px}
+.gl-zayro-entry-copy h2{font:600 clamp(18px,2.3vw,24px)/1.3 Georgia,serif;margin:7px 0;color:#382920}
+.gl-zayro-entry-copy p{font-size:13px;color:#675951;margin:0;max-width:460px;line-height:1.5}
+.gl-zayro-entry-buttons{display:flex;gap:9px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.gl-zayro-entry-buttons button,.gl-zayro-entry-buttons a{
+ cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:41px;
+ padding:10px 14px;border-radius:9px;border:1px solid #a58755;font-weight:650;font-size:12px;text-decoration:none;
+}
+.gl-zayro-entry-buttons button{background:#284566;color:#fff;border-color:#284566}
+.gl-zayro-entry-buttons a{background:#fff;color:#58412a}
+#gl-zayro-admin-root[hidden]{display:none!important}
+#gl-zayro-admin-root{position:fixed;z-index:10050;inset:0;font:14px/1.45 system-ui,sans-serif}
+.gl-zayro-admin-overlay{
+ position:absolute;inset:0;background:#122434b5;display:flex;align-items:flex-start;
+ justify-content:center;overflow:auto;padding:clamp(12px,5vw,45px);
+}
+.gl-zayro-admin{
+ width:min(890px,100%);min-width:0;position:relative;box-sizing:border-box;
+ border:1px solid #e1e8ef;border-radius:18px;box-shadow:0 15px 80px #0f1a2760;
+ background:#fff;color:#142f47;padding:clamp(15px,4vw,32px);margin:auto;
+ display:grid;gap:20px;
+}
+.gl-zayro-admin *{box-sizing:border-box}
+.gl-zayro-admin header{display:flex;justify-content:space-between;gap:15px;align-items:start}
+.gl-zayro-admin header small{color:#7890a0;letter-spacing:.08em;font-size:10px;font-weight:700}
+.gl-zayro-admin h2{font:bold clamp(23px,4vw,31px)/1.17 system-ui,sans-serif;margin:5px 0}
+.gl-zayro-admin header p{color:#607386;max-width:600px;margin:5px 0}
+.gl-zayro-admin header button{background:#eef3f8;border:0;border-radius:8px;width:41px;height:41px;font-size:25px;color:#183a5a;cursor:pointer}
+.gl-zayro-admin h3{margin:0;font-size:18px}
+.gl-zayro-admin form{background:#f9fbfe;border:1px solid #dce5ef;border-radius:13px;padding:18px;display:grid;gap:12px}
+.gl-zayro-admin form p{margin:0;color:#5c7181;font-size:12px}
+.gl-zayro-admin form a{color:#0b6594;text-decoration:underline}
+.gl-zayro-admin label{display:grid;gap:6px;color:#27435d;font-weight:650;font-size:12px}
+.gl-zayro-admin input:not([type=checkbox]),.gl-zayro-admin select,.gl-zayro-admin textarea{
+ border:1px solid #bfccd9;border-radius:8px;padding:10px 11px;width:100%;min-width:0;
+ background:#fff;color:#18364d;font:500 13px/1.5 system-ui,sans-serif;
+}
+.gl-zayro-admin textarea{min-height:70px;resize:vertical}
+.gl-zayro-admin button[type=submit],.gl-zayro-admin button[data-zayro-retry]{
+ justify-self:start;border:0;border-radius:9px;padding:12px 17px;background:#1d456c;color:#fff;font-weight:750;cursor:pointer;
+}
+.gl-zayro-admin button:disabled{opacity:.55;cursor:default}
+.gl-zayro-admin .gl-zayro-toggle{display:flex;align-items:center;gap:8px;font-size:13px}
+.gl-zayro-admin .gl-zayro-toggle input{width:18px;height:18px;accent-color:#215c86}
+.gl-zayro-admin .gl-zayro-help{background:#fff6e4;padding:10px;border-radius:8px}
+.gl-zayro-products{display:grid;gap:15px}
+.gl-zayro-products>p{color:#607386;margin:0}
+.gl-zayro-product-form{gap:10px}
+.gl-zayro-product-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.gl-zayro-product-head>div{display:grid;gap:3px}
+.gl-zayro-product-head strong{font-size:15px;overflow-wrap:anywhere}
+.gl-zayro-product-head small{color:#5e788c;font-size:12px}
+.gl-zayro-product-head label{display:flex;align-items:center;gap:8px;font-size:12px}
+.gl-zayro-product-head input{width:18px;height:18px;accent-color:#225d89}
+.gl-zayro-product-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gl-zayro-error,.gl-zayro-notice{border-radius:9px;padding:12px 15px;margin:0}
+.gl-zayro-error{background:#fff0ee;border:1px solid #ebc6c0;color:#8d3024}
+.gl-zayro-notice{background:#eef9f1;border:1px solid #c1e0c6;color:#1c6233}
+.gl-zayro-loading{color:#688299}
+@media(max-width:680px){
+ .gl-zayro-entry{flex-direction:column;align-items:stretch}
+ .gl-zayro-entry-buttons{justify-content:stretch}
+ .gl-zayro-entry-buttons button,.gl-zayro-entry-buttons a{flex:1}
+ .gl-zayro-product-fields{grid-template-columns:1fr}
+ .gl-zayro-admin-overlay{padding:10px}
+ .gl-zayro-admin{margin:0}
+}
