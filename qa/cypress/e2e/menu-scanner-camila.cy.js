@@ -46,4 +46,40 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   cy.get('#btn-ajustes').should('not.be.visible');
   cy.get('#gl-soporte-whatsapp').should('be.visible');
  });
+
+ it('en celular ZAYRO muestra Scanner usable y sin mezclar herramientas de otras empresas',()=>{
+  cy.viewport(390,844);
+  cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{
+   statusCode:200,headers:{'content-type':'application/javascript'},body
+  }).as('fake'));
+  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
+  cy.visit('/');cy.wait('@fake');
+  cy.get('.gl-intro',{timeout:14000}).should('not.be.visible');
+  cy.window().then(w=>{
+   w.__dashboard=true;
+   w.__tenantOverride=CAMI;
+   w.__companyOverride='Perfumes';
+  });
+  cy.get('#au-email').type('kmu15lopez@gmail.com');
+  cy.get('#au-pass').type('secreto1',{log:false});
+  cy.get('#au-in button[type="submit"]').click();
+  cy.get('.gl-ch-nav [data-ch-tab="locales"]',{timeout:18000}).should('be.visible').click();
+  cy.get('#hub .gl-company-folder')
+   .filter((_,e)=>!!e.querySelector('[data-act="local"][data-id="munro"]')).first().as('cami');
+  cy.get('@cami').find('summary').click();
+  cy.get('@cami').find('[data-act="local"][data-id="munro"]').click();
+  cy.get('#view .gl-scanner-private-home',{timeout:18000}).should('be.visible')
+   .and('contain.text','ZAYRO');
+  cy.get('#view .gl-scanner-private-card').should('have.length',6)
+   .each($card=>cy.wrap($card).should('be.visible').and('not.be.disabled'));
+  cy.get('#view [data-scanner-card="ventas"]').should('be.visible');
+  cy.get('#view [data-scanner-card="stock"]').should('be.visible');
+  cy.get('#view [data-scanner-card="precios"]').should('be.visible');
+  cy.get('#view').should('not.contain.text','Proveedores')
+   .and('not.contain.text','Administrar a los empleados');
+  cy.get('#gl-soporte-whatsapp').should('be.visible');
+  cy.document().then(doc=>{
+   if(doc.documentElement.scrollWidth>392)throw Error('El menú Scanner desborda el ancho de celular');
+  });
+ });
 });
