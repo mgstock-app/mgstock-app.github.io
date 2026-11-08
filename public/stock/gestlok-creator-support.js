@@ -54,6 +54,10 @@
   }
   async function open(tenant, name){
     if (!api || busy || !api.isCreadora?.()) return;
+    if (tenant === MOLINO_TENANT){
+      api.toast?.('Para ingresar a El Molino Café, elegí Acassuso o San Isidro desde Ver locales.', true);
+      return;
+    }
     const reason = String(window.prompt('Motivo de la consulta de «' + (name || 'la empresa') + '» (queda registrado en la auditoría):', '') || '').trim();
     if (reason.length < 3){ if (reason) api.toast('Escribí un motivo de al menos 3 letras.', true); return; }
     busy = true;
