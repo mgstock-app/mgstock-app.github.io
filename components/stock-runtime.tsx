@@ -32,6 +32,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
     "/stock/gestlok-zayro-admin.js?rev=zayro-public-shop-20261108",
+    "/stock/gestlok-scanner-menu.js?rev=camila-scanner-menu-20261108",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
     "/stock/gestlok-molino.js?rev=menu-empresa-20261108",
   ];
@@ -79,6 +80,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-tarjetas-fotos-20261107");
       if (!visitor) await load("/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106");
       if (!visitor) await load("/stock/gestlok-zayro-admin.js?rev=zayro-public-shop-20261108");
+      if (!visitor) await load("/stock/gestlok-scanner-menu.js?rev=camila-scanner-menu-20261108");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=pedidos-cami-20261029");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=scanner-precio-manual-20261106");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
