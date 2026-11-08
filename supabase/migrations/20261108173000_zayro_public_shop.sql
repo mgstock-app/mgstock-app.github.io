@@ -33,9 +33,10 @@ returns boolean language sql stable security definer set search_path=''
 as $$
  select (select auth.uid())='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3'::uuid
  and exists(
-   select 1 from gestlok_tenancy.account_active_tenant a
-   where a.user_id=(select auth.uid())
-     and a.tenant_id='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103'::uuid
+   select 1 from public.docs d where
+     d.tenant_id='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103'::uuid
+     and d.col='equipo' and lower(d.id)='camilab.lopez99@gmail.com'
+     and d.data->>'rol'='dueno'
  );
 $$;
 revoke all on function public.gestlok_zayro_is_owner() from public,anon;
