@@ -114,10 +114,10 @@
         ['home','Inicio','home',true],
         ['mol-precios','Precios','tag',true],
         ['mol-pedidos','Pedidos','chat',true],
-        ['mol-envios','Enviados','truck',true],
-        ['mol-devoluciones','Devoluciones','back',!creator],
-        ['mol-historial','Historial','history',!creator],
-        ['more','Más','more',creator]
+        ['mol-envios','Enviados','truck',!creator],
+        ['mol-devoluciones','Devoluciones','back',false],
+        ['mol-historial','Historial','history',false],
+        ['more','Más','more',true]
       ].filter(t=>t[3]);
     }
     // Mi Gusto: las dos herramientas principales del turno quedan juntas
