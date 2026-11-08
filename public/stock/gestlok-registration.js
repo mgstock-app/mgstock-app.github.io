@@ -64,12 +64,24 @@
         <div class="fld"><label for="${prefix}-phone">Teléfono de contacto</label><input id="${prefix}-phone" data-business="phone" type="tel" maxlength="25" autocomplete="tel" placeholder="+54 11 1234-5678" inputmode="tel"></div>
         <div class="fld"><label for="${prefix}-address">Nombre del local, dirección o referencia (opcional)</label><input id="${prefix}-address" data-business="address" data-business-optional="true" maxlength="160" autocomplete="street-address" placeholder="Podés dejarlo vacío si no tenés local fijo"></div>
       </fieldset>
-      <div class="fld" data-registration-module-field hidden><label for="${prefix}-modules">¿Qué querés administrar con GESTLOK?</label><select id="${prefix}-modules" data-registration-choice aria-describedby="${prefix}-detail"><option value="">Elegí una opción</option>${Object.entries(choices).map(([key,c])=>`<option value="${key}">${c.label}</option>`).join('')}</select><small id="${prefix}-detail" data-registration-detail></small></div>`;
+      <div class="fld" data-registration-module-field hidden><label for="${prefix}-modules">Áreas que solicitás</label><select id="${prefix}-modules" data-registration-choice><option value="">Elegí una opción</option>${Object.entries(choices).map(([key,c])=>`<option value="${key}">${c.label}</option>`).join('')}</select><small id="${prefix}-detail" data-registration-detail></small></div>
+      <fieldset class="gl-registration-microapps" data-registration-microapps hidden>
+        <legend>Elegí tus microapps</legend>
+        <p class="gl-microapps-intro">Podés combinar <b>varias microapps en un mismo negocio</b>. Todas pueden personalizarse según tus necesidades.</p>
+        <div class="gl-microapps-grid">${Object.entries(microapps).map(([id,app])=>`<div class="gl-microapp-card"><label for="${prefix}-micro-${id}"><input type="checkbox" id="${prefix}-micro-${id}" data-microapp-id value="${id}"><span class="gl-microapp-card-text"><b>${esc(app.label)}</b><small>${esc(app.detail)}</small></span></label><button type="button" data-demo-open="${id}">Probar demo interactiva</button></div>`).join('')}</div>
+        <div class="gl-microapps-selection" aria-live="polite" data-microapps-selection>Elegí las microapps que quieras conocer.</div>
+        <div class="gl-microapp-preview" data-microapp-preview hidden></div>
+        <label for="${prefix}-custom">¿Qué te gustaría personalizar? (opcional)</label>
+        <textarea id="${prefix}-custom" data-customization maxlength="600" rows="3" placeholder="Contanos qué tipo de negocio tenés, cuántos locales y qué tareas querés simplificar…"></textarea>
+        <p class="gl-microapps-disclaimer">Esta elección es una solicitud para preparar tu sistema. No activa servicios ni genera cargos automáticamente.</p>
+      </fieldset>`;
     return box;
   }
   function sync(form){
     const owner=form.querySelector('[data-registration-kind]').value==='dueno';
-    form.querySelector('[data-registration-module-field]').hidden=!owner;
+    form.querySelector('[data-registration-module-field]').hidden=true;
+    const microField=form.querySelector('[data-registration-microapps]');
+    if(microField)microField.hidden=!owner;
     const company=form.querySelector('[data-registration-business-field]');
     if(company){
       company.hidden=!owner;
@@ -77,23 +89,33 @@
         input.required=owner&&input.dataset.businessOptional!=='true';
       });
     }
-    const select=form.querySelector('[data-registration-choice]');select.required=owner;
-    if(!owner)select.value='';
+    const select=form.querySelector('[data-registration-choice]');select.required=false;
+    const apps=selectedApps(form);
+    select.value=owner?choiceForApps(apps):'';
+    const summary=form.querySelector('[data-microapps-selection]');
+    if(summary)summary.textContent=apps.length
+      ? apps.length+' microapp'+(apps.length===1?' seleccionada':'s seleccionadas')+' · '+(choices[select.value]?.label||'')
+      : 'Elegí al menos una microapp. Podés combinar todas las que necesites.';
     form.querySelector('[data-registration-detail]').textContent=choices[select.value]?.detail||'';
   }
   function read(form){
-    const intent=parse(form.querySelector('[data-registration-kind]')?.value,form.querySelector('[data-registration-choice]')?.value);
-    if(intent.kind!=='dueno')return intent;
+    const kind=form.querySelector('[data-registration-kind]')?.value;
+    if(kind!=='dueno')return parse(kind,'');
+    const microappIds=selectedApps(form);
+    if(!microappIds.length)throw Error('Elegí al menos una microapp para tu negocio.');
+    const intent=parse(kind,choiceForApps(microappIds));
     const get=key=>String(form.querySelector('[data-business="'+key+'"]')?.value||'').trim();
     const business={
       name:get('name'), responsible:get('responsible'),
-      phone:get('phone'), address:get('address')
+      phone:get('phone'), address:get('address'),
+      microapps:microappIds,
+      customization:String(form.querySelector('[data-customization]')?.value||'').trim()
     };
     const digits=business.phone.replace(/\D/g,'');
     if(business.name.length<2||business.name.length>100||
        business.responsible.length<3||business.responsible.length>100||
        digits.length<10||digits.length>15||
-       !/^[+0-9 ()-]{9,25}$/.test(business.phone)||business.address.length>160)
+       !/^[+0-9 ()-]{9,25}$/.test(business.phone)||business.address.length>160||business.customization.length>600)
       throw Error('Completá el negocio, la persona encargada y un teléfono válido.');
     return {...intent,business};
   }
@@ -127,7 +149,13 @@
   function fill(form,kind,modules,business=null){
     const choice=Object.keys(choices).find(key=>choices[key].modules.join(',')===(modules||[]).join(','))||'';
     form.querySelector('[data-registration-kind]').value=kind;
-    form.querySelector('[data-registration-choice]').value=choice;sync(form);
+    const known=Array.isArray(business?.microapps)?business.microapps.filter(id=>Object.hasOwn(microapps,id)):[];
+    const fallback=choice==='ambas'?['stock','empleados']:choice==='empresa'?['stock']:choice==='empleados'?['empleados']:[];
+    const selection=known.length?known:fallback;
+    form.querySelectorAll('[data-microapp-id]').forEach(box=>{box.checked=selection.includes(box.value);});
+    const customization=form.querySelector('[data-customization]');
+    if(customization)customization.value=business?.customization_notes||business?.customization||'';
+    sync(form);
     if(business)for(const [key,value] of Object.entries({
       name:business.business_name||business.name,
       responsible:business.responsible_name||business.responsible,
@@ -139,11 +167,12 @@
     let intent;try{intent=read(form);}catch(e){message(form,e.message,true);return;}
     busy(form,true);
     try{
-      const method=intent.kind==='dueno'?'gestlok_request_business_registration':'gestlok_request_registration';
+      const method=intent.kind==='dueno'?'gestlok_request_business_registration_v2':'gestlok_request_registration';
       const params=intent.kind==='dueno'?{
         p_modules:intent.modules,p_business_name:intent.business.name,
         p_responsible_name:intent.business.responsible,
-        p_contact_phone:intent.business.phone,p_business_address:intent.business.address
+        p_contact_phone:intent.business.phone,p_business_address:intent.business.address,
+        p_microapps:intent.business.microapps,p_customization:intent.business.customization
       }:{p_kind:intent.kind,p_modules:intent.modules};
       const {error}=await window.GestLokSupabase.rpc(method,params);
       if(error)throw error;
@@ -194,7 +223,28 @@
     const found=Object.values(choices).find(c=>JSON.stringify(c.modules)===JSON.stringify(request.modulosSolicitados));
     return found?'Solicitud de dueño/a · '+found.label:'Solicitud de dueño/a · Módulos pendientes';
   }
-  document.addEventListener('change',e=>{if(e.target.matches('[data-registration-kind],[data-registration-choice]'))sync(e.target.closest('form'));});
+  document.addEventListener('change',e=>{
+    if(e.target.matches('[data-registration-kind],[data-microapp-id]')){
+      const form=e.target.closest('form');sync(form);
+      const preview=form?.querySelector('[data-microapp-preview]');
+      if(preview&&!preview.hidden)demo(form,preview.dataset.demoId,Number(preview.dataset.demoStep||0));
+    }
+  });
+  document.addEventListener('click',e=>{
+    const button=e.target.closest('[data-demo-open],[data-demo-next],[data-demo-close],[data-demo-select]');
+    if(!button)return;
+    const form=button.closest('form');if(!form)return;
+    e.preventDefault();
+    const preview=form.querySelector('[data-microapp-preview]');
+    if(button.hasAttribute('data-demo-open')){demo(form,button.dataset.demoOpen,0);return;}
+    if(button.hasAttribute('data-demo-close')){preview.hidden=true;return;}
+    const id=preview?.dataset.demoId;if(!id||!Object.hasOwn(microapps,id))return;
+    if(button.hasAttribute('data-demo-next')){const i=Number(preview.dataset.demoStep||0);demo(form,id,i>=microapps[id].steps.length?0:i+1);}
+    if(button.hasAttribute('data-demo-select')){
+      const checkbox=[...form.querySelectorAll('[data-microapp-id]')].find(x=>x.value===id);
+      if(checkbox){checkbox.checked=true;sync(form);demo(form,id,Number(preview.dataset.demoStep||0));}
+    }
+  });
   document.addEventListener('submit',e=>{if(e.target.id==='gl-registration-request'){e.preventDefault();submit(e.target);}},true);
-  window.GestLokRegistration=Object.freeze({mountSignup,pending,read,parse,label});
+  window.GestLokRegistration=Object.freeze({mountSignup,pending,read,parse,label,microappLabel:id=>microapps[id]?.label||id,choiceForApps});
 })();
