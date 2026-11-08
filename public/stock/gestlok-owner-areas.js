@@ -88,6 +88,7 @@
   function gerenteHome(){
     if(api?.role?.()!=='gerente'||!api.S.local)return '';
     const local=api.S.local;
+    const isMolino=api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
     const brand=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
     const soloTienda=api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
     const staff=!soloTienda&&gerente.status==='ready'&&gerente.locals.includes(local);
@@ -96,7 +97,7 @@
       businessWelcome(gerenteMarca.tenant===api.S.me?.tenant_id?gerenteMarca.name:'Mi negocio',brand)+
       '<div class="gl-owner-areas">'+
       '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>'+(soloTienda?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
-      list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
+      list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>')+
       (soloTienda?'':'<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
       (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir colaboradores de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Colaboradores, legajos y turnos de tu propio local.</p>'+list([['team','Colaboradores y fichas'],['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article>')+'</div>'+ (staff ? '<nav class="gl-manager-quick" aria-label="Accesos rápidos del gerente">'+[['proveedores','box','Proveedores'],['vencimientos','calendar','Vencimientos'],['chat','file','Chat del local'],['avisos','bell','Avisos']].map(([k,i,t])=>'<button type="button" data-gerente-quick="'+k+'">'+svg(I[i],23)+'<span>'+t+'</span></button>').join('')+'</nav>' : '')+'</section>'+
       (window.GestLokCajaDiaria?.homeTile?.()||'')+
@@ -256,7 +257,7 @@
     return '<section class="gl-owner-landing" aria-label="Inicio del negocio · '+name+'">'+
       businessWelcome(state.data.company_name,branded,isSoloOwner())+
       '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
-      (commerce&&!isSoloOwner()?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
+      (commerce&&!isSoloOwner()&&!commercialPrepOnly?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>'+(commercialPrepOnly?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir administración comercial">'+svg(I.right,26)+'</button></div>'+
         '<p>Productos, stock, proveedores, pedidos y más.</p>'+
         list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['bars','Reportes e historial'],['cart','Tienda online / mixta / física'],['gear','Ajustes de la empresa']])+'</article>':'')+
