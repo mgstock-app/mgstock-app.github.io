@@ -39,28 +39,39 @@
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const attr=esc;
  const today=()=>new Date().toLocaleDateString('en-CA');
- let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='',accessEpoch=0;
+ let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='',accessEpoch=0,readOnly=false,readOnlyData=null;
  function eligible(context,host){
   return !!context && context.tenant_id===TENANT && context.role==='dueno'
     && host?.role?.()==='dueno' && host?.S?.me?.tenant_id===TENANT;
  }
- function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';records=[];audit=[];window.GestLokPreciosStock?.reset?.();close();}
+ function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';readOnly=false;readOnlyData=null;records=[];audit=[];window.GestLokPreciosStock?.reset?.();close();}
  async function refresh(context,host){
-  if(!context?.tenant_id||context.tenant_id!==host?.S?.me?.tenant_id||context.role!=='dueno'||host?.role?.()!=='dueno'||context.logo_id==='mi-gusto'||context.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'){reset();return;}
-  if(TENANT!==context.tenant_id){reset();TENANT=context.tenant_id;}
+  const sameTenant=context?.tenant_id&&context.tenant_id===host?.S?.me?.tenant_id;
+  const ownerView=sameTenant&&context.role==='dueno'&&host?.role?.()==='dueno';
+  const creatorView=sameTenant&&context.tenant_id==='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103'&&
+    ['dueno','creadora'].includes(context.role)&&host?.role?.()==='creadora'&&
+    host?.isCreadora?.()===true;
+  if(!sameTenant||(!ownerView&&!creatorView)||context.logo_id==='mi-gusto'||
+     context.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'){reset();return;}
+  if(TENANT!==context.tenant_id||verified&&(readOnly!==creatorView)){reset();TENANT=context.tenant_id;}
   api=host;
   if(verified||checking)return;
   checking=true;
   const epoch=accessEpoch;
   try{
+   // RLS solo devuelve el registro al dueño o a la creadora verificada
+   // cuando está consultando el tenant activo de ZAYRO.
    const {data,error:err}=await window.GestLokSupabase.from('gestlok_pilot_access')
     .select('enabled,owner_uid,plan_code').eq('tenant_id',TENANT).maybeSingle();
    if(err)throw err;
    const identity=await window.GestLokSupabase.auth.getUser();
    if(epoch!==accessEpoch)return;
-   enabled=data?.plan_code==='scanner'&&!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
-   ownerUid=enabled?identity.data.user.id:'';
-  }catch{if(epoch===accessEpoch)enabled=false;}
+   const uid=identity.data?.user?.id;
+   const valid=data?.plan_code==='scanner'&&data?.enabled===true&&!!uid&&!!data?.owner_uid;
+   readOnly=!!(valid&&creatorView&&data.owner_uid!==uid);
+   enabled=!!(valid&&(ownerView&&data.owner_uid===uid||readOnly));
+   ownerUid=enabled?data.owner_uid:'';
+  }catch{if(epoch===accessEpoch){enabled=false;ownerUid='';readOnly=false;}}
   finally{
    if(epoch!==accessEpoch)return;
    checking=false;verified=true;
@@ -73,13 +84,36 @@
    '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button></div></section>';
  }
  async function assertAccess(){
+  if(readOnly)throw Error('La vista de creadora es solo lectura.');
   if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
   const {data,error:err}=await window.GestLokSupabase.auth.getUser();
   if(err||!data.user||!ownerUid||data.user.id!==ownerUid)throw Error('Iniciá sesión con la cuenta dueña autorizada.');
   return true;
  }
+ async function assertReadOnlyAccess(){
+  if(!enabled||!readOnly||!ownerUid||api?.role?.()!=='creadora'||
+    api?.isCreadora?.()!==true||api?.S?.me?.tenant_id!==TENANT||
+    TENANT!=='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103')
+   throw Error('No tenés acceso de consulta al Plan Scanner de esta empresa.');
+  const db=window.GestLokSupabase;
+  const {data:identity,error:authError}=await db.auth.getUser();
+  if(authError||!identity?.user?.id||identity.user.id===ownerUid)
+   throw Error('La identidad de la creadora no se pudo verificar.');
+  const {data:plan,error:planError}=await db.from('gestlok_pilot_access')
+   .select('enabled,plan_code,owner_uid').eq('tenant_id',TENANT).maybeSingle();
+  if(planError||plan?.enabled!==true||plan?.plan_code!=='scanner'||plan?.owner_uid!==ownerUid)
+   throw Error('El servidor no habilitó el acceso de lectura a ZAYRO.');
+  return true;
+ }
  async function load(){
   const epoch=accessEpoch;
+  if(readOnly){
+   const snapshot=await window.GestLokScannerReadOnly?.load?.(window.GestLokSupabase,TENANT,assertReadOnlyAccess);
+   if(!snapshot)throw Error('No se pudo cargar el visor privado de ZAYRO.');
+   if(epoch!==accessEpoch)return;
+   readOnlyData=snapshot;records=snapshot.records||[];audit=snapshot.audit||[];
+   return;
+  }
   await assertAccess();
   const db=window.GestLokSupabase;
   const [r,a]=await Promise.all([
@@ -105,6 +139,14 @@
     (key==='tablero'||key==='auditoria'?'<small>Consulta</small>':['pedidos','precios','stock'].includes(key)?'<small>Gestión integrada con tu catálogo</small>':'<small>'+total+' registros · Carga manual</small>')+'</button>';
  }
  function sidebar(){
+  if(readOnly){
+   const sections=window.GestLokScannerReadOnly?.sections||[];
+   return '<nav class="gl-pilot-nav" aria-label="Secciones de ZAYRO en consulta"><div>'+
+    '<span class="gl-pilot-group">Plan Scanner · Solo lectura</span>'+
+    sections.map(([code,label])=>'<button type="button" data-pilot-readonly-tab="'+attr(code)+'" '+
+      'class="'+(active===code?'is-active':'')+'">'+esc(label)+'</button>').join('')+
+    '</div></nav>';
+  }
   return '<nav class="gl-pilot-nav" aria-label="Secciones de tu negocio"><div><span class="gl-pilot-group">Mi local</span>'+
    '<button type="button" data-pilot-tab="tablero" class="'+(active==='tablero'?'is-active':'')+'">Inicio</button>'+
    '<button type="button" data-pilot-caja>Caja</button>'+
@@ -153,6 +195,7 @@
     esc(sectionTitle(x.module))+'<small>'+esc(new Date(x.at).toLocaleString('es-AR'))+'</small></div>').join('')+'</div>';
  }
  function current(){
+  if(readOnly)return window.GestLokScannerReadOnly?.render?.(active,readOnlyData||{})||'<p>No se pudo mostrar la consulta.</p>';
   if(active==='tablero')return dashboard();
   if(active==='sistema_venta')return '<div id="gl-pos-preview-mount"><p>Cargando escáner…</p></div>';
   if(active==='dispositivos')return window.GestLokPosDevices?.renderSettings?.(TENANT)||'<p>Cargando configuración de dispositivos…</p>';
@@ -176,18 +219,18 @@
   let root=document.querySelector('#gl-pilot-panel');
   if(!root){root=document.createElement('div');root.id='gl-pilot-panel';document.body.append(root);}
   root.innerHTML='<div class="gl-pilot-shell" role="dialog" aria-modal="true" aria-labelledby="gl-pilot-title">'+
-    '<header class="gl-pilot-top"><div><small>GESTLOK · PRUEBA PRIVADA</small><h1 id="gl-pilot-title">Mi local</h1>'+
+    '<header class="gl-pilot-top"><div><small>'+(readOnly?'GESTLOK · VISTA DE CREADORA':'GESTLOK · PRUEBA PRIVADA')+'</small><h1 id="gl-pilot-title">Mi local</h1>'+
     '<span>Caja, ventas, stock y precios</span></div><button type="button" data-pilot-close aria-label="Volver a Mi local">← Volver a Mi local</button></header>'+
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
-    '<footer class="gl-pilot-footer">Plan Scanner privado: las ventas solo se registran cuando el dueño tiene habilitada la operación. No modifica datos de Mi Gusto ni de otras empresas.</footer></div>';
+    '<footer class="gl-pilot-footer">'+(readOnly?'Consulta privada de ZAYRO: no se permiten operaciones ni cambios.':'Plan Scanner privado: las ventas solo se registran cuando el dueño tiene habilitada la operación. No modifica datos de Mi Gusto ni de otras empresas.')+'</footer></div>';
   document.body.classList.add('gl-pilot-open');
-  if(active==='dispositivos')window.GestLokPosDevices?.mountSettings?.(root.querySelector('#gl-pilot-content'),TENANT);
+  if(active==='dispositivos'&&!readOnly)window.GestLokPosDevices?.mountSettings?.(root.querySelector('#gl-pilot-content'),TENANT);
  }
  async function open(){
   if(displayed||!enabled)return;
-  displayed=true;active='tablero';loading=true;
+  displayed=true;active=readOnly?'caja':'tablero';loading=true;
   window.history?.pushState({...window.history.state,glPilot:true},'');
   render();
   try{await load();error='';}catch(e){error=e.message||'No se pudo cargar';}
@@ -283,7 +326,16 @@
    if(mount)mount.textContent=e.message||'No se pudo iniciar el escáner.';
   }
  }
+ async function openReadOnlySection(section){
+  if(!readOnly||!enabled||!window.GestLokScannerReadOnly?.validSection?.(section)||
+     api?.role?.()!=='creadora'||api?.isCreadora?.()!==true)return false;
+  if(!displayed)await open();
+  if(!displayed||!readOnly)return false;
+  active=section;editing='';render();
+  return true;
+ }
  async function switchSection(section){
+  if(readOnly)return openReadOnlySection(section);
   if(!SCANNER_MODULES.includes(section)||!enabled)return;
   if(!displayed)await open();
   if(!displayed)return;
@@ -296,7 +348,7 @@
   if(section==='precios'||section==='stock')await window.GestLokPreciosStock?.open?.(section);
  }
  async function save(form){
-  if(busy)return;
+  if(readOnly||busy)return;
   busy=true;error='';
   const data=Object.fromEntries(new FormData(form).entries());
   if(!DICTIONARY[data.module]||['tablero','auditoria'].includes(data.module)||data.module!==active){busy=false;return;}
@@ -321,6 +373,7 @@
   finally{busy=false;render();}
  }
  async function remove(id){
+  if(readOnly)return;
   const item=records.find(x=>x.id===id&&x.module===active);
   if(!item||!confirm('¿Eliminar este registro de prueba? Quedará constancia en el historial.'))return;
   busy=true;
@@ -334,6 +387,13 @@
   finally{busy=false;render();}
  }
  document.addEventListener('click',e=>{
+  // El panel de consulta nunca acciona los controladores de cobro o edición.
+  if(readOnly){
+   if(e.target.closest('[data-pilot-close]')){close();return;}
+   const tab=e.target.closest('#gl-pilot-panel [data-pilot-readonly-tab]');
+   if(tab){e.preventDefault();void openReadOnlySection(tab.dataset.pilotReadonlyTab);}
+   return;
+  }
   if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close(false);return;}
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
   if(e.target.closest('[data-pilot-caja]')){e.preventDefault();if(displayed)close(false);const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
@@ -368,6 +428,9 @@
  window.addEventListener?.('popstate',()=>{if(displayed&&!window.history?.state?.glPilot)close(false);});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){close();document.body.classList.remove('gl-pilot-open');}});
  window.GestLokPilot=Object.freeze({refresh,homeTile,open,openOrders,reset,
-  authorized:()=>!!enabled&&ownerUid!==''&&api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='dueno',
+  authorized:()=>!!enabled&&!readOnly&&ownerUid!==''&&api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='dueno',
+  readonlyAuthorized:()=>!!enabled&&readOnly&&ownerUid!==''&&
+    api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='creadora'&&api?.isCreadora?.()===true,
+  readonlyMode:()=>readOnly,readonlySection:openReadOnlySection,
   tenantId:()=>TENANT,scanner:()=>enabled&&api?.role?.()==='dueno'&&api?.S?.me?.tenant_id===TENANT,switchSection,rerender:render,modules:MODULES.map(([id])=>id)});
 })();
