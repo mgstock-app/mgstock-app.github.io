@@ -22,7 +22,7 @@ function setup(authorized=true){
   return window.GestLokScannerMenu;
 }
 function host(tenant=CAMI,role='dueno',creator=false){
-  return {S:{me:{tenant_id:tenant}},role:()=>role,isCreadora:()=>creator};
+  return {S:{me:{tenant_id:tenant},local:'munro'},role:()=>role,isCreadora:()=>creator};
 }
 const ctx=tenant=>({tenant_id:tenant,role:'dueno',company_name:'Perfumes'});
 
@@ -31,7 +31,7 @@ test('Plan Scanner de Camila queda aislado en menú por tenant sin afectar Mi Gu
   assert.match(app,/'2a97bf8d-7d08-4aa7-b051-5d1a4dc80103': Object\.freeze\(\{microapps:Object\.freeze\(\['scanner'\]\)\}\)/);
   assert.match(app,/'6c8717ea-5f78-426b-9458-74a5dcac6e4e': Object\.freeze\(\{microapps:Object\.freeze\(\['molino'\]\)\}\)/);
   assert.match(app,/GestLokScannerMenu\?\.navHTML/);
-  assert.match(owner,/GestLokScannerMenu\?\.home\?\.\(state\.data,api\)/);
+  assert.match(owner,/GestLokScannerMenu\?\.home\?\.\(state\.data,api,shown\)/);
   assert.ok(owner.indexOf('const scannerHome=')<owner.indexOf("const commerce=allowed('comercial')"));
   assert.match(runtime,/await load\("\/stock\/gestlok-scanner-menu\.js/);
   assert.match(sw,/gestlok-scanner-menu\.js/);
@@ -71,4 +71,12 @@ test('No muestra acciones sin un plan verificado; ningún tenant ajeno recibe la
   assert.doesNotMatch(menu.home(ctx(CAMI),h),/data-pilot-pos/);
   assert.equal(menu.home(ctx('cb0dc04a-9a13-434f-a3d0-47f1d8f39670'),h),null);
   assert.equal(menu.navHTML(host('cb0dc04a-9a13-434f-a3d0-47f1d8f39670')),'');
+});
+
+test('Antes de elegir local se conserva el selector autorizado y no se abre Caja ni Ventas',()=>{
+ const menu=setup(),h=host();h.S.local='';
+ const html=menu.home(ctx(CAMI),h,{locals:[{id:'munro'}],card:l=>'<button data-act="local" data-id="'+l.id+'">Entrar</button>'});
+ assert.match(html,/data-act="local"/);
+ assert.doesNotMatch(html,/data-pilot-pos/);
+ assert.doesNotMatch(html,/data-pilot-caja/);
 });
