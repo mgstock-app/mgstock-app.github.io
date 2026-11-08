@@ -2102,12 +2102,24 @@ async function refreshRegistrationRequests(){
     if(!S.creatorSetup&&(!S.panel||S.panel==='share'))onSnapRefresh();
   }catch{}finally{registrationRequestBusy=false;}
 }
+function businessRegistrationFolder(x){
+  if(x.tipoCuenta!=='dueno'||!x.empresa)return '';
+  const fields=[
+    ['Persona encargada',x.responsable],['Teléfono de contacto',x.telefono],
+    ['Email registrado',x.email],['Dirección / referencia',x.direccion||'Sin dirección fija']
+  ];
+  return '<details class="gl-business-registration-card"><summary><span aria-hidden="true">▣</span> <b>'+
+    esc(x.empresa)+'</b><small>Ficha del negocio · Pendiente de autorización</small></summary>'+
+    '<dl>'+fields.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('')+'</dl>'+
+    '<p>Esta ficha no crea permisos ni locales. Prepará la empresa desde Administración y asigná el acceso autorizado.</p></details>';
+}
 function solRows(){
   if (!isCreadora() || !S.sol.length) return '';
   const solo = localesTodos().length === 1 ? [localesTodos()[0].id] : [];
   return `<div class="note warn" style="margin:0;display:grid;gap:4px"><b>${plural(S.sol.length, 'pedido de acceso pendiente', 'pedidos de acceso pendientes')}</b><span>${molinoRoles()?'Revisá las solicitudes. Los dueños se incorporan desde Administración y los gerentes reciben sus locales autorizados.':'Revisá las solicitudes. Los dueños requieren un alta independiente; a los colaboradores les asignás rol y local.'}</span></div>
   <div class="eq">${S.sol.map(x => { const id = esc(x.id); return `<div class="eq-r sol"><span class="av">${esc((x.email || '?').charAt(0))}</span><div style="min-width:0"><div class="em">${esc(x.email)}</div><small>${x.nombre ? esc(x.nombre) + ' · ' : ''}${x.proveedor === 'google' ? 'Google · ' : ''}${x.fecha ? rel(x.fecha) : ''}</small>
     ${window.GestLokRegistration?.label(x)?`<p class="note">${esc(window.GestLokRegistration.label(x))}</p>`:''}
+    ${businessRegistrationFolder(x)}
     ${x.tipoCuenta==='dueno'?'<p class="lead">Alta independiente de dueño pendiente de habilitación. No se asigna a los locales de otra empresa.</p>':`<div class="eq-ed">${rolSelect(`id="sol-rol-${id}" aria-label="Rol para ${esc(x.email)}"`, 'gerente')}${locChecks(`data-solloc="${id}"`, solo, false)}</div>`}</div>
     <div class="eq-a sol-a">${x.tipoCuenta==='dueno'?'<span class="pill">Alta de dueño</span>':`<button class="btn sm primary" data-act="sol-ok" data-id="${id}">Aprobar</button>`}<button class="btn sm" data-act="sol-no" data-id="${id}">Rechazar</button></div></div>`; }).join('')}</div>`;
 }
