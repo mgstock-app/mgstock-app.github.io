@@ -180,7 +180,7 @@
  }
  function render(){
   const rows=ordersDay();
-  return '<section class="gl-orders"><header class="gl-order-header"><div><small>GESTLOK · PILOTO DE CAMI</small>'+
+  return '<section class="gl-orders"><header class="gl-order-header"><div><small>ZAYRO · GESTIÓN COMERCIAL</small>'+
    '<h2>Pedidos</h2><p>Control diario de la tienda Perfumes</p></div>'+
    '<div class="gl-order-date"><button type="button" data-orders-prev aria-label="Día anterior">‹</button>'+
    '<strong>'+esc(dayLabel(day))+'</strong><button type="button" data-orders-next aria-label="Día siguiente">›</button></div></header>'+
@@ -213,7 +213,7 @@
   const items=Object.entries(draft).filter(([id,q])=>q>0).map(([id,quantity])=>({product_id:id,quantity}));
   if(!items.length){error='Agregá al menos un producto.';renderParent();return;}
   await execute(()=>db().from('gestlok_pilot_orders').insert({
-   tenant_id:TENANT,day,customer:String(fields.customer||'').trim(),
+   tenant_id:TENANT,owner_uid:window.GestLokPilot?.ownerUid?.(),day,customer:String(fields.customer||'').trim(),
    reference:String(fields.reference||'').trim(),notes:String(fields.notes||'').trim(),
    items,status
   }),status==='preparado'?'Pedido preparado guardado.':'Pedido pendiente guardado.');
@@ -222,7 +222,7 @@
  async function noOrder(form){
   const d=Object.fromEntries(new FormData(form).entries());
   await execute(()=>db().from('gestlok_pilot_orders').insert({
-   tenant_id:TENANT,day,reference:String(d.reference||'').trim(),
+   tenant_id:TENANT,owner_uid:window.GestLokPilot?.ownerUid?.(),day,reference:String(d.reference||'').trim(),
    reason:String(d.reason||'').trim(),status:'sin_realizar',items:[]
   }),'Pedido sin realizar registrado.');
  }
@@ -230,7 +230,7 @@
   const d=Object.fromEntries(new FormData(form).entries());
   const amount=String(d.unit_price||'').trim();
   await execute(()=>db().from('gestlok_pilot_products').insert({
-   tenant_id:TENANT,name:String(d.name||'').trim(),category:String(d.category||'').trim(),
+   tenant_id:TENANT,owner_uid:window.GestLokPilot?.ownerUid?.(),name:String(d.name||'').trim(),category:String(d.category||'').trim(),
    sku:String(d.sku||'').trim(),unit_price:amount===''?null:Number(amount)
   }),'Producto agregado al catálogo privado.');
  }
@@ -266,7 +266,7 @@
   if(!confirm('¿Finalizar el día '+dayLabel(day)+'? Los pedidos quedarán bloqueados.'))return;
   if(!confirm('Confirmación final: ¿guardar el cierre y abrir el próximo día?'))return;
   const closingDay=day;
-  await execute(()=>db().from('gestlok_pilot_order_closures').insert({tenant_id:TENANT,day}),
+  await execute(()=>db().from('gestlok_pilot_order_closures').insert({tenant_id:TENANT,owner_uid:window.GestLokPilot?.ownerUid?.(),day}),
     'Jornada finalizada. El historial quedó conservado.');
   if(!error){day=shift(closingDay,1);tab='cargar';draft={};draftMeta={customer:'',reference:'',notes:''};renderParent();}
  }

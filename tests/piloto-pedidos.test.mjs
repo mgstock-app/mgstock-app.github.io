@@ -16,9 +16,10 @@ test('Pedidos: está visible como módulo, sin desplegarse en empresas ajenas',(
  assert.equal(typeof api.getTotals,'function');
  const first=api.render();
  assert.match(first,/Pedidos/);
- assert.match(first,/GESTLOK · PILOTO DE CAMI/);
+ assert.match(first,/ZAYRO · GESTIÓN COMERCIAL/);
  assert.match(pilot,/context\.tenant_id===TENANT/);
- assert.match(pilot,/ownerUid!==''/);
+ assert.match(pilot,/!!ownerUid/);
+ assert.match(pilot,/gestlok_creator_editing_state/);
  assert.match(pilot,/data-pilot-orders/);
  assert.doesNotMatch(js,/@gmail\.com/);
 });

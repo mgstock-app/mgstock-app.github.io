@@ -177,7 +177,7 @@
    await assertAccess();
    let query=p
     ?db().from('gestlok_pilot_products').update(fields).eq('id',p.id).eq('tenant_id',tenant()).eq('updated_at',p.updated_at)
-    :db().from('gestlok_pilot_products').insert({tenant_id:tenant(),...fields});
+    :db().from('gestlok_pilot_products').insert({tenant_id:tenant(),owner_uid:window.GestLokPilot?.ownerUid?.(),...fields});
    const {data,error:e}=await query.select('id').maybeSingle();
    if(e)throw e;
    if(!data)throw Error('Otro dispositivo actualizó el producto. Actualizá antes de guardar.');

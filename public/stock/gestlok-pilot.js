@@ -39,15 +39,26 @@
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const attr=esc;
  const today=()=>new Date().toLocaleDateString('en-CA');
- let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='',accessEpoch=0;
- function eligible(context,host){
-  return !!context && context.tenant_id===TENANT && context.role==='dueno'
-    && host?.role?.()==='dueno' && host?.S?.me?.tenant_id===TENANT;
+ let enabled=false,checking=false,verified=false,busy=false,displayed=false,active='tablero',records=[],audit=[],error='',editing='',api=null,loading=false,ownerUid='',accessEpoch=0,accessMode='';
+ const CREATOR_TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
+ function creatorContext(context,host){
+  return context?.tenant_id===CREATOR_TENANT && host?.S?.me?.tenant_id===CREATOR_TENANT &&
+    ['dueno','creadora'].includes(context.role) && host?.role?.()==='creadora' &&
+    host?.isCreadora?.()===true;
  }
- function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';records=[];audit=[];window.GestLokPreciosStock?.reset?.();close();}
+ function eligible(context,host){
+  return !!context && context.tenant_id===TENANT && host?.S?.me?.tenant_id===TENANT &&
+    ((context.role==='dueno' && host?.role?.()==='dueno') || creatorContext(context,host));
+ }
+ function reset(){accessEpoch++;enabled=false;verified=false;checking=false;api=null;ownerUid='';accessMode='';records=[];audit=[];window.GestLokPreciosStock?.reset?.();close();}
  async function refresh(context,host){
-  if(!context?.tenant_id||context.tenant_id!==host?.S?.me?.tenant_id||context.role!=='dueno'||host?.role?.()!=='dueno'||context.logo_id==='mi-gusto'||context.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'){reset();return;}
-  if(TENANT!==context.tenant_id){reset();TENANT=context.tenant_id;}
+  const creator=creatorContext(context,host);
+  const owner=context?.tenant_id===host?.S?.me?.tenant_id &&
+    context?.role==='dueno' && host?.role?.()==='dueno';
+  if(!context?.tenant_id||(!owner&&!creator)||context.logo_id==='mi-gusto'||
+     context.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'){reset();return;}
+  const nextMode=creator?'creadora':'dueno';
+  if(TENANT!==context.tenant_id||accessMode!==nextMode){reset();TENANT=context.tenant_id;accessMode=nextMode;}
   api=host;
   if(verified||checking)return;
   checking=true;
@@ -56,11 +67,20 @@
    const {data,error:err}=await window.GestLokSupabase.from('gestlok_pilot_access')
     .select('enabled,owner_uid,plan_code').eq('tenant_id',TENANT).maybeSingle();
    if(err)throw err;
-   const identity=await window.GestLokSupabase.auth.getUser();
+   const {data:identity,error:authError}=await window.GestLokSupabase.auth.getUser();
+   if(authError||!identity?.user?.id)throw Error('Sesión no válida');
    if(epoch!==accessEpoch)return;
-   enabled=data?.plan_code==='scanner'&&!!data?.enabled&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
-   ownerUid=enabled?identity.data.user.id:'';
-  }catch{if(epoch===accessEpoch)enabled=false;}
+   const planReady=data?.plan_code==='scanner'&&data?.enabled===true&&!!data?.owner_uid;
+   if(!planReady)throw Error('Plan Scanner no habilitado');
+   if(creator){
+    const {data:editing,error:editingError}=await window.GestLokSupabase.rpc('gestlok_creator_editing_state');
+    if(editingError||editing?.active!==true||editing?.permanent!==true ||
+       identity.user.id===data.owner_uid)throw Error('Administración no autorizada');
+   }else if(data.owner_uid!==identity.user.id)throw Error('Dueña no autorizada');
+   if(epoch!==accessEpoch)return;
+   enabled=true;
+   ownerUid=data.owner_uid;
+  }catch{if(epoch===accessEpoch){enabled=false;ownerUid='';}}
   finally{
    if(epoch!==accessEpoch)return;
    checking=false;verified=true;
@@ -70,13 +90,29 @@
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
   return '<section class="gl-pilot-entry" aria-label="Herramientas comerciales"><div class="gl-pilot-entry-info"><small>OPERACIONES</small><h2>Accesos rápidos</h2></div>'+ 
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button></div></section>';
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>'+(accessMode==='creadora'?'Movimientos de caja':'Caja')+'</button><button type="button" data-pilot-pos>Ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button></div></section>';
  }
  async function assertAccess(){
-  if(!enabled||!api?.S?.me||api.S.me.tenant_id!==TENANT||api.role()!=='dueno')throw Error('Sin autorización para el piloto.');
-  const {data,error:err}=await window.GestLokSupabase.auth.getUser();
-  if(err||!data.user||!ownerUid||data.user.id!==ownerUid)throw Error('Iniciá sesión con la cuenta dueña autorizada.');
-  return true;
+  if(!authorized())throw Error('No se pudo verificar tu permiso en este local.');
+  const db=window.GestLokSupabase;
+  const {data:identity,error:authError}=await db.auth.getUser();
+  if(authError||!identity?.user?.id)throw Error('Tu sesión necesita volver a iniciarse.');
+  const {data:plan,error:planError}=await db.from('gestlok_pilot_access')
+    .select('enabled,owner_uid,plan_code').eq('tenant_id',TENANT).maybeSingle();
+  if(planError||plan?.enabled!==true||plan?.plan_code!=='scanner'||plan?.owner_uid!==ownerUid)
+    throw Error('El plan no está autorizado para esta empresa.');
+  if(accessMode==='dueno'&&identity.user.id===ownerUid)return true;
+  if(accessMode==='creadora'&&TENANT===CREATOR_TENANT&&
+     identity.user.id!==ownerUid&&api?.role?.()==='creadora'&&api?.isCreadora?.()===true){
+    const {data:state,error}=await db.rpc('gestlok_creator_editing_state');
+    if(!error&&state?.active===true&&state?.permanent===true)return true;
+  }
+  throw Error('La identidad o los permisos no se pudieron validar.');
+ }
+ function authorized(){
+  return !!enabled&&!!ownerUid&&api?.S?.me?.tenant_id===TENANT&&
+    ((accessMode==='dueno'&&api?.role?.()==='dueno')||
+     (accessMode==='creadora'&&TENANT===CREATOR_TENANT&&api?.role?.()==='creadora'&&api?.isCreadora?.()===true));
  }
  async function load(){
   const epoch=accessEpoch;
@@ -107,7 +143,7 @@
  function sidebar(){
   return '<nav class="gl-pilot-nav" aria-label="Secciones de tu negocio"><div><span class="gl-pilot-group">Mi local</span>'+
    '<button type="button" data-pilot-tab="tablero" class="'+(active==='tablero'?'is-active':'')+'">Inicio</button>'+
-   '<button type="button" data-pilot-caja>Caja</button>'+
+   '<button type="button" data-pilot-caja>'+(accessMode==='creadora'?'Movimientos de caja':'Caja')+'</button>'+
    HOME_MODULES.map(id=>'<button type="button" data-pilot-tab="'+id+'" class="'+(active===id?'is-active':'')+'">'+esc(HOME_LABELS[id][0])+'</button>').join('')+'</div></nav>';
  }
  function dashboard(){
@@ -181,7 +217,7 @@
     '<div class="gl-pilot-main">'+sidebar()+'<main class="gl-pilot-content" id="gl-pilot-content">'+
     (error?'<p class="gl-pilot-error" role="alert">'+esc(error)+'</p>':'')+
     (loading?'<p role="status">Consultando registros privados…</p>':current())+'</main></div>'+
-    '<footer class="gl-pilot-footer">Plan Scanner privado: las ventas solo se registran cuando el dueño tiene habilitada la operación. No modifica datos de Mi Gusto ni de otras empresas.</footer></div>';
+    '<footer class="gl-pilot-footer">Plan Scanner privado: las ventas requieren un plan habilitado y un usuario autorizado. Los datos permanecen separados por empresa.</footer></div>';
   document.body.classList.add('gl-pilot-open');
   if(active==='dispositivos')window.GestLokPosDevices?.mountSettings?.(root.querySelector('#gl-pilot-content'),TENANT);
  }
@@ -194,6 +230,12 @@
   finally{loading=false;render();}
  }
  async function openOrders(){return;}
+ async function openCreatorMovements(){
+  if(!authorized()||accessMode!=='creadora')return;
+  if(!displayed)await open();
+  if(!displayed)return;
+  active='finanzas';editing='';error='';render();
+ }
  const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','payment-split.js','checkout-client.js','pos-devices.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
@@ -336,7 +378,14 @@
  document.addEventListener('click',e=>{
   if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close(false);return;}
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
-  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();if(displayed)close(false);const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
+  if(e.target.closest('[data-pilot-caja]')){
+   e.preventDefault();
+   if(accessMode==='creadora'){void openCreatorMovements();return;}
+   if(displayed)close(false);
+   const opened=window.GestLokCajaDiaria?.openApp?.();
+   if(!opened)api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);
+   return;
+  }
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-devices]')){e.preventDefault();void switchSection('dispositivos');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
@@ -368,6 +417,9 @@
  window.addEventListener?.('popstate',()=>{if(displayed&&!window.history?.state?.glPilot)close(false);});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&displayed){close();document.body.classList.remove('gl-pilot-open');}});
  window.GestLokPilot=Object.freeze({refresh,homeTile,open,openOrders,reset,
-  authorized:()=>!!enabled&&ownerUid!==''&&api?.S?.me?.tenant_id===TENANT&&api?.role?.()==='dueno',
+  authorized,
+  creatorMode:()=>authorized()&&accessMode==='creadora',
+  accessChecked:()=>verified&&!checking,
+  ownerUid:()=>authorized()?ownerUid:'',
   tenantId:()=>TENANT,scanner:()=>enabled&&api?.role?.()==='dueno'&&api?.S?.me?.tenant_id===TENANT,switchSection,rerender:render,modules:MODULES.map(([id])=>id)});
 })();

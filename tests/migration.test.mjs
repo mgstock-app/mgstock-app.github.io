@@ -32,6 +32,10 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // El visor Scanner recibe la identidad verificada; restaurar argumento para el SHA base.
+      const creatorHook = 'window.GestLokOwnerAreas?.attach({S,role:miRol,isCreadora,render:';
+      assert.equal(content.split(creatorHook).length - 1, 1, 'Un único hook de creadora verificada');
+      content = content.replace(creatorHook, 'window.GestLokOwnerAreas?.attach({S,role:miRol,render:');
       // Restituir únicamente el comportamiento previo de continuación de local
       // para mantener la huella histórica inalterada. No modifica permisos.
       for (const {actual,original} of JSON.parse(read('tests/creator-access-hooks.json')).hooks){

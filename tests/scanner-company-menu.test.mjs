@@ -9,9 +9,9 @@ const owner=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
 const runtime=readFileSync('components/stock-runtime.tsx','utf8');
 const sw=readFileSync('scripts/sw-template.js','utf8');
 const CAMI='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
-function setup(authorized=true){
+function setup(authorized=true,checked=false){
   const window={
-    GestLokPilot:{authorized:()=>authorized},
+    GestLokPilot:{authorized:()=>authorized,creatorMode:()=>authorized,accessChecked:()=>checked},
     GestLokZayroAdmin:{homeTile:()=>'<section>Tienda Online · ZAYRO · ADMINISTRAR</section>'},
     GestLokMisProductos:{homeTile:()=>'<section>Mis Productos</section>'},
     GestLokCamiMonthly:{homeTile:()=>'<section>Resumen Mensual</section>'}
@@ -54,16 +54,22 @@ test('Dueña autenticada y autorizada ve únicamente Plan Scanner y ZAYRO',()=>{
     assert.equal(nav.includes(forbidden),false,forbidden);
   }
 });
-test('Vista de creadora replica Plan Scanner sin entregar botones de edición',()=>{
-  const menu=setup(false),h=host(CAMI,'creadora',true),html=menu.home(ctx(CAMI),h),nav=menu.navHTML(h);
+test('Creadora verificada puede operar Scanner; no hereda funciones de Mi Gusto',()=>{
+  const menu=setup(true),h=host(CAMI,'creadora',true),html=menu.home(ctx(CAMI),h),nav=menu.navHTML(h);
   assert.match(html,/ZAYRO/);
-  assert.match(html,/Vista de creadora/);
-  assert.match(html,/data-scanner-card="ventas" disabled/);
+  assert.match(html,/Administración general · Acceso verificado/);
+  assert.match(html,/data-scanner-card="ventas" data-pilot-pos/);
   assert.match(nav,/data-scanner-section="ventas"/);
-  assert.match(nav,/disabled/);
-  assert.doesNotMatch(html,/data-pilot-pos/);
+  assert.doesNotMatch(html,/disabled|Solo lectura/);
+  assert.match(nav,/data-pilot-stock/);
   assert.doesNotMatch(nav,/data-zayro-open/);
   assert.doesNotMatch(html,/Administrar a los empleados/);
+});
+test('Creadora no verificada no recibe controles de Scanner',()=>{
+  const menu=setup(false),h=host(CAMI,'creadora',true),html=menu.home(ctx(CAMI),h),nav=menu.navHTML(h);
+  assert.match(html,/Comprobando el acceso/);
+  assert.doesNotMatch(html,/data-pilot-pos/);
+  assert.doesNotMatch(nav,/data-pilot-stock/);
 });
 test('No muestra acciones sin un plan verificado; ningún tenant ajeno recibe la microapp',()=>{
   const menu=setup(false),h=host();
@@ -79,4 +85,21 @@ test('Antes de elegir local se conserva el selector autorizado y no se abre Caja
  assert.match(html,/data-act="local"/);
  assert.doesNotMatch(html,/data-pilot-pos/);
  assert.doesNotMatch(html,/data-pilot-caja/);
+});
+
+test('Un acceso denegado muestra explicación visible, nunca controles ni espera infinita',()=>{
+  const menu=setup(false,true),h=host(CAMI,'creadora',true);
+  assert.match(menu.home(ctx(CAMI),h),/no tiene autorizado/);
+  assert.match(menu.navHTML(h),/Consultá soporte/);
+  assert.doesNotMatch(menu.navHTML(h),/data-pilot-pos|data-pilot-stock|data-zayro-open/);
+});
+
+test('Un indicador visual isOwner no convierte a la dueña ni al gerente en creadora',()=>{
+ const menu=setup(true);
+ const owner=host();owner.S.me.isOwner=true;
+ assert.match(menu.navHTML(owner),/data-pilot-pos/);
+ assert.match(menu.navHTML(owner),/data-zayro-open/);
+ const gerente=host(CAMI,'gerente',true);gerente.S.me.isOwner=true;
+ assert.equal(menu.navHTML(gerente),'');
+ assert.match(menu.home(ctx(CAMI),gerente),/No hay acceso autorizado/);
 });
