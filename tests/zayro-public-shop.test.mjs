@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 
 const sql=readFileSync("supabase/migrations/20261108173000_zayro_public_shop.sql","utf8");
 const js=readFileSync("public/stock/gestlok-zayro-admin.js","utf8");
-const page=readFileSync("app/zayro/page.tsx","utf8");
+const page=readFileSync("app/zayro/zayro-store-client.tsx","utf8");
+const shell=readFileSync("app/zayro/page.tsx","utf8");
 
 test("ZAYRO conserva exclusividad de empresa y Dueña",()=>{
   assert.match(sql,/gestlok_zayro_is_owner/);
@@ -57,4 +58,10 @@ test("El script y sus enlaces se cargan solo para usuarios autenticados",()=>{
   assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-zayro-admin\.js/);
   assert.match(owner,/GestLokZayroAdmin\?\.homeTile\?\.\(api\)/);
   assert.match(page,/className="zayro"/);
+});
+
+test("El render de la vidriera se inicia en el navegador sin provocar hidratación de HTML variable",()=>{
+  assert.ok(shell.includes('dynamic(() => import("./zayro-store-client")'));
+  assert.ok(shell.includes("ssr: false"));
+  assert.ok(shell.includes("Preparando la tienda ZAYRO"));
 });
