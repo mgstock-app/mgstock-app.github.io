@@ -23,7 +23,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-commerce.js",
     "/stock/gestlok-owner-areas.js?rev=menu-empresa-20261108",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=menu-empresa-20261108",
+    "/stock/app.js?rev=creadora-acceso-empresas-20261108",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
@@ -90,7 +90,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
       await load("/stock/gestlok-owner-areas.js?rev=menu-empresa-20261108");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
-      await load("/stock/gestlok-creator-support.js?rev=molino-acceso-directo-20261108");
+      await load("/stock/gestlok-creator-support.js?rev=creadora-acceso-empresas-20261108");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
@@ -106,7 +106,7 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=menu-empresa-20261108");
+      await load("/stock/app.js?rev=creadora-acceso-empresas-20261108");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=menu-empresa-20261108");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-empresa-20261108");
