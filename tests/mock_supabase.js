@@ -311,7 +311,25 @@
       }
       if (fn === 'gestlok_my_registration'){
         const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
-        return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending'}:null,error:null};
+        return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending',business_name:row.data.empresa||'',responsible_name:row.data.responsable||'',contact_phone:row.data.telefono||'',business_address:row.data.direccion||''}:null,error:null};
+      }
+      if (fn === 'gestlok_request_business_registration'){
+        if(window.__registrationFail)return {data:null,error:{message:'Sin conexión'}};
+        if(!session||a)return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        const modules=args?.p_modules;
+        const name=String(args?.p_business_name||'').trim();
+        const responsible=String(args?.p_responsible_name||'').trim();
+        const phone=String(args?.p_contact_phone||'').trim();
+        const address=String(args?.p_business_address||'').trim();
+        if(!Array.isArray(modules)||!modules.length||modules.some(m=>!['comercial','recibos_personal'].includes(m))||
+           name.length<2||responsible.length<3||phone.replace(/\\D/g,'').length<10)
+          return {data:null,error:{code:'22023',message:'Datos comerciales incompletos'}};
+        let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        if(!row){row={col:'registration_requests',id:me(),data:{email:me(),fecha:Date.now()}};rows.push(row);}
+        row.data={...row.data,tipoCuenta:'dueno',modulosSolicitados:[...modules].sort(),
+          empresa:name,responsable:responsible,telefono:phone,direccion:address,status:'pending'};
+        notify('solicitudes');
+        return {data:{kind:'dueno',modules:row.data.modulosSolicitados,status:'pending'},error:null};
       }
       if (fn === 'gestlok_request_registration'){
         if(window.__registrationFail)return {data:null,error:{message:'Sin conexión'}};
