@@ -18,7 +18,7 @@ test('El Molino sólo otorga a la creadora preparación comercial sin dueño fic
  assert.match(migration,/Acassuso','San Isidro/);
  assert.doesNotMatch(migration,/rol','dueno'|insert into (?:gestlok_platform\.company_modules|public\.rm_app_local|public\.rm_test_members)/i);
  assert.doesNotMatch(migration,/\b(?:delete from|truncate|drop table|update public\.docs)\b/i);
- assert.match(runtime,/gestlok-owner-areas\.js\?rev=molino-roles-20261107/);
+ assert.match(runtime,/gestlok-owner-areas\.js\?rev=molino-inicio-20261108/);
  assert.match(runtime,/gestlok-creator-support\.js\?rev=molino-acceso-directo-20261108/);
 });
 
@@ -33,9 +33,9 @@ test('La creadora sólo ve Administración de tienda en El Molino; Empleados per
  api.attach({role:()=> 'creadora',S:{loaded:{e:true},me:{tenant_id:TENANT,email:'kmu15lopez@gmail.com'},equipo:[]},render(){}});
  await api.refresh();
  const html=api.view([{id:'acassuso'},{id:'san-isidro'}],()=> '');
- assert.match(html,/Administrar <span>mi tienda<\/span>/);
+ assert.doesNotMatch(html,/Administrar <span>mi tienda<\/span>/);
  assert.doesNotMatch(html,/gl-owner-employees-locked|data-owner-area-staff|a los empleados/);
- assert.match(html,/Productos y stock|Proveedores y pedidos/);
+ assert.match(html,/El Molino Café/);
 });
 
 test('El diseño comercial de Mi Gusto y otras empresas se conserva',async()=>{
