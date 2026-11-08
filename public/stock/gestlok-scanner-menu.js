@@ -6,7 +6,8 @@
   const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
   const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const isCompany=host=>host?.S?.me?.tenant_id===TENANT;
-  const isCreator=host=>host?.isCreadora?.()===true || host?.role?.()==='creadora' || host?.S?.me?.isOwner===true;
+  // Nunca deducir privilegios por isOwner: es una marca de UI, no una prueba de creadora.
+  const isCreator=host=>host?.role?.()==='creadora'&&host?.isCreadora?.()===true;
   const ownerReady=host=>isCompany(host)&&!isCreator(host)&&host?.role?.()==='dueno'&&
     window.GestLokPilot?.authorized?.()===true;
   const creatorReady=host=>isCompany(host)&&isCreator(host)&&host?.role?.()==='creadora'&&
