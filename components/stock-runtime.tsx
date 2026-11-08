@@ -32,7 +32,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
-    "/stock/gestlok-molino.js?rev=molino-live-20261107",
+    "/stock/gestlok-molino.js?rev=molino-acassuso-readonly-20261108",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
