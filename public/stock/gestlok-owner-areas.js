@@ -236,6 +236,12 @@
     shown={locals:locals||[],card:card||(()=>'')};
     if(state.status==='loading')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="status">Comprobando tus áreas autorizadas…</p></section>';
     if(state.status==='error')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="alert">No pudimos verificar tus permisos. Revisá la conexión.</p><button class="btn" data-owner-area-retry>Reintentar</button></section>';
+    // La perfumería tiene una microapp propia. No heredar carpetas ni
+    // Administración de empleados de empresas comerciales generales.
+    // Mantener el Inicio/selector de locales existente; usar panel exclusivo Scanner
+    // recién después de abrir una sucursal autorizada.
+    const scannerHome=api?.S?.local?window.GestLokScannerMenu?.home?.(state.data,api,shown):null;
+    if(scannerHome!==null&&scannerHome!==undefined)return scannerHome;
     const commerce=allowed('comercial'),staff=allowed('recibos_personal')&&!isSoloOwner();
     // El Molino es una empresa en preparación comercial. No mostrar tarjetas
     // de RR.HH. mientras la creadora define las necesidades del cliente.
