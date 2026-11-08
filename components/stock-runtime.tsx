@@ -23,10 +23,10 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-commerce.js",
     "/stock/gestlok-owner-areas.js?rev=molino-inicio-20261108",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=business-onboarding-20261108",
+    "/stock/app.js?rev=microapps-onboarding-20261108",
   ];
   const privateScripts = [
-    "/stock/gestlok-registration.js?rev=business-onboarding-20261108",
+    "/stock/gestlok-registration.js?rev=microapps-onboarding-20261108",
     "/stock/auth.js?rev=business-onboarding-20261108",
     "/stock/gestlok-logout.js?rev=logout-profile-menu-20261107",
     "/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107",
@@ -58,7 +58,7 @@ export function StockRuntime() {
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
-      if (!visitor) await load("/stock/gestlok-registration.js?rev=business-onboarding-20261108");
+      if (!visitor) await load("/stock/gestlok-registration.js?rev=microapps-onboarding-20261108");
       if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
       await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=business-onboarding-20261108");
       // Perfil seguro: salida dentro de Mi perfil, también accesible para cuentas pendientes.
@@ -102,7 +102,7 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=business-onboarding-20261108");
+      await load("/stock/app.js?rev=microapps-onboarding-20261108");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=whatsapp-alerta-turno-20261106");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-whatsapp-prioritario-20261106");
