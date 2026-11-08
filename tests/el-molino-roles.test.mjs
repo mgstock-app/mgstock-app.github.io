@@ -31,7 +31,7 @@ test('El gerente de El Molino ve la tienda sin Empleados',()=>{
    S:{me:{tenant_id:TENANT},local:'acassuso',localesDB:[{id:'acassuso',nombre:'Acassuso'}],equipo:[]},
    render(){}});
  const html=api.gerenteHome();
- assert.match(html,/Administrar <span>mi tienda<\/span>/);
+ assert.doesNotMatch(html,/Administrar <span>mi tienda<\/span>/);
  assert.doesNotMatch(html,/a los empleados|data-gerente-empleados|gl-owner-employees-locked/);
  assert.equal(api.gerenteCard(),'');
 });
