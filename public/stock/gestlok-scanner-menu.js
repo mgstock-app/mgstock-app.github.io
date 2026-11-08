@@ -32,7 +32,9 @@
   function navHTML(host){
     if(!isCompany(host)||!['dueno','creadora'].includes(host?.role?.())&&!isCreator(host))return '';
     loadStyle();
-    if(!viewing(host))return '<div class="gl-scanner-menu-wait" role="status">Verificando Plan Scanner…</div>';
+    if(!viewing(host))return window.GestLokPilot?.accessChecked?.()===true
+      ? '<div class="gl-scanner-menu-wait" role="alert">Plan Scanner no habilitado para este acceso. Consultá soporte.</div>'
+      : '<div class="gl-scanner-menu-wait" role="status">Verificando Plan Scanner…</div>';
     return actions.map(([label,key,attr])=>
       '<button type="button" '+attr+
       ' class="gl-scanner-nav" data-scanner-section="'+key+'"><span class="nl">'+escape(displayLabel(label,key,host))+'</span></button>'
@@ -58,7 +60,9 @@
     const creator=isCreator(host);
     if(!viewing(host)){
       return '<section class="gl-scanner-private-home"><h1>Plan Scanner</h1>'+
-        '<p role="status">Comprobando el acceso al Plan Scanner. No se mostrarán categorías de otras microapps.</p></section>';
+        (window.GestLokPilot?.accessChecked?.()===true
+          ?'<p role="alert">Este acceso no tiene autorizado el Plan Scanner. Consultá soporte.</p>'
+          :'<p role="status">Comprobando el acceso al Plan Scanner. No se mostrarán categorías de otras microapps.</p>')+'</section>';
     }
     const cards=actions.map(([label,key,attr])=>
       '<button type="button" class="gl-scanner-private-card" data-scanner-card="'+key+'" '+attr+
