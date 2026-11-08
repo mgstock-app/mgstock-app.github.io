@@ -44,3 +44,12 @@ Lint, pruebas, build y Cypress con mocks; después probar cuentas reales de dos 
 - Los accesos existentes con Google, los registros de colaboradores, las empresas activas y el catálogo de cada local se mantienen sin cambios.
 - Implementación en la rama: migración `20261108150000_gestlok_business_signup_profiles.sql`, cliente `gestlok-registration.js`, pantalla de ingreso `auth.js`, panel `app.js` y pruebas de registro.
 - **Despliegue:** aplicar y verificar la migración **antes** de publicar los archivos cliente. Revalidar con cuentas nuevas de dueño, colaborador y creadora. No desplegar si hay errores en Cypress o falta confirmar el vínculo con Google mediante correo verificado.
+
+## Catálogo de microapps y demos (08/11/2026)
+- El alta de dueños permite elegir **una o varias microapps**: Plan Scanner, Stock y proveedores, Precios y márgenes, Caja y pagos online, Control de vencimientos, Personal y recibos, Pedidos y clientes.
+- Cada tarjeta tiene una demo **interactiva, aislada y ficticia** con dos acciones. No toca ventas, caja, productos, WhatsApp ni bases reales. No es una promesa de que todas las integraciones estén ya activas.
+- El cliente puede combinar varias microapps bajo la misma empresa y escribir qué necesita personalizar (hasta 600 caracteres). Se aclara que la elección solicita configuración, pero **no crea cargos, licencias ni permisos**.
+- Los módulos amplios `comercial` y `recibos_personal` se deducen automáticamente de la combinación; no se pregunta dos veces.
+- El servidor valida una lista cerrada y coherente con esos módulos mediante la función autenticada `gestlok_request_business_registration_v2`. Los nuevos campos quedan en `gestlok_platform.registration_requests` y solo la creadora los ve en la ficha de la solicitud (microapps elegidas y nota de personalización).
+- Migración adicional `20261108160000_gestlok_microapp_catalog_requests.sql`: ejecutar después de `20261108150000_gestlok_business_signup_profiles.sql`, **antes del frontend**. Conserva las RPC anteriores para compatibilidad con caché.
+- El ingreso de colaboradores, las empresas ya existentes y las asignaciones reales de módulos no cambian. Pruebas: `tests/registration-modules.test.mjs`, `qa/cypress/e2e/registro-modulos.cy.js`.
