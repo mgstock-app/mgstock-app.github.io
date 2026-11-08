@@ -48,7 +48,7 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.get('#hub .gl-owner-landing').should('be.visible');
   cy.get('#app').should('not.be.visible');
   cy.get('#hub .gl-owner-business').should('contain.text','Administrar mi empresa');
-  cy.get('#hub .gl-owner-quick .gl-owner-tile').should('have.length',4);
+  cy.get('#hub .gl-owner-quick').should('not.exist');
   cy.get('#hub .gl-owner-employees-locked').should('exist').and('contain.text','Sin habilitar');
   cy.get('#hub [data-owner-area-staff]').should('not.exist');
   cy.get('#hub .gl-owner-business .gl-owner-arrow').click();

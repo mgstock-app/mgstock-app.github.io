@@ -46,33 +46,34 @@ describe('GestLok · Soporte WhatsApp',()=>{
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should('include','5491144715168');
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
       const decoded=decodeURIComponent(url);
-      expect(decoded).to.include('local Munro');
-      expect(decoded).to.include('sector de Inicio');
+      // Plantilla aprobada: «Hola, soy de <empresa> - <local>. Necesito soporte en <sector>.»
+      expect(decoded).to.include(' - Munro.');
+      expect(decoded).to.include('Necesito soporte en Inicio');
     });
     cy.get('[data-act="menu-open"]').click();
     cy.get('#snav [data-go="stock"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
-      expect(decodeURIComponent(url)).to.include('sector de Stock');
+      expect(decodeURIComponent(url)).to.include('Necesito soporte en Stock');
     });
     cy.get('[data-act="menu-open"]').click();
     cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
-      expect(decodeURIComponent(url)).to.include('sector de Proveedores');
+      expect(decodeURIComponent(url)).to.include('Necesito soporte en Proveedores');
     });
     cy.get('#gl-support-form').should('not.exist');
   });
-  it('Creadora edita el WhatsApp desde su panel sin enviar mensajes',()=>{
+  it('El número de soporte es fijo y el botón flotante también está en el panel de la creadora',()=>{
     launch();login('kmu15lopez@gmail.com');
     fakeSupport();
-    cy.get('#gl-support-form').should('be.visible');
-    cy.get('#gl-support-phone').clear().type('+54 9 11 5555 1234');
-    cy.get('#gl-support-form button[type="submit"]').click();
-    cy.get('#gl-support-current').should('contain.text','5491155551234');
-    cy.window().its('__fakeSupport').should(state=>{
-      expect(state.phone).to.eq('5491155551234');
-      expect(state.calls).to.have.length(1);
+    cy.get('#gl-soporte-whatsapp').should('be.visible')
+      .invoke('attr','href').should('include','wa.me/5491144715168');
+    cy.window().then(w=>w.GestLokSupport.adminCard()).then(html=>{
+      if(!html)return;
+      expect(html).to.include('5491144715168');
     });
-    cy.get('#gl-soporte-whatsapp').should('not.exist');
+    cy.window().its('__fakeSupport').should(state=>{
+      expect(state.calls).to.have.length(0);
+    });
   });
   it('Aparece también para colaborador de Solo ver',()=>{
     launch();login('lectura@example.com');

@@ -15,7 +15,11 @@
     chat:'<path d="M4 4h16v13H8l-4 3zM8 9h8M8 13h5"/>',
     stock:'<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 14h8"/>',
     payment:'<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h5"/>',
-    more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'
+    more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    tag:'<path d="M20 12 12 20 4 12V4h8z"/><circle cx="8.5" cy="8.5" r="1.5"/>',
+    truck:'<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
+    back:'<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+    history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
   };
   const icon=k=>'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+glyphs[k]+'</svg>';
   const dock=document.createElement('nav');
@@ -39,6 +43,8 @@
   const pagos=()=>localNav('cierre-online');
   const pedidos=()=>localNav('pedidos-clientes');
   const pedidosPendientes=()=>Number(window.GestLokMiGustoOrders?.pendingCount?.()||0);
+  // El Molino Café: solo su microapp «Vínculo entre sucursales» (botones reales del menú del local).
+  const molinoNav=k=>visible()?app.querySelector('#snav button[data-mol-nav="'+k+'"]'):null;
   let last='',open=false,lastSnap='';
   // Administración de empleados (misma dirección) muestra este mismo menú: barra de abajo en el celular y menú
   // del local en la PC. Se guardan solo nombres y secciones visibles; al volver, GESTLOK comprueba los permisos.
@@ -101,6 +107,18 @@
   const read=()=>{
     if(window.GestLokPilot?.scanner?.())return [['home','Inicio','home',true],['scanner-caja','Caja','payment',true],['scanner-pos','Sistema de ventas','shop',true],['scanner-stock','Stock','stock',true],['scanner-prices','Precios','payment',true]];
     const inLocal=visible();
+    if(inLocal&&molinoNav('precios')){
+      const creator=!!window.GestLokNavContext?.()?.creator;
+      return [
+        ['locales','Locales','shop',creator],
+        ['home','Inicio','home',true],
+        ['mol-precios','Precios','tag',true],
+        ['mol-envios','Enviados','truck',true],
+        ['mol-devoluciones','Devoluciones','back',!creator],
+        ['mol-historial','Historial','history',!creator],
+        ['more','Más','more',creator]
+      ].filter(t=>t[3]);
+    }
     // Mi Gusto: las dos herramientas principales del turno quedan juntas
     // en el menú inferior. Sin cambios en el Plan Scanner ni en otras empresas.
     if(inLocal&&pagos()&&pedidos())return [
@@ -146,6 +164,7 @@
       if(selector)document.querySelector(selector)?.click();
       return;
     }
+    if(k.startsWith('mol-')){molinoNav(k.slice(4))?.click();return;}
     if(k==='locales'){
       window.GestLokCreatorHome?.setTab?.('locales');
       if(visible())app.querySelector('[data-act="locales"]')?.click();
@@ -180,8 +199,9 @@
       ['avisos','Avisos'],
       ['vencimientos','Vencimientos']
     ].filter(([k])=>k==='home'||(k==='business'&&business())||(k==='staff'&&staff())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
+    const molinoExtra=visible()?[...app.querySelectorAll('#snav button[data-mol-nav]')].filter(b=>!dock.querySelector('[data-dock="mol-'+b.dataset.molNav+'"]')):[];
     const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','pedidos-clientes','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
-    sheet.innerHTML='<button type="button" class="gl-mobile-sheet__scrim" data-close-sheet aria-label="Cerrar más opciones"></button><section class="gl-mobile-sheet__panel" role="dialog" aria-modal="true" aria-label="Más opciones de GESTLOK"><header><strong>Más opciones</strong><button type="button" data-close-sheet aria-label="Cerrar">×</button></header><div class="gl-mobile-sheet__links">'+entries.map(([k,t])=>'<button type="button" data-sheet-action="'+k+'">'+t+'</button>').join('')+extra.map(b=>'<button type="button" data-sheet-go="'+String(b.dataset.go).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">'+(b.querySelector('.nl')?.textContent||b.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+'</div></section>';
+    sheet.innerHTML='<button type="button" class="gl-mobile-sheet__scrim" data-close-sheet aria-label="Cerrar más opciones"></button><section class="gl-mobile-sheet__panel" role="dialog" aria-modal="true" aria-label="Más opciones de GESTLOK"><header><strong>Más opciones</strong><button type="button" data-close-sheet aria-label="Cerrar">×</button></header><div class="gl-mobile-sheet__links">'+entries.map(([k,t])=>'<button type="button" data-sheet-action="'+k+'">'+t+'</button>').join('')+molinoExtra.map(b=>'<button type="button" data-sheet-action="mol-'+String(b.dataset.molNav).replace(/[^a-z]/g,'')+'">'+(b.querySelector('.nl')?.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+extra.map(b=>'<button type="button" data-sheet-go="'+String(b.dataset.go).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">'+(b.querySelector('.nl')?.textContent||b.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+'</div></section>';
     sheet.hidden=false;open=true;
     dock.querySelector('[data-dock="more"]')?.setAttribute('aria-expanded','true');
     sheet.querySelector('.gl-mobile-sheet__panel button')?.focus();

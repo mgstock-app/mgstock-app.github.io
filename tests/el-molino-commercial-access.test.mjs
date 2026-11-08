@@ -18,7 +18,7 @@ test('El Molino sólo otorga a la creadora preparación comercial sin dueño fic
  assert.match(migration,/Acassuso','San Isidro/);
  assert.doesNotMatch(migration,/rol','dueno'|insert into (?:gestlok_platform\.company_modules|public\.rm_app_local|public\.rm_test_members)/i);
  assert.doesNotMatch(migration,/\b(?:delete from|truncate|drop table|update public\.docs)\b/i);
- assert.match(runtime,/gestlok-owner-areas\.js\?rev=molino-inicio-20261108/);
+ assert.match(runtime,/gestlok-owner-areas\.js\?rev=menu-empresa-20261108/);
  assert.match(runtime,/gestlok-creator-support\.js\?rev=molino-acceso-directo-20261108/);
 });
 

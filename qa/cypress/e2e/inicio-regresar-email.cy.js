@@ -22,11 +22,12 @@ describe('Inicio compacto, «Regresar» y email recordado', () => {
     if (error.message.includes('Minified React error #418')) return false;
   });
 
-  it('en una PC de 1920×1080 se ven las tarjetas y los accesos generales sin desplazarse', () => {
+  it('en una PC de 1920×1080 se ven las tarjetas sin desplazarse y sin accesos generales', () => {
     cy.viewport(1920, 1080); launch(); login('dueno@example.com');
-    cy.get('#hub .gl-owner-quick').should('be.visible').then($q => {
+    cy.get('#hub .gl-owner-areas').should('be.visible').then($q => {
       expect($q[0].getBoundingClientRect().bottom).to.be.at.most(1080);
     });
+    cy.get('#hub .gl-owner-quick').should('not.exist');
   });
 
   it('desde una tarjeta, «Regresar» vuelve al inicio de tarjetas', () => {

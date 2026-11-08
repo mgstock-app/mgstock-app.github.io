@@ -28,7 +28,8 @@ describe('GestLok: tienda física, online y mixta',()=>{
   it('la dueña configura online y puede gestionar pedidos, sin mezclarlos entre locales',()=>{
     launch();
     login('dueno@example.com');
-    cy.get('.gl-owner-tile[data-owner-nav="settings"]').click();
+    cy.get('.gl-oh-user').click();
+    cy.get('.gl-oh-menu [data-owner-nav="settings"]').click();
     cy.get('#pn .gl-commerce-choice[data-commerce-mode="fisica"]').should('exist');
     cy.get('#pn [data-act="close"]').click();
     openLocal('munro');
