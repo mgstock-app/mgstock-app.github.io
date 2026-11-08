@@ -18,6 +18,7 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
       cy.get('#gl-signup-address').type('Local de prueba');
       const email=`dueno-${choice}@example.invalid`;
       cy.get('#au-email2').type(email);cy.get('#au-pass2').type('secreto1',{log:false});cy.get('#au-pass3').type('secreto1',{log:false});
+      cy.get('#au-up [name="terms"]').check();
       cy.get('#au-up button[type="submit"]').click();
       cy.window().its('__signup.options.data.gestlok_registration').should('deep.equal',{kind:'dueno',choice});
       login(email);
@@ -52,7 +53,7 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
     login('kmu15lopez@gmail.com');
     cy.contains('button','Revisar solicitudes').click();
     cy.get('#pn').should('contain.text','Administración de empleados').and('contain.text','Alta independiente');
-    cy.get('#pn .gl-business-registration-card').should('contain.text','Cafetería Futuro').click();
+    cy.get('#pn .gl-business-registration-card summary').should('contain.text','Cafetería Futuro').click();
     cy.get('#pn .gl-business-registration-card').should('contain.text','María Responsable')
       .and('contain.text','1234-5678');
     cy.get('#pn .sol [data-act="sol-ok"]').should('not.exist');
