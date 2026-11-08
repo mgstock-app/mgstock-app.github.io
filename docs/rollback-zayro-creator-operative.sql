@@ -97,7 +97,7 @@ begin
  new.items:=normalized;
  new.updated_at:=now();
  return new;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.gestlok_pilot_record_audit()
@@ -123,7 +123,7 @@ begin
    auth.uid());
  if tg_op='DELETE' then return old;end if;
  return new;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.gestlok_pos_checkout(p_tenant uuid, p_request uuid, p_payment text, p_lines jsonb)
@@ -242,7 +242,7 @@ begin
     v_total, v_canonical, v_details
   ) returning id into v_existing;
   return v_existing;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.gestlok_pos_checkout_split(p_tenant uuid, p_request uuid, p_payments jsonb, p_lines jsonb)
@@ -400,7 +400,7 @@ begin
     v_total, v_canonical, v_details
   ) returning id into v_existing;
   return v_existing;
-end; $function$
+end; $function$;
 
 
 CREATE OR REPLACE FUNCTION public.gestlok_scanner_pos_resumen(p_tenant uuid, p_day date)
@@ -445,5 +445,5 @@ begin
   'efectivo',coalesce((v_methods->>'efectivo')::numeric,0),
   'transferencia',coalesce((v_methods->>'transferencia')::numeric,0),
   'methods',v_methods,'source','scanner_pos','synced_to_caja',false);
-end $function$
+end $function$;
 
