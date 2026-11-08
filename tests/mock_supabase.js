@@ -397,9 +397,39 @@
         if(window.__creatorEditing)(window.__audit=window.__audit||[]).unshift({at:new Date().toISOString(),action:'editing_disabled',tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',detail:{}});
         window.__creatorEditing=false;return {data:{active:false,expires_at:null},error:null};
       }
+      if (fn === 'gestlok_molino_orders_state' || fn === 'gestlok_molino_order_create' || fn === 'gestlok_molino_order_ack'){
+        if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)
+          return {data:null,error:{code:'42501',message:'Sin autorización'}};
+        const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':
+          (window.__molinoBranchOverride==='acassuso'?'acassuso':'san_isidro');
+        const canCreate=['admin','dueno','acassuso'].includes(scope);
+        const canAck=['admin','dueno','san_isidro'].includes(scope);
+        const orders=window.__molinoOrders||(window.__molinoOrders=[]);
+        if(fn==='gestlok_molino_orders_state')
+          return {data:{scope,origin:'acassuso',destination:'san_isidro',can_create:canCreate,can_ack:canAck,
+            orders:orders.slice()},error:null};
+        if(fn==='gestlok_molino_order_create'){
+          if(!canCreate)return {data:null,error:{code:'42501',message:'Solo Acassuso realiza pedidos'}};
+          const lines=args?.p_items;
+          if(!Array.isArray(lines)||!lines.length||lines.length>40)
+            return {data:null,error:{code:'22023',message:'Pedido inválido'}};
+          const request='mock-pedido-'+Date.now();
+          lines.forEach((p,i)=>orders.unshift({
+            id:request+'-'+i,request_id:request,day:new Date().toISOString().slice(0,10),
+            product:p.product,quantity:p.quantity,note:p.note||'',requested_at:new Date().toISOString(),
+            seen_at:null,seen_by:null
+          }));
+          return {data:{request_id:request,items:lines.length},error:null};
+        }
+        if(!canAck)return {data:null,error:{code:'42501',message:'Solo San Isidro marca OK'}};
+        const item=orders.find(x=>x.id===args?.p_id);
+        if(!item)return {data:null,error:{code:'42501',message:'Pedido inexistente'}};
+        item.seen_at=item.seen_at||new Date().toISOString();item.seen_by='mock-sanisidro';
+        return {data:{...item},error:null};
+      }
       if (fn === 'gestlok_molino_state' || fn === 'gestlok_molino_history'){
         if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)return {data:null,error:{code:'42501',message:'Sin autorización'}};
-        const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':'san_isidro';
+        const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':(window.__molinoBranchOverride==='acassuso'?'acassuso':'san_isidro');
         return {data:{scope,day:new Date().toISOString().slice(0,10),closed:false,prices:[],envios:[],devoluciones:[],history:[]},error:null};
       }
       if (fn === 'gestlok_creator_audit'){
