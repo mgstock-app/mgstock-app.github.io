@@ -93,3 +93,13 @@ test('Un acceso denegado muestra explicación visible, nunca controles ni espera
   assert.match(menu.navHTML(h),/Consultá soporte/);
   assert.doesNotMatch(menu.navHTML(h),/data-pilot-pos|data-pilot-stock|data-zayro-open/);
 });
+
+test('Un indicador visual isOwner no convierte a la dueña ni al gerente en creadora',()=>{
+ const menu=setup(true);
+ const owner=host();owner.S.me.isOwner=true;
+ assert.match(menu.navHTML(owner),/data-pilot-pos/);
+ assert.match(menu.navHTML(owner),/data-zayro-open/);
+ const gerente=host(CAMI,'gerente',true);gerente.S.me.isOwner=true;
+ assert.equal(menu.navHTML(gerente),'');
+ assert.match(menu.home(ctx(CAMI),gerente),/No hay acceso autorizado/);
+});
