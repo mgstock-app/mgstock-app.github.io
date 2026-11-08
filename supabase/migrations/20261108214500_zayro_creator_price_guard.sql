@@ -56,5 +56,4 @@ begin
     new.in_stock := (new.stock_quantity > 0);
   end if;
   return new;
-end $function$
-;
+end $function$;
