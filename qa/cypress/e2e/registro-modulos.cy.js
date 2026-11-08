@@ -12,6 +12,10 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
     it(`registra la opción ${choice}, la conserva al confirmar y espera autorización`,()=>{
       launch();cy.get('[data-au="up"]').click();
       cy.get('#gl-signup-kind').select('dueno');cy.get('#gl-signup-modules').should('be.visible').select(choice);
+      cy.get('#gl-signup-company').should('be.visible').type('Negocio de prueba '+choice);
+      cy.get('#gl-signup-responsible').type('Persona Responsable');
+      cy.get('#gl-signup-phone').type('+54 11 1234-5678');
+      cy.get('#gl-signup-address').type('Local de prueba');
       const email=`dueno-${choice}@example.invalid`;
       cy.get('#au-email2').type(email);cy.get('#au-pass2').type('secreto1',{log:false});cy.get('#au-pass3').type('secreto1',{log:false});
       cy.get('#au-up button[type="submit"]').click();
@@ -22,6 +26,9 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
       cy.window().its('__rows').should(rows=>{
         const row=rows.find(r=>r.col==='registration_requests'&&r.id===email);
         expect(row.data.tipoCuenta).to.eq('dueno');expect(row.data.modulosSolicitados).to.deep.eq(modules);
+        expect(row.data.empresa).to.eq('Negocio de prueba '+choice);
+        expect(row.data.responsable).to.eq('Persona Responsable');
+        expect(row.data.telefono).to.eq('+54 11 1234-5678');
         expect(rows.some(r=>r.col==='equipo'&&r.id===email)).to.eq(false);
       });
       cy.get('[data-mode="pend"]').should('be.visible');cy.get('#app').should('not.be.visible');
@@ -30,6 +37,9 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
   it('primer ingreso sin preferencia permite elegir y no muestra éxito si falla el guardado',()=>{
     launch();login('nuevo-google@example.invalid');
     cy.get('#gl-request-kind').should('be.enabled').select('dueno');cy.get('#gl-request-modules').select('ambas');
+    cy.get('#gl-request-company').type('Cafetería de prueba');
+    cy.get('#gl-request-responsible').type('Responsable de prueba');
+    cy.get('#gl-request-phone').type('+54 11 1234-5678');
     cy.window().then(w=>{w.__registrationFail=true;});
     cy.get('#gl-registration-request button[type="submit"]').click();
     cy.get('[data-registration-status]').should('contain.text','No se pudo guardar');
@@ -38,10 +48,13 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
     cy.get('[data-registration-status]').should('contain.text','Solicitud guardada');
   });
   it('el panel de creadora distingue dueños y evita aprobarlos como gerentes',()=>{
-    launch();cy.window().then(w=>w.__rows.push({col:'registration_requests',id:'futuro-dueno@example.invalid',data:{email:'futuro-dueno@example.invalid',tipoCuenta:'dueno',modulosSolicitados:['recibos_personal'],fecha:Date.now()}}));
+    launch();cy.window().then(w=>w.__rows.push({col:'registration_requests',id:'futuro-dueno@example.invalid',data:{email:'futuro-dueno@example.invalid',tipoCuenta:'dueno',modulosSolicitados:['recibos_personal'],empresa:'Cafetería Futuro',responsable:'María Responsable',telefono:'+54 11 1234-5678',direccion:'Acassuso',fecha:Date.now()}}));
     login('kmu15lopez@gmail.com');
     cy.contains('button','Revisar solicitudes').click();
     cy.get('#pn').should('contain.text','Administración de empleados').and('contain.text','Alta independiente');
+    cy.get('#pn .gl-business-registration-card').should('contain.text','Cafetería Futuro').click();
+    cy.get('#pn .gl-business-registration-card').should('contain.text','María Responsable')
+      .and('contain.text','1234-5678');
     cy.get('#pn .sol [data-act="sol-ok"]').should('not.exist');
     cy.get('#pn .sol [data-act="sol-no"]').click();
     cy.window().its('__rows').should(rows=>{
