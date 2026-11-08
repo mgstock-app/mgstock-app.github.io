@@ -10,7 +10,7 @@
   const isCreator=host=>host?.isCreadora?.()===true || host?.role?.()==='creadora' || host?.S?.me?.isOwner===true;
   const ownerReady=host=>isCompany(host)&&!isCreator(host)&&host?.role?.()==='dueno'&&
     window.GestLokPilot?.authorized?.()===true;
-  const viewing=host=>isCompany(host)&&(isCreator(host)||ownerReady(host));
+  const viewing=host=>isCompany(host)&&(isCreator(host)?window.GestLokPilot?.readonlyAuthorized?.()===true:ownerReady(host));
   const actions=Object.freeze([
     ['Caja','caja','data-pilot-caja','credit-card'],
     ['Sistema de ventas','ventas','data-pilot-pos','scan-line'],
@@ -33,7 +33,7 @@
     const preview=isCreator(host);
     if(!viewing(host))return '<div class="gl-scanner-menu-wait" role="status">Verificando Plan Scanner…</div>';
     return actions.map(([label,key,attr])=>
-      '<button type="button" '+(preview?'disabled title="Vista previa de creadora: solo lectura"':attr)+
+      '<button type="button" '+(preview?'data-scanner-readonly="'+key+'" title="Abrir consulta sin editar"':attr)+
       ' class="gl-scanner-nav" data-scanner-section="'+key+'"><span class="nl">'+escape(label)+'</span></button>'
     ).join('')+
     (preview?'<span class="gl-scanner-menu-preview">Vista de creadora · Solo lectura</span>':
@@ -62,7 +62,7 @@
     }
     const cards=actions.map(([label,key,attr])=>
       '<button type="button" class="gl-scanner-private-card" data-scanner-card="'+key+'" '+
-      (preview?'disabled title="Vista previa: edición restringida a cuentas autorizadas"':attr)+
+      (preview?'data-scanner-readonly="'+key+'" title="Consultar datos reales en solo lectura"':attr)+
       '><span class="gl-scanner-card-icon" aria-hidden="true">▣</span><b>'+escape(label)+
       '</b><span aria-hidden="true">↗</span></button>'
     ).join('');
@@ -84,6 +84,15 @@
       '</section>';
   }
   document.addEventListener('click',event=>{
+    const consult=event.target.closest?.('[data-scanner-readonly]');
+    if(consult){
+      event.preventDefault();
+      if(consult.disabled||window.GestLokPilot?.readonlyAuthorized?.()!==true)return;
+      const section={ventas:'sistema_venta',caja:'caja',stock:'stock',precios:'precios',
+        pedidos:'pedidos',dispositivos:'dispositivos'}[consult.dataset.scannerReadonly];
+      if(section)void window.GestLokPilot?.readonlySection?.(section);
+      return;
+    }
     const btn=event.target.closest?.('[data-scanner-menu-orders]');
     if(!btn||btn.disabled)return;
     event.preventDefault();
