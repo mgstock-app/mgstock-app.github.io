@@ -34,3 +34,13 @@ Stock reservado, movimientos auditados con transacciones, devoluciones, importac
 
 ## Testing
 Lint, pruebas, build y Cypress con mocks; después probar cuentas reales de dos empresas y roles Dueño/Gerente antes de ofrecer comercialmente el servicio. La etapa 12 integral final sigue separada.
+
+## Alta comercial inicial (propuesta 08/11/2026)
+- La pantalla de **Crear mi cuenta** conserva la elección Dueño/a o Colaborador/a. Solo Dueño/a ve el formulario inspirado en flujos de alta de comercios: nombre del negocio, nombre y apellido de responsable, teléfono, dirección/referencia opcional, email, contraseña y aceptación de términos.
+- El nombre y la dirección se escriben manualmente. No se usa Google Maps ni se comunica la información a servicios externos.
+- La solicitud no llega al panel hasta que la persona confirme su email y guarde los datos mediante una RPC autenticada. El servidor valida cada campo y toma el email de la identidad verificada, no de la petición.
+- La **creadora** recibe una ficha/carpeta por negocio en **Revisar solicitudes**, con empresa, responsable, teléfono, correo, dirección y módulos solicitados. Solo la creadora puede consultar esa información.
+- Esta carpeta representa una **solicitud pendiente**, no un tenant habilitado. El alta comercial en el sistema queda sujeta al procedimiento existente de **Preparar empresa nueva**; no se conceden permisos, locales ni accesos cruzados a empresas existentes.
+- Los accesos existentes con Google, los registros de colaboradores, las empresas activas y el catálogo de cada local se mantienen sin cambios.
+- Implementación en la rama: migración `20261108150000_gestlok_business_signup_profiles.sql`, cliente `gestlok-registration.js`, pantalla de ingreso `auth.js`, panel `app.js` y pruebas de registro.
+- **Despliegue:** aplicar y verificar la migración **antes** de publicar los archivos cliente. Revalidar con cuentas nuevas de dueño, colaborador y creadora. No desplegar si hay errores en Cypress o falta confirmar el vínculo con Google mediante correo verificado.
