@@ -71,5 +71,8 @@ test('Integración: activar hardware solo en Scanner y conservar ticket al refre
  assert.match(pos,/receiptButton\.hidden=false/);
  assert.match(pos,/GestLokPosDevices\?\.bindKeyboard/);
  assert.match(css,/\.gl-pos-device-grid/);
- assert.ok(runtime.includes('/stock/gestlok-pilot.js?rev=scanner-camera-premium-20261107'));
+ assert.ok(runtime.includes('/stock/gestlok-pilot.js?rev='),'La versión publicada incluye el piloto real');
+ assert.ok(runtime.includes('/stock/gestlok-scanner-readonly.js?rev='));
+ assert.ok(runtime.indexOf('await load("/stock/gestlok-scanner-readonly.js')<
+   runtime.indexOf('await load("/stock/gestlok-pilot.js'),'La consulta se carga antes del piloto');
 });
