@@ -61,6 +61,15 @@
     form.querySelector('.fld').before(fields('gl-signup'));
     form.querySelector('h1').textContent='Registrá tu negocio';
     form.querySelector('p').textContent='Completá los datos una sola vez. La administradora revisará el alta y después podrás ingresar con Google.';
+    for(const id of ['#au-pass2','#au-pass3']){
+      const input=form.querySelector(id);if(input)input.minLength=8;
+    }
+    const secret=form.querySelector('#au-pass3')?.closest('.fld');
+    if(secret&&!secret.querySelector('[data-registration-password-hint]')){
+      const hint=document.createElement('small');hint.dataset.registrationPasswordHint='';
+      hint.textContent='Usá al menos 8 caracteres. No compartas tu contraseña con la administradora.';
+      secret.append(hint);
+    }
     if(!form.querySelector('[data-registration-terms]')){
       const terms=document.createElement('label');
       terms.className='gl-registration-terms';terms.dataset.registrationTerms='';
