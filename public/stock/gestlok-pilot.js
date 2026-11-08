@@ -419,6 +419,7 @@
  window.GestLokPilot=Object.freeze({refresh,homeTile,open,openOrders,reset,
   authorized,
   creatorMode:()=>authorized()&&accessMode==='creadora',
+  accessChecked:()=>verified&&!checking,
   ownerUid:()=>authorized()?ownerUid:'',
   tenantId:()=>TENANT,scanner:()=>enabled&&api?.role?.()==='dueno'&&api?.S?.me?.tenant_id===TENANT,switchSection,rerender:render,modules:MODULES.map(([id])=>id)});
 })();
