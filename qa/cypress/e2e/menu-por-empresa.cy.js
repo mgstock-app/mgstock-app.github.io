@@ -98,4 +98,33 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#gl-edit-menu').should('exist');
     cy.get('#btn-ajustes').should('be.visible');
   });
+
+  it('Pedidos móvil: Acassuso prepara dos productos, San Isidro confirma cada uno por separado',()=>{
+    cy.viewport(390,844);
+    login('dueno@example.com',true);
+    cy.get('.gl-oh-top [data-owner-nav="menu"]',{timeout:15000}).click();
+    cy.get('#pn [data-owner-nav="business"]').click();
+    cy.get('#pn [data-act="local"][data-id="munro"]').first().click();
+    cy.get('#gestlok-mobile-dock [data-dock="mol-pedidos"]').should('be.visible').click();
+    cy.get('#gl-molino-panel').should('be.visible').and('contain.text','Pedidos · Acassuso');
+    cy.get('#gl-molino-panel [data-mol-order-mode="realizar"]').should('be.visible');
+    cy.get('#gl-molino-order-form [name="product"]').type('Medialunas');
+    cy.get('#gl-molino-order-form [name="quantity"]').type('24');
+    cy.get('#gl-molino-order-form button[type="submit"]').click();
+    cy.get('#gl-molino-panel').should('contain.text','Pedido en preparación');
+    cy.get('#gl-molino-order-form [name="product"]').type('Café');
+    cy.get('#gl-molino-order-form [name="quantity"]').type('2');
+    cy.get('#gl-molino-order-form button[type="submit"]').click();
+    cy.get('[data-mol-order-send]').should('be.visible').click();
+    cy.get('#gl-molino-panel').should('contain.text','Pendiente de OK');
+    cy.get('#gl-molino-panel .gl-molino-order-group').should('have.length',1)
+      .and('contain.text','Medialunas').and('contain.text','Café');
+    cy.get('#gl-molino-panel [data-mol-order-ack]').should('have.length',2);
+    cy.get('#gl-molino-panel [data-mol-order-ack]').first().click();
+    cy.get('#gl-molino-panel .gl-molino-order-group').should('contain.text','1 de 2 vistos');
+    cy.get('#gl-molino-panel [data-mol-tab="precios"]').click();
+    cy.get('#gl-molino-panel').should('contain.text','Precios compartidos');
+    cy.get('#gl-molino-panel').should('not.contain.text','Pedido en preparación');
+    cy.document().then(d=>{if(d.documentElement.scrollWidth>392)throw Error('Desborde horizontal en Pedidos');});
+  });
 });
