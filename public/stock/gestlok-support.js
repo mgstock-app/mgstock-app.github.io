@@ -115,7 +115,8 @@
       if(version!==fetchVersion)return;
       // En caso de fallo se conserva el último número válido mostrado.
       // Nunca se borra la configuración ni se escribe en la base por un error de lectura.
-      failure=creator()?'No se pudo consultar el número. Se conserva el último registrado en esta sesión.':'';
+      loaded=true; // Evita lecturas en bucle; habrá un nuevo intento al volver a la aplicación.
+      failure=creator()?'No se pudo consultar el número. Se utiliza el número de respaldo hasta recuperar la conexión.':'';
     }finally{
       if(version===fetchVersion){loading=false;widget();syncCard();}
     }
