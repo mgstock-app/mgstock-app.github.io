@@ -1,13 +1,12 @@
-/* Creadora: recorrer otras empresas en SOLO LECTURA (sesión de soporte) y revisar cada pantalla
-   «como» un rol (vista previa visual). Nada de esto concede permisos: la sesión de soporte la
-   valida y la registra el backend (gestlok_creator_open_company) y la vista previa por rol es solo
-   de pantalla; la creadora sigue sin poder escribir salvo que habilite la edición. */
+/* Creadora: cambio auditado de empresa y sucursal. La identidad y permisos
+   operativos los confirma el backend; no se impone un rol visual de menor acceso. */
 (() => {
   'use strict';
   const PREVIEW_KEY = 'gestlok-preview-rol';
   // El Molino tiene membresía propia: no usar soporte para abrir sus sucursales.
   const MOLINO_TENANT = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
-  const PREVIEW_ROLES = Object.freeze({dueno:'Dueña', gerente:'Gerente', lectura:'Solo ver'});
+  // Sin perfiles de vista previa: la administradora conserva el rol autenticado.
+  const PREVIEW_ROLES = Object.freeze({});
   let api, support = {active:false, name:'', expires:0}, busy = false, timer = 0;
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const hora = t => { try { return new Date(t).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}); } catch { return ''; } };
@@ -16,10 +15,7 @@
     set(v){ try { if (v) window.sessionStorage.setItem(PREVIEW_KEY, v); else window.sessionStorage.removeItem(PREVIEW_KEY); } catch {} }
   };
   // Solo la creadora real puede tener una vista previa; nunca eleva permisos (solo muestra menos).
-  function previewRol(){
-    const v = store.get();
-    return Object.prototype.hasOwnProperty.call(PREVIEW_ROLES, v) && api?.isCreadora?.() ? v : '';
-  }
+  function previewRol(){ return ''; }
   function bar(){
     let el = document.getElementById('gl-support-bar');
     const pv = previewRol();
@@ -148,13 +144,7 @@
     if (tenantId === MOLINO_TENANT) return '';
     return '<button type="button" class="btn sm" data-support-open="' + esc(tenantId) + '" data-support-name="' + esc(name) + '">Abrir empresa</button>';
   }
-  function previewCard(){
-    if (!api?.isCreadora?.() || support.active) return '';
-    const cur = store.get();
-    return '<section class="gl-admin-card" aria-label="Vista previa por rol"><header><h2>Vista previa por rol</h2><small>Solo para revisar el diseño</small></header><div class="gl-home-essential-tools">' +
-      Object.entries(PREVIEW_ROLES).map(([k, label]) => '<button type="button" class="btn sm' + (cur === k ? ' primary' : '') + '" data-preview-rol="' + k + '">Ver como ' + esc(label) + '</button>').join('') +
-      '</div><p class="lead">No cambia permisos ni datos: tu cuenta conserva sus permisos. Para operar otra empresa, elegí su carpeta en «Locales».</p></section>';
-  }
+  function previewCard(){ return ''; }
   document.addEventListener('click', e => {
     const local=e.target.closest('[data-company-local]');
     if(local){e.preventDefault();openLocal(local.dataset.companyTenant,local.dataset.companyLocal,local.dataset.companyName);return;}
