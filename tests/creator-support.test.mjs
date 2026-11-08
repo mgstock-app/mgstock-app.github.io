@@ -46,19 +46,19 @@ test('Salir cierra la sesión de soporte y recarga',async()=>{
  listeners.click(target('[data-support-close]',{}));await tick();await tick();
  assert.ok(calls.some(c=>c[0]==='gestlok_creator_close_company'));assert.equal(reloads(),1);
 });
-test('La vista previa por rol solo aplica a la creadora y solo con roles conocidos',()=>{
- assert.equal(load(async()=>({}),{preview:'gerente'}).s.previewRol(),'gerente');
- assert.equal(load(async()=>({}),{preview:'dueno'}).s.previewRol(),'dueno');
+test('La creadora nunca hereda una vista previa de menor permiso guardada anteriormente',()=>{
+ assert.equal(load(async()=>({}),{preview:'gerente'}).s.previewRol(),'');
+ assert.equal(load(async()=>({}),{preview:'dueno'}).s.previewRol(),'');
+ assert.equal(load(async()=>({}),{preview:'lectura'}).s.previewRol(),'');
  assert.equal(load(async()=>({}),{preview:'creadora'}).s.previewRol(),'');
  assert.equal(load(async()=>({}),{preview:'admin'}).s.previewRol(),'');
  assert.equal(load(async()=>({}),{preview:'gerente',creadora:false}).s.previewRol(),'','un gerente real no puede activar una vista previa');
 });
-test('El botón de consulta no aparece sobre la propia empresa; la vista previa ofrece tres roles',()=>{
+test('La cuenta creadora conserva administración en todas las empresas sin vistas de rol reducidas',()=>{
  const {s}=load(async()=>({}));
  assert.match(s.openButton('own','Mi Gusto'),/Tu empresa/);
  assert.match(s.openButton('t-2','Perfumes'),/data-support-open="t-2"/);
- const card=s.previewCard();for(const k of ['dueno','gerente','lectura'])assert.match(card,new RegExp('data-preview-rol="'+k+'"'));
- assert.match(card,/No cambia permisos ni datos/);
+ assert.equal(s.previewCard(),'');
 });
 test('Un estado de soporte que falla deja la pantalla normal',async()=>{
  const {s}=load(async()=>({data:null,error:{message:'x'}}),{me:{tenant_id:'own',support:true}});

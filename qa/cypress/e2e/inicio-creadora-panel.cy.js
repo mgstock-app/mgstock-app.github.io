@@ -44,7 +44,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('[aria-label="Empresas registradas"]').should('contain.text','Empresa ficticia');
   // Mismo texto que validan empleados-modulo.cy.js e inicio-dueno-modulos.cy.js.
   cy.get('[aria-label="Empresas registradas"] button').should('have.length',1).and('contain.text','Abrir empresa');
-  cy.get('[aria-label="Vista previa por rol"]').should('contain.text','Ver como Gerente');
+  cy.get('[aria-label="Vista previa por rol"]').should('not.exist');
   cy.get('.gl-ch-nav [data-ch-tab="usuarios"]').click();
   cy.get('.gl-ch').should('contain.text','Usuarios aprobados');
   cy.get('.gl-ch-nav [data-ch-tab="empleados"]').click();
