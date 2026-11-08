@@ -1,0 +1,27 @@
+/* Menú exclusivo del Plan Scanner: no altera CSS de Mi Gusto ni de El Molino. */
+.gl-scanner-private-home{display:grid;gap:18px;padding:clamp(15px,2vw,25px);border:1px solid #e0e7ed;border-radius:17px;background:#f7fafc;color:#1e3851;max-width:1080px;margin:10px auto 26px;box-sizing:border-box}
+.gl-scanner-private-home *{box-sizing:border-box}
+.gl-scanner-private-header{background:#fff;border:1px solid #e0e8f0;border-radius:13px;padding:clamp(18px,2.6vw,32px)}
+.gl-scanner-private-header>small{color:#647e92;letter-spacing:.1em;font-size:11px;font-weight:800}
+.gl-scanner-private-header h1{font:750 clamp(30px,4vw,45px)/1.15 system-ui,sans-serif;color:#183650;letter-spacing:-.025em;margin:12px 0}
+.gl-scanner-private-header h1 span{display:inline;font:500 19px/1.5 system-ui,sans-serif;color:#637a90;letter-spacing:0;vertical-align:middle}
+.gl-scanner-private-header>p{font-size:14px;color:#62798a;margin:0}
+.gl-scanner-private-header .gl-scanner-readonly{margin-top:12px;padding:11px 13px;background:#fff5e6;border-radius:9px;color:#795a24;font-size:12px}
+.gl-scanner-private-section{display:grid;gap:15px}
+.gl-scanner-private-section h2{font:700 17px/1.3 system-ui,sans-serif;margin:0;color:#1e405b}
+.gl-scanner-private-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.gl-scanner-private-card{min-height:110px;border:1px solid #dbe4ed;border-radius:12px;background:#fff;padding:17px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;text-align:left;cursor:pointer;color:#173e5c;box-shadow:0 5px 15px #23374808}
+.gl-scanner-private-card:hover:not([disabled]){border-color:#3381b0;box-shadow:0 8px 23px #23374818}
+.gl-scanner-private-card b{font:700 15px system-ui,sans-serif}
+.gl-scanner-private-card .gl-scanner-card-icon{color:#207eb0;font-size:24px;line-height:1}
+.gl-scanner-private-card>span:last-child{align-self:flex-end;color:#6f92ad}
+.gl-scanner-private-card[disabled]{opacity:.7;cursor:default}
+.gl-scanner-zayro-preview{border:1px solid #e1d5c8;border-radius:12px;background:#fffaf3;padding:22px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.gl-scanner-zayro-preview h2{font:600 23px Georgia,serif;color:#40332b;margin:0}
+.gl-scanner-zayro-preview p{margin:0;color:#776656;font-size:13px;flex-basis:100%}
+.gl-scanner-zayro-preview a{font-size:12px;font-weight:750;text-decoration:none;border-radius:8px;color:#654b2b;border:1px solid #b79c78;padding:10px 13px}
+#snav .gl-scanner-nav{display:flex;align-items:center;gap:9px}
+#snav .gl-scanner-nav[disabled]{cursor:default;opacity:.7}
+#snav .gl-scanner-menu-preview,#snav .gl-scanner-menu-wait{display:block;font-size:11px;color:#688193;padding:9px 11px}
+@media(max-width:720px){.gl-scanner-private-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-scanner-private-card{min-height:95px;padding:13px}}
+@media(max-width:390px){.gl-scanner-private-home{padding:12px}.gl-scanner-private-grid{gap:8px}.gl-scanner-private-card b{font-size:13px}}
