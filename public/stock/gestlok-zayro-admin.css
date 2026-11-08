@@ -72,3 +72,25 @@
  .gl-zayro-admin-overlay{padding:10px}
  .gl-zayro-admin{margin:0}
 }
+
+/* Vista previa segura: muestra productos autorizados usando datos de RPC privada. */
+.gl-zayro-private-preview{display:grid;gap:13px;border:1px solid #dcccb6;background:#fbf7f1;border-radius:14px;padding:17px}
+.gl-zayro-preview-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.gl-zayro-preview-head>div{min-width:0}
+.gl-zayro-preview-head h3{font:600 19px Georgia,serif;margin:0 0 7px;color:#49342a}
+.gl-zayro-preview-head p{margin:0;color:#736051;font-size:12px;line-height:1.5}
+.gl-zayro-preview-head button{min-height:40px;max-width:100%;border:1px solid #9b7a4b;border-radius:9px;padding:9px 13px;background:#fff;color:#58412b;font-weight:700;font-size:12px;cursor:pointer}
+.gl-zayro-preview-window{background:#fffdf9;border:1px solid #e3d9ca;padding:16px;border-radius:11px}
+.gl-zayro-preview-brand{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:3px 0 18px;font:500 24px Georgia,serif;letter-spacing:.13em;color:#362a22}
+.gl-zayro-preview-brand small{font:700 10px system-ui,sans-serif;letter-spacing:.04em;color:#99753d;border-radius:99px;background:#f5e8d4;padding:6px 9px}
+.gl-zayro-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:12px}
+.gl-zayro-preview-product{border:1px solid #e8ddd0;border-radius:9px;overflow:hidden;min-width:0;background:#fff}
+.gl-zayro-preview-image{display:flex;align-items:center;justify-content:center;height:115px;background:#f5efe7;color:#b99d72}
+.gl-zayro-preview-image img{width:100%;height:100%;object-fit:contain}
+.gl-zayro-preview-image>span{font-size:55px}
+.gl-zayro-preview-content{display:grid;gap:5px;padding:10px 12px}
+.gl-zayro-preview-content small{font-size:10px;color:#9f7e52;text-transform:uppercase;letter-spacing:.1em}
+.gl-zayro-preview-content strong{font:500 16px Georgia,serif;color:#362a22;overflow-wrap:anywhere}
+.gl-zayro-preview-content b{font:700 13px system-ui,sans-serif;color:#382b24}
+.gl-zayro-preview-empty{font-size:13px;color:#806b59;margin:6px 0 12px}
+@media(max-width:680px){.gl-zayro-preview-head{align-items:stretch;flex-direction:column}.gl-zayro-preview-head button{width:100%}.gl-zayro-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
