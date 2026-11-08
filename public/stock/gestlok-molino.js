@@ -13,9 +13,19 @@ let api=null,opened=false,section='precios',state=null,historyData=null,selected
 const $=s=>document.querySelector(s);
 const hasTenant=()=>api?.S?.me?.tenant_id===TENANT;
 const role=()=>state?.scope||'none';
-const canPrices=()=>['admin','dueno','san_isidro'].includes(role());
-const canSend=()=>['admin','dueno','san_isidro'].includes(role());
-const canReturn=()=>['admin','dueno','acassuso'].includes(role());
+// La vista respeta la sucursal activa incluso para administradores y dueños.
+// Los permisos reales siguen verificándose en las RPC del servidor.
+const ACASSUSO='loc-6c8717ea5f78426b9458';
+const SAN_ISIDRO='loc-6c8717ea5f78426b9458-si';
+const activeBranch=()=>{
+ const loc=api?.S?.local;
+ if(loc===ACASSUSO||loc==='acassuso')return 'acassuso';
+ if(loc===SAN_ISIDRO||loc==='san_isidro')return 'san_isidro';
+ return role()==='acassuso'?'acassuso':role()==='san_isidro'?'san_isidro':null;
+};
+const canPrices=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()!=='acassuso';
+const canSend=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()!=='acassuso';
+const canReturn=()=>['admin','dueno','acassuso'].includes(role())&&activeBranch()!=='san_isidro';
 const canAckSent=()=>['admin','dueno','acassuso'].includes(role());
 const canAckReturned=()=>['admin','dueno','san_isidro'].includes(role());
 const canEdit=k=>k==='envio'?canSend():canReturn();
@@ -215,13 +225,14 @@ document.addEventListener('click',e=>{
  if(tab){section=tab.dataset.molTab;editPrice=null;editMove=null;warning='';message='';render();return;}
  if(e.target.closest('[data-mol-refresh]')){stale=false;void reload();return;}
  const hi=e.target.closest('[data-mol-history]');if(hi){void loadHistory(hi.dataset.molHistory);return;}
- const pe=e.target.closest('[data-mol-price-edit]');if(pe){editPrice=pe.dataset.molPriceEdit;render();$('#gl-molino-price-form [name="product"]')?.focus();return;}
+ const pe=e.target.closest('[data-mol-price-edit]');if(pe&&canPrices()){editPrice=pe.dataset.molPriceEdit;render();$('#gl-molino-price-form [name="product"]')?.focus();return;}
  const pm=e.target.closest('[data-mol-price-remove]');if(pm){
+   if(!canPrices())return;
    if(confirm('¿Quitar '+pm.dataset.name+' de Precios? El cambio quedará en el historial.'))
      void save('gestlok_molino_remove_price',{p_id:pm.dataset.molPriceRemove},'Producto retirado de la lista.');
    return;
  }
- const me=e.target.closest('[data-mol-move-edit]');if(me){if(section!=='envios')section=me.dataset.kind==='envio'?'envios':'devoluciones';editMove=me.dataset.molMoveEdit;render();$('#gl-molino-movement-form-'+me.dataset.kind+' [name="product"]')?.focus();return;}
+ const me=e.target.closest('[data-mol-move-edit]');if(me&&canEdit(me.dataset.kind)){if(section!=='envios')section=me.dataset.kind==='envio'?'envios':'devoluciones';editMove=me.dataset.molMoveEdit;render();$('#gl-molino-movement-form-'+me.dataset.kind+' [name="product"]')?.focus();return;}
  const c=e.target.closest('[data-mol-cancel]');if(c){editPrice=null;editMove=null;render();return;}
  const noteButton=e.target.closest('[data-mol-note]');
  if(noteButton){
@@ -241,7 +252,7 @@ document.addEventListener('submit',e=>{
  if(!opened)return;
  const price=e.target.closest('#gl-molino-price-form');
  if(price){
-  e.preventDefault();if(busy)return;
+  e.preventDefault();if(busy||!canPrices())return;
   const d=new FormData(price);
   void save('gestlok_molino_save_price',{
     p_id:editPrice||null,p_product:String(d.get('product')||'').trim(),
@@ -251,7 +262,7 @@ document.addEventListener('submit',e=>{
  }
  const move=e.target.closest('form[data-mol-movement-form]');
  if(move){
-  e.preventDefault();if(busy)return;
+  e.preventDefault();if(busy||!canEdit(move.dataset.kind))return;
   const d=new FormData(move);
   void save('gestlok_molino_save_movement',{
     p_kind:move.dataset.kind,p_id:editMove||null,
