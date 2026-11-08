@@ -226,3 +226,12 @@ html.auth-on .auth #au-up .au-links{margin:0}
   html.auth-on .auth #au-up .gl-registration-business{padding:13px}
   .gl-business-registration-card dl>div{grid-template-columns:1fr;gap:2px}
 }
+
+
+html.auth-on .auth #au-up .gl-registration-terms{
+  display:flex;align-items:flex-start;gap:9px;padding:0 2px;font:500 12px/1.5 Inter,system-ui,sans-serif;
+}
+html.auth-on .auth #au-up .gl-registration-terms input{
+  width:18px;height:18px;min-height:18px;margin:1px 0 0;flex:none;accent-color:#153c5b;
+}
+html.auth-on .auth #au-up .gl-registration-terms a{color:#17609d;text-decoration:underline}
