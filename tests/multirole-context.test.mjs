@@ -56,7 +56,7 @@ test('Soporte unificado sigue siendo lectura y no expone escritura',()=>{
  assert(support.includes("d.status='approved'"));
  assert(!support.includes("for update"));
  const stock=read('public/stock/gestlok-support.js');
- assert(stock.includes("['dueno','gerente','lectura','colaborador']"));
+ assert(stock.includes("const allowed=()=>!!(api?.S?.db&&api?.S?.me);"));
  const moduleLayout=read('modules/empleados/app/layout.tsx');
  assert(moduleLayout.includes("<SupportWhatsApp />"));
  assert(moduleLayout.includes("<RoleProfileSwitcher />"));
