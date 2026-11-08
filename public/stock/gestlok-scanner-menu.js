@@ -39,9 +39,20 @@
     (preview?'<span class="gl-scanner-menu-preview">Vista de creadora · Solo lectura</span>':
       '<button type="button" class="gl-scanner-nav" data-zayro-open><span class="nl">Tienda Online · ZAYRO</span></button>');
   }
-  function home(context,host){
+  function home(context,host,shown){
     if(context?.tenant_id!==TENANT)return null;
     loadStyle();
+    // Al entrar a GESTLOK todavía no hay sucursal activa: ofrecer acceso
+    // al local sin abrir Caja o Ventas fuera de su contexto.
+    if(!host?.S?.local){
+      const locals=(shown?.locals||[]).filter(l=>l?.id);
+      return '<section class="gl-scanner-private-home" aria-label="Locales de Plan Scanner">'+
+        '<header class="gl-scanner-private-header"><small>PLAN SCANNER · PERFUMERÍA</small>'+
+        '<h1>ZAYRO <span>Elegí tu local</span></h1>'+
+        '<p>Ingresá a tu sucursal para usar Caja, Ventas, Stock y Tienda Online.</p></header>'+
+        '<div class="gl-scanner-local-grid">'+(locals.map(l=>shown.card(l)).join('')||
+        '<p role="status">Todavía no hay locales habilitados.</p>')+'</div></section>';
+    }
     if(!isCompany(host)||!['dueno','creadora'].includes(host?.role?.())&&!isCreator(host))
       return '<section class="gl-scanner-private-home"><p role="alert">No hay acceso autorizado a este local.</p></section>';
     const preview=isCreator(host);
