@@ -10,7 +10,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   cy.viewport(1280,900);
   // Ampliar solamente esta prueba con RLS Scanner simulado (sin datos reales).
   // El mock general documenta otros locales; acá verificamos las 6 secciones.
-  const scannerMock=\`
+  const scannerMock=`
 ;(function(){
  const old=window.supabase.createClient.bind(window.supabase);
  window.supabase.createClient=function(){
@@ -38,7 +38,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   return client;
  };
 })();
-\`;
+`;
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{
    statusCode:200,headers:{'content-type':'application/javascript'},body:body+scannerMock
   }).as('fake'));
