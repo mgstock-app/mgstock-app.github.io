@@ -7,7 +7,7 @@
   const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
   const UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
   const EMAIL='camilab.lopez99@gmail.com';
-  let host=null,open=false,loading=false,saving=false,info=null,error='',notice='';
+  let host=null,open=false,preview=false,loading=false,saving=false,info=null,error='',notice='';
   const $=s=>document.querySelector(s);
   const db=()=>window.GestLokSupabase;
   const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;'}[c]));
@@ -47,6 +47,9 @@
     root.hidden=!open;
     if(!open){root.innerHTML='';return;}
     const products=Array.isArray(info?.products)?info.products:[];
+    const publicProducts=products.filter(p=>p.published===true&&p.active===true&&
+      Number(p.stock)>0&&Number(p.price)>0);
+    const validImage=url=>/^https:\/\/[^ "'<>]+$/i.test(String(url||''));
     const opts=[['mujer','Perfumes mujer'],['hombre','Perfumes hombre'],['unisex','Perfumes unisex'],['capilar','Cuidado capilar']];
     root.innerHTML='<div class="gl-zayro-admin-overlay" data-zayro-close-background>'+
       '<section class="gl-zayro-admin" role="dialog" aria-modal="true" aria-labelledby="gl-zayro-title">'+
@@ -60,11 +63,28 @@
       '<form class="gl-zayro-config" data-zayro-settings>'+
         '<h3>Configuración de la tienda pública</h3>'+
         '<p>Dirección propuesta: <a href="/zayro/" target="_blank" rel="noopener noreferrer">gestlok.com.ar/zayro</a></p>'+
-        '<label>WhatsApp de ventas <input name="telefono" type="tel" required placeholder="+54 11 1234-5678" value="'+escape(info.sales_whatsapp||'')+'"></label>'+
+        '<label>WhatsApp de ventas <input name="telefono" type="tel" placeholder="+54 11 1234-5678" value="'+escape(info.sales_whatsapp||'')+'"></label>'+
         '<label class="gl-zayro-toggle"><input name="habilitada" type="checkbox" '+(info.enabled?'checked':'')+'> Habilitar tienda pública</label>'+
         '<p class="gl-zayro-help">Al habilitar, se mostrarán solamente los productos publicados con precio y stock positivo. Los pedidos se consultan por WhatsApp; no se cobra ni reserva inventario automáticamente.</p>'+
         '<button type="submit" '+(saving?'disabled':'')+'>Guardar configuración</button>'+
       '</form>'+
+      '<section class="gl-zayro-private-preview" aria-label="Vista previa de la tienda ZAYRO">'+
+        '<div class="gl-zayro-preview-head"><div><h3>Vista previa privada</h3>'+
+        '<p>Así se verán tus productos publicados, aunque la tienda todavía esté desactivada. Solo vos podés ver esta vista.</p></div>'+
+        '<button type="button" data-zayro-preview-toggle aria-expanded="'+(preview?'true':'false')+'">'+
+        (preview?'Cerrar vista previa':'Ver cómo queda mi tienda')+'</button></div>'+
+        (preview?'<div class="gl-zayro-preview-window"><div class="gl-zayro-preview-brand">✧ ZAYRO <small>VISTA PREVIA · NO PÚBLICA</small></div>'+
+          (publicProducts.length?
+            '<div class="gl-zayro-preview-grid">'+publicProducts.map(p=>
+              '<article class="gl-zayro-preview-product"><div class="gl-zayro-preview-image">'+
+              (validImage(p.image_url)?'<img loading="lazy" referrerpolicy="no-referrer" alt="'+escape(p.name)+'" src="'+escape(p.image_url)+'">':
+                '<span aria-hidden="true">✧</span>')+'</div><div class="gl-zayro-preview-content">'+
+              '<small>'+escape(p.audience||'unisex')+'</small><strong>'+escape(p.name)+'</strong>'+
+              '<b>'+escape(money(p.price))+'</b></div></article>'
+            ).join('')+'</div>':
+            '<p class="gl-zayro-preview-empty">Todavía no hay productos marcados como publicados con precio y stock. Marcá uno y guardalo para verlo acá.</p>')+
+          '</div>':'')+
+      '</section>'+
       '<section class="gl-zayro-products"><h3>Publicar productos</h3>'+
       '<p>El nombre, precio y stock vienen de tu Plan Scanner. Las fotos, categorías y publicaciones se administran acá.</p>'+
       (!products.length?'<p>No hay productos cargados en tu cuenta.</p>':products.map(p=>
@@ -97,7 +117,7 @@
     if(!allowed())return;
     style();open=true;render();await load();
   }
-  function close(){open=false;error='';notice='';render();}
+  function close(){open=false;preview=false;error='';notice='';render();}
   async function saveSettings(form){
     if(saving)return;saving=true;error='';notice='';render();
     try{
@@ -131,11 +151,12 @@
     finally{saving=false;render();}
   }
   document.addEventListener('click',e=>{
-    const t=e.target.closest?.('[data-zayro-open],[data-zayro-close],[data-zayro-retry],[data-zayro-close-background]');
+    const t=e.target.closest?.('[data-zayro-open],[data-zayro-close],[data-zayro-retry],[data-zayro-preview-toggle],[data-zayro-close-background]');
     if(!t)return;
     if(t.matches('[data-zayro-open]')){e.preventDefault();start();}
     else if(t.matches('[data-zayro-close]')){e.preventDefault();close();}
     else if(t.matches('[data-zayro-retry]')){e.preventDefault();load();}
+    else if(t.matches('[data-zayro-preview-toggle]')){e.preventDefault();preview=!preview;render();}
     else if(e.target===t){close();}
   });
   document.addEventListener('submit',e=>{
