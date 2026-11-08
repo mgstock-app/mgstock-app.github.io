@@ -52,65 +52,87 @@
       setSupport(!!data?.active, data?.name, data?.expires_at);
     } catch { setSupport(false, '', null); }
   }
-  async function open(tenant, name){
-    if (!api || busy || !api.isCreadora?.()) return;
-    if (tenant === MOLINO_TENANT){
-      api.toast?.('Para ingresar a El Molino Café, elegí Acassuso o San Isidro desde Ver locales.', true);
-      return;
+  // Abrir una empresa y, si corresponde, una sucursal. No depende de un
+  // prompt bloqueado por navegadores móviles o la PWA instalada.
+  // Toda transición se valida por RPC. Las consultas a empresas ajenas
+  // conservan la auditoría obligatoria del servidor.
+  async function switchCompany(tenant, local, name){
+    if (!api?.isCreadora?.() || busy || !tenant) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false){
+      api.toast?.('Conectate a internet para cambiar de empresa.', true); return;
     }
-    const reason = String(window.prompt('Motivo de la consulta de «' + (name || 'la empresa') + '» (queda registrado en la auditoría):', '') || '').trim();
-    if (reason.length < 3){ if (reason) api.toast('Escribí un motivo de al menos 3 letras.', true); return; }
     busy = true;
     try {
-      const {data, error} = await window.GestLokSupabase.rpc('gestlok_creator_open_company', {p_tenant:tenant, p_reason:reason.slice(0, 200), p_minutes:30});
-      if (error) throw error;
-      store.set('');
-      setSupport(true, data?.name, data?.expires_at);
-      location.reload();
-    } catch (e) { api.toast((e && e.message) || 'No se pudo abrir la empresa.', true); busy = false; }
-  }
-  async function openLocal(tenant, local, name){
-    if(!api?.isCreadora?.() || busy || !tenant || !local)return;
-    if(typeof navigator!=='undefined' && navigator.onLine===false){
-      api.toast('Conectate a internet para cambiar de empresa.',true);return;
-    }
-    busy=true;
-    try{
-      // La creadora puede ingresar a un local de una empresa a la que está
-      // vinculada expresamente, con autorización verificada por el servidor.
-      // Para las demás empresas se conserva el modo soporte auditado.
-      const pending=await window.GestLokOffline?.pending?.().catch(()=>0);
-      if(pending)throw Error('Tenés cambios pendientes de sincronizar. Guardalos antes de cambiar de empresa.');
-      const {data:contexts,error:contextError}=await window.GestLokSupabase.rpc('gestlok_my_role_contexts');
-      if(contextError || !Array.isArray(contexts))throw contextError || Error('No pudimos verificar tus permisos.');
-      const direct=contexts.some(c=>c?.tenant_id===tenant && c.role==='creadora' &&
-        Array.isArray(c.local_names) && c.local_names.some(l=>l.id===local));
-      if(direct){
-        if(support.active){
-          const closed=await window.GestLokSupabase.rpc('gestlok_creator_close_company');
-          if(closed.error)throw closed.error;
+      const pending = await window.GestLokOffline?.pending?.().catch(() => 0);
+      if (pending) throw Error('Tenés cambios pendientes de sincronizar. Guardalos antes de cambiar de empresa.');
+      const sb = window.GestLokSupabase;
+      if (!sb?.rpc) throw Error('No se pudo conectar con el sistema de permisos. Actualizá la sesión.');
+      const {data:contexts,error:contextError} = await sb.rpc('gestlok_my_role_contexts');
+      if (contextError || !Array.isArray(contexts))
+        throw contextError || Error('No pudimos verificar tus permisos de acceso.');
+      const direct = contexts.some(c => c?.tenant_id === tenant && c.role === 'creadora' &&
+        (!local || (Array.isArray(c.local_names) && c.local_names.some(l => l.id === local))));
+      if (direct){
+        // Consultar la sesión ACTUAL del servidor: el estado local puede ser
+        // antiguo después de recargar o cambiar de empresa.
+        const {data:session,error:stateError}=await sb.rpc('gestlok_creator_support_state');
+        if(stateError)throw stateError;
+        if(session?.active){
+          const {error:closedError}=await sb.rpc('gestlok_creator_close_company');
+          if(closedError)throw closedError;
+          setSupport(false,'',null);
         }
-        const {data, error}=await window.GestLokSupabase.rpc('gestlok_choose_role_context',{p_tenant:tenant});
+        const {data,error}=await sb.rpc('gestlok_choose_role_context',{p_tenant:tenant});
         if(error || data?.tenant_id!==tenant || data?.role!=='creadora')
-          throw error || Error('No estás autorizada a administrar este local.');
-        // Contexto ya autorizado en servidor: un fallo de IndexedDB no debe impedir recargar.
-        try { await window.GestLokOffline?.invalidateContext?.(); } catch {}
+          throw error || Error('No estás autorizada a administrar esta empresa.');
       }else{
+        // El Molino siempre exige membresía directa (sin modo soporte).
         if(tenant===MOLINO_TENANT)
-          throw Error('No se pudo validar tu acceso directo a El Molino Café. Actualizá la sesión y volvé a intentar.');
-        const {error}=await window.GestLokSupabase.rpc('gestlok_creator_open_company',
-          {p_tenant:tenant,p_reason:'Administración de local desde Locales',p_minutes:60});
-        if(error)throw error;
+          throw Error('No se pudo validar tu acceso directo a El Molino Café. Actualizá la sesión.');
+        const {data,error}=await sb.rpc('gestlok_creator_open_company',{
+          p_tenant:tenant,
+          p_reason:local?'Ingreso administrativo al local desde Empresas activas':
+            'Revisión administrativa desde Empresas activas',
+          p_minutes:60
+        });
+        if(error || data?.tenant_id!==tenant || data?.active!==true)
+          throw error || Error('El servidor no autorizó el acceso a esta empresa.');
       }
+      // Nunca reutilizar documentos ni borradores de otra empresa. Un fallo
+      // de caché no bloquea el cambio ya confirmado en el servidor.
+      try { await window.GestLokOffline?.invalidateContext?.(); } catch {}
       store.set('');
-      // El navegador móvil puede rechazar sessionStorage; igual completar el cambio autorizado.
       try {
         window.sessionStorage.setItem('gestlok-admin-tab','locales');
-        window.sessionStorage.setItem('gestlok:profile-next-local',
-          JSON.stringify({email:String(api.S.me.email||'').toLowerCase(),tenant_id:tenant,local_id:local}));
-      } catch {}
+        if(local){
+          window.sessionStorage.setItem('gestlok:profile-next-local',JSON.stringify({
+            email:String(api.S?.me?.email||'').toLowerCase(),
+            tenant_id:tenant,local_id:local,created_at:Date.now()
+          }));
+        }else{
+          window.sessionStorage.removeItem('gestlok:profile-next-local');
+        }
+      }catch{}
       location.reload();
-    }catch(e){api.toast(e?.message||'No se pudo abrir el local.',true);busy=false;}
+    }catch(e){
+      api.toast?.(e?.message||'No se pudo abrir la empresa.',true);
+      busy=false;
+    }
+  }
+  function open(tenant,name){
+    // El Molino conserva su entrada por membresía y tarjeta de sucursal.
+    // No habilitar un atajo de soporte hacia esa empresa.
+    if(tenant===MOLINO_TENANT){
+      api?.toast?.('Para ingresar a El Molino Café, elegí Acassuso o San Isidro desde Ver locales.',true);
+      return;
+    }
+    // El botón de empresa abre directamente; no se pierde por ventanas
+    // emergentes canceladas. El backend sigue registrando el acceso.
+    return switchCompany(tenant,'',name);
+  }
+  function openLocal(tenant,local,name){
+    if(!local)return;
+    return switchCompany(tenant,local,name);
   }
   async function close(){
     if (busy) return;

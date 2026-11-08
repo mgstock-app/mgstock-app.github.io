@@ -32,6 +32,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Restituir únicamente el comportamiento previo de continuación de local
+      // para mantener la huella histórica inalterada. No modifica permisos.
+      for (const {actual,original} of JSON.parse(read('tests/creator-access-hooks.json')).hooks){
+        assert.equal(content.split(actual).length-1,1,'Un único hook de regreso a empresa');
+        content=content.replace(actual,original);
+      }
       // Menú e Inicio por empresa: inserciones revisadas que se revierten primero.
       const menuEmpresaHooks=JSON.parse(read('tests/gestlok-menu-empresa-hooks.json')).hooks;
       for(const {actual,original} of menuEmpresaHooks){
