@@ -1544,6 +1544,11 @@ html.auth-on body{overflow:hidden}
  .gl-soporte-icon{width:35px;height:35px}.gl-soporte-icon svg{width:22px;height:22px}
  .gl-support-settings{padding:16px}.gl-support-fields button{width:100%}
 }
+/* Soporte no debe cubrir el botón Enviar del chat ni la configuración de la creadora.
+   Se reserva un margen para el chat sin ocultar Soporte a los integrantes del local. */
+#gestlok-chat-form.gestlok-chat-form{padding-right:clamp(78px,8vw,96px);box-sizing:border-box}
+body:has(#gl-support-form) .gl-soporte-float{display:none!important}
+@media(max-width:480px){#gestlok-chat-form.gestlok-chat-form{padding-right:75px}}
 @media print{.gl-soporte-float{display:none!important}}
 
 /* GestLok · modalidad discreta solo para Dueño, debajo del indicador En vivo */
