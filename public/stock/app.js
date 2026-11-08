@@ -2108,9 +2108,16 @@ function businessRegistrationFolder(x){
     ['Persona encargada',x.responsable],['Teléfono de contacto',x.telefono],
     ['Email registrado',x.email],['Dirección / referencia',x.direccion||'Sin dirección fija']
   ];
+  const apps=Array.isArray(x.microapps)?x.microapps:[];
+  const appLabels=apps.map(id=>window.GestLokRegistration?.microappLabel?.(id)||id).filter(Boolean);
+  const notes=String(x.personalizacion||'').trim();
   return '<details class="gl-business-registration-card"><summary><span aria-hidden="true">▣</span> <b>'+
     esc(x.empresa)+'</b><small>Ficha del negocio · Pendiente de autorización</small></summary>'+
     '<dl>'+fields.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('')+'</dl>'+
+    '<section class="gl-company-microapps"><h4>Microapps solicitadas</h4>'+
+      (appLabels.length?'<div class="gl-company-microapp-tags">'+appLabels.map(label=>'<span>'+esc(label)+'</span>').join('')+'</div>':'<p>Selección de microapps pendiente.</p>')+
+      '<h4>Personalización que necesita</h4><p>'+esc(notes||'Todavía no indicó cambios particulares.')+'</p>'+
+      '<small>Las microapps pueden combinarse y adaptarse; esta lista no habilita módulos automáticamente.</small></section>'+
     '<p>Esta ficha no crea permisos ni locales. Prepará la empresa desde Administración y asigná el acceso autorizado.</p></details>';
 }
 function solRows(){
