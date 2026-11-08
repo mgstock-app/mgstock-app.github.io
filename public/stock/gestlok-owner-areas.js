@@ -45,7 +45,9 @@
     if(r.error)return {error:r.error};
     const co=(r.data?.companies||[]).find(c=>c.tenant_id===api.S.me?.tenant_id);
     if(!co)return {error:Error('Sin empresa')};
-    const branded=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
+    // El logo de Mi Gusto no define la identidad visual de otras empresas.
+    const branded=co.tenant_id==='cb0dc04a-9a13-434f-a3d0-47f1d8f39670'&&
+      (api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
     const staff=co.modules?.recibos_personal===true&&!!co.recibonet;
     return {data:{role:'dueno',tenant_id:co.tenant_id,company_name:co.name||'Mi empresa',logo_id:branded?'mi-gusto':null,
       local_ids:(co.locals||[]).map(l=>l.id),
