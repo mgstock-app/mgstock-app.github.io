@@ -34,7 +34,7 @@ const canEdit=k=>k==='envio'?canSend():canReturn();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=menu-empresa-20261108';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=pedidos-molino-20261108';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -357,7 +357,7 @@ document.addEventListener('submit',e=>{
   const product=String(data.get('product')||'').trim();
   const quantity=Number(data.get('quantity'));
   const note=String(data.get('note')||'').trim();
-  if(!product||product.length>140||!Number.isFinite(quantity)||quantity<=0||quantity>999999||Math.round(quantity*100)!==quantity*100||note.length>500){
+  if(!product||product.length>140||!Number.isFinite(quantity)||quantity<=0||quantity>999999||Math.abs(Math.round(quantity*100)-quantity*100)>1e-6||note.length>500){
    warning='Revisá producto, cantidad y observación.';render();return;
   }
   orderDraft.push({product,quantity,note});
