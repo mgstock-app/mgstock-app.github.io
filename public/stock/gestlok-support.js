@@ -3,10 +3,11 @@
  * No envía mensajes, no escribe chats ni comparte datos de inventario. */
 (() => {
   'use strict';
-  let api=null, phone='', loaded=false, loading=false, failure='', busy=false, fetchVersion=0;
+  const SUPPORT_PHONE='5491144715168';
+  let api=null, phone=SUPPORT_PHONE, loaded=true, loading=false, failure='', busy=false, fetchVersion=0;
   const $=q=>document.querySelector(q);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const allowed=()=>!!(api?.S?.db&&api?.S?.me&&['dueno','gerente','lectura','colaborador'].includes(api.miRol?.()));
+  const allowed=()=>!!(api?.S?.db&&api?.S?.me);
   const creator=()=>!!(api?.isCreadora?.()&&api?.S?.me&&api?.S?.db);
   const client=()=>window.GestLokSupabase;
   const valid=s=>/^[1-9][0-9]{7,14}$/.test(s);
@@ -41,17 +42,16 @@
     return String(name).trim().slice(0,140)||'Inicio';
   }
   function message(){
-    const local=api?.S?.local ? String(api?.localNombre?.()||'mi local').trim().slice(0,100) : '';
-    const company=String(api?.S?.companyName||api?.S?.company_name||'mi empresa').trim().slice(0,100);
-    return 'Hola, soy '+(local ? 'del local '+local+' de la empresa de '+ownerName() : 'usuario/a de '+company)+
-      ' y necesito ayuda en el sector de '+sector()+'.';
+    const local=String(api?.localNombre?.()||api?.S?.localName||api?.S?.local||'Local').trim().slice(0,100);
+    const company=String(api?.S?.companyName||api?.S?.company_name||'Empresa').trim().slice(0,100);
+    return 'Hola, soy de '+company+' - '+local+'. Necesito soporte en '+sector()+'.';
   }
   function link(){
-    return valid(phone)?'https://wa.me/'+phone+'?text='+encodeURIComponent(message()):'';
+    return 'https://wa.me/'+SUPPORT_PHONE+'?text='+encodeURIComponent(message());
   }
   function widget(){
     let el=$('#gl-soporte-whatsapp');
-    const visible=allowed()&&valid(phone);
+    const visible=allowed();
     if(!visible){
       el?.remove();
       return;
@@ -97,33 +97,12 @@
     const submit=$('#gl-support-form button[type="submit"]');
     if(submit)submit.disabled=!loaded||busy;
   }
-  async function load(force=false){
-    if(loading||(!force&&loaded)||!client()||!api?.S?.me||!api?.S?.db)return;
-    if(!creator()&&!allowed())return;
-    const account=String(api.S.me.email||'');
-    const version=++fetchVersion;
-    loading=true;failure='';
-    try{
-      const {data,error}=await client().from('gestlok_support_settings')
-        .select('whatsapp').eq('id','global').single();
-      if(error)throw error;
-      if(account!==String(api?.S?.me?.email||'')||version!==fetchVersion)return;
-      if(!valid(String(data?.whatsapp||'')))throw Error('Número no configurado.');
-      phone=data.whatsapp;loaded=true;failure='';
-    }catch(e){
-      if(account===String(api?.S?.me?.email||'')){
-        failure='No se pudo cargar el número de soporte. Revisá la conexión.';
-        // No usar un destinatario antiguo si no se verificó la configuración.
-        phone='';loaded=false;
-      }
-    }finally{
-      if(version===fetchVersion){loading=false;widget();syncCard();}
-    }
-  }
+  async function load(){phone=SUPPORT_PHONE;loaded=true;loading=false;failure='';widget();syncCard();}
   async function save(form){
     if(!creator()||busy||!loaded)return;
     const num=normalized(new FormData(form).get('telefono'));
     if(!num){api.toast('Ingresá un número válido con código internacional.',true);return;}
+    api.toast('El número de soporte es fijo para todos los locales.',true);return;
     busy=true;syncCard();
     try{
       const {data,error}=await client().rpc('gestlok_support_set_phone',{p_phone:num});
