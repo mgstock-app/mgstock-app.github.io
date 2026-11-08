@@ -19,7 +19,7 @@ test('El Molino sólo otorga a la creadora preparación comercial sin dueño fic
  assert.doesNotMatch(migration,/rol','dueno'|insert into (?:gestlok_platform\.company_modules|public\.rm_app_local|public\.rm_test_members)/i);
  assert.doesNotMatch(migration,/\b(?:delete from|truncate|drop table|update public\.docs)\b/i);
  assert.match(runtime,/gestlok-owner-areas\.js\?rev=molino-roles-20261107/);
- assert.match(runtime,/gestlok-creator-support\.js\?rev=molino-locales-20261107/);
+ assert.match(runtime,/gestlok-creator-support\.js\?rev=molino-acceso-directo-20261108/);
 });
 
 test('La creadora sólo ve Administración de tienda en El Molino; Empleados permanece invisible',async()=>{
