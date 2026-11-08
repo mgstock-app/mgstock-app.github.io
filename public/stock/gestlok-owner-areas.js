@@ -87,13 +87,13 @@
   }
   function gerenteHome(){
     if(api?.role?.()!=='gerente'||!api.S.local)return '';
-    const local=api.S.local, name=(api.S.localesDB||[]).find(l=>l.id===local)?.nombre||'Tu local';
+    const local=api.S.local;
     const brand=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
     const soloTienda=api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
     const staff=!soloTienda&&gerente.status==='ready'&&gerente.locals.includes(local);
     const pending=!soloTienda&&gerente.status==='loading';
     return '<section class="gl-owner-landing gl-manager-landing" aria-label="Inicio del gerente">'+
-      businessWelcome(gerenteMarca.tenant===api.S.me?.tenant_id?gerenteMarca.name:name,brand)+
+      businessWelcome(gerenteMarca.tenant===api.S.me?.tenant_id?gerenteMarca.name:'Mi negocio',brand)+
       '<div class="gl-owner-areas">'+
       '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>'+(soloTienda?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
       list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
