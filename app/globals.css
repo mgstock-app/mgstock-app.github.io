@@ -2406,3 +2406,9 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 @media(prefers-reduced-motion:reduce){
  #hub .gl-ch-company-locals summary>span{transition:none}
 }
+
+/* Botón flotante de Soporte (08/11/2026): espacio al final de cada sección para que nunca
+   tape botones como «Enviar» del chat; el contenido siempre puede desplazarse por encima. */
+@media(min-width:900px){
+ html:has(#gl-soporte-whatsapp) #app .wrap{padding-bottom:max(36px,calc(130px + env(safe-area-inset-bottom,0px)))}
+}
