@@ -9,7 +9,7 @@ const page=readFileSync("app/zayro/page.tsx","utf8");
 
 test("ZAYRO conserva exclusividad de empresa y Dueña",()=>{
   assert.match(sql,/gestlok_zayro_is_owner/);
-  assert.match(sql,/gestlok_tenancy\.account_active_tenant/);
+  assert.match(sql,/d\.col='equipo'/);
   assert.match(sql,/gestlok_zayro_admin_product/);
   assert.match(sql,/gestlok_zayro_admin_settings/);
   assert.match(sql,/auth\.uid\(\)/);
