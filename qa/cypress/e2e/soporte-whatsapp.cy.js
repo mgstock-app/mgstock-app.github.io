@@ -46,18 +46,18 @@ describe('GestLok · Soporte WhatsApp',()=>{
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should('include','5491144715168');
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
       const decoded=decodeURIComponent(url);
-      expect(decoded).to.include('local Munro');
-      expect(decoded).to.include('sector de Inicio');
+      expect(decoded).to.include('Hola, soy de Empresa - Munro.');
+      expect(decoded).to.include('Necesito soporte en Inicio.');
     });
     cy.get('[data-act="menu-open"]').click();
     cy.get('#snav [data-go="stock"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
-      expect(decodeURIComponent(url)).to.include('sector de Stock');
+      expect(decodeURIComponent(url)).to.include('Necesito soporte en Stock.');
     });
     cy.get('[data-act="menu-open"]').click();
     cy.get('#snav [data-go="proveedores"]').should('be.visible').click();
     cy.get('#gl-soporte-whatsapp').invoke('attr','href').should(url=>{
-      expect(decodeURIComponent(url)).to.include('sector de Proveedores');
+      expect(decodeURIComponent(url)).to.include('Necesito soporte en Proveedores.');
     });
     cy.get('#gl-support-form').should('not.exist');
   });
@@ -72,7 +72,8 @@ describe('GestLok · Soporte WhatsApp',()=>{
       expect(state.phone).to.eq('5491155551234');
       expect(state.calls).to.have.length(1);
     });
-    cy.get('#gl-soporte-whatsapp').should('not.exist');
+    // En configuración el FAB se oculta visualmente para no tapar el formulario.
+    cy.get('#gl-soporte-whatsapp').should('not.be.visible');
   });
   it('Aparece también para colaborador de Solo ver',()=>{
     launch();login('lectura@example.com');
