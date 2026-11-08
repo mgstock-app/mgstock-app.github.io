@@ -1,5 +1,5 @@
 /* global Cypress, cy, describe, it */
-// Regresión: la creadora observa el Plan Scanner real de Camila y NO el menú general.
+// Regresión: creadora verificada opera Scanner ZAYRO sin abrir otras microapps ni elevar a otros roles.
 // Datos ficticios: el navegador usa Supabase simulado y no modifica empresas.
 const CAMI='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
 describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
@@ -28,7 +28,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   cy.get('@cami').find('summary').click();
   cy.get('@cami').find('[data-act="local"][data-id="munro"]').click();
   cy.get('#snav',{timeout:18000}).should('be.visible');
-  cy.get('#snav [data-scanner-section="ventas"]').should('be.visible').and('be.disabled');
+  cy.get('#snav [data-scanner-section="ventas"]').should('be.visible').and('not.be.disabled');
   cy.get('#snav [data-scanner-section="stock"]').should('be.visible');
   cy.get('#snav').should('contain.text','Precios').and('contain.text','Sistema de ventas');
   cy.get('#snav').should('not.contain.text','Proveedores')
@@ -40,7 +40,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
     .and('contain.text','Plan Scanner').and('contain.text','ZAYRO');
   cy.get('#view').should('not.contain.text','Administrar a los empleados')
     .and('not.contain.text','Administrar mi empresa');
-  cy.get('#view .gl-scanner-private-card').should('have.length',6).and('be.disabled');
+  cy.get('#view .gl-scanner-private-card').should('have.length',6).and('not.be.disabled');
   cy.get('#view a[href="/zayro/"]').should('have.attr','target','_blank');
   cy.get('#gl-edit-menu').should('not.exist');
   cy.get('#btn-ajustes').should('not.be.visible');
