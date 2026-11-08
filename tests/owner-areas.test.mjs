@@ -16,7 +16,8 @@ test('Inicio cierra el acceso mientras verifica; solo muestra áreas operativas 
  assert.match(html,/Administrar <span>mi empresa<\/span>/);
  assert.match(html,/gl-owner-employees-locked/);assert.match(html,/aria-disabled="true"/);
  assert.doesNotMatch(html,/data-owner-area-staff|data-owner-go="staff"|Próximamente|local-ajeno/);
- assert.match(html,/Bienvenido\/a a/);assert.match(html,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
+ assert.match(html,/Bienvenido\/a a/);assert.match(html,/<h1 class="gl-business-name">Empresa ficticia<\/h1>/);
+ assert.match(html,/Con tecnología GESTLOK/);assert.doesNotMatch(html,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
 });
 test('Fallos de backend y contexto de otra empresa no habilitan carpetas',async()=>{
  for(const a of [load(null,{message:'offline'}),load({...context(),tenant_id:'tenant-ajeno'})]){
@@ -153,4 +154,48 @@ test('La tarjeta de empleados lleva a la administradora al personal de la empres
  await a.refresh();
  listeners.click({preventDefault(){},target:{closest:sel=>sel==='[data-owner-area-staff]'?{}:null}});
  const url=new URL(destination);assert.equal(url.pathname,'/empleados/vista-dueno/');assert.equal(url.searchParams.get('espacio'),'2026002');assert.equal(url.searchParams.get('local'),'torcuato');
+});
+
+test('Todos los locales presentan primero su empresa y sucursal, sin logo genérico protagonista',async()=>{
+ const d=context();d.company_name='Zayro';d.local_ids=['sucursal-1'];
+ const t=loadUI(d);t.S.local='sucursal-1';
+ t.S.localesDB=[{id:'sucursal-1',nombre:'Tienda Centro'}];
+ await t.api.refresh();
+ const h=t.api.view([{id:'sucursal-1',nombre:'Tienda Centro'}],()=> '');
+ assert.match(h,/<h1 class="gl-business-name">Zayro<\/h1>/);
+ assert.match(h,/gl-business-branch"><strong>Tienda Centro<\/strong>/);
+ assert.match(h,/Con tecnología GESTLOK/);
+ assert.doesNotMatch(h,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
+ assert.match(h,/data-owner-go="business"/);
+});
+test('El nombre comercial y la sucursal no admiten HTML inyectado',async()=>{
+ const d=context();d.company_name='<img onerror="alert(1)">';
+ const t=loadUI(d);t.S.local='sucursal-1';
+ t.S.localesDB=[{id:'sucursal-1',nombre:'<script>mala</script>'}];
+ await t.api.refresh();
+ const h=t.api.view([{id:'sucursal-1'}],()=> '');
+ assert.match(h,/&lt;img onerror/);
+ assert.match(h,/&lt;script&gt;mala&lt;\/script&gt;/);
+ assert.doesNotMatch(h,/<img onerror|<script>/);
+});
+test('El inicio de gerentes también destaca nombre de empresa y sucursal verificados',async()=>{
+ const tenant='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
+ let calls=0;
+ const window={addEventListener(){},GestLokSupabase:{rpc:async(name)=>{
+   calls++;
+   if(name==='gestlok_my_role_contexts')return {data:[{tenant_id:tenant,role:'gerente',company_name:'El Molino Café'}],error:null};
+   throw Error('RPC inesperada: '+name);
+ }}};
+ vm.runInNewContext(source,{window,document:{addEventListener(){}}});
+ const a=window.GestLokOwnerAreas;
+ a.attach({role:()=> 'gerente',S:{local:'acassuso',localesDB:[{id:'acassuso',nombre:'Acassuso'}],
+   me:{tenant_id:tenant},loaded:{e:true},equipo:[]},render(){}});
+ await a.refresh();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ const h=a.gerenteHome();
+ assert.match(h,/<h1 class="gl-business-name">El Molino Café<\/h1>/);
+ assert.match(h,/gl-business-branch"><strong>Acassuso<\/strong>/);
+ assert.match(h,/Administrar <span>mi tienda<\/span>/);
+ assert.doesNotMatch(h,/<h1><span>GEST<\/span><span>LOK<\/span><\/h1>/);
+ assert.equal(calls,1,'El nombre del gerente se consulta una vez por empresa');
 });

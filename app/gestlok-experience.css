@@ -200,3 +200,58 @@
   #hub .gl-ch .gl-ch-people{flex-wrap:wrap}
   #hub .gl-ch .gl-ch-rolelist{min-width:0}
 }
+
+/* Cada sucursal es protagonista: el sistema queda identificado de forma discreta.
+   Mismos estilos para creadora, dueños, gerentes y locales nuevos. */
+.gl-oh-hub .gl-owner-welcome.gl-business-welcome,
+.gl-owner-landing .gl-owner-welcome.gl-business-welcome {
+  display:flex;justify-content:space-between;align-items:flex-start;gap:18px;
+  margin-bottom:20px;padding:6px 0 22px;border-bottom:1px solid #dce7ee;
+}
+.gl-business-welcome .gl-business-identity {min-width:0;max-width:100%;}
+.gl-owner-welcome.gl-business-welcome .gl-business-eyebrow {
+  color:#6a7f8f;font-size:clamp(13px,1.3vw,16px);font-weight:550;letter-spacing:.01em;margin:0 0 7px;
+}
+.gl-owner-welcome.gl-business-welcome h1.gl-business-name {
+  font-size:clamp(32px,5vw,60px);font-weight:800;line-height:1.12;
+  letter-spacing:-.035em;margin:0 0 12px;color:#17364e;
+  overflow-wrap:anywhere;
+}
+.gl-owner-welcome.gl-business-welcome .gl-owner-welcome-logo {
+  margin:0 0 11px;
+}
+.gl-owner-welcome.gl-business-welcome .gl-business-branch {
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  width:fit-content;max-width:100%;
+  padding:7px 12px;border:1px solid #d7e6ef;border-radius:12px;
+  background:#f4f8fb;color:#24485c;font-size:clamp(15px,1.6vw,19px);
+  line-height:1.35;
+}
+.gl-business-branch strong{font-weight:750;overflow-wrap:anywhere;}
+.gl-business-branch span{color:#637c8b;font-size:.8em;font-weight:500;}
+.gl-owner-welcome.gl-business-welcome .gl-business-motto {
+  margin:8px 0 0;color:#38566a;font-size:14px;font-weight:650;
+}
+.gl-owner-welcome.gl-business-welcome .gl-business-tagline{
+  margin:12px 0 0;color:#607a8a;font-size:clamp(13px,1.4vw,16px);line-height:1.45;
+}
+.gl-owner-welcome.gl-business-welcome .gl-business-powered{
+  flex:none;font-size:11px;line-height:1.4;color:#7b8e9c;
+  font-weight:500;letter-spacing:.01em;padding-top:10px;
+}
+.gl-owner-welcome.gl-business-welcome [data-scanner-invite-open]{margin-top:14px;}
+@media(max-width:640px){
+  .gl-oh-hub .gl-owner-welcome.gl-business-welcome,
+  .gl-owner-landing .gl-owner-welcome.gl-business-welcome {
+    gap:5px;padding:0 0 16px;margin-bottom:16px;flex-direction:column;
+  }
+  .gl-owner-welcome.gl-business-welcome h1.gl-business-name{
+    font-size:clamp(31px,8vw,43px);margin-bottom:9px;
+  }
+  .gl-owner-welcome.gl-business-welcome .gl-business-branch{
+    font-size:16px;padding:7px 10px;
+  }
+  .gl-owner-welcome.gl-business-welcome .gl-business-powered{
+    align-self:flex-end;font-size:10px;padding:3px 0 0;
+  }
+}
