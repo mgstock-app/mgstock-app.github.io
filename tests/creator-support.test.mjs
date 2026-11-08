@@ -86,6 +86,7 @@ test('Un local propio de la creadora abre su contexto comercial sin modo soporte
  const {calls,listeners,reloads,store}=load(async(fn,args)=>{
    if(fn==='gestlok_my_role_contexts')return {data:[
      {tenant_id:'molino',role:'creadora',local_names:[{id:'acassuso',name:'Acassuso'},{id:'san-isidro',name:'San Isidro'}]}],error:null};
+   if(fn==='gestlok_creator_support_state')return {data:{active:false},error:null};
    if(fn==='gestlok_choose_role_context')return {data:{tenant_id:args.p_tenant,role:'creadora'},error:null};
    throw Error('No debe abrir soporte para un local propio');
  },{me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'}});
@@ -137,6 +138,7 @@ test('El Molino nunca abre una auditoría de soporte sin membresía verificada',
 test('Tras elegir El Molino se recarga aunque falle el almacenamiento móvil',async()=>{
  const t=load(async(fn,args)=>{
    if(fn==='gestlok_my_role_contexts')return {data:[{tenant_id:MOLINO,role:'creadora',local_names:[{id:'acassuso'}]}],error:null};
+   if(fn==='gestlok_creator_support_state')return {data:{active:false},error:null};
    if(fn==='gestlok_choose_role_context')return {data:{tenant_id:args.p_tenant,role:'creadora'},error:null};
    throw Error('No se debe abrir modo soporte');
  },{me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'},storageFails:true,offlineFails:true});
