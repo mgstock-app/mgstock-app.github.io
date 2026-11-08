@@ -1,4 +1,13 @@
-/* global describe, it, cy, expect */
+/* global describe, it, cy, expect, Cypress */
+ // El HTML raíz de GESTLOK emite el aviso de hidratación Next/React #418
+ // en Cypress; el mismo caso ya está exceptuado en demo-web-showcase.cy.js.
+ // Solo ignoramos ese código específico: los errores de red, JS y assertions
+ // de catálogo, filtros, carrito y WhatsApp deben seguir haciendo fallar.
+ Cypress.on('uncaught:exception', error => {
+   if (/Minified React error #418/.test(error?.message || '') &&
+       /react\.dev\/errors\/418/.test(error?.message || '')) return false;
+   return undefined;
+ });
 const base = {
  brand:"ZAYRO",enabled:true,sales_whatsapp:"5491144477888",currency:"ARS",
  products:[
