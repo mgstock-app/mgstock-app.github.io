@@ -51,7 +51,9 @@ describe('Inicio del dueño · cabecera, carpetas y accesos generales', () => {
     cy.get('.gl-oh-top [data-owner-nav="menu"]').click();
     cy.get('#pn').should('contain.text', 'Administrar mi empresa').and('contain.text', 'Administrar a los empleados').and('contain.text', 'Salir');
     cy.get('#pn [data-owner-nav="home"]').click(); cy.get('#pn .gl-owner-navlist').should('not.exist');
-    cy.get('.gl-owner-tile[data-owner-nav="support"]').click(); cy.get('#toast').should('contain.text', 'soporte');
+    // Con número configurado, Soporte es un enlace directo y no un panel con aviso.
+    cy.get('.gl-owner-quick a.gl-owner-tile[href^="https://wa.me/"]').should('contain.text','Soporte')
+      .and('have.attr','target','_blank').and('have.attr','rel','noopener noreferrer');
   });
   it('un dueño nuevo de la misma empresa ve el logo y el nombre de la empresa', () => {
     start('nuevo-dueno@example.com', w => {
