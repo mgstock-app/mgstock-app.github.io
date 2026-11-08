@@ -5,6 +5,8 @@
 (() => {
   'use strict';
   const PREVIEW_KEY = 'gestlok-preview-rol';
+  // El Molino tiene membresía propia: no usar soporte para abrir sus sucursales.
+  const MOLINO_TENANT = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
   const PREVIEW_ROLES = Object.freeze({dueno:'Dueña', gerente:'Gerente', lectura:'Solo ver'});
   let api, support = {active:false, name:'', expires:0}, busy = false, timer = 0;
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -52,6 +54,10 @@
   }
   async function open(tenant, name){
     if (!api || busy || !api.isCreadora?.()) return;
+    if (tenant === MOLINO_TENANT){
+      api.toast?.('Para ingresar a El Molino Café, elegí Acassuso o San Isidro desde Ver locales.', true);
+      return;
+    }
     const reason = String(window.prompt('Motivo de la consulta de «' + (name || 'la empresa') + '» (queda registrado en la auditoría):', '') || '').trim();
     if (reason.length < 3){ if (reason) api.toast('Escribí un motivo de al menos 3 letras.', true); return; }
     busy = true;
@@ -87,16 +93,22 @@
         const {data, error}=await window.GestLokSupabase.rpc('gestlok_choose_role_context',{p_tenant:tenant});
         if(error || data?.tenant_id!==tenant || data?.role!=='creadora')
           throw error || Error('No estás autorizada a administrar este local.');
-        await window.GestLokOffline?.invalidateContext?.();
+        // Contexto ya autorizado en servidor: un fallo de IndexedDB no debe impedir recargar.
+        try { await window.GestLokOffline?.invalidateContext?.(); } catch {}
       }else{
+        if(tenant===MOLINO_TENANT)
+          throw Error('No se pudo validar tu acceso directo a El Molino Café. Actualizá la sesión y volvé a intentar.');
         const {error}=await window.GestLokSupabase.rpc('gestlok_creator_open_company',
           {p_tenant:tenant,p_reason:'Administración de local desde Locales',p_minutes:60});
         if(error)throw error;
       }
       store.set('');
-      window.sessionStorage.setItem('gestlok-admin-tab','locales');
-      window.sessionStorage.setItem('gestlok:profile-next-local',
-        JSON.stringify({email:String(api.S.me.email||'').toLowerCase(),tenant_id:tenant,local_id:local}));
+      // El navegador móvil puede rechazar sessionStorage; igual completar el cambio autorizado.
+      try {
+        window.sessionStorage.setItem('gestlok-admin-tab','locales');
+        window.sessionStorage.setItem('gestlok:profile-next-local',
+          JSON.stringify({email:String(api.S.me.email||'').toLowerCase(),tenant_id:tenant,local_id:local}));
+      } catch {}
       location.reload();
     }catch(e){api.toast(e?.message||'No se pudo abrir el local.',true);busy=false;}
   }
@@ -110,6 +122,8 @@
   // Botón por empresa en la tabla de empresas registradas.
   function openButton(tenantId, name){
     if (!api || tenantId === api.S?.me?.tenant_id) return '<small>Tu empresa</small>';
+    // El Molino abre sus dos locales desde las tarjetas, nunca por sesión de soporte.
+    if (tenantId === MOLINO_TENANT) return '';
     return '<button type="button" class="btn sm" data-support-open="' + esc(tenantId) + '" data-support-name="' + esc(name) + '">Abrir empresa</button>';
   }
   function previewCard(){
