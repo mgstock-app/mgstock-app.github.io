@@ -74,11 +74,11 @@ test('Abrir un local de otra empresa conserva destino y cuenta antes de recargar
  assert.ok(calls.some(c=>c[0]==='gestlok_my_role_contexts'));
  const supportCall=calls.find(c=>c[0]==='gestlok_creator_open_company');
  assert.ok(supportCall);assert.equal(supportCall[1].p_tenant,'other');
- const target=JSON.parse(store.get('gestlok:profile-next-local'));
- assert.equal(target.email,'admin@example.com');
- assert.equal(target.tenant_id,'other');
- assert.equal(target.local_id,'munro');
- assert.equal(Number.isFinite(target.created_at),true);
+ const nextLocal=JSON.parse(store.get('gestlok:profile-next-local'));
+ assert.equal(nextLocal.email,'admin@example.com');
+ assert.equal(nextLocal.tenant_id,'other');
+ assert.equal(nextLocal.local_id,'munro');
+ assert.equal(Number.isFinite(nextLocal.created_at),true);
  assert.equal(store.get('gestlok-admin-tab'),'locales');assert.equal(reloads(),1);
 });
 
