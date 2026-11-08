@@ -20,6 +20,7 @@
     ['Pedidos','pedidos','data-scanner-menu-orders','clipboard-list'],
     ['Dispositivos','dispositivos','data-pilot-devices','printer']
   ]);
+  const displayLabel=(label,key,host)=>isCreator(host)&&key==='caja'?'Movimientos de caja':label;
   function loadStyle(){
     if(!document.head||document.getElementById('gl-scanner-business-style'))return;
     const link=document.createElement('link');
@@ -34,7 +35,7 @@
     if(!viewing(host))return '<div class="gl-scanner-menu-wait" role="status">Verificando Plan Scanner…</div>';
     return actions.map(([label,key,attr])=>
       '<button type="button" '+attr+
-      ' class="gl-scanner-nav" data-scanner-section="'+key+'"><span class="nl">'+escape(label)+'</span></button>'
+      ' class="gl-scanner-nav" data-scanner-section="'+key+'"><span class="nl">'+escape(displayLabel(label,key,host))+'</span></button>'
     ).join('')+
     (isCreator(host)?'':'<button type="button" class="gl-scanner-nav" data-zayro-open><span class="nl">Tienda Online · ZAYRO</span></button>');
   }
@@ -61,7 +62,7 @@
     }
     const cards=actions.map(([label,key,attr])=>
       '<button type="button" class="gl-scanner-private-card" data-scanner-card="'+key+'" '+attr+
-      '><span class="gl-scanner-card-icon" aria-hidden="true">▣</span><b>'+escape(label)+
+      '><span class="gl-scanner-card-icon" aria-hidden="true">▣</span><b>'+escape(displayLabel(label,key,host))+
       '</b><span aria-hidden="true">↗</span></button>'
     ).join('');
     const ownerZayro=window.GestLokZayroAdmin?.homeTile?.(host)||'';
