@@ -1,0 +1,18 @@
+{
+  "auth": [
+    {
+      "actual": "options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice}, ...(intent.business ? {gestlok_business:intent.business} : {}) } }",
+      "original": "options: { emailRedirectTo: SITE, data: { gestlok_registration: {kind:intent.kind,choice:intent.choice} } }"
+    }
+  ],
+  "app": [
+    {
+      "actual": "function businessRegistrationFolder(x){\n  if(x.tipoCuenta!=='dueno'||!x.empresa)return '';\n  const fields=[\n    ['Persona encargada',x.responsable],['Teléfono de contacto',x.telefono],\n    ['Email registrado',x.email],['Dirección / referencia',x.direccion||'Sin dirección fija']\n  ];\n  return '<details class=\"gl-business-registration-card\"><summary><span aria-hidden=\"true\">▣</span> <b>'+\n    esc(x.empresa)+'</b><small>Ficha del negocio · Pendiente de autorización</small></summary>'+\n    '<dl>'+fields.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('')+'</dl>'+\n    '<p>Esta ficha no crea permisos ni locales. Prepará la empresa desde Administración y asigná el acceso autorizado.</p></details>';\n}\n",
+      "original": ""
+    },
+    {
+      "actual": "\n    ${businessRegistrationFolder(x)}",
+      "original": ""
+    }
+  ]
+}
