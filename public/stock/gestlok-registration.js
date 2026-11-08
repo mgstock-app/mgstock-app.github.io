@@ -123,8 +123,8 @@
     const form=document.querySelector('#au-up');
     if(!form||form.querySelector('.gl-registration-fields'))return;
     form.querySelector('.fld').before(fields('gl-signup'));
-    form.querySelector('h1').textContent='Registrá tu negocio';
-    form.querySelector('p').textContent='Completá los datos una sola vez. La administradora revisará el alta y después podrás ingresar con Google.';
+    form.querySelector('h1').textContent='Creá tu cuenta en GESTLOK';
+    form.querySelector('p').textContent='Si tenés un negocio, elegí y probá las microapps que necesitás. Tu solicitud será revisada antes de habilitar el acceso.';
     for(const id of ['#au-pass2','#au-pass3']){
       const input=form.querySelector(id);if(input)input.minLength=8;
     }
