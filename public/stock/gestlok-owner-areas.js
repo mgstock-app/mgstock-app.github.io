@@ -4,6 +4,40 @@
   const isSoloOwner=()=>api?.role?.()==='dueno'&&window.GestLokPilot?.scanner?.()===true;
   let api,state={status:'loading',data:null},gerente={status:'loading',locals:[]},gerenteBusy=false,busy=false,admin={status:'loading',companies:[]},adminBusy=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // Una identidad por empresa y sucursal: GESTLOK es la herramienta, no la marca principal.
+  // El nombre viene del contexto autorizado; nunca de datos editables del navegador.
+  const localActual=()=>api?.S?.local
+    ?(api.S.localesDB||[]).find(l=>l.id===api.S.local)?.nombre||'' : '';
+  function businessWelcome(companyName,branded=false,soloOwner=false){
+    const business=String(companyName||'Mi negocio').trim()||'Mi negocio';
+    const branch=String(localActual()||'').trim();
+    return '<header class="gl-owner-welcome gl-business-welcome"><div class="gl-business-identity">'+
+      '<p class="gl-business-eyebrow">Bienvenido/a a</p>'+
+      (branded?'<h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1>'
+        :'<h1 class="gl-business-name">'+esc(business)+'</h1>')+
+      (branch?'<p class="gl-business-branch"><strong>'+esc(branch)+'</strong><span>· Sucursal</span></p>'
+        :'<p class="gl-business-branch"><strong>Mi negocio</strong><span>· Panel principal</span></p>')+
+      (branded?'<p class="gl-business-motto">Empanadas de Verdad</p>':'')+
+      '<p class="gl-owner-tagline gl-business-tagline">Tus herramientas, en un solo lugar.</p>'+
+      (soloOwner?'<button class="btn" type="button" data-scanner-invite-open>Invitar personas</button>':'')+
+      '</div><small class="gl-business-powered">Con tecnología GESTLOK</small></header>';
+  }
+  let gerenteMarca={tenant:'',name:''},gerenteMarcaConsultada='';
+  async function refreshGerenteMarca(){
+    if(api?.role?.()!=='gerente'||!api.S.loaded.e)return;
+    const tenant=api.S.me?.tenant_id;
+    if(!tenant||gerenteMarcaConsultada===tenant)return;
+    gerenteMarcaConsultada=tenant;
+    try{
+      const {data,error}=await window.GestLokSupabase.rpc('gestlok_my_role_contexts');
+      if(error||!Array.isArray(data))return;
+      const context=data.find(c=>c?.tenant_id===tenant&&c.role==='gerente');
+      const name=typeof context?.company_name==='string'?context.company_name.trim():'';
+      if(name&&api.S.me?.tenant_id===tenant){
+        gerenteMarca={tenant,name};api.render();
+      }
+    }catch{}
+  }
   /* Vista previa visual de la creadora como Dueña: arma el contexto con los datos que ya puede consultar.
      No concede permisos; el backend sigue tratándola como creadora de solo lectura. */
   async function previewOwner(){
@@ -58,9 +92,9 @@
     const soloTienda=api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
     const staff=!soloTienda&&gerente.status==='ready'&&gerente.locals.includes(local);
     const pending=!soloTienda&&gerente.status==='loading';
-    return '<section class="gl-owner-landing gl-manager-landing" aria-label="Inicio del gerente"><header class="gl-owner-welcome"><div><p>Bienvenido/a · '+esc(name)+'</p>'+
-      (brand?'<h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p>Empanadas de Verdad</p>':'<h1><span>GEST</span><span>LOK</span></h1>')+
-      '<p class="gl-owner-tagline">Todo lo que necesitás para tu local.</p></div></header><div class="gl-owner-areas">'+
+    return '<section class="gl-owner-landing gl-manager-landing" aria-label="Inicio del gerente">'+
+      businessWelcome(gerenteMarca.tenant===api.S.me?.tenant_id?gerenteMarca.name:name,brand)+
+      '<div class="gl-owner-areas">'+
       '<article class="gl-owner-area gl-owner-business" data-gerente-area="business"><div class="gl-owner-area-icon">'+ICON_STORE+'</div><div class="gl-owner-area-title"><h2>Administrar <span>'+(soloTienda?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-gerente-business aria-label="Abrir tareas de mi local">'+svg(I.right,26)+'</button></div><p>Productos, stock, proveedores y tareas de tu local.</p>'+
       list([['box','Productos y stock'],['truck','Proveedores y pedidos'],['calendar','Vencimientos y avisos'],['team','Chat del local']])+'</article>'+
       (soloTienda?'':'<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
@@ -75,6 +109,7 @@
     window.GestLokCajaDiaria?.refresh?.(api);
     window.GestLokInvites?.refresh?.();
     refreshGerente();
+    void refreshGerenteMarca();
     if(!api||!['dueno','creadora'].includes(api.role())||!api.S.loaded.e||busy)return;
     if(api.S.offline&&state.status==='ready')return;
     busy=true;
@@ -208,11 +243,8 @@
     const commercialPrepOnly=api?.S?.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e' &&
       ['creadora','dueno'].includes(api?.role?.()) && commerce && !staff;
     const name=esc(state.data.company_name||'Mi empresa');
-    // El logo de Mi Gusto solo se muestra cuando el backend lo asigna a esta empresa.
+    // Nunca asumir un logo que el servidor no haya asignado.
     const branded=state.data.logo_id==='mi-gusto';
-    const company=branded
-      ?'<img class="gl-owner-company-logo" src="img/mi-gusto-blanco.png" alt="Mi Gusto" width="562" height="278">'
-      :'<b class="gl-owner-company-name">'+name+'</b>';
     const tile=(k,ic,t)=>'<button class="gl-owner-tile" data-owner-nav="'+k+'"><span>'+svg(I[ic],28)+'</span>'+t+'</button>';
     const caja=window.GestLokCajaDiaria?.homeTile?.()||'';
     const pilot=window.GestLokPilot?.homeTile?.(state.data,api)||'';
@@ -221,10 +253,8 @@
     const futurePrices=isSoloOwner()?'':window.GestLokFuturePricing?.homeTile?.(state.data,api)||'';
     const sup=supportLink();
     const support=sup?'<a class="gl-owner-tile" href="'+esc(sup)+'" target="_blank" rel="noopener noreferrer"><span>'+svg(I.help,28)+'</span>Soporte</a>':tile('support','help','Soporte');
-    return '<section class="gl-owner-landing" aria-label="Inicio de GESTLOK · '+name+'">'+
-      '<header class="gl-owner-welcome">'+(branded
-        ?'<div><p>Bienvenido/a a</p><h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div>'
-        :(isSoloOwner()?'<div><h1>Panel principal</h1><p class="gl-owner-tagline">Accedé a tus herramientas y registros.</p><button class="btn" type="button" data-scanner-invite-open>Invitar personas</button></div>':'<div><p>Bienvenido/a a</p><h1><span>GEST</span><span>LOK</span></h1><p class="gl-owner-tagline">Todo lo que necesitás, en un solo lugar.</p></div><div class="gl-owner-company" aria-label="Empresa">'+company+'</div>'))+'</header>'+
+    return '<section class="gl-owner-landing" aria-label="Inicio del negocio · '+name+'">'+
+      businessWelcome(state.data.company_name,branded,isSoloOwner())+
       '<div class="gl-owner-areas'+(commerce?'':' gl-owner-areas-one')+'">'+
       (commerce&&!isSoloOwner()?'<article class="gl-owner-area gl-owner-business" data-owner-go="business" aria-labelledby="gl-owner-business-t"><div class="gl-owner-area-icon">'+ICON_STORE+'</div>'+
         '<div class="gl-owner-area-title"><h2 id="gl-owner-business-t">Administrar <span>'+(commercialPrepOnly?'mi tienda':'mi empresa')+'</span></h2><button class="gl-owner-arrow" data-owner-nav="business" aria-label="Abrir administración comercial">'+svg(I.right,26)+'</button></div>'+
