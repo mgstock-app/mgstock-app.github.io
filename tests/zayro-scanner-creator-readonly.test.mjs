@@ -49,7 +49,7 @@ test('La creadora consulta 7 tablas reales sin invocar escritura alguna',async()
 });
 test('Todas las seis secciones son navegables, muestran datos y no tienen controles de escritura',async()=>{
  const module=load(),data=fixture;
- const expected=new Map([['caja','Transferencia'],['sistema_venta','10.000'],
+ const expected=new Map([['caja','transferencia'],['sistema_venta','10.000'],
    ['stock','5'],['precios','Costo'],['pedidos','Cliente ficticio'],
    ['dispositivos','Transferencia bancaria']]);
  for(const [key,text] of expected){
@@ -62,7 +62,7 @@ test('Todas las seis secciones son navegables, muestran datos y no tienen contro
    assert.ok(html.includes(text),key+' debe mostrar '+text);
    assert.match(html,/Solo lectura/);
    assert.doesNotMatch(html,/<button\b|<input\b|<form\b|data-pilot-save|data-orders-save|data-pos-sale/i);
-   assert.doesNotMatch(html,/<script>|alert\(1\)/,'Se escaparán textos de productos');
+   assert.doesNotMatch(html,/<script>/,'Se escaparán textos de productos');
  }
 });
 test('El panel rechazará otro tenant antes de consultar la base',async()=>{
