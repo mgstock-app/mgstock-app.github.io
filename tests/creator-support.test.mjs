@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 const source=readFileSync('public/stock/gestlok-creator-support.js','utf8');
-function load(rpc,{creadora=true,reason='Revisión visual',preview='',me={tenant_id:'own'}}={}){
+function load(rpc,{creadora=true,reason='Revisión visual',preview='',me={tenant_id:'own'},storageFails=false,offlineFails=false}={}){
  const listeners={},calls=[],toasts=[],store=new Map(preview?[['gestlok-preview-rol',preview]]:[]);let reloads=0;
  const el={remove(){this.gone=true;},setAttribute(){},style:{}};
- const window={prompt:()=>reason,sessionStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},GestLokSupabase:{rpc:async(fn,args)=>{calls.push([fn,args]);return rpc(fn,args);}}};
+ const window={prompt:()=>reason,sessionStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>{if(storageFails)throw Error('Storage blocked');store.set(k,v);},removeItem:k=>store.delete(k)},GestLokSupabase:{rpc:async(fn,args)=>{calls.push([fn,args]);return rpc(fn,args);}}};
+ if(offlineFails)window.GestLokOffline={pending:async()=>0,invalidateContext:async()=>{throw Error('IndexedDB no disponible');}};
  const document={addEventListener(n,f){listeners[n]=f;},visibilityState:'visible',getElementById:()=>null,createElement:()=>el,body:{prepend(){}}};
  vm.runInNewContext(source,{window,document,location:{reload(){reloads++;}},setTimeout:(f,ms)=>{const t=setTimeout(f,ms);t.unref?.();return t;},clearTimeout,Date});
  const s=window.GestLokCreatorSupport;s.attach({isCreadora:()=>creadora,toast:(t,e)=>toasts.push([t,!!e]),S:{me}});
@@ -89,4 +90,33 @@ test('Un usuario sin membresía explícita conserva apertura auditada de soporte
  assert.ok(calls.some(c=>c[0]==='gestlok_creator_open_company'));
  assert.ok(!calls.some(c=>c[0]==='gestlok_choose_role_context'));
  assert.equal(reloads(),1);
+});
+
+const MOLINO='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
+test('El Molino no muestra Abrir empresa por soporte auditado',()=>{
+ const {s}=load(async()=>({data:{},error:null}));
+ assert.equal(s.openButton(MOLINO,'El Molino Café'),'');
+ assert.match(s.openButton('otro-tenant','Empresa ajena'),/data-support-open/);
+});
+test('El Molino nunca abre una auditoría de soporte sin membresía verificada',async()=>{
+ const t=load(async(fn)=>({data:fn==='gestlok_my_role_contexts'?[]:{},error:null}),
+   {me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'}});
+ t.listeners.click(target('[data-company-local]',{companyTenant:MOLINO,companyLocal:'acassuso',companyName:'El Molino Café'}));
+ await tick();await tick();
+ assert.ok(!t.calls.some(([fn])=>fn==='gestlok_creator_open_company'));
+ assert.ok(!t.calls.some(([fn])=>fn==='gestlok_choose_role_context'));
+ assert.equal(t.reloads(),0);
+ assert.ok(t.toasts.some(([message,err])=>err && message.includes('acceso directo')));
+});
+test('Tras elegir El Molino se recarga aunque falle el almacenamiento móvil',async()=>{
+ const t=load(async(fn,args)=>{
+   if(fn==='gestlok_my_role_contexts')return {data:[{tenant_id:MOLINO,role:'creadora',local_names:[{id:'acassuso'}]}],error:null};
+   if(fn==='gestlok_choose_role_context')return {data:{tenant_id:args.p_tenant,role:'creadora'},error:null};
+   throw Error('No se debe abrir modo soporte');
+ },{me:{tenant_id:'mi-gusto',email:'kmu15lopez@gmail.com'},storageFails:true,offlineFails:true});
+ t.listeners.click(target('[data-company-local]',{companyTenant:MOLINO,companyLocal:'acassuso',companyName:'El Molino Café'}));
+ await tick();await tick();
+ assert.ok(t.calls.some(([fn])=>fn==='gestlok_choose_role_context'));
+ assert.ok(!t.calls.some(([fn])=>fn==='gestlok_creator_open_company'));
+ assert.equal(t.reloads(),1);
 });
