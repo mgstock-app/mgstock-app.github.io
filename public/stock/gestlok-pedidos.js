@@ -180,7 +180,7 @@
  }
  function render(){
   const rows=ordersDay();
-  return '<section class="gl-orders"><header class="gl-order-header"><div><small>GESTLOK · PILOTO DE CAMI</small>'+
+  return '<section class="gl-orders"><header class="gl-order-header"><div><small>ZAYRO · GESTIÓN COMERCIAL</small>'+
    '<h2>Pedidos</h2><p>Control diario de la tienda Perfumes</p></div>'+
    '<div class="gl-order-date"><button type="button" data-orders-prev aria-label="Día anterior">‹</button>'+
    '<strong>'+esc(dayLabel(day))+'</strong><button type="button" data-orders-next aria-label="Día siguiente">›</button></div></header>'+
