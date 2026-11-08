@@ -67,7 +67,7 @@
    const identity=await window.GestLokSupabase.auth.getUser();
    if(epoch!==accessEpoch)return;
    const uid=identity.data?.user?.id;
-   const ownerVerified=data?.owner_uid===identity.data.user.id;
+   const ownerVerified=!!data&&!!identity.data?.user&&data.owner_uid===identity.data.user.id;
    const valid=data?.plan_code==='scanner'&&data?.enabled===true&&!!uid&&!!data?.owner_uid;
    readOnly=!!(valid&&creatorView&&!ownerVerified);
    enabled=!!(valid&&(ownerView&&ownerVerified||readOnly));
