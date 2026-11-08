@@ -90,7 +90,7 @@
  function homeTile(context,host){
   if(!enabled||!eligible(context,host))return '';
   return '<section class="gl-pilot-entry" aria-label="Herramientas comerciales"><div class="gl-pilot-entry-info"><small>OPERACIONES</small><h2>Accesos rápidos</h2></div>'+ 
-   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>Caja</button><button type="button" data-pilot-pos>Ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button></div></section>';
+   '<div class="gl-pilot-entry-actions"><button type="button" data-pilot-caja>'+(accessMode==='creadora'?'Movimientos de caja':'Caja')+'</button><button type="button" data-pilot-pos>Ventas</button><button type="button" data-pilot-stock>Stock</button><button type="button" data-pilot-prices>Precios</button></div></section>';
  }
  async function assertAccess(){
   if(!authorized())throw Error('No se pudo verificar tu permiso en este local.');
@@ -143,7 +143,7 @@
  function sidebar(){
   return '<nav class="gl-pilot-nav" aria-label="Secciones de tu negocio"><div><span class="gl-pilot-group">Mi local</span>'+
    '<button type="button" data-pilot-tab="tablero" class="'+(active==='tablero'?'is-active':'')+'">Inicio</button>'+
-   '<button type="button" data-pilot-caja>Caja</button>'+
+   '<button type="button" data-pilot-caja>'+(accessMode==='creadora'?'Movimientos de caja':'Caja')+'</button>'+
    HOME_MODULES.map(id=>'<button type="button" data-pilot-tab="'+id+'" class="'+(active===id?'is-active':'')+'">'+esc(HOME_LABELS[id][0])+'</button>').join('')+'</div></nav>';
  }
  function dashboard(){
@@ -230,6 +230,12 @@
   finally{loading=false;render();}
  }
  async function openOrders(){return;}
+ async function openCreatorMovements(){
+  if(!authorized()||accessMode!=='creadora')return;
+  if(!displayed)await open();
+  if(!displayed)return;
+  active='finanzas';editing='';error='';render();
+ }
  const POS_SCRIPTS=['catalog-adapter.js','barcode-scanner.js','payment-split.js','checkout-client.js','pos-devices.js','pos-preview.js'];
  async function loadPosScripts(){
   for(const file of POS_SCRIPTS){
@@ -372,7 +378,14 @@
  document.addEventListener('click',e=>{
   if(e.target.closest('#gl-pilot-panel [data-owner-nav]')){close(false);return;}
   if(e.target.closest('[data-pilot-open]')){e.preventDefault();void open();return;}
-  if(e.target.closest('[data-pilot-caja]')){e.preventDefault();if(displayed)close(false);const opened=window.GestLokCajaDiaria?.openApp?.();if(!opened){api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);}return;}
+  if(e.target.closest('[data-pilot-caja]')){
+   e.preventDefault();
+   if(accessMode==='creadora'){void openCreatorMovements();return;}
+   if(displayed)close(false);
+   const opened=window.GestLokCajaDiaria?.openApp?.();
+   if(!opened)api?.toast?.('No pudimos abrir la Caja. Revisá la conexión y volvé a intentarlo.',true);
+   return;
+  }
   if(e.target.closest('[data-pilot-pos]')){e.preventDefault();void switchSection('sistema_venta');return;}
   if(e.target.closest('[data-pilot-devices]')){e.preventDefault();void switchSection('dispositivos');return;}
   if(e.target.closest('[data-pilot-orders]')){e.preventDefault();void openOrders();return;}
