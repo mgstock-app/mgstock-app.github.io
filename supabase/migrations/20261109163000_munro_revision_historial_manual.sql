@@ -52,9 +52,10 @@ begin
   end if;
   -- Una semana cerrada admite 24 h de revision manual; una semana
   -- en curso mantiene la verificacion estricta de 30 minutos.
-  if v_live.actualizado_at < now() -
-      case when v_live.semana_hasta < (now() at time zone 'America/Argentina/Buenos_Aires')::date
-           then interval '24 hours' else interval '30 minutes' end
+  if (v_live.semana_hasta < (now() at time zone 'America/Argentina/Buenos_Aires')::date
+      and v_live.actualizado_at < now() - interval '24 hours')
+     or (v_live.semana_hasta >= (now() at time zone 'America/Argentina/Buenos_Aires')::date
+      and v_live.actualizado_at < now() - interval '30 minutes')
      or v_live.actualizado_at > now() + interval '1 minute' then
     raise exception 'La sincronizacion esta desactualizada. Envia la semana desde Google Sheets primero'
       using errcode='22023';
