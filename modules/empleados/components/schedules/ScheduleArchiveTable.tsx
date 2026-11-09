@@ -78,7 +78,7 @@ export function ScheduleArchiveTable({ local, archivo, hoja, desde, filas }: {
   return <section className={styles.resumen} aria-label={`Hoja ${hoja} archivada`}>
     <header className={styles.archiveHeader}>
       <h2 className={styles.rTitulo}>{hoja}</h2>
-      {archivo && data?.tiene_pdf && <button type="button" className={styles.download} disabled={downloading}
+      {archivo && data?.tiene_pdf !== false && <button type="button" className={styles.download} disabled={downloading}
         aria-label={`Descargar PDF de ${hoja}`} title={`Descargar PDF de ${hoja}`}
         onClick={() => void download()}><Download size={20} aria-hidden="true" /></button>}
     </header>
