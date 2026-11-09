@@ -85,7 +85,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
       // PedidosYa: exclusivo de Molino Café · Acassuso (el servidor valida empresa y sucursal).
-      if (!visitor) await load("/stock/gestlok-molino-pya.js?rev=pedidosya-20261109");
+      if (!visitor) await load("/stock/gestlok-molino-pya.js?rev=pedidosya-categorias-20261109");
       if (!visitor) await load("/stock/gestlok-molino.js?rev=pedidosya-20261109");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
@@ -104,7 +104,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-creator.js?rev=el-molino-pendiente-20261107");
       if (!visitor) await load("/stock/gestlok-support.js?rev=menu-empresa-20261108");
       // Modo diseño: solo la creadora ve el botón; los cambios se leen por empresa.
-      if (!visitor) await load("/stock/gestlok-design-mode.js?rev=modo-diseno-dock-20261109");
+      if (!visitor) await load("/stock/gestlok-design-mode.js?rev=modo-diseno-lateral-20261109");
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.
