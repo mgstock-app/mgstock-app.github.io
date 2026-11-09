@@ -31,6 +31,24 @@
       }
       window.location.reload();
     });
+    // Descartar con gesto horizontal sin instalar ni perder cambios abiertos.
+    banner.style.touchAction = 'pan-y';
+    let startX = null, startY = null;
+    banner.addEventListener('touchstart', event => {
+      if (event.touches.length !== 1) return;
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+    }, { passive: true });
+    banner.addEventListener('touchend', event => {
+      if (startX === null || !event.changedTouches.length) return;
+      const dx = event.changedTouches[0].clientX - startX;
+      const dy = event.changedTouches[0].clientY - startY;
+      startX = startY = null;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        banner.remove();
+        banner = null;
+      }
+    }, { passive: true });
     banner.append(message, button);
     document.body.appendChild(banner);
   });
