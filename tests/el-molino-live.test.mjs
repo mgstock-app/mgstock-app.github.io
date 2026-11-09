@@ -72,7 +72,7 @@ test('El historial diario es inmutable, guarda observaciones y precios; cierre 2
  assert.match(sql,/'cambios_precios'/);
  assert.match(sql,/'envios'/);
  assert.match(sql,/'devoluciones'/);
- assert.match(runtime,/await load\("\/stock\/gestlok-molino\.js\?rev=molino-menu-oscuro-20261109"\)/);
+ assert.match(runtime,/await load\("\/stock\/gestlok-molino\.js\?rev=pedidosya-20261109"\)/);
  assert.match(owner,/GestLokMolino\?\.homeTile\?\.\(\)/);
  assert.match(owner,/GestLokMolino\?\.attach\?\.\(ctx\)/);
 });
