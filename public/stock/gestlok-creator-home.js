@@ -5,6 +5,7 @@
 (() => {
   'use strict';
   const TAB_KEY = 'gestlok-admin-tab';
+  const PREMIUM_ADMIN_EMAIL = 'kmu15lopez@gmail.com';
   const TABS = Object.freeze([
     ['inicio', 'Inicio', '<path d="m4 11 8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>'],
     ['empresas', 'Empresas', '<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6M9 10h.01M15 10h.01"/>'],
@@ -256,6 +257,51 @@
       '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
       '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
   }
+
+  // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
+  // La lista de empresas/locales y la autorización de ingreso siguen viniendo del servidor.
+  function premiumLocales(p) {
+    const companies=window.GestLokOwnerAreas?.creatorCompanies?.()||[];
+    const currentTenant=api.S?.me?.tenant_id;
+    const fallback=window.GestLokOwnerAreas?.companyFolders?.()||p.parts?.locales||'';
+    const loading=/Cargando empresas|No pudimos cargar/.test(fallback);
+    const totalLocals=companies.reduce((sum,c)=>sum+(Array.isArray(c.locals)?c.locals.length:0),0);
+    const storeIcon='<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>';
+    const businessIcon='<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6M9 10h.01M15 10h.01"/>';
+    const lockIcon='<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/>';
+    const showCount=n=>loading?'—':String(n);
+    const stats='<div class="gl-ch-premium-stats" aria-label="Resumen de empresas y locales">'+
+      '<article class="gl-ch-premium-stat"><span class="gl-ch-premium-stat-icon">'+svg(businessIcon,25)+'</span><div><span>Empresas activas</span><strong>'+showCount(companies.length)+'</strong></div></article>'+
+      '<article class="gl-ch-premium-stat"><span class="gl-ch-premium-stat-icon">'+svg(storeIcon,25)+'</span><div><span>Locales totales</span><strong>'+showCount(totalLocals)+'</strong></div></article>'+
+      '<article class="gl-ch-premium-stat"><span class="gl-ch-premium-stat-icon">'+svg(lockIcon,25)+'</span><div><span>Acceso de administradora</span><strong class="gl-ch-premium-verified"><span aria-hidden="true">✓</span> Verificado</strong></div></article>'+
+      '</div>';
+    const cards=companies.map(c=>{
+      const locals=Array.isArray(c.locals)?c.locals:[];
+      const n=locals.length;
+      const attrs=l=>c.tenant_id===currentTenant
+        ?'data-act="local" data-id="'+esc(l.id)+'"'
+        :'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
+      const localCards=locals.map(l=>'<button type="button" class="gl-ch-premium-local" '+attrs(l)+
+        ' aria-label="Ingresar a '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
+        '<span class="gl-ch-premium-local-icon">'+svg(storeIcon,19)+'</span><span>'+esc(l.name||l.id)+'</span>'+
+        '<span aria-hidden="true">→</span></button>').join('');
+      return '<details class="gl-ch-premium-company" data-creator-company="'+esc(c.tenant_id)+'">'+
+        '<summary aria-label="Seleccionar empresa '+esc(c.name)+'">'+
+        '<span class="gl-ch-premium-company-icon">'+svg(businessIcon,27)+'</span>'+
+        '<span class="gl-ch-premium-company-title"><b>'+esc(c.name)+'</b><small>Empresa · Sucursales</small></span>'+
+        '<span class="gl-ch-premium-count">'+n+(n===1?' local':' locales')+'</span>'+
+        '<span class="gl-ch-premium-select">Seleccionar empresa <span aria-hidden="true">→</span></span>'+
+        '</summary><div class="gl-ch-premium-company-locals">'+
+        (localCards||'<p>Esta empresa todavía no tiene locales creados.</p>')+
+        '</div></details>';
+    }).join('');
+    return '<div class="gl-ch-premium-locales">'+stats+
+      '<section class="gl-ch-premium-directory" aria-label="Empresas y locales">'+
+      '<header><div><h2>Locales</h2><p>Elegí una empresa y después un local.</p></div></header>'+
+      (loading?fallback:'<div class="gl-ch-premium-company-grid">'+
+        (cards||'<p class="gl-ch-premium-empty">No hay empresas disponibles.</p>')+'</div>')+
+      '</section></div>';
+  }
   // No inventar permisos: solo gestlok_my_role_contexts + elección autorizada
   // permiten pasar al tenant de El Molino Café. Los movimientos siguen por RPC/RLS.
   async function openMolinoTool(id) {
@@ -324,6 +370,7 @@
     const cur = validTab(tab) ? tab : 'inicio';
     resumeMolinoTool();
     const parts = p.parts || {};
+    const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
     const nav = TABS.map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>').join('');
     const d = today();
@@ -331,7 +378,7 @@
     if (cur === 'inicio') body = home(p);
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
-    else if (cur === 'locales') body = '<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
+    else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + dailySettingsView() + (parts.tools || '') + '</div>';
@@ -339,13 +386,13 @@
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
-    return '<div class="gl-ch' + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
+    return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
       '<button type="button" class="gl-ch-collapse" data-ch-collapse aria-controls="gl-ch-navigation" aria-expanded="' + (!navCollapsed) + '" title="' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '" aria-label="' + (navCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral') + '">' + svg('<path d="M4 5h16v14H4zM9 5v14M13 9l-3 3 3 3"/>', 20) + '<span>' + (navCollapsed ? 'Expandir menú' : 'Contraer menú') + '</span></button>' +
       '<nav class="gl-ch-nav" id="gl-ch-navigation">' + nav + '</nav>' +
       '<div class="gl-ch-me"><span class="gl-ch-av">' + initial + '</span><div><b>Creadora</b><small>' + esc(api.S?.me?.email || '') + '</small><em>ADMINISTRADORA</em></div></div>' +
       '<p class="gl-ch-quote">Gestión simple<br>para negocios reales</p></aside>' +
-      '<main class="gl-ch-main"><header class="gl-ch-top"><div><h1>' + esc(title) + (cur === 'inicio' ? ' <span aria-hidden="true">👋</span>' : '') + '</h1><p>' + esc(sub) + '</p></div>' +
+      '<main class="gl-ch-main"><header class="gl-ch-top"><div><h1>' + esc(title) + (cur === 'inicio' && !premium ? ' <span aria-hidden="true">👋</span>' : '') + '</h1><p>' + esc(sub) + '</p></div>' +
       '<div class="gl-ch-topr"><div class="gl-ch-date"><span>' + esc(d.date) + '</span><span>' + esc(d.time) + '</span></div>' +
       '<button type="button" class="gl-ch-bell" data-act="share" aria-label="Solicitudes pendientes: ' + num(p.pending) + '">' + svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9z"/><path d="M10 21h4"/>', 22) + (p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>' +
       '</div></header>' + body +
