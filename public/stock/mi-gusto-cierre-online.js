@@ -499,8 +499,19 @@ function attach(h){
    if(m)void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:m.id,
      p_comanda:m.comanda,p_method:m.method,p_amount:m.amount,p_app:!m.app,p_observacion:m.observacion||''},'APP actualizado.');return;}
   const close=e.target.closest('[data-mgon-close]');
-  if(close&&writable()&&window.confirm('¿Cerrar el turno '+shiftName(snapshot.active.turno)+'? Se guardará en el historial y se abrirá el siguiente turno.')){
-   void action('gestlok_mg_online_close',{p_shift:snapshot.active.id},'Turno cerrado. Se abrió el siguiente.');tab='movimientos';showAllMoves=false;return;}
+  if(close&&writable()&&snapshot?.active){
+   const s=snapshot.active,declared=emptySelected(s);
+   const confirmed=window.confirm(declared?
+    '¿Cerrar el turno '+shiftName(s.turno)+' SIN MOVIMIENTOS y sin foto? Se registrará así en el historial y se abrirá el siguiente turno.':
+    '¿Cerrar el turno '+shiftName(s.turno)+'? Se guardará en el historial y se abrirá el siguiente turno.');
+   if(confirmed){
+    emptyCheckedFor=null;
+    void action(declared?'gestlok_mg_online_close_sin_movimientos':'gestlok_mg_online_close',
+     {p_shift:s.id},declared?'Turno cerrado sin movimientos. Se abrió el siguiente.':'Turno cerrado. Se abrió el siguiente.');
+    tab='movimientos';showAllMoves=false;
+   }
+   return;
+  }
  });
  document.addEventListener('submit',e=>{
   if(e.target.id!=='mg-online-form'||!writable())return;
@@ -517,6 +528,11 @@ function attach(h){
  });
  document.addEventListener('change',e=>{
   if(!allowed())return;
+  if(e.target.matches?.('[data-mgon-empty]')){
+   const s=snapshot?.active;
+   emptyCheckedFor=writable()&&s?.id===e.target.dataset.mgonEmpty&&!s.movements.length&&e.target.checked?s.id:null;
+   api.render();return;
+  }
   if(e.target.matches?.('[data-mgon-photo]')){const file=e.target.files?.[0];choosingPhoto=false;if(file)void uploadPhoto(e.target.dataset.mgonPhoto,file);return;}
   if(e.target.id==='mg-on-date-filter'){filter=e.target.value;opened=null;api.render();}
   if(e.target.id==='mg-on-history-view'){viewMode=e.target.value==='turno'?'turno':'dia';opened=null;api.render();}
