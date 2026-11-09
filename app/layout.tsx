@@ -25,6 +25,7 @@ import "./gestlok-experience.css";
 import "./gestlok-ios-install.css";
 import "./gestlok-nfc-qr.css";
 import "./gestlok-caja-diaria.css";
+import "./creator-premium.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://gestlok.com.ar"),
