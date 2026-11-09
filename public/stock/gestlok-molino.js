@@ -47,7 +47,7 @@ const canSenderObserve=()=>canSend();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=molino-inicio-avisos-20261109';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=molino-menu-oscuro-20261109';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
