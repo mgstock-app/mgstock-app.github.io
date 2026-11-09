@@ -170,6 +170,7 @@
   #hub .gl-ch-premium .gl-ch-collapse{margin:3px 5px}
   #hub .gl-ch-premium .gl-ch-nav{display:flex;gap:5px;overflow-x:auto}
   #hub .gl-ch-premium .gl-ch-nav button{white-space:nowrap;width:auto;flex:none;padding:9px 12px}
+  #hub .gl-ch.gl-ch-premium.gl-ch-collapsed .gl-ch-nav{display:none}
   #hub .gl-ch-premium .gl-ch-main{min-height:auto;padding:20px 14px 28px}
   #hub .gl-ch-premium-company-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
