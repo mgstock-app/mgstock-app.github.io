@@ -297,6 +297,25 @@
         }};
         return b;
       }
+      // Modo diseño (como gestlok_design_overrides): lee la empresa activa, escribe solo la creadora.
+      if(table==='gestlok_design_overrides'){
+        const rows=window.__designRows=window.__designRows||[];
+        const st={op:'select',payload:null,id:null};
+        const canWrite=()=>!!session?.user&&acc()?.rol==='creadora';
+        const run=()=>{
+          if(st.op==='select')return {data:rows.slice(),error:null};
+          if(!canWrite())return {data:null,error:{code:'42501',message:'Sin permiso'}};
+          if(st.op==='insert'){const row={id:'dsg-'+(rows.length+1)+'-'+Date.now(),page:'',anchor:'',original:'',kind:'text',value:'',...st.payload};delete row.tenant_id;rows.push(row);return {data:row,error:null};}
+          const i=rows.findIndex(r=>r.id===st.id);
+          if(st.op==='update'){if(i<0)return {data:null,error:{message:'No existe'}};const keep={...rows[i],...st.payload};delete keep.updated_at;rows[i]=keep;return {data:rows[i],error:null};}
+          if(st.op==='delete'){if(i>=0)rows.splice(i,1);return {data:null,error:null};}
+          return {data:null,error:null};
+        };
+        const b={select(){return b;},limit(){return b;},single(){return b;},eq(_c,v){st.id=v;return b;},
+          insert(p){st.op='insert';st.payload=p;return b;},update(p){st.op='update';st.payload=p;return b;},delete(){st.op='delete';return b;},
+          then(ok,ko){return Promise.resolve(run()).then(ok,ko);}};
+        return b;
+      }
       return builder();
     },
     async rpc(fn, args){

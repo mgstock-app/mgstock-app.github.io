@@ -47,7 +47,7 @@ const canSenderObserve=()=>canSend();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=marca-sucursales-20261109';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=molino-inicio-avisos-20261109';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -73,10 +73,134 @@ const NAV=[
 ];
 function navHTML(){
  if(!hasTenant())return '';
+ brandSidebar();
  return '<p class="snav-group gl-molino-navgroup">Vínculo entre sucursales</p>'+
   NAV.map(([id,label,d])=>'<button type="button" data-mol-open="'+id+'" data-mol-nav="'+id+'" aria-label="'+label+'" title="'+label+'"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg><span class="nl">'+label+'</span></button>').join('');
 }
 const sectionName=()=>opened?(NAV.find(x=>x[0]===section)||[])[1]||'':'';
+// ── Inicio de El Molino Café (09/11/2026): un solo logo, sin botones repetidos ──
+// Avisos según la sucursal activa: Acassuso recibe envíos y hace pedidos y devoluciones;
+// San Isidro solo ve los pedidos y las devoluciones que le manda Acassuso.
+// Los datos salen de las mismas RPC del Vínculo (el servidor valida cada permiso).
+let home={data:null,orders:null,at:0,loading:false,error:'',timer:null};
+function loadHome(force=false){
+ if(!hasTenant()||home.loading||(!force&&Date.now()-home.at<20000))return;
+ home.loading=true;
+ Promise.all([rpc('gestlok_molino_state'),rpc('gestlok_molino_orders_state').catch(()=>null)])
+  .then(([s,o])=>{home.data=s;home.orders=o;home.error='';})
+  .catch(e=>{home.error=e?.message||'No se pudo actualizar el estado de las sucursales.';})
+  .finally(()=>{home.at=Date.now();home.loading=false;if(!opened)api?.render?.();});
+}
+const hhmm=t=>{try{return new Date(t).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Argentina/Buenos_Aires'});}catch{return '';}};
+const whenLabel=t=>{
+ if(!t)return '';
+ const d=new Date(t);if(Number.isNaN(d.getTime()))return '';
+ const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}).format(d);
+ return day===localDay()?hhmm(t):fmtDate(day)+' '+hhmm(t);
+};
+function greeting(){
+ const h=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',hour12:false}).format(new Date()))%24;
+ return h>=5&&h<12?'Buenos días':h>=12&&h<20?'Buenas tardes':'Buenas noches';
+}
+function todayLabel(){
+ const t=new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',weekday:'long',day:'numeric',month:'long'}).format(new Date()).replace(',','');
+ return t.charAt(0).toUpperCase()+t.slice(1);
+}
+function homeCard(title,badge,tone,text,action,label,primary){
+ return '<article class="gl-mol-dash-card"><div class="gl-mol-dash-card-top"><h3>'+escapeHTML(title)+'</h3>'+
+  '<span class="gl-mol-badge gl-mol-badge--'+tone+'">'+escapeHTML(badge)+'</span></div>'+
+  '<p>'+escapeHTML(text)+'</p>'+
+  '<button type="button" class="'+(primary?'gl-mol-btn-primary':'gl-mol-btn')+'" data-mol-open="'+action+'">'+escapeHTML(label)+'</button></article>';
+}
+function homeAlerts(branch,data,orders){
+ const envios=(data?.envios||[]).filter(m=>!m.acknowledged_at).length;
+ const devol=(data?.devoluciones||[]).filter(m=>!m.acknowledged_at).length;
+ const pedidos=(orders?.orders||[]).filter(o=>!o.seen_at).length;
+ const plural=(n,a,b)=>n+' '+(n===1?a:b);
+ if(branch==='san_isidro')return [
+  homeCard('Pedidos de Acassuso',pedidos?plural(pedidos,'sin ver','sin ver'):'Al día',pedidos?'alert':'ok',
+   pedidos?'Acassuso te pidió productos. Revisalos y marcá OK cuando los veas.':'No hay pedidos nuevos de Acassuso.',
+   'pedidos',pedidos?'Ver pedidos':'Ver pedidos',!!pedidos),
+  homeCard('Devoluciones de Acassuso',devol?plural(devol,'por confirmar','por confirmar'):'Al día',devol?'alert':'ok',
+   devol?'Acassuso te devolvió productos. Confirmá lo que recibiste.':'No hay devoluciones esperando tu confirmación.',
+   'devoluciones',devol?'Confirmar devoluciones':'Ver devoluciones',!!devol)
+ ];
+ return [
+  homeCard('Productos enviados',envios?plural(envios,'por confirmar','por confirmar'):'Al día',envios?'alert':'ok',
+   envios?'San Isidro mandó mercadería. Revisala y confirmá lo que llegó.':'No hay envíos esperando tu confirmación.',
+   'envios',envios?'Confirmar recepción':'Ver envíos',!!envios),
+  homeCard('Pedidos',pedidos?plural(pedidos,'sin ver por San Isidro','sin ver por San Isidro'):'Al día',pedidos?'wait':'ok',
+   pedidos?'San Isidro todavía no vio tu último pedido.':'Pedile a San Isidro lo que falta.',
+   'pedidos','Hacer pedido',false),
+  homeCard('Devoluciones',devol?plural(devol,'sin confirmar','sin confirmar'):'Al día',devol?'wait':'ok',
+   devol?'San Isidro todavía no confirmó tus devoluciones.':'No hay devoluciones esperando respuesta.',
+   'devoluciones','Nueva devolución',false)
+ ];
+}
+function homeMoves(data,orders){
+ const qty=m=>fmtQty(m.quantity)+(m.unit==='g'?' g':m.unit==='kg'?' kg':'');
+ const rows=[];
+ for(const m of data?.envios||[]){
+  rows.push({t:m.created_at,text:'San Isidro envió '+qty(m)+' de '+m.product});
+  if(m.acknowledged_at)rows.push({t:m.acknowledged_at,text:'Acassuso confirmó el envío de '+m.product});
+ }
+ for(const m of data?.devoluciones||[]){
+  rows.push({t:m.created_at,text:'Acassuso devolvió '+qty(m)+' de '+m.product});
+  if(m.acknowledged_at)rows.push({t:m.acknowledged_at,text:'San Isidro confirmó la devolución de '+m.product});
+ }
+ for(const o of orders?.orders||[]){
+  rows.push({t:o.requested_at,text:'Acassuso pidió '+fmtQty(o.quantity)+' de '+o.product});
+  if(o.seen_at)rows.push({t:o.seen_at,text:'San Isidro vio el pedido de '+o.product});
+ }
+ for(const p of data?.prices||[])if(p.updated_at)rows.push({t:p.updated_at,text:'Precio actualizado: '+p.product});
+ return rows.filter(r=>r.t&&r.text).sort((a,b)=>String(b.t).localeCompare(String(a.t))).slice(0,5);
+}
+function homeHTML(){
+ if(!hasTenant()||!api?.S?.local)return '';
+ const branch=activeBranch();if(!branch)return '';
+ brandSidebar();
+ loadHome();
+ if(!home.timer)home.timer=setInterval(()=>{if(document.querySelector('.gl-mol-dash')&&!opened)loadHome();},30000);
+ const data=home.data,orders=home.orders;
+ const sub=todayLabel()+' · San Isidro envía, Acassuso recibe.'+(home.at&&data?' Actualizado '+hhmm(home.at)+'.':'');
+ let body;
+ if(!data&&home.error)body='<div class="gl-mol-dash-card" role="alert"><p>'+escapeHTML(home.error)+'</p><button type="button" class="gl-mol-btn" data-mol-home-retry>Reintentar</button></div>';
+ else if(!data)body='<p class="gl-mol-dash-loading" role="status">Cargando los avisos de la sucursal…</p>';
+ else{
+  const cards=homeAlerts(branch,data,orders);
+  const moves=homeMoves(data,orders);
+  const prices=(data.prices||[]).filter(p=>p.active!==false);
+  const last=prices.reduce((m,p)=>p.updated_at&&String(p.updated_at)>m?String(p.updated_at):m,'');
+  body='<section aria-labelledby="gl-mol-hoy" class="gl-mol-dash-block"><h2 id="gl-mol-hoy">Para hacer hoy</h2>'+
+   '<div class="gl-mol-dash-cards gl-mol-dash-cards--'+cards.length+'">'+cards.join('')+'</div></section>'+
+   '<div class="gl-mol-dash-row">'+
+    '<section class="gl-mol-dash-card gl-mol-dash-moves" aria-labelledby="gl-mol-moves"><div class="gl-mol-dash-card-top"><h2 id="gl-mol-moves">Últimos movimientos</h2>'+
+     '<button type="button" class="gl-mol-link" data-mol-open="historial">Ver historial →</button></div>'+
+     (moves.length?'<ul>'+moves.map(r=>'<li><span>'+escapeHTML(r.text)+'</span><time>'+escapeHTML(whenLabel(r.t))+'</time></li>').join('')+'</ul>':
+      '<p class="gl-mol-dash-empty">Todavía no hay movimientos hoy.</p>')+'</section>'+
+    '<section class="gl-mol-dash-card gl-mol-dash-prices" aria-labelledby="gl-mol-prices"><h2 id="gl-mol-prices">Precios compartidos</h2>'+
+     '<p>'+(branch==='san_isidro'?'San Isidro carga la lista y Acassuso la ve en vivo.':'La misma lista que usa San Isidro, siempre actualizada.')+'</p>'+
+     '<div class="gl-mol-dash-stats"><div><b>'+prices.length+'</b><span>'+(prices.length===1?'producto':'productos')+'</span></div>'+
+     (last?'<div><b>'+escapeHTML(whenLabel(last))+'</b><span>último cambio</span></div>':'')+'</div>'+
+     '<button type="button" class="gl-mol-btn" data-mol-open="precios">Ver precios</button></section>'+
+   '</div>';
+ }
+ const invite=window.GestLokInvites?.homeTile?.()||'';
+ return '<div class="gl-mol-dash"><header class="gl-mol-dash-head"><h1>'+greeting()+'</h1><p>'+escapeHTML(sub)+'</p></header>'+body+
+  (invite?'<div class="gl-mol-dash-invite">'+invite+'</div>':'')+'</div>';
+}
+// Un solo logo de El Molino: en el menú lateral, por sucursal. Nunca en otra empresa.
+function brandSidebar(){
+ const on=hasTenant()&&!!api?.S?.local&&!!activeBranch();
+ document.body?.classList?.toggle('gl-molino-tenant',on);
+ const brand=document.querySelector?.('#side .brand');
+ if(!brand)return;
+ let logo=brand.querySelector('.gl-molino-side-logo');
+ if(!on){logo?.remove();return;}
+ const html=logoHTML(api.S.local,'header');
+ if(!logo){logo=document.createElement('span');logo.className='gl-molino-side-logo';brand.appendChild(logo);}
+ if(logo.dataset.local!==api.S.local){logo.innerHTML=html;logo.dataset.local=api.S.local;}
+}
 function mount(){
  css();
  if($('#gl-molino-panel'))return;
@@ -90,6 +214,7 @@ function unmount(){
  if(channel&&window.GestLokSupabase?.removeChannel)try{window.GestLokSupabase.removeChannel(channel);}catch{}
  channel=null;$('#gl-molino-panel')?.remove();document.body.classList.remove('gl-molino-open');
  try{priorFocus?.focus?.();}catch{}priorFocus=null;
+ home.at=0;api?.render?.();
 }
 async function rpc(name,args){
  if(!hasTenant()||!window.GestLokSupabase)throw Error('Ingresá a El Molino Café con tu cuenta autorizada.');
@@ -482,5 +607,6 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('change',e=>{if(!opened||section!=='historial'||historyMode!=='mensual')return;if(e.target?.id==='gl-molino-month'){void loadMonth(String(e.target.value||''));}});
 document.addEventListener('keydown',e=>{if(opened&&e.key==='Escape'){e.preventDefault();unmount();}});
-window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,navHTML,sectionName,logoHTML,open:begin,close:unmount});
+document.addEventListener('click',e=>{if(e.target.closest('[data-mol-home-retry]')){e.preventDefault();home.at=0;home.error='';loadHome(true);}});
+window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,homeHTML,brandSidebar,navHTML,sectionName,logoHTML,open:begin,close:unmount});
 })();
