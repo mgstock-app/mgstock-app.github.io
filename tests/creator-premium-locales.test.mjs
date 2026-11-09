@@ -44,8 +44,9 @@ test('Locales premium: indicadores reales, una tarjeta por empresa y accesos ori
   assert.match(html,/>3<\/strong>/);
   assert.match(html,/>5<\/strong>/);
   assert.match(html,/Acceso de administradora/);
-  assert.equal((html.match(/class="gl-ch-premium-company"/g)||[]).length,3);
+  assert.equal((html.match(/class="gl-ch-premium-company gl-company-folder"/g)||[]).length,3);
   assert.equal((html.match(/class="gl-ch-premium-local"/g)||[]).length,5);
+  assert.match(html,/class="gl-ch-premium-company gl-company-folder"/);
   assert.match(html,/data-act="local" data-id="munro"/);
   assert.match(html,/data-company-local="munro" data-company-tenant="molino"/);
   assert.match(html,/El Molino &lt;Café&gt;/);
