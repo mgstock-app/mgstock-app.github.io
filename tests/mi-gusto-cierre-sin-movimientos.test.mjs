@@ -70,6 +70,10 @@ test('Mi Gusto: Sin movimientos cierra solo turno vacío y lo registra; pagos co
   assert.equal((await rpc('close_sin_movimientos','torcuato',torcuato.id)).closed.sin_movimientos,true);
   await ctx('gerente','torcuato','22222222-2222-4222-8222-222222222222');
   await assert.rejects(()=>rpc('state','torcuato'),/permiso/);
+  await ctx('colaborador','torcuato');
+  await assert.rejects(()=>rpc('close_sin_movimientos','torcuato',torcuato.id),/Sin permiso/);
+  await ctx('gerente','munro');
+  await assert.rejects(()=>rpc('close_sin_movimientos','torcuato',torcuato.id),/Sin permiso/);
   await db.exec('reset role;set role anon');
   await assert.rejects(()=>rpc('close_sin_movimientos','munro',second.id),/permission denied/);
  }finally{await db.close();}
