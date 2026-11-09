@@ -17,6 +17,18 @@ const role=()=>state?.scope||'none';
 // Los permisos reales siguen verificándose en las RPC del servidor.
 const ACASSUSO='loc-6c8717ea5f78426b9458';
 const SAN_ISIDRO='loc-6c8717ea5f78426b9458-si';
+// Identidad visual por sucursal; nunca reutilizar la marca en otro tenant.
+const logoBranch=id=>id===ACASSUSO||id==='acassuso'?'Acassuso':
+  id===SAN_ISIDRO||id==='san_isidro'?'San Isidro':'';
+function logoHTML(localId,variant='hero',tenantId=TENANT){
+ if(tenantId!==TENANT)return '';
+ const name=logoBranch(localId);
+ if(!name)return '';
+ const type=['hero','card','module','header'].includes(variant)?variant:'hero';
+ return '<span class="gl-molino-brand gl-molino-brand--'+type+'" aria-label="Molino café · '+name+'" data-molino-brand="'+(name==='Acassuso'?'acassuso':'san-isidro')+'">'+
+  '<img src="/img/molino-cafe-marca.svg" alt="Molino café" width="240" height="110" loading="eager" decoding="async">'+
+  '<small>'+name+'</small></span>';
+}
 const activeBranch=()=>{
  const loc=api?.S?.local;
  if(loc===ACASSUSO||loc==='acassuso')return 'acassuso';
@@ -35,13 +47,13 @@ const canSenderObserve=()=>canSend();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=envios-roles-20261109';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=marca-sucursales-20261109';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
  return '<section class="gl-molino-home" aria-label="Vínculo entre San Isidro y Acassuso">'+
   '<div class="gl-molino-home-head"><span class="gl-molino-home-symbol" aria-hidden="true">⇄</span><div><small>EL MOLINO CAFÉ · DOS SUCURSALES</small><h2>Vínculo entre sucursales</h2>'+
-  '<p>San Isidro envía, Acassuso recibe. Todo queda registrado y actualizado en vivo.</p></div></div>'+
+  '<p>San Isidro envía, Acassuso recibe. Todo queda registrado y actualizado en vivo.</p></div>'+logoHTML(api?.S?.local,'module',api?.S?.me?.tenant_id)+'</div>'+
   '<div class="gl-molino-home-actions">'+
   '<button type="button" data-mol-open="precios">◈ <span>Precios</span></button>'+
   '<button type="button" data-mol-open="pedidos">▤ <span>Pedidos</span></button>'+ 
@@ -344,8 +356,8 @@ function render(){
  const panel=active?(section==='precios'?prices():section==='pedidos'?ordersView():section==='envios'?movements('envio')+'<section class="gl-molino-return-panel"><p class="gl-molino-return-label">DEVOLUCIONES VINCULADAS A ESTE ENVÍO DIARIO</p>'+movements('devolucion')+'</section>':section==='devoluciones'?movements('devolucion'):history()):
  '<p class="gl-molino-empty">Verificando permisos y cargando el vínculo entre sucursales…</p>';
  root.innerHTML='<div class="gl-molino-screen" role="dialog" aria-modal="true" aria-labelledby="gl-molino-title">'+
-  '<header class="gl-molino-header"><div><small>GESTLOK · EL MOLINO CAFÉ</small><h2 id="gl-molino-title">Vínculo entre sucursales</h2>'+
-  '<p>'+scopeName()+' · Información compartida en vivo</p></div>'+
+  '<header class="gl-molino-header"><div class="gl-molino-header-copy"><small>EL MOLINO CAFÉ · DOS SUCURSALES</small><h2 id="gl-molino-title">Vínculo entre sucursales</h2>'+
+  '<p>'+scopeName()+' · Información compartida en vivo</p></div>'+logoHTML(api?.S?.local,'header',api?.S?.me?.tenant_id)+
   '<button type="button" id="gl-molino-close" data-mol-close aria-label="Cerrar">×</button></header>'+
   '<nav class="gl-molino-tabs" role="tablist" aria-label="Funciones compartidas">'+tabs()+'</nav>'+
   '<div class="gl-molino-main"><div class="gl-molino-alert" id="gl-molino-updated" '+(!stale?'hidden':'')+'><span>Hay cambios nuevos en el otro local.</span><button type="button" data-mol-refresh>Actualizar</button></div>'+
@@ -470,5 +482,5 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('change',e=>{if(!opened||section!=='historial'||historyMode!=='mensual')return;if(e.target?.id==='gl-molino-month'){void loadMonth(String(e.target.value||''));}});
 document.addEventListener('keydown',e=>{if(opened&&e.key==='Escape'){e.preventDefault();unmount();}});
-window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,navHTML,sectionName,open:begin,close:unmount});
+window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,navHTML,sectionName,logoHTML,open:begin,close:unmount});
 })();
