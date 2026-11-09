@@ -8,7 +8,7 @@ const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',ma
 const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate=s=>{if(!s)return '';const a=String(s).slice(0,10).split('-');return a.length===3?a.reverse().join('/'):String(s);};
 const fmtQty=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:3}).format(Number(n||0));
-const localDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const localDay=()=>{const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=t=>parts.find(x=>x.type===t)?.value||'';return get('year')+'-'+get('month')+'-'+get('day');};
 let api=null,opened=false,section='precios',state=null,historyData=null,orderState=null,orderMode='realizar',orderDraft=[],selectedDay='',historyMode='diario',monthlyData=null,selectedMonth=localDay().slice(0,7),busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
 const $=s=>document.querySelector(s);
 const hasTenant=()=>api?.S?.me?.tenant_id===TENANT;
