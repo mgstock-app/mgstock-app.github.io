@@ -16,7 +16,7 @@ const $=s=>document.querySelector(s);
 const inAcassuso=()=>api?.S?.me?.tenant_id===TENANT&&api?.S?.local===ACASSUSO;
 const money=n=>n==null||n===''||Number.isNaN(Number(n))?'—':'$ '+new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(n));
 const pct=()=>Number(data?.percent??50);
-const pya=(p,percent=pct())=>p==null||p===''||Number.isNaN(Number(p))?null:Math.round(Number(p)*(1+Number(percent)/100));
+const pya=(p,percent=pct())=>p==null||p===''||Number.isNaN(Number(p))?null:Math.ceil(Math.round(Number(p)*(100+Number(percent)))/10000)*100;
 const fmtDate=t=>{try{return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(t));}catch{return '';}};
 // «2.500», «$ 2500», «2500,50» → número. Vacío → null (sin precio).
 function parsePrice(v){
@@ -85,6 +85,11 @@ function productForm(p){
   '<button type="button" class="gl-pya-btn" data-pya-cancel-edit>Cancelar</button>'+
   (p?'<button type="button" class="gl-pya-btn gl-pya-btn--danger" data-pya-delete-product="'+esc(p.id)+'">Eliminar producto</button>':'')+'</div></form>';
 }
+function catMove(c){
+ const ids=(data?.categories||[]).map(x=>x.id),i=ids.indexOf(c.id);
+ return '<button type="button" class="gl-pya-icon" data-pya-cat-move="'+esc(c.id)+'" data-dir="-1" aria-label="Subir categoría '+esc(c.name)+'" title="Subir categoría"'+(i<=0?' disabled':'')+'>↑</button>'+
+  '<button type="button" class="gl-pya-icon" data-pya-cat-move="'+esc(c.id)+'" data-dir="1" aria-label="Bajar categoría '+esc(c.name)+'" title="Bajar categoría"'+(i<0||i>=ids.length-1?' disabled':'')+'>↓</button>';
+}
 function categoryBlock(c){
  const admin=!!data?.can_admin,all=products().filter(p=>p.category_id===c.id),list=all.filter(visible);
  if(!list.length&&(search||filter!=='todos'))return '';
@@ -95,6 +100,7 @@ function categoryBlock(c){
   '<button type="button" class="gl-pya-btn gl-pya-btn--danger" data-pya-delete-category="'+esc(c.id)+'">Eliminar categoría</button></form>':
   '<button type="button" class="gl-pya-cat-toggle" data-pya-toggle="'+esc(c.id)+'" aria-expanded="'+open+'"><span aria-hidden="true">'+(open?'▾':'▸')+'</span> '+esc(c.name)+' <small>('+all.length+')</small></button>'+
   (admin?'<button type="button" class="gl-pya-icon" data-pya-edit-category="'+esc(c.id)+'" aria-label="Editar categoría '+esc(c.name)+'" title="Editar categoría">✎</button>'+
+   catMove(c)+
    '<button type="button" class="gl-pya-mini" data-pya-new-product="'+esc(c.id)+'">+ Producto</button>':'');
  const adding=editing?.type==='new-product'&&editing.category===c.id?'<div class="gl-pya-row gl-pya-row--edit">'+productForm(null)+'</div>':'';
  return '<section class="gl-pya-cat" aria-label="'+esc(c.name)+'"><div class="gl-pya-cat-head">'+head+'</div>'+
@@ -128,7 +134,7 @@ function render(){
  panel.innerHTML='<div class="gl-pya-wrap">'+
   '<header class="gl-pya-head"><div class="gl-pya-title"><span class="gl-pya-logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5h16v1.2a2.7 2.7 0 0 1-5.3.6 2.7 2.7 0 0 1-5.4 0 2.7 2.7 0 0 1-5.3-.6z"/><path d="M5.5 13v7h13v-7M10 20v-4h4v4"/></svg></span>'+
    '<div><small>Acassuso / PedidosYa</small><h2 id="gl-pya-title">Precios PedidosYa <span class="gl-pya-chip">Exclusivo para Molino Acassuso</span></h2>'+
-   '<p>Actualizá los precios del menú. El precio de PedidosYa se calcula solo, según el porcentaje configurado.</p></div></div>'+
+   '<p>Actualizá los precios del menú. El precio de PedidosYa se calcula solo, según el porcentaje configurado, y se redondea hacia arriba a múltiplos de $100.</p></div></div>'+
    '<div class="gl-pya-headside">'+pctBox+'<span class="gl-pya-status'+(dirty?' is-dirty':'')+'" role="status">'+(dirty?'Cambios sin guardar':'Todo guardado')+'</span>'+
    '<button type="button" class="gl-pya-close" data-pya-close aria-label="Cerrar PedidosYa">×</button></div></header>'+
   (admin?'':'<p class="gl-pya-info">Solo la administradora puede editar nombres de categorías y productos, ordenarlos o cambiar el porcentaje.</p>')+
@@ -218,6 +224,9 @@ document.addEventListener('click',e=>{
  if((el=q('[data-pya-delete-product]'))){const p=products().find(x=>x.id===el.dataset.pyaDeleteProduct);
   if(!window.confirm('¿Eliminar «'+(p?.name||'')+'»? No se puede deshacer.'))return;
   editing=null;drafts.delete(p.id);void act(()=>rpc('gestlok_molino_pya_product_delete',{p_id:p.id}),'Producto eliminado.');return;}
+ if((el=q('[data-pya-cat-move]'))){const list=(data?.categories||[]).map(x=>x.id);const i=list.indexOf(el.dataset.pyaCatMove),j=i+Number(el.dataset.dir);
+  if(i<0||j<0||j>=list.length)return;[list[i],list[j]]=[list[j],list[i]];
+  void act(()=>rpc('gestlok_molino_pya_category_reorder',{p_ids:list}),'Orden de categorías actualizado.');return;}
  if((el=q('[data-pya-move]'))){const p=products().find(x=>x.id===el.dataset.pyaMove);if(!p)return;
   const list=products().filter(x=>x.category_id===p.category_id).map(x=>x.id);const i=list.indexOf(p.id),j=i+Number(el.dataset.dir);
   if(j<0||j>=list.length)return;[list[i],list[j]]=[list[j],list[i]];

@@ -22,10 +22,12 @@ function load(local,tenant=TENANT){
  return window;
 }
 
-test('Precio PYA = Precio Local + porcentaje (50 % inicial) y lectura de precios argentinos', ()=>{
+test('Precio PYA = Precio Local + porcentaje (50 % inicial), redondeado hacia arriba a $100, y lectura de precios argentinos', ()=>{
  const {GestLokMolinoPYA:m}=load(ACASSUSO);
- assert.equal(m.pya(2500),3750);assert.equal(m.pya(1200),1800);assert.equal(m.pya(14000),21000);
- assert.equal(m.pya(2800,40),3920);assert.equal(m.pya(null),null);
+ // Redondeo hacia arriba a múltiplos de $100.
+ assert.equal(m.pya(2500),3800);assert.equal(m.pya(1200),1800);assert.equal(m.pya(14000),21000);assert.equal(m.pya(1210),1900);
+ assert.equal(m.pya(2500.5),3800);assert.equal(m.pya(1100,10),1300);assert.equal(m.pya(2000,10),2200);
+ assert.equal(m.pya(2800,40),4000);assert.equal(m.pya(null),null);
  assert.equal(m.parsePrice('$ 2.500'),2500);assert.equal(m.parsePrice('2500,50'),2500.5);assert.equal(m.parsePrice('14.000'),14000);
  assert.equal(m.parsePrice(''),null);assert.ok(Number.isNaN(m.parsePrice('abc')));assert.ok(Number.isNaN(m.parsePrice('-5')));
 });
@@ -57,5 +59,33 @@ test('La base restringe PedidosYa a Acassuso y los nombres/orden a la administra
 });
 
 test('Se carga solo fuera de la demo de visitantes y antes del Vínculo', ()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-20261109"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-categorias-20261109"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
+});
+
+const cats=readFileSync('supabase/migrations/20261109200000_molino_pya_categorias.sql','utf8');
+test('Las 18 categorías aprobadas se cargan vacías, en orden y sin duplicados', ()=>{
+ const want=['Promociones y combos','Desayunos y meriendas','Cafetería','Pastelería','Panadería','Sándwiches y tostados','Hamburguesas','Ensaladas',
+  'Entradas y para compartir','Pizzas','Milanesas y supremas','Pastas','Platos principales','Guarniciones','Postres','Cervezas frías','Vinos','Especiales de temporada'];
+ const lists=[...cats.matchAll(/unnest\(array\[([\s\S]*?)\]\)/g)].map(m=>[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]));
+ assert.equal(lists.length,2);for(const l of lists)assert.deepEqual(l,want);
+ assert.match(cats,/where not exists \(select 1 from public\.gestlok_molino_pya_categories c/);
+ assert.match(cats,/create unique index if not exists gestlok_molino_pya_categories_name_uniq\s+on public\.gestlok_molino_pya_categories \(tenant_id, lower\(btrim\(name\)\)\)/);
+ assert.match(cats,/Ya existe una categoría con ese nombre/);
+ // Solo categorías: ni productos ni precios, y nada de San Isidro ni de otras empresas.
+ assert.doesNotMatch(cats,/insert into public\.gestlok_molino_pya_products|(update|insert into|delete from)\s+public\.gestlok_molino_prices/i);
+ assert.equal([...cats.matchAll(/'([0-9a-f-]{36})'/g)].every(m=>m[1]===TENANT),true);
+ assert.doesNotMatch(cats,/\b(drop table|truncate|delete from)\b/i);
+});
+
+test('Ordenar y renombrar categorías es solo de la administradora; el PYA redondea a $100 también en la base', ()=>{
+ for(const fn of ['category_reorder','category_save']){
+  const body=cats.split('function public.gestlok_molino_pya_'+fn+'(')[1].split('$$;')[0];
+  assert.match(body,/gestlok_molino_pya_require\(true\)/,fn);
+ }
+ assert.match(cats,/revoke all on function public\.gestlok_molino_pya_category_reorder\(uuid\[\]\) from public, anon/);
+ assert.match(cats,/ceil\(round\(p \* \(100 \+ coalesce\(pct, 50\)\) \/ 100\.0, 2\) \/ 100\) \* 100/);
+ assert.match(pyaSrc,/data-pya-cat-move/);
+ assert.match(pyaSrc,/rpc\('gestlok_molino_pya_category_reorder',\{p_ids:list\}\)/);
+ // Las flechas de categoría solo se dibujan dentro del bloque de la administradora.
+ assert.match(pyaSrc,/\(admin\?'<button type="button" class="gl-pya-icon" data-pya-edit-category=[^\n]+\n\s*catMove\(c\)\+/);
 });

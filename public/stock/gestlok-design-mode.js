@@ -112,6 +112,7 @@ function style(){
  '#gl-design-toggle{position:fixed;left:16px;bottom:16px;z-index:100200;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #16202E;background:#fff;color:#16202E;font:600 14px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(22,32,46,.18);cursor:pointer}'+
  'body.gl-design-on #gl-design-toggle{background:#3B6FD8;border-color:#3B6FD8;color:#fff}'+
  'body:has(#gestlok-mobile-dock:not([hidden])) #gl-design-toggle{bottom:calc(76px + env(safe-area-inset-bottom,0px))}'+
+ 'body.gl-pya-open #gl-design-toggle{display:none}'+
  '#gl-design-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:100201;width:min(680px,calc(100vw - 20px));box-sizing:border-box;background:#16202E;color:#fff;border-radius:14px;padding:12px 14px;font:14px/1.4 Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px}'+
  '#gl-design-bar .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}'+
  '#gl-design-bar button{min-height:40px;padding:0 12px;border-radius:9px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font:600 13px Inter,system-ui,sans-serif;cursor:pointer}'+
@@ -134,6 +135,19 @@ function renderUI(){
  const label=on?'Salir del modo diseño':'✎ Diseñar';
  if(toggle.textContent!==label)toggle.textContent=label;
  toggle.setAttribute('aria-pressed',String(on));
+ placeToggle();
+}
+// En computadora el botón va al lado del menú lateral (antes tapaba «Cerrar sesión»).
+// En celular lo ubica el CSS, sobre la barra inferior.
+function placeToggle(){
+ if(!toggle)return;
+ const dock=document.getElementById?.('gestlok-mobile-dock');let left='';
+ if(!dock||dock.hidden){
+  const tall=(globalThis.innerHeight||800)*0.6;
+  const side=[...(document.querySelectorAll?.('#side,.gl-admin-sidebar,.gl-ch-side')||[])].map(el=>el.getBoundingClientRect()).find(r=>r.width>0&&r.left<=1&&r.height>tall);
+  if(side)left=Math.round(side.right+16)+'px';
+ }
+ if(toggle.style.left!==left)toggle.style.left=left;
 }
 function setOn(v){
  on=!!v;document.body.classList.toggle('gl-design-on',on);
@@ -278,6 +292,8 @@ document.addEventListener('keydown',e=>{if(on&&e.key==='Escape'){e.preventDefaul
 function start(){
  if(!document.body)return setTimeout(start,50);
  new MutationObserver(()=>{if(!applying)schedule();}).observe(document.body,{childList:true,subtree:true});
+ window.addEventListener?.('resize',placeToggle);
+ document.addEventListener('click',()=>setTimeout(placeToggle,350),true);
  schedule();
 }
 start();

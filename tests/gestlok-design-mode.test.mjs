@@ -32,10 +32,18 @@ test('Solo la creadora ve el botón y los cambios nunca insertan HTML', ()=>{
 });
 
 test('El modo diseño se carga en toda la app (no en la demo de visitantes)', ()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-design-mode\.js\?rev=modo-diseno-dock-20261109"\)/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-design-mode\.js\?rev=modo-diseno-lateral-20261109"\)/);
 });
 
 test('El botón Diseñar se ubica sobre la barra inferior del celular, sin taparla', ()=>{
  const src=readFileSync('public/stock/gestlok-design-mode.js','utf8');
  assert.match(src,/body:has\(#gestlok-mobile-dock:not\(\[hidden\]\)\) #gl-design-toggle\{bottom:calc\(76px \+ env\(safe-area-inset-bottom,0px\)\)\}/);
+});
+
+test('En computadora el botón Diseñar va al lado del menú y no tapa «Cerrar sesión» ni PedidosYa', ()=>{
+ const src=readFileSync('public/stock/gestlok-design-mode.js','utf8');
+ assert.match(src,/function placeToggle\(\)/);
+ assert.match(src,/#side,\.gl-admin-sidebar,\.gl-ch-side/);
+ assert.match(src,/left=Math\.round\(side\.right\+16\)\+'px'/);
+ assert.match(src,/body\.gl-pya-open #gl-design-toggle\{display:none\}/);
 });
