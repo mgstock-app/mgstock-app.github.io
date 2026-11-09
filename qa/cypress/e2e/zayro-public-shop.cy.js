@@ -19,11 +19,11 @@ const base = {
    price:20000,stock:8,image_url:""}
  ]
 };
-function visitStore(data=base) {
+function visitStore(data=base,path="/zayro/") {
  cy.intercept("POST","**/rest/v1/rpc/gestlok_zayro_public_catalog",{
    statusCode:200,headers:{"content-type":"application/json"},body:data
  }).as("catalog");
- cy.visit("/zayro/");
+ cy.visit(path);
  cy.wait("@catalog");
 }
 describe("ZAYRO · tienda pública aislada",()=>{
@@ -33,6 +33,29 @@ describe("ZAYRO · tienda pública aislada",()=>{
   cy.get(".zayro-product").should("not.exist");
   cy.get('[data-au="up"]').should("not.exist");
   cy.get("#app").should("not.exist");
+  cy.get(".zayro-wa-float").should("not.exist");
+ });
+ it("limpia ?utm_source=chatgpt.com y deja la tienda en /zayro/",()=>{
+  visitStore(base,"/zayro/?utm_source=chatgpt.com&utm_medium=referral");
+  cy.location("pathname").should("eq","/zayro/");
+  cy.location("search").should("eq","");
+  cy.get(".zayro-product").should("have.length",2);
+  cy.get(".zayro-nav").contains("a","Perfumes").click();
+  cy.location("search").should("eq","");
+  cy.location("hash").should("eq","");
+  cy.get("#zayro-catalog-title").should("contain.text","Perfumes");
+ });
+ it("muestra el inicio premium con banner, beneficios, categorías y WhatsApp",()=>{
+  visitStore();
+  cy.get(".zayro-topbar").should("contain.text","Envíos a todo el país");
+  cy.get(".zayro-logo svg[aria-label='ZAYRO Parfum']").should("be.visible");
+  cy.contains("h1","Fragancias").should("be.visible");
+  cy.get(".zayro-hero").contains("a","Ver perfumes").should("be.visible");
+  cy.get(".zayro-benefits").should("contain.text","Calidad garantizada").and("contain.text","Atención personalizada");
+  cy.get(".zayro-cats").contains("button","Cuidado capilar").click();
+  cy.get("#zayro-catalog-title").should("contain.text","Cuidado capilar");
+  cy.get(".zayro-wa-float").should("have.attr","href").and("match",/^https:\/\/wa\.me\/5491144477888\?text=/);
+  cy.get(".zayro-promos").should("contain.text","¿No sabés cuál").and("contain.text","Desde Zona Norte");
  });
  it("muestra solo el catálogo público y permite filtrar sin datos privados",()=>{
   visitStore();
@@ -40,9 +63,9 @@ describe("ZAYRO · tienda pública aislada",()=>{
   cy.get(".zayro").should("contain.text","ZAYRO");
   cy.get(".zayro").should("not.contain.text","Costo")
     .and("not.contain.text","Ganancia").and("not.contain.text","Mi Gusto");
-  cy.get(".zayro-categories").contains("button","Mujer").click();
+  cy.get(".zayro-filters").contains("button","Mujer").click();
   cy.get(".zayro-product").should("have.length",1).and("contain.text","Fragancia de prueba A");
-  cy.get(".zayro-categories").contains("button","Hombre").click();
+  cy.get(".zayro-filters").contains("button","Hombre").click();
   cy.get(".zayro-product").should("have.length",1).and("contain.text","Fragancia de prueba B");
  });
  it("crea carrito y consulta por WhatsApp, sin escritura ni descuento de stock",()=>{
@@ -64,7 +87,12 @@ describe("ZAYRO · tienda pública aislada",()=>{
  it("mantiene categorías y carrito utilizables en celular",()=>{
   cy.viewport(390,844);
   visitStore();
-  cy.contains("h1","Tu próxima fragancia").should("be.visible");
+  cy.contains("h1","Fragancias").should("be.visible");
+  cy.get(".zayro-nav").should("not.be.visible");
+  cy.get("[aria-label='Abrir menú']").click();
+  cy.get(".zayro-drawer").should("be.visible").contains("a","Perfumes").click();
+  cy.get(".zayro-drawer").should("not.exist");
+  cy.location("search").should("eq","");
   cy.get(".zayro-product").first().contains("button","Agregar al carrito").click();
   cy.get(".zayro-bottom-cart button").should("be.visible").click();
   cy.get(".zayro-cart").should("be.visible");

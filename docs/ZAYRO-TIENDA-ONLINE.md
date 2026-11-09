@@ -11,6 +11,14 @@
 - Carrito sin pagos ni reservas de stock: el comprador envía una consulta con total estimado al WhatsApp de ventas. No se crea una venta ni se descuenta inventario hasta confirmación por el negocio.
 - La tienda nace desactivada, sin publicaciones automáticas y sin productos ficticios.
 
+## Inicio premium y dirección limpia (09/11/2026)
+
+- La tienda siempre queda en https://gestlok.com.ar/zayro/. Si se entra con ?utm_source=chatgpt.com (u otros utm_*, fbclid, gclid, srsltid…), se quitan de la barra sin recargar (app/zayro/store-url.ts + page.tsx). Canonical y Open Graph apuntan a /zayro/.
+- El menú, el logo y los botones se desplazan dentro de la página sin agregar #secciones ni parámetros.
+- Diseño negro, dorado y blanco basado en la tienda aprobada: barra superior, logo ZAYRO Parfum centrado, menú, banner con frasco y flores, beneficios, tarjetas Perfumes y Cuidado capilar, Productos destacados con filtros, banners de asesoramiento y envíos, Sobre ZAYRO, pie de contacto y botón flotante de WhatsApp. Ilustraciones en SVG (app/zayro/zayro-art.tsx), sin fotos externas.
+- El WhatsApp de ventas se convierte al formato de wa.me (1144715168 → 5491144715168); antes los pedidos se armaban sin el 549.
+- Estilos solo bajo .zayro (prueba automática); no cambian otras pantallas ni empresas.
+
 ## Seguridad
 
 - Migración supabase/migrations/20261108173000_zayro_public_shop.sql: revisar y aplicar **antes del frontend**.

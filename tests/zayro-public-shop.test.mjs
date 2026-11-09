@@ -7,6 +7,9 @@ const sql=readFileSync("supabase/migrations/20261108173000_zayro_public_shop.sql
 const js=readFileSync("public/stock/gestlok-zayro-admin.js","utf8");
 const page=readFileSync("app/zayro/zayro-store-client.tsx","utf8");
 const shell=readFileSync("app/zayro/page.tsx","utf8");
+const layout=readFileSync("app/zayro/layout.tsx","utf8");
+const css=readFileSync("app/zayro/zayro.css","utf8");
+const art=readFileSync("app/zayro/zayro-art.tsx","utf8");
 
 test("ZAYRO conserva exclusividad de empresa y Dueña",()=>{
   assert.match(sql,/gestlok_zayro_is_owner/);
@@ -76,4 +79,83 @@ test("Camila ve su vista previa privada y puede abrir la tienda pública",()=>{
   assert.match(js,/gestlok_zayro_admin_product/);
   assert.match(js,/gestlok_zayro_admin_settings/);
   assert.match(js,/preview=!preview;render\(\)/);
+});
+
+test("La tienda queda en /zayro/: quita ?utm_source=chatgpt.com y parámetros de seguimiento",async()=>{
+  const {cleanStoreHref,isTrackingParam}=await import("../app/zayro/store-url.ts");
+  const b="https://gestlok.com.ar";
+  assert.equal(cleanStoreHref(b+"/zayro/?utm_source=chatgpt.com"),"/zayro/");
+  assert.equal(cleanStoreHref(b+"/zayro/?utm_source=chatgpt.com&utm_medium=referral&fbclid=x&gclid=y"),"/zayro/");
+  assert.equal(cleanStoreHref(b+"/zayro/?UTM_Source=a&srsltid=b"),"/zayro/");
+  assert.equal(cleanStoreHref(b+"/zayro"),"/zayro/");
+  assert.equal(cleanStoreHref(b+"/zayro/index.html?utm_campaign=z"),"/zayro/");
+  assert.equal(cleanStoreHref(b+"/zayro/?utm_source=chatgpt.com#productos"),"/zayro/#productos");
+  assert.equal(cleanStoreHref(b+"/zayro/?fbclid=1&q=perfume"),"/zayro/?q=perfume");
+  assert.equal(cleanStoreHref(b+"/zayro/"),null);
+  assert.equal(cleanStoreHref(b+"/?utm_source=chatgpt.com"),null,"no toca otras páginas de GESTLOK");
+  assert.equal(cleanStoreHref(b+"/empleados/?utm_source=x"),null);
+  assert.equal(cleanStoreHref("no es una url"),null);
+  assert.ok(isTrackingParam("utm_term")&&isTrackingParam("fbclid")&&!isTrackingParam("q"));
+  assert.match(shell,/cleanStoreHref\(window\.location\.href\)/);
+  assert.match(shell,/window\.history\.replaceState\(null, "", clean\)/);
+  assert.match(layout,/canonical: "\/zayro\/"/);
+  assert.match(layout,/url: "https:\/\/gestlok\.com\.ar\/zayro\/"/);
+});
+
+test("Los enlaces internos de ZAYRO no agregan parámetros ni recargan la página",()=>{
+  assert.doesNotMatch(page+layout,/utm_|\?ref=|chatgpt/i);
+  assert.match(page,/href=\{item\.target === "inicio" \? STORE_PATH : "#" \+ item\.target\}/);
+  assert.match(page,/e\.preventDefault\(\);/);
+  assert.match(page,/scrollIntoView/);
+  assert.match(js,/href="\/zayro\/"/,"el panel privado abre la dirección limpia");
+});
+
+test("WhatsApp de ventas se convierte al formato internacional de Argentina",async()=>{
+  const {whatsappNumber,whatsappLabel,whatsappLink}=await import("../app/zayro/store-url.ts");
+  assert.equal(whatsappNumber("1144715168"),"5491144715168");
+  assert.equal(whatsappNumber("+54 11 4471-5168"),"5491144715168");
+  assert.equal(whatsappNumber("011 15 4471 5168"),"5491144715168");
+  assert.equal(whatsappNumber("5491144477888"),"5491144477888");
+  assert.equal(whatsappNumber("123"),"");
+  assert.equal(whatsappLabel("1144715168"),"11 4471-5168");
+  assert.equal(whatsappLink("1144715168","Hola ZAYRO"),"https://wa.me/5491144715168?text=Hola%20ZAYRO");
+  assert.equal(whatsappLink("","Hola"),"");
+  assert.match(page,/whatsappLink\(phone, message\)/);
+});
+
+test("Inicio premium de ZAYRO: barra, logo, menú, banner, beneficios, categorías, destacados, banners y WhatsApp",()=>{
+  for(const cls of ["zayro-topbar","zayro-header","zayro-nav","zayro-hero","zayro-benefits","zayro-cats",
+    "zayro-catalog","zayro-promos","zayro-about","zayro-footer","zayro-wa-float","zayro-drawer"])
+    assert.ok(page.includes('className="'+cls)||page.includes('"'+cls+' ')||page.includes('"'+cls+'"'),cls);
+  for(const text of ["Envíos a todo el país","Compras seguras","Diversos medios de pago","Fragancias","que te representan",
+    "Ver perfumes","Calidad garantizada","Compra fácil y segura","Atención personalizada","Ver categoría",
+    "Productos destacados","¿No sabés cuál","Desde Zona Norte","Quiénes somos","Contacto"])
+    assert.ok(page.includes(text),text);
+  assert.match(art,/export function ZayroLogo/);
+  assert.match(art,/PARFUM/);
+  assert.match(css,/@media \(max-width:760px\)/);
+  assert.match(css,/--z-gold/);
+});
+
+test("Los estilos de ZAYRO quedan aislados y no cambian otras pantallas de GESTLOK",()=>{
+  const body=css.replace(/\/\*[\s\S]*?\*\//g,"");
+  const selectors=[];
+  const walk=text=>{
+    let i=0;
+    while(i<text.length){
+      const open=text.indexOf("{",i);if(open<0)break;
+      const head=text.slice(i,open).trim();
+      let depth=1,j=open+1;
+      while(j<text.length&&depth){if(text[j]==="{")depth++;else if(text[j]==="}")depth--;j++;}
+      const inner=text.slice(open+1,j-1);
+      if(/^@media|^@supports/.test(head))walk(inner);
+      else if(!/^@keyframes/.test(head))selectors.push(...head.split(",").map(x=>x.trim()).filter(Boolean));
+      i=j;
+    }
+  };
+  walk(body);
+  assert.ok(selectors.length>100);
+  const outside=selectors.filter(sel=>!/^(\.zayro|:where\(\.zayro\)|html:has\(\.zayro\))/.test(sel));
+  assert.deepEqual(outside,[]);
+  assert.doesNotMatch(layout,/import\s+["']\.\.\//,"no importa estilos globales");
 });
