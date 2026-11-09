@@ -37,7 +37,10 @@ test("Munro: archivo manual seguro, unico e inmutable",async()=>{
    "20261104124000_horarios_en_vivo_munro.sql",
    "20261109153000_munro_horarios_archivo_manual.sql",
    "20261109163000_munro_revision_historial_manual.sql"
-  ])await db.exec(migration(name));
+  ]){
+    try{await db.exec(migration(name));}
+    catch(e){throw new Error("Falla en migracion "+name+": "+e.message,{cause:e});}
+  }
   const monday=(await db.query("select (date_trunc('week',timezone('America/Argentina/Buenos_Aires',now())))::date::text d")).rows[0].d;
   const sunday=(await db.query("select ($1::date + 6)::text d",[monday])).rows[0].d;
   const filas=JSON.stringify([{colaborador:"Persona ficticia",total:"40",puesto:"Turno"}]);
