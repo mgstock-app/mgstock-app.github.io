@@ -11,7 +11,7 @@ if(window.GestLokDesign)return;
 const TABLE='gestlok_design_overrides';
 const ROOTS=['#gl-molino-panel','#view','#hub','#snav'];
 const COLS='id,page,anchor,original,kind,value';
-let on=false,available=false,showHidden=false,items=[],loadedTenant='',loading=false,applying=false,timer=0,selected=null,mode='',bar=null,toggle=null,busy=false;
+let on=false,dragging=false,dragged=false,available=false,showHidden=false,items=[],loadedTenant='',loading=false,applying=false,timer=0,selected=null,mode='',bar=null,toggle=null,busy=false;
 const ctx=()=>{try{return window.GestLokNavContext?.()||{};}catch{return {};}};
 const isCreator=()=>ctx().creator===true;
 const tenant=()=>String(ctx().tenant||'');
@@ -109,7 +109,7 @@ function style(){
  '.gl-design-block::first-line{font-weight:700}'+
  'body.gl-design-on :is(#view,#hub,#snav,#gl-molino-panel) :is(h1,h2,h3,h4,p,span,b,strong,small,a,button,li,label,td,th,div,section,article,img):hover{outline:2px dashed #3B6FD8;outline-offset:2px;cursor:pointer}'+
  '.gl-design-selected{outline:3px solid #3B6FD8!important;outline-offset:2px}'+
- '#gl-design-toggle{position:fixed;left:16px;bottom:16px;z-index:100200;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #16202E;background:#fff;color:#16202E;font:600 14px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(22,32,46,.18);cursor:pointer}'+
+ '#gl-design-toggle{touch-action:none;user-select:none;position:fixed;left:16px;bottom:16px;z-index:100200;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #16202E;background:#fff;color:#16202E;font:600 14px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(22,32,46,.18);cursor:pointer}'+
  'body.gl-design-on #gl-design-toggle{background:#3B6FD8;border-color:#3B6FD8;color:#fff}'+
  'body:has(#gestlok-mobile-dock:not([hidden])) #gl-design-toggle{bottom:calc(76px + env(safe-area-inset-bottom,0px))}'+
  'body.gl-pya-open #gl-design-toggle{display:none}'+
@@ -131,6 +131,43 @@ function renderUI(){
  if(!toggle){
   toggle=document.createElement('button');toggle.id='gl-design-toggle';toggle.type='button';
   toggle.setAttribute('aria-pressed','false');document.body.appendChild(toggle);
+  let origin=null;
+  toggle.addEventListener('pointerdown',e=>{
+   if(e.button!==0)return;
+   const r=toggle.getBoundingClientRect();
+   origin={x:e.clientX,y:e.clientY,left:r.left,top:r.top};
+   dragging=false;dragged=false;
+   toggle.setPointerCapture?.(e.pointerId);
+  });
+  toggle.addEventListener('pointermove',e=>{
+   if(!origin)return;
+   const dx=e.clientX-origin.x,dy=e.clientY-origin.y;
+   if(!dragging&&Math.hypot(dx,dy)<7)return;
+   dragging=true;dragged=true;
+   const r=toggle.getBoundingClientRect();
+   const left=Math.max(8,Math.min(innerWidth-r.width-8,origin.left+dx));
+   const top=Math.max(8,Math.min(innerHeight-r.height-8,origin.top+dy));
+   toggle.style.left=left+'px';toggle.style.top=top+'px';toggle.style.bottom='auto';
+  });
+  const finish=()=>{
+   if(!origin)return;
+   origin=null;
+   if(dragging){
+    try{localStorage.setItem('gl-design-bubble-position',JSON.stringify({left:toggle.style.left,top:toggle.style.top}));}catch{}
+   }
+   dragging=false;
+  };
+  toggle.addEventListener('pointerup',finish);
+  toggle.addEventListener('pointercancel',finish);
+  toggle.addEventListener('click',e=>{if(dragged){e.stopImmediatePropagation();e.preventDefault();dragged=false;}},true);
+  try{
+   const pos=JSON.parse(localStorage.getItem('gl-design-bubble-position')||'null');
+   if(pos&&Number.isFinite(parseFloat(pos.left))&&Number.isFinite(parseFloat(pos.top))){
+    toggle.style.left=Math.max(8,Math.min(innerWidth-80,parseFloat(pos.left)))+'px';
+    toggle.style.top=Math.max(8,Math.min(innerHeight-44,parseFloat(pos.top)))+'px';
+    toggle.style.bottom='auto';
+   }
+  }catch{}
  }
  const label=on?'Salir del modo diseño':'✎ Diseñar';
  if(toggle.textContent!==label)toggle.textContent=label;
@@ -140,7 +177,7 @@ function renderUI(){
 // En computadora el botón va al lado del menú lateral (antes tapaba «Cerrar sesión»).
 // En celular lo ubica el CSS, sobre la barra inferior.
 function placeToggle(){
- if(!toggle)return;
+ if(!toggle||toggle.style.top)return;
  const dock=document.getElementById?.('gestlok-mobile-dock');let left='';
  if(!dock||dock.hidden){
   const tall=(globalThis.innerHeight||800)*0.6;
