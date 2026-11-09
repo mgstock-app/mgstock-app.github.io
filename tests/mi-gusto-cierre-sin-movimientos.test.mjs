@@ -85,6 +85,7 @@ test('La interfaz ofrece Sin movimientos solo en un turno sin comandas; fotos ob
  assert.match(js,/data-mgon-empty/);
  assert.match(js,/emptySelected\(s\)/);
  assert.match(js,/hasMoves&&!!s\.photo_path/);
+ assert.ok(js.includes("hasMoves||!writable()?'disabled '"),'Sin movimientos must remain visible but disabled when there are orders');
  assert.match(js,/gestlok_mg_online_close_sin_movimientos/);
  assert.match(js,/Sin movimientos/);
  assert.match(css,/\.mg-on-empty-choice/);
