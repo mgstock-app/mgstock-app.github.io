@@ -17,6 +17,7 @@ describe("Munro: Resumen y Semana se ven una sola vez por vista",()=>{
    if(path.includes("/rpc/rm_app_branch_schedule_links"))return req.reply([]);
    if(path.includes("/rpc/rm_horarios_locales"))return req.reply([{local_id:"munro",local_name:"Munro",conectado:true,ultimo_envio_at:now,puede_administrar:true}]);
    if(path.includes("/rpc/rm_horarios_en_vivo"))return req.reply(updated);
+   if(path.includes("/rpc/rm_horarios_estado_archivo"))return req.reply({manual:archived,pdf:false,pendiente:!archived});
    if(path.includes("/rpc/rm_horarios_historial"))return req.reply(archived?[{...original[0],desde:updated.desde,hasta:updated.hasta,archivo_id:"00000000-0000-4000-8000-000000000003"},...original]:original);
    if(path.includes("/rpc/rm_horarios_tabla"))return req.reply({tabla:req.body.p_hoja==="Resumen"?tabla("40:00"):tabla("18:00–23:30"),filas:[{colaborador:"Persona ficticia",total:"40"}],tiene_pdf:true});
    if(path.includes("/rpc/rm_horarios_archivar_manual")){
