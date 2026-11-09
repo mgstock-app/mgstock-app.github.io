@@ -180,13 +180,16 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#gl-molino-movement-form-devolucion [name="unit"]').select('kg');
     cy.get('#gl-molino-movement-form-devolucion button[type="submit"]').click();
     cy.get('#gl-molino-panel .gl-molino-return-ledger').should('contain.text','25.460')
-      .and('contain.text','12.540');
+      .and('contain.text','12.540').and('contain.text','Monto final');
+    cy.get('#gl-molino-panel [data-mol-day-final-summary]').should('contain.text','25.460');
     cy.get('#gl-molino-movement-form-devolucion [name="product"]').type('Pan test');
     cy.get('#gl-molino-movement-form-devolucion [name="quantity"]').type('250');
     cy.get('#gl-molino-movement-form-devolucion [name="unit"]').select('g');
     cy.get('#gl-molino-movement-form-devolucion button[type="submit"]').click();
     cy.get('#gl-molino-panel .gl-molino-return-ledger').should('contain.text','26.130')
       .and('contain.text','12.870');
+    cy.get('#gl-molino-panel .gl-molino-ledger-sum').should('contain.text','Total monto final del día').and('contain.text','26.130');
+    cy.get('#gl-molino-panel [data-mol-day-final-summary]').should('contain.text','26.130');
     cy.get('#gl-molino-panel [data-mol-ack]').should('have.length',2).first().click();
     cy.get('#gl-molino-panel .gl-molino-item.is-confirmed').should('have.length',1);
     cy.get('#gl-molino-panel [data-mol-tab="historial"]').click();
@@ -194,6 +197,8 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#gl-molino-month').should('be.visible');
     cy.get('#gl-molino-panel .gl-molino-month-totals').should('contain.text','26.130')
       .and('contain.text','12.870');
+    cy.get('#gl-molino-panel [data-mol-month-final-total]').should('contain.text','26.130');
+    cy.get('#gl-molino-panel .gl-molino-month-final').should('contain.text','Total monto final del mes');
     cy.get('#gl-molino-panel .gl-molino-month-day').should('contain.text','Pan test')
       .and('contain.text','kg').and('contain.text','g');
     cy.document().then(d=>{if(d.documentElement.scrollWidth>392)throw Error('Desborde horizontal en devoluciones');});
