@@ -89,6 +89,15 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
       <div><h2>Semana actual · Google Sheets</h2><p>Se actualiza al recibir cambios de la planilla de Munro.</p></div>
       <button type="button" className={styles.liveRefresh} onClick={()=>void refresh()} disabled={refreshing} aria-label="Actualizar vista de horarios"><RefreshCw size={16} aria-hidden="true" /> {refreshing?"Actualizando…":"Actualizar"}</button>
     </header>
+    {puedeArchivar&&<div className={styles.liveActions}>
+      <div>
+        <strong>Archivo manual de horarios</strong>
+        <p>{archivada?"Esta semana ya está guardada. Elegí «Historial» para verla.":!live?"Esperando los datos de Google Sheets para habilitar el guardado.":!sincronizada?"Sincronizá primero los últimos cambios desde Google Sheets.":"Guardá una copia de Resumen y Semana cuando estén completos. La planilla original no se modifica."}</p>
+      </div>
+      <button className={styles.btnPrincipal} type="button" disabled={guardando||archivada||!sincronizada||loading||!live} onClick={()=>void archivar()} title={archivada?"Semana ya guardada":!sincronizada?"Actualizá primero Google Sheets":"Enviar una copia de Resumen y Semana al historial"}>
+        <Archive size={18} aria-hidden="true" /> {guardando?"Guardando…":archivada?"Ya enviada al historial":"Enviar a historial"}
+      </button>
+    </div>}
     {loading&&<p role="status" className={styles.rPie}>Cargando horarios actuales…</p>}
     {error&&<p role="alert" className={styles.error}>{error}</p>}
     {aviso&&<p role="status" className={styles.aviso}>{aviso}</p>}
@@ -106,12 +115,7 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
           <Grid hoja={live.tablas[hoja]} nombre={hoja+" en vivo"} />
         </div>
       </section>)}
-      {puedeArchivar&&<div className={styles.liveActions}>
-        <div><strong>Guardar esta semana</strong><p>El historial se guarda únicamente de forma manual. Se conserva una copia de ambas tablas, sin modificar Google Sheets.</p></div>
-        <button className={styles.btnPrincipal} type="button" disabled={guardando||archivada||!sincronizada||loading} onClick={()=>void archivar()}>
-          <Archive size={18} aria-hidden="true" /> {guardando?"Guardando…":archivada?"Ya enviada al historial":"Enviar a historial"}
-        </button>
-      </div>}
+
     </>}
   </section>;
 }

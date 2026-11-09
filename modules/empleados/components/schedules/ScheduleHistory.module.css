@@ -234,3 +234,25 @@
 .liveActions .btnPrincipal{margin:0;white-space:nowrap;background:#143c63}
 .liveActions .btnPrincipal:hover:not(:disabled){background:#1a568c}
 @media(max-width:640px){.liveHeader,.liveActions{padding:13px}.liveActions .btnPrincipal{width:100%;justify-content:center}}
+
+
+/* Munro: dos vistas excluyentes para que Resumen y Semana se muestren una sola vez. */
+.vistaSwitcher{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  padding:7px;border:1px solid #d9e5ef;border-radius:13px;
+  background:#f5f9fc;width:max-content;max-width:100%;margin:12px 0 18px;
+}
+.vistaSwitcher button{
+  font:inherit;font-weight:750;font-size:14px;color:#355570;
+  padding:11px 19px;min-height:44px;border:1px solid transparent;
+  border-radius:9px;background:transparent;cursor:pointer;
+}
+.vistaSwitcher button[aria-pressed="true"]{
+  background:#143653;border-color:#143653;color:white;box-shadow:0 2px 7px #102a4424;
+}
+.vistaSwitcher button:not([aria-pressed="true"]):hover{background:#e5f1f9}
+.vistaSwitcher button:focus-visible{outline:3px solid #4197db;outline-offset:2px}
+@media(max-width:440px){
+  .vistaSwitcher{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .vistaSwitcher button{padding:10px 9px;font-size:13px}
+}
