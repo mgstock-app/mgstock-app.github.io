@@ -328,3 +328,13 @@ body.gl-molino-tenant #snav .gl-molino-navgroup{color:#AFC0CF!important}
 body.gl-molino-tenant #side .side-f,body.gl-molino-tenant #side .side-f *{color:#E9EEF3}
 body.gl-molino-tenant #side .side-f button,body.gl-molino-tenant #side .side-f a{background:transparent!important;border-color:rgba(255,255,255,.22)!important}
 body.gl-molino-tenant #side .xside{color:#E9EEF3}
+/* Menú oscuro de El Molino: botones «Locales», «Inicio» y pie del menú legibles (09/11/2026). */
+html body.gl-molino-tenant #side #snav>button,html body.gl-molino-tenant #side #snav>button.snav-back,html body.gl-molino-tenant #side #snav>button.snav-loc{background:transparent!important;background-color:transparent!important;color:#DCE4EB!important;border:1px solid transparent!important;box-shadow:none!important}
+html body.gl-molino-tenant #side #snav>button.snav-back{border-color:rgba(255,255,255,.18)!important}
+html body.gl-molino-tenant #side #snav>button[aria-current="page"]{background:rgba(255,255,255,.12)!important;background-color:rgba(255,255,255,.12)!important;color:#fff!important}
+html body.gl-molino-tenant #side #snav>button:hover{background:rgba(255,255,255,.08)!important}
+html body.gl-molino-tenant #side #snav>button *{color:inherit!important}
+html body.gl-molino-tenant #side #snav>button small{color:#AFC0CF!important}
+html body.gl-molino-tenant #side .side-f #inst,html body.gl-molino-tenant #side .side-f #gl-nav-logout,html body.gl-molino-tenant #side .side-f #gl-profile-switch-trigger,html body.gl-molino-tenant #side .side-f b,html body.gl-molino-tenant #side .side-f small,html body.gl-molino-tenant #side .side-f svg{color:#E9EEF3!important;stroke:currentColor}
+html body.gl-molino-tenant #side .side-f small{color:#AFC0CF!important}
+html body.gl-molino-tenant #side .side-f #inst,html body.gl-molino-tenant #side .side-f #gl-nav-logout,html body.gl-molino-tenant #side .side-f #gl-profile-switch-trigger{background:transparent!important;border:1px solid rgba(255,255,255,.22)!important}
