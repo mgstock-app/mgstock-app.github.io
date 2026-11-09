@@ -172,7 +172,7 @@ function movementItem(m,kind,fromHistory=false){
  return '<article class="gl-molino-item'+(ok?' is-confirmed':'')+'">'+
  '<div class="gl-molino-item-top"><div><strong>'+escapeHTML(m.product)+'</strong><small>Cantidad: <b>'+fmtQty(m.quantity)+' '+(kind==='devolucion'?(m.unit==='g'?'g':m.unit==='kg'?'kg':'unidades'):'')+'</b></small></div>'+
  '<span class="gl-molino-status '+(ok?'ok':'pending')+'">'+(ok?'✓ OK · '+label:'Pendiente de recepción')+'</span></div>'+
- (kind==='devolucion'&&m.net_total!=null?'<div class="gl-molino-return-metrics"><span>Precio: <b>'+money(m.unit_price)+' / '+(m.price_basis==='kg'?'kg':'unidad')+'</b></span><span>Venta: <b>'+money(m.gross_total)+'</b></span><span>Desc. 33%: <b>−'+money(m.discount_amount)+'</b></span><span>Resultante: <b>'+money(m.net_total)+'</b></span></div>':'')+
+ (kind==='devolucion'&&m.net_total!=null?'<div class="gl-molino-return-metrics"><span>Precio: <b>'+money(m.unit_price)+' / '+(m.price_basis==='kg'?'kg':'unidad')+'</b></span><span>Venta: <b>'+money(m.gross_total)+'</b></span><span>Desc. 33%: <b>−'+money(m.discount_amount)+'</b></span><span>Monto final: <b>'+money(m.net_total)+'</b></span></div>':'')+
  (m.note?'<p class="gl-molino-comment"><b>Observación de Acassuso:</b> '+escapeHTML(m.note)+'</p>':'')+
  (m.acknowledgement_note?'<p class="gl-molino-comment"><b>Observación al recibir:</b> '+escapeHTML(m.acknowledgement_note)+'</p>':'')+
  (canChange?'<button type="button" class="gl-molino-inline" data-mol-move-edit="'+escapeHTML(m.id)+'" data-kind="'+kind+'">Editar detalle</button>':'')+
@@ -183,17 +183,17 @@ function movementItem(m,kind,fromHistory=false){
 
 function returnLedger(records,caption='Cuadro de devoluciones'){
  const items=records||[];
- const gross=items.reduce((total,x)=>total+Number(x.gross_total||0),0);
- const discount=items.reduce((total,x)=>total+Number(x.discount_amount||0),0);
- const net=items.reduce((total,x)=>total+Number(x.net_total||0),0);
+ // El servidor guarda cada importe con dos decimales. No aplicar el 33% otra vez.
+ const total=key=>Math.round(items.reduce((sum,item)=>sum+Number(item[key]||0),0)*100)/100;
+ const gross=total('gross_total'),discount=total('discount_amount'),net=total('net_total');
  const missing=items.filter(x=>x.net_total==null).length;
  return '<section class="gl-molino-return-ledger" aria-label="'+escapeHTML(caption)+'"><h4>'+escapeHTML(caption)+'</h4>'+
   '<div class="gl-molino-return-totals"><span>Venta: <b>'+money(gross)+'</b></span>'+
    '<span>Descuento 33%: <b>−'+money(discount)+'</b></span>'+
-   '<span>Importe resultante: <b>'+money(net)+'</b></span></div>'+
+   '<span>Monto final: <b>'+money(net)+'</b></span></div>'+
   (missing?'<p class="gl-molino-tip">'+missing+' registros antiguos sin precio consolidado. No se les asignó un importe inventado.</p>':'')+
   (items.length?'<div class="gl-molino-tablewrap"><table class="gl-molino-table"><thead><tr>'+
-   '<th>Producto</th><th>Cantidad</th><th>Precio venta</th><th>Venta</th><th>Desc. 33%</th><th>Resultante</th><th>Estado</th>'+
+   '<th>Producto</th><th>Cantidad</th><th>Precio venta</th><th>Venta</th><th>Desc. 33%</th><th>Monto final</th><th>Estado</th>'+
    '</tr></thead><tbody>'+items.map(x=>'<tr>'+
    '<td><strong>'+escapeHTML(x.product)+'</strong></td>'+
    '<td>'+fmtQty(x.quantity)+' '+(x.unit==='kg'?'kg':x.unit==='g'?'g':'unid.')+'</td>'+
@@ -201,19 +201,27 @@ function returnLedger(records,caption='Cuadro de devoluciones'){
    '<td>'+(x.gross_total!=null?money(x.gross_total):'—')+'</td>'+
    '<td>'+(x.discount_amount!=null?'−'+money(x.discount_amount):'—')+'</td>'+
    '<td><b>'+(x.net_total!=null?money(x.net_total):'—')+'</b></td>'+
-   '<td>'+(x.acknowledged_at?'✓ OK':'Pendiente')+'</td></tr>').join('')+'</tbody></table></div>':
-   '<p class="gl-molino-empty">Todavía no hay devoluciones en este período.</p>')+'</section>';
+   '<td>'+(x.acknowledged_at?'✓ OK':'Pendiente')+'</td></tr>').join('')+'</tbody>'+
+   '<tfoot><tr class="gl-molino-ledger-sum"><th colspan="5" scope="row">Total monto final del día</th>'+
+   '<td class="gl-molino-money" data-mol-day-final-total><strong>'+money(net)+'</strong></td><td></td></tr></tfoot>'+
+   '</table></div>':
+   '<p class="gl-molino-empty">Todavía no hay devoluciones en este período.</p>')+
+  '<div class="gl-molino-final-summary"><span>Total monto final del día</span>'+
+  '<strong data-mol-day-final-summary>'+money(net)+'</strong>'+
+  '<small>Suma de los montos finales de '+items.length+' producto'+(items.length===1?'':'s')+' registrado'+(items.length===1?'':'s')+'.</small></div>'+
+  '</section>';
 }
+
 function monthView(){
  const data=monthlyData;
  let html='<div class="gl-molino-section-title"><h3>Resumen mensual de devoluciones</h3>'+
-  '<p>Conciliación entre Acassuso y San Isidro. Detalle por producto y totales de cada día; precios congelados al registrar.</p></div>'+
+  '<p>Conciliación entre Acassuso y San Isidro. Detalle por producto, día y mes; los precios de cada devolución quedan guardados.</p></div>'+
   '<label class="gl-molino-month-label">Mes <input type="month" id="gl-molino-month" value="'+escapeHTML(selectedMonth)+'" min="2026-11" max="'+escapeHTML(localDay().slice(0,7))+'"></label>';
  if(!data||data.month!==selectedMonth)return html+'<p class="gl-molino-tip" role="status">Cargando resumen del mes…</p>';
  html+='<div class="gl-molino-return-totals gl-molino-month-totals">'+
   '<span>Venta: <b>'+money(data.gross)+'</b></span>'+
   '<span>Descuento 33%: <b>−'+money(data.discount)+'</b></span>'+
-  '<span>Importe resultante: <b>'+money(data.net)+'</b></span>'+
+  '<span class="gl-molino-month-final">Total monto final del mes: <b data-mol-month-final-total>'+money(data.net)+'</b></span>'+
   '<span>Productos devueltos: <b>'+Number(data.total_items||0)+'</b></span></div>';
  if(data.unpriced_items)html+='<p class="gl-molino-tip">'+data.unpriced_items+' movimientos anteriores no tienen valoración; los totales no los incluyen.</p>';
  if(!(data.days||[]).length)return html+'<p class="gl-molino-empty">Sin devoluciones en el mes seleccionado.</p>';
@@ -311,7 +319,7 @@ function history(){
  const modeTabs='<div class="gl-molino-order-tabs" role="tablist" aria-label="Historial de devoluciones"><button type="button" data-mol-history-mode="diario" class="'+(historyMode==='diario'?'active':'')+'" aria-selected="'+(historyMode==='diario')+'">Historial diario</button><button type="button" data-mol-history-mode="mensual" class="'+(historyMode==='mensual'?'active':'')+'" aria-selected="'+(historyMode==='mensual')+'">Resumen mensual</button></div>';
  if(historyMode==='mensual')return modeTabs+monthView();
  const dates=state?.history||[];
- let body=modeTabs+'<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Todos los movimientos quedan guardados por fecha. Incluye el OK individual, observaciones y cambios de precios.</p></div>';
+ let body=modeTabs+'<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Cierre automático a las 23:59 (hora argentina). Elegí el día para consultar cada producto, su descuento del 33% y el total monto final de la jornada.</p></div>';
  if(!dates.length)return body+'<p class="gl-molino-empty">El primer historial estará disponible al cierre de las 23:59 (Argentina).</p>';
  body+='<div class="gl-molino-history-list">'+dates.map(d=>
   '<button type="button" class="'+(selectedDay===d.day?'active':'')+'" data-mol-history="'+escapeHTML(d.day)+'"><b>'+fmtDate(d.day)+'</b><small>'+d.envios+' envíos · '+d.devoluciones+' devoluciones · '+d.cambios_precios+' cambios de precios</small></button>'
