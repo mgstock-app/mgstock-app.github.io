@@ -26,6 +26,7 @@ const hora = (iso:string) => new Date(iso).toLocaleString("es-AR",{timeZone:"Ame
 
 export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props) {
   const [live,setLive] = useState<Live|null>(null);
+  const [estado,setEstado] = useState<{manual:boolean;pdf:boolean;pendiente:boolean}|null>(null);
   const [sincronizada,setSincronizada] = useState(false);
   const [lunesActual,setLunesActual] = useState("");
   const [loading,setLoading] = useState(true);
@@ -44,12 +45,17 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
         typeof data.actualizado_at==="string"&&!!data.tablas?.Resumen&&!!data.tablas?.Semana;
       const snapshot=valid?data:null;
       setLive(snapshot);
-      setLunesActual(mondayArgentina());
+      const monday=mondayArgentina();
+      setLunesActual(monday);
+      // Las semanas cerradas disponen de un periodo de revision manual mas amplio.
+      const vencimiento=snapshot?.hasta < monday ? 24*60*60*1000 : 30*60*1000;
       setSincronizada(!!snapshot&&Number.isFinite(Date.parse(snapshot.actualizado_at))&&
-        (Date.now()-Date.parse(snapshot.actualizado_at))<30*60*1000);
+        (Date.now()-Date.parse(snapshot.actualizado_at))<vencimiento);
+      setEstado(snapshot?await horariosHistoryApi.estadoArchivo(local,snapshot.desde):null);
       setError("");
     } catch {
-      setError("No se pudieron consultar los horarios en vivo. Revisá la conexión.");
+      setEstado(null);
+      setError("No se pudo comprobar la planilla o el historial. Actualizá la vista para reintentar.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,10 +71,11 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
 
   if(local!=="munro")return null;
   const actual=!!live&&live.desde===lunesActual;
-  const archivada=!!live&&(archivadas.includes(live.desde)||guardada===live.desde);
+  const archivada=!!live&&(guardada===live.desde||!!estado?.manual||(!!estado?.pdf&&!estado?.pendiente));
+  const preparado=!!live&&!!estado?.pendiente&&!archivada;
 
   async function archivar() {
-    if(!live||!puedeArchivar||guardando||archivada||!sincronizada)return;
+    if(!live||!puedeArchivar||guardando||!preparado||!sincronizada)return;
     const snapshot=live;
     if(!window.confirm("¿Enviar al historial la semana del "+fecha(snapshot.desde)+" al "+fecha(snapshot.hasta)+"?\n\nSe guardarán Resumen y Semana tal como llegaron desde Google Sheets. No se modifica ni se limpia la planilla. La copia histórica quedará cerrada para evitar cambios accidentales."))return;
     setGuardando(true);setError("");setAviso("");
@@ -86,15 +93,15 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
 
   return <section className={styles.resumen} aria-label="Horarios en vivo de Munro">
     <header className={styles.liveHeader}>
-      <div><h2>Semana actual · Google Sheets</h2><p>Se actualiza al recibir cambios de la planilla de Munro.</p></div>
+      <div><h2>Planilla en vivo · Google Sheets</h2><p>Se actualiza al recibir cambios de la planilla de Munro.</p></div>
       <button type="button" className={styles.liveRefresh} onClick={()=>void refresh()} disabled={refreshing} aria-label="Actualizar vista de horarios"><RefreshCw size={16} aria-hidden="true" /> {refreshing?"Actualizando…":"Actualizar"}</button>
     </header>
     {puedeArchivar&&<div className={styles.liveActions}>
       <div>
         <strong>Archivo manual de horarios</strong>
-        <p>{archivada?"Esta semana ya está guardada. Elegí «Historial» para verla.":!live?"Esperando los datos de Google Sheets para habilitar el guardado.":!sincronizada?"Sincronizá primero los últimos cambios desde Google Sheets.":"Guardá una copia de Resumen y Semana cuando estén completos. La planilla original no se modifica."}</p>
+        <p>{archivada?"La versión actual ya está guardada. Elegí «Historial» para verla.":!live?"Esperando los datos de Google Sheets para habilitar el guardado.":!estado?"Verificando si esta semana ya está archivada…":!estado.pendiente?"No hay cambios nuevos respecto del archivo guardado.":!sincronizada?"Sincronizá los últimos cambios desde Google Sheets antes de guardar.":estado.pdf?"Esta versión corregida está lista para enviar. La copia histórica anterior se conserva.":"Resumen y Semana están listos para guardar cuando decidas."}</p>
       </div>
-      <button className={styles.btnPrincipal} type="button" disabled={guardando||archivada||!sincronizada||loading||!live} onClick={()=>void archivar()} title={archivada?"Semana ya guardada":!sincronizada?"Actualizá primero Google Sheets":"Enviar una copia de Resumen y Semana al historial"}>
+      <button className={styles.btnPrincipal} type="button" disabled={guardando||!preparado||!sincronizada||loading} onClick={()=>void archivar()} title={archivada?"Semana ya guardada":!sincronizada?"Actualizá primero Google Sheets":"Enviar una copia de Resumen y Semana al historial"}>
         <Archive size={18} aria-hidden="true" /> {guardando?"Guardando…":archivada?"Ya enviada al historial":"Enviar a historial"}
       </button>
     </div>}
@@ -107,8 +114,8 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
         <p><b>Semana {fecha(live.desde)} al {fecha(live.hasta)}</b> · Último envío {hora(live.actualizado_at)}</p>
         <span className={sincronizada?styles.liveOk:styles.liveWarning}>{sincronizada?"Sincronizada":"Sin actualización reciente"}</span>
       </div>
-      {!actual&&<p role="alert" className={styles.liveAttention}>Google Sheets sigue mostrando la semana del {fecha(live.desde)}. La semana actual comienza el {fecha(lunesActual)}. Actualizá las fechas en la planilla y elegí «Enviar la semana ahora» para mostrarla acá.</p>}
-      {!sincronizada&&<p role="status" className={styles.rPie}>La última sincronización tiene más de 30 minutos. Antes de archivar, abrí Google Sheets y ejecutá «Enviar la semana ahora».</p>}
+      {!actual&&<p role="status" className={styles.liveAttention}>Estás revisando la semana cerrada del {fecha(live.desde)}. Podés enviar esta versión al historial antes de pasar a la semana del {fecha(lunesActual)}.</p>}
+      {!sincronizada&&<p role="status" className={styles.rPie}>La sincronización ya no está vigente. Antes de archivar, abrí Google Sheets y ejecutá «Enviar la semana ahora».</p>}
       {(["Resumen","Semana"] as const).map(hoja=><section key={hoja} aria-label={hoja+" en vivo"}>
         <h3 className={styles.rTitulo}>{hoja}</h3>
         <div className={hoja==="Semana"?[styles.tabla,styles.semanaScrollable].join(" "):styles.tabla} role="region" tabIndex={0} aria-label={"Tabla "+hoja+" en vivo, desplazamiento vertical y horizontal"}>
