@@ -196,3 +196,27 @@ body.gl-molino-open .gl-soporte-float{z-index:100101}
     margin:0;
   }
 }
+
+
+/* El Molino: conciliación visible por producto, jornada y mes.
+   El total es la suma de importes guardados, sin volver a aplicar descuentos. */
+.gl-molino-final-summary{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+ gap:3px 16px;margin-top:14px;padding:14px 16px;border:1px solid #caddeb;
+ border-radius:11px;background:#f0f6fb;color:#1c4669;
+}
+.gl-molino-final-summary>span{font-size:13px;font-weight:700}
+.gl-molino-final-summary>strong{font-size:21px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;color:#173857}
+.gl-molino-final-summary>small{grid-column:1/-1;font-size:11px;color:#5f7589}
+.gl-molino-ledger-sum{background:#eaf2fa;border-top:2px solid #c4d7e9}
+.gl-molino-ledger-sum th,.gl-molino-ledger-sum td{color:#1b4668!important;font-weight:800!important}
+.gl-molino-ledger-sum th{text-align:right!important}
+.gl-molino-ledger-sum td{white-space:nowrap;font-variant-numeric:tabular-nums}
+.gl-molino-month-totals .gl-molino-month-final{background:#ecf4fc;border-color:#b9d0e5;min-width:250px}
+.gl-molino-month-totals .gl-molino-month-final b{font-size:15px}
+@media(max-width:740px){
+ .gl-molino-final-summary{padding:12px;gap:6px 10px}
+ .gl-molino-final-summary>strong{font-size:18px}
+ .gl-molino-ledger-sum th{text-align:left!important}
+ .gl-molino-month-totals .gl-molino-month-final{min-width:0}
+}
