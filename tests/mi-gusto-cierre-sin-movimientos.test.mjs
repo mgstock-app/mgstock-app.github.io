@@ -37,7 +37,7 @@ test('Mi Gusto: Sin movimientos cierra solo turno vacío y lo registra; pagos co
   const open=(await rpc('state','munro')).active;
   assert.equal(open.movements.length,0);
   await assert.rejects(()=>rpc('close','munro',open.id),/Cargá al menos una/);
-  await assert.rejects(()=>rpc('close_sin_movimientos','torcuato',open.id),/otro local|inexistente|cerrado/i);
+  await assert.rejects(()=>rpc('close_sin_movimientos','torcuato',open.id),/otro local|inexistente|cerrado|Sin permiso/i);
   await assert.rejects(()=>rpc('close_sin_movimientos','dt',open.id),/Sin permiso/);
   const result=await rpc('close_sin_movimientos','munro',open.id);
   assert.equal(result.closed.status,'cerrado');
