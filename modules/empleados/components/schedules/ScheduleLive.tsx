@@ -26,6 +26,8 @@ const hora = (iso:string) => new Date(iso).toLocaleString("es-AR",{timeZone:"Ame
 
 export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props) {
   const [live,setLive] = useState<Live|null>(null);
+  const [sincronizada,setSincronizada] = useState(false);
+  const [lunesActual,setLunesActual] = useState("");
   const [loading,setLoading] = useState(true);
   const [refreshing,setRefreshing] = useState(false);
   const [guardando,setGuardando] = useState(false);
@@ -39,6 +41,8 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
     try {
       const data=await horariosHistoryApi.enVivo(local);
       setLive(data);
+      setLunesActual(mondayArgentina());
+      setSincronizada(!!data&&Number.isFinite(Date.parse(data.actualizado_at))&&(Date.now()-Date.parse(data.actualizado_at))<30*60*1000);
       setError("");
     } catch {
       setError("No se pudieron consultar los horarios en vivo. Revisá la conexión.");
@@ -50,16 +54,14 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
 
   useEffect(()=>{
     if(local!=="munro")return;
-    void refresh();
+    const start=window.setTimeout(()=>{void refresh();},0);
     const id=window.setInterval(()=>{ if(document.visibilityState==="visible")void refresh(); },30000);
-    return ()=>window.clearInterval(id);
+    return ()=>{window.clearTimeout(start);window.clearInterval(id);};
   },[local,refresh]);
 
   if(local!=="munro")return null;
-  const actual=live?.desde===mondayArgentina();
+  const actual=!!live&&live.desde===lunesActual;
   const archivada=!!live&&(archivadas.includes(live.desde)||guardada===live.desde);
-  const sincronizada=!!live&&Number.isFinite(Date.parse(live.actualizado_at)) &&
-    (Date.now()-Date.parse(live.actualizado_at))<30*60*1000;
 
   async function archivar() {
     if(!live||!puedeArchivar||guardando||archivada||!sincronizada)return;
@@ -92,7 +94,7 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
         <p><b>Semana {fecha(live.desde)} al {fecha(live.hasta)}</b> · Último envío {hora(live.actualizado_at)}</p>
         <span className={sincronizada?styles.liveOk:styles.liveWarning}>{sincronizada?"Sincronizada":"Sin actualización reciente"}</span>
       </div>
-      {!actual&&<p role="alert" className={styles.liveAttention}>Google Sheets sigue mostrando la semana del {fecha(live.desde)}. La semana actual comienza el {fecha(mondayArgentina())}. Actualizá las fechas en la planilla y elegí «Enviar la semana ahora» para mostrarla acá.</p>}
+      {!actual&&<p role="alert" className={styles.liveAttention}>Google Sheets sigue mostrando la semana del {fecha(live.desde)}. La semana actual comienza el {fecha(lunesActual)}. Actualizá las fechas en la planilla y elegí «Enviar la semana ahora» para mostrarla acá.</p>}
       {!sincronizada&&<p role="status" className={styles.rPie}>La última sincronización tiene más de 30 minutos. Antes de archivar, abrí Google Sheets y ejecutá «Enviar la semana ahora».</p>}
       {(["Resumen","Semana"] as const).map(hoja=><section key={hoja} aria-label={hoja+" en vivo"}>
         <h3 className={styles.rTitulo}>{hoja}</h3>
