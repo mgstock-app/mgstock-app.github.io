@@ -5,8 +5,10 @@ import type { HorarioLocal, HorarioSemana, HorarioFila, HojaArchivada } from "@/
 // y quién puede marcar pagos o conectar la planilla (dueño y creadora).
 export const horariosHistoryApi = {
   enVivo: (local: string) => rpc<{ desde: string; hasta: string; tablas: Record<"Resumen" | "Semana", HojaArchivada>; actualizado_at: string } | null>("rm_horarios_en_vivo", { p_local: local }),
+  archivarManual: (local: string, desde: string, actualizadoAt: string) =>
+    rpc<{ok:boolean; archivada:boolean; archivo_id:string; semana:string}>("rm_horarios_archivar_manual", {p_local:local,p_desde:desde,p_actualizado_at:actualizadoAt}),
   tabla: (local: string, archivo: string, hoja: "Resumen" | "Semana") =>
-    rpc<{ tabla: HojaArchivada | null; filas: HorarioFila[] }>("rm_horarios_tabla", { p_local: local, p_archivo: archivo, p_hoja: hoja }),
+    rpc<{ tabla: HojaArchivada | null; filas: HorarioFila[]; tiene_pdf: boolean }>("rm_horarios_tabla", { p_local: local, p_archivo: archivo, p_hoja: hoja }),
   archivo: (local: string, archivo: string, hoja: "Resumen" | "Semana") =>
     rpc<{ pdf: string }>("rm_horarios_archivo", { p_local: local, p_archivo: archivo, p_hoja: hoja }),
   locales: () => rpc<HorarioLocal[]>("rm_horarios_locales"),
