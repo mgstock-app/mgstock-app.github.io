@@ -11,11 +11,13 @@
   function businessWelcome(companyName,branded=false,soloOwner=false){
     const business=String(companyName||'Mi negocio').trim()||'Mi negocio';
     const branch=String(localActual()||'').trim();
+    const molino=api?.S?.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e'
+      ?(window.GestLokMolino?.logoHTML?.(api?.S?.local,'hero',api.S.me.tenant_id)||''):'';
     return '<header class="gl-owner-welcome gl-business-welcome"><div class="gl-business-identity">'+
       '<p class="gl-business-eyebrow">Bienvenido/a a</p>'+
-      (branded?'<h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1>'
+      (molino?'<div class="gl-molino-local-welcome">'+molino+'</div>':branded?'<h1 class="gl-owner-welcome-logo"><img src="img/mi-gusto-blanco.png" alt="Mi Gusto"></h1>'
         :'<h1 class="gl-business-name">'+esc(business)+'</h1>')+
-      (branch?'<p class="gl-business-branch"><strong>'+esc(branch)+'</strong><span>· Sucursal</span></p>'
+      (molino?'':branch?'<p class="gl-business-branch"><strong>'+esc(branch)+'</strong><span>· Sucursal</span></p>'
         :'<p class="gl-business-branch"><strong>Mi negocio</strong><span>· Panel principal</span></p>')+
       (branded?'<p class="gl-business-motto">Empanadas de Verdad</p>':'')+
       '<p class="gl-owner-tagline gl-business-tagline">Tus herramientas, en un solo lugar.</p>'+
