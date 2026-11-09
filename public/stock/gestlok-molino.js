@@ -7,9 +7,9 @@ const TENANT='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n||0));
 const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate=s=>{if(!s)return '';const a=String(s).slice(0,10).split('-');return a.length===3?a.reverse().join('/'):String(s);};
-const fmtQty=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(n||0));
-const localDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-let api=null,opened=false,section='precios',state=null,historyData=null,orderState=null,orderMode='realizar',orderDraft=[],selectedDay='',busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
+const fmtQty=n=>new Intl.NumberFormat('es-AR',{maximumFractionDigits:3}).format(Number(n||0));
+const localDay=()=>{const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=t=>parts.find(x=>x.type===t)?.value||'';return get('year')+'-'+get('month')+'-'+get('day');};
+let api=null,opened=false,section='precios',state=null,historyData=null,orderState=null,orderMode='realizar',orderDraft=[],selectedDay='',historyMode='diario',monthlyData=null,selectedMonth=localDay().slice(0,7),busy=false,fetching=false,warning='',message='',editPrice=null,editMove=null,channel=null,timer=null,stale=false,priorFocus=null;
 const $=s=>document.querySelector(s);
 const hasTenant=()=>api?.S?.me?.tenant_id===TENANT;
 const role=()=>state?.scope||'none';
@@ -34,7 +34,7 @@ const canEdit=k=>k==='envio'?canSend():canReturn();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=pedidos-molino-20261108';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=devoluciones33-20261108';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -72,7 +72,7 @@ function mount(){
  document.body.appendChild(node);document.body.classList.add('gl-molino-open');
 }
 function unmount(){
- opened=false;state=null;historyData=null;orderState=null;orderDraft=[];editPrice=null;editMove=null;stale=false;
+ opened=false;state=null;historyData=null;monthlyData=null;orderState=null;orderDraft=[];editPrice=null;editMove=null;stale=false;
  if(timer){clearInterval(timer);timer=null;}
  if(channel&&window.GestLokSupabase?.removeChannel)try{window.GestLokSupabase.removeChannel(channel);}catch{}
  channel=null;$('#gl-molino-panel')?.remove();document.body.classList.remove('gl-molino-open');
@@ -118,7 +118,7 @@ function watch(){
 function begin(tab){
  if(!hasTenant())return;
  priorFocus=document.activeElement;
- opened=true;section=['precios','pedidos','envios','devoluciones','historial'].includes(tab)?tab:'precios';
+ opened=true;historyMode='diario';monthlyData=null;selectedMonth=localDay().slice(0,7);section=['precios','pedidos','envios','devoluciones','historial'].includes(tab)?tab:'precios';
  warning='';message='';state=null;historyData=null;orderState=null;orderMode='realizar';orderDraft=[];editPrice=null;editMove=null;
  mount();render();void reload();watch();window.GestLokSupport?.render?.();
  setTimeout(()=>$('#gl-molino-close')?.focus(),0);
@@ -133,7 +133,8 @@ function priceForm(){
  const p=editPrice?(state?.prices||[]).find(x=>x.id===editPrice):null;
  return '<form id="gl-molino-price-form" class="gl-molino-form">'+
   '<label>Producto<input name="product" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
-  '<label>Precio ($)<input name="amount" type="number" min="0" max="999999999" step=".01" inputmode="decimal" value="'+escapeHTML(p?.amount??'')+'" placeholder="0,00" required></label>'+
+  '<label>Precio venta ($)<input name="amount" type="number" min="0" max="999999999" step=".01" inputmode="decimal" value="'+escapeHTML(p?.amount??'')+'" placeholder="0,00" required></label>'+
+  '<label>Precio por<select name="basis" aria-label="Base de precio"><option value="unidad" '+((p?.price_basis||'unidad')==='unidad'?'selected':'')+'>Unidad</option><option value="kg" '+(p?.price_basis==='kg'?'selected':'')+'>Kilo (kg)</option></select></label>'+
   '<button type="submit" class="gl-molino-main-btn">'+(p?'Guardar cambio':'Agregar precio')+'</button>'+
   (p?'<button type="button" data-mol-cancel="price" class="gl-molino-cancel">Cancelar</button>':'')+
   '</form>';
@@ -144,7 +145,7 @@ function prices(){
  priceForm()+
  '<div class="gl-molino-count">'+records.length+' productos en la lista</div>'+
  (records.length?'<div class="gl-molino-tablewrap"><table class="gl-molino-table"><thead><tr><th>Producto</th><th>Precio</th><th>Último cambio</th>'+(canPrices()?'<th>Acciones</th>':'')+'</tr></thead><tbody>'+
- records.map(p=>'<tr><td><strong>'+escapeHTML(p.product)+'</strong></td><td class="gl-molino-money">'+money(p.amount)+'</td><td>'+fmtDate(p.updated_at)+'</td>'+
+ records.map(p=>'<tr><td><strong>'+escapeHTML(p.product)+'</strong></td><td class="gl-molino-money">'+money(p.amount)+' / '+(p.price_basis==='kg'?'kg':'unidad')+'</td><td>'+fmtDate(p.updated_at)+'</td>'+
  (canPrices()?'<td><div class="gl-molino-row-actions"><button type="button" data-mol-price-edit="'+escapeHTML(p.id)+'">Editar</button><button type="button" class="warn" data-mol-price-remove="'+escapeHTML(p.id)+'" data-name="'+escapeHTML(p.product)+'">Quitar</button></div></td>':'')+
  '</tr>').join('')+'</tbody></table></div>':'<p class="gl-molino-empty">Todavía no se cargaron productos ni precios.</p>');
 }
@@ -155,7 +156,8 @@ function movementForm(kind){
  const isReturn=kind==='devolucion';
  return '<form id="gl-molino-movement-form-'+kind+'" data-mol-movement-form data-kind="'+kind+'" class="gl-molino-form">'+
  '<label>Producto<input name="product" list="gl-molino-products" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
- '<label>Cantidad<input type="number" name="quantity" min=".01" max="999999" step=".01" inputmode="decimal" placeholder="0" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
+ '<label>Cantidad<input type="number" name="quantity" min=".001" max="999999" step="'+(isReturn?'.001':'.01')+'" inputmode="decimal" placeholder="'+(isReturn?'Ej. 9.500':'0')+'" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
+ (isReturn?'<label>Unidad<select name="unit" aria-label="Unidad de devolución"><option value="unidad" '+((p?.unit||'unidad')==='unidad'?'selected':'')+'>Unidades</option><option value="kg" '+(p?.unit==='kg'?'selected':'')+'>Kilos (kg)</option><option value="g" '+(p?.unit==='g'?'selected':'')+'>Gramos (g)</option></select></label>':'')+
  (isReturn?'<label class="gl-molino-full">Observación opcional<textarea name="note" maxlength="1000" rows="2" placeholder="Estado del producto, motivo, etc.">'+escapeHTML(p?.note||'')+'</textarea></label>':'')+
  '<button type="submit" class="gl-molino-main-btn">'+(p?'Guardar cambio':isReturn?'Agregar devolución':'Agregar envío')+'</button>'+
  (p?'<button type="button" data-mol-cancel="movement" class="gl-molino-cancel">Cancelar</button>':'')+
@@ -168,8 +170,9 @@ function movementItem(m,kind,fromHistory=false){
  const canChange=canEdit(kind)&&!fromHistory&&!state?.closed&&!ok;
  const label=isSent?'Recibido por Acassuso':'Recibido por San Isidro';
  return '<article class="gl-molino-item'+(ok?' is-confirmed':'')+'">'+
- '<div class="gl-molino-item-top"><div><strong>'+escapeHTML(m.product)+'</strong><small>Cantidad: <b>'+fmtQty(m.quantity)+'</b></small></div>'+
+ '<div class="gl-molino-item-top"><div><strong>'+escapeHTML(m.product)+'</strong><small>Cantidad: <b>'+fmtQty(m.quantity)+' '+(kind==='devolucion'?(m.unit==='g'?'g':m.unit==='kg'?'kg':'unidades'):'')+'</b></small></div>'+
  '<span class="gl-molino-status '+(ok?'ok':'pending')+'">'+(ok?'✓ OK · '+label:'Pendiente de recepción')+'</span></div>'+
+ (kind==='devolucion'&&m.net_total!=null?'<div class="gl-molino-return-metrics"><span>Precio: <b>'+money(m.unit_price)+' / '+(m.price_basis==='kg'?'kg':'unidad')+'</b></span><span>Venta: <b>'+money(m.gross_total)+'</b></span><span>Desc. 33%: <b>−'+money(m.discount_amount)+'</b></span><span>Resultante: <b>'+money(m.net_total)+'</b></span></div>':'')+
  (m.note?'<p class="gl-molino-comment"><b>Observación de Acassuso:</b> '+escapeHTML(m.note)+'</p>':'')+
  (m.acknowledgement_note?'<p class="gl-molino-comment"><b>Observación al recibir:</b> '+escapeHTML(m.acknowledgement_note)+'</p>':'')+
  (canChange?'<button type="button" class="gl-molino-inline" data-mol-move-edit="'+escapeHTML(m.id)+'" data-kind="'+kind+'">Editar detalle</button>':'')+
@@ -177,6 +180,58 @@ function movementItem(m,kind,fromHistory=false){
  (ok?'<p class="gl-molino-confirmed-note">Confirmación registrada y compartida en ambos locales.</p>':'')+
  '</article>';
 }
+
+function returnLedger(records,caption='Cuadro de devoluciones'){
+ const items=records||[];
+ const gross=items.reduce((total,x)=>total+Number(x.gross_total||0),0);
+ const discount=items.reduce((total,x)=>total+Number(x.discount_amount||0),0);
+ const net=items.reduce((total,x)=>total+Number(x.net_total||0),0);
+ const missing=items.filter(x=>x.net_total==null).length;
+ return '<section class="gl-molino-return-ledger" aria-label="'+escapeHTML(caption)+'"><h4>'+escapeHTML(caption)+'</h4>'+
+  '<div class="gl-molino-return-totals"><span>Venta: <b>'+money(gross)+'</b></span>'+
+   '<span>Descuento 33%: <b>−'+money(discount)+'</b></span>'+
+   '<span>Importe resultante: <b>'+money(net)+'</b></span></div>'+
+  (missing?'<p class="gl-molino-tip">'+missing+' registros antiguos sin precio consolidado. No se les asignó un importe inventado.</p>':'')+
+  (items.length?'<div class="gl-molino-tablewrap"><table class="gl-molino-table"><thead><tr>'+
+   '<th>Producto</th><th>Cantidad</th><th>Precio venta</th><th>Venta</th><th>Desc. 33%</th><th>Resultante</th><th>Estado</th>'+
+   '</tr></thead><tbody>'+items.map(x=>'<tr>'+
+   '<td><strong>'+escapeHTML(x.product)+'</strong></td>'+
+   '<td>'+fmtQty(x.quantity)+' '+(x.unit==='kg'?'kg':x.unit==='g'?'g':'unid.')+'</td>'+
+   '<td>'+(x.unit_price!=null?money(x.unit_price)+' / '+(x.price_basis==='kg'?'kg':'unid.'):'Pendiente')+'</td>'+
+   '<td>'+(x.gross_total!=null?money(x.gross_total):'—')+'</td>'+
+   '<td>'+(x.discount_amount!=null?'−'+money(x.discount_amount):'—')+'</td>'+
+   '<td><b>'+(x.net_total!=null?money(x.net_total):'—')+'</b></td>'+
+   '<td>'+(x.acknowledged_at?'✓ OK':'Pendiente')+'</td></tr>').join('')+'</tbody></table></div>':
+   '<p class="gl-molino-empty">Todavía no hay devoluciones en este período.</p>')+'</section>';
+}
+function monthView(){
+ const data=monthlyData;
+ let html='<div class="gl-molino-section-title"><h3>Resumen mensual de devoluciones</h3>'+
+  '<p>Conciliación entre Acassuso y San Isidro. Detalle por producto y totales de cada día; precios congelados al registrar.</p></div>'+
+  '<label class="gl-molino-month-label">Mes <input type="month" id="gl-molino-month" value="'+escapeHTML(selectedMonth)+'" min="2026-11" max="'+escapeHTML(localDay().slice(0,7))+'"></label>';
+ if(!data||data.month!==selectedMonth)return html+'<p class="gl-molino-tip" role="status">Cargando resumen del mes…</p>';
+ html+='<div class="gl-molino-return-totals gl-molino-month-totals">'+
+  '<span>Venta: <b>'+money(data.gross)+'</b></span>'+
+  '<span>Descuento 33%: <b>−'+money(data.discount)+'</b></span>'+
+  '<span>Importe resultante: <b>'+money(data.net)+'</b></span>'+
+  '<span>Productos devueltos: <b>'+Number(data.total_items||0)+'</b></span></div>';
+ if(data.unpriced_items)html+='<p class="gl-molino-tip">'+data.unpriced_items+' movimientos anteriores no tienen valoración; los totales no los incluyen.</p>';
+ if(!(data.days||[]).length)return html+'<p class="gl-molino-empty">Sin devoluciones en el mes seleccionado.</p>';
+ return html+(data.days||[]).slice().reverse().map(d=>
+  '<section class="gl-molino-month-day"><h4>'+fmtDate(d.day)+' · '+Number(d.items||0)+' productos</h4>'+
+  returnLedger((d.details||[]).map(x=>({...x,gross_total:x.gross,discount_amount:x.discount,net_total:x.net})),
+  'Detalle del '+fmtDate(d.day))+
+  '</section>').join('');
+}
+async function loadMonth(month=selectedMonth){
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return;
+ selectedMonth=month;monthlyData=null;warning='';render();
+ try{
+  const data=await rpc('gestlok_molino_returns_month',{p_month:month});
+  if(opened&&selectedMonth===month){monthlyData=data;render();}
+ }catch(e){warning=e?.message||'No se pudo cargar el resumen mensual.';render();}
+}
+
 function movements(kind){
  const sent=kind==='envio';
  const records=state?.[sent?'envios':'devoluciones']||[];
@@ -184,7 +239,8 @@ function movements(kind){
  '<p>'+(sent?'San Isidro carga producto y cantidad. Acassuso confirma cada unidad de la lista por separado.':'Acassuso carga producto, cantidad y observación. San Isidro confirma la recepción de cada renglón.')+'</p></div>'+
  '<div class="gl-molino-dailybar"><span>Fecha del movimiento: <b>'+fmtDate(state?.day)+'</b></span><span>'+records.length+' productos · '+records.filter(m=>m.acknowledged_at).length+' con OK</span></div>'+
  movementForm(kind)+
- (records.length?'<div class="gl-molino-items">'+records.map(x=>movementItem(x,kind)).join('')+'</div>':'<p class="gl-molino-empty">Sin '+(sent?'envíos':'devoluciones')+' registrados hoy.</p>');
+ (!sent?returnLedger(records,'Cuadro diario de devoluciones · '+fmtDate(state?.day)):'')+
+ (records.length?'<div class="gl-molino-items">'+records.map(x=>movementItem(x,kind)).join('')+'</div>':sent?'<p class="gl-molino-empty">Sin envíos registrados hoy.</p>':'');
 }
 
 function orderGroups(){
@@ -252,8 +308,10 @@ async function ackOrder(id){
 }
 
 function history(){
+ const modeTabs='<div class="gl-molino-order-tabs" role="tablist" aria-label="Historial de devoluciones"><button type="button" data-mol-history-mode="diario" class="'+(historyMode==='diario'?'active':'')+'" aria-selected="'+(historyMode==='diario')+'">Historial diario</button><button type="button" data-mol-history-mode="mensual" class="'+(historyMode==='mensual'?'active':'')+'" aria-selected="'+(historyMode==='mensual')+'">Resumen mensual</button></div>';
+ if(historyMode==='mensual')return modeTabs+monthView();
  const dates=state?.history||[];
- let body='<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Todos los movimientos quedan guardados por fecha. Incluye el OK individual, observaciones y cambios de precios.</p></div>';
+ let body=modeTabs+'<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Todos los movimientos quedan guardados por fecha. Incluye el OK individual, observaciones y cambios de precios.</p></div>';
  if(!dates.length)return body+'<p class="gl-molino-empty">El primer historial estará disponible al cierre de las 23:59 (Argentina).</p>';
  body+='<div class="gl-molino-history-list">'+dates.map(d=>
   '<button type="button" class="'+(selectedDay===d.day?'active':'')+'" data-mol-history="'+escapeHTML(d.day)+'"><b>'+fmtDate(d.day)+'</b><small>'+d.envios+' envíos · '+d.devoluciones+' devoluciones · '+d.cambios_precios+' cambios de precios</small></button>'
@@ -263,7 +321,7 @@ function history(){
  const e=historyData.envios||[],d=historyData.devoluciones||[],p=historyData.cambios_precios||[];
  return body+'<div class="gl-molino-history-detail"><h4>Archivo del '+fmtDate(selectedDay)+'</h4>'+
  '<h5>Productos enviados</h5>'+(e.length?e.map(x=>movementItem(x,'envio',true)).join(''):'<p>Sin envíos.</p>')+
- '<h5>Devoluciones</h5>'+(d.length?d.map(x=>movementItem(x,'devolucion',true)).join(''):'<p>Sin devoluciones.</p>')+
+ '<h5>Devoluciones</h5>'+returnLedger(d,'Cuadro diario del '+fmtDate(selectedDay))+(d.length?d.map(x=>movementItem(x,'devolucion',true)).join(''):'<p>Sin devoluciones.</p>')+
  '<h5>Cambios de precios</h5>'+(p.length?p.map(x=>'<div class="gl-molino-price-history"><b>'+escapeHTML(x.product)+'</b><span>'+ (x.previous_amount==null?'Alta':money(x.previous_amount))+' → '+(x.amount==null?'Retirado':money(x.amount))+'</span></div>').join(''):'<p>Sin cambios de precios.</p>')+
  '</div>';
 }
@@ -313,7 +371,9 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-mol-close]')||e.target.id==='gl-molino-panel'){e.preventDefault();unmount();return;}
  const tab=e.target.closest('[data-mol-tab]');
  if(tab){section=tab.dataset.molTab;editPrice=null;editMove=null;warning='';message='';if(section==='pedidos'){orderState=null;render();void reload();}else render();return;}
- if(e.target.closest('[data-mol-refresh]')){stale=false;void reload();return;}
+ if(e.target.closest('[data-mol-refresh]')){stale=false;if(section==='historial'&&historyMode==='mensual')void loadMonth();else void reload();return;}
+ const histMode=e.target.closest('[data-mol-history-mode]');
+ if(histMode&&section==='historial'){historyMode=histMode.dataset.molHistoryMode==='mensual'?'mensual':'diario';if(historyMode==='mensual')void loadMonth();else render();return;}
 
  const orderTab=e.target.closest('[data-mol-order-mode]');
  if(orderTab&&section==='pedidos'){orderMode=orderTab.dataset.molOrderMode==='seguimiento'?'seguimiento':'realizar';render();return;}
@@ -367,9 +427,9 @@ document.addEventListener('submit',e=>{
  if(price){
   e.preventDefault();if(busy||!canPrices())return;
   const d=new FormData(price);
-  void save('gestlok_molino_save_price',{
+  void save('gestlok_molino_save_price_basis',{
     p_id:editPrice||null,p_product:String(d.get('product')||'').trim(),
-    p_amount:Number(d.get('amount'))
+    p_amount:Number(d.get('amount')),p_basis:String(d.get('basis')||'unidad')
   },'Precio guardado y compartido.');
   return;
  }
@@ -377,14 +437,15 @@ document.addEventListener('submit',e=>{
  if(move){
   e.preventDefault();if(busy||!canEdit(move.dataset.kind))return;
   const d=new FormData(move);
-  void save('gestlok_molino_save_movement',{
-    p_kind:move.dataset.kind,p_id:editMove||null,
+  void save(move.dataset.kind==='devolucion'?'gestlok_molino_save_return':'gestlok_molino_save_movement',{
+    ...(move.dataset.kind==='devolucion'?{p_unit:String(d.get('unit')||'unidad')}:{p_kind:'envio'}),p_id:editMove||null,
     p_product:String(d.get('product')||'').trim(),
     p_quantity:Number(d.get('quantity')),
     p_note:move.dataset.kind==='devolucion'?String(d.get('note')||'').trim():''
   },'Producto registrado y compartido.');
  }
 });
+document.addEventListener('change',e=>{if(!opened||section!=='historial'||historyMode!=='mensual')return;if(e.target?.id==='gl-molino-month'){void loadMonth(String(e.target.value||''));}});
 document.addEventListener('keydown',e=>{if(opened&&e.key==='Escape'){e.preventDefault();unmount();}});
 window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,navHTML,sectionName,open:begin,close:unmount});
 })();

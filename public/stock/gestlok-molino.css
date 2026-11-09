@@ -140,3 +140,24 @@ body.gl-molino-open .gl-soporte-float{z-index:100101}
  .gl-molino-order-draft-row{align-items:flex-start}
  .gl-molino-order-ack{width:100%}
 }
+
+
+/* Liquidación de devoluciones: tabla legible, cifras por día y mes sin alterar estilos de otros locales. */
+.gl-molino-form select{font-family:inherit;border:1px solid #bdcedf;background:#fff;border-radius:8px;padding:10px 11px;font-size:14px;color:#17314e;min-height:40px;width:100%;box-sizing:border-box}
+.gl-molino-return-ledger{margin:16px 0;padding:15px;border:1px solid #d4e3f0;border-radius:12px;background:#fafdff}
+.gl-molino-return-ledger h4{margin:0 0 12px;color:#163857;font-size:16px}
+.gl-molino-return-totals{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 13px}
+.gl-molino-return-totals span{display:inline-flex;justify-content:space-between;gap:12px;min-width:180px;padding:10px 13px;border:1px solid #dbe6ef;background:#fff;border-radius:8px;color:#4c667e;font-size:12px}
+.gl-molino-return-totals span b{color:#173857;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gl-molino-return-ledger .gl-molino-tablewrap{background:#fff}
+.gl-molino-return-ledger .gl-molino-table{font-size:12px;min-width:700px}
+.gl-molino-return-ledger .gl-molino-table th,.gl-molino-return-ledger .gl-molino-table td{padding:10px 9px}
+.gl-molino-return-metrics{margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px}
+.gl-molino-return-metrics span{font-size:12px;color:#496580;background:#f4f8fd;padding:8px 10px;border-radius:7px}
+.gl-molino-return-metrics b{color:#183d62}
+.gl-molino-month-label{display:flex;align-items:center;gap:12px;margin:12px 0 16px;color:#305171;font-size:13px;font-weight:700}
+.gl-molino-month-label input{min-height:42px;border:1px solid #bad0e3;border-radius:9px;padding:8px 11px;background:#fff;color:#17314e;font:inherit}
+.gl-molino-month-day{border-top:2px solid #e0eaf3;padding-top:12px;margin-top:18px}
+.gl-molino-month-day>h4{font-size:15px;color:#183d62;margin:0 0 10px}
+.gl-molino-month-totals{margin-bottom:15px}
+@media(max-width:740px){.gl-molino-return-ledger{padding:10px;margin:12px 0}.gl-molino-return-totals{display:grid;grid-template-columns:1fr}.gl-molino-return-totals span{min-width:0}.gl-molino-month-label{justify-content:space-between}.gl-molino-month-label input{max-width:170px}}
