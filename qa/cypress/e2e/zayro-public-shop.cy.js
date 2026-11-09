@@ -19,7 +19,10 @@ const base = {
    price:20000,stock:8,image_url:""}
  ]
 };
-function visitStore(data=base,path="/zayro/") {
+function visitStore(data=base,path="/zayro/",design=[]) {
+ cy.intercept("POST","**/rest/v1/rpc/gestlok_zayro_public_design",{
+   statusCode:200,headers:{"content-type":"application/json"},body:design
+ }).as("design");
  cy.intercept("POST","**/rest/v1/rpc/gestlok_zayro_public_catalog",{
    statusCode:200,headers:{"content-type":"application/json"},body:data
  }).as("catalog");
@@ -56,6 +59,24 @@ describe("ZAYRO · tienda pública aislada",()=>{
   cy.get("#zayro-catalog-title").should("contain.text","Cuidado capilar");
   cy.get(".zayro-wa-float").should("have.attr","href").and("match",/^https:\/\/wa\.me\/5491144477888\?text=/);
   cy.get(".zayro-promos").should("contain.text","¿No sabés cuál").and("contain.text","Desde Zona Norte");
+ });
+ it("aplica la tabla de diseño para visitantes sin mostrar el modo diseño",()=>{
+  visitStore(base,"/zayro/",[
+   {anchor:"hero.sub",kind:"text",value:"que te enamoran"},
+   {anchor:"sec.about",kind:"hide",value:""},
+   {anchor:"sec.benefits",kind:"add",value:"Promo de noviembre\n10% pagando por transferencia"}
+  ]);
+  cy.get(".zayro-hero-sub").should("have.text","que te enamoran");
+  cy.get("#sobre-zayro").should("not.exist");
+  cy.get(".zayro-zd-block").should("contain.text","Promo de noviembre").and("contain.text","10% pagando por transferencia");
+  cy.get(".zayro-zd-toggle").should("not.exist");
+  cy.get(".zayro-zd-bar").should("not.exist");
+ });
+ it("con ?diseno=1 y sin sesión pide ingresar y limpia la dirección",()=>{
+  visitStore(base,"/zayro/?diseno=1");
+  cy.location("search").should("eq","");
+  cy.get(".zayro-zd-notice").should("contain.text","ingresá a GESTLOK");
+  cy.get(".zayro-zd-toggle").should("not.exist");
  });
  it("muestra solo el catálogo público y permite filtrar sin datos privados",()=>{
   visitStore();

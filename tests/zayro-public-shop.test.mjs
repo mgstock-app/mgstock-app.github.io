@@ -10,6 +10,9 @@ const shell=readFileSync("app/zayro/page.tsx","utf8");
 const layout=readFileSync("app/zayro/layout.tsx","utf8");
 const css=readFileSync("app/zayro/zayro.css","utf8");
 const art=readFileSync("app/zayro/zayro-art.tsx","utf8");
+const design=readFileSync("app/zayro/store-design.tsx","utf8");
+const storeConfig=readFileSync("app/zayro/store-config.ts","utf8");
+const designSql=readFileSync("supabase/migrations/20261109160000_zayro_store_design.sql","utf8");
 
 test("ZAYRO conserva exclusividad de empresa y Dueña",()=>{
   assert.match(sql,/gestlok_zayro_is_owner/);
@@ -158,4 +161,33 @@ test("Los estilos de ZAYRO quedan aislados y no cambian otras pantallas de GESTL
   const outside=selectors.filter(sel=>!/^(\.zayro|:where\(\.zayro\)|html:has\(\.zayro\))/.test(sel));
   assert.deepEqual(outside,[]);
   assert.doesNotMatch(layout,/import\s+["']\.\.\//,"no importa estilos globales");
+});
+
+test("Tabla de diseño en la tienda: el público solo lee; diseñan Camila o la Administradora General",()=>{
+  assert.match(designSql,/public\.gestlok_zayro_is_owner\(\)/);
+  assert.match(designSql,/gestlok_platform\.admins a where a\.user_id = \(select auth\.uid\(\)\)/);
+  assert.match(designSql,/grant execute on function public\.gestlok_zayro_public_design\(\) to anon, authenticated/);
+  assert.match(designSql,/revoke all on function public\.gestlok_zayro_design_save\(text, text, text, text\) from public, anon/);
+  assert.match(designSql,/revoke all on function public\.gestlok_zayro_design_remove\(text, text\) from public, anon/);
+  assert.match(designSql,/o\.page = 'zayro:tienda'/);
+  assert.match(designSql,/tenant_id = '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103'::uuid/);
+  assert.match(designSql,/\^\[a-z0-9\]\[a-z0-9\._-\]\{0,79\}\$/,"ancla validada");
+  assert.doesNotMatch(designSql,/\bdrop\s+(table|policy)|\btruncate\b|alter table/i,"aditiva");
+  const publicFn=designSql.slice(designSql.indexOf("gestlok_zayro_public_design()"),designSql.indexOf("-- Guardar un cambio"));
+  assert.doesNotMatch(publicFn,/created_by|original|tenant_id',/,"no expone autor ni datos internos");
+});
+
+test("La tienda aplica textos, ocultos y bloques; el modo diseño solo aparece con permiso",()=>{
+  assert.match(design,/gestlok_zayro_public_design/);
+  assert.match(design,/gestlok_zayro_design_can_edit/);
+  assert.match(design,/gestlok_zayro_design_save/);
+  assert.match(design,/gestlok_zayro_design_remove/);
+  assert.match(design,/if \(!error && data === true\)/);
+  assert.match(design,/get\("diseno"\) === "1"/);
+  assert.doesNotMatch(design,/dangerouslySetInnerHTML|innerHTML/,"solo texto");
+  assert.match(storeConfig,/if \(!hasStoredSession\(\)\)|hasStoredSession/);
+  assert.match(page,/useStoreDesign\(\)/);
+  for(const key of ["sec.hero","hero.sub","hero.button","sec.benefits","sec.cats","sec.catalog","sec.promos","sec.about","sec.footer","promo1.text"])
+    assert.ok(page.includes('"'+key+'"'),key);
+  assert.match(js,/href="\/zayro\/\?diseno=1"/,"Camila abre el diseño desde su panel");
 });
