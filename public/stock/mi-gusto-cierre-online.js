@@ -38,7 +38,7 @@ function changeScale(delta){
  if(plus)plus.disabled=pageScale>=110;
 }
 let cashOkSaving=false;
-let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, gen=0;
+let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, emptyCheckedFor=null, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   !window.GestLokCreatorSupport?.previewRol?.() &&
@@ -46,8 +46,9 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
    (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;error='';}
-function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;}
+const emptySelected=s=>!!s&&Array.isArray(s.movements)&&s.movements.length===0&&emptyCheckedFor===s.id;
+function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;emptyCheckedFor=null;error='';}
+function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -79,7 +80,7 @@ async function refresh(){
  loading=true;
  try{const value=await rpc('gestlok_mg_online_state');
    if(loc!==local()||token!==gen)return;
-   snapshot=safeShiftState(value);error='';
+   snapshot=safeShiftState(value);if(emptyCheckedFor!==snapshot.active.id||snapshot.active.movements.length)emptyCheckedFor=null;error='';
  }catch(e){if(token===gen&&!choosingPhoto&&!uploading)error=e.message||'No pudimos consultar los cierres';}
  finally{loading=false;if(token===gen&&!choosingPhoto&&!uploading&&api?.S?.view==='cierre-online')api.render();}
 }
@@ -178,21 +179,26 @@ function entry(){
 }
 function movements(){
  const s=snapshot?.active;
+ const hasMoves=!!s&&Array.isArray(s.movements)&&s.movements.length>0;
+ const declared=emptySelected(s);
+ const canClose=!!s&&writable()&&(declared||(hasMoves&&!!s.photo_path));
  return '<div class="mg-on-section">'+entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
   movementList()+'</div>'+status()+
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
- '<p class="mg-on-photo-reminder '+(s?.photo_path?'mg-on-photo-ready':'')+'" role="status">'+(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Antes de cerrar el turno, el gerente debe subir la foto. El cierre se habilitará cuando termine la carga.')+'</p></div>'+
+ (!hasMoves&&s?'<label class="mg-on-empty-choice"><input type="checkbox" data-mgon-empty="'+esc(s.id)+'" '+(declared?'checked ':'')+(!writable()?'disabled ':'')+'><span><strong>Sin movimientos</strong><small>Confirmá que el turno no tuvo movimientos. Se cerrará sin foto.</small></span></label>':'')+
+ '<p class="mg-on-photo-reminder '+(declared||(hasMoves&&s?.photo_path)?'mg-on-photo-ready':'')+'" role="status">'+(declared?'✓ Sin movimientos. No necesitás foto para cerrar.':hasMoves?(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Hay movimientos registrados. Subí la foto para cerrar.'):'Seleccioná «Sin movimientos» para cerrar sin foto.')+'</p></div>'+
  (photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
- '<div class="mg-on-close-controls">'+'<button type="button" class="mg-on-close-primary" data-mgon-close '+(!writable()||!s?.photo_path?'disabled':'')+'>Cerrar turno →</button>'+photoControl(s)+'</div></div>'+cashMovementDetail();
+ '<div class="mg-on-close-controls"><button type="button" class="mg-on-close-primary" data-mgon-close '+(!canClose?'disabled':'')+'>Cerrar turno →</button>'+photoControl(s,declared)+'</div></div>'+cashMovementDetail();
 }
 const cameraIcon='<svg class="mg-on-camera" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';
-function photoControl(s){
+function photoControl(s,hideUploads=false){
  if(!s)return '';
- return '<div class="mg-on-photo-area"><label class="mg-on-photo-upload">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Elegir foto de galería')+
+ return '<div class="mg-on-photo-area">'+
+ (hideUploads?'':('<label class="mg-on-photo-upload">'+cameraIcon+' '+(uploading===s.id?'Subiendo foto…':'Elegir foto de galería')+
  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
  '<label class="mg-on-photo-upload">'+cameraIcon+' Sacar foto'+
  '<input type="file" data-mgon-photo="'+esc(s.id)+'" accept="image/*" capture="environment" '+(!allowed()||!online()||uploading?'disabled':'')+'></label>'+
- '<button type="button" data-mgon-view-photo="'+esc(s.id)+'">Ver fotos del turno</button>'+
+ '<button type="button" data-mgon-view-photo="'+esc(s.id)+'">Ver fotos del turno</button>'))+
  (photoUrls[s.id]?'<div class="mg-on-photo-preview">'+photoUrls[s.id].map((url,i)=>'<img alt="Foto '+(i+1)+' del cierre" src="'+esc(url)+'">').join('')+'</div>':'')+
  '<label>Observaciones del cierre (opcional)<textarea data-mgon-close-note="'+esc(s.id)+'" maxlength="2000" rows="2" placeholder="Escribí una observación">'+esc(s.cierre_observacion||'')+'</textarea></label>'+
  '<button type="button" data-mgon-save-note="'+esc(s.id)+'" '+(!writable()?'disabled':'')+'>Guardar observación</button></div>';
