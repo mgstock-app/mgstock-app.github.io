@@ -32,6 +32,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Solo dos inserciones visuales de marca por local en El Molino.
+      // Restituir el contenido original antes de comparar la huella protegida.
+      for(const {actual,original} of JSON.parse(read('tests/molino-brand-hooks.json')).hooks){
+        assert.equal(content.split(actual).length-1,1,'Un único hook de marca Molino revisado');
+        content=content.replace(actual,original);
+      }
       // El visor Scanner recibe la identidad verificada; restaurar argumento para el SHA base.
       const creatorHook = 'window.GestLokOwnerAreas?.attach({S,role:miRol,isCreadora,render:';
       assert.equal(content.split(creatorHook).length - 1, 1, 'Un único hook de creadora verificada');

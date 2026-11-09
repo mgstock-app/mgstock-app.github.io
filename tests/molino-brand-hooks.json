@@ -1,0 +1,13 @@
+{
+  "comment": "Only two audited visual additions for the El Molino logo in local entry cards. Restore the original stock fingerprint before hashing.",
+  "hooks": [
+    {
+      "actual": "  const edita = puedeEditarLocal(l.id);\n  const molinoBrand=S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e'\n    ?(window.GestLokMolino?.logoHTML?.(l.id,'card',S.me.tenant_id)||''):'';\n  return `<article class=\"lcard\" data-act=\"local\" data-id=\"${esc(l.id)}\">${molinoBrand?`<div class=\"gl-molino-picker-brand\">${molinoBrand}</div>`:''}\n",
+      "original": "  const edita = puedeEditarLocal(l.id);\n  return `<article class=\"lcard\" data-act=\"local\" data-id=\"${esc(l.id)}\">\n"
+    },
+    {
+      "actual": "      const st = hubStats(l.id);\n      const molinoBrand=S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e'\n        ?(window.GestLokMolino?.logoHTML?.(l.id,'card',S.me.tenant_id)||''):'';\n      return `<article class=\"gl-admin-location\">\n        ${molinoBrand?`<div class=\"gl-molino-admin-local-brand\">${molinoBrand}</div>`:`<div class=\"gl-admin-location-icon\">${ic('store')}</div>`}\n",
+      "original": "      const st = hubStats(l.id);\n      return `<article class=\"gl-admin-location\">\n        <div class=\"gl-admin-location-icon\">${ic('store')}</div>\n"
+    }
+  ]
+}

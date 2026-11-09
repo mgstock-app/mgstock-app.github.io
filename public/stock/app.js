@@ -2224,7 +2224,9 @@ function lcard(l){
   const s = hubStats(l.id), last = s.last, hoy = last && new Date(last.fecha).toDateString() === new Date().toDateString();
   const pill = !s.lc ? '' : last ? (hoy ? `<span class="lpill ok">Contado hoy</span>` : `<span class="lpill warn">Último conteo ${esc(rel(last.fecha))}</span>`) : `<span class="lpill">Sin conteos</span>`;
   const edita = puedeEditarLocal(l.id);
-  return `<article class="lcard" data-act="local" data-id="${esc(l.id)}">
+  const molinoBrand=S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e'
+    ?(window.GestLokMolino?.logoHTML?.(l.id,'card',S.me.tenant_id)||''):'';
+  return `<article class="lcard" data-act="local" data-id="${esc(l.id)}">${molinoBrand?`<div class="gl-molino-picker-brand">${molinoBrand}</div>`:''}
     <div class="lc-top"><div><small class="lc-k">Local</small><h2>${esc(l.nombre)}</h2><p>${s.loaded ? `${plural(s.n, 'producto', 'productos')} · ${plural(s.cats, 'categoría', 'categorías')}` : 'Cargando…'}</p></div>${pill}</div>
     <div class="lc-m">
       <div><span><i style="background:var(--crit)"></i>Sin stock</span><b>${s.sin}</b></div>
@@ -2296,8 +2298,10 @@ function renderHub(){
     const ready = mios.every(l => S.hub[l.id]?.lp);
     const puestos = mios.map(l => {
       const st = hubStats(l.id);
+      const molinoBrand=S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e'
+        ?(window.GestLokMolino?.logoHTML?.(l.id,'card',S.me.tenant_id)||''):'';
       return `<article class="gl-admin-location">
-        <div class="gl-admin-location-icon">${ic('store')}</div>
+        ${molinoBrand?`<div class="gl-molino-admin-local-brand">${molinoBrand}</div>`:`<div class="gl-admin-location-icon">${ic('store')}</div>`}
         <div class="gl-admin-location-text"><b>${esc(l.nombre)}</b><small>${st.loaded ? plural(st.n,'producto','productos') + ' · ' + st.sin + ' sin stock' : 'Cargando información…'}</small></div>
         <button class="btn sm" data-act="local" data-id="${esc(l.id)}">Abrir local →</button>
       </article>`;
