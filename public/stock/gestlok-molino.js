@@ -180,6 +180,58 @@ function movementItem(m,kind,fromHistory=false){
  (ok?'<p class="gl-molino-confirmed-note">Confirmación registrada y compartida en ambos locales.</p>':'')+
  '</article>';
 }
+
+function returnLedger(records,caption='Cuadro de devoluciones'){
+ const items=records||[];
+ const gross=items.reduce((total,x)=>total+Number(x.gross_total||0),0);
+ const discount=items.reduce((total,x)=>total+Number(x.discount_amount||0),0);
+ const net=items.reduce((total,x)=>total+Number(x.net_total||0),0);
+ const missing=items.filter(x=>x.net_total==null).length;
+ return '<section class="gl-molino-return-ledger" aria-label="'+escapeHTML(caption)+'"><h4>'+escapeHTML(caption)+'</h4>'+
+  '<div class="gl-molino-return-totals"><span>Venta: <b>'+money(gross)+'</b></span>'+
+   '<span>Descuento 33%: <b>−'+money(discount)+'</b></span>'+
+   '<span>Importe resultante: <b>'+money(net)+'</b></span></div>'+
+  (missing?'<p class="gl-molino-tip">'+missing+' registros antiguos sin precio consolidado. No se les asignó un importe inventado.</p>':'')+
+  (items.length?'<div class="gl-molino-tablewrap"><table class="gl-molino-table"><thead><tr>'+
+   '<th>Producto</th><th>Cantidad</th><th>Precio venta</th><th>Venta</th><th>Desc. 33%</th><th>Resultante</th><th>Estado</th>'+
+   '</tr></thead><tbody>'+items.map(x=>'<tr>'+
+   '<td><strong>'+escapeHTML(x.product)+'</strong></td>'+
+   '<td>'+fmtQty(x.quantity)+' '+(x.unit==='kg'?'kg':x.unit==='g'?'g':'unid.')+'</td>'+
+   '<td>'+(x.unit_price!=null?money(x.unit_price)+' / '+(x.price_basis==='kg'?'kg':'unid.'):'Pendiente')+'</td>'+
+   '<td>'+(x.gross_total!=null?money(x.gross_total):'—')+'</td>'+
+   '<td>'+(x.discount_amount!=null?'−'+money(x.discount_amount):'—')+'</td>'+
+   '<td><b>'+(x.net_total!=null?money(x.net_total):'—')+'</b></td>'+
+   '<td>'+(x.acknowledged_at?'✓ OK':'Pendiente')+'</td></tr>').join('')+'</tbody></table></div>':
+   '<p class="gl-molino-empty">Todavía no hay devoluciones en este período.</p>')+'</section>';
+}
+function monthView(){
+ const data=monthlyData;
+ let html='<div class="gl-molino-section-title"><h3>Resumen mensual de devoluciones</h3>'+
+  '<p>Conciliación entre Acassuso y San Isidro. Detalle por producto y totales de cada día; precios congelados al registrar.</p></div>'+
+  '<label class="gl-molino-month-label">Mes <input type="month" id="gl-molino-month" value="'+escapeHTML(selectedMonth)+'" min="2026-11" max="'+escapeHTML(localDay().slice(0,7))+'"></label>';
+ if(!data||data.month!==selectedMonth)return html+'<p class="gl-molino-tip" role="status">Cargando resumen del mes…</p>';
+ html+='<div class="gl-molino-return-totals gl-molino-month-totals">'+
+  '<span>Venta: <b>'+money(data.gross)+'</b></span>'+
+  '<span>Descuento 33%: <b>−'+money(data.discount)+'</b></span>'+
+  '<span>Importe resultante: <b>'+money(data.net)+'</b></span>'+
+  '<span>Productos devueltos: <b>'+Number(data.total_items||0)+'</b></span></div>';
+ if(data.unpriced_items)html+='<p class="gl-molino-tip">'+data.unpriced_items+' movimientos anteriores no tienen valoración; los totales no los incluyen.</p>';
+ if(!(data.days||[]).length)return html+'<p class="gl-molino-empty">Sin devoluciones en el mes seleccionado.</p>';
+ return html+(data.days||[]).slice().reverse().map(d=>
+  '<section class="gl-molino-month-day"><h4>'+fmtDate(d.day)+' · '+Number(d.items||0)+' productos</h4>'+
+  returnLedger((d.details||[]).map(x=>({...x,gross_total:x.gross,discount_amount:x.discount,net_total:x.net})),
+  'Detalle del '+fmtDate(d.day))+
+  '</section>').join('');
+}
+async function loadMonth(month=selectedMonth){
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return;
+ selectedMonth=month;monthlyData=null;warning='';render();
+ try{
+  const data=await rpc('gestlok_molino_returns_month',{p_month:month});
+  if(opened&&selectedMonth===month){monthlyData=data;render();}
+ }catch(e){warning=e?.message||'No se pudo cargar el resumen mensual.';render();}
+}
+
 function movements(kind){
  const sent=kind==='envio';
  const records=state?.[sent?'envios':'devoluciones']||[];
@@ -187,7 +239,8 @@ function movements(kind){
  '<p>'+(sent?'San Isidro carga producto y cantidad. Acassuso confirma cada unidad de la lista por separado.':'Acassuso carga producto, cantidad y observación. San Isidro confirma la recepción de cada renglón.')+'</p></div>'+
  '<div class="gl-molino-dailybar"><span>Fecha del movimiento: <b>'+fmtDate(state?.day)+'</b></span><span>'+records.length+' productos · '+records.filter(m=>m.acknowledged_at).length+' con OK</span></div>'+
  movementForm(kind)+
- (records.length?'<div class="gl-molino-items">'+records.map(x=>movementItem(x,kind)).join('')+'</div>':'<p class="gl-molino-empty">Sin '+(sent?'envíos':'devoluciones')+' registrados hoy.</p>');
+ (!sent?returnLedger(records,'Cuadro diario de devoluciones · '+fmtDate(state?.day)):'')+
+ (records.length?'<div class="gl-molino-items">'+records.map(x=>movementItem(x,kind)).join('')+'</div>':sent?'<p class="gl-molino-empty">Sin envíos registrados hoy.</p>':'');
 }
 
 function orderGroups(){
@@ -255,8 +308,10 @@ async function ackOrder(id){
 }
 
 function history(){
+ const modeTabs='<div class="gl-molino-order-tabs" role="tablist" aria-label="Historial de devoluciones"><button type="button" data-mol-history-mode="diario" class="'+(historyMode==='diario'?'active':'')+'" aria-selected="'+(historyMode==='diario')+'">Historial diario</button><button type="button" data-mol-history-mode="mensual" class="'+(historyMode==='mensual'?'active':'')+'" aria-selected="'+(historyMode==='mensual')+'">Resumen mensual</button></div>';
+ if(historyMode==='mensual')return modeTabs+monthView();
  const dates=state?.history||[];
- let body='<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Todos los movimientos quedan guardados por fecha. Incluye el OK individual, observaciones y cambios de precios.</p></div>';
+ let body=modeTabs+'<div class="gl-molino-section-title"><h3>Historial diario</h3><p>Todos los movimientos quedan guardados por fecha. Incluye el OK individual, observaciones y cambios de precios.</p></div>';
  if(!dates.length)return body+'<p class="gl-molino-empty">El primer historial estará disponible al cierre de las 23:59 (Argentina).</p>';
  body+='<div class="gl-molino-history-list">'+dates.map(d=>
   '<button type="button" class="'+(selectedDay===d.day?'active':'')+'" data-mol-history="'+escapeHTML(d.day)+'"><b>'+fmtDate(d.day)+'</b><small>'+d.envios+' envíos · '+d.devoluciones+' devoluciones · '+d.cambios_precios+' cambios de precios</small></button>'
@@ -266,7 +321,7 @@ function history(){
  const e=historyData.envios||[],d=historyData.devoluciones||[],p=historyData.cambios_precios||[];
  return body+'<div class="gl-molino-history-detail"><h4>Archivo del '+fmtDate(selectedDay)+'</h4>'+
  '<h5>Productos enviados</h5>'+(e.length?e.map(x=>movementItem(x,'envio',true)).join(''):'<p>Sin envíos.</p>')+
- '<h5>Devoluciones</h5>'+(d.length?d.map(x=>movementItem(x,'devolucion',true)).join(''):'<p>Sin devoluciones.</p>')+
+ '<h5>Devoluciones</h5>'+returnLedger(d,'Cuadro diario del '+fmtDate(selectedDay))+(d.length?d.map(x=>movementItem(x,'devolucion',true)).join(''):'<p>Sin devoluciones.</p>')+
  '<h5>Cambios de precios</h5>'+(p.length?p.map(x=>'<div class="gl-molino-price-history"><b>'+escapeHTML(x.product)+'</b><span>'+ (x.previous_amount==null?'Alta':money(x.previous_amount))+' → '+(x.amount==null?'Retirado':money(x.amount))+'</span></div>').join(''):'<p>Sin cambios de precios.</p>')+
  '</div>';
 }
@@ -316,7 +371,9 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-mol-close]')||e.target.id==='gl-molino-panel'){e.preventDefault();unmount();return;}
  const tab=e.target.closest('[data-mol-tab]');
  if(tab){section=tab.dataset.molTab;editPrice=null;editMove=null;warning='';message='';if(section==='pedidos'){orderState=null;render();void reload();}else render();return;}
- if(e.target.closest('[data-mol-refresh]')){stale=false;void reload();return;}
+ if(e.target.closest('[data-mol-refresh]')){stale=false;if(section==='historial'&&historyMode==='mensual')void loadMonth();else void reload();return;}
+ const histMode=e.target.closest('[data-mol-history-mode]');
+ if(histMode&&section==='historial'){historyMode=histMode.dataset.molHistoryMode==='mensual'?'mensual':'diario';if(historyMode==='mensual')void loadMonth();else render();return;}
 
  const orderTab=e.target.closest('[data-mol-order-mode]');
  if(orderTab&&section==='pedidos'){orderMode=orderTab.dataset.molOrderMode==='seguimiento'?'seguimiento':'realizar';render();return;}
@@ -388,6 +445,7 @@ document.addEventListener('submit',e=>{
   },'Producto registrado y compartido.');
  }
 });
+document.addEventListener('change',e=>{if(!opened||section!=='historial'||historyMode!=='mensual')return;if(e.target?.id==='gl-molino-month'){void loadMonth(String(e.target.value||''));}});
 document.addEventListener('keydown',e=>{if(opened&&e.key==='Escape'){e.preventDefault();unmount();}});
 window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,navHTML,sectionName,open:begin,close:unmount});
 })();
