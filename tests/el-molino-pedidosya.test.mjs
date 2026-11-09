@@ -59,7 +59,7 @@ test('La base restringe PedidosYa a Acassuso y los nombres/orden a la administra
 });
 
 test('Se carga solo fuera de la demo de visitantes y antes del Vínculo', ()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-categorias-20261109"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-diseno-20261109"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
 });
 
 const cats=readFileSync('supabase/migrations/20261109200000_molino_pya_categorias.sql','utf8');
@@ -86,6 +86,25 @@ test('Ordenar y renombrar categorías es solo de la administradora; el PYA redon
  assert.match(cats,/ceil\(round\(p \* \(100 \+ coalesce\(pct, 50\)\) \/ 100\.0, 2\) \/ 100\) \* 100/);
  assert.match(pyaSrc,/data-pya-cat-move/);
  assert.match(pyaSrc,/rpc\('gestlok_molino_pya_category_reorder',\{p_ids:list\}\)/);
- // Las flechas de categoría solo se dibujan dentro del bloque de la administradora.
- assert.match(pyaSrc,/\(admin\?'<button type="button" class="gl-pya-icon" data-pya-edit-category=[^\n]+\n\s*catMove\(c\)\+/);
+ // Editar, eliminar y ordenar categorías solo se dibujan para la administradora.
+ assert.match(pyaSrc,/const actions=!admin\?'':ordering\?catMove\(c\):/);
+ assert.match(pyaSrc,/\(admin\?' draggable="true"':''\)/);
+});
+
+test('Diseño de PedidosYa: vistas separadas, tabla de categorías y menú lateral solo dentro de Acassuso', ()=>{
+ const css=readFileSync('public/stock/gestlok-molino-pya.css','utf8');
+ // Cinco vistas en pestañas y la de Categorías como tabla con editar, eliminar y ordenar.
+ for(const v of ['categorias','productos','sin','modificados','todos'])assert.match(pyaSrc,new RegExp("\\['"+v+"','"));
+ assert.match(pyaSrc,/role="tablist"/);
+ assert.match(pyaSrc,/data-pya-edit-category=/);assert.match(pyaSrc,/data-pya-delete-category=/);assert.match(pyaSrc,/data-pya-ordering/);
+ // Sin cambios de lógica: mismas RPC de siempre.
+ const rpcs=[...new Set([...pyaSrc.matchAll(/rpc\('(gestlok_molino_pya_[a-z_]+)'/g)].map(m=>m[1]))].sort();
+ assert.deepEqual(rpcs,['gestlok_molino_pya_category_delete','gestlok_molino_pya_category_reorder','gestlok_molino_pya_category_save','gestlok_molino_pya_mark_updated',
+  'gestlok_molino_pya_product_delete','gestlok_molino_pya_product_save','gestlok_molino_pya_reorder','gestlok_molino_pya_save_prices','gestlok_molino_pya_set_percent',
+  'gestlok_molino_pya_state','gestlok_molino_pya_sync']);
+ // Las reglas del menú lateral solo aplican con PedidosYa abierto (Acassuso), nunca en San Isidro ni en otras empresas.
+ for(const rule of css.split('}').filter(r=>/#side/.test(r)))assert.match(rule,/body(\.gl-molino-tenant)?\.gl-pya-open/);
+ assert.match(pyaSrc,/l\.href='\/stock\/gestlok-molino-pya\.css\?rev=pedidosya-diseno-20261109'/);
+ // Al tocar otra sección del menú, PedidosYa se cierra (y pregunta si hay cambios sin guardar).
+ assert.match(pyaSrc,/if\(!close\(\)\)\{e\.preventDefault\(\);e\.stopPropagation\(\);\}/);
 });
