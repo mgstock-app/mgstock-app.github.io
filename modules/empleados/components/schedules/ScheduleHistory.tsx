@@ -37,6 +37,8 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
   const [localId, setLocalId] = useState("");
   const [semanas, setSemanas] = useState<HorarioSemana[] | null>(null);
   const [tab, setTab] = useState<Tab>("semanas");
+  // En Munro, separar la planilla activa de los archivos evita ver Resumen y Semana duplicados.
+  const [vistaMunro, setVistaMunro] = useState<"vivo" | "historial">("vivo");
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState("");
@@ -227,7 +229,6 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
               : "la planilla todavía no está conectada"}
         </p>
       )}
-      {localId === "munro" && tab === "semanas" && <ScheduleLive local={localId} puedeArchivar={admin} archivadas={(semanas ?? []).filter(s => Boolean(s.archivo_id)).map(s => s.desde)} onArchivada={() => { void refrescarHistorial(); }} />}
       {tabs.length > 1 && (
         <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
           {tabs.map(([id, texto]) => (
@@ -237,15 +238,35 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           ))}
         </div>
       )}
+      {localId === "munro" && tab === "semanas" && (
+        <>
+          <div className={styles.vistaSwitcher} role="group" aria-label="Elegir vista de horarios de Munro">
+            <button type="button" aria-pressed={vistaMunro === "vivo"} onClick={() => setVistaMunro("vivo")}>
+              En vivo
+            </button>
+            <button type="button" aria-pressed={vistaMunro === "historial"} onClick={() => setVistaMunro("historial")}>
+              Historial{semanas ? ` (${semanas.length})` : ""}
+            </button>
+          </div>
+          {vistaMunro === "vivo" && (
+            <ScheduleLive
+              local={localId}
+              puedeArchivar={admin}
+              archivadas={(semanas ?? []).filter(s => Boolean(s.archivo_id)).map(s => s.desde)}
+              onArchivada={() => { void refrescarHistorial(); }}
+            />
+          )}
+        </>
+      )}
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {aviso && <p role="status" className={styles.aviso}>{aviso}</p>}
 
-      {tab === "semanas" &&
+      {tab === "semanas" && (localId !== "munro" || vistaMunro === "historial") &&
         (semanas === null ? (
           <p role="status">Cargando semanas…</p>
         ) : !semanas.length ? (
           <p className={styles.empty}>
-            Todavía no hay semanas enviadas al historial. {localId === "munro" ? "La semana en vivo aparece arriba y se guarda con «Enviar a historial»." : local?.puede_administrar ? "Conectá la planilla desde la pestaña «Conexión con Google Sheets»." : "La dueña tiene que conectar la planilla."}
+            Todavía no hay semanas enviadas al historial. {localId === "munro" ? "Volvé a «En vivo» y usá «Enviar a historial» para guardar la semana." : local?.puede_administrar ? "Conectá la planilla desde la pestaña «Conexión con Google Sheets»." : "La dueña tiene que conectar la planilla."}
           </p>
         ) : (
           <>
