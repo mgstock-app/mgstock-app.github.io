@@ -42,7 +42,7 @@ export function Grid({ hoja, nombre }: { hoja: HojaArchivada; nombre: string }) 
 export function ScheduleArchiveTable({ local, archivo, hoja, desde, filas }: {
   local: string; archivo?: string; hoja: "Resumen" | "Semana"; desde: string; filas: HorarioFila[];
 }) {
-  const [data, setData] = useState<{ tabla: HojaArchivada | null; filas: HorarioFila[] } | null>(null);
+  const [data, setData] = useState<{ tabla: HojaArchivada | null; filas: HorarioFila[]; tiene_pdf: boolean } | null>(null);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   useEffect(() => {
@@ -78,7 +78,7 @@ export function ScheduleArchiveTable({ local, archivo, hoja, desde, filas }: {
   return <section className={styles.resumen} aria-label={`Hoja ${hoja} archivada`}>
     <header className={styles.archiveHeader}>
       <h2 className={styles.rTitulo}>{hoja}</h2>
-      {archivo && <button type="button" className={styles.download} disabled={downloading}
+      {archivo && data?.tiene_pdf && <button type="button" className={styles.download} disabled={downloading}
         aria-label={`Descargar PDF de ${hoja}`} title={`Descargar PDF de ${hoja}`}
         onClick={() => void download()}><Download size={20} aria-hidden="true" /></button>}
     </header>
@@ -96,6 +96,6 @@ export function ScheduleArchiveTable({ local, archivo, hoja, desde, filas }: {
       : !error && <p className={styles.rPie}>{archivo
           ? "Esta semana se guardó antes de incorporar las tablas. Su información original se conserva en el PDF descargable."
           : "Esta semana todavía no tiene una tabla archivada de Semana."}</p>}
-    <p className={styles.rPie}>Datos históricos guardados · {desde}<span className={styles.deslizar}> · Deslizá para ver todas las columnas</span></p>
+    <p className={styles.rPie}>Datos históricos guardados · {desde}{archivo && data?.tiene_pdf === false ? " · Copia manual de tablas (sin PDF)" : ""}<span className={styles.deslizar}> · Deslizá para ver todas las columnas</span></p>
   </section>;
 }
