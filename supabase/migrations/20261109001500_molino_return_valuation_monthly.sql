@@ -183,7 +183,7 @@ begin
   select jsonb_agg(jsonb_build_object(
     'day',q.day,'items',q.items,'gross',q.gross,'discount',q.discount,'net',q.net,
     'details',(select coalesce(jsonb_agg(jsonb_build_object(
-      'product',x.product,'quantity',x.quantity,'unit',x.unit,'unit_price',x.unit_price,
+      'product',x.product,'quantity',x.quantity,'unit',x.unit,'unit_price',x.unit_price,'price_basis',x.price_basis,
       'gross',x.gross_total,'discount',x.discount_amount,'net',x.net_total,
       'acknowledged_at',x.acknowledged_at) order by x.created_at,x.id),'[]'::jsonb)
       from public.gestlok_molino_movements x where x.kind='devolucion' and x.day=q.day)
