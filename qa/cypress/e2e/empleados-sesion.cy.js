@@ -66,6 +66,9 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.contains('a','Abrir planilla').should('have.attr','target','_blank');
   if(local==='munro'){
    cy.contains('h2','Historial de semanas').should('be.visible');
+   cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','En vivo').should('have.attr','aria-pressed','true');
+   cy.get('section[aria-label="Hoja Resumen archivada"]').should('not.exist');
+   cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','Historial').click();
    cy.get('section[aria-label="Hoja Resumen archivada"]').should('be.visible').within(()=>{
     cy.get('table[aria-label^="Resumen del"]').should('be.visible');
     cy.contains('td','Kati').should('be.visible');
