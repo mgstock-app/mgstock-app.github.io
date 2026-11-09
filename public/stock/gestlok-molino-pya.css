@@ -9,6 +9,7 @@ body.gl-pya-open{overflow:hidden}
 #gl-pya-panel *,#gl-pya-panel *::before,#gl-pya-panel *::after{box-sizing:border-box}
 #gl-pya-panel svg{flex:none}
 .gl-pya-wrap{flex:1;overflow:auto;display:flex;flex-direction:column;min-height:0}
+.gl-pya-wrap>*{flex-shrink:0}
 .gl-pya-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* Ubicación y encabezado */
@@ -38,7 +39,7 @@ body.gl-pya-open{overflow:hidden}
 .gl-pya-menu button:hover,.gl-pya-menu button:focus-visible{background:var(--pya-soft)}
 
 /* Pestañas */
-.gl-pya-tabs{display:flex;gap:8px;padding:14px 32px;border-top:1px solid #EDF1F5;border-bottom:1px solid #EDF1F5;overflow-x:auto;scrollbar-width:none}
+.gl-pya-tabs{display:flex;flex-wrap:wrap;gap:8px;padding:14px 32px;border-top:1px solid #EDF1F5;border-bottom:1px solid #EDF1F5;overflow-x:auto;scrollbar-width:none}
 .gl-pya-tabs::-webkit-scrollbar{display:none}
 .gl-pya-tab{flex:none;display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border-radius:10px;border:0;background:transparent;color:#26324A;font:600 16px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
 .gl-pya-tab:hover{background:var(--pya-soft)}
@@ -65,7 +66,7 @@ body.gl-pya-open{overflow:hidden}
 .gl-pya-sectext{min-width:0;flex:1 1 260px}
 .gl-pya-sechead h3{margin:0;font-size:22px;line-height:1.2;font-weight:700;color:var(--pya-ink)}
 .gl-pya-sechead p{margin:3px 0 0;font-size:15px;color:var(--pya-muted);line-height:1.4}
-.gl-pya-secactions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-left:auto}
+.gl-pya-secactions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:flex-end;margin-left:auto;flex:1 1 380px}
 .gl-pya-hint,.gl-pya-note{margin:0;font-size:13.5px;color:var(--pya-muted)}
 .gl-pya-hint{padding:10px 14px;border-radius:10px;background:#F2F6FC;border:1px dashed #C9D7EC;color:#1F3A5F}
 
@@ -113,7 +114,7 @@ body.gl-pya-open{overflow:hidden}
 .gl-pya-newcat{padding:14px;border:1px dashed var(--pya-line-2);border-radius:12px;background:#FAFBFC}
 
 /* Tabla de productos */
-.gl-pya-search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--pya-line-2);border-radius:10px;background:#fff;color:#8A95A5;width:min(100%,300px)}
+.gl-pya-search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--pya-line-2);border-radius:10px;background:#fff;color:#8A95A5;flex:1 1 220px;max-width:320px}
 .gl-pya-search input{border:0;outline:0;flex:1;min-width:0;font:15px Inter,system-ui,sans-serif;color:var(--pya-ink);background:transparent}
 .gl-pya-search:focus-within{border-color:#9DB8E3;box-shadow:0 0 0 3px rgba(157,184,227,.3)}
 .gl-pya-table{border:1px solid var(--pya-line);border-radius:14px;overflow:hidden;background:#fff}
@@ -167,6 +168,8 @@ html body.gl-pya-open #side #snav>button[aria-current="page"]:not([data-pya-open
 html body.gl-pya-open #side #snav>button.on:not([data-pya-open]),
 html body.gl-molino-tenant.gl-pya-open #side #snav>button[aria-current="page"]:not([data-pya-open]),
 html body.gl-molino-tenant.gl-pya-open #side #snav>button.on:not([data-pya-open]){background:transparent!important;background-color:transparent!important;box-shadow:none!important}
+html body.gl-pya-open #side #snav>button[aria-current="page"]:not([data-pya-open])::before,
+html body.gl-pya-open #side #snav>button.on:not([data-pya-open])::before{display:none!important}
 html body.gl-pya-open #side #snav>button[data-pya-open],
 html body.gl-molino-tenant.gl-pya-open #side #snav>button[data-pya-open]{background:rgba(255,255,255,.14)!important;background-color:rgba(255,255,255,.14)!important;color:#fff!important;box-shadow:inset 3px 0 0 #9DB8E3!important}
 
@@ -183,15 +186,17 @@ html body.gl-molino-tenant.gl-pya-open #side #snav>button[data-pya-open]{backgro
  .gl-pya-logo{flex-basis:46px;height:46px;border-radius:12px}
  .gl-pya-title{gap:12px;flex-basis:100%}
  .gl-pya-title p{font-size:14px}
- .gl-pya-pct{padding:8px 12px}
- .gl-pya-status{min-height:40px;padding:0 12px;font-size:14px}
- .gl-pya-tabs{padding-top:10px;padding-bottom:10px;gap:6px}
+ .gl-pya-pct{padding:8px 12px;flex-basis:100%}
+ .gl-pya-pct-row input{flex:1;max-width:120px}
+ .gl-pya-status{flex:1;justify-content:center;min-height:42px;padding:0 12px;font-size:14px}
+ .gl-pya-sq{width:42px;height:42px}
+ .gl-pya-tabs{flex-wrap:nowrap;padding-top:10px;padding-bottom:10px;gap:6px}
  .gl-pya-tab{min-height:44px;padding:0 14px;font-size:15px;gap:8px}
  .gl-pya-view{padding-top:18px;gap:14px}
  .gl-pya-sechead h3{font-size:20px}
  .gl-pya-secactions{margin-left:0;width:100%}
  .gl-pya-secactions .gl-pya-btn{flex:1 1 auto}
- .gl-pya-search{width:100%}
+ .gl-pya-search{max-width:none;flex-basis:100%}
  /* Categorías como lista compacta: número, nombre y cantidad, acciones a la derecha. */
  .gl-pya-chead{display:none}
  .gl-pya-crow{grid-template-columns:34px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:10px;row-gap:0;padding:10px 12px;border-top:1px solid #EEF1F5}
