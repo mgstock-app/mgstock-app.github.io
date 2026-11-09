@@ -252,7 +252,6 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
             <ScheduleLive
               local={localId}
               puedeArchivar={admin}
-              archivadas={(semanas ?? []).filter(s => Boolean(s.archivo_id)).map(s => s.desde)}
               onArchivada={() => { void refrescarHistorial(); }}
             />
           )}
