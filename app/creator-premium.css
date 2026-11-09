@@ -142,7 +142,7 @@
 #hub .gl-ch-premium-local{
   display:flex;align-items:center;gap:10px;min-height:54px;
   padding:9px 10px;border:1px solid #dce9f3;border-radius:11px;
-  background:#f9fcff;color:#143451;text-align:left;font:650 13px inherit;cursor:pointer;
+  background:#f9fcff;color:#143451;text-align:left;font:inherit;font-size:13px;font-weight:650;cursor:pointer;
 }
 #hub .gl-ch-premium-local:hover,
 #hub .gl-ch-premium-local:focus-visible{
