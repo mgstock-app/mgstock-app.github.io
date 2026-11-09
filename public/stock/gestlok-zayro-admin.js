@@ -24,7 +24,8 @@
       '<div class="gl-zayro-entry-copy"><small>MICROAPP EXCLUSIVA</small><h2>Tienda Online · ZAYRO</h2>'+
       '<p>Elegí qué productos publicar, cargá sus fotos y configurá el WhatsApp de ventas. La tienda nace desactivada.</p></div>'+
       '<div class="gl-zayro-entry-buttons"><button type="button" data-zayro-open>Administrar tienda</button>'+
-      '<a href="/zayro/" target="_blank" rel="noopener noreferrer">Ver página pública ↗</a></div></section>';
+      '<a href="/zayro/" target="_blank" rel="noopener noreferrer">Ver página pública ↗</a>'+
+      '<a href="/zayro/?diseno=1" target="_blank" rel="noopener noreferrer" data-zayro-design>✎ Diseñar mi tienda</a></div></section>';
   }
   async function verify(){
     if(!allowed()||!db())throw Error('La tienda pertenece únicamente a la cuenta de Camila.');
@@ -62,7 +63,7 @@
       !info?'<button type="button" data-zayro-retry>Volver a intentar</button>':
       '<form class="gl-zayro-config" data-zayro-settings>'+
         '<h3>Configuración de la tienda pública</h3>'+
-        '<p>Dirección propuesta: <a href="/zayro/" target="_blank" rel="noopener noreferrer">gestlok.com.ar/zayro</a></p>'+
+        '<p>Dirección de la tienda: <a href="/zayro/" target="_blank" rel="noopener noreferrer">gestlok.com.ar/zayro</a> · <a href="/zayro/?diseno=1" target="_blank" rel="noopener noreferrer" data-zayro-design>✎ Diseñar la tienda</a></p>'+
         '<label>WhatsApp de ventas <input name="telefono" type="tel" placeholder="+54 11 1234-5678" value="'+escape(info.sales_whatsapp||'')+'"></label>'+
         '<label class="gl-zayro-toggle"><input name="habilitada" type="checkbox" '+(info.enabled?'checked':'')+'> Habilitar tienda pública</label>'+
         '<p class="gl-zayro-help">Al habilitar, se mostrarán solamente los productos publicados con precio y stock positivo. Los pedidos se consultan por WhatsApp; no se cobra ni reserva inventario automáticamente.</p>'+

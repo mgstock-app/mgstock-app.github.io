@@ -184,7 +184,7 @@ html:has(.zayro) body::before{background:#0a0a0a}
 .zayro-eyebrow{margin:0 0 12px;font:500 12px/1 var(--z-sans);letter-spacing:.22em;text-transform:uppercase;color:var(--z-gold-d)}
 .zayro-about h2{font:400 clamp(28px,3vw,42px)/1.2 var(--z-display);color:#1b1815}
 .zayro-about h2 em{color:var(--z-gold-d)}
-.zayro-about p:last-child{margin:18px auto 0;max-width:640px;color:#665d55;font-size:15px}
+.zayro-about-text{margin:18px auto 0;max-width:640px;color:#665d55;font-size:15px}
 
 /* Pie */
 .zayro-footer{background:var(--z-black);color:#d8d1c7;border-top:1px solid #2a251f;scroll-margin-top:0}
@@ -241,6 +241,33 @@ html:has(.zayro) body::before{background:#0a0a0a}
 .zayro-drawer>a[aria-current]{color:var(--z-gold-d)}
 .zayro-drawer .zayro-drawer-wa{display:flex;align-items:center;gap:10px;margin-top:22px;padding:13px 18px;border:0;border-radius:999px;background:#25d366;color:#fff;font:500 15px/1 var(--z-sans)}
 .zayro-drawer-wa svg{width:22px;height:22px}
+
+/* Tabla de diseño: bloques agregados (los ve todo el público) y modo diseño (solo Camila o la administradora) */
+.zayro .zayro-zd-block{display:block;box-sizing:border-box;width:min(1200px,calc(100% - 32px));margin:18px auto;padding:18px 22px;border:1px solid #e3d3b0;border-radius:14px;
+  background:#fffdf8;color:#2b2724;font:400 14.5px/1.55 var(--z-sans);font-style:normal;letter-spacing:normal;text-transform:none;text-align:left;white-space:pre-line;
+  box-shadow:0 10px 26px -20px rgba(60,40,10,.5)}
+.zayro .zayro-zd-block strong{display:block;margin-bottom:4px;font:500 20px/1.25 var(--z-serif);color:#1b1815}
+.zayro .zayro-zd-line{display:block}
+.zayro.zayro-designing [data-zd],.zayro.zayro-designing [data-zd-block]{cursor:pointer}
+@media (hover:hover){.zayro.zayro-designing [data-zd]:hover,.zayro.zayro-designing [data-zd-block]:hover{outline:2px dashed #3b6fd8;outline-offset:2px}}
+.zayro .zayro-zd-selected{outline:3px solid #3b6fd8!important;outline-offset:3px}
+.zayro .zayro-zd-hidden{opacity:.4;outline:2px dashed #b5441a!important}
+.zayro .zayro-zd-toggle{position:fixed;z-index:60;left:16px;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 14px));min-height:44px;padding:0 18px;
+  border:1px solid #16202e;border-radius:999px;background:#fff;color:#16202e;font:600 14px/1 Inter,system-ui,sans-serif;box-shadow:0 6px 18px rgba(22,32,46,.22)}
+.zayro .zayro-zd-toggle.on{background:#3b6fd8;border-color:#3b6fd8;color:#fff}
+.zayro .zayro-zd-bar,.zayro .zayro-zd-notice{position:fixed;z-index:61;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));
+  width:min(680px,calc(100vw - 20px));box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:14px;
+  background:#16202e;color:#fff;font:14px/1.45 Inter,system-ui,sans-serif;box-shadow:0 14px 36px rgba(0,0,0,.35)}
+.zayro .zayro-zd-bar p,.zayro .zayro-zd-notice p{margin:0;color:#d5dde6}
+.zayro .zayro-zd-bar p b{color:#fff;margin-right:6px}
+.zayro .zayro-zd-row{display:flex;flex-wrap:wrap;gap:8px}
+.zayro .zayro-zd-row button,.zayro .zayro-zd-row a{min-height:40px;padding:0 13px;border:1px solid rgba(255,255,255,.32);border-radius:9px;background:transparent;color:#fff;font:600 13px/38px Inter,system-ui,sans-serif}
+.zayro .zayro-zd-row button.primary{background:#fff;border-color:#fff;color:#16202e}
+.zayro .zayro-zd-row button:disabled{opacity:.5;cursor:default}
+.zayro .zayro-zd-bar textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:0;border-radius:9px;color:#16202e;background:#fff;font:15px/1.45 Inter,system-ui,sans-serif;resize:vertical}
+.zayro .zayro-zd-msg{color:#f2d27a!important}
+.zayro-designing .zayro-wa-float,.zayro-designing .zayro-bottom-cart{display:none}
+.zayro-designing .zayro-zd-toggle.on{left:auto;right:12px;bottom:auto;top:max(12px,calc(env(safe-area-inset-top,0px) + 8px))}
 
 @media (prefers-reduced-motion:reduce){
   .zayro *,.zayro *::before,.zayro *::after{animation:none!important;transition:none!important}
@@ -325,6 +352,8 @@ html:has(.zayro) body::before{background:#0a0a0a}
   .zayro-wa-float svg{width:29px;height:29px}
   .zayro-bottom-cart{width:calc(100vw - 92px);left:12px;transform:none}
   .zayro-wa-float.lifted{bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 10px))}
+  .zayro .zayro-zd-toggle{bottom:max(84px,calc(env(safe-area-inset-bottom,0px) + 78px));left:12px}
+  .zayro .zayro-zd-block{width:calc(100% - 28px);padding:15px 16px}
 }
 @media (max-width:360px){
   .zayro-grid{gap:18px 10px}

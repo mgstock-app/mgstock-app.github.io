@@ -19,6 +19,13 @@
 - El WhatsApp de ventas se convierte al formato de wa.me (1144715168 → 5491144715168); antes los pedidos se armaban sin el 549.
 - Estilos solo bajo .zayro (prueba automática); no cambian otras pantallas ni empresas.
 
+## Tabla de diseño en la tienda (09/11/2026)
+
+- La tienda pública usa gestlok_design_overrides con la página 'zayro:tienda' (migración 20261109160000_zayro_store_design, aplicada).
+- Diseñan solo la dueña verificada (camilab.lopez99@gmail.com) o la Administradora General, con la sesión de GESTLOK abierta en el mismo navegador: https://gestlok.com.ar/zayro/?diseno=1 (también desde «✎ Diseñar mi tienda» en su panel).
+- En modo diseño: tocar un texto o sección → editar texto, ocultar, agregar bloque debajo, volver al original o restablecer todo. Los visitantes ven los cambios al instante; nunca se inserta HTML.
+- RPC: gestlok_zayro_public_design (anon, solo ancla/tipo/texto), gestlok_zayro_design_can_edit, gestlok_zayro_design_save, gestlok_zayro_design_remove.
+
 ## Seguridad
 
 - Migración supabase/migrations/20261108173000_zayro_public_shop.sql: revisar y aplicar **antes del frontend**.
