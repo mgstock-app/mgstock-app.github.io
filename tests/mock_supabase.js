@@ -427,10 +427,75 @@
         item.seen_at=item.seen_at||new Date().toISOString();item.seen_by='mock-sanisidro';
         return {data:{...item},error:null};
       }
+      if (['gestlok_molino_save_price_basis','gestlok_molino_save_return',
+        'gestlok_molino_acknowledge','gestlok_molino_returns_month'].includes(fn)){
+        if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)
+          return {data:null,error:{code:'42501',message:'Sin autorización'}};
+        const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':
+          (window.__molinoBranchOverride==='acassuso'?'acassuso':'san_isidro');
+        const canCreate=['admin','dueno','acassuso'].includes(scope);
+        const canAck=['admin','dueno','san_isidro'].includes(scope);
+        const canPrice=['admin','dueno','san_isidro'].includes(scope);
+        const prices=window.__molinoPrices||(window.__molinoPrices=[]);
+        const returned=window.__molinoReturns||(window.__molinoReturns=[]);
+        if(fn==='gestlok_molino_save_price_basis'){
+          if(!canPrice)return {data:null,error:{code:'42501',message:'Solo San Isidro carga Precios'}};
+          if(!['unidad','kg'].includes(args?.p_basis))return {data:null,error:{message:'Base de precio inválida'}};
+          const price={id:args.p_id||'price-'+(prices.length+1),product:args.p_product,
+           amount:Number(args.p_amount),price_basis:args.p_basis,active:true,updated_at:new Date().toISOString()};
+          const i=prices.findIndex(p=>p.id===price.id);if(i<0)prices.push(price);else prices[i]=price;
+          return {data:price,error:null};
+        }
+        if(fn==='gestlok_molino_save_return'){
+          if(!canCreate)return {data:null,error:{code:'42501',message:'Solo Acassuso devuelve'}};
+          const price=prices.find(p=>p.product.toLowerCase()===String(args?.p_product||'').trim().toLowerCase());
+          const unit=args?.p_unit;const qty=Number(args?.p_quantity);
+          if(!price||!['kg','g','unidad'].includes(unit)||qty<=0||!Number.isFinite(qty))
+            return {data:null,error:{message:'Precio o cantidad inválidos'}};
+          if((unit==='unidad')!==(price.price_basis==='unidad'))
+            return {data:null,error:{message:'La unidad no coincide con el precio'}};
+          const gross=Math.round(price.amount*(unit==='g'?qty/1000:qty)*100)/100;
+          const discount=Math.round(gross*33)/100;
+          const entry={id:args?.p_id||'return-'+(returned.length+1),day:new Date().toISOString().slice(0,10),
+            kind:'devolucion',product:price.product,quantity:qty,unit,note:args?.p_note||'',
+            unit_price:price.amount,price_basis:price.price_basis,gross_total:gross,
+            discount_rate:.33,discount_amount:discount,net_total:Math.round((gross-discount)*100)/100,
+            acknowledged_at:null};
+          const pos=returned.findIndex(x=>x.id===entry.id);
+          if(pos>=0){if(returned[pos].acknowledged_at)return {data:null,error:{code:'42501',message:'Ya confirmó San Isidro'}};returned[pos]=entry;}
+          else returned.push(entry);
+          return {data:entry,error:null};
+        }
+        if(fn==='gestlok_molino_acknowledge'){
+          if(!canAck)return {data:null,error:{code:'42501',message:'Solo San Isidro marca OK'}};
+          const row=returned.find(x=>x.id===args?.p_id);
+          if(!row)return {data:null,error:{code:'42501',message:'No encontrado'}};
+          row.acknowledged_at=row.acknowledged_at||new Date().toISOString();
+          row.acknowledgement_note=args?.p_note||'';
+          return {data:row,error:null};
+        }
+        if(fn==='gestlok_molino_returns_month'){
+          const month=String(args?.p_month||'');
+          const selected=returned.filter(x=>x.day.startsWith(month));
+          const groups={};
+          for(const x of selected)(groups[x.day]||(groups[x.day]=[])).push(x);
+          const sum=(arr,key)=>Math.round(arr.reduce((total,x)=>total+Number(x[key]||0),0)*100)/100;
+          return {data:{month,total_items:selected.length,unpriced_items:0,gross:sum(selected,'gross_total'),
+            discount:sum(selected,'discount_amount'),net:sum(selected,'net_total'),
+            days:Object.entries(groups).sort(([a],[b])=>a.localeCompare(b)).map(([day,rows])=>({
+              day,items:rows.length,gross:sum(rows,'gross_total'),discount:sum(rows,'discount_amount'),
+              net:sum(rows,'net_total'),details:rows.map(x=>({
+                product:x.product,quantity:x.quantity,unit:x.unit,unit_price:x.unit_price,
+                price_basis:x.price_basis,gross:x.gross_total,discount:x.discount_amount,
+                net:x.net_total,acknowledged_at:x.acknowledged_at
+              }))
+            }))},error:null};
+        }
+      }
       if (fn === 'gestlok_molino_state' || fn === 'gestlok_molino_history'){
         if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)return {data:null,error:{code:'42501',message:'Sin autorización'}};
         const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':(window.__molinoBranchOverride==='acassuso'?'acassuso':'san_isidro');
-        return {data:{scope,day:new Date().toISOString().slice(0,10),closed:false,prices:[],envios:[],devoluciones:[],history:[]},error:null};
+        return {data:{scope,day:new Date().toISOString().slice(0,10),closed:false,prices:window.__molinoPrices||[],envios:[],devoluciones:window.__molinoReturns||[],history:[]},error:null};
       }
       if (fn === 'gestlok_creator_audit'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};
