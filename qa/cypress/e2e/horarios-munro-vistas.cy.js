@@ -5,7 +5,7 @@ const token="eyJhbGciOiJIUzI1NiJ9."+btoa(JSON.stringify({sub:user.id,exp:Math.fl
 const tabla=(value)=>({values:[["Colaborador","Lunes"],["Persona ficticia",value]],backgrounds:[["#1e2f52","#1e2f52"],["#ffffff","#ffffff"]],colors:[["#ffffff","#ffffff"],["#222222","#222222"]],headerRows:1,merges:[]});
 describe("Munro: Resumen y Semana se ven una sola vez por vista",()=>{
  Cypress.on("uncaught:exception",e=>{if(e.message.includes("Minified React error #418"))return false;});
- it("muestra el archivo manual arriba, separa En vivo de Historial y conserva ambas hojas",()=>{
+ for (const admin of [true,false]) it(`permite a ${admin?"administradora":"gerente"} guardar Resumen y Semana sin dar accesos a pagos`,()=>{
   let archived=false;
   const now=new Date().toISOString();
   const original=[{desde:"2026-11-02",hasta:"2026-11-08",archivo_id:"00000000-0000-4000-8000-000000000002",filas:[{colaborador:"Persona ficticia",total:"40"}],recibido_at:now,actualizaciones:1,pagos:{}}];
@@ -15,7 +15,7 @@ describe("Munro: Resumen y Semana se ven una sola vez por vista",()=>{
    if(path.includes("/auth/v1/user"))return req.reply(user);
    if(path.includes("/rpc/rm_app_me"))return req.reply({...user,user_id:user.id,display_name:"Persona ficticia",status:"approved",role:null,gestlok_gerente:{local_ids:["munro"]}});
    if(path.includes("/rpc/rm_app_branch_schedule_links"))return req.reply([]);
-   if(path.includes("/rpc/rm_horarios_locales"))return req.reply([{local_id:"munro",local_name:"Munro",conectado:true,ultimo_envio_at:now,puede_administrar:true}]);
+   if(path.includes("/rpc/rm_horarios_locales"))return req.reply([{local_id:"munro",local_name:"Munro",conectado:true,ultimo_envio_at:now,puede_administrar:admin,puede_archivar:true}]);
    if(path.includes("/rpc/rm_horarios_en_vivo"))return req.reply(updated);
    if(path.includes("/rpc/rm_horarios_estado_archivo"))return req.reply({manual:archived,pdf:false,pendiente:!archived});
    if(path.includes("/rpc/rm_horarios_historial"))return req.reply(archived?[{...original[0],desde:updated.desde,hasta:updated.hasta,archivo_id:"00000000-0000-4000-8000-000000000003"},...original]:original);
@@ -30,6 +30,7 @@ describe("Munro: Resumen y Semana se ven una sola vez por vista",()=>{
   });
   cy.visit("/empleados/",{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:"synthetic",token_type:"bearer",expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
   cy.get(".gl-gerente__sidebar").contains("button","Horarios",{timeout:15000}).click();
+  if(!admin)cy.contains('button','Pendientes de pago').should('not.exist');
   cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains("button","En vivo").should("have.attr","aria-pressed","true");
   cy.get('section[aria-label="Resumen en vivo"]').should("be.visible");
   cy.get('section[aria-label="Semana en vivo"]').should("be.visible");
