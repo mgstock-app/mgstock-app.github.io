@@ -26,15 +26,16 @@ const activeBranch=()=>{
 const canPrices=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()!=='acassuso';
 const canSend=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()!=='acassuso';
 const canReturn=()=>['admin','dueno','acassuso'].includes(role())&&activeBranch()!=='san_isidro';
-const canAckSent=()=>['admin','dueno','acassuso'].includes(role());
-const canAckReturned=()=>['admin','dueno','san_isidro'].includes(role());
+const canAckSent=()=>['admin','dueno','acassuso'].includes(role())&&activeBranch()==='acassuso';
+const canAckReturned=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()==='san_isidro';
 const canOrder=()=>['admin','dueno','acassuso'].includes(role())&&activeBranch()!=='san_isidro';
 const canOrderAck=()=>['admin','dueno','san_isidro'].includes(role())&&activeBranch()!=='acassuso';
 const canEdit=k=>k==='envio'?canSend():canReturn();
+const canSenderObserve=()=>canSend();
 const scopeName=()=>({admin:'Administración general · ambos locales',dueno:'Dueño · ambos locales',san_isidro:'Gerente · San Isidro',acassuso:'Gerente · Acassuso'})[role()]||'Verificando acceso';
 function css(){
  if(document.getElementById('gl-molino-css'))return;
- const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=monto-final-cierre-20261109';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-molino-css';l.rel='stylesheet';l.href='/stock/gestlok-molino.css?rev=envios-roles-20261109';document.head.appendChild(l);
 }
 function homeTile(){
  if(!hasTenant()||!['creadora','dueno','gerente'].includes(api?.role?.()))return '';
@@ -158,7 +159,7 @@ function movementForm(kind){
  '<label>Producto<input name="product" list="gl-molino-products" maxlength="140" autocomplete="off" placeholder="Nombre del producto" value="'+escapeHTML(p?.product||'')+'" required></label>'+
  '<label>Cantidad<input type="number" name="quantity" min=".001" max="999999" step="'+(isReturn?'.001':'.01')+'" inputmode="decimal" placeholder="'+(isReturn?'Ej. 9.500':'0')+'" value="'+escapeHTML(p?.quantity??'')+'" required></label>'+
  (isReturn?'<label>Unidad<select name="unit" aria-label="Unidad de devolución"><option value="unidad" '+((p?.unit||'unidad')==='unidad'?'selected':'')+'>Unidades</option><option value="kg" '+(p?.unit==='kg'?'selected':'')+'>Kilos (kg)</option><option value="g" '+(p?.unit==='g'?'selected':'')+'>Gramos (g)</option></select></label>':'')+
- (isReturn?'<label class="gl-molino-full">Observación opcional<textarea name="note" maxlength="1000" rows="2" placeholder="Estado del producto, motivo, etc.">'+escapeHTML(p?.note||'')+'</textarea></label>':'')+
+ '<label class="gl-molino-full">'+(isReturn?'Observación opcional':'Observación de San Isidro (opcional)')+'<textarea name="note" maxlength="1000" rows="2" placeholder="'+(isReturn?'Estado del producto, motivo, etc.':'Detalles del envío para Acassuso')+'">'+escapeHTML(p?.note||'')+'</textarea></label>'+
  '<button type="submit" class="gl-molino-main-btn">'+(p?'Guardar cambio':isReturn?'Agregar devolución':'Agregar envío')+'</button>'+
  (p?'<button type="button" data-mol-cancel="movement" class="gl-molino-cancel">Cancelar</button>':'')+
  '</form>';
@@ -168,14 +169,16 @@ function movementItem(m,kind,fromHistory=false){
  const ok=!!m.acknowledged_at;
  const canAck=(isSent?canAckSent():canAckReturned())&&!fromHistory&&!state?.closed&&!ok;
  const canChange=canEdit(kind)&&!fromHistory&&!state?.closed&&!ok;
+ const canNoteSender=isSent&&canSenderObserve()&&!fromHistory&&!state?.closed&&!ok;
  const label=isSent?'Recibido por Acassuso':'Recibido por San Isidro';
  return '<article class="gl-molino-item'+(ok?' is-confirmed':'')+'">'+
  '<div class="gl-molino-item-top"><div><strong>'+escapeHTML(m.product)+'</strong><small>Cantidad: <b>'+fmtQty(m.quantity)+' '+(kind==='devolucion'?(m.unit==='g'?'g':m.unit==='kg'?'kg':'unidades'):'')+'</b></small></div>'+
  '<span class="gl-molino-status '+(ok?'ok':'pending')+'">'+(ok?'✓ OK · '+label:'Pendiente de recepción')+'</span></div>'+
  (kind==='devolucion'&&m.net_total!=null?'<div class="gl-molino-return-metrics"><span>Precio: <b>'+money(m.unit_price)+' / '+(m.price_basis==='kg'?'kg':'unidad')+'</b></span><span>Venta: <b>'+money(m.gross_total)+'</b></span><span>Desc. 33%: <b>−'+money(m.discount_amount)+'</b></span><span>Monto final: <b>'+money(m.net_total)+'</b></span></div>':'')+
- (m.note?'<p class="gl-molino-comment"><b>Observación de Acassuso:</b> '+escapeHTML(m.note)+'</p>':'')+
- (m.acknowledgement_note?'<p class="gl-molino-comment"><b>Observación al recibir:</b> '+escapeHTML(m.acknowledgement_note)+'</p>':'')+
+ (m.note?'<p class="gl-molino-comment"><b>Observación de '+(isSent?'San Isidro':'Acassuso')+':</b> '+escapeHTML(m.note)+'</p>':'')+
+ (m.acknowledgement_note?'<p class="gl-molino-comment"><b>Observación al recibir ('+(isSent?'Acassuso':'San Isidro')+'):</b> '+escapeHTML(m.acknowledgement_note)+'</p>':'')+
  (canChange?'<button type="button" class="gl-molino-inline" data-mol-move-edit="'+escapeHTML(m.id)+'" data-kind="'+kind+'">Editar detalle</button>':'')+
+ (canNoteSender?'<div class="gl-molino-ack gl-molino-sender-note"><label>Observación del envío (San Isidro)<input data-mol-sender-note="'+escapeHTML(m.id)+'" maxlength="1000" placeholder="Detalles para Acassuso" value="'+escapeHTML(m.note||'')+'"></label><div class="gl-molino-ack-actions"><button type="button" class="gl-molino-note-btn" data-mol-sender-save="'+escapeHTML(m.id)+'">Guardar observación</button></div></div>':'')+
  (canAck?'<div class="gl-molino-ack"><label>Observación al recibir (opcional)<input data-mol-ack-note="'+escapeHTML(m.id)+'" maxlength="1000" placeholder="Escribí una observación si necesitás" value="'+escapeHTML(m.acknowledgement_note||'')+'"></label><div class="gl-molino-ack-actions">'+(isSent?'<button type="button" class="gl-molino-note-btn" data-mol-note="'+escapeHTML(m.id)+'">Guardar observación</button>':'')+'<button type="button" class="gl-molino-ack-btn" data-mol-ack="'+escapeHTML(m.id)+'">✓ Marcar OK</button></div></div>':'')+
  (ok?'<p class="gl-molino-confirmed-note">Confirmación registrada y compartida en ambos locales.</p>':'')+
  '</article>';
@@ -400,6 +403,16 @@ document.addEventListener('click',e=>{
  }
  const me=e.target.closest('[data-mol-move-edit]');if(me&&canEdit(me.dataset.kind)){if(section!=='envios')section=me.dataset.kind==='envio'?'envios':'devoluciones';editMove=me.dataset.molMoveEdit;render();$('#gl-molino-movement-form-'+me.dataset.kind+' [name="product"]')?.focus();return;}
  const c=e.target.closest('[data-mol-cancel]');if(c){editPrice=null;editMove=null;render();return;}
+ const senderNote=e.target.closest('[data-mol-sender-save]');
+ if(senderNote){
+   if(!canSenderObserve()||state?.closed)return;
+   const id=senderNote.dataset.molSenderSave;
+   const row=(state?.envios||[]).find(m=>m.id===id);
+   if(!row||row.acknowledged_at)return;
+   const note=$('#gl-molino-panel input[data-mol-sender-note="'+id+'"]')?.value||'';
+   void save('gestlok_molino_save_sender_note',{p_id:id,p_note:note},'Observación de San Isidro compartida con Acassuso; el envío sigue pendiente de OK.');
+   return;
+ }
  const noteButton=e.target.closest('[data-mol-note]');
  if(noteButton){
    const id=noteButton.dataset.molNote;
@@ -410,6 +423,8 @@ document.addEventListener('click',e=>{
  const ack=e.target.closest('[data-mol-ack]');
  if(ack){
    const id=ack.dataset.molAck;
+   const m=[...(state?.envios||[]),...(state?.devoluciones||[])].find(x=>x.id===id);
+   if(!m||state?.closed||m.acknowledged_at||!(m.kind==='envio'?canAckSent():canAckReturned()))return;
    const note=$('#gl-molino-panel input[data-mol-ack-note="'+id+'"]')?.value||'';
    void save('gestlok_molino_acknowledge',{p_id:id,p_note:note},'OK guardado para este producto.');
  }
@@ -449,7 +464,7 @@ document.addEventListener('submit',e=>{
     ...(move.dataset.kind==='devolucion'?{p_unit:String(d.get('unit')||'unidad')}:{p_kind:'envio'}),p_id:editMove||null,
     p_product:String(d.get('product')||'').trim(),
     p_quantity:Number(d.get('quantity')),
-    p_note:move.dataset.kind==='devolucion'?String(d.get('note')||'').trim():''
+    p_note:String(d.get('note')||'').trim()
   },'Producto registrado y compartido.');
  }
 });
