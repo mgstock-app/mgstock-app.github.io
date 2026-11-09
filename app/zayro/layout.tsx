@@ -26,7 +26,6 @@ const FONTS = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,
 export default function ZayroLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-page-custom-font -- Tipografías exclusivas de la tienda ZAYRO; no se cargan en el resto de GESTLOK. */}
       <link rel="stylesheet" href={FONTS} precedence="zayro-fonts" />
       {children}
     </>
