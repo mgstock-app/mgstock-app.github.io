@@ -40,9 +40,13 @@ export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props)
     setRefreshing(true);
     try {
       const data=await horariosHistoryApi.enVivo(local);
-      setLive(data);
+      const valid=!!data&&!Array.isArray(data)&&typeof data.desde==="string"&&
+        typeof data.actualizado_at==="string"&&!!data.tablas?.Resumen&&!!data.tablas?.Semana;
+      const snapshot=valid?data:null;
+      setLive(snapshot);
       setLunesActual(mondayArgentina());
-      setSincronizada(!!data&&Number.isFinite(Date.parse(data.actualizado_at))&&(Date.now()-Date.parse(data.actualizado_at))<30*60*1000);
+      setSincronizada(!!snapshot&&Number.isFinite(Date.parse(snapshot.actualizado_at))&&
+        (Date.now()-Date.parse(snapshot.actualizado_at))<30*60*1000);
       setError("");
     } catch {
       setError("No se pudieron consultar los horarios en vivo. Revisá la conexión.");
