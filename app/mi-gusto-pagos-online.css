@@ -471,3 +471,16 @@
 
 /* Mi Gusto · aclaración de cálculo de Online Local, efectivo siempre separado. */
 .mg-on-online-help{margin:4px 0 12px;color:#526e86;font-size:12px;line-height:1.5}
+
+
+/* Mi Gusto · cierre sin movimientos: alternativa clara sin foto. */
+.mg-on-empty-choice{
+ display:flex;align-items:center;gap:12px;margin:12px 0;padding:13px 14px;
+ background:#fff;border:1px solid #b8d5df;border-radius:12px;cursor:pointer;
+}
+.mg-on-empty-choice:has(input:checked){background:#e9f7ef;border-color:#77bf98}
+.mg-on-empty-choice input{flex:none;accent-color:#17834c;width:22px;height:22px;cursor:pointer}
+.mg-on-empty-choice span{display:grid;gap:3px;min-width:0}
+.mg-on-empty-choice strong{font-size:14px;color:#173d50}
+.mg-on-empty-choice small{font-size:12px;color:#527085;line-height:1.4}
+.mg-on-empty-choice:focus-within{outline:2px solid #167d9b;outline-offset:2px}
