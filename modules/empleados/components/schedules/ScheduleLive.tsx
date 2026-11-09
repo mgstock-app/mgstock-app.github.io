@@ -42,13 +42,13 @@ export function ScheduleLive({local,puedeArchivar,onArchivada}:Props) {
     try {
       const data=await horariosHistoryApi.enVivo(local);
       const valid=!!data&&!Array.isArray(data)&&typeof data.desde==="string"&&
-        typeof data.actualizado_at==="string"&&!!data.tablas?.Resumen&&!!data.tablas?.Semana;
+        typeof data.actualizado_at==="string"&&typeof data.hasta==="string"&&!!data.tablas?.Resumen&&!!data.tablas?.Semana;
       const snapshot=valid?data:null;
       setLive(snapshot);
       const monday=mondayArgentina();
       setLunesActual(monday);
       // Las semanas cerradas disponen de un periodo de revision manual mas amplio.
-      const vencimiento=snapshot?.hasta < monday ? 24*60*60*1000 : 30*60*1000;
+      const vencimiento=snapshot && snapshot.hasta < monday ? 24*60*60*1000 : 30*60*1000;
       setSincronizada(!!snapshot&&Number.isFinite(Date.parse(snapshot.actualizado_at))&&
         (Date.now()-Date.parse(snapshot.actualizado_at))<vencimiento);
       setEstado(snapshot?await horariosHistoryApi.estadoArchivo(local,snapshot.desde):null);
