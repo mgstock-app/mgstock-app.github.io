@@ -190,12 +190,14 @@
       const localRows=Array.isArray(c.locals)?c.locals:[];
       const n=Array.isArray(c.locals)?localRows.length:num(c.locals);
       const localCards=localRows.map(l=>{
+        const molinoBrand=c.tenant_id===MOLINO_TENANT?
+          (window.GestLokMolino?.logoHTML?.(l.id,'card',c.tenant_id)||''):'';
         const attrs=own?'data-act="local" data-id="'+esc(l.id)+'"':
           'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
         return '<button type="button" class="gl-ch-quick-local gl-ch-company-local" '+attrs+
           ' aria-label="Abrir el local '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
-          '<span class="gl-ch-quick-icon">'+svg('<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>',22)+
-          '</span><span><b>'+esc(l.name||l.id)+'</b><small>Ingresar al local</small></span>'+
+          (molinoBrand?molinoBrand:'<span class="gl-ch-quick-icon">'+svg('<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>',22)+'</span>')+
+          '<span><b>'+esc(l.name||l.id)+'</b><small>Ingresar al local</small></span>'+
           '<span aria-hidden="true">→</span></button>';
       }).join('');
       const access=localRows.length?'<details class="gl-ch-company-locals"><summary>Ver locales'+
