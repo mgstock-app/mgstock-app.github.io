@@ -220,3 +220,61 @@ body.gl-molino-open .gl-soporte-float{z-index:100101}
  .gl-molino-ledger-sum th{text-align:left!important}
  .gl-molino-month-totals .gl-molino-month-final{min-width:0}
 }
+
+
+/* Identidad de El Molino: mismo logotipo por empresa, leyenda negra por local.
+   No modificar marcas, estilo ni permisos de otros tenants. */
+.gl-molino-brand{
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;flex:none;max-width:100%;min-width:0;vertical-align:middle;
+  color:#141414!important;text-align:center;line-height:1.2;
+}
+.gl-molino-brand img{
+  display:block;width:100%;height:auto;max-width:100%;aspect-ratio:380/174;
+  object-fit:contain;object-position:center;
+}
+.gl-molino-brand small{
+  display:block;color:#141414!important;font-family:Arial,Helvetica,sans-serif;
+  font-weight:500;letter-spacing:.07em;text-transform:none!important;
+  line-height:1.45;text-align:center;white-space:nowrap;
+}
+.gl-molino-brand--hero{width:clamp(190px,26vw,280px);margin:5px 0 9px;align-items:center;}
+.gl-molino-brand--hero small{font-size:13px!important;font-weight:600;}
+.gl-molino-brand--module{margin-left:auto;width:165px;}
+.gl-molino-brand--module small{font-size:12px!important;}
+.gl-molino-brand--header{width:128px;margin-left:auto;}
+.gl-molino-brand--header small{font-size:11px!important;}
+.gl-molino-brand--card{width:120px;max-width:100%;justify-self:center;}
+.gl-molino-brand--card small{font-size:10px!important;font-weight:600;}
+.gl-molino-home-head>div:first-of-type{flex:1;min-width:0;}
+.gl-molino-local-welcome{margin:3px 0 9px;}
+.gl-molino-local-welcome .gl-molino-brand{max-width:100%;}
+.gl-molino-header-copy{min-width:0;flex:1;}
+.gl-molino-header .gl-molino-brand--header{flex-shrink:1;}
+.gl-molino-picker-brand{display:flex;align-items:center;justify-content:center;padding:4px 0 10px;}
+.gl-molino-picker-brand .gl-molino-brand{width:min(170px,100%);}
+.gl-molino-admin-local-brand{display:flex;align-items:center;justify-content:center;flex:none;width:112px;}
+.gl-molino-admin-local-brand .gl-molino-brand{width:112px;}
+.gl-ch-company-local:has(.gl-molino-brand--card){
+  display:grid;grid-template-columns:120px minmax(0,1fr) auto;align-items:center;gap:13px;
+}
+.gl-ch-company-local:has(.gl-molino-brand--card)>span:nth-child(2){min-width:0;text-align:left;}
+.gl-ch-company-local:has(.gl-molino-brand--card)>span:nth-child(2) b{overflow-wrap:anywhere;}
+.gl-ch-company-local:has(.gl-molino-brand--card)>span:last-child{justify-self:end;}
+@media(max-width:760px){
+ .gl-molino-brand--hero{width:min(260px,72vw);}
+ .gl-molino-brand--module{width:120px;margin-left:0;}
+ .gl-molino-home-head{flex-wrap:wrap;}
+ .gl-molino-home-head>.gl-molino-brand{margin-left:61px;}
+ .gl-molino-header{gap:9px;}
+ .gl-molino-header .gl-molino-brand--header{width:94px;}
+ .gl-molino-header .gl-molino-brand--header small{font-size:9px!important;}
+ .gl-ch-company-local:has(.gl-molino-brand--card){grid-template-columns:88px minmax(0,1fr) auto;gap:9px;}
+ .gl-ch-company-local .gl-molino-brand--card{width:88px;}
+ .gl-molino-admin-local-brand{width:87px;}
+ .gl-molino-admin-local-brand .gl-molino-brand{width:87px;}
+}
+@media(max-width:440px){
+ .gl-molino-header .gl-molino-brand--header{width:80px;}
+ .gl-molino-home-head>.gl-molino-brand{margin-left:0;}
+}
