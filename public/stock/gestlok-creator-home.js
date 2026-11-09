@@ -264,7 +264,7 @@
     const companies=window.GestLokOwnerAreas?.creatorCompanies?.()||[];
     const currentTenant=api.S?.me?.tenant_id;
     const fallback=window.GestLokOwnerAreas?.companyFolders?.()||p.parts?.locales||'';
-    const loading=/Cargando empresas|No pudimos cargar/.test(fallback);
+    const loading=!companies.length&&/Cargando empresas|No pudimos cargar/.test(fallback);
     const totalLocals=companies.reduce((sum,c)=>sum+(Array.isArray(c.locals)?c.locals.length:0),0);
     const storeIcon='<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>';
     const businessIcon='<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6M9 10h.01M15 10h.01"/>';
