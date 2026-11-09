@@ -209,6 +209,7 @@ export function useStoreDesign() {
         <p>{notice === "denied" ? "Esta cuenta no puede diseñar la tienda ZAYRO." :
           "Para diseñar la tienda, ingresá a GESTLOK con la cuenta de ZAYRO y volvé a abrir este enlace."}</p>
         <div className="zayro-zd-row">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- GESTLOK se abre con carga completa (sesión y scripts propios). */}
           {notice === "login" && <a href="/">Ingresar a GESTLOK</a>}
           <button type="button" onClick={() => setNotice("")}>Cerrar</button>
         </div>
