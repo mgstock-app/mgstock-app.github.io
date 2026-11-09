@@ -7,6 +7,12 @@ create table if not exists gestlok_platform.scanner_new_tenant_enrollment (
  claimed_at timestamptz
 );
 alter table gestlok_platform.scanner_new_tenant_enrollment enable row level security;
+-- Immutable installation boundary: companies created before this migration are ineligible.
+create table if not exists gestlok_platform.scanner_enrollment_release_gate (
+ id boolean primary key default true check (id), installed_at timestamptz not null default clock_timestamp()
+);
+insert into gestlok_platform.scanner_enrollment_release_gate(id) values(true) on conflict do nothing;
+revoke all on gestlok_platform.scanner_enrollment_release_gate from public,anon,authenticated;
 revoke all on gestlok_platform.scanner_new_tenant_enrollment from public, anon, authenticated;
 
 create or replace function gestlok_platform.scanner_capture_new_company()
@@ -22,7 +28,7 @@ drop trigger if exists scanner_capture_new_company on gestlok_platform.companies
 -- No automatic trigger: a generic new business must not receive Scanner access.
 -- Enrollment is deliberately disabled until a verified plan-selection workflow exists.
 
-create or replace function gestlok_platform.scanner_approve_new_company(p_tenant uuid)
+create or replace function public.gestlok_scanner_approve_new_company(p_tenant uuid)
 returns boolean language plpgsql security definer set search_path='' as $
 declare v_email text;
 begin
@@ -30,13 +36,15 @@ begin
    select 1 from gestlok_platform.admins a where a.user_id=auth.uid()
  ) then raise exception 'Solo la creadora puede autorizar Scanner' using errcode='42501'; end if;
  select lower(btrim(c.owner_email)) into v_email
- from gestlok_platform.companies c where c.tenant_id=p_tenant;
+ from gestlok_platform.companies c where c.tenant_id=p_tenant
+ and c.created_at > (select g.installed_at from gestlok_platform.scanner_enrollment_release_gate g where g.id=true);
  if v_email is null then return false; end if;
  insert into gestlok_platform.scanner_new_tenant_enrollment(tenant_id,owner_email)
  values(p_tenant,v_email) on conflict(tenant_id) do nothing;
  return true;
 end $;
-revoke all on function gestlok_platform.scanner_approve_new_company(uuid) from public,anon,authenticated;
+revoke all on function public.gestlok_scanner_approve_new_company(uuid) from public,anon;
+grant execute on function public.gestlok_scanner_approve_new_company(uuid) to authenticated;
 
 create or replace function public.gestlok_scanner_claim_new_company(p_tenant uuid)
 returns boolean language plpgsql security definer set search_path='' as $$
