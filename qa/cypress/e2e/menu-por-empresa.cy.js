@@ -105,8 +105,8 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#snav .gl-molino-navgroup').should('have.css','display','none');
     cy.get('#snav [data-mol-nav]').should('have.length',5)
       .each($button=>{
-        cy.wrap($button).should('be.visible').and('have.attr','title')
-          .and('not.have.attr','title','');
+        cy.wrap($button).should('be.visible').and('have.attr','title');
+        cy.wrap($button).invoke('attr','title').should('not.be.empty');
         cy.wrap($button).find('svg.i').should('be.visible');
         cy.wrap($button).find('.nl').should('not.be.visible');
       });
