@@ -28,6 +28,13 @@ describe('Archivo visual de horarios',()=>{
   });
   cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
   cy.get('.gl-gerente__sidebar').contains('button','Horarios',{timeout:15000}).click();
+  // Resumen y Semana no se repiten: primero se ve solo la vista en vivo.
+  cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','En vivo').should('have.attr','aria-pressed','true');
+  cy.get('section[aria-label="Hoja Resumen archivada"]').should('not.exist');
+  cy.get('section[aria-label="Hoja Semana archivada"]').should('not.exist');
+  if(admin)cy.contains('button','Enviar a historial').should('be.visible').and('be.disabled');
+  else cy.contains('button','Enviar a historial').should('not.exist');
+  cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','Historial').click();
   cy.get('section[aria-label="Hoja Resumen archivada"] table').should('be.visible').contains('Persona ficticia');
   cy.get('section[aria-label="Hoja Resumen archivada"] th').should('have.length',10);
   cy.get('section[aria-label^="Hoja"] iframe').should('not.exist');
