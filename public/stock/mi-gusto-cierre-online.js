@@ -275,7 +275,7 @@ function shiftCard(s,turnoHint='tarde'){
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
  [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas online'],['online_local','Online Local']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
- '<small>'+Number(s.comandas||0)+' comandas registradas</small>'+photoControl(s)+'</article>';
+ '<small>'+Number(s.comandas||0)+' comandas registradas'+(s.sin_movimientos?' · Sin movimientos':'')+'</small>'+photoControl(s)+'</article>';
 }
 function summary(){
  const curr=snapshot?.active, all=[curr,...(snapshot?.history||[])].filter(Boolean).filter(s=>s.day===curr?.day);
@@ -314,7 +314,7 @@ function historyTotals(model){
 }
 function shiftHistoryCard(s){
  return '<article class="mg-on-history-card"><header><div><strong>'+
-  esc(shiftName(s.turno))+' · '+date(s.day)+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas</small></div>'+
+  esc(shiftName(s.turno))+' · '+date(s.day)+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas'+(s.sin_movimientos?' · Sin movimientos':'')+'</small></div>'+
   '<button type="button" data-mgon-detail="'+esc(s.id)+'" aria-expanded="'+(opened===s.id)+'">'+
   (opened===s.id?'Ocultar detalle':'Ver pedidos')+'</button></header>'+
   historyTotals(s)+(opened===s.id?oldRows(s):'')+'</article>';
@@ -330,7 +330,7 @@ function dayHistoryCard(d){
 function reportTurn(s,turno){
  if(!s)return '<div class="mg-on-report-turn"><h3>'+esc(shiftName(turno))+'</h3><p class="mg-on-empty">Sin cierre registrado para este turno.</p></div>';
  return '<section class="mg-on-report-turn"><header><h3>'+esc(shiftName(turno))+'</h3>'+
- '<span class="mg-on-closed">✓ Cerrado</span></header>'+
+ '<span class="mg-on-closed">✓ Cerrado'+(s.sin_movimientos?' · Sin movimientos':'')+'</span></header>'+
  historyTotals(s)+
  '<h4>Movimientos individuales</h4>'+
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
@@ -394,7 +394,7 @@ async function action(name,args,notify){
  if(!writable())return;
  saving=true;error='';saveNotice=false;
  try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();editing=null;
-  if(name==='gestlok_mg_online_close'&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
+  if(name.startsWith('gestlok_mg_online_close')&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
   if(name==='gestlok_mg_online_delete')await rpcRefresh(true);else await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
  finally{
@@ -411,7 +411,7 @@ async function action(name,args,notify){
 }
 async function rpcRefresh(allowEmpty=false){
  const current=local(),value=await rpc('gestlok_mg_online_state');if(current!==local())return;
- snapshot=safeShiftState(value,allowEmpty);error='';api.render();
+ snapshot=safeShiftState(value,allowEmpty);if(emptyCheckedFor!==snapshot.active.id||snapshot.active.movements.length)emptyCheckedFor=null;error='';api.render();
 }
 function attach(h){
  if(api)return;
