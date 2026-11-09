@@ -15,3 +15,8 @@
 6. Apply migrations only after schema verification; run unit tests, lint, build, Cypress and deployment checks.
 
 **Release status: BLOCKED.** Green CI on the draft only validates current checks; it is not proof of automatic Scanner access. Do not merge or deploy this PR yet.
+
+## 2026-11-09 safety correction
+- Generic company creation no longer triggers Scanner enrollment. Creator approval is explicitly required before the owner can claim access.
+- The approval function is intentionally not executable by client roles yet. A secure creator-facing approval RPC/UI and verified subscription selection are still required.
+- This branch is 100+ commits behind main; rebase and run the full test suite before merge. No production migration is authorized.
