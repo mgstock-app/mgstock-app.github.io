@@ -15,15 +15,6 @@ insert into gestlok_platform.scanner_enrollment_release_gate(id) values(true) on
 revoke all on gestlok_platform.scanner_enrollment_release_gate from public,anon,authenticated;
 revoke all on gestlok_platform.scanner_new_tenant_enrollment from public, anon, authenticated;
 
-create or replace function gestlok_platform.scanner_capture_new_company()
-returns trigger language plpgsql security definer set search_path='' as $$
-begin
- -- Fail closed: generic company creation does not imply Scanner subscription.
- -- Entitlements must be explicitly approved by the creator, not inferred from mode or email.
- return new;
- return new;
-end $$;
-revoke all on function gestlok_platform.scanner_capture_new_company() from public,anon,authenticated;
 drop trigger if exists scanner_capture_new_company on gestlok_platform.companies;
 -- No automatic trigger: a generic new business must not receive Scanner access.
 -- Enrollment is deliberately disabled until a verified plan-selection workflow exists.
