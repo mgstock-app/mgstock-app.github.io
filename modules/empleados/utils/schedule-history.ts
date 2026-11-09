@@ -161,7 +161,7 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
   const q = (v: string) => "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
   return [
     "// GESTLOK · Historial horarios. Pegalo en Extensiones → Apps Script de la planilla del local.",
-    "// Manda el Resumen de la semana a GESTLOK cada vez que cambia algo y una vez por hora.",
+    "// Mantiene el Resumen y Semana en vivo; en Munro el archivo es solo manual desde GESTLOK.",
     "var GESTLOK_TABLAS = " + (tablas ? "true" : "false") + ";",
     "var GESTLOK_URL = " + q(url.replace(/\/+$/, "")) + ";",
     "var GESTLOK_CLAVE = " + q(clave) + ";",
@@ -171,8 +171,10 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "  SpreadsheetApp.getUi().createMenu('GESTLOK')",
     "    .addItem('Conectar con GESTLOK (una sola vez)', 'conectarGestlok')",
     "    .addItem('Enviar la semana ahora', 'enviarAhora')",
-    "    .addItem('Guardar semana en historial', 'archivarGestlok')",
-    "    .addItem('Activar archivo lunes 08:00 Argentina', 'instalarArchivoGestlok')",
+    ...(tablas ? [] : [
+      "    .addItem('Guardar semana en historial', 'archivarGestlok')",
+      "    .addItem('Activar archivo lunes 08:00 Argentina', 'instalarArchivoGestlok')"
+    ]),
     "    .addToUi();",
     "}",
     "",
@@ -212,11 +214,11 @@ export function scriptParaSheets(codigo: string, url: string, clave: string, tab
     "",
     "function conectarGestlok() {",
     "  ScriptApp.getProjectTriggers().forEach(function (t) {",
-    "    if (t.getHandlerFunction() === 'alCambiar') ScriptApp.deleteTrigger(t);",
+    "    if (t.getHandlerFunction() === 'alCambiar' || (GESTLOK_TABLAS && t.getHandlerFunction() === 'archivoProgramadoGestlok')) ScriptApp.deleteTrigger(t);",
     "  });",
     "  ScriptApp.newTrigger('alCambiar').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();",
     "  ScriptApp.newTrigger('alCambiar').timeBased()" + (tablas ? ".everyMinutes(5)" : ".everyHours(1)") + ".create();",
-    "  instalarArchivoGestlok();",
+    ...(tablas ? ["  // Munro: el historial se confirma solo desde GESTLOK."] : ["  instalarArchivoGestlok();"]),
     "  enviarAhora();",
     "}",
     "",
@@ -277,6 +279,7 @@ function pdfGestlok(ss, hoja) {
   return Utilities.base64Encode(bytes);
 }
 function archivarGestlok() {
+  if (GESTLOK_TABLAS) throw new Error('En Munro el historial se guarda desde GESTLOK con Enviar a historial.');
   var r = guardarArchivoGestlok(SpreadsheetApp.getActive());
   SpreadsheetApp.getUi().alert('Semana y Resumen guardados en GESTLOK del ' + r.semana + '. Verificá ambos PDF en Historial antes de limpiar la planilla.');
 }
