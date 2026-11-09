@@ -95,7 +95,7 @@ async function reload(silent=false){
   if(!opened)return;
   if(!result||!['admin','dueno','san_isidro','acassuso'].includes(result.scope))throw Error('Sin autorización.');
   // Nunca interrumpir los formularios mientras el gerente está escribiendo.
-  if(silent&&$('#gl-molino-panel form:focus-within, #gl-molino-panel input[data-mol-ack-note]:focus, #gl-molino-panel textarea[data-mol-ack-note]:focus')){
+  if(silent&&$('#gl-molino-panel form:focus-within, #gl-molino-panel input[data-mol-ack-note]:focus, #gl-molino-panel input[data-mol-sender-note]:focus, #gl-molino-panel textarea[data-mol-ack-note]:focus')){
     stale=true;const b=$('#gl-molino-updated');if(b)b.hidden=false;return;
   }
   state=result;orderState=nextOrders;stale=false;render();
