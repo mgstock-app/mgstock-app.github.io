@@ -6,9 +6,10 @@ const sql=read('supabase/migrations/20261104221000_scanner_new_stock_tenant_enro
 const ui=read('public/stock/gestlok-pilot.js');
 const retired=read('supabase/migrations/20261104213000_scanner_local_enrollment_draft.sql');
 
-test('only newly provisioned stock companies receive enrollment marker',()=>{
- assert.match(sql,/after insert on gestlok_platform\.companies/i);
- assert.match(sql,/new\.tenant_id/);
+test('new company registration cannot automatically grant Scanner',()=>{
+ assert.doesNotMatch(sql,/create trigger scanner_capture_new_company\s+after insert/i);
+ assert.match(sql,/scanner_approve_new_company/);
+ assert.match(sql,/gestlok_platform\.admins a where a\.user_id=auth\.uid\(\)/i);
  assert.doesNotMatch(sql,/insert\s+into\s+gestlok_platform\.scanner_new_tenant_enrollment\s+select/i);
  assert.doesNotMatch(retired,/create trigger/i);
 });
