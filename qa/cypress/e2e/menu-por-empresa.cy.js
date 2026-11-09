@@ -86,6 +86,40 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.document().then(d => { if (d.documentElement.scrollWidth > 390) throw Error('Desborde horizontal'); });
   });
 
+
+  it('El Molino: menú lateral plegable sin títulos cortados en escritorio',()=>{
+    cy.viewport(1366,900);login('dueno@example.com',true);
+    cy.get('.gl-oh-top [data-owner-nav="menu"]',{timeout:15000}).click();
+    cy.get('#pn [data-owner-nav="business"]').click();
+    cy.get('#pn [data-act="local"][data-id="munro"]').first().click();
+    cy.get('#gl-molino-css',{timeout:15000}).should('have.prop','sheet').and('not.be.null');
+    cy.get('#app').then($app=>{
+      if($app.hasClass('gl-sidebar-collapsed'))cy.get('.gl-sidebar-collapse-button').click();
+    });
+    cy.get('#snav .gl-molino-navgroup').should('be.visible')
+      .and('contain.text','Vínculo entre sucursales');
+    cy.get('#snav [data-mol-nav="devoluciones"] .nl').should('be.visible')
+      .and('contain.text','Devoluciones');
+    cy.get('.gl-sidebar-collapse-button').should('be.visible').click();
+    cy.get('#app').should('have.class','gl-sidebar-collapsed');
+    cy.get('#snav .gl-molino-navgroup').should('have.css','display','none');
+    cy.get('#snav [data-mol-nav]').should('have.length',5)
+      .each($button=>{
+        cy.wrap($button).should('be.visible').and('have.attr','title')
+          .and('not.have.attr','title','');
+        cy.wrap($button).find('svg.i').should('be.visible');
+        cy.wrap($button).find('.nl').should('not.be.visible');
+      });
+    cy.get('#side').should($side=>{
+      expect($side[0].getBoundingClientRect().width).to.be.lessThan(90);
+    });
+    cy.get('.gl-sidebar-collapse-button').click();
+    cy.get('#app').should('not.have.class','gl-sidebar-collapsed');
+    cy.get('#snav .gl-molino-navgroup').should('be.visible');
+    cy.get('#snav [data-mol-nav="envios"] .nl').should('be.visible')
+      .and('contain.text','Productos enviados');
+  });
+
   it('Mi Gusto conserva su menú completo y la creadora lo ve sin «Más herramientas»', () => {
     cy.viewport(1280, 900); login('kmu15lopez@gmail.com', false);
     creadoraEntra('munro');
