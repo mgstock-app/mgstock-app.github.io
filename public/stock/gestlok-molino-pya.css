@@ -1,0 +1,90 @@
+/* El Molino Café · Acassuso · Precios PedidosYa (09/11/2026).
+   Área blanca, categorías en beige claro, PYA en amarillo suave, modificados resaltados. */
+#gl-pya-panel{position:fixed;top:0;right:0;bottom:0;left:0;z-index:100050;background:#fff;color:#1B2733;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif;box-shadow:-8px 0 30px rgba(22,32,46,.12)}
+body.gl-pya-open{overflow:hidden}
+.gl-pya-wrap{flex:1;overflow:auto;padding:24px clamp(14px,3vw,36px) 24px;display:flex;flex-direction:column;gap:16px}
+.gl-pya-head{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-start}
+.gl-pya-title{display:flex;gap:14px;align-items:flex-start;min-width:0;flex:1 1 420px}
+.gl-pya-logo{flex:0 0 52px;height:52px;border-radius:14px;background:#F4F6F8;border:1px solid #E3E8ED;display:flex;align-items:center;justify-content:center;color:#16202E}
+.gl-pya-title small{font-size:13px;color:#5E6B76}
+.gl-pya-title h2{margin:2px 0 4px;font-size:clamp(22px,2.6vw,28px);font-weight:700;color:#16202E;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.gl-pya-title p{margin:0;font-size:14.5px;line-height:1.45;color:#4A5763;max-width:620px}
+.gl-pya-chip{font-size:13px;font-weight:600;color:#5B4310;background:#FBF1DC;border:1px solid #EBD7A8;border-radius:10px;padding:4px 10px}
+.gl-pya-headside{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.gl-pya-pct{display:flex;align-items:flex-end;gap:8px;border:1px solid #DCE3EA;border-radius:12px;padding:8px 12px;background:#F8FAFC}
+.gl-pya-pct label,.gl-pya-pct>span{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:#16202E}
+.gl-pya-pct label span{display:flex;align-items:center;gap:4px;font-size:18px;font-weight:700}
+.gl-pya-pct input{width:64px;min-height:36px;border:1px solid #CFD8E1;border-radius:8px;padding:0 8px;font:700 18px Inter,system-ui,sans-serif;color:#16202E;background:#fff}
+.gl-pya-pct b{font-size:20px}
+.gl-pya-status{min-height:36px;display:inline-flex;align-items:center;padding:0 12px;border-radius:10px;font-size:13px;font-weight:600;background:#EEF5F0;color:#17663A;border:1px solid #CFE6D7}
+.gl-pya-status.is-dirty{background:#FFF7E0;color:#7A5A00;border-color:#EFD98F}
+.gl-pya-close{width:44px;height:44px;border-radius:12px;border:1px solid #DCE3EA;background:#fff;font-size:24px;line-height:1;color:#16202E;cursor:pointer}
+.gl-pya-info{margin:0;padding:10px 14px;border-radius:10px;background:#EEF4FB;border:1px solid #D3E2F3;color:#1F3A5F;font-size:14px}
+.gl-pya-msg{padding:10px 14px;border-radius:10px;background:#EEF5F0;color:#17663A;font-size:14px}
+.gl-pya-alert{padding:10px 14px;border-radius:10px;background:#FCEBE3;color:#9E3A14;font-size:14px}
+.gl-pya-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.gl-pya-filter{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #D4DCE4;background:#fff;color:#16202E;font:600 14px Inter,system-ui,sans-serif;cursor:pointer}
+.gl-pya-filter.active{background:#16202E;color:#fff;border-color:#16202E}
+.gl-pya-search{margin-left:auto;flex:1 1 220px;max-width:340px}
+.gl-pya-search input{width:100%;box-sizing:border-box;min-height:44px;border:1px solid #D4DCE4;border-radius:10px;padding:0 14px;font:14px Inter,system-ui,sans-serif}
+.gl-pya-admin{display:flex;flex-wrap:wrap;gap:8px}
+.gl-pya-btn{min-height:42px;padding:0 14px;border-radius:10px;border:1px solid #CFD8E1;background:#fff;color:#16202E;font:600 14px Inter,system-ui,sans-serif;cursor:pointer}
+.gl-pya-btn:disabled{opacity:.5;cursor:not-allowed}
+.gl-pya-btn--primary{background:#16202E;border-color:#16202E;color:#fff}
+.gl-pya-btn--danger{color:#9E3A14;border-color:#E9C2B2}
+.gl-pya-mini{min-height:32px;padding:0 10px;border-radius:8px;border:1px solid #CFD8E1;background:#fff;color:#16202E;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer}
+.gl-pya-icon{width:32px;height:32px;border-radius:8px;border:1px solid transparent;background:transparent;color:#5E6B76;cursor:pointer;font-size:15px}
+.gl-pya-icon:hover{border-color:#D4DCE4;color:#16202E}
+.gl-pya-icon:disabled{opacity:.3;cursor:default}
+.gl-pya-table{border:1px solid #E3E8ED;border-radius:14px;overflow:hidden}
+.gl-pya-thead,.gl-pya-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(150px,.8fr) minmax(150px,.8fr);gap:12px;align-items:center;padding:10px 16px}
+.gl-pya-thead{background:#F4F6F8;font-weight:700;font-size:14.5px;color:#16202E;border-bottom:1px solid #E3E8ED}
+.gl-pya-thead span:nth-child(n+2){text-align:center}
+.gl-pya-cat-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:#F8EFE3;padding:6px 12px;border-top:1px solid #EFE3D2}
+.gl-pya-cat-toggle{border:none;background:none;min-height:40px;font:700 15.5px Inter,system-ui,sans-serif;color:#1B2733;cursor:pointer;padding:0 4px}
+.gl-pya-cat-toggle small{font-weight:500;color:#6D5A3F}
+.gl-pya-row{border-top:1px solid #EEF1F4;background:#fff}
+.gl-pya-row.is-draft{background:#EAF6EE;box-shadow:inset 4px 0 0 #2E8B57}
+.gl-pya-row.is-pending{background:#FFFBEF;box-shadow:inset 4px 0 0 #E0A800}
+.gl-pya-name{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+.gl-pya-pname{font-size:15.5px;font-weight:600;color:#1B2733}
+.gl-pya-tools{display:inline-flex;gap:2px}
+.gl-pya-flag{font-size:13px;font-weight:600;color:#1F7A47}
+.gl-pya-meta{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap}
+.gl-pya-tag{font-size:12px;color:#5E6B76;background:#F1F4F7;border-radius:999px;padding:2px 8px}
+.gl-pya-tag--link{color:#1F3A5F;background:#E7EFF9}
+.gl-pya-tag--manual{color:#6B4E00;background:#FBF1DC}
+.gl-pya-change{flex-basis:100%;font-size:13px;color:#6B4E00;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.gl-pya-price{display:flex;align-items:center;gap:6px;border:1px solid #CFD8E1;border-radius:10px;padding:0 12px;min-height:42px;background:#fff;justify-self:center;width:min(100%,210px);box-sizing:border-box}
+.gl-pya-row.is-draft .gl-pya-price{border-color:#2E8B57;box-shadow:0 0 0 2px rgba(46,139,87,.15)}
+.gl-pya-price input{border:none;outline:none;flex:1;min-width:0;font:600 16px Inter,system-ui,sans-serif;color:#1B2733;background:transparent}
+.gl-pya-price input[aria-invalid]{color:#B5441A}
+.gl-pya-cur{color:#5E6B76;font-weight:600}
+.gl-pya-pya{justify-self:center;width:min(100%,210px);box-sizing:border-box;text-align:center;background:#FFF5CC;border-radius:10px;padding:10px 12px;font-weight:700;font-size:16px;color:#3D3000}
+.gl-pya-row.is-empty .gl-pya-pya{background:#F4F6F8;color:#8A97A3}
+.gl-pya-empty{padding:16px;color:#5E6B76;font-size:14.5px;margin:0}
+.gl-pya-form,.gl-pya-catform{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.gl-pya-form label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:#16202E;flex:1 1 200px}
+.gl-pya-form input,.gl-pya-form select,.gl-pya-catform input{min-height:42px;border:1px solid #CFD8E1;border-radius:10px;padding:0 12px;font:15px Inter,system-ui,sans-serif;background:#fff}
+.gl-pya-catform input{flex:1 1 200px}
+.gl-pya-newcat{padding:12px;border:1px dashed #CFD8E1;border-radius:12px}
+.gl-pya-form-actions{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}
+.gl-pya-row--edit{display:block;background:#F8FAFC}
+.gl-pya-conflicts{border:1px solid #EFD98F;background:#FFFBEF;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.gl-pya-conflicts h3{margin:0;font-size:16px}
+.gl-pya-conflicts p{margin:0;font-size:14px;color:#4A5763}
+.gl-pya-conflict{display:flex;gap:8px;align-items:center;font-size:14px;min-height:36px}
+.gl-pya-foot{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;padding:12px clamp(14px,3vw,36px) calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #E3E8ED;background:#fff}
+.gl-pya-foot span{font-size:14.5px;color:#1F3A5F;font-weight:600}
+.gl-pya-foot div{display:flex;gap:10px}
+.gl-pya-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Celular: cada producto como tarjeta (precio local y PYA lado a lado). */
+@media(max-width:700px){
+ .gl-pya-thead{display:none}
+ .gl-pya-row{grid-template-columns:1fr 1fr;gap:8px 10px}
+ .gl-pya-name{grid-column:1/-1}
+ .gl-pya-price,.gl-pya-pya{width:100%}
+ .gl-pya-search{margin-left:0;max-width:none}
+ .gl-pya-foot div{flex:1}
+ .gl-pya-foot .gl-pya-btn{flex:1}
+}

@@ -75,7 +75,13 @@ function navHTML(){
  if(!hasTenant())return '';
  brandSidebar();
  return '<p class="snav-group gl-molino-navgroup">Vínculo entre sucursales</p>'+
-  NAV.map(([id,label,d])=>'<button type="button" data-mol-open="'+id+'" data-mol-nav="'+id+'" aria-label="'+label+'" title="'+label+'"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg><span class="nl">'+label+'</span></button>').join('');
+  NAV.map(([id,label,d])=>'<button type="button" data-mol-open="'+id+'" data-mol-nav="'+id+'" aria-label="'+label+'" title="'+label+'"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg><span class="nl">'+label+'</span></button>'+
+   (id==='precios'?pyaNav():'')).join('');
+}
+// PedidosYa: exclusivo de la sucursal Acassuso (el servidor también lo restringe).
+function pyaNav(){
+ if(activeBranch()!=='acassuso'||!window.GestLokMolinoPYA)return '';
+ return '<button type="button" data-pya-open data-mol-nav="pedidosya" aria-label="PedidosYa" title="PedidosYa"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5h16v1.2a2.7 2.7 0 0 1-5.3.6 2.7 2.7 0 0 1-5.4 0 2.7 2.7 0 0 1-5.3-.6z"/><path d="M5.5 13v7h13v-7M10 20v-4h4v4"/></svg><span class="nl">PedidosYa</span></button>';
 }
 const sectionName=()=>opened?(NAV.find(x=>x[0]===section)||[])[1]||'':'';
 // ── Inicio de El Molino Café (09/11/2026): un solo logo, sin botones repetidos ──
@@ -608,5 +614,5 @@ document.addEventListener('submit',e=>{
 document.addEventListener('change',e=>{if(!opened||section!=='historial'||historyMode!=='mensual')return;if(e.target?.id==='gl-molino-month'){void loadMonth(String(e.target.value||''));}});
 document.addEventListener('keydown',e=>{if(opened&&e.key==='Escape'){e.preventDefault();unmount();}});
 document.addEventListener('click',e=>{if(e.target.closest('[data-mol-home-retry]')){e.preventDefault();home.at=0;home.error='';loadHome(true);}});
-window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();},homeTile,homeHTML,brandSidebar,navHTML,sectionName,logoHTML,open:begin,close:unmount});
+window.GestLokMolino=Object.freeze({attach(ctx){api=ctx;css();window.GestLokMolinoPYA?.attach?.(ctx);},homeTile,homeHTML,brandSidebar,navHTML,sectionName,logoHTML,open:begin,close:unmount});
 })();
