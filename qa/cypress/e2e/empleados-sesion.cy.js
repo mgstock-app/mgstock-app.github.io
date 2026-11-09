@@ -9,7 +9,7 @@ function setup(local){
   // Horarios en un solo lugar: planilla del local y (solo Munro) historial de semanas, sin pagos para el gerente.
   if(req.url.includes('/rest/v1/rpc/rm_app_branch_schedule_links')){req.reply([{local_id:local,local_name:local==='dt'?'Torcuato':'Munro',url:'https://docs.google.com/spreadsheets/d/planilla-de-prueba/edit'}]);return;}
   if(req.url.includes('/rest/v1/rpc/rm_horarios_locales')){req.reply(local==='munro'?[{local_id:'munro',local_name:'Munro',conectado:true,ultimo_envio_at:'2026-11-02T15:19:00Z',codigo_at:null,puede_administrar:false}]:[]);return;}
-  if(req.url.includes('/rest/v1/rpc/rm_horarios_historial')){req.reply([{desde:'2026-10-19',hasta:'2026-10-25',filas:[{colaborador:'Kati',puesto:'Staff',cobra_por:'Horas',trabajado:'39:00',off:'4:30',feriado:'–',ausentes:'–',vacaciones:'–',total:'43:30',observaciones:''}],recibido_at:'2026-11-02T15:06:00Z',actualizaciones:1,pagos:{}}]);return;}
+  if(req.url.includes('/rest/v1/rpc/rm_horarios_historial')){req.reply([{desde:'2026-10-19',hasta:'2026-10-25',archivo_id:'00000000-0000-4000-8000-000000000002',filas:[{colaborador:'Kati',puesto:'Staff',cobra_por:'Horas',trabajado:'39:00',off:'4:30',feriado:'–',ausentes:'–',vacaciones:'–',total:'43:30',observaciones:''}],recibido_at:'2026-11-02T15:06:00Z',actualizaciones:1,pagos:{}}]);return;}
   req.reply({statusCode:200,body:[]});
  });
 }

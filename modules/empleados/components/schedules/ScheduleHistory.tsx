@@ -71,7 +71,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
     horariosHistoryApi
       .historial(localId)
       .then((lista) => {
-        if (active) setSemanas(lista);
+        if (active) setSemanas(localId === "munro" ? lista.filter(s => Boolean(s.archivo_id)) : lista);
       })
       .catch((e: unknown) => {
         if (!active) return;
@@ -84,6 +84,14 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
   }, [localId]);
 
   const local = useMemo(() => locales?.find((l) => l.local_id === localId) ?? null, [locales, localId]);
+  async function refrescarHistorial() {
+    try {
+      const lista = await horariosHistoryApi.historial(localId);
+      setSemanas(localId === "munro" ? lista.filter(s => Boolean(s.archivo_id)) : lista);
+    } catch (e) {
+      setError(mensaje(e, "No se pudo actualizar el historial de horarios."));
+    }
+  }
   // «Pago» y «por pagar» son un control interno del dueño (y la creadora): los gerentes no los ven.
   const admin = local?.puede_administrar === true;
   const porPagar = useMemo(() => pendientes(semanas ?? []), [semanas]);
@@ -188,7 +196,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
         </>
       )}
       <p className={styles.lead}>
-        Resumen y Semana por fecha. Los PDF archivados se conservan aunque se limpie la planilla.
+        Resumen y Semana por fecha. Las copias manuales y los PDF anteriores se conservan aunque cambie la planilla.
         Buscá por colaborador, fecha o mes.
       </p>
       {locales.length > 1 && (
@@ -219,7 +227,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
               : "la planilla todavía no está conectada"}
         </p>
       )}
-      {localId === "munro" && tab === "semanas" && <ScheduleLive local={localId} />}
+      {localId === "munro" && tab === "semanas" && <ScheduleLive local={localId} puedeArchivar={admin} archivadas={(semanas ?? []).filter(s => Boolean(s.archivo_id)).map(s => s.desde)} onArchivada={() => { void refrescarHistorial(); }} />}
       {tabs.length > 1 && (
         <div className={styles.tabs} role="tablist" aria-label="Historial horarios">
           {tabs.map(([id, texto]) => (
@@ -237,7 +245,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           <p role="status">Cargando semanas…</p>
         ) : !semanas.length ? (
           <p className={styles.empty}>
-            Todavía no llegó ninguna semana. {local?.puede_administrar ? "Conectá la planilla desde la pestaña «Conexión con Google Sheets»." : "La dueña tiene que conectar la planilla."}
+            Todavía no hay semanas enviadas al historial. {localId === "munro" ? "La semana en vivo aparece arriba y se guarda con «Enviar a historial»." : local?.puede_administrar ? "Conectá la planilla desde la pestaña «Conexión con Google Sheets»." : "La dueña tiene que conectar la planilla."}
           </p>
         ) : (
           <>
@@ -444,7 +452,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
             <li>Tocá «Generar código». Si ya había uno, el anterior deja de funcionar.</li>
             <li>Abrí la planilla de horarios de {local.local_name} → Extensiones → Apps Script. Conservá una copia del código existente antes de incorporar este código y guardá.</li>
             <li>Recargá la planilla. En el menú «GESTLOK» elegí «Conectar con GESTLOK (una sola vez)» y aceptá los permisos de Google.</li>
-            <li>Se archivan ambas hojas los lunes a partir de las 08:00 (Argentina), con reintentos si Google demora. Antes de limpiar o cambiar fechas, también podés elegir «GESTLOK → Guardar semana en historial»: guarda los PDF completos de Semana y Resumen. Esperá la confirmación y verificá ambos acá.</li>
+            <li>{localId === "munro" ? "En Munro, Semana y Resumen se sincronizan al editar y cada 5 minutos. Para guardar, usá «Enviar a historial» dentro de GESTLOK. No hay archivo automático los lunes. Si tenías un código anterior, reemplazá el Apps Script y volvé a conectar para eliminar el disparador viejo." : "Para este local se mantiene la configuración actual de archivo de horarios."}</li>
           </ol>
           <button type="button" className={styles.btnPrincipal} disabled={ocupado === "codigo"} onClick={() => void generar()}>
             <KeyRound size={17} aria-hidden="true" /> {local.conectado ? "Generar un código nuevo" : "Generar código"}

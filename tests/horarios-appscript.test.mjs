@@ -84,3 +84,17 @@ test('Munro: archiva valores mostrados, colores y celdas combinadas; rechaza cam
  assert.throws(()=>context.guardarArchivoGestlok(ss),/cambió durante/);
  assert.equal(posts,1);
 });
+
+
+test('Munro: Apps Script sincroniza en vivo y desinstala el archivo automatico anterior',()=>{
+ const text=mod.exports.scriptParaSheets('test-code','https://example.supabase.co','public-test',true);
+ const menu=text.slice(text.indexOf("function onOpen()"),text.indexOf("function enviarSemana()"));
+ assert.match(menu,/Enviar la semana ahora/);
+ assert.doesNotMatch(menu,/Guardar semana en historial|Activar archivo lunes/);
+ const connect=text.slice(text.indexOf("function conectarGestlok()"),text.indexOf("function enviarEnVivoGestlok()"));
+ assert.match(connect,/archivoProgramadoGestlok/);
+ assert.match(connect,/ScriptApp\.deleteTrigger\(t\)/);
+ assert.match(connect,/everyMinutes\(5\)/);
+ assert.doesNotMatch(connect,/^\s*instalarArchivoGestlok\(\);/m);
+ assert.match(text,/En Munro el historial se guarda desde GESTLOK/);
+});
