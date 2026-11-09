@@ -34,7 +34,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-zayro-admin.js?rev=zayro-public-shop-20261108",
     "/stock/gestlok-scanner-menu.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
-    "/stock/gestlok-molino.js?rev=pedidos-molino-20261108",
+    "/stock/gestlok-molino.js?rev=devoluciones33-20261108",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
@@ -84,7 +84,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
-      if (!visitor) await load("/stock/gestlok-molino.js?rev=pedidos-molino-20261108");
+      if (!visitor) await load("/stock/gestlok-molino.js?rev=devoluciones33-20261108");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
