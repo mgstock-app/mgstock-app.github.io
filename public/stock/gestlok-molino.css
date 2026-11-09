@@ -278,3 +278,53 @@ body.gl-molino-open .gl-soporte-float{z-index:100101}
  .gl-molino-header .gl-molino-brand--header{width:80px;}
  .gl-molino-home-head>.gl-molino-brand{margin-left:0;}
 }
+
+/* ── Inicio de El Molino Café (09/11/2026): un logo, avisos por sucursal, sin botones repetidos ── */
+.gl-mol-dash{display:flex;flex-direction:column;gap:26px;max-width:1180px;font-family:Inter,system-ui,sans-serif;color:#1B2733}
+.gl-mol-dash-head h1{margin:0;font-family:Fraunces,Lora,Georgia,serif;font-size:clamp(30px,4vw,40px);line-height:1.1;font-weight:700;color:#1B2733}
+.gl-mol-dash-head p{margin:8px 0 0;font-size:16px;color:#5E6B76}
+.gl-mol-dash-block{display:flex;flex-direction:column;gap:14px}
+.gl-mol-dash h2{margin:0;font-size:18px;font-weight:700;color:#1B2733}
+.gl-mol-dash-cards{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.gl-mol-dash-card{background:#fff;border:1px solid #E7E1D6;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:none}
+.gl-mol-dash-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.gl-mol-dash-card h3{margin:0;font-size:17px;font-weight:700;color:#1B2733}
+.gl-mol-dash-card p{margin:0;font-size:15px;line-height:1.5;color:#4A5763}
+.gl-mol-badge{padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.gl-mol-badge--alert{background:#FCEBE3;color:#9E3A14}
+.gl-mol-badge--wait{background:#FDF3D3;color:#7A5A00}
+.gl-mol-badge--ok{background:#E3F3EA;color:#17663A}
+.gl-mol-btn,.gl-mol-btn-primary{margin-top:auto;min-height:46px;border-radius:10px;font:600 15px Inter,system-ui,sans-serif;cursor:pointer;padding:0 16px}
+.gl-mol-btn-primary{border:none;background:#16202E;color:#fff}
+.gl-mol-btn-primary:hover{background:#24344A}
+.gl-mol-btn{border:1px solid #CFC7B8;background:#fff;color:#16202E}
+.gl-mol-btn:hover{border-color:#16202E}
+.gl-mol-link{border:none;background:none;padding:6px 0;min-height:44px;font:600 14px Inter,system-ui,sans-serif;color:#16202E;text-decoration:underline;cursor:pointer}
+.gl-mol-dash-row{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.gl-mol-dash-moves ul{list-style:none;margin:0;padding:0}
+.gl-mol-dash-moves li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #EFEAE1;font-size:15px}
+.gl-mol-dash-moves time{font-size:14px;color:#5E6B76;white-space:nowrap}
+.gl-mol-dash-stats{display:flex;gap:28px;flex-wrap:wrap}
+.gl-mol-dash-stats div{display:flex;flex-direction:column;gap:2px}
+.gl-mol-dash-stats b{font-family:Fraunces,Lora,Georgia,serif;font-size:32px;color:#1B2733}
+.gl-mol-dash-stats span{font-size:14px;color:#5E6B76}
+.gl-mol-dash-empty,.gl-mol-dash-loading{color:#5E6B76;font-size:15px}
+/* Invitar: franja compacta, secundaria. */
+.gl-mol-dash-invite .gl-invite-home{border:1px dashed #CFC7B8!important;background:transparent!important;box-shadow:none!important;padding:16px 20px!important;border-radius:16px!important}
+.gl-mol-dash-invite .gl-invite-home h2,.gl-mol-dash-invite .gl-invite-home h3{font-size:15px!important}
+/* Menú lateral oscuro con el logo de la sucursal (solo El Molino Café). */
+body.gl-molino-tenant #side,body.gl-molino-tenant #side .side-in{background:#16202E!important;color:#E9EEF3}
+body.gl-molino-tenant #side .brand .mg,body.gl-molino-tenant #side .brand>div{display:none!important}
+body.gl-molino-tenant #side .brand{justify-content:center;width:100%}
+body.gl-molino-tenant #side .gl-molino-side-logo .gl-molino-brand--header{width:160px;margin:0 auto}
+body.gl-molino-tenant #side .gl-molino-side-logo small{color:#AFC0CF!important;letter-spacing:.08em;text-transform:uppercase}
+body.gl-molino-tenant #side .status{display:none!important}
+body.gl-molino-tenant #snav button,body.gl-molino-tenant #snav a{color:#DCE4EB!important;background:transparent!important;border-color:transparent!important}
+body.gl-molino-tenant #snav button:hover{background:rgba(255,255,255,.07)!important}
+body.gl-molino-tenant #snav button.on,body.gl-molino-tenant #snav button[aria-current="page"]{background:rgba(255,255,255,.12)!important;color:#fff!important}
+body.gl-molino-tenant #snav .i,body.gl-molino-tenant #snav svg{color:currentColor;stroke:currentColor}
+body.gl-molino-tenant #snav small{color:#AFC0CF!important}
+body.gl-molino-tenant #snav .gl-molino-navgroup{color:#AFC0CF!important}
+body.gl-molino-tenant #side .side-f,body.gl-molino-tenant #side .side-f *{color:#E9EEF3}
+body.gl-molino-tenant #side .side-f button,body.gl-molino-tenant #side .side-f a{background:transparent!important;border-color:rgba(255,255,255,.22)!important}
+body.gl-molino-tenant #side .xside{color:#E9EEF3}

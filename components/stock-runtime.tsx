@@ -21,7 +21,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=molino-brand-20261109",
+    "/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
     "/stock/app.js?rev=molino-brand-20261109",
   ];
@@ -34,7 +34,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-zayro-admin.js?rev=zayro-public-shop-20261108",
     "/stock/gestlok-scanner-menu.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
-    "/stock/gestlok-molino.js?rev=marca-sucursales-20261109",
+    "/stock/gestlok-molino.js?rev=molino-inicio-avisos-20261109",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
@@ -84,11 +84,11 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
-      if (!visitor) await load("/stock/gestlok-molino.js?rev=marca-sucursales-20261109");
+      if (!visitor) await load("/stock/gestlok-molino.js?rev=molino-inicio-avisos-20261109");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=molino-brand-20261109");
+      await load("/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
@@ -101,6 +101,8 @@ export function StockRuntime() {
       await load("/stock/gestlok-demo-metrics.js");
       await load("/stock/gestlok-creator.js?rev=el-molino-pendiente-20261107");
       if (!visitor) await load("/stock/gestlok-support.js?rev=menu-empresa-20261108");
+      // Modo diseño: solo la creadora ve el botón; los cambios se leen por empresa.
+      if (!visitor) await load("/stock/gestlok-design-mode.js?rev=modo-diseno-20261109");
       if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.

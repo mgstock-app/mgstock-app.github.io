@@ -89,6 +89,9 @@
   }
   function gerenteHome(){
     if(api?.role?.()!=='gerente'||!api.S.local)return '';
+    // El Molino Café: Inicio propio con avisos de la sucursal (mismo diseño para todos los roles).
+    const molinoHome=window.GestLokMolino?.homeHTML?.()||'';
+    if(molinoHome)return molinoHome;
     const local=api.S.local;
     const isMolino=api.S.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e';
     const brand=(api.S.equipo||[]).some(e=>e.rol==='dueno'&&e.logoId==='mi-gusto');
@@ -236,6 +239,8 @@
   }
   function view(locals,card){
     shown={locals:locals||[],card:card||(()=>'')};
+    // El Molino Café dentro de una sucursal: Inicio propio con avisos según el local.
+    if(api?.S?.local){const molinoHome=window.GestLokMolino?.homeHTML?.()||'';if(molinoHome)return molinoHome;}
     if(state.status==='loading')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="status">Comprobando tus áreas autorizadas…</p></section>';
     if(state.status==='error')return '<section class="gl-owner-landing gl-owner-landing-wait"><p role="alert">No pudimos verificar tus permisos. Revisá la conexión.</p><button class="btn" data-owner-area-retry>Reintentar</button></section>';
     // La perfumería tiene una microapp propia. No heredar carpetas ni
