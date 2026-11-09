@@ -20,7 +20,7 @@ drop trigger if exists scanner_capture_new_company on gestlok_platform.companies
 -- Enrollment is deliberately disabled until a verified plan-selection workflow exists.
 
 create or replace function public.gestlok_scanner_approve_new_company(p_tenant uuid)
-returns boolean language plpgsql security definer set search_path='' as $
+returns boolean language plpgsql security definer set search_path='' as $scanner_approve$
 declare v_email text;
 begin
  if auth.uid() is null or not exists (
@@ -33,7 +33,7 @@ begin
  insert into gestlok_platform.scanner_new_tenant_enrollment(tenant_id,owner_email)
  values(p_tenant,v_email) on conflict(tenant_id) do nothing;
  return true;
-end $;
+end $scanner_approve$;
 revoke all on function public.gestlok_scanner_approve_new_company(uuid) from public,anon;
 grant execute on function public.gestlok_scanner_approve_new_company(uuid) to authenticated;
 
