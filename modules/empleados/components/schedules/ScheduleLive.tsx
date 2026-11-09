@@ -9,7 +9,7 @@ import type { HojaArchivada } from "@/utils/schedule-history";
 import styles from "./ScheduleHistory.module.css";
 
 type Live = { desde: string; hasta: string; tablas: Record<"Resumen" | "Semana", HojaArchivada>; actualizado_at: string };
-type Props = {local:string; puedeArchivar:boolean; archivadas:string[]; onArchivada:()=>void};
+type Props = {local:string; puedeArchivar:boolean; onArchivada:()=>void};
 
 function mondayArgentina(): string {
   const parts = new Intl.DateTimeFormat("en-US", {timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
@@ -24,7 +24,7 @@ const fecha = (date:string) => {
 };
 const hora = (iso:string) => new Date(iso).toLocaleString("es-AR",{timeZone:"America/Argentina/Buenos_Aires",dateStyle:"short",timeStyle:"short"});
 
-export function ScheduleLive({local,puedeArchivar,archivadas,onArchivada}:Props) {
+export function ScheduleLive({local,puedeArchivar,onArchivada}:Props) {
   const [live,setLive] = useState<Live|null>(null);
   const [estado,setEstado] = useState<{manual:boolean;pdf:boolean;pendiente:boolean}|null>(null);
   const [sincronizada,setSincronizada] = useState(false);
