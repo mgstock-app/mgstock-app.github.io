@@ -285,7 +285,7 @@
         ' aria-label="Ingresar a '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-local-icon">'+svg(storeIcon,19)+'</span><span>'+esc(l.name||l.id)+'</span>'+
         '<span aria-hidden="true">→</span></button>').join('');
-      return '<details class="gl-ch-premium-company" data-creator-company="'+esc(c.tenant_id)+'">'+
+      return '<details class="gl-ch-premium-company gl-company-folder" data-creator-company="'+esc(c.tenant_id)+'">'+
         '<summary aria-label="Seleccionar empresa '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-company-icon">'+svg(businessIcon,27)+'</span>'+
         '<span class="gl-ch-premium-company-title"><b>'+esc(c.name)+'</b><small>Empresa · Sucursales</small></span>'+
