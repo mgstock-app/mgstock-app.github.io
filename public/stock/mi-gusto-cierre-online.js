@@ -46,7 +46,7 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
    (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-const emptySelected=s=>!!s&&Array.isArray(s.movements)&&s.movements.length===0&&emptyCheckedFor===s.id;
+const emptySelected=s=>!!s&&Array.isArray(s.movements)&&!s.movements.some(m=>m.method!=='efectivo')&&emptyCheckedFor===s.id;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;emptyCheckedFor=null;error='';}
 function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
 async function rpc(name,args={}){
@@ -179,14 +179,14 @@ function entry(){
 }
 function movements(){
  const s=snapshot?.active;
- const hasMoves=!!s&&Array.isArray(s.movements)&&s.movements.length>0;
+ const hasMoves=!!s&&Array.isArray(s.movements)&&s.movements.some(m=>m.method!=='efectivo');
  const declared=emptySelected(s);
  const canClose=!!s&&writable()&&(declared||(hasMoves&&!!s.photo_path));
  return '<div class="mg-on-section">'+entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
   movementList()+'</div>'+status()+
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
- (s?'<label class="mg-on-empty-choice"><input type="checkbox" data-mgon-empty="'+esc(s.id)+'" '+(declared?'checked ':'')+(hasMoves||!writable()?'disabled ':'')+'><span><strong>Sin movimientos</strong><small>'+(hasMoves?'Este turno tiene '+s.movements.length+' '+(s.movements.length===1?'comanda registrada':'comandas registradas')+'. Aunque los totales sean $ 0,00, no se puede marcar como vacío. Revisá «Últimos movimientos» o cerrá con foto.':'Confirmá que el turno no tuvo movimientos. Se cerrará sin foto.')+'</small></span></label>':'')+
- '<p class="mg-on-photo-reminder '+(declared||(hasMoves&&s?.photo_path)?'mg-on-photo-ready':'')+'" role="status">'+(declared?'✓ Sin movimientos. No necesitás foto para cerrar.':hasMoves?(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Hay movimientos registrados. Subí la foto para cerrar.'):'Seleccioná «Sin movimientos» para cerrar sin foto.')+'</p></div>'+
+ (s?'<label class="mg-on-empty-choice"><input type="checkbox" data-mgon-empty="'+esc(s.id)+'" '+(declared?'checked ':'')+(hasMoves||!writable()?'disabled ':'')+'><span><strong>Sin movimientos online</strong><small>'+(hasMoves?'Hay comandas online: se requiere foto para cerrar.':'Sin movimientos online. El efectivo queda registrado como control y podés cerrar sin foto.')+'</small></span></label>':'')+
+ '<p class="mg-on-photo-reminder '+(declared||(hasMoves&&s?.photo_path)?'mg-on-photo-ready':'')+'" role="status">'+(declared?'✓ Sin movimientos online. El efectivo queda guardado. No necesitás foto.':hasMoves?(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Hay movimientos registrados. Subí la foto para cerrar.'):'Seleccioná «Sin movimientos online» para cerrar sin foto.')+'</p></div>'+
  (photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
  '<div class="mg-on-close-controls"><button type="button" class="mg-on-close-primary" data-mgon-close '+(!canClose?'disabled':'')+'>Cerrar turno →</button>'+photoControl(s,declared)+'</div></div>'+cashMovementDetail();
 }
@@ -502,12 +502,12 @@ function attach(h){
   if(close&&writable()&&snapshot?.active){
    const s=snapshot.active,declared=emptySelected(s);
    const confirmed=window.confirm(declared?
-    '¿Cerrar el turno '+shiftName(s.turno)+' SIN MOVIMIENTOS y sin foto? Se registrará así en el historial y se abrirá el siguiente turno.':
+    '¿Cerrar el turno '+shiftName(s.turno)+' SIN MOVIMIENTOS ONLINE y sin foto? Los registros de efectivo se conservan.':
     '¿Cerrar el turno '+shiftName(s.turno)+'? Se guardará en el historial y se abrirá el siguiente turno.');
    if(confirmed){
     emptyCheckedFor=null;
     void action(declared?'gestlok_mg_online_close_sin_movimientos':'gestlok_mg_online_close',
-     {p_shift:s.id},declared?'Turno cerrado sin movimientos. Se abrió el siguiente.':'Turno cerrado. Se abrió el siguiente.');
+     {p_shift:s.id},declared?'Turno cerrado sin movimientos online. Se abrió el siguiente.':'Turno cerrado. Se abrió el siguiente.');
     tab='movimientos';showAllMoves=false;
    }
    return;
@@ -530,7 +530,7 @@ function attach(h){
   if(!allowed())return;
   if(e.target.matches?.('[data-mgon-empty]')){
    const s=snapshot?.active;
-   emptyCheckedFor=writable()&&s?.id===e.target.dataset.mgonEmpty&&!s.movements.length&&e.target.checked?s.id:null;
+   emptyCheckedFor=writable()&&s?.id===e.target.dataset.mgonEmpty&&!s.movements.some(m=>m.method!=='efectivo')&&e.target.checked?s.id:null;
    api.render();return;
   }
   if(e.target.matches?.('[data-mgon-photo]')){const file=e.target.files?.[0];choosingPhoto=false;if(file)void uploadPhoto(e.target.dataset.mgonPhoto,file);return;}
