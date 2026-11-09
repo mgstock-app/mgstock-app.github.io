@@ -21,12 +21,22 @@ test("Munro: archivo manual seguro, unico e inmutable",async()=>{
     "create schema rm_test_private",
     "create schema extensions",
     "create schema auth",
+    "create schema gestlok_tenancy",
+    "create function gestlok_tenancy.current_tenant_id() returns uuid language sql stable as $select '00000000-0000-4000-8000-000000000099'::uuid$",
+    "create function auth.jwt() returns jsonb language sql stable as $select '{\"email\":\"manager@example.invalid\"}'::jsonb$",
+    "create function rm_test_private.uid() returns uuid language sql stable as $select auth.uid()$",
+    "create function rm_test_private.app_role() returns text language sql stable as $select coalesce(current_setting('t.role',true),'')$",
+    "create function rm_test_private.gestlok_gerente_locals() returns text[] language sql stable as $select case when current_setting('t.manager',true)='yes' then array['munro']::text[] else '{}'::text[] end$",
+    "create table public.rm_app_local(id text primary key,name text,company_id uuid,organization_id uuid)",
+    "create table public.rm_test_members(user_id uuid,role text,local_id text)",
+    "create table public.rm_manager_permissions(user_id uuid,company_id uuid,organization_id uuid,can_edit boolean)",
+    "create table public.docs(tenant_id uuid,col text,data jsonb)",
     "create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('t.uid',true),'')::uuid$$",
     "create function extensions.digest(text,text) returns bytea language sql immutable as $$select decode(md5($1),'hex')$$",
     "create function rm_test_private.horarios_fecha(text) returns date language sql immutable as $$select to_date($1,'YYYY-MM-DD')$$",
     "create function rm_test_private.horarios_puede_ver(text) returns boolean language sql stable as $$select $1=current_setting('t.local',true)$$",
     "create function rm_test_private.horarios_puede_administrar(text) returns boolean language sql stable as $$select $1=current_setting('t.local',true) and current_setting('t.admin',true)='yes'$$",
-    "create table rm_test_private.horarios_conexiones(local_id text primary key,token_hash text,ultimo_envio_at timestamptz,envios int default 0)",
+    "create table rm_test_private.horarios_conexiones(local_id text primary key,token_hash text,ultimo_envio_at timestamptz,codigo_at timestamptz,envios int default 0)",
     "create table rm_test_private.horarios_semanas(local_id text,semana_desde date,semana_hasta date,filas jsonb,recibido_at timestamptz default now(),actualizaciones int default 1,primary key(local_id,semana_desde),constraint horarios_semanas_check check(extract(isodow from semana_desde)=1 and semana_hasta=semana_desde+6))",
     "create table rm_test_private.horarios_pagos(local_id text,semana_desde date,colaborador text,pagado boolean,marcado_at timestamptz default now())"
   ].join(";\n")+";";
@@ -36,11 +46,14 @@ test("Munro: archivo manual seguro, unico e inmutable",async()=>{
    "20261103234000_horarios_tablas_munro.sql",
    "20261104124000_horarios_en_vivo_munro.sql",
    "20261109153000_munro_horarios_archivo_manual.sql",
-   "20261109163000_munro_revision_historial_manual.sql"
+   "20261109163000_munro_revision_historial_manual.sql",
+   "20261109174000_munro_gerente_archivar_manual.sql"
   ]){
     try{await db.exec(migration(name));}
     catch(e){throw new Error("Falla en migracion "+name+": "+e.message,{cause:e});}
   }
+  await db.query("insert into public.rm_app_local(id,name,company_id,organization_id) values ('munro','Munro','00000000-0000-4000-8000-000000000088','00000000-0000-4000-8000-000000000077')");
+  await db.query("insert into public.docs(tenant_id,col,data) values ('00000000-0000-4000-8000-000000000099','equipo','{\"email\":\"manager@example.invalid\",\"rol\":\"gerente\"}'::jsonb)");
   const monday=(await db.query("select (date_trunc('week',timezone('America/Argentina/Buenos_Aires',now())))::date::text d")).rows[0].d;
   const sunday=(await db.query("select ($1::date + 6)::text d",[monday])).rows[0].d;
   const filas=JSON.stringify([{colaborador:"Persona ficticia",total:"40",puesto:"Turno"}]);
@@ -72,9 +85,16 @@ test("Munro: archivo manual seguro, unico e inmutable",async()=>{
   await db.exec("update rm_test_private.horarios_en_vivo set actualizado_at=now() where local_id='munro'");
   const fresh=await timestamp();
   await db.exec("set role authenticated");
+
+  await db.exec("set t.admin='no';set t.role='manager';set t.manager='yes'");
+  const managerLocal=await rpc("rm_horarios_locales",[]);
+  assert.equal(managerLocal[0]?.puede_administrar,false);
+  assert.equal(managerLocal[0]?.puede_archivar,true);
+  await assert.rejects(()=>rpc("rm_horarios_archivar_manual",["dt",monday,fresh]),/Munro/);
   const saved=await rpc("rm_horarios_archivar_manual",["munro",monday,fresh]);
   assert.equal(saved.ok,true);
   assert.equal(saved.archivada,false);
+  await db.exec("set t.admin='yes';set t.manager='no';set t.role='owner'");
   const again=await rpc("rm_horarios_archivar_manual",["munro",monday,fresh]);
   assert.equal(again.archivada,true);
   const after=await rpc("rm_horarios_estado_archivo",["munro",monday]);
