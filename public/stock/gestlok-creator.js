@@ -118,6 +118,7 @@
       '<label>Nombre de la empresa<input name="empresa" maxlength="100" minlength="2" required placeholder="Ej. Librería Central"></label>'+
       '<label>Nombre del Dueño<input name="dueno" maxlength="100" minlength="2" required placeholder="Ej. Gisela"></label><label>Email del Dueño<input name="email" type="email" autocomplete="off" maxlength="254" required placeholder="dueno@empresa.com"></label>'+
       '<label>Nombre del primer local<input name="local" maxlength="100" minlength="2" required placeholder="Ej. Depósito principal"></label>'+
+      '<label>Plan comercial<select name="plan"><option value="standard">Gestión estándar</option><option value="scanner">Plan Scanner</option></select></label>'+ 
       '<label>Modalidad<select name="modo"><option value="fisica">Tienda física</option><option value="online">Tienda online</option><option value="mixta">Tienda mixta</option></select></label>'+
       '<div class="gl-commerce-wide"><button type="submit" class="btn primary" '+(s.busy?'disabled':'')+'>Crear empresa y carpetas privadas</button></div>'+
       '</form><p class="note">No uses un correo que ya pertenezca a otra empresa GestLok: cada cuenta opera en una sola empresa. La creadora puede preparar todas sin convertirse en integrante.</p></section>';
@@ -168,6 +169,10 @@
       const {data,error}=await sb().rpc('gestlok_creator_prepare_company_named',
         {p_name:get('empresa'),p_owner_email:get('email'),p_mode:get('modo'),p_local_name:get('local'),p_owner_name:get('dueno')});
       if(error)throw error;
+      if(get('plan')==='scanner'){
+        const approved=await sb().rpc('gestlok_scanner_approve_new_company',{p_tenant:data.tenant_id});
+        if(approved.error||approved.data!==true)throw new Error('Empresa creada, pero el Plan Scanner quedó pendiente de aprobación: '+(approved.error?.message||'No autorizado'));
+      }
       s.created=data;s.selected=data.tenant_id;notify('Empresa preparada. Cargá ahora sus productos.');
       form.reset();
       s.busy=false;await refresh();
