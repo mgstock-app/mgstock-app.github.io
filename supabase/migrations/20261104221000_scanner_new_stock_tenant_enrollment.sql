@@ -12,17 +12,31 @@ revoke all on gestlok_platform.scanner_new_tenant_enrollment from public, anon, 
 create or replace function gestlok_platform.scanner_capture_new_company()
 returns trigger language plpgsql security definer set search_path='' as $$
 begin
- -- Only the creator-controlled provisioning function inserts platform companies.
- -- Do not update or backfill preexisting companies.
- insert into gestlok_platform.scanner_new_tenant_enrollment(tenant_id,owner_email)
- values(new.tenant_id,lower(btrim(new.owner_email)));
+ -- Fail closed: generic company creation does not imply Scanner subscription.
+ -- Entitlements must be explicitly approved by the creator, not inferred from mode or email.
+ return new;
  return new;
 end $$;
 revoke all on function gestlok_platform.scanner_capture_new_company() from public,anon,authenticated;
 drop trigger if exists scanner_capture_new_company on gestlok_platform.companies;
-create trigger scanner_capture_new_company
-after insert on gestlok_platform.companies
-for each row execute function gestlok_platform.scanner_capture_new_company();
+-- No automatic trigger: a generic new business must not receive Scanner access.
+-- Enrollment is deliberately disabled until a verified plan-selection workflow exists.
+
+create or replace function gestlok_platform.scanner_approve_new_company(p_tenant uuid)
+returns boolean language plpgsql security definer set search_path='' as $
+declare v_email text;
+begin
+ if auth.uid() is null or not exists (
+   select 1 from gestlok_platform.admins a where a.user_id=auth.uid()
+ ) then raise exception 'Solo la creadora puede autorizar Scanner' using errcode='42501'; end if;
+ select lower(btrim(c.owner_email)) into v_email
+ from gestlok_platform.companies c where c.tenant_id=p_tenant;
+ if v_email is null then return false; end if;
+ insert into gestlok_platform.scanner_new_tenant_enrollment(tenant_id,owner_email)
+ values(p_tenant,v_email) on conflict(tenant_id) do nothing;
+ return true;
+end $;
+revoke all on function gestlok_platform.scanner_approve_new_company(uuid) from public,anon,authenticated;
 
 create or replace function public.gestlok_scanner_claim_new_company(p_tenant uuid)
 returns boolean language plpgsql security definer set search_path='' as $$
