@@ -36,6 +36,7 @@ export type HorarioLocal = {
   ultimo_envio_at: string | null;
   codigo_at: string | null;
   puede_administrar: boolean;
+  puede_archivar: boolean;
 };
 export type Pendiente = { semana: HorarioSemana; fila: HorarioFila };
 

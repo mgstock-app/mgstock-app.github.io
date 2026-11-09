@@ -251,7 +251,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           {vistaMunro === "vivo" && (
             <ScheduleLive
               local={localId}
-              puedeArchivar={admin}
+              puedeArchivar={local?.puede_archivar === true}
               onArchivada={() => { void refrescarHistorial(); }}
             />
           )}
