@@ -161,3 +161,38 @@ body.gl-molino-open .gl-soporte-float{z-index:100101}
 .gl-molino-month-day>h4{font-size:15px;color:#183d62;margin:0 0 10px}
 .gl-molino-month-totals{margin-bottom:15px}
 @media(max-width:740px){.gl-molino-return-ledger{padding:10px;margin:12px 0}.gl-molino-return-totals{display:grid;grid-template-columns:1fr}.gl-molino-return-totals span{min-width:0}.gl-molino-month-label{justify-content:space-between}.gl-molino-month-label input{max-width:170px}}
+
+
+/* El Molino: encabezado legible con barra abierta; modo íconos sin palabras cortadas. */
+#app:not(.gl-sidebar-collapsed) #snav .gl-molino-navgroup{
+  display:block;
+  overflow-wrap:normal;
+  word-break:normal;
+  line-height:1.4;
+  max-width:100%;
+}
+@media(min-width:900px){
+  /* El ancho plegado es intencional: el título pertenece solo a la vista extendida. */
+  #app.gl-sidebar-collapsed #snav .gl-molino-navgroup{
+    display:none!important;
+  }
+  #app.gl-sidebar-collapsed #snav button[data-mol-nav]{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:10px 5px;
+    min-width:0;
+    width:100%;
+    gap:0;
+  }
+  #app.gl-sidebar-collapsed #snav button[data-mol-nav] .nl{
+    display:none!important;
+  }
+  #app.gl-sidebar-collapsed #snav button[data-mol-nav] svg.i{
+    display:block;
+    width:20px;
+    height:20px;
+    flex:0 0 20px;
+    margin:0;
+  }
+}
