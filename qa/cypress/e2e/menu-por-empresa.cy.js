@@ -41,6 +41,40 @@ function inicioMolino() {
 describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
   Cypress.on('uncaught:exception', e => { if (e.message.includes('Minified React error #418')) return false; });
 
+  it('identifica correctamente los logos de Acassuso y San Isidro en celular y escritorio', () => {
+    cy.viewport(390,844);login('dueno@example.com',true);
+    cy.window().then(w=>{
+      const logo=w.GestLokMolino;
+      expect(logo).to.have.property('logoHTML');
+      expect(logo.logoHTML('loc-6c8717ea5f78426b9458','hero',MOLINO))
+        .to.include('data-molino-brand="acassuso"');
+      expect(logo.logoHTML('loc-6c8717ea5f78426b9458-si','hero',MOLINO))
+        .to.include('data-molino-brand="san-isidro"');
+      expect(logo.logoHTML('loc-6c8717ea5f78426b9458-si','hero',
+        'cb0dc04a-9a13-434f-a3d0-47f1d8f39670')).to.equal('');
+      const test=w.document.createElement('div');
+      test.id='molino-brand-qa';test.style.cssText='position:fixed;top:10px;left:10px;z-index:999999;background:white;padding:8px;width:min(90vw,320px)';
+      test.innerHTML=logo.logoHTML('loc-6c8717ea5f78426b9458','card',MOLINO)
+        +logo.logoHTML('loc-6c8717ea5f78426b9458-si','card',MOLINO);
+      w.document.body.appendChild(test);
+    });
+    cy.get('#molino-brand-qa [data-molino-brand="acassuso"]').should('be.visible').within(()=>{
+      cy.get('small').should('have.text','Acassuso');
+      cy.get('img').should('have.attr','alt','Molino café')
+        .and('have.attr','src','/img/molino-cafe-marca.svg');
+    });
+    cy.get('#molino-brand-qa [data-molino-brand="san-isidro"]').should('be.visible')
+      .find('small').should('have.text','San Isidro');
+    cy.get('#molino-brand-qa img').first().should($img=>{
+      expect($img[0].complete).to.equal(true);
+      expect($img[0].naturalWidth).to.be.greaterThan(0);
+    });
+    cy.get('#molino-brand-qa').then($el=>$el.remove());
+    cy.document().then(d=>{
+      if(d.documentElement.scrollWidth>392)throw Error('Desborde horizontal con logos de sucursales');
+    });
+  });
+
   it('el dueño de El Molino ve solo el Vínculo entre sucursales en el menú y en Inicio', () => {
     cy.viewport(1280, 900); login('dueno@example.com', true);
     cy.get('.gl-oh-top [data-owner-nav="menu"]', { timeout: 15000 }).click();
