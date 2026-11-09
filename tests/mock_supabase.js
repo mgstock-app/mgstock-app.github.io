@@ -427,6 +427,19 @@
         item.seen_at=item.seen_at||new Date().toISOString();item.seen_by='mock-sanisidro';
         return {data:{...item},error:null};
       }
+      if (['gestlok_molino_save_sender_note','gestlok_molino_save_observation'].includes(fn)){
+        if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)
+          return {data:null,error:{code:'42501',message:'Sin autorización'}};
+        const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':
+          (window.__molinoBranchOverride==='acassuso'?'acassuso':'san_isidro');
+        const sender=fn==='gestlok_molino_save_sender_note';
+        if(!(sender?['admin','dueno','san_isidro']:['admin','dueno','acassuso']).includes(scope))
+          return {data:null,error:{code:'42501',message:'Sucursal sin permiso'}};
+        const row=(window.__molinoEnvios||[]).find(x=>x.id===args?.p_id);
+        if(!row||row.acknowledged_at)return {data:null,error:{code:'42501',message:'Envío inexistente o confirmado'}};
+        row[sender?'note':'acknowledgement_note']=String(args?.p_note||'');
+        return {data:{...row},error:null};
+      }
       if (['gestlok_molino_save_price_basis','gestlok_molino_save_return',
         'gestlok_molino_acknowledge','gestlok_molino_returns_month'].includes(fn)){
         if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)
@@ -467,6 +480,16 @@
           return {data:entry,error:null};
         }
         if(fn==='gestlok_molino_acknowledge'){
+          const sent=(window.__molinoEnvios||[]).find(x=>x.id===args?.p_id);
+          if(sent){
+            if(!['admin','dueno','acassuso'].includes(scope))
+              return {data:null,error:{code:'42501',message:'Solo Acassuso confirma envíos'}};
+            if(sent.acknowledged_at)return {data:null,error:{code:'42501',message:'Ya confirmado'}};
+            sent.acknowledged_at=new Date().toISOString();
+            sent.acknowledgement_note=String(args?.p_note||'');
+            return {data:{...sent},error:null};
+          }
+
           if(!canAck)return {data:null,error:{code:'42501',message:'Solo San Isidro marca OK'}};
           const row=returned.find(x=>x.id===args?.p_id);
           if(!row)return {data:null,error:{code:'42501',message:'No encontrado'}};
@@ -495,7 +518,7 @@
       if (fn === 'gestlok_molino_state' || fn === 'gestlok_molino_history'){
         if(window.__tenantOverride!=='6c8717ea-5f78-426b-9458-74a5dcac6e4e'||!a)return {data:null,error:{code:'42501',message:'Sin autorización'}};
         const scope=a.rol==='creadora'?'admin':a.rol==='dueno'?'dueno':(window.__molinoBranchOverride==='acassuso'?'acassuso':'san_isidro');
-        return {data:{scope,day:new Date().toISOString().slice(0,10),closed:false,prices:window.__molinoPrices||[],envios:[],devoluciones:window.__molinoReturns||[],history:[]},error:null};
+        return {data:{scope,day:new Date().toISOString().slice(0,10),closed:false,prices:window.__molinoPrices||[],envios:window.__molinoEnvios||[],devoluciones:window.__molinoReturns||[],history:[]},error:null};
       }
       if (fn === 'gestlok_creator_audit'){
         if(a?.rol!=='creadora')return {data:null,error:{code:'42501',message:'Sin permiso'}};

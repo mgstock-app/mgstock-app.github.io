@@ -190,6 +190,12 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
       .and('contain.text','12.870');
     cy.get('#gl-molino-panel .gl-molino-ledger-sum').should('contain.text','Total monto final del día').and('contain.text','26.130');
     cy.get('#gl-molino-panel [data-mol-day-final-summary]').should('contain.text','26.130');
+    // La recepción de una devolución corresponde a San Isidro, no a Acassuso.
+    cy.window().then(w=>{
+      w.GestLokMolino.close();
+      w.GestLokMolino.attach({S:{me:{tenant_id:MOLINO},local:'loc-6c8717ea5f78426b9458-si'},role:()=> 'dueno'});
+      w.GestLokMolino.open('devoluciones');
+    });
     cy.get('#gl-molino-panel [data-mol-ack]').should('have.length',2).first().click();
     cy.get('#gl-molino-panel .gl-molino-item.is-confirmed').should('have.length',1);
     cy.get('#gl-molino-panel [data-mol-tab="historial"]').click();
@@ -202,5 +208,43 @@ describe('Menú por empresa · El Molino Café y Mi Gusto', () => {
     cy.get('#gl-molino-panel .gl-molino-month-day').should('contain.text','Pan test')
       .and('contain.text','kg').and('contain.text','g');
     cy.document().then(d=>{if(d.documentElement.scrollWidth>392)throw Error('Desborde horizontal en devoluciones');});
+  });
+
+  it('Productos enviados: San Isidro deja nota sin OK; únicamente Acassuso confirma recepción',()=>{
+    cy.viewport(1280,850);
+    login('dueno@example.com',true);
+    cy.window().then(w=>{
+      w.__molinoEnvios=[{
+        id:'envio-recepcion-qa',kind:'envio',product:'Medialunas',quantity:3,note:'',
+        acknowledgement_note:'',acknowledged_at:null,created_at:new Date().toISOString(),
+        day:new Date().toISOString().slice(0,10)
+      }];
+      w.GestLokMolino.attach({S:{me:{tenant_id:MOLINO},local:'loc-6c8717ea5f78426b9458-si'},role:()=> 'dueno'});
+      w.GestLokMolino.open('envios');
+    });
+    cy.get('#gl-molino-panel .gl-molino-item').should('contain.text','Medialunas');
+    cy.get('#gl-molino-panel [data-mol-sender-save]').should('be.visible');
+    cy.get('#gl-molino-panel [data-mol-ack]').should('not.exist');
+    cy.get('#gl-molino-panel [data-mol-note]').should('not.exist');
+    cy.get('#gl-molino-panel [data-mol-sender-note]').type('Se enviaron en buen estado');
+    cy.get('#gl-molino-panel [data-mol-sender-save]').click();
+    cy.get('#gl-molino-panel').should('contain.text','Se enviaron en buen estado').and('contain.text','Pendiente de recepción');
+    cy.window().then(w=>{
+      expect(w.__molinoEnvios[0].acknowledged_at).to.equal(null);
+      w.GestLokMolino.close();
+      w.__molinoBranchOverride='acassuso';
+      w.GestLokMolino.attach({S:{me:{tenant_id:MOLINO},local:'loc-6c8717ea5f78426b9458'},role:()=> 'dueno'});
+      w.GestLokMolino.open('envios');
+    });
+    cy.get('#gl-molino-panel [data-mol-sender-save]').should('not.exist');
+    cy.get('#gl-molino-panel [data-mol-ack]').should('be.visible');
+    cy.get('#gl-molino-panel input[data-mol-ack-note]').type('Recibimos los tres');
+    cy.get('#gl-molino-panel [data-mol-ack]').click();
+    cy.get('#gl-molino-panel .gl-molino-item.is-confirmed').should('contain.text','Recibido por Acassuso');
+    cy.window().then(w=>{
+      expect(w.__molinoEnvios[0].acknowledged_at).to.be.a('string');
+      expect(w.__molinoEnvios[0].note).to.equal('Se enviaron en buen estado');
+      expect(w.__molinoEnvios[0].acknowledgement_note).to.equal('Recibimos los tres');
+    });
   });
 });
