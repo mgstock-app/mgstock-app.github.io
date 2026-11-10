@@ -322,7 +322,7 @@
    const prefix=OWNER_UID+'/'+targetId+'/';
    const suffix=()=>Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
    const originalPath=prefix+suffix(),editedPath=prefix+suffix();
-   const uploaded=[];
+   const uploaded=[];let committed=false;
    try{
     for(const [path,blob] of [[originalPath,original],[editedPath,edited]]){
      const up=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
@@ -335,11 +335,13 @@
      }).eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT)
        .eq('owner_uid',OWNER_UID).select('id').single();
     if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo asociar la foto al producto correcto.');
+    committed=true;
     const old=[item.photo_path,item.original_photo_path].filter(p=>p&&!uploaded.includes(p));
-    if(old.length)await storage.remove(old);
+    // Si falla la limpieza, NUNCA borrar las fotos recién guardadas.
+    try{if(old.length)await storage.remove(old);}catch(e){console.warn('No se pudo limpiar una foto anterior.',e);}
     await loadItems();
    }catch(err){
-    if(uploaded.length)await storage.remove(uploaded);
+    if(!committed&&uploaded.length)await storage.remove(uploaded);
     throw err;
    }
   },'Foto con fondo blanco guardada en «'+item.product+'». Original conservado.',
