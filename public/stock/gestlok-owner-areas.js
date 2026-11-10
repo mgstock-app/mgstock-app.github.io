@@ -126,6 +126,7 @@
       if(error||!data||data.role!=='dueno'||data.tenant_id!==api.S.me?.tenant_id)throw Error('Contexto no autorizado');
       await window.GestLokPilot?.refresh?.(data,api);
       await window.GestLokMisProductos?.refresh?.(data,api);
+      await window.GestLokTiendaNube?.refresh?.(data,api);
       await window.GestLokCamiMonthly?.refresh?.(data,api);
       window.GestLokFuturePricing?.refresh?.(data,api);
       const next={status:'ready',data};
