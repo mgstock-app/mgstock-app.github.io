@@ -40,7 +40,8 @@
       '<button type="button" '+attr+
       ' class="gl-scanner-nav" data-scanner-section="'+key+'"><span class="nl">'+escape(displayLabel(label,key,host))+'</span></button>'
     ).join('')+
-    (isCreator(host)?'':'<button type="button" class="gl-scanner-nav" data-zayro-open><span class="nl">Tienda Online · ZAYRO</span></button>');
+    (isCreator(host)?'':'<button type="button" class="gl-scanner-nav" data-zayro-open><span class="nl">Tienda Online · ZAYRO</span></button>')+
+    (window.GestLokMisProductos?.authorized?.()?'<button type="button" class="gl-scanner-nav" data-mp-open><span class="nl">Mis Productos</span></button>':'');
   }
   function home(context,host,shown){
     if(context?.tenant_id!==TENANT)return null;
@@ -74,7 +75,7 @@
     const zayro=ownerZayro||'<section class="gl-scanner-zayro-preview"><h2>Tienda Online · ZAYRO</h2>'+
       '<p>Vidriera pública del local. Para administrar productos se requiere la sesión de su dueña autorizada.</p>'+
       '<a href="/zayro/" target="_blank" rel="noopener noreferrer">Ver tienda pública ↗</a></section>';
-    const extras=creator?'':(window.GestLokMisProductos?.homeTile?.()||'')+
+    const extras=(window.GestLokMisProductos?.homeTile?.()||'')+
       (window.GestLokCamiMonthly?.homeTile?.()||'');
     return '<section class="gl-scanner-private-home" aria-label="Inicio del Plan Scanner">'+
       '<header class="gl-scanner-private-header"><small>MI NEGOCIO · PERFUMERÍA</small>'+
