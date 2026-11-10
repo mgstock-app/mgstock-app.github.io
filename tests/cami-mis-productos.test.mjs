@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-tarjetas-fotos-20261107/);
+ assert.match(runtime,/cami-fondo-blanco-20261110/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
