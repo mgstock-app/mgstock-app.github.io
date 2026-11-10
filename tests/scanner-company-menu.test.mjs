@@ -13,7 +13,7 @@ function setup(authorized=true,checked=false){
   const window={
     GestLokPilot:{authorized:()=>authorized,creatorMode:()=>authorized,accessChecked:()=>checked},
     GestLokZayroAdmin:{homeTile:()=>'<section>Tienda Online · ZAYRO · ADMINISTRAR</section>'},
-    GestLokMisProductos:{homeTile:()=>'<section>Mis Productos</section>'},
+    GestLokMisProductos:{authorized:()=>authorized,homeTile:()=>'<section>Mis Productos</section>'},
     GestLokCamiMonthly:{homeTile:()=>'<section>Resumen Mensual</section>'}
   };
   const listeners={};
@@ -58,6 +58,8 @@ test('Creadora verificada puede operar Scanner; no hereda funciones de Mi Gusto'
   const menu=setup(true),h=host(CAMI,'creadora',true),html=menu.home(ctx(CAMI),h),nav=menu.navHTML(h);
   assert.match(html,/ZAYRO/);
   assert.match(html,/Administración general · Acceso verificado/);
+  assert.match(html,/data-mp-open/);
+  assert.match(nav,/data-mp-open/);
   assert.match(html,/data-scanner-card="ventas" data-pilot-pos/);
   assert.match(nav,/data-scanner-section="ventas"/);
   assert.doesNotMatch(html,/disabled|Solo lectura/);

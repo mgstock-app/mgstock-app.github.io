@@ -83,8 +83,8 @@ function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true,seed
   };
   return q;
  };
- const host={S:{me:{email:userEmail,tenant_id:tenant}},role:()=>role,render(){},closePanel(){}};
- const ctx={role,tenant_id:tenant};
+ const host={S:{me:{email:userEmail,tenant_id:tenant}},role:()=>role,isCreadora:()=>role==='creadora',render(){},closePanel(){}};
+ const ctx={role:role==='creadora'?'dueno':role,tenant_id:tenant};
  const window={GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'owner',email:userEmail}},error:null})},from,
   storage:{from:()=>({createSignedUrls:async paths=>({data:paths.map(path=>({path,signedUrl:'https://signed.example/'+encodeURIComponent(path)})),error:null})})}},
   history:{state:{},pushState(){},replaceState(){},back(){}},
@@ -159,4 +159,27 @@ test('Ni otra cuenta ni Mi Gusto pueden ver ni abrir el cuaderno',async()=>{
  const denied=launch(email,'dueno',TENANT,false);
  await denied.mod.refresh(denied.ctx,denied.host);
  assert.equal(denied.mod.authorized(),false,'La RLS es el último control de acceso');
+});
+
+test('Creadora verificada ve y abre Mis Productos en la empresa de Camila',async()=>{
+ const creator=launch('kmu15lopez@gmail.com','creadora',TENANT,true);
+ await creator.mod.refresh(creator.ctx,creator.host);
+ assert.equal(creator.mod.authorized(),true);
+ assert.match(creator.mod.homeTile(),/Mis Productos/);
+ await creator.mod.open();
+ assert.match(creator.root.innerHTML,/Tester 60ml/);
+ const outsider=launch('otra@example.com','creadora',TENANT,true);
+ await outsider.mod.refresh(outsider.ctx,outsider.host);
+ assert.equal(outsider.mod.authorized(),false);
+ assert.equal(outsider.fromCalls.length,0);
+});
+test('Migración limita permiso de creadora al cuaderno y carpeta de fotos de Camila',()=>{
+ const migration=readFileSync('supabase/migrations/20261110011500_zayro_cami_product_creator_access.sql','utf8');
+ assert.match(migration,/gestlok_platform\.admins/);
+ assert.match(migration,/email_confirmed_at is not null/);
+ assert.match(migration,/gestlok_cami_product_tabs/);
+ assert.match(migration,/gestlok_cami_product_items/);
+ assert.match(migration,/storage\.objects/);
+ assert.match(migration,/gestlok-cami-product-photos/);
+ assert.doesNotMatch(migration,/disable row level security|\bdrop table\b|delete from public\.docs/i);
 });
