@@ -216,6 +216,7 @@ function metaPanel(){
    copyRow('URL de devolución de llamada',webhookUrl(),'mgp-webhook-url')+copyRow('Token de verificación',m.verify_token||'','mgp-verify-token')+
    '<small class="'+(m.webhook_verified_at?'mgp-ok-text':'mgp-wait-text')+'">'+(m.webhook_verified_at?'✓ Meta verificó el webhook: '+date(m.webhook_verified_at):'Meta todavía no verificó el webhook')+'</small></li>'+
   '<li><strong>Datos de la app de Meta</strong><span>Se guardan protegidos. El App Secret no se vuelve a mostrar.</span>'+
+   '<p class="mgp-hint">Desde octubre de 2026, la conexión requiere una configuración de <strong>WhatsApp Embedded Signup v4</strong> en Meta. Si Meta indica «no puede registrar clientes», verificá el estado Activo, la autorización de proveedor y la revisión de permisos en developers.facebook.com. El webhook verificado no reemplaza esa autorización. No desconectes WhatsApp Business del teléfono.</p>'+
    '<form id="mgp-meta-form" class="mgp-form"><label>App ID<input name="app_id" inputmode="numeric" pattern="[0-9]{5,25}" required value="'+esc(m.app_id||'')+'" '+(!canEdit()?'disabled':'')+'></label>'+
    '<label>ID de configuración (Inicio de sesión para empresas)<input name="config_id" inputmode="numeric" pattern="[0-9]{5,25}" required value="'+esc(m.config_id||'')+'" '+(!canEdit()?'disabled':'')+'></label>'+
    '<label>App Secret '+(m.has_app_secret?'<small>(guardado ✓ · dejalo vacío para no cambiarlo)</small>':'')+'<input name="app_secret" type="password" autocomplete="off" spellcheck="false" maxlength="64" '+(m.has_app_secret?'':'required ')+(!canEdit()?'disabled':'')+'></label>'+
@@ -348,7 +349,9 @@ function connectMeta(){
   }).catch(e=>{error=e.message||'No se pudo completar la conexión.';notice='';})
    .finally(()=>{busy=false;void refreshAfterSave().then(()=>update(true,false));});
  },{config_id:m.config_id,response_type:'code',override_default_response_type:true,
-   extras:{setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'}});
+   // Registro insertado v4: Meta retiró los flujos v2/v3 el 15/10/2026.
+   // Coexistencia: conservar la app WhatsApp Business del teléfono.
+   extras:{setup:{},featureType:'whatsapp_business_app_onboarding',version:'v4'}});
 }
 async function copyText(id){
  const value=document.getElementById(id)?.textContent||'';
