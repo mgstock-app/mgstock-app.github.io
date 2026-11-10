@@ -17,7 +17,7 @@ export function fileAudience(path) {
   if (NON_RUNTIME.test(p) || UPDATE_INFRA.has(p)) return [];
   if (/^(?:public\/stock\/(?:mi-gusto-|munro-|mg-|gestlok-mg-)|app\/(?:mi-gusto-|munro-)|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
   if (/^(?:public\/stock\/gestlok-molino|app\/(?:gestlok-molino|molino-)|public\/molino\/)/i.test(p)) return [TENANTS.molino];
-  if (/^(?:public\/stock\/gestlok-(?:zayro|scanner|pilot|mis-productos|tiendanube|cami-|pedidos\.js|precios-stock\.js)|app\/(?:zayro\/|gestlok-(?:scanner|pilot|mis-productos|tiendanube|cami-))|public\/zayro\/)/i.test(p)) return [TENANTS.zayro];
+  if (/^(?:public\/stock\/gestlok-(?:zayro|scanner|pilot|mis-productos|product-white-bg|tiendanube|cami-|pedidos\.js|precios-stock\.js)|app\/(?:zayro\/|gestlok-(?:scanner|pilot|mis-productos|tiendanube|cami-))|public\/zayro\/)/i.test(p)) return [TENANTS.zayro];
   return ['*'];
 }
 const referenceAudience = text => {
