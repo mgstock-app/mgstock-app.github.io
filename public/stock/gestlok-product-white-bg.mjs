@@ -44,11 +44,41 @@ export async function whiteBackground(source,onProgress){
  const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;
  const c=canvas.getContext('2d');if(!c)throw Error('No se pudo componer la foto.');
  c.fillStyle='#fff';c.fillRect(0,0,1200,1200);
- // Centramos la silueta real y dejamos márgenes aptos para ecommerce.
- const ratio=Math.min(1000/cw,1000/ch);
- const dx=(1200-cw*ratio)/2-minX*ratio;
- const dy=(1200-ch*ratio)/2-minY*ratio;
- c.drawImage(img,dx,dy,w*ratio,h*ratio);
+ // Estilo fijo del catálogo de Camila: fondo blanco puro, producto auténtico
+ // y sombra lateral proyectada a la derecha (luz suave desde arriba-izquierda).
+ // No se modifican los píxeles, el texto ni los colores del producto.
+ const ratio=Math.min(900/cw,900/ch);
+ const productW=cw*ratio,productH=ch*ratio;
+ const productX=(1100-productW)/2,productY=(1080-productH)/2;
+ // Crear la silueta con el alfa real del recorte; no inventar frascos ni etiquetas.
+ const silhouette=document.createElement('canvas');
+ silhouette.width=cw;silhouette.height=ch;
+ const sc=silhouette.getContext('2d');
+ if(!sc)throw Error('No se pudo preparar la sombra del producto.');
+ sc.drawImage(img,minX,minY,cw,ch,0,0,cw,ch);
+ sc.globalCompositeOperation='source-in';
+ sc.fillStyle='#20252a';sc.fillRect(0,0,cw,ch);
+ sc.globalCompositeOperation='source-over';
+ // La sombra siempre se dibuja ANTES del producto, para no tapar frasco ni caja.
+ c.save();
+ c.globalAlpha=.24;
+ c.filter='blur(31px)';
+ const reach=Math.min(168,Math.max(72,productH*.20));
+ c.translate(productX+reach+.36*productH,productY+.90*productH);
+ c.transform(ratio,0,-.36*ratio,.16*ratio,0,0);
+ c.drawImage(silhouette,0,0,cw,ch);
+ c.restore();
+ // Sombra de contacto discreta en el apoyo: da profundidad sin efecto artificial.
+ c.save();
+ c.filter='blur(15px)';
+ c.fillStyle='rgba(32,37,42,.17)';
+ c.beginPath();
+ c.ellipse(productX+productW/2+28,productY+productH+7,
+   Math.max(125,productW*.48),Math.max(16,Math.min(35,productH*.045)),0,0,Math.PI*2);
+ c.fill();
+ c.restore();
+ // Ajustar únicamente el encuadre del recorte real sobre el fondo blanco.
+ c.drawImage(img,productX-minX*ratio,productY-minY*ratio,w*ratio,h*ratio);
  const blob=await new Promise((resolve,reject)=>{
   canvas.toBlob(b=>b?resolve(b):reject(Error('No se pudo crear la foto blanca.')),'image/jpeg',.87);
  });
