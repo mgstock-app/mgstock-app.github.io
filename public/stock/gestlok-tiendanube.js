@@ -54,8 +54,8 @@
   const r=await db().auth.getUser();
   if(r.error||!userOK(r.data?.user))throw Error('Necesitás una sesión autorizada.');
  }
- async function load(){
-  loading=true;error='';render();
+ async function load({preserveMessage=false}={}){
+  loading=true;if(!preserveMessage)error='';render();
   try{
    await verify();
    const [s,o]=await Promise.all([
@@ -137,7 +137,7 @@
    if(result.data?.ok!==true)throw Error(result.data?.message||'Sincronización no disponible.');
    notice='Movimientos actualizados.';
   }catch(e){error=e.message||'No se pudo actualizar.';}
-  finally{busy=false;await load();if(visible)render();}
+  finally{busy=false;await load({preserveMessage:true});if(visible)render();}
  }
  document.addEventListener('click',e=>{
   const t=e.target;
