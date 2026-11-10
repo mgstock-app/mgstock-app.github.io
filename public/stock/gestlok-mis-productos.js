@@ -79,7 +79,7 @@
  async function loadItems(){
   const ticket=epoch,selected=tabId;
   if(!selected){items=[];render();return;}
-  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,photo_path,position,created_at','position',{key:'tab_id',value:selected});
+  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,photo_path,original_photo_path,position,created_at','position',{key:'tab_id',value:selected});
   if(ticket!==epoch||tabId!==selected||!visible)return;
   // Fecha de alta, no fecha de edición: las preferencias no alteran el orden.
   items=next.sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)
@@ -111,8 +111,10 @@
    '<div class="gl-mp-card-top"><div class="gl-mp-photo">'+
    (photo?'<img src="'+esc(photo)+'" loading="lazy" alt="Foto de '+name+'">':
     '<div class="gl-mp-no-photo" aria-hidden="true"><span>▧</span><small>Sin foto</small></div>')+
-   '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'+ Agregar foto')+'</button>'+
-   '<input type="file" hidden data-mp-photo-input="'+id+'" aria-label="Elegir foto de '+name+'" accept="image/jpeg,image/png,image/webp"></div>'+
+   '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'Elegir foto')+'</button>'+
+   '<button type="button" class="gl-mp-photo-camera" data-mp-photo-camera="'+id+'">📷 Sacar foto</button>'+
+   '<input type="file" hidden data-mp-photo-input="'+id+'" aria-label="Elegir foto de '+name+'" accept="image/jpeg,image/png,image/webp">'+
+   '<input type="file" hidden data-mp-photo-camera-input="'+id+'" aria-label="Sacar foto de '+name+'" accept="image/*" capture="environment"></div>'+
    '<div class="gl-mp-card-info"><h4 title="'+name+'">'+name+'</h4>'+
    '<div class="gl-mp-card-attributes"><span>Fragancia</span>'+fragranceSelect(item)+'</div>'+
    '<div class="gl-mp-votes">'+status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+'</div>'+
@@ -120,6 +122,7 @@
    '</div></div><div class="gl-mp-actions">'+
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
+   (item.original_photo_path?'<button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -204,7 +207,7 @@
  }
  async function run(task,message){
   if(busy)return;
-  busy=true;error='';notice='';render();
+  busy=true;error='';notice='Procesando foto… la primera vez puede descargar el modelo de fondo blanco.';render();
   try{await assertAccess();await task();notice=message||'Cambios guardados.';}
   catch(e){error=e.message||'No se pudo guardar.';}
   finally{busy=false;render();}
@@ -275,35 +278,70 @@
    image.src=url;
   });
  }
+
  async function uploadPhoto(id,file){
-  const item=items.find(x=>x.id===id);
+  // Capturamos ID + pestaña ANTES de cualquier operación asíncrona; no usamos
+  // la tarjeta visible al terminar el recorte ni vinculamos por nombre.
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
   if(!item||!file||busy)return;
+  const targetTab=item.tab_id, targetId=item.id;
   await run(async()=>{
-   const user=await assertAccess();
-   const blob=await compressPhoto(file);
-   const path=OWNER_UID+'/'+item.id+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   await assertAccess();
+   const original=await compressPhoto(file);
+   // Modelo descargado al primer uso: el recorte se hace sin subir la imagen a terceros.
+   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.mjs?rev=20261110');
+   const edited=await whiteBackground(original);
+   if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab)){
+    throw Error('Cambiaste de producto o pestaña. No se guardó la foto.');
+   }
    const storage=db().storage.from(PHOTO_BUCKET);
-   const upload=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-   if(upload.error)throw upload.error;
-   const saved=await db().from(ITEMS).update({photo_path:path,updated_at:new Date().toISOString()})
-    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
-   if(saved.error){await storage.remove([path]);throw saved.error;}
-   const oldPath=item.photo_path;
-   if(oldPath&&oldPath!==path)await storage.remove([oldPath]);
-   await loadItems();
-  },'Foto guardada.');
+   const prefix=OWNER_UID+'/'+targetId+'/';
+   const suffix=()=>Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   const originalPath=prefix+suffix(),editedPath=prefix+suffix();
+   const uploaded=[];
+   try{
+    for(const [path,blob] of [[originalPath,original],[editedPath,edited]]){
+     const up=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+     if(up.error)throw up.error;
+     uploaded.push(path);
+    }
+    // El servidor verifica tenant, dueño, pestaña e ID, además de la RLS del almacenamiento.
+    const saved=await db().from(ITEMS).update({
+      photo_path:editedPath,original_photo_path:originalPath,updated_at:new Date().toISOString()
+     }).eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT)
+       .eq('owner_uid',OWNER_UID).select('id').single();
+    if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo asociar la foto al producto correcto.');
+    const old=[item.photo_path,item.original_photo_path].filter(p=>p&&!uploaded.includes(p));
+    if(old.length)await storage.remove(old);
+    await loadItems();
+   }catch(err){
+    if(uploaded.length)await storage.remove(uploaded);
+    throw err;
+   }
+  },'Foto con fondo blanco guardada en «'+item.product+'». Original conservado.');
+ }
+ async function viewOriginalPhoto(id){
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
+  if(!item?.original_photo_path)return;
+  try{
+   await assertAccess();
+   const result=await db().storage.from(PHOTO_BUCKET).createSignedUrl(item.original_photo_path,120);
+   if(result.error)throw result.error;
+   window.open(result.data.signedUrl,'_blank','noopener,noreferrer');
+  }catch(e){error=e.message||'No se pudo abrir el original.';render();}
  }
  async function removePhoto(id){
-  const item=items.find(x=>x.id===id);
-  if(!item?.photo_path||!window.confirm('¿Quitar la foto de «'+item.product+'»?'))return;
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
+  if(!item?.photo_path||!window.confirm('¿Quitar ambas fotos de «'+item.product+'»?'))return;
   await run(async()=>{
-   const oldPath=item.photo_path;
-   const saved=await db().from(ITEMS).update({photo_path:null,updated_at:new Date().toISOString()})
-    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
+   const old=[item.photo_path,item.original_photo_path].filter(Boolean);
+   const saved=await db().from(ITEMS).update({
+    photo_path:null,original_photo_path:null,updated_at:new Date().toISOString()
+   }).eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).eq('owner_uid',OWNER_UID).select('id').single();
    if(saved.error)throw saved.error;
-   await db().storage.from(PHOTO_BUCKET).remove([oldPath]);
+   if(old.length)await db().storage.from(PHOTO_BUCKET).remove(old);
    await loadItems();
-  },'Foto eliminada.');
+  },'Fotos eliminadas de este producto.');
  }
  async function changeFragrance(id,value){
   if(!items.some(x=>x.id===id)||!['','fem','hombre','unisex'].includes(value))return;
@@ -330,7 +368,8 @@
   await run(async()=>{
    const r=await db().from(ITEMS).delete().eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT);
    if(r.error)throw r.error;
-   if(item.photo_path)await db().storage.from(PHOTO_BUCKET).remove([item.photo_path]);
+   const photos=[item.photo_path,item.original_photo_path].filter(Boolean);
+   if(photos.length)await db().storage.from(PHOTO_BUCKET).remove(photos);
    await loadItems();
   },'Producto eliminado.');
  }
@@ -493,6 +532,10 @@
   const print=el.closest('[data-mp-print]');
   const photo=el.closest('[data-mp-photo-btn]');
   if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
+  const camera=el.closest('[data-mp-photo-camera]');
+  if(camera){e.preventDefault();camera.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-camera-input]')?.click();return;}
+  const original=el.closest('[data-mp-photo-original]');
+  if(original){e.preventDefault();void viewOriginalPhoto(original.dataset.mpPhotoOriginal);return;}
   const remove=el.closest('[data-mp-photo-remove]');
   if(remove){e.preventDefault();void removePhoto(remove.dataset.mpPhotoRemove);return;}
   if(print){
@@ -536,10 +579,11 @@
   if(modal)updateLabelPreview(modal);
  });
  document.addEventListener('change',e=>{
-  const photo=e.target.closest('[data-mp-photo-input]');
+  const photo=e.target.closest('[data-mp-photo-input],[data-mp-photo-camera-input]');
   if(photo&&visible){
    const file=photo.files?.[0];
-   if(file)void uploadPhoto(photo.dataset.mpPhotoInput,file);
+   if(file)void uploadPhoto(photo.dataset.mpPhotoInput||photo.dataset.mpPhotoCameraInput,file);
+   photo.value='';
    return;
   }
   const select=e.target.closest('[data-mp-fragrance]');
