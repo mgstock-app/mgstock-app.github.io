@@ -21,7 +21,7 @@ function output(req:Request,status:number,data:Record<string,unknown>){
 const str=(s:unknown)=>String(s??'').slice(0,180);
 function sanitized(row:Record<string,unknown>){
  const id=str(row.id);
- if(!/^\\d{1,20}$/.test(id))return null;
+ if(!/^\d{1,20}$/.test(id))return null;
  const products=Array.isArray(row.products)?row.products:[];
  const quantity=products.reduce((sum:number,p:Record<string,unknown>)=>sum+Math.max(0,Number(p.quantity)||0),0);
  const numericTotal=Number(row.total??0);
@@ -67,7 +67,7 @@ Deno.serve(async(req:Request)=>{
  const storeId=Deno.env.get('TIENDANUBE_STORE_ID')||'';
  const appId=Deno.env.get('TIENDANUBE_APP_ID')||'';
  const token=Deno.env.get('TIENDANUBE_ACCESS_TOKEN')||'';
- if(!/^\\d+$/.test(storeId)||!/^\\d+$/.test(appId)||!token){
+ if(!/^\d+$/.test(storeId)||!/^\d+$/.test(appId)||!token){
   return output(req,409,{ok:false,message:'Falta autorizar TiendaNube con permiso read_orders para GESTLOK. La tienda todavía no está vinculada.'});
  }
  const svc=createClient(url,serviceKey,{auth:{persistSession:false}});
