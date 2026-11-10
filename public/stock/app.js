@@ -3978,6 +3978,8 @@ async function boot(){
   catch (e) { S.loadError = true; S.booted = true; render(); return; }
   S.db = db; S.user = user; S.dl = dl; S.booted = true;
   if (user){ try { S.me = await user.me(); S.uid = S.me.id; } catch {} }
+  // Cuando llega el tenant real, comprobar si el aviso PWA corresponde a esta empresa.
+  window.GestLokPWAUpdate?.refresh?.();
   if (!db){ render(); return; }
   render(); subscribeGlobal();
 }
