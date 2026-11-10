@@ -205,9 +205,9 @@
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
  }
- async function run(task,message){
+ async function run(task,message,progress=''){
   if(busy)return;
-  busy=true;error='';notice='Procesando foto… la primera vez puede descargar el modelo de fondo blanco.';render();
+  busy=true;error='';notice=progress;render();
   try{await assertAccess();await task();notice=message||'Cambios guardados.';}
   catch(e){error=e.message||'No se pudo guardar.';}
   finally{busy=false;render();}
@@ -318,7 +318,8 @@
     if(uploaded.length)await storage.remove(uploaded);
     throw err;
    }
-  },'Foto con fondo blanco guardada en «'+item.product+'». Original conservado.');
+  },'Foto con fondo blanco guardada en «'+item.product+'». Original conservado.',
+     'Procesando foto de «'+item.product+'»… la primera vez se descarga el modelo de fondo blanco.');
  }
  async function viewOriginalPhoto(id){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
