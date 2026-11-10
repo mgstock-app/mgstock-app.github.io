@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-tarjetas-fotos-20261107/);
+ assert.match(runtime,/cami-fondo-blanco-20261110/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -182,4 +182,42 @@ test('Migración limita permiso de creadora al cuaderno y carpeta de fotos de Ca
  assert.match(migration,/storage\.objects/);
  assert.match(migration,/gestlok-cami-product-photos/);
  assert.doesNotMatch(migration,/disable row level security|\bdrop table\b|delete from public\.docs/i);
+});
+
+
+test('Camila: cámara y edición con fondo blanco para todas las pestañas del cuaderno privado',()=>{
+ const remover=readFileSync('public/stock/gestlok-product-white-bg.mjs','utf8');
+ assert.match(script,/data-mp-photo-camera/);
+ assert.match(script,/capture="environment"/);
+ assert.match(script,/data-mp-photo-input/);
+ assert.match(script,/gestlok-product-white-bg\.mjs/);
+ assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
+ assert.match(script,/Foto editada con fondo blanco/);
+ assert.match(remover,/removeBackground/);
+ assert.match(remover,/quality:'fast'/);
+ assert.match(remover,/rgba|alpha|a\[\(y\*w\+x\)\*4\+3\]/);
+ assert.match(remover,/c\.fillStyle='#fff'/);
+ assert.match(remover,/canvas\.toBlob/);
+});
+
+test('Camila: la foto editada y la original se guardan solo en el ID y pestaña seleccionados',()=>{
+ const migration=readFileSync('supabase/migrations/20261110224500_cami_product_original_photo_private.sql','utf8');
+ assert.match(script,/const targetTab=item\.tab_id, targetId=item\.id/);
+ assert.match(script,/const prefix=OWNER_UID\+'\/'\+targetId\+'\/'/);
+ assert.match(script,/\.eq\('id',targetId\)\.eq\('tab_id',targetTab\)\.eq\('tenant_id',TENANT\)/);
+ assert.match(script,/\.eq\('owner_uid',OWNER_UID\)\.select\('id'\)\.single\(\)/);
+ assert.match(script,/photo_path:editedPath,original_photo_path:originalPath/);
+ assert.match(script,/saved\.data\?\.id!==targetId/);
+ assert.match(script,/storage\.remove\(uploaded\)/);
+ assert.match(script,/if\(!committed&&uploaded\.length\)/);
+ assert.match(script,/data-mp-photo-original/);
+ assert.match(migration,/split_part\(original_photo_path,'\/',2\)=id::text/);
+ assert.match(migration,/original_photo_path/);
+ assert.doesNotMatch(migration,/update\s+.*(?:stock|cash|caja|ventas)/i);
+});
+
+test('La publicación de fondos blancos se limita al tenant ZAYRO',async()=>{
+ const {fileAudience,TENANTS}=await import('../scripts/pwa-release-scope.mjs');
+ assert.deepEqual(fileAudience('public/stock/gestlok-product-white-bg.mjs'),[TENANTS.zayro]);
+ assert.deepEqual(fileAudience('public/stock/gestlok-mis-productos.js'),[TENANTS.zayro]);
 });
