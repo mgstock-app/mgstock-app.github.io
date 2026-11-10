@@ -32,6 +32,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
     "/stock/gestlok-zayro-admin.js?rev=zayro-diseno-tienda-20261109",
+    "/stock/gestlok-tiendanube.js?rev=zayro-tiendanube-20261110",
     "/stock/gestlok-scanner-menu.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
     "/stock/gestlok-molino.js?rev=pedidosya-20261109",
@@ -78,9 +79,10 @@ export function StockRuntime() {
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-tarjetas-fotos-20261107");
+      if (!visitor) await load("/stock/gestlok-tiendanube.js?rev=zayro-tiendanube-20261110");
       if (!visitor) await load("/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106");
       if (!visitor) await load("/stock/gestlok-zayro-admin.js?rev=zayro-diseno-tienda-20261109");
-      if (!visitor) await load("/stock/gestlok-scanner-menu.js?rev=zayro-creadora-operativa-20261108");
+      if (!visitor) await load("/stock/gestlok-scanner-menu.js?rev=zayro-tiendanube-20261110");
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
