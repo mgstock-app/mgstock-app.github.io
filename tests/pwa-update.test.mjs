@@ -130,10 +130,10 @@ test('Un cambio aislado de arranque de Molino no activa el cartel en Mi Gusto',(
   };
   assert.deepEqual(releaseAudience(Object.keys(patches),patches),[TENANTS.molino]);
 });
-test('El enganche de PWAUpdate en el inicio no implica cambio funcional de otros locales',()=>{
-  const patches={'public/stock/app.js':'+  // Cuando llega el tenant real, comprobar si el aviso PWA corresponde a esta empresa.\n+  window.GestLokPWAUpdate?.refresh?.();'};
-  assert.deepEqual(releaseAudience(['public/stock/app.js'],patches),[]);
-  assert.match(read('public/stock/app.js'),/GestLokPWAUpdate\?\.refresh\?\.\(\)/);
+test('El actualizador revisa el tenant sin modificar el controlador principal protegido',()=>{
+  assert.deepEqual(releaseAudience(['public/stock/app.js']),['*']);
+  assert.match(read('public/stock/app.js'),/window\.GestLokNavContext=/);
+  assert.match(read('public/stock/gestlok-pwa-update.js'),/setTimeout\(\(\) => \{ retryQueued = false; checkAudience\(\); \}, 1800\)/);
   assert.match(read('scripts/sw-template.js'),/gestlok-update-audience/);
   assert.match(read('scripts/version-cache.mjs'),/releaseAudience/);
 });
