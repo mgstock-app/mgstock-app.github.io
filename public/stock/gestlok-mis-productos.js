@@ -7,6 +7,8 @@
  if(window.GestLokMisProductos)return;
  const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
  const EMAIL='camilab.lopez99@gmail.com';
+ const CREATOR_EMAIL='kmu15lopez@gmail.com';
+ const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map();
  const $=s=>document.querySelector(s);
@@ -14,9 +16,12 @@
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
  let visible=false,tabs=[],items=[],tabId='',loading=false,busy=false,error='',notice='',editing='',itemForm=false,searchTerm='';
  const db=()=>window.GestLokSupabase;
- const validContext=(ctx,host)=>ctx?.tenant_id===TENANT&&ctx?.role==='dueno'&&host?.role?.()==='dueno'
-  &&host?.S?.me?.tenant_id===TENANT&&String(host.S.me.email||'').toLowerCase()===EMAIL;
- const own=(u)=>String(u?.email||'').toLowerCase()===EMAIL&&!!u?.id;
+ // La creadora se verifica por su rol real y por RLS en Supabase; nunca por isOwner.
+ const validContext=(ctx,host)=>ctx?.tenant_id===TENANT&&host?.S?.me?.tenant_id===TENANT&&(
+   (ctx?.role==='dueno'&&host?.role?.()==='dueno'&&String(host.S.me.email||'').toLowerCase()===EMAIL)||
+   (ctx?.role==='creadora'&&host?.role?.()==='creadora'&&host?.isCreadora?.()===true&&
+     String(host.S.me.email||'').toLowerCase()===CREATOR_EMAIL));
+ const own=(u)=>!!u?.id&&[EMAIL,CREATOR_EMAIL].includes(String(u?.email||'').toLowerCase());
  async function assertAccess(){
   if(!allowed||!validContext(context,api))throw Error('Este cuaderno es privado y no está habilitado para esta cuenta.');
   const result=await db().auth.getUser();
@@ -210,7 +215,7 @@
   if(tabs.some(t=>t.id!==old&&t.name.trim().toLowerCase()===name.toLowerCase())){error='Ya existe una pestaña con ese nombre.';render();return;}
   await run(async()=>{
    const q=old?db().from(TABS).update({name}).eq('id',old).eq('tenant_id',TENANT)
-    :db().from(TABS).insert({name,tenant_id:TENANT,position:tabs.length});
+    :db().from(TABS).insert({name,owner_uid:OWNER_UID,tenant_id:TENANT,position:tabs.length});
    const r=await q.select('id').single();if(r.error)throw r.error;
    tabId=old||r.data.id;if(!old)searchTerm='';await load();
   },'Pestaña guardada.');
@@ -237,7 +242,7 @@
    const fields={product,fragrance_type,liked,note,updated_at:new Date().toISOString()};
    const q=editing
     ? db().from(ITEMS).update(fields).eq('id',editing).eq('tenant_id',TENANT).eq('tab_id',tabId)
-    : db().from(ITEMS).insert({...fields,tab_id:tabId,tenant_id:TENANT,position:items.length});
+    : db().from(ITEMS).insert({...fields,owner_uid:OWNER_UID,tab_id:tabId,tenant_id:TENANT,position:items.length});
    const r=await q.select('id').single();if(r.error)throw r.error;
    editing='';itemForm=false;await loadItems();
   },'Producto guardado.');
@@ -276,7 +281,7 @@
   await run(async()=>{
    const user=await assertAccess();
    const blob=await compressPhoto(file);
-   const path=user.id+'/'+item.id+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   const path=OWNER_UID+'/'+item.id+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
    const storage=db().storage.from(PHOTO_BUCKET);
    const upload=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
    if(upload.error)throw upload.error;
