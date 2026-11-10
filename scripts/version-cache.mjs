@@ -23,7 +23,7 @@ try {
   const paths = diff(['--name-only']).trim().split('\n').filter(Boolean);
   const patches = {};
   for (const path of paths) {
-    if (path === 'components/stock-runtime.tsx' || path === 'app/layout.tsx') {
+    if (path === 'components/stock-runtime.tsx' || path === 'app/layout.tsx' || path === 'public/stock/app.js') {
       patches[path] = execFileSync('git', ['diff', '--unified=0', previous, 'HEAD', '--', path], {encoding:'utf8', maxBuffer:500_000});
     }
   }
