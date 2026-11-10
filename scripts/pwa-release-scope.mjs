@@ -12,6 +12,8 @@ const SHARED_LOADERS = new Set(['components/stock-runtime.tsx', 'app/layout.tsx'
 
 export function fileAudience(path) {
   const p = String(path || '').replaceAll('\\', '/');
+  // Cambios reales del worker (caché, offline y seguridad) requieren aviso general.
+  if (p === 'scripts/sw-template.js') return ['*'];
   if (NON_RUNTIME.test(p) || UPDATE_INFRA.has(p)) return [];
   if (/^(?:public\/stock\/(?:mi-gusto-|munro-|mg-|gestlok-mg-)|app\/(?:mi-gusto-|munro-)|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
   if (/^(?:public\/stock\/gestlok-molino|app\/(?:gestlok-molino|molino-)|public\/molino\/)/i.test(p)) return [TENANTS.molino];
