@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-fondo-blanco-20261110/);
+ assert.match(runtime,/cami-fondo-blanco-sombra-20261110/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -220,4 +220,27 @@ test('La publicación de fondos blancos se limita al tenant ZAYRO',async()=>{
  const {fileAudience,TENANTS}=await import('../scripts/pwa-release-scope.mjs');
  assert.deepEqual(fileAudience('public/stock/gestlok-product-white-bg.mjs'),[TENANTS.zayro]);
  assert.deepEqual(fileAudience('public/stock/gestlok-mis-productos.js'),[TENANTS.zayro]);
+});
+
+
+test('Todas las fotos nuevas de Camila usan automáticamente fondo blanco y sombra lateral suave',()=>{
+ const editor=readFileSync('public/stock/gestlok-product-white-bg.mjs','utf8');
+ // Mismo motor para cámara y galería; no hay un bypass de sombra.
+ assert.match(script,/data-mp-photo-camera-input/);
+ assert.match(script,/data-mp-photo-input/);
+ assert.match(script,/const edited=await whiteBackground\(original\)/);
+ assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
+ assert.match(script,/Fondo blanco y sombra lateral|fondo blanco y sombra lateral/);
+ assert.match(script,/Blanco \+ sombra lateral/);
+ assert.match(editor,/const ratio=Math\.min\(900\/cw,900\/ch\)/);
+ assert.match(editor,/const silhouette=document\.createElement\('canvas'\)/);
+ assert.match(editor,/sc\.globalCompositeOperation='source-in'/);
+ assert.match(editor,/c\.filter='blur\(31px\)'/);
+ assert.match(editor,/c\.transform\(ratio,0,-\.36\*ratio,\.16\*ratio,0,0\)/);
+ assert.match(editor,/c\.ellipse\(/);
+ assert.match(editor,/c\.filter='blur\(15px\)'/);
+ assert.match(editor,/c\.drawImage\(img,productX-minX\*ratio,productY-minY\*ratio,w\*ratio,h\*ratio\)/);
+ assert.ok(editor.indexOf('c.drawImage(silhouette,0,0,cw,ch)')<editor.indexOf('c.drawImage(img,productX-minX*ratio'),
+   'La sombra debe pintarse detrás del producto real');
+ assert.doesNotMatch(editor,/fetch\(source|FormData|apiKey/,'Sin subir foto a proveedor de IA externo');
 });
