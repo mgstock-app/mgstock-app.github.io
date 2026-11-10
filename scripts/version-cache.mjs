@@ -20,7 +20,7 @@ try {
     if (/^[a-f0-9]{40}$/.test(String(event.before || '')) && !/^0{40}$/.test(event.before)) previous = event.before;
   }
   const diff = (args) => execFileSync('git', ['diff', ...args, previous, 'HEAD'], {encoding:'utf8', maxBuffer:3_000_000});
-  const paths = diff(['--name-only']).trim().split('\\n').filter(Boolean);
+  const paths = diff(['--name-only']).trim().split('\n').filter(Boolean);
   const patches = {};
   for (const path of paths) {
     if (path === 'components/stock-runtime.tsx' || path === 'app/layout.tsx') {
