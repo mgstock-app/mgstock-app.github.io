@@ -38,11 +38,19 @@ const referenceAudience = text => {
   }
   return [...found];
 };
+function onlyUpdateContextPatch(patch) {
+  const changes = String(patch || '').split('\n')
+    .filter(line => /^[+-](?![+-])/.test(line))
+    .map(line => line.slice(1).trim());
+  return changes.length > 0 && changes.every(line =>
+    line.startsWith('//') || line === 'window.GestLokPWAUpdate?.refresh?.();');
+}
 export function releaseAudience(paths, patches = {}) {
   const audience = new Set();
   for (const path of paths || []) {
     const p = String(path || '');
-    const targets = SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p);
+    const targets = p === 'public/stock/app.js' && onlyUpdateContextPatch(patches[p]) ? [] :
+      SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p);
     for (const t of targets) {
       if (t === '*') return ['*'];
       audience.add(t);
