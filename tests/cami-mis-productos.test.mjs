@@ -84,7 +84,7 @@ function launch(userEmail=email,role='dueno',tenant=TENANT,dbHasAccess=true,seed
   return q;
  };
  const host={S:{me:{email:userEmail,tenant_id:tenant}},role:()=>role,isCreadora:()=>role==='creadora',render(){},closePanel(){}};
- const ctx={role,tenant_id:tenant};
+ const ctx={role:role==='creadora'?'dueno':role,tenant_id:tenant};
  const window={GestLokSupabase:{auth:{getUser:async()=>({data:{user:{id:'owner',email:userEmail}},error:null})},from,
   storage:{from:()=>({createSignedUrls:async paths=>({data:paths.map(path=>({path,signedUrl:'https://signed.example/'+encodeURIComponent(path)})),error:null})})}},
   history:{state:{},pushState(){},replaceState(){},back(){}},
