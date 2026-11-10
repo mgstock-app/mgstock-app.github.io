@@ -27,3 +27,17 @@ test('Scanner refresh claims before checking server-managed access',()=>{
  assert.ok(claim>0&&access>claim);
  assert.match(ui,/context\.logo_id==='mi-gusto'/);
 });
+
+test('Scanner approval is creator-only and excludes preexisting companies',()=>{
+ assert.match(sql,/create or replace function public\.gestlok_scanner_approve_new_company/i);
+ assert.match(sql,/c\.created_at\s*>\s*\(select g\.installed_at/i);
+ assert.match(sql,/scanner_enrollment_release_gate/i);
+ assert.match(sql,/grant execute on function public\.gestlok_scanner_approve_new_company\(uuid\) to authenticated/i);
+ assert.doesNotMatch(sql,/create trigger scanner_capture_new_company/i);
+});
+test('SQL function dollar-quote delimiters are balanced',()=>{
+ const tags=[...sql.matchAll(/\$(?:[a-z_]+)?\$/gi)].map(m=>m[0]);
+ const counts=new Map();
+ for(const tag of tags)counts.set(tag,(counts.get(tag)||0)+1);
+ for(const [tag,count] of counts)assert.equal(count%2,0,'Unbalanced SQL quote '+tag);
+});
