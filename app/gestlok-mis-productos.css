@@ -133,3 +133,42 @@ body.gl-mp-open{overflow:hidden}
  #gl-mp-panel .gl-mp-card .gl-mp-actions{justify-content:flex-start}
  #gl-mp-panel .gl-mp-card .gl-mp-actions button{font-size:11px}
 }
+
+/* Camila: edición de foto de producto, original y fondo blanco sin cambiar otras empresas. */
+#gl-mp-panel .gl-mp-photo-edit{font-size:12px;min-height:36px}
+[data-mp-photo-modal],[data-mp-original-modal]{
+ position:fixed;z-index:2147482005;inset:0;background:rgba(10,21,37,.72);
+ display:flex;align-items:center;justify-content:center;padding:clamp(10px,3vw,26px);overflow:auto;
+ font-family:Inter,system-ui,sans-serif
+}
+[data-mp-photo-modal] * ,[data-mp-original-modal] *{box-sizing:border-box}
+.gl-mp-photo-dialog,.gl-mp-original-dialog{
+ background:#fff;border-radius:16px;padding:20px;box-shadow:0 22px 65px #06172950;
+ width:min(760px,100%);max-height:calc(100dvh - 24px);overflow:auto;color:#183a5c
+}
+.gl-mp-photo-dialog header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.gl-mp-photo-dialog header small{color:#718399;font-size:11px;letter-spacing:.07em}
+.gl-mp-photo-dialog h2,.gl-mp-original-dialog h2{font-size:22px;color:#103763;margin:6px 0 3px}
+.gl-mp-photo-dialog header p{margin:0;color:#59728b;font-weight:700;font-size:15px}
+.gl-mp-photo-dialog header button{border:1px solid #ccd6e3;border-radius:8px;background:white;color:#103763;padding:7px 11px;font-size:17px}
+.gl-mp-photo-tip{font-size:13px;color:#63758a;line-height:1.5;margin:15px 0}
+.gl-mp-photo-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gl-mp-photo-compare figure{margin:0;min-width:0}
+.gl-mp-photo-compare figure>div{background:#f4f6f8;border:1px solid #dde5ed;border-radius:11px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.gl-mp-photo-compare img{display:block;width:100%;height:100%;object-fit:contain}
+.gl-mp-photo-compare figcaption{text-align:center;color:#576e83;font-size:12px;padding:9px}
+.gl-mp-photo-message{min-height:38px;margin:8px 0;padding:11px;background:#f1f6fc;border-radius:9px;color:#214c72;font-size:13px;line-height:1.4}
+.gl-mp-photo-message.is-error{background:#fff4f4;color:#942c36}
+.gl-mp-photo-modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.gl-mp-photo-modal-actions button,.gl-mp-original-dialog button{border:1px solid #bfcee0;padding:11px 15px;background:white;border-radius:9px;color:#123f6d;font-weight:700;font:inherit;cursor:pointer}
+.gl-mp-photo-modal-actions .gl-mp-photo-confirm{background:#113d6c;color:#fff;border-color:#113d6c;font-weight:750}
+.gl-mp-photo-modal-actions button:disabled{opacity:.45;cursor:not-allowed}
+.gl-mp-photo-dialog>small{color:#7a8999;font-size:12px;line-height:1.5}
+.gl-mp-original-dialog{width:min(530px,100%);display:flex;flex-direction:column;gap:12px}
+.gl-mp-original-dialog img{width:100%;height:auto;max-height:70dvh;object-fit:contain;background:#f5f5f5;border-radius:11px}
+@media(max-width:520px){
+ .gl-mp-photo-dialog{padding:13px;border-radius:12px}
+ .gl-mp-photo-dialog h2{font-size:19px}
+ .gl-mp-photo-compare{gap:7px}
+ .gl-mp-photo-modal-actions button{flex:1 1 160px;font-size:13px;padding:11px}
+}
