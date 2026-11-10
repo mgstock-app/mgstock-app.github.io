@@ -257,7 +257,7 @@ function close(force=false){
 }
 function css(){
  if(document.getElementById('gl-pya-css'))return;
- const l=document.createElement('link');l.id='gl-pya-css';l.rel='stylesheet';l.href='/stock/gestlok-molino-pya.css?rev=pedidosya-diseno-20261109';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-pya-css';l.rel='stylesheet';l.href='/stock/gestlok-molino-pya.css?rev=pedidosya-sobrio-20261110';document.head.appendChild(l);
 }
 async function act(fn,okMsg){
  if(busy)return;busy=true;msg='';error='';render();
