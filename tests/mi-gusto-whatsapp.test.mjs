@@ -9,6 +9,7 @@ const source=read('supabase/functions/mi-gusto-whatsapp/index.ts');
 const sql=read('supabase/migrations/20261106220000_mi_gusto_whatsapp_bot.sql');
 const sqlMunro=read('supabase/migrations/20261107020000_mi_gusto_whatsapp_conexion_sucursales.sql');
 const ui=read('public/stock/mi-gusto-pedidos-clientes.js');
+const runtime=read('components/stock-runtime.tsx');
 async function toJs(src){
  if(typeof nodeModule.stripTypeScriptTypes==='function'){process.removeAllListeners('warning');return nodeModule.stripTypeScriptTypes(src);}
  const ts=(await import('typescript')).default;
@@ -113,4 +114,16 @@ test('Munro y Don Torcuato: sin carga manual, número de pedido, observaciones y
  assert.match(sqlMunro,/'Hacer un pedido','Ver carta y precios','Hablar con el local'/);
  assert.match(sqlMunro,/return p_local in \('munro','torcuato'\)\s+and coalesce\(gestlok_mg_orders_private\.allowed\(p_local\),false\)\s+and public\.mi_rol\(\) in \('dueno','creadora'\)/);
  assert.doesNotMatch(sqlMunro,/drop table|delete from gestlok_mg_orders_private\.orders|truncate/i,'no borra pedidos históricos');
+});
+
+
+test('Mi Gusto inicia Meta Embedded Signup v4 para coexistencia sin alterar WhatsApp Business',()=>{
+ assert.match(ui,/featureType:'whatsapp_business_app_onboarding',version:'v4'/);
+ assert.doesNotMatch(ui,/sessionInfoVersion:'3'/);
+ assert.match(ui,/response_type:'code',override_default_response_type:true/);
+ assert.match(ui,/Si Meta indica «no puede registrar clientes»/);
+ assert.match(ui,/No desconectes WhatsApp Business del teléfono/);
+ assert.match(runtime,/mi-gusto-pedidos-clientes\.js\?rev=whatsapp-embedded-v4-20261110/);
+ // Sin migración de números, sin modificación de tokens ni activación automática del bot.
+ assert.doesNotMatch(ui,/deleteAccount|removePhoneNumber|migratePhoneNumber/);
 });
