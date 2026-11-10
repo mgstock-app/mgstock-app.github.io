@@ -11,6 +11,7 @@
  const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map();
+ let photoSession=null;
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -30,7 +31,7 @@
  }
  function reset(){
   epoch++;allowed=false;checked=false;checking=false;context=null;api=null;
-  tabs=[];items=[];photoUrls.clear();tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
+  tabs=[];items=[];photoUrls.clear();closePhotoModal();tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
   close(false);
  }
  async function refresh(ctx,host){
@@ -79,7 +80,7 @@
  async function loadItems(){
   const ticket=epoch,selected=tabId;
   if(!selected){items=[];render();return;}
-  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,photo_path,position,created_at','position',{key:'tab_id',value:selected});
+  const next=await allRows(ITEMS,'id,tab_id,product,fragrance_type,liked,note,photo_path,original_photo_path,position,created_at','position',{key:'tab_id',value:selected});
   if(ticket!==epoch||tabId!==selected||!visible)return;
   // Fecha de alta, no fecha de edición: las preferencias no alteran el orden.
   items=next.sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0)
@@ -111,8 +112,10 @@
    '<div class="gl-mp-card-top"><div class="gl-mp-photo">'+
    (photo?'<img src="'+esc(photo)+'" loading="lazy" alt="Foto de '+name+'">':
     '<div class="gl-mp-no-photo" aria-hidden="true"><span>▧</span><small>Sin foto</small></div>')+
+   '<button type="button" class="gl-mp-photo-edit" data-mp-camera-btn="'+id+'">📷 Sacar foto</button>'+
    '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'+ Agregar foto')+'</button>'+
-   '<input type="file" hidden data-mp-photo-input="'+id+'" aria-label="Elegir foto de '+name+'" accept="image/jpeg,image/png,image/webp"></div>'+
+   '<input type="file" hidden data-mp-photo-input="'+id+'" aria-label="Elegir foto de '+name+'" accept="image/jpeg,image/png,image/webp">'+
+   '<input type="file" hidden data-mp-photo-input="'+id+'" capture="environment" aria-label="Sacar foto de '+name+'" accept="image/*"></div>'+
    '<div class="gl-mp-card-info"><h4 title="'+name+'">'+name+'</h4>'+
    '<div class="gl-mp-card-attributes"><span>Fragancia</span>'+fragranceSelect(item)+'</div>'+
    '<div class="gl-mp-votes">'+status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+'</div>'+
@@ -120,6 +123,7 @@
    '</div></div><div class="gl-mp-actions">'+
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
+   (item.original_photo_path?'<button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -187,7 +191,7 @@
   finally{loading=false;render();}
  }
  function close(back=true){
-  removePrintModal();
+  removePrintModal();closePhotoModal();document.querySelector('[data-mp-original-modal]')?.remove();
   if(!visible)return;
   visible=false;searchTerm='';photoUrls.clear();$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
@@ -197,7 +201,7 @@
  }
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
-  removePrintModal();
+  removePrintModal();closePhotoModal();
   tabId=id;photoUrls.clear();itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
@@ -275,35 +279,157 @@
    image.src=url;
   });
  }
- async function uploadPhoto(id,file){
+
+ // El archivo elegido queda atado a id+tab_id+época. Nunca usa el producto actual
+ // después de procesar: evita guardar por error en otra pestaña o tarjeta.
+ function closePhotoModal(){
+  const session=photoSession;
+  photoSession=null;
+  if(session){for(const u of [session.originalUrl,session.editedUrl])if(u)URL.revokeObjectURL(u);}
+  document.querySelector('[data-mp-photo-modal]')?.remove();
+ }
+ function photoMessage(session,text,isError=false){
+  if(photoSession!==session)return;
+  const node=session.dialog.querySelector('[data-mp-photo-message]');
+  if(node){node.textContent=text;node.classList.toggle('is-error',isError);}
+ }
+ function readyPhotoButtons(session){
+  if(photoSession!==session)return;
+  session.dialog.querySelector('[data-mp-photo-save-edited]').disabled=!session.editedBlob||busy;
+  session.dialog.querySelector('[data-mp-photo-save-original]').disabled=!session.originalBlob||busy||session.processing;
+  session.dialog.querySelector('[data-mp-photo-retry]').disabled=!session.originalBlob||session.processing||busy;
+ }
+ async function processPhoto(session){
+  if(photoSession!==session||session.processing||busy)return;
+  session.processing=true;session.editedBlob=null;
+  if(session.editedUrl){URL.revokeObjectURL(session.editedUrl);session.editedUrl=null;}
+  const preview=session.dialog.querySelector('[data-mp-photo-after]');
+  preview.removeAttribute('src');preview.hidden=true;
+  readyPhotoButtons(session);
+  try{
+   photoMessage(session,'Cargando el editor automático. La primera vez descarga el modelo de recorte y puede consumir datos.');
+   const editor=await import('/stock/gestlok-cami-white-background.mjs?rev=20261110a');
+   const blob=await editor.whiteBackground(session.originalBlob,{
+    onProgress:msg=>photoMessage(session,msg)
+   });
+   if(photoSession!==session)return;
+   if(blob.size>3*1024*1024)throw Error('La imagen procesada supera 3 MB. Probá con otra foto.');
+   session.editedBlob=blob;
+   session.editedUrl=URL.createObjectURL(blob);
+   preview.src=session.editedUrl;preview.hidden=false;
+   photoMessage(session,'Vista previa lista. Elegí Guardar con fondo blanco para actualizar solo este producto.');
+  }catch(err){
+   if(photoSession!==session)return;
+   photoMessage(session,'No se pudo quitar el fondo automáticamente: '+(err?.message||'Probá otra imagen.')+
+    ' La foto original sigue disponible; no se guardó ningún cambio.',true);
+  }finally{session.processing=false;readyPhotoButtons(session);}
+ }
+ async function startPhoto(id,file){
+  if(!visible||!file||busy||photoSession)return;
   const item=items.find(x=>x.id===id);
-  if(!item||!file||busy)return;
-  await run(async()=>{
-   const user=await assertAccess();
+  if(!item)return;
+  await assertAccess().catch(err=>{error=err.message;render();});
+  if(!allowed||!visible||!items.some(x=>x.id===id))return;
+  const session={id,tabId,epoch,file,itemName:item.product,originalBlob:null,editedBlob:null,originalUrl:null,editedUrl:null,processing:false,dialog:null};
+  photoSession=session;
+  const dialog=document.createElement('div');
+  dialog.setAttribute('data-mp-photo-modal','');
+  dialog.innerHTML='<section class="gl-mp-photo-dialog" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-title">'+
+   '<header><div><small>Mis Productos · Foto privada</small><h2 id="gl-mp-photo-title">Preparar foto</h2><p data-mp-photo-name></p></div>'+
+   '<button type="button" data-mp-photo-cancel aria-label="Cerrar">✕</button></header>'+
+   '<p class="gl-mp-photo-tip">La edición conserva el frasco, la caja y sus colores reales. Revisá la vista previa antes de guardar.</p>'+
+   '<div class="gl-mp-photo-compare"><figure><div><img data-mp-photo-before alt="Foto original"></div><figcaption>Original</figcaption></figure>'+
+   '<figure><div><img data-mp-photo-after alt="Foto con fondo blanco" hidden></div><figcaption>Fondo blanco</figcaption></figure></div>'+
+   '<p class="gl-mp-photo-message" role="status" data-mp-photo-message>Preparando imagen…</p>'+
+   '<div class="gl-mp-photo-modal-actions"><button type="button" class="gl-mp-photo-confirm" data-mp-photo-save-edited disabled>Guardar con fondo blanco</button>'+
+   '<button type="button" data-mp-photo-save-original disabled>Guardar original</button>'+
+   '<button type="button" data-mp-photo-retry disabled>Reprocesar</button><button type="button" data-mp-photo-cancel>Cancelar</button></div>'+
+   '<small>Solo se actualizará este producto. El original se conservará en su ficha privada.</small></section>';
+  document.body.appendChild(dialog);session.dialog=dialog;
+  dialog.querySelector('[data-mp-photo-name]').textContent=item.product;
+  try{
    const blob=await compressPhoto(file);
-   const path=OWNER_UID+'/'+item.id+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
-   const storage=db().storage.from(PHOTO_BUCKET);
-   const upload=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-   if(upload.error)throw upload.error;
-   const saved=await db().from(ITEMS).update({photo_path:path,updated_at:new Date().toISOString()})
-    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
-   if(saved.error){await storage.remove([path]);throw saved.error;}
-   const oldPath=item.photo_path;
-   if(oldPath&&oldPath!==path)await storage.remove([oldPath]);
+   if(photoSession!==session)return;
+   session.originalBlob=blob;session.originalUrl=URL.createObjectURL(blob);
+   dialog.querySelector('[data-mp-photo-before]').src=session.originalUrl;
+   void processPhoto(session);
+  }catch(err){
+   photoMessage(session,err.message||'No se pudo preparar esta foto.',true);
+  }
+ }
+ async function savePreparedPhoto(edited){
+  const session=photoSession;
+  if(!session||busy||session.processing)return;
+  const blob=edited?session.editedBlob:session.originalBlob;
+  if(!blob||session.epoch!==epoch||session.tabId!==tabId||!items.some(x=>x.id===session.id)){
+   photoMessage(session,'El producto cambió. Volvé a abrir su foto antes de guardar.',true);return;
+  }
+  busy=true;readyPhotoButtons(session);photoMessage(session,'Guardando la foto en '+session.itemName+'…');
+  const storage=db().storage.from(PHOTO_BUCKET),uploaded=[];
+  const makePath=()=>OWNER_UID+'/'+session.id+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+  const store=async data=>{
+   const path=makePath();
+   const result=await storage.upload(path,data,{contentType:'image/jpeg',upsert:false,cacheControl:'3600'});
+   if(result.error)throw result.error;
+   uploaded.push(path);
+   return path;
+  };
+  try{
+   await assertAccess();
+   // Segunda lectura protege contra el borrado/movimiento de una ficha durante el procesamiento.
+   const current=await db().from(ITEMS).select('id,photo_path,original_photo_path,tab_id')
+    .eq('id',session.id).eq('tab_id',session.tabId).eq('owner_uid',OWNER_UID)
+    .eq('tenant_id',TENANT).single();
+   if(current.error||!current.data)throw Error('La ficha de este producto ya no existe.');
+   const originalPath=await store(session.originalBlob);
+   const editedPath=edited?await store(blob):originalPath;
+   if(photoSession!==session||session.epoch!==epoch||session.tabId!==tabId)throw Error('Cambiaste de producto. Se canceló el guardado.');
+   const saved=await db().from(ITEMS).update({
+     photo_path:editedPath,original_photo_path:originalPath,updated_at:new Date().toISOString()
+    }).eq('id',session.id).eq('tab_id',session.tabId).eq('tenant_id',TENANT)
+      .eq('owner_uid',OWNER_UID).eq('photo_path',current.data.photo_path)
+      .select('id').single();
+   if(saved.error||saved.data?.id!==session.id)throw saved.error||Error('La foto cambió durante el guardado. Volvé a intentarlo.');
+   // A partir de aquí ya están vinculadas a la ficha por ID; nunca borrar las nuevas.
+   uploaded.length=0;
+   const old=[current.data.photo_path,current.data.original_photo_path].filter(Boolean);
+   for(const p of new Set(old))if(p!==originalPath&&p!==editedPath)
+    await storage.remove([p]).catch(()=>{});
+   closePhotoModal();
+   notice='Foto '+(edited?'con fondo blanco ':'')+'guardada en «'+session.itemName+'».';
    await loadItems();
-  },'Foto guardada.');
+  }catch(err){
+   if(uploaded.length)await storage.remove(uploaded).catch(()=>{});
+   photoMessage(session,err.message||'No se pudo guardar la foto. No se modificó el producto.',true);
+  }finally{busy=false;readyPhotoButtons(session);}
+ }
+ async function viewOriginalPhoto(id){
+  const item=items.find(x=>x.id===id);
+  if(!item?.original_photo_path||busy)return;
+  try{
+   await assertAccess();
+   const result=await db().storage.from(PHOTO_BUCKET).createSignedUrl(item.original_photo_path,1800);
+   if(result.error||!result.data?.signedUrl)throw result.error||Error('No disponible.');
+   const overlay=document.createElement('div');
+   overlay.setAttribute('data-mp-original-modal','');
+   overlay.innerHTML='<section class="gl-mp-original-dialog" role="dialog" aria-modal="true"><h2></h2>'+
+    '<img alt="Foto real, sin editar" /><button type="button" data-mp-original-close>Cerrar original</button></section>';
+   overlay.querySelector('h2').textContent='Original · '+item.product;
+   overlay.querySelector('img').src=result.data.signedUrl;
+   document.body.append(overlay);
+  }catch(err){error=err?.message||'No se pudo mostrar el original.';render();}
  }
  async function removePhoto(id){
   const item=items.find(x=>x.id===id);
-  if(!item?.photo_path||!window.confirm('¿Quitar la foto de «'+item.product+'»?'))return;
+  if(!item?.photo_path||!window.confirm('¿Quitar las fotos de «'+item.product+'»?'))return;
   await run(async()=>{
-   const oldPath=item.photo_path;
-   const saved=await db().from(ITEMS).update({photo_path:null,updated_at:new Date().toISOString()})
-    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).select('id').single();
+   const previous=[item.photo_path,item.original_photo_path].filter(Boolean);
+   const saved=await db().from(ITEMS).update({photo_path:null,original_photo_path:null,updated_at:new Date().toISOString()})
+    .eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT).eq('owner_uid',OWNER_UID).select('id').single();
    if(saved.error)throw saved.error;
-   await db().storage.from(PHOTO_BUCKET).remove([oldPath]);
+   await db().storage.from(PHOTO_BUCKET).remove([...new Set(previous)]);
    await loadItems();
-  },'Foto eliminada.');
+  },'Fotos eliminadas.');
  }
  async function changeFragrance(id,value){
   if(!items.some(x=>x.id===id)||!['','fem','hombre','unisex'].includes(value))return;
@@ -330,7 +456,7 @@
   await run(async()=>{
    const r=await db().from(ITEMS).delete().eq('id',id).eq('tab_id',tabId).eq('tenant_id',TENANT);
    if(r.error)throw r.error;
-   if(item.photo_path)await db().storage.from(PHOTO_BUCKET).remove([item.photo_path]);
+   if(item.photo_path||item.original_photo_path)await db().storage.from(PHOTO_BUCKET).remove([...new Set([item.photo_path,item.original_photo_path].filter(Boolean))]);
    await loadItems();
   },'Producto eliminado.');
  }
@@ -480,6 +606,15 @@
  }
 
  document.addEventListener('click',e=>{
+  if(e.target.closest('[data-mp-photo-modal]')){
+   const el=e.target;
+   if(el.closest('[data-mp-photo-cancel]')){e.preventDefault();closePhotoModal();return;}
+   if(el.closest('[data-mp-photo-save-edited]')){e.preventDefault();void savePreparedPhoto(true);return;}
+   if(el.closest('[data-mp-photo-save-original]')){e.preventDefault();void savePreparedPhoto(false);return;}
+   if(el.closest('[data-mp-photo-retry]')){e.preventDefault();if(photoSession)void processPhoto(photoSession);return;}
+   return;
+  }
+  if(e.target.closest('[data-mp-original-close]')){e.preventDefault();document.querySelector('[data-mp-original-modal]')?.remove();return;}
   if(e.target.closest('[data-mp-open]')){e.preventDefault();api?.closePanel?.();void open();return;}
   const modal=e.target.closest('[data-mp-label-modal]');
   if(modal){
@@ -492,7 +627,11 @@
   const el=e.target;
   const print=el.closest('[data-mp-print]');
   const photo=el.closest('[data-mp-photo-btn]');
-  if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
+  if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]:not([capture])')?.click();return;}
+  const camera=el.closest('[data-mp-camera-btn]');
+  if(camera){e.preventDefault();camera.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input][capture]')?.click();return;}
+  const original=el.closest('[data-mp-photo-original]');
+  if(original){e.preventDefault();void viewOriginalPhoto(original.dataset.mpPhotoOriginal);return;}
   const remove=el.closest('[data-mp-photo-remove]');
   if(remove){e.preventDefault();void removePhoto(remove.dataset.mpPhotoRemove);return;}
   if(print){
@@ -539,7 +678,7 @@
   const photo=e.target.closest('[data-mp-photo-input]');
   if(photo&&visible){
    const file=photo.files?.[0];
-   if(file)void uploadPhoto(photo.dataset.mpPhotoInput,file);
+   if(file){photo.value='';void startPhoto(photo.dataset.mpPhotoInput,file);}
    return;
   }
   const select=e.target.closest('[data-mp-fragrance]');
