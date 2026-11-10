@@ -201,7 +201,7 @@
  }
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
-  removePrintModal();closePhotoModal();
+  removePrintModal();closePhotoModal();document.querySelector('[data-mp-original-modal]')?.remove();
   tabId=id;photoUrls.clear();itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
@@ -328,7 +328,7 @@
   if(!visible||!file||busy||photoSession)return;
   const item=items.find(x=>x.id===id);
   if(!item)return;
-  await assertAccess().catch(err=>{error=err.message;render();});
+  try{await assertAccess();}catch(err){error=err.message||'No tenés acceso a esta foto.';render();return;}
   if(!allowed||!visible||!items.some(x=>x.id===id))return;
   const session={id,tabId,epoch,file,itemName:item.product,originalBlob:null,editedBlob:null,originalUrl:null,editedUrl:null,processing:false,dialog:null};
   photoSession=session;
@@ -384,11 +384,13 @@
    const originalPath=await store(session.originalBlob);
    const editedPath=edited?await store(blob):originalPath;
    if(photoSession!==session||session.epoch!==epoch||session.tabId!==tabId)throw Error('Cambiaste de producto. Se canceló el guardado.');
-   const saved=await db().from(ITEMS).update({
+   const target=db().from(ITEMS).update({
      photo_path:editedPath,original_photo_path:originalPath,updated_at:new Date().toISOString()
     }).eq('id',session.id).eq('tab_id',session.tabId).eq('tenant_id',TENANT)
-      .eq('owner_uid',OWNER_UID).eq('photo_path',current.data.photo_path)
-      .select('id').single();
+      .eq('owner_uid',OWNER_UID);
+   const saved=await (current.data.photo_path
+      ? target.eq('photo_path',current.data.photo_path)
+      : target.is('photo_path',null)).select('id').single();
    if(saved.error||saved.data?.id!==session.id)throw saved.error||Error('La foto cambió durante el guardado. Volvé a intentarlo.');
    // A partir de aquí ya están vinculadas a la ficha por ID; nunca borrar las nuevas.
    uploaded.length=0;
