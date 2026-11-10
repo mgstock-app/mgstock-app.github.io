@@ -288,9 +288,9 @@
    backdrop.setAttribute('role','presentation');
    backdrop.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
     '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
-    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y la etiqueta estén completos.</p>'+
+    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y la etiqueta estén completos y la sombra lateral se vea natural.</p>'+
     '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
-    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Fondo blanco</figcaption></figure></div>'+
+    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Blanco + sombra lateral</figcaption></figure></div>'+
     '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
     '<button type="button" data-mp-photo-discard>Descartar y sacar otra foto</button></div>'+
     '<small>Se conservarán las dos versiones en la ficha privada, no en Tiendanube.</small></div>';
@@ -312,7 +312,7 @@
    await assertAccess();
    const original=await compressPhoto(file);
    // Modelo descargado al primer uso: el recorte se hace sin subir la imagen a terceros.
-   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.mjs?rev=20261110');
+   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.mjs?rev=20261110-sombra-lateral');
    const edited=await whiteBackground(original);
    if(!await reviewPhotoBeforeSaving(item,original,edited))throw Error('Foto descartada. No se modificó el producto.');
    if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab)){
@@ -344,7 +344,7 @@
     if(!committed&&uploaded.length)await storage.remove(uploaded);
     throw err;
    }
-  },'Foto con fondo blanco guardada en «'+item.product+'». Original conservado.',
+  },'Foto con fondo blanco y sombra lateral guardada en «'+item.product+'». Original conservado.',
      'Procesando foto de «'+item.product+'»… la primera vez se descarga el modelo de fondo blanco.');
  }
  async function viewOriginalPhoto(id){
