@@ -14,6 +14,7 @@ function setup(authorized=true,checked=false){
     GestLokPilot:{authorized:()=>authorized,creatorMode:()=>authorized,accessChecked:()=>checked},
     GestLokZayroAdmin:{homeTile:()=>'<section>Tienda Online · ZAYRO · ADMINISTRAR</section>'},
     GestLokMisProductos:{authorized:()=>authorized,homeTile:()=>'<section>Mis Productos</section>'},
+    GestLokTiendaNube:{authorized:()=>authorized,homeTile:()=>'<section>TiendaNube</section>'},
     GestLokCamiMonthly:{homeTile:()=>'<section>Resumen Mensual</section>'}
   };
   const listeners={};
@@ -45,6 +46,7 @@ test('Dueña autenticada y autorizada ve únicamente Plan Scanner y ZAYRO',()=>{
   assert.match(html,/Stock de productos/);
   assert.match(html,/Precios/);
   assert.match(html,/Tienda Online/);
+  assert.match(html,/TiendaNube/);
   assert.match(html,/data-zayro-open|ADMINISTRAR/);
   assert.match(nav,/data-pilot-pos/);
   assert.match(nav,/data-pilot-stock/);
@@ -59,7 +61,9 @@ test('Creadora verificada puede operar Scanner; no hereda funciones de Mi Gusto'
   assert.match(html,/ZAYRO/);
   assert.match(html,/Administración general · Acceso verificado/);
   assert.match(html,/data-mp-open/);
+  assert.match(html,/data-tn-open/);
   assert.match(nav,/data-mp-open/);
+  assert.match(nav,/data-tn-open/);
   assert.match(html,/data-scanner-card="ventas" data-pilot-pos/);
   assert.match(nav,/data-scanner-section="ventas"/);
   assert.doesNotMatch(html,/disabled|Solo lectura/);
