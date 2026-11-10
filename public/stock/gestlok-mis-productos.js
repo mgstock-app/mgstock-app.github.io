@@ -111,7 +111,7 @@
    '<div class="gl-mp-card-top"><div class="gl-mp-photo">'+
    (photo?'<img src="'+esc(photo)+'" loading="lazy" alt="Foto de '+name+'">':
     '<div class="gl-mp-no-photo" aria-hidden="true"><span>▧</span><small>Sin foto</small></div>')+
-   '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'Elegir foto')+'</button>'+
+   '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'+ Agregar foto')+'</button>'+
    '<button type="button" class="gl-mp-photo-camera" data-mp-photo-camera="'+id+'">📷 Sacar foto</button>'+
    '<input type="file" hidden data-mp-photo-input="'+id+'" aria-label="Elegir foto de '+name+'" accept="image/jpeg,image/png,image/webp">'+
    '<input type="file" hidden data-mp-photo-camera-input="'+id+'" aria-label="Sacar foto de '+name+'" accept="image/*" capture="environment"></div>'+
