@@ -25,7 +25,7 @@ test('Un guardado de foto solo modifica ficha exacta de Camila, no otra empresa 
  assert.match(ui,/const EMAIL='camilab\.lopez99@gmail\.com'/);
  assert.match(ui,/const PHOTO_BUCKET='gestlok-cami-product-photos'/);
  assert.match(ui,/session\.epoch!==epoch\|\|session\.tabId!==tabId/);
- assert.match(ui,/session\.id===/u); // ID captured at selection and never resolved from displayed product name
+ assert.match(ui,/x\.id===session\.id/); // ID captured at selection and never resolved from displayed product name
  assert.match(ui,/\.eq\('id',session\.id\)\.eq\('tab_id',session\.tabId\)\.eq\('tenant_id',TENANT\)/);
  assert.match(ui,/\.eq\('owner_uid',OWNER_UID\)/);
  assert.match(ui,/target\.is\('photo_path',null\)/);
