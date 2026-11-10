@@ -16,10 +16,10 @@
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
  let visible=false,tabs=[],items=[],tabId='',loading=false,busy=false,error='',notice='',editing='',itemForm=false,searchTerm='';
  const db=()=>window.GestLokSupabase;
- // La creadora se verifica por su rol real y por RLS en Supabase; nunca por isOwner.
+ // previewOwner devuelve contexto de dueña incluso a la creadora; su rol real se verifica en host y RLS.
  const validContext=(ctx,host)=>ctx?.tenant_id===TENANT&&host?.S?.me?.tenant_id===TENANT&&(
    (ctx?.role==='dueno'&&host?.role?.()==='dueno'&&String(host.S.me.email||'').toLowerCase()===EMAIL)||
-   (ctx?.role==='creadora'&&host?.role?.()==='creadora'&&host?.isCreadora?.()===true&&
+   (ctx?.role==='dueno'&&host?.role?.()==='creadora'&&host?.isCreadora?.()===true&&
      String(host.S.me.email||'').toLowerCase()===CREATOR_EMAIL));
  const own=(u)=>!!u?.id&&[EMAIL,CREATOR_EMAIL].includes(String(u?.email||'').toLowerCase());
  async function assertAccess(){
