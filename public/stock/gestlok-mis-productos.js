@@ -279,6 +279,29 @@
   });
  }
 
+
+ function reviewPhotoBeforeSaving(item,original,edited){
+  // Nunca sobrescribir una imagen privada hasta que la persona apruebe el recorte.
+  return new Promise(resolve=>{
+   const before=URL.createObjectURL(original),after=URL.createObjectURL(edited);
+   const backdrop=document.createElement('div');backdrop.dataset.mpPhotoPreview='true';
+   backdrop.setAttribute('role','presentation');
+   backdrop.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
+    '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
+    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y la etiqueta estén completos.</p>'+
+    '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
+    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Fondo blanco</figcaption></figure></div>'+
+    '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
+    '<button type="button" data-mp-photo-discard>Descartar y sacar otra foto</button></div>'+
+    '<small>Se conservarán las dos versiones en la ficha privada, no en Tiendanube.</small></div>';
+   document.body.append(backdrop);
+   const finish=ok=>{backdrop.remove();URL.revokeObjectURL(before);URL.revokeObjectURL(after);resolve(ok);};
+   backdrop.addEventListener('click',event=>{
+    if(event.target.closest('[data-mp-photo-approve]'))finish(true);
+    else if(event.target.closest('[data-mp-photo-discard]'))finish(false);
+   },{once:false});
+  });
+ }
  async function uploadPhoto(id,file){
   // Capturamos ID + pestaña ANTES de cualquier operación asíncrona; no usamos
   // la tarjeta visible al terminar el recorte ni vinculamos por nombre.
@@ -291,6 +314,7 @@
    // Modelo descargado al primer uso: el recorte se hace sin subir la imagen a terceros.
    const {whiteBackground}=await import('/stock/gestlok-product-white-bg.mjs?rev=20261110');
    const edited=await whiteBackground(original);
+   if(!await reviewPhotoBeforeSaving(item,original,edited))throw Error('Foto descartada. No se modificó el producto.');
    if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab)){
     throw Error('Cambiaste de producto o pestaña. No se guardó la foto.');
    }
