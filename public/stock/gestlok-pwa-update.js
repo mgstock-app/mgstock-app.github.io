@@ -6,6 +6,7 @@
   let pending = () => true;
   let banner;
   let audience = null;
+  let retries = 0, retryQueued = false;
 
   // Un cambio del service worker no implica que todas las empresas se actualizaron.
   // Si el cambio afecta scripts compartidos, el worker devuelve ['*'] y todos reciben aviso.
@@ -13,8 +14,13 @@
     if (!audience || banner) return;
     if (audience.includes('*')) { showBanner(); return; }
     const tenant = window.GestLokNavContext?.()?.tenant;
-    if (tenant && audience.includes(tenant)) showBanner();
-    // Sin identidad cargada, esperar al inicio de sesión o cambio de empresa.
+    if (tenant && audience.includes(tenant)) { showBanner(); return; }
+    // La sesión puede llegar después del controllerchange, sin tocar el app.js protegido.
+    if (!tenant && retries < 8 && !retryQueued) {
+      retries++;
+      retryQueued = true;
+      setTimeout(() => { retryQueued = false; checkAudience(); }, 1800);
+    }
   }
   window.GestLokPWAUpdate = {
     attach(check) { pending = check; checkAudience(); },
@@ -64,6 +70,9 @@
     banner.append(message, button);
     document.body.appendChild(banner);
   }
+  // El cambio de cuenta o el regreso a la app también pueden aportar un tenant válido.
+  window.addEventListener?.('focus', checkAudience);
+  document.addEventListener?.('visibilitychange', checkAudience);
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const replacing = controlled;
     controlled = true;
