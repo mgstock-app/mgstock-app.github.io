@@ -2,16 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import {releaseAudience,fileAudience,TENANTS} from '../scripts/pwa-release-scope.mjs';
 const read = p => readFileSync(p, 'utf8');
-function fixture(controlled = true) {
+function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto) {
   const handlers = {}, elements = [];
-  let reloads = 0;
+  let reloads = 0, currentTenant = tenant, channel;
   const element = () => ({style:{},children:[],listeners:{},setAttribute(){},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;}});
-  const navigator = {onLine:true,serviceWorker:{controller:controlled?{}:null,addEventListener(n,f){handlers[n]=f;}}};
-  const window = {location:{reload(){reloads++;}}};
+  const controller = scope == null ? {} : {
+    postMessage(message) { channel.port1.onmessage({data:{type:message.type,audience:scope}}); }
+  };
+  const navigator = {onLine:true,serviceWorker:{controller:controlled?controller:null,addEventListener(n,f){handlers[n]=f;}}};
+  const window = {location:{reload(){reloads++;}},GestLokNavContext:()=>({tenant:currentTenant})};
   const document = {createElement:element,body:{appendChild(e){elements.push(e);}}};
-  vm.runInNewContext(read('public/stock/gestlok-pwa-update.js'), {navigator,window,document});
-  return {handlers,elements,navigator,window,reloads:()=>reloads};
+  const MessageChannel = scope == null ? undefined : class {
+    constructor(){channel=this;this.port1={onmessage:null,close(){}};this.port2={};}
+  };
+  vm.runInNewContext(read('public/stock/gestlok-pwa-update.js'), {
+    navigator,window,document,MessageChannel,setTimeout:()=>123,clearTimeout(){}
+  });
+  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;}};
 }
 test('Una instalación nueva no pide recargar; una actualización avisa solo una vez', () => {
   const first=fixture(false);first.handlers.controllerchange();assert.equal(first.elements.length,0);
@@ -75,4 +84,56 @@ test('cada publicación lista las páginas de Empleados en el service worker', a
   const sw = rf(join(out, 'sw.js'), 'utf8');
   for (const p of ['/empleados/', '/empleados/horarios/', '/empleados/horarios/index.txt', '/empleados/_next/static/chunks/a.js']) assert.ok(sw.includes(JSON.stringify(p)), p);
   assert.ok(!sw.includes('__EMPLEADOS_PRECACHE__'));
+});
+
+test('Cambios de Molino y ZAYRO no muestran Actualizar en Mi Gusto',()=>{
+  for(const other of [TENANTS.molino,TENANTS.zayro]){
+    const f=fixture(true,[other],TENANTS.miGusto);
+    f.handlers.controllerchange();
+    assert.equal(f.elements.length,0,'Mi Gusto no debe ver novedades de '+other);
+    f.handlers.controllerchange();
+    assert.equal(f.elements.length,0);
+  }
+});
+test('El aviso sí llega a la empresa afectada, incluso si el contexto se carga después',()=>{
+  const f=fixture(true,[TENANTS.molino],null);
+  f.handlers.controllerchange();
+  assert.equal(f.elements.length,0);
+  f.setTenant(TENANTS.miGusto);f.window.GestLokPWAUpdate.refresh();
+  assert.equal(f.elements.length,0);
+  f.setTenant(TENANTS.molino);f.window.GestLokPWAUpdate.refresh();
+  assert.equal(f.elements.length,1);
+  f.window.GestLokPWAUpdate.refresh();
+  assert.equal(f.elements.length,1,'Nunca duplica el aviso');
+});
+test('Los cambios globales siguen apareciendo y los de infraestructura sin impacto no molestan',()=>{
+  const shared=fixture(true,['*'],TENANTS.miGusto);
+  shared.handlers.controllerchange();assert.equal(shared.elements.length,1);
+  const silent=fixture(true,[],TENANTS.miGusto);
+  silent.handlers.controllerchange();assert.equal(silent.elements.length,0);
+});
+test('La clasificación separa actualizaciones por empresa y conserva alertas de seguridad',()=>{
+  assert.deepEqual(fileAudience('public/stock/gestlok-molino-pya.css'),[TENANTS.molino]);
+  assert.deepEqual(fileAudience('public/stock/gestlok-zayro-admin.js'),[TENANTS.zayro]);
+  assert.deepEqual(fileAudience('public/stock/mi-gusto-cierre-online.js'),[TENANTS.miGusto]);
+  assert.deepEqual(releaseAudience(['public/stock/gestlok-molino-pya.css','tests/el-molino-pedidosya.test.mjs']),[TENANTS.molino]);
+  assert.deepEqual(releaseAudience(['public/stock/gestlok-zayro-admin.js','public/stock/gestlok-molino-pya.js']),[TENANTS.molino,TENANTS.zayro].sort());
+  assert.deepEqual(releaseAudience(['docs/tiendanube-integration-plan.md']),[]);
+  assert.deepEqual(releaseAudience(['public/stock/gestlok-pwa-update.js','scripts/version-cache.mjs']),[]);
+  assert.deepEqual(releaseAudience(['scripts/sw-template.js']),['*']);
+  assert.deepEqual(releaseAudience(['public/stock/app.js']),['*']);
+});
+test('Un cambio aislado de arranque de Molino no activa el cartel en Mi Gusto',()=>{
+  const patches={
+    'components/stock-runtime.tsx':'+      if (!visitor) await load("/stock/gestlok-molino-pya.js?rev=pedidosya-20261110");',
+    'app/layout.tsx':'+import "./gestlok-molino-pya.css";'
+  };
+  assert.deepEqual(releaseAudience(Object.keys(patches),patches),[TENANTS.molino]);
+});
+test('El actualizador revisa el tenant sin modificar el controlador principal protegido',()=>{
+  assert.deepEqual(releaseAudience(['public/stock/app.js']),['*']);
+  assert.match(read('public/stock/app.js'),/window\.GestLokNavContext=/);
+  assert.match(read('public/stock/gestlok-pwa-update.js'),/setTimeout\(\(\) => \{ retryQueued = false; checkAudience\(\); \}, 1800\)/);
+  assert.match(read('scripts/sw-template.js'),/gestlok-update-audience/);
+  assert.match(read('scripts/version-cache.mjs'),/releaseAudience/);
 });

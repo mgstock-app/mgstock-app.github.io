@@ -5,11 +5,29 @@
   let controlled = !!navigator.serviceWorker.controller;
   let pending = () => true;
   let banner;
-  window.GestLokPWAUpdate = { attach(check) { pending = check; } };
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    const replacing = controlled;
-    controlled = true;
-    if (!replacing || banner) return;
+  let audience = null;
+  let retries = 0, retryQueued = false;
+
+  // Un cambio del service worker no implica que todas las empresas se actualizaron.
+  // Si el cambio afecta scripts compartidos, el worker devuelve ['*'] y todos reciben aviso.
+  function checkAudience() {
+    if (!audience || banner) return;
+    if (audience.includes('*')) { showBanner(); return; }
+    const tenant = window.GestLokNavContext?.()?.tenant;
+    if (tenant && audience.includes(tenant)) { showBanner(); return; }
+    // La sesión puede llegar después del controllerchange, sin tocar el app.js protegido.
+    if (!tenant && retries < 8 && !retryQueued) {
+      retries++;
+      retryQueued = true;
+      setTimeout(() => { retryQueued = false; checkAudience(); }, 1800);
+    }
+  }
+  window.GestLokPWAUpdate = {
+    attach(check) { pending = check; checkAudience(); },
+    refresh: checkAudience
+  };
+  function showBanner() {
+    if (banner) return;
     banner = document.createElement('aside');
     banner.id = 'gl-pwa-update';
     banner.setAttribute('role', 'status');
@@ -51,5 +69,39 @@
     }, { passive: true });
     banner.append(message, button);
     document.body.appendChild(banner);
+  }
+  // El cambio de cuenta o el regreso a la app también pueden aportar un tenant válido.
+  window.addEventListener?.('focus', checkAudience);
+  document.addEventListener?.('visibilitychange', checkAudience);
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const replacing = controlled;
+    controlled = true;
+    if (!replacing || banner) return;
+    const worker = navigator.serviceWorker.controller;
+    // Un worker anterior o un navegador sin MessageChannel puede no comunicar el alcance:
+    // en ese caso conservamos el comportamiento seguro (mostrar el aviso).
+    if (!worker?.postMessage || typeof MessageChannel !== 'function') { showBanner(); return; }
+    const channel = new MessageChannel();
+    let answered = false;
+    const timeout = setTimeout(() => {
+      if (!answered) { answered = true; showBanner(); channel.port1.close?.(); }
+    }, 2500);
+    channel.port1.onmessage = ({data}) => {
+      if (answered) return;
+      answered = true;
+      clearTimeout(timeout);
+      channel.port1.close?.();
+      if (data?.type !== 'gestlok-update-audience' || !Array.isArray(data.audience) ||
+          !data.audience.every(value => typeof value === 'string')) {
+        showBanner(); return;
+      }
+      audience = data.audience;
+      checkAudience();
+    };
+    try {
+      worker.postMessage({type:'gestlok-update-audience'}, [channel.port2]);
+    } catch {
+      if (!answered) { answered = true; clearTimeout(timeout); showBanner(); }
+    }
   });
 })();
