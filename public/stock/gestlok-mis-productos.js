@@ -11,7 +11,13 @@
  const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
- let photoProgress=null,retryPhoto=null,exportPreview=null,chatGptFlow=null;
+ let photoProgress=null,retryPhoto=null,exportPreview=null,chatGptFlow=null,iaModal=null;
+ // Edición con IA generativa gratuita (Cloudflare Workers AI · FLUX.2) vía función de Supabase.
+ const IA_FN='gestlok-cami-foto-ia';
+ const MOTOR_URL='/stock/gestlok-cami-foto-ia.js?rev=20261111-ia-real-v1';
+ const RECORTE_URL='/stock/gestlok-product-white-bg.js?rev=20261111-ia-real-v1';
+ const IA_NO_DISPONIBLE=new Set(['sin_conexion','cupo','red','ia','conexion','plan','servicio']);
+ let iaEstado={checked:false,connected:false,hoy:0,cupo:90,hint:null,error:''};
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -32,6 +38,7 @@
  function reset(){
   epoch++;allowed=false;checked=false;checking=false;context=null;api=null;
   tabs=[];items=[];photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
+  iaEstado={checked:false,connected:false,hoy:0,cupo:90,hint:null,error:''};removeIAModal();
   close(false);
  }
  async function refresh(ctx,host){
@@ -130,7 +137,7 @@
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    (item.photo_path?'<button type="button" class="gl-mp-preview-action" data-mp-photo-open="'+id+'">Vista previa / Descargar</button>':'')+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
-   (item.original_photo_path?'<button type="button" class="gl-mp-free-ai" data-mp-photo-enhance="'+id+'">Mejorar luz y fondo · Gratis</button><button type="button" class="gl-mp-chatgpt-action" data-mp-chatgpt="'+id+'">Editar con ChatGPT</button><button type="button" data-mp-ai-import="'+id+'">Importar edición de IA</button><input type="file" hidden data-mp-ai-import-input="'+id+'" accept="image/jpeg,image/png,image/webp" aria-label="Importar imagen editada de '+name+'"><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
+   (item.original_photo_path?'<button type="button" class="gl-mp-free-ai" data-mp-photo-enhance="'+id+'">Editar con IA · Gratis</button><button type="button" class="gl-mp-chatgpt-action" data-mp-chatgpt="'+id+'">Editar con ChatGPT</button><button type="button" data-mp-ai-import="'+id+'">Importar edición de IA</button><input type="file" hidden data-mp-ai-import-input="'+id+'" accept="image/jpeg,image/png,image/webp" aria-label="Importar imagen editada de '+name+'"><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -183,8 +190,9 @@
       '<label class="gl-mp-search" for="gl-mp-search"><span>Buscar producto</span><input id="gl-mp-search" type="search" data-mp-search placeholder="Buscar por nombre…" autocomplete="off" value="'+esc(searchTerm)+'"></label>'+
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
+      iaBar()+
       '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
-      '<p class="gl-mp-hint">Al subir una foto, la IA local quita el fondo y mejora la luz automáticamente. Para una edición de estudio, compartí la foto con tu ChatGPT y después importá el resultado. Revisá las etiquetas antes de guardar.</p></section>')+
+      '<p class="gl-mp-hint">Al sacar o elegir una foto, la IA generativa gratuita la convierte en foto de catálogo: luz de estudio, blancos limpios y fondo blanco puro. Los textos, etiquetas y formas se toman siempre de tu foto real. Revisá la comparación antes de guardar.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
  }
@@ -196,9 +204,10 @@
   render();
   try{await load();}catch(err){error=err.message||'No pudimos cargar tus productos.';}
   finally{loading=false;render();}
+  if(!iaEstado.checked)void cargarEstadoIA();
  }
  function close(back=true){
-  removePrintModal();removeExportModal();removeChatGPTModal();
+  removePrintModal();removeExportModal();removeChatGPTModal();removeIAModal();
   if(!visible)return;
   visible=false;searchTerm='';photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
@@ -259,6 +268,121 @@
   },'Producto guardado.');
  }
 
+
+ /* ---------- IA generativa gratuita (Cloudflare Workers AI) ---------- */
+ async function iaCall(body){
+  const r=await db().functions.invoke(IA_FN,{body});
+  if(r.error){
+   let msg=r.data?.message,code=r.data?.code;
+   if(!msg){try{const j=await r.error.context?.json?.();msg=j?.message;code=j?.code;}catch{/* sin detalle */}}
+   const e=Error(msg||'No se pudo conectar con la edición de fotos. Revisá tu conexión.');e.code=code||'red';throw e;
+  }
+  return r.data||{};
+ }
+ async function cargarEstadoIA(){
+  try{
+   const d=await iaCall({action:'status'});
+   iaEstado={checked:true,connected:d.connected===true,hoy:Number(d.hoy)||0,cupo:Number(d.cupo_estimado)||90,hint:d.account_hint||null,error:''};
+  }catch(e){iaEstado={...iaEstado,checked:true,error:e.message||'No se pudo consultar la IA.'};}
+  if(visible)render();
+ }
+ function iaBar(){
+  const st=iaEstado;
+  const text=!st.checked?'Consultando la IA de fotos…':
+   st.connected?'IA de fotos conectada · FLUX.2 (Cloudflare, gratis) · hoy '+st.hoy+' de ~'+st.cupo:
+   st.error?'IA de fotos: '+st.error:'IA de fotos sin conectar: conectá la cuenta gratuita una sola vez.';
+  return '<div class="gl-mp-ia-bar '+(st.connected?'is-on':'is-off')+'" role="status"><span>'+esc(text)+'</span>'+
+   '<button type="button" data-mp-ia-config>'+(st.connected?'Conexión IA':'Conectar IA gratuita')+'</button></div>';
+ }
+ const blobToBase64=blob=>new Promise((resolve,reject)=>{
+  const fr=new FileReader();
+  fr.onload=()=>resolve(String(fr.result||'').split(',')[1]||'');
+  fr.onerror=()=>reject(Error('No se pudo leer la foto.'));
+  fr.readAsDataURL(blob);
+ });
+ function base64ToBlob(b64,type){
+  const bin=atob(b64),u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  return new Blob([u],{type});
+ }
+ async function pedirIA(blob,{intento}){
+  const d=await iaCall({action:'edit',image:await blobToBase64(blob),seed:Math.floor(Math.random()*2e9)+intento});
+  if(d.ok!==true){const e=Error(d.message||'La IA no respondió.');e.code=d.code||'ia';throw e;}
+  if(Number.isFinite(d.hoy))iaEstado={...iaEstado,checked:true,connected:true,hoy:d.hoy,error:''};
+  return base64ToBlob(d.image,d.mime||'image/jpeg');
+ }
+ function removeIAModal(){const m=iaModal;iaModal=null;m?.remove?.();}
+ function abrirConexionIA(){
+  removeIAModal();
+  const st=iaEstado,modal=document.createElement('div');modal.dataset.mpIaModal='true';
+  modal.innerHTML='<section class="gl-mp-ia-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-ia-title">'+
+   '<header><div><small>EDICIÓN CON IA · GRATIS</small><h2 id="gl-mp-ia-title">Conectar la IA de fotos</h2></div>'+
+   '<button type="button" data-mp-ia-close aria-label="Cerrar">✕</button></header>'+
+   '<p>GESTLOK usa <strong>Cloudflare Workers AI (FLUX.2)</strong> con una cuenta gratuita: unas 90 fotos por día, sin tarjeta. '+
+   'Si se termina el cupo, se frena hasta las 21:00 (hora argentina); nunca cobra.</p>'+
+   (st.connected?'<p class="gl-mp-ia-ok">Conectada'+(st.hint?' · cuenta …'+esc(st.hint):'')+'. Hoy: '+st.hoy+' ediciones.</p>':'')+
+   '<ol><li>Entrá a <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener noreferrer">dash.cloudflare.com</a> y creá la cuenta gratis.</li>'+
+   '<li>Perfil → <b>API Tokens</b> → <b>Create Token</b> → plantilla <b>«Workers AI»</b> → Create. Copiá el token.</li>'+
+   '<li>Copiá el <b>Account ID</b> (inicio de la cuenta → «Account details»).</li></ol>'+
+   '<form data-mp-ia-form><label>Account ID<input name="account_id" autocomplete="off" spellcheck="false" maxlength="40" placeholder="32 letras y números" required></label>'+
+   '<label>API Token<input name="token" type="password" autocomplete="off" spellcheck="false" maxlength="200" required></label>'+
+   '<div class="gl-mp-ia-actions"><button type="submit" data-mp-ia-save>'+(st.connected?'Cambiar conexión':'Conectar')+'</button>'+
+   (st.connected?'<button type="button" data-mp-ia-remove>Quitar conexión</button>':'')+'</div></form>'+
+   '<p role="status" data-mp-ia-status></p>'+
+   '<small>El token se guarda cifrado en GESTLOK (Vault) y solo lo usa el servidor. Nadie más lo ve.</small></section>';
+  document.body.append(modal);iaModal=modal;
+  modal.querySelector('input[name="account_id"]')?.focus({preventScroll:true});
+ }
+ async function guardarConexionIA(form){
+  const status=iaModal?.querySelector('[data-mp-ia-status]'),button=form.querySelector('[data-mp-ia-save]');
+  const account=String(form.account_id.value||'').trim(),token=String(form.token.value||'').trim();
+  if(button)button.disabled=true;if(status)status.textContent='Comprobando con Cloudflare…';
+  try{
+   await assertAccess();
+   const d=await iaCall({action:'connect',account_id:account,token});
+   if(d.ok!==true)throw Error(d.message||'No se pudo conectar.');
+   form.token.value='';
+   if(status)status.textContent='¡Listo! La IA de fotos quedó conectada.';
+   await cargarEstadoIA();
+   setTimeout(removeIAModal,900);
+  }catch(e){if(status)status.textContent=e.message||'No se pudo conectar.';}
+  finally{if(button)button.disabled=false;}
+ }
+ async function quitarConexionIA(){
+  if(!window.confirm('¿Quitar la conexión con la IA de fotos? Las fotos guardadas no cambian.'))return;
+  const status=iaModal?.querySelector('[data-mp-ia-status]');
+  try{await assertAccess();const d=await iaCall({action:'disconnect'});if(d.ok!==true)throw Error(d.message||'No se pudo quitar.');await cargarEstadoIA();removeIAModal();}
+  catch(e){if(status)status.textContent=e.message||'No se pudo quitar la conexión.';}
+ }
+ // Si la IA no está disponible, la persona decide; nunca se hace pasar un recorte por edición con IA.
+ function elegirAlternativa(item,motivo){
+  return new Promise(resolve=>{
+   const box=document.createElement('div');box.dataset.mpIaChoice='true';
+   box.innerHTML='<section class="gl-mp-ia-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-ia-choice-title">'+
+    '<h2 id="gl-mp-ia-choice-title">La edición con IA no está disponible</h2>'+
+    '<p>'+esc(motivo)+'</p>'+
+    '<p>Producto: <strong>'+esc(item.product)+'</strong>.</p>'+
+    '<div class="gl-mp-ia-actions">'+
+    (/cupo/i.test(motivo)?'':'<button type="button" data-choice="conectar">Conectar o revisar la IA</button>')+
+    '<button type="button" data-choice="basica">Usar versión básica (sin IA)</button>'+
+    '<button type="button" data-choice="cancelar">Cancelar</button></div>'+
+    '<small>La versión básica solo separa el producto, limpia bordes y pone fondo blanco: no es una edición fotográfica con IA.</small></section>';
+   document.body.append(box);
+   box.addEventListener('click',e=>{
+    const b=e.target.closest('[data-choice]');if(!b)return;
+    box.remove();resolve(b.dataset.choice);
+   });
+  });
+ }
+ function mensajeEtapa(stage,intento){
+  if(stage==='separando')return ['Separando el producto del fondo (IA en tu teléfono)…',20];
+  if(stage==='bordes')return ['Limpiando los bordes del producto…',35];
+  if(stage==='ia')return [intento>1?'La IA cambió el encuadre; pidiendo otra versión…':'Edición fotográfica con IA (luz de estudio, fondo blanco)…',intento>1?70:50];
+  if(stage==='fusion')return ['Conservando etiquetas y textos de tu foto real…',84];
+  if(stage==='final')return ['Componiendo la foto de catálogo 1200×1200…',92];
+  return ['Preparando la edición…',8];
+ }
+
  function compressPhoto(file){
   if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Elegí una imagen JPG, PNG o WebP.');
   if(file.size>20*1024*1024)throw Error('La foto es demasiado grande. Elegí una de hasta 20 MB.');
@@ -290,7 +414,7 @@
  }
 
 
- function reviewPhotoBeforeSaving(item,original,edited){
+ function reviewPhotoBeforeSaving(item,original,edited,info={modo:'ia'}){
   // Nunca sobrescribir una imagen privada hasta que la persona apruebe el recorte.
   return new Promise(resolve=>{
    const before=URL.createObjectURL(original),after=URL.createObjectURL(edited);
@@ -298,9 +422,15 @@
    backdrop.setAttribute('role','presentation');
    backdrop.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
     '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
-    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y las etiquetas estén completos, sin recortes raros. La posición de los objetos sigue siendo la de la foto real.</p>'+
+    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. '+
+    (info.modo==='ia'?'La IA rehízo la luz, los blancos y el fondo; los textos, etiquetas y formas salen de tu foto real.':
+     info.modo==='importada'?'Es la imagen que importaste, sin cambios. Revisá que las etiquetas sean las reales.':
+     'Versión básica: producto separado con fondo blanco, sin edición con IA.')+'</p>'+
     '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
-    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Estudio automático · fondo blanco</figcaption></figure></div>'+
+    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>'+
+    (info.modo==='ia'?'Editada con IA · FLUX.2':info.modo==='importada'?'Edición importada':'Versión básica · sin IA')+'</figcaption></figure></div>'+
+    (info.modo==='ia'&&info.report?'<p class="gl-mp-ia-report">Etiquetas y formas de tu foto: '+Math.round(Math.max(0,Math.min(1,info.report.fidelity||0))*100)+'% coincidentes'+
+     (info.report.mode==='global'?' · la IA movió el producto, así que solo se tomó su exposición y color':'')+'.</p>':'')+
     '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
     '<button type="button" data-mp-photo-discard>Descartar y sacar otra foto</button></div>'+
     '<small>Se conservarán las dos versiones en la ficha privada, no en Tiendanube.</small></div>';
@@ -355,20 +485,39 @@
   retryPhoto={id:targetId,tabId:targetTab,file:source};
   photoErrors.delete(targetId);
   photoProgress={id:targetId,message:'Preparando foto…',percent:1};
+  let info={modo:'ia'};
   await run(async()=>{
    await assertAccess();
    const original=await compressPhoto(source);
-   etapaFoto(targetId,'Preparando el estudio automático. La primera vez conviene usar Wi-Fi.',5);
-   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-estudio-luz-v5');
-   const edited=await whiteBackground(original,p=>{
-    const msg=p?.stage==='downloading'?'Descargando el modelo de edición…':
-     p?.stage==='processing'?'Quitando el fondo de la foto…':
-     p?.stage==='finishing'?'Corrigiendo la luz, sombras y nitidez del producto…':
-     'Preparando la edición automática…';
-    etapaFoto(targetId,msg,5+Math.min(90,Math.max(0,Number(p?.progress)||0)*90));
-   });
+   etapaFoto(targetId,'Preparando la edición con IA. La primera vez conviene usar Wi-Fi.',4);
+   const [motor,{recortarProducto}]=await Promise.all([import(MOTOR_URL),import(RECORTE_URL)]);
+   const onProgress=(stage,value)=>{const [msg,pct]=mensajeEtapa(stage,value);etapaFoto(targetId,msg,pct);};
+   if(!iaEstado.checked||!iaEstado.connected)await cargarEstadoIA();
+   let edited=null,usarIA=iaEstado.connected===true;
+   const alternativa=async motivo=>{
+    const choice=await elegirAlternativa(item,motivo);
+    if(choice==='conectar'){abrirConexionIA();throw Error('Conectá la IA gratuita y tocá «Reintentar edición».');}
+    if(choice!=='basica')throw Error('Edición cancelada. El producto no se modificó.');
+    return false;
+   };
+   if(!usarIA)usarIA=await alternativa(iaEstado.error||'Todavía no se conectó la cuenta gratuita de IA (Cloudflare).');
+   if(usarIA){
+    try{
+     const r=await motor.editarConIA(original,{recortar:recortarProducto,pedirIA,onProgress});
+     edited=r.blob;info={modo:'ia',report:r.report};
+    }catch(e){
+     if(!IA_NO_DISPONIBLE.has(e?.code))throw e;
+     if(e.code==='sin_conexion'||e.code==='conexion')iaEstado={...iaEstado,connected:false};
+     usarIA=await alternativa(e.message);
+    }
+   }
+   if(!edited){
+    etapaFoto(targetId,'Armando la versión básica (sin IA)…',30);
+    const r=await motor.editarSinIA(original,{recortar:recortarProducto,onProgress});
+    edited=r.blob;info={modo:'basica',report:r.report};
+   }
    etapaFoto(targetId,'Revisá la comparación y confirmá el producto.',95);
-   if(!await reviewPhotoBeforeSaving(item,original,edited))
+   if(!await reviewPhotoBeforeSaving(item,original,edited,info))
     throw Error('Foto descartada. El producto no se modificó.');
    if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab))
     throw Error('Cambiaste de producto o pestaña. No se guardó la foto.');
@@ -398,8 +547,10 @@
     if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
-  },'Foto con fondo blanco y luz mejorada guardada en «'+item.product+'». Original conservado.','');
+  },'Foto guardada en «'+item.product+'». Original conservado.','');
   const hadError=error;
+  if(!hadError)notice=info.modo==='ia'?'Foto editada con IA guardada en «'+item.product+'». Original conservado.':
+   'Versión básica (sin IA) guardada en «'+item.product+'». Original conservado.';
   photoProgress=null;
   if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
   else {photoErrors.delete(targetId);retryPhoto=null;}
@@ -606,7 +757,7 @@
    const original=await storage.download(originalPath);
    if(original.error||!original.data?.size)throw original.error||Error('Falta la foto original del producto.');
    const edited=await compressPhoto(source);
-   if(!await reviewPhotoBeforeSaving(item,original.data,edited))
+   if(!await reviewPhotoBeforeSaving(item,original.data,edited,{modo:'importada'}))
     throw Error('Importación descartada. Se conservó la foto anterior.');
    if(!visible||tabId!==targetTab||!items.some(x=>x.id===targetId&&x.original_photo_path===originalPath))
     throw Error('Cambiaste de pestaña o producto. No se guardó la imagen.');
@@ -844,6 +995,13 @@
 
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-mp-open]')){e.preventDefault();api?.closePanel?.();void open();return;}
+  const iaBox=e.target.closest('[data-mp-ia-modal]');
+  if(iaBox){
+   if(e.target===iaBox||e.target.closest('[data-mp-ia-close]')){e.preventDefault();removeIAModal();return;}
+   if(e.target.closest('[data-mp-ia-remove]')){e.preventDefault();void quitarConexionIA();return;}
+   return;
+  }
+  if(e.target.closest('[data-mp-ia-config]')){e.preventDefault();if(visible)abrirConexionIA();return;}
   const chatModal=e.target.closest('[data-mp-chatgpt-modal]');
   if(chatModal){
    if(e.target.closest('[data-mp-chat-close]')){e.preventDefault();removeChatGPTModal();return;}
@@ -955,12 +1113,14 @@
   if(select&&visible){void changeFragrance(select.dataset.mpFragrance,select.value);}
  });
  document.addEventListener('submit',e=>{
+  if(e.target.closest?.('[data-mp-ia-form]')){e.preventDefault();void guardarConexionIA(e.target);return;}
   if(e.target.id!=='gl-mp-form')return;
   e.preventDefault();void saveItem(e.target);
  });
  window.addEventListener?.('popstate',()=>{if(visible&&!window.history?.state?.glMisProductos)close(false);});
  document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
+  if(iaModal){removeIAModal();return;}
   if(chatGptFlow){removeChatGPTModal();return;}
   if(exportPreview){removeExportModal();return;}
   if(visible)close();

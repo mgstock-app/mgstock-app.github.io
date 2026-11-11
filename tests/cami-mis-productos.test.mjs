@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-estudio-auto-luz-v5-20261111/);
+ assert.match(runtime,/cami-ia-real-v1-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -185,19 +185,19 @@ test('Migración limita permiso de creadora al cuaderno y carpeta de fotos de Ca
 });
 
 
-test('Camila: cámara y edición con fondo blanco para todas las pestañas del cuaderno privado',()=>{
+test('Camila: cámara y edición con IA para todas las pestañas del cuaderno privado',()=>{
  const remover=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
  assert.match(script,/data-mp-photo-camera/);
  assert.match(script,/capture="environment"/);
  assert.match(script,/data-mp-photo-input/);
- assert.match(script,/gestlok-product-white-bg\.js/);
- assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-ia-real-v1/);
+ assert.match(script,/gestlok-cami-foto-ia\.js\?rev=20261111-ia-real-v1/);
+ assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited,info\)/);
  assert.match(script,/Foto editada con fondo blanco/);
+ assert.match(remover,/export async function recortarProducto/);
  assert.match(remover,/removeBackground/);
  assert.match(remover,/quality:'quality'/);
- assert.match(remover,/rgba|alpha|a\[\(y\*w\+x\)\*4\+3\]/);
- assert.match(remover,/c\.fillStyle='#fff'/);
- assert.match(remover,/canvas\.toBlob/);
+ assert.match(remover,/getImageData\(0,0,w,h\)/);
 });
 
 test('Camila: la foto editada y la original se guardan solo en el ID y pestaña seleccionados',()=>{
@@ -223,36 +223,32 @@ test('La publicación de fondos blancos se limita al tenant ZAYRO',async()=>{
 });
 
 
-test('Todas las fotos nuevas de Camila tienen fondo blanco y mejora real sin sombras',()=>{
- const editor=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
- const alias=readFileSync('public/stock/gestlok-product-white-bg.mjs','utf8');
- // Cámara y galería usan el mismo motor; también se puede volver a editar el original guardado.
+test('Todas las fotos nuevas de Camila pasan por la IA generativa; la versión básica solo si se elige',()=>{
+ // Cámara y galería usan el mismo flujo; también se puede volver a editar el original guardado.
  assert.match(script,/data-mp-photo-camera-input/);
  assert.match(script,/data-mp-photo-input/);
- assert.match(script,/const edited=await whiteBackground\(original,/);
- assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
- assert.match(script,/Estudio automático · fondo blanco/);
- assert.match(script,/luz mejorada guardada/);
+ assert.match(script,/motor\.editarConIA\(original,\{recortar:recortarProducto,pedirIA,onProgress\}\)/);
+ assert.match(script,/IA_FN='gestlok-cami-foto-ia'/);
+ assert.match(script,/action:'edit',image:await blobToBase64\(blob\)/);
+ // Nunca se hace pasar un recorte por edición con IA: si la IA falla, la persona elige.
+ assert.match(script,/function elegirAlternativa\(item,motivo\)/);
+ assert.match(script,/Usar versión básica \(sin IA\)/);
+ assert.match(script,/motor\.editarSinIA\(original/);
+ assert.match(script,/Versión básica · sin IA/);
+ assert.match(script,/Editada con IA · FLUX\.2/);
+ assert.match(script,/los textos, etiquetas y formas salen de tu foto real/);
+ assert.match(script,/Foto editada con IA guardada en/);
  assert.match(script,/Math\.min\(1,1800\/Math\.max\(image\.naturalWidth,image\.naturalHeight\)\)/);
  assert.match(script,/encode\(\.93\)/);
- assert.match(editor,/quality:'quality'/);
- assert.match(editor,/const ratio=Math\.min\(1020\/cw,850\/ch\)/);
- assert.match(editor,/const productX=\(1200-productW\)\/2,productY=1000-productH/);
- assert.match(editor,/subject\.width=1200;subject\.height=1200/);
- assert.match(editor,/contrast\(1\.035\)/);
- assert.match(editor,/bc\.filter='blur\(1px\)'/);
- assert.match(editor,/sc\.putImageData\(sharp,0,0\)/);
- assert.match(editor,/c\.drawImage\(subject,0,0\)/);
- assert.doesNotMatch(editor,/groundShadow|createRadialGradient|silhouette|drawImage\(img,productX-minX\*ratio,productY-minY\*ratio,w\*ratio,h\*ratio\);\s*const blob=/,'Sin sombra artificial');
+ assert.doesNotMatch(script,/Estudio automático · fondo blanco/);
  assert.doesNotMatch(script,/sombra lateral/);
- assert.match(alias,/export \{whiteBackground\} from '\.\/gestlok-product-white-bg\.js'/);
- assert.doesNotMatch(editor,/fetch\(source|FormData|apiKey/,'Sin subir foto a proveedor de IA externo');
+ assert.doesNotMatch(script,/api\.cloudflare\.com|CF_API_TOKEN|Bearer /,'El navegador nunca habla con Cloudflare ni ve el token');
 });
 
 test('Galería Android conserva la foto antes de redibujar, muestra progreso y permite reintento',()=>{
  assert.match(script,/new Blob\(\[await file\.arrayBuffer\(\)\],\{type:mime\}\)/);
  assert.match(script,/uploadPhoto\(photo\.dataset\.mpPhotoInput\|\|photo\.dataset\.mpPhotoCameraInput,file\)\.finally/);
- assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-estudio-luz-v5/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-ia-real-v1/);
  assert.match(script,/photoProgress=\{id:targetId/);
  assert.match(script,/data-mp-photo-meter/);
  assert.match(script,/data-mp-photo-retry/);
@@ -281,7 +277,7 @@ test('Una foto guardada muestra vista previa y descarga únicamente en su produc
  await a.mod.refresh(a.ctx,a.host);await a.mod.open();
  assert.match(a.cards.innerHTML,/data-mp-photo-open="e1"/);
  assert.match(a.cards.innerHTML,/Vista previa \/ Descargar/);
- assert.match(a.cards.innerHTML,/Mejorar luz y fondo · Gratis/);
+ assert.match(a.cards.innerHTML,/Editar con IA · Gratis/);
  assert.match(a.cards.innerHTML,/Ver original/);
  assert.match(a.cards.innerHTML,/data-mp-chatgpt="e1"/);
  assert.match(a.cards.innerHTML,/data-mp-ai-import="e1"/);
@@ -323,7 +319,7 @@ test('ChatGPT Plus: el envío es manual y no se emplea una API paga',()=>{
  assert.match(script,/async function importAIPhoto\(id,file\)/);
  assert.match(script,/const original=await storage\.download\(originalPath\)/);
  assert.match(script,/const edited=await compressPhoto\(source\)/);
- assert.match(script,/reviewPhotoBeforeSaving\(item,original\.data,edited\)/);
+ assert.match(script,/reviewPhotoBeforeSaving\(item,original\.data,edited,\{modo:'importada'\}\)/);
  assert.match(script,/\.eq\('id',targetId\)\.eq\('tab_id',targetTab\)\.eq\('tenant_id',TENANT\)\.eq\('owner_uid',OWNER_UID\)/);
  assert.match(script,/\.eq\('original_photo_path',originalPath\)\.eq\('photo_path',oldEdited\)/);
  assert.match(script,/photo_path:path,updated_at/);
@@ -333,14 +329,14 @@ test('ChatGPT Plus: el envío es manual y no se emplea una API paga',()=>{
  assert.match(css,/\[data-mp-chatgpt-modal\]/);
  assert.match(css,/gl-mp-chat-buttons/);
 });
-test('IA local gratuita queda aislada de stock y Mi Gusto',()=>{
+test('Edición con IA gratuita queda aislada de stock y Mi Gusto',()=>{
  assert.match(script,/data-mp-photo-enhance/);
- assert.match(script,/Mejorar luz y fondo · Gratis/);
+ assert.match(script,/Editar con IA · Gratis/);
  assert.match(script,/await uploadPhoto\(id,photo\.data,true\)/);
- assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-estudio-luz-v5/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-ia-real-v1/);
  assert.match(script,/validContext\(ctx,host\)/);
  assert.doesNotMatch(script,/gestlok_pilot_products|gestlok_pilot_pos_sales|mi_gusto_whatsapp/);
- assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-estudio-auto-luz-v5-20261111/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-ia-real-v1-20261111/);
 });
 
 test('Estudio automático: sombras neutras se aclaran, tapones negros se conservan y el vidrio mantiene color',async()=>{

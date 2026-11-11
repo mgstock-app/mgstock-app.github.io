@@ -67,6 +67,23 @@ export function balanceStudioLighting(pixels){
  return pixels;
 }
 
+// Máscara del producto (BiRefNet, en el teléfono) para la edición con IA.
+// Devuelve RGBA del recorte; quien lo usa toma solo el canal alfa y el color de la foto real.
+export async function recortarProducto(source,onProgress){
+ const remove=await getModel();
+ const result=await remove(source,{quality:'quality',onProgress});
+ if(!result?.blob)throw Error('El editor no pudo separar el producto del fondo.');
+ const img=await readImage(result.blob);
+ const w=img.naturalWidth,h=img.naturalHeight;
+ if(w<1||h<1||w*h>18000000)throw Error('La imagen no tiene un tamaño compatible.');
+ const c=document.createElement('canvas');c.width=w;c.height=h;
+ const x=c.getContext('2d',{willReadFrequently:true});
+ if(!x)throw Error('No se pudo leer el recorte de la foto.');
+ x.drawImage(img,0,0);
+ return {width:w,height:h,data:x.getImageData(0,0,w,h).data};
+}
+
+// Versión básica SIN IA generativa: solo se usa si la persona la elige explícitamente.
 export async function whiteBackground(source,onProgress){
   const remove=await getModel();
   // Usar el refinado de máscara: la opción fast pierde bordes de frascos y tipografías.
