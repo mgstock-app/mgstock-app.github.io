@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-ia-real-v1-20261111/);
+ assert.match(runtime,/cami-ia-sin-pedir-v2-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -223,17 +223,20 @@ test('La publicación de fondos blancos se limita al tenant ZAYRO',async()=>{
 });
 
 
-test('Todas las fotos nuevas de Camila pasan por la IA generativa; la versión básica solo si se elige',()=>{
+test('Fotos nuevas: IA generativa si está activa; si no, versión básica rotulada y sin preguntar nada',()=>{
  // Cámara y galería usan el mismo flujo; también se puede volver a editar el original guardado.
  assert.match(script,/data-mp-photo-camera-input/);
  assert.match(script,/data-mp-photo-input/);
  assert.match(script,/motor\.editarConIA\(original,\{recortar:recortarProducto,pedirIA,onProgress\}\)/);
  assert.match(script,/IA_FN='gestlok-cami-foto-ia'/);
  assert.match(script,/action:'edit',image:await blobToBase64\(blob\)/);
- // Nunca se hace pasar un recorte por edición con IA: si la IA falla, la persona elige.
- assert.match(script,/function elegirAlternativa\(item,motivo\)/);
- assert.match(script,/Usar versión básica \(sin IA\)/);
+ // Nunca se hace pasar un recorte por edición con IA: la comparación lo rotula «sin IA».
  assert.match(script,/motor\.editarSinIA\(original/);
+ assert.match(script,/info=\{modo:'basica',report:r\.report,motivo\}/);
+ assert.match(script,/La IA no estuvo disponible: /);
+ // La app no pide cuentas, tokens ni elecciones: la IA se activa del lado del servidor.
+ assert.doesNotMatch(script,/Account ID|API Token|data-mp-ia-config|data-mp-ia-form|elegirAlternativa|Conectar IA gratuita/);
+ assert.doesNotMatch(script,/action:'connect'/);
  assert.match(script,/Versión básica · sin IA/);
  assert.match(script,/Editada con IA · FLUX\.2/);
  assert.match(script,/los textos, etiquetas y formas salen de tu foto real/);
@@ -277,7 +280,8 @@ test('Una foto guardada muestra vista previa y descarga únicamente en su produc
  await a.mod.refresh(a.ctx,a.host);await a.mod.open();
  assert.match(a.cards.innerHTML,/data-mp-photo-open="e1"/);
  assert.match(a.cards.innerHTML,/Vista previa \/ Descargar/);
- assert.match(a.cards.innerHTML,/Editar con IA · Gratis/);
+ assert.match(a.cards.innerHTML,/Volver a editar foto/);
+ assert.doesNotMatch(a.root.innerHTML,/Conectar IA|Account ID|Cloudflare/,'sin pedidos de conexión en pantalla');
  assert.match(a.cards.innerHTML,/Ver original/);
  assert.match(a.cards.innerHTML,/data-mp-chatgpt="e1"/);
  assert.match(a.cards.innerHTML,/data-mp-ai-import="e1"/);
@@ -336,7 +340,7 @@ test('Edición con IA gratuita queda aislada de stock y Mi Gusto',()=>{
  assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-ia-real-v1/);
  assert.match(script,/validContext\(ctx,host\)/);
  assert.doesNotMatch(script,/gestlok_pilot_products|gestlok_pilot_pos_sales|mi_gusto_whatsapp/);
- assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-ia-real-v1-20261111/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-ia-sin-pedir-v2-20261111/);
 });
 
 test('Estudio automático: sombras neutras se aclaran, tapones negros se conservan y el vidrio mantiene color',async()=>{
