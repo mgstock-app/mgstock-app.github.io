@@ -152,3 +152,12 @@ body.gl-mp-open{overflow:hidden}
 .gl-mp-photo-confirm [data-mp-photo-approve]{background:#103763;border-color:#103763;color:#fff}
 .gl-mp-photo-preview-card small{color:#667b8e;font-size:12px;line-height:1.5}
 @media(max-width:550px){[data-mp-photo-preview] .gl-mp-photo-preview-card{padding:14px}.gl-mp-photo-pair{gap:6px}.gl-mp-photo-pair figcaption{font-size:11px}.gl-mp-photo-confirm button{flex:1 1 100%}}
+
+/* Estado de edición fotográfica en cada producto (galería y cámara). */
+.gl-mp-photo-progress,.gl-mp-photo-error{margin:8px 0 12px;padding:11px 13px;border-radius:11px;font-size:13px;line-height:1.4}
+.gl-mp-photo-progress{background:#eef3fa;color:#16385d;border:1px solid #b8cce4}
+.gl-mp-photo-progress span{display:block;font-weight:650;margin-bottom:7px}
+.gl-mp-photo-progress progress{display:block;width:100%;height:9px;accent-color:#1c4f82}
+.gl-mp-photo-error{background:#fff2f1;color:#982b27;border:1px solid #ddaaa6;display:grid;gap:9px}
+.gl-mp-photo-error button{justify-self:start;padding:8px 12px;border:1px solid #ba3c35;border-radius:8px;color:#a32822;background:white;font-weight:700;cursor:pointer}
+.gl-mp-photo-edit:disabled,.gl-mp-photo-camera:disabled{opacity:.5;cursor:wait}
