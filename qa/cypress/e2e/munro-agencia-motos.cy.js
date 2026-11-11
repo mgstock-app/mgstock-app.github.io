@@ -36,7 +36,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     if (error.message.includes('Minified React error #418')) return false;
   });
 
-  it('gerente de Munro carga la semana y ve el historial con horas, sin importes ni valores', () => {
+  it('gerente de Munro carga la semana y puede corregir el historial sin ver importes', () => {
     launch(); login('gerente.munro@example.com');
     cy.get('#snav [data-go="motos"]').should('exist').click();
     cy.get('.mo-page h1').should('contain.text', 'Motos Agencia');
@@ -57,16 +57,16 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('.mo-pend').should('contain.text', 'Planilla guardada');
     cy.get('[data-mo-pago="lucas"]').should('not.exist');
     cy.get('[data-mo-sem-pago]').should('not.exist');
-    // Historial: los gerentes de Munro también lo ven, en solo lectura y sin importes.
+    // Historial: los gerentes de Munro pueden corregir semanas existentes, sin ver importes.
     cy.get('.mo-hist').should('not.exist');
     cy.get('[data-mo-act="pestana"][data-p="historial"]').should('be.visible').click();
     cy.get('.mo-sheet').should('not.exist');
-    cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'solo lectura')
+    cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'podés corregir horarios')
       .and('contain.text', 'Todavía no hay semanas cerradas').and('not.contain.text', 'Total pago');
     cy.get('[data-mo-act="tarifas"]').should('not.exist');
     cy.get('[data-mo-act="pestana"][data-p="semana"]').click();
     cy.get('.mo-sheet').should('exist');
-    // Puede mirar la semana anterior, pero no modificarla.
+    // No permite crear semanas cerradas vacías; sí permite editar las que estén en el historial.
     cy.get('[data-mo-act="prev"]').click();
     cy.get('.mo-aviso').should('contain.text', 'semana cerrada');
     cy.get('[data-mo-act="modificar"]').should('not.exist');
