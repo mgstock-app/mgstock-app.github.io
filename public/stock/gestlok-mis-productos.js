@@ -699,6 +699,15 @@
 
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-mp-open]')){e.preventDefault();api?.closePanel?.();void open();return;}
+  const exportModal=e.target.closest('[data-mp-export-modal]');
+  if(exportModal){
+   if(e.target.closest('[data-mp-export-close]')){e.preventDefault();removeExportModal();return;}
+   if(e.target.closest('[data-mp-export-download]')){e.preventDefault();downloadExport();return;}
+   if(e.target.closest('[data-mp-export-clean],[data-mp-export-image]')){
+    e.preventDefault();exportModal.classList.toggle('gl-mp-export-clean');return;
+   }
+   return;
+  }
   const modal=e.target.closest('[data-mp-label-modal]');
   if(modal){
    if(e.target.closest('[data-mp-label-close]')){e.preventDefault();removePrintModal();return;}
@@ -708,6 +717,8 @@
   }
   if(!visible||!e.target.closest('#gl-mp-panel'))return;
   const el=e.target;
+  const openPreview=el.closest('[data-mp-photo-open]');
+  if(openPreview){e.preventDefault();void openProductPreview(openPreview.dataset.mpPhotoOpen,openPreview);return;}
   const print=el.closest('[data-mp-print]');
   const retry=el.closest('[data-mp-photo-retry]');
   if(retry){e.preventDefault();const selected=retryPhoto;
@@ -762,6 +773,8 @@
   if(modal)updateLabelPreview(modal);
  });
  document.addEventListener('change',e=>{
+  const format=e.target.closest('[data-mp-export-format]');
+  if(format){void updateExportPreview(format.closest('[data-mp-export-modal]'),format.value);return;}
   const photo=e.target.closest('[data-mp-photo-input],[data-mp-photo-camera-input]');
   if(photo&&visible){
    const file=photo.files?.[0];
@@ -777,6 +790,10 @@
   e.preventDefault();void saveItem(e.target);
  });
  window.addEventListener?.('popstate',()=>{if(visible&&!window.history?.state?.glMisProductos)close(false);});
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&visible)close();});
+ document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(exportPreview){removeExportModal();return;}
+  if(visible)close();
+ });
  window.GestLokMisProductos=Object.freeze({refresh,homeTile,open,reset,authorized:()=>allowed&&validContext(context,api)});
 })();
