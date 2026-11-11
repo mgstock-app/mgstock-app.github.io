@@ -121,3 +121,47 @@ test('Motos Agencia: migración permite corregir semanas cerradas sin abrir tari
   assert.match(script, /editable\(s\) \? 'Ver y editar' : 'Ver detalle'/);
   assert.doesNotMatch(sql, /\b(delete from|truncate|update public\.docs)\b/i);
 });
+
+test('Agencia Motos: valida las 24 h, detecta el error de la foto y no suma jornadas inválidas', () => {
+  const {_t:t} = cargar();
+  const superpuestos = t.validarDia({tm_e:'11:30',tm_s:'15:00',tt_e:'11:30',tt_s:'23:00'});
+  assert.equal(superpuestos.minutos, 0);
+  assert.ok(superpuestos.errores.some(e => e.includes('se superponen')));
+  assert.ok(superpuestos.campos.includes('tt_e'));
+  assert.ok(superpuestos.campos.includes('tm_s'));
+  assert.equal(t.minutosDia({tm_e:'11:30',tm_s:'15:00',tt_e:'11:30',tt_s:'23:00'}), 0);
+
+  const correcto = t.validarDia({tm_e:'11:30',tm_s:'15:00',tt_e:'19:00',tt_s:'23:00'});
+  assert.equal(correcto.errores.length, 0);
+  assert.equal(correcto.minutos, 450);
+
+  const incompleto = t.validarDia({tm_e:'11:30'});
+  assert.equal(incompleto.minutos, 0);
+  assert.ok(incompleto.campos.includes('tm_s'));
+
+  const iguales = t.validarDia({tt_e:'19:00',tt_s:'19:00'});
+  assert.ok(iguales.errores.some(e => e.includes('iguales')));
+
+  const fueraDe24 = t.validarDia({tm_e:'11:30',tm_s:'15:00',tt_e:'19:00',tt_s:'12:00'});
+  assert.ok(fueraDe24.errores.some(e => e.includes('24 horas')));
+
+  const noche = t.validarDia({tt_e:'19:33',tt_s:'00:00'});
+  assert.equal(noche.errores.length, 0);
+  assert.equal(noche.minutos, 267);
+  assert.equal(t.validarDia({}).errores.length, 0);
+  assert.ok(t.validarDia({tm_e:'25:00',tm_s:'19:00'}).errores.length > 0);
+});
+
+test('Agencia Motos: campos incorrectos y total en rojo, sin bloquear otros locales', () => {
+  const js = file('public/stock/munro-motos.js');
+  const css = file('app/munro-motos.css');
+  assert.match(js, /function validarDia\(c\)/);
+  assert.match(js, /const validacion = validarDia\(data\)/);
+  assert.match(js, /mo-time-error/);
+  assert.match(js, /mo-error-summary/);
+  assert.match(js, /aria-invalid="true"/);
+  assert.match(js, /lang="es-AR"/);
+  assert.match(css, /\.mo-time\.mo-time-error:disabled/);
+  assert.match(css, /\.mo-error-summary\[hidden\]/);
+  assert.match(js, /api\.S\.local === 'munro'/);
+});
