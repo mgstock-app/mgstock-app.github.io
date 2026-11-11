@@ -70,7 +70,11 @@
   const esDueno = () => ['creadora','dueno'].includes(rol());
   const permitido = () => !!api && api.S.me?.tenant_id === TENANT && api.S.local === 'munro' &&
     (esDueno() || (rol() === 'gerente' && api.misLocales().includes('munro')));
-  const editable = semana => permitido() && api.canW() && (esDueno() || semana === semanaActual());
+  /* Gerentes de Munro pueden corregir una semana cerrada si ya tiene registros.
+     Crear o quitar refuerzos de semanas cerradas sigue reservado a los dueños. */
+  const editable = semana => permitido() && api.canW() &&
+    (esDueno() || semana === semanaActual() || semanasConDatos().includes(semana));
+  const editableEstructura = semana => editable(semana) && (esDueno() || semana === semanaActual());
 
   /* ---------- Datos ---------- */
   const col = () => api.C('agencia_motos');
@@ -185,7 +189,7 @@
   }
   async function agregarRefuerzo(form){
     const semana = semanaVista;
-    if (!editable(semana)) return;
+    if (!editableEstructura(semana)) return;
     const nombre = form.elements.namedItem('nombre').value.trim().slice(0, 40);
     if (!nombre) return;
     agregando = false;
@@ -195,7 +199,7 @@
   }
   async function quitarRefuerzo(doc){
     const semana = semanaVista, r = refuerzos(semana).find(x => x.doc === doc);
-    if (!r || !editable(semana)) return;
+    if (!r || !editableEstructura(semana)) return;
     if (diasDe(semana).some(dia => minutosDia(leer(idCelda(semana, r.id, dia))) > 0)) {
       api.toast('Primero borrá los horarios cargados de esta moto.', true); return;
     }
@@ -243,7 +247,7 @@
       '<div><button class="btn sm primary" type="submit">Guardar</button><button class="btn sm" type="button" data-mo-act="cancelar-nombre">Cancelar</button></div></form>'
     : '<div class="mo-who"><span class="mo-ico">' + ICONO + '</span><div><b>' + E(m.nombre) + '</b><small>' + E(m.moto) + '</small>' +
       (editable(semanaVista) ? '<button class="mo-edit" data-mo-act="nombre" data-moto="' + E(m.id) + '" aria-label="Modificar ' + E(m.nombre) + '">✎ Modificar</button>' : '') + '</div>' +
-      (m.refuerzo && editable(semanaVista) ? '<button class="mo-x" data-mo-act="quitar" data-doc="' + E(m.doc) + '" aria-label="Quitar ' + E(m.nombre) + '">×</button>' : '') + '</div>';
+      (m.refuerzo && editableEstructura(semanaVista) ? '<button class="mo-x" data-mo-act="quitar" data-doc="' + E(m.doc) + '" aria-label="Quitar ' + E(m.nombre) + '">×</button>' : '') + '</div>';
   const totalMoto = (f, dueno) => '<div class="mo-total"><small>Total</small><b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' +
     (dueno ? '<span data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</span>' : '') + '</div>';
 
@@ -251,7 +255,7 @@
   function tablaPC(r, puede, dueno){
     const cab = '<div class="mo-row mo-head"><div>Empleado / Moto</div><div></div>' +
       r.dias.map((d, i) => '<div><b>' + DIAS[i] + '</b><small>' + corta(d) + '</small></div>').join('') + '<div>Total semanal</div></div>';
-    const filas = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<div class="mo-row mo-moto' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) +
+    const filas = [...r.filas, ...(editableEstructura(r.semana) ? [vacia(r)] : [])].map(f => '<div class="mo-row mo-moto' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) +
       '<div class="mo-labels">' + CAMPOS.map(([, l]) => '<span>' + l + '</span>').join('') + '<span class="mo-hd">Horas del día</span></div>' +
       r.dias.map((dia, i) => '<div class="mo-day">' + CAMPOS.map(([k, l]) => celda(r.semana, f, dia, k, l, puede)).join('') +
         '<span class="mo-hd" data-mo-dia="' + E(f.id) + '-' + i + '">' + fmtH(f.porDia[i]) + '</span></div>').join('') +
@@ -266,7 +270,7 @@
     const i = diaMovil, dia = r.dias[i];
     const tabs = '<div class="mo-tabs" role="tablist">' + r.dias.map((d, j) => '<button role="tab" aria-selected="' + (j === i) + '" class="mo-tab' + (j === i ? ' on' : '') +
       '" data-mo-act="dia" data-i="' + j + '"><b>' + DIAS[j] + '</b><small>' + corta(d) + '</small></button>').join('') + '</div>';
-    const cards = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<article class="mo-card' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) + '<div class="mo-card-grid">' +
+    const cards = [...r.filas, ...(editableEstructura(r.semana) ? [vacia(r)] : [])].map(f => '<article class="mo-card' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) + '<div class="mo-card-grid">' +
       CAMPOS.map(([k, l]) => '<label><span>' + l + '</span>' + celda(r.semana, f, dia, k, l, puede) + '</label>').join('') + '</div>' +
       '<footer><span>Horas del día <b data-mo-dia="' + E(f.id) + '-' + i + '">' + fmtH(f.porDia[i]) + '</b></span>' +
       '<span>Semana <b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' + (dueno ? ' · <b data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</b>' : '') + '</span></footer></article>').join('');
@@ -293,13 +297,15 @@
       return '<tr><td>Semana ' + numeroSemana(s) + '</td><td>' + larga(s) + '</td><td>' + larga(sumar(s, 6)) + '</td>' +
         FIJAS.map(m => '<td>' + fmtH(r.filas.find(f => f.id === m.id).min) + '</td>').join('') +
         '<td>' + fmtH(ref) + '</td><td><b>' + fmtH(r.min) + '</b></td>' + (dueno ? '<td><b>' + fmt$(r.pago) + '</b></td>' : '') +
-        '<td><button class="mo-link" data-mo-act="ver" data-semana="' + s + '">Ver detalle</button></td></tr>';
+        '<td><button class="mo-link" data-mo-act="ver" data-semana="' + s + '">Ver detalle</button>' +
+        (editable(s) ? ' <button class="mo-link" data-mo-act="editar-semana" data-semana="' + s + '">✎ Modificar</button>' : '') +
+        '</td></tr>';
     }).join('');
     const val = tarifas(), s = semanaActual();
     const resumenT = [...FIJAS.map(m => [m.id, m.nombre]), ['refuerzo', 'Refuerzo']]
       .map(([k, n]) => E(n) + ' ' + (tarifaEn(val, k, s) ? fmt$(tarifaEn(val, k, s)) : 'sin valor')).join(' · ');
     return '<section class="mo-hist"><div class="mo-hist-top"><span class="mo-hist-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>' +
-      '<div><b>Historial de semanas</b><small>' + (dueno ? '(dueños y gerentes de Munro; los importes solo los ven los dueños)' : '(solo lectura · los importes los ven los dueños)') + '</small></div><div class="mo-hist-acts">' +
+      '<div><b>Historial de semanas</b><small>' + (dueno ? '(horarios editables para dueños y gerentes de Munro; importes solo para dueños)' : '(podés corregir horarios; importes solo para dueños)') + '</small></div><div class="mo-hist-acts">' +
       (dueno && api.canW() ? '<button class="mo-pill" data-mo-act="tarifas" title="' + resumenT + '">Valor por hora</button>' : '') +
       (semanas.length > 8 ? '<button class="mo-pill" data-mo-act="todo">' + (verTodo ? 'Ver menos' : 'Ver historial completo →') + '</button>' : '') + '</div></div>' +
       tarifasForm() +
@@ -322,7 +328,7 @@
       (cerradas ? ' <span class="mo-cuenta">' + cerradas + '</span>' : '') + '</button></nav>';
     const flechas = '<div class="mo-nav"><button data-mo-act="prev" aria-label="Semana anterior">‹</button><button data-mo-act="next" aria-label="Semana siguiente"' + (enCurso ? ' disabled' : '') + '>›</button></div>';
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
-      : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada · se ve tal como quedó' + (puede ? '; los dueños pueden corregirla con «Modificar»' : ' (solo lectura)')
+      : !api.canW() ? 'Solo lectura' : !enCurso ? (puede ? 'Semana cerrada · podés corregir los horarios con «Modificar».' : 'Semana cerrada · solo lectura')
       : edicion ? 'Cargá los horarios y tocá «Guardar». Hasta guardar, los cambios no se envían.' : 'Tocá «Modificar» para cargar o corregir horarios.';
     const barra = puede ? '<div class="mo-toolbar"><span class="mo-pend">' + textoPendientes() + '</span>' +
       (edicion ? '<button class="btn" data-mo-act="cancelar"' + (guardando ? ' disabled' : '') + '>Cancelar</button><button class="btn primary" data-mo-act="guardar"' + (guardando ? ' disabled' : '') + '>' + (guardando ? 'Guardando…' : 'Guardar') + '</button>'
@@ -374,12 +380,16 @@
     document.addEventListener('click', event => {
       const btn = event.target.closest('[data-mo-act]'); if (!btn || !permitido()) return;
       const act = btn.dataset.moAct;
-      if (['prev','next','hoy','ver','pestana'].includes(act) && borrador.size) { api.toast('Guardá o cancelá los cambios antes de cambiar de semana.', true); return; }
-      if (['prev','next','hoy','ver'].includes(act)) { edicion = false; editNombre = ''; }
+      if (['prev','next','hoy','ver','editar-semana','pestana'].includes(act) && borrador.size) { api.toast('Guardá o cancelá los cambios antes de cambiar de semana.', true); return; }
+      if (['prev','next','hoy','ver','editar-semana'].includes(act)) { edicion = false; editNombre = ''; }
       if (act === 'prev') { semanaVista = sumar(semanaVista, -7); diaMovil = -1; }
       else if (act === 'next' && semanaVista < semanaActual()) { semanaVista = sumar(semanaVista, 7); diaMovil = -1; }
       else if (act === 'hoy') { semanaVista = semanaActual(); diaMovil = -1; }
       else if (act === 'ver') { semanaVista = btn.dataset.semana; diaMovil = -1; pestana = 'semana'; window.scrollTo?.({top:0, behavior:'smooth'}); }
+    else if (act === 'editar-semana' && editable(btn.dataset.semana)) {
+      semanaVista = btn.dataset.semana; diaMovil = -1; pestana = 'semana'; edicion = true;
+      window.scrollTo?.({top:0, behavior:'smooth'});
+    }
       else if (act === 'pestana') { pestana = btn.dataset.p === 'historial' ? 'historial' : 'semana'; edicion = false; }
       else if (act === 'dia') diaMovil = Number(btn.dataset.i);
       else if (act === 'agregar') agregando = true;
