@@ -130,7 +130,7 @@
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    (item.photo_path?'<button type="button" class="gl-mp-preview-action" data-mp-photo-open="'+id+'">Vista previa / Descargar</button>':'')+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
-   (item.original_photo_path?'<button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
+   (item.original_photo_path?'<button type="button" data-mp-photo-enhance="'+id+'">Mejorar foto guardada</button><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -279,7 +279,7 @@
       if(!blob)return reject(Error('No se pudo preparar la foto.'));
       if(blob.size>3*1024*1024)return reject(Error('La foto comprimida supera 3 MB.'));
       resolve(blob);
-     },'image/jpeg',0.78);
+     },'image/jpeg',0.90);
     }catch(e){reject(e);}
    };
    image.onerror=()=>{URL.revokeObjectURL(url);reject(Error('No se pudo abrir la foto. Probá con JPG o PNG.'));};
@@ -498,6 +498,21 @@
    modal.querySelector('[data-mp-export-close]')?.focus({preventScroll:true});
    await updateExportPreview(modal,'cuadrado');
   }catch(err){error=err.message||'No se pudo abrir la vista previa.';render();}
+ }
+ async function enhanceExistingPhoto(id){
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
+  if(!item?.original_photo_path||busy)return;
+  try{
+   await assertAccess();
+   const photo=await db().storage.from(PHOTO_BUCKET).download(item.original_photo_path);
+   if(photo.error)throw photo.error;
+   if(!photo.data||!photo.data.size)throw Error('No se pudo recuperar la foto original.');
+   if(!visible||tabId!==item.tab_id||!items.some(x=>x.id===id))return;
+   await uploadPhoto(id,photo.data,true);
+  }catch(err){
+   photoErrors.set(id,err.message||'No se pudo mejorar la foto guardada.');
+   render();
+  }
  }
  async function viewOriginalPhoto(id){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
@@ -728,6 +743,8 @@
   if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
   const camera=el.closest('[data-mp-photo-camera]');
   if(camera){e.preventDefault();camera.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-camera-input]')?.click();return;}
+  const enhance=el.closest('[data-mp-photo-enhance]');
+  if(enhance){e.preventDefault();void enhanceExistingPhoto(enhance.dataset.mpPhotoEnhance);return;}
   const original=el.closest('[data-mp-photo-original]');
   if(original){e.preventDefault();void viewOriginalPhoto(original.dataset.mpPhotoOriginal);return;}
   const remove=el.closest('[data-mp-photo-remove]');
