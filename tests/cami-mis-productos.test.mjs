@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-galeria-editor-20261111/);
+ assert.match(runtime,/cami-fotos-estudio-preview-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -232,23 +232,22 @@ test('Todas las fotos nuevas de Camila usan automáticamente fondo blanco y somb
  assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
  assert.match(script,/Fondo blanco y sombra lateral|fondo blanco y sombra lateral/);
  assert.match(script,/Blanco \+ sombra lateral/);
- assert.match(editor,/const ratio=Math\.min\(900\/cw,900\/ch\)/);
- assert.match(editor,/const silhouette=document\.createElement\('canvas'\)/);
- assert.match(editor,/sc\.globalCompositeOperation='source-in'/);
- assert.match(editor,/c\.filter='blur\(31px\)'/);
- assert.match(editor,/c\.transform\(ratio,0,-\.36\*ratio,\.16\*ratio,0,0\)/);
- assert.match(editor,/c\.ellipse\(/);
- assert.match(editor,/c\.filter='blur\(15px\)'/);
+ assert.match(editor,/const ratio=Math\.min\(980\/cw,860\/ch\)/);
+ assert.match(editor,/const productX=\(1200-productW\)\/2,productY=1005-productH/);
+ assert.match(editor,/function groundShadow\(x,y,rx,ry,strength\)/);
+ assert.match(editor,/c\.createRadialGradient\(0,0,0,0,0,1\)/);
+ assert.match(editor,/groundShadow\(productX\+productW\*\.55/);
+ assert.match(editor,/groundShadow\(productX\+productW\*\.67/);
  assert.match(editor,/c\.drawImage\(img,productX-minX\*ratio,productY-minY\*ratio,w\*ratio,h\*ratio\)/);
- assert.ok(editor.indexOf('c.drawImage(silhouette,0,0,cw,ch)')<editor.indexOf('c.drawImage(img,productX-minX*ratio'),
-   'La sombra debe pintarse detrás del producto real');
+ assert.doesNotMatch(editor,/c\.drawImage\(silhouette/,'No proyectar silueta desplazada');
+ assert.doesNotMatch(editor,/c\.transform\(ratio/,'No crear sombra tipo producto flotante');
  assert.doesNotMatch(editor,/fetch\(source|FormData|apiKey/,'Sin subir foto a proveedor de IA externo');
 });
 
 test('Galería Android conserva la foto antes de redibujar, muestra progreso y permite reintento',()=>{
  assert.match(script,/new Blob\(\[await file\.arrayBuffer\(\)\],\{type:mime\}\)/);
  assert.match(script,/uploadPhoto\(photo\.dataset\.mpPhotoInput\|\|photo\.dataset\.mpPhotoCameraInput,file\)\.finally/);
- assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-galeria-v2/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-estudio-v3/);
  assert.match(script,/photoProgress=\{id:targetId/);
  assert.match(script,/data-mp-photo-meter/);
  assert.match(script,/data-mp-photo-retry/);
@@ -267,4 +266,40 @@ test('Editor usa dos CDN del motor de fondo blanco fijado a versión 0.1.1',()=>
  assert.match(editor,/export async function whiteBackground/);
  assert.match(editor,/quality:'fast'/);
  assert.doesNotMatch(editor,/upload\(|storage\.from/);
+});
+
+test('Una foto guardada muestra vista previa y descarga únicamente en su producto',async()=>{
+ const entries=[{id:'e1',tab_id:'t1',product:'OUL FOR GLORY',liked:null,note:'',
+  position:0,photo_path:'owner/e1/edited.jpg',original_photo_path:'owner/e1/original.jpg',
+  created_at:'2026-11-11T02:00:00Z'}];
+ const a=launch(email,'dueno',TENANT,true,entries);
+ await a.mod.refresh(a.ctx,a.host);await a.mod.open();
+ assert.match(a.cards.innerHTML,/data-mp-photo-open="e1"/);
+ assert.match(a.cards.innerHTML,/Vista previa \/ Descargar/);
+ assert.match(a.cards.innerHTML,/Mejorar foto guardada/);
+ assert.match(a.cards.innerHTML,/Ver original/);
+ const noPhoto=launch(email,'dueno',TENANT,true,[{id:'e2',tab_id:'t1',product:'Sin foto',position:0}]);
+ await noPhoto.mod.refresh(noPhoto.ctx,noPhoto.host);await noPhoto.mod.open();
+ assert.doesNotMatch(noPhoto.root.innerHTML,/data-mp-photo-open/);
+ assert.doesNotMatch(noPhoto.root.innerHTML,/Mejorar foto guardada/);
+});
+test('Exportación de catálogo privada y formatos reales para Instagram/tienda',()=>{
+ assert.match(script,/from\(PHOTO_BUCKET\)\.download\(expectedPath\)/);
+ assert.match(script,/await assertAccess\(\)/);
+ assert.match(script,/expectedTab!==tabId/);
+ assert.match(script,/EXPORT_FORMATS=\{/);
+ assert.match(script,/cuadrado:\{width:1200,height:1200/);
+ assert.match(script,/instagram:\{width:1080,height:1350/);
+ assert.match(script,/historia:\{width:1080,height:1920/);
+ assert.match(script,/ctx\.drawImage\(image,\(dims\.width-w\)\/2,\(dims\.height-h\)\/2,w,h\)/);
+ assert.match(script,/canvas\.toBlob\(blob/);
+ assert.match(script,/link\.download='gestlok-'\+name\+'-'\+current\.format\+'\.jpg'/);
+ assert.match(script,/data-mp-export-clean/);
+ assert.match(script,/gl-mp-export-clean/);
+ assert.match(script,/if\(exportPreview\)\{removeExportModal\(\);return;\}/);
+ assert.match(script,/async function enhanceExistingPhoto\(id\)/);
+ assert.match(script,/await uploadPhoto\(id,photo\.data,true\)/);
+ assert.match(css,/gl-mp-export-stage/);
+ assert.match(css,/gl-mp-export-clean/);
+ assert.doesNotMatch(script,/getPublicUrl\(/);
 });
