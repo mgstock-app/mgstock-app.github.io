@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-fotos-blanco-pro-v4-20261111/);
+ assert.match(runtime,/cami-fotos-chatgpt-gratis-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -281,12 +281,15 @@ test('Una foto guardada muestra vista previa y descarga únicamente en su produc
  await a.mod.refresh(a.ctx,a.host);await a.mod.open();
  assert.match(a.cards.innerHTML,/data-mp-photo-open="e1"/);
  assert.match(a.cards.innerHTML,/Vista previa \/ Descargar/);
- assert.match(a.cards.innerHTML,/Mejorar foto guardada/);
+ assert.match(a.cards.innerHTML,/Mejorar gratis \(IA local\)/);
  assert.match(a.cards.innerHTML,/Ver original/);
+ assert.match(a.cards.innerHTML,/data-mp-chatgpt="e1"/);
+ assert.match(a.cards.innerHTML,/data-mp-ai-import="e1"/);
  const noPhoto=launch(email,'dueno',TENANT,true,[{id:'e2',tab_id:'t1',product:'Sin foto',position:0}]);
  await noPhoto.mod.refresh(noPhoto.ctx,noPhoto.host);await noPhoto.mod.open();
  assert.doesNotMatch(noPhoto.root.innerHTML,/data-mp-photo-open/);
- assert.doesNotMatch(noPhoto.root.innerHTML,/Mejorar foto guardada/);
+ assert.doesNotMatch(noPhoto.root.innerHTML,/data-mp-chatgpt/);
+ assert.doesNotMatch(noPhoto.root.innerHTML,/data-mp-ai-import/);
 });
 test('Exportación de catálogo privada y formatos reales para Instagram/tienda',()=>{
  assert.match(script,/from\(PHOTO_BUCKET\)\.download\(expectedPath\)/);
@@ -307,4 +310,35 @@ test('Exportación de catálogo privada y formatos reales para Instagram/tienda'
  assert.match(css,/gl-mp-export-stage/);
  assert.match(css,/gl-mp-export-clean/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
+});
+
+test('ChatGPT Plus: el envío es manual y no se emplea una API paga',()=>{
+ assert.match(script,/function promptChatGPT\(item\)/);
+ assert.match(script,/https:\/\/chatgpt\.com\//);
+ assert.match(script,/navigator\.share\(\{files:\[flow\.file\],text:flow\.prompt\}\)/);
+ assert.match(script,/navigator\.clipboard\?\.writeText/);
+ assert.match(script,/data-mp-chat-download/);
+ assert.match(script,/data-mp-chat-import/);
+ assert.match(script,/data-mp-ai-import-input/);
+ assert.match(script,/async function importAIPhoto\(id,file\)/);
+ assert.match(script,/const original=await storage\.download\(originalPath\)/);
+ assert.match(script,/const edited=await compressPhoto\(source\)/);
+ assert.match(script,/reviewPhotoBeforeSaving\(item,original\.data,edited\)/);
+ assert.match(script,/\.eq\('id',targetId\)\.eq\('tab_id',targetTab\)\.eq\('tenant_id',TENANT\)\.eq\('owner_uid',OWNER_UID\)/);
+ assert.match(script,/\.eq\('original_photo_path',originalPath\)\.eq\('photo_path',oldEdited\)/);
+ assert.match(script,/photo_path:path,updated_at/);
+ assert.match(script,/if\(!committed&&uploaded\).*storage\.remove/);
+ assert.doesNotMatch(script,/OPENAI_API_KEY|ANTHROPIC_API_KEY|api\.openai\.com|api\.anthropic\.com/);
+ assert.doesNotMatch(script,/getPublicUrl\(/);
+ assert.match(css,/\[data-mp-chatgpt-modal\]/);
+ assert.match(css,/gl-mp-chat-buttons/);
+});
+test('IA local gratuita queda aislada de stock y Mi Gusto',()=>{
+ assert.match(script,/data-mp-photo-enhance/);
+ assert.match(script,/Mejorar gratis \(IA local\)/);
+ assert.match(script,/await uploadPhoto\(id,photo\.data,true\)/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-foto-pro-v4/);
+ assert.match(script,/validContext\(ctx,host\)/);
+ assert.doesNotMatch(script,/gestlok_pilot_products|gestlok_pilot_pos_sales|mi_gusto_whatsapp/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-fotos-chatgpt-gratis-20261111/);
 });

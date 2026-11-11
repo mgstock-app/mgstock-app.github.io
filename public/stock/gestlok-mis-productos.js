@@ -11,7 +11,7 @@
  const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
- let photoProgress=null,retryPhoto=null,exportPreview=null;
+ let photoProgress=null,retryPhoto=null,exportPreview=null,chatGptFlow=null;
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -130,7 +130,7 @@
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    (item.photo_path?'<button type="button" class="gl-mp-preview-action" data-mp-photo-open="'+id+'">Vista previa / Descargar</button>':'')+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
-   (item.original_photo_path?'<button type="button" data-mp-photo-enhance="'+id+'">Mejorar foto guardada</button><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
+   (item.original_photo_path?'<button type="button" class="gl-mp-free-ai" data-mp-photo-enhance="'+id+'">Mejorar gratis (IA local)</button><button type="button" class="gl-mp-chatgpt-action" data-mp-chatgpt="'+id+'">Editar con ChatGPT</button><button type="button" data-mp-ai-import="'+id+'">Importar edición de IA</button><input type="file" hidden data-mp-ai-import-input="'+id+'" accept="image/jpeg,image/png,image/webp" aria-label="Importar imagen editada de '+name+'"><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -184,7 +184,7 @@
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
       '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
-      '<p class="gl-mp-hint">Podés agregar todos los productos que necesites. Cada pestaña conserva su propia lista.</p></section>')+
+      '<p class="gl-mp-hint">La IA local gratuita quita el fondo y ajusta luz y nitidez. Para una edición de estudio, compartí la foto con tu ChatGPT y después importá el resultado. Revisá las etiquetas antes de guardar.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
  }
@@ -198,7 +198,7 @@
   finally{loading=false;render();}
  }
  function close(back=true){
-  removePrintModal();removeExportModal();
+  removePrintModal();removeExportModal();removeChatGPTModal();
   if(!visible)return;
   visible=false;searchTerm='';photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
@@ -208,7 +208,7 @@
  }
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
-  removePrintModal();removeExportModal();
+  removePrintModal();removeExportModal();removeChatGPTModal();
   tabId=id;photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
@@ -501,6 +501,134 @@
    await updateExportPreview(modal,'cuadrado');
   }catch(err){error=err.message||'No se pudo abrir la vista previa.';render();}
  }
+
+ // ChatGPT Plus no funciona como API de GESTLOK. Solo intercambiamos archivos con consentimiento.
+ function promptChatGPT(item){
+  return [
+   'Editá la foto adjunta del producto «'+item.product+'» como fotografía de catálogo profesional.',
+   'Fondo blanco puro (#FFFFFF), sin sombras artificiales. Mejorá luz, reflejos reales y nitidez.',
+   'Conservá forma, proporciones, ubicación de objetos, colores y todos los detalles reales del frasco y su caja.',
+   'Mantené fieles las etiquetas y leyendas; no inventes marcas, palabras, tamaños ni números.',
+   'Aspecto natural de estudio, sin apariencia de IA. Entregá una sola imagen final, lista para Instagram y Tiendanube.'
+  ].join('\n');
+ }
+ function removeChatGPTModal(){
+  const state=chatGptFlow;chatGptFlow=null;
+  if(state?.url)URL.revokeObjectURL(state.url);
+  state?.modal?.remove();
+ }
+ function chatStatus(value){
+  const node=chatGptFlow?.modal?.querySelector('[data-mp-chat-status]');
+  if(node)node.textContent=value;
+ }
+ async function openChatGPTFlow(id){
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
+  if(!item?.original_photo_path||busy)return;
+  const expectedTab=item.tab_id,expectedPath=item.original_photo_path;
+  try{
+   await assertAccess();
+   const downloaded=await db().storage.from(PHOTO_BUCKET).download(expectedPath);
+   if(downloaded.error)throw downloaded.error;
+   if(!downloaded.data?.size)throw Error('La foto original todavía no está disponible.');
+   if(!visible||tabId!==expectedTab||!items.some(x=>x.id===id&&x.original_photo_path===expectedPath))return;
+   removeChatGPTModal();
+   const name=String(item.product||'producto').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,65)||'producto';
+   const file=new File([downloaded.data],'gestlok-'+name+'-original.jpg',{type:'image/jpeg'});
+   const url=URL.createObjectURL(file),prompt=promptChatGPT(item);
+   const modal=document.createElement('div');modal.dataset.mpChatgptModal='true';
+   modal.innerHTML='<section class="gl-mp-chat-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-chat-title">'+
+    '<header><div><small>FOTOGRAFÍA DE CATÁLOGO · OPCIONAL</small><h2 id="gl-mp-chat-title">Editar con ChatGPT</h2>'+
+    '<p>Producto: <strong>'+esc(item.product)+'</strong>. Sin contratar API paga.</p></div>'+
+    '<button type="button" data-mp-chat-close aria-label="Cerrar">✕</button></header>'+
+    '<img class="gl-mp-chat-image" src="'+esc(url)+'" alt="Foto original de '+esc(item.product)+'">'+
+    '<p>1. Copiá las instrucciones. 2. Compartí esta foto con ChatGPT o descargala y adjuntala desde su app.'+
+    ' 3. Guardá el resultado en la galería y volvé a importarlo.</p>'+
+    '<label>Instrucciones preparadas<textarea data-mp-chat-prompt readonly rows="4"></textarea></label>'+
+    '<div class="gl-mp-chat-buttons"><button type="button" data-mp-chat-copy>Copiar instrucciones</button>'+
+    '<button type="button" data-mp-chat-share>Compartir foto</button>'+
+    '<button type="button" data-mp-chat-download>Descargar original</button>'+
+    '<a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Abrir ChatGPT</a></div>'+
+    '<div class="gl-mp-chat-import"><button type="button" data-mp-chat-import>Importar foto terminada</button>'+
+    '<input type="file" hidden data-mp-ai-import-input="'+esc(item.id)+'" accept="image/jpeg,image/png,image/webp"></div>'+
+    '<p role="status" data-mp-chat-status>Si ChatGPT no aparece al compartir, descargá la foto y adjuntala manualmente.</p>'+
+    '<small>La imagen solo se comparte cuando lo elegís. GESTLOK no edita ni envía fotos a una API paga. Verificá las etiquetas del resultado.</small></section>';
+   document.body.append(modal);
+   modal.querySelector('[data-mp-chat-prompt]').value=prompt;
+   chatGptFlow={modal,url,file,prompt,id,tabId:expectedTab,originalPath:expectedPath};
+  }catch(err){photoErrors.set(id,err.message||'No se pudo abrir la foto original.');render();}
+ }
+ function shareChatGPT(){
+  const flow=chatGptFlow;if(!flow)return;
+  if(typeof navigator.share!=='function'||(typeof navigator.canShare==='function'&&!navigator.canShare({files:[flow.file]}))){
+   chatStatus('No se puede compartir desde este navegador. Descargá el original y adjuntalo en ChatGPT.');return;
+  }
+  // Gesto directo; no esperar ninguna operación antes de navigator.share.
+  navigator.share({files:[flow.file],text:flow.prompt})
+   .then(()=>chatStatus('Foto compartida. Si las instrucciones no llegaron, copialas y pegalas.'))
+   .catch(e=>{if(e?.name!=='AbortError')chatStatus('No se pudo compartir. Descargá el original y adjuntalo manualmente.');});
+ }
+ async function copyChatGPTPrompt(){
+  const flow=chatGptFlow;if(!flow)return;
+  try{
+   if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(flow.prompt);
+   else{
+    const input=flow.modal.querySelector('[data-mp-chat-prompt]');input.focus();input.select();
+    if(!document.execCommand?.('copy'))throw Error('Portapapeles no disponible');
+   }
+   chatStatus('Instrucciones copiadas. Pegalas en ChatGPT.');
+  }catch{chatStatus('Seleccioná y copiá manualmente el texto de las instrucciones.');}
+ }
+ function downloadChatGPTOriginal(){
+  const flow=chatGptFlow;if(!flow)return;
+  const a=document.createElement('a');a.href=flow.url;a.download=flow.file.name;a.rel='noopener';
+  document.body.append(a);a.click();a.remove();
+  chatStatus('Original descargado. Ahora podés adjuntarlo en ChatGPT.');
+ }
+ // Importar la edición como está: NO se vuelve a usar el recortador de fondo.
+ // Se conserva la versión original, los vínculos de pestaña y los controles RLS.
+ async function importAIPhoto(id,file){
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
+  if(!item?.original_photo_path||!file||busy)return;
+  const targetId=item.id,targetTab=item.tab_id,originalPath=item.original_photo_path,oldEdited=item.photo_path;
+  let source;
+  try{
+   const mime=normalizarFoto(file);
+   if(file.size>20*1024*1024)throw Error('La foto supera 20 MB.');
+   // Tomar bytes antes de redibujar el input de Android.
+   source=new Blob([await file.arrayBuffer()],{type:mime});
+  }catch(e){photoErrors.set(id,e.message||'No se pudo leer la foto.');render();return;}
+  if(!visible||tabId!==targetTab||!items.some(x=>x.id===id&&x.original_photo_path===originalPath))return;
+  removeChatGPTModal();
+  await run(async()=>{
+   await assertAccess();
+   const storage=db().storage.from(PHOTO_BUCKET);
+   const original=await storage.download(originalPath);
+   if(original.error||!original.data?.size)throw original.error||Error('Falta la foto original del producto.');
+   const edited=await compressPhoto(source);
+   if(!await reviewPhotoBeforeSaving(item,original.data,edited))
+    throw Error('Importación descartada. Se conservó la foto anterior.');
+   if(!visible||tabId!==targetTab||!items.some(x=>x.id===targetId&&x.original_photo_path===originalPath))
+    throw Error('Cambiaste de pestaña o producto. No se guardó la imagen.');
+   const path=OWNER_UID+'/'+targetId+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   let committed=false,uploaded=false;
+   try{
+    const up=await storage.upload(path,edited,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+    if(up.error)throw up.error;uploaded=true;
+    const saved=await db().from(ITEMS).update({photo_path:path,updated_at:new Date().toISOString()})
+     .eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT).eq('owner_uid',OWNER_UID)
+     .eq('original_photo_path',originalPath).eq('photo_path',oldEdited).select('id').single();
+    if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo guardar en el producto correcto.');
+    committed=true;
+    if(oldEdited&&oldEdited!==originalPath)try{await storage.remove([oldEdited]);}catch(e){console.warn('No se pudo limpiar la edición anterior.',e);}
+    await loadItems();
+   }catch(err){
+    if(!committed&&uploaded)try{await storage.remove([path]);}catch(e){console.warn('No se pudo limpiar la importación incompleta.',e);}
+    throw err;
+   }
+  },'Foto de ChatGPT guardada en «'+item.product+'». Original conservada.');
+ }
+
  async function enhanceExistingPhoto(id){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
   if(!item?.original_photo_path||busy)return;
@@ -716,6 +844,17 @@
 
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-mp-open]')){e.preventDefault();api?.closePanel?.();void open();return;}
+  const chatModal=e.target.closest('[data-mp-chatgpt-modal]');
+  if(chatModal){
+   if(e.target.closest('[data-mp-chat-close]')){e.preventDefault();removeChatGPTModal();return;}
+   if(e.target.closest('[data-mp-chat-share]')){e.preventDefault();shareChatGPT();return;}
+   if(e.target.closest('[data-mp-chat-copy]')){e.preventDefault();void copyChatGPTPrompt();return;}
+   if(e.target.closest('[data-mp-chat-download]')){e.preventDefault();downloadChatGPTOriginal();return;}
+   if(e.target.closest('[data-mp-chat-import]')){
+    e.preventDefault();chatModal.querySelector('[data-mp-ai-import-input]')?.click();return;
+   }
+   return;
+  }
   const exportModal=e.target.closest('[data-mp-export-modal]');
   if(exportModal){
    if(e.target.closest('[data-mp-export-close]')){e.preventDefault();removeExportModal();return;}
@@ -745,6 +884,10 @@
   if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
   const camera=el.closest('[data-mp-photo-camera]');
   if(camera){e.preventDefault();camera.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-camera-input]')?.click();return;}
+  const chat=el.closest('[data-mp-chatgpt]');
+  if(chat){e.preventDefault();void openChatGPTFlow(chat.dataset.mpChatgpt);return;}
+  const aiImport=el.closest('[data-mp-ai-import]');
+  if(aiImport){e.preventDefault();aiImport.closest('.gl-mp-card')?.querySelector('[data-mp-ai-import-input]')?.click();return;}
   const enhance=el.closest('[data-mp-photo-enhance]');
   if(enhance){e.preventDefault();void enhanceExistingPhoto(enhance.dataset.mpPhotoEnhance);return;}
   const original=el.closest('[data-mp-photo-original]');
@@ -794,6 +937,13 @@
  document.addEventListener('change',e=>{
   const format=e.target.closest('[data-mp-export-format]');
   if(format){void updateExportPreview(format.closest('[data-mp-export-modal]'),format.value);return;}
+  const ai=e.target.closest('[data-mp-ai-import-input]');
+  if(ai&&visible){
+   const file=ai.files?.[0],id=ai.dataset.mpAiImportInput;
+   if(file)void importAIPhoto(id,file).finally(()=>{ai.value='';});
+   else ai.value='';
+   return;
+  }
   const photo=e.target.closest('[data-mp-photo-input],[data-mp-photo-camera-input]');
   if(photo&&visible){
    const file=photo.files?.[0];
@@ -811,6 +961,7 @@
  window.addEventListener?.('popstate',()=>{if(visible&&!window.history?.state?.glMisProductos)close(false);});
  document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
+  if(chatGptFlow){removeChatGPTModal();return;}
   if(exportPreview){removeExportModal();return;}
   if(visible)close();
  });
