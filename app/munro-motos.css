@@ -134,3 +134,26 @@
 .mo-pestanas button[aria-selected="true"]{background:var(--mo-blue-ink);border-color:var(--mo-blue-ink);color:white}
 .mo-cuenta{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--mo-blue);color:var(--mo-blue-ink);font-size:12px}
 .mo-pestanas button[aria-selected="true"] .mo-cuenta{background:white}
+
+/* Agencia Motos · validaciones en rojo, también para semanas ya archivadas. */
+.mo-time.mo-time-error,.mo-time.mo-time-error:disabled{
+  border:2px solid #c42f28;background:#fff1f0;color:#92241f;font-weight:700;
+}
+.mo-time.mo-time-error:focus-visible{outline:3px solid #f7a7a3;outline-offset:1px}
+.mo-hd.mo-hd-error,.mo-total.mo-total-error,.mo-week.mo-week-error{
+  background:#fde7e5;color:#91251e;border:1px solid #cf4b40;
+}
+.mo-hd.mo-hd-error{font-size:11px;text-align:center}
+.mo-card.mo-card-error,.mo-card.mo-total-error{border:2px solid #cb3931;background:#fffafa}
+.mo-error-summary{margin:0 0 12px;padding:12px 14px;border:1px solid #ce4b43;border-radius:11px;background:#fff1f0;color:#92241f;font-size:13px}
+.mo-error-summary b{display:block;font-weight:750}
+.mo-error-summary ul{margin:7px 0;padding-left:20px}
+.mo-error-summary li{margin:3px 0;line-height:1.4}
+.mo-error-summary small{display:block;font-size:12px}
+.mo-error-msg{margin:0;padding:9px 10px;background:#fff1f0;border-radius:9px;color:#92241f;font-weight:650;font-size:12px}
+.mo-error-msg[hidden],.mo-error-summary[hidden]{display:none!important}
+.mo-tab.mo-tab-error{border:2px solid #cc453e;background:#fff1f0;color:#942820}
+.mo-tab.mo-tab-error small{color:#942820}
+.mo-tab.mo-tab-error.on{background:#a72a24;border-color:#a72a24;color:white}
+.mo-tab.mo-tab-error.on small{color:white}
+.mo-hist-error{color:#b42318}
