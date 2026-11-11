@@ -9,6 +9,7 @@ declare
   due_id uuid; due_mail text; gm_id uuid; gm_mail text; gt_id uuid; gt_mail text; ext_id uuid; ext_mail text;
   lunes text := to_char(date_trunc('week', now() at time zone 'America/Argentina/Buenos_Aires'), 'YYYY-MM-DD');
   vieja text := to_char(date_trunc('week', now() at time zone 'America/Argentina/Buenos_Aires') - interval '14 days', 'YYYY-MM-DD');
+  futura text := to_char(date_trunc('week', now() at time zone 'America/Argentina/Buenos_Aires') + interval '7 days', 'YYYY-MM-DD');
   caso record;
 begin
   select id into orig from gestlok_tenancy.tenants where code = 'gestlok-original';
@@ -40,7 +41,9 @@ begin
       ('Gerente Torcuato: nombres de Munro',   gt_id,  gt_mail,  'munro/agencia_motos',    'motos', '{"valores":{}}', false),
       ('Gerente Munro: semana en curso',       gm_id,  gm_mail,  'munro/agencia_motos',    'd-' || lunes || '-aye-' || lunes, '{"semana":"' || lunes || '"}', true),
       ('Gerente Munro: refuerzo',              gm_id,  gm_mail,  'munro/agencia_motos',    'm-' || lunes || '-rprueba2', '{"semana":"' || lunes || '","tipo":"refuerzo"}', true),
-      ('Gerente Munro: semana cerrada',        gm_id,  gm_mail,  'munro/agencia_motos',    'd-' || vieja || '-lucas-' || vieja, '{"semana":"' || vieja || '"}', false),
+      ('Gerente Munro: semana cerrada',        gm_id,  gm_mail,  'munro/agencia_motos',    'd-' || vieja || '-lucas-' || vieja, '{"semana":"' || vieja || '"}', true),
+      ('Gerente Munro: refuerzo cerrado',       gm_id,  gm_mail,  'munro/agencia_motos',    'm-' || vieja || '-rpruebah', '{"semana":"' || vieja || '","tipo":"refuerzo"}', true),
+      ('Gerente Munro: semana futura',         gm_id,  gm_mail,  'munro/agencia_motos',    'd-' || futura || '-lucas-' || futura, '{"semana":"' || futura || '"}', false),
       ('Gerente Munro: valores por hora',      gm_id,  gm_mail,  'munro/agencia_motos',    'tarifas', '{"valores":{}}', false),
       ('Gerente Torcuato: Munro',              gt_id,  gt_mail,  'munro/agencia_motos',    'd-' || lunes || '-alex-' || lunes, '{"semana":"' || lunes || '"}', false),
       ('Otra empresa: Munro',                  ext_id, ext_mail, 'munro/agencia_motos',    'd-' || lunes || '-lucas-' || lunes, '{"semana":"' || lunes || '"}', false)
