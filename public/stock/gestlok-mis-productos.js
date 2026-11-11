@@ -506,7 +506,7 @@
  function promptChatGPT(item){
   return [
    'Editá la foto adjunta del producto «'+item.product+'» como fotografía de catálogo profesional.',
-   'Fondo blanco puro (#FFFFFF), sin sombra lateral ni sombras dibujadas. Mejorá la iluminación, reflejos reales y nitidez.',
+   'Fondo blanco puro (#FFFFFF), sin sombras artificiales. Mejorá luz, reflejos reales y nitidez.',
    'Conservá forma, proporciones, ubicación de objetos, colores y todos los detalles reales del frasco y su caja.',
    'Mantené fieles las etiquetas y leyendas; no inventes marcas, palabras, tamaños ni números.',
    'Aspecto natural de estudio, sin apariencia de IA. Entregá una sola imagen final, lista para Instagram y Tiendanube.'
