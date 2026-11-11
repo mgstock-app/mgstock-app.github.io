@@ -5,8 +5,8 @@
    - El cierre es automático: la semana se calcula con la hora de Buenos Aires, así que
      cada lunes la planilla arranca vacía y la anterior pasa al historial sin borrar nada.
    - Dueños (y la creadora): planilla, valores por hora, importes e historial.
-     Gerentes de Munro: cargan y corrigen la semana en curso y ven el historial (horas,
-     solo lectura); no ven importes ni valores por hora.
+     Gerentes de Munro: cargan y corrigen horarios de la semana actual y de semanas
+     cerradas; no ven importes ni valores por hora.
    - El servidor repite estas reglas (política gestlok_munro_motos_*). */
 (() => {
   'use strict';
@@ -70,7 +70,7 @@
   const esDueno = () => ['creadora','dueno'].includes(rol());
   const permitido = () => !!api && api.S.me?.tenant_id === TENANT && api.S.local === 'munro' &&
     (esDueno() || (rol() === 'gerente' && api.misLocales().includes('munro')));
-  const editable = semana => permitido() && api.canW() && (esDueno() || semana === semanaActual());
+  const editable = semana => permitido() && api.canW() && semana <= semanaActual();
 
   /* ---------- Datos ---------- */
   const col = () => api.C('agencia_motos');
@@ -293,13 +293,13 @@
       return '<tr><td>Semana ' + numeroSemana(s) + '</td><td>' + larga(s) + '</td><td>' + larga(sumar(s, 6)) + '</td>' +
         FIJAS.map(m => '<td>' + fmtH(r.filas.find(f => f.id === m.id).min) + '</td>').join('') +
         '<td>' + fmtH(ref) + '</td><td><b>' + fmtH(r.min) + '</b></td>' + (dueno ? '<td><b>' + fmt$(r.pago) + '</b></td>' : '') +
-        '<td><button class="mo-link" data-mo-act="ver" data-semana="' + s + '">Ver detalle</button></td></tr>';
+        '<td><button class="mo-link" data-mo-act="ver" data-semana="' + s + '">' + (editable(s) ? 'Ver y editar' : 'Ver detalle') + '</button></td></tr>';
     }).join('');
     const val = tarifas(), s = semanaActual();
     const resumenT = [...FIJAS.map(m => [m.id, m.nombre]), ['refuerzo', 'Refuerzo']]
       .map(([k, n]) => E(n) + ' ' + (tarifaEn(val, k, s) ? fmt$(tarifaEn(val, k, s)) : 'sin valor')).join(' · ');
     return '<section class="mo-hist"><div class="mo-hist-top"><span class="mo-hist-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>' +
-      '<div><b>Historial de semanas</b><small>' + (dueno ? '(dueños y gerentes de Munro; los importes solo los ven los dueños)' : '(solo lectura · los importes los ven los dueños)') + '</small></div><div class="mo-hist-acts">' +
+      '<div><b>Historial de semanas</b><small>' + (dueno ? '(dueños y gerentes de Munro; los importes solo los ven los dueños)' : '(podés corregir semanas anteriores · sin acceso a importes)') + '</small></div><div class="mo-hist-acts">' +
       (dueno && api.canW() ? '<button class="mo-pill" data-mo-act="tarifas" title="' + resumenT + '">Valor por hora</button>' : '') +
       (semanas.length > 8 ? '<button class="mo-pill" data-mo-act="todo">' + (verTodo ? 'Ver menos' : 'Ver historial completo →') + '</button>' : '') + '</div></div>' +
       tarifasForm() +
@@ -322,7 +322,7 @@
       (cerradas ? ' <span class="mo-cuenta">' + cerradas + '</span>' : '') + '</button></nav>';
     const flechas = '<div class="mo-nav"><button data-mo-act="prev" aria-label="Semana anterior">‹</button><button data-mo-act="next" aria-label="Semana siguiente"' + (enCurso ? ' disabled' : '') + '>›</button></div>';
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
-      : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada · se ve tal como quedó' + (puede ? '; los dueños pueden corregirla con «Modificar»' : ' (solo lectura)')
+      : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada' + (puede ? ' · podés corregir horarios con «Modificar» y guardar los cambios.' : ' (solo lectura)')
       : edicion ? 'Cargá los horarios y tocá «Guardar». Hasta guardar, los cambios no se envían.' : 'Tocá «Modificar» para cargar o corregir horarios.';
     const barra = puede ? '<div class="mo-toolbar"><span class="mo-pend">' + textoPendientes() + '</span>' +
       (edicion ? '<button class="btn" data-mo-act="cancelar"' + (guardando ? ' disabled' : '') + '>Cancelar</button><button class="btn primary" data-mo-act="guardar"' + (guardando ? ' disabled' : '') + '>' + (guardando ? 'Guardando…' : 'Guardar') + '</button>'
