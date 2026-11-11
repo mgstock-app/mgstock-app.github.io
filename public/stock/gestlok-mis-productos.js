@@ -12,6 +12,9 @@
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
  let photoProgress=null,retryPhoto=null,exportPreview=null;
+ // Edición local y gratis: producto sobre cartulina blanca con luz corregida (sin IA generativa).
+ const ESTUDIO_URL='/stock/gestlok-cami-foto-estudio.js?rev=20261111-cartulina-v1';
+ const RECORTE_URL='/stock/gestlok-cami-recorte.js?rev=20261111-cartulina-v1';
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -183,7 +186,7 @@
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
       '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
-      '<p class="gl-mp-hint">La foto se guarda tal cual la sacás o la elegís de la galería. Tocala para verla en grande o descargarla.</p></section>')+
+      '<p class="gl-mp-hint">Al sacar o elegir una foto, GESTLOK la acomoda sobre cartulina blanca y corrige la luz. Antes de guardar ves la comparación y elegís la editada o la original.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
  }
@@ -290,6 +293,37 @@
  }
 
 
+ function etapaEdicion(stage){
+  if(stage==='separando')return ['Separando el producto del fondo… (la primera vez tarda un poco más; mejor con Wi-Fi)',25];
+  if(stage==='luz')return ['Corrigiendo la luz y los blancos…',60];
+  if(stage==='cartulina')return ['Poniendo el producto sobre cartulina blanca…',80];
+  return ['Preparando la foto…',10];
+ }
+ // Vista previa antes de guardar: editada, original o cancelar. Nada se guarda sin elegir.
+ function elegirFoto(item,original,edited,motivo){
+  return new Promise(resolve=>{
+   const before=URL.createObjectURL(original),after=edited?URL.createObjectURL(edited):'';
+   const box=document.createElement('div');box.dataset.mpPhotoPreview='true';box.setAttribute('role','presentation');
+   box.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
+    '<h2 id="gl-mp-photo-preview-title">Foto de '+esc(item.product)+'</h2>'+
+    (edited?'<p>Elegí cuál guardar. La editada pone el producto sobre cartulina blanca y corrige la luz; las letras y formas son las de tu foto.</p>':
+     '<p>No se pudo editar esta foto'+(motivo?': '+esc(motivo):'')+'. Podés guardar la original.</p>')+
+    '<div class="gl-mp-photo-pair'+(edited?'':' is-single')+'">'+
+    (edited?'<figure><img alt="Foto editada sobre cartulina blanca" src="'+esc(after)+'"><figcaption>Editada · cartulina blanca</figcaption></figure>':'')+
+    '<figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure></div>'+
+    '<div class="gl-mp-photo-confirm">'+
+    (edited?'<button type="button" data-mp-photo-choice="editada">Guardar editada</button>':'')+
+    '<button type="button" data-mp-photo-choice="original">Guardar original</button>'+
+    '<button type="button" data-mp-photo-choice="cancelar">Cancelar</button></div></div>';
+   document.body.append(box);
+   box.querySelector('[data-mp-photo-choice]')?.focus({preventScroll:true});
+   box.addEventListener('click',e=>{
+    const b=e.target.closest('[data-mp-photo-choice]');if(!b)return;
+    box.remove();URL.revokeObjectURL(before);if(after)URL.revokeObjectURL(after);
+    resolve(b.dataset.mpPhotoChoice);
+   });
+  });
+ }
  function normalizarFoto(file){
   const type=String(file?.type||'').toLowerCase();
   if(['image/jpeg','image/png','image/webp'].includes(type))return type;
@@ -331,37 +365,57 @@
   retryPhoto={id:targetId,tabId:targetTab,file:source};
   photoErrors.delete(targetId);
   photoProgress={id:targetId,message:'Preparando foto…',percent:10};
+  let elegida='original';
   await run(async()=>{
    await assertAccess();
-   const photo=await compressPhoto(source);
+   const original=await compressPhoto(source);
+   let edited=null,motivo='';
+   try{
+    const [{editarFotoCartulina},{recortarProducto}]=await Promise.all([import(ESTUDIO_URL),import(RECORTE_URL)]);
+    const r=await editarFotoCartulina(original,{recortar:recortarProducto,onProgress:stage=>{const [msg,pct]=etapaEdicion(stage);etapaFoto(targetId,msg,pct);}});
+    edited=r.blob;
+   }catch(e){
+    console.warn('No se pudo editar la foto.',e);
+    motivo=/fetch|network|import|module|descarg|conexi[oó]n/i.test(String(e?.message))?'no se pudo descargar el editor (revisá la conexión)':String(e?.message||'').slice(0,160);
+   }
+   etapaFoto(targetId,'Elegí la foto que querés guardar.',90);
+   elegida=await elegirFoto(item,original,edited,motivo);
+   if(elegida==='cancelar')throw Error('Foto descartada. El producto no se modificó.');
+   const photo=elegida==='editada'&&edited?edited:original;
    if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab))
     throw Error('Cambiaste de producto o pestaña. No se guardó la foto.');
    const storage=db().storage.from(PHOTO_BUCKET);
-   const path=OWNER_UID+'/'+targetId+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
-   let committed=false,uploaded=false;
+   const nuevo=()=>OWNER_UID+'/'+targetId+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   const path=nuevo(),originalPath=photo===original?null:nuevo();
+   const uploaded=[];let committed=false;
    try{
-    etapaFoto(targetId,'Guardando la foto en el producto…',60);
-    const up=await storage.upload(path,photo,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-    if(up.error)throw up.error;uploaded=true;
+    etapaFoto(targetId,'Guardando la foto en el producto…',95);
+    for(const [ruta,blob] of [[path,photo],[originalPath,original]]){
+     if(!ruta)continue;
+     const up=await storage.upload(ruta,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+     if(up.error)throw up.error;uploaded.push(ruta);
+    }
     const saved=await db().from(ITEMS).update({
-      photo_path:path,original_photo_path:null,updated_at:new Date().toISOString()
+      photo_path:path,original_photo_path:originalPath,updated_at:new Date().toISOString()
      }).eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT)
        .eq('owner_uid',OWNER_UID).select('id').single();
     if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo asociar la foto al producto correcto.');
     committed=true;
     // Fotos anteriores (incluidas versiones editadas viejas) se limpian del almacenamiento privado.
-    const old=[item.photo_path,item.original_photo_path].filter(p=>p&&p!==path);
+    const old=[item.photo_path,item.original_photo_path].filter(p=>p&&!uploaded.includes(p));
     try{if(old.length)await storage.remove(old);}catch(e){console.warn('No se pudo limpiar una foto anterior.',e);}
     etapaFoto(targetId,'Foto guardada. Actualizando tarjeta…',100);
     await loadItems();
    }catch(err){
-    if(!committed&&uploaded)try{await storage.remove([path]);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
+    if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
   },'Foto guardada en «'+item.product+'».','');
   const hadError=error;
+  if(!hadError)notice=(elegida==='editada'?'Foto editada guardada en «':'Foto original guardada en «')+item.product+'».';
+  if(hadError==='Foto descartada. El producto no se modificó.'){error='';notice=hadError;}
   photoProgress=null;
-  if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
+  if(hadError&&error)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
   else {photoErrors.delete(targetId);retryPhoto=null;}
   render();
  }
