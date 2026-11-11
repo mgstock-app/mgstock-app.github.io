@@ -411,8 +411,10 @@
     for (const f of r.filas) {
       f.validaciones.forEach((v, i) => {
         set('[data-mo-dia="' + CSS.escape(f.id + '-' + i) + '"]', horasDia(f, i));
-        document.querySelectorAll('[data-mo-dia="' + CSS.escape(f.id + '-' + i) + '"]').forEach(el =>
-          el.classList.toggle('mo-hd-error', !!v.errores.length));
+        document.querySelectorAll('[data-mo-dia="' + CSS.escape(f.id + '-' + i) + '"]').forEach(el => {
+          el.classList.toggle('mo-hd-error', !!v.errores.length);
+          el.closest('.mo-card')?.classList.toggle('mo-card-error', !!v.errores.length);
+        });
         const nota = document.querySelector('[data-mo-error="' + CSS.escape(f.id + '-' + i) + '"]');
         if (nota) { nota.hidden = !v.errores.length; nota.textContent = v.errores.join(' '); }
         for (const [k] of CAMPOS) document.querySelectorAll('.mo-time[data-moto="' + CSS.escape(f.id) +
@@ -426,7 +428,7 @@
       set('[data-mo-tot="' + CSS.escape(f.id) + '"]', horasSemana(f));
       if (dueno) set('[data-mo-pago="' + CSS.escape(f.id) + '"]', tieneError(f) ? '—' : fmt$(f.pago));
       document.querySelectorAll('[data-mo-tot="' + CSS.escape(f.id) + '"]').forEach(el =>
-        el.closest('.mo-total, .mo-card')?.classList.toggle('mo-total-error', tieneError(f)));
+        el.closest('.mo-total')?.classList.toggle('mo-total-error', tieneError(f)));
     }
     r.porDia.forEach((m, i) => {
       const hayError = r.filas.some(f => f.validaciones[i].errores.length);
