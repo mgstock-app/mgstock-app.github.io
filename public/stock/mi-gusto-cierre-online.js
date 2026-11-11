@@ -46,7 +46,8 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
    (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-const emptySelected=s=>!!s&&Array.isArray(s.movements)&&!s.movements.some(m=>m.method!=='efectivo')&&emptyCheckedFor===s.id;
+const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>m.method==='getnet'||m.method==='mercado_pago');
+const emptySelected=s=>!!s&&!hasPosnet(s)&&emptyCheckedFor===s.id;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;emptyCheckedFor=null;error='';}
 function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
 async function rpc(name,args={}){
@@ -80,7 +81,7 @@ async function refresh(){
  loading=true;
  try{const value=await rpc('gestlok_mg_online_state');
    if(loc!==local()||token!==gen)return;
-   snapshot=safeShiftState(value);if(emptyCheckedFor!==snapshot.active.id||snapshot.active.movements.length)emptyCheckedFor=null;error='';
+   snapshot=safeShiftState(value);if(emptyCheckedFor!==snapshot.active.id||hasPosnet(snapshot.active))emptyCheckedFor=null;error='';
  }catch(e){if(token===gen&&!choosingPhoto&&!uploading)error=e.message||'No pudimos consultar los cierres';}
  finally{loading=false;if(token===gen&&!choosingPhoto&&!uploading&&api?.S?.view==='cierre-online')api.render();}
 }
@@ -179,16 +180,16 @@ function entry(){
 }
 function movements(){
  const s=snapshot?.active;
- const hasMoves=!!s&&Array.isArray(s.movements)&&s.movements.some(m=>m.method!=='efectivo');
+ const posnet=hasPosnet(s);
  const declared=emptySelected(s);
- const canClose=!!s&&writable()&&(declared||(hasMoves&&!!s.photo_path));
+ const canClose=!!s&&writable()&&(declared||(posnet&&!!s.photo_path));
  return '<div class="mg-on-section">'+entry()+(saveNotice?'<div class="mg-on-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span><div><strong>¡Movimiento guardado correctamente!</strong><small>La comanda ya figura en los movimientos del turno.</small></div></div>':'')+
   movementList()+'</div>'+status()+
  '<div class="mg-on-close"><div class="mg-on-close-copy"><p>Al cerrar el turno, los movimientos quedan guardados en el historial y se abre automáticamente el turno siguiente.</p>'+
- (s?'<label class="mg-on-empty-choice"><input type="checkbox" data-mgon-empty="'+esc(s.id)+'" '+(declared?'checked ':'')+(hasMoves||!writable()?'disabled ':'')+'><span><strong>Sin movimientos online</strong><small>'+(hasMoves?'Hay comandas online: se requiere foto para cerrar.':'Sin movimientos online. El efectivo queda registrado como control y podés cerrar sin foto.')+'</small></span></label>':'')+
- '<p class="mg-on-photo-reminder '+(declared||(hasMoves&&s?.photo_path)?'mg-on-photo-ready':'')+'" role="status">'+(declared?'✓ Sin movimientos online. El efectivo queda guardado. No necesitás foto.':hasMoves?(s?.photo_path?'✓ Foto cargada. Ya podés cerrar el turno.':'📷 Hay movimientos registrados. Subí la foto para cerrar.'):'Seleccioná «Sin movimientos online» para cerrar sin foto.')+'</p></div>'+
+ (s?'<label class="mg-on-empty-choice"><input type="checkbox" data-mgon-empty="'+esc(s.id)+'" '+(declared?'checked ':'')+(posnet||!writable()?'disabled ':'')+'><span><strong>Sin movimientos de Posnet</strong><small>'+(posnet?'Hay pagos con Getnet o Mercado Pago: se requiere foto para cerrar.':'Sin Getnet ni Mercado Pago. Las transferencias y el efectivo quedan guardados; podés cerrar sin foto.')+'</small></span></label>':'')+
+ '<p class="mg-on-photo-reminder '+(declared||(posnet&&s?.photo_path)?'mg-on-photo-ready':'')+'" role="status">'+(declared?'✓ Sin movimientos de Posnet. Transferencias y efectivo conservados. No necesitás foto.':posnet?(s?.photo_path?'✓ Foto de Posnet cargada. Ya podés cerrar el turno.':'📷 Hay Getnet o Mercado Pago. Subí la foto del Posnet para cerrar.'):'Marcá «Sin movimientos de Posnet» para cerrar sin foto.')+'</p></div>'+
  (photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
- '<div class="mg-on-close-controls"><button type="button" class="mg-on-close-primary" data-mgon-close '+(!canClose?'disabled':'')+'>Cerrar turno →</button>'+photoControl(s,declared)+'</div></div>'+cashMovementDetail();
+ '<div class="mg-on-close-controls"><button type="button" class="mg-on-close-primary" data-mgon-close '+(!canClose?'disabled':'')+'>Cerrar turno →</button>'+photoControl(s,declared||!posnet)+'</div></div>'+cashMovementDetail();
 }
 const cameraIcon='<svg class="mg-on-camera" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="4"/></svg>';
 function photoControl(s,hideUploads=false){
@@ -275,7 +276,7 @@ function shiftCard(s,turnoHint='tarde'){
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
  [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas online'],['online_local','Online Local']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
- '<small>'+Number(s.comandas||0)+' comandas registradas'+(s.sin_movimientos?' · Sin movimientos':'')+'</small>'+photoControl(s)+'</article>';
+ '<small>'+Number(s.comandas||0)+' comandas registradas'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</small>'+photoControl(s)+'</article>';
 }
 function summary(){
  const curr=snapshot?.active, all=[curr,...(snapshot?.history||[])].filter(Boolean).filter(s=>s.day===curr?.day);
@@ -314,7 +315,7 @@ function historyTotals(model){
 }
 function shiftHistoryCard(s){
  return '<article class="mg-on-history-card"><header><div><strong>'+
-  esc(shiftName(s.turno))+' · '+date(s.day)+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas'+(s.sin_movimientos?' · Sin movimientos':'')+'</small></div>'+
+  esc(shiftName(s.turno))+' · '+date(s.day)+'</strong><small>✓ Cierre guardado · '+Number(s.comandas||0)+' comandas'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</small></div>'+
   '<button type="button" data-mgon-detail="'+esc(s.id)+'" aria-expanded="'+(opened===s.id)+'">'+
   (opened===s.id?'Ocultar detalle':'Ver pedidos')+'</button></header>'+
   historyTotals(s)+(opened===s.id?oldRows(s):'')+'</article>';
@@ -330,7 +331,7 @@ function dayHistoryCard(d){
 function reportTurn(s,turno){
  if(!s)return '<div class="mg-on-report-turn"><h3>'+esc(shiftName(turno))+'</h3><p class="mg-on-empty">Sin cierre registrado para este turno.</p></div>';
  return '<section class="mg-on-report-turn"><header><h3>'+esc(shiftName(turno))+'</h3>'+
- '<span class="mg-on-closed">✓ Cerrado'+(s.sin_movimientos?' · Sin movimientos':'')+'</span></header>'+
+ '<span class="mg-on-closed">✓ Cerrado'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</span></header>'+
  historyTotals(s)+
  '<h4>Movimientos individuales</h4>'+
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
@@ -411,7 +412,7 @@ async function action(name,args,notify){
 }
 async function rpcRefresh(allowEmpty=false){
  const current=local(),value=await rpc('gestlok_mg_online_state');if(current!==local())return;
- snapshot=safeShiftState(value,allowEmpty);if(emptyCheckedFor!==snapshot.active.id||snapshot.active.movements.length)emptyCheckedFor=null;error='';api.render();
+ snapshot=safeShiftState(value,allowEmpty);if(emptyCheckedFor!==snapshot.active.id||hasPosnet(snapshot.active))emptyCheckedFor=null;error='';api.render();
 }
 function attach(h){
  if(api)return;
@@ -502,12 +503,12 @@ function attach(h){
   if(close&&writable()&&snapshot?.active){
    const s=snapshot.active,declared=emptySelected(s);
    const confirmed=window.confirm(declared?
-    '¿Cerrar el turno '+shiftName(s.turno)+' SIN MOVIMIENTOS ONLINE y sin foto? Los registros de efectivo se conservan.':
+    '¿Cerrar el turno '+shiftName(s.turno)+' SIN MOVIMIENTOS DE POSNET y sin foto? Las transferencias y los registros de efectivo se conservan.':
     '¿Cerrar el turno '+shiftName(s.turno)+'? Se guardará en el historial y se abrirá el siguiente turno.');
    if(confirmed){
     emptyCheckedFor=null;
     void action(declared?'gestlok_mg_online_close_sin_movimientos':'gestlok_mg_online_close',
-     {p_shift:s.id},declared?'Turno cerrado sin movimientos online. Se abrió el siguiente.':'Turno cerrado. Se abrió el siguiente.');
+     {p_shift:s.id},declared?'Turno cerrado sin movimientos de Posnet. Transferencias y efectivo conservados; se abrió el siguiente.':'Turno cerrado. Se abrió el siguiente.');
     tab='movimientos';showAllMoves=false;
    }
    return;
@@ -530,7 +531,7 @@ function attach(h){
   if(!allowed())return;
   if(e.target.matches?.('[data-mgon-empty]')){
    const s=snapshot?.active;
-   emptyCheckedFor=writable()&&s?.id===e.target.dataset.mgonEmpty&&!s.movements.some(m=>m.method!=='efectivo')&&e.target.checked?s.id:null;
+   emptyCheckedFor=writable()&&s?.id===e.target.dataset.mgonEmpty&&!hasPosnet(s)&&e.target.checked?s.id:null;
    api.render();return;
   }
   if(e.target.matches?.('[data-mgon-photo]')){const file=e.target.files?.[0];choosingPhoto=false;if(file)void uploadPhoto(e.target.dataset.mgonPhoto,file);return;}

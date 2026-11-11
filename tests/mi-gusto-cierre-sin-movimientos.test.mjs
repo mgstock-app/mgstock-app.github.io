@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 const sql=p=>readFileSync(new URL('../supabase/migrations/'+p,import.meta.url),'utf8');
 const tenant='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 
-test('Mi Gusto: Sin movimientos cierra solo turno vacío y lo registra; pagos con movimientos siguen exigiendo foto',async()=>{
+test('Mi Gusto: cerrar sin foto con transferencia o efectivo, pero exigirla con Getnet/Mercado Pago',async()=>{
  const db=new PGlite();
  try{
   await db.exec([
@@ -25,7 +25,9 @@ test('Mi Gusto: Sin movimientos cierra solo turno vacío y lo registra; pagos co
    '20261102182000_mi_gusto_fotos_multiples_observaciones.sql',
    '20261104203000_mi_gusto_efectivo_descuento.sql',
    '20261105010500_mi_gusto_efectivo_ok.sql',
-   '20261109190000_mi_gusto_cierre_sin_movimientos.sql'
+   '20261109190000_mi_gusto_cierre_sin_movimientos.sql',
+   '20261109202000_mi_gusto_cierre_solo_efectivo.sql',
+   '20261111030000_mi_gusto_cierre_foto_solo_posnet.sql'
   ]){try{await db.exec(sql(m));}catch(e){throw new Error(m+': '+e.message,{cause:e});}}
   const ctx=async(role='gerente',locals='munro',tenantId=tenant)=>{
     for(const [key,value] of Object.entries({uid:'11111111-1111-4111-8111-111111111111',role,tenant:tenantId,locals}))
@@ -55,15 +57,26 @@ test('Mi Gusto: Sin movimientos cierra solo turno vacío y lo registra; pagos co
   await db.exec('set role authenticated');
   const second=result.active;
   await rpc('save_note','munro',second.id,null,'123','transferencia',2000,false,'test');
-  await assert.rejects(()=>rpc('close_sin_movimientos','munro',second.id),/movimientos/);
-  await assert.rejects(()=>rpc('close','munro',second.id),/Subí la foto/);
+  await rpc('save_note','munro',second.id,null,'124','efectivo',1000,false,'control');
+  const transfer=await rpc('close_sin_movimientos','munro',second.id);
+  assert.equal(transfer.closed.sin_movimientos,true,'marca sin movimientos DE POSNET');
+  assert.equal(transfer.closed.photo_path,null);
+  assert.equal(transfer.closed.movements.length,2,'se conservan transferencia y efectivo');
+  assert.equal(Number(transfer.closed.transferencia),2000);
+  assert.equal(Number(transfer.closed.total_ventas),2000,'no elimina ventas ni APP');
+  assert.equal(Number(transfer.closed.efectivo),900,'el efectivo conserva descuento 10%');
+  assert.equal(transfer.closed.movements.some(x=>x.method==='transferencia'),true);
+  const third=transfer.active;
+  await rpc('save_note','munro',third.id,null,'125','mercado_pago',4500,false,'posnet');
+  await assert.rejects(()=>rpc('close_sin_movimientos','munro',third.id),/Posnet|Getnet|Mercado Pago/);
+  await assert.rejects(()=>rpc('close','munro',third.id),/Subí la foto/);
   await db.exec('reset role');
-  await db.query("update gestlok_mg_online_private.shifts set photo_path='munro/test/cierre.jpg',photo_at=now(),photo_by='11111111-1111-4111-8111-111111111111' where id=$1",[second.id]);
+  await db.query("update gestlok_mg_online_private.shifts set photo_path='munro/test/cierre.jpg',photo_at=now(),photo_by='11111111-1111-4111-8111-111111111111' where id=$1",[third.id]);
   await db.exec('set role authenticated');
-  const normal=await rpc('close','munro',second.id);
+  const normal=await rpc('close','munro',third.id);
   assert.equal(normal.closed.sin_movimientos,false);
   assert.equal(normal.closed.movements.length,1);
-  assert.equal(Number(normal.closed.total_ventas),2000);
+  assert.equal(Number(normal.closed.total_ventas),4500);
   await ctx('gerente','torcuato');
   await assert.rejects(()=>rpc('state','munro'),/permiso/);
   const torcuato=(await rpc('state','torcuato')).active;
@@ -75,19 +88,26 @@ test('Mi Gusto: Sin movimientos cierra solo turno vacío y lo registra; pagos co
   await ctx('gerente','munro');
   await assert.rejects(()=>rpc('close_sin_movimientos','torcuato',torcuato.id),/Sin permiso/);
   await db.exec('reset role;set role anon');
-  await assert.rejects(()=>rpc('close_sin_movimientos','munro',second.id),/permission denied/);
+  await assert.rejects(()=>rpc('close_sin_movimientos','munro',third.id),/permission denied/);
  }finally{await db.close();}
 });
 
-test('La interfaz ofrece Sin movimientos solo en un turno sin comandas; fotos obligatorias si las hay',()=>{
+test('La interfaz ofrece Sin movimientos de Posnet si solo hay transferencia/efectivo; foto solo Getnet o MP',()=>{
  const js=readFileSync(new URL('../public/stock/mi-gusto-cierre-online.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../app/mi-gusto-pagos-online.css',import.meta.url),'utf8');
+ const server=sql('20261111030000_mi_gusto_cierre_foto_solo_posnet.sql');
  assert.match(js,/data-mgon-empty/);
+ assert.match(js,/const hasPosnet=s=>/);
+ assert.match(js,/m\.method==='getnet'\|\|m\.method==='mercado_pago'/);
  assert.match(js,/emptySelected\(s\)/);
- assert.match(js,/hasMoves&&!!s\.photo_path/);
- assert.ok(js.includes("hasMoves||!writable()?'disabled '"),'Sin movimientos must remain visible but disabled when there are orders');
+ assert.match(js,/posnet&&!!s\.photo_path/);
+ assert.match(js,/posnet\|\|!writable\(\)\?'disabled '/);
+ assert.match(js,/photoControl\(s,declared\|\|!posnet\)/);
+ assert.match(js,/Sin movimientos de Posnet/);
+ assert.match(js,/!hasPosnet\(s\)&&e\.target\.checked/);
  assert.match(js,/gestlok_mg_online_close_sin_movimientos/);
- assert.match(js,/Sin movimientos/);
  assert.match(css,/\.mg-on-empty-choice/);
  assert.doesNotMatch(js,/localStorage\.setItem\([^)]*emptyCheckedFor/);
+ assert.match(server,/method in \('getnet','mercado_pago'\)/);
+ assert.doesNotMatch(server,/delete from gestlok_mg_online_private\.movements/i);
 });
