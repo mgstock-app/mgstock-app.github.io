@@ -338,7 +338,7 @@
  async function uploadPhoto(id,file,retry=false){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
   if(!item||!file||busy)return;
-  const targetTab=item.tab_id,targetId=item.id;
+  const targetTab=item.tab_id, targetId=item.id;
   let source;
   try{
    if(!retry){
