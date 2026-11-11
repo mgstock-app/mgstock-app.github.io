@@ -10,7 +10,8 @@
  const CREATOR_EMAIL='kmu15lopez@gmail.com';
  const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
- const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map();
+ const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
+ let photoProgress=null,retryPhoto=null;
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -30,7 +31,7 @@
  }
  function reset(){
   epoch++;allowed=false;checked=false;checking=false;context=null;api=null;
-  tabs=[];items=[];photoUrls.clear();tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
+  tabs=[];items=[];photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
   close(false);
  }
  async function refresh(ctx,host){
@@ -192,7 +193,7 @@
  function close(back=true){
   removePrintModal();
   if(!visible)return;
-  visible=false;searchTerm='';photoUrls.clear();$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
+  visible=false;searchTerm='';photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
    if(back)window.history.back();
    else window.history.replaceState({...window.history.state,glMisProductos:false},'');
@@ -201,7 +202,7 @@
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
   removePrintModal();
-  tabId=id;photoUrls.clear();itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
+  tabId=id;photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
  }
@@ -209,7 +210,7 @@
   if(busy)return;
   busy=true;error='';notice=progress;render();
   try{await assertAccess();await task();notice=message||'Cambios guardados.';}
-  catch(e){error=e.message||'No se pudo guardar.';}
+  catch(e){error=e.message||'No se pudo guardar.';notice='';}
   finally{busy=false;render();}
  }
  async function saveTab(newName,old){
@@ -312,7 +313,7 @@
    await assertAccess();
    const original=await compressPhoto(file);
    // Modelo descargado al primer uso: el recorte se hace sin subir la imagen a terceros.
-   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.mjs?rev=20261110-sombra-lateral');
+   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-galeria-v2');
    const edited=await whiteBackground(original);
    if(!await reviewPhotoBeforeSaving(item,original,edited))throw Error('Foto descartada. No se modificó el producto.');
    if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab)){
@@ -609,8 +610,8 @@
   const photo=e.target.closest('[data-mp-photo-input],[data-mp-photo-camera-input]');
   if(photo&&visible){
    const file=photo.files?.[0];
-   if(file)void uploadPhoto(photo.dataset.mpPhotoInput||photo.dataset.mpPhotoCameraInput,file);
-   photo.value='';
+   if(file)void uploadPhoto(photo.dataset.mpPhotoInput||photo.dataset.mpPhotoCameraInput,file).finally(()=>{photo.value='';});
+   else photo.value='';
    return;
   }
   const select=e.target.closest('[data-mp-fragrance]');
