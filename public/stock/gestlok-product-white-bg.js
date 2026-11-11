@@ -34,6 +34,39 @@ async function readImage(blob){
   });
  }finally{URL.revokeObjectURL(url);}
 }
+
+// Iluminación local de estudio sin servicio externo. No reconstruye zonas
+// ilegibles: el detalle disponible siempre sale de la foto real.
+// El modelo neuronal BiRefNet se ocupa del fondo; este paso corrige luces.
+// Función pura para poder comprobar sombras, envases negros y transparencias.
+export function balanceStudioLighting(pixels){
+ const smooth=(x,a,b)=>{
+  const t=Math.max(0,Math.min(1,(x-a)/(b-a)));
+  return t*t*(3-2*t);
+ };
+ for(let p=0;p<pixels.length;p+=4){
+  const alpha=pixels[p+3];
+  if(alpha<248)continue; // No aumentar halos en los bordes de vidrio y etiquetas.
+  const red=pixels[p],green=pixels[p+1],blue=pixels[p+2];
+  const light=.2126*red+.7152*green+.0722*blue;
+  const chroma=Math.max(red,green,blue)-Math.min(red,green,blue);
+  // Papel y cajas neutras tienen sombras de luz, mientras que los tapones
+  // negros muy oscuros y los líquidos coloreados requieren protección.
+  const neutral=1-smooth(chroma,28,105);
+  const material=smooth(light,48,107);
+  const shaded=1-smooth(light,176,238);
+  const correction=Math.min(90,Math.max(0,228-light)*.77*neutral*material*shaded);
+  // Levantar medios tonos en vidrio de color, sin desaturar el líquido.
+  const colorLift=Math.min(14,Math.max(0,175-light)*.105*(1-neutral)*smooth(light,58,112));
+  const lift=correction+colorLift;
+  for(let channel=0;channel<3;channel++){
+   const value=pixels[p+channel];
+   pixels[p+channel]=Math.min(255,Math.max(0,value+lift));
+  }
+ }
+ return pixels;
+}
+
 export async function whiteBackground(source,onProgress){
   const remove=await getModel();
   // Usar el refinado de máscara: la opción fast pierde bordes de frascos y tipografías.
@@ -76,7 +109,7 @@ export async function whiteBackground(source,onProgress){
   if(!sc)throw Error('No se pudo mejorar la foto del producto.');
   sc.imageSmoothingEnabled=true;
   sc.imageSmoothingQuality='high';
-  sc.filter='brightness(1.045) contrast(1.045) saturate(1.035)';
+  sc.filter='brightness(1.10) contrast(1.035) saturate(1.045)';
   sc.drawImage(img,productX-minX*ratio,productY-minY*ratio,w*ratio,h*ratio);
   sc.filter='none';
 
@@ -91,14 +124,14 @@ export async function whiteBackground(source,onProgress){
     const pixels=sharp.data,blurred=bc.getImageData(0,0,1200,1200).data;
     for(let p=0;p<pixels.length;p+=4){
       if(pixels[p+3]<250||blurred[p+3]<245)continue;
-      const lum=pixels[p]*.2126+pixels[p+1]*.7152+pixels[p+2]*.0722;
-      const lift=.085*(1-lum/255);
       for(let k=0;k<3;k++){
         const detail=pixels[p+k]-blurred[p+k];
-        const focused=Math.abs(detail)>4&&Math.abs(detail)<80?detail*.50:0;
-        pixels[p+k]=Math.max(0,Math.min(255,pixels[p+k]+(255-pixels[p+k])*lift+focused));
+        // Enfoque moderado para no inventar caracteres ni crear bordes brillantes.
+        const focused=Math.abs(detail)>4&&Math.abs(detail)<65?detail*.42:0;
+        pixels[p+k]=Math.max(0,Math.min(255,pixels[p+k]+focused));
       }
     }
+    balanceStudioLighting(pixels);
     sc.putImageData(sharp,0,0);
   }
   c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';

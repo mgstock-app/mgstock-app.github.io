@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-fotos-chatgpt-gratis-20261111/);
+ assert.match(runtime,/cami-estudio-auto-luz-v5-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -231,15 +231,15 @@ test('Todas las fotos nuevas de Camila tienen fondo blanco y mejora real sin som
  assert.match(script,/data-mp-photo-input/);
  assert.match(script,/const edited=await whiteBackground\(original,/);
  assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
- assert.match(script,/Fondo blanco · sin sombra/);
- assert.match(script,/sin sombras guardada/);
+ assert.match(script,/Estudio automático · fondo blanco/);
+ assert.match(script,/luz mejorada guardada/);
  assert.match(script,/Math\.min\(1,1800\/Math\.max\(image\.naturalWidth,image\.naturalHeight\)\)/);
  assert.match(script,/encode\(\.93\)/);
  assert.match(editor,/quality:'quality'/);
  assert.match(editor,/const ratio=Math\.min\(1020\/cw,850\/ch\)/);
  assert.match(editor,/const productX=\(1200-productW\)\/2,productY=1000-productH/);
  assert.match(editor,/subject\.width=1200;subject\.height=1200/);
- assert.match(editor,/contrast\(1\.045\)/);
+ assert.match(editor,/contrast\(1\.035\)/);
  assert.match(editor,/bc\.filter='blur\(1px\)'/);
  assert.match(editor,/sc\.putImageData\(sharp,0,0\)/);
  assert.match(editor,/c\.drawImage\(subject,0,0\)/);
@@ -252,7 +252,7 @@ test('Todas las fotos nuevas de Camila tienen fondo blanco y mejora real sin som
 test('Galería Android conserva la foto antes de redibujar, muestra progreso y permite reintento',()=>{
  assert.match(script,/new Blob\(\[await file\.arrayBuffer\(\)\],\{type:mime\}\)/);
  assert.match(script,/uploadPhoto\(photo\.dataset\.mpPhotoInput\|\|photo\.dataset\.mpPhotoCameraInput,file\)\.finally/);
- assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-foto-pro-v4/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-estudio-luz-v5/);
  assert.match(script,/photoProgress=\{id:targetId/);
  assert.match(script,/data-mp-photo-meter/);
  assert.match(script,/data-mp-photo-retry/);
@@ -281,7 +281,7 @@ test('Una foto guardada muestra vista previa y descarga únicamente en su produc
  await a.mod.refresh(a.ctx,a.host);await a.mod.open();
  assert.match(a.cards.innerHTML,/data-mp-photo-open="e1"/);
  assert.match(a.cards.innerHTML,/Vista previa \/ Descargar/);
- assert.match(a.cards.innerHTML,/Mejorar gratis \(IA local\)/);
+ assert.match(a.cards.innerHTML,/Mejorar luz y fondo · Gratis/);
  assert.match(a.cards.innerHTML,/Ver original/);
  assert.match(a.cards.innerHTML,/data-mp-chatgpt="e1"/);
  assert.match(a.cards.innerHTML,/data-mp-ai-import="e1"/);
@@ -335,10 +335,29 @@ test('ChatGPT Plus: el envío es manual y no se emplea una API paga',()=>{
 });
 test('IA local gratuita queda aislada de stock y Mi Gusto',()=>{
  assert.match(script,/data-mp-photo-enhance/);
- assert.match(script,/Mejorar gratis \(IA local\)/);
+ assert.match(script,/Mejorar luz y fondo · Gratis/);
  assert.match(script,/await uploadPhoto\(id,photo\.data,true\)/);
- assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-foto-pro-v4/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-estudio-luz-v5/);
  assert.match(script,/validContext\(ctx,host\)/);
  assert.doesNotMatch(script,/gestlok_pilot_products|gestlok_pilot_pos_sales|mi_gusto_whatsapp/);
- assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-fotos-chatgpt-gratis-20261111/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-estudio-auto-luz-v5-20261111/);
+});
+
+test('Estudio automático: sombras neutras se aclaran, tapones negros se conservan y el vidrio mantiene color',async()=>{
+ const editor=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
+ const {balanceStudioLighting}=await import('data:text/javascript;base64,'+Buffer.from(editor,'utf8').toString('base64'));
+ // Caja blanca a la sombra, tapón negro, perfume ámbar y borde translúcido.
+ const pixels=new Uint8ClampedArray([
+  110,110,110,255,
+  27,27,28,255,
+  180,143,68,255,
+  120,120,120,100
+ ]);
+ const edited=balanceStudioLighting(pixels);
+ assert.ok(edited[0]>=176&&edited[0]<=205,'levantar de verdad la sombra gris de caja blanca');
+ assert.deepEqual(Array.from(edited.slice(4,8)),[27,27,28,255],'el tapón negro conserva su tono');
+ assert.ok(edited[8]>edited[9]&&edited[9]>edited[10],'vidrio ámbar mantiene jerarquía de color');
+ assert.deepEqual(Array.from(edited.slice(12,16)),[120,120,120,100],'no crear halo en el contorno semitransparente');
+ assert.match(editor,/quality:'quality'/);
+ assert.doesNotMatch(editor,/groundShadow|createRadialGradient|api\.openai\.com/);
 });
