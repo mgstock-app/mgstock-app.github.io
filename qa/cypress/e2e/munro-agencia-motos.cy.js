@@ -95,6 +95,12 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('.mo-who').should('contain.text', 'Refuerzo 2');
     horaNueva('12:00');
     cy.get('.mo-who').should('contain.text', 'Refuerzo 3');
+    lunes().then(s => {
+      cy.contains('.mo-who', 'Refuerzo 2').closest('.mo-row')
+        .find('.mo-time[data-dia="' + s + '"][data-campo="tm_s"]').type('11:00').blur();
+      cy.contains('.mo-who', 'Refuerzo 3').closest('.mo-row')
+        .find('.mo-time[data-dia="' + s + '"][data-campo="tm_s"]').type('13:00').blur();
+    });
     cy.get('[data-mo-act="guardar"]').click();
     cy.window().its('__rows').should(rows => {
       const refs = docsMotos(rows).filter(r => r.data.tipo === 'refuerzo');
@@ -149,6 +155,42 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('.mo-aviso').should('contain.text', 'semana cerrada');
     cy.get('[data-mo-act="hoy"]').click();
     cy.get('.mo-aviso').should('not.exist');
+  });
+
+  it('detecta turnos superpuestos, marca en rojo y no guarda hasta corregirlos', () => {
+    launch(); login('gerente.munro@example.com');
+    cy.get('#snav [data-go="motos"]').click();
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('lucas', 'tm_e', '11:30');
+    cy.get('.mo-error-summary').should('be.visible').and('contain.text', 'Completá la entrada y la salida');
+    hora('lucas', 'tm_s', '15:00');
+    hora('lucas', 'tt_e', '11:30');
+    hora('lucas', 'tt_s', '23:00');
+    lunes().then(s => {
+      cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tt_e"]')
+        .should('have.class', 'mo-time-error').and('have.attr', 'aria-invalid', 'true');
+      cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tm_s"]')
+        .should('have.class', 'mo-time-error');
+    });
+    cy.get('.mo-error-summary').should('contain.text', 'se superponen');
+    cy.get('[data-mo-dia="lucas-0"]').should('contain.text', 'Revisar');
+    cy.get('[data-mo-tot="lucas"]').should('contain.text', 'Revisar');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('exist');
+    cy.window().its('__rows').should(rows => {
+      expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0);
+    });
+    lunes().then(s => cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tt_e"]')
+      .clear().type('19:00').blur());
+    cy.get('.mo-time[data-moto="lucas"][data-campo="tt_e"]').first().should('not.have.class', 'mo-time-error');
+    cy.get('.mo-error-summary').should('not.be.visible');
+    cy.get('[data-mo-dia="lucas-0"]').should('contain.text', '7:30');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('not.exist');
+    lunes().then(s => cy.window().its('__rows').should(rows => {
+      const d = docsMotos(rows).find(r => r.id === 'd-' + s + '-lucas-' + s);
+      expect(d.data).to.include({tm_e:'11:30', tm_s:'15:00', tt_e:'19:00', tt_s:'23:00'});
+    }));
   });
 
   it('en celular muestra un día por vez, sin desbordes horizontales', () => {
