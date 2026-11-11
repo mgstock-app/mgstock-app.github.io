@@ -403,6 +403,102 @@
   else {photoErrors.delete(targetId);retryPhoto=null;}
   render();
  }
+
+ const EXPORT_FORMATS={
+  cuadrado:{width:1200,height:1200,label:'Cuadrada · Tiendanube 1200×1200'},
+  instagram:{width:1080,height:1350,label:'Instagram · feed 1080×1350'},
+  historia:{width:1080,height:1920,label:'Instagram · historia 1080×1920'}
+ };
+ function removeExportModal(){
+  const p=exportPreview;exportPreview=null;
+  if(p?.url)URL.revokeObjectURL(p.url);
+  p?.modal?.remove();
+  p?.trigger?.focus?.({preventScroll:true});
+ }
+ async function composeExport(source,format){
+  if(format==='cuadrado')return source;
+  const dims=EXPORT_FORMATS[format];if(!dims)throw Error('Elegí un formato válido.');
+  const url=URL.createObjectURL(source);
+  try{
+   const image=await new Promise((resolve,reject)=>{
+    const img=new Image();img.onload=()=>resolve(img);
+    img.onerror=()=>reject(Error('No se pudo leer la imagen guardada.'));
+    img.src=url;
+   });
+   const canvas=document.createElement('canvas');
+   canvas.width=dims.width;canvas.height=dims.height;
+   const ctx=canvas.getContext('2d');if(!ctx)throw Error('No se pudo preparar la vista previa.');
+   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+   const scale=Math.min(dims.width/image.naturalWidth,dims.height/image.naturalHeight);
+   const w=image.naturalWidth*scale,h=image.naturalHeight*scale;
+   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+   ctx.drawImage(image,(dims.width-w)/2,(dims.height-h)/2,w,h);
+   return await new Promise((resolve,reject)=>canvas.toBlob(blob=>
+    blob?resolve(blob):reject(Error('No se pudo exportar el archivo JPG.')),'image/jpeg',.94));
+  }finally{URL.revokeObjectURL(url);}
+ }
+ async function updateExportPreview(modal,format){
+  const state=exportPreview;
+  if(!state||state.modal!==modal||!EXPORT_FORMATS[format])return;
+  const msg=modal.querySelector('[data-mp-export-status]');
+  const button=modal.querySelector('[data-mp-export-download]');
+  const select=modal.querySelector('[data-mp-export-format]');
+  if(button)button.disabled=true;
+  if(select)select.disabled=true;
+  if(msg)msg.textContent='Preparando vista previa…';
+  try{
+   const blob=await composeExport(state.source,format);
+   if(exportPreview!==state||!modal.isConnected)return;
+   if(state.url)URL.revokeObjectURL(state.url);
+   state.blob=blob;state.format=format;state.url=URL.createObjectURL(blob);
+   modal.querySelector('[data-mp-export-image]').src=state.url;
+   if(msg)msg.textContent=EXPORT_FORMATS[format].width+' × '+EXPORT_FORMATS[format].height+' px · lista para compartir.';
+   if(button)button.disabled=false;
+  }catch(err){if(msg)msg.textContent=err.message||'No se pudo preparar esta versión.';}
+  finally{if(select)select.disabled=false;}
+ }
+ function downloadExport(){
+  const current=exportPreview;
+  if(!current?.url||!current.blob)return;
+  const name=String(current.item.product||'producto').normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-')
+   .replace(/^-|-$/g,'').slice(0,75)||'producto';
+  const link=document.createElement('a');link.href=current.url;
+  link.download='gestlok-'+name+'-'+current.format+'.jpg';
+  link.rel='noopener';
+  document.body.append(link);link.click();link.remove();
+ }
+ async function openProductPreview(id,trigger){
+  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
+  if(!item?.photo_path)return;
+  const expectedTab=item.tab_id,expectedPath=item.photo_path;
+  try{
+   await assertAccess();
+   const downloaded=await db().storage.from(PHOTO_BUCKET).download(expectedPath);
+   if(downloaded.error)throw downloaded.error;
+   if(!downloaded.data||downloaded.data.size===0)throw Error('La foto todavía no está disponible.');
+   if(!visible||expectedTab!==tabId||!items.some(x=>x.id===id&&x.photo_path===expectedPath))return;
+   removeExportModal();
+   const modal=document.createElement('div');modal.dataset.mpExportModal='true';
+   modal.innerHTML='<div class="gl-mp-export-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-export-title">'+
+    '<header class="gl-mp-export-header"><div><small>FOTO DE CATÁLOGO · GUARDADA</small>'+
+    '<h2 id="gl-mp-export-title">'+esc(item.product)+'</h2>'+
+    '<p>Elegí el formato para publicar o ampliá la foto y sacá una captura.</p></div>'+
+    '<button type="button" data-mp-export-close aria-label="Cerrar vista previa">✕</button></header>'+
+    '<div class="gl-mp-export-stage"><img data-mp-export-image alt="Foto de catálogo de '+esc(item.product)+'" title="Tocar para mostrar u ocultar controles"></div>'+
+    '<div class="gl-mp-export-tools"><label>Formato de imagen<select data-mp-export-format>'+
+    Object.entries(EXPORT_FORMATS).map(([key,entry])=>'<option value="'+key+'">'+esc(entry.label)+'</option>').join('')+'</select></label>'+
+    '<p role="status" data-mp-export-status>Preparando vista previa…</p>'+
+    '<div class="gl-mp-export-actions"><button type="button" data-mp-export-download disabled>Descargar JPG</button>'+
+    '<button type="button" data-mp-export-clean>Ampliar para captura</button>'+
+    '<button type="button" data-mp-export-close>Cerrar</button></div>'+
+    '<small>Para volver a los controles, tocá la imagen. No se publica en Instagram ni Tiendanube automáticamente.</small></div></div>';
+   document.body.append(modal);
+   exportPreview={modal,item,source:downloaded.data,blob:null,url:null,format:'cuadrado',trigger};
+   modal.querySelector('[data-mp-export-close]')?.focus({preventScroll:true});
+   await updateExportPreview(modal,'cuadrado');
+  }catch(err){error=err.message||'No se pudo abrir la vista previa.';render();}
+ }
  async function viewOriginalPhoto(id){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
   if(!item?.original_photo_path)return;
