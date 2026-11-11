@@ -60,7 +60,48 @@
     if (a == null || b == null) return 0;
     return b >= a ? b - a : b + 1440 - a;
   }
-  const minutosDia = c => c ? turno(c.tm_e, c.tm_s) + turno(c.tt_e, c.tt_s) : 0;
+  /* Horarios de 24 h: se admiten salidas después de medianoche, pero no turnos
+     incompletos, simultáneos ni una jornada que exceda las 24 h. */
+  function validarDia(c){
+    const errores = [], campos = new Set(), turnos = [];
+    const error = (mensaje, claves) => { errores.push(mensaje); claves.forEach(k => campos.add(k)); };
+    if (!c) return {minutos:0, errores, campos:[]};
+    for (const [entradaKey, salidaKey, nombre] of [
+      ['tm_e','tm_s','turno mañana'], ['tt_e','tt_s','turno tarde']
+    ]) {
+      const entrada = c[entradaKey] || '', salida = c[salidaKey] || '';
+      if (!entrada && !salida) continue;
+      if (!entrada || !salida) {
+        error('Completá la entrada y la salida del ' + nombre + '.', [entradaKey, salidaKey]);
+        continue;
+      }
+      if (!HORA.test(entrada) || !HORA.test(salida)) {
+        error('Ingresá horarios de 00:00 a 23:59 (' + nombre + ').', [entradaKey, salidaKey]);
+        continue;
+      }
+      const inicio = aMin(entrada), fin = aMin(salida);
+      if (inicio === fin) {
+        error('La entrada y la salida del ' + nombre + ' no pueden ser iguales.', [entradaKey, salidaKey]);
+        continue;
+      }
+      turnos.push({inicio, fin:fin < inicio ? fin + 1440 : fin, entradaKey, salidaKey});
+    }
+    if (turnos.length === 2) {
+      const [primero, segundo] = turnos;
+      if (segundo.inicio < primero.fin) {
+        error('Los turnos se superponen o están fuera de orden. El turno tarde debe comenzar después de la salida del turno mañana.',
+          [primero.salidaKey, segundo.entradaKey]);
+      }
+      if (segundo.fin > primero.inicio + 1440) {
+        error('La jornada supera las 24 horas desde la primera entrada.',
+          [primero.entradaKey, segundo.salidaKey]);
+      }
+    }
+    const minutos = turnos.reduce((s, t) => s + t.fin - t.inicio, 0);
+    if (minutos > 1440) error('La suma de turnos no puede superar 24 horas.', turnos.flatMap(t => [t.entradaKey, t.salidaKey]));
+    return {minutos:errores.length ? 0 : minutos, errores, campos:[...campos]};
+  }
+  const minutosDia = c => validarDia(c).minutos;
   const fmtH = min => Math.floor(min / 60) + ':' + String(min % 60).padStart(2, '0');
   const fmt$ = v => '$' + (Math.round(v * 100) / 100).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const importe = (min, valor) => Math.round(min / 60 * (Number(valor) || 0) * 100) / 100;
@@ -98,13 +139,16 @@
   function resumen(semana){
     const dias = diasDe(semana), val = tarifas();
     const filas = motosDe(semana).map(m => {
-      const porDia = dias.map(dia => minutosDia(leer(idCelda(semana, m.id, dia))));
+      const validaciones = dias.map(dia => validarDia(leer(idCelda(semana, m.id, dia))));
+      const porDia = validaciones.map(v => v.minutos);
       const min = porDia.reduce((a, b) => a + b, 0);
       const valor = tarifaEn(val, m.refuerzo ? 'refuerzo' : m.id, semana);
-      return {...m, porDia, min, valor, pago:importe(min, valor)};
+      return {...m, validaciones, porDia, min, valor, pago:importe(min, valor)};
     });
+    const errores = filas.flatMap(f => f.validaciones.flatMap((v, i) =>
+      v.errores.map(mensaje => ({moto:f.nombre, dia:dias[i], mensaje}))));
     const porDia = dias.map((_, i) => filas.reduce((a, f) => a + f.porDia[i], 0));
-    return {semana, dias, filas, porDia, min:porDia.reduce((a, b) => a + b, 0), pago:filas.reduce((a, f) => a + f.pago, 0)};
+    return {semana, dias, filas, errores, porDia, min:porDia.reduce((a, b) => a + b, 0), pago:filas.reduce((a, f) => a + f.pago, 0)};
   }
   const semanasConDatos = () => [...new Set(docs.map(d => d.data?.semana).filter(Boolean))]
     .filter(s => s < semanaActual()).sort().reverse();
@@ -133,8 +177,13 @@
   }
   async function guardarTodo(){
     if (guardando || !editable(semanaVista)) return;
-    for (const data of borrador.values()) for (const [k] of CAMPOS) {
-      if (data[k] && !HORA.test(data[k])) { api.toast('Revisá los horarios: usá el formato HH:MM.', true); return; }
+    for (const data of borrador.values()) {
+      const validacion = validarDia(data);
+      if (validacion.errores.length) {
+        api.toast('No se guardó: ' + validacion.errores[0], true);
+        refrescar();
+        return;
+      }
     }
     if (!borrador.size) { edicion = false; api.render(); return; }
     guardando = true; api.render();
@@ -196,7 +245,7 @@
   async function quitarRefuerzo(doc){
     const semana = semanaVista, r = refuerzos(semana).find(x => x.doc === doc);
     if (!r || !editable(semana)) return;
-    if (diasDe(semana).some(dia => minutosDia(leer(idCelda(semana, r.id, dia))) > 0)) {
+    if (diasDe(semana).some(dia => CAMPOS.some(([k]) => !!leer(idCelda(semana, r.id, dia))?.[k]))) {
       api.toast('Primero borrá los horarios cargados de esta moto.', true); return;
     }
     if (!confirm('¿Quitar «' + r.nombre + '» de esta semana?')) return;
@@ -229,9 +278,22 @@
   const mobile = () => !!window.matchMedia?.('(max-width: 760px)').matches;
   const celda = (semana, m, dia, campo, label, puede) => {
     const c = leer(idCelda(semana, m.id, dia)), v = c?.[campo] || '';
-    return '<input class="mo-time" type="time" step="60" value="' + E(v) + '"' + (puede && edicion ? '' : ' disabled') +
+    const validacion = validarDia(c), mal = validacion.campos.includes(campo);
+    return '<input class="mo-time' + (mal ? ' mo-time-error' : '') + '" type="time" lang="es-AR" step="60" value="' + E(v) + '"' + (puede && edicion ? '' : ' disabled') +
+      (mal ? ' aria-invalid="true" title="' + E(validacion.errores.join(' ')) + '"' : ' aria-invalid="false"') +
       ' data-moto="' + E(m.id) + '" data-dia="' + dia + '" data-campo="' + campo + '" aria-label="' + E(label + ' de ' + m.nombre + ' el ' + corta(dia)) + '">';
   };
+  const tieneError = f => !!f.validaciones?.some(v => v.errores.length);
+  const horasDia = (f, i) => f.validaciones?.[i]?.errores.length ? '⚠ Revisar' : fmtH(f.porDia[i]);
+  const horasSemana = f => tieneError(f) ? '⚠ Revisar' : fmtH(f.min);
+  function avisoErrores(r){
+    if (!r.errores.length) return '';
+    return '<b>⚠ ' + r.errores.length + (r.errores.length === 1 ? ' error de horario' : ' errores de horario') +
+      ' · Revisá los campos en rojo</b><ul>' +
+      r.errores.slice(0, 5).map(p => '<li>' + E(p.moto + ' · ' + larga(p.dia) + ': ' + p.mensaje) + '</li>').join('') +
+      (r.errores.length > 5 ? '<li>Y ' + (r.errores.length - 5) + ' más…</li>' : '') +
+      '</ul><small>Usá el formato de 24 horas (00:00–23:59). Los errores no se incluyen en los totales ni se pueden guardar.</small>';
+  }
   const tarjetaMoto = m => m.nuevo ? (agregando
     ? '<form id="mo-ref-form" class="mo-who mo-ref-form"><input name="nombre" maxlength="40" required placeholder="Nombre del refuerzo" autocomplete="off" aria-label="Nombre del refuerzo">' +
       '<div><button class="btn sm primary" type="submit">Agregar</button><button class="btn sm" type="button" data-mo-act="cancelar-ref">Cancelar</button></div></form>'
@@ -244,8 +306,8 @@
     : '<div class="mo-who"><span class="mo-ico">' + ICONO + '</span><div><b>' + E(m.nombre) + '</b><small>' + E(m.moto) + '</small>' +
       (editable(semanaVista) ? '<button class="mo-edit" data-mo-act="nombre" data-moto="' + E(m.id) + '" aria-label="Modificar ' + E(m.nombre) + '">✎ Modificar</button>' : '') + '</div>' +
       (m.refuerzo && editable(semanaVista) ? '<button class="mo-x" data-mo-act="quitar" data-doc="' + E(m.doc) + '" aria-label="Quitar ' + E(m.nombre) + '">×</button>' : '') + '</div>';
-  const totalMoto = (f, dueno) => '<div class="mo-total"><small>Total</small><b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' +
-    (dueno ? '<span data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</span>' : '') + '</div>';
+  const totalMoto = (f, dueno) => '<div class="mo-total' + (tieneError(f) ? ' mo-total-error' : '') + '"><small>Total</small><b data-mo-tot="' + E(f.id) + '">' + horasSemana(f) + '</b>' +
+    (dueno ? '<span data-mo-pago="' + E(f.id) + '">' + (tieneError(f) ? '—' : fmt$(f.pago)) + '</span>' : '') + '</div>';
 
   const vacia = r => ({...NUEVO, porDia:r.dias.map(() => 0), min:0, pago:0});
   function tablaPC(r, puede, dueno){
@@ -254,25 +316,27 @@
     const filas = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<div class="mo-row mo-moto' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) +
       '<div class="mo-labels">' + CAMPOS.map(([, l]) => '<span>' + l + '</span>').join('') + '<span class="mo-hd">Horas del día</span></div>' +
       r.dias.map((dia, i) => '<div class="mo-day">' + CAMPOS.map(([k, l]) => celda(r.semana, f, dia, k, l, puede)).join('') +
-        '<span class="mo-hd" data-mo-dia="' + E(f.id) + '-' + i + '">' + fmtH(f.porDia[i]) + '</span></div>').join('') +
+        '<span class="mo-hd' + (f.validaciones?.[i]?.errores.length ? ' mo-hd-error' : '') + '" data-mo-dia="' + E(f.id) + '-' + i + '">' + horasDia(f, i) + '</span></div>').join('') +
       totalMoto(f, dueno) + '</div>').join('');
     const tot = '<div class="mo-row mo-foot"><div class="mo-foot-label"><b>Totales por día</b><small>(todas las motos)</small></div>' +
-      r.porDia.map((m, i) => '<div data-mo-col="' + i + '">' + fmtH(m) + '</div>').join('') +
-      '<div class="mo-week"><small>Total semanal</small><b data-mo-sem>' + fmtH(r.min) + '</b>' + (dueno ? '<span data-mo-sem-pago>' + fmt$(r.pago) + '</span>' : '') + '</div></div>';
+      r.porDia.map((m, i) => '<div data-mo-col="' + i + '">' + (r.filas.some(f => f.validaciones?.[i]?.errores.length) ? '⚠ Revisar' : fmtH(m)) + '</div>').join('') +
+      '<div class="mo-week' + (r.errores.length ? ' mo-week-error' : '') + '"><small>Total semanal</small><b data-mo-sem>' + (r.errores.length ? '⚠ Revisar' : fmtH(r.min)) + '</b>' + (dueno ? '<span data-mo-sem-pago>' + (r.errores.length ? '—' : fmt$(r.pago)) + '</span>' : '') + '</div></div>';
     return '<div class="mo-scroll"><div class="mo-grid" style="--mo-cols:' + r.dias.length + '">' + cab + filas + tot + '</div></div>';
   }
   function tablaMovil(r, puede, dueno){
     if (diaMovil < 0) diaMovil = Math.max(0, r.dias.indexOf(hoyAR()));
     const i = diaMovil, dia = r.dias[i];
     const tabs = '<div class="mo-tabs" role="tablist">' + r.dias.map((d, j) => '<button role="tab" aria-selected="' + (j === i) + '" class="mo-tab' + (j === i ? ' on' : '') +
+      (r.filas.some(f => f.validaciones?.[j]?.errores.length) ? ' mo-tab-error' : '') +
       '" data-mo-act="dia" data-i="' + j + '"><b>' + DIAS[j] + '</b><small>' + corta(d) + '</small></button>').join('') + '</div>';
-    const cards = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<article class="mo-card' + (f.nuevo ? ' mo-nueva' : '') + '">' + tarjetaMoto(f) + '<div class="mo-card-grid">' +
+    const cards = [...r.filas, ...(puede ? [vacia(r)] : [])].map(f => '<article class="mo-card' + (f.nuevo ? ' mo-nueva' : '') + (f.validaciones?.[i]?.errores.length ? ' mo-card-error' : '') + '">' + tarjetaMoto(f) + '<div class="mo-card-grid">' +
       CAMPOS.map(([k, l]) => '<label><span>' + l + '</span>' + celda(r.semana, f, dia, k, l, puede) + '</label>').join('') + '</div>' +
-      '<footer><span>Horas del día <b data-mo-dia="' + E(f.id) + '-' + i + '">' + fmtH(f.porDia[i]) + '</b></span>' +
-      '<span>Semana <b data-mo-tot="' + E(f.id) + '">' + fmtH(f.min) + '</b>' + (dueno ? ' · <b data-mo-pago="' + E(f.id) + '">' + fmt$(f.pago) + '</b>' : '') + '</span></footer></article>').join('');
+      '<p class="mo-error-msg" data-mo-error="' + E(f.id + '-' + i) + '"' + (f.validaciones?.[i]?.errores.length ? '' : ' hidden') + '>' + E(f.validaciones?.[i]?.errores.join(' ') || '') + '</p>' +
+      '<footer><span>Horas del día <b data-mo-dia="' + E(f.id) + '-' + i + '">' + horasDia(f, i) + '</b></span>' +
+      '<span>Semana <b data-mo-tot="' + E(f.id) + '">' + horasSemana(f) + '</b>' + (dueno ? ' · <b data-mo-pago="' + E(f.id) + '">' + (tieneError(f) ? '—' : fmt$(f.pago)) + '</b>' : '') + '</span></footer></article>').join('');
     return tabs + '<div class="mo-cards">' + cards + '</div>' +
-      '<div class="mo-foot-m"><span>Total del ' + DIAS[i] + ' <b data-mo-col="' + i + '">' + fmtH(r.porDia[i]) + '</b></span>' +
-      '<span class="mo-week">Total semanal <b data-mo-sem>' + fmtH(r.min) + '</b>' + (dueno ? ' <span data-mo-sem-pago>' + fmt$(r.pago) + '</span>' : '') + '</span></div>';
+      '<div class="mo-foot-m"><span>Total del ' + DIAS[i] + ' <b data-mo-col="' + i + '">' + (r.filas.some(f => f.validaciones?.[i]?.errores.length) ? '⚠ Revisar' : fmtH(r.porDia[i])) + '</b></span>' +
+      '<span class="mo-week' + (r.errores.length ? ' mo-week-error' : '') + '">Total semanal <b data-mo-sem>' + (r.errores.length ? '⚠ Revisar' : fmtH(r.min)) + '</b>' + (dueno ? ' <span data-mo-sem-pago>' + (r.errores.length ? '—' : fmt$(r.pago)) + '</span>' : '') + '</span></div>';
   }
   /* Valor por hora: botón discreto junto al historial (solo dueños y creadora). */
   function tarifasForm(){
@@ -291,8 +355,8 @@
     const filas = lista.map(s => {
       const r = resumen(s), ref = r.filas.filter(f => f.refuerzo).reduce((a, f) => a + f.min, 0);
       return '<tr><td>Semana ' + numeroSemana(s) + '</td><td>' + larga(s) + '</td><td>' + larga(sumar(s, 6)) + '</td>' +
-        FIJAS.map(m => '<td>' + fmtH(r.filas.find(f => f.id === m.id).min) + '</td>').join('') +
-        '<td>' + fmtH(ref) + '</td><td><b>' + fmtH(r.min) + '</b></td>' + (dueno ? '<td><b>' + fmt$(r.pago) + '</b></td>' : '') +
+        FIJAS.map(m => '<td>' + horasSemana(r.filas.find(f => f.id === m.id)) + '</td>').join('') +
+        '<td>' + (r.filas.some(f => f.refuerzo && tieneError(f)) ? '⚠ Revisar' : fmtH(ref)) + '</td><td><b class="' + (r.errores.length ? 'mo-hist-error' : '') + '">' + (r.errores.length ? '⚠ Revisar' : fmtH(r.min)) + '</b></td>' + (dueno ? '<td><b>' + (r.errores.length ? '—' : fmt$(r.pago)) + '</b></td>' : '') +
         '<td><button class="mo-link" data-mo-act="ver" data-semana="' + s + '">' + (editable(s) ? 'Ver y editar' : 'Ver detalle') + '</button></td></tr>';
     }).join('');
     const val = tarifas(), s = semanaActual();
@@ -329,12 +393,14 @@
         : '<button class="btn primary" data-mo-act="modificar">✎ Modificar</button>') + '</div>' : '';
     return '<section class="sheet mo-page"><header class="mo-top"><span class="mo-hero">' + ICONO + '</span>' +
       '<div class="mo-title"><h1>Motos Agencia</h1><h2>Control horario semanal</h2>' +
-      '<p>Registrá la entrada y salida de cada moto. Al finalizar la semana, los datos se guardan automáticamente en el historial y se reinicia la planilla.</p></div>' +
+      '<p>Registrá la entrada y salida de cada moto. Al finalizar la semana, los datos se guardan automáticamente en el historial y se reinicia la planilla. Usá formato de 24 horas (ej.: 19:30), sin superponer turnos.</p></div>' +
       '<div class="mo-semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>' +
       '<div><small>' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</small><b>' + DIAS[0] + ' ' + corta(r.dias[0]) + ' – ' + DIAS[6] + ' ' + corta(r.dias[6]) + '</b></div>' + flechas + '</div></header>' +
       pestanas + (pestana === 'historial' ? historialHTML() :
       (enCurso ? '' : '<p class="mo-aviso">Estás viendo una semana cerrada. <button class="mo-link" data-mo-act="hoy">Volver a la semana actual</button></p>') +
-      '<section class="mo-sheet' + (edicion ? ' editando' : '') + '">' + barra + (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
+      '<section class="mo-sheet' + (edicion ? ' editando' : '') + '">' + barra +
+      '<div class="mo-error-summary" role="alert"' + (r.errores.length ? '' : ' hidden') + '>' + avisoErrores(r) + '</div>' +
+      (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
       '<p class="mo-estado">' + E(estado) + '</p>') + '</section>';
   }
   /* Actualiza totales sin redibujar, para no perder el foco mientras se carga. */
@@ -343,14 +409,38 @@
     const r = resumen(semanaVista), dueno = esDueno();
     const set = (sel, txt) => document.querySelectorAll(sel).forEach(el => { el.textContent = txt; });
     for (const f of r.filas) {
-      f.porDia.forEach((m, i) => set('[data-mo-dia="' + CSS.escape(f.id + '-' + i) + '"]', fmtH(m)));
-      set('[data-mo-tot="' + CSS.escape(f.id) + '"]', fmtH(f.min));
-      if (dueno) set('[data-mo-pago="' + CSS.escape(f.id) + '"]', fmt$(f.pago));
+      f.validaciones.forEach((v, i) => {
+        set('[data-mo-dia="' + CSS.escape(f.id + '-' + i) + '"]', horasDia(f, i));
+        document.querySelectorAll('[data-mo-dia="' + CSS.escape(f.id + '-' + i) + '"]').forEach(el => {
+          el.classList.toggle('mo-hd-error', !!v.errores.length);
+          el.closest('.mo-card')?.classList.toggle('mo-card-error', !!v.errores.length);
+        });
+        const nota = document.querySelector('[data-mo-error="' + CSS.escape(f.id + '-' + i) + '"]');
+        if (nota) { nota.hidden = !v.errores.length; nota.textContent = v.errores.join(' '); }
+        for (const [k] of CAMPOS) document.querySelectorAll('.mo-time[data-moto="' + CSS.escape(f.id) +
+          '"][data-dia="' + r.dias[i] + '"][data-campo="' + k + '"]').forEach(el => {
+          const mal = v.campos.includes(k);
+          el.classList.toggle('mo-time-error', mal);
+          el.setAttribute('aria-invalid', String(mal));
+          el.title = mal ? v.errores.join(' ') : '';
+        });
+      });
+      set('[data-mo-tot="' + CSS.escape(f.id) + '"]', horasSemana(f));
+      if (dueno) set('[data-mo-pago="' + CSS.escape(f.id) + '"]', tieneError(f) ? '—' : fmt$(f.pago));
+      document.querySelectorAll('[data-mo-tot="' + CSS.escape(f.id) + '"]').forEach(el =>
+        el.closest('.mo-total')?.classList.toggle('mo-total-error', tieneError(f)));
     }
-    r.porDia.forEach((m, i) => set('[data-mo-col="' + i + '"]', fmtH(m)));
-    set('[data-mo-sem]', fmtH(r.min));
+    r.porDia.forEach((m, i) => {
+      const hayError = r.filas.some(f => f.validaciones[i].errores.length);
+      set('[data-mo-col="' + i + '"]', hayError ? '⚠ Revisar' : fmtH(m));
+      document.querySelectorAll('.mo-tab[data-i="' + i + '"]').forEach(el => el.classList.toggle('mo-tab-error', hayError));
+    });
+    set('[data-mo-sem]', r.errores.length ? '⚠ Revisar' : fmtH(r.min));
     set('.mo-pend', textoPendientes());
-    if (dueno) set('[data-mo-sem-pago]', fmt$(r.pago));
+    if (dueno) set('[data-mo-sem-pago]', r.errores.length ? '—' : fmt$(r.pago));
+    document.querySelectorAll('.mo-week').forEach(el => el.classList.toggle('mo-week-error', !!r.errores.length));
+    const resumenErrores = $('.mo-error-summary');
+    if (resumenErrores) { resumenErrores.hidden = !r.errores.length; resumenErrores.innerHTML = avisoErrores(r); }
   }
   function reset(){ docs = []; pendientes.clear(); borrador.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; edicion = false; editNombre = ''; guardando = false; }
   function subscribe(loc, push){
@@ -419,5 +509,5 @@
     });
   }
   window.GestLokMunroMotos = {attach, view, reset, subscribe, permitido,
-    _t:{hoyAR, lunesDe, semanaActual, diasDe, numeroSemana, turno, minutosDia, fmtH, importe, tarifaEn, nombreEn}};
+    _t:{hoyAR, lunesDe, semanaActual, diasDe, numeroSemana, turno, minutosDia, validarDia, fmtH, importe, tarifaEn, nombreEn}};
 })();
