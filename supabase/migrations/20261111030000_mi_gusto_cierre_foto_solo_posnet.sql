@@ -2,8 +2,8 @@
 -- Transferencias, APP y controles de efectivo nunca obligan a cargar foto.
 -- La marca sin_movimientos se interpreta como "Sin movimientos de Posnet";
 -- no altera ni elimina ninguna comanda, transferencia, descuento, importe ni foto previa.
--- Permitir cierre sin foto cuando solo existen controles de efectivo.
--- No borra comandas ni modifica montos; el servidor verifica ausencia de pagos online.
+-- Permitir cierre sin foto con transferencias y/o efectivo, siempre que no haya Posnet.
+-- El servidor comprueba ausencia de Getnet y Mercado Pago, no ausencia de ventas.
 create or replace function gestlok_mg_online_private.require_photo_before_close()
 returns trigger language plpgsql set search_path='' as $$
 begin
