@@ -36,7 +36,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     if (error.message.includes('Minified React error #418')) return false;
   });
 
-  it('gerente de Munro carga la semana y ve el historial con horas, sin importes ni valores', () => {
+  it('gerente de Munro carga y corrige semanas cerradas sin importes ni valores', () => {
     launch(); login('gerente.munro@example.com');
     cy.get('#snav [data-go="motos"]').should('exist').click();
     cy.get('.mo-page h1').should('contain.text', 'Motos Agencia');
@@ -57,20 +57,27 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('.mo-pend').should('contain.text', 'Planilla guardada');
     cy.get('[data-mo-pago="lucas"]').should('not.exist');
     cy.get('[data-mo-sem-pago]').should('not.exist');
-    // Historial: los gerentes de Munro también lo ven, en solo lectura y sin importes.
+    // Historial: los gerentes pueden editar horarios de semanas cerradas, pero nunca ver importes.
     cy.get('.mo-hist').should('not.exist');
     cy.get('[data-mo-act="pestana"][data-p="historial"]').should('be.visible').click();
     cy.get('.mo-sheet').should('not.exist');
-    cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'solo lectura')
+    cy.get('.mo-hist').should('contain.text', 'Historial de semanas').and('contain.text', 'podés corregir semanas anteriores')
       .and('contain.text', 'Todavía no hay semanas cerradas').and('not.contain.text', 'Total pago');
     cy.get('[data-mo-act="tarifas"]').should('not.exist');
     cy.get('[data-mo-act="pestana"][data-p="semana"]').click();
     cy.get('.mo-sheet').should('exist');
-    // Puede mirar la semana anterior, pero no modificarla.
+    // Puede modificar una semana cerrada, guardar y volver al mismo detalle desde Historial.
     cy.get('[data-mo-act="prev"]').click();
     cy.get('.mo-aviso').should('contain.text', 'semana cerrada');
-    cy.get('[data-mo-act="modificar"]').should('not.exist');
-    cy.get('.mo-estado').should('contain.text', 'solo lectura');
+    cy.get('[data-mo-act="modificar"]').should('exist').click();
+    cy.get('.mo-time[data-moto="lucas"][data-campo="tm_e"]').first().type('09:00').blur();
+    cy.get('.mo-time[data-moto="lucas"][data-campo="tm_s"]').first().type('17:00').blur();
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-estado').should('contain.text', 'podés corregir horarios');
+    cy.get('[data-mo-act="pestana"][data-p="historial"]').click();
+    cy.get('.mo-hist').should('contain.text', '8:00');
+    cy.get('.mo-hist [data-mo-act="ver"]').first().should('contain.text', 'Ver y editar').click();
+    cy.get('[data-mo-act="modificar"]').should('exist');
     cy.get('[data-mo-act="hoy"]').click();
     cy.get('.mo-aviso').should('not.exist');
     lunes().then(s => cy.window().its('__rows').should(rows => {
