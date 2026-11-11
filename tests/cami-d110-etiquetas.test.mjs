@@ -40,7 +40,7 @@ function harness(){
 test('El cuaderno privado muestra la acción de imprimir nombre sin mezclarlo con Scanner',()=>{
  const h=harness();
  assert.match(h.window.__d110.row({id:'p1',product:'Perfume Acqua 50ml',liked:true,note:''}),/data-mp-print="p1"/);
- assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-fotos-simples-v3-20261111/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-cartulina-v4-20261111/);
  assert.match(source,/const item=items\.find\(x=>x\.id===print\.dataset\.mpPrint\)/);
  assert.match(source,/await assertAccess\(\)/);
  assert.doesNotMatch(source,/gestlok_pilot_products|gestlok_scanner_pos_sales|gestlok_pilot_records/);
