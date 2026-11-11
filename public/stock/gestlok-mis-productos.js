@@ -11,14 +11,7 @@
  const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
- let photoProgress=null,retryPhoto=null,exportPreview=null,chatGptFlow=null;
- // Edición con IA generativa gratuita (Cloudflare Workers AI · FLUX.2) vía función de Supabase.
- // La app NUNCA pide cuentas ni tokens: la IA se activa del lado del servidor (secretos de la función).
- const IA_FN='gestlok-cami-foto-ia';
- const MOTOR_URL='/stock/gestlok-cami-foto-ia.js?rev=20261111-ia-real-v1';
- const RECORTE_URL='/stock/gestlok-product-white-bg.js?rev=20261111-ia-real-v1';
- const IA_NO_DISPONIBLE=new Set(['sin_conexion','cupo','red','ia','conexion','plan','servicio']);
- let iaEstado={checked:false,connected:false,hoy:0,cupo:90,hint:null,error:''};
+ let photoProgress=null,retryPhoto=null,exportPreview=null;
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -39,7 +32,6 @@
  function reset(){
   epoch++;allowed=false;checked=false;checking=false;context=null;api=null;
   tabs=[];items=[];photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;tabId='';editing='';itemForm=false;searchTerm='';error='';notice='';
-  iaEstado={checked:false,connected:false,hoy:0,cupo:90,hint:null,error:''};
   close(false);
  }
  async function refresh(ctx,host){
@@ -133,12 +125,11 @@
     '<div class="gl-mp-photo-progress" role="status" aria-live="polite"><span data-mp-photo-status="'+id+'">'+esc(photoProgress.message)+'</span><progress data-mp-photo-meter="'+id+'" max="100" value="'+photoProgress.percent+'"></progress></div>':'')+
    (photoErrors.has(item.id)?
     '<div class="gl-mp-photo-error" role="alert"><span>'+esc(photoErrors.get(item.id))+'</span>'+
-    (retryPhoto?.id===item.id&&retryPhoto.tabId===tabId?'<button type="button" data-mp-photo-retry="'+id+'">Reintentar edición</button>':'')+'</div>':'')+
+    (retryPhoto?.id===item.id&&retryPhoto.tabId===tabId?'<button type="button" data-mp-photo-retry="'+id+'">Reintentar</button>':'')+'</div>':'')+
    '<div class="gl-mp-actions">'+
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    (item.photo_path?'<button type="button" class="gl-mp-preview-action" data-mp-photo-open="'+id+'">Vista previa / Descargar</button>':'')+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
-   (item.original_photo_path?'<button type="button" class="gl-mp-free-ai" data-mp-photo-enhance="'+id+'">'+(iaEstado.connected?'Editar con IA · Gratis':'Volver a editar foto')+'</button><button type="button" class="gl-mp-chatgpt-action" data-mp-chatgpt="'+id+'">Editar con ChatGPT</button><button type="button" data-mp-ai-import="'+id+'">Importar edición de IA</button><input type="file" hidden data-mp-ai-import-input="'+id+'" accept="image/jpeg,image/png,image/webp" aria-label="Importar imagen editada de '+name+'"><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -192,9 +183,7 @@
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
       '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
-      '<p class="gl-mp-hint">'+(iaEstado.connected?
-       'Al sacar o elegir una foto, la IA generativa gratuita la convierte en foto de catálogo: luz de estudio, blancos limpios y fondo blanco puro. Los textos, etiquetas y formas se toman siempre de tu foto real. Revisá la comparación antes de guardar.':
-       'Al sacar o elegir una foto, GESTLOK separa el producto y lo pone sobre fondo blanco puro. Revisá la comparación antes de guardar.')+'</p></section>')+
+      '<p class="gl-mp-hint">La foto se guarda tal cual la sacás o la elegís de la galería. Tocala para verla en grande o descargarla.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
  }
@@ -206,10 +195,9 @@
   render();
   try{await load();}catch(err){error=err.message||'No pudimos cargar tus productos.';}
   finally{loading=false;render();}
-  if(!iaEstado.checked)void cargarEstadoIA();
  }
  function close(back=true){
-  removePrintModal();removeExportModal();removeChatGPTModal();
+  removePrintModal();removeExportModal();
   if(!visible)return;
   visible=false;searchTerm='';photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
@@ -219,7 +207,7 @@
  }
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
-  removePrintModal();removeExportModal();removeChatGPTModal();
+  removePrintModal();removeExportModal();
   tabId=id;photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
@@ -271,49 +259,6 @@
  }
 
 
- /* ---------- IA generativa gratuita (Cloudflare Workers AI) ---------- */
- async function iaCall(body){
-  const r=await db().functions.invoke(IA_FN,{body});
-  if(r.error){
-   let msg=r.data?.message,code=r.data?.code;
-   if(!msg){try{const j=await r.error.context?.json?.();msg=j?.message;code=j?.code;}catch{/* sin detalle */}}
-   const e=Error(msg||'No se pudo conectar con la edición de fotos. Revisá tu conexión.');e.code=code||'red';throw e;
-  }
-  return r.data||{};
- }
- async function cargarEstadoIA(){
-  try{
-   const d=await iaCall({action:'status'});
-   iaEstado={checked:true,connected:d.connected===true,hoy:Number(d.hoy)||0,cupo:Number(d.cupo_estimado)||90,hint:d.account_hint||null,error:''};
-  }catch(e){iaEstado={...iaEstado,checked:true,error:e.message||'No se pudo consultar la IA.'};}
-  if(visible)render();
- }
- const blobToBase64=blob=>new Promise((resolve,reject)=>{
-  const fr=new FileReader();
-  fr.onload=()=>resolve(String(fr.result||'').split(',')[1]||'');
-  fr.onerror=()=>reject(Error('No se pudo leer la foto.'));
-  fr.readAsDataURL(blob);
- });
- function base64ToBlob(b64,type){
-  const bin=atob(b64),u=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-  return new Blob([u],{type});
- }
- async function pedirIA(blob,{intento}){
-  const d=await iaCall({action:'edit',image:await blobToBase64(blob),seed:Math.floor(Math.random()*2e9)+intento});
-  if(d.ok!==true){const e=Error(d.message||'La IA no respondió.');e.code=d.code||'ia';throw e;}
-  if(Number.isFinite(d.hoy))iaEstado={...iaEstado,checked:true,connected:true,hoy:d.hoy,error:''};
-  return base64ToBlob(d.image,d.mime||'image/jpeg');
- }
- function mensajeEtapa(stage,intento){
-  if(stage==='separando')return ['Separando el producto del fondo (IA en tu teléfono)…',20];
-  if(stage==='bordes')return ['Limpiando los bordes del producto…',35];
-  if(stage==='ia')return [intento>1?'La IA cambió el encuadre; pidiendo otra versión…':'Edición fotográfica con IA (luz de estudio, fondo blanco)…',intento>1?70:50];
-  if(stage==='fusion')return ['Conservando etiquetas y textos de tu foto real…',84];
-  if(stage==='final')return ['Componiendo la foto de catálogo 1200×1200…',92];
-  return ['Preparando la edición…',8];
- }
-
  function compressPhoto(file){
   if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Elegí una imagen JPG, PNG o WebP.');
   if(file.size>20*1024*1024)throw Error('La foto es demasiado grande. Elegí una de hasta 20 MB.');
@@ -345,35 +290,6 @@
  }
 
 
- function reviewPhotoBeforeSaving(item,original,edited,info={modo:'ia'}){
-  // Nunca sobrescribir una imagen privada hasta que la persona apruebe el recorte.
-  return new Promise(resolve=>{
-   const before=URL.createObjectURL(original),after=URL.createObjectURL(edited);
-   const backdrop=document.createElement('div');backdrop.dataset.mpPhotoPreview='true';
-   backdrop.setAttribute('role','presentation');
-   backdrop.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
-    '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
-    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. '+
-    (info.modo==='ia'?'La IA rehízo la luz, los blancos y el fondo; los textos, etiquetas y formas salen de tu foto real.':
-     info.modo==='importada'?'Es la imagen que importaste, sin cambios. Revisá que las etiquetas sean las reales.':
-     'Versión básica: producto separado con fondo blanco, sin edición con IA.'+
-     (info.motivo?' La IA no estuvo disponible: '+esc(info.motivo):''))+'</p>'+
-    '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
-    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>'+
-    (info.modo==='ia'?'Editada con IA · FLUX.2':info.modo==='importada'?'Edición importada':'Versión básica · sin IA')+'</figcaption></figure></div>'+
-    (info.modo==='ia'&&info.report?'<p class="gl-mp-ia-report">Etiquetas y formas de tu foto: '+Math.round(Math.max(0,Math.min(1,info.report.fidelity||0))*100)+'% coincidentes'+
-     (info.report.mode==='global'?' · la IA movió el producto, así que solo se tomó su exposición y color':'')+'.</p>':'')+
-    '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
-    '<button type="button" data-mp-photo-discard>Descartar y sacar otra foto</button></div>'+
-    '<small>Se conservarán las dos versiones en la ficha privada, no en Tiendanube.</small></div>';
-   document.body.append(backdrop);
-   const finish=ok=>{backdrop.remove();URL.revokeObjectURL(before);URL.revokeObjectURL(after);resolve(ok);};
-   backdrop.addEventListener('click',event=>{
-    if(event.target.closest('[data-mp-photo-approve]'))finish(true);
-    else if(event.target.closest('[data-mp-photo-discard]'))finish(false);
-   },{once:false});
-  });
- }
  function normalizarFoto(file){
   const type=String(file?.type||'').toLowerCase();
   if(['image/jpeg','image/png','image/webp'].includes(type))return type;
@@ -385,11 +301,9 @@
   throw Error('La galería debe entregar una foto JPG, PNG o WebP. Si es HEIC, exportala a JPG.');
  }
  function mensajeErrorFoto(e){
-  const text=String(e?.message||'No se pudo editar esta foto.');
-  if(/fetch|network|download|module|descarg|conexi[oó]n|timeout/i.test(text))
-   return 'No se pudo descargar el editor. Revisá tu conexión (preferentemente Wi-Fi) y tocá Reintentar edición.';
-  if(/memory|allocation|out-of-memory|wasm|gpu|inference/i.test(text))
-   return 'El celular no pudo completar el recorte. Cerrá otras aplicaciones y tocá Reintentar edición.';
+  const text=String(e?.message||'No se pudo guardar la foto.');
+  if(/fetch|network|conexi[oó]n|timeout/i.test(text))
+   return 'No se pudo guardar la foto. Revisá tu conexión y tocá Reintentar.';
   return text;
  }
  function etapaFoto(id,message,percent){
@@ -416,134 +330,56 @@
   if(!visible||busy||targetTab!==tabId||!items.some(x=>x.id===targetId&&x.tab_id===targetTab))return;
   retryPhoto={id:targetId,tabId:targetTab,file:source};
   photoErrors.delete(targetId);
-  photoProgress={id:targetId,message:'Preparando foto…',percent:1};
-  let info={modo:'ia'};
+  photoProgress={id:targetId,message:'Preparando foto…',percent:10};
   await run(async()=>{
    await assertAccess();
-   const original=await compressPhoto(source);
-   etapaFoto(targetId,'Preparando la edición con IA. La primera vez conviene usar Wi-Fi.',4);
-   const [motor,{recortarProducto}]=await Promise.all([import(MOTOR_URL),import(RECORTE_URL)]);
-   const onProgress=(stage,value)=>{const [msg,pct]=mensajeEtapa(stage,value);etapaFoto(targetId,msg,pct);};
-   if(!iaEstado.checked||!iaEstado.connected)await cargarEstadoIA();
-   let edited=null,motivo='';
-   if(iaEstado.connected===true){
-    try{
-     const r=await motor.editarConIA(original,{recortar:recortarProducto,pedirIA,onProgress});
-     edited=r.blob;info={modo:'ia',report:r.report};
-    }catch(e){
-     if(!IA_NO_DISPONIBLE.has(e?.code))throw e;
-     if(e.code==='sin_conexion'||e.code==='conexion')iaEstado={...iaEstado,connected:false};
-     motivo=e.message||'La IA no respondió.';
-    }
-   }
-   if(!edited){
-    // Sin preguntar: versión básica, rotulada como «sin IA» en la comparación.
-    etapaFoto(targetId,'Separando el producto y poniendo fondo blanco…',30);
-    const r=await motor.editarSinIA(original,{recortar:recortarProducto,onProgress});
-    edited=r.blob;info={modo:'basica',report:r.report,motivo};
-   }
-   etapaFoto(targetId,'Revisá la comparación y confirmá el producto.',95);
-   if(!await reviewPhotoBeforeSaving(item,original,edited,info))
-    throw Error('Foto descartada. El producto no se modificó.');
+   const photo=await compressPhoto(source);
    if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab))
     throw Error('Cambiaste de producto o pestaña. No se guardó la foto.');
    const storage=db().storage.from(PHOTO_BUCKET);
-   const prefix=OWNER_UID+'/'+targetId+'/';
-   const suffix=()=>Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
-   const originalPath=prefix+suffix(),editedPath=prefix+suffix();
-   const uploaded=[];let committed=false;
+   const path=OWNER_UID+'/'+targetId+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
+   let committed=false,uploaded=false;
    try{
-    etapaFoto(targetId,'Guardando las dos versiones en el producto correcto…',97);
-    for(const [path,blob] of [[originalPath,original],[editedPath,edited]]){
-     const up=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-     if(up.error)throw up.error;
-     uploaded.push(path);
-    }
+    etapaFoto(targetId,'Guardando la foto en el producto…',60);
+    const up=await storage.upload(path,photo,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
+    if(up.error)throw up.error;uploaded=true;
     const saved=await db().from(ITEMS).update({
-      photo_path:editedPath,original_photo_path:originalPath,updated_at:new Date().toISOString()
+      photo_path:path,original_photo_path:null,updated_at:new Date().toISOString()
      }).eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT)
        .eq('owner_uid',OWNER_UID).select('id').single();
     if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo asociar la foto al producto correcto.');
     committed=true;
-    const old=[item.photo_path,item.original_photo_path].filter(p=>p&&!uploaded.includes(p));
+    // Fotos anteriores (incluidas versiones editadas viejas) se limpian del almacenamiento privado.
+    const old=[item.photo_path,item.original_photo_path].filter(p=>p&&p!==path);
     try{if(old.length)await storage.remove(old);}catch(e){console.warn('No se pudo limpiar una foto anterior.',e);}
     etapaFoto(targetId,'Foto guardada. Actualizando tarjeta…',100);
     await loadItems();
    }catch(err){
-    if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
+    if(!committed&&uploaded)try{await storage.remove([path]);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
-  },'Foto guardada en «'+item.product+'». Original conservado.','');
+  },'Foto guardada en «'+item.product+'».','');
   const hadError=error;
-  if(!hadError)notice=info.modo==='ia'?'Foto editada con IA guardada en «'+item.product+'». Original conservado.':
-   'Versión básica (sin IA) guardada en «'+item.product+'». Original conservado.';
   photoProgress=null;
   if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
   else {photoErrors.delete(targetId);retryPhoto=null;}
   render();
  }
 
- const EXPORT_FORMATS={
-  cuadrado:{width:1200,height:1200,label:'Cuadrada · Tiendanube 1200×1200'},
-  instagram:{width:1080,height:1350,label:'Instagram · feed 1080×1350'},
-  historia:{width:1080,height:1920,label:'Instagram · historia 1080×1920'}
- };
  function removeExportModal(){
   const p=exportPreview;exportPreview=null;
   if(p?.url)URL.revokeObjectURL(p.url);
   p?.modal?.remove();
   p?.trigger?.focus?.({preventScroll:true});
  }
- async function composeExport(source,format){
-  if(format==='cuadrado')return source;
-  const dims=EXPORT_FORMATS[format];if(!dims)throw Error('Elegí un formato válido.');
-  const url=URL.createObjectURL(source);
-  try{
-   const image=await new Promise((resolve,reject)=>{
-    const img=new Image();img.onload=()=>resolve(img);
-    img.onerror=()=>reject(Error('No se pudo leer la imagen guardada.'));
-    img.src=url;
-   });
-   const canvas=document.createElement('canvas');
-   canvas.width=dims.width;canvas.height=dims.height;
-   const ctx=canvas.getContext('2d');if(!ctx)throw Error('No se pudo preparar la vista previa.');
-   ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
-   const scale=Math.min(dims.width/image.naturalWidth,dims.height/image.naturalHeight);
-   const w=image.naturalWidth*scale,h=image.naturalHeight*scale;
-   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-   ctx.drawImage(image,(dims.width-w)/2,(dims.height-h)/2,w,h);
-   return await new Promise((resolve,reject)=>canvas.toBlob(blob=>
-    blob?resolve(blob):reject(Error('No se pudo exportar el archivo JPG.')),'image/jpeg',.94));
-  }finally{URL.revokeObjectURL(url);}
- }
- async function updateExportPreview(modal,format){
-  const state=exportPreview;
-  if(!state||state.modal!==modal||!EXPORT_FORMATS[format])return;
-  const msg=modal.querySelector('[data-mp-export-status]');
-  const button=modal.querySelector('[data-mp-export-download]');
-  const select=modal.querySelector('[data-mp-export-format]');
-  if(button)button.disabled=true;
-  if(select)select.disabled=true;
-  if(msg)msg.textContent='Preparando vista previa…';
-  try{
-   const blob=await composeExport(state.source,format);
-   if(exportPreview!==state||!modal.isConnected)return;
-   if(state.url)URL.revokeObjectURL(state.url);
-   state.blob=blob;state.format=format;state.url=URL.createObjectURL(blob);
-   modal.querySelector('[data-mp-export-image]').src=state.url;
-   if(msg)msg.textContent=EXPORT_FORMATS[format].width+' × '+EXPORT_FORMATS[format].height+' px · lista para compartir.';
-   if(button)button.disabled=false;
-  }catch(err){if(msg)msg.textContent=err.message||'No se pudo preparar esta versión.';}
-  finally{if(select)select.disabled=false;}
- }
  function downloadExport(){
   const current=exportPreview;
-  if(!current?.url||!current.blob)return;
+  if(!current?.url)return;
   const name=String(current.item.product||'producto').normalize('NFD')
    .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-')
    .replace(/^-|-$/g,'').slice(0,75)||'producto';
   const link=document.createElement('a');link.href=current.url;
-  link.download='gestlok-'+name+'-'+current.format+'.jpg';
+  link.download='gestlok-'+name+'.jpg';
   link.rel='noopener';
   document.body.append(link);link.click();link.remove();
  }
@@ -558,179 +394,23 @@
    if(!downloaded.data||downloaded.data.size===0)throw Error('La foto todavía no está disponible.');
    if(!visible||expectedTab!==tabId||!items.some(x=>x.id===id&&x.photo_path===expectedPath))return;
    removeExportModal();
+   const url=URL.createObjectURL(downloaded.data);
    const modal=document.createElement('div');modal.dataset.mpExportModal='true';
    modal.innerHTML='<div class="gl-mp-export-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-export-title">'+
-    '<header class="gl-mp-export-header"><div><small>FOTO DE CATÁLOGO · GUARDADA</small>'+
-    '<h2 id="gl-mp-export-title">'+esc(item.product)+'</h2>'+
-    '<p>Elegí el formato para publicar o ampliá la foto y sacá una captura.</p></div>'+
+    '<header class="gl-mp-export-header"><div><small>VISTA PREVIA · FOTO GUARDADA</small>'+
+    '<h2 id="gl-mp-export-title">'+esc(item.product)+'</h2></div>'+
     '<button type="button" data-mp-export-close aria-label="Cerrar vista previa">✕</button></header>'+
-    '<div class="gl-mp-export-stage"><img data-mp-export-image alt="Foto de catálogo de '+esc(item.product)+'" title="Tocar para mostrar u ocultar controles"></div>'+
-    '<div class="gl-mp-export-tools"><label>Formato de imagen<select data-mp-export-format>'+
-    Object.entries(EXPORT_FORMATS).map(([key,entry])=>'<option value="'+key+'">'+esc(entry.label)+'</option>').join('')+'</select></label>'+
-    '<p role="status" data-mp-export-status>Preparando vista previa…</p>'+
-    '<div class="gl-mp-export-actions"><button type="button" data-mp-export-download disabled>Descargar JPG</button>'+
-    '<button type="button" data-mp-export-clean>Ampliar para captura</button>'+
+    '<div class="gl-mp-export-stage"><img data-mp-export-image src="'+esc(url)+'" alt="Foto de '+esc(item.product)+'" title="Tocar para ampliar o volver"></div>'+
+    '<div class="gl-mp-export-tools"><div class="gl-mp-export-actions"><button type="button" data-mp-export-download>Descargar foto</button>'+
+    '<button type="button" data-mp-export-clean>Ver en grande</button>'+
     '<button type="button" data-mp-export-close>Cerrar</button></div>'+
-    '<small>Para volver a los controles, tocá la imagen. No se publica en Instagram ni Tiendanube automáticamente.</small></div></div>';
+    '<small>Para volver a los botones, tocá la foto.</small></div></div>';
    document.body.append(modal);
-   exportPreview={modal,item,source:downloaded.data,blob:null,url:null,format:'cuadrado',trigger};
+   exportPreview={modal,item,url,trigger};
    modal.querySelector('[data-mp-export-close]')?.focus({preventScroll:true});
-   await updateExportPreview(modal,'cuadrado');
   }catch(err){error=err.message||'No se pudo abrir la vista previa.';render();}
  }
 
- // ChatGPT Plus no funciona como API de GESTLOK. Solo intercambiamos archivos con consentimiento.
- function promptChatGPT(item){
-  return [
-   'Editá la foto adjunta del producto «'+item.product+'» como fotografía de catálogo profesional.',
-   'Fondo blanco puro (#FFFFFF), sin sombras artificiales. Mejorá luz, reflejos reales y nitidez.',
-   'Conservá forma, proporciones, ubicación de objetos, colores y todos los detalles reales del frasco y su caja.',
-   'Mantené fieles las etiquetas y leyendas; no inventes marcas, palabras, tamaños ni números.',
-   'Aspecto natural de estudio, sin apariencia de IA. Entregá una sola imagen final, lista para Instagram y Tiendanube.'
-  ].join('\n');
- }
- function removeChatGPTModal(){
-  const state=chatGptFlow;chatGptFlow=null;
-  if(state?.url)URL.revokeObjectURL(state.url);
-  state?.modal?.remove();
- }
- function chatStatus(value){
-  const node=chatGptFlow?.modal?.querySelector('[data-mp-chat-status]');
-  if(node)node.textContent=value;
- }
- async function openChatGPTFlow(id){
-  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
-  if(!item?.original_photo_path||busy)return;
-  const expectedTab=item.tab_id,expectedPath=item.original_photo_path;
-  try{
-   await assertAccess();
-   const downloaded=await db().storage.from(PHOTO_BUCKET).download(expectedPath);
-   if(downloaded.error)throw downloaded.error;
-   if(!downloaded.data?.size)throw Error('La foto original todavía no está disponible.');
-   if(!visible||tabId!==expectedTab||!items.some(x=>x.id===id&&x.original_photo_path===expectedPath))return;
-   removeChatGPTModal();
-   const name=String(item.product||'producto').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,65)||'producto';
-   const file=new File([downloaded.data],'gestlok-'+name+'-original.jpg',{type:'image/jpeg'});
-   const url=URL.createObjectURL(file),prompt=promptChatGPT(item);
-   const modal=document.createElement('div');modal.dataset.mpChatgptModal='true';
-   modal.innerHTML='<section class="gl-mp-chat-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-chat-title">'+
-    '<header><div><small>FOTOGRAFÍA DE CATÁLOGO · OPCIONAL</small><h2 id="gl-mp-chat-title">Editar con ChatGPT</h2>'+
-    '<p>Producto: <strong>'+esc(item.product)+'</strong>. Sin contratar API paga.</p></div>'+
-    '<button type="button" data-mp-chat-close aria-label="Cerrar">✕</button></header>'+
-    '<img class="gl-mp-chat-image" src="'+esc(url)+'" alt="Foto original de '+esc(item.product)+'">'+
-    '<p>1. Copiá las instrucciones. 2. Compartí esta foto con ChatGPT o descargala y adjuntala desde su app.'+
-    ' 3. Guardá el resultado en la galería y volvé a importarlo.</p>'+
-    '<label>Instrucciones preparadas<textarea data-mp-chat-prompt readonly rows="4"></textarea></label>'+
-    '<div class="gl-mp-chat-buttons"><button type="button" data-mp-chat-copy>Copiar instrucciones</button>'+
-    '<button type="button" data-mp-chat-share>Compartir foto</button>'+
-    '<button type="button" data-mp-chat-download>Descargar original</button>'+
-    '<a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Abrir ChatGPT</a></div>'+
-    '<div class="gl-mp-chat-import"><button type="button" data-mp-chat-import>Importar foto terminada</button>'+
-    '<input type="file" hidden data-mp-ai-import-input="'+esc(item.id)+'" accept="image/jpeg,image/png,image/webp"></div>'+
-    '<p role="status" data-mp-chat-status>Si ChatGPT no aparece al compartir, descargá la foto y adjuntala manualmente.</p>'+
-    '<small>La imagen solo se comparte cuando lo elegís. GESTLOK no edita ni envía fotos a una API paga. Verificá las etiquetas del resultado.</small></section>';
-   document.body.append(modal);
-   modal.querySelector('[data-mp-chat-prompt]').value=prompt;
-   chatGptFlow={modal,url,file,prompt,id,tabId:expectedTab,originalPath:expectedPath};
-  }catch(err){photoErrors.set(id,err.message||'No se pudo abrir la foto original.');render();}
- }
- function shareChatGPT(){
-  const flow=chatGptFlow;if(!flow)return;
-  if(typeof navigator.share!=='function'||(typeof navigator.canShare==='function'&&!navigator.canShare({files:[flow.file]}))){
-   chatStatus('No se puede compartir desde este navegador. Descargá el original y adjuntalo en ChatGPT.');return;
-  }
-  // Gesto directo; no esperar ninguna operación antes de navigator.share.
-  navigator.share({files:[flow.file],text:flow.prompt})
-   .then(()=>chatStatus('Foto compartida. Si las instrucciones no llegaron, copialas y pegalas.'))
-   .catch(e=>{if(e?.name!=='AbortError')chatStatus('No se pudo compartir. Descargá el original y adjuntalo manualmente.');});
- }
- async function copyChatGPTPrompt(){
-  const flow=chatGptFlow;if(!flow)return;
-  try{
-   if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(flow.prompt);
-   else{
-    const input=flow.modal.querySelector('[data-mp-chat-prompt]');input.focus();input.select();
-    if(!document.execCommand?.('copy'))throw Error('Portapapeles no disponible');
-   }
-   chatStatus('Instrucciones copiadas. Pegalas en ChatGPT.');
-  }catch{chatStatus('Seleccioná y copiá manualmente el texto de las instrucciones.');}
- }
- function downloadChatGPTOriginal(){
-  const flow=chatGptFlow;if(!flow)return;
-  const a=document.createElement('a');a.href=flow.url;a.download=flow.file.name;a.rel='noopener';
-  document.body.append(a);a.click();a.remove();
-  chatStatus('Original descargado. Ahora podés adjuntarlo en ChatGPT.');
- }
- // Importar la edición como está: NO se vuelve a usar el recortador de fondo.
- // Se conserva la versión original, los vínculos de pestaña y los controles RLS.
- async function importAIPhoto(id,file){
-  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
-  if(!item?.original_photo_path||!file||busy)return;
-  const targetId=item.id,targetTab=item.tab_id,originalPath=item.original_photo_path,oldEdited=item.photo_path;
-  let source;
-  try{
-   const mime=normalizarFoto(file);
-   if(file.size>20*1024*1024)throw Error('La foto supera 20 MB.');
-   // Tomar bytes antes de redibujar el input de Android.
-   source=new Blob([await file.arrayBuffer()],{type:mime});
-  }catch(e){photoErrors.set(id,e.message||'No se pudo leer la foto.');render();return;}
-  if(!visible||tabId!==targetTab||!items.some(x=>x.id===id&&x.original_photo_path===originalPath))return;
-  removeChatGPTModal();
-  await run(async()=>{
-   await assertAccess();
-   const storage=db().storage.from(PHOTO_BUCKET);
-   const original=await storage.download(originalPath);
-   if(original.error||!original.data?.size)throw original.error||Error('Falta la foto original del producto.');
-   const edited=await compressPhoto(source);
-   if(!await reviewPhotoBeforeSaving(item,original.data,edited,{modo:'importada'}))
-    throw Error('Importación descartada. Se conservó la foto anterior.');
-   if(!visible||tabId!==targetTab||!items.some(x=>x.id===targetId&&x.original_photo_path===originalPath))
-    throw Error('Cambiaste de pestaña o producto. No se guardó la imagen.');
-   const path=OWNER_UID+'/'+targetId+'/'+Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
-   let committed=false,uploaded=false;
-   try{
-    const up=await storage.upload(path,edited,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
-    if(up.error)throw up.error;uploaded=true;
-    const saved=await db().from(ITEMS).update({photo_path:path,updated_at:new Date().toISOString()})
-     .eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT).eq('owner_uid',OWNER_UID)
-     .eq('original_photo_path',originalPath).eq('photo_path',oldEdited).select('id').single();
-    if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo guardar en el producto correcto.');
-    committed=true;
-    if(oldEdited&&oldEdited!==originalPath)try{await storage.remove([oldEdited]);}catch(e){console.warn('No se pudo limpiar la edición anterior.',e);}
-    await loadItems();
-   }catch(err){
-    if(!committed&&uploaded)try{await storage.remove([path]);}catch(e){console.warn('No se pudo limpiar la importación incompleta.',e);}
-    throw err;
-   }
-  },'Foto de ChatGPT guardada en «'+item.product+'». Original conservada.');
- }
-
- async function enhanceExistingPhoto(id){
-  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
-  if(!item?.original_photo_path||busy)return;
-  try{
-   await assertAccess();
-   const photo=await db().storage.from(PHOTO_BUCKET).download(item.original_photo_path);
-   if(photo.error)throw photo.error;
-   if(!photo.data||!photo.data.size)throw Error('No se pudo recuperar la foto original.');
-   if(!visible||tabId!==item.tab_id||!items.some(x=>x.id===id))return;
-   await uploadPhoto(id,photo.data,true);
-  }catch(err){
-   photoErrors.set(id,err.message||'No se pudo mejorar la foto guardada.');
-   render();
-  }
- }
- async function viewOriginalPhoto(id){
-  const item=items.find(x=>x.id===id&&x.tab_id===tabId);
-  if(!item?.original_photo_path)return;
-  try{
-   await assertAccess();
-   const result=await db().storage.from(PHOTO_BUCKET).createSignedUrl(item.original_photo_path,120);
-   if(result.error)throw result.error;
-   window.open(result.data.signedUrl,'_blank','noopener,noreferrer');
-  }catch(e){error=e.message||'No se pudo abrir el original.';render();}
- }
  async function removePhoto(id){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
   if(!item?.photo_path||!window.confirm('¿Quitar ambas fotos de «'+item.product+'»?'))return;
@@ -921,17 +601,6 @@
 
  document.addEventListener('click',e=>{
   if(e.target.closest('[data-mp-open]')){e.preventDefault();api?.closePanel?.();void open();return;}
-  const chatModal=e.target.closest('[data-mp-chatgpt-modal]');
-  if(chatModal){
-   if(e.target.closest('[data-mp-chat-close]')){e.preventDefault();removeChatGPTModal();return;}
-   if(e.target.closest('[data-mp-chat-share]')){e.preventDefault();shareChatGPT();return;}
-   if(e.target.closest('[data-mp-chat-copy]')){e.preventDefault();void copyChatGPTPrompt();return;}
-   if(e.target.closest('[data-mp-chat-download]')){e.preventDefault();downloadChatGPTOriginal();return;}
-   if(e.target.closest('[data-mp-chat-import]')){
-    e.preventDefault();chatModal.querySelector('[data-mp-ai-import-input]')?.click();return;
-   }
-   return;
-  }
   const exportModal=e.target.closest('[data-mp-export-modal]');
   if(exportModal){
    if(e.target.closest('[data-mp-export-close]')){e.preventDefault();removeExportModal();return;}
@@ -961,14 +630,6 @@
   if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
   const camera=el.closest('[data-mp-photo-camera]');
   if(camera){e.preventDefault();camera.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-camera-input]')?.click();return;}
-  const chat=el.closest('[data-mp-chatgpt]');
-  if(chat){e.preventDefault();void openChatGPTFlow(chat.dataset.mpChatgpt);return;}
-  const aiImport=el.closest('[data-mp-ai-import]');
-  if(aiImport){e.preventDefault();aiImport.closest('.gl-mp-card')?.querySelector('[data-mp-ai-import-input]')?.click();return;}
-  const enhance=el.closest('[data-mp-photo-enhance]');
-  if(enhance){e.preventDefault();void enhanceExistingPhoto(enhance.dataset.mpPhotoEnhance);return;}
-  const original=el.closest('[data-mp-photo-original]');
-  if(original){e.preventDefault();void viewOriginalPhoto(original.dataset.mpPhotoOriginal);return;}
   const remove=el.closest('[data-mp-photo-remove]');
   if(remove){e.preventDefault();void removePhoto(remove.dataset.mpPhotoRemove);return;}
   if(print){
@@ -1012,15 +673,6 @@
   if(modal)updateLabelPreview(modal);
  });
  document.addEventListener('change',e=>{
-  const format=e.target.closest('[data-mp-export-format]');
-  if(format){void updateExportPreview(format.closest('[data-mp-export-modal]'),format.value);return;}
-  const ai=e.target.closest('[data-mp-ai-import-input]');
-  if(ai&&visible){
-   const file=ai.files?.[0],id=ai.dataset.mpAiImportInput;
-   if(file)void importAIPhoto(id,file).finally(()=>{ai.value='';});
-   else ai.value='';
-   return;
-  }
   const photo=e.target.closest('[data-mp-photo-input],[data-mp-photo-camera-input]');
   if(photo&&visible){
    const file=photo.files?.[0];
@@ -1038,7 +690,6 @@
  window.addEventListener?.('popstate',()=>{if(visible&&!window.history?.state?.glMisProductos)close(false);});
  document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
-  if(chatGptFlow){removeChatGPTModal();return;}
   if(exportPreview){removeExportModal();return;}
   if(visible)close();
  });
