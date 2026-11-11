@@ -120,7 +120,13 @@
    '<div class="gl-mp-card-attributes"><span>Fragancia</span>'+fragranceSelect(item)+'</div>'+
    '<div class="gl-mp-votes">'+status(true,item.liked,item.id,'Me gustó')+status(false,item.liked,item.id,'No me gustó')+'</div>'+
    (item.note?'<p class="gl-mp-card-note"><b>Nota:</b> '+esc(item.note)+'</p>':'')+
-   '</div></div><div class="gl-mp-actions">'+
+   '</div></div>'+
+   (photoProgress?.id===item.id?
+    '<div class="gl-mp-photo-progress" role="status" aria-live="polite"><span data-mp-photo-status="'+id+'">'+esc(photoProgress.message)+'</span><progress data-mp-photo-meter="'+id+'" max="100" value="'+photoProgress.percent+'"></progress></div>':'')+
+   (photoErrors.has(item.id)?
+    '<div class="gl-mp-photo-error" role="alert"><span>'+esc(photoErrors.get(item.id))+'</span>'+
+    (retryPhoto?.id===item.id&&retryPhoto.tabId===tabId?'<button type="button" data-mp-photo-retry="'+id+'">Reintentar edición</button>':'')+'</div>':'')+
+   '<div class="gl-mp-actions">'+
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
    (item.original_photo_path?'<button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
@@ -303,34 +309,78 @@
    },{once:false});
   });
  }
- async function uploadPhoto(id,file){
-  // Capturamos ID + pestaña ANTES de cualquier operación asíncrona; no usamos
-  // la tarjeta visible al terminar el recorte ni vinculamos por nombre.
+ function normalizarFoto(file){
+  const type=String(file?.type||'').toLowerCase();
+  if(['image/jpeg','image/png','image/webp'].includes(type))return type;
+  if(type==='image/jpg')return 'image/jpeg';
+  const name=String(file?.name||'').toLowerCase();
+  if(!type&&/\\.jpe?g$/.test(name))return 'image/jpeg';
+  if(!type&&/\\.png$/.test(name))return 'image/png';
+  if(!type&&/\\.webp$/.test(name))return 'image/webp';
+  throw Error('La galería debe entregar una foto JPG, PNG o WebP. Si es HEIC, exportala a JPG.');
+ }
+ function mensajeErrorFoto(e){
+  const text=String(e?.message||'No se pudo editar esta foto.');
+  if(/fetch|network|download|module|descarg|conexi[oó]n|timeout/i.test(text))
+   return 'No se pudo descargar el editor. Revisá tu conexión (preferentemente Wi-Fi) y tocá Reintentar edición.';
+  if(/memory|allocation|out-of-memory|wasm|gpu|inference/i.test(text))
+   return 'El celular no pudo completar el recorte. Cerrá otras aplicaciones y tocá Reintentar edición.';
+  return text;
+ }
+ function etapaFoto(id,message,percent){
+  if(photoProgress?.id!==id)return;
+  photoProgress={id,message,percent:Math.min(100,Math.max(0,Math.round(percent)))};
+  const label=$('#gl-mp-panel [data-mp-photo-status="'+id+'"]');
+  const meter=$('#gl-mp-panel [data-mp-photo-meter="'+id+'"]');
+  if(label)label.textContent=message;
+  if(meter)meter.value=photoProgress.percent;
+ }
+ async function uploadPhoto(id,file,retry=false){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
   if(!item||!file||busy)return;
-  const targetTab=item.tab_id, targetId=item.id;
+  const targetTab=item.tab_id,targetId=item.id;
+  let source;
+  try{
+   if(!retry){
+    const mime=normalizarFoto(file);
+    if(file.size>20*1024*1024)throw Error('La foto supera 20 MB. Elegí una de menor tamaño.');
+    // Capturar bytes de la galería ANTES de volver a dibujar el input de Android.
+    source=new Blob([await file.arrayBuffer()],{type:mime});
+   }else source=file;
+  }catch(e){photoErrors.set(targetId,mensajeErrorFoto(e));render();return;}
+  if(!visible||busy||targetTab!==tabId||!items.some(x=>x.id===targetId&&x.tab_id===targetTab))return;
+  retryPhoto={id:targetId,tabId:targetTab,file:source};
+  photoErrors.delete(targetId);
+  photoProgress={id:targetId,message:'Preparando foto…',percent:1};
   await run(async()=>{
    await assertAccess();
-   const original=await compressPhoto(file);
-   // Modelo descargado al primer uso: el recorte se hace sin subir la imagen a terceros.
+   const original=await compressPhoto(source);
+   etapaFoto(targetId,'Descargando el editor de fondo blanco. La primera vez conviene usar Wi-Fi.',5);
    const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-galeria-v2');
-   const edited=await whiteBackground(original);
-   if(!await reviewPhotoBeforeSaving(item,original,edited))throw Error('Foto descartada. No se modificó el producto.');
-   if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab)){
+   const edited=await whiteBackground(original,p=>{
+    const msg=p?.stage==='downloading'?'Descargando el modelo de edición…':
+     p?.stage==='processing'?'Quitando el fondo de la foto…':
+     p?.stage==='finishing'?'Aplicando fondo blanco y sombra lateral…':
+     'Preparando la edición automática…';
+    etapaFoto(targetId,msg,5+Math.min(90,Math.max(0,Number(p?.progress)||0)*90));
+   });
+   etapaFoto(targetId,'Revisá la comparación y confirmá el producto.',95);
+   if(!await reviewPhotoBeforeSaving(item,original,edited))
+    throw Error('Foto descartada. El producto no se modificó.');
+   if(tabId!==targetTab||!items.some(x=>x.id===targetId&&x.tab_id===targetTab))
     throw Error('Cambiaste de producto o pestaña. No se guardó la foto.');
-   }
    const storage=db().storage.from(PHOTO_BUCKET);
    const prefix=OWNER_UID+'/'+targetId+'/';
    const suffix=()=>Date.now()+'-'+(window.crypto?.randomUUID?.()||Math.random().toString(36).slice(2))+'.jpg';
    const originalPath=prefix+suffix(),editedPath=prefix+suffix();
    const uploaded=[];let committed=false;
    try{
+    etapaFoto(targetId,'Guardando las dos versiones en el producto correcto…',97);
     for(const [path,blob] of [[originalPath,original],[editedPath,edited]]){
      const up=await storage.upload(path,blob,{contentType:'image/jpeg',cacheControl:'3600',upsert:false});
      if(up.error)throw up.error;
      uploaded.push(path);
     }
-    // El servidor verifica tenant, dueño, pestaña e ID, además de la RLS del almacenamiento.
     const saved=await db().from(ITEMS).update({
       photo_path:editedPath,original_photo_path:originalPath,updated_at:new Date().toISOString()
      }).eq('id',targetId).eq('tab_id',targetTab).eq('tenant_id',TENANT)
@@ -338,15 +388,19 @@
     if(saved.error||saved.data?.id!==targetId)throw saved.error||Error('No se pudo asociar la foto al producto correcto.');
     committed=true;
     const old=[item.photo_path,item.original_photo_path].filter(p=>p&&!uploaded.includes(p));
-    // Si falla la limpieza, NUNCA borrar las fotos recién guardadas.
     try{if(old.length)await storage.remove(old);}catch(e){console.warn('No se pudo limpiar una foto anterior.',e);}
+    etapaFoto(targetId,'Foto guardada. Actualizando tarjeta…',100);
     await loadItems();
    }catch(err){
-    if(!committed&&uploaded.length)await storage.remove(uploaded);
+    if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
-  },'Foto con fondo blanco y sombra lateral guardada en «'+item.product+'». Original conservado.',
-     'Procesando foto de «'+item.product+'»… la primera vez se descarga el modelo de fondo blanco.');
+  },'Foto con fondo blanco y sombra lateral guardada en «'+item.product+'». Original conservado.','');
+  const hadError=error;
+  photoProgress=null;
+  if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
+  else {photoErrors.delete(targetId);retryPhoto=null;}
+  render();
  }
  async function viewOriginalPhoto(id){
   const item=items.find(x=>x.id===id&&x.tab_id===tabId);
@@ -558,6 +612,10 @@
   if(!visible||!e.target.closest('#gl-mp-panel'))return;
   const el=e.target;
   const print=el.closest('[data-mp-print]');
+  const retry=el.closest('[data-mp-photo-retry]');
+  if(retry){e.preventDefault();const selected=retryPhoto;
+   if(selected?.id===retry.dataset.mpPhotoRetry&&selected.tabId===tabId)void uploadPhoto(selected.id,selected.file,true);
+   return;}
   const photo=el.closest('[data-mp-photo-btn]');
   if(photo){e.preventDefault();photo.closest('.gl-mp-photo')?.querySelector('[data-mp-photo-input]')?.click();return;}
   const camera=el.closest('[data-mp-photo-camera]');
