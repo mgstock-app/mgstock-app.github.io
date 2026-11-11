@@ -11,7 +11,7 @@ test('Mi Gusto: los turnos con fotos informan foto y observación al cliente', (
  assert.match(migration, /'photo_at',s\.photo_at/);
  assert.match(migration, /'cierre_observacion',s\.cierre_observacion/);
  assert.match(js, /if\(!saved\?\.photo_path\)throw Error/);
- assert.match(js, /hasMoves&&!!s\.photo_path/);
+ assert.match(js, /posnet&&!!s\.photo_path/);
  assert.match(js, /sin_movimientos/);
  assert.match(js, /data-mgon-empty/);
 });
