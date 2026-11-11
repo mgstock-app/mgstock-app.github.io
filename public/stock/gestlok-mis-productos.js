@@ -11,7 +11,7 @@
  const OWNER_UID='8ddf2c6c-8d62-44de-8ce8-27eb5759daa3';
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
- let photoProgress=null,retryPhoto=null;
+ let photoProgress=null,retryPhoto=null,exportPreview=null;
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -110,7 +110,7 @@
   const id=esc(item.id),name=esc(item.product),photo=photoUrls.get(item.id);
   return '<article class="gl-mp-card" data-mp-item="'+id+'">'+
    '<div class="gl-mp-card-top"><div class="gl-mp-photo">'+
-   (photo?'<img src="'+esc(photo)+'" loading="lazy" alt="Foto de '+name+'">':
+   (photo?'<button type="button" class="gl-mp-photo-open" data-mp-photo-open="'+id+'" aria-label="Vista previa de '+name+'"><img src="'+esc(photo)+'" loading="lazy" alt="Foto de '+name+'"></button>':
     '<div class="gl-mp-no-photo" aria-hidden="true"><span>▧</span><small>Sin foto</small></div>')+
    '<button type="button" class="gl-mp-photo-edit" data-mp-photo-btn="'+id+'">'+(item.photo_path?'Cambiar foto':'+ Agregar foto')+'</button>'+
    '<button type="button" class="gl-mp-photo-camera" data-mp-photo-camera="'+id+'">📷 Sacar foto</button>'+
@@ -128,6 +128,7 @@
     (retryPhoto?.id===item.id&&retryPhoto.tabId===tabId?'<button type="button" data-mp-photo-retry="'+id+'">Reintentar edición</button>':'')+'</div>':'')+
    '<div class="gl-mp-actions">'+
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
+   (item.photo_path?'<button type="button" class="gl-mp-preview-action" data-mp-photo-open="'+id+'">Vista previa / Descargar</button>':'')+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
    (item.original_photo_path?'<button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
@@ -197,7 +198,7 @@
   finally{loading=false;render();}
  }
  function close(back=true){
-  removePrintModal();
+  removePrintModal();removeExportModal();
   if(!visible)return;
   visible=false;searchTerm='';photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;$('#gl-mp-panel')?.remove();document.body.classList.remove('gl-mp-open');
   if(window.history?.state?.glMisProductos){
@@ -207,7 +208,7 @@
  }
  async function changeTab(id){
   if(!tabs.some(t=>t.id===id)||busy)return;
-  removePrintModal();
+  removePrintModal();removeExportModal();
   tabId=id;photoUrls.clear();photoErrors.clear();photoProgress=null;retryPhoto=null;itemForm=false;editing='';searchTerm='';error='';notice='';loading=true;render();
   try{await assertAccess();await loadItems();}catch(e){error=e.message||'No se pudo abrir la lista.';}
   finally{loading=false;render();}
@@ -295,7 +296,7 @@
    backdrop.setAttribute('role','presentation');
    backdrop.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
     '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
-    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y la etiqueta estén completos y la sombra lateral se vea natural.</p>'+
+    '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y las etiquetas estén completos, sin recortes raros. La posición de los objetos sigue siendo la de la foto real.</p>'+
     '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
     '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Blanco + sombra lateral</figcaption></figure></div>'+
     '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
@@ -356,7 +357,7 @@
    await assertAccess();
    const original=await compressPhoto(source);
    etapaFoto(targetId,'Descargando el editor de fondo blanco. La primera vez conviene usar Wi-Fi.',5);
-   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-galeria-v2');
+   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-estudio-v3');
    const edited=await whiteBackground(original,p=>{
     const msg=p?.stage==='downloading'?'Descargando el modelo de edición…':
      p?.stage==='processing'?'Quitando el fondo de la foto…':
@@ -395,7 +396,7 @@
     if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
-  },'Foto con fondo blanco y sombra lateral guardada en «'+item.product+'». Original conservado.','');
+  },'Foto de catálogo con fondo blanco y sombra lateral guardada en «'+item.product+'». Original conservado.','');
   const hadError=error;
   photoProgress=null;
   if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
