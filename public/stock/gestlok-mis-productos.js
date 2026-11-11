@@ -130,7 +130,7 @@
    '<button type="button" data-mp-print="'+id+'" aria-label="Imprimir nombre de '+name+' en NIIMBOT D110">Imprimir nombre</button>'+
    (item.photo_path?'<button type="button" class="gl-mp-preview-action" data-mp-photo-open="'+id+'">Vista previa / Descargar</button>':'')+
    '<button type="button" data-mp-edit="'+id+'" aria-label="Editar '+name+'">Editar</button>'+
-   (item.original_photo_path?'<button type="button" class="gl-mp-free-ai" data-mp-photo-enhance="'+id+'">Mejorar gratis (IA local)</button><button type="button" class="gl-mp-chatgpt-action" data-mp-chatgpt="'+id+'">Editar con ChatGPT</button><button type="button" data-mp-ai-import="'+id+'">Importar edición de IA</button><input type="file" hidden data-mp-ai-import-input="'+id+'" accept="image/jpeg,image/png,image/webp" aria-label="Importar imagen editada de '+name+'"><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
+   (item.original_photo_path?'<button type="button" class="gl-mp-free-ai" data-mp-photo-enhance="'+id+'">Mejorar luz y fondo · Gratis</button><button type="button" class="gl-mp-chatgpt-action" data-mp-chatgpt="'+id+'">Editar con ChatGPT</button><button type="button" data-mp-ai-import="'+id+'">Importar edición de IA</button><input type="file" hidden data-mp-ai-import-input="'+id+'" accept="image/jpeg,image/png,image/webp" aria-label="Importar imagen editada de '+name+'"><button type="button" data-mp-photo-original="'+id+'">Ver original</button>':'')+
    (item.photo_path?'<button type="button" data-mp-photo-remove="'+id+'">Quitar foto</button>':'')+
    '<button type="button" data-mp-delete="'+id+'" class="is-danger" aria-label="Eliminar '+name+'">Eliminar</button></div></article>';
  }
@@ -184,7 +184,7 @@
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
       '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
-      '<p class="gl-mp-hint">La IA local gratuita quita el fondo y ajusta luz y nitidez. Para una edición de estudio, compartí la foto con tu ChatGPT y después importá el resultado. Revisá las etiquetas antes de guardar.</p></section>')+
+      '<p class="gl-mp-hint">Al subir una foto, la IA local quita el fondo y mejora la luz automáticamente. Para una edición de estudio, compartí la foto con tu ChatGPT y después importá el resultado. Revisá las etiquetas antes de guardar.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
  }
@@ -300,7 +300,7 @@
     '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
     '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y las etiquetas estén completos, sin recortes raros. La posición de los objetos sigue siendo la de la foto real.</p>'+
     '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
-    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Fondo blanco · sin sombra</figcaption></figure></div>'+
+    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Estudio automático · fondo blanco</figcaption></figure></div>'+
     '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
     '<button type="button" data-mp-photo-discard>Descartar y sacar otra foto</button></div>'+
     '<small>Se conservarán las dos versiones en la ficha privada, no en Tiendanube.</small></div>';
@@ -358,12 +358,12 @@
   await run(async()=>{
    await assertAccess();
    const original=await compressPhoto(source);
-   etapaFoto(targetId,'Descargando el editor de fondo blanco. La primera vez conviene usar Wi-Fi.',5);
-   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-foto-pro-v4');
+   etapaFoto(targetId,'Preparando el estudio automático. La primera vez conviene usar Wi-Fi.',5);
+   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-estudio-luz-v5');
    const edited=await whiteBackground(original,p=>{
     const msg=p?.stage==='downloading'?'Descargando el modelo de edición…':
      p?.stage==='processing'?'Quitando el fondo de la foto…':
-     p?.stage==='finishing'?'Mejorando luz y nitidez sobre fondo blanco…':
+     p?.stage==='finishing'?'Corrigiendo la luz, sombras y nitidez del producto…':
      'Preparando la edición automática…';
     etapaFoto(targetId,msg,5+Math.min(90,Math.max(0,Number(p?.progress)||0)*90));
    });
@@ -398,7 +398,7 @@
     if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
-  },'Foto mejorada con fondo blanco y sin sombras guardada en «'+item.product+'». Original conservado.','');
+  },'Foto con fondo blanco y luz mejorada guardada en «'+item.product+'». Original conservado.','');
   const hadError=error;
   photoProgress=null;
   if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
