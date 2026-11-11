@@ -46,14 +46,15 @@ test('Motos Agencia: el valor por hora rige desde su semana y no cambia el histo
   assert.equal(t.tarifaEn(valores, 'aye', '2026-11-09'), 0);
 });
 
-test('Motos Agencia: solo Mi Gusto – Munro; dueños con importes, gerentes de Munro cargan la semana y ven el historial', () => {
+test('Motos Agencia: solo Mi Gusto – Munro; dueños con importes, gerentes de Munro corrigen también el historial', () => {
   const script = file('public/stock/munro-motos.js');
   const app = file('public/stock/app.js');
   assert.match(script, /const TENANT = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'/);
   assert.match(script, /api\.S\.local === 'munro'/);
   assert.match(script, /rol\(\) === 'gerente' && api\.misLocales\(\)\.includes\('munro'\)/);
   assert.match(script, /const esDueno = \(\) => \['creadora','dueno'\]\.includes\(rol\(\)\)/);
-  assert.match(script, /esDueno\(\) \|\| semana === semanaActual\(\)/);
+  assert.match(script, /const editable = semana => permitido\(\) && api\.canW\(\) && semana <= semanaActual\(\)/);
+  assert.match(script, /podés corregir horarios con «Modificar»/);
   assert.match(script, /function historialHTML\(\)\{\s*if \(!permitido\(\)\) return '';\s*const dueno = esDueno\(\);/);
   assert.match(script, /\(dueno \? '<th>Total pago<\/th>' : ''\)/);
   assert.match(script, /\(dueno && api\.canW\(\) \? '<button class="mo-pill" data-mo-act="tarifas"/);
@@ -105,4 +106,18 @@ test('Motos Agencia: «Modificar» habilita la planilla y «Guardar» envía los
   const sql = file('supabase/migrations/20261027010000_gestlok_munro_motos_nombres.sql');
   assert.match(sql, /id = 'motos' or public\.gestlok_motos_semana_abierta\(id\)/);
   assert.match(sql, /id not in \('tarifas', 'motos'\)/);
+});
+
+test('Motos Agencia: migración permite corregir semanas cerradas sin abrir tarifas ni futuras', () => {
+  const sql = file('supabase/migrations/20261111020000_munro_motos_gerente_edita_historial.sql');
+  const script = file('public/stock/munro-motos.js');
+  assert.match(sql, /alter policy gestlok_munro_motos_write_insert on public\.docs/);
+  assert.match(sql, /alter policy gestlok_munro_motos_write_update on public\.docs/);
+  assert.match(sql, /alter policy gestlok_munro_motos_write_delete on public\.docs/);
+  assert.match(sql, /public\.mi_rol\(\) = 'gerente' and public\.puede_editar_local\('munro'\)/);
+  assert.match(sql, /id = 'tarifas' and public\.mi_rol\(\) in \('creadora','dueno'\)/);
+  assert.match(sql, /substring\(id from 3 for 10\) <= to_char/);
+  assert.match(script, /podés corregir semanas anteriores/);
+  assert.match(script, /editable\(s\) \? 'Ver y editar' : 'Ver detalle'/);
+  assert.doesNotMatch(sql, /\b(delete from|truncate|update public\.docs)\b/i);
 });
