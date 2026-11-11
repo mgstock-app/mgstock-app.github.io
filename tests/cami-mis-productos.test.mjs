@@ -190,7 +190,7 @@ test('Camila: cámara y edición con fondo blanco para todas las pestañas del c
  assert.match(script,/data-mp-photo-camera/);
  assert.match(script,/capture="environment"/);
  assert.match(script,/data-mp-photo-input/);
- assert.match(script,/gestlok-product-white-bg\.mjs/);
+ assert.match(script,/gestlok-product-white-bg\.js/);
  assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
  assert.match(script,/Foto editada con fondo blanco/);
  assert.match(remover,/removeBackground/);
@@ -228,7 +228,7 @@ test('Todas las fotos nuevas de Camila usan automáticamente fondo blanco y somb
  // Mismo motor para cámara y galería; no hay un bypass de sombra.
  assert.match(script,/data-mp-photo-camera-input/);
  assert.match(script,/data-mp-photo-input/);
- assert.match(script,/const edited=await whiteBackground\(original\)/);
+ assert.match(script,/const edited=await whiteBackground\(original,/);
  assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
  assert.match(script,/Fondo blanco y sombra lateral|fondo blanco y sombra lateral/);
  assert.match(script,/Blanco \+ sombra lateral/);
