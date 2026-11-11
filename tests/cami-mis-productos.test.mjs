@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-fondo-blanco-sombra-20261110/);
+ assert.match(runtime,/cami-galeria-editor-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -186,7 +186,7 @@ test('Migración limita permiso de creadora al cuaderno y carpeta de fotos de Ca
 
 
 test('Camila: cámara y edición con fondo blanco para todas las pestañas del cuaderno privado',()=>{
- const remover=readFileSync('public/stock/gestlok-product-white-bg.mjs','utf8');
+ const remover=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
  assert.match(script,/data-mp-photo-camera/);
  assert.match(script,/capture="environment"/);
  assert.match(script,/data-mp-photo-input/);
@@ -218,13 +218,13 @@ test('Camila: la foto editada y la original se guardan solo en el ID y pestaña 
 
 test('La publicación de fondos blancos se limita al tenant ZAYRO',async()=>{
  const {fileAudience,TENANTS}=await import('../scripts/pwa-release-scope.mjs');
- assert.deepEqual(fileAudience('public/stock/gestlok-product-white-bg.mjs'),[TENANTS.zayro]);
+ assert.deepEqual(fileAudience('public/stock/gestlok-product-white-bg.js'),[TENANTS.zayro]);
  assert.deepEqual(fileAudience('public/stock/gestlok-mis-productos.js'),[TENANTS.zayro]);
 });
 
 
 test('Todas las fotos nuevas de Camila usan automáticamente fondo blanco y sombra lateral suave',()=>{
- const editor=readFileSync('public/stock/gestlok-product-white-bg.mjs','utf8');
+ const editor=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
  // Mismo motor para cámara y galería; no hay un bypass de sombra.
  assert.match(script,/data-mp-photo-camera-input/);
  assert.match(script,/data-mp-photo-input/);
@@ -243,4 +243,28 @@ test('Todas las fotos nuevas de Camila usan automáticamente fondo blanco y somb
  assert.ok(editor.indexOf('c.drawImage(silhouette,0,0,cw,ch)')<editor.indexOf('c.drawImage(img,productX-minX*ratio'),
    'La sombra debe pintarse detrás del producto real');
  assert.doesNotMatch(editor,/fetch\(source|FormData|apiKey/,'Sin subir foto a proveedor de IA externo');
+});
+
+test('Galería Android conserva la foto antes de redibujar, muestra progreso y permite reintento',()=>{
+ assert.match(script,/new Blob\(\[await file\.arrayBuffer\(\)\],\{type:mime\}\)/);
+ assert.match(script,/uploadPhoto\(photo\.dataset\.mpPhotoInput\|\|photo\.dataset\.mpPhotoCameraInput,file\)\.finally/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-galeria-v2/);
+ assert.match(script,/photoProgress=\{id:targetId/);
+ assert.match(script,/data-mp-photo-meter/);
+ assert.match(script,/data-mp-photo-retry/);
+ assert.match(script,/retryPhoto=\{id:targetId,tabId:targetTab,file:source\}/);
+ assert.match(script,/photoErrors\.set\(targetId,mensajeErrorFoto/);
+ assert.match(script,/photo_path:editedPath,original_photo_path:originalPath/);
+ assert.match(script,/const targetTab=item\.tab_id, targetId=item\.id/);
+ assert.match(script,/\.eq\('id',targetId\)\.eq\('tab_id',targetTab\)\.eq\('tenant_id',TENANT\)/);
+ assert.match(css,/gl-mp-photo-progress/);
+ assert.match(css,/gl-mp-photo-error/);
+});
+test('Editor usa dos CDN del motor de fondo blanco fijado a versión 0.1.1',()=>{
+ const editor=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
+ assert.match(editor,/https:\/\/cdn\.jsdelivr\.net\/npm\/@bg0\/browser@0\.1\.1\/\+esm/);
+ assert.match(editor,/https:\/\/esm\.sh\/@bg0\/browser@0\.1\.1/);
+ assert.match(editor,/export async function whiteBackground/);
+ assert.match(editor,/quality:'fast'/);
+ assert.doesNotMatch(editor,/upload\(|storage\.from/);
 });
