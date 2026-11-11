@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-fotos-estudio-preview-20261111/);
+ assert.match(runtime,/cami-fotos-blanco-pro-v4-20261111/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -194,7 +194,7 @@ test('Camila: cámara y edición con fondo blanco para todas las pestañas del c
  assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
  assert.match(script,/Foto editada con fondo blanco/);
  assert.match(remover,/removeBackground/);
- assert.match(remover,/quality:'fast'/);
+ assert.match(remover,/quality:'quality'/);
  assert.match(remover,/rgba|alpha|a\[\(y\*w\+x\)\*4\+3\]/);
  assert.match(remover,/c\.fillStyle='#fff'/);
  assert.match(remover,/canvas\.toBlob/);
@@ -223,31 +223,36 @@ test('La publicación de fondos blancos se limita al tenant ZAYRO',async()=>{
 });
 
 
-test('Todas las fotos nuevas de Camila usan automáticamente fondo blanco y sombra lateral suave',()=>{
+test('Todas las fotos nuevas de Camila tienen fondo blanco y mejora real sin sombras',()=>{
  const editor=readFileSync('public/stock/gestlok-product-white-bg.js','utf8');
- // Mismo motor para cámara y galería; no hay un bypass de sombra.
+ const alias=readFileSync('public/stock/gestlok-product-white-bg.mjs','utf8');
+ // Cámara y galería usan el mismo motor; también se puede volver a editar el original guardado.
  assert.match(script,/data-mp-photo-camera-input/);
  assert.match(script,/data-mp-photo-input/);
  assert.match(script,/const edited=await whiteBackground\(original,/);
  assert.match(script,/reviewPhotoBeforeSaving\(item,original,edited\)/);
- assert.match(script,/Fondo blanco y sombra lateral|fondo blanco y sombra lateral/);
- assert.match(script,/Blanco \+ sombra lateral/);
- assert.match(editor,/const ratio=Math\.min\(980\/cw,860\/ch\)/);
- assert.match(editor,/const productX=\(1200-productW\)\/2,productY=1005-productH/);
- assert.match(editor,/function groundShadow\(x,y,rx,ry,strength\)/);
- assert.match(editor,/c\.createRadialGradient\(0,0,0,0,0,1\)/);
- assert.match(editor,/groundShadow\(productX\+productW\*\.55/);
- assert.match(editor,/groundShadow\(productX\+productW\*\.67/);
- assert.match(editor,/c\.drawImage\(img,productX-minX\*ratio,productY-minY\*ratio,w\*ratio,h\*ratio\)/);
- assert.doesNotMatch(editor,/c\.drawImage\(silhouette/,'No proyectar silueta desplazada');
- assert.doesNotMatch(editor,/c\.transform\(ratio/,'No crear sombra tipo producto flotante');
+ assert.match(script,/Fondo blanco · sin sombra/);
+ assert.match(script,/sin sombras guardada/);
+ assert.match(script,/Math\.min\(1,1800\/Math\.max\(image\.naturalWidth,image\.naturalHeight\)\)/);
+ assert.match(script,/encode\(\.93\)/);
+ assert.match(editor,/quality:'quality'/);
+ assert.match(editor,/const ratio=Math\.min\(1020\/cw,850\/ch\)/);
+ assert.match(editor,/const productX=\(1200-productW\)\/2,productY=1000-productH/);
+ assert.match(editor,/subject\.width=1200;subject\.height=1200/);
+ assert.match(editor,/contrast\(1\.045\)/);
+ assert.match(editor,/bc\.filter='blur\(1px\)'/);
+ assert.match(editor,/sc\.putImageData\(sharp,0,0\)/);
+ assert.match(editor,/c\.drawImage\(subject,0,0\)/);
+ assert.doesNotMatch(editor,/groundShadow|createRadialGradient|silhouette|drawImage\(img,productX-minX\*ratio,productY-minY\*ratio,w\*ratio,h\*ratio\);\s*const blob=/,'Sin sombra artificial');
+ assert.doesNotMatch(script,/sombra lateral/);
+ assert.match(alias,/export \{whiteBackground\} from '\.\/gestlok-product-white-bg\.js'/);
  assert.doesNotMatch(editor,/fetch\(source|FormData|apiKey/,'Sin subir foto a proveedor de IA externo');
 });
 
 test('Galería Android conserva la foto antes de redibujar, muestra progreso y permite reintento',()=>{
  assert.match(script,/new Blob\(\[await file\.arrayBuffer\(\)\],\{type:mime\}\)/);
  assert.match(script,/uploadPhoto\(photo\.dataset\.mpPhotoInput\|\|photo\.dataset\.mpPhotoCameraInput,file\)\.finally/);
- assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-estudio-v3/);
+ assert.match(script,/gestlok-product-white-bg\.js\?rev=20261111-foto-pro-v4/);
  assert.match(script,/photoProgress=\{id:targetId/);
  assert.match(script,/data-mp-photo-meter/);
  assert.match(script,/data-mp-photo-retry/);
@@ -264,7 +269,7 @@ test('Editor usa dos CDN del motor de fondo blanco fijado a versión 0.1.1',()=>
  assert.match(editor,/https:\/\/cdn\.jsdelivr\.net\/npm\/@bg0\/browser@0\.1\.1\/\+esm/);
  assert.match(editor,/https:\/\/esm\.sh\/@bg0\/browser@0\.1\.1/);
  assert.match(editor,/export async function whiteBackground/);
- assert.match(editor,/quality:'fast'/);
+ assert.match(editor,/quality:'quality'/);
  assert.doesNotMatch(editor,/upload\(|storage\.from/);
 });
 

@@ -36,7 +36,8 @@ async function readImage(blob){
 }
 export async function whiteBackground(source,onProgress){
   const remove=await getModel();
-  const result=await remove(source,{quality:'fast',onProgress});
+  // Usar el refinado de máscara: la opción fast pierde bordes de frascos y tipografías.
+  const result=await remove(source,{quality:'quality',onProgress});
   if(!result?.blob)throw Error('El editor no pudo separar el producto del fondo.');
   const img=await readImage(result.blob);
   const w=img.naturalWidth,h=img.naturalHeight;
@@ -60,31 +61,48 @@ export async function whiteBackground(source,onProgress){
   const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;
   const c=canvas.getContext('2d');if(!c)throw Error('No se pudo componer la foto.');
   c.fillStyle='#fff';c.fillRect(0,0,canvas.width,canvas.height);
-  // Fotografía de catálogo: encuadre con márgenes iguales y apoyo visual real.
-  // Respetar la ubicación, el texto, la forma y el color del producto original.
-  const ratio=Math.min(980/cw,860/ch);
+  // Foto de catálogo: fondo #fff plano, sin sombras proyectadas ni de contacto.
+  // La caja, el frasco, el texto y la disposición provienen del recorte original.
+  const ratio=Math.min(1020/cw,850/ch);
   const productW=cw*ratio,productH=ch*ratio;
-  const productX=(1200-productW)/2,productY=1005-productH;
-  const groundY=productY+productH+9;
-  // Una sombra realista permanece sobre el suelo: nunca dibujar una silueta
-  // completa desplazada que simule que el frasco flota en el aire.
-  function groundShadow(x,y,rx,ry,strength){
-    c.save();c.translate(x,y);c.scale(rx,ry);
-    const gradient=c.createRadialGradient(0,0,0,0,0,1);
-    gradient.addColorStop(0,'rgba(41,39,35,'+strength+')');
-    gradient.addColorStop(.48,'rgba(41,39,35,'+(strength*.38)+')');
-    gradient.addColorStop(1,'rgba(41,39,35,0)');
-    c.fillStyle=gradient;c.beginPath();c.arc(0,0,1,0,2*Math.PI);c.fill();c.restore();
+  const productX=(1200-productW)/2,productY=1000-productH;
+
+  // Editar solo el producto, conservando la transparencia y todos sus detalles.
+  // Corrección tonal suave: levantar medios tonos de una foto oscura sin
+  // inventar reflejos, redibujar etiquetas ni modificar la geometría real.
+  const subject=document.createElement('canvas');
+  subject.width=1200;subject.height=1200;
+  const sc=subject.getContext('2d',{willReadFrequently:true});
+  if(!sc)throw Error('No se pudo mejorar la foto del producto.');
+  sc.imageSmoothingEnabled=true;
+  sc.imageSmoothingQuality='high';
+  sc.filter='brightness(1.045) contrast(1.045) saturate(1.035)';
+  sc.drawImage(img,productX-minX*ratio,productY-minY*ratio,w*ratio,h*ratio);
+  sc.filter='none';
+
+  // Enfoque moderado: realza bordes interiores y letras existentes.
+  // Evitar halos en los bordes de la máscara de transparencia.
+  const soft=document.createElement('canvas');soft.width=1200;soft.height=1200;
+  const bc=soft.getContext('2d',{willReadFrequently:true});
+  if(bc){
+    bc.filter='blur(1px)';
+    bc.drawImage(subject,0,0);
+    const sharp=sc.getImageData(0,0,1200,1200);
+    const pixels=sharp.data,blurred=bc.getImageData(0,0,1200,1200).data;
+    for(let p=0;p<pixels.length;p+=4){
+      if(pixels[p+3]<250||blurred[p+3]<245)continue;
+      const lum=pixels[p]*.2126+pixels[p+1]*.7152+pixels[p+2]*.0722;
+      const lift=.085*(1-lum/255);
+      for(let k=0;k<3;k++){
+        const detail=pixels[p+k]-blurred[p+k];
+        const focused=Math.abs(detail)>4&&Math.abs(detail)<80?detail*.50:0;
+        pixels[p+k]=Math.max(0,Math.min(255,pixels[p+k]+(255-pixels[p+k])*lift+focused));
+      }
+    }
+    sc.putImageData(sharp,0,0);
   }
-  // Luz principal desde arriba/izquierda: sombra de contacto y proyección lateral
-  // corta hacia la derecha, integrada con la base de frascos y cajas.
-  groundShadow(productX+productW*.55,groundY,Math.max(98,productW*.50),23,.22);
-  groundShadow(productX+productW*.67+Math.min(72,productW*.12),groundY+11,
-    Math.max(160,productW*.63),45,.12);
-  // Dibujar el producto tal como se recortó, sin reflejos inventados o blur.
-  c.imageSmoothingEnabled=true;
-  c.imageSmoothingQuality='high';
-  c.drawImage(img,productX-minX*ratio,productY-minY*ratio,w*ratio,h*ratio);
+  c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+  c.drawImage(subject,0,0);
   const blob=await new Promise((resolve,reject)=>{
     canvas.toBlob(b=>b?resolve(b):reject(Error('No se pudo exportar el catálogo.')),'image/jpeg',.94);
   });

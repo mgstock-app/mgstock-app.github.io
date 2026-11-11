@@ -267,7 +267,7 @@
    image.onload=()=>{
     URL.revokeObjectURL(url);
     try{
-     const factor=Math.min(1,1200/Math.max(image.naturalWidth,image.naturalHeight));
+     const factor=Math.min(1,1800/Math.max(image.naturalWidth,image.naturalHeight));
      const canvas=document.createElement('canvas');
      canvas.width=Math.max(1,Math.round(image.naturalWidth*factor));
      canvas.height=Math.max(1,Math.round(image.naturalHeight*factor));
@@ -275,11 +275,13 @@
      if(!ctx)throw Error('No se pudo preparar la imagen.');
      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
      ctx.drawImage(image,0,0,canvas.width,canvas.height);
-     canvas.toBlob(blob=>{
+     const encode=quality=>canvas.toBlob(blob=>{
       if(!blob)return reject(Error('No se pudo preparar la foto.'));
+      if(blob.size>3*1024*1024&&quality>.83)return encode(.83);
       if(blob.size>3*1024*1024)return reject(Error('La foto comprimida supera 3 MB.'));
       resolve(blob);
-     },'image/jpeg',0.90);
+     },'image/jpeg',quality);
+     encode(.93);
     }catch(e){reject(e);}
    };
    image.onerror=()=>{URL.revokeObjectURL(url);reject(Error('No se pudo abrir la foto. Probá con JPG o PNG.'));};
@@ -298,7 +300,7 @@
     '<h2 id="gl-mp-photo-preview-title">Revisá la foto de '+esc(item.product)+'</h2>'+
     '<p>La foto editada se guardará solo en <strong>'+esc(item.product)+'</strong>. Comprobá que el frasco y las etiquetas estén completos, sin recortes raros. La posición de los objetos sigue siendo la de la foto real.</p>'+
     '<div class="gl-mp-photo-pair"><figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure>'+
-    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Blanco + sombra lateral</figcaption></figure></div>'+
+    '<figure><img alt="Foto editada con fondo blanco" src="'+esc(after)+'"><figcaption>Fondo blanco · sin sombra</figcaption></figure></div>'+
     '<div class="gl-mp-photo-confirm"><button type="button" data-mp-photo-approve>Guardar en este producto</button>'+
     '<button type="button" data-mp-photo-discard>Descartar y sacar otra foto</button></div>'+
     '<small>Se conservarán las dos versiones en la ficha privada, no en Tiendanube.</small></div>';
@@ -357,11 +359,11 @@
    await assertAccess();
    const original=await compressPhoto(source);
    etapaFoto(targetId,'Descargando el editor de fondo blanco. La primera vez conviene usar Wi-Fi.',5);
-   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-estudio-v3');
+   const {whiteBackground}=await import('/stock/gestlok-product-white-bg.js?rev=20261111-foto-pro-v4');
    const edited=await whiteBackground(original,p=>{
     const msg=p?.stage==='downloading'?'Descargando el modelo de edición…':
      p?.stage==='processing'?'Quitando el fondo de la foto…':
-     p?.stage==='finishing'?'Aplicando fondo blanco y sombra lateral…':
+     p?.stage==='finishing'?'Mejorando luz y nitidez sobre fondo blanco…':
      'Preparando la edición automática…';
     etapaFoto(targetId,msg,5+Math.min(90,Math.max(0,Number(p?.progress)||0)*90));
    });
@@ -396,7 +398,7 @@
     if(!committed&&uploaded.length)try{await storage.remove(uploaded);}catch(e){console.warn('No se pudo limpiar la carga incompleta.',e);}
     throw err;
    }
-  },'Foto de catálogo con fondo blanco y sombra lateral guardada en «'+item.product+'». Original conservado.','');
+  },'Foto mejorada con fondo blanco y sin sombras guardada en «'+item.product+'». Original conservado.','');
   const hadError=error;
   photoProgress=null;
   if(hadError)photoErrors.set(targetId,mensajeErrorFoto({message:hadError}));
