@@ -10,7 +10,8 @@
   const isZayro=host=>tenantOf(host)===ZAYRO_TENANT;
   // Para otros clientes solo se abre tras comprobar el Plan Scanner del propio tenant.
   const isCompany=host=>isZayro(host)||(
-    !!tenantOf(host)&&window.GestLokPilot?.authorized?.()===true&&
+    !!tenantOf(host)&&!['cb0dc04a-9a13-434f-a3d0-47f1d8f39670','6c8717ea-5f78-426b-9458-74a5dcac6e4e'].includes(tenantOf(host))&&
+    window.GestLokPilot?.authorized?.()===true&&
     window.GestLokPilot?.tenantId?.()===tenantOf(host));
   // Nunca deducir privilegios por isOwner: es una marca de UI, no una prueba de creadora.
   const isCreator=host=>host?.role?.()==='creadora'&&host?.isCreadora?.()===true;
