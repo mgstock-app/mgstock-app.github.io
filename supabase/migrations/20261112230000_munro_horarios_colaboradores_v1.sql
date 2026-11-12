@@ -21,10 +21,29 @@ create table if not exists rm_test_private.munro_horarios_planillas (
 );
 create index if not exists munro_horarios_planillas_semana_idx
   on rm_test_private.munro_horarios_planillas(semana desc);
+-- Cada corrección queda auditada; nunca sobreescribir el registro de cambios.
+create table if not exists rm_test_private.munro_horarios_auditoria (
+  id bigint generated always as identity primary key,
+  colaborador_id integer not null,
+  semana date not null,
+  version_anterior integer not null,
+  version_nueva integer not null,
+  datos_antes jsonb not null,
+  datos_despues jsonb not null,
+  nombre_antes text not null,
+  nombre_despues text not null,
+  estado_antes text not null,
+  estado_despues text not null,
+  editado_por uuid not null,
+  editado_at timestamptz not null default now()
+);
+create index if not exists munro_horarios_auditoria_semana_idx
+  on rm_test_private.munro_horarios_auditoria(semana desc,colaborador_id);
 alter table rm_test_private.munro_horarios_colaboradores enable row level security;
 alter table rm_test_private.munro_horarios_planillas enable row level security;
-revoke all on rm_test_private.munro_horarios_colaboradores,rm_test_private.munro_horarios_planillas
-  from public,anon,authenticated;
+alter table rm_test_private.munro_horarios_auditoria enable row level security;
+revoke all on rm_test_private.munro_horarios_colaboradores,rm_test_private.munro_horarios_planillas,
+  rm_test_private.munro_horarios_auditoria from public,anon,authenticated;
 
 -- Tres puestos fijos por turno y cinco por hora. Nadie recibe nombre ficticio.
 insert into rm_test_private.munro_horarios_colaboradores(id,modalidad)
@@ -86,7 +105,7 @@ begin
      p_semana>(v_now::date-((extract(isodow from v_now::date)::integer)-1)) then
     raise exception 'Solo podés editar la semana actual o una anterior' using errcode='22023';
   end if;
-  if p_persona is null or p_persona<1 or p_version<0 or
+  if p_persona is null or p_persona<1 or p_version is null or p_version<0 or
     p_nombre is null or char_length(btrim(p_nombre))>80 or
     p_estado not in ('activo','refuerzo','inactivo') or
     coalesce(jsonb_typeof(p_datos),'')<>'object' then
@@ -162,6 +181,11 @@ begin
   if v_ver<>p_version then
     raise exception 'Otra persona modificó esta semana. Actualizá antes de guardar.' using errcode='40001';
   end if;
+  if btrim(p_nombre)<>'' and exists(
+    select 1 from rm_test_private.munro_horarios_colaboradores c
+    where c.id<>p_persona and lower(btrim(c.nombre))=lower(btrim(p_nombre))) then
+    raise exception 'Ese nombre ya existe. Revisá que no sea un colaborador duplicado.' using errcode='22023';
+  end if;
   update rm_test_private.munro_horarios_colaboradores
      set nombre=btrim(p_nombre),estado=p_estado,actualizado_at=now()
    where id=p_persona;
@@ -175,6 +199,13 @@ begin
       actualizado_por=excluded.actualizado_por,actualizado_at=now();
     v_ver:=v_ver+1;
   end if;
+  insert into rm_test_private.munro_horarios_auditoria (
+    colaborador_id,semana,version_anterior,version_nueva,
+    datos_antes,datos_despues,nombre_antes,nombre_despues,
+    estado_antes,estado_despues,editado_por)
+  values(p_persona,p_semana,coalesce(v_prev.version,0),v_ver,
+    coalesce(v_prev.datos,'{}'::jsonb),p_datos,v_persona.nombre,btrim(p_nombre),
+    v_persona.estado,p_estado,auth.uid());
   return jsonb_build_object('ok',true,'version',v_ver,'id',p_persona);
 end $$;
 
@@ -189,6 +220,10 @@ begin
    raise exception 'Ingresá un nombre de hasta 80 caracteres' using errcode='22023';
  end if;
  lock table rm_test_private.munro_horarios_colaboradores in share row exclusive mode;
+ if exists(select 1 from rm_test_private.munro_horarios_colaboradores
+   where lower(btrim(nombre))=lower(btrim(p_nombre))) then
+   raise exception 'Ese colaborador ya está registrado' using errcode='22023';
+ end if;
  select coalesce(max(id),8)+1 into v_id from rm_test_private.munro_horarios_colaboradores;
  if v_id>120 then raise exception 'Límite de colaboradores alcanzado' using errcode='22023';end if;
  insert into rm_test_private.munro_horarios_colaboradores(id,nombre,modalidad,estado)
