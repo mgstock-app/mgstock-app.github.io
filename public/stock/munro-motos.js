@@ -2,8 +2,9 @@
    Planilla semanal (lunes a domingo) con entrada y salida de dos turnos por moto.
    - Cada celda (semana, moto, día) es un documento propio en «munro/agencia_motos»:
      dos personas cargando a la vez no se pisan y sin conexión queda en la cola local.
-   - El cierre es automático: la semana se calcula con la hora de Buenos Aires, así que
-     cada lunes la planilla arranca vacía y la anterior pasa al historial sin borrar nada.
+   - Se permite guardar un turno parcial durante la semana; la revisión final es
+     el domingo 23:30 AR. El lunes comienza una semana nueva sin borrar datos:
+     una semana incompleta queda pendiente para corrección, no en historial cerrado.
    - Dueños (y la creadora): planilla, valores por hora, importes e historial.
      Gerentes de Munro: cargan y corrigen horarios de la semana actual y de semanas
      cerradas; no ven importes ni valores por hora.
@@ -416,7 +417,7 @@
       tarifasForm() +
       (semanas.length ? '<div class="mo-scroll"><table><thead><tr><th>Semana</th><th>Desde</th><th>Hasta</th>' + fijasDe(semanaActual()).map(m => '<th>' + E(m.nombre) + '</th>').join('') +
         '<th>Refuerzo</th><th>Total horas</th>' + (dueno ? '<th>Total pago</th>' : '') + '<th>Acciones</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
-        : '<p>Todavía no hay semanas cerradas. El lunes la semana en curso pasa sola al historial.</p>') + '</section>';
+        : '<p>Todavía no hay semanas cerradas. El lunes pasan al historial las semanas sin errores; las pendientes se pueden corregir.</p>') + '</section>';
   }
   const textoPendientes = () => edicion
     ? (borrador.size ? borrador.size + (borrador.size === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Modo edición')
