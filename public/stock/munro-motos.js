@@ -311,7 +311,7 @@
   const mobile = () => !!window.matchMedia?.('(max-width: 760px)').matches;
   const celda = (semana, m, dia, campo, label, puede) => {
     const c = leer(idCelda(semana, m.id, dia)), v = c?.[campo] || '';
-    const validacion = validarDia(c), mal = validacion.campos.includes(campo);
+    const validacion = validarDia(c,{exigirCompletos:revisarSemana(semana)}), mal = validacion.campos.includes(campo);
     return '<input class="mo-time' + (mal ? ' mo-time-error' : '') + '" type="time" lang="es-AR" step="60" value="' + E(v) + '"' + (puede && edicion ? '' : ' disabled') +
       (mal ? ' aria-invalid="true" title="' + E(validacion.errores.join(' ')) + '"' : ' aria-invalid="false"') +
       ' data-moto="' + E(m.id) + '" data-dia="' + dia + '" data-campo="' + campo + '" aria-label="' + E(label + ' de ' + m.nombre + ' el ' + corta(dia)) + '">';
@@ -560,6 +560,8 @@
     window.setInterval?.(()=>{
       const actual=semanaActual(), enRevision=revisarSemana(actual);
       if(actual!==ultimaSemana||enRevision!==estabaEnRevision){
+        const cambioSemana=actual!==ultimaSemana;
+        if(cambioSemana&&semanaVista===ultimaSemana&&!borrador.size){semanaVista=actual;diaMovil=-1;}
         ultimaSemana=actual;estabaEnRevision=enRevision;
         if(api.S.view==='motos')api.render();
       }
