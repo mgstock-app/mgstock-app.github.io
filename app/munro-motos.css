@@ -145,6 +145,12 @@
 }
 .mo-hd.mo-hd-error{font-size:11px;text-align:center}
 .mo-card.mo-card-error,.mo-card.mo-total-error{border:2px solid #cb3931;background:#fffafa}
+/* Un turno abierto es un borrador válido hasta la revisión dominical. */
+.mo-parcial-nota{margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--sunk);color:var(--muted);font-size:12.5px}
+.mo-aviso-cierre{margin-bottom:12px;border:1px solid #d19b4b}
+.mo-aviso-cierre strong,.mo-aviso-pendientes strong{font-weight:750}
+.mo-aviso-pendientes{margin-bottom:12px}
+.mo-aviso-pendientes .mo-link{margin-left:7px;font-weight:700}
 .mo-error-summary{margin:0 0 12px;padding:12px 14px;border:1px solid #ce4b43;border-radius:11px;background:#fff1f0;color:#92241f;font-size:13px}
 .mo-error-summary b{display:block;font-weight:750}
 .mo-error-summary ul{margin:7px 0;padding-left:20px}
