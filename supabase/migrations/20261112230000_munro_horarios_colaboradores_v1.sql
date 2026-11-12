@@ -151,6 +151,11 @@ begin
       raise exception 'La jornada supera 24 horas' using errcode='22023';
     end if;
   end loop;
+  -- Serializar también el primer guardado, cuando aún no existe fila. Evita pisar
+  -- la carga de otro gerente/dueño trabajando sobre el mismo colaborador y semana.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtext('munro_horarios_'||p_persona::text),
+    pg_catalog.hashtext(p_semana::text));
   select * into v_prev from rm_test_private.munro_horarios_planillas
     where colaborador_id=p_persona and semana=p_semana for update;
   v_ver:=case when found then v_prev.version else 0 end;
