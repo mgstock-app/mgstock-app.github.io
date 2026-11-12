@@ -11,7 +11,7 @@ const owner=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
 const sw=readFileSync('scripts/sw-template.js','utf8');
 const layout=readFileSync('app/layout.tsx','utf8');
 const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
-function launch(role='dueno',email='camilab.lopez99@gmail.com',tenant=TENANT,hasAccess=true){
+function launch(role='dueno',email='camilab.lopez99@gmail.com',tenant=TENANT,hasAccess=true,connection='connected',invokeResult={data:{ok:true},error:null}){
  const root={id:'gl-tn-root',hidden:true,innerHTML:''},listeners={};
  let exists=false;const calls=[];
  const document={
@@ -28,10 +28,10 @@ function launch(role='dueno',email='camilab.lopez99@gmail.com',tenant=TENANT,has
    calls.push(table);
    const q={select(){return q},eq(){return q},order(){return q},
     limit:async()=>({data:hasAccess?(table.endsWith('_state')?[{tenant_id:TENANT}]:[order]):[],error:null}),
-    single:async()=>({data:{connection_state:'connected',last_sync_at:'2026-11-10T12:00:00Z',last_sync_count:1},error:null})};
+    single:async()=>({data:{connection_state:connection,last_sync_at:connection==='connected'?'2026-11-10T12:00:00Z':null,last_sync_count:connection==='connected'?1:0},error:null})};
    return q;
   },
-  functions:{invoke:async()=>({data:{ok:true},error:null})}
+  functions:{invoke:async()=>invokeResult}
  };
  const host={S:{me:{tenant_id:tenant,email}},role:()=>role,isCreadora:()=>role==='creadora',render(){}};
  const ctx={tenant_id:tenant,role:'dueno'};
@@ -93,4 +93,34 @@ test('Sin OAuth, la API se limita a read_orders y evita guardar datos de cliente
  assert.match(edge,/order_id|order_number|payment_status/);
  assert.doesNotMatch(edge,/customer_email|customer_name|billing_address|shipping_address/);
  assert.doesNotMatch(edge,/from\('gestlok_pilot_products'\)|from\('gestlok_pilot_pos_sales'\)/);
+});
+
+test('TiendaNube pendiente no se muestra conectada y ofrece pasos para autorizar ZAYRO',async()=>{
+ const a=launch('dueno','camilab.lopez99@gmail.com',TENANT,true,'pending');
+ await a.mod.refresh(a.ctx,a.host);
+ await a.mod.open();
+ assert.match(a.root.innerHTML,/Conexión pendiente de autorización/);
+ assert.match(a.root.innerHTML,/Cómo conectar ZAYRO con GESTLOK/);
+ assert.match(a.root.innerHTML,/read_orders/);
+ assert.match(a.root.innerHTML,/Verificar conexión/);
+ assert.match(a.root.innerHTML,/tiendanube\.dev\/docs-api\/authentication/);
+ assert.doesNotMatch(a.root.innerHTML,/Tienda vinculada/);
+ assert.doesNotMatch(a.root.innerHTML,/Movimientos actualizados/);
+});
+
+test('Error de autorización HTTP en Supabase muestra un motivo entendible y no falsa sincronización',async()=>{
+ const result={
+   error:{message:'Edge Function returned a non-2xx status code',context:{json:async()=>({
+     ok:false,message:'Falta autorizar Tiendanube para GESTLOK.'})}},
+   data:null
+ };
+ const a=launch('dueno','camilab.lopez99@gmail.com',TENANT,true,'pending',result);
+ await a.mod.refresh(a.ctx,a.host);
+ await a.mod.open();
+ const button={disabled:false};
+ a.listeners.click({target:{closest:s=>s==='[data-tn-refresh]'?button:null,
+   hasAttribute:()=>false},preventDefault(){}});
+ for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));
+ assert.match(a.root.innerHTML,/Falta autorizar Tiendanube para GESTLOK/);
+ assert.doesNotMatch(a.root.innerHTML,/Movimientos actualizados/);
 });
