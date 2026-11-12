@@ -103,7 +103,100 @@ begin
     or (extract(isodow from v_now::date)=7 and
         (extract(hour from v_now)::integer*60+extract(minute from v_now)::integer)>=1410);
   for v_dia,v_celda in select key,value from jsonb_each(p_datos) loop
-    if v_dia !~ '^\\d{4}-\\d{2}-\\d{2}$' or
+    if v_dia !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2} or
+      v_dia::date<p_semana or v_dia::date>p_semana+6 or
+      jsonb_typeof(v_celda)<>'object' then
+      raise exception 'Día fuera de la semana' using errcode='22023';
+    end if;
+    for v_campo,v_hora in select key, value#>>'{}' from jsonb_each(v_celda) loop
+      if v_campo not in ('tm_e','tm_s','tt_e','tt_s','feriado') then
+        raise exception 'Campo horario no permitido' using errcode='22023';
+      end if;
+      if v_campo='feriado' then
+        if jsonb_typeof(v_celda->v_campo)<>'boolean' then
+          raise exception 'El feriado debe ser sí o no' using errcode='22023';
+        end if;
+      elsif coalesce(v_hora,'')<>'' and v_hora !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then
+        raise exception 'Usá horas HH:MM válidas' using errcode='22023';
+      end if;
+    end loop;
+    v_e:=coalesce(v_celda->>'tm_e','');v_s:=coalesce(v_celda->>'tm_s','');
+    if v_cierre and ((v_e='')<>(v_s='')) then
+      raise exception 'Completá mañana antes del cierre semanal' using errcode='22023';
+    end if;
+    v_tm_e:=null;v_tm_s:=null;v_tt_e:=null;v_tt_s:=null;
+    if v_e<>'' and v_s<>'' then
+      v_tm_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
+      v_tm_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
+      if v_tm_s<=v_tm_e or v_tm_s-v_tm_e>960 then
+        raise exception 'La salida de mañana debe ser posterior a la entrada' using errcode='22023';
+      end if;
+    end if;
+    v_e:=coalesce(v_celda->>'tt_e','');v_s:=coalesce(v_celda->>'tt_s','');
+    if v_cierre and ((v_e='')<>(v_s='')) then
+      raise exception 'Completá tarde antes del cierre semanal' using errcode='22023';
+    end if;
+    if v_e<>'' and v_s<>'' then
+      v_tt_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
+      v_tt_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
+      if v_tt_s<=v_tt_e then v_tt_s:=v_tt_s+1440;end if;
+      if v_tt_s-v_tt_e>960 or v_tt_s=v_tt_e then
+        raise exception 'El turno tarde tiene duración imposible' using errcode='22023';
+      end if;
+    end if;
+    if v_tm_s is not null and v_tt_e is not null and v_tt_e<v_tm_s then
+      raise exception 'Los turnos se superponen' using errcode='22023';
+    end if;
+    if v_tm_e is not null and v_tt_s is not null and v_tt_s>v_tm_e+1440 then
+      raise exception 'La jornada supera 24 horas' using errcode='22023';
+    end if;
+  end loop;
+  select * into v_prev from rm_test_private.munro_horarios_planillas
+    where colaborador_id=p_persona and semana=p_semana for update;
+  v_ver:=case when found then v_prev.version else 0 end;
+  if v_ver<>p_version then
+    raise exception 'Otra persona modificó esta semana. Actualizá antes de guardar.' using errcode='40001';
+  end if;
+  update rm_test_private.munro_horarios_colaboradores
+     set nombre=btrim(p_nombre),estado=p_estado,actualizado_at=now()
+   where id=p_persona;
+  if btrim(p_nombre)<>'' then
+    insert into rm_test_private.munro_horarios_planillas
+      (colaborador_id,semana,datos,nombre_semana,modalidad_semana,version,actualizado_por)
+    values(p_persona,p_semana,p_datos,btrim(p_nombre),v_persona.modalidad,v_ver+1,auth.uid())
+    on conflict(colaborador_id,semana) do update
+      set datos=excluded.datos,nombre_semana=excluded.nombre_semana,
+      modalidad_semana=excluded.modalidad_semana,version=excluded.version,
+      actualizado_por=excluded.actualizado_por,actualizado_at=now();
+    v_ver:=v_ver+1;
+  end if;
+  return jsonb_build_object('ok',true,'version',v_ver,'id',p_persona);
+end $$;
+
+create or replace function public.rm_munro_horarios_agregar(p_nombre text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare v_id integer;
+begin
+ if auth.uid() is null or not rm_test_private.horarios_puede_archivar('munro') then
+   raise exception 'Sin permiso para agregar colaboradores' using errcode='42501';
+ end if;
+ if nullif(btrim(coalesce(p_nombre,'')),'') is null or char_length(btrim(p_nombre))>80 then
+   raise exception 'Ingresá un nombre de hasta 80 caracteres' using errcode='22023';
+ end if;
+ lock table rm_test_private.munro_horarios_colaboradores in share row exclusive mode;
+ select coalesce(max(id),8)+1 into v_id from rm_test_private.munro_horarios_colaboradores;
+ if v_id>120 then raise exception 'Límite de colaboradores alcanzado' using errcode='22023';end if;
+ insert into rm_test_private.munro_horarios_colaboradores(id,nombre,modalidad,estado)
+ values(v_id,btrim(p_nombre),'hora','activo');
+ return jsonb_build_object('id',v_id,'nombre',btrim(p_nombre),'modalidad','hora','estado','activo');
+end $$;
+revoke all on function public.rm_munro_horarios_obtener(date),
+  public.rm_munro_horarios_guardar(integer,date,text,text,jsonb,integer),
+  public.rm_munro_horarios_agregar(text) from public,anon,authenticated;
+grant execute on function public.rm_munro_horarios_obtener(date),
+  public.rm_munro_horarios_guardar(integer,date,text,text,jsonb,integer),
+  public.rm_munro_horarios_agregar(text) to authenticated;
+ or
       v_dia::date<p_semana or v_dia::date>p_semana+6 or
       jsonb_typeof(v_celda)<>'object' then
       raise exception 'Día fuera de la semana' using errcode='22023';
