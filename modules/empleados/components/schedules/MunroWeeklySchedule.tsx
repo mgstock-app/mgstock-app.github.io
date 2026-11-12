@@ -224,7 +224,7 @@ export function MunroWeeklySchedule(){
          {!agregando?<button type="button" onClick={()=>setAgregando(true)}><Plus size={17}/> Agregar colaborador por hora</button>:
          <form onSubmit={e=>{e.preventDefault();void agregar();}}>
            <label>Nombre del nuevo colaborador (siempre por hora)
-             <input autoFocus value={nombreNuevo} maxLength={80} onChange={e=>setNombreNuevo(e.target.value)} required/></label>
+             <input value={nombreNuevo} maxLength={80} onChange={e=>setNombreNuevo(e.target.value)} required/></label>
            <button type="submit" disabled={guardando}>Agregar</button>
            <button type="button" onClick={()=>{setAgregando(false);setNombreNuevo("");}}>Cancelar</button>
          </form>}
