@@ -8,6 +8,9 @@ function setup(local){
   if(req.url.includes('/rest/v1/rpc/rm_app_me')){expect(req.headers.authorization).to.eq('Bearer '+token);req.reply({...user,user_id:user.id,display_name:'Gerente de prueba',status:'approved',role:null,gestlok_gerente:{local_ids:[local]}});return;}
   // Horarios en un solo lugar: planilla del local y (solo Munro) historial de semanas, sin pagos para el gerente.
   if(req.url.includes('/rest/v1/rpc/rm_app_branch_schedule_links')){req.reply([{local_id:local,local_name:local==='dt'?'Torcuato':'Munro',url:'https://docs.google.com/spreadsheets/d/planilla-de-prueba/edit'}]);return;}
+  if(req.url.includes('/rest/v1/rpc/rm_munro_horarios_obtener')){req.reply({semana:req.body?.p_semana||'2026-11-09',
+     personas:Array.from({length:8},(_,i)=>({id:i+1,nombre:'',modalidad:i<3?'turno':'hora',estado:'activo'})),
+     planillas:[],historial:[],puede_editar:true});return;}
   if(req.url.includes('/rest/v1/rpc/rm_horarios_locales')){req.reply(local==='munro'?[{local_id:'munro',local_name:'Munro',conectado:true,ultimo_envio_at:'2026-11-02T15:19:00Z',codigo_at:null,puede_administrar:false}]:[]);return;}
   if(req.url.includes('/rest/v1/rpc/rm_horarios_historial')){req.reply([{desde:'2026-10-19',hasta:'2026-10-25',archivo_id:'00000000-0000-4000-8000-000000000002',filas:[{colaborador:'Kati',puesto:'Staff',cobra_por:'Horas',trabajado:'39:00',off:'4:30',feriado:'–',ausentes:'–',vacaciones:'–',total:'43:30',observaciones:''}],recibido_at:'2026-11-02T15:06:00Z',actualizaciones:1,pagos:{}}]);return;}
   req.reply({statusCode:200,body:[]});
@@ -61,14 +64,11 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.get('.gl-gerente__sidebar').contains('button','Horarios').click();
   cy.get('.horarios-hub h1').should('contain.text','Horarios');
   cy.contains('Abrir Google Sheets y horarios').should('not.exist');
-  cy.contains('a','Abrir planilla').should('be.visible')
-    .and('have.attr','href','https://docs.google.com/spreadsheets/d/planilla-de-prueba/edit');
-  cy.contains('a','Abrir planilla').should('have.attr','target','_blank');
   if(local==='munro'){
+   cy.get('.mhs-tabla tbody tr').should('have.length',8);
+   cy.contains('a','Abrir planilla').should('not.exist','Munro usa planilla nativa');
+   cy.get('.mhs-pestanas').contains('button','Historial').click();
    cy.contains('h2','Historial de semanas').should('be.visible');
-   cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','En vivo').should('have.attr','aria-pressed','true');
-   cy.get('section[aria-label="Hoja Resumen archivada"]').should('not.exist');
-   cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','Historial').click();
    cy.get('section[aria-label="Hoja Resumen archivada"]').should('be.visible').within(()=>{
     cy.get('table[aria-label^="Resumen del"]').should('be.visible');
     cy.contains('td','Kati').should('be.visible');
@@ -79,6 +79,8 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
    cy.contains('por pagar').should('not.exist');
    cy.contains('Marcar pagado').should('not.exist');
   } else {
+   cy.contains('a','Abrir planilla').should('be.visible')
+     .and('have.attr','href','https://docs.google.com/spreadsheets/d/planilla-de-prueba/edit');
    cy.contains('Historial de semanas').should('not.exist');
   }
   cy.get('.gl-gerente__sidebar').contains('button','Colaboradores').click();

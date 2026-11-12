@@ -32,13 +32,13 @@ const mensaje = (e: unknown, fallback: string) => (e instanceof Error && e.messa
 
 // Historial horarios: una copia por semana del Resumen del Google Sheets del local, con Pagado / Pendiente.
 // embebido: va dentro de Horarios (sin título de página) y no aparece si la persona no ve ningún local con historial.
-export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
+export function ScheduleHistory({ embebido = false, soloArchivo = false }: { embebido?: boolean; soloArchivo?: boolean }) {
   const [locales, setLocales] = useState<HorarioLocal[] | null>(null);
   const [localId, setLocalId] = useState("");
   const [semanas, setSemanas] = useState<HorarioSemana[] | null>(null);
   const [tab, setTab] = useState<Tab>("semanas");
   // En Munro, separar la planilla activa de los archivos evita ver Resumen y Semana duplicados.
-  const [vistaMunro, setVistaMunro] = useState<"vivo" | "historial">("vivo");
+  const [vistaMunro, setVistaMunro] = useState<"vivo" | "historial">(soloArchivo ? "historial" : "vivo");
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState("");
@@ -54,8 +54,9 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
       .locales()
       .then((lista) => {
         if (!active) return;
-        setLocales(lista);
-        setLocalId((actual) => actual || lista[0]?.local_id || "");
+        const disponibles = soloArchivo ? lista.filter(item=>item.local_id==="munro") : lista;
+        setLocales(disponibles);
+        setLocalId((actual) => actual || disponibles[0]?.local_id || "");
       })
       .catch((e: unknown) => {
         if (!active) return;
@@ -65,7 +66,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [soloArchivo]);
 
   useEffect(() => {
     if (!localId) return;
@@ -185,7 +186,10 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
     );
 
   const tabs: Array<[Tab, string]> = [["semanas", `Semanas${semanas ? ` (${semanas.length})` : ""}`]];
-  if (admin) tabs.push(["pendientes", `Pendientes de pago (${porPagar.length})`], ["conexion", "Conexión con Google Sheets"]);
+  if (admin) {
+    tabs.push(["pendientes", `Pendientes de pago (${porPagar.length})`]);
+    if(!soloArchivo)tabs.push(["conexion", "Conexión con Google Sheets"]);
+  }
 
   return (
     <section className={embebido ? styles.pageEmbebida : styles.page} aria-label="Historial de semanas">
@@ -218,7 +222,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           </select>
         </label>
       )}
-      {local && (
+      {local && !soloArchivo && (
         <p className={local.conectado && local.ultimo_envio_at ? styles.estadoOk : styles.estadoPend}>
           <Link2 size={16} aria-hidden="true" />
           {local.local_name} ·{" "}
@@ -238,7 +242,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           ))}
         </div>
       )}
-      {localId === "munro" && tab === "semanas" && (
+      {localId === "munro" && tab === "semanas" && !soloArchivo && (
         <>
           <div className={styles.vistaSwitcher} role="group" aria-label="Elegir vista de horarios de Munro">
             <button type="button" aria-pressed={vistaMunro === "vivo"} onClick={() => setVistaMunro("vivo")}>
@@ -265,7 +269,7 @@ export function ScheduleHistory({ embebido = false }: { embebido?: boolean }) {
           <p role="status">Cargando semanas…</p>
         ) : !semanas.length ? (
           <p className={styles.empty}>
-            Todavía no hay semanas enviadas al historial. {localId === "munro" ? "Volvé a «En vivo» y usá «Enviar a historial» para guardar la semana." : local?.puede_administrar ? "Conectá la planilla desde la pestaña «Conexión con Google Sheets»." : "La dueña tiene que conectar la planilla."}
+            Todavía no hay semanas enviadas al historial. {soloArchivo ? "Los archivos anteriores se conservarán acá cuando existan." : localId === "munro" ? "Volvé a «En vivo» y usá «Enviar a historial» para guardar la semana." : local?.puede_administrar ? "Conectá la planilla desde la pestaña «Conexión con Google Sheets»." : "La dueña tiene que conectar la planilla."}
           </p>
         ) : (
           <>

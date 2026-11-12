@@ -11,6 +11,9 @@ describe('Archivo visual de horarios',()=>{
    if(path.includes('/auth/v1/user'))return req.reply(user);
    if(path.includes('/rpc/rm_app_me'))return req.reply({...user,user_id:user.id,display_name:'Persona ficticia',status:'approved',role:null,gestlok_gerente:{local_ids:['munro']}});
    if(path.includes('/rpc/rm_app_branch_schedule_links'))return req.reply([]);
+   if(path.includes('/rpc/rm_munro_horarios_obtener'))return req.reply({semana:req.body?.p_semana||'2026-11-09',
+     personas:Array.from({length:8},(_,i)=>({id:i+1,nombre:'',modalidad:i<3?'turno':'hora',estado:'activo'})),
+     planillas:[],historial:[],puede_editar:true});
    if(path.includes('/rpc/rm_horarios_locales'))return req.reply([{local_id:'munro',local_name:'Munro',conectado:true,ultimo_envio_at:'2026-11-02T11:00:00Z',puede_administrar:admin,puede_archivar:admin}]);
    if(path.includes('/rpc/rm_horarios_historial'))return req.reply([{desde:'2026-10-19',hasta:'2026-10-25',archivo_id:'00000000-0000-4000-8000-000000000002',filas:[{colaborador:'Persona ficticia',total:'40'}],recibido_at:'2026-11-02T11:00:00Z',actualizaciones:1,pagos:admin?{'Persona ficticia':{pagado:paid}}:{}}]);
    if(path.includes('/rpc/rm_horarios_tabla')){
@@ -28,13 +31,11 @@ describe('Archivo visual de horarios',()=>{
   });
   cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
   cy.get('.gl-gerente__sidebar').contains('button','Horarios',{timeout:15000}).click();
-  // Resumen y Semana no se repiten: primero se ve solo la vista en vivo.
-  cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','En vivo').should('have.attr','aria-pressed','true');
-  cy.get('section[aria-label="Hoja Resumen archivada"]').should('not.exist');
-  cy.get('section[aria-label="Hoja Semana archivada"]').should('not.exist');
-  if(admin)cy.contains('button','Enviar a historial').should('be.visible').and('be.disabled');
-  else cy.contains('button','Enviar a historial').should('not.exist');
-  cy.get('[aria-label="Elegir vista de horarios de Munro"]').contains('button','Historial').click();
+  // La nueva planilla reemplaza la vista "En vivo", sin borrar semanas guardadas.
+  cy.get('.mhs-pestanas').contains('button','Historial').click();
+  cy.contains('Historial anterior conservado').should('be.visible');
+  cy.get('[aria-label="Elegir vista de horarios de Munro"]').should('not.exist');
+  cy.contains('button','Enviar a historial').should('not.exist');
   cy.get('section[aria-label="Hoja Resumen archivada"] table').should('be.visible').contains('Persona ficticia');
   cy.get('section[aria-label="Hoja Resumen archivada"] th').should('have.length',10);
   cy.get('section[aria-label^="Hoja"] iframe').should('not.exist');
