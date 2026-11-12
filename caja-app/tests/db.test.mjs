@@ -56,6 +56,13 @@ test('Caja app en PostgreSQL real', {skip}, async t => {
 
     fresh();
     const alta = JSON.parse(sql(`select prueba.como('duena.a@example.com'); select public.caja_app_crear_comercio('Comercio', 'Centro', 'Sofía', '1234')::text;`).split('\n').at(-1));
+    await t.test('otra cuenta y sesión anónima no pueden ingresar a la caja del comercio',async()=>{
+      const another=await session(`select prueba.como('duena.b@example.com'); select public.caja_app_entrar_cuenta('${alta.local_id}')::text;`);
+      assert.equal(another.ok,false,'La cuenta B no debe recibir sesión de Caja A');
+      const anonymous=await session(`select prueba.como(null); select public.caja_app_entrar_cuenta('${alta.local_id}')::text;`);
+      assert.equal(anonymous.ok,false,'Sin identidad no se puede ingresar a la caja de otro negocio');
+    });
+
     // GESTLOK Caja entra con la cuenta, sin PIN. Varios equipos de la misma cuenta entran a la vez:
     // todos usan la misma persona (la dueña del alta) y cada uno recibe su propia sesión.
     await t.test('varios equipos entran a la vez con la misma cuenta: una sola persona', async () => {
@@ -68,6 +75,13 @@ test('Caja app en PostgreSQL real', {skip}, async t => {
       assert.equal(sql(`select count(*) from caja_app.personas`), '1');
     });
     const token = JSON.parse(sql(`select prueba.como('duena.a@example.com'); select public.caja_app_entrar_cuenta('${alta.local_id}')::text;`).split('\n').at(-1)).token;
+    await t.test('la sesión de una cajera nunca funciona con otra cuenta',async()=>{
+      const stolen=await session(`select prueba.como('duena.b@example.com'); select public.caja_app_estado('${token}')::text;`);
+      assert.equal(stolen.ok,false,'La otra empresa no puede reutilizar un token de caja ajeno');
+      const noAuth=await session(`select prueba.como(null); select public.caja_app_estado('${token}')::text;`);
+      assert.equal(noAuth.ok,false,'El token no permite saltarse la autenticación');
+    });
+
 
     await t.test('varios celulares abren a la vez: una sola caja', async () => {
       const res = await together(Array.from({length: 8}, () => asA(`public.caja_app_abrir('${token}', 20000, true)`)));
