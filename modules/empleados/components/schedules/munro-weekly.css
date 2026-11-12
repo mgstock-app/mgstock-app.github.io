@@ -65,6 +65,15 @@
 .mhs-resumen-desbordar th{background:#2c3e56;color:#fff;padding:11px;text-align:left}
 .mhs-resumen-desbordar td{padding:11px;border-bottom:1px solid #e1e5ed}
 .mhs-resumen>p{font-size:12px;color:#64748b}
+.mhs-historial-resumen{display:grid;gap:8px}
+.mhs-historial-resumen>p{color:#667085;font-size:13px;margin:0}
+.mhs-archivo-resumen{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  padding:10px 13px;border:1px solid #e1e5ed;border-radius:9px;background:#fff}
+.mhs-archivo-resumen>div{display:grid;gap:3px}
+.mhs-archivo-resumen strong{font-size:13px}
+.mhs-archivo-resumen small{color:#64748b}
+.mhs-archivo-resumen button{background:#fff;color:#162b4a;border:1px solid #cbd5e1;
+  border-radius:8px;padding:8px 12px;font-weight:650}
 .mhs-historial{display:grid;gap:12px}
 .mhs-historial h2{margin:7px 0}
 .mhs-historial details{border:1px solid #d6dde8;border-radius:10px;background:#fff;overflow:hidden}
