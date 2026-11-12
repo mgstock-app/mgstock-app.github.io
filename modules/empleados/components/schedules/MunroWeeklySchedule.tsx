@@ -52,7 +52,7 @@ export function MunroWeeklySchedule(){
    }catch(e){setError(aviso(e));}
    finally{setCargando(false);}
  },[semana]);
- useEffect(()=>{void cargar();},[cargar]);
+ useEffect(()=>{let active=true;queueMicrotask(()=>{if(active)void cargar();});return()=>{active=false;};},[cargar]);
  useEffect(()=>{
    const timer=window.setInterval(()=>setMomento(new Date()),30000);
    return()=>window.clearInterval(timer);
