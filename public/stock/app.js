@@ -199,7 +199,15 @@ const MENU_EMPRESAS = Object.freeze({
   // Cuenta perfumería de Camila: exclusivamente Plan Scanner y Tienda ZAYRO.
   '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103': Object.freeze({microapps:Object.freeze(['scanner'])})
 });
-const menuEmpresa = () => { const t = String(S.me?.tenant_id || ''); return t && Object.prototype.hasOwnProperty.call(MENU_EMPRESAS, t) ? MENU_EMPRESAS[t] : null; };
+// Cualquier negocio Scanner verificado usa el mismo menú; no depende de un tenant fijo.
+// Una empresa no habilitada conserva su menú normal, sin categorías de otros negocios.
+const MENU_SCANNER = Object.freeze({microapps:Object.freeze(['scanner'])});
+const menuEmpresa = () => {
+  const t = String(S.me?.tenant_id || '');
+  if(t && Object.prototype.hasOwnProperty.call(MENU_EMPRESAS,t))return MENU_EMPRESAS[t];
+  return t && t!==MI_GUSTO_TENANT && miRol()==='dueno' && window.GestLokPilot?.scanner?.()===true &&
+    window.GestLokPilot?.tenantId?.()===t ? MENU_SCANNER : null;
+};
 window.GestLokMenuEmpresa = () => !!menuEmpresa();
 function renderNavEmpresa(){
   const nav = $('#snav'), varios = localesMios().length > 1;
