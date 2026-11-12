@@ -10,7 +10,7 @@ import styles from "./ScheduleSheetCard.module.css";
 
 type BranchLink = { local_id: string; local_name: string; url: string | null };
 // compact: una fila por local con «Abrir planilla» (Horarios en un solo lugar); la tarjeta completa queda para configurar.
-export function BranchScheduleLink({ local, company, compact = false }: { local?: string; company?: string; compact?: boolean }) {
+export function BranchScheduleLink({ local, company, compact = false, excludeLocal }: { local?: string; company?: string; compact?: boolean; excludeLocal?: string }) {
   const { user } = useAuth();
   const [result, setResult] = useState<{ key: string; rows: BranchLink[]; failed: boolean } | null>(null);
   const [retry, setRetry] = useState(0);
@@ -31,12 +31,13 @@ export function BranchScheduleLink({ local, company, compact = false }: { local?
   if (!permitted) return null;
   if (result?.key !== key) return null;
   const visible = visibleBranchScheduleCards(result.rows);
+  const filtered = excludeLocal ? visible.filter(row=>row.local_id!==excludeLocal) : visible;
   if (result.failed || (result.rows.length > 0 && visible.length === 0)) return <div className="schedule-sheet-status" role="alert"><p>No pudimos cargar el enlace de horarios. Reintentá o consultá a Administración.</p><button type="button" onClick={() => setRetry(value => value + 1)}>Reintentar</button></div>;
   if (!visible.length && company && result.rows.length === 0) return <p className="schedule-sheet-status">Todavía no hay sucursales para configurar. Agregá un local desde Mis empresas para vincular su planilla de Google Sheets.</p>;
-  if (compact) return <div className="horarios-sheets">{visible.map(row =>
+  if (compact) return <div className="horarios-sheets">{filtered.map(row =>
     <ScheduleSheetRow key={`${row.local_id}:${row.url || "pending"}`} url={row.url} branch={row.local_id === "dt" ? "Torcuato" : row.local_name} localId={row.local_id} canConfigure={user?.role === "owner" || gerente} onUpdated={() => setRetry(value => value + 1)} />
   )}</div>;
-  return <div className="schedule-sheet-links">{visible.map((row, index) =>
+  return <div className="schedule-sheet-links">{filtered.map((row, index) =>
     <Fragment key={`${row.local_id}:${row.url || "pending"}`}>
       {index > 0 && <hr className={styles.separator} aria-hidden="true" />}
       <ScheduleSheetCard url={row.url} branch={row.local_id === "dt" ? "Torcuato" : row.local_name} localId={row.local_id} canConfigure={user?.role === "owner" || gerente} onUpdated={() => setRetry(value => value + 1)} />
