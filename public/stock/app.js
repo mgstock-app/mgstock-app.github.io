@@ -205,7 +205,7 @@ const MENU_SCANNER = Object.freeze({microapps:Object.freeze(['scanner'])});
 const menuEmpresa = () => {
   const t = String(S.me?.tenant_id || '');
   if(t && Object.prototype.hasOwnProperty.call(MENU_EMPRESAS,t))return MENU_EMPRESAS[t];
-  return t && miRol()==='dueno' && window.GestLokPilot?.scanner?.()===true &&
+  return t && t!==MI_GUSTO_TENANT && miRol()==='dueno' && window.GestLokPilot?.scanner?.()===true &&
     window.GestLokPilot?.tenantId?.()===t ? MENU_SCANNER : null;
 };
 window.GestLokMenuEmpresa = () => !!menuEmpresa();
