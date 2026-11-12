@@ -253,6 +253,19 @@ export function MunroWeeklySchedule(){
        </section>)}
        <p>Los turnos feriados cuentan doble: 2 turnos trabajados en feriado + 2 extra = 4 turnos computados.
           Los importes de sueldos se configurarán en otra etapa.</p>
+       <section className="mhs-historial-resumen">
+         <h3>Historial de resúmenes</h3>
+         {registros.length===0?<p>Todavía no hay semanas anteriores en esta planilla.</p>:
+           registros.slice(0,8).map(grupo=>{
+             const fecha=grupo[0].semana;
+             const a=grupo.filter(r=>r.modalidad==="hora").reduce((n,r)=>n+resumenPersona(r.modalidad,r.datos,fecha,momento).computados,0);
+             const t=grupo.filter(r=>r.modalidad==="turno").reduce((n,r)=>n+resumenPersona(r.modalidad,r.datos,fecha,momento).computados,0);
+             return <div className="mhs-archivo-resumen" key={fecha}>
+               <div><strong>Semana {semanaLabel(fecha)}</strong><small>{grupo.length} colaboradores · {formatoHoras(a)} horas · {t} turnos</small></div>
+               <button type="button" onClick={()=>{seleccionarSemana(fecha);setPestana("resumen");}}>Ver detalle</button>
+             </div>;
+           })}
+       </section>
      </div>}
      {pestana==="historial"&&<div className="mhs-historial">
        <h2>Historial de la nueva planilla</h2>
