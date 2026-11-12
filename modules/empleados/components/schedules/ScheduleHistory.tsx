@@ -222,7 +222,7 @@ export function ScheduleHistory({ embebido = false, soloArchivo = false }: { emb
           </select>
         </label>
       )}
-      {local && (
+      {local && !soloArchivo && (
         <p className={local.conectado && local.ultimo_envio_at ? styles.estadoOk : styles.estadoPend}>
           <Link2 size={16} aria-hidden="true" />
           {local.local_name} ·{" "}
