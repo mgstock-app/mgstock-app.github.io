@@ -118,12 +118,12 @@ test('Nueva empresa Scanner autorizada: marca propia y módulos comunes sin ZAYR
   const contexto={tenant_id:NEW_SCANNER,role:'dueno',company_name:'Kiosco Norte'};
   const html=menu.home(contexto,h),nav=menu.navHTML(h);
   assert.match(html,/Kiosco Norte <span>Plan Scanner/);
-  for(const label of ['Caja','Sistema de ventas','Stock de productos','Precios','Pedidos','Dispositivos']){
+  for(const label of ['Caja','Sistema de ventas','Stock de productos','Precios','Dispositivos']){
     assert.ok(html.includes(label),label);
   }
   assert.match(nav,/data-pilot-pos/);
   assert.match(nav,/data-pilot-stock/);
-  for(const forbidden of ['ZAYRO','Tienda Online','Mis Productos','TiendaNube','Resumen Mensual','PERFUMERÍA','Administrar a los empleados','Proveedores']){
+  for(const forbidden of ['ZAYRO','Tienda Online','Mis Productos','TiendaNube','Resumen Mensual','PERFUMERÍA','Administrar a los empleados','Proveedores','Pedidos','data-scanner-menu-orders']){
     assert.doesNotMatch(html,new RegExp(forbidden),forbidden);
     assert.doesNotMatch(nav,new RegExp(forbidden),forbidden);
   }
