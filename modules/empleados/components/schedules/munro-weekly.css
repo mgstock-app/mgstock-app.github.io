@@ -1,0 +1,102 @@
+/* Mi Gusto Munro · horarios nativos, visual limpio como Motos Agencia. */
+.mhs{display:grid;gap:14px;min-width:0;width:100%;max-width:100%;color:#14233c;font-variant-numeric:tabular-nums}
+.mhs *{box-sizing:border-box}
+.mhs button,.mhs input,.mhs select{font:inherit}
+.mhs button{cursor:pointer}
+.mhs button:disabled{opacity:.5;cursor:not-allowed}
+.mhs-pestanas{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid #e1e5ed}
+.mhs-pestanas button{padding:12px 18px;border:1px solid #e1e5ed;border-bottom:0;background:#fff;font-size:14px;font-weight:650;color:#344154}
+.mhs-pestanas button:first-child{border-radius:10px 0 0 0}
+.mhs-pestanas button:last-child{border-radius:0 10px 0 0}
+.mhs-pestanas button[aria-current="page"]{background:#162b4a;border-color:#162b4a;color:white}
+.mhs-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.mhs-semana{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mhs-semana button,.mhs-acciones button,.mhs-agregar button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:41px;padding:8px 13px;border:1px solid #cbd4df;background:#fff;color:#14233c;border-radius:9px;font-weight:650}
+.mhs-semana span{display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:650}
+.mhs-acciones{display:flex;flex-wrap:wrap;gap:8px}
+.mhs-acciones .mhs-primario{color:#fff;background:#162b4a;border-color:#162b4a}
+.mhs-alerta,.mhs-exito{margin:0;padding:10px 13px;border-radius:9px;border:1px solid #f4b4ad;background:#fff7f6;color:#9d2824}
+.mhs-exito{background:#f1faf5;color:#166038;border-color:#a6dfbd}
+.mhs-ayuda{margin:0;color:#5d6677;font-size:13px}
+.mhs-tabla-wrap{width:100%;overflow-x:auto;border:1px solid #d7dde6;border-radius:12px;background:#fff}
+.mhs-tabla{width:100%;border-spacing:0;border-collapse:collapse;min-width:1270px;font-size:12px}
+.mhs-tabla th,.mhs-tabla td{border-right:1px solid #e1e6ef;border-bottom:1px solid #e1e6ef;padding:9px;vertical-align:top}
+.mhs-tabla thead th{background:#2c3e56;color:white;text-align:center;font-size:13px;font-weight:700;min-width:125px}
+.mhs-tabla thead th:first-child{min-width:230px;text-align:left}
+.mhs-tabla thead th:last-child{min-width:130px}
+.mhs-tabla thead small{display:block;opacity:.86;font-weight:500;margin-top:3px}
+.mhs-tabla tbody tr:last-child th,.mhs-tabla tbody tr:last-child td{border-bottom:0}
+.mhs-tabla tbody th{width:220px;text-align:left;background:#fff}
+.mhs-inactivo{opacity:.66}
+.mhs-colaborador{display:grid;gap:9px}
+.mhs-colaborador strong{font-size:14px;overflow-wrap:anywhere}
+.mhs-modalidad{display:inline-flex;width:max-content;max-width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:3px 8px;background:#f8fafc;color:#475569;font-size:11px;font-weight:700}
+.mhs-colaborador>input,.mhs-card header input{width:100%;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid #cbd5e1;font-weight:650}
+.mhs-estado{display:flex;gap:4px;flex-wrap:wrap}
+.mhs-estado button{border:1px solid #cbd5e1;padding:5px 7px;background:white;border-radius:6px;font-size:11px;font-weight:650;color:#475569}
+.mhs-estado button[aria-pressed="true"]{background:#162b4a;color:#fff;border-color:#162b4a}
+.mhs-cuatro{display:grid;gap:6px}
+.mhs-cuatro>label:not(.mhs-feriado){display:flex;align-items:center;justify-content:space-between;gap:4px}
+.mhs-cuatro label span{color:#5b6471;font-size:10.5px;white-space:nowrap}
+.mhs-cuatro input[type=time]{width:79px;min-width:0;font-size:11.5px;padding:3px;border:1px solid #d1d8e2;border-radius:5px;background:#fff;color:#14233c}
+.mhs-cuatro input[type=time]:disabled{background:#f5f7fa}
+.mhs-cuatro input[aria-invalid="true"]{border:2px solid #cf3a35;background:#fff2f0}
+.mhs-feriado{display:flex;gap:5px;align-items:center;font-weight:600;color:#536175;font-size:11px;padding-top:5px}
+.mhs-feriado input{width:15px;height:15px;accent-color:#162b4a}
+.mhs-error{background:#fff1ef;border-radius:7px;padding:5px;border:1px solid #e79792}
+.mhs-revisar{display:block;color:#a62d26;font-weight:700;font-size:11px}
+.mhs-total{text-align:center;vertical-align:middle!important;background:#f8fafc}
+.mhs-total b{font-size:14px;white-space:nowrap}
+.mhs-total small{display:block;color:#b45309;margin-top:8px}
+.mhs-agregar{display:flex;flex-wrap:wrap;justify-content:flex-start}
+.mhs-agregar form{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.mhs-agregar form label{display:grid;gap:5px;font-size:13px}
+.mhs-agregar input{padding:9px 11px;min-height:41px;border:1px solid #cbd5e1;border-radius:9px}
+.mhs-agregar form button[type=submit]{background:#162b4a;color:white}
+.mhs-movil-dias,.mhs-movil-lista{display:none}
+.mhs-resumen{display:grid;gap:18px}
+.mhs-resumen h3,.mhs-historial h2{margin:0 0 10px;font-size:17px}
+.mhs-resumen-totales{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.mhs-resumen-totales>div{display:grid;gap:10px;padding:15px;border:1px solid #dfe4eb;border-radius:12px}
+.mhs-resumen-totales small{color:#667085;font-size:12px}
+.mhs-resumen-totales strong{font-size:24px}
+.mhs-resumen-desbordar{max-width:100%;overflow-x:auto;border:1px solid #e1e5ed;border-radius:11px}
+.mhs-resumen-desbordar table{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}
+.mhs-resumen-desbordar th{background:#2c3e56;color:#fff;padding:11px;text-align:left}
+.mhs-resumen-desbordar td{padding:11px;border-bottom:1px solid #e1e5ed}
+.mhs-resumen>p{font-size:12px;color:#64748b}
+.mhs-historial{display:grid;gap:12px}
+.mhs-historial h2{margin:7px 0}
+.mhs-historial details{border:1px solid #d6dde8;border-radius:10px;background:#fff;overflow:hidden}
+.mhs-historial details summary{padding:13px;cursor:pointer;font-weight:650}
+.mhs-historial>p{margin:0;color:#64748b}
+@media(max-width:920px){
+ .mhs-resumen-totales{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ .mhs-pestanas{display:grid;grid-template-columns:1fr 1fr 1fr}
+ .mhs-pestanas button{font-size:12px;padding:10px 5px;min-width:0}
+ .mhs-toolbar{align-items:stretch}
+ .mhs-semana{justify-content:space-between}
+ .mhs-acciones{justify-content:flex-end}
+ .mhs-acciones button{flex:1}
+ .mhs-tabla-wrap{display:none}
+ .mhs-movil-dias{display:flex;gap:5px;overflow-x:auto;padding:3px 0 7px}
+ .mhs-movil-dias button{flex:1 0 44px;display:grid;justify-items:center;gap:2px;border:1px solid #e1e5ed;background:#fff;border-radius:8px;padding:8px 2px;color:#253249;font-size:12px}
+ .mhs-movil-dias button[aria-pressed="true"]{background:#162b4a;color:white}
+ .mhs-movil-dias button span{font-size:11px}
+ .mhs-movil-lista{display:grid;gap:11px}
+ .mhs-card{border:1px solid #d6dde8;border-radius:12px;padding:13px;background:#fff;display:grid;gap:11px}
+ .mhs-card header{display:flex;justify-content:space-between;gap:8px;align-items:center}
+ .mhs-card header>div{min-width:0;display:grid;gap:5px}
+ .mhs-card header h3{margin:0;font-size:16px;overflow-wrap:anywhere}
+ .mhs-card header strong{font-size:12px;white-space:nowrap}
+ .mhs-cuatro{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .mhs-cuatro>label:not(.mhs-feriado){display:grid;gap:3px}
+ .mhs-cuatro label span{font-size:11px}
+ .mhs-cuatro input[type=time]{width:100%;min-height:39px;padding:6px;font-size:13px}
+ .mhs-feriado{align-self:end;font-size:12px}
+ .mhs-revisar{grid-column:1/-1}
+ .mhs-resumen-totales>div{padding:11px}
+ .mhs-resumen-totales strong{font-size:19px}
+}
