@@ -52,7 +52,7 @@ export function evaluarDia(dia:DiaHorarios={},exigirCompleto=false){
      if(exigirCompleto){errores.push("Completá el turno "+nombre+".");campoError.push(ie,is);}
      continue;
    }
-   let inicio=minutos(e)!,fin=minutos(s)!;
+   const inicio=minutos(e)!;let fin=minutos(s)!;
    if(cruza&&fin<=inicio)fin+=1440;
    if(fin<=inicio||fin-inicio>960){
      errores.push("Revisá la entrada y la salida del turno "+nombre+".");campoError.push(ie,is);continue;
