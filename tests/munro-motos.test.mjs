@@ -137,7 +137,11 @@ test('Agencia Motos: valida las 24 h, detecta el error de la foto y no suma jorn
 
   const incompleto = t.validarDia({tm_e:'11:30'});
   assert.equal(incompleto.minutos, 0);
-  assert.ok(incompleto.campos.includes('tm_s'));
+  assert.equal(incompleto.errores.length, 0, 'Guardar una entrada sola es válido durante la semana');
+  assert.ok(incompleto.parciales.some(p=>p.campos.includes('tm_s')));
+  const incompletoAlCierre = t.validarDia({tm_e:'11:30'},{exigirCompletos:true});
+  assert.ok(incompletoAlCierre.errores.some(e=>e.includes('Completá la entrada')));
+  assert.ok(incompletoAlCierre.campos.includes('tm_s'));
 
   const iguales = t.validarDia({tt_e:'19:00',tt_s:'19:00'});
   assert.ok(iguales.errores.some(e => e.includes('iguales')));
@@ -175,8 +179,8 @@ test('Agencia Motos: valida las 24 h, detecta el error de la foto y no suma jorn
 test('Agencia Motos: campos incorrectos y total en rojo, sin bloquear otros locales', () => {
   const js = file('public/stock/munro-motos.js');
   const css = file('app/munro-motos.css');
-  assert.match(js, /function validarDia\(c\)/);
-  assert.match(js, /const validacion = validarDia\(data\)/);
+  assert.match(js, /function validarDia\(c, \{exigirCompletos=false\}/);
+  assert.match(js, /const validacion = validarDia\(data,\{exigirCompletos:revisarSemana\(semanaVista\)\}\)/);
   assert.match(js, /mo-time-error/);
   assert.match(js, /mo-error-summary/);
   assert.match(js, /aria-invalid="true"/);
@@ -184,4 +188,34 @@ test('Agencia Motos: campos incorrectos y total en rojo, sin bloquear otros loca
   assert.match(css, /\.mo-time\.mo-time-error:disabled/);
   assert.match(css, /\.mo-error-summary\[hidden\]/);
   assert.match(js, /api\.S\.local === 'munro'/);
+});
+
+test('Motos Agencia: revisión del domingo a las 23:30 en hora argentina y no antes',()=>{
+  const {_t:t}=cargar(),semana='2026-11-09';
+  assert.equal(t.revisarSemana(semana,new Date('2026-11-12T15:00:00Z')),false,'jueves no bloquea');
+  assert.equal(t.revisarSemana(semana,new Date('2026-11-16T02:29:59Z')),false,'domingo 23:29:59 no bloquea');
+  assert.equal(t.revisarSemana(semana,new Date('2026-11-16T02:30:00Z')),true,'domingo 23:30 bloquea incompletos');
+  assert.equal(t.revisarSemana(semana,new Date('2026-11-16T02:59:59Z')),true,'domingo 23:59:59 sigue en revisión');
+  assert.equal(t.revisarSemana(semana,new Date('2026-11-16T03:00:00Z')),true,'lunes la semana anterior sigue pendiente');
+  assert.equal(t.revisarSemana('2026-11-16',new Date('2026-11-16T03:00:00Z')),false,'la semana nueva permite carga parcial');
+});
+test('Motos Agencia: solo falta salida, la hora se conserva sin calcularla; la corrección real sigue bloqueada',()=>{
+  const {_t:t}=cargar();
+  const abierta=t.validarDia({tm_e:'11:30',tt_e:'19:00',tt_s:'23:00'});
+  assert.equal(abierta.errores.length,0);
+  assert.equal(abierta.parciales.length,1);
+  assert.equal(abierta.minutos,240,'solo suma turno tarde completo');
+  const cierre=t.validarDia({tm_e:'11:30',tt_e:'19:00',tt_s:'23:00'},{exigirCompletos:true});
+  assert.ok(cierre.errores.length>0);
+  assert.equal(cierre.minutos,0,'no calcula total final de un día sin completar');
+  const mal=t.validarDia({tm_e:'19:00',tm_s:'15:00'});
+  assert.ok(mal.errores.length>0,'horarios imposibles se bloquean desde el primer día');
+});
+test('Motos Agencia: semana sin revisión no se archiva y el gerente ve acceso a pendientes de cierre',()=>{
+  const script=file('public/stock/munro-motos.js');
+  assert.match(script,/const semanasPendientes = \(\) => semanasVencidas\(\)\.filter/);
+  assert.match(script,/const semanasConDatos = \(\) => semanasVencidas\(\)\.filter/);
+  assert.match(script,/data-mo-act="ver" data-semana/);
+  assert.match(script,/mo-aviso-cierre/);
+  assert.match(script,/window\.setInterval\?\.\(/);
 });
