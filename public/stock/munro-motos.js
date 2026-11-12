@@ -60,8 +60,10 @@
     if (a == null || b == null) return 0;
     return b >= a ? b - a : b + 1440 - a;
   }
-  /* Horarios de 24 h: se admiten salidas después de medianoche, pero no turnos
-     incompletos, simultáneos ni una jornada que exceda las 24 h. */
+  /* Turno mañana: entrada y salida deben ser del mismo día. Turno tarde:
+     puede terminar de madrugada, pero nunca calcular una jornada absurda de 20 h.
+     Un turno no puede superar 16 h; no se suman ni guardan horarios inválidos. */
+  const MAX_MINUTOS_TURNO = 16 * 60;
   function validarDia(c){
     const errores = [], campos = new Set(), turnos = [];
     const error = (mensaje, claves) => { errores.push(mensaje); claves.forEach(k => campos.add(k)); };
@@ -84,7 +86,18 @@
         error('La entrada y la salida del ' + nombre + ' no pueden ser iguales.', [entradaKey, salidaKey]);
         continue;
       }
-      turnos.push({inicio, fin:fin < inicio ? fin + 1440 : fin, entradaKey, salidaKey});
+      // La mañana no cruza la medianoche. Evita contar 19:00 a 15:00 como 20 horas.
+      if (entradaKey === 'tm_e' && fin < inicio) {
+        error('La salida del turno mañana debe ser posterior a la entrada del mismo día.', [entradaKey, salidaKey]);
+        continue;
+      }
+      // La tarde sí puede cerrar después de medianoche (ej. 19:33 a 00:00).
+      const duracion = fin < inicio ? fin + 1440 - inicio : fin - inicio;
+      if (duracion > MAX_MINUTOS_TURNO) {
+        error('El ' + nombre + ' supera 16 horas. Revisá la entrada y la salida.', [entradaKey, salidaKey]);
+        continue;
+      }
+      turnos.push({inicio, fin:inicio + duracion, entradaKey, salidaKey});
     }
     if (turnos.length === 2) {
       const [primero, segundo] = turnos;
