@@ -246,7 +246,7 @@ export function MunroWeeklySchedule(){
            <tbody>{filasResumen.filter(f=>f.modalidad===modalidad).map(f=><tr key={f.id}>
              <td>{f.nombre}</td><td>{modalidad==="turno"?f.resumen.turnos:formatoHoras(f.resumen.horas)}</td>
              <td>{modalidad==="turno"?"+"+f.resumen.extraFeriado:formatoHoras(f.resumen.horasFeriado)}</td>
-             <td><strong>{modalidad==="turno"?formatoTurnos(f.resumen.computados):formatoHoras(f.resumen.computados)+" h"}</strong></td>
+             <td><strong>{f.resumen.errores?"Revisar":modalidad==="turno"?formatoTurnos(f.resumen.computados):formatoHoras(f.resumen.computados)+" h"}</strong></td>
              <td>{f.resumen.errores?"Revisar":f.resumen.pendientes?"Incompleto":f.estado}</td>
            </tr>)}</tbody>
          </table></div>
