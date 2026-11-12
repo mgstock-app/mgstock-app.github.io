@@ -85,11 +85,17 @@
     '<main class="gl-tn-main">'+
     (error?'<p class="gl-tn-alert" role="alert">'+esc(error)+'</p>':'')+
     (notice?'<p class="gl-tn-notice" role="status">'+esc(notice)+'</p>':'')+
-    '<div class="gl-tn-connection"><div><strong>'+ (connected?'Tienda vinculada':'Conexión pendiente')+'</strong>'+
+    '<div class="gl-tn-connection"><div><strong>'+ (connected?'Tienda vinculada':state?.connection_state==='error'?'Revisar conexión':'Conexión pendiente de autorización')+'</strong>'+
     '<p>'+ (connected?'Última sincronización: '+esc(stamp(state?.last_sync_at))+' · '+esc(state?.last_sync_count)+' pedidos consultados':
-       'El acceso de Tiendanube conectado a ChatGPT no se transfiere a GESTLOK. Falta autorizar la API de la tienda para actualizar movimientos automáticamente.')+
-    '</p></div><button type="button" data-tn-refresh '+(busy||loading?'disabled':'')+'>'+
-      (busy?'Sincronizando…':'Actualizar movimientos')+'</button></div>'+
+       'La tienda ZAYRO ya existe en Tiendanube, pero todavía falta autorizar el acceso de GESTLOK. La conexión de ChatGPT no se transfiere a esta aplicación.')+
+    '</p>'+(state?.last_error&&!connected?'<p role="alert">'+esc(state.last_error)+'</p>':'')+
+    '</div><button type="button" data-tn-refresh '+(busy||loading?'disabled':'')+'>'+
+      (busy?'Comprobando…':connected?'Actualizar movimientos':'Verificar conexión')+'</button></div>'+
+    (!connected?'<details class="gl-tn-connect-help"><summary>Cómo conectar ZAYRO con GESTLOK</summary>'+
+      '<p>La dueña debe autorizar una aplicación GESTLOK en Tiendanube con permiso de lectura de pedidos (<code>read_orders</code>).</p>'+
+      '<p>Una vez autorizada, la persona que administra Supabase debe guardar el ID de tienda, el ID de aplicación y el token en los secretos privados del proyecto. No compartas tokens ni contraseñas por chat.</p>'+
+      '<p>Después, tocá <strong>Verificar conexión</strong>. GESTLOK importará los estados de pedidos, pagos y entregas sin modificar Caja, ventas ni stock.</p>'+
+      '<a href="https://tiendanube.dev/docs-api/authentication" target="_blank" rel="noopener noreferrer">Instrucciones oficiales de Tiendanube</a></details>':'')+
     (loading?'<p role="status" class="gl-tn-loading">Consultando movimientos…</p>':
     '<div class="gl-tn-summary" aria-label="Resumen de pedidos importados">'+
      [['Pedidos',orders.length],['Pagados',paid.length],['Pendientes',pending.length],['En envío',inTransit.length]].map(([label,value])=>
@@ -130,9 +136,14 @@
    await verify();
    const result=await db().functions.invoke('zayro-tiendanube-sync',{body:{action:'sync'}});
    if(result.error){
-    let message=result.error?.message||'No se pudo sincronizar.';
-    if(result.data?.message)message=result.data.message;
-    throw Error(message);
+    // En respuestas 409 de Edge Functions, supabase-js entrega el detalle en error.context.
+    // Mostrar el motivo de autorización sin exponer tokens ni mensajes internos del servidor.
+    let detail=result.data;
+    if(!detail&&result.error.context?.json){
+      try{detail=await result.error.context.json();}catch{}
+    }
+    throw Error(typeof detail?.message==='string'?detail.message:
+      result.error?.message||'No se pudo sincronizar.');
    }
    if(result.data?.ok!==true)throw Error(result.data?.message||'Sincronización no disponible.');
    notice='Movimientos actualizados.';
