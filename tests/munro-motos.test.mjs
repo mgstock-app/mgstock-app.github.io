@@ -142,8 +142,28 @@ test('Agencia Motos: valida las 24 h, detecta el error de la foto y no suma jorn
   const iguales = t.validarDia({tt_e:'19:00',tt_s:'19:00'});
   assert.ok(iguales.errores.some(e => e.includes('iguales')));
 
-  const fueraDe24 = t.validarDia({tm_e:'11:30',tm_s:'15:00',tt_e:'19:00',tt_s:'12:00'});
+  const fueraDe24 = t.validarDia({tm_e:'07:00',tm_s:'19:00',tt_e:'20:00',tt_s:'10:00'});
   assert.ok(fueraDe24.errores.some(e => e.includes('24 horas')));
+
+  // Caso real denunciado: el primer campo es entrada mañana y el segundo salida mañana.
+  // 19:00 -> 15:00 no representa 20 horas trabajadas: es un horario incorrecto.
+  const mananaInvertida = t.validarDia({tm_e:'19:00',tm_s:'15:00'});
+  assert.equal(mananaInvertida.minutos, 0);
+  assert.ok(mananaInvertida.errores.some(e => e.includes('salida del turno mañana')));
+  assert.ok(mananaInvertida.campos.includes('tm_e'));
+  assert.ok(mananaInvertida.campos.includes('tm_s'));
+  assert.equal(t.minutosDia({tm_e:'19:00',tm_s:'15:00'}), 0);
+
+  // Tampoco aceptar 20 horas si esa misma combinación se carga en turno tarde.
+  const tardeImposible = t.validarDia({tt_e:'19:00',tt_s:'15:00'});
+  assert.equal(tardeImposible.minutos, 0);
+  assert.ok(tardeImposible.errores.some(e => e.includes('supera 16 horas')));
+  assert.ok(tardeImposible.campos.includes('tt_s'));
+
+  // Se conserva el turno tarde nocturno y el orden válido mañana -> tarde.
+  const jornadaCorrecta = t.validarDia({tm_e:'09:00',tm_s:'15:00',tt_e:'19:00',tt_s:'00:00'});
+  assert.equal(jornadaCorrecta.errores.length, 0);
+  assert.equal(jornadaCorrecta.minutos, 660);
 
   const noche = t.validarDia({tt_e:'19:33',tt_s:'00:00'});
   assert.equal(noche.errores.length, 0);

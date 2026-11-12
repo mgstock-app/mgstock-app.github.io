@@ -193,6 +193,39 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     }));
   });
 
+  it('rechaza 19:00 a 15:00, no lo suma ni guarda y permite el turno tarde hasta medianoche', () => {
+    launch(); login('gerente.munro@example.com');
+    cy.get('#snav [data-go="motos"]').click();
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('lucas', 'tm_e', '19:00');
+    hora('lucas', 'tm_s', '15:00');
+    cy.get('.mo-error-summary').should('be.visible').and('contain.text', 'salida del turno mañana');
+    cy.get('[data-mo-dia="lucas-0"]').should('contain.text', 'Revisar');
+    cy.get('[data-mo-tot="lucas"]').first().should('contain.text', 'Revisar');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('exist');
+    cy.window().its('__rows').should(rows =>
+      expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0));
+
+    lunes().then(s => cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tm_e"]')
+      .clear().type('09:00').blur());
+    hora('lucas', 'tt_e', '19:00');
+    hora('lucas', 'tt_s', '15:00');
+    cy.get('.mo-error-summary').should('contain.text', 'supera 16 horas');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.window().its('__rows').should(rows =>
+      expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0));
+    lunes().then(s => cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tt_s"]')
+      .clear().type('00:00').blur());
+    cy.get('.mo-error-summary').should('not.be.visible');
+    cy.get('[data-mo-dia="lucas-0"]').should('contain.text', '11:00');
+    cy.get('[data-mo-act="guardar"]').click();
+    lunes().then(s => cy.window().its('__rows').should(rows => {
+      const d = docsMotos(rows).find(r => r.id === 'd-' + s + '-lucas-' + s);
+      expect(d.data).to.include({tm_e:'09:00', tm_s:'15:00', tt_e:'19:00', tt_s:'00:00'});
+    }));
+  });
+
   it('en celular muestra un día por vez, sin desbordes horizontales', () => {
     cy.viewport(390, 844); launch(); login('gerente.munro@example.com');
     cy.get('#snav [data-go="motos"], #view [data-go="motos"]').first().click({force:true});
