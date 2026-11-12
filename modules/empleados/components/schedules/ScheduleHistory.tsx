@@ -66,7 +66,7 @@ export function ScheduleHistory({ embebido = false, soloArchivo = false }: { emb
     return () => {
       active = false;
     };
-  }, []);
+  }, [soloArchivo]);
 
   useEffect(() => {
     if (!localId) return;
