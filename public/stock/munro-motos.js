@@ -218,6 +218,16 @@
         return;
       }
     }
+    // Desde el domingo 23:30 se valida toda la semana, incluso los turnos
+    // parciales guardados en días anteriores. No alcanza con revisar el borrador.
+    if(revisarSemana(semanaVista)){
+      const estado=resumen(semanaVista);
+      if(estado.errores.length){
+        api.toast('No se puede cerrar la semana: revisá ' + estado.errores.length +
+          (estado.errores.length===1?' horario pendiente.':' horarios pendientes.'),true);
+        refrescar();return;
+      }
+    }
     if (!borrador.size) { edicion = false; api.render(); return; }
     guardando = true; api.render();
     let ok = 0;
