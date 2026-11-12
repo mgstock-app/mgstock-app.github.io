@@ -2,8 +2,9 @@
    Planilla semanal (lunes a domingo) con entrada y salida de dos turnos por moto.
    - Cada celda (semana, moto, día) es un documento propio en «munro/agencia_motos»:
      dos personas cargando a la vez no se pisan y sin conexión queda en la cola local.
-   - El cierre es automático: la semana se calcula con la hora de Buenos Aires, así que
-     cada lunes la planilla arranca vacía y la anterior pasa al historial sin borrar nada.
+   - Se permite guardar un turno parcial durante la semana; la revisión final es
+     el domingo 23:30 AR. El lunes comienza una semana nueva sin borrar datos:
+     una semana incompleta queda pendiente para corrección, no en historial cerrado.
    - Dueños (y la creadora): planilla, valores por hora, importes e historial.
      Gerentes de Munro: cargan y corrigen horarios de la semana actual y de semanas
      cerradas; no ven importes ni valores por hora.
@@ -43,6 +44,18 @@
   /* Lunes de la semana que contiene la fecha dada. */
   const lunesDe = s => sumar(s, -((utc(s).getUTCDay() + 6) % 7));
   const semanaActual = (now = new Date()) => lunesDe(hoyAR(now));
+  // El control final empieza el domingo 23:30 (hora de Buenos Aires).
+  // Durante la semana, una entrada sin salida es un dato parcial permitido.
+  function revisarSemana(semana, now = new Date()){
+    const actual = semanaActual(now);
+    if(semana < actual)return true; // Una semana vencida no puede archivarse incompleta.
+    if(semana !== actual)return false;
+    if(utc(hoyAR(now)).getUTCDay() !== 0)return false;
+    const partes = Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+      timeZone:TZ,hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+    }).formatToParts(now).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+    return Number(partes.hour)*60+Number(partes.minute)>=23*60+30;
+  }
   const diasDe = semana => DIAS.map((_, i) => sumar(semana, i));
   const corta = s => { const [, m, d] = s.split('-'); return Number(d) + '/' + Number(m); };
   const larga = s => { const [y, m, d] = s.split('-'); return d + '/' + m + '/' + y; };
@@ -64,17 +77,20 @@
      puede terminar de madrugada, pero nunca calcular una jornada absurda de 20 h.
      Un turno no puede superar 16 h; no se suman ni guardan horarios inválidos. */
   const MAX_MINUTOS_TURNO = 16 * 60;
-  function validarDia(c){
-    const errores = [], campos = new Set(), turnos = [];
+  function validarDia(c, {exigirCompletos=false}={}){
+    const errores = [], campos = new Set(), turnos = [], parciales = [];
     const error = (mensaje, claves) => { errores.push(mensaje); claves.forEach(k => campos.add(k)); };
-    if (!c) return {minutos:0, errores, campos:[]};
+    if (!c) return {minutos:0, errores, campos:[], parciales};
     for (const [entradaKey, salidaKey, nombre] of [
       ['tm_e','tm_s','turno mañana'], ['tt_e','tt_s','turno tarde']
     ]) {
       const entrada = c[entradaKey] || '', salida = c[salidaKey] || '';
       if (!entrada && !salida) continue;
       if (!entrada || !salida) {
-        error('Completá la entrada y la salida del ' + nombre + '.', [entradaKey, salidaKey]);
+        // No calcular horas de un turno abierto. La entrada sola se puede guardar.
+        const mensaje = 'Completá la entrada y la salida del ' + nombre + '.';
+        parciales.push({mensaje, campos:[entradaKey,salidaKey]});
+        if(exigirCompletos)error(mensaje,[entradaKey,salidaKey]);
         continue;
       }
       if (!HORA.test(entrada) || !HORA.test(salida)) {
@@ -112,7 +128,7 @@
     }
     const minutos = turnos.reduce((s, t) => s + t.fin - t.inicio, 0);
     if (minutos > 1440) error('La suma de turnos no puede superar 24 horas.', turnos.flatMap(t => [t.entradaKey, t.salidaKey]));
-    return {minutos:errores.length ? 0 : minutos, errores, campos:[...campos]};
+    return {minutos:errores.length ? 0 : minutos, errores, campos:[...campos], parciales};
   }
   const minutosDia = c => validarDia(c).minutos;
   const fmtH = min => Math.floor(min / 60) + ':' + String(min % 60).padStart(2, '0');
@@ -150,9 +166,9 @@
   const fijasDe = semana => FIJAS.map(m => { const n = nombreEn(nombres(), m.id, semana); return n ? {...m, nombre:n.nombre || m.nombre, moto:n.etiqueta || m.moto} : m; });
   const motosDe = semana => [...fijasDe(semana), ...refuerzos(semana)];
   function resumen(semana){
-    const dias = diasDe(semana), val = tarifas();
+    const dias = diasDe(semana), val = tarifas(), exigirCompletos = revisarSemana(semana);
     const filas = motosDe(semana).map(m => {
-      const validaciones = dias.map(dia => validarDia(leer(idCelda(semana, m.id, dia))));
+      const validaciones = dias.map(dia => validarDia(leer(idCelda(semana, m.id, dia)),{exigirCompletos}));
       const porDia = validaciones.map(v => v.minutos);
       const min = porDia.reduce((a, b) => a + b, 0);
       const valor = tarifaEn(val, m.refuerzo ? 'refuerzo' : m.id, semana);
@@ -160,11 +176,16 @@
     });
     const errores = filas.flatMap(f => f.validaciones.flatMap((v, i) =>
       v.errores.map(mensaje => ({moto:f.nombre, dia:dias[i], mensaje}))));
+    const parciales = filas.flatMap(f => f.validaciones.flatMap((v,i) =>
+      v.parciales.map(p => ({moto:f.nombre,dia:dias[i],mensaje:p.mensaje}))));
     const porDia = dias.map((_, i) => filas.reduce((a, f) => a + f.porDia[i], 0));
-    return {semana, dias, filas, errores, porDia, min:porDia.reduce((a, b) => a + b, 0), pago:filas.reduce((a, f) => a + f.pago, 0)};
+    return {semana, dias, filas, errores, parciales, porDia, min:porDia.reduce((a, b) => a + b, 0), pago:filas.reduce((a, f) => a + f.pago, 0)};
   }
-  const semanasConDatos = () => [...new Set(docs.map(d => d.data?.semana).filter(Boolean))]
+  const semanasVencidas = () => [...new Set(docs.map(d => d.data?.semana).filter(Boolean))]
     .filter(s => s < semanaActual()).sort().reverse();
+  // Una semana con horarios parciales o inválidos sigue editable, pero no figura como historial cerrado.
+  const semanasPendientes = () => semanasVencidas().filter(s=>resumen(s).errores.length);
+  const semanasConDatos = () => semanasVencidas().filter(s=>!resumen(s).errores.length);
 
   /* Cada horario cargado va al borrador; recién «Guardar» lo envía (o lo deja en la cola sin conexión). */
   async function cargarCelda(input){
@@ -191,11 +212,21 @@
   async function guardarTodo(){
     if (guardando || !editable(semanaVista)) return;
     for (const data of borrador.values()) {
-      const validacion = validarDia(data);
+      const validacion = validarDia(data,{exigirCompletos:revisarSemana(semanaVista)});
       if (validacion.errores.length) {
         api.toast('No se guardó: ' + validacion.errores[0], true);
         refrescar();
         return;
+      }
+    }
+    // Desde el domingo 23:30 se valida toda la semana, incluso los turnos
+    // parciales guardados en días anteriores. No alcanza con revisar el borrador.
+    if(revisarSemana(semanaVista)){
+      const estado=resumen(semanaVista);
+      if(estado.errores.length){
+        api.toast('No se puede cerrar la semana: revisá ' + estado.errores.length +
+          (estado.errores.length===1?' horario pendiente.':' horarios pendientes.'),true);
+        refrescar();return;
       }
     }
     if (!borrador.size) { edicion = false; api.render(); return; }
@@ -291,13 +322,17 @@
   const mobile = () => !!window.matchMedia?.('(max-width: 760px)').matches;
   const celda = (semana, m, dia, campo, label, puede) => {
     const c = leer(idCelda(semana, m.id, dia)), v = c?.[campo] || '';
-    const validacion = validarDia(c), mal = validacion.campos.includes(campo);
+    const validacion = validarDia(c,{exigirCompletos:revisarSemana(semana)}), mal = validacion.campos.includes(campo);
     return '<input class="mo-time' + (mal ? ' mo-time-error' : '') + '" type="time" lang="es-AR" step="60" value="' + E(v) + '"' + (puede && edicion ? '' : ' disabled') +
       (mal ? ' aria-invalid="true" title="' + E(validacion.errores.join(' ')) + '"' : ' aria-invalid="false"') +
       ' data-moto="' + E(m.id) + '" data-dia="' + dia + '" data-campo="' + campo + '" aria-label="' + E(label + ' de ' + m.nombre + ' el ' + corta(dia)) + '">';
   };
   const tieneError = f => !!f.validaciones?.some(v => v.errores.length);
   const horasDia = (f, i) => f.validaciones?.[i]?.errores.length ? '⚠ Revisar' : fmtH(f.porDia[i]);
+  const notaParciales = r => !revisarSemana(r.semana) && r.parciales.length
+    ? r.parciales.length + (r.parciales.length===1?' turno pendiente de completar.':' turnos pendientes de completar.') +
+      ' Podés guardar ahora; el control final es el domingo a las 23:30.'
+    : '';
   const horasSemana = f => tieneError(f) ? '⚠ Revisar' : fmtH(f.min);
   function avisoErrores(r){
     if (!r.errores.length) return '';
@@ -305,7 +340,7 @@
       ' · Revisá los campos en rojo</b><ul>' +
       r.errores.slice(0, 5).map(p => '<li>' + E(p.moto + ' · ' + larga(p.dia) + ': ' + p.mensaje) + '</li>').join('') +
       (r.errores.length > 5 ? '<li>Y ' + (r.errores.length - 5) + ' más…</li>' : '') +
-      '</ul><small>Usá el formato de 24 horas (00:00–23:59). Los errores no se incluyen en los totales ni se pueden guardar.</small>';
+      '</ul><small>Los horarios incorrectos no se guardan. Las entradas sin salida se pueden guardar antes del control del domingo a las 23:30.</small>';
   }
   const tarjetaMoto = m => m.nuevo ? (agregando
     ? '<form id="mo-ref-form" class="mo-who mo-ref-form"><input name="nombre" maxlength="40" required placeholder="Nombre del refuerzo" autocomplete="off" aria-label="Nombre del refuerzo">' +
@@ -382,7 +417,7 @@
       tarifasForm() +
       (semanas.length ? '<div class="mo-scroll"><table><thead><tr><th>Semana</th><th>Desde</th><th>Hasta</th>' + fijasDe(semanaActual()).map(m => '<th>' + E(m.nombre) + '</th>').join('') +
         '<th>Refuerzo</th><th>Total horas</th>' + (dueno ? '<th>Total pago</th>' : '') + '<th>Acciones</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
-        : '<p>Todavía no hay semanas cerradas. El lunes la semana en curso pasa sola al historial.</p>') + '</section>';
+        : '<p>Todavía no hay semanas cerradas. El lunes pasan al historial las semanas sin errores; las pendientes se pueden corregir.</p>') + '</section>';
   }
   const textoPendientes = () => edicion
     ? (borrador.size ? borrador.size + (borrador.size === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Modo edición')
@@ -393,6 +428,13 @@
     if (!semanaVista) semanaVista = actual;
     const r = resumen(semanaVista), dueno = esDueno(), puede = editable(semanaVista), enCurso = semanaVista === actual;
     const cerradas = semanasConDatos().length;
+    const semanasParaRevisar = semanasPendientes();
+    const avisoCierre = enCurso && revisarSemana(semanaVista)
+      ? '<p class="mo-aviso mo-aviso-cierre" role="status"><strong>Revisión semanal · domingo 23:30.</strong> Revisá las entradas y salidas antes del cierre. Los turnos incompletos impiden guardar y no pasan al historial como semana cerrada.</p>'
+      : '';
+    const avisoVencidas = enCurso && semanasParaRevisar.length
+      ? '<p class="mo-aviso mo-aviso-pendientes" role="status"><strong>Semana anterior pendiente de revisión.</strong> Hay horarios que completar antes de pasarla al historial. <button type="button" class="mo-link" data-mo-act="ver" data-semana="' + E(semanasParaRevisar[0]) + '">Revisar semana ' + numeroSemana(semanasParaRevisar[0]) + '</button></p>'
+      : '';
     const pestanas = '<nav class="mo-pestanas" role="tablist" aria-label="Motos Agencia">' +
       '<button role="tab" data-mo-act="pestana" data-p="semana" aria-selected="' + (pestana === 'semana') + '">' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</button>' +
       '<button role="tab" data-mo-act="pestana" data-p="historial" aria-selected="' + (pestana === 'historial') + '">Historial' +
@@ -406,13 +448,15 @@
         : '<button class="btn primary" data-mo-act="modificar">✎ Modificar</button>') + '</div>' : '';
     return '<section class="sheet mo-page"><header class="mo-top"><span class="mo-hero">' + ICONO + '</span>' +
       '<div class="mo-title"><h1>Motos Agencia</h1><h2>Control horario semanal</h2>' +
-      '<p>Registrá la entrada y salida de cada moto. Al finalizar la semana, los datos se guardan automáticamente en el historial y se reinicia la planilla. Usá formato de 24 horas (ej.: 19:30), sin superponer turnos.</p></div>' +
+      '<p>Cargá entradas y salidas durante la semana y guardalas aunque falte completar un turno. El domingo a las 23:30 se revisan los horarios pendientes antes de pasar al historial. Usá formato de 24 horas (ej.: 19:30).</p></div>' +
       '<div class="mo-semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>' +
       '<div><small>' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</small><b>' + DIAS[0] + ' ' + corta(r.dias[0]) + ' – ' + DIAS[6] + ' ' + corta(r.dias[6]) + '</b></div>' + flechas + '</div></header>' +
+      avisoVencidas + avisoCierre +
       pestanas + (pestana === 'historial' ? historialHTML() :
       (enCurso ? '' : '<p class="mo-aviso">Estás viendo una semana cerrada. <button class="mo-link" data-mo-act="hoy">Volver a la semana actual</button></p>') +
       '<section class="mo-sheet' + (edicion ? ' editando' : '') + '">' + barra +
       '<div class="mo-error-summary" role="alert"' + (r.errores.length ? '' : ' hidden') + '>' + avisoErrores(r) + '</div>' +
+      '<p class="mo-parcial-nota"' + (notaParciales(r)?'':' hidden') + '>' + E(notaParciales(r)) + '</p>' +
       (mobile() ? tablaMovil(r, puede, dueno) : tablaPC(r, puede, dueno)) + '</section>' +
       '<p class="mo-estado">' + E(estado) + '</p>') + '</section>';
   }
@@ -454,6 +498,8 @@
     document.querySelectorAll('.mo-week').forEach(el => el.classList.toggle('mo-week-error', !!r.errores.length));
     const resumenErrores = $('.mo-error-summary');
     if (resumenErrores) { resumenErrores.hidden = !r.errores.length; resumenErrores.innerHTML = avisoErrores(r); }
+    const nota = $('.mo-parcial-nota');
+    if(nota){const txt=notaParciales(r);nota.hidden=!txt;nota.textContent=txt;}
   }
   function reset(){ docs = []; pendientes.clear(); borrador.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; edicion = false; editNombre = ''; guardando = false; }
   function subscribe(loc, push){
@@ -520,7 +566,18 @@
     window.matchMedia?.('(max-width: 760px)').addEventListener?.('change', () => {
       if (mobile() !== antes && api.S.view === 'motos') { antes = mobile(); api.render(); }
     });
+    // Si la planilla está abierta a las 23:30 del domingo, activar el aviso sin recargar.
+    let ultimaSemana = semanaActual(), estabaEnRevision = revisarSemana(ultimaSemana);
+    window.setInterval?.(()=>{
+      const actual=semanaActual(), enRevision=revisarSemana(actual);
+      if(actual!==ultimaSemana||enRevision!==estabaEnRevision){
+        const cambioSemana=actual!==ultimaSemana;
+        if(cambioSemana&&semanaVista===ultimaSemana&&!borrador.size){semanaVista=actual;diaMovil=-1;}
+        ultimaSemana=actual;estabaEnRevision=enRevision;
+        if(api.S.view==='motos')api.render();
+      }
+    },15000);
   }
   window.GestLokMunroMotos = {attach, view, reset, subscribe, permitido,
-    _t:{hoyAR, lunesDe, semanaActual, diasDe, numeroSemana, turno, minutosDia, validarDia, fmtH, importe, tarifaEn, nombreEn}};
+    _t:{hoyAR, lunesDe, semanaActual, revisarSemana, diasDe, numeroSemana, turno, minutosDia, validarDia, fmtH, importe, tarifaEn, nombreEn}};
 })();
