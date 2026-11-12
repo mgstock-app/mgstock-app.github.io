@@ -162,7 +162,8 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('#snav [data-go="motos"]').click();
     cy.get('[data-mo-act="modificar"]').click();
     hora('lucas', 'tm_e', '11:30');
-    cy.get('.mo-error-summary').should('be.visible').and('contain.text', 'Completá la entrada y la salida');
+    cy.get('.mo-error-summary').should('not.be.visible');
+    cy.get('.mo-parcial-nota').should('be.visible').and('contain.text','Podés guardar ahora');
     hora('lucas', 'tm_s', '15:00');
     hora('lucas', 'tt_e', '11:30');
     hora('lucas', 'tt_s', '23:00');
@@ -191,6 +192,54 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
       const d = docsMotos(rows).find(r => r.id === 'd-' + s + '-lucas-' + s);
       expect(d.data).to.include({tm_e:'11:30', tm_s:'15:00', tt_e:'19:00', tt_s:'23:00'});
     }));
+  });
+
+  it('permite guardar una única entrada de turno tarde durante la semana y completarla después',()=>{
+    launch();login('gerente.munro@example.com');
+    cy.clock(new Date('2026-11-12T15:00:00Z').getTime(),['Date']);
+    cy.get('#snav [data-go="motos"]').click();
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('lucas','tt_e','19:00');
+    cy.get('.mo-error-summary').should('not.be.visible');
+    cy.get('.mo-parcial-nota').should('be.visible').and('contain.text','Podés guardar ahora');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('not.exist');
+    lunes().then(s=>cy.window().its('__rows').should(rows=>{
+      const d=docsMotos(rows).find(r=>r.id==='d-'+s+'-lucas-'+s);
+      expect(d.data.tt_e).to.eq('19:00');
+      expect(d.data.tt_s||'').to.eq('');
+    }));
+    cy.get('[data-mo-tot="lucas"]').first().should('have.text','0:00');
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('lucas','tt_s','23:00');
+    cy.get('.mo-parcial-nota').should('not.be.visible');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('[data-mo-tot="lucas"]').first().should('have.text','4:00');
+  });
+
+  it('el domingo 23:30 AR exige revisar turnos guardados antes de cerrar la semana',()=>{
+    launch();login('gerente.munro@example.com');
+    cy.clock(new Date('2026-11-16T02:29:00Z').getTime(),['Date','setInterval']);
+    cy.get('#snav [data-go="motos"]').click();
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('lucas','tt_e','19:00');
+    cy.get('.mo-error-summary').should('not.be.visible');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('not.exist');
+    cy.get('.mo-aviso-cierre').should('not.exist');
+
+    cy.tick(60*1000);
+    cy.get('.mo-aviso-cierre').should('be.visible').and('contain.text','domingo 23:30');
+    cy.get('.mo-error-summary').should('be.visible').and('contain.text','Completá la entrada y la salida');
+    cy.get('[data-mo-tot="lucas"]').first().should('contain.text','Revisar');
+    cy.get('[data-mo-act="modificar"]').click();
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('exist','el cierre no se permite con datos incompletos');
+    hora('lucas','tt_s','23:30');
+    cy.get('.mo-error-summary').should('not.be.visible');
+    cy.get('[data-mo-act="guardar"]').click();
+    cy.get('.mo-sheet.editando').should('not.exist');
+    cy.get('[data-mo-tot="lucas"]').first().should('have.text','4:30');
   });
 
   it('rechaza 19:00 a 15:00, no lo suma ni guarda y permite el turno tarde hasta medianoche', () => {
