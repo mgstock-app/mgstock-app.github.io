@@ -43,7 +43,7 @@
     if(!viewing(host))return window.GestLokPilot?.accessChecked?.()===true
       ? '<div class="gl-scanner-menu-wait" role="alert">Plan Scanner no habilitado para este acceso. Consultá soporte.</div>'
       : '<div class="gl-scanner-menu-wait" role="status">Verificando Plan Scanner…</div>';
-    return actions.map(([label,key,attr])=>
+    return actions.filter(([_,key])=>isZayro(host)||key!=='pedidos').map(([label,key,attr])=>
       '<button type="button" '+attr+
       ' class="gl-scanner-nav" data-scanner-section="'+key+'"><span class="nl">'+escape(displayLabel(label,key,host))+'</span></button>'
     ).join('')+
@@ -76,7 +76,7 @@
           ?'<p role="alert">Este acceso no tiene autorizado el Plan Scanner. Consultá soporte.</p>'
           :'<p role="status">Comprobando el acceso al Plan Scanner. No se mostrarán categorías de otras microapps.</p>')+'</section>';
     }
-    const cards=actions.map(([label,key,attr])=>
+    const cards=actions.filter(([_,key])=>zayro||key!=='pedidos').map(([label,key,attr])=>
       '<button type="button" class="gl-scanner-private-card" data-scanner-card="'+key+'" '+attr+
       '><span class="gl-scanner-card-icon" aria-hidden="true">▣</span><b>'+escape(displayLabel(label,key,host))+
       '</b><span aria-hidden="true">↗</span></button>'
@@ -91,7 +91,7 @@
     return '<section class="gl-scanner-private-home" aria-label="Inicio del Plan Scanner">'+
       '<header class="gl-scanner-private-header"><small>MI NEGOCIO · '+(zayro?'PERFUMERÍA':'PLAN SCANNER')+'</small>'+
         '<h1>'+escape(name)+' <span>Plan Scanner</span></h1>'+
-        '<p>Ventas, productos, precios y pedidos de tu local, en un solo lugar.</p>'+
+        '<p>'+(zayro?'Ventas, productos, precios y pedidos de tu local, en un solo lugar.':'Ventas, stock y precios de tu local, en un solo lugar.')+'</p>'+
         (creator?'<p class="gl-scanner-admin-caption">Administración general · Acceso verificado</p>':'')+
       '</header>'+
       '<div class="gl-scanner-private-section"><h2>Herramientas de tu negocio</h2>'+
@@ -104,7 +104,7 @@
     if(!btn||btn.disabled)return;
     event.preventDefault();
     // La verificación del backend también se repite dentro de Pedidos.open.
-    if(window.GestLokPilot?.authorized?.()!==true)return;
+    if(window.GestLokPilot?.authorized?.()!==true||window.GestLokPilot?.tenantId?.()!==ZAYRO_TENANT)return;
     void window.GestLokPedidos?.open?.();
   });
   window.GestLokScannerMenu=Object.freeze({navHTML,home,tenantId:()=>window.GestLokPilot?.tenantId?.()||ZAYRO_TENANT});
