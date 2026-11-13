@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-cartulina-v4-20261111/);
+ assert.match(runtime,/cami-belisa-fondo-real-v1-20261113/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -196,29 +196,29 @@ test('Camila: agregar foto desde la galería o con la cámara en todas las pesta
  assert.match(script,/uploadPhoto\(photo\.dataset\.mpPhotoInput\|\|photo\.dataset\.mpPhotoCameraInput,file\)\.finally/);
 });
 
-test('Al cargar una foto se edita sobre cartulina blanca y se elige editada u original antes de guardar',()=>{
- // Edición local y gratis: sin IA generativa, sin ChatGPT ni servicios externos.
+test('Camila: la foto conserva fondo y textura originales al mejorar la luz y antes de guardar',()=>{
+ // No segmentación, fondo blanco ni servicios de IA: la foto conserva todo su escenario real.
  assert.doesNotMatch(script,/editarConIA|gestlok-cami-foto-ia|gestlok-product-white-bg|ChatGPT|chatgpt|data-mp-ai-import|Cloudflare|Account ID/);
- assert.match(script,/ESTUDIO_URL='\/stock\/gestlok-cami-foto-estudio\.js\?rev=20261111-cartulina-v1'/);
- assert.match(script,/RECORTE_URL='\/stock\/gestlok-cami-recorte\.js\?rev=20261111-cartulina-v1'/);
- assert.match(script,/editarFotoCartulina\(original,\{recortar:recortarProducto/);
- assert.match(script,/elegida=await elegirFoto\(item,original,edited,motivo\)/);
+ assert.match(script,/FOTO_REAL_URL='\\/stock\\/gestlok-cami-foto-real\\.js\\?rev=20261113-belisa-fondo-real-v1'/);
+ assert.match(script,/editarFotoReal\\(original,\\{onProgress:stage/);
+ assert.doesNotMatch(script,/editarFotoCartulina\\(original|recortarProducto\\(original|import\\(RECORTE_URL\\)/);
+ assert.match(script,/Conserva el fondo negro, su textura y los colores reales/);
+ assert.match(script,/Editada · fondo real/);
+ assert.match(script,/elegida=await elegirFoto\\(item,original,edited,motivo\\)/);
  assert.match(script,/Guardar editada/);
  assert.match(script,/Guardar original/);
  assert.match(script,/data-mp-photo-choice="cancelar"/);
- assert.match(script,/Editada · cartulina blanca/);
- // Si el editor falla, igual se puede guardar la original.
  assert.match(script,/No se pudo editar esta foto/);
- assert.match(script,/const photo=elegida==='editada'&&edited\?edited:original/);
- assert.match(script,/Math\.min\(1,1800\/Math\.max\(image\.naturalWidth,image\.naturalHeight\)\)/);
- assert.match(script,/const targetTab=item\.tab_id, targetId=item\.id/);
+ assert.match(script,/const photo=elegida==='editada'&&edited\\?edited:original/);
+ assert.match(script,/Math\\.min\\(1,1800\\/Math\\.max\\(image\\.naturalWidth,image\\.naturalHeight\\)\\)/);
+ assert.match(script,/const targetTab=item\\.tab_id, targetId=item\\.id/);
  assert.match(script,/photo_path:path,original_photo_path:originalPath/);
- assert.match(script,/\.eq\('id',targetId\)\.eq\('tab_id',targetTab\)\.eq\('tenant_id',TENANT\)/);
- assert.match(script,/\.eq\('owner_uid',OWNER_UID\)\.select\('id'\)\.single\(\)/);
- assert.match(script,/saved\.data\?\.id!==targetId/);
- assert.match(script,/if\(!committed&&uploaded\.length\)try\{await storage\.remove\(uploaded\)/);
- assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(css,/\[data-mp-photo-preview\]/);
+ assert.match(script,/\\.eq\\('id',targetId\\)\\.eq\\('tab_id',targetTab\\)\\.eq\\('tenant_id',TENANT\\)/);
+ assert.match(script,/\\.eq\\('owner_uid',OWNER_UID\\)\\.select\\('id'\\)\\.single\\(\\)/);
+ assert.match(script,/saved\\.data\\?\\.id!==targetId/);
+ assert.match(script,/if\\(!committed&&uploaded\\.length\\)try\\{await storage\\.remove\\(uploaded\\)/);
+ assert.doesNotMatch(script,/getPublicUrl\\(/);
+ assert.match(css,/\\[data-mp-photo-preview\\]/);
  assert.match(css,/gl-mp-photo-pair/);
  assert.doesNotMatch(css,/gl-mp-chat|data-mp-chatgpt-modal|gl-mp-free-ai|gl-mp-ia-/);
 });
@@ -226,6 +226,7 @@ test('Al cargar una foto se edita sobre cartulina blanca y se elige editada u or
 test('La publicación de Mis Productos se limita al tenant ZAYRO',async()=>{
  const {fileAudience,TENANTS}=await import('../scripts/pwa-release-scope.mjs');
  assert.deepEqual(fileAudience('public/stock/gestlok-cami-foto-estudio.js'),[TENANTS.zayro]);
+ assert.deepEqual(fileAudience('public/stock/gestlok-cami-foto-real.js'),[TENANTS.zayro]);
  assert.deepEqual(fileAudience('public/stock/gestlok-cami-recorte.js'),[TENANTS.zayro]);
  assert.deepEqual(fileAudience('public/stock/gestlok-mis-productos.js'),[TENANTS.zayro]);
  assert.deepEqual(fileAudience('app/gestlok-mis-productos.css'),[TENANTS.zayro]);
@@ -271,6 +272,6 @@ test('Vista previa privada: ver en grande, descargar y cerrar, sin formatos ni e
  assert.doesNotMatch(script,/EXPORT_FORMATS|data-mp-export-format|composeExport/);
  assert.match(css,/gl-mp-export-stage/);
  assert.match(css,/gl-mp-export-clean/);
- assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-cartulina-v4-20261111/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-belisa-fondo-real-v1-20261113/);
  assert.doesNotMatch(script,/gestlok_pilot_products|gestlok_pilot_pos_sales|mi_gusto_whatsapp/);
 });
