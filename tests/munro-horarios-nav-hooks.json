@@ -1,0 +1,9 @@
+{
+  "comment": "Únicamente el atajo de Horarios en Administración de local de Munro, debajo de Motos Agencia. Se revierte antes de comprobar la huella original de stock.",
+  "hooks": [
+    {
+      "actual": "    (puedeVerMotos() ? `<button data-go=\"motos\">${ic('moto')}<span class=\"nl\">Motos Agencia</span></button><a class=\"snav-link\" href=\"${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}\">${ic('clock')}<span class=\"nl\">Horarios</span></a>` : '') +",
+      "original": "    (puedeVerMotos() ? `<button data-go=\"motos\">${ic('moto')}<span class=\"nl\">Motos Agencia</span></button>` : '') +"
+    }
+  ]
+}
