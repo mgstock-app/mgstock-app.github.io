@@ -32,6 +32,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Horarios de Munro: restituir únicamente el enlace revisado bajo Motos Agencia.
+      // No modificar nunca los hashes originales ni la lógica de permisos histórica.
+      for(const {actual,original} of JSON.parse(read('tests/munro-horarios-nav-hooks.json')).hooks){
+        assert.equal(content.split(actual).length-1,1,'Un atajo exclusivo de Horarios en Munro');
+        content=content.replace(actual,original);
+      }
       // Solo dos inserciones visuales de marca por local en El Molino.
       // Restituir el contenido original antes de comparar la huella protegida.
       for(const {actual,original} of JSON.parse(read('tests/molino-brand-hooks.json')).hooks){
