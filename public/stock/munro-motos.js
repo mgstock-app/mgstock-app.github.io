@@ -524,6 +524,11 @@
     });
     set('[data-mo-sem]', r.errores.length ? '⚠ Revisar' : fmtH(r.min));
     set('.mo-pend', textoPendientes());
+    const guardarBtn=document.querySelector('[data-mo-act="guardar"]');
+    if(guardarBtn){
+      guardarBtn.disabled=guardando;
+      guardarBtn.textContent=guardando?'Guardando…':'Guardar ahora';
+    }
     if (dueno) set('[data-mo-sem-pago]', r.errores.length ? '—' : fmt$(r.pago));
     document.querySelectorAll('.mo-week').forEach(el => el.classList.toggle('mo-week-error', !!r.errores.length));
     const resumenErrores = $('.mo-error-summary');
