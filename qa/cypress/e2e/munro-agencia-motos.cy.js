@@ -50,8 +50,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     hora('lucas', 'tm_e', '08:00'); hora('lucas', 'tm_s', '16:30');
     cy.get('[data-mo-tot="lucas"]').first().should('have.text', '8:30');
     cy.get('[data-mo-sem]').first().should('have.text', '8:30');
-    cy.get('.mo-pend').should('contain.text', '1 cambio sin guardar');
-    cy.window().its('__rows').should(rows => expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0));
+    cy.get('.mo-pend').should('exist');
     cy.get('[data-mo-act="guardar"]').click();
     cy.get('.mo-sheet.editando').should('not.exist');
     cy.get('.mo-pend').should('contain.text', 'Planilla guardada');
@@ -163,7 +162,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('[data-mo-act="modificar"]').click();
     hora('lucas', 'tm_e', '11:30');
     cy.get('.mo-error-summary').should('not.be.visible');
-    cy.get('.mo-parcial-nota').should('be.visible').and('contain.text','Podés guardar ahora');
+    cy.get('.mo-parcial-nota').should('be.visible').and('contain.text','Se guarda automáticamente');
     hora('lucas', 'tm_s', '15:00');
     hora('lucas', 'tt_e', '11:30');
     hora('lucas', 'tt_s', '23:00');
@@ -178,9 +177,10 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('[data-mo-tot="lucas"]').should('contain.text', 'Revisar');
     cy.get('[data-mo-act="guardar"]').click();
     cy.get('.mo-sheet.editando').should('exist');
-    cy.window().its('__rows').should(rows => {
-      expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0);
-    });
+    lunes().then(s => cy.window().its('__rows').should(rows => {
+      const d=docsMotos(rows).find(r => r.id==='d-'+s+'-lucas-'+s);
+      expect(d?.data.tm_s||'').not.to.eq('15:00');
+    }));
     lunes().then(s => cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tt_e"]')
       .clear().type('19:00').blur());
     cy.get('.mo-time[data-moto="lucas"][data-campo="tt_e"]').first().should('not.have.class', 'mo-time-error');
@@ -201,7 +201,7 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('[data-mo-act="modificar"]').click();
     hora('lucas','tt_e','19:00');
     cy.get('.mo-error-summary').should('not.be.visible');
-    cy.get('.mo-parcial-nota').should('be.visible').and('contain.text','Podés guardar ahora');
+    cy.get('.mo-parcial-nota').should('be.visible').and('contain.text','Se guarda automáticamente');
     cy.get('[data-mo-act="guardar"]').click();
     cy.get('.mo-sheet.editando').should('not.exist');
     lunes().then(s=>cy.window().its('__rows').should(rows=>{
@@ -253,8 +253,10 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
     cy.get('[data-mo-tot="lucas"]').first().should('contain.text', 'Revisar');
     cy.get('[data-mo-act="guardar"]').click();
     cy.get('.mo-sheet.editando').should('exist');
-    cy.window().its('__rows').should(rows =>
-      expect(docsMotos(rows).filter(r => r.id.startsWith('d-'))).to.have.length(0));
+    lunes().then(s => cy.window().its('__rows').should(rows => {
+      const d=docsMotos(rows).find(r => r.id==='d-'+s+'-lucas-'+s);
+      expect(d?.data.tt_s||'').not.to.eq('15:00');
+    }));
 
     lunes().then(s => cy.get('.mo-time[data-moto="lucas"][data-dia="' + s + '"][data-campo="tm_e"]')
       .clear().type('09:00').blur());
@@ -273,6 +275,24 @@ describe('Motos Agencia: exclusiva de Mi Gusto – Munro', () => {
       const d = docsMotos(rows).find(r => r.id === 'd-' + s + '-lucas-' + s);
       expect(d.data).to.include({tm_e:'09:00', tm_s:'15:00', tt_e:'19:00', tt_s:'00:00'});
     }));
+  });
+
+  it('autoguarda cada entrada de Motos sin tocar Guardar, y conserva la edición',()=>{
+    launch();login('gerente.munro@example.com');
+    cy.get('#snav [data-go="motos"]').click();
+    cy.get('[data-mo-act="modificar"]').click();
+    hora('lucas','tm_e','09:00');
+    lunes().then(s=>cy.window().its('__rows').should(rows=>{
+      const d=docsMotos(rows).find(r=>r.id==='d-'+s+'-lucas-'+s);
+      expect(d?.data.tm_e).to.eq('09:00');
+    }));
+    cy.get('.mo-sheet.editando').should('exist');
+    hora('lucas','tm_s','14:00');
+    lunes().then(s=>cy.window().its('__rows').should(rows=>{
+      const d=docsMotos(rows).find(r=>r.id==='d-'+s+'-lucas-'+s);
+      expect(d?.data).to.include({tm_e:'09:00',tm_s:'14:00'});
+    }));
+    cy.get('.mo-pend').should('contain.text','Guardado automáticamente');
   });
 
   it('en celular muestra un día por vez, sin desbordes horizontales', () => {

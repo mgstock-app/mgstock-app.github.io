@@ -95,7 +95,10 @@ test('Motos Agencia: «Modificar» habilita la planilla y «Guardar» envía los
   assert.match(script, /data-mo-act="guardar"/);
   assert.match(script, /data-mo-act="cancelar"/);
   assert.match(script, /async function cargarCelda\(input\)\{[\s\S]*borrador\.set\(id/);
-  assert.match(script, /async function guardarTodo\(\)\{[\s\S]*col\(\)\.doc\(id\)\.set\(data\)/);
+  assert.match(script, /async function guardarTodo\(automatico=false\)\{[\s\S]*col\(\)\.doc\(id\)\.set\(data\)/);
+  assert.match(script, /autoTimer=setTimeout\(\(\)=>\{autoTimer=null;void guardarTodo\(true\);\},900\)/);
+  assert.match(script, /if\(borrador\.get\(id\)===d\)borrador\.delete\(id\)/);
+  assert.match(script, /window\.addEventListener\('online'/);
   assert.match(script, /id="mo-name-form"/);
   assert.match(script, /col\(\)\.doc\('motos'\)\.set\(data\)/);
   assert.match(script, /beforeunload/);

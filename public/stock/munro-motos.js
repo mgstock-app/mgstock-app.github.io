@@ -24,8 +24,8 @@
   const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
   let api = null, docs = [], semanaVista = '', diaMovil = -1, verTodo = false, agregando = false, tarifasAbiertas = false;
-  /* «Modificar» habilita la planilla; los cambios quedan en el borrador hasta «Guardar». */
-  let edicion = false, editNombre = '', guardando = false;
+  /* «Modificar» habilita la planilla; cada entrada válida se guarda sola, sin cerrar edición. */
+  let edicion = false, editNombre = '', guardando = false, autoTimer = null, avisoGuardado = '';
   /* Pestañas: «Semana» (planilla) o «Historial» (semanas cerradas; importes solo para los dueños). */
   let pestana = 'semana';
   const pendientes = new Map(), borrador = new Map();
@@ -187,7 +187,13 @@
   const semanasPendientes = () => semanasVencidas().filter(s=>resumen(s).errores.length);
   const semanasConDatos = () => semanasVencidas().filter(s=>!resumen(s).errores.length);
 
-  /* Cada horario cargado va al borrador; recién «Guardar» lo envía (o lo deja en la cola sin conexión). */
+  /* Guardado diferido por celda. La cola offline ya existente se conserva. */
+  function programarAuto(){
+    if(autoTimer)clearTimeout(autoTimer);
+    if(!borrador.size||!editable(semanaVista))return;
+    autoTimer=setTimeout(()=>{autoTimer=null;void guardarTodo(true);},900);
+  }
+  /* Cada cambio entra al borrador inmediatamente, antes de sincronizarse. */
   async function cargarCelda(input){
     const semana = semanaVista, {dia, campo} = input.dataset;
     let moto = input.dataset.moto, creado = false;
@@ -207,43 +213,66 @@
     const id = idCelda(semana, moto, dia);
     const previo = leer(id) || {};
     borrador.set(id, {...previo, semana, moto, dia, [campo]:valor || ''});
+    avisoGuardado = '';
+    programarAuto();
     if (creado) api.render(); else refrescar();
   }
-  async function guardarTodo(){
+  async function guardarTodo(automatico=false){
     if (guardando || !editable(semanaVista)) return;
+    if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
     for (const data of borrador.values()) {
       const validacion = validarDia(data,{exigirCompletos:revisarSemana(semanaVista)});
       if (validacion.errores.length) {
-        api.toast('No se guardó: ' + validacion.errores[0], true);
-        refrescar();
-        return;
+        avisoGuardado = 'Sin guardar · revisá los campos en rojo.';
+        if(!automatico)api.toast('No se guardó: ' + validacion.errores[0], true);
+        refrescar();return;
       }
     }
-    // Desde el domingo 23:30 se valida toda la semana, incluso los turnos
-    // parciales guardados en días anteriores. No alcanza con revisar el borrador.
+    // Conservar el control del domingo y las semanas vencidas: nunca cerrar
+    // una semana incompleta ni enviar una combinación inválida.
     if(revisarSemana(semanaVista)){
       const estado=resumen(semanaVista);
       if(estado.errores.length){
-        api.toast('No se puede cerrar la semana: revisá ' + estado.errores.length +
+        avisoGuardado = 'Sin guardar · completá los horarios pendientes de revisión.';
+        if(!automatico)api.toast('No se puede cerrar la semana: revisá ' + estado.errores.length +
           (estado.errores.length===1?' horario pendiente.':' horarios pendientes.'),true);
         refrescar();return;
       }
     }
-    if (!borrador.size) { edicion = false; api.render(); return; }
-    guardando = true; api.render();
+    if (!borrador.size) {
+      if(!automatico){edicion=false;api.render();}
+      return;
+    }
+    guardando = true;
+    if(automatico)refrescar();else api.render();
     let ok = 0;
     try {
+      // Comparar identidad: si editan una misma celda durante la petición,
+      // conservar el borrador nuevo y programar otra escritura.
       for (const [id, d] of [...borrador]) {
         const data = {...d, autor:api.S.uid, actualizado:Date.now()};
         await api.w(() => col().doc(id).set(data));
-        pendientes.set(id, data); borrador.delete(id); ok++;
+        pendientes.set(id, data);
+        if(borrador.get(id)===d)borrador.delete(id);
+        ok++;
       }
-      edicion = false;
-      api.toast(navigator.onLine === false || api.S.offline
-        ? 'Sin internet: ' + ok + (ok === 1 ? ' horario quedó' : ' horarios quedaron') + ' en este equipo y se envían solos al volver la conexión.'
-        : 'Horarios guardados (' + ok + ').');
-    } catch (e) { api.fail(e); }
-    finally { guardando = false; api.render(); }
+      avisoGuardado = navigator.onLine===false || api.S.offline
+        ? 'Guardado en este equipo · se sincroniza al recuperar internet.'
+        : 'Guardado automáticamente.';
+      if(!automatico){
+        if(!borrador.size)edicion=false;
+        api.toast('Horarios guardados (' + ok + ').');
+      }
+    } catch (e) {
+      avisoGuardado='Error al guardar · cambios pendientes. Verificá la conexión.';
+      api.fail(e);
+    } finally {
+      guardando=false;
+      if(automatico)refrescar();else api.render();
+      // Otra edición durante un guardado no queda sin enviar.
+      if(borrador.size && avisoGuardado!=='Error al guardar · cambios pendientes. Verificá la conexión.' && avisoGuardado!=='Sin guardar · revisá los campos en rojo.')
+        programarAuto();
+    }
   }
   async function guardarNombre(form){
     const semana = semanaVista, clave = form.dataset.moto;
@@ -331,7 +360,7 @@
   const horasDia = (f, i) => f.validaciones?.[i]?.errores.length ? '⚠ Revisar' : fmtH(f.porDia[i]);
   const notaParciales = r => !revisarSemana(r.semana) && r.parciales.length
     ? r.parciales.length + (r.parciales.length===1?' turno pendiente de completar.':' turnos pendientes de completar.') +
-      ' Podés guardar ahora; el control final es el domingo a las 23:30.'
+      ' Se guarda automáticamente; el control final es el domingo a las 23:30.'
     : '';
   const horasSemana = f => tieneError(f) ? '⚠ Revisar' : fmtH(f.min);
   function avisoErrores(r){
@@ -419,8 +448,9 @@
         '<th>Refuerzo</th><th>Total horas</th>' + (dueno ? '<th>Total pago</th>' : '') + '<th>Acciones</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
         : '<p>Todavía no hay semanas cerradas. El lunes pasan al historial las semanas sin errores; las pendientes se pueden corregir.</p>') + '</section>';
   }
-  const textoPendientes = () => edicion
-    ? (borrador.size ? borrador.size + (borrador.size === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Modo edición')
+  const textoPendientes = () => guardando ? 'Guardando cambios…'
+    : borrador.size ? (avisoGuardado || borrador.size + (borrador.size === 1 ? ' cambio pendiente de guardado' : ' cambios pendientes de guardado'))
+    : edicion ? (avisoGuardado || 'Guardado automáticamente · podés seguir editando')
     : 'Planilla guardada';
   function view(){
     if (!permitido()) return '<section class="sheet"><p>No tenés acceso a este módulo.</p></section>';
@@ -441,14 +471,14 @@
       (cerradas ? ' <span class="mo-cuenta">' + cerradas + '</span>' : '') + '</button></nav>';
     const flechas = '<div class="mo-nav"><button data-mo-act="prev" aria-label="Semana anterior">‹</button><button data-mo-act="next" aria-label="Semana siguiente"' + (enCurso ? ' disabled' : '') + '>›</button></div>';
     const estado = api.S.offline || navigator.onLine === false ? 'Sin conexión · lo que cargues se guarda en este equipo y se envía solo al volver internet'
-      : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada' + (puede ? ' · podés corregir horarios con «Modificar» y guardar los cambios.' : ' (solo lectura)')
-      : edicion ? 'Cargá los horarios y tocá «Guardar». Hasta guardar, los cambios no se envían.' : 'Tocá «Modificar» para cargar o corregir horarios.';
+      : !api.canW() ? 'Solo lectura' : !enCurso ? 'Semana cerrada' + (puede ? ' · podés corregir horarios con «Modificar»; se guardan automáticamente.' : ' (solo lectura)')
+      : edicion ? 'Los horarios se guardan automáticamente al completar cada cambio.' : 'Tocá «Modificar» para cargar horarios; cada cambio se guardará solo.';
     const barra = puede ? '<div class="mo-toolbar"><span class="mo-pend">' + textoPendientes() + '</span>' +
       (edicion ? '<button class="btn" data-mo-act="cancelar"' + (guardando ? ' disabled' : '') + '>Cancelar</button><button class="btn primary" data-mo-act="guardar"' + (guardando ? ' disabled' : '') + '>' + (guardando ? 'Guardando…' : 'Guardar') + '</button>'
         : '<button class="btn primary" data-mo-act="modificar">✎ Modificar</button>') + '</div>' : '';
     return '<section class="sheet mo-page"><header class="mo-top"><span class="mo-hero">' + ICONO + '</span>' +
       '<div class="mo-title"><h1>Motos Agencia</h1><h2>Control horario semanal</h2>' +
-      '<p>Cargá entradas y salidas durante la semana y guardalas aunque falte completar un turno. El domingo a las 23:30 se revisan los horarios pendientes antes de pasar al historial. Usá formato de 24 horas (ej.: 19:30).</p></div>' +
+      '<p>Cargá entradas y salidas durante la semana; se guardan automáticamente aunque falte completar un turno. El domingo a las 23:30 se revisan los horarios pendientes antes de pasar al historial. Usá formato de 24 horas (ej.: 19:30).</p></div>' +
       '<div class="mo-semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>' +
       '<div><small>' + (enCurso ? 'Semana actual' : 'Semana ' + numeroSemana(semanaVista)) + '</small><b>' + DIAS[0] + ' ' + corta(r.dias[0]) + ' – ' + DIAS[6] + ' ' + corta(r.dias[6]) + '</b></div>' + flechas + '</div></header>' +
       avisoVencidas + avisoCierre +
@@ -494,6 +524,11 @@
     });
     set('[data-mo-sem]', r.errores.length ? '⚠ Revisar' : fmtH(r.min));
     set('.mo-pend', textoPendientes());
+    const guardarBtn=document.querySelector('[data-mo-act="guardar"]');
+    if(guardarBtn){
+      guardarBtn.disabled=guardando;
+      guardarBtn.textContent=guardando?'Guardando…':'Guardar ahora';
+    }
     if (dueno) set('[data-mo-sem-pago]', r.errores.length ? '—' : fmt$(r.pago));
     document.querySelectorAll('.mo-week').forEach(el => el.classList.toggle('mo-week-error', !!r.errores.length));
     const resumenErrores = $('.mo-error-summary');
@@ -501,7 +536,7 @@
     const nota = $('.mo-parcial-nota');
     if(nota){const txt=notaParciales(r);nota.hidden=!txt;nota.textContent=txt;}
   }
-  function reset(){ docs = []; pendientes.clear(); borrador.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; edicion = false; editNombre = ''; guardando = false; }
+  function reset(){ if(autoTimer)clearTimeout(autoTimer);autoTimer=null;avisoGuardado='';docs = []; pendientes.clear(); borrador.clear(); semanaVista = ''; diaMovil = -1; verTodo = false; agregando = false; tarifasAbiertas = false; edicion = false; editNombre = ''; guardando = false; }
   function subscribe(loc, push){
     if (loc !== 'munro' || !permitido()) return;
     push(col().onSnapshot(snap => {
@@ -536,7 +571,7 @@
       else if (act === 'quitar') { quitarRefuerzo(btn.dataset.doc); return; }
       else if (act === 'tarifas') tarifasAbiertas = !tarifasAbiertas;
       else if (act === 'modificar' && editable(semanaVista)) edicion = true;
-      else if (act === 'cancelar') { if (borrador.size && !confirm('¿Descartar los cambios sin guardar?')) return; borrador.clear(); edicion = false; }
+      else if (act === 'cancelar') { if (borrador.size && !confirm('¿Descartar los cambios sin guardar?')) return; if(autoTimer)clearTimeout(autoTimer);autoTimer=null;borrador.clear();avisoGuardado='';edicion = false; }
       else if (act === 'guardar') { guardarTodo(); return; }
       else if (act === 'nombre') editNombre = btn.dataset.moto;
       else if (act === 'cancelar-nombre') editNombre = '';
@@ -560,6 +595,8 @@
       if (event.target.id === 'mo-rates-form') { event.preventDefault(); guardarTarifas(event.target); }
       if (event.target.id === 'mo-name-form') { event.preventDefault(); guardarNombre(event.target); }
     });
+    // Volver a sincronizar una carga pendiente al recuperar la conexión.
+    window.addEventListener('online', () => {if(borrador.size)programarAuto();});
     // Avisar antes de cerrar o recargar con horarios sin guardar.
     window.addEventListener('beforeunload', event => { if (borrador.size) { event.preventDefault(); event.returnValue = ''; } });
     let antes = mobile();
