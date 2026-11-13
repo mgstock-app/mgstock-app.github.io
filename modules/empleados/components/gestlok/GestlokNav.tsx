@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { Bell, Bike, Boxes, CalendarClock, ClipboardList, House, Menu, MessageSquare, Package, ShoppingCart, Store, Truck, UsersRound, X } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -43,6 +44,8 @@ export type SeccionModulo = { id: string; label: string; actual?: boolean; onSel
 // Barra de abajo (solo celular, como en GESTLOK). «Colaboradores» marca que estás en Administración de empleados.
 export function GestlokDock({ secciones = [], titulo = "Administración de empleados" }: { secciones?: SeccionModulo[]; titulo?: string }) {
   const nav = useNavGestlok();
+  const pathname = usePathname();
+  const enHorarios = /(?:^|\/)horarios\/?$/.test(pathname || "");
   const [abierta, setAbierta] = useState(false);
   useEffect(() => {
     if (!abierta) return;
@@ -64,7 +67,12 @@ export function GestlokDock({ secciones = [], titulo = "Administración de emple
               </button>
             );
           if (clave === "staff" && nav.local === "munro")
-            return (
+            return enHorarios ? (
+              <button key={clave} type="button" aria-current="page" aria-label="Staff · Horarios de Munro"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                <Icono clave="staff" />Staff
+              </button>
+            ) : (
               <a key={clave} href="/empleados/horarios/" aria-label="Staff · abrir Horarios de Munro">
                 <Icono clave="staff" />Staff
               </a>
