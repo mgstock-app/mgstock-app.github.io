@@ -21,7 +21,7 @@ assert.equal(evaluarDia(dia).turnos,2);
 assert.equal(evaluarDia(dia).horas,480);
 const semanas={"2026-11-12":dia};
 const hasta=new Date("2026-11-12T15:00:00Z");
-const porTurno=resumenPersona("turno",semanas,"2026-11-09",hasta);
+const porTurno=resumenPersona("turno",semanas,"2026-11-09",hasta,["2026-11-12"]);
 assert.equal(porTurno.turnos,2);
 assert.equal(porTurno.extraFeriado,2);
 assert.equal(porTurno.computados,4,"Feriado 2 trabajados + 2 extra = 4 turnos");
