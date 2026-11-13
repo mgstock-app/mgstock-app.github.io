@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save } from "luc
 import { rpc } from "@/features/access/api";
 import { ScheduleHistory } from "./ScheduleHistory";
 import {
- diasSemana,evaluarDia,fechaCorta,formatoHoras,revisarSemana,resumenPersona,semanaActual,
+ diasSemana,evaluarDia,fechaCorta,formatoHoras,revisarSemana,resumenPersona,resumenLiquidacion,semanaActual,
  sumarDias,type Estado,type Persona,type Planilla,type Registro,type SemanaHorarios,
 } from "@/features/schedules/munro-model";
 import "./munro-weekly.css";
@@ -36,6 +36,10 @@ export function MunroWeeklySchedule(){
  const [agregando,setAgregando]=useState(false);
  const [nombreNuevo,setNombreNuevo]=useState("");
  const [momento,setMomento]=useState(()=>new Date());
+ const [feriados,setFeriados]=useState<string[]>([]);
+ const [feriadosVersion,setFeriadosVersion]=useState(0);
+ const [guardandoFeriados,setGuardandoFeriados]=useState(false);
+ const [mostrarFeriados,setMostrarFeriados]=useState(false);
  const puedeEditar=planilla?.puede_editar===true;
  const dias=useMemo(()=>diasSemana(semana),[semana]);
  const enRevision=revisarSemana(semana,momento);
@@ -49,6 +53,8 @@ export function MunroWeeklySchedule(){
        return {...persona,datos:registro?.datos||{},version:registro?.version||0};
      });
      setPlanilla(p);setFilas(actual);setPendientes([]);setEditando(false);
+     setFeriados(p.feriados||[]);setFeriadosVersion(p.feriados_version||0);
+     setMostrarFeriados(Boolean(p.feriados?.length));
    }catch(e){setError(aviso(e));}
    finally{setCargando(false);}
  },[semana]);
@@ -64,6 +70,24 @@ export function MunroWeeklySchedule(){
    window.addEventListener("beforeunload",onBeforeUnload);
    return()=>window.removeEventListener("beforeunload",onBeforeUnload);
  },[pendientes.length]);
+ // Sincronización entre dispositivos cada 15 segundos, sin pisar un borrador abierto.
+ useEffect(()=>{
+   if(editando||pendientes.length||guardandoFeriados)return;
+   let activo=true;
+   const timer=window.setInterval(async()=>{
+     try{
+       const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
+       if(!activo)return;
+       setPlanilla(p);
+       setFilas(p.personas.map(persona=>{
+         const r=p.planillas.find(x=>x.id===persona.id);
+         return {...persona,datos:r?.datos||{},version:r?.version||0};
+       }));
+       setFeriados(p.feriados||[]);setFeriadosVersion(p.feriados_version||0);
+     }catch{/* Mantener los datos actuales hasta recuperar la conexión. */}
+   },15000);
+   return()=>{activo=false;window.clearInterval(timer);};
+ },[semana,editando,pendientes.length,guardandoFeriados]);
  const cambiar=(id:number,updater:(anterior:Borrador)=>Borrador)=>{
    if(!editando||!puedeEditar)return;
    setFilas(actual=>actual.map(f=>f.id===id?updater(f):f));
@@ -72,6 +96,21 @@ export function MunroWeeklySchedule(){
  };
  const cambiarDia=(id:number,dia:string,campo:string,valor:string|boolean)=>{
    cambiar(id,f=>({...f,datos:{...f.datos,[dia]:{...(f.datos[dia]||{}),[campo]:valor}}}));
+ };
+ const actualizarFeriados=async(nuevos:string[])=>{
+   if(!puedeEditar||guardandoFeriados||pendientes.length){
+     if(pendientes.length)setError("Guardá los horarios antes de modificar los feriados.");
+     return;
+   }
+   setGuardandoFeriados(true);setError("");
+   try{
+     const res=await rpc<{ok:boolean;version:number;dias:string[]}>("rm_munro_horarios_feriados_guardar",{
+       p_semana:semana,p_dias:[...nuevos].sort(),p_version:feriadosVersion
+     });
+     setFeriados(res.dias);setFeriadosVersion(res.version);
+     setMensaje("Días feriados actualizados.");
+   }catch(e){setError(aviso(e));}
+   finally{setGuardandoFeriados(false);}
  };
  const seleccionarSemana=(siguiente:string)=>{
    if(pendientes.length&&!window.confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de semana?"))return;
