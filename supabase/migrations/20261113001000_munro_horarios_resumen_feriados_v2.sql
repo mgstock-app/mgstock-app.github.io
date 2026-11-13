@@ -124,156 +124,10 @@ begin
             raise exception 'Observaciones demasiado extensas' using errcode='22023';
           end if;
         elsif v_persona.modalidad='turno' then
-          if v_hora !~ '^[0-9]{1,2}
-        raise exception 'Usá horas HH:MM válidas' using errcode='22023';
-      end if;
-    end loop;
-    v_e:=coalesce(v_celda->>'tm_e','');v_s:=coalesce(v_celda->>'tm_s','');
-    if v_cierre and ((v_e='')<>(v_s='')) then
-      raise exception 'Completá mañana antes del cierre semanal' using errcode='22023';
-    end if;
-    v_tm_e:=null;v_tm_s:=null;v_tt_e:=null;v_tt_s:=null;
-    if v_e<>'' and v_s<>'' then
-      v_tm_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
-      v_tm_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
-      if v_tm_s<=v_tm_e or v_tm_s-v_tm_e>960 then
-        raise exception 'La salida de mañana debe ser posterior a la entrada' using errcode='22023';
-      end if;
-    end if;
-    v_e:=coalesce(v_celda->>'tt_e','');v_s:=coalesce(v_celda->>'tt_s','');
-    if v_cierre and ((v_e='')<>(v_s='')) then
-      raise exception 'Completá tarde antes del cierre semanal' using errcode='22023';
-    end if;
-    if v_e<>'' and v_s<>'' then
-      v_tt_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
-      v_tt_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
-      if v_tt_s<=v_tt_e then v_tt_s:=v_tt_s+1440;end if;
-      if v_tt_s-v_tt_e>960 or v_tt_s=v_tt_e then
-        raise exception 'El turno tarde tiene duración imposible' using errcode='22023';
-      end if;
-    end if;
-    if v_tm_s is not null and v_tt_e is not null and v_tt_e<v_tm_s then
-      raise exception 'Los turnos se superponen' using errcode='22023';
-    end if;
-    if v_tm_e is not null and v_tt_s is not null and v_tt_s>v_tm_e+1440 then
-      raise exception 'La jornada supera 24 horas' using errcode='22023';
-    end if;
-  end loop;
-  -- Serializar también el primer guardado, cuando aún no existe fila. Evita pisar
-  -- la carga de otro gerente/dueño trabajando sobre el mismo colaborador y semana.
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtext('munro_horarios_'||p_persona::text),
-    pg_catalog.hashtext(p_semana::text));
-  select * into v_prev from rm_test_private.munro_horarios_planillas
-    where colaborador_id=p_persona and semana=p_semana for update;
-  v_ver:=case when found then v_prev.version else 0 end;
-  if v_ver<>p_version then
-    raise exception 'Otra persona modificó esta semana. Actualizá antes de guardar.' using errcode='40001';
-  end if;
-  if btrim(p_nombre)<>'' and exists(
-    select 1 from rm_test_private.munro_horarios_colaboradores c
-    where c.id<>p_persona and lower(btrim(c.nombre))=lower(btrim(p_nombre))) then
-    raise exception 'Ese nombre ya existe. Revisá que no sea un colaborador duplicado.' using errcode='22023';
-  end if;
-  update rm_test_private.munro_horarios_colaboradores
-     set nombre=btrim(p_nombre),estado=p_estado,actualizado_at=now()
-   where id=p_persona;
-  if btrim(p_nombre)<>'' then
-    insert into rm_test_private.munro_horarios_planillas
-      (colaborador_id,semana,datos,nombre_semana,modalidad_semana,version,actualizado_por)
-    values(p_persona,p_semana,p_datos,btrim(p_nombre),v_persona.modalidad,v_ver+1,auth.uid())
-    on conflict(colaborador_id,semana) do update
-      set datos=excluded.datos,nombre_semana=excluded.nombre_semana,
-      modalidad_semana=excluded.modalidad_semana,version=excluded.version,
-      actualizado_por=excluded.actualizado_por,actualizado_at=now();
-    v_ver:=v_ver+1;
-  end if;
-  insert into rm_test_private.munro_horarios_auditoria (
-    colaborador_id,semana,version_anterior,version_nueva,
-    datos_antes,datos_despues,nombre_antes,nombre_despues,
-    estado_antes,estado_despues,editado_por)
-  values(p_persona,p_semana,coalesce(v_prev.version,0),v_ver,
-    coalesce(v_prev.datos,'{}'::jsonb),p_datos,v_persona.nombre,btrim(p_nombre),
-    v_persona.estado,p_estado,auth.uid());
-  return jsonb_build_object('ok',true,'version',v_ver,'id',p_persona);
-end $$;
- or v_hora::integer>14 then
+          if v_hora !~ '^[0-9]{1,2}$' or v_hora::integer>14 then
             raise exception 'Ingresá turnos enteros (0 a 14)' using errcode='22023';
           end if;
-        elsif v_hora !~ '^[0-9]{1,3}:[0-5][0-9]
-        raise exception 'Usá horas HH:MM válidas' using errcode='22023';
-      end if;
-    end loop;
-    v_e:=coalesce(v_celda->>'tm_e','');v_s:=coalesce(v_celda->>'tm_s','');
-    if v_cierre and ((v_e='')<>(v_s='')) then
-      raise exception 'Completá mañana antes del cierre semanal' using errcode='22023';
-    end if;
-    v_tm_e:=null;v_tm_s:=null;v_tt_e:=null;v_tt_s:=null;
-    if v_e<>'' and v_s<>'' then
-      v_tm_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
-      v_tm_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
-      if v_tm_s<=v_tm_e or v_tm_s-v_tm_e>960 then
-        raise exception 'La salida de mañana debe ser posterior a la entrada' using errcode='22023';
-      end if;
-    end if;
-    v_e:=coalesce(v_celda->>'tt_e','');v_s:=coalesce(v_celda->>'tt_s','');
-    if v_cierre and ((v_e='')<>(v_s='')) then
-      raise exception 'Completá tarde antes del cierre semanal' using errcode='22023';
-    end if;
-    if v_e<>'' and v_s<>'' then
-      v_tt_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
-      v_tt_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
-      if v_tt_s<=v_tt_e then v_tt_s:=v_tt_s+1440;end if;
-      if v_tt_s-v_tt_e>960 or v_tt_s=v_tt_e then
-        raise exception 'El turno tarde tiene duración imposible' using errcode='22023';
-      end if;
-    end if;
-    if v_tm_s is not null and v_tt_e is not null and v_tt_e<v_tm_s then
-      raise exception 'Los turnos se superponen' using errcode='22023';
-    end if;
-    if v_tm_e is not null and v_tt_s is not null and v_tt_s>v_tm_e+1440 then
-      raise exception 'La jornada supera 24 horas' using errcode='22023';
-    end if;
-  end loop;
-  -- Serializar también el primer guardado, cuando aún no existe fila. Evita pisar
-  -- la carga de otro gerente/dueño trabajando sobre el mismo colaborador y semana.
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtext('munro_horarios_'||p_persona::text),
-    pg_catalog.hashtext(p_semana::text));
-  select * into v_prev from rm_test_private.munro_horarios_planillas
-    where colaborador_id=p_persona and semana=p_semana for update;
-  v_ver:=case when found then v_prev.version else 0 end;
-  if v_ver<>p_version then
-    raise exception 'Otra persona modificó esta semana. Actualizá antes de guardar.' using errcode='40001';
-  end if;
-  if btrim(p_nombre)<>'' and exists(
-    select 1 from rm_test_private.munro_horarios_colaboradores c
-    where c.id<>p_persona and lower(btrim(c.nombre))=lower(btrim(p_nombre))) then
-    raise exception 'Ese nombre ya existe. Revisá que no sea un colaborador duplicado.' using errcode='22023';
-  end if;
-  update rm_test_private.munro_horarios_colaboradores
-     set nombre=btrim(p_nombre),estado=p_estado,actualizado_at=now()
-   where id=p_persona;
-  if btrim(p_nombre)<>'' then
-    insert into rm_test_private.munro_horarios_planillas
-      (colaborador_id,semana,datos,nombre_semana,modalidad_semana,version,actualizado_por)
-    values(p_persona,p_semana,p_datos,btrim(p_nombre),v_persona.modalidad,v_ver+1,auth.uid())
-    on conflict(colaborador_id,semana) do update
-      set datos=excluded.datos,nombre_semana=excluded.nombre_semana,
-      modalidad_semana=excluded.modalidad_semana,version=excluded.version,
-      actualizado_por=excluded.actualizado_por,actualizado_at=now();
-    v_ver:=v_ver+1;
-  end if;
-  insert into rm_test_private.munro_horarios_auditoria (
-    colaborador_id,semana,version_anterior,version_nueva,
-    datos_antes,datos_despues,nombre_antes,nombre_despues,
-    estado_antes,estado_despues,editado_por)
-  values(p_persona,p_semana,coalesce(v_prev.version,0),v_ver,
-    coalesce(v_prev.datos,'{}'::jsonb),p_datos,v_persona.nombre,btrim(p_nombre),
-    v_persona.estado,p_estado,auth.uid());
-  return jsonb_build_object('ok',true,'version',v_ver,'id',p_persona);
-end $$;
- or
+        elsif v_hora !~ '^[0-9]{1,3}:[0-5][0-9]$' or
           split_part(v_hora,':',1)::integer>168 then
           raise exception 'Ingresá horas y minutos válidos (0:00 a 168:00)' using errcode='22023';
         end if;
@@ -281,7 +135,7 @@ end $$;
         if jsonb_typeof(v_celda->v_campo)<>'boolean' then
           raise exception 'El feriado debe ser sí o no' using errcode='22023';
         end if;
-      elsif coalesce(v_hora,'')<>'' and v_hora !~ '^([01][0-9]|2[0-3]):[0-5][0-9]
+      elsif coalesce(v_hora,'')<>'' and v_hora !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then
         raise exception 'Usá horas HH:MM válidas' using errcode='22023';
       end if;
     end loop;
@@ -354,79 +208,7 @@ end $$;
     v_persona.estado,p_estado,auth.uid());
   return jsonb_build_object('ok',true,'version',v_ver,'id',p_persona);
 end $$;
- then
-        raise exception 'Usá horas HH:MM válidas' using errcode='22023';
-      end if;
-    end loop;
-    v_e:=coalesce(v_celda->>'tm_e','');v_s:=coalesce(v_celda->>'tm_s','');
-    if v_cierre and ((v_e='')<>(v_s='')) then
-      raise exception 'Completá mañana antes del cierre semanal' using errcode='22023';
-    end if;
-    v_tm_e:=null;v_tm_s:=null;v_tt_e:=null;v_tt_s:=null;
-    if v_e<>'' and v_s<>'' then
-      v_tm_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
-      v_tm_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
-      if v_tm_s<=v_tm_e or v_tm_s-v_tm_e>960 then
-        raise exception 'La salida de mañana debe ser posterior a la entrada' using errcode='22023';
-      end if;
-    end if;
-    v_e:=coalesce(v_celda->>'tt_e','');v_s:=coalesce(v_celda->>'tt_s','');
-    if v_cierre and ((v_e='')<>(v_s='')) then
-      raise exception 'Completá tarde antes del cierre semanal' using errcode='22023';
-    end if;
-    if v_e<>'' and v_s<>'' then
-      v_tt_e:=split_part(v_e,':',1)::integer*60+split_part(v_e,':',2)::integer;
-      v_tt_s:=split_part(v_s,':',1)::integer*60+split_part(v_s,':',2)::integer;
-      if v_tt_s<=v_tt_e then v_tt_s:=v_tt_s+1440;end if;
-      if v_tt_s-v_tt_e>960 or v_tt_s=v_tt_e then
-        raise exception 'El turno tarde tiene duración imposible' using errcode='22023';
-      end if;
-    end if;
-    if v_tm_s is not null and v_tt_e is not null and v_tt_e<v_tm_s then
-      raise exception 'Los turnos se superponen' using errcode='22023';
-    end if;
-    if v_tm_e is not null and v_tt_s is not null and v_tt_s>v_tm_e+1440 then
-      raise exception 'La jornada supera 24 horas' using errcode='22023';
-    end if;
-  end loop;
-  -- Serializar también el primer guardado, cuando aún no existe fila. Evita pisar
-  -- la carga de otro gerente/dueño trabajando sobre el mismo colaborador y semana.
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtext('munro_horarios_'||p_persona::text),
-    pg_catalog.hashtext(p_semana::text));
-  select * into v_prev from rm_test_private.munro_horarios_planillas
-    where colaborador_id=p_persona and semana=p_semana for update;
-  v_ver:=case when found then v_prev.version else 0 end;
-  if v_ver<>p_version then
-    raise exception 'Otra persona modificó esta semana. Actualizá antes de guardar.' using errcode='40001';
-  end if;
-  if btrim(p_nombre)<>'' and exists(
-    select 1 from rm_test_private.munro_horarios_colaboradores c
-    where c.id<>p_persona and lower(btrim(c.nombre))=lower(btrim(p_nombre))) then
-    raise exception 'Ese nombre ya existe. Revisá que no sea un colaborador duplicado.' using errcode='22023';
-  end if;
-  update rm_test_private.munro_horarios_colaboradores
-     set nombre=btrim(p_nombre),estado=p_estado,actualizado_at=now()
-   where id=p_persona;
-  if btrim(p_nombre)<>'' then
-    insert into rm_test_private.munro_horarios_planillas
-      (colaborador_id,semana,datos,nombre_semana,modalidad_semana,version,actualizado_por)
-    values(p_persona,p_semana,p_datos,btrim(p_nombre),v_persona.modalidad,v_ver+1,auth.uid())
-    on conflict(colaborador_id,semana) do update
-      set datos=excluded.datos,nombre_semana=excluded.nombre_semana,
-      modalidad_semana=excluded.modalidad_semana,version=excluded.version,
-      actualizado_por=excluded.actualizado_por,actualizado_at=now();
-    v_ver:=v_ver+1;
-  end if;
-  insert into rm_test_private.munro_horarios_auditoria (
-    colaborador_id,semana,version_anterior,version_nueva,
-    datos_antes,datos_despues,nombre_antes,nombre_despues,
-    estado_antes,estado_despues,editado_por)
-  values(p_persona,p_semana,coalesce(v_prev.version,0),v_ver,
-    coalesce(v_prev.datos,'{}'::jsonb),p_datos,v_persona.nombre,btrim(p_nombre),
-    v_persona.estado,p_estado,auth.uid());
-  return jsonb_build_object('ok',true,'version',v_ver,'id',p_persona);
-end $$;
+
 
 create or replace function public.rm_munro_horarios_feriados_guardar(
  p_semana date,p_dias jsonb,p_version integer default 0)
