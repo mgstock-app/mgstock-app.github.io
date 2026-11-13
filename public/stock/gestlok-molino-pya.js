@@ -98,14 +98,15 @@ function productRow(p,i,list,flat){
   '<div class="gl-pya-pya"><span class="gl-pya-sr">Precio PedidosYa</span>'+(bad?'—':esc(money(pya(price))))+'</div>'+
  '</div>';
 }
-function productForm(p){
+function productForm(p,category){
  const cats=categories(),si=data.san_isidro_prices||[];
  return '<form class="gl-pya-form" data-pya-product-form="'+esc(p?.id||'')+'">'+
-  '<label>Nombre del producto<input name="name" maxlength="120" required value="'+esc(p?.name||'')+'"></label>'+
-  '<label>Categoría<select name="category">'+cats.map(c=>'<option value="'+esc(c.id)+'"'+((p?.category_id||editing?.category)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></label>'+
-  (p?'':'<label>Precio local<input name="price" inputmode="decimal" placeholder="Opcional"></label>')+
+  '<label>Nombre del producto<input name="name" maxlength="120" required value="'+esc(editing?.fields?.name??p?.name??'')+'"></label>'+
+  (category?'<input type="hidden" name="category" value="'+esc(category.id)+'">':
+  '<label>Categoría<select name="category">'+cats.map(c=>'<option value="'+esc(c.id)+'"'+((p?.category_id||editing?.category)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></label>')+
+  (p?'':'<label>Precio local<input name="price" inputmode="decimal" placeholder="Opcional" value="'+esc(editing?.fields?.price||'')+'"></label>')+
   '<label>Vincular con la lista de San Isidro<select name="linked"><option value="">Sin vincular (precio manual)</option>'+
-   si.map(x=>'<option value="'+esc(x.id)+'"'+(p?.linked_price_id===x.id?' selected':'')+'>'+esc(x.product)+' · '+esc(money(x.amount))+'</option>').join('')+'</select></label>'+
+   si.map(x=>'<option value="'+esc(x.id)+'"'+((editing?.fields?.linked??p?.linked_price_id)===x.id?' selected':'')+'>'+esc(x.product)+' · '+esc(money(x.amount))+'</option>').join('')+'</select></label>'+
   '<div class="gl-pya-form-actions"><button type="submit" class="gl-pya-btn gl-pya-btn--primary">'+(p?'Guardar producto':'Agregar producto')+'</button>'+
   '<button type="button" class="gl-pya-btn" data-pya-cancel-edit>Cancelar</button>'+
   (p?'<button type="button" class="gl-pya-btn gl-pya-btn--danger" data-pya-delete-product="'+esc(p.id)+'">Eliminar producto</button>':'')+'</div></form>';
@@ -116,8 +117,22 @@ function catMove(c){
  return '<button type="button" class="gl-pya-sq" data-pya-cat-move="'+esc(c.id)+'" data-dir="-1" aria-label="Subir categoría '+esc(c.name)+'" title="Subir"'+(i<=0?' disabled':'')+'>'+svg('up',18)+'</button>'+
   '<button type="button" class="gl-pya-sq" data-pya-cat-move="'+esc(c.id)+'" data-dir="1" aria-label="Bajar categoría '+esc(c.name)+'" title="Bajar"'+(i<0||i>=ids.length-1?' disabled':'')+'>'+svg('down',18)+'</button>';
 }
+const expandedCategories=new Set();
+const productNameKey=name=>name.trim().replace(/\s+/g,' ').toLowerCase();
+function categoryDetails(c,list){
+ const id='gl-pya-details-'+esc(c.id);
+ if(!expandedCategories.has(c.id))return '<div id="'+id+'" hidden></div>';
+ const adding=editing?.type==='new-product'&&editing.category===c.id;
+ const add=data.can_admin?'<button type="button" class="gl-pya-mini" data-pya-new-product="'+esc(c.id)+'">'+svg('plus',14,2)+'Producto</button>':'';
+ const rows=list.map((p,i)=>productRow(p,i,list,false)).join('');
+ return '<div role="row" id="'+id+'">'+
+  '<div role="cell" aria-colspan="5" class="gl-pya-category-details">'+add+
+  (adding&&data.can_admin?productForm(null,c):'')+
+  (rows?productTableHead()+rows:(!adding?'<p class="gl-pya-empty">Todavía no hay productos en esta categoría.</p>':''))+'</div></div>';
+}
 function catRow(c,i){
- const admin=!!data?.can_admin,n=products().filter(p=>p.category_id===c.id).length;
+ const admin=!!data?.can_admin,list=products().filter(p=>p.category_id===c.id),n=list.length;
+ const expanded=expandedCategories.has(c.id);
  if(admin&&editing?.type==='category'&&editing.id===c.id)return '<div class="gl-pya-crow is-editing" role="row"><span role="cell"></span><span class="gl-pya-num" role="cell">'+(i+1)+'</span>'+
   '<form class="gl-pya-catform" data-pya-category-form="'+esc(c.id)+'" role="cell"><label class="gl-pya-sr" for="gl-pya-cat-'+esc(c.id)+'">Nombre de la categoría</label><input id="gl-pya-cat-'+esc(c.id)+'" name="name" maxlength="80" required value="'+esc(c.name)+'">'+
   '<button type="submit" class="gl-pya-btn gl-pya-btn--primary">Guardar</button><button type="button" class="gl-pya-btn" data-pya-cancel-edit>Cancelar</button></form></div>';
@@ -126,9 +141,9 @@ function catRow(c,i){
   '<button type="button" class="gl-pya-sq gl-pya-sq--danger" data-pya-delete-category="'+esc(c.id)+'" aria-label="Eliminar categoría '+esc(c.name)+'" title="Eliminar">'+svg('trash',18)+'</button>';
  return '<div class="gl-pya-crow" role="row" data-pya-cat-row="'+esc(c.id)+'"'+(admin?' draggable="true"':'')+'>'+
   '<span class="gl-pya-grip" role="cell">'+(admin?svg('grip',18):'')+'</span><span class="gl-pya-num" role="cell">'+(i+1)+'</span>'+
-  '<span class="gl-pya-cname" role="cell"><button type="button" data-pya-goto-cat="'+esc(c.id)+'" title="Ver los productos de '+esc(c.name)+'">'+esc(c.name)+'</button></span>'+
+  '<span class="gl-pya-cname" role="cell"><button type="button" data-pya-expand-category="'+esc(c.id)+'" aria-expanded="'+expanded+'" aria-controls="gl-pya-details-'+esc(c.id)+'"><span class="gl-pya-chev'+(expanded?' is-open':'')+'" aria-hidden="true">'+svg('chev',16,2)+'</span>'+esc(c.name)+'</button></span>'+
   '<span class="gl-pya-ccount" role="cell">'+n+(n===1?' producto':' productos')+'</span>'+
-  '<span class="gl-pya-cact" role="cell">'+actions+'</span></div>';
+  '<span class="gl-pya-cact" role="cell">'+actions+'</span></div>'+categoryDetails(c,list);
 }
 function sectionHead(icon,title,sub,actions){
  return '<div class="gl-pya-sechead"><span class="gl-pya-secicon">'+svg(icon,26,1.6)+'</span><div class="gl-pya-sectext"><h3>'+title+'</h3><p>'+sub+'</p></div>'+
@@ -158,6 +173,9 @@ function categoryBlock(c){
  return '<section class="gl-pya-cat" id="gl-pya-catsec-'+esc(c.id)+'" aria-label="'+esc(c.name)+'"><div class="gl-pya-cat-head">'+head+'</div>'+
   (open?(adding?'<div class="gl-pya-row gl-pya-row--edit">'+productForm(null)+'</div>':'')+list.map((p,i)=>productRow(p,i,list,false)).join(''):'')+'</section>';
 }
+function productTableHead(){
+ return '<div class="gl-pya-thead" aria-hidden="true"><span>Producto</span><span>Precio Local</span><span>Precio PYA (+'+esc(pct())+'%)</span></div>';
+}
 function productsView(){
  const admin=!!data?.can_admin,c=counts(),dirty=drafts.size>0;
  const meta={productos:['box','Productos ('+c.todos+')','Cargá el precio local de cada producto. El precio PYA se calcula solo.'],
@@ -178,7 +196,7 @@ function productsView(){
  const showEmpty=view==='todos'||view==='productos'?!products().filter(visible).length&&!(editing?.type==='new-product'):!rows;
  return sectionHead(meta[0],meta[1],meta[2],actions)+
   '<p class="gl-pya-note">Precio PYA = precio local + '+esc(pct())+' %, redondeado hacia arriba a múltiplos de $100.</p>'+
-  '<div class="gl-pya-table"><div class="gl-pya-thead" aria-hidden="true"><span>Producto</span><span>Precio Local</span><span>Precio PYA (+'+esc(pct())+'%)</span></div>'+
+  '<div class="gl-pya-table">'+productTableHead()+
   (view==='productos'?rows+(showEmpty?'<p class="gl-pya-empty gl-pya-empty--foot">'+empty+'</p>':''):(showEmpty?'<p class="gl-pya-empty">'+empty+'</p>':rows))+'</div>';
 }
 function statusHTML(dirty){
@@ -250,14 +268,14 @@ function open(){
 function close(force=false){
  if(!opened)return true;
  if(drafts.size&&!force&&!window.confirm('Tenés cambios sin guardar. ¿Salir sin guardarlos?'))return false;
- opened=false;drafts.clear();editing=null;conflicts=null;msg='';error='';ordering=false;menuOpen=false;dragId=null;
+ opened=false;expandedCategories.clear();drafts.clear();editing=null;conflicts=null;msg='';error='';ordering=false;menuOpen=false;dragId=null;
  clearInterval(pollTimer);pollTimer=null;sideObs?.disconnect();sideObs=null;$('#gl-pya-panel')?.remove();document.body.classList.remove('gl-pya-open');
  try{priorFocus?.focus?.();}catch{}
  return true;
 }
 function css(){
  if(document.getElementById('gl-pya-css'))return;
- const l=document.createElement('link');l.id='gl-pya-css';l.rel='stylesheet';l.href='/stock/gestlok-molino-pya.css?rev=pedidosya-sobrio-20261110';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-pya-css';l.rel='stylesheet';l.href='/stock/gestlok-molino-pya.css?rev=pedidosya-categorias-20261113';document.head.appendChild(l);
 }
 async function act(fn,okMsg){
  if(busy)return;busy=true;msg='';error='';render();
@@ -284,8 +302,11 @@ document.addEventListener('click',e=>{
  if(q('[data-pya-close]')){e.preventDefault();close();return;}
  if(q('[data-pya-retry]')){e.preventDefault();void reload();return;}
  if((el=q('[data-pya-view]'))){view=el.dataset.pyaView;if(view!=='categorias')ordering=false;if(editing?.type==='category'||editing?.type==='new-category')editing=null;render();return;}
- if((el=q('[data-pya-goto-cat]'))){const id=el.dataset.pyaGotoCat;view='productos';search='';collapsed.delete(id);ordering=false;render();
-  document.getElementById('gl-pya-catsec-'+id)?.scrollIntoView?.({block:'start',behavior:'smooth'});return;}
+ if((el=q('[data-pya-expand-category]'))){
+  const id=el.dataset.pyaExpandCategory;
+  if(expandedCategories.has(id))expandedCategories.delete(id);else expandedCategories.add(id);
+  render();$('#gl-pya-panel [data-pya-expand-category="'+id+'"]')?.focus();return;
+ }
  if((el=q('[data-pya-toggle]'))){const id=el.dataset.pyaToggle;if(collapsed.has(id))collapsed.delete(id);else collapsed.add(id);render();return;}
  if(q('[data-pya-cancel]')){drafts.clear();msg='Se descartaron los cambios sin guardar.';render();return;}
  if(q('[data-pya-save]')){
@@ -309,7 +330,8 @@ document.addEventListener('click',e=>{
  if(q('[data-pya-ordering]')){ordering=!ordering;editing=null;render();return;}
  if(q('[data-pya-new-category]')){editing={type:'new-category'};ordering=false;render();$('#gl-pya-newcat')?.focus();return;}
  if((el=q('[data-pya-edit-category]'))){editing={type:'category',id:el.dataset.pyaEditCategory};render();$('#gl-pya-cat-'+el.dataset.pyaEditCategory)?.focus();return;}
- if((el=q('[data-pya-new-product]'))){const cat=el.dataset.pyaNewProduct;if(view==='categorias'||view==='sin'||view==='modificados')view='productos';
+ if((el=q('[data-pya-new-product]'))){const cat=el.dataset.pyaNewProduct;if(view==='sin'||view==='modificados')view='productos';
+  if(view==='categorias')expandedCategories.add(cat);
   editing={type:'new-product',category:cat};collapsed.delete(cat);render();
   if(view==='productos')document.getElementById('gl-pya-catsec-'+cat)?.scrollIntoView?.({block:'start',behavior:'smooth'});
   $('#gl-pya-panel [data-pya-product-form] input[name="name"]')?.focus();return;}
@@ -390,12 +412,29 @@ document.addEventListener('submit',e=>{
   const id=f.dataset.pyaCategoryForm||null;editing=null;
   void act(()=>rpc('gestlok_molino_pya_category_save',{p_id:id,p_name:name}),id?'Categoría actualizada.':'Categoría creada.');return;}
  if(f.matches?.('[data-pya-product-form]')){e.preventDefault();const fd=new FormData(f),id=f.dataset.pyaProductForm||null;
-  const name=String(fd.get('name')||'').trim(),category=String(fd.get('category')||''),linked=String(fd.get('linked')||'')||null;
-  const price=id?null:parsePrice(fd.get('price'));
+  if(busy||!data?.can_admin||!editing)return;
+  const name=String(fd.get('name')||'').trim();
+  const category=view==='categorias'&&!id?editing.category:String(fd.get('category')||'');
+  const linked=String(fd.get('linked')||'')||null;
+  editing.fields={name,price:String(fd.get('price')||''),linked:linked||''};
+  const price=id?null:parsePrice(editing.fields.price);
   if(!name||!category)return;
   if(Number.isNaN(price)){error='Revisá el precio del producto.';render();return;}
-  editing=null;
-  void act(()=>rpc('gestlok_molino_pya_product_save',{p_id:id,p_category:category,p_name:name,p_price:price,p_linked:linked}),id?'Producto actualizado.':'Producto agregado.');return;}
+  const previous=products().find(p=>p.id===id);
+  if((!previous||previous.category_id!==category||productNameKey(previous.name)!==productNameKey(name))&&
+     products().some(p=>p.id!==id&&p.category_id===category&&productNameKey(p.name)===productNameKey(name))){
+   error='Ya existe un producto con ese nombre en esta categoría.';render();return;
+  }
+  const submitted=editing;
+  void act(async()=>{
+   try{await rpc('gestlok_molino_pya_product_save',{p_id:id,p_category:category,p_name:name,p_price:price,p_linked:linked});}
+   catch(e){
+    if(e.code==='23505'&&e.message?.includes('gestlok_molino_pya_products_name_uniq'))throw Error('Ya existe un producto con ese nombre en esta categoría.');
+    throw e;
+   }
+   if(editing===submitted)editing=null;
+  },id?'Producto actualizado.':'Producto agregado.');return;}
+
 });
 document.addEventListener('keydown',e=>{
  if(!opened||e.key!=='Escape')return;
