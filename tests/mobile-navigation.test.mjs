@@ -66,3 +66,23 @@ test("El menú de GESTLOK sigue dentro de Administración de empleados (celular 
  for(const f of ["modules/empleados/components/pages/GerenteHome.tsx","modules/empleados/components/owner/OwnerSidebar.tsx","modules/empleados/components/admin/AdminShell.tsx"])
   assert.match(read(f),/<GestlokLocalNav labelClassName=/,f);
 });
+
+test("Munro: Staff mantiene la barra horizontal en PC y el menú si falta el snapshot",()=>{
+ const schedule=read("modules/empleados/components/schedules/SchedulesWorkspace.tsx");
+ const dock=read("modules/empleados/components/gestlok/GestlokNav.tsx");
+ const css=read("modules/empleados/styles/mobile-navigation.css");
+ assert.match(schedule,/localesGerente\.includes\("munro"\)/);
+ assert.match(schedule,/nav\.local === "munro" \|\| munroUnico/);
+ assert.match(schedule,/className="gl-munro-schedules-route"/);
+ assert.match(schedule,/<GestlokDock munroHorarios/);
+ assert.match(dock,/asignados\.includes\("munro"\)/);
+ assert.match(dock,/guardado\.local === "munro"/);
+ for(const name of ["Inicio","Pagos Online","Stock Local","Staff","Más"])
+  assert.ok(dock.includes(name),"El gerente pierde "+name);
+ assert.match(css,/@media screen and \(min-width:901px\)/);
+ assert.match(css,/\.gl-munro-schedules-route > \.gl-module-dock/);
+ assert.match(css,/display:flex!important/);
+ assert.match(css,/\.gl-munro-schedules-route \.gl-gestlok-sheet/);
+ assert.match(css,/padding-bottom:calc\(112px/);
+ assert.match(css,/@media\(min-width:901px\),print/,"Otras rutas siguen usando su navegación habitual");
+});
