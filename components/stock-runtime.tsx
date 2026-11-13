@@ -67,7 +67,7 @@ export function StockRuntime() {
       // Perfil seguro: salida dentro de Mi perfil, también accesible para cuentas pendientes.
       if (!visitor) await load("/stock/gestlok-logout.js?rev=logout-profile-menu-20261107");
       if (!visitor) await load("/stock/gestlok-ios-install.js?rev=ios-home-screen-20261030");
-      await load("/stock/gestlok-updates.js?rev=gerente-avisos-20261026");
+      await load("/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113");
       if (!visitor) await load("/stock/gestlok-push.js");
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
