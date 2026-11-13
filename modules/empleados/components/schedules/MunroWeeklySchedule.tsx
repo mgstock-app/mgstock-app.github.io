@@ -186,12 +186,35 @@ export function MunroWeeklySchedule(){
  const totalEnRevision=filasResumen.filter(f=>f.resumen.errores.length>0||f.resumen.pendientes>0).length;
  const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
- const estadoBotones=(f:Borrador)=><div className="mhs-estado" role="group" aria-label={"Estado de "+cabecera(f)}>
-   {ESTADOS.map(estado=><button key={estado} type="button"
-     disabled={!editando||!puedeEditar||guardando} aria-pressed={f.estado===estado}
-     onClick={()=>cambiar(f.id,anterior=>({...anterior,estado}))}>
-     {estado==="activo"?"Activo":estado==="refuerzo"?"Refuerzo":"Inactivo"}
-   </button>)}
+ const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
+   <div className="mhs-estado" role="group" aria-label={"Estado de "+cabecera(f)}>
+     {ESTADOS.map(estado=><button key={estado} type="button"
+       disabled={!editando||!puedeEditar||guardando} aria-pressed={f.estado===estado}
+       className={"mhs-estado-"+estado} onClick={()=>cambiarEstado(f,estado)}>
+       <span className="mhs-luz-estado" aria-hidden="true"/>
+       {estado==="activo"?"Activo":estado==="refuerzo"?"Refuerzo":"Inactivo"}
+     </button>)}
+   </div>
+   {f.estado==="inactivo"&&<label className="mhs-inactivo-desde">
+     <span>Inactivo desde</span>
+     <input type="date" aria-label={"Inactivo desde · "+cabecera(f)}
+       max={fechaAR(new Date())} value={f.inactivo_desde||""}
+       disabled={!editando||!puedeEditar||guardando}
+       onChange={e=>cambiarInactivoDesde(f,e.target.value)}/>
+     {!f.inactivo_desde&&<small>Fecha pendiente de completar</small>}
+   </label>}
+   <div className="mhs-extra-opciones" role="group" aria-label={"Opciones de "+cabecera(f)}>
+     <label><input type="checkbox"
+       aria-label={"Habilitar feriado · "+cabecera(f)}
+       checked={feriadoHabilitado(f.datos,semana,feriados)}
+       disabled={!editando||!puedeEditar||guardando}
+       onChange={e=>cambiarOpcion(f,"feriado",e.target.checked)}/> Feriado</label>
+     <label><input type="checkbox"
+       aria-label={"Habilitar vacaciones · "+cabecera(f)}
+       checked={vacacionesHabilitadas(f.datos,semana)}
+       disabled={!editando||!puedeEditar||guardando}
+       onChange={e=>cambiarOpcion(f,"vacaciones",e.target.checked)}/> Vacaciones</label>
+   </div>
  </div>;
  const inputsDia=(f:Borrador,dia:string)=> {
    const d=datosDia(f,dia),verificar=evaluarDia(d,enRevision);
@@ -203,10 +226,18 @@ export function MunroWeeklySchedule(){
          aria-invalid={verificar.campos.includes(campo)}
          value={d[campo]||""} onChange={e=>cambiarDia(f.id,dia,campo,e.target.value)}/>
      </label>)}
-     <label className="mhs-feriado"><input type="checkbox" checked={d.vacaciones_dia===true}
-       disabled={!editando||!puedeEditar||guardando} onChange={e=>cambiarDia(f.id,dia,"vacaciones_dia",e.target.checked)}/>
-       Vacaciones (opcional)</label>
-     {feriados.includes(dia)&&<small className="mhs-dia-feriado">Feriado {fechaCorta(dia)}</small>}
+     {feriadoHabilitado(f.datos,semana,feriados)&&
+       <label className="mhs-dia-extra"><input type="checkbox"
+         aria-label={"Feriado · "+cabecera(f)+" · "+fechaCorta(dia)}
+         checked={d.feriado===true||(f.datos[semana]?.feriados_habilitados===undefined&&feriados.includes(dia))}
+         disabled={!editando||!puedeEditar||guardando}
+         onChange={e=>cambiarDia(f.id,dia,"feriado",e.target.checked)}/>Feriado</label>}
+     {vacacionesHabilitadas(f.datos,semana)&&
+       <label className="mhs-dia-extra"><input type="checkbox"
+         aria-label={"Vacaciones · "+cabecera(f)+" · "+fechaCorta(dia)}
+         checked={d.vacaciones_dia===true}
+         disabled={!editando||!puedeEditar||guardando}
+         onChange={e=>cambiarDia(f.id,dia,"vacaciones_dia",e.target.checked)}/>Vacaciones</label>}
      {verificar.errores.length>0&&<small className="mhs-revisar">{verificar.errores.join(" ")}</small>}
    </div>;
  };
@@ -290,28 +321,11 @@ export function MunroWeeklySchedule(){
        </div>}
      </>}
      {pestana==="resumen"&&<div className="mhs-resumen">
-       <section className="mhs-feriados-semana" aria-label="Feriados de la semana">
+       <section className="mhs-feriados-semana" aria-label="Feriados y vacaciones por colaborador">
          <div className="mhs-feriados-cabeza">
-           <strong>Feriado de la semana</strong>
-           <small>Opcional · Marcá únicamente los días feriados. El adicional se calcula con los turnos u horas trabajados.</small>
+           <strong>Feriados y vacaciones por colaborador</strong>
+           <small>Activá la opción debajo de su estado en Semana actual y marcá los días correspondientes. El resumen se completa automáticamente.</small>
          </div>
-         <label className="mhs-feriados-toggle">
-           <input type="checkbox" checked={mostrarFeriados||feriados.length>0}
-             disabled={!puedeEditar||guardandoFeriados||Boolean(pendientes.length)}
-             onChange={e=>{
-               if(e.target.checked)setMostrarFeriados(true);
-               else {setMostrarFeriados(false);void actualizarFeriados([]);}
-             }}/>
-           Usar feriado
-         </label>
-         {(mostrarFeriados||feriados.length>0)&&<div className="mhs-feriados-dias" role="group" aria-label="Elegir días feriados">
-           {dias.map((d,i)=><label key={d} className={feriados.includes(d)?"mhs-feriado-elegido":""}>
-             <input type="checkbox" checked={feriados.includes(d)}
-               disabled={!puedeEditar||guardandoFeriados||Boolean(pendientes.length)}
-               onChange={e=>void actualizarFeriados(e.target.checked?[...feriados,d]:feriados.filter(f=>f!==d))}/>
-             {DIAS[i]} {fechaCorta(d)}
-           </label>)}
-         </div>}
        </section>
        <div className="mhs-resumen-totales">
          <div><small>Colaboradores con nombre</small><strong>{filasResumen.length}</strong></div>
@@ -337,9 +351,11 @@ export function MunroWeeklySchedule(){
                <td><input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
                  disabled={!editando||!puedeEditar||guardando} inputMode="text"
                  onChange={e=>cambiarDia(f.id,semana,"off",e.target.value)}/></td>
-               <td><input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
-                 disabled={!editando||!puedeEditar||guardando} inputMode="text"
-                 onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/></td>
+               <td>{vacacionesHabilitadas(f.datos,semana)
+                 ?<input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
+                   disabled={!editando||!puedeEditar||guardando} inputMode="text"
+                   onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/>
+                 :<span className="mhs-sin-extra" title="Vacaciones no activadas">—</span>}</td>
                <td>{convertir(r.extraFeriado)}</td>
                <td className="mhs-total-liquidacion">
                  {r.errores.length>0
