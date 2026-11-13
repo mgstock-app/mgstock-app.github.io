@@ -112,7 +112,7 @@ begin
       raise exception 'Día fuera de la semana' using errcode='22023';
     end if;
     for v_campo,v_hora in select key, value#>>'{}' from jsonb_each(v_celda) loop
-      if v_campo not in ('tm_e','tm_s','tt_e','tt_s','feriado','off','vacaciones','observaciones') then
+      if v_campo not in ('tm_e','tm_s','tt_e','tt_s','feriado','vacaciones_dia','off','vacaciones','observaciones') then
         raise exception 'Campo horario no permitido' using errcode='22023';
       end if;
       if v_campo in ('off','vacaciones','observaciones') then
@@ -131,7 +131,7 @@ begin
           split_part(v_hora,':',1)::integer>168 then
           raise exception 'Ingresá horas y minutos válidos (0:00 a 168:00)' using errcode='22023';
         end if;
-      elsif v_campo='feriado' then
+      elsif v_campo in ('feriado','vacaciones_dia') then
         if jsonb_typeof(v_celda->v_campo)<>'boolean' then
           raise exception 'El feriado debe ser sí o no' using errcode='22023';
         end if;
@@ -139,6 +139,13 @@ begin
         raise exception 'Usá horas HH:MM válidas' using errcode='22023';
       end if;
     end loop;
+    if coalesce((v_celda->>'vacaciones_dia')::boolean,false) and
+       (nullif(v_celda->>'tm_e','') is not null or
+        nullif(v_celda->>'tm_s','') is not null or
+        nullif(v_celda->>'tt_e','') is not null or
+        nullif(v_celda->>'tt_s','') is not null) then
+      raise exception 'No se pueden cargar vacaciones y turnos el mismo día' using errcode='22023';
+    end if;
     v_e:=coalesce(v_celda->>'tm_e','');v_s:=coalesce(v_celda->>'tm_s','');
     if v_cierre and ((v_e='')<>(v_s='')) then
       raise exception 'Completá mañana antes del cierre semanal' using errcode='22023';
