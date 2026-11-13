@@ -35,6 +35,7 @@
   };
   const localNav=k=>visible()?app.querySelector('#snav button[data-go="'+k+'"]'):null;
   const staff=()=>actionable('[data-gerente-empleados], [data-owner-area-staff], [data-owner-nav="staff"]');
+  const esMunro=()=>visible() && String(window.GestLokNavContext?.()?.local||'')==='munro';
   const business=()=>actionable('[data-gerente-business], [data-owner-nav="business"], [data-owner-go="business"]');
   const bell=()=>localNav('avisos') || actionable('[data-owner-nav="bell"]');
   const current=()=>app.querySelector('#snav button[aria-current="page"]')?.dataset.go || '';
@@ -120,8 +121,16 @@
         ['more','Más','more',true]
       ].filter(t=>t[3]);
     }
-    // Mi Gusto: las dos herramientas principales del turno quedan juntas
-    // en el menú inferior. Sin cambios en el Plan Scanner ni en otras empresas.
+    // Mi Gusto Munro: accesos prioritarios del turno, solo con permiso real de cada sección.
+    // «Staff» abre directamente Horarios; Colaboradores y Pedidos WhatsApp siguen en Más.
+    if(esMunro()&&pagos())return [
+      ['home','Inicio','home',true],
+      ['pagos','Pagos Online','payment',true],
+      ['stock','Stock Local','stock',!!stock()],
+      ['staff','Staff','clock',!!staff()],
+      ['more','Más','more',true]
+    ].filter(t=>t[3]);
+    // Otros locales conservan sus accesos originales.
     if(inLocal&&pagos()&&pedidos())return [
       ['home','Inicio','home',true],
       ['pagos','Pagos Online','payment',true],
@@ -188,7 +197,16 @@
     if(k==='stock'){stock()?.click();return;}
     if(k==='pagos'){pagos()?.click();return;}
     if(k==='pedidos'){pedidos()?.click();return;}
-    if(k==='staff'){staff()?.click();return;}
+    if(k==='staff'){
+      if(esMunro() && staff()){
+        // La ruta /empleados/horarios/ funciona para gerente, dueño y creadora,
+        // siempre validando autorización desde Administración de empleados.
+        location.assign(new URL('empleados/horarios/',document.baseURI).href);
+        return;
+      }
+      staff()?.click();return;
+    }
+    if(k==='colaboradores'){staff()?.click();return;}
     if(k==='avisos'){bell()?.click();return;}
     if(k==='vencimientos'){localNav('vencimientos')?.click();}
   }
@@ -196,10 +214,11 @@
     const entries=[
       ['home','Inicio'],
       ['business','Administración de la empresa'],
-      ['staff','Colaboradores'],
+      [esMunro()?'colaboradores':'staff','Colaboradores'],
+      ...(esMunro()?[['pedidos','Pedidos WhatsApp']]:[]),
       ['avisos','Avisos'],
       ['vencimientos','Vencimientos']
-    ].filter(([k])=>k==='home'||(k==='business'&&business())||(k==='staff'&&staff())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
+    ].filter(([k])=>k==='home'||(k==='business'&&business())||(['staff','colaboradores'].includes(k)&&staff())||(k==='pedidos'&&pedidos())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
     const molinoExtra=visible()?[...app.querySelectorAll('#snav button[data-mol-nav]')].filter(b=>!dock.querySelector('[data-dock="mol-'+b.dataset.molNav+'"]')):[];
     const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','pedidos-clientes','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
     sheet.innerHTML='<button type="button" class="gl-mobile-sheet__scrim" data-close-sheet aria-label="Cerrar más opciones"></button><section class="gl-mobile-sheet__panel" role="dialog" aria-modal="true" aria-label="Más opciones de GESTLOK"><header><strong>Más opciones</strong><button type="button" data-close-sheet aria-label="Cerrar">×</button></header><div class="gl-mobile-sheet__links">'+entries.map(([k,t])=>'<button type="button" data-sheet-action="'+k+'">'+t+'</button>').join('')+molinoExtra.map(b=>'<button type="button" data-sheet-action="mol-'+String(b.dataset.molNav).replace(/[^a-z]/g,'')+'">'+(b.querySelector('.nl')?.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+extra.map(b=>'<button type="button" data-sheet-go="'+String(b.dataset.go).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">'+(b.querySelector('.nl')?.textContent||b.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+'</div></section>';
