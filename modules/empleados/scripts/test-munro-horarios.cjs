@@ -5,7 +5,7 @@ const text=fs.readFileSync("features/schedules/munro-model.ts","utf8");
 const compiled=ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
 const moduleLike={exports:{}};
 new Function("module","exports","require",compiled)(moduleLike,moduleLike.exports,require);
-const {fechaAR,semanaActual,lunesDe,diasSemana,revisarSemana,evaluarDia,resumenPersona,resumenLiquidacion,formatoHoras}=moduleLike.exports;
+const {fechaAR,semanaActual,lunesDe,diasSemana,revisarSemana,evaluarDia,resumenPersona,resumenLiquidacion,feriadoHabilitado,vacacionesHabilitadas,fechasFeriadoColaborador,formatoHoras}=moduleLike.exports;
 assert.equal(lunesDe("2026-11-12"),"2026-11-09");
 assert.equal(diasSemana("2026-11-09").at(-1),"2026-11-15");
 assert.equal(semanaActual(new Date("2026-11-16T02:31:00Z")),"2026-11-09");
@@ -67,7 +67,8 @@ assert.equal(pHora.off,270,"OFF inicial 4:30 por hora");
 assert.equal(pHora.extraFeriado,480,"un adicional por 8 horas trabajadas");
 assert.equal(pHora.total,1230);
 assert.equal(formatoHoras(pHora.total),"20:30");
-assert.equal(resumenLiquidacion("hora",semanas,"2026-11-09",[],hasta).extraFeriado,0,"sin feriado no se añade extra");
+assert.equal(resumenLiquidacion("hora",{"2026-11-09":{feriados_habilitados:false},...semanas},
+ "2026-11-09",[],hasta).extraFeriado,0,"el adicional no se suma si el colaborador desactivó feriado");
 const vacaciones={"2026-11-09":{off:"0",vacaciones:"1",vacaciones_dia:true},...semanas};
 const rVac=resumenLiquidacion("turno",vacaciones,"2026-11-09",feriado,hasta);
 assert.equal(rVac.off,0,"el OFF es modificable");
@@ -80,7 +81,7 @@ assert.ok(evaluarDia({tm_e:"08:00",tm_s:"12:00",vacaciones_dia:true}).errores.le
   "no pagar vacaciones y turno trabajado el mismo día");
 assert.ok(resumenLiquidacion("hora",{"2026-11-09":{off:"99:99"}},"2026-11-09",[],hasta).errores.length,
   "no calcular un resumen con OFF inválido");
-assert.match(ui,/rm_munro_horarios_feriados_guardar/);
+assert.match(ui,/Habilitar feriado/);
 assert.match(ui,/Resumen semanal/);
 assert.match(ui,/Total a liquidar/);
 assert.match(ui,/mhs-liquidacion/);
@@ -88,4 +89,40 @@ const stock=fs.readFileSync("../../public/stock/app.js","utf8");
 assert.match(stock,/Motos Agencia<\/span><\/button><a class="snav-link"/,
  "atajo de Horarios directamente debajo de Motos Agencia");
 assert.match(stock,/empleados\/\?seccion=horarios/);
+
+// Feriados y vacaciones por colaborador: una casilla independiente de cada fila.
+const personaConFeriado={"2026-11-09":{feriados_habilitados:true},...semanas};
+personaConFeriado["2026-11-12"]={...dia,feriado:true};
+assert.equal(feriadoHabilitado(personaConFeriado,"2026-11-09"),true);
+assert.deepEqual(fechasFeriadoColaborador(personaConFeriado,"2026-11-09"),["2026-11-12"]);
+assert.equal(resumenLiquidacion("turno",personaConFeriado,"2026-11-09",[],hasta).extraFeriado,2,
+ "solo las dos franjas trabajadas en el día marcado reciben adicional");
+const personaSinFeriado={"2026-11-09":{feriados_habilitados:false},...semanas};
+personaSinFeriado["2026-11-12"]={...dia,feriado:true};
+assert.equal(feriadoHabilitado(personaSinFeriado,"2026-11-09",feriado),false);
+assert.equal(resumenLiquidacion("turno",personaSinFeriado,"2026-11-09",feriado,hasta).extraFeriado,0,
+ "un colaborador sin Feriado activado nunca cobra adicional, aunque otro sí");
+const vacacionesPorPersona={"2026-11-09":{vacaciones_habilitadas:true,off:"1",vacaciones:"1",vacaciones_dia:true}};
+assert.equal(vacacionesHabilitadas(vacacionesPorPersona,"2026-11-09"),true);
+assert.equal(resumenLiquidacion("turno",vacacionesPorPersona,"2026-11-09",[],hasta).total,2);
+const vacacionesDesactivadas={"2026-11-09":{vacaciones_habilitadas:false,off:"1",vacaciones:"3",vacaciones_dia:true}};
+assert.equal(vacacionesHabilitadas(vacacionesDesactivadas,"2026-11-09"),false);
+assert.equal(resumenLiquidacion("turno",vacacionesDesactivadas,"2026-11-09",[],hasta).total,1,
+ "si se desactivaron vacaciones, una cifra vieja no puede sumarse oculta");
+const sql3=fs.readFileSync("../../supabase/migrations/20261113030000_munro_horarios_opciones_por_colaborador_v3.sql","utf8");
+assert.match(sql3,/add column if not exists inactivo_desde date/);
+assert.match(sql3,/add column if not exists inactivo_desde_antes date/);
+assert.match(sql3,/add column if not exists inactivo_desde_despues date/);
+assert.match(sql3,/feriados_habilitados/);
+assert.match(sql3,/vacaciones_habilitadas/);
+assert.match(sql3,/p_estado='inactivo'/);
+assert.match(sql3,/horarios_puede_archivar\('munro'\)/);
+assert.doesNotMatch(sql3,/drop table|truncate|delete from rm_test_private/i,
+ "nunca alterar destructivamente horarios o historial");
+assert.match(ui,/Habilitar feriado/);
+assert.match(ui,/Habilitar vacaciones/);
+assert.match(ui,/Inactivo desde/);
+assert.match(ui,/mhs-luz-estado/);
+assert.match(ui,/vacacionesHabilitadas\(f\.datos,semana\)/);
+assert.match(ui,/feriadoHabilitado\(f\.datos,semana,feriados\)/);
 console.log("munro-horarios: 3 por turno, 5 por hora, activos, feriados y archivo intacto: ok");
