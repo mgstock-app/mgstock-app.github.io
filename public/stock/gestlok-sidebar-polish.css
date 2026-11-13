@@ -154,3 +154,11 @@
 /* Marca Mi Gusto en alto contraste; el resto del menú permanece blanco. */
 #app .side .gestlok-company-identity{background:#080808!important;border-color:#080808!important}
 #app .side .gestlok-company-identity small{color:#fff!important}
+
+
+/* Atajo de Horarios: misma jerarquía visual que Motos Agencia, sin pantalla duplicada. */
+#app #snav .snav-sub a.snav-link{display:flex;align-items:center;gap:9px;min-height:39px;padding:9px 10px;
+border-radius:8px;color:inherit;text-decoration:none;font-size:12px;font-weight:620}
+#app #snav .snav-sub a.snav-link:hover,#app #snav .snav-sub a.snav-link:focus-visible{
+background:#ffffff17;color:#fff;outline-offset:2px}
+#app #snav .snav-sub a.snav-link svg{width:18px;height:18px;flex-shrink:0}
