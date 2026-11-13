@@ -73,3 +73,39 @@
   .gl-gestlok-sheet__links :is(a,button)[aria-current="page"]{border-color:#087ba4;background:#e9f6fb;color:#087ba4}
 }
 @media(min-width:901px),print{.gl-gestlok-sheet{display:none!important}}
+
+/* Munro · Staff > Horarios se abre como pantalla independiente, sin sidebar.
+   En computadora se mantiene la barra inferior de accesos rápidos sin tapar
+   la tabla semanal; no se habilita en otras rutas, empresas ni roles. */
+@media screen and (min-width:901px){
+  .app-shell .gl-munro-schedules-route{min-width:0;width:100%}
+  .app-shell .gl-munro-schedules-route .gl-munro-schedules-persistent{
+    padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))
+  }
+  .app-shell .gl-munro-schedules-route > .gl-module-dock{
+    display:flex!important;
+    position:fixed;bottom:0;left:50%;right:auto;transform:translateX(-50%);
+    width:min(100% - 32px,930px);
+    min-height:72px;z-index:1000;
+    align-items:stretch;justify-content:space-around;gap:6px;
+    padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px));
+    border:1px solid #d9e6ee;border-bottom:0;
+    border-radius:16px 16px 0 0;
+    background:#fff;
+    box-shadow:0 -7px 25px #112e4226;
+  }
+  .app-shell .gl-munro-schedules-route > .gl-module-dock :is(a,button){
+    display:flex;flex:1 1 0;flex-direction:row;align-items:center;justify-content:center;
+    min-width:0;gap:9px;max-width:none;
+    padding:10px 13px;border:0;border-radius:11px;
+    color:#345a71;background:transparent;text-decoration:none;
+    font:700 13px/1.2 Inter,system-ui,sans-serif;cursor:pointer;
+  }
+  .app-shell .gl-munro-schedules-route > .gl-module-dock :is(a,button):is(:hover,:focus-visible,[aria-current="page"]){
+    background:#e9f6fb;color:#087ba4
+  }
+  .app-shell .gl-munro-schedules-route > .gl-module-dock svg{width:20px;height:20px;flex:none}
+  .app-shell .gl-munro-schedules-route > .gl-module-dock :is(a,button):focus-visible{
+    outline:3px solid #27a0bb;outline-offset:1px
+  }
+}
