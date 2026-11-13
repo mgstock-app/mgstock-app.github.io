@@ -67,7 +67,8 @@ assert.equal(pHora.off,270,"OFF inicial 4:30 por hora");
 assert.equal(pHora.extraFeriado,480,"un adicional por 8 horas trabajadas");
 assert.equal(pHora.total,1230);
 assert.equal(formatoHoras(pHora.total),"20:30");
-assert.equal(resumenLiquidacion("hora",semanas,"2026-11-09",[],hasta).extraFeriado,0,"sin feriado no se añade extra");
+assert.equal(resumenLiquidacion("hora",{"2026-11-09":{feriados_habilitados:false},...semanas},
+ "2026-11-09",[],hasta).extraFeriado,0,"el adicional no se suma si el colaborador desactivó feriado");
 const vacaciones={"2026-11-09":{off:"0",vacaciones:"1",vacaciones_dia:true},...semanas};
 const rVac=resumenLiquidacion("turno",vacaciones,"2026-11-09",feriado,hasta);
 assert.equal(rVac.off,0,"el OFF es modificable");
