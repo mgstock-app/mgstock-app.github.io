@@ -344,7 +344,7 @@ export function MunroWeeklySchedule(){
          </table>
        </div>
        {filasResumen.length===0&&<p>Primero completá los nombres en Semana actual. El resumen se calculará automáticamente.</p>}
-       <p>**Criterio de liquidación:** Trabajado + OFF + Vacaciones + adicional de Feriado.
+       <p>Criterio de liquidación: Trabajado + OFF + Vacaciones + adicional de Feriado.
          OFF inicial: 1 turno o 4:30 horas (modificable). Vacaciones y feriados son opcionales.
          El feriado suma exclusivamente lo trabajado en los días seleccionados. Las horas se muestran como horas:minutos, no como dinero.</p>
        <section className="mhs-historial-resumen">
@@ -364,20 +364,25 @@ export function MunroWeeklySchedule(){
      </div>}
      {pestana==="historial"&&<div className="mhs-historial">
        <h2>Historial de la nueva planilla</h2>
-       {registros.length===0?<p>Todavía no hay semanas cerradas con la nueva planilla.</p>:
+       {registros.length===0?<p>Todavía no hay semanas anteriores guardadas en esta planilla.</p>:
        registros.map(grupo=>{
-         const inicio=grupo[0].semana;
-         const completos=grupo.every(r=>resumenPersona(r.modalidad,r.datos,inicio,momento).completo);
+         const inicio=grupo[0].semana,festivos=planilla.feriados_historial?.[inicio]||[];
+         const completo=grupo.every(r=>{
+           const x=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
+           return x.total!==null&&x.pendientes===0;
+         });
          return <details key={inicio}>
-           <summary>Semana {semanaLabel(inicio)} · {grupo.length} colaboradores · {completos?"Cerrada":"Revisar horarios"}</summary>
+           <summary>Semana {semanaLabel(inicio)} · {grupo.length} colaboradores · {completo?"Cerrada":"Revisar antes de liquidar"}</summary>
            <div className="mhs-resumen-desbordar"><table>
-             <thead><tr><th>Colaborador</th><th>Modalidad</th><th>Trabajado</th><th>Adicional feriado</th><th>Total</th></tr></thead>
+             <thead><tr><th>Colaborador</th><th>Cobra por</th><th>Trabajado</th><th>OFF</th>
+               <th>Vacaciones</th><th>Feriado extra</th><th>Total a liquidar</th><th>Observaciones</th></tr></thead>
              <tbody>{grupo.map(r=>{
-               const c=resumenPersona(r.modalidad,r.datos,inicio,momento);
-               return <tr key={r.id}><td>{r.nombre}</td><td>{r.modalidad==="turno"?"Turnos":"Horas"}</td>
-                 <td>{r.modalidad==="turno"?c.turnos:formatoHoras(c.horas)}</td>
-                 <td>{r.modalidad==="turno"?c.extraFeriado:formatoHoras(c.horasFeriado)}</td>
-                 <td>{c.completo?(r.modalidad==="turno"?formatoTurnos(c.computados):formatoHoras(c.computados)+" h"):"Pendiente"}</td>
+               const c=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
+               const fmt=(n:number)=>r.modalidad==="turno"?String(n):formatoHoras(n);
+               return <tr key={r.id}><td>{r.nombre}</td><td>{r.modalidad==="turno"?"Turno":"Hora"}</td>
+                 <td>{fmt(c.trabajados)}</td><td>{fmt(c.off)}</td><td>{fmt(c.vacaciones)}</td>
+                 <td>{fmt(c.extraFeriado)}</td><td>{c.total===null||c.pendientes?"Revisar":fmt(c.total)}</td>
+                 <td>{c.observaciones||"—"}</td>
                </tr>;
              })}</tbody>
            </table></div>
