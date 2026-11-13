@@ -269,7 +269,7 @@ test('Vista previa privada: ver en grande, descargar y cerrar, sin formatos ni e
  assert.match(script,/data-mp-photo-download href=/);
  assert.match(script,/Descargar imagen editada/);
  assert.match(script,/Descargar imagen original/);
- assert.match(script,/nombreArchivoFoto\\(item,edited/);
+ assert.ok(script.includes('nombreArchivoFoto(item,edited'));
  assert.match(script,/link\.download=nombreArchivoFoto\(current\.item\)/);
  assert.match(script,/data-mp-export-clean>Ver en grande/);
 
