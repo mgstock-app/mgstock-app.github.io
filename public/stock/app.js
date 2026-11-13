@@ -3847,7 +3847,7 @@ function afterAccess(){
 /* Mi Gusto: «Administración de local» agrupa Conteo diario y Motos Agencia (Munro) y Reseñas (Munro y Torcuato). */
 function navAdmLocal(){
   const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
-    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>` : '') +
+    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button><a class="snav-link" href="${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}">${ic('clock')}<span class="nl">Horarios</span></a>` : '') +
     (puedeVerResenas() ? `<button data-go="resenas">${ic('clip')}<span class="nl">Reseñas</span></button>` : '') +
     (puedeVerReclamos() ? `<button data-go="reclamos-internos">${ic('clip')}<span class="nl">Reclamos Internos</span></button>` : '') +
     ''; // Pagos Online se muestra una sola vez en accesos diarios.
