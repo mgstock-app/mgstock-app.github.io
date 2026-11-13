@@ -59,7 +59,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").first().contains("button","Refuerzo").click();
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
   cy.get(".mhs-alerta").should("not.exist");
-  cy.contains("button","Guardar").click();
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>{const x=ultimo();expect(x.p_nombre).to.eq("Lucía");expect(x.p_estado).to.eq("refuerzo");});
   cy.contains("button","Agregar colaborador por hora").click();
   cy.get(".mhs-agregar input").type("Nuevo colaborador");
@@ -92,7 +92,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get(".mhs-liquidacion tbody tr").first().should("contain.text","Feriado: 12/11");
    cy.get('input[aria-label="OFF de Lucía"]').clear().type("0");
    cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","4");
-   cy.contains("button","Guardar").click();
+   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
    cy.wrap(null).should(()=>{
      expect(ultimo().p_datos[SEMANA].feriados_habilitados).to.eq(true);
      expect(ultimo().p_datos["2026-11-12"].feriado).to.eq(true);
@@ -118,13 +118,25 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-inactivo').click();
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
      .clear().type("2026-11-10");
-   cy.contains("button","Guardar").click();
+   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
    cy.wrap(null).should(()=>{
      expect(ultimo().p_estado).to.eq("inactivo");
      expect(ultimo().p_datos[SEMANA].inactivo_desde).to.eq("2026-11-10");
    });
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("have.value","2026-11-10");
   });
+ it("guarda sucesivas ediciones sin tocar Guardar y actualiza la versión del colaborador",()=>{
+  cy.viewport(1320,900);
+  const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:2,semana:SEMANA,datos:{}}]});
+  cy.contains("button","Modificar").click();
+  cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].tm_e).to.eq("09:00"));
+  cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').eq(1).type("13:00");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].tm_s).to.eq("13:00"));
+  cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().should("have.value","09:00");
+ });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
   cy.contains("button","Modificar").should("not.exist");
