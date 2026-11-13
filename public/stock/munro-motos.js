@@ -360,7 +360,7 @@
   const horasDia = (f, i) => f.validaciones?.[i]?.errores.length ? '⚠ Revisar' : fmtH(f.porDia[i]);
   const notaParciales = r => !revisarSemana(r.semana) && r.parciales.length
     ? r.parciales.length + (r.parciales.length===1?' turno pendiente de completar.':' turnos pendientes de completar.') +
-      ' Podés guardar ahora; el control final es el domingo a las 23:30.'
+      ' Se guarda automáticamente; el control final es el domingo a las 23:30.'
     : '';
   const horasSemana = f => tieneError(f) ? '⚠ Revisar' : fmtH(f.min);
   function avisoErrores(r){
