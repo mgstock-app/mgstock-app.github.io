@@ -276,38 +276,88 @@ export function MunroWeeklySchedule(){
        </div>}
      </>}
      {pestana==="resumen"&&<div className="mhs-resumen">
+       <section className="mhs-feriados-semana" aria-label="Feriados de la semana">
+         <div className="mhs-feriados-cabeza">
+           <strong>Feriado de la semana</strong>
+           <small>Opcional · Marcá únicamente los días feriados. El adicional se calcula con los turnos u horas trabajados.</small>
+         </div>
+         <label className="mhs-feriados-toggle">
+           <input type="checkbox" checked={mostrarFeriados||feriados.length>0}
+             disabled={!puedeEditar||guardandoFeriados||Boolean(pendientes.length)}
+             onChange={e=>{
+               if(e.target.checked)setMostrarFeriados(true);
+               else {setMostrarFeriados(false);void actualizarFeriados([]);}
+             }}/>
+           Usar feriado
+         </label>
+         {(mostrarFeriados||feriados.length>0)&&<div className="mhs-feriados-dias" role="group" aria-label="Elegir días feriados">
+           {dias.map((d,i)=><label key={d} className={feriados.includes(d)?"mhs-feriado-elegido":""}>
+             <input type="checkbox" checked={feriados.includes(d)}
+               disabled={!puedeEditar||guardandoFeriados||Boolean(pendientes.length)}
+               onChange={e=>void actualizarFeriados(e.target.checked?[...feriados,d]:feriados.filter(f=>f!==d))}/>
+             {DIAS[i]} {fechaCorta(d)}
+           </label>)}
+         </div>}
+       </section>
        <div className="mhs-resumen-totales">
-         <div><small>Colaboradores</small><strong>{filasResumen.length}</strong></div>
-         <div><small>Horas computadas</small><strong>{formatoHoras(totalPorHora)} h</strong></div>
-         <div><small>Turnos computados</small><strong>{totalTurnos}</strong></div>
-         <div><small>Pendientes de revisión</small><strong>{totalEnRevision}</strong></div>
+         <div><small>Colaboradores con nombre</small><strong>{filasResumen.length}</strong></div>
+         <div><small>Total de horas a liquidar</small><strong>{formatoHoras(totalPorHora)} h</strong></div>
+         <div><small>Total de turnos a liquidar</small><strong>{totalTurnos}</strong></div>
+         <div><small>Registros por revisar</small><strong>{totalEnRevision}</strong></div>
        </div>
-       {(["turno","hora"] as const).map(modalidad=><section key={modalidad}>
-         <h3>{modalidad==="turno"?"Colaboradores por turno":"Colaboradores por hora"}</h3>
-         <div className="mhs-resumen-desbordar"><table>
-           <thead><tr><th>Colaborador</th><th>{modalidad==="turno"?"Trabajados":"Horas normales"}</th>
-             <th>{modalidad==="turno"?"Extra por feriado":"Horas feriado"}</th>
-             <th>Total computado</th><th>Estado</th></tr></thead>
-           <tbody>{filasResumen.filter(f=>f.modalidad===modalidad).map(f=><tr key={f.id}>
-             <td>{f.nombre}</td><td>{modalidad==="turno"?f.resumen.turnos:formatoHoras(f.resumen.horas)}</td>
-             <td>{modalidad==="turno"?"+"+f.resumen.extraFeriado:formatoHoras(f.resumen.horasFeriado)}</td>
-             <td><strong>{f.resumen.errores?"Revisar":modalidad==="turno"?formatoTurnos(f.resumen.computados):formatoHoras(f.resumen.computados)+" h"}</strong></td>
-             <td>{f.resumen.errores?"Revisar":f.resumen.pendientes?"Incompleto":f.estado}</td>
-           </tr>)}</tbody>
-         </table></div>
-       </section>)}
-       <p>Los turnos feriados cuentan doble: 2 turnos trabajados en feriado + 2 extra = 4 turnos computados.
-          Los importes de sueldos se configurarán en otra etapa.</p>
+       <div className="mhs-resumen-desbordar">
+         <table className="mhs-liquidacion">
+           <thead><tr>
+             <th scope="col">Colaborador</th><th scope="col">Cobra por</th>
+             <th scope="col">Trabajado</th><th scope="col">OFF</th>
+             <th scope="col">Vacaciones</th><th scope="col">Feriado</th>
+             <th scope="col">Total a liquidar</th><th scope="col">Observaciones</th>
+           </tr></thead>
+           <tbody>{filasResumen.map(f=>{
+             const r=f.resumen, porHora=f.modalidad==="hora";
+             const convertir=(n:number)=>porHora?formatoHoras(n):String(n);
+             return <tr key={f.id}>
+               <th scope="row">{f.nombre}</th>
+               <td>{porHora?"Hora":"Turno"}</td>
+               <td>{convertir(r.trabajados)}</td>
+               <td><input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
+                 disabled={!editando||!puedeEditar||guardando} inputMode="text"
+                 onChange={e=>cambiarDia(f.id,semana,"off",e.target.value)}/></td>
+               <td><input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
+                 disabled={!editando||!puedeEditar||guardando} inputMode="text"
+                 onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/></td>
+               <td>{convertir(r.extraFeriado)}</td>
+               <td className="mhs-total-liquidacion">
+                 {r.errores.length>0
+                   ?<span className="mhs-liquidacion-error">Revisar</span>
+                   :r.pendientes>0?"Pendiente":r.total===null?"Revisar":<strong>{convertir(r.total)}</strong>}
+               </td>
+               <td>
+                 <small className="mhs-nota-auto">{r.observaciones||"—"}</small>
+                 {editando&&puedeEditar&&<input aria-label={"Observación manual de "+f.nombre}
+                   placeholder="Aclaración opcional" maxLength={200}
+                   value={f.datos[semana]?.observaciones||""} disabled={guardando}
+                   onChange={e=>cambiarDia(f.id,semana,"observaciones",e.target.value)}/>}
+               </td>
+             </tr>;
+           })}</tbody>
+         </table>
+       </div>
+       {filasResumen.length===0&&<p>Primero completá los nombres en Semana actual. El resumen se calculará automáticamente.</p>}
+       <p>**Criterio de liquidación:** Trabajado + OFF + Vacaciones + adicional de Feriado.
+         OFF inicial: 1 turno o 4:30 horas (modificable). Vacaciones y feriados son opcionales.
+         El feriado suma exclusivamente lo trabajado en los días seleccionados. Las horas se muestran como horas:minutos, no como dinero.</p>
        <section className="mhs-historial-resumen">
          <h3>Historial de resúmenes</h3>
          {registros.length===0?<p>Todavía no hay semanas anteriores en esta planilla.</p>:
            registros.slice(0,8).map(grupo=>{
-             const fecha=grupo[0].semana;
-             const a=grupo.filter(r=>r.modalidad==="hora").reduce((n,r)=>n+resumenPersona(r.modalidad,r.datos,fecha,momento).computados,0);
-             const t=grupo.filter(r=>r.modalidad==="turno").reduce((n,r)=>n+resumenPersona(r.modalidad,r.datos,fecha,momento).computados,0);
+             const fecha=grupo[0].semana,festivos=planilla.feriados_historial?.[fecha]||[];
+             const a=grupo.filter(r=>r.modalidad==="hora").reduce((n,r)=>n+(resumenLiquidacion(r.modalidad,r.datos,fecha,festivos,momento).total||0),0);
+             const t=grupo.filter(r=>r.modalidad==="turno").reduce((n,r)=>n+(resumenLiquidacion(r.modalidad,r.datos,fecha,festivos,momento).total||0),0);
              return <div className="mhs-archivo-resumen" key={fecha}>
-               <div><strong>Semana {semanaLabel(fecha)}</strong><small>{grupo.length} colaboradores · {formatoHoras(a)} horas · {t} turnos</small></div>
-               <button type="button" onClick={()=>{seleccionarSemana(fecha);setPestana("resumen");}}>Ver detalle</button>
+               <div><strong>Semana {semanaLabel(fecha)}</strong>
+                 <small>{grupo.length} colaboradores · {formatoHoras(a)} horas · {t} turnos</small></div>
+               <button type="button" onClick={()=>seleccionarSemana(fecha)}>Ver detalle</button>
              </div>;
            })}
        </section>
