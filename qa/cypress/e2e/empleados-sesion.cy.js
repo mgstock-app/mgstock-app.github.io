@@ -106,8 +106,32 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
    cy.get('.gl-gestlok-sheet__panel').contains('a','Horarios').should('have.attr','aria-current','page');
    cy.get('.gl-gestlok-sheet__panel button[aria-label="Cerrar"]').click();
    cy.get('.gl-gestlok-dock').should('be.visible');
+   // PC: Horarios es una ruta sin sidebar. Los atajos de turno deben quedar
+   // visibles y funcionales incluso al cambiar Semana/Historial/Resumen semanal.
    cy.viewport(1240,820);
-   cy.get('.gl-gestlok-dock').should('not.be.visible');
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible')
+     .and('contain.text','Inicio').and('contain.text','Pagos Online')
+     .and('contain.text','Stock Local').and('contain.text','Staff');
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock')
+     .contains('a','Pagos Online').should('have.attr','href').and('include','gl_ir=cierre-online');
+   cy.get('.mhs-pestanas').contains('button','Historial').click();
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible');
+   cy.get('.mhs-pestanas').contains('button','Resumen semanal').click();
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible');
+   cy.get('.mhs-pestanas').contains('button','Semana actual').click();
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible');
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').contains('button','Más').click();
+   cy.get('.gl-gestlok-sheet__panel').should('be.visible').contains('a','Colaboradores');
+   cy.get('.gl-gestlok-sheet__panel button[aria-label="Cerrar"]').click();
+   // Si falta el menú en localStorage, el gerente autorizado de Munro
+   // recupera sus accesos sin tocar los roles ni los datos del local.
+   cy.window().then(w=>w.localStorage.removeItem('gestlok:nav'));
+   cy.reload();
+   cy.get('.mhs-tabla tbody tr',{timeout:15000}).should('have.length',8);
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible')
+     .and('contain.text','Pagos Online').and('contain.text','Stock Local');
+   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock')
+     .contains('a','Stock Local').should('have.attr','href').and('include','gl_ir_local=munro');
   }
  });
  it('sin sesión conserva el ingreso y no muestra información privada',()=>{
