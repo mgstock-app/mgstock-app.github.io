@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save } from "lucide-react";
 import { rpc } from "@/features/access/api";
 import { ScheduleHistory } from "./ScheduleHistory";
@@ -37,6 +37,10 @@ export function MunroWeeklySchedule(){
  const [nombreNuevo,setNombreNuevo]=useState("");
  const [momento,setMomento]=useState(()=>new Date());
  const [feriados,setFeriados]=useState<string[]>([]);
+ const [reintento,setReintento]=useState(0);
+ const revisiones=useRef<Record<number,number>>({});
+ const guardadoEnCurso=useRef(false);
+ const intentoAutomatico=useRef("");
 
  const puedeEditar=planilla?.puede_editar===true;
  const dias=useMemo(()=>diasSemana(semana),[semana]);
@@ -51,6 +55,7 @@ export function MunroWeeklySchedule(){
        return {...persona,datos:registro?.datos||{},version:registro?.version||0};
      });
      setPlanilla(p);setFilas(actual);setPendientes([]);setEditando(false);
+     revisiones.current={};intentoAutomatico.current="";
      setFeriados(p.feriados||[]);
    }catch(e){setError(aviso(e));}
    finally{setCargando(false);}
@@ -62,11 +67,11 @@ export function MunroWeeklySchedule(){
  },[]);
  useEffect(()=>{
    const onBeforeUnload=(event:BeforeUnloadEvent)=>{
-     if(pendientes.length){event.preventDefault();event.returnValue="";}
+     if(pendientes.length||guardando){event.preventDefault();event.returnValue="";}
    };
    window.addEventListener("beforeunload",onBeforeUnload);
    return()=>window.removeEventListener("beforeunload",onBeforeUnload);
- },[pendientes.length]);
+ },[pendientes.length,guardando]);
  // Sincronización entre dispositivos cada 15 segundos, sin pisar un borrador abierto.
  useEffect(()=>{
    if(editando||pendientes.length)return;
@@ -87,9 +92,10 @@ export function MunroWeeklySchedule(){
  },[semana,editando,pendientes.length]);
  const cambiar=(id:number,updater:(anterior:Borrador)=>Borrador)=>{
    if(!editando||!puedeEditar)return;
+   revisiones.current[id]=(revisiones.current[id]||0)+1;
    setFilas(actual=>actual.map(f=>f.id===id?updater(f):f));
    setPendientes(actual=>actual.includes(id)?actual:[...actual,id]);
-   setMensaje("");
+   setMensaje("");setError("");
  };
  const cambiarDia=(id:number,dia:string,campo:string,valor:string|boolean)=>{
    cambiar(id,f=>({...f,datos:{...f.datos,[dia]:{...(f.datos[dia]||{}),[campo]:valor}}}));
@@ -124,42 +130,88 @@ export function MunroWeeklySchedule(){
      datos:{...prev.datos,[semana]:{...(prev.datos[semana]||{}),inactivo_desde:fecha}}}));
  };
  const seleccionarSemana=(siguiente:string)=>{
-   if(pendientes.length&&!window.confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de semana?"))return;
-   setSemana(siguiente);setDiaSeleccionado(0);setMensaje("");
+  if(pendientes.length||guardando){
+   setError("Hay cambios pendientes de guardado. Revisá el estado antes de cambiar de semana.");
+   return;
+  }
+  setSemana(siguiente);setDiaSeleccionado(0);setMensaje("");
  };
- const guardar=async()=>{
-   if(!puedeEditar||!editando||guardando)return;
-   if(!pendientes.length){setEditando(false);return;}
-   // Los turnos imposibles se rechazan siempre. Durante la semana una entrada sola sí se guarda.
-   for(const f of filas.filter(f=>pendientes.includes(f.id))){
-     if(f.estado==="inactivo"&&(!f.inactivo_desde||f.inactivo_desde>fechaAR(new Date()))){
-       setError("Completá una fecha válida en Inactivo desde para "+(f.nombre||"el colaborador")+" .");return;
-     }
-     if(!f.nombre.trim()&&Object.keys(f.datos).length){
-       setError("Ingresá el nombre antes de cargar los horarios.");return;
-     }
-     for(const fecha of dias){
-       const r=evaluarDia(f.datos[fecha]||{},enRevision);
-       if(r.errores.length){setError((f.nombre||"Colaborador "+f.id)+", "+fechaCorta(fecha)+": "+r.errores[0]);return;}
-     }
+ const guardar=useCallback(async(automatico=false)=>{
+  if(!puedeEditar||!editando||guardadoEnCurso.current)return;
+  const objetivos=filas.filter(f=>pendientes.includes(f.id));
+  if(!objetivos.length){if(!automatico)setEditando(false);return;}
+  const validos:Borrador[]=[];
+  let primerError="";
+  // Cada colaborador se valida de forma independiente, sin detener a otros.
+  for(const f of objetivos){
+   let fallo="";
+   if(f.estado==="inactivo"&&(!f.inactivo_desde||f.inactivo_desde>fechaAR(new Date())))
+    fallo="Completá una fecha válida en Inactivo desde para "+(f.nombre||"el colaborador")+".";
+   else if(!f.nombre.trim()&&Object.keys(f.datos).length)
+    fallo="Ingresá el nombre antes de cargar los horarios.";
+   else{
+    for(const fecha of dias){
+     const r=evaluarDia(f.datos[fecha]||{},enRevision);
+     if(r.errores.length){fallo=(f.nombre||"Colaborador "+f.id)+", "+fechaCorta(fecha)+": "+r.errores[0];break;}
+    }
+    if(!fallo){
+     const r=resumenLiquidacion(f.modalidad,f.datos,semana,feriados);
+     if(r.errores.length)fallo=(f.nombre||"Colaborador "+f.id)+": "+r.errores[0];
+    }
    }
-   setError("");setGuardando(true);
-   try{
-     // Escritura con versión de cada colaborador: no pisa cambios desde otro dispositivo.
-     for(const f of filas.filter(f=>pendientes.includes(f.id))){
-       await rpc("rm_munro_horarios_guardar",{
-         p_persona:f.id,p_semana:semana,p_nombre:f.nombre,
-         p_estado:f.estado,p_datos:f.datos,p_version:f.version
-       });
-     }
-     await cargar();setMensaje("Horarios guardados correctamente.");
-   }catch(e){
-     setError(aviso(e)+" Si se guardó alguna fila, actualizá antes de seguir.");
-     // No limpiar el borrador automáticamente si falló alguna escritura.
-   }finally{setGuardando(false);}
- };
+   if(fallo){if(!primerError)primerError=fallo;}
+   else validos.push(f);
+  }
+  if(!validos.length){
+   if(primerError)setError(primerError+" · No guardado hasta corregirlo.");
+   return;
+  }
+  guardadoEnCurso.current=true;
+  setGuardando(true);setError(primerError?primerError+" · Falta guardar esta fila.":"");
+  let huboFallo=false;
+  try{
+   for(const f of validos){
+    const revision=revisiones.current[f.id]||0;
+    try{
+     const resultado=await rpc<{ok:boolean;version:number;id:number}>("rm_munro_horarios_guardar",{
+      p_persona:f.id,p_semana:semana,p_nombre:f.nombre,
+      p_estado:f.estado,p_datos:f.datos,p_version:f.version
+     });
+     if(!resultado?.ok||!Number.isInteger(resultado.version))throw new Error("No se confirmó el guardado.");
+     setFilas(actual=>actual.map(fila=>fila.id===f.id?{...fila,version:resultado.version}:fila));
+     // Si siguieron escribiendo mientras guardaba, la nueva edición sigue pendiente.
+     setPendientes(actual=>revisiones.current[f.id]===revision?actual.filter(id=>id!==f.id):actual);
+    }catch(e){
+     huboFallo=true;setError(aviso(e)+" · Cambios pendientes. Revisá tu conexión y reintentá.");
+     break;
+    }
+   }
+   if(!huboFallo&&!primerError)setMensaje("Guardado automáticamente.");
+   else if(!huboFallo)setMensaje("Los otros colaboradores se guardaron automáticamente.");
+  }finally{
+   guardadoEnCurso.current=false;
+   setGuardando(false);
+  }
+ },[puedeEditar,editando,filas,pendientes,dias,enRevision,semana,feriados]);
+ // Debounce de 900 ms sin recargar, borrar el borrador ni sacar el foco.
+ useEffect(()=>{
+  if(!editando||!puedeEditar||!pendientes.length||guardando)return;
+  const firma=semana+"|"+pendientes.map(id=>id+":"+(revisiones.current[id]||0)).join("|")+"|"+reintento;
+  if(firma===intentoAutomatico.current)return;
+  const timer=window.setTimeout(()=>{
+   intentoAutomatico.current=firma;
+   void guardar(true);
+  },900);
+  return()=>window.clearTimeout(timer);
+ },[editando,puedeEditar,pendientes,filas,guardando,semana,reintento,guardar]);
+ useEffect(()=>{
+  const volver=()=>{intentoAutomatico.current="";setReintento(n=>n+1);};
+  window.addEventListener("online",volver);
+  return()=>window.removeEventListener("online",volver);
+ },[]);
  const agregar=async()=>{
    if(!nombreNuevo.trim()||guardando)return;
+   if(pendientes.length){setError("Revisá primero los horarios pendientes de guardado.");return;}
    setGuardando(true);setError("");
    try{
      await rpc("rm_munro_horarios_agregar",{p_nombre:nombreNuevo.trim()});
@@ -189,7 +241,7 @@ export function MunroWeeklySchedule(){
  const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
    <div className="mhs-estado" role="group" aria-label={"Estado de "+cabecera(f)}>
      {ESTADOS.map(estado=><button key={estado} type="button"
-       disabled={!editando||!puedeEditar||guardando} aria-pressed={f.estado===estado}
+       disabled={!editando||!puedeEditar} aria-pressed={f.estado===estado}
        className={"mhs-estado-"+estado} onClick={()=>cambiarEstado(f,estado)}>
        <span className="mhs-luz-estado" aria-hidden="true"/>
        {estado==="activo"?"Activo":estado==="refuerzo"?"Refuerzo":"Inactivo"}
@@ -199,7 +251,7 @@ export function MunroWeeklySchedule(){
      <span>Inactivo desde</span>
      <input type="date" aria-label={"Inactivo desde · "+cabecera(f)}
        max={fechaAR(new Date())} value={f.inactivo_desde||""}
-       disabled={!editando||!puedeEditar||guardando}
+       disabled={!editando||!puedeEditar}
        onChange={e=>cambiarInactivoDesde(f,e.target.value)}/>
      {!f.inactivo_desde&&<small>Fecha pendiente de completar</small>}
    </label>}
@@ -207,12 +259,12 @@ export function MunroWeeklySchedule(){
      <label><input type="checkbox"
        aria-label={"Habilitar feriado · "+cabecera(f)}
        checked={feriadoHabilitado(f.datos,semana,feriados)}
-       disabled={!editando||!puedeEditar||guardando}
+       disabled={!editando||!puedeEditar}
        onChange={e=>cambiarOpcion(f,"feriado",e.target.checked)}/> Feriado</label>
      <label><input type="checkbox"
        aria-label={"Habilitar vacaciones · "+cabecera(f)}
        checked={vacacionesHabilitadas(f.datos,semana)}
-       disabled={!editando||!puedeEditar||guardando}
+       disabled={!editando||!puedeEditar}
        onChange={e=>cambiarOpcion(f,"vacaciones",e.target.checked)}/> Vacaciones</label>
    </div>
  </div>;
@@ -222,7 +274,7 @@ export function MunroWeeklySchedule(){
      {CAMPOS.map(([campo,label])=><label key={campo}>
        <span>{label}</span>
        <input aria-label={label+" · "+cabecera(f)+" · "+fechaCorta(dia)} type="time" step={60}
-         disabled={!editando||!puedeEditar||guardando}
+         disabled={!editando||!puedeEditar}
          aria-invalid={verificar.campos.includes(campo)}
          value={d[campo]||""} onChange={e=>cambiarDia(f.id,dia,campo,e.target.value)}/>
      </label>)}
@@ -230,13 +282,13 @@ export function MunroWeeklySchedule(){
        <label className="mhs-dia-extra"><input type="checkbox"
          aria-label={"Feriado · "+cabecera(f)+" · "+fechaCorta(dia)}
          checked={d.feriado===true||(f.datos[semana]?.feriados_habilitados===undefined&&feriados.includes(dia))}
-         disabled={!editando||!puedeEditar||guardando}
+         disabled={!editando||!puedeEditar}
          onChange={e=>cambiarDia(f.id,dia,"feriado",e.target.checked)}/>Feriado</label>}
      {vacacionesHabilitadas(f.datos,semana)&&
        <label className="mhs-dia-extra"><input type="checkbox"
          aria-label={"Vacaciones · "+cabecera(f)+" · "+fechaCorta(dia)}
          checked={d.vacaciones_dia===true}
-         disabled={!editando||!puedeEditar||guardando}
+         disabled={!editando||!puedeEditar}
          onChange={e=>cambiarDia(f.id,dia,"vacaciones_dia",e.target.checked)}/>Vacaciones</label>}
      {verificar.errores.length>0&&<small className="mhs-revisar">{verificar.errores.join(" ")}</small>}
    </div>;
@@ -248,6 +300,8 @@ export function MunroWeeklySchedule(){
          onClick={()=>setPestana(id)}>{label}</button>)}
    </nav>
    {error&&<p className="mhs-alerta" role="alert">{error}</p>}
+   {guardando&&<p role="status" className="mhs-ayuda">Guardando cambios automáticamente…</p>}
+   {pendientes.length>0&&!guardando&&editando&&<p role="status" className="mhs-ayuda">Cambios pendientes · se guardan automáticamente al completar la carga.</p>}
    {mensaje&&<p className="mhs-exito" role="status">{mensaje}</p>}
    {cargando&&<p role="status">Cargando Horarios de Munro…</p>}
    {!cargando&&planilla&&<>
@@ -260,8 +314,8 @@ export function MunroWeeklySchedule(){
        </div>
        {(pestana==="semana"||pestana==="resumen")&&puedeEditar&&<div className="mhs-acciones">
          {!editando?<button type="button" onClick={()=>setEditando(true)}><Pencil size={17}/> Modificar</button>:
-           <><button type="button" onClick={()=>{if(pendientes.length&&!window.confirm("¿Descartar los cambios?"))return;void cargar();}}>Cancelar</button>
-             <button className="mhs-primario" type="button" disabled={guardando} onClick={()=>void guardar()}><Save size={17}/>{guardando?"Guardando…":"Guardar"}</button></>}
+           <><button type="button" disabled={guardando} onClick={()=>{if(pendientes.length){setError("Hay cambios pendientes; no se pueden descartar sin revisarlos.");return;}setEditando(false);}}>Finalizar edición</button>
+             <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>}
        </div>}
      </div>}
      {enRevision&&(pestana==="semana"||pestana==="resumen")&&<p className="mhs-alerta" role="status">
@@ -270,7 +324,7 @@ export function MunroWeeklySchedule(){
      </p>}
      {pestana==="semana"&&<>
        <p className="mhs-ayuda">Tres colaboradores por turno y cinco por hora. Cargá los nombres y horarios cuando quieras.
-         Durante la semana podés guardar una entrada sin salida. Los feriados se eligen en Resumen semanal y las vacaciones se marcan por día.</p>
+         Cada entrada o cambio se guarda automáticamente, aunque todavía falte completar una salida durante la semana. Los feriados y vacaciones se marcan por colaborador.</p>
        <div className="mhs-movil-dias" role="group" aria-label="Día a mostrar">
          {dias.map((dia,i)=><button key={dia} type="button" aria-pressed={diaSeleccionado===i}
             onClick={()=>setDiaSeleccionado(i)}><b>{DIAS[i]}</b><span>{fechaCorta(dia)}</span></button>)}
@@ -284,7 +338,7 @@ export function MunroWeeklySchedule(){
                <th scope="row"><div className="mhs-colaborador">
                  <span className="mhs-modalidad">{f.modalidad==="turno"?"Por turno":"Por hora"}</span>
                  {editando&&puedeEditar?<input type="text" maxLength={80} placeholder={"Nombre · "+cabecera(f)}
-                   value={f.nombre} disabled={guardando} onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}
+                   value={f.nombre} onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}
                    aria-label={"Nombre del colaborador "+f.id}/>:<strong>{cabecera(f)}</strong>}
                  {estadoBotones(f)}
                </div></th>
@@ -349,11 +403,11 @@ export function MunroWeeklySchedule(){
                <td>{porHora?"Hora":"Turno"}</td>
                <td>{convertir(r.trabajados)}</td>
                <td><input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
-                 disabled={!editando||!puedeEditar||guardando} inputMode="text"
+                 disabled={!editando||!puedeEditar} inputMode="text"
                  onChange={e=>cambiarDia(f.id,semana,"off",e.target.value)}/></td>
                <td>{vacacionesHabilitadas(f.datos,semana)
                  ?<input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
-                   disabled={!editando||!puedeEditar||guardando} inputMode="text"
+                   disabled={!editando||!puedeEditar} inputMode="text"
                    onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/>
                  :<span className="mhs-sin-extra" title="Vacaciones no activadas">—</span>}</td>
                <td>{convertir(r.extraFeriado)}</td>
@@ -366,7 +420,7 @@ export function MunroWeeklySchedule(){
                  <small className="mhs-nota-auto">{r.observaciones||"—"}</small>
                  {editando&&puedeEditar&&<input aria-label={"Observación manual de "+f.nombre}
                    placeholder="Aclaración opcional" maxLength={200}
-                   value={f.datos[semana]?.observaciones||""} disabled={guardando}
+                   value={f.datos[semana]?.observaciones||""}
                    onChange={e=>cambiarDia(f.id,semana,"observaciones",e.target.value)}/>}
                </td>
              </tr>;
