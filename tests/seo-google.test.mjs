@@ -30,7 +30,7 @@ test('Página de presentación SEO pública no da acceso a módulos protegidos',
   assert.match(page,/Todo tu negocio, en orden/);
   assert.match(page,/Ver Plan Scanner en acción/);
   assert.match(page,/id="video"/);
-  assert.ok(page.includes('gestlok-plan-scanner-30s.mp4'));
+  assert.ok(page.includes('gestlok-plan-scanner-sobrio-32s.mp4'));
   assert.ok(!page.includes('href="/?demo=1"'));
   assert.match(page,/permisos y módulos habilitados/);
   assert.doesNotMatch(page,/supabase|service_role|auth\.getSession|private_key|password|token/i);

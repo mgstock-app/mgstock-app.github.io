@@ -23,7 +23,7 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
       const publicVideoHooks = [
         ["link.href='/conocer/#video';", "link.href=location.pathname+'?demo=1';"],
-        ["link.textContent='Mirá Plan Scanner en video · 30 segundos';", "link.textContent='Explorar demo interactiva · Sin registrarme';"],
+        ["link.textContent='Mirá Plan Scanner en video · 32 segundos';", "link.textContent='Explorar demo interactiva · Sin registrarme';"],
         ["info.textContent='Conocé las ventas, el escaneo con celular, el stock y los precios de GESTLOK.';", "info.textContent='Probá Dueña y Gerente en dos tiendas ficticias. Sin modificar datos reales.';"]
       ];
       for (const [updated, original] of publicVideoHooks) {
