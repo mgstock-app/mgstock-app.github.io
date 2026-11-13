@@ -87,7 +87,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
       // PedidosYa: exclusivo de Molino Café · Acassuso (el servidor valida empresa y sucursal).
-      if (!visitor) await load("/stock/gestlok-molino-pya.js?rev=pedidosya-categorias-20261113");
+      if (!visitor) await load("/stock/gestlok-molino-pya.js?rev=pedidosya-categorias-v2-20261113");
       if (!visitor) await load("/stock/gestlok-molino.js?rev=pedidosya-20261109");
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");

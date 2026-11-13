@@ -236,9 +236,9 @@ function render(){
   (admin||!data?'':'<p class="gl-pya-info">Solo la administradora puede crear, editar, eliminar u ordenar categorías y productos, y cambiar el porcentaje.</p>')+
   (msg?'<div class="gl-pya-msg" role="status">'+esc(msg)+'</div>':'')+(error&&data?'<div class="gl-pya-alert" role="alert">'+esc(error)+'</div>':'')+
   body+'</div>'+
-  (view!=='categorias'||dirty?'<footer class="gl-pya-foot"><span>'+footText(c,dirty,invalid)+'</span>'+
+  '<footer class="gl-pya-foot"'+(view==='categorias'&&!dirty?' hidden':'')+'><span>'+footText(c,dirty,invalid)+'</span>'+
   '<div><button type="button" class="gl-pya-btn" data-pya-cancel'+(dirty?'':' disabled')+'>Cancelar</button>'+
-  '<button type="button" class="gl-pya-btn gl-pya-btn--primary" data-pya-save'+(dirty&&!invalid&&!busy?'':' disabled')+'>Guardar cambios</button></div></footer>':'');
+  '<button type="button" class="gl-pya-btn gl-pya-btn--primary" data-pya-save'+(dirty&&!invalid&&!busy?'':' disabled')+'>Guardar cambios</button></div></footer>';
 }
 function conflictBox(){
  return '<section class="gl-pya-conflicts" role="alertdialog" aria-label="Precios manuales distintos de San Isidro"><h3>Estos productos tienen un precio manual distinto al de San Isidro</h3>'+
@@ -275,7 +275,7 @@ function close(force=false){
 }
 function css(){
  if(document.getElementById('gl-pya-css'))return;
- const l=document.createElement('link');l.id='gl-pya-css';l.rel='stylesheet';l.href='/stock/gestlok-molino-pya.css?rev=pedidosya-categorias-20261113';document.head.appendChild(l);
+ const l=document.createElement('link');l.id='gl-pya-css';l.rel='stylesheet';l.href='/stock/gestlok-molino-pya.css?rev=pedidosya-categorias-v2-20261113';document.head.appendChild(l);
 }
 async function act(fn,okMsg){
  if(busy)return;busy=true;msg='';error='';render();
@@ -394,7 +394,11 @@ document.addEventListener('input',e=>{
   // Actualizar contadores y botones sin redibujar los campos (no se pierde el foco).
   const panel=$('#gl-pya-panel'),c=counts(),dirty=drafts.size>0,invalid=[...drafts.values()].some(d=>Number.isNaN(d.value));
   const st=panel?.querySelector('.gl-pya-status');if(st)st.outerHTML=statusHTML(dirty);
-  const foot=panel?.querySelector('.gl-pya-foot span');if(foot)foot.textContent=footText(c,dirty,invalid);
+  const foot=panel?.querySelector('.gl-pya-foot');
+  if(foot){
+   foot.hidden=view==='categorias'&&!dirty;
+   foot.querySelector('span').textContent=footText(c,dirty,invalid);
+  }
   const save=panel?.querySelector('[data-pya-save]');if(save)save.disabled=!dirty||invalid||busy;
   const cancel=panel?.querySelector('[data-pya-cancel]');if(cancel)cancel.disabled=!dirty;
   for(const b of panel?.querySelectorAll('[data-pya-badge]')||[]){const k=b.dataset.pyaBadge,n=k==='sin'?c.sin:k==='modificados'?c.modificados:0;b.textContent=n||'';b.hidden=!n;}

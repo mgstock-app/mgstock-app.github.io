@@ -59,7 +59,7 @@ test('La base restringe PedidosYa a Acassuso y los nombres/orden a la administra
 });
 
 test('Se carga solo fuera de la demo de visitantes y antes del Vínculo', ()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-categorias-20261113"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-categorias-v2-20261113"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
 });
 
 const cats=readFileSync('supabase/migrations/20261109200000_molino_pya_categorias.sql','utf8');
@@ -104,7 +104,7 @@ test('Diseño de PedidosYa: vistas separadas, tabla de categorías y menú later
   'gestlok_molino_pya_state','gestlok_molino_pya_sync']);
  // Las reglas del menú lateral solo aplican con PedidosYa abierto (Acassuso), nunca en San Isidro ni en otras empresas.
  for(const rule of css.split('}').filter(r=>/#side/.test(r)))assert.match(rule,/body(\.gl-molino-tenant)?\.gl-pya-open/);
- assert.match(pyaSrc,/l\.href='\/stock\/gestlok-molino-pya\.css\?rev=pedidosya-categorias-20261113'/);
+ assert.match(pyaSrc,/l\.href='\/stock\/gestlok-molino-pya\.css\?rev=pedidosya-categorias-v2-20261113'/);
  // Al tocar otra sección del menú, PedidosYa se cierra (y pregunta si hay cambios sin guardar).
  assert.match(pyaSrc,/if\(!close\(\)\)\{e\.preventDefault\(\);e\.stopPropagation\(\);\}/);
 });
@@ -119,7 +119,7 @@ test('PedidosYa de Acassuso usa una paleta sobria sin fondos amarillos ni el roj
  assert.match(css,/\.gl-pya-row\.is-pending\{[^}]*box-shadow:inset 3px 0 0/);
  assert.match(css,/\.gl-pya-logo\{[^}]*background:#273F56/);
  assert.doesNotMatch(css,/#E5384D|#F8EFE3|#FFF5CC|#FFFBEF|#FDE7C2|#EAF6EE/i);
- assert.match(runtime,/gestlok-molino-pya\.js\?rev=pedidosya-categorias-20261113/);
+ assert.match(runtime,/gestlok-molino-pya\.js\?rev=pedidosya-categorias-v2-20261113/);
  // Cambios solo de apariencia: el aislamiento a Acassuso sigue vigente.
  assert.match(pyaSrc,/inAcassuso\(\)/);
 });

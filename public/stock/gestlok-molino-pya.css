@@ -221,3 +221,4 @@ html body.gl-molino-tenant.gl-pya-open #side #snav>button[data-pya-open]{backgro
 .gl-pya-cname .gl-pya-chev{vertical-align:middle;margin-right:6px}
 .gl-pya-category-details{padding:12px;border-bottom:1px solid var(--pya-line);background:var(--pya-soft)}
 .gl-pya-category-details > .gl-pya-mini{margin-bottom:8px}
+.gl-pya-foot[hidden]{display:none}
