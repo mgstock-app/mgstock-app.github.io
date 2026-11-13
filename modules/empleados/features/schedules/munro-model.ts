@@ -80,7 +80,9 @@ export function resumenPersona(modalidad:Modalidad,datos:SemanaHorarios,semana:s
    if(r.errores.length)errores+=r.errores.length;
    if(!completos&&(["tm_e","tm_s","tt_e","tt_s"] as CampoHora[]).some(k=>Boolean(d[k]))&&
       ((Boolean(d.tm_e)!==Boolean(d.tm_s))||(Boolean(d.tt_e)!==Boolean(d.tt_s))))pendientes++;
-   const esFeriado=feriados.includes(fecha)||r.feriado;
+   // Solo el feriado elegido para la semana genera adicional. Una marca antigua
+   // por colaborador no autoriza duplicar turnos u horas.
+   const esFeriado=feriados.includes(fecha);
    if(r.horas>0){dias++; if(esFeriado)horasFeriado+=r.horas;else horas+=r.horas;}
    if(r.turnos>0){turnos+=r.turnos;if(esFeriado)extraFeriado+=r.turnos;}
  }
