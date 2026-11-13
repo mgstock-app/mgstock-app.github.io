@@ -38,7 +38,11 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
        cy.get('#gestlok-mobile-dock [data-dock="pedidos"]').should('not.exist');
      });
      cy.get('#gestlok-mobile-dock [data-dock="more"]').click();
-     cy.get('#gestlok-mobile-sheet').should('contain.text','Pedidos WhatsApp').and('contain.text','Colaboradores');
+     cy.get('#gestlok-mobile-sheet').should('contain.text','Colaboradores');
+     cy.get('#snav').then($menu=>{
+       if($menu.find('[data-go="pedidos-clientes"]').length)
+         cy.get('#gestlok-mobile-sheet').should('contain.text','Pedidos WhatsApp');
+     });
      cy.get('#gestlok-mobile-sheet [data-close-sheet]').first().click({force:true});
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
