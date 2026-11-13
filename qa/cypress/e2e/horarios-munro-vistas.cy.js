@@ -24,7 +24,8 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
    if(path.includes("/rpc/rm_munro_horarios_guardar")){
    ultimo=req.body;
    const i=empleados.findIndex(x=>x.id===req.body.p_persona);
-   empleados[i]={...empleados[i],nombre:req.body.p_nombre,estado:req.body.p_estado};
+   empleados[i]={...empleados[i],nombre:req.body.p_nombre,estado:req.body.p_estado,
+     inactivo_desde:req.body.p_estado==="inactivo"?req.body.p_datos?.[SEMANA]?.inactivo_desde:null};
    const registro={id:req.body.p_persona,semana:req.body.p_semana,datos:req.body.p_datos,nombre:req.body.p_nombre,
      modalidad:empleados[i].modalidad,version:(registros.find(x=>x.id===req.body.p_persona)?.version||0)+1};
    registros=[...registros.filter(x=>x.id!==registro.id),registro];
@@ -76,23 +77,53 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get('section[aria-label="Resumen en vivo"]').should("not.exist");
   cy.get('section[aria-label="Semana en vivo"]').should("not.exist");
  });
-  it("liquida en vivo trabajado + OFF + feriado del día seleccionado",()=>{
+  it("feriado individual, doble solo en el día marcado, y OFF editable",()=>{
    cy.viewport(1320,900);
    const registro={id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,
      datos:{"2026-11-12":{tm_e:"09:00",tm_s:"13:00",tt_e:"19:00",tt_s:"23:00"}}};
    const ultimo=iniciar({precargados:[registro]});
+   cy.get(".mhs-tabla tbody tr").first().find('.mhs-dia-extra').should("not.exist");
+   cy.contains("button","Modificar").click();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar feriado"]').check();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
+   cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
-   cy.get(".mhs-liquidacion").should("contain.text","Lucía");
-   cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","3");
-   cy.get(".mhs-feriados-toggle input").check();
-   cy.contains(".mhs-feriados-dias label","Jue").find('input[type="checkbox"]').check();
    cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","5");
    cy.get(".mhs-liquidacion tbody tr").first().should("contain.text","Feriado: 12/11");
-   cy.contains("button","Modificar").click();
    cy.get('input[aria-label="OFF de Lucía"]').clear().type("0");
    cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","4");
    cy.contains("button","Guardar").click();
-   cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].off).to.eq("0"));
+   cy.wrap(null).should(()=>{
+     expect(ultimo().p_datos[SEMANA].feriados_habilitados).to.eq(true);
+     expect(ultimo().p_datos["2026-11-12"].feriado).to.eq(true);
+     expect(ultimo().p_datos[SEMANA].off).to.eq("0");
+   });
+  });
+  it("vacaciones solo aparece al habilitar por colaborador",()=>{
+   cy.viewport(1320,900);iniciar();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Vacaciones ·"]').should("not.exist");
+   cy.contains("button","Modificar").click();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar vacaciones"]').check();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Vacaciones ·"]').should("have.length",7);
+   cy.get('.mhs-tabla tbody tr').eq(1).find('input[aria-label^="Vacaciones ·"]').should("not.exist");
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Vacaciones ·"]').first().check();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar vacaciones"]').uncheck();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Vacaciones ·"]').should("not.exist");
+  });
+  it("semáforo por estado y fecha inactivo desde editable",()=>{
+   cy.viewport(1320,900);
+   const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}]});
+   cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-activo .mhs-luz-estado').should("be.visible");
+   cy.contains("button","Modificar").click();
+   cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-inactivo').click();
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
+     .clear().type("2026-11-10");
+   cy.contains("button","Guardar").click();
+   cy.wrap(null).should(()=>{
+     expect(ultimo().p_estado).to.eq("inactivo");
+     expect(ultimo().p_datos[SEMANA].inactivo_desde).to.eq("2026-11-10");
+   });
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("have.value","2026-11-10");
   });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
