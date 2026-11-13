@@ -81,7 +81,7 @@ assert.ok(evaluarDia({tm_e:"08:00",tm_s:"12:00",vacaciones_dia:true}).errores.le
   "no pagar vacaciones y turno trabajado el mismo día");
 assert.ok(resumenLiquidacion("hora",{"2026-11-09":{off:"99:99"}},"2026-11-09",[],hasta).errores.length,
   "no calcular un resumen con OFF inválido");
-assert.match(ui,/rm_munro_horarios_feriados_guardar/);
+assert.match(ui,/Habilitar feriado/);
 assert.match(ui,/Resumen semanal/);
 assert.match(ui,/Total a liquidar/);
 assert.match(ui,/mhs-liquidacion/);
