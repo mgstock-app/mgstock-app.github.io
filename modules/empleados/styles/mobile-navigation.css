@@ -22,6 +22,7 @@
   .app-shell .gl-module-dock svg{width:21px;height:21px;flex:none}
   .app-shell .gl-module-dock :is(a,button):focus-visible{outline:3px solid #27a0bb;outline-offset:1px}
   .app-shell :is(.gl-gerente__main,.owner-main,.gl-employee-main,.gi-admin-content){padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+  .app-shell .gl-munro-schedules-persistent{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
   .app-shell .app-navbar{z-index:900}
   .app-shell :is(.gl-gerente__sidebar,.owner-sidebar,.gl-employee-sidebar,.gi-admin-sidebar){overflow-y:auto;overscroll-behavior:contain}
   .app-shell .gl-gerente .gl-gerente__sidebar{background:#fff;color:#1c4258;border-right:1px solid #dce8ee}
