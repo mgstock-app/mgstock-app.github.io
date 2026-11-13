@@ -1,25 +1,20 @@
-# Mis Productos (ZAYRO) · Fotos sobre cartulina blanca
+# BELISA · Fotos con fondo y textura reales
 
-**11/11/2026, 09:24.** Pedido de la usuaria: fotos con fondo blanco que no parezcan hechas con IA, sino sacadas sobre cartulina blanca y con la luz correcta (referencia: Vercares Yellow sobre cartulina). Antes, a las 08:34, se había retirado la edición con IA y quedaban solo agregar foto y la vista previa.
+**13/11/2026.** La tienda de Camila ya utiliza un fondo negro tejido real. Por eso la edición predeterminada **no** debe eliminarlo ni reemplazarlo por cartulina blanca.
 
-## Cómo funciona (todo en el teléfono, gratis, sin IA generativa)
-1. «+ Agregar foto» (galería) o «📷 Sacar foto» (cámara).
-2. `gestlok-cami-recorte.js` separa el producto con BiRefNet (`@bg0/browser` 0.1.1, desde CDN; la primera vez se descarga). De ahí solo se usa la máscara.
-3. `gestlok-cami-foto-estudio.js` arma la foto final:
-   - **Luz:** balance de blancos con las zonas blancas del producto (también si están teñidas de amarillo o azul), luz pareja que suaviza manchas grandes, exposición y una curva que no quema los blancos. Las letras y formas son siempre las de la foto real.
-   - **Cartulina:** blanco real, no #FFFFFF. La pared queda un poco más gris, el apoyo más claro, con una curva suave, viñeta leve y grano fino de papel. El resultado es igual cada vez (azar con semilla).
-   - **Sombra de apoyo:** suave, solo debajo del producto y sobre el piso. No hay sombras recortadas alrededor del contorno.
-   - **Composición:** 1200×1200, producto centrado y apoyado al 82 % de la altura. La luz del fondo envuelve apenas el borde y el grano es el mismo en toda la imagen.
-4. **Vista previa antes de guardar:** «Guardar editada», «Guardar original» o «Cancelar». Si el editor falla (por ejemplo, sin conexión para descargarlo), se muestra solo la original para guardarla.
-5. Si se guarda la editada, la original queda en `original_photo_path`. La «Vista previa / Descargar» de la tarjeta muestra la foto guardada.
+## Nuevo comportamiento
 
-## Límites
-- La luz fuerte del sol (reflejos marcados) se suaviza, pero no se borra: es luz real de la foto.
-- En un vidrio transparente se ve lo que estaba detrás. Se probó reemplazarlo, pero dejaba manchas en tapas y cajas y se descartó. Para frascos de vidrio conviene un papel blanco atrás al sacar la foto.
-- Si el separador de producto deja un borde de más (por ejemplo, un pedazo de mesa), sale en la foto: en ese caso, mejor «Guardar original» o sacar otra foto con el fondo más liso.
+1. En **Mis Productos** de Camila (BELISA), usar **Agregar foto** o **Sacar foto**.
+2. GESTLOK importa la foto completa con `gestlok-cami-foto-real.js`, sin recorte ni segmentación. El procesamiento ocurre en el dispositivo.
+3. Mejora moderadamente exposición, detalles visibles y contraste sin eliminar el tejido negro, sus sombras originales ni modificar el encuadre.
+4. Compara **Editada · fondo real** y **Original**. Solo después de elegir **Guardar editada**, **Guardar original** o **Cancelar** se modifica el producto.
+5. Si se guarda la editada, la original se conserva en `original_photo_path`. Las fotos siguen en almacenamiento privado con los controles de acceso existentes.
+6. El cambio se limita al tenant de Camila y a fotos nuevas o reemplazadas. Las fotos históricas no se reprocesan automáticamente.
 
-## Pruebas
-`tests/cami-foto-estudio.test.mjs` (motor) y `tests/cami-mis-productos.test.mjs` (flujo).
+## Límites y garantías
 
-## Restos sin uso en Supabase
-La función `gestlok-cami-foto-ia` y el esquema `gestlok_cami_ai_private`, de la prueba con IA de Cloudflare, quedaron sin uso. No guardan datos y se pueden borrar desde el panel.
+- La mejora de luz usa filtros deterministas sobre píxeles de la foto, no IA generativa. No crea iluminación ficticia ni recupera detalles inexistentes en zonas quemadas o muy oscuras.
+- No coloca un nuevo fondo, no inventa texto, no altera el frasco y no borra elementos del ambiente.
+- Si el dispositivo no permite editar o exportar, aparece la opción de guardar la original.
+- El algoritmo anterior de cartulina blanca queda en el repositorio por compatibilidad histórica, pero **ya no se usa** en este flujo.
+- Pruebas: `tests/cami-foto-real.test.mjs` y `tests/cami-mis-productos.test.mjs`.
