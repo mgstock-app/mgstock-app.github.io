@@ -38,7 +38,9 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.viewport(390,844);
   cy.get('.gl-gestlok-dock').should('be.visible')
     .and('contain.text','Inicio').and('contain.text','Pagos Online').and('contain.text','Stock Local').and('contain.text','Más');
-  cy.get('.gl-gestlok-dock').contains('a','Staff').should('have.attr','href','/empleados/horarios/');
+  if(local==='munro')cy.get('.gl-gestlok-dock').contains('a','Staff')
+     .should('have.attr','href','/empleados/horarios/');
+  else cy.get('.gl-gestlok-dock [aria-current="page"]').should('contain.text','Colaboradores');
   cy.get('.gl-gestlok-dock').contains('a','Pagos Online').should('have.attr','href').and('include','gl_ir=cierre-online');
   cy.get('.gl-gestlok-dock button[aria-haspopup="dialog"]').click();
   cy.get('.gl-gestlok-sheet__panel').should('be.visible').and('contain.text','Horarios').and('contain.text','Proveedores');
