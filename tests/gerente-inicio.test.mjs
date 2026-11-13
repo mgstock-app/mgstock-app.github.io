@@ -25,11 +25,18 @@ test('homeAlerts muestra las 3 novedades más recientes, escapadas, y avisa cuan
     vm.runInNewContext(updates, {window, document, Intl, Date, setTimeout, crypto: {}});
     window.GestLokUpdates.attach(c); return window.GestLokUpdates;
   };
-  const u = load(ctxMk([{fecha: 1, titulo: 'Viejo'}, {fecha: 40, titulo: 'C', detalle: '<img src=x>'}, {fecha: 30, titulo: 'B'}, {fecha: 20, titulo: 'A'}]));
+  const u = load(ctxMk([
+    {fecha: 99, titulo: 'Conteo realizado'},
+    {fecha: 1, titulo: 'Viejo', publicacion_autorizada: true},
+    {fecha: 40, titulo: 'C', detalle: '<img src=x>',publicacion_autorizada:true},
+    {fecha: 30, titulo: 'B',publicacion_autorizada:true},
+    {fecha: 20, titulo: 'A',publicacion_autorizada:true}
+  ]));
   const html = u.homeAlerts();
   assert.ok(html.includes('Avisos del local') && html.includes('data-go="avisos"'));
   assert.ok(html.includes('&lt;img src=x&gt;') && !html.includes('<img'));
   assert.ok(!html.includes('Viejo'));
+  assert.ok(!html.includes('Conteo realizado'), 'No mostrar avisos automáticos históricos');
   assert.ok(html.indexOf('>C<') < html.indexOf('>B<') && html.indexOf('>B<') < html.indexOf('>A<'));
   assert.ok(load(ctxMk([])).homeAlerts().includes('Sin novedades por ahora'));
   assert.equal(load({S: {local: '', avisos: []}, localNombre: () => ''}).homeAlerts(), '');
