@@ -3,9 +3,9 @@
 export type Modalidad = "hora" | "turno";
 export type Estado = "activo" | "refuerzo" | "inactivo";
 export type CampoHora = "tm_e" | "tm_s" | "tt_e" | "tt_s";
-export type DiaHorarios = Partial<Record<CampoHora,string>> & { feriado?:boolean; vacaciones_dia?:boolean; off?:string; vacaciones?:string; observaciones?:string };
+export type DiaHorarios = Partial<Record<CampoHora,string>> & { feriado?:boolean; vacaciones_dia?:boolean; feriados_habilitados?:boolean; vacaciones_habilitadas?:boolean; inactivo_desde?:string; off?:string; vacaciones?:string; observaciones?:string };
 export type SemanaHorarios = Record<string,DiaHorarios>;
-export type Persona = {id:number; nombre:string; modalidad:Modalidad; estado:Estado};
+export type Persona = {id:number; nombre:string; modalidad:Modalidad; estado:Estado; inactivo_desde?:string|null};
 export type Registro = {id:number; semana:string; datos:SemanaHorarios; nombre:string; modalidad:Modalidad; version:number};
 export type Planilla = {semana:string; personas:Persona[]; planillas:Registro[]; historial:Registro[]; puede_editar:boolean; feriados?:string[]; feriados_version?:number; feriados_historial?:Record<string,string[]>};
 const FORMATO=/^([01][0-9]|2[0-3]):[0-5][0-9]$/;
@@ -71,8 +71,24 @@ export function evaluarDia(dia:DiaHorarios={},exigirCompleto=false){
  return {errores,campos:[...new Set(campoError)],horas:errores.length?0:horas,
    turnos:errores.length?0:turnos,feriado};
 }
+/** Los flags son semanales e individuales. Datos anteriores conservan sus marcas originales. */
+export function feriadoHabilitado(datos:SemanaHorarios,semana:string,globales:string[]=[]):boolean {
+ const flag=datos?.[semana]?.feriados_habilitados;
+ return typeof flag==="boolean"?flag:diasSemana(semana).some(d=>datos?.[d]?.feriado===true)||globales.length>0;
+}
+export function vacacionesHabilitadas(datos:SemanaHorarios,semana:string):boolean {
+ const flag=datos?.[semana]?.vacaciones_habilitadas;
+ return typeof flag==="boolean"?flag:diasSemana(semana).some(d=>datos?.[d]?.vacaciones_dia===true);
+}
+export function fechasFeriadoColaborador(datos:SemanaHorarios,semana:string,globales:string[]=[]):string[]{
+ const flag=datos?.[semana]?.feriados_habilitados;
+ if(flag===false)return [];
+ return diasSemana(semana).filter(d=>flag===true?datos?.[d]?.feriado===true:
+   datos?.[d]?.feriado===true||globales.includes(d));
+}
 export function resumenPersona(modalidad:Modalidad,datos:SemanaHorarios,semana:string,now=new Date(),feriados:string[]=[]){
  const completos=revisarSemana(semana,now);
+ const feriadosPersona=fechasFeriadoColaborador(datos,semana,feriados);
  let horas=0,horasFeriado=0,turnos=0,extraFeriado=0,errores=0,pendientes=0,dias=0;
  for(const fecha of diasSemana(semana)){
    const d=datos?.[fecha]||{};
@@ -80,9 +96,8 @@ export function resumenPersona(modalidad:Modalidad,datos:SemanaHorarios,semana:s
    if(r.errores.length)errores+=r.errores.length;
    if(!completos&&(["tm_e","tm_s","tt_e","tt_s"] as CampoHora[]).some(k=>Boolean(d[k]))&&
       ((Boolean(d.tm_e)!==Boolean(d.tm_s))||(Boolean(d.tt_e)!==Boolean(d.tt_s))))pendientes++;
-   // Solo el feriado elegido para la semana genera adicional. Una marca antigua
-   // por colaborador no autoriza duplicar turnos u horas.
-   const esFeriado=feriados.includes(fecha);
+   // El feriado se marca por colaborador. El global solo respalda datos previos.
+   const esFeriado=feriadosPersona.includes(fecha);
    if(r.horas>0){dias++; if(esFeriado)horasFeriado+=r.horas;else horas+=r.horas;}
    if(r.turnos>0){turnos+=r.turnos;if(esFeriado)extraFeriado+=r.turnos;}
  }
@@ -105,7 +120,8 @@ export function resumenLiquidacion(
  const porHora=modalidad==="hora";
  const esperadoOFF=porHora?"4:30":"1";
  const offTexto=ajustes.off??esperadoOFF;
- const vacacionesTexto=ajustes.vacaciones??(porHora?"0:00":"0");
+ const vacacionesTexto=ajustes.vacaciones_habilitadas===false?(porHora?"0:00":"0"):
+   ajustes.vacaciones??(porHora?"0:00":"0");
  const parse=(valor:string)=>{
    if(porHora){
      if(!/^\d{1,3}:[0-5]\d$/.test(valor))return null;
@@ -117,8 +133,9 @@ export function resumenLiquidacion(
  const off=parse(offTexto),vacaciones=parse(vacacionesTexto);
  const trabajados=porHora?base.horas+base.horasFeriado:base.turnos;
  const extraFeriado=porHora?base.horasFeriado:base.extraFeriado;
- const vacacionesDias=diasSemana(semana).filter(d=>datos?.[d]?.vacaciones_dia===true);
- const feriadosTrabajados=feriados.filter(d=>{
+ const vacacionesDias=vacacionesHabilitadas(datos,semana)?
+   diasSemana(semana).filter(d=>datos?.[d]?.vacaciones_dia===true):[];
+ const feriadosTrabajados=fechasFeriadoColaborador(datos,semana,feriados).filter(d=>{
    const v=evaluarDia(datos?.[d]||{},false);
    return v.horas>0&&v.errores.length===0;
  });
