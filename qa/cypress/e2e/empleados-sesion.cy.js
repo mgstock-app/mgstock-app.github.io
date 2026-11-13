@@ -89,6 +89,26 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.reload();
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
   cy.contains('Continuar con Google').should('not.exist');
+  if(local==='munro'){
+   // Staff abre una ruta diferente: el gerente no debe perder accesos en el turno.
+   cy.viewport(390,844);
+   cy.visit('/empleados/horarios/');
+   cy.get('.mhs-tabla tbody tr',{timeout:15000}).should('have.length',8);
+   cy.get('.gl-gestlok-dock').should('be.visible').within(()=>{
+     cy.contains('a','Inicio').should('have.attr','href').and('include','gl_ir=inicio');
+     cy.contains('a','Pagos Online').should('have.attr','href').and('include','gl_ir=cierre-online');
+     cy.contains('a','Stock Local').should('have.attr','href').and('include','gl_ir=stock');
+     cy.contains('button','Staff').should('have.attr','aria-current','page').click();
+     cy.contains('button','Más').click();
+   });
+   cy.get('.gl-gestlok-sheet__panel').should('be.visible')
+     .contains('a','Colaboradores').should('have.attr','href','/empleados/');
+   cy.get('.gl-gestlok-sheet__panel').contains('a','Horarios').should('have.attr','aria-current','page');
+   cy.get('.gl-gestlok-sheet__panel button[aria-label="Cerrar"]').click();
+   cy.get('.gl-gestlok-dock').should('be.visible');
+   cy.viewport(1240,820);
+   cy.get('.gl-gestlok-dock').should('not.be.visible');
+  }
  });
  it('sin sesión conserva el ingreso y no muestra información privada',()=>{
   setup('munro');cy.clearCookies();
