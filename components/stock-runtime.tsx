@@ -78,7 +78,7 @@ export function StockRuntime() {
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
-      if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-belisa-fondo-real-v1-20261113");
+      if (!visitor) await load("/stock/gestlok-mis-productos.js?rev=cami-belisa-descarga-v2-20261113");
       if (!visitor) await load("/stock/gestlok-tiendanube.js?rev=zayro-tiendanube-20261110");
       if (!visitor) await load("/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106");
       if (!visitor) await load("/stock/gestlok-zayro-admin.js?rev=zayro-diseno-tienda-20261109");
