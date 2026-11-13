@@ -108,4 +108,41 @@
   .app-shell .gl-munro-schedules-route > .gl-module-dock :is(a,button):focus-visible{
     outline:3px solid #27a0bb;outline-offset:1px
   }
+  /* La pestaña «Más» funciona también en escritorio, con fondo y cierre. */
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet{
+    display:block!important;position:fixed;inset:0;z-index:1050
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__scrim{
+    position:absolute;inset:0;width:100%;height:100%;
+    border:0;background:#122a4159
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__panel{
+    position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+    width:min(100% - 24px,650px);max-height:80dvh;overflow:auto;
+    background:#fff;color:#1c4158;border-radius:18px 18px 0 0;
+    padding:20px 22px 27px;box-shadow:0 -10px 42px #152d4740
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__panel header{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:8px
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__panel header button{
+    display:grid;place-items:center;width:42px;height:42px;border:0;
+    background:#f1f7fa;border-radius:10px;color:#23475a;cursor:pointer
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__grupo{
+    margin:14px 0 9px;font:800 11px Inter,system-ui,sans-serif;
+    letter-spacing:.08em;text-transform:uppercase;color:#6b8193
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__links{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__links :is(a,button){
+    display:flex;align-items:center;gap:9px;min-height:46px;
+    border:1px solid #e0eaf0;border-radius:11px;background:#f8fbfd;
+    color:#27516c;font:700 13px Inter,system-ui,sans-serif;
+    text-align:left;padding:10px;text-decoration:none;cursor:pointer
+  }
+  .app-shell .gl-munro-schedules-route .gl-gestlok-sheet__links :is(a,button)[aria-current="page"]{
+    border-color:#087ba4;background:#e9f6fb;color:#087ba4
+  }
 }
