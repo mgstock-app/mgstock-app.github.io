@@ -34,7 +34,7 @@ test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin 
  assert.match(script,/data-mp-photo-remove/);
  assert.match(css,/gl-mp-card-top/);
  assert.doesNotMatch(script,/getPublicUrl\(/);
- assert.match(runtime,/cami-belisa-fondo-real-v1-20261113/);
+ assert.match(runtime,/cami-belisa-descarga-v2-20261113/);
 });
 
 test('RLS excluye otras cuentas y no depende de habilitación Scanner',()=>{
@@ -265,13 +265,18 @@ test('Vista previa privada: ver en grande, descargar y cerrar, sin formatos ni e
  assert.match(script,/await assertAccess\(\)/);
  assert.match(script,/expectedTab!==tabId/);
  assert.match(script,/VISTA PREVIA · FOTO GUARDADA/);
- assert.match(script,/data-mp-export-download>Descargar foto/);
+ assert.match(script,/data-mp-export-download>Descargar imagen/);
+ assert.match(script,/data-mp-photo-download href=/);
+ assert.match(script,/Descargar imagen editada/);
+ assert.match(script,/Descargar imagen original/);
+ assert.match(script,/download="'+esc(nombreArchivoFoto(item,edited?'editada':'original'))+'/);
+ assert.match(script,/link\.download=nombreArchivoFoto\(current\.item\)/);
  assert.match(script,/data-mp-export-clean>Ver en grande/);
- assert.match(script,/link\.download='gestlok-'\+name\+'\.jpg'/);
+ assert.match(script,/link\.download=nombreArchivoFoto\(current\.item\)/);
  assert.match(script,/if\(exportPreview\)\{removeExportModal\(\);return;\}/);
  assert.doesNotMatch(script,/EXPORT_FORMATS|data-mp-export-format|composeExport/);
  assert.match(css,/gl-mp-export-stage/);
  assert.match(css,/gl-mp-export-clean/);
- assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-belisa-fondo-real-v1-20261113/);
+ assert.match(runtime,/gestlok-mis-productos\.js\?rev=cami-belisa-descarga-v2-20261113/);
  assert.doesNotMatch(script,/gestlok_pilot_products|gestlok_pilot_pos_sales|mi_gusto_whatsapp/);
 });
