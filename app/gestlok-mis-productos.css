@@ -199,6 +199,6 @@ body.gl-mp-open{overflow:hidden}
 .gl-mp-photo-confirm .gl-mp-photo-download:focus-visible{outline:3px solid #367baf;outline-offset:2px}
 .gl-mp-photo-confirm [data-mp-photo-choice="editada"]{background:#103763;border-color:#103763;color:#fff}
 .gl-mp-photo-preview-card small{color:#667b8e;font-size:12px;line-height:1.5}
-@media(max-width:550px){[data-mp-photo-preview] .gl-mp-photo-preview-card{padding:14px}.gl-mp-photo-pair{gap:8px;grid-template-columns:1fr}.gl-mp-photo-pair figure:first-child img{max-height:42dvh}.gl-mp-photo-pair figure:last-child img{max-height:20dvh}.gl-mp-photo-pair.is-single figure:last-child img{max-height:45dvh}.gl-mp-photo-pair figcaption{font-size:12px}.gl-mp-photo-confirm button{flex:1 1 100%}}
+@media(max-width:550px){[data-mp-photo-preview] .gl-mp-photo-preview-card{padding:14px}.gl-mp-photo-pair{gap:8px;grid-template-columns:1fr}.gl-mp-photo-pair figure:first-child img{max-height:42dvh}.gl-mp-photo-pair figure:last-child img{max-height:20dvh}.gl-mp-photo-pair.is-single figure:last-child img{max-height:45dvh}.gl-mp-photo-pair figcaption{font-size:12px}.gl-mp-photo-confirm button,.gl-mp-photo-confirm .gl-mp-photo-download{flex:1 1 100%}}
 .gl-mp-photo-pair.is-single{grid-template-columns:minmax(0,420px);justify-content:center}
 .gl-mp-photo-confirm [data-mp-photo-choice="cancelar"]{color:#8b2c26;border-color:#e0b8b4}
