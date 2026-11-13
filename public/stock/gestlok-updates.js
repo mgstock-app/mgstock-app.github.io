@@ -119,7 +119,10 @@
   const homeAlerts = () => {
     if (!ctx || !ctx.S.local) return '';
     const when=f=>{ try { return new Date(Number(f)).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}); } catch { return ''; } };
-    const logs=(ctx.S.avisos || []).slice().sort((a,b)=>Number(b.fecha||0)-Number(a.fecha||0)).slice(0,3);
+    // Solo comunicaciones solicitadas por la administradora. Los avisos automáticos
+    // históricos siguen almacenados, sin llenar esta bandeja.
+    const logs=(ctx.S.avisos || []).filter(a=>a.publicacion_autorizada===true)
+      .sort((a,b)=>Number(b.fecha||0)-Number(a.fecha||0)).slice(0,3);
     return '<section class="gl-home-essential-actions gl-home-avisos" aria-label="Avisos del local"><h2>Avisos del local</h2>'+
       (logs.length ? '<ul class="gl-home-avisos-list">'+logs.map(a=>'<li><b>'+esc(a.titulo||'Actualización')+'</b><span>'+esc(a.detalle||'')+'</span><small>'+esc(when(a.fecha))+'</small></li>').join('')+'</ul>'
                    : '<p class="lead">Sin novedades por ahora.</p>')+
@@ -141,12 +144,14 @@
   };
   const viewAlerts = () => {
     if (!ctx) return '';
-    const S=ctx.S, alerts=getAlerts(S), logs=(S.avisos || []).slice().sort((a,b)=>Number(b.fecha||0)-Number(a.fecha||0)).slice(0,40);
+    const S=ctx.S, logs=(S.avisos || []).filter(a=>a.publicacion_autorizada===true)
+      .sort((a,b)=>Number(b.fecha||0)-Number(a.fecha||0)).slice(0,20);
     return '<section class="sheet gl-exp-page"><p class="eyebrow">GestLok · '+esc(ctx.localNombre())+'</p><h1>Centro de avisos</h1>'+
-      '<p class="lead">Consultá faltantes, conteos pendientes y novedades del equipo en el local.</p>'+
-      '<p class="lead">Estos avisos se consultan dentro de GestLok. No se envían notificaciones al dispositivo.</p>'+ 
-      '<h2>Situación actual</h2><div class="gl-exp-alerts">'+(alerts.length?alerts.map(a=>'<article class="card pad gl-alert '+a.level+'"><b>'+esc(a.label)+'</b><p>'+esc(a.desc)+'</p></article>').join(''):'<div class="card pad"><b>Sin alertas urgentes en este local.</b></div>')+'</div>'+
-      '<h2>Actividad reciente</h2>'+(logs.length?logs.map(a=>'<div class="gl-activity card pad"><b>'+esc(a.titulo||'Actualización')+'</b><small>'+esc(a.detalle||'')+'</small></div>').join(''):'<p class="lead">Las próximas actualizaciones guardadas aparecerán acá.</p>')+'</section>';
+      '<p class="lead">Comunicaciones importantes de tu local, publicadas únicamente a pedido de la administradora.</p>'+
+      '<p class="lead">Estos avisos se consultan dentro de GestLok. No se envían notificaciones al dispositivo.</p>'+
+      '<h2>Novedades oficiales</h2>'+
+      (logs.length?logs.map(a=>'<article class="gl-activity card pad"><b>'+esc(a.titulo||'Aviso')+'</b><small>'+esc(a.detalle||'')+'</small><small>'+esc(new Date(Number(a.fecha)||Date.now()).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}))+'</small></article>').join(''):'<p class="lead">Sin notificaciones nuevas. Se publican solo cuando la administradora lo solicita.</p>')+
+      '</section>';
   };
   const save = async form => {
     if(!ctx || busy || !ctx.canW() || ctx.S.offline) return ctx?.toast('Necesitás conexión y permiso de edición.',true);
