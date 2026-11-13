@@ -5,17 +5,23 @@ const token="eyJhbGciOiJIUzI1NiJ9."+btoa(JSON.stringify({sub:user.id,exp:Math.fl
 const SEMANA="2026-11-09";
 const personas=()=>Array.from({length:8},(_,i)=>({id:i+1,nombre:"",modalidad:i<3?"turno":"hora",estado:"activo"}));
 const tabla=(value)=>({values:[["Colaborador","Lunes"],["Persona ficticia",value]],backgrounds:[["#1e2f52","#1e2f52"],["#ffffff","#ffffff"]],colors:[["#ffffff","#ffffff"],["#222222","#222222"]],headerRows:1,merges:[]});
-function iniciar({editable=true}={}){
- let empleados=personas(),registros=[],ultimo=null;
+function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
+ let empleados=personas().map(p=>({...p,nombre:precargados.find(r=>r.id===p.id)?.nombre||""}));
+ let registros=[...precargados],ultimo=null,feriados=[...diasFeriados],feriadosVersion=feriados.length?1:0;
  cy.intercept("**/*.supabase.co/**",req=>{
   const path=req.url;
   if(path.includes("/auth/v1/user"))return req.reply(user);
   if(path.includes("/rpc/rm_app_me"))return req.reply({...user,user_id:user.id,display_name:"Gerente ficticio",status:"approved",role:null,gestlok_gerente:{local_ids:["munro"]}});
   if(path.includes("/rpc/rm_app_branch_schedule_links"))return req.reply([]);
   if(path.includes("/rpc/rm_munro_horarios_obtener"))return req.reply({
-   semana:req.body?.p_semana||SEMANA,personas:empleados,planillas:registros,historial:[],puede_editar:editable
+   semana:req.body?.p_semana||SEMANA,personas:empleados,planillas:registros,historial:[],
+    puede_editar:editable,feriados,feriados_version:feriadosVersion,feriados_historial:{}
   });
-  if(path.includes("/rpc/rm_munro_horarios_guardar")){
+  if(path.includes("/rpc/rm_munro_horarios_feriados_guardar")){
+    feriados=req.body.p_dias;feriadosVersion+=1;
+    return req.reply({ok:true,version:feriadosVersion,dias:feriados});
+   }
+   if(path.includes("/rpc/rm_munro_horarios_guardar")){
    ultimo=req.body;
    const i=empleados.findIndex(x=>x.id===req.body.p_persona);
    empleados[i]={...empleados[i],nombre:req.body.p_nombre,estado:req.body.p_estado};
@@ -70,6 +76,24 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get('section[aria-label="Resumen en vivo"]').should("not.exist");
   cy.get('section[aria-label="Semana en vivo"]').should("not.exist");
  });
+  it("liquida en vivo trabajado + OFF + feriado del día seleccionado",()=>{
+   cy.viewport(1320,900);
+   const registro={id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,
+     datos:{"2026-11-12":{tm_e:"09:00",tm_s:"13:00",tt_e:"19:00",tt_s:"23:00"}}};
+   const ultimo=iniciar({precargados:[registro]});
+   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+   cy.get(".mhs-liquidacion").should("contain.text","Lucía");
+   cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","3");
+   cy.get(".mhs-feriados-toggle input").check();
+   cy.get(".mhs-feriados-dias label").contains("Jue").parent().find('input[type="checkbox"]').check();
+   cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","5");
+   cy.get(".mhs-liquidacion tbody tr").first().should("contain.text","Feriado: 12/11");
+   cy.contains("button","Modificar").click();
+   cy.get('input[aria-label="OFF de Lucía"]').clear().type("0");
+   cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","4");
+   cy.contains("button","Guardar").click();
+   cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].off).to.eq("0"));
+  });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
   cy.contains("button","Modificar").should("not.exist");
