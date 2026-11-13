@@ -14,13 +14,13 @@ const setup=(email,width=390)=>{
 };
 describe('GESTLOK · Dock inferior móvil y permisos',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
- it('gerente puede abrir Colaboradores desde abajo, sin tabla nueva de horarios',()=>{
+ it('Munro: Staff abre directamente Horarios desde el menú inferior',()=>{
    setup('gerente.munro@example.com');
    cy.get('#view .gl-manager-landing',{timeout:15000}).should('be.visible');
    cy.get('#view [data-gerente-empleados]',{timeout:15000}).should('be.visible');
    cy.get('#gestlok-mobile-dock').should('be.visible');
-   cy.get('#gestlok-mobile-dock [data-dock="staff"]').should('contain.text','Colaboradores').click();
-   cy.location('pathname').should('eq','/empleados/');
+   cy.get('#gestlok-mobile-dock [data-dock="staff"]').should('contain.text','Staff').click();
+   cy.location('pathname').should('eq','/empleados/horarios/');
    cy.get('.gestlok-module-bar').should('be.visible');
    cy.contains('button','Continuar con Google',{timeout:15000}).should('be.visible');
  });

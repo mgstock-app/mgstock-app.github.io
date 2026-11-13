@@ -33,9 +33,17 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
      });
      cy.get('#gestlok-mobile-dock [data-dock]').then($buttons=>{
        const ids=[...$buttons].map(b=>b.getAttribute('data-dock'));
-       if(ids.includes('pedidos'))expect(ids.slice(0,4)).to.deep.equal(['home','pagos','pedidos','stock']);
-       else expect(ids.slice(0,3)).to.deep.equal(['home','pagos','stock']);
+       expect(ids).to.deep.equal(['home','pagos','stock','staff','more']);
+       cy.get('#gestlok-mobile-dock [data-dock="staff"]').should('contain.text','Staff');
+       cy.get('#gestlok-mobile-dock [data-dock="pedidos"]').should('not.exist');
      });
+     cy.get('#gestlok-mobile-dock [data-dock="more"]').click();
+     cy.get('#gestlok-mobile-sheet').should('contain.text','Colaboradores');
+     cy.get('#snav').then($menu=>{
+       if($menu.find('[data-go="pedidos-clientes"]').length)
+         cy.get('#gestlok-mobile-sheet').should('contain.text','Pedidos WhatsApp');
+     });
+     cy.get('#gestlok-mobile-sheet [data-close-sheet]').first().click({force:true});
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
      cy.get('.mg-on-summary',{timeout:15000}).should('be.visible');

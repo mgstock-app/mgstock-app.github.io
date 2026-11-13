@@ -63,6 +63,12 @@ export function GestlokDock({ secciones = [], titulo = "Administración de emple
                 <Icono clave="more" />{label}
               </button>
             );
+          if (clave === "staff" && nav.local === "munro")
+            return (
+              <a key={clave} href="/empleados/horarios/" aria-label="Staff · abrir Horarios de Munro">
+                <Icono clave="staff" />Staff
+              </a>
+            );
           if (clave === "staff")
             return (
               <button key={clave} type="button" aria-current="page" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
