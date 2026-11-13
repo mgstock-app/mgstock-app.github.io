@@ -160,11 +160,16 @@ export function MunroWeeklySchedule(){
    },{})
  ),[planilla?.historial]);
  const filasResumen=filas.filter(f=>f.nombre.trim()).map(f=>({
-   ...f,resumen:resumenPersona(f.modalidad,f.datos,semana,momento)
+   ...f,resumen:resumenLiquidacion(f.modalidad,f.datos,semana,feriados,momento)
  }));
- const totalPorHora=filasResumen.filter(f=>f.modalidad==="hora").reduce((a,f)=>a+f.resumen.computados,0);
- const totalTurnos=filasResumen.filter(f=>f.modalidad==="turno").reduce((a,f)=>a+f.resumen.computados,0);
- const totalEnRevision=filasResumen.filter(f=>f.resumen.errores>0).length;
+ const totalPorHora=filasResumen.filter(f=>f.modalidad==="hora"&&f.resumen.total!==null)
+   .reduce((a,f)=>a+(f.resumen.total||0),0);
+ const totalTurnos=filasResumen.filter(f=>f.modalidad==="turno"&&f.resumen.total!==null)
+   .reduce((a,f)=>a+(f.resumen.total||0),0);
+ const faltantes=filas.filter(f=>f.estado!=="inactivo"&&(
+   !f.nombre.trim() || dias.some(fecha=>evaluarDia(f.datos[fecha]||{},true).errores.length>0)
+ )).map(f=>f.nombre||"Colaborador "+f.id);
+ const totalEnRevision=filasResumen.filter(f=>f.resumen.errores.length>0||f.resumen.pendientes>0).length;
  const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
  const estadoBotones=(f:Borrador)=><div className="mhs-estado" role="group" aria-label={"Estado de "+cabecera(f)}>
@@ -184,9 +189,10 @@ export function MunroWeeklySchedule(){
          aria-invalid={verificar.campos.includes(campo)}
          value={d[campo]||""} onChange={e=>cambiarDia(f.id,dia,campo,e.target.value)}/>
      </label>)}
-     <label className="mhs-feriado"><input type="checkbox" checked={d.feriado===true}
-       disabled={!editando||!puedeEditar||guardando} onChange={e=>cambiarDia(f.id,dia,"feriado",e.target.checked)}/>
-       Feriado</label>
+     <label className="mhs-feriado"><input type="checkbox" checked={d.vacaciones_dia===true}
+       disabled={!editando||!puedeEditar||guardando} onChange={e=>cambiarDia(f.id,dia,"vacaciones_dia",e.target.checked)}/>
+       Vacaciones (opcional)</label>
+     {feriados.includes(dia)&&<small className="mhs-dia-feriado">Feriado {fechaCorta(dia)}</small>}
      {verificar.errores.length>0&&<small className="mhs-revisar">{verificar.errores.join(" ")}</small>}
    </div>;
  };
@@ -194,8 +200,7 @@ export function MunroWeeklySchedule(){
    <nav className="mhs-pestanas" aria-label="Vistas de Horarios">
      {([["semana","Semana actual"],["historial","Historial"],["resumen","Resumen semanal"]] as const)
        .map(([id,label])=><button key={id} type="button" aria-current={pestana===id?"page":undefined}
-         onClick={()=>{if(pendientes.length&&!window.confirm("Hay cambios sin guardar. ¿Descartarlos?"))return;
-           if(pendientes.length){void cargar();}setPestana(id);}}>{label}</button>)}
+         onClick={()=>setPestana(id)}>{label}</button>)}
    </nav>
    {error&&<p className="mhs-alerta" role="alert">{error}</p>}
    {mensaje&&<p className="mhs-exito" role="status">{mensaje}</p>}
@@ -208,18 +213,19 @@ export function MunroWeeklySchedule(){
          <button type="button" aria-label="Semana siguiente" disabled={semana>=limiteFuturo()}
            onClick={()=>seleccionarSemana(sumarDias(semana,7))}><ChevronRight size={18}/></button>
        </div>
-       {pestana==="semana"&&puedeEditar&&<div className="mhs-acciones">
+       {(pestana==="semana"||pestana==="resumen")&&puedeEditar&&<div className="mhs-acciones">
          {!editando?<button type="button" onClick={()=>setEditando(true)}><Pencil size={17}/> Modificar</button>:
            <><button type="button" onClick={()=>{if(pendientes.length&&!window.confirm("¿Descartar los cambios?"))return;void cargar();}}>Cancelar</button>
              <button className="mhs-primario" type="button" disabled={guardando} onClick={()=>void guardar()}><Save size={17}/>{guardando?"Guardando…":"Guardar"}</button></>}
        </div>}
      </div>}
-     {enRevision&&pestana==="semana"&&<p className="mhs-alerta" role="status">
-       Revisión semanal desde el domingo a las 23:30 (hora argentina): completá los turnos pendientes antes del historial.
+     {enRevision&&(pestana==="semana"||pestana==="resumen")&&<p className="mhs-alerta" role="status">
+       Revisión semanal desde el domingo a las 23:40 (hora argentina).
+       {faltantes.length>0?" Pendientes: "+faltantes.join(", ")+".":" Todos los turnos están revisados."}
      </p>}
      {pestana==="semana"&&<>
        <p className="mhs-ayuda">Tres colaboradores por turno y cinco por hora. Cargá los nombres y horarios cuando quieras.
-         Durante la semana podés guardar una entrada sin salida. Los días feriados se identifican por separado.</p>
+         Durante la semana podés guardar una entrada sin salida. Los feriados se eligen en Resumen semanal y las vacaciones se marcan por día.</p>
        <div className="mhs-movil-dias" role="group" aria-label="Día a mostrar">
          {dias.map((dia,i)=><button key={dia} type="button" aria-pressed={diaSeleccionado===i}
             onClick={()=>setDiaSeleccionado(i)}><b>{DIAS[i]}</b><span>{fechaCorta(dia)}</span></button>)}
@@ -228,7 +234,7 @@ export function MunroWeeklySchedule(){
          <table className="mhs-tabla">
            <thead><tr><th scope="col">Colaborador</th>{dias.map((dia,i)=><th key={dia} scope="col">{DIAS[i]}<small>{fechaCorta(dia)}</small></th>)}<th scope="col">Total semanal</th></tr></thead>
            <tbody>{filas.map(f=>{
-             const r=resumenPersona(f.modalidad,f.datos,semana,momento);
+             const r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
              return <tr key={f.id} className={f.estado==="inactivo"?"mhs-inactivo":""}>
                <th scope="row"><div className="mhs-colaborador">
                  <span className="mhs-modalidad">{f.modalidad==="turno"?"Por turno":"Por hora"}</span>
@@ -239,7 +245,7 @@ export function MunroWeeklySchedule(){
                </div></th>
                {dias.map(dia=><td key={dia}>{inputsDia(f,dia)}</td>)}
                <td className="mhs-total">
-                 <b>{r.errores? "Revisar":f.modalidad==="hora"?formatoHoras(r.computados)+" h":formatoTurnos(r.computados)}</b>
+                 <b>{r.errores? "Revisar":f.modalidad==="hora"?formatoHoras(r.horas+r.horasFeriado)+" h":formatoTurnos(r.turnos)}</b>
                  {r.pendientes>0&&<small>{r.pendientes} pendientes</small>}
                </td>
              </tr>;
@@ -247,13 +253,13 @@ export function MunroWeeklySchedule(){
          </table>
        </div>
        <div className="mhs-movil-lista">{filas.map(f=>{
-         const dia=dias[diaSeleccionado],r=resumenPersona(f.modalidad,f.datos,semana,momento);
+         const dia=dias[diaSeleccionado],r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
          return <article className="mhs-card" key={f.id}>
            <header><div><span className="mhs-modalidad">{f.modalidad==="hora"?"Por hora":"Por turno"}</span>
              {editando&&puedeEditar?<input value={f.nombre} placeholder={"Nombre · Colaborador "+f.id}
                onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}/>:
                <h3>{cabecera(f)}</h3>}</div>
-             <strong>{r.errores?"Revisar":f.modalidad==="hora"?formatoHoras(r.computados)+" h":formatoTurnos(r.computados)}</strong>
+             <strong>{r.errores?"Revisar":f.modalidad==="hora"?formatoHoras(r.horas+r.horasFeriado)+" h":formatoTurnos(r.turnos)}</strong>
            </header>
            {estadoBotones(f)}
            {inputsDia(f,dia)}
