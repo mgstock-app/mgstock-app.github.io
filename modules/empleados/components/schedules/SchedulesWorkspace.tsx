@@ -102,15 +102,18 @@ export function SchedulesWorkspace() {
   // portada del gerente mientras cambia de semanas/pestañas, sin mostrarlo
   // a otro local ni duplicar el dock de dueño/administradora.
   // El menú guardado es visual: los accesos a GESTLOK vuelven a validar permisos.
-  if (isGestlokGerente(user) && nav.local === "munro" && user?.gestlok_gerente?.local_ids?.includes("munro")) {
+  const localesGerente = user?.gestlok_gerente?.local_ids ?? [];
+  const munroUnico = localesGerente.length === 1 && localesGerente[0] === "munro";
+  if (isGestlokGerente(user) && localesGerente.includes("munro") &&
+      (nav.local === "munro" || munroUnico)) {
     return (
-      <>
+      <div className="gl-munro-schedules-route">
         <main className="gl-munro-schedules-persistent">{content}</main>
-        <GestlokDock secciones={[
+        <GestlokDock munroHorarios secciones={[
           { id: "colaboradores", label: "Colaboradores", href: "/empleados/", icon: <UsersRound size={18} /> },
           { id: "horarios", label: "Horarios", actual: true, href: "/empleados/horarios/", icon: <CalendarDays size={18} /> },
         ]} />
-      </>
+      </div>
     );
   }
   if (user?.role !== "owner") return content;

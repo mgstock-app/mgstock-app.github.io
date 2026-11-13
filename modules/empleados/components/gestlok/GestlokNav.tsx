@@ -42,8 +42,22 @@ const Icono = ({ clave, size = 20 }: { clave: string; size?: number }) => {
 export type SeccionModulo = { id: string; label: string; actual?: boolean; onSelect?: () => void; href?: string; icon?: ReactNode };
 
 // Barra de abajo (solo celular, como en GESTLOK). «Colaboradores» marca que estás en Administración de empleados.
-export function GestlokDock({ secciones = [], titulo = "Administración de empleados" }: { secciones?: SeccionModulo[]; titulo?: string }) {
-  const nav = useNavGestlok();
+export function GestlokDock({ secciones = [], titulo = "Administración de empleados", munroHorarios = false }: { secciones?: SeccionModulo[]; titulo?: string; munroHorarios?: boolean }) {
+  const guardado = useNavGestlok();
+  const { user } = useAuth();
+  // La ruta de Horarios de Munro debe conservar los accesos aunque el navegador
+  // no haya guardado el menú (o haya quedado un local anterior en localStorage).
+  // Solo se arma para un gerente cuya asignación Munro está confirmada en sesión.
+  // GESTLOK vuelve a verificar permisos cuando abre cada destino.
+  const asignados = user?.gestlok_gerente?.local_ids ?? [];
+  const esGerenteMunro = munroHorarios && asignados.includes("munro") &&
+    (guardado.local === "munro" || (asignados.length === 1 && asignados[0] === "munro"));
+  const nav: NavGestlok = esGerenteMunro ? {
+    local: "munro",
+    localName: "Munro",
+    dock: [["home", "Inicio"], ["pagos", "Pagos Online"], ["stock", "Stock Local"], ["staff", "Staff"], ["more", "Más"]],
+    side: guardado.local === "munro" ? guardado.side : [],
+  } : guardado;
   const pathname = usePathname();
   const enHorarios = /(?:^|\/)horarios\/?$/.test(pathname || "");
   const [abierta, setAbierta] = useState(false);
