@@ -85,7 +85,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get(".mhs-liquidacion").should("contain.text","Lucía");
    cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","3");
    cy.get(".mhs-feriados-toggle input").check();
-   cy.get(".mhs-feriados-dias label").contains("Jue").parent().find('input[type="checkbox"]').check();
+   cy.contains(".mhs-feriados-dias label","Jue").find('input[type="checkbox"]').check();
    cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","5");
    cy.get(".mhs-liquidacion tbody tr").first().should("contain.text","Feriado: 12/11");
    cy.contains("button","Modificar").click();
