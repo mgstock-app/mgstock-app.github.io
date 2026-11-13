@@ -297,6 +297,13 @@
   if(stage==='detalle')return ['Mejorando suavemente la nitidez…',75];
   return ['Preparando la foto…',10];
  }
+ // Nombres legibles al bajar las fotos para Instagram o Tienda Nube.
+ function nombreArchivoFoto(item,version=''){
+  const nombre=String(item?.product||'producto').normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-')
+   .replace(/^-|-$/g,'').slice(0,75)||'producto';
+  return 'belisa-'+nombre+(version?'-'+version:'')+'.jpg';
+ }
  // Vista previa antes de guardar: editada, original o cancelar. Nada se guarda sin elegir.
  function elegirFoto(item,original,edited,motivo){
   return new Promise(resolve=>{
@@ -311,8 +318,10 @@
     '<figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure></div>'+
     '<div class="gl-mp-photo-confirm">'+
     (edited?'<button type="button" data-mp-photo-choice="editada">Guardar editada</button>':'')+
+    '<a class="gl-mp-photo-download" data-mp-photo-download href="'+esc(edited?after:before)+'" download="'+esc(nombreArchivoFoto(item,edited?'editada':'original'))+'">'+(edited?'Descargar imagen editada':'Descargar imagen original')+'</a>'+
     '<button type="button" data-mp-photo-choice="original">Guardar original</button>'+
-    '<button type="button" data-mp-photo-choice="cancelar">Cancelar</button></div></div>';
+    '<button type="button" data-mp-photo-choice="cancelar">Cancelar</button></div>'+
+    '<small>Descargar no modifica el producto ni reemplaza la foto guardada.</small></div>';
    document.body.append(box);
    box.querySelector('[data-mp-photo-choice]')?.focus({preventScroll:true});
    box.addEventListener('click',e=>{
@@ -427,11 +436,8 @@
  function downloadExport(){
   const current=exportPreview;
   if(!current?.url)return;
-  const name=String(current.item.product||'producto').normalize('NFD')
-   .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-')
-   .replace(/^-|-$/g,'').slice(0,75)||'producto';
   const link=document.createElement('a');link.href=current.url;
-  link.download='gestlok-'+name+'.jpg';
+  link.download=nombreArchivoFoto(current.item);
   link.rel='noopener';
   document.body.append(link);link.click();link.remove();
  }
@@ -453,7 +459,7 @@
     '<h2 id="gl-mp-export-title">'+esc(item.product)+'</h2></div>'+
     '<button type="button" data-mp-export-close aria-label="Cerrar vista previa">✕</button></header>'+
     '<div class="gl-mp-export-stage"><img data-mp-export-image src="'+esc(url)+'" alt="Foto de '+esc(item.product)+'" title="Tocar para ampliar o volver"></div>'+
-    '<div class="gl-mp-export-tools"><div class="gl-mp-export-actions"><button type="button" data-mp-export-download>Descargar foto</button>'+
+    '<div class="gl-mp-export-tools"><div class="gl-mp-export-actions"><button type="button" data-mp-export-download>Descargar imagen</button>'+
     '<button type="button" data-mp-export-clean>Ver en grande</button>'+
     '<button type="button" data-mp-export-close>Cerrar</button></div>'+
     '<small>Para volver a los botones, tocá la foto.</small></div></div>';
