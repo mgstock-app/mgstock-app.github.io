@@ -12,9 +12,8 @@
  const TABS='gestlok_cami_product_tabs', ITEMS='gestlok_cami_product_items';
  const PHOTO_BUCKET='gestlok-cami-product-photos',photoUrls=new Map(),photoErrors=new Map();
  let photoProgress=null,retryPhoto=null,exportPreview=null;
- // Edición local y gratis: producto sobre cartulina blanca con luz corregida (sin IA generativa).
- const ESTUDIO_URL='/stock/gestlok-cami-foto-estudio.js?rev=20261111-cartulina-v1';
- const RECORTE_URL='/stock/gestlok-cami-recorte.js?rev=20261111-cartulina-v1';
+ // BELISA: conservar fondo y textura reales; mejorar luz y detalle sin recorte ni IA.
+ const FOTO_REAL_URL='/stock/gestlok-cami-foto-real.js?rev=20261113-belisa-fondo-real-v1';
  const $=s=>document.querySelector(s);
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
  let api=null,context=null,allowed=false,checked=false,checking=false,epoch=0;
@@ -186,7 +185,7 @@
       '<small class="gl-mp-result-count" data-mp-count role="status">'+resultLabel()+'</small></div>'+
       (itemForm?form():'')+
       '<div class="gl-mp-cards" data-mp-cards>'+rowsHtml()+'</div>'+
-      '<p class="gl-mp-hint">Al sacar o elegir una foto, GESTLOK la acomoda sobre cartulina blanca y corrige la luz. Antes de guardar ves la comparación y elegís la editada o la original.</p></section>')+
+      '<p class="gl-mp-hint">BELISA · Al sacar o elegir una foto, mejoramos la iluminación y la nitidez sin cambiar el fondo, la textura ni los colores reales. Compará la edición antes de guardarla.</p></section>')+
    '</main></div></div>';
   document.body.classList.add('gl-mp-open');
  }
@@ -294,9 +293,8 @@
 
 
  function etapaEdicion(stage){
-  if(stage==='separando')return ['Separando el producto del fondo… (la primera vez tarda un poco más; mejor con Wi-Fi)',25];
-  if(stage==='luz')return ['Corrigiendo la luz y los blancos…',60];
-  if(stage==='cartulina')return ['Poniendo el producto sobre cartulina blanca…',80];
+  if(stage==='luz')return ['Mejorando la iluminación sin modificar el fondo…',45];
+  if(stage==='detalle')return ['Mejorando suavemente la nitidez…',75];
   return ['Preparando la foto…',10];
  }
  // Vista previa antes de guardar: editada, original o cancelar. Nada se guarda sin elegir.
@@ -306,10 +304,10 @@
    const box=document.createElement('div');box.dataset.mpPhotoPreview='true';box.setAttribute('role','presentation');
    box.innerHTML='<div class="gl-mp-photo-preview-card" role="dialog" aria-modal="true" aria-labelledby="gl-mp-photo-preview-title">'+
     '<h2 id="gl-mp-photo-preview-title">Foto de '+esc(item.product)+'</h2>'+
-    (edited?'<p>Elegí cuál guardar. La editada pone el producto sobre cartulina blanca y corrige la luz; las letras y formas son las de tu foto.</p>':
+    (edited?'<p>Elegí cuál guardar. La editada mejora la luz y los detalles. Conserva el fondo negro, su textura y los colores reales de la foto.</p>':
      '<p>No se pudo editar esta foto'+(motivo?': '+esc(motivo):'')+'. Podés guardar la original.</p>')+
     '<div class="gl-mp-photo-pair'+(edited?'':' is-single')+'">'+
-    (edited?'<figure><img alt="Foto editada sobre cartulina blanca" src="'+esc(after)+'"><figcaption>Editada · cartulina blanca</figcaption></figure>':'')+
+    (edited?'<figure><img alt="Foto editada con el fondo real conservado" src="'+esc(after)+'"><figcaption>Editada · fondo real</figcaption></figure>':'')+
     '<figure><img alt="Foto original" src="'+esc(before)+'"><figcaption>Original</figcaption></figure></div>'+
     '<div class="gl-mp-photo-confirm">'+
     (edited?'<button type="button" data-mp-photo-choice="editada">Guardar editada</button>':'')+
@@ -371,8 +369,8 @@
    const original=await compressPhoto(source);
    let edited=null,motivo='';
    try{
-    const [{editarFotoCartulina},{recortarProducto}]=await Promise.all([import(ESTUDIO_URL),import(RECORTE_URL)]);
-    const r=await editarFotoCartulina(original,{recortar:recortarProducto,onProgress:stage=>{const [msg,pct]=etapaEdicion(stage);etapaFoto(targetId,msg,pct);}});
+    const {editarFotoReal}=await import(FOTO_REAL_URL);
+    const r=await editarFotoReal(original,{onProgress:stage=>{const [msg,pct]=etapaEdicion(stage);etapaFoto(targetId,msg,pct);}});
     edited=r.blob;
    }catch(e){
     console.warn('No se pudo editar la foto.',e);
