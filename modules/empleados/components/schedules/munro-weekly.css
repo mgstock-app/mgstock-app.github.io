@@ -109,3 +109,33 @@
  .mhs-resumen-totales>div{padding:11px}
  .mhs-resumen-totales strong{font-size:19px}
 }
+
+
+/* Resumen de liquidación: claro, sin colores decorativos ni mezclar horas y turnos. */
+.mhs-feriados-semana{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid #d7dde6;border-radius:12px;padding:13px;background:#fff}
+.mhs-feriados-cabeza{display:grid;gap:4px;flex:1 1 250px}
+.mhs-feriados-cabeza strong{font-size:15px}
+.mhs-feriados-cabeza small{font-size:12px;color:#5b6575}
+.mhs-feriados-toggle{display:inline-flex;gap:7px;align-items:center;font-size:13px;font-weight:650}
+.mhs-feriados-toggle input{width:17px;height:17px;accent-color:#162b4a}
+.mhs-feriados-dias{display:flex;flex-wrap:wrap;gap:5px;width:100%}
+.mhs-feriados-dias label{display:inline-flex;align-items:center;gap:6px;border:1px solid #cbd5e1;padding:7px 9px;border-radius:8px;font-size:12px}
+.mhs-feriados-dias label.mhs-feriado-elegido{background:#edf1f6;border-color:#162b4a;font-weight:700}
+.mhs-feriados-dias input{accent-color:#162b4a}
+.mhs-dia-feriado{font-size:10px;font-weight:650;color:#162b4a}
+.mhs-liquidacion{min-width:920px}
+.mhs-liquidacion th,.mhs-liquidacion td{vertical-align:middle}
+.mhs-liquidacion tbody th{color:#152440;font-weight:700}
+.mhs-liquidacion input{max-width:110px;min-width:63px;width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:8px;font-size:12px;color:#152440;background:#fff}
+.mhs-liquidacion input:disabled{border-color:#e2e8f0;color:#334155;background:#f8fafc}
+.mhs-liquidacion td:last-child{min-width:185px}
+.mhs-liquidacion td:last-child input{max-width:245px;margin-top:8px}
+.mhs-nota-auto{display:block;color:#475569;line-height:1.4;font-size:11.5px}
+.mhs-total-liquidacion{background:#f8fafc;white-space:nowrap;text-align:center;font-size:14px}
+.mhs-liquidacion-error{font-weight:700;color:#af302b}
+.mhs-resumen>p{line-height:1.55;font-size:12px}
+@media(max-width:760px){
+ .mhs-feriados-semana{align-items:flex-start}
+ .mhs-feriados-dias label{padding:8px 9px}
+ .mhs-liquidacion input{min-width:70px}
+}
