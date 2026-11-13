@@ -302,7 +302,7 @@ export function MunroWeeklySchedule(){
    {error&&<p className="mhs-alerta" role="alert">{error}</p>}
    {guardando&&<p role="status" className="mhs-ayuda">Guardando cambios automáticamente…</p>}
    {pendientes.length>0&&!guardando&&editando&&<p role="status" className="mhs-ayuda">Cambios pendientes · se guardan automáticamente al completar la carga.</p>}
-   {mensaje&&<p className="mhs-exito" role="status">{mensaje}</p>}
+   {mensaje&&!pendientes.length&&<p className="mhs-exito" role="status">{mensaje}</p>}
    {cargando&&<p role="status">Cargando Horarios de Munro…</p>}
    {!cargando&&planilla&&<>
      {pestana!=="historial"&&<div className="mhs-toolbar">
