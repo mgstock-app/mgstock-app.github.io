@@ -8,8 +8,13 @@ test("El dock principal aparece solo en teléfonos y reutiliza controles con per
  assert.match(js,/max-width:899px/);
  for(const action of ["data-gerente-empleados","data-owner-area-staff","data-go","vencimientos","Colaboradores"])
    assert.ok(js.includes(action),"Falta acción existente: "+action);
- assert.match(js,/if\(k==='staff'\)\{staff\(\)\?\.click\(\)/);
+ assert.match(js,/if\(k==='staff'\)\{/);
+ assert.match(js,/staff\(\)\?\.click\(\)/);
  assert.match(js,/\['staff','Colaboradores'/);
+ assert.match(js,/\['staff','Staff','clock',!!staff\(\)\]/);
+ assert.match(js,/esMunro\(\)/);
+ assert.match(js,/empleados\/horarios\//);
+ assert.match(read("modules/empleados/components/gestlok/GestlokNav.tsx"),/nav\.local === "munro"/);
  assert.match(css,/@media\(max-width:899px\)/);
  assert.match(css,/@media print/);
  assert.match(read("components/stock-runtime.tsx"),/gestlok-mobile-dock\.js/);
