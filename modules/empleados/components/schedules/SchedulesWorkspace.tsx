@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
-import { Menu } from "lucide-react";
+import { CalendarDays, Menu, UsersRound } from "lucide-react";
+import { GestlokDock, useNavGestlok } from "@/components/gestlok/GestlokNav";
 import { OwnerSidebar } from "@/components/owner/OwnerSidebar";
 import { AdminShell } from "@/components/admin/AdminShell";
 import "@/components/owner/owner.css";
@@ -89,6 +90,7 @@ function SchedulesForStaff() {
 
 export function SchedulesWorkspace() {
   const { user } = useAuth();
+  const nav = useNavGestlok();
   const [open, setOpen] = useState(false);
   const content = (
     <Suspense fallback={<p className="empty-state">Cargando Horarios…</p>}>
@@ -96,6 +98,21 @@ export function SchedulesWorkspace() {
     </Suspense>
   );
   if (user?.role === "admin") return <AdminShell>{content}</AdminShell>;
+  // Staff de Mi Gusto Munro abre esta ruta independiente. Mantener el dock de la
+  // portada del gerente mientras cambia de semanas/pestañas, sin mostrarlo
+  // a otro local ni duplicar el dock de dueño/administradora.
+  // El menú guardado es visual: los accesos a GESTLOK vuelven a validar permisos.
+  if (isGestlokGerente(user) && nav.local === "munro" && user?.gestlok_gerente?.local_ids?.includes("munro")) {
+    return (
+      <>
+        <main className="gl-munro-schedules-persistent">{content}</main>
+        <GestlokDock secciones={[
+          { id: "colaboradores", label: "Colaboradores", href: "/empleados/", icon: <UsersRound size={18} /> },
+          { id: "horarios", label: "Horarios", actual: true, href: "/empleados/horarios/", icon: <CalendarDays size={18} /> },
+        ]} />
+      </>
+    );
+  }
   if (user?.role !== "owner") return content;
   return (
     <div className="owner-home">
