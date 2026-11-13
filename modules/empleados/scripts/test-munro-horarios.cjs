@@ -25,7 +25,7 @@ const porTurno=resumenPersona("turno",semanas,"2026-11-09",hasta,["2026-11-12"])
 assert.equal(porTurno.turnos,2);
 assert.equal(porTurno.extraFeriado,2);
 assert.equal(porTurno.computados,4,"Feriado 2 trabajados + 2 extra = 4 turnos");
-const porHora=resumenPersona("hora",semanas,"2026-11-09",hasta);
+const porHora=resumenPersona("hora",semanas,"2026-11-09",hasta,["2026-11-12"]);
 assert.equal(porHora.horas,0);
 assert.equal(porHora.horasFeriado,480);
 assert.equal(porHora.computados,480);
