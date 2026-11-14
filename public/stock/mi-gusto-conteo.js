@@ -13,7 +13,7 @@ const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
 function marks(value){
  const n=Math.max(0,Math.min(500,Math.floor(Number(value)||0)));
- if(!n)return '<small>+ chapa</small>';
+ if(!n)return '<small aria-hidden="true">+</small>';
  const group=count=>'<svg viewBox="0 0 34 34" aria-hidden="true" focusable="false">'+
  (count>=1?'<path d="M5 4V30"/>':'')+(count>=2?'<path d="M5 4H29"/>':'')+
  (count>=3?'<path d="M29 4V30"/>':'')+(count>=4?'<path d="M5 30H29"/>':'')+
@@ -106,7 +106,7 @@ function decompColumn(p,canWrite){
  if(p.units_per_chapa>0){
   return '<td class="gcm-chapa gcm-decomp-cell">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
- return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+v.qty+'"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
+ return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
@@ -126,7 +126,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
    (canCatalog?'<details class="gcm-product-actions"><summary aria-label="Opciones del producto '+esc(p.name)+'">⋯</summary><span class="gcm-admin-actions">'+
    '<button type="button" data-gcm-rename="'+esc(p.id)+'" aria-label="Cambiar nombre de '+esc(p.name)+'">Renombrar</button>'+
    '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span></details>':'')+
-   '</th>'+cells+'<td class="gcm-total">'+sum+'</td></tr>';
+   '</th>'+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong><span>'+items.length+' productos</span></summary>'+
  '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
