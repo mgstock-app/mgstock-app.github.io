@@ -31,7 +31,10 @@ describe('Gerente · tarjeta de Empleados (Horarios) sin avisos en el inicio',()
     .and('have.attr','aria-label','Staff · abrir Horarios de Munro');
   cy.get('#snav [data-act="staff-horarios"]').click();
   cy.location('pathname',{timeout:15000}).should('eq','/empleados/horarios/');
-  cy.get('.horarios-hub h1',{timeout:15000}).should('contain.text','Horarios');
+  // El mock de login de stock no persiste la sesión de Empleados al cambiar
+  // de aplicación. La ruta y la pantalla de ingreso se comprueban acá;
+  // qa/cypress/e2e/empleados-sesion.cy.js comprueba la planilla autenticada.
+  cy.get('.gestlok-module-back',{timeout:15000}).should('have.attr','href','/');
  });
  it('El acceso Staff no aparece en Torcuato ni sin autorización',()=>{
   cy.viewport(1366,900);start();login('gerente.torcuato@example.com');
