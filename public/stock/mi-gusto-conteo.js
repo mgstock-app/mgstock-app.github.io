@@ -7,7 +7,7 @@ if(window.GestLokMunroConteo)return;
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const SHIFTS=[['manana_entrada','Mañana · entrada'],['manana_salida','Mañana · salida'],['noche_salida','Noche · salida']];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const arDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
 function marks(value){
@@ -96,7 +96,7 @@ function extraTable(kind,title,headA,headB,rec,canWrite){
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de Mi Gusto Munro.</p>';
  if(!snapshot&&!loading&&!error)void refresh();
- const rec=entry(),canWrite=editable()&&!closed()&&!busy,canCatalog=admin()&&!historyRecord&&!busy;
+ const rec=entry(),canWrite=editable()&&!closed(),canCatalog=admin()&&!historyRecord&&!busy;
  const list=(snapshot?.products||[]).filter(p=>p.active||!!rec.data?.[p.id]);
  const categories=[...new Set(list.map(p=>p.section))];
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
@@ -182,7 +182,7 @@ document.addEventListener('click',async e=>{
  }
  const id=el.dataset.gcmPlus||el.dataset.gcmMinus;
  if(id){
-  if(!editable()||closed()||busy)return;
+  if(!editable()||closed())return;
   const p=productById(id),i=Number(el.dataset.idx);
   if(!p||!p.units_per_chapa||i<1||i>4)return;
   const cell=getCell(p,i),delta=el.hasAttribute('data-gcm-plus')?1:-1;
@@ -212,9 +212,9 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('change',e=>{
  const input=e.target,root=input.closest?.('.gcm-page');
- if(!root||!allowed()||busy)return;
+ if(!root||!allowed())return;
  if(input.id==='gcm-day'){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(input.value)||input.value>arDay())return;
+  if(busy||!/^\d{4}-\d{2}-\d{2}$/.test(input.value)||input.value>arDay())return;
   day=input.value;historyRecord=null;error='';snapshot=null;generation++;api.render();return;
  }
  if(!editable()||closed())return;
