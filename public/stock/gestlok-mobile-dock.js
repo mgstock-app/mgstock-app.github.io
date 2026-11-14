@@ -19,7 +19,8 @@
     tag:'<path d="M20 12 12 20 4 12V4h8z"/><circle cx="8.5" cy="8.5" r="1.5"/>',
     truck:'<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
     back:'<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
-    history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+    history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    count:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'
   };
   const icon=k=>'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+glyphs[k]+'</svg>';
   const dock=document.createElement('nav');
@@ -42,6 +43,7 @@
   // Solo accesos autorizados que existen en el menú real del local.
   const stock=()=>localNav('stock');
   const pagos=()=>localNav('cierre-online');
+  const conteo=()=>localNav('conteo-munro');
   const pedidos=()=>localNav('pedidos-clientes');
   const pedidosPendientes=()=>Number(window.GestLokMiGustoOrders?.pendingCount?.()||0);
   // El Molino Café: solo su microapp «Vínculo entre sucursales» (botones reales del menú del local).
@@ -126,6 +128,7 @@
     if(esMunro()&&pagos())return [
       ['home','Inicio','home',true],
       ['pagos','Pagos Online','payment',true],
+      ['conteo','Conteo','count',!!conteo()],
       ['stock','Stock Local','stock',!!stock()],
       ['staff','Staff','clock',!!staff()],
       ['more','Más','more',true]
@@ -196,6 +199,7 @@
     }
     if(k==='stock'){stock()?.click();return;}
     if(k==='pagos'){pagos()?.click();return;}
+    if(k==='conteo'){conteo()?.click();return;}
     if(k==='pedidos'){pedidos()?.click();return;}
     if(k==='staff'){
       if(esMunro() && staff()){
@@ -220,7 +224,7 @@
       ['vencimientos','Vencimientos']
     ].filter(([k])=>k==='home'||(k==='business'&&business())||(['staff','colaboradores'].includes(k)&&staff())||(k==='pedidos'&&pedidos())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));
     const molinoExtra=visible()?[...app.querySelectorAll('#snav button[data-mol-nav]')].filter(b=>!dock.querySelector('[data-dock="mol-'+b.dataset.molNav+'"]')):[];
-    const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','pedidos-clientes','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
+    const extra=visible()?[...app.querySelectorAll('#snav button[data-go]')].filter(b=>!['inicio','stock','cierre-online','conteo-munro','pedidos-clientes','avisos','vencimientos'].includes(b.dataset.go)).slice(0,16):[];
     sheet.innerHTML='<button type="button" class="gl-mobile-sheet__scrim" data-close-sheet aria-label="Cerrar más opciones"></button><section class="gl-mobile-sheet__panel" role="dialog" aria-modal="true" aria-label="Más opciones de GESTLOK"><header><strong>Más opciones</strong><button type="button" data-close-sheet aria-label="Cerrar">×</button></header><div class="gl-mobile-sheet__links">'+entries.map(([k,t])=>'<button type="button" data-sheet-action="'+k+'">'+t+'</button>').join('')+molinoExtra.map(b=>'<button type="button" data-sheet-action="mol-'+String(b.dataset.molNav).replace(/[^a-z]/g,'')+'">'+(b.querySelector('.nl')?.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+extra.map(b=>'<button type="button" data-sheet-go="'+String(b.dataset.go).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">'+(b.querySelector('.nl')?.textContent||b.textContent||'Opción').trim().replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>').join('')+'</div></section>';
     sheet.hidden=false;open=true;
     dock.querySelector('[data-dock="more"]')?.setAttribute('aria-expanded','true');
@@ -239,7 +243,7 @@
       last=signature;
       dock.innerHTML=tabs.map(([key,label,ico])=>'<button type="button" data-dock="'+key+'" aria-label="'+label+(key==='pedidos'&&pending?' · '+pending+' pendientes':'')+'"'+(key==='more'?' aria-haspopup="dialog" aria-expanded="false"':'')+'>'+icon(ico)+'<span>'+label+'</span>'+(key==='pedidos'&&pending?'<b class="mgp-dock-count" aria-hidden="true">'+Math.min(99,pending)+'</b>':'')+'</button>').join('');
     }
-    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'home','stock':'stock','cierre-online':'pagos','pedidos-clientes':'pedidos','vencimientos':'more','avisos':'more'}[current()]||'more')):'home';
+    const active=visible()?(app.querySelector('#view .gl-manager-landing')?'home':({'inicio':'home','stock':'stock','cierre-online':'pagos','conteo-munro':'conteo','pedidos-clientes':'pedidos','vencimientos':'more','avisos':'more'}[current()]||'more')):'home';
     dock.querySelectorAll('button[data-dock]').forEach(b=>{
       if(b.dataset.dock===active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
     });
