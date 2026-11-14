@@ -95,7 +95,7 @@
       const r=el.getBoundingClientRect();
       active={id:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top,moved:false};
       blockClick=false;
-      el.setPointerCapture?.(e.pointerId);
+      try{el.setPointerCapture?.(e.pointerId);}catch{}
     };
     const move=e=>{
       if(!active||active.id!==e.pointerId)return;
