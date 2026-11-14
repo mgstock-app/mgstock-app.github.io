@@ -56,7 +56,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("a","Abrir planilla").should("not.exist");
   cy.contains("button","Modificar").click();
   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Nombre del colaborador"]').type("Lucía");
-  cy.get(".mhs-tabla tbody tr").first().contains("button","Refuerzo").click();
+  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo");
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
   cy.get(".mhs-alerta").should("not.exist");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -115,7 +115,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}]});
    cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-activo .mhs-luz-estado').should("be.visible");
    cy.contains("button","Modificar").click();
-   cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-inactivo').click();
+   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
      .clear().type("2026-11-10");
    cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -136,6 +136,62 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].tm_s).to.eq("13:00"));
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().should("have.value","09:00");
+ });
+ it("muestra total semanal bajo el nombre, horas diarias solo por hora y estado único",()=>{
+  cy.viewport(1366,900);
+  const precargados=[
+    {id:1,nombre:"Turnista",modalidad:"turno",semana:SEMANA,version:1,
+      datos:{"2026-11-09":{tm_e:"09:00",tm_s:"13:00",tt_e:"17:00",tt_s:"21:00"}}},
+    {id:4,nombre:"Julieta",modalidad:"hora",semana:SEMANA,version:1,
+      datos:{"2026-11-09":{tm_e:"09:00",tm_s:"13:00",tt_e:"17:00",tt_s:"21:00"}}}
+  ];
+  iniciar({precargados});
+  cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-total-nombre")
+    .should("contain.text","8:00 h");
+  cy.get(".mhs-tabla tbody tr").eq(3).find("td").first().find(".mhs-horas-dia")
+    .should("contain.text","8:00 h");
+  cy.get(".mhs-tabla tbody tr").eq(3).find("td").eq(1).find(".mhs-horas-dia")
+    .should("contain.text","—");
+  cy.get(".mhs-tabla tbody tr").first().find(".mhs-total-nombre").should("contain.text","2 turnos");
+  cy.get(".mhs-tabla tbody tr").first().find(".mhs-horas-dia").should("not.exist");
+  cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
+    .should("contain.text","Activo").and("not.contain.text","Refuerzo").and("not.contain.text","Inactivo");
+  cy.contains("button","Modificar").click();
+  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
+    .should("have.class","mhs-estado-refuerzo").and("contain.text","Refuerzo");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.contains("button","Finalizar edición").click();
+  cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
+    .should("contain.text","Refuerzo").and("not.contain.text","Activo");
+ });
+ it("guarda OFF y Medio OFF por día, sin borrar horarios ni duplicar el OFF de liquidación",()=>{
+  cy.viewport(1320,900);
+  const getUltimo=iniciar({precargados:[{id:4,nombre:"Julieta",modalidad:"hora",version:1,
+    semana:SEMANA,datos:{}}]});
+  cy.contains("button","Modificar").click();
+  const lun=()=>cy.get(".mhs-tabla tbody tr").eq(3).find("td").first();
+  lun().contains("button","OFF").click();
+  lun().find(".mhs-horas-dia").should("contain.text","0 h");
+  lun().find('input[type="time"]').first().should("be.disabled");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.wrap(null).should(()=>expect(getUltimo().p_datos["2026-11-09"].descanso).to.eq("off"));
+  lun().contains("button","OFF").click();
+  lun().contains("button","Medio OFF").click();
+  lun().find('input[type="time"]').eq(0).type("09:00");
+  lun().find('input[type="time"]').eq(1).type("13:00");
+  lun().find('input[type="time"]').eq(2).should("be.disabled");
+  lun().find(".mhs-horas-dia").should("contain.text","4:00 h");
+  cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-total-nombre").should("contain.text","4:00 h");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.wrap(null).should(()=>{
+    const data=getUltimo().p_datos;
+    expect(data["2026-11-09"].descanso).to.eq("medio_off");
+    expect(data["2026-11-09"].tm_e).to.eq("09:00");
+    expect(data["2026-11-09"].tm_s).to.eq("13:00");
+  });
+  cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+  cy.get('input[aria-label="OFF de Julieta"]').should("have.value","4:30");
  });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
