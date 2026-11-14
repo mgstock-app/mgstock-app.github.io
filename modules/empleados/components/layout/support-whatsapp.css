@@ -1,9 +1,29 @@
-.app-shell .gestlok-help{position:fixed;right:max(13px,env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));
- z-index:1038;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:7px 13px 7px 7px;background:#fff;border:1px solid #cbe7d9;
- border-radius:999px;box-shadow:0 5px 21px #0a44301c;text-decoration:none;color:#155b45;
- font:750 12px/1.3 "Segoe UI",Arial,sans-serif}
-.app-shell .gestlok-help:hover{transform:translateY(-1px);box-shadow:0 8px 25px #0a443029}
-.app-shell .gestlok-help__icon{width:30px;height:30px;display:grid;place-items:center;flex-shrink:0;border-radius:50%;background:#17a874;color:white}
+/* Burbuja uniforme de soporte: arrastrable sin perder el enlace de WhatsApp. */
+.app-shell .gestlok-help{
+ position:fixed;right:max(13px,env(safe-area-inset-right,0px));
+ bottom:calc(84px + env(safe-area-inset-bottom,0px));
+ z-index:1038;display:flex;align-items:center;justify-content:center;gap:0;
+ width:56px;min-width:56px;height:56px;min-height:56px;
+ padding:0;border:1px solid #b6ddc9;border-radius:50%;background:#fff;
+ box-shadow:0 5px 20px #123a3029;color:#155b45;text-decoration:none;
+ touch-action:none;user-select:none;-webkit-user-select:none;
+ cursor:grab;transition:box-shadow .15s ease
+}
+.app-shell .gestlok-help:hover{transform:none;box-shadow:0 7px 24px #123a3036}
+.app-shell .gestlok-help.gestlok-help--dragging{cursor:grabbing;transform:none;box-shadow:0 12px 28px #123a3040}
+.app-shell .gestlok-help__icon{
+ width:43px;height:43px;flex:0 0 43px;display:grid;place-items:center;
+ border-radius:50%;background:#25d366;color:#fff
+}
+.app-shell .gestlok-help__icon svg{width:27px;height:27px}
+.app-shell .gestlok-help__label{display:none}
 .app-shell .gestlok-help:focus-visible{outline:3px solid #268d8d;outline-offset:3px}
-@media(max-width:590px){.app-shell .gestlok-help{right:10px;bottom:calc(92px + env(safe-area-inset-bottom,0px));min-height:43px}}
+@media(max-width:590px){
+ .app-shell .gestlok-help{
+  right:10px;bottom:calc(92px + env(safe-area-inset-bottom,0px));
+  width:52px;min-width:52px;height:52px;min-height:52px;padding:0;border-radius:50%
+ }
+ .app-shell .gestlok-help__icon{width:40px;height:40px;flex-basis:40px}
+ .app-shell .gestlok-help__icon svg{width:25px;height:25px}
+}
 @media print{.app-shell .gestlok-help{display:none!important}}
