@@ -246,3 +246,73 @@
 
 /* Selección del Conteo fijada por la administradora del local. */
 .gcm-sections-locked{margin:10px 0 13px;padding:10px 12px;border:1px solid #dce5ef;border-radius:8px;background:#f6f9fc;color:#425e77;font-size:12px;font-weight:650}
+
+
+/* Historial de Munro: una fila por fecha y tres turnos al desplegar. */
+.gcm-open-history{display:inline-flex;align-items:center;justify-content:center;min-height:39px;margin-top:8px;padding:8px 14px;border:1px solid #b9cada;border-radius:8px;background:#fff;color:#12345a;font-size:13px;font-weight:800}
+.gcm-open-history:hover{background:#f2f6fb}
+.gcm-history-screen{min-height:320px;padding-top:16px}
+.gcm-history-top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:0 0 20px;flex-wrap:wrap}
+.gcm-history-title{display:flex;flex-direction:column;gap:9px}
+.gcm-history-title>button{align-self:flex-start;border:0;background:transparent;color:#25496c;min-height:28px;padding:2px 4px;font-size:13px;font-weight:750;text-align:left}
+.gcm-history-title>button:hover{text-decoration:underline}
+.gcm-history-title h2{margin:2px 0 0;color:#112d4a;font-size:24px;line-height:1.2}
+.gcm-history-top>label{display:flex;flex-direction:column;gap:5px;color:#365775;font-size:12px;font-weight:750}
+.gcm-history-top input[type=month]{padding:7px 10px;border:1px solid #cbd8e5;background:white;color:#183757;min-height:39px;border-radius:8px;font:inherit}
+.gcm-history-days{display:flex;flex-direction:column;gap:8px}
+.gcm-history-day{border:1px solid #d9e2ed;border-radius:9px;overflow:hidden;background:#fff;box-shadow:0 1px 2px #12345a09}
+.gcm-history-day-button{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:61px;gap:12px;padding:13px 16px;border:0;background:#fff;color:#173451;text-align:left}
+.gcm-history-day-button:hover{background:#f7fafc}
+.gcm-history-day-button[aria-expanded=true]{background:#12345a;color:white}
+.gcm-history-date{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.gcm-history-date strong{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.gcm-history-calendar{display:flex;align-items:center;justify-content:center;width:28px;height:28px;font-size:21px;color:#41617d}
+.gcm-history-day-button[aria-expanded=true] .gcm-history-calendar,.gcm-history-day-button[aria-expanded=true] .gcm-history-weekday{color:#e2effc}
+.gcm-history-weekday{font-size:13px;color:#677c91}
+.gcm-history-arrow{margin-left:auto;flex:0 0 auto;font-size:25px;line-height:1;font-weight:500}
+.gcm-history-shifts{padding:7px 13px 13px;display:flex;flex-direction:column;gap:6px}
+.gcm-history-shift{display:flex;align-items:center;gap:10px;min-height:51px;border-radius:7px;background:#f6f8fb;border:1px solid #ecf0f4;padding:8px 12px}
+.gcm-history-shift-name{flex:1 1 auto;min-width:110px;color:#173451;font-size:14px;font-weight:750}
+.gcm-history-status{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;background:#fdf3df;border:1px solid #ecd6ad;color:#805d1f;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:750}
+.gcm-history-status.is-done{background:#ecf7ef;border-color:#c6e7cb;color:#296038}
+.gcm-history-detail-button{flex:0 0 auto;background:#12345a;color:white;min-height:35px;border:1px solid #12345a;border-radius:7px;padding:6px 13px;font-size:12px;font-weight:750}
+.gcm-history-detail-button:hover{background:#234e77}
+.gcm-history-no-data{color:#8190a0;font-size:12px;font-style:italic}
+.gcm-history-empty{font-size:13px;color:#60758b;border:1px dashed #cbd7e5;border-radius:8px;padding:22px;text-align:center}
+.gcm-history-detail .gcm-history-top{margin-bottom:14px}
+.gcm-hd-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px 15px;background:#edf3fa;border:1px solid #dde7f2;padding:11px 13px;border-radius:8px;color:#173b5b;font-size:13px;margin-bottom:9px}
+.gcm-hd-meta>strong{font-size:16px}
+.gcm-hd-notice{margin:7px 0 14px;font-size:12px;color:#63788d}
+.gcm-hd-category{border:1px solid #d9e2ed;border-radius:8px;overflow:hidden;margin:0 0 9px}
+.gcm-hd-category>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 14px;background:#12345a;color:white;font-size:13px;font-weight:800}
+.gcm-hd-category>summary>span{font-size:11px;color:#d8e8f7;font-weight:650}
+.gcm-hd-category table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px;text-align:center}
+.gcm-hd-category thead th{background:#eaf0f6;font-weight:800}
+.gcm-hd-category th,.gcm-hd-category td{border:1px solid #e2e8f0;padding:8px 10px;vertical-align:middle}
+.gcm-hd-category tbody th{text-align:left;min-width:90px}
+.gcm-hd-qty strong{font-variant-numeric:tabular-nums}
+.gcm-hd-qty small{display:block;color:#5a7288;font-size:10px;margin-top:3px;white-space:nowrap}
+.gcm-hd-total{font-weight:900;background:#eef4fa;color:#143858}
+.gcm-hd-extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.gcm-hd-extra{border:1px solid #d9e2ed;border-radius:8px;overflow:hidden}
+.gcm-hd-extra h3{margin:0;font-size:13px;color:white;background:#12345a;padding:10px 12px}
+.gcm-hd-extra table{width:100%;border-collapse:collapse;font-size:12px}
+.gcm-hd-extra td{padding:8px 12px;border-bottom:1px solid #e2e8f0}
+.gcm-hd-extra td:last-child{text-align:right}
+@media(max-width:700px){
+ .gcm-history-screen{padding:12px 9px}
+ .gcm-history-title h2{font-size:22px}
+ .gcm-history-top>label{width:100%}
+ .gcm-history-top input[type=month]{width:100%}
+ .gcm-history-day-button{min-height:56px;padding:10px 12px}
+ .gcm-history-date{gap:7px}
+ .gcm-history-date strong{font-size:14px}
+ .gcm-history-weekday{font-size:12px}
+ .gcm-history-calendar{width:24px;height:24px;font-size:18px}
+ .gcm-history-shifts{padding:7px}
+ .gcm-history-shift{padding:8px;gap:6px;flex-wrap:wrap}
+ .gcm-history-shift-name{font-size:12px;flex:1 1 100%;white-space:normal}
+ .gcm-history-detail-button{margin-left:auto}
+ .gcm-history-status{font-size:10px}
+ .gcm-hd-meta{gap:7px 10px}
+}
