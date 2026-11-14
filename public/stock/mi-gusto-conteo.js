@@ -357,8 +357,15 @@ document.addEventListener('change',async e=>{
   return;
  }
  if(input.hasAttribute('data-gcm-section-visible')||input.id==='gcm-waste-toggle'){
-  if(!editable()||closed()||busy||!snapshot)return;
   const section=input.id==='gcm-waste-toggle'?'_waste':input.dataset.gcmSectionVisible;
+  if(!editable()||closed()||!snapshot)return;
+  if(busy){
+   const active=entry();
+   input.checked=section==='_waste'?!!active.waste_visible:
+     !Array.isArray(active.hidden_sections)||!active.hidden_sections.includes(section);
+   api.toast?.('Se está guardando el conteo. Reintentá cuando termine.');
+   return;
+  }
   if(!section||section!=='_waste'&&!snapshot.products.some(p=>p.section===section&&p.active))return;
   const visible=input.checked,oldRec=entry(),old=section==='_waste'?!!oldRec.waste_visible:
     !Array.isArray(oldRec.hidden_sections)||!oldRec.hidden_sections.includes(section);
