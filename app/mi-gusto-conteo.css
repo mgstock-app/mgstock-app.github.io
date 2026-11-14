@@ -222,3 +222,24 @@
  .gcm-extra-header button{font-size:11px;padding:5px 8px}
  .gcm-extras .gcm-remove-col{width:46px;min-width:46px}
 }
+
+
+/* Permite al gerente quitar la categoría directamente desde su barra azul. */
+.gcm-section > summary{gap:12px;padding-right:12px}
+.gcm-section-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:11px;flex:0 0 auto}
+.gcm-section-toolbar > span{font-size:11px;font-weight:650;color:#e4eef8;white-space:nowrap}
+.gcm-section-toolbar .gcm-hide-section{
+  display:inline-flex;justify-content:center;align-items:center;
+  min-height:32px;padding:5px 12px;border-radius:6px;
+  border:1px solid #8faac7;background:#25496e;color:#fff;
+  font-size:12px;font-weight:800;white-space:nowrap;
+  cursor:pointer;transition:background .15s ease;
+}
+.gcm-section-toolbar .gcm-hide-section:hover,
+.gcm-section-toolbar .gcm-hide-section:focus-visible{background:#355e85;outline-offset:2px}
+.gcm-section-toolbar .gcm-hide-section:disabled{opacity:.55;cursor:default}
+@media(max-width:700px){
+  .gcm-section > summary{padding:7px 10px;min-height:51px;gap:8px}
+  .gcm-section-toolbar{gap:7px}
+  .gcm-section-toolbar .gcm-hide-section{min-height:36px;padding:6px 10px;font-size:11px}
+}
