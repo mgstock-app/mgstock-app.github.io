@@ -62,3 +62,25 @@
 .gcm-loading,.gcm-error{padding:12px;border:1px solid #bcd0e4;border-radius:8px;background:#f5f9fd;font-size:12px}
 .gcm-error{background:#fff2f2;color:#8a2727}
 @media(max-width:700px){.gcm-page{padding:9px 7px 28px}.gcm-header h2{font-size:23px}.gcm-tabs button{font-size:11px;padding:12px 3px}.gcm-section thead th{min-width:105px}.gcm-section th:first-child{position:sticky;left:0;z-index:2;box-shadow:2px 0 3px #dde6ef}.gcm-section thead th:first-child{z-index:3}.gcm-bottom{grid-template-columns:1fr}}
+
+/* Encabezado fijo de sucursal + responsable modificable por turno. */
+.gcm-header-fields{display:flex;align-items:stretch;flex-wrap:wrap;gap:10px}
+.gcm-header-fields>div,.gcm-header-fields>label{min-width:145px;min-height:66px;padding:9px 11px;display:flex;flex-direction:column;justify-content:center;gap:6px;border:1px solid #dbe4ee;border-radius:9px;background:#f8fafc;color:#244764}
+.gcm-header-fields span,.gcm-header-fields label{font-size:12px;font-weight:750}
+.gcm-header-fields strong{font-size:14px;color:#102d49}
+.gcm-header-fields select{min-height:36px;background:white;color:#193b59;border:1px solid #bdccdc;border-radius:6px;padding:4px 26px 4px 9px}
+.gcm-decomp-toggle{display:flex;gap:8px;align-items:center;font-weight:800;color:#123e5b;font-size:13px;white-space:nowrap;cursor:pointer}
+.gcm-decomp-toggle input{width:18px;height:18px;accent-color:#12345a;cursor:pointer}
+.gcm-help>div{display:flex;flex:1;min-width:185px;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.gcm-decomp-head{background:#fff1db!important;color:#6b3f13!important;min-width:144px!important}
+.gcm-decomp-cell{background:#fff9ee!important;border-right:2px solid #e5c58e!important}
+.gcm-decomp-note{color:#7a4b16;font-size:12px;line-height:1.4;padding:7px 10px;background:#fff7e9;border:1px solid #f1dfc6;border-radius:6px;margin:4px 0 12px}
+.gcm-section:has(.gcm-decomp-head) tbody tr:nth-child(even) .gcm-decomp-cell{background:#fff5e5!important}
+@media(max-width:700px){
+  .gcm-header-fields{width:100%}
+  .gcm-header-fields>div,.gcm-header-fields>label{flex:1 1 125px;min-width:100px}
+  .gcm-header-fields select{max-width:100%;font-size:13px}
+  .gcm-section:has(.gcm-decomp-head) th:nth-child(2){position:sticky;left:146px;z-index:2;box-shadow:2px 0 3px #dde6ef;background:#fbfcff}
+  .gcm-section:has(.gcm-decomp-head) thead th:nth-child(2){z-index:3;background:#e9eff6}
+  .gcm-decomp-cell{min-width:146px}
+}
