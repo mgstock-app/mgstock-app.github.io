@@ -237,6 +237,8 @@ const puedeVerPagosOnline = () => !!window.GestLokMiGustoOnline?.permitido();
 const puedeVerPedidosClientes = () => !!window.GestLokMiGustoOrders?.permitido();
 const puedeVerReclamos = () => !!window.GestLokReclamosInternos?.permitido();
 const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();
+const puedeVerStaffMunro = () => S.me?.tenant_id === MI_GUSTO_TENANT && S.local === 'munro' &&
+  window.GestLokOwnerAreas?.staffNavVisible?.() === true;
 const localesTodos = () => [...S.localesDB].sort((a,b) => (num(a.orden) ?? 99) - (num(b.orden) ?? 99) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
 const localesMios = () => esTotal() ? localesTodos() : localesTodos().filter(l => misLocales().includes(l.id));
 /* La creadora consulta en solo lectura salvo que haya habilitado la edición (lo hace valer el backend). */
@@ -464,7 +466,8 @@ function renderNav(){
   const hojasMenu = visibles();
   const stockDiario = hojasMenu.find(h => h.id === 'stock' || /^(stock local|stock)$/i.test(String(h.nombre || '').trim()));
   const pagosDiarios = puedeVerPagosOnline();
-  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>${pagosDiarios ? `<button data-go="cierre-online">${ic('clip')}<span class="nl">Pagos Online</span></button>` : ''}${puedeVerPedidosClientes() ? `<button data-go="pedidos-clientes">${ic('cart')}<span class="nl">Pedidos WhatsApp</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}${stockDiario ? `<button data-go="${esc(stockDiario.id)}">${ic('box')}<span class="nl">Stock Local</span>${hojaBadge(stockDiario)}</button>` : ''}<button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const staffMunro = puedeVerStaffMunro();
+  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>${staffMunro ? `<button type="button" data-act="staff-horarios" aria-label="Staff · abrir Horarios de Munro">${ic('clock')}<span class="nl">Staff</span></button>` : ''}${pagosDiarios ? `<button data-go="cierre-online">${ic('clip')}<span class="nl">Pagos Online</span></button>` : ''}${puedeVerPedidosClientes() ? `<button data-go="pedidos-clientes">${ic('cart')}<span class="nl">Pedidos WhatsApp</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}${stockDiario ? `<button data-go="${esc(stockDiario.id)}">${ic('box')}<span class="nl">Stock Local</span>${hojaBadge(stockDiario)}</button>` : ''}<button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
     ${hojasMenu.filter(h => !stockDiario || h.id !== stockDiario.id).map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
@@ -3519,6 +3522,7 @@ document.addEventListener('click', e => {
   const a = t.dataset.act, id = t.dataset.id;
   if (t.tagName === 'INPUT') return;
   switch (a){
+    case 'staff-horarios': window.GestLokOwnerAreas?.openStaffHorarios?.(); break;
     case 'menu-open': $('#app').classList.add('open'); $('#scrim').hidden = false; $('#snav button')?.focus(); break;
     case 'menu-close': $('#app').classList.remove('open'); $('#scrim').hidden = true; break;
     case 'close': closePanel(); break;
@@ -3847,7 +3851,7 @@ function afterAccess(){
 /* Mi Gusto: «Administración de local» agrupa Conteo diario y Motos Agencia (Munro) y Reseñas (Munro y Torcuato). */
 function navAdmLocal(){
   const items = (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
-    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button><a class="snav-link" href="${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}">${ic('clock')}<span class="nl">Horarios</span></a>` : '') +
+    (puedeVerMotos() ? `<button data-go="motos">${ic('moto')}<span class="nl">Motos Agencia</span></button>${puedeVerStaffMunro() ? '' : `<a class="snav-link" href="${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}">${ic('clock')}<span class="nl">Horarios</span></a>`}` : '') +
     (puedeVerResenas() ? `<button data-go="resenas">${ic('clip')}<span class="nl">Reseñas</span></button>` : '') +
     (puedeVerReclamos() ? `<button data-go="reclamos-internos">${ic('clip')}<span class="nl">Reclamos Internos</span></button>` : '') +
     ''; // Pagos Online se muestra una sola vez en accesos diarios.

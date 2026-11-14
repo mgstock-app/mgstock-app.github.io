@@ -21,9 +21,9 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109",
+    "/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=molino-brand-20261109",
+    "/stock/app.js?rev=munro-staff-pc-20261113",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
@@ -92,7 +92,7 @@ export function StockRuntime() {
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109");
+      await load("/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
@@ -112,7 +112,7 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=molino-brand-20261109");
+      await load("/stock/app.js?rev=munro-staff-pc-20261113");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=menu-empresa-20261108");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-empresa-20261108");

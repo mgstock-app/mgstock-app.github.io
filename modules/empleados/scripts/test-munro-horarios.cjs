@@ -86,9 +86,12 @@ assert.match(ui,/Resumen semanal/);
 assert.match(ui,/Total a liquidar/);
 assert.match(ui,/mhs-liquidacion/);
 const stock=fs.readFileSync("../../public/stock/app.js","utf8");
-assert.match(stock,/Motos Agencia<\/span><\/button><a class="snav-link"/,
- "atajo de Horarios directamente debajo de Motos Agencia");
-assert.match(stock,/empleados\/\?seccion=horarios/);
+assert.match(stock,/data-act="staff-horarios" aria-label="Staff · abrir Horarios de Munro"/,
+ "Staff debe aparecer como atajo directo en el menú de Munro");
+assert.match(stock,/case 'staff-horarios': window\.GestLokOwnerAreas\?\.openStaffHorarios\?\.\(\)/,
+ "Staff debe abrir la ruta autorizada de Horarios");
+assert.match(stock,/puedeVerStaffMunro\(\) \? '' : `<a class="snav-link"/,
+ "No duplicar Horarios debajo de Motos Agencia cuando aparece Staff");
 
 // Feriados y vacaciones por colaborador: una casilla independiente de cada fila.
 const personaConFeriado={"2026-11-09":{feriados_habilitados:true},...semanas};
