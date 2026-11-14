@@ -54,3 +54,46 @@ for(const [local,backend] of [['munro','munro'],['torcuato','dt']])test('Dos tar
  listeners.click({preventDefault(){},target:{closest:s=>s==='[data-gerente-business]'?{}:null}});
  assert.equal(business,1);
 });
+
+test('Munro: Staff es opción visible del menú lateral, sin duplicar Horarios y con caché PWA actualizada',()=>{
+ const sidebar=readFileSync('public/stock/app.js','utf8');
+ const areas=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
+ const runtime=readFileSync('components/stock-runtime.tsx','utf8');
+ assert.match(sidebar,/const puedeVerStaffMunro = \(\) => S\.me\?\.tenant_id === MI_GUSTO_TENANT && S\.local === 'munro'/);
+ assert.match(sidebar,/staffMunro \? `<button type="button" data-act="staff-horarios"/);
+ assert.match(sidebar,/case 'staff-horarios': window\.GestLokOwnerAreas\?\.openStaffHorarios\?\.\(\)/);
+ assert.match(sidebar,/puedeVerStaffMunro\(\) \? '' : `<a class="snav-link"/);
+ assert.match(areas,/staffNavVisible,openStaffHorarios/);
+ assert.match(runtime,/app\.js\?rev=munro-staff-pc-20261113/);
+});
+test('El menú Staff exige autorización de servidor, empresa Mi Gusto y sucursal Munro',async()=>{
+ const source=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
+ const tenant='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+ const make=async({local='munro',permit=true,company=tenant}={})=>{
+  const window={addEventListener(){},GestLokSupabase:{rpc:async()=>permit
+   ?{data:{role:'gerente',tenant_id:company,local_ids:[local]},error:null}
+   :{data:null,error:{message:'sin permiso'}}}};
+  const document={addEventListener(){},baseURI:'https://gestlok.com.ar/'};
+  const assigned=[];
+  const location={assign:url=>assigned.push(url)};
+  vm.runInNewContext(source,{window,document,location,URL});
+  const api=window.GestLokOwnerAreas;
+  const S={loaded:{e:true},local,me:{tenant_id:company},localesDB:[{id:local,nombre:local}]};
+  api.attach({role:()=> 'gerente',S,render(){}});
+  assert.equal(api.staffNavVisible(),false,'No mostrar antes de consultar el servidor');
+  await api.refresh();
+  return {api,S,assigned};
+ };
+ const good=await make();
+ assert.equal(good.api.staffNavVisible(),true);
+ assert.equal(good.api.openStaffHorarios(),true);
+ assert.deepEqual(good.assigned,['https://gestlok.com.ar/empleados/horarios/']);
+ const denied=await make({permit:false});
+ assert.equal(denied.api.staffNavVisible(),false);
+ assert.equal(denied.api.openStaffHorarios(),false);
+ assert.equal(denied.assigned.length,0);
+ assert.equal((await make({local:'torcuato'})).api.staffNavVisible(),false);
+ assert.equal((await make({company:'otra-empresa'})).api.staffNavVisible(),false);
+ good.S.local='torcuato';
+ assert.equal(good.api.staffNavVisible(),false,'El acceso desaparece al cambiar de local');
+});
