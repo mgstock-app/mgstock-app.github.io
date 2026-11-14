@@ -13,7 +13,7 @@ const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
 function marks(value){
  const n=Math.max(0,Math.min(500,Math.floor(Number(value)||0)));
- if(!n)return '<small>+ chapa</small>';
+ if(!n)return '<small aria-hidden="true">+</small>';
  const group=count=>'<svg viewBox="0 0 34 34" aria-hidden="true" focusable="false">'+
  (count>=1?'<path d="M5 4V30"/>':'')+(count>=2?'<path d="M5 4H29"/>':'')+
  (count>=3?'<path d="M29 4V30"/>':'')+(count>=4?'<path d="M5 30H29"/>':'')+
@@ -50,11 +50,11 @@ async function refresh(){
  }catch(e){if(token===generation)error=e.message||'No se pudo consultar Conteo';}
  finally{loading=false;if(token===generation&&api?.S?.view==='conteo-munro')api.render();}
 }
-function entry(){return selected()||{day,shift,data:{},decomiso:{},decomiso_visible:false,responsable:null,consumption:[],waste:[],status:'borrador'};}
+function entry(){return selected()||{day,shift,data:{},decomiso:{},decomiso_visible:false,waste_visible:false,hidden_sections:[],responsable:null,consumption:[],waste:[],status:'borrador'};}
 function draftRecord(){
  if(!snapshot)return null;
  let rec=(snapshot.counts||[]).find(s=>s.shift===shift);
- if(!rec){rec={day,shift,data:{},decomiso:{},decomiso_visible:false,responsable:null,consumption:[],waste:[],status:'borrador'};snapshot.counts.push(rec);}
+ if(!rec){rec={day,shift,data:{},decomiso:{},decomiso_visible:false,waste_visible:false,hidden_sections:[],responsable:null,consumption:[],waste:[],status:'borrador'};snapshot.counts.push(rec);}
  return rec;
 }
 function getDecomisoCell(p){
@@ -78,52 +78,96 @@ function saveDecomiso(p,newCell){
   p_day:d,p_shift:s,p_product:p.id,p_chapas:newCell.chapas,p_sueltas:newCell.sueltas,p_qty:newCell.qty
  }));
 }
+
+/* Las chapas y las sueltas se cargan juntas, tal como se anotan en papel (|| 16). */
+function chapaCompacta(p,v,canWrite,isDecomiso,index){
+ const pid=esc(p.id),where=isDecomiso?'de decomiso':'del vencimiento '+index;
+ const attrs=isDecomiso?'':' data-idx="'+index+'"';
+ const plus=isDecomiso?'data-gcm-decomp-plus':'data-gcm-plus';
+ const minus=isDecomiso?'data-gcm-decomp-minus':'data-gcm-minus';
+ const suelta=isDecomiso?'data-gcm-decomp-suelta':'data-gcm-suelta';
+ const disabled=canWrite?'':' disabled';
+ const unitValue=v.sueltas>0?v.sueltas:'';
+ const label=esc(p.name+' '+where);
+ return '<div class="gcm-inline-count">'+
+  '<button type="button" class="gcm-mark-button" '+plus+'="'+pid+'"'+attrs+disabled+
+    ' aria-label="Sumar chapa '+label+'" title="'+v.chapas+' chapas · tocar para sumar">'+marks(v.chapas)+'</button>'+
+  '<button type="button" class="gcm-mark-undo" '+minus+'="'+pid+'"'+attrs+disabled+
+    ' aria-label="Quitar chapa '+label+'" title="Quitar una chapa">−</button>'+
+  '<label class="gcm-inline-units"><span aria-hidden="true">+</span>'+
+   '<input type="number" min="0" max="100000" inputmode="numeric" '+suelta+'="'+pid+'"'+attrs+
+    ' placeholder="u." value="'+unitValue+'"'+disabled+
+    ' aria-label="Unidades sueltas '+label+'"></label>'+
+  '</div>';
+}
+
 function decompColumn(p,canWrite){
  const v=getDecomisoCell(p), disabled=canWrite?'':' disabled';
  if(p.units_per_chapa>0){
-  return '<td class="gcm-chapa gcm-decomp-cell"><div class="gcm-chapa-box"><button type="button" data-gcm-decomp-plus="'+esc(p.id)+'"'+disabled+' aria-label="Sumar chapa de decomiso de '+esc(p.name)+'">'+marks(v.chapas)+'</button>'+
-  '<button type="button" class="gcm-less" data-gcm-decomp-minus="'+esc(p.id)+'"'+disabled+' aria-label="Quitar chapa de decomiso">−</button></div>'+
-  '<label class="gcm-small">Sueltas <input type="number" min="0" max="100000" inputmode="numeric" data-gcm-decomp-suelta="'+esc(p.id)+'" value="'+v.sueltas+'"'+disabled+'></label>'+
-  '<span class="gcm-cell-total">'+amount(p,v)+' u.</span></td>';
+  return '<td class="gcm-chapa gcm-decomp-cell">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
- return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+v.qty+'"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
+ return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
- const dates=Array.from({length:4},(_,i)=>first==='manana_entrada'?labelDay(plusDays(dateBase,i)):'Vto '+(i+1));
+ const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:first==='manana_entrada'?labelDay(plusDays(dateBase,i)).slice(0,5):''}));
  const rows=items.map(p=>{
   const cells=[1,2,3,4].map(i=>{
-   const v=getCell(p,i),disabled=!canWrite?' disabled':'',value=amount(p,v);
+   const v=getCell(p,i),disabled=!canWrite?' disabled':'';
    if(p.units_per_chapa){
-    return '<td class="gcm-chapa"><div class="gcm-chapa-box"><button type="button" data-gcm-plus="'+esc(p.id)+'" data-idx="'+i+'"'+disabled+' aria-label="Sumar chapa '+esc(p.name)+' vencimiento '+i+'">'+marks(v.chapas)+'</button>'+
-    '<button class="gcm-less" type="button" data-gcm-minus="'+esc(p.id)+'" data-idx="'+i+'"'+disabled+' aria-label="Quitar chapa">−</button></div>'+
-    '<label class="gcm-small">Sueltas <input type="number" min="0" max="100000" inputmode="numeric" data-gcm-suelta="'+esc(p.id)+'" data-idx="'+i+'" value="'+v.sueltas+'"'+disabled+'></label>'+
-    '<span class="gcm-cell-total">'+value+' u.</span></td>';
+    return '<td class="gcm-chapa">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
-   return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+v.qty+'"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
+   return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
   }).join('');
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
   return '<tr>'+(showDecomiso?decompColumn(p,canWrite):'')+
-   '<th scope="row"><span>'+esc(p.name)+'</span>'+
-   (canCatalog?'<span class="gcm-admin-actions"><button type="button" data-gcm-rename="'+esc(p.id)+'" aria-label="Cambiar nombre de '+esc(p.name)+'">Editar</button>'+
-   '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span>':'')+
-   '</th>'+cells+'<td class="gcm-total">'+sum+'</td></tr>';
+   '<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+ 
+   (canCatalog?'<details class="gcm-product-actions"><summary aria-label="Opciones del producto '+esc(p.name)+'">⋯</summary><span class="gcm-admin-actions">'+
+   '<button type="button" data-gcm-rename="'+esc(p.id)+'" aria-label="Cambiar nombre de '+esc(p.name)+'">Renombrar</button>'+
+   '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span></details>':'')+
+   '</th>'+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong><span>'+items.length+' productos</span></summary>'+
- '<div class="gcm-scroller" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
+ '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  (showDecomiso?'<th scope="col" class="gcm-decomp-head">Decomiso</th>':'')+
- '<th scope="col">Producto</th>'+
- dates.map(s=>'<th scope="col">'+esc(s)+'</th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
+ '<th scope="col" class="gcm-product-head">Producto</th>'+
+ dates.map(s=>'<th scope="col"><span class="gcm-vto">'+esc(s.vto)+'</span>'+(s.dia?'<span class="gcm-vto-date">'+esc(s.dia)+'</span>':'')+'</th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
 }
 function extraTable(kind,title,headA,headB,rec,canWrite){
- const rows=Array.isArray(rec[kind])?rec[kind]:[],length=Math.max(3,rows.length+1);
- return '<section class="gcm-extras"><h3>'+title+'</h3><table><thead><tr><th>'+headA+'</th><th>'+headB+'</th></tr></thead><tbody>'+
- Array.from({length:Math.min(60,length)},(_,i)=>{
+ const rows=Array.isArray(rec[kind])?rec[kind]:[];
+ const count=Math.min(60,Math.max(1,rows.length));
+ return '<section class="gcm-extras" data-gcm-kind="'+kind+'"><div class="gcm-extra-header"><h3>'+title+'</h3>'+
+ (canWrite?'<button type="button" data-gcm-extra-add="'+kind+'"'+(rows.length>=60?' disabled':'')+
+  ' aria-label="Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'">+ Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'</button>':'')+
+ '</div><table><thead><tr><th>'+headA+'</th><th>'+headB+'</th>'+(canWrite?'<th class="gcm-remove-col">Acción</th>':'')+'</tr></thead><tbody>'+
+ Array.from({length:count},(_,i)=>{
   const item=rows[i]||{},disabled=canWrite?'':' disabled';
-  return '<tr><td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="name" value="'+esc(item.name||'')+'" placeholder="'+esc(headA)+'"'+disabled+'></td>'+
-   '<td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="value" value="'+esc(item.value||'')+'" placeholder="'+esc(headB)+'"'+disabled+'></td></tr>';
- }).join('')+'</tbody></table></section>';
+  return '<tr><td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="name" value="'+esc(item.name||'')+
+   '" placeholder="'+esc(headA)+'" aria-label="'+esc(headA)+' '+(i+1)+'"'+disabled+'></td>'+
+   '<td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="value" value="'+esc(item.value||'')+
+   '" placeholder="'+esc(headB)+'" aria-label="'+esc(headB)+' '+(i+1)+'"'+disabled+'></td>'+
+   (canWrite?'<td class="gcm-remove-col"><button type="button" data-gcm-extra-remove="'+kind+'" data-row="'+i+
+   '" aria-label="Quitar fila '+(i+1)+' de '+title+'" title="Quitar fila">×</button></td>':'')+'</tr>';
+ }).join('')+'</tbody></table>'+
+ (kind==='consumption'?'<p class="gcm-extra-hint">Sumá o quitá colaboradores según el turno. Cada cambio se guarda automáticamente.</p>':'')+
+ '</section>';
+}
+function extrasList(kind){
+ const rec=draftRecord();if(!rec)return null;
+ const vals=Array.isArray(rec[kind])?[...rec[kind]]:[];
+ return {rec,vals};
+}
+function saveExtraList(kind,vals){
+ if(!['consumption','waste'].includes(kind)||!Array.isArray(vals)||vals.length>60)return;
+ const rec=draftRecord();if(!rec)return;
+ if(kind==='waste'&&!rec.waste_visible)return;
+ const safe=vals.map(x=>({name:String(x?.name||'').slice(0,90),value:String(x?.value||'').slice(0,90)}));
+ rec[kind]=safe;
+ const d=day,s=shift,copy=JSON.parse(JSON.stringify(safe));
+ return schedule(d+'|'+s+'|'+kind,()=>rpc('gestlok_munro_conteo_set_extra',{
+  p_day:d,p_shift:s,p_kind:kind,p_items:copy
+ }));
 }
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de Mi Gusto Munro.</p>';
@@ -133,6 +177,9 @@ function view(){
  const showDecomiso=!!rec.decomiso_visible;
  const list=(snapshot?.products||[]).filter(p=>p.active||!!rec.data?.[p.id]||!!rec.decomiso?.[p.id]);
  const categories=[...new Set(list.map(p=>p.section))];
+ const hidden=new Set(Array.isArray(rec.hidden_sections)?rec.hidden_sections:[]);
+ const visibleCategories=categories.filter(name=>!hidden.has(name));
+ const showWaste=!!rec.waste_visible;
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
  const hist='<div class="gcm-history-list">'+(snapshot?.history||[]).map(x=>
   '<button type="button" data-gcm-history="'+esc(x.day)+'|'+esc(x.shift)+'">'+labelDay(x.day)+' · '+esc(SHIFTS.find(s=>s[0]===x.shift)?.[1]||x.shift)+' · '+esc(x.responsable||'Sin responsable')+'</button>').join('')+'</div>';
@@ -147,9 +194,21 @@ function view(){
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
- categories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso)).join('')+
+'<div class="gcm-sheet-tip">Cada toque agrega una chapa (5 marcas completan un cuadrado). Escribí las unidades sueltas junto a las marcas; el total se calcula a la derecha.</div>'+
+ '<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
+ '<div class="gcm-config-options">'+categories.map(name=>
+  '<label><input type="checkbox" data-gcm-section-visible="'+esc(name)+'"'+(!hidden.has(name)?' checked':'')+
+  (!canWrite?' disabled':'')+'><span>'+esc(name)+'</span></label>'
+ ).join('')+'</div><p>Ocultar una sección no borra productos ni cantidades. Podés volver a mostrarla cuando quieras.</p></details>'+
+ (visibleCategories.length?'':'<p class="gcm-empty-sections">Todas las secciones están ocultas. Entrá a «Personalizar secciones» para mostrarlas.</p>')+
+ visibleCategories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso)).join('')+
  (Object.values(rec.decomiso||{}).some(v=>Number(v.chapas)||Number(v.sueltas)||Number(v.qty))?'<p class="gcm-decomp-note">Los totales incluyen el decomiso registrado, aunque ocultes la columna.</p>':'')+
- '<div class="gcm-bottom">'+extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+extraTable('waste','DESPERDICIO','Producto','Cantidad',rec,canWrite)+'</div>'+
+ '<div class="gcm-extra-controls"><label class="gcm-waste-toggle"><input id="gcm-waste-toggle" type="checkbox"'+(showWaste?' checked':'')+
+ (!canWrite?' disabled':'')+'><span>Mostrar Desperdicios</span></label>'+
+ (showWaste?'<span>Habilitado para este turno</span>':'<span>Opcional · se muestra solo al activarlo</span>')+'</div>'+
+ '<div class="gcm-bottom'+(showWaste?'':' gcm-bottom-single')+'">'+
+ extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+
+ (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
  (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-refresh>Actualizar</button>'+
  (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Finalizar '+esc(SHIFTS.find(s=>s[0]===shift)?.[1]||'turno')+'</button>':'<span>Conteo del turno archivado</span>')+'</div>':'')+
  '<section class="gcm-history"><h3>Historial de conteos</h3><p>Los turnos finalizados se conservan por fecha y responsable.</p>'+hist+'</section>':'')+
@@ -177,14 +236,11 @@ const productById=id=>snapshot?.products?.find(p=>p.id===id&&p.active);
 function updateExtra(input){
  const kind=input.dataset.gcmExtra,idx=Number(input.dataset.row),field=input.dataset.field;
  if(!['consumption','waste'].includes(kind)||!['name','value'].includes(field)||idx<0||idx>59)return;
- let rec=(snapshot?.counts||[]).find(s=>s.shift===shift);
- if(!rec){rec={day,shift,data:{},consumption:[],waste:[],status:'borrador'};snapshot.counts.push(rec);}
- const vals=Array.isArray(rec[kind])?[...rec[kind]]:[];
+ const data=extrasList(kind);if(!data||kind==='waste'&&!data.rec.waste_visible)return;
+ const vals=data.vals;
  while(vals.length<=idx)vals.push({name:'',value:''});
- vals[idx]={...vals[idx],[field]:input.value.trim().slice(0,90)};
- rec[kind]=vals;
- const d=day,s=shift,copy=JSON.parse(JSON.stringify(vals));
- return schedule(d+'|'+s+'|'+kind,()=>rpc('gestlok_munro_conteo_set_extra',{p_day:d,p_shift:s,p_kind:kind,p_items:copy}));
+ vals[idx]={...vals[idx],[field]:input.value.slice(0,90)};
+ return saveExtraList(kind,vals);
 }
 function attach(value){api=value;}
 function subscribe(local,push){
@@ -205,6 +261,26 @@ document.addEventListener('click',async e=>{
  if(!root||!allowed())return;
  const el=e.target.closest('button');
  if(!el)return;
+ if(el.hasAttribute('data-gcm-extra-add')||el.hasAttribute('data-gcm-extra-remove')){
+  if(!editable()||closed()||!snapshot)return;
+  const isAdd=el.hasAttribute('data-gcm-extra-add');
+  const kind=isAdd?el.dataset.gcmExtraAdd:el.dataset.gcmExtraRemove;
+  if(!['consumption','waste'].includes(kind))return;
+  const data=extrasList(kind);if(!data||kind==='waste'&&!data.rec.waste_visible)return;
+  const vals=data.vals;
+  if(isAdd){
+   if(vals.length>=60){api.toast?.('Máximo 60 filas por sección');return;}
+   if(vals.length===0)vals.push({name:'',value:''});
+   vals.push({name:'',value:''});
+  }else{
+   const index=Number(el.dataset.row);
+   if(!Number.isInteger(index)||index<0||index>=Math.max(1,vals.length))return;
+   const item=vals[index];
+   if(item&&(item.name||item.value)&&!window.confirm('¿Quitar esta fila? Se eliminarán sus datos del conteo del turno.'))return;
+   vals.splice(index,1);
+  }
+  void saveExtraList(kind,vals);api.render();return;
+ }
  if(el.hasAttribute('data-gcm-retry')||el.hasAttribute('data-gcm-refresh')){error='';void refresh();return;}
  if(el.hasAttribute('data-gcm-back')){historyRecord=null;api.render();return;}
  const newShift=el.dataset.gcmShift;
@@ -277,6 +353,34 @@ document.addEventListener('change',async e=>{
   try{await rpc('gestlok_munro_conteo_decomiso_visible',{p_day:d,p_shift:s,p_visible:visible});
     const rec=draftRecord();if(rec)rec.decomiso_visible=visible;error='';
   }catch(err){error=err.message||'No se pudo cambiar Decomiso';input.checked=old;api.toast?.(error);}
+  finally{busy=false;api.render();}
+  return;
+ }
+ if(input.hasAttribute('data-gcm-section-visible')||input.id==='gcm-waste-toggle'){
+  const section=input.id==='gcm-waste-toggle'?'_waste':input.dataset.gcmSectionVisible;
+  if(!editable()||closed()||!snapshot)return;
+  if(busy){
+   const active=entry();
+   input.checked=section==='_waste'?!!active.waste_visible:
+     !Array.isArray(active.hidden_sections)||!active.hidden_sections.includes(section);
+   api.toast?.('Se está guardando el conteo. Reintentá cuando termine.');
+   return;
+  }
+  if(!section||section!=='_waste'&&!snapshot.products.some(p=>p.section===section&&p.active))return;
+  const visible=input.checked,oldRec=entry(),old=section==='_waste'?!!oldRec.waste_visible:
+    !Array.isArray(oldRec.hidden_sections)||!oldRec.hidden_sections.includes(section);
+  const d=day,s=shift;busy=true;
+  try{
+   await rpc('gestlok_munro_conteo_set_section',{p_day:d,p_shift:s,p_section:section,p_visible:visible});
+   const rec=draftRecord();if(rec){
+    if(section==='_waste')rec.waste_visible=visible;
+    else {
+     const current=Array.isArray(rec.hidden_sections)?rec.hidden_sections:[];
+     rec.hidden_sections=visible?current.filter(n=>n!==section):[...new Set([...current,section])];
+    }
+   }
+   error='';
+  }catch(err){input.checked=old;error=err.message||'No se pudo modificar la sección';api.toast?.(error);}
   finally{busy=false;api.render();}
   return;
  }

@@ -84,3 +84,141 @@
   .gcm-section:has(.gcm-decomp-head) thead th:nth-child(2){z-index:3;background:#e9eff6}
   .gcm-decomp-cell{min-width:146px}
 }
+
+
+/* Vista real de la planilla: 1 fila/producto; chapas y unidades contiguas en cada vencimiento. */
+.gcm-sheet-tip{margin:0 0 9px;color:#4c6479;background:#f7f9fc;border:1px solid #e3eaf2;border-radius:7px;padding:8px 10px;font-size:12px;line-height:1.5}
+.gcm-sheet-scroll{scrollbar-width:thin}
+.gcm-section .gcm-sheet-scroll table{table-layout:auto;min-width:920px;font-size:12px}
+.gcm-section .gcm-sheet-scroll th,.gcm-section .gcm-sheet-scroll td{padding:4px 5px;vertical-align:middle}
+.gcm-section .gcm-sheet-scroll thead th{min-width:160px;padding:8px 5px}
+.gcm-section .gcm-sheet-scroll thead th:first-child,.gcm-section .gcm-sheet-scroll tbody th{min-width:93px;max-width:108px}
+.gcm-section .gcm-sheet-scroll thead th:last-child{min-width:72px}
+.gcm-section .gcm-sheet-scroll tbody tr{min-height:40px}
+.gcm-section .gcm-sheet-scroll tbody tr:hover td{background-color:#f7fbff}
+.gcm-vto,.gcm-vto-date{display:block;line-height:1.25}
+.gcm-vto{font-size:12px;font-weight:800}
+.gcm-vto-date{font-size:11px;font-weight:650;margin-top:2px;color:#395f7d}
+.gcm-section td.gcm-chapa{min-width:163px;padding:4px 3px}
+.gcm-inline-count{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:153px;max-width:220px;margin:auto;white-space:nowrap}
+.gcm-inline-count .gcm-mark-button{display:flex;align-items:center;justify-content:center;min-width:48px;min-height:37px;max-width:130px;flex:1 1 auto;background:#fff;border:1px solid #cbd5e1;border-radius:5px;padding:4px 5px;color:#102e4c}
+.gcm-inline-count .gcm-mark-button:not(:disabled):active{background:#eaf2fb}
+.gcm-inline-count .gcm-mark-button small{font-size:10px;font-weight:750;color:#59728c}
+.gcm-inline-count .gcm-mark-undo{flex:0 0 23px;min-height:37px;font-weight:800;color:#526e88;background:#f4f6f9;border:1px solid #d7e0ea;border-radius:5px;padding:0}
+.gcm-inline-units{display:flex;align-items:center;flex:0 0 auto;gap:1px;color:#55728a;font-size:12px;font-weight:750}
+.gcm-inline-units>span{padding-right:2px}
+.gcm-inline-units input{box-sizing:border-box;width:48px;max-width:48px;min-height:37px;border:1px solid #cbd5e1;border-radius:5px;padding:5px 3px;text-align:center;color:#12345a;font-size:14px;font-weight:700;background:#fff}
+.gcm-inline-units input::placeholder{color:#9aabbb;font-size:11px}
+.gcm-inline-count .gcm-marks{display:flex;flex-wrap:nowrap;max-width:100%;overflow:auto;scrollbar-width:none;gap:2px}
+.gcm-inline-count .gcm-marks::-webkit-scrollbar{display:none}
+.gcm-inline-count .gcm-marks svg{flex:0 0 auto;width:21px;height:21px}
+.gcm-section .gcm-total{font-variant-numeric:tabular-nums;font-size:13px}
+.gcm-section .gcm-qty{width:65px;min-height:36px}
+.gcm-product-actions{display:inline-block;position:relative;margin-left:5px;vertical-align:middle}
+.gcm-product-actions summary{list-style:none;display:inline-flex;min-width:20px;height:22px;justify-content:center;align-items:center;background:#eef3fa!important;color:#3c5874!important;border:1px solid #dce5ef;border-radius:5px;padding:1px 3px!important;font-size:14px!important}
+.gcm-product-actions summary::-webkit-details-marker{display:none}
+.gcm-product-actions .gcm-admin-actions{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0}
+.gcm-product-actions:not([open]) .gcm-admin-actions{display:none}
+.gcm-product-actions .gcm-admin-actions button{font-size:10px}
+.gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:first-child{min-width:164px}
+.gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th{min-width:93px}
+@media(max-width:700px){
+ .gcm-section .gcm-sheet-scroll table{min-width:865px}
+ .gcm-section .gcm-sheet-scroll tbody th{width:91px;min-width:91px;max-width:95px}
+ .gcm-section .gcm-sheet-scroll thead th:first-child{min-width:91px}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:first-child{min-width:163px}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th{left:163px;min-width:91px;max-width:95px}
+ .gcm-section:has(.gcm-decomp-head) th:nth-child(2){left:163px}
+ .gcm-section .gcm-sheet-scroll thead th:not(:first-child){min-width:158px}
+ .gcm-sheet-tip{font-size:11px}
+}
+
+
+/* En pantallas angostas se conserva Producto, pero no se congelan dos columnas. */
+@media(max-width:700px){
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:first-child{position:static!important}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:nth-child(2){position:sticky;left:0!important;z-index:3}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th{position:sticky;left:0!important;z-index:2}
+}
+
+@media(max-width:700px){.gcm-section .gcm-sheet-scroll thead th:last-child{min-width:72px}}
+
+
+/* Columna de producto: códigos en una línea, misma alineación y altura para todas las filas.
+   Corrige el espaciado excesivo visto en la planilla de entrada de turno. */
+.gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+  width:104px;min-width:104px;max-width:104px;
+  text-align:left;padding:9px 12px;font-size:12px;letter-spacing:.01em;
+  background:#e9eff6;
+}
+.gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+  box-sizing:border-box;width:104px;min-width:104px;max-width:104px;
+  height:48px;padding:7px 12px;text-align:left;vertical-align:middle;
+  color:#112e4c;background:#f9fbfd;font-size:13px;font-weight:800;
+  line-height:1.25;white-space:nowrap;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;
+}
+.gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell .gcm-product-name{
+  display:inline-block;max-width:100%;white-space:nowrap;text-align:left;
+}
+.gcm-section .gcm-sheet-scroll tbody td{
+  height:48px;vertical-align:middle;
+}
+.gcm-product-actions{vertical-align:middle;margin-left:4px}
+.gcm-product-actions .gcm-admin-actions{
+  position:absolute;top:100%;left:0;z-index:20;
+  min-width:144px;padding:8px;background:#fff;
+  border:1px solid #d5dfeb;border-radius:8px;
+  box-shadow:0 8px 18px #152b4224;
+}
+.gcm-product-actions .gcm-admin-actions button{width:100%;text-align:left;white-space:nowrap}
+.gcm-section .gcm-sheet-scroll tbody tr:nth-child(even) th.gcm-product-cell{background:#f3f7fb}
+@media(max-width:700px){
+ .gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+   width:90px;min-width:90px;max-width:90px;padding-left:9px;padding-right:5px
+ }
+ .gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+   width:90px;min-width:90px;max-width:90px;padding:6px 9px;font-size:12px;
+   position:sticky;left:0;z-index:2;
+ }
+ .gcm-section .gcm-sheet-scroll thead th.gcm-product-head{position:sticky;left:0;z-index:3}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th.gcm-product-cell{left:0!important}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th.gcm-product-head{left:0!important}
+}
+
+
+/* Preferencias de turno: las secciones se pueden ocultar y restaurar sin borrar datos. */
+.gcm-section-config{margin:10px 0 12px;border:1px solid #d3dfeb;border-radius:8px;overflow:hidden;background:#fbfdff}
+.gcm-section-config summary{cursor:pointer;list-style:none;padding:11px 14px;color:#12345a;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gcm-section-config summary::-webkit-details-marker{display:none}
+.gcm-section-config summary:after{content:"⌄";font-size:18px;color:#57748e}
+.gcm-section-config[open] summary:after{content:"⌃"}
+.gcm-config-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px;padding:10px 12px 2px;border-top:1px solid #e4ebf2}
+.gcm-config-options label{display:flex;align-items:center;gap:9px;border:1px solid #e4eaf1;border-radius:7px;padding:9px;background:#fff;color:#24455f;font-size:12px;font-weight:700;cursor:pointer;min-height:40px}
+.gcm-config-options label input{height:17px;width:17px;flex:0 0 17px;accent-color:#12345a}
+.gcm-section-config p{font-size:11px;color:#647b90;line-height:1.4;margin:10px 12px 12px}
+.gcm-empty-sections{background:#f7f9fc;border:1px dashed #b9c8d8;color:#385775;padding:16px;border-radius:8px;font-size:13px}
+.gcm-extra-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:19px 0 8px;padding:10px 12px;border:1px solid #d9e2ed;border-radius:8px;background:#f8fafc;flex-wrap:wrap}
+.gcm-waste-toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#173a5b;cursor:pointer}
+.gcm-waste-toggle input{height:19px;width:19px;accent-color:#12345a}
+.gcm-extra-controls>span{font-size:11px;color:#657c90}
+.gcm-bottom-single{grid-template-columns:minmax(0,1fr)}
+.gcm-bottom-single .gcm-extras{width:100%;max-width:920px}
+.gcm-extra-header{display:flex;align-items:center;justify-content:space-between;background:#12345a;gap:8px;min-height:44px;padding:7px 12px}
+.gcm-extras .gcm-extra-header h3{padding:0;text-align:left;background:transparent;flex:1;font-size:13px;margin:0}
+.gcm-extra-header button{flex:0 0 auto;border:1px solid #aec9e3;border-radius:6px;background:#f4f8fc;color:#143d62;min-height:31px;padding:4px 10px;font-size:12px;font-weight:800}
+.gcm-extra-header button:disabled{opacity:.55;cursor:not-allowed}
+.gcm-extras th,.gcm-extras td{padding:6px 8px!important;text-align:left}
+.gcm-extras thead th{font-size:12px;color:#233e58;background:#eef3f8}
+.gcm-extras input{color:#193953;font-size:13px}
+.gcm-extras .gcm-remove-col{width:64px;min-width:64px;text-align:center}
+.gcm-extras td.gcm-remove-col button{border:1px solid #d9e3ed;background:#fff;color:#6f7885;border-radius:6px;min-width:32px;min-height:32px;font-size:18px;font-weight:700;cursor:pointer}
+.gcm-extras td.gcm-remove-col button:hover{background:#fff1f1;color:#933}
+.gcm-extra-hint{font-size:11px;line-height:1.4;color:#647b90;margin:7px 10px 10px}
+@media(max-width:700px){
+ .gcm-config-options{grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}
+ .gcm-bottom-single .gcm-extras{max-width:none}
+ .gcm-extra-header{padding:8px 10px}
+ .gcm-extra-header button{font-size:11px;padding:5px 8px}
+ .gcm-extras .gcm-remove-col{width:46px;min-width:46px}
+}
