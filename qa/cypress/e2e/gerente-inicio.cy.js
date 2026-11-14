@@ -23,10 +23,26 @@ describe('Gerente · tarjeta de Empleados (Horarios) sin avisos en el inicio',()
 
   });
  }
+ it('Munro en PC: Staff siempre aparece en el menú lateral autorizado y abre Horarios',()=>{
+  cy.viewport(1366,900);start();login('gerente.munro@example.com');
+  cy.get('#view [data-gerente-empleados]',{timeout:15000}).should('be.visible');
+  cy.get('#snav [data-act="staff-horarios"]').should('be.visible')
+    .and('contain.text','Staff')
+    .and('have.attr','aria-label','Staff · abrir Horarios de Munro');
+  cy.get('#snav [data-act="staff-horarios"]').click();
+  cy.location('pathname',{timeout:15000}).should('eq','/empleados/horarios/');
+  cy.get('.horarios-hub h1',{timeout:15000}).should('contain.text','Horarios');
+ });
+ it('El acceso Staff no aparece en Torcuato ni sin autorización',()=>{
+  cy.viewport(1366,900);start();login('gerente.torcuato@example.com');
+  cy.get('#view [data-gerente-empleados]',{timeout:15000}).should('be.visible');
+  cy.get('#snav [data-act="staff-horarios"]').should('not.exist');
+ });
  it('si el servidor no autoriza, no se ofrece la carpeta Horarios',()=>{
   start();cy.window().then(w=>{w.__gerenteFail=true;});login('gerente.munro@example.com');
   cy.get('#view .gl-manager-landing',{timeout:15000}).should('be.visible');
   cy.wait(1800);cy.get('#view [data-gerente-empleados]').should('not.exist');
+  cy.get('#snav [data-act="staff-horarios"]').should('not.exist');
  });
  it('un usuario de solo lectura sigue sin Avisos ni carpeta Horarios',()=>{
   start();login('lectura@example.com');
