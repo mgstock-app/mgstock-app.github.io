@@ -128,7 +128,10 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
    '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span></details>':'')+
    '</th>'+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
- return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong><span>'+items.length+' productos</span></summary>'+
+ return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
+ '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
+ (canWrite?'<button type="button" class="gcm-hide-section" data-gcm-hide-section="'+esc(name)+'" aria-label="Quitar sección '+esc(name)+' del conteo" title="Ocultar sección del conteo">Quitar</button>':'')+
+ '</span></summary>'+
  '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  (showDecomiso?'<th scope="col" class="gcm-decomp-head">Decomiso</th>':'')+
  '<th scope="col" class="gcm-product-head">Producto</th>'+
@@ -261,6 +264,28 @@ document.addEventListener('click',async e=>{
  if(!root||!allowed())return;
  const el=e.target.closest('button');
  if(!el)return;
+ if(el.hasAttribute('data-gcm-hide-section')){
+  // El botón está dentro del summary: no debe abrir/cerrar la categoría.
+  e.preventDefault();
+  e.stopPropagation();
+  if(!editable()||closed()||busy||!snapshot)return;
+  const section=el.dataset.gcmHideSection;
+  if(!section||!snapshot.products.some(p=>p.active&&p.section===section))return;
+  busy=true;
+  const d=day,s=shift;
+  try{
+   await rpc('gestlok_munro_conteo_set_section',{p_day:d,p_shift:s,p_section:section,p_visible:false});
+   const rec=draftRecord();
+   if(rec){
+    const hidden=Array.isArray(rec.hidden_sections)?rec.hidden_sections:[];
+    rec.hidden_sections=[...new Set([...hidden,section])];
+   }
+   opened.delete(section);
+   error='';
+  }catch(err){error=err.message||'No se pudo ocultar la sección';api.toast?.(error);}
+  finally{busy=false;api.render();}
+  return;
+ }
  if(el.hasAttribute('data-gcm-extra-add')||el.hasAttribute('data-gcm-extra-remove')){
   if(!editable()||closed()||!snapshot)return;
   const isAdd=el.hasAttribute('data-gcm-extra-add');
