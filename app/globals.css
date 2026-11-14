@@ -2422,7 +2422,7 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   padding:0;border-radius:50%;border:1px solid #b6ddc9;
   background:#fff;color:#155b45!important;box-shadow:0 5px 20px #123a3029;
   touch-action:none;user-select:none;-webkit-user-select:none;
-  cursor:grab;transition:box-shadow .15s ease;z-index:1001;
+  cursor:grab;transition:box-shadow .15s ease;z-index:65;
 }
 .gl-soporte-float:hover{
   transform:none;box-shadow:0 7px 24px #123a3036;
