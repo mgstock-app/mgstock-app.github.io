@@ -81,6 +81,20 @@
       if(changed)api.render();
     }finally{gerenteBusy=false;}
   }
+  // El acceso Staff del menú lateral de Munro solo aparece con autorización
+  // real del servidor. No alcanza con el rol ni con datos de localStorage.
+  function staffNavVisible(){
+    if(!api?.S?.local||api.S.local!=='munro'||api.S.me?.tenant_id!=='cb0dc04a-9a13-434f-a3d0-47f1d8f39670')return false;
+    if(api.role()==='gerente')return gerente.status==='ready'&&gerente.locals.includes('munro');
+    if(['dueno','creadora'].includes(api.role()))return allowed('recibos_personal');
+    return false;
+  }
+  function openStaffHorarios(){
+    if(!staffNavVisible())return false;
+    // Horarios es una ruta independiente y verifica permisos nuevamente.
+    location.assign(new URL('empleados/horarios/',document.baseURI).href);
+    return true;
+  }
   function gerenteCard(){
     if(api?.S?.me?.tenant_id==='6c8717ea-5f78-426b-9458-74a5dcac6e4e')return '';
     if(gerente.status!=='ready')return '';
@@ -427,6 +441,6 @@
   window.addEventListener('online',()=>{refresh();refreshAdmin();});
   const companyName=()=>String((state.status==='ready'&&state.data?.tenant_id===api?.S?.me?.tenant_id?state.data.company_name:'')||
     (gerenteMarca.tenant===api?.S?.me?.tenant_id?gerenteMarca.name:'')||'').trim();
-  window.GestLokOwnerAreas=Object.freeze({companyName,attach(ctx){api=ctx;window.GestLokMolino?.attach?.(ctx);window.GestLokInvites?.attach?.(ctx);},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,refreshAdmin,adminView,companyFolders,
+  window.GestLokOwnerAreas=Object.freeze({companyName,attach(ctx){api=ctx;window.GestLokMolino?.attach?.(ctx);window.GestLokInvites?.attach?.(ctx);},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,staffNavVisible,openStaffHorarios,refreshAdmin,adminView,companyFolders,
     creatorCompanies:()=>api?.role?.()==='creadora'&&admin.status==='ready'?admin.companies.map(c=>({...c,locals:(c.locals||[]).map(l=>({...l}))})):[]});
 })();
