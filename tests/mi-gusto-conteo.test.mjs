@@ -33,8 +33,13 @@ test('catálogo editable solo por creadora y turnos de Munro',()=>{
  assert.match(source,/noche_salida/);
  assert.ok(events.find(([type])=>type==='click'));
 });
-test('catálogo de chapa declara también MV a 27',()=>{
+test('MV se renombra a SGR sin crear dos productos activos',()=>{
  const db=fs.readFileSync(new URL('../supabase/migrations/20261114172500_munro_conteo_mv_27.sql',import.meta.url),'utf8');
  assert.match(db,/name='MV'/);
  assert.match(db,/units_per_chapa=27/);
+ const fix=fs.readFileSync(new URL('../supabase/migrations/20261114202000_munro_mv_renombrada_sgr.sql',import.meta.url),'utf8');
+ assert.match(fix,/set name='SGR', units_per_chapa=27/);
+ assert.match(fix,/where id='c1-22'/);
+ assert.match(fix,/set active=false/);
+ assert.match(fix,/where id='c1-24'/);
 });
