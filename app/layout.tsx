@@ -9,6 +9,7 @@ import "./mi-gusto-pedidos-clientes.css";
 import "./gestlok-reclamos-internos.css";
 import "./gestlok-nav-fixes.css";
 import "./mi-gusto-pagos-online.css";
+import "./mi-gusto-conteo.css";
 import "./inicio-compacto.css";
 import "./white-unified.css";
 import "./mobile-navigation.css";
