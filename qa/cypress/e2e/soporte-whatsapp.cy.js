@@ -15,6 +15,9 @@ function login(email){
   cy.get('#au-in button[type="submit"]').click();
 }
 function fakeSupport(){
+  // El script de soporte se carga de forma asincrónica tras login/recarga.
+  // Esperar a que exista el módulo evita un acceso prematuro a .load().
+  cy.window().its('GestLokSupport',{timeout:20000}).should('have.property','load');
   cy.window().then(w=>{
     const state={phone:'5491144715168',calls:[]};
     w.__fakeSupport=state;
