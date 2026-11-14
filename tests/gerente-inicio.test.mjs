@@ -65,6 +65,7 @@ test('Munro: Staff es opción visible del menú lateral, sin duplicar Horarios y
  assert.match(sidebar,/puedeVerStaffMunro\(\) \? '' : `<a class="snav-link"/);
  assert.match(areas,/staffNavVisible,openStaffHorarios/);
  assert.match(runtime,/app\.js\?rev=munro-staff-pc-20261113/);
+ assert.match(runtime,/gestlok-owner-areas\.js\?rev=munro-staff-sidebar-20261113/);
 });
 test('El menú Staff exige autorización de servidor, empresa Mi Gusto y sucursal Munro',async()=>{
  const source=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
