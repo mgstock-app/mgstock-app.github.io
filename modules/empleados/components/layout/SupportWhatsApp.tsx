@@ -73,7 +73,7 @@ export function SupportWhatsApp() {
       const r=el.getBoundingClientRect();
       pointer={id:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top,moved:false};
       blockClick=false;
-      el.setPointerCapture?.(e.pointerId);
+      try{el.setPointerCapture?.(e.pointerId);}catch{}
     };
     const move=(e:PointerEvent)=>{
       if(!pointer||pointer.id!==e.pointerId)return;
