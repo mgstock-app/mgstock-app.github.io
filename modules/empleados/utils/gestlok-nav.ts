@@ -6,7 +6,7 @@ export type NavGestlok = { local: string | null; localName: string; dock: Array<
 
 export const CLAVE_NAV = "gestlok:nav";
 const CLAVE = /^[A-Za-z0-9_-]{1,80}$/;
-const DOCK = ["home", "business", "staff", "avisos", "pagos", "stock", "locales", "more"];
+const DOCK = ["home", "business", "staff", "avisos", "pagos", "conteo", "stock", "locales", "more"];
 const texto = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 export function navPorDefecto(): NavGestlok {
@@ -62,6 +62,8 @@ export function enlaceDock(home: string, nav: NavGestlok, clave: string): string
       return enlaceVista(home, nav, "cierre-online");
     case "stock":
       return enlaceVista(home, nav, "stock");
+    case "conteo":
+      return enlaceVista(home, nav, "conteo-munro");
     default:
       return null;
   }
@@ -70,6 +72,6 @@ export function enlaceDock(home: string, nav: NavGestlok, clave: string): string
 // Secciones del local para el menú lateral (PC) y la hoja «Más» (sin repetir las que ya están en la barra).
 export function seccionesLocal(nav: NavGestlok, sinLasDeLaBarra = false): NavItem[] {
   if (!sinLasDeLaBarra) return nav.side;
-  const enBarra = new Set(nav.dock.map(([k]) => ({ home: "inicio", pagos: "cierre-online", stock: "stock", avisos: "avisos" } as Record<string, string>)[k]).filter(Boolean));
+  const enBarra = new Set(nav.dock.map(([k]) => ({ home: "inicio", pagos: "cierre-online", conteo: "conteo-munro", stock: "stock", avisos: "avisos" } as Record<string, string>)[k]).filter(Boolean));
   return nav.side.filter((s) => !enBarra.has(s.go));
 }
