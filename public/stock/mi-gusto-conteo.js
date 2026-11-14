@@ -117,7 +117,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
    if(p.units_per_chapa){
     return '<td class="gcm-chapa">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
-   return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+v.qty+'"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
+   return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
   }).join('');
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
