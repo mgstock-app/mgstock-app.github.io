@@ -95,6 +95,11 @@ describe('GestLok · Soporte WhatsApp',()=>{
     });
     cy.get('#gl-soporte-whatsapp').should('have.attr','href').and('include','wa.me/5491144715168');
     cy.reload();
+    // El adapter de Supabase ficticio conserva la posición local pero no la
+    // sesión de usuario entre recargas. Simular el reingreso para la prueba.
+    cy.get('#au-in button[type="submit"]',{timeout:15000}).should('be.visible');
+    login('gerente.munro@example.com');
+    fakeSupport();
     cy.get('#gl-soporte-whatsapp',{timeout:15000}).should('be.visible').then($el=>{
       const saved=JSON.parse(localStorage.getItem('gestlok:support-bubble-position-v1')||'null');
       expect(saved).to.have.property('v',1);
