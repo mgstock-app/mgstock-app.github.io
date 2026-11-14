@@ -2,8 +2,9 @@
 // Las horas y los turnos se cuentan por separado para evitar liquidaciones ambiguas.
 export type Modalidad = "hora" | "turno";
 export type Estado = "activo" | "refuerzo" | "inactivo";
+export type DescansoDia = "" | "off" | "medio_off";
 export type CampoHora = "tm_e" | "tm_s" | "tt_e" | "tt_s";
-export type DiaHorarios = Partial<Record<CampoHora,string>> & { feriado?:boolean; vacaciones_dia?:boolean; feriados_habilitados?:boolean; vacaciones_habilitadas?:boolean; inactivo_desde?:string; off?:string; vacaciones?:string; observaciones?:string };
+export type DiaHorarios = Partial<Record<CampoHora,string>> & { feriado?:boolean; vacaciones_dia?:boolean; feriados_habilitados?:boolean; vacaciones_habilitadas?:boolean; inactivo_desde?:string; off?:string; vacaciones?:string; observaciones?:string; descanso?:DescansoDia };
 export type SemanaHorarios = Record<string,DiaHorarios>;
 export type Persona = {id:number; nombre:string; modalidad:Modalidad; estado:Estado; inactivo_desde?:string|null};
 export type Registro = {id:number; semana:string; datos:SemanaHorarios; nombre:string; modalidad:Modalidad; version:number};
@@ -67,6 +68,18 @@ export function evaluarDia(dia:DiaHorarios={},exigirCompleto=false){
    errores.push("Un día de vacaciones no puede tener turnos trabajados.");
    campoError.push("tm_e","tm_s","tt_e","tt_s");
  }
+ // El descanso diario marca disponibilidad, no reemplaza el OFF pago del
+ // resumen semanal. No inventa horas ni turnos, y nunca borra turnos existentes.
+ const descanso=dia.descanso||"";
+ const hayHorarios=(["tm_e","tm_s","tt_e","tt_s"] as CampoHora[]).some(c=>Boolean(dia[c]));
+ if(!["","off","medio_off"].includes(descanso))errores.push("Estado de descanso incorrecto.");
+ if(descanso==="off"&&hayHorarios)errores.push("OFF completo no puede tener horarios cargados.");
+ if(descanso==="medio_off"&&
+   (Boolean(dia.tm_e)||Boolean(dia.tm_s))&&
+   (Boolean(dia.tt_e)||Boolean(dia.tt_s)))
+   errores.push("Medio OFF admite una sola franja de trabajo.");
+ if(descanso&&dia.vacaciones_dia===true)
+   errores.push("OFF y Vacaciones no pueden marcarse el mismo día.");
  const feriado=dia.feriado===true;
  return {errores,campos:[...new Set(campoError)],horas:errores.length?0:horas,
    turnos:errores.length?0:turnos,feriado};
