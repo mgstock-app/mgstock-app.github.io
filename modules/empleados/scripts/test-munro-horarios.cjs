@@ -128,4 +128,33 @@ assert.match(ui,/Inactivo desde/);
 assert.match(ui,/mhs-luz-estado/);
 assert.match(ui,/vacacionesHabilitadas\(f\.datos,semana\)/);
 assert.match(ui,/feriadoHabilitado\(f\.datos,semana,feriados\)/);
+
+// Control visual y operativo OFF / Medio OFF: se guardan sin inventar horas.
+assert.equal(evaluarDia({descanso:"off"}).horas,0);
+assert.equal(evaluarDia({descanso:"off"}).turnos,0);
+assert.equal(evaluarDia({descanso:"off",tm_e:"09:00",tm_s:"13:00"}).errores.length,1,
+ "OFF no puede convivir con un turno cargado");
+assert.equal(evaluarDia({descanso:"medio_off",tm_e:"09:00",tm_s:"13:00"}).horas,240);
+assert.equal(evaluarDia({descanso:"medio_off",tm_e:"09:00",tm_s:"13:00"}).turnos,1);
+assert.equal(evaluarDia({descanso:"medio_off",tm_e:"09:00",tm_s:"13:00",tt_e:"18:00",tt_s:"22:00"}).errores.length,1,
+ "Medio OFF admite una sola franja");
+assert.ok(evaluarDia({descanso:"medio_off",vacaciones_dia:true}).errores.length,
+ "No acumular franco y vacaciones el mismo día");
+assert.equal(resumenPersona("hora",{"2026-11-09":{descanso:"off"},"2026-11-10":{descanso:"medio_off",tm_e:"09:00",tm_s:"13:00"}},
+ "2026-11-09",hasta).horas,240);
+assert.equal(resumenPersona("turno",{"2026-11-09":{descanso:"off"},"2026-11-10":{descanso:"medio_off",tm_e:"09:00",tm_s:"13:00"}},
+ "2026-11-09",hasta).turnos,1);
+const v4=fs.readFileSync("../../supabase/migrations/20261114031000_munro_horarios_off_medio_off_v4.sql","utf8");
+assert.match(v4,/horarios_puede_archivar\('munro'\)/);
+assert.match(v4,/v_campo='descanso'/);
+assert.match(v4,/medio_off/);
+assert.match(v4,/OFF completo no admite horarios/);
+assert.doesNotMatch(v4,/\b(drop table|truncate|delete from)\b/i);
+assert.match(ui,/mhs-total-nombre/);
+assert.match(ui,/mhs-horas-dia/);
+assert.match(ui,/mhs-descansos/);
+assert.match(ui,/ESTADOS\.map/);
+assert.match(ui,/<select aria-label=\{"Estado de "/);
+assert.doesNotMatch(ui,/\.map\(estado=><button/,"Los tres estados no deben mostrarse a la vez");
+
 console.log("munro-horarios: 3 por turno, 5 por hora, activos, feriados y archivo intacto: ok");

@@ -100,6 +100,26 @@ export function MunroWeeklySchedule(){
  const cambiarDia=(id:number,dia:string,campo:string,valor:string|boolean)=>{
    cambiar(id,f=>({...f,datos:{...f.datos,[dia]:{...(f.datos[dia]||{}),[campo]:valor}}}));
  };
+ const cambiarDescanso=(f:Borrador,dia:string,valor:"off"|"medio_off")=>{
+   const actual=f.datos[dia]||{};
+   const nuevo=actual.descanso===valor?"":valor;
+   const hayMañana=Boolean(actual.tm_e||actual.tm_s);
+   const hayTarde=Boolean(actual.tt_e||actual.tt_s);
+   // Nunca borrar horas existentes de manera implícita.
+   if(nuevo==="off"&&(hayMañana||hayTarde)){
+     setError("Borrá las entradas y salidas antes de marcar OFF completo.");
+     return;
+   }
+   if(nuevo==="medio_off"&&hayMañana&&hayTarde){
+     setError("Medio OFF permite una sola franja: quitá primero el turno que no se trabajó.");
+     return;
+   }
+   if(nuevo&&actual.vacaciones_dia){
+     setError("No podés combinar OFF o Medio OFF con Vacaciones en el mismo día.");
+     return;
+   }
+   cambiarDia(f.id,dia,"descanso",nuevo);
+ };
  const cambiarOpcion=(f:Borrador,tipo:"feriado"|"vacaciones",habilitar:boolean)=>{
    const indicador=tipo==="feriado"?"feriados_habilitados":"vacaciones_habilitadas";
    const marca=tipo==="feriado"?"feriado":"vacaciones_dia";
@@ -239,13 +259,18 @@ export function MunroWeeklySchedule(){
  const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
  const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
-   <div className="mhs-estado" role="group" aria-label={"Estado de "+cabecera(f)}>
-     {ESTADOS.map(estado=><button key={estado} type="button"
-       disabled={!editando||!puedeEditar} aria-pressed={f.estado===estado}
-       className={"mhs-estado-"+estado} onClick={()=>cambiarEstado(f,estado)}>
-       <span className="mhs-luz-estado" aria-hidden="true"/>
-       {estado==="activo"?"Activo":estado==="refuerzo"?"Refuerzo":"Inactivo"}
-     </button>)}
+   <div className={"mhs-estado mhs-estado-"+f.estado}>
+     <span className="mhs-luz-estado" aria-hidden="true"/>
+     {editando&&puedeEditar
+       ?<select aria-label={"Estado de "+cabecera(f)} value={f.estado}
+         onChange={e=>cambiarEstado(f,e.target.value as Estado)}>
+         {ESTADOS.map(estado=><option key={estado} value={estado}>
+           {estado==="activo"?"Activo":estado==="refuerzo"?"Refuerzo":"Inactivo"}
+         </option>)}
+       </select>
+       :<span className="mhs-estado-seleccionado">
+         {f.estado==="activo"?"Activo":f.estado==="refuerzo"?"Refuerzo":"Inactivo"}
+       </span>}
    </div>
    {f.estado==="inactivo"&&<label className="mhs-inactivo-desde">
      <span>Inactivo desde</span>
@@ -268,13 +293,31 @@ export function MunroWeeklySchedule(){
        onChange={e=>cambiarOpcion(f,"vacaciones",e.target.checked)}/> Vacaciones</label>
    </div>
  </div>;
+ const resumenCorto=(f:Borrador,r:ReturnType<typeof resumenPersona>)=>
+   r.errores?"Total semanal: revisar":f.modalidad==="hora"
+     ?"Total semanal: "+formatoHoras(r.horas+r.horasFeriado)+" h"
+     :"Total semanal: "+formatoTurnos(r.turnos);
  const inputsDia=(f:Borrador,dia:string)=> {
    const d=datosDia(f,dia),verificar=evaluarDia(d,enRevision);
+   const conMañana=Boolean(d.tm_e||d.tm_s),conTarde=Boolean(d.tt_e||d.tt_s);
+   const conHorario=conMañana||conTarde;
    return <div className={"mhs-cuatro"+(verificar.errores.length?" mhs-error":"")}>
+     {(editando&&puedeEditar||Boolean(d.descanso))&&
+       <div className="mhs-descansos" role="group" aria-label={"Descanso · "+cabecera(f)+" · "+fechaCorta(dia)}>
+         {(["off","medio_off"] as const).map(valor=>
+           (editando&&puedeEditar||d.descanso===valor)&&<button key={valor} type="button"
+             className={"mhs-descanso-boton"+(d.descanso===valor?" mhs-descanso-elegido":"")}
+             aria-pressed={d.descanso===valor} disabled={!editando||!puedeEditar}
+             onClick={()=>cambiarDescanso(f,dia,valor)}>
+             {valor==="off"?"OFF":"Medio OFF"}
+           </button>)}
+       </div>}
      {CAMPOS.map(([campo,label])=><label key={campo}>
        <span>{label}</span>
        <input aria-label={label+" · "+cabecera(f)+" · "+fechaCorta(dia)} type="time" step={60}
-         disabled={!editando||!puedeEditar}
+         disabled={!editando||!puedeEditar||d.descanso==="off"||
+           (d.descanso==="medio_off"&&
+             (campo.startsWith("tm_")?conTarde:conMañana))}
          aria-invalid={verificar.campos.includes(campo)}
          value={d[campo]||""} onChange={e=>cambiarDia(f.id,dia,campo,e.target.value)}/>
      </label>)}
@@ -290,6 +333,13 @@ export function MunroWeeklySchedule(){
          checked={d.vacaciones_dia===true}
          disabled={!editando||!puedeEditar}
          onChange={e=>cambiarDia(f.id,dia,"vacaciones_dia",e.target.checked)}/>Vacaciones</label>}
+     {f.modalidad==="hora"&&
+       <div className="mhs-horas-dia" aria-label={"Horas del día · "+cabecera(f)+" · "+fechaCorta(dia)}>
+         {verificar.errores.length?"Horas del día: revisar":verificar.horas>0
+           ?"Horas del día: "+formatoHoras(verificar.horas)+" h"
+           :d.descanso==="off"?"Horas del día: 0 h · OFF"
+           :conHorario?"Horas del día: pendiente":"Horas del día: —"}
+       </div>}
      {verificar.errores.length>0&&<small className="mhs-revisar">{verificar.errores.join(" ")}</small>}
    </div>;
  };
@@ -324,14 +374,16 @@ export function MunroWeeklySchedule(){
      </p>}
      {pestana==="semana"&&<>
        <p className="mhs-ayuda">Tres colaboradores por turno y cinco por hora. Cargá los nombres y horarios cuando quieras.
-         Cada entrada o cambio se guarda automáticamente, aunque todavía falte completar una salida durante la semana. Los feriados y vacaciones se marcan por colaborador.</p>
+         Cada entrada o cambio se guarda automáticamente. OFF indica franco completo sin horarios;
+         Medio OFF permite trabajar solo una franja. Los totales muestran únicamente horas y turnos realmente cargados.
+         El ajuste de OFF remunerado se mantiene separado en Resumen semanal.</p>
        <div className="mhs-movil-dias" role="group" aria-label="Día a mostrar">
          {dias.map((dia,i)=><button key={dia} type="button" aria-pressed={diaSeleccionado===i}
             onClick={()=>setDiaSeleccionado(i)}><b>{DIAS[i]}</b><span>{fechaCorta(dia)}</span></button>)}
        </div>
        <div className="mhs-tabla-wrap">
          <table className="mhs-tabla">
-           <thead><tr><th scope="col">Colaborador</th>{dias.map((dia,i)=><th key={dia} scope="col">{DIAS[i]}<small>{fechaCorta(dia)}</small></th>)}<th scope="col">Total semanal</th></tr></thead>
+           <thead><tr><th scope="col">Colaborador</th>{dias.map((dia,i)=><th key={dia} scope="col">{DIAS[i]}<small>{fechaCorta(dia)}</small></th>)}</tr></thead>
            <tbody>{filas.map(f=>{
              const r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
              return <tr key={f.id} className={f.estado==="inactivo"?"mhs-inactivo":""}>
@@ -340,13 +392,11 @@ export function MunroWeeklySchedule(){
                  {editando&&puedeEditar?<input type="text" maxLength={80} placeholder={"Nombre · "+cabecera(f)}
                    value={f.nombre} onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}
                    aria-label={"Nombre del colaborador "+f.id}/>:<strong>{cabecera(f)}</strong>}
+                 <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
+                 {r.pendientes>0&&<small className="mhs-pendientes">{r.pendientes} horarios pendientes</small>}
                  {estadoBotones(f)}
                </div></th>
                {dias.map(dia=><td key={dia}>{inputsDia(f,dia)}</td>)}
-               <td className="mhs-total">
-                 <b>{r.errores? "Revisar":f.modalidad==="hora"?formatoHoras(r.horas+r.horasFeriado)+" h":formatoTurnos(r.turnos)}</b>
-                 {r.pendientes>0&&<small>{r.pendientes} pendientes</small>}
-               </td>
              </tr>;
            })}</tbody>
          </table>
@@ -358,7 +408,7 @@ export function MunroWeeklySchedule(){
              {editando&&puedeEditar?<input value={f.nombre} placeholder={"Nombre · Colaborador "+f.id}
                onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}/>:
                <h3>{cabecera(f)}</h3>}</div>
-             <strong>{r.errores?"Revisar":f.modalidad==="hora"?formatoHoras(r.horas+r.horasFeriado)+" h":formatoTurnos(r.turnos)}</strong>
+             <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
            </header>
            {estadoBotones(f)}
            {inputsDia(f,dia)}
