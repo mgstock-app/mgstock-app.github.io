@@ -140,3 +140,5 @@
  .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:nth-child(2){position:sticky;left:0!important;z-index:3}
  .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th{position:sticky;left:0!important;z-index:2}
 }
+
+@media(max-width:700px){.gcm-section .gcm-sheet-scroll thead th:last-child{min-width:72px}}
