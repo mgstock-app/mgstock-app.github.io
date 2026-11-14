@@ -1,0 +1,25 @@
+{
+  "comment": "Solo normaliza cinco inserciones visuales revisadas de Staff en el menú de Munro. Después sigue la huella SHA-256 original; no se cambian permisos ni hashes.",
+  "hooks": [
+    {
+      "actual": "const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();\nconst puedeVerStaffMunro = () => S.me?.tenant_id === MI_GUSTO_TENANT && S.local === 'munro' &&\n  window.GestLokOwnerAreas?.staffNavVisible?.() === true;",
+      "original": "const puedeVerMotos = () => !!window.GestLokMunroMotos?.permitido();"
+    },
+    {
+      "actual": "  const pagosDiarios = puedeVerPagosOnline();\n  const staffMunro = puedeVerStaffMunro();",
+      "original": "  const pagosDiarios = puedeVerPagosOnline();"
+    },
+    {
+      "actual": "${staffMunro ? `<button type=\"button\" data-act=\"staff-horarios\" aria-label=\"Staff · abrir Horarios de Munro\">${ic('clock')}<span class=\"nl\">Staff</span></button>` : ''}",
+      "original": ""
+    },
+    {
+      "actual": "    case 'staff-horarios': window.GestLokOwnerAreas?.openStaffHorarios?.(); break;\n",
+      "original": ""
+    },
+    {
+      "actual": "    (puedeVerMotos() ? `<button data-go=\"motos\">${ic('moto')}<span class=\"nl\">Motos Agencia</span></button>${puedeVerStaffMunro() ? '' : `<a class=\"snav-link\" href=\"${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}\">${ic('clock')}<span class=\"nl\">Horarios</span></a>`}` : '') +",
+      "original": "    (puedeVerMotos() ? `<button data-go=\"motos\">${ic('moto')}<span class=\"nl\">Motos Agencia</span></button><a class=\"snav-link\" href=\"${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}\">${ic('clock')}<span class=\"nl\">Horarios</span></a>` : '') +"
+    }
+  ]
+}
