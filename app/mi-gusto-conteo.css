@@ -132,3 +132,11 @@
  .gcm-section .gcm-sheet-scroll thead th:not(:first-child){min-width:158px}
  .gcm-sheet-tip{font-size:11px}
 }
+
+
+/* En pantallas angostas se conserva Producto, pero no se congelan dos columnas. */
+@media(max-width:700px){
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:first-child{position:static!important}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th:nth-child(2){position:sticky;left:0!important;z-index:3}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th{position:sticky;left:0!important;z-index:2}
+}
