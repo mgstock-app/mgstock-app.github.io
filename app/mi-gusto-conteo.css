@@ -243,3 +243,6 @@
   .gcm-section-toolbar{gap:7px}
   .gcm-section-toolbar .gcm-hide-section{min-height:36px;padding:6px 10px;font-size:11px}
 }
+
+/* Selección del Conteo fijada por la administradora del local. */
+.gcm-sections-locked{margin:10px 0 13px;padding:10px 12px;border:1px solid #dce5ef;border-radius:8px;background:#f6f9fc;color:#425e77;font-size:12px;font-weight:650}
