@@ -75,6 +75,32 @@ describe('GestLok · Soporte WhatsApp',()=>{
       expect(state.calls).to.have.length(0);
     });
   });
+  it('La burbuja de soporte se puede mover en celular sin alterar el enlace',()=>{
+    cy.viewport(390,844);
+    launch();login('gerente.munro@example.com');fakeSupport();
+    cy.window().then(w=>w.localStorage.removeItem('gestlok:support-bubble-position-v1'));
+    cy.get('#gl-soporte-whatsapp').should('be.visible')
+      .and('have.css','touch-action','none')
+      .then($el=>{
+        const box=$el[0].getBoundingClientRect();
+        cy.wrap($el).trigger('pointerdown',{pointerId:4,pointerType:'touch',button:0,clientX:box.left+22,clientY:box.top+22})
+          .trigger('pointermove',{pointerId:4,pointerType:'touch',clientX:box.left-110,clientY:box.top-100})
+          .trigger('pointerup',{pointerId:4,pointerType:'touch',clientX:box.left-110,clientY:box.top-100});
+      });
+    cy.window().then(w=>{
+      const saved=JSON.parse(w.localStorage.getItem('gestlok:support-bubble-position-v1')||'null');
+      expect(saved?.v).to.eq(1);
+      expect(saved.x).to.be.within(0,1);
+      expect(saved.y).to.be.within(0,1);
+    });
+    cy.get('#gl-soporte-whatsapp').should('have.attr','href').and('include','wa.me/5491144715168');
+    cy.reload();
+    cy.get('#gl-soporte-whatsapp',{timeout:15000}).should('be.visible').then($el=>{
+      const saved=JSON.parse(localStorage.getItem('gestlok:support-bubble-position-v1')||'null');
+      expect(saved).to.have.property('v',1);
+      expect($el[0].style.left).to.match(/px$/);
+    });
+  });
   it('Aparece también para colaborador de Solo ver',()=>{
     launch();login('lectura@example.com');
     fakeSupport();
