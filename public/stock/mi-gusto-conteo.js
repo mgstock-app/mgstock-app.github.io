@@ -108,7 +108,7 @@ function decompColumn(p,canWrite){
  }
  return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
 }
-function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
+function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
  const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:first==='manana_entrada'?labelDay(plusDays(dateBase,i)).slice(0,5):''}));
  const rows=items.map(p=>{
@@ -130,7 +130,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
- (canWrite?'<button type="button" class="gcm-hide-section" data-gcm-hide-section="'+esc(name)+'" aria-label="Quitar sección '+esc(name)+' del conteo" title="Ocultar sección del conteo">Quitar</button>':'')+
+ (canManageCategories?'<button type="button" class="gcm-hide-section" data-gcm-hide-section="'+esc(name)+'" aria-label="Quitar sección '+esc(name)+' del conteo" title="Ocultar sección del conteo">Quitar</button>':'')+
  '</span></summary>'+
  '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  (showDecomiso?'<th scope="col" class="gcm-decomp-head">Decomiso</th>':'')+
@@ -178,9 +178,12 @@ function view(){
  if(!historyRecord && day!==arDay() && !busy){day=arDay();snapshot=null;++generation;}
  const rec=entry(),canWrite=editable()&&!closed()&&!!snapshot,canCatalog=admin()&&!historyRecord&&!busy;
  const showDecomiso=!!rec.decomiso_visible;
+ const sectionsLocked=!!snapshot?.settings?.locked;
+ const canManageCategories=canWrite&&(!sectionsLocked||admin());
  const list=(snapshot?.products||[]).filter(p=>p.active||!!rec.data?.[p.id]||!!rec.decomiso?.[p.id]);
  const categories=[...new Set(list.map(p=>p.section))];
- const hidden=new Set(Array.isArray(rec.hidden_sections)?rec.hidden_sections:[]);
+ const hiddenSource=sectionsLocked&&!historyRecord?snapshot?.settings?.hidden_sections:rec.hidden_sections;
+ const hidden=new Set(Array.isArray(hiddenSource)?hiddenSource:[]);
  const visibleCategories=categories.filter(name=>!hidden.has(name));
  const showWaste=!!rec.waste_visible;
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
@@ -198,13 +201,14 @@ function view(){
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
 '<div class="gcm-sheet-tip">Cada toque agrega una chapa (5 marcas completan un cuadrado). Escribí las unidades sueltas junto a las marcas; el total se calcula a la derecha.</div>'+
- '<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
+ (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
   '<label><input type="checkbox" data-gcm-section-visible="'+esc(name)+'"'+(!hidden.has(name)?' checked':'')+
   (!canWrite?' disabled':'')+'><span>'+esc(name)+'</span></label>'
- ).join('')+'</div><p>Ocultar una sección no borra productos ni cantidades. Podés volver a mostrarla cuando quieras.</p></details>'+
+ ).join('')+'</div><p>Ocultar una sección no borra productos ni cantidades. Podés volver a mostrarla cuando quieras.</p></details>':
+ sectionsLocked?'<p class="gcm-sections-locked">Categorías fijas de Munro. Solo la administradora puede cambiarlas.</p>':'')+
  (visibleCategories.length?'':'<p class="gcm-empty-sections">Todas las secciones están ocultas. Entrá a «Personalizar secciones» para mostrarlas.</p>')+
- visibleCategories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso)).join('')+
+ visibleCategories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso,canManageCategories)).join('')+
  (Object.values(rec.decomiso||{}).some(v=>Number(v.chapas)||Number(v.sueltas)||Number(v.qty))?'<p class="gcm-decomp-note">Los totales incluyen el decomiso registrado, aunque ocultes la columna.</p>':'')+
  '<div class="gcm-extra-controls"><label class="gcm-waste-toggle"><input id="gcm-waste-toggle" type="checkbox"'+(showWaste?' checked':'')+
  (!canWrite?' disabled':'')+'><span>Mostrar Desperdicios</span></label>'+
@@ -268,7 +272,7 @@ document.addEventListener('click',async e=>{
   // El botón está dentro del summary: no debe abrir/cerrar la categoría.
   e.preventDefault();
   e.stopPropagation();
-  if(!editable()||closed()||busy||!snapshot)return;
+  if(!editable()||closed()||busy||!snapshot||snapshot?.settings?.locked&&!admin())return;
   const section=el.dataset.gcmHideSection;
   if(!section||!snapshot.products.some(p=>p.active&&p.section===section))return;
   busy=true;
@@ -279,6 +283,12 @@ document.addEventListener('click',async e=>{
    if(rec){
     const hidden=Array.isArray(rec.hidden_sections)?rec.hidden_sections:[];
     rec.hidden_sections=[...new Set([...hidden,section])];
+   }
+   if(snapshot?.settings?.locked){
+    const original=Array.isArray(snapshot.settings.hidden_sections)?snapshot.settings.hidden_sections:[];
+    const next=[...new Set([...original,section])];
+    snapshot.settings.hidden_sections=next;
+    snapshot.counts.filter(x=>x.status==='borrador').forEach(x=>{x.hidden_sections=next;});
    }
    opened.delete(section);
    error='';
@@ -384,16 +394,19 @@ document.addEventListener('change',async e=>{
  if(input.hasAttribute('data-gcm-section-visible')||input.id==='gcm-waste-toggle'){
   const section=input.id==='gcm-waste-toggle'?'_waste':input.dataset.gcmSectionVisible;
   if(!editable()||closed()||!snapshot)return;
+  if(section!=='_waste'&&snapshot?.settings?.locked&&!admin()){api.toast?.('Solo la administradora puede cambiar las categorías fijas.');return;}
   if(busy){
    const active=entry();
+   const hiddenNow=snapshot?.settings?.locked?snapshot.settings.hidden_sections:active.hidden_sections;
    input.checked=section==='_waste'?!!active.waste_visible:
-     !Array.isArray(active.hidden_sections)||!active.hidden_sections.includes(section);
+     !Array.isArray(hiddenNow)||!hiddenNow.includes(section);
    api.toast?.('Se está guardando el conteo. Reintentá cuando termine.');
    return;
   }
   if(!section||section!=='_waste'&&!snapshot.products.some(p=>p.section===section&&p.active))return;
-  const visible=input.checked,oldRec=entry(),old=section==='_waste'?!!oldRec.waste_visible:
-    !Array.isArray(oldRec.hidden_sections)||!oldRec.hidden_sections.includes(section);
+  const visible=input.checked,oldRec=entry();
+  const prevHidden=snapshot?.settings?.locked?snapshot.settings.hidden_sections:oldRec.hidden_sections;
+  const old=section==='_waste'?!!oldRec.waste_visible:!Array.isArray(prevHidden)||!prevHidden.includes(section);
   const d=day,s=shift;busy=true;
   try{
    await rpc('gestlok_munro_conteo_set_section',{p_day:d,p_shift:s,p_section:section,p_visible:visible});
@@ -402,6 +415,12 @@ document.addEventListener('change',async e=>{
     else {
      const current=Array.isArray(rec.hidden_sections)?rec.hidden_sections:[];
      rec.hidden_sections=visible?current.filter(n=>n!==section):[...new Set([...current,section])];
+     if(snapshot?.settings?.locked){
+      const all=Array.isArray(snapshot.settings.hidden_sections)?snapshot.settings.hidden_sections:[];
+      const next=visible?all.filter(n=>n!==section):[...new Set([...all,section])];
+      snapshot.settings.hidden_sections=next;
+      snapshot.counts.filter(x=>x.status==='borrador').forEach(x=>{x.hidden_sections=next;});
+     }
     }
    }
    error='';
