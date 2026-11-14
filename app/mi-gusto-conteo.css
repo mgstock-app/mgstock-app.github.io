@@ -1,0 +1,64 @@
+/* Conteo Mi Gusto Munro · diseño de planilla legible en móvil y PC. */
+.gcm-page{font:inherit;color:#152b42;max-width:1440px;margin:0 auto 28px;padding:clamp(12px,2vw,24px);background:#fff}
+.gcm-page *{box-sizing:border-box}
+.gcm-page button,.gcm-page input{font:inherit}
+.gcm-page button{cursor:pointer}
+.gcm-header{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.gcm-header h2{font-size:25px;margin:2px 0;font-weight:800;color:#0e2945}
+.gcm-header p{font-size:13px;margin:3px 0;color:#607287}
+.gcm-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;color:#345981}
+.gcm-header label{font-size:12px;font-weight:750;display:flex;flex-direction:column;gap:5px}
+.gcm-header input{min-height:39px;border:1px solid #b9c7d7;border-radius:8px;padding:6px;background:#fff;color:#112e4e}
+.gcm-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:12px 0}
+.gcm-tabs button{border:1px solid #cbd5e1;background:#f5f8fc;color:#163756;padding:11px 6px;border-radius:9px;font-size:13px;font-weight:750}
+.gcm-tabs .is-active{background:#12345a;border-color:#12345a;color:white}
+.gcm-help{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;background:#edf3fa;color:#214768;border-radius:8px;padding:11px;font-size:12px;margin:8px 0 14px}
+.gcm-help span{font-weight:800}
+.gcm-section{margin:0 0 11px;border:1px solid #d6dee8;border-radius:9px;background:white;overflow:hidden}
+.gcm-section summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#12345a;color:white;font-size:13px;padding:12px 14px}
+.gcm-section summary strong{font-weight:800}
+.gcm-section summary span{color:#e8f0f9;font-size:11px}
+.gcm-scroller{overflow-x:auto;overscroll-behavior-x:contain}
+.gcm-section table{width:100%;border-collapse:separate;border-spacing:0;text-align:center;font-size:12px}
+.gcm-section th,.gcm-section td{border-right:1px solid #dce3ec;border-bottom:1px solid #dce3ec;padding:6px 7px}
+.gcm-section thead th{background:#e9eff6;font-weight:800;color:#183752;min-width:111px}
+.gcm-section thead th:first-child{min-width:116px}
+.gcm-section thead th:last-child{min-width:75px}
+.gcm-section tbody th{font-weight:750;text-align:left;background:#fbfcff;min-width:115px}
+.gcm-section tbody tr:last-child td,.gcm-section tbody tr:last-child th{border-bottom:0}
+.gcm-section tbody tr:nth-child(even) td{background:#fbfdff}
+.gcm-chapa{min-width:146px}
+.gcm-chapa-box{display:flex;justify-content:center;gap:5px;align-items:center}
+.gcm-chapa-box button:first-child{border:1px solid #b4c3d5;border-radius:7px;background:white;color:#12345a;min-height:44px;min-width:68px;padding:4px;max-width:160px}
+.gcm-chapa-box button:first-child:disabled{opacity:.8}
+.gcm-chapa-box button small{font-size:10px;color:#406282}
+.gcm-less{font-size:17px;font-weight:800;border:1px solid #d2dce8;border-radius:7px;background:#f4f7fa;width:29px;min-height:40px}
+.gcm-marks{display:flex;gap:1px;flex-wrap:wrap;max-width:152px;justify-content:center}
+.gcm-marks svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linejoin:round;stroke-linecap:round}
+.gcm-small{font-size:10px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:3px}
+.gcm-small input{max-width:57px;width:57px;min-height:29px;border-radius:5px;border:1px solid #cbd5e1;padding:2px 4px;text-align:center}
+.gcm-qty{width:74px;max-width:100%;min-height:38px;border:1px solid #c6d3e2;border-radius:6px;text-align:center}
+.gcm-cell-total{font-size:11px;font-weight:800;color:#13385a;display:block;margin-top:3px}
+.gcm-total{font-size:13px;font-weight:900;color:#133c60;background:#eaf1f9!important}
+.gcm-admin-actions{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.gcm-admin-actions button{font-size:9px;font-weight:700;color:#285b88;background:white;border:1px solid #d5dfeb;padding:3px 5px;border-radius:5px}
+.gcm-bottom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+.gcm-extras{border:1px solid #d6dee8;border-radius:9px;overflow:hidden}
+.gcm-extras h3{margin:0;background:#12345a;color:white;font-weight:800;font-size:13px;text-align:center;padding:10px}
+.gcm-extras table{border-collapse:collapse;width:100%;font-size:12px}
+.gcm-extras td,.gcm-extras th{border:1px solid #e2e8f0;padding:5px}
+.gcm-extras th{background:#eef3f8}
+.gcm-extras input{width:100%;border:1px solid #d5dfeb;border-radius:4px;min-height:34px;padding:5px}
+.gcm-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:15px;flex-wrap:wrap}
+.gcm-actions button,.gcm-history-alert button{border:1px solid #bdccdc;border-radius:8px;background:white;color:#12345a;padding:11px 15px;font-weight:750}
+.gcm-actions button:last-of-type{background:#12345a;color:white;border-color:#12345a}
+.gcm-actions button:disabled{opacity:.55}
+.gcm-history{margin:20px 0 0;border-top:1px solid #dce4ec;padding-top:12px}
+.gcm-history h3{font-size:18px;margin:0 0 4px}
+.gcm-history p{margin:0 0 12px;color:#62768c;font-size:12px}
+.gcm-history-list{display:flex;flex-wrap:wrap;gap:7px}
+.gcm-history-list button{border:1px solid #c7d4e3;border-radius:7px;background:#f4f8fc;color:#153756;padding:8px;font-size:12px}
+.gcm-history-alert{background:#fff4d5;border:1px solid #e9d39d;padding:10px;margin-bottom:8px;border-radius:7px;display:flex;align-items:center;justify-content:space-between}
+.gcm-loading,.gcm-error{padding:12px;border:1px solid #bcd0e4;border-radius:8px;background:#f5f9fd;font-size:12px}
+.gcm-error{background:#fff2f2;color:#8a2727}
+@media(max-width:700px){.gcm-page{padding:9px 7px 28px}.gcm-header h2{font-size:23px}.gcm-tabs button{font-size:11px;padding:12px 3px}.gcm-section thead th{min-width:105px}.gcm-section th:first-child{position:sticky;left:0;z-index:2;box-shadow:2px 0 3px #dde6ef}.gcm-section thead th:first-child{z-index:3}.gcm-bottom{grid-template-columns:1fr}}
