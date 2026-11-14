@@ -142,3 +142,46 @@
 }
 
 @media(max-width:700px){.gcm-section .gcm-sheet-scroll thead th:last-child{min-width:72px}}
+
+
+/* Columna de producto: códigos en una línea, misma alineación y altura para todas las filas.
+   Corrige el espaciado excesivo visto en la planilla de entrada de turno. */
+.gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+  width:104px;min-width:104px;max-width:104px;
+  text-align:left;padding:9px 12px;font-size:12px;letter-spacing:.01em;
+  background:#e9eff6;
+}
+.gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+  box-sizing:border-box;width:104px;min-width:104px;max-width:104px;
+  height:48px;padding:7px 12px;text-align:left;vertical-align:middle;
+  color:#112e4c;background:#f9fbfd;font-size:13px;font-weight:800;
+  line-height:1.25;white-space:nowrap;letter-spacing:.01em;
+  font-variant-numeric:tabular-nums;
+}
+.gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell .gcm-product-name{
+  display:inline-block;max-width:100%;white-space:nowrap;text-align:left;
+}
+.gcm-section .gcm-sheet-scroll tbody td{
+  height:48px;vertical-align:middle;
+}
+.gcm-product-actions{vertical-align:middle;margin-left:4px}
+.gcm-product-actions .gcm-admin-actions{
+  position:absolute;top:100%;left:0;z-index:20;
+  min-width:144px;padding:8px;background:#fff;
+  border:1px solid #d5dfeb;border-radius:8px;
+  box-shadow:0 8px 18px #152b4224;
+}
+.gcm-product-actions .gcm-admin-actions button{width:100%;text-align:left;white-space:nowrap}
+.gcm-section .gcm-sheet-scroll tbody tr:nth-child(even) th.gcm-product-cell{background:#f3f7fb}
+@media(max-width:700px){
+ .gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+   width:90px;min-width:90px;max-width:90px;padding-left:9px;padding-right:5px
+ }
+ .gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+   width:90px;min-width:90px;max-width:90px;padding:6px 9px;font-size:12px;
+   position:sticky;left:0;z-index:2;
+ }
+ .gcm-section .gcm-sheet-scroll thead th.gcm-product-head{position:sticky;left:0;z-index:3}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll tbody th.gcm-product-cell{left:0!important}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th.gcm-product-head{left:0!important}
+}
