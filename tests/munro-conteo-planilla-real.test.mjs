@@ -42,3 +42,14 @@ test('las cinco marcas forman un cuadrado con diagonal, no una sola chapa',()=>{
  assert.equal((mod._test.marks(5).match(/<path /g)||[]).length,5);
  assert.match(mod._test.marks(5),/M5 30L29 4/);
 });
+
+
+test('códigos de producto en una sola columna alineada a la izquierda',async()=>{
+ const {mod}=makeApp();mod.view();await new Promise(r=>setImmediate(r));const html=mod.view();
+ assert.match(html,/<th scope="col" class="gcm-product-head">Producto<\/th>/);
+ assert.match(html,/<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">MT<\/span>/);
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ assert.match(css,/th\.gcm-product-cell/);
+ assert.match(css,/text-align:left/);
+ assert.match(css,/height:48px/);
+});
