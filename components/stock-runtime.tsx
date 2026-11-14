@@ -23,7 +23,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-commerce.js",
     "/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=molino-brand-20261109",
+    "/stock/app.js?rev=munro-staff-pc-20261113",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
@@ -112,7 +112,7 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=molino-brand-20261109");
+      await load("/stock/app.js?rev=munro-staff-pc-20261113");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=menu-empresa-20261108");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-empresa-20261108");
