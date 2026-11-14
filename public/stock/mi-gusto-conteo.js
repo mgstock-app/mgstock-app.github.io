@@ -78,13 +78,33 @@ function saveDecomiso(p,newCell){
   p_day:d,p_shift:s,p_product:p.id,p_chapas:newCell.chapas,p_sueltas:newCell.sueltas,p_qty:newCell.qty
  }));
 }
+
+/* Las chapas y las sueltas se cargan juntas, tal como se anotan en papel (|| 16). */
+function chapaCompacta(p,v,canWrite,isDecomiso,index){
+ const pid=esc(p.id),where=isDecomiso?'de decomiso':'del vencimiento '+index;
+ const attrs=isDecomiso?'':' data-idx="'+index+'"';
+ const plus=isDecomiso?'data-gcm-decomp-plus':'data-gcm-plus';
+ const minus=isDecomiso?'data-gcm-decomp-minus':'data-gcm-minus';
+ const suelta=isDecomiso?'data-gcm-decomp-suelta':'data-gcm-suelta';
+ const disabled=canWrite?'':' disabled';
+ const unitValue=v.sueltas>0?v.sueltas:'';
+ const label=esc(p.name+' '+where);
+ return '<div class="gcm-inline-count">'+
+  '<button type="button" class="gcm-mark-button" '+plus+'="'+pid+'"'+attrs+disabled+
+    ' aria-label="Sumar chapa '+label+'" title="'+v.chapas+' chapas · tocar para sumar">'+marks(v.chapas)+'</button>'+
+  '<button type="button" class="gcm-mark-undo" '+minus+'="'+pid+'"'+attrs+disabled+
+    ' aria-label="Quitar chapa '+label+'" title="Quitar una chapa">−</button>'+
+  '<label class="gcm-inline-units"><span aria-hidden="true">+</span>'+
+   '<input type="number" min="0" max="100000" inputmode="numeric" '+suelta+'="'+pid+'"'+attrs+
+    ' placeholder="u." value="'+unitValue+'"'+disabled+
+    ' aria-label="Unidades sueltas '+label+'"></label>'+
+  '</div>';
+}
+
 function decompColumn(p,canWrite){
  const v=getDecomisoCell(p), disabled=canWrite?'':' disabled';
  if(p.units_per_chapa>0){
-  return '<td class="gcm-chapa gcm-decomp-cell"><div class="gcm-chapa-box"><button type="button" data-gcm-decomp-plus="'+esc(p.id)+'"'+disabled+' aria-label="Sumar chapa de decomiso de '+esc(p.name)+'">'+marks(v.chapas)+'</button>'+
-  '<button type="button" class="gcm-less" data-gcm-decomp-minus="'+esc(p.id)+'"'+disabled+' aria-label="Quitar chapa de decomiso">−</button></div>'+
-  '<label class="gcm-small">Sueltas <input type="number" min="0" max="100000" inputmode="numeric" data-gcm-decomp-suelta="'+esc(p.id)+'" value="'+v.sueltas+'"'+disabled+'></label>'+
-  '<span class="gcm-cell-total">'+amount(p,v)+' u.</span></td>';
+  return '<td class="gcm-chapa gcm-decomp-cell">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
  return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+v.qty+'"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
 }
@@ -95,10 +115,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
   const cells=[1,2,3,4].map(i=>{
    const v=getCell(p,i),disabled=!canWrite?' disabled':'',value=amount(p,v);
    if(p.units_per_chapa){
-    return '<td class="gcm-chapa"><div class="gcm-chapa-box"><button type="button" data-gcm-plus="'+esc(p.id)+'" data-idx="'+i+'"'+disabled+' aria-label="Sumar chapa '+esc(p.name)+' vencimiento '+i+'">'+marks(v.chapas)+'</button>'+
-    '<button class="gcm-less" type="button" data-gcm-minus="'+esc(p.id)+'" data-idx="'+i+'"'+disabled+' aria-label="Quitar chapa">−</button></div>'+
-    '<label class="gcm-small">Sueltas <input type="number" min="0" max="100000" inputmode="numeric" data-gcm-suelta="'+esc(p.id)+'" data-idx="'+i+'" value="'+v.sueltas+'"'+disabled+'></label>'+
-    '<span class="gcm-cell-total">'+value+' u.</span></td>';
+    return '<td class="gcm-chapa">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
    return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+v.qty+'"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
   }).join('');
@@ -106,12 +123,13 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
   return '<tr>'+(showDecomiso?decompColumn(p,canWrite):'')+
    '<th scope="row"><span>'+esc(p.name)+'</span>'+
-   (canCatalog?'<span class="gcm-admin-actions"><button type="button" data-gcm-rename="'+esc(p.id)+'" aria-label="Cambiar nombre de '+esc(p.name)+'">Editar</button>'+
-   '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span>':'')+
+   (canCatalog?'<details class="gcm-product-actions"><summary aria-label="Opciones del producto '+esc(p.name)+'">⋯</summary><span class="gcm-admin-actions">'+
+   '<button type="button" data-gcm-rename="'+esc(p.id)+'" aria-label="Cambiar nombre de '+esc(p.name)+'">Renombrar</button>'+
+   '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span></details>':'')+
    '</th>'+cells+'<td class="gcm-total">'+sum+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong><span>'+items.length+' productos</span></summary>'+
- '<div class="gcm-scroller" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
+ '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  (showDecomiso?'<th scope="col" class="gcm-decomp-head">Decomiso</th>':'')+
  '<th scope="col">Producto</th>'+
  dates.map(s=>'<th scope="col">'+esc(s)+'</th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
@@ -147,6 +165,7 @@ function view(){
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
+'<div class="gcm-sheet-tip">Cada toque agrega una chapa (5 marcas completan un cuadrado). Escribí las unidades sueltas junto a las marcas; el total se calcula a la derecha.</div>'+
  categories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso)).join('')+
  (Object.values(rec.decomiso||{}).some(v=>Number(v.chapas)||Number(v.sueltas)||Number(v.qty))?'<p class="gcm-decomp-note">Los totales incluyen el decomiso registrado, aunque ocultes la columna.</p>':'')+
  '<div class="gcm-bottom">'+extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+extraTable('waste','DESPERDICIO','Producto','Cantidad',rec,canWrite)+'</div>'+
