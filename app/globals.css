@@ -2412,3 +2412,37 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 @media(min-width:900px){
  html:has(#gl-soporte-whatsapp) #app .wrap{padding-bottom:max(36px,calc(130px + env(safe-area-inset-bottom,0px)))}
 }
+
+
+/* Soporte global · burbuja desplazable para celular, tablet y computadora.
+   Conserva el ícono WhatsApp; el texto sigue disponible a lectores de pantalla. */
+.gl-soporte-float{
+  display:flex;align-items:center;justify-content:center;gap:0;
+  width:56px;min-width:56px;height:56px;min-height:56px;
+  padding:0;border-radius:50%;border:1px solid #b6ddc9;
+  background:#fff;color:#155b45!important;box-shadow:0 5px 20px #123a3029;
+  touch-action:none;user-select:none;-webkit-user-select:none;
+  cursor:grab;transition:box-shadow .15s ease;z-index:65;
+}
+.gl-soporte-float:hover{
+  transform:none;box-shadow:0 7px 24px #123a3036;
+}
+.gl-soporte-float.gl-soporte-is-dragging{
+  cursor:grabbing;transform:none;box-shadow:0 12px 28px #123a3040
+}
+.gl-soporte-float .gl-soporte-icon{
+  width:43px;height:43px;flex:0 0 43px;border-radius:50%;
+  display:grid;place-items:center;background:#25d366;color:#fff
+}
+.gl-soporte-float .gl-soporte-icon svg{width:27px;height:27px}
+.gl-soporte-float .gl-soporte-name{display:none}
+@media(max-width:580px){
+  .gl-soporte-float{
+    right:max(10px,env(safe-area-inset-right,0px));
+    bottom:calc(89px + env(safe-area-inset-bottom,0px));
+    width:52px;min-width:52px;height:52px;min-height:52px;padding:0;border-radius:50%
+  }
+  .gl-soporte-float .gl-soporte-icon{width:40px;height:40px;flex-basis:40px}
+  .gl-soporte-float .gl-soporte-icon svg{width:25px;height:25px}
+}
+@media print{.gl-soporte-float{display:none!important}}
