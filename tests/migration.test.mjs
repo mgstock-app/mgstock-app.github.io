@@ -32,6 +32,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Staff en PC: revertir solo las cinco inserciones de menú revisadas.
+      // Después se siguen verificando TODOS los hashes históricos sin modificarlos.
+      for(const {actual,original} of JSON.parse(read('tests/munro-staff-sidebar-hooks.json')).hooks){
+        assert.equal(content.split(actual).length-1,1,'Un único hook autorizado para Staff de Munro');
+        content=content.replace(actual,original);
+      }
       // Horarios de Munro: restituir únicamente el enlace revisado bajo Motos Agencia.
       // No modificar nunca los hashes originales ni la lógica de permisos histórica.
       for(const {actual,original} of JSON.parse(read('tests/munro-horarios-nav-hooks.json')).hooks){
