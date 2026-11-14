@@ -33,7 +33,8 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
      });
      cy.get('#gestlok-mobile-dock [data-dock]').then($buttons=>{
        const ids=[...$buttons].map(b=>b.getAttribute('data-dock'));
-       expect(ids).to.deep.equal(['home','pagos','stock','staff','more']);
+       expect(ids).to.deep.equal(['home','pagos','conteo','stock','staff','more']);
+       cy.get('#gestlok-mobile-dock [data-dock="conteo"]').should('contain.text','Conteo');
        cy.get('#gestlok-mobile-dock [data-dock="staff"]').should('contain.text','Staff');
        cy.get('#gestlok-mobile-dock [data-dock="pedidos"]').should('not.exist');
      });
@@ -47,6 +48,8 @@ describe('GESTLOK · Accesos rápidos y navegación en PC',()=>{
      cy.get('#gestlok-mobile-dock [data-dock="pagos"]').should('be.visible').click();
      cy.get('#ttl').should('contain.text','Pagos Online');
      cy.get('.mg-on-summary',{timeout:15000}).should('be.visible');
+     cy.get('#gestlok-mobile-dock [data-dock="conteo"]').click();
+     cy.get('#ttl').should('contain.text','Conteo');
      cy.get('#gestlok-mobile-dock [data-dock="stock"]').click();
      cy.get('#ttl').should('not.contain.text','Pagos Online');
     }

@@ -1,0 +1,45 @@
+{
+  "hooks": [
+    {
+      "actual": "const puedeVerConteoMunro = () => !!window.GestLokMunroConteo?.permitido();\n",
+      "original": ""
+    },
+    {
+      "actual": "  if (S.view === 'conteo-munro') return puedeVerConteoMunro() ? window.GestLokMunroConteo.view() : V.inicio();\n",
+      "original": ""
+    },
+    {
+      "actual": "S.view === 'conteo-munro' ? 'Conteo' : ",
+      "original": ""
+    },
+    {
+      "actual": " || S.view === 'conteo-munro'",
+      "original": "",
+      "count": 3
+    },
+    {
+      "actual": "(v === 'conteo-munro' && puedeVerConteoMunro()) || ",
+      "original": ""
+    },
+    {
+      "actual": "(puedeVerConteoMunro() ? `<button data-go=\"conteo-munro\">${ic('clip')}<span class=\"nl\">Conteo</span></button>` : '') +\n    ",
+      "original": ""
+    },
+    {
+      "actual": " && !puedeVerConteoMunro()",
+      "original": ""
+    },
+    {
+      "actual": "  window.GestLokMunroConteo?.subscribe(loc,push);\n",
+      "original": ""
+    },
+    {
+      "actual": "    window.GestLokMunroConteo?.reset();\n",
+      "original": ""
+    },
+    {
+      "actual": "window.GestLokMunroConteo?.attach({S,render,miRol,misLocales,toast});\n",
+      "original": ""
+    }
+  ]
+}

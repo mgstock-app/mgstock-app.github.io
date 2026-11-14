@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { CLAVE_NAV, enlaceDock, enlaceVista, leerNavGestlok, navPorDefecto, seccionesLocal, type NavGestlok } from "@/utils/gestlok-nav";
 
 // Menú de GESTLOK dentro de Administración de empleados, para no sentir que se sale de la app:
-// en el celular, la misma barra de abajo (Inicio, Pagos Online, Stock Local, Colaboradores, Más);
+// en Munro la barra conserva Inicio, Pagos Online, Conteo, Stock Local, Staff y Más;
 // en la PC, las secciones del local en el menú lateral. Los enlaces vuelven a GESTLOK, que comprueba permisos.
 const HOME = process.env.NEXT_PUBLIC_GESTLOK_HOME || "/";
 const leer = () => {
@@ -32,7 +32,7 @@ export function useNavGestlok(): NavGestlok {
 const ICONOS: Record<string, typeof House> = {
   home: House, inicio: House, locales: Store, business: Store, staff: UsersRound, avisos: Bell, pagos: ClipboardList,
   "cierre-online": ClipboardList, stock: Package, proveedores: Truck, "pedidos-online": ShoppingCart, "tienda-online": Store,
-  chat: MessageSquare, vencimientos: CalendarClock, motos: Bike, more: Menu,
+  chat: MessageSquare, vencimientos: CalendarClock, motos: Bike, conteo: ClipboardList, "conteo-munro": ClipboardList, more: Menu,
 };
 const Icono = ({ clave, size = 20 }: { clave: string; size?: number }) => {
   const I = ICONOS[clave] ?? Boxes;
@@ -55,7 +55,7 @@ export function GestlokDock({ secciones = [], titulo = "Administración de emple
   const nav: NavGestlok = esGerenteMunro ? {
     local: "munro",
     localName: "Munro",
-    dock: [["home", "Inicio"], ["pagos", "Pagos Online"], ["stock", "Stock Local"], ["staff", "Staff"], ["more", "Más"]],
+    dock: [["home", "Inicio"], ["pagos", "Pagos Online"], ["conteo", "Conteo"], ["stock", "Stock Local"], ["staff", "Staff"], ["more", "Más"]],
     side: guardado.local === "munro" ? guardado.side : [],
   } : guardado;
   const pathname = usePathname();

@@ -23,7 +23,7 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.clearCookies();
   // Menú de GESTLOK que la app principal guardó para esta cuenta (solo nombres y secciones del local).
   const nav={v:1,uid:user.id,local,localName:local==='dt'?'Don Torcuato':'Munro',at:Date.now(),
-   dock:[['home','Inicio'],['pagos','Pagos Online'],['stock','Stock Local'],['staff',local==='munro'?'Staff':'Colaboradores'],['more','Más']],
+   dock:[['home','Inicio'],['pagos','Pagos Online'],['conteo','Conteo'],['stock','Stock Local'],['staff',local==='munro'?'Staff':'Colaboradores'],['more','Más']],
    side:[{go:'inicio',label:'Inicio',folder:false},{go:'cierre-online',label:'Pagos Online',folder:false},{go:'stock',label:'Stock Local',folder:false},{go:'proveedores',label:'Proveedores',folder:false}]};
   cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));w.localStorage.setItem('gestlok:nav',JSON.stringify(nav));}});
   cy.get('h1',{timeout:15000}).should('contain.text','Administración de empleados');
@@ -97,6 +97,7 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
    cy.get('.gl-gestlok-dock').should('be.visible').within(()=>{
      cy.contains('a','Inicio').should('have.attr','href').and('include','gl_ir=inicio');
      cy.contains('a','Pagos Online').should('have.attr','href').and('include','gl_ir=cierre-online');
+     cy.contains('a','Conteo').should('have.attr','href').and('include','gl_ir=conteo-munro');
      cy.contains('a','Stock Local').should('have.attr','href').and('include','gl_ir=stock');
      cy.contains('button','Staff').should('have.attr','aria-current','page').click();
      cy.contains('button','Más').click();
