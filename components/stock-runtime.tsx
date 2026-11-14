@@ -21,7 +21,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
     "/stock/gestlok-commerce.js",
-    "/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109",
+    "/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
     "/stock/app.js?rev=munro-staff-pc-20261113",
   ];
@@ -92,7 +92,7 @@ export function StockRuntime() {
       // Caja diaria por empresa (pedido #200): el servidor decide qué empresa la ve.
       if (!visitor) await load("/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104");
       if (!visitor) await load("/stock/gestlok-scanner-invites.js");
-      await load("/stock/gestlok-owner-areas.js?rev=molino-inicio-avisos-20261109");
+      await load("/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
