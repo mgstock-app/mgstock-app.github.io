@@ -110,10 +110,10 @@ function decompColumn(p,canWrite){
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
- const dates=Array.from({length:4},(_,i)=>first==='manana_entrada'?labelDay(plusDays(dateBase,i)):'Vto '+(i+1));
+ const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:first==='manana_entrada'?labelDay(plusDays(dateBase,i)).slice(0,5):''}));
  const rows=items.map(p=>{
   const cells=[1,2,3,4].map(i=>{
-   const v=getCell(p,i),disabled=!canWrite?' disabled':'',value=amount(p,v);
+   const v=getCell(p,i),disabled=!canWrite?' disabled':'';
    if(p.units_per_chapa){
     return '<td class="gcm-chapa">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
@@ -132,7 +132,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso){
  '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  (showDecomiso?'<th scope="col" class="gcm-decomp-head">Decomiso</th>':'')+
  '<th scope="col">Producto</th>'+
- dates.map(s=>'<th scope="col">'+esc(s)+'</th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
+ dates.map(s=>'<th scope="col"><span class="gcm-vto">'+esc(s.vto)+'</span>'+(s.dia?'<span class="gcm-vto-date">'+esc(s.dia)+'</span>':'')+'</th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
 }
 function extraTable(kind,title,headA,headB,rec,canWrite){
  const rows=Array.isArray(rec[kind])?rec[kind]:[],length=Math.max(3,rows.length+1);
