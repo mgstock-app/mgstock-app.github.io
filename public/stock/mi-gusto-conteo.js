@@ -409,21 +409,21 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
 }
 function extraTable(kind,title,headA,headB,rec,canWrite){
  const rows=Array.isArray(rec[kind])?rec[kind]:[];
- const count=Math.min(60,Math.max(1,rows.length));
+ const count=kind==='consumption'?10:Math.min(60,Math.max(1,rows.length));
  return '<section class="gcm-extras" data-gcm-kind="'+kind+'"><div class="gcm-extra-header"><h3>'+title+'</h3>'+
- (canWrite?'<button type="button" data-gcm-extra-add="'+kind+'"'+(rows.length>=60?' disabled':'')+
+ (canWrite&&kind!=='consumption'?'<button type="button" data-gcm-extra-add="'+kind+'"'+(rows.length>=60?' disabled':'')+
   ' aria-label="Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'">+ Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'</button>':'')+
- '</div><table><thead><tr><th>'+headA+'</th><th>'+headB+'</th>'+(canWrite?'<th class="gcm-remove-col">Acción</th>':'')+'</tr></thead><tbody>'+
+ '</div><table><thead><tr><th>'+headA+'</th><th>'+headB+'</th>'+(canWrite&&kind!=='consumption'?'<th class="gcm-remove-col">Acción</th>':'')+'</tr></thead><tbody>'+
  Array.from({length:count},(_,i)=>{
   const item=rows[i]||{},disabled=canWrite?'':' disabled';
   return '<tr><td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="name" value="'+esc(item.name||'')+
    '" placeholder="'+esc(headA)+'" aria-label="'+esc(headA)+' '+(i+1)+'"'+disabled+'></td>'+
    '<td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="value" value="'+esc(item.value||'')+
    '" placeholder="'+esc(headB)+'" aria-label="'+esc(headB)+' '+(i+1)+'"'+disabled+'></td>'+
-   (canWrite?'<td class="gcm-remove-col"><button type="button" data-gcm-extra-remove="'+kind+'" data-row="'+i+
+   (canWrite&&kind!=='consumption'?'<td class="gcm-remove-col"><button type="button" data-gcm-extra-remove="'+kind+'" data-row="'+i+
    '" aria-label="Quitar fila '+(i+1)+' de '+title+'" title="Quitar fila">×</button></td>':'')+'</tr>';
  }).join('')+'</tbody></table>'+
- (kind==='consumption'?'<p class="gcm-extra-hint">Sumá o quitá colaboradores según el turno. Cada cambio se guarda automáticamente.</p>':'')+
+ (kind==='consumption'?'<p class="gcm-extra-hint">10 espacios fijos para colaboradores. Cada cambio se guarda automáticamente.</p>':'')+
  '</section>';
 }
 function extrasList(kind){
@@ -577,7 +577,7 @@ function saveCell(p,i,newCell){
 const productById=id=>snapshot?.products?.find(p=>p.id===id&&p.active);
 function updateExtra(input){
  const kind=input.dataset.gcmExtra,idx=Number(input.dataset.row),field=input.dataset.field;
- if(!['consumption','waste'].includes(kind)||!['name','value'].includes(field)||idx<0||idx>59)return;
+ if(!['consumption','waste'].includes(kind)||!['name','value'].includes(field)||idx<0||idx>=(kind==='consumption'?10:60))return;
  const data=extrasList(kind);if(!data||kind==='waste'&&!data.rec.waste_visible)return;
  const vals=data.vals;
  while(vals.length<=idx)vals.push({name:'',value:''});
@@ -654,7 +654,7 @@ document.addEventListener('click',async e=>{
   if(!editable()||closed()||!snapshot)return;
   const isAdd=el.hasAttribute('data-gcm-extra-add');
   const kind=isAdd?el.dataset.gcmExtraAdd:el.dataset.gcmExtraRemove;
-  if(!['consumption','waste'].includes(kind))return;
+  if(!['consumption','waste'].includes(kind)||kind==='consumption')return;
   const data=extrasList(kind);if(!data||kind==='waste'&&!data.rec.waste_visible)return;
   const vals=data.vals;
   if(isAdd){
