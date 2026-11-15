@@ -351,7 +351,7 @@ function decompColumn(p,canWrite){
  return '<td class="gcm-decomp-cell gcm-numeric-cell gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">'+numericCompacta(p,v,canWrite,true,0)+'</td>';
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
- const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
+ const dateBase=historyRecord?.day||day;
  const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:labelDay(plusDays(dateBase,i)).slice(0,5)}));
  const rows=items.map(p=>{
   const cells=[1,2,3,4].map(i=>{
