@@ -28,8 +28,8 @@ test('planilla real: chapas y unidades sueltas comparten una casilla y 27 por ch
  assert.match(html,/data-gcm-plus="mt" data-idx="1"/);
  assert.match(html,/data-gcm-suelta-plus="mt" data-idx="1"/);
  assert.match(html,/data-gcm-suelta-minus="mt" data-idx="1"/);
- assert.ok(html.includes('>16 u.</output>'));
- assert.doesNotMatch(html,/data-gcm-suelta="mt"/);
+ assert.match(html,/data-gcm-suelta="mt" data-idx="1" value="16"/);
+ assert.match(html,/data-gcm-suelta="mt"/);
  assert.match(html,/class="gcm-total">70<\/td>/);
  assert.doesNotMatch(html,/gcm-cell-total/);
 });
@@ -72,7 +72,7 @@ test('Conteo usa botones fijos y filas separadas para evitar pulsaciones cruzada
 
 test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',async()=>{
  const events=[],renders=[],writes=[],window={};
- const total={textContent:''},unitValue={textContent:''},chapasValue={textContent:''},visual={innerHTML:''};
+ const total={textContent:''},unitValue={value:''},chapasValue={textContent:''},visual={innerHTML:''};
  const unitMinus={disabled:false},saveStatus={textContent:'',className:''};
  const markButton={title:'',querySelector:(s)=>({'.gcm-mark-visual':visual,'.gcm-chapas-value':chapasValue}[s]||null)};
  const td={dataset:{},querySelector:(s)=>({'.gcm-mark-button':markButton,'.gcm-units-value':unitValue,'.gcm-unit-minus':unitMinus,'.gcm-cell-save':saveStatus}[s]||null),
@@ -98,7 +98,7 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  await new Promise(r=>setImmediate(r));
  assert.equal(renders.length,before,'La pantalla no debe re-renderizarse por sumar una chapa');
  assert.equal(chapasValue.textContent,'3');
- assert.equal(unitValue.textContent,'16 u.');
+ assert.equal(unitValue.value,'16');
  assert.equal(total.textContent,'97');
  assert.equal(saveStatus.textContent,'✓ Guardado');
  assert.equal(writes.at(-1)?.p_chapas,3);
@@ -108,16 +108,41 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  button.hasAttribute=(s)=>s==='data-gcm-suelta-plus';
  await events.find(([name])=>name==='click')[1]({target:button});
  await new Promise(r=>setImmediate(r));
- assert.equal(unitValue.textContent,'17 u.');
+ assert.equal(unitValue.value,'17');
  assert.equal(total.textContent,'98');
  assert.equal(writes.at(-1)?.p_sueltas,17);
  button.dataset={gcmSueltaMinus:'mt',idx:'1'};
  button.hasAttribute=(s)=>s==='data-gcm-suelta-minus';
  await events.find(([name])=>name==='click')[1]({target:button});
  await new Promise(r=>setImmediate(r));
- assert.equal(unitValue.textContent,'16 u.');
+ assert.equal(unitValue.value,'16');
  assert.equal(total.textContent,'97');
  assert.equal(writes.at(-1)?.p_sueltas,16);
  assert.equal(saveStatus.textContent,'✓ Guardado');
  assert.equal(renders.length,before,'Ningún cambio de unidades debe redibujar la página');
+});
+
+test('recuperación permite seleccionar el día anterior sin convertirlo al día actual',async()=>{
+ const {mod}=makeApp();
+ mod.view();await new Promise(r=>setImmediate(r));
+ const html=mod.view();
+ assert.match(html,/data-gcm-day="ayer"/);
+ assert.match(html,/data-gcm-manual-save/);
+ assert.match(html,/Recuperar conteo de ayer/);
+ assert.doesNotMatch(source,/day!==arDay\(\)\s*&&\s*!busy/);
+ assert.doesNotMatch(source,/window\.addEventListener\('focus'/);
+});
+
+test('se guardan valores numéricos sin cerrar el teclado ni reiniciar la tabla',async()=>{
+ const {mod}=makeApp();
+ mod.view();await new Promise(r=>setImmediate(r));
+ assert.match(source,/document\.addEventListener\('input',/);
+ assert.match(source,/saveCellFeedback\(input,task\)/);
+ assert.match(source,/input\.hasAttribute\('data-gcm-qty'\)\|\|input\.hasAttribute\('data-gcm-decomp-qty'\)\)return/);
+ assert.match(source,/data-gcm-manual-save/);
+ assert.match(source,/gestlok_munro_conteo_state',\{p_day:day\}/);
+ assert.match(source,/JSON\.stringify\(\[\.\.\.pendingDrafts\.values\(\)\]\)/);
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ assert.match(css,/gcm-day-bar/);
+ assert.match(css,/gcm-save-bar/);
 });

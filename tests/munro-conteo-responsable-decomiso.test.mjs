@@ -37,7 +37,7 @@ test('local fijo Munro, fecha del día argentino y selector de responsables',asy
  assert.match(html,/Gerente \/ Responsable/);
  for(const name of ['Cami','Shuli','Tizi'])assert.match(html,new RegExp('value="'+name+'"'));
  assert.match(html,/<option value="Shuli" selected>Shuli<\/option>/);
- assert.match(html,/Fecha de inicio/);
+ assert.match(html,/Fecha del conteo/);
  assert.match(html,/Hoy · \d{2}\/\d{2}\/\d{4}/);
  assert.doesNotMatch(html,/type="date"/);
 });
@@ -51,7 +51,7 @@ test('decomiso visible aparece a la izquierda del producto y suma chapas + suelt
  assert.match(html,/data-gcm-decomp-plus="p1"/);
  assert.match(html,/data-gcm-decomp-suelta-plus="p1"/);
  assert.match(html,/data-gcm-decomp-suelta-minus="p1"/);
- assert.ok(html.includes('>2 u.</output>'));
+ assert.match(html,/data-gcm-decomp-suelta="p1" value="2"/);
 });
 
 test('sin activar Decomiso la columna desaparece pero los valores ya guardados siguen en total',async()=>{

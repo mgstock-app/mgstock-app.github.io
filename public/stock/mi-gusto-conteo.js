@@ -25,6 +25,60 @@ function marks(value){
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',historyRecord=null,loading=false,error='',busy=false,opened=new Set(['EMPANADAS']),generation=0;
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0;
 const queues=new Map();
+// Borradores locales: se conservan hasta recibir confirmación real del servidor.
+// Solo cantidades del usuario, local y fechas recientes; sin información de otras empresas.
+const pendingDrafts=new Map();
+let pendingStore='';
+function draftStorageKey(){
+ const user=api?.S?.me?.id||api?.S?.me?.email;
+ return user?'gcm:pendientes:v1:'+TENANT+':'+String(user):'';
+}
+function persistDrafts(){
+ if(!pendingStore||!window.localStorage)return;
+ try{window.localStorage.setItem(pendingStore,JSON.stringify([...pendingDrafts.values()]));}
+ catch(_){/* El conteo permanece en memoria y en la cola hasta la confirmación. */}
+}
+function readDrafts(){
+ const key=draftStorageKey();
+ if(!key||key===pendingStore)return;
+ pendingStore=key;pendingDrafts.clear();
+ try{
+  const items=JSON.parse(window.localStorage?.getItem(key)||'[]');
+  const today=arDay();
+  if(Array.isArray(items))for(const item of items){
+   if(!item||typeof item.key!=='string'||typeof item.day!=='string'||item.day>today||item.day<plusDays(today,-7))continue;
+   if(!SHIFTS.some(x=>x[0]===item.shift)||!item.pid||!['cell','decomiso'].includes(item.kind))continue;
+   pendingDrafts.set(item.key,item);
+  }
+ }catch(_){/* No interrumpir el conteo por un borrador local inválido. */}
+}
+function noteDraft(kind,d,s,pid,i,value){
+ readDrafts();
+ const key=[d,s,kind,pid,i].join('|');
+ const item={key,kind,day:d,shift:s,pid,index:i,cell:{...value}};
+ pendingDrafts.set(key,item);persistDrafts();
+ return item;
+}
+function confirmDraft(item){
+ if(pendingDrafts.get(item.key)!==item)return;
+ pendingDrafts.delete(item.key);persistDrafts();
+}
+function overlayDrafts(){
+ if(!snapshot)return;
+ readDrafts();
+ for(const draft of pendingDrafts.values()){
+  if(draft.day!==day)continue;
+  let rec=snapshot.counts.find(x=>x.shift===draft.shift);
+  if(!rec){rec={day,shift:draft.shift,data:{},decomiso:{},status:'borrador'};snapshot.counts.push(rec);}
+  if(draft.kind==='decomiso'){
+   rec.decomiso=rec.decomiso||{};rec.decomiso[draft.pid]={...draft.cell};
+  }else{
+   rec.data=rec.data||{};
+   rec.data[draft.pid]={...(rec.data[draft.pid]||{}),['v'+draft.index]:{...draft.cell}};
+  }
+ }
+}
+const activePending=()=>[...pendingDrafts.values()].filter(x=>x.day===day&&x.shift===shift);
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&api.S?.local==='munro'&&
  !window.GestLokCreatorSupport?.previewRol?.() &&
  (api.miRol()==='creadora'||api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes('munro')));
@@ -52,7 +106,7 @@ async function refresh(){
   const value=await rpc('gestlok_munro_conteo_state',{p_day:d});
   if(token!==generation||day!==d)return;
   if(!Array.isArray(value?.products)||!Array.isArray(value?.counts)||!Array.isArray(value?.history))throw Error('Respuesta incompleta del servidor.');
-  snapshot=value;error='';
+  snapshot=value;overlayDrafts();error='';
  }catch(e){if(token===generation)error=e.message||'No se pudo consultar Conteo';}
  finally{loading=false;if(token===generation&&api?.S?.view==='conteo-munro')api.render();}
 }
@@ -187,10 +241,12 @@ const amount=(p,v)=>p.units_per_chapa>0?v.chapas*p.units_per_chapa+v.sueltas:v.q
 function patchDecomiso(pid,newCell){const rec=draftRecord();if(rec){rec.decomiso=rec.decomiso||{};rec.decomiso[pid]={...newCell};}}
 function saveDecomiso(p,newCell){
  patchDecomiso(p.id,newCell);
- const d=day,s=shift;
- return schedule(d+'|'+s+'|decomiso|'+p.id,()=>rpc('gestlok_munro_conteo_set_decomiso',{
+ const d=day,s=shift,draft=noteDraft('decomiso',d,s,p.id,0,newCell);
+ const task=schedule(d+'|'+s+'|decomiso|'+p.id,()=>rpc('gestlok_munro_conteo_set_decomiso',{
   p_day:d,p_shift:s,p_product:p.id,p_chapas:newCell.chapas,p_sueltas:newCell.sueltas,p_qty:newCell.qty
  }));
+ task.then(()=>confirmDraft(draft)).catch(()=>{});
+ return task;
 }
 
 /* Controles de tamaño fijo: un toque suma chapa; unidades sueltas con botones +/-.
@@ -202,6 +258,7 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
  const minus=isDecomiso?'data-gcm-decomp-minus':'data-gcm-minus';
  const unitPlus=isDecomiso?'data-gcm-decomp-suelta-plus':'data-gcm-suelta-plus';
  const unitMinus=isDecomiso?'data-gcm-decomp-suelta-minus':'data-gcm-suelta-minus';
+ const suelta=isDecomiso?'data-gcm-decomp-suelta':'data-gcm-suelta';
  const disabled=canWrite?'':' disabled';
  const label=esc(p.name+' '+where);
  return '<div class="gcm-inline-count">'+
@@ -215,7 +272,8 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
   '<div class="gcm-units-stepper">'+
    '<button type="button" class="gcm-unit-minus" '+unitMinus+'="'+pid+'"'+attrs+
     (!canWrite||v.sueltas<=0?' disabled':'')+' aria-label="Quitar unidad suelta '+label+'">−</button>'+
-   '<output class="gcm-units-value" aria-label="Unidades sueltas '+label+'">'+v.sueltas+' u.</output>'+
+   '<input type="number" min="0" max="100000" inputmode="numeric" class="gcm-units-value" '+suelta+'="'+pid+'"'+attrs+
+    ' value="'+v.sueltas+'"'+disabled+' aria-label="Unidades sueltas '+label+'">'+
    '<button type="button" class="gcm-unit-plus" '+unitPlus+'="'+pid+'"'+attrs+disabled+
     ' aria-label="Sumar unidad suelta '+label+'">+</button>'+
   '</div>'+
@@ -236,7 +294,7 @@ function syncCountDom(el,p,i,isDecomp){
   button.title=v.chapas+' chapas · tocar para sumar';
  }
  const units=td.querySelector('.gcm-units-value');
- if(units)units.textContent=v.sueltas+' u.';
+ if(units&&units!==el)units.value=String(v.sueltas);
  const unitMinus=td.querySelector('.gcm-unit-minus');
  if(unitMinus)unitMinus.disabled=v.sueltas<=0;
  const row=td.closest('tr'),total=row?.querySelector('.gcm-total');
@@ -268,7 +326,7 @@ function decompColumn(p,canWrite){
  if(p.units_per_chapa>0){
   return '<td class="gcm-chapa gcm-decomp-cell">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
- return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
+ return '<td class="gcm-decomp-cell gcm-numeric-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"><span class="gcm-cell-save" role="status" aria-live="polite"></span></td>';
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
@@ -279,7 +337,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    if(p.units_per_chapa){
     return '<td class="gcm-chapa">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
-   return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
+   return '<td class="gcm-numeric-cell"><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"><span class="gcm-cell-save" role="status" aria-live="polite"></span></td>';
   }).join('');
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
@@ -342,7 +400,7 @@ function saveExtraList(kind,vals){
 }
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de Mi Gusto Munro.</p>';
- if(!historyMode&&!historyRecord&&day!==arDay()&&!busy){day=arDay();snapshot=null;++generation;}
+ // Se conserva el día seleccionado hasta que el gerente lo cambie expresamente.
  if(!snapshot&&!loading&&!error)void refresh();
  if(historyMode)return historyRecord?historyDetailView():historyListView();
  const rec=entry(),canWrite=editable()&&!closed()&&!!snapshot,canCatalog=admin()&&!historyRecord&&!busy;
@@ -357,16 +415,24 @@ function view(){
  const showWaste=!!rec.waste_visible;
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
 
+ const isToday=day===arDay(),yesterday=plusDays(arDay(),-1);
  return '<div class="gcm-page"><header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p><button type="button" class="gcm-open-history" data-gcm-history-open>Historial de conteos</button></div>'+
  '<div class="gcm-header-fields"><div><span>Local</span><strong>Munro</strong></div>'+
  '<label>Gerente / Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
- '<div><span>Fecha de inicio</span><strong>'+(historyRecord?'Archivado: ':'Hoy · ')+labelDay(historyRecord?.day||day)+'</strong></div></div></header>'+
+ '<div><span>Fecha del conteo</span><strong>'+(isToday?'Hoy · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
+ '<div class="gcm-day-bar"><strong>Conteo del '+esc(labelDay(day))+'</strong>'+
+ (isToday?'<button type="button" data-gcm-day="ayer">Recuperar conteo de ayer · '+esc(labelDay(yesterday))+'</button>':
+ '<button type="button" data-gcm-day="hoy">Ir al conteo de hoy</button>')+
+ (!isToday?'<span>Estás trabajando con datos del '+esc(labelDay(day))+'. No se cambió la fecha.</span>':'')+
+ '</div>'+
+ '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
+ '<button type="button" data-gcm-manual-save>Guardar conteo</button></div>'+
  '<nav class="gcm-tabs" aria-label="Turno">'+names+'</nav>'+
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
- '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
+ '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':activePending().length?'Cambios pendientes de confirmar':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
 '<div class="gcm-sheet-tip">Tocá las marcas para sumar chapas (5 forman un cuadrado). Usá + y − para las unidades sueltas. Cada cambio se guarda sin mover la planilla.</div>'+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
@@ -383,7 +449,7 @@ function view(){
  '<div class="gcm-bottom'+(showWaste?'':' gcm-bottom-single')+'">'+
  extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
- (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-refresh>Actualizar</button>'+
+ (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
  (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Finalizar '+esc(SHIFTS.find(s=>s[0]===shift)?.[1]||'turno')+'</button>':'<span>Conteo del turno archivado</span>')+'</div>':'')+
  '':'' )+
  '</div>';
@@ -403,18 +469,21 @@ function schedule(key,fn){
   if(queues.get(key)===next)queues.delete(key);
   busy=queues.size>0;
   error='Error al guardar: '+(e.message||'Reintentá');
+  const indicator=document.querySelector('.gcm-help span:last-child');
+  if(indicator)indicator.textContent='Error al guardar · Reintentar';
   api?.toast?.(error);
-  if(api?.S?.view==='conteo-munro')api.render();
  });
  return next;
 }
 function saveCell(p,i,newCell){
  patchCell(p.id,i,newCell);
- const d=day,s=shift;
- return schedule(d+'|'+s+'|'+p.id+'|'+i,()=>rpc('gestlok_munro_conteo_set_cell',{
+ const d=day,s=shift,draft=noteDraft('cell',d,s,p.id,i,newCell);
+ const task=schedule(d+'|'+s+'|'+p.id+'|'+i,()=>rpc('gestlok_munro_conteo_set_cell',{
  p_day:d,p_shift:s,p_product:p.id,p_index:i,
  p_chapas:newCell.chapas,p_sueltas:newCell.sueltas,p_qty:newCell.qty
  }));
+ task.then(()=>confirmDraft(draft)).catch(()=>{});
+ return task;
 }
 const productById=id=>snapshot?.products?.find(p=>p.id===id&&p.active);
 function updateExtra(input){
@@ -426,13 +495,11 @@ function updateExtra(input){
  vals[idx]={...vals[idx],[field]:input.value.slice(0,90)};
  return saveExtraList(kind,vals);
 }
-function attach(value){api=value;}
+function attach(value){api=value;readDrafts();}
 function subscribe(local,push){
  if(local!=='munro'||!allowed())return;
  void refresh();
- const focus=()=>{if(api?.S?.view==='conteo-munro'&&!busy&&!loading)void refresh();};
- window.addEventListener('focus',focus);
- push(()=>window.removeEventListener('focus',focus));
+ // Sin refresh por focus: preserva posición y teclado del dispositivo.
 }
 document.addEventListener('toggle',e=>{
  if(e.target.matches?.('.gcm-section')){
@@ -514,7 +581,51 @@ document.addEventListener('click',async e=>{
   }
   void saveExtraList(kind,vals);api.render();return;
  }
- if(el.hasAttribute('data-gcm-retry')||el.hasAttribute('data-gcm-refresh')){error='';void refresh();return;}
+ if(el.hasAttribute('data-gcm-day')){
+  if(busy){api?.toast?.('Primero debe finalizar el guardado de las cantidades.');return;}
+  const target=el.dataset.gcmDay==='ayer'?plusDays(arDay(),-1):arDay();
+  if(day===target)return;
+  ++generation;day=target;snapshot=null;historyRecord=null;shift='manana_entrada';loading=false;error='';
+  api.render();void refresh();return;
+ }
+ if(el.hasAttribute('data-gcm-manual-save')){
+  if(!editable()||closed()||!snapshot)return;
+  el.disabled=true;el.textContent='Verificando guardado…';
+  try{
+   // Finalizar intentos en curso y reintentar borradores que quedaron sin confirmar.
+   await Promise.allSettled([...queues.values()]);
+   const recovered=activePending();
+   for(const draft of recovered){
+    const p=productById(draft.pid);
+    if(!p)throw Error('Hay un producto pendiente que necesita revisión: '+draft.pid);
+    const task=draft.kind==='decomiso'?saveDecomiso(p,draft.cell):saveCell(p,draft.index,draft.cell);
+    task.catch(()=>{});
+   }
+   await Promise.all([...queues.values()]);
+   if(activePending().length)throw Error('Quedaron cantidades sin guardar.');
+   const server=await rpc('gestlok_munro_conteo_state',{p_day:day});
+   if(!Array.isArray(server?.counts))throw Error('No se pudo verificar la información.');
+   const local=entry(),remote=server.counts.find(x=>x.shift===shift);
+   if(!remote&&Object.keys(local.data||{}).length)throw Error('El servidor todavía no tiene el conteo.');
+   const stale=Object.entries(local.data||{}).some(([pid,values])=>Object.entries(values).some(([vto,cell])=>{
+    const saved=remote?.data?.[pid]?.[vto];
+    return !saved||['chapas','sueltas','qty'].some(key=>Number(saved[key]||0)!==Number(cell[key]||0));
+   }));
+   const decompMismatch=Object.entries(local.decomiso||{}).some(([pid,cell])=>
+    ['chapas','sueltas','qty'].some(k=>Number(remote?.decomiso?.[pid]?.[k]||0)!==Number(cell?.[k]||0)));
+   const extraMismatch=['consumption','waste'].some(kind=>
+    JSON.stringify(remote?.[kind]||[])!==JSON.stringify(local[kind]||[]));
+   if(stale||decompMismatch||extraMismatch)throw Error('Hay cantidades sin confirmar. No cierres Conteo.');
+   error='';el.textContent='✓ Guardado verificado';
+   api?.toast?.('Conteo guardado y verificado en el servidor.');
+  }catch(err){
+   error=err.message||'No se pudo guardar';
+   el.textContent='No se guardó · Reintentar';
+   api?.toast?.(error);
+  }finally{el.disabled=false;}
+  return;
+ }
+ if(el.hasAttribute('data-gcm-retry')||el.hasAttribute('data-gcm-refresh')){if(busy)return;error='';void refresh();return;}
  if(el.hasAttribute('data-gcm-history-open')){
   if(busy)return;
   historyMode=true;historyRecord=null;historyMonth=arDay().slice(0,7);
@@ -589,6 +700,29 @@ document.addEventListener('click',async e=>{
   finally{busy=false;void refresh();}
  }
 });
+// Carga numérica: el teclado sigue abierto y cada dígito se protege sin re-render.
+document.addEventListener('input',e=>{
+ const input=e.target;
+ if(!input?.matches?.('[data-gcm-qty],[data-gcm-decomp-qty],[data-gcm-suelta],[data-gcm-decomp-suelta]')||!input.closest?.('.gcm-page'))return;
+ if(!editable()||closed()||!snapshot)return;
+ const isUnit=input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta');
+ const isDecomp=input.hasAttribute('data-gcm-decomp-qty')||input.hasAttribute('data-gcm-decomp-suelta');
+ const id=isDecomp?(isUnit?input.dataset.gcmDecompSuelta:input.dataset.gcmDecompQty):
+  (isUnit?input.dataset.gcmSuelta:input.dataset.gcmQty);
+ const p=productById(id),i=Number(input.dataset.idx);
+ if(!p||(!isDecomp&&(i<1||i>4)))return;
+ const raw=String(input.value||'');
+ if(raw!==''&&!/^\d+$/.test(raw))return;
+ const limit=isUnit?100000:1000000,val=raw===''?0:Number(raw);
+ if(!Number.isSafeInteger(val)||val<0||val>limit)return;
+ const cell=isDecomp?getDecomisoCell(p):getCell(p,i);
+ const field=isUnit?'sueltas':'qty';
+ if(cell[field]===val)return;
+ cell[field]=val;
+ const task=isDecomp?saveDecomiso(p,cell):saveCell(p,i,cell);
+ syncCountDom(input,p,i,isDecomp);
+ saveCellFeedback(input,task);
+});
 document.addEventListener('change',async e=>{
  const input=e.target,root=input.closest?.('.gcm-page');
  if(!root||!allowed())return;
@@ -662,6 +796,9 @@ document.addEventListener('change',async e=>{
   return;
  }
  if(!editable()||closed())return;
+ // Los numéricos ya se guardaron en input: no reconstruir la vista al perder el foco.
+ if(input.hasAttribute('data-gcm-qty')||input.hasAttribute('data-gcm-decomp-qty'))return;
+ if(input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta'))return;
  if(input.hasAttribute('data-gcm-extra')){void updateExtra(input);return;}
  const isDecomp=input.hasAttribute('data-gcm-decomp-suelta')||input.hasAttribute('data-gcm-decomp-qty');
  const kind=input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta')?'sueltas':
