@@ -259,3 +259,16 @@ test('la vista A4 usa valores archivados, no cambia registros y dibuja 10 consum
  assert.equal(m.canvases.length,2);
  assert.equal(m.canvases[1].height/m.canvases[1].width,1754/1240);
 });
+
+test('Consumos siempre ofrece exactamente 10 filas para 10 colaboradores',async()=>{
+ const m=app('gerente');m.module.view();await tick();await tick();
+ const html=m.module.view();
+ for(let i=0;i<10;i++){
+  assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="name"'));
+  assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="value"'));
+ }
+ assert.equal((html.match(/data-gcm-extra="consumption" data-row=/g)||[]).length,20);
+ assert.doesNotMatch(html,/data-gcm-extra-add="consumption"/);
+ assert.doesNotMatch(html,/data-gcm-extra-remove="consumption"/);
+ assert.match(html,/10 espacios fijos para colaboradores/);
+});
