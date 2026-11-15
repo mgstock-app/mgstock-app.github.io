@@ -236,3 +236,20 @@ test('botones + y − en bebidas guardan el valor sin re-render ni cambiar de fi
  assert.equal(writes.at(-1)?.p_qty,6);
  assert.equal(renders.length,before);
 });
+
+test('teclado numérico abierto no bloquea el gesto vertical de la planilla',()=>{
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ const fix=css.slice(css.lastIndexOf('/* Conteo · desplazamiento vertical con teclado numérico abierto.'));
+ assert.ok(fix,'Debe existir la corrección de scroll para Conteo');
+ assert.match(fix,/\.gcm-page \.gcm-section\s*\{\s*overflow:visible!important/);
+ assert.match(fix,/\.gcm-page \.gcm-section \.gcm-sheet-scroll\s*\{[\s\S]*?overflow-x:auto!important;[\s\S]*?overflow-y:auto!important/);
+ assert.match(fix,/overscroll-behavior-y:auto!important/);
+ assert.match(fix,/touch-action:pan-x pan-y pinch-zoom!important/);
+ assert.match(fix,/\.gcm-page input\[type="number"\]\s*\{\s*touch-action:pan-y pinch-zoom!important/);
+ assert.doesNotMatch(fix,/overflow-y:hidden/);
+ // Durante el tipeo, el componente se actualiza por casilla sin reemplazar la pantalla.
+ assert.match(source,/document\.addEventListener\('input',/);
+ assert.match(source,/syncCountDom\(input,p,i,isDecomp\)/);
+ assert.match(source,/saveCellFeedback\(input,task\)/);
+ assert.doesNotMatch(source,/window\.addEventListener\('focus'/);
+});
