@@ -53,7 +53,7 @@ test('Alerta Android aparece en Pedidos WhatsApp, atajos y contador para gerente
 });
 test('Gerente ve alertas sin permiso para crear clave; la dueña sí puede configurar',async()=>{
  const gerente=make('gerente');gerente.mod.subscribe('munro',()=>{});await tick();await tick();
- assert.match(gerente.mod.view(),/Avisos desde el celular/);
+ assert.match(gerente.mod.view(),/Conectar avisos del celular/);
  assert.doesNotMatch(gerente.mod.view(),/data-mgp-mobile-key/);
  const duena=make('dueno');duena.mod.subscribe('munro',()=>{});await tick();await tick();
  assert.match(duena.mod.view(),/data-mgp-mobile-key/);
