@@ -319,3 +319,35 @@ test('A4 respeta el orden de Conteo y pone cada total cerca del producto, con le
  assert.ok(m.placed.some(v=>v.text==='TOTAL GENERAL'));
  assert.ok(m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'));
 });
+
+test('excepción 14/11: solo cambia la etiqueta a Noche salida y conserva turno/datos originales',async()=>{
+ const m=app('dueno');
+ const original={...m.todayEntry,day:'2026-11-14',shift:'manana_entrada',status:'borrador',
+  data:{p1:{v1:{chapas:4,sueltas:9,qty:0}}}};
+ m.rows.splice(0,m.rows.length,original);
+ m.module.view();await tick();await tick();
+ await m.click('data-gcm-history-open');await tick();
+ const list=await m.click('data-gcm-history-day','2026-11-14');
+ assert.match(list,/Turno Noche salida/);
+ assert.doesNotMatch(list,/Turno Mañana entrada|Turno Mañana salida/);
+ assert.equal((list.match(/data-gcm-history="2026-11-14\|/g)||[]).length,1);
+ assert.match(list,/data-gcm-history="2026-11-14\|manana_entrada"/);
+ assert.equal(m.module._test.historyShiftLabel(original),'Noche · salida');
+ assert.equal(m.module._test.historyShiftLabel({...original,day:'2026-11-15'}),'Mañana · entrada');
+ const detail=await m.click('data-gcm-history','2026-11-14|manana_entrada');
+ assert.match(detail,/Turno Noche salida/);
+ assert.match(detail,/conteo-munro-2026-11-14-noche_salida\.png/);
+ assert.ok(m.drawn.includes('Turno: Noche · salida'));
+ assert.ok(m.drawn.includes('129')); // 4 chapas x 30 + 9 sueltas
+ assert.equal(original.shift,'manana_entrada','no cambia el identificador real');
+ assert.equal(original.data.p1.v1.chapas,4);
+ assert.equal(original.data.p1.v1.sueltas,9);
+ assert.equal(m.calls.filter(x=>/gestlok_munro_conteo_set_|gestlok_munro_conteo_finalize/.test(x.name)).length,0);
+});
+test('desde el 15/11 el historial sigue mostrando los tres turnos habituales',()=>{
+ const win={};vm.runInNewContext(source,{window:win,document:{addEventListener:()=>{}},navigator:{onLine:true},Intl,Date,Promise,Set,Map,Math,Array,Object,Number,String,JSON,console});
+ for(const s of ['manana_entrada','manana_salida','noche_salida']){
+  const title=win.GestLokMunroConteo._test.historyShiftLabel({day:'2026-11-15',shift:s});
+  assert.ok(title&&title.includes(' · '));
+ }
+});
