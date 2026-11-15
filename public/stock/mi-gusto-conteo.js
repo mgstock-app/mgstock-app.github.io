@@ -25,6 +25,60 @@ function marks(value){
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',historyRecord=null,loading=false,error='',busy=false,opened=new Set(['EMPANADAS']),generation=0;
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0;
 const queues=new Map();
+// Borradores locales: se conservan hasta recibir confirmación real del servidor.
+// Solo cantidades del usuario, local y fechas recientes; sin información de otras empresas.
+const pendingDrafts=new Map();
+let pendingStore='';
+function draftStorageKey(){
+ const user=api?.S?.me?.id||api?.S?.me?.email;
+ return user?'gcm:pendientes:v1:'+TENANT+':'+String(user):'';
+}
+function persistDrafts(){
+ if(!pendingStore||!window.localStorage)return;
+ try{window.localStorage.setItem(pendingStore,JSON.stringify([...pendingDrafts.values()]));}
+ catch(_){/* El conteo permanece en memoria y en la cola hasta la confirmación. */}
+}
+function readDrafts(){
+ const key=draftStorageKey();
+ if(!key||key===pendingStore)return;
+ pendingStore=key;pendingDrafts.clear();
+ try{
+  const items=JSON.parse(window.localStorage?.getItem(key)||'[]');
+  const today=arDay();
+  if(Array.isArray(items))for(const item of items){
+   if(!item||typeof item.key!=='string'||typeof item.day!=='string'||item.day>today||item.day<plusDays(today,-7))continue;
+   if(!SHIFTS.some(x=>x[0]===item.shift)||!item.pid||!['cell','decomiso'].includes(item.kind))continue;
+   pendingDrafts.set(item.key,item);
+  }
+ }catch(_){/* No interrumpir el conteo por un borrador local inválido. */}
+}
+function noteDraft(kind,d,s,pid,i,value){
+ readDrafts();
+ const key=[d,s,kind,pid,i].join('|');
+ const item={key,kind,day:d,shift:s,pid,index:i,cell:{...value}};
+ pendingDrafts.set(key,item);persistDrafts();
+ return item;
+}
+function confirmDraft(item){
+ if(pendingDrafts.get(item.key)!==item)return;
+ pendingDrafts.delete(item.key);persistDrafts();
+}
+function overlayDrafts(){
+ if(!snapshot)return;
+ readDrafts();
+ for(const draft of pendingDrafts.values()){
+  if(draft.day!==day)continue;
+  let rec=snapshot.counts.find(x=>x.shift===draft.shift);
+  if(!rec){rec={day,shift:draft.shift,data:{},decomiso:{},status:'borrador'};snapshot.counts.push(rec);}
+  if(draft.kind==='decomiso'){
+   rec.decomiso=rec.decomiso||{};rec.decomiso[draft.pid]={...draft.cell};
+  }else{
+   rec.data=rec.data||{};
+   rec.data[draft.pid]={...(rec.data[draft.pid]||{}),['v'+draft.index]:{...draft.cell}};
+  }
+ }
+}
+const activePending=()=>[...pendingDrafts.values()].filter(x=>x.day===day&&x.shift===shift);
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&api.S?.local==='munro'&&
  !window.GestLokCreatorSupport?.previewRol?.() &&
  (api.miRol()==='creadora'||api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes('munro')));
@@ -52,7 +106,7 @@ async function refresh(){
   const value=await rpc('gestlok_munro_conteo_state',{p_day:d});
   if(token!==generation||day!==d)return;
   if(!Array.isArray(value?.products)||!Array.isArray(value?.counts)||!Array.isArray(value?.history))throw Error('Respuesta incompleta del servidor.');
-  snapshot=value;error='';
+  snapshot=value;overlayDrafts();error='';
  }catch(e){if(token===generation)error=e.message||'No se pudo consultar Conteo';}
  finally{loading=false;if(token===generation&&api?.S?.view==='conteo-munro')api.render();}
 }
@@ -187,10 +241,12 @@ const amount=(p,v)=>p.units_per_chapa>0?v.chapas*p.units_per_chapa+v.sueltas:v.q
 function patchDecomiso(pid,newCell){const rec=draftRecord();if(rec){rec.decomiso=rec.decomiso||{};rec.decomiso[pid]={...newCell};}}
 function saveDecomiso(p,newCell){
  patchDecomiso(p.id,newCell);
- const d=day,s=shift;
- return schedule(d+'|'+s+'|decomiso|'+p.id,()=>rpc('gestlok_munro_conteo_set_decomiso',{
+ const d=day,s=shift,draft=noteDraft('decomiso',d,s,p.id,0,newCell);
+ const task=schedule(d+'|'+s+'|decomiso|'+p.id,()=>rpc('gestlok_munro_conteo_set_decomiso',{
   p_day:d,p_shift:s,p_product:p.id,p_chapas:newCell.chapas,p_sueltas:newCell.sueltas,p_qty:newCell.qty
  }));
+ task.then(()=>confirmDraft(draft)).catch(()=>{});
+ return task;
 }
 
 /* Controles de tamaño fijo: un toque suma chapa; unidades sueltas con botones +/-.
@@ -374,7 +430,7 @@ function view(){
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
- '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
+ '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':activePending().length?'Cambios pendientes de confirmar':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
 '<div class="gcm-sheet-tip">Tocá las marcas para sumar chapas (5 forman un cuadrado). Usá + y − para las unidades sueltas. Cada cambio se guarda sin mover la planilla.</div>'+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
@@ -419,11 +475,13 @@ function schedule(key,fn){
 }
 function saveCell(p,i,newCell){
  patchCell(p.id,i,newCell);
- const d=day,s=shift;
- return schedule(d+'|'+s+'|'+p.id+'|'+i,()=>rpc('gestlok_munro_conteo_set_cell',{
+ const d=day,s=shift,draft=noteDraft('cell',d,s,p.id,i,newCell);
+ const task=schedule(d+'|'+s+'|'+p.id+'|'+i,()=>rpc('gestlok_munro_conteo_set_cell',{
  p_day:d,p_shift:s,p_product:p.id,p_index:i,
  p_chapas:newCell.chapas,p_sueltas:newCell.sueltas,p_qty:newCell.qty
  }));
+ task.then(()=>confirmDraft(draft)).catch(()=>{});
+ return task;
 }
 const productById=id=>snapshot?.products?.find(p=>p.id===id&&p.active);
 function updateExtra(input){
@@ -435,7 +493,7 @@ function updateExtra(input){
  vals[idx]={...vals[idx],[field]:input.value.slice(0,90)};
  return saveExtraList(kind,vals);
 }
-function attach(value){api=value;}
+function attach(value){api=value;readDrafts();}
 function subscribe(local,push){
  if(local!=='munro'||!allowed())return;
  void refresh();
