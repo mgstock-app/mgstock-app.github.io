@@ -554,6 +554,23 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
  (canManageCategories?'<button type="button" class="gcm-hide-section" data-gcm-hide-section="'+esc(name)+'" aria-label="Quitar sección '+esc(name)+' del conteo" title="Ocultar sección del conteo">Quitar</button>':'')+
  '</span></summary>'+
+ (canCatalog?'<div class="gcm-product-add-bar">'+
+ '<button type="button" class="gcm-add-product-trigger" data-gcm-add-product-open="'+esc(name)+'" aria-haspopup="dialog">+ Agregar producto</button>'+
+ '<span>El producto aparecerá en los tres turnos.</span></div>'+
+ '<dialog class="gcm-add-product-dialog" aria-label="Agregar producto en '+esc(name)+'">'+
+ '<div class="gcm-product-dialog-heading"><strong>Agregar producto</strong><span>Categoría: '+esc(name)+'</span></div>'+
+ '<label class="gcm-add-product-field">Nombre del producto'+
+ '<input type="text" data-gcm-new-product-name maxlength="100" placeholder="Ej.: Pizza especial" autocomplete="off" required></label>'+
+ '<label class="gcm-add-product-field">Cómo se cuenta'+
+ '<select data-gcm-new-product-type>'+
+ '<option value="0"'+(name!=='EMPANADAS'?' selected':'')+'>Por unidades</option>'+
+ '<option value="27">Por chapas (27 unidades)</option>'+
+ '<option value="30"'+(name==='EMPANADAS'?' selected':'')+'>Por chapas (30 unidades)</option>'+
+ '</select></label>'+
+ '<p class="gcm-add-product-help">Se agregará en esta categoría, para los tres turnos. No modifica conteos anteriores.</p>'+
+ '<p class="gcm-add-product-error" role="alert" aria-live="polite" data-gcm-add-product-error></p>'+
+ '<div class="gcm-add-product-actions"><button type="button" data-gcm-add-product-save>Guardar producto</button>'+
+ '<button type="button" data-gcm-add-product-cancel>Cancelar</button></div></dialog>':'')+
  '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  '<th scope="col" class="gcm-product-head">Producto</th>'+
  
@@ -647,7 +664,8 @@ function view(){
  const sectionsLocked=!!snapshot?.settings?.locked;
  const canManageCategories=canWrite&&(!sectionsLocked||admin());
  const list=(snapshot?.products||[]).filter(p=>p.active||!!rec.data?.[p.id]||!!rec.decomiso?.[p.id]);
- const categories=[...new Set(list.map(p=>p.section))];
+ // La administradora también puede recuperar categorías sin productos activos.
+ const categories=[...new Set((admin()?snapshot?.products||[]:list).map(p=>p.section).filter(Boolean))];
  const hiddenSource=sectionsLocked&&!historyRecord?snapshot?.settings?.hidden_sections:rec.hidden_sections;
  const hidden=new Set(Array.isArray(hiddenSource)?hiddenSource:[]);
  const visibleCategories=categories.filter(name=>!hidden.has(name));
@@ -756,6 +774,62 @@ document.addEventListener('click',async e=>{
   // Pulsar fuera del cuadro cierra el menú sin alterar el conteo.
   const dialog=e.target?.matches?.('.gcm-product-dialog')?e.target:null;
   if(dialog?.open)dialog.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-add-product-open')){
+  e.preventDefault();
+  if(!admin()||!editable()||busy||!snapshot||historyMode)return;
+  const section=el.dataset.gcmAddProductOpen;
+  const wrapper=el.closest('.gcm-section');
+  if(!wrapper||wrapper.dataset.gcmSection!==section||
+     !snapshot.products.some(p=>p.section===section))return;
+  const dialog=wrapper.querySelector('.gcm-add-product-dialog');
+  if(dialog&&!dialog.open&&typeof dialog.showModal==='function'){
+   dialog.showModal();
+   dialog.querySelector('[data-gcm-new-product-name]')?.focus();
+  }
+  return;
+ }
+ if(el.hasAttribute('data-gcm-add-product-cancel')){
+  e.preventDefault();
+  el.closest('.gcm-add-product-dialog')?.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-add-product-save')){
+  e.preventDefault();
+  if(!admin()||!editable()||busy||!snapshot||historyMode)return;
+  const dialog=el.closest('.gcm-add-product-dialog');
+  const section=el.closest('.gcm-section')?.dataset.gcmSection;
+  if(!dialog||!section||!snapshot.products.some(p=>p.section===section))return;
+  const input=dialog.querySelector('[data-gcm-new-product-name]');
+  const type=dialog.querySelector('[data-gcm-new-product-type]');
+  const status=dialog.querySelector('[data-gcm-add-product-error]');
+  const name=String(input?.value||'').trim(),per=Number(type?.value);
+  const fail=message=>{if(status)status.textContent=message;input?.focus();};
+  if(!name||name.length>100){fail('Escribí un nombre de producto de hasta 100 caracteres.');return;}
+  if(![0,27,30].includes(per)){fail('Seleccioná unidades o chapas.');return;}
+  if(snapshot.products.some(p=>p.active&&p.section===section&&p.name.trim().toLocaleLowerCase('es')===name.toLocaleLowerCase('es'))){
+   fail('Ya existe un producto con ese nombre en esta categoría.');return;
+  }
+  busy=true;el.disabled=true;el.textContent='Guardando…';
+  try{
+   const result=await rpc('gestlok_munro_conteo_add_product',{
+    p_section:section,p_name:name,p_units_per_chapa:per
+   });
+   if(!result?.ok||!result?.product?.id)throw Error('El servidor no confirmó el alta del producto.');
+   opened.add(section);
+   dialog.close();
+   error='';
+   busy=false;
+   await refresh();
+   api?.toast?.('Producto «'+name+'» agregado en '+section+'.');
+  }catch(err){
+   const message=err.message||'No se pudo agregar el producto.';
+   if(status)status.textContent=message;
+   api?.toast?.(message);
+  }finally{
+   busy=false;el.disabled=false;el.textContent='Guardar producto';
+  }
   return;
  }
  if(el.hasAttribute('data-gcm-product-menu')){
