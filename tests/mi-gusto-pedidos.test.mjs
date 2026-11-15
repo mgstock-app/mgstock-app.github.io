@@ -102,7 +102,7 @@ test('servidor preserva efectivo, validación de sucursal y recibidos irreversib
  assert.match(sql,/p_local text,p_id uuid/);
 });
 
-test('Pedidos WhatsApp muestra Todos, Pendientes y Realizados sin mezclar estados',async()=>{
+test('Pedidos WhatsApp conserva pedidos anteriores sin confundirlos con alertas del celular',async()=>{
  const s=setup();
  s.data.munro.orders.push({
    id:'ok-2',local:'munro',customer_name:'Cliente realizado',customer_phone:'1133344455',
@@ -110,23 +110,12 @@ test('Pedidos WhatsApp muestra Todos, Pendientes y Realizados sin mezclar estado
    status:'recibido',created_at:'2026-11-06T19:00:00Z',received_at:'2026-11-06T20:00:00Z'
  });
  s.orders.subscribe('munro',()=>{});await tick();
- const initial=s.orders.view();
- assert.match(initial,/Pedidos WhatsApp/);
- assert.match(initial,/Todos \(2\)/);
- assert.match(initial,/Pendientes \(1\)/);
- assert.match(initial,/Realizados \(1\)/);
- assert.match(initial,/Cliente Munro/);
- assert.doesNotMatch(initial,/Cliente realizado/);
- const clickTab=value=>s.handlers.click({target:{closest:q=>q==='[data-mgp-tab]'?{dataset:{mgpTab:value}}:null}});
- clickTab('todos');
- assert.match(s.orders.view(),/Cliente Munro/);
- assert.match(s.orders.view(),/Cliente realizado/);
- clickTab('realizados');
- assert.doesNotMatch(s.orders.view(),/Cliente Munro/);
- assert.match(s.orders.view(),/Cliente realizado/);
- clickTab('pendientes');
- assert.match(s.orders.view(),/Cliente Munro/);
- assert.doesNotMatch(s.orders.view(),/Cliente realizado/);
+ const html=s.orders.view();
+ assert.match(html,/Pedidos históricos \(2\)/);
+ assert.match(html,/Cliente Munro/);
+ assert.match(html,/Cliente realizado/);
+ assert.doesNotMatch(html,/Conexión con WhatsApp Business \(Meta\)/);
+ assert.doesNotMatch(html,/Mensajes automáticos de WhatsApp/);
 });
 
 test('OK con tilde marca solo pedido visto por gerente autorizado y no registra cobro',async()=>{
