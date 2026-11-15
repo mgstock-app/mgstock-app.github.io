@@ -38,14 +38,18 @@ function setup({role='dueno',local='munro',locals=['munro'],settings=SETTINGS,ca
  return {orders,api,S,calls,handlers,data};
 }
 const tick=()=>new Promise(r=>setImmediate(r));
+const openLink=s=>s.handlers.click({target:{closest:q=>q==='[data-mgp-section]'?{dataset:{mgpSection:'vinculacion'}}:null}});
 const click=(s,attr,value)=>s.handlers.click({target:{closest:q=>q==='['+attr+']'?{dataset:{[attr.replace(/^data-/,'').replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]:value}}:null}});
 
 test('Munro y Don Torcuato muestran panel de avisos separado, sin la configuración vieja de Meta',async()=>{
  for(const local of ['munro','torcuato']){
   const s=setup({local,locals:[local]});s.orders.subscribe(local,()=>{});await tick();await tick();
   const html=s.orders.view();
-  assert.match(html,new RegExp('Vincular WhatsApp Business de '+(local==='munro'?'Munro':'Don Torcuato')));
+  assert.match(html,/data-mgp-section="avisos"/);
+  assert.match(html,/data-mgp-section="vinculacion"/);
   assert.match(html,/Avisos de WhatsApp Business/);
+  openLink(s);
+  assert.match(s.orders.view(),new RegExp('Vincular WhatsApp Business de '+(local==='munro'?'Munro':'Don Torcuato')));
   assert.doesNotMatch(html,/Conexión con WhatsApp Business \(Meta\)|Mensajes automáticos de WhatsApp|Guardar datos de Meta/);
   assert.doesNotMatch(html,/Registrar pedido manualmente|mgp-order-form/);
   assert.match(html,/No hay avisos pendientes/);
@@ -53,6 +57,7 @@ test('Munro y Don Torcuato muestran panel de avisos separado, sin la configuraci
 });
 test('La comanda anterior sigue accesible, con sus datos completos',async()=>{
  const s=setup({role:'gerente'});s.orders.subscribe('munro',()=>{});await tick();await tick();
+ openLink(s);
  const html=s.orders.view();
  for(const text of [/#MG-001/,/María G\./,/\+54 9 11 2222-3333/,/https:\/\/wa\.me\/5491122223333/,
  /<b>6 ×<\/b> Carne suave/,/Observaciones:<\/b> Sin cebolla/,/12 unidades/,/Total: \$\s?24\.000/,/✓ OK · Vista/]){
@@ -60,21 +65,25 @@ test('La comanda anterior sigue accesible, con sus datos completos',async()=>{
  }
  assert.match(html,/Pedidos históricos \(1\)/);
 });
-test('Solo dueña y administradora generan la clave de un local; gerente ve los avisos',async()=>{
+test('Dueña y gerente de su local pueden generar la clave; avisos separados de la configuración',async()=>{
  for(const local of ['munro','torcuato']){
   const dueña=setup({local,locals:[local]});dueña.orders.subscribe(local,()=>{});await tick();await tick();
+  openLink(dueña);
   assert.match(dueña.orders.view(),/data-mgp-mobile-key/);
   const gerente=setup({role:'gerente',local,locals:[local]});gerente.orders.subscribe(local,()=>{});await tick();await tick();
+  openLink(gerente);
   assert.match(gerente.orders.view(),/data-mgp-mobile-key/);
-  assert.match(gerente.orders.view(),/Avisos de WhatsApp Business/);
+  assert.match(gerente.orders.view(),/data-mgp-section="avisos"/);
  }
 });
 test('La configuración incluye JSON por sucursal y aclara el límite de notificaciones',async()=>{
  const m=setup();m.orders.subscribe('munro',()=>{});await tick();await tick();
+ openLink(m);
  assert.match(m.orders.view(),/&quot;local&quot;:&quot;munro&quot;/);
  assert.match(m.orders.view(),/\{not_title\}/);
  assert.match(m.orders.view(),/No garantiza detectar un pedido confirmado/);
  const t=setup({local:'torcuato',locals:['torcuato']});t.orders.subscribe('torcuato',()=>{});await tick();await tick();
+ openLink(t);
  assert.match(t.orders.view(),/&quot;local&quot;:&quot;torcuato&quot;/);
  assert.doesNotMatch(t.orders.view(),/&quot;local&quot;:&quot;munro&quot;/);
 });
