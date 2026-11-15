@@ -342,7 +342,7 @@ function saveExtraList(kind,vals){
 }
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de Mi Gusto Munro.</p>';
- if(!historyMode&&!historyRecord&&day!==arDay()&&!busy){day=arDay();snapshot=null;++generation;}
+ // Se conserva el día seleccionado hasta que el gerente lo cambie expresamente.
  if(!snapshot&&!loading&&!error)void refresh();
  if(historyMode)return historyRecord?historyDetailView():historyListView();
  const rec=entry(),canWrite=editable()&&!closed()&&!!snapshot,canCatalog=admin()&&!historyRecord&&!busy;
@@ -357,11 +357,19 @@ function view(){
  const showWaste=!!rec.waste_visible;
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
 
+ const isToday=day===arDay(),yesterday=plusDays(arDay(),-1);
  return '<div class="gcm-page"><header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p><button type="button" class="gcm-open-history" data-gcm-history-open>Historial de conteos</button></div>'+
  '<div class="gcm-header-fields"><div><span>Local</span><strong>Munro</strong></div>'+
  '<label>Gerente / Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
- '<div><span>Fecha de inicio</span><strong>'+(historyRecord?'Archivado: ':'Hoy · ')+labelDay(historyRecord?.day||day)+'</strong></div></div></header>'+
+ '<div><span>Fecha del conteo</span><strong>'+(isToday?'Hoy · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
+ '<div class="gcm-day-bar"><strong>Conteo del '+esc(labelDay(day))+'</strong>'+
+ (isToday?'<button type="button" data-gcm-day="ayer">Recuperar conteo de ayer · '+esc(labelDay(yesterday))+'</button>':
+ '<button type="button" data-gcm-day="hoy">Ir al conteo de hoy</button>')+
+ (!isToday?'<span>Estás trabajando con datos del '+esc(labelDay(day))+'. No se cambió la fecha.</span>':'')+
+ '</div>'+
+ '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
+ '<button type="button" data-gcm-manual-save>Guardar conteo</button></div>'+
  '<nav class="gcm-tabs" aria-label="Turno">'+names+'</nav>'+
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
@@ -383,7 +391,7 @@ function view(){
  '<div class="gcm-bottom'+(showWaste?'':' gcm-bottom-single')+'">'+
  extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
- (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-refresh>Actualizar</button>'+
+ (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
  (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Finalizar '+esc(SHIFTS.find(s=>s[0]===shift)?.[1]||'turno')+'</button>':'<span>Conteo del turno archivado</span>')+'</div>':'')+
  '':'' )+
  '</div>';
@@ -403,8 +411,9 @@ function schedule(key,fn){
   if(queues.get(key)===next)queues.delete(key);
   busy=queues.size>0;
   error='Error al guardar: '+(e.message||'Reintentá');
+  const indicator=document.querySelector('.gcm-help span:last-child');
+  if(indicator)indicator.textContent='Error al guardar · Reintentar';
   api?.toast?.(error);
-  if(api?.S?.view==='conteo-munro')api.render();
  });
  return next;
 }
@@ -430,9 +439,7 @@ function attach(value){api=value;}
 function subscribe(local,push){
  if(local!=='munro'||!allowed())return;
  void refresh();
- const focus=()=>{if(api?.S?.view==='conteo-munro'&&!busy&&!loading)void refresh();};
- window.addEventListener('focus',focus);
- push(()=>window.removeEventListener('focus',focus));
+ // Sin refresh por focus: preserva posición y teclado del dispositivo.
 }
 document.addEventListener('toggle',e=>{
  if(e.target.matches?.('.gcm-section')){
