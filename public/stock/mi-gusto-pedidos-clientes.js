@@ -10,10 +10,10 @@ const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pesos=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',dateStyle:'short',timeStyle:'short'}).format(new Date(x)):'—';
-let api=null,items=[],catalog=[],phone='',tab='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
+let api=null,items=[],catalog=[],phone='',tab='pendientes',section='avisos',alertsFilter='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
 let settings=null,fbReady=null,fbAppId='',signupInfo=null;
 let polling=false,firstSnapshot=true,knownOrderIds=new Set(),lastNewOrderId='',lastUiSig='',lastAlertSig='';
-let androidBridge=null,androidAlerts=[],androidBridgeKey='';
+let androidBridge=null,androidAlerts=[],androidReviewed=[],androidBridgeKey='';
 const PAUSE_MS=12000;
 const GRAPH_VERSION='v25.0';
 const FORM_IDS='#mgp-order-form,#mgp-number-form,#mgp-catalog-form,#mgp-messages-form,#mgp-meta-form';
@@ -97,10 +97,11 @@ function hideAlert(){
 function acceptMobileAlerts(result,loc){
  if(!(loc in LOCALS)||loc!==local()||!allowed()||!result)return false;
  const next=Array.isArray(result.alerts)?result.alerts.filter(x=>x.status==='pendiente'):[];
- const before=androidAlerts.map(x=>x.id).join('|');
+ const reviewed=Array.isArray(result.reviewed)?result.reviewed.filter(x=>x.status==='visto'):[];
+ const before=[...androidAlerts,...androidReviewed].map(x=>x.id+':'+x.status).join('|');
  androidBridge={configured:!!result.configured,last_event_at:result.last_event_at||null};
- androidAlerts=next;indicators();
- return before!==next.map(x=>x.id).join('|');
+ androidAlerts=next;androidReviewed=reviewed;indicators();
+ return before!==[...next,...reviewed].map(x=>x.id+':'+x.status).join('|');
 }
 function acceptOrders(rows,loc){
  if(loc!==local()||!allowed())return false;
@@ -225,20 +226,32 @@ function copyRow(label,value,id){
 
 function mobileAlertPanel(){
  if(!metaLocal())return '';
- const pending=mobileAlerts();
- return '<section class="mgp-mobile-alerts"><header><strong>Avisos de WhatsApp Business · '+esc(localName())+'</strong><small>'+pending.length+' por revisar</small></header>'+
- (pending.length?pending.map(a=>{
+ const pending=mobileAlerts(),reviewed=androidReviewed;
+ const lookingAtReviewed=alertsFilter==='revisados';
+ const alerts=lookingAtReviewed?reviewed:pending;
+ const filterButton=(key,label,count)=>'<button type="button" data-mgp-alert-filter="'+key+'" aria-pressed="'+(alertsFilter===key)+'">'+esc(label)+' <span>'+count+'</span></button>';
+ return '<section class="mgp-mobile-alerts" aria-label="Avisos de WhatsApp Business de '+esc(localName())+'">'+
+ '<header><strong>Avisos de WhatsApp Business · '+esc(localName())+'</strong><small>'+pending.length+' por revisar</small></header>'+
+ '<nav class="mgp-mobile-filters" aria-label="Filtrar avisos de la sucursal">'+
+ filterButton('pendientes','Pendientes',pending.length)+filterButton('revisados','Revisados',reviewed.length)+'</nav>'+
+ (alerts.length?alerts.map(a=>{
   const digits=String(a.customer_phone||'').replace(/[^0-9]/g,'');
   const number=digits?'<strong id="mgp-mobile-phone-'+esc(a.id)+'">'+esc(customerPhone(digits))+'</strong>'+
    '<button type="button" data-mgp-copy="mgp-mobile-phone-'+esc(a.id)+'">Copiar número</button>'+
    '<a href="https://wa.me/'+esc(digits)+'" target="_blank" rel="noopener noreferrer">Abrir chat</a>':
    '<small>Número no disponible en la notificación. Buscalo en WhatsApp Business.</small>';
-  return '<div class="mgp-mobile-alert-item"><div><strong>Revisar conversación en WhatsApp de '+esc(localName())+'</strong>'+
+  return '<div class="mgp-mobile-alert-item'+(lookingAtReviewed?' mgp-mobile-alert-reviewed':'')+'"><div><strong>Revisar conversación en WhatsApp de '+esc(localName())+'</strong>'+
    '<small>Alerta recibida: '+date(a.created_at)+' · No significa pedido confirmado.</small>'+
    '<div class="mgp-mobile-contact">'+number+'</div></div>'+
-   '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Revisado</button></div>';
+   (lookingAtReviewed?'<span class="mgp-mobile-reviewed-label">✓ Revisado'+(a.seen_at?' · '+date(a.seen_at):'')+'</span>':
+   '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Revisado</button>')+'</div>';
  }).join(''):
- '<p class="mgp-mobile-empty">No hay avisos pendientes en esta sucursal.</p>')+'</section>';
+ (lookingAtReviewed?'<p class="mgp-mobile-empty">Todavía no hay avisos revisados en esta sucursal.</p>':
+ '<div class="mgp-mobile-zero"><p>No hay avisos pendientes en esta sucursal.</p>'+
+ (androidBridge?.configured&&!androidBridge?.last_event_at?
+ '<small>La clave ya está creada, pero el celular todavía no envió ninguna señal a GESTLOK.</small>'+
+ '<button type="button" data-mgp-section="vinculacion">Ver vinculación</button>':'')+'</div>'))+
+ '</section>';
 }
 function mobileBridgePanel(){
  if(!metaLocal())return '';
@@ -308,18 +321,24 @@ function view(){
   '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar número</button></form></details>':'';
  const historical=items.length?'<details class="mgp-config"><summary>Pedidos históricos ('+items.length+')</summary>'+
   '<div class="mgp-list">'+items.map(orderCard).join('')+'</div></details>':'';
+ const nav='<nav class="mgp-main-tabs" aria-label="Secciones de Pedidos WhatsApp">'+
+  '<button type="button" data-mgp-section="avisos" aria-current="'+(section==='avisos'?'page':'false')+'">Avisos'+
+  (mobileAlerts().length?'<span class="mgp-main-tab-count">'+mobileAlerts().length+'</span>':'')+'</button>'+
+  '<button type="button" data-mgp-section="vinculacion" aria-current="'+(section==='vinculacion'?'page':'false')+'">Vinculación</button></nav>';
+ const phoneCard='<div class="mgp-status"><span class="mgp-phone-icon">'+waIcon+'</span><div class="mgp-phone-detail"><span>WhatsApp de '+esc(localName())+'</span><strong>'+esc(formatPhone(phone))+'</strong>'+
+ '<small>El vínculo de alertas se configura en el Android del local.</small></div>'+
+ (phone?'<a class="mgp-phone-open" href="https://wa.me/'+esc(phone.replace(/[^0-9]/g,''))+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del local">↗</a>':'')+'</div>';
  return '<section class="mgp-page" aria-label="Avisos de pedidos WhatsApp de Mi Gusto"><header class="mgp-head"><div><small>Mi Gusto · '+esc(localName())+'</small>'+
  '<h2><span class="mgp-title-icon">'+waIcon+'</span> Pedidos WhatsApp</h2>'+
- '<p>Alertas para revisar desde el WhatsApp Business de esta sucursal. El agente de Meta sigue atendiendo desde WhatsApp.</p></div>'+
+ '<p>Avisos del WhatsApp Business de esta sucursal. El agente de Meta sigue atendiendo desde WhatsApp.</p></div>'+
  '<button type="button" class="mgp-reload" data-mgp-reload '+(!online()?'disabled':'')+'>Actualizar</button></header>'+
- '<div class="mgp-status"><span class="mgp-phone-icon">'+waIcon+'</span><div class="mgp-phone-detail"><span>WhatsApp de '+esc(localName())+'</span><strong>'+esc(formatPhone(phone))+'</strong>'+
- '<small>El vínculo de alertas se configura en el Android del local.</small></div>'+
- (phone?'<a class="mgp-phone-open" href="https://wa.me/'+esc(phone.replace(/[^0-9]/g,''))+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del local">↗</a>':'')+'</div>'+
+ nav+
  (error?'<p role="alert" class="mgp-error">'+esc(error)+'</p>':'')+
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
  (!online()?'<p role="status" class="mgp-error">Sin conexión: los avisos se consultan online.</p>':'')+
- (loading?'<p role="status">Cargando avisos…</p>':mobileAlertPanel())+
- mobileBridgePanel()+config+historical+
+ (section==='avisos'?
+  (loading?'<p role="status">Cargando avisos…</p>':mobileAlertPanel()):
+  phoneCard+mobileBridgePanel()+config+historical)+
  '<p class="mgp-footnote">✓ Revisado confirma que alguien controló la conversación. Una alerta no significa pedido confirmado. No modifica Caja, Stock ni Pagos Online.</p></section>';
 }
 async function action(method,args,success){
@@ -427,6 +446,10 @@ function attach(h){
  });
  document.addEventListener('click',e=>{
   if(api?.S.view!=='pedidos-clientes'||!allowed())return;
+  const sectionBtn=e.target.closest('[data-mgp-section]');
+  if(sectionBtn&&['avisos','vinculacion'].includes(sectionBtn.dataset.mgpSection)){section=sectionBtn.dataset.mgpSection;notice='';update(true);return;}
+  const filterBtn=e.target.closest('[data-mgp-alert-filter]');
+  if(filterBtn&&['pendientes','revisados'].includes(filterBtn.dataset.mgpAlertFilter)){alertsFilter=filterBtn.dataset.mgpAlertFilter;notice='';update(true);return;}
   const tabBtn=e.target.closest('[data-mgp-tab]');
   if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
@@ -536,7 +559,7 @@ function subscribe(loc,push){
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);document.removeEventListener('visibilitychange',visible);hideAlert();});
 }
 function reset(){
- epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidBridgeKey='';tab='pendientes';loading=false;busy=false;polling=false;
+ epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidReviewed=[];androidBridgeKey='';tab='pendientes';section='avisos';alertsFilter='pendientes';loading=false;busy=false;polling=false;
  error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
 }
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
