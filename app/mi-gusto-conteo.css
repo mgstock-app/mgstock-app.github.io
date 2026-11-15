@@ -915,7 +915,7 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
 /* Conteo por turnos: Historial y Conteo siempre accesibles, sin tapar la planilla. */
 .gcm-page .gcm-mode-nav{
  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
- position:sticky;top:0;z-index:24;
+ position:sticky;top:calc(70px + env(safe-area-inset-top,0px));z-index:19;
  padding:8px 0 10px;margin-bottom:10px;
  background:#fff;border-bottom:1px solid #e0e8f0;
 }
@@ -935,7 +935,7 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
 .gcm-page .gcm-save-bar .gcm-close-turn:disabled{opacity:.5}
 .gcm-page .gcm-tabs button.is-active{box-shadow:inset 0 -3px 0 rgba(255,255,255,.35)}
 @media(max-width:899px){
- .gcm-page .gcm-mode-nav{top:0;padding-block:6px}
+ .gcm-page .gcm-mode-nav{top:calc(73px + env(safe-area-inset-top,0px));padding-block:6px}
  .gcm-page .gcm-mode-nav button{min-height:48px;font-size:13px}
  .gcm-page .gcm-save-bar{gap:8px}
  .gcm-page .gcm-save-bar span{flex:1 1 100%}
