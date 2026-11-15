@@ -350,12 +350,20 @@ function historyDetailsTable(section,products,rec){
    '</details>';
 }
 function historyExtraBlock(kind,title,rec){
- const rows=(Array.isArray(rec[kind])?rec[kind]:[]).filter(r=>r&&(String(r.name||'').trim()||String(r.value||'').trim()));
- if(!rows.length||kind==='waste'&&!rec.waste_visible)return '';
- return '<section class="gcm-hd-extra"><h3>'+title+'</h3><table><tbody>'+
-  rows.map(r=>'<tr><td>'+esc(r.name||'—')+'</td><td>'+esc(r.value||'—')+'</td></tr>').join('')+
-  '</tbody></table></section>';
+ const existing=Array.isArray(rec[kind])?rec[kind]:[];
+ const rows=kind==='consumption'?Array.from({length:10},(_,i)=>existing[i]||{}):
+  existing.filter(r=>r&&(String(r.name||'').trim()||String(r.value||'').trim()));
+ if(!rows.length||(kind==='waste'&&!rec.waste_visible))return '';
+ return '<section class="gcm-hd-extra"><h3>'+title+'</h3><table><thead><tr>'+
+ (kind==='consumption'?'<th>#</th>':'')+'<th>'+(kind==='consumption'?'Colaborador':'Producto')+'</th><th>'+(kind==='consumption'?'Consumo':'Cantidad')+'</th></tr></thead><tbody>'+
+ rows.map((r,i)=>'<tr>'+(kind==='consumption'?'<td>'+(i+1)+'</td>':'')+
+  '<td>'+esc(r.name||'—')+'</td><td>'+esc(r.value||'—')+'</td></tr>').join('')+
+ '</tbody></table>'+
+ (kind==='consumption'&&existing.length>10?
+  '<p>Existen '+(existing.length-10)+' registros adicionales de turnos anteriores, conservados en el historial original.</p>':'')+
+ '</section>';
 }
+
 function historyDetailView(){
  const rec=historyRecord;
  if(!rec)return historyListView();
