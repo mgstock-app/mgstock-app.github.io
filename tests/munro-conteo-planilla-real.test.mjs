@@ -102,4 +102,20 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  assert.equal(total.textContent,'97');
  assert.equal(writes.at(-1)?.p_chapas,3);
  assert.equal(writes.at(-1)?.p_sueltas,16);
+ // Los botones de unidades trabajan en la misma casilla, sin abrir teclado ni perder posición.
+ button.dataset={gcmSueltaPlus:'mt',idx:'1'};
+ button.hasAttribute=(s)=>s==='data-gcm-suelta-plus';
+ await events.find(([name])=>name==='click')[1]({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(unitValue.textContent,'17 u.');
+ assert.equal(total.textContent,'98');
+ assert.equal(writes.at(-1)?.p_sueltas,17);
+ button.dataset={gcmSueltaMinus:'mt',idx:'1'};
+ button.hasAttribute=(s)=>s==='data-gcm-suelta-minus';
+ await events.find(([name])=>name==='click')[1]({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(unitValue.textContent,'16 u.');
+ assert.equal(total.textContent,'97');
+ assert.equal(writes.at(-1)?.p_sueltas,16);
+ assert.equal(renders.length,before,'Ningún cambio de unidades debe redibujar la página');
 });
