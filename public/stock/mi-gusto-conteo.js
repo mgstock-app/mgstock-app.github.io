@@ -590,7 +590,17 @@ document.addEventListener('click',async e=>{
   if(!editable()||closed()||!snapshot)return;
   el.disabled=true;el.textContent='Verificando guardado…';
   try{
+   // Finalizar intentos en curso y reintentar borradores que quedaron sin confirmar.
+   await Promise.allSettled([...queues.values()]);
+   const recovered=activePending();
+   for(const draft of recovered){
+    const p=productById(draft.pid);
+    if(!p)throw Error('Hay un producto pendiente que necesita revisión: '+draft.pid);
+    const task=draft.kind==='decomiso'?saveDecomiso(p,draft.cell):saveCell(p,draft.index,draft.cell);
+    task.catch(()=>{});
+   }
    await Promise.all([...queues.values()]);
+   if(activePending().length)throw Error('Quedaron cantidades sin guardar.');
    const server=await rpc('gestlok_munro_conteo_state',{p_day:day});
    if(!Array.isArray(server?.counts))throw Error('No se pudo verificar la información.');
    const local=entry(),remote=server.counts.find(x=>x.shift===shift);
@@ -599,7 +609,11 @@ document.addEventListener('click',async e=>{
     const saved=remote?.data?.[pid]?.[vto];
     return !saved||['chapas','sueltas','qty'].some(key=>Number(saved[key]||0)!==Number(cell[key]||0));
    }));
-   if(stale)throw Error('Hay cantidades sin confirmar. No cierres Conteo.');
+   const decompMismatch=Object.entries(local.decomiso||{}).some(([pid,cell])=>
+    ['chapas','sueltas','qty'].some(k=>Number(remote?.decomiso?.[pid]?.[k]||0)!==Number(cell?.[k]||0)));
+   const extraMismatch=['consumption','waste'].some(kind=>
+    JSON.stringify(remote?.[kind]||[])!==JSON.stringify(local[kind]||[]));
+   if(stale||decompMismatch||extraMismatch)throw Error('Hay cantidades sin confirmar. No cierres Conteo.');
    error='';el.textContent='✓ Guardado verificado';
    api?.toast?.('Conteo guardado y verificado en el servidor.');
   }catch(err){
