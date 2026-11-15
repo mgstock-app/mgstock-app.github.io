@@ -433,6 +433,48 @@ function saveExtraList(kind,vals){
   p_day:d,p_shift:s,p_kind:kind,p_items:copy
  }));
 }
+/** Verifica contra Supabase cada cantidad antes de guardar o cerrar el turno.
+ * Reintenta borradores locales y nunca descarta datos sin confirmación. */
+async function verifyTurnSaved(requireExisting=false){
+ const d=day,s=shift;
+ await Promise.allSettled([...queues.values()]);
+ const pending=activePending();
+ const tasks=[];
+ for(const draft of pending){
+  const p=productById(draft.pid);
+  if(!p)throw Error('Hay un producto pendiente que necesita revisión: '+draft.pid);
+  tasks.push(draft.kind==='decomiso'?saveDecomiso(p,draft.cell):saveCell(p,draft.index,draft.cell));
+ }
+ await Promise.all(tasks);
+ await Promise.all([...queues.values()]);
+ if(day!==d||shift!==s)throw Error('El turno cambió durante el guardado. Revisá antes de cerrar.');
+ if(activePending().length)throw Error('Hay cantidades sin guardar. No se puede cerrar el turno.');
+ const state=await rpc('gestlok_munro_conteo_state',{p_day:d});
+ if(!Array.isArray(state?.counts))throw Error('El servidor no pudo confirmar el guardado.');
+ const local=entry(),remote=state.counts.find(x=>x.shift===s);
+ if(!remote){
+  if(requireExisting||Object.keys(local.data||{}).length||Object.keys(local.decomiso||{}).length)
+   throw Error('Todavía no existe un conteo guardado para este turno.');
+  return {state,remote:null};
+ }
+ const mismatched=Object.entries(local.data||{}).some(([pid,values])=>
+  Object.entries(values).some(([vto,cell])=>{
+   const saved=remote.data?.[pid]?.[vto];
+   return !saved||['chapas','sueltas','qty'].some(k=>Number(saved[k]||0)!==Number(cell[k]||0));
+  }));
+ const decompMismatch=Object.entries(local.decomiso||{}).some(([pid,cell])=>
+  ['chapas','sueltas','qty'].some(k=>Number(remote.decomiso?.[pid]?.[k]||0)!==Number(cell?.[k]||0)));
+ const extraMismatch=['consumption','waste'].some(kind=>
+  JSON.stringify(remote[kind]||[])!==JSON.stringify(local[kind]||[]));
+ if(mismatched||decompMismatch||extraMismatch)
+  throw Error('Hay cantidades sin confirmar en el servidor. No se cerró el turno.');
+ if(requireExisting){
+  if(remote.status==='finalizado')throw Error('Este turno ya está cerrado. Revisá el historial.');
+  if(!RESPONSABLES.includes(remote.responsable))
+   throw Error('Seleccioná al gerente responsable antes de cerrar el turno.');
+ }
+ return {state,remote};
+}
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de Mi Gusto Munro.</p>';
  // Se conserva el día seleccionado hasta que el gerente lo cambie expresamente.
@@ -627,33 +669,10 @@ document.addEventListener('click',async e=>{
   api.render();void refresh();return;
  }
  if(el.hasAttribute('data-gcm-manual-save')){
-  if(!editable()||closed()||!snapshot)return;
+  if(!editable()||closed()||!snapshot||finishing)return;
   el.disabled=true;el.textContent='Verificando guardado…';
   try{
-   // Finalizar intentos en curso y reintentar borradores que quedaron sin confirmar.
-   await Promise.allSettled([...queues.values()]);
-   const recovered=activePending();
-   for(const draft of recovered){
-    const p=productById(draft.pid);
-    if(!p)throw Error('Hay un producto pendiente que necesita revisión: '+draft.pid);
-    const task=draft.kind==='decomiso'?saveDecomiso(p,draft.cell):saveCell(p,draft.index,draft.cell);
-    task.catch(()=>{});
-   }
-   await Promise.all([...queues.values()]);
-   if(activePending().length)throw Error('Quedaron cantidades sin guardar.');
-   const server=await rpc('gestlok_munro_conteo_state',{p_day:day});
-   if(!Array.isArray(server?.counts))throw Error('No se pudo verificar la información.');
-   const local=entry(),remote=server.counts.find(x=>x.shift===shift);
-   if(!remote&&Object.keys(local.data||{}).length)throw Error('El servidor todavía no tiene el conteo.');
-   const stale=Object.entries(local.data||{}).some(([pid,values])=>Object.entries(values).some(([vto,cell])=>{
-    const saved=remote?.data?.[pid]?.[vto];
-    return !saved||['chapas','sueltas','qty'].some(key=>Number(saved[key]||0)!==Number(cell[key]||0));
-   }));
-   const decompMismatch=Object.entries(local.decomiso||{}).some(([pid,cell])=>
-    ['chapas','sueltas','qty'].some(k=>Number(remote?.decomiso?.[pid]?.[k]||0)!==Number(cell?.[k]||0)));
-   const extraMismatch=['consumption','waste'].some(kind=>
-    JSON.stringify(remote?.[kind]||[])!==JSON.stringify(local[kind]||[]));
-   if(stale||decompMismatch||extraMismatch)throw Error('Hay cantidades sin confirmar. No cierres Conteo.');
+   await verifyTurnSaved();
    error='';el.textContent='✓ Guardado verificado';
    api?.toast?.('Conteo guardado y verificado en el servidor.');
   }catch(err){
@@ -747,12 +766,43 @@ document.addEventListener('click',async e=>{
   finally{busy=false;void refresh();}
   return;
  }
- if(el.hasAttribute('data-gcm-finalize')&&editable()&&!closed()&&!busy){
-  if(!window.confirm('¿Finalizar y archivar el conteo del turno? Después queda en solo lectura.'))return;
-  busy=true;
-  try{await rpc('gestlok_munro_conteo_finalize',{p_day:day,p_shift:shift});}
-  catch(err){error=err.message||'No se pudo finalizar';api.toast?.(error);}
-  finally{busy=false;void refresh();}
+ if(el.hasAttribute('data-gcm-finalize')){
+  if(!editable()||closed()||!snapshot||finishing)return;
+  const currentDay=day,currentShift=shift,following=nextTurn(currentDay,currentShift);
+  const currentName=SHIFTS.find(x=>x[0]===currentShift)?.[1]||currentShift;
+  const nextName=SHIFTS.find(x=>x[0]===following.shift)?.[1]||following.shift;
+  if(!window.confirm('¿Cerrar turno '+currentName+' del '+labelDay(currentDay)+'? Se guardará en Historial y se abrirá '+nextName+' del '+labelDay(following.day)+'.'))return;
+  finishing=true;busy=true;
+  el.disabled=true;el.textContent='Guardando y cerrando…';
+  try{
+   await verifyTurnSaved(true);
+   const response=await rpc('gestlok_munro_conteo_finalize',{p_day:currentDay,p_shift:currentShift});
+   if(!response?.ok)throw Error('El servidor no confirmó el cierre del turno.');
+   const archived=await rpc('gestlok_munro_conteo_state',{p_day:currentDay});
+   if(archived?.counts?.find(x=>x.shift===currentShift)?.status!=='finalizado')
+    throw Error('No se pudo comprobar el archivo del turno. Actualizá antes de continuar.');
+   // El historial consulta estos mismos registros, sin duplicar ni alterar cantidades.
+   shift=following.shift;historyMode=false;historyRecord=null;
+   historyRows=[];historyExpanded=null;historyMonth=following.day.slice(0,7);
+   error='';
+   if(following.day!==currentDay){
+    ++generation;day=following.day;snapshot=null;loading=false;
+   }else{
+    snapshot=archived;overlayDrafts();
+   }
+   api?.toast?.('Turno '+currentName+' cerrado. Abriendo '+nextName+'.');
+  }catch(err){
+   error=err.message||'No se pudo cerrar el turno';
+   api?.toast?.(error);
+  }finally{
+   finishing=false;busy=false;
+   api.render();
+   if(!error){
+    document.querySelector('.gcm-page')?.scrollIntoView?.({block:'start'});
+    window.scrollTo?.(0,0);
+   }
+  }
+  return;
  }
 });
 // Carga numérica: el teclado sigue abierto y cada dígito se protege sin re-render.
