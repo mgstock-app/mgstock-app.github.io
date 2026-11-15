@@ -280,6 +280,24 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
   '<span class="gcm-cell-save" role="status" aria-live="polite"></span>'+
  '</div>';
 }
+/* Productos sin chapas (aguas, gaseosas, etc.): un contador compacto y editable.
+   Las unidades siguen guardándose en el mismo campo qty de cada vencimiento. */
+function numericCompacta(p,v,canWrite,isDecomiso,index){
+ const pid=esc(p.id),label=esc(p.name+(isDecomiso?' decomiso':' vencimiento '+index));
+ const attrs=isDecomiso?'':' data-idx="'+index+'"';
+ const plus=isDecomiso?'data-gcm-decomp-qty-plus':'data-gcm-qty-plus';
+ const minus=isDecomiso?'data-gcm-decomp-qty-minus':'data-gcm-qty-minus';
+ const inputAttr=isDecomiso?'data-gcm-decomp-qty':'data-gcm-qty';
+ const disabled=canWrite?'':' disabled';
+ return '<div class="gcm-numeric-count">'+
+ '<div class="gcm-qty-stepper">'+
+ '<button type="button" class="gcm-qty-minus" '+minus+'="'+pid+'"'+attrs+
+ (!canWrite||!v.qty?' disabled':'')+' aria-label="Restar una unidad de '+label+'">−</button>'+
+ '<input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" '+inputAttr+'="'+pid+'"'+attrs+
+ ' value="'+(v.qty||0)+'"'+disabled+' aria-label="Unidades de '+label+'">'+
+ '<button type="button" class="gcm-qty-plus" '+plus+'="'+pid+'"'+attrs+disabled+' aria-label="Sumar una unidad de '+label+'">+</button>'+
+ '</div><span class="gcm-cell-save" role="status" aria-live="polite"></span></div>';
+}
 // Actualización puntual de la casilla y del total, sin reemplazar el DOM de Conteo.
 function syncCountDom(el,p,i,isDecomp){
  const td=el.closest('td');
@@ -295,6 +313,10 @@ function syncCountDom(el,p,i,isDecomp){
  }
  const units=td.querySelector('.gcm-units-value');
  if(units&&units!==el)units.value=String(v.sueltas);
+ const directQty=td.querySelector('.gcm-qty');
+ if(directQty&&directQty!==el)directQty.value=String(v.qty);
+ const qtyMinus=td.querySelector('.gcm-qty-minus');
+ if(qtyMinus)qtyMinus.disabled=v.qty<=0;
  const unitMinus=td.querySelector('.gcm-unit-minus');
  if(unitMinus)unitMinus.disabled=v.sueltas<=0;
  const row=td.closest('tr'),total=row?.querySelector('.gcm-total');
@@ -326,7 +348,7 @@ function decompColumn(p,canWrite){
  if(p.units_per_chapa>0){
   return '<td class="gcm-chapa gcm-decomp-cell gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
- return '<td class="gcm-decomp-cell gcm-numeric-cell gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"><span class="gcm-cell-save" role="status" aria-live="polite"></span></td>';
+ return '<td class="gcm-decomp-cell gcm-numeric-cell gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">'+numericCompacta(p,v,canWrite,true,0)+'</td>';
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
@@ -337,11 +359,11 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    if(p.units_per_chapa){
     return '<td class="gcm-chapa gcm-vto-col'+(activeVto===String(i)?' is-current-vto':'')+'" data-gcm-idx="'+i+'">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
-   return '<td class="gcm-numeric-cell gcm-vto-col'+(activeVto===String(i)?' is-current-vto':'')+'" data-gcm-idx="'+i+'"><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"><span class="gcm-cell-save" role="status" aria-live="polite"></span></td>';
+   return '<td class="gcm-numeric-cell gcm-vto-col'+(activeVto===String(i)?' is-current-vto':'')+'" data-gcm-idx="'+i+'">'+numericCompacta(p,v,canWrite,false,i)+'</td>';
   }).join('');
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
-  return '<tr><th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+ 
+  return '<tr class="'+(p.units_per_chapa>0?'gcm-chapa-row':'gcm-qty-row')+'"><th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+ 
    (canCatalog?'<div class="gcm-product-actions">'+
    '<button type="button" class="gcm-product-menu-trigger" data-gcm-product-menu="'+esc(p.id)+'" aria-haspopup="dialog" aria-label="Opciones del producto '+esc(p.name)+'" title="Opciones del producto">⋯</button>'+
    '<dialog class="gcm-product-dialog" aria-label="Opciones del producto '+esc(p.name)+'">'+
@@ -673,6 +695,23 @@ document.addEventListener('click',async e=>{
   const [d,s]=el.dataset.gcmHistory.split('|');
   const record=historyRows.find(v=>v.day===d&&v.shift===s);
   if(historyMode&&record){historyRecord=record;api.render();}return;
+ }
+ // Contador directo para aguas, gaseosas y otros productos sin chapas.
+ if(el.hasAttribute('data-gcm-qty-plus')||el.hasAttribute('data-gcm-qty-minus')||
+    el.hasAttribute('data-gcm-decomp-qty-plus')||el.hasAttribute('data-gcm-decomp-qty-minus')){
+  if(!editable()||closed()||!snapshot)return;
+  const isDecompQty=el.hasAttribute('data-gcm-decomp-qty-plus')||el.hasAttribute('data-gcm-decomp-qty-minus');
+  const pid=el.dataset.gcmQtyPlus||el.dataset.gcmQtyMinus||el.dataset.gcmDecompQtyPlus||el.dataset.gcmDecompQtyMinus;
+  const p=productById(pid),i=Number(el.dataset.idx);
+  if(!p||p.units_per_chapa>0||(!isDecompQty&&(i<1||i>4)))return;
+  const cell=isDecompQty?getDecomisoCell(p):getCell(p,i);
+  const add=el.hasAttribute('data-gcm-qty-plus')||el.hasAttribute('data-gcm-decomp-qty-plus');
+  const qty=Math.max(0,Math.min(1000000,cell.qty+(add?1:-1)));
+  if(qty===cell.qty)return;
+  cell.qty=qty;
+  const task=isDecompQty?saveDecomiso(p,cell):saveCell(p,i,cell);
+  syncCountDom(el,p,i,isDecompQty);saveCellFeedback(el,task);
+  return;
  }
  const isDecomp=['data-gcm-decomp-plus','data-gcm-decomp-minus','data-gcm-decomp-suelta-plus','data-gcm-decomp-suelta-minus'].some(name=>el.hasAttribute(name));
  const id=el.dataset.gcmPlus||el.dataset.gcmMinus||el.dataset.gcmDecompPlus||el.dataset.gcmDecompMinus||
