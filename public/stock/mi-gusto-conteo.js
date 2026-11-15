@@ -219,6 +219,7 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
    '<button type="button" class="gcm-unit-plus" '+unitPlus+'="'+pid+'"'+attrs+disabled+
     ' aria-label="Sumar unidad suelta '+label+'">+</button>'+
   '</div>'+
+  '<span class="gcm-cell-save" role="status" aria-live="polite"></span>'+
  '</div>';
 }
 // Actualización puntual de la casilla y del total, sin reemplazar el DOM de Conteo.
@@ -244,6 +245,22 @@ function syncCountDom(el,p,i,isDecomp){
   for(let n=1;n<=4;n++)sum+=amount(p,getCell(p,n));
   total.textContent=sum?String(sum):'—';
  }
+}
+
+// Cada casilla reserva su espacio de confirmación; guardados anteriores no pisan el último.
+function saveCellFeedback(el,task){
+ const td=el.closest('td'),status=td?.querySelector('.gcm-cell-save');
+ if(!td||!status)return;
+ const token=String((Number(td.dataset.gcmSaveToken)||0)+1);
+ td.dataset.gcmSaveToken=token;
+ status.className='gcm-cell-save is-saving';status.textContent='Guardando…';
+ task.then(()=>{
+  if(td.dataset.gcmSaveToken!==token)return;
+  status.className='gcm-cell-save is-saved';status.textContent='✓ Guardado';
+ }).catch(()=>{
+  if(td.dataset.gcmSaveToken!==token)return;
+  status.className='gcm-cell-save is-error';status.textContent='No guardado';
+ });
 }
 
 function decompColumn(p,canWrite){
@@ -544,8 +561,9 @@ document.addEventListener('click',async e=>{
   const next=Math.max(0,Math.min(limit,cell[field]+(adding?1:-1)));
   if(next===cell[field])return;
   cell[field]=next;
-  if(isDecomp)void saveDecomiso(p,cell);else void saveCell(p,i,cell);
+  const task=isDecomp?saveDecomiso(p,cell):saveCell(p,i,cell);
   syncCountDom(el,p,i,isDecomp);
+  saveCellFeedback(el,task);
   return;
  }
  const productId=el.dataset.gcmRename||el.dataset.gcmRemove;
