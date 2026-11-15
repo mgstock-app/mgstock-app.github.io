@@ -877,3 +877,36 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
  .gcm-page .gcm-section .gcm-sheet-scroll tbody tr.gcm-qty-row > th.gcm-product-cell,
  .gcm-page .gcm-section .gcm-sheet-scroll tbody tr.gcm-qty-row > td{height:92px!important;max-height:92px!important}
 }
+
+
+/* Conteo · desplazamiento vertical con teclado numérico abierto.
+   No bloquear el gesto vertical en el scroll horizontal de los vencimientos.
+   Chrome/Android debe poder propagarlo a la página sin desenfocar el input. */
+.gcm-page .gcm-section{
+ overflow:visible!important;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll{
+ overflow-x:auto!important;
+ overflow-y:auto!important;
+ overscroll-behavior-x:contain;
+ overscroll-behavior-y:auto!important;
+ touch-action:pan-x pan-y pinch-zoom!important;
+ -webkit-overflow-scrolling:touch;
+}
+.gcm-page .gcm-sheet-scroll table{
+ touch-action:pan-x pan-y pinch-zoom;
+}
+.gcm-page input[type="number"]{
+ touch-action:pan-y pinch-zoom!important;
+}
+@media(hover:none) and (pointer:coarse){
+ .gcm-page{overflow-y:visible!important}
+ .gcm-page .gcm-section .gcm-sheet-scroll{
+  overscroll-behavior-y:auto!important;
+  touch-action:pan-x pan-y pinch-zoom!important;
+ }
+ .gcm-page .gcm-qty-stepper input[type="number"],
+ .gcm-page .gcm-units-stepper input[type="number"]{
+  touch-action:pan-y pinch-zoom!important;
+ }
+}
