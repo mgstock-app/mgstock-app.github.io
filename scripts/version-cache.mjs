@@ -10,9 +10,10 @@ const version = process.env.GITHUB_RUN_ID
   : new Date().toISOString().replace(/[^0-9]/g, '');
 const digest = createHash('sha256').update(version).digest('hex').slice(0, 16);
 const template = readFileSync(new URL('./sw-template.js', import.meta.url), 'utf8');
-// Cada despliegue declara qué empresas tienen cambios visibles. Por seguridad,
-// archivos compartidos o un diff indeterminado implican aviso global.
-let audience = ['*'];
+// El aviso exige evidencia concreta del alcance del cambio.
+// Si un diff no se puede consultar, actualizar assets silenciosamente;
+// nunca molestar a tiendas con un aviso global inventado.
+let audience = [];
 try {
   let previous = 'HEAD^';
   if (process.env.GITHUB_EVENT_PATH) {
@@ -29,7 +30,7 @@ try {
   }
   audience = releaseAudience(paths, patches);
 } catch (error) {
-  console.warn('Alcance PWA no disponible; avisos globales por precaución:', error?.message || error);
+  console.warn('Alcance PWA no verificable; sin cartel de actualización:', error?.message || error);
 }
 const SCOPE_MARK = '/*__UPDATE_AUDIENCE__*/["*"]';
 if (!template.includes(SCOPE_MARK)) throw new Error('Marcador de alcance PWA ausente');
