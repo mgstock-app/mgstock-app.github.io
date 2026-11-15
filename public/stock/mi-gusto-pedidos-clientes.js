@@ -219,6 +219,50 @@ function messagesPanel(){
 function copyRow(label,value,id){
  return '<div class="mgp-copy"><span>'+label+'</span><code id="'+id+'">'+esc(value)+'</code><button type="button" data-mgp-copy="'+id+'">Copiar</button></div>';
 }
+
+function mobileAlertPanel(){
+ if(local()!=='munro')return '';
+ const pending=mobileAlerts();
+ return '<section class="mgp-mobile-alerts"><header><strong>Avisos de WhatsApp Business</strong><small>'+pending.length+' por revisar</small></header>'+
+ (pending.length?pending.map(a=>'<div class="mgp-mobile-alert-item"><div><strong>Revisar conversación en WhatsApp de Munro</strong>'+
+ '<small>Notificación del celular · '+date(a.created_at)+' · No significa pedido confirmado.</small></div>'+
+ '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>Ya revisé</button></div>').join(''):
+ '<p class="mgp-mobile-empty">No hay avisos del celular pendientes.</p>')+'</section>';
+}
+function mobileBridgePanel(){
+ if(local()!=='munro')return '';
+ const configured=!!androidBridge?.configured;
+ return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config">'+
+ '<summary>Conectar avisos del celular a GESTLOK (sin API de WhatsApp)</summary>'+
+ '<p>El celular Android avisa a GESTLOK cuando WhatsApp Business recibe una notificación del agente. No lee chats ni detecta pedidos que Meta no notifique.</p>'+
+ '<p><b>Estado:</b> '+(configured?'Puente configurado':'Puente pendiente')+
+ (androidBridge?.last_event_at?' · Última señal: '+date(androidBridge.last_event_at):' · Sin señales recibidas')+'</p>'+
+ '<ol><li>En el Android del local instalá MacroDroid y autorizá acceso a notificaciones.</li>'+
+ '<li>Disparador: Notificación recibida → WhatsApp Business. Filtrá avisos del agente que derivan al personal.</li>'+
+ '<li>Acción: Solicitud HTTP POST a la siguiente URL; encabezado <code>X-Gestlok-Bridge-Key</code> con la clave.</li>'+
+ '<li>Probá una derivación real. GESTLOK abierto mostrará un aviso en Pedidos WhatsApp y los atajos.</li></ol>'+
+ '<div class="mgp-mobile-credentials"><b>URL</b><code id="mgp-mobile-url">'+esc(bridgeUrl())+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-url">Copiar URL</button></div>'+
+ (canSetNumber()?'<button class="mgp-button" type="button" data-mgp-mobile-key '+(!canEdit()?'disabled':'')+'>'+
+ (configured?'Generar nueva clave':'Generar clave de vínculo')+'</button>':'')+
+ (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
+ '<p class="mgp-mobile-warning">No envíes contenido de clientes. Si WhatsApp Business no emite notificaciones, GESTLOK tampoco puede recibir avisos.</p></details>';
+}
+async function createMobileBridgeKey(){
+ if(local()!=='munro'||!canEdit()||!canSetNumber())return;
+ if(androidBridge?.configured&&!window.confirm('La clave anterior dejará de funcionar. ¿Continuar?'))return;
+ busy=true;error='';notice='';update(true);
+ try{
+  const result=await rpc('gestlok_mg_android_bridge_create');
+  if(!/^[a-f0-9]{64}$/.test(result?.token||''))throw Error('No se pudo generar la clave');
+  androidBridgeKey=result.token;
+  androidBridge={configured:true,last_event_at:androidBridge?.last_event_at||null};
+  notice='Copiá la URL y clave en MacroDroid del celular de Munro.';
+ }catch(e){error=e.message||'Error al crear clave';}
+ finally{busy=false;update(true);}
+}
+
 function metaPanel(){
  if(!canConfigure())return '';
  const m=settings?.meta_app||{},c=settings?.connection;
@@ -281,8 +325,9 @@ function view(){
  '<button type="button" data-mgp-tab="pendientes" aria-current="'+(tab==='pendientes'?'page':'false')+'">Pendientes ('+pending.length+')</button>'+
  '<button type="button" data-mgp-tab="realizados" aria-current="'+(tab==='realizados'?'page':'false')+'">Realizados ('+done.length+')</button></nav>'+
  (loading?'<p role="status">Cargando pedidos…</p>':
+ mobileAlertPanel()+
  '<div class="mgp-list">'+(selected.length?selected.map(orderCard).join(''):'<p class="mgp-empty">'+(tab==='todos'?'Todavía no hay pedidos registrados.':tab==='pendientes'?'No hay pedidos pendientes.':'Todavía no hay pedidos marcados como realizados.')+'</p>')+'</div>')+
- catalogPanel+messagesPanel()+metaPanel()+manual+config+
+ catalogPanel+mobileBridgePanel()+messagesPanel()+metaPanel()+manual+config+
  '<p class="mgp-footnote">El OK significa que el dueño o gerente vio la comanda, no que se preparó o entregó. No registra cobros ni modifica Caja, Stock o Pagos Online.</p></section>';
 }
 async function action(method,args,success){
@@ -393,6 +438,12 @@ function attach(h){
   const tabBtn=e.target.closest('[data-mgp-tab]');
   if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
+  if(e.target.closest('[data-mgp-mobile-key]')){void createMobileBridgeKey();return;}
+  const mobileAck=e.target.closest('[data-mgp-mobile-ack]');
+  if(mobileAck&&canEdit()&&local()==='munro'){
+   void action('gestlok_mg_android_bridge_ack',{p_id:mobileAck.dataset.mgpMobileAck},'Aviso revisado.');
+   return;
+  }
   const copy=e.target.closest('[data-mgp-copy]');
   if(copy){void copyText(copy.dataset.mgpCopy);return;}
   if(e.target.closest('[data-mgp-connect]')){connectMeta();return;}
@@ -497,5 +548,5 @@ function reset(){
  error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
 }
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
- _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
+ _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,mobileAlertPanel,mobileBridgePanel,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
 })();
