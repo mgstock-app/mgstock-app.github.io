@@ -13,7 +13,7 @@ const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Bue
 let api=null,items=[],catalog=[],phone='',tab='pendientes',section='avisos',alertsFilter='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
 let settings=null,fbReady=null,fbAppId='',signupInfo=null;
 let polling=false,firstSnapshot=true,knownOrderIds=new Set(),lastNewOrderId='',lastUiSig='',lastAlertSig='';
-let androidBridge=null,androidAlerts=[],androidReviewed=[],androidBridgeKey='';
+let androidBridge=null,androidAlerts=[],androidReviewed=[],androidBridgeKey='',bridgeTest=null;
 const PAUSE_MS=12000;
 const GRAPH_VERSION='v25.0';
 const FORM_IDS='#mgp-order-form,#mgp-number-form,#mgp-catalog-form,#mgp-messages-form,#mgp-meta-form';
@@ -114,9 +114,22 @@ function acceptMobileAlerts(result,loc){
  const next=Array.isArray(result.alerts)?result.alerts.filter(x=>x.status==='pendiente'):[];
  const reviewed=Array.isArray(result.reviewed)?result.reviewed.filter(x=>x.status==='visto'):[];
  const before=[...androidAlerts,...androidReviewed].map(x=>x.id+':'+x.status).join('|');
+ const previousSignal=androidBridge?.last_event_at||null;
  androidBridge={configured:!!result.configured,last_event_at:result.last_event_at||null};
- androidAlerts=next;androidReviewed=reviewed;indicators();
- return before!==[...next,...reviewed].map(x=>x.id+':'+x.status).join('|');
+ androidAlerts=next;androidReviewed=reviewed;
+ let passed=false;
+ if(bridgeTest?.local===loc&&!bridgeTest.passed&&androidBridge.configured){
+  const received=Date.parse(androidBridge.last_event_at||'');
+  const baseline=Date.parse(bridgeTest.previousAt||'')||0;
+  // No reconocer eventos antiguos ni avisos anteriores al inicio de la prueba.
+  if(Number.isFinite(received)&&received>Math.max(baseline,bridgeTest.startedAt-5000)){
+   bridgeTest.passed=true;passed=true;
+   notice='Prueba correcta: GESTLOK recibió una señal nueva del Android de '+localName()+'.';
+  }
+ }
+ indicators();
+ return passed||previousSignal!==androidBridge.last_event_at||
+  before!==[...next,...reviewed].map(x=>x.id+':'+x.status).join('|');
 }
 function acceptOrders(rows,loc){
  if(loc!==local()||!allowed())return false;
@@ -271,33 +284,62 @@ function mobileAlertPanel(){
 function mobileBridgePanel(){
  if(!metaLocal())return '';
  const configured=!!androidBridge?.configured,example=JSON.stringify({local:local(),customer_phone:'{not_title}'});
- return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config"'+(androidBridgeKey?' open':'')+'>'+
- '<summary>Vincular WhatsApp Business de '+esc(localName())+' (sin API)</summary>'+
- '<p>Cada sucursal necesita su propio celular Android con WhatsApp Business y MacroDroid. Solo se transmite la alerta y el número cuando figura visible; no se copian conversaciones.</p>'+
- '<p><b>Estado:</b> '+(configured?'Clave generada':'Pendiente de configurar')+
- (androidBridge?.last_event_at?' · Última señal: '+date(androidBridge.last_event_at):' · Sin señales recibidas')+'</p>'+
-
+ const testing=bridgeTest?.local===local()?bridgeTest:null;
+ const last=androidBridge?.last_event_at;
+ const hasSignal=!!last;
+ const verified=!!testing?.passed;
+ const status=verified?'Señal de prueba recibida':hasSignal?'Última señal registrada: '+date(last):configured?'Clave generada · Falta prueba':'Pendiente de configurar';
+ return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config" open>'+
+ '<summary>Conectar avisos del WhatsApp Business de '+esc(localName())+' (sin API)</summary>'+
+ '<p>Cada sucursal usa su propio Android, número y clave. El QR abre un asistente, no accede a los chats ni vincula WhatsApp Web.</p>'+
+ '<p class="mgp-bridge-status" role="status"><b>Estado de '+esc(localName())+':</b> '+esc(status)+'</p>'+
  '<div class="mgp-mobile-qr"><div class="mgp-mobile-qr-image">'+(setupQrSvg()||'<span>No se pudo mostrar el QR. Usá el enlace.</span>')+'</div>'+
- '<div class="mgp-mobile-qr-info"><strong>QR propio de GESTLOK · '+esc(localName())+'</strong>'+
- '<p>Escanealo con el Android del local para abrir la guía de configuración. No conecta WhatsApp por sí solo ni reemplaza los permisos de MacroDroid.</p>'+
- '<div class="mgp-mobile-qr-links"><a href="'+esc(setupLink())+'" target="_blank" rel="noopener noreferrer">Abrir en este celular</a>'+
+ '<div class="mgp-mobile-qr-info"><strong>1. Escanear QR de GESTLOK · '+esc(localName())+'</strong>'+
+ '<p>Escaneá desde el celular del local. El asistente indica cómo autorizar notificaciones y preparar MacroDroid una sola vez.</p>'+
+ '<div class="mgp-mobile-qr-links"><a href="'+esc(setupLink())+'" target="_blank" rel="noopener noreferrer">Abrir asistente en este celular</a>'+
  '<button type="button" data-mgp-copy="mgp-setup-url">Copiar enlace</button></div>'+
  '<code id="mgp-setup-url">'+esc(setupLink())+'</code></div></div>'+
- '<ol><li>En el Android de '+esc(localName())+', instalá MacroDroid y autorizá acceso a notificaciones.</li>'+
- '<li>Disparador: <b>Notificación recibida → WhatsApp Business</b>. Filtrá por la notificación de derivación del agente, NO por todos los mensajes. Verificá qué aviso produce Meta.</li>'+
- '<li>Acción: <b>Solicitud HTTP POST</b> con URL de abajo, encabezado <code>X-Gestlok-Bridge-Key</code> con tu clave y <code>Content-Type: application/json</code>.</li>'+
- '<li>En el cuerpo JSON pegá el ejemplo. <code>{not_title}</code> representa el título de la notificación: si contiene un nombre en vez del teléfono, se registra el aviso sin número.</li>'+
- '<li>Probá una derivación real para verificar el aviso en GESTLOK.</li></ol>'+
- '<div class="mgp-mobile-credentials"><b>URL</b><code id="mgp-mobile-url">'+esc(bridgeUrl())+'</code>'+
- '<button type="button" data-mgp-copy="mgp-mobile-url">Copiar URL</button></div>'+
- '<div class="mgp-mobile-credentials"><b>Cuerpo JSON</b><code id="mgp-mobile-json">'+esc(example)+'</code>'+
- '<button type="button" data-mgp-copy="mgp-mobile-json">Copiar JSON</button></div>'+
+ '<div class="mgp-mobile-test">'+
+ '<strong>2. Autorizar clave y probar avisos</strong>'+
+ '<p>Generá una clave solo si todavía no tenés una válida. Usá la clave de '+esc(localName())+' en MacroDroid; nunca la envíes por WhatsApp ni la pongas en el QR.</p>'+
  (canLinkLocalBridge()?'<button class="mgp-button" type="button" data-mgp-mobile-key '+(!canEdit()?'disabled':'')+'>'+
- (configured?'Generar nueva clave':'Generar clave de vínculo')+'</button>':'')+
+ (configured?'Reemplazar clave (desconecta la anterior)':'Generar clave de vínculo')+'</button>':'')+
  (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
- '<p class="mgp-mobile-warning">La alerta depende de que WhatsApp Business muestre una notificación identificable en el celular. No garantiza detectar un pedido confirmado. No se envía texto de clientes.</p></details>';
+ '<p>Cuando MacroDroid esté activo, iniciá la prueba y generá una notificación real de WhatsApp Business desde otro celular.</p>'+
+ '<div class="mgp-mobile-test-buttons"><button type="button" data-mgp-mobile-test '+(!configured||!canEdit()?'disabled':'')+'>Iniciar prueba de conexión</button>'+
+ '<button type="button" data-mgp-mobile-check '+(!testing||!canEdit()?'disabled':'')+'>Comprobar señal</button></div>'+
+ (testing?(verified?'<p class="mgp-mobile-test-success" role="status">✓ Conectado para avisos: se recibió una nueva señal de '+esc(localName())+'. No confirma la recepción de todos los pedidos.</p>':
+ '<p class="mgp-mobile-test-wait" role="status">Esperando señal nueva del Android de '+esc(localName())+'. Si no llega, revisá permisos, disparador y filtro en MacroDroid.</p>'):'')+
+ '</div>'+
+ '<details class="mgp-mobile-advanced"><summary>Configuración manual (por si la necesitás)</summary>'+
+ '<p>En MacroDroid: Notificación recibida → WhatsApp Business; filtrar por derivación real del agente. Acción: Solicitud HTTP POST.</p>'+
+ '<div class="mgp-mobile-credentials"><b>URL</b><code id="mgp-mobile-url">'+esc(bridgeUrl())+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-url">Copiar URL</button></div>'+
+ '<div class="mgp-mobile-credentials"><b>Encabezados</b><code>X-Gestlok-Bridge-Key: [clave privada de '+esc(localName())+']\nContent-Type: application/json</code></div>'+
+ '<div class="mgp-mobile-credentials"><b>Cuerpo JSON</b><code id="mgp-mobile-json">'+esc(example)+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-json">Copiar JSON</button></div>'+
+ '<p>{not_title} representa el título de la notificación y debe insertarse con el selector de variables de MacroDroid.</p></details>'+
+ '<p class="mgp-mobile-warning">Un QR no puede conectar WhatsApp Business directamente sin una integración autorizada. El puente solo funciona cuando Android emite una notificación identificable; no interpreta pedidos confirmados ni altera Caja, Stock o Pagos Online.</p></details>';
 }
+function beginMobileBridgeTest(){
+ if(!canEdit()||!metaLocal()||!androidBridge?.configured)return;
+ bridgeTest={local:local(),startedAt:Date.now(),previousAt:androidBridge.last_event_at||null,passed:false};
+ notice='Prueba iniciada para '+localName()+'. Generá una notificación real desde otro teléfono y tocá Comprobar señal.';
+ error='';update(true);
+}
+async function checkMobileBridgeTest(){
+ if(!canEdit()||!metaLocal()||bridgeTest?.local!==local())return;
+ const loc=local(),started=bridgeTest.startedAt;
+ try{
+  const bridge=await rpc('gestlok_mg_android_bridge_state');
+  if(loc!==local()||bridgeTest?.startedAt!==started)return;
+  acceptMobileAlerts(bridge,loc);
+  if(!bridgeTest.passed)notice='Todavía no llegó una señal nueva para '+localName()+'. Revisá MacroDroid y las notificaciones.';
+  update(true);
+ }catch(e){error=e.message||'No se pudo verificar la conexión';update(true);}
+}
+
 async function createMobileBridgeKey(){
  if(!metaLocal()||!canEdit()||!canLinkLocalBridge())return;
  if(androidBridge?.configured&&!window.confirm('La clave anterior dejará de funcionar. ¿Continuar?'))return;
@@ -305,7 +347,7 @@ async function createMobileBridgeKey(){
  try{
   const result=await rpc('gestlok_mg_android_bridge_create');
   if(!/^[a-f0-9]{64}$/.test(result?.token||''))throw Error('No se pudo generar la clave');
-  androidBridgeKey=result.token;
+  androidBridgeKey=result.token;bridgeTest=null;
   androidBridge={configured:true,last_event_at:androidBridge?.last_event_at||null};
   notice='Copiá la URL, el JSON y la clave en MacroDroid del celular de '+localName()+'.';
  }catch(e){error=e.message||'Error al crear clave';}
@@ -476,6 +518,8 @@ function attach(h){
   if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
   if(e.target.closest('[data-mgp-mobile-key]')){void createMobileBridgeKey();return;}
+  if(e.target.closest('[data-mgp-mobile-test]')){beginMobileBridgeTest();return;}
+  if(e.target.closest('[data-mgp-mobile-check]')){void checkMobileBridgeTest();return;}
   const mobileAck=e.target.closest('[data-mgp-mobile-ack]');
   if(mobileAck&&canEdit()&&metaLocal()){
    void action('gestlok_mg_android_bridge_ack',{p_id:mobileAck.dataset.mgpMobileAck},'Aviso revisado.');
@@ -581,9 +625,9 @@ function subscribe(loc,push){
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);document.removeEventListener('visibilitychange',visible);hideAlert();});
 }
 function reset(){
- epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidReviewed=[];androidBridgeKey='';tab='pendientes';section='avisos';alertsFilter='pendientes';loading=false;busy=false;polling=false;
+ epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidReviewed=[];androidBridgeKey='';bridgeTest=null;tab='pendientes';section='avisos';alertsFilter='pendientes';loading=false;busy=false;polling=false;
  error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
 }
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
- _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,mobileAlertPanel,mobileBridgePanel,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
+ _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,mobileAlertPanel,mobileBridgePanel,beginMobileBridgeTest,checkMobileBridgeTest,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
 })();
