@@ -15,10 +15,10 @@ const yesterday=today=>{
  const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);
 };
 function app(role='dueno'){
- const listeners=new Map(),calls=[],drawn=[],canvases=[];
+ const listeners=new Map(),calls=[],drawn=[],placed=[],canvases=[];
  const window={confirm:()=>true};
  const canvasContext={fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
-  fillText(t){drawn.push(String(t));},measureText:t=>({width:String(t).length*10})};
+  fillText(t,x,y){drawn.push(String(t));placed.push({text:String(t),x,y,font:this.font});},measureText:t=>({width:String(t).length*10})};
  const document={addEventListener:(name,fn)=>listeners.set(name,fn),querySelector:()=>null,
   createElement:type=>{
    if(type!=='canvas')throw Error('Unexpected element: '+type);
@@ -54,7 +54,7 @@ function app(role='dueno'){
   await listeners.get('click')({target,preventDefault(){},stopPropagation(){}});
   await tick();return module.view();
  };
- return {module,today,older,calls,click,listeners,rows,drawn,canvases};
+ return {module,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
 }
 async function start(role){
  const m=app(role);m.module.view();await tick();await tick();
@@ -271,4 +271,44 @@ test('Consumos siempre ofrece exactamente 10 filas para 10 colaboradores',async(
  assert.doesNotMatch(html,/data-gcm-extra-add="consumption"/);
  assert.doesNotMatch(html,/data-gcm-extra-remove="consumption"/);
  assert.match(html,/10 espacios fijos para colaboradores/);
+});
+
+test('A4 respeta el orden de Conteo y pone cada total cerca del producto, con letra grande',async()=>{
+ const m=app('dueno');
+ // Alfabéticamente sería otro orden. Conteo utiliza el mismo arreglo del catálogo.
+ m.todayEntry.data.p2={v1:{chapas:1,sueltas:0,qty:0}};
+ const expected=[];
+ for(let i=0;i<27;i++){
+  const id='extra'+i,name='SKU '+String(27-i).padStart(2,'0');
+  expected.push(name);
+  m.products.push({id,name,section:'EMPANADAS',position:103+i,active:true,units_per_chapa:0});
+  m.todayEntry.data[id]={v1:{chapas:0,sueltas:0,qty:i+1}};
+ }
+ m.module.view();await tick();await tick();
+ await m.click('data-gcm-history-open');await tick();
+ await m.click('data-gcm-history-day',m.today);
+ const html=await m.click('data-gcm-history',m.today+'|manana_entrada');
+ assert.match(html,/Vista previa A4/);
+ assert.equal(m.canvases.length,1);
+ assert.equal(m.canvases[0].width,1240);
+ assert.equal(m.canvases[0].height,1754);
+ // El HTML y la imagen usan el catálogo: AC, MT y los 27 productos nuevos.
+ const pAC=html.indexOf('<strong>AC</strong>');
+ const pMT=html.indexOf('<strong>MT</strong>');
+ const pFirst=html.indexOf('<strong>SKU 27</strong>');
+ assert.ok(pAC>=0&&pMT>pAC&&pFirst>pMT,'Orden real AC, MT, SKU 27');
+ assert.deepEqual(m.drawn.filter(t=>t.startsWith('SKU ')),expected);
+ const label=m.placed.find(v=>v.text==='SKU 27');
+ const quantity=m.placed.find(v=>v.text==='1'&&v.x>label.x&&
+  Math.abs(v.y-label.y)<.01&&v.x-label.x<510);
+ assert.ok(quantity,'Total junto al nombre, en la misma fila');
+ assert.ok(quantity.x-label.x<510,'El total no debe estar en la otra punta de A4');
+ const size=Number(label.font.match(/(\d+)px/)?.[1]||0);
+ assert.ok(size>=24,'Producto debe verse en tamaño legible: '+size);
+ const totalSize=Number(quantity.font.match(/(\d+)px/)?.[1]||0);
+ assert.ok(totalSize>=size,'Los números deben ser igual o más grandes');
+ const consumo=m.placed.find(v=>v.text==='Consumo');
+ assert.ok(Number(consumo.font.match(/(\d+)px/)?.[1]||0)>=21);
+ assert.ok(m.placed.some(v=>v.text==='TOTAL GENERAL'));
+ assert.ok(m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'));
 });
