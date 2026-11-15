@@ -910,3 +910,41 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
   touch-action:pan-y pinch-zoom!important;
  }
 }
+
+
+/* Conteo por turnos: Historial y Conteo siempre accesibles, sin tapar la planilla. */
+.gcm-page .gcm-mode-nav{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+ position:sticky;top:0;z-index:24;
+ padding:8px 0 10px;margin-bottom:10px;
+ background:#fff;border-bottom:1px solid #e0e8f0;
+}
+.gcm-page .gcm-mode-nav button{
+ min-width:0;min-height:46px;padding:9px 12px;
+ border:1px solid #bfcfdd;background:#f5f8fc;
+ border-radius:9px;color:#20435f;font-size:14px;font-weight:800;
+}
+.gcm-page .gcm-mode-nav button.is-active,
+.gcm-page .gcm-mode-nav button[aria-current="page"]{
+ background:#12345a;color:white;border-color:#12345a;
+}
+.gcm-page .gcm-save-bar .gcm-close-turn{
+ background:#1c5a51;color:#fff;border-color:#1c5a51;
+ font-size:13px;font-weight:850;min-width:133px;
+}
+.gcm-page .gcm-save-bar .gcm-close-turn:disabled{opacity:.5}
+.gcm-page .gcm-tabs button.is-active{box-shadow:inset 0 -3px 0 rgba(255,255,255,.35)}
+@media(max-width:899px){
+ .gcm-page .gcm-mode-nav{top:0;padding-block:6px}
+ .gcm-page .gcm-mode-nav button{min-height:48px;font-size:13px}
+ .gcm-page .gcm-save-bar{gap:8px}
+ .gcm-page .gcm-save-bar span{flex:1 1 100%}
+ .gcm-page .gcm-save-bar>button{flex:1 1 125px;min-height:48px}
+ .gcm-page .gcm-actions{justify-content:stretch}
+ .gcm-page .gcm-actions button{flex:1 1 150px;min-height:47px}
+}
+@media(max-width:390px){
+ .gcm-page .gcm-save-bar>button{font-size:12px}
+ .gcm-page .gcm-tabs{gap:4px}
+ .gcm-page .gcm-tabs button{font-size:11px;min-width:0;padding:12px 3px}
+}
