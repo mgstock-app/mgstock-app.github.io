@@ -41,8 +41,8 @@ const customerPhone=x=>{const v=String(x||'').replace(/[^0-9]/g,'');
 const escapeLines=x=>esc(x).replace(/\n/g,'<br>');
 const formatPhone=x=>{const v=String(x||'').replace(/[^0-9]/g,'');return /^5411[0-9]{8}$/.test(v)?'+54 11 '+v.slice(4,8)+'-'+v.slice(8):v?'+'+v:'Pendiente de configurar';};
 const pendingOrders=()=>items.filter(x=>x.status==='nuevo');
-const pendingCount=()=>allowed()?pendingOrders().length:0;
-const mobileAlerts=()=>local()==='munro'&&allowed()?androidAlerts.filter(x=>x.status==='pendiente'):[];
+const pendingCount=()=>allowed()?pendingOrders().length+mobileAlerts().length:0;
+const mobileAlerts=()=>allowed()?androidAlerts.filter(x=>x.status==='pendiente'):[];
 const totalAlerts=()=>pendingCount()+mobileAlerts().length;
 const bridgeUrl=()=>String(window.SPM_CONFIG?.url||'https://vgsepaaewbctjsjcpeta.supabase.co').replace(/\/$/,'')+'/functions/v1/mi-gusto-android-alert';
 const navBadge=()=>totalAlerts()?'<span class="mgp-nav-count" data-mgp-nav-count aria-label="'+totalAlerts()+' avisos pendientes">'+Math.min(99,totalAlerts())+(totalAlerts()>99?'+':'')+'</span>':'';
@@ -83,7 +83,7 @@ function indicators(){
  lastAlertSig=sig;
  banner.classList.toggle('mgp-global-alert-new',!!latest||!!phoneAlert);
  const title=phoneAlert?'¡Aviso desde WhatsApp Business!':latest?(latest.source==='whatsapp'?'¡Nueva comanda por WhatsApp!':'¡Nueva comanda pendiente!'):'Pedidos WhatsApp pendientes';
- const desc=phoneAlert?'Abrí el chat de Munro para comprobar si hay un pedido. '+android.length+' aviso'+(android.length===1?'':'s')+' por revisar.':latest?esc(latest.customer_name)+' · '+count+' pendiente'+(count===1?'':'s')+' de OK':count+' pedido'+(count===1?'':'s')+' por revisar en '+esc(LOCALS[local()]);
+ const desc=phoneAlert?'Revisá WhatsApp Business de '+esc(localName())+(phoneAlert.customer_phone?' · cliente: '+esc(customerPhone(phoneAlert.customer_phone)):' · número no disponible')+'. '+android.length+' aviso'+(android.length===1?'':'s')+' por revisar.':latest?esc(latest.customer_name)+' · '+count+' pendiente'+(count===1?'':'s')+' de OK':count+' pedido'+(count===1?'':'s')+' por revisar en '+esc(LOCALS[local()]);
  banner.innerHTML='<span class="mgp-alert-icon">'+waIcon+'</span><div class="mgp-alert-copy"><strong>'+title+'</strong><small>'+desc+'</small></div>'+
   '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedidos</button>';
 }
@@ -92,7 +92,7 @@ function hideAlert(){
  lastAlertSig='';
 }
 function acceptMobileAlerts(result,loc){
- if(loc!=='munro'||loc!==local()||!allowed()||!result)return false;
+ if(!(loc in LOCALS)||loc!==local()||!allowed()||!result)return false;
  const next=Array.isArray(result.alerts)?result.alerts.filter(x=>x.status==='pendiente'):[];
  const before=androidAlerts.map(x=>x.id).join('|');
  androidBridge={configured:!!result.configured,last_event_at:result.last_event_at||null};
@@ -117,7 +117,7 @@ async function checkIncoming(){
  if(!allowed()||!online()||polling||busy||loading)return;
  const request=epoch,loc=local();polling=true;
  try{
-  const [state,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),loc==='munro'?rpc('gestlok_mg_android_bridge_state').catch(()=>null):Promise.resolve(null)]);
+  const [state,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_android_bridge_state').catch(()=>null)]);
   if(request!==epoch||loc!==local()||!allowed())return;
   const changed=acceptOrders(state?.orders,loc),newAlert=acceptMobileAlerts(bridge,loc);
   if((changed||newAlert)&&api?.S.view==='pedidos-clientes')update();
@@ -165,7 +165,7 @@ async function refresh(){
  const request=++epoch,loc=local();
  loading=!loaded;update();
  try{
-  const [result,prices,conf,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings(),loc==='munro'?rpc('gestlok_mg_android_bridge_state').catch(()=>null):Promise.resolve(null)]);
+  const [result,prices,conf,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings(),rpc('gestlok_mg_android_bridge_state').catch(()=>null)]);
   if(request!==epoch||loc!==local())return;
   catalog=Array.isArray(prices)?prices:[];settings=conf;
   acceptMobileAlerts(bridge,loc);
@@ -221,36 +221,47 @@ function copyRow(label,value,id){
 }
 
 function mobileAlertPanel(){
- if(local()!=='munro')return '';
+ if(!metaLocal())return '';
  const pending=mobileAlerts();
- return '<section class="mgp-mobile-alerts"><header><strong>Avisos de WhatsApp Business</strong><small>'+pending.length+' por revisar</small></header>'+
- (pending.length?pending.map(a=>'<div class="mgp-mobile-alert-item"><div><strong>Revisar conversación en WhatsApp de Munro</strong>'+
- '<small>Notificación del celular · '+date(a.created_at)+' · No significa pedido confirmado.</small></div>'+
- '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>Ya revisé</button></div>').join(''):
- '<p class="mgp-mobile-empty">No hay avisos del celular pendientes.</p>')+'</section>';
+ return '<section class="mgp-mobile-alerts"><header><strong>Avisos de WhatsApp Business · '+esc(localName())+'</strong><small>'+pending.length+' por revisar</small></header>'+
+ (pending.length?pending.map(a=>{
+  const digits=String(a.customer_phone||'').replace(/[^0-9]/g,'');
+  const number=digits?'<strong id="mgp-mobile-phone-'+esc(a.id)+'">'+esc(customerPhone(digits))+'</strong>'+
+   '<button type="button" data-mgp-copy="mgp-mobile-phone-'+esc(a.id)+'">Copiar número</button>'+
+   '<a href="https://wa.me/'+esc(digits)+'" target="_blank" rel="noopener noreferrer">Abrir chat</a>':
+   '<small>Número no disponible en la notificación. Buscalo en WhatsApp Business.</small>';
+  return '<div class="mgp-mobile-alert-item"><div><strong>Revisar conversación en WhatsApp de '+esc(localName())+'</strong>'+
+   '<small>Alerta recibida: '+date(a.created_at)+' · No significa pedido confirmado.</small>'+
+   '<div class="mgp-mobile-contact">'+number+'</div></div>'+
+   '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Revisado</button></div>';
+ }).join(''):
+ '<p class="mgp-mobile-empty">No hay avisos pendientes en esta sucursal.</p>')+'</section>';
 }
 function mobileBridgePanel(){
- if(local()!=='munro')return '';
- const configured=!!androidBridge?.configured;
+ if(!metaLocal())return '';
+ const configured=!!androidBridge?.configured,example=JSON.stringify({local:local(),customer_phone:'{not_title}'});
  return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config"'+(androidBridgeKey?' open':'')+'>'+
- '<summary>Conectar avisos del celular a GESTLOK (sin API de WhatsApp)</summary>'+
- '<p>El celular Android avisa a GESTLOK cuando WhatsApp Business recibe una notificación del agente. No lee chats ni detecta pedidos que Meta no notifique.</p>'+
- '<p><b>Estado:</b> '+(configured?'Puente configurado':'Puente pendiente')+
+ '<summary>Vincular WhatsApp Business de '+esc(localName())+' (sin API)</summary>'+
+ '<p>Cada sucursal necesita su propio celular Android con WhatsApp Business y MacroDroid. Solo se transmite la alerta y el número cuando figura visible; no se copian conversaciones.</p>'+
+ '<p><b>Estado:</b> '+(configured?'Clave generada':'Pendiente de configurar')+
  (androidBridge?.last_event_at?' · Última señal: '+date(androidBridge.last_event_at):' · Sin señales recibidas')+'</p>'+
- '<ol><li>En el Android del local instalá MacroDroid y autorizá acceso a notificaciones.</li>'+
- '<li>Disparador: Notificación recibida → WhatsApp Business. Filtrá avisos del agente que derivan al personal.</li>'+
- '<li>Acción: Solicitud HTTP POST a la siguiente URL; encabezado <code>X-Gestlok-Bridge-Key</code> con la clave.</li>'+
- '<li>Probá una derivación real. GESTLOK abierto mostrará un aviso en Pedidos WhatsApp y los atajos.</li></ol>'+
+ '<ol><li>En el Android de '+esc(localName())+', instalá MacroDroid y autorizá acceso a notificaciones.</li>'+
+ '<li>Disparador: <b>Notificación recibida → WhatsApp Business</b>. Filtrá por la notificación de derivación del agente, NO por todos los mensajes. Verificá qué aviso produce Meta.</li>'+
+ '<li>Acción: <b>Solicitud HTTP POST</b> con URL de abajo, encabezado <code>X-Gestlok-Bridge-Key</code> con tu clave y <code>Content-Type: application/json</code>.</li>'+
+ '<li>En el cuerpo JSON pegá el ejemplo. <code>{not_title}</code> representa el título de la notificación: si contiene un nombre en vez del teléfono, se registra el aviso sin número.</li>'+
+ '<li>Probá una derivación real para verificar el aviso en GESTLOK.</li></ol>'+
  '<div class="mgp-mobile-credentials"><b>URL</b><code id="mgp-mobile-url">'+esc(bridgeUrl())+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-url">Copiar URL</button></div>'+
+ '<div class="mgp-mobile-credentials"><b>Cuerpo JSON</b><code id="mgp-mobile-json">'+esc(example)+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-json">Copiar JSON</button></div>'+
  (canSetNumber()?'<button class="mgp-button" type="button" data-mgp-mobile-key '+(!canEdit()?'disabled':'')+'>'+
  (configured?'Generar nueva clave':'Generar clave de vínculo')+'</button>':'')+
  (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
- '<p class="mgp-mobile-warning">No envíes contenido de clientes. Si WhatsApp Business no emite notificaciones, GESTLOK tampoco puede recibir avisos.</p></details>';
+ '<p class="mgp-mobile-warning">La alerta depende de que WhatsApp Business muestre una notificación identificable en el celular. No garantiza detectar un pedido confirmado. No se envía texto de clientes.</p></details>';
 }
 async function createMobileBridgeKey(){
- if(local()!=='munro'||!canEdit()||!canSetNumber())return;
+ if(!metaLocal()||!canEdit()||!canSetNumber())return;
  if(androidBridge?.configured&&!window.confirm('La clave anterior dejará de funcionar. ¿Continuar?'))return;
  busy=true;error='';notice='';update(true);
  try{
@@ -258,7 +269,7 @@ async function createMobileBridgeKey(){
   if(!/^[a-f0-9]{64}$/.test(result?.token||''))throw Error('No se pudo generar la clave');
   androidBridgeKey=result.token;
   androidBridge={configured:true,last_event_at:androidBridge?.last_event_at||null};
-  notice='Copiá la URL y clave en MacroDroid del celular de Munro.';
+  notice='Copiá la URL, el JSON y la clave en MacroDroid del celular de '+localName()+'.';
  }catch(e){error=e.message||'Error al crear clave';}
  finally{busy=false;update(true);}
 }
@@ -287,48 +298,26 @@ function metaPanel(){
   '</ol></details>';
 }
 function view(){
- if(!allowed())return '<p class="lead">No tenés acceso a los pedidos de esta sucursal.</p>';
- const pending=items.filter(x=>x.status==='nuevo'),done=items.filter(x=>x.status==='recibido');
- const selected=tab==='todos'?items:tab==='realizados'?done:pending;
- const config=canSetNumber()?'<details class="mgp-config"><summary>Número de WhatsApp de '+esc(LOCALS[local()])+'</summary>'+
-  '<p>Número propio de esta sucursal. Al conectar con Meta se comprueba que sea este mismo.</p>'+
+ if(!allowed())return '<p class="lead">No tenés acceso a los avisos de esta sucursal.</p>';
+ const config=canSetNumber()?'<details class="mgp-config"><summary>Número de WhatsApp de '+esc(localName())+'</summary>'+
+  '<p>Número de atención de esta sucursal. El puente de avisos se configura por separado.</p>'+
   '<form id="mgp-number-form"><label>Número con código de país (ej.: 54911... )<input name="number" inputmode="tel" autocomplete="tel" required minlength="10" maxlength="24" value="'+esc(phone)+'" placeholder="54911..." '+(!canEdit()?'disabled':'')+'></label>'+
   '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar número</button></form></details>':'';
- const catalogPanel='<section class="mgp-catalog-card" aria-label="Carta y precios de WhatsApp">'+
-  '<header class="mgp-catalog-head"><span class="mgp-catalog-icon">'+cutleryIcon+'</span><div><strong>Carta y precios para WhatsApp</strong><small>'+catalog.filter(x=>x.active).length+' productos activos en '+esc(LOCALS[local()])+'</small></div></header>'+
-  '<div class="mgp-menu-list">'+(catalog.length?catalog.map(x=>'<div class="mgp-menu-item"><div class="mgp-menu-name"><span class="mgp-menu-empanada" aria-hidden="true">◡</span><span><strong>'+esc(x.name)+'</strong>'+(!x.active?'<small>Oculto de WhatsApp</small>':'')+'</span></div><span class="mgp-menu-price">'+pesos(x.price)+'</span>'+
-    (canSetNumber()?'<div class="mgp-menu-actions"><button type="button" data-mgp-edit="'+esc(x.id)+'">Editar</button>'+(x.active?'<button type="button" data-mgp-disable="'+esc(x.id)+'">Ocultar</button>':'<button type="button" data-mgp-enable="'+esc(x.id)+'">Mostrar</button>')+'</div>':'')+'</div>').join(''):'<p class="mgp-catalog-empty">Todavía no hay productos cargados. Agregá la carta y precios de esta sucursal.</p>')+'</div>'+
-  (canSetNumber()?'<details class="mgp-config mgp-catalog-editor" id="mgp-catalog"><summary>+ Agregar producto / Editar carta</summary>'+
-    '<p>Los precios son independientes por sucursal. No se modifica Stock Local.</p>'+
-    '<form id="mgp-catalog-form" class="mgp-form"><input type="hidden" name="id" value=""><label>Producto<input name="name" minlength="2" maxlength="120" required placeholder="Ej.: Empanada de carne" '+(!canEdit()?'disabled':'')+'></label>'+
-    '<label>Precio final en pesos<input name="price" type="number" min="0.01" max="999999.99" step="0.01" required inputmode="decimal" placeholder="0" '+(!canEdit()?'disabled':'')+'></label>'+
-    '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar en la carta</button></form></details>':'')+'</section>';
- // Los pedidos entran solo desde WhatsApp: sin carga manual en ninguna sucursal de Mi Gusto.
- const manual=metaLocal()?'':'<details class="mgp-config" id="mgp-add-details"><summary>Registrar pedido manualmente (para control interno)</summary>'+
- '<form id="mgp-order-form" class="mgp-form"><label>Nombre del cliente<input name="customer" required minlength="2" maxlength="120" autocomplete="off" placeholder="Nombre y apellido" '+(!canEdit()?'disabled':'')+'></label>'+
- '<label>Teléfono<input name="phone" inputmode="tel" required maxlength="25" autocomplete="off" placeholder="11..." '+(!canEdit()?'disabled':'')+'></label>'+
- '<label>Pedido y cantidades<textarea name="items" required minlength="2" maxlength="4000" rows="3" placeholder="Ej.: 6 carne, 6 jamón y queso" '+(!canEdit()?'disabled':'')+'></textarea></label>'+
- '<label>Total en efectivo ($)<input name="total" type="number" required min="0.01" step="0.01" inputmode="decimal" placeholder="0" '+(!canEdit()?'disabled':'')+'></label>'+
- '<label>Observaciones (opcional)<textarea name="notes" maxlength="1000" rows="2" '+(!canEdit()?'disabled':'')+'></textarea></label>'+
- '<button class="mgp-button" type="submit" '+(!canEdit()?'disabled':'')+'>Guardar pedido</button></form></details>';
- return '<section class="mgp-page" aria-label="Pedidos WhatsApp de Mi Gusto"><header class="mgp-head"><div><small>Mi Gusto · '+esc(LOCALS[local()])+'</small>'+
- '<h2><span class="mgp-title-icon">'+waIcon+'</span> Pedidos WhatsApp</h2><p>Pedidos confirmados por WhatsApp. Pago únicamente en efectivo.</p></div>'+
+ const historical=items.length?'<details class="mgp-config"><summary>Pedidos históricos ('+items.length+')</summary>'+
+  '<div class="mgp-list">'+items.map(orderCard).join('')+'</div></details>':'';
+ return '<section class="mgp-page" aria-label="Avisos de pedidos WhatsApp de Mi Gusto"><header class="mgp-head"><div><small>Mi Gusto · '+esc(localName())+'</small>'+
+ '<h2><span class="mgp-title-icon">'+waIcon+'</span> Pedidos WhatsApp</h2>'+
+ '<p>Alertas para revisar desde el WhatsApp Business de esta sucursal. El agente de Meta sigue atendiendo desde WhatsApp.</p></div>'+
  '<button type="button" class="mgp-reload" data-mgp-reload '+(!online()?'disabled':'')+'>Actualizar</button></header>'+
- '<div class="mgp-status"><span class="mgp-phone-icon">'+waIcon+'</span><div class="mgp-phone-detail"><span>WhatsApp del local</span><strong>'+esc(formatPhone(phone))+'</strong>'+
- (metaLocal()?connectionStatus():'<small>'+(phone?'Número configurado para '+esc(LOCALS[local()])+' · conexión con Meta pendiente':'Cada sucursal utiliza su propio número')+'</small>')+'</div>'+
+ '<div class="mgp-status"><span class="mgp-phone-icon">'+waIcon+'</span><div class="mgp-phone-detail"><span>WhatsApp de '+esc(localName())+'</span><strong>'+esc(formatPhone(phone))+'</strong>'+
+ '<small>El vínculo de alertas se configura en el Android del local.</small></div>'+
  (phone?'<a class="mgp-phone-open" href="https://wa.me/'+esc(phone.replace(/[^0-9]/g,''))+'" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp del local">↗</a>':'')+'</div>'+
  (error?'<p role="alert" class="mgp-error">'+esc(error)+'</p>':'')+
  (notice?'<p role="status" class="mgp-success">'+esc(notice)+'</p>':'')+
- (!online()?'<p role="status" class="mgp-error">Sin conexión: los pedidos solo se consultan y confirman online.</p>':'')+
- '<nav class="mgp-tabs" aria-label="Filtrar pedidos de WhatsApp">'+
- '<button type="button" data-mgp-tab="todos" aria-current="'+(tab==='todos'?'page':'false')+'">Todos ('+items.length+')</button>'+
- '<button type="button" data-mgp-tab="pendientes" aria-current="'+(tab==='pendientes'?'page':'false')+'">Pendientes ('+pending.length+')</button>'+
- '<button type="button" data-mgp-tab="realizados" aria-current="'+(tab==='realizados'?'page':'false')+'">Realizados ('+done.length+')</button></nav>'+
- (loading?'<p role="status">Cargando pedidos…</p>':
- mobileAlertPanel()+
- '<div class="mgp-list">'+(selected.length?selected.map(orderCard).join(''):'<p class="mgp-empty">'+(tab==='todos'?'Todavía no hay pedidos registrados.':tab==='pendientes'?'No hay pedidos pendientes.':'Todavía no hay pedidos marcados como realizados.')+'</p>')+'</div>')+
- catalogPanel+mobileBridgePanel()+messagesPanel()+metaPanel()+manual+config+
- '<p class="mgp-footnote">El OK significa que el dueño o gerente vio la comanda, no que se preparó o entregó. No registra cobros ni modifica Caja, Stock o Pagos Online.</p></section>';
+ (!online()?'<p role="status" class="mgp-error">Sin conexión: los avisos se consultan online.</p>':'')+
+ (loading?'<p role="status">Cargando avisos…</p>':mobileAlertPanel())+
+ mobileBridgePanel()+config+historical+
+ '<p class="mgp-footnote">✓ Revisado confirma que alguien controló la conversación. Una alerta no significa pedido confirmado. No modifica Caja, Stock ni Pagos Online.</p></section>';
 }
 async function action(method,args,success){
  if(!canEdit())return;
@@ -345,7 +334,7 @@ async function action(method,args,success){
 async function refreshAfterSave(){
  const request=++epoch,loc=local();
  try{
-  const [result,prices,conf,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings(),loc==='munro'?rpc('gestlok_mg_android_bridge_state').catch(()=>null):Promise.resolve(null)]);
+  const [result,prices,conf,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings(),rpc('gestlok_mg_android_bridge_state').catch(()=>null)]);
   if(request===epoch&&loc===local()){
    catalog=Array.isArray(prices)?prices:[];settings=conf;
    acceptMobileAlerts(bridge,loc);
@@ -440,7 +429,7 @@ function attach(h){
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
   if(e.target.closest('[data-mgp-mobile-key]')){void createMobileBridgeKey();return;}
   const mobileAck=e.target.closest('[data-mgp-mobile-ack]');
-  if(mobileAck&&canEdit()&&local()==='munro'){
+  if(mobileAck&&canEdit()&&metaLocal()){
    void action('gestlok_mg_android_bridge_ack',{p_id:mobileAck.dataset.mgpMobileAck},'Aviso revisado.');
    return;
   }
