@@ -43,7 +43,7 @@ const formatPhone=x=>{const v=String(x||'').replace(/[^0-9]/g,'');return /^5411[
 const pendingOrders=()=>items.filter(x=>x.status==='nuevo');
 const pendingCount=()=>allowed()?pendingOrders().length+mobileAlerts().length:0;
 const mobileAlerts=()=>allowed()?androidAlerts.filter(x=>x.status==='pendiente'):[];
-const totalAlerts=()=>pendingCount()+mobileAlerts().length;
+const totalAlerts=()=>pendingCount();
 const bridgeUrl=()=>String(window.SPM_CONFIG?.url||'https://vgsepaaewbctjsjcpeta.supabase.co').replace(/\/$/,'')+'/functions/v1/mi-gusto-android-alert';
 const navBadge=()=>totalAlerts()?'<span class="mgp-nav-count" data-mgp-nav-count aria-label="'+totalAlerts()+' avisos pendientes">'+Math.min(99,totalAlerts())+(totalAlerts()>99?'+':'')+'</span>':'';
 function quickAccess(){
