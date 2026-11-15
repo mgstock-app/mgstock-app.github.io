@@ -6,7 +6,8 @@ import {releaseAudience,fileAudience,TENANTS,LOCAL_AUDIENCE} from '../scripts/pw
 const read = p => readFileSync(p, 'utf8');
 function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, local = 'munro') {
   const handlers = {}, elements = [];
-  let reloads = 0, currentTenant = tenant, currentLocal = local, channel;
+  let reloads = 0, currentTenant = tenant, currentLocal = local, channel, timerId = 0;
+  const intervals=new Map();
   const element = () => ({style:{},children:[],listeners:{},removed:false,setAttribute(){},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;},remove(){this.removed=true;}});
   const controller = scope == null ? {} : {
     postMessage(message) { channel.port1.onmessage({data:{type:message.type,audience:scope}}); }
@@ -18,9 +19,11 @@ function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, loca
     constructor(){channel=this;this.port1={onmessage:null,close(){}};this.port2={};}
   };
   vm.runInNewContext(read('public/stock/gestlok-pwa-update.js'), {
-    navigator,window,document,MessageChannel,setTimeout:()=>123,clearTimeout(){}
+    navigator,window,document,MessageChannel,setTimeout:()=>123,clearTimeout(){},
+    setInterval:fn=>{const id=++timerId;intervals.set(id,fn);return id;},
+    clearInterval:id=>intervals.delete(id)
   });
-  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;}};
+  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;},tick:()=>{for(const fn of [...intervals.values()])fn();},timerCount:()=>intervals.size};
 }
 test('Una instalación nueva no pide recargar; una actualización verificada avisa solo una vez', () => {
   const first=fixture(false,['*']);first.handlers.controllerchange();assert.equal(first.elements.length,0);
@@ -164,6 +167,28 @@ test('Al cambiar de Munro a Torcuato se retira el aviso; solo vuelve en Munro',(
  f.setLocal('munro');f.window.GestLokPWAUpdate.refresh();
  assert.equal(f.elements.length,2,'La actualización sigue pendiente para Munro');
  assert.equal(f.elements[1].removed,false);
+});
+test('El cartel se retira automáticamente al cambiar a Torcuato, aun sin llamar refresh',()=>{
+ const f=fixture(true,[LOCAL_AUDIENCE.munro],TENANTS.miGusto,'munro');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,1);
+ assert.equal(f.timerCount(),1);
+ f.setLocal('torcuato');f.tick();
+ assert.equal(f.elements[0].removed,true);
+ assert.equal(f.timerCount(),0,'No queda una comprobación en segundo plano');
+});
+test('Deslizar descarta el cartel sin volver a mostrarlo hasta la próxima versión',()=>{
+ const f=fixture(true,[LOCAL_AUDIENCE.munro],TENANTS.miGusto,'munro');
+ f.handlers.controllerchange();
+ const banner=f.elements[0];
+ banner.listeners.touchstart({touches:[{clientX:140,clientY:80}]});
+ banner.listeners.touchend({changedTouches:[{clientX:30,clientY:84}]});
+ assert.equal(banner.removed,true);
+ assert.equal(f.timerCount(),0);
+ f.window.GestLokPWAUpdate.refresh();
+ assert.equal(f.elements.length,1,'No reabrir un aviso que la persona descartó');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,2,'Nueva publicación relevante se puede anunciar');
 });
 test('Worker anterior o sin audiencia no causa avisos globales inventados',()=>{
  const f=fixture(true,null,TENANTS.molino,'acassuso');
