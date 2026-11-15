@@ -681,27 +681,22 @@ function view(){
  const hidden=new Set(Array.isArray(hiddenSource)?hiddenSource:[]);
  const visibleCategories=categories.filter(name=>!hidden.has(name));
  const showWaste=!!rec.waste_visible;
- const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
-
- const isToday=day===arDay(),yesterday=plusDays(arDay(),-1);
- return '<div class="gcm-page">'+conteoHistorialNav('conteo')+'<header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p></div>'+
- '<div class="gcm-header-fields"><div><span>Local</span><strong>Munro</strong></div>'+
- '<label>Gerente / Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
+ const isToday=day===arDay();
+ return '<div class="gcm-page gcm-count-screen">'+conteoHistorialNav('conteo')+
+ '<header class="gcm-header gcm-header-compact"><div class="gcm-header-title"><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2></div>'+
+ '<div class="gcm-header-fields gcm-header-fields-compact" aria-label="Datos del conteo"><div class="gcm-field-local"><span>Local</span><strong>Munro</strong></div>'+
+ '<label class="gcm-field-responsable">Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
- '<div><span>Fecha del conteo</span><strong>'+(isToday?'Hoy · ':day>arDay()?'Próximo · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
- '<div class="gcm-day-bar"><strong>Conteo del '+esc(labelDay(day))+'</strong>'+
- (isToday?'<button type="button" data-gcm-day="ayer">Recuperar conteo de ayer · '+esc(labelDay(yesterday))+'</button>':
- '<button type="button" data-gcm-day="hoy">Ir al conteo de hoy</button>')+
- (!isToday?'<span>'+(day>arDay()?'Siguiente día preparado para el conteo: ':'Estás trabajando con datos del ')+esc(labelDay(day))+'.</span>':'')+
- '</div>'+
+ '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+(isToday?'Hoy · ':day>arDay()?'Próximo · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
  (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
  '</div>'+
- '<nav class="gcm-tabs" aria-label="Turno">'+names+'</nav>'+
+ // Los turnos se asignan automáticamente al cerrar; sus nombres se consultan en Historial.
+ 
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
- (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
+ (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+'Los cuatro vencimientos se completan en la misma planilla.'+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':activePending().length?'Cambios pendientes de confirmar':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
 '<div class="gcm-sheet-tip">Las cuatro fechas están juntas. En el celular deslizá la tabla hacia los costados para verlas.</div>'+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
@@ -720,7 +715,7 @@ function view(){
  extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
  (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
- (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno · '+esc(SHIFTS.find(s=>s[0]===shift)?.[1]||'turno')+'</button>':'<span>Turno cerrado y archivado</span>')+'</div>':'')+
+ (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'<span>Conteo archivado</span>')+'</div>':'')+
  '':'' )+
  '</div>';
 }
@@ -907,13 +902,6 @@ document.addEventListener('click',async e=>{
   }
   void saveExtraList(kind,vals);api.render();return;
  }
- if(el.hasAttribute('data-gcm-day')){
-  if(busy){api?.toast?.('Primero debe finalizar el guardado de las cantidades.');return;}
-  const target=el.dataset.gcmDay==='ayer'?plusDays(arDay(),-1):arDay();
-  if(day===target)return;
-  ++generation;autoResumeTurn=false;day=target;snapshot=null;historyRecord=null;shift='manana_entrada';loading=false;error='';
-  api.render();void refresh();return;
- }
  if(el.hasAttribute('data-gcm-manual-save')){
   if(!editable()||closed()||!snapshot||finishing)return;
   el.disabled=true;el.textContent='Verificando guardado…';
@@ -953,11 +941,6 @@ document.addEventListener('click',async e=>{
   const date=el.dataset.gcmHistoryDay;
   if(groupedHistory().some(([d])=>d===date)){historyExpanded=historyExpanded===date?null:date;api.render();}
   return;
- }
- const newShift=el.dataset.gcmShift;
- if(newShift){
-  if(!SHIFTS.some(x=>x[0]===newShift)||busy)return;
-  historyRecord=null;autoResumeTurn=false;shift=newShift;api.render();return;
  }
  if(el.hasAttribute('data-gcm-history')){
   if(busy)return;
