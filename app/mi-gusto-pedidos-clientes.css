@@ -242,3 +242,25 @@
 .mgp-mobile-contact button,.mgp-mobile-contact a{display:inline-flex;align-items:center;justify-content:center;border:1px solid #c9d6e3;background:#fff;color:#12345a;text-decoration:none;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;min-height:36px}
 .mgp-mobile-contact button:focus-visible,.mgp-mobile-contact a:focus-visible{outline:2px solid #12345a;outline-offset:2px}
 .mgp-mobile-credentials code{overflow-wrap:anywhere;white-space:pre-wrap;user-select:text}
+
+/* Mi Gusto: vista operativa de avisos separada de la configuración Android. */
+.mgp-main-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:5px;background:#f1f4f8;border:1px solid #dbe4ed;border-radius:13px}
+.mgp-main-tabs button{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0;min-height:46px;border:0;border-radius:9px;background:transparent;color:#405b77;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.mgp-main-tabs button[aria-current="page"]{background:#12345a;color:#fff;box-shadow:0 2px 5px #12345a20}
+.mgp-main-tabs button:focus-visible,.mgp-mobile-filters button:focus-visible{outline:3px solid #83b4dc;outline-offset:2px}
+.mgp-main-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:2px 6px;border-radius:16px;background:#ffe5ba;color:#664314;font-size:12px}
+.mgp-mobile-alerts{margin:0 0 12px;border-radius:13px}
+.mgp-mobile-alerts header{padding:15px 17px}
+.mgp-mobile-alerts header strong{font-size:15px}
+.mgp-mobile-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:12px 14px 3px}
+.mgp-mobile-filters button{display:flex;justify-content:center;align-items:center;gap:8px;min-height:41px;border-radius:9px;border:1px solid #cfdae6;background:#fff;color:#46617c;font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+.mgp-mobile-filters button[aria-pressed="true"]{background:#eaf1f8;border-color:#8baac7;color:#12345a}
+.mgp-mobile-filters button span{font-size:12px}
+.mgp-mobile-zero{padding:30px 20px;text-align:center;display:grid;justify-items:center;gap:10px}
+.mgp-mobile-zero p{font-size:14px;font-weight:750;color:#405771;margin:0}
+.mgp-mobile-zero small{max-width:420px;color:#627487;line-height:1.5}
+.mgp-mobile-zero button{border:1px solid #abc0d1;background:#f4f8fc;color:#12345a;border-radius:9px;padding:9px 13px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.mgp-mobile-alert-reviewed{background:#f7fafc;border-color:#e3e9f0}
+.mgp-mobile-alert-reviewed strong{color:#3b536b}
+.mgp-mobile-reviewed-label{flex:none;font-size:12px;font-weight:800;color:#227046}
+@media(max-width:560px){.mgp-main-tabs button{font-size:13px;min-height:44px}.mgp-mobile-alerts header{padding:13px}.mgp-mobile-filters{padding:10px 10px 3px}.mgp-mobile-zero{padding:23px 14px}.mgp-mobile-reviewed-label{margin-left:auto}}
