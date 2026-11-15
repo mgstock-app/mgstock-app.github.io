@@ -28,8 +28,8 @@ test('planilla real: chapas y unidades sueltas comparten una casilla y 27 por ch
  assert.match(html,/data-gcm-plus="mt" data-idx="1"/);
  assert.match(html,/data-gcm-suelta-plus="mt" data-idx="1"/);
  assert.match(html,/data-gcm-suelta-minus="mt" data-idx="1"/);
- assert.ok(html.includes('>16 u.</output>'));
- assert.doesNotMatch(html,/data-gcm-suelta="mt"/);
+ assert.match(html,/data-gcm-suelta="mt" data-idx="1" value="16"/);
+ assert.match(html,/data-gcm-suelta="mt"/);
  assert.match(html,/class="gcm-total">70<\/td>/);
  assert.doesNotMatch(html,/gcm-cell-total/);
 });
