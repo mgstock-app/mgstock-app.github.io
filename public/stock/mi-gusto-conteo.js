@@ -7,6 +7,14 @@ if(window.GestLokMunroConteo)return;
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const SHIFTS=[['manana_entrada','Mañana · entrada'],['manana_salida','Mañana · salida'],['noche_salida','Noche · salida']];
 const RESPONSABLES=['Cami','Shuli','Tizi'];
+/** Orden único del turno. El último cierre abre mañana entrada del siguiente día. */
+function nextTurn(date,turn){
+ const idx=SHIFTS.findIndex(x=>x[0]===turn);
+ if(idx<0)throw Error('Turno de Conteo no válido');
+ return idx===SHIFTS.length-1?{day:plusDays(date,1),shift:SHIFTS[0][0]}:
+  {day:date,shift:SHIFTS[idx+1][0]};
+}
+
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
@@ -22,7 +30,7 @@ function marks(value){
  return '<span class="gcm-marks">'+Array.from({length:Math.min(g,12)},()=>group(5)).join('')+
  (r?group(r):'')+(g>12?'<small>+'+(g-12)*5+'</small>':'')+'</span>';
 }
-let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,opened=new Set(['EMPANADAS']),generation=0;
+let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0;
 const queues=new Map();
 // Borradores locales: se conservan hasta recibir confirmación real del servidor.
@@ -46,7 +54,7 @@ function readDrafts(){
   const items=JSON.parse(window.localStorage?.getItem(key)||'[]');
   const today=arDay();
   if(Array.isArray(items))for(const item of items){
-   if(!item||typeof item.key!=='string'||typeof item.day!=='string'||item.day>today||item.day<plusDays(today,-7))continue;
+   if(!item||typeof item.key!=='string'||typeof item.day!=='string'||item.day>plusDays(today,1)||item.day<plusDays(today,-7))continue;
    if(!SHIFTS.some(x=>x[0]===item.shift)||!item.pid||!['cell','decomiso'].includes(item.kind))continue;
    pendingDrafts.set(item.key,item);
   }
@@ -82,14 +90,14 @@ const activePending=()=>[...pendingDrafts.values()].filter(x=>x.day===day&&x.shi
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&api.S?.local==='munro'&&
  !window.GestLokCreatorSupport?.previewRol?.() &&
  (api.miRol()==='creadora'||api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes('munro')));
-const editable=()=>allowed()&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
+const editable=()=>allowed()&&!finishing&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
 const admin=()=>allowed()&&api.miRol()==='creadora'&&!api.S?.ro;
 const selected=()=>historyRecord||(snapshot?.counts||[]).find(s=>s.shift===shift)||null;
 const closed=()=>!!historyRecord||selected()?.status==='finalizado';
 function reset(){
  ++generation;++historyToken;
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
- loading=false;busy=false;error='';queues.clear();opened=new Set(['EMPANADAS']);
+ loading=false;busy=false;finishing=false;error='';queues.clear();opened=new Set(['EMPANADAS']);
  historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';
 }
 async function rpc(name,args){
@@ -139,6 +147,12 @@ function groupedHistory(){
  }
  return [...groups.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
 }
+function conteoHistorialNav(mode){
+ return '<nav class="gcm-mode-nav" aria-label="Conteo e historial">'+
+ '<button type="button" data-gcm-history-exit'+(mode==='conteo'?' class="is-active" aria-current="page"':'')+'>Conteo</button>'+
+ '<button type="button" data-gcm-history-open'+(mode==='historial'?' class="is-active" aria-current="page"':'')+'>Historial</button>'+
+ '</nav>';
+}
 function historyListView(){
  const groups=groupedHistory();
  const days=groups.map(([date,records])=>{
@@ -157,7 +171,7 @@ function historyListView(){
      '<span class="gcm-history-no-data">Sin cargar</span>')+'</div>';
    }).join('')+'</div>':'')+'</section>';
  }).join('');
- return '<div class="gcm-page gcm-history-screen">'+
+ return '<div class="gcm-page gcm-history-screen">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title"><button type="button" data-gcm-history-exit>← Volver al conteo</button>'+
    '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Historial de conteos</h2></div></div>'+
    '<label>Mes <input type="month" id="gcm-history-month" min="2025-01" max="'+arDay().slice(0,7)+'" value="'+esc(historyMonth)+'"></label></header>'+
@@ -206,7 +220,7 @@ function historyDetailView(){
  const products=(snapshot?.products||[]).filter(p=>p.active||rec.data?.[p.id]||rec.decomiso?.[p.id]);
  const hidden=new Set(Array.isArray(rec.hidden_sections)?rec.hidden_sections:[]);
  const categories=[...new Set(products.map(p=>p.section))].filter(x=>!hidden.has(x));
- return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+
+ return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+
    '<button type="button" data-gcm-history-back>← Volver al historial</button>'+
    '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Detalle del conteo</h2></div></div></header>'+
@@ -438,18 +452,20 @@ function view(){
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
 
  const isToday=day===arDay(),yesterday=plusDays(arDay(),-1);
- return '<div class="gcm-page"><header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p><button type="button" class="gcm-open-history" data-gcm-history-open>Historial de conteos</button></div>'+
+ return '<div class="gcm-page">'+conteoHistorialNav('conteo')+'<header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p><button type="button" class="gcm-open-history" data-gcm-history-open>Historial de conteos</button></div>'+
  '<div class="gcm-header-fields"><div><span>Local</span><strong>Munro</strong></div>'+
  '<label>Gerente / Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
- '<div><span>Fecha del conteo</span><strong>'+(isToday?'Hoy · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
+ '<div><span>Fecha del conteo</span><strong>'+(isToday?'Hoy · ':day>arDay()?'Próximo · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
  '<div class="gcm-day-bar"><strong>Conteo del '+esc(labelDay(day))+'</strong>'+
  (isToday?'<button type="button" data-gcm-day="ayer">Recuperar conteo de ayer · '+esc(labelDay(yesterday))+'</button>':
  '<button type="button" data-gcm-day="hoy">Ir al conteo de hoy</button>')+
  (!isToday?'<span>Estás trabajando con datos del '+esc(labelDay(day))+'. No se cambió la fecha.</span>':'')+
  '</div>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
- '<button type="button" data-gcm-manual-save>Guardar conteo</button></div>'+
+ '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
+ (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
+ '</div>'+
  '<nav class="gcm-tabs" aria-label="Turno">'+names+'</nav>'+
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
@@ -472,7 +488,7 @@ function view(){
  extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite)+
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
  (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
- (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Finalizar '+esc(SHIFTS.find(s=>s[0]===shift)?.[1]||'turno')+'</button>':'<span>Conteo del turno archivado</span>')+'</div>':'')+
+ (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno · '+esc(SHIFTS.find(s=>s[0]===shift)?.[1]||'turno')+'</button>':'<span>Turno cerrado y archivado</span>')+'</div>':'')+
  '':'' )+
  '</div>';
 }
