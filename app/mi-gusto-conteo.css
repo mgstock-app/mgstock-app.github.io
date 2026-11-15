@@ -464,3 +464,17 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
    width:92px;min-width:92px;max-width:92px;
  }
 }
+
+/* Confirmación del guardado dentro de la misma casilla, en espacio reservado. */
+.gcm-section .gcm-sheet-scroll tbody tr > th,
+.gcm-section .gcm-sheet-scroll tbody tr > td,
+.gcm-section .gcm-sheet-scroll tbody tr > th.gcm-product-cell{height:124px}
+.gcm-inline-count{grid-template-rows:42px 42px 14px;gap:4px}
+.gcm-cell-save{
+  display:block;min-height:14px;height:14px;line-height:14px;
+  text-align:center;font-size:10px;font-weight:800;white-space:nowrap;
+  color:#687f94;
+}
+.gcm-cell-save.is-saving{color:#865919}
+.gcm-cell-save.is-saved{color:#237146}
+.gcm-cell-save.is-error{color:#a73333}
