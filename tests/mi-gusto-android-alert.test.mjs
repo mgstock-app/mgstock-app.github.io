@@ -101,7 +101,7 @@ test('Pestaña Avisos separa pendientes y revisados sin perder avisos al marcar 
  assert.doesNotMatch(html,/data-mgp-mobile-ack/);
  assert.equal(m.mod.pendingCount(),1,'revisados no generan contador de avisos pendientes');
  clickSection(m,'vinculacion');
- assert.match(m.mod.view(),/Vincular WhatsApp Business de Don Torcuato/);
+ assert.match(m.mod.view(),/Conectar avisos del WhatsApp Business de Don Torcuato/);
  assert.doesNotMatch(m.mod.view(),/mgp-mobile-alert-item/);
  clickSection(m,'avisos');
  assert.match(m.mod.view(),/data-mgp-section="avisos" aria-current="page"/);
@@ -147,7 +147,7 @@ test('QR propio de GESTLOK es legible, específico del local y nunca lleva la cl
   clickSection(m,'vinculacion');
   const html=m.mod.view();
   const url='https://gestlok.com.ar/vincular-whatsapp/?local='+loc;
-  assert.match(html,/QR propio de GESTLOK/);
+  assert.match(html,/Escanear QR de GESTLOK/);
   assert.ok(html.includes('href="'+url+'"'));
   assert.match(html,/<svg[^>]*aria-label="QR de configuración de /);
   assert.equal(m.qrCalls.at(-1),url);
@@ -155,7 +155,7 @@ test('QR propio de GESTLOK es legible, específico del local y nunca lleva la cl
   assert.match(html,/Un QR no puede conectar WhatsApp Business directamente/);
  }
  const ajeno=make('gerente','torcuato',['munro']);
- assert.doesNotMatch(ajeno.mod.view(),/QR propio de GESTLOK/);
+ assert.doesNotMatch(ajeno.mod.view(),/Escanear QR de GESTLOK/);
 });
 
 test('Guía pública del QR valida sucursal y no publica ni solicita claves en el enlace',()=>{
