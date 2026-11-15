@@ -72,7 +72,7 @@ test('Conteo usa botones fijos y filas separadas para evitar pulsaciones cruzada
 
 test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',async()=>{
  const events=[],renders=[],writes=[],window={};
- const total={textContent:''},unitValue={textContent:''},chapasValue={textContent:''},visual={innerHTML:''};
+ const total={textContent:''},unitValue={value:''},chapasValue={textContent:''},visual={innerHTML:''};
  const unitMinus={disabled:false},saveStatus={textContent:'',className:''};
  const markButton={title:'',querySelector:(s)=>({'.gcm-mark-visual':visual,'.gcm-chapas-value':chapasValue}[s]||null)};
  const td={dataset:{},querySelector:(s)=>({'.gcm-mark-button':markButton,'.gcm-units-value':unitValue,'.gcm-unit-minus':unitMinus,'.gcm-cell-save':saveStatus}[s]||null),
@@ -98,7 +98,7 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  await new Promise(r=>setImmediate(r));
  assert.equal(renders.length,before,'La pantalla no debe re-renderizarse por sumar una chapa');
  assert.equal(chapasValue.textContent,'3');
- assert.equal(unitValue.textContent,'16 u.');
+ assert.equal(unitValue.value,'16');
  assert.equal(total.textContent,'97');
  assert.equal(saveStatus.textContent,'✓ Guardado');
  assert.equal(writes.at(-1)?.p_chapas,3);
@@ -108,14 +108,14 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  button.hasAttribute=(s)=>s==='data-gcm-suelta-plus';
  await events.find(([name])=>name==='click')[1]({target:button});
  await new Promise(r=>setImmediate(r));
- assert.equal(unitValue.textContent,'17 u.');
+ assert.equal(unitValue.value,'17');
  assert.equal(total.textContent,'98');
  assert.equal(writes.at(-1)?.p_sueltas,17);
  button.dataset={gcmSueltaMinus:'mt',idx:'1'};
  button.hasAttribute=(s)=>s==='data-gcm-suelta-minus';
  await events.find(([name])=>name==='click')[1]({target:button});
  await new Promise(r=>setImmediate(r));
- assert.equal(unitValue.textContent,'16 u.');
+ assert.equal(unitValue.value,'16');
  assert.equal(total.textContent,'97');
  assert.equal(writes.at(-1)?.p_sueltas,16);
  assert.equal(saveStatus.textContent,'✓ Guardado');
