@@ -140,7 +140,7 @@ test('se guardan valores numéricos sin cerrar el teclado ni reiniciar la tabla'
  assert.match(source,/saveCellFeedback\(input,task\)/);
  assert.match(source,/input\.hasAttribute\('data-gcm-qty'\)\|\|input\.hasAttribute\('data-gcm-decomp-qty'\)\)return/);
  assert.match(source,/data-gcm-manual-save/);
- assert.match(source,/gestlok_munro_conteo_state',\{p_day:day\}/);
+ assert.match(source,/gestlok_munro_conteo_state',\{p_day:d\}/);
  assert.match(source,/JSON\.stringify\(\[\.\.\.pendingDrafts\.values\(\)\]\)/);
  const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
  assert.match(css,/gcm-day-bar/);
