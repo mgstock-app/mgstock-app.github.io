@@ -1,5 +1,5 @@
 // Alcance del cartel de actualización: una publicación de otra empresa no requiere recarga.
-// Ante cambios compartidos o desconocidos se avisa a todos (conservador).
+// Solo cambios compartidos verificados avisan a todos; cambios desconocidos se revisan sin inventar alertas.
 export const TENANTS = Object.freeze({
   miGusto: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',
   molino: '6c8717ea-5f78-426b-9458-74a5dcac6e4e',
