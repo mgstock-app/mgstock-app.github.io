@@ -344,7 +344,7 @@ function saveCellFeedback(el,task){
 }
 
 function decompColumn(p,canWrite){
- const v=getDecomisoCell(p), disabled=canWrite?'':' disabled';
+ const v=getDecomisoCell(p);
  if(p.units_per_chapa>0){
   return '<td class="gcm-chapa gcm-decomp-cell gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
@@ -355,7 +355,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:first==='manana_entrada'?labelDay(plusDays(dateBase,i)).slice(0,5):''}));
  const rows=items.map(p=>{
   const cells=[1,2,3,4].map(i=>{
-   const v=getCell(p,i),disabled=!canWrite?' disabled':'';
+   const v=getCell(p,i);
    if(p.units_per_chapa){
     return '<td class="gcm-chapa gcm-vto-col'+(activeVto===String(i)?' is-current-vto':'')+'" data-gcm-idx="'+i+'">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
