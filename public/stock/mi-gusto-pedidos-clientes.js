@@ -31,6 +31,9 @@ const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
 const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
 const canEdit=()=>allowed()&&online()&&!busy&&!!window.GestLokSupabase;
 const canSetNumber=()=>allowed()&&['dueno','creadora'].includes(api.miRol());
+// Vinculación operativa de avisos: gerentes solo en su propio local autorizado.
+// No habilita edición del número ni configuración antigua de Meta.
+const canLinkLocalBridge=()=>allowed()&&['dueno','creadora','gerente'].includes(api.miRol());
 const metaLocal=()=>local() in LOCALS;
 const localName=()=>LOCALS[local()]||'';
 const canConfigure=()=>metaLocal()&&canSetNumber()&&settings?.can_configure===true;
@@ -254,14 +257,14 @@ function mobileBridgePanel(){
  '<button type="button" data-mgp-copy="mgp-mobile-url">Copiar URL</button></div>'+
  '<div class="mgp-mobile-credentials"><b>Cuerpo JSON</b><code id="mgp-mobile-json">'+esc(example)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-json">Copiar JSON</button></div>'+
- (canSetNumber()?'<button class="mgp-button" type="button" data-mgp-mobile-key '+(!canEdit()?'disabled':'')+'>'+
+ (canLinkLocalBridge()?'<button class="mgp-button" type="button" data-mgp-mobile-key '+(!canEdit()?'disabled':'')+'>'+
  (configured?'Generar nueva clave':'Generar clave de vínculo')+'</button>':'')+
  (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
  '<p class="mgp-mobile-warning">La alerta depende de que WhatsApp Business muestre una notificación identificable en el celular. No garantiza detectar un pedido confirmado. No se envía texto de clientes.</p></details>';
 }
 async function createMobileBridgeKey(){
- if(!metaLocal()||!canEdit()||!canSetNumber())return;
+ if(!metaLocal()||!canEdit()||!canLinkLocalBridge())return;
  if(androidBridge?.configured&&!window.confirm('La clave anterior dejará de funcionar. ¿Continuar?'))return;
  busy=true;error='';notice='';update(true);
  try{
