@@ -506,3 +506,19 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
  .gcm-save-bar button{min-height:46px}
  .gcm-numeric-cell .gcm-qty{min-width:68px;max-width:76px}
 }
+
+/* Unidades: se pueden escribir sin perder teclado o modificar con + y −. */
+.gcm-units-stepper input.gcm-units-value{
+ display:block;width:100%;max-width:100%;min-width:0;height:42px;min-height:42px;
+ margin:0;padding:0 1px;text-align:center;line-height:42px;
+ border:1px solid #bdcedf;border-radius:7px;background:#fff;color:#143a5b;
+ font-size:16px;font-weight:850;appearance:textfield;-moz-appearance:textfield;
+ font-variant-numeric:tabular-nums;
+}
+.gcm-units-stepper input.gcm-units-value::-webkit-inner-spin-button,
+.gcm-units-stepper input.gcm-units-value::-webkit-outer-spin-button{
+ -webkit-appearance:none;margin:0;
+}
+.gcm-units-stepper input.gcm-units-value:focus-visible{
+ outline:2px solid #087ab8;outline-offset:1px;
+}
