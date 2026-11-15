@@ -49,7 +49,9 @@ test('decomiso visible aparece a la izquierda del producto y suma chapas + suelt
  // Dos chapas normales + cuatro sueltas = 64; una de decomiso + dos sueltas = 32.
  assert.match(html,/class="gcm-total">96<\/td>/);
  assert.match(html,/data-gcm-decomp-plus="p1"/);
- assert.match(html,/data-gcm-decomp-suelta="p1"/);
+ assert.match(html,/data-gcm-decomp-suelta-plus="p1"/);
+ assert.match(html,/data-gcm-decomp-suelta-minus="p1"/);
+ assert.match(html,/class="gcm-units-value"[^>]*>2 u\\.<\\/output>/);
 });
 
 test('sin activar Decomiso la columna desaparece pero los valores ya guardados siguen en total',async()=>{
