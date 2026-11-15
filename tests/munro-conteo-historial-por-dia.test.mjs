@@ -15,8 +15,16 @@ const yesterday=today=>{
  const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);
 };
 function app(role='dueno'){
- const listeners=new Map(),calls=[];
- const window={confirm:()=>true},document={addEventListener:(name,fn)=>listeners.set(name,fn),querySelector:()=>null};
+ const listeners=new Map(),calls=[],drawn=[],canvases=[];
+ const window={confirm:()=>true};
+ const canvasContext={fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
+  fillText(t){drawn.push(String(t));},measureText:t=>({width:String(t).length*10})};
+ const document={addEventListener:(name,fn)=>listeners.set(name,fn),querySelector:()=>null,
+  createElement:type=>{
+   if(type!=='canvas')throw Error('Unexpected element: '+type);
+   const canvas={width:0,height:0,getContext:()=>canvasContext,toDataURL:type=>{assert.equal(type,'image/png');return 'data:image/png;base64,AAAA';}};
+   canvases.push(canvas);return canvas;
+  }};
  vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,Math,Array,Object,Number,String,JSON,console});
  const today=date(),older=yesterday(today);
  const products=[{id:'p1',name:'AC',section:'EMPANADAS',units_per_chapa:30,active:true,position:101},
@@ -46,7 +54,7 @@ function app(role='dueno'){
   await listeners.get('click')({target,preventDefault(){},stopPropagation(){}});
   await tick();return module.view();
  };
- return {module,today,older,calls,click,listeners,rows};
+ return {module,today,older,calls,click,listeners,rows,drawn,canvases};
 }
 async function start(role){
  const m=app(role);m.module.view();await tick();await tick();
@@ -79,7 +87,19 @@ test('Ver detalle abre solo el conteo del turno seleccionado, en lectura',async(
  const m=await start();
  await m.click('data-gcm-history-day',m.today);
  let html=await m.click('data-gcm-history',m.today+'|manana_entrada');
- assert.match(html,/Detalle del conteo/);
+ assert.match(html,/Vista previa A4/);
+ assert.match(html,/class="gcm-a4-preview"/);
+ assert.match(html,/data:image\/png;base64,AAAA/);
+ assert.match(html,/download="conteo-munro-/);
+ assert.match(html,/Productos y totales/);
+ assert.match(html,/>Producto<\/th><th>Total<\/th>/);
+ assert.match(html,/>Consumos<\/h3>/);
+ assert.equal(m.canvases.length,1);
+ assert.equal(m.canvases[0].width,1240);
+ assert.equal(m.canvases[0].height,1754);
+ assert.ok(m.drawn.includes('CONTEO DE PRODUCTOS'));
+ assert.ok(m.drawn.includes('AC'));
+ assert.ok(m.drawn.includes('65'));
  assert.match(html,/Responsable: Cami/);
  assert.match(html,/Turno Mañana entrada/i);
  assert.match(html,/>65</);
@@ -88,7 +108,7 @@ test('Ver detalle abre solo el conteo del turno seleccionado, en lectura',async(
  assert.doesNotMatch(html,/data-gcm-history-day=/);
  html=await m.click('data-gcm-history-back');
  assert.match(html,/Historial de conteos/);
- assert.doesNotMatch(html,/Detalle del conteo/);
+ assert.doesNotMatch(html,/class="gcm-a4-preview"/);
 });
 test('el gerente también puede abrir el historial sin poder editar datos desde detalle',async()=>{
  const m=await start('gerente');await m.click('data-gcm-history-day',m.today);
@@ -223,4 +243,19 @@ test('Conteo e Historial están disponibles en teléfono, tablet y PC',()=>{
  assert.match(css,/@media\(max-width:899px\)/);
  assert.match(css,/@media\(max-width:390px\)/);
  assert.match(css,/\.gcm-page \.gcm-save-bar \.gcm-close-turn/);
+});
+
+test('la vista A4 usa valores archivados, no cambia registros y dibuja 10 consumos',async()=>{
+ const m=await start('dueno');await m.click('data-gcm-history-day',m.today);
+ const before=m.calls.length;
+ const html=await m.click('data-gcm-history',m.today+'|manana_entrada');
+ assert.match(html,/Hoja A4 completa/);
+ assert.match(html,/Descargar imagen A4 \(PNG\)/);
+ assert.equal((html.match(/data-gcm-extra="consumption"/g)||[]).length,0);
+ assert.ok(m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'));
+ assert.deepEqual(m.drawn.filter(x=>/^([1-9]|10)$/.test(x)),['1','2','3','4','5','6','7','8','9','10']);
+ assert.equal(m.calls.slice(before).filter(x=>x.name==='gestlok_munro_conteo_finalize'||x.name==='gestlok_munro_conteo_set_extra').length,0);
+ await m.click('data-gcm-a4-refresh');
+ assert.equal(m.canvases.length,2);
+ assert.equal(m.canvases[1].height/m.canvases[1].width,1754/1240);
 });
