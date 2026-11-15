@@ -67,15 +67,15 @@ test('Conteo usa botones fijos y filas separadas para evitar pulsaciones cruzada
  const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
  assert.match(css,/border-spacing:0 7px/);
  assert.match(css,/grid-template-rows:42px 42px/);
- assert.match(css,/height:113px/);
+ assert.match(css,/height:124px/);
 });
 
 test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',async()=>{
  const events=[],renders=[],writes=[],window={};
  const total={textContent:''},unitValue={textContent:''},chapasValue={textContent:''},visual={innerHTML:''};
- const unitMinus={disabled:false};
+ const unitMinus={disabled:false},saveStatus={textContent:'',className:''};
  const markButton={title:'',querySelector:(s)=>({'.gcm-mark-visual':visual,'.gcm-chapas-value':chapasValue}[s]||null)};
- const td={querySelector:(s)=>({'.gcm-mark-button':markButton,'.gcm-units-value':unitValue,'.gcm-unit-minus':unitMinus}[s]||null),
+ const td={dataset:{},querySelector:(s)=>({'.gcm-mark-button':markButton,'.gcm-units-value':unitValue,'.gcm-unit-minus':unitMinus,'.gcm-cell-save':saveStatus}[s]||null),
   closest:(s)=>s==='tr'?{querySelector:()=>total}:null};
  const button={dataset:{gcmPlus:'mt',idx:'1'},hasAttribute:(s)=>s==='data-gcm-plus',
   closest:(s)=>({'.gcm-page':{},button,td}[s]||null)};
@@ -100,6 +100,7 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  assert.equal(chapasValue.textContent,'3');
  assert.equal(unitValue.textContent,'16 u.');
  assert.equal(total.textContent,'97');
+ assert.equal(saveStatus.textContent,'✓ Guardado');
  assert.equal(writes.at(-1)?.p_chapas,3);
  assert.equal(writes.at(-1)?.p_sueltas,16);
  // Los botones de unidades trabajan en la misma casilla, sin abrir teclado ni perder posición.
@@ -117,5 +118,6 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  assert.equal(unitValue.textContent,'16 u.');
  assert.equal(total.textContent,'97');
  assert.equal(writes.at(-1)?.p_sueltas,16);
+ assert.equal(saveStatus.textContent,'✓ Guardado');
  assert.equal(renders.length,before,'Ningún cambio de unidades debe redibujar la página');
 });
