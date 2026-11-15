@@ -31,7 +31,7 @@ function marks(value){
  (r?group(r):'')+(g>12?'<small>+'+(g-12)*5+'</small>':'')+'</span>';
 }
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
-let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true;
+let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null;
 const queues=new Map();
 // Borradores locales: se conservan hasta recibir confirmación real del servidor.
 // Solo cantidades del usuario, local y fechas recientes; sin información de otras empresas.
@@ -98,7 +98,7 @@ function reset(){
  ++generation;++historyToken;
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
  loading=false;busy=false;finishing=false;error='';queues.clear();opened=new Set(['EMPANADAS']);
- historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;
+ historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
@@ -694,7 +694,8 @@ document.addEventListener('click',async e=>{
  if(el.hasAttribute('data-gcm-retry')||el.hasAttribute('data-gcm-refresh')){if(busy)return;error='';void refresh();return;}
  if(el.hasAttribute('data-gcm-history-open')){
   if(busy)return;
-  historyMode=true;historyRecord=null;historyMonth=arDay().slice(0,7);
+  if(historyMode){historyRecord=null;api.render();return;}
+  historyMode=true;historyRecord=null;historyMonth=(lastClosedDay||arDay()).slice(0,7);
   historyExpanded=null;historyRows=[];historyError='';void loadHistory();api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-exit')){
@@ -791,8 +792,8 @@ document.addEventListener('click',async e=>{
    if(archived?.counts?.find(x=>x.shift===currentShift)?.status!=='finalizado')
     throw Error('No se pudo comprobar el archivo del turno. Actualizá antes de continuar.');
    // El historial consulta estos mismos registros, sin duplicar ni alterar cantidades.
-   autoResumeTurn=false;shift=following.shift;historyMode=false;historyRecord=null;
-   historyRows=[];historyExpanded=null;historyMonth=following.day.slice(0,7);
+   autoResumeTurn=false;lastClosedDay=currentDay;shift=following.shift;historyMode=false;historyRecord=null;
+   historyRows=[];historyExpanded=null;historyMonth=currentDay.slice(0,7);
    error='';
    if(following.day!==currentDay){
     ++generation;day=following.day;snapshot=null;loading=false;
@@ -927,5 +928,5 @@ document.addEventListener('change',async e=>{
  if(isDecomp)void saveDecomiso(p,cell);else void saveCell(p,i,cell);
  api.render();
 });
-window.GestLokMunroConteo=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{marks,plusDays,labelDay}});
+window.GestLokMunroConteo=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{marks,plusDays,labelDay,nextTurn}});
 })();
