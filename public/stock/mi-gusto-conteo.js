@@ -31,7 +31,7 @@ function marks(value){
  (r?group(r):'')+(g>12?'<small>+'+(g-12)*5+'</small>':'')+'</span>';
 }
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
-let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null;
+let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null,historyPreviewUrl='',historyPreviewError='';
 const queues=new Map();
 // Borradores locales: se conservan hasta recibir confirmación real del servidor.
 // Solo cantidades del usuario, local y fechas recientes; sin información de otras empresas.
@@ -98,7 +98,7 @@ function reset(){
  ++generation;++historyToken;
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
  loading=false;busy=false;finishing=false;error='';queues.clear();opened=new Set(['EMPANADAS']);
- historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;
+ historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
@@ -176,7 +176,7 @@ function historyListView(){
     const rec=records.get(key);
     return '<div class="gcm-history-shift"><span class="gcm-history-shift-name">Turno '+esc(title.replace(' · ',' '))+'</span>'+
     (rec?'<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+(rec.status==='finalizado'?'Finalizado':'En curso')+'</span>'+
-     '<button type="button" class="gcm-history-detail-button" data-gcm-history="'+esc(date)+'|'+esc(key)+'">Ver detalle</button>':
+     '<button type="button" class="gcm-history-detail-button" data-gcm-history="'+esc(date)+'|'+esc(key)+'">Vista previa A4</button>':
      '<span class="gcm-history-no-data">Sin cargar</span>')+'</div>';
    }).join('')+'</div>':'')+'</section>';
  }).join('');
@@ -359,20 +359,31 @@ function historyExtraBlock(kind,title,rec){
 function historyDetailView(){
  const rec=historyRecord;
  if(!rec)return historyListView();
- const products=(snapshot?.products||[]).filter(p=>p.active||rec.data?.[p.id]||rec.decomiso?.[p.id]);
- const hidden=new Set(Array.isArray(rec.hidden_sections)?rec.hidden_sections:[]);
- const categories=[...new Set(products.map(p=>p.section))].filter(x=>!hidden.has(x));
+ const products=(snapshot?.products||[]).filter(p=>rec.data?.[p.id]||rec.decomiso?.[p.id]);
+ const categories=[...new Set(products.map(p=>p.section))];
+ const filename='conteo-munro-'+rec.day+'-'+rec.shift+'.png';
+ const image=historyPreviewUrl?'<figure class="gcm-a4-preview">'+
+   '<img src="'+historyPreviewUrl+'" alt="Hoja A4 completa: conteo del '+esc(labelDay(rec.day))+'; '+esc(rec.shift)+'; productos, totales y consumos" loading="eager">'+
+   '<figcaption>Una sola imagen, proporción A4. Podés ampliarla o descargarla.</figcaption></figure>':
+   '<p class="gcm-error" role="alert">'+esc(historyPreviewError||'No se pudo generar la imagen A4.')+'</p>';
  return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+
    '<button type="button" data-gcm-history-back>← Volver al historial</button>'+
-   '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Detalle del conteo</h2></div></div></header>'+
+   '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Vista previa A4</h2></div></div></header>'+
   '<div class="gcm-hd-meta"><strong>'+esc(labelDay(rec.day))+'</strong><span>'+esc('Turno '+(SHIFTS.find(x=>x[0]===rec.shift)?.[1]||rec.shift).replace(' · ',' '))+'</span>'+
   '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span><span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
   (rec.status==='finalizado'?'Finalizado':'En curso')+'</span></div>'+
-  '<p class="gcm-hd-notice">Consulta de solo lectura. Los totales incluyen el decomiso registrado.</p>'+
-  (categories.length?categories.map(section=>historyDetailsTable(section,products.filter(p=>p.section===section),rec)).join(''):'<p>No hay productos cargados.</p>')+
-  '<div class="gcm-hd-extras">'+historyExtraBlock('consumption','Consumo',rec)+historyExtraBlock('waste','Desperdicios',rec)+'</div>'+
-  '</div>';
+  '<div class="gcm-a4-toolbar">'+(historyPreviewUrl?'<a class="gcm-a4-download" href="'+historyPreviewUrl+
+  '" download="'+filename+'">Descargar imagen A4 (PNG)</a>':'')+
+  '<button type="button" data-gcm-a4-refresh>Regenerar vista previa</button></div>'+
+  image+
+  '<details class="gcm-hd-breakdown"><summary>Ver resumen de productos y detalle por vencimiento</summary>'+
+  '<p class="gcm-hd-notice">Solo lectura. Cada total incluye los vencimientos y el decomiso registrado.</p>'+
+  historySummaryTable(rec)+
+  (categories.length?categories.map(section=>historyDetailsTable(section,products.filter(p=>p.section===section),rec)).join(''):
+   '<p>No hay productos cargados.</p>')+
+  '<div class="gcm-hd-extras">'+historyExtraBlock('consumption','Consumos',rec)+
+   historyExtraBlock('waste','Desperdicios',rec)+'</div></details></div>';
 }
 function entry(){return selected()||{day,shift,data:{},decomiso:{},decomiso_visible:false,waste_visible:false,hidden_sections:[],responsable:null,consumption:[],waste:[],status:'borrador'};}
 function draftRecord(){
@@ -828,16 +839,21 @@ document.addEventListener('click',async e=>{
  if(el.hasAttribute('data-gcm-history-open')){
   if(busy)return;
   if(historyMode){historyRecord=null;api.render();return;}
-  historyMode=true;historyRecord=null;historyMonth=(lastClosedDay||arDay()).slice(0,7);
+  historyMode=true;historyRecord=null;historyPreviewUrl='';historyPreviewError='';historyMonth=(lastClosedDay||arDay()).slice(0,7);
   historyExpanded=null;historyRows=[];historyError='';void loadHistory();api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-exit')){
   if(busy)return;
-  historyMode=false;historyRecord=null;++historyToken;
+  historyMode=false;historyRecord=null;historyPreviewUrl='';historyPreviewError='';++historyToken;
   historyLoading=false;error='';void refresh();api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-back')){
-  historyRecord=null;api.render();return;
+  historyRecord=null;historyPreviewUrl='';historyPreviewError='';api.render();return;
+ }
+ if(el.hasAttribute('data-gcm-a4-refresh')&&historyMode&&historyRecord){
+  try{historyPreviewUrl=historyA4Image(historyRecord);historyPreviewError='';}
+  catch(err){historyPreviewUrl='';historyPreviewError=err.message||'No se pudo generar el A4.';}
+  api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-retry')){historyError='';void loadHistory();api.render();return;}
  if(el.hasAttribute('data-gcm-history-day')){
@@ -854,7 +870,12 @@ document.addEventListener('click',async e=>{
   if(busy)return;
   const [d,s]=el.dataset.gcmHistory.split('|');
   const record=historyRows.find(v=>v.day===d&&v.shift===s);
-  if(historyMode&&record){historyRecord=record;api.render();}return;
+  if(historyMode&&record){
+   historyRecord=record;historyPreviewUrl='';historyPreviewError='';
+   try{historyPreviewUrl=historyA4Image(record);}
+   catch(err){historyPreviewError=err.message||'No se pudo generar el A4.';}
+   api.render();
+  }return;
  }
  // Contador directo para aguas, gaseosas y otros productos sin chapas.
  if(el.hasAttribute('data-gcm-qty-plus')||el.hasAttribute('data-gcm-qty-minus')||
