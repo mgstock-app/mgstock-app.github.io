@@ -147,58 +147,92 @@ test('se guardan valores numéricos sin cerrar el teclado ni reiniciar la tabla'
  assert.match(css,/gcm-save-bar/);
 });
 
-test('vista simple muestra únicamente Vto 1 y separa todos los otros vencimientos sin perder cantidades',async()=>{
+test('Conteo muestra las cuatro fechas dentro de cada planilla, sin pestañas separadas',async()=>{
  const {mod}=makeApp();mod.view();await new Promise(r=>setImmediate(r));
  const html=mod.view();
- assert.match(html,/class="gcm-expiry-tabs"/);
- for(let n=1;n<=4;n++)assert.match(html,new RegExp('data-gcm-vto="'+n+'"'));
- assert.match(html,/data-gcm-vto="1" class="is-current" aria-pressed="true"/);
- assert.equal((html.match(/class="[^"]*gcm-vto-col is-current-vto[^"]*"/g)||[]).length,2);
- assert.match(html,/data-gcm-idx="2"/);
- assert.match(html,/data-gcm-idx="3"/);
- assert.match(html,/data-gcm-idx="4"/);
- assert.match(html,/class="gcm-total">70<\/td>/);
+ assert.doesNotMatch(html,/class="gcm-expiry-tabs"/);
+ assert.doesNotMatch(html,/data-gcm-vto=/);
+ for(let n=1;n<=4;n++){
+  assert.match(html,new RegExp('data-gcm-idx="'+n+'"'));
+  assert.match(html,new RegExp('Vto '+n));
+ }
+ const header=html.slice(html.indexOf('<thead>'),html.indexOf('</thead>')+8);
+ assert.ok(header.includes('>Producto</th>'));
+ for(let n=1;n<=4;n++)assert.ok(header.indexOf('Vto '+n)>header.indexOf('>Producto</th>'));
+ assert.ok(header.indexOf('Vto 1')<header.indexOf('Vto 2'));
+ assert.ok(header.indexOf('Vto 2')<header.indexOf('Vto 3'));
+ assert.ok(header.indexOf('Vto 3')<header.indexOf('Vto 4'));
+ assert.ok(header.indexOf('>Total</th>')>header.indexOf('Vto 4'));
  const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
- assert.match(css,/\.gcm-vto-col:not\(\.is-current-vto\)\{display:none!important\}/);
- assert.match(css,/VISTA SIMPLE CONTEO/);
- assert.match(css,/table-layout:fixed!important/);
- assert.match(css,/overflow-x:visible!important/);
+ assert.match(css,/CONTEO · 4 VENCIMIENTOS A LA VISTA/);
+ assert.match(css,/\.gcm-vto-col:not\(\.is-current-vto\)\{[\s\S]*?display:table-cell!important/);
+ assert.match(css,/overflow-x:auto!important/);
+ assert.match(css,/position:sticky!important;left:0!important/);
+});
+test('contar no cambia de fecha ni reconstruye la página y no hay selector superior',async()=>{
+ assert.doesNotMatch(source,/const nextVto=el\.dataset\.gcmVto/);
+ assert.doesNotMatch(source,/data-gcm-vto=/);
+ assert.match(source,/syncCountDom\(el,p,i,isDecomp\)/);
+ assert.match(source,/saveCellFeedback\(el,task\)/);
+ assert.match(source,/dates\.map\(/);
+ assert.match(source,/gestlok_munro_conteo_set_cell/);
+});
+test('productos sin chapas usan filas compactas y botones claros en lugar de raya aislada',async()=>{
+ const htmlSource=source;
+ assert.match(htmlSource,/function numericCompacta\(/);
+ assert.match(htmlSource,/class="gcm-qty-stepper"/);
+ assert.match(htmlSource,/data-gcm-qty-plus/);
+ assert.match(htmlSource,/data-gcm-qty-minus/);
+ assert.match(htmlSource,/gcm-qty-row/);
+ assert.doesNotMatch(htmlSource,/placeholder="—"\+disabled\+' aria-label="Cantidad/);
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ assert.match(css,/FILAS COMPACTAS SIN CHAPAS/);
+ assert.match(css,/tr\.gcm-qty-row > td\{/);
+ assert.match(css,/height:94px!important/);
+ assert.match(css,/height:108px!important/);
 });
 
-test('cambiar Vto no reconstruye la pantalla, no guarda datos nuevos ni cambia posición',async()=>{
+test('botones + y − en bebidas guardan el valor sin re-render ni cambiar de fila',async()=>{
  const events=[],renders=[],writes=[],window={};
- const cols=Array.from({length:4},(_,i)=>({
-  dataset:{gcmIdx:String(i+1)},current:i===0,
-  classList:{toggle(name,value){if(name==='is-current-vto')cols[i].current=value;}}
- }));
- const tabs=Array.from({length:4},(_,i)=>({
-  dataset:{gcmVto:String(i+1)},current:i===0,pressed:'',
-  classList:{toggle(name,value){if(name==='is-current')tabs[i].current=value;}},
-  setAttribute(name,value){if(name==='aria-pressed')this.pressed=value;}
- }));
- const root={querySelectorAll:s=>s==='.gcm-vto-col'?cols:s==='[data-gcm-vto]'?tabs:[]};
- const target={
-  dataset:{gcmVto:'2'},
-  hasAttribute:()=>false,
-  closest:s=>s==='.gcm-page'?root:s==='button'?target:null
- };
- const document={addEventListener:(s,fn)=>events.push([s,fn]),querySelector:()=>null};
+ const total={textContent:''},qtyInput={value:'6'},saveStatus={textContent:'',className:''},minus={disabled:false};
+ const row={querySelector:(s)=>s==='.gcm-total'?total:null};
+ const td={dataset:{},querySelector:(s)=>({'.gcm-qty':qtyInput,'.gcm-qty-minus':minus,'.gcm-cell-save':saveStatus}[s]||null),
+  closest:(s)=>s==='tr'?row:null};
+ const root={};
+ const button={dataset:{gcmQtyPlus:'agua',idx:'1'},hasAttribute:(s)=>s==='data-gcm-qty-plus',
+  closest:(s)=>s==='button'?button:s==='td'?td:s==='.gcm-page'?root:null};
+ const document={addEventListener:(name,fn)=>events.push([name,fn]),querySelector:()=>null};
  vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,Object,JSON,Number,String,Math,console});
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
- const get=k=>parts.find(x=>x.type===k).value,day=get('year')+'-'+get('month')+'-'+get('day');
+ const get=k=>parts.find(p=>p.type===k).value,day=get('year')+'-'+get('month')+'-'+get('day');
  window.GestLokSupabase={rpc:async(name,args)=>{
-  writes.push(name);
-  return {error:null,data:{products:[{id:'mt',section:'EMPANADAS',name:'MT',active:true,units_per_chapa:27}],
-   counts:[{day,shift:'manana_entrada',data:{mt:{v1:{chapas:2,sueltas:16,qty:0}}},status:'borrador'}],history:[]}};
+  if(name==='gestlok_munro_conteo_set_cell'){writes.push(args);return {error:null,data:{}};}
+  return {error:null,data:{products:[{id:'agua',name:'Agua 500 cc',section:'AGUAS',active:true,units_per_chapa:0}],
+   counts:[{day,shift:'manana_entrada',data:{agua:{v1:{qty:6,chapas:0,sueltas:0}}},status:'borrador'}],history:[]}};
  }};
  const mod=window.GestLokMunroConteo;
  mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'munro',view:'conteo-munro',ro:false,offline:false},
   miRol:()=> 'gerente',misLocales:()=>['munro'],render:()=>renders.push('render'),toast:()=>{}});
- mod.view();await new Promise(r=>setImmediate(r));const renderBefore=renders.length,writeBefore=writes.length;
- await events.find(([type])=>type==='click')[1]({target});
- assert.equal(renders.length,renderBefore,'Cambiar vencimiento no debe redibujar la pantalla');
- assert.equal(writes.length,writeBefore,'Cambiar vencimiento no guarda ni modifica cantidades');
- assert.deepEqual(cols.map(x=>x.current),[false,true,false,false]);
- assert.deepEqual(tabs.map(x=>x.current),[false,true,false,false]);
- assert.equal(tabs[1].pressed,'true');
+ mod.view();await new Promise(r=>setImmediate(r));
+ const html=mod.view();
+ assert.match(html,/class="gcm-qty-row"/);
+ assert.match(html,/data-gcm-qty-plus="agua" data-idx="1"/);
+ assert.match(html,/data-gcm-qty-minus="agua" data-idx="1"/);
+ assert.match(html,/data-gcm-qty="agua" data-idx="1" value="6"/);
+ const before=renders.length,click=events.find(([type])=>type==='click')[1];
+ await click({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(renders.length,before);
+ assert.equal(qtyInput.value,'7');
+ assert.equal(total.textContent,'7');
+ assert.equal(saveStatus.textContent,'✓ Guardado');
+ assert.equal(writes.at(-1)?.p_qty,7);
+ button.dataset={gcmQtyMinus:'agua',idx:'1'};
+ button.hasAttribute=(s)=>s==='data-gcm-qty-minus';
+ await click({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(qtyInput.value,'6');
+ assert.equal(total.textContent,'6');
+ assert.equal(writes.at(-1)?.p_qty,6);
+ assert.equal(renders.length,before);
 });

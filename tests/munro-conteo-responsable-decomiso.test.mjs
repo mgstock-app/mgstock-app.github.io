@@ -42,11 +42,14 @@ test('local fijo Munro, fecha del día argentino y selector de responsables',asy
  assert.doesNotMatch(html,/type="date"/);
 });
 
-test('decomiso visible es una pestaña separada y suma chapas + sueltas',async()=>{
+test('decomiso opcional aparece en la misma planilla después de las cuatro fechas',async()=>{
  const {html}=await renderReady(true);
  assert.match(html,/id="gcm-decomiso-toggle" checked/);
  assert.ok(html.indexOf('>Producto</th>')<html.indexOf('>Decomiso</th>'));
- assert.match(html,/data-gcm-vto="d"/);
+ assert.doesNotMatch(html,/data-gcm-vto="d"/);
+ const head=html.slice(html.indexOf('<thead>'),html.indexOf('</thead>')+8);
+ assert.ok(head.indexOf('Vto 4')<head.indexOf('>Decomiso</th>'));
+ assert.ok(head.indexOf('>Decomiso</th>')<head.indexOf('>Total</th>'));
  assert.match(html,/data-gcm-idx="d"/);
  // Dos chapas normales + cuatro sueltas = 64; una de decomiso + dos sueltas = 32.
  assert.match(html,/class="gcm-total">96<\/td>/);
