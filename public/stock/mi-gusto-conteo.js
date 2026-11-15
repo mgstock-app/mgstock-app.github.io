@@ -260,7 +260,7 @@ function historyA4Image(rec){
  const wasteRows=Math.ceil(waste.length/wasteColumns);
  const wasteH=wasteRows?60+wasteRows*25:0,consH=338;
  const extraY=H-95-consH-wasteH;
- const yStart=326,available=extraY-yStart-38;
+ const yStart=326,available=extraY-yStart-90;
  let cols=totals.length>74?3:totals.length>31?2:1;
  while(cols<3&&Math.ceil(totals.length/cols)*25>available)cols++;
  const rowsPerCol=Math.max(1,Math.ceil(totals.length/cols));
@@ -284,7 +284,7 @@ function historyA4Image(rec){
    rule(x,y+rowH,width);
   }
  }
- const subtotalY=Math.min(extraY-12,yStart+38+actualH+37);
+ const subtotalY=yStart+38+actualH+39;
  rect(M,subtotalY-28,W-M*2,37,pale);
  write('TOTAL GENERAL',M+12,subtotalY-1,21,navy,'700');
  write(sum,right-12,subtotalY-1,24,navy,'700','right');
