@@ -8,15 +8,32 @@
   let audience = null;
   let retries = 0, retryQueued = false;
 
-  // Un cambio del service worker no implica que todas las empresas se actualizaron.
-  // Si el cambio afecta scripts compartidos, el worker devuelve ['*'] y todos reciben aviso.
+  // Un nuevo SW NO significa que todos los locales tengan novedades.
+  // Audiencias: ['*'] = cambios compartidos; ['tenant'] = toda la empresa;
+  // ['tenant:munro'] = solo Munro, NO Don Torcuato del mismo tenant.
+  function isAffected() {
+    if (!audience || !audience.length) return false;
+    if (audience.includes('*')) return true;
+    const context = window.GestLokNavContext?.();
+    const tenant = typeof context?.tenant === 'string' ? context.tenant : '';
+    const local = typeof context?.local === 'string' ? context.local : '';
+    return !!tenant && (audience.includes(tenant) || (!!local && audience.includes(tenant+':'+local)));
+  }
+  function hideBanner() {
+    if (!banner) return;
+    banner.remove();
+    banner = null;
+  }
   function checkAudience() {
-    if (!audience || banner) return;
-    if (audience.includes('*')) { showBanner(); return; }
-    const tenant = window.GestLokNavContext?.()?.tenant;
-    if (tenant && audience.includes(tenant)) { showBanner(); return; }
-    // La sesión puede llegar después del controllerchange, sin tocar el app.js protegido.
-    if (!tenant && retries < 8 && !retryQueued) {
+    if (audience === null) return;
+    if (isAffected()) { showBanner(); return; }
+    // Si se cambia de local o empresa, quitar cualquier cartel del local anterior.
+    hideBanner();
+    const context=window.GestLokNavContext?.();
+    const tenant=context?.tenant,local=context?.local;
+    const awaitsContext=!tenant ||
+      (audience.some(x => typeof x==='string' && x.startsWith(tenant+':')) && !local);
+    if (audience.length && awaitsContext && retries < 8 && !retryQueued) {
       retries++;
       retryQueued = true;
       setTimeout(() => { retryQueued = false; checkAudience(); }, 1800);
@@ -72,19 +89,26 @@
   }
   // El cambio de cuenta o el regreso a la app también pueden aportar un tenant válido.
   window.addEventListener?.('focus', checkAudience);
+  window.addEventListener?.('popstate', checkAudience);
+  window.addEventListener?.('hashchange', checkAudience);
   document.addEventListener?.('visibilitychange', checkAudience);
+  // El cambio entre Munro/Torcuato puede hacerse sin refrescar ni cambiar URL.
+  // Verificamos después del clic para retirar el cartel si cambió el local.
+  document.addEventListener?.('click', () => setTimeout(checkAudience, 180), true);
+  const safeSilence = () => { audience=[]; checkAudience(); };
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const replacing = controlled;
     controlled = true;
-    if (!replacing || banner) return;
+    if (!replacing) return;
+    audience=null; hideBanner(); retries=0; retryQueued=false;
     const worker = navigator.serviceWorker.controller;
-    // Un worker anterior o un navegador sin MessageChannel puede no comunicar el alcance:
-    // en ese caso conservamos el comportamiento seguro (mostrar el aviso).
-    if (!worker?.postMessage || typeof MessageChannel !== 'function') { showBanner(); return; }
+    // Worker anterior o sin MessageChannel: no sabemos qué local cambió.
+    // Mostrar un aviso global sería falso; se actualiza silenciosamente al reabrir.
+    if (!worker?.postMessage || typeof MessageChannel !== 'function') { safeSilence(); return; }
     const channel = new MessageChannel();
     let answered = false;
     const timeout = setTimeout(() => {
-      if (!answered) { answered = true; showBanner(); channel.port1.close?.(); }
+      if (!answered) { answered = true; safeSilence(); channel.port1.close?.(); }
     }, 2500);
     channel.port1.onmessage = ({data}) => {
       if (answered) return;
@@ -92,8 +116,9 @@
       clearTimeout(timeout);
       channel.port1.close?.();
       if (data?.type !== 'gestlok-update-audience' || !Array.isArray(data.audience) ||
-          !data.audience.every(value => typeof value === 'string')) {
-        showBanner(); return;
+          !data.audience.every(value => value==='*' ||
+            (typeof value === 'string' && /^[0-9a-f-]{36}(?::[a-z0-9_-]{1,60})?$/.test(value)))) {
+        safeSilence(); return;
       }
       audience = data.audience;
       checkAudience();
@@ -101,7 +126,7 @@
     try {
       worker.postMessage({type:'gestlok-update-audience'}, [channel.port2]);
     } catch {
-      if (!answered) { answered = true; clearTimeout(timeout); showBanner(); }
+      if (!answered) { answered = true; clearTimeout(timeout); safeSilence(); }
     }
   });
 })();
