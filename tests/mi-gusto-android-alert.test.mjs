@@ -8,7 +8,9 @@ const sql=fs.readFileSync(new URL('../supabase/migrations/20261115022000_munro_a
 const sqlBoth=fs.readFileSync(new URL('../supabase/migrations/20261115131500_mi_gusto_whatsapp_alertas_dos_locales.sql',import.meta.url),'utf8');
 const sqlManager=fs.readFileSync(new URL('../supabase/migrations/20261115154500_mi_gusto_gerente_vinculo_whatsapp_alertas.sql',import.meta.url),'utf8');
 const edge=fs.readFileSync(new URL('../supabase/functions/mi-gusto-android-alert/index.ts',import.meta.url),'utf8');
+const sqlHistory=fs.readFileSync(new URL('../supabase/migrations/20261115172500_mi_gusto_avisos_whatsapp_historial.sql',import.meta.url),'utf8');
 const alert={id:'11111111-1111-4111-8111-111111111111',status:'pendiente',created_at:'2026-11-15T02:10:00Z',customer_phone:'5491122233344'};
+const reviewed={id:'22222222-2222-4222-8222-222222222222',status:'visto',created_at:'2026-11-14T02:00:00Z',seen_at:'2026-11-14T02:30:00Z',customer_phone:'5491122244455'};
 
 function make(role='gerente',local='munro',assignedLocals=[local]){
  const handlers={};const calls=[];
@@ -27,7 +29,7 @@ function make(role='gerente',local='munro',assignedLocals=[local]){
    if(name==='gestlok_mg_orders_state')return {data:{local,whatsapp_number:'541170000000',orders:[]},error:null};
    if(name==='gestlok_mg_orders_catalog')return {data:[],error:null};
    if(name==='gestlok_mg_whatsapp_settings')return {data:null,error:null};
-   if(name==='gestlok_mg_android_bridge_state')return {data:{configured:true,last_event_at:alert.created_at,alerts:[alert]},error:null};
+   if(name==='gestlok_mg_android_bridge_state')return {data:{configured:true,last_event_at:alert.created_at,alerts:[alert],reviewed:[reviewed]},error:null};
    if(name==='gestlok_mg_android_bridge_ack')return {data:true,error:null};
    if(name==='gestlok_mg_android_bridge_create')return {data:{ok:true,token:'b'.repeat(64)},error:null};
    return {data:null,error:null};
@@ -40,6 +42,8 @@ function make(role='gerente',local='munro',assignedLocals=[local]){
  return {mod,api,calls,handlers};
 }
 const tick=()=>new Promise(r=>setImmediate(r));
+const clickSection=(m,section)=>m.handlers.click({target:{closest:q=>q==='[data-mgp-section]'?{dataset:{mgpSection:section}}:null}});
+const clickFilter=(m,filter)=>m.handlers.click({target:{closest:q=>q==='[data-mgp-alert-filter]'?{dataset:{mgpAlertFilter:filter}}:null}});
 test('Alerta Android aparece en Pedidos WhatsApp, atajos y contador para gerente de Munro',async()=>{
  const m=make();m.mod.subscribe('munro',()=>{});
  await tick();await tick();
@@ -58,12 +62,14 @@ test('Alerta Android aparece en Pedidos WhatsApp, atajos y contador para gerente
 test('Gerente autorizado puede generar vínculo de su local, sin editar el número',async()=>{
  for(const loc of ['munro','torcuato']){
   const gerente=make('gerente',loc);gerente.mod.subscribe(loc,()=>{});await tick();await tick();
+  clickSection(gerente,'vinculacion');
   const html=gerente.mod.view();
   assert.match(html,/data-mgp-mobile-key/);
   assert.match(html,/X-Gestlok-Bridge-Key/);
   assert.doesNotMatch(html,/mgp-number-form/,'el gerente no administra el número de WhatsApp');
  }
  const dueña=make('dueno');dueña.mod.subscribe('munro',()=>{});await tick();await tick();
+ clickSection(dueña,'vinculacion');
  assert.match(dueña.mod.view(),/data-mgp-mobile-key/);
  const ajeno=make('gerente','torcuato',['munro']);ajeno.mod.subscribe('torcuato',()=>{});await tick();
  assert.doesNotMatch(ajeno.mod.view(),/data-mgp-mobile-key/);
@@ -75,10 +81,36 @@ test('Torcuato recibe sus propios avisos, sin contaminar Munro',async()=>{
  const t=make('gerente','torcuato');t.mod.subscribe('torcuato',()=>{});await tick();await tick();
  const html=t.mod.view();
  assert.match(html,/Revisar conversación en WhatsApp de Don Torcuato/);
- assert.match(html,/Vincular WhatsApp Business de Don Torcuato/);
+ assert.match(html,/data-mgp-section="vinculacion"/);
  assert.match(html,/Copiar número/);
  assert.ok(t.calls.some(x=>x.name==='gestlok_mg_android_bridge_state'&&x.args.p_local==='torcuato'));
  assert.doesNotMatch(html,/Revisar conversación en WhatsApp de Munro/);
+});
+
+test('Pestaña Avisos separa pendientes y revisados sin perder avisos al marcar OK',async()=>{
+ const m=make('gerente','torcuato');m.mod.subscribe('torcuato',()=>{});await tick();await tick();
+ assert.match(m.mod.view(),/data-mgp-section="avisos" aria-current="page"/);
+ assert.match(m.mod.view(),/Pendientes/);
+ assert.match(m.mod.view(),/data-mgp-mobile-ack="11111111-1111-4111-8111-111111111111"/);
+ assert.doesNotMatch(m.mod.view(),/Clave \(única visualización\)/);
+ clickFilter(m,'revisados');
+ const html=m.mod.view();
+ assert.match(html,/22222222-2222-4222-8222-222222222222/);
+ assert.match(html,/✓ Revisado/);
+ assert.doesNotMatch(html,/data-mgp-mobile-ack/);
+ assert.equal(m.mod.pendingCount(),1,'revisados no generan contador de avisos pendientes');
+ clickSection(m,'vinculacion');
+ assert.match(m.mod.view(),/Vincular WhatsApp Business de Don Torcuato/);
+ assert.doesNotMatch(m.mod.view(),/mgp-mobile-alert-item/);
+ clickSection(m,'avisos');
+ assert.match(m.mod.view(),/data-mgp-section="avisos" aria-current="page"/);
+});
+test('RPC del historial restringe resultados a la sucursal real y no expone conversaciones',()=>{
+ assert.match(sqlHistory,/gestlok_mg_orders_private\.allowed\(p_local\)/);
+ assert.match(sqlHistory,/where local=p_local and status='visto'/);
+ assert.match(sqlHistory,/where local=p_local and status='pendiente'/);
+ assert.match(sqlHistory,/revoke all on function public\.gestlok_mg_android_bridge_state\(text\)/);
+ assert.doesNotMatch(sqlHistory,/message_text|items_detail|service_role/);
 });
 
 test('Servidor recibe señal genérica autenticada, no copia chats ni crea pedidos',()=>{
