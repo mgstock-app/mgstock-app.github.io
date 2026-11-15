@@ -681,19 +681,17 @@ function view(){
  const hidden=new Set(Array.isArray(hiddenSource)?hiddenSource:[]);
  const visibleCategories=categories.filter(name=>!hidden.has(name));
  const showWaste=!!rec.waste_visible;
- const isToday=day===arDay();
  return '<div class="gcm-page gcm-count-screen">'+conteoHistorialNav('conteo')+
  '<header class="gcm-header gcm-header-compact"><div class="gcm-header-title"><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2></div>'+
  '<div class="gcm-header-fields gcm-header-fields-compact" aria-label="Datos del conteo"><div class="gcm-field-local"><span>Local</span><strong>Munro</strong></div>'+
  '<label class="gcm-field-responsable">Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
- '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+(isToday?'Hoy · ':day>arDay()?'Próximo · ':'Anterior · ')+labelDay(day)+'</strong></div></div></header>'+
+ '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
  (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
  '</div>'+
- // Los turnos se asignan automáticamente al cerrar; sus nombres se consultan en Historial.
- 
+ // Sin pestañas de turnos: el avance es automático y se identifica en Historial.
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+'Los cuatro vencimientos se completan en la misma planilla.'+
