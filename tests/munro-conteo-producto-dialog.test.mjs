@@ -153,7 +153,7 @@ test('empanadas admite chapas de 27 o 30; no crea duplicados ni nombres vacíos'
  mod.view();await tick();
  const dialog=newProductDialog('Empanada nueva','27');
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','EMPANADAS',dialog));
- assert.equal(rpcArgs.at(-1).args.p_units_per_chapa,27);
+ assert.equal(rpcArgs.find(x=>x.name==='gestlok_munro_conteo_add_product')?.args.p_units_per_chapa,27);
  dialog.input.value='AC';
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','EMPANADAS',dialog));
  assert.match(dialog.status.textContent,/Ya existe/);
