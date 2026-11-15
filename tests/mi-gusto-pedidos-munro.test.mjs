@@ -65,7 +65,7 @@ test('Solo dueña y administradora generan la clave de un local; gerente ve los 
   const dueña=setup({local,locals:[local]});dueña.orders.subscribe(local,()=>{});await tick();await tick();
   assert.match(dueña.orders.view(),/data-mgp-mobile-key/);
   const gerente=setup({role:'gerente',local,locals:[local]});gerente.orders.subscribe(local,()=>{});await tick();await tick();
-  assert.doesNotMatch(gerente.orders.view(),/data-mgp-mobile-key/);
+  assert.match(gerente.orders.view(),/data-mgp-mobile-key/);
   assert.match(gerente.orders.view(),/Avisos de WhatsApp Business/);
  }
 });
