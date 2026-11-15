@@ -478,3 +478,31 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
 .gcm-cell-save.is-saving{color:#865919}
 .gcm-cell-save.is-saved{color:#237146}
 .gcm-cell-save.is-error{color:#a73333}
+
+/* Recuperación y guardado manual: siempre visibles cerca de la fecha. */
+.gcm-day-bar,.gcm-save-bar{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:9px;padding:9px 12px;margin:8px 0;border:1px solid #d9e4ee;
+ border-radius:9px;background:#f8fafc;color:#193b5a;font-size:12px;
+}
+.gcm-day-bar strong{font-size:13px;font-weight:800}
+.gcm-day-bar span{flex:1 1 100%;font-weight:750;color:#7d5023}
+.gcm-day-bar button,.gcm-save-bar button{
+ display:inline-flex;align-items:center;justify-content:center;min-height:42px;
+ padding:8px 13px;border:1px solid #b9c9d9;border-radius:8px;
+ color:#12385a;background:#fff;font-size:12px;font-weight:800;
+}
+.gcm-save-bar{background:#eef5fa}
+.gcm-save-bar span{flex:1;min-width:140px}
+.gcm-save-bar button{color:#fff;background:#12345a;border-color:#12345a}
+.gcm-save-bar button:disabled{opacity:.7}
+.gcm-numeric-cell .gcm-cell-save{margin-top:7px}
+.gcm-numeric-cell .gcm-qty{
+ font-size:16px;min-height:46px;min-width:78px;text-align:center;
+ border:1px solid #b9ccde;border-radius:7px;color:#12345a;
+}
+@media(max-width:700px){
+ .gcm-day-bar,.gcm-save-bar{padding:10px;gap:8px}
+ .gcm-save-bar button{min-height:46px}
+ .gcm-numeric-cell .gcm-qty{min-width:68px;max-width:76px}
+}
