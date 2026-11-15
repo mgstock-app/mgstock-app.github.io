@@ -1048,3 +1048,18 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-page .gcm-product-add-bar>span{flex:1 1 130px}
  dialog.gcm-add-product-dialog{padding:17px;width:calc(100vw - 20px)}
 }
+
+
+/* Resumen histórico alineado al orden real de Conteo, sin totales lejanos. */
+.gcm-history-detail .gcm-hd-summary{
+ max-width:790px;margin:17px auto;
+}
+.gcm-history-detail .gcm-hd-summary td strong{font-size:16px}
+.gcm-history-detail .gcm-hd-summary-number{font-size:19px!important}
+.gcm-history-detail .gcm-hd-summary th:last-child,
+.gcm-history-detail .gcm-hd-summary td:last-child{width:115px}
+@media(max-width:700px){
+ .gcm-history-detail .gcm-hd-summary{max-width:100%}
+ .gcm-history-detail .gcm-hd-summary td strong{font-size:15px}
+ .gcm-history-detail .gcm-hd-summary-number{font-size:18px!important}
+}
