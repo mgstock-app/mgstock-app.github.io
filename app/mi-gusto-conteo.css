@@ -377,3 +377,104 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
  .gcm-product-menu-trigger{width:34px;min-height:37px}
  dialog.gcm-product-dialog{padding:16px;border-radius:12px}
 }
+
+
+/* Conteo táctil estable: filas separadas, objetivos grandes y ancho fijo por vencimiento.
+   Los controles cambian el valor sin redibujar la página ni abrir el teclado móvil. */
+.gcm-section .gcm-sheet-scroll table{
+  width:max(100%,1060px);min-width:1060px;table-layout:fixed;border-spacing:0 7px;
+}
+.gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll table{
+  width:max(100%,1260px);min-width:1260px;
+}
+.gcm-section .gcm-sheet-scroll thead th{
+  width:196px;min-width:196px;padding:9px 6px;
+}
+.gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+  width:104px;min-width:104px;max-width:104px;
+}
+.gcm-section .gcm-sheet-scroll thead th:last-child{
+  width:76px;min-width:76px;
+}
+.gcm-section .gcm-sheet-scroll tbody tr > th,
+.gcm-section .gcm-sheet-scroll tbody tr > td{
+  height:113px;border-top:1px solid #d9e3ee;border-bottom:1px solid #d9e3ee;
+  vertical-align:middle;background-clip:padding-box;
+}
+.gcm-section .gcm-sheet-scroll tbody tr > th.gcm-product-cell{
+  height:113px;white-space:nowrap;
+}
+.gcm-section .gcm-sheet-scroll tbody td.gcm-chapa{
+  width:196px;min-width:196px;padding:8px 10px;
+}
+.gcm-inline-count{
+  display:grid;grid-template-columns:1fr;grid-template-rows:42px 42px;
+  gap:7px;width:174px;min-width:174px;max-width:174px;
+  margin:0 auto;white-space:nowrap;
+}
+.gcm-chapas-stepper{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:7px;min-width:0}
+.gcm-inline-count .gcm-mark-button{
+  display:flex;align-items:center;justify-content:space-between;
+  min-width:0;width:100%;max-width:none;height:42px;min-height:42px;
+  padding:4px 8px;gap:5px;border:1px solid #bdcedf;border-radius:7px;
+  background:#fff;color:#183956;overflow:hidden;
+}
+.gcm-mark-visual{display:block;flex:1 1 auto;min-width:0;overflow:hidden}
+.gcm-inline-count .gcm-marks{
+  display:flex;max-width:100%;flex-wrap:nowrap;overflow:hidden;
+  justify-content:flex-start;gap:2px;
+}
+.gcm-inline-count .gcm-marks svg{width:20px;height:20px;flex:0 0 20px}
+.gcm-chapas-value{
+  flex:0 0 25px;text-align:right;font-size:14px;line-height:1;
+  color:#12345a;font-variant-numeric:tabular-nums;
+}
+.gcm-inline-count .gcm-mark-undo{
+  width:42px;height:42px;min-height:42px;padding:0;
+  font-size:20px;border-radius:7px;
+}
+.gcm-units-stepper{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:7px}
+.gcm-units-stepper button{
+  width:42px;height:42px;min-width:42px;min-height:42px;
+  padding:0;border:1px solid #b9ccde;border-radius:7px;
+  background:#eff5fb;color:#123e62;font-size:21px;font-weight:800;
+}
+.gcm-units-stepper output{
+  display:flex;align-items:center;justify-content:center;
+  height:42px;min-width:0;padding:0 3px;
+  border:1px solid #bdcedf;border-radius:7px;background:#fff;
+  color:#143a5b;font-size:14px;font-weight:850;
+  font-variant-numeric:tabular-nums;
+}
+.gcm-inline-count button:disabled{opacity:.42;cursor:default}
+.gcm-inline-count button:not(:disabled):active{background:#dcebf9}
+.gcm-inline-count button:focus-visible{outline:2px solid #087ab8;outline-offset:2px}
+.gcm-section .gcm-sheet-scroll tbody tr:hover > td{background-color:#f7fbff}
+.gcm-section .gcm-sheet-scroll tbody tr:focus-within > th.gcm-product-cell{
+  background:#dceaf8;color:#102d4b;
+}
+@media(max-width:700px){
+ .gcm-section .gcm-sheet-scroll table{width:1060px;min-width:1060px}
+ .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll table{width:1260px;min-width:1260px}
+ .gcm-section .gcm-sheet-scroll thead th:not(.gcm-product-head):not(:last-child){min-width:196px}
+ .gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+   width:92px;min-width:92px;max-width:92px;
+ }
+ .gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+   width:92px;min-width:92px;max-width:92px;
+ }
+}
+
+/* Confirmación del guardado dentro de la misma casilla, en espacio reservado. */
+.gcm-section .gcm-sheet-scroll tbody tr > th,
+.gcm-section .gcm-sheet-scroll tbody tr > td,
+.gcm-section .gcm-sheet-scroll tbody tr > th.gcm-product-cell{height:124px}
+.gcm-inline-count{grid-template-rows:42px 42px 14px;gap:4px}
+.gcm-cell-save{
+  display:block;min-height:14px;height:14px;line-height:14px;
+  text-align:center;font-size:10px;font-weight:800;white-space:nowrap;
+  color:#687f94;
+}
+.gcm-cell-save.is-saving{color:#865919}
+.gcm-cell-save.is-saved{color:#237146}
+.gcm-cell-save.is-error{color:#a73333}

@@ -193,26 +193,74 @@ function saveDecomiso(p,newCell){
  }));
 }
 
-/* Las chapas y las sueltas se cargan juntas, tal como se anotan en papel (|| 16). */
+/* Controles de tamaño fijo: un toque suma chapa; unidades sueltas con botones +/-.
+   No abrir teclado ni redibujar la planilla mientras se está contando. */
 function chapaCompacta(p,v,canWrite,isDecomiso,index){
  const pid=esc(p.id),where=isDecomiso?'de decomiso':'del vencimiento '+index;
  const attrs=isDecomiso?'':' data-idx="'+index+'"';
  const plus=isDecomiso?'data-gcm-decomp-plus':'data-gcm-plus';
  const minus=isDecomiso?'data-gcm-decomp-minus':'data-gcm-minus';
- const suelta=isDecomiso?'data-gcm-decomp-suelta':'data-gcm-suelta';
+ const unitPlus=isDecomiso?'data-gcm-decomp-suelta-plus':'data-gcm-suelta-plus';
+ const unitMinus=isDecomiso?'data-gcm-decomp-suelta-minus':'data-gcm-suelta-minus';
  const disabled=canWrite?'':' disabled';
- const unitValue=v.sueltas>0?v.sueltas:'';
  const label=esc(p.name+' '+where);
  return '<div class="gcm-inline-count">'+
-  '<button type="button" class="gcm-mark-button" '+plus+'="'+pid+'"'+attrs+disabled+
-    ' aria-label="Sumar chapa '+label+'" title="'+v.chapas+' chapas · tocar para sumar">'+marks(v.chapas)+'</button>'+
-  '<button type="button" class="gcm-mark-undo" '+minus+'="'+pid+'"'+attrs+disabled+
+  '<div class="gcm-chapas-stepper">'+
+   '<button type="button" class="gcm-mark-button" '+plus+'="'+pid+'"'+attrs+disabled+
+    ' aria-label="Sumar chapa '+label+'" title="'+v.chapas+' chapas · tocar para sumar">'+
+    '<span class="gcm-mark-visual">'+marks(v.chapas)+'</span><strong class="gcm-chapas-value">'+v.chapas+'</strong></button>'+
+   '<button type="button" class="gcm-mark-undo" '+minus+'="'+pid+'"'+attrs+disabled+
     ' aria-label="Quitar chapa '+label+'" title="Quitar una chapa">−</button>'+
-  '<label class="gcm-inline-units"><span aria-hidden="true">+</span>'+
-   '<input type="number" min="0" max="100000" inputmode="numeric" '+suelta+'="'+pid+'"'+attrs+
-    ' placeholder="u." value="'+unitValue+'"'+disabled+
-    ' aria-label="Unidades sueltas '+label+'"></label>'+
-  '</div>';
+  '</div>'+
+  '<div class="gcm-units-stepper">'+
+   '<button type="button" class="gcm-unit-minus" '+unitMinus+'="'+pid+'"'+attrs+
+    (!canWrite||v.sueltas<=0?' disabled':'')+' aria-label="Quitar unidad suelta '+label+'">−</button>'+
+   '<output class="gcm-units-value" aria-label="Unidades sueltas '+label+'">'+v.sueltas+' u.</output>'+
+   '<button type="button" class="gcm-unit-plus" '+unitPlus+'="'+pid+'"'+attrs+disabled+
+    ' aria-label="Sumar unidad suelta '+label+'">+</button>'+
+  '</div>'+
+  '<span class="gcm-cell-save" role="status" aria-live="polite"></span>'+
+ '</div>';
+}
+// Actualización puntual de la casilla y del total, sin reemplazar el DOM de Conteo.
+function syncCountDom(el,p,i,isDecomp){
+ const td=el.closest('td');
+ if(!td)return;
+ const v=isDecomp?getDecomisoCell(p):getCell(p,i);
+ const button=td.querySelector('.gcm-mark-button');
+ if(button){
+  const visual=button.querySelector('.gcm-mark-visual');
+  if(visual)visual.innerHTML=marks(v.chapas);
+  const count=button.querySelector('.gcm-chapas-value');
+  if(count)count.textContent=String(v.chapas);
+  button.title=v.chapas+' chapas · tocar para sumar';
+ }
+ const units=td.querySelector('.gcm-units-value');
+ if(units)units.textContent=v.sueltas+' u.';
+ const unitMinus=td.querySelector('.gcm-unit-minus');
+ if(unitMinus)unitMinus.disabled=v.sueltas<=0;
+ const row=td.closest('tr'),total=row?.querySelector('.gcm-total');
+ if(total){
+  let sum=amount(p,getDecomisoCell(p));
+  for(let n=1;n<=4;n++)sum+=amount(p,getCell(p,n));
+  total.textContent=sum?String(sum):'—';
+ }
+}
+
+// Cada casilla reserva su espacio de confirmación; guardados anteriores no pisan el último.
+function saveCellFeedback(el,task){
+ const td=el.closest('td'),status=td?.querySelector('.gcm-cell-save');
+ if(!td||!status)return;
+ const token=String((Number(td.dataset.gcmSaveToken)||0)+1);
+ td.dataset.gcmSaveToken=token;
+ status.className='gcm-cell-save is-saving';status.textContent='Guardando…';
+ task.then(()=>{
+  if(td.dataset.gcmSaveToken!==token)return;
+  status.className='gcm-cell-save is-saved';status.textContent='✓ Guardado';
+ }).catch(()=>{
+  if(td.dataset.gcmSaveToken!==token)return;
+  status.className='gcm-cell-save is-error';status.textContent='No guardado';
+ });
 }
 
 function decompColumn(p,canWrite){
@@ -319,7 +367,7 @@ function view(){
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
-'<div class="gcm-sheet-tip">Cada toque agrega una chapa (5 marcas completan un cuadrado). Escribí las unidades sueltas junto a las marcas; el total se calcula a la derecha.</div>'+
+'<div class="gcm-sheet-tip">Tocá las marcas para sumar chapas (5 forman un cuadrado). Usá + y − para las unidades sueltas. Cada cambio se guarda sin mover la planilla.</div>'+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
   '<label><input type="checkbox" data-gcm-section-visible="'+esc(name)+'"'+(!hidden.has(name)?' checked':'')+
@@ -346,8 +394,18 @@ function schedule(key,fn){
  queues.set(key,next);busy=true;
  const indicator=document.querySelector('.gcm-help span:last-child');
  if(indicator)indicator.textContent='Guardando…';
- next.then(()=>{if(queues.get(key)===next){queues.delete(key);if(!queues.size)busy=false;const el=document.querySelector('.gcm-help span:last-child');if(el)el.textContent='Guardado automáticamente';}})
- .catch(e=>{if(queues.get(key)===next){queues.delete(key);busy=false;}error='Error al guardar: '+(e.message||'Reintentá');api?.toast?.(error);if(api?.S?.view==='conteo-munro')api.render();});
+ next.then(()=>{
+  if(queues.get(key)!==next)return;
+  queues.delete(key);busy=queues.size>0;
+  const el=document.querySelector('.gcm-help span:last-child');
+  if(el)el.textContent=busy?'Guardando…':'Guardado automáticamente';
+ }).catch(e=>{
+  if(queues.get(key)===next)queues.delete(key);
+  busy=queues.size>0;
+  error='Error al guardar: '+(e.message||'Reintentá');
+  api?.toast?.(error);
+  if(api?.S?.view==='conteo-munro')api.render();
+ });
  return next;
 }
 function saveCell(p,i,newCell){
@@ -487,17 +545,26 @@ document.addEventListener('click',async e=>{
   const record=historyRows.find(v=>v.day===d&&v.shift===s);
   if(historyMode&&record){historyRecord=record;api.render();}return;
  }
- const isDecomp=el.hasAttribute('data-gcm-decomp-plus')||el.hasAttribute('data-gcm-decomp-minus');
- const id=el.dataset.gcmPlus||el.dataset.gcmMinus||el.dataset.gcmDecompPlus||el.dataset.gcmDecompMinus;
+ const isDecomp=['data-gcm-decomp-plus','data-gcm-decomp-minus','data-gcm-decomp-suelta-plus','data-gcm-decomp-suelta-minus'].some(name=>el.hasAttribute(name));
+ const id=el.dataset.gcmPlus||el.dataset.gcmMinus||el.dataset.gcmDecompPlus||el.dataset.gcmDecompMinus||
+  el.dataset.gcmSueltaPlus||el.dataset.gcmSueltaMinus||el.dataset.gcmDecompSueltaPlus||el.dataset.gcmDecompSueltaMinus;
  if(id){
   if(!editable()||closed())return;
   const p=productById(id),i=Number(el.dataset.idx);
   if(!p||!p.units_per_chapa||(!isDecomp&&(i<1||i>4)))return;
   const cell=isDecomp?getDecomisoCell(p):getCell(p,i);
-  const delta=el.hasAttribute('data-gcm-plus')||el.hasAttribute('data-gcm-decomp-plus')?1:-1;
-  cell.chapas=Math.max(0,Math.min(500,cell.chapas+delta));
-  if(isDecomp)void saveDecomiso(p,cell);else void saveCell(p,i,cell);
-  api.render();return;
+  const isUnit=el.hasAttribute('data-gcm-suelta-plus')||el.hasAttribute('data-gcm-suelta-minus')||
+   el.hasAttribute('data-gcm-decomp-suelta-plus')||el.hasAttribute('data-gcm-decomp-suelta-minus');
+  const adding=el.hasAttribute('data-gcm-plus')||el.hasAttribute('data-gcm-decomp-plus')||
+   el.hasAttribute('data-gcm-suelta-plus')||el.hasAttribute('data-gcm-decomp-suelta-plus');
+  const field=isUnit?'sueltas':'chapas',limit=isUnit?100000:500;
+  const next=Math.max(0,Math.min(limit,cell[field]+(adding?1:-1)));
+  if(next===cell[field])return;
+  cell[field]=next;
+  const task=isDecomp?saveDecomiso(p,cell):saveCell(p,i,cell);
+  syncCountDom(el,p,i,isDecomp);
+  saveCellFeedback(el,task);
+  return;
  }
  const productId=el.dataset.gcmRename||el.dataset.gcmRemove;
  if(productId&&admin()&&!busy){
