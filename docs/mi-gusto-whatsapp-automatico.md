@@ -19,6 +19,12 @@ El agente de Meta atiende al cliente **dentro de WhatsApp Business** de cada suc
 - Esta solución no requiere Cloud API. Requiere MacroDroid y permisos de notificación en el Android de la sucursal. El estado de vínculo se comprueba únicamente mediante una señal real recibida y nunca al escanear el QR.
 - Si el agente de Meta no crea una notificación Android reconocible, **no hay alerta**: el QR no soluciona esa limitación.
 
+## Asistente de vinculación por QR (Munro y Torcuato)
+- El QR de cada sucursal abre la página pública `/vincular-whatsapp/?local=munro` o `?local=torcuato`, ahora con **tres pasos interactivos**: Preparar Android, Configurar MacroDroid y Probar conexión.
+- En la pantalla privada de GESTLOK → Pedidos WhatsApp → Vinculación se mantiene la clave de sucursal y se agrega **Iniciar prueba de conexión** y **Comprobar señal**. La conexión solo se valida si el servidor reporta una señal **nueva** posterior al inicio de la prueba; eventos antiguos y QR escaneados sin señal no se consideran conectados.
+- Las dos sucursales mantienen su **número propio**, clave privada, control de acceso por rol, eventos y avisos aislados. No se incluye ningún número o clave en la URL ni en el QR público.
+- Este asistente **no instala ni configura MacroDroid automáticamente**. Android debe autorizar manualmente el acceso a notificaciones y el operador debe completar el filtro correcto. No es un login de WhatsApp Web ni lee chats. Una señal recibida no demuestra que se hayan detectado todos los pedidos.
+
 ## Vinculación de cada celular Android
 1. Ingresar con dueño o creadora a **Mi Gusto → [sucursal] → Pedidos WhatsApp → Vincular WhatsApp Business**.
 2. Generar clave de vínculo para ese local (se muestra una única vez). **No enviarla por WhatsApp ni ponerla en capturas.**

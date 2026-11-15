@@ -49,7 +49,7 @@ test('Munro y Don Torcuato muestran panel de avisos separado, sin la configuraci
   assert.match(html,/data-mgp-section="vinculacion"/);
   assert.match(html,/Avisos de WhatsApp Business/);
   openLink(s);
-  assert.match(s.orders.view(),new RegExp('Vincular WhatsApp Business de '+(local==='munro'?'Munro':'Don Torcuato')));
+  assert.match(s.orders.view(),new RegExp('Conectar avisos del WhatsApp Business de '+(local==='munro'?'Munro':'Don Torcuato')));
   assert.doesNotMatch(html,/Conexión con WhatsApp Business \(Meta\)|Mensajes automáticos de WhatsApp|Guardar datos de Meta/);
   assert.doesNotMatch(html,/Registrar pedido manualmente|mgp-order-form/);
   assert.match(html,/No hay avisos pendientes/);
@@ -81,7 +81,7 @@ test('La configuración incluye JSON por sucursal y aclara el límite de notific
  openLink(m);
  assert.match(m.orders.view(),/&quot;local&quot;:&quot;munro&quot;/);
  assert.match(m.orders.view(),/\{not_title\}/);
- assert.match(m.orders.view(),/No garantiza detectar un pedido confirmado/);
+ assert.match(m.orders.view(),/no interpreta pedidos confirmados/);
  const t=setup({local:'torcuato',locals:['torcuato']});t.orders.subscribe('torcuato',()=>{});await tick();await tick();
  openLink(t);
  assert.match(t.orders.view(),/&quot;local&quot;:&quot;torcuato&quot;/);
