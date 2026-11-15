@@ -48,7 +48,7 @@ test('Munro y Don Torcuato muestran panel de avisos separado, sin la configuraci
   assert.match(html,/Avisos de WhatsApp Business/);
   assert.doesNotMatch(html,/Conexión con WhatsApp Business \(Meta\)|Mensajes automáticos de WhatsApp|Guardar datos de Meta/);
   assert.doesNotMatch(html,/Registrar pedido manualmente|mgp-order-form/);
-  assert.match(html,/✓ Revisado/);
+  assert.match(html,/No hay avisos pendientes/);
  }
 });
 test('La comanda anterior sigue accesible, con sus datos completos',async()=>{
