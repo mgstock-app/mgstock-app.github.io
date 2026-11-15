@@ -202,3 +202,63 @@ test('cambiar Vto no reconstruye la pantalla, no guarda datos nuevos ni cambia p
  assert.deepEqual(tabs.map(x=>x.current),[false,true,false,false]);
  assert.equal(tabs[1].pressed,'true');
 });
+
+test('productos sin chapas usan filas compactas y botones claros en lugar de raya aislada',async()=>{
+ const htmlSource=source;
+ assert.match(htmlSource,/function numericCompacta\(/);
+ assert.match(htmlSource,/class="gcm-qty-stepper"/);
+ assert.match(htmlSource,/data-gcm-qty-plus/);
+ assert.match(htmlSource,/data-gcm-qty-minus/);
+ assert.match(htmlSource,/gcm-qty-row/);
+ assert.doesNotMatch(htmlSource,/placeholder="—"\+disabled\+' aria-label="Cantidad/);
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ assert.match(css,/FILAS COMPACTAS SIN CHAPAS/);
+ assert.match(css,/tr\.gcm-qty-row > td\{/);
+ assert.match(css,/height:94px!important/);
+ assert.match(css,/height:108px!important/);
+});
+
+test('botones + y − en bebidas guardan el valor sin re-render ni cambiar de fila',async()=>{
+ const events=[],renders=[],writes=[],window={};
+ const total={textContent:''},qtyInput={value:'6'},saveStatus={textContent:'',className:''},minus={disabled:false};
+ const row={querySelector:(s)=>s==='.gcm-total'?total:null};
+ const td={dataset:{},querySelector:(s)=>({'.gcm-qty':qtyInput,'.gcm-qty-minus':minus,'.gcm-cell-save':saveStatus}[s]||null),
+  closest:(s)=>s==='tr'?row:null};
+ const root={};
+ const button={dataset:{gcmQtyPlus:'agua',idx:'1'},hasAttribute:(s)=>s==='data-gcm-qty-plus',
+  closest:(s)=>s==='button'?button:s==='td'?td:s==='.gcm-page'?root:null};
+ const document={addEventListener:(name,fn)=>events.push([name,fn]),querySelector:()=>null};
+ vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,Object,JSON,Number,String,Math,console});
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const get=k=>parts.find(p=>p.type===k).value,day=get('year')+'-'+get('month')+'-'+get('day');
+ window.GestLokSupabase={rpc:async(name,args)=>{
+  if(name==='gestlok_munro_conteo_set_cell'){writes.push(args);return {error:null,data:{}};}
+  return {error:null,data:{products:[{id:'agua',name:'Agua 500 cc',section:'AGUAS',active:true,units_per_chapa:0}],
+   counts:[{day,shift:'manana_entrada',data:{agua:{v1:{qty:6,chapas:0,sueltas:0}}},status:'borrador'}],history:[]}};
+ }};
+ const mod=window.GestLokMunroConteo;
+ mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'munro',view:'conteo-munro',ro:false,offline:false},
+  miRol:()=> 'gerente',misLocales:()=>['munro'],render:()=>renders.push('render'),toast:()=>{}});
+ mod.view();await new Promise(r=>setImmediate(r));
+ const html=mod.view();
+ assert.match(html,/class="gcm-qty-row"/);
+ assert.match(html,/data-gcm-qty-plus="agua" data-idx="1"/);
+ assert.match(html,/data-gcm-qty-minus="agua" data-idx="1"/);
+ assert.match(html,/data-gcm-qty="agua" data-idx="1" value="6"/);
+ const before=renders.length,click=events.find(([type])=>type==='click')[1];
+ await click({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(renders.length,before);
+ assert.equal(qtyInput.value,'7');
+ assert.equal(total.textContent,'7');
+ assert.equal(saveStatus.textContent,'✓ Guardado');
+ assert.equal(writes.at(-1)?.p_qty,7);
+ button.dataset={gcmQtyMinus:'agua',idx:'1'};
+ button.hasAttribute=(s)=>s==='data-gcm-qty-minus';
+ await click({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(qtyInput.value,'6');
+ assert.equal(total.textContent,'6');
+ assert.equal(writes.at(-1)?.p_qty,6);
+ assert.equal(renders.length,before);
+});
