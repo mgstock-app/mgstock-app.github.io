@@ -324,7 +324,7 @@ function decompColumn(p,canWrite){
  if(p.units_per_chapa>0){
   return '<td class="gcm-chapa gcm-decomp-cell">'+chapaCompacta(p,v,canWrite,true,0)+'</td>';
  }
- return '<td class="gcm-decomp-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"></td>';
+ return '<td class="gcm-decomp-cell gcm-numeric-cell"><input type="number" class="gcm-qty" min="0" max="1000000" inputmode="numeric" data-gcm-decomp-qty="'+esc(p.id)+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Decomiso de '+esc(p.name)+'"><span class="gcm-cell-save" role="status" aria-live="polite"></span></td>';
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
@@ -335,7 +335,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    if(p.units_per_chapa){
     return '<td class="gcm-chapa">'+chapaCompacta(p,v,canWrite,false,i)+'</td>';
    }
-   return '<td><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"></td>';
+   return '<td class="gcm-numeric-cell"><input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" data-gcm-qty="'+esc(p.id)+'" data-idx="'+i+'" value="'+(v.qty||'')+'" placeholder="—"'+disabled+' aria-label="Cantidad '+esc(p.name)+' vencimiento '+i+'"><span class="gcm-cell-save" role="status" aria-live="polite"></span></td>';
   }).join('');
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
@@ -684,6 +684,27 @@ document.addEventListener('click',async e=>{
   finally{busy=false;void refresh();}
  }
 });
+// La edición numérica no espera a que se cierre el teclado ni redibuja la pantalla.
+// Guarda cada valor completo a medida que se escribe y conserva el foco.
+document.addEventListener('input',e=>{
+ const input=e.target;
+ if(!input?.matches?.('[data-gcm-qty],[data-gcm-decomp-qty]')||!input.closest?.('.gcm-page'))return;
+ if(!editable()||closed()||!snapshot)return;
+ const isDecomp=input.hasAttribute('data-gcm-decomp-qty');
+ const p=productById(isDecomp?input.dataset.gcmDecompQty:input.dataset.gcmQty);
+ const i=Number(input.dataset.idx);
+ if(!p||(!isDecomp&&(i<1||i>4)))return;
+ const raw=String(input.value||'');
+ if(raw!==''&&!/^\\d+$/.test(raw))return;
+ const val=raw===''?0:Number(raw);
+ if(!Number.isSafeInteger(val)||val<0||val>1000000)return;
+ const cell=isDecomp?getDecomisoCell(p):getCell(p,i);
+ if(cell.qty===val)return;
+ cell.qty=val;
+ const task=isDecomp?saveDecomiso(p,cell):saveCell(p,i,cell);
+ syncCountDom(input,p,i,isDecomp);
+ saveCellFeedback(input,task);
+});
 document.addEventListener('change',async e=>{
  const input=e.target,root=input.closest?.('.gcm-page');
  if(!root||!allowed())return;
@@ -757,6 +778,8 @@ document.addEventListener('change',async e=>{
   return;
  }
  if(!editable()||closed())return;
+ // Los numéricos ya se guardaron en input: no reconstruir la vista al perder el foco.
+ if(input.hasAttribute('data-gcm-qty')||input.hasAttribute('data-gcm-decomp-qty'))return;
  if(input.hasAttribute('data-gcm-extra')){void updateExtra(input);return;}
  const isDecomp=input.hasAttribute('data-gcm-decomp-suelta')||input.hasAttribute('data-gcm-decomp-qty');
  const kind=input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta')?'sueltas':
