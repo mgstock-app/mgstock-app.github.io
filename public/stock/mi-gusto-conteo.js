@@ -121,7 +121,7 @@ async function refresh(){
    if(firstOpen)shift=firstOpen[0];
    else{
     // Ya cerraron los 3 turnos del día: continuar con la entrada del día siguiente.
-    ++generation;day=plusDays(d,1);shift=SHIFTS[0][0];snapshot=null;
+    day=plusDays(d,1);shift=SHIFTS[0][0];snapshot=null;
    }
   }
  }catch(e){if(token===generation)error=e.message||'No se pudo consultar Conteo';}
