@@ -13,6 +13,7 @@ const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Bue
 let api=null,items=[],catalog=[],phone='',tab='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
 let settings=null,fbReady=null,fbAppId='',signupInfo=null;
 let polling=false,firstSnapshot=true,knownOrderIds=new Set(),lastNewOrderId='',lastUiSig='',lastAlertSig='';
+let androidBridge=null,androidAlerts=[],androidBridgeKey='';
 const PAUSE_MS=12000;
 const GRAPH_VERSION='v25.0';
 const FORM_IDS='#mgp-order-form,#mgp-number-form,#mgp-catalog-form,#mgp-messages-form,#mgp-meta-form';
@@ -41,18 +42,21 @@ const escapeLines=x=>esc(x).replace(/\n/g,'<br>');
 const formatPhone=x=>{const v=String(x||'').replace(/[^0-9]/g,'');return /^5411[0-9]{8}$/.test(v)?'+54 11 '+v.slice(4,8)+'-'+v.slice(8):v?'+'+v:'Pendiente de configurar';};
 const pendingOrders=()=>items.filter(x=>x.status==='nuevo');
 const pendingCount=()=>allowed()?pendingOrders().length:0;
-const navBadge=()=>pendingCount()?'<span class="mgp-nav-count" data-mgp-nav-count aria-label="'+pendingCount()+' pedidos pendientes">'+Math.min(99,pendingCount())+(pendingCount()>99?'+':'')+'</span>':'';
+const mobileAlerts=()=>local()==='munro'&&allowed()?androidAlerts.filter(x=>x.status==='pendiente'):[];
+const totalAlerts=()=>pendingCount()+mobileAlerts().length;
+const bridgeUrl=()=>String(window.SPM_CONFIG?.url||'https://vgsepaaewbctjsjcpeta.supabase.co').replace(/\/$/,'')+'/functions/v1/mi-gusto-android-alert';
+const navBadge=()=>totalAlerts()?'<span class="mgp-nav-count" data-mgp-nav-count aria-label="'+totalAlerts()+' avisos pendientes">'+Math.min(99,totalAlerts())+(totalAlerts()>99?'+':'')+'</span>':'';
 function quickAccess(){
  if(!allowed())return '';
  return '<nav class="mgp-shift-quick" aria-label="Atajos de turno de Mi Gusto">'+
   '<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>'+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button mgp-shift-whatsapp">'+waIcon+'<span><strong>Pedidos WhatsApp</strong><small><span data-mgp-quick-count>'+pendingCount()+'</span> pendientes de OK</small></span></button>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button mgp-shift-whatsapp">'+waIcon+'<span><strong>Pedidos WhatsApp</strong><small><span data-mgp-quick-count>'+totalAlerts()+'</span> avisos para revisar</small></span></button>'+
  '</nav>';
 }
 const signature=rows=>rows.map(x=>[x.id,x.status,x.created_at,x.received_at].join(':')).join('|');
 function indicators(){
  if(!allowed())return hideAlert();
- const count=pendingCount(),pending=pendingOrders();
+ const count=totalAlerts(),pending=pendingOrders(),android=mobileAlerts();
  // Contadores visibles tanto en el menú lateral como en el atajo del Inicio.
  const nav=document.querySelector?.('#snav button[data-go="pedidos-clientes"]');
  if(nav&&document.createElement){
@@ -60,7 +64,7 @@ function indicators(){
    if(count){
      if(!badge){badge=document.createElement('span');badge.className='mgp-nav-count';badge.dataset.mgpNavCount='';nav.appendChild(badge);}
      badge.textContent=String(Math.min(99,count))+(count>99?'+':'');
-     badge.setAttribute('aria-label',count+' pedidos pendientes');
+     badge.setAttribute('aria-label',count+' avisos pendientes');
    }else badge?.remove();
  }
  document.querySelectorAll?.('[data-mgp-quick-count]')?.forEach(el=>{el.textContent=String(count);});
@@ -73,19 +77,27 @@ function indicators(){
    banner.setAttribute('role','status');banner.setAttribute('aria-live','polite');
    document.body.appendChild(banner);
  }
- const latest=pending.find(o=>o.id===lastNewOrderId);
- const sig=[local(),count,lastNewOrderId,latest?.customer_name,online()].join('|');
+ const latest=pending.find(o=>o.id===lastNewOrderId),phoneAlert=android[0];
+ const sig=[local(),count,lastNewOrderId,latest?.customer_name,phoneAlert?.id,online()].join('|');
  if(sig===lastAlertSig)return;
  lastAlertSig=sig;
- banner.classList.toggle('mgp-global-alert-new',!!latest);
- const title=latest?(latest.source==='whatsapp'?'¡Nueva comanda por WhatsApp!':'¡Nueva comanda pendiente!'):'Pedidos WhatsApp pendientes';
- const desc=latest?esc(latest.customer_name)+' · '+count+' pendiente'+(count===1?'':'s')+' de OK':count+' pedido'+(count===1?'':'s')+' por revisar en '+esc(LOCALS[local()]);
+ banner.classList.toggle('mgp-global-alert-new',!!latest||!!phoneAlert);
+ const title=phoneAlert?'¡Aviso desde WhatsApp Business!':latest?(latest.source==='whatsapp'?'¡Nueva comanda por WhatsApp!':'¡Nueva comanda pendiente!'):'Pedidos WhatsApp pendientes';
+ const desc=phoneAlert?'Abrí el chat de Munro para comprobar si hay un pedido. '+android.length+' aviso'+(android.length===1?'':'s')+' por revisar.':latest?esc(latest.customer_name)+' · '+count+' pendiente'+(count===1?'':'s')+' de OK':count+' pedido'+(count===1?'':'s')+' por revisar en '+esc(LOCALS[local()]);
  banner.innerHTML='<span class="mgp-alert-icon">'+waIcon+'</span><div class="mgp-alert-copy"><strong>'+title+'</strong><small>'+desc+'</small></div>'+
   '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedidos</button>';
 }
 function hideAlert(){
  document.getElementById?.('mgp-global-alert')?.remove();
  lastAlertSig='';
+}
+function acceptMobileAlerts(result,loc){
+ if(loc!=='munro'||loc!==local()||!allowed()||!result)return false;
+ const next=Array.isArray(result.alerts)?result.alerts.filter(x=>x.status==='pendiente'):[];
+ const before=androidAlerts.map(x=>x.id).join('|');
+ androidBridge={configured:!!result.configured,last_event_at:result.last_event_at||null};
+ androidAlerts=next;indicators();
+ return before!==next.map(x=>x.id).join('|');
 }
 function acceptOrders(rows,loc){
  if(loc!==local()||!allowed())return false;
@@ -105,10 +117,10 @@ async function checkIncoming(){
  if(!allowed()||!online()||polling||busy||loading)return;
  const request=epoch,loc=local();polling=true;
  try{
-  const state=await rpc('gestlok_mg_orders_state');
+  const [state,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),loc==='munro'?rpc('gestlok_mg_android_bridge_state').catch(()=>null):Promise.resolve(null)]);
   if(request!==epoch||loc!==local()||!allowed())return;
-  const changed=acceptOrders(state?.orders,loc);
-  if(changed&&api?.S.view==='pedidos-clientes')update();
+  const changed=acceptOrders(state?.orders,loc),newAlert=acceptMobileAlerts(bridge,loc);
+  if((changed||newAlert)&&api?.S.view==='pedidos-clientes')update();
  }catch(e){
   // No se ocultan comandas previamente recibidas por un corte momentáneo.
   if(loc===local()&&api?.S.view==='pedidos-clientes')error=e.message||'No se pudieron actualizar los pedidos.';
@@ -153,9 +165,10 @@ async function refresh(){
  const request=++epoch,loc=local();
  loading=!loaded;update();
  try{
-  const [result,prices,conf]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings()]);
+  const [result,prices,conf,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings(),loc==='munro'?rpc('gestlok_mg_android_bridge_state').catch(()=>null):Promise.resolve(null)]);
   if(request!==epoch||loc!==local())return;
   catalog=Array.isArray(prices)?prices:[];settings=conf;
+  acceptMobileAlerts(bridge,loc);
   acceptOrders(result?.orders,loc);
   phone=String(result?.whatsapp_number||'');loaded=true;error='';
  }catch(e){if(request===epoch&&loc===local())error=e.message||'No pudimos consultar los pedidos.';}
@@ -206,6 +219,50 @@ function messagesPanel(){
 function copyRow(label,value,id){
  return '<div class="mgp-copy"><span>'+label+'</span><code id="'+id+'">'+esc(value)+'</code><button type="button" data-mgp-copy="'+id+'">Copiar</button></div>';
 }
+
+function mobileAlertPanel(){
+ if(local()!=='munro')return '';
+ const pending=mobileAlerts();
+ return '<section class="mgp-mobile-alerts"><header><strong>Avisos de WhatsApp Business</strong><small>'+pending.length+' por revisar</small></header>'+
+ (pending.length?pending.map(a=>'<div class="mgp-mobile-alert-item"><div><strong>Revisar conversación en WhatsApp de Munro</strong>'+
+ '<small>Notificación del celular · '+date(a.created_at)+' · No significa pedido confirmado.</small></div>'+
+ '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>Ya revisé</button></div>').join(''):
+ '<p class="mgp-mobile-empty">No hay avisos del celular pendientes.</p>')+'</section>';
+}
+function mobileBridgePanel(){
+ if(local()!=='munro')return '';
+ const configured=!!androidBridge?.configured;
+ return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config"'+(androidBridgeKey?' open':'')+'>'+
+ '<summary>Conectar avisos del celular a GESTLOK (sin API de WhatsApp)</summary>'+
+ '<p>El celular Android avisa a GESTLOK cuando WhatsApp Business recibe una notificación del agente. No lee chats ni detecta pedidos que Meta no notifique.</p>'+
+ '<p><b>Estado:</b> '+(configured?'Puente configurado':'Puente pendiente')+
+ (androidBridge?.last_event_at?' · Última señal: '+date(androidBridge.last_event_at):' · Sin señales recibidas')+'</p>'+
+ '<ol><li>En el Android del local instalá MacroDroid y autorizá acceso a notificaciones.</li>'+
+ '<li>Disparador: Notificación recibida → WhatsApp Business. Filtrá avisos del agente que derivan al personal.</li>'+
+ '<li>Acción: Solicitud HTTP POST a la siguiente URL; encabezado <code>X-Gestlok-Bridge-Key</code> con la clave.</li>'+
+ '<li>Probá una derivación real. GESTLOK abierto mostrará un aviso en Pedidos WhatsApp y los atajos.</li></ol>'+
+ '<div class="mgp-mobile-credentials"><b>URL</b><code id="mgp-mobile-url">'+esc(bridgeUrl())+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-url">Copiar URL</button></div>'+
+ (canSetNumber()?'<button class="mgp-button" type="button" data-mgp-mobile-key '+(!canEdit()?'disabled':'')+'>'+
+ (configured?'Generar nueva clave':'Generar clave de vínculo')+'</button>':'')+
+ (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
+ '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
+ '<p class="mgp-mobile-warning">No envíes contenido de clientes. Si WhatsApp Business no emite notificaciones, GESTLOK tampoco puede recibir avisos.</p></details>';
+}
+async function createMobileBridgeKey(){
+ if(local()!=='munro'||!canEdit()||!canSetNumber())return;
+ if(androidBridge?.configured&&!window.confirm('La clave anterior dejará de funcionar. ¿Continuar?'))return;
+ busy=true;error='';notice='';update(true);
+ try{
+  const result=await rpc('gestlok_mg_android_bridge_create');
+  if(!/^[a-f0-9]{64}$/.test(result?.token||''))throw Error('No se pudo generar la clave');
+  androidBridgeKey=result.token;
+  androidBridge={configured:true,last_event_at:androidBridge?.last_event_at||null};
+  notice='Copiá la URL y clave en MacroDroid del celular de Munro.';
+ }catch(e){error=e.message||'Error al crear clave';}
+ finally{busy=false;update(true);}
+}
+
 function metaPanel(){
  if(!canConfigure())return '';
  const m=settings?.meta_app||{},c=settings?.connection;
@@ -268,8 +325,9 @@ function view(){
  '<button type="button" data-mgp-tab="pendientes" aria-current="'+(tab==='pendientes'?'page':'false')+'">Pendientes ('+pending.length+')</button>'+
  '<button type="button" data-mgp-tab="realizados" aria-current="'+(tab==='realizados'?'page':'false')+'">Realizados ('+done.length+')</button></nav>'+
  (loading?'<p role="status">Cargando pedidos…</p>':
+ mobileAlertPanel()+
  '<div class="mgp-list">'+(selected.length?selected.map(orderCard).join(''):'<p class="mgp-empty">'+(tab==='todos'?'Todavía no hay pedidos registrados.':tab==='pendientes'?'No hay pedidos pendientes.':'Todavía no hay pedidos marcados como realizados.')+'</p>')+'</div>')+
- catalogPanel+messagesPanel()+metaPanel()+manual+config+
+ catalogPanel+mobileBridgePanel()+messagesPanel()+metaPanel()+manual+config+
  '<p class="mgp-footnote">El OK significa que el dueño o gerente vio la comanda, no que se preparó o entregó. No registra cobros ni modifica Caja, Stock o Pagos Online.</p></section>';
 }
 async function action(method,args,success){
@@ -287,9 +345,10 @@ async function action(method,args,success){
 async function refreshAfterSave(){
  const request=++epoch,loc=local();
  try{
-  const [result,prices,conf]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings()]);
+  const [result,prices,conf,bridge]=await Promise.all([rpc('gestlok_mg_orders_state'),rpc('gestlok_mg_orders_catalog'),loadSettings(),loc==='munro'?rpc('gestlok_mg_android_bridge_state').catch(()=>null):Promise.resolve(null)]);
   if(request===epoch&&loc===local()){
    catalog=Array.isArray(prices)?prices:[];settings=conf;
+   acceptMobileAlerts(bridge,loc);
    acceptOrders(result?.orders,loc);
    phone=String(result?.whatsapp_number||'');loaded=true;
   }
@@ -379,6 +438,12 @@ function attach(h){
   const tabBtn=e.target.closest('[data-mgp-tab]');
   if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
+  if(e.target.closest('[data-mgp-mobile-key]')){void createMobileBridgeKey();return;}
+  const mobileAck=e.target.closest('[data-mgp-mobile-ack]');
+  if(mobileAck&&canEdit()&&local()==='munro'){
+   void action('gestlok_mg_android_bridge_ack',{p_id:mobileAck.dataset.mgpMobileAck},'Aviso revisado.');
+   return;
+  }
   const copy=e.target.closest('[data-mgp-copy]');
   if(copy){void copyText(copy.dataset.mgpCopy);return;}
   if(e.target.closest('[data-mgp-connect]')){connectMeta();return;}
@@ -479,9 +544,9 @@ function subscribe(loc,push){
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);document.removeEventListener('visibilitychange',visible);hideAlert();});
 }
 function reset(){
- epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;tab='pendientes';loading=false;busy=false;polling=false;
+ epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidBridgeKey='';tab='pendientes';loading=false;busy=false;polling=false;
  error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
 }
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
- _test:{esc,pesos,orderCard,acceptOrders,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
+ _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,mobileAlertPanel,mobileBridgePanel,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
 })();

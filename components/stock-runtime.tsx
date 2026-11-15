@@ -75,7 +75,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=posnet-foto-20261111");
       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=munro-conteo-20261114-dialogo-producto");
-      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-embedded-v4-20261110");
+      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-munro-android-bridge-20261115");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
