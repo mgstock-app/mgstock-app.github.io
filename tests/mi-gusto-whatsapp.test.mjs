@@ -64,7 +64,7 @@ test('sin precios inventados ni pagos, sin tocar módulos de Mi Gusto',()=>{
  assert.match(sqlMunro,/'efectivo'/);
  assert.match(ui,/gestlok_mg_orders_catalog_save/);
  assert.match(ui,/gestlok_mg_orders_catalog_disable/);
- assert.match(ui,/Carta y precios para WhatsApp/);
+ assert.doesNotMatch(ui,/Carta y precios para WhatsApp/);
 });
 
 test('habilitación por etapas: Munro funciona solo y Torcuato continúa aislado',async()=>{
@@ -123,7 +123,7 @@ test('Mi Gusto inicia Meta Embedded Signup v4 para coexistencia sin alterar What
  assert.match(ui,/response_type:'code',override_default_response_type:true/);
  assert.match(ui,/Si Meta indica «no puede registrar clientes»/);
  assert.match(ui,/No desconectes WhatsApp Business del teléfono/);
- assert.match(runtime,/mi-gusto-pedidos-clientes\.js\?rev=whatsapp-munro-android-bridge-20261115/);
+ assert.match(runtime,/mi-gusto-pedidos-clientes\.js\?rev=whatsapp-alertas-dos-locales-20261115/);
  // Sin migración de números, sin modificación de tokens ni activación automática del bot.
  assert.doesNotMatch(ui,/deleteAccount|removePhoneNumber|migratePhoneNumber/);
 });
