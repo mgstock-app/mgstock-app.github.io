@@ -57,6 +57,7 @@ function setup({tenant=MG,role='gerente',local='munro',locals=['munro']}={}){
   return {orders,api,S,data,calls,handlers,document,elements};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+const openLink=s=>s.handlers.click({target:{closest:q=>q==='[data-mgp-section]'?{dataset:{mgpSection:'vinculacion'}}:null}});
 
 test('módulo aislado: nunca habilita otras empresas ni colaboradores',()=>{
  const other=setup({tenant:'00000000-0000-0000-0000-000000000999'});
@@ -71,6 +72,7 @@ test('números y pedidos distintos al cambiar de sucursal',async()=>{
  const s=setup({locals:['munro','torcuato']});
  s.orders.subscribe('munro',()=>{});
  await tick();
+ openLink(s);
  assert.match(s.orders.view(),/Cliente Munro/);
  assert.match(s.orders.view(),/5491111111111/);
  assert.doesNotMatch(s.orders.view(),/Cliente Torcuato/);
@@ -78,6 +80,7 @@ test('números y pedidos distintos al cambiar de sucursal',async()=>{
  s.orders.reset();
  s.orders.subscribe('torcuato',()=>{});
  await tick();
+ openLink(s);
  assert.match(s.orders.view(),/Cliente Torcuato/);
  assert.match(s.orders.view(),/5491122222222/);
  assert.doesNotMatch(s.orders.view(),/Cliente Munro/);
@@ -110,6 +113,7 @@ test('Pedidos WhatsApp conserva pedidos anteriores sin confundirlos con alertas 
    status:'recibido',created_at:'2026-11-06T19:00:00Z',received_at:'2026-11-06T20:00:00Z'
  });
  s.orders.subscribe('munro',()=>{});await tick();
+ openLink(s);
  const html=s.orders.view();
  assert.match(html,/Pedidos históricos \(2\)/);
  assert.match(html,/Cliente Munro/);
@@ -121,6 +125,7 @@ test('Pedidos WhatsApp conserva pedidos anteriores sin confundirlos con alertas 
 test('OK con tilde marca solo pedido visto por gerente autorizado y no registra cobro',async()=>{
  const s=setup({role:'gerente',local:'munro',locals:['munro']});
  s.orders.subscribe('munro',()=>{});await tick();
+ openLink(s);
  assert.match(s.orders.view(),/OK · Vista/);
  s.handlers.click({target:{closest:q=>q==='[data-mgp-receive]'?{dataset:{mgpReceive:'first'}}:null}});
  await tick();await tick();
