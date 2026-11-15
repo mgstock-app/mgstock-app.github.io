@@ -377,8 +377,18 @@ function schedule(key,fn){
  queues.set(key,next);busy=true;
  const indicator=document.querySelector('.gcm-help span:last-child');
  if(indicator)indicator.textContent='Guardando…';
- next.then(()=>{if(queues.get(key)===next){queues.delete(key);if(!queues.size)busy=false;const el=document.querySelector('.gcm-help span:last-child');if(el)el.textContent='Guardado automáticamente';}})
- .catch(e=>{if(queues.get(key)===next){queues.delete(key);busy=false;}error='Error al guardar: '+(e.message||'Reintentá');api?.toast?.(error);if(api?.S?.view==='conteo-munro')api.render();});
+ next.then(()=>{
+  if(queues.get(key)!==next)return;
+  queues.delete(key);busy=queues.size>0;
+  const el=document.querySelector('.gcm-help span:last-child');
+  if(el)el.textContent=busy?'Guardando…':'Guardado automáticamente';
+ }).catch(e=>{
+  if(queues.get(key)===next)queues.delete(key);
+  busy=queues.size>0;
+  error='Error al guardar: '+(e.message||'Reintentá');
+  api?.toast?.(error);
+  if(api?.S?.view==='conteo-munro')api.render();
+ });
  return next;
 }
 function saveCell(p,i,newCell){
