@@ -219,7 +219,7 @@ test('al reabrir Conteo continúa en el primer turno pendiente del día',async()
 test('Conteo e Historial están disponibles en teléfono, tablet y PC',()=>{
  const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
  assert.match(css,/\.gcm-page \.gcm-mode-nav/);
- assert.match(css,/position:sticky;top:0/);
+ assert.match(css,/position:sticky;top:calc\(70px \+ env\(safe-area-inset-top,0px\)\)/);
  assert.match(css,/@media\(max-width:899px\)/);
  assert.match(css,/@media\(max-width:390px\)/);
  assert.match(css,/\.gcm-page \.gcm-save-bar \.gcm-close-turn/);
