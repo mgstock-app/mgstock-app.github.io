@@ -26,7 +26,10 @@ test('planilla real: chapas y unidades sueltas comparten una casilla y 27 por ch
  mod.view();await new Promise(r=>setImmediate(r));const html=mod.view();
  assert.match(html,/class="gcm-inline-count"/);
  assert.match(html,/data-gcm-plus="mt" data-idx="1"/);
- assert.match(html,/data-gcm-suelta="mt" data-idx="1" placeholder="u\." value="16"/);
+ assert.match(html,/data-gcm-suelta-plus="mt" data-idx="1"/);
+ assert.match(html,/data-gcm-suelta-minus="mt" data-idx="1"/);
+ assert.match(html,/class="gcm-units-value"[^>]*>16 u\\.<\\/output>/);
+ assert.doesNotMatch(html,/data-gcm-suelta="mt"/);
  assert.match(html,/class="gcm-total">70<\/td>/);
  assert.doesNotMatch(html,/gcm-cell-total/);
 });
@@ -52,4 +55,51 @@ test('códigos de producto en una sola columna alineada a la izquierda',async()=
  assert.match(css,/th\.gcm-product-cell/);
  assert.match(css,/text-align:left/);
  assert.match(css,/height:48px/);
+});
+
+test('Conteo usa botones fijos y filas separadas para evitar pulsaciones cruzadas',async()=>{
+ const {mod}=makeApp();mod.view();await new Promise(r=>setImmediate(r));
+ const html=mod.view();
+ assert.match(html,/class="gcm-chapas-stepper"/);
+ assert.match(html,/class="gcm-units-stepper"/);
+ assert.match(html,/data-gcm-suelta-minus="mt"/);
+ assert.match(html,/data-gcm-suelta-plus="mt"/);
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ assert.match(css,/border-spacing:0 7px/);
+ assert.match(css,/grid-template-rows:42px 42px/);
+ assert.match(css,/height:113px/);
+});
+
+test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',async()=>{
+ const events=[],renders=[],writes=[],window={};
+ const total={textContent:''},unitValue={textContent:''},chapasValue={textContent:''},visual={innerHTML:''};
+ const unitMinus={disabled:false};
+ const markButton={title:'',querySelector:(s)=>({'.gcm-mark-visual':visual,'.gcm-chapas-value':chapasValue}[s]||null)};
+ const td={querySelector:(s)=>({'.gcm-mark-button':markButton,'.gcm-units-value':unitValue,'.gcm-unit-minus':unitMinus}[s]||null),
+  closest:(s)=>s==='tr'?{querySelector:()=>total}:null};
+ const button={dataset:{gcmPlus:'mt',idx:'1'},hasAttribute:(s)=>s==='data-gcm-plus',
+  closest:(s)=>({'.gcm-page':{},button,td}[s]||null)};
+ const document={addEventListener:(s,fn)=>events.push([s,fn]),querySelector:()=>null};
+ vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,Object,JSON,Number,String,Math,console});
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const get=k=>parts.find(p=>p.type===k).value;
+ const day=get('year')+'-'+get('month')+'-'+get('day');
+ window.GestLokSupabase={rpc:async(name,args)=>{
+  if(name==='gestlok_munro_conteo_set_cell'){writes.push(args);return {error:null,data:{}};}
+  return {error:null,data:{products:[{id:'mt',name:'MT',section:'EMPANADAS',active:true,units_per_chapa:27}],
+   counts:[{day,shift:'manana_entrada',data:{mt:{v1:{chapas:2,sueltas:16,qty:0}}},status:'borrador'}],history:[]}};
+ }};
+ const mod=window.GestLokMunroConteo;
+ mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local:'munro',view:'conteo-munro',ro:false,offline:false},
+  miRol:()=> 'gerente',misLocales:()=>['munro'],render:()=>renders.push('render'),toast:()=>{}});
+ mod.view();await new Promise(r=>setImmediate(r));
+ const before=renders.length;
+ await events.find(([name])=>name==='click')[1]({target:button});
+ await new Promise(r=>setImmediate(r));
+ assert.equal(renders.length,before,'La pantalla no debe re-renderizarse por sumar una chapa');
+ assert.equal(chapasValue.textContent,'3');
+ assert.equal(unitValue.textContent,'16 u.');
+ assert.equal(total.textContent,'97');
+ assert.equal(writes.at(-1)?.p_chapas,3);
+ assert.equal(writes.at(-1)?.p_sueltas,16);
 });
