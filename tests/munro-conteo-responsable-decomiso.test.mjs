@@ -37,7 +37,7 @@ test('local fijo Munro, fecha del día argentino y selector de responsables',asy
  assert.match(html,/Gerente \/ Responsable/);
  for(const name of ['Cami','Shuli','Tizi'])assert.match(html,new RegExp('value="'+name+'"'));
  assert.match(html,/<option value="Shuli" selected>Shuli<\/option>/);
- assert.match(html,/Fecha de inicio/);
+ assert.match(html,/Fecha del conteo/);
  assert.match(html,/Hoy · \d{2}\/\d{2}\/\d{4}/);
  assert.doesNotMatch(html,/type="date"/);
 });
