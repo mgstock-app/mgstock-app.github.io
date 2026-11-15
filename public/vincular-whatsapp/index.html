@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Vincular avisos de WhatsApp · GESTLOK</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}
+body{margin:0;background:#f3f6fa;color:#1b3047;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:610px;margin:24px auto;padding:0 14px 42px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.brand{background:#12345a;color:white;border-radius:11px;padding:9px 13px;font-weight:800;font-size:14px;letter-spacing:.04em}
+h1{font-size:24px;line-height:1.25;margin:0 0 7px;color:#12345a}
+h2{font-size:16px;color:#12345a;margin:0 0 10px}
+p{margin:0 0 11px}small,.sub{color:#617589;font-size:13px}
+.panel{background:white;border:1px solid #dce4ee;border-radius:15px;padding:22px;margin:12px 0;box-shadow:0 3px 12px #13375409}
+.status{border-left:4px solid #bd8739;padding:10px 12px;background:#fff9eb;border-radius:7px;font-size:13px}
+ol{padding-left:22px;margin:12px 0}li{padding:0 0 10px;line-height:1.55}
+.field{background:#f6f9fc;border:1px solid #d9e3ef;border-radius:10px;padding:10px 12px;margin:9px 0}
+.field label{display:block;font-size:12px;font-weight:750;color:#526780;margin-bottom:5px}
+.field code{display:block;white-space:pre-wrap;overflow-wrap:anywhere;color:#153d62;font-size:12px;line-height:1.55;margin-bottom:8px}
+button,.button{display:inline-block;background:#12345a;color:white;border:1px solid #12345a;border-radius:9px;padding:10px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;min-height:42px}
+button.secondary,.button.secondary{background:#fff;color:#12345a}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+.ok{min-height:20px;font-size:12px;color:#1c7451;margin-top:4px}
+footer{padding:10px 0;color:#657488;font-size:12px}
+@media(max-width:490px){main{margin:18px auto}.panel{padding:16px}h1{font-size:21px}.actions>*{flex:1;text-align:center}}
+</style>
+</head>
+<body>
+<main>
+<header><span class="brand">GESTLOK</span><span class="sub">Mi Gusto · Vinculación de avisos</span></header>
+<section class="panel" id="content" hidden>
+<h1>Configurar WhatsApp Business de <span id="local-name"></span></h1>
+<p class="sub">Guía abierta con el QR propio de GESTLOK. Sin WhatsApp Cloud API.</p>
+<p class="status"><strong>Importante:</strong> escanear el QR no vincula WhatsApp automáticamente. Sirve para preparar MacroDroid en el Android de esta sucursal. El vínculo estará operativo solo cuando llegue una señal real a GESTLOK.</p>
+<h2 style="margin-top:22px">1. Preparar el celular</h2>
+<ol>
+<li>Usá el Android que recibe las notificaciones del WhatsApp Business de <strong id="local-name-2"></strong>. Instalá MacroDroid si todavía no está y autorizá el acceso a notificaciones.</li>
+<li>En MacroDroid, creá una macro con el disparador <strong>Notificación recibida → WhatsApp Business</strong>. Elegí exclusivamente el aviso de derivación del agente de Meta; no todos los mensajes.</li>
+<li>Agregá una acción <strong>Solicitud HTTP</strong> con método <strong>POST</strong>, esta URL y los encabezados siguientes.</li>
+</ol>
+<div class="field"><label>URL de solicitud (POST)</label><code id="url"></code><button class="secondary" data-copy="url">Copiar URL</button></div>
+<div class="field"><label>Encabezado 1</label><code>X-Gestlok-Bridge-Key: [clave privada del local]</code><p class="sub">Copiá la clave desde GESTLOK → Pedidos WhatsApp → Vinculación. Nunca compartas esa clave por chat ni captures la pantalla con ella visible.</p></div>
+<div class="field"><label>Encabezado 2</label><code id="header-content-type">Content-Type: application/json</code><button class="secondary" data-copy="header-content-type">Copiar encabezado</button></div>
+<div class="field"><label>Cuerpo JSON</label><code id="body-json"></code><button class="secondary" data-copy="body-json">Copiar JSON</button></div>
+<p class="sub">Insertá la variable de título de notificación desde el selector de MacroDroid. Según la versión, el nombre del texto mágico puede variar. Si el título muestra el nombre del contacto y no un teléfono, GESTLOK recibirá el aviso sin número.</p>
+<h2 style="margin-top:20px">2. Verificar la conexión</h2>
+<ol>
+<li>Guardá y activá la macro en el Android de <strong id="local-name-3"></strong>.</li>
+<li>Desde otro teléfono, realizá una prueba para generar la notificación elegida.</li>
+<li>Volvé a <strong>GESTLOK → Mi Gusto → <span id="local-name-4"></span> → Pedidos WhatsApp → Avisos</strong> y verificá que llegue el aviso.</li>
+</ol>
+<p class="status">Si WhatsApp Business o el agente de Meta no muestran notificación en Android, MacroDroid no puede generar el aviso. La prueba no confirma que exista un pedido.</p>
+<div class="actions"><a class="button" href="https://gestlok.com.ar/">Volver a GESTLOK</a><a class="button secondary" href="https://www.macrodroid.com/">MacroDroid</a></div>
+<p id="feedback" class="ok" role="status" aria-live="polite"></p>
+</section>
+<section class="panel" id="invalid" hidden><h1>Enlace de vinculación inválido</h1><p>Ingresá a Pedidos WhatsApp desde el local correspondiente en GESTLOK para generar el QR correcto.</p><a class="button" href="https://gestlok.com.ar/">Ir a GESTLOK</a></section>
+<footer>GESTLOK · Guía de avisos por sucursal. No copia conversaciones ni cambia Caja, Stock o Pagos Online.</footer>
+</main>
+<script>
+(function(){
+'use strict';
+var locals={munro:'Munro',torcuato:'Don Torcuato'};
+var local=new URLSearchParams(location.search).get('local');
+var valid=Object.prototype.hasOwnProperty.call(locals,local);
+var byId=function(id){return document.getElementById(id)};
+byId(valid?'content':'invalid').hidden=false;
+if(!valid)return;
+document.title='Vincular '+locals[local]+' · GESTLOK';
+['local-name','local-name-2','local-name-3','local-name-4'].forEach(function(id){byId(id).textContent=locals[local]});
+byId('url').textContent='https://vgsepaaewbctjsjcpeta.supabase.co/functions/v1/mi-gusto-android-alert';
+byId('body-json').textContent=JSON.stringify({local:local,customer_phone:'{not_title}'},null,2);
+document.querySelectorAll('[data-copy]').forEach(function(button){
+ button.addEventListener('click',function(){
+  var item=byId(button.getAttribute('data-copy'));
+  var value=item?item.textContent:'';
+  if(!value)return;
+  if(!navigator.clipboard||!navigator.clipboard.writeText){
+   byId('feedback').textContent='Mantené presionado el texto y seleccioná Copiar.';
+   return;
+  }
+  navigator.clipboard.writeText(value).then(function(){byId('feedback').textContent='Copiado.'})
+   .catch(function(){byId('feedback').textContent='Mantené presionado el texto y seleccioná Copiar.'});
+ });
+});
+})();
+</script>
+</body>
+</html>
