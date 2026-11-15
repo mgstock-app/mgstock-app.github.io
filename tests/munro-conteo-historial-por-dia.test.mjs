@@ -189,13 +189,16 @@ test('tres cierres exitosos guardan en historial y abren el próximo turno y dí
   await m.click('data-gcm-finalize');
   assert.equal(m.rows[i].status,'finalizado','Turno '+shift+' debe archivarse');
   html=m.mod.view();
-  if(i<2)assert.match(html,new RegExp('data-gcm-shift="'+(['manana_salida','noche_salida'][i])+'" class="is-active"'));
+  assert.doesNotMatch(html,/data-gcm-shift=|<nav class="gcm-tabs"/);
+  if(i<2)assert.match(html,new RegExp('<span>Fecha</span><strong>'+m.today.split('-').reverse().join('/')+'</strong>'));
+  assert.deepEqual(m.calls.filter(x=>x.name==='gestlok_munro_conteo_finalize').map(x=>x.args.p_shift),
+   ['manana_entrada','manana_salida','noche_salida'].slice(0,i+1));
  }
  // Noche salida: se muestra el día siguiente, nunca reabre noche ni pisa el día anterior.
  await tick();await tick();
  html=m.mod.view();
- assert.match(html,new RegExp('Conteo del '+m.tomorrow.split('-').reverse().join('/')));
- assert.match(html,/data-gcm-shift="manana_entrada" class="is-active"/);
+ assert.match(html,new RegExp('<span>Fecha</span><strong>'+m.tomorrow.split('-').reverse().join('/')+'</strong>'));
+ assert.doesNotMatch(html,/data-gcm-shift=|data-gcm-day=/);
  assert.equal(m.calls.filter(x=>x.name==='gestlok_munro_conteo_finalize').length,3);
  assert.deepEqual(m.calls.filter(x=>x.name==='gestlok_munro_conteo_finalize').map(x=>x.args.p_shift),
   ['manana_entrada','manana_salida','noche_salida']);
@@ -215,7 +218,8 @@ test('una cantidad no confirmada impide archivar y cambiar de turno',async()=>{
  await m.click('data-gcm-finalize');
  assert.equal(m.rows[0].status,'borrador');
  assert.equal(m.calls.filter(x=>x.name==='gestlok_munro_conteo_finalize').length,0);
- assert.match(m.mod.view(),/data-gcm-shift="manana_entrada" class="is-active"/);
+ assert.doesNotMatch(m.mod.view(),/data-gcm-shift=|data-gcm-day=/);
+ assert.match(m.mod.view(),new RegExp('<span>Fecha</span><strong>'+m.today.split('-').reverse().join('/')+'</strong>'));
  assert.ok(m.messages.some(x=>x.includes('sin confirmar')));
 });
 
@@ -223,17 +227,20 @@ test('si falla el archivo en servidor no se abre el siguiente turno',async()=>{
  const m=sequentialHarness({finalizeFails:true});m.mod.view();await tick();await tick();
  await m.click('data-gcm-finalize');
  assert.equal(m.rows[0].status,'borrador');
- assert.match(m.mod.view(),/data-gcm-shift="manana_entrada" class="is-active"/);
+ assert.doesNotMatch(m.mod.view(),/data-gcm-shift=|data-gcm-day=/);
+ assert.match(m.mod.view(),new RegExp('<span>Fecha</span><strong>'+m.today.split('-').reverse().join('/')+'</strong>'));
  assert.ok(m.messages.some(x=>x.includes('No se pudo archivar')));
 });
 
 test('al reabrir Conteo continúa en el primer turno pendiente del día',async()=>{
  const m=sequentialHarness();m.rows[0].status='finalizado';
  m.mod.view();await tick();await tick();
- assert.match(m.mod.view(),/data-gcm-shift="manana_salida" class="is-active"/);
+ // El turno pendiente tiene un valor distinto al archivado, sin mostrar pestañas para elegirlo.
+ assert.doesNotMatch(m.mod.view(),/data-gcm-shift=|gcm-tabs/);
+ assert.match(m.mod.view(),/data-gcm-finalize/);
  const complete=sequentialHarness({allClosed:true});
  complete.mod.view();await tick();await tick();await tick();
- assert.match(complete.mod.view(),new RegExp('Conteo del '+complete.tomorrow.split('-').reverse().join('/')));
+ assert.match(complete.mod.view(),new RegExp('<span>Fecha</span><strong>'+complete.tomorrow.split('-').reverse().join('/')+'</strong>'));
 });
 
 test('Conteo e Historial están disponibles en teléfono, tablet y PC',()=>{
