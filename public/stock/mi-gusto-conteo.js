@@ -258,6 +258,7 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
  const minus=isDecomiso?'data-gcm-decomp-minus':'data-gcm-minus';
  const unitPlus=isDecomiso?'data-gcm-decomp-suelta-plus':'data-gcm-suelta-plus';
  const unitMinus=isDecomiso?'data-gcm-decomp-suelta-minus':'data-gcm-suelta-minus';
+ const suelta=isDecomiso?'data-gcm-decomp-suelta':'data-gcm-suelta';
  const disabled=canWrite?'':' disabled';
  const label=esc(p.name+' '+where);
  return '<div class="gcm-inline-count">'+
@@ -271,7 +272,8 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
   '<div class="gcm-units-stepper">'+
    '<button type="button" class="gcm-unit-minus" '+unitMinus+'="'+pid+'"'+attrs+
     (!canWrite||v.sueltas<=0?' disabled':'')+' aria-label="Quitar unidad suelta '+label+'">−</button>'+
-   '<output class="gcm-units-value" aria-label="Unidades sueltas '+label+'">'+v.sueltas+' u.</output>'+
+   '<input type="number" min="0" max="100000" inputmode="numeric" class="gcm-units-value" '+suelta+'="'+pid+'"'+attrs+
+    ' value="'+v.sueltas+'"'+disabled+' aria-label="Unidades sueltas '+label+'">'+
    '<button type="button" class="gcm-unit-plus" '+unitPlus+'="'+pid+'"'+attrs+disabled+
     ' aria-label="Sumar unidad suelta '+label+'">+</button>'+
   '</div>'+
@@ -292,7 +294,7 @@ function syncCountDom(el,p,i,isDecomp){
   button.title=v.chapas+' chapas · tocar para sumar';
  }
  const units=td.querySelector('.gcm-units-value');
- if(units)units.textContent=v.sueltas+' u.';
+ if(units&&units!==el)units.value=String(v.sueltas);
  const unitMinus=td.querySelector('.gcm-unit-minus');
  if(unitMinus)unitMinus.disabled=v.sueltas<=0;
  const row=td.closest('tr'),total=row?.querySelector('.gcm-total');
@@ -698,23 +700,25 @@ document.addEventListener('click',async e=>{
   finally{busy=false;void refresh();}
  }
 });
-// La edición numérica no espera a que se cierre el teclado ni redibuja la pantalla.
-// Guarda cada valor completo a medida que se escribe y conserva el foco.
+// Carga numérica: el teclado sigue abierto y cada dígito se protege sin re-render.
 document.addEventListener('input',e=>{
  const input=e.target;
- if(!input?.matches?.('[data-gcm-qty],[data-gcm-decomp-qty]')||!input.closest?.('.gcm-page'))return;
+ if(!input?.matches?.('[data-gcm-qty],[data-gcm-decomp-qty],[data-gcm-suelta],[data-gcm-decomp-suelta]')||!input.closest?.('.gcm-page'))return;
  if(!editable()||closed()||!snapshot)return;
- const isDecomp=input.hasAttribute('data-gcm-decomp-qty');
- const p=productById(isDecomp?input.dataset.gcmDecompQty:input.dataset.gcmQty);
- const i=Number(input.dataset.idx);
+ const isUnit=input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta');
+ const isDecomp=input.hasAttribute('data-gcm-decomp-qty')||input.hasAttribute('data-gcm-decomp-suelta');
+ const id=isDecomp?(isUnit?input.dataset.gcmDecompSuelta:input.dataset.gcmDecompQty):
+  (isUnit?input.dataset.gcmSuelta:input.dataset.gcmQty);
+ const p=productById(id),i=Number(input.dataset.idx);
  if(!p||(!isDecomp&&(i<1||i>4)))return;
  const raw=String(input.value||'');
- if(raw!==''&&!/^\\d+$/.test(raw))return;
- const val=raw===''?0:Number(raw);
- if(!Number.isSafeInteger(val)||val<0||val>1000000)return;
+ if(raw!==''&&!/^\d+$/.test(raw))return;
+ const limit=isUnit?100000:1000000,val=raw===''?0:Number(raw);
+ if(!Number.isSafeInteger(val)||val<0||val>limit)return;
  const cell=isDecomp?getDecomisoCell(p):getCell(p,i);
- if(cell.qty===val)return;
- cell.qty=val;
+ const field=isUnit?'sueltas':'qty';
+ if(cell[field]===val)return;
+ cell[field]=val;
  const task=isDecomp?saveDecomiso(p,cell):saveCell(p,i,cell);
  syncCountDom(input,p,i,isDecomp);
  saveCellFeedback(input,task);
@@ -794,6 +798,7 @@ document.addEventListener('change',async e=>{
  if(!editable()||closed())return;
  // Los numéricos ya se guardaron en input: no reconstruir la vista al perder el foco.
  if(input.hasAttribute('data-gcm-qty')||input.hasAttribute('data-gcm-decomp-qty'))return;
+ if(input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta'))return;
  if(input.hasAttribute('data-gcm-extra')){void updateExtra(input);return;}
  const isDecomp=input.hasAttribute('data-gcm-decomp-suelta')||input.hasAttribute('data-gcm-decomp-qty');
  const kind=input.hasAttribute('data-gcm-suelta')||input.hasAttribute('data-gcm-decomp-suelta')?'sueltas':
