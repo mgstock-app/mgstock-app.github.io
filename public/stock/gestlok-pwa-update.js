@@ -3,6 +3,7 @@
   'use strict';
   if (!('serviceWorker' in navigator)) return;
   let controlled = !!navigator.serviceWorker.controller;
+  let lastNotifiedController = null;
   let pending = () => true;
   let banner;
   let audience = null;
@@ -104,9 +105,13 @@
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const replacing = controlled;
     controlled = true;
-    if (!replacing) return;
-    audience=null; dismissed=false; hideBanner(); retries=0; retryQueued=false;
     const worker = navigator.serviceWorker.controller;
+    if (!replacing) return;
+    // A veces el navegador re-emite controllerchange del MISMO worker.
+    // No convertir un evento duplicado en un aviso nuevo.
+    if (worker && worker === lastNotifiedController) return;
+    lastNotifiedController=worker;
+    audience=null; dismissed=false; hideBanner(); retries=0; retryQueued=false;
     // Worker anterior o sin MessageChannel: no sabemos qué local cambió.
     // Mostrar un aviso global sería falso; se actualiza silenciosamente al reabrir.
     if (!worker?.postMessage || typeof MessageChannel !== 'function') { safeSilence(); return; }
