@@ -22,11 +22,12 @@ function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, loca
   });
   return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;}};
 }
-test('Una instalación nueva no pide recargar; una actualización avisa solo una vez', () => {
+test('Una instalación nueva no pide recargar; una actualización verificada avisa solo una vez', () => {
   const first=fixture(false,['*']);first.handlers.controllerchange();assert.equal(first.elements.length,0);
-  first.handlers.controllerchange();assert.equal(first.elements.length,1);
-  first.handlers.controllerchange();assert.equal(first.elements.length,1);
-  assert.equal(first.reloads(),0);
+  const updated=fixture(true,['*']);
+  updated.handlers.controllerchange();assert.equal(updated.elements.length,1);
+  updated.handlers.controllerchange();assert.equal(updated.elements.length,1);
+  assert.equal(updated.reloads(),0);
 });
 test('Actualizar requiere una elección explícita, conexión y ningún cambio pendiente', () => {
   const f=fixture(true,['*']);f.handlers.controllerchange();
