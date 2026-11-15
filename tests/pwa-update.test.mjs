@@ -23,7 +23,7 @@ function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, loca
     setInterval:fn=>{const id=++timerId;intervals.set(id,fn);return id;},
     clearInterval:id=>intervals.delete(id)
   });
-  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;},tick:()=>{for(const fn of [...intervals.values()])fn();},timerCount:()=>intervals.size};
+  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;},replaceController:()=>{navigator.serviceWorker.controller={...controller};},tick:()=>{for(const fn of [...intervals.values()])fn();},timerCount:()=>intervals.size};
 }
 test('Una instalación nueva no pide recargar; una actualización verificada avisa solo una vez', () => {
   const first=fixture(false,['*']);first.handlers.controllerchange();assert.equal(first.elements.length,0);
@@ -188,6 +188,8 @@ test('Deslizar descarta el cartel sin volver a mostrarlo hasta la próxima versi
  f.window.GestLokPWAUpdate.refresh();
  assert.equal(f.elements.length,1,'No reabrir un aviso que la persona descartó');
  f.handlers.controllerchange();
+ assert.equal(f.elements.length,1,'Un evento duplicado del mismo worker no cuenta como nueva versión');
+ f.replaceController();f.handlers.controllerchange();
  assert.equal(f.elements.length,2,'Nueva publicación relevante se puede anunciar');
 });
 test('Worker anterior o sin audiencia no causa avisos globales inventados',()=>{
