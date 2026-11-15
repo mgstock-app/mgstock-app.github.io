@@ -6,10 +6,11 @@ import vm from 'node:vm';
 const script=fs.readFileSync(new URL('../public/stock/mi-gusto-pedidos-clientes.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../supabase/migrations/20261115022000_munro_android_whatsapp_bridge.sql',import.meta.url),'utf8');
 const sqlBoth=fs.readFileSync(new URL('../supabase/migrations/20261115131500_mi_gusto_whatsapp_alertas_dos_locales.sql',import.meta.url),'utf8');
+const sqlManager=fs.readFileSync(new URL('../supabase/migrations/20261115154500_mi_gusto_gerente_vinculo_whatsapp_alertas.sql',import.meta.url),'utf8');
 const edge=fs.readFileSync(new URL('../supabase/functions/mi-gusto-android-alert/index.ts',import.meta.url),'utf8');
 const alert={id:'11111111-1111-4111-8111-111111111111',status:'pendiente',created_at:'2026-11-15T02:10:00Z',customer_phone:'5491122233344'};
 
-function make(role='gerente',local='munro'){
+function make(role='gerente',local='munro',assignedLocals=[local]){
  const handlers={};const calls=[];
  const document={
   addEventListener:(k,f)=>{handlers[k]=f},removeEventListener(){},hidden:false,activeElement:null,
@@ -34,7 +35,7 @@ function make(role='gerente',local='munro'){
  };
  vm.runInNewContext(script,{window,document,navigator:{onLine:true},setInterval:()=>1,clearInterval:()=>{},setTimeout,Intl,Date,console,URL});
  const api={S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local,view:'pedidos-clientes',ro:false,offline:false},
-  miRol:()=>role,misLocales:()=>[local],render(){},toast(){}};
+  miRol:()=>role,misLocales:()=>assignedLocals,render(){},toast(){}};
  const mod=window.GestLokMiGustoOrders;mod.attach(api);
  return {mod,api,calls,handlers};
 }
@@ -54,15 +55,22 @@ test('Alerta Android aparece en Pedidos WhatsApp, atajos y contador para gerente
  assert.match(html,/Copiar número/);
  assert.ok(m.calls.some(c=>c.name==='gestlok_mg_android_bridge_state'&&c.args.p_local==='munro'));
 });
-test('Gerente ve alertas sin permiso para crear clave; la dueña sí puede configurar',async()=>{
- const gerente=make('gerente');gerente.mod.subscribe('munro',()=>{});await tick();await tick();
- assert.match(gerente.mod.view(),/Vincular WhatsApp Business de Munro/);
- assert.doesNotMatch(gerente.mod.view(),/data-mgp-mobile-key/);
- const duena=make('dueno');duena.mod.subscribe('munro',()=>{});await tick();await tick();
- assert.match(duena.mod.view(),/data-mgp-mobile-key/);
- assert.match(duena.mod.view(),/X-Gestlok-Bridge-Key/);
- assert.match(duena.mod.view(),/mi-gusto-android-alert/);
+test('Gerente autorizado puede generar vínculo de su local, sin editar el número',async()=>{
+ for(const loc of ['munro','torcuato']){
+  const gerente=make('gerente',loc);gerente.mod.subscribe(loc,()=>{});await tick();await tick();
+  const html=gerente.mod.view();
+  assert.match(html,/data-mgp-mobile-key/);
+  assert.match(html,/X-Gestlok-Bridge-Key/);
+  assert.doesNotMatch(html,/mgp-number-form/,'el gerente no administra el número de WhatsApp');
+ }
+ const dueña=make('dueno');dueña.mod.subscribe('munro',()=>{});await tick();await tick();
+ assert.match(dueña.mod.view(),/data-mgp-mobile-key/);
+ const ajeno=make('gerente','torcuato',['munro']);ajeno.mod.subscribe('torcuato',()=>{});await tick();
+ assert.doesNotMatch(ajeno.mod.view(),/data-mgp-mobile-key/);
+ assert.equal(ajeno.mod.permitido(),false,'no se autoriza otro local');
+ const colaborador=make('colaborador');assert.equal(colaborador.mod.permitido(),false);
 });
+
 test('Torcuato recibe sus propios avisos, sin contaminar Munro',async()=>{
  const t=make('gerente','torcuato');t.mod.subscribe('torcuato',()=>{});await tick();await tick();
  const html=t.mod.view();
@@ -91,4 +99,11 @@ test('La migración separa las claves y guarda solo número, nunca textos del ch
  assert.match(sqlBoth,/to service_role/);
  assert.match(edge,/p_customer_phone:phone/);
  assert.doesNotMatch(sqlBoth,/customer_name|message_text|items_detail/);
+});
+
+test('Crear clave en servidor: gerente restringido por sucursal real, sin exponer otros permisos',()=>{
+ assert.match(sqlManager,/gestlok_mg_orders_private\.allowed\(p_local\)/);
+ assert.match(sqlManager,/public\.mi_rol\(\) not in \('dueno','creadora','gerente'\)/);
+ assert.match(sqlManager,/revoke all on function public\.gestlok_mg_android_bridge_create\(text\)/);
+ assert.doesNotMatch(sqlManager,/grant execute on function public\.gestlok_mg_android_bridge_ingest_v2/);
 });
