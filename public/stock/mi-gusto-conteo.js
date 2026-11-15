@@ -521,7 +521,37 @@ document.addEventListener('click',async e=>{
   }
   void saveExtraList(kind,vals);api.render();return;
  }
- if(el.hasAttribute('data-gcm-retry')||el.hasAttribute('data-gcm-refresh')){error='';void refresh();return;}
+ if(el.hasAttribute('data-gcm-day')){
+  if(busy){api?.toast?.('Primero debe finalizar el guardado de las cantidades.');return;}
+  const target=el.dataset.gcmDay==='ayer'?plusDays(arDay(),-1):arDay();
+  if(day===target)return;
+  ++generation;day=target;snapshot=null;historyRecord=null;shift='manana_entrada';loading=false;error='';
+  api.render();void refresh();return;
+ }
+ if(el.hasAttribute('data-gcm-manual-save')){
+  if(!editable()||closed()||!snapshot)return;
+  el.disabled=true;el.textContent='Verificando guardado…';
+  try{
+   await Promise.all([...queues.values()]);
+   const server=await rpc('gestlok_munro_conteo_state',{p_day:day});
+   if(!Array.isArray(server?.counts))throw Error('No se pudo verificar la información.');
+   const local=entry(),remote=server.counts.find(x=>x.shift===shift);
+   if(!remote&&Object.keys(local.data||{}).length)throw Error('El servidor todavía no tiene el conteo.');
+   const stale=Object.entries(local.data||{}).some(([pid,values])=>Object.entries(values).some(([vto,cell])=>{
+    const saved=remote?.data?.[pid]?.[vto];
+    return !saved||['chapas','sueltas','qty'].some(key=>Number(saved[key]||0)!==Number(cell[key]||0));
+   }));
+   if(stale)throw Error('Hay cantidades sin confirmar. No cierres Conteo.');
+   error='';el.textContent='✓ Guardado verificado';
+   api?.toast?.('Conteo guardado y verificado en el servidor.');
+  }catch(err){
+   error=err.message||'No se pudo guardar';
+   el.textContent='No se guardó · Reintentar';
+   api?.toast?.(error);
+  }finally{el.disabled=false;}
+  return;
+ }
+ if(el.hasAttribute('data-gcm-retry')||el.hasAttribute('data-gcm-refresh')){if(busy)return;error='';void refresh();return;}
  if(el.hasAttribute('data-gcm-history-open')){
   if(busy)return;
   historyMode=true;historyRecord=null;historyMonth=arDay().slice(0,7);
