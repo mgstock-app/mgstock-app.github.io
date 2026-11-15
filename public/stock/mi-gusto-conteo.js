@@ -237,9 +237,15 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
   return '<tr>'+(showDecomiso?decompColumn(p,canWrite):'')+
    '<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+ 
-   (canCatalog?'<details class="gcm-product-actions"><summary aria-label="Opciones del producto '+esc(p.name)+'">⋯</summary><span class="gcm-admin-actions">'+
-   '<button type="button" data-gcm-rename="'+esc(p.id)+'" aria-label="Cambiar nombre de '+esc(p.name)+'">Renombrar</button>'+
-   '<button type="button" data-gcm-remove="'+esc(p.id)+'" aria-label="Quitar '+esc(p.name)+'">Quitar</button></span></details>':'')+
+   (canCatalog?'<div class="gcm-product-actions">'+
+   '<button type="button" class="gcm-product-menu-trigger" data-gcm-product-menu="'+esc(p.id)+'" aria-haspopup="dialog" aria-label="Opciones del producto '+esc(p.name)+'" title="Opciones del producto">⋯</button>'+
+   '<dialog class="gcm-product-dialog" aria-label="Opciones del producto '+esc(p.name)+'">'+
+   '<div class="gcm-product-dialog-heading"><strong>Opciones del producto</strong><span>'+esc(p.name)+'</span></div>'+
+   '<div class="gcm-product-dialog-actions">'+
+   '<button type="button" data-gcm-rename="'+esc(p.id)+'">Cambiar nombre</button>'+
+   '<button type="button" data-gcm-remove="'+esc(p.id)+'">Quitar producto</button>'+
+   '<button type="button" class="gcm-product-dialog-cancel" data-gcm-menu-close>Cancelar</button>'+
+   '</div></dialog></div>':'')+
    '</th>'+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
@@ -380,7 +386,28 @@ document.addEventListener('click',async e=>{
  const root=e.target.closest('.gcm-page');
  if(!root||!allowed())return;
  const el=e.target.closest('button');
- if(!el)return;
+ if(!el){
+  // Pulsar fuera del cuadro cierra el menú sin alterar el conteo.
+  const dialog=e.target?.matches?.('.gcm-product-dialog')?e.target:null;
+  if(dialog?.open)dialog.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-product-menu')){
+  e.preventDefault();
+  if(!admin()||busy||closed())return;
+  const p=productById(el.dataset.gcmProductMenu);
+  if(!p)return;
+  const dialog=el.closest('.gcm-product-actions')?.querySelector('.gcm-product-dialog');
+  if(dialog&&!dialog.open&&typeof dialog.showModal==='function'){
+   dialog.showModal(); // Top layer: nunca se recorta por el scroll horizontal de la planilla.
+   dialog.querySelector('[data-gcm-rename]')?.focus();
+  }
+  return;
+ }
+ if(el.hasAttribute('data-gcm-menu-close')){
+  el.closest('.gcm-product-dialog')?.close();
+  return;
+ }
  if(el.hasAttribute('data-gcm-hide-section')){
   // El botón está dentro del summary: no debe abrir/cerrar la categoría.
   e.preventDefault();
@@ -475,6 +502,8 @@ document.addEventListener('click',async e=>{
  const productId=el.dataset.gcmRename||el.dataset.gcmRemove;
  if(productId&&admin()&&!busy){
   const p=productById(productId);if(!p)return;
+  // Cerrar el diálogo antes del aviso nativo de confirmación/renombrado.
+  el.closest('.gcm-product-dialog')?.close();
   const remove=el.hasAttribute('data-gcm-remove');
   if(remove&&!window.confirm('¿Quitar '+p.name+' del catálogo de Munro? Los conteos históricos se conservarán.'))return;
   const name=remove?p.name:window.prompt('Nuevo nombre del producto:',p.name);
