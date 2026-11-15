@@ -34,11 +34,11 @@ async function renderReady(visible){
 test('local fijo Munro, fecha del día argentino y selector de responsables',async()=>{
  const {html}=await renderReady(true);
  assert.match(html,/<strong>Munro<\/strong>/);
- assert.match(html,/Gerente \/ Responsable/);
+ assert.match(html,/class="gcm-field-responsable">Responsable/);
  for(const name of ['Cami','Shuli','Tizi'])assert.match(html,new RegExp('value="'+name+'"'));
  assert.match(html,/<option value="Shuli" selected>Shuli<\/option>/);
- assert.match(html,/Fecha del conteo/);
- assert.match(html,/Hoy · \d{2}\/\d{2}\/\d{4}/);
+ assert.match(html,/class="gcm-field-fecha"><span>Fecha<\/span>/);
+ assert.match(html,/<span>Fecha<\/span><strong>\d{2}\/\d{2}\/\d{4}<\/strong>/);
  assert.doesNotMatch(html,/type="date"/);
 });
 
