@@ -948,3 +948,44 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
  .gcm-page .gcm-tabs{gap:4px}
  .gcm-page .gcm-tabs button{font-size:11px;min-width:0;padding:12px 3px}
 }
+
+/* Historial Munro: ficha de lectura simple y una imagen A4 completa por turno. */
+.gcm-history-detail{max-width:1020px;margin:0 auto}
+.gcm-hd-summary{margin:17px 0;border:1px solid #d5e1ed;border-radius:10px;overflow:hidden;background:white}
+.gcm-hd-summary h3{background:#12345a;color:#fff;margin:0;padding:12px 16px;font-size:14px}
+.gcm-hd-summary table{border-collapse:collapse;width:100%;table-layout:fixed}
+.gcm-hd-summary th{text-align:left;font-size:13px;padding:11px 15px;background:#edf3f8;color:#234b6a}
+.gcm-hd-summary th:last-child,.gcm-hd-summary td:last-child{text-align:right;width:112px}
+.gcm-hd-summary td{padding:10px 15px;border-top:1px solid #e5edf5;font-size:14px;vertical-align:middle}
+.gcm-hd-summary td strong{display:block;color:#173958}
+.gcm-hd-summary td small{display:block;color:#677c8e;margin-top:2px;font-size:11px}
+.gcm-hd-summary tr:nth-child(2n) td{background:#f9fbfd}
+.gcm-hd-summary-number{color:#11395a;font-variant-numeric:tabular-nums;font-weight:900;font-size:16px!important}
+.gcm-hd-summary tfoot th,.gcm-hd-summary tfoot td{padding:13px 15px;background:#e2eff9;font-weight:900;color:#12345a}
+.gcm-hd-summary p{padding:10px 15px;color:#875f23;font-size:12px}
+.gcm-a4-toolbar{display:flex;justify-content:flex-start;flex-wrap:wrap;gap:9px;margin:15px 0}
+.gcm-a4-download,.gcm-a4-toolbar button{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:46px;border:1px solid #12345a;background:#12345a;color:#fff!important;
+ font-size:13px;font-weight:850;text-decoration:none;border-radius:9px;padding:10px 14px;cursor:pointer;
+}
+.gcm-a4-toolbar button{color:#193d5e!important;background:#fff;border-color:#c4d4e3}
+.gcm-a4-preview{display:flex;flex-direction:column;align-items:center;gap:9px;
+ margin:0 auto 20px;padding:16px 10px;background:#f0f4f8;border:1px solid #dce6ef;border-radius:11px;
+}
+.gcm-a4-preview img{display:block;width:100%;max-width:760px;height:auto;aspect-ratio:210/297;
+ background:#fff;box-shadow:0 7px 25px rgba(18,52,90,.16);object-fit:contain;
+}
+.gcm-a4-preview figcaption{font-size:12px;color:#536c82;text-align:center}
+.gcm-hd-breakdown{margin:16px 0;border:1px solid #d2deea;border-radius:10px;background:#fff}
+.gcm-hd-breakdown>summary{padding:15px 17px;cursor:pointer;color:#183f60;font-size:14px;font-weight:850}
+.gcm-hd-breakdown>summary:focus-visible{outline:2px solid #0a72ad;outline-offset:2px}
+.gcm-hd-breakdown>.gcm-hd-summary,.gcm-hd-breakdown>.gcm-hd-category,
+.gcm-hd-breakdown>.gcm-hd-extras,.gcm-hd-breakdown>.gcm-hd-notice{margin:12px}
+@media(max-width:700px){
+ .gcm-a4-preview{padding:10px 5px}
+ .gcm-a4-toolbar>*{flex:1 1 170px;text-align:center}
+ .gcm-hd-summary td,.gcm-hd-summary th{padding:10px 9px}
+ .gcm-hd-summary th:last-child,.gcm-hd-summary td:last-child{width:86px}
+ .gcm-hd-breakdown>summary{font-size:13px}
+}

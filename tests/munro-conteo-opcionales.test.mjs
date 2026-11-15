@@ -74,14 +74,18 @@ test('gerente oculta y restaura secciones sin modificar el catálogo',async()=>{
  await input({attr:'data-gcm-section-visible',dataset:{gcmSectionVisible:'SALSAS'},checked:true});
  assert.match(mod.view(),/data-gcm-section="SALSAS"/);
 });
-test('se pueden agregar y quitar colaboradores sin límite de tres filas',async()=>{
+test('Consumos tiene 10 filas fijas y no permite agregar ni quitar colaboradores',async()=>{
  const {mod,button,rec}=setup();mod.view();await tick();
- for(let i=0;i<5;i++)await button('data-gcm-extra-add',{gcmExtraAdd:'consumption'});
- assert.equal(rec.consumption.length,6);
  const html=mod.view();
- assert.match(html,/data-row="5" data-field="name"/);
- await button('data-gcm-extra-remove',{gcmExtraRemove:'consumption',row:'5'});
- assert.equal(rec.consumption.length,5);
+ for(let i=0;i<10;i++){
+  assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="name"'));
+  assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="value"'));
+ }
+ assert.doesNotMatch(html,/data-gcm-extra-add="consumption"/);
+ assert.doesNotMatch(html,/data-gcm-extra-remove="consumption"/);
+ await button('data-gcm-extra-add',{gcmExtraAdd:'consumption'});
+ await button('data-gcm-extra-remove',{gcmExtraRemove:'consumption',row:'9'});
+ assert.equal(rec.consumption.length,0);
 });
 test('Desperdicios solo aparece y se guarda cuando gerente lo activa',async()=>{
  const {mod,input,button,rec,calls}=setup();mod.view();await tick();
