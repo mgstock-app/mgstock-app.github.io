@@ -232,7 +232,7 @@ function mobileAlertPanel(){
 function mobileBridgePanel(){
  if(local()!=='munro')return '';
  const configured=!!androidBridge?.configured;
- return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config">'+
+ return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config"'+(androidBridgeKey?' open':'')+'>'+
  '<summary>Conectar avisos del celular a GESTLOK (sin API de WhatsApp)</summary>'+
  '<p>El celular Android avisa a GESTLOK cuando WhatsApp Business recibe una notificación del agente. No lee chats ni detecta pedidos que Meta no notifique.</p>'+
  '<p><b>Estado:</b> '+(configured?'Puente configurado':'Puente pendiente')+
