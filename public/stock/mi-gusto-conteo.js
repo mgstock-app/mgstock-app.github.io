@@ -299,33 +299,33 @@ function historyA4Image(rec){
  rect(pairStart,subtotalY-29,totalBoxWidth,43,pale);
  write('TOTAL GENERAL',pairStart+12,subtotalY+1,23,navy,'700');
  write(sum,pairStart+totalBoxWidth-14,subtotalY+1,27,navy,'700','right');
- // Los 10 renglones existen incluso si todavía están vacíos.
+ // Los diez renglones siguen completos. Tipografía reforzada también en Consumos.
  let y=extraY;
- write('CONSUMOS  ·  10 COLABORADORES',M,y+19,23,navy,'700');
- y+=31;
- rect(M,y,W-M*2,35,pale);
- write('#',M+13,y+25,18,navy,'700');
- write('Colaborador',M+67,y+25,18,navy,'700');
- write('Consumo',right-13,y+25,18,navy,'700','right');
- y+=35;
+ write('CONSUMOS  ·  10 COLABORADORES',M,y+24,26,navy,'700');
+ y+=38;
+ rect(M,y,W-M*2,41,pale);
+ write('#',M+14,y+28,21,navy,'700');
+ write('Colaborador',M+67,y+28,21,navy,'700');
+ write('Consumo',right-14,y+28,21,navy,'700','right');
+ y+=41;
  for(let i=0;i<10;i++){
-  const r=consumption[i],rh=25;
-  if(i%2===1)rect(M,y+i*rh,W-M*2,rh,'#f8fafc');
-  write(i+1,M+15,y+i*rh+18,17,muted);
-  write(trim(r.name||'—',650,17),M+67,y+i*rh+18,17,ink);
-  write(trim(r.value||'—',260,17),right-13,y+i*rh+18,17,ink,'500','right');
+  const r=consumption[i],rh=29;
+  if(i%2===1)rect(M,y+i*rh,W-M*2,rh,'#f4f8fc');
+  write(i+1,M+15,y+i*rh+22,21,muted);
+  write(trim(r.name||'—',650,21),M+67,y+i*rh+22,21,ink);
+  write(trim(r.value||'—',260,21),right-14,y+i*rh+22,21,ink,'600','right');
   rule(M,y+(i+1)*rh,W-M*2);
  }
- y+=250;
+ y+=290;
  if(waste.length){
-  y+=25;write('DESPERDICIOS',M,y,21,navy,'700');y+=12;
+  y+=25;write('DESPERDICIOS',M,y,23,navy,'700');y+=12;
   const colW=(W-M*2-(wasteColumns-1)*18)/wasteColumns;
   for(let k=0;k<waste.length;k++){
-   const col=Math.floor(k/wasteRows),j=k%wasteRows,x=M+col*(colW+18),yy=y+j*25;
-   const name=trim(waste[k].name||'—',colW-115,16);
-   write(name,x+4,yy+19,16,ink);
-   write(trim(waste[k].value||'—',105,16),x+colW-4,yy+19,16,ink,'500','right');
-   rule(x,yy+25,colW);
+   const col=Math.floor(k/wasteRows),j=k%wasteRows,x=M+col*(colW+18),yy=y+j*30;
+   const name=trim(waste[k].name||'—',colW-115,19);
+   write(name,x+4,yy+23,19,ink);
+   write(trim(waste[k].value||'—',105,19),x+colW-4,yy+23,19,ink,'600','right');
+   rule(x,yy+30,colW);
   }
  }
  rule(M,H-74,W-M*2);
