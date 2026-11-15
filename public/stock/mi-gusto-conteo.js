@@ -31,7 +31,7 @@ function marks(value){
  (r?group(r):'')+(g>12?'<small>+'+(g-12)*5+'</small>':'')+'</span>';
 }
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
-let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0;
+let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true;
 const queues=new Map();
 // Borradores locales: se conservan hasta recibir confirmación real del servidor.
 // Solo cantidades del usuario, local y fechas recientes; sin información de otras empresas.
@@ -98,7 +98,7 @@ function reset(){
  ++generation;++historyToken;
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
  loading=false;busy=false;finishing=false;error='';queues.clear();opened=new Set(['EMPANADAS']);
- historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';
+ historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
@@ -115,6 +115,15 @@ async function refresh(){
   if(token!==generation||day!==d)return;
   if(!Array.isArray(value?.products)||!Array.isArray(value?.counts)||!Array.isArray(value?.history))throw Error('Respuesta incompleta del servidor.');
   snapshot=value;overlayDrafts();error='';
+  if(autoResumeTurn&&d===arDay()){
+   autoResumeTurn=false;
+   const firstOpen=SHIFTS.find(([id])=>value.counts.find(row=>row.shift===id)?.status!=='finalizado');
+   if(firstOpen)shift=firstOpen[0];
+   else{
+    // Ya cerraron los 3 turnos del día: continuar con la entrada del día siguiente.
+    ++generation;day=plusDays(d,1);shift=SHIFTS[0][0];snapshot=null;
+   }
+  }
  }catch(e){if(token===generation)error=e.message||'No se pudo consultar Conteo';}
  finally{loading=false;if(token===generation&&api?.S?.view==='conteo-munro')api.render();}
 }
@@ -494,7 +503,7 @@ function view(){
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
 
  const isToday=day===arDay(),yesterday=plusDays(arDay(),-1);
- return '<div class="gcm-page">'+conteoHistorialNav('conteo')+'<header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p><button type="button" class="gcm-open-history" data-gcm-history-open>Historial de conteos</button></div>'+
+ return '<div class="gcm-page">'+conteoHistorialNav('conteo')+'<header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p></div>'+
  '<div class="gcm-header-fields"><div><span>Local</span><strong>Munro</strong></div>'+
  '<label>Gerente / Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
@@ -502,7 +511,7 @@ function view(){
  '<div class="gcm-day-bar"><strong>Conteo del '+esc(labelDay(day))+'</strong>'+
  (isToday?'<button type="button" data-gcm-day="ayer">Recuperar conteo de ayer · '+esc(labelDay(yesterday))+'</button>':
  '<button type="button" data-gcm-day="hoy">Ir al conteo de hoy</button>')+
- (!isToday?'<span>Estás trabajando con datos del '+esc(labelDay(day))+'. No se cambió la fecha.</span>':'')+
+ (!isToday?'<span>'+(day>arDay()?'Siguiente día preparado para el conteo: ':'Estás trabajando con datos del ')+esc(labelDay(day))+'.</span>':'')+
  '</div>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
@@ -665,7 +674,7 @@ document.addEventListener('click',async e=>{
   if(busy){api?.toast?.('Primero debe finalizar el guardado de las cantidades.');return;}
   const target=el.dataset.gcmDay==='ayer'?plusDays(arDay(),-1):arDay();
   if(day===target)return;
-  ++generation;day=target;snapshot=null;historyRecord=null;shift='manana_entrada';loading=false;error='';
+  ++generation;autoResumeTurn=false;day=target;snapshot=null;historyRecord=null;shift='manana_entrada';loading=false;error='';
   api.render();void refresh();return;
  }
  if(el.hasAttribute('data-gcm-manual-save')){
@@ -705,7 +714,7 @@ document.addEventListener('click',async e=>{
  const newShift=el.dataset.gcmShift;
  if(newShift){
   if(!SHIFTS.some(x=>x[0]===newShift)||busy)return;
-  historyRecord=null;shift=newShift;api.render();return;
+  historyRecord=null;autoResumeTurn=false;shift=newShift;api.render();return;
  }
  if(el.hasAttribute('data-gcm-history')){
   if(busy)return;
@@ -782,7 +791,7 @@ document.addEventListener('click',async e=>{
    if(archived?.counts?.find(x=>x.shift===currentShift)?.status!=='finalizado')
     throw Error('No se pudo comprobar el archivo del turno. Actualizá antes de continuar.');
    // El historial consulta estos mismos registros, sin duplicar ni alterar cantidades.
-   shift=following.shift;historyMode=false;historyRecord=null;
+   autoResumeTurn=false;shift=following.shift;historyMode=false;historyRecord=null;
    historyRows=[];historyExpanded=null;historyMonth=following.day.slice(0,7);
    error='';
    if(following.day!==currentDay){
