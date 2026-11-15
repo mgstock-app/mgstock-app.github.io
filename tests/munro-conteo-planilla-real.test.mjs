@@ -122,13 +122,16 @@ test('sumar chapa no vuelve a dibujar la pantalla y guarda el valor preciso',asy
  assert.equal(renders.length,before,'Ningún cambio de unidades debe redibujar la página');
 });
 
-test('recuperación permite seleccionar el día anterior sin convertirlo al día actual',async()=>{
+test('la recuperación queda solo en Historial y el conteo no cambia de día automáticamente',async()=>{
  const {mod}=makeApp();
  mod.view();await new Promise(r=>setImmediate(r));
  const html=mod.view();
- assert.match(html,/data-gcm-day="ayer"/);
+ assert.doesNotMatch(html,/data-gcm-day=/);
+ assert.doesNotMatch(html,/Recuperar conteo de ayer/);
+ assert.match(html,/data-gcm-history-open/);
  assert.match(html,/data-gcm-manual-save/);
- assert.match(html,/Recuperar conteo de ayer/);
+ assert.match(html,/gcm-header-fields-compact/);
+ assert.doesNotMatch(html,/class="gcm-day-bar"/);
  assert.doesNotMatch(source,/day!==arDay\(\)\s*&&\s*!busy/);
  assert.doesNotMatch(source,/window\.addEventListener\('focus'/);
 });
@@ -143,7 +146,7 @@ test('se guardan valores numéricos sin cerrar el teclado ni reiniciar la tabla'
  assert.match(source,/gestlok_munro_conteo_state',\{p_day:d\}/);
  assert.match(source,/JSON\.stringify\(\[\.\.\.pendingDrafts\.values\(\)\]\)/);
  const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
- assert.match(css,/gcm-day-bar/);
+ assert.match(css,/gcm-header-compact/);
  assert.match(css,/gcm-save-bar/);
 });
 
@@ -252,4 +255,27 @@ test('teclado numérico abierto no bloquea el gesto vertical de la planilla',()=
  assert.match(source,/syncCountDom\(input,p,i,isDecomp\)/);
  assert.match(source,/saveCellFeedback\(input,task\)/);
  assert.doesNotMatch(source,/window\.addEventListener\('focus'/);
+});
+
+test('hoja de carga: metadatos compactos sin botones de turnos; Historial conserva accesos',async()=>{
+ const {mod}=makeApp();mod.view();await new Promise(r=>setImmediate(r));
+ const html=mod.view();
+ assert.match(html,/class="gcm-page gcm-count-screen"/);
+ assert.match(html,/class="gcm-header gcm-header-compact"/);
+ assert.match(html,/class="gcm-header-fields gcm-header-fields-compact"/);
+ assert.match(html,/<span>Local<\/span><strong>Munro<\/strong>/);
+ assert.match(html,/class="gcm-field-responsable">Responsable <select id="gcm-responsable"/);
+ assert.match(html,/class="gcm-field-fecha"><span>Fecha<\/span>/);
+ assert.doesNotMatch(html,/gcm-day-bar|Recuperar conteo|data-gcm-day=/);
+ assert.doesNotMatch(html,/data-gcm-shift=|<nav class="gcm-tabs"/);
+ assert.doesNotMatch(html,/Cerrar turno · Mañana|Cerrar turno · Noche/);
+ assert.match(html,/data-gcm-history-open/);
+ assert.match(html,/data-gcm-finalize/);
+ const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+ assert.match(css,/Munro · hoja de carga enfocada en contar/);
+ assert.match(css,/\.gcm-count-screen \.gcm-header-fields-compact/);
+ assert.match(css,/@media\(max-width:430px\)/);
+ // El avance sigue fijado por siguiente turno y no depende de pulsar pestañas.
+ assert.match(source,/nextTurn\(currentDay,currentShift\)/);
+ assert.doesNotMatch(source,/const newShift=el\.dataset\.gcmShift/);
 });
