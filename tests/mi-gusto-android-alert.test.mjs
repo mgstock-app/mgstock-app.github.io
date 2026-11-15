@@ -152,7 +152,7 @@ test('QR propio de GESTLOK es legible, específico del local y nunca lleva la cl
   assert.match(html,/<svg[^>]*aria-label="QR de configuración de /);
   assert.equal(m.qrCalls.at(-1),url);
   assert.doesNotMatch(m.qrCalls.join('|'),/b{64}/,'la clave de vínculo no se comparte por QR');
-  assert.match(html,/No conecta WhatsApp por sí solo/);
+  assert.match(html,/Un QR no puede conectar WhatsApp Business directamente/);
  }
  const ajeno=make('gerente','torcuato',['munro']);
  assert.doesNotMatch(ajeno.mod.view(),/QR propio de GESTLOK/);
@@ -166,4 +166,44 @@ test('Guía pública del QR valida sucursal y no publica ni solicita claves en e
  assert.match(page,/customer_phone:'\{not_title\}'/);
  assert.match(page,/navigator.clipboard.writeText/);
  assert.doesNotMatch(page,/token=|bridge_key=|localStorage/);
+});
+
+test('Vínculo sin falsa conexión: solo una nueva notificación valida la prueba de Munro',async()=>{
+ const m=make('gerente','munro');m.mod.subscribe('munro',()=>{});
+ await tick();await tick();clickSection(m,'vinculacion');
+ const initial=m.mod.view();
+ assert.match(initial,/data-mgp-mobile-test/);
+ assert.doesNotMatch(initial,/Conectado para avisos/);
+ m.mod._test.beginMobileBridgeTest();
+ assert.match(m.mod.view(),/Esperando señal nueva del Android de Munro/);
+ const old=new Date(Date.now()-120000).toISOString();
+ m.mod._test.acceptMobileAlerts({configured:true,last_event_at:old,alerts:[],reviewed:[]},'munro');
+ assert.doesNotMatch(m.mod.view(),/Conectado para avisos/,'una señal vieja no confirma la conexión');
+ const fresh=new Date(Date.now()+1000).toISOString();
+ m.mod._test.acceptMobileAlerts({configured:true,last_event_at:fresh,alerts:[],reviewed:[]},'munro');
+ assert.match(m.mod.view(),/Conectado para avisos: se recibió una nueva señal de Munro/);
+ assert.doesNotMatch(m.mod.view(),/señal de Don Torcuato/);
+});
+
+test('La prueba de vinculación se aísla entre Munro y Torcuato',async()=>{
+ const m=make('gerente','torcuato');m.mod.subscribe('torcuato',()=>{});
+ await tick();await tick();clickSection(m,'vinculacion');
+ m.mod._test.beginMobileBridgeTest();
+ m.mod._test.acceptMobileAlerts({configured:true,last_event_at:new Date(Date.now()+2000).toISOString(),alerts:[],reviewed:[]},'munro');
+ assert.doesNotMatch(m.mod.view(),/Conectado para avisos/);
+ m.mod._test.acceptMobileAlerts({configured:true,last_event_at:new Date(Date.now()+3000).toISOString(),alerts:[],reviewed:[]},'torcuato');
+ assert.match(m.mod.view(),/Conectado para avisos: se recibió una nueva señal de Don Torcuato/);
+});
+
+test('Asistente QR tiene tres etapas, conserva privacidad y aclara el límite de las notificaciones',()=>{
+ const page=fs.readFileSync(new URL('../public/vincular-whatsapp/index.html',import.meta.url),'utf8');
+ assert.match(page,/data-stage="1"/);
+ assert.match(page,/data-stage="2" hidden/);
+ assert.match(page,/data-stage="3" hidden/);
+ assert.match(page,/showStep\(n\)/);
+ assert.match(page,/El QR no conecta WhatsApp por sí solo/);
+ assert.match(page,/Iniciar prueba de conexión/);
+ assert.match(page,/Comprobar señal/);
+ assert.match(page,/Cada sucursal conserva su número, su clave privada y sus avisos independientes/);
+ assert.doesNotMatch(page,/\+54 11 7144|\+54 11 7661/,'el QR público no debe incluir los números privados');
 });
