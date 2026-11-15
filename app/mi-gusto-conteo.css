@@ -522,3 +522,160 @@ dialog.gcm-product-dialog::backdrop{background:rgba(8,27,47,.56)}
 .gcm-units-stepper input.gcm-units-value:focus-visible{
  outline:2px solid #087ab8;outline-offset:1px;
 }
+
+/* VISTA SIMPLE CONTEO: un vencimiento por vez en toda pantalla.
+   Un único panel por producto. No requiere scroll horizontal. */
+.gcm-page{max-width:1050px}
+.gcm-page .gcm-expiry-tabs{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+ margin:16px 0 12px;padding:0;
+}
+.gcm-page .gcm-expiry-tabs:has([data-gcm-vto="d"]){grid-template-columns:repeat(5,minmax(0,1fr))}
+.gcm-page .gcm-expiry-tabs button{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+ min-width:0;min-height:56px;padding:7px 5px;
+ color:#254968;background:#f7f9fc;border:1px solid #d3dfec;
+ border-radius:9px;text-align:center;font-size:13px;font-weight:750;
+}
+.gcm-page .gcm-expiry-tabs button strong{font-weight:850;font-size:13px}
+.gcm-page .gcm-expiry-tabs button small{font-size:11px;color:#58728c}
+.gcm-page .gcm-expiry-tabs button.is-current{
+ color:#fff;background:#12345a;border-color:#12345a;
+}
+.gcm-page .gcm-expiry-tabs button.is-current small{color:#dbe8f5}
+.gcm-page .gcm-expiry-tabs button:focus-visible{outline:2px solid #087ab8;outline-offset:2px}
+/* Todas las columnas se mantienen en el DOM para conservar los valores,
+   pero solamente una se muestra. El cambio de pestaña no llama a render(). */
+.gcm-page .gcm-section .gcm-vto-col:not(.is-current-vto){display:none!important}
+.gcm-page .gcm-section .gcm-sheet-scroll{overflow-x:visible!important;overscroll-behavior:contain}
+.gcm-page .gcm-section{overflow:hidden}
+.gcm-page .gcm-section .gcm-sheet-scroll table,
+.gcm-page .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll table{
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ table-layout:fixed!important;border-spacing:0 9px!important;border-collapse:separate;
+ font-size:13px;text-align:center;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll thead th,
+.gcm-page .gcm-section .gcm-sheet-scroll thead th:not(:first-child),
+.gcm-page .gcm-section:has(.gcm-decomp-head) .gcm-sheet-scroll thead th{
+ min-width:0!important;max-width:none!important;width:auto!important;
+ padding:12px 9px;font-size:13px;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll thead th.gcm-product-head{
+ width:14%!important;min-width:78px!important;max-width:none!important;
+ padding:12px!important;text-align:left;position:static!important;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll thead th:last-child{
+ width:110px!important;min-width:0!important;font-size:11px;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+ width:14%!important;min-width:78px!important;max-width:none!important;
+ position:static!important;left:auto!important;box-shadow:none!important;
+ height:110px!important;padding:13px 10px!important;
+ background:#edf3f9!important;color:#143958;font-size:16px;font-weight:900;
+ white-space:normal;vertical-align:middle;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll tbody td{
+ height:110px!important;min-width:0!important;padding:9px!important;
+ border-top:1px solid #e1e8ef;
+ border-bottom:1px solid #e1e8ef;background:#fff;
+ vertical-align:middle;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll tbody td.gcm-chapa,
+.gcm-page .gcm-section .gcm-sheet-scroll tbody td.gcm-decomp-cell{
+ width:auto!important;min-width:0!important;padding:8px 15px!important;
+ border-right:0!important;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll tbody .gcm-total{
+ width:110px;min-width:0!important;background:#f2f6fb!important;
+ color:#113a5c;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;
+}
+.gcm-page .gcm-section .gcm-sheet-scroll tbody tr:nth-child(even) td{background:#fff!important}
+.gcm-page .gcm-section .gcm-sheet-scroll tbody tr:last-child td,
+.gcm-page .gcm-section .gcm-sheet-scroll tbody tr:last-child th{border-bottom:1px solid #e1e8ef}
+.gcm-page .gcm-section .gcm-inline-count{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ grid-template-rows:auto 15px!important;align-items:end;
+ column-gap:16px;row-gap:3px;
+ width:100%!important;max-width:590px!important;min-width:0!important;
+ margin:auto;padding:0!important;white-space:normal;
+}
+.gcm-page .gcm-section .gcm-chapas-stepper{
+ display:grid;grid-template-columns:minmax(0,1fr) 48px;
+ grid-template-rows:15px 46px;gap:5px;align-items:center;min-width:0;
+}
+.gcm-page .gcm-section .gcm-chapas-stepper:before{
+ content:"Chapas";grid-column:1/-1;text-align:left;
+ color:#526d86;font-size:11px;font-weight:800;letter-spacing:.01em;
+}
+.gcm-page .gcm-section .gcm-units-stepper{
+ display:grid;grid-template-columns:46px minmax(0,1fr) 46px;
+ grid-template-rows:15px 46px;gap:5px;min-width:0;
+}
+.gcm-page .gcm-section .gcm-units-stepper:before{
+ content:"Unidades";grid-column:1/-1;text-align:left;
+ color:#526d86;font-size:11px;font-weight:800;letter-spacing:.01em;
+}
+.gcm-page .gcm-inline-count .gcm-mark-button,
+.gcm-page .gcm-inline-count .gcm-mark-undo,
+.gcm-page .gcm-units-stepper button,
+.gcm-page .gcm-units-stepper input.gcm-units-value{
+ height:46px!important;min-height:46px!important;min-width:0!important;
+ border-radius:8px;font-size:19px;outline-offset:2px;
+}
+.gcm-page .gcm-inline-count .gcm-mark-button{
+ max-width:none!important;width:100%!important;justify-content:center;gap:14px;
+ background:#fff;border-color:#b9cce0;
+}
+.gcm-page .gcm-inline-count .gcm-mark-undo{
+ width:48px!important;background:#eef3f8;font-size:24px;
+}
+.gcm-page .gcm-inline-count .gcm-chapas-value{font-size:19px;flex:0 0 28px}
+.gcm-page .gcm-units-stepper button{width:46px!important;font-size:24px}
+.gcm-page .gcm-units-stepper input.gcm-units-value{width:100%!important;max-width:none!important;font-size:19px!important}
+.gcm-page .gcm-inline-count .gcm-cell-save{grid-column:1/-1;min-height:15px;height:15px;font-size:11px}
+.gcm-page .gcm-section .gcm-numeric-cell .gcm-qty{
+ min-width:0!important;width:min(160px,100%);height:54px;font-size:20px;
+}
+.gcm-page .gcm-sheet-tip{
+ margin:0 0 12px;padding:6px 3px;background:transparent;border:0;
+ color:#526e84;font-size:12px;
+}
+.gcm-page .gcm-help{background:#f8fafc;border:1px solid #e3ebf3}
+.gcm-page .gcm-section >summary{min-height:51px}
+@media(max-width:680px){
+ .gcm-page .gcm-expiry-tabs,
+ .gcm-page .gcm-expiry-tabs:has([data-gcm-vto="d"]){
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
+ }
+ .gcm-page .gcm-expiry-tabs [data-gcm-vto="d"]{grid-column:1/-1}
+ .gcm-page .gcm-expiry-tabs button{min-height:53px;padding:7px 3px}
+ .gcm-page .gcm-expiry-tabs button strong{font-size:12px}
+ .gcm-page .gcm-section .gcm-sheet-scroll thead th.gcm-product-head,
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{
+  width:65px!important;min-width:0!important;max-width:65px!important;
+  padding:9px 5px!important;font-size:14px;left:auto!important;
+ }
+ .gcm-page .gcm-section .gcm-sheet-scroll thead th:last-child,
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody .gcm-total{
+  width:72px!important;font-size:12px;padding:6px 2px!important;
+ }
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody td.gcm-chapa,
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody td.gcm-decomp-cell{
+  padding:7px!important;
+ }
+ .gcm-page .gcm-section .gcm-inline-count{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto auto 15px!important;gap:7px!important;
+  max-width:220px!important;
+ }
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody td,
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody th.gcm-product-cell{height:171px!important}
+ .gcm-page .gcm-section .gcm-chapas-stepper,
+ .gcm-page .gcm-section .gcm-units-stepper{grid-template-rows:13px 44px;gap:4px}
+ .gcm-page .gcm-inline-count .gcm-mark-button,
+ .gcm-page .gcm-inline-count .gcm-mark-undo,
+ .gcm-page .gcm-units-stepper button,
+ .gcm-page .gcm-units-stepper input.gcm-units-value{height:44px!important;min-height:44px!important}
+ .gcm-page .gcm-section .gcm-sheet-scroll tbody td.gcm-numeric-cell{height:93px!important}
+}

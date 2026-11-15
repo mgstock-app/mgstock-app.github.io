@@ -39,7 +39,7 @@ test('gerente no ve Quitar ni ajustes, no puede modificar categorías pero puede
  const h=mod.view();
  assert.doesNotMatch(h,/data-gcm-hide-section/);
  assert.doesNotMatch(h,/data-gcm-section-visible/);
- assert.match(h,/Categorías fijas de Munro/);
+ assert.doesNotMatch(h,/Categorías fijas de Munro/); // Sin mensajes técnicos que distraigan al gerente.
  assert.match(h,/data-gcm-plus="a"/);
  const button={dataset:{gcmHideSection:'SALSAS'},hasAttribute:x=>x==='data-gcm-hide-section'};
  await listeners.get('click')({target:{closest:what=>what==='button'?button:{}},preventDefault(){},stopPropagation(){}});
