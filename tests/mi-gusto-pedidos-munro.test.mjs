@@ -40,90 +40,45 @@ function setup({role='dueno',local='munro',locals=['munro'],settings=SETTINGS,ca
 const tick=()=>new Promise(r=>setImmediate(r));
 const click=(s,attr,value)=>s.handlers.click({target:{closest:q=>q==='['+attr+']'?{dataset:{[attr.replace(/^data-/,'').replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]:value}}:null}});
 
-test('Munro y Don Torcuato: sin carga manual y cada una con su propia configuración',async()=>{
- const m=setup();m.orders.subscribe('munro',()=>{});await tick();await tick();
- assert.doesNotMatch(m.orders.view(),/Registrar pedido manualmente|mgp-order-form/);
- assert.match(m.orders.view(),/Conectar WhatsApp de Munro/);
- const t=setup({local:'torcuato',locals:['torcuato']});t.orders.subscribe('torcuato',()=>{});await tick();await tick();
- const th=t.orders.view();
- assert.doesNotMatch(th,/Registrar pedido manualmente|mgp-order-form/);
- assert.match(th,/Mensajes automáticos de WhatsApp/);
- assert.match(th,/al escribir a Don Torcuato/);
- assert.match(th,/Conectar WhatsApp de Don Torcuato/);
- assert.match(th,/\+54 11 7661-7182/);
- assert.doesNotMatch(th,/María G\./,'los pedidos de Munro no aparecen en Torcuato');
- assert.deepEqual(t.calls.filter(c=>c.method==='gestlok_mg_whatsapp_settings').map(c=>c.p_local),['torcuato']);
- assert.deepEqual(m.calls.filter(c=>c.method==='gestlok_mg_whatsapp_settings').map(c=>c.p_local),['munro']);
+test('Munro y Don Torcuato muestran panel de avisos separado, sin la configuración vieja de Meta',async()=>{
+ for(const local of ['munro','torcuato']){
+  const s=setup({local,locals:[local]});s.orders.subscribe(local,()=>{});await tick();await tick();
+  const html=s.orders.view();
+  assert.match(html,new RegExp('Vincular WhatsApp Business de '+(local==='munro'?'Munro':'Don Torcuato')));
+  assert.match(html,/Avisos de WhatsApp Business/);
+  assert.doesNotMatch(html,/Conexión con WhatsApp Business \(Meta\)|Mensajes automáticos de WhatsApp|Guardar datos de Meta/);
+  assert.doesNotMatch(html,/Registrar pedido manualmente|mgp-order-form/);
+  assert.match(html,/✓ Revisado/);
+ }
 });
-
-test('la comanda muestra N.º, cliente, teléfono, fecha, productos, cantidades, observaciones y total',async()=>{
+test('La comanda anterior sigue accesible, con sus datos completos',async()=>{
  const s=setup({role:'gerente'});s.orders.subscribe('munro',()=>{});await tick();await tick();
  const html=s.orders.view();
- assert.match(html,/#MG-001/);
- assert.match(html,/María G\./);
- assert.match(html,/\+54 9 11 2222-3333/);
- assert.match(html,/href="https:\/\/wa\.me\/5491122223333"/);
- assert.match(html,/<b>6 ×<\/b> Carne suave/);
- assert.match(html,/<b>6 ×<\/b> Jamón y queso/);
- assert.match(html,/12 unidades/);
- assert.match(html,/Observaciones:<\/b> Sin cebolla/);
- assert.match(html,/Total: \$\s?24\.000/);
- assert.match(html,/Pago únicamente en efectivo/);
- assert.match(html,/✓ OK · Vista/);
- assert.match(html,/Pendientes \(1\)/);
+ for(const text of [/#MG-001/,/María G\./,/\+54 9 11 2222-3333/,/https:\/\/wa\.me\/5491122223333/,
+ /<b>6 ×<\/b> Carne suave/,/Observaciones:<\/b> Sin cebolla/,/12 unidades/,/Total: \$\s?24\.000/,/✓ OK · Vista/]){
+  assert.match(html,text);
+ }
+ assert.match(html,/Pedidos históricos \(1\)/);
 });
-
-test('mensajes editables y conexión con Meta: solo dueño o administradora en Munro',async()=>{
- const owner=setup();owner.orders.subscribe('munro',()=>{});await tick();await tick();
- const html=owner.orders.view();
- assert.match(html,/Mensajes automáticos de WhatsApp/);
- assert.match(html,/name="welcome_text"[^>]*>¡Bienvenido a Mi Gusto! 🥟/);
- for(const k of ['option_order','option_prices','option_human'])assert.match(html,new RegExp('name="'+k+'" maxlength="20"'));
- assert.match(html,/value="Ver carta y precios"/);
- assert.match(html,/data-mgp-preview="option_human">Hablar con el local/);
- assert.match(html,/Conexión con WhatsApp Business \(Meta\)/);
- assert.match(html,/https:\/\/vgsepaaewbctjsjcpeta\.supabase\.co\/functions\/v1\/mi-gusto-whatsapp/);
- assert.match(html,/a1b2c3d4e5f60718293a4b5c6d7e8f9012ab/);
- assert.match(html,/name="app_secret" type="password"/);
- assert.match(html,/data-mgp-connect disabled/,'sin datos de Meta el botón no se habilita');
- assert.match(html,/Pendiente: conectar este número/);
- const manager=setup({role:'gerente'});manager.orders.subscribe('munro',()=>{});await tick();await tick();
- const mh=manager.orders.view();
- assert.doesNotMatch(mh,/Mensajes automáticos de WhatsApp|Conexión con WhatsApp Business|a1b2c3d4e5f6/);
- assert.match(mh,/Pendiente: conectar este número/);
+test('Solo dueña y administradora generan la clave de un local; gerente ve los avisos',async()=>{
+ for(const local of ['munro','torcuato']){
+  const dueña=setup({local,locals:[local]});dueña.orders.subscribe(local,()=>{});await tick();await tick();
+  assert.match(dueña.orders.view(),/data-mgp-mobile-key/);
+  const gerente=setup({role:'gerente',local,locals:[local]});gerente.orders.subscribe(local,()=>{});await tick();await tick();
+  assert.doesNotMatch(gerente.orders.view(),/data-mgp-mobile-key/);
+  assert.match(gerente.orders.view(),/Avisos de WhatsApp Business/);
+ }
 });
-
-test('estado conectado y activar respuestas solo con carta cargada',async()=>{
- const connected={...SETTINGS,meta_app:{...SETTINGS.meta_app,app_id:'1234567890',config_id:'9876543210',has_app_secret:true,webhook_verified_at:'2026-11-07T01:00:00Z'},
-  connection:{display_phone:'+54 9 11 7144-6654',verified_name:'Mi Gusto Munro',is_on_biz_app:true,platform_type:'CLOUD_API',bot_enabled:false,connected_at:'2026-11-07T01:10:00Z',last_event_at:null,sync_status:{}}};
- const empty=setup({settings:connected});empty.orders.subscribe('munro',()=>{});await tick();await tick();
- const html=empty.orders.view();
- assert.match(html,/✓ Conectado con Meta · sigue funcionando en la app del teléfono/);
- assert.match(html,/Respuestas automáticas: <b>desactivadas<\/b>/);
- assert.match(html,/✓ Meta verificó el webhook/);
- assert.match(html,/data-mgp-connect >Volver a conectar|data-mgp-connect\s*>Volver a conectar/);
- click(empty,'data-mgp-bot','on');await tick();
- assert.equal(empty.calls.filter(c=>c.method==='gestlok_mg_whatsapp_set_bot').length,0,'sin productos no se activa');
- assert.match(empty.orders.view(),/Cargá al menos un producto/);
- const ready=setup({settings:connected,catalog:[{id:'p1',name:'Carne suave',price:2000,active:true}]});
- ready.orders.subscribe('munro',()=>{});await tick();await tick();
- click(ready,'data-mgp-bot','on');await tick();await tick();
- assert.deepEqual(ready.calls.filter(c=>c.method==='gestlok_mg_whatsapp_set_bot').map(c=>[c.p_local,c.p_enabled]),[['munro',true]]);
+test('La configuración incluye JSON por sucursal y aclara el límite de notificaciones',async()=>{
+ const m=setup();m.orders.subscribe('munro',()=>{});await tick();await tick();
+ assert.match(m.orders.view(),/&quot;local&quot;:&quot;munro&quot;/);
+ assert.match(m.orders.view(),/\{not_title\}/);
+ assert.match(m.orders.view(),/No garantiza detectar un pedido confirmado/);
+ const t=setup({local:'torcuato',locals:['torcuato']});t.orders.subscribe('torcuato',()=>{});await tick();await tick();
+ assert.match(t.orders.view(),/&quot;local&quot;:&quot;torcuato&quot;/);
+ assert.doesNotMatch(t.orders.view(),/&quot;local&quot;:&quot;munro&quot;/);
 });
-
-test('productos ocultos se pueden volver a mostrar en WhatsApp',async()=>{
- const s=setup({catalog:[{id:'p2',name:'Humita',price:1900,active:false}]});
- s.orders.subscribe('munro',()=>{});await tick();await tick();
- assert.match(s.orders.view(),/Oculto de WhatsApp/);
- click(s,'data-mgp-enable','p2');await tick();await tick();
- const call=s.calls.find(c=>c.method==='gestlok_mg_orders_catalog_save');
- assert.deepEqual([call.p_local,call.p_id,call.p_name,call.p_price],['munro','p2','Humita',1900]);
-});
-
-test('el navegador nunca maneja tokens de Meta ni la clave de servicio',()=>{
- assert.doesNotMatch(moduleSource,/access_token|service_role|client_secret/);
- assert.match(moduleSource,/featureType:'whatsapp_business_app_onboarding'/);
- assert.match(moduleSource,/response_type:'code'/);
- assert.match(moduleSource,/host!=='facebook\.com'&&!host\.endsWith\('\.facebook\.com'\)/);
- assert.match(moduleSource,/functions\.invoke\('mi-gusto-whatsapp'/);
+test('No registra ventas ni expone credenciales en el navegador',()=>{
+ assert.doesNotMatch(moduleSource,/service_role|SERVICE_ROLE|app_secret_id|decrypted/);
+ assert.doesNotMatch(moduleSource,/gestlok_mg_online_save|stock_quantity|caja_register|pos_checkout/);
 });
