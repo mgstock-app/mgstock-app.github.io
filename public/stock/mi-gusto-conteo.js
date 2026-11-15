@@ -191,11 +191,15 @@ function historyListView(){
 }
 // Resumen derivado de las cantidades realmente archivadas. Nunca modifica el historial.
 function historyProductTotals(rec){
- const catalog=new Map((snapshot?.products||[]).map(p=>[String(p.id),p]));
+ // Conteo muestra snapshot.products en el orden original del catálogo.
+ // El historial debe respetar exactamente ese mismo orden, no ordenar alfabéticamente.
+ const catalogProducts=snapshot?.products||[];
+ const catalog=new Map(catalogProducts.map(p=>[String(p.id),p]));
+ const catalogOrder=new Map(catalogProducts.map((p,i)=>[String(p.id),i]));
  const ids=new Set([...Object.keys(rec.data||{}),...Object.keys(rec.decomiso||{})]);
  return [...ids].map(id=>{
   const p=catalog.get(id);
-  if(!p)return {id,name:'Producto sin referencia ('+id.slice(0,8)+')',section:'OTROS',total:null};
+  if(!p)return {id,name:'Producto sin referencia ('+id.slice(0,8)+')',section:'OTROS',total:null,order:Number.MAX_SAFE_INTEGER};
   const data=rec.data?.[id]||{},decomiso=rec.decomiso?.[id]||{};
   let total=0;
   for(let i=1;i<=4;i++){
@@ -203,9 +207,8 @@ function historyProductTotals(rec){
    total+=amount(p,{chapas:Number(v.chapas)||0,sueltas:Number(v.sueltas)||0,qty:Number(v.qty)||0});
   }
   total+=amount(p,{chapas:Number(decomiso.chapas)||0,sueltas:Number(decomiso.sueltas)||0,qty:Number(decomiso.qty)||0});
-  return {id,name:p.name,section:p.section||'OTROS',total};
- }).sort((a,b)=>a.section.localeCompare(b.section,'es')||
-  a.name.localeCompare(b.name,'es',{numeric:true}));
+  return {id,name:p.name,section:p.section||'OTROS',total,order:catalogOrder.get(id)??Number.MAX_SAFE_INTEGER};
+ }).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
 }
 function historySummaryTable(rec){
  const rows=historyProductTotals(rec);
@@ -258,63 +261,71 @@ function historyA4Image(rec){
   rec.waste.filter(x=>String(x?.name||'').trim()||String(x?.value||'').trim()):[];
  const wasteColumns=waste.length>18?3:waste.length>9?2:1;
  const wasteRows=Math.ceil(waste.length/wasteColumns);
- const wasteH=wasteRows?60+wasteRows*25:0,consH=338;
+ // Reservar tamaño de letra de lectura real para el encabezado y los diez consumos.
+ const wasteH=wasteRows?66+wasteRows*30:0,consH=400;
  const extraY=H-95-consH-wasteH;
- const yStart=326,available=extraY-yStart-90;
- let cols=totals.length>74?3:totals.length>31?2:1;
- while(cols<3&&Math.ceil(totals.length/cols)*25>available)cols++;
+ const yStart=326,available=Math.max(180,extraY-yStart-100);
+ // Dos paneles compactos: cada cantidad queda junto a su producto, no al extremo de la hoja.
+ // Se lee de arriba hacia abajo en la columna izquierda, luego en la derecha,
+ // siguiendo el orden exacto de la planilla Conteo.
+ let cols=totals.length>65?3:totals.length>17?2:1;
+ while(cols<3&&Math.ceil(totals.length/cols)*46>available)cols++;
  const rowsPerCol=Math.max(1,Math.ceil(totals.length/cols));
- const rowH=Math.min(32,Math.max(15,Math.floor(available/rowsPerCol)));
+ const rowH=Math.min(54,Math.max(16,Math.floor(available/rowsPerCol)));
  const actualH=rowsPerCol*rowH;
- write('RESUMEN POR PRODUCTO',M,303,24,navy,'700');
- const width=(W-M*2-(cols-1)*23)/cols;
+ write('RESUMEN POR PRODUCTO',M,303,27,navy,'700');
+ const gap=27;
+ const pairWidth=Math.min(cols===1?710:cols===2?500:347,(W-M*2-gap*(cols-1))/cols);
+ const pairStart=(W-(cols*pairWidth+gap*(cols-1)))/2;
+ const headerHeight=42;
  for(let col=0;col<cols;col++){
-  const x=M+col*(width+23),headerY=yStart;
-  rect(x,headerY-17,width,38,pale);
-  write('Producto',x+10,headerY+8,18,navy,'700');
-  write('Total',x+width-10,headerY+8,18,navy,'700','right');
+  const x=pairStart+col*(pairWidth+gap),headerY=yStart;
+  rect(x,headerY-17,pairWidth,headerHeight,pale);
+  write('Producto',x+12,headerY+11,22,navy,'700');
+  write('Total',x+pairWidth-13,headerY+11,22,navy,'700','right');
   for(let j=0;j<rowsPerCol;j++){
    const r=totals[col*rowsPerCol+j];if(!r)break;
-   const y=headerY+38+j*rowH;
-   if(j%2===1)rect(x,y,width,rowH,'#f8fafc');
-   const font=rowH<23?16:19;
-   const label=trim(r.name,width-100,font,'500');
-   write(label,x+10,y+rowH*.72,font,ink);
-   write(r.total===null?'—':r.total,x+width-11,y+rowH*.72,font,ink,'700','right');
-   rule(x,y+rowH,width);
+   const y=headerY+headerHeight+j*rowH;
+   if(j%2===1)rect(x,y,pairWidth,rowH,'#f4f8fc');
+   const font=Math.min(26,Math.max(15,Math.floor(rowH*.49)));
+   const label=trim(r.name,pairWidth-115,font,'600');
+   write(label,x+12,y+rowH*.72,font,ink,'600');
+   write(r.total===null?'—':r.total,x+pairWidth-14,y+rowH*.72,font+1,navy,'700','right');
+   rule(x,y+rowH,pairWidth);
   }
  }
- const subtotalY=yStart+38+actualH+39;
- rect(M,subtotalY-28,W-M*2,37,pale);
- write('TOTAL GENERAL',M+12,subtotalY-1,21,navy,'700');
- write(sum,right-12,subtotalY-1,24,navy,'700','right');
- // Los 10 renglones existen incluso si todavía están vacíos.
+ const subtotalY=yStart+headerHeight+actualH+35;
+ const totalBoxWidth=Math.min(430,W-M*2);
+ rect(pairStart,subtotalY-29,totalBoxWidth,43,pale);
+ write('TOTAL GENERAL',pairStart+12,subtotalY+1,23,navy,'700');
+ write(sum,pairStart+totalBoxWidth-14,subtotalY+1,27,navy,'700','right');
+ // Los diez renglones siguen completos. Tipografía reforzada también en Consumos.
  let y=extraY;
- write('CONSUMOS  ·  10 COLABORADORES',M,y+19,23,navy,'700');
- y+=31;
- rect(M,y,W-M*2,35,pale);
- write('#',M+13,y+25,18,navy,'700');
- write('Colaborador',M+67,y+25,18,navy,'700');
- write('Consumo',right-13,y+25,18,navy,'700','right');
- y+=35;
+ write('CONSUMOS  ·  10 COLABORADORES',M,y+24,26,navy,'700');
+ y+=38;
+ rect(M,y,W-M*2,41,pale);
+ write('#',M+14,y+28,21,navy,'700');
+ write('Colaborador',M+67,y+28,21,navy,'700');
+ write('Consumo',right-14,y+28,21,navy,'700','right');
+ y+=41;
  for(let i=0;i<10;i++){
-  const r=consumption[i],rh=25;
-  if(i%2===1)rect(M,y+i*rh,W-M*2,rh,'#f8fafc');
-  write(i+1,M+15,y+i*rh+18,17,muted);
-  write(trim(r.name||'—',650,17),M+67,y+i*rh+18,17,ink);
-  write(trim(r.value||'—',260,17),right-13,y+i*rh+18,17,ink,'500','right');
+  const r=consumption[i],rh=29;
+  if(i%2===1)rect(M,y+i*rh,W-M*2,rh,'#f4f8fc');
+  write(i+1,M+15,y+i*rh+22,21,muted);
+  write(trim(r.name||'—',650,21),M+67,y+i*rh+22,21,ink);
+  write(trim(r.value||'—',260,21),right-14,y+i*rh+22,21,ink,'600','right');
   rule(M,y+(i+1)*rh,W-M*2);
  }
- y+=250;
+ y+=290;
  if(waste.length){
-  y+=25;write('DESPERDICIOS',M,y,21,navy,'700');y+=12;
+  y+=25;write('DESPERDICIOS',M,y,23,navy,'700');y+=12;
   const colW=(W-M*2-(wasteColumns-1)*18)/wasteColumns;
   for(let k=0;k<waste.length;k++){
-   const col=Math.floor(k/wasteRows),j=k%wasteRows,x=M+col*(colW+18),yy=y+j*25;
-   const name=trim(waste[k].name||'—',colW-115,16);
-   write(name,x+4,yy+19,16,ink);
-   write(trim(waste[k].value||'—',105,16),x+colW-4,yy+19,16,ink,'500','right');
-   rule(x,yy+25,colW);
+   const col=Math.floor(k/wasteRows),j=k%wasteRows,x=M+col*(colW+18),yy=y+j*30;
+   const name=trim(waste[k].name||'—',colW-115,19);
+   write(name,x+4,yy+23,19,ink);
+   write(trim(waste[k].value||'—',105,19),x+colW-4,yy+23,19,ink,'600','right');
+   rule(x,yy+30,colW);
   }
  }
  rule(M,H-74,W-M*2);
