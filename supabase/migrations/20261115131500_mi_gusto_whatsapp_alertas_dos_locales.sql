@@ -83,6 +83,51 @@ begin
  if v_expected is null or v_expected<>encode(sha256(convert_to(p_token,'UTF8')),'hex')
  then raise exception 'Vínculo inválido' using errcode='42501'; end if;
  v_phone:=regexp_replace(coalesce(p_customer_phone,''),'[^0-9]','','g');
+ -- Formato local 11xxxxxxxx → WhatsApp internacional argentino 54911xxxxxxxx.
+ if v_phone ~ '^11[0-9]{8}
+ update gestlok_mg_orders_private.android_bridge_keys set last_event_at=now()
+ where local=p_local;
+ -- Evitar duplicados inmediatos de Android. Ventana POR sucursal, no global.
+ if exists(select 1 from gestlok_mg_orders_private.android_alerts
+           where local=p_local and created_at>now()-interval '2 seconds')
+ then return jsonb_build_object('ok',true,'created',false); end if;
+ insert into gestlok_mg_orders_private.android_alerts(local,customer_phone)
+ values (p_local,v_phone) returning id into v_id;
+ return jsonb_build_object('ok',true,'created',true,'id',v_id,'has_phone',v_phone is not null);
+end $$;
+
+revoke all on function public.gestlok_mg_android_bridge_create(text),
+ public.gestlok_mg_android_bridge_state(text),
+ public.gestlok_mg_android_bridge_ack(text,uuid),
+ public.gestlok_mg_android_bridge_ingest_v2(text,text,text)
+ from public,anon,authenticated;
+grant execute on function public.gestlok_mg_android_bridge_create(text),
+ public.gestlok_mg_android_bridge_state(text),
+ public.gestlok_mg_android_bridge_ack(text,uuid) to authenticated;
+grant execute on function public.gestlok_mg_android_bridge_ingest_v2(text,text,text) to service_role;
+ then v_phone:='549'||v_phone; end if;
+ if v_phone ~ '^5411[0-9]{8}
+ update gestlok_mg_orders_private.android_bridge_keys set last_event_at=now()
+ where local=p_local;
+ -- Evitar duplicados inmediatos de Android. Ventana POR sucursal, no global.
+ if exists(select 1 from gestlok_mg_orders_private.android_alerts
+           where local=p_local and created_at>now()-interval '2 seconds')
+ then return jsonb_build_object('ok',true,'created',false); end if;
+ insert into gestlok_mg_orders_private.android_alerts(local,customer_phone)
+ values (p_local,v_phone) returning id into v_id;
+ return jsonb_build_object('ok',true,'created',true,'id',v_id,'has_phone',v_phone is not null);
+end $$;
+
+revoke all on function public.gestlok_mg_android_bridge_create(text),
+ public.gestlok_mg_android_bridge_state(text),
+ public.gestlok_mg_android_bridge_ack(text,uuid),
+ public.gestlok_mg_android_bridge_ingest_v2(text,text,text)
+ from public,anon,authenticated;
+grant execute on function public.gestlok_mg_android_bridge_create(text),
+ public.gestlok_mg_android_bridge_state(text),
+ public.gestlok_mg_android_bridge_ack(text,uuid) to authenticated;
+grant execute on function public.gestlok_mg_android_bridge_ingest_v2(text,text,text) to service_role;
+ then v_phone:='549'||substr(v_phone,3); end if;
  if length(v_phone) not between 10 and 15 then v_phone:=null; end if;
  update gestlok_mg_orders_private.android_bridge_keys set last_event_at=now()
  where local=p_local;
