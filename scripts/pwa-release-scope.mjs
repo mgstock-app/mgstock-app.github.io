@@ -1,10 +1,12 @@
 // Alcance del cartel de actualización: una publicación de otra empresa no requiere recarga.
-// Ante cambios compartidos o desconocidos se avisa a todos (conservador).
+// Solo cambios compartidos verificados avisan a todos; cambios desconocidos se revisan sin inventar alertas.
 export const TENANTS = Object.freeze({
   miGusto: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',
   molino: '6c8717ea-5f78-426b-9458-74a5dcac6e4e',
   zayro: '2a97bf8d-7d08-4aa7-b051-5d1a4dc80103'
 });
+
+export const LOCAL_AUDIENCE = Object.freeze({munro: TENANTS.miGusto + ':munro'});
 
 const NON_RUNTIME = /^(?:tests\/|docs\/|supabase\/|\.github\/|scripts\/|README|GESTLOK-GUIA)/i;
 const UPDATE_INFRA = new Set(['public/stock/gestlok-pwa-update.js','scripts/version-cache.mjs','scripts/pwa-release-scope.mjs','scripts/sw-template.js']);
@@ -15,30 +17,73 @@ export function fileAudience(path) {
   // Cambios reales del worker (caché, offline y seguridad) requieren aviso general.
   if (p === 'scripts/sw-template.js') return ['*'];
   if (NON_RUNTIME.test(p) || UPDATE_INFRA.has(p)) return [];
-  if (/^(?:public\/stock\/(?:mi-gusto-|munro-|mg-|gestlok-mg-)|app\/(?:mi-gusto-|munro-)|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
+  // Conteo y demás pantallas exclusivas de Munro no cambian Torcuato.
+  if (/^(?:public\/stock\/(?:mi-gusto-conteo\.js|munro-|gestlok-munro-)|app\/(?:mi-gusto-conteo\.css|munro-))/i.test(p)) {
+    return [LOCAL_AUDIENCE.munro];
+  }
+  // El resto de módulos Mi Gusto sí pueden usarse en ambas sucursales.
+  if (/^(?:public\/stock\/(?:mi-gusto-|mg-|gestlok-mg-)|app\/mi-gusto-|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
   if (/^(?:public\/stock\/gestlok-molino|app\/(?:gestlok-molino|molino-)|public\/molino\/)/i.test(p)) return [TENANTS.molino];
   if (/^(?:public\/stock\/gestlok-(?:zayro|scanner|pilot|mis-productos|product-white-bg|tiendanube|cami-|pedidos\.js|precios-stock\.js)|app\/(?:zayro\/|gestlok-(?:scanner|pilot|mis-productos|tiendanube|cami-))|public\/zayro\/)/i.test(p)) return [TENANTS.zayro];
   return ['*'];
 }
-const referenceAudience = text => {
-  // Solo aceptar cambios en rutas/imports: jamás inferir alcance de código de aplicación arbitrario.
-  const lines = String(text || '').split('\n')
-    .filter(line => /^[+-](?![+-])/.test(line))
-    .map(line => line.slice(1).trim())
-    .filter(Boolean);
-  if (!lines.length) return [];
-  const found = new Set();
-  for (const line of lines) {
-    // Un import a una sección específica o la versión de un script de esa sección.
-    const matches = [...line.matchAll(/(?:\/stock\/|\.\/)([a-z0-9./_-]+(?:\.js|\.css))(?:\?[^'"\s]*)?|(?:\/app\/)([a-z0-9./_-]+\.css)/ig)];
-    if (matches.length !== 1 || !/^(?:import\s|["']?\/stock\/|["']?\.\/|await load\(|if \(!visitor\) await load\(|"\/stock\/)/.test(line)) return ['*'];
-    const part = matches[0][1] || matches[0][2] || '';
-    const extension = part.endsWith('.css') ? 'app/' : 'public/stock/';
-    const scoped = fileAudience(extension + part.replace(/^.*\//, ''));
-    if (scoped.includes('*')) return ['*'];
-    scoped.forEach(id => found.add(id));
+// Un loader puede declarar varios archivos en una línea. No atribuirle a toda
+// GESTLOK un módulo compartido si ese módulo NO se modificó en el diff.
+const RESOURCE = /(?:\/(?:stock|vendor|app)\/|\.\/)[a-z0-9./_-]+\.(?:js|css)(?:\?[^'"\s,)]*)?/gi;
+const refs = line => [...line.matchAll(RESOURCE)].map(x => x[0]);
+const normalize = line => line.trim().replace(RESOURCE,'__ASSET__');
+function subtract(left,right) {
+  const counts=new Map();
+  for(const x of right)counts.set(x,(counts.get(x)||0)+1);
+  const leftOnly=[];
+  for(const x of left) {
+    const n=counts.get(x)||0;
+    if(n)counts.set(x,n-1);
+    else leftOnly.push(x);
   }
-  return [...found];
+  return leftOnly;
+}
+function assetAudience(asset) {
+  const path=String(asset).split('?')[0];
+  if(path.startsWith('/stock/'))return fileAudience('public'+path);
+  if(path.startsWith('/app/'))return fileAudience(path.slice(1));
+  if(path.startsWith('./'))return fileAudience('app/'+path.slice(2));
+  return ['*'];
+}
+function simpleLoader(line) {
+  const s=line.trim();
+  return /^(?:if\s*\([^;]+\)\s*)?await\s+load\(\s*['"][^'"]+['"]\s*\)\s*;?\s*$/.test(s)
+    || /^import\s+['"][^'"]+['"]\s*;?\s*$/.test(s);
+}
+const referenceAudience = patch => {
+  // Líneas añadidas y quitadas, sin encabezados +++/--- del formato git.
+  const changes=String(patch||'').split('\n')
+    .filter(x => /^[+-](?![+-])/.test(x))
+    .map(x => ({sign:x[0],text:x.slice(1).trim()}))
+    .filter(x => x.text);
+  if(!changes.length)return ['*'];
+  const old=changes.filter(x=>x.sign==='-').map(x=>x.text);
+  const fresh=changes.filter(x=>x.sign==='+').map(x=>x.text);
+  const oldShapes=old.map(normalize),newShapes=fresh.map(normalize);
+  const removedShapes=subtract(oldShapes,newShapes),addedShapes=subtract(newShapes,oldShapes);
+  // Permitir una línea suelta solo cuando es un import o loader evidente.
+  // Si cambia la lógica compartida, no inferir el alcance a partir de nombres.
+  if([...old.filter(x=>removedShapes.includes(normalize(x))),
+       ...fresh.filter(x=>addedShapes.includes(normalize(x)))]
+       .some(x=>!simpleLoader(x)))return ['*'];
+  // Restar literalmente los assets intactos, aunque compartan la misma línea.
+  const changed=[
+    ...subtract(old.flatMap(refs),fresh.flatMap(refs)),
+    ...subtract(fresh.flatMap(refs),old.flatMap(refs))
+  ];
+  if(!changed.length)return [];
+  const audience=new Set();
+  for(const asset of changed){
+    const scoped=assetAudience(asset);
+    if(scoped.includes('*'))return ['*'];
+    scoped.forEach(x=>audience.add(x));
+  }
+  return [...audience].sort();
 };
 export function releaseAudience(paths, patches = {}) {
   const audience = new Set();

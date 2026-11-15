@@ -2,34 +2,38 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import {releaseAudience,fileAudience,TENANTS} from '../scripts/pwa-release-scope.mjs';
+import {releaseAudience,fileAudience,TENANTS,LOCAL_AUDIENCE} from '../scripts/pwa-release-scope.mjs';
 const read = p => readFileSync(p, 'utf8');
-function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto) {
+function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, local = 'munro') {
   const handlers = {}, elements = [];
-  let reloads = 0, currentTenant = tenant, channel;
-  const element = () => ({style:{},children:[],listeners:{},setAttribute(){},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;}});
+  let reloads = 0, currentTenant = tenant, currentLocal = local, channel, timerId = 0;
+  const intervals=new Map();
+  const element = () => ({style:{},children:[],listeners:{},removed:false,setAttribute(){},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;},remove(){this.removed=true;}});
   const controller = scope == null ? {} : {
     postMessage(message) { channel.port1.onmessage({data:{type:message.type,audience:scope}}); }
   };
   const navigator = {onLine:true,serviceWorker:{controller:controlled?controller:null,addEventListener(n,f){handlers[n]=f;}}};
-  const window = {location:{reload(){reloads++;}},GestLokNavContext:()=>({tenant:currentTenant})};
+  const window = {location:{reload(){reloads++;}},GestLokNavContext:()=>({tenant:currentTenant,local:currentLocal})};
   const document = {createElement:element,body:{appendChild(e){elements.push(e);}}};
   const MessageChannel = scope == null ? undefined : class {
     constructor(){channel=this;this.port1={onmessage:null,close(){}};this.port2={};}
   };
   vm.runInNewContext(read('public/stock/gestlok-pwa-update.js'), {
-    navigator,window,document,MessageChannel,setTimeout:()=>123,clearTimeout(){}
+    navigator,window,document,MessageChannel,setTimeout:()=>123,clearTimeout(){},
+    setInterval:fn=>{const id=++timerId;intervals.set(id,fn);return id;},
+    clearInterval:id=>intervals.delete(id)
   });
-  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;}};
+  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;},replaceController:()=>{navigator.serviceWorker.controller={...controller};},tick:()=>{for(const fn of [...intervals.values()])fn();},timerCount:()=>intervals.size};
 }
-test('Una instalación nueva no pide recargar; una actualización avisa solo una vez', () => {
-  const first=fixture(false);first.handlers.controllerchange();assert.equal(first.elements.length,0);
-  first.handlers.controllerchange();assert.equal(first.elements.length,1);
-  first.handlers.controllerchange();assert.equal(first.elements.length,1);
-  assert.equal(first.reloads(),0);
+test('Una instalación nueva no pide recargar; una actualización verificada avisa solo una vez', () => {
+  const first=fixture(false,['*']);first.handlers.controllerchange();assert.equal(first.elements.length,0);
+  const updated=fixture(true,['*']);
+  updated.handlers.controllerchange();assert.equal(updated.elements.length,1);
+  updated.handlers.controllerchange();assert.equal(updated.elements.length,1);
+  assert.equal(updated.reloads(),0);
 });
 test('Actualizar requiere una elección explícita, conexión y ningún cambio pendiente', () => {
-  const f=fixture();f.handlers.controllerchange();
+  const f=fixture(true,['*']);f.handlers.controllerchange();
   const [message,button]=f.elements[0].children;
   button.listeners.click();assert.equal(f.reloads(),0);
   assert.match(message.textContent,/Guardá/);
@@ -116,6 +120,10 @@ test('La clasificación separa actualizaciones por empresa y conserva alertas de
   assert.deepEqual(fileAudience('public/stock/gestlok-molino-pya.css'),[TENANTS.molino]);
   assert.deepEqual(fileAudience('public/stock/gestlok-zayro-admin.js'),[TENANTS.zayro]);
   assert.deepEqual(fileAudience('public/stock/mi-gusto-cierre-online.js'),[TENANTS.miGusto]);
+  assert.deepEqual(fileAudience('public/stock/mi-gusto-conteo.js'),[LOCAL_AUDIENCE.munro]);
+  assert.deepEqual(fileAudience('app/mi-gusto-conteo.css'),[LOCAL_AUDIENCE.munro]);
+  assert.deepEqual(fileAudience('public/stock/munro-motos.js'),[LOCAL_AUDIENCE.munro]);
+  assert.deepEqual(fileAudience('public/stock/munro-daily.js'),[LOCAL_AUDIENCE.munro]);
   assert.deepEqual(releaseAudience(['public/stock/gestlok-molino-pya.css','tests/el-molino-pedidosya.test.mjs']),[TENANTS.molino]);
   assert.deepEqual(releaseAudience(['public/stock/gestlok-zayro-admin.js','public/stock/gestlok-molino-pya.js']),[TENANTS.molino,TENANTS.zayro].sort());
   assert.deepEqual(releaseAudience(['docs/tiendanube-integration-plan.md']),[]);
@@ -136,4 +144,86 @@ test('El actualizador revisa el tenant sin modificar el controlador principal pr
   assert.match(read('public/stock/gestlok-pwa-update.js'),/setTimeout\(\(\) => \{ retryQueued = false; checkAudience\(\); \}, 1800\)/);
   assert.match(read('scripts/sw-template.js'),/gestlok-update-audience/);
   assert.match(read('scripts/version-cache.mjs'),/releaseAudience/);
+});
+
+test('Una actualización de Conteo Munro no muestra Actualizar en Torcuato ni otras empresas',()=>{
+ const s=[LOCAL_AUDIENCE.munro];
+ for(const [tenant,local] of [[TENANTS.miGusto,'torcuato'],[TENANTS.molino,'acassuso'],
+                                [TENANTS.molino,'san-isidro'],[TENANTS.zayro,'']]){
+  const f=fixture(true,s,tenant,local);
+  f.handlers.controllerchange();
+  assert.equal(f.elements.length,0,tenant+'/'+local+' no tuvo cambios');
+ }
+ const munro=fixture(true,s,TENANTS.miGusto,'munro');
+ munro.handlers.controllerchange();
+ assert.equal(munro.elements.length,1,'Munro recibe su actualización real');
+});
+test('Al cambiar de Munro a Torcuato se retira el aviso; solo vuelve en Munro',()=>{
+ const f=fixture(true,[LOCAL_AUDIENCE.munro],TENANTS.miGusto,'munro');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,1);
+ f.setLocal('torcuato');f.window.GestLokPWAUpdate.refresh();
+ assert.equal(f.elements[0].removed,true,'No deja un aviso falso al entrar a Torcuato');
+ f.setLocal('munro');f.window.GestLokPWAUpdate.refresh();
+ assert.equal(f.elements.length,2,'La actualización sigue pendiente para Munro');
+ assert.equal(f.elements[1].removed,false);
+});
+test('El cartel se retira automáticamente al cambiar a Torcuato, aun sin llamar refresh',()=>{
+ const f=fixture(true,[LOCAL_AUDIENCE.munro],TENANTS.miGusto,'munro');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,1);
+ assert.equal(f.timerCount(),1);
+ f.setLocal('torcuato');f.tick();
+ assert.equal(f.elements[0].removed,true);
+ assert.equal(f.timerCount(),0,'No queda una comprobación en segundo plano');
+});
+test('Deslizar descarta el cartel sin volver a mostrarlo hasta la próxima versión',()=>{
+ const f=fixture(true,[LOCAL_AUDIENCE.munro],TENANTS.miGusto,'munro');
+ f.handlers.controllerchange();
+ const banner=f.elements[0];
+ banner.listeners.touchstart({touches:[{clientX:140,clientY:80}]});
+ banner.listeners.touchend({changedTouches:[{clientX:30,clientY:84}]});
+ assert.equal(banner.removed,true);
+ assert.equal(f.timerCount(),0);
+ f.window.GestLokPWAUpdate.refresh();
+ assert.equal(f.elements.length,1,'No reabrir un aviso que la persona descartó');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,1,'Un evento duplicado del mismo worker no cuenta como nueva versión');
+ f.replaceController();f.handlers.controllerchange();
+ assert.equal(f.elements.length,2,'Nueva publicación relevante se puede anunciar');
+});
+test('Worker anterior o sin audiencia no causa avisos globales inventados',()=>{
+ const f=fixture(true,null,TENANTS.molino,'acassuso');
+ f.handlers.controllerchange();assert.equal(f.elements.length,0);
+ const silent=fixture(true,[],TENANTS.miGusto,'munro');
+ silent.handlers.controllerchange();assert.equal(silent.elements.length,0);
+});
+test('Diff real de Conteo en una línea con comercio compartido avisa SOLO a Munro',()=>{
+ const patch=[
+   '@@ -20,7 +20,7 @@ function preloadStartupScripts(visitor: boolean) {',
+   '   const common = [',
+   '-    "/stock/gestlok-commerce.js", "/stock/mi-gusto-conteo.js?rev=old",',
+   '+    "/stock/gestlok-commerce.js", "/stock/mi-gusto-conteo.js?rev=new",',
+   '       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=old");',
+   '-      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=old");',
+   '+      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=new");'
+ ].join('\n');
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{'components/stock-runtime.tsx':patch}),[LOCAL_AUDIENCE.munro]);
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx','public/stock/mi-gusto-conteo.js','tests/munro-conteo.test.mjs'],
+   {'components/stock-runtime.tsx':patch}),[LOCAL_AUDIENCE.munro]);
+});
+test('Cambios realmente compartidos siguen notificando a todos; cambios de backend sin pantalla no',()=>{
+ const diff='-      if (!visitor) await load("/stock/app.js?rev=v1");\n'+
+            '+      if (!visitor) await load("/stock/app.js?rev=v2");';
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{'components/stock-runtime.tsx':diff}),['*']);
+ assert.deepEqual(releaseAudience(['public/stock/app.js']),['*']);
+ assert.deepEqual(releaseAudience(['scripts/sw-template.js']),['*']);
+ assert.deepEqual(releaseAudience(['supabase/migrations/20261115_munro.sql','tests/pwa-update.test.mjs']),[]);
+ assert.deepEqual(releaseAudience(['public/stock/gestlok-pwa-update.js','scripts/pwa-release-scope.mjs','scripts/version-cache.mjs']),[]);
+});
+test('No inferir local de cambios de lógica que no son importaciones ni referencias',()=>{
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],
+   {'components/stock-runtime.tsx':'-  if (visitor) return;\n+  if (!visitor) return;'}),['*']);
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{}),['*']);
+ assert.deepEqual(releaseAudience(['public/stock/mi-gusto-cierre-online.js']),[TENANTS.miGusto]);
 });
