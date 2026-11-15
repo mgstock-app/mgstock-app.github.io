@@ -6,7 +6,7 @@
   let pending = () => true;
   let banner;
   let audience = null;
-  let retries = 0, retryQueued = false;
+  let retries = 0, retryQueued = false, bannerTimer = null, dismissed = false;
 
   // Un nuevo SW NO significa que todos los locales tengan novedades.
   // Audiencias: ['*'] = cambios compartidos; ['tenant'] = toda la empresa;
@@ -20,6 +20,8 @@
     return !!tenant && (audience.includes(tenant) || (!!local && audience.includes(tenant+':'+local)));
   }
   function hideBanner() {
+    if (bannerTimer!==null && typeof clearInterval==='function') clearInterval(bannerTimer);
+    bannerTimer=null;
     if (!banner) return;
     banner.remove();
     banner = null;
@@ -44,7 +46,7 @@
     refresh: checkAudience
   };
   function showBanner() {
-    if (banner) return;
+    if (banner || dismissed) return;
     banner = document.createElement('aside');
     banner.id = 'gl-pwa-update';
     banner.setAttribute('role', 'status');
@@ -80,12 +82,15 @@
       const dy = event.changedTouches[0].clientY - startY;
       startX = startY = null;
       if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        banner.remove();
-        banner = null;
+        dismissed = true;
+        hideBanner();
       }
     }, { passive: true });
     banner.append(message, button);
     document.body.appendChild(banner);
+    // Mientras el aviso esté visible, verificar el local con poca frecuencia.
+    // Se detiene en cuanto el usuario entra en un local sin cambios.
+    if (typeof setInterval==='function') bannerTimer=setInterval(checkAudience,1500);
   }
   // El cambio de cuenta o el regreso a la app también pueden aportar un tenant válido.
   window.addEventListener?.('focus', checkAudience);
@@ -100,7 +105,7 @@
     const replacing = controlled;
     controlled = true;
     if (!replacing) return;
-    audience=null; hideBanner(); retries=0; retryQueued=false;
+    audience=null; dismissed=false; hideBanner(); retries=0; retryQueued=false;
     const worker = navigator.serviceWorker.controller;
     // Worker anterior o sin MessageChannel: no sabemos qué local cambió.
     // Mostrar un aviso global sería falso; se actualiza silenciosamente al reabrir.
