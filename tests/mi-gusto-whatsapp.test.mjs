@@ -64,7 +64,7 @@ test('sin precios inventados ni pagos, sin tocar módulos de Mi Gusto',()=>{
  assert.match(sqlMunro,/'efectivo'/);
  assert.match(ui,/gestlok_mg_orders_catalog_save/);
  assert.match(ui,/gestlok_mg_orders_catalog_disable/);
- assert.match(ui,/Carta y precios para WhatsApp/);
+ assert.doesNotMatch(ui,/Carta y precios para WhatsApp/);
 });
 
 test('habilitación por etapas: Munro funciona solo y Torcuato continúa aislado',async()=>{
