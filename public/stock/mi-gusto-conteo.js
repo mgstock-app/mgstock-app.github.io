@@ -352,7 +352,7 @@ function decompColumn(p,canWrite){
 }
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day,first=historyRecord?.shift||shift;
- const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:first==='manana_entrada'?labelDay(plusDays(dateBase,i)).slice(0,5):''}));
+ const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:labelDay(plusDays(dateBase,i)).slice(0,5)}));
  const rows=items.map(p=>{
   const cells=[1,2,3,4].map(i=>{
    const v=getCell(p,i);
@@ -373,7 +373,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    '<button type="button" data-gcm-remove="'+esc(p.id)+'">Quitar producto</button>'+
    '<button type="button" class="gcm-product-dialog-cancel" data-gcm-menu-close>Cancelar</button>'+
    '</div></dialog></div>':'')+
-   '</th>'+(showDecomiso?decompColumn(p,canWrite):'')+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
+   '</th>'+cells+(showDecomiso?decompColumn(p,canWrite):'')+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
@@ -381,8 +381,8 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  '</span></summary>'+
  '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
  '<th scope="col" class="gcm-product-head">Producto</th>'+
- (showDecomiso?'<th scope="col" class="gcm-decomp-head gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">Decomiso</th>':'')+
- dates.map((s,index)=>'<th scope="col" class="gcm-vto-col'+(activeVto===String(index+1)?' is-current-vto':'')+'" data-gcm-idx="'+(index+1)+'"><span class="gcm-vto">'+esc(s.vto)+'</span>'+(s.dia?'<span class="gcm-vto-date">'+esc(s.dia)+'</span>':'')+'</th>').join('')+'<th scope="col">Total general</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
+ 
+ dates.map((s,index)=>'<th scope="col" class="gcm-vto-col'+(activeVto===String(index+1)?' is-current-vto':'')+'" data-gcm-idx="'+(index+1)+'"><span class="gcm-vto">'+esc(s.vto)+'</span><span class="gcm-vto-date">'+esc(s.dia)+'</span></th>').join('')+(showDecomiso?'<th scope="col" class="gcm-decomp-head gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">Decomiso</th>':'')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
 }
 function extraTable(kind,title,headA,headB,rec,canWrite){
  const rows=Array.isArray(rec[kind])?rec[kind]:[];
@@ -438,12 +438,6 @@ function view(){
  const names=SHIFTS.map(([id,name])=>'<button type="button" data-gcm-shift="'+id+'"'+(!historyRecord&&shift===id?' class="is-active"':'')+'>'+esc(name)+'</button>').join('');
 
  const isToday=day===arDay(),yesterday=plusDays(arDay(),-1);
- const showVtoDates=shift==='manana_entrada';
- const options=Array.from({length:4},(_,i)=>({id:String(i+1),label:'Vto '+(i+1),date:showVtoDates?labelDay(plusDays(day,i)).slice(0,5):''}));
- if(showDecomiso)options.push({id:'d',label:'Decomiso',date:''});
- const expiryNav='<nav class="gcm-expiry-tabs" aria-label="Vencimiento del conteo">'+
- options.map(o=>'<button type="button" data-gcm-vto="'+o.id+'" class="'+(activeVto===o.id?'is-current':'')+'" aria-pressed="'+(activeVto===o.id?'true':'false')+'">'+
- '<strong>'+esc(o.label)+'</strong>'+(o.date?'<small>'+esc(o.date)+'</small>':'')+'</button>').join('')+'</nav>';
  return '<div class="gcm-page"><header class="gcm-header"><div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2><p>Tres conteos por día · guardado automático por casilla.</p><button type="button" class="gcm-open-history" data-gcm-history-open>Historial de conteos</button></div>'+
  '<div class="gcm-header-fields"><div><span>Local</span><strong>Munro</strong></div>'+
  '<label>Gerente / Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
@@ -459,9 +453,9 @@ function view(){
  '<nav class="gcm-tabs" aria-label="Turno">'+names+'</nav>'+
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
  (loading?'<p class="gcm-loading" role="status">Cargando conteos…</p>':'')+
- (snapshot?expiryNav+'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
+ (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+(historyRecord?'Consulta del conteo finalizado.':shift==='manana_entrada'?'Entrada: hoy y tres días posteriores.':'Salida: cuatro vencimientos por producto.')+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':activePending().length?'Cambios pendientes de confirmar':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
-'<div class="gcm-sheet-tip">Elegí un vencimiento. Cargá chapas y unidades sin desplazar la planilla.</div>'+
+'<div class="gcm-sheet-tip">Las cuatro fechas están juntas. En el celular deslizá la tabla hacia los costados para verlas.</div>'+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
   '<label><input type="checkbox" data-gcm-section-visible="'+esc(name)+'"'+(!hidden.has(name)?' checked':'')+
@@ -671,18 +665,6 @@ document.addEventListener('click',async e=>{
  if(el.hasAttribute('data-gcm-history-day')){
   const date=el.dataset.gcmHistoryDay;
   if(groupedHistory().some(([d])=>d===date)){historyExpanded=historyExpanded===date?null:date;api.render();}
-  return;
- }
- const nextVto=el.dataset.gcmVto;
- if(nextVto){
-  if(!['1','2','3','4','d'].includes(nextVto)||(nextVto==='d'&&!entry().decomiso_visible))return;
-  activeVto=nextVto;
-  root.querySelectorAll('.gcm-vto-col').forEach(node=>node.classList.toggle('is-current-vto',node.dataset.gcmIdx===nextVto));
-  root.querySelectorAll('[data-gcm-vto]').forEach(node=>{
-   const selected=node.dataset.gcmVto===nextVto;
-   node.classList.toggle('is-current',selected);
-   node.setAttribute('aria-pressed',String(selected));
-  });
   return;
  }
  const newShift=el.dataset.gcmShift;
