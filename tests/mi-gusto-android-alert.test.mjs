@@ -13,7 +13,7 @@ const alert={id:'11111111-1111-4111-8111-111111111111',status:'pendiente',create
 const reviewed={id:'22222222-2222-4222-8222-222222222222',status:'visto',created_at:'2026-11-14T02:00:00Z',seen_at:'2026-11-14T02:30:00Z',customer_phone:'5491122244455'};
 
 function make(role='gerente',local='munro',assignedLocals=[local]){
- const handlers={};const calls=[];
+ const handlers={};const calls=[];const qrCalls=[];
  const document={
   addEventListener:(k,f)=>{handlers[k]=f},removeEventListener(){},hidden:false,activeElement:null,
   querySelector(){return null},querySelectorAll(){return []},getElementById(){return null},
@@ -22,6 +22,7 @@ function make(role='gerente',local='munro',assignedLocals=[local]){
  };
  const window={
   confirm:()=>true,addEventListener(){},removeEventListener(){},
+  qrcode:()=>({addData:v=>qrCalls.push(v),make(){},getModuleCount:()=>3,isDark:(r,c)=>r===c}),
   GestLokCreatorSupport:{previewRol:()=>null},
   SPM_CONFIG:{url:'https://vgsepaaewbctjsjcpeta.supabase.co'},
   GestLokSupabase:{rpc:async(name,args)=>{
@@ -39,7 +40,7 @@ function make(role='gerente',local='munro',assignedLocals=[local]){
  const api={S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local,view:'pedidos-clientes',ro:false,offline:false},
   miRol:()=>role,misLocales:()=>assignedLocals,render(){},toast(){}};
  const mod=window.GestLokMiGustoOrders;mod.attach(api);
- return {mod,api,calls,handlers};
+ return {mod,api,calls,handlers,qrCalls};
 }
 const tick=()=>new Promise(r=>setImmediate(r));
 const clickSection=(m,section)=>m.handlers.click({target:{closest:q=>q==='[data-mgp-section]'?{dataset:{mgpSection:section}}:null}});
@@ -138,4 +139,31 @@ test('Crear clave en servidor: gerente restringido por sucursal real, sin expone
  assert.match(sqlManager,/public\.mi_rol\(\) not in \('dueno','creadora','gerente'\)/);
  assert.match(sqlManager,/revoke all on function public\.gestlok_mg_android_bridge_create\(text\)/);
  assert.doesNotMatch(sqlManager,/grant execute on function public\.gestlok_mg_android_bridge_ingest_v2/);
+});
+
+test('QR propio de GESTLOK es legible, específico del local y nunca lleva la clave privada',async()=>{
+ for(const loc of ['munro','torcuato']){
+  const m=make('gerente',loc);m.mod.subscribe(loc,()=>{});await tick();await tick();
+  clickSection(m,'vinculacion');
+  const html=m.mod.view();
+  const url='https://gestlok.com.ar/vincular-whatsapp/?local='+loc;
+  assert.match(html,/QR propio de GESTLOK/);
+  assert.ok(html.includes('href="'+url+'"'));
+  assert.match(html,/<svg[^>]*aria-label="QR de configuración de /);
+  assert.equal(m.qrCalls.at(-1),url);
+  assert.doesNotMatch(m.qrCalls.join('|'),/b{64}/,'la clave de vínculo no se comparte por QR');
+  assert.match(html,/No conecta WhatsApp por sí solo/);
+ }
+ const ajeno=make('gerente','torcuato',['munro']);
+ assert.doesNotMatch(ajeno.mod.view(),/QR propio de GESTLOK/);
+});
+
+test('Guía pública del QR valida sucursal y no publica ni solicita claves en el enlace',()=>{
+ const page=fs.readFileSync(new URL('../public/vincular-whatsapp/index.html',import.meta.url),'utf8');
+ assert.match(page,/Object.prototype.hasOwnProperty.call\(locals,local\)/);
+ assert.match(page,/X-Gestlok-Bridge-Key/);
+ assert.match(page,/WhatsApp Business/);
+ assert.match(page,/customer_phone:'\{not_title\}'/);
+ assert.match(page,/navigator.clipboard.writeText/);
+ assert.doesNotMatch(page,/token=|bridge_key=|localStorage/);
 });

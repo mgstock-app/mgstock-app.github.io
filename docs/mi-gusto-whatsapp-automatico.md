@@ -12,6 +12,13 @@ El agente de Meta atiende al cliente **dentro de WhatsApp Business** de cada suc
 - En GESTLOK: **Pedidos WhatsApp → Avisos de WhatsApp Business → Abrir chat / Copiar número → ✓ Revisado**. El OK no toca Caja, Stock ni Pagos Online.
 - Dueños y creadora gestionan la clave; gerentes autorizados revisan y marcan avisos. Los datos de los locales no se cruzan.
 
+## QR propio de GESTLOK (sin API)
+- En **Pedidos WhatsApp → Vinculación** cada sucursal ve un QR real y un botón **Abrir en este celular**. La librería QR ya incluida en la app lo genera localmente.
+- El QR de Munro abre `https://gestlok.com.ar/vincular-whatsapp/?local=munro`; el de Don Torcuato abre `https://gestlok.com.ar/vincular-whatsapp/?local=torcuato`. Es una **guía de configuración**, no un QR de WhatsApp Web ni una conexión automática.
+- El enlace contiene **solo la sucursal**, jamás la clave privada de 64 caracteres ni datos de clientes. La clave se obtiene en la pantalla autenticada de GESTLOK, una sola vez.
+- Esta solución no requiere Cloud API. Requiere MacroDroid y permisos de notificación en el Android de la sucursal. El estado de vínculo se comprueba únicamente mediante una señal real recibida y nunca al escanear el QR.
+- Si el agente de Meta no crea una notificación Android reconocible, **no hay alerta**: el QR no soluciona esa limitación.
+
 ## Vinculación de cada celular Android
 1. Ingresar con dueño o creadora a **Mi Gusto → [sucursal] → Pedidos WhatsApp → Vincular WhatsApp Business**.
 2. Generar clave de vínculo para ese local (se muestra una única vez). **No enviarla por WhatsApp ni ponerla en capturas.**

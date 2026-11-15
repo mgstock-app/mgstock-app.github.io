@@ -264,3 +264,17 @@
 .mgp-mobile-alert-reviewed strong{color:#3b536b}
 .mgp-mobile-reviewed-label{flex:none;font-size:12px;font-weight:800;color:#227046}
 @media(max-width:560px){.mgp-main-tabs button{font-size:13px;min-height:44px}.mgp-mobile-alerts header{padding:13px}.mgp-mobile-filters{padding:10px 10px 3px}.mgp-mobile-zero{padding:23px 14px}.mgp-mobile-reviewed-label{margin-left:auto}}
+
+/* QR de inicio de configuración: público y sin claves, separado por sucursal. */
+.mgp-mobile-qr{display:flex;align-items:center;gap:18px;margin:12px 16px 16px;padding:14px;border:1px solid #d7e2eb;border-radius:13px;background:#f8fafc}
+.mgp-mobile-qr-image{display:grid;place-items:center;flex:none;width:170px;height:170px;padding:9px;background:#fff;border:1px solid #dbe4ed;border-radius:10px}
+.mgp-mobile-qr-image svg{width:100%;height:100%;display:block}
+.mgp-mobile-qr-image span{font-size:12px;line-height:1.4;color:#647588;text-align:center}
+.mgp-mobile-qr-info{min-width:0;display:grid;gap:8px}
+.mgp-mobile-qr-info strong{font-size:15px;color:#12345a}
+.mgp-mobile-qr-info p{margin:0;font-size:12px;line-height:1.5;color:#50667b}
+.mgp-mobile-qr-links{display:flex;gap:7px;flex-wrap:wrap}
+.mgp-mobile-qr-links a,.mgp-mobile-qr-links button{display:inline-flex;justify-content:center;align-items:center;min-height:39px;padding:8px 12px;border:1px solid #12345a;border-radius:9px;background:#fff;color:#12345a;font:inherit;font-size:12px;font-weight:750;text-decoration:none;cursor:pointer}
+.mgp-mobile-qr-links a{background:#12345a;color:#fff}
+.mgp-mobile-qr-info>code{font-size:11px;overflow-wrap:anywhere;color:#536c84}
+@media(max-width:570px){.mgp-mobile-qr{flex-direction:column;text-align:center;gap:10px;margin:12px 10px}.mgp-mobile-qr-image{width:185px;height:185px}.mgp-mobile-qr-links{justify-content:center}.mgp-mobile-qr-links a,.mgp-mobile-qr-links button{flex:1 1 130px}}

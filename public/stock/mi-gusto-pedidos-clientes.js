@@ -48,6 +48,21 @@ const pendingCount=()=>allowed()?pendingOrders().length+mobileAlerts().length:0;
 const mobileAlerts=()=>allowed()?androidAlerts.filter(x=>x.status==='pendiente'):[];
 const totalAlerts=()=>pendingCount();
 const bridgeUrl=()=>String(window.SPM_CONFIG?.url||'https://vgsepaaewbctjsjcpeta.supabase.co').replace(/\/$/,'')+'/functions/v1/mi-gusto-android-alert';
+// El QR lleva únicamente a una guía de configuración pública de GESTLOK:
+// jamás incluye la clave privada de la sucursal ni habilita lectura de chats.
+const setupLink=()=> 'https://gestlok.com.ar/vincular-whatsapp/?local='+encodeURIComponent(local());
+function setupQrSvg(){
+ if(!metaLocal()||typeof window.qrcode!=='function')return '';
+ try{
+  const q=window.qrcode(0,'M');q.addData(setupLink());q.make();
+  const n=q.getModuleCount(),margin=4,size=n+margin*2;
+  let path='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))path+='M'+c+' '+r+'h1v1h-1z';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+size+' '+size+'" role="img" aria-label="QR de configuración de '+esc(localName())+'" shape-rendering="crispEdges">'+
+   '<rect width="'+size+'" height="'+size+'" fill="#fff"/><path transform="translate('+margin+' '+margin+')" d="'+path+'" fill="#111"/></svg>';
+ }catch{return '';}
+}
+
 const navBadge=()=>totalAlerts()?'<span class="mgp-nav-count" data-mgp-nav-count aria-label="'+totalAlerts()+' avisos pendientes">'+Math.min(99,totalAlerts())+(totalAlerts()>99?'+':'')+'</span>':'';
 function quickAccess(){
  if(!allowed())return '';
@@ -261,6 +276,13 @@ function mobileBridgePanel(){
  '<p>Cada sucursal necesita su propio celular Android con WhatsApp Business y MacroDroid. Solo se transmite la alerta y el número cuando figura visible; no se copian conversaciones.</p>'+
  '<p><b>Estado:</b> '+(configured?'Clave generada':'Pendiente de configurar')+
  (androidBridge?.last_event_at?' · Última señal: '+date(androidBridge.last_event_at):' · Sin señales recibidas')+'</p>'+
+
+ '<div class="mgp-mobile-qr"><div class="mgp-mobile-qr-image">'+(setupQrSvg()||'<span>No se pudo mostrar el QR. Usá el enlace.</span>')+'</div>'+
+ '<div class="mgp-mobile-qr-info"><strong>QR propio de GESTLOK · '+esc(localName())+'</strong>'+
+ '<p>Escanealo con el Android del local para abrir la guía de configuración. No conecta WhatsApp por sí solo ni reemplaza los permisos de MacroDroid.</p>'+
+ '<div class="mgp-mobile-qr-links"><a href="'+esc(setupLink())+'" target="_blank" rel="noopener noreferrer">Abrir en este celular</a>'+
+ '<button type="button" data-mgp-copy="mgp-setup-url">Copiar enlace</button></div>'+
+ '<code id="mgp-setup-url">'+esc(setupLink())+'</code></div></div>'+
  '<ol><li>En el Android de '+esc(localName())+', instalá MacroDroid y autorizá acceso a notificaciones.</li>'+
  '<li>Disparador: <b>Notificación recibida → WhatsApp Business</b>. Filtrá por la notificación de derivación del agente, NO por todos los mensajes. Verificá qué aviso produce Meta.</li>'+
  '<li>Acción: <b>Solicitud HTTP POST</b> con URL de abajo, encabezado <code>X-Gestlok-Bridge-Key</code> con tu clave y <code>Content-Type: application/json</code>.</li>'+
