@@ -148,7 +148,14 @@ function dateTitle(iso){
  const d=new Date(iso+'T12:00:00Z');
  return new Intl.DateTimeFormat('es-AR',{weekday:'long',timeZone:'UTC'}).format(d);
 }
-function groupedHistory(){
+// Corrección excepcional de etiqueta: 14/11/2026 fue un solo conteo real.
+ // Se mantiene el ID original del registro (manana_entrada) y TODAS sus cantidades.
+ // Solo el texto visible en el historial y su PNG se identifica como Noche salida.
+ function historyShiftLabel(rec){
+  if(rec?.day==='2026-11-14'&&rec?.shift==='manana_entrada')return 'Noche · salida';
+  return SHIFTS.find(s=>s[0]===rec?.shift)?.[1]||rec?.shift||'';
+ }
+ function groupedHistory(){
  const groups=new Map();
  for(const r of historyRows){
   if(!groups.has(r.day))groups.set(r.day,new Map());
@@ -172,7 +179,9 @@ function historyListView(){
    '<span class="gcm-history-date"><span class="gcm-history-calendar" aria-hidden="true">▦</span><strong>'+esc(name)+'</strong>'+
    '<span class="gcm-history-weekday">'+esc(dateTitle(date))+'</span></span>'+
    '<span class="gcm-history-arrow" aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>'+
-   (expanded?'<div class="gcm-history-shifts">'+SHIFTS.map(([key,title])=>{
+   (expanded?'<div class="gcm-history-shifts">'+(date==='2026-11-14'
+  ?[['manana_entrada','Noche · salida']]
+  :SHIFTS).map(([key,title])=>{
     const rec=records.get(key);
     return '<div class="gcm-history-shift"><span class="gcm-history-shift-name">Turno '+esc(title.replace(' · ',' '))+'</span>'+
     (rec?'<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+(rec.status==='finalizado'?'Finalizado':'En curso')+'</span>'+
@@ -250,7 +259,7 @@ function historyA4Image(rec){
  write('CONTEO DE PRODUCTOS',M,137,40,ink,'700');
  rule(M,165,W-M*2,navy);
  write('Fecha: '+labelDay(rec.day),M,213,22,ink,'700');
- write('Turno: '+(SHIFTS.find(x=>x[0]===rec.shift)?.[1]||rec.shift),M,253,21,ink);
+ write('Turno: '+historyShiftLabel(rec),M,253,21,ink);
  write('Responsable: '+(rec.responsable||'Sin asignar'),W/2,213,21,ink);
  write('Estado: '+(rec.status==='finalizado'?'Finalizado':'En curso'),W/2,253,21,
   rec.status==='finalizado'?'#216e57':'#875c25','700');
@@ -380,16 +389,16 @@ function historyDetailView(){
  if(!rec)return historyListView();
  const products=(snapshot?.products||[]).filter(p=>rec.data?.[p.id]||rec.decomiso?.[p.id]);
  const categories=[...new Set(products.map(p=>p.section))];
- const filename='conteo-munro-'+rec.day+'-'+rec.shift+'.png';
+ const filename='conteo-munro-'+rec.day+'-'+(rec.day==='2026-11-14'&&rec.shift==='manana_entrada'?'noche_salida':rec.shift)+'.png';
  const image=historyPreviewUrl?'<figure class="gcm-a4-preview">'+
-   '<img src="'+historyPreviewUrl+'" alt="Hoja A4 completa: conteo del '+esc(labelDay(rec.day))+'; '+esc(rec.shift)+'; productos, totales y consumos" loading="eager">'+
+   '<img src="'+historyPreviewUrl+'" alt="Hoja A4 completa: conteo del '+esc(labelDay(rec.day))+'; '+esc(historyShiftLabel(rec))+'; productos, totales y consumos" loading="eager">'+
    '<figcaption>Una sola imagen, proporción A4. Podés ampliarla o descargarla.</figcaption></figure>':
    '<p class="gcm-error" role="alert">'+esc(historyPreviewError||'No se pudo generar la imagen A4.')+'</p>';
  return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+
    '<button type="button" data-gcm-history-back>← Volver al historial</button>'+
    '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Vista previa A4</h2></div></div></header>'+
-  '<div class="gcm-hd-meta"><strong>'+esc(labelDay(rec.day))+'</strong><span>'+esc('Turno '+(SHIFTS.find(x=>x[0]===rec.shift)?.[1]||rec.shift).replace(' · ',' '))+'</span>'+
+  '<div class="gcm-hd-meta"><strong>'+esc(labelDay(rec.day))+'</strong><span>'+esc('Turno '+historyShiftLabel(rec).replace(' · ',' '))+'</span>'+
   '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span><span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
   (rec.status==='finalizado'?'Finalizado':'En curso')+'</span></div>'+
   '<div class="gcm-a4-toolbar">'+(historyPreviewUrl?'<a class="gcm-a4-download" href="'+historyPreviewUrl+
@@ -1156,5 +1165,5 @@ document.addEventListener('change',async e=>{
  if(isDecomp)void saveDecomiso(p,cell);else void saveCell(p,i,cell);
  api.render();
 });
-window.GestLokMunroConteo=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{marks,plusDays,labelDay,nextTurn}});
+window.GestLokMunroConteo=Object.freeze({attach,view,subscribe,reset,permitido:allowed,_test:{marks,plusDays,labelDay,nextTurn,historyShiftLabel}});
 })();
