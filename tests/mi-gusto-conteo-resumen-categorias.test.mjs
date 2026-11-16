@@ -78,7 +78,7 @@ for(const local of ['munro','torcuato']){
   assert.ok(labels.includes('ADEREZOS'));
   assert.ok(labels.includes('TOTAL GENERAL'));
   assert.ok(labels.includes(String(grand)));
-  assert.ok(labels.includes('CONSUMOS  ·  10 COLABORADORES'));
+  assert.ok(!labels.includes('CONSUMOS  ·  10 COLABORADORES'));
   assert.equal(a.canvases[0].width,1240);
   assert.equal(a.canvases[0].height,1754);
   assert.match(html,/Descargar imagen A4 \(PNG\)/);
@@ -111,7 +111,7 @@ for(const local of ['munro','torcuato']){
   assert.match(emp,/>EMP 24<\/strong>/);
   assert.doesNotMatch(emp,/EMPANADAS \(cont/);
   assert.ok(html.indexOf('<section class="gcm-hd-summary"')<html.indexOf('class="gcm-hd-print"'));
-  assert.match(html,/<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores<\/span><\/summary>/);
+  assert.doesNotMatch(html,/<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores<\/span><\/summary>/);
   assert.match(html,/<details class="gcm-hd-print"><summary>Descargar o imprimir<\/summary>/);
   assert.match(html,/data-gcm-a4-refresh/);
   // La visualización no solicita escrituras ni altera cantidades guardadas.

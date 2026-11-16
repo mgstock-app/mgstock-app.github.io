@@ -55,10 +55,10 @@ function setup(){
  return {mod,db,rec,calls,input,button};
 }
 
-test('Consumo visible y Desperdicios oculto por defecto',async()=>{
+test('Sin Consumo en Mañana entrada y Desperdicios ocultos por defecto',async()=>{
  const {mod}=setup();mod.view();await tick();
  const html=mod.view();
- assert.match(html,/>CONSUMO<\/h3>/);
+ assert.doesNotMatch(html,/>CONSUMO<\/h3>/);
  assert.doesNotMatch(html,/>DESPERDICIOS<\/h3>/);
  assert.match(html,/id="gcm-waste-toggle"/);
  assert.match(html,/Personalizar secciones/);
@@ -74,15 +74,10 @@ test('gerente oculta y restaura secciones sin modificar el catálogo',async()=>{
  await input({attr:'data-gcm-section-visible',dataset:{gcmSectionVisible:'SALSAS'},checked:true});
  assert.match(mod.view(),/data-gcm-section="SALSAS"/);
 });
-test('Consumos tiene 10 filas fijas y no permite agregar ni quitar colaboradores',async()=>{
+test('Mañana entrada no genera filas de consumo ni permite cambiarlas',async()=>{
  const {mod,button,rec}=setup();mod.view();await tick();
  const html=mod.view();
- for(let i=0;i<10;i++){
-  assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="name"'));
-  assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="value"'));
- }
- assert.doesNotMatch(html,/data-gcm-extra-add="consumption"/);
- assert.doesNotMatch(html,/data-gcm-extra-remove="consumption"/);
+ assert.doesNotMatch(html,/data-gcm-extra="consumption"/);
  await button('data-gcm-extra-add',{gcmExtraAdd:'consumption'});
  await button('data-gcm-extra-remove',{gcmExtraRemove:'consumption',row:'9'});
  assert.equal(rec.consumption.length,0);

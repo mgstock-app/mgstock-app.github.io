@@ -39,7 +39,7 @@ for(const loc of ['munro','torcuato']){
   assert.match(html,/data-gcm-nav-section="SALSAS"/);
   assert.match(html,/data-gcm-nav-section="AGUAS"/);
   assert.doesNotMatch(html,/data-gcm-nav-section="HELADOS"/,'categorías ocultas no deben aparecer en el lateral');
-  assert.match(html,/data-gcm-nav-extras="consumption"/);
+  assert.doesNotMatch(html,/data-gcm-nav-extras="consumption"/);
   assert.match(html,/data-gcm-nav-extras="waste"/);
   for(let n=1;n<=4;n++)assert.match(html,new RegExp('gcm-expiry-ruler-date[^>]*><b>Vto '+n+'<'));
   assert.ok(html.indexOf('data-gcm-nav-section="EMPANADAS"')<html.indexOf('data-gcm-nav-section="SALSAS"'));
