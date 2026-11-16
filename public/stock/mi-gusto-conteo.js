@@ -311,7 +311,8 @@ function historyA4Image(rec){
  const wasteCols=waste.length>27?4:waste.length>18?3:waste.length>9?2:1;
  const wasteRows=Math.ceil(waste.length/wasteCols);
  const wasteH=waste.length?55+wasteRows*27:0;
- const consH=385,consY=H-93-consH-wasteH;
+ const hasConsumption=rec.shift!=='manana_entrada';
+ const consH=hasConsumption?385:0,consY=H-93-consH-wasteH;
  rect(0,0,W,H,'#fff');rect(0,0,W,13,navy);
  write('MI GUSTO  ·  '+localLabel().toUpperCase(),M,70,22,navy,'700');
  write('CONTEO DE PRODUCTOS',M,122,38,ink,'700');
@@ -335,7 +336,7 @@ function historyA4Image(rec){
  rect(M,262,W-2*M,99,navy);
  write('TOTAL GENERAL',M+23,297,20,'#dce8f4','700');
  write(sum,M+23,342,43,'#fff','700');
- write('10 ESPACIOS DE CONSUMO',right-23,325,21,'#fff','600','right');
+ if(hasConsumption)write('10 ESPACIOS DE CONSUMO',right-23,325,21,'#fff','600','right');
  write('RESUMEN POR CATEGORÍA',M,407,26,navy,'700');
  rule(M,421,W-2*M);
  const top=437,available=Math.max(180,consY-top-24),gap=14;
@@ -387,8 +388,9 @@ function historyA4Image(rec){
  if(!rows.length)write('Sin productos registrados en este turno',M,top+47,23,muted);
  if(groups.some(group=>group.missing))
   write('* Hay productos sin referencia; revisar el detalle del historial.',M,consY-14,16,'#9b6925');
- // Consumos: no se oculta ninguna de las diez filas originales.
+ // Consumos solo en Mañana salida y Noche salida; nunca en Mañana entrada.
  let y=consY;
+ if(hasConsumption){
  write('CONSUMOS  ·  10 COLABORADORES',M,y+25,26,navy,'700');
  y+=41;
  rect(M,y,W-2*M,40,pale);
@@ -405,6 +407,7 @@ function historyA4Image(rec){
   rule(M,y+(i+1)*rh,W-2*M);
  }
  y+=290;
+ }
  if(waste.length){
   y+=23;write('DESPERDICIOS',M,y,23,navy,'700');y+=14;
   const gapW=16,colW=(W-2*M-(wasteCols-1)*gapW)/wasteCols;
@@ -499,7 +502,8 @@ function historyCorrectionPanel(rec){
    RESPONSABLES.map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
   '<div class="gcm-history-fix-list">'+list.map(row).join('')+'</div>'+
    '<p class="gcm-history-fix-expl">Se guardan los registros cargados. Los campos vacíos de la fila adicional no crean datos.</p>';
- const kinds=[['cell','Cantidad por vencimiento'],['decomiso','Decomiso'],['responsable','Responsable'],['consumption','Consumos'],['waste','Desperdicios']];
+ const kinds=[['cell','Cantidad por vencimiento'],['decomiso','Decomiso'],['responsable','Responsable'],
+  ...(rec.shift==='manana_entrada'?[]:[['consumption','Consumos']]),['waste','Desperdicios']];
  const changes=historyCorrectionsLoaded?
   '<div class="gcm-history-corrections"><h4>Correcciones registradas</h4>'+
   (historyCorrections.length?historyCorrections.map(x=>'<article><strong>'+esc(x.kind==='cell'?'Vto '+x.expiry_index:x.kind==='decomiso'?'Decomiso':x.kind==='responsable'?'Responsable':x.kind==='consumption'?'Consumos':'Desperdicios')+
