@@ -101,6 +101,8 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get(".mhs-tabla tbody tr").first().find('.mhs-dia-extra').should("not.exist");
    cy.contains("button","Modificar").click();
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar feriado"]').check();
+   // El jueves debe quedar a la vista sin esconderse bajo la columna fija de colaboradores.
+   cy.get(".mhs-tabla-wrap").scrollTo(420,0,{duration:0});
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
