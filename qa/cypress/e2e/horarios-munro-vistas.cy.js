@@ -259,4 +259,18 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("button","Agregar colaborador por hora").should("not.exist");
   cy.get(".mhs-tabla input[type=time]").first().should("be.disabled");
  });
+ it("mantiene siete días visibles con diseño compacto y sin scroll vertical anidado",()=>{
+  cy.viewport(1366,900);iniciar();
+  cy.get(".mhs-tabla thead th",{timeout:15000}).should("have.length",8);
+  cy.get(".mhs-tabla-wrap").should(($wrap)=>{
+   const s=getComputedStyle($wrap[0]);
+   expect(s.maxHeight).to.eq("none");
+   expect(s.overflowY).to.eq("visible");
+  });
+  cy.get(".mhs-tabla tbody tr").first().find(".mhs-total-nombre")
+    .should("contain.text","Total semanal");
+  cy.get(".mhs-tabla tbody tr").first().find("input[type=time]")
+    .should("have.length",28);
+ });
+
 });
