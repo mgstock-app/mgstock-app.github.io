@@ -572,8 +572,8 @@ function expiryRuler(showDecomiso){
  return '<div class="gcm-expiry-ruler" aria-label="Vencimientos y fechas fijos durante el conteo">'+
  '<div class="gcm-expiry-ruler-scroll" role="region" aria-label="Fechas y vencimientos, desplazamiento horizontal" tabindex="0">'+
  '<div class="gcm-expiry-ruler-grid'+(showDecomiso?' has-decomiso':'')+'">'+
- '<span class="gcm-expiry-ruler-product">Producto</span>'+dates+
- (showDecomiso?'<span class="gcm-expiry-ruler-decomiso">Decomiso</span>':'')+
+ '<span class="gcm-expiry-ruler-product">Producto</span>'+
+ (showDecomiso?'<span class="gcm-expiry-ruler-decomiso">Decomiso</span>':'')+dates+
  '<span class="gcm-expiry-ruler-total">Total</span></div></div></div>';
 }
 function selectCategoryButton(root,name){
@@ -616,7 +616,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    '<button type="button" data-gcm-remove="'+esc(p.id)+'">Quitar producto</button>'+
    '<button type="button" class="gcm-product-dialog-cancel" data-gcm-menu-close>Cancelar</button>'+
    '</div></dialog></div>':'')+
-   '</th>'+cells+(showDecomiso?decompColumn(p,canWrite):'')+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
+   '</th>'+(showDecomiso?decompColumn(p,canWrite):'')+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
@@ -639,10 +639,11 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  '<p class="gcm-add-product-error" role="alert" aria-live="polite" data-gcm-add-product-error></p>'+
  '<div class="gcm-add-product-actions"><button type="button" data-gcm-add-product-save>Guardar producto</button>'+
  '<button type="button" data-gcm-add-product-cancel>Cancelar</button></div></dialog>':'')+
- '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table><thead><tr>'+
- '<th scope="col" class="gcm-product-head">Producto</th>'+
+ '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table class="gcm-count-data-table'+(showDecomiso?' has-decomiso':'')+'"><colgroup><col class="gcm-col-product">'+
+ (showDecomiso?'<col class="gcm-col-decomiso">':'')+Array.from({length:4},()=>'<col class="gcm-col-vto">').join('')+'<col class="gcm-col-total"></colgroup><thead class="gcm-repeat-head"><tr>'+
+ '<th scope="col" class="gcm-product-head">Producto</th>'+(showDecomiso?'<th scope="col" class="gcm-decomp-head gcm-vto-col" data-gcm-idx="d">Decomiso</th>':'')+
  
- dates.map((s,index)=>'<th scope="col" class="gcm-vto-col'+(activeVto===String(index+1)?' is-current-vto':'')+'" data-gcm-idx="'+(index+1)+'"><span class="gcm-vto">'+esc(s.vto)+'</span><span class="gcm-vto-date">'+esc(s.dia)+'</span></th>').join('')+(showDecomiso?'<th scope="col" class="gcm-decomp-head gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">Decomiso</th>':'')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
+ dates.map((s,index)=>'<th scope="col" class="gcm-vto-col'+(activeVto===String(index+1)?' is-current-vto':'')+'" data-gcm-idx="'+(index+1)+'"><span class="gcm-vto">'+esc(s.vto)+'</span><span class="gcm-vto-date">'+esc(s.dia)+'</span></th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
 }
 function extraTable(kind,title,headA,headB,rec,canWrite){
  const rows=Array.isArray(rec[kind])?rec[kind]:[];
@@ -1209,7 +1210,18 @@ document.addEventListener('change',async e=>{
   try{await rpc('gestlok_munro_conteo_decomiso_visible',{p_day:d,p_shift:s,p_visible:visible});
     const rec=draftRecord();if(rec)rec.decomiso_visible=visible;error='';
   }catch(err){error=err.message||'No se pudo cambiar Decomiso';input.checked=old;api.toast?.(error);}
-  finally{busy=false;api.render();}
+  finally{
+   busy=false;api.render();
+   if(!error){
+    // La columna Decomiso está junto al producto para que se vea enseguida
+    // incluso en tablets de poco ancho, sin tener que buscar el Vto 5.
+    const sheet=document.querySelector?.('.gcm-count-screen .gcm-sheet-scroll');
+    if(sheet)sheet.scrollLeft=0;
+    const ruler=document.querySelector?.('.gcm-count-screen .gcm-expiry-ruler-scroll');
+    if(ruler)ruler.scrollLeft=0;
+    api?.toast?.(visible?'Decomiso habilitado. La columna amarilla aparece junto a Producto.':'Decomiso oculto. Las cantidades registradas siguen guardadas.');
+   }
+  }
   return;
  }
  if(input.hasAttribute('data-gcm-section-visible')||input.id==='gcm-waste-toggle'){
