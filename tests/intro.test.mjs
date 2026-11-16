@@ -13,7 +13,7 @@ test("la introducción GestLok aparece antes del login sin cambiar los accesos",
   assert.ok(page.indexOf("<GestLokIntro />") < page.indexOf("<StockRuntime />"));
   assert.match(splash, />GESTLOK<\/div>/);
   assert.match(splash, /Todo tu negocio, en orden\./);
-  assert.match(css, /gl-intro-dismiss \.62s ease-in-out 3\.1s forwards/);
+  assert.match(css, /gl-intro-dismiss \.2s ease-out \.12s forwards/);
   assert.match(css, /visibility:hidden;pointer-events:none/);
 });
 
@@ -25,4 +25,11 @@ test("la introducción respeta movimiento reducido y no interrumpe al volver a l
   assert.doesNotMatch(splash, /supabase|localStorage|fetch\(/i);
   assert.match(splash, /sessionStorage\.getItem\(KEY\)/);
   assert.match(splash, /sessionStorage\.setItem\(KEY, "1"\)/);
+});
+
+
+test("la presentación no bloquea varios segundos el ingreso",()=>{
+ const css=read("app/gestlok-intro.css");
+ assert.doesNotMatch(css,/3\\.1s forwards|3\\.7s/);
+ assert.match(css,/gl-intro-dismiss \\.2s ease-out \\.12s forwards/);
 });
