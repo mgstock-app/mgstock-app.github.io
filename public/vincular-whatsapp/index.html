@@ -54,6 +54,17 @@ footer{padding:6px 0;color:#627488;font-size:12px}
 <h1>Configurar avisos de WhatsApp Business</h1>
 <p>Este asistente corresponde solo a <strong id="local-name"></strong>. Cada sucursal conserva su número, su clave privada y sus avisos independientes.</p>
 <p class="status"><strong>El QR no conecta WhatsApp por sí solo.</strong> Para funcionar sin la API de Meta hay que autorizar una vez las notificaciones y preparar MacroDroid. GESTLOK confirmará la conexión solo cuando reciba una señal real.</p>
+<div class="field" id="macrodroid-import">
+<h2>¿Ya tenés MacroDroid instalado?</h2>
+<p>Podés importar una macro de GESTLOK con el método POST, la URL, los encabezados y el JSON de <strong id="local-name-import"></strong> ya preparados, sin escribirlos a mano.</p>
+<ol><li>Ingresá con tu cuenta autorizada a <strong>GESTLOK → Mi Gusto → <span id="local-name-import-2"></span> → Pedidos WhatsApp → Vinculación</strong>.</li>
+<li>Tocá <strong>Descargar macro preparada</strong>. GESTLOK genera un archivo .macro en tu celular, con la clave privada de esa sucursal.</li>
+<li>Abrí el archivo con MacroDroid o importalo desde el menú Macros. Revisá el filtro de notificación, autorizá permisos y activá la macro.</li>
+<li>Volvé a GESTLOK para <strong>Iniciar prueba de conexión</strong> y <strong>Comprobar señal</strong>.</li></ol>
+<p class="tip">Por seguridad, la clave no viaja en el QR y no se genera el archivo sin una sesión autorizada. Si tenías una clave anterior, GESTLOK confirmará su reemplazo.</p>
+<div class="actions"><a class="button" href="https://gestlok.com.ar/">Entrar a GESTLOK para importar</a></div>
+</div>
+<p class="sub">También podés configurar la macro manualmente en tres pasos:</p>
 <nav class="steps" aria-label="Pasos de vinculación">
 <button type="button" class="step" data-step="1" aria-current="step"><span class="step-num">1</span>Preparar</button>
 <button type="button" class="step" data-step="2" aria-current="false"><span class="step-num">2</span>Configurar</button>
@@ -109,7 +120,7 @@ footer{padding:6px 0;color:#627488;font-size:12px}
  byId(valid?'content':'invalid').hidden=false;
  if(!valid)return;
  document.title='Vincular avisos '+locals[local]+' · GESTLOK';
- ['local-name','local-name-1','local-name-2','local-name-3','local-name-4','local-tag'].forEach(function(id){byId(id).textContent=locals[local]});
+ ['local-name','local-name-1','local-name-2','local-name-3','local-name-4','local-name-import','local-name-import-2','local-tag'].forEach(function(id){byId(id).textContent=locals[local]});
  byId('url').textContent='https://vgsepaaewbctjsjcpeta.supabase.co/functions/v1/mi-gusto-android-alert';
  byId('body-json').textContent=JSON.stringify({local:local,customer_phone:'{not_title}'},null,2);
  function showStep(n){
