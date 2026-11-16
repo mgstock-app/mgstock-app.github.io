@@ -1,0 +1,96 @@
+
+/* Staff de Mi Gusto Munro: presentación únicamente.
+   Preserva todos los campos, roles, datos, OFF y guardado automático. */
+.mhs{--mhs-azul:#142d50;--mhs-borde:#dce5ef;color:#1a2a43;gap:16px}
+.mhs-pestanas{gap:6px;border-bottom:1px solid var(--mhs-borde);padding-bottom:4px}
+.mhs-pestanas button{border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;
+  background:transparent;color:#526178;min-height:43px;font-size:13px;font-weight:700;padding:10px 15px}
+.mhs-pestanas button:first-child,.mhs-pestanas button:last-child{border-radius:8px 8px 0 0}
+.mhs-pestanas button[aria-current="page"]{border-color:var(--mhs-azul);background:#f0f4fa;color:var(--mhs-azul)}
+.mhs button:focus-visible,.mhs input:focus-visible,.mhs select:focus-visible{outline:2px solid #467db8;outline-offset:2px}
+.mhs-toolbar{border:1px solid var(--mhs-borde);border-radius:12px;padding:12px 14px;background:#fff;gap:12px}
+.mhs-semana span{color:var(--mhs-azul);font-size:14px;white-space:normal}
+.mhs-semana button,.mhs-acciones button,.mhs-agregar button{border-radius:9px;min-height:42px;border-color:#cbd6e5}
+.mhs-acciones .mhs-primario,.mhs-agregar>button{background:var(--mhs-azul);border-color:var(--mhs-azul);color:#fff}
+.mhs-ayuda{line-height:1.55;color:#64748b}
+.mhs-tabla-navegacion{background:#f8fafc;border:1px solid #e1e8f1;border-left:3px solid #244a79;
+  border-radius:9px;padding:9px 12px;gap:4px}
+.mhs-tabla-navegacion strong{color:#203d60;font-size:13px}
+.mhs-tabla-navegacion>span{color:#768499;font-size:12px}
+.mhs-tabla-wrap{border:0;background:transparent;border-radius:0}
+.mhs-tabla{border-collapse:separate;border-spacing:0 10px;font-size:12px}
+.mhs-tabla thead th{background:var(--mhs-azul);color:white;border-bottom:0;
+  font-size:13px;font-weight:750;padding:14px 5px;text-align:center}
+.mhs-tabla thead th:first-child{border-radius:10px 0 0 10px;text-align:left;padding-left:13px}
+.mhs-tabla thead th:last-child{border-radius:0 10px 10px 0}
+.mhs-tabla thead small{font-size:11px;opacity:.85;margin-top:5px}
+.mhs-tabla tbody th,.mhs-tabla tbody td{vertical-align:top;background:white;
+  border-top:1px solid var(--mhs-borde);border-bottom:1px solid var(--mhs-borde);
+  border-right:1px solid #ebeff5}
+.mhs-tabla tbody th{border-left:1px solid var(--mhs-borde);border-radius:11px 0 0 11px;padding:15px 9px}
+.mhs-tabla tbody td:last-child{border-right:1px solid var(--mhs-borde);border-radius:0 11px 11px 0}
+.mhs-tabla tbody tr.mhs-inactivo th,.mhs-tabla tbody tr.mhs-inactivo td{background:#fbfcfe}
+.mhs-colaborador{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+.mhs-colaborador>strong{order:0;color:#162b4a;font-size:17px;font-weight:800}
+.mhs-colaborador>input{order:0;min-height:39px;font-size:14px;background:#fff}
+.mhs-colaborador .mhs-modalidad{order:1;background:#f1f5fa;border:0;
+  color:#50617b;font-size:11px;padding:4px 8px;border-radius:6px}
+.mhs-colaborador .mhs-opciones-colaborador{order:2;width:100%;gap:11px}
+.mhs-colaborador .mhs-total-nombre{order:3;display:block;width:100%;max-width:100%;
+  border:1px solid #e4eaf2;border-radius:9px;background:#f1f5fa;
+  color:#284467;padding:10px 9px;font-size:12px;line-height:1.4}
+.mhs-colaborador .mhs-pendientes{order:4}
+.mhs-estado{border-radius:8px;padding:5px 8px;min-height:34px}
+.mhs-extra-opciones{display:grid;gap:8px;border-color:#e4eaf2;padding-top:10px}
+.mhs-extra-opciones label{font-size:12px;font-weight:500;min-height:22px}
+.mhs-tabla .mhs-cuatro{position:relative;display:grid;grid-template-columns:minmax(0,1fr);
+  gap:7px;padding-top:44px;align-content:start;min-width:0}
+.mhs-tabla .mhs-cuatro .mhs-descansos{position:absolute;top:0;left:0;right:0;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;
+  padding:0;background:transparent}
+.mhs-tabla .mhs-descansos .mhs-descanso-boton{min-height:34px;min-width:0;
+  background:#f7f9fc;border-color:#cbd6e4;color:#506078;
+  font-size:clamp(9px,.8vw,11px);border-radius:7px}
+.mhs-tabla .mhs-descansos .mhs-descanso-boton[aria-pressed="true"]{
+  border-color:#7495bf;background:#e6f0fd;color:#163f70}
+.mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra){display:grid;
+  grid-template-columns:minmax(0,1fr);gap:4px;align-content:start;min-width:0}
+.mhs-tabla .mhs-cuatro label span{display:block;min-height:22px;color:#64738a;
+  font-size:clamp(9px,.84vw,11px);line-height:1.2;white-space:normal;font-weight:650}
+.mhs-tabla .mhs-cuatro input[type=time]{display:block;width:100%;min-width:0;min-height:40px;
+  padding:6px 1px;border:1px solid #cbd5e3;border-radius:8px;background:#fbfcfe;
+  color:#223a59;font-size:clamp(11px,.9vw,14px);text-align:center;font-weight:650}
+.mhs-tabla .mhs-cuatro input[type=time]:disabled{background:#f2f5f9;color:#68768a}
+.mhs-tabla .mhs-cuatro input[aria-invalid="true"]{border:2px solid #ce403b;background:#fff3f1}
+.mhs-tabla .mhs-cuatro>label.mhs-dia-extra{margin-top:2px;padding-top:7px}
+.mhs-tabla .mhs-horas-dia{padding:8px 2px;min-height:32px;margin-top:2px;
+  border-radius:7px;background:#edf4fc;color:#315577;font-size:10px}
+.mhs-agregar{padding-top:6px}
+.mhs-agregar>button{padding:10px 17px;border-radius:10px;font-weight:750}
+.mhs-agregar>button:hover:not(:disabled){background:#1e426c}
+@media(min-width:761px){
+  /* Un solo desplazamiento vertical: el de la página; evita saltos de la planilla. */
+  .mhs-tabla-wrap{max-height:none;overflow:clip;position:relative;
+    scrollbar-gutter:auto;overscroll-behavior:auto;scroll-padding-top:0}
+  .mhs-tabla{width:100%;min-width:0;table-layout:fixed}
+  .mhs-tabla thead th{position:sticky;top:0;z-index:3;min-width:0;
+    max-width:none;width:auto;box-shadow:none}
+  .mhs-tabla thead th:first-child{width:clamp(166px,19%,214px);z-index:4}
+  .mhs-tabla tbody th{position:static;min-width:0;max-width:none;width:auto;box-shadow:none}
+  .mhs-tabla tbody td{min-width:0;max-width:none;width:auto;padding:12px 4px}
+}
+@media(max-width:760px){
+  .mhs{gap:12px}
+  .mhs-toolbar{padding:10px;gap:8px}
+  .mhs-pestanas button{min-height:42px;padding:9px 5px;font-size:12px}
+  .mhs-semana span{font-size:12px}
+  .mhs-movil-dias button{min-height:53px;border-color:#dce5ef;border-radius:9px}
+  .mhs-movil-lista{gap:12px}
+  .mhs-card{border:1px solid #dce5ef;border-radius:13px;padding:14px;gap:12px;
+    box-shadow:0 2px 8px #15314d0b}
+  .mhs-card header h3{color:#162b4a;font-size:17px}
+  .mhs-card header .mhs-total-nombre{background:#f0f5fb;border-radius:8px;padding:8px}
+  .mhs-card .mhs-cuatro input[type=time]{min-height:42px;border-radius:8px;
+    border:1px solid #cbd6e4;background:#fbfcfe}
+  .mhs-agregar>button{width:100%}
+}
