@@ -18,8 +18,8 @@
       "original": "    (puedeVerMotos() ? `<button data-go=\"motos\">${ic('moto')}<span class=\"nl\">Motos Agencia</span></button><a class=\"snav-link\" href=\"${esc(new URL('empleados/?seccion=horarios',document.baseURI).href)}\">${ic('clock')}<span class=\"nl\">Horarios</span></a>` : '') +"
     },
     {
-      "actual": "if (!puedeVerMotos() && !puedeVerStaffMunro() && !puedeVerResenas() && !puedeVerPagosOnline() && !puedeVerConteoMunro() && !puedeVerReclamos()) return items;",
-      "original": "if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline() && !puedeVerConteoMunro() && !puedeVerReclamos()) return items;"
+      "actual": "if (!puedeVerMotos() && !puedeVerStaffMunro() && !puedeVerResenas() && !puedeVerPagosOnline() && !puedeVerReclamos()) return items;",
+      "original": "if (!puedeVerMotos() && !puedeVerResenas() && !puedeVerPagosOnline() && !puedeVerReclamos()) return items;"
     }
   ]
 }
