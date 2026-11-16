@@ -38,6 +38,13 @@ function marks(value){
 }
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null,historyPreviewUrl='',historyPreviewError='';
+let historyEditMode=false,historyEditKind='cell',historyEditProduct='',historyEditVto=1;
+let historyCorrections=[],historyCorrectionsLoaded=false,historyCorrectionError='',historyCorrecting=false;
+function clearHistoryEditor(){
+ historyEditMode=false;historyEditKind='cell';historyEditProduct='';historyEditVto=1;
+ historyCorrections=[];historyCorrectionsLoaded=false;historyCorrectionError='';historyCorrecting=false;
+}
+
 const queues=new Map();
 // Borradores locales: se conservan hasta recibir confirmación real del servidor.
 // Solo cantidades del usuario, local y fechas recientes; sin información de otras empresas.
@@ -104,7 +111,7 @@ function reset(){
  ++generation;++historyToken;
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
  loading=false;busy=false;finishing=false;error='';queues.clear();pendingDrafts.clear();pendingStore='';opened=new Set(['EMPANADAS']);
- historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';
+ historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
@@ -452,6 +459,67 @@ function historyExtraBlock(kind,title,rec){
  '</section>';
 }
 
+function historyCorrectionPanel(rec){
+ const canEdit=editable()&&rec.status==='finalizado';
+ const catalog=snapshot?.products||[];
+ const present=new Set([...Object.keys(rec.data||{}),...Object.keys(rec.decomiso||{})]);
+ const products=catalog.filter(p=>present.has(p.id));
+ const usable=products.length?products:catalog;
+ if(!historyEditProduct||!usable.some(p=>p.id===historyEditProduct))historyEditProduct=usable[0]?.id||'';
+ const p=usable.find(x=>x.id===historyEditProduct);
+ const kind=historyEditKind;
+ const idx=kind==='decomiso'?0:historyEditVto;
+ const prev=kind==='cell'?rec.data?.[p?.id]?.['v'+idx]:
+  kind==='decomiso'?rec.decomiso?.[p?.id]:null;
+ const value={chapas:Number(prev?.chapas)||0,sueltas:Number(prev?.sueltas)||0,qty:Number(prev?.qty)||0};
+ const input=(field,label,max)=>'<label>'+label+'<input type="number" min="0" max="'+max+
+  '" step="1" inputmode="numeric" data-gcm-history-number="'+field+'" value="'+value[field]+'" required></label>';
+ const list=kind==='consumption'?Array.from({length:10},(_,i)=>rec.consumption?.[i]||{name:'',value:''}):
+  [...(Array.isArray(rec.waste)?rec.waste:[]),{name:'',value:''}].slice(0,60);
+ const row=(r,i)=>'<div class="gcm-history-fix-row"><strong>'+(i+1)+'</strong>'+
+  '<input data-gcm-history-extra-name placeholder="'+(kind==='consumption'?'Colaborador':'Producto')+'" maxlength="90" value="'+esc(r.name||'')+'" aria-label="Nombre fila '+(i+1)+'">'+
+  '<input data-gcm-history-extra-value placeholder="'+(kind==='consumption'?'Consumo':'Cantidad')+'" maxlength="90" value="'+esc(r.value||'')+'" aria-label="Valor fila '+(i+1)+'"></div>';
+ const details=kind==='cell'||kind==='decomiso'?
+  '<div class="gcm-history-fix-grid"><label>Producto<select id="gcm-history-fix-product">'+
+   usable.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===historyEditProduct?' selected':'')+'>'+esc(q.section+' · '+q.name)+'</option>').join('')+
+   '</select></label>'+
+   (kind==='cell'?'<label>Vencimiento<select id="gcm-history-fix-vto">'+
+    [1,2,3,4].map(n=>'<option value="'+n+'"'+(idx===n?' selected':'')+'>Vto '+n+'</option>').join('')+
+    '</select></label>':'<p class="gcm-history-fix-expl">Decomiso del turno</p>')+
+   (p?.units_per_chapa>0?input('chapas','Chapas (0–500)',500)+input('sueltas','Unidades sueltas (0–100000)',100000):
+    input('qty','Unidades (0–1000000)',1000000))+'</div>'+
+   '<p class="gcm-history-fix-expl">Valor archivado: <strong>'+
+   (p?.units_per_chapa>0?value.chapas+' chapas + '+value.sueltas+' unidades':value.qty+' unidades')+
+   '</strong>. El cambio afecta únicamente este producto y vencimiento.</p>':
+  kind==='responsable'?'<label>Responsable del turno<select id="gcm-history-fix-responsable">'+
+   RESPONSABLES.map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
+  '<div class="gcm-history-fix-list">'+list.map(row).join('')+'</div>'+
+   '<p class="gcm-history-fix-expl">Se guardan los registros cargados. Los campos vacíos de la fila adicional no crean datos.</p>';
+ const kinds=[['cell','Cantidad por vencimiento'],['decomiso','Decomiso'],['responsable','Responsable'],['consumption','Consumos'],['waste','Desperdicios']];
+ const changes=historyCorrectionsLoaded?
+  '<div class="gcm-history-corrections"><h4>Correcciones registradas</h4>'+
+  (historyCorrections.length?historyCorrections.map(x=>'<article><strong>'+esc(x.kind==='cell'?'Vto '+x.expiry_index:x.kind==='decomiso'?'Decomiso':x.kind==='responsable'?'Responsable':x.kind==='consumption'?'Consumos':'Desperdicios')+
+   '</strong> · '+esc(catalog.find(p=>p.id===x.product_id)?.name||'')+
+   '<small>'+esc(x.actor_email||'')+' · '+esc(new Date(x.corrected_at).toLocaleString('es-AR'))+'</small>'+
+   '<p>Motivo: '+esc(x.reason||'')+'</p><details><summary>Ver antes y después</summary>'+
+   '<pre>'+esc(JSON.stringify(x.before_value))+' → '+esc(JSON.stringify(x.after_value))+'</pre></details></article>').join(''):
+   '<p>Este turno todavía no tiene correcciones.</p>')+'</div>':'';
+ return '<section class="gcm-history-correction">'+
+  '<div class="gcm-history-correction-head"><div><h3>Correcciones del turno cerrado</h3>'+
+  '<p>El turno sigue finalizado. Cada modificación se registra con fecha, usuario y motivo.</p></div>'+
+  (canEdit?'<button type="button" data-gcm-history-fix-toggle aria-expanded="'+historyEditMode+'">'+
+   (historyEditMode?'Cancelar edición':'Editar turno cerrado')+'</button>':'')+
+  '<button type="button" data-gcm-history-show-corrections>Ver cambios realizados</button></div>'+
+  (historyCorrectionError?'<p class="gcm-error" role="alert">'+esc(historyCorrectionError)+'</p>':'')+
+  (canEdit&&historyEditMode?'<div class="gcm-history-fix-form" role="group" aria-label="Corregir turno finalizado">'+
+   '<label>¿Qué querés corregir?<select id="gcm-history-fix-kind">'+
+   kinds.map(([id,name])=>'<option value="'+id+'"'+(id===kind?' selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
+   details+
+   '<label>Motivo obligatorio de la corrección<textarea id="gcm-history-fix-reason" maxlength="300" minlength="8" rows="2" placeholder="Por ejemplo: se registraron 3 unidades de más por error de carga"></textarea></label>'+
+   '<button type="button" data-gcm-history-fix-save'+(historyCorrecting?' disabled':'')+'>Guardar corrección auditada</button>'+
+   '<p class="gcm-history-fix-expl">Solo se guardará este cambio. El registro anterior permanece en auditoría.</p></div>':'')+
+  changes+'</section>';
+}
 function historyDetailView(){
  const rec=historyRecord;
  if(!rec)return historyListView();
@@ -474,12 +542,13 @@ function historyDetailView(){
   // Pantalla principal: tarjetas reales en todo el ancho; Empanadas ocupa la
   // fila completa y distribuye sus numerosos productos en columnas legibles.
   historySummaryTable(rec)+
+  historyCorrectionPanel(rec)+
   '<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores</span></summary>'+
   '<div class="gcm-hd-consumption-body">'+historyExtraBlock('consumption','Consumos',rec)+'</div></details>'+
   (rec.waste_visible?'<details class="gcm-hd-consumption"><summary>Desperdicios</summary>'+
    '<div class="gcm-hd-consumption-body">'+historyExtraBlock('waste','Desperdicios',rec)+'</div></details>':'')+
   '<details class="gcm-hd-breakdown"><summary>Ver detalle por vencimiento</summary>'+
-  '<p class="gcm-hd-notice">Solo lectura. Los totales incluyen los vencimientos y el decomiso registrado.</p>'+
+  '<p class="gcm-hd-notice">El detalle original se conserva. Las correcciones auditadas se gestionan arriba.</p>'+
   (categories.length?categories.map(section=>historyDetailsTable(section,products.filter(p=>p.section===section),rec)).join(''):
    '<p>No hay productos cargados.</p>')+'</details>'+
   // La hoja A4 queda disponible solo al desplegar esta opción secundaria;
@@ -1098,16 +1167,85 @@ document.addEventListener('click',async e=>{
  if(el.hasAttribute('data-gcm-history-open')){
   if(busy)return;
   if(historyMode){historyRecord=null;api.render();return;}
-  historyMode=true;historyRecord=null;historyPreviewUrl='';historyPreviewError='';historyMonth=(lastClosedDay||arDay()).slice(0,7);
+  historyMode=true;historyRecord=null;historyPreviewUrl='';historyPreviewError='';historyMonth=(lastClosedDay||arDay()).slice(0,7);clearHistoryEditor();
   historyExpanded=null;historyRows=[];historyError='';void loadHistory();api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-exit')){
   if(busy)return;
-  historyMode=false;historyRecord=null;historyPreviewUrl='';historyPreviewError='';++historyToken;
+  historyMode=false;historyRecord=null;historyPreviewUrl='';historyPreviewError='';++historyToken;clearHistoryEditor();
   historyLoading=false;error='';void refresh();api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-back')){
-  historyRecord=null;historyPreviewUrl='';historyPreviewError='';api.render();return;
+  historyRecord=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();api.render();return;
+ }
+ if(el.hasAttribute('data-gcm-history-fix-toggle')&&historyMode&&historyRecord){
+  if(!editable()||historyCorrecting)return;
+  historyEditMode=!historyEditMode;historyCorrectionError='';api.render();return;
+ }
+ if(el.hasAttribute('data-gcm-history-show-corrections')&&historyMode&&historyRecord){
+  try{
+   const rows=await rpc('gestlok_munro_conteo_correction_history',
+     {p_day:historyRecord.day,p_shift:historyRecord.shift});
+   historyCorrections=Array.isArray(rows)?rows:[];historyCorrectionsLoaded=true;
+   historyCorrectionError='';api.render();
+  }catch(err){historyCorrectionError=err.message||'No se pudieron consultar las correcciones.';api?.toast?.(historyCorrectionError);api.render();}
+  return;
+ }
+ if(el.hasAttribute('data-gcm-history-fix-save')&&historyMode&&historyRecord){
+  if(!editable()||!historyEditMode||historyCorrecting)return;
+  const rec=historyRecord,local=activeLocal(),kind=historyEditKind;
+  const reason=document.getElementById('gcm-history-fix-reason')?.value?.trim()||'';
+  if(reason.length<8||reason.length>300){historyCorrectionError='Escribí el motivo de la corrección (mínimo 8 caracteres).';api.render();return;}
+  let pid=null,index=null,value,expected;
+  if(kind==='cell'||kind==='decomiso'){
+   pid=historyEditProduct;index=kind==='cell'?historyEditVto:0;
+   const p=snapshot?.products?.find(x=>x.id===pid);
+   if(!p){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
+   const current=kind==='cell'?rec.data?.[pid]?.['v'+index]:rec.decomiso?.[pid];
+   expected=current===undefined?null:current;
+   const read=field=>{
+    const input=document.querySelector('[data-gcm-history-number="'+field+'"]');
+    const n=Number(input?.value);
+    if(!input||!Number.isSafeInteger(n)||n<0)throw Error('Ingresá cantidades enteras y mayores o iguales a cero.');
+    return n;
+   };
+   try{
+    value=p.units_per_chapa>0?{chapas:read('chapas'),sueltas:read('sueltas'),qty:0}:
+     {chapas:0,sueltas:0,qty:read('qty')};
+   }catch(err){historyCorrectionError=err.message;api.render();return;}
+  }else if(kind==='responsable'){
+   value=document.getElementById('gcm-history-fix-responsable')?.value||'';
+   expected=rec.responsable||null;
+  }else if(kind==='consumption'||kind==='waste'){
+   const names=[...document.querySelectorAll('.gcm-history-fix-list [data-gcm-history-extra-name]')];
+   const values=[...document.querySelectorAll('.gcm-history-fix-list [data-gcm-history-extra-value]')];
+   value=names.map((n,i)=>({name:n.value.trim(),value:(values[i]?.value||'').trim()}))
+    .filter(x=>x.name||x.value);
+   expected=kind==='consumption'?(rec.consumption||[]):(rec.waste||[]);
+  }else return;
+  historyCorrecting=true;historyCorrectionError='';el.disabled=true;
+  const fixedDay=rec.day,fixedShift=rec.shift;
+  try{
+   const response=await rpc('gestlok_munro_conteo_correct_closed',{
+    p_day:fixedDay,p_shift:fixedShift,p_kind:kind,p_product:pid,p_index:index,
+    p_value:value,p_expected:expected,p_reason:reason
+   });
+   if(!response?.ok)throw Error('El servidor no confirmó la corrección.');
+   if(local!==activeLocal()||historyRecord?.day!==fixedDay||historyRecord?.shift!==fixedShift)throw Error('Cambió el turno o la sucursal. Revisá el historial.');
+   const rows=await rpc('gestlok_munro_conteo_history',{p_month:fixedDay.slice(0,7)+'-01'});
+   if(!Array.isArray(rows))throw Error('No fue posible verificar el historial actualizado.');
+   historyRows=rows;
+   const fresh=rows.find(r=>r.day===fixedDay&&r.shift===fixedShift);
+   if(!fresh||fresh.status!=='finalizado')throw Error('No se confirmó que el turno siga finalizado.');
+   historyRecord=fresh;historyPreviewUrl='';historyPreviewError='';
+   try{historyPreviewUrl=historyA4Image(fresh);}catch(e){historyPreviewError=e.message||'Error en vista A4';}
+   const audit=await rpc('gestlok_munro_conteo_correction_history',{p_day:fixedDay,p_shift:fixedShift});
+   historyCorrections=Array.isArray(audit)?audit:[];historyCorrectionsLoaded=true;
+   historyEditMode=false;historyCorrectionError='';
+   api?.toast?.('Corrección guardada. El turno continúa cerrado y el cambio quedó auditado.');
+  }catch(err){historyCorrectionError=err.message||'No se pudo guardar la corrección.';api?.toast?.(historyCorrectionError);}
+  finally{historyCorrecting=false;api.render();}
+  return;
  }
  if(el.hasAttribute('data-gcm-a4-refresh')&&historyMode&&historyRecord){
   try{historyPreviewUrl=historyA4Image(historyRecord);historyPreviewError='';}
@@ -1125,7 +1263,7 @@ document.addEventListener('click',async e=>{
   const [d,s]=el.dataset.gcmHistory.split('|');
   const record=historyRows.find(v=>v.day===d&&v.shift===s);
   if(historyMode&&record){
-   historyRecord=record;historyPreviewUrl='';historyPreviewError='';
+   historyRecord=record;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
    try{historyPreviewUrl=historyA4Image(record);}
    catch(err){historyPreviewError=err.message||'No se pudo generar el A4.';}
    api.render();
@@ -1254,6 +1392,13 @@ document.addEventListener('change',async e=>{
   const month=input.value;
   if(!/^\d{4}-\d{2}$/.test(month)||month<'2025-01'||month>arDay().slice(0,7))return;
   historyMonth=month;historyExpanded=null;historyRows=[];historyError='';void loadHistory();api.render();return;
+ }
+ if(historyMode&&historyRecord&&historyEditMode&&
+  ['gcm-history-fix-kind','gcm-history-fix-product','gcm-history-fix-vto'].includes(input.id)){
+   if(input.id==='gcm-history-fix-kind')historyEditKind=input.value;
+   if(input.id==='gcm-history-fix-product')historyEditProduct=input.value;
+   if(input.id==='gcm-history-fix-vto')historyEditVto=Number(input.value)||1;
+   historyCorrectionError='';api.render();return;
  }
  if(input.id==='gcm-responsable'){
   if(!editable()||closed()||busy||!snapshot)return;

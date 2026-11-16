@@ -1661,3 +1661,71 @@ dialog.gcm-add-product-dialog::backdrop{
  }
  .gcm-history-wide .gcm-hd-empanadas tbody{padding:8px 10px 12px}
 }
+
+
+/* Correcciones auditadas de Conteo cerrado — Munro y Don Torcuato. */
+.gcm-history-wide .gcm-history-correction{
+ border:1px solid #ccdae8;border-radius:12px;background:#fff;
+ margin:17px 0 22px;padding:18px
+}
+.gcm-history-correction-head{
+ display:flex;align-items:center;gap:12px;justify-content:space-between;
+ flex-wrap:wrap
+}
+.gcm-history-correction-head>div{flex:1 1 260px;min-width:0}
+.gcm-history-correction-head h3{font-size:17px;margin:0 0 5px;color:#183a56}
+.gcm-history-correction-head p{font-size:12px;color:#526b80;margin:0}
+.gcm-history-correction button{
+ cursor:pointer;border:1px solid #bbcddd;border-radius:8px;
+ background:#fff;color:#12345a;font-size:13px;font-weight:700;
+ padding:10px 13px;min-height:39px
+}
+.gcm-history-correction button[data-gcm-history-fix-save]{
+ color:#fff;background:#12345a;border-color:#12345a
+}
+.gcm-history-correction button:disabled{opacity:.55;cursor:default}
+.gcm-history-fix-form{
+ margin-top:16px;padding:17px;border-radius:10px;
+ background:#f5f8fb;border:1px solid #d6e3ec;
+ display:grid;gap:13px;max-width:100%
+}
+.gcm-history-fix-form label{
+ display:grid;gap:6px;font-size:13px;font-weight:700;color:#213f5b;
+ min-width:0
+}
+.gcm-history-fix-form input,
+.gcm-history-fix-form select,
+.gcm-history-fix-form textarea{
+ min-width:0;width:100%;font:inherit;font-size:14px;color:#233953;
+ padding:9px 10px;border:1px solid #bdcbd9;background:#fff;border-radius:7px
+}
+.gcm-history-fix-form textarea{resize:vertical;min-height:75px}
+.gcm-history-fix-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px;align-items:end
+}
+.gcm-history-fix-expl{font-size:12px;color:#536b81;margin:0}
+.gcm-history-fix-list{display:grid;gap:5px;max-height:410px;overflow-y:auto}
+.gcm-history-fix-row{
+ display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1fr);
+ align-items:center;gap:9px
+}
+.gcm-history-corrections{margin:18px 0 0;border-top:1px solid #e1e8ef;padding-top:12px}
+.gcm-history-corrections h4{margin:0 0 10px;font-size:15px}
+.gcm-history-corrections article{
+ border-bottom:1px solid #e4eaf0;padding:10px 0;font-size:13px
+}
+.gcm-history-corrections article small{
+ display:block;color:#5f7589;font-size:12px;margin-top:4px
+}
+.gcm-history-corrections article p{margin:6px 0}
+.gcm-history-corrections pre{
+ max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere;
+ background:#f5f8fb;padding:9px;border-radius:6px;font-size:12px
+}
+@media(max-width:620px){
+ .gcm-history-fix-grid{grid-template-columns:minmax(0,1fr)}
+ .gcm-history-correction{padding:13px}
+ .gcm-history-fix-form{padding:11px}
+ .gcm-history-correction-head button{flex:1 1 145px}
+}
