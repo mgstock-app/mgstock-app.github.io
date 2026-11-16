@@ -30,7 +30,12 @@ describe('Munro: cierre diario exclusivo, roles e historial', () => {
   // Fixture con visibilidad restablecida: conserva pruebas del módulo y del historial legado.
   beforeEach(() => {
     launch();
-    cy.window().then(w=>{
+    // El módulo real debe estar cargado antes de activar la visibilidad
+    // ficticia del Conteo diario legado. No altera permisos de producción.
+    cy.window().should(w=>{
+      expect(w.GestLokCreatorHome, 'módulo de creadora cargado').to.be.an('object');
+      expect(w.GestLokNavContext, 'controlador principal cargado').to.be.a('function');
+    }).then(w=>{
       w.GestLokCreatorHome={...w.GestLokCreatorHome,dailyVisible:()=>true,refreshDaily:()=>{}};
     });
   });

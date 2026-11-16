@@ -249,7 +249,11 @@ test('La pestaña está en el panel de la creadora y los archivos se cargan en o
   const home = read('public/stock/gestlok-creator-home.js');
   assert.ok(home.includes("['nfc', 'NFC y QR'") && home.includes("cur === 'nfc'") && home.includes('window.GestLokNfcQr?.attach?.(ctx)'));
   const rt = read('components/stock-runtime.tsx');
-  const a = rt.indexOf('/vendor/qrcode-generator.js'), b = rt.indexOf('/stock/gestlok-nfc-qr.js'), c = rt.indexOf('/stock/gestlok-creator-home.js');
+  // Una precarga puede aparecer antes en el archivo, pero no altera la
+  // ejecución: verificar únicamente el orden de los await reales.
+  const a = rt.indexOf('await load("/vendor/qrcode-generator.js"'),
+    b = rt.indexOf('await load("/stock/gestlok-nfc-qr.js'),
+    c = rt.indexOf('await load("/stock/gestlok-creator-home.js');
   assert.ok(a > 0 && a < b && b < c);
   assert.ok(rt.includes('/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102'));
   const sw = read('scripts/sw-template.js');

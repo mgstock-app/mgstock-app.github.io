@@ -6,7 +6,12 @@ function start(email = 'dueno@example.com', staff = false) {
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
   cy.visit('/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
-  cy.window().then(w => {
+  // La portada puede aparecer antes de que el backend simulado y app.js
+  // terminen de inicializarse. Esperar datos reales del fixture de prueba.
+  cy.window().should(w => {
+    expect(w.__rows, 'datos simulados cargados').to.be.an('array');
+    expect(w.GestLokNavContext, 'controlador de inicio cargado').to.be.a('function');
+  }).then(w => {
     w.__staffModule = staff;
     const me = w.__rows.find(r => r.col === 'equipo' && r.id === 'dueno@example.com');
     if (me) me.data.logoId = 'mi-gusto';

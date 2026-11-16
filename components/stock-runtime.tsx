@@ -37,6 +37,16 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-scanner-menu.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
     "/stock/gestlok-molino.js?rev=pedidosya-20261109",
+    // Solo descarga anticipada: cada módulo sigue EJECUTÁNDOSE en su orden original.
+    "/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113",
+    "/stock/gestlok-push.js",
+    "/stock/munro-daily.js",
+    "/stock/mi-gusto-cierre-online.js?rev=posnet-foto-20261111",
+    "/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-pestana-avisos-20261115",
+    "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
+    "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
+    "/stock/gestlok-creator-home.js?rev=molino-brand-20261109",
+    "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
