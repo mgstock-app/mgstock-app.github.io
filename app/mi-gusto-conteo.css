@@ -1431,3 +1431,154 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-history-detail .gcm-hd-summary-group th,
  .gcm-history-detail .gcm-hd-summary-group td{padding:9px 10px}
 }
+
+
+/* HISTORIAL ANCHO: la pantalla para dueña/gerentes NO es una hoja A4.
+   Empanadas tiene prioridad en ancho y mantiene todos sus productos visibles.
+   Solo presentación: mismos totales/turnos/roles/datos archivados. */
+.gcm-page.gcm-history-wide{
+ width:100%;max-width:1680px;margin-inline:auto;
+ padding-inline:clamp(12px,1.8vw,30px);overflow:visible
+}
+.gcm-history-wide .gcm-history-top{
+ margin:8px 0 18px
+}
+.gcm-history-wide .gcm-history-title h2{
+ font-size:clamp(24px,2.4vw,34px);color:#122f4c;letter-spacing:-.02em
+}
+.gcm-history-wide .gcm-hd-meta{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ align-items:center;gap:0;padding:0;background:#f4f7fa;
+ border:1px solid #d4e0eb;border-radius:12px;overflow:hidden;
+ margin-bottom:19px;font-size:clamp(13px,1.15vw,16px)
+}
+.gcm-history-wide .gcm-hd-meta>*{
+ display:flex;align-items:center;min-width:0;min-height:76px;
+ padding:15px 20px;border-right:1px solid #d8e3ed;overflow-wrap:anywhere;
+ font-weight:750;color:#1b3957;background:transparent
+}
+.gcm-history-wide .gcm-hd-meta>:last-child{border-right:0}
+.gcm-history-wide .gcm-hd-summary{
+ width:100%;max-width:none;margin:0 0 24px;padding-bottom:0;
+ border:0;background:transparent;overflow:visible
+}
+.gcm-history-wide .gcm-hd-summary-header{
+ border-radius:12px;background:#12345a;padding:20px 24px
+}
+.gcm-history-wide .gcm-hd-summary-header h3{font-size:clamp(18px,1.6vw,22px)}
+.gcm-history-wide .gcm-hd-summary-header>div{
+ font-size:17px;display:flex;align-items:center;gap:12px
+}
+.gcm-history-wide .gcm-hd-summary-header>div strong{
+ font-size:clamp(30px,3.2vw,42px);letter-spacing:-.03em
+}
+.gcm-history-wide .gcm-hd-summary-grid{
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:20px;padding:20px 0 0;align-items:start
+}
+.gcm-history-wide .gcm-hd-summary-group{
+ border:1px solid #d1dfeb;border-radius:12px;
+ box-shadow:0 3px 12px rgba(21,51,81,.04);background:#fff
+}
+.gcm-history-wide .gcm-hd-summary-group h4{
+ font-size:clamp(15px,1.35vw,19px);padding:16px 18px;
+ background:#eaf0f6;color:#153654
+}
+.gcm-history-wide .gcm-hd-summary-group h4 span{
+ background:#12345a;color:white;padding:6px 11px;border-radius:8px;
+ font-size:clamp(13px,1vw,16px);font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.gcm-history-wide .gcm-hd-summary-group th{
+ padding:12px 17px;font-size:13px;white-space:normal
+}
+.gcm-history-wide .gcm-hd-summary-group td{
+ padding:12px 17px;font-size:15px
+}
+.gcm-history-wide .gcm-hd-summary-group td strong{
+ font-size:15px;line-height:1.35;overflow-wrap:anywhere
+}
+.gcm-history-wide .gcm-hd-summary-group td:last-child{
+ width:95px;text-align:right;font-size:18px!important;font-weight:850;
+ color:#132f4a;font-variant-numeric:tabular-nums
+}
+/* Empanadas: UNA tarjeta completa con 4/3/2/1 columnas según espacio. */
+.gcm-history-wide .gcm-hd-summary-group.gcm-hd-empanadas{
+ grid-column:1/-1
+}
+.gcm-history-wide .gcm-hd-empanadas table{
+ display:block;width:100%;border-collapse:separate
+}
+.gcm-history-wide .gcm-hd-empanadas thead{
+ position:absolute;clip-path:inset(50%);height:1px;width:1px;
+ overflow:hidden;white-space:nowrap
+}
+.gcm-history-wide .gcm-hd-empanadas tbody{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:12px;padding:17px
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;min-height:48px;min-width:0;padding:10px 13px;
+ border:1px solid #e3eaf1;border-radius:8px;background:#fbfcfe
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr:nth-child(even){background:#f3f7fb}
+.gcm-history-wide .gcm-hd-empanadas tbody td{
+ display:block;min-width:0;padding:0!important;border:0!important;
+ background:transparent!important;vertical-align:middle
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td:first-child{flex:1;min-width:0}
+.gcm-history-wide .gcm-hd-empanadas tbody td:last-child{
+ width:auto;flex:0 0 auto;white-space:nowrap
+}
+.gcm-history-wide .gcm-hd-consumption,
+.gcm-history-wide .gcm-hd-print{
+ background:#fff;border:1px solid #d4e0eb;border-radius:12px;
+ overflow:hidden;margin:20px 0
+}
+.gcm-history-wide .gcm-hd-consumption>summary,
+.gcm-history-wide .gcm-hd-print>summary{
+ display:flex;align-items:center;gap:15px;
+ padding:19px 23px;min-height:67px;background:#edf3f8;
+ color:#143555;font-size:18px;font-weight:850;cursor:pointer
+}
+.gcm-history-wide .gcm-hd-consumption>summary span{
+ margin-left:auto;color:#4b6278;font-size:15px;font-weight:700
+}
+.gcm-history-wide .gcm-hd-consumption-body{padding:12px 20px 20px}
+.gcm-history-wide .gcm-hd-consumption-body .gcm-hd-extra{
+ border:0;margin:0;max-width:none
+}
+.gcm-history-wide .gcm-hd-consumption-body .gcm-hd-extra h3{
+ font-size:15px;margin:0 0 10px
+}
+.gcm-history-wide .gcm-hd-breakdown{margin:20px 0}
+.gcm-history-wide .gcm-hd-print{margin-top:12px}
+.gcm-history-wide .gcm-hd-print>h3{margin:18px 20px 5px;font-size:16px}
+.gcm-history-wide .gcm-hd-print .gcm-a4-toolbar{
+ margin:13px 20px
+}
+.gcm-history-wide .gcm-hd-print .gcm-a4-preview{
+ max-width:820px;margin:0 auto 20px
+}
+@media(max-width:1200px){
+ .gcm-history-wide .gcm-hd-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gcm-history-wide .gcm-hd-empanadas tbody{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:850px){
+ .gcm-history-wide .gcm-hd-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gcm-history-wide .gcm-hd-meta>:nth-child(2){border-right:0}
+ .gcm-history-wide .gcm-hd-meta>:nth-child(-n+2){border-bottom:1px solid #d8e3ed}
+ .gcm-history-wide .gcm-hd-empanadas tbody{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gcm-history-wide .gcm-hd-summary-grid{gap:14px;padding-top:14px}
+ .gcm-history-wide .gcm-hd-summary-group td{padding:11px 12px}
+}
+@media(max-width:580px){
+ .gcm-page.gcm-history-wide{padding-inline:9px}
+ .gcm-history-wide .gcm-hd-summary-grid{grid-template-columns:minmax(0,1fr)}
+ .gcm-history-wide .gcm-hd-empanadas tbody{grid-template-columns:minmax(0,1fr);gap:7px;padding:10px}
+ .gcm-history-wide .gcm-hd-summary-header{padding:15px}
+ .gcm-history-wide .gcm-hd-meta>*{min-height:63px;padding:12px}
+ .gcm-history-wide .gcm-hd-summary-group h4{padding:13px}
+ .gcm-history-wide .gcm-hd-consumption>summary,
+ .gcm-history-wide .gcm-hd-print>summary{font-size:16px;padding:15px}
+}
