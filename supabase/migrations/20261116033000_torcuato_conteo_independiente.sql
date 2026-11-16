@@ -78,8 +78,7 @@ begin
  end loop;
  if n<>2 then raise exception 'Funciones privadas incompletas: %',n; end if;
 
- -- Cada nueva fila de Torcuato hereda SUS categorías ocultas.
- create trigger_placeholder_unused: begin null; end; -- eliminado antes de desplegar
+ -- Cada nueva fila de Torcuato hereda SUS categorías ocultas mediante el trigger creado abajo.
 
  -- Reusar las 11 funciones actuales con nombres y tablas exclusivos de Torcuato.
  n:=0;
