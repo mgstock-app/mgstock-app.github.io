@@ -1287,3 +1287,103 @@ dialog.gcm-add-product-dialog::backdrop{
   scroll-margin-top:calc(217px + env(safe-area-inset-top,0px));
  }
 }
+
+/* FIX 16/11 - Conteo Munro y Torcuato: UNA única fila de vencimientos.
+   Las tablas conservan los encabezados semánticos en su HTML, pero el
+   <colgroup> define anchos para no perder alineación al ocultar duplicados. */
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll thead.gcm-repeat-head{
+ display:none!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table{
+ table-layout:fixed!important;
+ width:1110px!important;
+ min-width:1110px!important;
+ max-width:none!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table.has-decomiso{
+ width:1320px!important;
+ min-width:1320px!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-product{width:132px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-vto,
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-decomiso{width:216px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-total{width:114px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table.has-decomiso col.gcm-col-total{width:108px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table tbody th.gcm-product-cell{
+ width:132px!important;min-width:132px!important;max-width:132px!important;
+ position:sticky!important;left:0!important;z-index:3;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table tbody td.gcm-vto-col{
+ width:216px!important;min-width:216px!important;max-width:216px!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table tbody td.gcm-total{
+ width:114px!important;min-width:114px!important;max-width:114px!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table.has-decomiso tbody td.gcm-total{
+ width:108px!important;min-width:108px!important;max-width:108px!important;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid{
+ grid-template-columns:132px repeat(4,216px) 114px!important;
+ width:1110px!important;min-width:1110px!important;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid.has-decomiso{
+ grid-template-columns:132px 216px repeat(4,216px) 108px!important;
+ width:1320px!important;min-width:1320px!important;
+}
+.gcm-count-screen .gcm-expiry-ruler-decomiso{
+ order:initial;
+ background:#fff0d8;color:#6d491a;
+}
+.gcm-count-screen .gcm-decomp-cell{
+ background:#fff4dd!important;
+ border-right:2px solid #d9b66b!important;
+}
+.gcm-count-screen .gcm-decomp-toggle:has(input:checked){
+ background:#fff5e4;
+ border:1px solid #d9bc8b;
+ border-radius:9px;
+ padding:8px 10px;
+}
+
+/* Tablet vertical: el panel NO se transforma en botón.
+   Se conserva a la izquierda, una categoría debajo de otra. */
+@media (min-width:350px) and (max-width:640px){
+ .gcm-count-screen .gcm-count-layout{
+  display:grid!important;
+  grid-template-columns:clamp(104px,24vw,140px) minmax(0,1fr)!important;
+  gap:9px!important;align-items:start;position:relative;
+ }
+ .gcm-count-screen .gcm-category-toggle{display:none!important}
+ .gcm-count-screen .gcm-category-nav{
+  display:block!important;
+  position:sticky!important;
+  top:calc(137px + env(safe-area-inset-top,0px))!important;
+  left:auto!important;
+  width:auto!important;
+  max-height:calc(100dvh - 152px)!important;
+  box-shadow:0 3px 12px rgba(18,52,90,.08)!important;
+ }
+ .gcm-count-screen .gcm-category-nav-head{padding:11px 8px!important;font-size:12px}
+ .gcm-count-screen .gcm-category-nav-head button{display:none!important}
+ .gcm-count-screen .gcm-category-nav-items{
+  flex-direction:column!important;
+  padding:5px!important;
+ }
+ .gcm-count-screen .gcm-category-nav-items button{
+  width:100%!important;min-height:44px;
+  padding:7px 5px;font-size:11px;line-height:1.35;
+  align-items:flex-start;flex-wrap:wrap;
+ }
+ .gcm-count-screen .gcm-category-nav-items button>small{font-size:10px}
+ .gcm-count-screen .gcm-count-main{min-width:0!important}
+ .gcm-count-screen .gcm-expiry-ruler{
+  top:calc(137px + env(safe-area-inset-top,0px));
+ }
+}
+@media (min-width:641px) and (max-width:900px){
+ .gcm-count-screen .gcm-count-layout{
+  grid-template-columns:clamp(148px,20vw,185px) minmax(0,1fr);
+ }
+}
+/* Sin barra superior adicional o categoría horizontal: solo el lateral y
+   el encabezado único de vencimientos dentro de la planilla. */
