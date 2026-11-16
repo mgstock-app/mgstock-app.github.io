@@ -142,10 +142,9 @@ async function refresh(){
    else{
     // Ya cerraron los 3 turnos del día: continuar con la entrada del día siguiente.
     day=plusDays(d,1);shift=SHIFTS[0][0];snapshot=null;
-   } 
-  if(shift==='manana_entrada'&&snapshot&&!historyMode)void morning()?.load(morningCtx(),false);
-
+   }
   }
+  if(shift==='manana_entrada'&&snapshot&&!historyMode)void morning()?.load(morningCtx(),false);
  }catch(e){if(token===generation)error=e.message||'No se pudo consultar Conteo';}
  finally{loading=false;if(token===generation&&api?.S?.view==='conteo-munro')api.render();}
 }
