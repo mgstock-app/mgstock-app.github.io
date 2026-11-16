@@ -85,11 +85,38 @@ const referenceAudience = patch => {
   }
   return [...audience].sort();
 };
+// Detectar solo el movimiento de Staff de Munro; cualquier otro cambio en app.js sigue siendo compartido.
+function isOnlyMunroStaffNavMove(patch) {
+  const changes=String(patch||'').split('\n')
+    .filter(x=>/^[+-](?![+-])/.test(x)).map(x=>({sign:x[0],line:x.slice(1)}));
+  if(changes.length!==6)return false;
+  const removed=changes.filter(x=>x.sign==='-').map(x=>x.line);
+  const added=changes.filter(x=>x.sign==='+').map(x=>x.line);
+  if(removed.length!==3||added.length!==3)return false;
+  if(!removed.includes('  const staffMunro = puedeVerStaffMunro();'))return false;
+  const oldTop=removed.find(x=>x.startsWith('  const html = `'));
+  const newTop=added.find(x=>x.startsWith('  const html = `'));
+  if(!oldTop||!newTop)return false;
+  const left=oldTop.indexOf('${staffMunro ? ');
+  const right=oldTop.indexOf('${pagosDiarios ? ');
+  if(left<0||right<=left)return false;
+  const staff=oldTop.slice(left,right);
+  if(!staff.includes('data-act="staff-horarios"')||!staff.includes('<span class="nl">Staff</span>')||staff.length>380)return false;
+  if(oldTop.slice(0,left)+oldTop.slice(right)!==newTop)return false;
+  const nested=added.find(x=>x.startsWith('    (puedeVerStaffMunro() ? '));
+  if(!nested||!nested.includes('data-act="staff-horarios"')||!nested.includes('<span class="nl">Staff</span>')||!nested.endsWith(" : '') +"))return false;
+  const oldGuard=removed.find(x=>x.trim().startsWith('if (!puedeVerMotos() && '));
+  const newGuard=added.find(x=>x.trim().startsWith('if (!puedeVerMotos() && '));
+  return !!oldGuard && !!newGuard
+    && oldGuard.replace('!puedeVerMotos() && ','!puedeVerMotos() && !puedeVerStaffMunro() && ')===newGuard;
+}
 export function releaseAudience(paths, patches = {}) {
   const audience = new Set();
   for (const path of paths || []) {
     const p = String(path || '');
-    const targets = SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p);
+    const targets = p === 'public/stock/app.js' ?
+      (isOnlyMunroStaffNavMove(patches[p]) ? [LOCAL_AUDIENCE.munro] : ['*']) :
+      (SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p));
     for (const t of targets) {
       if (t === '*') return ['*'];
       audience.add(t);
