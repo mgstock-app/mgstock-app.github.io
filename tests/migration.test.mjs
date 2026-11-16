@@ -32,6 +32,20 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Normalizar exclusivamente la preservación visual de scroll de Conteo.
+      // Los hashes históricos y los permisos permanecen intactos.
+      const scrollStart='// Evitar saltos durante actualizaciones que redibujan Conteo.\n';
+      assert.equal(content.split(scrollStart).length-1,1,'Adaptador único de scroll de Conteo');
+      const start=content.indexOf(scrollStart),end=content.indexOf('function render(){',start);
+      assert.ok(end>start,'El adaptador está justo antes del render general');
+      content=content.slice(0,start)+content.slice(end);
+      for(const segment of [
+       "  const conteoViewport=S.view==='conteo-munro'?captureConteoViewport():null;\n",
+       '  restoreConteoViewport(conteoViewport);\n'
+      ]){
+       assert.equal(content.split(segment).length-1,1,'Hook de posición de Conteo único');
+       content=content.replace(segment,'');
+      }
       // Normalizar solo hooks de Conteo, sin alterar la huella histórica.
       for(const {actual,original,count=1} of JSON.parse(read('tests/mi-gusto-conteo-hooks.json')).hooks){
         assert.equal(content.split(actual).length-1,count,'Hook de Conteo de Munro');
