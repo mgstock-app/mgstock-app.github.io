@@ -42,7 +42,6 @@ export function MunroWeeklySchedule(){
  const revisiones=useRef<Record<number,number>>({});
  const guardadoEnCurso=useRef(false);
  const intentoAutomatico=useRef("");
- const tablaScrollRef=useRef<HTMLDivElement>(null);
 
  const semanaCerrada=planilla?.semana_cerrada===true;
  const puedeEditar=planilla?.puede_editar===true&&!semanaCerrada;
@@ -274,11 +273,6 @@ export function MunroWeeklySchedule(){
    }catch(e){setError(aviso(e));}
    finally{setCerrandoSemana(false);}
  };
- const moverTabla=(lado:"inicio"|"final")=>{
-   const contenedor=tablaScrollRef.current;
-   if(!contenedor)return;
-   contenedor.scrollTo({left:lado==="final"?contenedor.scrollWidth:0,behavior:"smooth"});
- };
  const registros=useMemo(()=>Object.values(
    (planilla?.historial||[]).reduce<Record<string,Registro[]>>((m,r)=>{
      (m[r.semana]??=[]).push(r);return m;
@@ -426,13 +420,11 @@ export function MunroWeeklySchedule(){
          {dias.map((dia,i)=><button key={dia} type="button" aria-pressed={diaSeleccionado===i}
             onClick={()=>setDiaSeleccionado(i)}><b>{DIAS[i]}</b><span>{fechaCorta(dia)}</span></button>)}
        </div>
-       <div className="mhs-tabla-navegacion" aria-label="Navegación horizontal de la semana completa">
+       <div className="mhs-tabla-navegacion" aria-label="Semana completa visible">
          <strong>Semana completa · lunes a domingo</strong>
-         <span>La fila de días y los nombres permanecen visibles mientras recorrés la planilla.</span>
-         <div><button type="button" onClick={()=>moverTabla("inicio")}>← Lunes</button>
-           <button type="button" onClick={()=>moverTabla("final")}>Domingo →</button></div>
+         <span>Los siete días se muestran juntos. Los nombres y los días permanecen visibles al bajar.</span>
        </div>
-       <div className="mhs-tabla-wrap" ref={tablaScrollRef} role="region" aria-label="Horarios de lunes a domingo, desplazamiento horizontal y vertical">
+       <div className="mhs-tabla-wrap" role="region" aria-label="Horarios de lunes a domingo, semana completa visible; desplazamiento vertical">
          <table className="mhs-tabla">
            <thead><tr><th scope="col">Colaborador</th>{dias.map((dia,i)=><th key={dia} scope="col">{DIAS[i]}<small>{fechaCorta(dia)}</small></th>)}</tr></thead>
            <tbody>{filas.map(f=>{
