@@ -90,3 +90,45 @@ test('Estilos conservan columna lateral izquierda, fecha fija y controles grande
  assert.match(css,/@media\(max-width:640px\)/);
  assert.match(css,/is-category-nav-open \.gcm-category-nav/);
 });
+
+test('Corrección 16/11: fechas aparecen una sola vez; el encabezado repetido queda oculto',async()=>{
+ const a=mount('munro');
+ a.mod.view();await tick();
+ const html=a.mod.view();
+ assert.match(html,/gcm-expiry-ruler-grid/);
+ assert.match(html,/<thead class="gcm-repeat-head">/);
+ assert.match(css,/\.gcm-count-screen \.gcm-count-main \.gcm-section \.gcm-sheet-scroll thead\.gcm-repeat-head\{\s*display:none!important/);
+ assert.match(html,/class="gcm-count-data-table"/);
+ assert.match(html,/<colgroup><col class="gcm-col-product">/);
+ assert.match(css,/table\.gcm-count-data-table\{\s*table-layout:fixed!important/);
+});
+test('Categorías quedan apiladas en lateral izquierdo también en tablet vertical',()=>{
+ assert.match(css,/@media \(min-width:350px\) and \(max-width:640px\)\{/);
+ assert.match(css,/\.gcm-count-screen \.gcm-count-layout\{\s*display:grid!important/);
+ assert.match(css,/grid-template-columns:clamp\(104px,24vw,140px\) minmax\(0,1fr\)!important/);
+ assert.match(css,/\.gcm-count-screen \.gcm-category-toggle\{display:none!important\}/);
+ assert.match(css,/\.gcm-count-screen \.gcm-category-nav\{\s*display:block!important;\s*position:sticky!important/);
+ assert.match(css,/\.gcm-count-screen \.gcm-category-nav-items\{\s*flex-direction:column!important/);
+});
+for(const local of ['munro','torcuato']){
+ test('Decomiso '+local+': checkbox guarda y muestra columna amarilla accesible al comienzo de cada fila',async()=>{
+  const a=mount(local);
+  a.mod.view();await tick();
+  assert.doesNotMatch(a.mod.view(),/gcm-expiry-ruler-decomiso/);
+  const input={id:'gcm-decomiso-toggle',checked:true,closest:sel=>sel==='.gcm-page'?{}:null};
+  await a.events.get('change')({target:input});
+  const html=a.mod.view();
+  assert.match(html,/id="gcm-decomiso-toggle" checked/);
+  assert.match(html,/class="gcm-count-data-table has-decomiso"/);
+  assert.ok(html.indexOf('gcm-expiry-ruler-decomiso')<html.indexOf('gcm-expiry-ruler-date'));
+  assert.ok(html.indexOf('>Decomiso</th>')<html.indexOf('Vto 1'));
+  const save=a.calls.find(c=>c.name==='gestlok_'+local+'_conteo_decomiso_visible');
+  assert.ok(save,'no guardó el cambio de Decomiso en el RPC local');
+  assert.equal(save.args.p_visible,true);
+  assert.match(css,/\.gcm-count-screen \.gcm-decomp-cell\{/);
+  input.checked=false;
+  await a.events.get('change')({target:input});
+  assert.doesNotMatch(a.mod.view(),/gcm-expiry-ruler-decomiso/);
+  assert.ok(a.calls.some(c=>c.name==='gestlok_'+local+'_conteo_decomiso_visible'&&c.args.p_visible===false));
+ });
+}
