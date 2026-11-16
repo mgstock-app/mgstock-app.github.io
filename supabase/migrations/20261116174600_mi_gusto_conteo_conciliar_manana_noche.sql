@@ -103,14 +103,16 @@ begin
  perform gestlok_munro_conteo_private.require_access(true,false);
  if p_day is null or p_product is null or length(p_product)>60
   or p_confirm is null then raise exception 'Datos inválidos'; end if;
+ -- Bloquear primero Noche salida y después Mañana entrada, igual que finalizar:
+ -- evita interbloqueos entre confirmación OK y cierre simultáneo.
+ select * into previous from gestlok_munro_conteo_private.shifts
+  where day=p_day-1 and shift=baseline_shift and status='finalizado' for update;
+ if not found then raise exception 'Falta el cierre de Noche salida del día anterior'; end if;
  select * into morning from gestlok_munro_conteo_private.shifts
   where day=p_day and shift='manana_entrada' for update;
  if not found or morning.status='finalizado' then
   raise exception 'Solo se puede confirmar un turno Mañana entrada abierto y guardado';
  end if;
- select * into previous from gestlok_munro_conteo_private.shifts
-  where day=p_day-1 and shift=baseline_shift and status='finalizado' for update;
- if not found then raise exception 'Falta el cierre de Noche salida del día anterior'; end if;
  select * into compare_row from gestlok_munro_conteo_private.comparison_rows(p_day) c
   where c.product_id=p_product;
  if not found then raise exception 'Producto no registrado'; end if;
@@ -306,14 +308,16 @@ begin
  perform gestlok_torcuato_conteo_private.require_access(true,false);
  if p_day is null or p_product is null or length(p_product)>60
   or p_confirm is null then raise exception 'Datos inválidos'; end if;
+ -- Bloquear primero Noche salida y después Mañana entrada, igual que finalizar:
+ -- evita interbloqueos entre confirmación OK y cierre simultáneo.
+ select * into previous from gestlok_torcuato_conteo_private.shifts
+  where day=p_day-1 and shift=baseline_shift and status='finalizado' for update;
+ if not found then raise exception 'Falta el cierre de Noche salida del día anterior'; end if;
  select * into morning from gestlok_torcuato_conteo_private.shifts
   where day=p_day and shift='manana_entrada' for update;
  if not found or morning.status='finalizado' then
   raise exception 'Solo se puede confirmar un turno Mañana entrada abierto y guardado';
  end if;
- select * into previous from gestlok_torcuato_conteo_private.shifts
-  where day=p_day-1 and shift=baseline_shift and status='finalizado' for update;
- if not found then raise exception 'Falta el cierre de Noche salida del día anterior'; end if;
  select * into compare_row from gestlok_torcuato_conteo_private.comparison_rows(p_day) c
   where c.product_id=p_product;
  if not found then raise exception 'Producto no registrado'; end if;
