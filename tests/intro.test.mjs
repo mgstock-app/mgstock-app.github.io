@@ -30,6 +30,6 @@ test("la introducción respeta movimiento reducido y no interrumpe al volver a l
 
 test("la presentación no bloquea varios segundos el ingreso",()=>{
  const css=read("app/gestlok-intro.css");
- assert.doesNotMatch(css,/3\\.1s forwards|3\\.7s/);
- assert.match(css,/gl-intro-dismiss \\.2s ease-out \\.12s forwards/);
+ assert.doesNotMatch(css,/3\.1s forwards|3\.7s/);
+ assert.match(css,/gl-intro-dismiss \.2s ease-out \.12s forwards/);
 });
