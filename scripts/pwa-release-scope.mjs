@@ -113,12 +113,24 @@ function isOnlyMunroStaffNavMove(patch) {
   return !!oldGuard && !!newGuard
     && oldGuard.replace('!puedeVerMotos() && ','!puedeVerMotos() && !puedeVerStaffMunro() && ')===newGuard;
 }
+// La única modificación del service worker es cachear el controlador nuevo
+// de Conteo compartido por Mi Gusto. Esto no debe generar aviso falso en otras empresas.
+function onlyMiGustoMorningShell(patch){
+ const lines=String(patch||'').split('\n').filter(x=>/^[+-](?![+-])/.test(x));
+ if(lines.length!==2)return false;
+ const minus=lines.find(x=>x.startsWith('-'))?.slice(1).trim();
+ const plus=lines.find(x=>x.startsWith('+'))?.slice(1).trim();
+ if(!minus?.startsWith('const SHELL = ')||!plus?.startsWith('const SHELL = '))return false;
+ return plus.replace("'/stock/mi-gusto-conteo-morning.js', ", '')===minus;
+}
 export function releaseAudience(paths, patches = {}) {
   const audience = new Set();
   for (const path of paths || []) {
     const p = String(path || '');
     const targets = p === 'public/stock/app.js' ?
       (isOnlyMunroStaffNavMove(patches[p]) ? [LOCAL_AUDIENCE.munro] : ['*']) :
+      p === 'scripts/sw-template.js' && onlyMiGustoMorningShell(patches[p]) ?
+        [TENANTS.miGusto] :
       (SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p));
     for (const t of targets) {
       if (t === '*') return ['*'];
