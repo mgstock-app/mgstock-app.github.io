@@ -33,11 +33,11 @@ revoke all on function gestlok_munro_conteo_private.product_total(jsonb,jsonb,te
 -- Caso documentado: el único conteo real 14/11 de Munro se archivó bajo el ID
 -- Mañana entrada pero corresponde a Noche salida; NO se cambia el registro de origen.
 create or replace function gestlok_munro_conteo_private.comparison_rows(p_day date)
-returns table(product_id text, section text, product_name text,
+returns table(product_id text, section text, product_name text, product_position integer,
  night_total bigint,morning_total bigint,night_updated_at timestamptz,
  acknowledged boolean)
 language sql stable set search_path='' as $rows$
- select p.id,p.section,p.name,
+ select p.id,p.section,p.name,p.position,
   gestlok_munro_conteo_private.product_total(b.data,b.decomiso,p.id,p.units_per_chapa) night_total,
   gestlok_munro_conteo_private.product_total(m.data,m.decomiso,p.id,p.units_per_chapa) morning_total,
   b.updated_at,
@@ -83,7 +83,7 @@ begin
   'difference',x.morning_total-x.night_total,'acknowledged',x.acknowledged,
   'night_updated_at',x.night_updated_at
  ) order by case when upper(x.section) like '%EMPANADA%' then 0 when upper(x.section) like '%PIZZA%' then 1 else 2 end,
- x.product_name),'[]'::jsonb)
+ x.product_position),'[]'::jsonb)
  into result from gestlok_munro_conteo_private.comparison_rows(p_day) x;
  return jsonb_build_object('previous_day',p_day-1,
   'previous_shift',reference_shift,'baseline_ready',has_night,'rows',result);
@@ -236,11 +236,11 @@ revoke all on function gestlok_torcuato_conteo_private.product_total(jsonb,jsonb
 -- Caso documentado: el único conteo real 14/11 de Munro se archivó bajo el ID
 -- Mañana entrada pero corresponde a Noche salida; NO se cambia el registro de origen.
 create or replace function gestlok_torcuato_conteo_private.comparison_rows(p_day date)
-returns table(product_id text, section text, product_name text,
+returns table(product_id text, section text, product_name text, product_position integer,
  night_total bigint,morning_total bigint,night_updated_at timestamptz,
  acknowledged boolean)
 language sql stable set search_path='' as $rows$
- select p.id,p.section,p.name,
+ select p.id,p.section,p.name,p.position,
   gestlok_torcuato_conteo_private.product_total(b.data,b.decomiso,p.id,p.units_per_chapa) night_total,
   gestlok_torcuato_conteo_private.product_total(m.data,m.decomiso,p.id,p.units_per_chapa) morning_total,
   b.updated_at,
@@ -286,7 +286,7 @@ begin
   'difference',x.morning_total-x.night_total,'acknowledged',x.acknowledged,
   'night_updated_at',x.night_updated_at
  ) order by case when upper(x.section) like '%EMPANADA%' then 0 when upper(x.section) like '%PIZZA%' then 1 else 2 end,
- x.product_name),'[]'::jsonb)
+ x.product_position),'[]'::jsonb)
  into result from gestlok_torcuato_conteo_private.comparison_rows(p_day) x;
  return jsonb_build_object('previous_day',p_day-1,
   'previous_shift',reference_shift,'baseline_ready',has_night,'rows',result);
