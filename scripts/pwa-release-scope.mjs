@@ -21,6 +21,8 @@ export function fileAudience(path) {
   if (/^(?:public\/stock\/(?:mi-gusto-conteo\.js|munro-|gestlok-munro-)|app\/(?:mi-gusto-conteo\.css|munro-))/i.test(p)) {
     return [LOCAL_AUDIENCE.munro];
   }
+  // Staff semanal de Munro: no generar avisos falsos en Torcuato ni otros locales.
+  if (/^modules\/empleados\/(?:components\/schedules\/(?:MunroWeeklySchedule\.tsx|munro-weekly\.css)|features\/schedules\/munro-model\.ts)$/.test(p)) return [LOCAL_AUDIENCE.munro];
   // El resto de módulos Mi Gusto sí pueden usarse en ambas sucursales.
   if (/^(?:public\/stock\/(?:mi-gusto-|mg-|gestlok-mg-)|app\/mi-gusto-|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
   if (/^(?:public\/stock\/gestlok-molino|app\/(?:gestlok-molino|molino-)|public\/molino\/)/i.test(p)) return [TENANTS.molino];
