@@ -247,16 +247,21 @@ function historySummaryTable(rec){
  const groups=historyGroupedProducts(rec);
  const general=groups.reduce((sum,group)=>sum+group.total,0);
  const missing=groups.some(group=>group.missing);
- return '<section class="gcm-hd-summary"><header class="gcm-hd-summary-header">'+
-  '<h3>Productos y totales</h3><div>Total general <strong>'+general+'</strong></div></header>'+
-  (groups.length?'<div class="gcm-hd-summary-grid">'+groups.map(group=>
-   '<section class="gcm-hd-summary-group'+(group.section.toLocaleUpperCase('es').includes('EMPANADAS')?' gcm-hd-empanadas':'')+'"><h4>'+esc(group.section)+
+ const isEmpanadas=group=>group.section.toLocaleUpperCase('es').includes('EMPANADAS');
+ const empanadas=groups.filter(isEmpanadas),others=groups.filter(group=>!isEmpanadas(group));
+ // Un solo renglón por producto. El orden de la planilla se conserva íntegro.
+ const card=group=>'<section class="gcm-hd-summary-group'+(isEmpanadas(group)?' gcm-hd-empanadas':'')+'"><h4>'+esc(group.section)+
    '<span>Total: '+group.total+(group.missing?' · revisar':'')+'</span></h4>'+
    '<table><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody>'+
    group.rows.map(row=>'<tr><td><strong>'+esc(row.name)+'</strong></td>'+
     '<td class="gcm-hd-summary-number">'+(row.total===null?'Sin referencia':row.total)+'</td></tr>').join('')+
-   '</tbody></table></section>').join('')+'</div>':
-   '<p>Sin cantidades registradas</p>')+
+   '</tbody></table></section>';
+ return '<section class="gcm-hd-summary"><header class="gcm-hd-summary-header">'+
+  '<h3>Productos y totales</h3><div>Total general <strong>'+general+'</strong></div></header>'+
+  (groups.length?'<div class="gcm-hd-summary-layout'+(empanadas.length?' has-empanadas':'')+'">'+
+    (empanadas.length?'<div class="gcm-hd-empanadas-stack">'+empanadas.map(card).join('')+'</div>':'')+
+    (others.length?'<div class="gcm-hd-summary-grid">'+others.map(card).join('')+'</div>':'')+
+    '</div>':'<p>Sin cantidades registradas</p>')+
   (missing?'<p>Algunos productos ya no están en el catálogo; revisalos antes de tomar el total como definitivo.</p>':'')+
   '</section>';
 }
