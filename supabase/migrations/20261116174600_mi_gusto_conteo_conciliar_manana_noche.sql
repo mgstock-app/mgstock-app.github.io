@@ -67,7 +67,7 @@ revoke all on function gestlok_munro_conteo_private.comparison_rows(date) from p
 create or replace function public.gestlok_munro_conteo_compare_morning(p_day date)
 returns jsonb language plpgsql stable security definer set search_path='' as $api$
 declare
- has_night boolean; result jsonb;
+ has_night boolean; first_day boolean; result jsonb;
  reference_shift text:=(case when p_day=date '2026-11-15' then 'manana_entrada' else 'noche_salida' end);
 begin
  perform gestlok_munro_conteo_private.require_access(false,false);
@@ -77,6 +77,10 @@ begin
  end if;
  select exists(select 1 from gestlok_munro_conteo_private.shifts
   where day=p_day-1 and shift=reference_shift and status='finalizado') into has_night;
+ select not exists(select 1 from gestlok_torcuato_conteo_private.shifts
+  where day<p_day and shift='noche_salida' and status='finalizado') into first_day;
+ select not exists(select 1 from gestlok_munro_conteo_private.shifts
+  where day<p_day and shift='noche_salida' and status='finalizado') into first_day;
  select coalesce(jsonb_agg(jsonb_build_object(
   'id',x.product_id,'section',x.section,'name',x.product_name,
   'night_total',x.night_total,'morning_total',x.morning_total,
@@ -86,7 +90,7 @@ begin
  x.product_position),'[]'::jsonb)
  into result from gestlok_munro_conteo_private.comparison_rows(p_day) x;
  return jsonb_build_object('previous_day',p_day-1,
-  'previous_shift',reference_shift,'baseline_ready',has_night,'rows',result);
+  'previous_shift',reference_shift,'baseline_ready',has_night,'first_day',first_day,'rows',result);
 end $api$;
 
 create or replace function public.gestlok_munro_conteo_ack_morning(
@@ -147,6 +151,7 @@ declare
  r gestlok_munro_conteo_private.shifts%rowtype;
  prior gestlok_munro_conteo_private.shifts%rowtype;
  pending_count integer;
+ baseline_ready boolean:=false;
  baseline_shift text:=(case when p_day=date '2026-11-15' then 'manana_entrada' else 'noche_salida' end);
 begin
  perform gestlok_munro_conteo_private.require_access(true,false);
@@ -156,7 +161,9 @@ begin
  if p_shift='manana_entrada' then
   select * into prior from gestlok_munro_conteo_private.shifts
    where day=p_day-1 and shift=baseline_shift and status='finalizado' for update;
-  if not found then
+  baseline_ready:=found;
+  if not baseline_ready and exists(select 1 from gestlok_munro_conteo_private.shifts
+   where day<p_day and shift='noche_salida' and status='finalizado') then
    raise exception 'No se puede cerrar Mañana entrada: falta Noche salida finalizada del día anterior.';
   end if;
  end if;
@@ -168,7 +175,7 @@ begin
  if r.responsable not in ('Cami','Shuli','Tizi') or r.responsable is null then
   raise exception 'Elegí al gerente responsable antes de finalizar';
  end if;
- if p_shift='manana_entrada' then
+ if p_shift='manana_entrada' and baseline_ready then
   select count(*) into pending_count
   from gestlok_munro_conteo_private.comparison_rows(p_day) x
   where x.night_total<>x.morning_total and not x.acknowledged;
@@ -272,7 +279,7 @@ revoke all on function gestlok_torcuato_conteo_private.comparison_rows(date) fro
 create or replace function public.gestlok_torcuato_conteo_compare_morning(p_day date)
 returns jsonb language plpgsql stable security definer set search_path='' as $api$
 declare
- has_night boolean; result jsonb;
+ has_night boolean; first_day boolean; result jsonb;
  reference_shift text:=(case when false then 'manana_entrada' else 'noche_salida' end);
 begin
  perform gestlok_torcuato_conteo_private.require_access(false,false);
@@ -291,7 +298,7 @@ begin
  x.product_position),'[]'::jsonb)
  into result from gestlok_torcuato_conteo_private.comparison_rows(p_day) x;
  return jsonb_build_object('previous_day',p_day-1,
-  'previous_shift',reference_shift,'baseline_ready',has_night,'rows',result);
+  'previous_shift',reference_shift,'baseline_ready',has_night,'first_day',first_day,'rows',result);
 end $api$;
 
 create or replace function public.gestlok_torcuato_conteo_ack_morning(
@@ -352,6 +359,7 @@ declare
  r gestlok_torcuato_conteo_private.shifts%rowtype;
  prior gestlok_torcuato_conteo_private.shifts%rowtype;
  pending_count integer;
+ baseline_ready boolean:=false;
  baseline_shift text:=(case when false then 'manana_entrada' else 'noche_salida' end);
 begin
  perform gestlok_torcuato_conteo_private.require_access(true,false);
@@ -361,7 +369,9 @@ begin
  if p_shift='manana_entrada' then
   select * into prior from gestlok_torcuato_conteo_private.shifts
    where day=p_day-1 and shift=baseline_shift and status='finalizado' for update;
-  if not found then
+  baseline_ready:=found;
+  if not baseline_ready and exists(select 1 from gestlok_torcuato_conteo_private.shifts
+   where day<p_day and shift='noche_salida' and status='finalizado') then
    raise exception 'No se puede cerrar Mañana entrada: falta Noche salida finalizada del día anterior.';
   end if;
  end if;
@@ -373,7 +383,7 @@ begin
  if r.responsable not in ('Cami','Shuli','Tizi') or r.responsable is null then
   raise exception 'Elegí al gerente responsable antes de finalizar';
  end if;
- if p_shift='manana_entrada' then
+ if p_shift='manana_entrada' and baseline_ready then
   select count(*) into pending_count
   from gestlok_torcuato_conteo_private.comparison_rows(p_day) x
   where x.night_total<>x.morning_total and not x.acknowledged;
