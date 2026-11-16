@@ -23,6 +23,7 @@ function fresh() {
   psql(DB, ['-f', 'tests/fixtures/base.sql']);
   psql(DB, ['-f', 'supabase/migrations/20261102050000_caja_app_base.sql']);
   psql(DB, ['-f', 'supabase/migrations/20261102170000_caja_app_sin_pin.sql']);
+  psql(DB, ['-f', 'supabase/migrations/20261116140000_caja_app_invitaciones.sql']);
 }
 function session(q) {
   return new Promise(resolve => {
@@ -52,6 +53,10 @@ test('Caja app en PostgreSQL real', {skip}, async t => {
     await t.test('reglas de negocio y seguridad', () => {
       fresh();
       assert.match(psql(DB, ['-f', 'tests/fixtures/logica.sql']), /CAJA APP: OK/);
+    });
+    await t.test('invitar al equipo: un solo uso, vencimiento, permisos y quitar acceso', () => {
+      fresh();
+      assert.match(psql(DB, ['-f', 'tests/fixtures/invitaciones.sql']), /CAJA APP INVITACIONES: OK/);
     });
 
     fresh();

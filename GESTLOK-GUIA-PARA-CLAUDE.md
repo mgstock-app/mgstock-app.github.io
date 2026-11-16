@@ -193,6 +193,14 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
   sesión con la cuenta y `caja_app_salir` solo la vence (sin `delete`). La app no muestra PIN, «Cambiar de persona» ni
   «Personas y PIN»; el panel lo ve la cuenta dueña. Para que otra persona cargue hace falta invitar su cuenta (pendiente).
 
+- **Invitar al equipo (16/11/2026):** Configuración → Equipo. El dueño crea una invitación (`caja_app_invitar`) y manda
+  el enlace `/caja/?invitacion=CODIGO` (un solo uso, 7 días; en la base solo queda la huella del código). La persona la
+  acepta con su propia cuenta (`caja_app_aceptar_invitacion`) y queda como miembro `encargado` con su persona (puesto y
+  locales de la invitación): usa la caja, no ve el panel del dueño. `caja_app_anular_invitacion`, `caja_app_equipo` y
+  `caja_app_acceso_persona` (quitar/devolver acceso; vence las sesiones, no borra) son solo del dueño. Migración
+  `caja-app/supabase/migrations/20261116140000_caja_app_invitaciones.sql` (aditiva). Sigue pendiente: fotos, sin
+  conexión y alta/venta de comercios.
+
 ## 14. Historial horarios de Munro y pestaña Historial de Motos Agencia (02/11/2026)
 - **Pedido:** solo Munro (Torcuato queda como está, lo pidió la usuaria). Visible para dueño, creadora y gerente de Munro.
 - **Cómo funciona:** los horarios se siguen cargando en el Google Sheets «Horarios Munro» (plantilla GESTLOK). Un script

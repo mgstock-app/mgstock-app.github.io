@@ -42,7 +42,12 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
    cuenta: falta invitar cuentas de encargado (etapa 6).
 5. **Sin conexión** — PENDIENTE. Cola en el celular (IndexedDB) que reenvía con la misma clave al volver la señal.
 6. **Alta de comercios y venta** — PENDIENTE (decisión de la usuaria): alta abierta o con aprobación, prueba gratis,
-   precio, avisos por WhatsApp/email, cuentas de encargado (invitaciones).
+   precio, avisos por WhatsApp/email.
+   **Invitar al equipo — HECHO (16/11).** Configuración → Equipo → «+ Invitar» (nombre, puesto y locales): crea un
+   enlace `…/caja/?invitacion=CODIGO` de un solo uso que vence a los 7 días. La persona entra con su propia cuenta y
+   solo usa la caja (no ve Historial ni Configuración). El dueño puede anular una invitación y quitar o devolver el
+   acceso; al quitarlo, la sesión abierta deja de servir en el momento. Nada se borra y todo queda en la auditoría.
+   Migración `20261116140000_caja_app_invitaciones.sql`; pruebas `tests/fixtures/invitaciones.sql` y recorrido web.
 7. **Marca y dominio** — DECIDIDO (02/11): va bajo GESTLOK como «GESTLOK Caja» en `gestlok.com.ar/caja/` (no hace
    falta repositorio ni dominio propios). Primera empresa: Perfumes · Belisa Parfum (reemplaza su Caja diaria #200).
    Idea en estudio: vender módulos sueltos más económicos (Caja, Empleados, Proveedores y stock) y GESTLOK completo.

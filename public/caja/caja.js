@@ -82,6 +82,19 @@
     }
     return p;
   })();
+  // Invitación al equipo: /caja/?invitacion=CODIGO. El código se guarda en este equipo hasta 7 días (así no se pierde
+  // al entrar con Google o al confirmar el email) y se quita de la dirección. Se acepta al entrar con la cuenta.
+  (() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (!q.has('invitacion')) return;
+      const c = String(q.get('invitacion') || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 12);
+      if (c.length === 12) guardar('caja.invitacion', { codigo: c, t: Date.now() });
+      q.delete('invitacion');
+      history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
+    } catch (e) { /* sin historial */ }
+  })();
+  const invPendiente = () => { const i = leer('caja.invitacion'); return i && i.codigo && Date.now() - Number(i.t || 0) < 7 * 864e5 ? String(i.codigo) : null; };
   const anfitrion = (() => { try { return new URLSearchParams(location.search).get('integrado') === '1' && window.frameElement?.id === 'gl-caja-app-frame' ? window.frameElement.ownerDocument.defaultView : null; } catch { return null; } })();
   const integrado = !!anfitrion;
   const scannerGuestCaja = integrado && new URLSearchParams(location.search).get('scanner_comercio');
@@ -149,12 +162,33 @@
   }
   const hojaAbierta = () => !hoja.hidden;
 
+  // ---------------- invitación al equipo ----------------
+  // Un solo envío aunque la app arranque dos veces seguidas (al cargar y al confirmarse la sesión): el código se
+  // retira del equipo antes de mandarlo y solo se repone si no hubo conexión.
+  let aceptando = null;
+  function aceptarInvitacion() {
+    if (aceptando) return aceptando;
+    const codigo = scannerGuestCaja ? null : invPendiente();
+    if (!codigo) return Promise.resolve();
+    const guardada = leer('caja.invitacion');
+    guardar('caja.invitacion', null);
+    aceptando = rpc('aceptar_invitacion', { p_codigo: codigo }).then((r) => {
+      guardar('caja.dispositivo', { comercio_id: r.comercio_id }); S.creando = false;
+      avisar('Listo: ya podés usar la caja de ' + r.comercio + '.');
+    }, (e) => {
+      if (e.red) { guardar('caja.invitacion', guardada); throw e; }
+      avisar(e.message);
+    }).finally(() => { aceptando = null; });
+    return aceptando;
+  }
+
   // ---------------- arranque ----------------
   async function arrancar() {
     const { data } = await sb.auth.getSession();
     S.user = data && data.session ? data.session.user : null;
     if (S.recuperar) return pintar();
     if (!S.user) { S.comercios = []; S.comercio = null; S.local = null; return pintar(); }
+    try { await aceptarInvitacion(); } catch (e) { return pintarFalla(e); }
     try { S.comercios = (await rpc('mis_comercios')) || []; if(scannerGuestCaja)S.comercios=S.comercios.filter(c=>c.id===scannerGuestCaja); }
     catch (e) { return pintarFalla(e); }
     const disp = leer('caja.dispositivo') || {};
@@ -246,7 +280,7 @@
         '<div class="separador">o</div><button class="btn ancho" data-act="google">Entrar con Google</button>' +
         '<div class="enlaces"><button class="btn texto" data-act="acceso" data-modo="crear">Crear una cuenta</button><button class="btn texto" data-act="acceso" data-modo="olvide">Olvidé mi contraseña</button></div>';
     } else if (m === 'crear') {
-      f = '<form data-form="crearCuenta"><h1>Crear cuenta</h1><p class="sub" style="margin:6px 0 18px">Es la cuenta del dueño del comercio.</p><div class="error"></div>' +
+      f = '<form data-form="crearCuenta"><h1>Crear cuenta</h1><p class="sub" style="margin:6px 0 18px">' + (invPendiente() ? 'Con esta cuenta vas a entrar a la caja.' : 'Es la cuenta del dueño del comercio.') + '</p><div class="error"></div>' +
         '<label class="campo"><span>Email</span><input name="email" type="email" autocomplete="username" required></label>' +
         '<label class="campo"><span>Contraseña</span><input name="clave" type="password" minlength="8" autocomplete="new-password" required><small>Mínimo 8 caracteres.</small></label>' +
         '<button class="btn prim ancho">Crear cuenta</button></form>' +
@@ -259,7 +293,8 @@
     } else {
       f = '<div class="ok-msg">' + h(m) + '</div><button class="btn ancho" data-act="acceso" data-modo="entrar">Volver a entrar</button>';
     }
-    app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() + f + (PRE ? '<p class="enlaces">' + volverGestlok() + '</p>' : '') + '</div></div>';
+    const invitado = invPendiente() && ['entrar', 'crear'].includes(m) ? '<div class="ok-msg" style="margin-bottom:14px">Te invitaron a una caja. Entrá con tu cuenta o creá una para aceptar.</div>' : '';
+    app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() + invitado + f + (PRE ? '<p class="enlaces">' + volverGestlok() + '</p>' : '') + '</div></div>';
   }
   function pantallaNuevaClave() {
     app.innerHTML = '<div class="centro"><div class="panel-acceso">' + marca() +
@@ -278,6 +313,7 @@
       '<label class="campo"><span>Tu nombre</span><input name="yo" maxlength="60" required placeholder="Como te van a ver en la caja" value="' + h(PRE && !S.comercios.length ? PRE.yo : '') + '"></label>' +
       '<button class="btn prim ancho">Crear y empezar</button></form>' +
       '<div class="enlaces">' + volverGestlok() + (S.comercios.length ? '<button class="btn texto" data-act="cancelarCrear">Volver</button>' : '') +
+      (scannerGuestCaja ? '' : '<button class="btn texto" data-act="tengoCodigo">Tengo un código de invitación</button>') +
       '<button class="btn texto" data-act="salirCuenta">Cerrar sesión (' + h(S.user.email || '') + ')</button></div></div></div>';
   }
 
@@ -596,7 +632,11 @@
         S.hist = await rpc('historial', { p_comercio: S.comercio.id, p_local: S.local.id, p_desde: S.histFiltro.desde, p_hasta: S.histFiltro.hasta });
         return poner(vistaHistorial(S.hist));
       }
-      if (v === 'config') { if (!S.cfg) { poner('<p class="cargando">Cargando…</p>'); S.cfg = await rpc('config', { p_comercio: S.comercio.id }); } return poner(vistaConfig(S.cfg)); }
+      if (v === 'config') {
+        if (!S.cfg) { poner('<p class="cargando">Cargando…</p>'); S.cfg = await rpc('config', { p_comercio: S.comercio.id }); }
+        if (!equipoActual()) { try { ponerEquipo(await rpc('equipo', { p_comercio: S.comercio.id })); } catch (e) { S.equipo = { de: S.comercio.id, falla: e.message }; } }
+        return poner(vistaConfig(S.cfg));
+      }
     } catch (e) {
       poner('<p class="error">' + h(e.message) + '</p><button class="btn" data-act="reintentar">Probar de nuevo</button>');
     }
@@ -684,6 +724,43 @@
       : '<span class="chip quitable" data-valor="' + h(v) + '">' + h(v) + '<button type="button" data-act="quitarItem" aria-label="Quitar ' + h(v) + '">×</button></span>').join('') + '</div>' +
       '<div class="fila" style="margin:-4px 0 14px"><input class="entrada" data-nuevo="' + clave + '" maxlength="40" placeholder="Agregar…" style="min-height:40px"><button type="button" class="btn chico" data-act="agregarItem" data-lista="' + clave + '">Agregar</button></div>';
   }
+  // Equipo: personas con acceso a la caja e invitaciones sin usar. Solo lo ve la cuenta dueña.
+  const equipoActual = () => (S.equipo && S.comercio && S.equipo.de === S.comercio.id && !S.equipo.falla ? S.equipo : null);
+  function ponerEquipo(e) { S.equipo = { de: S.comercio.id, personas: (e && e.personas) || [], invitaciones: (e && e.invitaciones) || [] }; }
+  const enlaceInvitacion = (codigo) => SITE + '?invitacion=' + encodeURIComponent(codigo);
+  function tarjetaEquipo(c) {
+    const eq = equipoActual();
+    const donde = (ids) => (!ids || !ids.length) ? 'Todos los locales' : (ids.map((id) => (c.locales.find((l) => l.id === id) || {}).nombre).filter(Boolean).join(', ') || 'Sin local');
+    const vence = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: TZ });
+    if (!eq) return '<div class="tarjeta" data-equipo><h2>Equipo</h2><p class="sub" style="margin-top:6px">' + h((S.equipo && S.equipo.falla) || 'No se pudo cargar el equipo.') + '</p></div>';
+    return '<div class="tarjeta" data-equipo><div class="fila entre"><h2>Equipo</h2><button class="btn chico" data-act="invitar">+ Invitar</button></div>' +
+      '<p class="sub" style="margin:4px 0 6px">Cada persona entra con su propia cuenta y carga a su nombre. No ve este panel.</p><ul class="lista">' +
+      eq.personas.map((p) => '<li><span><b>' + h(p.nombre) + '</b> · ' + h(ROL[p.rol] || '') + '<br><small class="sub">' +
+        h(p.rol === 'dueno' ? (p.yo ? 'Tu cuenta' : 'Panel del dueño') : (p.con_cuenta ? donde(p.locales) : 'Sin cuenta todavía')) + (p.activo ? '' : ' · Sin acceso') + '</small></span>' +
+        (p.rol !== 'dueno' && p.con_cuenta ? '<button class="btn chico" data-act="accesoPersona" data-id="' + h(p.id) + '" data-activo="' + (p.activo ? '0' : '1') + '">' + (p.activo ? 'Quitar acceso' : 'Devolver acceso') + '</button>' : '') + '</li>').join('') + '</ul>' +
+      (eq.invitaciones.length ? '<p class="etiqueta" style="margin-top:12px">Invitaciones sin usar</p><ul class="lista">' +
+        eq.invitaciones.map((i) => '<li><span><b>' + h(i.nombre) + '</b> · ' + h(ROL[i.rol] || '') + '<br><small class="sub">' + h(donde(i.locales)) + ' · vence el ' + h(vence(i.expira_at)) + '</small></span>' +
+          '<button class="btn chico" data-act="anularInvitacion" data-id="' + h(i.id) + '">Anular</button></li>').join('') + '</ul>' : '') + '</div>';
+  }
+  function hojaInvitar() {
+    const activos = S.cfg.locales.filter((l) => l.activo);
+    abrirHoja('Invitar al equipo', '<form data-form="invitar"><div class="error"></div>' +
+      '<label class="campo"><span>Nombre</span><input name="nombre" maxlength="50" minlength="2" required autofocus placeholder="Como se va a ver en la caja"></label>' +
+      '<label class="campo"><span>Puesto</span><select name="rol"><option value="cajero">Cajero/a</option><option value="encargado">Encargado/a</option></select></label>' +
+      (activos.length > 1 ? '<span class="etiqueta">¿En qué locales trabaja?</span><div class="pila" style="margin:6px 0 14px">' +
+        activos.map((l) => '<label class="check"><input type="checkbox" name="local" value="' + h(l.id) + '"><span>' + h(l.nombre) + '</span></label>').join('') +
+        '</div><p class="ayuda" style="margin:-6px 0 12px">Sin marcar ninguno: todos los locales.</p>' : '') +
+      '<button class="btn prim ancho">Crear invitación</button>' +
+      '<p class="ayuda" style="margin-top:8px">Le mandás un enlace. Entra con su propia cuenta y solo usa la caja: no ve el historial ni la configuración.</p></form>');
+  }
+  function hojaEnlace(nombre, codigo) {
+    const url = enlaceInvitacion(codigo);
+    const texto = 'Hola ' + nombre + ': te invito a cargar la caja de ' + S.comercio.nombre + ' en GESTLOK Caja. Abrí este enlace y entrá con tu cuenta: ' + url;
+    abrirHoja('Invitación para ' + nombre, '<p class="sub" style="margin-bottom:12px">Mandale este enlace. Sirve una sola vez y vence en 7 días. Guardalo ahora: por seguridad no se vuelve a mostrar.</p>' +
+      '<label class="campo"><span>Enlace</span><input data-enlace readonly value="' + h(url) + '" onfocus="this.select()"></label>' +
+      '<div class="pila"><button class="btn prim ancho" data-act="copiarEnlace">Copiar enlace</button>' +
+      '<a class="btn ancho" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(texto) + '">Enviar por WhatsApp</a></div>');
+  }
   function vistaConfig(c) {
     const disp = '<div class="tarjeta"><h2>Este equipo</h2><p class="sub" style="margin:4px 0 12px">Se guarda solo en este ' + nombreMedio(S.medio) + '.</p>' +
       '<label class="campo"><span>Local</span><select data-act-change="cambiarLocal">' + c.locales.filter((l) => l.activo).map((l) => '<option value="' + h(l.id) + '"' + (l.id === S.local.id ? ' selected' : '') + '>' + h(l.nombre) + '</option>').join('') + '</select></label>' +
@@ -708,7 +785,7 @@
     const locales = '<div class="tarjeta"><div class="fila entre"><h2>Locales</h2><button class="btn chico" data-act="editarLocal" data-id="">+ Agregar</button></div><ul class="lista" style="margin-top:6px">' +
       c.locales.map((l) => '<li><span><b>' + h(l.nombre) + '</b>' + (l.activo ? '' : ' <span class="estado">Inactivo</span>') + '</span><button class="btn chico" data-act="editarLocal" data-id="' + h(l.id) + '">Editar</button></li>').join('') + '</ul></div>';
     const fotos = '<div class="tarjeta suave"><h2>Fotos antes del cierre</h2><p class="sub" style="margin-top:6px">Próximamente: pedir fotos del efectivo contado y de los comprobantes, y bloquear el cierre si faltan.</p></div>';
-    return '<div class="encabezado"><div><h1>Configuración</h1><p class="sub">' + h(c.nombre) + '</p></div></div><div class="config-grid"><div>' + general + listas + '</div><div>' + locales + disp + fotos + '</div></div>';
+    return '<div class="encabezado"><div><h1>Configuración</h1><p class="sub">' + h(c.nombre) + '</p></div></div><div class="config-grid"><div>' + general + listas + '</div><div>' + tarjetaEquipo(c) + locales + disp + fotos + '</div></div>';
   }
   function hojaLocal(id) {
     const l = id ? S.cfg.locales.find((x) => x.id === id) : null;
@@ -750,6 +827,21 @@
     },
     salirCuenta: async () => { await salirOp(); S.cfg = null; guardar('caja.dispositivo', null); await sb.auth.signOut(); cerrarHoja(); S.acceso = 'entrar'; arrancar(); },
     nuevoComercio: () => { S.creando = true; pintar(); },
+    invitar: () => hojaInvitar(),
+    tengoCodigo: () => abrirHoja('Código de invitación', '<form data-form="codigoInvitacion"><div class="error"></div>' +
+      '<label class="campo"><span>Código o enlace que te mandaron</span><input name="codigo" required autofocus autocapitalize="characters" autocomplete="off"></label>' +
+      '<button class="btn prim ancho">Aceptar invitación</button></form>'),
+    copiarEnlace: async () => {
+      const i = hoja.querySelector('[data-enlace]'); if (!i) return;
+      try { await navigator.clipboard.writeText(i.value); avisar('Enlace copiado.'); }
+      catch (e) { i.focus(); i.select(); avisar('Mantené apretado el enlace para copiarlo.'); }
+    },
+    anularInvitacion: async (b) => { ponerEquipo(await rpc('anular_invitacion', { p_comercio: S.comercio.id, p_id: b.dataset.id })); app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Invitación anulada.'); },
+    accesoPersona: async (b) => {
+      const dar = b.dataset.activo === '1';
+      ponerEquipo(await rpc('acceso_persona', { p_comercio: S.comercio.id, p_persona: b.dataset.id, p_activo: dar }));
+      app.innerHTML = marco(vistaConfig(S.cfg)); avisar(dar ? 'Acceso devuelto.' : 'Acceso quitado: ya no puede cargar en la caja.');
+    },
     cancelarCrear: () => { S.creando = false; pintar(); },
     elegirComercio: (b) => { S.comercio = S.comercios.find((c) => c.id === b.dataset.id) || null; S.local = S.comercio && S.comercio.locales.length === 1 ? S.comercio.locales[0] : null; if (S.comercio && S.local) guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: S.local.id }); pintar(); },
     elegirLocal: (b) => { S.local = S.comercio.locales.find((l) => l.id === b.dataset.id); guardar('caja.dispositivo', { comercio_id: S.comercio.id, local_id: S.local.id }); salirOp(); pintar(); },
@@ -875,6 +967,17 @@
       const lista = (k) => [...f.querySelectorAll('[data-lista="' + k + '"] [data-valor]')].map((x) => x.dataset.valor);
       S.cfg = await rpc('guardar_config', { p_comercio: S.comercio.id, p_config: { medios: ['Efectivo'].concat(lista('medios')), categorias_gasto: lista('categorias_gasto'), tipos_retiro: lista('tipos_retiro'), categorias_ingreso: lista('categorias_ingreso') } });
       app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Listas guardadas.');
+    },
+    invitar: async (f) => {
+      const nombre = f.nombre.value.trim();
+      const r = await rpc('invitar', { p_comercio: S.comercio.id, p_nombre: nombre, p_rol: f.rol.value, p_locales: [...f.querySelectorAll('input[name="local"]:checked')].map((x) => x.value) });
+      ponerEquipo(r.equipo); app.innerHTML = marco(vistaConfig(S.cfg)); hojaEnlace(nombre, r.codigo);
+    },
+    codigoInvitacion: async (f) => {
+      const crudo = f.codigo.value.trim(), m = /[?&]invitacion=([^&#\s]+)/i.exec(crudo);
+      const c = String(m ? m[1] : crudo).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      if (c.length !== 12) throw new Error('El código tiene 12 letras y números. Revisalo o pedí el enlace de nuevo.');
+      guardar('caja.invitacion', { codigo: c, t: Date.now() }); cerrarHoja(); await arrancar();
     },
     local: async (f) => {
       S.cfg = await rpc('guardar_local', { p_comercio: S.comercio.id, p_id: f.dataset.id || null, p_nombre: f.nombre.value.trim(), p_activo: f.activo ? f.activo.checked : true });

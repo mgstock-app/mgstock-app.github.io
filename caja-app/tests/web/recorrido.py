@@ -21,7 +21,7 @@ UID, EMAIL = 'a1000000-0000-4000-8000-000000000001', 'duena.a@example.com'
 errores = []
 
 
-def sesion():
+def sesion(UID=UID, EMAIL=EMAIL):
     exp = int(time.time()) + 10 * 365 * 86400
     b = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip('=')
     tok = b({'alg': 'HS256', 'typ': 'JWT'}) + '.' + b({'sub': UID, 'role': 'authenticated', 'email': EMAIL, 'exp': exp, 'aud': 'authenticated'}) + '.firma'
@@ -30,14 +30,14 @@ def sesion():
                      'user_metadata': {}, 'created_at': '2026-01-01T00:00:00Z'}}
 
 
-def contexto(p, nav, telefono):
+def contexto(p, nav, telefono, uid=UID, email=EMAIL):
     if telefono:
         d = dict(p.devices['iPhone 13'])
         d.pop('default_browser_type', None)
         ctx = nav.new_context(**d, locale='es-AR', timezone_id='America/Argentina/Buenos_Aires')
     else:
         ctx = nav.new_context(viewport={'width': 1366, 'height': 900}, locale='es-AR', timezone_id='America/Argentina/Buenos_Aires')
-    ctx.add_init_script("if(!localStorage.getItem('caja-app-auth'))localStorage.setItem('caja-app-auth',%s);" % json.dumps(json.dumps(sesion())))
+    ctx.add_init_script("if(!localStorage.getItem('caja-app-auth'))localStorage.setItem('caja-app-auth',%s);" % json.dumps(json.dumps(sesion(uid, email))))
     page = ctx.new_page()
     page.on('pageerror', lambda e: errores.append('pageerror: %s' % e))
     # Los 4xx esperables (validaciones, sesión vencida que se renueva sola) y las fuentes externas bloqueadas no cuentan: sí cualquier error de JavaScript.
@@ -82,7 +82,7 @@ def esperar_sin_hoja(page):
 
 
 with sync_playwright() as p:
-    nav = p.chromium.launch()
+    nav = p.chromium.launch(channel=os.environ.get('CAJA_NAVEGADOR') or None)
 
     # ================= TELÉFONO =================
     ctx, page = contexto(p, nav, True)
@@ -291,6 +291,64 @@ with sync_playwright() as p:
     foto(page, 'pc-08-historial-del-local')
     ctx.close()
 
+    # ================= EQUIPO: invitar a otra persona con su propia cuenta =================
+    ctx, page = contexto(p, nav, False)
+    page.goto(BASE + '/caja/')
+    # Equipo nuevo y el comercio ya tiene dos locales: primero se elige el local.
+    page.locator('[data-act=elegirLocal]', has_text='Centro').click()
+    page.locator('.lateral nav button', has_text='Configuración').click()
+    equipo = page.locator('[data-equipo]')
+    expect(equipo).to_contain_text('Tu cuenta')
+    expect(equipo.locator('[data-act=accesoPersona]')).to_have_count(0)
+    equipo.locator('[data-act=invitar]').click()
+    hoja(page).locator('input[name=nombre]').fill('Lucía')
+    expect(hoja(page).locator('input[name=local]')).to_have_count(2)
+    hoja(page).locator('button.prim').click()
+    expect(hoja(page)).to_contain_text('Invitación para Lucía')
+    enlace = hoja(page).locator('input[data-enlace]').input_value()
+    assert '/caja/?invitacion=' in enlace and len(enlace.split('invitacion=')[1]) == 12, enlace
+    expect(hoja(page).locator('a[href^="https://wa.me/?text="]')).to_be_visible()
+    foto(page, 'pc-09-invitacion')
+    page.keyboard.press('Escape')
+    expect(equipo).to_contain_text('Invitaciones sin usar')
+    expect(equipo.locator('[data-act=anularInvitacion]')).to_have_count(1)
+    foto(page, 'pc-10-equipo-pendiente')
+
+    # La persona invitada abre el enlace en su teléfono, con su propia cuenta.
+    ctx2, inv = contexto(p, nav, True, 'c1000000-0000-4000-8000-000000000001', 'intruso@example.com')
+    inv.goto(enlace)
+    expect(inv.locator('#aviso')).to_contain_text('ya podés usar la caja')
+    assert 'invitacion' not in inv.url, 'el código quedó en la dirección'
+    inv.wait_for_selector('h1:has-text("¿Qué local es este equipo?")')
+    inv.locator('[data-act=elegirLocal]', has_text='Centro').click()
+    inv.wait_for_selector('h1:has-text("Caja cerrada")')
+    inv.locator('[data-act=menu]').first.click()
+    expect(hoja(inv)).to_contain_text('Cerrar sesión')
+    expect(hoja(inv)).not_to_contain_text('Configuración')
+    expect(hoja(inv)).not_to_contain_text('Historial')
+    foto(inv, 'tel-09-invitada')
+    inv.keyboard.press('Escape')
+    # El mismo enlace ya no sirve para nadie más y no rompe la app.
+    inv.goto(enlace)
+    expect(inv.locator('#aviso')).to_contain_text('ya se usó')
+    inv.wait_for_selector('h1:has-text("Caja cerrada")')
+
+    # La dueña la ve en el equipo y le quita el acceso.
+    page.reload()
+    page.locator('.lateral nav button', has_text='Configuración').click()
+    equipo = page.locator('[data-equipo]')
+    expect(equipo).to_contain_text('Lucía')
+    expect(equipo).not_to_contain_text('Invitaciones sin usar')
+    equipo.locator('[data-act=accesoPersona]').click()
+    expect(page.locator('#aviso')).to_contain_text('Acceso quitado')
+    expect(equipo).to_contain_text('Sin acceso')
+    expect(equipo.locator('[data-act=accesoPersona]')).to_have_text('Devolver acceso')
+    foto(page, 'pc-11-equipo-sin-acceso')
+    inv.reload()
+    expect(inv.locator('body')).to_contain_text('desactivado')
+    ctx2.close()
+    ctx.close()
+
     # ================= SIN SESIÓN (pantalla de acceso) =================
     ctx = nav.new_context(viewport={'width': 390, 'height': 800}, is_mobile=True, has_touch=True)
     page = ctx.new_page()
@@ -301,6 +359,13 @@ with sync_playwright() as p:
     foto(page, 'tel-08-acceso')
     page.click('text=Crear una cuenta')
     page.wait_for_selector('form[data-form=crearCuenta]')
+    # Con un enlace de invitación: avisa que hay que entrar y guarda el código para después del ingreso.
+    page.goto(BASE + '/caja/?invitacion=ABCDEFGHJKMN')
+    page.wait_for_selector('form[data-form=entrar]')
+    expect(page.locator('.ok-msg')).to_contain_text('Te invitaron a una caja')
+    assert 'invitacion' not in page.url
+    assert json.loads(page.evaluate("localStorage.getItem('caja.invitacion')"))['codigo'] == 'ABCDEFGHJKMN'
+    foto(page, 'tel-10-acceso-invitada')
     ctx.close()
     nav.close()
 
