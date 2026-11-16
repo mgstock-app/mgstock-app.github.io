@@ -70,7 +70,7 @@
 .mhs-agregar>button:hover:not(:disabled){background:#1e426c}
 @media(min-width:761px){
   /* Un solo desplazamiento vertical: el de la página; evita saltos de la planilla. */
-  .mhs-tabla-wrap{max-height:none;overflow:clip;position:relative;
+  .mhs-tabla-wrap{max-height:none;overflow:visible;position:relative;
     scrollbar-gutter:auto;overscroll-behavior:auto;scroll-padding-top:0}
   .mhs-tabla{width:100%;min-width:0;table-layout:fixed}
   .mhs-tabla thead th{position:sticky;top:0;z-index:3;min-width:0;
