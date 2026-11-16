@@ -14,8 +14,8 @@ function connect(c){
  context=c;return true;
 }
 const differences=()=>data?.rows?.filter(x=>Number(x.difference)!==0)||[];
-const pending=()=>differences().filter(x=>!x.acknowledged);
-const ready=()=>!!data?.baseline_ready&&!pending().length;
+const pending=()=>data?.first_day?[]:differences().filter(x=>!x.acknowledged);
+const ready=()=>!!(data?.baseline_ready||data?.first_day)&&!pending().length;
 function panel(){
  const d=context?.day||'',previous=data?.previous_day||plusDays(d,-1);
  const title='Comparación · Noche salida '+dayLabel(previous)+' / Mañana entrada '+dayLabel(d);
@@ -23,6 +23,8 @@ function panel(){
  const err=error?'<p class="gcm-morning-error" role="alert">'+esc(error)+'</p>':'';
  if(!data)return '<section class="gcm-morning-review" role="status"><header><strong>'+esc(title)+
   '</strong>'+refreshButton+'</header><p>'+ (loading?'Comparando los totales guardados…':'Verificá los totales de cada producto antes del cierre.')+'</p>'+err+'</section>';
+ if(data.first_day)return '<section class="gcm-morning-review is-complete" role="status"><header><strong>'+esc(title)+
+  '</strong>'+refreshButton+'</header><p>Primer día de Conteo: todavía no existe una Noche salida anterior para comparar. Este primer cierre crea el punto de partida. Desde mañana la comparación será obligatoria.</p>'+err+'</section>';
  if(!data.baseline_ready)return '<section class="gcm-morning-review is-blocked" role="alert"><header><strong>'+esc(title)+
   '</strong>'+refreshButton+'</header><p>Falta cerrar Noche salida del día anterior. No se puede finalizar Mañana entrada sin ese conteo.</p>'+err+'</section>';
  const rows=differences(),issues=pending();
