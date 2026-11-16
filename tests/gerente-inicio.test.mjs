@@ -60,7 +60,8 @@ test('Munro: Staff es opción visible del menú lateral, sin duplicar Horarios y
  const areas=readFileSync('public/stock/gestlok-owner-areas.js','utf8');
  const runtime=readFileSync('components/stock-runtime.tsx','utf8');
  assert.match(sidebar,/const puedeVerStaffMunro = \(\) => S\.me\?\.tenant_id === MI_GUSTO_TENANT && S\.local === 'munro'/);
- assert.match(sidebar,/staffMunro \? `<button type="button" data-act="staff-horarios"/);
+ assert.match(sidebar,/\(puedeVerStaffMunro\(\) \? `<button type="button" data-act="staff-horarios"/);
+ assert.match(sidebar,/Motos Agencia<\/span><\/button>[^\n]* : ''\) \+\n    \(puedeVerStaffMunro\(\)/);
  assert.match(sidebar,/case 'staff-horarios': window\.GestLokOwnerAreas\?\.openStaffHorarios\?\.\(\)/);
  assert.match(sidebar,/puedeVerStaffMunro\(\) \? '' : `<a class="snav-link"/);
  assert.match(areas,/staffNavVisible,openStaffHorarios/);
