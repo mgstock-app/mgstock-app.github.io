@@ -547,8 +547,8 @@ function historyDetailView(){
   // fila completa y distribuye sus numerosos productos en columnas legibles.
   historySummaryTable(rec)+
   historyCorrectionPanel(rec)+
-  '<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores</span></summary>'+
-  '<div class="gcm-hd-consumption-body">'+historyExtraBlock('consumption','Consumos',rec)+'</div></details>'+
+  (rec.shift==='manana_entrada'?'':'<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores</span></summary>'+
+  '<div class="gcm-hd-consumption-body">'+historyExtraBlock('consumption','Consumos',rec)+'</div></details>')+
   (rec.waste_visible?'<details class="gcm-hd-consumption"><summary>Desperdicios</summary>'+
    '<div class="gcm-hd-consumption-body">'+historyExtraBlock('waste','Desperdicios',rec)+'</div></details>':'')+
   '<details class="gcm-hd-breakdown"><summary>Ver detalle por vencimiento</summary>'+
@@ -1339,6 +1339,20 @@ document.addEventListener('click',async e=>{
   const currentDay=day,currentShift=shift,following=nextTurn(currentDay,currentShift);
   const currentName=SHIFTS.find(x=>x[0]===currentShift)?.[1]||currentShift;
   const nextName=SHIFTS.find(x=>x[0]===following.shift)?.[1]||following.shift;
+  if(currentShift==='manana_entrada'){
+   el.disabled=true;el.textContent='Comparando con la noche…';
+   try{
+    await verifyTurnSaved(true);
+    const result=await morning()?.load(morningCtx(),false);
+    if(!result)throw Error('No se pudo comprobar Noche salida. Actualizá y reintentá.');
+    if(!result.baseline_ready)throw Error('No podés cerrar Mañana entrada: falta Noche salida finalizada del día anterior.');
+    const pend=(result.rows||[]).filter(r=>Number(r.difference)!==0&&!r.acknowledged);
+    if(pend.length)throw Error('Hay '+pend.length+' productos con diferencia. Volvé a controlar, corregí el conteo o marcá OK si la cantidad de la mañana es correcta.');
+   }catch(err){
+    error=err.message||'No se pudo comparar con la noche.';
+    api?.toast?.(error);window.alert?.(error);api.render();return;
+   }finally{el.disabled=false;el.textContent='Cerrar turno';}
+  }
   if(!window.confirm('¿Cerrar turno '+currentName+' del '+labelDay(currentDay)+'? Se guardará en Historial y se abrirá '+nextName+' del '+labelDay(following.day)+'.'))return;
   finishing=true;busy=true;
   el.disabled=true;el.textContent='Guardando y cerrando…';
