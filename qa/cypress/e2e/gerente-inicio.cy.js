@@ -26,9 +26,13 @@ describe('Gerente · tarjeta de Empleados (Horarios) sin avisos en el inicio',()
  it('Munro en PC: Staff siempre aparece en el menú lateral autorizado y abre Horarios',()=>{
   cy.viewport(1366,900);start();login('gerente.munro@example.com');
   cy.get('#view [data-gerente-empleados]',{timeout:15000}).should('be.visible');
-  cy.get('#snav [data-act="staff-horarios"]').should('be.visible')
+  cy.get('#snav .snav-folder .snav-sub [data-act="staff-horarios"]').should('be.visible')
     .and('contain.text','Staff')
     .and('have.attr','aria-label','Staff · abrir Horarios de Munro');
+  // Una única entrada: dentro de Administración de local, justo después de Motos Agencia.
+  cy.get('#snav [data-act="staff-horarios"]').should('have.length',1)
+    .prev().should('have.attr','data-go','motos');
+  cy.get('#snav > [data-act="staff-horarios"]').should('not.exist');
   cy.get('#snav [data-act="staff-horarios"]').click();
   cy.location('pathname',{timeout:15000}).should('eq','/empleados/horarios/');
   // El mock de login de stock no persiste la sesión de Empleados al cambiar
