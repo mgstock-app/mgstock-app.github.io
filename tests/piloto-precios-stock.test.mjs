@@ -43,7 +43,7 @@ test('Stock: contador manual, cálculo de inventario estimado, no modifica Pedid
  assert.match(orders,/data-orders-go-prices/);
  assert.match(orders,/data-orders-go-stock/);
  const runtime=read('components/stock-runtime.tsx'),sw=read('scripts/sw-template.js'),layout=read('app/layout.tsx');
- assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-precios-stock\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-precios-stock\.js/);
  assert.match(sw,/'\/stock\/gestlok-precios-stock\.js'/);
  assert.match(layout,/gestlok-precios-stock\.css/);
 });

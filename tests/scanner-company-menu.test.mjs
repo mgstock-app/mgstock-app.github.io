@@ -36,7 +36,7 @@ test('Plan Scanner de Camila queda aislado en menú por tenant sin afectar Mi Gu
   assert.match(app,/GestLokPilot\?\.scanner\?\.\(\)/,'Nuevos planes Scanner deben usar su menú sin asignar un tenant fijo');
   assert.match(owner,/api\?\.S\?\.local\?window\.GestLokScannerMenu\?\.home\?\.\(state\.data,api,shown\):null/);
   assert.ok(owner.indexOf('const scannerHome=')<owner.indexOf("const commerce=allowed('comercial')"));
-  assert.match(runtime,/queueLoad\("\/stock\/gestlok-scanner-menu\.js/);
+  assert.match(runtime,/await load\("\/stock\/gestlok-scanner-menu\.js/);
   assert.match(sw,/gestlok-scanner-menu\.js/);
 });
 

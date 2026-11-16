@@ -59,7 +59,7 @@ test('La base restringe PedidosYa a Acassuso y los nombres/orden a la administra
 });
 
 test('Se carga solo fuera de la demo de visitantes y antes del Vínculo', ()=>{
- assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-categorias-v2-20261113"\);\s*\n\s*if \(!visitor\) queueLoad\("\/stock\/gestlok-molino\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-molino-pya\.js\?rev=pedidosya-categorias-v2-20261113"\);\s*\n\s*if \(!visitor\) await load\("\/stock\/gestlok-molino\.js/);
 });
 
 const cats=readFileSync('supabase/migrations/20261109200000_molino_pya_categorias.sql','utf8');

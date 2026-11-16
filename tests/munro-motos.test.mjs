@@ -70,7 +70,7 @@ test('Motos Agencia: solo Mi Gusto – Munro; dueños con importes, gerentes de 
 });
 
 test('Motos Agencia queda disponible sin conexión y el servidor repite los permisos', () => {
-  assert.match(file('components/stock-runtime.tsx'), /queueLoad\("\/stock\/munro-motos\.js/);
+  assert.match(file('components/stock-runtime.tsx'), /load\("\/stock\/munro-motos\.js/);
   for (const sw of ['scripts/sw-template.js', 'public/sw.js']) assert.match(file(sw), /'\/stock\/munro-motos\.js'/);
   assert.match(file('app/layout.tsx'), /import "\.\/munro-motos\.css";/);
   const sql = file('supabase/migrations/20261027000000_gestlok_munro_agencia_motos.sql');

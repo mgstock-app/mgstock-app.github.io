@@ -48,7 +48,7 @@ test('Pagos Online: switches APP, fórmulas y RLS/flujo de componentes',()=>{
  assert.match(sql,/next_day:=s\.day\+case when s\.turno='tarde' then 1 else 0 end/);
  assert.match(sql,/revoke all on all tables in schema gestlok_mg_online_private from public,anon,authenticated/);
  assert.match(read('public/stock/app.js'),/data-go="cierre-online"/);
- assert.match(read('components/stock-runtime.tsx'),/if \(!visitor\) queueLoad\("\/stock\/mi-gusto-cierre-online\.js/);
+ assert.match(read('components/stock-runtime.tsx'),/if \(!visitor\) await load\("\/stock\/mi-gusto-cierre-online\.js/);
  assert.match(read('app/mi-gusto-pagos-online.css'),/grid-template-columns:1fr 1fr/);
 });
 test('Historial del día agrupa mañana y tarde, y conserva totales sin repetir APP',()=>{

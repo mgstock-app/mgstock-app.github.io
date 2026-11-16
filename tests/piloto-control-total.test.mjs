@@ -42,7 +42,7 @@ test("Se carga únicamente en sesiones privadas, no en demo ni se expone a empre
  const runtime=read("components/stock-runtime.tsx");
  const owners=read("public/stock/gestlok-owner-areas.js");
  const layout=read("app/layout.tsx");
- assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-pilot\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-pilot\.js/);
  assert.match(owners,/window\.GestLokPilot\?\.refresh\?\.\(data,api\)/);
  assert.match(owners,/window\.GestLokPilot\?\.homeTile\?\.\(state\.data,api\)/);
  assert.match(layout,/gestlok-pilot\.css/);

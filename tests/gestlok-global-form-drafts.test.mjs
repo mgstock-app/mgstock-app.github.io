@@ -113,7 +113,7 @@ test('Integración en todas las categorías sin cambiar lógica ni datos',()=>{
  assert.match(app,/S\.me\?\.id\|\|S\.me\?\.email/);
  assert.match(read('public/stock/gestlok-updates.js'),/data-draft-key/);
  assert.match(read('public/stock/gestlok-reclamos-internos.js'),/data-draft-key/);
- assert.match(runtime,/queueLoad\("\/stock\/gestlok-form-draft-guard\.js/);
+ assert.match(runtime,/load\("\/stock\/gestlok-form-draft-guard\.js/);
  assert.ok(runtime.indexOf('gestlok-form-draft-guard.js')<runtime.indexOf('/stock/app.js?rev'));
  for(const sw of ['scripts/sw-template.js','public/sw.js'])assert.match(read(sw),/'\/stock\/gestlok-form-draft-guard\.js'/);
 });

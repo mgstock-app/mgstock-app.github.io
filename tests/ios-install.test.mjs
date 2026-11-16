@@ -49,7 +49,7 @@ test('El manifiesto Apple y el diseño mobile siguen integrados',()=>{
  assert.match(layout,/appleWebApp:\s*\{ capable: true/);
  assert.match(layout,/viewportFit:\s*'cover'|viewportFit:\s*"cover"/);
  assert.match(layout,/gestlok-ios-install\.css/);
- assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-ios-install\.js/);
+ assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-ios-install\.js/);
  assert.match(read('scripts/sw-template.js'),/'\/stock\/gestlok-ios-install\.js'/);
  assert.match(read('app/gestlok-ios-install.css'),/font-size:16px/);
  assert.match(read('app/mobile-navigation.css'),/safe-area-inset-bottom/);
