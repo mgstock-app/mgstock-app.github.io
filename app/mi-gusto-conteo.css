@@ -1124,3 +1124,166 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-count-screen .gcm-header-fields-compact select{min-height:39px;height:39px;font-size:12px}
  .gcm-count-screen .gcm-header-title h2{font-size:19px}
 }
+
+/* Conteo de ambos locales · navegación lateral y vencimientos siempre a la vista.
+   Respeta la planilla y sus botones originales. No encoge las celdas. */
+.gcm-count-screen.gcm-page{max-width:1820px}
+.gcm-count-screen .gcm-count-layout{
+ display:grid;
+ grid-template-columns:clamp(172px,16vw,220px) minmax(0,1fr);
+ gap:14px;
+ align-items:start;
+ width:100%;
+}
+.gcm-count-screen .gcm-count-main{min-width:0}
+.gcm-count-screen .gcm-category-nav{
+ align-self:start;
+ position:sticky;
+ top:calc(139px + env(safe-area-inset-top,0px));
+ z-index:18;
+ max-height:calc(100dvh - 160px);
+ min-height:120px;
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ border:1px solid #d3deea;
+ border-radius:11px;
+ background:#f8fafc;
+ box-shadow:0 3px 12px rgba(18,52,90,.08);
+ scrollbar-width:thin;
+}
+.gcm-count-screen .gcm-category-nav-head{
+ position:sticky;top:0;z-index:1;
+ display:flex;justify-content:space-between;align-items:center;
+ padding:13px 12px;
+ color:#12345a;background:#e8f0f8;
+ border-bottom:1px solid #d3dfeb;
+ font-size:14px;font-weight:850;
+}
+.gcm-count-screen .gcm-category-nav-head button{display:none}
+.gcm-count-screen .gcm-category-nav-items{
+ display:flex;flex-direction:column;gap:4px;
+ padding:9px;
+}
+.gcm-count-screen .gcm-category-nav-items button{
+ display:flex;align-items:center;justify-content:space-between;gap:7px;
+ min-height:46px;width:100%;
+ border:1px solid transparent;border-radius:8px;
+ padding:10px 8px;color:#234765;background:transparent;
+ text-align:left;font-size:12px;line-height:1.35;font-weight:750;
+ overflow-wrap:anywhere;
+}
+.gcm-count-screen .gcm-category-nav-items button>small{
+ flex:0 0 auto;padding:3px 6px;border-radius:7px;
+ color:#547089;background:#e8f0f7;font-size:11px;font-weight:800;
+}
+.gcm-count-screen .gcm-category-nav-items button:hover,
+.gcm-count-screen .gcm-category-nav-items button:focus-visible{
+ border-color:#a9c4dc;background:#eff5fa;outline-offset:1px;
+}
+.gcm-count-screen .gcm-category-nav-items button.is-active,
+.gcm-count-screen .gcm-category-nav-items button[aria-current="true"]{
+ color:#fff;background:#12345a;border-color:#12345a;
+}
+.gcm-count-screen .gcm-category-nav-items button.is-active>small,
+.gcm-count-screen .gcm-category-nav-items button[aria-current="true"]>small{
+ color:#fff;background:#355e84;
+}
+.gcm-count-screen .gcm-category-toggle{display:none}
+.gcm-count-screen .gcm-expiry-ruler{
+ position:sticky;
+ top:calc(139px + env(safe-area-inset-top,0px));
+ z-index:17;
+ margin-bottom:8px;
+ background:#f1f6fb;
+ border:1px solid #c8d9e9;
+ border-radius:9px;
+ box-shadow:0 3px 10px rgba(12,47,83,.12);
+}
+.gcm-count-screen .gcm-expiry-ruler-scroll{
+ max-width:100%;overflow-x:auto;overflow-y:auto;
+ scrollbar-width:none;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;
+}
+.gcm-count-screen .gcm-expiry-ruler-scroll::-webkit-scrollbar{display:none}
+.gcm-count-screen .gcm-expiry-ruler-grid{
+ display:grid;
+ grid-template-columns:132px repeat(4,216px) 100px;
+ min-width:1110px;width:max(100%,1110px);
+ min-height:68px;align-items:stretch;
+ text-align:center;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid.has-decomiso{
+ grid-template-columns:132px repeat(5,216px) 100px;
+ min-width:1320px;width:max(100%,1320px);
+}
+.gcm-count-screen .gcm-expiry-ruler-grid>span{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ border-right:1px solid #ccdbe9;
+ font-size:14px;font-weight:850;
+ padding:7px 4px;color:#173d5f;
+ white-space:nowrap;
+}
+.gcm-count-screen .gcm-expiry-ruler-date:nth-child(even){
+ background:#e5eff8;
+}
+.gcm-count-screen .gcm-expiry-ruler-date strong{
+ margin-top:3px;font-size:13px;color:#315d81;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid .gcm-expiry-ruler-product,
+.gcm-count-screen .gcm-expiry-ruler-grid .gcm-expiry-ruler-total{
+ background:#dce9f6;color:#103a5b;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid .gcm-expiry-ruler-decomiso{
+ background:#fff0d8;color:#6d491a;
+}
+.gcm-count-screen .gcm-count-main .gcm-section,
+.gcm-count-screen .gcm-count-main .gcm-extras,
+.gcm-count-screen .gcm-count-main .gcm-extra-controls{
+ scroll-margin-top:calc(225px + env(safe-area-inset-top,0px));
+}
+@media(max-width:900px) and (min-width:641px){
+ .gcm-count-screen .gcm-count-layout{
+  grid-template-columns:150px minmax(0,1fr);
+  gap:8px;
+ }
+ .gcm-count-screen .gcm-category-nav-items button{
+  font-size:11px;min-height:44px;padding:8px 6px;
+ }
+ .gcm-count-screen .gcm-category-nav{top:calc(147px + env(safe-area-inset-top,0px))}
+ .gcm-count-screen .gcm-expiry-ruler{top:calc(147px + env(safe-area-inset-top,0px))}
+}
+@media(max-width:640px){
+ /* En teléfono, menú lateral desplegable para no quitarle ancho a la tabla. */
+ .gcm-count-screen .gcm-count-layout{display:block;position:relative}
+ .gcm-count-screen .gcm-category-toggle{
+  display:flex;align-items:center;justify-content:center;
+  min-height:46px;width:100%;margin:0 0 9px;
+  color:#12345a;background:#eaf2f9;border:1px solid #c2d4e4;
+  border-radius:9px;font-weight:850;font-size:14px;
+ }
+ .gcm-count-screen .gcm-category-nav{
+  display:none;position:fixed;
+  top:calc(128px + env(safe-area-inset-top,0px));
+  left:8px;
+  z-index:120;
+  width:min(278px,calc(100vw - 16px));
+  max-height:calc(100dvh - 150px);
+  box-shadow:0 12px 35px rgba(6,27,47,.3);
+ }
+ .gcm-count-screen.is-category-nav-open .gcm-category-nav{display:block}
+ .gcm-count-screen .gcm-category-nav-head button{
+  display:flex;align-items:center;justify-content:center;
+  min-height:40px;min-width:40px;
+  background:white;color:#12345a;border:1px solid #c9d7e7;
+  border-radius:8px;font-size:22px;
+ }
+ .gcm-count-screen .gcm-expiry-ruler{
+  top:calc(141px + env(safe-area-inset-top,0px));
+ }
+ .gcm-count-screen .gcm-expiry-ruler-grid{min-height:63px}
+ .gcm-count-screen .gcm-count-main .gcm-section,
+ .gcm-count-screen .gcm-count-main .gcm-extras,
+ .gcm-count-screen .gcm-count-main .gcm-extra-controls{
+  scroll-margin-top:calc(217px + env(safe-area-inset-top,0px));
+ }
+}

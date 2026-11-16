@@ -555,6 +555,44 @@ function decompColumn(p,canWrite){
  }
  return '<td class="gcm-decomp-cell gcm-numeric-cell gcm-vto-col'+(activeVto==='d'?' is-current-vto':'')+'" data-gcm-idx="d">'+numericCompacta(p,v,canWrite,true,0)+'</td>';
 }
+
+function categorySidebar(names,products){
+ const links=names.map((name,index)=>'<button type="button" data-gcm-nav-section="'+esc(name)+'"'+(index===0?' class="is-active" aria-current="true"':'')+
+ '><span>'+esc(name)+'</span><small>'+products.filter(p=>p.section===name).length+'</small></button>').join('');
+ return '<button type="button" class="gcm-category-toggle" data-gcm-category-toggle aria-expanded="false" aria-controls="gcm-category-nav">☰ Categorías</button>'+
+ '<aside class="gcm-category-nav" id="gcm-category-nav" aria-label="Navegar por categorías del conteo">'+
+ '<div class="gcm-category-nav-head"><strong>Categorías</strong><button type="button" data-gcm-category-close aria-label="Cerrar categorías">×</button></div>'+
+ '<div class="gcm-category-nav-items">'+links+
+ '<button type="button" data-gcm-nav-extras="consumption">Consumo de Staff</button>'+
+ '<button type="button" data-gcm-nav-extras="waste">Desperdicios</button></div></aside>';
+}
+function expiryRuler(showDecomiso){
+ const base=historyRecord?.day||day;
+ const dates=Array.from({length:4},(_,i)=>'<span class="gcm-expiry-ruler-date"><b>Vto '+(i+1)+'</b><strong>'+esc(labelDay(plusDays(base,i)).slice(0,5))+'</strong></span>').join('');
+ return '<div class="gcm-expiry-ruler" aria-label="Vencimientos y fechas fijos durante el conteo">'+
+ '<div class="gcm-expiry-ruler-scroll" role="region" aria-label="Fechas y vencimientos, desplazamiento horizontal" tabindex="0">'+
+ '<div class="gcm-expiry-ruler-grid'+(showDecomiso?' has-decomiso':'')+'">'+
+ '<span class="gcm-expiry-ruler-product">Producto</span>'+dates+
+ (showDecomiso?'<span class="gcm-expiry-ruler-decomiso">Decomiso</span>':'')+
+ '<span class="gcm-expiry-ruler-total">Total</span></div></div></div>';
+}
+function selectCategoryButton(root,name){
+ root.querySelectorAll('.gcm-category-nav [data-gcm-nav-section],.gcm-category-nav [data-gcm-nav-extras]').forEach(btn=>{
+  const active=btn.dataset.gcmNavSection===name||btn.dataset.gcmNavExtras===name;
+  btn.classList.toggle('is-active',active);
+  if(active)btn.setAttribute('aria-current','true');else btn.removeAttribute('aria-current');
+ });
+}
+function updateCategoryFromScroll(){
+ const root=document.querySelector?.('.gcm-count-screen');
+ if(!root)return;
+ const sections=[...root.querySelectorAll('.gcm-count-main .gcm-section,.gcm-count-main .gcm-extras')];
+ const threshold=205;let last=null;
+ for(const section of sections){if(section.getBoundingClientRect().top<=threshold)last=section;}
+ const current=last||sections[0];
+ if(current)selectCategoryButton(root,current.dataset.gcmSection||current.dataset.gcmKind);
+}
+
 function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day;
  const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:labelDay(plusDays(dateBase,i)).slice(0,5)}));
@@ -716,6 +754,8 @@ function view(){
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+'Los cuatro vencimientos se completan en la misma planilla.'+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':activePending().length?'Cambios pendientes de confirmar':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
 '<div class="gcm-sheet-tip">Las cuatro fechas están juntas. En el celular deslizá la tabla hacia los costados para verlas.</div>'+
+ '<div class="gcm-count-layout">'+categorySidebar(visibleCategories,list)+
+ '<main class="gcm-count-main">'+expiryRuler(showDecomiso)+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
   '<label><input type="checkbox" data-gcm-section-visible="'+esc(name)+'"'+(!hidden.has(name)?' checked':'')+
@@ -733,7 +773,7 @@ function view(){
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
  (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
  (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'<span>Conteo archivado</span>')+'</div>':'')+
- '':'' )+
+ '</main></div>'+ '':'' )+
  '</div>';
 }
 function schedule(key,fn){
@@ -790,6 +830,32 @@ function subscribe(local,push){
  void refresh();
  // Sin refresh por focus: preserva posición y teclado del dispositivo.
 }
+
+let navScrollQueued=false;
+function queueActiveCategoryUpdate(){
+ if(navScrollQueued)return;navScrollQueued=true;
+ const run=()=>{navScrollQueued=false;updateCategoryFromScroll();};
+ if(typeof window.requestAnimationFrame==='function')window.requestAnimationFrame(run);
+ else run();
+}
+// Las secciones mantienen scroll horizontal independiente. La barra superior
+// replica la posición sin redibujar ni perder foco del teclado de la tablet.
+document.addEventListener('scroll',e=>{
+ const target=e.target;
+ if(target?.matches?.('.gcm-sheet-scroll,.gcm-expiry-ruler-scroll')){
+  const root=target.closest('.gcm-count-screen');if(!root)return;
+  const x=target.scrollLeft;
+  root.querySelectorAll('.gcm-sheet-scroll,.gcm-expiry-ruler-scroll').forEach(el=>{
+   if(el!==target&&Math.abs(el.scrollLeft-x)>2)el.scrollLeft=x;
+  });
+  return;
+ }
+ if(target===document||target===document.documentElement)queueActiveCategoryUpdate();
+},true);
+if(typeof window.addEventListener==='function'){
+ window.addEventListener('scroll',queueActiveCategoryUpdate,{passive:true});
+}
+
 document.addEventListener('toggle',e=>{
  if(e.target.matches?.('.gcm-section')){
   const name=e.target.dataset.gcmSection;
@@ -804,6 +870,25 @@ document.addEventListener('click',async e=>{
   // Pulsar fuera del cuadro cierra el menú sin alterar el conteo.
   const dialog=e.target?.matches?.('.gcm-product-dialog')?e.target:null;
   if(dialog?.open)dialog.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-category-toggle')||el.hasAttribute('data-gcm-category-close')){
+  const open=el.hasAttribute('data-gcm-category-toggle')&&!root.classList.contains('is-category-nav-open');
+  root.classList.toggle('is-category-nav-open',open);
+  root.querySelector('.gcm-category-toggle')?.setAttribute('aria-expanded',String(open));
+  return;
+ }
+ if(el.hasAttribute('data-gcm-nav-section')||el.hasAttribute('data-gcm-nav-extras')){
+  const name=el.dataset.gcmNavSection,extra=el.dataset.gcmNavExtras;
+  const section=name?[...root.querySelectorAll('.gcm-count-main .gcm-section')].find(x=>x.dataset.gcmSection===name):null;
+  const target=section||root.querySelector('.gcm-count-main [data-gcm-kind="'+extra+'"]')||
+    (extra==='waste'?root.querySelector('.gcm-extra-controls'):null);
+  if(!target)return;
+  if(section&&!section.open){section.open=true;opened.add(name);}
+  selectCategoryButton(root,name||extra);
+  root.classList.remove('is-category-nav-open');
+  root.querySelector('.gcm-category-toggle')?.setAttribute('aria-expanded','false');
+  target.scrollIntoView?.({behavior:'smooth',block:'start'});
   return;
  }
  if(el.hasAttribute('data-gcm-add-product-open')){
