@@ -1,10 +1,16 @@
-/* GESTLOK · Mi Gusto Munro · Conteo por turnos.
+/* GESTLOK · Mi Gusto Munro y Don Torcuato · Conteo por turnos.
    Chapas representadas por cuadrados: 4 lados + diagonal = 5 chapas.
    El backend valida tenant, sucursal, rol, fecha y ediciones de catálogo. */
 (()=>{
 'use strict';
 if(window.GestLokMunroConteo)return;
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
+const LOCALES=['munro','torcuato'];
+// La interfaz es la misma, pero todas las consultas y escrituras del conteo
+// se efectúan sobre funciones y tablas privadas de su propia sucursal.
+const activeLocal=()=>LOCALES.includes(api?.S?.local)?api.S.local:'munro';
+const localLabel=()=>activeLocal()==='torcuato'?'Don Torcuato':'Munro';
+const onlyMunroHistoricalCorrection=rec=>activeLocal()==='munro'&&rec?.day==='2026-11-14'&&rec?.shift==='manana_entrada';
 const SHIFTS=[['manana_entrada','Mañana · entrada'],['manana_salida','Mañana · salida'],['noche_salida','Noche · salida']];
 const RESPONSABLES=['Cami','Shuli','Tizi'];
 /** Orden único del turno. El último cierre abre mañana entrada del siguiente día. */
@@ -39,7 +45,7 @@ const pendingDrafts=new Map();
 let pendingStore='';
 function draftStorageKey(){
  const user=api?.S?.me?.id||api?.S?.me?.email;
- return user?'gcm:pendientes:v1:'+TENANT+':'+String(user):'';
+ return user?(activeLocal()==='munro'?'gcm:pendientes:v1:'+TENANT+':'+String(user):'gcm:pendientes:v2:'+TENANT+':torcuato:'+String(user)):'';
 }
 function persistDrafts(){
  if(!pendingStore||!window.localStorage)return;
@@ -87,9 +93,9 @@ function overlayDrafts(){
  }
 }
 const activePending=()=>[...pendingDrafts.values()].filter(x=>x.day===day&&x.shift===shift);
-const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&api.S?.local==='munro'&&
+const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&LOCALES.includes(api.S?.local)&&
  !window.GestLokCreatorSupport?.previewRol?.() &&
- (api.miRol()==='creadora'||api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes('munro')));
+ (api.miRol()==='creadora'||api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(api.S.local)));
 const editable=()=>allowed()&&!finishing&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
 const admin=()=>allowed()&&api.miRol()==='creadora'&&!api.S?.ro;
 const selected=()=>historyRecord||(snapshot?.counts||[]).find(s=>s.shift===shift)||null;
@@ -97,12 +103,16 @@ const closed=()=>!!historyRecord||selected()?.status==='finalizado';
 function reset(){
  ++generation;++historyToken;
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
- loading=false;busy=false;finishing=false;error='';queues.clear();opened=new Set(['EMPANADAS']);
+ loading=false;busy=false;finishing=false;error='';queues.clear();pendingDrafts.clear();pendingStore='';opened=new Set(['EMPANADAS']);
  historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
- const r=await window.GestLokSupabase.rpc(name,args||{});
+ const local=activeLocal();
+ // No aceptar RPC arbitrarios: solo los nombres del módulo original.
+ if(!/^gestlok_munro_conteo_[a-z_]+$/.test(name))throw Error('Función de Conteo no autorizada');
+ const target=local==='torcuato'?name.replace('gestlok_munro_conteo_','gestlok_torcuato_conteo_'):name;
+ const r=await window.GestLokSupabase.rpc(target,args||{});
  if(r.error)throw Error(r.error.message||'No se pudo guardar.');
  return r.data;
 }
@@ -152,7 +162,7 @@ function dateTitle(iso){
  // Se mantiene el ID original del registro (manana_entrada) y TODAS sus cantidades.
  // Solo el texto visible en el historial y su PNG se identifica como Noche salida.
  function historyShiftLabel(rec){
-  if(rec?.day==='2026-11-14'&&rec?.shift==='manana_entrada')return 'Noche · salida';
+  if(onlyMunroHistoricalCorrection(rec))return 'Noche · salida';
   return SHIFTS.find(s=>s[0]===rec?.shift)?.[1]||rec?.shift||'';
  }
  function groupedHistory(){
@@ -179,7 +189,7 @@ function historyListView(){
    '<span class="gcm-history-date"><span class="gcm-history-calendar" aria-hidden="true">▦</span><strong>'+esc(name)+'</strong>'+
    '<span class="gcm-history-weekday">'+esc(dateTitle(date))+'</span></span>'+
    '<span class="gcm-history-arrow" aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>'+
-   (expanded?'<div class="gcm-history-shifts">'+(date==='2026-11-14'
+   (expanded?'<div class="gcm-history-shifts">'+(activeLocal()==='munro'&&date==='2026-11-14'
   ?[['manana_entrada','Noche · salida']]
   :SHIFTS).map(([key,title])=>{
     const rec=records.get(key);
@@ -191,7 +201,7 @@ function historyListView(){
  }).join('');
  return '<div class="gcm-page gcm-history-screen">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title"><button type="button" data-gcm-history-exit>← Volver al conteo</button>'+
-   '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Historial de conteos</h2></div></div>'+
+   '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Historial de conteos</h2></div></div>'+
    '<label>Mes <input type="month" id="gcm-history-month" min="2025-01" max="'+arDay().slice(0,7)+'" value="'+esc(historyMonth)+'"></label></header>'+
   (historyError?'<p class="gcm-error" role="alert">'+esc(historyError)+' <button type="button" data-gcm-history-retry>Reintentar</button></p>':'')+
   (historyLoading?'<p role="status" class="gcm-loading">Cargando historial…</p>':
@@ -255,7 +265,7 @@ function historyA4Image(rec){
  const rule=(x,y,w,color=line)=>{c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();c.moveTo(x,y);c.lineTo(x+w,y);c.stroke();};
  const rect=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
  rect(0,0,W,H,'#ffffff');rect(0,0,W,15,navy);
- write('MI GUSTO  ·  MUNRO',M,88,23,navy,'700');
+ write('MI GUSTO  ·  '+localLabel().toUpperCase(),M,88,23,navy,'700');
  write('CONTEO DE PRODUCTOS',M,137,40,ink,'700');
  rule(M,165,W-M*2,navy);
  write('Fecha: '+labelDay(rec.day),M,213,22,ink,'700');
@@ -389,7 +399,7 @@ function historyDetailView(){
  if(!rec)return historyListView();
  const products=(snapshot?.products||[]).filter(p=>rec.data?.[p.id]||rec.decomiso?.[p.id]);
  const categories=[...new Set(products.map(p=>p.section))];
- const filename='conteo-munro-'+rec.day+'-'+(rec.day==='2026-11-14'&&rec.shift==='manana_entrada'?'noche_salida':rec.shift)+'.png';
+ const filename='conteo-'+activeLocal()+'-'+rec.day+'-'+(onlyMunroHistoricalCorrection(rec)?'noche_salida':rec.shift)+'.png';
  const image=historyPreviewUrl?'<figure class="gcm-a4-preview">'+
    '<img src="'+historyPreviewUrl+'" alt="Hoja A4 completa: conteo del '+esc(labelDay(rec.day))+'; '+esc(historyShiftLabel(rec))+'; productos, totales y consumos" loading="eager">'+
    '<figcaption>Una sola imagen, proporción A4. Podés ampliarla o descargarla.</figcaption></figure>':
@@ -397,7 +407,7 @@ function historyDetailView(){
  return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+
    '<button type="button" data-gcm-history-back>← Volver al historial</button>'+
-   '<div><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Vista previa A4</h2></div></div></header>'+
+   '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Vista previa A4</h2></div></div></header>'+
   '<div class="gcm-hd-meta"><strong>'+esc(labelDay(rec.day))+'</strong><span>'+esc('Turno '+historyShiftLabel(rec).replace(' · ',' '))+'</span>'+
   '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span><span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
   (rec.status==='finalizado'?'Finalizado':'En curso')+'</span></div>'+
@@ -674,7 +684,7 @@ async function verifyTurnSaved(requireExisting=false){
  return {state,remote};
 }
 function view(){
- if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de Mi Gusto Munro.</p>';
+ if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de su sucursal de Mi Gusto.</p>';
  // Se conserva el día seleccionado hasta que el gerente lo cambie expresamente.
  if(!snapshot&&!loading&&!error)void refresh();
  if(historyMode)return historyRecord?historyDetailView():historyListView();
@@ -691,8 +701,8 @@ function view(){
  const visibleCategories=categories.filter(name=>!hidden.has(name));
  const showWaste=!!rec.waste_visible;
  return '<div class="gcm-page gcm-count-screen">'+conteoHistorialNav('conteo')+
- '<header class="gcm-header gcm-header-compact"><div class="gcm-header-title"><span class="gcm-eyebrow">MI GUSTO · MUNRO</span><h2>Conteo</h2></div>'+
- '<div class="gcm-header-fields gcm-header-fields-compact" aria-label="Datos del conteo"><div class="gcm-field-local"><span>Local</span><strong>Munro</strong></div>'+
+ '<header class="gcm-header gcm-header-compact"><div class="gcm-header-title"><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Conteo</h2></div>'+
+ '<div class="gcm-header-fields gcm-header-fields-compact" aria-label="Datos del conteo"><div class="gcm-field-local"><span>Local</span><strong>'+esc(localLabel())+'</strong></div>'+
  '<label class="gcm-field-responsable">Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
  '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
@@ -727,17 +737,24 @@ function view(){
  '</div>';
 }
 function schedule(key,fn){
+ const thisLocal=activeLocal(),thisGeneration=generation;
  const old=queues.get(key)||Promise.resolve();
- const next=old.catch(()=>{}).then(fn);
+ // Una operación pendiente de Munro no puede terminar escribiendo en Torcuato.
+ const next=old.catch(()=>{}).then(()=>{
+  if(thisGeneration!==generation||thisLocal!==activeLocal())throw Error('Se cambió de sucursal antes de guardar.');
+  return fn();
+ });
  queues.set(key,next);busy=true;
  const indicator=document.querySelector('.gcm-help span:last-child');
  if(indicator)indicator.textContent='Guardando…';
  next.then(()=>{
+  if(thisGeneration!==generation||thisLocal!==activeLocal())return;
   if(queues.get(key)!==next)return;
   queues.delete(key);busy=queues.size>0;
   const el=document.querySelector('.gcm-help span:last-child');
   if(el)el.textContent=busy?'Guardando…':'Guardado automáticamente';
  }).catch(e=>{
+  if(thisGeneration!==generation||thisLocal!==activeLocal())return;
   if(queues.get(key)===next)queues.delete(key);
   busy=queues.size>0;
   error='Error al guardar: '+(e.message||'Reintentá');
@@ -769,7 +786,7 @@ function updateExtra(input){
 }
 function attach(value){api=value;readDrafts();}
 function subscribe(local,push){
- if(local!=='munro'||!allowed())return;
+ if(!LOCALES.includes(local)||local!==activeLocal()||!allowed())return;
  void refresh();
  // Sin refresh por focus: preserva posición y teclado del dispositivo.
 }
@@ -1004,7 +1021,7 @@ document.addEventListener('click',async e=>{
   // Cerrar el diálogo antes del aviso nativo de confirmación/renombrado.
   el.closest('.gcm-product-dialog')?.close();
   const remove=el.hasAttribute('data-gcm-remove');
-  if(remove&&!window.confirm('¿Quitar '+p.name+' del catálogo de Munro? Los conteos históricos se conservarán.'))return;
+  if(remove&&!window.confirm('¿Quitar '+p.name+' del catálogo de '+localLabel()+'? Los conteos históricos se conservarán.'))return;
   const name=remove?p.name:window.prompt('Nuevo nombre del producto:',p.name);
   if(name===null||!name.trim()||name.trim().length>100)return;
   busy=true;

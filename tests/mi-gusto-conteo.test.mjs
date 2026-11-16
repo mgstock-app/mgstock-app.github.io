@@ -27,8 +27,9 @@ test('una misma casilla permite chapas y unidades sueltas',()=>{
  assert.match(source,/p_chapas:newCell\.chapas,p_sueltas:newCell\.sueltas/);
  assert.match(source,/v\.chapas\*p\.units_per_chapa\+v\.sueltas/);
 });
-test('catálogo editable solo por creadora y turnos de Munro',()=>{
- assert.match(source,/api\.S\?\.local==='munro'/);
+test('catálogo editable solo por creadora y tres turnos por sucursal',()=>{
+ assert.match(source,/LOCALES\.includes\(api\.S\?\.local\)/);
+ assert.match(source,/api\.misLocales\(\)\.includes\(api\.S\.local\)/);
  assert.match(source,/api\.miRol\(\)==='creadora'/);
  assert.match(source,/noche_salida/);
  assert.ok(events.find(([type])=>type==='click'));

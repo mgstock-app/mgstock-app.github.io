@@ -40,6 +40,16 @@ describe('Gerente · tarjeta de Empleados (Horarios) sin avisos en el inicio',()
   // qa/cypress/e2e/empleados-sesion.cy.js comprueba la planilla autenticada.
   cy.get('.gestlok-module-back',{timeout:15000}).should('have.attr','href','/');
  });
+ it('Don Torcuato muestra su Conteo independiente dentro de Administración de local',()=>{
+  cy.viewport(1366,900);start();login('gerente.torcuato@example.com');
+  cy.get('#view .gl-manager-landing',{timeout:15000}).should('be.visible');
+  cy.get('#snav .snav-folder').should('exist');
+  cy.get('#snav .snav-folder [data-go="conteo-munro"]').should('be.visible').click();
+  cy.get('#view .gcm-count-screen',{timeout:15000}).should('be.visible');
+  cy.get('#view .gcm-header').should('contain.text','DON TORCUATO')
+    .and('not.contain.text','MUNRO');
+  cy.get('#view [data-gcm-history-open]').should('be.visible');
+ });
  it('El acceso Staff no aparece en Torcuato ni sin autorización',()=>{
   cy.viewport(1366,900);start();login('gerente.torcuato@example.com');
   cy.get('#view [data-gerente-empleados]',{timeout:15000}).should('be.visible');
