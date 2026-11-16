@@ -20,7 +20,7 @@ function preloadStartupScripts(visitor: boolean) {
   const common = [
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
-    "/stock/gestlok-commerce.js", "/stock/mi-gusto-conteo.js?rev=mi-gusto-conteo-categorias-20261116",
+    "/stock/gestlok-commerce.js", "/stock/mi-gusto-conteo.js?rev=mi-gusto-conteo-vto-decomiso-lateral-fix-20261116",
     "/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
     "/stock/app.js?rev=munro-staff-pc-20261113",
@@ -74,7 +74,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=posnet-foto-20261111");
-      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=mi-gusto-conteo-categorias-20261116");
+      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=mi-gusto-conteo-vto-decomiso-lateral-fix-20261116");
       if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-pestana-avisos-20261115");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
