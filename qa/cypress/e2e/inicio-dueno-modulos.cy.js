@@ -36,7 +36,10 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
-  cy.window().then(w=>{
+  cy.window().should(w=>{
+   expect(w.__rows, 'locales simulados disponibles').to.be.an('array');
+   expect(w.GestLokNavContext, 'controlador listo').to.be.a('function');
+  }).then(w=>{
    const local=w.__rows.find(r=>r.col==='locales'&&r.id==='munro');
    local.data.nombre='PerCam';
    const second=w.__rows.findIndex(r=>r.col==='locales'&&r.id==='torcuato');

@@ -11,7 +11,11 @@ const iniciar = (email, {habilitada = true, cajaApp = false, viewport = [390, 84
   cy.visit('/');
   cy.wait('@mock');
   cy.get('.gl-intro', {timeout: 15000}).should('not.be.visible');
-  cy.window().then((w) => {
+  // Esperar al simulador y controlador: la intro breve ya no oculta su carga.
+  cy.window().should((w) => {
+    expect(w.__rows, 'datos de prueba preparados').to.be.an('array');
+    expect(w.GestLokNavContext, 'controlador listo').to.be.a('function');
+  }).then((w) => {
     if (!w.__rows.some((r) => r.col === 'equipo' && r.id === DUENA))
       w.__rows.push({col: 'equipo', id: DUENA, data: {email: DUENA, rol: 'dueno', nombre: 'Camila'}});
     w.__cajaHabilitada = habilitada ? [DUENA] : [];
