@@ -250,7 +250,7 @@ function historySummaryTable(rec){
  return '<section class="gcm-hd-summary"><header class="gcm-hd-summary-header">'+
   '<h3>Productos y totales</h3><div>Total general <strong>'+general+'</strong></div></header>'+
   (groups.length?'<div class="gcm-hd-summary-grid">'+groups.map(group=>
-   '<section class="gcm-hd-summary-group"><h4>'+esc(group.section)+
+   '<section class="gcm-hd-summary-group'+(group.section.toLocaleUpperCase('es').includes('EMPANADAS')?' gcm-hd-empanadas':'')+'"><h4>'+esc(group.section)+
    '<span>Total: '+group.total+(group.missing?' · revisar':'')+'</span></h4>'+
    '<table><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody>'+
    group.rows.map(row=>'<tr><td><strong>'+esc(row.name)+'</strong></td>'+
@@ -454,27 +454,37 @@ function historyDetailView(){
  const categories=[...new Set(products.map(p=>p.section))];
  const filename='conteo-'+activeLocal()+'-'+rec.day+'-'+(onlyMunroHistoricalCorrection(rec)?'noche_salida':rec.shift)+'.png';
  const image=historyPreviewUrl?'<figure class="gcm-a4-preview">'+
-   '<img src="'+historyPreviewUrl+'" alt="Hoja A4 completa: conteo del '+esc(labelDay(rec.day))+'; '+esc(historyShiftLabel(rec))+'; productos, totales y consumos" loading="eager">'+
-   '<figcaption>Una sola imagen, proporción A4. Podés ampliarla o descargarla.</figcaption></figure>':
+   '<img src="'+historyPreviewUrl+'" alt="Hoja A4 completa: conteo del '+esc(labelDay(rec.day))+'; '+esc(historyShiftLabel(rec))+'; productos, totales y consumos" loading="lazy">'+
+   '<figcaption>Vista de impresión opcional. El resumen de pantalla es ancho y no depende del tamaño A4.</figcaption></figure>':
    '<p class="gcm-error" role="alert">'+esc(historyPreviewError||'No se pudo generar la imagen A4.')+'</p>';
- return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+conteoHistorialNav('historial')+
+ return '<div class="gcm-page gcm-history-screen gcm-history-detail gcm-history-wide">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+
    '<button type="button" data-gcm-history-back>← Volver al historial</button>'+
-   '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Vista previa A4</h2></div></div></header>'+
-  '<div class="gcm-hd-meta"><strong>'+esc(labelDay(rec.day))+'</strong><span>'+esc('Turno '+historyShiftLabel(rec).replace(' · ',' '))+'</span>'+
-  '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span><span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
+   '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Resumen del conteo</h2></div></div></header>'+
+  '<div class="gcm-hd-meta" aria-label="Datos del turno"><strong>'+esc(labelDay(rec.day))+'</strong>'+
+  '<span>Turno '+esc(historyShiftLabel(rec).replace(' · ',' '))+'</span>'+
+  '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span>'+
+  '<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
   (rec.status==='finalizado'?'Finalizado':'En curso')+'</span></div>'+
+  // Pantalla principal: tarjetas reales en todo el ancho; Empanadas ocupa la
+  // fila completa y distribuye sus numerosos productos en columnas legibles.
+  historySummaryTable(rec)+
+  '<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores</span></summary>'+
+  '<div class="gcm-hd-consumption-body">'+historyExtraBlock('consumption','Consumos',rec)+'</div></details>'+
+  (rec.waste_visible?'<details class="gcm-hd-consumption"><summary>Desperdicios</summary>'+
+   '<div class="gcm-hd-consumption-body">'+historyExtraBlock('waste','Desperdicios',rec)+'</div></details>':'')+
+  '<details class="gcm-hd-breakdown"><summary>Ver detalle por vencimiento</summary>'+
+  '<p class="gcm-hd-notice">Solo lectura. Los totales incluyen los vencimientos y el decomiso registrado.</p>'+
+  (categories.length?categories.map(section=>historyDetailsTable(section,products.filter(p=>p.section===section),rec)).join(''):
+   '<p>No hay productos cargados.</p>')+'</details>'+
+  // La hoja A4 queda disponible solo al desplegar esta opción secundaria;
+  // nunca más sustituye la vista de pantalla ni limita el ancho del resumen.
+  '<details class="gcm-hd-print"><summary>Descargar o imprimir</summary>'+
+  '<h3>Vista previa A4 (opcional)</h3>'+
   '<div class="gcm-a4-toolbar">'+(historyPreviewUrl?'<a class="gcm-a4-download" href="'+historyPreviewUrl+
   '" download="'+filename+'">Descargar imagen A4 (PNG)</a>':'')+
   '<button type="button" data-gcm-a4-refresh>Regenerar vista previa</button></div>'+
-  image+
-  '<details class="gcm-hd-breakdown"><summary>Ver resumen de productos y detalle por vencimiento</summary>'+
-  '<p class="gcm-hd-notice">Solo lectura. Cada total incluye los vencimientos y el decomiso registrado.</p>'+
-  historySummaryTable(rec)+
-  (categories.length?categories.map(section=>historyDetailsTable(section,products.filter(p=>p.section===section),rec)).join(''):
-   '<p>No hay productos cargados.</p>')+
-  '<div class="gcm-hd-extras">'+historyExtraBlock('consumption','Consumos',rec)+
-   historyExtraBlock('waste','Desperdicios',rec)+'</div></details></div>';
+  image+'</details></div>';
 }
 function entry(){return selected()||{day,shift,data:{},decomiso:{},decomiso_visible:false,waste_visible:false,hidden_sections:[],responsable:null,consumption:[],waste:[],status:'borrador'};}
 function draftRecord(){
