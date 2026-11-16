@@ -102,7 +102,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.contains("button","Modificar").click();
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar feriado"]').check();
    // El jueves debe quedar a la vista sin esconderse bajo la columna fija de colaboradores.
-   cy.get(".mhs-tabla-wrap").scrollTo(420,0,{duration:0});
+   cy.get(".mhs-tabla thead th").last().should("be.visible");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
@@ -211,15 +211,27 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
   cy.get('input[aria-label="OFF de Julieta"]').should("have.value","4:30");
  });
- it("mantiene encabezados y colaborador visibles al bajar y permite llegar hasta domingo sin achicar la tabla",()=>{
+ it("muestra lunes a domingo en la misma pantalla y mantiene fijos los encabezados al bajar",()=>{
   cy.viewport(1366,900);iniciar();
-  cy.get(".mhs-tabla thead th").should("have.length",8).last().should("contain.text","Dom");
-  cy.get(".mhs-tabla").should("have.css","min-width","2370px");
+  cy.get(".mhs-tabla thead th").should("have.length",8).first().should("contain.text","Colaborador");
+  cy.get(".mhs-tabla thead th").last().should("contain.text","Dom");
+  cy.get(".mhs-tabla-wrap").should($el=>{
+    const el=$el[0];
+    expect(el.scrollWidth,"sin scroll horizontal de la semana").to.be.at.most(el.clientWidth+2);
+  });
+  cy.get(".mhs-tabla thead th").last().should("be.visible");
   cy.get(".mhs-tabla-wrap").scrollTo("bottom",{duration:0});
   cy.get(".mhs-tabla thead th").first().should("have.css","position","sticky");
   cy.get(".mhs-tabla tbody tr").last().find("th").should("have.css","position","sticky");
-  cy.contains("button","Domingo →").click();
-  cy.get(".mhs-tabla-wrap").should($el=>expect($el[0].scrollLeft).to.be.greaterThan(500));
+  cy.get(".mhs-tabla thead th").last().should("be.visible");
+ });
+ it("en una notebook de 1024px también se ven los siete días",()=>{
+  cy.viewport(1024,768);iniciar();
+  cy.get(".mhs-tabla thead th").should("have.length",8);
+  cy.get(".mhs-tabla-wrap").should($el=>{
+    const el=$el[0];
+    expect(el.scrollWidth,"los siete días caben").to.be.at.most(el.clientWidth+2);
+  });
   cy.get(".mhs-tabla thead th").last().should("be.visible");
  });
  it("Semana finalizada archiva una vez y abre la próxima sin horarios y sin colaboradores inactivos",()=>{
