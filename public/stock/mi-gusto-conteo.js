@@ -1349,8 +1349,8 @@ document.addEventListener('click',async e=>{
     await verifyTurnSaved(true);
     const result=await morning()?.load(morningCtx(),false);
     if(!result)throw Error('No se pudo comprobar Noche salida. Actualizá y reintentá.');
-    if(!result.baseline_ready)throw Error('No podés cerrar Mañana entrada: falta Noche salida finalizada del día anterior.');
-    const pend=(result.rows||[]).filter(r=>Number(r.difference)!==0&&!r.acknowledged);
+    if(!result.baseline_ready&&!result.first_day)throw Error('No podés cerrar Mañana entrada: falta Noche salida finalizada del día anterior.');
+    const pend=result.first_day?[]:(result.rows||[]).filter(r=>Number(r.difference)!==0&&!r.acknowledged);
     if(pend.length)throw Error('Hay '+pend.length+' productos con diferencia. Volvé a controlar, corregí el conteo o marcá OK si la cantidad de la mañana es correcta.');
    }catch(err){
     error=err.message||'No se pudo comparar con la noche.';
