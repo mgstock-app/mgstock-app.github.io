@@ -17,8 +17,9 @@ export function fileAudience(path) {
   // Cambios reales del worker (caché, offline y seguridad) requieren aviso general.
   if (p === 'scripts/sw-template.js') return ['*'];
   if (NON_RUNTIME.test(p) || UPDATE_INFRA.has(p)) return [];
-  // Conteo y demás pantallas exclusivas de Munro no cambian Torcuato.
-  if (/^(?:public\/stock\/(?:mi-gusto-conteo\.js|munro-|gestlok-munro-)|app\/(?:mi-gusto-conteo\.css|munro-))/i.test(p)) {
+  // Solo los módulos exclusivos de Munro avisan a Munro. Conteo es compartido
+  // visualmente por Munro y Torcuato: sus cambios deben avisar a ambos.
+  if (/^(?:public\/stock\/(?:munro-|gestlok-munro-)|app\/munro-)/i.test(p)) {
     return [LOCAL_AUDIENCE.munro];
   }
   // Staff semanal de Munro: no generar avisos falsos en Torcuato ni otros locales.
