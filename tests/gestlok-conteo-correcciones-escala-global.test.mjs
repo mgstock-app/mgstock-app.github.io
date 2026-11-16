@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const js=read('public/stock/mi-gusto-conteo.js');
@@ -61,4 +62,9 @@ test('Controles A−/A+ de 50 a 180 % por usuario, local, vista y tarjeta',()=>{
  assert.match(employees,/gestlok-font-controls\.js\?rev=texto-50-180-20261116/);
  assert.match(runtime,/mi-gusto-historial-editable-auditado-20261116/);
  assert.doesNotMatch(fonts,/\.zoom\s*=|document\.documentElement\.style\.zoom/);
+});
+
+test('Los módulos JS no contienen errores de sintaxis',()=>{
+ assert.doesNotThrow(()=>new vm.Script(js));
+ assert.doesNotThrow(()=>new vm.Script(fonts));
 });
