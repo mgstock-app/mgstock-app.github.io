@@ -30,7 +30,7 @@ for(const local of ['munro','torcuato']){
   assert.ok(sql.includes('before insert or update on '+priv+'.shifts'));
   assert.ok(sql.includes('revoke all on function public.'+prefix+'_ack_morning'));
   assert.ok(sql.includes('grant execute on function public.'+prefix+'_ack_morning'));
-  assert.ok(sql.includes('coalesce((v.x->>\\'qty\\')::bigint,0)'));
+  assert.ok(sql.includes("coalesce((v.x->>'qty')::bigint,0)"));
  });
 }
 test('Excepción 14/11 Munro: no altera el turno real, pero sirve como noche anterior del 15/11',()=>{
