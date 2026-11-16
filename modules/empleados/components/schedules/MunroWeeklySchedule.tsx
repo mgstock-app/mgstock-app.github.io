@@ -244,7 +244,7 @@ export function MunroWeeklySchedule(){
    finally{setGuardando(false);}
  };
  const finalizarSemana=async()=>{
-   if(!puedeEditar||semanaCerrada||cerrandoSemana||guardandoEnCurso.current||guardando)return;
+   if(!puedeEditar||semanaCerrada||cerrandoSemana||guardadoEnCurso.current||guardando)return;
    if(pendientes.length){
      setError("Primero esperá a que se guarden todos los cambios; después finalizá la semana.");
      return;
