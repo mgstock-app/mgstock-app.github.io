@@ -230,7 +230,7 @@ test('No inferir local de cambios de lógica que no son importaciones ni referen
 
 test('El único cambio de orden Staff de Munro no avisa a Torcuato ni a otras empresas',()=>{
  const lines=read('public/stock/app.js').split('\n');
- const newTop=lines.find(x=>x.startsWith('  const html = `'));
+ const newTop=lines.find(x=>x.startsWith('  const html = `')&&x.includes('snav-loc snav-back'));
  const nested=lines.find(x=>x.startsWith('    (puedeVerStaffMunro() ? '));
  const newGuard=lines.find(x=>x.includes('if (!puedeVerMotos() && !puedeVerStaffMunro()'));
  assert.ok(newTop&&nested&&newGuard);
