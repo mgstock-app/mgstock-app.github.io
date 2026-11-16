@@ -3849,7 +3849,7 @@ function afterAccess(){
   }
   applyPushNavigation();
 }
-/* Mi Gusto: «Administración de local» agrupa Conteo y Motos Agencia → Staff (Munro), Reseñas y Reclamos. */
+/* Mi Gusto: «Administración de local» agrupa Conteo diario y Motos Agencia (Munro) y Reseñas (Munro y Torcuato). */
 function navAdmLocal(){
   const items = (puedeVerConteoMunro() ? `<button data-go="conteo-munro">${ic('clip')}<span class="nl">Conteo</span></button>` : '') +
     (puedeVerDiarioMunro() ? `<button data-go="diario">${ic('clip')}<span class="nl">Conteo diario</span></button>` : '') +
