@@ -1200,7 +1200,7 @@ dialog.gcm-add-product-dialog::backdrop{
  box-shadow:0 3px 10px rgba(12,47,83,.12);
 }
 .gcm-count-screen .gcm-expiry-ruler-scroll{
- max-width:100%;overflow-x:auto;overflow-y:clip;
+ max-width:100%;overflow-x:auto;overflow-y:auto;
  scrollbar-width:none;overscroll-behavior-x:contain;
  -webkit-overflow-scrolling:touch;
 }
