@@ -120,8 +120,8 @@ test('La clasificación separa actualizaciones por empresa y conserva alertas de
   assert.deepEqual(fileAudience('public/stock/gestlok-molino-pya.css'),[TENANTS.molino]);
   assert.deepEqual(fileAudience('public/stock/gestlok-zayro-admin.js'),[TENANTS.zayro]);
   assert.deepEqual(fileAudience('public/stock/mi-gusto-cierre-online.js'),[TENANTS.miGusto]);
-  assert.deepEqual(fileAudience('public/stock/mi-gusto-conteo.js'),[LOCAL_AUDIENCE.munro]);
-  assert.deepEqual(fileAudience('app/mi-gusto-conteo.css'),[LOCAL_AUDIENCE.munro]);
+  assert.deepEqual(fileAudience('public/stock/mi-gusto-conteo.js'),[TENANTS.miGusto]);
+  assert.deepEqual(fileAudience('app/mi-gusto-conteo.css'),[TENANTS.miGusto]);
   assert.deepEqual(fileAudience('public/stock/munro-motos.js'),[LOCAL_AUDIENCE.munro]);
   assert.deepEqual(fileAudience('public/stock/munro-daily.js'),[LOCAL_AUDIENCE.munro]);
   assert.deepEqual(releaseAudience(['public/stock/gestlok-molino-pya.css','tests/el-molino-pedidosya.test.mjs']),[TENANTS.molino]);
@@ -208,9 +208,9 @@ test('Diff real de Conteo en una línea con comercio compartido avisa SOLO a Mun
    '-      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=old");',
    '+      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=new");'
  ].join('\n');
- assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{'components/stock-runtime.tsx':patch}),[LOCAL_AUDIENCE.munro]);
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{'components/stock-runtime.tsx':patch}),[TENANTS.miGusto]);
  assert.deepEqual(releaseAudience(['components/stock-runtime.tsx','public/stock/mi-gusto-conteo.js','tests/munro-conteo.test.mjs'],
-   {'components/stock-runtime.tsx':patch}),[LOCAL_AUDIENCE.munro]);
+   {'components/stock-runtime.tsx':patch}),[TENANTS.miGusto]);
 });
 test('Cambios realmente compartidos siguen notificando a todos; cambios de backend sin pantalla no',()=>{
  const diff='-      if (!visitor) await load("/stock/app.js?rev=v1");\n'+
