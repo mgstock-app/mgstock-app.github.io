@@ -229,27 +229,46 @@ function historyProductTotals(rec){
   return {id,name:p.name,section:p.section||'OTROS',total,order:catalogOrder.get(id)??Number.MAX_SAFE_INTEGER};
  }).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
 }
-function historySummaryTable(rec){
- const rows=historyProductTotals(rec);
- const general=rows.reduce((n,r)=>n+(r.total||0),0);
- return '<section class="gcm-hd-summary"><h3>Productos y totales</h3>'+
- '<table><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody>'+
- (rows.length?rows.map(r=>'<tr><td><strong>'+esc(r.name)+'</strong><small>'+esc(r.section)+'</small></td>'+
- '<td class="gcm-hd-summary-number">'+(r.total===null?'Sin referencia':r.total)+'</td></tr>').join(''):
- '<tr><td colspan="2">Sin cantidades registradas</td></tr>')+
- '</tbody><tfoot><tr><th>Total general</th><td>'+general+'</td></tr></tfoot></table>'+
- (rows.some(r=>r.total===null)?'<p>Algunos productos ya no están en el catálogo y requieren revisión para calcular su total.</p>':'')+
- '</section>';
+// Agrupación únicamente visual: usa las secciones y los totales reales del catálogo.
+// Se comparte entre la imagen A4 y el resumen de lectura. No escribe datos.
+function historyGroupedProducts(rec){
+ const groups=new Map();
+ for(const row of historyProductTotals(rec)){
+  const section=String(row.section||'OTROS').trim()||'OTROS';
+  if(!groups.has(section))groups.set(section,{section,rows:[],total:0,missing:false});
+  const group=groups.get(section);
+  group.rows.push(row);
+  if(row.total===null)group.missing=true;
+  else group.total+=row.total;
+ }
+ return [...groups.values()];
 }
-/* Una única imagen PNG con proporción A4. Dibujo directo sobre Canvas, sin
-   capturas múltiples, cortes de página ni dependencias de servicios externos. */
+function historySummaryTable(rec){
+ const groups=historyGroupedProducts(rec);
+ const general=groups.reduce((sum,group)=>sum+group.total,0);
+ const missing=groups.some(group=>group.missing);
+ return '<section class="gcm-hd-summary"><header class="gcm-hd-summary-header">'+
+  '<h3>Productos y totales</h3><div>Total general <strong>'+general+'</strong></div></header>'+
+  (groups.length?'<div class="gcm-hd-summary-grid">'+groups.map(group=>
+   '<section class="gcm-hd-summary-group"><h4>'+esc(group.section)+
+   '<span>Total: '+group.total+(group.missing?' · revisar':'')+'</span></h4>'+
+   '<table><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody>'+
+   group.rows.map(row=>'<tr><td><strong>'+esc(row.name)+'</strong></td>'+
+    '<td class="gcm-hd-summary-number">'+(row.total===null?'Sin referencia':row.total)+'</td></tr>').join('')+
+   '</tbody></table></section>').join('')+'</div>':
+   '<p>Sin cantidades registradas</p>')+
+  (missing?'<p>Algunos productos ya no están en el catálogo; revisalos antes de tomar el total como definitivo.</p>':'')+
+  '</section>';
+}
+/* Imagen A4 del historial (Munro y Don Torcuato). Los bloques se forman con
+   las categorías reales: jamás se asignan rubros, productos ni valores ficticios. */
 function historyA4Image(rec){
  const canvas=document.createElement('canvas');
  canvas.width=1240;canvas.height=1754;
  const c=canvas.getContext('2d');
  if(!c)throw Error('Este dispositivo no puede generar la vista previa A4.');
  const W=canvas.width,H=canvas.height,M=67,right=W-M;
- const navy='#12345a',ink='#182b3c',muted='#567083',line='#d6e2eb',pale='#eef4f9';
+ const navy='#12345a',ink='#172d44',muted='#536b80',line='#dce5ed',pale='#eff4f9';
  const write=(text,x,y,size=21,color=ink,weight='500',align='left')=>{
   c.fillStyle=color;c.textAlign=align;c.textBaseline='alphabetic';
   c.font=weight+' '+size+'px Arial, sans-serif';
@@ -262,94 +281,128 @@ function historyA4Image(rec){
   while(txt.length>1&&c.measureText(txt+'…').width>maxWidth)txt=txt.slice(0,-1);
   return txt+'…';
  };
- const rule=(x,y,w,color=line)=>{c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();c.moveTo(x,y);c.lineTo(x+w,y);c.stroke();};
+ const rule=(x,y,w,color=line)=>{
+  c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();
+  c.moveTo(x,y);c.lineTo(x+w,y);c.stroke();
+ };
  const rect=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
- rect(0,0,W,H,'#ffffff');rect(0,0,W,15,navy);
- write('MI GUSTO  ·  '+localLabel().toUpperCase(),M,88,23,navy,'700');
- write('CONTEO DE PRODUCTOS',M,137,40,ink,'700');
- rule(M,165,W-M*2,navy);
- write('Fecha: '+labelDay(rec.day),M,213,22,ink,'700');
- write('Turno: '+historyShiftLabel(rec),M,253,21,ink);
- write('Responsable: '+(rec.responsable||'Sin asignar'),W/2,213,21,ink);
- write('Estado: '+(rec.status==='finalizado'?'Finalizado':'En curso'),W/2,253,21,
-  rec.status==='finalizado'?'#216e57':'#875c25','700');
- const totals=historyProductTotals(rec);
- const sum=totals.reduce((n,r)=>n+(r.total||0),0);
+ const groups=historyGroupedProducts(rec);
+ const rows=groups.flatMap(group=>group.rows);
+ const sum=groups.reduce((n,group)=>n+group.total,0);
  const consumption=Array.from({length:10},(_,i)=>rec.consumption?.[i]||{});
  const waste=rec.waste_visible&&Array.isArray(rec.waste)?
   rec.waste.filter(x=>String(x?.name||'').trim()||String(x?.value||'').trim()):[];
- const wasteColumns=waste.length>18?3:waste.length>9?2:1;
- const wasteRows=Math.ceil(waste.length/wasteColumns);
- // Reservar tamaño de letra de lectura real para el encabezado y los diez consumos.
- const wasteH=wasteRows?66+wasteRows*30:0,consH=400;
- const extraY=H-95-consH-wasteH;
- const yStart=326,available=Math.max(180,extraY-yStart-100);
- // Dos paneles compactos: cada cantidad queda junto a su producto, no al extremo de la hoja.
- // Se lee de arriba hacia abajo en la columna izquierda, luego en la derecha,
- // siguiendo el orden exacto de la planilla Conteo.
- let cols=totals.length>65?3:totals.length>17?2:1;
- while(cols<3&&Math.ceil(totals.length/cols)*46>available)cols++;
- const rowsPerCol=Math.max(1,Math.ceil(totals.length/cols));
- const rowH=Math.min(54,Math.max(16,Math.floor(available/rowsPerCol)));
- const actualH=rowsPerCol*rowH;
- write('RESUMEN POR PRODUCTO',M,303,27,navy,'700');
- const gap=27;
- const pairWidth=Math.min(cols===1?710:cols===2?500:347,(W-M*2-gap*(cols-1))/cols);
- const pairStart=(W-(cols*pairWidth+gap*(cols-1)))/2;
- const headerHeight=42;
- for(let col=0;col<cols;col++){
-  const x=pairStart+col*(pairWidth+gap),headerY=yStart;
-  rect(x,headerY-17,pairWidth,headerHeight,pale);
-  write('Producto',x+12,headerY+11,22,navy,'700');
-  write('Total',x+pairWidth-13,headerY+11,22,navy,'700','right');
-  for(let j=0;j<rowsPerCol;j++){
-   const r=totals[col*rowsPerCol+j];if(!r)break;
-   const y=headerY+headerHeight+j*rowH;
-   if(j%2===1)rect(x,y,pairWidth,rowH,'#f4f8fc');
-   const font=Math.min(26,Math.max(15,Math.floor(rowH*.49)));
-   const label=trim(r.name,pairWidth-115,font,'600');
-   write(label,x+12,y+rowH*.72,font,ink,'600');
-   write(r.total===null?'—':r.total,x+pairWidth-14,y+rowH*.72,font+1,navy,'700','right');
-   rule(x,y+rowH,pairWidth);
+ const wasteCols=waste.length>27?4:waste.length>18?3:waste.length>9?2:1;
+ const wasteRows=Math.ceil(waste.length/wasteCols);
+ const wasteH=waste.length?55+wasteRows*27:0;
+ const consH=385,consY=H-93-consH-wasteH;
+ rect(0,0,W,H,'#fff');rect(0,0,W,13,navy);
+ write('MI GUSTO  ·  '+localLabel().toUpperCase(),M,70,22,navy,'700');
+ write('CONTEO DE PRODUCTOS',M,122,38,ink,'700');
+ rule(M,140,W-2*M,navy);
+ // Los datos identifican el turno sin ocupar toda la página.
+ const meta=[
+  ['Fecha',labelDay(rec.day)],
+  ['Turno',historyShiftLabel(rec)],
+  ['Responsable',rec.responsable||'Sin asignar'],
+  ['Estado',rec.status==='finalizado'?'Finalizado':'En curso']
+ ];
+ const metaW=(W-2*M)/4;
+ rect(M,160,W-2*M,86,pale);
+ for(let i=0;i<meta.length;i++){
+  const x=M+i*metaW;
+  if(i)rect(x,172,1,62,line);
+  write(meta[i][0],x+16,188,17,muted,'600');
+  write(trim(meta[i][1],metaW-30,21,'700'),x+16,224,21,ink,'700');
+ }
+ // Barra principal: total de ese turno; los 10 consumos son espacios fijos.
+ rect(M,262,W-2*M,99,navy);
+ write('TOTAL GENERAL',M+23,297,20,'#dce8f4','700');
+ write(sum,M+23,342,43,'#fff','700');
+ write('10 ESPACIOS DE CONSUMO',right-23,325,21,'#fff','600','right');
+ write('RESUMEN POR CATEGORÍA',M,407,26,navy,'700');
+ rule(M,421,W-2*M);
+ const top=437,available=Math.max(180,consY-top-24),gap=14;
+ // Distribuir grupos de distintos tamaños en columnas, sin alterar su orden interno.
+ const plans=[
+  {cols:2,width:500,rowH:34,font:24,chunk:12},
+  {cols:3,width:340,rowH:31,font:21,chunk:11},
+  {cols:3,width:340,rowH:27,font:19,chunk:13},
+  {cols:3,width:340,rowH:23,font:17,chunk:16},
+  {cols:3,width:340,rowH:18,font:14,chunk:20}
+ ];
+ const arrange=plan=>{
+  const colHeights=Array(plan.cols).fill(0),cards=[];
+  for(const group of groups){
+   for(let offset=0;offset<group.rows.length;offset+=plan.chunk){
+    const slice=group.rows.slice(offset,offset+plan.chunk);
+    const col=colHeights.indexOf(Math.min(...colHeights));
+    const height=39+slice.length*plan.rowH;
+    cards.push({group,rows:slice,continued:offset>0,col,y:colHeights[col]});
+    colHeights[col]+=height+gap;
+   }
+  }
+  return {plan,cards,height:Math.max(0,...colHeights)-gap};
+ };
+ let chosen=arrange(plans[plans.length-1]);
+ for(const plan of plans){
+  const candidate=arrange(plan);
+  if(candidate.height<=available){chosen=candidate;break;}
+ }
+ const {plan,cards}=chosen;
+ const startX=(W-(plan.cols*plan.width+(plan.cols-1)*21))/2;
+ for(const card of cards){
+  const x=startX+card.col*(plan.width+21),y=top+card.y;
+  const totalLabel=card.continued?'':('Total '+card.group.total+(card.group.missing?'*':''));
+  rect(x,y,plan.width,37,pale);
+  write(trim(card.group.section+(card.continued?' (cont.)':''),plan.width-148,19,'700'),
+   x+13,y+25,19,navy,'700');
+  if(totalLabel)write(totalLabel,x+plan.width-12,y+25,17,navy,'700','right');
+  for(let i=0;i<card.rows.length;i++){
+   const row=card.rows[i],yy=y+39+i*plan.rowH;
+   if(i%2===1)rect(x,yy,plan.width,plan.rowH,'#f8fafc');
+   const label=trim(row.name,plan.width-113,plan.font,'600');
+   write(label,x+13,yy+plan.rowH*.76,plan.font,ink,'600');
+   write(row.total===null?'—':row.total,x+plan.width-13,yy+plan.rowH*.76,
+    plan.font,navy,'700','right');
+   rule(x,yy+plan.rowH,plan.width);
   }
  }
- const subtotalY=yStart+headerHeight+actualH+35;
- const totalBoxWidth=Math.min(430,W-M*2);
- rect(pairStart,subtotalY-29,totalBoxWidth,43,pale);
- write('TOTAL GENERAL',pairStart+12,subtotalY+1,23,navy,'700');
- write(sum,pairStart+totalBoxWidth-14,subtotalY+1,27,navy,'700','right');
- // Los diez renglones siguen completos. Tipografía reforzada también en Consumos.
- let y=extraY;
- write('CONSUMOS  ·  10 COLABORADORES',M,y+24,26,navy,'700');
- y+=38;
- rect(M,y,W-M*2,41,pale);
- write('#',M+14,y+28,21,navy,'700');
- write('Colaborador',M+67,y+28,21,navy,'700');
- write('Consumo',right-14,y+28,21,navy,'700','right');
+ if(!rows.length)write('Sin productos registrados en este turno',M,top+47,23,muted);
+ if(groups.some(group=>group.missing))
+  write('* Hay productos sin referencia; revisar el detalle del historial.',M,consY-14,16,'#9b6925');
+ // Consumos: no se oculta ninguna de las diez filas originales.
+ let y=consY;
+ write('CONSUMOS  ·  10 COLABORADORES',M,y+25,26,navy,'700');
  y+=41;
+ rect(M,y,W-2*M,40,pale);
+ write('#',M+14,y+27,21,navy,'700');
+ write('Colaborador',M+67,y+27,21,navy,'700');
+ write('Consumo',right-14,y+27,21,navy,'700','right');
+ y+=40;
  for(let i=0;i<10;i++){
-  const r=consumption[i],rh=29;
-  if(i%2===1)rect(M,y+i*rh,W-M*2,rh,'#f4f8fc');
+  const row=consumption[i],rh=29;
+  if(i%2===1)rect(M,y+i*rh,W-2*M,rh,'#f8fafc');
   write(i+1,M+15,y+i*rh+22,21,muted);
-  write(trim(r.name||'—',650,21),M+67,y+i*rh+22,21,ink);
-  write(trim(r.value||'—',260,21),right-14,y+i*rh+22,21,ink,'600','right');
-  rule(M,y+(i+1)*rh,W-M*2);
+  write(trim(row.name||'—',650,21),M+67,y+i*rh+22,21,ink);
+  write(trim(row.value||'—',260,21),right-14,y+i*rh+22,21,ink,'600','right');
+  rule(M,y+(i+1)*rh,W-2*M);
  }
  y+=290;
  if(waste.length){
-  y+=25;write('DESPERDICIOS',M,y,23,navy,'700');y+=12;
-  const colW=(W-M*2-(wasteColumns-1)*18)/wasteColumns;
-  for(let k=0;k<waste.length;k++){
-   const col=Math.floor(k/wasteRows),j=k%wasteRows,x=M+col*(colW+18),yy=y+j*30;
-   const name=trim(waste[k].name||'—',colW-115,19);
-   write(name,x+4,yy+23,19,ink);
-   write(trim(waste[k].value||'—',105,19),x+colW-4,yy+23,19,ink,'600','right');
-   rule(x,yy+30,colW);
+  y+=23;write('DESPERDICIOS',M,y,23,navy,'700');y+=14;
+  const gapW=16,colW=(W-2*M-(wasteCols-1)*gapW)/wasteCols;
+  for(let i=0;i<waste.length;i++){
+   const col=Math.floor(i/wasteRows),r=i%wasteRows;
+   const x=M+col*(colW+gapW),yy=y+r*27;
+   write(trim(waste[i].name||'—',colW-91,17),x+4,yy+21,17,ink);
+   write(trim(waste[i].value||'—',84,17),x+colW-4,yy+21,17,navy,'700','right');
+   rule(x,yy+27,colW);
   }
  }
- rule(M,H-74,W-M*2);
- write('Conteo archivado · '+labelDay(rec.day),M,H-48,16,muted);
- write('Documento A4 · Vista completa',right,H-48,16,muted,'500','right');
+ rule(M,H-72,W-M*2);
+ write('Conteo archivado · '+labelDay(rec.day),M,H-47,16,muted);
+ write('Documento A4 · Mi Gusto '+localLabel(),right,H-47,16,muted,'500','right');
  return canvas.toDataURL('image/png');
 }
 function historyDetailsTable(section,products,rec){

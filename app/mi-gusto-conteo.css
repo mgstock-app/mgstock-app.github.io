@@ -1387,3 +1387,47 @@ dialog.gcm-add-product-dialog::backdrop{
 }
 /* Sin barra superior adicional o categoría horizontal: solo el lateral y
    el encabezado único de vencimientos dentro de la planilla. */
+
+
+/* Resumen por categorías reales para la vista A4 e Historial: ambas sucursales.
+   En el teléfono se apilan tarjetas; en tablet/PC se leen en dos columnas. */
+.gcm-history-detail .gcm-hd-summary{max-width:100%;padding:0 0 16px}
+.gcm-hd-summary .gcm-hd-summary-header{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:10px;background:#12345a;padding:12px 16px;color:#fff
+}
+.gcm-hd-summary .gcm-hd-summary-header h3{
+ margin:0;padding:0;background:transparent;font-size:16px;color:#fff
+}
+.gcm-hd-summary .gcm-hd-summary-header>div{font-size:13px;font-weight:650}
+.gcm-hd-summary .gcm-hd-summary-header>div strong{
+ margin-left:8px;font-size:22px;font-weight:900;color:#fff
+}
+.gcm-hd-summary-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ align-items:start;gap:14px;padding:15px
+}
+.gcm-hd-summary-group{
+ min-width:0;overflow:hidden;border:1px solid #d8e2ec;
+ border-radius:10px;background:#fff
+}
+.gcm-hd-summary-group h4{
+ display:flex;justify-content:space-between;align-items:center;
+ flex-wrap:wrap;gap:7px;margin:0;padding:11px 13px;
+ font-size:15px;font-weight:850;color:#153858;background:#edf3f8
+}
+.gcm-hd-summary-group h4 span{
+ font-size:12px;font-weight:800;color:#345a79;font-variant-numeric:tabular-nums
+}
+.gcm-history-detail .gcm-hd-summary-group table{width:100%;table-layout:fixed}
+.gcm-history-detail .gcm-hd-summary-group th,
+.gcm-history-detail .gcm-hd-summary-group td{padding:9px 13px}
+.gcm-history-detail .gcm-hd-summary-group td strong{font-size:15px;overflow-wrap:anywhere}
+.gcm-history-detail .gcm-hd-summary-group th:last-child,
+.gcm-history-detail .gcm-hd-summary-group td:last-child{width:112px}
+@media(max-width:700px){
+ .gcm-hd-summary-grid{grid-template-columns:minmax(0,1fr);gap:11px;padding:10px}
+ .gcm-hd-summary .gcm-hd-summary-header{padding:12px}
+ .gcm-history-detail .gcm-hd-summary-group th,
+ .gcm-history-detail .gcm-hd-summary-group td{padding:9px 10px}
+}
