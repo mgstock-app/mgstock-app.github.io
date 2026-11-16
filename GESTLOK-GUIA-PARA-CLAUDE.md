@@ -249,3 +249,24 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
 - **Creadora:** ya no se ocultan categorías detrás de «Más herramientas» (`gestlok-navigation-editor.js`); conserva «Locales» para volver a su panel y «Editar categorías» solo en empresas sin perfil. Cerrar sesión: «Mi perfil» y «↪ Cerrar sesión» del menú lateral.
 - **Para sumar una empresa nueva:** agregar su `tenant_id` y sus microapps a `MENU_EMPRESAS` (y la entrada de menú de la microapp). La seguridad sigue en la base: `gestlok_tenant_fence` (RESTRICTIVE) en `docs` y RPC/RLS por empresa.
 - **Prueba:** `qa/cypress/e2e/menu-por-empresa.cy.js` (el simulador acepta `window.__tenantOverride` y `window.__companyOverride`).
+
+## 18. Micro apps generales para empresas nuevas (16/11/2026)
+- **Regla de la usuaria:** las micro apps de las empresas en uso (Mi Gusto, El Molino, ZAYRO) **no se modifican**. Para
+  las empresas nuevas se arma una versión **general y completa** de cada una; si un cliente pide algo a medida, se
+  cambia solo para él. Cada versión general va en archivos, funciones y tablas propios y se enciende por empresa.
+- **Orden:** 1) Reseñas con cupón (hecha), 2) Stock, conteo y proveedores, 3) Empleados, 4) Vínculo entre sucursales.
+  GESTLOK Caja y NFC/QR ya son generales. Pagos Online y Motos Agencia no se generalizan (lo cubre la Caja).
+- **Reseñas con cupón general:** `public/stock/gestlok-resenas-general.js` (`window.GestLokResenasGeneral`, panel propio
+  `#gl-rg-panel`), `app/gestlok-resenas-general.css`. Aparece como tarjeta en el Inicio del dueño y del gerente
+  (`gestlok-owner-areas.js`) solo si `gestlok_resenas_gen_scope()` la habilita. Base: esquema
+  `gestlok_resenas_gen_private` (empresas, ajustes, coupons, events) y RPC `gestlok_resenas_gen_scope/list/create/
+  redeem/update/settings_save`. Por local: % de descuento, días de validez y mensaje de WhatsApp (solo el dueño);
+  un cupón pendiente por teléfono y local; único uso; dueño y gerentes del local registran y marcan usados.
+  Mi Gusto está excluida por restricción de la tabla y sigue con `mi-gusto-resenas.js` / `gestlok_resenas_private`.
+- **Encender una empresa:** `supabase/operaciones/resenas-general-habilitar-empresa.sql`.
+- **Pruebas:** `tests/resenas-general.test.mjs`, flujo «Reseñas general · PostgreSQL»
+  (`tests/db/resenas-general-postgres.test.mjs`, `tests/fixtures/resenas-general/base.sql`,
+  `supabase/tests/resenas-general.sql`).
+- **Avisos de actualización:** `scripts/pwa-release-scope.mjs` no avisa a las empresas actuales por cambios de los
+  archivos propios de una micro app general.
+

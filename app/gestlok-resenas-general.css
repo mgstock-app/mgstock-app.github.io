@@ -1,0 +1,61 @@
+/* Reseñas con cupón general (empresas nuevas). Estilos propios: no cambia las Reseñas de Mi Gusto. */
+body.gl-rg-open{overflow:hidden}
+#gl-rg-panel{position:fixed;inset:0;z-index:100000;display:flex;justify-content:center;background:#0e223c80;color:#193550;font:400 14px/1.5 Inter,system-ui,sans-serif}
+#gl-rg-panel *{box-sizing:border-box}
+#gl-rg-panel .gl-rg-shell{position:relative;height:100%;height:100dvh;max-width:1100px;width:100%;background:#f7f9fc;display:flex;flex-direction:column;box-shadow:0 15px 100px #061a3033}
+#gl-rg-panel .gl-rg-top{padding:14px 22px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #e1eaf2}
+#gl-rg-panel .gl-rg-top small{color:#3b789f;letter-spacing:.09em;font-size:10px;font-weight:800}
+#gl-rg-panel .gl-rg-top h1{margin:2px 0;color:#132f4b;font-size:22px;font-weight:800;line-height:1.2}
+#gl-rg-panel .gl-rg-top span{color:#6c8398;font-size:12px}
+#gl-rg-panel .gl-rg-top>div:last-child{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#gl-rg-panel button,#gl-rg-panel select,#gl-rg-panel input,#gl-rg-panel textarea,#gl-rg-panel a{font:inherit}
+#gl-rg-panel .gl-rg-top button,#gl-rg-panel .gl-rg-top select{min-height:44px;padding:9px 14px;background:#fff;border:1px solid #cfdae5;border-radius:10px;color:#16466e;font-weight:650}
+#gl-rg-panel .gl-rg-main{flex:1;overflow:auto;padding:18px 22px 40px;display:grid;gap:16px;align-content:start}
+#gl-rg-panel .gl-rg-error,#gl-rg-panel .gl-rg-ok{margin:0;padding:11px 14px;border-radius:10px;font-weight:600}
+#gl-rg-panel .gl-rg-error{background:#fdecec;color:#9b1c1c;border:1px solid #f5c2c2}
+#gl-rg-panel .gl-rg-ok{background:#e9f7ef;color:#17603a;border:1px solid #bfe5cf}
+#gl-rg-panel .gl-rg-new{background:#fff;border:1px solid #dfe8f0;border-radius:14px;padding:16px;display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}
+#gl-rg-panel .gl-rg-new h2{grid-column:1/-1;margin:0;font-size:16px;color:#132f4b}
+#gl-rg-panel label{display:grid;gap:5px;font-size:12px;font-weight:650;color:#4b6379}
+#gl-rg-panel input,#gl-rg-panel textarea{width:100%;min-height:46px;padding:10px 12px;border:1px solid #cfdae5;border-radius:10px;background:#fff;color:#132f4b;font-size:16px}
+#gl-rg-panel textarea{min-height:110px;resize:vertical}
+#gl-rg-panel form button:not([type=button]){min-height:46px;padding:10px 18px;border:0;border-radius:10px;background:#16466e;color:#fff;font-weight:750}
+#gl-rg-panel form button:disabled{opacity:.55}
+#gl-rg-panel .gl-rg-last{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:#fff8e6;border:1px solid #f0d58a;border-radius:14px;padding:14px 16px}
+#gl-rg-panel .gl-rg-last div{display:grid}
+#gl-rg-panel .gl-rg-last strong{font-size:30px;letter-spacing:.14em;color:#132f4b;line-height:1.2}
+#gl-rg-panel .gl-rg-last a,#gl-rg-panel .gl-rg-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:9px 14px;border-radius:10px;background:#1c8a4d;color:#fff;font-weight:700;text-decoration:none}
+#gl-rg-panel .gl-rg-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#gl-rg-panel .gl-rg-stats div{background:#fff;border:1px solid #dfe8f0;border-radius:12px;padding:10px 14px;display:grid}
+#gl-rg-panel .gl-rg-stats strong{font-size:22px;color:#132f4b}
+#gl-rg-panel .gl-rg-table{background:#fff;border:1px solid #dfe8f0;border-radius:14px;overflow:auto}
+#gl-rg-panel table{width:100%;border-collapse:collapse;min-width:640px}
+#gl-rg-panel th,#gl-rg-panel td{padding:10px 12px;text-align:left;border-bottom:1px solid #edf2f6;vertical-align:middle}
+#gl-rg-panel th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6c8398;background:#f9fbfd}
+#gl-rg-panel td small{display:block;color:#6c8398;font-size:12px}
+#gl-rg-panel .gl-rg-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#fff3cd;color:#7a5600}
+#gl-rg-panel .gl-rg-badge.used{background:#e3f4ea;color:#17603a}
+#gl-rg-panel .gl-rg-badge.expired{background:#eceff3;color:#5b6876}
+#gl-rg-panel .gl-rg-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#gl-rg-panel .gl-rg-actions button{min-height:44px;padding:9px 14px;border-radius:10px;border:1px solid #16466e;background:#fff;color:#16466e;font-weight:700}
+#gl-rg-panel .gl-rg-actions .gl-rg-link{border:0;text-decoration:underline;padding:9px 6px}
+#gl-rg-panel .gl-rg-empty{margin:0;padding:26px 16px;text-align:center;color:#6c8398}
+#gl-rg-panel .gl-rg-modal{position:absolute;inset:0;background:#0e223c80;display:flex;align-items:center;justify-content:center;padding:16px}
+#gl-rg-panel .gl-rg-modal form{width:min(460px,100%);max-height:100%;overflow:auto;background:#fff;border-radius:16px;padding:20px;display:grid;gap:12px}
+#gl-rg-panel .gl-rg-modal h3{margin:0;font-size:18px;color:#132f4b}
+#gl-rg-panel .gl-rg-modal p{margin:0;color:#6c8398;font-size:12px}
+#gl-rg-panel .gl-rg-modal form>div{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+#gl-rg-panel .gl-rg-modal button[type=button]{min-height:46px;padding:10px 16px;border-radius:10px;border:1px solid #cfdae5;background:#fff;color:#16466e;font-weight:650}
+.gl-rg-entry{margin-top:14px}
+@media(max-width:720px){
+ #gl-rg-panel .gl-rg-top{padding:12px 14px}
+ #gl-rg-panel .gl-rg-main{padding:14px 14px 40px}
+ #gl-rg-panel .gl-rg-new{grid-template-columns:1fr}
+ #gl-rg-panel .gl-rg-table{border:0;background:none;overflow:visible}
+ #gl-rg-panel table{min-width:0}
+ #gl-rg-panel thead{display:none}
+ #gl-rg-panel tr{display:grid;gap:4px;background:#fff;border:1px solid #dfe8f0;border-radius:12px;padding:12px;margin-bottom:10px}
+ #gl-rg-panel td{border:0;padding:0}
+ #gl-rg-panel td:first-child{font-weight:750;font-size:16px;color:#132f4b}
+ .gl-rg-entry{flex-direction:column;align-items:stretch}
+}

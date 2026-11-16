@@ -1,0 +1,7 @@
+-- Reseñas con cupón general: encender (o apagar) el módulo para UNA empresa nueva.
+-- Reemplazar <TENANT_ID> por el identificador de la empresa. No sirve para Mi Gusto (usa su propia versión).
+-- Encender:
+--   insert into gestlok_resenas_gen_private.empresas(tenant_id) values ('<TENANT_ID>')
+--   on conflict (tenant_id) do update set enabled = true;
+-- Apagar sin perder cupones ni ajustes:
+--   update gestlok_resenas_gen_private.empresas set enabled = false where tenant_id = '<TENANT_ID>';

@@ -120,6 +120,7 @@
       (soloTienda?'':'<article class="gl-owner-area gl-owner-employees'+(staff?'':' gl-owner-employees-locked')+'"'+(staff?' data-gerente-area="staff"':' aria-disabled="true"')+'><div class="gl-owner-area-icon">'+ICON_TEAM+'</div><div class="gl-owner-area-title"><h2>Administrar <span>a los empleados</span></h2>'+
       (staff?'<button class="gl-owner-arrow" data-gerente-empleados aria-label="Abrir colaboradores de mi local">'+svg(I.right,26)+'</button>':'<small role="status">'+(pending?'Comprobando acceso…':'Horarios no habilitados')+'</small>')+'</div><p>Colaboradores, legajos y turnos de tu propio local.</p>'+list([['team','Colaboradores y fichas'],['calendar','Horarios'],['link','Enlaces a Google Sheets']])+'</article>')+'</div>'+ (staff ? '<nav class="gl-manager-quick" aria-label="Accesos rápidos del gerente">'+[['proveedores','box','Proveedores'],['vencimientos','calendar','Vencimientos'],['chat','file','Chat del local'],['avisos','bell','Avisos']].map(([k,i,t])=>'<button type="button" data-gerente-quick="'+k+'">'+svg(I[i],23)+'<span>'+t+'</span></button>').join('')+'</nav>' : '')+'</section>'+
       (window.GestLokCajaDiaria?.homeTile?.()||'')+
+      (window.GestLokResenasGeneral?.homeTile?.()||'')+
       (window.GestLokMolino?.homeTile?.()||'')+
       (window.GestLokInvites?.homeTile?.()||'')+
       (window.GestLokMenuEmpresa?.()?'':(window.GestLokUpdates?.homeDue?.()||''));
@@ -127,6 +128,8 @@
   async function refresh(){
     // Caja diaria (pedido #200): solo aparece si el servidor la habilita para la empresa de la sesión.
     window.GestLokCajaDiaria?.refresh?.(api);
+    // Reseñas con cupón general: solo empresas nuevas habilitadas por el servidor (nunca Mi Gusto).
+    void window.GestLokResenasGeneral?.refresh?.(api);
     window.GestLokInvites?.refresh?.();
     refreshGerente();
     void refreshGerenteMarca();
@@ -296,7 +299,7 @@
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+
         '<p style="margin:16px 0 0;font-size:14px"><strong>Este módulo aún no está habilitado para tu empresa.</strong> Solicitá su activación a la administración de GESTLOK.</p></article>':'')+
-      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+futurePrices+monthly+myProducts+zayroStore+
+      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+(window.GestLokResenasGeneral?.homeTile?.()||'')+futurePrices+monthly+myProducts+zayroStore+
       (window.GestLokMolino?.homeTile?.()||'')+
       (window.GestLokInvites?.homeTile?.()||'')+
       // Sin tarjetas Reportes generales, Mi cuenta, Ajustes ni Soporte (08/11/2026):

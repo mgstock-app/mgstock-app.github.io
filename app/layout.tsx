@@ -23,6 +23,7 @@ import "./gestlok-mis-productos.css";
 import "./gestlok-tiendanube.css";
 import "./gestlok-cami-monthly.css";
 import "./gestlok-future-pricing.css";
+import "./gestlok-resenas-general.css";
 import "./gestlok-experience.css";
 import "./gestlok-ios-install.css";
 import "./gestlok-nfc-qr.css";

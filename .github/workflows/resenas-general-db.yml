@@ -1,0 +1,48 @@
+name: Reseñas general · PostgreSQL
+# Permisos, aislamiento entre empresas y reglas de Reseñas con cupón general sobre un PostgreSQL 16 vacío.
+# No usa la base de producción ni credenciales.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*resenas_general*'
+      - 'supabase/tests/resenas-general.sql'
+      - 'tests/fixtures/resenas-general/**'
+      - 'tests/db/resenas-general-postgres.test.mjs'
+      - '.github/workflows/resenas-general-db.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*resenas_general*'
+      - 'supabase/tests/resenas-general.sql'
+      - 'tests/fixtures/resenas-general/**'
+      - 'tests/db/resenas-general-postgres.test.mjs'
+      - '.github/workflows/resenas-general-db.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Permisos, aislamiento y reglas
+        env:
+          RESENAS_PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node --test tests/db/resenas-general-postgres.test.mjs

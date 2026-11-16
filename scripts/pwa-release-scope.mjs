@@ -17,6 +17,8 @@ export function fileAudience(path) {
   // Cambios reales del worker (caché, offline y seguridad) requieren aviso general.
   if (p === 'scripts/sw-template.js') return ['*'];
   if (NON_RUNTIME.test(p) || UPDATE_INFRA.has(p)) return [];
+  // Micro apps generales para empresas nuevas: ninguna empresa actual las usa, no avisar a nadie.
+  if (/^(?:public\/stock\/gestlok-resenas-general\.js|app\/gestlok-resenas-general\.css)$/i.test(p)) return [];
   // Conteo y demás pantallas exclusivas de Munro no cambian Torcuato.
   if (/^(?:public\/stock\/(?:mi-gusto-conteo\.js|munro-|gestlok-munro-)|app\/(?:mi-gusto-conteo\.css|munro-))/i.test(p)) {
     return [LOCAL_AUDIENCE.munro];

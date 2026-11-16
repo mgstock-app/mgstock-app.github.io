@@ -87,6 +87,8 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-pedidos.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-precios-stock.js?rev=zayro-creadora-operativa-20261108");
       if (!visitor) await load("/stock/gestlok-future-pricing.js?rev=precios-locales-20261029");
+      // Reseñas con cupón general para empresas nuevas (Mi Gusto conserva su propia versión).
+      if (!visitor) await load("/stock/gestlok-resenas-general.js?rev=resenas-general-20261116");
       // PedidosYa: exclusivo de Molino Café · Acassuso (el servidor valida empresa y sucursal).
       if (!visitor) await load("/stock/gestlok-molino-pya.js?rev=pedidosya-categorias-v2-20261113");
       if (!visitor) await load("/stock/gestlok-molino.js?rev=pedidosya-20261109");
