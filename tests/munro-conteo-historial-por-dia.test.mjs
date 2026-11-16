@@ -337,7 +337,8 @@ test('excepción 14/11: solo cambia la etiqueta a Noche salida y conserva turno/
  const detail=await m.click('data-gcm-history','2026-11-14|manana_entrada');
  assert.match(detail,/Turno Noche salida/);
  assert.match(detail,/conteo-munro-2026-11-14-noche_salida\.png/);
- assert.ok(m.drawn.includes('Turno: Noche · salida'));
+ assert.ok(m.drawn.includes('Noche · salida'));
+ assert.ok(!m.drawn.includes('Mañana · entrada'),'la vista A4 debe respetar la corrección histórica');
  assert.ok(m.drawn.includes('129')); // 4 chapas x 30 + 9 sueltas
  assert.equal(original.shift,'manana_entrada','no cambia el identificador real');
  assert.equal(original.data.p1.v1.chapas,4);
