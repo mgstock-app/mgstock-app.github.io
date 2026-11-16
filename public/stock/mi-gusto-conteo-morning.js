@@ -54,7 +54,9 @@ function row(productId){
 function paint(){
  const root=document.querySelector('.gcm-count-screen'),holder=root?.querySelector('[data-gcm-morning-holder]');
  if(!holder||!context)return;
- holder.innerHTML=panel();
+ // Evita la reconstrucción si nada cambió.
+ const next=panel();
+ if(holder.innerHTML!==next)holder.innerHTML=next;
  for(const tr of root.querySelectorAll('[data-gcm-morning-row]')){
   const x=row(tr.dataset.gcmMorningRow);
   tr.classList.toggle('gcm-morning-difference',x.different&&!x.acknowledged);

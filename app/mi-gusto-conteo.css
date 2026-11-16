@@ -1802,3 +1802,9 @@ dialog.gcm-add-product-dialog::backdrop{
 .gcm-count-screen .gcm-sheet-scroll,.gcm-count-screen .gcm-expiry-ruler-scroll{
  scroll-behavior:auto!important;scroll-snap-type:none!important;overscroll-behavior-x:contain;
 }
+
+/* La comparación que cambia al guardar queda después de la planilla. */
+.gcm-count-screen .gcm-morning-quick-note{
+ font-size:12px;line-height:1.4;color:#334c65;margin:9px 0 12px;padding:8px 11px;
+ border-left:3px solid #bf7b30;background:#fff9ef;border-radius:6px;
+}

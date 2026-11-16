@@ -906,7 +906,7 @@ function view(){
  (snapshot?'<div class="gcm-help"><label class="gcm-decomp-toggle"><input type="checkbox" id="gcm-decomiso-toggle"'+(showDecomiso?' checked':'')+(!canWrite?' disabled':'')+'> Mostrar Decomiso</label><div>'+'Los cuatro vencimientos se completan en la misma planilla.'+
  '<span>'+(closed()?'Finalizado · solo lectura':!editable()?'Solo lectura':activePending().length?'Cambios pendientes de confirmar':busy?'Guardando…':'Guardado automático')+'</span></div></div>'+
 '<div class="gcm-sheet-tip">Las cuatro fechas están juntas. En el celular deslizá la tabla hacia los costados para verlas.</div>'+
- (shift==='manana_entrada'?'<div data-gcm-morning-holder>'+(morning()?.panel()||'<p role="status">Consultando diferencias…</p>')+'</div>':'')+
+ (shift==='manana_entrada'?'<p class="gcm-morning-quick-note">Comparación nocturna: revisá las filas rojas. El detalle y los OK están después de la planilla.</p>':'')+
  '<div class="gcm-count-layout">'+categorySidebar(visibleCategories,list)+
  '<main class="gcm-count-main">'+expiryRuler(showDecomiso)+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
@@ -926,7 +926,8 @@ function view(){
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
  (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
  (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'<span>Conteo archivado</span>')+'</div>':'')+
- '</main></div>'+ '':'' )+
+ '</main></div>'+
+ (shift==='manana_entrada'?'<div data-gcm-morning-holder>'+(morning()?.panel()||'<p role="status">Consultando diferencias…</p>')+'</div>':'')+ '':'' )+
  '</div>';
 }
 function schedule(key,fn){

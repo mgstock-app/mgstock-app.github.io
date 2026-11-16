@@ -24,3 +24,11 @@ test('El render conserva desplazamiento de Conteo',()=>{
 test('Una actualización espera a que se salga de Conteo',()=>{
  assert.match(read('public/stock/gestlok-pwa-update.js'),/document\.querySelector\?\.\('\.gcm-count-screen'\)/);
 });
+
+test('Las diferencias cambiantes van después de la planilla, sin mover el conteo',()=>{
+ const source=read('public/stock/mi-gusto-conteo.js');
+ const table=source.indexOf("'<div class=\"gcm-count-layout\">");
+ const review=source.indexOf("'<div data-gcm-morning-holder>'");
+ assert.ok(table>0&&review>table,'No poner filas variables encima de los vencimientos');
+ assert.match(source,/gcm-morning-quick-note/);
+});
