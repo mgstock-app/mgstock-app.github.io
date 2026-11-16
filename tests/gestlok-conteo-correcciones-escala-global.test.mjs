@@ -50,7 +50,7 @@ test('Controles A−/A+ de 50 a 180 % por usuario, local, vista y tarjeta',()=>{
  assert.match(fonts,/nav\?\.uid/);
  assert.match(fonts,/nav\?\.tenant/);
  assert.match(fonts,/nav\?\.local/);
- assert.match(fonts,/readCard\(key,fallback\)/);
+ assert.match(fonts,/readCard=\(key,fallback\)=>/);
  assert.match(fonts,/data-font-global="-1"/);
  assert.match(fonts,/data-font-global="1"/);
  assert.match(fonts,/data-font-card="-1"/);
