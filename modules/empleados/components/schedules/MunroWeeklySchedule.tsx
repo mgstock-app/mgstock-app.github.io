@@ -406,9 +406,9 @@ export function MunroWeeklySchedule(){
          {pestana==="semana"&&!semanaCerrada&&<button type="button" className="mhs-cierre-semanal" disabled={guardando||cerrandoSemana||pendientes.length>0||semana>semanaActual()}
            onClick={()=>void finalizarSemana()}><CheckCircle2 size={18}/> Semana finalizada</button>}
          {semanaCerrada?<span className="mhs-cerrada-chip"><CheckCircle2 size={17}/> Semana finalizada · solo lectura</span>:
-         {!editando?<button type="button" onClick={()=>setEditando(true)}><Pencil size={17}/> Modificar</button>:
+         !editando?<button type="button" onClick={()=>setEditando(true)}><Pencil size={17}/> Modificar</button>:
            <><button type="button" disabled={guardando} onClick={()=>{if(pendientes.length){setError("Hay cambios pendientes; no se pueden descartar sin revisarlos.");return;}setEditando(false);}}>Finalizar edición</button>
-             <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>}
+             <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>
          }
        </div>}
      </div>}
