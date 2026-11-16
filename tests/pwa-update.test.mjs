@@ -227,3 +227,17 @@ test('No inferir local de cambios de lógica que no son importaciones ni referen
  assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{}),['*']);
  assert.deepEqual(releaseAudience(['public/stock/mi-gusto-cierre-online.js']),[TENANTS.miGusto]);
 });
+
+test('El único cambio de orden Staff de Munro no avisa a Torcuato ni a otras empresas',()=>{
+ const lines=read('public/stock/app.js').split('\n');
+ const newTop=lines.find(x=>x.startsWith('  const html = `'));
+ const nested=lines.find(x=>x.startsWith('    (puedeVerStaffMunro() ? '));
+ const newGuard=lines.find(x=>x.includes('if (!puedeVerMotos() && !puedeVerStaffMunro()'));
+ assert.ok(newTop&&nested&&newGuard);
+ const oldStaff=nested.replace(/^    \(puedeVerStaffMunro\(\) \? /,'${staffMunro ? ').replace(/'\) \+$/, "'}");
+ const oldTop=newTop.replace('${pagosDiarios ? ',oldStaff+'${pagosDiarios ? ');
+ const oldGuard=newGuard.replace('!puedeVerStaffMunro() && ','');
+ const patch=['-  const staffMunro = puedeVerStaffMunro();','-'+oldTop,'+'+newTop,'+'+nested,'-'+oldGuard,'+'+newGuard].join('\n');
+ assert.deepEqual(releaseAudience(['public/stock/app.js','tests/gerente-inicio.test.mjs','scripts/version-cache.mjs'],{'public/stock/app.js':patch}),[LOCAL_AUDIENCE.munro]);
+ assert.deepEqual(releaseAudience(['public/stock/app.js'],{'public/stock/app.js':patch+'\n+  console.log("extra");'}),['*'],'cualquier otro cambio de app.js mantiene aviso compartido');
+});
