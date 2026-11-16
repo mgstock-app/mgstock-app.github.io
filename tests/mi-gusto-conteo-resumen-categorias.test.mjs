@@ -106,7 +106,7 @@ for(const local of ['munro','torcuato']){
   assert.match(html,/class="gcm-page gcm-history-screen gcm-history-detail gcm-history-wide"/);
   assert.match(html,/<h2>Resumen del conteo<\/h2>/);
   assert.ok(start>0&&finish>start);
-  assert.equal((emp.match(/<tr>/g)||[]).length,26);
+  assert.equal((emp.slice(emp.indexOf('<tbody>')).match(/<tr>/g)||[]).length,26);
   assert.match(emp,/>AC<\/strong>/);
   assert.match(emp,/>EMP 24<\/strong>/);
   assert.doesNotMatch(emp,/EMPANADAS \(cont/);
