@@ -303,3 +303,13 @@
  .mgp-mobile-test-buttons{display:grid;grid-template-columns:1fr}
  .mgp-mobile-config>.mgp-mobile-warning{margin:10px!important}
 }
+
+/* Importación nativa de MacroDroid: la configuración privada se descarga solo desde GESTLOK. */
+.mgp-mobile-import{display:grid;gap:9px;margin:14px 16px 10px;padding:16px;border:1px solid #cddde9;background:#f5f9fc;border-radius:13px}
+.mgp-mobile-import>strong{font-size:16px;color:#12345a}
+.mgp-mobile-import>p{font-size:12px;line-height:1.55;color:#516981;margin:0}
+.mgp-mobile-import>label{font-size:12px;font-weight:750;color:#244461}
+.mgp-mobile-import>input{min-height:42px;padding:10px 12px;border:1px solid #bfcedd;border-radius:9px;background:#fff;color:#152d43;font:inherit;font-size:14px;width:100%}
+.mgp-mobile-import>small{color:#65778a;font-size:11px;line-height:1.45}
+.mgp-mobile-import>.mgp-button{white-space:normal;justify-self:start;max-width:100%}
+@media(max-width:570px){.mgp-mobile-import{margin:10px;padding:12px}.mgp-mobile-import>.mgp-button{width:100%;justify-content:center}}

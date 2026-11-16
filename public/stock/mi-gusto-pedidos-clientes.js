@@ -293,6 +293,13 @@ function mobileBridgePanel(){
  '<summary>Conectar avisos del WhatsApp Business de '+esc(localName())+' (sin API)</summary>'+
  '<p>Cada sucursal usa su propio Android, número y clave. El QR abre un asistente, no accede a los chats ni vincula WhatsApp Web.</p>'+
  '<p class="mgp-bridge-status" role="status"><b>Estado de '+esc(localName())+':</b> '+esc(status)+'</p>'+
+ '<div class="mgp-mobile-import"><strong>Importar configuración completa en MacroDroid</strong>'+
+ '<p>Escaneá el QR en el Android de la sucursal. Para descargar una macro con URL, POST, encabezados y JSON ya cargados, iniciá sesión en GESTLOK y usá este botón. El archivo se genera en tu celular: el QR no incluye la clave privada.</p>'+
+ '<label for="mgp-notification-filter">Frase de la notificación de derivación del agente (opcional)</label>'+
+ '<input id="mgp-notification-filter" maxlength="160" placeholder="Escribí la frase real del aviso del agente">'+
+ '<small>Si no sabés la frase, importá la macro desactivada y configurá el filtro cuando identifiques la notificación. Evitá disparar con todos los mensajes.</small>'+
+ (canLinkLocalBridge()?'<button type="button" class="mgp-button" data-mgp-mobile-download '+(!canEdit()?'disabled':'')+'>Descargar macro preparada para '+esc(localName())+'</button>':'')+
+ '<p><strong>Después:</strong> Abrí el archivo con MacroDroid, revisá el disparador, autorizá notificaciones y activá la macro. No se activa sola desde un QR.</p></div>'+
  '<div class="mgp-mobile-qr"><div class="mgp-mobile-qr-image">'+(setupQrSvg()||'<span>No se pudo mostrar el QR. Usá el enlace.</span>')+'</div>'+
  '<div class="mgp-mobile-qr-info"><strong>1. Escanear QR de GESTLOK · '+esc(localName())+'</strong>'+
  '<p>Escaneá desde el celular del local. El asistente indica cómo autorizar notificaciones y preparar MacroDroid una sola vez.</p>'+
@@ -322,6 +329,95 @@ function mobileBridgePanel(){
  '<p>{not_title} representa el título de la notificación y debe insertarse con el selector de variables de MacroDroid.</p></details>'+
  '<p class="mgp-mobile-warning">Un QR no puede conectar WhatsApp Business directamente sin una integración autorizada. El puente solo funciona cuando Android emite una notificación identificable; no interpreta pedidos confirmados ni altera Caja, Stock o Pagos Online.</p></details>';
 }
+// Archivo .macro nativo generado únicamente dentro de una sesión autorizada.
+// El QR PÚBLICO solo informa la sucursal; nunca lleva la clave. El archivo privado
+// contiene la clave creada en el servidor para ese local y no se sube a ningún servicio.
+function buildAndroidMacro(loc,token,filterText=''){
+ if(!(loc in LOCALS)||!/^[a-f0-9]{64}$/.test(String(token||'')))throw Error('Vínculo de sucursal inválido.');
+ const filter=String(filterText||'').trim().slice(0,160);
+ const stamp=Date.now();
+ let idSeed=100+Math.floor(Math.random()*800);
+ const guid=()=>-(stamp*1000+(idSeed++));
+ const action={
+  requestConfig:{
+   allowAnyCertificate:false,basicAuthEnabled:false,basicAuthPassword:'',basicAuthUsername:'',
+   blockNextAction:false,clientCertEnabled:false,clientCertKeyStoreDisplayName:'',
+   clientCertKeyStoreUri:'',clientCertPassword:'',contentBodyDynamicFileName:'',
+   contentBodyFileDisplayName:'',contentBodyFileUri:'',contentBodyFolderDisplayName:'',
+   contentBodyFolderUri:'',contentBodySource:0,
+   contentBodyText:JSON.stringify({local:loc,customer_phone:'{not_title}'}),
+   contentType:'application/json',followRedirects:true,
+   headerParams:[{paramName:'X-Gestlok-Bridge-Key',paramValue:token},
+                 {paramName:'Content-Type',paramValue:'application/json'}],
+   localFileUri:'',prettifyJson:false,queryParams:[],
+   requestTimeOutSeconds:30,requestType:1,saveResponseFileName:'',
+   saveResponseFolderPathDisplayName:'',saveResponseFolderPathUri:'',
+   saveResponseType:0,saveReturnCodeToVariable:false,
+   saveReturnHeadersToVariable:false,urlToOpen:bridgeUrl(),
+   useLocalFileUri:false,useStaticContentBodyFile:true
+  },disableLogging:true,m_SIGUID:guid(),m_classType:'HttpRequestAction',
+  m_constraintList:[],m_isDisabled:false,m_isOrCondition:false
+ };
+ const trigger={
+  enableRegex:false,ignoreCase:true,m_applicationNameList:['WhatsApp Business'],
+  m_exactMatch:false,m_excludeApps:false,m_excludes:false,
+  m_ignoreOngoing:true,m_option:0,m_packageNameList:['com.whatsapp.w4b'],
+  m_soundOption:0,m_supressMultiples:true,m_textContent:filter,
+  matchOptionMessage:0,matchOptionTitle:0,separateTitleAndMessage:false,
+  disableLogging:false,m_SIGUID:guid(),m_classType:'NotificationTrigger',
+  m_constraintList:[],m_isDisabled:false,m_isOrCondition:false
+ };
+ return {globalVariables:[],macro:{
+   breakpoints:[],disabledTimestamp:0,exportedActionBlocks:[],
+   forceEvenIfNotEnabledTimestamp:0,isActionBlock:false,isExtra:false,
+   isFavourite:false,lastEditedTimestamp:stamp,localVariables:[],
+   localVarsAlphabetical:true,m_GUID:guid(),
+   m_actionList:[action],m_category:'GESTLOK',m_constraintList:[],
+   m_description:'Mi Gusto '+LOCALS[loc]+'. Envía un aviso a GESTLOK al detectar una notificación autorizada de WhatsApp Business. Verificar el filtro de derivación del agente y los permisos antes de activar. No lee chats ni confirma pedidos. Este archivo contiene una clave privada: no compartir.',
+   m_descriptionOpen:false,m_enabled:false,m_excludeLog:true,
+   m_headingColor:0,m_isOrCondition:false,
+   m_name:'GESTLOK · WhatsApp '+LOCALS[loc],m_triggerList:[trigger]
+  },macroExportVersion:1};
+}
+function saveAndroidMacroFile(macro,loc){
+ if(!window.Blob||!window.URL?.createObjectURL)throw Error('Este navegador no permite descargar el archivo.');
+ const blob=new window.Blob([JSON.stringify(macro)],{type:'application/octet-stream'});
+ const url=window.URL.createObjectURL(blob);
+ try{
+  const link=document.createElement('a');
+  link.href=url;link.download='GESTLOK-WhatsApp-'+loc+'.macro';
+  link.rel='noopener';document.body.appendChild(link);link.click();link.remove();
+ }finally{
+  setTimeout(()=>window.URL.revokeObjectURL(url),60000);
+ }
+}
+async function downloadAndroidMacro(){
+ if(!metaLocal()||!canEdit()||!canLinkLocalBridge())return;
+ const loc=local();
+ const filter=String(document.getElementById?.('mgp-notification-filter')?.value||'').trim();
+ if(filter.length>160){error='El filtro no puede superar 160 caracteres.';update(true);return;}
+ const reuse=/^[a-f0-9]{64}$/.test(androidBridgeKey);
+ if(!reuse&&androidBridge?.configured&&!window.confirm(
+  'Para crear el archivo automático debemos generar una clave nueva de '+localName()+'. La clave anterior dejará de servir y la macro anterior deberá reemplazarse. ¿Continuar?'
+ ))return;
+ if(!filter&&!window.confirm('No ingresaste una frase que identifique la derivación del agente. La macro se descargará desactivada para evitar avisos falsos. Deberás configurar el filtro y activarla en MacroDroid. ¿Continuar?'))return;
+ busy=true;error='';notice='';update(true);
+ try{
+  let key=androidBridgeKey;
+  if(!reuse){
+   const result=await rpc('gestlok_mg_android_bridge_create');
+   if(loc!==local())return;
+   if(!/^[a-f0-9]{64}$/.test(result?.token||''))throw Error('No se pudo generar la clave');
+   key=result.token;androidBridgeKey=key;bridgeTest=null;
+   androidBridge={configured:true,last_event_at:null};
+  }
+  if(loc!==local())return;
+  saveAndroidMacroFile(buildAndroidMacro(loc,key,filter),loc);
+  notice='Archivo .macro de '+localName()+' descargado. Abrilo o importalo desde MacroDroid → Macros → Importar macro. Revisá el filtro y activá la macro; luego iniciá una prueba en GESTLOK. El archivo contiene la clave privada: no lo compartas.';
+ }catch(e){error=e.message||'No se pudo descargar la macro.';}
+ finally{if(loc===local()){busy=false;update(true);}}
+}
+
 function beginMobileBridgeTest(){
  if(!canEdit()||!metaLocal()||!androidBridge?.configured)return;
  bridgeTest={local:local(),startedAt:Date.now(),previousAt:androidBridge.last_event_at||null,passed:false};
@@ -518,6 +614,7 @@ function attach(h){
   if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
   if(e.target.closest('[data-mgp-mobile-key]')){void createMobileBridgeKey();return;}
+  if(e.target.closest('[data-mgp-mobile-download]')){void downloadAndroidMacro();return;}
   if(e.target.closest('[data-mgp-mobile-test]')){beginMobileBridgeTest();return;}
   if(e.target.closest('[data-mgp-mobile-check]')){void checkMobileBridgeTest();return;}
   const mobileAck=e.target.closest('[data-mgp-mobile-ack]');
@@ -629,5 +726,5 @@ function reset(){
  error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
 }
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
- _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,mobileAlertPanel,mobileBridgePanel,beginMobileBridgeTest,checkMobileBridgeTest,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
+ _test:{esc,pesos,orderCard,acceptOrders,acceptMobileAlerts,mobileAlertPanel,mobileBridgePanel,beginMobileBridgeTest,checkMobileBridgeTest,buildAndroidMacro,indicators,formatPhone,checkIncoming,customerPhone,messagesPanel,metaPanel,setSettings:v=>{settings=v;}}});
 })();

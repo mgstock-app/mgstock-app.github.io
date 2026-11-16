@@ -25,6 +25,14 @@ El agente de Meta atiende al cliente **dentro de WhatsApp Business** de cada suc
 - Las dos sucursales mantienen su **número propio**, clave privada, control de acceso por rol, eventos y avisos aislados. No se incluye ningún número o clave en la URL ni en el QR público.
 - Este asistente **no instala ni configura MacroDroid automáticamente**. Android debe autorizar manualmente el acceso a notificaciones y el operador debe completar el filtro correcto. No es un login de WhatsApp Web ni lee chats. Una señal recibida no demuestra que se hayan detectado todos los pedidos.
 
+## Importar macro preparada desde el QR (nueva opción)
+- El QR público de cada local sigue abriendo `/vincular-whatsapp/?local=munro` o `?local=torcuato`. Se incluye acceso a **Importar macro preparada**.
+- En **GESTLOK autenticado → Mi Gusto → [local] → Pedidos WhatsApp → Vinculación**, botón **Descargar macro preparada para [local]**: genera un archivo nativo `.macro` con un solo disparador `NotificationTrigger` de WhatsApp Business (`com.whatsapp.w4b`) y acción `HttpRequestAction` **POST** con la URL existente, encabezados `X-Gestlok-Bridge-Key` y `Content-Type`, y el JSON `{"local":"munro|torcuato","customer_phone":"{not_title}"}` fijado al local.
+- **Clave:** el QR y la página pública nunca incluyen la clave privada. El archivo se arma y descarga únicamente desde la sesión autorizada del local. Si la clave no está disponible en esa sesión, la RPC crea una nueva; se solicita confirmación antes de reemplazar una anterior (las macros antiguas dejarán de funcionar). El archivo incluye la clave y **no debe compartirse ni enviarse por WhatsApp**.
+- **Importación:** el usuario abre el archivo con MacroDroid o lo importa desde el menú Macros. El archivo se genera con `m_enabled=false` para evitar avisos falsos: debe revisarse/ajustarse la frase del aviso de derivación, otorgar permisos de acceso a notificaciones y activar la macro manualmente. El contenido del disparador se puede indicar en el formulario opcional del panel (sin publicar ese texto en la URL).
+- **Verificación:** después de importar y activar, generar notificación real y usar **Iniciar prueba de conexión → Comprobar señal**. El QR por sí mismo jamás marca conectado. Android y Meta pueden no generar una notificación visible; no se garantiza detectar todos los pedidos.
+- Este sistema funciona sin WhatsApp Cloud API; no cambia los teléfonos ni los datos de Munro o Don Torcuato, ni Caja, Stock ni Pagos Online.
+
 ## Vinculación de cada celular Android
 1. Ingresar con dueño o creadora a **Mi Gusto → [sucursal] → Pedidos WhatsApp → Vincular WhatsApp Business**.
 2. Generar clave de vínculo para ese local (se muestra una única vez). **No enviarla por WhatsApp ni ponerla en capturas.**

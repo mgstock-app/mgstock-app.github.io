@@ -207,3 +207,49 @@ test('Asistente QR tiene tres etapas, conserva privacidad y aclara el límite de
  assert.match(page,/Cada sucursal conserva su número, su clave privada y sus avisos independientes/);
  assert.doesNotMatch(page,/\+54 11 7144|\+54 11 7661/,'el QR público no debe incluir los números privados');
 });
+
+test('Descarga de MacroDroid: exportación nativa por sucursal con HTTP POST y JSON preconfigurados',async()=>{
+ for(const loc of ['munro','torcuato']){
+  const m=make('gerente',loc);m.mod.subscribe(loc,()=>{});await tick();await tick();
+  clickSection(m,'vinculacion');
+  assert.match(m.mod.view(),/Descargar macro preparada para /);
+  assert.match(m.mod.view(),/data-mgp-mobile-download/);
+  const key='b'.repeat(64);
+  const exported=m.mod._test.buildAndroidMacro(loc,key,'PEDIDO DERIVADO');
+  assert.equal(exported.macroExportVersion,1);
+  assert.equal(exported.macro.m_enabled,false,'se exige revisión y permiso antes de habilitar la macro');
+  assert.equal(exported.macro.m_category,'GESTLOK');
+  assert.match(exported.macro.m_name,new RegExp(loc==='munro'?'Munro':'Don Torcuato'));
+  const trigger=exported.macro.m_triggerList[0];
+  assert.equal(trigger.m_classType,'NotificationTrigger');
+  assert.equal(trigger.m_packageNameList[0],'com.whatsapp.w4b');
+  assert.equal(trigger.m_textContent,'PEDIDO DERIVADO');
+  assert.equal(trigger.m_supressMultiples,true);
+  const action=exported.macro.m_actionList[0];
+  assert.equal(action.m_classType,'HttpRequestAction');
+  assert.equal(action.requestConfig.requestType,1,'POST en el ejemplo nativo de MacroDroid');
+  assert.match(action.requestConfig.urlToOpen,/\/functions\/v1\/mi-gusto-android-alert$/);
+  assert.equal(action.requestConfig.contentType,'application/json');
+  assert.equal(JSON.parse(action.requestConfig.contentBodyText).local,loc);
+  assert.equal(JSON.parse(action.requestConfig.contentBodyText).customer_phone,'{not_title}');
+  const headers=action.requestConfig.headerParams;
+  assert.equal(headers.find(h=>h.paramName==='X-Gestlok-Bridge-Key')?.paramValue,key);
+  assert.equal(headers.find(h=>h.paramName==='Content-Type')?.paramValue,'application/json');
+  assert.equal(new Set([exported.macro.m_GUID,trigger.m_SIGUID,action.m_SIGUID]).size,3);
+  assert.ok(!m.qrCalls.join('').includes(key),'la clave jamás debe codificarse en el QR público');
+ }
+});
+
+test('Se impide generar macros con claves inválidas o de locales desconocidos',()=>{
+ const m=make();
+ assert.throws(()=>m.mod._test.buildAndroidMacro('otro','b'.repeat(64)),/Vínculo de sucursal inválido/);
+ assert.throws(()=>m.mod._test.buildAndroidMacro('munro','clave-invalida'),/Vínculo de sucursal inválido/);
+});
+test('El asistente QR separa la importación privada del enlace público',()=>{
+ const page=fs.readFileSync(new URL('../public/vincular-whatsapp/index.html',import.meta.url),'utf8');
+ assert.match(page,/¿Ya tenés MacroDroid instalado\?/);
+ assert.match(page,/Descargar macro preparada/);
+ assert.match(page,/la clave no viaja en el QR/);
+ assert.match(page,/una sesión autorizada/);
+ assert.doesNotMatch(page,/b{64}|macrodroid:\/\/|bridge_key=/);
+});
