@@ -7,7 +7,7 @@ const MIN=50,MAX=180,STEP=10,PREFIX='gestlok:font-scale:v1:';
 const NODE_SELECTOR='h1,h2,h3,h4,h5,h6,p,span,strong,b,small,label,button,input,select,textarea,th,td,li,summary,a,caption,dt,dd';
 const CARD_SELECTOR='.gcm-hd-summary-group,.gcm-section,.gcm-hd-category,.mhs-card,.ch,.gl-empresa-card,.gl-local-card,.gl-oh-card,.gl-owner-card,.card,.module-card,.local-card,.empresa-card,[class*="module-card"],[class*="business-card"],[class*="local-card"],[class*="company-card"]';
 const originals=new WeakMap();
-let timer=null,busy=false,initialized=false;
+let timer=null,busy=false,initialized=false,hadCustomTextSize=false;
 const clamp=n=>Math.max(MIN,Math.min(MAX,Math.round((Number(n)||100)/STEP)*STEP));
 const hash=s=>{
  let h=2166136261;
@@ -116,6 +116,10 @@ function apply(){
  const nav=typeof window.GestLokNavContext==='function'?window.GestLokNavContext():null;
  widget.hidden=target.id==='stock-root'&&!nav?.uid;
  setupCards(target,key,global);
+ const hasCustom=global!==100||[...target.querySelectorAll('[data-glk-font-card-value]')]
+  .some(el=>Number(el.dataset.glkFontCardValue)!==100);
+ if(!hasCustom&&!hadCustomTextSize)return;
+ hadCustomTextSize=hasCustom;
  const nodes=[...target.querySelectorAll(NODE_SELECTOR)].filter(el=>
   el instanceof HTMLElement && !el.closest('.glk-font-card-buttons,#glk-font-widget'));
  // Recuperar la tipografía base ANTES de medir: evita multiplicar tamaños en cascada.
@@ -123,6 +127,7 @@ function apply(){
   if(!originals.has(el))originals.set(el,el.style.fontSize||'');
   else el.style.fontSize=originals.get(el);
  }
+ if(!hasCustom)return;
  const measured=nodes.map(el=>parseFloat(getComputedStyle(el).fontSize));
  nodes.forEach((el,i)=>{
   const card=el.closest('[data-glk-font-card-key]');
