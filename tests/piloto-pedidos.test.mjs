@@ -63,7 +63,7 @@ test('Pedidos: cache PWA, privacidad y acceso por la misma sesión',()=>{
  const runtime=read('components/stock-runtime.tsx');
  const sw=read('scripts/sw-template.js');
  const layout=read('app/layout.tsx');
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-pedidos\.js/);
+ assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-pedidos\.js/);
  assert.match(sw,/'\/stock\/gestlok-pedidos\.js'/);
  assert.match(layout,/gestlok-orders\.css/);
  assert.match(pilot,/active==='pedidos'/);

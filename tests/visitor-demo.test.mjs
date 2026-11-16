@@ -13,8 +13,8 @@ test('El visitante utiliza los módulos operativos reales con backend de memoria
  assert.doesNotThrow(()=>new vm.Script(visitor));
  assert.match(auth,/Mirá Plan Scanner en video · 30 segundos/);
  assert.match(runtime,/visitor \? "\/stock\/gestlok-visitor-demo\.js" : "\/stock\/auth\.js\?rev=[A-Za-z0-9-]+"/);
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-push\.js"\)/);
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-support\.js(?:\?rev=[A-Za-z0-9-]+)?"\)/);
+ assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-push\.js"\)/);
+ assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-support\.js(?:\?rev=[A-Za-z0-9-]+)?"\)/);
  for(const m of ['gestlok-updates','gestlok-commerce','gestlok-tienda',
   'gestlok-provider-pdf','app.js'])assert.ok(runtime.includes(m));
  assert.match(visitor,/window\.claude=Object\.freeze/);
@@ -96,7 +96,7 @@ test('Demo · Horarios: el Excel ficticio da los mismos totales en la app que en
     'Paula Medina': '25:00 hs', 'Tomás Godoy': '39:30 hs', 'Valentina Sosa': '36:00 hs', 'Rocío Álvarez': '20:30 hs'});
   for (const p of data.equipo) assert.ok(!/@|\d{8,}/.test(JSON.stringify(p)), 'Sin datos de contacto reales');
   const runtime = read('components/stock-runtime.tsx'), owner = read('public/stock/gestlok-owner-areas.js');
-  assert.match(runtime, /if \(visitor\) await load\("\/stock\/gestlok-demo-horarios\.js"\)/);
+  assert.match(runtime, /if \(visitor\) queueLoad\("\/stock\/gestlok-demo-horarios\.js"\)/);
   assert.match(owner, /GestLokVisitorDemo\?\.active&&window\.GestLokDemoHorarios/);
   assert.match(read('public/stock/gestlok-visitor-demo.js'), /recibos_personal:\{authorized:true,operational:true\}/);
 });

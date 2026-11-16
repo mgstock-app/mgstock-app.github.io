@@ -61,7 +61,7 @@ test("Panel privado no ofrece la tienda a cuentas y tenants ajenos",()=>{
 test("El script y sus enlaces se cargan solo para usuarios autenticados",()=>{
   const runtime=readFileSync("components/stock-runtime.tsx","utf8");
   const owner=readFileSync("public/stock/gestlok-owner-areas.js","utf8");
-  assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-zayro-admin\.js/);
+  assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-zayro-admin\.js/);
   assert.match(owner,/GestLokZayroAdmin\?\.homeTile\?\.\(api\)/);
   assert.match(page,/className="zayro"/);
 });
