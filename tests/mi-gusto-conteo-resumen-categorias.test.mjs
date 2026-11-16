@@ -12,7 +12,7 @@ const today=()=>{
  return value('year')+'-'+value('month')+'-'+value('day');
 };
 
-function mount(local){
+function mount(local,{extraEmpanadas=0}={}){
  const date=today(),drawn=[],calls=[],events=new Map(),canvases=[];
  const ctx={fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
   fillText(value,x,y){drawn.push({text:String(value),x,y,font:this.font});},
@@ -32,6 +32,11 @@ function mount(local){
   {id:'c',name:'Ketchup',section:'ADEREZOS',units_per_chapa:0,active:true}
  ];
  const data={a:{v1:{qty:local==='munro'?12:21}},b:{v2:{qty:7}},c:{v1:{qty:3}}};
+ for(let i=0;i<extraEmpanadas;i++){
+  const id='e'+i;
+  products.push({id,name:'EMP '+String(i+1).padStart(2,'0'),section:'EMPANADAS',units_per_chapa:0,active:true});
+  data[id]={v1:{qty:i+1}};
+ }
  const rec={day:date,shift:'manana_entrada',status:'finalizado',responsable:'Cami',data,
   decomiso:{},decomiso_visible:false,consumption:[{name:'Empleado 1',value:'1'}],
   waste:[],waste_visible:false,hidden_sections:[]};
@@ -87,4 +92,37 @@ test('Diseño se adapta a tablet y teléfono sin inventar categorías ni totales
  assert.match(source,/function historyGroupedProducts\(rec\)/);
  assert.match(source,/historyGroupedProducts\(rec\)/);
  assert.doesNotMatch(source,/section:'Cocina'|section:'Bebidas'|section:'Salsas y extras'/);
+});
+
+for(const local of ['munro','torcuato']){
+ test('Historial '+local+' usa panel ancho y Empanadas muestra 26 productos sin dividir la tarjeta',async()=>{
+  const a=mount(local,{extraEmpanadas:24});
+  a.mod.view();await tick();await tick();
+  await a.click('data-gcm-history-open');await a.click('data-gcm-history-day',a.date);
+  await a.click('data-gcm-history',a.date+'|manana_entrada');
+  const html=a.mod.view(),start=html.indexOf('gcm-hd-summary-group gcm-hd-empanadas');
+  const finish=html.indexOf('</section>',start);
+  const emp=html.slice(start,finish);
+  assert.match(html,/class="gcm-page gcm-history-screen gcm-history-detail gcm-history-wide"/);
+  assert.match(html,/<h2>Resumen del conteo<\/h2>/);
+  assert.ok(start>0&&finish>start);
+  assert.equal((emp.match(/<tr>/g)||[]).length,26);
+  assert.match(emp,/>AC<\/strong>/);
+  assert.match(emp,/>EMP 24<\/strong>/);
+  assert.doesNotMatch(emp,/EMPANADAS \(cont/);
+  assert.ok(html.indexOf('<section class="gcm-hd-summary"')<html.indexOf('class="gcm-hd-print"'));
+  assert.match(html,/<details class="gcm-hd-consumption"><summary>Consumos <span>10 colaboradores<\/span><\/summary>/);
+  assert.match(html,/<details class="gcm-hd-print"><summary>Descargar o imprimir<\/summary>/);
+  assert.match(html,/data-gcm-a4-refresh/);
+  // La visualización no solicita escrituras ni altera cantidades guardadas.
+  assert.ok(a.calls.every(x=>!(/_set_|_finalize|_add_|_remove_/.test(x.name))));
+ });
+}
+test('Diseño de dueña: 3 tarjetas en PC y Empanadas en 4/3/2/1 columnas según ancho',()=>{
+ assert.match(css,/\.gcm-page\.gcm-history-wide\{\s*width:100%;max-width:1680px/);
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-summary-grid\{\s*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-summary-group\.gcm-hd-empanadas\{\s*grid-column:1\/-1/);
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-empanadas tbody\{\s*display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+ for(const cols of [3,2])assert.match(css,new RegExp('gcm-hd-empanadas tbody\\{grid-template-columns:repeat\\('+cols+',minmax'));
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-empanadas tbody\{grid-template-columns:minmax\(0,1fr\)/);
 });
