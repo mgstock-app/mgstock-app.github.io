@@ -220,10 +220,16 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     expect(el.scrollWidth,"sin scroll horizontal de la semana").to.be.at.most(el.clientWidth+2);
   });
   cy.get(".mhs-tabla thead th").last().should("be.visible");
-  cy.get(".mhs-tabla-wrap").scrollTo("bottom",{duration:0});
+  // El scroll es de la página, no de la tabla: evita saltos mientras se editan horarios.
+  cy.get(".mhs-tabla-wrap").should($el=>{
+    const css=getComputedStyle($el[0]);
+    expect(css.maxHeight).to.eq("none");
+    expect(css.overflowY).to.eq("visible");
+  });
   cy.get(".mhs-tabla thead th").first().should("have.css","position","sticky");
-  cy.get(".mhs-tabla tbody tr").last().find("th").should("have.css","position","sticky");
-  cy.get(".mhs-tabla thead th").last().should("be.visible");
+  cy.get(".mhs-tabla tbody tr").last().find("th").should("have.css","position","static");
+  cy.scrollTo("bottom",{duration:0});
+  cy.get(".mhs-tabla tbody tr").last().find("th").should("exist");
  });
  it("en una notebook de 1024px también se ven los siete días",()=>{
   cy.viewport(1024,768);iniciar();
@@ -259,4 +265,18 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("button","Agregar colaborador por hora").should("not.exist");
   cy.get(".mhs-tabla input[type=time]").first().should("be.disabled");
  });
+ it("mantiene siete días visibles con diseño compacto y sin scroll vertical anidado",()=>{
+  cy.viewport(1366,900);iniciar();
+  cy.get(".mhs-tabla thead th",{timeout:15000}).should("have.length",8);
+  cy.get(".mhs-tabla-wrap").should(($wrap)=>{
+   const s=getComputedStyle($wrap[0]);
+   expect(s.maxHeight).to.eq("none");
+   expect(s.overflowY).to.eq("visible");
+  });
+  cy.get(".mhs-tabla tbody tr").first().find(".mhs-total-nombre")
+    .should("contain.text","Total semanal");
+  cy.get(".mhs-tabla tbody tr").first().find("input[type=time]")
+    .should("have.length",28);
+ });
+
 });
