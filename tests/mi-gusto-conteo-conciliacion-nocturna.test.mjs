@@ -98,6 +98,19 @@ test('Diferencia visible + checkbox OK; al confirmar se guarda y libera el pendi
  assert.equal(h.mod.pending().length,0);
  assert.ok(h.calls.some(c=>c.name==='gestlok_munro_conteo_ack_morning'&&c.args.p_product==='pizza'&&c.args.p_confirm===true));
 });
+test('Primer día sin historial de Noche: inicializa; cuando ya existían noches el cierre exige D-1',async()=>{
+ const h=makeHarness();
+ const first={...h.ctx,rpc:async()=>({baseline_ready:false,first_day:true,previous_day:'2026-11-15',rows:[]})};
+ await h.mod.load(first,false);
+ assert.equal(h.mod.ready(),true,'primer día nuevo no debe quedar bloqueado');
+ assert.match(h.mod.panel(),/Primer día de Conteo/);
+ const missing={...h.ctx,local:'torcuato',rpc:async()=>({baseline_ready:false,first_day:false,rows:[]})};
+ await h.mod.load(missing,false);
+ assert.equal(h.mod.ready(),false);
+ assert.match(h.mod.panel(),/Falta cerrar Noche salida/);
+ assert.match(sql,/first_day boolean/);
+ assert.match(sql,/if p_shift='manana_entrada' and baseline_ready then/);
+});
 test('Al cambiar de local no reutiliza las diferencias de Munro en Torcuato',async()=>{
  const h=makeHarness();await h.mod.load(h.ctx,false);
  assert.equal(h.mod.pending().length,1);
