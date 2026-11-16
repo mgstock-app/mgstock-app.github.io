@@ -8,6 +8,7 @@ import {
  sumarDias,type Estado,type Persona,type Planilla,type Registro,type SemanaHorarios,
 } from "@/features/schedules/munro-model";
 import "./munro-weekly.css";
+import "./munro-weekly-polish.css";
 
 type Borrador = Persona & {datos:SemanaHorarios;version:number};
 type Pestaña = "semana"|"historial"|"resumen";
