@@ -336,7 +336,8 @@ function buildAndroidMacro(loc,token,filterText=''){
  if(!(loc in LOCALS)||!/^[a-f0-9]{64}$/.test(String(token||'')))throw Error('Vínculo de sucursal inválido.');
  const filter=String(filterText||'').trim().slice(0,160);
  const stamp=Date.now();
- const guid=()=>-(stamp*1000+Math.floor(Math.random()*999));
+ let idSeed=100+Math.floor(Math.random()*800);
+ const guid=()=>-(stamp*1000+(idSeed++));
  const action={
   requestConfig:{
    allowAnyCertificate:false,basicAuthEnabled:false,basicAuthPassword:'',basicAuthUsername:'',
@@ -405,6 +406,7 @@ async function downloadAndroidMacro(){
   let key=androidBridgeKey;
   if(!reuse){
    const result=await rpc('gestlok_mg_android_bridge_create');
+   if(loc!==local())return;
    if(!/^[a-f0-9]{64}$/.test(result?.token||''))throw Error('No se pudo generar la clave');
    key=result.token;androidBridgeKey=key;bridgeTest=null;
    androidBridge={configured:true,last_event_at:null};
