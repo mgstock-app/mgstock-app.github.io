@@ -36,7 +36,12 @@ describe("GestLok: auditoría de recorridos, perfiles y sincronización local", 
     cy.get(".gl-intro", {timeout:12000}).should("not.be.visible");
     cy.get("#au-in").should("be.visible");
     // Los tests históricos de la planilla prueban el estado restaurado sin tocar producción.
-    cy.window().then(w=>{
+    // El login puede mostrarse antes de que terminen de ejecutarse los módulos.
+    // Esperar al controlador para que el módulo real no pise el stub del test.
+    cy.window().should(w=>{
+      expect(w.GestLokCreatorHome, 'módulo de creadora cargado').to.be.an('object');
+      expect(w.GestLokNavContext, 'controlador principal cargado').to.be.a('function');
+    }).then(w=>{
       w.GestLokCreatorHome={...w.GestLokCreatorHome,dailyVisible:()=>true,refreshDaily:()=>{}};
     });
   });
