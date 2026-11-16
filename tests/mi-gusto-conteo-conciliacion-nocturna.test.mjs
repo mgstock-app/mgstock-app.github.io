@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { releaseAudience,TENANTS } from '../scripts/pwa-release-scope.mjs';
 
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const sql=read('supabase/migrations/20261116174600_mi_gusto_conteo_conciliar_manana_noche.sql');
@@ -104,4 +105,12 @@ test('Al cambiar de local no reutiliza las diferencias de Munro en Torcuato',asy
  h.mod.connect(other);
  assert.equal(h.mod.pending().length,0);
  assert.match(h.mod.panel(),/Verificá los totales/);
+});
+
+test('PWA: cachear el controlador nocturno solo avisa a Mi Gusto, no a otras empresas',()=>{
+ const older="const SHELL = ['/', '/stock/mi-gusto-conteo.js'].map(path => BASE + path);";
+ const updated="const SHELL = ['/', '/stock/mi-gusto-conteo-morning.js', '/stock/mi-gusto-conteo.js'].map(path => BASE + path);";
+ const patch='@@ -1 +1 @@\n-'+older+'\n+'+updated+'\n';
+ assert.deepEqual(releaseAudience(['scripts/sw-template.js'],{'scripts/sw-template.js':patch}),[TENANTS.miGusto]);
+ assert.deepEqual(releaseAudience(['scripts/sw-template.js'],{'scripts/sw-template.js':'@@\n-console.log(1)\n+console.log(2)'}),['*']);
 });
