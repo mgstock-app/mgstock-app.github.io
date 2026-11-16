@@ -7,14 +7,18 @@ const model=read("modules/empleados/features/schedules/munro-model.ts");
 const css=read("modules/empleados/components/schedules/munro-weekly.css");
 const sql=read("supabase/migrations/20261116094500_munro_staff_cierre_semanal.sql");
 
-test("siete días visibles con scroll propio y encabezado/colaborador fijos sin reducir columnas",()=>{
+test("Staff Munro muestra siete días juntos sin ancho fijo y mantiene encabezados fijos",()=>{
  assert.match(ui,/const DIAS=\["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"\]/);
- assert.match(ui,/mhs-tabla-wrap" ref=\{tablaScrollRef\}/);
- assert.match(ui,/Navegación horizontal de la semana completa/);
- assert.match(ui,/moverTabla\("final"\)/);
- assert.match(css,/\.mhs-tabla\{[\s\S]*?width:2370px;/);
+ assert.match(ui,/Semana completa · lunes a domingo/);
+ assert.match(ui,/aria-label="Semana completa visible"/);
+ assert.match(ui,/aria-label="Horarios de lunes a domingo, semana completa visible; desplazamiento vertical"/);
+ assert.doesNotMatch(ui,/moverTabla\("final"\)|ref=\{tablaScrollRef\}/);
+ assert.match(css,/\.mhs-tabla\{[\s\S]*?table-layout:fixed;[\s\S]*?width:100%;[\s\S]*?min-width:0;/);
+ assert.doesNotMatch(css,/width:2370px;/);
  assert.match(css,/\.mhs-tabla thead th\{[\s\S]*?position:sticky;[\s\S]*?top:0/);
  assert.match(css,/\.mhs-tabla tbody th\{[\s\S]*?position:sticky;[\s\S]*?left:0/);
+ assert.match(css,/\.mhs-tabla \.mhs-cuatro>label:not\(\.mhs-dia-extra\)\{[\s\S]*?grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(css,/\.mhs-tabla \.mhs-cuatro input\[type=time\]\{[\s\S]*?width:100%;[\s\S]*?min-width:0/);
 });
 test("cierre se confirma, se guarda con RPC autorizada y crea semana limpia",()=>{
  assert.match(ui,/Semana finalizada<\/button>/);
