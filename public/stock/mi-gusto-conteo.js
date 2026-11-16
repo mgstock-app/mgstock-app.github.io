@@ -992,23 +992,24 @@ function queueActiveCategoryUpdate(){
  if(typeof window.requestAnimationFrame==='function')window.requestAnimationFrame(run);
  else run();
 }
-// Las secciones mantienen scroll horizontal independiente. La barra superior
-// replica la posición sin redibujar ni perder foco del teclado de la tablet.
+// Sin rebote: los scrolls replicados no vuelven a dirigir la posición.
+const mirroredScroll=new WeakMap();
+function syncExpiryScroll(target){
+ const expected=mirroredScroll.get(target);
+ if(expected!==undefined){mirroredScroll.delete(target);if(Math.abs(target.scrollLeft-expected)<=2)return;}
+ const root=target.closest?.('.gcm-count-screen');if(!root)return;
+ const x=target.scrollLeft;
+ root.querySelectorAll('.gcm-sheet-scroll,.gcm-expiry-ruler-scroll').forEach(el=>{
+  if(el===target||Math.abs(el.scrollLeft-x)<=2)return;
+  el.scrollLeft=x;mirroredScroll.set(el,el.scrollLeft);
+ });
+}
 document.addEventListener('scroll',e=>{
  const target=e.target;
- if(target?.matches?.('.gcm-sheet-scroll,.gcm-expiry-ruler-scroll')){
-  const root=target.closest('.gcm-count-screen');if(!root)return;
-  const x=target.scrollLeft;
-  root.querySelectorAll('.gcm-sheet-scroll,.gcm-expiry-ruler-scroll').forEach(el=>{
-   if(el!==target&&Math.abs(el.scrollLeft-x)>2)el.scrollLeft=x;
-  });
-  return;
- }
+ if(target?.matches?.('.gcm-sheet-scroll,.gcm-expiry-ruler-scroll')){syncExpiryScroll(target);return;}
  if(target===document||target===document.documentElement)queueActiveCategoryUpdate();
 },true);
-if(typeof window.addEventListener==='function'){
- window.addEventListener('scroll',queueActiveCategoryUpdate,{passive:true});
-}
+if(typeof window.addEventListener==='function')window.addEventListener('scroll',queueActiveCategoryUpdate,{passive:true});
 
 document.addEventListener('toggle',e=>{
  if(e.target.matches?.('.gcm-section')){
@@ -1458,10 +1459,7 @@ document.addEventListener('change',async e=>{
    if(!error){
     // La columna Decomiso está junto al producto para que se vea enseguida
     // incluso en tablets de poco ancho, sin tener que buscar el Vto 5.
-    const sheet=document.querySelector?.('.gcm-count-screen .gcm-sheet-scroll');
-    if(sheet)sheet.scrollLeft=0;
-    const ruler=document.querySelector?.('.gcm-count-screen .gcm-expiry-ruler-scroll');
-    if(ruler)ruler.scrollLeft=0;
+     // Mantener el vencimiento visible, también al activar Decomiso.
     api?.toast?.(visible?'Decomiso habilitado. La columna amarilla aparece junto a Producto.':'Decomiso oculto. Las cantidades registradas siguen guardadas.');
    }
   }

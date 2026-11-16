@@ -1797,3 +1797,8 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-morning-item label{min-height:42px}
  .gcm-morning-items{max-height:300px}
 }
+
+/* Deslizamiento horizontal manual continuo, sin snap ni animación. */
+.gcm-count-screen .gcm-sheet-scroll,.gcm-count-screen .gcm-expiry-ruler-scroll{
+ scroll-behavior:auto!important;scroll-snap-type:none!important;overscroll-behavior-x:contain;
+}
