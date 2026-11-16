@@ -29,7 +29,11 @@
   }
   function checkAudience() {
     if (audience === null) return;
-    if (isAffected()) { showBanner(); return; }
+    if (isAffected()) {
+      // No ocupar ni redibujar Conteo durante una carga.
+      if (document.querySelector?.('.gcm-count-screen')) { hideBanner(); return; }
+      showBanner(); return;
+    }
     // Si se cambia de local o empresa, quitar cualquier cartel del local anterior.
     hideBanner();
     const context=window.GestLokNavContext?.();

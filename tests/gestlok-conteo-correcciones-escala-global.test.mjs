@@ -44,26 +44,13 @@ test('El historial ofrece editar cantidad, decomiso, responsable y extras con mo
  assert.match(js,/historyPreviewUrl=historyA4Image\(fresh\)/);
  assert.match(js,/historyCorrectionsLoaded=true/);
 });
-test('Controles A−/A+ de 50 a 180 % por usuario, local, vista y tarjeta',()=>{
- assert.match(fonts,/const MIN=50,MAX=180,STEP=10/);
- assert.match(fonts,/GestLokNavContext/);
- assert.match(fonts,/nav\?\.uid/);
- assert.match(fonts,/nav\?\.tenant/);
- assert.match(fonts,/nav\?\.local/);
- assert.match(fonts,/readCard=\(key,fallback\)=>/);
- assert.match(fonts,/data-font-global="-1"/);
- assert.match(fonts,/data-font-global="1"/);
- assert.match(fonts,/data-font-card="-1"/);
- assert.match(fonts,/data-font-card="1"/);
- assert.match(fonts,/localStorage\.setItem/);
- assert.match(fonts,/originals=new WeakMap/);
- assert.match(fonts,/getComputedStyle\(el\)\.fontSize/);
- assert.match(layout,/gestlok-font-controls\.js\?rev=texto-50-180-20261116/);
- assert.match(employees,/gestlok-font-controls\.js\?rev=texto-50-180-20261116/);
+test('El control global de letra se retiró de todas las pantallas',()=>{
+ assert.doesNotMatch(layout,/gestlok-font-controls/);
+ assert.doesNotMatch(employees,/gestlok-font-controls/);
+ assert.doesNotMatch(fonts,/MutationObserver|data-font-global|setScreenPercent/);
+ assert.match(fonts,/control global de escalado retirado/);
  assert.match(runtime,/mi-gusto-historial-editable-auditado-20261116/);
- assert.doesNotMatch(fonts,/\.zoom\s*=|document\.documentElement\.style\.zoom/);
 });
-
 test('Los módulos JS no contienen errores de sintaxis',()=>{
  assert.doesNotThrow(()=>new vm.Script(js));
  assert.doesNotThrow(()=>new vm.Script(fonts));

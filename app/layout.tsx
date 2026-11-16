@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-page-custom-font -- Shared font stylesheet in the App Router root layout. */
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 import "./gestlok-intro.css";
 import "./owner-mobile-refinements.css";
@@ -59,5 +58,5 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#11283c" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="es-AR"><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap" /></head><body>{children}<Script src={`${basePath}/stock/gestlok-font-controls.js?rev=texto-50-180-20261116`} strategy="afterInteractive" /></body></html>;
+  return <html lang="es-AR"><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap" /></head><body>{children}</body></html>;
 }
