@@ -42,14 +42,16 @@ test('local fijo Munro, fecha del día argentino y selector de responsables',asy
  assert.doesNotMatch(html,/type="date"/);
 });
 
-test('decomiso opcional aparece en la misma planilla después de las cuatro fechas',async()=>{
+test('decomiso opcional aparece junto a Producto y antes de los cuatro vencimientos para tablet',async()=>{
  const {html}=await renderReady(true);
  assert.match(html,/id="gcm-decomiso-toggle" checked/);
- assert.ok(html.indexOf('>Producto</th>')<html.indexOf('>Decomiso</th>'));
+ const head=html.slice(html.indexOf('<thead class="gcm-repeat-head">'),html.indexOf('</thead>')+8);
+ assert.ok(head.indexOf('>Producto</th>')<head.indexOf('>Decomiso</th>'));
+ assert.ok(head.indexOf('>Decomiso</th>')<head.indexOf('Vto 1'));
+ assert.ok(head.indexOf('Vto 4')<head.indexOf('>Total</th>'));
  assert.doesNotMatch(html,/data-gcm-vto="d"/);
- const head=html.slice(html.indexOf('<thead>'),html.indexOf('</thead>')+8);
- assert.ok(head.indexOf('Vto 4')<head.indexOf('>Decomiso</th>'));
- assert.ok(head.indexOf('>Decomiso</th>')<head.indexOf('>Total</th>'));
+ assert.match(html,/gcm-expiry-ruler-grid has-decomiso/);
+ assert.ok(html.indexOf('gcm-expiry-ruler-decomiso')<html.indexOf('gcm-expiry-ruler-date'));
  assert.match(html,/data-gcm-idx="d"/);
  // Dos chapas normales + cuatro sueltas = 64; una de decomiso + dos sueltas = 32.
  assert.match(html,/class="gcm-total">96<\/td>/);
