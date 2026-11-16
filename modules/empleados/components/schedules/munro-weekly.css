@@ -214,3 +214,127 @@
  .mhs-estado{min-height:39px}
  .mhs-estado select{min-height:25px}
 }
+
+/* Semana completa PC/tablet: columnas amplias, sin achicar controles.
+   El scroll vertical pertenece a la tabla para conservar los encabezados fijos. */
+@media(min-width:761px){
+ .mhs-tabla-wrap{
+   width:100%;
+   max-height:max(420px,calc(100dvh - 260px));
+   overflow:auto;
+   overscroll-behavior:contain;
+   scrollbar-gutter:stable;
+   position:relative;
+   isolation:isolate;
+ }
+ .mhs-tabla{
+   border-collapse:separate;
+   border-spacing:0;
+   table-layout:fixed;
+   width:2370px;
+   min-width:2370px;
+ }
+ .mhs-tabla thead th{
+   position:sticky;
+   top:0;
+   z-index:5;
+   width:295px;
+   min-width:295px;
+   max-width:295px;
+   background:#2c3e56;
+   box-shadow:0 2px 0 #cbd5e1;
+   font-size:14px;
+   padding:13px 10px;
+ }
+ .mhs-tabla thead th:first-child{
+   left:0;
+   z-index:8;
+   width:305px;
+   min-width:305px;
+   max-width:305px;
+ }
+ .mhs-tabla tbody th{
+   position:sticky;
+   left:0;
+   z-index:4;
+   width:305px;
+   min-width:305px;
+   max-width:305px;
+   background:#fff;
+   box-shadow:2px 0 0 #d3dfea;
+ }
+ .mhs-tabla tbody tr.mhs-inactivo th{background:#fcfcfd}
+ .mhs-tabla tbody td{
+   width:295px;
+   min-width:295px;
+   max-width:295px;
+   padding:12px 16px;
+ }
+ .mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra){
+   display:grid;
+   grid-template-columns:minmax(82px,1fr) 105px;
+   gap:9px;
+   align-items:center;
+ }
+ .mhs-tabla .mhs-cuatro label span{font-size:12px}
+ .mhs-tabla .mhs-cuatro input[type=time]{
+   width:105px;
+   min-width:105px;
+   min-height:36px;
+   font-size:13px;
+   padding:5px 7px;
+ }
+}
+.mhs-tabla-navegacion{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ flex-wrap:wrap;
+ padding:10px 12px;
+ border:1px solid #d8e3ee;
+ border-radius:10px;
+ background:#f6f9fc;
+ color:#1d4265;
+}
+.mhs-tabla-navegacion strong{font-size:13px}
+.mhs-tabla-navegacion>span{font-size:12px;color:#5b7083;flex:1 1 180px}
+.mhs-tabla-navegacion>div{display:flex;gap:7px;flex-wrap:wrap}
+.mhs-tabla-navegacion button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-height:36px;
+ border:1px solid #c2d3e1;
+ border-radius:8px;
+ background:#fff;
+ color:#173d60;
+ padding:7px 12px;
+ font-size:12px;
+ font-weight:750;
+}
+.mhs-tabla-navegacion button:hover{background:#eaf2fa}
+.mhs-acciones .mhs-cierre-semanal{
+ border-color:#245a44;
+ color:#fff;
+ background:#23664a;
+ font-weight:800;
+}
+.mhs-acciones .mhs-cierre-semanal:hover:not(:disabled){background:#1a523a}
+.mhs-acciones .mhs-cierre-semanal:disabled{opacity:.55}
+.mhs-cerrada-chip{
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ min-height:41px;
+ padding:8px 12px;
+ border:1px solid #aad9bf;
+ border-radius:9px;
+ color:#1b704b;
+ background:#e9f6ef;
+ font-size:13px;
+ font-weight:750;
+}
+@media(max-width:760px){
+ .mhs-tabla-navegacion{display:none}
+ .mhs-acciones .mhs-cierre-semanal{width:100%;flex:1 1 100%}
+}
