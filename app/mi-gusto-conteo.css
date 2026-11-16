@@ -1582,3 +1582,82 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-history-wide .gcm-hd-consumption>summary,
  .gcm-history-wide .gcm-hd-print>summary{font-size:16px;padding:15px}
 }
+
+
+/* 16/11: Empanadas en UNA columna de productos, con total inmediatamente al lado.
+   La lista larga queda a la izquierda; los otros rubros aprovechan el espacio
+   a la derecha. Mismo diseño para Munro y Torcuato, sin tocar ningún dato. */
+.gcm-history-wide .gcm-hd-summary-layout{
+ display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);
+ align-items:start;column-gap:20px;padding-top:18px
+}
+.gcm-history-wide .gcm-hd-summary-layout:not(.has-empanadas){
+ grid-template-columns:minmax(0,1fr)
+}
+.gcm-history-wide .gcm-hd-empanadas-stack{
+ display:grid;grid-template-columns:minmax(0,1fr);
+ gap:16px;min-width:0
+}
+.gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ padding:0;gap:17px;min-width:0
+}
+.gcm-history-wide .gcm-hd-summary-layout:not(.has-empanadas) > .gcm-hd-summary-grid{
+ grid-template-columns:repeat(3,minmax(0,1fr))
+}
+.gcm-history-wide .gcm-hd-summary-group.gcm-hd-empanadas{
+ grid-column:auto;min-width:0
+}
+.gcm-history-wide .gcm-hd-empanadas table{
+ display:block;width:100%;max-width:100%
+}
+.gcm-history-wide .gcm-hd-empanadas tbody{
+ display:flex;flex-direction:column;align-items:stretch;
+ gap:0;padding:9px 12px 13px
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr{
+ display:grid;grid-template-columns:minmax(0,125px) 65px;
+ justify-content:start;align-items:center;
+ column-gap:10px;min-height:36px;max-width:235px;width:100%;
+ padding:7px 8px;margin:0;
+ border:0;border-bottom:1px solid #e5ebf1;border-radius:0;
+ background:#fff
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr:nth-child(even){background:#f7f9fc}
+.gcm-history-wide .gcm-hd-empanadas tbody tr:last-child{border-bottom:0}
+.gcm-history-wide .gcm-hd-empanadas tbody td{
+ display:block;min-width:0;margin:0;padding:0!important;
+ border:0!important;background:transparent!important
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td:first-child{
+ width:125px;flex:none
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td:last-child{
+ width:65px!important;flex:none;white-space:nowrap;
+ text-align:right;font-size:16px!important;font-weight:850
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td strong{
+ font-size:15px;font-weight:750;line-height:1.25
+}
+@media(max-width:1120px){
+ .gcm-history-wide .gcm-hd-summary-layout{
+  grid-template-columns:minmax(265px,320px) minmax(0,1fr);gap:15px
+ }
+ .gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+  grid-template-columns:minmax(0,1fr)
+ }
+}
+@media(max-width:760px){
+ .gcm-history-wide .gcm-hd-summary-layout{
+  grid-template-columns:minmax(0,1fr);gap:15px
+ }
+ .gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))
+ }
+}
+@media(max-width:580px){
+ .gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+  grid-template-columns:minmax(0,1fr)
+ }
+ .gcm-history-wide .gcm-hd-empanadas tbody{padding:8px 10px 12px}
+}

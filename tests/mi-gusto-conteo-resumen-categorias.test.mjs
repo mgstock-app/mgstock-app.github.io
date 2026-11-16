@@ -118,11 +118,31 @@ for(const local of ['munro','torcuato']){
   assert.ok(a.calls.every(x=>!(/_set_|_finalize|_add_|_remove_/.test(x.name))));
  });
 }
-test('Diseño de dueña: 3 tarjetas en PC y Empanadas en 4/3/2/1 columnas según ancho',()=>{
- assert.match(css,/\.gcm-page\.gcm-history-wide\{\s*width:100%;max-width:1680px/);
- assert.match(css,/\.gcm-history-wide \.gcm-hd-summary-grid\{\s*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
- assert.match(css,/\.gcm-history-wide \.gcm-hd-summary-group\.gcm-hd-empanadas\{\s*grid-column:1\/-1/);
- assert.match(css,/\.gcm-history-wide \.gcm-hd-empanadas tbody\{\s*display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
- for(const cols of [3,2])assert.match(css,new RegExp('gcm-hd-empanadas tbody\\{grid-template-columns:repeat\\('+cols+',minmax'));
- assert.match(css,/\.gcm-history-wide \.gcm-hd-empanadas tbody\{grid-template-columns:minmax\(0,1fr\)/);
+test('Empanadas ocupa solo una columna con nombre y total cerca; otros rubros a la derecha',()=>{
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-summary-layout\{\s*display:grid;grid-template-columns:minmax\(280px,340px\) minmax\(0,1fr\)/);
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-empanadas tbody\{\s*display:flex;flex-direction:column/);
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-empanadas tbody tr\{\s*display:grid;grid-template-columns:minmax\(0,125px\) 65px/);
+ assert.match(css,/column-gap:10px;min-height:36px;max-width:235px;width:100%/);
+ assert.match(css,/\.gcm-history-wide \.gcm-hd-summary-layout > \.gcm-hd-summary-grid\{\s*display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(css,/@media\(max-width:760px\)\{\s*\.gcm-history-wide \.gcm-hd-summary-layout\{\s*grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(source,/gcm-hd-empanadas-stack/);
+ assert.match(source,/gcm-hd-summary-layout/);
 });
+for(const local of ['munro','torcuato']){
+ test('Empanadas se muestra antes de otros rubros y mantiene los 26 pares producto/total en '+local,async()=>{
+  const a=mount(local,{extraEmpanadas:24});
+  a.mod.view();await tick();await tick();
+  await a.click('data-gcm-history-open');await a.click('data-gcm-history-day',a.date);
+  await a.click('data-gcm-history',a.date+'|manana_entrada');
+  const html=a.mod.view();
+  const empStart=html.indexOf('<div class="gcm-hd-empanadas-stack">');
+  const otherStart=html.indexOf('<div class="gcm-hd-summary-grid">');
+  assert.ok(empStart>0&&otherStart>empStart,'empanadas tiene su propia columna');
+  const emp=html.slice(empStart,otherStart);
+  assert.equal((emp.match(/<tr><td><strong>/g)||[]).length,26);
+  assert.match(emp,/<strong>AC<\/strong><\/td><td class="gcm-hd-summary-number">/);
+  assert.match(emp,/<strong>EMP 24<\/strong><\/td><td class="gcm-hd-summary-number">24<\/td>/);
+  assert.match(html.slice(otherStart),/ADEREZOS/);
+  assert.ok(a.calls.every(x=>!(/_set_|_finalize|_add_|_remove_/.test(x.name))));
+ });
+}
