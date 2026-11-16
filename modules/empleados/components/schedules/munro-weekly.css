@@ -224,6 +224,8 @@
    overflow:auto;
    overscroll-behavior:contain;
    scrollbar-gutter:stable;
+   scroll-padding-left:330px;
+   scroll-padding-top:72px;
    position:relative;
    isolation:isolate;
  }
