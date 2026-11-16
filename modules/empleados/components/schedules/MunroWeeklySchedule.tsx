@@ -432,7 +432,7 @@ export function MunroWeeklySchedule(){
          <div><button type="button" onClick={()=>moverTabla("inicio")}>← Lunes</button>
            <button type="button" onClick={()=>moverTabla("final")}>Domingo →</button></div>
        </div>
-       <div className="mhs-tabla-wrap" ref={tablaScrollRef} role="region" aria-label="Horarios de lunes a domingo, desplazamiento horizontal y vertical" tabIndex={0}>
+       <div className="mhs-tabla-wrap" ref={tablaScrollRef} role="region" aria-label="Horarios de lunes a domingo, desplazamiento horizontal y vertical">
          <table className="mhs-tabla">
            <thead><tr><th scope="col">Colaborador</th>{dias.map((dia,i)=><th key={dia} scope="col">{DIAS[i]}<small>{fechaCorta(dia)}</small></th>)}</tr></thead>
            <tbody>{filas.map(f=>{
