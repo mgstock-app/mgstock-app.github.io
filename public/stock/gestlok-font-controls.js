@@ -26,6 +26,7 @@ const read=key=>{
  try{const n=Number(localStorage.getItem(key));return n>=MIN&&n<=MAX?clamp(n):100;}
  catch(_){return 100;}
 };
+const readCard=(key,fallback)=>{try{const val=localStorage.getItem(key);return val===null?fallback:read(key);}catch(_){return fallback;}};
 const save=(key,n)=>{try{localStorage.setItem(key,String(n));}catch(_){}};
 const escapeAttr=s=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const css=[
@@ -61,7 +62,7 @@ function install(){
   if(button.hasAttribute('data-font-card')){
    const card=button.closest('[data-glk-font-card-key]');if(!card)return;
    const k=key+'card:'+card.dataset.glkFontCardKey;
-   save(k,clamp(read(k)+Number(button.dataset.fontCard)*STEP));
+   save(k,clamp(readCard(k,read(key+'global'))+Number(button.dataset.fontCard)*STEP));
   }else{
    const k=key+'global';
    save(k,button.hasAttribute('data-font-reset')?100:clamp(read(k)+Number(button.dataset.fontGlobal)*STEP));
@@ -76,7 +77,7 @@ function install(){
    n.nodeType===1&&!n.closest?.('.glk-font-card-buttons,#glk-font-widget'))))schedule();
  }).observe(document.body,{subtree:true,childList:true});
 }
-function setupCards(target,key){
+function setupCards(target,key,global){
  const counters=new Map();
  const cards=[...target.querySelectorAll(CARD_SELECTOR)].filter(card=>card instanceof HTMLElement);
  for(const card of cards){
@@ -95,7 +96,7 @@ function setupCards(target,key){
     '<button type="button" data-font-card="1" aria-label="Aumentar letra de '+escapeAttr(label)+'">A+</button>';
    card.prepend(bar);
   }
-  const scale=read(key+'card:'+stable);
+  const scale=readCard(key+'card:'+stable,global);
   card.dataset.glkFontCardValue=String(scale);
   const bar=card.querySelector(':scope > .glk-font-card-buttons');
   if(!bar)continue;
@@ -114,7 +115,7 @@ function apply(){
  widget.querySelector('[data-font-global="1"]').disabled=global>=MAX;
  const nav=typeof window.GestLokNavContext==='function'?window.GestLokNavContext():null;
  widget.hidden=target.id==='stock-root'&&!nav?.uid;
- setupCards(target,key);
+ setupCards(target,key,global);
  const nodes=[...target.querySelectorAll(NODE_SELECTOR)].filter(el=>
   el instanceof HTMLElement && !el.closest('.glk-font-card-buttons,#glk-font-widget'));
  // Recuperar la tipografía base ANTES de medir: evita multiplicar tamaños en cascada.
