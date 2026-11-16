@@ -159,7 +159,7 @@ test('Conteo muestra las cuatro fechas dentro de cada planilla, sin pestañas se
   assert.match(html,new RegExp('data-gcm-idx="'+n+'"'));
   assert.match(html,new RegExp('Vto '+n));
  }
- const header=html.slice(html.indexOf('<thead>'),html.indexOf('</thead>')+8);
+ const header=html.slice(html.indexOf('<thead class="gcm-repeat-head">'),html.indexOf('</thead>')+8);
  assert.ok(header.includes('>Producto</th>'));
  for(let n=1;n<=4;n++)assert.ok(header.indexOf('Vto '+n)>header.indexOf('>Producto</th>'));
  assert.ok(header.indexOf('Vto 1')<header.indexOf('Vto 2'));
