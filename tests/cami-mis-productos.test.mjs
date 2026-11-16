@@ -14,7 +14,7 @@ const TENANT='2a97bf8d-7d08-4aa7-b051-5d1a4dc80103';
 const email='camilab.lopez99@gmail.com';
 
 test('Mis Productos se carga por separado, solo para dueña de Perfumería, sin Plan Scanner',()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-mis-productos\.js/);
+ assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-mis-productos\.js/);
  assert.match(owner,/GestLokMisProductos\?\.refresh/);
  assert.match(owner,/GestLokMisProductos\?\.homeTile/);
  assert.match(layout,/gestlok-mis-productos\.css/);

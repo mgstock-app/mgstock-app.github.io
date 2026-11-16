@@ -32,7 +32,7 @@ test('Solo la creadora ve el botón y los cambios nunca insertan HTML', ()=>{
 });
 
 test('El modo diseño se carga en toda la app (no en la demo de visitantes)', ()=>{
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-design-mode\.js\?rev=modo-diseno-lateral-20261109"\)/);
+ assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-design-mode\.js\?rev=modo-diseno-lateral-20261109"\)/);
 });
 
 test('El botón Diseñar se ubica sobre la barra inferior del celular, sin taparla', ()=>{

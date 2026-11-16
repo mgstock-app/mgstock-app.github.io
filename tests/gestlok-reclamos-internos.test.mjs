@@ -32,7 +32,7 @@ test('Categoría global abajo de Reseñas, accesible desde los locales actuales 
  assert.match(app,/window\.GestLokReclamosInternos\?\.subscribe\(loc,push\)/);
  assert.match(app,/window\.GestLokReclamosInternos\?\.reset\(\)/);
  assert.match(app,/window\.GestLokReclamosInternos\?\.attach/);
- assert.match(read('components/stock-runtime.tsx'),/load\("\/stock\/gestlok-reclamos-internos\.js/);
+ assert.match(read('components/stock-runtime.tsx'),/queueLoad\("\/stock\/gestlok-reclamos-internos\.js/);
  assert.match(read('app/layout.tsx'),/gestlok-reclamos-internos\.css/);
  for(const path of ['public/sw.js','scripts/sw-template.js'])
   assert.match(read(path),/'\/stock\/gestlok-reclamos-internos\.js'/);

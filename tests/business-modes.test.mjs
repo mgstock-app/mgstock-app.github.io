@@ -75,7 +75,7 @@ test('Las rutas cambian según modalidad y se conserva el Conteo diario exclusiv
   assert.match(app,/C\('pedidos_online'\)/);
   assert.match(app,/LOCAL_COLS = \[[^\]]*'pedidos_online'/);
   assert.match(app,/puedeVerDiarioMunro\(\)/);
-  assert.match(file('components/stock-runtime.tsx'),/load\("\/stock\/gestlok-commerce\.js"\)/);
+  assert.match(file('components/stock-runtime.tsx'),/queueLoad\("\/stock\/gestlok-commerce\.js"\)/);
 });
 
 test('El acceso a configuración de empresa queda limitado por RLS y tenant', () => {

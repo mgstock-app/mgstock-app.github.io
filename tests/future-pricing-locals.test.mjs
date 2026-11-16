@@ -39,7 +39,7 @@ test('Mi Gusto actual y futuro queda excluido en el servidor, y Belisa conserva 
 });
 test('La instalación PWA incluye el módulo privado, sin cambiar ReciboNet',()=>{
  const runtime=read('components/stock-runtime.tsx'),sw=read('scripts/sw-template.js'),owner=read('public/stock/gestlok-owner-areas.js'),layout=read('app/layout.tsx');
- assert.match(runtime,/if \(!visitor\) await load\("\/stock\/gestlok-future-pricing\.js/);
+ assert.match(runtime,/if \(!visitor\) queueLoad\("\/stock\/gestlok-future-pricing\.js/);
  assert.match(sw,/'\/stock\/gestlok-future-pricing\.js'/);
  assert.match(owner,/GestLokFuturePricing\?\.refresh\?\.\(data,api\)/);
  assert.match(owner,/GestLokFuturePricing\?\.homeTile\?\.\(state\.data,api\)/);
