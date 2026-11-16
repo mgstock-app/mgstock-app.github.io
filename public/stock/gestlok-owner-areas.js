@@ -299,7 +299,7 @@
         '<p>Horarios, planillas, recibos y gestión del personal.</p>'+
         list([['calendar','Horarios'],['sheet','Planillas'],['receipt','Recibos de sueldo'],['team','Empleados y roles'],['link','Enlaces a Excel y Google Sheets'],['bars','Reportes']])+
         '<p style="margin:16px 0 0;font-size:14px"><strong>Este módulo aún no está habilitado para tu empresa.</strong> Solicitá su activación a la administración de GESTLOK.</p></article>':'')+
-      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+(window.GestLokResenasGeneral?.homeTile?.()||'')+futurePrices+monthly+myProducts+zayroStore+
+      (!commerce&&!staff?'<p class="note gl-owner-none">Todavía no hay áreas habilitadas para esta cuenta.</p>':'')+'</div>'+(isSoloOwner()?'':caja)+pilot+futurePrices+(window.GestLokResenasGeneral?.homeTile?.()||'')+monthly+myProducts+zayroStore+
       (window.GestLokMolino?.homeTile?.()||'')+
       (window.GestLokInvites?.homeTile?.()||'')+
       // Sin tarjetas Reportes generales, Mi cuenta, Ajustes ni Soporte (08/11/2026):
