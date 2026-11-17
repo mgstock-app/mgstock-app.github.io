@@ -44,3 +44,35 @@ test('MV se renombra a SGR sin crear dos productos activos',()=>{
  assert.match(fix,/set active=false/);
  assert.match(fix,/where id='c1-24'/);
 });
+
+
+test('Conteo identifica el turno activo del servidor, sin modificar cantidades',async()=>{
+ const cases=[
+  {active:'manana_entrada',finished:[],label:'Mañana · entrada'},
+  {active:'manana_salida',finished:['manana_entrada'],label:'Mañana · salida'},
+  {active:'noche_salida',finished:['manana_entrada','manana_salida'],label:'Noche · salida'}
+ ];
+ for(const {active,finished,label} of cases){
+  const win={};
+  const state={
+   products:[{id:'emp',name:'Carne',section:'EMPANADAS',active:true,units_per_chapa:27}],
+   counts:[...finished.map(shift=>({shift,status:'finalizado',responsable:'Tizi',data:{emp:{v1:{chapas:1,sueltas:3,qty:0}}}})),
+    {shift:active,status:'borrador',responsable:'Tizi',data:{emp:{v1:{chapas:1,sueltas:4,qty:0}}}}],
+   history:[],settings:{locked:true,hidden_sections:[]}
+  };
+  const original=JSON.stringify(state),requested=[];
+  win.GestLokSupabase={rpc:async(name)=>{requested.push(name);return {error:null,data:JSON.parse(JSON.stringify(state))};}};
+  vm.runInNewContext(source,{window:win,document:{addEventListener:()=>{}},
+   navigator:{onLine:true},Date,Intl,Promise,Set,Map,Math,Array,Object,Number,String,JSON,console});
+  const instance=win.GestLokMunroConteo;
+  instance.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670',id:'tester'},local:'munro',view:'conteo-munro',ro:false,offline:false},
+   miRol:()=> 'gerente',misLocales:()=>['munro'],render:()=>{},toast:()=>{}});
+  assert.match(instance.view(),/Verificando turno…/);
+  for(let i=0;i<9;i++)await Promise.resolve();
+  const html=instance.view();
+  assert.match(html,new RegExp('class="gcm-current-shift"[^>]*><span>Turno de conteo</span><strong>'+label+'</strong>'));
+  assert.doesNotMatch(html,/data-gcm-shift=|<nav class="gcm-tabs"/);
+  assert.equal(JSON.stringify(state),original,'mostrar el turno no debe tocar cantidades');
+  assert.ok(requested.includes('gestlok_munro_conteo_state'));
+ }
+});
