@@ -96,7 +96,7 @@ assert.doesNotMatch(ui,/className="mhs-colab"[^>]* open>/);
 
 assert.match(ui,/const editarPersona=\(id:number\)=>editando&&puedeEditar&&\(personaEnEdicion===null\|\|personaEnEdicion===id\)/,
  "Modificar individual limita la edición a la persona seleccionada");
-assert.match(ui,/const controlesPersona=\(f:Borrador,desdeResumen=false\)=>/,
+assert.match(ui,/const controlesPersona=\(f:Pick<Borrador,"id"\|"nombre"\|"modalidad">,desdeResumen=false\)=>/,
  "Cada colaborador tiene su propio control de edición");
 assert.match(ui,/if\(!editarPersona\(id\)\)return;/,
  "No permitir guardar cambios de una persona distinta");
