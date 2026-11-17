@@ -574,10 +574,10 @@ export function MunroWeeklySchedule(){
                <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
                <button type="button" className="mhs-card-expandir" aria-expanded={abierta}
                  aria-label={(abierta?"Ocultar":"Ver")+" horarios de "+cabecera(f)}
-                 onClick={()=>{
-                   if(editando&&personaEnEdicion===f.id)return;
-                   setPersonaMovilAbierta(abierta?null:f.id);
-                 }}>{abierta?"Ocultar":"Ver horarios"}</button>
+                 disabled={editando&&personaEnEdicion===f.id}
+                 onClick={()=>setPersonaMovilAbierta(abierta?null:f.id)}>
+                  {editando&&personaEnEdicion===f.id?"Editando":abierta?"Ocultar":"Ver horarios"}
+                </button>
              </div>
            </header>
            {abierta&&<div className="mhs-card-detalle">
