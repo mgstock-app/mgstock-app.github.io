@@ -1836,3 +1836,10 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-recover-night{padding:12px;align-items:stretch}
  .gcm-recover-night>div,.gcm-recover-night button{width:100%}
 }
+
+.gcm-recovery-active{
+ padding:10px 12px;margin:8px 0;border-radius:8px;
+ border:1px solid #bfd3e5;background:#f0f6fb;color:#164368;
+ font-size:12px;line-height:1.5;
+}
+.gcm-recovery-active strong{font-weight:850}
