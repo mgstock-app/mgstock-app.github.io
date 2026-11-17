@@ -63,6 +63,38 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
 }
 describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  Cypress.on("uncaught:exception",e=>e.message.includes("Minified React error #418")?false:undefined);
+ it("permite modificar solo un colaborador desde Semana actual, sin habilitar los demás",()=>{
+  cy.viewport(1320,900);const ultimo=iniciar({precargados:[
+   {id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}},
+   {id:4,nombre:"Julieta",modalidad:"hora",version:1,semana:SEMANA,datos:{}}
+  ]});
+  cy.get(".mhs-tabla tbody tr").eq(0).find(".mhs-editar-persona").should("contain.text","Modificar").click();
+  cy.get(".mhs-tabla tbody tr").eq(0).find('input[type="time"]').first().should("be.enabled").type("09:00");
+  cy.get(".mhs-tabla tbody tr").eq(3).find('input[type="time"]').first().should("be.disabled");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.wrap(null).should(()=>expect(ultimo().p_persona).to.eq(1));
+  cy.get(".mhs-tabla tbody tr").eq(0).find(".mhs-editar-persona").should("contain.text","Listo").click();
+  cy.get(".mhs-tabla tbody tr").eq(0).find('input[type="time"]').first().should("be.disabled");
+ });
+ it("muestra Modificar por persona en Resumen, con OFF y feriados individuales",()=>{
+  cy.viewport(1320,900);const ultimo=iniciar({precargados:[
+   {id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}},
+   {id:4,nombre:"Julieta",modalidad:"hora",version:1,semana:SEMANA,datos:{}}
+  ]});
+  cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").first().click();
+  cy.get(".mhs-resumen > .mhs-colab").should("have.length",2);
+  cy.get(".mhs-resumen > .mhs-colab").first().find("summary").click();
+  cy.get(".mhs-resumen > .mhs-colab").eq(1).find("summary").click();
+  cy.get('input[aria-label="OFF de Lucía"]').should("be.disabled");
+  cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-editar-persona").click();
+  cy.get('input[aria-label="OFF de Lucía"]').should("be.enabled").clear().type("2");
+  cy.get('input[aria-label="OFF de Julieta"]').should("be.disabled");
+  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].off).to.eq("2"));
+  cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-editar-persona").contains("Listo").click();
+  cy.get('input[aria-label="OFF de Lucía"]').should("be.disabled");
+ });
  it("muestra 3 turnos, 5 por hora y permite completar nombre, estado y entrada sin salida",()=>{
   cy.viewport(1320,900);const ultimo=iniciar();
   cy.get(".mhs-tabla tbody tr",{timeout:15000}).should("have.length",8);
