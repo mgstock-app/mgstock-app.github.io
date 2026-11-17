@@ -1,0 +1,77 @@
+
+/* Mi Gusto Munro: matriz de cuatro filas por colaborador, siete columnas de días.
+   Solo modifica presentación: inputs, roles, RPC, OFF, feriado y autoguardado intactos. */
+.mhs-ayuda-detalle{border:1px solid #e0e7f0;border-radius:9px;background:#f9fbfe;color:#53647a;padding:8px 12px;font-size:12px;line-height:1.55}
+.mhs-ayuda-detalle summary{cursor:pointer;color:#304b70;font-weight:700}
+.mhs-ayuda-detalle summary:focus-visible{outline:2px solid #4279ba;outline-offset:2px}
+.mhs-ayuda-detalle p{margin:8px 0 2px}
+.mhs-matriz-colaborador{min-width:0}
+.mhs-matriz-etiquetas{display:none}
+@media(min-width:761px){
+ .mhs-tabla thead th:first-child{width:clamp(285px,30%,345px)}
+ .mhs-tabla tbody th{padding:12px 8px}
+ .mhs-tabla tbody td{padding:12px 3px}
+ .mhs-matriz-colaborador{display:grid;grid-template-columns:minmax(0,1fr) minmax(76px,32%);gap:8px}
+ .mhs-matriz-colaborador>.mhs-colaborador{min-width:0;max-width:100%}
+ .mhs-matriz-etiquetas{display:flex;flex-direction:column;align-items:stretch;padding-top:43px;min-width:0;color:#45566d}
+ .mhs-matriz-etiquetas>span{height:70px;min-height:70px;display:flex;align-items:center;border-top:1px solid #ebeff5;padding:6px 3px;font-size:clamp(10px,.94vw,12px);line-height:1.3;font-weight:650;overflow-wrap:anywhere}
+ .mhs-matriz-etiquetas>span:last-child{border-bottom:1px solid #ebeff5}
+ .mhs-tabla .mhs-cuatro{display:flex;flex-direction:column;gap:0;align-items:stretch;padding-top:43px;min-width:0;position:relative}
+ .mhs-tabla .mhs-cuatro .mhs-descansos{position:absolute;top:0;left:0;right:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;padding:0;background:transparent}
+ .mhs-tabla .mhs-descansos .mhs-descanso-boton{min-height:35px;padding:5px 1px;border-radius:7px;font-size:clamp(9px,.83vw,11px)}
+ .mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra){display:flex;justify-content:center;align-items:center;width:100%;height:70px;min-height:70px;padding:7px 1px;border-top:1px solid #ebeff5;margin:0}
+ .mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra):nth-of-type(4){border-bottom:1px solid #ebeff5}
+ .mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra)>span{display:none}
+ .mhs-tabla .mhs-cuatro input[type=time]{display:block;width:100%;min-width:0;max-width:100%;height:40px;min-height:40px;margin:0;padding:5px 1px;background:#fbfcfe;text-align:center;border-radius:8px;font-size:clamp(11px,.93vw,13px)}
+ .mhs-tabla .mhs-cuatro .mhs-dia-extra{width:100%;min-height:30px;margin:5px 0 0;padding:5px 2px}
+ .mhs-tabla .mhs-horas-dia{width:100%;margin-top:7px;min-height:31px}
+ .mhs-tabla .mhs-revisar{margin-top:5px}
+ .mhs-tabla .mhs-colaborador>strong{font-size:clamp(14px,1.2vw,17px)}
+ .mhs-tabla .mhs-total-nombre{font-size:11px;padding:8px 7px}
+ .mhs-tabla .mhs-extra-opciones label{white-space:normal}
+ .mhs-tabla .mhs-estado{max-width:100%}
+ .mhs-tabla .mhs-estado select{min-width:0;max-width:100%;width:100%}
+}
+@media(min-width:761px) and (max-width:1030px){
+ .mhs-tabla thead th:first-child{width:285px}
+ .mhs-matriz-colaborador{grid-template-columns:minmax(0,1fr) 76px;gap:4px}
+ .mhs-tabla tbody th{padding:10px 5px}
+ .mhs-tabla .mhs-cuatro input[type=time]{font-size:11px}
+}
+@media(max-width:760px){
+ /* En teléfonos permanecen las tarjetas del día, con etiquetas en cada campo. */
+ .mhs-matriz-etiquetas{display:none}
+ .mhs-matriz-colaborador{display:block}
+}
+
+/* Mantener los controles fuera del encabezado fijo al llegar mediante Tab
+   o al saltar a un campo del calendario. */
+@media(min-width:761px){
+ .mhs-tabla tbody :is(select,input,button){scroll-margin-top:110px}
+ .mhs-tabla tbody th{scroll-margin-top:110px}
+}
+
+/* Evitar que las etiquetas de la matriz cubran el menú de estado o sus clics. */
+@media(min-width:761px){
+ .mhs-matriz-colaborador>.mhs-colaborador{width:100%;min-width:0}
+ .mhs-matriz-colaborador .mhs-opciones-colaborador{width:100%;min-width:0;max-width:100%}
+ .mhs-matriz-colaborador .mhs-estado{width:100%;max-width:100%;min-width:0}
+ .mhs-matriz-colaborador .mhs-estado select{box-sizing:border-box;min-width:0;max-width:100%;width:100%}
+ .mhs-matriz-etiquetas{pointer-events:none}
+}
+
+@media(min-width:761px){
+ .mhs-matriz-colaborador{grid-template-columns:minmax(0,1fr) 82px}
+ .mhs-matriz-colaborador>.mhs-colaborador{min-width:0}
+ .mhs-matriz-colaborador .mhs-estado{min-width:0}
+ .mhs-matriz-colaborador .mhs-estado select{max-width:100%;min-width:0;box-sizing:border-box}
+}
+
+/* El selector comparte fila flexible con el indicador de color; nunca puede medir
+   100% más el punto de estado, porque invadiría la columna de los horarios. */
+@media(min-width:761px){
+ .mhs-matriz-colaborador .mhs-estado{display:flex;align-items:center}
+ .mhs-matriz-colaborador .mhs-estado select{
+   flex:1 1 0%;width:0;min-width:0;max-width:100%;box-sizing:border-box
+ }
+}

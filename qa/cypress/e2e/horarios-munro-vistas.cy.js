@@ -72,7 +72,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("a","Abrir planilla").should("not.exist");
   cy.contains("button","Modificar").click();
   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Nombre del colaborador"]').type("Lucía");
-  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
   cy.get(".mhs-alerta").should("not.exist");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -133,7 +133,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}]});
    cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-activo .mhs-luz-estado').should("be.visible");
    cy.contains("button","Modificar").click();
-   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo");
+   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo",{scrollBehavior:"center"});
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
      .clear().type("2026-11-10");
    cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -175,7 +175,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("contain.text","Activo").and("not.contain.text","Refuerzo").and("not.contain.text","Inactivo");
   cy.contains("button","Modificar").click();
-  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("have.class","mhs-estado-refuerzo").and("contain.text","Refuerzo");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -277,6 +277,48 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     .should("contain.text","Total semanal");
   cy.get(".mhs-tabla tbody tr").first().find("input[type=time]")
     .should("have.length",28);
+ });
+
+ it("presenta cuatro filas de horario alineadas con los siete días y sin perder los campos reales",()=>{
+  cy.viewport(1366,900);iniciar();
+  cy.get(".horarios-hub h1").should("contain.text","Staff · Munro");
+  cy.get(".mhs-tabla thead th").should("have.length",8);
+  cy.get(".mhs-tabla tbody tr").first().within(()=>{
+    cy.get(".mhs-matriz-etiquetas span").should("have.length",4)
+      .then($labels=>expect([...$labels].map(x=>x.textContent)).to.deep.eq([
+        "Entrada TM","Salida TM","Entrada TT","Salida TT"
+      ]));
+    cy.get("td").should("have.length",7);
+    cy.get("td").each($dia=>cy.wrap($dia).find('input[type="time"]').should("have.length",4));
+  });
+  cy.contains("button","Modificar").click();
+  cy.get(".mhs-tabla tbody tr").first().then($fila=>{
+    const estado=$fila.find(".mhs-estado select")[0];
+    const etiquetas=$fila.find(".mhs-matriz-etiquetas")[0];
+    const e=estado.getBoundingClientRect(),l=etiquetas.getBoundingClientRect();
+    expect(e.right,"estado dentro del espacio del colaborador").to.be.at.most(l.left+2);
+  });
+  cy.get(".mhs-tabla tbody tr").first().then($fila=>{
+    const nombres=$fila.find(".mhs-matriz-etiquetas span");
+    const horarios=$fila.find("td").first().find('input[type="time"]');
+    for(let k=0;k<4;k++){
+      const a=nombres[k].getBoundingClientRect();
+      const b=horarios[k].getBoundingClientRect();
+      expect(Math.abs((a.top+a.height/2)-(b.top+b.height/2)),
+        "fila "+k+" alineada").to.be.lessThan(4);
+    }
+  });
+ });
+ it("en celular conserva entradas y salidas con rótulos y selector de día",()=>{
+  cy.viewport(1320,900);iniciar();
+  cy.viewport(390,844);
+  cy.get(".mhs-tabla-wrap").should("not.be.visible");
+  cy.get(".mhs-movil-lista .mhs-card").first().within(()=>{
+    cy.get('input[type="time"]').should("have.length",4);
+    cy.contains("span","Entrada TM").should("be.visible");
+    cy.contains("span","Salida TT").should("be.visible");
+  });
+  cy.get(".mhs-movil-dias button").should("have.length",7);
  });
 
 });
