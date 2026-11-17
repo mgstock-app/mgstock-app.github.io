@@ -70,6 +70,7 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
    cy.get('.mhs-tabla tbody tr').should('have.length',8);
    cy.contains('a','Abrir planilla').should('not.exist','Munro usa planilla nativa');
    cy.get('.mhs-pestanas').contains("button","Resumen semanal").click();
+   cy.get('.mhs-resumen-semanas .mhs-semana-item').first().click();
    cy.get('.mhs-archivo-anterior > summary').click();
    cy.contains('h2','Historial de semanas').should('be.visible');
    cy.get('section[aria-label="Hoja Resumen archivada"]').should('be.visible').within(()=>{
