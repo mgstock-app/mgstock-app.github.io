@@ -408,3 +408,24 @@
   .mhs-resumen-semanas{gap:12px}
   .mhs-semana-item{min-height:59px;padding:12px;gap:10px}
 }
+
+
+/* Acción individual: una sola persona editable, sin botones llamativos. */
+.mhs-control-persona{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;min-width:0}
+.mhs-control-persona .mhs-editar-persona,.mhs-control-persona .mhs-persona-ir-horarios{
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ min-height:36px;padding:7px 12px;border:1px solid #cbd6e3;border-radius:8px;
+ background:#fff;color:#244564;font-size:12px;font-weight:700;white-space:nowrap
+}
+.mhs-control-persona .mhs-editar-persona:hover:not(:disabled),
+.mhs-control-persona .mhs-persona-ir-horarios:hover:not(:disabled){background:#f0f5fb;border-color:#99abc2}
+.mhs-control-persona .mhs-editar-persona:focus-visible,
+.mhs-control-persona .mhs-persona-ir-horarios:focus-visible{outline:2px solid #467db8;outline-offset:2px}
+.mhs-control-persona .mhs-persona-editando,.mhs-accion-estado{font-size:12px;color:#315776;font-weight:650}
+.mhs-tabla .mhs-control-persona{justify-content:flex-start;width:100%}
+.mhs-colab>.mhs-control-persona{padding:0 4px 12px}
+.mhs-movil-lista .mhs-control-persona{justify-content:flex-start}
+@media(max-width:640px){
+ .mhs-colab>.mhs-control-persona{padding:0 4px 10px}
+ .mhs-control-persona .mhs-editar-persona,.mhs-control-persona .mhs-persona-ir-horarios{min-height:38px}
+}
