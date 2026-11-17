@@ -179,11 +179,14 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    });
   });
   it("feriado resaltado también en celular sin abrir la tarjeta",()=>{
-    cy.viewport(390,844);
+    // Iniciar en escritorio: Horarios está en la barra lateral; luego simular teléfono.
+    cy.viewport(1320,900);
     iniciar({precargados:[{
       id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,
       datos:{[SEMANA]:{feriados_habilitados:true},"2026-11-12":{feriado:true,tm_e:"09:00",tm_s:"13:00"}}
     }]});
+    cy.get('.mhs-tabla').should('exist');
+    cy.viewport(390,844);
     cy.get('.mhs-movil-dias button').contains("Jue").click();
     cy.get('.mhs-movil-lista .mhs-card').first().should("have.class","mhs-card--feriado")
       .find('.mhs-card-feriado').should("contain.text","FERIADO");
