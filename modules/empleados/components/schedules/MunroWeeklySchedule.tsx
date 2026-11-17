@@ -355,9 +355,9 @@ export function MunroWeeklySchedule(){
      </dl>
    </section>;
  };
- const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
+ const cabecera=(f:Pick<Borrador,"id"|"nombre"|"modalidad">)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
- const controlesPersona=(f:Borrador,desdeResumen=false)=>{
+ const controlesPersona=(f:Pick<Borrador,"id"|"nombre"|"modalidad">,desdeResumen=false)=>{
   if(!puedeEditar||(editando&&personaEnEdicion===null))return null;
   const activa=editando&&personaEnEdicion===f.id;
   return <div className="mhs-control-persona">
