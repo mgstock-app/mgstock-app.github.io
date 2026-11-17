@@ -392,16 +392,45 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     }
   });
  });
- it("en celular conserva entradas y salidas con rótulos y selector de día",()=>{
+ it("en celular deja la fila de siete días fija mientras se recorren los colaboradores",()=>{
   cy.viewport(1320,900);iniciar();
   cy.viewport(390,844);
   cy.get(".mhs-tabla-wrap").should("not.be.visible");
+  cy.get(".mhs-movil-lista .mhs-card").should("have.length",8);
+  cy.get(".mhs-movil-dias button").should("have.length",7);
+  cy.get(".mhs-card--cerrada").should("have.length",8);
+  cy.get(".mhs-card-expandir").first().click();
   cy.get(".mhs-movil-lista .mhs-card").first().within(()=>{
     cy.get('input[type="time"]').should("have.length",4);
     cy.contains("span","Entrada TM").should("be.visible");
     cy.contains("span","Salida TT").should("be.visible");
   });
-  cy.get(".mhs-movil-dias button").should("have.length",7);
+  cy.get(".mhs-card-expandir").first().click();
+  cy.get(".mhs-movil-lista .mhs-card").last().scrollIntoView();
+  cy.get(".mhs-movil-dias").should($bar=>{
+    const rect=$bar[0].getBoundingClientRect();
+    const headerBottom=document.querySelector(".gestlok-module-bar")?.getBoundingClientRect().bottom??0;
+    expect(getComputedStyle($bar[0]).position).to.equal("sticky");
+    expect(rect.top,"los días no quedan tapados por la barra de GESTLOK").to.be.at.least(headerBottom-2);
+    expect(rect.top,"los días no desaparecen").to.be.lessThan(180);
+    expect(rect.bottom).to.be.at.most(innerHeight);
+  });
+  cy.get(".mhs-movil-dias button").eq(3).click();
+  cy.get(".mhs-movil-dias button").eq(3).should("have.attr","aria-pressed","true");
  });
-
+ it("en móvil filtra colaboradores por nombre y permite modificar solo el elegido",()=>{
+  cy.viewport(1320,900);iniciar({precargados:[
+    {id:1,nombre:"Juli",modalidad:"turno",version:1,semana:SEMANA,datos:{}},
+    {id:4,nombre:"Mari",modalidad:"hora",version:1,semana:SEMANA,datos:{}}
+  ]});
+  cy.viewport(390,844);
+  cy.get("#mhs-buscar-colaborador").type("mari");
+  cy.get(".mhs-movil-lista .mhs-card").should("have.length",1).should("contain.text","Mari");
+  cy.get(".mhs-movil-lista .mhs-card").find('input[type="time"]').should("have.length",0);
+  cy.get(".mhs-card-expandir").click();
+  cy.get(".mhs-movil-lista .mhs-card").find('input[type="time"]').should("have.length",4);
+  cy.get(".mhs-movil-lista .mhs-card").contains("button","Modificar").click();
+  cy.get(".mhs-movil-lista .mhs-card").contains("button","Listo").should("be.visible");
+ });
+ 
 });
