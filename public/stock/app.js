@@ -355,6 +355,26 @@ async function batchRun(items, fn, size=5){ for (let i = 0; i < items.length; i 
 
 /* ---------- Render general ---------- */
 let renderedFormScope='';
+// Evitar saltos durante actualizaciones que redibujan Conteo.
+function captureConteoViewport(){
+ const root=document.querySelector('.gcm-count-screen');if(!root)return null;
+ const view=document.getElementById('view');
+ return {y:typeof window.scrollY==='number'?window.scrollY:null,viewY:view?.scrollTop??null,
+  ruler:root.querySelector('.gcm-expiry-ruler-scroll')?.scrollLeft||0,
+  nav:root.querySelector('.gcm-category-nav')?.scrollTop||0,
+  panes:[...root.querySelectorAll('.gcm-section')].map(x=>[x.dataset.gcmSection,x.querySelector('.gcm-sheet-scroll')?.scrollLeft||0])};
+}
+function restoreConteoViewport(saved){
+ if(!saved)return;
+ const root=document.querySelector('.gcm-count-screen');if(!root)return;
+ const positions=new Map(saved.panes);
+ root.querySelectorAll('.gcm-section').forEach(x=>{const sheet=x.querySelector('.gcm-sheet-scroll');
+  if(sheet)sheet.scrollLeft=positions.get(x.dataset.gcmSection)??saved.ruler;});
+ const ruler=root.querySelector('.gcm-expiry-ruler-scroll');if(ruler)ruler.scrollLeft=saved.ruler;
+ const nav=root.querySelector('.gcm-category-nav');if(nav)nav.scrollTop=saved.nav;
+ const view=document.getElementById('view');if(view&&saved.viewY!==null)view.scrollTop=saved.viewY;
+ if(saved.y!==null&&typeof window.scrollTo==='function')window.scrollTo(0,saved.y);
+}
 function render(){
   window.GestLokSupport?.render();
   window.GestLokRoleSwitcher?.render();
@@ -407,9 +427,11 @@ function render(){
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
   const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
+  const conteoViewport=S.view==='conteo-munro'?captureConteoViewport():null;
   renderChrome();
   $('#view').innerHTML = viewHTML();
   formGuard?.restore($('#view'),preserved,formScope);
+  restoreConteoViewport(conteoViewport);
   renderedFormScope=formScope;
   if(toolsOpen && S.view==='inicio'){
     const details=$('#view .gl-home-essential-settings');

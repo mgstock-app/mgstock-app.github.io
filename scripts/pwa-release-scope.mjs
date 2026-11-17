@@ -17,10 +17,13 @@ export function fileAudience(path) {
   // Cambios reales del worker (caché, offline y seguridad) requieren aviso general.
   if (p === 'scripts/sw-template.js') return ['*'];
   if (NON_RUNTIME.test(p) || UPDATE_INFRA.has(p)) return [];
-  // Conteo y demás pantallas exclusivas de Munro no cambian Torcuato.
-  if (/^(?:public\/stock\/(?:mi-gusto-conteo\.js|munro-|gestlok-munro-)|app\/(?:mi-gusto-conteo\.css|munro-))/i.test(p)) {
+  // Solo los módulos exclusivos de Munro avisan a Munro. Conteo es compartido
+  // visualmente por Munro y Torcuato: sus cambios deben avisar a ambos.
+  if (/^(?:public\/stock\/(?:munro-|gestlok-munro-)|app\/munro-)/i.test(p)) {
     return [LOCAL_AUDIENCE.munro];
   }
+  // Staff semanal de Munro: no generar avisos falsos en Torcuato ni otros locales.
+  if (/^modules\/empleados\/(?:components\/schedules\/(?:MunroWeeklySchedule\.tsx|munro-weekly\.css)|features\/schedules\/munro-model\.ts)$/.test(p)) return [LOCAL_AUDIENCE.munro];
   // El resto de módulos Mi Gusto sí pueden usarse en ambas sucursales.
   if (/^(?:public\/stock\/(?:mi-gusto-|mg-|gestlok-mg-)|app\/mi-gusto-|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
   if (/^(?:public\/stock\/gestlok-molino|app\/(?:gestlok-molino|molino-)|public\/molino\/)/i.test(p)) return [TENANTS.molino];
@@ -110,12 +113,24 @@ function isOnlyMunroStaffNavMove(patch) {
   return !!oldGuard && !!newGuard
     && oldGuard.replace('!puedeVerMotos() && ','!puedeVerMotos() && !puedeVerStaffMunro() && ')===newGuard;
 }
+// La única modificación del service worker es cachear el controlador nuevo
+// de Conteo compartido por Mi Gusto. Esto no debe generar aviso falso en otras empresas.
+function onlyMiGustoMorningShell(patch){
+ const lines=String(patch||'').split('\n').filter(x=>/^[+-](?![+-])/.test(x));
+ if(lines.length!==2)return false;
+ const minus=lines.find(x=>x.startsWith('-'))?.slice(1).trim();
+ const plus=lines.find(x=>x.startsWith('+'))?.slice(1).trim();
+ if(!minus?.startsWith('const SHELL = ')||!plus?.startsWith('const SHELL = '))return false;
+ return plus.replace("'/stock/mi-gusto-conteo-morning.js', ", '')===minus;
+}
 export function releaseAudience(paths, patches = {}) {
   const audience = new Set();
   for (const path of paths || []) {
     const p = String(path || '');
     const targets = p === 'public/stock/app.js' ?
       (isOnlyMunroStaffNavMove(patches[p]) ? [LOCAL_AUDIENCE.munro] : ['*']) :
+      p === 'scripts/sw-template.js' && onlyMiGustoMorningShell(patches[p]) ?
+        [TENANTS.miGusto] :
       (SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p));
     for (const t of targets) {
       if (t === '*') return ['*'];

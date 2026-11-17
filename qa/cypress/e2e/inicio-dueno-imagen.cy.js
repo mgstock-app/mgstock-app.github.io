@@ -6,7 +6,11 @@ function start(email = 'dueno@example.com', setup) {
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
   cy.visit('/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
-  cy.window().then(w => {
+  // La intro puede desaparecer antes de completar el arranque.
+  cy.window().should(w => {
+    expect(w.__rows, 'equipo ficticio disponible').to.be.an('array');
+    expect(w.GestLokNavContext, 'controlador listo').to.be.a('function');
+  }).then(w => {
     w.__staffModule = true;
     const me = w.__rows.find(r => r.col === 'equipo' && r.id === 'dueno@example.com');
     if (me) me.data.logoId = 'mi-gusto';

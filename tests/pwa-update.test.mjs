@@ -120,8 +120,8 @@ test('La clasificación separa actualizaciones por empresa y conserva alertas de
   assert.deepEqual(fileAudience('public/stock/gestlok-molino-pya.css'),[TENANTS.molino]);
   assert.deepEqual(fileAudience('public/stock/gestlok-zayro-admin.js'),[TENANTS.zayro]);
   assert.deepEqual(fileAudience('public/stock/mi-gusto-cierre-online.js'),[TENANTS.miGusto]);
-  assert.deepEqual(fileAudience('public/stock/mi-gusto-conteo.js'),[LOCAL_AUDIENCE.munro]);
-  assert.deepEqual(fileAudience('app/mi-gusto-conteo.css'),[LOCAL_AUDIENCE.munro]);
+  assert.deepEqual(fileAudience('public/stock/mi-gusto-conteo.js'),[TENANTS.miGusto]);
+  assert.deepEqual(fileAudience('app/mi-gusto-conteo.css'),[TENANTS.miGusto]);
   assert.deepEqual(fileAudience('public/stock/munro-motos.js'),[LOCAL_AUDIENCE.munro]);
   assert.deepEqual(fileAudience('public/stock/munro-daily.js'),[LOCAL_AUDIENCE.munro]);
   assert.deepEqual(releaseAudience(['public/stock/gestlok-molino-pya.css','tests/el-molino-pedidosya.test.mjs']),[TENANTS.molino]);
@@ -208,9 +208,9 @@ test('Diff real de Conteo en una línea con comercio compartido avisa SOLO a Mun
    '-      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=old");',
    '+      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=new");'
  ].join('\n');
- assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{'components/stock-runtime.tsx':patch}),[LOCAL_AUDIENCE.munro]);
+ assert.deepEqual(releaseAudience(['components/stock-runtime.tsx'],{'components/stock-runtime.tsx':patch}),[TENANTS.miGusto]);
  assert.deepEqual(releaseAudience(['components/stock-runtime.tsx','public/stock/mi-gusto-conteo.js','tests/munro-conteo.test.mjs'],
-   {'components/stock-runtime.tsx':patch}),[LOCAL_AUDIENCE.munro]);
+   {'components/stock-runtime.tsx':patch}),[TENANTS.miGusto]);
 });
 test('Cambios realmente compartidos siguen notificando a todos; cambios de backend sin pantalla no',()=>{
  const diff='-      if (!visitor) await load("/stock/app.js?rev=v1");\n'+
@@ -240,4 +240,16 @@ test('El único cambio de orden Staff de Munro no avisa a Torcuato ni a otras em
  const patch=['-  const staffMunro = puedeVerStaffMunro();','-'+oldTop,'+'+newTop,'+'+nested,'-'+oldGuard,'+'+newGuard].join('\n');
  assert.deepEqual(releaseAudience(['public/stock/app.js','tests/gerente-inicio.test.mjs','scripts/version-cache.mjs'],{'public/stock/app.js':patch}),[LOCAL_AUDIENCE.munro]);
  assert.deepEqual(releaseAudience(['public/stock/app.js'],{'public/stock/app.js':patch+'\n+  console.log("extra");'}),['*'],'cualquier otro cambio de app.js mantiene aviso compartido');
+});
+
+test('Cambios en Staff semanal de Munro no generan carteles falsos en Torcuato ni otras empresas',()=>{
+ const paths=[
+  'modules/empleados/components/schedules/MunroWeeklySchedule.tsx',
+  'modules/empleados/components/schedules/munro-weekly.css',
+  'modules/empleados/features/schedules/munro-model.ts',
+  'supabase/migrations/20261116094500_munro_staff_cierre_semanal.sql'
+ ];
+ assert.deepEqual(releaseAudience(paths),[LOCAL_AUDIENCE.munro]);
+ assert.deepEqual(releaseAudience(['modules/empleados/components/schedules/HorariosHub.tsx']),['*'],
+   'otros componentes compartidos no deben clasificar erróneamente como Munro');
 });

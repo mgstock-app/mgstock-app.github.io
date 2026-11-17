@@ -93,7 +93,7 @@ test('Ver detalle abre solo el conteo del turno seleccionado, en lectura',async(
  assert.match(html,/download="conteo-munro-/);
  assert.match(html,/Productos y totales/);
  assert.match(html,/>Producto<\/th><th>Total<\/th>/);
- assert.match(html,/>Consumos<\/h3>/);
+ assert.doesNotMatch(html,/>Consumos<\/h3>/,'Mañana entrada no tiene Consumos');
  assert.equal(m.canvases.length,1);
  assert.equal(m.canvases[0].width,1240);
  assert.equal(m.canvases[0].height,1754);
@@ -128,7 +128,9 @@ test('RPC mensual incluye borradores y finalizados y valida autorización por te
 
 /* Regresión: cerrar cada turno archiva la fecha original y abre el siguiente. */
 function sequentialHarness({mismatch=false,finalizeFails=false,allClosed=false}={}){
- const events=new Map(),calls=[],messages=[],renders=[],window={confirm:()=>true,scrollTo:()=>{}};
+ const events=new Map(),calls=[],messages=[],renders=[],window={confirm:()=>true,scrollTo:()=>{},alert:()=>{},
+  GestLokConteoMorning:{clear(){},row(){return {different:false};},panel(){return ''},schedule(){},
+   async load(){return {baseline_ready:true,rows:[]};}}};
  const document={addEventListener:(name,fn)=>events.set(name,fn),querySelector:()=>null};
  vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,Math,Array,Object,Number,String,JSON,console});
  const today=date(),tomorrow=window.GestLokMunroConteo._test.plusDays(today,1);
@@ -259,25 +261,28 @@ test('la vista A4 usa valores archivados, no cambia registros y dibuja 10 consum
  assert.match(html,/Hoja A4 completa/);
  assert.match(html,/Descargar imagen A4 \(PNG\)/);
  assert.equal((html.match(/data-gcm-extra="consumption"/g)||[]).length,0);
- assert.ok(m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'));
- assert.deepEqual(m.drawn.filter(x=>/^([1-9]|10)$/.test(x)),['1','2','3','4','5','6','7','8','9','10']);
+ assert.ok(!m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'),'Mañana entrada no tiene Consumos');
+ assert.deepEqual(m.drawn.filter(x=>/^([1-9]|10)$/.test(x)),[]);
  assert.equal(m.calls.slice(before).filter(x=>x.name==='gestlok_munro_conteo_finalize'||x.name==='gestlok_munro_conteo_set_extra').length,0);
  await m.click('data-gcm-a4-refresh');
  assert.equal(m.canvases.length,2);
  assert.equal(m.canvases[1].height/m.canvases[1].width,1754/1240);
 });
 
-test('Consumos siempre ofrece exactamente 10 filas para 10 colaboradores',async()=>{
+test('Mañana entrada sin Consumos; Mañana salida tiene 10 espacios',async()=>{
  const m=app('gerente');m.module.view();await tick();await tick();
- const html=m.module.view();
+ let html=m.module.view();
+ assert.doesNotMatch(html,/data-gcm-extra="consumption"/);
+ assert.doesNotMatch(html,/Consumo de Staff/);
+ m.todayEntry.status='finalizado';
+ m.rows.find(r=>r.shift==='manana_salida').status='borrador';
+ m.module.reset();m.module.view();await tick();await tick();
+ html=m.module.view();
  for(let i=0;i<10;i++){
   assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="name"'));
   assert.match(html,new RegExp('data-gcm-extra="consumption" data-row="'+i+'" data-field="value"'));
  }
  assert.equal((html.match(/data-gcm-extra="consumption" data-row=/g)||[]).length,20);
- assert.doesNotMatch(html,/data-gcm-extra-add="consumption"/);
- assert.doesNotMatch(html,/data-gcm-extra-remove="consumption"/);
- assert.match(html,/10 espacios fijos para colaboradores/);
 });
 
 test('A4 respeta el orden de Conteo y pone cada total cerca del producto, con letra grande',async()=>{
@@ -314,10 +319,9 @@ test('A4 respeta el orden de Conteo y pone cada total cerca del producto, con le
  assert.ok(size>=24,'Producto debe verse en tamaño legible: '+size);
  const totalSize=Number(quantity.font.match(/(\d+)px/)?.[1]||0);
  assert.ok(totalSize>=size,'Los números deben ser igual o más grandes');
- const consumo=m.placed.find(v=>v.text==='Consumo');
- assert.ok(Number(consumo.font.match(/(\d+)px/)?.[1]||0)>=21);
+ assert.ok(!m.placed.find(v=>v.text==='Consumo'),'Mañana entrada no tiene consumo');
  assert.ok(m.placed.some(v=>v.text==='TOTAL GENERAL'));
- assert.ok(m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'));
+ assert.ok(!m.drawn.includes('CONSUMOS  ·  10 COLABORADORES'),'Mañana entrada no tiene Consumos');
 });
 
 test('excepción 14/11: solo cambia la etiqueta a Noche salida y conserva turno/datos originales',async()=>{
@@ -337,7 +341,8 @@ test('excepción 14/11: solo cambia la etiqueta a Noche salida y conserva turno/
  const detail=await m.click('data-gcm-history','2026-11-14|manana_entrada');
  assert.match(detail,/Turno Noche salida/);
  assert.match(detail,/conteo-munro-2026-11-14-noche_salida\.png/);
- assert.ok(m.drawn.includes('Turno: Noche · salida'));
+ assert.ok(m.drawn.includes('Noche · salida'));
+ assert.ok(!m.drawn.includes('Mañana · entrada'),'la vista A4 debe respetar la corrección histórica');
  assert.ok(m.drawn.includes('129')); // 4 chapas x 30 + 9 sueltas
  assert.equal(original.shift,'manana_entrada','no cambia el identificador real');
  assert.equal(original.data.p1.v1.chapas,4);

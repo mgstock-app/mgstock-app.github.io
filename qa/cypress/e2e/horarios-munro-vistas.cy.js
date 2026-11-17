@@ -8,15 +8,31 @@ const tabla=(value)=>({values:[["Colaborador","Lunes"],["Persona ficticia",value
 function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
  let empleados=personas().map(p=>({...p,nombre:precargados.find(r=>r.id===p.id)?.nombre||""}));
  let registros=[...precargados],ultimo=null,feriados=[...diasFeriados],feriadosVersion=feriados.length?1:0;
+ let cierres=[],archivo=[],cierreEnviado=null;
  cy.intercept("**/*.supabase.co/**",req=>{
   const path=req.url;
   if(path.includes("/auth/v1/user"))return req.reply(user);
   if(path.includes("/rpc/rm_app_me"))return req.reply({...user,user_id:user.id,display_name:"Gerente ficticio",status:"approved",role:null,gestlok_gerente:{local_ids:["munro"]}});
   if(path.includes("/rpc/rm_app_branch_schedule_links"))return req.reply([]);
-  if(path.includes("/rpc/rm_munro_horarios_obtener"))return req.reply({
-   semana:req.body?.p_semana||SEMANA,personas:empleados,planillas:registros,historial:[],
-    puede_editar:editable,feriados,feriados_version:feriadosVersion,feriados_historial:{}
-  });
+  if(path.includes("/rpc/rm_munro_horarios_obtener")){
+   const actual=req.body?.p_semana||SEMANA;
+   return req.reply({
+     semana:actual,
+     personas:cierres.length&&actual>cierres[0]?empleados.filter(p=>p.estado!=="inactivo"):empleados,
+     planillas:cierres.includes(actual)?archivo:actual===SEMANA?registros:[],
+     historial:archivo,puede_editar:editable,semana_cerrada:cierres.includes(actual),cierres,
+     feriados,feriados_version:feriadosVersion,feriados_historial:{}
+   });
+  }
+  if(path.includes("/rpc/rm_munro_horarios_finalizar_semana")){
+    cierreEnviado=req.body;
+    if(cierres.includes(req.body.p_semana))return req.reply({message:"Semana ya cerrada"},400);
+    cierres=[req.body.p_semana];
+    archivo=[...registros];
+    const siguiente=new Date(req.body.p_semana+"T12:00:00Z");
+    siguiente.setUTCDate(siguiente.getUTCDate()+7);
+    return req.reply({ok:true,archivado:true,siguiente_semana:siguiente.toISOString().slice(0,10)});
+  }
   if(path.includes("/rpc/rm_munro_horarios_feriados_guardar")){
     feriados=req.body.p_dias;feriadosVersion+=1;
     return req.reply({ok:true,version:feriadosVersion,dias:feriados});
@@ -43,7 +59,7 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
  cy.visit("/empleados/",{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:"synthetic",token_type:"bearer",expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
  cy.clock(new Date("2026-11-12T15:00:00Z").getTime(),["Date"]);
  cy.get(".gl-gerente__sidebar").contains("button","Horarios",{timeout:15000}).click();
- return ()=>ultimo;
+ return Object.assign(()=>ultimo,{ultimoCierre:()=>cierreEnviado,cierres:()=>cierres,archivo:()=>archivo});
 }
 describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  Cypress.on("uncaught:exception",e=>e.message.includes("Minified React error #418")?false:undefined);
@@ -56,7 +72,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("a","Abrir planilla").should("not.exist");
   cy.contains("button","Modificar").click();
   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Nombre del colaborador"]').type("Lucía");
-  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
   cy.get(".mhs-alerta").should("not.exist");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -85,6 +101,8 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get(".mhs-tabla tbody tr").first().find('.mhs-dia-extra').should("not.exist");
    cy.contains("button","Modificar").click();
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar feriado"]').check();
+   // El jueves debe quedar a la vista sin esconderse bajo la columna fija de colaboradores.
+   cy.get(".mhs-tabla thead th").last().should("be.visible");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
@@ -115,7 +133,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}]});
    cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-activo .mhs-luz-estado').should("be.visible");
    cy.contains("button","Modificar").click();
-   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo");
+   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo",{scrollBehavior:"center"});
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
      .clear().type("2026-11-10");
    cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -157,7 +175,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("contain.text","Activo").and("not.contain.text","Refuerzo").and("not.contain.text","Inactivo");
   cy.contains("button","Modificar").click();
-  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("have.class","mhs-estado-refuerzo").and("contain.text","Refuerzo");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -193,10 +211,114 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
   cy.get('input[aria-label="OFF de Julieta"]').should("have.value","4:30");
  });
+ it("muestra lunes a domingo en la misma pantalla y mantiene fijos los encabezados al bajar",()=>{
+  cy.viewport(1366,900);iniciar();
+  cy.get(".mhs-tabla thead th").should("have.length",8).first().should("contain.text","Colaborador");
+  cy.get(".mhs-tabla thead th").last().should("contain.text","Dom");
+  cy.get(".mhs-tabla-wrap").should($el=>{
+    const el=$el[0];
+    expect(el.scrollWidth,"sin scroll horizontal de la semana").to.be.at.most(el.clientWidth+2);
+  });
+  cy.get(".mhs-tabla thead th").last().should("be.visible");
+  // El scroll es de la página, no de la tabla: evita saltos mientras se editan horarios.
+  cy.get(".mhs-tabla-wrap").should($el=>{
+    const css=getComputedStyle($el[0]);
+    expect(css.maxHeight).to.eq("none");
+    expect(css.overflowY).to.eq("visible");
+  });
+  cy.get(".mhs-tabla thead th").first().should("have.css","position","sticky");
+  cy.get(".mhs-tabla tbody tr").last().find("th").should("have.css","position","static");
+  cy.scrollTo("bottom",{duration:0});
+  cy.get(".mhs-tabla tbody tr").last().find("th").should("exist");
+ });
+ it("en una notebook de 1024px también se ven los siete días",()=>{
+  cy.viewport(1024,768);iniciar();
+  cy.get(".mhs-tabla thead th").should("have.length",8);
+  cy.get(".mhs-tabla-wrap").should($el=>{
+    const el=$el[0];
+    expect(el.scrollWidth,"los siete días caben").to.be.at.most(el.clientWidth+2);
+  });
+  cy.get(".mhs-tabla thead th").last().should("be.visible");
+ });
+ it("Semana finalizada archiva una vez y abre la próxima sin horarios y sin colaboradores inactivos",()=>{
+  cy.viewport(1366,900);
+  const precargados=[
+   {id:1,nombre:"Julia",modalidad:"turno",semana:SEMANA,version:1,datos:{"2026-11-09":{tm_e:"09:00",tm_s:"13:00"}}},
+   {id:4,nombre:"Martín",modalidad:"hora",semana:SEMANA,version:1,datos:{}}
+  ];
+  const ultimo=iniciar({precargados});
+  cy.contains("button","Semana finalizada",{timeout:15000}).should("be.visible");
+  cy.on("window:confirm",()=>true);
+  cy.contains("button","Semana finalizada").click();
+  cy.get(".mhs-exito").should("contain.text","Semana finalizada y enviada a Historial");
+  cy.get(".mhs-semana").should("contain.text","16/11 al 22/11");
+  cy.get(".mhs-tabla tbody tr").first().should("contain.text","Julia");
+  cy.get(".mhs-tabla tbody tr").first().find("input[type=time]").each($input=>expect($input.val()).to.eq(""));
+  cy.wrap(null).should(()=>{expect(ultimo.ultimoCierre()).to.deep.eq({p_semana:SEMANA});expect(ultimo.cierres()).to.deep.eq([SEMANA]);});
+  cy.get(".mhs-pestanas").contains("button","Historial").click();
+  cy.contains("summary","Semana 09/11 al 15/11").should("contain.text","Finalizada").click();
+  cy.get(".mhs-historial details").first().should("contain.text","Julia");
+ });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
   cy.contains("button","Modificar").should("not.exist");
   cy.contains("button","Agregar colaborador por hora").should("not.exist");
   cy.get(".mhs-tabla input[type=time]").first().should("be.disabled");
  });
+ it("mantiene siete días visibles con diseño compacto y sin scroll vertical anidado",()=>{
+  cy.viewport(1366,900);iniciar();
+  cy.get(".mhs-tabla thead th",{timeout:15000}).should("have.length",8);
+  cy.get(".mhs-tabla-wrap").should(($wrap)=>{
+   const s=getComputedStyle($wrap[0]);
+   expect(s.maxHeight).to.eq("none");
+   expect(s.overflowY).to.eq("visible");
+  });
+  cy.get(".mhs-tabla tbody tr").first().find(".mhs-total-nombre")
+    .should("contain.text","Total semanal");
+  cy.get(".mhs-tabla tbody tr").first().find("input[type=time]")
+    .should("have.length",28);
+ });
+
+ it("presenta cuatro filas de horario alineadas con los siete días y sin perder los campos reales",()=>{
+  cy.viewport(1366,900);iniciar();
+  cy.get(".horarios-hub h1").should("contain.text","Staff · Munro");
+  cy.get(".mhs-tabla thead th").should("have.length",8);
+  cy.get(".mhs-tabla tbody tr").first().within(()=>{
+    cy.get(".mhs-matriz-etiquetas span").should("have.length",4)
+      .then($labels=>expect([...$labels].map(x=>x.textContent)).to.deep.eq([
+        "Entrada TM","Salida TM","Entrada TT","Salida TT"
+      ]));
+    cy.get("td").should("have.length",7);
+    cy.get("td").each($dia=>cy.wrap($dia).find('input[type="time"]').should("have.length",4));
+  });
+  cy.contains("button","Modificar").click();
+  cy.get(".mhs-tabla tbody tr").first().then($fila=>{
+    const estado=$fila.find(".mhs-estado select")[0];
+    const etiquetas=$fila.find(".mhs-matriz-etiquetas")[0];
+    const e=estado.getBoundingClientRect(),l=etiquetas.getBoundingClientRect();
+    expect(e.right,"estado dentro del espacio del colaborador").to.be.at.most(l.left+2);
+  });
+  cy.get(".mhs-tabla tbody tr").first().then($fila=>{
+    const nombres=$fila.find(".mhs-matriz-etiquetas span");
+    const horarios=$fila.find("td").first().find('input[type="time"]');
+    for(let k=0;k<4;k++){
+      const a=nombres[k].getBoundingClientRect();
+      const b=horarios[k].getBoundingClientRect();
+      expect(Math.abs((a.top+a.height/2)-(b.top+b.height/2)),
+        "fila "+k+" alineada").to.be.lessThan(4);
+    }
+  });
+ });
+ it("en celular conserva entradas y salidas con rótulos y selector de día",()=>{
+  cy.viewport(1320,900);iniciar();
+  cy.viewport(390,844);
+  cy.get(".mhs-tabla-wrap").should("not.be.visible");
+  cy.get(".mhs-movil-lista .mhs-card").first().within(()=>{
+    cy.get('input[type="time"]').should("have.length",4);
+    cy.contains("span","Entrada TM").should("be.visible");
+    cy.contains("span","Salida TT").should("be.visible");
+  });
+  cy.get(".mhs-movil-dias button").should("have.length",7);
+ });
+
 });

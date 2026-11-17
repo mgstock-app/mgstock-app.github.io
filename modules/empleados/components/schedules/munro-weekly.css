@@ -214,3 +214,150 @@
  .mhs-estado{min-height:39px}
  .mhs-estado select{min-height:25px}
 }
+
+/* Staff Munro · semana completa de un vistazo en PC/tablet:
+   1 columna de colaboradores + 7 días. Ningún ancho fijo en píxeles
+   que obligue a desplazar la planilla para llegar al domingo. */
+@media(min-width:761px){
+ .mhs-tabla-wrap{
+   width:100%;max-width:100%;
+   max-height:max(420px,calc(100dvh - 260px));
+   overflow-y:auto;
+   overflow-x:auto;
+   overscroll-behavior:contain;
+   scrollbar-gutter:stable;
+   scroll-padding-top:66px;
+   position:relative;
+   isolation:isolate;
+ }
+ .mhs-tabla{
+   border-collapse:separate;
+   border-spacing:0;
+   table-layout:fixed;
+   width:100%;
+   min-width:0;
+ }
+ .mhs-tabla thead th{
+   position:sticky;
+   top:0;
+   z-index:5;
+   width:auto;
+   min-width:0;
+   max-width:none;
+   background:#2c3e56;
+   box-shadow:0 2px 0 #cbd5e1;
+   font-size:clamp(11px,1vw,13px);
+   padding:12px 3px;
+ }
+ .mhs-tabla thead th:first-child{
+   position:sticky;
+   left:0;
+   z-index:8;
+   width:clamp(155px,17%,220px);
+   min-width:0;
+   max-width:none;
+   padding-left:10px;
+ }
+ .mhs-tabla tbody th{
+   position:sticky;
+   left:0;
+   z-index:4;
+   width:auto;
+   min-width:0;
+   max-width:none;
+   padding:12px 8px;
+   background:#fff;
+   box-shadow:2px 0 0 #d3dfea;
+ }
+ .mhs-tabla tbody tr.mhs-inactivo th{background:#fcfcfd}
+ .mhs-tabla tbody td{
+   width:auto;
+   min-width:0;
+   max-width:none;
+   padding:9px 5px;
+ }
+ .mhs-tabla .mhs-cuatro{gap:6px}
+ .mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra){
+   display:grid;
+   grid-template-columns:minmax(0,1fr);
+   gap:3px;
+   align-items:start;
+   min-width:0;
+ }
+ .mhs-tabla .mhs-cuatro label span{
+   font-size:clamp(9px,.85vw,11px);
+   line-height:1.25;
+   white-space:normal;
+ }
+ .mhs-tabla .mhs-cuatro input[type=time]{
+   display:block;
+   width:100%;
+   min-width:0;
+   min-height:33px;
+   font-size:clamp(11px,.88vw,12px);
+   padding:4px 2px;
+ }
+ .mhs-tabla .mhs-descansos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}
+ .mhs-tabla .mhs-descansos .mhs-descanso-boton{
+   min-width:0;min-height:32px;padding:4px 2px;
+   font-size:clamp(9px,.8vw,11px);white-space:normal
+ }
+ .mhs-tabla .mhs-horas-dia{
+   padding:7px 3px;font-size:10px;overflow-wrap:anywhere
+ }
+ .mhs-tabla .mhs-colaborador{gap:7px}
+ .mhs-tabla .mhs-colaborador strong{font-size:13px}
+}
+.mhs-tabla-navegacion{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ flex-wrap:wrap;
+ padding:10px 12px;
+ border:1px solid #d8e3ee;
+ border-radius:10px;
+ background:#f6f9fc;
+ color:#1d4265;
+}
+.mhs-tabla-navegacion strong{font-size:13px}
+.mhs-tabla-navegacion>span{font-size:12px;color:#5b7083;flex:1 1 180px}
+.mhs-tabla-navegacion>div{display:flex;gap:7px;flex-wrap:wrap}
+.mhs-tabla-navegacion button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-height:36px;
+ border:1px solid #c2d3e1;
+ border-radius:8px;
+ background:#fff;
+ color:#173d60;
+ padding:7px 12px;
+ font-size:12px;
+ font-weight:750;
+}
+.mhs-tabla-navegacion button:hover{background:#eaf2fa}
+.mhs-acciones .mhs-cierre-semanal{
+ border-color:#245a44;
+ color:#fff;
+ background:#23664a;
+ font-weight:800;
+}
+.mhs-acciones .mhs-cierre-semanal:hover:not(:disabled){background:#1a523a}
+.mhs-acciones .mhs-cierre-semanal:disabled{opacity:.55}
+.mhs-cerrada-chip{
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ min-height:41px;
+ padding:8px 12px;
+ border:1px solid #aad9bf;
+ border-radius:9px;
+ color:#1b704b;
+ background:#e9f6ef;
+ font-size:13px;
+ font-weight:750;
+}
+@media(max-width:760px){
+ .mhs-tabla-navegacion{display:none}
+ .mhs-acciones .mhs-cierre-semanal{width:100%;flex:1 1 100%}
+}

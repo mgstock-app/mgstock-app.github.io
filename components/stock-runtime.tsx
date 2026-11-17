@@ -20,7 +20,8 @@ function preloadStartupScripts(visitor: boolean) {
   const common = [
     "/vendor/supabase.js", "/stock/config.js",
     "/stock/gestlok-offline.js?rev=offline-20261027",
-    "/stock/gestlok-commerce.js", "/stock/mi-gusto-conteo.js?rev=mi-gusto-conteo-torcuato-20261116",
+    "/stock/gestlok-commerce.js", "/stock/mi-gusto-conteo-morning.js?rev=conciliacion-20261116",
+    "/stock/mi-gusto-conteo.js?rev=mi-gusto-historial-editable-auditado-20261116-comparar-turnos",
     "/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
     "/stock/app.js?rev=munro-staff-pc-20261113",
@@ -36,6 +37,16 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-scanner-menu.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-invites.js?rev=invite-google-20261107",
     "/stock/gestlok-molino.js?rev=pedidosya-20261109",
+    // Solo descarga anticipada: cada módulo sigue EJECUTÁNDOSE en su orden original.
+    "/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113",
+    "/stock/gestlok-push.js",
+    "/stock/munro-daily.js",
+    "/stock/mi-gusto-cierre-online.js?rev=posnet-foto-20261111",
+    "/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-pestana-avisos-20261115",
+    "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
+    "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
+    "/stock/gestlok-creator-home.js?rev=molino-brand-20261109",
+    "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
@@ -74,7 +85,8 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=posnet-foto-20261111");
-      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=mi-gusto-conteo-torcuato-20261116");
+      if (!visitor) await load("/stock/mi-gusto-conteo-morning.js?rev=conciliacion-20261116");
+      if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=mi-gusto-historial-editable-auditado-20261116-comparar-turnos");
       if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-pestana-avisos-20261115");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");

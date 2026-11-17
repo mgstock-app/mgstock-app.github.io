@@ -13,9 +13,9 @@ export function HorariosHub({ locales = [], company, lead, children }: { locales
   return (
     <section className="management-page schedules-page horarios-hub">
       <span className="eyebrow">ADMINISTRACIÓN DE EMPLEADOS</span>
-      <h1><CalendarDays size={26} aria-hidden="true" /> Horarios</h1>
+      <h1><CalendarDays size={26} aria-hidden="true" /> {munro ? "Staff · Munro" : "Horarios"}</h1>
       <p className="horarios-hub__lead">{munro
-        ? "Planilla semanal de colaboradores de Mi Gusto · Munro. El historial anterior se conserva sin cambios."
+        ? "Horarios semanales · lunes a domingo. El historial anterior se conserva sin cambios."
         : lead ?? "La planilla de Google Sheets del local y el historial de semanas, en un solo lugar."}</p>
       {children}
       {munro ? <>

@@ -1124,3 +1124,694 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-count-screen .gcm-header-fields-compact select{min-height:39px;height:39px;font-size:12px}
  .gcm-count-screen .gcm-header-title h2{font-size:19px}
 }
+
+/* Conteo de ambos locales · navegación lateral y vencimientos siempre a la vista.
+   Respeta la planilla y sus botones originales. No encoge las celdas. */
+.gcm-count-screen.gcm-page{max-width:1820px}
+.gcm-count-screen .gcm-count-layout{
+ display:grid;
+ grid-template-columns:clamp(172px,16vw,220px) minmax(0,1fr);
+ gap:14px;
+ align-items:start;
+ width:100%;
+}
+.gcm-count-screen .gcm-count-main{min-width:0}
+.gcm-count-screen .gcm-category-nav{
+ align-self:start;
+ position:sticky;
+ top:calc(139px + env(safe-area-inset-top,0px));
+ z-index:18;
+ max-height:calc(100dvh - 160px);
+ min-height:120px;
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ border:1px solid #d3deea;
+ border-radius:11px;
+ background:#f8fafc;
+ box-shadow:0 3px 12px rgba(18,52,90,.08);
+ scrollbar-width:thin;
+}
+.gcm-count-screen .gcm-category-nav-head{
+ position:sticky;top:0;z-index:1;
+ display:flex;justify-content:space-between;align-items:center;
+ padding:13px 12px;
+ color:#12345a;background:#e8f0f8;
+ border-bottom:1px solid #d3dfeb;
+ font-size:14px;font-weight:850;
+}
+.gcm-count-screen .gcm-category-nav-head button{display:none}
+.gcm-count-screen .gcm-category-nav-items{
+ display:flex;flex-direction:column;gap:4px;
+ padding:9px;
+}
+.gcm-count-screen .gcm-category-nav-items button{
+ display:flex;align-items:center;justify-content:space-between;gap:7px;
+ min-height:46px;width:100%;
+ border:1px solid transparent;border-radius:8px;
+ padding:10px 8px;color:#234765;background:transparent;
+ text-align:left;font-size:12px;line-height:1.35;font-weight:750;
+ overflow-wrap:anywhere;
+}
+.gcm-count-screen .gcm-category-nav-items button>small{
+ flex:0 0 auto;padding:3px 6px;border-radius:7px;
+ color:#547089;background:#e8f0f7;font-size:11px;font-weight:800;
+}
+.gcm-count-screen .gcm-category-nav-items button:hover,
+.gcm-count-screen .gcm-category-nav-items button:focus-visible{
+ border-color:#a9c4dc;background:#eff5fa;outline-offset:1px;
+}
+.gcm-count-screen .gcm-category-nav-items button.is-active,
+.gcm-count-screen .gcm-category-nav-items button[aria-current="true"]{
+ color:#fff;background:#12345a;border-color:#12345a;
+}
+.gcm-count-screen .gcm-category-nav-items button.is-active>small,
+.gcm-count-screen .gcm-category-nav-items button[aria-current="true"]>small{
+ color:#fff;background:#355e84;
+}
+.gcm-count-screen .gcm-category-toggle{display:none}
+.gcm-count-screen .gcm-expiry-ruler{
+ position:sticky;
+ top:calc(139px + env(safe-area-inset-top,0px));
+ z-index:17;
+ margin-bottom:8px;
+ background:#f1f6fb;
+ border:1px solid #c8d9e9;
+ border-radius:9px;
+ box-shadow:0 3px 10px rgba(12,47,83,.12);
+}
+.gcm-count-screen .gcm-expiry-ruler-scroll{
+ max-width:100%;overflow-x:auto;overflow-y:auto;
+ scrollbar-width:none;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;
+}
+.gcm-count-screen .gcm-expiry-ruler-scroll::-webkit-scrollbar{display:none}
+.gcm-count-screen .gcm-expiry-ruler-grid{
+ display:grid;
+ grid-template-columns:132px repeat(4,216px) 100px;
+ min-width:1110px;width:max(100%,1110px);
+ min-height:68px;align-items:stretch;
+ text-align:center;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid.has-decomiso{
+ grid-template-columns:132px repeat(5,216px) 100px;
+ min-width:1320px;width:max(100%,1320px);
+}
+.gcm-count-screen .gcm-expiry-ruler-grid>span{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ border-right:1px solid #ccdbe9;
+ font-size:14px;font-weight:850;
+ padding:7px 4px;color:#173d5f;
+ white-space:nowrap;
+}
+.gcm-count-screen .gcm-expiry-ruler-date:nth-child(even){
+ background:#e5eff8;
+}
+.gcm-count-screen .gcm-expiry-ruler-date strong{
+ margin-top:3px;font-size:13px;color:#315d81;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid .gcm-expiry-ruler-product,
+.gcm-count-screen .gcm-expiry-ruler-grid .gcm-expiry-ruler-total{
+ background:#dce9f6;color:#103a5b;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid .gcm-expiry-ruler-decomiso{
+ background:#fff0d8;color:#6d491a;
+}
+.gcm-count-screen .gcm-count-main .gcm-section,
+.gcm-count-screen .gcm-count-main .gcm-extras,
+.gcm-count-screen .gcm-count-main .gcm-extra-controls{
+ scroll-margin-top:calc(225px + env(safe-area-inset-top,0px));
+}
+@media(max-width:900px) and (min-width:641px){
+ .gcm-count-screen .gcm-count-layout{
+  grid-template-columns:150px minmax(0,1fr);
+  gap:8px;
+ }
+ .gcm-count-screen .gcm-category-nav-items button{
+  font-size:11px;min-height:44px;padding:8px 6px;
+ }
+ .gcm-count-screen .gcm-category-nav{top:calc(147px + env(safe-area-inset-top,0px))}
+ .gcm-count-screen .gcm-expiry-ruler{top:calc(147px + env(safe-area-inset-top,0px))}
+}
+@media(max-width:640px){
+ /* En teléfono, menú lateral desplegable para no quitarle ancho a la tabla. */
+ .gcm-count-screen .gcm-count-layout{display:block;position:relative}
+ .gcm-count-screen .gcm-category-toggle{
+  display:flex;align-items:center;justify-content:center;
+  min-height:46px;width:100%;margin:0 0 9px;
+  color:#12345a;background:#eaf2f9;border:1px solid #c2d4e4;
+  border-radius:9px;font-weight:850;font-size:14px;
+ }
+ .gcm-count-screen .gcm-category-nav{
+  display:none;position:fixed;
+  top:calc(128px + env(safe-area-inset-top,0px));
+  left:8px;
+  z-index:120;
+  width:min(278px,calc(100vw - 16px));
+  max-height:calc(100dvh - 150px);
+  box-shadow:0 12px 35px rgba(6,27,47,.3);
+ }
+ .gcm-count-screen.is-category-nav-open .gcm-category-nav{display:block}
+ .gcm-count-screen .gcm-category-nav-head button{
+  display:flex;align-items:center;justify-content:center;
+  min-height:40px;min-width:40px;
+  background:white;color:#12345a;border:1px solid #c9d7e7;
+  border-radius:8px;font-size:22px;
+ }
+ .gcm-count-screen .gcm-expiry-ruler{
+  top:calc(141px + env(safe-area-inset-top,0px));
+ }
+ .gcm-count-screen .gcm-expiry-ruler-grid{min-height:63px}
+ .gcm-count-screen .gcm-count-main .gcm-section,
+ .gcm-count-screen .gcm-count-main .gcm-extras,
+ .gcm-count-screen .gcm-count-main .gcm-extra-controls{
+  scroll-margin-top:calc(217px + env(safe-area-inset-top,0px));
+ }
+}
+
+/* FIX 16/11 - Conteo Munro y Torcuato: UNA única fila de vencimientos.
+   Las tablas conservan los encabezados semánticos en su HTML, pero el
+   <colgroup> define anchos para no perder alineación al ocultar duplicados. */
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll thead.gcm-repeat-head{
+ display:none!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table{
+ table-layout:fixed!important;
+ width:1110px!important;
+ min-width:1110px!important;
+ max-width:none!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table.has-decomiso{
+ width:1320px!important;
+ min-width:1320px!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-product{width:132px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-vto,
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-decomiso{width:216px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table col.gcm-col-total{width:114px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table.has-decomiso col.gcm-col-total{width:108px!important}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table tbody th.gcm-product-cell{
+ width:132px!important;min-width:132px!important;max-width:132px!important;
+ position:sticky!important;left:0!important;z-index:3;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table tbody td.gcm-vto-col{
+ width:216px!important;min-width:216px!important;max-width:216px!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table tbody td.gcm-total{
+ width:114px!important;min-width:114px!important;max-width:114px!important;
+}
+.gcm-count-screen .gcm-count-main .gcm-section .gcm-sheet-scroll table.gcm-count-data-table.has-decomiso tbody td.gcm-total{
+ width:108px!important;min-width:108px!important;max-width:108px!important;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid{
+ grid-template-columns:132px repeat(4,216px) 114px!important;
+ width:1110px!important;min-width:1110px!important;
+}
+.gcm-count-screen .gcm-expiry-ruler-grid.has-decomiso{
+ grid-template-columns:132px 216px repeat(4,216px) 108px!important;
+ width:1320px!important;min-width:1320px!important;
+}
+.gcm-count-screen .gcm-expiry-ruler-decomiso{
+ order:initial;
+ background:#fff0d8;color:#6d491a;
+}
+.gcm-count-screen .gcm-decomp-cell{
+ background:#fff4dd!important;
+ border-right:2px solid #d9b66b!important;
+}
+.gcm-count-screen .gcm-decomp-toggle:has(input:checked){
+ background:#fff5e4;
+ border:1px solid #d9bc8b;
+ border-radius:9px;
+ padding:8px 10px;
+}
+
+/* Tablet vertical: el panel NO se transforma en botón.
+   Se conserva a la izquierda, una categoría debajo de otra. */
+@media (min-width:350px) and (max-width:640px){
+ .gcm-count-screen .gcm-count-layout{
+  display:grid!important;
+  grid-template-columns:clamp(104px,24vw,140px) minmax(0,1fr)!important;
+  gap:9px!important;align-items:start;position:relative;
+ }
+ .gcm-count-screen .gcm-category-toggle{display:none!important}
+ .gcm-count-screen .gcm-category-nav{
+  display:block!important;
+  position:sticky!important;
+  top:calc(137px + env(safe-area-inset-top,0px))!important;
+  left:auto!important;
+  width:auto!important;
+  max-height:calc(100dvh - 152px)!important;
+  box-shadow:0 3px 12px rgba(18,52,90,.08)!important;
+ }
+ .gcm-count-screen .gcm-category-nav-head{padding:11px 8px!important;font-size:12px}
+ .gcm-count-screen .gcm-category-nav-head button{display:none!important}
+ .gcm-count-screen .gcm-category-nav-items{
+  flex-direction:column!important;
+  padding:5px!important;
+ }
+ .gcm-count-screen .gcm-category-nav-items button{
+  width:100%!important;min-height:44px;
+  padding:7px 5px;font-size:11px;line-height:1.35;
+  align-items:flex-start;flex-wrap:wrap;
+ }
+ .gcm-count-screen .gcm-category-nav-items button>small{font-size:10px}
+ .gcm-count-screen .gcm-count-main{min-width:0!important}
+ .gcm-count-screen .gcm-expiry-ruler{
+  top:calc(137px + env(safe-area-inset-top,0px));
+ }
+}
+@media (min-width:641px) and (max-width:900px){
+ .gcm-count-screen .gcm-count-layout{
+  grid-template-columns:clamp(148px,20vw,185px) minmax(0,1fr);
+ }
+}
+/* Sin barra superior adicional o categoría horizontal: solo el lateral y
+   el encabezado único de vencimientos dentro de la planilla. */
+
+
+/* Resumen por categorías reales para la vista A4 e Historial: ambas sucursales.
+   En el teléfono se apilan tarjetas; en tablet/PC se leen en dos columnas. */
+.gcm-history-detail .gcm-hd-summary{max-width:100%;padding:0 0 16px}
+.gcm-hd-summary .gcm-hd-summary-header{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:10px;background:#12345a;padding:12px 16px;color:#fff
+}
+.gcm-hd-summary .gcm-hd-summary-header h3{
+ margin:0;padding:0;background:transparent;font-size:16px;color:#fff
+}
+.gcm-hd-summary .gcm-hd-summary-header>div{font-size:13px;font-weight:650}
+.gcm-hd-summary .gcm-hd-summary-header>div strong{
+ margin-left:8px;font-size:22px;font-weight:900;color:#fff
+}
+.gcm-hd-summary-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ align-items:start;gap:14px;padding:15px
+}
+.gcm-hd-summary-group{
+ min-width:0;overflow:hidden;border:1px solid #d8e2ec;
+ border-radius:10px;background:#fff
+}
+.gcm-hd-summary-group h4{
+ display:flex;justify-content:space-between;align-items:center;
+ flex-wrap:wrap;gap:7px;margin:0;padding:11px 13px;
+ font-size:15px;font-weight:850;color:#153858;background:#edf3f8
+}
+.gcm-hd-summary-group h4 span{
+ font-size:12px;font-weight:800;color:#345a79;font-variant-numeric:tabular-nums
+}
+.gcm-history-detail .gcm-hd-summary-group table{width:100%;table-layout:fixed}
+.gcm-history-detail .gcm-hd-summary-group th,
+.gcm-history-detail .gcm-hd-summary-group td{padding:9px 13px}
+.gcm-history-detail .gcm-hd-summary-group td strong{font-size:15px;overflow-wrap:anywhere}
+.gcm-history-detail .gcm-hd-summary-group th:last-child,
+.gcm-history-detail .gcm-hd-summary-group td:last-child{width:112px}
+@media(max-width:700px){
+ .gcm-hd-summary-grid{grid-template-columns:minmax(0,1fr);gap:11px;padding:10px}
+ .gcm-hd-summary .gcm-hd-summary-header{padding:12px}
+ .gcm-history-detail .gcm-hd-summary-group th,
+ .gcm-history-detail .gcm-hd-summary-group td{padding:9px 10px}
+}
+
+
+/* HISTORIAL ANCHO: la pantalla para dueña/gerentes NO es una hoja A4.
+   Empanadas tiene prioridad en ancho y mantiene todos sus productos visibles.
+   Solo presentación: mismos totales/turnos/roles/datos archivados. */
+.gcm-page.gcm-history-wide{
+ width:100%;max-width:1680px;margin-inline:auto;
+ padding-inline:clamp(12px,1.8vw,30px);overflow:visible
+}
+.gcm-history-wide .gcm-history-top{
+ margin:8px 0 18px
+}
+.gcm-history-wide .gcm-history-title h2{
+ font-size:clamp(24px,2.4vw,34px);color:#122f4c;letter-spacing:-.02em
+}
+.gcm-history-wide .gcm-hd-meta{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ align-items:center;gap:0;padding:0;background:#f4f7fa;
+ border:1px solid #d4e0eb;border-radius:12px;overflow:hidden;
+ margin-bottom:19px;font-size:clamp(13px,1.15vw,16px)
+}
+.gcm-history-wide .gcm-hd-meta>*{
+ display:flex;align-items:center;min-width:0;min-height:76px;
+ padding:15px 20px;border-right:1px solid #d8e3ed;overflow-wrap:anywhere;
+ font-weight:750;color:#1b3957;background:transparent
+}
+.gcm-history-wide .gcm-hd-meta>:last-child{border-right:0}
+.gcm-history-wide .gcm-hd-summary{
+ width:100%;max-width:none;margin:0 0 24px;padding-bottom:0;
+ border:0;background:transparent;overflow:visible
+}
+.gcm-history-wide .gcm-hd-summary-header{
+ border-radius:12px;background:#12345a;padding:20px 24px
+}
+.gcm-history-wide .gcm-hd-summary-header h3{font-size:clamp(18px,1.6vw,22px)}
+.gcm-history-wide .gcm-hd-summary-header>div{
+ font-size:17px;display:flex;align-items:center;gap:12px
+}
+.gcm-history-wide .gcm-hd-summary-header>div strong{
+ font-size:clamp(30px,3.2vw,42px);letter-spacing:-.03em
+}
+.gcm-history-wide .gcm-hd-summary-grid{
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:20px;padding:20px 0 0;align-items:start
+}
+.gcm-history-wide .gcm-hd-summary-group{
+ border:1px solid #d1dfeb;border-radius:12px;
+ box-shadow:0 3px 12px rgba(21,51,81,.04);background:#fff
+}
+.gcm-history-wide .gcm-hd-summary-group h4{
+ font-size:clamp(15px,1.35vw,19px);padding:16px 18px;
+ background:#eaf0f6;color:#153654
+}
+.gcm-history-wide .gcm-hd-summary-group h4 span{
+ background:#12345a;color:white;padding:6px 11px;border-radius:8px;
+ font-size:clamp(13px,1vw,16px);font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.gcm-history-wide .gcm-hd-summary-group th{
+ padding:12px 17px;font-size:13px;white-space:normal
+}
+.gcm-history-wide .gcm-hd-summary-group td{
+ padding:12px 17px;font-size:15px
+}
+.gcm-history-wide .gcm-hd-summary-group td strong{
+ font-size:15px;line-height:1.35;overflow-wrap:anywhere
+}
+.gcm-history-wide .gcm-hd-summary-group td:last-child{
+ width:95px;text-align:right;font-size:18px!important;font-weight:850;
+ color:#132f4a;font-variant-numeric:tabular-nums
+}
+/* Empanadas: UNA tarjeta completa con 4/3/2/1 columnas según espacio. */
+.gcm-history-wide .gcm-hd-summary-group.gcm-hd-empanadas{
+ grid-column:1/-1
+}
+.gcm-history-wide .gcm-hd-empanadas table{
+ display:block;width:100%;border-collapse:separate
+}
+.gcm-history-wide .gcm-hd-empanadas thead{
+ position:absolute;clip-path:inset(50%);height:1px;width:1px;
+ overflow:hidden;white-space:nowrap
+}
+.gcm-history-wide .gcm-hd-empanadas tbody{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:12px;padding:17px
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;min-height:48px;min-width:0;padding:10px 13px;
+ border:1px solid #e3eaf1;border-radius:8px;background:#fbfcfe
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr:nth-child(even){background:#f3f7fb}
+.gcm-history-wide .gcm-hd-empanadas tbody td{
+ display:block;min-width:0;padding:0!important;border:0!important;
+ background:transparent!important;vertical-align:middle
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td:first-child{flex:1;min-width:0}
+.gcm-history-wide .gcm-hd-empanadas tbody td:last-child{
+ width:auto;flex:0 0 auto;white-space:nowrap
+}
+.gcm-history-wide .gcm-hd-consumption,
+.gcm-history-wide .gcm-hd-print{
+ background:#fff;border:1px solid #d4e0eb;border-radius:12px;
+ overflow:hidden;margin:20px 0
+}
+.gcm-history-wide .gcm-hd-consumption>summary,
+.gcm-history-wide .gcm-hd-print>summary{
+ display:flex;align-items:center;gap:15px;
+ padding:19px 23px;min-height:67px;background:#edf3f8;
+ color:#143555;font-size:18px;font-weight:850;cursor:pointer
+}
+.gcm-history-wide .gcm-hd-consumption>summary span{
+ margin-left:auto;color:#4b6278;font-size:15px;font-weight:700
+}
+.gcm-history-wide .gcm-hd-consumption-body{padding:12px 20px 20px}
+.gcm-history-wide .gcm-hd-consumption-body .gcm-hd-extra{
+ border:0;margin:0;max-width:none
+}
+.gcm-history-wide .gcm-hd-consumption-body .gcm-hd-extra h3{
+ font-size:15px;margin:0 0 10px
+}
+.gcm-history-wide .gcm-hd-breakdown{margin:20px 0}
+.gcm-history-wide .gcm-hd-print{margin-top:12px}
+.gcm-history-wide .gcm-hd-print>h3{margin:18px 20px 5px;font-size:16px}
+.gcm-history-wide .gcm-hd-print .gcm-a4-toolbar{
+ margin:13px 20px
+}
+.gcm-history-wide .gcm-hd-print .gcm-a4-preview{
+ max-width:820px;margin:0 auto 20px
+}
+@media(max-width:1200px){
+ .gcm-history-wide .gcm-hd-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gcm-history-wide .gcm-hd-empanadas tbody{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:850px){
+ .gcm-history-wide .gcm-hd-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gcm-history-wide .gcm-hd-meta>:nth-child(2){border-right:0}
+ .gcm-history-wide .gcm-hd-meta>:nth-child(-n+2){border-bottom:1px solid #d8e3ed}
+ .gcm-history-wide .gcm-hd-empanadas tbody{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gcm-history-wide .gcm-hd-summary-grid{gap:14px;padding-top:14px}
+ .gcm-history-wide .gcm-hd-summary-group td{padding:11px 12px}
+}
+@media(max-width:580px){
+ .gcm-page.gcm-history-wide{padding-inline:9px}
+ .gcm-history-wide .gcm-hd-summary-grid{grid-template-columns:minmax(0,1fr)}
+ .gcm-history-wide .gcm-hd-empanadas tbody{grid-template-columns:minmax(0,1fr);gap:7px;padding:10px}
+ .gcm-history-wide .gcm-hd-summary-header{padding:15px}
+ .gcm-history-wide .gcm-hd-meta>*{min-height:63px;padding:12px}
+ .gcm-history-wide .gcm-hd-summary-group h4{padding:13px}
+ .gcm-history-wide .gcm-hd-consumption>summary,
+ .gcm-history-wide .gcm-hd-print>summary{font-size:16px;padding:15px}
+}
+
+
+/* 16/11: Empanadas en UNA columna de productos, con total inmediatamente al lado.
+   La lista larga queda a la izquierda; los otros rubros aprovechan el espacio
+   a la derecha. Mismo diseño para Munro y Torcuato, sin tocar ningún dato. */
+.gcm-history-wide .gcm-hd-summary-layout{
+ display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);
+ align-items:start;column-gap:20px;padding-top:18px
+}
+.gcm-history-wide .gcm-hd-summary-layout:not(.has-empanadas){
+ grid-template-columns:minmax(0,1fr)
+}
+.gcm-history-wide .gcm-hd-empanadas-stack{
+ display:grid;grid-template-columns:minmax(0,1fr);
+ gap:16px;min-width:0
+}
+.gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ padding:0;gap:17px;min-width:0
+}
+.gcm-history-wide .gcm-hd-summary-layout:not(.has-empanadas) > .gcm-hd-summary-grid{
+ grid-template-columns:repeat(3,minmax(0,1fr))
+}
+.gcm-history-wide .gcm-hd-summary-group.gcm-hd-empanadas{
+ grid-column:auto;min-width:0
+}
+.gcm-history-wide .gcm-hd-empanadas table{
+ display:block;width:100%;max-width:100%
+}
+.gcm-history-wide .gcm-hd-empanadas tbody{
+ display:flex;flex-direction:column;align-items:stretch;
+ gap:0;padding:9px 12px 13px
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr{
+ display:grid;grid-template-columns:minmax(0,125px) 65px;
+ justify-content:start;align-items:center;
+ column-gap:10px;min-height:36px;max-width:235px;width:100%;
+ padding:7px 8px;margin:0;
+ border:0;border-bottom:1px solid #e5ebf1;border-radius:0;
+ background:#fff
+}
+.gcm-history-wide .gcm-hd-empanadas tbody tr:nth-child(even){background:#f7f9fc}
+.gcm-history-wide .gcm-hd-empanadas tbody tr:last-child{border-bottom:0}
+.gcm-history-wide .gcm-hd-empanadas tbody td{
+ display:block;min-width:0;margin:0;padding:0!important;
+ border:0!important;background:transparent!important
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td:first-child{
+ width:125px;flex:none
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td:last-child{
+ width:65px!important;flex:none;white-space:nowrap;
+ text-align:right;font-size:16px!important;font-weight:850
+}
+.gcm-history-wide .gcm-hd-empanadas tbody td strong{
+ font-size:15px;font-weight:750;line-height:1.25
+}
+@media(max-width:1120px){
+ .gcm-history-wide .gcm-hd-summary-layout{
+  grid-template-columns:minmax(265px,320px) minmax(0,1fr);gap:15px
+ }
+ .gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+  grid-template-columns:minmax(0,1fr)
+ }
+}
+@media(max-width:760px){
+ .gcm-history-wide .gcm-hd-summary-layout{
+  grid-template-columns:minmax(0,1fr);gap:15px
+ }
+ .gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))
+ }
+}
+@media(max-width:580px){
+ .gcm-history-wide .gcm-hd-summary-layout > .gcm-hd-summary-grid{
+  grid-template-columns:minmax(0,1fr)
+ }
+ .gcm-history-wide .gcm-hd-empanadas tbody{padding:8px 10px 12px}
+}
+
+
+/* Correcciones auditadas de Conteo cerrado — Munro y Don Torcuato. */
+.gcm-history-wide .gcm-history-correction{
+ border:1px solid #ccdae8;border-radius:12px;background:#fff;
+ margin:17px 0 22px;padding:18px
+}
+.gcm-history-correction-head{
+ display:flex;align-items:center;gap:12px;justify-content:space-between;
+ flex-wrap:wrap
+}
+.gcm-history-correction-head>div{flex:1 1 260px;min-width:0}
+.gcm-history-correction-head h3{font-size:17px;margin:0 0 5px;color:#183a56}
+.gcm-history-correction-head p{font-size:12px;color:#526b80;margin:0}
+.gcm-history-correction button{
+ cursor:pointer;border:1px solid #bbcddd;border-radius:8px;
+ background:#fff;color:#12345a;font-size:13px;font-weight:700;
+ padding:10px 13px;min-height:39px
+}
+.gcm-history-correction button[data-gcm-history-fix-save]{
+ color:#fff;background:#12345a;border-color:#12345a
+}
+.gcm-history-correction button:disabled{opacity:.55;cursor:default}
+.gcm-history-fix-form{
+ margin-top:16px;padding:17px;border-radius:10px;
+ background:#f5f8fb;border:1px solid #d6e3ec;
+ display:grid;gap:13px;max-width:100%
+}
+.gcm-history-fix-form label{
+ display:grid;gap:6px;font-size:13px;font-weight:700;color:#213f5b;
+ min-width:0
+}
+.gcm-history-fix-form input,
+.gcm-history-fix-form select,
+.gcm-history-fix-form textarea{
+ min-width:0;width:100%;font:inherit;font-size:14px;color:#233953;
+ padding:9px 10px;border:1px solid #bdcbd9;background:#fff;border-radius:7px
+}
+.gcm-history-fix-form textarea{resize:vertical;min-height:75px}
+.gcm-history-fix-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px;align-items:end
+}
+.gcm-history-fix-expl{font-size:12px;color:#536b81;margin:0}
+.gcm-history-fix-list{display:grid;gap:5px;max-height:410px;overflow-y:auto}
+.gcm-history-fix-row{
+ display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1fr);
+ align-items:center;gap:9px
+}
+.gcm-history-corrections{margin:18px 0 0;border-top:1px solid #e1e8ef;padding-top:12px}
+.gcm-history-corrections h4{margin:0 0 10px;font-size:15px}
+.gcm-history-corrections article{
+ border-bottom:1px solid #e4eaf0;padding:10px 0;font-size:13px
+}
+.gcm-history-corrections article small{
+ display:block;color:#5f7589;font-size:12px;margin-top:4px
+}
+.gcm-history-corrections article p{margin:6px 0}
+.gcm-history-corrections pre{
+ max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere;
+ background:#f5f8fb;padding:9px;border-radius:6px;font-size:12px
+}
+@media(max-width:620px){
+ .gcm-history-fix-grid{grid-template-columns:minmax(0,1fr)}
+ .gcm-history-correction{padding:13px}
+ .gcm-history-fix-form{padding:11px}
+ .gcm-history-correction-head button{flex:1 1 145px}
+}
+
+
+/* Mi Gusto · Control de apertura: noche anterior vs mañana entrada. */
+.gcm-morning-review{
+ margin:14px 0 18px;padding:15px 17px;background:#f8fafc;
+ border:1px solid #cad9e5;border-radius:11px;color:#173753;
+ box-shadow:0 2px 7px #1536530a
+}
+.gcm-morning-review.is-blocked{background:#fff9f8;border:2px solid #dc4a4a}
+.gcm-morning-review.is-complete{background:#f6faf8;border-color:#b0d7bc}
+.gcm-morning-review header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.gcm-morning-review header>div{flex:1 1 260px;min-width:0}
+.gcm-morning-review header strong{font-size:15px;font-weight:800}
+.gcm-morning-review p{margin:7px 0;font-size:12px;line-height:1.5}
+.gcm-morning-review header button{
+ flex:none;background:#fff;border:1px solid #bbcad7;border-radius:8px;
+ padding:8px 11px;font:700 12px system-ui,sans-serif;color:#173753;cursor:pointer
+}
+.gcm-morning-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gcm-morning-review.is-blocked .gcm-morning-actions>strong{color:#a11e22}
+.gcm-morning-review.is-complete .gcm-morning-actions>strong{color:#27643a}
+.gcm-morning-instructions{color:#8d1b22;font-weight:700}
+.gcm-morning-items{
+ list-style:none;padding:4px;margin:8px 0 0;display:grid;gap:5px;
+ max-height:340px;overflow-y:auto;overscroll-behavior:contain
+}
+.gcm-morning-item{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,320px);
+ gap:10px;align-items:center;border:1px solid #eed0d0;
+ border-left:5px solid #c92d30;border-radius:8px;
+ background:#fff;padding:9px 12px;min-width:0
+}
+.gcm-morning-item.is-confirmed{border-color:#b9ddc5;border-left-color:#2b8a48;background:#f7fdf9}
+.gcm-morning-item strong{font-weight:800;font-size:13px}
+.gcm-morning-item p{margin:3px 0;color:#ad272b;font-size:12px}
+.gcm-morning-item.is-confirmed p{color:#365d46}
+.gcm-morning-item label{
+ display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;
+ color:#183851;background:#fff;border:1px solid #dddfeb;font-size:12px;font-weight:650;
+ cursor:pointer
+}
+.gcm-morning-item label input{width:18px;height:18px;flex:none;accent-color:#238044}
+.gcm-morning-match{font-weight:750;color:#247042}
+.gcm-morning-error{color:#b7282a;font-weight:700}
+.gcm-count-data-table tbody tr.gcm-morning-difference th,
+.gcm-count-data-table tbody tr.gcm-morning-difference td{
+ background:#fff1f0!important;border-top:1px solid #e9a4a4!important;
+ border-bottom:1px solid #e9a4a4!important
+}
+.gcm-count-data-table tbody tr.gcm-morning-difference th{
+ border-left:5px solid #d92731!important;color:#9e181c!important
+}
+.gcm-count-data-table tbody tr.gcm-morning-difference .gcm-total{color:#af1520!important;font-weight:900!important}
+.gcm-count-data-table tbody tr.gcm-morning-confirmed th{
+ background:#eef8f0!important;border-left:5px solid #26884c!important
+}
+.gcm-count-data-table [data-gcm-morning-note]{
+ display:block;margin-top:5px;font-size:11px;line-height:1.3;font-weight:750;
+ color:#b41f27;white-space:normal;overflow-wrap:anywhere
+}
+.gcm-count-data-table tr.gcm-morning-confirmed [data-gcm-morning-note]{color:#237d42}
+.gcm-count-data-table [data-gcm-morning-note][hidden]{display:none!important}
+@media(max-width:680px){
+ .gcm-morning-review{padding:11px}
+ .gcm-morning-item{grid-template-columns:minmax(0,1fr)}
+ .gcm-morning-item label{min-height:42px}
+ .gcm-morning-items{max-height:300px}
+}
+
+/* Deslizamiento horizontal manual continuo, sin snap ni animación. */
+.gcm-count-screen .gcm-sheet-scroll,.gcm-count-screen .gcm-expiry-ruler-scroll{
+ scroll-behavior:auto!important;scroll-snap-type:none!important;overscroll-behavior-x:contain;
+}
+
+/* La comparación que cambia al guardar queda después de la planilla. */
+.gcm-count-screen .gcm-morning-quick-note{
+ font-size:12px;line-height:1.4;color:#334c65;margin:9px 0 12px;padding:8px 11px;
+ border-left:3px solid #bf7b30;background:#fff9ef;border-radius:6px;
+}
+
+/* El gesto puede empezar encima del teclado o botón de una casilla:
+   permitir el desplazamiento lateral del contenedor en Android. */
+.gcm-count-screen .gcm-sheet-scroll input[type="number"],
+.gcm-count-screen .gcm-sheet-scroll button{
+ touch-action:pan-x pan-y pinch-zoom!important;
+}
