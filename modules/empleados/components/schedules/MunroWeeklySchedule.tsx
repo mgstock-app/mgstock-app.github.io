@@ -428,6 +428,10 @@ export function MunroWeeklySchedule(){
        </div>
        <div className="mhs-tabla-wrap" role="region" aria-label="Horarios de lunes a domingo, semana completa visible; desplazamiento vertical">
          <table className="mhs-tabla">
+           <colgroup>
+             <col style={{width:"30%"}}/>
+             {dias.map(dia=><col key={dia} style={{width:"10%"}}/>)}
+           </colgroup>
            <thead><tr><th scope="col">Colaborador</th>{dias.map((dia,i)=><th key={dia} scope="col">{DIAS[i]}<small>{fechaCorta(dia)}</small></th>)}</tr></thead>
            <tbody>{filas.map(f=>{
              const r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
