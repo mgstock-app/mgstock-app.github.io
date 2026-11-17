@@ -56,13 +56,10 @@
 .mhs-movil-dias,.mhs-movil-lista{display:none}
 .mhs-resumen{display:grid;gap:18px}
 .mhs-resumen h3,.mhs-historial h2{margin:0 0 10px;font-size:17px}
-.mhs-resumen-totales{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.mhs-resumen-totales>div{display:grid;gap:10px;padding:15px;border:1px solid #dfe4eb;border-radius:12px}
-.mhs-resumen-totales small{color:#667085;font-size:12px}
-.mhs-resumen-totales strong{font-size:24px}
 .mhs-resumen-desbordar{max-width:100%;overflow-x:auto;border:1px solid #e1e5ed;border-radius:11px}
 .mhs-resumen-desbordar table{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}
-.mhs-resumen-desbordar th{background:#2c3e56;color:#fff;padding:11px;text-align:left}
+.mhs-resumen-desbordar th{padding:11px;text-align:left}
+.mhs-resumen-desbordar thead th{background:#2c3e56;color:#fff}
 .mhs-resumen-desbordar td{padding:11px;border-bottom:1px solid #e1e5ed}
 .mhs-resumen>p{font-size:12px;color:#64748b}
 .mhs-historial-resumen{display:grid;gap:8px}
@@ -80,7 +77,6 @@
 .mhs-historial details summary{padding:13px;cursor:pointer;font-weight:650}
 .mhs-historial>p{margin:0;color:#64748b}
 @media(max-width:920px){
- .mhs-resumen-totales{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:760px){
  .mhs-pestanas{display:grid;grid-template-columns:1fr 1fr 1fr}
@@ -106,8 +102,6 @@
  .mhs-cuatro input[type=time]{width:100%;min-height:39px;padding:6px;font-size:13px}
  .mhs-feriado{align-self:end;font-size:12px}
  .mhs-revisar{grid-column:1/-1}
- .mhs-resumen-totales>div{padding:11px}
- .mhs-resumen-totales strong{font-size:19px}
 }
 
 
@@ -125,7 +119,7 @@
 .mhs-dia-feriado{font-size:10px;font-weight:650;color:#162b4a}
 .mhs-resumen-desbordar table.mhs-liquidacion{min-width:1050px}
 .mhs-liquidacion th,.mhs-liquidacion td{vertical-align:middle}
-.mhs-liquidacion tbody th{color:#152440;font-weight:700}
+.mhs-liquidacion tbody th{background:#fff;color:#152440;font-weight:700;border-bottom:1px solid #e1e5ed}
 .mhs-liquidacion input{max-width:110px;min-width:63px;width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:8px;font-size:12px;color:#152440;background:#fff}
 .mhs-liquidacion input:disabled{border-color:#e2e8f0;color:#334155;background:#f8fafc}
 .mhs-liquidacion td:last-child{min-width:185px}
