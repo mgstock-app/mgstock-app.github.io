@@ -408,12 +408,14 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-card-expandir").first().click();
   cy.get(".mhs-movil-lista .mhs-card").last().scrollIntoView();
   cy.get(".mhs-movil-dias").should($bar=>{
-    const rect=$bar[0].getBoundingClientRect();
-    const headerBottom=document.querySelector(".gestlok-module-bar")?.getBoundingClientRect().bottom??0;
-    expect(getComputedStyle($bar[0]).position).to.equal("sticky");
+    const el=$bar[0];
+    const rect=el.getBoundingClientRect();
+    const appWindow=el.ownerDocument.defaultView;
+    const headerBottom=el.ownerDocument.querySelector(".gestlok-module-bar")?.getBoundingClientRect().bottom??0;
+    expect(appWindow?.getComputedStyle(el).position).to.equal("sticky");
     expect(rect.top,"los días no quedan tapados por la barra de GESTLOK").to.be.at.least(headerBottom-2);
     expect(rect.top,"los días no desaparecen").to.be.lessThan(180);
-    expect(rect.bottom).to.be.at.most(innerHeight);
+    expect(rect.bottom).to.be.at.most(appWindow?.innerHeight??844);
   });
   cy.get(".mhs-movil-dias button").eq(3).click();
   cy.get(".mhs-movil-dias button").eq(3).should("have.attr","aria-pressed","true");
