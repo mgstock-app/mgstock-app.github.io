@@ -23,7 +23,11 @@ export function fileAudience(path) {
     return [LOCAL_AUDIENCE.munro];
   }
   // Staff semanal de Munro: no generar avisos falsos en Torcuato ni otros locales.
-  if (/^modules\/empleados\/(?:components\/schedules\/(?:MunroWeeklySchedule\.tsx|munro-weekly\.css)|features\/schedules\/munro-model\.ts)$/.test(p)) return [LOCAL_AUDIENCE.munro];
+  if (/^modules\/empleados\/(?:components\/schedules\/(?:MunroWeeklySchedule\.tsx|MunroEmployeeLinks\.tsx|EmployeeMunroWeeklySummary\.tsx|munro-weekly\.css|munro-employee-links\.css|employee-munro-weekly-summary\.css)|features\/schedules\/munro-model\.ts)$/.test(p)) return [LOCAL_AUDIENCE.munro];
+  // EmployeeScheduleLink es compartido. Solo si el diff añade el resumen
+  // personal exclusivo de Munro se limita el aviso a esa sucursal.
+  // Cualquier otro cambio de este componente sigue siendo compartido.
+  if (p === 'modules/empleados/components/schedules/EmployeeScheduleLink.tsx') return ['*'];
   // El resto de módulos Mi Gusto sí pueden usarse en ambas sucursales.
   if (/^(?:public\/stock\/(?:mi-gusto-|mg-|gestlok-mg-)|app\/mi-gusto-|public\/mi-gusto\/)/i.test(p)) return [TENANTS.miGusto];
   if (/^(?:public\/stock\/gestlok-molino|app\/(?:gestlok-molino|molino-)|public\/molino\/)/i.test(p)) return [TENANTS.molino];
@@ -131,6 +135,11 @@ export function releaseAudience(paths, patches = {}) {
       (isOnlyMunroStaffNavMove(patches[p]) ? [LOCAL_AUDIENCE.munro] : ['*']) :
       p === 'scripts/sw-template.js' && onlyMiGustoMorningShell(patches[p]) ?
         [TENANTS.miGusto] :
+      p === 'modules/empleados/components/schedules/EmployeeScheduleLink.tsx'
+        && typeof patches[p] === 'string'
+        && patches[p].includes('+import { EmployeeMunroWeeklySummary } from "./EmployeeMunroWeeklySummary";')
+        && patches[p].includes('+    {user.local_id==="munro"&&<EmployeeMunroWeeklySummary />}')
+        ? [LOCAL_AUDIENCE.munro] :
       (SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p));
     for (const t of targets) {
       if (t === '*') return ['*'];
