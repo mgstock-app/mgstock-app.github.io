@@ -7,7 +7,7 @@ export type CampoHora = "tm_e" | "tm_s" | "tt_e" | "tt_s";
 export type DiaHorarios = Partial<Record<CampoHora,string>> & { feriado?:boolean; vacaciones_dia?:boolean; feriados_habilitados?:boolean; vacaciones_habilitadas?:boolean; inactivo_desde?:string; off?:string; vacaciones?:string; observaciones?:string; descanso?:DescansoDia };
 export type SemanaHorarios = Record<string,DiaHorarios>;
 export type Persona = {id:number; nombre:string; modalidad:Modalidad; estado:Estado; inactivo_desde?:string|null};
-export type Registro = {id:number; semana:string; datos:SemanaHorarios; nombre:string; modalidad:Modalidad; version:number};
+export type Registro = {id:number; semana:string; datos:SemanaHorarios; nombre:string; modalidad:Modalidad; version:number; estado?:Estado; inactivo_desde?:string|null};
 export type Planilla = {semana:string; personas:Persona[]; planillas:Registro[]; historial:Registro[]; puede_editar:boolean; semana_cerrada?:boolean; cierres?:string[]; feriados?:string[]; feriados_version?:number; feriados_historial?:Record<string,string[]>};
 const FORMATO=/^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 const minutos=(hora?:string)=>hora&&FORMATO.test(hora)?Number(hora.slice(0,2))*60+Number(hora.slice(3)):null;
