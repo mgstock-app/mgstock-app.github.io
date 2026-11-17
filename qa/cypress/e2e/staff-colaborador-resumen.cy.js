@@ -22,7 +22,7 @@ describe("Staff · colaborador de Munro",()=>{
    if(rpc)llamadas.push(rpc);
    if(path.includes("/auth/v1/user"))return req.reply(user);
    if(rpc==="rm_app_me")return req.reply({...user,user_id:user.id,display_name:"Juli Ficticia",status:"approved",
-     role:"employee",local_id:"munro",local_name:"Munro"});
+     role:"employee",local_id:"munro",local_name:"Munro",organization_id:"00000000-0000-4000-8000-000000000032",sheet_id:null,owner_public_id:null,created_at:"2026-01-01T00:00:00Z"});
    if(rpc==="rm_munro_horarios_colaborador")return req.reply({semana:req.body?.p_semana||SEMANA,
      personas:[{id:1,nombre:"Juli",modalidad:"turno",estado:"activo"}],planillas:[registro],historial:[],
      puede_editar:false,solo_lectura:true,semana_cerrada:false,cierres:[],feriados:[],feriados_version:0,feriados_historial:{}});
