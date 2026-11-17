@@ -6,10 +6,10 @@ const user={id:"00000000-0000-4000-8000-000000000031",email:"colaborador@example
 const token="eyJhbGciOiJIUzI1NiJ9."+btoa(JSON.stringify({sub:user.id,exp:Math.floor(Date.now()/1000)+3600}))+".synthetic";
 const SEMANA="2026-11-09";
 const registro={id:1,semana:SEMANA,nombre:"Juli",modalidad:"turno",version:0,datos:{
-  "2026-11-09":{tt_e:"19:00",tt_s:"23:40",feriado:true},
+  // El lunes y los ajustes de la semana comparten clave (fecha del lunes).
+  "2026-11-09":{tt_e:"19:00",tt_s:"23:40",feriado:true,feriados_habilitados:true,off:"1"},
   "2026-11-11":{tt_e:"19:00",tt_s:"23:40",feriado:true},
-  "2026-11-13":{tt_e:"20:00",tt_s:"23:50"},
-  [SEMANA]:{feriados_habilitados:true,off:"1"}
+  "2026-11-13":{tt_e:"20:00",tt_s:"23:50"}
 }};
 
 describe("Staff · colaborador de Munro",()=>{
