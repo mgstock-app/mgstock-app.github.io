@@ -150,7 +150,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    // Si marcó el día equivocado, la misma casilla se destilda sin borrar horarios.
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').uncheck();
    cy.get('.mhs-tabla tbody tr').first().find('td.mhs-celda-feriado').should("not.exist");
-   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="TM Entrada · Lucía · 12/11"]').should("have.value","09:00");
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Entrada TM · Lucía · 12/11"]').should("have.value","09:00");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
    cy.get('.mhs-tabla tbody tr').first().find('td.mhs-celda-feriado').should("have.length",1);
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
@@ -184,7 +184,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
       id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,
       datos:{[SEMANA]:{feriados_habilitados:true},"2026-11-12":{feriado:true,tm_e:"09:00",tm_s:"13:00"}}
     }]});
-    cy.get('.mhs-movil-dias button').contains("JUE").click();
+    cy.get('.mhs-movil-dias button').contains("Jue").click();
     cy.get('.mhs-movil-lista .mhs-card').first().should("have.class","mhs-card--feriado")
       .find('.mhs-card-feriado').should("contain.text","FERIADO");
     cy.get('.mhs-movil-lista .mhs-card').eq(1).should("not.have.class","mhs-card--feriado");
