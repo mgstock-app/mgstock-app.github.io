@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, CheckCircle2 } from "lucide-react";
 import { rpc } from "@/features/access/api";
 import { ScheduleHistory } from "./ScheduleHistory";
+import { MunroEmployeeLinks } from "./MunroEmployeeLinks";
 import {
  diasSemana,evaluarDia,fechaAR,fechaCorta,fechasFeriadoColaborador,feriadoHabilitado,vacacionesHabilitadas,formatoHoras,revisarSemana,resumenPersona,resumenLiquidacion,semanaActual,
  sumarDias,type Estado,type Modalidad,type Persona,type Planilla,type Registro,type SemanaHorarios,
@@ -611,6 +612,7 @@ export function MunroWeeklySchedule(){
           <ChevronRight size={19} aria-hidden="true"/>
         </button>)}
        </div>
+       {puedeEditar&&<MunroEmployeeLinks personas={filas} />}
      </section>}
      {pestana==="resumen"&&resumenDetalle&&<div className="mhs-resumen">
        <button type="button" className="mhs-volver-semanas" onClick={()=>setResumenDetalle(false)}>
