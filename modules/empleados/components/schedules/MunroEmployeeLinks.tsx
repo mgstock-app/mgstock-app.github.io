@@ -26,7 +26,7 @@ export function MunroEmployeeLinks({personas}:{personas:Persona[]}){
  const guardar=async(c:Cuenta)=>{
   const raw=elecciones[c.usuario_id]??"";
   const id=raw===""?null:Number(raw);
-  if(raw!==""&&(!Number.isInteger(id)||!personas.some(p=>p.id===id))){setError("Seleccioná un colaborador válido.");return;}
+  if(raw!==""&&(id===null||!Number.isInteger(id)||!personas.some(p=>p.id===id))){setError("Seleccioná un colaborador válido.");return;}
   setGuardando(c.usuario_id);setError("");setMensaje("");
   try{
    await rpc("rm_munro_horarios_cuentas_vincular",{p_usuario:c.usuario_id,p_colaborador:id});
