@@ -128,6 +128,14 @@ assert.equal(feriadoHabilitado(personaConFeriado,"2026-11-09"),true);
 assert.deepEqual(fechasFeriadoColaborador(personaConFeriado,"2026-11-09"),["2026-11-12"]);
 assert.equal(resumenLiquidacion("turno",personaConFeriado,"2026-11-09",[],hasta).extraFeriado,2,
  "solo las dos franjas trabajadas en el día marcado reciben adicional");
+// La desmarcación explícita de un día legado prevalece sobre la fecha global.
+const feriadoLegado={"2026-11-12":{...dia,feriado:false}};
+assert.deepEqual(fechasFeriadoColaborador(feriadoLegado,"2026-11-09",feriado),[],
+ "un feriado desmarcado no puede volver a activarse por el calendario anterior");
+assert.equal(resumenLiquidacion("turno",feriadoLegado,"2026-11-09",feriado,hasta).extraFeriado,0,
+ "destildar mantiene las horas y retira solamente el adicional feriado");
+assert.equal(evaluarDia(feriadoLegado["2026-11-12"]).turnos,2,
+ "destildar feriado no borra horarios guardados");
 const personaSinFeriado={"2026-11-09":{feriados_habilitados:false},...semanas};
 personaSinFeriado["2026-11-12"]={...dia,feriado:true};
 assert.equal(feriadoHabilitado(personaSinFeriado,"2026-11-09",feriado),false);
