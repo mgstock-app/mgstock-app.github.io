@@ -32,8 +32,8 @@ describe('Archivo visual de horarios',()=>{
   cy.visit('/empleados/',{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:'synthetic-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
   cy.get('.gl-gerente__sidebar').contains('button','Horarios',{timeout:15000}).click();
   // La nueva planilla reemplaza la vista "En vivo", sin borrar semanas guardadas.
-  cy.get('.mhs-pestanas').contains('button','Historial').click();
-  cy.contains('Historial anterior conservado').should('be.visible');
+  cy.get('.mhs-pestanas').contains("button","Resumen semanal").click();
+  cy.get('.mhs-archivo-anterior > summary').click();
   cy.get('[aria-label="Elegir vista de horarios de Munro"]').should('not.exist');
   cy.contains('button','Enviar a historial').should('not.exist');
   cy.get('section[aria-label="Hoja Resumen archivada"] table').should('be.visible').contains('Persona ficticia');
@@ -51,8 +51,8 @@ describe('Archivo visual de horarios',()=>{
   cy.get('button[aria-label="Descargar PDF de Semana"]').should('be.visible').click();
   if(admin){
    cy.get('details[aria-label^="Pagos de la semana"]').should('not.have.attr','open');
-   cy.get('details summary').click();cy.contains('button','Pagado').should('be.visible');
-   cy.get('details summary').click();cy.get('details summary').click();
+   cy.get('details[aria-label^="Pagos de la semana"] summary').click();cy.contains('button','Pagado').should('be.visible');
+   cy.get('details[aria-label^="Pagos de la semana"] summary').click();cy.get('details[aria-label^="Pagos de la semana"] summary').click();
    cy.contains('button','Pagado').should('have.attr','aria-pressed','true');
   } else cy.contains('Pagos de la semana').should('not.exist');
   cy.viewport(390,844);

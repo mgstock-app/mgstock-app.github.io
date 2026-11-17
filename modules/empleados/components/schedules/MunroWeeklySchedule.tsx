@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, CheckCircl
 import { rpc } from "@/features/access/api";
 import { ScheduleHistory } from "./ScheduleHistory";
 import {
- diasSemana,evaluarDia,fechaAR,fechaCorta,feriadoHabilitado,vacacionesHabilitadas,formatoHoras,revisarSemana,resumenPersona,resumenLiquidacion,semanaActual,
+ diasSemana,evaluarDia,fechaAR,fechaCorta,fechasFeriadoColaborador,feriadoHabilitado,vacacionesHabilitadas,formatoHoras,revisarSemana,resumenPersona,resumenLiquidacion,semanaActual,
  sumarDias,type Estado,type Persona,type Planilla,type Registro,type SemanaHorarios,
 } from "@/features/schedules/munro-model";
 import "./munro-weekly.css";
@@ -12,7 +12,7 @@ import "./munro-weekly-polish.css";
 import "./munro-weekly-matrix.css";
 
 type Borrador = Persona & {datos:SemanaHorarios;version:number};
-type Pestaña = "semana"|"historial"|"resumen";
+type Pestaña = "semana"|"resumen";
 const ESTADOS: readonly Estado[]=["activo","refuerzo","inactivo"];
 const CAMPOS = [
  ["tm_e","Entrada TM"],["tm_s","Salida TM"],["tt_e","Entrada TT"],["tt_s","Salida TT"]
@@ -279,18 +279,13 @@ export function MunroWeeklySchedule(){
    (planilla?.historial||[]).reduce<Record<string,Registro[]>>((m,r)=>{
      (m[r.semana]??=[]).push(r);return m;
    },{})
- ),[planilla?.historial]);
+ ).sort((a,b)=>b[0].semana.localeCompare(a[0].semana)),[planilla?.historial]);
  const filasResumen=filas.filter(f=>f.nombre.trim()).map(f=>({
    ...f,resumen:resumenLiquidacion(f.modalidad,f.datos,semana,feriados,momento)
  }));
- const totalPorHora=filasResumen.filter(f=>f.modalidad==="hora"&&f.resumen.total!==null)
-   .reduce((a,f)=>a+(f.resumen.total||0),0);
- const totalTurnos=filasResumen.filter(f=>f.modalidad==="turno"&&f.resumen.total!==null)
-   .reduce((a,f)=>a+(f.resumen.total||0),0);
  const faltantes=filas.filter(f=>f.estado!=="inactivo"&&(
    !f.nombre.trim() || dias.some(fecha=>evaluarDia(f.datos[fecha]||{},true).errores.length>0)
  )).map(f=>f.nombre||"Colaborador "+f.id);
- const totalEnRevision=filasResumen.filter(f=>f.resumen.errores.length>0||f.resumen.pendientes>0).length;
  const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
  const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
@@ -380,7 +375,7 @@ export function MunroWeeklySchedule(){
  };
  return <section className="mhs" aria-label="Planilla semanal de colaboradores de Munro">
    <nav className="mhs-pestanas" aria-label="Vistas de Horarios">
-     {([["semana","Semana actual"],["historial","Historial"],["resumen","Resumen semanal"]] as const)
+     {([["semana","Semana actual"],["resumen","Resumen semanal"]] as const)
        .map(([id,label])=><button key={id} type="button" aria-current={pestana===id?"page":undefined}
          onClick={()=>setPestana(id)}>{label}</button>)}
    </nav>
@@ -391,14 +386,14 @@ export function MunroWeeklySchedule(){
    {mensaje&&!pendientes.length&&<p className="mhs-exito" role="status">{mensaje}</p>}
    {cargando&&<p role="status">Cargando Horarios de Munro…</p>}
    {!cargando&&planilla&&<>
-     {pestana!=="historial"&&<div className="mhs-toolbar">
+     <div className="mhs-toolbar">
        <div className="mhs-semana">
          <button type="button" aria-label="Semana anterior" onClick={()=>seleccionarSemana(sumarDias(semana,-7))}><ChevronLeft size={18}/></button>
          <span><CalendarDays size={18}/> Semana del {semanaLabel(semana)}</span>
          <button type="button" aria-label="Semana siguiente" disabled={semana>=limiteFuturo()}
            onClick={()=>seleccionarSemana(sumarDias(semana,7))}><ChevronRight size={18}/></button>
        </div>
-       {(pestana==="semana"||pestana==="resumen")&&planilla.puede_editar&&<div className="mhs-acciones">
+       {planilla.puede_editar&&<div className="mhs-acciones">
          {pestana==="semana"&&!semanaCerrada&&<button type="button" className="mhs-cierre-semanal" disabled={guardando||cerrandoSemana||pendientes.length>0||semana>semanaActual()}
            onClick={()=>void finalizarSemana()}><CheckCircle2 size={18}/> Semana finalizada</button>}
          {semanaCerrada?<span className="mhs-cerrada-chip"><CheckCircle2 size={17}/> Semana finalizada · solo lectura</span>:
@@ -407,8 +402,8 @@ export function MunroWeeklySchedule(){
              <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>
          }
        </div>}
-     </div>}
-     {enRevision&&(pestana==="semana"||pestana==="resumen")&&<p className="mhs-alerta" role="status">
+     </div>
+     {enRevision&&<p className="mhs-alerta" role="status">
        Revisión semanal desde el domingo a las 23:40 (hora argentina).
        {faltantes.length>0?" Pendientes: "+faltantes.join(", ")+".":" Todos los turnos están revisados."}
      </p>}
@@ -484,12 +479,6 @@ export function MunroWeeklySchedule(){
            <small>Activá la opción debajo de su estado en Semana actual y marcá los días correspondientes. El resumen se completa automáticamente.</small>
          </div>
        </section>
-       <div className="mhs-resumen-totales">
-         <div><small>Colaboradores con nombre</small><strong>{filasResumen.length}</strong></div>
-         <div><small>Total de horas a liquidar</small><strong>{formatoHoras(totalPorHora)} h</strong></div>
-         <div><small>Total de turnos a liquidar</small><strong>{totalTurnos}</strong></div>
-         <div><small>Registros por revisar</small><strong>{totalEnRevision}</strong></div>
-       </div>
        <div className="mhs-resumen-desbordar">
          <table className="mhs-liquidacion">
            <thead><tr>
@@ -534,23 +523,9 @@ export function MunroWeeklySchedule(){
        <p>Criterio de liquidación: Trabajado + OFF + Vacaciones + adicional de Feriado.
          OFF inicial: 1 turno o 4:30 horas (modificable). Vacaciones y feriados son opcionales.
          El feriado suma exclusivamente lo trabajado en los días seleccionados. Las horas se muestran como horas:minutos, no como dinero.</p>
-       <section className="mhs-historial-resumen">
-         <h3>Historial de resúmenes</h3>
-         {registros.length===0?<p>Todavía no hay semanas anteriores en esta planilla.</p>:
-           registros.slice(0,8).map(grupo=>{
-             const fecha=grupo[0].semana,festivos=planilla.feriados_historial?.[fecha]||[];
-             const a=grupo.filter(r=>r.modalidad==="hora").reduce((n,r)=>n+(resumenLiquidacion(r.modalidad,r.datos,fecha,festivos,momento).total||0),0);
-             const t=grupo.filter(r=>r.modalidad==="turno").reduce((n,r)=>n+(resumenLiquidacion(r.modalidad,r.datos,fecha,festivos,momento).total||0),0);
-             return <div className="mhs-archivo-resumen" key={fecha}>
-               <div><strong>Semana {semanaLabel(fecha)}</strong>
-                 <small>{grupo.length} colaboradores · {formatoHoras(a)} horas · {t} turnos</small></div>
-               <button type="button" onClick={()=>seleccionarSemana(fecha)}>Ver detalle</button>
-             </div>;
-           })}
-       </section>
-     </div>}
-     {pestana==="historial"&&<div className="mhs-historial">
-       <h2>Historial de la nueva planilla</h2>
+       <section className="mhs-historial" aria-labelledby="mhs-historial-titulo">
+       <h2 id="mhs-historial-titulo">Historial</h2>
+       <p>Elegí una semana para ver el resumen y consultar las entradas y salidas de cada día.</p>
        {registros.length===0?<p>Todavía no hay semanas anteriores guardadas en esta planilla.</p>:
        registros.map(grupo=>{
          const inicio=grupo[0].semana,festivos=planilla.feriados_historial?.[inicio]||[];
@@ -560,7 +535,9 @@ export function MunroWeeklySchedule(){
            return x.total!==null&&x.pendientes===0;
          });
          return <details key={inicio}>
-           <summary>Semana {semanaLabel(inicio)} · {grupo.length} colaboradores · {cerrado?"Finalizada":completo?"Anterior · completa":"Revisar antes de liquidar"}</summary>
+           <summary>Semana {semanaLabel(inicio)} · {inicio.slice(0,4)} · {grupo.length} colaboradores · {cerrado?"Finalizada":completo?"Anterior · completa":"Revisar antes de liquidar"}</summary>
+           <div className="mhs-archivo-contenido">
+           <h3>Resumen de la semana</h3>
            <div className="mhs-resumen-desbordar"><table>
              <thead><tr><th>Colaborador</th><th>Cobra por</th><th>Trabajado</th><th>OFF</th>
                <th>Vacaciones</th><th>Feriado extra</th><th>Total a liquidar</th><th>Observaciones</th></tr></thead>
@@ -574,11 +551,42 @@ export function MunroWeeklySchedule(){
                </tr>;
              })}</tbody>
            </table></div>
+           <h3>Detalle por día</h3>
+           {grupo.map(r=><details className="mhs-archivo-persona" key={r.id}>
+             <summary>{r.nombre}</summary>
+             <div className="mhs-resumen-desbordar"><table>
+               <thead><tr><th scope="col">Día</th><th scope="col">Mañana</th>
+                 <th scope="col">Noche</th><th scope="col">Trabajado</th><th scope="col">Estado</th></tr></thead>
+               <tbody>{diasSemana(inicio).map((dia,i)=>{
+                 const d=r.datos[dia]||{};
+                 const jornada=evaluarDia(d,true);
+                 const marcas=[
+                   d.descanso==="off"?"OFF":d.descanso==="medio_off"?"Medio OFF":"",
+                   d.vacaciones_dia?"Vacaciones":"",
+                   fechasFeriadoColaborador(r.datos,inicio,festivos).includes(dia)?"Feriado":"",
+                 ].filter(Boolean).join(" · ");
+                 const franja=(entrada?:string,salida?:string)=>entrada||salida
+                   ?(entrada||"—")+" a "+(salida||"—"):"—";
+                 const trabajado=r.modalidad==="turno"?jornada.turnos+" t.":formatoHoras(jornada.horas)+" h";
+                 return <tr key={dia}>
+                   <th scope="row">{DIAS[i]} {fechaCorta(dia)}</th>
+                   <td>{franja(d.tm_e,d.tm_s)}</td><td>{franja(d.tt_e,d.tt_s)}</td>
+                   <td>{jornada.errores.length?"—":trabajado}</td>
+                   <td>{jornada.errores.length?jornada.errores.join(" "):marcas||"—"}</td>
+                 </tr>;
+               })}</tbody>
+             </table></div>
+           </details>)}
+           </div>
          </details>;
        })}
-       <h2>Historial anterior conservado</h2>
-       <p>Se conservan intactas las semanas y los archivos anteriores de Google Sheets, incluidos sus controles de pago.</p>
-       <ScheduleHistory embebido soloArchivo />
+       <details className="mhs-archivo-anterior">
+         <summary>Historial anterior conservado</summary>
+         <div className="mhs-archivo-contenido">
+           <ScheduleHistory embebido soloArchivo />
+         </div>
+       </details>
+       </section>
      </div>}
    </>}
  </section>;

@@ -67,7 +67,7 @@ async function main() {
   assert(schedules.includes("<HorariosHub company={loading ? undefined : selected?.id}"),"Horarios route should contain the Sheets shortcut");
   const hub = fs.readFileSync(path.join("components","schedules","HorariosHub.tsx"),"utf8");
   assert(hub.includes("<BranchScheduleLink key={company} company={company} compact />"),"Horarios shows each branch sheet as one compact row");
-  assert(hub.includes("<ScheduleHistory embebido />"),"El historial de semanas está dentro de Horarios (un solo lugar)");
+  assert(hub.includes("embebido localScope={local}"),"El historial de Horarios sigue el local seleccionado");
   const gerenteHome = fs.readFileSync(path.join("components","pages","GerenteHome.tsx"),"utf8");
   assert(gerenteHome.includes("<SchedulesContent/>") && !gerenteHome.includes("Abrir Google Sheets y horarios"),"El gerente ve Horarios directo, sin pantalla intermedia");
   const legajos = fs.readFileSync(path.join("components","legajos","ManagerLegajos.tsx"),"utf8");
