@@ -4,6 +4,7 @@ import { CalendarDays, ExternalLink, LockKeyhole, RefreshCcw, FileSpreadsheet } 
 import { rpc } from "@/features/access/api";
 import { employeeSheetPreview } from "@/utils/employee-schedule-preview";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { MunroWeeklySchedule } from "./MunroWeeklySchedule";
 import "./employee-schedule-link.css";
 
 type PrivateLink = { local_id: string; local_name: string; url: string };
@@ -16,8 +17,11 @@ export function EmployeeScheduleLink() {
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const load = useCallback(() => setReload(n => n + 1), []);
+  // Mi Gusto Munro: el colaborador ve el Resumen semanal de Staff (solo lectura)
+  // y ya no recibe la planilla de Google Sheets (el servidor tampoco la envía).
+  const munro = user?.local_id === "munro";
   useEffect(() => {
-    if (user?.role !== "employee" || user.status !== "approved") return;
+    if (user?.role !== "employee" || user.status !== "approved" || munro) return;
     let alive = true;
     rpc<Partial<PrivateLink>>("rm_app_employee_schedule_view")
       .then(value => {
@@ -38,8 +42,15 @@ export function EmployeeScheduleLink() {
       })
       .finally(() => { if (alive) setBusy(false); });
     return () => { alive = false; };
-  }, [user?.role, user?.status, user?.local_id, reload]);
+  }, [user?.role, user?.status, user?.local_id, reload, munro]);
   if (user?.role !== "employee" || user.status !== "approved" || !user.local_id) return null;
+  if (munro) return <section className="employee-sheets employee-staff-resumen" aria-label="Horarios de mi local">
+    <div className="employee-sheets__header">
+      <span className="employee-sheets__icon"><CalendarDays size={22}/></span>
+      <div><h2>Horarios de mi local</h2><p>{user.local_name || "Munro"} · Resumen semanal · solo lectura</p></div>
+    </div>
+    <MunroWeeklySchedule colaborador />
+  </section>;
   const preview = info ? employeeSheetPreview(info.url) : null;
   return <section className="employee-sheets" aria-label="Horarios de mi local">
     <div className="employee-sheets__header">

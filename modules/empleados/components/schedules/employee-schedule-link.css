@@ -13,3 +13,8 @@
 .app-shell .employee-sheets__error{color:#af324c!important;background:#fff3f5;padding:10px;border-radius:9px}
 .app-shell .employee-sheets__pending{padding:10px;border:1px dashed #d4e2ed;border-radius:10px;background:#f9fbff}
 .app-shell .employee-sheets .employee-sheets__refresh{display:inline-flex;align-items:center;gap:7px;border:1px solid #d7e7f0;padding:8px 11px;border-radius:8px;background:white;color:#386d8d;font:650 11px/1.3 'Segoe UI',Arial,sans-serif}
+/* Colaborador de Munro: Resumen semanal de Staff en solo lectura, a todo el ancho. */
+.app-shell .employee-private-portal__cards>div:has(.employee-staff-resumen){grid-column:1/-1}
+.app-shell .employee-staff-resumen .mhs{gap:12px}
+.app-shell .employee-staff-resumen .mhs-toolbar{margin:0}
+@media(max-width:640px){.app-shell .employee-sheets.employee-staff-resumen{padding:14px 10px}}

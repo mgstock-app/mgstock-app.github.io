@@ -171,4 +171,20 @@ assert.match(ui,/ESTADOS\.map/);
 assert.match(ui,/<select aria-label=\{"Estado de "/);
 assert.doesNotMatch(ui,/\.map\(estado=><button/,"Los tres estados no deben mostrarse a la vez");
 
+// Colaboradores de Munro: solo la pestaña Resumen, en solo lectura, sin planilla de Google Sheets.
+const link=fs.readFileSync("components/schedules/EmployeeScheduleLink.tsx","utf8");
+const sql5=fs.readFileSync("../../supabase/migrations/20261117044000_munro_staff_resumen_colaboradores.sql","utf8");
+assert.match(link,/const munro = user\?\.local_id === "munro";/);
+assert.match(link,/if \(munro\) return [\s\S]*?<MunroWeeklySchedule colaborador \/>/);
+assert.match(link,/user\.status !== "approved" \|\| munro\) return;/,"No pedir el enlace de Sheets para Munro");
+assert.match(ui,/colaborador\?"rm_munro_horarios_colaborador":"rm_munro_horarios_obtener"/);
+assert.match(ui,/useState<Pestaña>\(colaborador\?"resumen":"semana"\)/);
+assert.match(ui,/\{!colaborador&&<nav className="mhs-pestanas"/,"El colaborador no ve la pestaña Semana actual");
+assert.match(ui,/\{!colaborador&&<details className="mhs-archivo-anterior">/);
+assert.match(sql5,/'puede_editar',false/);
+assert.match(sql5,/m\.local_id = 'munro'/);
+assert.match(sql5,/e\.value - 'observaciones'/,"Sin notas manuales del dueño");
+assert.match(sql5,/and l\.id <> 'munro'/,"Munro deja de recibir el enlace a Google Sheets");
+assert.match(sql5,/revoke all on function public\.rm_munro_horarios_colaborador\(date\) from public, anon;/);
+assert.doesNotMatch(sql5,/\b(drop table|truncate|delete from|insert into|update rm_)/i);
 console.log("munro-horarios: 3 por turno, 5 por hora, activos, feriados y archivo intacto: ok");

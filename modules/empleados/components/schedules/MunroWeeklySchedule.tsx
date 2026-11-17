@@ -23,12 +23,15 @@ const formatoTurnos=(n:number)=>n+" "+(n===1?"turno":"turnos");
 const semanaLabel=(s:string)=>fechaCorta(s)+" al "+fechaCorta(sumarDias(s,6));
 const limiteFuturo=()=>semanaActual();
 
-export function MunroWeeklySchedule(){
+/** colaborador: vista del colaborador de Munro. Solo la pestaña Resumen, en solo
+ * lectura, con su propia función del servidor (sin notas del dueño, sin editar). */
+export function MunroWeeklySchedule({colaborador=false}:{colaborador?:boolean}={}){
+ const fuente=colaborador?"rm_munro_horarios_colaborador":"rm_munro_horarios_obtener";
  const [semana,setSemana]=useState(()=>semanaActual());
  const [planilla,setPlanilla]=useState<Planilla|null>(null);
  const [filas,setFilas]=useState<Borrador[]>([]);
  const [pendientes,setPendientes]=useState<number[]>([]);
- const [pestana,setPestana]=useState<Pestaña>("semana");
+ const [pestana,setPestana]=useState<Pestaña>(colaborador?"resumen":"semana");
  const [diaSeleccionado,setDiaSeleccionado]=useState<number>(0);
  const [editando,setEditando]=useState(false);
  const [cargando,setCargando]=useState(true);
@@ -53,7 +56,7 @@ export function MunroWeeklySchedule(){
  const cargar=useCallback(async()=>{
    setCargando(true);setError("");
    try{
-     const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
+     const p=await rpc<Planilla>(fuente,{p_semana:semana});
      const actual=p.personas.map(persona=>{
        const registro=p.planillas.find(x=>x.id===persona.id);
        return {...persona,datos:registro?.datos||{},version:registro?.version||0};
@@ -63,7 +66,7 @@ export function MunroWeeklySchedule(){
      setFeriados(p.feriados||[]);
    }catch(e){setError(aviso(e));}
    finally{setCargando(false);}
- },[semana]);
+ },[semana,fuente]);
  useEffect(()=>{let active=true;queueMicrotask(()=>{if(active)void cargar();});return()=>{active=false;};},[cargar]);
  useEffect(()=>{
    const timer=window.setInterval(()=>setMomento(new Date()),30000);
@@ -82,7 +85,7 @@ export function MunroWeeklySchedule(){
    let activo=true;
    const timer=window.setInterval(async()=>{
      try{
-       const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
+       const p=await rpc<Planilla>(fuente,{p_semana:semana});
        if(!activo)return;
        setPlanilla(p);
        setFilas(p.personas.map(persona=>{
@@ -93,7 +96,7 @@ export function MunroWeeklySchedule(){
      }catch{/* Mantener los datos actuales hasta recuperar la conexión. */}
    },15000);
    return()=>{activo=false;window.clearInterval(timer);};
- },[semana,editando,pendientes.length]);
+ },[semana,editando,pendientes.length,fuente]);
  const cambiar=(id:number,updater:(anterior:Borrador)=>Borrador)=>{
    if(!editando||!puedeEditar)return;
    revisiones.current[id]=(revisiones.current[id]||0)+1;
@@ -420,12 +423,13 @@ export function MunroWeeklySchedule(){
      {verificar.errores.length>0&&<small className="mhs-revisar">{verificar.errores.join(" ")}</small>}
    </div>;
  };
- return <section className="mhs" aria-label="Planilla semanal de colaboradores de Munro">
-   <nav className="mhs-pestanas" aria-label="Vistas de Horarios">
+ return <section className={"mhs"+(colaborador?" mhs-solo-lectura":"")}
+   aria-label={colaborador?"Resumen semanal de Staff de Munro · solo lectura":"Planilla semanal de colaboradores de Munro"}>
+   {!colaborador&&<nav className="mhs-pestanas" aria-label="Vistas de Horarios">
      {([["semana","Semana actual"],["resumen","Resumen semanal"]] as const)
        .map(([id,label])=><button key={id} type="button" aria-current={pestana===id?"page":undefined}
          onClick={()=>setPestana(id)}>{label}</button>)}
-   </nav>
+   </nav>}
    {error&&<p className="mhs-alerta" role="alert">{error}</p>}
    {guardando&&<p role="status" className="mhs-ayuda">Guardando cambios automáticamente…</p>}
    {cerrandoSemana&&<p role="status" className="mhs-ayuda">Archivando la semana y preparando la planilla siguiente…</p>}
@@ -450,7 +454,7 @@ export function MunroWeeklySchedule(){
          }
        </div>}
      </div>
-     {enRevision&&<p className="mhs-alerta" role="status">
+     {enRevision&&!colaborador&&<p className="mhs-alerta" role="status">
        Revisión semanal desde el domingo a las 23:40 (hora argentina).
        {faltantes.length>0?" Pendientes: "+faltantes.join(", ")+".":" Todos los turnos están revisados."}
      </p>}
@@ -523,7 +527,9 @@ export function MunroWeeklySchedule(){
        <section className="mhs-feriados-semana" aria-label="Resumen individual por colaborador">
          <div className="mhs-feriados-cabeza">
            <strong>Resumen individual por colaborador</strong>
-           <small>Cada tabla se arma sola con los horarios cargados en Semana actual. Feriados y vacaciones se activan debajo del estado de cada colaborador.</small>
+           <small>{colaborador
+             ?"Cómo se trabajó cada día de la semana. Solo lectura: los horarios los carga el local."
+             :"Cada tabla se arma sola con los horarios cargados en Semana actual. Feriados y vacaciones se activan debajo del estado de cada colaborador."}</small>
          </div>
        </section>
        {filasResumen.map(f=>{
@@ -533,11 +539,11 @@ export function MunroWeeklySchedule(){
              <span className="mhs-modalidad">{porHora?"Por hora":"Por turno"}</span></summary>
            {tablaDias(f.modalidad,f.datos,semana,feriados,enRevision)}
            {liquidacion(f.modalidad,r,
-             <input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
+             colaborador?cantidad(f.modalidad,r.off):<input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
                disabled={!editando||!puedeEditar} inputMode="text"
                onChange={e=>cambiarDia(f.id,semana,"off",e.target.value)}/>,
              vacacionesHabilitadas(f.datos,semana)
-               ?<input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
+               ?colaborador?cantidad(f.modalidad,r.vacaciones):<input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
                  disabled={!editando||!puedeEditar} inputMode="text"
                  onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/>:null,
              editando&&puedeEditar?<input aria-label={"Observación manual de "+f.nombre}
@@ -580,12 +586,12 @@ export function MunroWeeklySchedule(){
            </div>
          </details>;
        })}
-       <details className="mhs-archivo-anterior">
+       {!colaborador&&<details className="mhs-archivo-anterior">
          <summary>Historial anterior conservado</summary>
          <div className="mhs-archivo-contenido">
            <ScheduleHistory embebido soloArchivo />
          </div>
-       </details>
+       </details>}
        </section>
      </div>}
    </>}
