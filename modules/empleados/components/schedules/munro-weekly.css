@@ -429,3 +429,33 @@
  .mhs-colab>.mhs-control-persona{padding:0 4px 10px}
  .mhs-control-persona .mhs-editar-persona,.mhs-control-persona .mhs-persona-ir-horarios{min-height:38px}
 }
+
+/* Munro: feriado por día visible, también antes de desplegar la tarjeta móvil. */
+.mhs-tabla tbody td.mhs-celda-feriado{background:#fff3d8;box-shadow:inset 0 0 0 2px #e5ad3e}
+.mhs-cuatro.mhs-cuatro--feriado{padding:6px;border-radius:8px;background:#fff7e8}
+.mhs-cuatro>label.mhs-dia-extra--feriado{
+ display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;
+ gap:6px;min-height:31px;padding:7px 8px;margin-top:3px;
+ border:1px solid #d6dce5;border-radius:7px;background:#f8fafc;
+ font-size:11px;font-weight:700;color:#32465c;
+}
+.mhs-cuatro>label.mhs-dia-extra--marcado{background:#f5d888;border-color:#bb821c;color:#5d3e04;font-weight:850}
+.mhs-cuatro>label.mhs-dia-extra--marcado span{color:#5d3e04;font-weight:850}
+.mhs-dia-extra--marcado input[type=checkbox]{accent-color:#9a6410}
+.mhs-feriado-marcado{
+ display:inline-block;padding:2px 5px;border-radius:4px;
+ background:#734b0c;color:#fff;font-size:9px;letter-spacing:.03em;
+}
+.mhs-card.mhs-card--feriado{border-color:#d6a349;background:#fffaf0;box-shadow:inset 3px 0 #c58d23}
+.mhs-card-feriado{
+ display:inline-flex;align-items:center;align-self:start;width:max-content;max-width:100%;
+ padding:3px 8px;border-radius:6px;border:1px solid #d8a53b;
+ background:#f5df9e;color:#63420b;font-size:11px;font-weight:800;
+}
+.mhs-resumen-desbordar .mhs-dias tr.mhs-resumen-dia-feriado th,
+.mhs-resumen-desbordar .mhs-dias tr.mhs-resumen-dia-feriado td{background:#fff0ca;color:#583e10}
+.mhs-resumen-desbordar .mhs-dias tr.mhs-resumen-dia-feriado th{border-left:3px solid #bf8721}
+@media(max-width:760px){
+ .mhs-cuatro--feriado .mhs-dia-extra--marcado{grid-column:1/-1}
+ .mhs-card-feriado{font-size:11px}
+}
