@@ -93,7 +93,7 @@ export function EmployeePortalShell(){
       <section className="employee-private-portal" aria-label="Mi espacio privado del colaborador">
         <header className="employee-private-portal__hero">
           <span>GESTLOK · MI ESPACIO PERSONAL</span>
-          <h1>Hola, {user.display_name?.split(" ")[0]||"colaborador"}</h1>
+          <h1>Hola</h1>
           <p>Tu recibo de sueldo y los horarios del local que tenés asignado.</p>
           <small>Local: {local}</small>
         </header>
