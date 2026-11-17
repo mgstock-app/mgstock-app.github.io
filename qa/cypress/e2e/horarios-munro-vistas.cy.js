@@ -145,6 +145,14 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    // El jueves debe quedar a la vista sin esconderse bajo la columna fija de colaboradores.
    cy.get(".mhs-tabla thead th").last().should("be.visible");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
+   cy.get('.mhs-tabla tbody tr').first().find('td.mhs-celda-feriado').should("have.length",1)
+     .find('.mhs-dia-extra--marcado').should("contain.text","MARCADO");
+   // Si marcó el día equivocado, la misma casilla se destilda sin borrar horarios.
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').uncheck();
+   cy.get('.mhs-tabla tbody tr').first().find('td.mhs-celda-feriado').should("not.exist");
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="TM Entrada · Lucía · 12/11"]').should("have.value","09:00");
+   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
+   cy.get('.mhs-tabla tbody tr').first().find('td.mhs-celda-feriado').should("have.length",1);
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
    // Solo las fechas aparecen inicialmente, no el detalle de todo el personal.
@@ -169,6 +177,19 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
      expect(ultimo().p_datos["2026-11-12"].feriado).to.eq(true);
      expect(ultimo().p_datos[SEMANA].off).to.eq("0");
    });
+  });
+  it("feriado resaltado también en celular sin abrir la tarjeta",()=>{
+    cy.viewport(390,844);
+    iniciar({precargados:[{
+      id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,
+      datos:{[SEMANA]:{feriados_habilitados:true},"2026-11-12":{feriado:true,tm_e:"09:00",tm_s:"13:00"}}
+    }]});
+    cy.get('.mhs-movil-dias button').contains("JUE").click();
+    cy.get('.mhs-movil-lista .mhs-card').first().should("have.class","mhs-card--feriado")
+      .find('.mhs-card-feriado').should("contain.text","FERIADO");
+    cy.get('.mhs-movil-lista .mhs-card').eq(1).should("not.have.class","mhs-card--feriado");
+    cy.get('.mhs-movil-lista .mhs-card').first().find('.mhs-card-expandir').click();
+    cy.get('.mhs-movil-lista .mhs-card').first().find('.mhs-dia-extra--marcado').should("contain.text","MARCADO");
   });
   it("vacaciones solo aparece al habilitar por colaborador",()=>{
    cy.viewport(1320,900);iniciar();
