@@ -58,7 +58,7 @@ test('Se resaltan productos en rojo y se priorizan empanadas y pizzas',()=>{
  assert.match(main,/if\(currentShift==='manana_entrada'\)/);
  assert.match(main,/await verifyTurnSaved\(true\)/);
  assert.match(main,/await morning\(\)\?\.load\(morningCtx\(\),false\)/);
- assert.match(runtime,/mi-gusto-conteo-morning\.js\?rev=conciliacion-20261116/);
+ assert.match(runtime,/mi-gusto-conteo-morning\.js\?rev=recuperar-noche-20261117/);
  assert.ok(runtime.indexOf('mi-gusto-conteo-morning.js?rev')<runtime.indexOf('mi-gusto-conteo.js?rev'),'orden de carga');
  assert.doesNotThrow(()=>new vm.Script(main));
  assert.doesNotThrow(()=>new vm.Script(morning));
@@ -126,4 +126,28 @@ test('PWA: cachear el controlador nocturno solo avisa a Mi Gusto, no a otras emp
  const patch='@@ -1 +1 @@\n-'+older+'\n+'+updated+'\n';
  assert.deepEqual(releaseAudience(['scripts/sw-template.js'],{'scripts/sw-template.js':patch}),[TENANTS.miGusto]);
  assert.deepEqual(releaseAudience(['scripts/sw-template.js'],{'scripts/sw-template.js':'@@\n-console.log(1)\n+console.log(2)'}),['*']);
+});
+
+test('Noche pendiente: botón accesible arriba y en comparación, solo cuando el servidor la requiere',async()=>{
+ const h=makeHarness();
+ const missing={...h.ctx,day:'2026-11-17',rpc:async()=>({
+  baseline_ready:false,first_day:false,previous_day:'2026-11-16',rows:[]
+ })};
+ await h.mod.load(missing,false);
+ assert.equal(h.mod.previousNightPending(),true);
+ assert.match(h.mod.recoveryPanel(),/Noche · salida del 16\/11\/2026/);
+ assert.match(h.mod.recoveryPanel(),/data-gcm-open-pending-night/);
+ assert.match(h.mod.panel(),/data-gcm-open-pending-night/);
+ assert.match(main,/data-gcm-recovery-holder/);
+ assert.match(main,/await verifyTurnSaved\(\)/);
+ assert.match(main,/comparison\.baseline_ready\|\|comparison\.first_day/);
+ assert.match(main,/previous\.counts\.find\(r=>r\.shift==='noche_salida'\)\?\.status==='finalizado'/);
+ assert.match(main,/shift='noche_salida'/);
+ assert.match(main,/autoResumeTurn=false;day=previousDay/);
+ assert.match(css,/\.gcm-recover-night button/);
+ await h.mod.load({...h.ctx,rpc:async()=>({
+  baseline_ready:true,first_day:false,previous_day:'2026-11-15',rows:[]
+ })},false);
+ assert.equal(h.mod.previousNightPending(),false);
+ assert.equal(h.mod.recoveryPanel(),'');
 });
