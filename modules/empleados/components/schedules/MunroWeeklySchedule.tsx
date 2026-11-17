@@ -31,6 +31,8 @@ export function MunroWeeklySchedule(){
  const [pestana,setPestana]=useState<Pestaña>("semana");
  const [resumenDetalle,setResumenDetalle]=useState(false);
  const [diaSeleccionado,setDiaSeleccionado]=useState<number>(0);
+ const [personaMovilAbierta,setPersonaMovilAbierta]=useState<number|null>(null);
+ const [busquedaMovil,setBusquedaMovil]=useState("");
  const [editando,setEditando]=useState(false);
  const [personaEnEdicion,setPersonaEnEdicion]=useState<number|null>(null);
  const [cargando,setCargando]=useState(true);
@@ -60,7 +62,7 @@ export function MunroWeeklySchedule(){
        const registro=p.planillas.find(x=>x.id===persona.id);
        return {...persona,...(p.semana_cerrada&&registro?{nombre:registro.nombre,modalidad:registro.modalidad,estado:registro.estado||persona.estado,inactivo_desde:registro.inactivo_desde??persona.inactivo_desde}:{}),datos:registro?.datos||{},version:registro?.version||0};
      });
-     setPlanilla(p);setFilas(actual);setPendientes([]);setEditando(false);setPersonaEnEdicion(null);
+     setPlanilla(p);setFilas(actual);setPendientes([]);setEditando(false);setPersonaEnEdicion(null);setPersonaMovilAbierta(null);
      revisiones.current={};intentoAutomatico.current="";
      setFeriados(p.feriados||[]);
    }catch(e){setError(aviso(e));}
@@ -102,7 +104,7 @@ export function MunroWeeklySchedule(){
   if(guardando||guardadoEnCurso.current||pendientes.length){
    setError("Primero esperá que se guarden los cambios anteriores.");return;
   }
-  setEditando(true);setPersonaEnEdicion(id);setError("");
+  setEditando(true);setPersonaEnEdicion(id);setPersonaMovilAbierta(id);setError("");
  };
  const terminarEdicionPersona=(id:number)=>{
   if(guardando||guardadoEnCurso.current||pendientes.includes(id)){
@@ -175,7 +177,7 @@ export function MunroWeeklySchedule(){
    return false;
   }
   if(siguiente!==semana){setPlanilla(null);setFilas([]);setCargando(true);setSemana(siguiente);}
-  setDiaSeleccionado(0);setMensaje("");setError("");
+  setDiaSeleccionado(0);setPersonaMovilAbierta(null);setBusquedaMovil("");setMensaje("");setError("");
   return true;
  };
  const guardar=useCallback(async(automatico=false)=>{
@@ -545,20 +547,49 @@ export function MunroWeeklySchedule(){
            })}</tbody>
          </table>
        </div>
-       <div className="mhs-movil-lista">{filas.map(f=>{
+       <div className="mhs-movil-buscar">
+         <label htmlFor="mhs-buscar-colaborador">Buscar colaborador</label>
+         <input id="mhs-buscar-colaborador" type="search" autoComplete="off"
+           placeholder="Escribí un nombre…" value={busquedaMovil}
+           onChange={e=>setBusquedaMovil(e.target.value)}/>
+       </div>
+       <div className="mhs-movil-lista">{filas.filter(f=>f.nombre.toLocaleLowerCase("es-AR").includes(busquedaMovil.trim().toLocaleLowerCase("es-AR"))).map(f=>{
          const dia=dias[diaSeleccionado],r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
-         return <article className="mhs-card" key={f.id}>
-           <header><div><span className="mhs-modalidad">{f.modalidad==="hora"?"Por hora":"Por turno"}</span>
-             {editarPersona(f.id)&&!semanaCerrada?<input value={f.nombre} placeholder={"Nombre · Colaborador "+f.id}
-               onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}/>:
-               <h3>{cabecera(f)}</h3>}</div>
-             <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
+         const d=datosDia(f,dia);
+         const turnos=[
+           d.tm_e&&d.tm_s?"Mañana "+d.tm_e+"–"+d.tm_s:"",
+           d.tt_e&&d.tt_s?"Noche "+d.tt_e+"–"+d.tt_s:""
+         ].filter(Boolean).join(" · ");
+         const abierta=personaMovilAbierta===f.id||(editando&&personaEnEdicion===f.id);
+         return <article className={"mhs-card"+(abierta?" mhs-card--abierta":" mhs-card--cerrada")} key={f.id}>
+           <header>
+             <div className="mhs-card-identidad">
+               <h3>{cabecera(f)}</h3>
+               <div className="mhs-card-etiquetas"><span className="mhs-modalidad">{f.modalidad==="hora"?"Por hora":"Por turno"}</span>
+                 <span className={"mhs-card-estado mhs-card-estado--"+f.estado}>{f.estado==="activo"?"Activo":f.estado==="refuerzo"?"Refuerzo":"Inactivo"}</span>
+               </div>
+               {!abierta&&<small className="mhs-card-turnos">{turnos||"Sin horario en el día seleccionado"}</small>}
+             </div>
+             <div className="mhs-card-resumen">
+               <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
+               <button type="button" className="mhs-card-expandir" aria-expanded={abierta}
+                 aria-label={(abierta?"Ocultar":"Ver")+" horarios de "+cabecera(f)}
+                 disabled={editando&&personaEnEdicion===f.id}
+                 onClick={()=>setPersonaMovilAbierta(abierta?null:f.id)}>
+                  {editando&&personaEnEdicion===f.id?"Editando":abierta?"Ocultar":"Ver horarios"}
+                </button>
+             </div>
            </header>
-           {estadoBotones(f)}
-           {controlesPersona(f)}
-           {inputsDia(f,dia)}
+           {abierta&&<div className="mhs-card-detalle">
+             {estadoBotones(f)}
+             {controlesPersona(f)}
+             {inputsDia(f,dia)}
+           </div>}
          </article>;
-       })}</div>
+       })}
+       {filas.filter(f=>f.nombre.toLocaleLowerCase("es-AR").includes(busquedaMovil.trim().toLocaleLowerCase("es-AR"))).length===0&&
+         <p className="mhs-ayuda">No hay colaboradores que coincidan con la búsqueda.</p>}
+       </div>
        {puedeEditar&&!semanaCerrada&&<div className="mhs-agregar">
          {!agregando?<button type="button" onClick={()=>setAgregando(true)}><Plus size={17}/> Agregar colaborador por hora</button>:
          <form onSubmit={e=>{e.preventDefault();void agregar();}}>
