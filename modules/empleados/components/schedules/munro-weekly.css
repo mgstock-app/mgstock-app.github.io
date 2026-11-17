@@ -352,3 +352,31 @@
 .mhs-archivo-contenido{display:grid;gap:10px;min-width:0;padding:0 12px 12px}
 .mhs-archivo-persona>summary{background:#f5f7fa}
 .mhs-archivo-persona tbody th{background:#fff;color:#152440;border-bottom:1px solid #e1e5ed;white-space:nowrap}
+
+.mhs-archivo-persona > summary {
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding:16px;
+ list-style:none;
+}
+.mhs-archivo-persona > summary::-webkit-details-marker { display:none }
+.mhs-archivo-persona > summary::before { content:"›"; font-size:22px; color:#52657b }
+.mhs-archivo-persona[open] > summary::before { transform:rotate(90deg) }
+.mhs-archivo-nombre { flex:1; min-width:0; overflow-wrap:anywhere }
+.mhs-archivo-total { display:grid; gap:4px; text-align:right }
+.mhs-archivo-total small { font-size:11px; font-weight:400; color:#52657b }
+.mhs-archivo-total strong { font-size:16px; color:#152440 }
+.mhs-archivo-individual { display:grid; gap:16px; padding:20px 16px }
+.mhs-archivo-desglose { display:flex; flex-wrap:wrap; gap:16px 32px; margin:0 }
+.mhs-archivo-desglose > div { display:grid; gap:6px }
+.mhs-archivo-desglose dt { font-size:12px; color:#52657b }
+.mhs-archivo-desglose dd { margin:0; font-size:16px; font-weight:650; color:#152440 }
+.mhs-archivo-observaciones { margin:0; font-size:13px; line-height:1.6; color:#52657b }
+.mhs-archivo-persona table { min-width:480px; line-height:1.5 }
+@media(max-width:600px) {
+ .mhs-historial { padding:12px }
+ .mhs-archivo-contenido { padding:0 8px 8px }
+ .mhs-archivo-persona > summary { padding:14px 10px }
+ .mhs-archivo-individual { padding:16px 10px }
+}
