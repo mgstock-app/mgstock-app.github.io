@@ -155,7 +155,7 @@ export function MunroWeeklySchedule(){
      datos:{...prev.datos,[semana]:{...(prev.datos[semana]||{}),inactivo_desde:fecha}}}));
  };
  const seleccionarSemana=(siguiente:string):boolean=>{
-  if(pendientes.length||guardando||cerrandoSemana){
+  if(siguiente!==semana&&(pendientes.length||guardando||cerrandoSemana)){
    setError("Hay cambios pendientes o un cierre en curso. Revisá el estado antes de cambiar de semana.");
    return false;
   }
@@ -545,7 +545,7 @@ export function MunroWeeklySchedule(){
        <section className="mhs-feriados-semana" aria-label="Resumen individual por colaborador">
          <div className="mhs-feriados-cabeza">
            <strong>Resumen individual por colaborador</strong>
-           <small>Cada tabla se arma sola con los horarios cargados en Semana actual. Feriados y vacaciones se activan debajo del estado de cada colaborador.</small>
+           <small>Los datos corresponden a la semana seleccionada. Abrí un colaborador para consultar su detalle.</small>
          </div>
        </section>
        {filasResumen.map(f=>{
