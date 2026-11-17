@@ -43,3 +43,10 @@
  .mhs-matriz-etiquetas{display:none}
  .mhs-matriz-colaborador{display:block}
 }
+
+/* Mantener los controles fuera del encabezado fijo al llegar mediante Tab
+   o al saltar a un campo del calendario. */
+@media(min-width:761px){
+ .mhs-tabla tbody :is(select,input,button){scroll-margin-top:110px}
+ .mhs-tabla tbody th{scroll-margin-top:110px}
+}
