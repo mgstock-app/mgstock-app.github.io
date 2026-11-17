@@ -49,7 +49,7 @@ test('El control global de letra se retiró de todas las pantallas',()=>{
  assert.doesNotMatch(employees,/gestlok-font-controls/);
  assert.doesNotMatch(fonts,/MutationObserver|data-font-global|setScreenPercent/);
  assert.match(fonts,/control global de escalado retirado/);
- assert.match(runtime,/mi-gusto-historial-editable-auditado-20261116/);
+ assert.match(runtime,/mi-gusto-conteo\.js\?rev=recuperar-noche-20261117/);
 });
 test('Los módulos JS no contienen errores de sintaxis',()=>{
  assert.doesNotThrow(()=>new vm.Script(js));

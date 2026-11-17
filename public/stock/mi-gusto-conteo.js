@@ -37,6 +37,7 @@ function marks(value){
  (r?group(r):'')+(g>12?'<small>+'+(g-12)*5+'</small>':'')+'</span>';
 }
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
+let recoveringFromDay=null; // Solo aviso contextual al recuperar una noche pasada.
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null,historyPreviewUrl='',historyPreviewError='';
 let historyEditMode=false,historyEditKind='cell',historyEditProduct='',historyEditVto=1;
 let historyCorrections=[],historyCorrectionsLoaded=false,historyCorrectionError='',historyCorrecting=false;
@@ -114,7 +115,7 @@ function reset(){
  morning()?.clear();
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
  loading=false;busy=false;finishing=false;error='';queues.clear();pendingDrafts.clear();pendingStore='';opened=new Set(['EMPANADAS']);
- historyMode=false;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
+ historyMode=false;recoveringFromDay=null;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
@@ -896,6 +897,8 @@ function view(){
  '<label class="gcm-field-responsable">Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
  '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
+ (recoveringFromDay&&shift==='noche_salida'?'<div class="gcm-recovery-active" role="status">Recuperando <strong>Noche · salida del '+labelDay(day)+'</strong>. Al cerrar vas a volver a Mañana · entrada del '+labelDay(recoveringFromDay)+'.</div>':'')+
+ '<div data-gcm-recovery-holder>'+(shift==='manana_entrada'?(morning()?.recoveryPanel?.()||''):'')+'</div>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
  (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
@@ -1026,6 +1029,41 @@ document.addEventListener('click',async e=>{
   // Pulsar fuera del cuadro cierra el menú sin alterar el conteo.
   const dialog=e.target?.matches?.('.gcm-product-dialog')?e.target:null;
   if(dialog?.open)dialog.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-open-pending-night')){
+  e.preventDefault();
+  // El gerente puede recuperar SOLO la Noche salida anterior aún abierta.
+  // Se confirma lo ya cargado en Mañana entrada antes de cambiar la fecha.
+  if(historyMode||shift!=='manana_entrada'||!editable()||!snapshot||loading||busy||finishing){
+   api?.toast?.('Esperá que termine de guardar el conteo antes de cambiar de turno.');
+   return;
+  }
+  const originalDay=day;
+  el.disabled=true;el.textContent='Verificando turno pendiente…';
+  try{
+   await verifyTurnSaved();
+   if(day!==originalDay||shift!=='manana_entrada')throw Error('Cambió el turno actual. Volvé a revisar.');
+   const comparison=await rpc('gestlok_munro_conteo_compare_morning',{p_day:originalDay});
+   const previousDay=plusDays(originalDay,-1);
+   if(comparison?.previous_day!==previousDay||comparison.baseline_ready||comparison.first_day)
+    throw Error('La noche anterior ya no figura pendiente. Actualizá la comparación.');
+   const previous=await rpc('gestlok_munro_conteo_state',{p_day:previousDay});
+   if(!Array.isArray(previous?.counts)||!Array.isArray(previous?.products))
+    throw Error('No se pudieron cargar los datos del turno noche.');
+   if(previous.counts.find(r=>r.shift==='noche_salida')?.status==='finalizado')
+    throw Error('Noche salida ya está finalizada. Volvé a comparar la mañana.');
+   ++generation;
+   morning()?.clear();
+   autoResumeTurn=false;recoveringFromDay=originalDay;day=previousDay;shift='noche_salida';activeVto='1';
+   historyMode=false;historyRecord=null;snapshot=previous;overlayDrafts();error='';
+   api?.toast?.('Noche salida del '+labelDay(previousDay)+': revisá y cerrá el turno pendiente.');
+  }catch(err){
+   error=err.message||'No se pudo abrir Noche salida';
+   api?.toast?.(error);
+  }finally{
+   el.disabled=false;api.render();
+  }
   return;
  }
  if(el.hasAttribute('data-gcm-category-toggle')||el.hasAttribute('data-gcm-category-close')){
@@ -1370,7 +1408,7 @@ document.addEventListener('click',async e=>{
    if(archived?.counts?.find(x=>x.shift===currentShift)?.status!=='finalizado')
     throw Error('No se pudo comprobar el archivo del turno. Actualizá antes de continuar.');
    // El historial consulta estos mismos registros, sin duplicar ni alterar cantidades.
-   autoResumeTurn=false;lastClosedDay=currentDay;shift=following.shift;historyMode=false;historyRecord=null;
+   autoResumeTurn=false;recoveringFromDay=null;lastClosedDay=currentDay;shift=following.shift;historyMode=false;historyRecord=null;
    historyRows=[];historyExpanded=null;historyMonth=currentDay.slice(0,7);
    error='';
    if(following.day!==currentDay){

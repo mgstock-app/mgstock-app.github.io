@@ -1815,3 +1815,31 @@ dialog.gcm-add-product-dialog::backdrop{
 .gcm-count-screen .gcm-sheet-scroll button{
  touch-action:pan-x pan-y pinch-zoom!important;
 }
+
+/* Recuperar únicamente la noche anterior pendiente sin selector de turnos libre. */
+.gcm-recover-night{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ gap:12px;padding:13px 15px;margin:10px 0;
+ border:1px solid #c5d6e5;border-left:4px solid #214e78;
+ border-radius:10px;background:#f2f7fb;color:#163955;
+}
+.gcm-recover-night strong{display:block;font-size:14px;font-weight:850}
+.gcm-recover-night p{margin:5px 0 0;font-size:12px;line-height:1.45}
+.gcm-recover-night button,
+.gcm-morning-review [data-gcm-open-pending-night]{
+ min-height:44px;padding:10px 14px;background:#12345a;color:#fff;
+ border:1px solid #12345a;border-radius:8px;font-size:13px;font-weight:800;
+}
+.gcm-recover-night button:disabled,
+.gcm-morning-review [data-gcm-open-pending-night]:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:600px){
+ .gcm-recover-night{padding:12px;align-items:stretch}
+ .gcm-recover-night>div,.gcm-recover-night button{width:100%}
+}
+
+.gcm-recovery-active{
+ padding:10px 12px;margin:8px 0;border-radius:8px;
+ border:1px solid #bfd3e5;background:#f0f6fb;color:#164368;
+ font-size:12px;line-height:1.5;
+}
+.gcm-recovery-active strong{font-weight:850}
