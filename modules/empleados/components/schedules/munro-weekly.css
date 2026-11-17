@@ -390,3 +390,21 @@
  .mhs-resumen-desbordar .mhs-dias th:first-child{padding-left:8px}
  .mhs-liquidacion{font-size:12.5px}
 }
+
+
+/* Índice de Resumen: solo semanas y fechas hasta entrar a una semana. */
+.mhs-resumen-semanas{display:grid;gap:14px;padding:4px 0 10px}
+.mhs-resumen-semanas h2{margin:0;font-size:17px;font-weight:750;color:#162b4a}
+.mhs-lista-semanas{display:grid;gap:9px}
+.mhs-semana-item{display:flex;align-items:center;gap:13px;width:100%;min-height:64px;padding:13px 16px;
+  border:1px solid #d7e1ed;border-radius:12px;background:#fff;color:#192f4e;text-align:left;font-size:14px;font-weight:700}
+.mhs-semana-item span{flex:1;min-width:0}
+.mhs-semana-item svg{flex:none;color:#49647e}
+.mhs-semana-item:hover{border-color:#8ca9c9;background:#f5f8fc}
+.mhs-semana-item:focus-visible,.mhs-volver-semanas:focus-visible{outline:2px solid #467db8;outline-offset:2px}
+.mhs-volver-semanas{display:inline-flex;align-items:center;gap:6px;justify-self:start;min-height:40px;
+  padding:9px 12px;border:1px solid #cbd6e5;border-radius:9px;background:#fff;color:#173454;font-weight:700;font-size:13px}
+@media(max-width:760px){
+  .mhs-resumen-semanas{gap:12px}
+  .mhs-semana-item{min-height:59px;padding:12px;gap:10px}
+}

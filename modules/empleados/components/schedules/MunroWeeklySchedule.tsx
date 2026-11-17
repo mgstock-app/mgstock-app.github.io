@@ -29,6 +29,7 @@ export function MunroWeeklySchedule(){
  const [filas,setFilas]=useState<Borrador[]>([]);
  const [pendientes,setPendientes]=useState<number[]>([]);
  const [pestana,setPestana]=useState<Pestaña>("semana");
+ const [resumenDetalle,setResumenDetalle]=useState(false);
  const [diaSeleccionado,setDiaSeleccionado]=useState<number>(0);
  const [editando,setEditando]=useState(false);
  const [cargando,setCargando]=useState(true);
@@ -153,12 +154,14 @@ export function MunroWeeklySchedule(){
    cambiar(f.id,prev=>({...prev,inactivo_desde:fecha||null,
      datos:{...prev.datos,[semana]:{...(prev.datos[semana]||{}),inactivo_desde:fecha}}}));
  };
- const seleccionarSemana=(siguiente:string)=>{
-  if(pendientes.length||guardando||cerrandoSemana){
+ const seleccionarSemana=(siguiente:string):boolean=>{
+  if(siguiente!==semana&&(pendientes.length||guardando||cerrandoSemana)){
    setError("Hay cambios pendientes o un cierre en curso. Revisá el estado antes de cambiar de semana.");
-   return;
+   return false;
   }
-  setSemana(siguiente);setDiaSeleccionado(0);setMensaje("");
+  if(siguiente!==semana){setPlanilla(null);setFilas([]);setCargando(true);setSemana(siguiente);}
+  setDiaSeleccionado(0);setMensaje("");setError("");
+  return true;
  };
  const guardar=useCallback(async(automatico=false)=>{
   if(!puedeEditar||!editando||guardadoEnCurso.current)return;
@@ -269,7 +272,7 @@ export function MunroWeeklySchedule(){
      // Nunca copiar datos ni horarios de la semana finalizada.
      revisiones.current={};intentoAutomatico.current="";
      setPlanilla(null);setFilas([]);setPendientes([]);setEditando(false);
-     setDiaSeleccionado(0);setPestana("semana");setCargando(true);
+     setDiaSeleccionado(0);setPestana("semana");setResumenDetalle(false);setCargando(true);
      setSemana(resultado.siguiente_semana);
      setMensaje("Semana finalizada y enviada a Historial. Se abrió la siguiente semana con los colaboradores activos y sin horarios.");
    }catch(e){setError(aviso(e));}
@@ -280,7 +283,11 @@ export function MunroWeeklySchedule(){
      (m[r.semana]??=[]).push(r);return m;
    },{})
  ).sort((a,b)=>b[0].semana.localeCompare(a[0].semana)),[planilla?.historial]);
- const filasResumen=filas.filter(f=>f.nombre.trim()).map(f=>({
+ const semanasResumen=[...new Set([
+  semanaActual(momento),...(planilla?.cierres||[]),...registros.map(grupo=>grupo[0].semana)
+ ])].filter(inicio=>inicio<=semanaActual(momento)).sort((a,b)=>b.localeCompare(a));
+ const fuentesResumen=semanaCerrada&&planilla?.planillas.length?planilla.planillas:filas;
+ const filasResumen=fuentesResumen.filter(f=>f.nombre.trim()).map(f=>({
    ...f,resumen:resumenLiquidacion(f.modalidad,f.datos,semana,feriados,momento)
  }));
  const faltantes=filas.filter(f=>f.estado!=="inactivo"&&(
@@ -424,7 +431,7 @@ export function MunroWeeklySchedule(){
    <nav className="mhs-pestanas" aria-label="Vistas de Horarios">
      {([["semana","Semana actual"],["resumen","Resumen semanal"]] as const)
        .map(([id,label])=><button key={id} type="button" aria-current={pestana===id?"page":undefined}
-         onClick={()=>setPestana(id)}>{label}</button>)}
+         onClick={()=>{if(id==="semana"&&!seleccionarSemana(semanaActual()))return;setPestana(id);setResumenDetalle(false);}}>{label}</button>)}
    </nav>
    {error&&<p className="mhs-alerta" role="alert">{error}</p>}
    {guardando&&<p role="status" className="mhs-ayuda">Guardando cambios automáticamente…</p>}
@@ -433,12 +440,12 @@ export function MunroWeeklySchedule(){
    {mensaje&&!pendientes.length&&<p className="mhs-exito" role="status">{mensaje}</p>}
    {cargando&&<p role="status">Cargando Horarios de Munro…</p>}
    {!cargando&&planilla&&<>
-     <div className="mhs-toolbar">
+     {(pestana==="semana"||resumenDetalle)&&<div className="mhs-toolbar">
        <div className="mhs-semana">
-         <button type="button" aria-label="Semana anterior" onClick={()=>seleccionarSemana(sumarDias(semana,-7))}><ChevronLeft size={18}/></button>
+         {pestana==="semana"&&<button type="button" aria-label="Semana anterior" onClick={()=>seleccionarSemana(sumarDias(semana,-7))}><ChevronLeft size={18}/></button>}
          <span><CalendarDays size={18}/> Semana del {semanaLabel(semana)}</span>
-         <button type="button" aria-label="Semana siguiente" disabled={semana>=limiteFuturo()}
-           onClick={()=>seleccionarSemana(sumarDias(semana,7))}><ChevronRight size={18}/></button>
+         {pestana==="semana"&&<button type="button" aria-label="Semana siguiente" disabled={semana>=limiteFuturo()}
+           onClick={()=>seleccionarSemana(sumarDias(semana,7))}><ChevronRight size={18}/></button>}
        </div>
        {planilla.puede_editar&&<div className="mhs-acciones">
          {pestana==="semana"&&!semanaCerrada&&<button type="button" className="mhs-cierre-semanal" disabled={guardando||cerrandoSemana||pendientes.length>0||semana>semanaActual()}
@@ -449,8 +456,8 @@ export function MunroWeeklySchedule(){
              <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>
          }
        </div>}
-     </div>
-     {enRevision&&<p className="mhs-alerta" role="status">
+     </div>}
+     {enRevision&&(pestana==="semana"||resumenDetalle)&&<p className="mhs-alerta" role="status">
        Revisión semanal desde el domingo a las 23:40 (hora argentina).
        {faltantes.length>0?" Pendientes: "+faltantes.join(", ")+".":" Todos los turnos están revisados."}
      </p>}
@@ -519,16 +526,31 @@ export function MunroWeeklySchedule(){
          </form>}
        </div>}
      </>}
-     {pestana==="resumen"&&<div className="mhs-resumen">
+     {pestana==="resumen"&&!resumenDetalle&&<section className="mhs-resumen-semanas" aria-label="Semanas del resumen">
+       <h2>Resumen semanal</h2>
+       <div className="mhs-lista-semanas">
+       {semanasResumen.map(inicio=><button key={inicio} type="button" className="mhs-semana-item"
+          aria-label={"Abrir resumen de la semana del "+semanaLabel(inicio)}
+          onClick={()=>{if(seleccionarSemana(inicio))setResumenDetalle(true);}}>
+          <CalendarDays size={19} aria-hidden="true"/>
+          <span>Semana del {semanaLabel(inicio)}</span>
+          <ChevronRight size={19} aria-hidden="true"/>
+        </button>)}
+       </div>
+     </section>}
+     {pestana==="resumen"&&resumenDetalle&&<div className="mhs-resumen">
+       <button type="button" className="mhs-volver-semanas" onClick={()=>setResumenDetalle(false)}>
+         <ChevronLeft size={18}/> Volver a semanas
+       </button>
        <section className="mhs-feriados-semana" aria-label="Resumen individual por colaborador">
          <div className="mhs-feriados-cabeza">
            <strong>Resumen individual por colaborador</strong>
-           <small>Cada tabla se arma sola con los horarios cargados en Semana actual. Feriados y vacaciones se activan debajo del estado de cada colaborador.</small>
+           <small>Los datos corresponden a la semana seleccionada. Abrí un colaborador para consultar su detalle.</small>
          </div>
        </section>
        {filasResumen.map(f=>{
          const r=f.resumen, porHora=f.modalidad==="hora";
-         return <details className="mhs-colab" key={f.id} open>
+         return <details className="mhs-colab" key={semana+":"+f.id}>
            <summary><span className="mhs-colab-nombre">{f.nombre}</span>
              <span className="mhs-modalidad">{porHora?"Por hora":"Por turno"}</span></summary>
            {tablaDias(f.modalidad,f.datos,semana,feriados,enRevision)}
@@ -551,42 +573,12 @@ export function MunroWeeklySchedule(){
        <p>Criterio de liquidación: Trabajado + OFF + Vacaciones + adicional de Feriado.
          OFF inicial: 1 turno o 4:30 horas (modificable). Vacaciones y feriados son opcionales.
          El feriado suma exclusivamente lo trabajado en los días seleccionados.</p>
-       <section className="mhs-historial" aria-labelledby="mhs-historial-titulo">
-       <h2 id="mhs-historial-titulo">Historial</h2>
-       <p>Elegí una semana para ver el resumen y consultar las entradas y salidas de cada día.</p>
-       {registros.length===0?<p>Todavía no hay semanas anteriores guardadas en esta planilla.</p>:
-       registros.map(grupo=>{
-         const inicio=grupo[0].semana,festivos=planilla.feriados_historial?.[inicio]||[];
-         const cerrado=planilla.cierres?.includes(inicio)===true;
-         const completo=grupo.every(r=>{
-           const x=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
-           return x.total!==null&&x.pendientes===0;
-         });
-         return <details key={inicio}>
-           <summary>Semana {semanaLabel(inicio)} · {inicio.slice(0,4)} · {grupo.length} colaboradores · {cerrado?"Finalizada":completo?"Anterior · completa":"Revisar antes de liquidar"}</summary>
-           <div className="mhs-archivo-contenido">
-           <h3>Resumen de la semana · por colaborador</h3>
-           {grupo.map(r=>{
-             const c=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
-             return <details className="mhs-colab mhs-archivo-persona" key={r.id}>
-               <summary><span className="mhs-colab-nombre">{r.nombre}</span>
-                 <span className="mhs-modalidad">{r.modalidad==="hora"?"Por hora":"Por turno"}</span></summary>
-               {tablaDias(r.modalidad,r.datos,inicio,festivos,true)}
-               {liquidacion(r.modalidad,c,cantidad(r.modalidad,c.off),
-                 vacacionesHabilitadas(r.datos,inicio)?cantidad(r.modalidad,c.vacaciones):null,null,
-                 feriadoHabilitado(r.datos,inicio,festivos))}
-             </details>;
-           })}
-           </div>
-         </details>;
-       })}
        <details className="mhs-archivo-anterior">
          <summary>Historial anterior conservado</summary>
          <div className="mhs-archivo-contenido">
            <ScheduleHistory embebido soloArchivo />
          </div>
        </details>
-       </section>
      </div>}
    </>}
  </section>;

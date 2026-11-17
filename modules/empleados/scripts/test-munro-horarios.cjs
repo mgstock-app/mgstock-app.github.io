@@ -47,7 +47,8 @@ assert.match(ui,/rm_munro_horarios_agregar/);
 assert.match(hub,/MunroWeeklySchedule/);
 assert.match(hub,/munro \? <MunroWeeklySchedule \/> : <>/);
 assert.match(hub,/<BranchScheduleLink key=\{local\} local=\{local\} compact/);
-assert.match(ui,/pestana==="resumen"&&<div className="mhs-resumen">[\s\S]*?<section className="mhs-historial"/);
+assert.match(ui,/pestana==="resumen"&&!resumenDetalle&&<section className="mhs-resumen-semanas"/);
+assert.match(ui,/pestana==="resumen"&&resumenDetalle&&<div className="mhs-resumen"/);
 assert.match(archive,/soloArchivo/);
 assert.match(sql,/generate_series\(1,8\)/);
 assert.match(sql,/case when i<=3 then 'turno' else 'hora' end/);
@@ -90,7 +91,8 @@ assert.match(ui,/mhs-liquidacion/);
 // Resumen individual: sin cuadro general; una tabla diaria y una liquidación por colaborador.
 assert.doesNotMatch(ui,/<table className="mhs-liquidacion">/,"El cuadro general del resumen fue reemplazado");
 assert.doesNotMatch(ui,/Cobra por/,"Sin columnas del cuadro general, tampoco en el Historial");
-assert.match(ui,/filasResumen\.map\(f=>\{[\s\S]*?<details className="mhs-colab" key=\{f\.id\} open>/);
+assert.match(ui,/filasResumen\.map\(f=>\{[\s\S]*?<details className="mhs-colab" key=\{semana\+":"\+f\.id\}>/);
+assert.doesNotMatch(ui,/className="mhs-colab"[^>]* open>/);
 assert.match(ui,/Día<\/th><th scope="col">Mañana<\/th>\s*<th scope="col">Noche<\/th><th scope="col">Trabajado<\/th><th scope="col">Estado/);
 for(const texto of ["Resumen de liquidación","Turnos trabajados","Horas trabajadas","<dt>OFF</dt>","<dt>Feriado</dt>"])
   assert.ok(ui.includes(texto),"Falta en la liquidación individual: "+texto);
@@ -98,7 +100,7 @@ assert.match(ui,/aria-label=\{"OFF de "\+f\.nombre\}[\s\S]*?cambiarDia\(f\.id,se
 assert.doesNotMatch(ui,/OFF pagos/,"La fila se llama solo OFF");
 assert.match(ui,/\{conFeriado&&<div><dt>Feriado<\/dt>/,"Feriado solo se muestra con la casilla de feriado marcada");
 assert.match(ui,/feriadoHabilitado\(f\.datos,semana,feriados\)\)\}/);
-assert.match(ui,/feriadoHabilitado\(r\.datos,inicio,festivos\)\)\}/);
+assert.match(ui,/mhs-resumen-semanas/,"El índice solo enumera semanas");
 const stock=fs.readFileSync("../../public/stock/app.js","utf8");
 assert.match(stock,/data-act="staff-horarios" aria-label="Staff · abrir Horarios de Munro"/,
  "Staff debe aparecer como atajo directo en el menú de Munro");
