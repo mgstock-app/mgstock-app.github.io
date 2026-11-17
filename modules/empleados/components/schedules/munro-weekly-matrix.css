@@ -75,10 +75,3 @@
    flex:1 1 0%;width:0;min-width:0;max-width:100%;box-sizing:border-box
  }
 }
-
-/* Última capa de la matriz: la etiqueta FERIADO marcada debe conservar contraste. */
-.mhs-tabla .mhs-cuatro>label.mhs-dia-extra--marcado{border-color:#a96e0c;background:#f5d888;color:#5d3e04}
-.mhs-tabla .mhs-cuatro>label.mhs-dia-extra--marcado span{color:#5d3e04;font-weight:850;min-height:0}
-.mhs-tabla .mhs-cuatro>label.mhs-dia-extra--marcado .mhs-feriado-marcado{color:#fff}
-
-.mhs-tabla tbody tr.mhs-inactivo td.mhs-celda-feriado{background:#fff3d8}
