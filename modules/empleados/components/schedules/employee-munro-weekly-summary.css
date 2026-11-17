@@ -1,0 +1,35 @@
+.employee-munro-horarios{display:grid;gap:14px;min-width:0;width:100%}
+.ems{display:grid;gap:12px;border:1px solid #dce5ee;border-radius:14px;background:#fff;padding:15px;min-width:0;color:#172f4c}
+.ems *{box-sizing:border-box}
+.ems-encabezado{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ems-encabezado h2{display:flex;align-items:center;gap:8px;margin:0;font-size:18px}
+.ems-encabezado p{margin:6px 0 0;color:#60738b;font-size:12px}
+.ems-actualizar{display:grid;place-items:center;min-width:39px;min-height:39px;background:#fff;border:1px solid #cad8e8;border-radius:9px;color:#163f67;cursor:pointer}
+.ems-aviso{margin:0;background:#f7f9fc;border:1px solid #dce5f0;padding:12px;border-radius:9px;color:#304862;font-size:13px}
+.ems-semana{display:grid;gap:6px;font-size:12px;font-weight:750;color:#40536a}
+.ems-semana select{max-width:100%;width:100%;min-height:43px;background:#fff;color:#182e48;padding:8px;border:1px solid #c8d4e3;border-radius:9px}
+.ems-nombre{margin:0;font-size:13px;color:#516278}
+.ems-nombre strong{color:#203c60}
+.ems-tabla-scroll{overflow-x:auto;max-width:100%;border:1px solid #dde5ee;border-radius:10px}
+.ems-dias{width:100%;border-collapse:collapse;font-size:12px}
+.ems-dias th,.ems-dias td{text-align:left;padding:9px 7px;border-bottom:1px solid #e7edf4}
+.ems-dias thead{background:#223b58;color:#fff}
+.ems-dias tbody th{font-weight:750;white-space:nowrap}
+.ems-dias tbody tr:last-child th,.ems-dias tbody tr:last-child td{border-bottom:0}
+.ems-liquidacion{margin:0;border:1px solid #dce5ee;border-radius:10px;overflow:hidden}
+.ems-liquidacion>div{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid #e7edf4;font-size:13px}
+.ems-liquidacion>div:last-child{border:0}
+.ems-liquidacion dt{color:#445a70}
+.ems-liquidacion dd{margin:0;text-align:right;font-weight:700;color:#233d5c}
+.ems-liquidacion .ems-total{background:#223b58}
+.ems-liquidacion .ems-total dt,.ems-liquidacion .ems-total dd{color:white;font-weight:800}
+@media(max-width:600px){
+ .ems{padding:11px;gap:10px}
+ .ems-tabla-scroll{overflow:visible}
+ .ems-dias{table-layout:fixed;font-size:10.5px}
+ .ems-dias th,.ems-dias td{padding:7px 3px;overflow-wrap:anywhere}
+ .ems-dias th:nth-child(1){width:23%}
+ .ems-dias th:nth-child(2),.ems-dias th:nth-child(3){width:20%}
+ .ems-dias th:nth-child(4){width:18%}
+ .ems-dias th:nth-child(5){width:19%}
+}
