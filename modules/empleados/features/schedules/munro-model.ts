@@ -97,7 +97,8 @@ export function fechasFeriadoColaborador(datos:SemanaHorarios,semana:string,glob
  const flag=datos?.[semana]?.feriados_habilitados;
  if(flag===false)return [];
  return diasSemana(semana).filter(d=>flag===true?datos?.[d]?.feriado===true:
-   datos?.[d]?.feriado===true||globales.includes(d));
+   // Una desmarcación explícita prevalece sobre el feriado global legado.
+   datos?.[d]?.feriado===true||(datos?.[d]?.feriado!==false&&globales.includes(d)));
 }
 export function resumenPersona(modalidad:Modalidad,datos:SemanaHorarios,semana:string,now=new Date(),feriados:string[]=[]){
  const completos=revisarSemana(semana,now);
