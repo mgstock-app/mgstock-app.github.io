@@ -896,6 +896,7 @@ function view(){
  '<label class="gcm-field-responsable">Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
  '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
+ '<div data-gcm-recovery-holder>'+(shift==='manana_entrada'?(morning()?.recoveryPanel()||''):'')+'</div>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
  (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
@@ -1026,6 +1027,41 @@ document.addEventListener('click',async e=>{
   // Pulsar fuera del cuadro cierra el menú sin alterar el conteo.
   const dialog=e.target?.matches?.('.gcm-product-dialog')?e.target:null;
   if(dialog?.open)dialog.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-open-pending-night')){
+  e.preventDefault();
+  // El gerente puede recuperar SOLO la Noche salida anterior aún abierta.
+  // Se confirma lo ya cargado en Mañana entrada antes de cambiar la fecha.
+  if(historyMode||shift!=='manana_entrada'||!editable()||!snapshot||loading||busy||finishing){
+   api?.toast?.('Esperá que termine de guardar el conteo antes de cambiar de turno.');
+   return;
+  }
+  const originalDay=day;
+  el.disabled=true;el.textContent='Verificando turno pendiente…';
+  try{
+   await verifyTurnSaved();
+   if(day!==originalDay||shift!=='manana_entrada')throw Error('Cambió el turno actual. Volvé a revisar.');
+   const comparison=await rpc('gestlok_munro_conteo_compare_morning',{p_day:originalDay});
+   const previousDay=plusDays(originalDay,-1);
+   if(comparison?.previous_day!==previousDay||comparison.baseline_ready||comparison.first_day)
+    throw Error('La noche anterior ya no figura pendiente. Actualizá la comparación.');
+   const previous=await rpc('gestlok_munro_conteo_state',{p_day:previousDay});
+   if(!Array.isArray(previous?.counts)||!Array.isArray(previous?.products))
+    throw Error('No se pudieron cargar los datos del turno noche.');
+   if(previous.counts.find(r=>r.shift==='noche_salida')?.status==='finalizado')
+    throw Error('Noche salida ya está finalizada. Volvé a comparar la mañana.');
+   ++generation;
+   morning()?.clear();
+   autoResumeTurn=false;day=previousDay;shift='noche_salida';activeVto='1';
+   historyMode=false;historyRecord=null;snapshot=previous;overlayDrafts();error='';
+   api?.toast?.('Noche salida del '+labelDay(previousDay)+': revisá y cerrá el turno pendiente.');
+  }catch(err){
+   error=err.message||'No se pudo abrir Noche salida';
+   api?.toast?.(error);
+  }finally{
+   el.disabled=false;api.render();
+  }
   return;
  }
  if(el.hasAttribute('data-gcm-category-toggle')||el.hasAttribute('data-gcm-category-close')){
