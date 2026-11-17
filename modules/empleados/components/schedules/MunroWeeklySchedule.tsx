@@ -431,7 +431,7 @@ export function MunroWeeklySchedule(){
    <nav className="mhs-pestanas" aria-label="Vistas de Horarios">
      {([["semana","Semana actual"],["resumen","Resumen semanal"]] as const)
        .map(([id,label])=><button key={id} type="button" aria-current={pestana===id?"page":undefined}
-         onClick={()=>{setPestana(id);setResumenDetalle(false);}}>{label}</button>)}
+         onClick={()=>{if(id==="semana"&&!seleccionarSemana(semanaActual()))return;setPestana(id);setResumenDetalle(false);}}>{label}</button>)}
    </nav>
    {error&&<p className="mhs-alerta" role="alert">{error}</p>}
    {guardando&&<p role="status" className="mhs-ayuda">Guardando cambios automáticamente…</p>}
