@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CalendarDays, ExternalLink, LockKeyhole, RefreshCcw, FileSpreadsheet } from "lucide-react";
 import { rpc } from "@/features/access/api";
 import { employeeSheetPreview } from "@/utils/employee-schedule-preview";
+import { EmployeeMunroWeeklySummary } from "./EmployeeMunroWeeklySummary";
 import { useAuth } from "@/components/auth/AuthProvider";
 import "./employee-schedule-link.css";
 
@@ -41,7 +42,9 @@ export function EmployeeScheduleLink() {
   }, [user?.role, user?.status, user?.local_id, reload]);
   if (user?.role !== "employee" || user.status !== "approved" || !user.local_id) return null;
   const preview = info ? employeeSheetPreview(info.url) : null;
-  return <section className="employee-sheets" aria-label="Horarios de mi local">
+  return <div className="employee-munro-horarios">
+    {user.local_id==="munro"&&<EmployeeMunroWeeklySummary />}
+    <section className="employee-sheets" aria-label="Horarios de mi local">
     <div className="employee-sheets__header">
       <span className="employee-sheets__icon"><CalendarDays size={22}/></span>
       <div><h2>Horarios de mi local</h2><p>{user.local_name || info?.local_name || "Mi local asignado"} · Google Sheets</p></div>
@@ -61,5 +64,6 @@ export function EmployeeScheduleLink() {
       : <p className="employee-sheets__pending">Tu empresa todavía no configuró un Google Sheets para este local.</p>}
     <p className="employee-sheets__note"><LockKeyhole size={15}/> El dueño debe compartir el archivo con tu cuenta de Google como <strong>Lector</strong>. Si Google te permite editar, solicitá que corrijan el permiso en Drive.</p>
     <button type="button" className="employee-sheets__refresh" disabled={busy} onClick={() => { setBusy(true); load(); }}><RefreshCcw size={15}/> Actualizar enlace</button>
-  </section>;
+  </section>
+  </div>;
 }
