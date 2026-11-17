@@ -48,7 +48,7 @@ export function MunroWeeklySchedule(){
  const intentoAutomatico=useRef("");
 
  const semanaCerrada=planilla?.semana_cerrada===true;
- const puedeEditar=planilla?.puede_editar===true&&!semanaCerrada;
+ const puedeEditar=planilla?.puede_editar===true; // Con permiso, una semana cerrada admite correcciones auditadas.
  const dias=useMemo(()=>diasSemana(semana),[semana]);
  const enRevision=revisarSemana(semana,momento);
 
@@ -58,7 +58,7 @@ export function MunroWeeklySchedule(){
      const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
      const actual=p.personas.map(persona=>{
        const registro=p.planillas.find(x=>x.id===persona.id);
-       return {...persona,datos:registro?.datos||{},version:registro?.version||0};
+       return {...persona,...(p.semana_cerrada&&registro?{nombre:registro.nombre,modalidad:registro.modalidad,estado:registro.estado||persona.estado,inactivo_desde:registro.inactivo_desde??persona.inactivo_desde}:{}),datos:registro?.datos||{},version:registro?.version||0};
      });
      setPlanilla(p);setFilas(actual);setPendientes([]);setEditando(false);setPersonaEnEdicion(null);
      revisiones.current={};intentoAutomatico.current="";
@@ -89,7 +89,7 @@ export function MunroWeeklySchedule(){
        setPlanilla(p);
        setFilas(p.personas.map(persona=>{
          const r=p.planillas.find(x=>x.id===persona.id);
-         return {...persona,datos:r?.datos||{},version:r?.version||0};
+         return {...persona,...(p.semana_cerrada&&r?{nombre:r.nombre,modalidad:r.modalidad,estado:r.estado||persona.estado,inactivo_desde:r.inactivo_desde??persona.inactivo_desde}:{}),datos:r?.datos||{},version:r?.version||0};
        }));
        setFeriados(p.feriados||[]);
      }catch{/* Mantener los datos actuales hasta recuperar la conexión. */}
@@ -215,10 +215,15 @@ export function MunroWeeklySchedule(){
    for(const f of validos){
     const revision=revisiones.current[f.id]||0;
     try{
-     const resultado=await rpc<{ok:boolean;version:number;id:number}>("rm_munro_horarios_guardar",{
-      p_persona:f.id,p_semana:semana,p_nombre:f.nombre,
-      p_estado:f.estado,p_datos:f.datos,p_version:f.version
-     });
+     const resultado=semanaCerrada
+       ?await rpc<{ok:boolean;version:number;id:number}>("rm_munro_horarios_corregir_cierre",{
+        p_persona:f.id,p_semana:semana,p_datos:f.datos,p_version:f.version,
+        p_motivo:"Corrección de carga en semana finalizada"
+       })
+       :await rpc<{ok:boolean;version:number;id:number}>("rm_munro_horarios_guardar",{
+        p_persona:f.id,p_semana:semana,p_nombre:f.nombre,
+        p_estado:f.estado,p_datos:f.datos,p_version:f.version
+       });
      if(!resultado?.ok||!Number.isInteger(resultado.version))throw new Error("No se confirmó el guardado.");
      setFilas(actual=>actual.map(fila=>fila.id===f.id?{...fila,version:resultado.version}:fila));
      // Si siguieron escribiendo mientras guardaba, la nueva edición sigue pendiente.
@@ -228,13 +233,13 @@ export function MunroWeeklySchedule(){
      break;
     }
    }
-   if(!huboFallo&&!primerError)setMensaje("Guardado automáticamente.");
+   if(!huboFallo&&!primerError)setMensaje(semanaCerrada?"Corrección guardada en el historial.":"Guardado automáticamente.");
    else if(!huboFallo)setMensaje("Los otros colaboradores se guardaron automáticamente.");
   }finally{
    guardadoEnCurso.current=false;
    setGuardando(false);
   }
- },[puedeEditar,editando,filas,pendientes,dias,enRevision,semana,feriados]);
+ },[puedeEditar,semanaCerrada,editando,filas,pendientes,dias,enRevision,semana,feriados]);
  // Debounce de 900 ms sin recargar, borrar el borrador ni sacar el foco.
  useEffect(()=>{
   if(!editando||!puedeEditar||!pendientes.length||guardando)return;
@@ -277,7 +282,7 @@ export function MunroWeeklySchedule(){
      setError("No hay horarios guardados esta semana. Completá una planilla antes del cierre.");
      return;
    }
-   if(!window.confirm("¿Finalizar la semana del "+semanaLabel(semana)+"? Se guardará una copia definitiva en Historial, ya no se podrá modificar y se abrirá la siguiente semana vacía, conservando los colaboradores activos. Esta acción no se puede deshacer."))return;
+   if(!window.confirm("¿Finalizar la semana del "+semanaLabel(semana)+"? Se guardará una copia definitiva en Historial, se abrirá una semana nueva vacía. Las correcciones posteriores quedarán registradas en el historial."))return;
    setCerrandoSemana(true);setError("");setMensaje("");
    try{
      const resultado=await rpc<{ok:boolean;siguiente_semana:string;archivado:boolean}>("rm_munro_horarios_finalizar_semana",{p_semana:semana});
@@ -301,7 +306,7 @@ export function MunroWeeklySchedule(){
  const semanasResumen=[...new Set([
   semanaActual(momento),...(planilla?.cierres||[]),...registros.map(grupo=>grupo[0].semana)
  ])].filter(inicio=>inicio<=semanaActual(momento)).sort((a,b)=>b.localeCompare(a));
- const fuentesResumen=semanaCerrada&&planilla?.planillas.length?planilla.planillas:filas;
+ const fuentesResumen=filas; // Actualizar en pantalla el total apenas se corrigen horarios.
  const filasResumen=fuentesResumen.filter(f=>f.nombre.trim()).map(f=>({
    ...f,resumen:resumenLiquidacion(f.modalidad,f.datos,semana,feriados,momento)
  }));
@@ -380,7 +385,7 @@ export function MunroWeeklySchedule(){
  const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
    <div className={"mhs-estado mhs-estado-"+f.estado}>
      <span className="mhs-luz-estado" aria-hidden="true"/>
-     {editarPersona(f.id)
+     {editarPersona(f.id)&&!semanaCerrada
        ?<select aria-label={"Estado de "+cabecera(f)} value={f.estado}
          onChange={e=>cambiarEstado(f,e.target.value as Estado)}>
          {ESTADOS.map(estado=><option key={estado} value={estado}>
@@ -395,7 +400,7 @@ export function MunroWeeklySchedule(){
      <span>Inactivo desde</span>
      <input type="date" aria-label={"Inactivo desde · "+cabecera(f)}
        max={fechaAR(new Date())} value={f.inactivo_desde||""}
-       disabled={!editarPersona(f.id)}
+       disabled={!editarPersona(f.id)||semanaCerrada}
        onChange={e=>cambiarInactivoDesde(f,e.target.value)}/>
      {!f.inactivo_desde&&<small>Fecha pendiente de completar</small>}
    </label>}
@@ -485,8 +490,8 @@ export function MunroWeeklySchedule(){
        {planilla.puede_editar&&<div className="mhs-acciones">
          {pestana==="semana"&&!semanaCerrada&&<button type="button" className="mhs-cierre-semanal" disabled={guardando||cerrandoSemana||pendientes.length>0||semana>semanaActual()}
            onClick={()=>void finalizarSemana()}><CheckCircle2 size={18}/> Semana finalizada</button>}
-         {semanaCerrada?<span className="mhs-cerrada-chip"><CheckCircle2 size={17}/> Semana finalizada · solo lectura</span>:
-         !editando?<button type="button" onClick={()=>{setPersonaEnEdicion(null);setEditando(true);}}><Pencil size={17}/> Modificar</button>:
+         {semanaCerrada&&<span className="mhs-cerrada-chip"><CheckCircle2 size={17}/> Semana finalizada · correcciones auditadas</span>}
+          {!editando?<button type="button" onClick={()=>{setPersonaEnEdicion(null);setEditando(true);}}><Pencil size={17}/> Modificar</button>:
           personaEnEdicion!==null?<span className="mhs-accion-estado">Edición individual activa</span>:
            <><button type="button" disabled={guardando} onClick={()=>{if(pendientes.length){setError("Hay cambios pendientes; no se pueden descartar sin revisarlos.");return;}setEditando(false);setPersonaEnEdicion(null);}}>Finalizar edición</button>
              <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>
@@ -498,7 +503,7 @@ export function MunroWeeklySchedule(){
        {faltantes.length>0?" Pendientes: "+faltantes.join(", ")+".":" Todos los turnos están revisados."}
      </p>}
      {pestana==="semana"&&<>
-       {semanaCerrada&&<p className="mhs-exito" role="status">Esta semana ya está archivada en Historial. No se puede editar.</p>}
+       {semanaCerrada&&<p className="mhs-exito" role="status">Semana archivada: podés corregir los horarios con Modificar. Los cambios quedan registrados.</p>}
        <details className="mhs-ayuda-detalle"><summary>Cómo cargar los horarios</summary><p className="mhs-ayuda">Tres colaboradores por turno y cinco por hora. Cargá los nombres y horarios cuando quieras.
          Cada entrada o cambio se guarda automáticamente. OFF indica franco completo sin horarios;
          Medio OFF permite trabajar solo una franja. Los totales muestran únicamente horas y turnos realmente cargados.
@@ -523,7 +528,7 @@ export function MunroWeeklySchedule(){
              return <tr key={f.id} className={f.estado==="inactivo"?"mhs-inactivo":""}>
                <th scope="row"><div className="mhs-matriz-colaborador"><div className="mhs-colaborador">
                  <span className="mhs-modalidad">{f.modalidad==="turno"?"Por turno":"Por hora"}</span>
-                 {editarPersona(f.id)?<input type="text" maxLength={80} placeholder={"Nombre · "+cabecera(f)}
+                 {editarPersona(f.id)&&!semanaCerrada?<input type="text" maxLength={80} placeholder={"Nombre · "+cabecera(f)}
                    value={f.nombre} onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}
                    aria-label={"Nombre del colaborador "+f.id}/>:<strong>{cabecera(f)}</strong>}
                  <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
@@ -544,7 +549,7 @@ export function MunroWeeklySchedule(){
          const dia=dias[diaSeleccionado],r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
          return <article className="mhs-card" key={f.id}>
            <header><div><span className="mhs-modalidad">{f.modalidad==="hora"?"Por hora":"Por turno"}</span>
-             {editarPersona(f.id)?<input value={f.nombre} placeholder={"Nombre · Colaborador "+f.id}
+             {editarPersona(f.id)&&!semanaCerrada?<input value={f.nombre} placeholder={"Nombre · Colaborador "+f.id}
                onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}/>:
                <h3>{cabecera(f)}</h3>}</div>
              <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
@@ -554,7 +559,7 @@ export function MunroWeeklySchedule(){
            {inputsDia(f,dia)}
          </article>;
        })}</div>
-       {puedeEditar&&<div className="mhs-agregar">
+       {puedeEditar&&!semanaCerrada&&<div className="mhs-agregar">
          {!agregando?<button type="button" onClick={()=>setAgregando(true)}><Plus size={17}/> Agregar colaborador por hora</button>:
          <form onSubmit={e=>{e.preventDefault();void agregar();}}>
            <label>Nombre del nuevo colaborador (siempre por hora)
