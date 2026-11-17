@@ -258,8 +258,9 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
   cy.contains("summary","Semana 09/11 al 15/11").should("contain.text","Finalizada").click();
   cy.get(".mhs-historial > details").first().within(()=>{
-    cy.get("h3").contains("Resumen de la semana").should("be.visible");
+    cy.get(".mhs-archivo-contenido > .mhs-resumen-desbordar").should("not.exist");
     cy.contains(".mhs-archivo-persona > summary","Julia").click();
+    cy.get(".mhs-archivo-persona[open]").should("contain.text","Resumen individual").and("contain.text","Total a liquidar");
     cy.get(".mhs-archivo-persona[open] tbody tr").should("have.length",7);
     cy.get(".mhs-archivo-persona[open] tbody").contains("Lun 09/11").should("be.visible");
   });
