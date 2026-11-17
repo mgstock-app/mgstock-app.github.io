@@ -106,10 +106,17 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
-   cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","5");
-   cy.get(".mhs-liquidacion tbody tr").first().should("contain.text","Feriado: 12/11");
+   // Resumen individual: una tabla de siete días y su liquidación por colaborador.
+   cy.get(".mhs-resumen > .mhs-colab").first().should("contain.text","Lucía").find(".mhs-dias tbody tr").should("have.length",7);
+   cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-dias tbody").contains("tr","Jue 12/11").should("contain.text","2 t.").and("contain.text","Feriado");
+   cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-total-liquidacion").should("contain.text","5 turnos");
+   cy.get(".mhs-resumen > .mhs-colab").first().should("contain.text","Feriado: 12/11");
+   // Feriado aparece solo en quien tiene la casilla marcada; la fila de OFF se llama OFF.
+   cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-liquidacion dt").contains(/^Feriado$/).should("exist");
+   cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-liquidacion dt").contains(/^OFF$/).should("exist");
+   cy.get(".mhs-resumen").should("not.contain.text","OFF pagos");
    cy.get('input[aria-label="OFF de Lucía"]').clear().type("0");
-   cy.get(".mhs-liquidacion tbody tr").first().find(".mhs-total-liquidacion").should("contain.text","4");
+   cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-total-liquidacion").should("contain.text","4 turnos");
    cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
    cy.wrap(null).should(()=>{
      expect(ultimo().p_datos[SEMANA].feriados_habilitados).to.eq(true);

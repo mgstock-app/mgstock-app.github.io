@@ -108,13 +108,8 @@
 .mhs-feriados-dias label.mhs-feriado-elegido{background:#edf1f6;border-color:#162b4a;font-weight:700}
 .mhs-feriados-dias input{accent-color:#162b4a}
 .mhs-dia-feriado{font-size:10px;font-weight:650;color:#162b4a}
-.mhs-resumen-desbordar table.mhs-liquidacion{min-width:1050px}
-.mhs-liquidacion th,.mhs-liquidacion td{vertical-align:middle}
-.mhs-liquidacion tbody th{background:#fff;color:#152440;font-weight:700;border-bottom:1px solid #e1e5ed}
 .mhs-liquidacion input{max-width:110px;min-width:63px;width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:8px;font-size:12px;color:#152440;background:#fff}
 .mhs-liquidacion input:disabled{border-color:#e2e8f0;color:#334155;background:#f8fafc}
-.mhs-liquidacion td:last-child{min-width:185px}
-.mhs-liquidacion td:last-child input{max-width:245px;margin-top:8px}
 .mhs-nota-auto{display:block;color:#475569;line-height:1.4;font-size:11.5px}
 .mhs-total-liquidacion{background:#f8fafc;white-space:nowrap;text-align:center;font-size:14px}
 .mhs-liquidacion-error{font-weight:700;color:#af302b}
@@ -352,3 +347,46 @@
 .mhs-archivo-contenido{display:grid;gap:10px;min-width:0;padding:0 12px 12px}
 .mhs-archivo-persona>summary{background:#f5f7fa}
 .mhs-archivo-persona tbody th{background:#fff;color:#152440;border-bottom:1px solid #e1e5ed;white-space:nowrap}
+
+/* Resumen individual por colaborador: tabla diaria + resumen de liquidación.
+   Compacto para leerse entero en el celular, sin desplazamiento lateral. */
+.mhs-colab{border:1px solid #d7dde6;border-radius:12px;background:#f7f8fb;padding:0 10px 10px;min-width:0}
+.mhs-colab>summary{display:flex;align-items:center;gap:8px;padding:12px 4px;cursor:pointer;font-weight:800;font-size:15px;color:#152440;text-transform:uppercase}
+.mhs-archivo-persona.mhs-colab>summary{background:transparent}
+.mhs-colab>summary{list-style:none}
+.mhs-colab>summary::-webkit-details-marker{display:none}
+.mhs-colab>summary::before{content:"▶";font-size:10px;color:#475569}
+.mhs-colab[open]>summary::before{content:"▼"}
+.mhs-colab-nombre{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.mhs-colab>summary .mhs-modalidad{text-transform:none;font-weight:650}
+.mhs-colab .mhs-resumen-desbordar{background:#fff}
+.mhs-resumen-desbordar table.mhs-dias{min-width:0;table-layout:auto}
+.mhs-dias tbody th{background:#fff;color:#152440;border-bottom:1px solid #e1e5ed;white-space:nowrap;font-weight:700}
+.mhs-dias td{white-space:nowrap}
+.mhs-dias td:last-child{white-space:normal}
+.mhs-dias tbody tr:last-child th,.mhs-dias tbody tr:last-child td{border-bottom:0}
+.mhs-liquidacion{display:block;margin:10px 0 0;border:1px solid #e1e5ed;border-radius:11px;background:#fff;font-size:13px;overflow:hidden}
+.mhs-liquidacion dl{margin:0}
+.mhs-liquidacion .mhs-liq-titulo{margin:0;padding:9px 11px;background:#edf1f6;color:#152440;font-weight:800;font-size:12px;letter-spacing:.03em;text-transform:uppercase}
+.mhs-liquidacion dl>div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px;border-top:1px solid #eef1f5}
+.mhs-liquidacion dl>div>dt{color:#475569}
+.mhs-liquidacion dd{margin:0;text-align:right;font-weight:700;color:#152440}
+.mhs-liquidacion dd small{font-weight:500;color:#64748b}
+.mhs-liquidacion input{max-width:96px;min-width:63px;text-align:right}
+.mhs-liquidacion .mhs-liq-total{background:#2c3e56}
+.mhs-liquidacion .mhs-liq-total>dt{color:#fff;font-weight:700}
+.mhs-liquidacion .mhs-liq-total .mhs-total-liquidacion{background:transparent;color:#fff;font-size:15px}
+.mhs-liquidacion .mhs-liq-total .mhs-liquidacion-error{color:#ffd0cc}
+.mhs-liquidacion .mhs-liq-nota{display:grid;justify-content:stretch;gap:4px}
+.mhs-liquidacion .mhs-liq-nota dd{text-align:left;font-weight:500}
+.mhs-liquidacion .mhs-liq-nota input{max-width:none;width:100%;text-align:left;margin-top:6px}
+@media(max-width:640px){
+ .mhs-colab{padding:0 7px 8px}
+ .mhs-resumen-desbordar table.mhs-dias{font-size:11.5px;table-layout:fixed}
+ .mhs-dias th:nth-child(1){width:23%}.mhs-dias th:nth-child(2),.mhs-dias th:nth-child(3){width:19%}
+ .mhs-dias th:nth-child(4){width:20%}.mhs-dias th:nth-child(5){width:19%}
+ .mhs-dias td{white-space:normal;overflow-wrap:anywhere}
+ .mhs-resumen-desbordar .mhs-dias th,.mhs-resumen-desbordar .mhs-dias td{padding:8px 4px}
+ .mhs-resumen-desbordar .mhs-dias th:first-child{padding-left:8px}
+ .mhs-liquidacion{font-size:12.5px}
+}

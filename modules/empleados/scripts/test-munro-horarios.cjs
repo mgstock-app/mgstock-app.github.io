@@ -85,8 +85,20 @@ assert.ok(resumenLiquidacion("hora",{"2026-11-09":{off:"99:99"}},"2026-11-09",[]
   "no calcular un resumen con OFF inválido");
 assert.match(ui,/Habilitar feriado/);
 assert.match(ui,/Resumen semanal/);
-assert.match(ui,/Total a liquidar/);
+assert.match(ui,/Total final a liquidar/);
 assert.match(ui,/mhs-liquidacion/);
+// Resumen individual: sin cuadro general; una tabla diaria y una liquidación por colaborador.
+assert.doesNotMatch(ui,/<table className="mhs-liquidacion">/,"El cuadro general del resumen fue reemplazado");
+assert.doesNotMatch(ui,/Cobra por/,"Sin columnas del cuadro general, tampoco en el Historial");
+assert.match(ui,/filasResumen\.map\(f=>\{[\s\S]*?<details className="mhs-colab" key=\{f\.id\} open>/);
+assert.match(ui,/Día<\/th><th scope="col">Mañana<\/th>\s*<th scope="col">Noche<\/th><th scope="col">Trabajado<\/th><th scope="col">Estado/);
+for(const texto of ["Resumen de liquidación","Turnos trabajados","Horas trabajadas","<dt>OFF</dt>","<dt>Feriado</dt>"])
+  assert.ok(ui.includes(texto),"Falta en la liquidación individual: "+texto);
+assert.match(ui,/aria-label=\{"OFF de "\+f\.nombre\}[\s\S]*?cambiarDia\(f\.id,semana,"off"/,"OFF sigue editable y con guardado automático");
+assert.doesNotMatch(ui,/OFF pagos/,"La fila se llama solo OFF");
+assert.match(ui,/\{conFeriado&&<div><dt>Feriado<\/dt>/,"Feriado solo se muestra con la casilla de feriado marcada");
+assert.match(ui,/feriadoHabilitado\(f\.datos,semana,feriados\)\)\}/);
+assert.match(ui,/feriadoHabilitado\(r\.datos,inicio,festivos\)\)\}/);
 const stock=fs.readFileSync("../../public/stock/app.js","utf8");
 assert.match(stock,/data-act="staff-horarios" aria-label="Staff · abrir Horarios de Munro"/,
  "Staff debe aparecer como atajo directo en el menú de Munro");

@@ -1,11 +1,11 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, CheckCircle2 } from "lucide-react";
 import { rpc } from "@/features/access/api";
 import { ScheduleHistory } from "./ScheduleHistory";
 import {
  diasSemana,evaluarDia,fechaAR,fechaCorta,fechasFeriadoColaborador,feriadoHabilitado,vacacionesHabilitadas,formatoHoras,revisarSemana,resumenPersona,resumenLiquidacion,semanaActual,
- sumarDias,type Estado,type Persona,type Planilla,type Registro,type SemanaHorarios,
+ sumarDias,type Estado,type Modalidad,type Persona,type Planilla,type Registro,type SemanaHorarios,
 } from "@/features/schedules/munro-model";
 import "./munro-weekly.css";
 import "./munro-weekly-polish.css";
@@ -286,6 +286,53 @@ export function MunroWeeklySchedule(){
  const faltantes=filas.filter(f=>f.estado!=="inactivo"&&(
    !f.nombre.trim() || dias.some(fecha=>evaluarDia(f.datos[fecha]||{},true).errores.length>0)
  )).map(f=>f.nombre||"Colaborador "+f.id);
+ // Resumen individual: la misma tabla diaria y la misma liquidación para la
+ // semana abierta (editable, con guardado automático) y para el Historial.
+ const cantidad=(modalidad:Modalidad,n:number)=>modalidad==="hora"?formatoHoras(n)+" h":formatoTurnos(n);
+ const tablaDias=(modalidad:Modalidad,datos:SemanaHorarios,inicio:string,festivos:string[],exigir:boolean)=>{
+   const conFeriado=fechasFeriadoColaborador(datos,inicio,festivos);
+   const franja=(entrada?:string,salida?:string)=>entrada||salida?(entrada||"—")+" a "+(salida||"—"):"—";
+   return <div className="mhs-resumen-desbordar"><table className="mhs-dias">
+     <thead><tr><th scope="col">Día</th><th scope="col">Mañana</th>
+       <th scope="col">Noche</th><th scope="col">Trabajado</th><th scope="col">Estado</th></tr></thead>
+     <tbody>{diasSemana(inicio).map((dia,i)=>{
+       const d=datos[dia]||{};
+       const jornada=evaluarDia(d,exigir);
+       const marcas=[
+         d.descanso==="off"?"OFF":d.descanso==="medio_off"?"Medio OFF":"",
+         d.vacaciones_dia?"Vacaciones":"",
+         conFeriado.includes(dia)?"Feriado":"",
+       ].filter(Boolean).join(" · ");
+       const trabajado=modalidad==="turno"?jornada.turnos+" t.":formatoHoras(jornada.horas)+" h";
+       return <tr key={dia}>
+         <th scope="row">{DIAS[i]} {fechaCorta(dia)}</th>
+         <td>{franja(d.tm_e,d.tm_s)}</td><td>{franja(d.tt_e,d.tt_s)}</td>
+         <td>{jornada.errores.length?"—":trabajado}</td>
+         <td>{jornada.errores.length?jornada.errores.join(" "):marcas||"—"}</td>
+       </tr>;
+     })}</tbody>
+   </table></div>;
+ };
+ const liquidacion=(modalidad:Modalidad,r:ReturnType<typeof resumenLiquidacion>,
+   off:ReactNode,vacaciones:ReactNode,nota:ReactNode,conFeriado:boolean)=>{
+   const porHora=modalidad==="hora";
+   return <section className="mhs-liquidacion" aria-label="Resumen de liquidación">
+     <h4 className="mhs-liq-titulo">Resumen de liquidación</h4>
+     <dl>
+     <div><dt>{porHora?"Horas trabajadas":"Turnos trabajados"}</dt><dd>{cantidad(modalidad,r.trabajados)}</dd></div>
+     <div><dt>OFF</dt><dd>{off}</dd></div>
+     {vacaciones!==null&&<div><dt>Vacaciones</dt><dd>{vacaciones}</dd></div>}
+     {conFeriado&&<div><dt>Feriado</dt><dd>{cantidad(modalidad,r.extraFeriado)}
+       {r.feriadosTrabajados.length>0&&<small> · {r.feriadosTrabajados.map(fechaCorta).join(", ")}</small>}</dd></div>}
+     <div className="mhs-liq-total"><dt>Total final a liquidar</dt>
+       <dd className="mhs-total-liquidacion">{r.errores.length>0
+         ?<span className="mhs-liquidacion-error">Revisar</span>
+         :r.pendientes>0?"Pendiente":r.total===null?"Revisar":<strong>{cantidad(modalidad,r.total)}</strong>}</dd></div>
+     {(r.observaciones||nota)&&<div className="mhs-liq-nota"><dt>Observaciones</dt>
+       <dd><small className="mhs-nota-auto">{r.observaciones||"—"}</small>{nota}</dd></div>}
+     </dl>
+   </section>;
+ };
  const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
  const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
@@ -473,56 +520,37 @@ export function MunroWeeklySchedule(){
        </div>}
      </>}
      {pestana==="resumen"&&<div className="mhs-resumen">
-       <section className="mhs-feriados-semana" aria-label="Feriados y vacaciones por colaborador">
+       <section className="mhs-feriados-semana" aria-label="Resumen individual por colaborador">
          <div className="mhs-feriados-cabeza">
-           <strong>Feriados y vacaciones por colaborador</strong>
-           <small>Activá la opción debajo de su estado en Semana actual y marcá los días correspondientes. El resumen se completa automáticamente.</small>
+           <strong>Resumen individual por colaborador</strong>
+           <small>Cada tabla se arma sola con los horarios cargados en Semana actual. Feriados y vacaciones se activan debajo del estado de cada colaborador.</small>
          </div>
        </section>
-       <div className="mhs-resumen-desbordar">
-         <table className="mhs-liquidacion">
-           <thead><tr>
-             <th scope="col">Colaborador</th><th scope="col">Cobra por</th>
-             <th scope="col">Trabajado</th><th scope="col">OFF</th>
-             <th scope="col">Vacaciones</th><th scope="col">Feriado</th>
-             <th scope="col">Total a liquidar</th><th scope="col">Observaciones</th>
-           </tr></thead>
-           <tbody>{filasResumen.map(f=>{
-             const r=f.resumen, porHora=f.modalidad==="hora";
-             const convertir=(n:number)=>porHora?formatoHoras(n):String(n);
-             return <tr key={f.id}>
-               <th scope="row">{f.nombre}</th>
-               <td>{porHora?"Hora":"Turno"}</td>
-               <td>{convertir(r.trabajados)}</td>
-               <td><input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
+       {filasResumen.map(f=>{
+         const r=f.resumen, porHora=f.modalidad==="hora";
+         return <details className="mhs-colab" key={f.id} open>
+           <summary><span className="mhs-colab-nombre">{f.nombre}</span>
+             <span className="mhs-modalidad">{porHora?"Por hora":"Por turno"}</span></summary>
+           {tablaDias(f.modalidad,f.datos,semana,feriados,enRevision)}
+           {liquidacion(f.modalidad,r,
+             <input aria-label={"OFF de "+f.nombre} value={f.datos[semana]?.off??(porHora?"4:30":"1")}
+               disabled={!editando||!puedeEditar} inputMode="text"
+               onChange={e=>cambiarDia(f.id,semana,"off",e.target.value)}/>,
+             vacacionesHabilitadas(f.datos,semana)
+               ?<input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
                  disabled={!editando||!puedeEditar} inputMode="text"
-                 onChange={e=>cambiarDia(f.id,semana,"off",e.target.value)}/></td>
-               <td>{vacacionesHabilitadas(f.datos,semana)
-                 ?<input aria-label={"Vacaciones de "+f.nombre} value={f.datos[semana]?.vacaciones??(porHora?"0:00":"0")}
-                   disabled={!editando||!puedeEditar} inputMode="text"
-                   onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/>
-                 :<span className="mhs-sin-extra" title="Vacaciones no activadas">—</span>}</td>
-               <td>{convertir(r.extraFeriado)}</td>
-               <td className="mhs-total-liquidacion">
-                 {r.errores.length>0
-                   ?<span className="mhs-liquidacion-error">Revisar</span>
-                   :r.pendientes>0?"Pendiente":r.total===null?"Revisar":<strong>{convertir(r.total)}</strong>}
-               </td>
-               <td>
-                 <small className="mhs-nota-auto">{r.observaciones||"—"}</small>
-                 {editando&&puedeEditar&&<input aria-label={"Observación manual de "+f.nombre}
-                   placeholder="Aclaración opcional" maxLength={200}
-                   value={f.datos[semana]?.observaciones||""}
-                   onChange={e=>cambiarDia(f.id,semana,"observaciones",e.target.value)}/>}
-               </td>
-             </tr>;
-           })}</tbody>
-         </table>
-       </div>
+                 onChange={e=>cambiarDia(f.id,semana,"vacaciones",e.target.value)}/>:null,
+             editando&&puedeEditar?<input aria-label={"Observación manual de "+f.nombre}
+               placeholder="Aclaración opcional" maxLength={200}
+               value={f.datos[semana]?.observaciones||""}
+               onChange={e=>cambiarDia(f.id,semana,"observaciones",e.target.value)}/>:null,
+             feriadoHabilitado(f.datos,semana,feriados))}
+         </details>;
+       })}
        {filasResumen.length===0&&<p>Primero completá los nombres en Semana actual. El resumen se calculará automáticamente.</p>}
        <p>Criterio de liquidación: Trabajado + OFF + Vacaciones + adicional de Feriado.
          OFF inicial: 1 turno o 4:30 horas (modificable). Vacaciones y feriados son opcionales.
-         El feriado suma exclusivamente lo trabajado en los días seleccionados. Las horas se muestran como horas:minutos, no como dinero.</p>
+         El feriado suma exclusivamente lo trabajado en los días seleccionados.</p>
        <section className="mhs-historial" aria-labelledby="mhs-historial-titulo">
        <h2 id="mhs-historial-titulo">Historial</h2>
        <p>Elegí una semana para ver el resumen y consultar las entradas y salidas de cada día.</p>
@@ -537,46 +565,18 @@ export function MunroWeeklySchedule(){
          return <details key={inicio}>
            <summary>Semana {semanaLabel(inicio)} · {inicio.slice(0,4)} · {grupo.length} colaboradores · {cerrado?"Finalizada":completo?"Anterior · completa":"Revisar antes de liquidar"}</summary>
            <div className="mhs-archivo-contenido">
-           <h3>Resumen de la semana</h3>
-           <div className="mhs-resumen-desbordar"><table>
-             <thead><tr><th>Colaborador</th><th>Cobra por</th><th>Trabajado</th><th>OFF</th>
-               <th>Vacaciones</th><th>Feriado extra</th><th>Total a liquidar</th><th>Observaciones</th></tr></thead>
-             <tbody>{grupo.map(r=>{
-               const c=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
-               const fmt=(n:number)=>r.modalidad==="turno"?String(n):formatoHoras(n);
-               return <tr key={r.id}><td>{r.nombre}</td><td>{r.modalidad==="turno"?"Turno":"Hora"}</td>
-                 <td>{fmt(c.trabajados)}</td><td>{fmt(c.off)}</td><td>{fmt(c.vacaciones)}</td>
-                 <td>{fmt(c.extraFeriado)}</td><td>{c.total===null||c.pendientes?"Revisar":fmt(c.total)}</td>
-                 <td>{c.observaciones||"—"}</td>
-               </tr>;
-             })}</tbody>
-           </table></div>
-           <h3>Detalle por día</h3>
-           {grupo.map(r=><details className="mhs-archivo-persona" key={r.id}>
-             <summary>{r.nombre}</summary>
-             <div className="mhs-resumen-desbordar"><table>
-               <thead><tr><th scope="col">Día</th><th scope="col">Mañana</th>
-                 <th scope="col">Noche</th><th scope="col">Trabajado</th><th scope="col">Estado</th></tr></thead>
-               <tbody>{diasSemana(inicio).map((dia,i)=>{
-                 const d=r.datos[dia]||{};
-                 const jornada=evaluarDia(d,true);
-                 const marcas=[
-                   d.descanso==="off"?"OFF":d.descanso==="medio_off"?"Medio OFF":"",
-                   d.vacaciones_dia?"Vacaciones":"",
-                   fechasFeriadoColaborador(r.datos,inicio,festivos).includes(dia)?"Feriado":"",
-                 ].filter(Boolean).join(" · ");
-                 const franja=(entrada?:string,salida?:string)=>entrada||salida
-                   ?(entrada||"—")+" a "+(salida||"—"):"—";
-                 const trabajado=r.modalidad==="turno"?jornada.turnos+" t.":formatoHoras(jornada.horas)+" h";
-                 return <tr key={dia}>
-                   <th scope="row">{DIAS[i]} {fechaCorta(dia)}</th>
-                   <td>{franja(d.tm_e,d.tm_s)}</td><td>{franja(d.tt_e,d.tt_s)}</td>
-                   <td>{jornada.errores.length?"—":trabajado}</td>
-                   <td>{jornada.errores.length?jornada.errores.join(" "):marcas||"—"}</td>
-                 </tr>;
-               })}</tbody>
-             </table></div>
-           </details>)}
+           <h3>Resumen de la semana · por colaborador</h3>
+           {grupo.map(r=>{
+             const c=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
+             return <details className="mhs-colab mhs-archivo-persona" key={r.id}>
+               <summary><span className="mhs-colab-nombre">{r.nombre}</span>
+                 <span className="mhs-modalidad">{r.modalidad==="hora"?"Por hora":"Por turno"}</span></summary>
+               {tablaDias(r.modalidad,r.datos,inicio,festivos,true)}
+               {liquidacion(r.modalidad,c,cantidad(r.modalidad,c.off),
+                 vacacionesHabilitadas(r.datos,inicio)?cantidad(r.modalidad,c.vacaciones):null,null,
+                 feriadoHabilitado(r.datos,inicio,festivos))}
+             </details>;
+           })}
            </div>
          </details>;
        })}
