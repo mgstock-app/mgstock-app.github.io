@@ -9,6 +9,7 @@ import {
 } from "@/features/schedules/munro-model";
 import "./munro-weekly.css";
 import "./munro-weekly-polish.css";
+import "./munro-weekly-matrix.css";
 
 type Borrador = Persona & {datos:SemanaHorarios;version:number};
 type Pestaña = "semana"|"historial"|"resumen";
@@ -413,17 +414,17 @@ export function MunroWeeklySchedule(){
      </p>}
      {pestana==="semana"&&<>
        {semanaCerrada&&<p className="mhs-exito" role="status">Esta semana ya está archivada en Historial. No se puede editar.</p>}
-       <p className="mhs-ayuda">Tres colaboradores por turno y cinco por hora. Cargá los nombres y horarios cuando quieras.
+       <details className="mhs-ayuda-detalle"><summary>Cómo cargar los horarios</summary><p className="mhs-ayuda">Tres colaboradores por turno y cinco por hora. Cargá los nombres y horarios cuando quieras.
          Cada entrada o cambio se guarda automáticamente. OFF indica franco completo sin horarios;
          Medio OFF permite trabajar solo una franja. Los totales muestran únicamente horas y turnos realmente cargados.
-         El ajuste de OFF remunerado se mantiene separado en Resumen semanal.</p>
+         El ajuste de OFF remunerado se mantiene separado en Resumen semanal.</p></details>
        <div className="mhs-movil-dias" role="group" aria-label="Día a mostrar">
          {dias.map((dia,i)=><button key={dia} type="button" aria-pressed={diaSeleccionado===i}
             onClick={()=>setDiaSeleccionado(i)}><b>{DIAS[i]}</b><span>{fechaCorta(dia)}</span></button>)}
        </div>
        <div className="mhs-tabla-navegacion" aria-label="Semana completa visible">
          <strong>Semana completa · lunes a domingo</strong>
-         <span>Los siete días se muestran juntos. Los nombres y los días permanecen visibles al bajar.</span>
+         <span>Cuatro filas por colaborador · siete días visibles.</span>
        </div>
        <div className="mhs-tabla-wrap" role="region" aria-label="Horarios de lunes a domingo, semana completa visible; desplazamiento vertical">
          <table className="mhs-tabla">
@@ -431,7 +432,7 @@ export function MunroWeeklySchedule(){
            <tbody>{filas.map(f=>{
              const r=resumenPersona(f.modalidad,f.datos,semana,momento,feriados);
              return <tr key={f.id} className={f.estado==="inactivo"?"mhs-inactivo":""}>
-               <th scope="row"><div className="mhs-colaborador">
+               <th scope="row"><div className="mhs-matriz-colaborador"><div className="mhs-colaborador">
                  <span className="mhs-modalidad">{f.modalidad==="turno"?"Por turno":"Por hora"}</span>
                  {editando&&puedeEditar?<input type="text" maxLength={80} placeholder={"Nombre · "+cabecera(f)}
                    value={f.nombre} onChange={e=>cambiar(f.id,prev=>({...prev,nombre:e.target.value}))}
@@ -439,6 +440,10 @@ export function MunroWeeklySchedule(){
                  <span className="mhs-total-nombre">{resumenCorto(f,r)}</span>
                  {r.pendientes>0&&<small className="mhs-pendientes">{r.pendientes} horarios pendientes</small>}
                  {estadoBotones(f)}
+               </div>
+                 <div className="mhs-matriz-etiquetas" aria-hidden="true">
+                   {CAMPOS.map(([campo,label])=><span key={campo}>{label}</span>)}
+                 </div>
                </div></th>
                {dias.map(dia=><td key={dia}>{inputsDia(f,dia)}</td>)}
              </tr>;
