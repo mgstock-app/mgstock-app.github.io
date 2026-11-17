@@ -898,7 +898,7 @@ function view(){
  RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
  '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
  (recoveringFromDay&&shift==='noche_salida'?'<div class="gcm-recovery-active" role="status">Recuperando <strong>Noche · salida del '+labelDay(day)+'</strong>. Al cerrar vas a volver a Mañana · entrada del '+labelDay(recoveringFromDay)+'.</div>':'')+
- '<div data-gcm-recovery-holder>'+(shift==='manana_entrada'?(morning()?.recoveryPanel()||''):'')+'</div>'+
+ '<div data-gcm-recovery-holder>'+(shift==='manana_entrada'?(morning()?.recoveryPanel?.()||''):'')+'</div>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
  (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
