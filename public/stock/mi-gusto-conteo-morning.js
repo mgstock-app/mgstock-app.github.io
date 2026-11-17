@@ -16,6 +16,16 @@ function connect(c){
 const differences=()=>data?.rows?.filter(x=>Number(x.difference)!==0)||[];
 const pending=()=>data?.first_day?[]:differences().filter(x=>!x.acknowledged);
 const ready=()=>!!(data?.baseline_ready||data?.first_day)&&!pending().length;
+// Recuperación puntual: solo si el servidor confirmó que falta la noche anterior.
+// No se habilita la edición ni se saltea la comparación de la mañana.
+const previousNightPending=()=>!!data&&!data.baseline_ready&&!data.first_day;
+function recoveryPanel(){
+ if(!previousNightPending())return '';
+ const previous=data.previous_day||plusDays(context?.day||'',-1);
+ return '<section class="gcm-recover-night" role="alert"><div><strong>Falta cerrar Noche · salida del '+dayLabel(previous)+'</strong>'+
+  '<p>Podés retomar ese turno, revisar las cantidades y cerrarlo. Después volverás a Mañana · entrada.</p></div>'+
+  '<button type="button" data-gcm-open-pending-night'+(context?.editable?'':' disabled')+'>Abrir turno noche pendiente</button></section>';
+}
 function panel(){
  const d=context?.day||'',previous=data?.previous_day||plusDays(d,-1);
  const title='Comparación · Noche salida '+dayLabel(previous)+' / Mañana entrada '+dayLabel(d);
@@ -26,7 +36,8 @@ function panel(){
  if(data.first_day)return '<section class="gcm-morning-review is-complete" role="status"><header><strong>'+esc(title)+
   '</strong>'+refreshButton+'</header><p>Primer día de Conteo: todavía no existe una Noche salida anterior para comparar. Este primer cierre crea el punto de partida. Desde mañana la comparación será obligatoria.</p>'+err+'</section>';
  if(!data.baseline_ready)return '<section class="gcm-morning-review is-blocked" role="alert"><header><strong>'+esc(title)+
-  '</strong>'+refreshButton+'</header><p>Falta cerrar Noche salida del día anterior. No se puede finalizar Mañana entrada sin ese conteo.</p>'+err+'</section>';
+  '</strong>'+refreshButton+'</header><p>Falta cerrar Noche salida del día anterior. No se puede finalizar Mañana entrada sin ese conteo.</p>'+
+  '<button type="button" data-gcm-open-pending-night'+(context?.editable?'':' disabled')+'>Abrir Noche salida pendiente</button>'+err+'</section>';
  const rows=differences(),issues=pending();
  const items=rows.map(x=>{
   const yes=!!x.acknowledged,diff=Number(x.difference),sign=diff>0?'+':'';
@@ -54,6 +65,9 @@ function row(productId){
 function paint(){
  const root=document.querySelector('.gcm-count-screen'),holder=root?.querySelector('[data-gcm-morning-holder]');
  if(!holder||!context)return;
+ // Mostrar el acceso a la noche pendiente cerca de la cabecera, sin mover toda la planilla.
+ const recovery=root.querySelector('[data-gcm-recovery-holder]');
+ if(recovery){const html=recoveryPanel();if(recovery.innerHTML!==html)recovery.innerHTML=html;}
  // Evita la reconstrucción si nada cambió.
  const next=panel();
  if(holder.innerHTML!==next)holder.innerHTML=next;
@@ -114,6 +128,6 @@ document.addEventListener('change',e=>{
  void acknowledge(input.dataset.gcmMorningOk,input.checked);
 },true);
 function clear(){++token;if(timer!==null)clearTimeout(timer);timer=null;current='';context=null;data=null;error='';loading=false;}
-window.GestLokConteoMorning=Object.freeze({connect,load,schedule,panel,row,paint,ready,pending,clear,
+window.GestLokConteoMorning=Object.freeze({connect,load,schedule,panel,recoveryPanel,previousNightPending,row,paint,ready,pending,clear,
  _test:{dayLabel,plusDays}});
 })();
