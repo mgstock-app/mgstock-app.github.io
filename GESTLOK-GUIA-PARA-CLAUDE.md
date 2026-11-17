@@ -198,8 +198,15 @@ Base de partida: `main` `5c55bba` (#86). Fin: `main` con #87 y este documento.
   acepta con su propia cuenta (`caja_app_aceptar_invitacion`) y queda como miembro `encargado` con su persona (puesto y
   locales de la invitación): usa la caja, no ve el panel del dueño. `caja_app_anular_invitacion`, `caja_app_equipo` y
   `caja_app_acceso_persona` (quitar/devolver acceso; vence las sesiones, no borra) son solo del dueño. Migración
-  `caja-app/supabase/migrations/20261116140000_caja_app_invitaciones.sql` (aditiva). Sigue pendiente: fotos, sin
-  conexión y alta/venta de comercios.
+  `caja-app/supabase/migrations/20261116140000_caja_app_invitaciones.sql` (aditiva).
+- **Fotos antes del cierre (16/11/2026):** Configuración → «Fotos antes del cierre» (hasta 8, obligatorias u
+  opcionales, con o sin bloqueo del cierre). Con fotos pedidas el cierre empieza por ellas (`C.paso === 0`); se suben
+  al depósito privado `caja-app-fotos` y se registran con `caja_app_registrar_foto`. Reglas de `storage.objects` vía
+  `public.caja_app_foto_permitida(nombre, subir)`: sube el dueño o una persona activa de ese local con la caja
+  abierta; ven el dueño y las personas activas del local; nadie modifica ni quita. Migración
+  `caja-app/supabase/migrations/20261116220000_caja_app_fotos_storage.sql` (aditiva).
+- **Encender la Caja en una empresa nueva de GESTLOK:** `supabase/operaciones/gestlok-caja-habilitar-empresa.sql`.
+- Sigue pendiente: uso sin conexión y alta/venta de comercios (decisión de la usuaria).
 
 ## 14. Historial horarios de Munro y pestaña Historial de Motos Agencia (02/11/2026)
 - **Pedido:** solo Munro (Torcuato queda como está, lo pidió la usuaria). Visible para dueño, creadora y gerente de Munro.

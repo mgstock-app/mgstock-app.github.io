@@ -150,8 +150,39 @@ with sync_playwright() as p:
     expect(page.locator('.resumen-grid .tarjeta', has_text='Efectivo que debería haber')).to_contain_text('$ 5.900')
     expect(page.locator('.mov.anulado')).to_have_count(2)
     foto(page, 'tel-03-correcciones')
-    # Cierre
+    # Fotos antes del cierre: la dueña pide una foto obligatoria (por la misma función que usa Configuración).
+    pedido = page.evaluate('''async () => {
+      const t = JSON.parse(localStorage.getItem('caja-app-auth')).access_token;
+      const comercio = JSON.parse(localStorage.getItem('caja.dispositivo')).comercio_id;
+      const r = await fetch('/rest/v1/rpc/caja_app_guardar_config', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t },
+        body: JSON.stringify({ p_comercio: comercio, p_config: { fotos: [{ id: 'efectivo', nombre: 'Efectivo contado', obligatoria: true }], bloquear_sin_fotos: true } }) });
+      return (await r.json()).fotos.length;
+    }''')
+    assert pedido == 1, pedido
+    page.reload()
+    page.wait_for_selector('.cerrar-caja')
     page.locator('.cerrar-caja').click()
+    page.wait_for_selector('h2:has-text("Fotos antes de cerrar")')
+    expect(page.locator('.encabezado .sub')).to_contain_text('Paso 1 de 5')
+    page.click('text=Siguiente')
+    expect(page.locator('#error-cierre')).to_contain_text('Faltan fotos obligatorias: Efectivo contado')
+    # Un archivo que no es imagen no se sube.
+    page.set_input_files('input[data-foto=efectivo]', {'name': 'nota.txt', 'mimeType': 'text/plain', 'buffer': b'hola'})
+    expect(page.locator('#error-cierre')).to_contain_text('Elegí una imagen')
+    png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+    page.set_input_files('input[data-foto=efectivo]', {'name': 'efectivo.png', 'mimeType': 'image/png', 'buffer': png})
+    expect(page.locator('#aviso')).to_contain_text('Foto guardada')
+    expect(page.locator('li[data-pedido=efectivo]')).to_contain_text('1 foto cargada')
+    page.set_input_files('input[data-foto=otra]', {'name': 'ticket.png', 'mimeType': 'image/png', 'buffer': png})
+    expect(page.locator('li[data-pedido=otra]')).to_contain_text('1 foto cargada')
+    foto(page, 'tel-04-fotos')
+    page.click('text=Siguiente')
+    page.wait_for_selector('h2:has-text("Revisá los cobros por medio")')
+    expect(page.locator('.encabezado .sub')).to_contain_text('Paso 2 de 5')
+    # Atrás vuelve a las fotos y las conserva.
+    page.click('text=Atrás')
+    expect(page.locator('li[data-pedido=efectivo]')).to_contain_text('1 foto cargada')
+    page.click('text=Siguiente')
     page.wait_for_selector('h2:has-text("Revisá los cobros por medio")')
     page.locator('input[data-medio="Efectivo"]').check()
     foto(page, 'tel-04a-cierre-medios')
@@ -264,6 +295,12 @@ with sync_playwright() as p:
     esperar_sin_hoja(page)
     foto(page, 'pc-05-abierta-totales')
     page.locator('.acciones-caja [data-act=iniciarCierre]').click()
+    # El comercio pide una foto obligatoria: en computadora también es el primer paso.
+    page.wait_for_selector('h2:has-text("Fotos antes de cerrar")')
+    page.set_input_files('input[data-foto=efectivo]', {'name': 'efectivo.png', 'mimeType': 'image/png', 'buffer': base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')})
+    expect(page.locator('li[data-pedido=efectivo]')).to_contain_text('1 foto cargada')
+    foto(page, 'pc-06-fotos')
+    page.click('text=Siguiente')
     page.fill('input[data-cierre=venta]', '1.493.400')
     page.fill('input[data-medio=Posnet]', '376.600')
     page.fill('input[data-medio="Mercado Pago"]', '350.000')
@@ -313,6 +350,42 @@ with sync_playwright() as p:
     expect(equipo).to_contain_text('Invitaciones sin usar')
     expect(equipo.locator('[data-act=anularInvitacion]')).to_have_count(1)
     foto(page, 'pc-10-equipo-pendiente')
+
+    # Fotos: la dueña las configura y las ve en el historial del cierre.
+    fc = page.locator('[data-fotos-config]')
+    expect(fc).to_contain_text('Efectivo contado')
+    expect(fc.locator('input[data-act=bloqueoFotos]')).to_be_checked()
+    fc.locator('input[name=nombre]').fill('Cierre del posnet')
+    fc.locator('input[name=obligatoria]').uncheck()
+    fc.locator('form button').click()
+    expect(page.locator('#aviso')).to_contain_text('próximo cierre')
+    fc = page.locator('[data-fotos-config]')
+    expect(fc.locator('[data-act=quitarFoto]')).to_have_count(2)
+    fc.locator('input[name=nombre]').fill('cierre del POSNET')
+    fc.locator('form button').click()
+    expect(fc.locator('form .error')).to_contain_text('Ya pedís una foto con ese nombre')
+    fc.locator('input[data-act=bloqueoFotos]').click()
+    expect(page.locator('#aviso')).to_contain_text('aunque falten fotos')
+    expect(page.locator('[data-fotos-config] input[data-act=bloqueoFotos]')).not_to_be_checked()
+    page.locator('[data-fotos-config] input[data-act=bloqueoFotos]').click()
+    expect(page.locator('[data-fotos-config] input[data-act=bloqueoFotos]')).to_be_checked()
+    foto(page, 'pc-10b-fotos-config')
+    page.locator('[data-fotos-config] li', has_text='Cierre del posnet').locator('[data-act=quitarFoto]').click()
+    expect(page.locator('[data-fotos-config] [data-act=quitarFoto]')).to_have_count(1)
+    page.locator('.lateral nav button', has_text='Historial').click()
+    page.locator('[data-act=verCaja]', has_text='Centro').first.click()
+    fd = hoja(page).locator('[data-fotos-detalle]')
+    expect(fd).to_contain_text('Efectivo contado')
+    expect(fd).to_contain_text('Otra foto')
+    expect(fd.locator('[data-act=verFoto]')).to_have_count(2)
+    with page.expect_popup() as emergente:
+        fd.locator('[data-act=verFoto]').first.click()
+    emergente.value.wait_for_url('**/storage/v1/object/sign/caja-app-fotos/**')
+    emergente.value.close()
+    foto(page, 'pc-10c-fotos-historial')
+    page.keyboard.press('Escape')
+    page.locator('.lateral nav button', has_text='Configuración').click()
+    equipo = page.locator('[data-equipo]')
 
     # La persona invitada abre el enlace en su teléfono, con su propia cuenta.
     ctx2, inv = contexto(p, nav, True, 'c1000000-0000-4000-8000-000000000001', 'intruso@example.com')

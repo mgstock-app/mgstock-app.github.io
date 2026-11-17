@@ -21,9 +21,12 @@ const sql = q => psql(DB, ['-c', q]);
 function fresh() {
   psql(MAINT(), ['-c', `drop database if exists ${DB} with (force)`, '-c', `create database ${DB}`]);
   psql(DB, ['-f', 'tests/fixtures/base.sql']);
+  psql(DB, ['-f', 'tests/fixtures/storage.sql']);
   psql(DB, ['-f', 'supabase/migrations/20261102050000_caja_app_base.sql']);
   psql(DB, ['-f', 'supabase/migrations/20261102170000_caja_app_sin_pin.sql']);
   psql(DB, ['-f', 'supabase/migrations/20261116140000_caja_app_invitaciones.sql']);
+  psql(DB, ['-f', 'supabase/migrations/20261116220000_caja_app_fotos_storage.sql']);
+  psql(DB, ['-f', 'supabase/migrations/20261116220000_caja_app_fotos_storage.sql']); // repetible
 }
 function session(q) {
   return new Promise(resolve => {
@@ -57,6 +60,10 @@ test('Caja app en PostgreSQL real', {skip}, async t => {
     await t.test('invitar al equipo: un solo uso, vencimiento, permisos y quitar acceso', () => {
       fresh();
       assert.match(psql(DB, ['-f', 'tests/fixtures/invitaciones.sql']), /CAJA APP INVITACIONES: OK/);
+    });
+    await t.test('fotos antes del cierre: quién sube, quién ve, bloqueo del cierre y fotos inmutables', () => {
+      fresh();
+      assert.match(psql(DB, ['-f', 'tests/fixtures/fotos.sql']), /CAJA APP FOTOS: OK/);
     });
 
     fresh();

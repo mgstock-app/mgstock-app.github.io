@@ -32,9 +32,13 @@ provisoria será `https://gestlok.com.ar/caja/` (ya habilitada en Supabase Auth:
    crear cuenta, recuperar), alta del comercio, elegir local del equipo, entrada con la cuenta (sin PIN), abrir (sugerida / otro monto),
    cobro/gasto/ingreso/retiro, corregir, anular, cierre en 4 pasos (cobro por cobro o totales al cierre),
    caja cerrada. Recorrido con navegador en CI (trabajo `web`).
-3. **Fotos** — PENDIENTE. Bucket privado de Storage `caja-app-fotos` con políticas por comercio
-   (`<comercio>/<caja>/<archivo>`). Hoy no hay buckets ni políticas en el proyecto: probar primero que la
-   migración pueda crear políticas sobre `storage.objects`.
+3. **Fotos antes del cierre** — HECHO (16/11). Configuración → «Fotos antes del cierre»: el dueño agrega hasta 8
+   fotos a pedir (obligatorias u opcionales) y decide si el cierre se bloquea cuando falta una obligatoria. Si hay
+   fotos pedidas, el cierre empieza por ellas (paso 1 de 5): cámara o galería, la foto se achica en el equipo y se
+   guarda en el depósito privado `caja-app-fotos` (`<comercio>/<caja>/<archivo>`). El dueño las ve en el detalle del
+   Historial («Ver foto», enlace que vence a los 5 minutos). Nadie las modifica ni las quita. Sin fotos pedidas el
+   cierre queda igual que antes. Migración `20261116220000_caja_app_fotos_storage.sql`; pruebas
+   `tests/fixtures/fotos.sql` y recorrido web. Para subir una foto hace falta conexión.
 4. **Panel del dueño** — HECHO lo básico (02/11): Hoy en todos los locales, cierres automáticos sin arqueo
    (arqueo tardío), Historial con descarga para Excel (CSV con `;`), Configuración (comercio, forma de carga, hora,
    caja inicial habitual, medios, categorías, locales, este equipo). Falta: fotos y avisos.

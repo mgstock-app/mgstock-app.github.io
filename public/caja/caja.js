@@ -506,11 +506,73 @@
   // ---------------- cierre ----------------
   function iniciarCierre() {
     const c = S.estado.caja;
-    S.cierre = { paso: 1, venta: '', otros: {}, verif: {}, arqueo: '', retiro: '', destino: '', obs: '', modo: c.modo_carga };
+    // Si el dueño pidió fotos, el cierre empieza por ellas (paso 0); si no, queda igual que siempre.
+    const primero = (S.estado.config.fotos || []).length ? 0 : 1;
+    S.cierre = { paso: primero, primero, venta: '', otros: {}, verif: {}, arqueo: '', retiro: '', destino: '', obs: '', modo: c.modo_carga };
     (S.estado.config.medios || []).forEach((m) => { if (m !== 'Efectivo') S.cierre.otros[m] = ''; S.cierre.verif[m] = false; });
     window.scrollTo(0, 0);
     pintar();
   }
+  // ---------------- fotos antes del cierre ----------------
+  const BUCKET_FOTOS = 'caja-app-fotos';
+  const fotosDe = (caja, pedido) => ((caja && caja.fotos_detalle) || []).filter((f) => f.pedido === pedido).length;
+  // Achica la foto en el equipo (lado mayor 1600 px, JPEG) para que suba rápido con datos móviles.
+  async function achicarFoto(file) {
+    if (!/^image\//.test(file.type || '')) throw new Error('Elegí una imagen.');
+    try {
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = url; });
+      const esc = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.naturalWidth * esc)); cv.height = Math.max(1, Math.round(img.naturalHeight * esc));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      const blob = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.82));
+      if (blob) return { blob, ext: 'jpg', tipo: 'image/jpeg' };
+    } catch (e) { /* se intenta con el archivo original */ }
+    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[file.type];
+    if (!ext || file.size > 3 * 1024 * 1024) throw new Error('No se pudo preparar la foto. Sacala de nuevo o elegí otra.');
+    return { blob: file, ext, tipo: file.type };
+  }
+  async function subirFoto(input) {
+    const file = input.files && input.files[0], pedido = input.dataset.foto;
+    input.value = '';
+    if (!file || S.subiendo || !S.cierre || !S.estado || !S.op) return;
+    S.subiendo = pedido; pantallaCierre();
+    let error = '';
+    try {
+      if (navigator.onLine === false) throw new Error('Sin conexión: para subir la foto hace falta internet. Probá de nuevo.');
+      const f = await achicarFoto(file), c = S.estado.caja;
+      const azar = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
+      const path = S.comercio.id + '/' + c.id + '/' + azar + '.' + f.ext;
+      const up = await sb.storage.from(BUCKET_FOTOS).upload(path, f.blob, { contentType: f.tipo, upsert: false });
+      if (up.error) throw new Error('No se pudo subir la foto. Revisá la conexión y probá de nuevo.');
+      S.estado.caja = await rpc('registrar_foto', { p_token: S.op.token, p_caja: c.id, p_pedido: pedido, p_path: path });
+      avisar('Foto guardada.');
+    } catch (e) { error = e.message || 'No se pudo subir la foto.'; }
+    S.subiendo = null;
+    if (!S.cierre || !S.estado || !S.estado.caja || S.estado.caja.estado !== 'abierta') return pintar();
+    pantallaCierre();
+    const err = document.getElementById('error-cierre');
+    if (err && error) { err.textContent = error; window.scrollTo(0, 0); }
+  }
+  function fotosDetalle(c) {
+    const fs = c.fotos_detalle || [];
+    if (!fs.length) return '';
+    const nombres = { otra: 'Otra foto' };
+    ((S.cfg && S.cfg.fotos) || []).forEach((f) => { nombres[f.id] = f.nombre; });
+    return '<div class="tarjeta" style="margin-top:12px" data-fotos-detalle><h2>Fotos del cierre</h2><ul class="lista">' + fs.map((f) => '<li><span><b>' + h(nombres[f.pedido] || f.pedido) + '</b><br><small class="sub">' +
+      hora(f.subida_at) + (f.subida_por ? ' · ' + h(f.subida_por) : '') + '</small></span><button class="btn chico" data-act="verFoto" data-path="' + h(f.path) + '">Ver foto</button></li>').join('') + '</ul></div>';
+  }
+  const idFoto = (nombre, usados) => {
+    let base = String(nombre).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'foto';
+    if (base === 'otra') base = 'otra-foto';
+    let id = base, n = 1;
+    while (usados.includes(id)) { n += 1; id = base + '-' + n; }
+    return id;
+  };
+  const guardarFotos = async (cambio) => { S.cfg = await rpc('guardar_config', { p_comercio: S.comercio.id, p_config: cambio }); app.innerHTML = marco(vistaConfig(S.cfg)); };
+
   function calcCierre() {
     const c = S.estado.caja, t = c.totales || {}, C = S.cierre;
     let venta, otros = 0, ventasEf;
@@ -534,9 +596,18 @@
   }
   function pantallaCierre() {
     const e = S.estado, c = e.caja, t = c.totales || {}, C = S.cierre, k = calcCierre();
-    const total = 4, cfg = e.config;
+    const conFotos = C.primero === 0, total = conFotos ? 5 : 4, cfg = e.config;
     let cuerpo = '';
-    if (C.paso === 1 && C.modo === 'totales') {
+    if (C.paso === 0) {
+      cuerpo = '<h2>Fotos antes de cerrar</h2><p class="sub" style="margin:4px 0 16px">Sacá la foto o elegila de la galería. Quedan guardadas con el cierre y no se pueden cambiar.</p>' +
+        '<div class="tarjeta" style="padding:4px 16px"><ul class="lista" data-fotos-cierre>' +
+        (cfg.fotos || []).concat([{ id: 'otra', nombre: 'Otra foto', obligatoria: false }]).map((f) => {
+          const n = fotosDe(c, f.id);
+          return '<li data-pedido="' + h(f.id) + '"><span><b>' + h(f.nombre) + '</b><br><small class="sub">' + (f.obligatoria ? 'Obligatoria' : 'Opcional') + ' · ' + (n ? (n === 1 ? '1 foto cargada' : n + ' fotos cargadas') : 'Sin foto') + '</small></span>' +
+            '<label class="btn chico' + (n || !f.obligatoria ? '' : ' prim') + '"><input type="file" accept="image/*" data-foto="' + h(f.id) + '" hidden' + (S.subiendo ? ' disabled' : '') + '>' + (S.subiendo === f.id ? 'Subiendo…' : (n ? 'Agregar otra' : 'Agregar foto')) + '</label></li>';
+        }).join('') + '</ul></div>' +
+        (cfg.bloquear_sin_fotos ? '' : '<p class="ayuda" style="margin-top:8px">Podés seguir sin las fotos, pero el cierre va a quedar sin ellas.</p>');
+    } else if (C.paso === 1 && C.modo === 'totales') {
       cuerpo = '<h2>Totales del sistema</h2><p class="sub" style="margin:4px 0 16px">Copiá la venta total y lo cobrado por cada medio que no es efectivo.</p>' +
         '<label class="campo"><span>Venta total del sistema</span><input class="entrada grande" data-cierre="venta" inputmode="decimal" autocomplete="off" value="' + h(C.venta) + '" placeholder="0" autofocus></label>' +
         Object.keys(C.otros).map((m) => '<label class="campo"><span>' + h(m) + '</span><input class="entrada" data-cierre="otros" data-medio="' + h(m) + '" inputmode="decimal" autocomplete="off" value="' + h(C.otros[m]) + '" placeholder="0"></label>').join('') +
@@ -563,10 +634,10 @@
         '<div class="tarjeta" style="margin-top:12px">' + (C.modo === 'totales' ? renglon('Venta total del sistema', k.venta) + renglon('Otros medios', k.otros) : renglon('Cobrado', t.total_cobrado)) +
         renglon('Saldo teórico', k.saldo) + renglon('Arqueo (contado)', k.arqueo) + renglon('Retiro' + (C.destino ? ' · ' + C.destino : ''), -(k.retiro || 0)) + renglon('Queda para mañana', k.queda, true) + '</div>';
     }
-    const pasos = '<div class="pasos">' + [1, 2, 3, 4].map((i) => '<i class="' + (i <= C.paso ? 'hecho' : '') + '"></i>').join('') + '</div>';
-    app.innerHTML = marco('<div class="cierre-pc"><div class="encabezado"><div><h1>Cerrar caja</h1><p class="sub">Paso ' + C.paso + ' de ' + total + ' · ' + h(e.local.nombre) + ' · ' + h(fecha(c.dia, true)) + '</p></div></div>' + pasos +
+    const pasos = '<div class="pasos">' + (conFotos ? [0, 1, 2, 3, 4] : [1, 2, 3, 4]).map((i) => '<i class="' + (i <= C.paso ? 'hecho' : '') + '"></i>').join('') + '</div>';
+    app.innerHTML = marco('<div class="cierre-pc"><div class="encabezado"><div><h1>Cerrar caja</h1><p class="sub">Paso ' + (C.paso + (conFotos ? 1 : 0)) + ' de ' + total + ' · ' + h(e.local.nombre) + ' · ' + h(fecha(c.dia, true)) + '</p></div></div>' + pasos +
       '<p class="error" id="error-cierre"></p>' + cuerpo +
-      '<div class="pie-cierre"><button class="btn" data-act="cierreAtras">' + (C.paso === 1 ? 'Cancelar' : 'Atrás') + '</button>' +
+      '<div class="pie-cierre"><button class="btn" data-act="cierreAtras">' + (C.paso === C.primero ? 'Cancelar' : 'Atrás') + '</button>' +
       '<button class="btn prim" data-act="cierreSigue">' + (C.paso === 4 ? 'Cerrar caja definitivamente' : 'Siguiente') + '</button></div></div>');
     const f = app.querySelector('[autofocus]');
     if (f && esPC()) f.focus();
@@ -583,6 +654,11 @@
   async function cierreSigue() {
     const C = S.cierre, k = calcCierre(), err = document.getElementById('error-cierre');
     const falla = (m) => { if (err) { err.textContent = m; window.scrollTo(0, 0); } };
+    if (C.paso === 0) {
+      if (S.subiendo) return falla('Esperá a que termine de subir la foto.');
+      const cfg = S.estado.config, faltan = (cfg.fotos || []).filter((f) => f.obligatoria && !fotosDe(S.estado.caja, f.id)).map((f) => f.nombre);
+      if (cfg.bloquear_sin_fotos && faltan.length) return falla('Faltan fotos obligatorias: ' + faltan.join(', ') + '.');
+    }
     if (C.paso === 1 && C.modo === 'totales') {
       if (isNaN(k.venta)) return falla('Cargá la venta total del sistema.');
       for (const m of Object.keys(C.otros)) if (String(C.otros[m]).trim() !== '' && isNaN(parseMonto(C.otros[m]))) return falla('Revisá el importe de ' + m + '.');
@@ -699,7 +775,8 @@
   async function verCaja(id) {
     try {
       const c = await rpc('detalle', { p_comercio: S.comercio.id, p_caja: id });
-      abrirHoja((c.local || '') + ' · ' + fecha(c.dia, true), c.estado === 'cerrada' ? vistaCerrada(c, true, true) : '<div class="tarjeta">' + renglon('Cobrado', (c.totales || {}).total_cobrado) + renglon('Efectivo que debería haber', (c.totales || {}).saldo_teorico) + '</div>' + (c.movimientos || []).map((m) => filaMov(m, false)).join(''));
+      if (!S.cfg && (c.fotos_detalle || []).length) { try { S.cfg = await rpc('config', { p_comercio: S.comercio.id }); } catch (e) { /* se muestran con su identificador */ } }
+      abrirHoja((c.local || '') + ' · ' + fecha(c.dia, true), (c.estado === 'cerrada' ? vistaCerrada(c, true, true) : '<div class="tarjeta">' + renglon('Cobrado', (c.totales || {}).total_cobrado) + renglon('Efectivo que debería haber', (c.totales || {}).saldo_teorico) + '</div>' + (c.movimientos || []).map((m) => filaMov(m, false)).join('')) + fotosDetalle(c));
     } catch (e) { avisar(e.message); }
   }
   async function hojaArqueoTardio(id) {
@@ -784,7 +861,12 @@
       '<button class="btn prim">Guardar listas</button></form>';
     const locales = '<div class="tarjeta"><div class="fila entre"><h2>Locales</h2><button class="btn chico" data-act="editarLocal" data-id="">+ Agregar</button></div><ul class="lista" style="margin-top:6px">' +
       c.locales.map((l) => '<li><span><b>' + h(l.nombre) + '</b>' + (l.activo ? '' : ' <span class="estado">Inactivo</span>') + '</span><button class="btn chico" data-act="editarLocal" data-id="' + h(l.id) + '">Editar</button></li>').join('') + '</ul></div>';
-    const fotos = '<div class="tarjeta suave"><h2>Fotos antes del cierre</h2><p class="sub" style="margin-top:6px">Próximamente: pedir fotos del efectivo contado y de los comprobantes, y bloquear el cierre si faltan.</p></div>';
+    const pedidas = c.fotos || [];
+    const fotos = '<div class="tarjeta" data-fotos-config><h2>Fotos antes del cierre</h2><p class="sub" style="margin:4px 0 6px">Pedí fotos del efectivo contado, del posnet o de los comprobantes. Quedan guardadas con cada cierre y nadie las puede cambiar.</p>' +
+      (pedidas.length ? '<ul class="lista">' + pedidas.map((f) => '<li><span><b>' + h(f.nombre) + '</b><br><small class="sub">' + (f.obligatoria ? 'Obligatoria' : 'Opcional') + '</small></span><button class="btn chico" data-act="quitarFoto" data-id="' + h(f.id) + '">Quitar</button></li>').join('') + '</ul>' +
+        '<label class="check" style="margin:10px 0"><input type="checkbox" data-act="bloqueoFotos"' + (c.bloquear_sin_fotos ? ' checked' : '') + '><span>No dejar cerrar la caja si falta una foto obligatoria</span></label>' : '<p class="sub" style="margin:6px 0 10px">Todavía no pedís ninguna foto: el cierre no cambia.</p>') +
+      (pedidas.length >= 8 ? '<p class="ayuda">Máximo 8 fotos.</p>' : '<form data-form="fotoNueva"><div class="error"></div><label class="campo"><span>Nueva foto a pedir</span><input name="nombre" maxlength="40" minlength="2" required placeholder="Ej.: Efectivo contado"></label>' +
+        '<label class="check" style="margin-bottom:10px"><input type="checkbox" name="obligatoria" checked><span>Obligatoria</span></label><button class="btn ancho">Agregar foto</button></form>') + '</div>';
     return '<div class="encabezado"><div><h1>Configuración</h1><p class="sub">' + h(c.nombre) + '</p></div></div><div class="config-grid"><div>' + general + listas + '</div><div>' + tarjetaEquipo(c) + locales + disp + fotos + '</div></div>';
   }
   function hojaLocal(id) {
@@ -828,6 +910,14 @@
     salirCuenta: async () => { await salirOp(); S.cfg = null; guardar('caja.dispositivo', null); await sb.auth.signOut(); cerrarHoja(); S.acceso = 'entrar'; arrancar(); },
     nuevoComercio: () => { S.creando = true; pintar(); },
     invitar: () => hojaInvitar(),
+    quitarFoto: async (b) => { await guardarFotos({ fotos: (S.cfg.fotos || []).filter((f) => f.id !== b.dataset.id) }); avisar('Foto quitada. Los cierres anteriores conservan las suyas.'); },
+    bloqueoFotos: async (b) => { const v = b.checked; try { await guardarFotos({ bloquear_sin_fotos: v }); } catch (e) { b.checked = !v; throw e; } avisar(v ? 'El cierre exige las fotos obligatorias.' : 'El cierre se puede hacer aunque falten fotos.'); },
+    verFoto: async (b) => {
+      const w = window.open('', '_blank');
+      const r = await sb.storage.from(BUCKET_FOTOS).createSignedUrl(b.dataset.path, 300);
+      if (r.error || !r.data || !r.data.signedUrl) { if (w) w.close(); throw new Error('No se pudo abrir la foto. Probá de nuevo.'); }
+      if (w) w.location.href = r.data.signedUrl; else location.href = r.data.signedUrl;
+    },
     tengoCodigo: () => abrirHoja('Código de invitación', '<form data-form="codigoInvitacion"><div class="error"></div>' +
       '<label class="campo"><span>Código o enlace que te mandaron</span><input name="codigo" required autofocus autocapitalize="characters" autocomplete="off"></label>' +
       '<button class="btn prim ancho">Aceptar invitación</button></form>'),
@@ -864,7 +954,7 @@
     corregirMov: (b) => hojaCorregir(b.dataset.id),
     verTodos: () => { S.listaCompleta = true; pintar(); },
     iniciarCierre: () => iniciarCierre(),
-    cierreAtras: () => { if (S.cierre.paso === 1) { S.cierre = null; } else { S.cierre.paso -= 1; } pintar(); },
+    cierreAtras: () => { if (S.cierre.paso === S.cierre.primero) { S.cierre = null; } else { S.cierre.paso -= 1; } pintar(); },
     cierreSigue: () => cierreSigue(),
     verCaja: (b) => verCaja(b.dataset.id),
     arqueoTardio: (b) => hojaArqueoTardio(b.dataset.id),
@@ -968,6 +1058,13 @@
       S.cfg = await rpc('guardar_config', { p_comercio: S.comercio.id, p_config: { medios: ['Efectivo'].concat(lista('medios')), categorias_gasto: lista('categorias_gasto'), tipos_retiro: lista('tipos_retiro'), categorias_ingreso: lista('categorias_ingreso') } });
       app.innerHTML = marco(vistaConfig(S.cfg)); avisar('Listas guardadas.');
     },
+    fotoNueva: async (f) => {
+      const nombre = f.nombre.value.trim().replace(/\s+/g, ' '), actuales = S.cfg.fotos || [];
+      if (nombre.length < 2) throw new Error('Escribí qué foto pedís.');
+      if (actuales.some((x) => x.nombre.toLowerCase() === nombre.toLowerCase())) throw new Error('Ya pedís una foto con ese nombre.');
+      await guardarFotos({ fotos: actuales.concat([{ id: idFoto(nombre, actuales.map((x) => x.id)), nombre, obligatoria: f.obligatoria.checked }]) });
+      avisar('Listo: se va a pedir en el próximo cierre.');
+    },
     invitar: async (f) => {
       const nombre = f.nombre.value.trim();
       const r = await rpc('invitar', { p_comercio: S.comercio.id, p_nombre: nombre, p_rol: f.rol.value, p_locales: [...f.querySelectorAll('input[name="local"]:checked')].map((x) => x.value) });
@@ -1037,6 +1134,7 @@
   document.addEventListener('change', (ev) => {
     const t = ev.target;
     if (t.dataset && t.dataset.cierre === 'verif' && S.cierre) S.cierre.verif[t.dataset.medio] = t.checked;
+    if (t.dataset && t.dataset.foto && t.type === 'file') subirFoto(t);
     if (t.dataset && t.dataset.actChange === 'cambiarLocal') {
       const l = S.comercio.locales.find((x) => x.id === t.value);
       if (!l) return;

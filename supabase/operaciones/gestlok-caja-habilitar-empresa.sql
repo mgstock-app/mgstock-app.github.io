@@ -1,0 +1,10 @@
+-- GESTLOK Caja: encender (o apagar) la caja para UNA empresa nueva de GESTLOK.
+-- Con esto, en el Inicio del dueño de esa empresa aparece «Abrir GESTLOK Caja» con el alta precargada.
+-- Reemplazar <TENANT_ID> por el identificador de la empresa y <NOMBRE> por su nombre. No cambia a ninguna otra empresa.
+-- (Un comercio que no usa GESTLOK no necesita este paso: entra directo a gestlok.com.ar/caja/ y crea su comercio.)
+-- Encender:
+--   insert into gestlok_caja_private.caja_app_empresas (tenant_id, nota)
+--   values ('<TENANT_ID>', '<NOMBRE> · alta de GESTLOK Caja')
+--   on conflict (tenant_id) do update set habilitada = true;
+-- Apagar sin perder nada (los datos de la caja quedan guardados):
+--   update gestlok_caja_private.caja_app_empresas set habilitada = false where tenant_id = '<TENANT_ID>';

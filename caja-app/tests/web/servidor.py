@@ -10,6 +10,7 @@ import re
 import secrets
 import shlex
 import subprocess
+import urllib.parse
 import sys
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'public'))
@@ -67,7 +68,49 @@ class Manejador(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(cuerpo)
             return
+        if self.path.startswith('/storage/v1/object/sign/'):
+            # Foto firmada de prueba: un PNG de 1x1.
+            cuerpo = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+            self.send_response(200)
+            self.send_header('Content-Type', 'image/png')
+            self.send_header('Content-Length', str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
+            return
         return super().do_GET()
+
+    # --- Imitación del almacenamiento de Supabase: las reglas reales de storage.objects deciden quién sube y quién ve.
+    def sql_como(self, consulta):
+        claims = claims_de(self.headers.get('Authorization'))
+        rol = 'authenticated' if claims.get('sub') else 'anon'
+        sql = ("\\pset tuples_only on\nbegin;\n\\o /dev/null\nselect set_config('request.jwt.claims', %s, true);\nset local role %s;\n\\o\n%s;\ncommit;\n"
+               % (literal(json.dumps(claims)), rol, consulta))
+        return subprocess.run(['psql', *PG, '-X', '-q', '-A', '-v', 'ON_ERROR_STOP=1'], input=sql, capture_output=True, text=True)
+
+    def almacenamiento(self):
+        ruta = urllib.parse.unquote(self.path.split('?')[0])
+        m = re.match(r'^/storage/v1/object/(sign/)?([a-z0-9-]+)/(.+)$', ruta)
+        if not m:
+            return False
+        firmar, deposito, nombre = m.group(1), m.group(2), m.group(3)
+        largo = int(self.headers.get('Content-Length') or 0)
+        cuerpo = self.rfile.read(largo) if largo else b''
+        if firmar:
+            r = self.sql_como('select count(*) from storage.objects where bucket_id = %s and name = %s' % (literal(deposito), literal(nombre)))
+            if r.returncode != 0 or r.stdout.strip() != '1':
+                self.responder(400, {'statusCode': '404', 'error': 'not_found', 'message': 'Object not found'})
+            else:
+                self.responder(200, {'signedURL': '/object/sign/%s/%s?token=prueba' % (deposito, urllib.parse.quote(nombre))})
+            return True
+        if len(cuerpo) < 100:
+            self.responder(400, {'statusCode': '400', 'error': 'invalid', 'message': 'Archivo vacío'})
+            return True
+        r = self.sql_como('insert into storage.objects (bucket_id, name) values (%s, %s)' % (literal(deposito), literal(nombre)))
+        if r.returncode != 0:
+            self.responder(403, {'statusCode': '403', 'error': 'Unauthorized', 'message': 'new row violates row-level security policy'})
+        else:
+            self.responder(200, {'Key': deposito + '/' + nombre, 'Id': secrets.token_hex(8)})
+        return True
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -82,6 +125,8 @@ class Manejador(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(cuerpo)
 
     def do_POST(self):
+        if self.path.startswith('/storage/v1/') and self.almacenamiento():
+            return
         m = re.match(r'^/rest/v1/rpc/(caja_app_[a-z_]+)$', self.path.split('?')[0])
         if not m:
             return self.responder(404, {'code': 'PGRST202', 'message': 'Could not find the function'})
