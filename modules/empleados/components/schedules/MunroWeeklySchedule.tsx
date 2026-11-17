@@ -334,7 +334,7 @@ export function MunroWeeklySchedule(){
          conFeriado.includes(dia)?"Feriado":"",
        ].filter(Boolean).join(" · ");
        const trabajado=modalidad==="turno"?jornada.turnos+" t.":formatoHoras(jornada.horas)+" h";
-       return <tr key={dia}>
+       return <tr key={dia} className={conFeriado.includes(dia)?"mhs-resumen-dia-feriado":undefined}>
          <th scope="row">{DIAS[i]} {fechaCorta(dia)}</th>
          <td>{franja(d.tm_e,d.tm_s)}</td><td>{franja(d.tt_e,d.tt_s)}</td>
          <td>{jornada.errores.length?"—":trabajado}</td>
@@ -420,6 +420,9 @@ export function MunroWeeklySchedule(){
        onChange={e=>cambiarOpcion(f,"vacaciones",e.target.checked)}/> Vacaciones</label>
    </div>
  </div>;
+ // Criterio único para planilla, móvil y resumen.
+ const feriadoDelDia=(f:Borrador,dia:string)=>
+   fechasFeriadoColaborador(f.datos,semana,feriados).includes(dia);
  const resumenCorto=(f:Borrador,r:ReturnType<typeof resumenPersona>)=>
    r.errores?"Total semanal: revisar":f.modalidad==="hora"
      ?"Total semanal: "+formatoHoras(r.horas+r.horasFeriado)+" h"
@@ -428,7 +431,9 @@ export function MunroWeeklySchedule(){
    const d=datosDia(f,dia),verificar=evaluarDia(d,enRevision);
    const conMañana=Boolean(d.tm_e||d.tm_s),conTarde=Boolean(d.tt_e||d.tt_s);
    const conHorario=conMañana||conTarde;
-   return <div className={"mhs-cuatro"+(verificar.errores.length?" mhs-error":"")}>
+   const marcadoFeriado=feriadoDelDia(f,dia);
+   return <div className={"mhs-cuatro"+(verificar.errores.length?" mhs-error":"")+
+     (marcadoFeriado?" mhs-cuatro--feriado":"")}>
      {(editarPersona(f.id)||Boolean(d.descanso))&&
        <div className="mhs-descansos" role="group" aria-label={"Descanso · "+cabecera(f)+" · "+fechaCorta(dia)}>
          {(["off","medio_off"] as const).map(valor=>
@@ -449,11 +454,13 @@ export function MunroWeeklySchedule(){
          value={d[campo]||""} onChange={e=>cambiarDia(f.id,dia,campo,e.target.value)}/>
      </label>)}
      {feriadoHabilitado(f.datos,semana,feriados)&&
-       <label className="mhs-dia-extra"><input type="checkbox"
+       <label className={"mhs-dia-extra mhs-dia-extra--feriado"+
+         (marcadoFeriado?" mhs-dia-extra--marcado":"")}><input type="checkbox"
          aria-label={"Feriado · "+cabecera(f)+" · "+fechaCorta(dia)}
-         checked={d.feriado===true||(f.datos[semana]?.feriados_habilitados===undefined&&feriados.includes(dia))}
-         disabled={!editarPersona(f.id)}
-         onChange={e=>cambiarDia(f.id,dia,"feriado",e.target.checked)}/>Feriado</label>}
+         checked={marcadoFeriado} disabled={!editarPersona(f.id)}
+         onChange={e=>cambiarDia(f.id,dia,"feriado",e.target.checked)}/>
+         <span>Feriado</span>{marcadoFeriado&&<strong className="mhs-feriado-marcado">MARCADO</strong>}
+       </label>}
      {vacacionesHabilitadas(f.datos,semana)&&
        <label className="mhs-dia-extra"><input type="checkbox"
          aria-label={"Vacaciones · "+cabecera(f)+" · "+fechaCorta(dia)}
@@ -543,7 +550,8 @@ export function MunroWeeklySchedule(){
                    {CAMPOS.map(([campo,label])=><span key={campo}>{label}</span>)}
                  </div>
                </div></th>
-               {dias.map(dia=><td key={dia}>{inputsDia(f,dia)}</td>)}
+               {dias.map(dia=><td key={dia} className={feriadoDelDia(f,dia)?"mhs-celda-feriado":undefined}>
+                 {inputsDia(f,dia)}</td>)}
              </tr>;
            })}</tbody>
          </table>
@@ -562,13 +570,16 @@ export function MunroWeeklySchedule(){
            d.tt_e&&d.tt_s?"Noche "+d.tt_e+"–"+d.tt_s:""
          ].filter(Boolean).join(" · ");
          const abierta=personaMovilAbierta===f.id||(editando&&personaEnEdicion===f.id);
-         return <article className={"mhs-card"+(abierta?" mhs-card--abierta":" mhs-card--cerrada")} key={f.id}>
+         const marcadoFeriado=feriadoDelDia(f,dia);
+         return <article className={"mhs-card"+(abierta?" mhs-card--abierta":" mhs-card--cerrada")+
+           (marcadoFeriado?" mhs-card--feriado":"")} key={f.id}>
            <header>
              <div className="mhs-card-identidad">
                <h3>{cabecera(f)}</h3>
                <div className="mhs-card-etiquetas"><span className="mhs-modalidad">{f.modalidad==="hora"?"Por hora":"Por turno"}</span>
                  <span className={"mhs-card-estado mhs-card-estado--"+f.estado}>{f.estado==="activo"?"Activo":f.estado==="refuerzo"?"Refuerzo":"Inactivo"}</span>
                </div>
+               {marcadoFeriado&&<span className="mhs-card-feriado">FERIADO · {fechaCorta(dia)}</span>}
                {!abierta&&<small className="mhs-card-turnos">{turnos||"Sin horario en el día seleccionado"}</small>}
              </div>
              <div className="mhs-card-resumen">
