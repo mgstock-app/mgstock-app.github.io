@@ -283,14 +283,9 @@ export function MunroWeeklySchedule(){
  const filasResumen=filas.filter(f=>f.nombre.trim()).map(f=>({
    ...f,resumen:resumenLiquidacion(f.modalidad,f.datos,semana,feriados,momento)
  }));
- const totalPorHora=filasResumen.filter(f=>f.modalidad==="hora"&&f.resumen.total!==null)
-   .reduce((a,f)=>a+(f.resumen.total||0),0);
- const totalTurnos=filasResumen.filter(f=>f.modalidad==="turno"&&f.resumen.total!==null)
-   .reduce((a,f)=>a+(f.resumen.total||0),0);
  const faltantes=filas.filter(f=>f.estado!=="inactivo"&&(
    !f.nombre.trim() || dias.some(fecha=>evaluarDia(f.datos[fecha]||{},true).errores.length>0)
  )).map(f=>f.nombre||"Colaborador "+f.id);
- const totalEnRevision=filasResumen.filter(f=>f.resumen.errores.length>0||f.resumen.pendientes>0).length;
  const cabecera=(f:Borrador)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
  const estadoBotones=(f:Borrador)=><div className="mhs-opciones-colaborador">
@@ -484,12 +479,6 @@ export function MunroWeeklySchedule(){
            <small>Activá la opción debajo de su estado en Semana actual y marcá los días correspondientes. El resumen se completa automáticamente.</small>
          </div>
        </section>
-       <div className="mhs-resumen-totales">
-         <div><small>Colaboradores con nombre</small><strong>{filasResumen.length}</strong></div>
-         <div><small>Total de horas a liquidar</small><strong>{formatoHoras(totalPorHora)} h</strong></div>
-         <div><small>Total de turnos a liquidar</small><strong>{totalTurnos}</strong></div>
-         <div><small>Registros por revisar</small><strong>{totalEnRevision}</strong></div>
-       </div>
        <div className="mhs-resumen-desbordar">
          <table className="mhs-liquidacion">
            <thead><tr>
