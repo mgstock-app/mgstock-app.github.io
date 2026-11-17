@@ -93,6 +93,18 @@ assert.doesNotMatch(ui,/<table className="mhs-liquidacion">/,"El cuadro general 
 assert.doesNotMatch(ui,/Cobra por/,"Sin columnas del cuadro general, tampoco en el Historial");
 assert.match(ui,/filasResumen\.map\(f=>\{[\s\S]*?<details className="mhs-colab" key=\{semana\+":"\+f\.id\}>/);
 assert.doesNotMatch(ui,/className="mhs-colab"[^>]* open>/);
+
+assert.match(ui,/const editarPersona=\(id:number\)=>editando&&puedeEditar&&\(personaEnEdicion===null\|\|personaEnEdicion===id\)/,
+ "Modificar individual limita la edición a la persona seleccionada");
+assert.match(ui,/const controlesPersona=\(f:Borrador,desdeResumen=false\)=>/,
+ "Cada colaborador tiene su propio control de edición");
+assert.match(ui,/if\(!editarPersona\(id\)\)return;/,
+ "No permitir guardar cambios de una persona distinta");
+assert.match(ui,/controlesPersona\(f,true\)/,
+ "El botón de Modificar también aparece en el Resumen semanal");
+assert.match(ui,/disabled=\{!editarPersona\(f.id\)\}/,
+ "OFF y feriado usan el permiso de edición individual");
+
 assert.match(ui,/Día<\/th><th scope="col">Mañana<\/th>\s*<th scope="col">Noche<\/th><th scope="col">Trabajado<\/th><th scope="col">Estado/);
 for(const texto of ["Resumen de liquidación","Turnos trabajados","Horas trabajadas","<dt>OFF</dt>","<dt>Feriado</dt>"])
   assert.ok(ui.includes(texto),"Falta en la liquidación individual: "+texto);
