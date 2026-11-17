@@ -64,7 +64,7 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   cy.get('.gl-module-dock').should('not.be.visible');
   // Horarios en un solo lugar: la planilla se abre directo y el historial está debajo (sin pantallas intermedias).
   cy.get('.gl-gerente__sidebar').contains('button','Horarios').click();
-  cy.get('.horarios-hub h1').should('contain.text','Horarios');
+  cy.get('.horarios-hub h1').should('contain.text',local==='munro'?'Staff · Munro':'Horarios');
   cy.contains('Abrir Google Sheets y horarios').should('not.exist');
   if(local==='munro'){
    cy.get('.mhs-tabla tbody tr').should('have.length',8);
