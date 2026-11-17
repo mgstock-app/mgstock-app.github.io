@@ -22,11 +22,12 @@ begin
  ) order by d.display_name), '[]'::jsonb) into v_result
  from public.rm_test_members m
  join public.rm_app_directory d on d.user_id=m.user_id
+  join auth.users u on u.id=d.user_id and u.email_confirmed_at is not null and lower(btrim(u.email))=lower(btrim(d.email))
  join public.rm_app_local l on l.id=m.local_id
  join public.rm_organization_members om on om.user_id=m.user_id and om.organization_id=l.organization_id
  left join rm_test_private.munro_horarios_cuentas v on v.usuario_id=m.user_id
  where m.local_id='munro' and m.role='employee' and d.status='approved'
-   and rm_test_private.verified_email(d.email);
+   ;
  return v_result;
 end $$;
 revoke all on function public.rm_munro_horarios_cuentas_listar() from public,anon,authenticated;
@@ -42,10 +43,11 @@ begin
  if p_usuario is null or not exists (
   select 1 from public.rm_test_members m
   join public.rm_app_directory d on d.user_id=m.user_id
+  join auth.users u on u.id=d.user_id and u.email_confirmed_at is not null and lower(btrim(u.email))=lower(btrim(d.email))
   join public.rm_app_local l on l.id=m.local_id
   join public.rm_organization_members om on om.user_id=m.user_id and om.organization_id=l.organization_id
   where m.user_id=p_usuario and m.role='employee' and m.local_id='munro'
-    and d.status='approved' and rm_test_private.verified_email(d.email)
+    and d.status='approved'
  ) then
   raise exception 'La cuenta no es de un colaborador aprobado de Munro' using errcode='42501';
  end if;
