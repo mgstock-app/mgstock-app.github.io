@@ -70,7 +70,7 @@ test('retomar noche anterior conserva ambos conteos, vencimientos, decomiso y co
  assert.match(h.mod.view(),/Abrir turno noche pendiente/);
  const pending=await h.click('data-gcm-open-pending-night');
  assert.match(pending,/Recuperando/);
- assert.match(pending,/Turno noche/i); // no selector libre, solo el turno correcto
+ assert.match(pending,/Noche · salida/); // no selector libre, solo el turno correcto
  assert.match(pending,new RegExp(h.yesterday.split('-').reverse().join('/')));
  assert.deepEqual(h.day,h.snapshotBefore.morning);
  assert.deepEqual(h.night,h.snapshotBefore.night);
