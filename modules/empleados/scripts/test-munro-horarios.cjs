@@ -100,7 +100,7 @@ assert.match(ui,/aria-label=\{"OFF de "\+f\.nombre\}[\s\S]*?cambiarDia\(f\.id,se
 assert.doesNotMatch(ui,/OFF pagos/,"La fila se llama solo OFF");
 assert.match(ui,/\{conFeriado&&<div><dt>Feriado<\/dt>/,"Feriado solo se muestra con la casilla de feriado marcada");
 assert.match(ui,/feriadoHabilitado\(f\.datos,semana,feriados\)\)\}/);
-assert.match(ui,/feriadoHabilitado\(r\.datos,inicio,festivos\)\)\}/);
+assert.match(ui,/mhs-resumen-semanas/,"El índice solo enumera semanas");
 const stock=fs.readFileSync("../../public/stock/app.js","utf8");
 assert.match(stock,/data-act="staff-horarios" aria-label="Staff · abrir Horarios de Munro"/,
  "Staff debe aparecer como atajo directo en el menú de Munro");
