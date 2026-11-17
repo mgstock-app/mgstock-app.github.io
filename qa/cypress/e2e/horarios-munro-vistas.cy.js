@@ -33,7 +33,15 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
     siguiente.setUTCDate(siguiente.getUTCDate()+7);
     return req.reply({ok:true,archivado:true,siguiente_semana:siguiente.toISOString().slice(0,10)});
   }
-  if(path.includes("/rpc/rm_munro_horarios_feriados_guardar")){
+  if(path.includes("/rpc/rm_munro_horarios_corregir_cierre")){
+    ultimo=req.body;
+    const i=archivo.findIndex(x=>x.id===req.body.p_persona);
+    if(i<0)return req.reply({message:"Colaborador fuera del cierre"},400);
+    if(archivo[i].version!==req.body.p_version)return req.reply({message:"Versión desactualizada"},409);
+    archivo[i]={...archivo[i],datos:req.body.p_datos,version:archivo[i].version+1};
+    return req.reply({ok:true,id:req.body.p_persona,version:archivo[i].version,corregido:true});
+   }
+   if(path.includes("/rpc/rm_munro_horarios_feriados_guardar")){
     feriados=req.body.p_dias;feriadosVersion+=1;
     return req.reply({ok:true,version:feriadosVersion,dias:feriados});
    }
@@ -312,7 +320,29 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-resumen > .mhs-colab").should("not.exist");
   cy.get(".mhs-resumen-totales").should("not.exist");
  });
- it("restringe las acciones cuando el permiso de escritura es falso",()=>{
+ it("permite corregir un colaborador archivado y recalcula su resumen",()=>{
+   cy.viewport(1366,900);
+   const ultimo=iniciar({precargados:[
+    {id:1,nombre:"Julia",modalidad:"turno",semana:SEMANA,version:1,datos:{"2026-11-09":{tm_e:"09:00",tm_s:"13:00"}}}
+   ]});
+   cy.on("window:confirm",()=>true);
+   cy.contains("button","Semana finalizada").click();
+   cy.get(".mhs-semana").should("contain.text","16/11 al 22/11");
+   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+   cy.get(".mhs-resumen-semanas .mhs-semana-item").contains("09/11 al 15/11").click();
+   cy.get(".mhs-resumen > .mhs-colab").contains("summary","Julia").click();
+   cy.get(".mhs-resumen > .mhs-colab[open]").find(".mhs-editar-persona").contains("Modificar").click();
+   cy.get('input[aria-label="OFF de Julia"]').should("not.be.disabled").clear().type("2");
+   cy.wrap(null).should(()=>{
+    expect(ultimo().p_persona).to.eq(1);
+    expect(ultimo().p_semana).to.eq(SEMANA);
+    expect(ultimo().p_datos[SEMANA].off).to.eq("2");
+    expect(ultimo().p_motivo).to.match(/Corrección de carga/);
+    expect(ultimo.archivo().find(x=>x.id===1).version).to.eq(2);
+   });
+   cy.get(".mhs-resumen > .mhs-colab[open]").find(".mhs-total-liquidacion").should("contain.text","3 turnos");
+  });
+  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
   cy.contains("button","Modificar").should("not.exist");
   cy.contains("button","Agregar colaborador por hora").should("not.exist");
