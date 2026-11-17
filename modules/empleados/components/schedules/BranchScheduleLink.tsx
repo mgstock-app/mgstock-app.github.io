@@ -30,7 +30,7 @@ export function BranchScheduleLink({ local, company, compact = false, excludeLoc
   }, [permitted, key, local, company, retry]);
   if (!permitted) return null;
   if (result?.key !== key) return null;
-  const visible = visibleBranchScheduleCards(result.rows);
+  const visible = visibleBranchScheduleCards(result.rows.filter(row => !local || row.local_id === local));
   const filtered = excludeLocal ? visible.filter(row=>row.local_id!==excludeLocal) : visible;
   if (result.failed || (result.rows.length > 0 && visible.length === 0)) return <div className="schedule-sheet-status" role="alert"><p>No pudimos cargar el enlace de horarios. Reintentá o consultá a Administración.</p><button type="button" onClick={() => setRetry(value => value + 1)}>Reintentar</button></div>;
   if (!visible.length && company && result.rows.length === 0) return <p className="schedule-sheet-status">Todavía no hay sucursales para configurar. Agregá un local desde Mis empresas para vincular su planilla de Google Sheets.</p>;

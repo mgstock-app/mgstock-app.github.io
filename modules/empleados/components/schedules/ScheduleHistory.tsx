@@ -32,7 +32,7 @@ const mensaje = (e: unknown, fallback: string) => (e instanceof Error && e.messa
 
 // Historial horarios: una copia por semana del Resumen del Google Sheets del local, con Pagado / Pendiente.
 // embebido: va dentro de Horarios (sin título de página) y no aparece si la persona no ve ningún local con historial.
-export function ScheduleHistory({ embebido = false, soloArchivo = false }: { embebido?: boolean; soloArchivo?: boolean }) {
+export function ScheduleHistory({ embebido = false, soloArchivo = false, localScope }: { embebido?: boolean; soloArchivo?: boolean; localScope?: string }) {
   const [locales, setLocales] = useState<HorarioLocal[] | null>(null);
   const [localId, setLocalId] = useState("");
   const [semanas, setSemanas] = useState<HorarioSemana[] | null>(null);
@@ -54,9 +54,10 @@ export function ScheduleHistory({ embebido = false, soloArchivo = false }: { emb
       .locales()
       .then((lista) => {
         if (!active) return;
-        const disponibles = soloArchivo ? lista.filter(item=>item.local_id==="munro") : lista;
+        const scopedLocal = soloArchivo ? "munro" : localScope;
+        const disponibles = scopedLocal ? lista.filter(item => item.local_id === scopedLocal) : lista;
         setLocales(disponibles);
-        setLocalId((actual) => actual || disponibles[0]?.local_id || "");
+        setLocalId((actual) => disponibles.some(item => item.local_id === actual) ? actual : disponibles[0]?.local_id || "");
       })
       .catch((e: unknown) => {
         if (!active) return;
@@ -66,7 +67,7 @@ export function ScheduleHistory({ embebido = false, soloArchivo = false }: { emb
     return () => {
       active = false;
     };
-  }, [soloArchivo]);
+  }, [soloArchivo, localScope]);
 
   useEffect(() => {
     if (!localId) return;

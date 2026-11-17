@@ -69,7 +69,8 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
   if(local==='munro'){
    cy.get('.mhs-tabla tbody tr').should('have.length',8);
    cy.contains('a','Abrir planilla').should('not.exist','Munro usa planilla nativa');
-   cy.get('.mhs-pestanas').contains('button','Historial').click();
+   cy.get('.mhs-pestanas').contains("button","Resumen semanal").click();
+   cy.get('.mhs-archivo-anterior > summary').click();
    cy.contains('h2','Historial de semanas').should('be.visible');
    cy.get('section[aria-label="Hoja Resumen archivada"]').should('be.visible').within(()=>{
     cy.get('table[aria-label^="Resumen del"]').should('be.visible');
@@ -108,15 +109,13 @@ describe('Empleados comparte la sesión de GESTLOK',()=>{
    cy.get('.gl-gestlok-sheet__panel button[aria-label="Cerrar"]').click();
    cy.get('.gl-gestlok-dock').should('be.visible');
    // PC: Horarios es una ruta sin sidebar. Los atajos de turno deben quedar
-   // visibles y funcionales incluso al cambiar Semana/Historial/Resumen semanal.
+   // visibles y funcionales al cambiar entre Semana actual y Resumen semanal.
    cy.viewport(1240,820);
    cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible')
      .and('contain.text','Inicio').and('contain.text','Pagos Online')
      .and('contain.text','Stock Local').and('contain.text','Staff');
    cy.get('.gl-munro-schedules-route > .gl-gestlok-dock')
      .contains('a','Pagos Online').should('have.attr','href').and('include','gl_ir=cierre-online');
-   cy.get('.mhs-pestanas').contains('button','Historial').click();
-   cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible');
    cy.get('.mhs-pestanas').contains('button','Resumen semanal').click();
    cy.get('.gl-munro-schedules-route > .gl-gestlok-dock').should('be.visible');
    cy.get('.mhs-pestanas').contains('button','Semana actual').click();

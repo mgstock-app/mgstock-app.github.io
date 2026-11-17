@@ -85,8 +85,8 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  });
  it("conserva el archivo antiguo de Sheets y los detalles sin mostrar el panel En vivo",()=>{
   cy.viewport(1320,900);iniciar();
-  cy.get(".mhs-pestanas").contains("button","Historial").click();
-  cy.contains("Historial anterior conservado").should("be.visible");
+  cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+  cy.get(".mhs-archivo-anterior > summary").click();
   cy.get('[aria-label="Elegir vista de horarios de Munro"]').should("not.exist");
   cy.get('section[aria-label="Hoja Resumen archivada"]',{timeout:15000}).should("be.visible");
   cy.get('section[aria-label="Hoja Semana archivada"]').should("be.visible");
@@ -255,9 +255,15 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").first().should("contain.text","Julia");
   cy.get(".mhs-tabla tbody tr").first().find("input[type=time]").each($input=>expect($input.val()).to.eq(""));
   cy.wrap(null).should(()=>{expect(ultimo.ultimoCierre()).to.deep.eq({p_semana:SEMANA});expect(ultimo.cierres()).to.deep.eq([SEMANA]);});
-  cy.get(".mhs-pestanas").contains("button","Historial").click();
+  cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
   cy.contains("summary","Semana 09/11 al 15/11").should("contain.text","Finalizada").click();
-  cy.get(".mhs-historial details").first().should("contain.text","Julia");
+  cy.get(".mhs-historial > details").first().within(()=>{
+    cy.get("h3").contains("Resumen de la semana").should("be.visible");
+    cy.contains(".mhs-archivo-persona > summary","Julia").click();
+    cy.get(".mhs-archivo-persona tbody tr").should("have.length",7);
+    cy.get(".mhs-archivo-persona tbody").contains("Lun 09/11").should("be.visible");
+  });
+  cy.get(".mhs-resumen-totales").should("not.exist");
  });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
   cy.viewport(1320,900);iniciar({editable:false});
