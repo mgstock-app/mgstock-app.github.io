@@ -537,23 +537,27 @@ export function MunroWeeklySchedule(){
          return <details key={inicio}>
            <summary>Semana {semanaLabel(inicio)} · {inicio.slice(0,4)} · {grupo.length} colaboradores · {cerrado?"Finalizada":completo?"Anterior · completa":"Revisar antes de liquidar"}</summary>
            <div className="mhs-archivo-contenido">
-           <h3>Resumen de la semana</h3>
-           <div className="mhs-resumen-desbordar"><table>
-             <thead><tr><th>Colaborador</th><th>Cobra por</th><th>Trabajado</th><th>OFF</th>
-               <th>Vacaciones</th><th>Feriado extra</th><th>Total a liquidar</th><th>Observaciones</th></tr></thead>
-             <tbody>{grupo.map(r=>{
-               const c=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
-               const fmt=(n:number)=>r.modalidad==="turno"?String(n):formatoHoras(n);
-               return <tr key={r.id}><td>{r.nombre}</td><td>{r.modalidad==="turno"?"Turno":"Hora"}</td>
-                 <td>{fmt(c.trabajados)}</td><td>{fmt(c.off)}</td><td>{fmt(c.vacaciones)}</td>
-                 <td>{fmt(c.extraFeriado)}</td><td>{c.total===null||c.pendientes?"Revisar":fmt(c.total)}</td>
-                 <td>{c.observaciones||"—"}</td>
-               </tr>;
-             })}</tbody>
-           </table></div>
-           <h3>Detalle por día</h3>
-           {grupo.map(r=><details className="mhs-archivo-persona" key={r.id}>
-             <summary>{r.nombre}</summary>
+           {grupo.map(r=>{
+             const liquidacion=resumenLiquidacion(r.modalidad,r.datos,inicio,festivos,momento);
+             const fmt=(n:number)=>r.modalidad==="turno"?n+" turnos":formatoHoras(n)+" h";
+             const total=liquidacion.errores.length||liquidacion.total===null
+               ?"Revisar":liquidacion.pendientes?"Pendiente":fmt(liquidacion.total);
+             return <details className="mhs-archivo-persona" key={r.id}>
+             <summary>
+               <span className="mhs-archivo-nombre">{r.nombre}</span>
+               <span className="mhs-archivo-total"><small>Total a liquidar</small><strong>{total}</strong></span>
+             </summary>
+             <div className="mhs-archivo-individual">
+               <h3>Resumen individual</h3>
+               <dl className="mhs-archivo-desglose">
+                 <div><dt>Trabajado</dt><dd>{fmt(liquidacion.trabajados)}</dd></div>
+                 <div><dt>OFF</dt><dd>{fmt(liquidacion.off)}</dd></div>
+                 {liquidacion.vacaciones!==0&&<div><dt>Vacaciones</dt><dd>{fmt(liquidacion.vacaciones)}</dd></div>}
+                 {liquidacion.extraFeriado!==0&&<div><dt>Feriado extra</dt><dd>{fmt(liquidacion.extraFeriado)}</dd></div>}
+               </dl>
+               {liquidacion.observaciones&&<p className="mhs-archivo-observaciones">{liquidacion.observaciones}</p>}
+               {liquidacion.errores.length>0&&<p className="mhs-liquidacion-error">{liquidacion.errores.join(" ")}</p>}
+               <h3>Detalle por día</h3>
              <div className="mhs-resumen-desbordar"><table>
                <thead><tr><th scope="col">Día</th><th scope="col">Mañana</th>
                  <th scope="col">Noche</th><th scope="col">Trabajado</th><th scope="col">Estado</th></tr></thead>
@@ -576,7 +580,9 @@ export function MunroWeeklySchedule(){
                  </tr>;
                })}</tbody>
              </table></div>
-           </details>)}
+             </div>
+           </details>;
+           })}
            </div>
          </details>;
        })}
