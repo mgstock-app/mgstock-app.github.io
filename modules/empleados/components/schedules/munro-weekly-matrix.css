@@ -8,7 +8,7 @@
 .mhs-matriz-colaborador{min-width:0}
 .mhs-matriz-etiquetas{display:none}
 @media(min-width:761px){
- .mhs-tabla thead th:first-child{width:clamp(255px,29%,320px)}
+ .mhs-tabla thead th:first-child{width:clamp(325px,34%,385px)}
  .mhs-tabla tbody th{padding:12px 8px}
  .mhs-tabla tbody td{padding:12px 3px}
  .mhs-matriz-colaborador{display:grid;grid-template-columns:minmax(0,1fr) minmax(76px,32%);gap:8px}
@@ -33,7 +33,7 @@
  .mhs-tabla .mhs-estado select{min-width:0;max-width:100%;width:100%}
 }
 @media(min-width:761px) and (max-width:1030px){
- .mhs-tabla thead th:first-child{width:255px}
+ .mhs-tabla thead th:first-child{width:325px}
  .mhs-matriz-colaborador{grid-template-columns:minmax(0,1fr) 76px;gap:4px}
  .mhs-tabla tbody th{padding:10px 5px}
  .mhs-tabla .mhs-cuatro input[type=time]{font-size:11px}
@@ -58,4 +58,11 @@
  .mhs-matriz-colaborador .mhs-estado{width:100%;max-width:100%;min-width:0}
  .mhs-matriz-colaborador .mhs-estado select{box-sizing:border-box;min-width:0;max-width:100%;width:100%}
  .mhs-matriz-etiquetas{pointer-events:none}
+}
+
+@media(min-width:761px){
+ .mhs-matriz-colaborador{grid-template-columns:minmax(0,1fr) 82px}
+ .mhs-matriz-colaborador>.mhs-colaborador{min-width:0}
+ .mhs-matriz-colaborador .mhs-estado{min-width:0}
+ .mhs-matriz-colaborador .mhs-estado select{max-width:100%;min-width:0;box-sizing:border-box}
 }
