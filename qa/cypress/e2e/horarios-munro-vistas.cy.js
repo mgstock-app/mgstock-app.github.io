@@ -86,6 +86,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  it("conserva el archivo antiguo de Sheets y los detalles sin mostrar el panel En vivo",()=>{
   cy.viewport(1320,900);iniciar();
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").first().click();
   cy.get(".mhs-archivo-anterior > summary").click();
   cy.get('[aria-label="Elegir vista de horarios de Munro"]').should("not.exist");
   cy.get('section[aria-label="Hoja Resumen archivada"]',{timeout:15000}).should("be.visible");
@@ -106,7 +107,12 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label="Feriado · Lucía · 12/11"]').check();
    cy.get('.mhs-tabla tbody tr').eq(1).find('.mhs-dia-extra').should("not.exist");
    cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
-   // Resumen individual: una tabla de siete días y su liquidación por colaborador.
+   // Solo las fechas aparecen inicialmente, no el detalle de todo el personal.
+   cy.get(".mhs-resumen-semanas .mhs-semana-item").should("contain.text","09/11 al 15/11");
+   cy.get(".mhs-resumen > .mhs-colab").should("not.exist");
+   cy.get(".mhs-resumen-semanas .mhs-semana-item").first().click();
+   cy.get(".mhs-resumen > .mhs-colab").first().should("not.have.attr","open");
+   cy.get(".mhs-resumen > .mhs-colab").first().find("summary").click();
    cy.get(".mhs-resumen > .mhs-colab").first().should("contain.text","Lucía").find(".mhs-dias tbody tr").should("have.length",7);
    cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-dias tbody").contains("tr","Jue 12/11").should("contain.text","2 t.").and("contain.text","Feriado");
    cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-total-liquidacion").should("contain.text","5 turnos");
@@ -216,6 +222,8 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     expect(data["2026-11-09"].tm_s).to.eq("13:00");
   });
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").first().click();
+  cy.get(".mhs-resumen > .mhs-colab").contains("summary","Julieta").click();
   cy.get('input[aria-label="OFF de Julieta"]').should("have.value","4:30");
  });
  it("muestra lunes a domingo en la misma pantalla y mantiene fijos los encabezados al bajar",()=>{
@@ -263,13 +271,13 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").first().find("input[type=time]").each($input=>expect($input.val()).to.eq(""));
   cy.wrap(null).should(()=>{expect(ultimo.ultimoCierre()).to.deep.eq({p_semana:SEMANA});expect(ultimo.cierres()).to.deep.eq([SEMANA]);});
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
-  cy.contains("summary","Semana 09/11 al 15/11").should("contain.text","Finalizada").click();
-  cy.get(".mhs-historial > details").first().within(()=>{
-    cy.get("h3").contains("Resumen de la semana").should("be.visible");
-    cy.contains(".mhs-archivo-persona > summary","Julia").click();
-    cy.get(".mhs-archivo-persona[open] tbody tr").should("have.length",7);
-    cy.get(".mhs-archivo-persona[open] tbody").contains("Lun 09/11").should("be.visible");
-  });
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").should("have.length",2);
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").contains("09/11 al 15/11").click();
+  cy.get(".mhs-resumen > .mhs-colab").contains("summary","Julia").click();
+  cy.get(".mhs-resumen > .mhs-colab[open] tbody tr").should("have.length",7);
+  cy.get(".mhs-resumen > .mhs-colab[open] tbody").contains("Lun 09/11").should("be.visible");
+  cy.contains("button","Volver a semanas").click();
+  cy.get(".mhs-resumen > .mhs-colab").should("not.exist");
   cy.get(".mhs-resumen-totales").should("not.exist");
  });
  it("restringe las acciones cuando el permiso de escritura es falso",()=>{
