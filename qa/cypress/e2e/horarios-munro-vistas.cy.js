@@ -271,7 +271,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").first().find("input[type=time]").each($input=>expect($input.val()).to.eq(""));
   cy.wrap(null).should(()=>{expect(ultimo.ultimoCierre()).to.deep.eq({p_semana:SEMANA});expect(ultimo.cierres()).to.deep.eq([SEMANA]);});
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
-  cy.get(".mhs-resumen-semanas .mhs-semana-item").should("have.length",2);
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").should("have.length",1); // Fecha simulada: semana actual 09/11; no mostrar una semana futura.
   cy.get(".mhs-resumen-semanas .mhs-semana-item").contains("09/11 al 15/11").click();
   cy.get(".mhs-resumen > .mhs-colab").contains("summary","Julia").click();
   cy.get(".mhs-resumen > .mhs-colab[open] tbody tr").should("have.length",7);
