@@ -58,7 +58,7 @@ export function MunroWeeklySchedule(){
      const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
      const actual=p.personas.map(persona=>{
        const registro=p.planillas.find(x=>x.id===persona.id);
-       return {...persona,datos:registro?.datos||{},version:registro?.version||0};
+       return {...persona,...(p.semana_cerrada&&registro?{nombre:registro.nombre,modalidad:registro.modalidad,estado:registro.estado||persona.estado,inactivo_desde:registro.inactivo_desde??persona.inactivo_desde}:{}),datos:registro?.datos||{},version:registro?.version||0};
      });
      setPlanilla(p);setFilas(actual);setPendientes([]);setEditando(false);setPersonaEnEdicion(null);
      revisiones.current={};intentoAutomatico.current="";
@@ -89,7 +89,7 @@ export function MunroWeeklySchedule(){
        setPlanilla(p);
        setFilas(p.personas.map(persona=>{
          const r=p.planillas.find(x=>x.id===persona.id);
-         return {...persona,datos:r?.datos||{},version:r?.version||0};
+         return {...persona,...(p.semana_cerrada&&r?{nombre:r.nombre,modalidad:r.modalidad,estado:r.estado||persona.estado,inactivo_desde:r.inactivo_desde??persona.inactivo_desde}:{}),datos:r?.datos||{},version:r?.version||0};
        }));
        setFeriados(p.feriados||[]);
      }catch{/* Mantener los datos actuales hasta recuperar la conexión. */}
