@@ -8,10 +8,10 @@
 .mhs-matriz-colaborador{min-width:0}
 .mhs-matriz-etiquetas{display:none}
 @media(min-width:761px){
- .mhs-tabla thead th:first-child{width:clamp(225px,27%,300px)}
+ .mhs-tabla thead th:first-child{width:clamp(255px,29%,320px)}
  .mhs-tabla tbody th{padding:12px 8px}
  .mhs-tabla tbody td{padding:12px 3px}
- .mhs-matriz-colaborador{display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,37%);gap:8px}
+ .mhs-matriz-colaborador{display:grid;grid-template-columns:minmax(0,1fr) minmax(76px,32%);gap:8px}
  .mhs-matriz-colaborador>.mhs-colaborador{min-width:0;max-width:100%}
  .mhs-matriz-etiquetas{display:flex;flex-direction:column;align-items:stretch;padding-top:43px;min-width:0;color:#45566d}
  .mhs-matriz-etiquetas>span{height:70px;min-height:70px;display:flex;align-items:center;border-top:1px solid #ebeff5;padding:6px 3px;font-size:clamp(10px,.94vw,12px);line-height:1.3;font-weight:650;overflow-wrap:anywhere}
@@ -33,8 +33,8 @@
  .mhs-tabla .mhs-estado select{min-width:0;max-width:100%;width:100%}
 }
 @media(min-width:761px) and (max-width:1030px){
- .mhs-tabla thead th:first-child{width:225px}
- .mhs-matriz-colaborador{grid-template-columns:minmax(0,1fr) 75px;gap:4px}
+ .mhs-tabla thead th:first-child{width:255px}
+ .mhs-matriz-colaborador{grid-template-columns:minmax(0,1fr) 76px;gap:4px}
  .mhs-tabla tbody th{padding:10px 5px}
  .mhs-tabla .mhs-cuatro input[type=time]{font-size:11px}
 }
@@ -49,4 +49,13 @@
 @media(min-width:761px){
  .mhs-tabla tbody :is(select,input,button){scroll-margin-top:110px}
  .mhs-tabla tbody th{scroll-margin-top:110px}
+}
+
+/* Evitar que las etiquetas de la matriz cubran el menú de estado o sus clics. */
+@media(min-width:761px){
+ .mhs-matriz-colaborador>.mhs-colaborador{width:100%;min-width:0}
+ .mhs-matriz-colaborador .mhs-opciones-colaborador{width:100%;min-width:0;max-width:100%}
+ .mhs-matriz-colaborador .mhs-estado{width:100%;max-width:100%;min-width:0}
+ .mhs-matriz-colaborador .mhs-estado select{box-sizing:border-box;min-width:0;max-width:100%;width:100%}
+ .mhs-matriz-etiquetas{pointer-events:none}
 }
