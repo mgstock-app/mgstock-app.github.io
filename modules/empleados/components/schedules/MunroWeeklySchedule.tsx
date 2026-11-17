@@ -314,16 +314,16 @@ export function MunroWeeklySchedule(){
    </table></div>;
  };
  const liquidacion=(modalidad:Modalidad,r:ReturnType<typeof resumenLiquidacion>,
-   off:ReactNode,vacaciones:ReactNode,nota:ReactNode)=>{
+   off:ReactNode,vacaciones:ReactNode,nota:ReactNode,conFeriado:boolean)=>{
    const porHora=modalidad==="hora";
    return <section className="mhs-liquidacion" aria-label="Resumen de liquidación">
      <h4 className="mhs-liq-titulo">Resumen de liquidación</h4>
      <dl>
      <div><dt>{porHora?"Horas trabajadas":"Turnos trabajados"}</dt><dd>{cantidad(modalidad,r.trabajados)}</dd></div>
-     <div><dt>OFF pagos</dt><dd>{off}</dd></div>
+     <div><dt>OFF</dt><dd>{off}</dd></div>
      {vacaciones!==null&&<div><dt>Vacaciones</dt><dd>{vacaciones}</dd></div>}
-     <div><dt>Feriados correspondientes</dt><dd>{cantidad(modalidad,r.extraFeriado)}
-       {r.feriadosTrabajados.length>0&&<small> · {r.feriadosTrabajados.map(fechaCorta).join(", ")}</small>}</dd></div>
+     {conFeriado&&<div><dt>Feriado</dt><dd>{cantidad(modalidad,r.extraFeriado)}
+       {r.feriadosTrabajados.length>0&&<small> · {r.feriadosTrabajados.map(fechaCorta).join(", ")}</small>}</dd></div>}
      <div className="mhs-liq-total"><dt>Total final a liquidar</dt>
        <dd className="mhs-total-liquidacion">{r.errores.length>0
          ?<span className="mhs-liquidacion-error">Revisar</span>
@@ -543,11 +543,12 @@ export function MunroWeeklySchedule(){
              editando&&puedeEditar?<input aria-label={"Observación manual de "+f.nombre}
                placeholder="Aclaración opcional" maxLength={200}
                value={f.datos[semana]?.observaciones||""}
-               onChange={e=>cambiarDia(f.id,semana,"observaciones",e.target.value)}/>:null)}
+               onChange={e=>cambiarDia(f.id,semana,"observaciones",e.target.value)}/>:null,
+             feriadoHabilitado(f.datos,semana,feriados))}
          </details>;
        })}
        {filasResumen.length===0&&<p>Primero completá los nombres en Semana actual. El resumen se calculará automáticamente.</p>}
-       <p>Criterio de liquidación: Trabajado + OFF pagos + Vacaciones + adicional de Feriado.
+       <p>Criterio de liquidación: Trabajado + OFF + Vacaciones + adicional de Feriado.
          OFF inicial: 1 turno o 4:30 horas (modificable). Vacaciones y feriados son opcionales.
          El feriado suma exclusivamente lo trabajado en los días seleccionados.</p>
        <section className="mhs-historial" aria-labelledby="mhs-historial-titulo">
@@ -572,7 +573,8 @@ export function MunroWeeklySchedule(){
                  <span className="mhs-modalidad">{r.modalidad==="hora"?"Por hora":"Por turno"}</span></summary>
                {tablaDias(r.modalidad,r.datos,inicio,festivos,true)}
                {liquidacion(r.modalidad,c,cantidad(r.modalidad,c.off),
-                 vacacionesHabilitadas(r.datos,inicio)?cantidad(r.modalidad,c.vacaciones):null,null)}
+                 vacacionesHabilitadas(r.datos,inicio)?cantidad(r.modalidad,c.vacaciones):null,null,
+                 feriadoHabilitado(r.datos,inicio,festivos))}
              </details>;
            })}
            </div>
