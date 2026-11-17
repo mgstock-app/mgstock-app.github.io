@@ -22,7 +22,7 @@ export function MunroEmployeeLinks({personas}:{personas:Persona[]}){
   }catch{setError("No fue posible consultar las cuentas de colaboradores de Munro.");}
   finally{setCargando(false);}
  },[]);
- useEffect(()=>{void cargar();},[cargar]);
+ useEffect(()=>{let activo=true;queueMicrotask(()=>{if(activo)void cargar();});return()=>{activo=false;};},[cargar]);
  const guardar=async(c:Cuenta)=>{
   const raw=elecciones[c.usuario_id]??"";
   const id=raw===""?null:Number(raw);
