@@ -143,7 +143,7 @@ test('Noche pendiente: botón accesible arriba y en comparación, solo cuando el
  assert.match(main,/comparison\.baseline_ready\|\|comparison\.first_day/);
  assert.match(main,/previous\.counts\.find\(r=>r\.shift==='noche_salida'\)\?\.status==='finalizado'/);
  assert.match(main,/shift='noche_salida'/);
- assert.match(main,/autoResumeTurn=false;day=previousDay/);
+ assert.match(main,/autoResumeTurn=false;recoveringFromDay=originalDay;day=previousDay/);
  assert.match(css,/\.gcm-recover-night button/);
  await h.mod.load({...h.ctx,rpc:async()=>({
   baseline_ready:true,first_day:false,previous_day:'2026-11-15',rows:[]
