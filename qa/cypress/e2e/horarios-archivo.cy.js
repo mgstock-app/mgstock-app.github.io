@@ -33,6 +33,7 @@ describe('Archivo visual de horarios',()=>{
   cy.get('.gl-gerente__sidebar').contains('button','Horarios',{timeout:15000}).click();
   // La nueva planilla reemplaza la vista "En vivo", sin borrar semanas guardadas.
   cy.get('.mhs-pestanas').contains("button","Resumen semanal").click();
+  cy.get('.mhs-resumen-semanas .mhs-semana-item').first().click();
   cy.get('.mhs-archivo-anterior > summary').click();
   cy.get('[aria-label="Elegir vista de horarios de Munro"]').should('not.exist');
   cy.contains('button','Enviar a historial').should('not.exist');
