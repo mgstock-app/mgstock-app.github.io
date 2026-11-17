@@ -459,3 +459,9 @@
  .mhs-cuatro--feriado .mhs-dia-extra--marcado{grid-column:1/-1}
  .mhs-card-feriado{font-size:11px}
 }
+
+/* Contraste sobre la matriz: no cambiar estilos de otros locales. */
+.mhs-tabla .mhs-cuatro>label.mhs-dia-extra--marcado{border-color:#a96e0c;background:#f5d888;color:#5d3e04}
+.mhs-tabla .mhs-cuatro>label.mhs-dia-extra--marcado span{color:#5d3e04;font-weight:850;min-height:0}
+.mhs-tabla .mhs-cuatro>label.mhs-dia-extra--marcado .mhs-feriado-marcado{color:#fff}
+.mhs-tabla tbody tr.mhs-inactivo td.mhs-celda-feriado{background:#fff3d8}
