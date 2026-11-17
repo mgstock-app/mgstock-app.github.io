@@ -291,8 +291,9 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     cy.get("td").should("have.length",7);
     cy.get("td").each($dia=>cy.wrap($dia).find('input[type="time"]').should("have.length",4));
   });
+  cy.contains("button","Modificar").click();
   cy.get(".mhs-tabla tbody tr").first().then($fila=>{
-    const estado=$fila.find(".mhs-estado select")[0]||$fila.find(".mhs-estado")[0];
+    const estado=$fila.find(".mhs-estado select")[0];
     const etiquetas=$fila.find(".mhs-matriz-etiquetas")[0];
     const e=estado.getBoundingClientRect(),l=etiquetas.getBoundingClientRect();
     expect(e.right,"estado dentro del espacio del colaborador").to.be.at.most(l.left+2);
