@@ -44,7 +44,7 @@ test("Munro: vinculación exige gerente autorizado y nunca coincide por nombre",
 });
 
 test("solo Munro habilita el resumen en la vista individual, resto conserva Google Sheets",()=>{
- assert.match(portal,/user\.role !== "employee" \|\| user\.status !== "approved"/);
+ assert.match(portal,/user\?\.role !== "employee" \|\| user\.status !== "approved"/);
  assert.match(portal,/user\.local_id==="munro"/);
  assert.match(portal,/rm_app_employee_schedule_view/);
  assert.match(portal,/Ver planilla \(solo lectura\)/);
