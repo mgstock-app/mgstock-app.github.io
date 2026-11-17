@@ -96,6 +96,8 @@
 }
 
 
+.mhs-movil-buscar{display:none}
+
 /* Munro · móvil: día fijo bajo la barra de GESTLOK, tarjetas compactas.
    Solo estilos del Staff de Munro, sin alterar otros módulos o roles. */
 @media screen and (max-width:760px){
