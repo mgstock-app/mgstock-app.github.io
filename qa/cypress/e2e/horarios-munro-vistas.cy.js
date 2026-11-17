@@ -72,7 +72,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("a","Abrir planilla").should("not.exist");
   cy.contains("button","Modificar").click();
   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Nombre del colaborador"]').type("Lucía");
-  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').scrollIntoView({offset:{top:-120,left:0}}).select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
   cy.get(".mhs-alerta").should("not.exist");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -133,7 +133,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}]});
    cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-activo .mhs-luz-estado').should("be.visible");
    cy.contains("button","Modificar").click();
-   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').scrollIntoView({offset:{top:-120,left:0}}).select("inactivo");
+   cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo",{scrollBehavior:"center"});
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
      .clear().type("2026-11-10");
    cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
@@ -175,7 +175,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("contain.text","Activo").and("not.contain.text","Refuerzo").and("not.contain.text","Inactivo");
   cy.contains("button","Modificar").click();
-  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').scrollIntoView({offset:{top:-120,left:0}}).select("refuerzo");
+  cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("have.class","mhs-estado-refuerzo").and("contain.text","Refuerzo");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
