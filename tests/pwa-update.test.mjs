@@ -8,7 +8,7 @@ function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, loca
   const handlers = {}, elements = [];
   let reloads = 0, currentTenant = tenant, currentLocal = local, channel, timerId = 0;
   const intervals=new Map();
-  const element = () => ({style:{},children:[],listeners:{},removed:false,setAttribute(){},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;},remove(){this.removed=true;}});
+  const element = () => ({style:{},children:[],listeners:{},attributes:{},removed:false,setAttribute(n,v){this.attributes[n]=v;},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;},remove(){this.removed=true;}});
   const controller = scope == null ? {} : {
     postMessage(message) { channel.port1.onmessage({data:{type:message.type,audience:scope}}); }
   };
@@ -261,4 +261,44 @@ test('Cambios en Staff semanal de Munro no generan carteles falsos en Torcuato n
  ),[LOCAL_AUDIENCE.munro]);
  assert.deepEqual(releaseAudience(['modules/empleados/components/schedules/HorariosHub.tsx']),['*'],
    'otros componentes compartidos no deben clasificar erróneamente como Munro');
+});
+
+test('X arriba a la izquierda: descarta el aviso sin recargar ni perder formularios',()=>{
+ const f=fixture(true,['*'],TENANTS.miGusto,'munro');
+ f.handlers.controllerchange();
+ const banner=f.elements[0];
+ const close=banner.children.find(el=>el.attributes['aria-label']==='Cerrar aviso de actualización');
+ assert.ok(close,'El aviso debe tener botón X accesible');
+ assert.equal(close.textContent,'×');
+ assert.match(close.style.cssText,/left:9px/);
+ close.listeners.click();
+ assert.equal(banner.removed,true);
+ assert.equal(f.reloads(),0,'Cerrar no recarga ni pierde los datos en pantalla');
+ assert.equal(f.timerCount(),0,'Cerrar también detiene las comprobaciones del aviso');
+ f.window.GestLokPWAUpdate.refresh();
+ f.tick();
+ assert.equal(f.elements.length,1,'No reaparece el cartel mientras no haya otra versión');
+ f.replaceController();
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,2,'Una actualización nueva sí puede volver a mostrarse');
+});
+
+test('Selects sin editar NO bloquean la actualización; cambios reales sí',()=>{
+ const app=read('public/stock/app.js');
+ const helper=app.match(/function pwaFormDirty\(el\)\{[\s\S]*?\n\}/)?.[0];
+ assert.ok(helper,'El controlador debe distinguir cambios reales en selects');
+ assert.match(app,/\.some\(pwaFormDirty\)/);
+ const dirty=vm.runInNewContext('('+helper+')',{Array});
+ const opts=(initial)=>[{selected:initial===0,defaultSelected:initial===0},{selected:initial===1,defaultSelected:initial===1}];
+ const single={tagName:'SELECT',selectedIndex:0,options:opts(-1),multiple:false};
+ assert.equal(dirty(single),false,'Primer elemento seleccionado automáticamente no es cambio');
+ assert.equal(dirty({...single,selectedIndex:1}),true,'Cambiar de método es borrador pendiente');
+ assert.equal(dirty({...single,selectedIndex:1,options:opts(1)}),false,'Opción explícita preseleccionada tampoco bloquea');
+ const multi={tagName:'SELECT',multiple:true,options:opts(-1)};
+ assert.equal(dirty(multi),false);
+ assert.equal(dirty({...multi,options:opts(-1).map((o,i)=>({...o,selected:i===1}))}),true);
+ assert.equal(dirty({tagName:'INPUT',type:'checkbox',checked:false,defaultChecked:false}),false);
+ assert.equal(dirty({tagName:'INPUT',type:'checkbox',checked:true,defaultChecked:false}),true);
+ assert.equal(dirty({tagName:'INPUT',type:'text',value:'',defaultValue:''}),false);
+ assert.equal(dirty({tagName:'INPUT',type:'text',value:'escrito',defaultValue:''}),true);
 });
