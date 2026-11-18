@@ -4,9 +4,18 @@
 alter table gestlok_mg_orders_private.android_alerts
  add column if not exists notification_preview text;
 
-alter table gestlok_mg_orders_private.android_alerts
- add constraint android_alerts_preview_max_length
- check (notification_preview is null or char_length(notification_preview) <= 240);
+do $
+begin
+ if not exists (
+   select 1 from pg_constraint
+   where conname='android_alerts_preview_max_length'
+     and conrelid='gestlok_mg_orders_private.android_alerts'::regclass
+ ) then
+  alter table gestlok_mg_orders_private.android_alerts
+   add constraint android_alerts_preview_max_length
+   check (notification_preview is null or char_length(notification_preview) <= 240);
+ end if;
+end $;
 
 -- Ingesta con versión nueva: conserva el enlace y la validación de clave del RPC v2,
 -- además de su prevención de duplicados y aislamiento de sucursal.
