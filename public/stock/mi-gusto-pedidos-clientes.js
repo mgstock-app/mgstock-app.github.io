@@ -124,7 +124,9 @@ function acceptMobileAlerts(result,loc){
   // No reconocer eventos antiguos ni avisos anteriores al inicio de la prueba.
   if(Number.isFinite(received)&&received>Math.max(baseline,bridgeTest.startedAt-5000)){
    bridgeTest.passed=true;passed=true;
-   notice='Prueba correcta: GESTLOK recibió una señal nueva del Android de '+localName()+'.';
+   bridgeTest.failed=false;
+   bridgeTest.feedback='✓ Conectado para avisos: se recibió una nueva señal de '+localName()+'. No confirma que haya un pedido.';
+   notice='';
   }
  }
  indicators();
@@ -288,6 +290,7 @@ function mobileBridgePanel(){
  const last=androidBridge?.last_event_at;
  const hasSignal=!!last;
  const verified=!!testing?.passed;
+ const testClass=verified?'mgp-mobile-test-success':testing?.failed?'mgp-mobile-test-error':'mgp-mobile-test-wait';
  const status=verified?'Señal de prueba recibida':hasSignal?'Última señal registrada: '+date(last):configured?'Clave generada · Falta prueba':'Pendiente de configurar';
  return '<details class="mgp-config mgp-mobile-config" id="mgp-mobile-config" open>'+
  '<summary>Conectar avisos del WhatsApp Business de '+esc(localName())+' (sin API)</summary>'+
@@ -314,10 +317,9 @@ function mobileBridgePanel(){
  (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
  '<p>Cuando MacroDroid esté activo, iniciá la prueba y generá una notificación real de WhatsApp Business desde otro celular.</p>'+
- '<div class="mgp-mobile-test-buttons"><button type="button" data-mgp-mobile-test '+(!configured||!canEdit()?'disabled':'')+'>Iniciar prueba de conexión</button>'+
- '<button type="button" data-mgp-mobile-check '+(!testing||!canEdit()?'disabled':'')+'>Comprobar señal</button></div>'+
- (testing?(verified?'<p class="mgp-mobile-test-success" role="status">✓ Conectado para avisos: se recibió una nueva señal de '+esc(localName())+'. No confirma la recepción de todos los pedidos.</p>':
- '<p class="mgp-mobile-test-wait" role="status">Esperando señal nueva del Android de '+esc(localName())+'. Si no llega, revisá permisos, disparador y filtro en MacroDroid.</p>'):'')+
+ '<div class="mgp-mobile-test-buttons"><button type="button" data-mgp-mobile-test '+(!configured||!canEdit()?'disabled':'')+'>'+(testing?'Reiniciar prueba de conexión':'Iniciar prueba de conexión')+'</button>'+
+ '<button type="button" data-mgp-mobile-check '+(!testing||!canEdit()||testing?.checking?'disabled':'')+' aria-busy="'+!!testing?.checking+'">'+(testing?.checking?'Comprobando…':'Comprobar señal')+'</button></div>'+
+ (testing?'<p class="'+testClass+'" role="'+(testing.failed?'alert':'status')+'" aria-live="polite">'+esc(testing.feedback||'Prueba iniciada. Esperando señal nueva del Android de '+localName()+'.')+'</p>':'')+
  '</div>'+
  '<details class="mgp-mobile-advanced"><summary>Configuración manual (por si la necesitás)</summary>'+
  '<p>En MacroDroid: Notificación recibida → WhatsApp Business; filtrar por derivación real del agente. Acción: Solicitud HTTP POST.</p>'+
@@ -420,20 +422,37 @@ async function downloadAndroidMacro(){
 
 function beginMobileBridgeTest(){
  if(!canEdit()||!metaLocal()||!androidBridge?.configured)return;
- bridgeTest={local:local(),startedAt:Date.now(),previousAt:androidBridge.last_event_at||null,passed:false};
- notice='Prueba iniciada para '+localName()+'. Generá una notificación real desde otro teléfono y tocá Comprobar señal.';
- error='';update(true);
+ bridgeTest={
+  local:local(),startedAt:Date.now(),previousAt:androidBridge.last_event_at||null,
+  passed:false,checking:false,failed:false,checks:0,
+  feedback:'Prueba iniciada para '+localName()+'. Esperando señal nueva del Android de '+localName()+'. Enviá un mensaje desde otro celular y después tocá Comprobar señal.'
+ };
+ notice='';error='';update(true);
 }
 async function checkMobileBridgeTest(){
- if(!canEdit()||!metaLocal()||bridgeTest?.local!==local())return;
+ if(!canEdit()||!metaLocal()||bridgeTest?.local!==local()||bridgeTest.checking)return;
  const loc=local(),started=bridgeTest.startedAt;
+ bridgeTest.checking=true;bridgeTest.failed=false;
+ bridgeTest.feedback='Comprobando si llegó una señal nueva desde el Android de '+localName()+'…';
+ notice='';error='';update(true);
  try{
   const bridge=await rpc('gestlok_mg_android_bridge_state');
   if(loc!==local()||bridgeTest?.startedAt!==started)return;
   acceptMobileAlerts(bridge,loc);
-  if(!bridgeTest.passed)notice='Todavía no llegó una señal nueva para '+localName()+'. Revisá MacroDroid y las notificaciones.';
-  update(true);
- }catch(e){error=e.message||'No se pudo verificar la conexión';update(true);}
+  bridgeTest.checks++;
+  bridgeTest.feedback=bridgeTest.passed?
+   '✓ Comprobación '+bridgeTest.checks+': señal nueva recibida desde '+localName()+'. La conexión de avisos funciona.':
+   'Comprobación '+bridgeTest.checks+': todavía no llegó ninguna señal nueva de '+localName()+'. Revisá en MacroDroid el registro de la macro y el resultado de Solicitud HTTP (POST).';
+ }catch(e){
+  if(loc!==local()||bridgeTest?.startedAt!==started)return;
+  bridgeTest.failed=true;
+  bridgeTest.feedback='No se pudo consultar la señal de '+localName()+': '+(e.message||'error de conexión')+'. Intentá nuevamente.';
+ }finally{
+  if(loc===local()&&bridgeTest?.startedAt===started){
+   bridgeTest.checking=false;
+   update(true);
+  }
+ }
 }
 
 async function createMobileBridgeKey(){
