@@ -195,6 +195,26 @@ test('La prueba de vinculación se aísla entre Munro y Torcuato',async()=>{
  assert.match(m.mod.view(),/Conectado para avisos: se recibió una nueva señal de Don Torcuato/);
 });
 
+test('Botones de prueba muestran progreso y resultado visible sin señal nueva',async()=>{
+ const m=make('gerente','munro');m.mod.subscribe('munro',()=>{});
+ await tick();await tick();clickSection(m,'vinculacion');
+ m.mod._test.beginMobileBridgeTest();
+ const started=m.mod.view();
+ assert.match(started,/Prueba iniciada para Munro/);
+ assert.match(started,/data-mgp-mobile-check/);
+ const event={target:{closest:selector=>selector==='[data-mgp-mobile-check]'?{}:null}};
+ m.handlers.click(event);
+ assert.match(m.mod.view(),/Comprobando si llegó una señal nueva/);
+ assert.match(m.mod.view(),/Comprobando…/);
+ await tick();await tick();
+ const checked=m.mod.view();
+ assert.match(checked,/Comprobación 1: todavía no llegó ninguna señal nueva de Munro/);
+ assert.match(checked,/Revisá en MacroDroid el registro de la macro/);
+ assert.ok(m.calls.some(x=>x.name==='gestlok_mg_android_bridge_state'));
+ m.handlers.click(event);await tick();await tick();
+ assert.match(m.mod.view(),/Comprobación 2:/,'cada pulsación muestra una respuesta nueva');
+});
+
 test('Asistente QR tiene tres etapas, conserva privacidad y aclara el límite de las notificaciones',()=>{
  const page=fs.readFileSync(new URL('../public/vincular-whatsapp/index.html',import.meta.url),'utf8');
  assert.match(page,/data-stage="1"/);
