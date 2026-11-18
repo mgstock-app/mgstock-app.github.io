@@ -250,6 +250,8 @@ test('Cambios en Staff semanal de Munro no generan carteles falsos en Torcuato n
   'modules/empleados/components/schedules/munro-employee-links.css',
   'modules/empleados/components/schedules/employee-munro-weekly-summary.css',
   'modules/empleados/components/schedules/munro-weekly.css',
+  'modules/empleados/components/schedules/munro-weekly-polish.css',
+  'modules/empleados/components/schedules/munro-weekly-matrix.css',
   'modules/empleados/features/schedules/munro-model.ts',
   'supabase/migrations/20261116094500_munro_staff_cierre_semanal.sql'
  ];
