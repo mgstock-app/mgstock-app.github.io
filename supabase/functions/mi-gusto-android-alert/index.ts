@@ -1,6 +1,6 @@
 // Mi Gusto · avisos operativos de WhatsApp Business por sucursal, sin Cloud API.
-// Únicamente señal de un Android autorizado y número visible en la notificación (si existe).
-// No almacena conversaciones, nombres ni interpreta si hay un pedido confirmado.
+// Solo recibe señales autorizadas y una vista previa acotada si Android la muestra.
+// No consulta chats de Meta ni interpreta si el pedido fue confirmado.
 import {createClient} from "npm:@supabase/supabase-js@2.118.0";
 
 const json=(status:number,data:Record<string,unknown>)=>new Response(JSON.stringify(data),{
@@ -14,9 +14,9 @@ Deno.serve(async(req:Request)=>{
  if(!url||!service)return json(503,{ok:false,error:"Servicio no configurado"});
  let body:Record<string,unknown>={};
  try{
-  if(Number(req.headers.get("content-length")||0)>512)return json(413,{ok:false,error:"Solicitud demasiado grande"});
+  if(Number(req.headers.get("content-length")||0)>1024)return json(413,{ok:false,error:"Solicitud demasiado grande"});
   const raw=await req.text();
-  if(raw.length>512)return json(413,{ok:false,error:"Solicitud demasiado grande"});
+  if(raw.length>1024)return json(413,{ok:false,error:"Solicitud demasiado grande"});
   if(raw.trim())body=JSON.parse(raw);
   if(!body||typeof body!=="object"||Array.isArray(body))return json(400,{ok:false,error:"Datos inválidos"});
  }catch{return json(400,{ok:false,error:"JSON inválido"});}
@@ -26,12 +26,17 @@ Deno.serve(async(req:Request)=>{
  // En tal caso el servidor guarda solo la alerta, SIN guardar el texto del contacto.
  const title=typeof body.customer_phone==="string"?body.customer_phone.slice(0,80):"";
  const phone=/^[+0-9().\s-]{10,32}$/.test(title)?title:null;
+ // Vista previa opcional: solo texto visible de una notificación Android.
+ // No se devuelve el contenido en la respuesta ni se registra en logs.
+ if(body.notification_preview!=null&&typeof body.notification_preview!=="string")
+  return json(400,{ok:false,error:"Vista previa inválida"});
+ const preview=typeof body.notification_preview==="string"?body.notification_preview.slice(0,350):null;
  const client=createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}});
  try{
-  const {data,error}=await client.rpc("gestlok_mg_android_bridge_ingest_v2",{
-   p_local:local,p_token:token,p_customer_phone:phone
+  const {data,error}=await client.rpc("gestlok_mg_android_bridge_ingest_v3",{
+   p_local:local,p_token:token,p_customer_phone:phone,p_notification_preview:preview
   });
   if(error)return json(error.code==="42501"?401:503,{ok:false,error:"Vínculo no autorizado o temporalmente no disponible"});
-  return json(200,{ok:true,created:data?.created===true,has_phone:data?.has_phone===true});
+  return json(200,{ok:true,created:data?.created===true,has_phone:data?.has_phone===true,has_preview:data?.has_preview===true});
  }catch{return json(503,{ok:false,error:"Servicio temporalmente no disponible"});}
 });
