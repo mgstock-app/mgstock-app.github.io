@@ -91,7 +91,7 @@ footer{padding:6px 0;color:#627488;font-size:12px}
 <div class="field"><label>Encabezado de autorización</label><code>X-Gestlok-Bridge-Key: [clave privada del local]</code><p class="tip">La clave privada se genera y se copia desde GESTLOK → Pedidos WhatsApp → Vinculación de <strong id="local-name-2"></strong>. Nunca se incluye en el QR y no se comparte por mensajes.</p></div>
 <div class="field"><label>Encabezado de contenido</label><code id="header-content-type">Content-Type: application/json</code><button type="button" class="secondary" data-copy="header-content-type">Copiar encabezado</button></div>
 <div class="field"><label>JSON del local</label><code id="body-json"></code><button type="button" class="secondary" data-copy="body-json">Copiar JSON</button></div>
-<p class="tip">Reemplazá <code>{not_title}</code> usando el selector de variables de MacroDroid para el título de la notificación. Si el título contiene un nombre y no un número, GESTLOK registrará el aviso sin teléfono.</p>
+<p class="tip">Usá el selector de MacroDroid: <code>{not_title}</code> para el título y <code>{not_text}</code> para el texto visible. La vista previa es opcional, no lee chats completos. Si no aparece un número, GESTLOK registrará el aviso sin teléfono. Filtrá solo los avisos operativos: no actives cualquier mensaje.</p>
 <div class="actions"><button type="button" class="secondary" data-next="1">Anterior</button><button type="button" data-next="3">Configuración guardada</button></div>
 </section>
 <section data-stage="3" hidden>
@@ -122,7 +122,7 @@ footer{padding:6px 0;color:#627488;font-size:12px}
  document.title='Vincular avisos '+locals[local]+' · GESTLOK';
  ['local-name','local-name-1','local-name-2','local-name-3','local-name-4','local-name-import','local-name-import-2','local-tag'].forEach(function(id){byId(id).textContent=locals[local]});
  byId('url').textContent='https://vgsepaaewbctjsjcpeta.supabase.co/functions/v1/mi-gusto-android-alert';
- byId('body-json').textContent=JSON.stringify({local:local,customer_phone:'{not_title}'},null,2);
+ byId('body-json').textContent=JSON.stringify({local:local,customer_phone:'{not_title}',notification_preview:'{not_text}'},null,2);
  function showStep(n){
   if(![1,2,3].includes(n))return;
   document.querySelectorAll('[data-stage]').forEach(function(s){s.hidden=Number(s.getAttribute('data-stage'))!==n;});
