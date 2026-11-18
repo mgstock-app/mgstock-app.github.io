@@ -6,7 +6,7 @@ const SEMANA="2026-11-09";
 const personas=()=>Array.from({length:8},(_,i)=>({id:i+1,nombre:"",modalidad:i<3?"turno":"hora",estado:"activo"}));
 const tabla=(value)=>({values:[["Colaborador","Lunes"],["Persona ficticia",value]],backgrounds:[["#1e2f52","#1e2f52"],["#ffffff","#ffffff"]],colors:[["#ffffff","#ffffff"],["#222222","#222222"]],headerRows:1,merges:[]});
 function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
- let empleados=personas().map(p=>({...p,nombre:precargados.find(r=>r.id===p.id)?.nombre||""}));
+ let empleados=personas().map(p=>{const origen=precargados.find(r=>r.id===p.id);return {...p,nombre:origen?.nombre||"",estado:origen?.estado||p.estado,inactivo_desde:origen?.inactivo_desde||null};});
  let registros=[...precargados],ultimo=null,feriados=[...diasFeriados],feriadosVersion=feriados.length?1:0;
  let cierres=[],archivo=[],cierreEnviado=null;
  cy.intercept("**/*.supabase.co/**",req=>{
@@ -65,9 +65,11 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
   return req.reply([]);
  });
  cy.visit("/empleados/",{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:"synthetic",token_type:"bearer",expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
- cy.clock(new Date("2026-11-12T15:00:00Z").getTime(),["Date"]);
+ let reloj;
+ cy.clock(new Date("2026-11-12T15:00:00Z").getTime(),["Date"]).then(v=>{reloj=v;});
  cy.get(".gl-gerente__sidebar").contains("button","Horarios",{timeout:15000}).click();
- return Object.assign(()=>ultimo,{ultimoCierre:()=>cierreEnviado,cierres:()=>cierres,archivo:()=>archivo});
+ return Object.assign(()=>ultimo,{ultimoCierre:()=>cierreEnviado,cierres:()=>cierres,archivo:()=>archivo,
+  cambiarFecha:fecha=>cy.then(()=>reloj.setSystemTime(new Date(fecha).getTime())).then(()=>cy.tick(30000))});
 }
 describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  Cypress.on("uncaught:exception",e=>e.message.includes("Minified React error #418")?false:undefined);
@@ -319,23 +321,33 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   });
   cy.get(".mhs-tabla thead th").last().should("be.visible");
  });
+ it("impide finalizar durante la semana vigente",()=>{
+  cy.viewport(1366,900);
+  const ultimo=iniciar({precargados:[{id:1,nombre:"Julia",modalidad:"turno",semana:SEMANA,version:1,datos:{}}]});
+  cy.contains("button","Semana finalizada").should("be.disabled");
+  cy.contains("El cierre se habilita el lunes 16/11").should("be.visible");
+  cy.then(()=>expect(ultimo.ultimoCierre()).to.eq(null));
+ });
  it("Semana finalizada archiva una vez y abre la próxima sin horarios y sin colaboradores inactivos",()=>{
   cy.viewport(1366,900);
   const precargados=[
    {id:1,nombre:"Julia",modalidad:"turno",semana:SEMANA,version:1,datos:{"2026-11-09":{tm_e:"09:00",tm_s:"13:00"}}},
-   {id:4,nombre:"Martín",modalidad:"hora",semana:SEMANA,version:1,datos:{}}
+   {id:4,nombre:"Martín",modalidad:"hora",estado:"inactivo",inactivo_desde:"2026-11-02",semana:SEMANA,version:1,datos:{}}
   ];
   const ultimo=iniciar({precargados});
-  cy.contains("button","Semana finalizada",{timeout:15000}).should("be.visible");
+  cy.contains("button","Semana finalizada",{timeout:15000}).should("be.disabled");
+  ultimo.cambiarFecha("2026-11-16T15:00:00Z");
+  cy.contains("button","Semana finalizada",{timeout:15000}).should("be.enabled");
   cy.on("window:confirm",()=>true);
   cy.contains("button","Semana finalizada").click();
   cy.get(".mhs-exito").should("contain.text","Semana finalizada y enviada a Historial");
   cy.get(".mhs-semana").should("contain.text","16/11 al 22/11");
   cy.get(".mhs-tabla tbody tr").first().should("contain.text","Julia");
+  cy.get(".mhs-tabla tbody tr").should("have.length",7).should("not.contain.text","Martín");
   cy.get(".mhs-tabla tbody tr").first().find("input[type=time]").each($input=>expect($input.val()).to.eq(""));
   cy.wrap(null).should(()=>{expect(ultimo.ultimoCierre()).to.deep.eq({p_semana:SEMANA});expect(ultimo.cierres()).to.deep.eq([SEMANA]);});
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
-  cy.get(".mhs-resumen-semanas .mhs-semana-item").should("have.length",1); // Fecha simulada: semana actual 09/11; no mostrar una semana futura.
+  cy.get(".mhs-resumen-semanas .mhs-semana-item").should("have.length",2); // Fecha simulada: semana actual 16/11.
   cy.get(".mhs-resumen-semanas .mhs-semana-item").contains("09/11 al 15/11").click();
   cy.get(".mhs-resumen > .mhs-colab").contains("summary","Julia").click();
   cy.get(".mhs-resumen > .mhs-colab[open] tbody tr").should("have.length",7);
@@ -349,6 +361,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    const ultimo=iniciar({precargados:[
     {id:1,nombre:"Julia",modalidad:"turno",semana:SEMANA,version:1,datos:{"2026-11-09":{tm_e:"09:00",tm_s:"13:00"}}}
    ]});
+   ultimo.cambiarFecha("2026-11-16T15:00:00Z");
    cy.on("window:confirm",()=>true);
    cy.contains("button","Semana finalizada").click();
    cy.get(".mhs-semana").should("contain.text","16/11 al 22/11");
