@@ -304,10 +304,12 @@ function summary(){
  '<button type="button" data-mgon-jump-history>Ver historial</button></div></section>';
 }
 function oldRows(s){
+ const rows=filterPayments(s.movements||[],historyMethodFilter);
  return '<div class="mg-on-detail"><h4>Movimientos individuales · '+esc(shiftName(s.turno))+'</h4>'+
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Importe</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
- (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
- '</tbody></table></div>'+shiftCard(s)+cashMovementDetail(s)+'</div>';
+ (rows.length?rows.map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join(''):
+ '<tr><td colspan="5" class="mg-on-pay-empty">No hay movimientos con este medio de pago en el turno.</td></tr>')+
+ '</tbody></table></div>'+shiftCard(s)+(historyMethodFilter==='todos'?cashMovementDetail(s):'')+'</div>';
 }
 /* El servidor devuelve cierres definitivos por sucursal.
    Agrupar solamente en la presentación preserva detalle y cálculo histórico. */
@@ -342,15 +344,17 @@ function dayHistoryCard(d){
   '<button type="button" class="mg-on-day-open" data-mgon-open-day="'+esc(d.day)+'">Ver detalle</button></article>';
 }
 function reportTurn(s,turno){
+ const rows=filterPayments(s?.movements||[],historyMethodFilter);
  if(!s)return '<div class="mg-on-report-turn"><h3>'+esc(shiftName(turno))+'</h3><p class="mg-on-empty">Sin cierre registrado para este turno.</p></div>';
  return '<section class="mg-on-report-turn"><header><h3>'+esc(shiftName(turno))+'</h3>'+
  '<span class="mg-on-closed">✓ Cerrado'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</span></header>'+
  historyTotals(s)+
- '<h4>Movimientos individuales</h4>'+
+ '<h4>Movimientos individuales'+(historyMethodFilter==='todos'?'':' · '+esc(METHODS[historyMethodFilter]))+' ('+rows.length+')</h4>'+
  '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
- (s.movements||[]).map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
- '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join('')+
- '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+'</div>'+cashMovementDetail(s)+'</section>';
+ (rows.length?rows.map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
+ '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join(''):
+ '<tr><td colspan="5" class="mg-on-pay-empty">No hay movimientos con este medio de pago en el turno.</td></tr>')+
+ '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+'</div>'+(historyMethodFilter==='todos'?cashMovementDetail(s):'')+'</section>';
 }
 function historyModal(){
  if(!modalDay)return '';
@@ -367,6 +371,8 @@ function historyModal(){
  '<button type="button" data-mgon-modal-close aria-label="Cerrar reporte" class="mg-on-modal-close">×</button></header>'+
  '<nav class="mg-on-modal-tabs" aria-label="Ver el reporte">'+tabs.map(([key,label])=>
  '<button type="button" data-mgon-modal-tab="'+key+'" aria-current="'+(modalTab===key?'page':'false')+'">'+label+'</button>').join('')+'</nav>'+
+ '<div class="mg-on-modal-filterbar">'+paymentFilterControl('history',historyMethodFilter)+
+ '<span>El filtro solo cambia el detalle; los totales del cierre no se modifican.</span></div>'+
  '<div class="mg-on-modal-content">'+(photoError?'<p role="alert" class="mg-on-error">'+esc(photoError)+'</p>':'')+
  (modalTab==='dia'?'<section class="mg-on-day-total"><h3>Día Completo</h3>'+historyTotals(d)+'</section>'+
  reportTurn(morning,'manana')+reportTurn(night,'tarde'):
@@ -374,10 +380,10 @@ function historyModal(){
 }
 function history(){
  const rows=(snapshot?.history||[]).filter(s=>!filter||s.day===filter);
- const days=historyGroups(rows);
+ const days=historyGroups(rows).filter(d=>historyMethodFilter==='todos'||d.shifts.some(s=>(s.movements||[]).some(m=>m.method===historyMethodFilter)));
  return '<section class="mg-on-history-embedded" id="mg-on-history"><header><h3>Historial por día</h3>'+
  '<p>Elegí una fecha para abrir el reporte completo, separado en Mañana, Noche y Día Completo.</p></header>'+
- '<div class="mg-on-history-filters"><label>Buscar fecha<input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+
+ '<div class="mg-on-history-filters"><label>Buscar fecha<input id="mg-on-date-filter" type="date" value="'+esc(filter)+'"></label>'+paymentFilterControl('history',historyMethodFilter)+
  '<button type="button" data-mgon-clear-filters>Ver todos los días</button></div>'+
  (days.length?'<div class="mg-on-history-list">'+days.map(dayHistoryCard).join('')+'</div>':
  '<p class="mg-on-empty">Todavía no hay cierres con ese filtro.</p>')+'</section>';
@@ -486,7 +492,7 @@ function attach(h){
   const cancel=e.target.closest('[data-mgon-cancel]');
   if(cancel){editing=null;api.render();return;}
   const clear=e.target.closest('[data-mgon-clear-filters]');
-  if(clear){filter='';shiftFilter='todos';opened=null;api.render();return;}
+  if(clear){filter='';shiftFilter='todos';historyMethodFilter='todos';opened=null;api.render();return;}
   const day=e.target.closest('[data-mgon-open-day]');
   if(day){modalDay=day.dataset.mgonOpenDay;modalTab='dia';photoError='';api.render();document.querySelector('[data-mgon-modal-close]')?.focus();return;}
   if(e.target.closest('[data-mgon-modal-close]')||e.target.hasAttribute?.('data-mgon-modal-backdrop')){
@@ -542,6 +548,19 @@ function attach(h){
  });
  document.addEventListener('change',e=>{
   if(!allowed())return;
+  const payment=e.target.closest?.('[data-mgon-payment-filter]');
+  if(payment){
+   const selected=PAYMENT_FILTERS.some(([key])=>key===payment.value)?payment.value:'todos';
+   if(payment.dataset.mgonPaymentFilter==='active')activeMethodFilter=selected;
+   else if(payment.dataset.mgonPaymentFilter==='history')historyMethodFilter=selected;
+   else return;
+   // Mantener la posición del reporte al cambiar de pago en el teléfono.
+   const scroller=document.querySelector('.mg-on-modal-content'),scrollTop=scroller?.scrollTop;
+   api.render();
+   const next=document.querySelector('.mg-on-modal-content');
+   if(next&&typeof scrollTop==='number')next.scrollTop=scrollTop;
+   return;
+  }
   if(e.target.matches?.('[data-mgon-empty]')){
    const s=snapshot?.active;
    emptyCheckedFor=writable()&&s?.id===e.target.dataset.mgonEmpty&&!hasPosnet(s)&&e.target.checked?s.id:null;
@@ -565,5 +584,5 @@ function subscribe(loc,push){
 }
 document.addEventListener('input',e=>{if(e.target?.matches?.('#mg-online-form [name=amount]')){const field=e.target;const before=field.value;const cursor=field.selectionStart??before.length;const digitsBefore=before.slice(0,cursor).replace(/[^0-9,]/g,'').length;const formatted=formatAmountTyping(before);field.value=formatted;let pos=0,seen=0;while(pos<formatted.length&&seen<digitsBefore){if(/[0-9,]/.test(formatted[pos]))seen++;pos++;}field.setSelectionRange(pos,pos);}if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
 document.addEventListener('change',e=>{if(e.target?.closest?.('#mg-online-form'))updateCashPreview();});
-window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,syncCashPreview:updateCashPreview,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf,safeShiftState,stateAfterCashOk}});
+window.GestLokMiGustoOnline=Object.freeze({attach,view,subscribe,reset,openForEntry,permitido:allowed,syncCashPreview:updateCashPreview,_test:{date,shiftName,historyGroups,clampScale,getScale,todayArgentina,timeOf,safeShiftState,stateAfterCashOk,filterPayments,paymentFilterControl}});
 })();
