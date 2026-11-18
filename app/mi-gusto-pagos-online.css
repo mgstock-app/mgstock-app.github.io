@@ -484,3 +484,23 @@
 .mg-on-empty-choice strong{font-size:14px;color:#173d50}
 .mg-on-empty-choice small{font-size:12px;color:#527085;line-height:1.4}
 .mg-on-empty-choice:focus-within{outline:2px solid #167d9b;outline-offset:2px}
+
+
+/* Filtros de medio de pago: vista operativa, historial y reporte modal. Solo presentación. */
+.mg-on-pay-filter{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:800;color:#315b77}
+.mg-on-pay-filter select{width:100%;min-width:0;min-height:44px;padding:9px 12px;border:1px solid #c7d9e6;border-radius:10px;background:#fff;color:#173b55;font-size:14px;font-weight:700}
+.mg-on-pay-filter select:focus-visible{outline:2px solid #176ca8;outline-offset:2px}
+.mg-on-recent-filters{display:flex;align-items:center;gap:12px;margin:0 0 13px}
+.mg-on-recent-filters .mg-on-pay-filter{width:min(100%,260px)}
+.mg-on-history-filters .mg-on-pay-filter{flex:1 1 175px}
+.mg-on-modal-filterbar{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:9px 20px;border-bottom:1px solid #e3edf4;background:#fff}
+.mg-on-modal-filterbar .mg-on-pay-filter{width:min(100%,250px);flex-shrink:0}
+.mg-on-modal-filterbar>span{font-size:11px;line-height:1.4;color:#637b8b}
+.mg-on-pay-empty{text-align:center;padding:18px!important;font-size:13px;color:#53748b}
+@media(max-width:600px){
+ .mg-on-recent-filters .mg-on-pay-filter{width:100%}
+ .mg-on-modal-filterbar{padding:9px 12px;gap:8px}
+ .mg-on-modal-filterbar .mg-on-pay-filter{width:100%}
+ .mg-on-modal-filterbar>span{display:none}
+ .mg-on-history-filters .mg-on-pay-filter{flex:1 1 100%}
+}
