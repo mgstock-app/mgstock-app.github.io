@@ -94,14 +94,16 @@ assert.doesNotMatch(ui,/Cobra por/,"Sin columnas del cuadro general, tampoco en 
 assert.match(ui,/filasResumen\.map\(f=>\{[\s\S]*?<details className="mhs-colab" key=\{semana\+":"\+f\.id\}>/);
 assert.doesNotMatch(ui,/className="mhs-colab"[^>]* open>/);
 
-assert.match(ui,/const editarPersona=\(id:number\)=>editando&&puedeEditar&&\(personaEnEdicion===null\|\|personaEnEdicion===id\)/,
- "Modificar individual limita la edición a la persona seleccionada");
+assert.match(ui,/const editarPersona=\(id:number\)=>puedeEditar&&\(!semanaCerrada\|\|\(editando&&personaEnEdicion===id\)\)/,
+ "La semana vigente se edita directamente y el historial requiere Modificar");
+assert.match(ui,/if\(!puedeEditar\|\|!semanaCerrada\)return null;/,
+ "Modificar solo se muestra en las semanas finalizadas");
 assert.match(ui,/const controlesPersona=\(f:Pick<Borrador,"id"\|"nombre"\|"modalidad">,desdeResumen=false\)=>/,
  "Cada colaborador tiene su propio control de edición");
 assert.match(ui,/if\(!editarPersona\(id\)\)return;/,
  "No permitir guardar cambios de una persona distinta");
 assert.match(ui,/controlesPersona\(f,true\)/,
- "El botón de Modificar también aparece en el Resumen semanal");
+ "Modificar se mantiene en el Resumen de semanas finalizadas");
 assert.match(ui,/disabled=\{!editarPersona\(f.id\)\}/,
  "OFF y feriado usan el permiso de edición individual");
 
