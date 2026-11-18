@@ -17,7 +17,17 @@ Deno.serve(async(req:Request)=>{
   if(Number(req.headers.get("content-length")||0)>1024)return json(413,{ok:false,error:"Solicitud demasiado grande"});
   const raw=await req.text();
   if(raw.length>1024)return json(413,{ok:false,error:"Solicitud demasiado grande"});
-  if(raw.trim())body=JSON.parse(raw);
+  if(raw.trim()){
+   try{body=JSON.parse(raw);}
+   catch{
+    // Algunas versiones de MacroDroid insertan {not_text} sin escapar comillas
+    // o saltos de línea dentro del cuerpo JSON. Admitimos solamente el molde
+    // fijo de la macro autorizada; nunca ejecutamos ni interpretamos el texto.
+    const captured=raw.match(/^\{"local":"(munro|torcuato)","customer_phone":"([\s\S]*?)","notification_preview":"([\s\S]*)"\}$/);
+    if(!captured)return json(400,{ok:false,error:"JSON inválido"});
+    body={local:captured[1],customer_phone:captured[2],notification_preview:captured[3]};
+   }
+  }
   if(!body||typeof body!=="object"||Array.isArray(body))return json(400,{ok:false,error:"Datos inválidos"});
  }catch{return json(400,{ok:false,error:"JSON inválido"});}
  const local=body.local;
