@@ -268,17 +268,25 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     semana:SEMANA,datos:{}}]});
   cy.contains("button","Modificar").click();
   const lun=()=>cy.get(".mhs-tabla tbody tr").eq(3).find("td").first();
-  lun().contains("button","OFF").click();
+  // Un único selector por día, sin catorce botones repetidos por colaborador.
+  lun().find('select[aria-label^="Descanso ·"]').should("have.length",1).select("off");
+  lun().find(".mhs-descanso-boton").should("not.exist");
   lun().find(".mhs-horas-dia").should("contain.text","0 h");
   lun().find('input[type="time"]').first().should("be.disabled");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(getUltimo().p_datos["2026-11-09"].descanso).to.eq("off"));
-  lun().contains("button","OFF").click();
-  lun().contains("button","Medio OFF").click();
+  lun().find('select[aria-label^="Descanso ·"]').select("");
+  lun().find('select[aria-label^="Descanso ·"]').select("medio_off");
   lun().find('input[type="time"]').eq(0).type("09:00");
   lun().find('input[type="time"]').eq(1).type("13:00");
   lun().find('input[type="time"]').eq(2).should("be.disabled");
   lun().find(".mhs-horas-dia").should("contain.text","4:00 h");
+  // Intentar OFF sobre un horario cargado muestra error y conserva las dos horas.
+  lun().find('select[aria-label^="Descanso ·"]').select("off");
+  cy.get(".mhs-alerta").should("contain.text","Borrá las entradas y salidas");
+  lun().find('select[aria-label^="Descanso ·"]').should("have.value","medio_off");
+  lun().find('input[type="time"]').eq(0).should("have.value","09:00");
+  lun().find('input[type="time"]').eq(1).should("have.value","13:00");
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-total-nombre").should("contain.text","4:00 h");
   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>{
