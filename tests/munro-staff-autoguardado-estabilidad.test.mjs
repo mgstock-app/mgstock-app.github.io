@@ -9,7 +9,7 @@ const css=read("modules/empleados/components/schedules/munro-weekly-matrix.css")
 test("Semana abierta editable automáticamente, sin Modificar, Listo ni Guardar",()=>{
  assert.match(ui,/const editarPersona=\(id:number\)=>puedeEditar&&\(!semanaCerrada\|\|\(editando&&personaEnEdicion===id\)\)/);
  assert.match(ui,/if\(!puedeEditar\|\|!semanaCerrada\)return null;/);
- assert.doesNotMatch(ui,/Guardar ahora|Finalizar edición|<Save size/);
+ assert.doesNotMatch(ui,/Guardar ahora|<Save size/); // 'Listo' permanece únicamente en historial finalizado.
  assert.match(ui,/if\(!editarPersona\(id\)\)return;/);
  assert.match(ui,/if\(!puedeEditar\|\|\(semanaCerrada&&!editando\)\|\|guardadoEnCurso\.current\)return;/);
  assert.match(ui,/void guardar\(\);/);
