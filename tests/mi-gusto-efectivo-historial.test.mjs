@@ -5,7 +5,7 @@ import {runInNewContext} from 'node:vm';
 
 const source=readFileSync(new URL('../public/stock/mi-gusto-cierre-online.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../app/mi-gusto-pagos-online.css',import.meta.url),'utf8');
-const instrumented=source.replace(/\}\)\(\);\s*$/, 'window.__test={cashMovementDetail,reportTurn,oldRows};\n})();');
+const instrumented=source.replace(/\}\)\(\);\s*$/, 'window.__test={cashMovementDetail,reportTurn,oldRows,filterPayments,paymentFilterControl,movementList,history,historyModal,setFilters:(active,archived)=>{activeMethodFilter=active;historyMethodFilter=archived;},setSnapshot:(value)=>{snapshot=value;},setModalDay:(value)=>{modalDay=value;}};\n})();');
 assert.notEqual(instrumented,source,'Se esperaba el módulo de Pagos Online');
 const window={};
 runInNewContext(instrumented,{
@@ -107,4 +107,68 @@ test('Mi Gusto: 5 comandas sin OK suman $16.460, cada tilde resta su descuento y
  assert.equal(amounts(conOtroOk),'$10.420,00');
  assert.equal(amounts(movements),'$16.460,00','Al desmarcar debe volver a sumar');
  assert.equal(amounts(movements.map(r=>({...r,ok:true}))),'$0,00');
+});
+
+
+test('Filtrar por pago conserva las filas originales y los cuatro métodos de la lista',()=>{
+ const data=[cashMovement,transferMovement,{...cashMovement,method:'mercado_pago',comanda:'25'}, {...cashMovement,method:'getnet',comanda:'42'}];
+ assert.equal(window.__test.filterPayments(data,'todos').length,4);
+ for(const method of ['transferencia','mercado_pago','getnet']){
+  const found=window.__test.filterPayments(data,method);
+  assert.equal(found.length,1);
+  assert.equal(found[0].method,method);
+ }
+ assert.equal(data.length,4,'filtrar no modifica la colección de movimientos');
+ const select=window.__test.paymentFilterControl('history','mercado_pago');
+ assert.match(select,/Filtrar por pago/);
+ assert.match(select,/data-mgon-payment-filter="history"/);
+ assert.match(select,/<option value="mercado_pago" selected>Mercado Pago<\/option>/);
+ assert.match(select,/Transferencia/);
+ assert.match(select,/Getnet/);
+});
+
+test('Planilla diaria: Mercado Pago muestra solo coincidencias y conserva el control efectivo',()=>{
+ const extra={...cashMovement,id:'33333333-3333-4333-8333-333333333333',method:'mercado_pago',comanda:'30'};
+ const getnet={...extra,id:'44444444-4444-4444-8444-444444444444',method:'getnet',comanda:'41'};
+ window.__test.setSnapshot({active:{...closed,status:'abierto',movements:[cashMovement,transferMovement,extra,getnet]}});
+ window.__test.setFilters('mercado_pago','todos');
+ let html=window.__test.movementList();
+ assert.match(html,/data-mgon-payment-filter="active"/);
+ assert.match(html,/1 de 4 comandas/);
+ assert.match(html,/Comanda número 30/);
+ assert.doesNotMatch(html,/Comanda número 12|Comanda número 21|Comanda número 41/);
+ window.__test.setFilters('getnet','todos');
+ html=window.__test.movementList();
+ assert.match(html,/Comanda número 41/);
+ assert.doesNotMatch(html,/Comanda número 30/);
+ window.__test.setFilters('todos','todos');
+ assert.match(window.__test.movementList(),/4 comandas/);
+ assert.match(window.__test.cashMovementDetail({...closed,status:'abierto'}),/Total efectivo/);
+});
+
+test('Historial: filtrar no cambia totales, ni fechas originales, ni cierra fotos del turno',()=>{
+ const mp={...cashMovement,id:'33333333-3333-4333-8333-333333333333',method:'mercado_pago',comanda:'35'};
+ const getnet={...cashMovement,id:'44444444-4444-4444-8444-444444444444',method:'getnet',comanda:'49'};
+ const day={...closed,movements:[cashMovement,transferMovement,mp,getnet],comandas:4,mercado_pago:1800,getnet:300,transferencia:500,total_ventas:2600,online_local:2600};
+ const another={...closed,id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',day:'2026-11-03',movements:[transferMovement],comandas:1};
+ window.__test.setSnapshot({active:{...day,status:'abierto'},history:[day,another]});
+ window.__test.setModalDay('2026-11-04');
+ window.__test.setFilters('todos','mercado_pago');
+ const report=window.__test.reportTurn(day,'manana');
+ assert.match(report,/Movimientos individuales · Mercado Pago \(1\)/);
+ assert.match(report,/#35/);
+ assert.doesNotMatch(report,/#12|#21|#49/);
+ assert.match(report,/\$\s*2\.600,00/,'los totales completos se muestran intactos');
+ assert.doesNotMatch(report,/Detalle de efectivo del turno/,'efectivo no se mezcla con la búsqueda específica');
+ assert.match(report,/mg-on-photo-area/);
+ const list=window.__test.history();
+ assert.match(list,/17\/|04\/11\/26/);
+ assert.doesNotMatch(list,/03\/11\/26/,'no mostrar días sin movimientos de la forma elegida');
+ const modal=window.__test.historyModal();
+ assert.match(modal,/mg-on-modal-filterbar/);
+ assert.match(modal,/data-mgon-payment-filter="history"/);
+ assert.match(modal,/los totales del cierre no se modifican/);
+ window.__test.setFilters('todos','todos');
+ assert.match(window.__test.history(),/03\/11\/26/);
+ window.__test.setModalDay(null);
 });
