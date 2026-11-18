@@ -55,7 +55,7 @@
     banner = document.createElement('aside');
     banner.id = 'gl-pwa-update';
     banner.setAttribute('role', 'status');
-    banner.style.cssText = 'position:fixed;bottom:20px;left:16px;right:16px;max-width:460px;margin:auto;z-index:10000;padding:16px;background:#171717;color:white;border-radius:12px;box-shadow:0 4px 24px #0004';
+    banner.style.cssText = 'position:fixed;bottom:20px;left:16px;right:16px;max-width:460px;margin:auto;z-index:10000;padding:16px 16px 16px 58px;background:#171717;color:white;border-radius:12px;box-shadow:0 4px 24px #0004';
     const message = document.createElement('p');
     message.textContent = 'Hay una actualización de GestLok disponible.';
     const button = document.createElement('button');
@@ -72,6 +72,17 @@
         return;
       }
       window.location.reload();
+    });
+    // Cerrar siempre es posible, incluso cuando hay formularios pendientes.
+    // La acción no recarga, no descarta datos y no toca el service worker.
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.setAttribute('aria-label', 'Cerrar aviso de actualización');
+    closeButton.textContent = '×';
+    closeButton.style.cssText = 'position:absolute;top:9px;left:9px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid #ffffff55;border-radius:10px;background:#ffffff15;color:#fff;font-size:26px;line-height:1;cursor:pointer';
+    closeButton.addEventListener('click', () => {
+      dismissed = true;
+      hideBanner();
     });
     // Descartar con gesto horizontal sin instalar ni perder cambios abiertos.
     banner.style.touchAction = 'pan-y';
@@ -91,7 +102,7 @@
         hideBanner();
       }
     }, { passive: true });
-    banner.append(message, button);
+    banner.append(message, button, closeButton);
     document.body.appendChild(banner);
     // Mientras el aviso esté visible, verificar el local con poca frecuencia.
     // Se detiene en cuanto el usuario entra en un local sin cambios.
