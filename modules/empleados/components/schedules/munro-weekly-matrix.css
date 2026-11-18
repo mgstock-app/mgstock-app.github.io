@@ -75,3 +75,24 @@
    flex:1 1 0%;width:0;min-width:0;max-width:100%;box-sizing:border-box
  }
 }
+
+
+/* Staff Munro: confirmación compacta, fija; jamás empuja las filas al guardar. */
+.mhs-guardado-flotante{
+ position:fixed;right:18px;bottom:20px;z-index:40;
+ display:flex;align-items:center;justify-content:center;
+ max-width:min(360px,calc(100vw - 28px));min-height:37px;
+ padding:8px 13px;box-sizing:border-box;
+ border:1px solid #b8d5c5;border-radius:9px;
+ background:#f0f9f3;color:#17613b;
+ box-shadow:0 3px 12px #10233818;
+ font-size:12px;font-weight:750;line-height:1.4;
+ pointer-events:none;overflow-wrap:anywhere;
+}
+.mhs-guardado-flotante--error{background:#fff5f2;color:#a12d22;border-color:#e6b3aa}
+@media(max-width:760px){
+ .mhs-guardado-flotante{
+  right:10px;bottom:calc(82px + env(safe-area-inset-bottom,0px));
+  max-width:calc(100vw - 20px);font-size:12px;
+ }
+}
