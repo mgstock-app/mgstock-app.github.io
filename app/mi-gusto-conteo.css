@@ -1863,3 +1863,24 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-count-screen .gcm-current-shift{padding:8px 10px;gap:5px 9px}
  .gcm-count-screen .gcm-current-shift strong{font-size:14px}
 }
+
+
+/* Identificación compacta del turno: permanece en la barra fija de fechas,
+   también al bajar por la planilla. No añade controles ni ocupa ancho de tabla. */
+.gcm-count-screen .gcm-expiry-shift{
+ display:flex;align-items:center;gap:9px;min-height:32px;
+ padding:5px 12px;border-bottom:1px solid #c8d9e9;
+ background:#eaf2f9;color:#12345a;
+}
+.gcm-count-screen .gcm-expiry-shift span{
+ font-size:11px;font-weight:700;color:#48657f;
+}
+.gcm-count-screen .gcm-expiry-shift strong{
+ font-size:12px;font-weight:850;letter-spacing:.02em;
+ color:#12345a;text-transform:uppercase;
+}
+@media(max-width:430px){
+ .gcm-count-screen .gcm-expiry-shift{gap:7px;padding:5px 9px}
+ .gcm-count-screen .gcm-expiry-shift span{font-size:10px}
+ .gcm-count-screen .gcm-expiry-shift strong{font-size:11px}
+}
