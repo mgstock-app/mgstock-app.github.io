@@ -123,9 +123,9 @@ export function MunroWeeklySchedule(){
  const cambiarDia=(id:number,dia:string,campo:string,valor:string|boolean)=>{
    cambiar(id,f=>({...f,datos:{...f.datos,[dia]:{...(f.datos[dia]||{}),[campo]:valor}}}));
  };
- const cambiarDescanso=(f:Borrador,dia:string,valor:"off"|"medio_off")=>{
+ const cambiarDescanso=(f:Borrador,dia:string,nuevo:""|"off"|"medio_off")=>{
    const actual=f.datos[dia]||{};
-   const nuevo=actual.descanso===valor?"":valor;
+   if(nuevo===(actual.descanso||""))return;
    const hayMañana=Boolean(actual.tm_e||actual.tm_s);
    const hayTarde=Boolean(actual.tt_e||actual.tt_s);
    // Nunca borrar horas existentes de manera implícita.
@@ -435,14 +435,18 @@ export function MunroWeeklySchedule(){
    return <div className={"mhs-cuatro"+(verificar.errores.length?" mhs-error":"")+
      (marcadoFeriado?" mhs-cuatro--feriado":"")}>
      {(editarPersona(f.id)||Boolean(d.descanso))&&
-       <div className="mhs-descansos" role="group" aria-label={"Descanso · "+cabecera(f)+" · "+fechaCorta(dia)}>
-         {(["off","medio_off"] as const).map(valor=>
-           (editarPersona(f.id)||d.descanso===valor)&&<button key={valor} type="button"
-             className={"mhs-descanso-boton"+(d.descanso===valor?" mhs-descanso-elegido":"")}
-             aria-pressed={d.descanso===valor} disabled={!editarPersona(f.id)}
-             onClick={()=>cambiarDescanso(f,dia,valor)}>
-             {valor==="off"?"OFF":"Medio OFF"}
-           </button>)}
+       <div className="mhs-descansos">
+         {editarPersona(f.id)
+           ?<select aria-label={"Descanso · "+cabecera(f)+" · "+fechaCorta(dia)}
+             title="Descanso del día" value={d.descanso||""}
+             onChange={e=>cambiarDescanso(f,dia,e.target.value as ""|"off"|"medio_off")}>
+             <option value="">Descanso</option>
+             <option value="off">OFF</option>
+             <option value="medio_off">Medio OFF</option>
+           </select>
+           :<span className="mhs-descanso-valor" aria-label={"Descanso · "+cabecera(f)+" · "+fechaCorta(dia)}>
+             {d.descanso==="off"?"OFF":"Medio OFF"}
+           </span>}
        </div>}
      {CAMPOS.map(([campo,label])=><label key={campo}>
        <span>{label}</span>
