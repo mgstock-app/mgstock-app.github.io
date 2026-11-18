@@ -253,6 +253,8 @@ test('Descarga de MacroDroid: exportación nativa por sucursal con HTTP POST y J
   clickSection(m,'vinculacion');
   assert.match(m.mod.view(),/Descargar macro preparada para /);
   assert.match(m.mod.view(),/data-mgp-mobile-download/);
+  assert.match(m.mod.view(),/desactivá «Evitar múltiples disparos»/);
+  assert.match(m.mod.view(),/No reemplaces la clave/);
   const key='b'.repeat(64);
   const exported=m.mod._test.buildAndroidMacro(loc,key,'PEDIDO DERIVADO');
   assert.equal(exported.macroExportVersion,1);
@@ -263,7 +265,7 @@ test('Descarga de MacroDroid: exportación nativa por sucursal con HTTP POST y J
   assert.equal(trigger.m_classType,'NotificationTrigger');
   assert.equal(trigger.m_packageNameList[0],'com.whatsapp.w4b');
   assert.equal(trigger.m_textContent,'PEDIDO DERIVADO');
-  assert.equal(trigger.m_supressMultiples,true);
+  assert.equal(trigger.m_supressMultiples,false,'la macro no descarta avisos consecutivos de WhatsApp Business');
   const action=exported.macro.m_actionList[0];
   assert.equal(action.m_classType,'HttpRequestAction');
   assert.equal(action.requestConfig.requestType,1,'POST en el ejemplo nativo de MacroDroid');
