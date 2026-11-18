@@ -331,7 +331,7 @@ function mobileBridgePanel(){
  '<input id="mgp-notification-filter" maxlength="160" placeholder="Escribí la frase real del aviso del agente">'+
  '<small>Si no sabés la frase, importá la macro desactivada y configurá el filtro cuando identifiques la notificación. Evitá disparar con todos los mensajes.</small>'+
  (canLinkLocalBridge()?'<button type="button" class="mgp-button" data-mgp-mobile-download '+(!canEdit()?'disabled':'')+'>Descargar macro preparada para '+esc(localName())+'</button>':'')+
- '<p><strong>Después:</strong> Abrí el archivo con MacroDroid, revisá el disparador, autorizá notificaciones y activá la macro. No se activa sola desde un QR.</p></div>'+
+ '<p><strong>Después:</strong> Abrí el archivo con MacroDroid, revisá el disparador, autorizá notificaciones y activá la macro. Esta versión permite avisos consecutivos, sin desactivar el filtro de derivación. No se activa sola desde un QR.</p></div>'+
  '<div class="mgp-mobile-qr"><div class="mgp-mobile-qr-image">'+(setupQrSvg()||'<span>No se pudo mostrar el QR. Usá el enlace.</span>')+'</div>'+
  '<div class="mgp-mobile-qr-info"><strong>1. Escanear QR de GESTLOK · '+esc(localName())+'</strong>'+
  '<p>Escaneá desde el celular del local. El asistente indica cómo autorizar notificaciones y preparar MacroDroid una sola vez.</p>'+
@@ -346,6 +346,7 @@ function mobileBridgePanel(){
  (androidBridgeKey?'<div class="mgp-mobile-credentials"><b>Clave (única visualización)</b><code id="mgp-mobile-secret">'+esc(androidBridgeKey)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-secret">Copiar clave</button></div>':'')+
  '<p>Cuando MacroDroid esté activo, iniciá la prueba y generá una notificación real de WhatsApp Business desde otro celular.</p>'+
+ '<p class="mgp-bridge-tip"><strong>Si llegó el primer aviso pero los siguientes no:</strong> en MacroDroid → macro GESTLOK de '+esc(localName())+' → disparador «Notificación recibida», desactivá «Evitar múltiples disparos» y comprobá que el filtro coincida con la notificación visible de WhatsApp Business. No reemplaces la clave. Si Android no muestra una notificación, GESTLOK no puede recibir ese mensaje sin la API.</p>'+
  '<div class="mgp-mobile-test-buttons"><button type="button" data-mgp-mobile-test '+(!configured||!canEdit()?'disabled':'')+'>'+(testing?'Reiniciar prueba de conexión':'Iniciar prueba de conexión')+'</button>'+
  '<button type="button" data-mgp-mobile-check '+(!testing||!canEdit()||testing?.checking?'disabled':'')+' aria-busy="'+!!testing?.checking+'">'+(testing?.checking?'Comprobando…':'Comprobar señal')+'</button></div>'+
  (testing?'<p class="'+testClass+'" role="'+(testing.failed?'alert':'status')+'" aria-live="polite">'+esc(testing.feedback||'Prueba iniciada. Esperando señal nueva del Android de '+localName()+'.')+'</p>':'')+
@@ -393,7 +394,7 @@ function buildAndroidMacro(loc,token,filterText=''){
   enableRegex:false,ignoreCase:true,m_applicationNameList:['WhatsApp Business'],
   m_exactMatch:false,m_excludeApps:false,m_excludes:false,
   m_ignoreOngoing:true,m_option:0,m_packageNameList:['com.whatsapp.w4b'],
-  m_soundOption:0,m_supressMultiples:true,m_textContent:filter,
+  m_soundOption:0,m_supressMultiples:false,m_textContent:filter,
   matchOptionMessage:0,matchOptionTitle:0,separateTitleAndMessage:false,
   disableLogging:false,m_SIGUID:guid(),m_classType:'NotificationTrigger',
   m_constraintList:[],m_isDisabled:false,m_isOrCondition:false
