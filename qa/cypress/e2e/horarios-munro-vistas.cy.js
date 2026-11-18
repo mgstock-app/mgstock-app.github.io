@@ -73,20 +73,20 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
 }
 describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  Cypress.on("uncaught:exception",e=>e.message.includes("Minified React error #418")?false:undefined);
- it("permite modificar solo un colaborador desde Semana actual, sin habilitar los demás",()=>{
+ it("semana abierta: sin Modificar ni Guardar, edición directa de todo el personal",()=>{
   cy.viewport(1320,900);const ultimo=iniciar({precargados:[
    {id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}},
    {id:4,nombre:"Julieta",modalidad:"hora",version:1,semana:SEMANA,datos:{}}
   ]});
-  cy.get(".mhs-tabla tbody tr").eq(0).find(".mhs-editar-persona").should("contain.text","Modificar").click();
+  cy.contains("button","Modificar").should("not.exist");
+  cy.contains("button","Guardar ahora").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(0).find('input[type="time"]').first().should("be.enabled").type("09:00");
-  cy.get(".mhs-tabla tbody tr").eq(3).find('input[type="time"]').first().should("be.disabled");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get(".mhs-tabla tbody tr").eq(3).find('input[type="time"]').first().should("be.enabled");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(ultimo().p_persona).to.eq(1));
-  cy.get(".mhs-tabla tbody tr").eq(0).find(".mhs-editar-persona").should("contain.text","Listo").click();
-  cy.get(".mhs-tabla tbody tr").eq(0).find('input[type="time"]').first().should("be.disabled");
+  cy.get(".mhs-tabla tbody tr").eq(0).find('input[type="time"]').first().should("be.enabled");
  });
- it("muestra Modificar por persona en Resumen, con OFF y feriados individuales",()=>{
+ it("resumen de la semana abierta: OFF editable sin Modificar",()=>{
   cy.viewport(1320,900);const ultimo=iniciar({precargados:[
    {id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}},
    {id:4,nombre:"Julieta",modalidad:"hora",version:1,semana:SEMANA,datos:{}}
@@ -94,16 +94,27 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
   cy.get(".mhs-resumen-semanas .mhs-semana-item").first().click();
   cy.get(".mhs-resumen > .mhs-colab").should("have.length",2);
-  cy.get(".mhs-resumen > .mhs-colab").first().find("summary").click();
-  cy.get(".mhs-resumen > .mhs-colab").eq(1).find("summary").click();
-  cy.get('input[aria-label="OFF de Lucía"]').should("be.disabled");
-  cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-editar-persona").click();
+  cy.get(".mhs-resumen > .mhs-colab").each($el=>cy.wrap($el).find("summary").click());
+  cy.get(".mhs-resumen .mhs-editar-persona").should("not.exist");
   cy.get('input[aria-label="OFF de Lucía"]').should("be.enabled").clear().type("2");
-  cy.get('input[aria-label="OFF de Julieta"]').should("be.disabled");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get('input[aria-label="OFF de Julieta"]').should("be.enabled");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].off).to.eq("2"));
-  cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-editar-persona").contains("Listo").click();
-  cy.get('input[aria-label="OFF de Lucía"]').should("be.disabled");
+ });
+ it("autoguardado no quita el foco ni provoca saltos al sincronizar",()=>{
+  cy.viewport(1320,900);iniciar({precargados:[
+   {id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}
+  ]});
+  cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().as("hora");
+  cy.get("@hora").type("09:00").should("have.value","09:00");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get("@hora").should("have.focus");
+  cy.window().then(win=>{
+   const antes=win.scrollY;
+   cy.tick(16000);
+   cy.get("@hora").should("have.value","09:00").should("have.focus");
+   cy.window().should(w=>expect(Math.abs(w.scrollY-antes)).to.be.lessThan(4));
+  });
  });
  it("muestra 3 turnos, 5 por hora y permite completar nombre, estado y entrada sin salida",()=>{
   cy.viewport(1320,900);const ultimo=iniciar();
@@ -112,12 +123,12 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").eq(2).should("contain.text","Por turno");
   cy.get(".mhs-tabla tbody tr").eq(3).should("contain.text","Por hora");
   cy.contains("a","Abrir planilla").should("not.exist");
-  cy.contains("button","Modificar").click();
+  cy.contains("button","Modificar").should("not.exist");
   cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Nombre del colaborador"]').type("Lucía");
   cy.get(".mhs-tabla tbody tr").first().find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
-  cy.get(".mhs-alerta").should("not.exist");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get(".mhs-guardado-flotante--error").should("not.exist");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>{const x=ultimo();expect(x.p_nombre).to.eq("Lucía");expect(x.p_estado).to.eq("refuerzo");});
   cy.contains("button","Agregar colaborador por hora").click();
   cy.get(".mhs-agregar input").type("Nuevo colaborador");
@@ -142,7 +153,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
      datos:{"2026-11-12":{tm_e:"09:00",tm_s:"13:00",tt_e:"19:00",tt_s:"23:00"}}};
    const ultimo=iniciar({precargados:[registro]});
    cy.get(".mhs-tabla tbody tr").first().find('.mhs-dia-extra').should("not.exist");
-   cy.contains("button","Modificar").click();
+   cy.contains("button","Modificar").should("not.exist");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar feriado"]').check();
    // El jueves debe quedar a la vista sin esconderse bajo la columna fija de colaboradores.
    cy.get(".mhs-tabla thead th").last().should("be.visible");
@@ -173,7 +184,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.get(".mhs-resumen").should("not.contain.text","OFF pagos");
    cy.get('input[aria-label="OFF de Lucía"]').clear().type("0");
    cy.get(".mhs-resumen > .mhs-colab").first().find(".mhs-total-liquidacion").should("contain.text","4 turnos");
-   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+   cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
    cy.wrap(null).should(()=>{
      expect(ultimo().p_datos[SEMANA].feriados_habilitados).to.eq(true);
      expect(ultimo().p_datos["2026-11-12"].feriado).to.eq(true);
@@ -199,7 +210,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   it("vacaciones solo aparece al habilitar por colaborador",()=>{
    cy.viewport(1320,900);iniciar();
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Vacaciones ·"]').should("not.exist");
-   cy.contains("button","Modificar").click();
+   cy.contains("button","Modificar").should("not.exist");
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Habilitar vacaciones"]').check();
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Vacaciones ·"]').should("have.length",7);
    cy.get('.mhs-tabla tbody tr').eq(1).find('input[aria-label^="Vacaciones ·"]').should("not.exist");
@@ -211,11 +222,11 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
    cy.viewport(1320,900);
    const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:1,semana:SEMANA,datos:{}}]});
    cy.get('.mhs-tabla tbody tr').first().find('.mhs-estado-activo .mhs-luz-estado').should("be.visible");
-   cy.contains("button","Modificar").click();
+   cy.contains("button","Modificar").should("not.exist");
    cy.get('.mhs-tabla tbody tr').first().find('select[aria-label^="Estado de"]').select("inactivo",{scrollBehavior:"center"});
    cy.get('.mhs-tabla tbody tr').first().find('input[aria-label^="Inactivo desde"]').should("be.visible")
      .clear().type("2026-11-10");
-   cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+   cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
    cy.wrap(null).should(()=>{
      expect(ultimo().p_estado).to.eq("inactivo");
      expect(ultimo().p_datos[SEMANA].inactivo_desde).to.eq("2026-11-10");
@@ -225,12 +236,12 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
  it("guarda sucesivas ediciones sin tocar Guardar y actualiza la versión del colaborador",()=>{
   cy.viewport(1320,900);
   const ultimo=iniciar({precargados:[{id:1,nombre:"Lucía",modalidad:"turno",version:2,semana:SEMANA,datos:{}}]});
-  cy.contains("button","Modificar").click();
+  cy.contains("button","Modificar").should("not.exist");
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().type("09:00");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].tm_e).to.eq("09:00"));
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').eq(1).type("13:00");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(ultimo().p_datos[SEMANA].tm_s).to.eq("13:00"));
   cy.get(".mhs-tabla tbody tr").first().find('input[type="time"]').first().should("have.value","09:00");
  });
@@ -253,12 +264,12 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").first().find(".mhs-horas-dia").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("contain.text","Activo").and("not.contain.text","Refuerzo").and("not.contain.text","Inactivo");
-  cy.contains("button","Modificar").click();
+  cy.contains("button","Modificar").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("have.class","mhs-estado-refuerzo").and("contain.text","Refuerzo");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
-  cy.contains("button","Finalizar edición").click();
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.contains("button","Finalizar edición").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
     .should("contain.text","Refuerzo").and("not.contain.text","Activo");
  });
@@ -266,14 +277,14 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.viewport(1320,900);
   const getUltimo=iniciar({precargados:[{id:4,nombre:"Julieta",modalidad:"hora",version:1,
     semana:SEMANA,datos:{}}]});
-  cy.contains("button","Modificar").click();
+  cy.contains("button","Modificar").should("not.exist");
   const lun=()=>cy.get(".mhs-tabla tbody tr").eq(3).find("td").first();
   // Un único selector por día, sin catorce botones repetidos por colaborador.
   lun().find('select[aria-label^="Descanso ·"]').should("have.length",1).select("off");
   lun().find(".mhs-descanso-boton").should("not.exist");
   lun().find(".mhs-horas-dia").should("contain.text","0 h");
   lun().find('input[type="time"]').first().should("be.disabled");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>expect(getUltimo().p_datos["2026-11-09"].descanso).to.eq("off"));
   lun().find('select[aria-label^="Descanso ·"]').select("");
   lun().find('select[aria-label^="Descanso ·"]').select("medio_off");
@@ -288,7 +299,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   lun().find('input[type="time"]').eq(0).should("have.value","09:00");
   lun().find('input[type="time"]').eq(1).should("have.value","13:00");
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-total-nombre").should("contain.text","4:00 h");
-  cy.get(".mhs-exito",{timeout:15000}).should("contain.text","Guardado automáticamente");
+  cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.wrap(null).should(()=>{
     const data=getUltimo().p_datos;
     expect(data["2026-11-09"].descanso).to.eq("medio_off");
@@ -348,7 +359,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("button","Semana finalizada",{timeout:15000}).should("be.enabled");
   cy.on("window:confirm",()=>true);
   cy.contains("button","Semana finalizada").click();
-  cy.get(".mhs-exito").should("contain.text","Semana finalizada y enviada a Historial");
+  cy.get(".mhs-guardado-flotante").should("contain.text","Semana finalizada y enviada a Historial");
   cy.get(".mhs-semana").should("contain.text","16/11 al 22/11");
   cy.get(".mhs-tabla tbody tr").first().should("contain.text","Julia");
   cy.get(".mhs-tabla tbody tr").should("have.length",7).should("not.contain.text","Martín");
@@ -419,7 +430,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
     cy.get("td").should("have.length",7);
     cy.get("td").each($dia=>cy.wrap($dia).find('input[type="time"]').should("have.length",4));
   });
-  cy.contains("button","Modificar").click();
+  cy.contains("button","Modificar").should("not.exist");
   cy.get(".mhs-tabla tbody tr").first().then($fila=>{
     const estado=$fila.find(".mhs-estado select")[0];
     const etiquetas=$fila.find(".mhs-matriz-etiquetas")[0];
@@ -465,7 +476,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-movil-dias button").eq(3).click();
   cy.get(".mhs-movil-dias button").eq(3).should("have.attr","aria-pressed","true");
  });
- it("en móvil filtra colaboradores por nombre y permite modificar solo el elegido",()=>{
+ it("en móvil filtra colaboradores y edita su horario sin Modificar",()=>{
   cy.viewport(1320,900);iniciar({precargados:[
     {id:1,nombre:"Juli",modalidad:"turno",version:1,semana:SEMANA,datos:{}},
     {id:4,nombre:"Mari",modalidad:"hora",version:1,semana:SEMANA,datos:{}}
@@ -476,8 +487,8 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-movil-lista .mhs-card").find('input[type="time"]').should("have.length",0);
   cy.get(".mhs-card-expandir").click();
   cy.get(".mhs-movil-lista .mhs-card").find('input[type="time"]').should("have.length",4);
-  cy.get(".mhs-movil-lista .mhs-card").contains("button","Modificar").click();
-  cy.get(".mhs-movil-lista .mhs-card").contains("button","Listo").should("be.visible");
+  cy.get(".mhs-movil-lista .mhs-card").contains("button","Modificar").should("not.exist");
+  cy.get(".mhs-movil-lista .mhs-card").find('input[type="time"]').first().should("be.enabled");
  });
  
 });
