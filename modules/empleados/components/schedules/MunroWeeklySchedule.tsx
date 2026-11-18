@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, CheckCircle2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, CheckCircle2 } from "lucide-react";
 import { rpc } from "@/features/access/api";
 import { ScheduleHistory } from "./ScheduleHistory";
 import { MunroEmployeeLinks } from "./MunroEmployeeLinks";
@@ -47,6 +47,7 @@ export function MunroWeeklySchedule(){
  const [feriados,setFeriados]=useState<string[]>([]);
  const [reintento,setReintento]=useState(0);
  const revisiones=useRef<Record<number,number>>({});
+ const revisionLocal=useRef(0);
  const guardadoEnCurso=useRef(false);
  const intentoAutomatico=useRef("");
 
@@ -81,25 +82,32 @@ export function MunroWeeklySchedule(){
    window.addEventListener("beforeunload",onBeforeUnload);
    return()=>window.removeEventListener("beforeunload",onBeforeUnload);
  },[pendientes.length,guardando]);
- // Sincronización entre dispositivos cada 15 segundos, sin pisar un borrador abierto.
+ // Sincronización sin desplazar pantalla ni pisar un campo abierto.
  useEffect(()=>{
-   if(editando||pendientes.length)return;
-   let activo=true;
-   const timer=window.setInterval(async()=>{
-     try{
-       const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
-       if(!activo)return;
-       setPlanilla(p);
-       setFilas(p.personas.map(persona=>{
-         const r=p.planillas.find(x=>x.id===persona.id);
-         return {...persona,...(p.semana_cerrada&&r?{nombre:r.nombre,modalidad:r.modalidad,estado:r.estado||persona.estado,inactivo_desde:r.inactivo_desde??persona.inactivo_desde}:{}),datos:r?.datos||{},version:r?.version||0};
-       }));
-       setFeriados(p.feriados||[]);
-     }catch{/* Mantener los datos actuales hasta recuperar la conexión. */}
-   },15000);
-   return()=>{activo=false;window.clearInterval(timer);};
- },[semana,editando,pendientes.length]);
- const editarPersona=(id:number)=>editando&&puedeEditar&&(personaEnEdicion===null||personaEnEdicion===id);
+  if(editando||pendientes.length||guardando)return;
+  let activo=true;
+  const campoEnUso=()=>Boolean(document.activeElement?.closest(".mhs input, .mhs select, .mhs textarea"));
+  const timer=window.setInterval(async()=>{
+   if(guardadoEnCurso.current||campoEnUso())return;
+   const revisionAnterior=revisionLocal.current;
+   try{
+    const p=await rpc<Planilla>("rm_munro_horarios_obtener",{p_semana:semana});
+    if(!activo||guardadoEnCurso.current||campoEnUso()||revisionLocal.current!==revisionAnterior)return;
+    setPlanilla(prev=>JSON.stringify(prev)===JSON.stringify(p)?prev:p);
+    setFilas(prev=>{
+     const nuevas=p.personas.map(persona=>{
+      const r=p.planillas.find(x=>x.id===persona.id);
+      return {...persona,...(p.semana_cerrada&&r?{nombre:r.nombre,modalidad:r.modalidad,estado:r.estado||persona.estado,inactivo_desde:r.inactivo_desde??persona.inactivo_desde}:{}),datos:r?.datos||{},version:r?.version||0};
+     });
+     return JSON.stringify(prev)===JSON.stringify(nuevas)?prev:nuevas;
+    });
+    setFeriados(prev=>JSON.stringify(prev)===JSON.stringify(p.feriados||[])?prev:p.feriados||[]);
+   }catch{/* Mantener pantalla y campos actuales si falla la conexión. */}
+  },15000);
+  return()=>{activo=false;window.clearInterval(timer);};
+ },[semana,editando,pendientes.length,guardando]);
+ // Semana vigente editable directamente. Modificar únicamente en historial finalizado.
+ const editarPersona=(id:number)=>puedeEditar&&(!semanaCerrada||(editando&&personaEnEdicion===id));
  const empezarEdicionPersona=(id:number)=>{
   if(!puedeEditar)return;
   if(guardando||guardadoEnCurso.current||pendientes.length){
@@ -116,6 +124,7 @@ export function MunroWeeklySchedule(){
  const cambiar=(id:number,updater:(anterior:Borrador)=>Borrador)=>{
    if(!editarPersona(id))return;
    revisiones.current[id]=(revisiones.current[id]||0)+1;
+   revisionLocal.current+=1;
    setFilas(actual=>actual.map(f=>f.id===id?updater(f):f));
    setPendientes(actual=>actual.includes(id)?actual:[...actual,id]);
    setMensaje("");setError("");
@@ -181,10 +190,10 @@ export function MunroWeeklySchedule(){
   setDiaSeleccionado(0);setPersonaMovilAbierta(null);setBusquedaMovil("");setMensaje("");setError("");
   return true;
  };
- const guardar=useCallback(async(automatico=false)=>{
-  if(!puedeEditar||!editando||guardadoEnCurso.current)return;
+ const guardar=useCallback(async()=>{
+  if(!puedeEditar||(semanaCerrada&&!editando)||guardadoEnCurso.current)return;
   const objetivos=filas.filter(f=>pendientes.includes(f.id));
-  if(!objetivos.length){if(!automatico){setEditando(false);setPersonaEnEdicion(null);}return;}
+  if(!objetivos.length)return;
   const validos:Borrador[]=[];
   let primerError="";
   // Cada colaborador se valida de forma independiente, sin detener a otros.
@@ -245,20 +254,25 @@ export function MunroWeeklySchedule(){
  },[puedeEditar,semanaCerrada,editando,filas,pendientes,dias,enRevision,semana,feriados]);
  // Debounce de 900 ms sin recargar, borrar el borrador ni sacar el foco.
  useEffect(()=>{
-  if(!editando||!puedeEditar||!pendientes.length||guardando)return;
+  if(!puedeEditar||(semanaCerrada&&!editando)||!pendientes.length||guardando)return;
   const firma=semana+"|"+pendientes.map(id=>id+":"+(revisiones.current[id]||0)).join("|")+"|"+reintento;
   if(firma===intentoAutomatico.current)return;
   const timer=window.setTimeout(()=>{
    intentoAutomatico.current=firma;
-   void guardar(true);
+   void guardar();
   },900);
   return()=>window.clearTimeout(timer);
- },[editando,puedeEditar,pendientes,filas,guardando,semana,reintento,guardar]);
+ },[editando,semanaCerrada,puedeEditar,pendientes,filas,guardando,semana,reintento,guardar]);
  useEffect(()=>{
   const volver=()=>{intentoAutomatico.current="";setReintento(n=>n+1);};
   window.addEventListener("online",volver);
   return()=>window.removeEventListener("online",volver);
  },[]);
+ useEffect(()=>{
+   if(!mensaje||pendientes.length)return;
+   const timer=window.setTimeout(()=>setMensaje(""),2800);
+   return()=>window.clearTimeout(timer);
+ },[mensaje,pendientes.length]);
  const agregar=async()=>{
    if(!nombreNuevo.trim()||guardando)return;
    if(pendientes.length){setError("Revisá primero los horarios pendientes de guardado.");return;}
@@ -366,7 +380,7 @@ export function MunroWeeklySchedule(){
  const cabecera=(f:Pick<Borrador,"id"|"nombre"|"modalidad">)=>f.nombre.trim()||("Colaborador "+f.id+" · "+(f.modalidad==="turno"?"por turno":"por hora"));
  const datosDia=(f:Borrador,dia:string)=>f.datos[dia]||{};
  const controlesPersona=(f:Pick<Borrador,"id"|"nombre"|"modalidad">,desdeResumen=false)=>{
-  if(!puedeEditar||(editando&&personaEnEdicion===null))return null;
+  if(!puedeEditar||!semanaCerrada)return null;
   const activa=editando&&personaEnEdicion===f.id;
   return <div className="mhs-control-persona">
    {activa?<>
@@ -487,12 +501,13 @@ export function MunroWeeklySchedule(){
        .map(([id,label])=><button key={id} type="button" aria-current={pestana===id?"page":undefined}
          onClick={()=>{if(id==="semana"&&!seleccionarSemana(semanaActual()))return;setPestana(id);setResumenDetalle(false);}}>{label}</button>)}
    </nav>
-   {error&&<p className="mhs-alerta" role="alert">{error}</p>}
-   {guardando&&<p role="status" className="mhs-ayuda">Guardando cambios automáticamente…</p>}
-   {cerrandoSemana&&<p role="status" className="mhs-ayuda">Archivando la semana y preparando la planilla siguiente…</p>}
-   {pendientes.length>0&&!guardando&&editando&&<p role="status" className="mhs-ayuda">Cambios pendientes · se guardan automáticamente al completar la carga.</p>}
-   {mensaje&&!pendientes.length&&<p className="mhs-exito" role="status">{mensaje}</p>}
-   {cargando&&<p role="status">Cargando Horarios de Munro…</p>}
+   {(error||cerrandoSemana||guardando||pendientes.length>0||mensaje)&&
+      <div className={"mhs-guardado-flotante"+(error?" mhs-guardado-flotante--error":"")}
+        role={error?"alert":"status"} aria-live={error?"assertive":"polite"}>
+        {error||(cerrandoSemana?"Finalizando semana…":guardando?"Guardando…":
+          pendientes.length>0?"Cambios pendientes…":mensaje)}
+      </div>}
+    {cargando&&<p role="status">Cargando Horarios de Munro…</p>}
    {!cargando&&planilla&&<>
      {(pestana==="semana"||resumenDetalle)&&<div className="mhs-toolbar">
        <div className="mhs-semana">
@@ -507,11 +522,7 @@ export function MunroWeeklySchedule(){
          {pestana==="semana"&&!semanaCerrada&&semana>=semanaActual(momento)&&
            <small className="mhs-ayuda">La semana está vigente. El cierre se habilita el lunes {fechaCorta(sumarDias(semana,7))}.</small>}
          {semanaCerrada&&<span className="mhs-cerrada-chip"><CheckCircle2 size={17}/> Semana finalizada · correcciones auditadas</span>}
-          {!editando?<button type="button" onClick={()=>{setPersonaEnEdicion(null);setEditando(true);}}><Pencil size={17}/> Modificar</button>:
-          personaEnEdicion!==null?<span className="mhs-accion-estado">Edición individual activa</span>:
-           <><button type="button" disabled={guardando} onClick={()=>{if(pendientes.length){setError("Hay cambios pendientes; no se pueden descartar sin revisarlos.");return;}setEditando(false);setPersonaEnEdicion(null);}}>Finalizar edición</button>
-             <button className="mhs-primario" type="button" disabled={guardando||!pendientes.length} onClick={()=>void guardar(false)}><Save size={17}/> Guardar ahora</button></>
-         }
+          
        </div>}
      </div>}
      {enRevision&&(pestana==="semana"||resumenDetalle)&&<p className="mhs-alerta" role="status">
