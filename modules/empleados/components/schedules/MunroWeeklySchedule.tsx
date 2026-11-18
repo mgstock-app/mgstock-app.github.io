@@ -48,6 +48,7 @@ export function MunroWeeklySchedule(){
  const [reintento,setReintento]=useState(0);
  const revisiones=useRef<Record<number,number>>({});
  const revisionLocal=useRef(0);
+ const fallosAutomaticos=useRef(0);
  const guardadoEnCurso=useRef(false);
  const intentoAutomatico=useRef("");
 
@@ -125,6 +126,7 @@ export function MunroWeeklySchedule(){
    if(!editarPersona(id))return;
    revisiones.current[id]=(revisiones.current[id]||0)+1;
    revisionLocal.current+=1;
+   fallosAutomaticos.current=0;
    setFilas(actual=>actual.map(f=>f.id===id?updater(f):f));
    setPendientes(actual=>actual.includes(id)?actual:[...actual,id]);
    setMensaje("");setError("");
@@ -241,11 +243,14 @@ export function MunroWeeklySchedule(){
      // Si siguieron escribiendo mientras guardaba, la nueva edición sigue pendiente.
      setPendientes(actual=>revisiones.current[f.id]===revision?actual.filter(id=>id!==f.id):actual);
     }catch(e){
-     huboFallo=true;setError(aviso(e)+" · Cambios pendientes. Revisá tu conexión y reintentá.");
+     huboFallo=true;
+     fallosAutomaticos.current+=1;
+     const volverAIntentar=fallosAutomaticos.current<3;
+     setError(aviso(e)+(volverAIntentar?" · Cambios sin guardar. Se reintentará automáticamente.":" · Cambios sin guardar. Modificá un campo o reconectate para reintentar."));
      break;
     }
    }
-   if(!huboFallo&&!primerError)setMensaje(semanaCerrada?"Corrección guardada en el historial.":"Guardado automáticamente.");
+   if(!huboFallo&&!primerError){fallosAutomaticos.current=0;setMensaje(semanaCerrada?"Corrección guardada en el historial.":"Guardado automáticamente.");}
    else if(!huboFallo)setMensaje("Los otros colaboradores se guardaron automáticamente.");
   }finally{
    guardadoEnCurso.current=false;
@@ -264,7 +269,7 @@ export function MunroWeeklySchedule(){
   return()=>window.clearTimeout(timer);
  },[editando,semanaCerrada,puedeEditar,pendientes,filas,guardando,semana,reintento,guardar]);
  useEffect(()=>{
-  const volver=()=>{intentoAutomatico.current="";setReintento(n=>n+1);};
+  const volver=()=>{fallosAutomaticos.current=0;intentoAutomatico.current="";setReintento(n=>n+1);};
   window.addEventListener("online",volver);
   return()=>window.removeEventListener("online",volver);
  },[]);
@@ -273,6 +278,12 @@ export function MunroWeeklySchedule(){
    const timer=window.setTimeout(()=>setMensaje(""),2800);
    return()=>window.clearTimeout(timer);
  },[mensaje,pendientes.length]);
+ useEffect(()=>{
+   if(!pendientes.length||!error.includes("Se reintentará automáticamente."))return;
+   const demora=Math.min(20000,3000*2**fallosAutomaticos.current);
+   const timer=window.setTimeout(()=>{intentoAutomatico.current="";setReintento(n=>n+1);},demora);
+   return()=>window.clearTimeout(timer);
+ },[pendientes.length,error,reintento]);
  const agregar=async()=>{
    if(!nombreNuevo.trim()||guardando)return;
    if(pendientes.length){setError("Revisá primero los horarios pendientes de guardado.");return;}
@@ -294,7 +305,7 @@ export function MunroWeeklySchedule(){
      setError("La semana sigue vigente. Podés finalizarla a partir del lunes siguiente.");
      return;
    }
-   const hasSaved=planilla?.planillas.some(r=>r.nombre.trim());
+   const hasSaved=filas.some(f=>f.nombre.trim()&&f.version>0); // Incluir guardados confirmados sin esperar sincronización.
    if(!hasSaved){
      setError("No hay horarios guardados esta semana. Completá una planilla antes del cierre.");
      return;
