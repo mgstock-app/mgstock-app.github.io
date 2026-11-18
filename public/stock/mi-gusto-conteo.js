@@ -715,7 +715,10 @@ function categorySidebar(names,products){
 function expiryRuler(showDecomiso){
  const base=historyRecord?.day||day;
  const dates=Array.from({length:4},(_,i)=>'<span class="gcm-expiry-ruler-date"><b>Vto '+(i+1)+'</b><strong>'+esc(labelDay(plusDays(base,i)).slice(0,5))+'</strong></span>').join('');
+ // Es el turno real abierto por el servidor; esta etiqueta no permite cambiar de planilla.
+ const turno=SHIFTS.find(([id])=>id===shift)?.[1]||'Turno sin identificar';
  return '<div class="gcm-expiry-ruler" aria-label="Vencimientos y fechas fijos durante el conteo">'+
+ '<div class="gcm-expiry-shift" aria-hidden="true"><span>Planilla activa</span><strong>'+esc(turno)+'</strong></div>'+
  '<div class="gcm-expiry-ruler-scroll" role="region" aria-label="Fechas y vencimientos, desplazamiento horizontal" tabindex="0">'+
  '<div class="gcm-expiry-ruler-grid'+(showDecomiso?' has-decomiso':'')+'">'+
  '<span class="gcm-expiry-ruler-product">Producto</span>'+

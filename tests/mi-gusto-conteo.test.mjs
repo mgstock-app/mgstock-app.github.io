@@ -71,8 +71,12 @@ test('Conteo identifica el turno activo del servidor, sin modificar cantidades',
   for(let i=0;i<9;i++)await Promise.resolve();
   const html=instance.view();
   assert.match(html,new RegExp('class="gcm-current-shift"[^>]*><span>Turno de conteo</span><strong>'+label+'</strong>'));
+  assert.match(html,new RegExp('class="gcm-expiry-shift" aria-hidden="true"><span>Planilla activa</span><strong>'+label+'</strong>'));
   assert.doesNotMatch(html,/data-gcm-shift=|<nav class="gcm-tabs"/);
   assert.equal(JSON.stringify(state),original,'mostrar el turno no debe tocar cantidades');
   assert.ok(requested.includes('gestlok_munro_conteo_state'));
+  const css=fs.readFileSync(new URL('../app/mi-gusto-conteo.css',import.meta.url),'utf8');
+  assert.match(css,/\.gcm-count-screen \.gcm-expiry-shift\{/);
+  assert.match(css,/\.gcm-count-screen \.gcm-expiry-ruler\{[\s\S]*?position:sticky/);
  }
 });
