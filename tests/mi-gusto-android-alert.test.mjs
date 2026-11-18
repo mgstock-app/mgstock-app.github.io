@@ -9,7 +9,7 @@ const sqlBoth=fs.readFileSync(new URL('../supabase/migrations/20261115131500_mi_
 const sqlManager=fs.readFileSync(new URL('../supabase/migrations/20261115154500_mi_gusto_gerente_vinculo_whatsapp_alertas.sql',import.meta.url),'utf8');
 const edge=fs.readFileSync(new URL('../supabase/functions/mi-gusto-android-alert/index.ts',import.meta.url),'utf8');
 const sqlHistory=fs.readFileSync(new URL('../supabase/migrations/20261115172500_mi_gusto_avisos_whatsapp_historial.sql',import.meta.url),'utf8');
-const alert={id:'11111111-1111-4111-8111-111111111111',status:'pendiente',created_at:'2026-11-15T02:10:00Z',customer_phone:'5491122233344'};
+const alert={id:'11111111-1111-4111-8111-111111111111',status:'pendiente',created_at:'2026-11-15T02:10:00Z',customer_phone:'5491122233344',notification_preview:'Consulta por entrega a domicilio.'};
 const reviewed={id:'22222222-2222-4222-8222-222222222222',status:'visto',created_at:'2026-11-14T02:00:00Z',seen_at:'2026-11-14T02:30:00Z',customer_phone:'5491122244455'};
 
 function make(role='gerente',local='munro',assignedLocals=[local]){
@@ -76,6 +76,25 @@ test('Gerente autorizado puede generar vínculo de su local, sin editar el núme
  assert.doesNotMatch(ajeno.mod.view(),/data-mgp-mobile-key/);
  assert.equal(ajeno.mod.permitido(),false,'no se autoriza otro local');
  const colaborador=make('colaborador');assert.equal(colaborador.mod.permitido(),false);
+});
+
+test('Munro y Torcuato muestran detalle del aviso, vista previa real y botón para abrir WhatsApp',async()=>{
+ for(const loc of ['munro','torcuato']){
+  const m=make('gerente',loc);m.mod.subscribe(loc,()=>{});await tick();await tick();
+  let html=m.mod.view();
+  assert.match(html,/Consulta por entrega a domicilio/);
+  assert.match(html,/data-mgp-alert-detail="11111111-1111-4111-8111-111111111111"/);
+  m.handlers.click({target:{closest:q=>q==='[data-mgp-alert-detail]'?{dataset:{mgpAlertDetail:alert.id}}:null}});
+  html=m.mod.view();
+  assert.match(html,/Detalle del aviso/);
+  assert.match(html,/Vista previa de la notificación/);
+  assert.match(html,/Abrir WhatsApp/);
+  assert.match(html,/Marcar como revisado/);
+  assert.match(html,loc==='munro'?/Sucursal: Munro/:/Sucursal: Don Torcuato/);
+  assert.doesNotMatch(html,/Pedido confirmado|Pedido: 12 empanadas/);
+  m.handlers.click({target:{closest:q=>q==='[data-mgp-alert-back]'?{}:null}});
+  assert.match(m.mod.view(),/Ver detalle/);
+ }
 });
 
 test('Torcuato recibe sus propios avisos, sin contaminar Munro',async()=>{
@@ -252,12 +271,26 @@ test('Descarga de MacroDroid: exportación nativa por sucursal con HTTP POST y J
   assert.equal(action.requestConfig.contentType,'application/json');
   assert.equal(JSON.parse(action.requestConfig.contentBodyText).local,loc);
   assert.equal(JSON.parse(action.requestConfig.contentBodyText).customer_phone,'{not_title}');
+  assert.equal(JSON.parse(action.requestConfig.contentBodyText).notification_preview,'{not_text}');
   const headers=action.requestConfig.headerParams;
   assert.equal(headers.find(h=>h.paramName==='X-Gestlok-Bridge-Key')?.paramValue,key);
   assert.equal(headers.find(h=>h.paramName==='Content-Type')?.paramValue,'application/json');
   assert.equal(new Set([exported.macro.m_GUID,trigger.m_SIGUID,action.m_SIGUID]).size,3);
   assert.ok(!m.qrCalls.join('').includes(key),'la clave jamás debe codificarse en el QR público');
  }
+});
+
+test('Vista previa se guarda solo desde notificación Android autorizada, en RPC privado',()=>{
+ const sqlPreview=fs.readFileSync(new URL('../supabase/migrations/20261118031800_mi_gusto_whatsapp_aviso_preview.sql',import.meta.url),'utf8');
+ assert.match(sqlPreview,/gestlok_mg_android_bridge_ingest_v3/);
+ assert.match(sqlPreview,/gestlok_mg_android_bridge_ingest_v2\(p_local,p_token,p_customer_phone\)/);
+ assert.match(sqlPreview,/where local=p_local and status='pendiente'/);
+ assert.match(sqlPreview,/where local=p_local and status='visto'/);
+ assert.match(sqlPreview,/char_length\(notification_preview\) <= 240/);
+ assert.match(sqlPreview,/grant execute on function public.gestlok_mg_android_bridge_ingest_v3\(text,text,text,text\)\s+to service_role/);
+ assert.match(edge,/p_notification_preview:preview/);
+ assert.match(edge,/notification_preview/);
+ assert.doesNotMatch(edge,/console\.log/);
 });
 
 test('Se impide generar macros con claves inválidas o de locales desconocidos',()=>{
