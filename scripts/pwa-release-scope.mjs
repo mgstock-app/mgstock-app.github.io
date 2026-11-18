@@ -23,7 +23,7 @@ export function fileAudience(path) {
     return [LOCAL_AUDIENCE.munro];
   }
   // Staff semanal de Munro: no generar avisos falsos en Torcuato ni otros locales.
-  if (/^modules\/empleados\/(?:components\/schedules\/(?:MunroWeeklySchedule\.tsx|MunroEmployeeLinks\.tsx|EmployeeMunroWeeklySummary\.tsx|munro-weekly\.css|munro-employee-links\.css|employee-munro-weekly-summary\.css)|features\/schedules\/munro-model\.ts)$/.test(p)) return [LOCAL_AUDIENCE.munro];
+  if (/^modules\/empleados\/(?:components\/schedules\/(?:MunroWeeklySchedule\.tsx|MunroEmployeeLinks\.tsx|EmployeeMunroWeeklySummary\.tsx|munro-weekly\.css|munro-weekly-(?:polish|matrix)\.css|munro-employee-links\.css|employee-munro-weekly-summary\.css)|features\/schedules\/munro-model\.ts)$/.test(p)) return [LOCAL_AUDIENCE.munro];
   // EmployeeScheduleLink es compartido. Solo si el diff añade el resumen
   // personal exclusivo de Munro se limita el aviso a esa sucursal.
   // Cualquier otro cambio de este componente sigue siendo compartido.
