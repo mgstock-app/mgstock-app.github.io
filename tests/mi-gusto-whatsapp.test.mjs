@@ -123,7 +123,7 @@ test('Mi Gusto inicia Meta Embedded Signup v4 para coexistencia sin alterar What
  assert.match(ui,/response_type:'code',override_default_response_type:true/);
  assert.match(ui,/Si Meta indica «no puede registrar clientes»/);
  assert.match(ui,/No desconectes WhatsApp Business del teléfono/);
- assert.match(runtime,/mi-gusto-pedidos-clientes\.js\?rev=whatsapp-detalle-alertas-20261118/);
+ assert.match(runtime,/mi-gusto-pedidos-clientes\.js\?rev=whatsapp-avisos-consecutivos-20261118/);
  // Sin migración de números, sin modificación de tokens ni activación automática del bot.
  assert.doesNotMatch(ui,/deleteAccount|removePhoneNumber|migratePhoneNumber/);
 });

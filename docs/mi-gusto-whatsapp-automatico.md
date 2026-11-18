@@ -51,6 +51,11 @@ El agente de Meta atiende al cliente **dentro de WhatsApp Business** de cada suc
 6. Cuerpo JSON sugerido para Munro: `{"local":"munro","customer_phone":"{not_title}"}`. Para Torcuato: `{"local":"torcuato","customer_phone":"{not_title}"}`. `{not_title}` es la variable del **título de la notificación**; validar el nombre concreto de variable en la versión de MacroDroid instalada y usar el selector de variables propio de la app.
 7. Realizar pedido real de prueba desde otro teléfono; verificar **notificación Android → llamada HTTP → aviso GESTLOK**. Repetir en la otra sucursal y comprobar que ninguno ve el aviso ajeno.
 
+## Corrección de avisos consecutivos (18/11/2026)
+- En las nuevas macros descargadas desde GESTLOK se desactiva `m_supressMultiples` para no descartar notificaciones consecutivas de WhatsApp Business. Se mantiene el filtro de derivación y la deduplicación inmediata en el servidor.
+- **Macros ya instaladas:** en MacroDroid, editar el disparador «Notificación recibida» y desactivar «Evitar múltiples disparos». Verificar que el texto del filtro coincida con la notificación Android real. No reemplazar la clave vigente; una descarga de otra macro no modifica la que ya está activa.
+- Esta corrección no puede detectar mensajes si WhatsApp Business o el agente de Meta no producen una notificación Android. La última señal registrada confirma una recepción pasada, nunca cobertura completa de futuros mensajes.
+
 ## Limitación principal
 Meta Business Agent y WhatsApp Business pueden gestionar mensajes sin generar una notificación visible para Android. **Sin esa notificación, no se envía ningún aviso al puente.** El puente no puede detectar mensajes ocultos ni acceder al número por su cuenta. En ese caso se necesita que el propio agente o servicio que recibe el pedido emita un evento autorizado; no se puede prometer el 100% de alertas usando exclusivamente MacroDroid.
 
