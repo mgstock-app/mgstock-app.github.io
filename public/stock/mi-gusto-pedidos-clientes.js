@@ -125,7 +125,7 @@ function acceptMobileAlerts(result,loc){
   if(Number.isFinite(received)&&received>Math.max(baseline,bridgeTest.startedAt-5000)){
    bridgeTest.passed=true;passed=true;
    bridgeTest.failed=false;
-   bridgeTest.feedback='✓ GESTLOK recibió una señal nueva del Android de '+localName()+'. La prueba confirma avisos, no pedidos.';
+   bridgeTest.feedback='✓ Conectado para avisos: se recibió una nueva señal de '+localName()+'. No confirma que haya un pedido.';
    notice='';
   }
  }
@@ -425,7 +425,7 @@ function beginMobileBridgeTest(){
  bridgeTest={
   local:local(),startedAt:Date.now(),previousAt:androidBridge.last_event_at||null,
   passed:false,checking:false,failed:false,checks:0,
-  feedback:'Prueba iniciada para '+localName()+'. Enviá un mensaje desde otro celular, esperá la notificación y después tocá Comprobar señal.'
+  feedback:'Prueba iniciada para '+localName()+'. Esperando señal nueva del Android de '+localName()+'. Enviá un mensaje desde otro celular y después tocá Comprobar señal.'
  };
  notice='';error='';update(true);
 }
