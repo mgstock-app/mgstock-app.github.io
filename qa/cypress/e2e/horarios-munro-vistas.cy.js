@@ -66,7 +66,7 @@ function iniciar({editable=true,precargados=[],diasFeriados=[]}={}){
  });
  cy.visit("/empleados/",{onBeforeLoad(w){w.localStorage.setItem(key,JSON.stringify({access_token:token,refresh_token:"synthetic",token_type:"bearer",expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user}));}});
  let reloj;
- cy.clock(new Date("2026-11-12T15:00:00Z").getTime(),["Date"]).then(v=>{reloj=v;});
+ cy.clock(new Date("2026-11-12T15:00:00Z").getTime(),["Date","setInterval","clearInterval"]).then(v=>{reloj=v;});
  cy.get(".gl-gerente__sidebar").contains("button","Horarios",{timeout:15000}).click();
  return Object.assign(()=>ultimo,{ultimoCierre:()=>cierreEnviado,cierres:()=>cierres,archivo:()=>archivo,
   cambiarFecha:fecha=>cy.then(()=>reloj.setSystemTime(new Date(fecha).getTime())).then(()=>cy.tick(30000))});
