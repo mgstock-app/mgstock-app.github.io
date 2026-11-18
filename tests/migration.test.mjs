@@ -32,6 +32,15 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Normalizar solo el detector de formularios del aviso PWA.
+      // Preservamos la huella SHA histórica del controlador de Stock.
+      const pwaHelper="// Un select sin cambios no es un borrador pendiente:\n// HTMLSelectElement no tiene defaultValue y antes siempre bloqueaba «Actualizar».\nfunction pwaFormDirty(el){\n  if(el.tagName==='SELECT'){\n    const options=Array.from(el.options||[]);\n    if(el.multiple)return options.some(option=>option.selected!==option.defaultSelected);\n    const explicit=options.findIndex(option=>option.defaultSelected);\n    const original=explicit>=0?explicit:(options.length?0:-1);\n    return el.selectedIndex!==original;\n  }\n  if(el.type==='checkbox'||el.type==='radio')return el.checked!==el.defaultChecked;\n  return el.value!==el.defaultValue;\n}\n";
+      assert.equal(content.split(pwaHelper).length-1,1,'Helper PWA único y auditado');
+      content=content.replace(pwaHelper,'');
+      const pwaUpdated="    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(pwaFormDirty)\n";
+      const pwaOriginal="    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>\n      el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)\n";
+      assert.equal(content.split(pwaUpdated).length-1,1,'Detector PWA único y auditado');
+      content=content.replace(pwaUpdated,pwaOriginal);
       // Normalizar exclusivamente la preservación visual de scroll de Conteo.
       // Los hashes históricos y los permisos permanecen intactos.
       const scrollStart='// Evitar saltos durante actualizaciones que redibujan Conteo.\n';
