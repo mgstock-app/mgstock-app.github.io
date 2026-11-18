@@ -315,3 +315,30 @@
 .mgp-mobile-import>small{color:#65778a;font-size:11px;line-height:1.45}
 .mgp-mobile-import>.mgp-button{white-space:normal;justify-self:start;max-width:100%}
 @media(max-width:570px){.mgp-mobile-import{margin:10px;padding:12px}.mgp-mobile-import>.mgp-button{width:100%;justify-content:center}}
+
+/* Mi Gusto · vista real de detalle de avisos de WhatsApp, en ambas sucursales. */
+.mgp-mobile-alert-item{background:#fff;border-bottom:1px solid #e2eaf1;align-items:start}
+.mgp-alert-card-content{flex:1;min-width:0}
+.mgp-alert-card-content>strong{color:#12345a;display:block;font-size:14px;line-height:1.4}
+.mgp-alert-card-preview{margin:8px 0 3px;font-size:13px;color:#2f455c;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mgp-alert-card-preview.mgp-alert-no-preview{font-style:italic;color:#738396;font-size:12px}
+.mgp-alert-card-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.mgp-mobile-alert-item .mgp-alert-card-actions button:first-child{background:#fff;color:#12345a;border:1px solid #9db5cc}
+.mgp-alert-detail{background:#fff;padding:0 0 16px}
+.mgp-alert-detail-head{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #e3eaf1;color:#12345a}
+.mgp-alert-detail-head>strong{font-size:16px}
+.mgp-alert-detail-head>button{border:0;background:#eef4f9;color:#12345a;border-radius:9px;padding:9px 12px;min-height:40px;font-weight:750;cursor:pointer}
+.mgp-alert-detail-body{padding:17px;display:grid;gap:11px;color:#253f56}
+.mgp-alert-detail-body>p{margin:0;font-size:13px}
+.mgp-alert-detail-body>small{color:#64798b;font-size:12px;line-height:1.5}
+.mgp-alert-detail-heading{font-size:17px;color:#12345a}
+.mgp-alert-detail-local{justify-self:start;background:#eaf2fa;color:#12345a;padding:5px 11px;border-radius:20px;font-weight:700;font-size:12px}
+.mgp-alert-detail-message{border:1px solid #dce6ee;background:#f5f8fb;padding:13px;border-radius:12px;overflow-wrap:anywhere}
+.mgp-alert-detail-message>strong{font-size:12px;color:#52708a}
+.mgp-alert-detail-message>p{font-size:14px;line-height:1.6;color:#213952;white-space:pre-wrap;margin:8px 0 0}
+.mgp-alert-detail-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.mgp-alert-detail-actions button,.mgp-alert-detail-actions a{flex:1 1 145px;min-height:46px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid #12345a;padding:10px 14px;font:inherit;font-size:13px;font-weight:750;text-decoration:none;text-align:center;cursor:pointer}
+.mgp-alert-detail-actions button{background:white;color:#12345a}
+.mgp-alert-detail-actions a{background:#12345a;color:#fff}
+.mgp-alert-detail-actions .mgp-mobile-reviewed-label{display:inline-flex;align-items:center}
+@media(max-width:560px){.mgp-mobile-alert-item{gap:9px}.mgp-alert-card-actions{width:100%;justify-content:stretch}.mgp-alert-card-actions button{flex:1 1 auto;margin:0}.mgp-alert-detail-body{padding:14px}.mgp-alert-detail-actions{display:grid}.mgp-alert-detail-actions button,.mgp-alert-detail-actions a{width:100%}}

@@ -13,7 +13,7 @@ const date=x=>x?new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Bue
 let api=null,items=[],catalog=[],phone='',tab='pendientes',section='avisos',alertsFilter='pendientes',loading=false,busy=false,error='',notice='',epoch=0,loaded=false;
 let settings=null,fbReady=null,fbAppId='',signupInfo=null;
 let polling=false,firstSnapshot=true,knownOrderIds=new Set(),lastNewOrderId='',lastUiSig='',lastAlertSig='';
-let androidBridge=null,androidAlerts=[],androidReviewed=[],androidBridgeKey='',bridgeTest=null;
+let androidBridge=null,androidAlerts=[],androidReviewed=[],androidBridgeKey='',bridgeTest=null,selectedAndroidAlertId='';
 const PAUSE_MS=12000;
 const GRAPH_VERSION='v25.0';
 const FORM_IDS='#mgp-order-form,#mgp-number-form,#mgp-catalog-form,#mgp-messages-form,#mgp-meta-form';
@@ -259,33 +259,62 @@ function mobileAlertPanel(){
  const pending=mobileAlerts(),reviewed=androidReviewed;
  const lookingAtReviewed=alertsFilter==='revisados';
  const alerts=lookingAtReviewed?reviewed:pending;
+ const selected=alerts.find(a=>String(a.id)===String(selectedAndroidAlertId))||null;
  const filterButton=(key,label,count)=>'<button type="button" data-mgp-alert-filter="'+key+'" aria-pressed="'+(alertsFilter===key)+'">'+esc(label)+' <span>'+count+'</span></button>';
+ const alertActions=a=>{
+  const digits=String(a.customer_phone||'').replace(/[^0-9]/g,'');
+  return '<div class="mgp-alert-detail-actions">'+
+   (!lookingAtReviewed?'<button type="button" class="mgp-alert-reviewed-action" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Marcar como revisado</button>':'<span class="mgp-mobile-reviewed-label">✓ Revisado</span>')+
+   (digits?'<a href="https://wa.me/'+esc(digits)+'" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>':
+    '<a href="intent://#Intent;package=com.whatsapp.w4b;end" class="mgp-alert-open-app">Abrir WhatsApp Business</a>')+
+   '</div>';
+ };
+ const detail=selected?(()=>{
+  const digits=String(selected.customer_phone||'').replace(/[^0-9]/g,'');
+  const preview=String(selected.notification_preview||'').trim();
+  return '<section class="mgp-alert-detail" aria-label="Detalle del aviso" data-mgp-alert-detail-panel>'+
+   '<div class="mgp-alert-detail-head"><button type="button" data-mgp-alert-back aria-label="Volver a los avisos">← Volver</button><strong>Detalle del aviso</strong></div>'+
+   '<div class="mgp-alert-detail-body"><strong class="mgp-alert-detail-heading">Revisar conversación en WhatsApp de '+esc(localName())+'</strong>'+
+   '<span class="mgp-alert-detail-local">Sucursal: '+esc(localName())+'</span>'+
+   '<p><b>Cliente:</b> No disponible en la notificación</p>'+
+   '<p><b>Teléfono:</b> '+(digits?esc(customerPhone(digits)):'No disponible en la notificación')+'</p>'+
+   '<div class="mgp-alert-detail-message"><strong>Vista previa de la notificación:</strong><p>'+
+    (preview?esc(preview):'El teléfono no envió texto para este aviso. Abrí WhatsApp Business para leer la conversación.')+'</p></div>'+
+   '<p><b>Recibido:</b> '+esc(date(selected.created_at))+'</p>'+
+   '<small>El texto proviene solo de la notificación Android, si está disponible. No es un pedido confirmado ni una copia del chat.</small>'+
+   (!digits?'<small>Sin número de cliente: WhatsApp Business se abre sin seleccionar conversación. Buscala manualmente en el celular del local.</small>':'')+
+   alertActions(selected)+'</div></section>';
+ })():null;
  return '<section class="mgp-mobile-alerts" aria-label="Avisos de WhatsApp Business de '+esc(localName())+'">'+
  '<header><strong>Avisos de WhatsApp Business · '+esc(localName())+'</strong><small>'+pending.length+' por revisar</small></header>'+
  '<nav class="mgp-mobile-filters" aria-label="Filtrar avisos de la sucursal">'+
  filterButton('pendientes','Pendientes',pending.length)+filterButton('revisados','Revisados',reviewed.length)+'</nav>'+
- (alerts.length?alerts.map(a=>{
+ (detail|| (alerts.length?alerts.map(a=>{
+  const preview=String(a.notification_preview||'').trim();
   const digits=String(a.customer_phone||'').replace(/[^0-9]/g,'');
   const number=digits?'<strong id="mgp-mobile-phone-'+esc(a.id)+'">'+esc(customerPhone(digits))+'</strong>'+
    '<button type="button" data-mgp-copy="mgp-mobile-phone-'+esc(a.id)+'">Copiar número</button>'+
    '<a href="https://wa.me/'+esc(digits)+'" target="_blank" rel="noopener noreferrer">Abrir chat</a>':
    '<small>Número no disponible en la notificación. Buscalo en WhatsApp Business.</small>';
-  return '<div class="mgp-mobile-alert-item'+(lookingAtReviewed?' mgp-mobile-alert-reviewed':'')+'"><div><strong>Revisar conversación en WhatsApp de '+esc(localName())+'</strong>'+
-   '<small>Alerta recibida: '+date(a.created_at)+' · No significa pedido confirmado.</small>'+
+  return '<div class="mgp-mobile-alert-item'+(lookingAtReviewed?' mgp-mobile-alert-reviewed':'')+'">'+
+   '<div class="mgp-alert-card-content"><strong>Revisar conversación en WhatsApp de '+esc(localName())+'</strong>'+
+   '<small>Alerta recibida: '+esc(date(a.created_at))+' · No significa pedido confirmado.</small>'+
+   (preview?'<p class="mgp-alert-card-preview">'+esc(preview)+'</p>':'<p class="mgp-alert-card-preview mgp-alert-no-preview">Sin vista previa del mensaje</p>')+
    '<div class="mgp-mobile-contact">'+number+'</div></div>'+
-   (lookingAtReviewed?'<span class="mgp-mobile-reviewed-label">✓ Revisado'+(a.seen_at?' · '+date(a.seen_at):'')+'</span>':
-   '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Revisado</button>')+'</div>';
+   '<div class="mgp-alert-card-actions"><button type="button" data-mgp-alert-detail="'+esc(a.id)+'" aria-label="Ver detalle del aviso">Ver detalle</button>'+
+   (lookingAtReviewed?'<span class="mgp-mobile-reviewed-label">✓ Revisado'+(a.seen_at?' · '+esc(date(a.seen_at)):'')+'</span>':
+   '<button type="button" data-mgp-mobile-ack="'+esc(a.id)+'" '+(!canEdit()?'disabled':'')+'>✓ Revisado</button>')+'</div></div>';
  }).join(''):
  (lookingAtReviewed?'<p class="mgp-mobile-empty">Todavía no hay avisos revisados en esta sucursal.</p>':
  '<div class="mgp-mobile-zero"><p>No hay avisos pendientes en esta sucursal.</p>'+
  (androidBridge?.configured&&!androidBridge?.last_event_at?
  '<small>La clave ya está creada, pero el celular todavía no envió ninguna señal a GESTLOK.</small>'+
- '<button type="button" data-mgp-section="vinculacion">Ver vinculación</button>':'')+'</div>'))+
+ '<button type="button" data-mgp-section="vinculacion">Ver vinculación</button>':'')+'</div>')))+
  '</section>';
 }
 function mobileBridgePanel(){
  if(!metaLocal())return '';
- const configured=!!androidBridge?.configured,example=JSON.stringify({local:local(),customer_phone:'{not_title}'});
+ const configured=!!androidBridge?.configured,example=JSON.stringify({local:local(),customer_phone:'{not_title}',notification_preview:'{not_text}'});
  const testing=bridgeTest?.local===local()?bridgeTest:null;
  const last=androidBridge?.last_event_at;
  const hasSignal=!!last;
@@ -328,7 +357,7 @@ function mobileBridgePanel(){
  '<div class="mgp-mobile-credentials"><b>Encabezados</b><code>X-Gestlok-Bridge-Key: [clave privada de '+esc(localName())+']\nContent-Type: application/json</code></div>'+
  '<div class="mgp-mobile-credentials"><b>Cuerpo JSON</b><code id="mgp-mobile-json">'+esc(example)+'</code>'+
  '<button type="button" data-mgp-copy="mgp-mobile-json">Copiar JSON</button></div>'+
- '<p>{not_title} representa el título de la notificación y debe insertarse con el selector de variables de MacroDroid.</p></details>'+
+ '<p>{not_title} es el título; {not_text} es el texto visible de la notificación. Verificá las variables en MacroDroid. Si no hay texto, el aviso igual se registra sin vista previa.</p></details>'+
  '<p class="mgp-mobile-warning">Un QR no puede conectar WhatsApp Business directamente sin una integración autorizada. El puente solo funciona cuando Android emite una notificación identificable; no interpreta pedidos confirmados ni altera Caja, Stock o Pagos Online.</p></details>';
 }
 // Archivo .macro nativo generado únicamente dentro de una sesión autorizada.
@@ -347,7 +376,7 @@ function buildAndroidMacro(loc,token,filterText=''){
    clientCertKeyStoreUri:'',clientCertPassword:'',contentBodyDynamicFileName:'',
    contentBodyFileDisplayName:'',contentBodyFileUri:'',contentBodyFolderDisplayName:'',
    contentBodyFolderUri:'',contentBodySource:0,
-   contentBodyText:JSON.stringify({local:loc,customer_phone:'{not_title}'}),
+   contentBodyText:JSON.stringify({local:loc,customer_phone:'{not_title}',notification_preview:'{not_text}'}),
    contentType:'application/json',followRedirects:true,
    headerParams:[{paramName:'X-Gestlok-Bridge-Key',paramValue:token},
                  {paramName:'Content-Type',paramValue:'application/json'}],
@@ -626,9 +655,12 @@ function attach(h){
  document.addEventListener('click',e=>{
   if(api?.S.view!=='pedidos-clientes'||!allowed())return;
   const sectionBtn=e.target.closest('[data-mgp-section]');
-  if(sectionBtn&&['avisos','vinculacion'].includes(sectionBtn.dataset.mgpSection)){section=sectionBtn.dataset.mgpSection;notice='';update(true);return;}
+  if(sectionBtn&&['avisos','vinculacion'].includes(sectionBtn.dataset.mgpSection)){section=sectionBtn.dataset.mgpSection;selectedAndroidAlertId='';notice='';update(true);return;}
+  const detailBtn=e.target.closest('[data-mgp-alert-detail]');
+  if(detailBtn){selectedAndroidAlertId=detailBtn.dataset.mgpAlertDetail;update(true);return;}
+  if(e.target.closest('[data-mgp-alert-back]')){selectedAndroidAlertId='';update(true);return;}
   const filterBtn=e.target.closest('[data-mgp-alert-filter]');
-  if(filterBtn&&['pendientes','revisados'].includes(filterBtn.dataset.mgpAlertFilter)){alertsFilter=filterBtn.dataset.mgpAlertFilter;notice='';update(true);return;}
+  if(filterBtn&&['pendientes','revisados'].includes(filterBtn.dataset.mgpAlertFilter)){alertsFilter=filterBtn.dataset.mgpAlertFilter;selectedAndroidAlertId='';notice='';update(true);return;}
   const tabBtn=e.target.closest('[data-mgp-tab]');
   if(tabBtn){const choice=tabBtn.dataset.mgpTab;if(['todos','pendientes','realizados'].includes(choice)){tab=choice;notice='';update();}return;}
   if(e.target.closest('[data-mgp-reload]')){void refresh();return;}
@@ -741,7 +773,7 @@ function subscribe(loc,push){
  push(()=>{clearInterval(timer);window.removeEventListener('focus',focused);document.removeEventListener('visibilitychange',visible);hideAlert();});
 }
 function reset(){
- epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidReviewed=[];androidBridgeKey='';bridgeTest=null;tab='pendientes';section='avisos';alertsFilter='pendientes';loading=false;busy=false;polling=false;
+ epoch++;items=[];catalog=[];phone='';settings=null;signupInfo=null;androidBridge=null;androidAlerts=[];androidReviewed=[];androidBridgeKey='';bridgeTest=null;selectedAndroidAlertId='';tab='pendientes';section='avisos';alertsFilter='pendientes';loading=false;busy=false;polling=false;
  error='';notice='';loaded=false;firstSnapshot=true;knownOrderIds=new Set();lastNewOrderId='';lastUiSig='';hideAlert();
 }
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
