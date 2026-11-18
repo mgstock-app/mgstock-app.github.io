@@ -33,6 +33,15 @@ El agente de Meta atiende al cliente **dentro de WhatsApp Business** de cada suc
 - **Verificación:** después de importar y activar, generar notificación real y usar **Iniciar prueba de conexión → Comprobar señal**. El QR por sí mismo jamás marca conectado. Android y Meta pueden no generar una notificación visible; no se garantiza detectar todos los pedidos.
 - Este sistema funciona sin WhatsApp Cloud API; no cambia los teléfonos ni los datos de Munro o Don Torcuato, ni Caja, Stock ni Pagos Online.
 
+## Detalle de avisos y vista previa Android (18/11/2026)
+- En **Pedidos WhatsApp → Avisos**, Munro y Don Torcuato disponen de tarjetas ordenadas, **Ver detalle**, **Abrir WhatsApp** y **Marcar como revisado**; historial de revisados por sucursal.
+- Cada aviso sigue indicando una **conversación para revisar**, nunca un pedido confirmado. La pantalla no inventa clientes, importes, contenidos ni teléfonos.
+- Si WhatsApp Business muestra texto en una notificación de Android, MacroDroid puede enviar el campo opcional `notification_preview` (variable `{not_text}`). Se almacena **solo esa vista previa**, máximo 240 caracteres, en la tabla privada de avisos. Si Android no lo muestra, la app señala **sin vista previa**, y el personal consulta WhatsApp Business.
+- El número se usa para **Abrir WhatsApp** en el chat específico solamente si el título de la notificación contiene un teléfono válido. Si falta, el botón intenta abrir WhatsApp Business, pero se debe localizar la conversación manualmente en ese Android.
+- El receptor usa la misma clave de cada local y conserva soporte de la macro anterior (solo señal). Para obtener la vista previa hay que **editar en MacroDroid** el cuerpo JSON de la solicitud HTTP o importar una macro nueva preparada con `notification_preview`; **no reemplazar claves activas sin necesidad**.
+- Filtrar la notificación de derivación/atención. **No usar «Cualquier contenido» en producción**: enviaría alertas y vistas previas de todos los mensajes; es necesario comprobar la notificación real que emite el agente de Meta.
+- Las credenciales privadas no viajan en el QR. Solo personal autorizado de cada sucursal ve el texto opcional. No se envían avisos editoriales de actualización a otras empresas.
+
 ## Vinculación de cada celular Android
 1. Ingresar con dueño o creadora a **Mi Gusto → [sucursal] → Pedidos WhatsApp → Vincular WhatsApp Business**.
 2. Generar clave de vínculo para ese local (se muestra una única vez). **No enviarla por WhatsApp ni ponerla en capturas.**
