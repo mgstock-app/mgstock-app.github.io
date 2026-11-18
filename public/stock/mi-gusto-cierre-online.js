@@ -5,6 +5,7 @@
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
 const METHODS={transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',efectivo:'Efectivo'};
+const PAYMENT_FILTERS=[['todos','Todos los pagos'],['mercado_pago','Mercado Pago'],['transferencia','Transferencia'],['getnet','Getnet']];
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cash=x=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(x)||0);
 const date=x=>{const a=String(x||'').slice(0,10).split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0].slice(2):'—';};
@@ -38,7 +39,7 @@ function changeScale(delta){
  if(plus)plus.disabled=pageScale>=110;
 }
 let cashOkSaving=false;
-let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, emptyCheckedFor=null, gen=0;
+let api=null, snapshot=null, tab='movimientos', error='', loading=false, saving=false, editing=null, opened=null, filter='', viewMode='dia', shiftFilter='todos', modalDay=null, modalTab='dia', activeMethodFilter='todos', historyMethodFilter='todos', uploading=null, choosingPhoto=false, photoUrls={}, photoError='', saveNotice=false, showAllMoves=false, emptyCheckedFor=null, gen=0;
 const local=()=>api?.S?.local;
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
   !window.GestLokCreatorSupport?.previewRol?.() &&
@@ -48,8 +49,8 @@ const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
 const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>m.method==='getnet'||m.method==='mercado_pago');
 const emptySelected=s=>!!s&&!hasPosnet(s)&&emptyCheckedFor===s.id;
-function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;emptyCheckedFor=null;error='';}
-function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
+function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;activeMethodFilter='todos';emptyCheckedFor=null;error='';}
+function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';activeMethodFilter='todos';historyMethodFilter='todos';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
 async function rpc(name,args={}){
  if(!allowed())throw Error('Sin autorización para el local');
  if(!online())throw Error('Sin conexión. Guardar y cerrar turnos requiere internet.');
@@ -116,14 +117,26 @@ function nav(){
  '<button type="button" data-mgon-tab="resumen" aria-current="'+(tab==='resumen'?'page':'false')+'">Resumen</button>'+
  '<button type="button" data-mgon-tab="historial" aria-current="'+(tab==='historial'?'page':'false')+'">Historial</button></nav>';
 }
+function filterPayments(rows,method){
+ return method==='todos'?rows:rows.filter(m=>m.method===method);
+}
+function paymentFilterControl(scope,selected){
+ return '<label class="mg-on-pay-filter">Filtrar por pago<select data-mgon-payment-filter="'+scope+'" aria-label="Filtrar movimientos por forma de pago">'+
+  PAYMENT_FILTERS.map(([key,name])=>'<option value="'+key+'" '+(selected===key?'selected':'')+'>'+name+'</option>').join('')+'</select></label>';
+}
 function movementList(){
  const all=[...(snapshot?.active?.movements||[])].reverse();
- const rows=showAllMoves?all:all.slice(0,6);
+ const matched=filterPayments(all,activeMethodFilter);
+ // Cuando se filtra, mostrar todas las coincidencias, no solo las últimas seis.
+ const rows=activeMethodFilter!=='todos'||showAllMoves?matched:matched.slice(0,6);
  const heading='<header class="mg-on-recent-head"><div class="mg-on-recent-title"><span class="mg-on-recent-icon" aria-hidden="true">☷</span><h3>Últimos movimientos</h3></div>'+
-  '<span class="mg-on-recent-count">'+all.length+' '+(all.length===1?'comanda':'comandas')+'</span></header>';
+  '<span class="mg-on-recent-count">'+(activeMethodFilter==='todos'?String(all.length):matched.length+' de '+all.length)+' '+(all.length===1?'comanda':'comandas')+'</span></header>';
  const tags='<div class="mg-on-recent-tags" aria-label="Datos del turno"><span>'+date(snapshot?.active?.day)+'</span><span>Turno '+esc(shiftName(snapshot?.active?.turno))+'</span><span>'+esc(LOCALS[local()]||'')+'</span></div>';
- if(!all.length)return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+
+ const filterBar='<div class="mg-on-recent-filters">'+paymentFilterControl('active',activeMethodFilter)+'</div>';
+ if(!all.length)return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+filterBar+
    '<p class="mg-on-empty">Todavía no hay comandas cargadas en este turno.</p></section>';
+ if(!matched.length)return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+filterBar+
+   '<p class="mg-on-empty">No hay movimientos de '+esc(METHODS[activeMethodFilter]||activeMethodFilter)+' en este turno.</p></section>';
  const method=r=>'<span class="mg-on-method"><span class="mg-on-method-mark mg-on-method-'+esc(r.method)+'" aria-hidden="true">'+
   esc(({transferencia:'T',getnet:'G',mercado_pago:'MP',efectivo:'E'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
  const appControl=r=>'<button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+
@@ -142,8 +155,8 @@ function movementList(){
   '</article>';
  const desktop='<div class="mg-on-recent-desktop"><div class="mg-on-recent-stack">'+rows.map(card).join('')+'</div></div>';
  const mobile='<div class="mg-on-recent-mobile">'+rows.map(card).join('')+'</div>';
- return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+desktop+mobile+
- (all.length>6?'<button type="button" class="mg-on-more" data-mgon-recent-all aria-expanded="'+showAllMoves+'">'+
+ return '<section class="mg-on-recent" aria-label="Últimos movimientos">'+heading+tags+filterBar+desktop+mobile+
+ (activeMethodFilter==='todos'&&all.length>6?'<button type="button" class="mg-on-more" data-mgon-recent-all aria-expanded="'+showAllMoves+'">'+
  (showAllMoves?'Mostrar solo los últimos 6':'Ver los '+all.length+' movimientos del turno')+'</button>':'')+'</section>';
 }
 function cashMovementDetail(s=snapshot?.active){
