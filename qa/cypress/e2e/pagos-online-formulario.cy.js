@@ -72,6 +72,16 @@ describe('GESTLOK · Pagos Online: formulario limpio después de guardar', () =>
         expect(saved).to.have.length(2);
         expect(saved[1]).to.include({ local, comanda: '37', amount: 200, method: 'transferencia', app: false, observacion: '' });
       });
+      // Filtrar la lista diaria no toca ni el formulario ni la base de datos.
+      cy.get('[data-mgon-payment-filter="active"]').select('mercado_pago');
+      cy.get('.mg-on-recent-desktop .mg-on-recent-card').should('have.length',1).and('contain.text','#36');
+      cy.get('[data-mgon-payment-filter="active"]').select('transferencia');
+      cy.get('.mg-on-recent-desktop .mg-on-recent-card').should('have.length',1).and('contain.text','#37');
+      cy.get('[data-mgon-payment-filter="active"]').select('getnet');
+      cy.get('.mg-on-recent').should('contain.text','No hay movimientos de Getnet en este turno.');
+      cy.get('[data-mgon-payment-filter="active"]').select('todos');
+      cy.get('.mg-on-recent-desktop .mg-on-recent-card').should('have.length',2);
+      cy.window().its('__mgOnlineSaved').should('have.length',2);
     });
   }
 
