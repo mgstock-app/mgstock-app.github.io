@@ -291,6 +291,8 @@
 .mgp-mobile-test-buttons button:disabled{opacity:.5;cursor:not-allowed}
 .mgp-mobile-test .mgp-mobile-test-success{background:#e7f4eb;border:1px solid #b8deca;color:#176e44;border-radius:9px;padding:11px;font-weight:750}
 .mgp-mobile-test .mgp-mobile-test-wait{background:#fff9eb;border:1px solid #ecd9b5;color:#745b2c;border-radius:9px;padding:11px}
+.mgp-mobile-test .mgp-mobile-test-error{background:#fff0f0;border:1px solid #e8bdbd;color:#8a3333;border-radius:9px;padding:11px}
+.mgp-mobile-test-buttons button[aria-busy="true"]{cursor:progress}
 .mgp-mobile-advanced{margin:12px 16px;padding:8px 13px;border:1px solid #d8e3ed;border-radius:10px}
 .mgp-mobile-advanced>summary{padding:10px 3px;font-size:12px;font-weight:750;color:#12345a}
 .mgp-mobile-advanced>p{font-size:12px;line-height:1.55;color:#566d82;margin:8px 0}
