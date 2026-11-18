@@ -170,17 +170,21 @@
 }
 .mhs-estado select:focus-visible{outline:2px solid #3e78aa;outline-offset:2px}
 .mhs-estado select option{color:#162b4a;background:#fff}
-.mhs-descansos{display:flex;gap:4px;align-items:center;flex-wrap:wrap;
-  padding:4px;border-radius:7px;background:#f4f7fb}
-.mhs-descansos .mhs-descanso-boton{
-  padding:6px 7px;border:1px solid #ccd6e2;border-radius:6px;
-  background:#fff;color:#40516b;font-weight:650;font-size:10.5px;
-  min-height:31px;line-height:1
+.mhs-descansos{width:100%;min-width:0;display:block}
+.mhs-descansos select{
+  display:block;width:100%;min-width:0;min-height:29px;box-sizing:border-box;
+  border:1px solid #dbe3ed;border-radius:6px;
+  padding:3px 2px;background:#f8fafc;color:#56677e;
+  font-size:11px;font-weight:600;line-height:1.2;
+  cursor:pointer
 }
-.mhs-descansos .mhs-descanso-boton[aria-pressed="true"]{
-  border-color:#466280;background:#e5effa;color:#183b5f;font-weight:800
+.mhs-descansos select:focus-visible{outline:2px solid #467db8;outline-offset:2px}
+.mhs-descanso-valor{
+  display:inline-block;max-width:100%;box-sizing:border-box;
+  border:1px solid #c6d8e7;border-radius:5px;
+  background:#edf4fb;color:#214564;
+  padding:4px 6px;font-size:11px;line-height:1.25;font-weight:750
 }
-.mhs-descansos .mhs-descanso-boton:disabled{opacity:1;cursor:default}
 .mhs-horas-dia{
   margin-top:5px;padding:7px 6px;border-radius:7px;background:#e7f2ff;
   color:#173e64;text-align:center;font-size:10.5px;font-weight:750;line-height:1.3
@@ -189,7 +193,8 @@
  .mhs-total-nombre{font-size:12px}
  .mhs-card header .mhs-total-nombre{max-width:48%;width:auto;text-align:right;justify-content:end}
  .mhs-descansos{grid-column:1/-1}
- .mhs-descansos .mhs-descanso-boton{flex:1;min-height:36px;font-size:12px}
+ .mhs-descansos select{min-height:36px;padding:5px 8px;font-size:12px}
+ .mhs-descanso-valor{padding:6px 8px;font-size:12px}
  .mhs-horas-dia{grid-column:1/-1;font-size:12px;padding:10px 8px}
  .mhs-estado{min-height:39px}
  .mhs-estado select{min-height:25px}
@@ -277,10 +282,10 @@
    font-size:clamp(11px,.88vw,12px);
    padding:4px 2px;
  }
- .mhs-tabla .mhs-descansos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}
- .mhs-tabla .mhs-descansos .mhs-descanso-boton{
-   min-width:0;min-height:32px;padding:4px 2px;
-   font-size:clamp(9px,.8vw,11px);white-space:normal
+ .mhs-tabla .mhs-descansos{display:block;padding:0;background:transparent}
+ .mhs-tabla .mhs-descansos select{
+   min-height:28px;max-width:100%;padding:3px 1px;
+   font-size:clamp(10px,.83vw,11px)
  }
  .mhs-tabla .mhs-horas-dia{
    padding:7px 3px;font-size:10px;overflow-wrap:anywhere
