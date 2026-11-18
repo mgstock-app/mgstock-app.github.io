@@ -276,8 +276,8 @@ export function MunroWeeklySchedule(){
      setError("Primero esperá a que se guarden todos los cambios; después finalizá la semana.");
      return;
    }
-   if(semana>semanaActual()){
-     setError("No se puede finalizar una semana futura.");
+   if(semana>=semanaActual()){
+     setError("La semana sigue vigente. Podés finalizarla a partir del lunes siguiente.");
      return;
    }
    const hasSaved=planilla?.planillas.some(r=>r.nombre.trim());
@@ -498,8 +498,10 @@ export function MunroWeeklySchedule(){
            onClick={()=>seleccionarSemana(sumarDias(semana,7))}><ChevronRight size={18}/></button>}
        </div>
        {planilla.puede_editar&&<div className="mhs-acciones">
-         {pestana==="semana"&&!semanaCerrada&&<button type="button" className="mhs-cierre-semanal" disabled={guardando||cerrandoSemana||pendientes.length>0||semana>semanaActual()}
+         {pestana==="semana"&&!semanaCerrada&&<button type="button" className="mhs-cierre-semanal" disabled={guardando||cerrandoSemana||pendientes.length>0||semana>=semanaActual(momento)}
            onClick={()=>void finalizarSemana()}><CheckCircle2 size={18}/> Semana finalizada</button>}
+         {pestana==="semana"&&!semanaCerrada&&semana>=semanaActual(momento)&&
+           <small className="mhs-ayuda">La semana está vigente. El cierre se habilita el lunes {fechaCorta(sumarDias(semana,7))}.</small>}
          {semanaCerrada&&<span className="mhs-cerrada-chip"><CheckCircle2 size={17}/> Semana finalizada · correcciones auditadas</span>}
           {!editando?<button type="button" onClick={()=>{setPersonaEnEdicion(null);setEditando(true);}}><Pencil size={17}/> Modificar</button>:
           personaEnEdicion!==null?<span className="mhs-accion-estado">Edición individual activa</span>:
