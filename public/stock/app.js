@@ -4022,6 +4022,19 @@ async function boot(){
 }
 
 /* ---------- Inicio ---------- */
+// Un select sin cambios no es un borrador pendiente:
+// HTMLSelectElement no tiene defaultValue y antes siempre bloqueaba «Actualizar».
+function pwaFormDirty(el){
+  if(el.tagName==='SELECT'){
+    const options=Array.from(el.options||[]);
+    if(el.multiple)return options.some(option=>option.selected!==option.defaultSelected);
+    const explicit=options.findIndex(option=>option.defaultSelected);
+    const original=explicit>=0?explicit:(options.length?0:-1);
+    return el.selectedIndex!==original;
+  }
+  if(el.type==='checkbox'||el.type==='radio')return el.checked!==el.defaultChecked;
+  return el.value!==el.defaultValue;
+}
 function start(){
   S.loadStartedAt = Date.now();
   setTimeout(() => { if (!S.booted || (S.db && (!S.loaded.e || !S.loaded.l))) renderHub(); }, 12500);
@@ -4031,8 +4044,7 @@ function start(){
     Object.keys(S.draft).length || Object.keys(S.notas).length || Object.keys(S.fdraft).length ||
     Object.values(S.provDrafts).some(d => d.dirty) ||
     document.querySelector('#gestlok-chat-text')?.value?.trim() ||
-    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>
-      el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)
+    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(pwaFormDirty)
   ));
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // Keep the existing installed PWA: request SW revalidation on launch and
