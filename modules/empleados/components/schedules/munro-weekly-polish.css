@@ -44,15 +44,9 @@
 .mhs-extra-opciones{display:grid;gap:8px;border-color:#e4eaf2;padding-top:10px}
 .mhs-extra-opciones label{font-size:12px;font-weight:500;min-height:22px}
 .mhs-tabla .mhs-cuatro{position:relative;display:grid;grid-template-columns:minmax(0,1fr);
-  gap:7px;padding-top:44px;align-content:start;min-width:0}
+  gap:7px;padding-top:36px;align-content:start;min-width:0}
 .mhs-tabla .mhs-cuatro .mhs-descansos{position:absolute;top:0;left:0;right:0;
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;
-  padding:0;background:transparent}
-.mhs-tabla .mhs-descansos .mhs-descanso-boton{min-height:34px;min-width:0;
-  background:#f7f9fc;border-color:#cbd6e4;color:#506078;
-  font-size:clamp(9px,.8vw,11px);border-radius:7px}
-.mhs-tabla .mhs-descansos .mhs-descanso-boton[aria-pressed="true"]{
-  border-color:#7495bf;background:#e6f0fd;color:#163f70}
+  display:block;padding:0;background:transparent}
 .mhs-tabla .mhs-cuatro>label:not(.mhs-dia-extra){display:grid;
   grid-template-columns:minmax(0,1fr);gap:4px;align-content:start;min-width:0}
 .mhs-tabla .mhs-cuatro label span{display:block;min-height:22px;color:#64738a;
