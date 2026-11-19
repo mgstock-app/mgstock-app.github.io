@@ -415,7 +415,7 @@ for(const local of ['munro','torcuato']){
   assert.match(section,/data-gcm-extra-add="consumption"/);
   const tbody={rows:[{},{},{}],insertAdjacentHTML(where,html){
     assert.equal(where,'beforeend');this.rows.push(html);
-   },querySelectorAll:sel=>sel==='tr'?this.rows:[],lastElementChild:{querySelector:()=>({focus:()=>{focusCount++;}})}};
+   },querySelectorAll(sel){return sel==='tr'?this.rows:[];},lastElementChild:{querySelector:()=>({focus:()=>{focusCount++;}})}};
   const root={querySelector:sel=>sel==='.gcm-extras[data-gcm-kind="consumption"] tbody'?tbody:null};
   const button={dataset:{gcmExtraAdd:'consumption'},disabled:false,hasAttribute:attr=>attr==='data-gcm-extra-add'};
   const target={closest:sel=>sel==='.gcm-page'?root:sel==='button'?button:null};
