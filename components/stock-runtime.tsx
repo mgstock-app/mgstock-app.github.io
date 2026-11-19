@@ -42,10 +42,10 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-push.js",
     "/stock/munro-daily.js",
     "/stock/mi-gusto-cierre-online.js?rev=filtro-pagos-20261118",
-    "/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-avisos-consecutivos-20261118",
+    "/stock/gestlok-chat-central.js?rev=gestlok-chat-central-20261119c",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
-    "/stock/gestlok-creator-home.js?rev=molino-brand-20261109",
+    "/stock/gestlok-creator-home.js?rev=gestlok-chat-microapp-20261119",
     "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -87,7 +87,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=filtro-pagos-20261118");
       if (!visitor) await load("/stock/mi-gusto-conteo-morning.js?rev=recuperar-noche-20261117");
       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=consumo-tres-mas-20261119");
-      if (!visitor) await load("/stock/mi-gusto-pedidos-clientes.js?rev=whatsapp-avisos-consecutivos-20261118");
+      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=gestlok-chat-central-20261119c");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
@@ -111,7 +111,7 @@ export function StockRuntime() {
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
-      await load("/stock/gestlok-creator-home.js?rev=molino-brand-20261109");
+      await load("/stock/gestlok-creator-home.js?rev=gestlok-chat-microapp-20261119");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");

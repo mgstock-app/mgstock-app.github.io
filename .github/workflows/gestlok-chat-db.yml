@@ -1,0 +1,54 @@
+name: GESTLOK Chat · PostgreSQL
+# Aislamiento entre empresas, permisos y pedidos de GESTLOK Chat sobre un PostgreSQL 16 real y vacío.
+# No usa la base de producción ni credenciales.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*gestlok_chat*'
+      - 'supabase/tests/gestlok-chat-*'
+      - 'tests/fixtures/chat/**'
+      - 'tests/db/gestlok-chat-*.test.mjs'
+      - 'supabase/functions/gestlok-chat/**'
+      - 'tests/gestlok-chat-*.test.mjs'
+      - '.github/workflows/gestlok-chat-db.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*gestlok_chat*'
+      - 'supabase/tests/gestlok-chat-*'
+      - 'tests/fixtures/chat/**'
+      - 'tests/db/gestlok-chat-*.test.mjs'
+      - '.github/workflows/gestlok-chat-db.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Aislamiento, permisos y pedidos
+        env:
+          CHAT_PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node --test tests/db/gestlok-chat-postgres.test.mjs
+      - name: Función segura de punta a punta (función + motor + base)
+        env:
+          CHAT_PG_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node --experimental-strip-types --no-warnings --test tests/db/gestlok-chat-funcion.test.mjs
