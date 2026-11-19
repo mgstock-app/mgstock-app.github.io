@@ -221,7 +221,9 @@
       ['Sistema de Ventas', 'Escáner y registro de cobros'],
       ['Plan Scanner', 'Escaneo con cámara, ventas y control de stock'],
       ['Horarios', 'Turnos y planillas'],
-      ['Empleados', 'Legajos y recibos autorizados']
+      ['Empleados', 'Legajos y recibos autorizados'],
+      // GESTLOK Chat: se enciende empresa por empresa en el servidor (gestlok_chat_private.empresas). Hoy: Mi Gusto.
+      ['GESTLOK Chat', 'Atención y pedidos por chat, un chat por local · Activa en Mi Gusto']
     ].map(([name,detail]) => '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
       '<b>' + name + '</b><small>' + detail + '</small><span>Elegir local →</span></button>').join('');
     // Catálogo de herramientas compartidas de El Molino Café. No habilita estas

@@ -105,7 +105,7 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
   {tenant_id:'t-3',name:'Empresa <script>',locals:[{id:'l-3',name:'Local <externo>'}]},
  ];
  const html=r.h.view({pending:0,parts:{},companies,quickLocals:'SOLO MI GUSTO'});
- for (const name of ['Empresas activas','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Plan Scanner','Horarios','Empleados']) {
+ for (const name of ['Empresas activas','Mis microapps','Caja','Stock Local','Precios','Sistema de Ventas','Plan Scanner','Horarios','Empleados','GESTLOK Chat']) {
   assert.ok(html.includes(name),name);
  }
  assert.ok(html.includes('data-act="local" data-id="munro"'));
@@ -122,7 +122,7 @@ test('Inicio multiempresa: todas las empresas y sus locales se muestran con el a
  assert.equal((html.match(/class="gl-ch-company-local-grid"/g)||[]).length,3);
  assert.equal((html.match(/data-creator-company=/g)||[]).length,3);
  assert.equal((html.match(/class="gl-ch-quick-local gl-ch-company-local"/g)||[]).length,4,'Cada local tiene tarjeta y apertura propia');
- assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,12);
+ assert.equal((html.match(/class="gl-ch-microapp"/g)||[]).length,13);
  assert.match(html,/<h2>Operaciones entre sucursales<\/h2>/);
  for (const operation of ['precios','pedidos','envios','devoluciones','historial']) {
   assert.ok(html.includes('data-ch-molino="'+operation+'"'),'Falta operación '+operation);

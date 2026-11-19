@@ -110,7 +110,7 @@ function view(){
  queueMicrotask(colocar);
  const l=local();
  return '<section class="gcc" aria-label="Central de mensajes de '+esc(localName())+'">'+
-  '<div class="gcc-cab"><h2>Central de mensajes</h2><small>'+esc(localName())+' · asistente y pedidos por chat</small>'+
+  '<div class="gcc-cab"><h2>Central de mensajes</h2><small>GESTLOK Chat · '+esc(localName())+' · asistente y pedidos por chat</small>'+
   '<a href="/chat/panel/?local='+encodeURIComponent(l)+'" target="_blank" rel="noopener">Abrir aparte</a></div>'+
   (online()?'':'<p class="gcc-aviso">Sin conexión: la Central se actualiza cuando vuelva internet.</p>')+
   '<div data-gcc-lugar></div></section>';
