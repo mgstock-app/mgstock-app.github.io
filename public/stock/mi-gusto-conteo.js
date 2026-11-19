@@ -806,24 +806,32 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  
  dates.map((s,index)=>'<th scope="col" class="gcm-vto-col'+(activeVto===String(index+1)?' is-current-vto':'')+'" data-gcm-idx="'+(index+1)+'"><span class="gcm-vto">'+esc(s.vto)+'</span><span class="gcm-vto-date">'+esc(s.dia)+'</span></th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
 }
+function extraRow(kind,headA,headB,item,i,canWrite){
+ const disabled=canWrite?'':' disabled';
+ return '<tr><td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="name" value="'+esc(item.name||'')+
+  '" placeholder="'+esc(headA)+'" aria-label="'+esc(headA)+' '+(i+1)+'"'+disabled+'></td>'+
+  '<td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="value" value="'+esc(item.value||'')+
+  '" placeholder="'+esc(headB)+'" aria-label="'+esc(headB)+' '+(i+1)+'"'+disabled+'></td>'+
+  (canWrite&&kind!=='consumption'?'<td class="gcm-remove-col"><button type="button" data-gcm-extra-remove="'+kind+'" data-row="'+i+
+   '" aria-label="Quitar fila '+(i+1)+' de '+(kind==='waste'?'DESPERDICIOS':'CONSUMO')+'" title="Quitar fila">×</button></td>':'')+'</tr>';
+}
 function extraTable(kind,title,headA,headB,rec,canWrite){
  const rows=Array.isArray(rec[kind])?rec[kind]:[];
- const count=kind==='consumption'?10:Math.min(60,Math.max(1,rows.length));
+ const morningExit=kind==='consumption'&&shift==='manana_salida';
+ // Mañana salida: 3 colaboradores inicialmente. Nunca ocultar consumos existentes.
+ // Noche salida conserva sus 10 espacios habituales.
+ const minimum=kind==='consumption'?(morningExit?3:10):1;
+ const count=Math.min(60,Math.max(minimum,rows.length));
+ const canAdd=canWrite&&(kind!=='consumption'||morningExit);
  return '<section class="gcm-extras" data-gcm-kind="'+kind+'"><div class="gcm-extra-header"><h3>'+title+'</h3>'+
- (canWrite&&kind!=='consumption'?'<button type="button" data-gcm-extra-add="'+kind+'"'+(rows.length>=60?' disabled':'')+
-  ' aria-label="Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'">+ Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'</button>':'')+
- '</div><table><thead><tr><th>'+headA+'</th><th>'+headB+'</th>'+(canWrite&&kind!=='consumption'?'<th class="gcm-remove-col">Acción</th>':'')+'</tr></thead><tbody>'+
- Array.from({length:count},(_,i)=>{
-  const item=rows[i]||{},disabled=canWrite?'':' disabled';
-  return '<tr><td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="name" value="'+esc(item.name||'')+
-   '" placeholder="'+esc(headA)+'" aria-label="'+esc(headA)+' '+(i+1)+'"'+disabled+'></td>'+
-   '<td><input type="text" maxlength="90" data-gcm-extra="'+kind+'" data-row="'+i+'" data-field="value" value="'+esc(item.value||'')+
-   '" placeholder="'+esc(headB)+'" aria-label="'+esc(headB)+' '+(i+1)+'"'+disabled+'></td>'+
-   (canWrite&&kind!=='consumption'?'<td class="gcm-remove-col"><button type="button" data-gcm-extra-remove="'+kind+'" data-row="'+i+
-   '" aria-label="Quitar fila '+(i+1)+' de '+title+'" title="Quitar fila">×</button></td>':'')+'</tr>';
- }).join('')+'</tbody></table>'+
- (kind==='consumption'?'<p class="gcm-extra-hint">10 espacios fijos para colaboradores. Cada cambio se guarda automáticamente.</p>':'')+
- '</section>';
+  (canAdd?'<button type="button" data-gcm-extra-add="'+kind+'"'+(count>=60?' disabled':'')+
+   ' aria-label="Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'">+ Agregar '+(kind==='consumption'?'colaborador':'desperdicio')+'</button>':'')+
+  '</div><table><thead><tr><th>'+headA+'</th><th>'+headB+'</th>'+(canWrite&&kind!=='consumption'?'<th class="gcm-remove-col">Acción</th>':'')+'</tr></thead><tbody>'+
+  Array.from({length:count},(_,i)=>extraRow(kind,headA,headB,rows[i]||{},i,canWrite)).join('')+'</tbody></table>'+
+  (kind==='consumption'?'<p class="gcm-extra-hint">'+
+   (morningExit?'3 espacios iniciales. Sumá más colaboradores con + cuando haga falta.':'10 espacios para colaboradores.')+
+   ' Cada cambio se guarda automáticamente.</p>':'')+
+  '</section>';
 }
 function extrasList(kind){
  const rec=draftRecord();if(!rec)return null;
@@ -990,7 +998,7 @@ const productById=id=>snapshot?.products?.find(p=>p.id===id&&p.active);
 function updateExtra(input){
  const kind=input.dataset.gcmExtra,idx=Number(input.dataset.row),field=input.dataset.field;
  if(kind==='consumption'&&shift==='manana_entrada')return;
- if(!['consumption','waste'].includes(kind)||!['name','value'].includes(field)||idx<0||idx>=(kind==='consumption'?10:60))return;
+ if(!['consumption','waste'].includes(kind)||!['name','value'].includes(field)||idx<0||idx>=60)return;
  const data=extrasList(kind);if(!data||kind==='waste'&&!data.rec.waste_visible)return;
  const vals=data.vals;
  while(vals.length<=idx)vals.push({name:'',value:''});
@@ -1204,9 +1212,24 @@ document.addEventListener('click',async e=>{
   if(!editable()||closed()||!snapshot)return;
   const isAdd=el.hasAttribute('data-gcm-extra-add');
   const kind=isAdd?el.dataset.gcmExtraAdd:el.dataset.gcmExtraRemove;
-  if(!['consumption','waste'].includes(kind)||kind==='consumption')return;
+  if(!['consumption','waste'].includes(kind))return;
+  if(kind==='consumption'&&(!isAdd||shift!=='manana_salida'))return;
   const data=extrasList(kind);if(!data||kind==='waste'&&!data.rec.waste_visible)return;
   const vals=data.vals;
+  if(kind==='consumption'){
+   // Agregar UNA fila sin reconstruir la planilla, perder foco ni mover las fechas.
+   const tbody=root.querySelector?.('.gcm-extras[data-gcm-kind="consumption"] tbody');
+   if(!tbody)return;
+   const visible=tbody.querySelectorAll('tr').length;
+   if(visible>=60){el.disabled=true;api.toast?.('Máximo 60 colaboradores');return;}
+   while(vals.length<visible)vals.push({name:'',value:''});
+   vals.push({name:'',value:''});
+   tbody.insertAdjacentHTML('beforeend',extraRow('consumption','Colaborador','Consumo',{},visible,true));
+   el.disabled=vals.length>=60;
+   void saveExtraList('consumption',vals);
+   tbody.lastElementChild?.querySelector('[data-field="name"]')?.focus?.({preventScroll:true});
+   return;
+  }
   if(isAdd){
    if(vals.length>=60){api.toast?.('Máximo 60 filas por sección');return;}
    if(vals.length===0)vals.push({name:'',value:''});
