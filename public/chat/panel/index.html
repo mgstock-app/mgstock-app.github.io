@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex">
+<title>GESTLOK Chat · Panel</title>
+<link rel="icon" href="/icons/gestlok-favicon-v2-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/gestlok-apple-v2-180.png">
+<link rel="stylesheet" href="/chat/panel/panel.css?v=20261119a">
+</head>
+<body>
+<div class="panel" id="panel" aria-busy="true">
+  <header class="tope">
+    <a class="volver" href="/" aria-label="Volver a GESTLOK">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </a>
+    <div class="tope-texto">
+      <h1>GESTLOK Chat</h1>
+      <p id="empresa">Cargando…</p>
+    </div>
+    <label class="oculto" for="sucursal">Sucursal</label>
+    <select id="sucursal" hidden></select>
+  </header>
+  <nav class="pestanas" id="pestanas" role="tablist" aria-label="Secciones" hidden>
+    <button role="tab" type="button" data-p="pedidos" aria-selected="true">Pedidos <span class="globo" id="globo" hidden></span></button>
+    <button role="tab" type="button" data-p="carta" aria-selected="false">Carta</button>
+    <button role="tab" type="button" data-p="ajustes" aria-selected="false">Ajustes</button>
+    <button role="tab" type="button" data-p="charlas" aria-selected="false">Conversaciones</button>
+  </nav>
+  <main id="contenido" class="contenido" tabindex="-1"></main>
+</div>
+<div class="aviso" id="aviso" role="status" aria-live="polite" hidden></div>
+<script src="/vendor/supabase.js"></script>
+<script src="/vendor/qrcode-generator.js"></script>
+<script src="/chat/config.js?v=20261119a"></script>
+<script src="/chat/panel/panel.js?v=20261119a"></script>
+</body>
+</html>

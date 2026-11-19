@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="Hacé tu pedido por chat. Atención virtual del local con GESTLOK Chat.">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Pedidos por chat · GESTLOK Chat</title>
+<link rel="icon" href="/icons/gestlok-favicon-v2-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/gestlok-apple-v2-180.png">
+<link rel="stylesheet" href="/chat/chat.css?v=20261119a">
+</head>
+<body>
+<div class="app" id="app" aria-busy="true">
+  <header class="cabecera">
+    <div class="avatar" id="avatar" aria-hidden="true">G</div>
+    <div class="cabecera-texto">
+      <h1 id="titulo">Cargando…</h1>
+      <p id="subtitulo">Pedidos por chat</p>
+    </div>
+    <button class="icono" id="btn-info" type="button" aria-label="Horario, envío y pagos" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+    </button>
+  </header>
+  <div class="aviso-pedido" id="aviso-pedido" role="status" aria-live="polite" hidden></div>
+  <main class="mensajes" id="mensajes" aria-live="polite" aria-relevant="additions"></main>
+  <div class="barra-pedido" id="barra-pedido" hidden>
+    <button type="button" id="btn-carrito" class="barra-resumen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h15l-1.6 8.2a2 2 0 0 1-2 1.6H9.1a2 2 0 0 1-2-1.6L5 3H3"/><circle cx="9.5" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>
+      <span id="barra-texto">Tu pedido</span>
+    </button>
+    <button type="button" class="boton principal" id="btn-finalizar">Finalizar</button>
+  </div>
+  <form class="redactar" id="redactar" autocomplete="off">
+    <button type="button" class="icono carta" id="btn-carta" aria-label="Ver la carta">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+    </button>
+    <label class="oculto" for="texto">Escribí tu mensaje</label>
+    <textarea id="texto" rows="1" maxlength="600" placeholder="Escribí tu pedido o consulta" enterkeyhint="send" disabled></textarea>
+    <button type="submit" class="icono enviar" id="btn-enviar" aria-label="Enviar" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-6 16-2.5-6.5z"/></svg>
+    </button>
+  </form>
+  <p class="pie">Atención virtual con <strong>GESTLOK Chat</strong> · <a href="https://gestlok.com.ar/privacidad.html" target="_blank" rel="noopener">Privacidad</a></p>
+</div>
+<div class="fondo-hoja" id="fondo-hoja" hidden></div>
+<section class="hoja" id="hoja" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo" hidden>
+  <div class="hoja-cabecera">
+    <h2 id="hoja-titulo"></h2>
+    <button class="icono" type="button" id="hoja-cerrar" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="hoja-cuerpo" id="hoja-cuerpo"></div>
+</section>
+<noscript><p class="sin-js">Para hacer tu pedido activá JavaScript en el navegador.</p></noscript>
+<script src="/chat/config.js?v=20261119a"></script>
+<script type="module" src="/chat/chat.js?v=20261119a"></script>
+</body>
+</html>

@@ -3,3 +3,7 @@
 # Munro se puede habilitar independientemente de Don Torcuato.
 [functions.mi-gusto-whatsapp]
 verify_jwt = false
+
+# GESTLOK Chat: público (clientes sin cuenta). La seguridad la hacen el token de sesión, los topes y la base.
+[functions.gestlok-chat]
+verify_jwt = false
