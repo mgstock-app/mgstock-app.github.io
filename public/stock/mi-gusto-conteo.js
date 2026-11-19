@@ -601,7 +601,8 @@ function saveDecomiso(p,newCell){
 }
 
 /* Controles de tamaño fijo: un toque suma chapa; unidades sueltas con botones +/-.
-   No abrir teclado ni redibujar la planilla mientras se está contando. */
+   No abrir teclado ni redibujar la planilla mientras se está contando.
+   El cero es placeholder visual: nunca se antepone ni agrega a la escritura. */
 function chapaCompacta(p,v,canWrite,isDecomiso,index){
  const pid=esc(p.id),where=isDecomiso?'de decomiso':'del vencimiento '+index;
  const attrs=isDecomiso?'':' data-idx="'+index+'"';
@@ -624,7 +625,7 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
    '<button type="button" class="gcm-unit-minus" '+unitMinus+'="'+pid+'"'+attrs+
     (!canWrite||v.sueltas<=0?' disabled':'')+' aria-label="Quitar unidad suelta '+label+'">−</button>'+
    '<input type="number" min="0" max="100000" inputmode="numeric" class="gcm-units-value" '+suelta+'="'+pid+'"'+attrs+
-    ' value="'+v.sueltas+'"'+disabled+' aria-label="Unidades sueltas '+label+'">'+
+    ' value="'+(v.sueltas||'')+'" placeholder="0"'+disabled+' aria-label="Unidades sueltas '+label+'">'+
    '<button type="button" class="gcm-unit-plus" '+unitPlus+'="'+pid+'"'+attrs+disabled+
     ' aria-label="Sumar unidad suelta '+label+'">+</button>'+
   '</div>'+
@@ -645,7 +646,7 @@ function numericCompacta(p,v,canWrite,isDecomiso,index){
  '<button type="button" class="gcm-qty-minus" '+minus+'="'+pid+'"'+attrs+
  (!canWrite||!v.qty?' disabled':'')+' aria-label="Restar una unidad de '+label+'">−</button>'+
  '<input class="gcm-qty" type="number" min="0" max="1000000" inputmode="numeric" '+inputAttr+'="'+pid+'"'+attrs+
- ' value="'+(v.qty||0)+'"'+disabled+' aria-label="Unidades de '+label+'">'+
+ ' value="'+(v.qty||'')+'" placeholder="0"'+disabled+' aria-label="Unidades de '+label+'">'+
  '<button type="button" class="gcm-qty-plus" '+plus+'="'+pid+'"'+attrs+disabled+' aria-label="Sumar una unidad de '+label+'">+</button>'+
  '</div><span class="gcm-cell-save" role="status" aria-live="polite"></span></div>';
 }
@@ -663,9 +664,9 @@ function syncCountDom(el,p,i,isDecomp){
   button.title=v.chapas+' chapas · tocar para sumar';
  }
  const units=td.querySelector('.gcm-units-value');
- if(units&&units!==el)units.value=String(v.sueltas);
+ if(units&&units!==el)units.value=v.sueltas?String(v.sueltas):'';
  const directQty=td.querySelector('.gcm-qty');
- if(directQty&&directQty!==el)directQty.value=String(v.qty);
+ if(directQty&&directQty!==el)directQty.value=v.qty?String(v.qty):'';
  const qtyMinus=td.querySelector('.gcm-qty-minus');
  if(qtyMinus)qtyMinus.disabled=v.qty<=0;
  const unitMinus=td.querySelector('.gcm-unit-minus');
