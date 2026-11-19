@@ -10,7 +10,8 @@ const tenant='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 
 function mount(local){
  const events=new Map(), calls=[],window={};
- const doc={addEventListener:(name,fn)=>events.set(name,fn),querySelector:()=>null};
+ let navRoot=null;
+ const doc={addEventListener:(name,fn)=>events.set(name,fn),querySelector:selector=>selector==='.gcm-count-screen'?navRoot:null};
  vm.runInNewContext(js,{window,document:doc,navigator:{onLine:true},Date,Intl,Promise,Set,Map,JSON,Object,Math,Number,Array,String,console});
  const products=[
   {id:'ac',name:'AC',section:'EMPANADAS',position:1,units_per_chapa:30,active:true},
@@ -24,7 +25,7 @@ function mount(local){
  const mod=window.GestLokMunroConteo;
  mod.attach({S:{me:{tenant_id:tenant,id:'test'+local},local,view:'conteo-munro',ro:false,offline:false},
  miRol:()=> 'gerente',misLocales:()=>[local],render:()=>{},toast:()=>{}});
- return {mod,events,calls,state};
+ return {mod,events,calls,state,doc,setNavRoot:value=>{navRoot=value;}};
 }
 
 for(const loc of ['munro','torcuato']){
@@ -134,5 +135,48 @@ for(const local of ['munro','torcuato']){
   await a.events.get('change')({target:input});
   assert.doesNotMatch(a.mod.view(),/gcm-expiry-ruler-decomiso/);
   assert.ok(a.calls.some(c=>c.name==='gestlok_'+local+'_conteo_decomiso_visible'&&c.args.p_visible===false));
+ });
+}
+
+for(const local of ['munro','torcuato']){
+ test('Conteo '+local+': resalta la categoría visible debajo de la barra fija, no la anterior',async()=>{
+  const a=mount(local);a.mod.view();await tick();
+  const positions={'HELADOS':75,'GASEOSAS 2,25 L':225,'GASEOSAS 1,75 L':540};
+  const categories=Object.keys(positions);
+  const sections=categories.map(name=>({
+   dataset:{gcmSection:name},
+   getBoundingClientRect:()=>({top:positions[name]})
+  }));
+  const buttons=categories.map(name=>{
+   const attrs=new Map(),classes=new Set();
+   return {
+    dataset:{gcmNavSection:name},attrs,classes,
+    classList:{toggle:(key,on)=>{if(on)classes.add(key);else classes.delete(key);}},
+    setAttribute:(key,value)=>attrs.set(key,value),
+    removeAttribute:key=>attrs.delete(key)
+   };
+  });
+  a.setNavRoot({
+   querySelectorAll:selector=>selector.startsWith('.gcm-count-main')?sections:buttons,
+   querySelector:selector=>selector==='.gcm-expiry-ruler'?{
+    getBoundingClientRect:()=>({bottom:220})
+   }:null
+  });
+  const scroll=()=>a.events.get('scroll')({target:a.doc});
+  scroll();
+  assert.equal(buttons.find(b=>b.attrs.get('aria-current')==='true')?.dataset.gcmNavSection,'GASEOSAS 2,25 L');
+  assert.equal(buttons.filter(b=>b.classes.has('is-active')).length,1);
+  positions['HELADOS']=-420;
+  positions['GASEOSAS 2,25 L']=60;
+  positions['GASEOSAS 1,75 L']=225;
+  scroll();
+  assert.equal(buttons.find(b=>b.attrs.get('aria-current')==='true')?.dataset.gcmNavSection,'GASEOSAS 1,75 L');
+  assert.equal(buttons.filter(b=>b.classes.has('is-active')).length,1);
+  positions['HELADOS']=225;
+  positions['GASEOSAS 2,25 L']=610;
+  positions['GASEOSAS 1,75 L']=1020;
+  scroll();
+  assert.equal(buttons.find(b=>b.attrs.get('aria-current')==='true')?.dataset.gcmNavSection,'HELADOS');
+  assert.equal(a.calls.length,1,'el indicador visual no debe guardar ni alterar el conteo');
  });
 }

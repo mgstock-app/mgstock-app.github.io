@@ -736,7 +736,12 @@ function updateCategoryFromScroll(){
  const root=document.querySelector?.('.gcm-count-screen');
  if(!root)return;
  const sections=[...root.querySelectorAll('.gcm-count-main .gcm-section,.gcm-count-main .gcm-extras')];
- const threshold=205;let last=null;
+ // El ancla de navegación deja el título debajo de la barra fija de vencimientos.
+ // Usar el borde real de esa barra: 205 px quedaba por encima del título y
+ // mantenía marcada la categoría anterior (p. ej., Helados al ver Gaseosas).
+ const rulerBottom=root.querySelector?.('.gcm-expiry-ruler')?.getBoundingClientRect?.().bottom;
+ const threshold=Number.isFinite(rulerBottom)&&rulerBottom>0?rulerBottom+12:237;
+ let last=null;
  for(const section of sections){if(section.getBoundingClientRect().top<=threshold)last=section;}
  const current=last||sections[0];
  if(current)selectCategoryButton(root,current.dataset.gcmSection||current.dataset.gcmKind);
