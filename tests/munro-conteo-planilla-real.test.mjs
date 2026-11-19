@@ -409,7 +409,7 @@ for(const local of ['munro','torcuato']){
    miRol:()=> 'gerente',misLocales:()=>[local],render:()=>renders.push(true),toast:()=>{}});
   mod.view();await new Promise(resolve=>setImmediate(resolve));
   const first=mod.view();
-  const section=first.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\\s\\S]*?<\\/section>/)?.[0];
+  const section=first.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\s\S]*?<\/section>/)?.[0];
   assert.ok(section,'Consumo visible en turno Mañana salida');
   assert.equal((section.match(/data-field="name"/g)||[]).length,3);
   assert.match(section,/data-gcm-extra-add="consumption"/);
@@ -431,7 +431,7 @@ for(const local of ['munro','torcuato']){
   assert.equal(firstWrite?.args.p_kind,'consumption');
   assert.equal(firstWrite?.args.p_items.length,4);
   const second=mod.view();
-  const secondSection=second.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\\s\\S]*?<\\/section>/)?.[0];
+  const secondSection=second.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\s\S]*?<\/section>/)?.[0];
   assert.equal((secondSection.match(/data-field="name"/g)||[]).length,4);
   const input={value:'Caro',dataset:{gcmExtra:'consumption',row:'3',field:'name'},
    hasAttribute:attr=>attr==='data-gcm-extra',closest:sel=>sel==='.gcm-page'?root:null};
@@ -461,7 +461,7 @@ for(const local of ['munro','torcuato']){
    miRol:()=> 'gerente',misLocales:()=>[local],render:()=>{},toast:()=>{}});
   mod.view();await new Promise(resolve=>setImmediate(resolve));
   const html=mod.view();
-  const section=html.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\\s\\S]*?<\\/section>/)?.[0];
+  const section=html.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\s\S]*?<\/section>/)?.[0];
   assert.equal((section.match(/data-field="name"/g)||[]).length,10);
   assert.doesNotMatch(section,/data-gcm-extra-add="consumption"/);
  });
