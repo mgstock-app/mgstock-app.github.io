@@ -279,3 +279,67 @@ test('hoja de carga: metadatos compactos sin botones de turnos; Historial conser
  assert.match(source,/nextTurn\(currentDay,currentShift\)/);
  assert.doesNotMatch(source,/const newShift=el\.dataset\.gcmShift/);
 });
+
+
+for(const local of ['munro','torcuato']){
+ test('Conteo '+local+': el cero se muestra como placeholder, sin valor numérico escrito',async()=>{
+  const window={},events=new Map(),writes=[],renders=[];
+  const document={addEventListener:(name,fn)=>events.set(name,fn),querySelector:()=>null};
+  vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,Object,JSON,Number,String,Math,console});
+  const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const get=k=>dateParts.find(x=>x.type===k).value;
+  const today=get('year')+'-'+get('month')+'-'+get('day');
+  const state={
+   products:[
+    {id:'agua',section:'AGUAS',name:'Agua',active:true,units_per_chapa:0,position:1},
+    {id:'ac',section:'EMPANADAS',name:'AC',active:true,units_per_chapa:30,position:2}
+   ],
+   counts:[{
+    day:today,shift:'manana_entrada',status:'borrador',responsable:'Cami',
+    data:{agua:{v1:{qty:0},v2:{qty:16}},ac:{v1:{chapas:0,sueltas:0}}},
+    decomiso:{agua:{qty:0},ac:{chapas:0,sueltas:0}},decomiso_visible:true,
+    consumption:[],waste:[]
+   }],history:[]
+  };
+  window.GestLokSupabase={rpc:async(name,args)=>{
+   if(name==='gestlok_'+local+'_conteo_state')return {error:null,data:state};
+   writes.push({name,args});return {error:null,data:{}};
+  }};
+  const mod=window.GestLokMunroConteo;
+  mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local,view:'conteo-munro',ro:false,offline:false},
+   miRol:()=> 'gerente',misLocales:()=>[local],render:()=>renders.push('render'),toast:()=>{}});
+  mod.view();
+  await new Promise(resolve=>setImmediate(resolve));
+  const html=mod.view();
+  assert.match(html,/data-gcm-qty="agua" data-idx="1" value="" placeholder="0"/);
+  assert.match(html,/data-gcm-qty="agua" data-idx="2" value="16" placeholder="0"/);
+  assert.match(html,/data-gcm-decomp-qty="agua" value="" placeholder="0"/);
+  assert.match(html,/data-gcm-suelta="ac" data-idx="1" value="" placeholder="0"/);
+  assert.match(html,/data-gcm-decomp-suelta="ac" value="" placeholder="0"/);
+  const initialRenderCount=renders.length;
+  const enter=async(attribute,pid,idx,value)=>{
+   const input={value,hasAttribute:key=>key===attribute,matches:()=>true,
+    dataset:{idx:String(idx),
+     gcmQty:attribute==='data-gcm-qty'?pid:undefined,
+     gcmDecompQty:attribute==='data-gcm-decomp-qty'?pid:undefined,
+     gcmSuelta:attribute==='data-gcm-suelta'?pid:undefined,
+     gcmDecompSuelta:attribute==='data-gcm-decomp-suelta'?pid:undefined},
+    closest:selector=>selector==='.gcm-page'?{}:null};
+   events.get('input')({target:input});
+   await new Promise(resolve=>setImmediate(resolve));
+  };
+  await enter('data-gcm-qty','agua',1,'1');
+  assert.equal(writes.at(-1)?.args.p_qty,1,'escribir 1 no debe guardar 10');
+  await enter('data-gcm-qty','agua',1,'16');
+  assert.equal(writes.at(-1)?.args.p_qty,16,'escribir 16 no debe guardar 160');
+  await enter('data-gcm-suelta','ac',1,'1');
+  assert.equal(writes.at(-1)?.args.p_sueltas,1);
+  await enter('data-gcm-decomp-qty','agua',0,'16');
+  assert.equal(writes.at(-1)?.args.p_qty,16);
+  await enter('data-gcm-decomp-suelta','ac',0,'1');
+  assert.equal(writes.at(-1)?.args.p_sueltas,1);
+  assert.equal(writes.length,5,'las cinco entradas se guardan una sola vez');
+  assert.ok(writes.every(w=>w.name.startsWith('gestlok_'+local+'_conteo_')),'sin escrituras a otra sucursal');
+  assert.equal(renders.length,initialRenderCount,'no redibujar mientras se escribe');
+ });
+}
