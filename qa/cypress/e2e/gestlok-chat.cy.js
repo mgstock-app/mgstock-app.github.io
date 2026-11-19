@@ -110,7 +110,7 @@ describe('GESTLOK Chat · panel', () => {
     cy.get('input[aria-label="Disponible: Empanada de carne"]').uncheck();
     cy.get('#aviso').should('contain.text', 'Empanada de carne agotado');
     cy.get('[data-p=mensajes]').click();
-    cy.contains('label', 'Pedido terminado · retiro').find('textarea').clear().type('Listo {codigo}, pasá cuando quieras');
+    cy.contains('label', 'Pedido terminado · retiro').find('textarea').clear().type('Listo {codigo}, pasá cuando quieras', {parseSpecialCharSequences: false});
     cy.get('.vista-previa').eq(1).should('contain.text', 'Listo MM-0012, pasá cuando quieras');
     cy.contains('label', 'Indicaciones para la IA').find('textarea').type('Tratá de vos.');
     cy.contains('button', 'Guardar mensajes').click();
