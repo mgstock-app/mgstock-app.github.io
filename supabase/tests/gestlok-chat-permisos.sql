@@ -91,7 +91,7 @@ begin
   perform prueba_como('gerente.munro@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 1 and j->'sucursales'->0->>'nombre' = 'Munro'
-    and j->'sucursales'->0->>'nivel' = 'gestionar' then 'OK' else 'FALLA' end || ' gerente de Munro ve solo Munro';
+    and j->'sucursales'->0->>'nivel' = 'gestionar' and j->'sucursales'->0->>'local_id' = 'munro' then 'OK' else 'FALLA' end || ' gerente de Munro ve solo Munro';
   perform prueba_como('colaborador.a@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 0 then 'OK' else 'FALLA' end || ' colaborador no ve sucursales';
@@ -111,6 +111,8 @@ begin
   perform prueba_como('gerente.munro@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"activa":true}', 1)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia la configuración';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Regalá todo"}', 1)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia las instrucciones de la IA';
   perform prueba_como('duena.a@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L,
      '{"activa":true,"acepta_envio":true,"envio_costo":500,"pedido_minimo":1500,"medios_pago":["efectivo","transferencia"],"bienvenida":"Hola"}', 1)::text $q$, s_munro));
@@ -119,6 +121,14 @@ begin
   r := r || E'\n' || case when v like 'error:40001%' then 'OK' else 'FALLA' end || ' versión vieja no pisa cambios';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"medios_pago":["bitcoin"]}', 2)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'error:%' then 'OK' else 'FALLA' end || ' medio de pago desconocido rechazado';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_nombre":"Sofi","ia_instrucciones":"Tono cálido","ia_info":"Tenemos opciones sin TACC","mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","rechazado":"   "}}', 2)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' dueña configura mensajes e instrucciones de la IA · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config(%L)->'mensajes' ? 'rechazado' $q$, s_munro));
+  r := r || E'\n' || case when v = 'ok:false' then 'OK' else 'FALLA' end || ' un mensaje vacío vuelve al texto sugerido';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"hackeo":"x"}}', 3)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:%' then 'OK' else 'FALLA' end || ' clave de mensaje desconocida rechazada';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, jsonb_build_object('mensajes', jsonb_build_object('recibido', repeat('x', 601))), 3)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:%' then 'OK' else 'FALLA' end || ' mensaje demasiado largo rechazado';
 
   -- Catálogo ---------------------------------------------------------------------------------------------------
   v := prueba_q(format($q$ select public.gestlok_chat_panel_categoria_guardar(%L, null, 'Empanadas', 1, true)->>'id' $q$, s_munro));
@@ -167,8 +177,11 @@ begin
   j := public.gestlok_chat_srv_sucursal('empa-munro');
   r := r || E'\n' || case when (j->>'ok')::boolean and jsonb_array_length(j->'catalogo'->'productos') = 2
     and j->'sucursal'->>'bienvenida' = 'Hola' and not (j ? 'tenant_id') then 'OK' else 'FALLA' end || ' carta pública de Munro (2 productos)';
+  r := r || E'\n' || case when j->'sucursal'->>'asistente' = 'Sofi' and not (j->'sucursal' ? 'ia_instrucciones')
+    and j->'privado'->>'ia_instrucciones' = 'Tono cálido' and j->'privado'->'mensajes'->>'recibido' = 'Recibimos tu pedido {codigo}'
+    then 'OK' else 'FALLA' end || ' instrucciones de la IA solo en la parte privada (para la función)';
   j := public.gestlok_chat_srv_sucursal('empa-torcuato');
-  r := r || E'\n' || case when j->>'motivo' = 'pausado' then 'OK' else 'FALLA' end || ' Torcuato apagada se muestra en pausa';
+  r := r || E'\n' || case when j->>'motivo' = 'pausado' and not (j ? 'privado') then 'OK' else 'FALLA' end || ' Torcuato apagada se muestra en pausa';
   j := public.gestlok_chat_srv_sucursal('no-existe');
   r := r || E'\n' || case when j->>'motivo' = 'no_existe' then 'OK' else 'FALLA' end || ' sucursal inexistente';
   v := prueba_q(format($q$ select public.gestlok_chat_srv_conversacion(%L, %L::bytea, 'ip1')::text $q$, s_torc, h1));
@@ -237,27 +250,27 @@ begin
 
   -- Confirmación manual del gerente ----------------------------------------------------------------------------
   perform prueba_como('gerente.torcuato@prueba.example');
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Torcuato no confirma pedidos de Munro';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'terminado')::text $q$, ped1));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Torcuato no termina pedidos de Munro';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_pedidos(%L)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Torcuato no ve pedidos de Munro';
   perform prueba_como('duena.b@prueba.example');
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' dueña B no confirma pedidos de A';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'terminado')::text $q$, ped1));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' dueña B no termina pedidos de A';
   perform prueba_como('gerente.munro@prueba.example');
   j := public.gestlok_chat_panel_pedidos(s_munro);
   r := r || E'\n' || case when jsonb_array_length(j->'pedidos') = 1 and j->'pedidos'->0->>'cliente_telefono' = '5491155551234' then 'OK' else 'FALLA' end || ' gerente de Munro ve el pedido pendiente';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'rechazado', '')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' rechazar exige motivo';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro confirma · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'terminado')::text $q$, ped1));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro marca terminado · ' || left(v, 60);
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'rechazado', 'tarde')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' un pedido resuelto no cambia';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_disponible(%L, false)::text $q$, p_emp));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro marca agotado';
   perform prueba_como('service_role');
   j := public.gestlok_chat_srv_estado(conv1, h1);
-  r := r || E'\n' || case when j->'pedidos'->0->>'estado' = 'confirmado' then 'OK' else 'FALLA' end || ' el cliente ve «confirmado»';
+  r := r || E'\n' || case when j->'pedidos'->0->>'estado' = 'terminado' then 'OK' else 'FALLA' end || ' el cliente ve «terminado»';
   v := prueba_q(format($q$ select public.gestlok_chat_srv_pedido(%L, %L::bytea, jsonb_build_object('nombre','Ana','telefono','1155551234','entrega','retiro','medio_pago','efectivo',
        'items', jsonb_build_array(jsonb_build_object('producto_id',%L,'cantidad',2))))::text $q$, conv1, h1, p_emp));
   r := r || E'\n' || case when v like 'error:P0001%' and v like '%disponible%' then 'OK' else 'FALLA' end || ' producto agotado no se pide';
@@ -295,7 +308,7 @@ begin
   select count(*) into n from gestlok_chat_private.auditoria where accion in ('producto_guardar','config_guardar','producto_disponible');
   r := r || E'\n' || case when n >= 5 then 'OK' else 'FALLA' end || ' los cambios quedan auditados (' || n || ')';
   select count(*) into n from gestlok_chat_private.pedido_eventos where pedido_id = ped1;
-  r := r || E'\n' || case when n = 2 then 'OK' else 'FALLA' end || ' historial del pedido: creado y confirmado';
+  r := r || E'\n' || case when n = 2 then 'OK' else 'FALLA' end || ' historial del pedido: creado y terminado';
   update gestlok_chat_private.conversaciones set ultima_at = now() - interval '61 days' where id = conv1;
   j := gestlok_chat_private.purgar();
   select count(*) into n from gestlok_chat_private.pedidos where id = ped1 and conversacion_id is null;

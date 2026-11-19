@@ -34,7 +34,9 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   process.env.CHAT_PG_DB = urlFor(DB);
 
   let handler;
-  globalThis.Deno = {env: {get: k => ({SUPABASE_URL: 'http://local', SUPABASE_SERVICE_ROLE_KEY: 'x'})[k]}, serve: h => { handler = h; }};
+  const ENV = {SUPABASE_URL: 'http://local', SUPABASE_SERVICE_ROLE_KEY: 'x'};
+  globalThis.Deno = {env: {get: k => ENV[k]}, serve: h => { handler = h; }};
+  ok(DB, [], `update gestlok_chat_private.sucursales set mensajes = '{"recibido":"Recibimos {codigo}, {nombre}. Total {total}."}', ia_instrucciones = 'Instrucción secreta del dueño' where slug = 'mi-gusto-munro'`);
   register(pathToFileURL(root + 'tests/fixtures/chat/loader.mjs'));
   await import(pathToFileURL(root + 'supabase/functions/gestlok-chat/index.ts').href);
   assert.ok(handler, 'la función registra su handler');
@@ -74,9 +76,16 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.equal(r.body.carrito.length, 2, 'el carrito se conserva si falla');
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {datos: {nombre: 'Ana', telefono: '11 5555-1234', entrega: 'envio', direccion: 'Mitre 200', medio_pago: 'efectivo'}}});
   assert.equal(r.body.pedido.codigo, 'MM-0001'); assert.equal(Number(r.body.pedido.total), 3600);
+  assert.equal(r.body.mensajes.at(-1).texto, 'Recibimos MM-0001, Ana. Total $ 3.600.', 'usa el mensaje configurado por el local');
   assert.equal(r.body.carrito.length, 0);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
   assert.equal(r.body.pedidos[0].estado, 'pendiente');
+  assert.ok(!JSON.stringify(r.body).includes('Instrucción secreta'), 'las instrucciones de la IA nunca llegan al cliente');
+  // El gerente marca terminado → el cliente recibe el aviso de «listo» (envío)
+  ok(DB, [], `update gestlok_chat_private.pedidos set estado = 'terminado', decidido_at = now() where codigo = 'MM-0001'`);
+  r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
+  assert.equal(r.body.pedidos[0].estado, 'terminado');
+  assert.equal(r.body.pedidos[0].aviso, '¡Tu pedido MM-0001 está listo y sale para Mitre 200!');
 
   // El chat no guarda datos personales en los mensajes
   const msgs = ok(DB, ['-At', '-c', 'select string_agg(texto, \' | \') from gestlok_chat_private.mensajes']);
@@ -91,6 +100,47 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   // Otro teléfono no ve el pedido del primero
   r = await llamar({slug: 'mi-gusto-munro', token: 'otroTokenDeOtroCliente000000000000000002', accion: 'estado'});
   assert.equal(r.body.pedidos.length, 0);
+
+  // Asistente con IA (API simulada): responde con herramientas; si falla, responde el motor.
+  ENV.GESTLOK_CHAT_IA_PROVEEDOR = 'openai'; ENV.GESTLOK_CHAT_IA_CLAVE = 'clave-de-prueba';
+  let iaPedidos = [];
+  const fetchOriginal = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    iaPedidos.push(JSON.parse(init.body));
+    if (String(url).includes('falla')) return {ok: false, status: 503, json: async () => ({})};
+    const ultimo = JSON.parse(init.body).messages.at(-1);
+    const body = ultimo.role === 'tool'
+      ? {choices: [{message: {content: 'Listo, sumé 3 de jamón y queso. ¿Algo más?'}}]}
+      : {choices: [{message: {content: null, tool_calls: [{id: 't1', type: 'function', function: {name: 'agregar_producto', arguments: '{"producto":"P2","cantidad":3}'}}]}}]};
+    return {ok: true, status: 200, json: async () => body};
+  };
+  t.after(() => { globalThis.fetch = fetchOriginal; });
+  let handlerIA;
+  globalThis.Deno.serve = h => { handlerIA = h; };
+  await import(pathToFileURL(root + 'supabase/functions/gestlok-chat/index.ts').href + '?ia=1');
+  const TOKEN_IA = 'tokenDelClienteConInteligenciaArtificial01';
+  const llamarIA = async body => { const res = await handlerIA(new Request('http://local/gestlok-chat', {method: 'POST',
+    headers: {'content-type': 'application/json', origin: ORIGEN, 'x-forwarded-for': '200.5.5.5'}, body: JSON.stringify(body)})); return res.json(); };
+  await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'abrir'});
+  r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'tres de jamón y queso porfa'}})};
+  assert.equal(r.body.motor, 'ia');
+  assert.equal(r.body.mensajes[0].texto, 'Listo, sumé 3 de jamón y queso. ¿Algo más?');
+  assert.deepEqual(r.body.carrito.map(l => l.cantidad), [3]);
+  assert.match(iaPedidos[0].messages[0].content, /Instrucción secreta del dueño/, 'la IA recibe las indicaciones del dueño');
+  assert.ok(!iaPedidos[0].messages[0].content.includes('5a000000'), 'la IA no recibe identificadores internos');
+  ENV.GESTLOK_CHAT_IA_URL = 'https://falla.example/v1/chat';
+  globalThis.Deno.serve = h => { handlerIA = h; };
+  await import(pathToFileURL(root + 'supabase/functions/gestlok-chat/index.ts').href + '?ia=2');
+  r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: '1 de carne'}})};
+  assert.equal(r.body.motor, 'guiado', 'si la IA falla responde el motor');
+  assert.deepEqual(r.body.carrito.map(l => l.cantidad).sort(), [1, 3]);
+  delete ENV.GESTLOK_CHAT_IA_URL;
+  ok(DB, [], `update gestlok_chat_private.sucursales set ia_activa = false where slug = 'mi-gusto-munro'`);
+  iaPedidos = [];
+  globalThis.Deno.serve = h => { handlerIA = h; };
+  await import(pathToFileURL(root + 'supabase/functions/gestlok-chat/index.ts').href + '?ia=3');
+  r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'hola'}})};
+  assert.equal(r.body.motor, 'guiado'); assert.equal(iaPedidos.length, 0, 'con la IA apagada en la sucursal no se llama a la API');
 
   // Topes: muchos mensajes seguidos desde la misma conexión se frenan
   let frenado = false;

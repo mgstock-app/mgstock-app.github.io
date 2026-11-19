@@ -1,5 +1,5 @@
 /* GESTLOK Chat · panel. Compacto y legible en el celular; dos columnas de tarjetas en computadora. */
-:root{
+:root,:host{
   --azul:#13294b; --azul-suave:#eef2f8; --acento:#c2410c; --tinta:#0f172a; --gris:#475569; --gris-claro:#94a3b8;
   --linea:#e2e8f0; --fondo:#f6f7f9; --papel:#fff; --ok:#15803d; --ok-suave:#ecfdf3; --mal:#b91c1c; --mal-suave:#fef2f2;
   --espera:#a16207; --espera-suave:#fefce8;
@@ -14,10 +14,12 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--azul);outline-offset:2px}
 svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .oculto{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.panel{max-width:1100px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+.panel{max-width:1100px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;font-size:15px;line-height:1.4;color:var(--tinta);text-align:left}
+:host{display:block;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.panel *,.panel *::before,.panel *::after{box-sizing:border-box}
 
 .tope{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));background:var(--azul);color:#fff}
-.volver{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;color:#fff}
+.volver{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;color:#fff;font-size:30px;line-height:1;text-decoration:none}
 .tope-texto{flex:1;min-width:0}
 .tope h1{margin:0;font-size:16px;font-weight:750;letter-spacing:.01em}
 .tope p{margin:0;font-size:13px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -124,3 +126,16 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .aviso{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tinta);color:#fff;border-radius:10px;padding:10px 16px;font-size:14.5px;z-index:50;max-width:calc(100vw - 24px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .aviso.error{background:var(--mal)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Mensajes configurables */
+.plantilla{border-top:1px solid var(--linea);padding-top:10px;margin-top:10px}
+.plantilla:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.plantilla .ayuda{display:block;color:var(--gris);font-size:13px;margin:-6px 0 6px}
+.vista-previa{margin:0 0 4px;background:var(--azul-suave);border-radius:10px;padding:8px 10px;font-size:14px;white-space:pre-wrap}
+.plantilla .enlace{margin-left:0;padding-left:0}
+/* Integrado en GESTLOK: sin cabecera propia, la Central ocupa el lugar de la sección */
+.embebido .tope{display:none}
+.embebido .pestanas{top:0;border-radius:12px 12px 0 0;border:1px solid var(--linea)}
+.panel.embebido{min-height:0;background:var(--fondo);border-radius:12px}
+.embebido .contenido{padding:12px 4px}
+@media(min-width:900px){.embebido .contenido{padding:14px 0}}

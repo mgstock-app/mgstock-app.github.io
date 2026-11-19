@@ -1,13 +1,15 @@
-/* GESTLOK Chat · panel en GESTLOK (dueño, gerente y creadora).
- * Usa la misma sesión de GESTLOK (mismo dominio). Cada acción la autoriza la base: este archivo solo muestra
- * lo que el servidor devuelve según el nivel (configurar, gestionar o ver). Nunca innerHTML con datos.
- * Modo demostración sin red: ?demo=1.
+/* GESTLOK Chat · panel / Central de mensajes (dueño, gerente y creadora).
+ * Componente montable: página propia (/chat/panel/) o integrado en GESTLOK (Central de mensajes de cada local),
+ * dentro de un shadow DOM para que sus estilos no se mezclen. Usa la misma sesión de GESTLOK.
+ * Cada acción la autoriza la base: acá solo se muestra lo que el servidor devuelve según el nivel
+ * (configurar, gestionar o ver). Nunca innerHTML con datos. Modo demostración sin red: ?demo=1.
  */
 (function () {
   'use strict';
-  const CFG = window.GESTLOK_CHAT_CONFIG || {};
-  const DEMO = new URLSearchParams(location.search).get('demo') === '1';
-  const $ = id => document.getElementById(id);
+  const CFG = window.GESTLOK_CHAT_CONFIG || {
+    url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
+    key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
+  const VERSION_CSS = '20261119c';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -18,16 +20,46 @@
     for (const h of hijos.flat()) if (h !== null && h !== undefined && h !== false) n.append(h instanceof Node ? h : document.createTextNode(String(h)));
     return n;
   };
+  // replaceChildren sin «null» sueltos (se ignoran los hijos vacíos).
+  const poner = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter(h => h !== null && h !== undefined && h !== false));
   const pesos = n => '$ ' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const hora = t => { try { return new Date(t).toLocaleString('es-AR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}); } catch { return ''; } };
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
-  const ESTADOS = {pendiente: 'Pendiente', confirmado: 'Confirmado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
+  const ESTADOS = {pendiente: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
+  let motor = null; // plantillas de mensajes compartidas con el chat
+  import('/chat/motor.js').then(m => { motor = m; }).catch(() => {});
 
+  /**
+   * Monta el panel en «destino».
+   * @param {HTMLElement} destino
+   * @param {{sb?:object, local?:string, embebido?:boolean, demo?:boolean, alCambiarPendientes?:Function}} op
+   */
+  function montar(destino, op = {}) {
+  const DEMO = !!op.demo;
+  const EMBED = !!op.embebido;
+  const LOCAL = String(op.local || '').toLowerCase();
+  const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
+  const marco = el('div', {class: 'panel' + (EMBED ? ' embebido' : ''), id: 'panel', 'aria-busy': 'true'},
+    el('header', {class: 'tope'},
+      el('a', {class: 'volver', href: '/', 'aria-label': 'Volver a GESTLOK', text: '‹'}),
+      el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
+      el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
+    el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
+      [['pedidos', 'Pedidos'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
+        el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
+          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) : null))),
+    el('main', {id: 'contenido', class: 'contenido', tabindex: '-1'}),
+    el('div', {class: 'aviso', id: 'aviso', role: 'status', 'aria-live': 'polite', hidden: true}));
+  raiz.replaceChildren(...[EMBED ? el('link', {rel: 'stylesheet', href: '/chat/panel/panel.css?v=' + VERSION_CSS}) : null, marco].filter(Boolean));
+  const $ = id => raiz.querySelector('#' + id);
   const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0, pendientesVistos: null, ocupado: false};
-  let sb = null;
-  if (!DEMO) {
+  let sb = op.sb || null;
+  if (!DEMO && !sb) {
     try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: false}}); }
     catch { /* se informa abajo */ }
+  }
+  function avisarAnfitrion(pendientes) {
+    try { op.alCambiarPendientes?.(S.suc?.local_id, pendientes); } catch { /* nada */ }
   }
   async function rpc(fn, args) {
     if (DEMO) return demoRpc(fn, args || {});
@@ -71,8 +103,9 @@
     const sel = $('sucursal');
     sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id, text: s.nombre + (s.pendientes ? ' (' + s.pendientes + ')' : '')})));
     let guardada = null; try { guardada = localStorage.getItem('gestlok-chat-panel:sucursal'); } catch { /* sin almacenamiento */ }
-    S.suc = r.sucursales.find(s => s.id === guardada) || r.sucursales[0];
-    sel.value = S.suc.id; sel.hidden = r.sucursales.length < 2;
+    S.suc = (LOCAL && r.sucursales.find(s => s.local_id === LOCAL)) || r.sucursales.find(s => s.id === guardada) || r.sucursales[0];
+    if (EMBED && LOCAL && S.suc.local_id !== LOCAL) return fijo('Sin acceso a esta sucursal', 'Tu usuario no tiene la Central de mensajes de este local.');
+    sel.value = S.suc.id; sel.hidden = r.sucursales.length < 2 || (EMBED && !!LOCAL);
     sel.onchange = () => {
       S.suc = S.sucursales.find(s => s.id === sel.value); S.pendientesVistos = null;
       try { localStorage.setItem('gestlok-chat-panel:sucursal', S.suc.id); } catch { /* nada */ }
@@ -89,16 +122,16 @@
   function mostrar() {
     for (const b of $('pestanas').querySelectorAll('[data-p]')) {
       b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
-      if (b.dataset.p === 'ajustes') b.hidden = !puede('ver');
+      if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
       if (b.dataset.p === 'charlas') b.hidden = !puede('gestionar');
     }
     clearTimeout(S.sondeo);
-    ({pedidos: verPedidos, carta: verCarta, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
+    ({pedidos: verPedidos, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
   async function verPedidos() {
-    const filtros = [['pendiente', 'Pendientes'], ['confirmado', 'Confirmados'], ['rechazado', 'Rechazados'], ['todos', 'Todos']];
+    const filtros = [['pendiente', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['todos', 'Todos']];
     const cabeza = el('div', {class: 'filtros', role: 'toolbar', 'aria-label': 'Filtrar pedidos'}, filtros.map(([v, t]) =>
       el('button', {type: 'button', class: 'chip', 'aria-pressed': String(S.filtro === v), text: t, onclick: () => { S.filtro = v; verPedidos(); }})));
     const lista = el('div', {class: 'tarjetas'}, el('p', {class: 'nota', text: 'Cargando pedidos…'}));
@@ -112,7 +145,8 @@
     const pend = r.pedidos.filter(p => p.estado === 'pendiente').length;
     if (S.filtro === 'pendiente') {
       $('globo').textContent = String(pend); $('globo').hidden = !pend;
-      document.title = (pend ? '(' + pend + ') ' : '') + 'GESTLOK Chat · Panel';
+      if (!EMBED) document.title = (pend ? '(' + pend + ') ' : '') + 'GESTLOK Chat · Panel';
+      avisarAnfitrion(pend);
       if (S.pendientesVistos !== null && pend > S.pendientesVistos) {
         aviso('Llegó un pedido nuevo');
         try { navigator.vibrate?.([120, 80, 120]); } catch { /* nada */ }
@@ -120,13 +154,17 @@
       S.pendientesVistos = pend;
     }
     lista.replaceChildren(...(r.pedidos.length ? r.pedidos.map(tarjetaPedido)
-      : [el('p', {class: 'nota', text: S.filtro === 'pendiente' ? 'No hay pedidos esperando confirmación.' : 'No hay pedidos para mostrar.'})]));
+      : [el('p', {class: 'nota', text: S.filtro === 'pendiente' ? 'No hay pedidos en preparación.' : 'No hay pedidos para mostrar.'})]));
     programar(lista);
   }
   function programar(lista) {
     clearTimeout(S.sondeo);
     if (S.pestana !== 'pedidos') return;
-    S.sondeo = setTimeout(() => { if (document.hidden || S.ocupado) return programar(lista); cargarPedidos(lista); }, 15000);
+    S.sondeo = setTimeout(() => {
+      if (!marco.isConnected) return; // la sección ya no está en pantalla
+      if (document.hidden || S.ocupado) return programar(lista);
+      cargarPedidos(lista);
+    }, 15000);
   }
   function tarjetaPedido(p) {
     const tel = String(p.cliente_telefono || '');
@@ -137,7 +175,7 @@
       const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
         el('button', {type: 'button', class: 'boton peligro', text: 'Rechazar pedido', onclick: () => decidir(p, 'rechazado', motivo.value)}));
       acciones.append(
-        el('button', {type: 'button', class: 'boton principal', text: 'Confirmar', onclick: () => decidir(p, 'confirmado', '')}),
+        el('button', {type: 'button', class: 'boton principal', text: 'Pedido terminado', onclick: () => decidir(p, 'terminado', '')}),
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
     }
@@ -162,7 +200,7 @@
     S.ocupado = true;
     try {
       await rpc('panel_decidir', {p_pedido: p.id, p_decision: decision, p_motivo: motivo || ''});
-      aviso(decision === 'confirmado' ? 'Pedido ' + p.codigo + ' confirmado' : 'Pedido ' + p.codigo + ' rechazado');
+      aviso(decision === 'terminado' ? 'Pedido ' + p.codigo + ' terminado: el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
       if (S.pendientesVistos) S.pendientesVistos -= 1;
     } catch (e) { aviso(e.message, true); }
     finally { S.ocupado = false; }
@@ -177,7 +215,7 @@
     const config = puede('configurar');
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
-    contenido.replaceChildren(
+    poner(contenido,
       el('p', {class: 'nota', text: config ? 'Cargá lo que ofrecés por chat. «Agotado» lo puede marcar también el gerente.' : 'Marcá «Agotado» lo que no haya hoy. Los precios los cambia el dueño.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
@@ -265,6 +303,64 @@
     });
   }
 
+  // ------------------------------------------------------------------------------------------- mensajes
+  const MENSAJES = [
+    ['recibido', 'Pedido recibido', 'Cuando el cliente envía el pedido.'],
+    ['terminado_retiro', 'Pedido terminado · retiro', 'Cuando marcás «Pedido terminado» y el cliente retira.'],
+    ['terminado_envio', 'Pedido terminado · envío', 'Cuando marcás «Pedido terminado» y es con envío.'],
+    ['rechazado', 'Pedido rechazado', 'Se agrega el motivo que escribís al rechazar.'],
+    ['pausado', 'Chat en pausa', 'Cuando el chat está cerrado.'],
+    ['despedida', 'Despedida', 'Cuando el cliente agradece.'],
+  ];
+  async function verMensajes() {
+    contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
+    if (!motor) motor = await import('/chat/motor.js').catch(() => null);
+    let a;
+    try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    const editable = puede('configurar');
+    const ejemplo = {nombre: 'Ana', codigo: (a.prefijo || 'P') + '-0012', total: '$ 8.400', direccion: 'Av. Mitre 2200', local: a.direccion || ('el local de ' + a.nombre), motivo: 'nos quedamos sin stock'};
+    const area = (valor, max, filas, ph) => { const t = el('textarea', {rows: String(filas), maxlength: String(max), placeholder: ph || '', disabled: !editable}); t.value = valor || ''; return t; };
+    const activa = el('input', {type: 'checkbox', checked: a.ia_activa !== false, disabled: !editable});
+    const nombre = el('input', {type: 'text', maxlength: '40', placeholder: 'Ej.: Sofi', disabled: !editable}); nombre.value = a.ia_nombre || '';
+    const bienvenida = area(a.bienvenida, 500, 3, '¡Hola! Soy ' + (a.ia_nombre || 'el asistente') + ' de ' + a.empresa + ' ' + a.nombre + '. Podés escribirme tu pedido o mirar la carta.');
+    const instrucciones = area(a.ia_instrucciones, 2000, 5, 'Ej.: Tratá de vos. Ofrecé bebida si piden empanadas. Si preguntan por eventos, deciles que llamen al local.');
+    const info = area(a.ia_info, 4000, 6, 'Ej.: Las empanadas son al horno. Hay opciones sin TACC: … Tiempo de preparación: 30 a 40 minutos. Envío solo a Munro y Florida.');
+    const campos = {};
+    const plantillas = MENSAJES.map(([k, titulo, ayuda]) => {
+      const base = motor?.MENSAJES_BASE?.[k] || '';
+      const t = area(a.mensajes?.[k], 600, 3, base);
+      const vista = el('p', {class: 'vista-previa'});
+      const pintar = () => { const txt = (t.value.trim() || base); vista.textContent = 'Así lo ve el cliente: ' + (motor ? motor.plantilla(txt, ejemplo) : txt); };
+      t.addEventListener('input', pintar); pintar();
+      campos[k] = t;
+      return el('div', {class: 'plantilla'}, campo(titulo, t), el('small', {class: 'ayuda', text: ayuda}), vista,
+        editable ? el('button', {type: 'button', class: 'enlace', text: 'Usar el texto sugerido', onclick: () => { t.value = ''; pintar(); }}) : null);
+    });
+    const form = el('form', {class: 'ajustes', onsubmit: async e => {
+      e.preventDefault();
+      const mensajes = {}; for (const [k, t] of Object.entries(campos)) if (t.value.trim()) mensajes[k] = t.value.trim();
+      try {
+        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
+          ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
+          bienvenida: bienvenida.value, mensajes}});
+        aviso('Mensajes guardados'); verMensajes();
+      } catch (err) { aviso(err.message, true); }
+    }},
+    el('section', {class: 'bloque'}, el('h3', {text: 'Asistente con inteligencia artificial'}),
+      el('label', {class: 'check'}, activa, ' Responder con IA (si se apaga, responde el asistente guiado)'),
+      campo('Nombre del asistente (opcional)', nombre),
+      campo('Mensaje de bienvenida', bienvenida),
+      campo('Indicaciones para la IA: tono, qué ofrecer, qué evitar', instrucciones),
+      campo('Información del local y preguntas frecuentes', info),
+      el('p', {class: 'nota', text: 'La IA solo usa la carta, estos datos y los ajustes del local. No puede cambiar precios, confirmar ni terminar pedidos.'})),
+    el('section', {class: 'bloque'}, el('h3', {text: 'Mensajes automáticos'}),
+      el('p', {class: 'nota', text: 'Dejalo vacío para usar el texto sugerido. Podés usar: {nombre} {codigo} {total} {direccion} {local} {motivo}.'}),
+      plantillas),
+    editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar mensajes'})
+      : el('p', {class: 'nota', text: 'Solo el dueño puede cambiar los mensajes.'}));
+    contenido.replaceChildren(form);
+  }
+
   // ------------------------------------------------------------------------------------------- ajustes
   async function verAjustes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
@@ -286,7 +382,7 @@
       if (!f.acepta_retiro.checked && !f.acepta_envio.checked) return aviso('Elegí retiro, envío o ambos.', true);
       try {
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
-          activa: f.activa.checked, bienvenida: f.bienvenida.value, horario: f.horario.value, direccion: f.direccion.value,
+          activa: f.activa.checked, horario: f.horario.value, direccion: f.direccion.value,
           acepta_retiro: f.acepta_retiro.checked, acepta_envio: f.acepta_envio.checked, envio_costo: Number(f.envio_costo.value) || 0,
           envio_zona: f.envio_zona.value, pedido_minimo: Number(f.pedido_minimo.value) || 0, medios_pago: elegidos}});
         aviso('Ajustes guardados'); verAjustes();
@@ -299,7 +395,6 @@
       qr, el('p', {class: 'nota', text: 'Cuando esté listo el subdominio, el enlace será ' + final + '.'})),
     el('section', {class: 'bloque'}, el('h3', {text: 'Estado'}), chk('activa', 'Chat abierto: los clientes pueden escribir y pedir')),
     el('section', {class: 'bloque'}, el('h3', {text: 'Lo que ve el cliente'}),
-      campo('Mensaje de bienvenida (opcional)', inp('bienvenida', {tag: 'textarea', rows: '2', maxlength: '500'})),
       campo('Horario', inp('horario', {type: 'text', maxlength: '300', placeholder: 'Ej.: Todos los días de 11 a 15 y de 19 a 23'})),
       campo('Dirección del local', inp('direccion', {type: 'text', maxlength: '200'}))),
     el('section', {class: 'bloque'}, el('h3', {text: 'Entrega y pago'}), chk('acepta_retiro', 'Retiro en el local'), chk('acepta_envio', 'Envío a domicilio'),
@@ -343,11 +438,12 @@
     el('div', {class: 'dialogo-cuerpo'}, cuerpo), error,
     guardar ? el('footer', {}, el('button', {type: 'button', class: 'boton', text: 'Cancelar', onclick: () => d.close()}),
       el('button', {type: 'submit', class: 'boton principal', text: 'Guardar'})) : null);
-    d.append(form); document.body.append(d);
+    d.append(form); marco.append(d);
     d.addEventListener('close', () => d.remove());
     d.showModal();
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.pestana === 'pedidos' && S.suc) verPedidos(); });
+  const alVolver = () => { if (marco.isConnected && !document.hidden && S.pestana === 'pedidos' && S.suc) verPedidos(); };
+  document.addEventListener('visibilitychange', alVolver);
 
   // ------------------------------------------------------------------------------------------- demostración
   const D = {
@@ -362,17 +458,17 @@
       direccion: 'Av. Mitre 2200, 3° B', horario: '21:30', medio_pago: 'transferencia', nota: 'Tocar timbre B', subtotal: 13900, envio: 800, total: 14700,
       creado_at: new Date().toISOString(), items: [{cantidad: 6, nombre: 'Empanada de carne', opciones: [], nota: '', importe: 7200},
         {cantidad: 1, nombre: 'Pizza muzzarella', opciones: [{grupo: 'Tamaño', valores: ['Chica']}], nota: 'bien cocida', importe: 7500}]},
-      {id: 'x2', codigo: 'MM-0006', estado: 'confirmado', motivo: '', cliente_nombre: 'Beto', cliente_telefono: '1144443333', entrega: 'retiro', direccion: '',
+      {id: 'x2', codigo: 'MM-0006', estado: 'terminado', motivo: '', cliente_nombre: 'Beto', cliente_telefono: '1144443333', entrega: 'retiro', direccion: '',
         horario: '', medio_pago: 'efectivo', nota: '', subtotal: 3600, envio: 0, total: 3600, creado_at: new Date(Date.now() - 3600e3).toISOString(),
         items: [{cantidad: 3, nombre: 'Empanada de carne', opciones: [], nota: '', importe: 3600}]}],
     config: {slug: 'mi-gusto-munro', nombre: 'Munro', empresa: 'Mi Gusto', bienvenida: '', horario: 'Todos los días de 11 a 23', direccion: 'Av. Mitre 100',
       acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'Munro y Florida', pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia'],
-      activa: true, prefijo: 'MM', version: 3},
+      activa: true, prefijo: 'MM', version: 3, mensajes: {}, ia_activa: true, ia_nombre: 'Sofi', ia_instrucciones: '', ia_info: ''},
   };
   async function demoRpc(fn, a) {
     await new Promise(r => setTimeout(r, 120));
     switch (fn) {
-      case 'panel_inicio': return {habilitado: true, empresa: 'Mi Gusto (demostración)', sucursales: D.suc};
+      case 'panel_inicio': return {habilitado: true, empresa: 'Mi Gusto (demostración)', sucursales: D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
       case 'panel_pedidos': return {nivel: D.nivel, pedidos: D.pedidos.filter(p => a.p_estado === 'todos' || p.estado === a.p_estado)};
       case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (p.estado !== 'pendiente') throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
@@ -388,4 +484,18 @@
   }
 
   iniciar();
+  return {
+    marco,
+    refrescar: () => { if (S.suc && S.pestana === 'pedidos') verPedidos(); },
+    destruir: () => { clearTimeout(S.sondeo); document.removeEventListener('visibilitychange', alVolver); raiz.replaceChildren(); },
+  };
+  }
+
+  window.GestLokChatPanel = Object.freeze({montar});
+  // Página propia: <script src="panel.js" data-montar="id-del-contenedor">
+  const script = document.currentScript;
+  if (script && script.dataset.montar) {
+    const Q = new URLSearchParams(location.search);
+    montar(document.getElementById(script.dataset.montar), {demo: Q.get('demo') === '1', local: Q.get('local') || ''});
+  }
 })();

@@ -1,9 +1,3 @@
-# Webhook de Meta: autentica por firma X-Hub-Signature-256, no por JWT de Supabase.
-# No habilita mensajes hasta configurar MG_WA_ENABLED y las credenciales de al menos un número autorizado.
-# Munro se puede habilitar independientemente de Don Torcuato.
-[functions.mi-gusto-whatsapp]
-verify_jwt = false
-
 # GESTLOK Chat: público (clientes sin cuenta). La seguridad la hacen el token de sesión, los topes y la base.
 [functions.gestlok-chat]
 verify_jwt = false

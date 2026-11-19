@@ -124,7 +124,7 @@
       ].filter(t=>t[3]);
     }
     // Mi Gusto Munro: accesos prioritarios del turno, solo con permiso real de cada sección.
-    // «Staff» abre directamente Horarios; Colaboradores y Pedidos WhatsApp siguen en Más.
+    // «Staff» abre directamente Horarios; Colaboradores y la Central de mensajes siguen en Más.
     if(esMunro()&&pagos())return [
       ['home','Inicio','home',true],
       ['pagos','Pagos Online','payment',true],
@@ -137,7 +137,7 @@
     if(inLocal&&pagos()&&pedidos())return [
       ['home','Inicio','home',true],
       ['pagos','Pagos Online','payment',true],
-      ['pedidos','Pedidos WhatsApp','chat',true],
+      ['pedidos','Mensajes','chat',true],
       ['stock','Stock Local','stock',!!stock()],
       ['staff','Colaboradores','people',!!staff()],
       ['more','Más','more',true]
@@ -219,7 +219,7 @@
       ['home','Inicio'],
       ['business','Administración de la empresa'],
       [esMunro()?'colaboradores':'staff','Colaboradores'],
-      ...(esMunro()?[['pedidos','Pedidos WhatsApp']]:[]),
+      ...(esMunro()?[['pedidos','Central de mensajes']]:[]),
       ['avisos','Avisos'],
       ['vencimientos','Vencimientos']
     ].filter(([k])=>k==='home'||(k==='business'&&business())||(['staff','colaboradores'].includes(k)&&staff())||(k==='pedidos'&&pedidos())||(k==='avisos'&&bell())||(k==='vencimientos'&&localNav(k)));

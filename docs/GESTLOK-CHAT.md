@@ -3,8 +3,13 @@
 Módulo de atención virtual y pedidos por chat, **multiempresa**: cada empresa y sucursal tiene su chat, asistente,
 catálogo, conversaciones, pedidos y permisos independientes. Primera empresa: **Mi Gusto** (Munro y Don Torcuato).
 
-> Regla: GESTLOK Chat es un módulo **nuevo y separado**. No modifica Pedidos WhatsApp, Caja, Stock, Empleados,
-> Reseñas ni NFC. Todo lo suyo vive en `gestlok_chat_private` y en `public/chat/`.
+> Regla: GESTLOK Chat es un módulo **nuevo y separado** (`gestlok_chat_private`, `public/chat/`). No modifica Caja,
+> Stock, Empleados, Reseñas ni NFC.
+>
+> **19/11/2026:** en Mi Gusto reemplaza a «Pedidos WhatsApp». En el menú de Munro y Don Torcuato la sección pasa a
+> llamarse **Central de mensajes** (`public/stock/gestlok-chat-central.js`). Pedidos WhatsApp se quitó de la app
+> (pantalla, avisos de Android, guía y funciones) y la migración `20261119230000_mi_gusto_pedidos_whatsapp_retirar.sql`
+> le corta el acceso **sin borrar sus datos**.
 
 ## 1. Arquitectura
 
@@ -29,7 +34,9 @@ Cliente (celular) ──► chat.gestlok.com.ar  (hoy: gestlok.com.ar/chat/?s=<s
 | Función segura | `supabase/functions/gestlok-chat/index.ts` (+ `motor.js`) |
 | Motor del asistente | `supabase/functions/gestlok-chat/motor.js` (copia idéntica en `public/chat/motor.js`) |
 | Chat público | `public/chat/index.html`, `chat.js`, `chat.css`, `config.js` |
-| Panel | `public/chat/panel/index.html`, `panel.js`, `panel.css` |
+| Panel / Central | `public/chat/panel/panel.js` (componente: página propia o montado en GESTLOK con shadow DOM), `panel.css` |
+| Central en GESTLOK | `public/stock/gestlok-chat-central.js`, `app/gestlok-chat-central.css` |
+| Asistente con IA | `supabase/functions/gestlok-chat/ia.js` |
 | Alta Mi Gusto | `supabase/operaciones/gestlok-chat-habilitar-mi-gusto.sql` |
 | Copiar carta de Munro (opcional) | `supabase/operaciones/gestlok-chat-copiar-carta-munro.sql` |
 
@@ -47,8 +54,8 @@ Claves foráneas compuestas (`tenant_id`, `sucursal_id`) impiden mezclar datos d
 
 | Quién | Pedidos | Carta | Ajustes | Conversaciones |
 |---|---|---|---|---|
-| Dueño de la empresa | Confirmar / rechazar | Todo (precios, opciones, categorías) | Todo | Leer |
-| Gerente de **esa** sucursal | Confirmar / rechazar | Solo «agotado / disponible» | Ver | Leer |
+| Dueño de la empresa | Pedido terminado / rechazar | Todo (precios, opciones, categorías) | Todo | Leer |
+| Gerente de **esa** sucursal | Pedido terminado / rechazar | Solo «agotado / disponible» | Ver (mensajes también) | Leer |
 | Creadora con escritura activa | Como dueño | Como dueño | Como dueño | Leer |
 | Creadora en soporte (solo lectura) | Ver | Ver | Ver | — |
 | Colaborador, otra empresa, sin sesión | — | — | — | — |
@@ -59,7 +66,17 @@ Siempre dentro de la empresa activa de GESTLOK (`gestlok_tenancy.current_tenant_
 
 ## 4. Asistente
 
-Motor propio, sin costo y determinístico: entiende saludos, horario, envío, pagos, dirección, precios, la carta y
+**Con IA (si está activa en la sucursal y hay clave en la función):** responde el texto libre del cliente con las
+herramientas `agregar_producto`, `quitar_producto`, `vaciar_pedido`, `mostrar_carta`, `finalizar_pedido`,
+`estado_del_pedido` y `cancelar_pedido_enviado`. Recibe las reglas fijas, los datos del local, las **indicaciones** y la
+**información / preguntas frecuentes** que carga el dueño en la pestaña **Mensajes**, la carta con códigos P1, P2… (sin
+identificadores internos) y el pedido en curso. No puede crear pedidos (los crea la base con el formulario), cambiar
+precios, terminar pedidos ni ver otros clientes. Proveedores: `anthropic` (Claude, `claude-haiku-5-5`) u `openai`
+(cualquier API compatible; por defecto Gemini `gemini-flash-latest`). Secretos de la función: `GESTLOK_CHAT_IA_PROVEEDOR`,
+`GESTLOK_CHAT_IA_CLAVE`, opcionales `GESTLOK_CHAT_IA_MODELO` y `GESTLOK_CHAT_IA_URL`. Sin clave, con la IA apagada o
+si falla (12 s, 4 rondas), responde el motor guiado.
+
+**Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
 Pregunta cuando hay dudas y pide las opciones obligatorias. **Nunca** fija precios ni confirma: la base recalcula todo
 al crear el pedido. Etapa 3: IA opcional con herramientas acotadas (buscar en la carta, armar carrito, pedir datos),
@@ -68,7 +85,12 @@ detrás del mismo motor; si la IA falla o no está activa, sigue el motor.
 ## 5. Pedido
 
 Productos y opciones, aclaraciones, retiro o envío (dirección), nombre, teléfono, medio de pago, horario deseado.
-Estados: `pendiente` → `confirmado` / `rechazado` (con motivo para el cliente) / `cancelado` (por el cliente).
+Estados: `pendiente` (el asistente lo tomó; el local lo prepara) → **`terminado`** (el gerente toca «Pedido terminado»
+y el cliente recibe «tu pedido está listo») / `rechazado` (con motivo para el cliente) / `cancelado` (por el cliente).
+
+**Mensajes configurables** (pestaña Mensajes, por sucursal; vacío = texto sugerido): bienvenida, pedido recibido,
+pedido terminado (retiro y envío), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}`
+`{direccion}` `{local}` `{motivo}`.
 Un solo pedido pendiente por conversación; topes por día por sucursal, por teléfono y por conversación.
 El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pendiente).
 
@@ -92,9 +114,9 @@ El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pend
 | `tests/gestlok-chat-motor.test.mjs` | Motor del asistente | `npm test` |
 | `qa/cypress/e2e/gestlok-chat.cy.js` | Chat y panel en celular | Cypress |
 
-## 8. Puesta en marcha (etapa 2, con aprobación de la dueña)
+## 8. Puesta en marcha
 
-1. Aplicar la migración `20261119210000_gestlok_chat_base.sql` en Supabase.
+1. Aplicar las migraciones `20261119210000_gestlok_chat_base.sql` y `20261119230000_mi_gusto_pedidos_whatsapp_retirar.sql`.
 2. Publicar la función `gestlok-chat` (`verify_jwt = false`) y cargar el secreto `GESTLOK_CHAT_SALT` (texto al azar).
 3. Correr `supabase/operaciones/gestlok-chat-habilitar-mi-gusto.sql` (Munro y Don Torcuato quedan apagadas).
 4. Opcional: `gestlok-chat-copiar-carta-munro.sql` (copia nombre y precio desde Pedidos WhatsApp, sin tocarlo).

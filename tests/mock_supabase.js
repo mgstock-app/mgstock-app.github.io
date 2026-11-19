@@ -190,6 +190,36 @@
       return err('Función desconocida', '42883');
     } catch (e) { return err(typeof e === 'string' ? e : 'Error'); }
   }
+  // GESTLOK Chat · Central de mensajes (como las RPC gestlok_chat_panel_*): datos ficticios en memoria.
+  // Dueño y creadora configuran; el gerente solo gestiona su local; lectura y otros no ven nada.
+  function chatRpc(fn, x, a){
+    const C = window.__chat = window.__chat || {pedidos: [{id: 'ch-1', local: 'munro', codigo: 'MM-0001', estado: 'pendiente', motivo: '',
+      cliente_nombre: 'Cliente Ficticio', cliente_telefono: '1100000000', entrega: 'retiro', direccion: '', horario: '', medio_pago: 'efectivo', nota: '',
+      subtotal: 3000, envio: 0, total: 3000, creado_at: new Date().toISOString(), decidido_at: null,
+      items: [{cantidad: 3, nombre: 'Empanada de prueba', opciones: [], nota: '', importe: 3000}]}], version: {munro: 1, torcuato: 1}};
+    const suc = {munro: 'suc-munro', torcuato: 'suc-torcuato'}, deSuc = id => Object.keys(suc).find(k => suc[k] === id);
+    const nivel = loc => !a ? null : ['dueno', 'creadora'].includes(a.rol) ? 'configurar'
+      : (a.rol === 'gerente' && (a.locales || []).includes(loc)) ? 'gestionar' : null;
+    const sinPermiso = {data: null, error: {code: '42501', message: 'No tenés permiso para esta acción de GESTLOK Chat'}};
+    const pend = loc => C.pedidos.filter(p => p.local === loc && p.estado === 'pendiente').length;
+    if (fn === 'gestlok_chat_panel_inicio') return {data: {habilitado: true, empresa: 'Mi Gusto', sucursales: Object.keys(suc).filter(nivel).map(loc =>
+      ({id: suc[loc], local_id: loc, nombre: loc === 'munro' ? 'Munro' : 'Don Torcuato', slug: 'mi-gusto-' + loc, activa: true, nivel: nivel(loc), pendientes: pend(loc)}))}, error: null};
+    const loc = deSuc(x.p_sucursal) || C.pedidos.find(p => p.id === x.p_pedido)?.local;
+    if (!loc || !nivel(loc)) return sinPermiso;
+    if (fn === 'gestlok_chat_panel_pedidos') return {data: {nivel: nivel(loc), pedidos: C.pedidos.filter(p => p.local === loc && (x.p_estado === 'todos' || p.estado === x.p_estado))}, error: null};
+    if (fn === 'gestlok_chat_panel_decidir') {
+      const p = C.pedidos.find(q => q.id === x.p_pedido);
+      if (p.estado !== 'pendiente') return {data: null, error: {code: 'P0001', message: 'Este pedido ya fue resuelto'}};
+      Object.assign(p, {estado: x.p_decision, motivo: x.p_motivo || '', decidido_at: new Date().toISOString()});
+      return {data: {ok: true, codigo: p.codigo, estado: p.estado}, error: null};
+    }
+    if (fn === 'gestlok_chat_panel_catalogo') return {data: {categorias: [], productos: [], nivel: nivel(loc)}, error: null};
+    if (fn === 'gestlok_chat_panel_config') return {data: {id: suc[loc], slug: 'mi-gusto-' + loc, nombre: loc, empresa: 'Mi Gusto', activa: true, prefijo: 'MM',
+      bienvenida: '', horario: '', direccion: '', acepta_retiro: true, acepta_envio: false, envio_costo: 0, envio_zona: '', pedido_minimo: 0,
+      medios_pago: ['efectivo'], version: C.version[loc], nivel: nivel(loc), mensajes: {}, ia_activa: true, ia_nombre: '', ia_instrucciones: '', ia_info: ''}, error: null};
+    if (fn === 'gestlok_chat_panel_conversaciones') return {data: [], error: null};
+    return {data: null, error: {code: 'P0001', message: 'Función de prueba no simulada: ' + fn}};
+  }
   function cajaRpc(fn, x, a){
     const err = (m, code) => ({data:null, error:{code:code || '22023', message:m}});
     const TEN = 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
@@ -327,6 +357,7 @@
       // NFC y QR (como las RPC gestlok_nfc_*): solo la creadora; comercios y sucursales con link propio,
       // placas que usan su link, el de la sucursal o el del comercio; activar, reasignar e historial en memoria.
       if (/^gestlok_nfc_/.test(fn)) return nfcRpc(fn, args || {}, a);
+      if (/^gestlok_chat_panel_/.test(fn)) return chatRpc(fn, args || {}, a);
       // Estado ficticio para probar Pagos Online sin consultar datos de Mi Gusto.
       if (fn === 'gestlok_mg_online_state'){
         const loc=args?.p_local;

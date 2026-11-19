@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, totalCarrito, validarLinea, PAGOS} from './motor.js';
+import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -17,6 +17,8 @@ const el = (tag, props = {}, ...hijos) => {
   return n;
 };
 
+// replaceChildren sin «null» sueltos (se ignoran los hijos vacíos).
+const poner = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter(h => h !== null && h !== undefined && h !== false));
 const params = new URLSearchParams(location.search);
 const DEMO = params.get('demo') === '1';
 function slugDeUrl() {
@@ -122,8 +124,8 @@ function actualizarCarrito(c) {
   $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' + pesos(totalCarrito(S.catalogo, S.carrito));
 }
 const TEXTO_ESTADO = {
-  pendiente: ['Pedido enviado', 'Esperando que el local lo confirme'],
-  confirmado: ['Pedido confirmado', 'El local ya lo tomó'],
+  pendiente: ['Pedido recibido', 'Lo están preparando. Te avisamos cuando esté listo'],
+  terminado: ['¡Pedido listo!', ''],
   rechazado: ['El local no pudo tomarlo', ''],
   cancelado: ['Pedido cancelado', ''],
 };
@@ -134,13 +136,14 @@ function mostrarPedido(p) {
   if (!p) { caja.hidden = true; return; }
   const [t, sub] = TEXTO_ESTADO[p.estado] || [p.estado, ''];
   caja.className = 'aviso-pedido ' + p.estado;
-  caja.replaceChildren(el('span', {class: 'punto', 'aria-hidden': 'true'}),
-    el('div', {}, el('strong', {text: t + ' · ' + p.codigo}), (p.estado === 'rechazado' && p.motivo ? p.motivo : sub) + ' · ' + pesos(p.total)),
-    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null);
+  caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
+    el('div', {}, el('strong', {text: t + ' · ' + p.codigo}), (p.estado === 'rechazado' && p.motivo ? p.motivo
+      : p.estado === 'terminado' ? (p.entrega === 'envio' ? 'Sale para tu dirección' : 'Ya podés pasar a retirarlo') : sub) + ' · ' + pesos(p.total)),
+    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null].filter(Boolean));
   caja.hidden = false;
   if (antes && antes.codigo === p.codigo && antes.estado !== p.estado && antes.estado === 'pendiente') {
-    if (p.estado === 'confirmado') burbuja('asistente', '¡Buenas noticias! El local confirmó tu pedido ' + p.codigo + '.');
-    if (p.estado === 'rechazado') burbuja('asistente', 'El local no pudo tomar tu pedido ' + p.codigo + '.' + (p.motivo ? '\nMotivo: ' + p.motivo : ''));
+    // El texto lo arma la función con los mensajes que configuró el local.
+    if (p.aviso && ['terminado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
     try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
   }
   programarSondeo();
@@ -180,7 +183,7 @@ function abrirCarta() {
   const cuerpo = el('div');
   const pintar = () => {
     const prods = S.catalogo.productos.filter(p => !S.categoria || p.categoria_id === S.categoria);
-    cuerpo.replaceChildren(
+    poner(cuerpo,
       cats.length > 1 ? el('div', {class: 'categorias', role: 'toolbar', 'aria-label': 'Categorías'},
         [{id: '', nombre: 'Todo'}, ...cats].map(c => el('button', {type: 'button', class: 'chip', text: c.nombre,
           'aria-pressed': String(S.categoria === c.id), onclick: () => { S.categoria = c.id; pintar(); }}))) : null,
@@ -291,7 +294,7 @@ function abrirDatos() {
   campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
   campo('nota', 'Aclaraciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2'}),
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
-  el('p', {class: 'nota', text: 'El local revisa y confirma tu pedido. Tus datos se usan solo para este pedido.'}),
+  el('p', {class: 'nota', text: 'El local prepara tu pedido y te avisa por acá cuando está listo. Tus datos se usan solo para este pedido.'}),
   error,
   el('button', {type: 'submit', class: 'boton principal ancho', text: 'Enviar pedido'}));
   refrescar();
@@ -344,7 +347,7 @@ async function iniciar() {
   if (!r.ok) {
     if (r.motivo === 'pausado') {
       $('titulo').textContent = [r.sucursal?.empresa, r.sucursal?.nombre].filter(Boolean).join(' · ') || 'Chat en pausa';
-      return pantallaFija('Ahora no estamos tomando pedidos por chat', 'Volvé a intentar más tarde.');
+      return pantallaFija('Chat en pausa', r.sucursal?.mensaje || 'Ahora no estamos tomando pedidos por chat. Volvé a intentar más tarde.');
     }
     return pantallaFija('Chat no encontrado', r.error && r.status !== 404 ? r.error : 'Revisá el enlace que te compartió el local.');
   }
@@ -396,12 +399,14 @@ async function demoApi(accion, extra) {
   if (r.accion?.tipo === 'crear_pedido') {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
-    demoPedido = pedido = {codigo: 'DEMO-0001', estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: ''};
+    const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
+    demoPedido = pedido = conAviso({codigo: 'DEMO-0001', estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
+      entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
     r.estado.carrito = [];
-    mensajes.push({texto: '¡Listo! Enviamos tu pedido DEMO-0001 al local.\nTotal: ' + pesos(sub + envio) + '\nTe aviso acá apenas lo confirmen.'});
-    setTimeout(() => { if (demoPedido) demoPedido = {...demoPedido, estado: 'confirmado'}; }, 7000);
+    mensajes.push({texto: pedido.aviso});
+    setTimeout(() => { if (demoPedido) demoPedido = conAviso({...demoPedido, estado: 'terminado'}); }, 7000);
   } else if (r.accion?.tipo === 'estado') {
-    mensajes.push({texto: demoPedido ? 'Tu pedido ' + demoPedido.codigo + ': ' + demoPedido.estado + '.' : 'Todavía no enviaste ningún pedido.'});
+    mensajes.push({texto: demoPedido ? demoPedido.aviso : 'Todavía no enviaste ningún pedido.'});
   } else if (r.accion?.tipo === 'cancelar' && demoPedido?.estado === 'pendiente') {
     demoPedido = pedido = {...demoPedido, estado: 'cancelado'};
     mensajes.push({texto: 'Cancelamos tu pedido ' + demoPedido.codigo + '.'});

@@ -18,7 +18,7 @@
       "original": ""
     },
     {
-      "actual": "S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'pedidos-clientes' ? 'Pedidos WhatsApp' :",
+      "actual": "S.view === 'cierre-online' ? 'Pagos Online' : S.view === 'pedidos-clientes' ? 'Central de mensajes' :",
       "original": "S.view === 'cierre-online' ? 'Pagos Online' :"
     },
     {
@@ -27,7 +27,7 @@
       "count": 2
     },
     {
-      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Pedidos WhatsApp</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}",
+      "actual": "${puedeVerPedidosClientes() ? `<button data-go=\"pedidos-clientes\">${ic('cart')}<span class=\"nl\">Central de mensajes</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}",
       "original": ""
     },
     {

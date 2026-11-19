@@ -15,6 +15,38 @@ const VACIAS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'con', 'sin', 'y'
 const MAX_CARRITO = 30;
 const MAX_CANTIDAD = 50;
 
+/** Mensajes automáticos sugeridos. El dueño los cambia en el panel (vacío = este texto).
+ * Variables: {nombre} {codigo} {total} {direccion} {local} {motivo}. */
+export const MENSAJES_BASE = {
+  recibido: '¡Gracias, {nombre}! Recibimos tu pedido {codigo} y ya lo estamos preparando.\nTotal: {total}.\nTe aviso por acá cuando esté terminado.',
+  terminado_retiro: '¡Tu pedido {codigo} está listo! Ya podés pasar a retirarlo por {local}.',
+  terminado_envio: '¡Tu pedido {codigo} está listo y sale para {direccion}!',
+  rechazado: 'Lo sentimos, {nombre}: no pudimos tomar tu pedido {codigo}.\nMotivo: {motivo}',
+  pausado: 'Ahora no estamos tomando pedidos por chat. Volvé a intentar más tarde.',
+  despedida: '¡Gracias por escribirnos! Si necesitás algo más, acá estoy.',
+};
+/** Completa una plantilla con los datos (las variables sin dato quedan vacías). */
+export function plantilla(texto, datos) {
+  return String(texto ?? '').replace(/\{(nombre|codigo|total|direccion|local|motivo)\}/g, (_, k) => String(datos?.[k] ?? '')).replace(/[ \t]+\n/g, '\n').trim();
+}
+export function mensajeDe(mensajes, clave) {
+  const propio = mensajes && typeof mensajes[clave] === 'string' ? mensajes[clave].trim() : '';
+  return propio || MENSAJES_BASE[clave] || '';
+}
+/** Texto para el cliente según el estado de su pedido. */
+export function textoEstadoPedido(pedido, sucursal, mensajes) {
+  const s = sucursal || {};
+  const datos = {nombre: pedido.nombre || '', codigo: pedido.codigo, total: pesos(pedido.total),
+    direccion: pedido.direccion || 'tu dirección', local: s.direccion || ('el local de ' + (s.nombre || '')).trim(), motivo: pedido.motivo || ''};
+  switch (pedido.estado) {
+    case 'pendiente': return plantilla(mensajeDe(mensajes, 'recibido'), datos);
+    case 'terminado': return plantilla(mensajeDe(mensajes, pedido.entrega === 'envio' ? 'terminado_envio' : 'terminado_retiro'), datos);
+    case 'rechazado': return plantilla(mensajeDe(mensajes, 'rechazado'), datos);
+    case 'cancelado': return 'Cancelamos tu pedido ' + pedido.codigo + '.';
+    default: return '';
+  }
+}
+
 export const PAGOS = {
   efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito',
 };
@@ -177,17 +209,17 @@ function intencion(t) {
 const BOTONES_INICIO = [
   {id: 'carta', texto: 'Ver la carta'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'},
 ];
-function botonesCarrito(carrito) {
+export function botonesCarrito(carrito) {
   return carrito.length
     ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'carrito', texto: 'Ver mi pedido'}]
     : BOTONES_INICIO;
 }
 
-function textoHorario(s) {
+export function textoHorario(s) {
   return (s.horario ? 'Horario: ' + s.horario + '.' : 'El local todavía no cargó su horario.') +
     (s.direccion ? '\nEstamos en ' + s.direccion + '.' : '');
 }
-function textoEnvio(s) {
+export function textoEnvio(s) {
   const partes = [];
   if (s.acepta_retiro) partes.push('Podés retirar en el local' + (s.direccion ? ' (' + s.direccion + ')' : '') + '.');
   if (s.acepta_envio) {
@@ -197,17 +229,17 @@ function textoEnvio(s) {
   if (Number(s.pedido_minimo) > 0) partes.push('Pedido mínimo: ' + pesos(s.pedido_minimo) + '.');
   return partes.join('\n');
 }
-function textoPago(s) {
+export function textoPago(s) {
   return 'Aceptamos: ' + (s.medios_pago || ['efectivo']).map(m => PAGOS[m] || m).join(', ') + '.';
 }
-function textoCarrito(catalogo, carrito) {
+export function textoCarrito(catalogo, carrito) {
   if (!carrito.length) return 'Tu pedido está vacío. Tocá «Ver la carta» o escribime qué querés, por ejemplo «2 empanadas de carne».';
   return 'Tu pedido:\n' + carrito.map(l => '• ' + describirLinea(catalogo, l)).join('\n') +
     '\nTotal estimado: ' + pesos(totalCarrito(catalogo, carrito));
 }
 
 /** Agrega líneas al carrito (sumando cantidades si es igual). Devuelve los avisos. */
-function sumar(catalogo, carrito, lineas) {
+export function sumar(catalogo, carrito, lineas) {
   const avisos = [];
   for (const l of lineas) {
     const p = productoPorId(catalogo, l.producto_id);
@@ -223,7 +255,7 @@ function sumar(catalogo, carrito, lineas) {
 
 export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: []}; }
 
-function limpiarEstado(estado, catalogo) {
+export function limpiarEstado(estado, catalogo) {
   const e = Object.assign(estadoInicial(), estado && typeof estado === 'object' ? estado : {});
   e.carrito = (Array.isArray(e.carrito) ? e.carrito : []).filter(l => productoPorId(catalogo, l.producto_id) && Number.isInteger(l.cantidad)).slice(0, MAX_CARRITO);
   e.pendientes = (Array.isArray(e.pendientes) ? e.pendientes : []).slice(0, 4);
@@ -235,7 +267,7 @@ function limpiarEstado(estado, catalogo) {
  * @param {{sucursal, catalogo, estado, entrada:{texto?:string, boton?:string, agregar?:object, quitar?:number, datos?:object}}} p
  * @returns {{estado, mensajes:Array<{texto:string, botones?:Array, tipo?:string, productos?:Array}>, accion?:object}}
  */
-export function responder({sucursal, catalogo, estado, entrada}) {
+export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   const s = sucursal || {};
   const e = limpiarEstado(estado, catalogo);
   const out = [];
@@ -244,7 +276,7 @@ export function responder({sucursal, catalogo, estado, entrada}) {
   entrada = entrada || {};
 
   if (entrada.inicio) {
-    decir((s.bienvenida || ('¡Hola! Soy el asistente de ' + (s.empresa || 'el local') + ' ' + (s.nombre || '') + '.').trim()) +
+    decir((s.bienvenida || ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' + (s.nombre || '') + '.').trim()) +
       '\nPodés escribirme tu pedido, por ejemplo «2 empanadas de carne y 1 de jamón y queso», o mirar la carta.',
       {botones: BOTONES_INICIO});
     return fin();
@@ -300,7 +332,7 @@ export function responder({sucursal, catalogo, estado, entrada}) {
   switch (accion) {
     case 'vacio': decir('Escribime qué necesitás.', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'saludo': decir('¡Hola! ¿Qué te preparamos hoy?', {botones: botonesCarrito(e.carrito)}); return fin();
-    case 'gracias': decir('¡De nada! Si querés algo más, escribime.', {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'gracias': decir(mensajeDe(mensajes, 'despedida'), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'horario': decir(textoHorario(s) + '\n' + textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'envio': decir(textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'pago': decir(textoPago(s), {botones: botonesCarrito(e.carrito)}); return fin();
@@ -308,7 +340,7 @@ export function responder({sucursal, catalogo, estado, entrada}) {
     case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
     case 'vaciar': e.carrito = []; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
-    case 'humano': decir('Tu pedido llega al local y una persona lo confirma.' + (s.direccion ? ' También podés acercarte a ' + s.direccion + '.' : ''), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'humano': decir('Tu pedido llega al local y una persona lo prepara y te avisa cuando está terminado.' + (s.direccion ? ' También podés acercarte a ' + s.direccion + '.' : ''), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'estado': decir('Te muestro cómo va tu pedido.'); return fin({tipo: 'estado'});
     case 'cancelar':
       if (e.carrito.length) { e.carrito = []; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }

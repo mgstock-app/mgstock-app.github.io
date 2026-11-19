@@ -33,5 +33,5 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   const informe = out.slice(out.indexOf('INFORME') + 7).split('\nCONTEXT')[0];
   const lines = informe.split('\n').map(s => s.trim()).filter(Boolean);
   assert.deepEqual(lines.filter(l => l.startsWith('FALLA')), [], informe);
-  assert.ok(lines.filter(l => l.startsWith('OK')).length >= 75, informe);
+  assert.ok(lines.filter(l => l.startsWith('OK')).length >= 80, informe);
 });

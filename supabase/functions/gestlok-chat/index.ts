@@ -4,13 +4,22 @@
  * - Topes por IP, por conversación y por sucursal (en la base). Textos acotados. CORS solo para los dominios propios.
  * - Precios, totales, disponibilidad y numeración los decide la base. El asistente solo arma el carrito.
  * - No guarda nombre, teléfono ni dirección en el chat: esos datos van únicamente en el pedido.
- * Secretos: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (automáticos), GESTLOK_CHAT_SALT (opcional, recomendado),
- * GESTLOK_CHAT_ORIGINS (opcional, lista separada por comas).
+ * - Texto libre: lo responde la IA si la sucursal la tiene activa y hay clave; si no (o si falla), el motor sin IA.
+ * Secretos: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (automáticos), GESTLOK_CHAT_SALT (recomendado),
+ * GESTLOK_CHAT_ORIGINS (opcional), GESTLOK_CHAT_IA_PROVEEDOR («anthropic» u «openai»), GESTLOK_CHAT_IA_CLAVE,
+ * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { describirLinea, pesos, responder, totalCarrito, PAGOS } from "./motor.js";
+import { describirLinea, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
+type Turno = {
+  estado: Json & { carrito: unknown[]; paso?: unknown };
+  mensajes: Json[];
+  accion?: { tipo: string; pedido?: unknown };
+  motor?: string;
+};
 const env = (k: string) => Deno.env.get(k) || "";
 const ORIGENES = (env("GESTLOK_CHAT_ORIGINS") || "https://chat.gestlok.com.ar,https://gestlok.com.ar,https://www.gestlok.com.ar")
   .split(",").map((s) => s.trim()).filter(Boolean);
@@ -53,17 +62,10 @@ async function rpc(fn: string, args: Json) {
   if (error) throw error;
   return data as Json;
 }
-const ESTADOS: Record<string, string> = {
-  pendiente: "está esperando la confirmación del local",
-  confirmado: "fue CONFIRMADO por el local",
-  rechazado: "no pudo ser tomado por el local",
-  cancelado: "fue cancelado",
+const IA = {
+  proveedor: env("GESTLOK_CHAT_IA_PROVEEDOR") || (env("GESTLOK_CHAT_IA_CLAVE") ? "anthropic" : ""),
+  clave: env("GESTLOK_CHAT_IA_CLAVE"), modelo: env("GESTLOK_CHAT_IA_MODELO"), url: env("GESTLOK_CHAT_IA_URL"),
 };
-function textoPedido(p: Json) {
-  return "Tu pedido " + p.codigo + " " + (ESTADOS[String(p.estado)] || String(p.estado)) + "." +
-    (p.motivo && p.estado === "rechazado" ? "\nMotivo: " + p.motivo : "") +
-    "\nTotal: " + pesos(p.total) + (p.medio_pago ? " · " + (PAGOS[String(p.medio_pago)] || p.medio_pago) : "");
-}
 
 /** Valida y recorta la entrada del cliente (nunca se confía en el navegador). */
 function limpiarEntrada(e: unknown): Json | null {
@@ -120,6 +122,10 @@ Deno.serve(async (req) => {
     const suc = await rpc("gestlok_chat_srv_sucursal", { p_slug: slug });
     if (!suc.ok) return json({ ok: false, motivo: suc.motivo, sucursal: suc.sucursal ?? null }, suc.motivo === "pausado" ? 200 : 404, origen);
     const sucursal = suc.sucursal as Json; const catalogo = suc.catalogo as Json; const sucId = suc.id as string;
+    const privado = (suc.privado as Json) || {};
+    const mensajesLocal = (privado.mensajes as Json) || {};
+    // Cada pedido lleva el texto que corresponde a su estado, con los mensajes que configuró el local.
+    const conAviso = (p: Json) => ({ ...p, aviso: textoEstadoPedido(p, sucursal, mensajesLocal) });
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;
 
@@ -128,25 +134,36 @@ Deno.serve(async (req) => {
       let estado = (conv.estado as Json) || {};
       let extra: Json[] = [];
       if (conv.nueva) {
-        const r = responder({ sucursal, catalogo, estado, entrada: { inicio: true } });
+        const r = responder({ sucursal, catalogo, estado, entrada: { inicio: true }, mensajes: mensajesLocal });
         estado = r.estado; extra = r.mensajes;
         await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
           p_cliente: "", p_respuesta: r.mensajes.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
         mensajes = [];
       }
       return json({ ok: true, sucursal, catalogo, mensajes, nuevos: extra, carrito: (estado as Json).carrito ?? [],
-        pedidos: conv.pedidos ?? [] }, 200, origen);
+        pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso) }, 200, origen);
     }
 
     if (accion === "estado") {
-      return json({ ok: true, ...(await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash })) }, 200, origen);
+      const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
+      return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso) }, 200, origen);
     }
 
     if (accion !== "mensaje") return json({ ok: false, error: "Acción desconocida" }, 400, origen);
     const entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
 
-    const r = responder({ sucursal, catalogo, estado: conv.estado, entrada });
+    // Texto libre → IA (si está activa y configurada) con respaldo en el motor. Botones, carta y formulario → motor.
+    let r: Turno | null = null;
+    if (entrada.texto && privado.ia_activa !== false && IA.clave) {
+      try {
+        r = await responderIA({ sucursal, privado, catalogo, estado: conv.estado, historial: conv.mensajes,
+          texto: String(entrada.texto), config: IA }) as Turno;
+      } catch (e) {
+        console.warn("gestlok-chat IA → motor", (e as Error)?.message);
+      }
+    }
+    if (!r) r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
     const mensajes: Json[] = [...r.mensajes];
     let pedido: Json | null = null;
     // Lo que queda escrito del lado del cliente (sin datos personales).
@@ -161,20 +178,19 @@ Deno.serve(async (req) => {
       if (error) {
         mensajes.push({ texto: textoError(error) + "\nRevisá los datos y volvé a enviarlo.", tipo: "datos" });
       } else {
-        pedido = (data as Json).pedido as Json;
+        pedido = conAviso((data as Json).pedido as Json);
         r.estado.carrito = []; r.estado.paso = "enviado";
-        mensajes.push({ texto: "¡Listo! Enviamos tu pedido " + pedido.codigo + " al local.\nTotal: " + pesos(pedido.total) +
-          "\nTe aviso acá apenas lo confirmen. Dejá esta página abierta o volvé a entrar desde el mismo teléfono." });
+        mensajes.push({ texto: String(pedido.aviso) });
       }
     } else if (r.accion?.tipo === "estado") {
       const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
       const ult = ((est.pedidos as Json[]) || [])[0];
-      mensajes.push({ texto: ult ? textoPedido(ult) : "Todavía no enviaste ningún pedido desde este teléfono." });
-      pedido = ult ?? null;
+      pedido = ult ? conAviso(ult) : null;
+      mensajes.push({ texto: pedido ? String(pedido.aviso) : "Todavía no enviaste ningún pedido desde este teléfono." });
     } else if (r.accion?.tipo === "cancelar") {
       const { data, error } = await db.rpc("gestlok_chat_srv_cancelar", { p_conversacion: convId, p_token_hash: hash });
       if (error) mensajes.push({ texto: textoError(error) });
-      else { pedido = (data as Json).pedido as Json; mensajes.push({ texto: textoPedido(pedido) }); }
+      else { pedido = conAviso((data as Json).pedido as Json); mensajes.push({ texto: String(pedido.aviso) }); }
     }
 
     try {
@@ -184,7 +200,8 @@ Deno.serve(async (req) => {
       // Si el pedido ya se creó, el cliente tiene que enterarse aunque no se haya podido guardar el turno.
       if (!pedido || r.accion?.tipo !== "crear_pedido") throw e;
     }
-    return json({ ok: true, mensajes, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido }, 200, origen);
+    return json({ ok: true, mensajes, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
+      motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);
   } catch (e) {
     const err = e as { code?: string; message?: string };
     if (err?.code !== "P0001" && err?.code !== "22023") console.error("gestlok-chat", err?.code, err?.message);

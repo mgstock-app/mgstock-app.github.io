@@ -24,7 +24,10 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja .error-form').should('contain.text', 'dirección');
     cy.get('#hoja input[name=direccion]').type('Mitre 200');
     cy.get('#hoja button[type=submit]').click();
-    cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'DEMO-0001').and('contain.text', 'Esperando');
+    cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'DEMO-0001').and('contain.text', 'preparando');
+    cy.get('.burbuja.asistente').last().should('contain.text', 'Recibimos tu pedido DEMO-0001');
+    cy.get('#aviso-pedido', {timeout: 25000}).should('contain.text', '¡Pedido listo!');
+    cy.get('.burbuja.asistente').last().should('contain.text', 'está listo y sale para Mitre 200');
     cy.get('#barra-pedido').should('not.be.visible');
     sinDesborde();
   });
@@ -72,6 +75,7 @@ describe('GESTLOK Chat · chat público', () => {
   it('muestra la pausa y el chat inexistente', () => {
     cy.intercept('POST', FUNCION, {statusCode: 200, body: {ok: false, motivo: 'pausado', sucursal: {nombre: 'Don Torcuato', empresa: 'Mi Gusto'}}});
     cy.visit('/chat/?s=mi-gusto-torcuato');
+    cy.contains('Chat en pausa');
     cy.contains('Ahora no estamos tomando pedidos por chat');
     cy.get('#redactar').should('not.be.visible');
     cy.visit('/chat/');
@@ -80,12 +84,17 @@ describe('GESTLOK Chat · chat público', () => {
 });
 
 describe('GESTLOK Chat · panel', () => {
+  it('integrado en GESTLOK abre directo el local pedido y sin cabecera propia', () => {
+    cy.visit('/chat/panel/?demo=1&embed=1&local=torcuato');
+    cy.get('#pestanas').should('be.visible');
+  });
+
   it('sin sesión pide entrar a GESTLOK', () => {
     cy.visit('/chat/panel/');
     cy.contains('Entrá a GESTLOK');
   });
 
-  it('el gerente confirma, rechaza con motivo y marca agotado (demostración)', () => {
+  it('el gerente marca terminado, rechaza con motivo, marca agotado y edita mensajes (demostración)', () => {
     cy.viewport(390, 820);
     cy.visit('/chat/panel/?demo=1');
     cy.get('.tarjeta.pendiente').should('contain.text', 'MM-0007').and('contain.text', 'Ana Pérez');
@@ -93,12 +102,19 @@ describe('GESTLOK Chat · panel', () => {
     cy.contains('button', 'Rechazar…').click();
     cy.get('.rechazo .boton.peligro').click();
     cy.get('#aviso').should('contain.text', 'motivo');
+    cy.get('.acciones .boton.principal').should('have.text', 'Pedido terminado');
     cy.get('.acciones .boton.principal').click();
-    cy.get('#aviso').should('contain.text', 'MM-0007 confirmado');
-    cy.contains('No hay pedidos esperando confirmación');
+    cy.get('#aviso').should('contain.text', 'MM-0007 terminado');
+    cy.contains('No hay pedidos en preparación');
     cy.get('[data-p=carta]').click();
     cy.get('input[aria-label="Disponible: Empanada de carne"]').uncheck();
     cy.get('#aviso').should('contain.text', 'Empanada de carne agotado');
+    cy.get('[data-p=mensajes]').click();
+    cy.contains('label', 'Pedido terminado · retiro').find('textarea').clear().type('Listo {codigo}, pasá cuando quieras');
+    cy.get('.vista-previa').eq(1).should('contain.text', 'Listo MM-0012, pasá cuando quieras');
+    cy.contains('label', 'Indicaciones para la IA').find('textarea').type('Tratá de vos.');
+    cy.contains('button', 'Guardar mensajes').click();
+    cy.get('#aviso').should('contain.text', 'Mensajes guardados');
     cy.get('[data-p=ajustes]').click();
     cy.get('.enlace-publico a').should('have.attr', 'href', 'https://gestlok.com.ar/chat/?s=mi-gusto-munro');
     cy.get('.qr img').should('be.visible');

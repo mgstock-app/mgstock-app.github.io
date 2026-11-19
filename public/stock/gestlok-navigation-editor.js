@@ -99,7 +99,7 @@ function draw(){
   if(last?.nextElementSibling!==n)nav.insertBefore(n,last?.nextElementSibling||null);
   last=n;
  }
- // Munro y Don Torcuato: Inicio → Pagos Online → Pedidos WhatsApp → Stock Local.
+ // Munro y Don Torcuato: Inicio → Pagos Online → Central de mensajes → Stock Local.
  // Respeta los permisos existentes y prevalece sobre órdenes antiguos guardados.
  const inicio=known.get('inicio'),whatsapp=known.get('pedidos-clientes'),stockLocal=known.get('stock'),stockCajas=known.get('stock-cajas');
  if(stockCajas)stockCajas.dataset.navBuiltin='stock-cajas';
@@ -214,7 +214,7 @@ function actions(e){
 }
 async function save(){
  const c=ctx();if(!c?.creator||busy)return;
- // Pedidos WhatsApp es un acceso fijo del turno; el backend de personalización
+ // La Central de mensajes es un acceso fijo del turno; el backend de personalización
  // todavía guarda el resto de categorías. No enviar este ID nuevo al guardado legado.
  const items=draft.filter(x=>x.id!=='pedidos-clientes').map(x=>({id:x.id,label:trim(x.label),...(x.target?{target:x.target}:{})}));
  if(items.some(x=>x.label.length<2||x.label.length>45)){error='Cada nombre debe tener entre 2 y 45 caracteres.';paint();return;}

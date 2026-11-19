@@ -9,6 +9,8 @@
 --   * Panel (GESTLOK): funciones public.gestlok_chat_panel_* con sesión de GESTLOK. Cada una revisa
 --     empresa activa, rol (dueño, gerente, creadora) y sucursal. Nunca devuelven datos de otra empresa.
 --   * Precios y totales se calculan SIEMPRE en la base, con el catálogo vigente.
+--   * Pedido: «pendiente» (el asistente lo tomó; el local lo prepara) → «terminado» (el gerente avisa que está listo),
+--     «rechazado» (con motivo) o «cancelado» (por el cliente mientras está pendiente).
 
 create extension if not exists pgcrypto;
 create schema if not exists gestlok_chat_private;
@@ -23,6 +25,16 @@ create table if not exists gestlok_chat_private.empresas (
   creada_por uuid,
   actualizada_at timestamptz not null default now()
 );
+
+-- Mensajes automáticos que el dueño edita (vacío = texto sugerido). Solo claves conocidas y textos acotados.
+create or replace function gestlok_chat_private.mensajes_validos(p jsonb)
+returns boolean language sql immutable set search_path = '' as $$
+  select p is not null and jsonb_typeof(p) = 'object'
+    and not exists (select 1 from jsonb_each(p) e
+      where e.key not in ('recibido','terminado_retiro','terminado_envio','rechazado','pausado','despedida')
+         or jsonb_typeof(e.value) <> 'string' or length(e.value #>> '{}') > 600)
+$$;
+revoke all on function gestlok_chat_private.mensajes_validos(jsonb) from public, anon, authenticated;
 
 create table if not exists gestlok_chat_private.sucursales (
   id uuid primary key default gen_random_uuid(),
@@ -46,6 +58,12 @@ create table if not exists gestlok_chat_private.sucursales (
   ultimo_numero integer not null default 0 check (ultimo_numero >= 0),
   tope_pedidos_dia integer not null default 200 check (tope_pedidos_dia between 1 and 5000),
   tope_mensajes_dia integer not null default 3000 check (tope_mensajes_dia between 50 and 100000),
+  -- Asistente: la IA responde si está activa y hay clave en la función; si no, responde el motor sin IA.
+  mensajes jsonb not null default '{}'::jsonb check (gestlok_chat_private.mensajes_validos(mensajes)),
+  ia_activa boolean not null default true,
+  ia_nombre text not null default '' check (length(ia_nombre) <= 40),
+  ia_instrucciones text not null default '' check (length(ia_instrucciones) <= 2000),
+  ia_info text not null default '' check (length(ia_info) <= 4000),
   version integer not null default 1,
   actualizada_at timestamptz not null default now(),
   actualizada_por uuid,
@@ -164,7 +182,7 @@ create table if not exists gestlok_chat_private.pedidos (
   subtotal numeric(12,2) not null check (subtotal > 0),
   envio numeric(12,2) not null default 0 check (envio >= 0),
   total numeric(12,2) not null check (total > 0 and total < 100000000),
-  estado text not null default 'pendiente' check (estado in ('pendiente','confirmado','rechazado','cancelado')),
+  estado text not null default 'pendiente' check (estado in ('pendiente','terminado','rechazado','cancelado')),
   motivo text not null default '' check (length(motivo) <= 300),
   creado_at timestamptz not null default now(),
   decidido_at timestamptz,
@@ -181,13 +199,13 @@ create index if not exists gchat_pedidos_conv on gestlok_chat_private.pedidos(co
 create table if not exists gestlok_chat_private.pedido_eventos (
   id bigint generated always as identity primary key,
   pedido_id uuid not null references gestlok_chat_private.pedidos(id) on delete restrict,
-  evento text not null check (evento in ('creado','confirmado','rechazado','cancelado')),
+  evento text not null check (evento in ('creado','terminado','rechazado','cancelado')),
   actor uuid,
   detalle text not null default '' check (length(detalle) <= 300),
   creado_at timestamptz not null default now()
 );
 create unique index if not exists gchat_evento_decision_unica on gestlok_chat_private.pedido_eventos(pedido_id)
-  where evento in ('confirmado','rechazado','cancelado');
+  where evento in ('terminado','rechazado','cancelado');
 
 create table if not exists gestlok_chat_private.auditoria (
   id bigint generated always as identity primary key,
@@ -296,13 +314,15 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'empresa', (select e.nombre_publico from gestlok_chat_private.empresas e where e.tenant_id = s.tenant_id),
     'bienvenida', s.bienvenida, 'horario', s.horario, 'direccion', s.direccion,
     'acepta_retiro', s.acepta_retiro, 'acepta_envio', s.acepta_envio, 'envio_costo', s.envio_costo,
-    'envio_zona', s.envio_zona, 'pedido_minimo', s.pedido_minimo, 'medios_pago', to_jsonb(s.medios_pago))
+    'envio_zona', s.envio_zona, 'pedido_minimo', s.pedido_minimo, 'medios_pago', to_jsonb(s.medios_pago),
+    'asistente', s.ia_nombre)
 $$;
 
 create or replace function gestlok_chat_private.pedido_publico(p gestlok_chat_private.pedidos)
 returns jsonb language sql stable set search_path = '' as $$
   select jsonb_build_object('codigo', p.codigo, 'estado', p.estado, 'motivo', p.motivo, 'total', p.total,
-    'subtotal', p.subtotal, 'envio', p.envio, 'items', p.items, 'entrega', p.entrega,
+    'subtotal', p.subtotal, 'envio', p.envio, 'items', p.items, 'entrega', p.entrega, 'direccion', p.direccion,
+    'nombre', split_part(p.cliente_nombre, ' ', 1),
     'medio_pago', p.medio_pago, 'creado_at', p.creado_at, 'decidido_at', p.decidido_at)
 $$;
 
@@ -341,10 +361,14 @@ begin
   if s.id is null or not v_hab then return jsonb_build_object('ok', false, 'motivo', 'no_existe'); end if;
   if not s.activa then
     return jsonb_build_object('ok', false, 'motivo', 'pausado', 'sucursal', jsonb_build_object('nombre', s.nombre,
-      'empresa', (select e.nombre_publico from gestlok_chat_private.empresas e where e.tenant_id = s.tenant_id)));
+      'empresa', (select e.nombre_publico from gestlok_chat_private.empresas e where e.tenant_id = s.tenant_id),
+      'mensaje', coalesce(s.mensajes->>'pausado', '')));
   end if;
+  -- «privado» lo usa solo la función segura (instrucciones de la IA y plantillas); nunca se reenvía al cliente.
   return jsonb_build_object('ok', true, 'id', s.id, 'sucursal', gestlok_chat_private.sucursal_publica(s),
-    'catalogo', gestlok_chat_private.catalogo(s.id, true));
+    'catalogo', gestlok_chat_private.catalogo(s.id, true),
+    'privado', jsonb_build_object('mensajes', s.mensajes, 'ia_activa', s.ia_activa,
+      'ia_instrucciones', s.ia_instrucciones, 'ia_info', s.ia_info));
 end $$;
 
 -- Abre o retoma la conversación de este teléfono. Topes: conversaciones nuevas por IP y día.
@@ -543,7 +567,7 @@ begin
   if e.tenant_id is null then return jsonb_build_object('habilitado', false); end if;
   return jsonb_build_object('habilitado', true, 'empresa', e.nombre_publico,
     'sucursales', coalesce((select jsonb_agg(x order by x->>'nombre') from (
-      select jsonb_build_object('id', s.id, 'nombre', s.nombre, 'slug', s.slug, 'activa', s.activa,
+      select jsonb_build_object('id', s.id, 'nombre', s.nombre, 'slug', s.slug, 'local_id', s.local_id, 'activa', s.activa,
         'nivel', gestlok_chat_private.nivel(s.id),
         'pendientes', (select count(*) from gestlok_chat_private.pedidos p where p.sucursal_id = s.id and p.estado = 'pendiente')) x
       from gestlok_chat_private.sucursales s where s.tenant_id = e.tenant_id and gestlok_chat_private.nivel(s.id) is not null) q), '[]'::jsonb));
@@ -553,7 +577,7 @@ create or replace function public.gestlok_chat_panel_pedidos(p_sucursal uuid, p_
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare v_nivel text := gestlok_chat_private.exigir(p_sucursal, 'ver');
 begin
-  if coalesce(p_estado, '') not in ('pendiente','confirmado','rechazado','cancelado','todos') then
+  if coalesce(p_estado, '') not in ('pendiente','terminado','rechazado','cancelado','todos') then
     raise exception 'Filtro inválido' using errcode = '22023';
   end if;
   return jsonb_build_object('nivel', v_nivel, 'pedidos', coalesce((select jsonb_agg(jsonb_build_object(
@@ -573,7 +597,7 @@ declare v_suc uuid; v_ped gestlok_chat_private.pedidos;
 begin
   select sucursal_id into v_suc from gestlok_chat_private.pedidos where id = p_pedido;
   perform gestlok_chat_private.exigir(v_suc, 'gestionar');
-  if p_decision not in ('confirmado','rechazado') then raise exception 'Decisión inválida' using errcode = '22023'; end if;
+  if p_decision not in ('terminado','rechazado') then raise exception 'Decisión inválida' using errcode = '22023'; end if;
   if p_decision = 'rechazado' and length(btrim(coalesce(p_motivo, ''))) < 3 then
     raise exception 'Escribí el motivo del rechazo para el cliente' using errcode = '22023';
   end if;
@@ -664,7 +688,8 @@ declare v_nivel text := gestlok_chat_private.exigir(p_sucursal, 'ver'); s gestlo
 begin
   select * into s from gestlok_chat_private.sucursales where id = p_sucursal;
   return gestlok_chat_private.sucursal_publica(s) || jsonb_build_object('id', s.id, 'activa', s.activa, 'prefijo', s.prefijo,
-    'tope_pedidos_dia', s.tope_pedidos_dia, 'version', s.version, 'nivel', v_nivel);
+    'tope_pedidos_dia', s.tope_pedidos_dia, 'version', s.version, 'nivel', v_nivel, 'mensajes', s.mensajes,
+    'ia_activa', s.ia_activa, 'ia_nombre', s.ia_nombre, 'ia_instrucciones', s.ia_instrucciones, 'ia_info', s.ia_info);
 end $$;
 
 create or replace function public.gestlok_chat_panel_config_guardar(p_sucursal uuid, p_config jsonb, p_version integer)
@@ -687,6 +712,13 @@ begin
     envio_zona = coalesce(left(p_config->>'envio_zona', 300), envio_zona),
     pedido_minimo = coalesce((p_config->>'pedido_minimo')::numeric, pedido_minimo),
     medios_pago = coalesce(v_medios, medios_pago),
+    mensajes = case when jsonb_typeof(p_config->'mensajes') = 'object'
+      then (select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb) from jsonb_each(p_config->'mensajes') e
+            where jsonb_typeof(e.value) = 'string' and length(btrim(e.value #>> '{}')) > 0) else mensajes end,
+    ia_activa = coalesce((p_config->>'ia_activa')::boolean, ia_activa),
+    ia_nombre = coalesce(left(btrim(p_config->>'ia_nombre'), 40), ia_nombre),
+    ia_instrucciones = coalesce(left(p_config->>'ia_instrucciones', 2000), ia_instrucciones),
+    ia_info = coalesce(left(p_config->>'ia_info', 4000), ia_info),
     version = version + 1, actualizada_at = now(), actualizada_por = auth.uid()
    where id = p_sucursal and version = p_version returning * into s;
   if s.id is null then raise exception 'Otra persona cambió la configuración. Volvé a abrirla.' using errcode = '40001'; end if;
