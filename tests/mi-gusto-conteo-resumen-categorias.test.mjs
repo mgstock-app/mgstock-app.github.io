@@ -12,7 +12,7 @@ const today=()=>{
  return value('year')+'-'+value('month')+'-'+value('day');
 };
 
-function mount(local,{extraEmpanadas=0}={}){
+function mount(local,{extraEmpanadas=0,showDecomiso=false}={}){
  const date=today(),drawn=[],calls=[],events=new Map(),canvases=[];
  const ctx={fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},
   fillText(value,x,y){drawn.push({text:String(value),x,y,font:this.font});},
@@ -38,7 +38,7 @@ function mount(local,{extraEmpanadas=0}={}){
   data[id]={v1:{qty:i+1}};
  }
  const rec={day:date,shift:'manana_entrada',status:'finalizado',responsable:'Cami',data,
-  decomiso:{},decomiso_visible:false,consumption:[{name:'Empleado 1',value:'1'}],
+  decomiso:showDecomiso?{a:{qty:2}}:{},decomiso_visible:showDecomiso,consumption:[{name:'Empleado 1',value:'1'}],
   waste:[],waste_visible:false,hidden_sections:[]};
  window.GestLokSupabase={rpc:async(name,args)=>{
   calls.push({name,args});
@@ -144,5 +144,25 @@ for(const local of ['munro','torcuato']){
   assert.match(emp,/<strong>EMP 24<\/strong><\/td><td class="gcm-hd-summary-number">24<\/td>/);
   assert.match(html.slice(otherStart),/ADEREZOS/);
   assert.ok(a.calls.every(x=>!(/_set_|_finalize|_add_|_remove_/.test(x.name))));
+ });
+}
+
+for(const local of ['munro','torcuato']){
+ test('Detalle por vencimiento de '+local+': Decomiso queda primero solo al activarse',async()=>{
+  const a=mount(local,{showDecomiso:true});a.mod.view();await tick();await tick();
+  await a.click('data-gcm-history-open');await a.click('data-gcm-history-day',a.date);
+  await a.click('data-gcm-history',a.date+'|manana_entrada');
+  const html=a.mod.view();
+  const first=html.indexOf('<details class="gcm-hd-category"');
+  const section=html.slice(first,html.indexOf('</details>',first));
+  assert.match(section,/<thead><tr><th>Decomiso<\/th><th>Producto<\/th><th>Vto 1<\/th>/);
+  assert.match(section,/<tr><td class="gcm-hd-qty"><strong>2<\/strong><\/td><th scope="row">AC<\/th>/);
+  assert.match(section,/class="gcm-hd-total">14<\/td>/);
+  assert.ok(a.calls.every(x=>!(/_set_|_finalize|_add_|_remove_/.test(x.name))));
+  const b=mount(local);b.mod.view();await tick();await tick();
+  await b.click('data-gcm-history-open');await b.click('data-gcm-history-day',b.date);
+  await b.click('data-gcm-history',b.date+'|manana_entrada');
+  assert.match(b.mod.view(),/<thead><tr><th>Producto<\/th><th>Vto 1<\/th>/);
+  assert.doesNotMatch(b.mod.view(),/<th>Decomiso<\/th>/);
  });
 }
