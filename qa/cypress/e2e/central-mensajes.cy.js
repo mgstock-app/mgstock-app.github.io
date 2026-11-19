@@ -1,6 +1,6 @@
 /* global Cypress, describe, it, cy */
 // Central de mensajes (GESTLOK Chat) dentro de GESTLOK, en lugar de Pedidos WhatsApp. Solo datos ficticios.
-const setup=(email,width=390,tenant='')=>{
+const setup=(email,width=390,opciones={})=>{
  cy.viewport(width,844);
  cy.task('mockSupabase').then(fake=>{
    cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body:fake}).as('mock');
@@ -8,7 +8,7 @@ const setup=(email,width=390,tenant='')=>{
  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
  cy.visit('/');cy.wait('@mock');
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
- if(tenant)cy.window().then(w=>{w.__tenantOverride=tenant;w.__companyOverride='Otra empresa ficticia';});
+ cy.window().then(w=>{if(opciones.panel)w.__dashboard=true;if(opciones.sinChat)w.__chatSinEmpresa=true;});
  cy.get('#au-email').clear().type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
@@ -83,7 +83,7 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
 
  it('micro app general: la administradora la activa por empresa desde su panel',()=>{
   cy.on('window:confirm',()=>true);
-  setup('kmu15lopez@gmail.com',1280);
+  setup('kmu15lopez@gmail.com',1280,{panel:true});
   cy.get('.gl-ch-microapp',{timeout:15000}).contains('GESTLOK Chat').click();
   cy.get('.gl-ch-nav [data-ch-tab="herramientas"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-chat-admin',{timeout:15000}).should('contain.text','un chat por local');
@@ -95,8 +95,8 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.get('[data-ch-chat-company="00000000-0000-4000-8000-000000000222"]',{timeout:10000}).should('contain.text','Pausada');
  });
 
- it('otra empresa sin GESTLOK Chat no ve la Central',()=>{
-  setup('dueno@example.com',1280,'00000000-0000-4000-8000-000000000222');
+ it('si el servidor no tiene GESTLOK Chat encendido para la empresa, no aparece la Central',()=>{
+  setup('gerente.munro@example.com',1280,{sinChat:true});
   cy.get('#snav button[data-go="inicio"]',{timeout:15000}).should('exist');
   cy.wait(1500);
   cy.get('#snav button[data-go="pedidos-clientes"]').should('not.exist');

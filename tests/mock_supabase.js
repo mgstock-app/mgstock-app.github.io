@@ -204,7 +204,7 @@
     const sinPermiso = {data: null, error: {code: '42501', message: 'No tenés permiso para esta acción de GESTLOK Chat'}};
     const pend = loc => C.pedidos.filter(p => p.local === loc && p.estado === 'pendiente').length;
     // Como en el servidor: solo las empresas con GESTLOK Chat encendido (en el simulador, Mi Gusto).
-    if (fn === 'gestlok_chat_panel_inicio' && window.__tenantOverride && window.__tenantOverride !== 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670') return {data: {habilitado: false}, error: null};
+    if (fn === 'gestlok_chat_panel_inicio' && (window.__chatSinEmpresa || (window.__tenantOverride && window.__tenantOverride !== 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'))) return {data: {habilitado: false}, error: null};
     if (fn === 'gestlok_chat_panel_inicio') return {data: {habilitado: true, empresa: 'Mi Gusto', sucursales: Object.keys(suc).filter(nivel).map(loc =>
       ({id: suc[loc], local_id: loc, nombre: loc === 'munro' ? 'Munro' : 'Don Torcuato', slug: 'mi-gusto-' + loc, activa: true, nivel: nivel(loc), pendientes: pend(loc)}))}, error: null};
     // Administradora: encender, pausar y listar GESTLOK Chat por empresa (sin datos de clientes).
