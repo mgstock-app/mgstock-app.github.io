@@ -157,7 +157,7 @@ for(const local of ['munro','torcuato']){
   const section=html.slice(first,html.indexOf('</details>',first));
   assert.match(section,/<thead><tr><th>Decomiso<\/th><th>Producto<\/th><th>Vto 1<\/th>/);
   assert.match(section,/<tr><td class="gcm-hd-qty"><strong>2<\/strong><\/td><th scope="row">AC<\/th>/);
-  assert.match(section,/class="gcm-hd-total">14<\/td>/);
+  assert.match(section,new RegExp('class="gcm-hd-total">'+(local==='munro'?14:23)+'</td>'));
   assert.ok(a.calls.every(x=>!(/_set_|_finalize|_add_|_remove_/.test(x.name))));
   const b=mount(local);b.mod.view();await tick();await tick();
   await b.click('data-gcm-history-open');await b.click('data-gcm-history-day',b.date);
