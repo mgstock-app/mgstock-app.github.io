@@ -191,12 +191,13 @@
     } catch (e) { return err(typeof e === 'string' ? e : 'Error'); }
   }
   // GESTLOK Chat · Central de mensajes (como las RPC gestlok_chat_panel_*): datos ficticios en memoria.
-  // Dueño y creadora configuran; el gerente solo gestiona su local; lectura y otros no ven nada.
+  // Dueño y creadora configuran todo; el gerente gestiona su local (pedidos, carta y mensajes); lectura y otros no ven nada.
   function chatRpc(fn, x, a){
     const C = window.__chat = window.__chat || {pedidos: [{id: 'ch-1', local: 'munro', codigo: 'MM-0001', estado: 'pendiente', motivo: '',
       cliente_nombre: 'Cliente Ficticio', cliente_telefono: '1100000000', entrega: 'retiro', direccion: '', horario: '', medio_pago: 'efectivo', nota: '',
       subtotal: 3000, envio: 0, total: 3000, creado_at: new Date().toISOString(), decidido_at: null,
-      items: [{cantidad: 3, nombre: 'Empanada de prueba', opciones: [], nota: '', importe: 3000}]}], version: {munro: 1, torcuato: 1}};
+      items: [{cantidad: 3, nombre: 'Empanada de prueba', opciones: [], nota: '', importe: 3000}]}], version: {munro: 1, torcuato: 1},
+      carta: {munro: {categorias: [], productos: []}, torcuato: {categorias: [], productos: []}}, mensajes: {munro: {}, torcuato: {}}};
     const suc = {munro: 'suc-munro', torcuato: 'suc-torcuato'}, deSuc = id => Object.keys(suc).find(k => suc[k] === id);
     const nivel = loc => !a ? null : ['dueno', 'creadora'].includes(a.rol) ? 'configurar'
       : (a.rol === 'gerente' && (a.locales || []).includes(loc)) ? 'gestionar' : null;
@@ -213,10 +214,28 @@
       Object.assign(p, {estado: x.p_decision, motivo: x.p_motivo || '', decidido_at: new Date().toISOString()});
       return {data: {ok: true, codigo: p.codigo, estado: p.estado}, error: null};
     }
-    if (fn === 'gestlok_chat_panel_catalogo') return {data: {categorias: [], productos: [], nivel: nivel(loc)}, error: null};
+    if (fn === 'gestlok_chat_panel_catalogo') return {data: {...C.carta[loc], nivel: nivel(loc)}, error: null};
+    if (fn === 'gestlok_chat_panel_categoria_guardar') {
+      const id = x.p_id || ('cat-' + loc + '-' + (C.carta[loc].categorias.length + 1));
+      C.carta[loc].categorias = C.carta[loc].categorias.filter(k => k.id !== id).concat({id, nombre: x.p_nombre, orden: x.p_orden || 0, activa: x.p_activa !== false});
+      return {data: {ok: true, id}, error: null};
+    }
+    if (fn === 'gestlok_chat_panel_producto_guardar') {
+      const q = x.p_producto || {}, id = q.id || ('prod-' + loc + '-' + (C.carta[loc].productos.length + 1));
+      C.carta[loc].productos = C.carta[loc].productos.filter(k => k.id !== id).concat({...q, id, opciones: q.opciones || []});
+      return {data: {ok: true, id}, error: null};
+    }
+    if (fn === 'gestlok_chat_panel_config_guardar') {
+      const soloMensajes = ['mensajes', 'bienvenida', 'ia_activa', 'ia_nombre', 'ia_instrucciones', 'ia_info'];
+      if (nivel(loc) !== 'configurar' && Object.keys(x.p_config || {}).some(k => !soloMensajes.includes(k))) return sinPermiso;
+      if (x.p_version !== C.version[loc]) return {data: null, error: {code: '40001', message: 'Otra persona cambió la configuración. Volvé a abrirla.'}};
+      if (x.p_config?.mensajes) C.mensajes[loc] = x.p_config.mensajes;
+      C.version[loc] += 1;
+      return {data: {ok: true, version: C.version[loc]}, error: null};
+    }
     if (fn === 'gestlok_chat_panel_config') return {data: {id: suc[loc], slug: 'mi-gusto-' + loc, nombre: loc, empresa: 'Mi Gusto', activa: true, prefijo: 'MM',
       bienvenida: '', horario: '', direccion: '', acepta_retiro: true, acepta_envio: false, envio_costo: 0, envio_zona: '', pedido_minimo: 0,
-      medios_pago: ['efectivo'], version: C.version[loc], nivel: nivel(loc), mensajes: {}, ia_activa: true, ia_nombre: '', ia_instrucciones: '', ia_info: ''}, error: null};
+      medios_pago: ['efectivo'], version: C.version[loc], nivel: nivel(loc), mensajes: C.mensajes[loc], ia_activa: true, ia_nombre: '', ia_instrucciones: '', ia_info: ''}, error: null};
     if (fn === 'gestlok_chat_panel_conversaciones') return {data: [], error: null};
     return {data: null, error: {code: 'P0001', message: 'Función de prueba no simulada: ' + fn}};
   }

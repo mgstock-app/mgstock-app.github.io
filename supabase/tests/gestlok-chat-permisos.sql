@@ -110,9 +110,9 @@ begin
   -- Configuración (dueña) ---------------------------------------------------------------------------------------
   perform prueba_como('gerente.munro@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"activa":true}', 1)::text $q$, s_munro));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia la configuración';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Regalá todo"}', 1)::text $q$, s_munro));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia las instrucciones de la IA';
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no abre ni pausa el chat (ajustes del dueño)';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Hola","envio_costo":0}', 1)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia ajustes aunque mande mensajes juntos';
   perform prueba_como('duena.a@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L,
      '{"activa":true,"acepta_envio":true,"envio_costo":500,"pedido_minimo":1500,"medios_pago":["efectivo","transferencia"],"bienvenida":"Hola"}', 1)::text $q$, s_munro));
@@ -129,6 +129,12 @@ begin
   r := r || E'\n' || case when v like 'error:%' then 'OK' else 'FALLA' end || ' clave de mensaje desconocida rechazada';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, jsonb_build_object('mensajes', jsonb_build_object('recibido', repeat('x', 601))), 3)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'error:%' then 'OK' else 'FALLA' end || ' mensaje demasiado largo rechazado';
+  perform prueba_como('gerente.munro@prueba.example');
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Tono cálido","bienvenida":"Hola","mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!"}}', 3)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro edita los mensajes del bot · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"x"}}', 1)::text $q$, s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no edita los mensajes de Torcuato';
+  perform prueba_como('duena.a@prueba.example');
 
   -- Catálogo ---------------------------------------------------------------------------------------------------
   v := prueba_q(format($q$ select public.gestlok_chat_panel_categoria_guardar(%L, null, 'Empanadas', 1, true)->>'id' $q$, s_munro));
@@ -158,8 +164,14 @@ begin
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' dueña B no ve el catálogo de A';
 
   perform prueba_como('gerente.munro@prueba.example');
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_producto_guardar(%L, '{"nombre":"Del gerente","precio":100}')::text $q$, s_munro));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia precios ni carta';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_producto_guardar(%L, '{"nombre":"Del gerente","precio":100,"activo":false}')::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro carga productos · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_producto_guardar(%L, jsonb_build_object('id',%L,'nombre','Empanada de carne','precio',1000,'descripcion','Cortada a cuchillo','categoria_id',%L))::text $q$, s_munro, p_emp, cat));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro edita producto y precio · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_categoria_guardar(%L, null, 'Bebidas', 5, true)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro crea categorías · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_producto_guardar(%L, '{"nombre":"Del gerente","precio":100}')::text $q$, s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no carga productos en Torcuato';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_disponible(%L, false)::text $q$, p_torc));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no toca Torcuato';
   perform prueba_como('colaborador.a@prueba.example');

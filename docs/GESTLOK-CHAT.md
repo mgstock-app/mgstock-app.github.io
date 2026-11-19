@@ -52,14 +52,16 @@ Claves foráneas compuestas (`tenant_id`, `sucursal_id`) impiden mezclar datos d
 
 ## 3. Permisos
 
-| Quién | Pedidos | Carta | Ajustes | Conversaciones |
-|---|---|---|---|---|
-| Dueño de la empresa | Pedido terminado / rechazar | Todo (precios, opciones, categorías) | Todo | Leer |
-| Gerente de **esa** sucursal | Pedido terminado / rechazar | Solo «agotado / disponible» | Ver (mensajes también) | Leer |
-| Creadora con escritura activa | Como dueño | Como dueño | Como dueño | Leer |
-| Creadora en soporte (solo lectura) | Ver | Ver | Ver | — |
-| Colaborador, otra empresa, sin sesión | — | — | — | — |
-| Cliente (público) | El suyo, por su token | Carta pública | — | La suya |
+| Quién | Pedidos | Carta | Mensajes del bot | Ajustes del local | Conversaciones |
+|---|---|---|---|---|---|
+| Dueño de la empresa | Pedido terminado / rechazar | Todo (productos, precios, opciones, categorías, agotado) | Editar | Todo | Leer |
+| Gerente de **esa** sucursal | Pedido terminado / rechazar | Todo (productos, precios, opciones, categorías, agotado) | Editar | Ver | Leer |
+| Administradora (creadora) con escritura activa | Como dueño | Como dueño | Como dueño | Como dueño | Leer |
+| Creadora en soporte (solo lectura) | Ver | Ver | Ver | Ver | — |
+| Colaborador, otra empresa, sin sesión | — | — | — | — | — |
+| Cliente (público) | El suyo, por su token | Carta pública | Los recibe | — | La suya |
+
+Ajustes del local = abrir o pausar el chat, retiro/envío, costo y zona de envío, pedido mínimo, medios de pago, horario y dirección.
 
 Siempre dentro de la empresa activa de GESTLOK (`gestlok_tenancy.current_tenant_id()`), con `public.mi_rol()` y
 `public.puede_editar_local()`.

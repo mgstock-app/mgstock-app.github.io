@@ -8,6 +8,8 @@
 --     Las funciones public.gestlok_chat_srv_* no se pueden ejecutar desde anon ni authenticated.
 --   * Panel (GESTLOK): funciones public.gestlok_chat_panel_* con sesión de GESTLOK. Cada una revisa
 --     empresa activa, rol (dueño, gerente, creadora) y sucursal. Nunca devuelven datos de otra empresa.
+--     Carta (productos, precios, categorías) y mensajes del asistente: dueño, administradora y gerente de ESE local.
+--     Ajustes del local (abrir/pausar el chat, entrega, pagos, horario, dirección): dueño y administradora.
 --   * Precios y totales se calculan SIEMPRE en la base, con el catálogo vigente.
 --   * Pedido: «pendiente» (el asistente lo tomó; el local lo prepara) → «terminado» (el gerente avisa que está listo),
 --     «rechazado» (con motivo) o «cancelado» (por el cliente mientras está pendiente).
@@ -248,8 +250,9 @@ begin
   return v_n <= p_max;
 end $$;
 
--- Nivel del usuario del panel en una sucursal: configurar (dueño/creadora), gestionar (gerente de esa
--- sucursal), ver (creadora en modo soporte, solo lectura) o null. Siempre dentro de la empresa activa.
+-- Nivel del usuario del panel en una sucursal: configurar (dueño/creadora: todo), gestionar (gerente de esa
+-- sucursal: pedidos, carta y mensajes), ver (creadora en modo soporte, solo lectura) o null.
+-- Siempre dentro de la empresa activa.
 create or replace function gestlok_chat_private.nivel(p_sucursal uuid)
 returns text language plpgsql stable security definer set search_path = '' as $$
 declare v_t uuid; v_local text; v_rol text;
@@ -622,7 +625,7 @@ create or replace function public.gestlok_chat_panel_categoria_guardar(
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare s gestlok_chat_private.sucursales; v_id uuid;
 begin
-  perform gestlok_chat_private.exigir(p_sucursal, 'configurar');
+  perform gestlok_chat_private.exigir(p_sucursal, 'gestionar');
   select * into s from gestlok_chat_private.sucursales where id = p_sucursal;
   if p_id is null then
     insert into gestlok_chat_private.categorias(tenant_id, sucursal_id, nombre, orden, activa)
@@ -640,7 +643,7 @@ create or replace function public.gestlok_chat_panel_producto_guardar(p_sucursal
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare s gestlok_chat_private.sucursales; v_id uuid; v_cat uuid; v_antes jsonb; v_precio numeric;
 begin
-  perform gestlok_chat_private.exigir(p_sucursal, 'configurar');
+  perform gestlok_chat_private.exigir(p_sucursal, 'gestionar');
   select * into s from gestlok_chat_private.sucursales where id = p_sucursal;
   if p_producto is null or jsonb_typeof(p_producto) <> 'object' then raise exception 'Datos inválidos' using errcode = '22023'; end if;
   v_cat := case when coalesce(p_producto->>'categoria_id', '') ~ '^[0-9a-f-]{36}$' then (p_producto->>'categoria_id')::uuid end;
@@ -694,10 +697,15 @@ end $$;
 
 create or replace function public.gestlok_chat_panel_config_guardar(p_sucursal uuid, p_config jsonb, p_version integer)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare s gestlok_chat_private.sucursales; v_medios text[];
+declare s gestlok_chat_private.sucursales; v_medios text[]; v_nivel text;
 begin
-  perform gestlok_chat_private.exigir(p_sucursal, 'configurar');
+  v_nivel := gestlok_chat_private.exigir(p_sucursal, 'gestionar');
   if p_config is null or jsonb_typeof(p_config) <> 'object' then raise exception 'Datos inválidos' using errcode = '22023'; end if;
+  -- El gerente edita los mensajes del asistente; los ajustes del local quedan para el dueño y la administradora.
+  if v_nivel <> 'configurar' and exists (select 1 from jsonb_object_keys(p_config) k
+       where k not in ('mensajes','bienvenida','ia_activa','ia_nombre','ia_instrucciones','ia_info')) then
+    raise exception 'Los ajustes del local (estado, entrega, pagos, horario) los cambia el dueño' using errcode = '42501';
+  end if;
   if jsonb_typeof(p_config->'medios_pago') = 'array' then
     select array_agg(distinct x) into v_medios from jsonb_array_elements_text(p_config->'medios_pago') x;
   end if;

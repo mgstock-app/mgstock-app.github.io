@@ -212,11 +212,12 @@
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando la carta…'}));
     let c;
     try { c = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    const config = puede('configurar');
+    // Carta: dueño, administradora y gerente del local (lo valida la base).
+    const config = puede('gestionar');
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
     poner(contenido,
-      el('p', {class: 'nota', text: config ? 'Cargá lo que ofrecés por chat. «Agotado» lo puede marcar también el gerente.' : 'Marcá «Agotado» lo que no haya hoy. Los precios los cambia el dueño.'}),
+      el('p', {class: 'nota', text: config ? 'Cargá lo que ofrecés por chat: productos, precios y categorías. «Hay» se apaga cuando algo se agota.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
         el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)})) : null,
@@ -317,7 +318,8 @@
     if (!motor) motor = await import('/chat/motor.js').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    const editable = puede('configurar');
+    // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
+    const editable = puede('gestionar');
     const ejemplo = {nombre: 'Ana', codigo: (a.prefijo || 'P') + '-0012', total: '$ 8.400', direccion: 'Av. Mitre 2200', local: a.direccion || ('el local de ' + a.nombre), motivo: 'nos quedamos sin stock'};
     const area = (valor, max, filas, ph) => { const t = el('textarea', {rows: String(filas), maxlength: String(max), placeholder: ph || '', disabled: !editable}); t.value = valor || ''; return t; };
     const activa = el('input', {type: 'checkbox', checked: a.ia_activa !== false, disabled: !editable});
@@ -357,7 +359,7 @@
       el('p', {class: 'nota', text: 'Dejalo vacío para usar el texto sugerido. Podés usar: {nombre} {codigo} {total} {direccion} {local} {motivo}.'}),
       plantillas),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar mensajes'})
-      : el('p', {class: 'nota', text: 'Solo el dueño puede cambiar los mensajes.'}));
+      : el('p', {class: 'nota', text: 'Mensajes en solo lectura.'}));
     contenido.replaceChildren(form);
   }
 
@@ -403,7 +405,7 @@
       campo('Zona de envío', inp('envio_zona', {type: 'text', maxlength: '300', placeholder: 'Ej.: Munro, Florida y Carapachay'})),
       el('p', {class: 'etiqueta', text: 'Medios de pago'}), el('div', {class: 'medios'}, medios)),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
-      : el('p', {class: 'nota', text: 'Solo el dueño puede cambiar estos ajustes.'}));
+      : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
     contenido.replaceChildren(form);
   }
 

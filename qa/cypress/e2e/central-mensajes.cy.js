@@ -45,6 +45,33 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   central().find('[data-p="carta"]').should('have.attr','aria-selected','true');
  });
 
+ it('gerente de Munro edita carta (producto, precio y categoría) y mensajes del bot; los ajustes quedan para el dueño',()=>{
+  setup('gerente.munro@example.com',1280);
+  cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();
+  central().find('[data-p="carta"]').click();
+  central().contains('button','+ Categoría').click();
+  central().find('dialog.dialogo input[type="text"]').first().type('Empanadas');
+  central().find('dialog.dialogo').contains('button','Guardar').click();
+  central().find('#aviso').should('contain.text','Categoría guardada');
+  central().contains('button','+ Producto').click();
+  central().find('dialog.dialogo input[type="text"]').first().type('Empanada de carne');
+  central().find('dialog.dialogo input[type="number"]').first().type('1500');
+  central().find('dialog.dialogo').contains('button','Guardar').click();
+  central().find('#aviso').should('contain.text','Producto guardado');
+  central().find('.producto').should('contain.text','Empanada de carne').and('contain.text','1.500');
+  central().find('.producto').contains('button','Editar').click();
+  central().find('dialog.dialogo input[type="number"]').first().clear().type('1700');
+  central().find('dialog.dialogo').contains('button','Guardar').click();
+  central().find('.producto').should('contain.text','1.700');
+  central().find('[data-p="mensajes"]').click();
+  central().find('textarea').last().type('¡Gracias por tu compra!',{parseSpecialCharSequences:false});
+  central().contains('button','Guardar mensajes').click();
+  central().find('#aviso').should('contain.text','Mensajes guardados');
+  central().find('[data-p="ajustes"]').click();
+  central().contains('button','Guardar ajustes').should('not.exist');
+  central().contains('los cambia el dueño o la administradora');
+ });
+
  it('gerente de Torcuato ve solo su local',()=>{
   setup('gerente.torcuato@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();

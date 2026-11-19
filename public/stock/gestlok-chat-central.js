@@ -9,7 +9,7 @@
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
 const PAUSA_MS=15000;
-const VERSION_PANEL='20261119c';
+const VERSION_PANEL='20261119d';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,vistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
