@@ -32,3 +32,14 @@ test('Las diferencias cambiantes van después de la planilla, sin mover el conte
  assert.ok(table>0&&review>table,'No poner filas variables encima de los vencimientos');
  assert.match(source,/gcm-morning-quick-note/);
 });
+
+test('Notificaciones ajenas y sincronización no reconstruyen Conteo durante la carga',()=>{
+ const app=read('public/stock/app.js');
+ assert.match(app,/function onSnapRefresh\(\)\{[\s\S]*?S\.view === 'conteo-munro' && puedeVerConteoMunro\(\)\) renderLive\(\);\s*else render\(\);/);
+ assert.match(app,/addEventListener\('gestlok-sync-complete',[\s\S]*?S\.view === 'conteo-munro' && puedeVerConteoMunro\(\)\) \{ renderLive\(\); return; \}/);
+ assert.match(app,/if \(ch && S\.view !== 'conteo-munro'\) render\(\)/);
+ const conteo=read('public/stock/mi-gusto-conteo.js');
+ assert.match(conteo,/if\(input\.hasAttribute\('data-gcm-extra'\)\)\{void updateExtra\(input\);return;\}/);
+ assert.match(conteo,/rec\[kind\]=safe;/);
+ assert.match(conteo,/return schedule\(d\+'\|'\+s\+'\|'\+kind/);
+});

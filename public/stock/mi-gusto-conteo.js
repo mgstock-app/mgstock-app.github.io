@@ -22,6 +22,8 @@ function nextTurn(date,turn){
 }
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ // Caja Palito tiene cajas de 45 unidades. El dato interno sigue siendo «chapas».
+ const packWord=p=>p?.units_per_chapa===45&&/caja palito/i.test(p.name)?'caja':'chapa';
 const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
@@ -431,7 +433,8 @@ function historyDetailsTable(section,products,rec){
   const chapas=Math.max(0,Number(v?.chapas)||0),sueltas=Math.max(0,Number(v?.sueltas)||0),qty=Math.max(0,Number(v?.qty)||0);
   const total=p.units_per_chapa>0?chapas*p.units_per_chapa+sueltas:qty;
   if(!total)return '<td class="gcm-hd-qty">—</td>';
-  const parts=p.units_per_chapa>0&&chapas?'<small>'+chapas+' '+(chapas===1?'chapa':'chapas')+(sueltas?' + '+sueltas+' u.':'')+'</small>':'';
+  const pack=packWord(p);
+  const parts=p.units_per_chapa>0&&chapas?'<small>'+chapas+' '+pack+(chapas===1?'':'s')+(sueltas?' + '+sueltas+' u.':'')+'</small>':'';
   return '<td class="gcm-hd-qty"><strong>'+total+'</strong>'+parts+'</td>';
  };
  const rows=products.map(p=>{
@@ -494,10 +497,10 @@ function historyCorrectionPanel(rec){
    (kind==='cell'?'<label>Vencimiento<select id="gcm-history-fix-vto">'+
     [1,2,3,4].map(n=>'<option value="'+n+'"'+(idx===n?' selected':'')+'>Vto '+n+'</option>').join('')+
     '</select></label>':'<p class="gcm-history-fix-expl">Decomiso del turno</p>')+
-   (p?.units_per_chapa>0?input('chapas','Chapas (0–500)',500)+input('sueltas','Unidades sueltas (0–100000)',100000):
+   (p?.units_per_chapa>0?input('chapas',packWord(p)==='caja'?'Cajas (0–500)':'Chapas (0–500)',500)+input('sueltas','Unidades sueltas (0–100000)',100000):
     input('qty','Unidades (0–1000000)',1000000))+'</div>'+
    '<p class="gcm-history-fix-expl">Valor archivado: <strong>'+
-   (p?.units_per_chapa>0?value.chapas+' chapas + '+value.sueltas+' unidades':value.qty+' unidades')+
+   (p?.units_per_chapa>0?value.chapas+' '+packWord(p)+(value.chapas===1?'':'s')+' + '+value.sueltas+' unidades':value.qty+' unidades')+
    '</strong>. El cambio afecta únicamente este producto y vencimiento.</p>':
   kind==='responsable'?'<label>Responsable del turno<select id="gcm-history-fix-responsable">'+
    RESPONSABLES.map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
@@ -612,14 +615,14 @@ function chapaCompacta(p,v,canWrite,isDecomiso,index){
  const unitMinus=isDecomiso?'data-gcm-decomp-suelta-minus':'data-gcm-suelta-minus';
  const suelta=isDecomiso?'data-gcm-decomp-suelta':'data-gcm-suelta';
  const disabled=canWrite?'':' disabled';
- const label=esc(p.name+' '+where);
+ const label=esc(p.name+' '+where),pack=packWord(p);
  return '<div class="gcm-inline-count">'+
   '<div class="gcm-chapas-stepper">'+
    '<button type="button" class="gcm-mark-button" '+plus+'="'+pid+'"'+attrs+disabled+
-    ' aria-label="Sumar chapa '+label+'" title="'+v.chapas+' chapas · tocar para sumar">'+
+    ' aria-label="Sumar '+pack+' '+label+'" title="'+v.chapas+' '+pack+(v.chapas===1?'':'s')+' · tocar para sumar">'+
     '<span class="gcm-mark-visual">'+marks(v.chapas)+'</span><strong class="gcm-chapas-value">'+v.chapas+'</strong></button>'+
    '<button type="button" class="gcm-mark-undo" '+minus+'="'+pid+'"'+attrs+disabled+
-    ' aria-label="Quitar chapa '+label+'" title="Quitar una chapa">−</button>'+
+    ' aria-label="Quitar '+pack+' '+label+'" title="Quitar una '+pack+'">−</button>'+
   '</div>'+
   '<div class="gcm-units-stepper">'+
    '<button type="button" class="gcm-unit-minus" '+unitMinus+'="'+pid+'"'+attrs+
@@ -661,7 +664,8 @@ function syncCountDom(el,p,i,isDecomp){
   if(visual)visual.innerHTML=marks(v.chapas);
   const count=button.querySelector('.gcm-chapas-value');
   if(count)count.textContent=String(v.chapas);
-  button.title=v.chapas+' chapas · tocar para sumar';
+  const pack=packWord(p);
+   button.title=v.chapas+' '+pack+(v.chapas===1?'':'s')+' · tocar para sumar';
  }
  const units=td.querySelector('.gcm-units-value');
  if(units&&units!==el)units.value=v.sueltas?String(v.sueltas):'';

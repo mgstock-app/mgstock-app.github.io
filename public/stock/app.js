@@ -2018,7 +2018,12 @@ function onOnline(){
   else toast(syncOffline() ? 'Volvió la conexión: enviando lo guardado en este equipo' : 'Volvió la conexión');
 }
 function onOffline(){ if (S.offline) return; S.offline = true; render(); toast(syncOffline() ? 'Sin internet. Podés seguir usando GESTLOK: lo que guardes se envía solo cuando vuelva la conexión.' : 'Sin internet. Podés seguir cargando: queda guardado en este equipo.', true); }
-window.addEventListener('gestlok-sync-complete', () => { if (S.local) render(); });
+window.addEventListener('gestlok-sync-complete', () => {
+  if (!S.local) return;
+  // La sincronización de otros módulos no debe reemplazar Conteo mientras se escribe.
+  if (S.view === 'conteo-munro' && puedeVerConteoMunro()) { renderLive(); return; }
+  render();
+});
 window.addEventListener('online', onOnline);
 window.addEventListener('offline', onOffline);
 window.addEventListener('pagehide', saveDraft);
@@ -3783,7 +3788,10 @@ $('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closePanel()
 /* ---------- Conexión ---------- */
 function setLive(s){ S.live = s; if (S.local) renderLive(); }
 function onSnapRefresh(){
-  render();
+  // Las novedades ajenas a Conteo actualizan el estado sin destruir sus campos.
+  // Si se revoca el acceso, se renderiza para aplicar los permisos nuevos.
+  if (S.view === 'conteo-munro' && puedeVerConteoMunro()) renderLive();
+  else render();
   if (S.panel === 'ajustes' && !DR && !S.aj.ordering){ if (!S.aj.editId && !S.aj.delId && !S.aj.catEdit && ['productos','categorias','f-items'].includes(S.aj.tab)) renderAjustesBody(); else if (S.aj.tab === 'pegar'){ const pv = $('#ap-prev'); if (pv) pv.innerHTML = pastePreview(); } }
   if (S.panel === 'share') refreshShare();
   if (S.panel === 'hojas' && !S.hj.editId && !S.hj.delId && !S.hj.busy) refreshHojas();
@@ -4007,7 +4015,7 @@ function mostrarHub(){
 async function resolveNames(){
   if (!S.user) return;
   const ids = [...new Set(S.conteos.map(c => c.autor).filter(Boolean))]; if (!ids.length) return;
-  try { const ps = await S.user.profiles(ids); let ch = false; for (const id of ids){ const n = (ps[id] && ps[id].name) || ''; if (S.names[id] !== n){ S.names[id] = n; ch = true; } } if (ch) render(); } catch {}
+  try { const ps = await S.user.profiles(ids); let ch = false; for (const id of ids){ const n = (ps[id] && ps[id].name) || ''; if (S.names[id] !== n){ S.names[id] = n; ch = true; } } if (ch && S.view !== 'conteo-munro') render(); } catch {}
 }
 async function boot(){
   const c = window.claude;
