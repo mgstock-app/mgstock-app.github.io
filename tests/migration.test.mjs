@@ -32,6 +32,27 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Revisar y normalizar solamente los tres puntos que evitaban
+      // reconstruir Conteo por suscripciones ajenas o sincronización.
+      // Mantener el hash original y todos los permisos sin cambios.
+      const stableConteoHooks=[
+        {
+          actual:"function onSnapRefresh(){\n  // Las novedades ajenas a Conteo actualizan el estado sin destruir sus campos.\n  // Si se revoca el acceso, se renderiza para aplicar los permisos nuevos.\n  if (S.view === 'conteo-munro' && puedeVerConteoMunro()) renderLive();\n  else render();",
+          original:"function onSnapRefresh(){\n  render();"
+        },
+        {
+          actual:"window.addEventListener('gestlok-sync-complete', () => {\n  if (!S.local) return;\n  // La sincronización de otros módulos no debe reemplazar Conteo mientras se escribe.\n  if (S.view === 'conteo-munro' && puedeVerConteoMunro()) { renderLive(); return; }\n  render();\n});",
+          original:"window.addEventListener('gestlok-sync-complete', () => { if (S.local) render(); });"
+        },
+        {
+          actual:"if (ch && S.view !== 'conteo-munro') render(); } catch {}",
+          original:"if (ch) render(); } catch {}"
+        }
+      ];
+      for(const {actual,original} of stableConteoHooks){
+        assert.equal(content.split(actual).length-1,1,'Un único control de estabilidad de Conteo revisado');
+        content=content.replace(actual,original);
+      }
       // Normalizar solo el detector de formularios del aviso PWA.
       // Preservamos la huella SHA histórica del controlador de Stock.
       const pwaHelper="// Un select sin cambios no es un borrador pendiente:\n// HTMLSelectElement no tiene defaultValue y antes siempre bloqueaba «Actualizar».\nfunction pwaFormDirty(el){\n  if(el.tagName==='SELECT'){\n    const options=Array.from(el.options||[]);\n    if(el.multiple)return options.some(option=>option.selected!==option.defaultSelected);\n    const explicit=options.findIndex(option=>option.defaultSelected);\n    const original=explicit>=0?explicit:(options.length?0:-1);\n    return el.selectedIndex!==original;\n  }\n  if(el.type==='checkbox'||el.type==='radio')return el.checked!==el.defaultChecked;\n  return el.value!==el.defaultValue;\n}\n";
