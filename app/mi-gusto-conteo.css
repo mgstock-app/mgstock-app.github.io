@@ -290,6 +290,11 @@
 .gcm-hd-category thead th{background:#eaf0f6;font-weight:800}
 .gcm-hd-category th,.gcm-hd-category td{border:1px solid #e2e8f0;padding:8px 10px;vertical-align:middle}
 .gcm-hd-category tbody th{text-align:left;min-width:90px}
+/* Decomiso solo se pinta cuando la tabla histórica incluye su columna. */
+.gcm-hd-category:has(thead th:first-child:nth-last-child(7)) thead th:first-child,
+.gcm-hd-category:has(thead th:first-child:nth-last-child(7)) tbody td:first-child{
+ background:#fff4dd;color:#6d491a;
+}
 .gcm-hd-qty strong{font-variant-numeric:tabular-nums}
 .gcm-hd-qty small{display:block;color:#5a7288;font-size:10px;margin-top:3px;white-space:nowrap}
 .gcm-hd-total{font-weight:900;background:#eef4fa;color:#143858}
@@ -1213,7 +1218,7 @@ dialog.gcm-add-product-dialog::backdrop{
  text-align:center;
 }
 .gcm-count-screen .gcm-expiry-ruler-grid.has-decomiso{
- grid-template-columns:132px repeat(5,216px) 100px;
+ grid-template-columns:216px 132px repeat(4,216px) 100px;
  min-width:1320px;width:max(100%,1320px);
 }
 .gcm-count-screen .gcm-expiry-ruler-grid>span{
@@ -1327,7 +1332,7 @@ dialog.gcm-add-product-dialog::backdrop{
  width:1110px!important;min-width:1110px!important;
 }
 .gcm-count-screen .gcm-expiry-ruler-grid.has-decomiso{
- grid-template-columns:132px 216px repeat(4,216px) 108px!important;
+ grid-template-columns:216px 132px repeat(4,216px) 108px!important;
  width:1320px!important;min-width:1320px!important;
 }
 .gcm-count-screen .gcm-expiry-ruler-decomiso{
