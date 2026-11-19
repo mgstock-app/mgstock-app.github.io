@@ -384,3 +384,85 @@ for(const local of ['munro','torcuato']){
   assert.ok(writes.every(x=>x.name.startsWith('gestlok_'+local+'_conteo_')));
  });
 }
+
+
+for(const local of ['munro','torcuato']){
+ test('Consumo '+local+': Mañana salida muestra 3 filas, permite agregar una y guarda sin redibujar',async()=>{
+  const events=new Map(),writes=[],renders=[],window={};
+  let focusCount=0;
+  const todayParts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const get=k=>todayParts.find(x=>x.type===k).value;
+  const day=get('year')+'-'+get('month')+'-'+get('day');
+  const initialRows=[];
+  const counts=[
+   {day,shift:'manana_entrada',status:'finalizado',data:{},consumption:[],waste:[]},
+   {day,shift:'manana_salida',status:'borrador',data:{},consumption:initialRows,waste:[]}
+  ];
+  const document={addEventListener:(type,fn)=>events.set(type,fn),querySelector:()=>null};
+  vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,WeakMap,Object,Array,String,Number,JSON,Math,console});
+  window.GestLokSupabase={rpc:async(name,args)=>{
+   if(name==='gestlok_'+local+'_conteo_state')return {data:{products:[{id:'a',name:'AC',section:'EMPANADAS',active:true,units_per_chapa:30,position:1}],counts,history:[],settings:{locked:true,hidden_sections:[]}},error:null};
+   writes.push({name,args});return {data:{ok:true},error:null};
+  }};
+  const mod=window.GestLokMunroConteo;
+  mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local,view:'conteo-munro',ro:false,offline:false},
+   miRol:()=> 'gerente',misLocales:()=>[local],render:()=>renders.push(true),toast:()=>{}});
+  mod.view();await new Promise(resolve=>setImmediate(resolve));
+  const first=mod.view();
+  const section=first.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\\s\\S]*?<\\/section>/)?.[0];
+  assert.ok(section,'Consumo visible en turno Mañana salida');
+  assert.equal((section.match(/data-field="name"/g)||[]).length,3);
+  assert.match(section,/data-gcm-extra-add="consumption"/);
+  const tbody={rows:[{},{},{}],insertAdjacentHTML(where,html){
+    assert.equal(where,'beforeend');this.rows.push(html);
+   },querySelectorAll:sel=>sel==='tr'?this.rows:[],lastElementChild:{querySelector:()=>({focus:()=>{focusCount++;}})}};
+  const root={querySelector:sel=>sel==='.gcm-extras[data-gcm-kind="consumption"] tbody'?tbody:null};
+  const button={dataset:{gcmExtraAdd:'consumption'},disabled:false,hasAttribute:attr=>attr==='data-gcm-extra-add'};
+  const target={closest:sel=>sel==='.gcm-page'?root:sel==='button'?button:null};
+  const previousRenders=renders.length;
+  await events.get('click')({target,preventDefault(){}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(tbody.rows.length,4);
+  assert.equal(focusCount,1);
+  assert.equal(renders.length,previousRenders,'Agregar una fila no reconstruye Conteo');
+  const firstWrite=writes.at(-1);
+  assert.equal(firstWrite?.name,'gestlok_'+local+'_conteo_set_extra');
+  assert.equal(firstWrite?.args.p_shift,'manana_salida');
+  assert.equal(firstWrite?.args.p_kind,'consumption');
+  assert.equal(firstWrite?.args.p_items.length,4);
+  const second=mod.view();
+  const secondSection=second.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\\s\\S]*?<\\/section>/)?.[0];
+  assert.equal((secondSection.match(/data-field="name"/g)||[]).length,4);
+  const input={value:'Caro',dataset:{gcmExtra:'consumption',row:'3',field:'name'},
+   hasAttribute:attr=>attr==='data-gcm-extra',closest:sel=>sel==='.gcm-page'?root:null};
+  await events.get('change')({target:input});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(writes.at(-1).args.p_items[3].name,'Caro');
+  assert.equal(writes.at(-1).args.p_items.length,4);
+  assert.equal(renders.length,previousRenders,'Guardar nombre no reconstruye el formulario');
+  assert.ok(writes.every(w=>w.name.startsWith('gestlok_'+local+'_conteo_')));
+ });
+ test('Consumo '+local+': el turno Noche salida conserva 10 filas y los datos existentes nunca se ocultan',async()=>{
+  const events=new Map(),window={};
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const get=k=>parts.find(x=>x.type===k).value;
+  const day=get('year')+'-'+get('month')+'-'+get('day');
+  const initialFive=Array.from({length:5},(_,i)=>({name:'Empleado '+(i+1),value:'1'}));
+  const doc={addEventListener:(type,fn)=>events.set(type,fn),querySelector:()=>null};
+  vm.runInNewContext(source,{window,document:doc,navigator:{onLine:true},Intl,Date,Promise,Set,Map,WeakMap,Object,Array,String,Number,JSON,Math,console});
+  let entries=[
+   {day,shift:'manana_entrada',status:'finalizado',data:{}},
+   {day,shift:'manana_salida',status:'finalizado',data:{},consumption:initialFive},
+   {day,shift:'noche_salida',status:'borrador',data:{},consumption:[]}
+  ];
+  window.GestLokSupabase={rpc:async()=>({error:null,data:{products:[{id:'a',name:'AC',section:'EMPANADAS',active:true,units_per_chapa:30}],counts:entries,history:[]}})};
+  const mod=window.GestLokMunroConteo;
+  mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local,view:'conteo-munro',ro:false,offline:false},
+   miRol:()=> 'gerente',misLocales:()=>[local],render:()=>{},toast:()=>{}});
+  mod.view();await new Promise(resolve=>setImmediate(resolve));
+  const html=mod.view();
+  const section=html.match(/<section class="gcm-extras" data-gcm-kind="consumption">[\\s\\S]*?<\\/section>/)?.[0];
+  assert.equal((section.match(/data-field="name"/g)||[]).length,10);
+  assert.doesNotMatch(section,/data-gcm-extra-add="consumption"/);
+ });
+}
