@@ -28,6 +28,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .cabecera p{margin:1px 0 0;font-size:13px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .icono{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;border:0;background:transparent;color:var(--gris);flex:none}
 .icono:active{background:var(--linea)}
+.icono:disabled{opacity:.4}
 
 .aviso-pedido{margin:8px 12px 0;padding:10px 12px;border-radius:12px;font-size:14px;display:flex;gap:10px;align-items:flex-start;border:1px solid transparent}
 .aviso-pedido strong{display:block}

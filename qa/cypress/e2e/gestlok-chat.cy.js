@@ -32,7 +32,8 @@ describe('GESTLOK Chat · chat público', () => {
   it('agotados no se pueden elegir y los textos no se interpretan como HTML', () => {
     cy.viewport(390, 800);
     cy.visit('/chat/?demo=1');
-    cy.get('#btn-carta').click();
+    cy.get('.burbuja.asistente').should('be.visible');
+    cy.get('#btn-carta').should('not.be.disabled').click();
     cy.get('#hoja').contains('button', 'Empanada de humita').should('be.disabled').and('contain.text', 'Agotado');
     cy.get('#hoja-cerrar').click();
     cy.get('#texto').type('<img src=x onerror="window.__xss=1"> hola{enter}');

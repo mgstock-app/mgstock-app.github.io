@@ -360,7 +360,7 @@ async function iniciar() {
   actualizarCarrito(r.carrito);
   if (!(r.nuevos || []).length) chips(BOTONES_BASE());
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
-  texto.disabled = false;
+  texto.disabled = false; $('btn-carta').disabled = false;
   $('app').setAttribute('aria-busy', 'false');
 }
 
