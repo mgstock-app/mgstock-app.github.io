@@ -343,3 +343,44 @@ for(const local of ['munro','torcuato']){
   assert.equal(renders.length,initialRenderCount,'no redibujar mientras se escribe');
  });
 }
+
+
+for(const local of ['munro','torcuato']){
+ test('SALSAS · Caja Palito: una caja suma 45 unidades en '+local+' y no redibuja la planilla',async()=>{
+  const handlers=new Map(),writes=[],renders=[];
+  const window={};
+  const document={addEventListener:(name,fn)=>handlers.set(name,fn),querySelector:()=>null};
+  vm.runInNewContext(source,{window,document,navigator:{onLine:true},Intl,Date,Promise,Set,Map,WeakMap,Object,Array,String,Number,JSON,Math,console});
+  const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const f=k=>dateParts.find(x=>x.type===k).value;
+  const day=f('year')+'-'+f('month')+'-'+f('day');
+  const product={id:'c2-palito-45',name:'Caja Palito',section:'SALSAS',units_per_chapa:45,active:true,position:210};
+  window.GestLokSupabase={rpc:async(name,args)=>{
+   if(name==='gestlok_'+local+'_conteo_state')return {data:{products:[product],counts:[{day,shift:'manana_entrada',status:'borrador',data:{},decomiso:{},decomiso_visible:false,consumption:[],waste:[]}],history:[],settings:{locked:true,hidden_sections:[]}},error:null};
+   writes.push({name,args});return {data:{ok:true},error:null};
+  }};
+  const mod=window.GestLokMunroConteo;
+  mod.attach({S:{me:{tenant_id:'cb0dc04a-9a13-434f-a3d0-47f1d8f39670'},local,view:'conteo-munro',ro:false,offline:false},
+   miRol:()=> 'gerente',misLocales:()=>[local],render:()=>renders.push('render'),toast:()=>{}});
+  mod.view();await new Promise(resolve=>setImmediate(resolve));
+  const before=mod.view();
+  assert.match(before,/Caja Palito/);
+  assert.match(before,/aria-label="Sumar caja Caja Palito del vencimiento 1"/);
+  assert.match(before,/title="0 cajas · tocar para sumar"/);
+  const renderCount=renders.length;
+  const button={dataset:{gcmPlus:'c2-palito-45',idx:'1'},hasAttribute:x=>x==='data-gcm-plus',
+   closest:x=>x==='td'?null:null};
+  const target={closest:x=>x==='.gcm-page'?{}:x==='button'?button:null};
+  await handlers.get('click')({target,preventDefault(){}});
+  await new Promise(resolve=>setImmediate(resolve));
+  const write=writes.find(x=>x.name==='gestlok_'+local+'_conteo_set_cell');
+  assert.ok(write);
+  assert.equal(write.args.p_chapas,1);
+  assert.equal(write.args.p_sueltas,0);
+  assert.equal(write.args.p_qty,0);
+  assert.match(mod.view(),/class="gcm-total">45<\/td>/);
+  assert.match(mod.view(),/title="1 caja · tocar para sumar"/);
+  assert.equal(renders.length,renderCount,'Guardar no debe reconstruir pantalla de Conteo');
+  assert.ok(writes.every(x=>x.name.startsWith('gestlok_'+local+'_conteo_')));
+ });
+}
