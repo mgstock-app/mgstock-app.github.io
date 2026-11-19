@@ -90,6 +90,60 @@
       diarioError='No se pudo actualizar la visibilidad. '+String(e?.message||'');
     } finally {diarioBusy=false;api?.renderLocal?.();api?.render?.();}
   }
+  // GESTLOK Chat · micro app general: la administradora la enciende por empresa. El servidor (require_admin)
+  // valida cada acción; cada local queda con su chat apagado hasta que el dueño o el gerente lo configure.
+  let chatAdmin=null, chatBusy=false, chatError='', chatTried=false;
+  async function loadChatAdmin(){
+    if(!api?.isCreadora?.()||chatBusy||!window.GestLokSupabase?.rpc)return;
+    chatBusy=true;chatTried=true;chatError='';
+    try{const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_empresas');if(error)throw error;chatAdmin=Array.isArray(data)?data:[];}
+    catch{chatError='No se pudo consultar GESTLOK Chat. Revisá la conexión.';}
+    finally{chatBusy=false;api?.render?.();}
+  }
+  function chatResumen(){
+    if(!chatTried&&!chatBusy&&api?.isCreadora?.())queueMicrotask(loadChatAdmin);
+    const on=(chatAdmin||[]).filter(e=>e.habilitada).map(e=>e.nombre);
+    return on.length?'Activa en '+on.join(', '):'Se activa por empresa';
+  }
+  function chatAdminView(){
+    if(!api?.isCreadora?.())return '';
+    if(!chatTried&&!chatBusy)queueMicrotask(loadChatAdmin);
+    const companies=window.GestLokOwnerAreas?.creatorCompanies?.()||[];
+    const porId=new Map((chatAdmin||[]).map(e=>[e.tenant_id,e]));
+    const filas=companies.map(c=>{
+      const e=porId.get(c.tenant_id), n=Array.isArray(c.locals)?c.locals.length:0;
+      const sucs=(e?.sucursales||[]).map(x=>'<li><b>'+esc(x.nombre)+'</b> · '+(x.activa?'chat abierto':'chat apagado')+' · '+num(x.productos)+' productos'+
+        (x.pendientes?' · '+num(x.pendientes)+' en preparación':'')+' · <a href="/chat/?s='+encodeURIComponent(x.slug)+'" target="_blank" rel="noopener">enlace</a></li>').join('');
+      const estado=!e?'No activa':e.habilitada?'Activa · '+(e.sucursales||[]).length+' chat'+((e.sucursales||[]).length===1?'':'s'):'Pausada';
+      const boton=!e?'<button type="button" class="btn primary" data-ch-chat-on="'+esc(c.tenant_id)+'"'+(n&&!chatBusy?'':' disabled')+'>Activar GESTLOK Chat</button>':
+        e.habilitada?'<button type="button" class="btn" data-ch-chat-estado="'+esc(c.tenant_id)+'" data-v="no"'+(chatBusy?' disabled':'')+'>Pausar</button>'+
+          '<button type="button" class="btn" data-ch-chat-on="'+esc(c.tenant_id)+'"'+(chatBusy?' disabled':'')+'>Sumar locales nuevos</button>':
+        '<button type="button" class="btn primary" data-ch-chat-estado="'+esc(c.tenant_id)+'" data-v="si"'+(chatBusy?' disabled':'')+'>Reactivar</button>';
+      return '<article class="gl-ch-chat-row" data-ch-chat-company="'+esc(c.tenant_id)+'"><div><h3>'+esc(c.name)+'</h3><small>'+esc(estado)+
+        (n?'':' · sin locales cargados')+'</small>'+(sucs?'<ul>'+sucs+'</ul>':'')+'</div><div class="gl-ch-chat-actions">'+boton+'</div></article>';
+    }).join('');
+    return '<section class="gl-admin-card gl-ch-chat-admin" aria-label="GESTLOK Chat por empresa">'+
+      '<header><h2>GESTLOK Chat</h2><small>Atención y pedidos por chat · un chat por local</small></header>'+
+      '<p>Encendela para cada comercio. Cada local queda con su propio chat y su enlace, apagado hasta que el dueño o el gerente carguen la carta, los mensajes y los ajustes en su Central de mensajes.</p>'+
+      (chatBusy&&!chatAdmin?'<p role="status">Consultando…</p>':'')+(chatError?'<p role="alert">'+esc(chatError)+'</p>':'')+
+      '<div class="gl-ch-chat-list">'+(filas||'<p>No hay empresas cargadas.</p>')+'</div></section>';
+  }
+  async function chatAdminAction(tenant, encender){
+    const c=(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(x=>x.tenant_id===tenant);
+    if(!c||chatBusy||!window.GestLokSupabase?.rpc)return;
+    const existe=(chatAdmin||[]).some(e=>e.tenant_id===tenant);
+    const pregunta=encender===null?(existe?'¿Sumar a GESTLOK Chat los locales nuevos de '+c.name+'?':'¿Activar GESTLOK Chat en '+c.name+'? Cada local queda con su chat apagado hasta que lo configuren.')
+      :encender?'¿Reactivar GESTLOK Chat en '+c.name+'?':'¿Pausar GESTLOK Chat en '+c.name+'? Los clientes no van a poder escribir; los datos se conservan.';
+    if(!window.confirm(pregunta))return;
+    chatBusy=true;chatError='';api?.render?.();
+    try{
+      const {error}=encender===null?await window.GestLokSupabase.rpc('gestlok_chat_admin_habilitar',{p_tenant:tenant,p_nombre:c.name,p_sucursales:null})
+        :await window.GestLokSupabase.rpc('gestlok_chat_admin_estado',{p_tenant:tenant,p_habilitada:encender});
+      if(error)throw error;
+      api?.toast?.(encender===false?'GESTLOK Chat pausado en '+c.name+'.':'GESTLOK Chat activo en '+c.name+'.');
+    }catch(e){chatError='No se pudo actualizar GESTLOK Chat. '+String(e?.message||'');}
+    finally{chatBusy=false;chatTried=false;void loadChatAdmin();}
+  }
   async function loadCoupons(){if(!api?.isCreadora?.()||couponBusy||!window.GestLokSupabase)return;couponBusy=true;couponAttempted=true;couponError='';try{for(const loc of ['munro','torcuato']){const {data,error}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:loc});if(error)throw error;couponRows[loc]=Array.isArray(data)?data:[];}}catch{couponError='No se pudieron consultar los cupones. Revisá permisos y conexión.';}finally{couponBusy=false;if(api?.isCreadora?.())api.render();}}
   function couponView(){if(!couponAttempted&&!couponBusy)queueMicrotask(loadCoupons);return '<section class="gl-admin-card" aria-label="Cupones de Mi Gusto"><header><h2>Cupones de Mi Gusto</h2><button type="button" data-ch-coupons-refresh>Actualizar</button></header><p>Munro y Torcuato por separado. Beneficio del 10% independiente de publicar reseñas. La emisión y utilización se realizan desde la sección Reseñas de cada sucursal.</p>'+(couponError?'<p role="alert">'+esc(couponError)+'</p>':'')+['munro','torcuato'].map(loc=>{const a=couponRows[loc]||[];const counts={pending:0,used:0,expired:0};a.forEach(r=>{if(r.status in counts)counts[r.status]++;});return '<article style="border-top:1px solid #ddd;padding:12px 0"><h3>'+ (loc==='munro'?'Munro':'Torcuato') +'</h3><p>Total: '+a.length+' · Pendientes: '+counts.pending+' · Usados: '+counts.used+' · Vencidos: '+counts.expired+'</p><div style="overflow-x:auto"><table><thead><tr><th>Cupón</th><th>Cliente</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>'+a.slice(0,50).map(r=>'<tr><td>'+esc(r.code)+'</td><td>'+esc(r.customer_name)+'</td><td>'+esc(r.status)+'</td><td>'+esc(String(r.created_at||'').slice(0,10))+'</td></tr>').join('')+'</tbody></table></div></article>';}).join('')+'</section>';}
 
@@ -222,9 +276,12 @@
       ['Plan Scanner', 'Escaneo con cámara, ventas y control de stock'],
       ['Horarios', 'Turnos y planillas'],
       ['Empleados', 'Legajos y recibos autorizados'],
-      // GESTLOK Chat: se enciende empresa por empresa en el servidor (gestlok_chat_private.empresas). Hoy: Mi Gusto.
-      ['GESTLOK Chat', 'Atención y pedidos por chat, un chat por local · Activa en Mi Gusto']
-    ].map(([name,detail]) => '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
+      // GESTLOK Chat: se enciende empresa por empresa en Herramientas (gestlok_chat_admin_*).
+      ['GESTLOK Chat', 'Atención y pedidos por chat, un chat por local']
+    ].map(([name,detail]) => name === 'GESTLOK Chat'
+      ? '<button type="button" class="gl-ch-microapp" data-ch-tab="herramientas" aria-label="Activar GESTLOK Chat por empresa">' +
+        '<b>' + name + '</b><small>' + detail + ' · ' + esc(chatResumen()) + '</small><span>Activar por empresa →</span></button>'
+      : '<button type="button" class="gl-ch-microapp" data-ch-tab="locales" aria-label="Elegir local para ' + name + '">' +
       '<b>' + name + '</b><small>' + detail + '</small><span>Elegir local →</span></button>').join('');
     // Catálogo de herramientas compartidas de El Molino Café. No habilita estas
     // funciones para otras empresas: el servidor comprueba cada acceso.
@@ -383,7 +440,7 @@
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
-    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + dailySettingsView() + (parts.tools || '') + '</div>';
+    else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + chatAdminView() + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' : 'Administración de GESTLOK';
@@ -422,6 +479,10 @@
       api.render();
       return;
     }
+    const chatOn=ev.target.closest?.('[data-ch-chat-on]');
+    if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
+    const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');
+    if(chatEstado&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatEstado.dataset.chChatEstado,chatEstado.dataset.v==='si');return;}
     const dailyToggle=ev.target.closest?.('[data-ch-diario-visibility]');
     if(dailyToggle&&api?.isCreadora?.()){ev.preventDefault();void toggleDailyVisibility();return;}
     const refresh = ev.target.closest?.('[data-ch-coupons-refresh]');if(refresh && api?.isCreadora?.()){ev.preventDefault();loadCoupons();return;}

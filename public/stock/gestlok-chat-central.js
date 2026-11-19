@@ -1,32 +1,62 @@
-/* GESTLOK Chat · Central de mensajes dentro de GESTLOK (Mi Gusto: Munro y Don Torcuato, cada local por separado).
- * Reemplaza a «Pedidos WhatsApp». Mantiene la misma interfaz que usa app.js (window.GestLokMiGustoOrders):
+/* GESTLOK Chat · Central de mensajes dentro de GESTLOK. Micro app GENERAL: aparece en cualquier empresa y local
+ * que tenga GESTLOK Chat encendido en el servidor (gestlok_chat_private), cada local con su propio chat.
+ * No hay empresas ni locales fijos en el código: los dice gestlok_chat_panel_inicio según la sesión.
+ * En Mi Gusto reemplaza a «Pedidos WhatsApp». Mantiene la interfaz que usa app.js (window.GestLokMiGustoOrders):
  * menú, atajo del Inicio, contador, aviso flotante de pedidos nuevos y la sección.
  * La sección monta el panel de GESTLOK Chat (/chat/panel/panel.js) dentro de un shadow DOM que se conserva entre
  * redibujos de GESTLOK: no se recarga ni pierde lo que se está escribiendo. Los permisos los decide la base.
  */
 (()=>{
 'use strict';
-const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
-const LOCALS={munro:'Munro',torcuato:'Don Torcuato'};
 const PAUSA_MS=15000;
-const VERSION_PANEL='20261119d';
+const VERSION_PANEL='20261119e';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,vistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
+// Locales con GESTLOK Chat encendido para esta sesión: {tenant, locales: Map(local_id → nombre)}. Lo dice el servidor.
+let servidor={tenant:'',locales:new Map()},buscando='',fallo={tenant:'',at:0};
 
 const local=()=>api?.S?.local;
-const localName=()=>LOCALS[local()]||'';
-// Mismas reglas que tenía «Pedidos WhatsApp»: dueño, gerente de ese local o creadora con escritura.
-const allowed=()=>!!api && api.S?.me?.tenant_id===TENANT && local() in LOCALS &&
-  !window.GestLokCreatorSupport?.previewRol?.() &&
+const tenant=()=>String(api?.S?.me?.tenant_id||'');
+const localName=()=>servidor.locales.get(local())||'';
+// Dueño, gerente de ese local o creadora con escritura (el servidor vuelve a validar cada acción).
+const rolOk=()=>!!api && !window.GestLokCreatorSupport?.previewRol?.() &&
   (api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(local()))||
    (api.miRol()==='creadora'&&!api.S?.ro));
+const allowed=()=>{
+ if(!rolOk()||!tenant()||!local())return false;
+ if(servidor.tenant!==tenant()){void descubrir();return false;}
+ return servidor.locales.has(local());
+};
 const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
+const leer=(data,t)=>{
+ const locales=new Map((data?.habilitado?data.sucursales||[]:[]).filter(x=>x?.nivel&&x.local_id).map(x=>[String(x.local_id),String(x.nombre||x.local_id)]));
+ servidor={tenant:t,locales};
+};
+// Pregunta una vez por empresa qué locales tienen el chat. Si cambia algo, GESTLOK redibuja el menú.
+async function descubrir(){
+ const t=tenant();
+ if(!t||buscando===t||!window.GestLokSupabase||!online())return;
+ if(fallo.tenant===t&&Date.now()-fallo.at<60000)return; // tras un error, se reintenta en un minuto
+ buscando=t;
+ try{
+  const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_panel_inicio');
+  if(error){fallo={tenant:t,at:Date.now()};return;}
+  if(t!==tenant())return;
+  const antes=servidor.locales.has(local());
+  leer(data,t);
+  const suc=(data?.sucursales||[]).find(x=>x.local_id===local());
+  if(suc&&servidor.locales.has(local()))actualizar(suc.pendientes);
+  if(servidor.locales.has(local())!==antes)api?.render?.();
+ }catch{fallo={tenant:t,at:Date.now()};/* sin conexión: se vuelve a preguntar más tarde */}
+ finally{if(buscando===t)buscando='';}
+}
 
 function quickAccess(){
  if(!allowed())return '';
- return '<nav class="mgp-shift-quick" aria-label="Atajos de turno de Mi Gusto">'+
-  '<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>'+
+ // «Pagos Online» solo donde esa micro app existe (hoy Mi Gusto).
+ const pagos=window.GestLokMiGustoOnline?.permitido?.()?'<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>':'';
+ return '<nav class="mgp-shift-quick" aria-label="Atajos del turno">'+pagos+
   '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+pendientes+'</span> pedidos en preparación</small></span></button>'+
  '</nav>';
 }
@@ -69,11 +99,17 @@ function actualizar(n){
  if(!pendientes)ocultarAviso();
 }
 async function consultar(){
- if(!allowed()||!online()||!window.GestLokSupabase)return;
+ if(!rolOk()||!online()||!window.GestLokSupabase)return;
+ // Empresas o locales sin GESTLOK Chat: no se consulta cada 15 segundos.
+ if(servidor.tenant===tenant()&&!servidor.locales.has(local()))return;
+ if(servidor.tenant!==tenant())return void descubrir();
  const loc=local(),e=epoca;
  try{
   const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_panel_inicio');
   if(error||e!==epoca||loc!==local())return;
+  const t=tenant(),antes=servidor.locales.has(loc);
+  leer(data,t);
+  if(!servidor.locales.has(loc)){if(antes)api?.render?.();return;}
   const s=(data?.sucursales||[]).find(x=>x.local_id===loc);
   actualizar(s?s.pendientes:0);
  }catch{/* sin conexión: se reintenta en el próximo ciclo */}
@@ -116,7 +152,7 @@ function view(){
   '<div data-gcc-lugar></div></section>';
 }
 function subscribe(loc,push){
- if(!allowed()||!(loc in LOCALS))return;
+ if(!rolOk()||!loc)return;
  void consultar();
  const t=setInterval(()=>{if(!document.hidden)void consultar();},PAUSA_MS);
  const foco=()=>{void consultar();};
@@ -124,11 +160,11 @@ function subscribe(loc,push){
  push(()=>{clearInterval(t);window.removeEventListener('focus',foco);ocultarAviso();});
 }
 function reset(){
- epoca++;pendientes=0;vistos=null;ocultarAviso();
+ epoca++;pendientes=0;vistos=null;ocultarAviso();servidor={tenant:'',locales:new Map()};buscando='';
  if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';
 }
 function attach(h){if(!api)api=h;}
 
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
- _test:{actualizar,consultar,colocar,estado:()=>({pendientes,vistos,montado:!!panel})}});
+ _test:{actualizar,consultar,colocar,descubrir,estado:()=>({pendientes,vistos,montado:!!panel,locales:[...servidor.locales.keys()]})}});
 })();

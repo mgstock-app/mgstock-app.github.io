@@ -325,8 +325,8 @@
     const activa = el('input', {type: 'checkbox', checked: a.ia_activa !== false, disabled: !editable});
     const nombre = el('input', {type: 'text', maxlength: '40', placeholder: 'Ej.: Sofi', disabled: !editable}); nombre.value = a.ia_nombre || '';
     const bienvenida = area(a.bienvenida, 500, 3, '¡Hola! Soy ' + (a.ia_nombre || 'el asistente') + ' de ' + a.empresa + ' ' + a.nombre + '. Podés escribirme tu pedido o mirar la carta.');
-    const instrucciones = area(a.ia_instrucciones, 2000, 5, 'Ej.: Tratá de vos. Ofrecé bebida si piden empanadas. Si preguntan por eventos, deciles que llamen al local.');
-    const info = area(a.ia_info, 4000, 6, 'Ej.: Las empanadas son al horno. Hay opciones sin TACC: … Tiempo de preparación: 30 a 40 minutos. Envío solo a Munro y Florida.');
+    const instrucciones = area(a.ia_instrucciones, 2000, 5, 'Ej.: Tratá de vos. Ofrecé un complemento cuando pidan el producto principal. Si preguntan por algo especial, deciles que llamen al local.');
+    const info = area(a.ia_info, 4000, 6, 'Ej.: Tiempo de preparación: 30 a 40 minutos. Hay opciones sin TACC: … Promos de la semana: … Formas de retiro y garantía: …');
     const campos = {};
     const plantillas = MENSAJES.map(([k, titulo, ayuda]) => {
       const base = motor?.MENSAJES_BASE?.[k] || '';
@@ -402,7 +402,7 @@
     el('section', {class: 'bloque'}, el('h3', {text: 'Entrega y pago'}), chk('acepta_retiro', 'Retiro en el local'), chk('acepta_envio', 'Envío a domicilio'),
       el('div', {class: 'dos'}, campo('Costo de envío', inp('envio_costo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'})),
         campo('Pedido mínimo', inp('pedido_minimo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'}))),
-      campo('Zona de envío', inp('envio_zona', {type: 'text', maxlength: '300', placeholder: 'Ej.: Munro, Florida y Carapachay'})),
+      campo('Zona de envío', inp('envio_zona', {type: 'text', maxlength: '300', placeholder: 'Ej.: barrios o localidades a los que llegás'})),
       el('p', {class: 'etiqueta', text: 'Medios de pago'}), el('div', {class: 'medios'}, medios)),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
       : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
@@ -470,7 +470,7 @@
   async function demoRpc(fn, a) {
     await new Promise(r => setTimeout(r, 120));
     switch (fn) {
-      case 'panel_inicio': return {habilitado: true, empresa: 'Mi Gusto (demostración)', sucursales: D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
+      case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración', sucursales: D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
       case 'panel_pedidos': return {nivel: D.nivel, pedidos: D.pedidos.filter(p => a.p_estado === 'todos' || p.estado === a.p_estado)};
       case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (p.estado !== 'pendiente') throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
@@ -480,7 +480,7 @@
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
       case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente'}];
-      case 'panel_conversacion': return [{rol: 'asistente', texto: '¡Hola! ¿Qué te preparamos hoy?'}, {rol: 'cliente', texto: 'media docena de carne y una pizza chica'}, {rol: 'asistente', texto: 'Agregué: …'}];
+      case 'panel_conversacion': return [{rol: 'asistente', texto: '¡Hola! ¿Qué te gustaría pedir hoy?'}, {rol: 'cliente', texto: 'media docena de carne y una pizza chica'}, {rol: 'asistente', texto: 'Agregué: …'}];
       default: throw new Error('Demostración: ' + fn);
     }
   }

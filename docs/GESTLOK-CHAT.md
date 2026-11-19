@@ -3,6 +3,14 @@
 Módulo de atención virtual y pedidos por chat, **multiempresa**: cada empresa y sucursal tiene su chat, asistente,
 catálogo, conversaciones, pedidos y permisos independientes. Primera empresa: **Mi Gusto** (Munro y Don Torcuato).
 
+> **Micro app general para comercializar (19/11/2026).** No hay empresas ni locales fijos en el código: la
+> administradora la enciende por empresa en su Inicio → **Herramientas → GESTLOK Chat** («Activar GESTLOK Chat»,
+> «Pausar», «Reactivar», «Sumar locales nuevos»), con `gestlok_chat_admin_habilitar / _estado / _empresas`
+> (migración `20261119233500_gestlok_chat_comercializar.sql`). Cada local recibe su chat, su enlace
+> (`/chat/?s=<empresa>-<local>`) y su prefijo de pedidos automáticos, **apagado** hasta que el dueño o el gerente
+> personalicen la carta, los mensajes del bot y los ajustes en su **Central de mensajes**. La Central aparece sola en
+> el menú de los locales que el servidor tiene habilitados; los ejemplos del asistente salen de la carta de cada local.
+
 > Regla: GESTLOK Chat es un módulo **nuevo y separado** (`gestlok_chat_private`, `public/chat/`). No modifica Caja,
 > Stock, Empleados, Reseñas ni NFC.
 >
@@ -118,11 +126,13 @@ El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pend
 
 ## 8. Puesta en marcha
 
-1. Aplicar las migraciones `20261119210000_gestlok_chat_base.sql` y `20261119230000_mi_gusto_pedidos_whatsapp_retirar.sql`.
+1. Aplicar las migraciones `20261119210000_gestlok_chat_base.sql`, `20261119233500_gestlok_chat_comercializar.sql`
+   y (solo Mi Gusto) `20261119230000_mi_gusto_pedidos_whatsapp_retirar.sql`.
 2. Publicar la función `gestlok-chat` (`verify_jwt = false`) y cargar el secreto `GESTLOK_CHAT_SALT` (texto al azar).
-3. Correr `supabase/operaciones/gestlok-chat-habilitar-mi-gusto.sql` (Munro y Don Torcuato quedan apagadas).
-4. Opcional: `gestlok-chat-copiar-carta-munro.sql` (copia nombre y precio desde Pedidos WhatsApp, sin tocarlo).
-5. El dueño revisa carta y ajustes en `gestlok.com.ar/chat/panel/` y abre el chat. Pedido real de prueba.
+3. Encender cada empresa desde Herramientas → GESTLOK Chat (Mi Gusto se encendió el 19/11 con
+   `supabase/operaciones/gestlok-chat-habilitar-mi-gusto.sql`; Munro y Don Torcuato quedan apagadas).
+4. Dueño o gerente: Central de mensajes → Carta (productos, precios, categorías), Mensajes (bot) y, el dueño, Ajustes
+   → «Chat abierto». Pedido real de prueba.
 6. Subdominio: repositorio `mgstock-app/gestlok-chat` con GitHub Pages y `CNAME` = `chat.gestlok.com.ar`;
    en el DNS del dominio, registro `CNAME chat → mgstock-app.github.io`. El sitio copia `public/chat/` y suma
    `404.html` para las rutas `/<sucursal>`.
@@ -132,4 +142,4 @@ El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pend
 
 - **3:** IA opcional; avisos al celular del gerente (GESTLOK Push); acceso al panel desde el menú de GESTLOK;
   respuestas del local dentro del chat; WhatsApp con el mismo motor.
-- **4:** alta de otras empresas desde el panel de la creadora; colores y logo por empresa.
+- **4:** colores y logo por empresa; cobro de la suscripción de la micro app.

@@ -11,6 +11,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const DB = 'gestlok_chat_prueba_' + process.pid;
 const skip = !URL_BASE && 'Definí CHAT_PG_URL para correr las pruebas sobre PostgreSQL';
 const MIG = 'supabase/migrations/20261119210000_gestlok_chat_base.sql';
+const MIG2 = 'supabase/migrations/20261119233500_gestlok_chat_comercializar.sql';
 
 function urlFor(db) { const u = new URL(URL_BASE); u.pathname = '/' + db; return u.toString(); }
 function psql(db, args) {
@@ -27,6 +28,8 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   ok(DB, ['-f', 'tests/fixtures/chat/base.sql']);
   ok(DB, ['-f', MIG]);
   ok(DB, ['-f', MIG]); // repetible
+  ok(DB, ['-f', MIG2]);
+  ok(DB, ['-f', MIG2]); // repetible
   const r = psql(DB, ['-f', 'supabase/tests/gestlok-chat-permisos.sql']);
   const out = (r.stderr || '') + (r.stdout || '');
   assert.match(out, /ERROR:\s+INFORME/, out);

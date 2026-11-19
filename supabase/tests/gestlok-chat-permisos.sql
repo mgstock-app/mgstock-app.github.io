@@ -328,5 +328,40 @@ begin
   select count(*) into n from gestlok_chat_private.mensajes where conversacion_id = conv1;
   r := r || E'\n' || case when n = 0 then 'OK' else 'FALLA' end || ' sin mensajes huérfanos';
 
+
+  -- Micro app general: la administradora la enciende para un comercio nuevo desde su panel --------------------------
+  perform set_config('role', 'postgres', true);
+  insert into gestlok_tenancy.tenants (id, code) values ('d0000000-0000-4000-8000-00000000000d', 'LOLA');
+  insert into public.docs (tenant_id, col, id, data) values
+    ('d0000000-0000-4000-8000-00000000000d', 'locales', 'sur', '{"nombre":"Café Sur"}'),
+    ('d0000000-0000-4000-8000-00000000000d', 'locales', 'norte', '{"nombre":"Norte"}');
+  perform prueba_como('duena.a@prueba.example');
+  v := prueba_q($q$ select public.gestlok_chat_admin_empresas()::text $q$);
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' una dueña no ve el listado de empresas';
+  v := prueba_q($q$ select public.gestlok_chat_admin_estado('a0000000-0000-4000-8000-00000000000a', false)::text $q$);
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' una dueña no pausa la micro app';
+  perform prueba_como('creadora@prueba.example');
+  v := prueba_q($q$ select public.gestlok_chat_admin_habilitar('d0000000-0000-4000-8000-00000000000d', 'Café Lola')->>'sucursales' $q$);
+  r := r || E'\n' || case when v = 'ok:2' then 'OK' else 'FALLA' end || ' alta en un clic: un chat por cada local · ' || v;
+  v := prueba_q($q$ select public.gestlok_chat_admin_habilitar('d0000000-0000-4000-8000-00000000000d', 'Café Lola', null)->>'sucursales' $q$);
+  r := r || E'\n' || case when v = 'ok:0' then 'OK' else 'FALLA' end || ' repetir el alta no duplica chats';
+  perform set_config('role', 'postgres', true);
+  select string_agg(slug || '/' || prefijo || '/' || nombre || '/' || activa, ' ' order by slug) into v
+    from gestlok_chat_private.sucursales where tenant_id = 'd0000000-0000-4000-8000-00000000000d';
+  r := r || E'\n' || case when v = 'cafe-lola-cafe-sur/CS/Café Sur/false cafe-lola-norte/N/Norte/false' then 'OK' else 'FALLA' end
+    || ' enlaces y prefijos automáticos, chats apagados · ' || coalesce(v, '');
+  r := r || E'\n' || case when gestlok_chat_private.slug_libre('Empa Munro') = 'empa-munro-2' then 'OK' else 'FALLA' end || ' un enlace ocupado no se repite';
+  perform prueba_como('creadora@prueba.example');
+  j := public.gestlok_chat_admin_empresas();
+  r := r || E'\n' || case when jsonb_array_length(j) = 3 and not (j::text ~ 'cliente_|telefono') then 'OK' else 'FALLA' end || ' la administradora ve las 3 empresas sin datos de clientes';
+  v := prueba_q($q$ select public.gestlok_chat_admin_estado('d0000000-0000-4000-8000-00000000000d', false)::text $q$);
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' la administradora pausa la micro app de una empresa';
+  perform prueba_como('service_role');
+  j := public.gestlok_chat_srv_sucursal('cafe-lola-norte');
+  r := r || E'\n' || case when j->>'motivo' = 'no_existe' then 'OK' else 'FALLA' end || ' empresa pausada: su chat no existe para el público';
+  perform prueba_como('creadora@prueba.example');
+  v := prueba_q($q$ select public.gestlok_chat_admin_estado('d0000000-0000-4000-8000-00000000000d', true)::text $q$);
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' y la vuelve a activar';
+  perform set_config('role', 'postgres', true);
   raise exception 'INFORME%', r;
 end $t$;

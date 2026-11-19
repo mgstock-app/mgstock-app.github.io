@@ -1,6 +1,6 @@
 /* global Cypress, describe, it, cy */
 // Central de mensajes (GESTLOK Chat) dentro de GESTLOK, en lugar de Pedidos WhatsApp. Solo datos ficticios.
-const setup=(email,width=390)=>{
+const setup=(email,width=390,tenant='')=>{
  cy.viewport(width,844);
  cy.task('mockSupabase').then(fake=>{
    cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body:fake}).as('mock');
@@ -8,6 +8,7 @@ const setup=(email,width=390)=>{
  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
  cy.visit('/');cy.wait('@mock');
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
+ if(tenant)cy.window().then(w=>{w.__tenantOverride=tenant;w.__companyOverride='Otra empresa ficticia';});
  cy.get('#au-email').clear().type(email);
  cy.get('#au-pass').type('secreto1',{log:false});
  cy.get('#au-in button[type="submit"]').click();
@@ -78,6 +79,27 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.get('.gcc-cab').should('contain.text','Don Torcuato');
   central().contains('No hay pedidos en preparación');
   central().find('.tarjeta').should('not.exist');
+ });
+
+ it('micro app general: la administradora la activa por empresa desde su panel',()=>{
+  cy.on('window:confirm',()=>true);
+  setup('kmu15lopez@gmail.com',1280);
+  cy.get('.gl-ch-microapp',{timeout:15000}).contains('GESTLOK Chat').click();
+  cy.get('.gl-ch-nav [data-ch-tab="herramientas"]').should('have.attr','aria-current','page');
+  cy.get('.gl-ch-chat-admin',{timeout:15000}).should('contain.text','un chat por local');
+  cy.get('[data-ch-chat-company="cb0dc04a-9a13-434f-a3d0-47f1d8f39670"]').should('contain.text','Activa · 2 chats').and('contain.text','Munro').and('contain.text','Don Torcuato');
+  cy.get('[data-ch-chat-company="00000000-0000-4000-8000-000000000222"]').should('contain.text','No activa')
+    .contains('button','Activar GESTLOK Chat').click();
+  cy.get('[data-ch-chat-company="00000000-0000-4000-8000-000000000222"]',{timeout:10000}).should('contain.text','Activa · 1 chat').and('contain.text','chat apagado');
+  cy.get('[data-ch-chat-company="00000000-0000-4000-8000-000000000222"]').contains('button','Pausar').click();
+  cy.get('[data-ch-chat-company="00000000-0000-4000-8000-000000000222"]',{timeout:10000}).should('contain.text','Pausada');
+ });
+
+ it('otra empresa sin GESTLOK Chat no ve la Central',()=>{
+  setup('dueno@example.com',1280,'00000000-0000-4000-8000-000000000222');
+  cy.get('#snav button[data-go="inicio"]',{timeout:15000}).should('exist');
+  cy.wait(1500);
+  cy.get('#snav button[data-go="pedidos-clientes"]').should('not.exist');
  });
 
  it('lectura no tiene la Central de mensajes',()=>{

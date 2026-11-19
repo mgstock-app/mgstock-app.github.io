@@ -203,8 +203,26 @@
       : (a.rol === 'gerente' && (a.locales || []).includes(loc)) ? 'gestionar' : null;
     const sinPermiso = {data: null, error: {code: '42501', message: 'No tenés permiso para esta acción de GESTLOK Chat'}};
     const pend = loc => C.pedidos.filter(p => p.local === loc && p.estado === 'pendiente').length;
+    // Como en el servidor: solo las empresas con GESTLOK Chat encendido (en el simulador, Mi Gusto).
+    if (fn === 'gestlok_chat_panel_inicio' && window.__tenantOverride && window.__tenantOverride !== 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670') return {data: {habilitado: false}, error: null};
     if (fn === 'gestlok_chat_panel_inicio') return {data: {habilitado: true, empresa: 'Mi Gusto', sucursales: Object.keys(suc).filter(nivel).map(loc =>
       ({id: suc[loc], local_id: loc, nombre: loc === 'munro' ? 'Munro' : 'Don Torcuato', slug: 'mi-gusto-' + loc, activa: true, nivel: nivel(loc), pendientes: pend(loc)}))}, error: null};
+    // Administradora: encender, pausar y listar GESTLOK Chat por empresa (sin datos de clientes).
+    if (/^gestlok_chat_admin_/.test(fn)) {
+      if (!a || a.rol !== 'creadora') return sinPermiso;
+      C.admin = C.admin || [{tenant_id: 'cb0dc04a-9a13-434f-a3d0-47f1d8f39670', nombre: 'Mi Gusto', habilitada: true,
+        sucursales: [{local_id: 'munro', nombre: 'Munro', slug: 'mi-gusto-munro', activa: false, productos: 0, pendientes: pend('munro')},
+          {local_id: 'torcuato', nombre: 'Don Torcuato', slug: 'mi-gusto-torcuato', activa: false, productos: 0, pendientes: pend('torcuato')}]}];
+      if (fn === 'gestlok_chat_admin_empresas') return {data: C.admin, error: null};
+      const e = C.admin.find(q => q.tenant_id === x.p_tenant);
+      if (fn === 'gestlok_chat_admin_habilitar') {
+        if (!e) C.admin.push({tenant_id: x.p_tenant, nombre: x.p_nombre, habilitada: true,
+          sucursales: [{local_id: 'otro', nombre: 'Otro local', slug: 'chat-' + String(x.p_tenant).slice(-4), activa: false, productos: 0, pendientes: 0}]});
+        else e.habilitada = true;
+        return {data: {ok: true, sucursales: e ? 0 : 1}, error: null};
+      }
+      if (fn === 'gestlok_chat_admin_estado') { if (!e) return {data: null, error: {code: 'P0002', message: 'Esa empresa no tiene GESTLOK Chat'}}; e.habilitada = !!x.p_habilitada; return {data: {ok: true, habilitada: e.habilitada}, error: null}; }
+    }
     const loc = deSuc(x.p_sucursal) || C.pedidos.find(p => p.id === x.p_pedido)?.local;
     if (!loc || !nivel(loc)) return sinPermiso;
     if (fn === 'gestlok_chat_panel_pedidos') return {data: {nivel: nivel(loc), pedidos: C.pedidos.filter(p => p.local === loc && (x.p_estado === 'todos' || p.estado === x.p_estado))}, error: null};
@@ -376,7 +394,7 @@
       // NFC y QR (como las RPC gestlok_nfc_*): solo la creadora; comercios y sucursales con link propio,
       // placas que usan su link, el de la sucursal o el del comercio; activar, reasignar e historial en memoria.
       if (/^gestlok_nfc_/.test(fn)) return nfcRpc(fn, args || {}, a);
-      if (/^gestlok_chat_panel_/.test(fn)) return chatRpc(fn, args || {}, a);
+      if (/^gestlok_chat_(panel|admin)_/.test(fn)) return chatRpc(fn, args || {}, a);
       // Estado ficticio para probar Pagos Online sin consultar datos de Mi Gusto.
       if (fn === 'gestlok_mg_online_state'){
         const loc=args?.p_local;
