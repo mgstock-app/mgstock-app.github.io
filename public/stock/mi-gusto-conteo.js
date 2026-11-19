@@ -443,12 +443,12 @@ function historyDetailsTable(section,products,rec){
    return makeCell(p,cell);
   }).join('');
   total+=amount(p,{chapas:Number(decomp.chapas)||0,sueltas:Number(decomp.sueltas)||0,qty:Number(decomp.qty)||0});
-  return '<tr><th scope="row">'+esc(p.name)+'</th>'+(showDecomiso?makeCell(p,decomp):'')+cols+'<td class="gcm-hd-total">'+(total||'—')+'</td></tr>';
+  return '<tr>'+(showDecomiso?makeCell(p,decomp):'')+'<th scope="row">'+esc(p.name)+'</th>'+cols+'<td class="gcm-hd-total">'+(total||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-hd-category"'+(section==='EMPANADAS'?' open':'')+'>'+
    '<summary>'+esc(section)+'<span>'+products.length+' productos</span></summary>'+
-   '<div class="gcm-scroller"><table><thead><tr><th>Producto</th>'+
-   (showDecomiso?'<th>Decomiso</th>':'')+
+   '<div class="gcm-scroller"><table><thead><tr>'+
+   (showDecomiso?'<th>Decomiso</th>':'')+'<th>Producto</th>'+
    [1,2,3,4].map(i=>'<th>Vto '+i+'</th>').join('')+'<th>Total</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
    '</details>';
 }
@@ -721,8 +721,8 @@ function expiryRuler(showDecomiso){
  '<div class="gcm-expiry-shift" aria-hidden="true"><span>Planilla activa</span><strong>'+esc(turno)+'</strong></div>'+
  '<div class="gcm-expiry-ruler-scroll" role="region" aria-label="Fechas y vencimientos, desplazamiento horizontal" tabindex="0">'+
  '<div class="gcm-expiry-ruler-grid'+(showDecomiso?' has-decomiso':'')+'">'+
- '<span class="gcm-expiry-ruler-product">Producto</span>'+
- (showDecomiso?'<span class="gcm-expiry-ruler-decomiso">Decomiso</span>':'')+dates+
+ (showDecomiso?'<span class="gcm-expiry-ruler-decomiso">Decomiso</span>':'')+
+ '<span class="gcm-expiry-ruler-product">Producto</span>'+dates+
  '<span class="gcm-expiry-ruler-total">Total</span></div></div></div>';
 }
 function selectCategoryButton(root,name){
@@ -757,7 +757,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
   return '<tr data-gcm-morning-row="'+esc(p.id)+'" class="'+(p.units_per_chapa>0?'gcm-chapa-row':'gcm-qty-row')+
-   (check?.different?(check.acknowledged?' gcm-morning-confirmed':' gcm-morning-difference'):'')+'"><th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+
+   (check?.different?(check.acknowledged?' gcm-morning-confirmed':' gcm-morning-difference'):'')+'">'+(showDecomiso?decompColumn(p,canWrite):'')+'<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+
    (shift==='manana_entrada'?'<small data-gcm-morning-note'+(check?.different?'':' hidden')+'>'+esc(check?.label||'')+'</small>':'')+
    (canCatalog?'<div class="gcm-product-actions">'+
    '<button type="button" class="gcm-product-menu-trigger" data-gcm-product-menu="'+esc(p.id)+'" aria-haspopup="dialog" aria-label="Opciones del producto '+esc(p.name)+'" title="Opciones del producto">⋯</button>'+
@@ -768,7 +768,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    '<button type="button" data-gcm-remove="'+esc(p.id)+'">Quitar producto</button>'+
    '<button type="button" class="gcm-product-dialog-cancel" data-gcm-menu-close>Cancelar</button>'+
    '</div></dialog></div>':'')+
-   '</th>'+(showDecomiso?decompColumn(p,canWrite):'')+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
+   '</th>'+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
@@ -791,9 +791,8 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  '<p class="gcm-add-product-error" role="alert" aria-live="polite" data-gcm-add-product-error></p>'+
  '<div class="gcm-add-product-actions"><button type="button" data-gcm-add-product-save>Guardar producto</button>'+
  '<button type="button" data-gcm-add-product-cancel>Cancelar</button></div></dialog>':'')+
- '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table class="gcm-count-data-table'+(showDecomiso?' has-decomiso':'')+'"><colgroup><col class="gcm-col-product">'+
- (showDecomiso?'<col class="gcm-col-decomiso">':'')+Array.from({length:4},()=>'<col class="gcm-col-vto">').join('')+'<col class="gcm-col-total"></colgroup><thead class="gcm-repeat-head"><tr>'+
- '<th scope="col" class="gcm-product-head">Producto</th>'+(showDecomiso?'<th scope="col" class="gcm-decomp-head gcm-vto-col" data-gcm-idx="d">Decomiso</th>':'')+
+ '<div class="gcm-scroller gcm-sheet-scroll" role="region" aria-label="'+esc(name)+'" tabindex="0"><table class="gcm-count-data-table'+(showDecomiso?' has-decomiso':'')+'"><colgroup>'+(showDecomiso?'<col class="gcm-col-decomiso">':'')+'<col class="gcm-col-product">'+Array.from({length:4},()=>'<col class="gcm-col-vto">').join('')+'<col class="gcm-col-total"></colgroup><thead class="gcm-repeat-head"><tr>'+
+ (showDecomiso?'<th scope="col" class="gcm-decomp-head gcm-vto-col" data-gcm-idx="d">Decomiso</th>':'')+'<th scope="col" class="gcm-product-head">Producto</th>'+
  
  dates.map((s,index)=>'<th scope="col" class="gcm-vto-col'+(activeVto===String(index+1)?' is-current-vto':'')+'" data-gcm-idx="'+(index+1)+'"><span class="gcm-vto">'+esc(s.vto)+'</span><span class="gcm-vto-date">'+esc(s.dia)+'</span></th>').join('')+'<th scope="col">Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
 }
@@ -1502,10 +1501,10 @@ document.addEventListener('change',async e=>{
   finally{
    busy=false;api.render();
    if(!error){
-    // La columna Decomiso está junto al producto para que se vea enseguida
-    // incluso en tablets de poco ancho, sin tener que buscar el Vto 5.
+    // Decomiso aparece a la izquierda de Producto.
+    // El orden se mantiene en tablet y teléfono.
      // Mantener el vencimiento visible, también al activar Decomiso.
-    api?.toast?.(visible?'Decomiso habilitado. La columna amarilla aparece junto a Producto.':'Decomiso oculto. Las cantidades registradas siguen guardadas.');
+    api?.toast?.(visible?'Decomiso habilitado. La columna amarilla aparece a la izquierda de Producto.':'Decomiso oculto. Las cantidades registradas siguen guardadas.');
    }
   }
   return;

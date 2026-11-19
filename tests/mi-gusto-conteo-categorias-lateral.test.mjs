@@ -120,9 +120,12 @@ for(const local of ['munro','torcuato']){
   const html=a.mod.view();
   assert.match(html,/id="gcm-decomiso-toggle" checked/);
   assert.match(html,/class="gcm-count-data-table has-decomiso"/);
-  assert.ok(html.indexOf('gcm-expiry-ruler-decomiso')<html.indexOf('gcm-expiry-ruler-date'));
+  assert.ok(html.indexOf('gcm-expiry-ruler-decomiso')<html.indexOf('gcm-expiry-ruler-product'));
+   assert.ok(html.indexOf('gcm-expiry-ruler-product')<html.indexOf('gcm-expiry-ruler-date'));
   const head=html.slice(html.indexOf('<thead class="gcm-repeat-head">'),html.indexOf('</thead>')+8);
-  assert.ok(head.indexOf('>Decomiso</th>')<head.indexOf('Vto 1'));
+  assert.ok(head.indexOf('>Decomiso</th>')<head.indexOf('>Producto</th>'));
+   assert.ok(head.indexOf('>Producto</th>')<head.indexOf('Vto 1'));
+   assert.match(html,/<colgroup><col class="gcm-col-decomiso"><col class="gcm-col-product">/);
   const save=a.calls.find(c=>c.name==='gestlok_'+local+'_conteo_decomiso_visible');
   assert.ok(save,'no guardó el cambio de Decomiso en el RPC local');
   assert.equal(save.args.p_visible,true);
