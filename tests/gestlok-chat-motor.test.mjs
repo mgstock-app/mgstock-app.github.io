@@ -121,3 +121,11 @@ test('estado, cancelar y estado inválido', () => {
   const r = turno({carrito: [{producto_id: 'borrado', cantidad: 1}], paso: 'x'}, {texto: 'ver pedido'});
   assert.equal(r.estado.carrito.length, 0, 'descarta productos que ya no están');
 });
+
+test('los ejemplos salen de la carta del local (sirve para cualquier comercio)', () => {
+  const m = M.ejemploPedido({productos: [{nombre: 'Café con leche', activo: true, disponible: true}, {nombre: 'Medialuna', activo: true, disponible: true}]});
+  assert.equal(m, '«2 café con leche y 1 medialuna»');
+  assert.equal(M.ejemploPedido({productos: [{nombre: 'Agotado', disponible: false}]}), '«2 de tal producto»');
+  assert.doesNotMatch(M.textoCarrito({productos: [{nombre: 'Corte de pelo', activo: true}]}, []), /empanada/);
+});
+

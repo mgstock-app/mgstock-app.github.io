@@ -52,7 +52,7 @@ export const PAGOS = {
 };
 
 export function normalizar(t) {
-  return String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9ñ\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 const raiz = p => p.length > 4 && p.endsWith('es') ? p.slice(0, -2) : p.length > 3 && p.endsWith('s') ? p.slice(0, -1) : p;
@@ -232,8 +232,15 @@ export function textoEnvio(s) {
 export function textoPago(s) {
   return 'Aceptamos: ' + (s.medios_pago || ['efectivo']).map(m => PAGOS[m] || m).join(', ') + '.';
 }
+// Ejemplo de pedido armado con la carta de ESTE local (sirve para cualquier comercio).
+export function ejemploPedido(catalogo) {
+  const ps = (catalogo?.productos || []).filter(p => p.activo !== false && p.disponible !== false);
+  if (!ps.length) return '«2 de tal producto»';
+  const nombre = p => String(p.nombre || '').trim().toLowerCase();
+  return ps.length > 1 ? '«2 ' + nombre(ps[0]) + ' y 1 ' + nombre(ps[1]) + '»' : '«2 ' + nombre(ps[0]) + '»';
+}
 export function textoCarrito(catalogo, carrito) {
-  if (!carrito.length) return 'Tu pedido está vacío. Tocá «Ver la carta» o escribime qué querés, por ejemplo «2 empanadas de carne».';
+  if (!carrito.length) return 'Tu pedido está vacío. Tocá «Ver la carta» o escribime qué querés, por ejemplo ' + ejemploPedido(catalogo) + '.';
   return 'Tu pedido:\n' + carrito.map(l => '• ' + describirLinea(catalogo, l)).join('\n') +
     '\nTotal estimado: ' + pesos(totalCarrito(catalogo, carrito));
 }
@@ -277,7 +284,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
 
   if (entrada.inicio) {
     decir((s.bienvenida || ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' + (s.nombre || '') + '.').trim()) +
-      '\nPodés escribirme tu pedido, por ejemplo «2 empanadas de carne y 1 de jamón y queso», o mirar la carta.',
+      '\nPodés escribirme tu pedido, por ejemplo ' + ejemploPedido(catalogo) + ', o mirar la carta.',
       {botones: BOTONES_INICIO});
     return fin();
   }
@@ -331,7 +338,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
 
   switch (accion) {
     case 'vacio': decir('Escribime qué necesitás.', {botones: botonesCarrito(e.carrito)}); return fin();
-    case 'saludo': decir('¡Hola! ¿Qué te preparamos hoy?', {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'saludo': decir('¡Hola! ¿Qué te gustaría pedir hoy?', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'gracias': decir(mensajeDe(mensajes, 'despedida'), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'horario': decir(textoHorario(s) + '\n' + textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'envio': decir(textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
@@ -373,11 +380,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   // Texto libre: intentar armar el pedido.
   const {lineas, dudas, sinCoincidencia} = interpretarPedido(catalogo, texto);
   if (!lineas.length && !dudas.length && /\b(pedi|pedido|ordenar|encargar)/.test(normalizar(texto))) {
-    decir('¡Dale! Mirá la carta y tocá lo que quieras, o escribime por ejemplo «2 empanadas de carne».', {tipo: 'carta'});
+    decir('¡Dale! Mirá la carta y tocá lo que quieras, o escribime por ejemplo ' + ejemploPedido(catalogo) + '.', {tipo: 'carta'});
     return fin();
   }
   if (!lineas.length && !dudas.length) {
-    decir('No te entendí bien. Podés escribir algo como «2 empanadas de carne» o mirar la carta.', {botones: botonesCarrito(e.carrito)});
+    decir('No te entendí bien. Podés escribir algo como ' + ejemploPedido(catalogo) + ' o mirar la carta.', {botones: botonesCarrito(e.carrito)});
     return fin();
   }
   const completas = []; const aElegir = [];
