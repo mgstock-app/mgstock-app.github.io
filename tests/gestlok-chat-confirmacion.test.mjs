@@ -25,7 +25,7 @@ test('confirmación manual, permisos y aislamiento sobre PostgreSQL embebido', a
 test('el mensaje pendiente nunca anuncia preparación aunque exista una plantilla anterior', () => {
  const p = {estado:'pendiente',codigo:'XX-001',total:1000};
  assert.match(textoEstadoPedido(p, {}, {recibido:'Ya lo estamos preparando'}), /pendiente de revisión y confirmación/);
- assert.match(textoEstadoPedido({...p,estado:'confirmado'}, {}, {}), /gerente confirmó/);
+ assert.match(textoEstadoPedido({...p,estado:'confirmado'}, {}, {}), /ya está en preparación/);
 });
 test('función pública → pedido completo → gerente → estado del cliente', async () => {
  const {default: ts} = await import('typescript');
@@ -82,7 +82,7 @@ test('función pública → pedido completo → gerente → estado del cliente',
   await assert.rejects(()=>decide('terminado'),/primero debe confirmarse/);
   await decide('confirmado');
   let status=await call({...base,accion:'estado'});
-  assert.equal(status.pedidos[0].estado,'confirmado'); assert.match(status.pedidos[0].aviso,/gerente confirmó/);
+  assert.equal(status.pedidos[0].estado,'confirmado'); assert.match(status.pedidos[0].aviso,/ya está en preparación/);
   await decide('terminado');
   status=await call({...base,accion:'estado'});
   assert.equal(status.pedidos[0].estado,'terminado');
