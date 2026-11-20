@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js';
+import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120pagos1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -358,6 +358,8 @@ $('btn-info').onclick = abrirInfo;
 function pantallaFija(titulo, detalle) {
   $('app').setAttribute('aria-busy', 'false');
   $('redactar').hidden = true;
+  $('barra-pedido').hidden = true;
+  $('btn-carta').disabled = true;
   lista.replaceChildren(el('div', {class: 'pausado'}, el('h2', {text: titulo}), el('p', {text: detalle})));
 }
 async function iniciar() {
@@ -381,7 +383,11 @@ async function iniciar() {
   $('subtitulo').textContent = r.sucursal.horario || 'Pedidos por chat';
   $('avatar').textContent = (r.sucursal.empresa || r.sucursal.nombre || 'G').trim().charAt(0).toUpperCase();
   $('btn-info').hidden = false;
-  for (const m of r.mensajes || []) burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente', m.texto);
+  for (const [indice, m] of (r.mensajes || []).entries()) {
+    const antiguo = indice === 0 && m.rol === 'asistente' && /Podés escribirme tu pedido, por ejemplo/.test(m.texto);
+    burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente',
+      antiguo && r.sucursal.bienvenida ? r.sucursal.bienvenida : m.texto);
+  }
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
   if (!(r.nuevos || []).length) chips(BOTONES_BASE());
