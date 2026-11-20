@@ -42,7 +42,9 @@
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
   const marco = el('div', {class: 'panel' + (EMBED ? ' embebido' : ''), id: 'panel', 'aria-busy': 'true'},
     el('header', {class: 'tope'},
-      el('a', {class: 'volver', href: '/', 'aria-label': 'Volver a GESTLOK', text: '‹'}),
+      el('a', {class: 'volver', href: DEMO ? '#' : '/',
+        onclick: DEMO ? e => e.preventDefault() : undefined,
+        'aria-label': DEMO ? 'Demostración de GESTLOK Chat' : 'Volver a GESTLOK', text: '‹'}),
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
