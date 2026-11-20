@@ -45,14 +45,17 @@
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['stock', 'Stock'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
+      [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['stock', 'Stock'], ['carta', 'Carta'],
+        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
-          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) : null))),
+          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
+          k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
     el('main', {id: 'contenido', class: 'contenido', tabindex: '-1'}),
     el('div', {class: 'aviso', id: 'aviso', role: 'status', 'aria-live': 'polite', hidden: true}));
   raiz.replaceChildren(...[EMBED ? el('link', {rel: 'stylesheet', href: '/chat/panel/panel.css?v=' + VERSION_CSS}) : null, marco].filter(Boolean));
   const $ = id => raiz.querySelector('#' + id);
-  const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0, pendientesVistos: null, ocupado: false};
+  const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0,
+    pendientesVistos: null, reclamosVistos: null, ocupado: false};
   let sb = op.sb || null;
   if (!DEMO && !sb) {
     try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: false}}); }
@@ -101,7 +104,8 @@
     S.sucursales = r.sucursales;
     $('empresa').textContent = r.empresa;
     const sel = $('sucursal');
-    sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id, text: s.nombre + (s.pendientes ? ' (' + s.pendientes + ')' : '')})));
+    sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id,
+      text: s.nombre + ((s.pendientes || s.reclamos) ? ' (' + ((s.pendientes||0)+(s.reclamos||0)) + ')' : '')})));
     let guardada = null; try { guardada = localStorage.getItem('gestlok-chat-panel:sucursal'); } catch { /* sin almacenamiento */ }
     S.suc = (LOCAL && r.sucursales.find(s => s.local_id === LOCAL)) || r.sucursales.find(s => s.id === guardada) || r.sucursales[0];
     if (EMBED && LOCAL && S.suc.local_id !== LOCAL) return fijo('Sin acceso a esta sucursal', 'Tu usuario no tiene la Central de mensajes de este local.');
@@ -123,10 +127,14 @@
     for (const b of $('pestanas').querySelectorAll('[data-p]')) {
       b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
       if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
-      if (b.dataset.p === 'charlas') b.hidden = !puede('gestionar');
+      if (b.dataset.p === 'charlas' || b.dataset.p === 'soporte') b.hidden = !puede('gestionar');
     }
     clearTimeout(S.sondeo);
-    ({pedidos: verPedidos, stock: verStock, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
+    const avisoSoporte = $('globo-soporte');
+    if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
+      avisoSoporte.hidden = !(S.suc?.reclamos > 0); }
+    ({pedidos: verPedidos, soporte: verSoporte, stock: verStock, carta: verCarta,
+      mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
@@ -517,6 +525,34 @@
     contenido.replaceChildren(form);
   }
 
+  // ------------------------------------------------------------------------------------------- soporte humano y reclamos
+  async function verSoporte() {
+    const sucId = S.suc.id;
+    contenido.replaceChildren(el('h2', {text:'Soporte al cliente'}),
+      el('p', {class:'nota',text:'Los reclamos llegan desde el chat público. El gerente responde al cliente en la misma conversación.'}),
+      el('p',{class:'nota',text:'Cargando reclamos…'}));
+    let reclamos;
+    try { reclamos = await rpc('panel_soporte',{p_sucursal:sucId}); }
+    catch(e){return contenido.replaceChildren(el('p',{class:'error',text:e.message}));}
+    if (S.pestana !== 'soporte' || S.suc.id !== sucId) return;
+    S.suc.reclamos = reclamos.length;
+    const badge = $('globo-soporte');
+    if (badge) { badge.hidden = !reclamos.length; badge.textContent = String(reclamos.length); }
+    contenido.replaceChildren(
+      el('h2',{text:'Soporte al cliente'}),
+      el('p',{class:'nota',text:'Reclamos de esta sucursal pendientes de respuesta.'}),
+      ...(reclamos.length ? reclamos.map(r => el('article',{class:'soporte-reclamo'},
+        el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo'})[r.tipo]||'Reclamo'}),
+          r.pedido ? el('span',{class:'estado',text:'Pedido '+r.pedido}) : null),
+        el('p',{text:r.detalle}),
+        el('small',{text:hora(r.creado_at)}),
+        el('button',{type:'button',class:'boton principal',text:'Responder en el chat',
+          onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at},r.id)}))) :
+        [el('p',{class:'nota',text:'No hay reclamos pendientes.'})]));
+    clearTimeout(S.sondeo);
+    S.sondeo=setTimeout(()=>{if(S.pestana==='soporte'&&!document.hidden)verSoporte();},15000);
+  }
+
   // ------------------------------------------------------------------------------------------- conversaciones
   async function verCharlas() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
@@ -527,15 +563,26 @@
         el('span', {class: 'charla-cab'}, el('strong', {text: hora(c.ultima_at)}), c.pedido ? el('span', {class: 'estado', text: c.pedido}) : null),
         el('span', {class: 'charla-ult', text: c.ultimo || ''})))) : el('p', {class: 'nota', text: 'Todavía no hay conversaciones.'}));
   }
-  async function abrirCharla(c) {
+  async function abrirCharla(c, reclamoId = null) {
     let m;
     try { m = await rpc('panel_conversacion', {p_conversacion: c.id}); } catch (e) { return aviso(e.message, true); }
-    dialogo('Conversación · ' + hora(c.creada_at), [el('div', {class: 'hilo'}, m.map(x => el('p', {class: 'msj ' + x.rol, text: x.texto})))], null);
+    const respuesta = el('textarea',{rows:3,maxlength:1000,placeholder:'Escribí tu respuesta al cliente',
+      'aria-label':'Respuesta al cliente',class:'soporte-texto'});
+    dialogo('Conversación · ' + hora(c.creada_at), [
+      el('div', {class: 'hilo'}, m.map(x => el('p', {class: 'msj ' + x.rol, text: x.texto}))),
+      puede('gestionar') ? campo('Responder por este chat',respuesta) : null
+    ].filter(Boolean), puede('gestionar') ? async ()=>{
+      if (respuesta.value.trim().length < 2) throw new Error('Escribí una respuesta para el cliente.');
+      await rpc('panel_responder',{p_conversacion:c.id,p_texto:respuesta.value.trim(),p_reclamo:reclamoId});
+      aviso('Respuesta enviada al cliente por GESTLOK Chat');
+      if (S.pestana === 'soporte') await verSoporte();
+      else if(S.pestana === 'charlas') await verCharlas();
+    }:null,'Enviar mensaje');
   }
 
   // ------------------------------------------------------------------------------------------- utilidades
   function campo(texto, control) { return el('label', {class: 'campo'}, el('span', {text: texto}), control); }
-  function dialogo(titulo, cuerpo, guardar) {
+  function dialogo(titulo, cuerpo, guardar, textoGuardar = 'Guardar') {
     const d = el('dialog', {class: 'dialogo', 'aria-label': titulo});
     const error = el('p', {class: 'error', role: 'alert', hidden: true});
     const form = el('form', {method: 'dialog', onsubmit: async e => {
@@ -547,12 +594,13 @@
     }}, el('header', {}, el('h2', {text: titulo}), el('button', {type: 'button', class: 'cerrar', 'aria-label': 'Cerrar', text: '×', onclick: () => d.close()})),
     el('div', {class: 'dialogo-cuerpo'}, cuerpo), error,
     guardar ? el('footer', {}, el('button', {type: 'button', class: 'boton', text: 'Cancelar', onclick: () => d.close()}),
-      el('button', {type: 'submit', class: 'boton principal', text: 'Guardar'})) : null);
+      el('button', {type: 'submit', class: 'boton principal', text: textoGuardar})) : null);
     d.append(form); marco.append(d);
     d.addEventListener('close', () => d.remove());
     d.showModal();
   }
-  const alVolver = () => { if (marco.isConnected && !document.hidden && S.pestana === 'pedidos' && S.suc) verPedidos(); };
+  const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
+    if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
   document.addEventListener('visibilitychange', alVolver);
 
   // ------------------------------------------------------------------------------------------- demostración
