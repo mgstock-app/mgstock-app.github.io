@@ -380,7 +380,13 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     return fin();
   }
   if (entrada.boton === 'programar_si') {
-    if (!s.atencion?.habilitado) {decir('La programación no está habilitada para este local.');return fin();}
+    if (!s.atencion?.habilitado || s.atencion.abierto) {
+      e.programado=false;
+      decir(s.atencion?.abierto
+        ? 'El local ya está abierto. Puede realizar su pedido normalmente.'
+        : 'La programación no está habilitada para este local.',{botones:botonesCarrito(e.carrito)});
+      return fin();
+    }
     e.programado=true;
     decir('Con gusto. '+(e.carrito.length
       ? 'Conservamos los productos que ya eligió. Puede finalizar el pedido cuando lo desee. '
