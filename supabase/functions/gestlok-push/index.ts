@@ -167,7 +167,7 @@ Deno.serve(async(req:Request)=>{
  let data:Record<string,unknown>;
  try{
   if(Number(req.headers.get("content-length")||0)>8192)throw Error("too long");
-  data=await req.reply();
+  data=await req.json();
   if(!data||typeof data!=="object"||Array.isArray(data))throw Error("invalid");
  }catch{return reply(400,{ok:false,error:"Datos inválidos"});}
  if(data.op==="set-preference"){
