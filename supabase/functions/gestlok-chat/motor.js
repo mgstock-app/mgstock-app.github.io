@@ -296,6 +296,10 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       decir('La selección del menú es inválida. Volvé a revisar tu carrito.');
       return fin();
     }
+    if (entrada.lote_id && e.ultimo_lote === entrada.lote_id) {
+      decir('Esta selección del menú ya fue recibida.\\n' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
+      return fin();
+    }
     const siguiente = e.carrito.map(l => ({...l, opciones: {...(l.opciones || {})}}));
     for (const entradaLinea of lineas) {
       const l = {producto_id: entradaLinea.producto_id, cantidad: Number(entradaLinea.cantidad),
@@ -312,6 +316,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       if (aviso.length) { decir(aviso.join(' ') + ' No se agregó la selección.'); return fin(); }
     }
     e.carrito = siguiente;
+    if (entrada.lote_id) e.ultimo_lote = entrada.lote_id;
     e.paso = 'pedido';
     decir('Recibí tu selección del menú:\\n' + lineas.map(l => '• ' + describirLinea(catalogo, l)).join('\\n') +
       '\\nTotal estimado: ' + pesos(totalCarrito(catalogo, e.carrito)) +
