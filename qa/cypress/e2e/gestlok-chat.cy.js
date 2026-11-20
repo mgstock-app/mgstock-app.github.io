@@ -125,3 +125,19 @@ describe('GESTLOK Chat · panel', () => {
     sinDesborde();
   });
 });
+
+describe('GESTLOK Chat · historial de demanda del local',()=>{
+  it('muestra pedidos diarios por retiro, delivery y programación sin datos de clientes',()=>{
+    cy.viewport(390,844);
+    cy.visit('/chat/panel/?demo=1');
+    cy.get('[data-p="reporte"]').click();
+    cy.contains('Historial diario · Pedidos por GESTLOK Chat').should('be.visible');
+    cy.contains('.reporte-cifra','Pedidos recibidos').should('contain.text','2');
+    cy.contains('.reporte-cifra','Retiro').should('contain.text','1');
+    cy.contains('.reporte-cifra','Delivery').should('contain.text','1');
+    cy.contains('.reporte-cifra','Programados').should('contain.text','1');
+    cy.get('.reporte-dia').first().should('contain.text','Retiro: 1').and('contain.text','Delivery: 1');
+    cy.contains('button','Últimos 7 días').click();
+    cy.get('.reporte-dia').should('have.length',1);
+  });
+});
