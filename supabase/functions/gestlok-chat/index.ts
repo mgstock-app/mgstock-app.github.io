@@ -4,8 +4,9 @@
  * - Topes por IP, por conversación y por sucursal (en la base). Textos acotados. CORS solo para los dominios propios.
  * - Precios, totales, disponibilidad y numeración los decide la base. El asistente solo arma el carrito.
  * - No guarda nombre, teléfono ni dirección en el chat: esos datos van únicamente en el pedido.
- * - Prioridad: botones y carrito (asistente guiado, sin costo). La IA escribe la bienvenida y responde solo lo que
- *   el guiado no entiende; si no hay IA o falla, la consulta pasa al gerente por el mismo chat.
+ * - Prioridad: botones y carrito (asistente guiado, sin costo). La IA escribe el saludo de bienvenida (debajo, el
+ *   sistema indica los botones) y responde solo lo que el guiado no entiende; si no hay IA o falla, saluda el
+ *   asistente guiado y la consulta pasa al gerente por el mismo chat.
  * - Los avisos de estado del pedido (recibido, confirmado, listo, rechazado) los arma el sistema con los mensajes
  *   del local; la IA no interviene.
  * Secretos: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (automáticos), GESTLOK_CHAT_SALT (recomendado),
@@ -30,11 +31,12 @@ const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const BOTON_TEXTO: Record<string, string> = {
-  carta: "Ver la carta", promociones: "Ver promociones", horario: "Horario y envío", pago: "Medios de pago", finalizar: "Finalizar pedido",
+  carta: "Hacer un pedido", promociones: "Ver promociones", horario: "Horario y envío", pago: "Medios de pago", finalizar: "Finalizar pedido",
   carrito: "Ver mi pedido", estado: "¿Cómo va mi pedido?", cancelar: "Cancelar pedido",
   soporte: "Ayuda con mi pedido", demora: "Consultar demora", reclamo_demora: "Avisar demora al gerente",
   reclamo_faltante: "Faltante en mi pedido", reclamo_otro: "Otro reclamo",
   hablar_gerente: "Hablar con el gerente", programar_si:"Sí, dejar pedido programado", programar_no:"No, gracias",
+  promo_no: "Seguir sin promoción",
 };
 
 function cors(origen: string | null): HeadersInit {
@@ -248,7 +250,8 @@ Deno.serve(async (req) => {
             extra = at.habilitado && at.abierto === false
               // Cerrado: saludo de la IA y, debajo, el aviso del sistema con la próxima apertura y sus botones.
               ? [{ texto: saludo }, { ...extra[0], texto: String(extra[0].texto || "").replace(/^Gracias por comunicarse\.\s*/, "") }, ...extra.slice(1)]
-              : [{ ...extra[0], texto: saludo }, ...extra.slice(1)];
+              // Abierto: la IA saluda y, en el mismo mensaje, el sistema indica los botones de abajo (nombres exactos).
+              : [{ ...extra[0], texto: [saludo, String(extra[0].guia || "")].filter(Boolean).join("\n") }, ...extra.slice(1)];
           } catch (e) {
             console.warn("gestlok-chat bienvenida IA no disponible → guiada", (e as Error)?.message);
           }
@@ -371,7 +374,8 @@ Deno.serve(async (req) => {
     let pedido: Json | null = null;
     // Lo que queda escrito del lado del cliente (sin datos personales).
     const cliente = textoOriginal || (entrada.texto ? String(entrada.texto)
-      : entrada.boton ? (BOTON_TEXTO[String(entrada.boton)] || "Elegí una opción")
+      : entrada.boton ? (BOTON_TEXTO[String(entrada.boton)] ||
+        (String(entrada.boton).startsWith("promo:") ? "Armar la promoción" : "Elegí una opción"))
       : entrada.agregar ? "Agregar: " + describirLinea(catalogo, entrada.agregar as never)
       : entrada.agregar_varios ? "Selección del menú: " +
         (entrada.agregar_varios as Json[]).map(l => describirLinea(catalogo, l as never)).join(", ")
@@ -390,6 +394,7 @@ Deno.serve(async (req) => {
         r.estado.carrito = []; r.estado.paso = "enviado";
         r.estado.programado = false; // Cada nuevo pedido requiere consentimiento independiente.
         r.estado.sugerido = false; // El próximo pedido vuelve a recibir la venta sugerida.
+        delete r.estado.promo_ofrecida; delete r.estado.promo_reemplazo; // y la oferta de promoción
         mensajes.push({ texto: String(pedido.aviso), botones:[{id:"estado",texto:"Ver estado del pedido"},{id:"soporte",texto:"Necesito ayuda"}] });
       }
     } else if (r.accion?.tipo === "estado") {

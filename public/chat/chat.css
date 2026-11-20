@@ -51,6 +51,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .escribiendo{align-self:flex-start;background:var(--papel);border-radius:var(--radio);padding:12px 14px;display:flex;gap:4px}
 .escribiendo i{width:7px;height:7px;border-radius:50%;background:var(--gris-claro);animation:latir 1s infinite}
 .escribiendo i:nth-child(2){animation-delay:.15s}.escribiendo i:nth-child(3){animation-delay:.3s}
+/* La conversación arranca abajo, junto al cuadro de escribir (como en WhatsApp): saludo y botones quedan a mano. */
+.mensajes>:first-child{margin-top:auto}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start;max-width:100%;margin:-2px 0 4px}
 .chip{border:1px solid var(--acento);background:var(--papel);color:var(--acento-osc);border-radius:999px;padding:7px 13px;font-size:14px;font-weight:600;min-height:36px}
 .chip:active{background:var(--acento-suave)}

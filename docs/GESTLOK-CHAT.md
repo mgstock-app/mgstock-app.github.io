@@ -93,6 +93,14 @@ enlaces, queda la bienvenida guiada; con el local cerrado, el aviso de próxima 
 sistema debajo); 2) responde el texto libre que el guiado no entiende. Los **avisos de estado del pedido** (recibido,
 confirmado, listo, rechazado, cancelado) los arma siempre el sistema con los mensajes del local: la IA no interviene.
 
+**Saludo y botones (20/11/2026).** La conversación arranca abajo, junto al cuadro de escribir (como en WhatsApp), así
+el saludo y los botones quedan a mano. El primer mensaje es: saludo según la hora de Argentina («¡Buenas noches!»;
+reemplaza un «¡Hola!» suelto al comienzo del texto del dueño) + bienvenida del dueño + en el mismo globo la guía de los
+botones con sus nombres exactos: «Para hacer su pedido, toque «Hacer un pedido» aquí abajo. También puede tocar «Ver
+promociones», «Horario y envío», «Medios de pago» o «Ayuda con mi pedido».» («Ver promociones» solo con menú
+interactivo y promos vigentes). Con la IA activa, la IA escribe el saludo y el sistema agrega la guía debajo (la IA no
+nombra botones, para que nunca invente uno). La bienvenida del dueño no necesita mencionar los botones.
+
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
 Pregunta cuando hay dudas y pide las opciones obligatorias. **Nunca** fija precios ni confirma: la base recalcula todo

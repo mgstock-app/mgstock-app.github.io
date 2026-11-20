@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120pizzassafe1';
+import {botonesBienvenida, describirLinea, detallesLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120bienvenida1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -169,10 +169,7 @@ function mostrarEscribiendo(si) {
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
   ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
-  : [{id: 'carta', texto: 'Ver menú'},
-      ...(usaMenuInteractivo(S.sucursal) && promocionesVigentes(S.catalogo).length ? [{id: 'promociones', texto: 'Ver promociones'}] : []),
-      {id: 'horario', texto: 'Horario y envío'},
-      {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
+  : botonesBienvenida(S.sucursal, S.catalogo); // «Hacer un pedido», «Ver promociones» (si hay), horario, pagos y ayuda
 
 async function enviar(entrada, textoVisible) {
   if (S.enviando) return false;

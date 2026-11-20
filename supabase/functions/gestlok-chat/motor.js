@@ -217,6 +217,68 @@ function promocionesParaTexto(promos, texto) {
   return pidePromo || candidatos.length ? candidatos : null;
 }
 
+/* Promoción que conviene: el cliente eligió unidades sueltas (ej. 3 empanadas) que también entran en una promo vigente
+ * (ej. «Pack 3 empanadas + 1 salsa»). El asistente se la ofrece; si la arma en el menú, las sueltas pasan a la promo. */
+function grupoEnlazado(p) {
+  return (p?.opciones || []).find(g => esCantidad(g) && (g.valores || []).some(v => v.producto_id)) || null;
+}
+/** Línea suelta que puede pasar a una promo: producto simple, sin adicionales elegidos ni aclaración. */
+function lineaSuelta(catalogo, l) {
+  const p = productoPorId(catalogo, l?.producto_id);
+  if (!p || grupoEnlazado(p) || String(l.nota || '').trim()) return false;
+  return !Object.values(l.opciones || {}).some(v => Array.isArray(v) ? v.length : v && Object.keys(v).length);
+}
+/** Cuántas unidades sueltas del carrito entran en la promo y cómo quedan cargadas en su selector. */
+export function candidatoPromo(catalogo, carrito, promoId) {
+  const p = productoPorId(catalogo, promoId);
+  const g = grupoEnlazado(p);
+  const total = Number(g?.total) || 0;
+  if (!p || !g || !total || (carrito || []).some(l => l.producto_id === p.id)) return null;
+  const porProducto = new Map(valoresDisponibles(catalogo, g).filter(v => v.producto_id).map(v => [v.producto_id, v.id]));
+  let unidades = 0; let cargadas = 0; const elegidas = {};
+  for (const l of carrito || []) {
+    if (!lineaSuelta(catalogo, l) || !porProducto.has(l.producto_id)) continue;
+    unidades += l.cantidad;
+    const n = Math.min(l.cantidad, total - cargadas);
+    if (n > 0) { const id = porProducto.get(l.producto_id); elegidas[id] = (elegidas[id] || 0) + n; cargadas += n; }
+  }
+  return unidades ? {promo: p, grupo: g, total, unidades, elegidas} : null;
+}
+/** Promos para ofrecer: las del mismo tamaño que lo elegido; si no hay, la más cercana para arriba (máximo 3). */
+export function promosParaCarrito(catalogo, carrito) {
+  const cands = promocionesVigentes(catalogo).map(p => candidatoPromo(catalogo, carrito, p.id)).filter(Boolean);
+  if (!cands.length) return [];
+  const nivel = c => c.total === c.unidades ? [0, 0] : c.total > c.unidades ? [1, c.total - c.unidades] : [2, c.unidades - c.total];
+  const extras = c => (c.promo.opciones || []).filter(g => g !== c.grupo && esCantidad(g)).length;
+  cands.sort((a, b) => nivel(a)[0] - nivel(b)[0] || nivel(a)[1] - nivel(b)[1] || extras(a) - extras(b) || Number(a.promo.precio) - Number(b.promo.precio));
+  const mejor = nivel(cands[0]).join(':');
+  return cands.filter(c => nivel(c).join(':') === mejor).slice(0, 3);
+}
+const claveOferta = cands => cands.length ? cands[0].unidades + ':' + cands.map(c => c.promo.id).join(',') : '';
+function nombreCantidad(nombre, n) {
+  const t = String(nombre || '').trim().toLowerCase();
+  if (n === 1) return t.endsWith('s') ? t.slice(0, -1) : t;
+  return t.endsWith('s') ? t : t + (/[aeiou]$/.test(t) ? 's' : 'es');
+}
+function textoOfertaPromo(cands) {
+  const c = cands[0];
+  const unidad = nombreCantidad(c.grupo.nombre, c.unidades);
+  const incluye = (c.promo.opciones || []).filter(g => g !== c.grupo && esCantidad(g))
+    .map(g => Number(g.total) + ' ' + nombreCantidad(g.nombre, Number(g.total)));
+  const lineas = [cands.length > 1 ? '¡Tenemos promociones para usted!' : '¡Tenemos una promoción para usted!'];
+  lineas.push(cands.length > 1
+    ? 'Con sus ' + c.unidades + ' ' + unidad + ' puede armar una de estas promociones' + (incluye.length ? ', que incluyen ' + incluye.join(' y ') + ' a elección' : '') + '.'
+    : 'Con sus ' + c.unidades + ' ' + unidad + ' puede armar la ' + c.promo.nombre + ' por ' + pesos(c.promo.precio) +
+      (incluye.length ? ', que incluye ' + incluye.join(' y ') + ' a elección' : '') + '.');
+  if (c.total > c.unidades) lineas.push('En el menú completa ' + (c.total - c.unidades === 1 ? 'la ' : 'las ') + (c.total - c.unidades) + ' ' + nombreCantidad(c.grupo.nombre, c.total - c.unidades) + ' que faltan.');
+  if (c.total < c.unidades) lineas.push((c.unidades - c.total === 1 ? 'La que sobra queda suelta.' : 'Las ' + (c.unidades - c.total) + ' que sobran quedan sueltas.'));
+  lineas.push('Si la arma, sus ' + nombreCantidad(c.grupo.nombre, 2) + ' sueltas pasan a la promoción y no se cobran aparte.');
+  return lineas.join('\n');
+}
+const botonesOfertaPromo = (cands, alFinalizar) => [
+  ...cands.map(c => ({id: 'promo:' + c.promo.id, texto: 'Armar ' + c.promo.nombre + ' · ' + pesos(c.promo.precio)})),
+  alFinalizar ? {id: 'finalizar', texto: 'No, gracias. Finalizar'} : {id: 'promo_no', texto: 'No, seguir sin promoción'}];
+
 /* Venta sugerida (cualquier rubro gastronómico): categorías de postres y de bebidas, reconocidas por su nombre. */
 const RE_POSTRE = /postre|helado|dulce|torta/i;
 const RE_BEBIDA = /bebida|gaseosa|cerveza|vino|agua|jugo|refresco/i;
@@ -465,9 +527,44 @@ function intencion(t) {
 }
 
 const BOTONES_INICIO = [
-  {id: 'carta', texto: 'Armar mi pedido'}, {id: 'horario', texto: 'Horario y envío'},
+  {id: 'carta', texto: 'Hacer un pedido'}, {id: 'horario', texto: 'Horario y envío'},
   {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'},
 ];
+/** Botones del saludo: «Hacer un pedido» primero y, con menú interactivo y promos vigentes, «Ver promociones». */
+export function botonesBienvenida(sucursal, catalogo) {
+  return usaMenuInteractivo(sucursal) && promocionesVigentes(catalogo).length
+    ? [BOTONES_INICIO[0], {id: 'promociones', texto: 'Ver promociones'}, ...BOTONES_INICIO.slice(1)]
+    : BOTONES_INICIO;
+}
+
+/** Saludo según la hora de Argentina (lo usan la bienvenida guiada y la de la IA). */
+export function momentoDelDia(ahora = new Date()) {
+  const h = Number(new Intl.DateTimeFormat('en-GB', {timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23'}).format(ahora));
+  return h >= 6 && h < 13 ? 'Buenos días' : h >= 13 && h < 20 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+/** Le indica al cliente los botones que tiene justo debajo del saludo, con sus nombres exactos. */
+export function guiaBotones(botones) {
+  const lista = (botones || []).filter(b => b && b.texto);
+  const nombre = b => '«' + b.texto + '»';
+  const pedir = lista.find(b => b.id === 'carta');
+  const otros = lista.filter(b => b !== pedir).map(nombre);
+  const unir = xs => xs.length > 1 ? xs.slice(0, -1).join(', ') + ' o ' + xs[xs.length - 1] : xs[0];
+  return [pedir ? 'Para hacer su pedido, toque ' + nombre(pedir) + ' aquí abajo.' : '',
+    otros.length ? (pedir ? 'También puede tocar ' : 'Puede tocar ') + unir(otros) + '.' : ''].filter(Boolean).join(' ');
+}
+
+// «¡Hola!», «Buenas», «Buen día»… al comienzo del texto del dueño: lo reemplaza el saludo según la hora.
+const SALUDO_SUELTO = /^[\s¡!]*(hola|buenas|buen d[ií]a|buenos d[ií]as|buenas tardes|buenas noches)\s*[!.,;:]*\s*/i;
+/** Bienvenida guiada (sin IA): saludo según la hora + texto del dueño + guía de los botones de abajo. */
+export function bienvenidaGuiada(sucursal, botones, ahora) {
+  const s = sucursal || {};
+  const local = [s.empresa, s.nombre].filter(Boolean).join(' ') || 'el local';
+  let cuerpo = String(s.bienvenida || '').trim().replace(SALUDO_SUELTO, '');
+  cuerpo = cuerpo ? cuerpo.charAt(0).toUpperCase() + cuerpo.slice(1)
+    : (s.asistente ? 'Soy ' + s.asistente + ', la asistente virtual de ' + local + '.' : 'Le damos la bienvenida a ' + local + '.');
+  return ['¡' + momentoDelDia(ahora) + '! ' + cuerpo, guiaBotones(botones)].filter(Boolean).join('\n');
+}
 export function botonesCarrito(carrito) {
   return carrito.length
     ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'carrito', texto: 'Ver mi pedido'}]
@@ -539,7 +636,7 @@ export function limpiarEstado(estado, catalogo) {
  * @param {{sucursal, catalogo, estado, entrada:{texto?:string, boton?:string, agregar?:object, agregar_varios?:object[], quitar?:number, datos?:object}}} p
  * @returns {{estado, mensajes:Array<{texto:string, botones?:Array, tipo?:string, productos?:Array}>, accion?:object}}
  */
-export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
+export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}) {
   const s = sucursal || {};
   const e = limpiarEstado(estado, catalogo);
   const out = [];
@@ -556,12 +653,9 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
           {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
       return fin();
     }
-    const bienvenida = s.bienvenida?.trim() ||
-      ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' +
-       (s.nombre || '') + (menuInteractivo ? '. Puede armar su pedido desde el menú interactivo.' : '. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.')).trim();
-    const hayPromos = menuInteractivo && promocionesVigentes(catalogo).length > 0;
-    decir(bienvenida + (hayPromos ? '\nPuede consultar las promociones disponibles de este local.' : ''), {
-      botones: hayPromos ? [BOTONES_INICIO[0], {id: 'promociones', texto: 'Ver promociones'}, ...BOTONES_INICIO.slice(1)] : BOTONES_INICIO});
+    // Saludo según la hora, bienvenida del dueño y, en el mismo mensaje, qué hace cada botón de abajo.
+    const botones = botonesBienvenida(s, catalogo);
+    decir(bienvenidaGuiada(s, botones, ahora), {botones, guia: guiaBotones(botones)});
     return fin();
   }
   if (entrada.boton === 'programar_si') {
@@ -611,12 +705,46 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       const aviso = sumar(catalogo, siguiente, [l]);
       if (aviso.length) { decir(aviso.join(' ') + ' No se agregó la selección.'); return fin(); }
     }
+    // Promo ofrecida por el asistente: las unidades sueltas que ya estaban en el carrito pasan a la promo.
+    let absorbidas = 0; let unidadAbs = '';
+    const promoPedida = e.promo_reemplazo && lineas.filter(l => l.producto_id === e.promo_reemplazo);
+    if (promoPedida?.length) {
+      const g = grupoEnlazado(productoPorId(catalogo, e.promo_reemplazo));
+      if (g) {
+        const antes = {};
+        for (const l of e.carrito) if (lineaSuelta(catalogo, l)) antes[l.producto_id] = (antes[l.producto_id] || 0) + l.cantidad;
+        const enPromo = {};
+        for (const l of promoPedida) for (const [vid, n] of Object.entries(l.opciones?.[g.id] || {})) {
+          const v = (g.valores || []).find(x => x.id === vid);
+          if (v?.producto_id && Number.isInteger(n) && n > 0) enPromo[v.producto_id] = (enPromo[v.producto_id] || 0) + n * (Number(l.cantidad) || 1);
+        }
+        for (const [pid, n] of Object.entries(enPromo)) {
+          let quitar = Math.min(n, antes[pid] || 0);
+          for (const l of siguiente) {
+            if (quitar <= 0) break;
+            if (l.producto_id !== pid || !lineaSuelta(catalogo, l)) continue;
+            const k = Math.min(quitar, l.cantidad); l.cantidad -= k; quitar -= k; absorbidas += k;
+          }
+        }
+        for (let i = siguiente.length - 1; i >= 0; i--) if (siguiente[i].cantidad <= 0) siguiente.splice(i, 1);
+        unidadAbs = nombreCantidad(g.nombre, absorbidas);
+      }
+      delete e.promo_reemplazo;
+    }
     e.carrito = siguiente;
     if (entrada.lote_id) e.ultimo_lote = entrada.lote_id;
     e.paso = 'pedido';
+    const ofertas = promosParaCarrito(catalogo, e.carrito);
+    // No se ofrece otra promo en el mismo turno en que el cliente armó una.
+    const ofrecer = ofertas.length && !promoPedida?.length && e.promo_ofrecida !== claveOferta(ofertas);
     decir('Recibí tu selección del menú:\n' + lineas.map(l => '• ' + describirLinea(catalogo, l)).join('\n') +
+      (absorbidas ? '\n' + (absorbidas === 1 ? 'Su ' + unidadAbs + ' suelta pasó' : 'Sus ' + absorbidas + ' ' + unidadAbs + ' sueltas pasaron') + ' a la promoción.' : '') +
       '\nTotal estimado: ' + pesos(totalCarrito(catalogo, e.carrito)) +
-      '\nPodés agregar más o finalizar para completar tus datos.', {botones: botonesCarrito(e.carrito)});
+      (ofrecer ? '' : '\nPodés agregar más o finalizar para completar tus datos.'), ofrecer ? {} : {botones: botonesCarrito(e.carrito)});
+    if (ofrecer) {
+      e.promo_ofrecida = claveOferta(ofertas);
+      decir(textoOfertaPromo(ofertas), {botones: botonesOfertaPromo(ofertas, false)});
+    }
     return fin();
   }
 
@@ -664,6 +792,25 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
 
   const texto = String(entrada.texto || '').slice(0, 600);
   const accion = entrada.boton ? String(entrada.boton) : intencion(texto);
+
+  // Oferta de promoción: abre el selector de la promo con las unidades sueltas ya cargadas.
+  if (accion.startsWith('promo:')) {
+    const p = productoPorId(catalogo, accion.slice(6));
+    if (!p || p.activo === false || p.disponible === false || !promocionesVigentes(catalogo).some(x => x.id === p.id)) {
+      decir('Esa promoción ya no está disponible. Puede elegir otra en el menú.', {tipo: 'carta'});
+      return fin();
+    }
+    const c = candidatoPromo(catalogo, e.carrito, p.id);
+    e.promo_reemplazo = p.id;
+    decir(c ? 'Complete su ' + p.nombre + ' en el menú. Ya cargamos sus ' + nombreCantidad(c.grupo.nombre, 2) + '; elija lo que falta.'
+      : 'Complete su ' + p.nombre + ' en el menú.',
+    {tipo: 'producto', productos: [p.id], cantidad: 1, opciones: c ? {[c.grupo.id]: c.elegidas} : {}});
+    return fin();
+  }
+  if (accion === 'promo_no') {
+    decir('De acuerdo, seguimos con su selección.\n' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
+    return fin();
+  }
 
   if (menuInteractivo && (accion === 'promociones' || (!entrada.boton && ['texto', 'precio', 'carta'].includes(accion)))) {
     const promos = promocionesVigentes(catalogo);
@@ -729,7 +876,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     case 'direccion': decir(s.direccion ? 'Estamos en ' + s.direccion + '.' : 'El local todavía no cargó su dirección.', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
-    case 'vaciar': e.carrito = []; e.sugerido = false; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
+    case 'vaciar': e.carrito = []; e.sugerido = false; delete e.promo_ofrecida; delete e.promo_reemplazo; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
     case 'humano': decir('El gerente puede responderle por este mismo chat. Para pedir atención, seleccione la opción de soporte.',{botones:[{id:'hablar_gerente',texto:'Hablar con el gerente'}]}); return fin();
     case 'estado': decir('Te muestro cómo va tu pedido.'); return fin({tipo: 'estado'});
     case 'cancelar':
@@ -749,6 +896,15 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
         decir('Estamos cerrados y abriremos nuevamente '+s.atencion.proximo_texto+
           '. ¿Desea programar su pedido?',{botones:[{id:'programar_si',texto:'Sí, programar pedido'},
           {id:'programar_no',texto:'No, gracias'}]}); return fin();
+      }
+      // Promoción que conviene con lo elegido: una vez por combinación, antes de la venta sugerida.
+      {
+        const ofertas = promosParaCarrito(catalogo, e.carrito);
+        if (ofertas.length && e.promo_ofrecida !== claveOferta(ofertas)) {
+          e.promo_ofrecida = claveOferta(ofertas);
+          decir(textoOfertaPromo(ofertas), {botones: botonesOfertaPromo(ofertas, true)});
+          return fin();
+        }
       }
       // Venta sugerida: una sola vez por pedido, antes de pedir los datos.
       if (!e.sugerido) {
