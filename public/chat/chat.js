@@ -390,6 +390,8 @@ function abrirIdentificacion() {
     if (problema) { error.textContent = problema; error.hidden = false; return; }
     // Datos solo en memoria hasta el envío final: no se agregan a mensajes ni almacenamiento local.
     S.identificado = true;
+    $('hoja-cerrar').hidden = false;
+    $('fondo-hoja').onclick = cerrarHoja;
     cerrarHoja();
     burbuja('asistente', 'Gracias, ' + String(d.nombre).trim() + '. Ya puede elegir sus productos o consultar nuestra carta.');
     chips(BOTONES_BASE());
