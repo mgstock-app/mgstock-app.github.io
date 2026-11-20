@@ -90,6 +90,25 @@ function limpiarEntrada(e: unknown): Json | null {
       out.agregar = { producto_id: a.producto_id, cantidad: Number(a.cantidad), opciones, nota: String(a.nota ?? "").slice(0, 200) };
     }
   }
+  if (Array.isArray(x.agregar_varios)) {
+    if (x.agregar_varios.length < 1 || x.agregar_varios.length > 30) return null;
+    const lineas: Json[] = [];
+    for (const bruto of x.agregar_varios) {
+      if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return null;
+      const a = bruto as Json; const opciones: Record<string, string[]> = {};
+      if (typeof a.producto_id !== "string" || !/^[0-9a-f-]{36}$/.test(a.producto_id) ||
+          !Number.isInteger(a.cantidad) || (a.cantidad as number) < 1 || (a.cantidad as number) > 50) return null;
+      if (a.opciones && (typeof a.opciones !== "object" || Array.isArray(a.opciones))) return null;
+      for (const [k, v] of Object.entries((a.opciones as Json) || {}).slice(0, 8)) {
+        if (!/^[a-z0-9_]{1,30}$/.test(k) || !Array.isArray(v) ||
+            v.some(i => typeof i !== "string" || !/^[a-z0-9_]{1,30}$/.test(i))) return null;
+        opciones[k] = v.slice(0, 30);
+      }
+      lineas.push({producto_id: a.producto_id, cantidad: a.cantidad, opciones,
+        nota: typeof a.nota === "string" ? a.nota.slice(0, 200) : ""});
+    }
+    out.agregar_varios = lineas;
+  }
   if (x.datos && typeof x.datos === "object") {
     const d = x.datos as Json; const s = (k: string, n: number) => String(d[k] ?? "").trim().slice(0, n);
     out.datos = { nombre: s("nombre", 80), telefono: s("telefono", 25), entrega: s("entrega", 10), direccion: s("direccion", 200),
@@ -171,6 +190,8 @@ Deno.serve(async (req) => {
     const cliente = entrada.texto ? String(entrada.texto)
       : entrada.boton ? (BOTON_TEXTO[String(entrada.boton)] || "Elegí una opción")
       : entrada.agregar ? "Agregar: " + describirLinea(catalogo, entrada.agregar as never)
+      : entrada.agregar_varios ? "Selección del menú: " +
+        (entrada.agregar_varios as Json[]).map(l => describirLinea(catalogo, l as never)).join(", ")
       : entrada.datos ? "Envié mis datos para el pedido"
       : "Quitar un producto";
 
