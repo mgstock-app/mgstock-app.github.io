@@ -542,6 +542,7 @@ function abrirDatos() {
   const inputDireccion=dir.querySelector('input');
   const avisoRecuerdo=el('div',{class:'recuerdo-cliente',hidden:true});
   let perfil=null;let telefonoConsultado='';let datoConfirmado='';
+  let telefonoIdentidad=String(d.telefono||'').replace(/\D/g,'');
 
   function preguntaDeRecuerdo() {
     avisoRecuerdo.replaceChildren();
@@ -553,7 +554,9 @@ function abrirDatos() {
       ? '¡Qué bueno volver a atenderlo! ¿El envío sigue siendo a '+perfil.direccion+'?'
       : '¡Qué bueno volver a atenderlo! ¿El pedido es a nombre de '+perfil.nombre+'?';
     const si=el('button',{type:'button',class:'boton chico',text:'Sí, es correcto',onclick:()=>{
-      if (perfil.nombre) {d.nombre=perfil.nombre;inputNombre.value=perfil.nombre;}
+      if (perfil.nombre && (!d.nombre.trim() || d.entrega==='retiro')) {
+        d.nombre=perfil.nombre;inputNombre.value=perfil.nombre;
+      }
       if (direccion) {d.direccion=perfil.direccion;inputDireccion.value=perfil.direccion;}
       datoConfirmado=tipo;avisoRecuerdo.hidden=true;guardarDatos();
     }});
@@ -577,7 +580,14 @@ function abrirDatos() {
   }
   inputTelefono.addEventListener('blur',consultarRecuerdo);
   inputTelefono.addEventListener('input',()=>{
-    if (String(inputTelefono.value||'').replace(/\D/g,'')!==telefonoConsultado) {
+    const nuevo=String(inputTelefono.value||'').replace(/\D/g,'');
+    if (/^[0-9]{8,15}$/.test(telefonoIdentidad) && nuevo!==telefonoIdentidad) {
+      // Dispositivo compartido: cambiar de teléfono no conserva el nombre/domicilio anterior.
+      d.nombre='';d.direccion='';inputNombre.value='';inputDireccion.value='';
+      guardarDatos();
+    }
+    telefonoIdentidad=nuevo;
+    if (nuevo!==telefonoConsultado) {
       perfil=null;datoConfirmado='';avisoRecuerdo.hidden=true;
     }
   });
