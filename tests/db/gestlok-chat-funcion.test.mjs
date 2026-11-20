@@ -78,7 +78,9 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   let r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'abrir'});
   assert.equal(r.status, 200); assert.equal(r.cors, ORIGEN);
   assert.equal(r.body.catalogo.productos.length, 2);
-  assert.match(r.body.nuevos[0].texto, /asistente de Mi Gusto Munro/);
+  // Saludo según la hora + bienvenida + guía de los botones de abajo («Hacer un pedido» primero).
+  assert.match(r.body.nuevos[0].texto, /^¡Buen(os días|as tardes|as noches)! [\s\S]*Mi Gusto Munro[\s\S]*toque «Hacer un pedido» aquí abajo\./);
+  assert.equal(r.body.nuevos[0].botones[0].texto, 'Hacer un pedido');
   assert.ok(!JSON.stringify(r.body).includes('tenant_id'), 'no expone identificadores internos');
   // Reabrir: la conversación conserva su historial y sus productos anteriores.
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'abrir'});
@@ -215,14 +217,15 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
     headers: {'content-type': 'application/json', origin: ORIGEN, 'x-forwarded-for': '200.5.5.5'}, body: JSON.stringify(body)})); return res.json(); };
   // Bienvenida: la escribe la IA; los botones siguen siendo los del sistema.
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'abrir'})};
-  assert.equal(r.body.nuevos[0].texto, 'Buenas noches, bienvenido a Mi Gusto Munro. Puede ver el menú con los botones de abajo.');
+  // La IA saluda y, en el mismo mensaje, el sistema indica los botones de abajo.
+  assert.match(r.body.nuevos[0].texto, /^Buenas noches, bienvenido a Mi Gusto Munro\. Puede ver el menú con los botones de abajo\.\nPara hacer su pedido, toque «Hacer un pedido» aquí abajo\./);
   assert.ok(r.body.nuevos[0].botones.some(b => b.id === 'carta'), 'la bienvenida conserva los botones del sistema');
   assert.equal(iaPedidos.length, 1); assert.ok(!('tools' in iaPedidos[0]));
   // Retomar la conversación no vuelve a llamar a la IA.
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'abrir'})};
   assert.equal(iaPedidos.length, 1, 'la bienvenida se pide una sola vez por conversación');
   assert.equal(r.body.nuevos.length, 0);
-  assert.equal(r.body.mensajes.at(-1).texto, 'Buenas noches, bienvenido a Mi Gusto Munro. Puede ver el menú con los botones de abajo.', 'al recargar se ve la misma bienvenida');
+  assert.match(r.body.mensajes.at(-1).texto, /^Buenas noches, bienvenido a Mi Gusto Munro\. Puede ver el menú con los botones de abajo\.\nPara hacer su pedido, toque «Hacer un pedido»/, 'al recargar se ve la misma bienvenida');
   iaPedidos = [];
   // Prioridad botones y carrito: un pedido escrito lo resuelve el asistente guiado, sin llamar a la IA.
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'tres de jamón y queso porfa'}})};
@@ -250,7 +253,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'hacen facturas tipo A'}})};
   assert.equal(r.body.soporte_pendiente, true, 'si la IA falla, la consulta pasa al gerente');
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: 'tokenDeOtroClienteConLaIACaida0000000003', accion: 'abrir'})};
-  assert.match(r.body.nuevos[0].texto, /asistente de Mi Gusto Munro/, 'si la IA falla, queda la bienvenida guiada');
+  assert.match(r.body.nuevos[0].texto, /^¡Buen(os días|as tardes|as noches)! [\s\S]*Mi Gusto Munro[\s\S]*«Hacer un pedido»/, 'si la IA falla, queda la bienvenida guiada');
   delete ENV.GESTLOK_CHAT_IA_URL;
   ok(DB, [], `update gestlok_chat_private.sucursales set ia_activa = false where slug = 'mi-gusto-munro'`);
   iaPedidos = [];
