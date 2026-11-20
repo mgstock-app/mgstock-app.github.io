@@ -224,6 +224,50 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'hola'}})};
   assert.equal(r.body.motor, 'guiado'); assert.equal(iaPedidos.length, 0, 'con la IA apagada en la sucursal no se llama a la API');
 
+  // Delivery: descuento real en la base, monto entregado y cambio para el repartidor.
+  ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_pct=10 where slug='mi-gusto-munro'");
+  const TOKEN_CASH='tokenDePruebaMontoEfectivo00000000000004';
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'abrir'});
+  assert.equal(r.status,200);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'mensaje',entrada:{texto:'2 empanadas de carne'}});
+  assert.equal(r.body.carrito.length,1);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'mensaje',entrada:{boton:'finalizar'}});
+  assert.ok(r.body.mensajes.some(m=>m.tipo==='datos'));
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'mensaje',
+    entrada:{datos:{nombre:'Cliente efectivo',telefono:'1155550010',entrega:'envio',direccion:'Mitre 300',
+      medio_pago:'efectivo',efectivo_abona:'3000'}}});
+  assert.equal(r.status,200);
+  assert.equal(Number(r.body.pedido.subtotal),2000);
+  assert.equal(Number(r.body.pedido.descuento),200);
+  assert.equal(Number(r.body.pedido.total),2300);
+  assert.equal(Number(r.body.pedido.efectivo_abona),3000);
+  assert.equal(Number(r.body.pedido.efectivo_cambio),700);
+  ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_pct=0 where slug='mi-gusto-munro'");
+
+  // Foto: la sube el cliente por el token de SU conversación y Storage privado.
+  const TOKEN_FOTO='tokenDePruebaFotosCliente000000000000005';
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'abrir'});
+  assert.equal(r.status,200);
+  const jpg=Buffer.from([255,216,255,224,0,16,74,70,73,70,0,1,1,0,0,1,0,1,255,217]).toString('base64');
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'adjuntar',mime:'image/jpeg',imagen:jpg});
+  assert.equal(r.status,200);
+  assert.equal(r.body.soporte_pendiente,true);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'abrir'});
+  assert.equal(r.body.fotos.length,1);
+  assert.match(r.body.fotos[0].url,/^https:\/\/test-storage\.example\/private\//);
+  const otro=await llamar({slug:'mi-gusto-munro',token:'tokenFotografiasDeOtroCliente00000000006',accion:'abrir'});
+  assert.equal(otro.body.fotos.length,0,'un cliente ajeno no ve comprobantes');
+  const mala=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'adjuntar',
+    mime:'image/jpeg',imagen:Buffer.from('no-es-una-foto-real').toString('base64')});
+  assert.equal(mala.status,400,'el servidor rechaza archivos disfrazados de JPEG');
+
+  // Al cerrar manualmente, no se reciben pedidos ni nuevos mensajes desde el token anterior.
+  ok(DB, [], "update gestlok_chat_private.conversaciones set cerrada_at=now() where id=(select conversacion_id from gestlok_chat_private.adjuntos limit 1)");
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'estado'});
+  assert.equal(r.body.cerrada,true);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'mensaje',entrada:{texto:'hola'}});
+  assert.equal(r.status,409,'el cliente no escribe en una charla cerrada');
+
   // Topes: muchos mensajes seguidos desde la misma conexión se frenan
   let frenado = false;
   for (let i = 0; i < 25 && !frenado; i++) {
