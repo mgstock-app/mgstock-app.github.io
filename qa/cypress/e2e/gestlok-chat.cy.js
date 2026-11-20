@@ -32,6 +32,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja button[type=submit]').click();
     cy.get('#hoja .error-form').should('contain.text', 'dirección');
     cy.get('#hoja input[name=direccion]').type('Mitre 200');
+    cy.get('#hoja input[name=efectivo_abona]').should('be.visible').type('50000');
+    cy.get('#hoja .cambio-previsto').should('contain.text','Cambio a enviar');
     cy.get('#hoja button[type=submit]').click();
     cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'Pendiente de confirmación').and('not.contain.text','DEMO-0001');
     cy.get('.burbuja.asistente').last().should('contain.text', 'pendiente de revisión y confirmación').and('not.contain.text','DEMO-0001');
