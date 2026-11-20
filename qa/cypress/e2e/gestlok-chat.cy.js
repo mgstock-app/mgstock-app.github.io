@@ -109,8 +109,9 @@ describe('GESTLOK Chat · panel', () => {
     cy.get('.acciones .boton.principal').click();
     cy.get('#aviso').should('contain.text', 'MM-0007 terminado');
     cy.contains('No hay pedidos para mostrar');
-    cy.get('[data-p=carta]').click();
-    cy.get('input[aria-label="Disponible: Empanada de carne"]').uncheck();
+    cy.get('[data-p=stock]').click();
+    cy.contains('.stock-cabecera', 'Empanadas').find('button.stock-desplegar').click();
+    cy.contains('.stock-item', 'Empanada de carne').find('input[type="checkbox"]').uncheck({force:true});
     cy.get('#aviso').should('contain.text', 'Empanada de carne agotado');
     cy.get('[data-p=mensajes]').click();
     cy.contains('label', 'Pedido terminado · retiro').find('textarea').clear().type('Listo {codigo}, pasá cuando quieras', {parseSpecialCharSequences: false});
