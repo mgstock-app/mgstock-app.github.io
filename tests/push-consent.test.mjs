@@ -25,7 +25,7 @@ test('Dueña recibe cartel único y permiso sólo desde un click voluntario',()=
 test('Push exige consentimiento y autenticación en servidor sin activar envíos',()=>{
  assert.match(edge,/admin\.auth\.getUser\(bearer\.slice\(7\)\)/);
  assert.match(edge,/client\.rpc\("mi_acceso"\)/);
- assert.match(edge,/access\?\.rol!=="dueno"/);
+ assert.match(edge,/\\["dueno","gerente"\\]/);
  assert.match(edge,/\.eq\("user_id",account\.user\.id\)/);
  assert.match(edge,/\.eq\("tenant_id",account\.tenant_id\)/);
  assert.match(edge,/deliveryEnabled:true/);
