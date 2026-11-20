@@ -254,6 +254,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   font-size:15px;
 }
 .menu-producto-detalle .grupo-encabezado strong{font-size:15px}
+.menu-producto-detalle .grupo-cantidad legend .grupo-estado[aria-live]{flex-basis:auto;margin-left:0}
 .menu-producto-detalle .grupo-estado{
   display:inline-flex;align-items:center;justify-content:center;
   flex:none;margin:0;padding:4px 9px;border-radius:7px;
