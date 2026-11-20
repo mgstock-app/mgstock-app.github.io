@@ -153,10 +153,10 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.match(r.body.pedidos[0].aviso, /sal|entreg|listo|pedido/i);
   assert.match(r.body.pedidos[0].aviso, /Mitre 200/);
   assert.doesNotMatch(JSON.stringify(r.body), /MM-0001/, 'el código no llega al cliente');
-  // Pedido terminado está listo/en camino, pero NO recibido: sin reseña ni agradecimiento.
+  // Pedido listo/enviado: cierre inmediato aunque el cliente todavía no confirmó recepción.
   assert.equal(r.body.pedidos[0].recibido_at, null);
-  assert.equal(r.body.pedidos[0].cierre, undefined);
-  assert.equal(r.body.pedidos[0].resena, undefined);
+  assert.equal(r.body.pedidos[0].cierre, '¡Gracias por elegirnos!');
+  assert.equal(r.body.pedidos[0].resena, undefined, 'sin URL de Google configurada no hay enlace');
   r = await llamar({slug:'mi-gusto-munro', token:TOKEN, accion:'recibido'});
   assert.equal(r.status,200);
   assert.ok(r.body.pedido.recibido_at, 'registra entrega confirmada por el cliente');
