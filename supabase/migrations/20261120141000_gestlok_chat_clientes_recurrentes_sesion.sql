@@ -313,7 +313,7 @@ end $function$;
 -- Solo los gerentes pueden cerrar, y los hilos cerrados se eliminan a los 60 días.
 -- Los perfiles inactivos se eliminan físicamente después de 24 meses.
 create or replace function gestlok_chat_private.purgar()
-returns jsonb language plpgsql security definer set search_path='' as $
+returns jsonb language plpgsql security definer set search_path='' as $gc_purge$
 declare n_conv integer; n_lim integer; n_clientes integer;
 begin
   delete from gestlok_chat_private.conversaciones
@@ -325,5 +325,5 @@ begin
   delete from gestlok_chat_private.limites where ventana < now()-interval '2 days';
   get diagnostics n_lim=row_count;
   return jsonb_build_object('conversaciones',n_conv,'limites',n_lim,'clientes',n_clientes);
-end $;
+end $gc_purge$;
 revoke all on function gestlok_chat_private.purgar() from public,anon,authenticated;
