@@ -27,7 +27,7 @@ test('Dueña tiene el interruptor general y los cinco individuales',()=>{
  assert.match(edge,/\.upsert\(/);
  assert.match(edge,/admin\.auth\.getUser/);
  assert.match(edge,/mi_acceso/);
- assert.match(edge,/rol!=="dueno"/);
+ assert.match(edge,/\["dueno","gerente"\]/);
 });
 test('Solo Gerente puede marcar un mensaje como urgente; envío reintentable',()=>{
  assert.match(app,/miRol\(\)==='gerente'\?/);

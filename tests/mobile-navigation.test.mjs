@@ -57,7 +57,7 @@ test("El menú de GESTLOK sigue dentro de Administración de empleados (celular 
  // Volver: solo con los botones reales de GESTLOK (entrar al local y abrir la sección del menú).
  assert.match(dock,/\[data-act="local"\]\[data-id="'\+p\.local\+'"\]/);
  assert.match(dock,/#snav button\[data-go="'\+p\.view\+'"\]/);
- assert.match(app,/!\['chat','proveedores','vencimientos','avisos'\]\.includes\(p\.view\)/,"Las push siguen limitadas");
+ assert.ok(app.includes("!['chat','proveedores','vencimientos','avisos','pedidos-clientes'].includes(p.view)"),"La push solo abre secciones autorizadas");
  assert.match(dock,/\['business','avisos'\]\.includes\(h\)/);
  // Empleados: barra de abajo y menú lateral con los mismos accesos.
  assert.match(nav,/export function GestlokDock/);

@@ -3849,7 +3849,7 @@ function applyPushNavigation(){
  if(!p||!S.started||!S.loaded.e||!S.loaded.l)return;
  pendingPushNav=null;
  if(!/^[A-Za-z0-9_-]{1,80}$/.test(p.local) ||
-   !['chat','proveedores','vencimientos','avisos'].includes(p.view))return;
+   !['chat','proveedores','vencimientos','avisos','pedidos-clientes'].includes(p.view))return;
  if(!localesMios().some(x=>x.id===p.local))return;
  abrirLocal(p.local);
  go(p.view);

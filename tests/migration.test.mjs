@@ -32,6 +32,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Destino adicional de push para pedidos GESTLOK Chat. La navegación
+      // sigue validando el local autorizado antes de abrir la Central.
+      const chatPushActual="!['chat','proveedores','vencimientos','avisos','pedidos-clientes'].includes(p.view)";
+      const chatPushOriginal="!['chat','proveedores','vencimientos','avisos'].includes(p.view)";
+      assert.equal(content.split(chatPushActual).length-1,1,'Destino push de pedidos único y revisado');
+      content=content.replace(chatPushActual,chatPushOriginal);
       // Revisar y normalizar solamente los tres puntos que evitaban
       // reconstruir Conteo por suscripciones ajenas o sincronización.
       // Mantener el hash original y todos los permisos sin cambios.

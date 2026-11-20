@@ -9,12 +9,63 @@
 (()=>{
 'use strict';
 const PAUSA_MS=15000;
+let audioCtx=null,soundReady=false;
+function activarSonido(){
+ try{const C=window.AudioContext||window.webkitAudioContext;
+  if(!C)return false;
+  audioCtx ||= new C();
+  void audioCtx.resume().then(()=>{soundReady=true;}).catch(()=>{soundReady=false;});
+  soundReady=audioCtx.state==='running';return true;
+ }catch{return false;}
+}
+function sonar(){
+ if(!soundReady||audioCtx?.state!=='running')return;
+ try{[0,.2,.4].forEach((delay,i)=>{
+  const t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.value=i===2?890:740;
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(.14,t+.03);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.16);
+  o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+.17);
+ });}catch{/* audio no compatible */}
+}
+document.addEventListener('pointerdown',()=>{if(allowed()&&(!soundReady||audioCtx?.state!=='running'))activarSonido();},{capture:true});
+
 const VERSION_PANEL='20261120pizzassafe1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
 // Locales con GESTLOK Chat encendido para esta sesión: {tenant, locales: Map(local_id → nombre)}. Lo dice el servidor.
 let servidor={tenant:'',locales:new Map()},buscando='',fallo={tenant:'',at:0};
+let idsSucursal=new Map(), ultimoAvisoId='', ultimoAvisoAt=0, avisoEtapa=0, avisoAbierto=false, idConsulta=0;
+async function detalleNuevo(){
+ const localActual=local(),suc=idsSucursal.get(localActual),turno=++idConsulta;
+ if(!suc||!online()||!allowed())return;
+ try{
+  const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_panel_pedidos',
+    {p_sucursal:suc.id,p_estado:'pendiente',p_limite:50});
+  if(error||turno!==idConsulta||localActual!==local())return;
+  const pedido=(data?.pedidos||[]).filter(p=>!p.es_prueba)
+    .sort((a,b)=>Date.parse(b.creado_at)-Date.parse(a.creado_at))[0];
+  if(!pedido)return;
+  ultimoAvisoId=pedido.id;ultimoAvisoAt=Date.now();avisoEtapa=0;avisoAbierto=false;
+  const a=document.getElementById('mgp-global-alert');
+  const detalle=a?.querySelector('[data-gcc-preview]');
+  if(detalle)detalle.textContent=[pedido.codigo,pedido.cliente_nombre,pedido.entrega==='envio'?'Delivery':'Retiro',
+    pedido.medio_pago,'$ '+Number(pedido.total||0).toLocaleString('es-AR'),
+    (pedido.items||[]).slice(0,2).map(i=>(i.cantidad||1)+'× '+i.nombre).join(' · ')].filter(Boolean).join(' · ');
+ }catch{/* la alerta simple sigue visible */}
+}
+function recordarPedido(){
+ if(!ultimoAvisoId||!ultimoAvisoAt||!pendientes||avisoAbierto||document.hidden)return;
+ const mins=(Date.now()-ultimoAvisoAt)/60000,etapa=mins>=5?2:mins>=2?1:0;
+ if(etapa>avisoEtapa){avisoEtapa=etapa;avisoNuevo('pedido',true);}
+}
+document.addEventListener('click',e=>{
+ if(e.target.closest?.('[data-gcc-close]')){e.preventDefault();ocultarAviso();return;}
+ if(e.target.closest?.('.mgp-alert-open'))avisoAbierto=true;
+});
+
 
 const local=()=>api?.S?.local;
 const tenant=()=>String(api?.S?.me?.tenant_id||'');
@@ -32,6 +83,7 @@ const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
 const leer=(data,t)=>{
  const locales=new Map((data?.habilitado?data.sucursales||[]:[]).filter(x=>x?.nivel&&x.local_id).map(x=>[String(x.local_id),String(x.nombre||x.local_id)]));
  servidor={tenant:t,locales};
+  idsSucursal=new Map((data?.sucursales||[]).filter(x=>x?.local_id&&x?.id).map(x=>[String(x.local_id),x]));
 };
 // Pregunta una vez por empresa qué locales tienen el chat. Si cambia algo, GESTLOK redibuja el menú.
 async function descubrir(){
@@ -78,16 +130,60 @@ function indicadores(){
  document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes+reclamos);});
  window.GestLokMobileDock?.refresh?.();
 }
-function avisoNuevo(tipo='pedido'){
+function avisoNuevo(tipo='pedido',recordatorio=false){
  // Aviso flotante en cualquier pantalla de GESTLOK (no se muestra si ya se está en la Central).
- if(api?.S?.view==='pedidos-clientes')return;
+ // Mostrar aviso también en la propia Central para no perder pedidos.
  let a=document.getElementById('mgp-global-alert');
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
- a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+(tipo==='reclamo'?'¡Reclamo de cliente!':'¡Pedido nuevo por chat!')+'</strong><small>'+
+ a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+
+   (tipo==='prueba'?'Aviso de prueba · sin pedido real':tipo==='reclamo'?'¡Reclamo de cliente!':recordatorio?'Pedido sin abrir · recordatorio':'¡Pedido nuevo por chat!')+
+   '</strong><small data-gcc-preview>'+
   esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar')+'</small></div>'+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Abrir Central</button>';
- try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
+  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedido</button>'+
+   '<button type="button" class="mgp-alert-close" data-gcc-close aria-label="Cerrar aviso">×</button>';
+ sonar();
+  try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
+}
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest?.('[data-gcc-alert]');if(!b||!allowed())return;
+  ev.preventDefault();activarSonido();
+  if(b.dataset.gccAlert==='probar'){void Promise.resolve(audioCtx?.resume()).then(()=>{soundReady=true;avisoNuevo('prueba');});return;}
+  // Solicitar permiso dentro del gesto real, antes de cualquier operación asíncrona.
+  const permiso='Notification' in window?
+    (Notification.permission==='default'?Notification.requestPermission():
+      Promise.resolve(Notification.permission)):Promise.resolve('unsupported');
+  Promise.resolve(permiso).then(async value=>{
+    if(value==='granted'){await registrarPush();b.textContent='Notificaciones activadas';}
+    else b.textContent='Sonido activado · Push sin permiso';
+  }).catch(err=>{b.textContent='Sonido activado · Revisar avisos';b.title=String(err?.message||'Error de notificaciones');});
+  const estado=document.querySelector('[data-gcc-alert-estado]');
+  if(estado)estado.textContent=soundReady?'Sonido activado en esta sesión.':
+    'En algunos celulares necesitás tocar nuevamente para activar sonido.';
+});
+async function registrarPush(){
+ const c=window.SPM_CONFIG||{};
+ if(!c.url||!c.key||!navigator.serviceWorker||!window.PushManager)
+   throw Error('El dispositivo no admite notificaciones push.');
+ const apiUrl=c.url.replace(/\/$/,'')+'/functions/v1/gestlok-push';
+ const {data}=await window.GestLokSupabase.auth.getSession();
+ const token=data?.session?.access_token;
+ if(!token)throw Error('Iniciá sesión.');
+ const headers={apikey:c.key,Authorization:'Bearer '+token};
+ const response=await fetch(apiUrl+'?op=config',{headers,cache:'no-store'});
+ const conf=await response.json();
+ if(!response.ok||!conf.publicKey)throw Error('Las notificaciones no están disponibles.');
+ const k=conf.publicKey.replace(/-/g,'+').replace(/_/g,'/');
+ const bytes=atob(k+'='.repeat((4-k.length%4)%4));
+ const worker=await navigator.serviceWorker.ready;
+ let subscription=await worker.pushManager.getSubscription();
+ if(!subscription)subscription=await worker.pushManager.subscribe({
+   userVisibleOnly:true,applicationServerKey:Uint8Array.from(bytes,ch=>ch.charCodeAt(0))});
+ const saved=await fetch(apiUrl,{method:'POST',
+   headers:{...headers,'Content-Type':'application/json'},
+   body:JSON.stringify({op:'subscribe',subscription:subscription.toJSON()})});
+ const result=await saved.json();
+ if(!saved.ok||!result.ok)throw Error(result.error||'No se pudo vincular el dispositivo.');
 }
 function ocultarAviso(){document.getElementById('mgp-global-alert')?.remove();}
 
@@ -97,8 +193,9 @@ function actualizar(n,r=reclamos){
  reclamos=Math.max(0,Number(r)||0);reclamosVistos=reclamos;
  indicadores();
  if(antesReclamos!==null&&reclamos>antesReclamos)avisoNuevo('reclamo');
- else if(antes!==null&&pendientes>antes)avisoNuevo('pedido');
- if(!pendientes&&!reclamos)ocultarAviso();
+ else if(antes!==null&&pendientes>antes){avisoNuevo('pedido');void detalleNuevo();}
+ if(!pendientes&&!reclamos){ocultarAviso();ultimoAvisoId='';ultimoAvisoAt=0;}
+  recordarPedido();
 }
 async function consultar(){
  if(!rolOk()||!online()||!window.GestLokSupabase)return;
@@ -151,7 +248,9 @@ function view(){
   '<div class="gcc-cab"><h2>Central de mensajes</h2><small>GESTLOK Chat · '+esc(localName())+' · asistente y pedidos por chat</small>'+
   '<a href="/chat/panel/?local='+encodeURIComponent(l)+'" target="_blank" rel="noopener">Abrir aparte</a></div>'+
   (online()?'':'<p class="gcc-aviso">Sin conexión: la Central se actualiza cuando vuelva internet.</p>')+
-  '<div data-gcc-lugar></div></section>';
+  '<div class="gcc-alert-controls"><button type="button" data-gcc-alert="activar">Activar sonido y notificaciones</button>'+
+   '<button type="button" data-gcc-alert="probar">Probar aviso</button><span data-gcc-alert-estado role="status"></span></div>'+
+   '<div data-gcc-lugar></div></section>';
 }
 function subscribe(loc,push){
  if(!rolOk()||!loc)return;
@@ -162,7 +261,7 @@ function subscribe(loc,push){
  push(()=>{clearInterval(t);window.removeEventListener('focus',foco);ocultarAviso();});
 }
 function reset(){
- epoca++;pendientes=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();servidor={tenant:'',locales:new Map()};buscando='';
+ epoca++;pendientes=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();idsSucursal.clear();ultimoAvisoId='';ultimoAvisoAt=0;avisoAbierto=false;servidor={tenant:'',locales:new Map()};buscando='';
  if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';
 }
 function attach(h){if(!api)api=h;}
