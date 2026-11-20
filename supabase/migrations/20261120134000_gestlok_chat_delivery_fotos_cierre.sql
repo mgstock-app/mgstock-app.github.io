@@ -64,8 +64,8 @@ BEGIN
  IF c.mensajes>=400 THEN RAISE EXCEPTION 'La conversación llegó a su límite' USING errcode='P0001'; END IF;
  IF p_mime NOT IN ('image/jpeg','image/png','image/webp') OR p_bytes NOT BETWEEN 1 AND 2000000
  THEN RAISE EXCEPTION 'Archivo de imagen inválido' USING errcode='22023'; END IF;
- IF p_path !~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|png|webp)$'
-   OR p_path NOT LIKE (c.tenant_id::text||'/'||c.sucursal_id::text||'/'||c.id::text||'/%')
+ IF p_path !~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|png|webp)$'
+   OR p_path NOT LIKE (c.sucursal_id::text||'/'||c.id::text||'/%')
  THEN RAISE EXCEPTION 'Ruta de adjunto inválida' USING errcode='42501'; END IF;
  IF NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id='gestlok-chat-adjuntos' AND name=p_path)
  THEN RAISE EXCEPTION 'Archivo no disponible' USING errcode='P0001'; END IF;
