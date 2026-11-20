@@ -30,7 +30,7 @@ const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const BOTON_TEXTO: Record<string, string> = {
-  carta: "Ver la carta", horario: "Horario y envío", pago: "Medios de pago", finalizar: "Finalizar pedido",
+  carta: "Ver la carta", promociones: "Ver promociones", horario: "Horario y envío", pago: "Medios de pago", finalizar: "Finalizar pedido",
   carrito: "Ver mi pedido", estado: "¿Cómo va mi pedido?", cancelar: "Cancelar pedido",
   soporte: "Ayuda con mi pedido", demora: "Consultar demora", reclamo_demora: "Avisar demora al gerente",
   reclamo_faltante: "Faltante en mi pedido", reclamo_otro: "Otro reclamo",

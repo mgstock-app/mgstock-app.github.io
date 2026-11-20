@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {responder} from '../public/chat/motor.js';
+import {promocionesVigentes, responder} from '../public/chat/motor.js';
 
 const catalogo = {categorias: [], productos: [
   {id: 'e1', nombre: 'Empanada JyQ', precio: 4900, activo: true, disponible: true, opciones: []},
@@ -53,4 +53,26 @@ test('menú: el asistente pide datos antes de registrar pedido', () => {
   const datos = turno(r.estado, {boton:'finalizar'});
   assert.equal(datos.accion, undefined);
   assert.ok(datos.mensajes.some(m => m.tipo === 'datos'));
+});
+
+test('cada sucursal ofrece solo sus promociones disponibles y lleva al selector', () => {
+  for (const slug of ['mi-gusto-munro', 'mi-gusto-torcuato']) {
+    const grupo = {id: 'emp', nombre: 'Empanadas', tipo: 'cantidad', total: 6, obligatorio: true,
+      valores: [{id: 'carne', nombre: 'Carne', producto_id: 'e2'}]};
+    const promo = {id: 'pack-' + slug, nombre: 'Pack de 6 empanadas', precio: 32000, opciones: [grupo]};
+    const carta = {...catalogo, productos: [...catalogo.productos, promo,
+      {...promo, id: 'oculto', activo: false}, {...promo, id: 'agotado', disponible: false},
+      {...promo, id: 'sin-variedades', opciones: [{...grupo, valores: []}]}]};
+    const responderLocal = entrada => responder({sucursal: {...sucursal, slug}, catalogo: carta, entrada});
+    assert.deepEqual(promocionesVigentes(carta), [promo]);
+    for (const texto of ['¿Qué promociones tienen?', 'Quiero seis empanadas', '¿Cuánto sale el pack de 6?']) {
+      const r = responderLocal({texto});
+      assert.deepEqual(r.estado.carrito, []);
+      assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['elegir:' + promo.id + ':1', 'carta']);
+    }
+    const r = responderLocal({boton: 'elegir:' + promo.id + ':1'});
+    assert.equal(r.mensajes[0].tipo, 'producto');
+    assert.equal(r.mensajes[0].opciones, undefined);
+    assert.deepEqual(r.estado.carrito, []);
+  }
 });

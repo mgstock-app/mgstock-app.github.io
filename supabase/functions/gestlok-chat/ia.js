@@ -5,7 +5,7 @@
  * Proveedores: «openai» (ChatGPT), «anthropic» (Claude) o «gemini» (Google, API compatible con OpenAI).
  */
 import {botonesCarrito, describirLinea, faltantes, limpiarEstado, pesos, responder, sumar, textoCarrito,
-  textoEnvio, textoHorario, textoPago, totalCarrito, validarLinea, formalizar} from './motor.js';
+  textoEnvio, textoHorario, textoPago, totalCarrito, validarLinea, formalizar, promocionesVigentes, usaMenuInteractivo} from './motor.js';
 
 const MAX_RONDAS = 4;
 const MAX_HISTORIAL = 12;
@@ -50,6 +50,8 @@ function indice(catalogo) {
 export function armarSistema({sucursal, privado, catalogo, estado}) {
   const s = sucursal || {}; const pr = privado || {};
   const {prods, porId} = indice(catalogo);
+  const menuInteractivo = usaMenuInteractivo(s);
+  const promos = menuInteractivo ? promocionesVigentes(catalogo) : [];
   const cats = new Map((catalogo?.categorias || []).map(c => [c.id, c.nombre]));
   const carta = prods.map(p => {
     const ops = (p.opciones || []).map(g => '    · ' + g.nombre + ' [código ' + g.id + '] (' + (g.tipo === 'una' ? 'elegir 1' : g.tipo === 'cantidad' ? 'repartir exactamente ' + g.total + ' unidades, se pueden repetir; pasá {código: cantidad}' : 'hasta ' + g.max) +
@@ -65,7 +67,9 @@ export function armarSistema({sucursal, privado, catalogo, estado}) {
     'REGLAS:',
     '1. Atienda solo consultas de este negocio. Si la pregunta está fuera del local, o faltan datos confiables para responderla, DEBE llamar a la herramienta derivar_al_gerente. No se limite a decir que no puede ayudar.',
     '2. Nunca invente productos, precios, promociones, horarios, estados de entrega ni datos. Use solo la información del local y derive lo desconocido al gerente mediante herramienta.',
-    '3. Para armar el pedido usá SIEMPRE las herramientas (agregar_producto, quitar_producto, vaciar_pedido). Si falta una opción obligatoria, preguntala antes de agregar.',
+    menuInteractivo
+      ? '3. Priorice siempre el menú interactivo. Use mostrar_carta para elegir varios productos o agregar_producto para abrir el selector de un producto. Explique que el cliente debe completar la selección allí. Ofrezca las promociones vigentes de la lista, con sus precios y opciones. Para un pack el cliente elige todas las unidades y complementos en el selector.'
+      : '3. Para armar el pedido usá SIEMPRE las herramientas (agregar_producto, quitar_producto, vaciar_pedido). Si falta una opción obligatoria, preguntala antes de agregar.',
     '4. Los precios son orientativos: el total final lo calcula el sistema. No ofrezcas descuentos.',
     '5. Cuando el cliente terminó de elegir, usá finalizar_pedido: el sistema le muestra un formulario para nombre, teléfono, entrega y pago. No pidas esos datos por chat.',
     '6. No confirme pedidos, ni afirme que están listos sin consultar el estado; eso lo decide el gerente desde GESTLOK. Para saber cómo va use estado_del_pedido. Jamás informe ni pida códigos internos de pedido: se retira por nombre.',
@@ -82,6 +86,7 @@ export function armarSistema({sucursal, privado, catalogo, estado}) {
       : '',
     pr.ia_info ? '\nINFORMACIÓN Y PREGUNTAS FRECUENTES (cargadas por el dueño):\n' + pr.ia_info : '',
     pr.ia_instrucciones ? '\nINDICACIONES DEL DUEÑO (respetalas si no contradicen las reglas):\n' + pr.ia_instrucciones : '',
+    menuInteractivo ? '\nPROMOCIONES VIGENTES QUE PUEDE OFRECER:\n' + (promos.map(p => porId.get(p.id) + ' · ' + p.nombre + ' · ' + pesos(p.precio)).join('\n') || '(ninguna)') : '',
     '',
     'CARTA (código · nombre · precio):',
     carta || '(todavía no hay productos cargados)',
@@ -110,6 +115,7 @@ export function armarHistorial(historial, texto) {
 /** Ejecuta las herramientas sobre el estado de esta conversación. */
 function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
   const {porCodigo} = indice(catalogo);
+  const menuInteractivo = usaMenuInteractivo(sucursal);
   const ui = {tipo: null, productos: null, cantidad: null, accion: null, botones: null};
   const ejecutar = (nombre, args) => {
     args = args && typeof args === 'object' ? args : {};
@@ -118,6 +124,16 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
         const p = porCodigo.get(String(args.producto || '').toUpperCase().trim());
         if (!p) return 'No existe ese código en la carta. Usá un código P… de la carta.';
         const cantidad = Math.round(Number(args.cantidad));
+        if (menuInteractivo) {
+          if (p.disponible === false) return p.nombre + ' no está disponible ahora.';
+          if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 50) return 'Cantidad inválida.';
+          if (ui.tipo === 'carta' || (ui.tipo === 'producto' && ui.productos[0] !== p.id)) {
+            ui.tipo = 'carta'; ui.productos = null;
+          } else {
+            ui.tipo = 'producto'; ui.productos = [p.id]; ui.cantidad = cantidad;
+          }
+          return 'El sistema abre el menú interactivo para que el cliente complete la selección. El producto todavía no está en el carrito.';
+        }
         const opciones = {};
         if (args.opciones && typeof args.opciones === 'object') {
           for (const [k, v] of Object.entries(args.opciones)) {
@@ -145,6 +161,7 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
       case 'vaciar_pedido': estado.carrito = []; return 'Pedido vaciado.';
       case 'mostrar_carta': ui.tipo = 'carta'; return 'Se le muestra la carta al cliente.';
       case 'finalizar_pedido': {
+        if (menuInteractivo && ['producto', 'carta'].includes(ui.tipo)) return 'Primero el cliente debe completar la selección en el menú.';
         const r = responder({sucursal, catalogo, estado, entrada: {boton: 'finalizar'}, mensajes});
         const m = r.mensajes[0] || {};
         // Venta sugerida (una vez por pedido): la IA ofrece postre o bebida antes de pedir los datos.

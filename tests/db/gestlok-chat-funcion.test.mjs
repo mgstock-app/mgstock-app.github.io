@@ -100,6 +100,15 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
     opciones:{emp:{carne:4,jyq:2},sal:{criolla:1,ajo:1}}}],lote_id:lotePromo};
   r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'abrir'});
   assert.equal(r.status,200);
+  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:{texto:'¿Tienen el pack de seis empanadas?'}});
+  assert.ok(r.body.mensajes[0].botones.some(b => b.id === 'elegir:' + promoId + ':1'));
+  assert.deepEqual(r.body.carrito, []);
+  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:{boton:'elegir:' + promoId + ':1'}});
+  assert.equal(r.body.mensajes[0].tipo, 'producto');
+  const incompleto = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:{...entradaPromo,
+    agregar_varios:[{...entradaPromo.agregar_varios[0], opciones:{emp:{carne:4,jyq:2}, sal:{ajo:1}}}]}});
+  assert.equal(incompleto.body.lote_aceptado, false);
+  assert.deepEqual(incompleto.body.carrito, []);
   r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:entradaPromo});
   assert.equal(r.status,200,'la función acepta el mapa de cantidades del combo');
   assert.equal(r.body.lote_aceptado,true,'el servidor confirma la aceptación del lote');
@@ -114,8 +123,15 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.equal(rechazado.status,400,'no se aceptan cantidades falsas en un combo');
   ok(DB, [], `update gestlok_chat_private.productos set activo=false where id='${promoId}'`);
 
-  // Pedido escrito → carrito → datos → pedido pendiente
+  // Pedido escrito → menú interactivo → carrito → datos → pedido pendiente
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {texto: '2 empanadas de carne y 1 de jamón y queso'}});
+  assert.equal(r.body.mensajes[0].tipo, 'carta');
+  assert.deepEqual(r.body.carrito, []);
+  r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {
+    lote_id: '152be738-6038-4614-be55-2985e270984f', agregar_varios: [
+      {producto_id: '9a000000-0000-4000-8000-000000000001', cantidad: 2},
+      {producto_id: '9a000000-0000-4000-8000-000000000002', cantidad: 1},
+    ]}});
   assert.equal(r.body.carrito.length, 2); assert.equal(r.body.total, 3100);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {boton: 'finalizar'}});
   assert.equal(r.body.mensajes.at(-1).tipo, 'datos');
