@@ -206,7 +206,10 @@
         el('span', {text: i.cantidad + ' × ' + i.nombre + ((i.opciones || []).length ? ' (' + i.opciones.map(o => o.valores.join(', ')).join(' · ') + ')' : '') + (i.nota ? ' — ' + i.nota : '')}),
         el('span', {text: pesos(i.importe)})))),
       p.nota ? el('p', {class: 'nota-cliente', text: 'Aclaración: ' + p.nota}) : null,
+      Number(p.descuento)>0 ? el('p',{class:'nota-cliente',text:'Descuento efectivo 10%: −'+pesos(p.descuento)}) : null,
       el('p', {class: 'totales', text: (Number(p.envio) > 0 ? 'Envío ' + pesos(p.envio) + ' · ' : '') + 'Total ' + pesos(p.total)}),
+      p.entrega==='envio' && p.medio_pago==='efectivo' && Number(p.efectivo_abona)>0
+        ? el('p',{class:'nota-cliente',text:'Abonará con '+pesos(p.efectivo_abona)+' · Cambio a enviar: '+pesos(p.efectivo_cambio)}) : null,
       p.motivo && p.estado !== 'pendiente' ? el('p', {class: 'nota', text: 'Motivo: ' + p.motivo}) : null,
       acciones);
   }
@@ -666,25 +669,70 @@
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     let r;
     try { r = await rpc('panel_conversaciones', {p_sucursal: S.suc.id, p_limite: 40}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    contenido.replaceChildren(el('p', {class: 'nota', text: 'Solo lectura. Se borran solas a los 60 días; los pedidos quedan.'}),
+    contenido.replaceChildren(el('p', {class: 'nota', text: 'Mensajes y comprobantes por sucursal. El gerente puede responder y cerrar manualmente la conversación.'}),
       r.length ? el('div', {class: 'tarjetas'}, r.map(c => el('button', {type: 'button', class: 'charla', onclick: () => abrirCharla(c)},
-        el('span', {class: 'charla-cab'}, el('strong', {text: hora(c.ultima_at)}), c.pedido ? el('span', {class: 'estado', text: c.pedido}) : null),
+        el('span', {class: 'charla-cab'}, el('strong', {text: hora(c.ultima_at)}),
+          c.cerrada_at ? el('span',{class:'estado',text:'Cerrada'}) : null,
+          c.pedido ? el('span', {class: 'estado', text: c.pedido}) : null),
         el('span', {class: 'charla-ult', text: c.ultimo || ''})))) : el('p', {class: 'nota', text: 'Todavía no hay conversaciones.'}));
   }
   async function abrirCharla(c, reclamoId = null) {
-    let m;
-    try { m = await rpc('panel_conversacion', {p_conversacion: c.id}); } catch (e) { return aviso(e.message, true); }
-    const respuesta = el('textarea',{rows:3,maxlength:1000,placeholder:'Escribí tu respuesta al cliente',
+    let mensajes, estado;
+    try {
+      [mensajes,estado]=await Promise.all([
+        rpc('panel_conversacion',{p_conversacion:c.id}),
+        rpc('panel_estado_conversacion',{p_conversacion:c.id})]);
+    } catch(e) {return aviso(e.message,true);}
+    const hilo=el('div',{class:'hilo'});
+    const pintarMensajes=async (lista) => {
+      const nodos=await Promise.all(lista.map(async m=>{
+        const item=el('p',{class:'msj '+m.rol,text:m.texto});
+        if (m.adjunto?.path && !DEMO) {
+          const {data,error}=await sb.storage.from('gestlok-chat-adjuntos').createSignedUrl(m.adjunto.path,300);
+          if (!error && data?.signedUrl) item.append(el('a',{href:data.signedUrl,target:'_blank',rel:'noopener noreferrer'},
+            el('img',{src:data.signedUrl,alt:'Foto o comprobante del cliente',loading:'lazy'})));
+        }
+        return item;
+      }));
+      hilo.replaceChildren(...nodos);
+      hilo.scrollTop=hilo.scrollHeight;
+    };
+    await pintarMensajes(mensajes);
+    const respuesta=el('textarea',{rows:3,maxlength:1000,placeholder:'Escribí tu respuesta al cliente',
       'aria-label':'Respuesta al cliente',class:'soporte-texto'});
-    dialogo('Conversación · ' + hora(c.creada_at), [
-      el('div', {class: 'hilo'}, m.map(x => el('p', {class: 'msj ' + x.rol, text: x.texto}))),
-      puede('gestionar') ? campo('Responder por este chat',respuesta) : null
-    ].filter(Boolean), puede('gestionar') ? async ()=>{
-      if (respuesta.value.trim().length < 2) throw new Error('Escribí una respuesta para el cliente.');
+    const deshabilitado=Boolean(estado.cerrada);
+    const botonTransferencia=el('button',{type:'button',class:'boton',text:'Enviar datos para transferencia',
+      disabled:deshabilitado || !estado.puede_enviar_transferencia,onclick:async()=>{
+        botonTransferencia.disabled=true;
+        try {
+          await rpc('panel_enviar_transferencia',{p_conversacion:c.id});
+          await pintarMensajes(await rpc('panel_conversacion',{p_conversacion:c.id}));
+          aviso('Datos de transferencia enviados por este chat');
+        } catch(e){aviso(e.message,true);}
+        finally{botonTransferencia.disabled=deshabilitado || !estado.puede_enviar_transferencia;}
+      }});
+    let modal;
+    const botonCerrar=el('button',{type:'button',class:'boton',text:'Cerrar conversación',disabled:deshabilitado,
+      onclick:async()=>{
+        if (!confirm('¿Cerrar esta conversación? El cliente podrá iniciar una nueva.')) return;
+        botonCerrar.disabled=true;
+        try {
+          await rpc('panel_cerrar_conversacion',{p_conversacion:c.id});
+          modal.close();
+          aviso('Conversación finalizada');
+          if (S.pestana==='soporte') verSoporte(); else if(S.pestana==='charlas') verCharlas();
+        } catch(e){botonCerrar.disabled=false;aviso(e.message,true);}
+      }});
+    modal=dialogo('Conversación · '+hora(c.creada_at),[
+      deshabilitado ? el('p',{class:'nota',text:'Conversación finalizada por el gerente.'}) : null,
+      hilo,
+      puede('gestionar') && !deshabilitado ? campo('Responder por este chat',respuesta) : null,
+      puede('gestionar') ? el('div',{class:'acciones'},botonTransferencia,botonCerrar) : null
+    ].filter(Boolean),puede('gestionar') && !deshabilitado ? async()=>{
+      if (respuesta.value.trim().length<2) throw Error('Escribí una respuesta para el cliente.');
       await rpc('panel_responder',{p_conversacion:c.id,p_texto:respuesta.value.trim(),p_reclamo:reclamoId});
       aviso('Respuesta enviada al cliente por GESTLOK Chat');
-      if (S.pestana === 'soporte') await verSoporte();
-      else if(S.pestana === 'charlas') await verCharlas();
+      if(S.pestana==='soporte') await verSoporte(); else if(S.pestana==='charlas') await verCharlas();
     }:null,'Enviar mensaje');
   }
 
@@ -706,6 +754,7 @@
     d.append(form); marco.append(d);
     d.addEventListener('close', () => d.remove());
     d.showModal();
+    return d;
   }
   const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
     if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
