@@ -37,7 +37,7 @@ declare
   s_munro uuid; s_torc uuid; s_centro uuid; cat uuid; p_emp uuid; p_pizza uuid; p_torc uuid; p_b uuid;
   h1 bytea := digest('token-cliente-1', 'sha256'); h2 bytea := digest('token-cliente-2', 'sha256');
   h3 bytea := digest('token-cliente-3', 'sha256'); hb bytea := digest('token-cliente-b', 'sha256');
-  conv1 uuid; conv2 uuid; conv3 uuid; convb uuid; ped1 uuid; ver integer;
+  conv1 uuid; conv2 uuid; conv3 uuid; convb uuid; ped1 uuid; ticket1 uuid; ver integer;
   pizza_ok text;
   procedure_ok boolean;
 begin
@@ -353,6 +353,40 @@ begin
   r := r || E'\n' || case when n >= 5 then 'OK' else 'FALLA' end || ' los cambios quedan auditados (' || n || ')';
   select count(*) into n from gestlok_chat_private.pedido_eventos where pedido_id = ped1;
   r := r || E'\n' || case when n = 3 then 'OK' else 'FALLA' end || ' historial: creado, confirmado y terminado';
+
+  -- Soporte: reclamos reales del cliente y respuesta humana sin salir del mismo chat.
+  perform prueba_como('service_role');
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_reclamo(%L,%L::bytea,'ip1','faltante','Me falta una empanada')::text $q$,conv1,h1));
+  r := r || E'\n' || case when v like 'ok:%' and v like '%gerente%' then 'OK' else 'FALLA' end
+    || ' el cliente avisa faltante; queda una alerta para el gerente · ' || left(v,85);
+  perform set_config('role','postgres',true);
+  select id into ticket1 from gestlok_chat_private.reclamos where conversacion_id=conv1 and estado='pendiente';
+  r := r || E'\n' || case when ticket1 is not null then 'OK' else 'FALLA' end || ' alerta persistente en sucursal Munro';
+  perform prueba_como('gerente.munro@prueba.example');
+  j := public.gestlok_chat_panel_inicio();
+  r := r || E'\n' || case when (j->'sucursales'->0->>'reclamos')::int=1 then 'OK' else 'FALLA' end
+    || ' el gerente ve el aviso en la Central de GESTLOK';
+  j := public.gestlok_chat_panel_soporte(s_munro);
+  r := r || E'\n' || case when jsonb_array_length(j)=1 and j->0->>'tipo'='faltante' then 'OK' else 'FALLA' end
+    || ' alerta de faltante se abre desde el local correcto';
+  v := prueba_q(format('select public.gestlok_chat_panel_soporte(%L)::text',s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' gerente de Munro no ve reclamos de Torcuato';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'Revisamos el faltante y te contactamos acá',%L)::text $q$,conv1,ticket1));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
+    || ' gerente responde por el mismo chat de cliente';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'Duplicado',%L)::text $q$,conv1,ticket1));
+  r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end
+    || ' reclamo respondido no se cierra dos veces';
+  perform prueba_como('service_role');
+  j := public.gestlok_chat_srv_respuestas(conv1,h1,0);
+  r := r || E'\n' || case when j->>'soporte_pendiente'='false'
+      and (j->'mensajes_local'->0->>'texto') like '%Revisamos el faltante%' then 'OK' else 'FALLA' end
+    || ' cliente recupera respuesta humana por su token y el aviso se resuelve';
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_respuestas(%L,%L::bytea,0)::text $q$,conv1,h2));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' otro cliente no lee la conversación de soporte';
+  perform set_config('role','postgres',true);
   update gestlok_chat_private.conversaciones set ultima_at = now() - interval '61 days' where id = conv1;
   j := gestlok_chat_private.purgar();
   select count(*) into n from gestlok_chat_private.pedidos where id = ped1 and conversacion_id is null;
