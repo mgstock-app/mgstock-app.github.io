@@ -16,7 +16,7 @@ describe('Modo diseño de la Administradora General', () => {
     cy.viewport(1280, 900); login('kmu15lopez@gmail.com');
     cy.get('.gl-ch-nav [data-ch-tab="locales"]', { timeout: 15000 }).click();
     cy.get('#hub .gl-company-folder').filter((_, f) => !!f.querySelector('[data-act="local"][data-id="munro"]')).first().as('folder');
-    cy.get('@folder').find('summary').click();
+    cy.get('@folder').find('> summary').click();
     cy.get('@folder').find('[data-act="local"][data-id="munro"]').click();
     cy.get('#snav [data-go="proveedores"]').click({ force: true });
     cy.get('#gl-design-toggle', { timeout: 10000 }).should('be.visible').click();
