@@ -230,3 +230,42 @@
   #hub .gl-ch-showroom-pane iframe{height:70dvh;min-height:570px}
   #hub .gl-ch-showroom-tabs button{flex-basis:100%}
 }
+
+/* Demo ampliable sin escalar la interfaz del cliente ni del gerente.
+   El modo pantalla completa es el predeterminado al entrar desde celular. */
+#hub .gl-ch-showroom-actions{display:flex;gap:8px;flex-wrap:wrap}
+#hub .gl-ch-showroom-expand{
+  min-height:44px;padding:10px 15px;border-radius:12px;
+  border:1px solid #123e66;background:#123e66;color:#fff;
+  font:inherit;font-weight:650;cursor:pointer;
+}
+#hub .gl-ch-showroom-stage{width:100%;min-width:0}
+#hub .gl-ch-showroom-expanded{
+  position:fixed!important;inset:0!important;z-index:100000!important;
+  box-sizing:border-box;width:100%!important;height:100dvh!important;
+  max-height:100dvh;display:flex;flex-direction:column;
+  border:0;border-radius:0;padding:12px;background:#fff;overflow:hidden;
+}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-header{flex:0 0 auto;align-items:center}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-header h2{font-size:18px}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-header p,
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-note,
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-foot{display:none}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-tabs{flex:0 0 auto;margin:8px 0}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-stage{
+  flex:1 1 auto;min-height:0;display:flex;overflow:hidden;
+}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-pane{
+  flex:1 1 auto;min-height:0;display:block;
+}
+#hub .gl-ch-showroom-expanded .gl-ch-showroom-pane iframe{
+  height:100%!important;min-height:0!important;max-height:none;
+}
+@media(max-width:620px){
+  #hub .gl-ch-showroom-expanded{padding:8px max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left))}
+  #hub .gl-ch-showroom-expanded .gl-ch-showroom-header{gap:7px}
+  #hub .gl-ch-showroom-expanded .gl-ch-showroom-header h2{font-size:16px}
+  #hub .gl-ch-showroom-expanded .gl-ch-showroom-actions{width:100%}
+  #hub .gl-ch-showroom-expanded .gl-ch-showroom-actions button{flex:1 1 auto;min-height:40px;padding:7px 10px;font-size:13px}
+  #hub .gl-ch-showroom-expanded .gl-ch-showroom-tabs button{flex:1 1 42%;min-height:42px;padding:8px 7px;font-size:13.5px}
+}
