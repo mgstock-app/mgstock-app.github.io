@@ -384,6 +384,7 @@ function abrirCarta() {
   // Se preserva la posición para que el cliente no pierda el producto que estaba mirando.
   const pintar = (mantenerPosicion = false) => {
     const scroll = mantenerPosicion ? $('hoja-cuerpo').scrollTop : 0;
+    const tabsScroll = cuerpo.querySelector('.categorias')?.scrollLeft || 0;
     const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria));
     const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
     const mostrarError = texto => { aviso = texto; pintar(true); };
@@ -456,6 +457,7 @@ function abrirCarta() {
           : 'Elegí los productos y cantidades para tu pedido.'}),
         S.borrador.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Revisar selección',
           onclick: abrirSeleccion}) : null));
+    if (cuerpo.querySelector('.categorias')) cuerpo.querySelector('.categorias').scrollLeft = tabsScroll;
     $('hoja-cuerpo').scrollTop = scroll;
   };
   pintar();
