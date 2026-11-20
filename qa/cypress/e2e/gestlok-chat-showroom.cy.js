@@ -39,7 +39,9 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     cy.get('#empresa').should('contain.text','Comercio de demostración');
     cy.contains('#contenido .tarjeta','DEMO-').should('contain.text','Ana Demostración')
       .contains('button','Confirmar y pasar a preparación').click();
-    cy.window().then(win=>{
+    // Confirmar es una acción asíncrona: reintentar hasta recibir el acuse del gerente,
+    // en lugar de leer sessionStorage inmediatamente después del clic.
+    cy.window().should(win=>{
       const o=JSON.parse(win.sessionStorage.getItem('gestlok:chat-showroom:v1')).order;
       expect(o.estado).to.eq('confirmado');
       expect(o.confirmado_at).to.be.a('string');
