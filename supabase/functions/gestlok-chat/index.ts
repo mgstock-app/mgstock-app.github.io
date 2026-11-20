@@ -186,6 +186,11 @@ Deno.serve(async (req) => {
         soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
 
+    if (accion === "recibido") {
+      const recibido = await rpc("gestlok_chat_srv_recibido", {p_conversacion:convId,p_token_hash:hash});
+      return json({ok:true,pedido:conAviso(recibido.pedido as Json)},200,origen);
+    }
+
     if (accion === "estado") {
       const desde = Number.isSafeInteger(body.desde) && (body.desde as number) >= 0
         ? (body.desde as number) : 0;
