@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261120soporte1';
+  const VERSION_CSS = '20261120turnos1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -45,7 +45,7 @@
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['stock', 'Stock'], ['carta', 'Carta'],
+      [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
         ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
@@ -55,7 +55,7 @@
   raiz.replaceChildren(...[EMBED ? el('link', {rel: 'stylesheet', href: '/chat/panel/panel.css?v=' + VERSION_CSS}) : null, marco].filter(Boolean));
   const $ = id => raiz.querySelector('#' + id);
   const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0,
-    pendientesVistos: null, reclamosVistos: null, ocupado: false};
+    pendientesVistos: null, reclamosVistos: null, reporteDias:30, ocupado: false};
   let sb = op.sb || null;
   if (!DEMO && !sb) {
     try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: false}}); }
@@ -133,7 +133,7 @@
     const avisoSoporte = $('globo-soporte');
     if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
       avisoSoporte.hidden = !(S.suc?.reclamos > 0); }
-    ({pedidos: verPedidos, soporte: verSoporte, stock: verStock, carta: verCarta,
+    ({pedidos: verPedidos, soporte: verSoporte, reporte:verReporte, stock: verStock, carta: verCarta,
       mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
   }
 
@@ -179,12 +179,17 @@
   function tarjetaPedido(p) {
     const tel = String(p.cliente_telefono || '');
     const acciones = el('div', {class: 'acciones'});
+    const programadoFuturo=p.estado==='pendiente' && p.programado_para && 
+      new Date(p.programado_para).getTime()>Date.now();
     if (['pendiente', 'confirmado'].includes(p.estado) && puede('gestionar')) {
       const motivo = el('input', {type: 'text', maxlength: '300', placeholder: 'Motivo para el cliente (ej.: sin stock)', 'aria-label': 'Motivo del rechazo'});
       const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
         el('button', {type: 'button', class: 'boton peligro', text: 'Rechazar pedido', onclick: () => decidir(p, 'rechazado', motivo.value)}));
       acciones.append(
-        el('button', {type: 'button', class: 'boton principal', text: p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : 'Pedido terminado', onclick: () => decidir(p, p.estado === 'pendiente' ? 'confirmado' : 'terminado', '')}),
+        el('button', {type: 'button', class: 'boton principal',
+          disabled:!!programadoFuturo,
+          text: programadoFuturo?'Disponible al abrir el local':p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : 'Pedido terminado',
+          onclick: () => decidir(p, p.estado === 'pendiente' ? 'confirmado' : 'terminado', '')}),
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
     }
@@ -192,6 +197,9 @@
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
         el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel})),
+      programadoFuturo?el('p',{class:'nota-cliente',text:'PEDIDO PROGRAMADO · Próxima apertura '+
+        new Date(p.programado_para).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
+        '. El gerente debe confirmar al comenzar el turno.'}):null,
       el('p', {class: 'entrega', text: (p.entrega === 'envio' ? 'Envío a ' + p.direccion : 'Retira en el local') +
         ' · ' + (PAGOS[p.medio_pago] || p.medio_pago) + (p.horario ? ' · Para: ' + p.horario : '')}),
       el('ul', {class: 'items'}, (p.items || []).map(i => el('li', {},
@@ -525,6 +533,46 @@
     contenido.replaceChildren(form);
   }
 
+  // ------------------------------------------------------------------------------------------- historial diario de demanda por sucursal
+  async function verReporte() {
+    const id=S.suc.id,dias=S.reporteDias;
+    contenido.replaceChildren(
+      el('h2',{text:'Historial diario · Pedidos por GESTLOK Chat'}),
+      el('p',{class:'nota',text:'Pedidos registrados en el sistema, agrupados por día y tipo de entrega. Los cancelados y rechazados se informan por separado.'}),
+      el('div',{class:'filtros'},[7,30,90].map(n=>el('button',{type:'button',class:'chip',
+        'aria-pressed':String(n===S.reporteDias),text:'Últimos '+n+' días',onclick:()=>{S.reporteDias=n;verReporte();}}))),
+      el('p',{class:'nota',text:'Consultando registros…'}));
+    let registros;
+    try {registros=await rpc('panel_reporte_diario',{p_sucursal:id,p_dias:dias});}
+    catch(e){contenido.append(el('p',{class:'error',text:e.message}));return;}
+    if(S.pestana!=='reporte'||S.suc.id!==id||S.reporteDias!==dias)return;
+    const acum=(k)=>registros.reduce((s,r)=>s+Number(r[k]||0),0);
+    const resumen=el('div',{class:'reporte-resumen'},
+      ...[['Pedidos recibidos','total'],['Retiro','retiro'],['Delivery','delivery'],
+        ['Programados','programados']].map(([titulo,key])=>el('div',{class:'reporte-cifra'},
+          el('small',{text:titulo}),el('strong',{text:String(acum(key))}))));
+    const entradas=registros.filter(r=>Number(r.total)>0);
+    const fechas=entradas.length?entradas.map(r=>el('article',{class:'reporte-dia'},
+      el('header',{},el('strong',{text:new Date(String(r.fecha)+'T12:00:00').toLocaleDateString('es-AR',
+       {weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})}),
+       el('span',{class:'estado',text:r.total+' pedido'+(r.total===1?'':'s')})),
+      el('div',{class:'reporte-detalle'},
+        el('span',{text:'Retiro: '+r.retiro}),
+        el('span',{text:'Delivery: '+r.delivery}),
+        el('span',{text:'Programados: '+r.programados}),
+        el('span',{text:'Por confirmar: '+r.pendientes}),
+        el('span',{text:'En preparación: '+r.confirmados}),
+        el('span',{text:'Terminados: '+r.terminados}),
+        el('span',{text:'Cancelados: '+r.cancelados}),
+        el('span',{text:'Rechazados: '+r.rechazados})))) :
+      [el('p',{class:'nota',text:'No se registraron pedidos en el período seleccionado.'})];
+    const botones=contenido.querySelector('.filtros');
+    contenido.replaceChildren(
+      el('h2',{text:'Historial diario · Pedidos por GESTLOK Chat'}),
+      el('p',{class:'nota',text:'Registros reales de '+S.suc.nombre+'. No incluye consultas sin pedido.'}),
+      botones,resumen,...fechas);
+  }
+
   // ------------------------------------------------------------------------------------------- soporte humano y reclamos
   async function verSoporte() {
     const sucId = S.suc.id;
@@ -542,7 +590,7 @@
       el('h2',{text:'Soporte al cliente'}),
       el('p',{class:'nota',text:'Reclamos de esta sucursal pendientes de respuesta.'}),
       ...(reclamos.length ? reclamos.map(r => el('article',{class:'soporte-reclamo'},
-        el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo'})[r.tipo]||'Reclamo'}),
+        el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo',consulta:'Consulta para el gerente'})[r.tipo]||'Reclamo'}),
           r.pedido ? el('span',{class:'estado',text:'Pedido '+r.pedido}) : null),
         el('p',{text:r.detalle}),
         el('small',{text:hora(r.creado_at)+(r.respondido_at?' · Respondido, pendiente de cierre':' · Esperando respuesta')}),
@@ -662,6 +710,10 @@
         {rol:'asistente',texto:'Avisé al gerente. Te responderá por este mismo chat.'},
         ...D.respuestas.map(texto=>({rol:'local',texto}))];
       case 'panel_soporte': return D.reclamos.filter(r=>r.estado==='pendiente');
+      case 'panel_reporte_diario': return Array.from({length:a.p_dias||30},(_,i)=>({
+        fecha:new Date(Date.now()-i*86400000).toISOString().slice(0,10),total:i?0:2,
+        retiro:i?0:1,delivery:i?0:1,programados:i?0:1,pendientes:i?0:1,
+        confirmados:0,terminados:i?0:1,rechazados:0,cancelados:0,importe_confirmado:i?0:3600}));
       case 'panel_responder': {
         if (String(a.p_texto||'').trim().length < 2) throw new Error('Escribí una respuesta.');
         D.respuestas.push(a.p_texto);

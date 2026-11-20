@@ -344,6 +344,34 @@ begin
   perform set_config('prueba.escritura', '', true);
   perform set_config('prueba.soporte', '', true);
 
+
+  -- Horarios y reportes por sucursal, usando fechas de prueba (sin afectar pedidos reales).
+  perform set_config('role','postgres',true);
+  update gestlok_chat_private.sucursales set
+    turnos_chat='[{"inicio":"11:00","fin":"14:40"},{"inicio":"19:00","fin":"23:15"}]'::jsonb
+  where id=s_munro;
+  select gestlok_chat_private.estado_atencion(s,'2026-11-20 15:30'::timestamp)
+  into j from gestlok_chat_private.sucursales s where s.id=s_munro;
+  r:=r || E'\n' || case when j->>'abierto'='false' and j->>'proximo_texto'='hoy a las 19:00'
+    then 'OK' else 'FALLA' end || ' entre turnos, siguiente apertura a las 19:00';
+  select gestlok_chat_private.estado_atencion(s,'2026-11-20 23:30'::timestamp)
+  into j from gestlok_chat_private.sucursales s where s.id=s_munro;
+  r:=r || E'\n' || case when j->>'abierto'='false' and j->>'proximo_texto'='mañana a las 11:00'
+    then 'OK' else 'FALLA' end || ' después del turno noche, abre al día siguiente';
+  perform prueba_como('gerente.munro@prueba.example');
+  j:=public.gestlok_chat_panel_reporte_diario(s_munro,7);
+  r:=r || E'\n' || case when jsonb_array_length(j)=7
+     and (j->0->>'fecha') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    then 'OK' else 'FALLA' end || ' reporte diario con fechas locales ISO';
+  v:=prueba_q(format('select public.gestlok_chat_panel_reporte_diario(%L,7)::text',s_torc));
+  r:=r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' el gerente de Munro no ve reportes de Torcuato';
+  perform prueba_como('duena.b@prueba.example');
+  v:=prueba_q(format('select public.gestlok_chat_panel_reporte_diario(%L,7)::text',s_munro));
+  r:=r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' otra empresa no ve el historial diario de Mi Gusto';
+  perform set_config('role','postgres',true);
+
   -- Topes, auditoría y borrado ---------------------------------------------------------------------------------------
   perform set_config('role', 'postgres', true);
   procedure_ok := gestlok_chat_private.consumir('prueba:x', 'minuto', 2) and gestlok_chat_private.consumir('prueba:x', 'minuto', 2)

@@ -191,3 +191,14 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .soporte-texto{display:block;width:100%;min-height:88px;padding:10px;border:1px solid var(--linea);border-radius:10px;resize:vertical;font:inherit}
 .hilo{max-height:42vh;overflow-y:auto;margin-bottom:14px}
 .msj.local{background:#e8f6ec;color:#164e31}
+
+/* Reporte diario: tarjetas sencillas para móvil y escritorio, sin exponer clientes. */
+.reporte-resumen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.reporte-cifra{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:12px}
+.reporte-cifra small{display:block;color:var(--gris);font-size:12px}
+.reporte-cifra strong{display:block;font-size:22px;color:var(--azul)}
+.reporte-dia{background:#fff;border:1px solid var(--linea);border-radius:12px;padding:12px;margin:0 0 10px}
+.reporte-dia header{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.reporte-dia header strong{text-transform:capitalize}
+.reporte-detalle{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;font-size:13px;color:var(--gris)}
+@media(min-width:850px){.reporte-resumen{grid-template-columns:repeat(4,minmax(0,1fr))}.reporte-detalle{grid-template-columns:repeat(4,minmax(0,1fr))}}

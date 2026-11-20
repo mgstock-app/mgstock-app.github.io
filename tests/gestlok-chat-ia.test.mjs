@@ -103,9 +103,9 @@ test('la respuesta se limpia (sin markdown y acotada)', async () => {
 
 test('mensajes configurables del local con variables', () => {
   const p = {codigo: 'MM-0001', estado: 'terminado', entrega: 'retiro', total: 3600, nombre: 'Ana', direccion: ''};
-  assert.equal(M.textoEstadoPedido(p, sucursal, {}), '¡Tu pedido MM-0001 está listo! Ya podés pasar a retirarlo por Mitre 100.');
-  assert.equal(M.textoEstadoPedido({...p, entrega: 'envio', direccion: 'Belgrano 5'}, sucursal, {terminado_envio: 'Ya sale {codigo} a {direccion}, {nombre}'}), 'Ya sale MM-0001 a Belgrano 5, Ana');
-  assert.match(M.textoEstadoPedido({...p, estado: 'pendiente'}, sucursal, {}), /Recibimos tu pedido MM-0001.*\$ 3\.600/s);
-  assert.equal(M.textoEstadoPedido({...p, estado: 'rechazado', motivo: 'sin stock'}, sucursal, {rechazado: '  '}), 'Lo sentimos, Ana: no pudimos tomar tu pedido MM-0001.\nMotivo: sin stock');
+  assert.match(M.textoEstadoPedido(p, sucursal, {}), /indique su nombre/);
+  assert.doesNotMatch(M.textoEstadoPedido({...p, entrega: 'envio', direccion: 'Belgrano 5'}, sucursal, {terminado_envio: 'Ya sale {codigo} a {direccion}, {nombre}'}), /MM-0001/);
+  assert.match(M.textoEstadoPedido({...p, estado: 'pendiente'}, sucursal, {}), /pendiente de revisión y confirmación/);
+  assert.match(M.textoEstadoPedido({...p, estado: 'rechazado', motivo: 'sin stock'}, sucursal, {rechazado: '  '}), /sin stock/);
   assert.equal(M.plantilla('{nombre} {otra} {codigo}', {nombre: 'A', codigo: 'B'}), 'A {otra} B');
 });

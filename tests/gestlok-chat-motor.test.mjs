@@ -138,7 +138,7 @@ test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correcta
     medios_pago_envio: ['efectivo', 'transferencia']};
   const responder = entrada => M.responder({sucursal: miGusto, catalogo: cat, estado: null, entrada});
   const inicio = responder({inicio: true});
-  assert.equal(inicio.mensajes[0].texto, miGusto.bienvenida);
+  assert.equal(inicio.mensajes[0].texto, M.formalizar(miGusto.bienvenida));
   assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago', 'soporte']);
   const pagos = responder({boton: 'pago'});
   assert.match(pagos.mensajes[0].texto, /Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia/);
@@ -169,4 +169,41 @@ test('soporte: consultas no crean reclamo; faltante, demora real y otros reclamo
  assert.equal(M.clasificarSoporte({boton:'reclamo_faltante'}),'faltante');
  assert.equal(M.clasificarSoporte({boton:'hablar_gerente'}),'otro');
  assert.equal(M.clasificarSoporte({texto:'Quiero 3 empanadas de carne'}),null);
+});
+
+test('Mi Gusto fuera de horario ofrece próximo turno y acepta pedido programado',()=>{
+  const cerrado={...suc,atencion:{habilitado:true,abierto:false,proximo_texto:'hoy a las 19:00'}};
+  const inicio=M.responder({sucursal:cerrado,catalogo:cat,estado:null,entrada:{inicio:true}});
+  assert.match(inicio.mensajes[0].texto,/cerrado/i);
+  assert.match(inicio.mensajes[0].texto,/hoy a las 19:00/);
+  assert.ok(inicio.mensajes[0].botones.some(b=>b.id==='programar_si'));
+  assert.doesNotMatch(inicio.mensajes[0].texto,/\\btu\\b|\\bpodés\\b/i);
+  let r=M.responder({sucursal:cerrado,catalogo:cat,estado:inicio.estado,entrada:{boton:'programar_si'}});
+  assert.equal(r.estado.programado,true);
+  r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{texto:'3 empanadas de carne'}});
+  r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{boton:'finalizar'}});
+  assert.equal(r.mensajes[0].tipo,'datos');
+  r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{datos:{
+    nombre:'María López',telefono:'1155551234',entrega:'retiro',medio_pago:'efectivo'}}});
+  assert.equal(r.accion.tipo,'crear_pedido');
+  assert.equal(r.accion.pedido.programar,true);
+});
+test('sin autorización no se envía un pedido fuera de horario',()=>{
+ const cerrado={...suc,atencion:{habilitado:true,abierto:false,proximo_texto:'mañana a las 11:00'}};
+ let r=M.responder({sucursal:cerrado,catalogo:cat,estado:null,entrada:{texto:'3 empanadas de carne'}});
+ r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{boton:'finalizar'}});
+ assert.match(r.mensajes[0].texto,/mañana a las 11:00/);
+ assert.equal(r.accion,undefined);
+});
+test('no expone código interno y comunica retiro por nombre',()=>{
+ const p={codigo:'MM-0452',estado:'terminado',nombre:'Ana',entrega:'retiro',total:12000};
+ const t=M.textoEstadoPedido(p,{nombre:'Munro',direccion:'Av. Mitre 100'},null);
+ assert.doesNotMatch(t,/MM-0452|código/i);
+ assert.match(t,/nombre/i);
+ assert.doesNotMatch(t,/\\btu\\b|\\bpodés\\b/i);
+});
+test('consulta ajena deriva al gerente y pedido gastronómico no',()=>{
+ assert.equal(M.consultaAjena('¿Quién ganó el partido de fútbol?'),true);
+ assert.equal(M.consultaAjena('Quiero 2 pizzas muzzarella'),false);
+ assert.equal(M.consultaAjena('¿Cuánto demora mi pedido?'),false);
 });

@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120soporte1';
+import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120turnos1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -112,6 +112,7 @@ async function enviar(entrada, textoVisible) {
       burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return;
     }
+    if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
     actualizarCarrito(r.carrito);
     if (typeof r.soporte_pendiente === 'boolean') {
       S.soportePendiente = r.soporte_pendiente;
@@ -143,7 +144,7 @@ function actualizarCarrito(c) {
   $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' + pesos(totalCarrito(S.catalogo, S.carrito));
 }
 const TEXTO_ESTADO = {
-  pendiente: ['Pendiente de confirmación', 'El gerente debe revisar y confirmar tu pedido'],
+  pendiente: ['Pendiente de confirmación', 'El gerente debe revisar y confirmar su pedido'],
   confirmado: ['Pedido confirmado', 'El local lo está preparando'],
   terminado: ['¡Pedido listo!', ''],
   rechazado: ['El local no pudo tomarlo', ''],
@@ -155,13 +156,16 @@ function mostrarPedido(p) {
   const caja = $('aviso-pedido');
   if (!p) { caja.hidden = true; return; }
   const [t, sub] = TEXTO_ESTADO[p.estado] || [p.estado, ''];
+  const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
+  const etiqueta = programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
+    timeZone:'America/Argentina/Buenos_Aires',weekday:'short',hour:'2-digit',minute:'2-digit'}) : t;
   caja.className = 'aviso-pedido ' + p.estado;
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
-    el('div', {}, el('strong', {text: t + ' · ' + p.codigo}), (p.estado === 'rechazado' && p.motivo ? p.motivo
-      : p.estado === 'terminado' ? (p.entrega === 'envio' ? 'Sale para tu dirección' : 'Ya podés pasar a retirarlo') : sub) + ' · ' + pesos(p.total)),
+    el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
+      : p.estado === 'terminado' ? (p.entrega === 'envio' ? 'El local coordinará su entrega' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null].filter(Boolean));
   caja.hidden = false;
-  if (antes && antes.codigo === p.codigo && antes.estado !== p.estado && ['pendiente', 'confirmado'].includes(antes.estado)) {
+  if (antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado)) {
     // El texto lo arma la función con los mensajes que configuró el local.
     if (p.aviso && ['confirmado', 'terminado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
     try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
@@ -318,9 +322,9 @@ function abrirDatos() {
   const form = el('form', {onsubmit: e => {
     e.preventDefault();
     const tel = String(d.telefono || '').replace(/\D/g, '');
-    const problema = String(d.nombre || '').trim().length < 2 ? 'Escribí tu nombre.'
-      : tel.length < 8 || tel.length > 15 ? 'Escribí un teléfono válido (con código de área).'
-      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Escribí la dirección de entrega.' : '';
+    const problema = String(d.nombre || '').trim().length < 2 ? 'Ingrese su nombre.'
+      : tel.length < 8 || tel.length > 15 ? 'Ingrese un teléfono válido (con código de área).'
+      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.' : '';
     if (problema) { error.textContent = problema; error.hidden = false; return; }
     cerrarHoja();
     enviar({datos: {...d}}, 'Enviar pedido');
@@ -334,14 +338,16 @@ function abrirDatos() {
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
   dir,
   el('label', {class: 'campo'}, el('span', {text: 'Medio de pago'}), pago),
-  campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
+  s.atencion?.habilitado && !s.atencion.abierto
+    ? el('p',{class:'nota',text:'Pedido para la próxima apertura: '+s.atencion.proximo_texto+'. El gerente lo confirmará manualmente.'})
+    : campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
   campo('nota', 'Aclaraciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2'}),
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
-  el('p', {class: 'nota', text: 'El gerente revisa y confirma tu pedido antes de prepararlo. Te avisamos por este chat. Tus datos se usan solo para este pedido.'}),
+  el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Le informaremos por este chat. Sus datos se usan únicamente para el pedido.'}),
   error,
   el('button', {type: 'submit', class: 'boton principal ancho', text: 'Enviar pedido'}));
   refrescar();
-  abrirHoja('Tus datos', form);
+  abrirHoja('Sus datos', form);
 }
 
 function abrirInfo() {
@@ -454,16 +460,16 @@ async function demoApi(accion, extra) {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
-    demoPedido = pedido = conAviso({codigo: 'DEMO-0001', estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
+    demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
     r.estado.carrito = [];
     mensajes.push({texto: pedido.aviso});
     // La demo conserva el pedido pendiente: nunca simula una confirmación automática.
   } else if (r.accion?.tipo === 'estado') {
-    mensajes.push({texto: demoPedido ? demoPedido.aviso : 'Todavía no enviaste ningún pedido.'});
+    mensajes.push({texto: demoPedido ? demoPedido.aviso : 'Todavía no hay pedidos enviados desde este chat.'});
   } else if (r.accion?.tipo === 'cancelar' && demoPedido?.estado === 'pendiente') {
     demoPedido = pedido = {...demoPedido, estado: 'cancelado'};
-    mensajes.push({texto: 'Cancelamos tu pedido ' + demoPedido.codigo + '.'});
+    mensajes.push({texto: 'Su pedido fue cancelado.'});
   }
   return {ok: true, mensajes, carrito: r.estado.carrito, pedido};
 }

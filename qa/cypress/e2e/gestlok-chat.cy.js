@@ -24,8 +24,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja .error-form').should('contain.text', 'dirección');
     cy.get('#hoja input[name=direccion]').type('Mitre 200');
     cy.get('#hoja button[type=submit]').click();
-    cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'DEMO-0001').and('contain.text', 'Pendiente de confirmación');
-    cy.get('.burbuja.asistente').last().should('contain.text', 'Recibimos tu pedido DEMO-0001');
+    cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'Pendiente de confirmación').and('not.contain.text','DEMO-0001');
+    cy.get('.burbuja.asistente').last().should('contain.text', 'pendiente de revisión y confirmación').and('not.contain.text','DEMO-0001');
     cy.get('#aviso-pedido').should('not.contain.text', '¡Pedido listo!');
     cy.get('#barra-pedido').should('not.be.visible');
     sinDesborde();
@@ -123,5 +123,21 @@ describe('GESTLOK Chat · panel', () => {
     cy.get('.enlace-publico a').should('have.attr', 'href', 'https://gestlok.com.ar/chat/?s=mi-gusto-munro');
     cy.get('.qr img').should('be.visible');
     sinDesborde();
+  });
+});
+
+describe('GESTLOK Chat · historial de demanda del local',()=>{
+  it('muestra pedidos diarios por retiro, delivery y programación sin datos de clientes',()=>{
+    cy.viewport(390,844);
+    cy.visit('/chat/panel/?demo=1');
+    cy.get('[data-p="reporte"]').click();
+    cy.contains('Historial diario · Pedidos por GESTLOK Chat').should('be.visible');
+    cy.contains('.reporte-cifra','Pedidos recibidos').should('contain.text','2');
+    cy.contains('.reporte-cifra','Retiro').should('contain.text','1');
+    cy.contains('.reporte-cifra','Delivery').should('contain.text','1');
+    cy.contains('.reporte-cifra','Programados').should('contain.text','1');
+    cy.get('.reporte-dia').first().should('contain.text','Retiro: 1').and('contain.text','Delivery: 1');
+    cy.contains('button','Últimos 7 días').click();
+    cy.get('.reporte-dia').should('have.length',1);
   });
 });
