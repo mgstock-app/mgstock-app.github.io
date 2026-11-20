@@ -112,6 +112,7 @@ async function enviar(entrada, textoVisible) {
       burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return;
     }
+    if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
     actualizarCarrito(r.carrito);
     if (typeof r.soporte_pendiente === 'boolean') {
       S.soportePendiente = r.soporte_pendiente;
