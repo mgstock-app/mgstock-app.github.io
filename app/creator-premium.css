@@ -186,3 +186,47 @@
 @media(prefers-reduced-motion:reduce){
   #hub .gl-ch-premium-select span{transition:none}
 }
+
+
+/* Prueba GESTLOK Chat · acceso privado desde Inicio de la creadora.
+   Los marcos son las mismas pantallas de Chat, con ?demo=1&showroom=1. */
+#hub .gl-ch-showroom{
+  width:100%;min-width:0;overflow:hidden;border:1px solid #dce7f1;border-radius:18px;
+  background:#fff;padding:clamp(12px,2vw,22px);box-shadow:0 8px 28px #0a284512;
+}
+#hub .gl-ch-showroom-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#hub .gl-ch-showroom-header h2{margin:0;color:#102a46;font-size:clamp(19px,2vw,24px)}
+#hub .gl-ch-showroom-header p{margin:6px 0 0;color:#50677a;font-size:14px}
+#hub .gl-ch-showroom-reset,#hub .gl-ch-showroom-open{
+  min-height:44px;padding:10px 15px;border-radius:12px;font:inherit;font-weight:650;cursor:pointer;
+  border:1px solid #c9dced;background:#f4f9fd;color:#153e62;
+}
+#hub .gl-ch-showroom-open{background:#123e66;color:white;border-color:#123e66}
+#hub .gl-ch-showroom-note{
+  margin:15px 0;padding:11px 13px;border:1px solid #e7d9a8;border-radius:12px;
+  background:#fffdf4;color:#54471d;font-size:13px;line-height:1.55;
+}
+#hub .gl-ch-showroom-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:5px;margin:0 0 12px;
+  border-radius:13px;background:#f0f5fa}
+#hub .gl-ch-showroom-tabs button{
+  flex:1 1 190px;min-height:46px;padding:10px 14px;border:0;border-radius:10px;
+  background:transparent;color:#294964;font:inherit;font-size:14px;font-weight:650;cursor:pointer;
+}
+#hub .gl-ch-showroom-tabs button.on,#hub .gl-ch-showroom-tabs button[aria-selected=true]{
+  background:#123e66;color:#fff;box-shadow:0 2px 9px #0b233e22;
+}
+#hub .gl-ch-showroom-pane[hidden]{display:none!important}
+#hub .gl-ch-showroom-pane{width:100%;min-width:0;overflow:hidden;border-radius:13px;border:1px solid #dce7f1}
+#hub .gl-ch-showroom-pane iframe{
+  display:block;border:0;width:100%;min-height:600px;height:min(76dvh,790px);
+  background:#f7fafc;
+}
+#hub .gl-ch-showroom-foot{margin:12px 2px 0;color:#697d90;font-size:12px;line-height:1.5}
+#hub .gl-ch-showroom-teaser p{color:#5b7288;line-height:1.5}
+@media(max-width:620px){
+  #hub .gl-ch-showroom{padding:10px;border-radius:13px}
+  #hub .gl-ch-showroom-header{padding:3px}
+  #hub .gl-ch-showroom-reset{width:100%}
+  #hub .gl-ch-showroom-pane iframe{height:70dvh;min-height:570px}
+  #hub .gl-ch-showroom-tabs button{flex-basis:100%}
+}
