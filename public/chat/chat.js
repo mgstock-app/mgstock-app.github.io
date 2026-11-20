@@ -172,7 +172,8 @@ function programarSondeo() {
   clearTimeout(S.sondeo);
   if (!S.soportePendiente && !['pendiente', 'confirmado'].includes(S.pedido?.estado)) return;
   S.sondeo = setTimeout(async () => {
-    if (document.hidden) return programarSondeo();
+    // Mantener contacto con el gerente durante soporte, aun si el cliente cambia de pestaña.
+    if (document.hidden && !S.soportePendiente) return programarSondeo();
     try {
       const r = await api('estado', {desde: S.ultimoLocal});
       if (r.ok) {
