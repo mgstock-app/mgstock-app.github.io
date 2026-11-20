@@ -59,6 +59,8 @@ export const MENSAJES_BASE = {
   // Al terminar el pedido (listo para retirar o enviado): invitación a reseñar (solo si hay link) y cierre.
   resena: '¿Cómo fue su experiencia? Nos ayudaría mucho que nos la cuente en una reseña.',
   cierre: '¡Gracias por elegirnos!',
+  // Venta sugerida: antes de pedir los datos, si el pedido no tiene postre o bebida.
+  sugerencia: 'Antes de finalizar, ¿desea agregar un postre o una bebida para acompañar su pedido?',
 };
 /** Link de reseñas del local: solo https y solo dominios de Google (evita enlaces engañosos). '' si no sirve. */
 export function urlResena(u) {
@@ -181,6 +183,27 @@ export function describirLinea(catalogo, linea) {
     if (vals.length) ops.push(vals.join(', '));
   }
   return linea.cantidad + ' × ' + p.nombre + (ops.length ? ' (' + ops.join(' · ') + ')' : '') + (linea.nota ? ' — ' + linea.nota : '');
+}
+
+/* Venta sugerida (cualquier rubro gastronómico): categorías de postres y de bebidas, reconocidas por su nombre. */
+const RE_POSTRE = /postre|helado|dulce|torta/i;
+const RE_BEBIDA = /bebida|gaseosa|cerveza|vino|agua|jugo|refresco/i;
+/** Categorías para ofrecer antes de finalizar: postres y bebidas con algo disponible, si el pedido todavía no tiene. */
+export function categoriasSugeridas(catalogo, carrito) {
+  const cats = catalogo?.categorias || [];
+  const tipoCat = c => RE_POSTRE.test(c?.nombre || '') ? 'postre' : RE_BEBIDA.test(c?.nombre || '') ? 'bebida' : '';
+  const tipoDe = p => tipoCat(cats.find(c => c.id === p?.categoria_id));
+  const tiene = {postre: false, bebida: false};
+  for (const l of carrito || []) {
+    const p = productoPorId(catalogo, l.producto_id);
+    const t = tipoDe(p);
+    if (t) tiene[t] = true;
+    // Promos que ya traen bebida (ej. «+ lata»): no se ofrece otra.
+    if ((p?.opciones || []).some(g => RE_BEBIDA.test(g.nombre) || /lata/i.test(g.nombre))) tiene.bebida = true;
+  }
+  return cats.filter(c => { const t = tipoCat(c); return t && !tiene[t]; })
+    .filter(c => disponibles(catalogo).some(p => p.categoria_id === c.id && p.disponible !== false))
+    .slice(0, 3).map(c => ({id: c.id, nombre: c.nombre, tipo: tipoCat(c)}));
 }
 
 /** Opciones obligatorias que todavía faltan elegir en una línea. */
@@ -401,7 +424,7 @@ export function sumar(catalogo, carrito, lineas) {
   return avisos;
 }
 
-export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: [], programado: false}; }
+export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: [], programado: false, sugerido: false}; }
 
 export function limpiarEstado(estado, catalogo) {
   const e = Object.assign(estadoInicial(), estado && typeof estado === 'object' ? estado : {});
@@ -499,6 +522,13 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   const texto = String(entrada.texto || '').slice(0, 600);
   const accion = entrada.boton ? String(entrada.boton) : intencion(texto);
 
+  // Venta sugerida: «Ver postres» / «Ver bebidas» abre la carta en esa categoría.
+  if (accion.startsWith('carta:')) {
+    const c = (catalogo?.categorias || []).find(x => x.id === accion.slice(6));
+    decir(c ? 'Estas son las opciones de ' + c.nombre.toLowerCase() + '. Toque una para agregarla.' : 'Esta es nuestra carta.',
+      {tipo: 'carta', ...(c ? {categoria: c.id} : {})});
+    return fin();
+  }
   // Dudas pendientes: «¿Cuál?» → el cliente toca una opción.
   if (accion.startsWith('elegir:')) {
     const [, id, cant] = accion.split(':');
@@ -535,11 +565,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     case 'direccion': decir(s.direccion ? 'Estamos en ' + s.direccion + '.' : 'El local todavía no cargó su dirección.', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
-    case 'vaciar': e.carrito = []; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
+    case 'vaciar': e.carrito = []; e.sugerido = false; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
     case 'humano': decir('El gerente puede responderle por este mismo chat. Para pedir atención, seleccione la opción de soporte.',{botones:[{id:'hablar_gerente',texto:'Hablar con el gerente'}]}); return fin();
     case 'estado': decir('Te muestro cómo va tu pedido.'); return fin({tipo: 'estado'});
     case 'cancelar':
-      if (e.carrito.length) { e.carrito = []; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }
+      if (e.carrito.length) { e.carrito = []; e.sugerido = false; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }
       decir('Voy a cancelar tu pedido pendiente.'); return fin({tipo: 'cancelar'});
     case 'finalizar':
       if (!e.carrito.length) { decir(textoCarrito(catalogo, e.carrito), {botones: BOTONES_INICIO}); return fin(); }
@@ -555,6 +585,17 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
         decir('Estamos cerrados y abriremos nuevamente '+s.atencion.proximo_texto+
           '. ¿Desea programar su pedido?',{botones:[{id:'programar_si',texto:'Sí, programar pedido'},
           {id:'programar_no',texto:'No, gracias'}]}); return fin();
+      }
+      // Venta sugerida: una sola vez por pedido, antes de pedir los datos.
+      if (!e.sugerido) {
+        const cats = categoriasSugeridas(catalogo, e.carrito);
+        if (cats.length) {
+          e.sugerido = true;
+          decir(mensajeDe(mensajes, 'sugerencia'), {sugerencia: true, botones: [
+            ...cats.map(c => ({id: 'carta:' + c.id, texto: 'Ver ' + c.nombre.toLowerCase()})),
+            {id: 'finalizar', texto: 'No, gracias. Finalizar'}]});
+          return fin();
+        }
       }
       e.paso = 'datos';
       decir(textoCarrito(catalogo, e.carrito) + '\nComplete sus datos para enviar el pedido al local.', {tipo: 'datos'});

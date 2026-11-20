@@ -139,3 +139,18 @@ test('bienvenida con IA: se descarta si trae precios, números, enlaces, falla o
   await assert.rejects(bienvenidaIA({sucursal, privado, config: cfgOAI, fetchImpl: apiFalsa([{status: 429, body: {}}]).fetchImpl}), /IA 429/);
   await assert.rejects(bienvenidaIA({sucursal, privado, config: {proveedor: 'gemini', clave: ''}}), /sin configurar/);
 });
+
+test('venta sugerida con IA: antes de cerrar ofrece postre o bebida y después muestra los datos', async () => {
+  const cat = {categorias: [{id: 'c1', nombre: 'Empanadas'}, {id: 'c2', nombre: 'Postres'}], productos: [
+    {id: 'uuid-carne', categoria_id: 'c1', nombre: 'Empanada de carne', precio: 1000, activo: true, disponible: true, opciones: []},
+    {id: 'uuid-flan', categoria_id: 'c2', nombre: 'Flan', precio: 1500, activo: true, disponible: true, opciones: []}]};
+  const estado = {carrito: [{producto_id: 'uuid-carne', cantidad: 2, opciones: {}}]};
+  const {fetchImpl, llamadas} = apiFalsa([oai(null, [['finalizar_pedido']]), oai('Antes de cerrar, ¿desea agregar un postre?')]);
+  const r = await responderIA({sucursal, privado, catalogo: cat, estado, historial: [], texto: 'eso es todo', config: cfgOAI, fetchImpl});
+  assert.match(llamadas[1].body.messages.at(-1).content, /Antes de cerrar, ofrecele/);
+  assert.equal(r.estado.sugerido, true);
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['carta:c2', 'finalizar']);
+  const otra = apiFalsa([oai(null, [['finalizar_pedido']]), oai('Complete sus datos.')]);
+  const r2 = await responderIA({sucursal, privado, catalogo: cat, estado: r.estado, historial: [], texto: 'no, gracias', config: cfgOAI, fetchImpl: otra.fetchImpl});
+  assert.equal(r2.mensajes[0].tipo, 'datos', 'la segunda vez no se vuelve a ofrecer');
+});

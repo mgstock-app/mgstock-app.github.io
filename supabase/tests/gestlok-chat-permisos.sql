@@ -152,6 +152,11 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!","resena_url":"","resena":"","cierre":"¡Gracias por elegirnos!"}}', 7)::text $q$, s_munro));
   v := prueba_q(format($q$ select (public.gestlok_chat_panel_config(%L)->'mensajes' ? 'resena_url')::text $q$, s_munro));
   r := r || E'\n' || case when v = 'ok:false' then 'OK' else 'FALLA' end || ' borrar el link deja de ofrecer la reseña';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"sugerencia":"¿Le sumamos un postre o una bebida?"}}', 8)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente edita la pregunta de la venta sugerida · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!"}}', 9)::text $q$, s_munro));
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config(%L)->'mensajes'->>'sugerencia' $q$, s_munro));
+  r := r || E'\n' || case when v = 'ok:¿Le sumamos un postre o una bebida?' then 'OK' else 'FALLA' end || ' un panel anterior no borra la venta sugerida';
   perform set_config('role', 'postgres', true);
   r := r || E'\n' || case when not gestlok_chat_private.mensajes_validos('{"resena_url":"https://evil.example/x"}')
       and gestlok_chat_private.mensajes_validos('{"resena_url":"https://maps.app.goo.gl/abc","cierre":"Gracias"}')

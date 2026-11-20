@@ -110,7 +110,7 @@ export function armarHistorial(historial, texto) {
 /** Ejecuta las herramientas sobre el estado de esta conversación. */
 function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
   const {porCodigo} = indice(catalogo);
-  const ui = {tipo: null, productos: null, cantidad: null, accion: null};
+  const ui = {tipo: null, productos: null, cantidad: null, accion: null, botones: null};
   const ejecutar = (nombre, args) => {
     args = args && typeof args === 'object' ? args : {};
     switch (nombre) {
@@ -147,6 +147,11 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
       case 'finalizar_pedido': {
         const r = responder({sucursal, catalogo, estado, entrada: {boton: 'finalizar'}, mensajes});
         const m = r.mensajes[0] || {};
+        // Venta sugerida (una vez por pedido): la IA ofrece postre o bebida antes de pedir los datos.
+        if (m.sugerencia) {
+          estado.sugerido = true; ui.botones = m.botones;
+          return 'Antes de cerrar, ofrecele al cliente con amabilidad y sin insistir: «' + m.texto + '». El sistema le muestra botones para ver esas opciones. Si no quiere nada más, volvé a usar finalizar_pedido.';
+        }
         if (m.tipo === 'datos') { ui.tipo = 'datos'; estado.paso = 'datos'; return 'Listo: el cliente ya ve el formulario para sus datos. Decile que lo complete para enviar el pedido.'; }
         return 'Todavía no se puede cerrar: ' + (m.texto || 'revisá el pedido');
       }
@@ -229,7 +234,7 @@ export async function responderIA({sucursal, privado, catalogo, estado, historia
   if (!respuesta && !ui.tipo && !ui.accion) throw new Error('IA sin respuesta');
   const m = {texto: formalizar(respuesta || (ui.tipo === 'datos' ? 'Complete sus datos para enviar el pedido.' : 'Entendido.'))};
   if (ui.tipo) { m.tipo = ui.tipo; if (ui.productos) { m.productos = ui.productos; m.cantidad = ui.cantidad; } }
-  else m.botones = botonesCarrito(e.carrito);
+  else m.botones = ui.botones || botonesCarrito(e.carrito);
   return {estado: e, mensajes: [m], ...(ui.accion ? {accion: ui.accion} : {}), motor: 'ia'};
 }
 

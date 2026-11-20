@@ -244,3 +244,43 @@ test('reseña y cierre al terminar el pedido: solo links https de Google', () =>
   assert.equal(M.cierrePedido({estado: 'rechazado'}, msj), null, 'un pedido rechazado no pide reseña');
   assert.match(M.textoEstadoPedido({estado: 'terminado', entrega: 'envio', nombre: 'Ana', direccion: 'Mitre 200', total: 1000}, {}, {}), /en camino a Mitre 200/);
 });
+
+test('venta sugerida: antes de los datos ofrece postres y bebidas una sola vez', () => {
+  const cat = {categorias: [{id: 'ce', nombre: 'Empanadas'}, {id: 'cb', nombre: 'Bebidas'}, {id: 'cp', nombre: 'Postres'}, {id: 'cv', nombre: 'Vinos'}], productos: [
+    {id: 'e1', categoria_id: 'ce', nombre: 'Empanada de carne', precio: 1000, activo: true, disponible: true, opciones: []},
+    {id: 'b1', categoria_id: 'cb', nombre: 'Coca-Cola lata', precio: 900, activo: true, disponible: true, opciones: []},
+    {id: 'p1', categoria_id: 'cp', nombre: 'Flan', precio: 1500, activo: true, disponible: true, opciones: []},
+    {id: 'v1', categoria_id: 'cv', nombre: 'Malbec', precio: 9000, activo: true, disponible: false, opciones: []},
+    {id: 'k1', categoria_id: 'ce', nombre: 'Pack 2 empanadas + lata', precio: 2500, activo: true, disponible: true, opciones: [
+      {id: 'lata', nombre: 'Lata', tipo: 'una', obligatorio: true, valores: [{id: 'coca', nombre: 'Coca-Cola'}]}]},
+  ]};
+  const suc = {nombre: 'Centro', acepta_retiro: true};
+  let r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 2, opciones: {}}]}, entrada: {boton: 'finalizar'}});
+  assert.equal(r.mensajes[0].sugerencia, true);
+  assert.match(r.mensajes[0].texto, /postre o una bebida/);
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['carta:cb', 'carta:cp', 'finalizar'], 'categorías en el orden de la carta');
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.texto), ['Ver bebidas', 'Ver postres', 'No, gracias. Finalizar']);
+  assert.ok(!r.mensajes[0].botones.some(b => b.id === 'carta:cv'), 'sin vinos disponibles no se ofrecen');
+  assert.equal(r.estado.sugerido, true);
+  // «Ver postres» abre la carta en esa categoría.
+  const v = M.responder({sucursal: suc, catalogo: cat, estado: r.estado, entrada: {boton: 'carta:cp'}});
+  assert.equal(v.mensajes[0].tipo, 'carta'); assert.equal(v.mensajes[0].categoria, 'cp');
+  // «No, gracias. Finalizar»: no se vuelve a ofrecer y pasa a los datos.
+  r = M.responder({sucursal: suc, catalogo: cat, estado: r.estado, entrada: {boton: 'finalizar'}});
+  assert.equal(r.mensajes[0].tipo, 'datos');
+  // Con postre y bebida en el pedido, va directo a los datos.
+  r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}, {producto_id: 'p1', cantidad: 1, opciones: {}},
+    {producto_id: 'b1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'}});
+  assert.equal(r.mensajes[0].tipo, 'datos');
+  // Una promo con lata ya trae bebida: solo se ofrecen postres.
+  assert.deepEqual(M.categoriasSugeridas(cat, [{producto_id: 'k1', cantidad: 1, opciones: {lata: ['coca']}}]).map(c => c.id), ['cp']);
+  // Texto propio del local.
+  r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'},
+    mensajes: {sugerencia: '¿Le sumamos un Franui o una gaseosa?'}});
+  assert.equal(r.mensajes[0].texto, '¿Le sumamos un Franui o una gaseosa?');
+  // Vaciar el pedido vuelve a habilitar la sugerencia.
+  assert.equal(M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [], sugerido: true}, entrada: {boton: 'vaciar'}}).estado.sugerido, false);
+  // Un local sin postres ni bebidas no ve ningún paso extra.
+  assert.equal(M.responder({sucursal: suc, catalogo: {categorias: [{id: 'ce', nombre: 'Empanadas'}], productos: [cat.productos[0]]},
+    estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'}}).mensajes[0].tipo, 'datos');
+});
