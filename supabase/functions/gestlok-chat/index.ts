@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
         return json({ok:false,error:"Elegí una imagen JPG, PNG o WebP válida (máximo 2 MB)."},400,origen);
       }
       let bytes: Uint8Array;
-      try { const bin=atob(imagen); bytes=Uint8Array.from(bin,c=>c.charCodeAt(0)); }
+      try { const bin=atob(imagen); bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); }
       catch { return json({ok:false,error:"No pudimos leer la imagen"},400,origen); }
       if (bytes.length > 2000000 || bytes.length < 16) return json({ok:false,error:"La imagen supera los 2 MB."},413,origen);
       const jpg = bytes[0]===255 && bytes[1]===216 && bytes[2]===255;
