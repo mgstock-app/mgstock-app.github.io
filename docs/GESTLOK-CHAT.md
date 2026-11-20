@@ -116,8 +116,9 @@ reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó s
 maps.app.goo.gl, google.com…): la base rechaza cualquier otro. Se muestra una vez por pedido en ese teléfono, también si
 el cliente vuelve a abrir el chat dentro de las 24 h; el aviso de estado arriba del chat queda con el enlace «Dejar reseña».
 **Venta sugerida.** Al tocar «Finalizar pedido», si el pedido no lleva postre o bebida, el chat lo ofrece una vez
-(pregunta editable en Mensajes → «Antes de finalizar: venta sugerida») con botones «Ver postres» / «Ver bebidas», que
-abren la carta en esa categoría, y «No, gracias. Finalizar». Las categorías se reconocen por el nombre (postres,
+(pregunta editable en Mensajes → «Antes de finalizar: venta sugerida») con botones de productos concretos con su precio
+(de cada categoría, el más caro y el más económico; un toque lo agrega al pedido), «Ver más postres / bebidas» si hay
+otros (abre la carta en esa categoría) y «No, gracias. Finalizar». Las categorías se reconocen por el nombre (postres,
 helados, dulces, bebidas, gaseosas, cervezas, vinos, aguas, jugos) y solo se ofrecen si tienen algo disponible; una
 promo que ya trae bebida («+ lata») no la vuelve a ofrecer. Con IA, la herramienta finalizar_pedido hace el mismo paso.
 

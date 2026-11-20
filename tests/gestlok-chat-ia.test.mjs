@@ -149,7 +149,7 @@ test('venta sugerida con IA: antes de cerrar ofrece postre o bebida y después m
   const r = await responderIA({sucursal, privado, catalogo: cat, estado, historial: [], texto: 'eso es todo', config: cfgOAI, fetchImpl});
   assert.match(llamadas[1].body.messages.at(-1).content, /Antes de cerrar, ofrecele/);
   assert.equal(r.estado.sugerido, true);
-  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['carta:c2', 'finalizar']);
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['elegir:uuid-flan:1', 'finalizar']);
   const otra = apiFalsa([oai(null, [['finalizar_pedido']]), oai('Complete sus datos.')]);
   const r2 = await responderIA({sucursal, privado, catalogo: cat, estado: r.estado, historial: [], texto: 'no, gracias', config: cfgOAI, fetchImpl: otra.fetchImpl});
   assert.equal(r2.mensajes[0].tipo, 'datos', 'la segunda vez no se vuelve a ofrecer');

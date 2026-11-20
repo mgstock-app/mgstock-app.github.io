@@ -258,9 +258,12 @@ test('venta sugerida: antes de los datos ofrece postres y bebidas una sola vez',
   let r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 2, opciones: {}}]}, entrada: {boton: 'finalizar'}});
   assert.equal(r.mensajes[0].sugerencia, true);
   assert.match(r.mensajes[0].texto, /postre o una bebida/);
-  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['carta:cb', 'carta:cp', 'finalizar'], 'categorías en el orden de la carta');
-  assert.deepEqual(r.mensajes[0].botones.map(b => b.texto), ['Ver bebidas', 'Ver postres', 'No, gracias. Finalizar']);
-  assert.ok(!r.mensajes[0].botones.some(b => b.id === 'carta:cv'), 'sin vinos disponibles no se ofrecen');
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['elegir:b1:1', 'elegir:p1:1', 'finalizar'], 'productos concretos, en el orden de la carta');
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.texto), ['Coca-Cola lata · $ 900', 'Flan · $ 1.500', 'No, gracias. Finalizar']);
+  assert.ok(!r.mensajes[0].botones.some(b => /v1|cv/.test(b.id)), 'sin vinos disponibles no se ofrecen');
+  // Tocar un producto ofrecido lo agrega al pedido.
+  const conFlan = M.responder({sucursal: suc, catalogo: cat, estado: r.estado, entrada: {boton: 'elegir:p1:1'}});
+  assert.deepEqual(conFlan.estado.carrito.map(l => l.producto_id), ['e1', 'p1']);
   assert.equal(r.estado.sugerido, true);
   // «Ver postres» abre la carta en esa categoría.
   const v = M.responder({sucursal: suc, catalogo: cat, estado: r.estado, entrada: {boton: 'carta:cp'}});
@@ -283,4 +286,20 @@ test('venta sugerida: antes de los datos ofrece postres y bebidas una sola vez',
   // Un local sin postres ni bebidas no ve ningún paso extra.
   assert.equal(M.responder({sucursal: suc, catalogo: {categorias: [{id: 'ce', nombre: 'Empanadas'}], productos: [cat.productos[0]]},
     estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'}}).mensajes[0].tipo, 'datos');
+});
+
+test('venta sugerida: el producto más caro y el más económico de cada categoría, y «Ver más» si hay otros', () => {
+  const cat = {categorias: [{id: 'ce', nombre: 'Empanadas'}, {id: 'cb', nombre: 'Bebidas'}, {id: 'cp', nombre: 'Postres'}], productos: [
+    {id: 'e1', categoria_id: 'ce', nombre: 'Empanada de carne', precio: 4900, activo: true, disponible: true, opciones: []},
+    {id: 'a1', categoria_id: 'cb', nombre: 'Agua sin gas', precio: 3890, activo: true, disponible: true, opciones: []},
+    {id: 'b2', categoria_id: 'cb', nombre: 'Coca-Cola 2,25 L', precio: 7500, activo: true, disponible: true, opciones: []},
+    {id: 'b3', categoria_id: 'cb', nombre: 'Coca-Cola lata 354 ml', precio: 3100, activo: true, disponible: true, opciones: []},
+    {id: 'b4', categoria_id: 'cb', nombre: 'Sprite lata 354 ml', precio: 3100, activo: true, disponible: true, opciones: []},
+    {id: 'f1', categoria_id: 'cp', nombre: 'Franui Chocolate amargo', precio: 8500, activo: true, disponible: true, opciones: []},
+    {id: 'f2', categoria_id: 'cp', nombre: 'Franui Chocolate con leche', precio: 8500, activo: true, disponible: true, opciones: []},
+    {id: 'f3', categoria_id: 'cp', nombre: 'Franui Pink', precio: 8500, activo: true, disponible: false, opciones: []},
+  ]};
+  const r = M.responder({sucursal: {nombre: 'Munro', acepta_retiro: true}, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 6, opciones: {}}]}, entrada: {boton: 'finalizar'}});
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.texto), ['Coca-Cola 2,25 L · $ 7.500', 'Coca-Cola lata 354 ml · $ 3.100',
+    'Franui Chocolate amargo · $ 8.500', 'Franui Chocolate con leche · $ 8.500', 'Ver más bebidas', 'No, gracias. Finalizar']);
 });

@@ -206,6 +206,20 @@ export function categoriasSugeridas(catalogo, carrito) {
     .slice(0, 3).map(c => ({id: c.id, nombre: c.nombre, tipo: tipoCat(c)}));
 }
 
+/** Productos a ofrecer de cada categoría sugerida: el de mayor precio y el más económico (hasta 2 por categoría). */
+export function productosSugeridos(catalogo, categorias) {
+  const out = [];
+  for (const c of categorias || []) {
+    const ps = disponibles(catalogo).filter(p => p.categoria_id === c.id && p.disponible !== false);
+    if (!ps.length) continue;
+    const caro = ps.reduce((a, p) => Number(p.precio) > Number(a.precio) ? p : a, ps[0]);
+    const resto = ps.filter(p => p !== caro);
+    const barato = resto.length ? resto.reduce((a, p) => Number(p.precio) < Number(a.precio) ? p : a, resto[0]) : null;
+    out.push({categoria: c, productos: [caro, barato].filter(Boolean), total: ps.length});
+  }
+  return out;
+}
+
 /** Opciones obligatorias que todavía faltan elegir en una línea. */
 export function faltantes(producto, opciones) {
   return (producto.opciones || []).filter(g => esCantidad(g) ? unidades(opciones?.[g.id]) !== Number(g.total)
@@ -591,8 +605,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
         const cats = categoriasSugeridas(catalogo, e.carrito);
         if (cats.length) {
           e.sugerido = true;
+          // Ofrece productos concretos con precio (se agregan con un toque) y, si hay más, «Ver más …».
+          const grupos = productosSugeridos(catalogo, cats);
           decir(mensajeDe(mensajes, 'sugerencia'), {sugerencia: true, botones: [
-            ...cats.map(c => ({id: 'carta:' + c.id, texto: 'Ver ' + c.nombre.toLowerCase()})),
+            ...grupos.flatMap(g => g.productos.map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}))),
+            ...grupos.filter(g => g.total > g.productos.length).map(g => ({id: 'carta:' + g.categoria.id, texto: 'Ver más ' + g.categoria.nombre.toLowerCase()})),
             {id: 'finalizar', texto: 'No, gracias. Finalizar'}]});
           return fin();
         }
