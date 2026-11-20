@@ -46,7 +46,7 @@
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
       [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
-        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
+        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones'], ['clientes','Clientes frecuentes']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
           k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
@@ -127,14 +127,14 @@
     for (const b of $('pestanas').querySelectorAll('[data-p]')) {
       b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
       if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
-      if (b.dataset.p === 'charlas' || b.dataset.p === 'soporte') b.hidden = !puede('gestionar');
+      if (['charlas','soporte','clientes'].includes(b.dataset.p)) b.hidden = !puede('gestionar');
     }
     clearTimeout(S.sondeo);
     const avisoSoporte = $('globo-soporte');
     if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
       avisoSoporte.hidden = !(S.suc?.reclamos > 0); }
     ({pedidos: verPedidos, soporte: verSoporte, reporte:verReporte, stock: verStock, carta: verCarta,
-      mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
+      mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas,clientes:verClientes})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
@@ -742,6 +742,26 @@
     }:null,'Enviar mensaje');
   }
 
+  // Clientes frecuentes de ESTA sucursal. Solo personal autorizado; no hay búsquedas públicas por teléfono.
+  async function verClientes() {
+    contenido.replaceChildren(el('p',{class:'nota',text:'Cargando clientes frecuentes…'}));
+    let clientes;
+    try {clientes=await rpc('panel_clientes',{p_sucursal:S.suc.id,p_limite:60});}
+    catch(e){contenido.replaceChildren(el('p',{class:'error',text:e.message}));return;}
+    if (!Array.isArray(clientes) || !clientes.length) {
+      contenido.replaceChildren(el('p',{class:'nota',text:'Todavía no hay clientes con más de un pedido en esta sucursal.'}));
+      return;
+    }
+    contenido.replaceChildren(
+      el('p',{class:'nota',text:'Clientes con dos o más pedidos en esta sucursal. Datos internos, visibles solo para el personal autorizado.'}),
+      el('div',{class:'tarjetas'},clientes.map(c=>el('article',{class:'tarjeta'},
+        el('header',{},el('strong',{text:c.nombre}),el('span',{class:'estado',text:c.pedidos+' pedidos'})),
+        el('p',{class:'cliente'},el('a',{href:'tel:+'+String(c.telefono||''),text:String(c.telefono||'')})),
+        el('p',{class:'nota-cliente',text:'Último pedido: '+hora(c.ultimo_at)}),
+        c.direccion ? el('p',{class:'nota-cliente',text:'Última dirección de delivery: '+c.direccion}) : null
+      ))));
+  }
+
   // ------------------------------------------------------------------------------------------- utilidades
   function campo(texto, control) { return el('label', {class: 'campo'}, el('span', {text: texto}), control); }
   function dialogo(titulo, cuerpo, guardar, textoGuardar = 'Guardar') {
@@ -810,6 +830,7 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
+      case 'panel_clientes': return [{nombre:'María (demo)',telefono:'1155551234',pedidos:3,ultimo_at:new Date().toISOString(),direccion:'Mitre 300'}];
       case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente',cerrada_at:D.cerrada?new Date().toISOString():null}];
       case 'panel_estado_conversacion': return {cerrada:!!D.cerrada,puede_enviar_transferencia:true};
       case 'panel_enviar_transferencia':
