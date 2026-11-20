@@ -49,7 +49,7 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
 }
 
 export const PAGOS = {
-  efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito',
+  efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Tarjeta de débito', credito: 'Tarjeta de crédito',
 };
 
 export function normalizar(t) {
