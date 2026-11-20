@@ -53,6 +53,13 @@ describe('Inicio independiente de la creadora',()=>{
     .find('iframe').should('have.attr','src','/chat/?demo=1&showroom=1');
   cy.get('[data-showroom-pane=local]').should('not.be.visible');
   cy.get('[data-ch-showroom-reset]').should('be.visible');
+  // El celular entra a pantalla completa: mantiene ancho legible y permite salir.
+  cy.get('.gl-ch-showroom').should('have.class','gl-ch-showroom-expanded');
+  cy.get('[data-ch-showroom-expand]').should('have.attr','aria-pressed','true').click();
+  cy.get('.gl-ch-showroom').should('not.have.class','gl-ch-showroom-expanded');
+  cy.get('[data-ch-showroom-expand]').click();
+  cy.get('.gl-ch-showroom').should('have.class','gl-ch-showroom-expanded');
+
  });
  it('las pestañas conservan todas las funciones anteriores (acceso a otras empresas incluido)',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
