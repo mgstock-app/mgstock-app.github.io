@@ -300,8 +300,19 @@
         try {
           await rpc('panel_stock_categoria',{p_sucursal:sucursalId,p_categoria:categoriaId,p_disponible:encender});
           for(const i of items)i.disponible=encender;
+          lista.querySelectorAll('.stock-item').forEach(fila => {
+            fila.querySelector('.stock-led').className='stock-led ' + (encender?'encendido':'apagado');
+            const estado=fila.querySelector('.stock-estado');
+            estado.className='stock-estado ' + (encender?'encendido':'apagado');
+            estado.textContent=encender?'Disponible':'Agotado';
+            const control=fila.querySelector('input[type=checkbox]');
+            if (control) { control.checked=encender;control.setAttribute('aria-label',
+              (encender?'Apagar ':'Encender ')+fila.querySelector('strong').textContent); }
+          });
+          cabecera.querySelector('.stock-conteo').textContent=
+            items.filter(x=>x.disponible).length + ' de ' + items.length + ' disponibles';
+          boton.textContent=encender?'Apagar categoría':'Encender categoría';
           aviso(titulo+(encender?' habilitada':' agotada'));
-          verStock();
         }catch(e){aviso(e.message,true);boton.disabled=false;}
       };
       lista.prepend(el('div',{class:'stock-acciones'},boton));
@@ -549,6 +560,8 @@
     nivel: 'configurar',
     suc: [{id: 's1', nombre: 'Munro', slug: 'demo', activa: true, nivel: 'configurar', pendientes: 1}, {id: 's2', nombre: 'Don Torcuato', slug: 'demo-2', activa: false, nivel: 'configurar', pendientes: 0}],
     cats: [{id: 'c1', nombre: 'Empanadas', orden: 1, activa: true}, {id: 'c2', nombre: 'Pizzas', orden: 2, activa: true}],
+    adicionales: [{grupo_id:'gratinado',valor_id:'gratinar',nombre:'Gratinada adicional',
+      extra_min:900,extra_max:900,disponible:true}],
     prods: [{id: 'p1', categoria_id: 'c1', nombre: 'Empanada de carne', descripcion: '', precio: 1200, activo: true, disponible: true, orden: 0, opciones: []},
       {id: 'p2', categoria_id: 'c1', nombre: 'Empanada de humita', descripcion: '', precio: 1200, activo: true, disponible: false, orden: 0, opciones: []},
       {id: 'p3', categoria_id: 'c2', nombre: 'Pizza muzzarella', descripcion: '', precio: 7500, activo: true, disponible: true, orden: 0, opciones: [
@@ -572,6 +585,13 @@
       case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
       case 'panel_disponible': D.prods.find(p => p.id === a.p_producto).disponible = a.p_disponible; return {ok: true};
+      case 'panel_stock_categoria':
+        D.prods.filter(p=>p.categoria_id===a.p_categoria&&p.activo).forEach(p=>{p.disponible=a.p_disponible;});
+        return {ok:true};
+      case 'panel_stock_adicionales': return D.adicionales;
+      case 'panel_stock_adicional':
+        D.adicionales.find(o=>o.grupo_id===a.p_grupo&&o.valor_id===a.p_valor).disponible=a.p_disponible;
+        return {ok:true};
       case 'panel_producto_guardar': { const x = a.p_producto; if (x.id) Object.assign(D.prods.find(p => p.id === x.id), x); else D.prods.push({...x, id: 'n' + Date.now()}); return {ok: true}; }
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
