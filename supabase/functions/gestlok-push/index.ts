@@ -1,4 +1,4 @@
-// GestLok Web Push · cinco avisos, exclusivamente Dueña que aceptó el permiso.
+// GestLok Web Push · dueños y avisos Chat de gerentes autorizados.
 // Solo servicios de envío confiables. No se exponen claves VAPID privadas.
 import {createClient} from "npm:@supabase/supabase-js@2.118.0";
 import webpush from "npm:web-push@3.6.7";
@@ -6,14 +6,15 @@ const SUPA_URL=Deno.env.get("SUPABASE_URL")||"";
 const ANON=Deno.env.get("SUPABASE_ANON_KEY")||"";
 const SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
 const SITE="https://mgstock-app.github.io";
-const allowed=["master","order_ready","due_soon","due_today","urgent_chat","important_changes"] as const;
+const allowedOrigins=new Set([SITE,"https://gestlok.com.ar","https://www.gestlok.com.ar"]);
+const allowed=["master","order_ready","due_soon","due_today","urgent_chat","important_changes","chat_order"] as const;
 type Flag=typeof allowed[number];
 type Prefs=Record<Flag,boolean>;
-const defaults:Prefs={master:true,order_ready:true,due_soon:true,due_today:true,urgent_chat:true,important_changes:true};
+const defaults:Prefs={master:true,order_ready:true,due_soon:true,due_today:true,urgent_chat:true,important_changes:true,chat_order:true};
 const cors={"Access-Control-Allow-Origin":SITE,"Access-Control-Allow-Headers":"authorization,apikey,content-type,x-client-info,x-gestlok-cron",
 "Access-Control-Allow-Methods":"GET,POST,OPTIONS","Vary":"Origin"};
-const json=(code:number,body:unknown)=>new Response(JSON.stringify(body),{status:code,headers:{
-  ...cors,"Content-Type":"application/json;charset=utf-8","Cache-Control":"no-store"}});
+const json=(code:number,body:unknown,origin=SITE)=>new Response(JSON.stringify(body),{status:code,headers:{
+  ...cors,"Access-Control-Allow-Origin":origin,"Content-Type":"application/json;charset=utf-8","Cache-Control":"no-store"}});
 const admin=createClient(SUPA_URL,SERVICE,{auth:{autoRefreshToken:false,persistSession:false}});
 const endpointValid=(s:unknown)=>{
  if(typeof s!=="string"||s.length>2048)return false;
@@ -35,12 +36,17 @@ async function auth(req:Request){
  const client=createClient(SUPA_URL,ANON,{global:{headers:{Authorization:bearer}},
   auth:{autoRefreshToken:false,persistSession:false}});
  const {data:access,error:accessError}=await client.rpc("mi_acceso");
- if(accessError||access?.rol!=="dueno"||!access.tenant_id)return null;
- return {user:data.user,tenant_id:String(access.tenant_id)};
+ if(accessError||!["dueno","gerente"].includes(String(access?.rol||""))||!access.tenant_id)return null;
+ if(access.rol==="gerente"){
+   const {data:locales,error:e}=await client.rpc("gestlok_chat_panel_inicio");
+   if(e||!locales?.habilitado||!Array.isArray(locales.sucursales)||
+     !locales.sucursales.some((s:{nivel?:string})=>["gestionar","configurar"].includes(s.nivel||"")))return null;
+ }
+ return {user:data.user,tenant_id:String(access.tenant_id),rol:String(access.rol)};
 }
 async function prefOf(tenant:string,user:string):Promise<Prefs>{
  const {data,error}=await admin.from("gestlok_push_preferences").select(
-  "master,order_ready,due_soon,due_today,urgent_chat,important_changes")
+  "master,order_ready,due_soon,due_today,urgent_chat,important_changes,chat_order")
   .eq("tenant_id",tenant).eq("user_id",user).maybeSingle();
  if(error)throw Error("Preferencias temporalmente no disponibles");
  return Object.fromEntries(allowed.map(k=>[k,data?.[k]??defaults[k]])) as Prefs;
@@ -87,6 +93,12 @@ async function dispatch(){
   for(const device of devices||[]){
    if(!endpointValid(device.endpoint))continue;
    let eligible=users.get(device.user_id);
+   if(eligible===undefined&&evt.category==="chat_order"){
+     const {data:ok,error:permError}=await admin.rpc("gestlok_chat_push_can_receive",{
+       p_user:device.user_id,p_tenant:evt.tenant_id,p_local:evt.local_id});
+     eligible=!permError&&ok===true;
+     users.set(device.user_id,eligible);
+   }
    if(eligible===undefined){
     const {data:identity}=await admin.auth.admin.getUserById(device.user_id);
     const email=String(identity?.user?.email||"").toLowerCase();
@@ -112,7 +124,7 @@ async function dispatch(){
      await webpush.sendNotification({endpoint:device.endpoint,
        keys:{auth:device.auth_key,p256dh:device.p256dh_key}},
        JSON.stringify({title:evt.title,body:evt.body,path:"/",local:evt.local_id,view:evt.path,tag:String(evt.category)+":"+evt.id}),{
-       TTL:3600,urgency:evt.category==="urgent_chat"?"high":"normal"});
+       TTL:3600,urgency:["urgent_chat","chat_order"].includes(evt.category)?"high":"normal"});
      delivered++;
      await admin.from("gestlok_push_deliveries").update({delivered_at:new Date().toISOString(),last_error:null})
        .eq("event_id",evt.id).eq("endpoint",device.endpoint);
@@ -130,9 +142,11 @@ async function dispatch(){
  return json(200,{ok:true,attempted,delivered,deliveryEnabled:true});
 }
 Deno.serve(async(req:Request)=>{
- if(req.headers.get("origin") && req.headers.get("origin")!==SITE)return json(403,{ok:false,error:"Origen no permitido"});
- if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
- if(!SUPA_URL||!SERVICE||!ANON)return json(503,{ok:false,error:"Servicio no configurado"});
+ const origin=req.headers.get("origin"),accepted=origin&&allowedOrigins.has(origin)?origin:SITE;
+ const reply=(status:number,data:unknown)=>json(status,data,accepted);
+ if(origin&&!allowedOrigins.has(origin))return reply(403,{ok:false,error:"Origen no permitido"});
+ if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"Access-Control-Allow-Origin":accepted}});
+ if(!SUPA_URL||!SERVICE||!ANON)return reply(503,{ok:false,error:"Servicio no configurado"});
  const op=new URL(req.url).searchParams.get("op");
  if(req.method==="GET"&&op==="config"){
   const {data,error}=await admin.from("gestlok_push_settings").select("public_key").eq("id",1).single();
@@ -140,25 +154,27 @@ Deno.serve(async(req:Request)=>{
    json(200,{ok:true,publicKey:data.public_key,deliveryEnabled:true});
  }
  if(req.method==="POST"&&op==="dispatch"){
-   if(!await verifyCron(req.headers.get("x-gestlok-cron")||""))return json(403,{ok:false,error:"No autorizado"});
+   if(!await verifyCron(req.headers.get("x-gestlok-cron")||""))return reply(403,{ok:false,error:"No autorizado"});
    return await dispatch();
  }
- if(req.method!=="GET"&&req.method!=="POST")return json(405,{ok:false,error:"Método no permitido"});
+ if(req.method!=="GET"&&req.method!=="POST")return reply(405,{ok:false,error:"Método no permitido"});
  const account=await auth(req);
- if(!account)return json(403,{ok:false,error:"Solo Dueña puede gestionar notificaciones"});
+ if(!account)return reply(403,{ok:false,error:"Solo Dueña puede gestionar notificaciones"});
  if(req.method==="GET"&&op==="preferences"){
-   return json(200,{ok:true,preferences:await prefOf(account.tenant_id,account.user.id)});
+   return reply(200,{ok:true,preferences:await prefOf(account.tenant_id,account.user.id)});
  }
- if(req.method!=="POST")return json(405,{ok:false,error:"Método no permitido"});
+ if(req.method!=="POST")return reply(405,{ok:false,error:"Método no permitido"});
  let data:Record<string,unknown>;
  try{
   if(Number(req.headers.get("content-length")||0)>8192)throw Error("too long");
   data=await req.json();
   if(!data||typeof data!=="object"||Array.isArray(data))throw Error("invalid");
- }catch{return json(400,{ok:false,error:"Datos inválidos"});}
+ }catch{return reply(400,{ok:false,error:"Datos inválidos"});}
  if(data.op==="set-preference"){
-   if(!allowed.includes(data.key as Flag)||typeof data.value!=="boolean")
-      return json(400,{ok:false,error:"Preferencia inválida"});
+   if(account.rol==="gerente"&&data.key!=="chat_order")
+     return reply(403,{ok:false,error:"Solo podés cambiar avisos de pedidos"});
+  if(!allowed.includes(data.key as Flag)||typeof data.value!=="boolean")
+      return reply(400,{ok:false,error:"Preferencia inválida"});
    const prefs=await prefOf(account.tenant_id,account.user.id);
    prefs[data.key as Flag]=data.value;
    const {error}=await admin.from("gestlok_push_preferences").upsert({
@@ -167,16 +183,16 @@ Deno.serve(async(req:Request)=>{
    return error?json(503,{ok:false,error:"No se guardó la preferencia"}):
      json(200,{ok:true,preferences:prefs});
  }
- if(data.op!=="subscribe"&&data.op!=="unsubscribe")return json(400,{ok:false,error:"Operación inválida"});
+ if(data.op!=="subscribe"&&data.op!=="unsubscribe")return reply(400,{ok:false,error:"Operación inválida"});
  const sub=data.subscription as {endpoint?:unknown,keys?:{auth?:unknown,p256dh?:unknown}};
- if(!sub||!endpointValid(sub.endpoint))return json(400,{ok:false,error:"Endpoint no admitido"});
+ if(!sub||!endpointValid(sub.endpoint))return reply(400,{ok:false,error:"Endpoint no admitido"});
  if(data.op==="unsubscribe"){
    const {error}=await admin.from("gestlok_push_devices").delete()
      .eq("endpoint",sub.endpoint).eq("user_id",account.user.id).eq("tenant_id",account.tenant_id);
    return error?json(503,{ok:false,error:"No se pudo quitar dispositivo"}):json(200,{ok:true});
  }
  if(!validKey(sub.keys?.auth,100)||!validKey(sub.keys?.p256dh,200))
-   return json(400,{ok:false,error:"Claves push inválidas"});
+   return reply(400,{ok:false,error:"Claves push inválidas"});
  const {error}=await admin.from("gestlok_push_devices").upsert({
    endpoint:sub.endpoint,user_id:account.user.id,tenant_id:account.tenant_id,
    auth_key:sub.keys?.auth,p256dh_key:sub.keys?.p256dh,enabled:true,registered_at:new Date().toISOString()
