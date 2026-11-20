@@ -297,7 +297,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       return fin();
     }
     if (entrada.lote_id && e.ultimo_lote === entrada.lote_id) {
-      decir('Esta selección del menú ya fue recibida.\\n' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
+      decir('Esta selección del menú ya fue recibida.\n' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
       return fin();
     }
     const siguiente = e.carrito.map(l => ({...l, opciones: {...(l.opciones || {})}}));
@@ -318,9 +318,9 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     e.carrito = siguiente;
     if (entrada.lote_id) e.ultimo_lote = entrada.lote_id;
     e.paso = 'pedido';
-    decir('Recibí tu selección del menú:\\n' + lineas.map(l => '• ' + describirLinea(catalogo, l)).join('\\n') +
-      '\\nTotal estimado: ' + pesos(totalCarrito(catalogo, e.carrito)) +
-      '\\nPodés agregar más o finalizar para completar tus datos.', {botones: botonesCarrito(e.carrito)});
+    decir('Recibí tu selección del menú:\n' + lineas.map(l => '• ' + describirLinea(catalogo, l)).join('\n') +
+      '\nTotal estimado: ' + pesos(totalCarrito(catalogo, e.carrito)) +
+      '\nPodés agregar más o finalizar para completar tus datos.', {botones: botonesCarrito(e.carrito)});
     return fin();
   }
 
