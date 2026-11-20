@@ -60,7 +60,7 @@
       diarioError='No se pudo consultar el estado. Conteo diario continúa oculto.';
     } finally {
       diarioLoading=false;
-      if(diarioUser===id){api?.renderLocal?.();api?.render?.();}
+      if(diarioUser===id && tab!=='chat-prueba'){api?.renderLocal?.();api?.render?.();}
     }
   }
   function dailySettingsView(){
@@ -186,9 +186,12 @@
     try {
       const {data: d, error} = await window.GestLokSupabase.rpc('gestlok_creator_dashboard');
       if (error || !d || d.scope !== 'creator_dashboard' || !d.totals || !Array.isArray(d.series)) throw Error('Sin autorización');
-      const changed = JSON.stringify(d) !== JSON.stringify(data) || status !== 'ready';
+      const estabaListo = status === 'ready';
+      const changed = JSON.stringify(d) !== JSON.stringify(data) || !estabaListo;
       data = d; status = 'ready';
-      if (changed) api.render();
+      // No reconstruir los iframes en mitad de una demostración al actualizar
+      // estadísticas en segundo plano. El primer ingreso sí debe renderizar.
+      if (changed && (!estabaListo || tab !== 'chat-prueba')) api.render();
     } catch {
       const changed = status !== 'off';
       data = null; status = 'off';
