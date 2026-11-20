@@ -534,6 +534,59 @@ function abrirDatos() {
     d.efectivo_abona=importeEstimado.toFixed(2); efectivoInput.value=d.efectivo_abona; guardarDatos();refrescar();
   }});
   efectivo.append(pagoJusto);
+  const campoNombre=campo('nombre','Nombre',{type:'text',maxlength:'80',autocomplete:'name',required:true});
+  const campoTelefono=campo('telefono','Teléfono de contacto',{
+    type:'tel',maxlength:'25',autocomplete:'tel',inputmode:'tel',placeholder:'Ej.: 11 5555 1234',required:true});
+  const inputNombre=campoNombre.querySelector('input');
+  const inputTelefono=campoTelefono.querySelector('input');
+  const inputDireccion=dir.querySelector('input');
+  const avisoRecuerdo=el('div',{class:'recuerdo-cliente',hidden:true});
+  let perfil=null;let telefonoConsultado='';let datoConfirmado='';
+
+  function preguntaDeRecuerdo() {
+    avisoRecuerdo.replaceChildren();
+    if (!perfil?.encontrado) {avisoRecuerdo.hidden=true;return;}
+    const direccion=d.entrega==='envio' && String(perfil.direccion||'').trim().length>=5;
+    const tipo=direccion?'direccion':'nombre';
+    if (datoConfirmado===tipo) {avisoRecuerdo.hidden=true;return;}
+    const pregunta=direccion
+      ? '¡Qué bueno volver a atenderlo! ¿El envío sigue siendo a '+perfil.direccion+'?'
+      : '¡Qué bueno volver a atenderlo! ¿El pedido es a nombre de '+perfil.nombre+'?';
+    const si=el('button',{type:'button',class:'boton chico',text:'Sí, es correcto',onclick:()=>{
+      if (perfil.nombre) {d.nombre=perfil.nombre;inputNombre.value=perfil.nombre;}
+      if (direccion) {d.direccion=perfil.direccion;inputDireccion.value=perfil.direccion;}
+      datoConfirmado=tipo;avisoRecuerdo.hidden=true;guardarDatos();
+    }});
+    const no=el('button',{type:'button',class:'boton chico',text:'No, modificar',onclick:()=>{
+      if (direccion) {d.direccion='';inputDireccion.value='';inputDireccion.focus();}
+      else {d.nombre='';inputNombre.value='';inputNombre.focus();}
+      datoConfirmado=tipo;avisoRecuerdo.hidden=true;guardarDatos();
+    }});
+    poner(avisoRecuerdo,el('p',{text:pregunta}),el('div',{class:'recuerdo-acciones'},si,no));
+    avisoRecuerdo.hidden=false;
+  }
+  async function consultarRecuerdo() {
+    const tel=String(inputTelefono.value||'').replace(/\D/g,'');
+    if (!/^[0-9]{8,15}$/.test(tel) || tel===telefonoConsultado) return;
+    telefonoConsultado=tel;perfil=null;datoConfirmado='';avisoRecuerdo.hidden=true;
+    try {
+      const r=await api('recordar',{telefono:tel});
+      if (String(inputTelefono.value||'').replace(/\D/g,'')!==tel) return;
+      if (r.ok && r.encontrado) {perfil=r;preguntaDeRecuerdo();}
+    } catch { /* puede hacer pedido nuevo aunque falle el recuerdo */ }
+  }
+  inputTelefono.addEventListener('blur',consultarRecuerdo);
+  inputTelefono.addEventListener('input',()=>{
+    if (String(inputTelefono.value||'').replace(/\D/g,'')!==telefonoConsultado) {
+      perfil=null;datoConfirmado='';avisoRecuerdo.hidden=true;
+    }
+  });
+  inputNombre.addEventListener('input',()=>{
+    if (perfil && d.entrega==='retiro') {datoConfirmado='nombre';avisoRecuerdo.hidden=true;}
+  });
+  inputDireccion.addEventListener('input',()=>{
+    if (perfil && d.entrega==='envio') {datoConfirmado='direccion';avisoRecuerdo.hidden=true;}
+  });
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const form = el('form', {onsubmit: e => {
     e.preventDefault();
@@ -544,15 +597,20 @@ function abrirDatos() {
       : d.entrega === 'envio' && d.medio_pago === 'efectivo' &&
         (!Number.isFinite(Number(d.efectivo_abona)) || Number(d.efectivo_abona) < importeEstimado)
         ? 'Indique un importe en efectivo igual o superior al total, o seleccione pago justo.' : '';
-    if (problema) { error.textContent = problema; error.hidden = false; return; }
+    const faltaConfirmar=perfil?.encontrado && !datoConfirmado &&
+      (d.entrega==='retiro' || String(perfil.direccion||'').trim().length>=5);
+    if (problema || faltaConfirmar) {
+      error.textContent = problema || 'Confirme el nombre o la dirección guardada, o elija modificarla.';
+      error.hidden=false;return;
+    }
     cerrarHoja();
     enviar({datos: {...d}}, 'Enviar pedido');
   }},
-  campo('nombre', 'Nombre', {type: 'text', maxlength: '80', autocomplete: 'name', required: true}),
-  campo('telefono', 'Teléfono de contacto', {type: 'tel', maxlength: '25', autocomplete: 'tel', inputmode: 'tel', placeholder: 'Ej.: 11 5555 1234', required: true}),
+  campoNombre,campoTelefono,avisoRecuerdo,
+  el('p',{class:'nota',text:'No hace falta registrarse. Si ya pidió desde este navegador, al ingresar su teléfono podremos recordar sus datos.'}),
   entregas.length > 1 ? el('div', {class: 'segmentado', role: 'radiogroup', 'aria-label': 'Entrega'}, entregas.map(([v, t]) => {
     const r = el('input', {type: 'radio', name: 'entrega', value: v, checked: d.entrega === v});
-    r.addEventListener('change', () => { d.entrega = v; guardarDatos();refrescar(); });
+    r.addEventListener('change', () => { d.entrega=v;datoConfirmado='';guardarDatos();refrescar();preguntaDeRecuerdo(); });
     return el('label', {}, r, t);
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
   dir,
@@ -568,6 +626,7 @@ function abrirDatos() {
   el('button', {type: 'submit', class: 'boton principal ancho', text: 'Enviar pedido'}));
   refrescar();
   abrirHoja('Sus datos', form);
+  if (/^[0-9]{8,15}$/.test(String(d.telefono||'').replace(/\D/g,''))) consultarRecuerdo();
 }
 
 function abrirInfo() {
