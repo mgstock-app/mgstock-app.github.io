@@ -46,7 +46,7 @@ const TOKEN = token();
 const CLIENTE_TOKEN = token('gestlok-chat:cliente:' + SLUG);
 const CLAVE_DATOS = 'gestlok-chat:datos:' + SLUG;
 const CLAVE_TEXTO = 'gestlok-chat:texto:' + SLUG;
-const DURACION_BORRADOR = 60 * 24 * 60 * 60 * 1000;
+const DURACION_BORRADOR = 24 * 60 * 60 * 1000; // solo datos todavía sin enviar
 function recuperarLocal(clave) {
   try {
     const x = JSON.parse(localStorage.getItem(clave) || 'null');
@@ -203,7 +203,13 @@ async function enviar(entrada, textoVisible) {
       programarSondeo();
     }
     for (const m of r.mensajes || []) mensajeAsistente(m);
-    if (r.pedido) mostrarPedido(r.pedido);
+    if (r.pedido) {
+      mostrarPedido(r.pedido);
+      // Los datos ya están guardados de forma privada en el servidor. No dejar
+      // un formulario con domicilio/teléfono terminado en un dispositivo compartido.
+      S.datos={entrega:'',medio_pago:''};
+      try {localStorage.removeItem(CLAVE_DATOS);} catch {}
+    }
     return loteAceptado;
   } catch {
     mostrarEscribiendo(false);
