@@ -193,6 +193,10 @@
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
     }
+    if (p.conversacion_id && puede('gestionar')) {
+      acciones.prepend(el('button',{type:'button',class:'boton',text:'Abrir chat del cliente',
+        onclick:()=>abrirCharla({id:p.conversacion_id,creada_at:p.creado_at})}));
+    }
     return el('article', {class: 'tarjeta ' + p.estado},
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
