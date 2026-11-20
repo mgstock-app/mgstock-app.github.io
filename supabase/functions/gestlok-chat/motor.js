@@ -35,7 +35,14 @@ export function formalizar(texto) {
     .replace(/\b([Pp])robá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='P'?'Intente':'intente')
     .replace(/\b([Vv])olvé\b/g,(_m,i)=>i==='V'?'Vuelva':'vuelva')
     .replace(/\b([Dd])ecime\b/g,(_m,i)=>i==='D'?'Indíqueme':'indíqueme')
-    .replace(/\b([Hh])acemos\b/g,(_m,i)=>i==='H'?'Realizamos':'realizamos');
+    .replace(/\b([Hh])acemos\b/g,(_m,i)=>i==='H'?'Realizamos':'realizamos')
+    .replace(/\b([Tt])e\b/g,(_m,i)=>i==='T'?'Le':'le')
+    .replace(/\b([Tt])u\b/g,(_m,i)=>i==='T'?'Su':'su')
+    .replace(/\b([Tt])us\b/g,(_m,i)=>i==='T'?'Sus':'sus')
+    .replace(/ayudarte/gi,'ayudarle')
+    .replace(/([Nn])ecesitás/g,(_m,i)=>i==='N'?'Necesita':'necesita')
+    .replace(/([Qq])uerías/g,(_m,i)=>i==='Q'?'Desearía':'desearía')
+;
 }
 const MAX_CARRITO = 30;
 const MAX_CANTIDAD = 50;
@@ -354,7 +361,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
 
   if (entrada.inicio) {
     if (s.atencion?.habilitado && s.atencion.abierto === false) {
-      decir('Buenas tardes. Por el momento nuestro local está cerrado. Abriremos nuevamente '+s.atencion.proximo_texto+
+      decir('Gracias por comunicarse. Por el momento nuestro local está cerrado. Abriremos nuevamente '+s.atencion.proximo_texto+
         '. ¿Desea dejar un pedido programado para la próxima apertura? El gerente lo revisará y confirmará cuando corresponda.',{
         botones:[{id:'programar_si',texto:'Sí, dejar pedido programado'},
           {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
