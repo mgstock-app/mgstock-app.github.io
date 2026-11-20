@@ -135,7 +135,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.wait('@fn');
     cy.get('#aviso-pedido').should('contain.text', '¡Pedido en camino!').find('a').should('not.exist');
     cy.get('.burbuja.resena').should('not.exist');
-    cy.get('.burbuja.asistente').last().should('not.have.text', '¡Gracias por elegirnos!');
+    cy.contains('.burbuja.asistente','¡Gracias por elegirnos!').should('not.exist');
     cy.get('a[href*="estafa"]').should('not.exist');
   });
 
@@ -257,7 +257,16 @@ describe('GESTLOK Chat · clientes frecuentes y continuidad sin registro',()=>{
   const empezarPedido=()=>{
     cy.get('#texto').type('2 empanadas de carne{enter}');
     cy.get('#btn-finalizar').click();
-    cy.contains('.chip','No, gracias. Finalizar').click();
+    // Si hay venta sugerida permite rechazar; si no, abre directamente los datos.
+    cy.get('body').should($body => {
+      const sugerencia = $body.find('.chip').toArray().some(x => x.textContent.includes('No, gracias. Finalizar'));
+      expect(sugerencia || $body.find('#hoja').is(':visible')).to.eq(true);
+    });
+    cy.get('body').then($body => {
+      if ($body.find('.chip').toArray().some(x => x.textContent.includes('No, gracias. Finalizar'))) {
+        cy.contains('.chip','No, gracias. Finalizar').click();
+      }
+    });
     cy.get('#hoja').should('be.visible').and('contain.text','Sus datos');
   };
 
