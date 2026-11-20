@@ -36,12 +36,15 @@
    */
   function montar(destino, op = {}) {
   const DEMO = !!op.demo;
+  const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
   const EMBED = !!op.embebido;
   const LOCAL = String(op.local || '').toLowerCase();
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
   const marco = el('div', {class: 'panel' + (EMBED ? ' embebido' : ''), id: 'panel', 'aria-busy': 'true'},
     el('header', {class: 'tope'},
-      el('a', {class: 'volver', href: '/', 'aria-label': 'Volver a GESTLOK', text: '‹'}),
+      el('a', {class: 'volver', href: DEMO ? '#' : '/',
+        onclick: DEMO ? e => e.preventDefault() : undefined,
+        'aria-label': DEMO ? 'Demostración de GESTLOK Chat' : 'Volver a GESTLOK', text: '‹'}),
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
@@ -106,13 +109,14 @@
     const sel = $('sucursal');
     sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id,
       text: s.nombre + ((s.pendientes || s.reclamos) ? ' (' + ((s.pendientes||0)+(s.reclamos||0)) + ')' : '')})));
-    let guardada = null; try { guardada = localStorage.getItem('gestlok-chat-panel:sucursal'); } catch { /* sin almacenamiento */ }
+    const sucursalPref = DEMO ? 'gestlok-chat-panel:sucursal-demo' : 'gestlok-chat-panel:sucursal';
+    let guardada = null; try { guardada = localStorage.getItem(sucursalPref); } catch { /* sin almacenamiento */ }
     S.suc = (LOCAL && r.sucursales.find(s => s.local_id === LOCAL)) || r.sucursales.find(s => s.id === guardada) || r.sucursales[0];
     if (EMBED && LOCAL && S.suc.local_id !== LOCAL) return fijo('Sin acceso a esta sucursal', 'Tu usuario no tiene la Central de mensajes de este local.');
     sel.value = S.suc.id; sel.hidden = r.sucursales.length < 2 || (EMBED && !!LOCAL);
     sel.onchange = () => {
       S.suc = S.sucursales.find(s => s.id === sel.value); S.pendientesVistos = null;
-      try { localStorage.setItem('gestlok-chat-panel:sucursal', S.suc.id); } catch { /* nada */ }
+      try { localStorage.setItem(sucursalPref, S.suc.id); } catch { /* nada */ }
       mostrar();
     };
     $('pestanas').hidden = false;
@@ -788,6 +792,14 @@
   const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
     if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
   document.addEventListener('visibilitychange', alVolver);
+  // Los dos iframes del showroom comparten sessionStorage en la misma pestaña.
+  // Refrescar sin navegar ni consultar la base cuando el cliente arma un pedido.
+  const alCambioShowroom = e => {
+    if(!SHOWROOM || e.key!==SHOWROOM.key || !S.suc || !marco.isConnected)return;
+    if(S.pestana==='pedidos')void verPedidos();
+    else if(S.pestana==='charlas')void verCharlas();
+  };
+  if(SHOWROOM)window.addEventListener('storage',alCambioShowroom);
 
   // ------------------------------------------------------------------------------------------- demostración
   const D = {
@@ -814,12 +826,41 @@
       acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'Munro y Florida', pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia'],
       activa: true, prefijo: 'MM', version: 3, mensajes: {}, ia_activa: true, ia_nombre: 'Sofi', ia_instrucciones: '', ia_info: ''},
   };
+  if (SHOWROOM) {
+    // Mostrar a futuros comercios un local completamente ficticio. Nunca
+    // incrustar la identidad ni los datos bancarios de una tienda real.
+    D.suc[0].nombre='Sucursal Centro';
+    D.suc[0].slug='demo';
+    D.suc[0].local_id='demo';
+    D.suc.splice(1);
+    Object.assign(D.config,{slug:'demo',nombre:'Sucursal Centro',empresa:'Comercio de demostración',
+      direccion:'Calle Ejemplo 123',envio_zona:'Zona de demostración',prefijo:'DEMO'});
+    D.pedidos[0].codigo='DEMO-0007';
+    D.pedidos[0].cliente_nombre='Cliente de ejemplo';
+    D.pedidos[0].cliente_telefono='1100000000';
+    D.pedidos[0].direccion='Calle Ejemplo 456';
+    D.pedidos[1].codigo='DEMO-0006';
+    D.pedidos[1].cliente_nombre='Otro cliente de ejemplo';
+    D.pedidos[1].cliente_telefono='1100000001';
+    D.reclamos[0].pedido='DEMO-0007';
+  }
   async function demoRpc(fn, a) {
     await new Promise(r => setTimeout(r, 120));
     switch (fn) {
-      case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración', sucursales: D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
-      case 'panel_pedidos': return {nivel: D.nivel, pedidos: D.pedidos.filter(p => a.p_estado === 'todos' || p.estado === a.p_estado)};
-      case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
+      case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración',
+        sucursales: SHOWROOM ? [{...D.suc[0],nombre:'Sucursal Centro',local_id:'demo'}] :
+          D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
+      case 'panel_pedidos': {
+        const compartido=SHOWROOM?.read().order;
+        return {nivel:D.nivel,pedidos:[...(compartido?[compartido]:[]),...D.pedidos]
+          .filter(p=>a.p_estado==='todos'||p.estado===a.p_estado)};
+      }
+      case 'panel_decidir': {
+        if(SHOWROOM?.read().order?.id===a.p_pedido) {
+          if(!SHOWROOM.decide(a.p_pedido,a.p_decision,a.p_motivo))throw new Error('Este pedido ya fue resuelto');
+          return {ok:true};
+        }
+        const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
       case 'panel_disponible': D.prods.find(p => p.id === a.p_producto).disponible = a.p_disponible; return {ok: true};
       case 'panel_stock_categoria':
@@ -833,18 +874,34 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
-      case 'panel_clientes': return [{nombre:'María (demo)',telefono:'1155551234',pedidos:3,ultimo_at:new Date().toISOString(),direccion:'Mitre 300'}];
-      case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente',cerrada_at:D.cerrada?new Date().toISOString():null}];
-      case 'panel_estado_conversacion': return {cerrada:!!D.cerrada,puede_enviar_transferencia:true};
+      case 'panel_clientes': return SHOWROOM
+        ? [{nombre:'Cliente frecuente (demo)',telefono:'1100000002',pedidos:3,
+            ultimo_at:new Date().toISOString(),direccion:'Calle Ejemplo 123'}]
+        : [{nombre:'María (demo)',telefono:'1155551234',pedidos:3,ultimo_at:new Date().toISOString(),direccion:'Mitre 300'}];
+      case 'panel_conversaciones': {
+        const sh=SHOWROOM?.read(),ultimo=sh?.messages.at(-1);
+        return [...(sh?.messages.length?[{id:'showroom-conversacion',creada_at:new Date().toISOString(),
+          ultima_at:new Date().toISOString(),mensajes:sh.messages.length,ultimo:ultimo?.texto||'',
+          pedido:sh.order?sh.order.codigo+' · '+sh.order.estado:'',cerrada_at:null}]:[]),
+          {id:'v1',creada_at:new Date().toISOString(),ultima_at:new Date().toISOString(),mensajes:6,
+            ultimo:'¡Listo! Enviamos tu pedido MM-0007 al local.',pedido:'MM-0007 · pendiente',
+            cerrada_at:D.cerrada?new Date().toISOString():null}];
+      }
+      case 'panel_estado_conversacion': return {cerrada:a.p_conversacion==='showroom-conversacion'?false:!!D.cerrada,
+        puede_enviar_transferencia:true};
       case 'panel_enviar_transferencia':
         if(D.cerrada)throw Error('La conversación ya está cerrada');
-        D.respuestas.push('Le envio los datos para transferir!\nAlias: migustomunro\nTitular: Gisela Alejandra Oppenheimer\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
+        D.respuestas.push(SHOWROOM
+          ? 'Datos ficticios para demostración: Alias comercio.demo · No transferir.'
+          : 'Le envio los datos para transferir!\\nAlias: migustomunro\\nTitular: Gisela Alejandra Oppenheimer\\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
         return {ok:true};
       case 'panel_cerrar_conversacion':
         D.cerrada=true;D.respuestas.push('La conversación fue finalizada por el local. Puede iniciar una nueva consulta cuando lo necesite.');
         D.reclamos.forEach(r=>{r.estado='respondido';});
         return {ok:true,cerrada:true};
-      case 'panel_conversacion': return [
+      case 'panel_conversacion': if(SHOWROOM&&a.p_conversacion==='showroom-conversacion')
+        return SHOWROOM.read().messages;
+        return [
         {rol:'asistente',texto:'¡Hola! ¿Qué te gustaría pedir hoy?'},
         {rol:'cliente',texto:'Mi pedido está tardando mucho'},
         {rol:'asistente',texto:'Avisé al gerente. Te responderá por este mismo chat.'},
@@ -856,6 +913,10 @@
         confirmados:0,terminados:i?0:1,rechazados:0,cancelados:0,importe_confirmado:i?0:3600}));
       case 'panel_responder': {
         if (String(a.p_texto||'').trim().length < 2) throw new Error('Escribí una respuesta.');
+        if(SHOWROOM&&a.p_conversacion==='showroom-conversacion') {
+          SHOWROOM.add('local',a.p_texto);
+          return {ok:true};
+        }
         D.respuestas.push(a.p_texto);
         if (a.p_reclamo) {
           const r=D.reclamos.find(x=>x.id===a.p_reclamo);
@@ -880,7 +941,10 @@
   return {
     marco,
     refrescar: () => { if (S.suc && S.pestana === 'pedidos') verPedidos(); },
-    destruir: () => { clearTimeout(S.sondeo); document.removeEventListener('visibilitychange', alVolver); raiz.replaceChildren(); },
+    destruir: () => { clearTimeout(S.sondeo);
+      document.removeEventListener('visibilitychange', alVolver);
+      if(SHOWROOM)window.removeEventListener('storage',alCambioShowroom);
+      raiz.replaceChildren(); },
   };
   }
 

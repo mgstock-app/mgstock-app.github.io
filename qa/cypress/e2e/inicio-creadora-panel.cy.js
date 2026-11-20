@@ -30,14 +30,29 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
-  // Ocho pestañas: se sumó «NFC y QR» (#199) a las siete anteriores.
-  cy.get('.gl-ch-nav button').should('have.length',8);
+  // Nueve pestañas: se sumó «Prueba GESTLOK Chat» a las ocho anteriores.
+  cy.get('.gl-ch-nav button').should('have.length',9);
+  cy.get('.gl-ch-nav [data-ch-tab="chat-prueba"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="nfc"]').should('exist');
   cy.get('.gl-ch .gl-ch-logout').should('not.exist');
   cy.get('#gl-profile-switch-trigger').click();
   cy.get('.gl-profile-switch-logout').should('be.visible').and('contain.text','Cerrar sesión');
   cy.get('[data-roles-close]').click();
+ });
+ it('la creadora abre dos perfiles ficticios de Chat sin afectar tiendas',()=>{
+  cy.viewport(390,844);start('kmu15lopez@gmail.com');
+  cy.get('.gl-ch-nav [data-ch-tab="chat-prueba"]',{timeout:12000}).click();
+  cy.get('.gl-ch-showroom').should('be.visible').and('contain.text','Datos ficticios');
+  cy.get('.gl-ch-showroom-tabs [role=tab]').should('have.length',2);
+  cy.get('.gl-ch-showroom-pane iframe').should('have.length',2);
+  cy.get('[data-showroom-pane=local]').should('be.visible')
+    .find('iframe').should('have.attr','src','/chat/panel/?demo=1&showroom=1');
+  cy.get('.gl-ch-showroom [data-ch-showroom=cliente]').click();
+  cy.get('[data-showroom-pane=cliente]').should('be.visible')
+    .find('iframe').should('have.attr','src','/chat/?demo=1&showroom=1');
+  cy.get('[data-showroom-pane=local]').should('not.be.visible');
+  cy.get('[data-ch-showroom-reset]').should('be.visible');
  });
  it('las pestañas conservan todas las funciones anteriores (acceso a otras empresas incluido)',()=>{
   cy.viewport(1440,900);start('kmu15lopez@gmail.com');
