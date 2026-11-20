@@ -9,6 +9,28 @@
 (()=>{
 'use strict';
 const PAUSA_MS=15000;
+let audioCtx=null,soundReady=false;
+function activarSonido(){
+ try{const C=window.AudioContext||window.webkitAudioContext;
+  if(!C)return false;
+  audioCtx ||= new C();
+  void audioCtx.resume().then(()=>{soundReady=true;}).catch(()=>{soundReady=false;});
+  soundReady=audioCtx.state==='running';return true;
+ }catch{return false;}
+}
+function sonar(){
+ if(!soundReady||audioCtx?.state!=='running')return;
+ try{[0,.2,.4].forEach((delay,i)=>{
+  const t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.value=i===2?890:740;
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(.14,t+.03);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.16);
+  o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+.17);
+ });}catch{/* audio no compatible */}
+}
+document.addEventListener('pointerdown',()=>{if(!soundReady)activarSonido();},{capture:true});
+
 const VERSION_PANEL='20261120pizzassafe1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
@@ -80,15 +102,24 @@ function indicadores(){
 }
 function avisoNuevo(tipo='pedido'){
  // Aviso flotante en cualquier pantalla de GESTLOK (no se muestra si ya se está en la Central).
- if(api?.S?.view==='pedidos-clientes')return;
+ // Mostrar aviso también en la propia Central para no perder pedidos.
  let a=document.getElementById('mgp-global-alert');
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
  a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+(tipo==='reclamo'?'¡Reclamo de cliente!':'¡Pedido nuevo por chat!')+'</strong><small>'+
   esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar')+'</small></div>'+
   '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Abrir Central</button>';
- try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
+ sonar();
+  try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
 }
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest?.('[data-gcc-alert]');if(!b||!allowed())return;
+  ev.preventDefault();activarSonido();
+  if(b.dataset.gccAlert==='probar')avisoNuevo('pedido');
+  const estado=document.querySelector('[data-gcc-alert-estado]');
+  if(estado)estado.textContent=soundReady?'Sonido activado en esta sesión.':
+    'En algunos celulares necesitás tocar nuevamente para activar sonido.';
+});
 function ocultarAviso(){document.getElementById('mgp-global-alert')?.remove();}
 
 function actualizar(n,r=reclamos){
@@ -151,7 +182,9 @@ function view(){
   '<div class="gcc-cab"><h2>Central de mensajes</h2><small>GESTLOK Chat · '+esc(localName())+' · asistente y pedidos por chat</small>'+
   '<a href="/chat/panel/?local='+encodeURIComponent(l)+'" target="_blank" rel="noopener">Abrir aparte</a></div>'+
   (online()?'':'<p class="gcc-aviso">Sin conexión: la Central se actualiza cuando vuelva internet.</p>')+
-  '<div data-gcc-lugar></div></section>';
+  '<div class="gcc-alert-controls"><button type="button" data-gcc-alert="activar">Activar sonido</button>'+
+   '<button type="button" data-gcc-alert="probar">Probar aviso</button><span data-gcc-alert-estado role="status"></span></div>'+
+   '<div data-gcc-lugar></div></section>';
 }
 function subscribe(loc,push){
  if(!rolOk()||!loc)return;
