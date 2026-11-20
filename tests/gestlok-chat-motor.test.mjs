@@ -141,7 +141,7 @@ test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correcta
   assert.equal(inicio.mensajes[0].texto, miGusto.bienvenida);
   assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago']);
   const pagos = responder({boton: 'pago'});
-  assert.match(pagos.mensajes[0].texto, /Retiro en el local: Débito, Crédito, Efectivo, Transferencia/);
+  assert.match(pagos.mensajes[0].texto, /Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia/);
   assert.match(pagos.mensajes[0].texto, /Delivery: Efectivo, Transferencia/);
   assert.doesNotMatch(pagos.mensajes[0].texto, /Mercado Pago/);
   assert.match(responder({boton: 'horario'}).mensajes[0].texto, /Horario:/);
