@@ -208,3 +208,36 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .burbuja{max-width:94%}
   .chip{padding:10px 14px}
 }
+
+/* Menú interactivo: sumar sin salir de la lista, con editor de promos en el mismo lugar. */
+.menu-fila{border-bottom:1px solid var(--linea);min-width:0}
+.menu-fila:last-child{border-bottom:0}
+.menu-fila-principal{display:flex;align-items:center;gap:8px;min-width:0}
+.menu-fila .producto{flex:1;min-width:0;width:auto;border:0;padding:13px 0;cursor:pointer}
+.menu-fila .producto:disabled{cursor:default}
+.menu-fila .producto-texto strong{overflow-wrap:anywhere}
+.menu-pasos{display:flex;align-items:center;gap:5px;flex:none}
+.menu-paso{display:grid;place-items:center;width:42px;height:42px;flex:none;border:1px solid var(--linea);
+  border-radius:50%;background:var(--papel);color:var(--tinta);font-size:22px;line-height:1;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.menu-paso-mas{background:var(--acento-suave);border-color:var(--acento-suave);color:var(--acento-osc);font-weight:700}
+.menu-paso:focus-visible,.menu-fila .producto:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.menu-n{min-width:2ch;text-align:center;font-variant-numeric:tabular-nums;font-size:16px;font-weight:700}
+.menu-producto-detalle{border:1px solid var(--linea);background:#f9fbfe;border-radius:14px;
+  padding:14px;margin:0 0 12px}
+.menu-producto-detalle[hidden]{display:none!important}
+.menu-producto-detalle .campo input{background:#fff}
+.menu-personalizar-titulo{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--linea);font-size:15px}
+.menu-personalizar-titulo .boton{flex:none;min-height:42px}
+.menu-aviso{margin:8px 0}
+@media(max-width:420px){
+ .menu-fila-principal{gap:5px}
+ .menu-fila .producto{gap:6px}
+ .menu-fila .producto-texto strong{font-size:14.5px}
+ .menu-fila .producto-texto small{font-size:12.5px}
+ .menu-fila .precio{font-size:13px}
+ .menu-pasos{gap:3px}
+ .menu-paso{width:38px;height:42px}
+ .menu-producto-detalle{padding:11px}
+}
