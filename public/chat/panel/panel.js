@@ -606,7 +606,10 @@
   // ------------------------------------------------------------------------------------------- demostración
   const D = {
     nivel: 'configurar',
-    suc: [{id: 's1', nombre: 'Munro', slug: 'demo', activa: true, nivel: 'configurar', pendientes: 1}, {id: 's2', nombre: 'Don Torcuato', slug: 'demo-2', activa: false, nivel: 'configurar', pendientes: 0}],
+    reclamos:[{id:'r1',conversacion_id:'v1',tipo:'demora',detalle:'Mi pedido está tardando mucho',
+      creado_at:new Date().toISOString(),pedido:'MM-0007',estado:'pendiente'}],
+    respuestas:[],
+    suc: [{id: 's1', nombre: 'Munro', slug: 'demo', activa: true, nivel: 'configurar', pendientes: 1, reclamos:1}, {id: 's2', nombre: 'Don Torcuato', slug: 'demo-2', activa: false, nivel: 'configurar', pendientes: 0}],
     cats: [{id: 'c1', nombre: 'Empanadas', orden: 1, activa: true}, {id: 'c2', nombre: 'Pizzas', orden: 2, activa: true}],
     adicionales: [{grupo_id:'gratinado',valor_id:'gratinar',nombre:'Gratinada adicional',
       extra_min:900,extra_max:900,disponible:true}],
@@ -645,7 +648,23 @@
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
       case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente'}];
-      case 'panel_conversacion': return [{rol: 'asistente', texto: '¡Hola! ¿Qué te gustaría pedir hoy?'}, {rol: 'cliente', texto: 'media docena de carne y una pizza chica'}, {rol: 'asistente', texto: 'Agregué: …'}];
+      case 'panel_conversacion': return [
+        {rol:'asistente',texto:'¡Hola! ¿Qué te gustaría pedir hoy?'},
+        {rol:'cliente',texto:'Mi pedido está tardando mucho'},
+        {rol:'asistente',texto:'Avisé al gerente. Te responderá por este mismo chat.'},
+        ...D.respuestas.map(texto=>({rol:'local',texto}))];
+      case 'panel_soporte': return D.reclamos.filter(r=>r.estado==='pendiente');
+      case 'panel_responder': {
+        if (String(a.p_texto||'').trim().length < 2) throw new Error('Escribí una respuesta.');
+        D.respuestas.push(a.p_texto);
+        if (a.p_reclamo) {
+          const r=D.reclamos.find(x=>x.id===a.p_reclamo);
+          if(!r || r.estado!=='pendiente')throw new Error('Reclamo ya respondido');
+          r.estado='respondido';
+        }
+        D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
+        return {ok:true};
+      }
       default: throw new Error('Demostración: ' + fn);
     }
   }
