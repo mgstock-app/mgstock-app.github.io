@@ -40,7 +40,7 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
       expect(o.confirmado_at).to.be.a('string');
     });
     cy.visit('/chat/?demo=1&showroom=1');
-    cy.get('#aviso-pedido').should('contain.text','confirmado');
+    cy.get('#aviso-pedido').should('contain.text','Pedido confirmado');
     cy.then(()=>expect(red,'ninguna solicitud de pedido al servidor real').to.eq(0));
   });
 });
