@@ -480,7 +480,7 @@ function abrirDatos() {
     totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye 10% de descuento en productos' : '');
     const efectivoDelivery = d.entrega === 'envio' && d.medio_pago === 'efectivo';
     efectivo.hidden = !efectivoDelivery;
-    efectivoInput.required = efectivoDelivery;
+    // Validación al enviar: primero dirección y luego importe. Sin bloqueo nativo anticipado.
     cambioTxt.hidden = !efectivoDelivery;
     if (efectivoDelivery) {
       const abona = Number(d.efectivo_abona);
