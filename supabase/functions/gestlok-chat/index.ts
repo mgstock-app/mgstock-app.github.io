@@ -224,6 +224,12 @@ Deno.serve(async (req) => {
         soporteActivo = soporte.soporte_pendiente === true;
       }
       if (!esSoporte && !consultaEstado && !soporteActivo && boton !== "cancelar") {
+        // Aun si ignoramos el texto, aplicar los límites existentes por IP y conversación.
+        // No guardar textos irrelevantes, no gastar IA ni generar alertas al gerente.
+        await rpc("gestlok_chat_srv_turno", {
+          p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+          p_cliente:"",p_respuesta:"",p_estado:(conv.estado as Json) || {}
+        });
         return json({ok:true,mensajes:[{texto:"Su pedido está en seguimiento. Puede consultar su estado o solicitar ayuda al gerente.",
           botones:[{id:"estado",texto:"Ver estado del pedido"},{id:"soporte",texto:"Necesito ayuda"}]}],
           carrito:(conv.estado as Json)?.carrito || [],motor:"guiado"},200,origen);
