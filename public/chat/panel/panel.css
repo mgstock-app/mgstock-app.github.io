@@ -210,3 +210,23 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .dialogo .acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .dialogo .acciones .boton{flex:1;min-width:180px;white-space:normal}
 .dialogo .acciones .boton:disabled{opacity:.5}
+
+/* Jerarquía legible y controles táctiles en todas las vistas de la Central. */
+.panel{font-size:16px;line-height:1.5}
+.pestanas button{font-size:15px;min-height:48px}
+.boton{font-size:15.5px;min-height:46px}
+.chip{font-size:15px;min-height:44px}
+.tarjeta header strong{font-size:18px}
+.cliente,.entrega,.items li,.msj{font-size:16px}
+.campo span,.etiqueta{font-size:14.5px}
+.campo input,.campo select,.campo textarea{min-height:46px}
+@media(max-width:620px){
+ .tope h1{font-size:18px}
+ .tope p{font-size:14px}
+ .contenido{padding:14px 12px}
+ .pestanas button{padding:12px 14px}
+ .tarjeta{padding:14px}
+ .acciones>.boton{flex:1 1 100%;min-height:48px}
+ .bloque{padding:14px}
+ .dos{grid-template-columns:minmax(0,1fr)}
+}
