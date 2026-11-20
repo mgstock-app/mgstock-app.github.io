@@ -17,7 +17,7 @@ type Json = Record<string, unknown>;
 type Turno = {
   estado: Json & { carrito: unknown[]; paso?: unknown };
   mensajes: Json[];
-  accion?: { tipo: string; pedido?: unknown };
+  accion?: { tipo: string; pedido?: unknown; motivo?: string };
   motor?: string;
 };
 const env = (k: string) => Deno.env.get(k) || "";
