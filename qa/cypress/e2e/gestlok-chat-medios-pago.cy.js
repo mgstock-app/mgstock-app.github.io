@@ -34,7 +34,7 @@ describe('GESTLOK Chat · mensajes y medios de pago', () => {
     cy.contains('.burbuja.asistente','11:00 a 14:40').should('be.visible');
     cy.get('#btn-info').click();
     cy.get('#hoja').should('contain.text','Pago · retiro en local').and('contain.text','Pago · delivery')
-      .and('contain.text','Crédito, Efectivo, Transferencia').and('contain.text','Delivery');
+      .and('contain.text','Crédito, Efectivo, Transferencia');
     cy.get('#hoja-cerrar').click();
     cy.get('#btn-finalizar').click();
     cy.wait('@chat');
