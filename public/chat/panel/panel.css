@@ -181,3 +181,13 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
  .stock-item{gap:7px}
  .stock-estado{font-size:11px}
 }
+
+/* Soporte humano del chat: lista por local, sin controles duplicados. */
+.soporte-reclamo{border:1px solid var(--linea);border-left:4px solid #b45309;background:#fff;border-radius:12px;padding:12px;margin-bottom:10px}
+.soporte-reclamo header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.soporte-reclamo p{white-space:pre-wrap;overflow-wrap:anywhere;margin:9px 0}
+.soporte-reclamo small{display:block;color:var(--gris);margin-bottom:9px}
+.soporte-reclamo .boton{font-size:13px;min-height:38px}
+.soporte-texto{display:block;width:100%;min-height:88px;padding:10px;border:1px solid var(--linea);border-radius:10px;resize:vertical;font:inherit}
+.hilo{max-height:42vh;overflow-y:auto;margin-bottom:14px}
+.msj.local{background:#e8f6ec;color:#164e31}
