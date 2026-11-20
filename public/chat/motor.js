@@ -602,7 +602,7 @@ export function ejemploPedido(catalogo) {
   return ps.length > 1 ? '«2 ' + nombre(ps[0]) + ' y 1 ' + nombre(ps[1]) + '»' : '«2 ' + nombre(ps[0]) + '»';
 }
 export function textoCarrito(catalogo, carrito) {
-  if (!carrito.length) return 'Tu pedido está vacío. Tocá «Ver la carta» o escribime qué querés, por ejemplo ' + ejemploPedido(catalogo) + '.';
+  if (!carrito.length) return 'Tu pedido está vacío. Tocá «Hacer un pedido» o escribime qué querés, por ejemplo ' + ejemploPedido(catalogo) + '.';
   return 'Tu pedido:\n' + carrito.map(l => '• ' + describirLinea(catalogo, l)).join('\n') +
     '\nTotal estimado: ' + pesos(totalCarrito(catalogo, carrito));
 }
