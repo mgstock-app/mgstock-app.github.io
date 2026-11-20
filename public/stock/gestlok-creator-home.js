@@ -544,6 +544,10 @@
     if (resetShowroom && api?.isCreadora?.() && tab === 'chat-prueba') {
       ev.preventDefault();
       try { sessionStorage.removeItem('gestlok:chat-showroom:v1'); } catch {}
+      // Solo llaves del chat ficticio «demo». No tocar sesiones, clientes
+      // ni borradores de ningún local real.
+      try {for(const t of ['token','cliente','datos','texto','menu'])
+        localStorage.removeItem('gestlok-chat:'+t+':demo');} catch {}
       document.querySelectorAll('.gl-ch-showroom iframe').forEach(iframe => {
         try { iframe.contentWindow.location.reload(); } catch { iframe.src = iframe.getAttribute('src'); }
       });
