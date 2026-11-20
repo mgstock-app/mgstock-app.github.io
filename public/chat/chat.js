@@ -813,7 +813,9 @@ async function demoApi(accion, extra) {
     return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
   }
   if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : [],cerrada:false};
-  if (accion === 'recordar') return {ok:true,encontrado:false};
+  if (accion === 'recordar') return params.get('frecuente')==='1'
+    ? {ok:true,encontrado:true,nombre:'María Pérez',direccion:'Av. Siempre Viva 742',visitas:3}
+    : {ok:true,encontrado:false};
   if (accion === 'adjuntar') return {ok:true,imagen_url:null,texto:'Foto enviada al gerente'};
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
