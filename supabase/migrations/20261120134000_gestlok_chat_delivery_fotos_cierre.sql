@@ -363,7 +363,7 @@ begin
   end if;
   return jsonb_build_object('nivel', v_nivel, 'pedidos', coalesce((select jsonb_agg(jsonb_build_object(
       'id', p.id, 'codigo', p.codigo, 'estado', p.estado, 'motivo', p.motivo, 'cliente_nombre', p.cliente_nombre,
-      'cliente_telefono', p.cliente_telefono, 'entrega', p.entrega, 'direccion', p.direccion, 'horario', p.horario,
+      'cliente_telefono', p.cliente_telefono, 'conversacion_id', p.conversacion_id, 'entrega', p.entrega, 'direccion', p.direccion, 'horario', p.horario,
       'medio_pago', p.medio_pago, 'descuento', p.descuento, 'efectivo_abona', p.efectivo_abona,
       'efectivo_cambio', p.efectivo_cambio, 'nota', p.nota, 'items', p.items, 'subtotal', p.subtotal, 'envio', p.envio,
       'total', p.total, 'programado_para', p.programado_para, 'es_prueba',p.es_prueba, 'creado_at', p.creado_at, 'decidido_at', p.decidido_at, 'confirmado_at', p.confirmado_at) order by
