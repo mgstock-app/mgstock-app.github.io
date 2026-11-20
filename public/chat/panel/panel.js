@@ -792,6 +792,14 @@
   const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
     if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
   document.addEventListener('visibilitychange', alVolver);
+  // Los dos iframes del showroom comparten sessionStorage en la misma pestaña.
+  // Refrescar sin navegar ni consultar la base cuando el cliente arma un pedido.
+  const alCambioShowroom = e => {
+    if(!SHOWROOM || e.key!==SHOWROOM.key || !S.suc || !marco.isConnected)return;
+    if(S.pestana==='pedidos')void verPedidos();
+    else if(S.pestana==='charlas')void verCharlas();
+  };
+  if(SHOWROOM)window.addEventListener('storage',alCambioShowroom);
 
   // ------------------------------------------------------------------------------------------- demostración
   const D = {
@@ -933,7 +941,10 @@
   return {
     marco,
     refrescar: () => { if (S.suc && S.pestana === 'pedidos') verPedidos(); },
-    destruir: () => { clearTimeout(S.sondeo); document.removeEventListener('visibilitychange', alVolver); raiz.replaceChildren(); },
+    destruir: () => { clearTimeout(S.sondeo);
+      document.removeEventListener('visibilitychange', alVolver);
+      if(SHOWROOM)window.removeEventListener('storage',alCambioShowroom);
+      raiz.replaceChildren(); },
   };
   }
 
