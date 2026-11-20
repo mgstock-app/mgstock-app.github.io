@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
     const sinCodigo = (v: string) => String(v||'').replace(/\bpedido\s+[A-Z]{1,4}-\d{4,}\b/gi,'pedido')
        .replace(/\b[A-Z]{1,4}-\d{4,}\b/g,'').replace(/\s+([.!?,])/g,'$1');
     const conAviso = (p: Json) => {
-      const {codigo: _interno, ...visible}=p;
+      const visible: Json = {...p};
+      delete visible.codigo;
       return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal))};
     };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
