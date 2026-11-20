@@ -205,6 +205,7 @@
       el('ul', {class: 'items'}, (p.items || []).map(i => el('li', {},
         el('span', {text: i.cantidad + ' × ' + i.nombre + ((i.opciones || []).length ? ' (' + i.opciones.map(o => o.valores.join(', ')).join(' · ') + ')' : '') + (i.nota ? ' — ' + i.nota : '')}),
         el('span', {text: pesos(i.importe)})))),
+      p.estado === 'terminado' ? el('p', {class:'nota-cliente', text: p.recibido_at ? 'CLIENTE CONFIRMÓ RECEPCIÓN · ' + new Date(p.recibido_at).toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Esperando confirmación de recepción del cliente'}) : null,
       p.nota ? el('p', {class: 'nota-cliente', text: 'Aclaración: ' + p.nota}) : null,
       el('p', {class: 'totales', text: (Number(p.envio) > 0 ? 'Envío ' + pesos(p.envio) + ' · ' : '') + 'Total ' + pesos(p.total)}),
       p.motivo && p.estado !== 'pendiente' ? el('p', {class: 'nota', text: 'Motivo: ' + p.motivo}) : null,
