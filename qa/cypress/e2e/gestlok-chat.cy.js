@@ -147,7 +147,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.intercept('POST', FUNCION, abrirConPedido(pedido)).as('fn');
     cy.visit('/chat/?s=mi-gusto-torcuato');
     cy.wait('@fn');
-    cy.get('#aviso-pedido').should('contain.text', '¡Pedido listo!').find('a')
+    cy.get('#aviso-pedido').should('contain.text', 'Pedido recibido por el cliente').find('a')
       .should('have.attr', 'href', pedido.resena.url).and('have.attr', 'rel', 'noopener noreferrer');
     cy.contains('.burbuja.asistente', 'listo para retirar');
     cy.get('.burbuja.resena').should('contain.text', 'nos cuente su experiencia').find('a.resena-link')
@@ -166,7 +166,7 @@ describe('GESTLOK Chat · chat público', () => {
       aviso: 'Ana, su pedido está en camino 🛵', resena: {texto: 'Déjenos su reseña', url: 'https://estafa.example/review'}, cierre: '¡Gracias por elegirnos!'})).as('fn');
     cy.visit('/chat/?s=mi-gusto-torcuato');
     cy.wait('@fn');
-    cy.get('#aviso-pedido').should('contain.text', '¡Pedido en camino!').find('a').should('not.exist');
+    cy.get('#aviso-pedido').should('contain.text', 'Pedido recibido por el cliente').find('a').should('not.exist');
     cy.get('.burbuja.resena').should('not.exist');
     cy.get('.burbuja.asistente').last().should('have.text', '¡Gracias por elegirnos!');
     cy.get('a[href*="estafa"]').should('not.exist');
