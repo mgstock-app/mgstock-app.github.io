@@ -158,6 +158,7 @@ async function enviar(entrada, textoVisible) {
       }
       lista.querySelectorAll('.burbuja.error').forEach(n => n.remove());
       burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
+      if (r.status === 409 && /cerrad|finalizad/i.test(r.error||'')) {mostrarCierre();return false;}
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return false;
     }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
@@ -659,17 +660,21 @@ async function iniciar() {
   $('subtitulo').textContent = r.sucursal.horario || 'Pedidos por chat';
   $('avatar').textContent = (r.sucursal.empresa || r.sucursal.nombre || 'G').trim().charAt(0).toUpperCase();
   $('btn-info').hidden = false;
+  const urlsFotos = new Map((r.fotos || []).map(f=>[Number(f.mensaje_id),f.url]));
   for (const [indice, m] of (r.mensajes || []).entries()) {
+    if (m.rol === 'cliente' && urlsFotos.has(Number(m.id))) {
+      burbujaFoto('cliente',urlsFotos.get(Number(m.id)),'Foto enviada al gerente');continue;
+    }
     const antiguo = indice === 0 && m.rol === 'asistente' && /Podés escribirme tu pedido, por ejemplo/.test(m.texto);
     burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente',
       antiguo && r.sucursal.bienvenida ? r.sucursal.bienvenida : m.texto);
   }
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
-  if (!(r.nuevos || []).length) chips(BOTONES_BASE());
+  if (!(r.nuevos || []).length && !r.cerrada) chips(BOTONES_BASE());
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
-  if (S.soportePendiente) programarSondeo();
   texto.disabled = false; $('btn-carta').disabled = false;
+  if (r.cerrada) mostrarCierre(); else programarSondeo();
   $('app').setAttribute('aria-busy', 'false');
 }
 
@@ -677,7 +682,7 @@ async function iniciar() {
 const DEMO_DATOS = {
   sucursal: {slug: 'demo', nombre: 'Sucursal Centro', empresa: 'Tu Comercio', bienvenida: '', horario: 'Todos los días de 11 a 23',
     direccion: 'Av. Siempre Viva 742', acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'hasta 20 cuadras',
-    pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia', 'mercado_pago']},
+    pedido_minimo: 3000, descuento_efectivo_pct:10, medios_pago: ['efectivo', 'transferencia', 'mercado_pago']},
   catalogo: {categorias: [{id: 'c1', nombre: 'Empanadas'}, {id: 'c2', nombre: 'Pizzas'}, {id: 'c3', nombre: 'Postres'}],
     productos: [
       {id: 'd1', categoria_id: 'c1', nombre: 'Empanada de carne', descripcion: 'Cortada a cuchillo', precio: 1200, activo: true, disponible: true, opciones: []},
@@ -703,7 +708,8 @@ async function demoApi(accion, extra) {
     demoEstado = r.estado;
     return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
   }
-  if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : []};
+  if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : [],cerrada:false};
+  if (accion === 'adjuntar') return {ok:true,imagen_url:null,texto:'Foto enviada al gerente'};
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
   const mensajes = [...r.mensajes]; let pedido = null;
