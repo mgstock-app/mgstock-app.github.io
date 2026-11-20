@@ -208,7 +208,7 @@ function intencion(t) {
 }
 
 const BOTONES_INICIO = [
-  {id: 'carta', texto: 'Ver la carta'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'},
+  {id: 'carta', texto: 'Armar mi pedido'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'},
 ];
 export function botonesCarrito(carrito) {
   return carrito.length
