@@ -17,8 +17,10 @@ export function EmployeeScheduleLink() {
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   const load = useCallback(() => setReload(n => n + 1), []);
+  // Munro tiene un RPC personal exclusivo. Nunca solicitar ni mostrar Google Sheets del local.
+  const munro = user?.role === "employee" && user.status === "approved" && user.local_id === "munro";
   useEffect(() => {
-    if (user?.role !== "employee" || user.status !== "approved") return;
+    if (munro || user?.role !== "employee" || user.status !== "approved") return;
     let alive = true;
     rpc<Partial<PrivateLink>>("rm_app_employee_schedule_view")
       .then(value => {
@@ -39,11 +41,11 @@ export function EmployeeScheduleLink() {
       })
       .finally(() => { if (alive) setBusy(false); });
     return () => { alive = false; };
-  }, [user?.role, user?.status, user?.local_id, reload]);
+  }, [user?.role, user?.status, user?.local_id, munro, reload]);
   if (user?.role !== "employee" || user.status !== "approved" || !user.local_id) return null;
+  if (munro) return <div className="employee-munro-horarios"><EmployeeMunroWeeklySummary /></div>;
   const preview = info ? employeeSheetPreview(info.url) : null;
   return <div className="employee-munro-horarios">
-    {user.local_id==="munro"&&<EmployeeMunroWeeklySummary />}
     <section className="employee-sheets" aria-label="Horarios de mi local">
     <div className="employee-sheets__header">
       <span className="employee-sheets__icon"><CalendarDays size={22}/></span>
