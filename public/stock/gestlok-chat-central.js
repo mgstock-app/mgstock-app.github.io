@@ -14,7 +14,7 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
 // Locales con GESTLOK Chat encendido para esta sesión: {tenant, locales: Map(local_id → nombre)}. Lo dice el servidor.
-let servidor={tenant:'',locales:new Map()},buscando='',fallo={tenant:'',at:0};
+let servidor={tenant:'',locales:new Map(),ids:new Map()},buscando='',fallo={tenant:'',at:0},avisoEpoca=0;
 
 const local=()=>api?.S?.local;
 const tenant=()=>String(api?.S?.me?.tenant_id||'');
@@ -31,7 +31,8 @@ const allowed=()=>{
 const online=()=>!!api&&!api.S?.offline&&navigator.onLine!==false;
 const leer=(data,t)=>{
  const locales=new Map((data?.habilitado?data.sucursales||[]:[]).filter(x=>x?.nivel&&x.local_id).map(x=>[String(x.local_id),String(x.nombre||x.local_id)]));
- servidor={tenant:t,locales};
+ const ids=new Map((data?.habilitado?data.sucursales||[]:[]).filter(x=>x?.nivel&&x.local_id&&x.id).map(x=>[String(x.local_id),String(x.id)]));
+ servidor={tenant:t,locales,ids};
 };
 // Pregunta una vez por empresa qué locales tienen el chat. Si cambia algo, GESTLOK redibuja el menú.
 async function descubrir(){
@@ -78,17 +79,52 @@ function indicadores(){
  document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes+reclamos);});
  window.GestLokMobileDock?.refresh?.();
 }
+const pesos=n=>'$\u00a0'+String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const PAGOS={efectivo:'Efectivo',transferencia:'Transferencia',mercado_pago:'Mercado Pago',debito:'Débito',credito:'Crédito'};
+// Vista previa del último pedido pendiente (o de la última consulta): quién, cómo y qué pidió.
+async function vistaPrevia(tipo){
+ const suc=servidor.ids.get(local());
+ if(!suc||!window.GestLokSupabase||!online())return '';
+ try{
+  if(tipo==='reclamo'){
+   const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_panel_soporte',{p_sucursal:suc});
+   const r=!error&&Array.isArray(data)?[...data].sort((a,b)=>String(b.creado_at).localeCompare(String(a.creado_at)))[0]:null;
+   if(!r)return '';
+   const det=String(r.detalle||'');
+   return '<span class="mgp-alert-preview"><b>'+esc(({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo',consulta:'Consulta para el gerente'})[r.tipo]||'Reclamo')+
+    (r.pedido?' · '+esc(r.pedido):'')+'</b><span>«'+esc(det.length>110?det.slice(0,107)+'…':det)+'»</span></span>';
+  }
+  const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_panel_pedidos',{p_sucursal:suc,p_estado:'pendiente',p_limite:20});
+  const lista=!error&&Array.isArray(data?.pedidos)?data.pedidos:[];
+  const p=[...lista].sort((a,b)=>String(b.creado_at).localeCompare(String(a.creado_at)))[0];
+  if(!p)return '';
+  const items=(p.items||[]).map(i=>(Number(i.cantidad)||1)+' × '+String(i.nombre||''));
+  const prod=items.slice(0,2).join(' · ')+(items.length>2?' · +'+(items.length-2)+' más':'');
+  const cliente=String(p.cliente_nombre||'').trim();
+  return '<span class="mgp-alert-preview"><b>'+esc(p.codigo||'Pedido')+(cliente?' · '+esc(cliente):'')+'</b>'+
+   '<span>'+esc((p.entrega==='envio'?'Envío':'Retiro en el local')+' · '+(PAGOS[p.medio_pago]||p.medio_pago||'')+' · Total '+pesos(p.total))+'</span>'+
+   (prod?'<span>'+esc(prod)+'</span>':'')+'</span>';
+ }catch{return '';}
+}
 function avisoNuevo(tipo='pedido'){
- // Aviso flotante en cualquier pantalla de GESTLOK (no se muestra si ya se está en la Central).
+ // Aviso flotante con vista previa en cualquier pantalla de GESTLOK (Pagos Online, Stock, Inicio…),
+ // también por encima de las ventanas abiertas. No se muestra si ya se está en la Central.
  if(api?.S?.view==='pedidos-clientes')return;
+ const mia=++avisoEpoca,loc=local();
  let a=document.getElementById('mgp-global-alert');
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
- a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+(tipo==='reclamo'?'¡Reclamo de cliente!':'¡Pedido nuevo por chat!')+'</strong><small>'+
-  esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar')+'</small></div>'+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Abrir Central</button>';
+ const titulo=tipo==='reclamo'?'¡Consulta o reclamo de cliente!':'¡Pedido nuevo por chat!';
+ const resumen=esc(localName())+' · '+(tipo==='reclamo'?reclamos+' pendiente'+(reclamos===1?'':'s')+' de respuesta':pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar');
+ const pintar=previa=>{a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+titulo+'</strong><small>'+resumen+'</small>'+previa+'</div>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">'+(tipo==='reclamo'?'Responder':'Ver pedido')+'</button>'+
+  '<button type="button" class="mgp-alert-close" aria-label="Cerrar aviso" data-gcc-cerrar>×</button>';};
+ pintar('');
+ a.classList.remove('mgp-global-alert-new');void a.offsetWidth;a.classList.add('mgp-global-alert-new');
  try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
+ vistaPrevia(tipo).then(previa=>{if(previa&&mia===avisoEpoca&&loc===local()&&document.body.contains(a))pintar(previa);});
 }
+document.addEventListener('click',e=>{if(e.target.closest?.('[data-gcc-cerrar]'))ocultarAviso();});
 function ocultarAviso(){document.getElementById('mgp-global-alert')?.remove();}
 
 function actualizar(n,r=reclamos){
@@ -162,7 +198,7 @@ function subscribe(loc,push){
  push(()=>{clearInterval(t);window.removeEventListener('focus',foco);ocultarAviso();});
 }
 function reset(){
- epoca++;pendientes=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();servidor={tenant:'',locales:new Map()};buscando='';
+ epoca++;pendientes=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();servidor={tenant:'',locales:new Map(),ids:new Map()};buscando='';
  if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';
 }
 function attach(h){if(!api)api=h;}

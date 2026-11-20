@@ -39,6 +39,26 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.contains('Pedidos WhatsApp').should('not.exist');
  });
 
+ it('pedido nuevo con vista previa en otra sección de GESTLOK, sobre todo lo abierto',()=>{
+  setup('gerente.munro@example.com',390);
+  cy.get('[data-gcc-quick-count]',{timeout:20000}).should('have.text','1');
+  const pedido=(id,codigo)=>({id,local:'munro',codigo,estado:'pendiente',motivo:'',cliente_nombre:'Laura Gómez',cliente_telefono:'1100000002',
+   entrega:'envio',direccion:'Calle Ficticia 123',horario:'',medio_pago:'efectivo',nota:'',subtotal:56900,envio:4000,total:55210,
+   creado_at:new Date().toISOString(),decidido_at:null,items:[{cantidad:1,nombre:'Pizza 8 porciones · Muzzarella',opciones:[],nota:'',importe:17900},
+   {cantidad:1,nombre:'Pack 6 empanadas + 2 salsas',opciones:[],nota:'',importe:31500},{cantidad:1,nombre:'Coca-Cola 2,25 L',opciones:[],nota:'',importe:7500}]});
+  cy.window().then(w=>{w.__chat.pedidos.push(pedido('ch-2','MM-0002'));w.dispatchEvent(new Event('focus'));});
+  cy.get('#mgp-global-alert',{timeout:20000}).should('be.visible').and('contain.text','¡Pedido nuevo por chat!')
+   .and('contain.text','MM-0002 · Laura Gómez').and('contain.text','Envío · Efectivo · Total $\u00a055.210')
+   .and('contain.text','1 × Pizza 8 porciones · Muzzarella · 1 × Pack 6 empanadas + 2 salsas · +1 más');
+  cy.get('#mgp-global-alert').should('have.css','z-index','30050');
+  cy.get('#mgp-global-alert [data-gcc-cerrar]').click();
+  cy.get('#mgp-global-alert').should('not.exist');
+  cy.window().then(w=>{w.__chat.pedidos.push(pedido('ch-3','MM-0003'));w.dispatchEvent(new Event('focus'));});
+  cy.get('#mgp-global-alert',{timeout:20000}).should('contain.text','MM-0003').contains('button','Ver pedido').click();
+  cy.get('#ttl').should('contain.text','Central de mensajes');
+  central().find('.tarjeta.pendiente').should('have.length',3);
+ });
+
  it('el panel no se recarga cuando GESTLOK redibuja la pantalla',()=>{
   setup('gerente.munro@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();

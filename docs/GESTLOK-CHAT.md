@@ -119,6 +119,12 @@ reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó s
 (dueño, administradora o gerente del local). El link es por sucursal, solo `https://` y de Google (g.page,
 maps.app.goo.gl, google.com…): la base rechaza cualquier otro. Se muestra una vez por pedido en ese teléfono, también si
 el cliente vuelve a abrir el chat dentro de las 24 h; el aviso de estado arriba del chat queda con el enlace «Dejar reseña».
+**Aviso de pedido nuevo con vista previa (en todo GESTLOK).** Si el dueño o gerente está en otra sección (Pagos Online,
+Stock, Inicio…), al entrar un pedido aparece abajo un aviso con el código, el cliente, retiro o envío, el medio de pago,
+el total y los primeros productos («+N más»), con «Ver pedido» (abre la Central) y «×» para cerrarlo. Con un reclamo o
+consulta muestra el tipo, el pedido y el texto del cliente, con «Responder». Queda por encima de las ventanas abiertas
+(por ejemplo, el reporte de Pagos Online). Se revisa cada 15 s y al volver a la pestaña; vale igual para Munro y
+Don Torcuato, cada uno con sus pedidos. Si no se puede leer el detalle, queda el aviso simple con la cantidad.
 **Venta sugerida.** Al tocar «Finalizar pedido», si el pedido no lleva postre o bebida, el chat lo ofrece una vez
 (pregunta editable en Mensajes → «Antes de finalizar: venta sugerida») con botones de productos concretos con su precio
 (de cada categoría, el más caro y el más económico; un toque lo agrega al pedido), «Ver más postres / bebidas» si hay
