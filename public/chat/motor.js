@@ -12,18 +12,43 @@ const NUMEROS = {
 const VACIAS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'con', 'sin', 'y', 'a', 'al', 'en', 'para', 'por', 'un', 'una',
   'uno', 'unos', 'unas', 'quiero', 'queria', 'quisiera', 'me', 'das', 'das', 'mandame', 'mandas', 'traeme', 'pedir',
   'pido', 'hola', 'porfa', 'por', 'favor', 'gracias', 'tambien', 'mas', 'otra', 'otro', 'que', 'q', 'sea', 'son']);
+/** Mantiene un trato respetuoso incluso en los textos del motor de respaldo. */
+export function formalizar(texto) {
+  return String(texto||'')
+    .replace(/\\b([Tt])u pedido\\b/g,(_m,i)=>i==='T'?'Su pedido':'su pedido')
+    .replace(/\\b([Tt])us datos\\b/g,(_m,i)=>i==='T'?'Sus datos':'sus datos')
+    .replace(/\\b([Tt])u dirección\\b/g,(_m,i)=>i==='T'?'Su dirección':'su dirección')
+    .replace(/\\b([Tt])e responderá\\b/g,(_m,i)=>i==='T'?'Le responderá':'le responderá')
+    .replace(/\\b([Tt])e avisamos\\b/g,(_m,i)=>i==='T'?'Le avisamos':'le avisamos')
+    .replace(/\\b([Pp])odés\\b/g,(_m,i)=>i==='P'?'Puede':'puede')
+    .replace(/\\b([Qq])uerés\\b/g,(_m,i)=>i==='Q'?'Desea':'desea')
+    .replace(/\\b([Tt])ocá\\b/g,(_m,i)=>i==='T'?'Seleccione':'seleccione')
+    .replace(/\\b([Ee])legí\\b/g,(_m,i)=>i==='E'?'Elija':'elija')
+    .replace(/\\b([Mm])irá\\b/g,(_m,i)=>i==='M'?'Consulte':'consulte')
+    .replace(/\\b([Rr])evisá\\b/g,(_m,i)=>i==='R'?'Revise':'revise')
+    .replace(/\\b([Ee])scribime\\b/g,(_m,i)=>i==='E'?'Escríbanos':'escríbanos')
+    .replace(/\\b([Cc])ompletá\\b/g,(_m,i)=>i==='C'?'Complete':'complete')
+    .replace(/\\b([Aa])gregá\\b/g,(_m,i)=>i==='A'?'Agregue':'agregue')
+    .replace(/\\b([Cc])onsultá\\b/g,(_m,i)=>i==='C'?'Consulte':'consulte')
+    .replace(/\\b([Ss])i necesitás\\b/g,(_m,i)=>i==='S'?'Si necesita':'si necesita')
+    .replace(/\\b([Tt])enés\\b/g,(_m,i)=>i==='T'?'Tiene':'tiene')
+    .replace(/\\b([Pp])robá\\b/g,(_m,i)=>i==='P'?'Intente':'intente')
+    .replace(/\\b([Vv])olvé\\b/g,(_m,i)=>i==='V'?'Vuelva':'vuelva')
+    .replace(/\\b([Dd])ecime\\b/g,(_m,i)=>i==='D'?'Indíqueme':'indíqueme')
+    .replace(/\\b([Hh])acemos\\b/g,(_m,i)=>i==='H'?'Realizamos':'realizamos');
+}
 const MAX_CARRITO = 30;
 const MAX_CANTIDAD = 50;
 
 /** Mensajes automáticos sugeridos. El dueño los cambia en el panel (vacío = este texto).
  * Variables: {nombre} {codigo} {total} {direccion} {local} {motivo}. */
 export const MENSAJES_BASE = {
-  recibido: '¡Gracias, {nombre}! Recibimos tu pedido {codigo}. Está pendiente de revisión y confirmación del gerente.\nTotal: {total}.',
-  terminado_retiro: '¡Tu pedido {codigo} está listo! Ya podés pasar a retirarlo por {local}.',
-  terminado_envio: '¡Tu pedido {codigo} está listo y sale para {direccion}!',
-  rechazado: 'Lo sentimos, {nombre}: no pudimos tomar tu pedido {codigo}.\nMotivo: {motivo}',
-  pausado: 'Ahora no estamos tomando pedidos por chat. Volvé a intentar más tarde.',
-  despedida: '¡Gracias por escribirnos! Si necesitás algo más, acá estoy.',
+  recibido: 'Gracias, {nombre}. Recibimos su pedido. El gerente lo revisará antes de confirmarlo. Total estimado: {total}.',
+  terminado_retiro: '{nombre}, su pedido está listo para retirar en {local}. Al acercarse, solo indique su nombre.',
+  terminado_envio: '{nombre}, su pedido está listo. El local coordinará la entrega en {direccion}.',
+  rechazado: 'Le pedimos disculpas, {nombre}. No pudimos tomar su pedido. Motivo: {motivo}',
+  pausado: 'En este momento el chat se encuentra en pausa. Puede volver a contactarnos más tarde.',
+  despedida: 'Muchas gracias por comunicarse. Estamos a su disposición.',
 };
 /** Completa una plantilla con los datos (las variables sin dato quedan vacías). */
 export function plantilla(texto, datos) {
@@ -35,15 +60,23 @@ export function mensajeDe(mensajes, clave) {
 }
 /** Texto para el cliente según el estado de su pedido. */
 export function textoEstadoPedido(pedido, sucursal, mensajes) {
-  const s = sucursal || {};
-  const datos = {nombre: pedido.nombre || '', codigo: pedido.codigo, total: pesos(pedido.total),
-    direccion: pedido.direccion || 'tu dirección', local: s.direccion || ('el local de ' + (s.nombre || '')).trim(), motivo: pedido.motivo || ''};
-  switch (pedido.estado) {
-    case 'pendiente': return plantilla(MENSAJES_BASE.recibido, datos);
-    case 'confirmado': return 'El gerente confirmó tu pedido ' + pedido.codigo + '. Ya está en preparación.';
-    case 'terminado': return plantilla(mensajeDe(mensajes, pedido.entrega === 'envio' ? 'terminado_envio' : 'terminado_retiro'), datos);
-    case 'rechazado': return plantilla(mensajeDe(mensajes, 'rechazado'), datos);
-    case 'cancelado': return 'Cancelamos tu pedido ' + pedido.codigo + '.';
+  const s=sucursal||{};
+  const nombre=pedido.nombre||'';
+  const d={nombre,total:pesos(pedido.total),direccion:pedido.direccion||'su dirección',
+    local:s.direccion||('el local de '+(s.nombre||'')).trim(),motivo:pedido.motivo||'',codigo:''};
+  const salida = texto => formalizar(plantilla(String(texto||'').replace(/\\bpedido\\s*\\{codigo\\}/gi,'pedido').replace(/\\{codigo\\}/g,''),d)
+     .replace(/\\b[A-Z]{1,4}-\\d{4,}\\b/g,'').replace(/\\s+([.!?,])/g,'$1'));
+  switch(pedido.estado){
+    case 'pendiente':
+      return pedido.programado_para
+        ? 'Gracias, '+nombre+'. Recibimos su pedido programado para '+new Intl.DateTimeFormat('es-AR',
+           {timeZone:'America/Argentina/Buenos_Aires',weekday:'long',hour:'2-digit',minute:'2-digit'})
+           .format(new Date(pedido.programado_para))+' h. Queda sujeto a revisión y confirmación del gerente antes de prepararlo.'
+        : salida(mensajeDe(mensajes,'recibido'));
+    case 'confirmado': return 'El gerente confirmó su pedido. El local está preparándolo.';
+    case 'terminado': return salida(mensajeDe(mensajes,pedido.entrega==='envio'?'terminado_envio':'terminado_retiro'));
+    case 'rechazado': return salida(mensajeDe(mensajes,'rechazado'));
+    case 'cancelado': return 'Su pedido fue cancelado.';
     default: return '';
   }
 }
@@ -290,7 +323,7 @@ export function sumar(catalogo, carrito, lineas) {
   return avisos;
 }
 
-export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: []}; }
+export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: [], programado: false}; }
 
 export function limpiarEstado(estado, catalogo) {
   const e = Object.assign(estadoInicial(), estado && typeof estado === 'object' ? estado : {});
@@ -308,15 +341,35 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   const s = sucursal || {};
   const e = limpiarEstado(estado, catalogo);
   const out = [];
-  const decir = (texto, extra = {}) => out.push({texto, ...extra});
+  const decir = (texto, extra = {}) => out.push({texto:formalizar(texto), ...extra});
   const fin = (accion) => ({estado: e, mensajes: out, ...(accion ? {accion} : {})});
   entrada = entrada || {};
 
   if (entrada.inicio) {
+    if (s.atencion?.habilitado && s.atencion.abierto === false) {
+      decir('Buenas tardes. Por el momento nuestro local está cerrado. Abriremos nuevamente '+s.atencion.proximo_texto+
+        '. ¿Desea dejar un pedido programado para la próxima apertura? El gerente lo revisará y confirmará cuando corresponda.',{
+        botones:[{id:'programar_si',texto:'Sí, dejar pedido programado'},
+          {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
+      return fin();
+    }
     decir(s.bienvenida?.trim() ||
       ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' +
        (s.nombre || '') + '. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.').trim(),
       {botones: BOTONES_INICIO});
+    return fin();
+  }
+  if (entrada.boton === 'programar_si') {
+    if (!s.atencion?.habilitado) {decir('La programación no está habilitada para este local.');return fin();}
+    e.programado=true;
+    decir('Con gusto. Puede elegir los productos de la carta. Su pedido quedará programado para '+
+      s.atencion.proximo_texto+' y será revisado por el gerente antes de su preparación.',{
+      botones:[{id:'carta',texto:'Ver menú'},{id:'soporte',texto:'Contactar al gerente'}]});
+    return fin();
+  }
+  if (entrada.boton === 'programar_no') {
+    e.programado=false;
+    decir('Entendido. Cuando lo desee, puede volver a comunicarse. Muchas gracias.',{botones:BOTONES_INICIO});
     return fin();
   }
   if (entrada.agregar) {
@@ -336,6 +389,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     return fin();
   }
   if (entrada.datos) {
+    if (s.atencion?.habilitado && !s.atencion.abierto && !e.programado) {
+      decir('Por el momento el local está cerrado. ¿Desea dejar este pedido para '+s.atencion.proximo_texto+'?',{
+        botones:[{id:'programar_si',texto:'Sí, programar pedido'},{id:'programar_no',texto:'No, gracias'}]});
+      return fin();
+    }
     // El formulario de cierre envía los datos: la base valida todo y crea el pedido.
     if (!e.carrito.length) { decir('Tu pedido está vacío.', {botones: BOTONES_INICIO}); return fin(); }
     for (const l of e.carrito) {
@@ -347,7 +405,8 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       items: e.carrito.map(l => ({producto_id: l.producto_id, cantidad: l.cantidad, opciones: l.opciones, nota: l.nota})),
       nombre: String(d.nombre || '').slice(0, 80), telefono: String(d.telefono || '').slice(0, 25),
       entrega: d.entrega === 'envio' ? 'envio' : 'retiro', direccion: String(d.direccion || '').slice(0, 200),
-      horario: String(d.horario || '').slice(0, 60), medio_pago: String(d.medio_pago || ''), nota: String(d.nota || '').slice(0, 500),
+      horario: e.programado && !s.atencion?.abierto ? '' : String(d.horario || '').slice(0, 60),
+      programar: Boolean(e.programado), medio_pago: String(d.medio_pago || ''), nota: String(d.nota || '').slice(0, 500),
     }});
   }
 
@@ -368,6 +427,8 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   }
 
   switch (accion) {
+    case 'programar_si': return responder({sucursal:s,catalogo,estado:e,entrada:{boton:'programar_si'},mensajes});
+    case 'programar_no': return responder({sucursal:s,catalogo,estado:e,entrada:{boton:'programar_no'},mensajes});
     case 'vacio': decir('Escribime qué necesitás.', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'saludo': decir('¡Hola! ¿Qué te gustaría pedir hoy?', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'gracias': decir(mensajeDe(mensajes, 'despedida'), {botones: botonesCarrito(e.carrito)}); return fin();
@@ -389,7 +450,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
     case 'vaciar': e.carrito = []; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
-    case 'humano': decir('Tu pedido llega al local para que el gerente lo revise y confirme antes de prepararlo.' + (s.direccion ? ' También podés acercarte a ' + s.direccion + '.' : ''), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'humano': decir('El gerente puede responderle por este mismo chat. Para pedir atención, seleccione la opción de soporte.',{botones:[{id:'hablar_gerente',texto:'Hablar con el gerente'}]}); return fin();
     case 'estado': decir('Te muestro cómo va tu pedido.'); return fin({tipo: 'estado'});
     case 'cancelar':
       if (e.carrito.length) { e.carrito = []; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }
@@ -404,8 +465,13 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
         decir('El pedido mínimo es de ' + pesos(s.pedido_minimo) + '. ' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
         return fin();
       }
+      if (s.atencion?.habilitado && !s.atencion.abierto && !e.programado) {
+        decir('Estamos cerrados y abriremos nuevamente '+s.atencion.proximo_texto+
+          '. ¿Desea programar su pedido?',{botones:[{id:'programar_si',texto:'Sí, programar pedido'},
+          {id:'programar_no',texto:'No, gracias'}]}); return fin();
+      }
       e.paso = 'datos';
-      decir(textoCarrito(catalogo, e.carrito) + '\nCompletá tus datos para enviarlo al local.', {tipo: 'datos'});
+      decir(textoCarrito(catalogo, e.carrito) + '\nComplete sus datos para enviar el pedido al local.', {tipo: 'datos'});
       return fin();
     default: break;
   }
