@@ -219,6 +219,13 @@ export function interpretarPedido(catalogo, texto) {
   return {lineas, dudas, sinCoincidencia};
 }
 
+/** Consultas claramente ajenas a la gastronomía: se deriva en vez de inventar respuestas.
+ * Los casos ambiguos se dejan a la IA y a su herramienta de derivación. */
+export function consultaAjena(texto='') {
+  const n=normalizar(texto);
+  if (/\\b(pedido|comida|menu|carta|delivery|repart|pizza|empanada|horario|local|envio|retiro|pago|demora|precio)\\b/.test(n)) return false;
+  return /\\b(clima|pronostico|temperatura|presidente|politica|gobierno|elecciones|futbol|partido de futbol|river|boca juniors|medicina|diagnostico|enfermedad|cotizacion dolar|bolsa|criptomoneda|tarea escolar|historia argentina|programacion|codigo fuente|capital de|matematica|geografia|astrologia|horoscopo)\\b/.test(n);
+}
 /** Clasifica reclamos antes de llamar a la IA; consultar tiempos no genera alerta por sí solo. */
 export function clasificarSoporte(entrada = {}) {
   const b = String(entrada.boton || '');
