@@ -237,25 +237,23 @@
       const elementos = extras.map(o => ({id:o.grupo_id + ':' + o.valor_id, nombre:o.nombre,
         precio:o.extra_min, precio_max:o.extra_max, disponible:o.disponible,
         tipo:'adicional', grupo_id:o.grupo_id, valor_id:o.valor_id}));
-      bloques.push(crearGrupoStock('Adicionales', elementos, null, editable, sucursalId));
+      bloques.push(crearGrupoStock(categorias.some(k => /^adicionales$/i.test(k.nombre)) ? 'Extras opcionales' : 'Adicionales', elementos, null, editable, sucursalId));
     }
-    contenido.replaceChildren(encabezado, ...bloques.length ? bloques : [el('p', {class:'nota',text:'No hay productos activos para controlar.'})]);
+    contenido.replaceChildren(encabezado, ...(bloques.length ? bloques : [el('p', {class:'nota',text:'No hay productos activos para controlar.'})]));
   }
 
   function crearGrupoStock(titulo, items, categoriaId, editable, sucursalId) {
     const disponibles = items.filter(x => x.disponible).length;
     const bloque = el('section', {class: 'stock-bloque'});
     const desplegar = el('button', {type:'button',class:'stock-desplegar',
-      'aria-expanded':'false','aria-label':'Mostrar productos de ' + titulo});
+      'aria-expanded':'false','aria-label':'Mostrar productos de ' + titulo, text:titulo});
     const lista = el('div', {class: 'stock-lista', hidden:true});
-    const cabecera = el('div', {class:'stock-cabecera'},
-      desplegar,
-      el('span',{class:'stock-conteo',text:disponibles + ' de ' + items.length + ' disponibles'}));
-    bloque.append(el('h3', {class:'stock-titulo',text:titulo}), cabecera, lista);
-    desplegar.textContent = 'Ver productos';
+    const cabecera = el('div', {class:'stock-cabecera' + (/empanadas?/i.test(titulo)?' empanadas':'')},
+      desplegar, el('span',{class:'stock-conteo',text:disponibles + ' de ' + items.length + ' disponibles'}));
+    bloque.append(cabecera, lista);
     desplegar.onclick = () => {
       lista.hidden = !lista.hidden;
-      desplegar.textContent = lista.hidden ? 'Ver productos' : 'Ocultar productos';
+      
       desplegar.setAttribute('aria-expanded', String(!lista.hidden));
     };
     function itemFila(i) {
@@ -306,7 +304,7 @@
           verStock();
         }catch(e){aviso(e.message,true);boton.disabled=false;}
       };
-      cabecera.append(boton);
+      lista.prepend(el('div',{class:'stock-acciones'},boton));
     }
     return bloque;
   }
