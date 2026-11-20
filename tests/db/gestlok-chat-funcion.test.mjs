@@ -86,8 +86,8 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.match(r.body.mensajes.at(-1).texto, /Falta la dirección/, 'error de la base mostrado al cliente');
   assert.equal(r.body.carrito.length, 2, 'el carrito se conserva si falla');
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {datos: {nombre: 'Ana', telefono: '11 5555-1234', entrega: 'envio', direccion: 'Mitre 200', medio_pago: 'efectivo'}}});
-  assert.equal(r.body.pedido.codigo, 'MM-0001'); assert.equal(Number(r.body.pedido.total), 3600);
-  assert.match(r.body.mensajes.at(-1).texto, /pendiente de revisión y confirmación/, 'no confirma con plantillas anteriores');
+  assert.ok(!('codigo' in r.body.pedido),'el código es interno del gerente'); assert.equal(Number(r.body.pedido.total), 3600);
+  assert.match(r.body.mensajes.at(-1).texto, /gerente lo revisará antes de confirmarlo/i, 'no confirma con plantillas anteriores');
   assert.equal(r.body.carrito.length, 0);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
   assert.equal(r.body.pedidos[0].estado, 'pendiente');
@@ -96,7 +96,9 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   ok(DB, [], `update gestlok_chat_private.pedidos set estado = 'terminado', decidido_at = now() where codigo = 'MM-0001'`);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
   assert.equal(r.body.pedidos[0].estado, 'terminado');
-  assert.equal(r.body.pedidos[0].aviso, '¡Tu pedido MM-0001 está listo y sale para Mitre 200!');
+  assert.match(r.body.pedidos[0].aviso, /su pedido está listo/i);
+  assert.match(r.body.pedidos[0].aviso, /Mitre 200/);
+  assert.doesNotMatch(JSON.stringify(r.body), /MM-0001/, 'el código no llega al cliente');
 
   // El chat no guarda datos personales en los mensajes
   const msgs = ok(DB, ['-At', '-c', 'select string_agg(texto, \' | \') from gestlok_chat_private.mensajes']);
