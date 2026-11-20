@@ -627,7 +627,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   if (lineas.length === 1 && !dudas.length && !sinCoincidencia.length) {
     const l = lineas[0], individual = productoPorId(catalogo, l.producto_id);
     const promo = disponibles(catalogo).find(p => {
-      if (p.disponible === false || !/^pack\\s/i.test(p.nombre || '')) return false;
+      if (p.disponible === false || !/^pack\s/i.test(p.nombre || '')) return false;
       const grupos = (p.opciones || []).filter(esCantidad);
       const emp = grupos.find(g => /empanad/i.test(g.nombre) && Number(g.total) === l.cantidad);
       const salsa = grupos.find(g => /salsa/i.test(g.nombre) && Number(g.total) > 0);
