@@ -124,7 +124,8 @@ function actualizarCarrito(c) {
   $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' + pesos(totalCarrito(S.catalogo, S.carrito));
 }
 const TEXTO_ESTADO = {
-  pendiente: ['Pedido recibido', 'Lo están preparando. Te avisamos cuando esté listo'],
+  pendiente: ['Pendiente de confirmación', 'El gerente debe revisar y confirmar tu pedido'],
+  confirmado: ['Pedido confirmado', 'El local lo está preparando'],
   terminado: ['¡Pedido listo!', ''],
   rechazado: ['El local no pudo tomarlo', ''],
   cancelado: ['Pedido cancelado', ''],
@@ -141,23 +142,23 @@ function mostrarPedido(p) {
       : p.estado === 'terminado' ? (p.entrega === 'envio' ? 'Sale para tu dirección' : 'Ya podés pasar a retirarlo') : sub) + ' · ' + pesos(p.total)),
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null].filter(Boolean));
   caja.hidden = false;
-  if (antes && antes.codigo === p.codigo && antes.estado !== p.estado && antes.estado === 'pendiente') {
+  if (antes && antes.codigo === p.codigo && antes.estado !== p.estado && ['pendiente', 'confirmado'].includes(antes.estado)) {
     // El texto lo arma la función con los mensajes que configuró el local.
-    if (p.aviso && ['terminado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
+    if (p.aviso && ['confirmado', 'terminado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
     try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
   }
   programarSondeo();
 }
 function programarSondeo() {
   clearTimeout(S.sondeo);
-  if (S.pedido?.estado !== 'pendiente') return;
+  if (!['pendiente', 'confirmado'].includes(S.pedido?.estado)) return;
   S.sondeo = setTimeout(async () => {
     if (document.hidden) return programarSondeo();
     try { const r = await api('estado'); if (r.ok && r.pedidos?.[0]) mostrarPedido(r.pedidos[0]); else programarSondeo(); }
     catch { programarSondeo(); }
   }, 12000);
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && S.pedido?.estado === 'pendiente') programarSondeo(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && ['pendiente', 'confirmado'].includes(S.pedido?.estado)) programarSondeo(); });
 
 // ---------------------------------------------------------------------------------------------- hojas
 function abrirHoja(titulo, contenido) {
@@ -404,7 +405,7 @@ async function demoApi(accion, extra) {
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
     r.estado.carrito = [];
     mensajes.push({texto: pedido.aviso});
-    setTimeout(() => { if (demoPedido) demoPedido = conAviso({...demoPedido, estado: 'terminado'}); }, 7000);
+    // La demo conserva el pedido pendiente: nunca simula una confirmación automática.
   } else if (r.accion?.tipo === 'estado') {
     mensajes.push({texto: demoPedido ? demoPedido.aviso : 'Todavía no enviaste ningún pedido.'});
   } else if (r.accion?.tipo === 'cancelar' && demoPedido?.estado === 'pendiente') {

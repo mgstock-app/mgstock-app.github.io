@@ -25,7 +25,7 @@
   const pesos = n => '$ ' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const hora = t => { try { return new Date(t).toLocaleString('es-AR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}); } catch { return ''; } };
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
-  const ESTADOS = {pendiente: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
+  const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
   import('/chat/motor.js').then(m => { motor = m; }).catch(() => {});
 
@@ -63,6 +63,7 @@
   }
   async function rpc(fn, args) {
     if (DEMO) return demoRpc(fn, args || {});
+    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await sb.rpc('gestlok_chat_' + fn, args || {}); } catch { throw new Error('Sin conexión. Revisá internet y probá de nuevo.'); }
     if (r.error) {
@@ -94,6 +95,7 @@
       const {data} = await sb.auth.getSession();
       if (!data?.session) return fijo('Entrá a GESTLOK', 'Iniciá sesión en GESTLOK con tu cuenta y volvé a abrir el panel.', ['Ir a GESTLOK', '/']);
     }
+    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await rpc('panel_inicio'); } catch (e) { return fijo('No pudimos abrir el panel', e.message); }
     if (!r.habilitado) return fijo('GESTLOK Chat no está activo', 'GESTLOK Chat no está habilitado para la empresa que tenés elegida en GESTLOK. Si tenés varias empresas, elegí la correcta en GESTLOK y volvé.', ['Ir a GESTLOK', '/']);
@@ -131,7 +133,7 @@
 
   // ------------------------------------------------------------------------------------------- pedidos
   async function verPedidos() {
-    const filtros = [['pendiente', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['todos', 'Todos']];
+    const filtros = [['pendiente', 'Por confirmar'], ['confirmado', 'En preparación'], ['terminado', 'Terminados'], ['rechazado', 'Rechazados'], ['todos', 'Todos']];
     const cabeza = el('div', {class: 'filtros', role: 'toolbar', 'aria-label': 'Filtrar pedidos'}, filtros.map(([v, t]) =>
       el('button', {type: 'button', class: 'chip', 'aria-pressed': String(S.filtro === v), text: t, onclick: () => { S.filtro = v; verPedidos(); }})));
     const lista = el('div', {class: 'tarjetas'}, el('p', {class: 'nota', text: 'Cargando pedidos…'}));
@@ -139,9 +141,11 @@
     await cargarPedidos(lista);
   }
   async function cargarPedidos(lista) {
+    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await rpc('panel_pedidos', {p_sucursal: S.suc.id, p_estado: S.filtro, p_limite: 60}); }
     catch (e) { lista.replaceChildren(el('p', {class: 'error', text: e.message})); return programar(lista); }
+    if (S.suc.id !== sucursal || S.filtro !== filtro || !lista.isConnected) return;
     const pend = r.pedidos.filter(p => p.estado === 'pendiente').length;
     if (S.filtro === 'pendiente') {
       $('globo').textContent = String(pend); $('globo').hidden = !pend;
@@ -154,7 +158,7 @@
       S.pendientesVistos = pend;
     }
     lista.replaceChildren(...(r.pedidos.length ? r.pedidos.map(tarjetaPedido)
-      : [el('p', {class: 'nota', text: S.filtro === 'pendiente' ? 'No hay pedidos en preparación.' : 'No hay pedidos para mostrar.'})]));
+      : [el('p', {class: 'nota', text: S.filtro === 'pendiente' ? 'No hay pedidos pendientes de confirmación.' : 'No hay pedidos para mostrar.'})]));
     programar(lista);
   }
   function programar(lista) {
@@ -162,28 +166,26 @@
     if (S.pestana !== 'pedidos') return;
     S.sondeo = setTimeout(() => {
       if (!marco.isConnected) return; // la sección ya no está en pantalla
-      if (document.hidden || S.ocupado) return programar(lista);
+      if (document.hidden || S.ocupado || lista.contains(marco.activeElement || document.activeElement)) return programar(lista);
       cargarPedidos(lista);
     }, 15000);
   }
   function tarjetaPedido(p) {
     const tel = String(p.cliente_telefono || '');
-    const wa = tel.length === 10 ? '549' + tel : tel;
     const acciones = el('div', {class: 'acciones'});
-    if (p.estado === 'pendiente' && puede('gestionar')) {
+    if (['pendiente', 'confirmado'].includes(p.estado) && puede('gestionar')) {
       const motivo = el('input', {type: 'text', maxlength: '300', placeholder: 'Motivo para el cliente (ej.: sin stock)', 'aria-label': 'Motivo del rechazo'});
       const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
         el('button', {type: 'button', class: 'boton peligro', text: 'Rechazar pedido', onclick: () => decidir(p, 'rechazado', motivo.value)}));
       acciones.append(
-        el('button', {type: 'button', class: 'boton principal', text: 'Pedido terminado', onclick: () => decidir(p, 'terminado', '')}),
+        el('button', {type: 'button', class: 'boton principal', text: p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : 'Pedido terminado', onclick: () => decidir(p, p.estado === 'pendiente' ? 'confirmado' : 'terminado', '')}),
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
     }
     return el('article', {class: 'tarjeta ' + p.estado},
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
-        el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel}), ' · ',
-        el('a', {href: 'https://wa.me/' + wa, target: '_blank', rel: 'noopener', text: 'WhatsApp'})),
+        el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel})),
       el('p', {class: 'entrega', text: (p.entrega === 'envio' ? 'Envío a ' + p.direccion : 'Retira en el local') +
         ' · ' + (PAGOS[p.medio_pago] || p.medio_pago) + (p.horario ? ' · Para: ' + p.horario : '')}),
       el('ul', {class: 'items'}, (p.items || []).map(i => el('li', {},
@@ -200,7 +202,7 @@
     S.ocupado = true;
     try {
       await rpc('panel_decidir', {p_pedido: p.id, p_decision: decision, p_motivo: motivo || ''});
-      aviso(decision === 'terminado' ? 'Pedido ' + p.codigo + ' terminado: el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
+      aviso(decision === 'confirmado' ? 'Pedido ' + p.codigo + ' confirmado y enviado a preparación' : decision === 'terminado' ? 'Pedido ' + p.codigo + ' terminado: el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
       if (S.pendientesVistos) S.pendientesVistos -= 1;
     } catch (e) { aviso(e.message, true); }
     finally { S.ocupado = false; }
@@ -306,7 +308,6 @@
 
   // ------------------------------------------------------------------------------------------- mensajes
   const MENSAJES = [
-    ['recibido', 'Pedido recibido', 'Cuando el cliente envía el pedido.'],
     ['terminado_retiro', 'Pedido terminado · retiro', 'Cuando marcás «Pedido terminado» y el cliente retira.'],
     ['terminado_envio', 'Pedido terminado · envío', 'Cuando marcás «Pedido terminado» y es con envío.'],
     ['rechazado', 'Pedido rechazado', 'Se agrega el motivo que escribís al rechazar.'],
@@ -412,6 +413,7 @@
   // ------------------------------------------------------------------------------------------- conversaciones
   async function verCharlas() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
+    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await rpc('panel_conversaciones', {p_sucursal: S.suc.id, p_limite: 40}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Solo lectura. Se borran solas a los 60 días; los pedidos quedan.'}),
@@ -472,7 +474,7 @@
     switch (fn) {
       case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración', sucursales: D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
       case 'panel_pedidos': return {nivel: D.nivel, pedidos: D.pedidos.filter(p => a.p_estado === 'todos' || p.estado === a.p_estado)};
-      case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (p.estado !== 'pendiente') throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
+      case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
       case 'panel_disponible': D.prods.find(p => p.id === a.p_producto).disponible = a.p_disponible; return {ok: true};
       case 'panel_producto_guardar': { const x = a.p_producto; if (x.id) Object.assign(D.prods.find(p => p.id === x.id), x); else D.prods.push({...x, id: 'n' + Date.now()}); return {ok: true}; }

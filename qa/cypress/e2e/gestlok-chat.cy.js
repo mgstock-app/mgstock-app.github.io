@@ -24,10 +24,9 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja .error-form').should('contain.text', 'dirección');
     cy.get('#hoja input[name=direccion]').type('Mitre 200');
     cy.get('#hoja button[type=submit]').click();
-    cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'DEMO-0001').and('contain.text', 'preparando');
+    cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'DEMO-0001').and('contain.text', 'Pendiente de confirmación');
     cy.get('.burbuja.asistente').last().should('contain.text', 'Recibimos tu pedido DEMO-0001');
-    cy.get('#aviso-pedido', {timeout: 25000}).should('contain.text', '¡Pedido listo!');
-    cy.get('.burbuja.asistente').last().should('contain.text', 'está listo y sale para Mitre 200');
+    cy.get('#aviso-pedido').should('not.contain.text', '¡Pedido listo!');
     cy.get('#barra-pedido').should('not.be.visible');
     sinDesborde();
   });
@@ -102,10 +101,14 @@ describe('GESTLOK Chat · panel', () => {
     cy.contains('button', 'Rechazar…').click();
     cy.get('.rechazo .boton.peligro').click();
     cy.get('#aviso').should('contain.text', 'motivo');
+    cy.get('.acciones .boton.principal').should('have.text', 'Confirmar y pasar a preparación').click();
+    cy.contains('No hay pedidos pendientes de confirmación');
+    cy.contains('button', 'En preparación').click();
+    cy.get('.tarjeta.confirmado').should('contain.text', 'MM-0007');
     cy.get('.acciones .boton.principal').should('have.text', 'Pedido terminado');
     cy.get('.acciones .boton.principal').click();
     cy.get('#aviso').should('contain.text', 'MM-0007 terminado');
-    cy.contains('No hay pedidos en preparación');
+    cy.contains('No hay pedidos para mostrar');
     cy.get('[data-p=carta]').click();
     cy.get('input[aria-label="Disponible: Empanada de carne"]').uncheck();
     cy.get('#aviso').should('contain.text', 'Empanada de carne agotado');

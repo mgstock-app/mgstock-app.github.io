@@ -62,8 +62,8 @@ Claves foráneas compuestas (`tenant_id`, `sucursal_id`) impiden mezclar datos d
 
 | Quién | Pedidos | Carta | Mensajes del bot | Ajustes del local | Conversaciones |
 |---|---|---|---|---|---|
-| Dueño de la empresa | Pedido terminado / rechazar | Todo (productos, precios, opciones, categorías, agotado) | Editar | Todo | Leer |
-| Gerente de **esa** sucursal | Pedido terminado / rechazar | Todo (productos, precios, opciones, categorías, agotado) | Editar | Ver | Leer |
+| Dueño de la empresa | Confirmar / terminar / rechazar | Todo (productos, precios, opciones, categorías, agotado) | Editar | Todo | Leer |
+| Gerente de **esa** sucursal | Confirmar / terminar / rechazar | Todo (productos, precios, opciones, categorías, agotado) | Editar | Ver | Leer |
 | Administradora (creadora) con escritura activa | Como dueño | Como dueño | Como dueño | Como dueño | Leer |
 | Creadora en soporte (solo lectura) | Ver | Ver | Ver | Ver | — |
 | Colaborador, otra empresa, sin sesión | — | — | — | — | — |
@@ -141,5 +141,11 @@ El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pend
 ## 9. Etapas siguientes
 
 - **3:** IA opcional; avisos al celular del gerente (GESTLOK Push); acceso al panel desde el menú de GESTLOK;
-  respuestas del local dentro del chat; WhatsApp con el mismo motor.
+  respuestas del local dentro del chat. No incluye WhatsApp, Meta, MacroDroid ni sincronización externa.
 - **4:** colores y logo por empresa; cobro de la suscripción de la micro app.
+
+## Confirmación manual (19/11/2026)
+
+El chat público toma el pedido completo y lo deja `pendiente`. El gerente revisa los detalles y pulsa «Confirmar y pasar a preparación». La misma operación transaccional registra `confirmado`, fecha y usuario, y lo incorpora a la lista interna «En preparación» de la Central. Solo después se puede marcar `terminado`. No se crea una venta ni se modifica caja o stock. La base impide terminar sin confirmar, duplicar la confirmación o decidir pedidos de otro local/empresa. El asistente y el cliente no tienen permisos para confirmar.
+
+Migración: `20261120000406_gestlok_chat_confirmacion_manual.sql`. El texto pendiente es fijo para que plantillas anteriores no anuncien preparación antes de la aprobación. Se conservan los pedidos históricos.

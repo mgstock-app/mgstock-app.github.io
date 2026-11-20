@@ -30,6 +30,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   t.after(() => psql('postgres', ['-c', `drop database if exists ${DB} with (force)`]));
   ok(DB, ['-f', 'tests/fixtures/chat/base.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261119210000_gestlok_chat_base.sql']);
+  ok(DB, ['-f', 'supabase/migrations/20261120000406_gestlok_chat_confirmacion_manual.sql']);
   ok(DB, [], SEMILLA);
   process.env.CHAT_PG_DB = urlFor(DB);
 
@@ -49,6 +50,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
     return {status: res.status, cors: res.headers.get('access-control-allow-origin'), body: res.status === 204 ? null : await res.json()};
   };
 
+  for (const body of [null, [], 1, 'texto']) assert.equal((await llamar(body)).status, 400);
   // CORS y validaciones de entrada
   assert.equal((await llamar(null, {metodo: 'OPTIONS'})).status, 204);
   assert.equal((await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'abrir'}, {origen: 'https://malo.example'})).status, 403);
@@ -76,7 +78,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.equal(r.body.carrito.length, 2, 'el carrito se conserva si falla');
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {datos: {nombre: 'Ana', telefono: '11 5555-1234', entrega: 'envio', direccion: 'Mitre 200', medio_pago: 'efectivo'}}});
   assert.equal(r.body.pedido.codigo, 'MM-0001'); assert.equal(Number(r.body.pedido.total), 3600);
-  assert.equal(r.body.mensajes.at(-1).texto, 'Recibimos MM-0001, Ana. Total $ 3.600.', 'usa el mensaje configurado por el local');
+  assert.match(r.body.mensajes.at(-1).texto, /pendiente de revisión y confirmación/, 'no confirma con plantillas anteriores');
   assert.equal(r.body.carrito.length, 0);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
   assert.equal(r.body.pedidos[0].estado, 'pendiente');

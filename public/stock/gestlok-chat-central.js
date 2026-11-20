@@ -9,7 +9,7 @@
 (()=>{
 'use strict';
 const PAUSA_MS=15000;
-const VERSION_PANEL='20261119e';
+const VERSION_PANEL='20261120a';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,vistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
@@ -57,11 +57,11 @@ function quickAccess(){
  // «Pagos Online» solo donde esa micro app existe (hoy Mi Gusto).
  const pagos=window.GestLokMiGustoOnline?.permitido?.()?'<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>':'';
  return '<nav class="mgp-shift-quick" aria-label="Atajos del turno">'+pagos+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+pendientes+'</span> pedidos en preparación</small></span></button>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+pendientes+'</span> pedidos por confirmar</small></span></button>'+
  '</nav>';
 }
 function navBadge(){
- return allowed()&&pendientes?'<span class="mgp-nav-count" data-gcc-nav-count aria-label="'+pendientes+' pedidos en preparación">'+Math.min(99,pendientes)+'</span>':'';
+ return allowed()&&pendientes?'<span class="mgp-nav-count" data-gcc-nav-count aria-label="'+pendientes+' pedidos por confirmar">'+Math.min(99,pendientes)+'</span>':'';
 }
 const pendingCount=()=>allowed()?pendientes:0;
 
@@ -72,7 +72,7 @@ function indicadores(){
   let b=nav.querySelector('[data-gcc-nav-count]');
   if(pendientes){
    if(!b){b=document.createElement('span');b.className='mgp-nav-count';b.dataset.gccNavCount='';nav.appendChild(b);}
-   b.textContent=String(Math.min(99,pendientes));b.setAttribute('aria-label',pendientes+' pedidos en preparación');
+   b.textContent=String(Math.min(99,pendientes));b.setAttribute('aria-label',pendientes+' pedidos por confirmar');
   }else b?.remove();
  }
  document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes);});
@@ -85,7 +85,7 @@ function avisoNuevo(){
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
  a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>¡Pedido nuevo por chat!</strong><small>'+
-  esc(localName())+' · '+pendientes+' pedido'+(pendientes===1?'':'s')+' en preparación</small></div>'+
+  esc(localName())+' · '+pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar</small></div>'+
   '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedidos</button>';
  try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
 }

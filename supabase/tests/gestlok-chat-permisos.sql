@@ -275,6 +275,18 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'rechazado', '')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' rechazar exige motivo';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'terminado')::text $q$, ped1));
+  r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' no termina sin confirmación manual';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente confirma antes de preparación';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
+  r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' no duplica confirmación';
+  perform prueba_como('service_role');
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_cancelar(%L, %L::bytea)::text $q$, conv1, h1));
+  r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' cliente no cancela preparación confirmada';
+  perform prueba_como('gerente.munro@prueba.example');
+  j := public.gestlok_chat_panel_pedidos(s_munro, 'confirmado');
+  r := r || E'\n' || case when jsonb_array_length(j->'pedidos') = 1 then 'OK' else 'FALLA' end || ' pedido llega a preparación interna';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'terminado')::text $q$, ped1));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro marca terminado · ' || left(v, 60);
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'rechazado', 'tarde')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' un pedido resuelto no cambia';
@@ -320,7 +332,7 @@ begin
   select count(*) into n from gestlok_chat_private.auditoria where accion in ('producto_guardar','config_guardar','producto_disponible');
   r := r || E'\n' || case when n >= 5 then 'OK' else 'FALLA' end || ' los cambios quedan auditados (' || n || ')';
   select count(*) into n from gestlok_chat_private.pedido_eventos where pedido_id = ped1;
-  r := r || E'\n' || case when n = 2 then 'OK' else 'FALLA' end || ' historial del pedido: creado y terminado';
+  r := r || E'\n' || case when n = 3 then 'OK' else 'FALLA' end || ' historial: creado, confirmado y terminado';
   update gestlok_chat_private.conversaciones set ultima_at = now() - interval '61 days' where id = conv1;
   j := gestlok_chat_private.purgar();
   select count(*) into n from gestlok_chat_private.pedidos where id = ped1 and conversacion_id is null;
