@@ -31,7 +31,7 @@ const SLUG = DEMO ? 'demo' : slugDeUrl();
 
 const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [], pedido: null, enviando: false,
   ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
-  ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null};
+  ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null, cerrada: false};
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
 function token() {
@@ -73,7 +73,7 @@ function sumarBorrador(l) {
 // ---------------------------------------------------------------------------------------------- conexión
 async function api(accion, extra = {}) {
   if (DEMO) return demoApi(accion, extra);
-  const ctl = new AbortController(); const corte = setTimeout(() => ctl.abort(), 20000);
+  const ctl = new AbortController(); const corte = setTimeout(() => ctl.abort(), accion === "adjuntar" ? 45000 : 20000);
   try {
     const res = await fetch(CFG.funcion, {method: 'POST', signal: ctl.signal,
       headers: {'content-type': 'application/json', apikey: CFG.key || '', authorization: 'Bearer ' + (CFG.key || '')},
@@ -88,6 +88,24 @@ async function api(accion, extra = {}) {
 const lista = $('mensajes');
 function bajar() { requestAnimationFrame(() => { lista.scrollTop = lista.scrollHeight; }); }
 function burbuja(rol, texto) { lista.append(el('div', {class: 'burbuja ' + rol, text: texto})); bajar(); }
+function burbujaFoto(rol, url, texto = 'Foto enviada') {
+  const n=el('div',{class:'burbuja foto '+rol});
+  if (typeof url==='string' && /^https:\/\//.test(url)) n.append(el('a',{href:url,target:'_blank',rel:'noopener noreferrer'},
+    el('img',{src:url,alt:'Imagen compartida en la conversación',loading:'lazy'})));
+  n.append(el('span',{text:texto}));lista.append(n);bajar();
+}
+function mostrarCierre() {
+  if (S.cerrada) return;
+  S.cerrada=true;clearTimeout(S.sondeo);
+  $('redactar').hidden=true;$('barra-pedido').hidden=true;
+  const reiniciar=el('button',{type:'button',class:'boton principal',text:'Iniciar nueva conversación',onclick:()=>{
+    try {localStorage.removeItem('gestlok-chat:token:'+SLUG);localStorage.removeItem(CLAVE_BORRADOR);}catch{}
+    location.reload();
+  }});
+  lista.append(el('div',{class:'chat-cerrado'},
+    el('p',{text:'El gerente finalizó esta conversación. Puede iniciar una nueva consulta.'}),reiniciar));
+  bajar();
+}
 function quitarChips() { lista.querySelectorAll('.chips,.accion').forEach(n => n.remove()); }
 function chips(botones) {
   if (!botones?.length) return;
@@ -235,7 +253,7 @@ function mostrarPedido(p) {
 }
 function programarSondeo() {
   clearTimeout(S.sondeo);
-  if (!S.soportePendiente && !['pendiente', 'confirmado'].includes(S.pedido?.estado)) return;
+  if (S.cerrada) return;
   S.sondeo = setTimeout(async () => {
     // Mantener contacto con el gerente durante soporte, aun si el cliente cambia de pestaña.
     if (document.hidden && !S.soportePendiente) return programarSondeo();
@@ -249,6 +267,7 @@ function programarSondeo() {
           try { navigator.vibrate?.(100); } catch { /* opcional */ }
         }
         if (typeof r.soporte_pendiente === 'boolean') S.soportePendiente = r.soporte_pendiente;
+        if (r.cerrada) {mostrarCierre();return;}
         if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
         else programarSondeo();
       } else programarSondeo();
@@ -256,7 +275,7 @@ function programarSondeo() {
   }, 12000);
 }
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && (S.soportePendiente || ['pendiente', 'confirmado'].includes(S.pedido?.estado))) programarSondeo();
+  if (!document.hidden && !S.cerrada) programarSondeo();
 });
 
 // ---------------------------------------------------------------------------------------------- hojas
@@ -468,7 +487,7 @@ function abrirDatos() {
         ? 'Cambio a enviar: ' + pesos(abona - importeEstimado)
         : 'Indique con cuánto abonará para preparar el cambio. También puede elegir pago justo.';
     }
-    notaPago.hidden = !(d.entrega === 'envio' && d.medio_pago === 'transferencia');
+    notaPago.hidden = !(d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0);
     notaPago.textContent = 'Si abona en efectivo tiene un ' + (Number(s.descuento_efectivo_pct) || 0) +
       '% de descuento en los productos. Si prefiere transferencia, el gerente le enviará los datos por este chat. Puede adjuntar aquí el comprobante.';
   };
