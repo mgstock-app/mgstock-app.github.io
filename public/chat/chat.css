@@ -38,6 +38,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .aviso-pedido .punto{width:10px;height:10px;border-radius:50%;background:currentColor;margin-top:5px;flex:none}
 .aviso-pedido.pendiente .punto{animation:latir 1.6s ease-in-out infinite}
 @keyframes latir{50%{opacity:.25}}
+.aviso-pedido a{margin-left:auto;color:inherit;font-size:13px;white-space:nowrap;text-decoration:underline}
+.burbuja.resena .resena-link{display:flex;width:fit-content;align-items:center;margin-top:8px;text-decoration:none;color:var(--acento);border-color:var(--acento)}
 .aviso-pedido button{margin-left:auto;border:0;background:transparent;color:inherit;text-decoration:underline;font-size:13px;padding:0}
 
 .mensajes{flex:1;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}

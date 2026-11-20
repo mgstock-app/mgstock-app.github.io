@@ -229,3 +229,18 @@ test('promos: repartir unidades entre variedades (premium y clásicas sin recarg
   assert.equal(M.faltantes(pack, {emp: {carne: 6}}).map(g => g.id).join(), 'sal');
   assert.equal(M.unidades({a: 2, b: 3, c: -1}), 5);
 });
+
+test('reseña y cierre al terminar el pedido: solo links https de Google', () => {
+  assert.equal(M.urlResena('https://g.page/r/CT9jkvArEGhFEBM/review'), 'https://g.page/r/CT9jkvArEGhFEBM/review');
+  assert.ok(M.urlResena('https://maps.app.goo.gl/abc123'));
+  assert.ok(M.urlResena('https://search.google.com/local/writereview?placeid=XYZ'));
+  for (const malo of ['http://g.page/r/x', 'https://g.page.estafa.example/r', 'https://estafa.example/g.page', 'javascript:alert(1)',
+    'https://usuario:clave@g.page/r/x', 'https://g.page/r/x y', '', null]) assert.equal(M.urlResena(malo), '', String(malo));
+  const msj = {resena_url: 'https://g.page/r/CT9jkvArEGhFEBM/review', resena: '{nombre}, nos ayudaría mucho que nos deje su reseña.', cierre: '¡Gracias por elegirnos! 🥰'};
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, msj),
+    {resena: {texto: 'Ana, nos ayudaría mucho que nos deje su reseña.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'}, cierre: '¡Gracias por elegirnos! 🥰'});
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
+  assert.equal(M.cierrePedido({estado: 'pendiente'}, msj), null);
+  assert.equal(M.cierrePedido({estado: 'rechazado'}, msj), null, 'un pedido rechazado no pide reseña');
+  assert.match(M.textoEstadoPedido({estado: 'terminado', entrega: 'envio', nombre: 'Ana', direccion: 'Mitre 200', total: 1000}, {}, {}), /en camino a Mitre 200/);
+});

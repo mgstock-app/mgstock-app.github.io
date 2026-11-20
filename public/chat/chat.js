@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120promos1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120resena1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -150,24 +150,47 @@ const TEXTO_ESTADO = {
   rechazado: ['El local no pudo tomarlo', ''],
   cancelado: ['Pedido cancelado', ''],
 };
+/** Pedido listo o enviado: aviso, invitación a reseñar (si el local cargó su link de Google) y cierre.
+ * Una sola vez por pedido en este teléfono, aunque el cliente cierre el chat y vuelva más tarde (hasta 24 h). */
+function despedidaPedido(p) {
+  if (p.estado !== 'terminado' || Date.now() - new Date(p.creado_at).getTime() > 864e5) return;
+  const clave = 'gestlok-chat:cierre:' + (S.sucursal?.slug || '') + ':' + p.creado_at;
+  try { if (localStorage.getItem(clave)) return; localStorage.setItem(clave, '1'); } catch { /* sin almacenamiento: se muestra igual */ }
+  // Si el cliente acaba de consultar el estado, el aviso ya está en pantalla: no se repite.
+  const yaVisto = [...lista.querySelectorAll('.burbuja')].slice(-3).some(b => b.textContent === p.aviso);
+  if (p.aviso && !yaVisto) burbuja('asistente', p.aviso);
+  const url = urlResena(p.resena?.url);
+  if (url) {
+    lista.append(el('div', {class: 'burbuja asistente resena'}, String(p.resena.texto || ''),
+      el('a', {class: 'boton chico resena-link', href: url, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar mi reseña en Google'})));
+  }
+  if (p.cierre) burbuja('asistente', p.cierre);
+  bajar();
+  try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
+}
 function mostrarPedido(p) {
   const antes = S.pedido;
   S.pedido = p;
   const caja = $('aviso-pedido');
   if (!p) { caja.hidden = true; return; }
-  const [t, sub] = TEXTO_ESTADO[p.estado] || [p.estado, ''];
+  const envio = p.entrega === 'envio';
+  const [t, sub] = p.estado === 'terminado' && envio ? ['¡Pedido en camino!', ''] : (TEXTO_ESTADO[p.estado] || [p.estado, '']);
+  const resena = p.estado === 'terminado' ? urlResena(p.resena?.url) : '';
   const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
   const etiqueta = programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
     timeZone:'America/Argentina/Buenos_Aires',weekday:'short',hour:'2-digit',minute:'2-digit'}) : t;
   caja.className = 'aviso-pedido ' + p.estado;
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
     el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
-      : p.estado === 'terminado' ? (p.entrega === 'envio' ? 'El local coordinará su entrega' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
-    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null].filter(Boolean));
+      : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
+    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null,
+    resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null].filter(Boolean));
   caja.hidden = false;
-  if (antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado)) {
+  const cambio = antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado);
+  if (p.estado === 'terminado' && (cambio || !antes)) despedidaPedido(p);
+  else if (cambio) {
     // El texto lo arma la función con los mensajes que configuró el local.
-    if (p.aviso && ['confirmado', 'terminado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
+    if (p.aviso && ['confirmado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
     try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
   }
   programarSondeo();

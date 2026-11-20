@@ -106,8 +106,16 @@ Estados: `pendiente` (requiere revisión) → `confirmado` (el gerente autoriza 
 y el cliente recibe «tu pedido está listo») / `rechazado` (con motivo para el cliente) / `cancelado` (por el cliente).
 
 **Mensajes configurables** (pestaña Mensajes, por sucursal; vacío = texto sugerido): bienvenida,
-pedido terminado (retiro y envío), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}`
-`{direccion}` `{local}` `{motivo}`.
+«Listo para retirar» y «Pedido enviado» (el botón del gerente cambia según la entrega; los dos pasan el pedido a
+`terminado`), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}` `{direccion}` `{local}` `{motivo}`.
+
+**Al terminar el pedido: reseña y cierre.** Después del aviso de «listo» o «enviado», el cliente recibe la invitación a
+reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó su **link de reseñas de Google**) y el
+**mensaje de cierre** («¡Gracias por elegirnos!»). Se edita en Mensajes → «Al terminar el pedido: reseña y cierre»
+(dueño, administradora o gerente del local). El link es por sucursal, solo `https://` y de Google (g.page,
+maps.app.goo.gl, google.com…): la base rechaza cualquier otro. Se muestra una vez por pedido en ese teléfono, también si
+el cliente vuelve a abrir el chat dentro de las 24 h; el aviso de estado arriba del chat queda con el enlace «Dejar reseña».
+Mi Gusto: textos cargados con `supabase/operaciones/mi-gusto-chat-resena-cierre-20261120.sql`; link solo en Don Torcuato.
 Un solo pedido pendiente por conversación; topes por día por sucursal, por teléfono y por conversación.
 El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pendiente o confirmado).
 

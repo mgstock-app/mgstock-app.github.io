@@ -137,6 +137,25 @@ begin
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente puede editar ajustes completos de su local';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"x"}}', 1)::text $q$, s_torc));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no edita los mensajes de Torcuato';
+
+  -- Reseña y cierre al terminar el pedido ---------------------------------------------------------------------
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!","resena_url":"https://g.page/r/CT9jkvArEGhFEBM/review","resena":"Cuéntenos su experiencia","cierre":"¡Gracias por elegirnos!"}}', 5)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente carga el link de reseñas de Google y el cierre · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"resena_url":"https://g.page.estafa.example/review"}}', 6)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' link de reseñas que no es de Google rechazado';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"resena_url":"http://g.page/r/x"}}', 6)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' link de reseñas sin https rechazado';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!"}}', 6)::text $q$, s_munro));
+  v := prueba_q(format($q$ select (public.gestlok_chat_panel_config(%L)->'mensajes')::text $q$, s_munro));
+  r := r || E'\n' || case when v like '%"resena_url": "https://g.page/r/CT9jkvArEGhFEBM/review"%' and v like '%"cierre": "¡Gracias por elegirnos!"%'
+    and v like '%Recibimos tu pedido {codigo}%' then 'OK' else 'FALLA' end || ' guardar desde un panel anterior no borra la reseña ni el cierre';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!","resena_url":"","resena":"","cierre":"¡Gracias por elegirnos!"}}', 7)::text $q$, s_munro));
+  v := prueba_q(format($q$ select (public.gestlok_chat_panel_config(%L)->'mensajes' ? 'resena_url')::text $q$, s_munro));
+  r := r || E'\n' || case when v = 'ok:false' then 'OK' else 'FALLA' end || ' borrar el link deja de ofrecer la reseña';
+  perform set_config('role', 'postgres', true);
+  r := r || E'\n' || case when not gestlok_chat_private.mensajes_validos('{"resena_url":"https://evil.example/x"}')
+      and gestlok_chat_private.mensajes_validos('{"resena_url":"https://maps.app.goo.gl/abc","cierre":"Gracias"}')
+    then 'OK' else 'FALLA' end || ' la base solo guarda links de reseñas de Google';
   perform prueba_como('duena.a@prueba.example');
 
   -- Catálogo ---------------------------------------------------------------------------------------------------

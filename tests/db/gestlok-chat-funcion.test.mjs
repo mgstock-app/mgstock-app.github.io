@@ -41,6 +41,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   ok(DB, ['-f', 'supabase/migrations/20261120024820_gestlok_chat_reportes_fecha_local.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261120024908_gestlok_chat_turnos_privilegios_privados.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261120060000_gestlok_chat_promos_cantidad.sql']);
+  ok(DB, ['-f', 'supabase/migrations/20261120070000_gestlok_chat_resena_cierre.sql']);
   ok(DB, [], SEMILLA);
   process.env.CHAT_PG_DB = urlFor(DB);
 
@@ -100,6 +101,18 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.match(r.body.pedidos[0].aviso, /sal|entreg|listo|pedido/i);
   assert.match(r.body.pedidos[0].aviso, /Mitre 200/);
   assert.doesNotMatch(JSON.stringify(r.body), /MM-0001/, 'el código no llega al cliente');
+  // Pedido terminado: cierre siempre; la invitación a reseñar solo si el local cargó su link de Google.
+  assert.equal(r.body.pedidos[0].cierre, '¡Gracias por elegirnos!');
+  assert.equal(r.body.pedidos[0].resena, null, 'sin link no se ofrece la reseña');
+  ok(DB, [], `update gestlok_chat_private.sucursales set mensajes = mensajes || '{"resena_url":"https://g.page/r/CT9jkvArEGhFEBM/review","resena":"Nos ayudaría mucho que nos deje su reseña y nos cuente su experiencia.","cierre":"¡Gracias por elegirnos! 🥰"}' where slug = 'mi-gusto-munro'`);
+  r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
+  assert.deepEqual(r.body.pedidos[0].resena, {texto: 'Nos ayudaría mucho que nos deje su reseña y nos cuente su experiencia.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'});
+  assert.equal(r.body.pedidos[0].cierre, '¡Gracias por elegirnos! 🥰');
+  const enCamino = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'abrir'});
+  assert.match(enCamino.body.pedidos[0].aviso, /en camino a Mitre 200/, 'envío terminado = en camino');
+  assert.equal(enCamino.body.pedidos[0].resena.url, 'https://g.page/r/CT9jkvArEGhFEBM/review', 'al volver a abrir el chat también llega');
+  assert.notEqual(psql(DB, [], `update gestlok_chat_private.sucursales set mensajes = mensajes || '{"resena_url":"https://evil.example/x"}' where slug = 'mi-gusto-munro'`).status, 0,
+    'la base no guarda links de reseñas que no son de Google');
 
   // El chat no guarda datos personales en los mensajes
   const msgs = ok(DB, ['-At', '-c', 'select string_agg(texto, \' | \') from gestlok_chat_private.mensajes']);
