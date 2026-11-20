@@ -309,5 +309,21 @@ begin
        from (select * from gestlok_chat_private.pedidos where conversacion_id = c.id order by creado_at desc limit 5) p), '[]'::jsonb));
 end $function$;
 
--- Los perfiles que lleven más de 24 meses sin compras no se reidentifican.
--- El borrado físico se ejecuta con el cron de limpieza existente.
+-- Ningún chat ABIERTO desaparece porque el cliente haya cambiado de aplicación.
+-- Solo los gerentes pueden cerrar, y los hilos cerrados se eliminan a los 60 días.
+-- Los perfiles inactivos se eliminan físicamente después de 24 meses.
+create or replace function gestlok_chat_private.purgar()
+returns jsonb language plpgsql security definer set search_path='' as $
+declare n_conv integer; n_lim integer; n_clientes integer;
+begin
+  delete from gestlok_chat_private.conversaciones
+  where cerrada_at is not null and ultima_at < now()-interval '60 days';
+  get diagnostics n_conv=row_count;
+  delete from gestlok_chat_private.clientes_frecuentes
+  where ultimo_pedido_at < now()-interval '24 months';
+  get diagnostics n_clientes=row_count;
+  delete from gestlok_chat_private.limites where ventana < now()-interval '2 days';
+  get diagnostics n_lim=row_count;
+  return jsonb_build_object('conversaciones',n_conv,'limites',n_lim,'clientes',n_clientes);
+end $;
+revoke all on function gestlok_chat_private.purgar() from public,anon,authenticated;

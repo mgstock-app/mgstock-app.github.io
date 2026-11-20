@@ -512,8 +512,14 @@ begin
   perform set_config('role','postgres',true);
   update gestlok_chat_private.conversaciones set ultima_at = now() - interval '61 days' where id = conv1;
   j := gestlok_chat_private.purgar();
+  select count(*) into n from gestlok_chat_private.conversaciones where id=conv1;
+  r := r || E'\n' || case when (j->>'conversaciones')::int=0 and n=1 then 'OK' else 'FALLA' end
+    || ' conversación abierta no desaparece aunque pasen 60 días';
+  update gestlok_chat_private.conversaciones set cerrada_at = now() - interval '61 days' where id=conv1;
+  j := gestlok_chat_private.purgar();
   select count(*) into n from gestlok_chat_private.pedidos where id = ped1 and conversacion_id is null;
-  r := r || E'\n' || case when (j->>'conversaciones')::int = 1 and n = 1 then 'OK' else 'FALLA' end || ' conversaciones viejas se borran y el pedido queda';
+  r := r || E'\n' || case when (j->>'conversaciones')::int=1 and n=1 then 'OK' else 'FALLA' end
+    || ' conversación cerrada antigua se elimina y pedido permanece';
   select count(*) into n from gestlok_chat_private.mensajes where conversacion_id = conv1;
   r := r || E'\n' || case when n = 0 then 'OK' else 'FALLA' end || ' sin mensajes huérfanos';
 
