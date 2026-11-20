@@ -569,6 +569,64 @@ $('btn-carrito').onclick = abrirCarrito;
 $('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Finalizar pedido');
 $('btn-info').onclick = abrirInfo;
 
+// La foto se redimensiona en el teléfono: reduce uso de datos y elimina metadatos EXIF.
+async function imagenComprimida(archivo) {
+  if (!archivo || !archivo.type.startsWith('image/')) throw Error('Elegí una imagen.');
+  if (archivo.size > 25000000) throw Error('La foto es demasiado grande.');
+  let bmp;
+  try { bmp=await createImageBitmap(archivo); }
+  catch {
+    bmp=await new Promise((ok,fail)=>{
+      const img=new Image();const url=URL.createObjectURL(archivo);
+      img.onload=()=>{URL.revokeObjectURL(url);ok(img);};
+      img.onerror=()=>{URL.revokeObjectURL(url);fail(Error('No se pudo abrir la imagen.'));};
+      img.src=url;
+    });
+  }
+  const lienzo=document.createElement('canvas');
+  const escala=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+  lienzo.width=Math.max(1,Math.round(bmp.width*escala));
+  lienzo.height=Math.max(1,Math.round(bmp.height*escala));
+  lienzo.getContext('2d').drawImage(bmp,0,0,lienzo.width,lienzo.height);
+  bmp.close?.();
+  let foto=await new Promise(ok=>lienzo.toBlob(ok,'image/jpeg',0.82));
+  if (!foto || foto.size>2000000) {
+    const escala2=Math.min(1,1100/Math.max(lienzo.width,lienzo.height));
+    const reducido=document.createElement('canvas');
+    reducido.width=Math.max(1,Math.round(lienzo.width*escala2));
+    reducido.height=Math.max(1,Math.round(lienzo.height*escala2));
+    reducido.getContext('2d').drawImage(lienzo,0,0,reducido.width,reducido.height);
+    foto=await new Promise(ok=>reducido.toBlob(ok,'image/jpeg',0.65));
+  }
+  if (!foto || foto.size>2000000) throw Error('La imagen sigue siendo demasiado grande. Probá con otra foto.');
+  const data=await new Promise((ok,fail)=>{
+    const reader=new FileReader();reader.onload=()=>ok(String(reader.result));reader.onerror=()=>fail(Error('No se pudo leer la foto.'));
+    reader.readAsDataURL(foto);
+  });
+  return {mime:'image/jpeg',imagen:data.split(',')[1]};
+}
+async function enviarFoto(archivo) {
+  if (S.enviando || S.cerrada) return;
+  S.enviando=true;$('btn-galeria').disabled=true;$('btn-camara').disabled=true;
+  try {
+    const imagen=await imagenComprimida(archivo);
+    const r=await api('adjuntar',imagen);
+    if (!r.ok) throw Error(r.error||'No se pudo enviar la foto.');
+    burbujaFoto('cliente',r.imagen_url,'Foto enviada al gerente');
+    S.soportePendiente=true;programarSondeo();
+  } catch(e) {burbuja('error',e.message||'No pudimos enviar la foto.');}
+  finally {S.enviando=false;$('btn-galeria').disabled=false;$('btn-camara').disabled=false;}
+}
+$('btn-galeria').onclick=()=>$('foto-galeria').click();
+$('btn-camara').onclick=()=>$('foto-camara').click();
+for (const input of [$('foto-galeria'),$('foto-camara')]) {
+  input.addEventListener('change',()=>{
+    const archivo=input.files?.[0];input.value='';
+    if (archivo) enviarFoto(archivo);
+  });
+}
+
+
 // ---------------------------------------------------------------------------------------------- inicio
 function pantallaFija(titulo, detalle) {
   $('app').setAttribute('aria-busy', 'false');
