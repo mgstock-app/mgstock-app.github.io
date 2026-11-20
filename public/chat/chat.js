@@ -583,7 +583,7 @@ function abrirDatos() {
       ? '¡Qué bueno volver a atenderlo! ¿El envío sigue siendo a '+perfil.direccion+'?'
       : '¡Qué bueno volver a atenderlo! ¿El pedido es a nombre de '+perfil.nombre+'?';
     const si=el('button',{type:'button',class:'boton chico',text:'Sí, es correcto',onclick:()=>{
-      if (perfil.nombre && (!d.nombre.trim() || d.entrega==='retiro')) {
+      if (perfil.nombre && (!String(d.nombre || '').trim() || d.entrega==='retiro')) {
         d.nombre=perfil.nombre;inputNombre.value=perfil.nombre;
       }
       if (direccion) {d.direccion=perfil.direccion;inputDireccion.value=perfil.direccion;}
