@@ -81,8 +81,8 @@ herramientas `agregar_producto`, `quitar_producto`, `vaciar_pedido`, `mostrar_ca
 `estado_del_pedido` y `cancelar_pedido_enviado`. Recibe las reglas fijas, los datos del local, las **indicaciones** y la
 **información / preguntas frecuentes** que carga el dueño en la pestaña **Mensajes**, la carta con códigos P1, P2… (sin
 identificadores internos) y el pedido en curso. No puede crear pedidos (los crea la base con el formulario), cambiar
-precios, terminar pedidos ni ver otros clientes. Proveedores: `openai` (ChatGPT, por defecto `gpt-4.1-mini`; elegido para Mi Gusto), `anthropic`
-(Claude, `claude-haiku-5-5`) o `gemini` (`gemini-flash-latest`). Secretos de la función: `GESTLOK_CHAT_IA_PROVEEDOR`,
+precios, terminar pedidos ni ver otros clientes. Proveedores: `gemini` (`gemini-flash-latest`, gratuito; elegido para Mi Gusto), `openai` (ChatGPT, `gpt-4.1-mini`), `anthropic`
+(Claude, `claude-haiku-5-5`). Para Mi Gusto: secretos `GESTLOK_CHAT_IA_PROVEEDOR=gemini` y `GESTLOK_CHAT_IA_CLAVE` (clave gratis de Google AI Studio). Secretos de la función: `GESTLOK_CHAT_IA_PROVEEDOR`,
 `GESTLOK_CHAT_IA_CLAVE`, opcionales `GESTLOK_CHAT_IA_MODELO` y `GESTLOK_CHAT_IA_URL`. Sin clave, con la IA apagada o
 si falla (12 s, 4 rondas), responde el motor guiado.
 
