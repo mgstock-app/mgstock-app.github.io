@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261119c';
+  const VERSION_CSS = '20261120stock1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -45,7 +45,7 @@
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
+      [['pedidos', 'Pedidos'], ['stock', 'Stock'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) : null))),
     el('main', {id: 'contenido', class: 'contenido', tabindex: '-1'}),
@@ -126,7 +126,7 @@
       if (b.dataset.p === 'charlas') b.hidden = !puede('gestionar');
     }
     clearTimeout(S.sondeo);
-    ({pedidos: verPedidos, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
+    ({pedidos: verPedidos, stock: verStock, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
@@ -207,6 +207,119 @@
     verPedidos();
   }
 
+  // ------------------------------------------------------------------------------------------- stock operativo, exclusivo del panel interno
+  async function verStock() {
+    contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando stock del chat…'}));
+    const sucursalId = S.suc.id;
+    let c, extras;
+    try {
+      [c, extras] = await Promise.all([
+        rpc('panel_catalogo', {p_sucursal: sucursalId}),
+        rpc('panel_stock_adicionales', {p_sucursal: sucursalId}),
+      ]);
+    } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    if (S.suc.id !== sucursalId || S.pestana !== 'stock') return;
+    const editable = puede('gestionar');
+    const bloques = [];
+    const encabezado = el('div', {class: 'stock-encabezado'},
+      el('div', {}, el('h2', {text: 'Disponibilidad'}), el('p', {class: 'nota', text:
+        'Control interno del local. Apagá productos o adicionales agotados; el cliente no ve estos interruptores.'})));
+    const categorias = [...c.categorias].sort((a,b) => (a.orden||0)-(b.orden||0));
+    if (c.productos.some(p => !p.categoria_id)) categorias.push({id: null, nombre: 'Otros'});
+    for (const categoria of categorias) {
+      const productos = c.productos.filter(p => (p.categoria_id||null) === categoria.id && p.activo);
+      if (!productos.length) continue;
+      bloques.push(crearGrupoStock(categoria.nombre, productos.map(p => ({id:p.id, nombre:p.nombre,
+        precio:p.precio, disponible: p.disponible, tipo:'producto', categoria_id:categoria.id})),
+        categoria.id, editable, sucursalId));
+    }
+    if (extras?.length) {
+      const elementos = extras.map(o => ({id:o.grupo_id + ':' + o.valor_id, nombre:o.nombre,
+        precio:o.extra_min, precio_max:o.extra_max, disponible:o.disponible,
+        tipo:'adicional', grupo_id:o.grupo_id, valor_id:o.valor_id}));
+      bloques.push(crearGrupoStock(categorias.some(k => /^adicionales$/i.test(k.nombre)) ? 'Extras opcionales' : 'Adicionales', elementos, null, editable, sucursalId));
+    }
+    contenido.replaceChildren(encabezado, ...(bloques.length ? bloques : [el('p', {class:'nota',text:'No hay productos activos para controlar.'})]));
+  }
+
+  function crearGrupoStock(titulo, items, categoriaId, editable, sucursalId) {
+    const disponibles = items.filter(x => x.disponible).length;
+    const bloque = el('section', {class: 'stock-bloque'});
+    const desplegar = el('button', {type:'button',class:'stock-desplegar',
+      'aria-expanded':'false','aria-label':'Mostrar productos de ' + titulo, text:titulo});
+    const lista = el('div', {class: 'stock-lista', hidden:true});
+    const cabecera = el('div', {class:'stock-cabecera' + (/empanadas?/i.test(titulo)?' empanadas':'')},
+      desplegar, el('span',{class:'stock-conteo',text:disponibles + ' de ' + items.length + ' disponibles'}));
+    bloque.append(cabecera, lista);
+    desplegar.onclick = () => {
+      lista.hidden = !lista.hidden;
+      
+      desplegar.setAttribute('aria-expanded', String(!lista.hidden));
+    };
+    function itemFila(i) {
+      const precio = i.precio_max && i.precio_max !== i.precio
+        ? ' · ' + pesos(i.precio) + '–' + pesos(i.precio_max) : ' · ' + pesos(i.precio);
+      const estado = el('span', {class:'stock-estado ' + (i.disponible?'encendido':'apagado'),
+        text:i.disponible?'Disponible':'Agotado'});
+      const cambio = el('input', {type:'checkbox',checked:i.disponible,
+        'aria-label': (i.disponible?'Apagar ':'Encender ') + i.nombre});
+      cambio.onchange = async () => {
+        const anterior = i.disponible;
+        cambio.disabled = true;
+        try {
+          if (i.tipo === 'producto') {
+            await rpc('panel_disponible', {p_producto:i.id,p_disponible:cambio.checked});
+          } else {
+            await rpc('panel_stock_adicional', {p_sucursal:sucursalId,p_grupo:i.grupo_id,p_valor:i.valor_id,
+              p_disponible:cambio.checked});
+          }
+          i.disponible = cambio.checked;
+          estado.className = 'stock-estado ' + (i.disponible?'encendido':'apagado');
+          estado.textContent = i.disponible?'Disponible':'Agotado';
+          cabecera.querySelector('.stock-conteo').textContent =
+            items.filter(x=>x.disponible).length + ' de ' + items.length + ' disponibles';
+          cambio.setAttribute('aria-label',(i.disponible?'Apagar ':'Encender ')+i.nombre);
+          aviso(i.nombre + (i.disponible ? ' disponible' : ' agotado'));
+        } catch(e) { cambio.checked=anterior; aviso(e.message,true); }
+        finally { cambio.disabled = false; }
+      };
+      return el('div', {class:'stock-item'},
+        el('span',{class:'stock-led ' + (i.disponible?'encendido':'apagado'),'aria-hidden':'true'}),
+        el('div',{class:'stock-item-txt'}, el('strong',{text:i.nombre}),
+          el('small',{text:precio.slice(3)})),estado,
+        editable?el('label',{class:'stock-switch'},cambio,el('span',{class:'stock-slider','aria-hidden':'true'})):null);
+    }
+    lista.replaceChildren(...items.map(itemFila));
+    if (editable && categoriaId) {
+      const todosDisponibles = disponibles === items.length;
+      const boton = el('button',{type:'button',class:'stock-grupo-accion',
+        text:todosDisponibles?'Apagar categoría':'Encender categoría'});
+      boton.onclick = async () => {
+        boton.disabled = true;
+        const encender = items.some(x=>!x.disponible);
+        try {
+          await rpc('panel_stock_categoria',{p_sucursal:sucursalId,p_categoria:categoriaId,p_disponible:encender});
+          for(const i of items)i.disponible=encender;
+          lista.querySelectorAll('.stock-item').forEach(fila => {
+            fila.querySelector('.stock-led').className='stock-led ' + (encender?'encendido':'apagado');
+            const estado=fila.querySelector('.stock-estado');
+            estado.className='stock-estado ' + (encender?'encendido':'apagado');
+            estado.textContent=encender?'Disponible':'Agotado';
+            const control=fila.querySelector('input[type=checkbox]');
+            if (control) { control.checked=encender;control.setAttribute('aria-label',
+              (encender?'Apagar ':'Encender ')+fila.querySelector('strong').textContent); }
+          });
+          cabecera.querySelector('.stock-conteo').textContent=
+            items.filter(x=>x.disponible).length + ' de ' + items.length + ' disponibles';
+          boton.textContent=encender?'Apagar categoría':'Encender categoría';
+          aviso(titulo+(encender?' habilitada':' agotada'));
+        }catch(e){aviso(e.message,true);boton.disabled=false;}
+      };
+      lista.prepend(el('div',{class:'stock-acciones'},boton));
+    }
+    return bloque;
+  }
+
   // ------------------------------------------------------------------------------------------- carta
   async function verCarta() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando la carta…'}));
@@ -217,7 +330,7 @@
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
     poner(contenido,
-      el('p', {class: 'nota', text: config ? 'Cargá lo que ofrecés por chat: productos, precios y categorías. «Hay» se apaga cuando algo se agota.' : 'Carta en solo lectura.'}),
+      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para prender o apagar por falta de stock usá la pestaña Stock.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
         el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)})) : null,
@@ -227,11 +340,7 @@
         prods.map(p => el('div', {class: 'producto' + (p.activo ? '' : ' inactivo')},
           el('div', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
             el('small', {text: pesos(p.precio) + ((p.opciones || []).length ? ' · con opciones' : '') + (p.activo ? '' : ' · no figura en la carta')})),
-          puede('gestionar') ? el('label', {class: 'interruptor'},
-            el('input', {type: 'checkbox', checked: p.disponible, 'aria-label': 'Disponible: ' + p.nombre, onchange: async ev => {
-              try { await rpc('panel_disponible', {p_producto: p.id, p_disponible: ev.target.checked}); aviso(p.nombre + (ev.target.checked ? ' disponible' : ' agotado')); }
-              catch (e) { ev.target.checked = !ev.target.checked; aviso(e.message, true); }
-            }}), el('span', {text: 'Hay'})) : el('span', {class: p.disponible ? 'ok' : 'agotado', text: p.disponible ? 'Disponible' : 'Agotado'}),
+          el('span', {class: !p.activo ? 'stock-inactivo' : p.disponible ? 'ok' : 'agotado', text: !p.activo ? 'Oculto' : p.disponible ? 'Disponible' : 'Agotado'}),
           config ? el('button', {type: 'button', class: 'enlace', text: 'Editar', onclick: () => editarProducto(p, c)}) : null)))))
         : el('div', {class: 'vacio'}, el('p', {text: 'Todavía no hay productos.'})));
   }
@@ -451,6 +560,8 @@
     nivel: 'configurar',
     suc: [{id: 's1', nombre: 'Munro', slug: 'demo', activa: true, nivel: 'configurar', pendientes: 1}, {id: 's2', nombre: 'Don Torcuato', slug: 'demo-2', activa: false, nivel: 'configurar', pendientes: 0}],
     cats: [{id: 'c1', nombre: 'Empanadas', orden: 1, activa: true}, {id: 'c2', nombre: 'Pizzas', orden: 2, activa: true}],
+    adicionales: [{grupo_id:'gratinado',valor_id:'gratinar',nombre:'Gratinada adicional',
+      extra_min:900,extra_max:900,disponible:true}],
     prods: [{id: 'p1', categoria_id: 'c1', nombre: 'Empanada de carne', descripcion: '', precio: 1200, activo: true, disponible: true, orden: 0, opciones: []},
       {id: 'p2', categoria_id: 'c1', nombre: 'Empanada de humita', descripcion: '', precio: 1200, activo: true, disponible: false, orden: 0, opciones: []},
       {id: 'p3', categoria_id: 'c2', nombre: 'Pizza muzzarella', descripcion: '', precio: 7500, activo: true, disponible: true, orden: 0, opciones: [
@@ -474,6 +585,13 @@
       case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
       case 'panel_disponible': D.prods.find(p => p.id === a.p_producto).disponible = a.p_disponible; return {ok: true};
+      case 'panel_stock_categoria':
+        D.prods.filter(p=>p.categoria_id===a.p_categoria&&p.activo).forEach(p=>{p.disponible=a.p_disponible;});
+        return {ok:true};
+      case 'panel_stock_adicionales': return D.adicionales;
+      case 'panel_stock_adicional':
+        D.adicionales.find(o=>o.grupo_id===a.p_grupo&&o.valor_id===a.p_valor).disponible=a.p_disponible;
+        return {ok:true};
       case 'panel_producto_guardar': { const x = a.p_producto; if (x.id) Object.assign(D.prods.find(p => p.id === x.id), x); else D.prods.push({...x, id: 'n' + Date.now()}); return {ok: true}; }
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};

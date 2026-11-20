@@ -30,7 +30,16 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   ok(DB, ['-f', MIG]); // repetible
   ok(DB, ['-f', MIG2]);
   ok(DB, ['-f', MIG2]); // repetible
-  ok(DB, ['-f', 'supabase/migrations/20261120000406_gestlok_chat_confirmacion_manual.sql']);
+  for (const name of [
+    '20261120000406_gestlok_chat_confirmacion_manual.sql',
+    '20261120010751_gestlok_chat_pagos_por_entrega.sql',
+    '20261120010908_gestlok_chat_pagos_retiro_delivery_columnas.sql',
+    '20261120013358_gestlok_chat_stock_interno_permisos_gerente.sql',
+    '20261120014204_gestlok_chat_gerente_no_ampliar_editor.sql',
+  ]) {
+    ok(DB, ['-f', 'supabase/migrations/' + name]);
+    ok(DB, ['-f', 'supabase/migrations/' + name]); // idempotencia
+  }
   const r = psql(DB, ['-f', 'supabase/tests/gestlok-chat-permisos.sql']);
   const out = (r.stderr || '') + (r.stdout || '');
   assert.match(out, /ERROR:\s+INFORME/, out);
