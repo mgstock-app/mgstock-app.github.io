@@ -312,3 +312,36 @@ test('venta sugerida: el producto más caro y el más económico de cada categor
   assert.deepEqual(r.mensajes[0].botones.map(b => b.texto), ['Coca-Cola 2,25 L · $ 7.500', 'Coca-Cola lata 354 ml · $ 3.100',
     'Franui Chocolate amargo · $ 8.500', 'Franui Chocolate con leche · $ 8.500', 'Ver más bebidas', 'No, gracias. Finalizar']);
 });
+
+// Carta tipo Mi Gusto: tamaños en el nombre, medidas y packs con números (20/11/2026).
+const CARTA_TAMANOS = {categorias: [{id: 'p8', nombre: 'Pizzas de 8 porciones'}, {id: 'p4', nombre: 'Pizzas individuales'}, {id: 'beb', nombre: 'Bebidas'}, {id: 'pro', nombre: 'Promociones'}],
+  productos: [
+    ...['Muzzarella', 'Napolitana', 'Fugazzeta', 'Panceta', 'Pepperoni'].map((s, i) => ({id: 'g' + i, categoria_id: 'p8', nombre: 'Pizza 8 porciones · ' + s, descripcion: 'Pizza entera de 8 porciones', precio: 17900 + i, opciones: []})),
+    ...['Muzza', 'Napolitana', 'Pepperoni', 'Jamón y morrón'].map((s, i) => ({id: 'c' + i, categoria_id: 'p4', nombre: 'Pizza individual ' + s, descripcion: 'Pizza de 4 porciones', precio: 10900 + i, opciones: []})),
+    {id: 'b1', categoria_id: 'beb', nombre: 'Coca-Cola 1,75 L', precio: 6500, opciones: []}, {id: 'b2', categoria_id: 'beb', nombre: 'Coca-Cola Zero 1,75 L', precio: 6500, opciones: []},
+    {id: 'b3', categoria_id: 'beb', nombre: 'Coca-Cola 2,25 L', precio: 7500, opciones: []}, {id: 'b4', categoria_id: 'beb', nombre: 'Fanta 2,25 L', precio: 7500, opciones: []},
+    {id: 'k2', categoria_id: 'pro', nombre: 'Pack 2 empanadas + 1 salsa', precio: 10900, opciones: []}, {id: 'k12', categoria_id: 'pro', nombre: 'Pack 12 empanadas + 3 salsas', precio: 52900, opciones: []}]};
+const pedidoDe = t => { const r = M.interpretarPedido(CARTA_TAMANOS, t); return {l: r.lineas.map(l => [l.producto_id, l.cantidad]), d: r.dudas.map(d => d.opciones.map(p => p.id))}; };
+
+test('«de 8 porciones», «2,25 L» o «Pack 12» son parte del producto, no la cantidad', () => {
+  assert.deepEqual(pedidoDe('una pizza de muzzarella de 8 porciones').l, [['g0', 1]]);
+  assert.deepEqual(pedidoDe('quiero una pizza de 8 porciones de muzzarella').l, [['g0', 1]]);
+  assert.deepEqual(pedidoDe('2 pizzas de 8 porciones de napolitana').l, [['g1', 2]]);
+  assert.deepEqual(pedidoDe('una coca 2,25').l, [['b3', 1]], 'la coma decimal no corta el pedido');
+  assert.deepEqual(pedidoDe('2 coca de 1,75').l, [['b1', 2]], 'lo que no se nombró (Zero) no se agrega');
+  assert.deepEqual(pedidoDe('2 packs de 12 empanadas').l, [['k12', 2]]);
+});
+
+test('pizza chica, individual o de 4 porciones: se ofrecen las individuales de la carta', () => {
+  for (const t of ['quiero una pizza chica', 'una pizza individual', 'una pizza de 4 porciones'])
+    assert.deepEqual(pedidoDe(t).d, [['c0', 'c1', 'c2', 'c3']], t);
+  assert.deepEqual(pedidoDe('quiero una pizza chica de muzzarella').l, [['c0', 1]]);
+  assert.deepEqual(pedidoDe('pizza indi napolitana').l, [['c1', 1]]);
+  assert.deepEqual(pedidoDe('2 pizzas chicas de pepperoni').l, [['c2', 2]]);
+  assert.deepEqual(pedidoDe('una pizza grande de muzzarella').l, [['g0', 1]]);
+  assert.deepEqual(pedidoDe('una pizza de muzzarella').d, [['g0', 'c0']], 'sin tamaño pregunta cuál');
+  const r = M.responder({sucursal: {}, catalogo: CARTA_TAMANOS, estado: null, entrada: {texto: 'una pizza grande'}});
+  assert.equal(r.mensajes[0].tipo, 'carta', 'muchas opciones de una categoría: abre la carta ahí');
+  assert.equal(r.mensajes[0].categoria, 'p8');
+});
+
