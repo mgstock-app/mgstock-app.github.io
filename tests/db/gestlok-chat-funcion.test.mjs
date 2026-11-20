@@ -146,6 +146,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'abrir'})};
   assert.equal(iaPedidos.length, 1, 'la bienvenida se pide una sola vez por conversación');
   assert.equal(r.body.nuevos.length, 0);
+  assert.equal(r.body.mensajes.at(-1).texto, 'Buenas noches, bienvenido a Mi Gusto Munro. Puede ver el menú con los botones de abajo.', 'al recargar se ve la misma bienvenida');
   iaPedidos = [];
   // Prioridad botones y carrito: un pedido escrito lo resuelve el asistente guiado, sin llamar a la IA.
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'tres de jamón y queso porfa'}})};
