@@ -285,7 +285,9 @@ Deno.serve(async (req) => {
         r.estado.carrito = []; r.estado.paso = "enviado";
         r.estado.programado = false; // Cada nuevo pedido requiere consentimiento independiente.
         r.estado.sugerido = false; // El próximo pedido vuelve a recibir la venta sugerida.
-        mensajes.push({ texto: String(pedido.aviso) });
+        mensajes.push({ texto: String(pedido.aviso), botones:[
+          {id:"estado",texto:"Ver estado del pedido"},
+          {id:"soporte",texto:"Necesito ayuda"}] });
       }
     } else if (r.accion?.tipo === "estado") {
       const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
