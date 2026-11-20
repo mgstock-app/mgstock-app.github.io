@@ -48,6 +48,8 @@ describe('GESTLOK Chat · soporte y seguimiento humano',()=>{
     cy.contains('.soporte-reclamo','Demora').contains('button','Responder en el chat').click();
     cy.get('dialog.dialogo textarea.soporte-texto').type('Ya lo revisamos. Tu pedido está en preparación.');
     cy.get('dialog.dialogo').contains('button','Enviar mensaje').click();
+    cy.contains('.soporte-reclamo','Respondido, pendiente de cierre',{timeout:8000}).should('be.visible');
+    cy.contains('.soporte-reclamo','Mi pedido está tardando mucho').contains('button','Cerrar reclamo').click();
     cy.contains('No hay reclamos pendientes',{timeout:8000}).should('be.visible');
     cy.get('#globo-soporte').should('not.be.visible');
   });
