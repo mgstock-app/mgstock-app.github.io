@@ -101,7 +101,13 @@ describe("MG Stock: Ingreso de mercadería", () => {
     // manual desde un .should (ese elemento puede haber sido reemplazado por render()).
     cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().check({force:true});
     cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().should('be.checked');
-    cy.get('#ing-ok',{timeout:15000}).should('not.be.disabled');
+    // Diagnóstico del bloqueo real, sin omitir el control antidualidad de importación.
+    cy.get('#ing-ok',{timeout:15000}).should($ok=>{
+      const $=Cypress.$, bloque=$('#ing-bloqueo').text().trim();
+      const pendientes=$('#ing-pend select').length;
+      const seleccionados=$('#ing-tabla [data-ingon]:checked:not(:disabled)').length;
+      expect($ok.prop('disabled'),'Importar habilitado (bloqueo='+JSON.stringify(bloque)+', pendientes='+pendientes+', seleccionados='+seleccionados+')').to.eq(false);
+    });
     cy.get("#ing-ok").click();
     cy.get("#pn").should("contain.text", "ya se importó");
     cy.get('#pn [data-act="close"]').first().click();
