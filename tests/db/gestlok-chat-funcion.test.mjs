@@ -156,7 +156,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   // Pedido listo/enviado: cierre inmediato aunque el cliente todavía no confirmó recepción.
   assert.equal(r.body.pedidos[0].recibido_at, null);
   assert.equal(r.body.pedidos[0].cierre, '¡Gracias por elegirnos!');
-  assert.equal(r.body.pedidos[0].resena, undefined, 'sin URL de Google configurada no hay enlace');
+  assert.equal(r.body.pedidos[0].resena, null, 'sin URL de Google configurada no hay enlace');
   r = await llamar({slug:'mi-gusto-munro', token:TOKEN, accion:'recibido'});
   assert.equal(r.status,200);
   assert.ok(r.body.pedido.recibido_at, 'registra entrega confirmada por el cliente');
