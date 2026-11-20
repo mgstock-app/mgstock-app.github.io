@@ -5,7 +5,7 @@ describe('GESTLOK Chat · botonera interna de stock', () => {
     cy.get('[data-p="stock"]').click();
     cy.contains('Disponibilidad').should('be.visible');
     cy.get('.stock-bloque').should('have.length',3);
-    cy.get('.stock-switch').should('not.exist');
+    cy.get('.stock-lista').should('not.be.visible');
     cy.contains('.stock-cabecera','Empanadas').find('button.stock-desplegar').click();
     cy.contains('.stock-bloque','Empanadas').within(() => {
       cy.get('.stock-switch').should('have.length',2);
