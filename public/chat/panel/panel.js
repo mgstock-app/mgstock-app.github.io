@@ -107,13 +107,14 @@
     const sel = $('sucursal');
     sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id,
       text: s.nombre + ((s.pendientes || s.reclamos) ? ' (' + ((s.pendientes||0)+(s.reclamos||0)) + ')' : '')})));
-    let guardada = null; try { guardada = localStorage.getItem('gestlok-chat-panel:sucursal'); } catch { /* sin almacenamiento */ }
+    const sucursalPref = DEMO ? 'gestlok-chat-panel:sucursal-demo' : 'gestlok-chat-panel:sucursal';
+    let guardada = null; try { guardada = localStorage.getItem(sucursalPref); } catch { /* sin almacenamiento */ }
     S.suc = (LOCAL && r.sucursales.find(s => s.local_id === LOCAL)) || r.sucursales.find(s => s.id === guardada) || r.sucursales[0];
     if (EMBED && LOCAL && S.suc.local_id !== LOCAL) return fijo('Sin acceso a esta sucursal', 'Tu usuario no tiene la Central de mensajes de este local.');
     sel.value = S.suc.id; sel.hidden = r.sucursales.length < 2 || (EMBED && !!LOCAL);
     sel.onchange = () => {
       S.suc = S.sucursales.find(s => s.id === sel.value); S.pendientesVistos = null;
-      try { localStorage.setItem('gestlok-chat-panel:sucursal', S.suc.id); } catch { /* nada */ }
+      try { localStorage.setItem(sucursalPref, S.suc.id); } catch { /* nada */ }
       mostrar();
     };
     $('pestanas').hidden = false;
