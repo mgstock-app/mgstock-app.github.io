@@ -242,6 +242,7 @@ Deno.serve(async (req) => {
       } else {
         pedido = conAviso((data as Json).pedido as Json);
         r.estado.carrito = []; r.estado.paso = "enviado";
+        r.estado.programado = false; // Cada nuevo pedido requiere consentimiento independiente.
         mensajes.push({ texto: String(pedido.aviso) });
       }
     } else if (r.accion?.tipo === "estado") {
@@ -263,7 +264,7 @@ Deno.serve(async (req) => {
       if (!pedido || r.accion?.tipo !== "crear_pedido") throw e;
     }
     return json({ ok: true, mensajes:mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
-      carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
+      atencion:sucursal.atencion, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
       motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);
   } catch (e) {
     const err = e as { code?: string; message?: string };
