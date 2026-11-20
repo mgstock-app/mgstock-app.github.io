@@ -255,7 +255,8 @@ describe('GESTLOK Chat · transferencia y cierre del gerente', () => {
 
 describe('GESTLOK Chat · clientes frecuentes y continuidad sin registro',()=>{
   const empezarPedido=()=>{
-    cy.get('#texto').type('2 empanadas de carne{enter}');
+    // El pedido demo mínimo es $3.000; 3 empanadas de $1.200 permiten finalizar.
+    cy.get('#texto').type('3 empanadas de carne{enter}');
     cy.get('#btn-finalizar').click();
     // Si hay venta sugerida permite rechazar; si no, abre directamente los datos.
     cy.get('body').should($body => {
