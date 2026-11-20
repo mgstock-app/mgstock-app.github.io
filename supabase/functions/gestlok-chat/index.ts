@@ -4,15 +4,17 @@
  * - Topes por IP, por conversación y por sucursal (en la base). Textos acotados. CORS solo para los dominios propios.
  * - Precios, totales, disponibilidad y numeración los decide la base. El asistente solo arma el carrito.
  * - No guarda nombre, teléfono ni dirección en el chat: esos datos van únicamente en el pedido.
- * - Prioridad: botones y carrito (asistente guiado, sin costo). La IA solo responde lo que el guiado no entiende;
- *   si no hay IA o falla, la consulta pasa al gerente por el mismo chat.
+ * - Prioridad: botones y carrito (asistente guiado, sin costo). La IA escribe la bienvenida y responde solo lo que
+ *   el guiado no entiende; si no hay IA o falla, la consulta pasa al gerente por el mismo chat.
+ * - Los avisos de estado del pedido (recibido, confirmado, listo, rechazado) los arma el sistema con los mensajes
+ *   del local; la IA no interviene.
  * Secretos: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (automáticos), GESTLOK_CHAT_SALT (recomendado),
  * GESTLOK_CHAT_ORIGINS (opcional), GESTLOK_CHAT_IA_PROVEEDOR («anthropic» u «openai»), GESTLOK_CHAT_IA_CLAVE,
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
-import { responderIA } from "./ia.js";
+import { bienvenidaIA, responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
 type Turno = {
@@ -154,6 +156,20 @@ Deno.serve(async (req) => {
       if (conv.nueva) {
         const r = responder({ sucursal, catalogo, estado, entrada: { inicio: true }, mensajes: mensajesLocal });
         estado = r.estado; extra = r.mensajes;
+        // La bienvenida la escribe la IA (si está activa y con clave). Botones, carrito, carta y avisos siguen
+        // siendo del sistema. Si la IA tarda, falla o responde algo dudoso, queda la bienvenida guiada.
+        if (privado.ia_activa !== false && IA.clave && extra.length) {
+          try {
+            const saludo = await bienvenidaIA({ sucursal, privado, config: IA });
+            const at = (sucursal.atencion as Json) || {};
+            extra = at.habilitado && at.abierto === false
+              // Cerrado: saludo de la IA y, debajo, el aviso del sistema con la próxima apertura y sus botones.
+              ? [{ texto: saludo }, { ...extra[0], texto: String(extra[0].texto || "").replace(/^Gracias por comunicarse\.\s*/, "") }, ...extra.slice(1)]
+              : [{ ...extra[0], texto: saludo }, ...extra.slice(1)];
+          } catch (e) {
+            console.warn("gestlok-chat bienvenida IA no disponible → guiada", (e as Error)?.message);
+          }
+        }
         await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
           p_cliente: "", p_respuesta: r.mensajes.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
         mensajes = [];
