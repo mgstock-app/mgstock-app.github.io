@@ -201,6 +201,8 @@
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
         el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel})),
+      Number(p.cliente_pedidos)>=2
+        ? el('p',{class:'nota-cliente',text:'Cliente frecuente · '+p.cliente_pedidos+' pedidos en esta sucursal'}) : null,
       programadoFuturo?el('p',{class:'nota-cliente',text:'PEDIDO PROGRAMADO · Próxima apertura '+
         new Date(p.programado_para).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
         '. El gerente debe confirmar al comenzar el turno.'}):null,

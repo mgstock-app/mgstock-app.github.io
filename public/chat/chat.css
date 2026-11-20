@@ -163,3 +163,10 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .chat-cerrado p{margin:0 0 10px;font-size:14px}
 .campo[hidden],.nota[hidden],.redactar[hidden],.barra-pedido[hidden]{display:none!important}
 .pago-explicacion,.cambio-previsto{padding:8px;border-radius:8px;background:var(--acento-suave)}
+
+/* Reconocimiento sin registro: pregunta explícita y botones accesibles en celular. */
+.recuerdo-cliente{border:1px solid var(--acento);border-radius:12px;padding:11px 12px;background:var(--acento-suave);margin:7px 0 12px}
+.recuerdo-cliente[hidden]{display:none!important}
+.recuerdo-cliente p{font-size:14px;font-weight:600;line-height:1.4;margin:0 0 10px;overflow-wrap:anywhere}
+.recuerdo-acciones{display:flex;flex-wrap:wrap;gap:8px}
+.recuerdo-acciones button{flex:1;min-width:126px;min-height:42px;white-space:normal}

@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120delivery1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120clientes1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -655,7 +655,11 @@ $('redactar').addEventListener('submit', e => {
   if (!t || S.enviando) return;
   texto.value = ''; texto.style.height = 'auto';
   guardarLocal(CLAVE_TEXTO,'');
-  enviar({texto: t}, t);
+  enviar({texto: t}, t).then(ok=>{
+    if (!ok && !texto.value) {
+      texto.value=t; texto.dispatchEvent(new Event('input'));
+    }
+  });
 });
 $('btn-carta').onclick = abrirCarta;
 $('btn-carrito').onclick = abrirCarrito;
@@ -809,6 +813,7 @@ async function demoApi(accion, extra) {
     return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
   }
   if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : [],cerrada:false};
+  if (accion === 'recordar') return {ok:true,encontrado:false};
   if (accion === 'adjuntar') return {ok:true,imagen_url:null,texto:'Foto enviada al gerente'};
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
