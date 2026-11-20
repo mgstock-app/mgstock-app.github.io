@@ -108,7 +108,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('.burbuja.resena').should('not.exist');
   });
 
-  it('no ofrece reseña antes de recibir; el cliente confirma su recepción sin registrarse', () => {
+  it('ofrece la reseña al marcar listo o enviado, sin esperar la recepción; el cliente igual confirma que lo recibió', () => {
     cy.viewport(390,800);
     const pedido = {creado_at:new Date().toISOString(),estado:'terminado',entrega:'retiro',total:2000,nombre:'Ana',
       aviso:'Su pedido está listo para retirar',resena:{texto:'Déjenos su reseña',url:'https://g.page/r/review'},
@@ -119,12 +119,13 @@ describe('GESTLOK Chat · chat público', () => {
     }).as('fn');
     cy.visit('/chat/?s=mi-gusto-torcuato');
     cy.wait('@fn');
-    cy.get('#aviso-pedido').should('contain.text','Ya recibí mi pedido');
-    cy.get('.burbuja.resena').should('not.exist');
+    cy.get('#aviso-pedido').should('contain.text','Ya recibí mi pedido').find('a').should('have.attr','href','https://g.page/r/review');
+    cy.get('.burbuja.resena').should('have.length', 1).find('a.resena-link').should('contain.text','Dejar mi reseña en Google');
+    cy.get('.burbuja.asistente').last().should('have.text','¡Gracias por elegirnos!');
     cy.get('#aviso-pedido').contains('button','Ya recibí mi pedido').click();
     cy.wait('@fn');
     cy.get('#aviso-pedido').should('contain.text','Pedido recibido por el cliente');
-    cy.get('.burbuja.resena').should('exist');
+    cy.get('.burbuja.resena').should('have.length', 1);
   });
 
   it('pedido enviado: «en camino»; un link de reseña que no es de Google no se muestra', () => {
@@ -135,7 +136,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.wait('@fn');
     cy.get('#aviso-pedido').should('contain.text', '¡Pedido en camino!').find('a').should('not.exist');
     cy.get('.burbuja.resena').should('not.exist');
-    cy.contains('.burbuja.asistente','¡Gracias por elegirnos!').should('not.exist');
+    cy.contains('.burbuja.asistente','¡Gracias por elegirnos!').should('exist');
     cy.get('a[href*="estafa"]').should('not.exist');
   });
 

@@ -71,9 +71,10 @@ export function urlResena(u) {
     'google.com', 'www.google.com', 'google.com.ar', 'www.google.com.ar'];
   return x.protocol === 'https:' && !x.username && !x.password && !x.port && hosts.includes(x.hostname) ? x.href : '';
 }
-/** Pedido terminado → invitación a reseñar (si el local cargó su link) y mensaje de cierre. null en otros estados. */
+/** Pedido terminado («Pedido enviado» o «Listo para retirar») → invitación a reseñar (si el local cargó su link)
+ * y mensaje de cierre, junto con el aviso. No espera la confirmación de recepción del cliente. null en otros estados. */
 export function cierrePedido(pedido, mensajes) {
-  if (pedido?.estado !== 'terminado' || !pedido?.recibido_at) return null;
+  if (pedido?.estado !== 'terminado') return null;
   const d = {nombre: pedido.nombre || ''};
   const url = urlResena(mensajes?.resena_url);
   return {resena: url ? {texto: formalizar(plantilla(mensajeDe(mensajes, 'resena'), d)), url} : null,

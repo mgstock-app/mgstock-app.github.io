@@ -246,7 +246,10 @@ test('reseña y cierre al terminar el pedido: solo links https de Google', () =>
   assert.deepEqual(M.cierrePedido({estado: 'terminado', recibido_at:'2026-11-20T12:00:00Z', nombre: 'Ana'}, msj),
     {resena: {texto: 'Ana, nos ayudaría mucho que nos deje su reseña.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'}, cierre: '¡Gracias por elegirnos! 🥰'});
   assert.deepEqual(M.cierrePedido({estado: 'terminado', recibido_at:'2026-11-20T12:00:00Z', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
-  assert.equal(M.cierrePedido({estado:'terminado', nombre:'Ana'}, msj), null, 'sin recepción no se envía reseña');
+  assert.deepEqual(M.cierrePedido({estado:'terminado', nombre:'Ana'}, msj),
+    {resena: {texto: 'Ana, nos ayudaría mucho que nos deje su reseña.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'}, cierre: '¡Gracias por elegirnos! 🥰'},
+    'al marcar «Pedido enviado» o «Listo para retirar» ya se invita a reseñar, sin esperar la recepción');
+  assert.equal(M.cierrePedido({estado: 'confirmado', nombre: 'Ana'}, msj), null, 'en preparación todavía no se pide reseña');
   assert.equal(M.cierrePedido({estado: 'pendiente'}, msj), null);
   assert.equal(M.cierrePedido({estado: 'rechazado'}, msj), null, 'un pedido rechazado no pide reseña');
   assert.match(M.textoEstadoPedido({estado: 'terminado', entrega: 'envio', nombre: 'Ana', direccion: 'Mitre 200', total: 1000}, {}, {}), /en camino a Mitre 200/);

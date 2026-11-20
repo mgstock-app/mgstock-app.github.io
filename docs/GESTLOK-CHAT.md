@@ -109,7 +109,8 @@ y el cliente recibe «tu pedido está listo») / `rechazado` (con motivo para el
 «Listo para retirar» y «Pedido enviado» (el botón del gerente cambia según la entrega; los dos pasan el pedido a
 `terminado`), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}` `{direccion}` `{local}` `{motivo}`.
 
-**Al terminar el pedido: reseña y cierre.** Después del aviso de «listo» o «enviado», el cliente recibe la invitación a
+**Al terminar el pedido: reseña y cierre.** Junto con el aviso de «listo» o «enviado» (cuando el gerente toca «Listo para retirar» o
+«Pedido enviado», sin esperar a que el cliente confirme la recepción), el cliente recibe la invitación a
 reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó su **link de reseñas de Google**) y el
 **mensaje de cierre** («¡Gracias por elegirnos!»). Se edita en Mensajes → «Al terminar el pedido: reseña y cierre»
 (dueño, administradora o gerente del local). El link es por sucursal, solo `https://` y de Google (g.page,
