@@ -184,6 +184,39 @@ Deno.serve(async (req) => {
     };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;
+    const cierre = await rpc("gestlok_chat_srv_cierre", {p_conversacion:convId,p_token_hash:hash});
+    const cerrada = cierre.cerrada === true;
+    if (accion === "adjuntar") {
+      if (cerrada) return json({ok:false,error:"La conversación ya fue finalizada. Iniciá una nueva."},409,origen);
+      const mime = String(body.mime || "");
+      const imagen = body.imagen;
+      if (!["image/jpeg","image/png","image/webp"].includes(mime) || typeof imagen !== "string" ||
+          imagen.length < 16 || imagen.length > 2700000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(imagen)) {
+        return json({ok:false,error:"Elegí una imagen JPG, PNG o WebP válida (máximo 2 MB)."},400,origen);
+      }
+      let bytes: Uint8Array;
+      try { const bin=atob(imagen); bytes=Uint8Array.from(bin,c=>c.charCodeAt(0)); }
+      catch { return json({ok:false,error:"No pudimos leer la imagen"},400,origen); }
+      if (bytes.length > 2000000 || bytes.length < 16) return json({ok:false,error:"La imagen supera los 2 MB."},413,origen);
+      const jpg = bytes[0]===255 && bytes[1]===216 && bytes[2]===255;
+      const png = bytes[0]===137 && bytes[1]===80 && bytes[2]===78 && bytes[3]===71;
+      const webp = String.fromCharCode(...bytes.slice(0,4))==="RIFF" && String.fromCharCode(...bytes.slice(8,12))==="WEBP";
+      if (!(mime==="image/jpeg"&&jpg || mime==="image/png"&&png || mime==="image/webp"&&webp)) {
+        return json({ok:false,error:"El archivo no corresponde a una imagen válida."},400,origen);
+      }
+      const extension = mime==="image/png"?"png":mime==="image/webp"?"webp":"jpg";
+      const path = sucId+"/"+convId+"/"+crypto.randomUUID()+"."+extension;
+      const bucket=db.storage.from("gestlok-chat-adjuntos");
+      const {error:subError}=await bucket.upload(path,bytes,{contentType:mime,upsert:false,cacheControl:"0"});
+      if (subError) throw subError;
+      try {
+        await rpc("gestlok_chat_srv_adjunto", {p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+          p_path:path,p_mime:mime,p_bytes:bytes.length});
+      } catch (e) { await bucket.remove([path]); throw e; }
+      const {data:firmada}=await bucket.createSignedUrl(path,600);
+      return json({ok:true,imagen_url:firmada?.signedUrl||null,texto:"Foto enviada al gerente.",
+        soporte_pendiente:true},200,origen);
+    }
 
     if (accion === "abrir") {
       let mensajes = (conv.mensajes as Json[]) || [];
