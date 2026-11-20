@@ -143,7 +143,10 @@ async function enviar(entrada, textoVisible) {
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return false;
     }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
-    if (entrada.agregar_varios) { S.borrador = []; S.loteId = null; guardarBorrador(); }
+    // Solo borrar el borrador si el servidor ACEPTÓ el lote; un error de catálogo o
+    // de validación puede devolver HTTP 200 con un mensaje, pero sin incorporar productos.
+    const loteAceptado = !entrada.agregar_varios || r.lote_aceptado === true;
+    if (entrada.agregar_varios && loteAceptado) { S.borrador = []; S.loteId = null; guardarBorrador(); }
     actualizarCarrito(r.carrito);
     if (typeof r.soporte_pendiente === 'boolean') {
       S.soportePendiente = r.soporte_pendiente;
@@ -151,7 +154,7 @@ async function enviar(entrada, textoVisible) {
     }
     for (const m of r.mensajes || []) mensajeAsistente(m);
     if (r.pedido) mostrarPedido(r.pedido);
-    return true;
+    return loteAceptado;
   } catch {
     mostrarEscribiendo(false);
     burbuja('error', 'Sin conexión. Revisá tu internet.');
@@ -607,7 +610,8 @@ async function demoApi(accion, extra) {
     demoPedido = pedido = {...demoPedido, estado: 'cancelado'};
     mensajes.push({texto: 'Su pedido fue cancelado.'});
   }
-  return {ok: true, mensajes, carrito: r.estado.carrito, pedido};
+  return {ok: true, mensajes, carrito: r.estado.carrito, pedido,
+    lote_aceptado: !!extra.entrada?.agregar_varios && r.estado.ultimo_lote === extra.entrada.lote_id};
 }
 
 iniciar();

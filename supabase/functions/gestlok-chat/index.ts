@@ -316,6 +316,7 @@ Deno.serve(async (req) => {
     }
     return json({ ok: true, mensajes:mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
       atencion:sucursal.atencion, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
+      lote_aceptado: !!entrada.agregar_varios && r.estado.ultimo_lote === entrada.lote_id,
       motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);
   } catch (e) {
     const err = e as { code?: string; message?: string };

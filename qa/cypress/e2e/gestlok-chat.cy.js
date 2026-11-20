@@ -15,6 +15,10 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja').should('be.visible').contains('button', 'Pizza muzzarella').click();
     cy.get('#hoja').contains('label', 'Grande').click();
     cy.get('#hoja button[type=submit]').should('contain.text', '10.500').click();
+    cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
+    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella (Grande)');
+    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', 'Pizza muzzarella (Grande)');
     cy.get('#btn-finalizar').click();
     // Venta sugerida: ofrece postres antes de los datos; «Ver postres» abre la carta en esa categoría.
@@ -205,6 +209,9 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.get('#hoja [aria-label="Sumar Criolla"]').click();
     cy.get('#hoja [aria-label="Sumar Crema de ajo"]').click();
     cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', '6.500').click();
+    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.get('#hoja .menu-revision').should('contain.text','4 Empanada de carne').and('contain.text','1 Crema de ajo');
+    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', '4 Empanada de carne').and('contain.text', '1 Crema de ajo');
     cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(375)); // sin desborde horizontal
   });

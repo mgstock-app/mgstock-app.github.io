@@ -20,14 +20,45 @@ describe('GESTLOK Chat · menú interactivo', () => {
 
     cy.get('#hoja .menu-revision button').contains('Enviar selección al asistente').click();
     cy.get('.burbuja.asistente', {timeout: 12000}).last()
-      .should('contain.text', 'Recibí tu selección del menú');
+      .should('contain.text', 'Recibí su selección del menú');
     cy.get('#barra-texto').should('contain.text', '3 productos');
     cy.get('#hoja').should('not.be.visible');
 
     // Registrar el pedido requiere una acción posterior y datos del cliente.
     cy.get('#btn-finalizar').should('contain.text', 'Finalizar').click();
+    cy.contains('.chip','No, gracias. Finalizar').click();
     cy.get('#hoja').should('be.visible');
-    cy.get('#hoja').should('contain.text', 'Tus datos');
+    cy.get('#hoja').should('contain.text', 'Sus datos');
     cy.get('#aviso-pedido').should('not.be.visible');
+  });
+});
+
+describe('GESTLOK Chat · menú interactivo ante un rechazo', () => {
+  it('conserva el borrador si el servidor rechaza el lote y permite volver a corregirlo', () => {
+    cy.viewport(390, 844);
+    const producto = {id:'9a000000-0000-4000-8000-000000000001',categoria_id:'c1',
+      nombre:'Empanada de carne',precio:1200,activo:true,disponible:true,opciones:[]};
+    cy.intercept('POST','**/functions/v1/gestlok-chat', req => {
+      if (req.body.accion === 'abrir') return req.reply({ok:true,sucursal:{
+        slug:'mi-gusto-munro',empresa:'Mi Gusto',nombre:'Munro',acepta_retiro:true,
+        acepta_envio:false,medios_pago:['efectivo']},catalogo:{
+        categorias:[{id:'c1',nombre:'Empanadas'}],productos:[producto]},
+        mensajes:[],nuevos:[{texto:'Bienvenido',botones:[]}],carrito:[],pedidos:[]});
+      return req.reply({ok:true,carrito:[],lote_aceptado:false,
+        mensajes:[{texto:'Producto agotado. No se agregó ningún producto de esta selección.'}]});
+    }).as('chat');
+    cy.visit('/chat/?s=mi-gusto-munro');
+    cy.get('#btn-carta').click();
+    cy.contains('#hoja .producto','Empanada de carne').click();
+    cy.get('#hoja form button[type=submit]').click();
+    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
+    cy.wait('@chat');
+    cy.get('#hoja').should('be.visible').and('contain.text','Tu selección del menú');
+    cy.get('#hoja .menu-revision').should('contain.text','1 × Empanada de carne');
+    cy.get('#barra-texto').should('contain.text','1 producto');
+    cy.reload();
+    cy.get('#btn-carrito').click();
+    cy.get('#hoja .menu-revision').should('contain.text','1 × Empanada de carne');
   });
 });
