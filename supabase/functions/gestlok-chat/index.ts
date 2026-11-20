@@ -243,14 +243,19 @@ Deno.serve(async (req) => {
           p_cliente: "", p_respuesta: extra.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
         mensajes = [];
       }
-      const soporte = await rpc("gestlok_chat_srv_respuestas", {
-        p_conversacion: convId, p_token_hash: hash, p_desde: 0 });
+      const [soporte, archivos] = await Promise.all([
+        rpc("gestlok_chat_srv_respuestas", {p_conversacion:convId,p_token_hash:hash,p_desde:0}),
+        rpc("gestlok_chat_srv_mis_adjuntos", {p_conversacion:convId,p_token_hash:hash})]);
+      const fotos = await Promise.all(((archivos as unknown as Json[])||[]).map(async (f:Json)=>{
+        const {data}=await db.storage.from("gestlok-chat-adjuntos").createSignedUrl(String(f.path),600);
+        return {mensaje_id:f.mensaje_id,url:data?.signedUrl||null};
+      }));
       return json({ ok: true, sucursal, catalogo,
         mensajes: mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
         nuevos:extra.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
         carrito: (estado as Json).carrito ?? [],
         pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso),
-        soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
+        soporte_pendiente: soporte.soporte_pendiente, cerrada, fotos }, 200, origen);
     }
 
     if (accion === "estado") {
@@ -261,10 +266,11 @@ Deno.serve(async (req) => {
         rpc("gestlok_chat_srv_respuestas", { p_conversacion: convId, p_token_hash: hash, p_desde: desde })]);
       return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso),
         mensajes_local: ((soporte.mensajes_local as Json[]) || []).map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
-        soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
+        soporte_pendiente: soporte.soporte_pendiente, cerrada }, 200, origen);
     }
 
     if (accion !== "mensaje") return json({ ok: false, error: "Acción desconocida" }, 400, origen);
+    if (cerrada) return json({ok:false,error:"La conversación fue finalizada. Iniciá una nueva consulta."},409,origen);
     let entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
     const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
