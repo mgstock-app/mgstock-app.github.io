@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120turnos1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120promos1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -240,14 +240,52 @@ function abrirCarta() {
 function abrirProducto(p, sugerido = {}) {
   let cantidad = Math.min(50, Math.max(1, Number(sugerido.cantidad) || 1));
   const elegidas = {};
-  for (const g of p.opciones || []) elegidas[g.id] = [...(sugerido.opciones?.[g.id] || [])];
+  for (const g of p.opciones || []) elegidas[g.id] = esCantidad(g) ? {...(sugerido.opciones?.[g.id] || {})} : [...(sugerido.opciones?.[g.id] || [])];
+  const contadores = []; // se actualizan en cada cambio (promos: «4 de 6»)
   const salida = el('output', {'aria-live': 'polite', text: String(cantidad)});
   const nota = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: bien cocida, sin cebolla'});
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const boton = el('button', {type: 'submit', class: 'boton principal ancho'});
-  const linea = () => ({producto_id: p.id, cantidad, opciones: Object.fromEntries(Object.entries(elegidas).filter(([, v]) => v.length)), nota: nota.value.trim()});
-  const refrescar = () => { salida.textContent = String(cantidad); boton.textContent = 'Agregar · ' + pesos(totalCarrito(S.catalogo, [linea()])); };
-  const grupos = (p.opciones || []).map(g => el('fieldset', {class: 'grupo'},
+  const linea = () => ({producto_id: p.id, cantidad, nota: nota.value.trim(), opciones: Object.fromEntries(Object.entries(elegidas)
+    .map(([k, v]) => [k, Array.isArray(v) ? v : Object.fromEntries(Object.entries(v).filter(([, n]) => n > 0))])
+    .filter(([, v]) => Array.isArray(v) ? v.length : Object.keys(v).length))});
+  const refrescar = () => {
+    salida.textContent = String(cantidad);
+    for (const c of contadores) c();
+    const falta = faltantes(p, linea().opciones).find(esCantidad);
+    boton.disabled = !!falta;
+    boton.textContent = falta ? 'Elegí ' + (Number(falta.total) - unidades(elegidas[falta.id])) + ' más en ' + falta.nombre.toLowerCase()
+      : 'Agregar · ' + pesos(totalCarrito(S.catalogo, [linea()]));
+  };
+  // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
+  const grupoCantidad = g => {
+    const total = Number(g.total) || 1;
+    const resumen = el('small', {'aria-live': 'polite'});
+    contadores.push(() => { const u = unidades(elegidas[g.id]); resumen.textContent = u + ' de ' + total; resumen.classList.toggle('completo', u === total); });
+    const filas = valoresDisponibles(S.catalogo, g).map(v => {
+      const n = el('output', {class: 'n', text: String(elegidas[g.id][v.id] || 0)});
+      const menos = el('button', {type: 'button', class: 'paso', 'aria-label': 'Quitar ' + v.nombre, text: '−'});
+      const mas = el('button', {type: 'button', class: 'paso', 'aria-label': 'Sumar ' + v.nombre, text: '+'});
+      const fila = el('div', {class: 'opcion opcion-cantidad'}, el('span', {text: v.nombre}),
+        Number(v.extra) > 0 ? el('em', {text: '+ ' + pesos(v.extra)}) : null, el('div', {class: 'pasos'}, menos, n, mas));
+      const cambiar = d => {
+        const actual = elegidas[g.id][v.id] || 0, u = unidades(elegidas[g.id]);
+        if (d > 0 && u >= total) return;
+        elegidas[g.id][v.id] = Math.max(0, actual + d);
+        error.hidden = true; refrescar();
+      };
+      menos.addEventListener('click', () => cambiar(-1));
+      mas.addEventListener('click', () => cambiar(1));
+      contadores.push(() => {
+        const k = elegidas[g.id][v.id] || 0, u = unidades(elegidas[g.id]);
+        n.textContent = String(k); menos.disabled = k === 0; mas.disabled = u >= total; fila.classList.toggle('elegida', k > 0);
+      });
+      return fila;
+    });
+    return el('fieldset', {class: 'grupo grupo-cantidad'}, el('legend', {}, g.nombre, el('small', {text: 'Elegí ' + total + (total > 1 ? ' · podés repetir' : '')}), resumen),
+      filas.length ? filas : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
+  };
+  const grupos = (p.opciones || []).map(g => esCantidad(g) ? grupoCantidad(g) : el('fieldset', {class: 'grupo'},
     el('legend', {}, g.nombre, el('small', {text: g.tipo === 'una' ? (g.obligatorio ? 'Elegí 1' : 'Opcional') : 'Hasta ' + g.max + (g.obligatorio ? ' · obligatorio' : '')})),
     g.valores.map(v => {
       const input = el('input', {type: g.tipo === 'una' ? 'radio' : 'checkbox', name: 'g-' + g.id, value: v.id, checked: elegidas[g.id].includes(v.id)});
@@ -441,6 +479,11 @@ const DEMO_DATOS = {
         {id: 'tam', nombre: 'Tamaño', tipo: 'una', obligatorio: true, valores: [{id: 'chica', nombre: 'Chica'}, {id: 'grande', nombre: 'Grande', extra: 3000}]},
         {id: 'ext', nombre: 'Extras', tipo: 'varias', max: 2, valores: [{id: 'acei', nombre: 'Aceitunas', extra: 500}, {id: 'huevo', nombre: 'Huevo', extra: 600}]}]},
       {id: 'd5', categoria_id: 'c3', nombre: 'Flan casero', descripcion: 'Con dulce de leche', precio: 2500, activo: true, disponible: true, opciones: []},
+      // Promo de demostración: repartir 6 unidades entre variedades (la humita está agotada y no se ofrece).
+      {id: 'd6', categoria_id: 'c1', nombre: 'Pack 6 empanadas + 2 salsas', descripcion: '6 empanadas a elección y 2 salsas.', precio: 6500, activo: true, disponible: true, opciones: [
+        {id: 'emp', nombre: 'Empanadas', tipo: 'cantidad', total: 6, obligatorio: true, valores: [{id: 'carne', nombre: 'Empanada de carne', extra: 0, producto_id: 'd1'},
+          {id: 'jyq', nombre: 'Empanada de jamón y queso', extra: 0, producto_id: 'd2'}, {id: 'humita', nombre: 'Empanada de humita', extra: 0, producto_id: 'd3'}]},
+        {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla', extra: 0}, {id: 'ajo', nombre: 'Crema de ajo', extra: 0}]}]},
     ]},
 };
 let demoEstado = null; let demoPedido = null;

@@ -83,10 +83,16 @@ function limpiarEntrada(e: unknown): Json | null {
   if (Number.isInteger(x.quitar) && (x.quitar as number) >= 0 && (x.quitar as number) < 30) out.quitar = x.quitar;
   if (x.agregar && typeof x.agregar === "object") {
     const a = x.agregar as Json;
-    const opciones: Record<string, string[]> = {};
+    const opciones: Record<string, string[] | Record<string, number>> = {};
     if (a.opciones && typeof a.opciones === "object") {
       for (const [k, v] of Object.entries(a.opciones as Json).slice(0, 8)) {
-        if (/^[a-z0-9_]{1,30}$/.test(k) && Array.isArray(v)) opciones[k] = v.filter((i) => typeof i === "string" && /^[a-z0-9_]{1,30}$/.test(i)).slice(0, 30);
+        if (!/^[a-z0-9_]{1,30}$/.test(k)) continue;
+        if (Array.isArray(v)) opciones[k] = v.filter((i) => typeof i === "string" && /^[a-z0-9_]{1,30}$/.test(i)).slice(0, 30);
+        // Promos: {variedad: cantidad} (enteros de 0 a 50).
+        else if (v && typeof v === "object") {
+          opciones[k] = Object.fromEntries(Object.entries(v as Json).slice(0, 40)
+            .filter(([id, n]) => /^[a-z0-9_]{1,30}$/.test(id) && Number.isInteger(n) && (n as number) > 0 && (n as number) <= 50)) as Record<string, number>;
+        }
       }
     }
     if (typeof a.producto_id === "string" && /^[0-9a-f-]{36}$/.test(a.producto_id)) {

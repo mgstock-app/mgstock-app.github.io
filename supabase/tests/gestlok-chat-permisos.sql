@@ -34,7 +34,7 @@ do $t$
 declare
   r text := ''; v text; n integer; j jsonb;
   ta uuid := 'a0000000-0000-4000-8000-00000000000a'; tb uuid := 'b0000000-0000-4000-8000-00000000000b';
-  s_munro uuid; s_torc uuid; s_centro uuid; cat uuid; p_emp uuid; p_pizza uuid; p_torc uuid; p_b uuid;
+  s_munro uuid; s_torc uuid; s_centro uuid; cat uuid; p_emp uuid; p_pizza uuid; p_torc uuid; p_b uuid; p_pack uuid; h9 bytea := digest('token-cliente-9', 'sha256'); conv9 uuid;
   h1 bytea := digest('token-cliente-1', 'sha256'); h2 bytea := digest('token-cliente-2', 'sha256');
   h3 bytea := digest('token-cliente-3', 'sha256'); hb bytea := digest('token-cliente-b', 'sha256');
   conv1 uuid; conv2 uuid; conv3 uuid; convb uuid; ped1 uuid; ticket1 uuid; ver integer;
@@ -259,6 +259,57 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_srv_pedido(%L, %L::bytea, jsonb_build_object('nombre','Ana','telefono','12','entrega','retiro','medio_pago','efectivo',
        'items', jsonb_build_array(jsonb_build_object('producto_id',%L,'cantidad',2))))::text $q$, conv1, h1, p_emp));
   r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' teléfono inválido rechazado';
+
+  -- Promos y combos: «elegir N unidades» (cualquier rubro) ---------------------------------------------------------
+  perform set_config('role', 'postgres', true);
+  r := r || E'\n' || case when not gestlok_chat_private.opciones_validas('[{"id":"emp","nombre":"Empanadas","tipo":"cantidad","valores":[{"id":"a","nombre":"A"}]}]')
+    then 'OK' else 'FALLA' end || ' una promo sin total es inválida';
+  r := r || E'\n' || case when not gestlok_chat_private.opciones_validas('[{"id":"emp","nombre":"E","tipo":"cantidad","total":3,"valores":[{"id":"a","nombre":"A","producto_id":"x"}]}]')
+    then 'OK' else 'FALLA' end || ' una variedad con producto_id mal formado es inválida';
+  insert into gestlok_chat_private.productos(tenant_id, sucursal_id, nombre, precio, activo, opciones)
+  select tenant_id, id, 'Pack 3 empanadas + 1 salsa', 3000, true, jsonb_build_array(
+    jsonb_build_object('id','emp','nombre','Empanadas','tipo','cantidad','total',3,'obligatorio',true,'valores', jsonb_build_array(
+      jsonb_build_object('id','carne','nombre','Carne','extra',0,'producto_id',p_emp), jsonb_build_object('id','humita','nombre','Humita','extra',0))),
+    jsonb_build_object('id','salsa','nombre','Salsas','tipo','cantidad','total',1,'obligatorio',true,'valores', jsonb_build_array(
+      jsonb_build_object('id','criolla','nombre','Criolla','extra',0), jsonb_build_object('id','ajo','nombre','Crema de ajo','extra',100))))
+  from gestlok_chat_private.sucursales where id = s_munro returning id into p_pack;
+  perform prueba_como('service_role');
+  j := public.gestlok_chat_srv_conversacion(s_munro, h9, 'ip9'); conv9 := (j->>'id')::uuid;
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_pedido(%L, %L::bytea, jsonb_build_object('nombre','Ana','telefono','1155551234','entrega','retiro','medio_pago','efectivo',
+       'items', jsonb_build_array(jsonb_build_object('producto_id',%L,'cantidad',1,'opciones','{"emp":{"carne":2},"salsa":{"criolla":1}}'::jsonb))))::text $q$, conv9, h9, p_pack));
+  r := r || E'\n' || case when v like 'error:22023%' and v like '%elegí 3 (elegiste 2)%' then 'OK' else 'FALLA' end || ' promo incompleta rechazada · ' || left(v, 80);
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_pedido(%L, %L::bytea, jsonb_build_object('nombre','Ana','telefono','1155551234','entrega','retiro','medio_pago','efectivo',
+       'items', jsonb_build_array(jsonb_build_object('producto_id',%L,'cantidad',1,'opciones','{"emp":{"carne":2,"pollo":1},"salsa":{"criolla":1}}'::jsonb))))::text $q$, conv9, h9, p_pack));
+  r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' variedad que no está en la promo rechazada';
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_pedido(%L, %L::bytea, jsonb_build_object('nombre','Ana','telefono','1155551234','entrega','retiro','medio_pago','efectivo',
+       'items', jsonb_build_array(jsonb_build_object('producto_id',%L,'cantidad',1,'opciones','{"emp":["carne","humita"],"salsa":{"criolla":1}}'::jsonb))))::text $q$, conv9, h9, p_pack));
+  r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' promo mandada como lista rechazada';
+  j := public.gestlok_chat_srv_sucursal('empa-munro');
+  r := r || E'\n' || case when (select count(*) from jsonb_array_elements(j->'catalogo'->'productos') x where x->>'nombre' = 'Pack 3 empanadas + 1 salsa'
+      and jsonb_array_length(x->'opciones'->0->'valores') = 2) = 1 then 'OK' else 'FALLA' end || ' la carta pública ofrece las variedades de la promo';
+  -- Pedido correcto (se deshace al final del bloque para no alterar las pruebas siguientes).
+  begin
+    j := public.gestlok_chat_srv_pedido(conv9, h9, jsonb_build_object('nombre','Ana','telefono','1155551234','entrega','retiro','medio_pago','efectivo',
+       'items', jsonb_build_array(jsonb_build_object('producto_id', p_pack, 'cantidad', 2, 'opciones', '{"emp":{"carne":2,"humita":1},"salsa":{"ajo":1}}'::jsonb))));
+    r := r || E'\n' || case when (j->'pedido'->>'total')::numeric = 6200 and (j->'pedido'->'items'->0->'opciones')::text like '%2 Carne%'
+        and (j->'pedido'->'items'->0->'opciones')::text like '%1 Humita%' then 'OK' else 'FALLA' end
+      || ' promo armada: precio de la base (2 × (3000 + 100)) y detalle de variedades · ' || coalesce(j->'pedido'->>'total', '');
+    raise exception 'deshacer' using errcode = 'P0099';
+  exception when sqlstate 'P0099' then null;
+  end;
+  perform set_config('role', 'postgres', true);
+  update gestlok_chat_private.productos set disponible = false where id = p_emp;
+  perform prueba_como('service_role');
+  j := public.gestlok_chat_srv_sucursal('empa-munro');
+  r := r || E'\n' || case when (select jsonb_array_length(x->'opciones'->0->'valores') from jsonb_array_elements(j->'catalogo'->'productos') x
+      where x->>'nombre' = 'Pack 3 empanadas + 1 salsa') = 1 then 'OK' else 'FALLA' end || ' una variedad cuyo producto se agotó deja de ofrecerse';
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_pedido(%L, %L::bytea, jsonb_build_object('nombre','Ana','telefono','1155551234','entrega','retiro','medio_pago','efectivo',
+       'items', jsonb_build_array(jsonb_build_object('producto_id',%L,'cantidad',1,'opciones','{"emp":{"carne":3},"salsa":{"criolla":1}}'::jsonb))))::text $q$, conv9, h9, p_pack));
+  r := r || E'\n' || case when v like 'error:P0001%' and v like '%Carne no está disponible%' then 'OK' else 'FALLA' end || ' y no se puede pedir · ' || left(v, 70);
+  perform set_config('role', 'postgres', true);
+  update gestlok_chat_private.productos set disponible = true where id = p_emp;
+  delete from gestlok_chat_private.productos where id = p_pack;
+  perform prueba_como('service_role');
 
   -- Pedido válido: precios siempre de la base -------------------------------------------------------------------
   j := public.gestlok_chat_srv_pedido(conv1, h1, jsonb_build_object('nombre', '  Ana   Pérez ', 'telefono', '+54 9 11 5555-1234',

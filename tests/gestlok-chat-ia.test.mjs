@@ -51,7 +51,7 @@ test('OpenAI/Gemini: agrega con herramientas y responde', async () => {
   assert.equal(r.mensajes[0].texto, '¡Listo! Agregué 2 empanadas de carne. ¿Algo más?');
   assert.ok(r.mensajes[0].botones.some(b => b.id === 'finalizar'));
   assert.equal(llamadas[0].headers.authorization, 'Bearer clave-falsa');
-  assert.match(llamadas[0].url, /generativelanguage\.googleapis\.com/);
+  assert.match(llamadas[0].url, /api\.openai\.com\/v1\/chat\/completions/); // ChatGPT por defecto
   assert.equal(llamadas[1].body.messages.at(-1).role, 'tool');
   assert.match(llamadas[1].body.messages.at(-1).content, /Agregado: 2 × Empanada de carne/);
 });

@@ -207,3 +207,25 @@ test('consulta ajena deriva al gerente y pedido gastronómico no',()=>{
  assert.equal(M.consultaAjena('Quiero 2 pizzas muzzarella'),false);
  assert.equal(M.consultaAjena('¿Cuánto demora mi pedido?'),false);
 });
+
+test('promos: repartir unidades entre variedades (premium y clásicas sin recargo) y salsas', () => {
+  const cat = {productos: [
+    {id: 'e1', nombre: 'Carne', precio: 4900, activo: true, disponible: true, opciones: []},
+    {id: 'e2', nombre: 'La Sagrada', precio: 5500, activo: true, disponible: false, opciones: []},
+    {id: 'pk', nombre: 'Pack 6 empanadas + 2 salsas', precio: 31500, activo: true, disponible: true, opciones: [
+      {id: 'emp', nombre: 'Empanadas', tipo: 'cantidad', total: 6, obligatorio: true, valores: [
+        {id: 'carne', nombre: 'Carne', extra: 0, producto_id: 'e1'}, {id: 'sagrada', nombre: 'La Sagrada', extra: 0, producto_id: 'e2'},
+        {id: 'pollo', nombre: 'Pollo', extra: 0}]},
+      {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla'}, {id: 'ajo', nombre: 'Crema de ajo'}]}]},
+  ]};
+  const pack = cat.productos[2];
+  assert.deepEqual(M.valoresDisponibles(cat, pack.opciones[0]).map(v => v.id), ['carne', 'pollo']); // La Sagrada agotada
+  const linea = {producto_id: 'pk', cantidad: 1, opciones: {emp: {carne: 4, pollo: 2}, sal: {criolla: 1, ajo: 1}}};
+  assert.equal(M.validarLinea(cat, linea), '');
+  assert.equal(M.importeLinea(cat, linea), 31500);
+  assert.match(M.describirLinea(cat, linea), /4 Carne, 2 Pollo · 1 Criolla, 1 Crema de ajo/);
+  assert.match(M.validarLinea(cat, {...linea, opciones: {emp: {carne: 5}, sal: {criolla: 2}}}), /elegí 6 \(llevás 5\)/);
+  assert.match(M.validarLinea(cat, {...linea, opciones: {emp: {carne: 3, sagrada: 3}, sal: {criolla: 2}}}), /La Sagrada no está disponible/);
+  assert.equal(M.faltantes(pack, {emp: {carne: 6}}).map(g => g.id).join(), 'sal');
+  assert.equal(M.unidades({a: 2, b: 3, c: -1}), 5);
+});
