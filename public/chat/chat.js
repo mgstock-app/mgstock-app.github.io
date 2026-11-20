@@ -377,33 +377,94 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja')
 
 function abrirCarta() {
   const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id && p.activo !== false));
-  const cuerpo = el('div');
-  const pintar = () => {
+  const cuerpo = el('div', {class: 'menu-interactivo'});
+  let aviso = '';
+
+  // El menú sigue abierto al agregar, quitar o personalizar productos.
+  // Se preserva la posición para que el cliente no pierda el producto que estaba mirando.
+  const pintar = (mantenerPosicion = false) => {
+    const scroll = mantenerPosicion ? $('hoja-cuerpo').scrollTop : 0;
+    const tabsScroll = cuerpo.querySelector('.categorias')?.scrollLeft || 0;
     const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria));
     const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
+    const mostrarError = texto => { aviso = texto; pintar(true); };
+    const lineaSimple = p => S.borrador.find(l => l.producto_id === p.id && !l.nota &&
+      Object.keys(l.opciones || {}).length === 0);
+    const cambiarSimple = (p, delta) => {
+      if (delta > 0) {
+        const l = {producto_id: p.id, cantidad: 1, nota: '', opciones: {}};
+        const problema = validarLinea(S.catalogo, l) || sumarBorrador(l);
+        if (problema) return mostrarError(problema);
+      } else {
+        const l = lineaSimple(p);
+        if (!l) return;
+        if (l.cantidad > 1) l.cantidad--;
+        else S.borrador.splice(S.borrador.indexOf(l), 1);
+        S.loteId = null;
+        guardarBorrador();
+      }
+      aviso = '';
+      actualizarCarrito();
+      pintar(true);
+    };
+    const filaProducto = p => {
+      const disponible = p.disponible !== false;
+      const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > 0;
+      const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
+      const simple = lineaSimple(p);
+      const detalle = el('div', {class: 'menu-producto-detalle', hidden: true});
+      const cerrarDetalle = () => { detalle.replaceChildren(); detalle.hidden = true; };
+      const mostrarDetalle = () => {
+        if (!disponible) return;
+        if (!detalle.hidden) { cerrarDetalle(); return; }
+        // Un solo editor abierto, siempre debajo del producto elegido.
+        cuerpo.querySelectorAll('.menu-producto-detalle').forEach(d => {
+          d.replaceChildren(); d.hidden = true;
+        });
+        abrirProducto(p, {}, {slot: detalle, onAdd: () => pintar(true), onCancel: cerrarDetalle});
+      };
+      const botonProducto = el('button', {type: 'button', class: 'producto',
+        disabled: !disponible, onclick: mostrarDetalle,
+        'aria-label': requiereOpciones ? 'Elegir opciones de ' + p.nombre : 'Personalizar ' + p.nombre},
+        el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
+          p.descripcion ? el('small', {text: p.descripcion}) : null),
+        disponible ? el('span', {class: 'precio', text: pesos(p.precio)}) :
+          el('span', {class: 'agotado', text: 'Agotado'}));
+      const controles = !disponible ? null : el('div', {class: 'menu-pasos'},
+        !requiereOpciones && simple ? el('button', {type: 'button', class: 'menu-paso',
+          'aria-label': 'Quitar una unidad de ' + p.nombre, text: '−', onclick: () => cambiarSimple(p, -1)}) : null,
+        cantidad ? el('output', {class: 'menu-n', 'aria-label': p.nombre + ': ' + cantidad + ' seleccionados',
+          text: String(cantidad)}) : null,
+        el('button', {type: 'button', class: 'menu-paso menu-paso-mas',
+          'aria-label': requiereOpciones ? 'Elegir opciones de ' + p.nombre : 'Sumar una unidad de ' + p.nombre,
+          text: '+', onclick: () => requiereOpciones ? mostrarDetalle() : cambiarSimple(p, 1)}));
+      return el('li', {class: 'menu-fila'},
+        el('div', {class: 'menu-fila-principal'}, botonProducto, controles),
+        detalle);
+    };
     poner(cuerpo,
       cats.length > 1 ? el('div', {class: 'categorias', role: 'toolbar', 'aria-label': 'Categorías'},
         [{id: '', nombre: 'Todo'}, ...cats].map(c => el('button', {type: 'button', class: 'chip', text: c.nombre,
-          'aria-pressed': String(S.categoria === c.id), onclick: () => { S.categoria = c.id; pintar(); }}))) : null,
-      prods.length ? el('ul', {class: 'lista'}, prods.map(p => el('li', {}, el('button', {type: 'button', class: 'producto',
-        disabled: p.disponible === false, onclick: () => abrirProducto(p)},
-        el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}), p.descripcion ? el('small', {text: p.descripcion}) : null),
-        p.disponible === false ? el('span', {class: 'agotado', text: 'Agotado'}) : el('span', {class: 'precio', text: pesos(p.precio)}),
-        p.disponible === false ? null : el('span', {class: 'mas', 'aria-hidden': 'true', text: '+'})))))
+          'aria-pressed': String(S.categoria === c.id),
+          onclick: () => { S.categoria = c.id; aviso = ''; pintar(); }}))) : null,
+      aviso ? el('p', {class: 'error-form menu-aviso', role: 'alert', text: aviso}) : null,
+      prods.length ? el('ul', {class: 'lista'}, prods.map(filaProducto))
         : el('p', {class: 'nota', text: 'Todavía no hay productos cargados.'}),
       el('div', {class: 'menu-pie'},
-        el('div', {class: 'menu-pie-texto', text: S.borrador.length
+        el('div', {class: 'menu-pie-texto', 'aria-live': 'polite', text: S.borrador.length
           ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
             pesos(totalCarrito(S.catalogo, S.borrador))
           : 'Elegí los productos y cantidades para tu pedido.'}),
         S.borrador.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Revisar selección',
           onclick: abrirSeleccion}) : null));
+    if (cuerpo.querySelector('.categorias')) cuerpo.querySelector('.categorias').scrollLeft = tabsScroll;
+    $('hoja-cuerpo').scrollTop = scroll;
   };
   pintar();
   abrirHoja('Menú interactivo', cuerpo);
 }
 
-function abrirProducto(p, sugerido = {}) {
+function abrirProducto(p, sugerido = {}, inline = null) {
   let cantidad = Math.min(50, Math.max(1, Number(sugerido.cantidad) || 1));
   const elegidas = {};
   for (const g of p.opciones || []) elegidas[g.id] = esCantidad(g) ? {...(sugerido.opciones?.[g.id] || {})} : [...(sugerido.opciones?.[g.id] || [])];
@@ -477,7 +538,8 @@ function abrirProducto(p, sugerido = {}) {
     const fallo = sumarBorrador(l);
     if (fallo) { error.textContent = fallo; error.hidden = false; return; }
     actualizarCarrito();
-    abrirCarta();
+    if (inline) inline.onAdd();
+    else abrirCarta();
   }},
   p.descripcion ? el('p', {class: 'nota', text: p.descripcion}) : null,
   el('p', {class: 'precio', text: pesos(p.precio)}),
@@ -487,7 +549,16 @@ function abrirProducto(p, sugerido = {}) {
   el('label', {class: 'campo'}, el('span', {text: 'Aclaración (opcional)'}), nota),
   error, boton);
   refrescar();
-  abrirHoja(p.nombre, form);
+  if (inline) {
+    inline.slot.replaceChildren(
+      el('div', {class: 'menu-personalizar-titulo'}, el('strong', {text: 'Personalizá ' + p.nombre}),
+        el('button', {type: 'button', class: 'boton chico', text: 'Volver al menú',
+          onclick: inline.onCancel})),
+      form);
+    inline.slot.hidden = false;
+    // El formulario aparece debajo del producto, sin reemplazar el menú.
+    inline.slot.scrollIntoView({block: 'nearest'});
+  } else abrirHoja(p.nombre, form);
 }
 
 function abrirSeleccion() {
