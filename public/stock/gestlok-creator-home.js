@@ -34,7 +34,7 @@
     login: ['Ingreso', 'user']
   });
   let api, data = null, status = 'idle', busy = false, timer = 0, tab = 'inicio', molinoBusy = false;
-  let showroomPerfil = 'local';
+  let showroomPerfil = 'local', showroomExpandido = !!window.matchMedia?.('(max-width: 620px)')?.matches;
   let couponRows = {munro:null,torcuato:null}, couponBusy=false, couponError='', couponAttempted=false;
   // Preferencia global, persistida en base y controlada por la creadora.
   // Predeterminado: oculto. Nunca se guarda como una preferencia de navegador.
@@ -438,14 +438,16 @@
     if (!api?.isCreadora?.()) return '';
     const active = showroomPerfil === 'cliente' ? 'cliente' : 'local';
     const frame = (perfil, url, titulo) =>
-      '<div class="gl-ch-showroom-pane" data-showroom-pane="' + perfil + '"' +
+      '<div class="gl-ch-showroom-pane" id="gl-ch-showroom-' + perfil + '" data-showroom-pane="' + perfil + '"' +
       (perfil !== active ? ' hidden' : '') + '>' +
       '<iframe title="' + titulo + '" src="' + url + '" loading="eager" ' +
       'referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms" ></iframe></div>';
-    return '<section class="gl-ch-showroom" aria-label="Prueba GESTLOK Chat">' +
+    return '<section class="gl-ch-showroom' + (showroomExpandido ? ' gl-ch-showroom-expanded' : '') + '" aria-label="Prueba GESTLOK Chat">' +
       '<header class="gl-ch-showroom-header"><div><h2>Prueba GESTLOK Chat</h2>' +
       '<p>Demostración para presentar a comerciantes y comprobar funciones nuevas.</p></div>' +
-      '<button type="button" data-ch-showroom-reset class="gl-ch-showroom-reset">Reiniciar demostración</button></header>' +
+      '<div class="gl-ch-showroom-actions"><button type="button" data-ch-showroom-expand class="gl-ch-showroom-expand" aria-pressed="' + showroomExpandido + '">' +
+      (showroomExpandido ? 'Salir de pantalla completa' : 'Pantalla completa') + '</button>' +
+      '<button type="button" data-ch-showroom-reset class="gl-ch-showroom-reset">Reiniciar demostración</button></div></header>' +
       '<p class="gl-ch-showroom-note" role="status"><strong>Datos ficticios · Modo seguro.</strong> Los pedidos, mensajes y cambios solo existen ' +
       'en esta prueba. No llegan a Supabase, a Mi Gusto ni a otras empresas. ' +
       'Usá Perfil de cliente para crear un pedido y Perfil de local para revisarlo y confirmarlo manualmente.</p>' +
@@ -454,8 +456,9 @@
         '<button type="button" role="tab" data-ch-showroom="' + id + '" aria-selected="' +
         (id === active) + '" aria-controls="gl-ch-showroom-' + id + '"' +
         (id === active ? ' class="on"' : '') + '>' + text + '</button>').join('') + '</div>' +
-      '<div id="gl-ch-showroom-local">' + frame('local', '/chat/panel/?demo=1&showroom=1', 'GESTLOK Chat · Panel del gerente (demostración)') + '</div>' +
-      '<div id="gl-ch-showroom-cliente">' + frame('cliente', '/chat/?demo=1&showroom=1', 'GESTLOK Chat · Vista del cliente (demostración)') + '</div>' +
+      '<div class="gl-ch-showroom-stage">' +
+      frame('local', '/chat/panel/?demo=1&showroom=1', 'GESTLOK Chat · Panel del gerente (demostración)') +
+      frame('cliente', '/chat/?demo=1&showroom=1', 'GESTLOK Chat · Vista del cliente (demostración)') + '</div>' +
       '<p class="gl-ch-showroom-foot">El perfil de local incluye Pedidos, Soporte, Historial, Stock, Carta, Mensajes, Ajustes, Conversaciones y Clientes frecuentes. ' +
       'Los pedidos de esta prueba nunca se confirman automáticamente.</p></section>';
   }
@@ -507,6 +510,7 @@
   }
   function goTab(v) {
     if (!validTab(v)) return;
+    if(v !== 'chat-prueba') showroomExpandido = false;
     tab = v; store.set(v);
     api?.render();
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
@@ -530,6 +534,15 @@
     const molino = ev.target.closest?.('[data-ch-molino]');
     if (molino && api?.isCreadora?.()) {
       ev.preventDefault(); void openMolinoTool(molino.dataset.chMolino); return;
+    }
+    const expandir = ev.target.closest?.('[data-ch-showroom-expand]');
+    if (expandir && api?.isCreadora?.() && tab === 'chat-prueba') {
+      ev.preventDefault();
+      showroomExpandido = !showroomExpandido;
+      document.querySelector('#hub .gl-ch-showroom')?.classList.toggle('gl-ch-showroom-expanded', showroomExpandido);
+      expandir.setAttribute('aria-pressed', String(showroomExpandido));
+      expandir.textContent = showroomExpandido ? 'Salir de pantalla completa' : 'Pantalla completa';
+      return;
     }
     const perfil = ev.target.closest?.('[data-ch-showroom]');
     if (perfil && api?.isCreadora?.() && tab === 'chat-prueba') {

@@ -179,3 +179,32 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .recuerdo-cliente p{font-size:14px;font-weight:600;line-height:1.4;margin:0 0 10px;overflow-wrap:anywhere}
 .recuerdo-acciones{display:flex;flex-wrap:wrap;gap:8px}
 .recuerdo-acciones button{flex:1;min-width:126px;min-height:42px;white-space:normal}
+
+/* Legibilidad GESTLOK Chat en celulares: el editor no debe comprimirse
+   por el menú y las dos opciones para adjuntar imágenes. */
+.burbuja{font-size:16px;line-height:1.5}
+.chip{font-size:15px;min-height:44px}
+.redactar textarea{min-height:48px;overflow-y:auto}
+.redactar textarea::placeholder{color:#66788a;opacity:1}
+@media(max-width:620px){
+  .cabecera h1{font-size:18px}
+  .cabecera p{font-size:14px}
+  .redactar{
+    display:grid;grid-template-columns:repeat(3,44px) minmax(0,1fr) 48px;
+    grid-template-rows:44px minmax(56px,auto);align-items:center;
+    gap:7px;padding:10px max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left));
+  }
+  #btn-carta{grid-column:1;grid-row:1}
+  #btn-galeria{grid-column:2;grid-row:1}
+  #btn-camara{grid-column:3;grid-row:1}
+  .redactar textarea{
+    grid-column:1/5;grid-row:2;width:100%;min-height:56px;
+    padding:13px 14px;border-radius:16px;font-size:16px;line-height:1.35;
+  }
+  #btn-enviar{grid-column:5;grid-row:2;width:48px;height:48px}
+  .redactar .icono{min-width:44px;min-height:44px}
+  .pie{font-size:12px;padding-bottom:max(6px,env(safe-area-inset-bottom))}
+  .mensajes{padding:14px 12px 12px}
+  .burbuja{max-width:94%}
+  .chip{padding:10px 14px}
+}
