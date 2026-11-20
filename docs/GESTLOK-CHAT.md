@@ -86,6 +86,13 @@ precios, terminar pedidos ni ver otros clientes. Proveedores: `gemini` (`gemini-
 `GESTLOK_CHAT_IA_CLAVE`, opcionales `GESTLOK_CHAT_IA_MODELO` y `GESTLOK_CHAT_IA_URL`. Sin clave, con la IA apagada o
 si falla (12 s, 4 rondas), responde el motor guiado.
 
+**Qué hace la IA y qué hace el sistema.** El pedido se arma con los botones y el carrito (motor guiado, sin costo).
+La IA solo: 1) escribe la **bienvenida** de cada conversación nueva (una llamada por conversación, sin herramientas,
+saludo según la hora, toma como base la bienvenida del dueño; si tarda más de 6 s, falla o trae precios, números o
+enlaces, queda la bienvenida guiada; con el local cerrado, el aviso de próxima apertura y sus botones los pone el
+sistema debajo); 2) responde el texto libre que el guiado no entiende. Los **avisos de estado del pedido** (recibido,
+confirmado, listo, rechazado, cancelado) los arma siempre el sistema con los mensajes del local: la IA no interviene.
+
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
 Pregunta cuando hay dudas y pide las opciones obligatorias. **Nunca** fija precios ni confirma: la base recalcula todo

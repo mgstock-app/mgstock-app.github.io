@@ -161,8 +161,8 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
   return {ejecutar, ui};
 }
 
-async function pedir(fetchImpl, url, init) {
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ESPERA_MS);
+async function pedir(fetchImpl, url, init, espera = ESPERA_MS) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), espera);
   try {
     const res = await fetchImpl(url, {...init, signal: ctl.signal});
     const body = await res.json().catch(() => null);
@@ -231,4 +231,56 @@ export async function responderIA({sucursal, privado, catalogo, estado, historia
   if (ui.tipo) { m.tipo = ui.tipo; if (ui.productos) { m.productos = ui.productos; m.cantidad = ui.cantidad; } }
   else m.botones = botonesCarrito(e.carrito);
   return {estado: e, mensajes: [m], ...(ui.accion ? {accion: ui.accion} : {}), motor: 'ia'};
+}
+
+/* Bienvenida: la IA escribe solo el saludo inicial. Los botones, el carrito, la carta y los avisos de estado
+ * siguen siendo del sistema. Sin herramientas, sin datos inventados y con un tope corto de espera: si tarda,
+ * falla o devuelve algo dudoso, se usa la bienvenida del asistente guiado. */
+const ESPERA_BIENVENIDA_MS = 6000;
+
+export function momentoDelDia(ahora = new Date()) {
+  const h = Number(new Intl.DateTimeFormat('en-GB', {timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23'}).format(ahora));
+  return h >= 6 && h < 13 ? 'Buenos días' : h >= 13 && h < 20 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+export function armarSistemaBienvenida({sucursal, privado, ahora}) {
+  const s = sucursal || {}; const pr = privado || {};
+  const cerrado = s.atencion?.habilitado && s.atencion.abierto === false;
+  return [
+    'Escriba SOLO el mensaje de bienvenida del chat de pedidos de ' + (s.empresa || 'el comercio') + ', sucursal ' + (s.nombre || '') + '.',
+    'Usted es ' + (s.asistente ? s.asistente + ', la asistente virtual' : 'el asistente virtual') + ' del local.',
+    'Trate al cliente de USTED, en español formal de Argentina, cálido y breve: 1 o 2 oraciones, como máximo 40 palabras. Sin emojis, sin voseo, sin markdown.',
+    'Empiece con «' + momentoDelDia(ahora) + '».',
+    cerrado
+      ? 'El local está cerrado en este momento: no invite a pedir ahora. Justo debajo, el sistema informa la próxima apertura y ofrece dejar un pedido programado.'
+      : 'Invite a armar el pedido con los botones de abajo («Ver menú») o a escribir lo que necesita.',
+    'No mencione precios, promociones, productos, horarios, demoras, números ni enlaces. No pida datos personales.',
+    s.bienvenida ? 'Bienvenida que escribió el dueño (respete su contenido y su tono): ' + String(s.bienvenida).slice(0, 500) : '',
+    pr.ia_instrucciones ? 'Indicaciones del dueño (solo para el tono): ' + String(pr.ia_instrucciones).slice(0, 800) : '',
+  ].filter(Boolean).join('\n');
+}
+
+/** Devuelve el texto de bienvenida o lanza error (la función usa entonces la bienvenida guiada). */
+export async function bienvenidaIA({sucursal, privado, config, fetchImpl, ahora}) {
+  const prov = PROVEEDORES[config?.proveedor];
+  if (!prov || !config?.clave) throw new Error('IA sin configurar');
+  const sistema = armarSistemaBienvenida({sucursal, privado, ahora});
+  const pedido = 'Un cliente acaba de abrir el chat. Escriba la bienvenida.';
+  const url = config.url || prov.url; const modelo = config.modelo || prov.modelo; const f = fetchImpl || fetch;
+  let texto;
+  if (config.proveedor === 'anthropic') {
+    const r = await pedir(f, url, {method: 'POST',
+      headers: {'content-type': 'application/json', 'x-api-key': config.clave, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: modelo, max_tokens: 300, system: sistema, messages: [{role: 'user', content: pedido}]})}, ESPERA_BIENVENIDA_MS);
+    texto = (Array.isArray(r.content) ? r.content : []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+  } else {
+    const r = await pedir(f, url, {method: 'POST',
+      headers: {'content-type': 'application/json', authorization: 'Bearer ' + config.clave},
+      body: JSON.stringify({model: modelo, max_tokens: 600, messages: [{role: 'system', content: sistema}, {role: 'user', content: pedido}]})}, ESPERA_BIENVENIDA_MS);
+    texto = r.choices?.[0]?.message?.content;
+  }
+  const limpio = limpiarTexto(texto).replace(/\s+/g, ' ').trim();
+  // Un saludo no lleva precios, números ni enlaces; si aparece algo así, se descarta.
+  if (limpio.length < 8 || limpio.length > 320 || /[$\d]|https?:|www\./i.test(limpio)) throw new Error('IA: bienvenida descartada');
+  return formalizar(limpio);
 }

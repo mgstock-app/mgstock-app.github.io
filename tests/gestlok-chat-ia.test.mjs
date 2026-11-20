@@ -1,7 +1,7 @@
 // GESTLOK Chat · asistente con IA, con la API simulada (sin red). Cubre Claude (anthropic) y API compatible con OpenAI (Gemini).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {responderIA, armarSistema, armarHistorial} from '../supabase/functions/gestlok-chat/ia.js';
+import {responderIA, armarSistema, armarHistorial, bienvenidaIA, armarSistemaBienvenida, momentoDelDia} from '../supabase/functions/gestlok-chat/ia.js';
 import * as M from '../supabase/functions/gestlok-chat/motor.js';
 
 const catalogo = {categorias: [{id: 'c1', nombre: 'Empanadas'}], productos: [
@@ -108,4 +108,34 @@ test('mensajes configurables del local con variables', () => {
   assert.match(M.textoEstadoPedido({...p, estado: 'pendiente'}, sucursal, {}), /pendiente de revisión y confirmación/);
   assert.match(M.textoEstadoPedido({...p, estado: 'rechazado', motivo: 'sin stock'}, sucursal, {rechazado: '  '}), /sin stock/);
   assert.equal(M.plantilla('{nombre} {otra} {codigo}', {nombre: 'A', codigo: 'B'}), 'A {otra} B');
+});
+
+test('bienvenida con IA: saludo formal según la hora, sin herramientas ni datos inventados', async () => {
+  const noche = new Date('2026-11-20T04:30:00Z'); // 01:30 en Buenos Aires
+  assert.equal(momentoDelDia(noche), 'Buenas noches');
+  assert.equal(momentoDelDia(new Date('2026-11-20T13:00:00Z')), 'Buenos días');
+  assert.equal(momentoDelDia(new Date('2026-11-20T19:00:00Z')), 'Buenas tardes');
+  const {fetchImpl, llamadas} = apiFalsa([oai('**Buenas noches**, bienvenido a Mi Gusto Munro. Soy Sofi; puede ver el menú con los botones de abajo o escribirme lo que necesita.')]);
+  const t = await bienvenidaIA({sucursal, privado, config: cfgOAI, fetchImpl, ahora: noche});
+  assert.match(t, /^Buenas noches, bienvenido a Mi Gusto Munro/);
+  assert.ok(!t.includes('**'));
+  const body = llamadas[0].body;
+  assert.ok(!('tools' in body), 'la bienvenida no usa herramientas');
+  assert.match(body.messages[0].content, /Empiece con «Buenas noches»/);
+  assert.match(body.messages[0].content, /No mencione precios, promociones/);
+  assert.ok(!body.messages[0].content.includes('Las empanadas son al horno'), 'no recibe la información interna del local');
+  // Local cerrado: no invita a pedir ya (el sistema informa la apertura debajo).
+  const cerrado = armarSistemaBienvenida({sucursal: {...sucursal, atencion: {habilitado: true, abierto: false, proximo_texto: 'hoy a las 11:00'}}, privado, ahora: noche});
+  assert.match(cerrado, /está cerrado en este momento/);
+  // Claude (anthropic) también sirve.
+  const a = apiFalsa([{content: [{type: 'text', text: 'Buenas noches, le damos la bienvenida a Mi Gusto Munro.'}]}]);
+  assert.match(await bienvenidaIA({sucursal, privado, config: {proveedor: 'anthropic', clave: 'sk-falsa'}, fetchImpl: a.fetchImpl, ahora: noche}), /bienvenida/);
+});
+
+test('bienvenida con IA: se descarta si trae precios, números, enlaces, falla o no hay clave', async () => {
+  for (const malo of ['Hola, hoy la docena sale $ 9000.', 'Visite www.ejemplo.com', 'Hola', 'x'.repeat(400)]) {
+    await assert.rejects(bienvenidaIA({sucursal, privado, config: cfgOAI, fetchImpl: apiFalsa([oai(malo)]).fetchImpl}), /descartada/);
+  }
+  await assert.rejects(bienvenidaIA({sucursal, privado, config: cfgOAI, fetchImpl: apiFalsa([{status: 429, body: {}}]).fetchImpl}), /IA 429/);
+  await assert.rejects(bienvenidaIA({sucursal, privado, config: {proveedor: 'gemini', clave: ''}}), /sin configurar/);
 });

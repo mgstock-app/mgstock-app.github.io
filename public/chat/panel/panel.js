@@ -498,6 +498,7 @@
       el('label', {class: 'check'}, activa, ' Responder con IA (si se apaga, responde el asistente guiado)'),
       campo('Nombre del asistente (opcional)', nombre),
       campo('Mensaje de bienvenida', bienvenida),
+      el('small', {class: 'ayuda', text: 'Con la IA activa, la bienvenida la escribe la IA tomando este texto como base y el saludo según la hora. Debajo siempre aparecen los botones y el carrito.'}),
       campo('Indicaciones para la IA: tono, qué ofrecer, qué evitar', instrucciones),
       campo('Información del local y preguntas frecuentes', info),
       el('p', {class: 'nota', text: 'La IA solo usa la carta, estos datos y los ajustes del local. No puede cambiar precios, confirmar ni terminar pedidos.'})),
