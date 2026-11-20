@@ -129,3 +129,16 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .pausado h2{color:var(--tinta);font-size:19px;margin:0 0 6px}
 .sin-js{padding:20px;text-align:center}
 .demo{background:#eef2ff;color:#3730a3;font-size:12.5px;text-align:center;padding:5px 10px}
+/* Promos y combos: repartir unidades entre variedades (botones grandes para el pulgar, sin saltos de diseño) */
+.grupo-cantidad legend{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;width:100%}
+.grupo-cantidad legend small[aria-live]{margin-left:auto;font-weight:700;color:var(--acento);font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.grupo-cantidad legend small.completo{color:#1c7c4a}
+.opcion-cantidad{cursor:default;min-height:52px;padding:6px 6px 6px 12px}
+.opcion-cantidad.elegida{border-color:var(--acento);background:var(--acento-suave)}
+.opcion-cantidad span{min-width:0;overflow-wrap:anywhere}
+.pasos{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.pasos .paso{width:40px;height:40px;border-radius:50%;border:1px solid var(--linea);background:var(--papel);font-size:20px;line-height:1;color:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pasos .paso:disabled{opacity:.35}
+.pasos .n{display:inline-block;width:2ch;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.boton.principal:disabled{opacity:.6;cursor:not-allowed}
+

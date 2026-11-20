@@ -22,7 +22,7 @@ const HERRAMIENTAS = [
       producto: {type: 'string', description: 'Código del producto, por ejemplo P3'},
       cantidad: {type: 'integer', minimum: 1, maximum: 50},
       opciones: {type: 'object', description: 'Por cada código de opción, la lista de códigos de valores elegidos. Ej.: {"tam":["grande"]}',
-        additionalProperties: {type: 'array', items: {type: 'string'}}},
+        additionalProperties: {anyOf: [{type: 'array', items: {type: 'string'}}, {type: 'object', additionalProperties: {type: 'integer', minimum: 0}}]}},
       nota: {type: 'string', description: 'Aclaración del cliente para ese producto (opcional)'}},
     required: ['producto', 'cantidad']}},
   {nombre: 'quitar_producto', descripcion: 'Quita una línea del pedido.',
@@ -51,7 +51,7 @@ export function armarSistema({sucursal, privado, catalogo, estado}) {
   const {prods, porId} = indice(catalogo);
   const cats = new Map((catalogo?.categorias || []).map(c => [c.id, c.nombre]));
   const carta = prods.map(p => {
-    const ops = (p.opciones || []).map(g => '    · ' + g.nombre + ' [código ' + g.id + '] (' + (g.tipo === 'una' ? 'elegir 1' : 'hasta ' + g.max) +
+    const ops = (p.opciones || []).map(g => '    · ' + g.nombre + ' [código ' + g.id + '] (' + (g.tipo === 'una' ? 'elegir 1' : g.tipo === 'cantidad' ? 'repartir exactamente ' + g.total + ' unidades, se pueden repetir; pasá {código: cantidad}' : 'hasta ' + g.max) +
       (g.obligatorio ? ', obligatorio' : ', opcional') + '): ' + g.valores.map(v => v.nombre + ' [' + v.id + ']' + (Number(v.extra) ? ' +' + pesos(v.extra) : '')).join(', '));
     return '- ' + porId.get(p.id) + ' · ' + p.nombre + ' · ' + pesos(p.precio) + (p.disponible === false ? ' · AGOTADO HOY' : '') +
       (p.categoria_id && cats.get(p.categoria_id) ? ' · ' + cats.get(p.categoria_id) : '') + (p.descripcion ? ' · ' + p.descripcion : '') +
@@ -119,7 +119,10 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
         const cantidad = Math.round(Number(args.cantidad));
         const opciones = {};
         if (args.opciones && typeof args.opciones === 'object') {
-          for (const [k, v] of Object.entries(args.opciones)) if (Array.isArray(v)) opciones[k] = v.map(String).slice(0, 30);
+          for (const [k, v] of Object.entries(args.opciones)) {
+            if (Array.isArray(v)) opciones[k] = v.map(String).slice(0, 30);
+            else if (v && typeof v === 'object') opciones[k] = Object.fromEntries(Object.entries(v).slice(0, 40).map(([id, n]) => [String(id), Math.max(0, Math.round(Number(n)) || 0)]).filter(([, n]) => n > 0));
+          }
         }
         const linea = {producto_id: p.id, cantidad, opciones, nota: String(args.nota || '').slice(0, 200)};
         const falta = faltantes(p, opciones);

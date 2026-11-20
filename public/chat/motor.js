@@ -114,13 +114,35 @@ export function pesos(n) {
 function productoPorId(catalogo, id) { return (catalogo?.productos || []).find(p => p.id === id); }
 function disponibles(catalogo) { return (catalogo?.productos || []).filter(p => p.activo !== false); }
 
+/* Grupo «cantidad» (promos y combos de cualquier rubro): el cliente reparte un total exacto entre variedades,
+ * pudiendo repetir. Ej.: «Pack 6 empanadas + 2 salsas» → {empanadas: {carne: 3, pollo: 3}, salsas: {criolla: 2}}.
+ * Una variedad puede apuntar a un producto de la carta (producto_id): si ese producto se agota, deja de ofrecerse. */
+export function esCantidad(g) { return g?.tipo === 'cantidad'; }
+/** Unidades elegidas en un grupo «cantidad» ({id: n} → suma). */
+export function unidades(sel) {
+  return sel && typeof sel === 'object' && !Array.isArray(sel) ? Object.values(sel).reduce((a, n) => a + (Number.isInteger(n) && n > 0 ? n : 0), 0) : 0;
+}
+/** Variedades que se pueden elegir hoy (sin las que apuntan a un producto agotado o fuera de la carta). */
+export function valoresDisponibles(catalogo, g) {
+  return (g?.valores || []).filter(v => {
+    if (!v.producto_id) return true;
+    const x = productoPorId(catalogo, v.producto_id);
+    return !!x && x.activo !== false && x.disponible !== false;
+  });
+}
+/** Lista de ids elegidos (grupos «una»/«varias») o pares [id, n] (grupo «cantidad»). */
+function elegidos(g, sel) {
+  if (esCantidad(g)) return sel && typeof sel === 'object' && !Array.isArray(sel) ? Object.entries(sel).filter(([, n]) => Number.isInteger(n) && n > 0) : [];
+  return Array.isArray(sel) ? sel.map(id => [id, 1]) : [];
+}
+
 /** Precio orientativo de una línea (la base recalcula siempre). */
 export function importeLinea(catalogo, linea) {
   const p = productoPorId(catalogo, linea.producto_id);
   if (!p) return 0;
   let extra = 0;
   for (const g of p.opciones || []) {
-    for (const vid of linea.opciones?.[g.id] || []) extra += Number(g.valores.find(v => v.id === vid)?.extra || 0);
+    for (const [vid, n] of elegidos(g, linea.opciones?.[g.id])) extra += n * Number(g.valores.find(v => v.id === vid)?.extra || 0);
   }
   return (Number(p.precio) + extra) * linea.cantidad;
 }
@@ -132,7 +154,10 @@ export function describirLinea(catalogo, linea) {
   if (!p) return linea.cantidad + ' × (producto que ya no está)';
   const ops = [];
   for (const g of p.opciones || []) {
-    const vals = (linea.opciones?.[g.id] || []).map(id => g.valores.find(v => v.id === id)?.nombre).filter(Boolean);
+    const vals = elegidos(g, linea.opciones?.[g.id]).map(([id, n]) => {
+      const nombre = g.valores.find(v => v.id === id)?.nombre;
+      return nombre && (esCantidad(g) ? n + ' ' + nombre : nombre);
+    }).filter(Boolean);
     if (vals.length) ops.push(vals.join(', '));
   }
   return linea.cantidad + ' × ' + p.nombre + (ops.length ? ' (' + ops.join(' · ') + ')' : '') + (linea.nota ? ' — ' + linea.nota : '');
@@ -140,7 +165,8 @@ export function describirLinea(catalogo, linea) {
 
 /** Opciones obligatorias que todavía faltan elegir en una línea. */
 export function faltantes(producto, opciones) {
-  return (producto.opciones || []).filter(g => g.obligatorio && !(opciones?.[g.id] || []).length);
+  return (producto.opciones || []).filter(g => esCantidad(g) ? unidades(opciones?.[g.id]) !== Number(g.total)
+    : g.obligatorio && !(opciones?.[g.id] || []).length);
 }
 
 /** Valida una línea igual que la base (para avisar antes de enviar). Devuelve '' o el problema. */
@@ -151,6 +177,17 @@ export function validarLinea(catalogo, linea) {
   if (!Number.isInteger(linea.cantidad) || linea.cantidad < 1 || linea.cantidad > MAX_CANTIDAD) return 'Cantidad inválida.';
   for (const k of Object.keys(linea.opciones || {})) if (!(p.opciones || []).some(g => g.id === k)) return 'Opción inválida.';
   for (const g of p.opciones || []) {
+    if (esCantidad(g)) {
+      const sel = linea.opciones?.[g.id] || {};
+      if (typeof sel !== 'object' || Array.isArray(sel)) return 'Opción inválida.';
+      for (const [id, n] of Object.entries(sel)) {
+        if (!Number.isInteger(n) || n < 0 || !g.valores.some(v => v.id === id)) return 'Opción inválida.';
+        if (n > 0 && !valoresDisponibles(catalogo, g).some(v => v.id === id)) return (g.valores.find(v => v.id === id)?.nombre || 'Una variedad') + ' no está disponible ahora.';
+      }
+      const u = unidades(sel), total = Number(g.total);
+      if (u !== total) return 'En ' + g.nombre.toLowerCase() + ' de ' + p.nombre + ' elegí ' + total + (u ? ' (llevás ' + u + ')' : '') + '.';
+      continue;
+    }
     const sel = linea.opciones?.[g.id] || [];
     if (new Set(sel).size !== sel.length || sel.some(id => !g.valores.some(v => v.id === id))) return 'Opción inválida.';
     if (g.obligatorio && !sel.length) return 'Elegí ' + g.nombre.toLowerCase() + ' para ' + p.nombre + '.';
@@ -194,6 +231,7 @@ function opcionesDe(producto, segmento) {
   const q = new Set(claves(normalizar(segmento).replace(/\bsin\s+[a-z0-9ñ]+/g, ' ')));
   const ops = {};
   for (const g of producto.opciones || []) {
+    if (esCantidad(g)) continue; // las promos se arman en su selector (cantidades por variedad)
     const elegidas = g.valores.filter(v => {
       const k = claves(v.nombre);
       return k.length && k.every(w => q.has(w));

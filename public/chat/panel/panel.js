@@ -374,36 +374,58 @@
   }
 
   // Editor de opciones: cada grupo con valores «Nombre | extra».
-  function editorOpciones(opciones) {
+  // Tipo «Promo: elegir N unidades» (cualquier rubro): el cliente reparte N entre las variedades y puede repetir.
+  // Una variedad con el mismo nombre que un producto de la carta queda enlazada: si ese producto se agota, no se ofrece.
+  function editorOpciones(opciones, c) {
     const caja = el('div', {class: 'opciones'});
+    const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const productos = (c?.productos || []).filter(x => x.activo !== false);
     const grupos = (opciones || []).map(g => ({...g, texto: g.valores.map(v => v.nombre + (Number(v.extra) ? ' | ' + v.extra : '')).join('\n')}));
     const pintar = () => caja.replaceChildren(...grupos.map((g, i) => {
       const nombre = el('input', {type: 'text', maxlength: '60', placeholder: 'Ej.: Tamaño'}); nombre.value = g.nombre || '';
       nombre.oninput = () => { g.nombre = nombre.value; };
-      const tipo = el('select', {}, el('option', {value: 'una', text: 'Elige una'}), el('option', {value: 'varias', text: 'Elige varias'}));
+      const tipo = el('select', {}, el('option', {value: 'una', text: 'Elige una'}), el('option', {value: 'varias', text: 'Elige varias'}),
+        el('option', {value: 'cantidad', text: 'Promo: elegir N unidades'}));
       tipo.value = g.tipo || 'una'; tipo.onchange = () => { g.tipo = tipo.value; pintar(); };
       const max = el('input', {type: 'number', min: '1', max: '30', inputmode: 'numeric'}); max.value = String(g.max || 2); max.oninput = () => { g.max = Number(max.value); };
+      const total = el('input', {type: 'number', min: '1', max: '50', inputmode: 'numeric'}); total.value = String(g.total || 6); total.oninput = () => { g.total = Number(total.value); };
+      // Carga de un toque las variedades de una categoría (por ejemplo, todas las empanadas).
+      const desde = el('select', {'aria-label': 'Sumar variedades de una categoría'}, el('option', {value: '', text: 'Sumar variedades de una categoría…'}),
+        (c?.categorias || []).map(k => el('option', {value: k.id, text: k.nombre})));
+      desde.onchange = () => {
+        const ya = new Set(String(g.texto || '').split('\n').map(norm).filter(Boolean));
+        const nuevos = productos.filter(x => x.categoria_id === desde.value && !ya.has(norm(x.nombre))).map(x => x.nombre);
+        g.texto = [String(g.texto || '').trim(), ...nuevos].filter(Boolean).join('\n'); desde.value = ''; pintar();
+      };
       const obl = el('input', {type: 'checkbox', checked: !!g.obligatorio}); obl.onchange = () => { g.obligatorio = obl.checked; };
       const valores = el('textarea', {rows: '3', placeholder: 'Un valor por renglón. Con recargo: Grande | 2000'}); valores.value = g.texto || '';
       valores.oninput = () => { g.texto = valores.value; };
       return el('fieldset', {class: 'grupo'}, el('legend', {text: 'Opción ' + (i + 1)}),
-        campo('Nombre', nombre), el('div', {class: 'dos'}, campo('Tipo', tipo), g.tipo === 'varias' ? campo('Máximo', max) : el('span')),
-        el('label', {class: 'check'}, obl, ' Obligatoria'), campo('Valores', valores),
+        campo('Nombre', nombre), el('div', {class: 'dos'}, campo('Tipo', tipo), g.tipo === 'varias' ? campo('Máximo', max) : g.tipo === 'cantidad' ? campo('Unidades a elegir', total) : el('span')),
+        g.tipo === 'cantidad' ? el('p', {class: 'nota', text: 'El cliente reparte las unidades entre estas variedades y puede repetir. Las que se llaman igual que un producto de la carta se ocultan solas cuando ese producto se agota.'})
+          : el('label', {class: 'check'}, obl, ' Obligatoria'),
+        campo('Valores', valores), g.tipo === 'cantidad' && (c?.categorias || []).length ? desde : null,
         el('button', {type: 'button', class: 'enlace peligro', text: 'Quitar opción', onclick: () => { grupos.splice(i, 1); pintar(); }}));
     }), el('button', {type: 'button', class: 'boton', text: '+ Agregar opción (tamaño, sabor, extras…)',
       onclick: () => { if (grupos.length < 8) { grupos.push({nombre: '', tipo: 'una', obligatorio: true, texto: ''}); pintar(); } }}));
     pintar();
-    const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x';
+    const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x';
     caja.leer = () => grupos.map((g, i) => {
       const usados = new Set();
       const valores = String(g.texto || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
         const [n, e] = l.split('|').map(x => x.trim());
-        let id = slug(n); while (usados.has(id)) id = (id + '_').slice(0, 30); usados.add(id);
-        return {id, nombre: n.slice(0, 60), extra: Math.max(0, Number(String(e || '0').replace(/[^0-9.]/g, '')) || 0)};
+        // Se conserva el código de antes (así no se pierden los «agotados» del gerente) y se enlaza con la carta por nombre.
+        const previo = (g.valores || []).find(v => norm(v.nombre) === norm(n));
+        let id = previo?.id || slug(n); while (usados.has(id)) id = (id + '_').slice(0, 30); usados.add(id);
+        const prod = productos.find(x => norm(x.nombre) === norm(n));
+        return {id, nombre: n.slice(0, 60), extra: Math.max(0, Number(String(e || '0').replace(/[^0-9.]/g, '')) || 0), ...(prod ? {producto_id: prod.id} : {})};
       });
       if (!String(g.nombre || '').trim() || !valores.length) throw new Error('Completá el nombre y los valores de la opción ' + (i + 1) + '.');
-      return {id: (slug(g.nombre) + '_' + i).slice(0, 30), nombre: g.nombre.trim().slice(0, 60), tipo: g.tipo || 'una', obligatorio: !!g.obligatorio,
-        ...(g.tipo === 'varias' ? {max: Math.min(30, Math.max(1, Math.round(Number(g.max) || 1)))} : {}), valores};
+      if (valores.length > 40) throw new Error('La opción ' + (i + 1) + ' tiene más de 40 valores.');
+      return {id: g.id || (slug(g.nombre) + '_' + i).slice(0, 30), nombre: g.nombre.trim().slice(0, 60), tipo: g.tipo || 'una',
+        obligatorio: g.tipo === 'cantidad' ? true : !!g.obligatorio,
+        ...(g.tipo === 'varias' ? {max: Math.min(30, Math.max(1, Math.round(Number(g.max) || 1)))} : {}),
+        ...(g.tipo === 'cantidad' ? {total: Math.min(50, Math.max(1, Math.round(Number(g.total) || 1)))} : {}), valores};
     });
     return caja;
   }
@@ -416,7 +438,7 @@
     const orden = el('input', {type: 'number', min: '0', max: '10000', inputmode: 'numeric'}); orden.value = String(p?.orden ?? 0);
     const activo = el('input', {type: 'checkbox', checked: p ? p.activo : true});
     const disp = el('input', {type: 'checkbox', checked: p ? p.disponible : true});
-    const ops = editorOpciones(p?.opciones);
+    const ops = editorOpciones(p?.opciones, c);
     dialogo(p ? 'Editar producto' : 'Nuevo producto', [campo('Nombre', nombre), campo('Descripción (opcional)', desc),
       el('div', {class: 'dos'}, campo('Precio', precio), campo('Orden', orden)), campo('Categoría', cat),
       el('label', {class: 'check'}, activo, ' Figura en la carta'), el('label', {class: 'check'}, disp, ' Hay hoy (disponible)'),
