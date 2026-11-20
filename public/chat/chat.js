@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120sugerida1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120identificacion1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -393,7 +393,7 @@ function abrirIdentificacion() {
     $('hoja-cerrar').hidden = false;
     $('fondo-hoja').onclick = cerrarHoja;
     cerrarHoja();
-    burbuja('asistente', 'Gracias, ' + String(d.nombre).trim() + '. Ya puede elegir sus productos o consultar nuestra carta.');
+    burbuja('asistente', 'Gracias. Ya puede elegir sus productos o consultar nuestra carta.');
     chips(BOTONES_BASE());
     $('texto').disabled = false; $('btn-carta').disabled = false;
     $('texto').focus({preventScroll:true});
