@@ -303,8 +303,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   const otroDispositivo=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ2,cliente_token:BROWSER_EXTRA,
     accion:'recordar',telefono:TEL_FREQ});
   assert.equal(otroDispositivo.body.encontrado,false,'mismo teléfono sin secreto del navegador nunca revela dirección');
-  const perfilGuardado=ok(DB,['-At','-c'],
-    'select count(*) from gestlok_chat_private.clientes_frecuentes where telefono='+String.fromCharCode(39)+TEL_FREQ+String.fromCharCode(39)).trim();
+  const perfilGuardado=ok(DB,['-At','-c', "select count(*) from gestlok_chat_private.clientes_frecuentes where telefono='"+TEL_FREQ+"'"]).trim();
   assert.equal(perfilGuardado,'1');
 
   // Topes: muchos mensajes seguidos desde la misma conexión se frenan
