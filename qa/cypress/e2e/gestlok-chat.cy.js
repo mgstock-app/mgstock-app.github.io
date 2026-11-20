@@ -15,11 +15,14 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja').should('be.visible').contains('button', 'Pizza muzzarella').click();
     cy.get('#hoja').contains('label', 'Grande').click();
     cy.get('#hoja button[type=submit]').should('contain.text', '10.500').click();
+    cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
+    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella (Grande)');
+    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', 'Pizza muzzarella (Grande)');
     cy.get('#btn-finalizar').click();
-    // Venta sugerida: ofrece el postre con su precio antes de los datos; un toque lo agrega al pedido.
+    // Venta sugerida: ofrece un postre concreto con precio. El cliente decide si agregarlo.
     cy.get('.burbuja.asistente').last().should('contain.text', 'postre o una bebida');
-    cy.contains('.chip', 'No, gracias. Finalizar').should('be.visible');
     cy.contains('.chip', 'Flan casero · $ 2.500').click();
     cy.get('.burbuja.asistente').last().should('contain.text', 'Flan casero');
     cy.get('#btn-finalizar').click();
@@ -205,6 +208,9 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.get('#hoja [aria-label="Sumar Criolla"]').click();
     cy.get('#hoja [aria-label="Sumar Crema de ajo"]').click();
     cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', '6.500').click();
+    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.get('#hoja .menu-revision').should('contain.text','4 Empanada de carne').and('contain.text','1 Crema de ajo');
+    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', '4 Empanada de carne').and('contain.text', '1 Crema de ajo');
     cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(375)); // sin desborde horizontal
   });

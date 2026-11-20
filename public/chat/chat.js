@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120sugerida2';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120menuupsell1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -31,7 +31,7 @@ const SLUG = DEMO ? 'demo' : slugDeUrl();
 
 const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [], pedido: null, enviando: false,
   ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
-  ultimoLocal: 0, soportePendiente: false};
+  ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null};
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
 function token() {
@@ -43,6 +43,32 @@ function token() {
   return t;
 }
 const TOKEN = token();
+const CLAVE_BORRADOR = 'gestlok-chat:menu:' + SLUG;
+function guardarBorrador() {
+  try {
+    if (S.borrador.length) localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({lineas: S.borrador, loteId: S.loteId}));
+    else localStorage.removeItem(CLAVE_BORRADOR);
+  } catch { /* queda en memoria */ }
+}
+function restaurarBorrador() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) || '{}');
+    S.borrador = (Array.isArray(d.lineas) ? d.lineas : []).filter(l => !validarLinea(S.catalogo, l)).slice(0, 30);
+    S.loteId = typeof d.loteId === 'string' && /^[0-9a-f-]{36}$/.test(d.loteId) ? d.loteId : null;
+  } catch { S.borrador = []; S.loteId = null; }
+  guardarBorrador();
+}
+function sumarBorrador(l) {
+  const igual = S.borrador.find(x => x.producto_id === l.producto_id &&
+    JSON.stringify(x.opciones || {}) === JSON.stringify(l.opciones || {}) && !x.nota && !l.nota);
+  if (igual && igual.cantidad + l.cantidad > 50) return 'Podés pedir hasta 50 unidades del mismo producto.';
+  if (!igual && S.borrador.length + S.carrito.length >= 30) return 'Llegaste al máximo de productos distintos.';
+  if (igual) igual.cantidad += l.cantidad;
+  else S.borrador.push(l);
+  S.loteId = null; guardarBorrador();
+  return '';
+}
+
 
 // ---------------------------------------------------------------------------------------------- conexión
 async function api(accion, extra = {}) {
@@ -97,7 +123,7 @@ const BOTONES_BASE = () => S.carrito.length
       {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
 
 async function enviar(entrada, textoVisible) {
-  if (S.enviando) return;
+  if (S.enviando) return false;
   S.enviando = true; S.ultimaEntrada = {entrada, textoVisible};
   quitarChips();
   if (textoVisible) burbuja('cliente', textoVisible);
@@ -110,13 +136,17 @@ async function enviar(entrada, textoVisible) {
         $('titulo').textContent = [r.sucursal?.empresa, r.sucursal?.nombre].filter(Boolean).join(' · ') ||
           $('titulo').textContent;
         pantallaFija('Chat en pausa', r.sucursal?.mensaje || 'El local pausó temporalmente la atención por chat.');
-        return;
+        return false;
       }
       lista.querySelectorAll('.burbuja.error').forEach(n => n.remove());
       burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
-      chips([{id: '__reintentar', texto: 'Reintentar'}]); return;
+      chips([{id: '__reintentar', texto: 'Reintentar'}]); return false;
     }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
+    // Solo borrar el borrador si el servidor ACEPTÓ el lote; un error de catálogo o
+    // de validación puede devolver HTTP 200 con un mensaje, pero sin incorporar productos.
+    const loteAceptado = !entrada.agregar_varios || r.lote_aceptado === true;
+    if (entrada.agregar_varios && loteAceptado) { S.borrador = []; S.loteId = null; guardarBorrador(); }
     actualizarCarrito(r.carrito);
     if (typeof r.soporte_pendiente === 'boolean') {
       S.soportePendiente = r.soporte_pendiente;
@@ -124,10 +154,12 @@ async function enviar(entrada, textoVisible) {
     }
     for (const m of r.mensajes || []) mensajeAsistente(m);
     if (r.pedido) mostrarPedido(r.pedido);
+    return loteAceptado;
   } catch {
     mostrarEscribiendo(false);
     burbuja('error', 'Sin conexión. Revisá tu internet.');
     chips([{id: '__reintentar', texto: 'Reintentar'}]);
+    return false;
   } finally { S.enviando = false; bloquear(false); }
 }
 function tocarBoton(b) {
@@ -143,9 +175,11 @@ function bloquear(si) { $('btn-enviar').disabled = si || !$('texto').value.trim(
 // ---------------------------------------------------------------------------------------------- carrito y pedido
 function actualizarCarrito(c) {
   if (Array.isArray(c)) S.carrito = c;
-  const n = S.carrito.reduce((s, l) => s + l.cantidad, 0);
-  $('barra-pedido').hidden = !S.carrito.length;
-  $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' + pesos(totalCarrito(S.catalogo, S.carrito));
+  const n = [...S.carrito, ...S.borrador].reduce((s, l) => s + l.cantidad, 0);
+  $('barra-pedido').hidden = !n;
+  $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' +
+    pesos(totalCarrito(S.catalogo, [...S.carrito, ...S.borrador]));
+  $('btn-finalizar').textContent = S.borrador.length ? 'Enviar al asistente' : 'Finalizar';
 }
 const TEXTO_ESTADO = {
   pendiente: ['Pendiente de confirmación', 'El gerente debe revisar y confirmar su pedido'],
@@ -245,10 +279,11 @@ $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
 function abrirCarta() {
-  const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id));
+  const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id && p.activo !== false));
   const cuerpo = el('div');
   const pintar = () => {
-    const prods = S.catalogo.productos.filter(p => !S.categoria || p.categoria_id === S.categoria);
+    const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria));
+    const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
     poner(cuerpo,
       cats.length > 1 ? el('div', {class: 'categorias', role: 'toolbar', 'aria-label': 'Categorías'},
         [{id: '', nombre: 'Todo'}, ...cats].map(c => el('button', {type: 'button', class: 'chip', text: c.nombre,
@@ -258,10 +293,17 @@ function abrirCarta() {
         el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}), p.descripcion ? el('small', {text: p.descripcion}) : null),
         p.disponible === false ? el('span', {class: 'agotado', text: 'Agotado'}) : el('span', {class: 'precio', text: pesos(p.precio)}),
         p.disponible === false ? null : el('span', {class: 'mas', 'aria-hidden': 'true', text: '+'})))))
-        : el('p', {class: 'nota', text: 'Todavía no hay productos cargados.'}));
+        : el('p', {class: 'nota', text: 'Todavía no hay productos cargados.'}),
+      el('div', {class: 'menu-pie'},
+        el('div', {class: 'menu-pie-texto', text: S.borrador.length
+          ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
+            pesos(totalCarrito(S.catalogo, S.borrador))
+          : 'Elegí los productos y cantidades para tu pedido.'}),
+        S.borrador.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Revisar selección',
+          onclick: abrirSeleccion}) : null));
   };
   pintar();
-  abrirHoja('Carta', cuerpo);
+  abrirHoja('Menú interactivo', cuerpo);
 }
 
 function abrirProducto(p, sugerido = {}) {
@@ -282,7 +324,7 @@ function abrirProducto(p, sugerido = {}) {
     const falta = faltantes(p, linea().opciones).find(esCantidad);
     boton.disabled = !!falta;
     boton.textContent = falta ? 'Elegí ' + (Number(falta.total) - unidades(elegidas[falta.id])) + ' más en ' + falta.nombre.toLowerCase()
-      : 'Agregar · ' + pesos(totalCarrito(S.catalogo, [linea()]));
+      : 'Agregar a mi selección · ' + pesos(totalCarrito(S.catalogo, [linea()]));
   };
   // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
   const grupoCantidad = g => {
@@ -330,8 +372,10 @@ function abrirProducto(p, sugerido = {}) {
     e.preventDefault();
     const l = linea(); const problema = validarLinea(S.catalogo, l);
     if (problema) { error.textContent = problema; error.hidden = false; return; }
-    cerrarHoja();
-    enviar({agregar: l}, 'Agregar: ' + describirLinea(S.catalogo, l));
+    const fallo = sumarBorrador(l);
+    if (fallo) { error.textContent = fallo; error.hidden = false; return; }
+    actualizarCarrito();
+    abrirCarta();
   }},
   p.descripcion ? el('p', {class: 'nota', text: p.descripcion}) : null,
   el('p', {class: 'precio', text: pesos(p.precio)}),
@@ -344,7 +388,34 @@ function abrirProducto(p, sugerido = {}) {
   abrirHoja(p.nombre, form);
 }
 
+function abrirSeleccion() {
+  const cuerpo = el('div', {class: 'menu-revision'},
+    el('p', {class: 'nota', text: 'Revisá todos los productos antes de enviárselos al asistente.'}),
+    ...S.borrador.map((l, i) => el('div', {class: 'linea'},
+      el('div', {}, el('strong', {text: describirLinea(S.catalogo, l)}),
+        el('small', {text: pesos(totalCarrito(S.catalogo, [l]))})),
+      el('button', {type: 'button', class: 'boton chico', text: 'Quitar', onclick: () => {
+        S.borrador.splice(i, 1); S.loteId = null; guardarBorrador(); actualizarCarrito();
+        S.borrador.length ? abrirSeleccion() : abrirCarta();
+      }}))),
+    el('div', {class: 'total'}, el('span', {text: 'Total estimado'}),
+      el('span', {text: pesos(totalCarrito(S.catalogo, [...S.carrito, ...S.borrador]))})),
+    el('p', {class: 'nota', text: 'El asistente recibirá tu selección. Después vas a completar tus datos; el gerente confirma manualmente.'}),
+    el('button', {type: 'button', class: 'boton ancho', text: 'Seguir eligiendo', onclick: abrirCarta}),
+    el('button', {type: 'button', class: 'boton principal ancho', text: 'Enviar selección al asistente',
+      onclick: async () => {
+        if (S.enviando || !S.borrador.length) return;
+        if (!S.loteId) { S.loteId = crypto.randomUUID(); guardarBorrador(); }
+        const entrada = {agregar_varios: S.borrador.map(l => ({...l})), lote_id: S.loteId};
+        const textoSeleccion = 'Mi selección del menú:\n' + S.borrador.map(l => '• ' + describirLinea(S.catalogo, l)).join('\n');
+        cerrarHoja();
+        const ok = await enviar(entrada, textoSeleccion);
+        if (!ok) abrirSeleccion();
+      }}));
+  abrirHoja('Tu selección del menú', cuerpo);
+}
 function abrirCarrito() {
+  if (S.borrador.length) return abrirSeleccion();
   const cuerpo = el('div',
     S.carrito.length ? S.carrito.map((l, i) => el('div', {class: 'linea'},
       el('div', {}, describirLinea(S.catalogo, l), el('small', {text: pesos(totalCarrito(S.catalogo, [l]))})),
@@ -443,7 +514,7 @@ $('redactar').addEventListener('submit', e => {
 });
 $('btn-carta').onclick = abrirCarta;
 $('btn-carrito').onclick = abrirCarrito;
-$('btn-finalizar').onclick = () => enviar({boton: 'finalizar'}, 'Finalizar pedido');
+$('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Finalizar pedido');
 $('btn-info').onclick = abrirInfo;
 
 // ---------------------------------------------------------------------------------------------- inicio
@@ -468,7 +539,7 @@ async function iniciar() {
     }
     return pantallaFija('Chat no encontrado', r.error && r.status !== 404 ? r.error : 'Revisá el enlace que te compartió el local.');
   }
-  S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
+  S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo; restaurarBorrador();
   S.soportePendiente = r.soporte_pendiente === true;
   S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')
     .map(m => Number.isSafeInteger(m.id) ? m.id : 0));
@@ -541,7 +612,8 @@ async function demoApi(accion, extra) {
     demoPedido = pedido = {...demoPedido, estado: 'cancelado'};
     mensajes.push({texto: 'Su pedido fue cancelado.'});
   }
-  return {ok: true, mensajes, carrito: r.estado.carrito, pedido};
+  return {ok: true, mensajes, carrito: r.estado.carrito, pedido,
+    lote_aceptado: !!extra.entrada?.agregar_varios && r.estado.ultimo_lote === extra.entrada.lote_id};
 }
 
 iniciar();

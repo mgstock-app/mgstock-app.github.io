@@ -102,6 +102,39 @@ function limpiarEntrada(e: unknown): Json | null {
       out.agregar = { producto_id: a.producto_id, cantidad: Number(a.cantidad), opciones, nota: String(a.nota ?? "").slice(0, 200) };
     }
   }
+  if (Array.isArray(x.agregar_varios)) {
+    if (x.agregar_varios.length < 1 || x.agregar_varios.length > 30) return null;
+    const lineas: Json[] = [];
+    for (const bruto of x.agregar_varios) {
+      if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return null;
+      const a = bruto as Json;
+      // El lote acepta tanto opciones simples (array) como combos de cantidad
+      // ({variedad: cantidad}). Validamos todo antes de guardar, sin descartar grupos.
+      const opciones: Record<string, string[] | Record<string, number>> = {};
+      if (typeof a.producto_id !== "string" || !/^[0-9a-f-]{36}$/.test(a.producto_id) ||
+          !Number.isInteger(a.cantidad) || (a.cantidad as number) < 1 || (a.cantidad as number) > 50) return null;
+      if (a.opciones && (typeof a.opciones !== "object" || Array.isArray(a.opciones))) return null;
+      const grupos = Object.entries((a.opciones as Json) || {});
+      if (grupos.length > 8) return null;
+      for (const [k, v] of grupos) {
+        if (!/^[a-z0-9_]{1,30}$/.test(k)) return null;
+        if (Array.isArray(v)) {
+          if (v.length > 30 || v.some(i => typeof i !== "string" || !/^[a-z0-9_]{1,30}$/.test(i))) return null;
+          opciones[k] = v;
+        } else if (v && typeof v === "object") {
+          const cantidades = Object.entries(v as Json);
+          if (cantidades.length > 40 || cantidades.some(([id, n]) =>
+            !/^[a-z0-9_]{1,30}$/.test(id) || !Number.isInteger(n) || (n as number) < 1 || (n as number) > 50)) return null;
+          opciones[k] = Object.fromEntries(cantidades) as Record<string, number>;
+        } else return null;
+      }
+      lineas.push({producto_id: a.producto_id, cantidad: a.cantidad, opciones,
+        nota: typeof a.nota === "string" ? a.nota.slice(0, 200) : ""});
+    }
+    if (typeof x.lote_id !== "string" || !/^[0-9a-f-]{36}$/.test(x.lote_id)) return null;
+    out.lote_id = x.lote_id;
+    out.agregar_varios = lineas;
+  }
   if (x.datos && typeof x.datos === "object") {
     const d = x.datos as Json; const s = (k: string, n: number) => String(d[k] ?? "").trim().slice(0, n);
     out.datos = { nombre: s("nombre", 80), telefono: s("telefono", 25), entrega: s("entrega", 10), direccion: s("direccion", 200),
@@ -259,6 +292,8 @@ Deno.serve(async (req) => {
     const cliente = textoOriginal || (entrada.texto ? String(entrada.texto)
       : entrada.boton ? (BOTON_TEXTO[String(entrada.boton)] || "Elegí una opción")
       : entrada.agregar ? "Agregar: " + describirLinea(catalogo, entrada.agregar as never)
+      : entrada.agregar_varios ? "Selección del menú: " +
+        (entrada.agregar_varios as Json[]).map(l => describirLinea(catalogo, l as never)).join(", ")
       : entrada.datos ? "Envié mis datos para el pedido"
       : "Quitar un producto");
 
@@ -293,6 +328,7 @@ Deno.serve(async (req) => {
     }
     return json({ ok: true, mensajes:mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
       atencion:sucursal.atencion, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
+      lote_aceptado: !!entrada.agregar_varios && r.estado.ultimo_lote === entrada.lote_id,
       motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);
   } catch (e) {
     const err = e as { code?: string; message?: string };

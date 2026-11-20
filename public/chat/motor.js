@@ -206,7 +206,7 @@ export function categoriasSugeridas(catalogo, carrito) {
     .slice(0, 3).map(c => ({id: c.id, nombre: c.nombre, tipo: tipoCat(c)}));
 }
 
-/** Productos a ofrecer de cada categoría sugerida: el de mayor precio y el más económico (hasta 2 por categoría). */
+/** Productos a ofrecer según la carta vigente y disponibilidad. */
 export function productosSugeridos(catalogo, categorias) {
   const out = [];
   for (const c of categorias || []) {
@@ -378,7 +378,7 @@ function intencion(t) {
 }
 
 const BOTONES_INICIO = [
-  {id: 'carta', texto: 'Ver menú'}, {id: 'horario', texto: 'Horario y envío'},
+  {id: 'carta', texto: 'Armar mi pedido'}, {id: 'horario', texto: 'Horario y envío'},
   {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'},
 ];
 export function botonesCarrito(carrito) {
@@ -449,7 +449,7 @@ export function limpiarEstado(estado, catalogo) {
 
 /**
  * Responde un turno.
- * @param {{sucursal, catalogo, estado, entrada:{texto?:string, boton?:string, agregar?:object, quitar?:number, datos?:object}}} p
+ * @param {{sucursal, catalogo, estado, entrada:{texto?:string, boton?:string, agregar?:object, agregar_varios?:object[], quitar?:number, datos?:object}}} p
  * @returns {{estado, mensajes:Array<{texto:string, botones?:Array, tipo?:string, productos?:Array}>, accion?:object}}
  */
 export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
@@ -495,6 +495,41 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     decir('Entendido. Cuando lo desee, puede volver a comunicarse. Muchas gracias.',{botones:BOTONES_INICIO});
     return fin();
   }
+  // La carta interactiva envía todas las selecciones juntas. Se validan ANTES de guardar nada.
+  if (entrada.agregar_varios) {
+    const lineas = entrada.agregar_varios;
+    if (!Array.isArray(lineas) || !lineas.length || lineas.length > MAX_CARRITO) {
+      decir('La selección del menú es inválida. Volvé a revisar tu carrito.');
+      return fin();
+    }
+    if (entrada.lote_id && e.ultimo_lote === entrada.lote_id) {
+      decir('Esta selección del menú ya fue recibida.\n' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
+      return fin();
+    }
+    const siguiente = e.carrito.map(l => ({...l, opciones: {...(l.opciones || {})}}));
+    for (const entradaLinea of lineas) {
+      const l = {producto_id: entradaLinea.producto_id, cantidad: Number(entradaLinea.cantidad),
+        opciones: entradaLinea.opciones || {}, nota: String(entradaLinea.nota || '').slice(0, 200)};
+      const problema = validarLinea(catalogo, l);
+      if (problema) { decir(problema + ' No se agregó ningún producto de esta selección.'); return fin(); }
+      const igual = siguiente.find(x => x.producto_id === l.producto_id &&
+        JSON.stringify(x.opciones || {}) === JSON.stringify(l.opciones || {}) && !x.nota && !l.nota);
+      if (igual && igual.cantidad + l.cantidad > MAX_CANTIDAD) {
+        decir('Superaste la cantidad máxima para ' + productoPorId(catalogo, l.producto_id).nombre + '. No se agregó la selección.');
+        return fin();
+      }
+      const aviso = sumar(catalogo, siguiente, [l]);
+      if (aviso.length) { decir(aviso.join(' ') + ' No se agregó la selección.'); return fin(); }
+    }
+    e.carrito = siguiente;
+    if (entrada.lote_id) e.ultimo_lote = entrada.lote_id;
+    e.paso = 'pedido';
+    decir('Recibí tu selección del menú:\n' + lineas.map(l => '• ' + describirLinea(catalogo, l)).join('\n') +
+      '\nTotal estimado: ' + pesos(totalCarrito(catalogo, e.carrito)) +
+      '\nPodés agregar más o finalizar para completar tus datos.', {botones: botonesCarrito(e.carrito)});
+    return fin();
+  }
+
   if (entrada.agregar) {
     const l = {producto_id: entrada.agregar.producto_id, cantidad: Number(entrada.agregar.cantidad),
       opciones: entrada.agregar.opciones || {}, nota: String(entrada.agregar.nota || '').slice(0, 200)};
@@ -605,7 +640,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
         const cats = categoriasSugeridas(catalogo, e.carrito);
         if (cats.length) {
           e.sugerido = true;
-          // Ofrece productos concretos con precio (se agregan con un toque) y, si hay más, «Ver más …».
+          // Oferta concreta: precio y un toque para agregar. El total se valida en la base.
           const grupos = productosSugeridos(catalogo, cats);
           decir(mensajeDe(mensajes, 'sugerencia'), {sugerencia: true, botones: [
             ...grupos.flatMap(g => g.productos.map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}))),
