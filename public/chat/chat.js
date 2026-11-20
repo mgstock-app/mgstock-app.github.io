@@ -299,7 +299,7 @@ function abrirSeleccion() {
         if (S.enviando || !S.borrador.length) return;
         if (!S.loteId) { S.loteId = crypto.randomUUID(); guardarBorrador(); }
         const entrada = {agregar_varios: S.borrador.map(l => ({...l})), lote_id: S.loteId};
-        const textoSeleccion = 'Mi selección del menú:\\n' + S.borrador.map(l => '• ' + describirLinea(S.catalogo, l)).join('\\n');
+        const textoSeleccion = 'Mi selección del menú:\n' + S.borrador.map(l => '• ' + describirLinea(S.catalogo, l)).join('\n');
         cerrarHoja();
         const ok = await enviar(entrada, textoSeleccion);
         if (!ok) abrirSeleccion();
