@@ -12,6 +12,7 @@
     ['usuarios', 'Usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
+    ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
     ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
@@ -33,6 +34,7 @@
     login: ['Ingreso', 'user']
   });
   let api, data = null, status = 'idle', busy = false, timer = 0, tab = 'inicio', molinoBusy = false;
+  let showroomPerfil = 'local';
   let couponRows = {munro:null,torcuato:null}, couponBusy=false, couponError='', couponAttempted=false;
   // Preferencia global, persistida en base y controlada por la creadora.
   // Predeterminado: oculto. Nunca se guarda como una preferencia de navegador.
@@ -297,6 +299,7 @@
       ['Empleados y horarios', 'empleados', '<path d="M3 20c0-4 4-7 9-7s9 3 9 7"/><circle cx="12" cy="7" r="4"/>'],
       ['Locales', 'locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9"/>'],
       ['Herramientas', 'herramientas', '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>'],
+      ['Prueba GESTLOK Chat', 'chat-prueba', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
       ['Reseñas', 'resenas', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>']
     ].map(([name,id,icon]) => '<button type="button" class="gl-ch-shortcut" data-ch-tab="' + id + '">' +
       '<span class="gl-ch-ico b">' + svg(icon, 22) + '</span><b>' + name + '</b><span aria-hidden="true">›</span></button>').join('');
@@ -313,6 +316,9 @@
       '<header><h2>Operaciones entre sucursales</h2></header>' +
       '<p><b>El Molino Café</b> · San Isidro y Acassuso. Las funciones están protegidas por los permisos de cada local.</p>' +
       '<div class="gl-ch-microapps">' + molinoTools + '</div></section>' +
+      '<section class="gl-ch-card gl-ch-showroom-teaser"><header><h2>Prueba GESTLOK Chat</h2></header>' +
+      '<p>Mostrá las vistas de cliente y gerente con pedidos ficticios. Probá nuevas funciones sin afectar a ninguna tienda.</p>' +
+      '<button type="button" class="gl-ch-showroom-open" data-ch-tab="chat-prueba">Abrir demostración →</button></section>' +
       '<section class="gl-ch-card"><header><h2>Administración y herramientas</h2></header>' +
       '<p>Accesos rápidos a los módulos existentes. Cada empresa conserva sus propios datos y permisos.</p>' +
       '<div class="gl-ch-shortcuts">' + shortcuts + '</div></section></div>';
@@ -423,6 +429,33 @@
         window.GestLokMolino?.open?.(next.section);
     });
   }
+  // Ensayo aislado: dos iframes con los modos de prueba ya existentes.
+  // Ambos se comunican SOLO por sessionStorage del mismo navegador y pestaña.
+  function chatShowroomView() {
+    if (!api?.isCreadora?.()) return '';
+    const active = showroomPerfil === 'cliente' ? 'cliente' : 'local';
+    const frame = (perfil, url, titulo) =>
+      '<div class="gl-ch-showroom-pane" data-showroom-pane="' + perfil + '"' +
+      (perfil !== active ? ' hidden' : '') + '>' +
+      '<iframe title="' + titulo + '" src="' + url + '" loading="eager" ' +
+      'referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms" ></iframe></div>';
+    return '<section class="gl-ch-showroom" aria-label="Prueba GESTLOK Chat">' +
+      '<header class="gl-ch-showroom-header"><div><h2>Prueba GESTLOK Chat</h2>' +
+      '<p>Demostración para presentar a comerciantes y comprobar funciones nuevas.</p></div>' +
+      '<button type="button" data-ch-showroom-reset class="gl-ch-showroom-reset">Reiniciar demostración</button></header>' +
+      '<p class="gl-ch-showroom-note" role="status"><strong>Datos ficticios · Modo seguro.</strong> Los pedidos, mensajes y cambios solo existen ' +
+      'en esta prueba. No llegan a Supabase, a Mi Gusto ni a otras empresas. ' +
+      'Usá Perfil de cliente para crear un pedido y Perfil de local para revisarlo y confirmarlo manualmente.</p>' +
+      '<div class="gl-ch-showroom-tabs" role="tablist" aria-label="Elegir perfil de prueba">' +
+      [['local', 'Perfil de local · Gerente'], ['cliente', 'Perfil de cliente']].map(([id, text]) =>
+        '<button type="button" role="tab" data-ch-showroom="' + id + '" aria-selected="' +
+        (id === active) + '" aria-controls="gl-ch-showroom-' + id + '"' +
+        (id === active ? ' class="on"' : '') + '>' + text + '</button>').join('') + '</div>' +
+      '<div id="gl-ch-showroom-local">' + frame('local', '/chat/panel/?demo=1&showroom=1', 'GESTLOK Chat · Panel del gerente (demostración)') + '</div>' +
+      '<div id="gl-ch-showroom-cliente">' + frame('cliente', '/chat/?demo=1&showroom=1', 'GESTLOK Chat · Vista del cliente (demostración)') + '</div>' +
+      '<p class="gl-ch-showroom-foot">El perfil de local incluye Pedidos, Soporte, Historial, Stock, Carta, Mensajes, Ajustes, Conversaciones y Clientes frecuentes. ' +
+      'Los pedidos de esta prueba nunca se confirman automáticamente.</p></section>';
+  }
   // La preferencia visual es del dispositivo; nunca modifica roles ni alcance.
   const navPrefKey = 'gestlok:creator-menu-collapsed:v1';
   let navCollapsed = false;
@@ -441,12 +474,14 @@
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
+    else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + chatAdminView() + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
-    const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' : 'Administración de GESTLOK';
+    const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
+      cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
@@ -492,6 +527,28 @@
     const molino = ev.target.closest?.('[data-ch-molino]');
     if (molino && api?.isCreadora?.()) {
       ev.preventDefault(); void openMolinoTool(molino.dataset.chMolino); return;
+    }
+    const perfil = ev.target.closest?.('[data-ch-showroom]');
+    if (perfil && api?.isCreadora?.() && tab === 'chat-prueba') {
+      ev.preventDefault();
+      showroomPerfil = perfil.dataset.chShowroom === 'cliente' ? 'cliente' : 'local';
+      document.querySelectorAll('.gl-ch-showroom [data-ch-showroom]').forEach(btn => {
+        const on = btn.dataset.chShowroom === showroomPerfil;
+        btn.setAttribute('aria-selected', String(on)); btn.classList.toggle('on',on);
+      });
+      document.querySelectorAll('.gl-ch-showroom [data-showroom-pane]').forEach(p =>
+        {p.hidden=p.dataset.showroomPane!==showroomPerfil;});
+      return;
+    }
+    const resetShowroom = ev.target.closest?.('[data-ch-showroom-reset]');
+    if (resetShowroom && api?.isCreadora?.() && tab === 'chat-prueba') {
+      ev.preventDefault();
+      try { sessionStorage.removeItem('gestlok:chat-showroom:v1'); } catch {}
+      document.querySelectorAll('.gl-ch-showroom iframe').forEach(iframe => {
+        try { iframe.contentWindow.location.reload(); } catch { iframe.src = iframe.getAttribute('src'); }
+      });
+      api.toast?.('Demostración reiniciada. No se alteraron datos reales.');
+      return;
     }
     const b = ev.target.closest && ev.target.closest('[data-ch-tab]');
     if (b) { ev.preventDefault(); goTab(b.dataset.chTab); }
