@@ -287,25 +287,69 @@ export function validarLinea(catalogo, linea) {
 }
 
 /** Busca productos por texto. Devuelve [{producto, puntaje}] ordenado. */
+export const RE_PORCIONES = /\b(\d{1,2}) porcion(?:es)?\b/;
+const RE_CHICA = /\b(individual|individuales|indi|chica|chicas|chico|chicos|chiquita|chiquitas|chiquito|personal|personales|mini)\b/;
+const RE_GRANDE = /\b(grande|grandes|entera|enteras|entero|familiar|familiares)\b/;
+export function tamanoDe(texto) {
+  const n = normalizar(texto);
+  const m = n.match(RE_PORCIONES);
+  if (m) return Number(m[1]) <= 4 ? 'chica' : 'grande';
+  if (RE_CHICA.test(n)) return 'chica';
+  if (RE_GRANDE.test(n)) return 'grande';
+  return null;
+}
+// Para comparar sabores sin que el tamaño cuente como palabra («Pizza 8 porciones · Muzzarella» ≈ «pizza de muzzarella»).
+const sinTamano = t => normalizar(t).replace(/\b\d{1,2} porcion(?:es)?\b/g, ' ')
+  .replace(new RegExp(RE_CHICA.source + '|' + RE_GRANDE.source, 'g'), ' ');
+const decimales = t => String(t ?? '').replace(/(\d)[.,](\d)/g, '$1d$2'); // «2,25 L» → «2d25 L»: medida, no dos números
+const clavesSinTamano = t => { const k = claves(sinTamano(decimales(t))); return k.length ? k : claves(decimales(t)); };
+// «Pack 12 empanadas»: el número va pegado a lo que cuenta. Si el cliente escribe «12 empanadas», ese pack gana.
+function numerosDelNombre(nombre, texto) {
+  const n = palabras(decimales(nombre)).map(raiz), q = palabras(decimales(texto)).map(raiz);
+  let extra = 0;
+  for (let i = 0; i < n.length - 1; i++) {
+    if (/^\d+$/.test(n[i]) && q.some((w, j) => w === n[i] && q[j + 1] === n[i + 1])) extra += 0.25;
+  }
+  return extra;
+}
+// «muzza» = «muzzarella», «napo» = «napolitana»: una palabra de 4 letras o más que empieza igual que la otra.
+const coincide = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a)));
+
+/** Busca productos por texto. Devuelve [{producto, puntaje}] ordenado. */
 export function buscar(catalogo, texto) {
-  const q = claves(texto);
+  const q = clavesSinTamano(texto);
   if (!q.length) return [];
-  const res = [];
+  const pedido = tamanoDe(texto);
+  let res = [];
   for (const p of disponibles(catalogo)) {
-    const n = claves(p.nombre);
+    const n = clavesSinTamano(p.nombre);
     if (!n.length) continue;
-    const enNombre = n.filter(w => q.includes(w)).length;
-    const enTexto = q.filter(w => n.includes(w)).length;
+    const enNombre = n.filter(w => q.some(x => coincide(w, x))).length;
+    const enTexto = q.filter(w => n.some(x => coincide(w, x))).length;
     if (!enNombre) continue;
     // Prioriza que el texto cubra el nombre completo («empanada de carne» > «empanada»).
-    const puntaje = enNombre / n.length + 0.15 * (enTexto / q.length);
-    res.push({producto: p, puntaje});
+    const bonus = numerosDelNombre(p.nombre, texto);
+    const puntaje = enNombre / n.length + 0.15 * (enTexto / q.length) + bonus;
+    res.push({producto: p, puntaje, bonus, cubre: enTexto, completo: enNombre === n.length, tamano: tamanoDe(p.nombre + ' ' + (p.descripcion || ''))});
   }
-  return res.sort((a, b) => b.puntaje - a.puntaje || a.producto.nombre.localeCompare(b.producto.nombre));
+  // Si el cliente dijo el tamaño y la carta lo tiene, se ofrecen solo los de ese tamaño.
+  if (pedido && res.some(r => r.tamano === pedido)) res = res.filter(r => r.tamano === pedido);
+  return res.sort((a, b) => b.puntaje - a.puntaje || a.producto.nombre.localeCompare(b.producto.nombre))
+    .map(({producto, puntaje, bonus, cubre, completo}) => ({producto, puntaje, bonus, cubre, completo}));
 }
 
-function cantidadDe(segmento) {
-  const t = normalizar(segmento);
+/** Cantidad pedida en un segmento. Las medidas no son cantidades: «de 8 porciones», «2,25 L», «354 ml», ni los números
+ * que forman parte del nombre del producto («Pack 6 empanadas», «Pizza 8 porciones»). */
+function cantidadDe(segmento, producto) {
+  let t = normalizar(String(segmento ?? '').replace(/\d+[.,]\d+|\d+d\d+/g, ' '))
+    .replace(/\b\d{1,4} ?(porcion|porciones|ml|cc|l|lt|lts|litro|litros|kg|kilo|kilos|g|gr|grs|gramo|gramos|cm)\b/g, ' ');
+  const nombre = producto ? palabras(decimales(producto.nombre)) : [];
+  for (let i = 0; i < nombre.length - 1; i++) {
+    if (!/^\d+$/.test(nombre[i])) continue;
+    const sigue = raiz(nombre[i + 1]);
+    t = t.split(' ').filter((w, j, todas) => !(w === nombre[i] && todas[j + 1] && raiz(todas[j + 1]) === sigue)).join(' ');
+  }
+  t = t.replace(/\s+/g, ' ').trim();
   if (/\bmedia docena\b/.test(t)) return 6;
   if (/\bdocena\b/.test(t)) { const m = t.match(/\b(\d{1,2})\s+docenas?\b/); return m ? Number(m[1]) * 12 : 12; }
   const m = t.match(/(?:^|\s)(\d{1,3})(?:\s|$|x)/) || t.match(/^x\s?(\d{1,3})\b/);
@@ -335,7 +379,7 @@ function opcionesDe(producto, segmento) {
 export function interpretarPedido(catalogo, texto) {
   // Corta por comas, «más» o «+»; «y» solo corta si sigue una cantidad («… y 1 de jamón y queso»).
   const cant = '(?:\\d|media\\b|docena\\b|' + Object.keys(NUMEROS).map(w => w + '\\b').join('|') + ')';
-  const segmentos = String(texto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const segmentos = decimales(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .split(/,|\n|\s\+\s|\smas\s|;/)
     .flatMap(x => normalizar(x).split(new RegExp('\\sy\\s(?=' + cant + ')')))
     .map(x => x.trim()).filter(Boolean);
@@ -344,16 +388,27 @@ export function interpretarPedido(catalogo, texto) {
   for (const seg of segmentos) {
     const encontrados = buscar(catalogo, seg);
     let p = encontrados[0]?.producto;
-    const empate = encontrados.filter(e => e.puntaje === encontrados[0]?.puntaje);
+    let empate = encontrados.filter(e => e.puntaje === encontrados[0]?.puntaje);
+    // Si el cliente no nombró un producto completo, son opciones todos los que coinciden en las mismas palabras
+    // («una pizza chica» → todas las pizzas individuales de la carta, no solo la de nombre más corto).
+    const mejor = encontrados[0];
+    if (mejor && !mejor.completo) empate = encontrados.filter(e => e.puntaje === mejor.puntaje || (!e.completo && e.cubre === mejor.cubre && e.bonus === mejor.bonus));
+    // Lo que el cliente no nombró no se agrega: «una coca 1,75» es Coca-Cola, no Coca-Cola Zero.
+    if (empate.length > 1) {
+      const k = empate.map(e => clavesSinTamano(e.producto.nombre));
+      const base = empate.filter((e, i) => !k.some((o, j) => j !== i && o.length < k[i].length && o.every(w => k[i].includes(w))));
+      if (base.length) empate = base;
+      p = empate[0].producto;
+    }
     // «2 de carne y 1 de jamón»: si el segmento no nombra el producto, se usa el anterior como contexto.
     if ((!p || empate.length > 1) && ultimo) {
       const ctx = buscar(catalogo, ultimo + ' ' + seg);
       if (ctx[0] && ctx.filter(e => e.puntaje === ctx[0].puntaje).length === 1) { p = ctx[0].producto; empate.length = 1; }
     }
     if (!p) { if (claves(seg).length) sinCoincidencia.push(seg); continue; }
-    if (empate.length > 1) { dudas.push({texto: seg, opciones: empate.slice(0, 4).map(e => e.producto)}); continue; }
+    if (empate.length > 1) { dudas.push({texto: seg, opciones: empate.map(e => e.producto)}); continue; }
     ultimo = claves(p.nombre)[0] || ultimo;
-    const cantidad = Math.min(MAX_CANTIDAD, Math.max(1, cantidadDe(seg)));
+    const cantidad = Math.min(MAX_CANTIDAD, Math.max(1, cantidadDe(seg, p)));
     lineas.push({producto_id: p.id, cantidad, opciones: opcionesDe(p, seg), nota: ''});
   }
   return {lineas, dudas, sinCoincidencia};
@@ -791,8 +846,15 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   }
   for (const d of dudas) {
     const cant = Math.min(MAX_CANTIDAD, Math.max(1, cantidadDe(d.texto)));
-    decir('¿Cuál de estos querés para «' + d.texto + '»?', {botones: d.opciones.map(p => ({id: 'elegir:' + p.id + ':' + cant, texto: p.nombre}))});
+    // Muchas opciones de una misma categoría («una pizza grande»): se abre la carta en esa categoría.
+    const cat = (catalogo?.categorias || []).find(c => c.id === d.opciones[0]?.categoria_id);
+    if (d.opciones.length > 4 && cat && d.opciones.every(p => p.categoria_id === cat.id)) {
+      decir('Estas son nuestras opciones de ' + cat.nombre.toLowerCase() + '. Seleccione la que prefiera.', {tipo: 'carta', categoria: cat.id});
+      continue;
+    }
+    decir('¿Cuál de estos querés para «' + d.texto.replace(/(\d)d(\d)/g, '$1,$2') + '»?', {botones: d.opciones.slice(0, 4).map(p => ({id: 'elegir:' + p.id + ':' + cant, texto: p.nombre}))});
   }
+
   if (sinCoincidencia.length && (completas.length || aElegir.length || dudas.length)) {
     decir('No encontré: ' + sinCoincidencia.join(', ') + '. Revisá la carta.', {botones: [{id: 'carta', texto: 'Ver la carta'}]});
   }
