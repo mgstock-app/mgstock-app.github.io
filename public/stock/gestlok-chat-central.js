@@ -9,10 +9,10 @@
 (()=>{
 'use strict';
 const PAUSA_MS=15000;
-const VERSION_PANEL='20261120stock1';
+const VERSION_PANEL='20261120soporte1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
-let api=null,pendientes=0,vistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
+let api=null,pendientes=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
 // Locales con GESTLOK Chat encendido para esta sesión: {tenant, locales: Map(local_id → nombre)}. Lo dice el servidor.
 let servidor={tenant:'',locales:new Map()},buscando='',fallo={tenant:'',at:0};
 
@@ -46,7 +46,7 @@ async function descubrir(){
   const antes=servidor.locales.has(local());
   leer(data,t);
   const suc=(data?.sucursales||[]).find(x=>x.local_id===local());
-  if(suc&&servidor.locales.has(local()))actualizar(suc.pendientes);
+  if(suc&&servidor.locales.has(local()))actualizar(suc.pendientes,suc.reclamos);
   if(servidor.locales.has(local())!==antes)api?.render?.();
  }catch{fallo={tenant:t,at:Date.now()};/* sin conexión: se vuelve a preguntar más tarde */}
  finally{if(buscando===t)buscando='';}
@@ -57,46 +57,48 @@ function quickAccess(){
  // «Pagos Online» solo donde esa micro app existe (hoy Mi Gusto).
  const pagos=window.GestLokMiGustoOnline?.permitido?.()?'<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>':'';
  return '<nav class="mgp-shift-quick" aria-label="Atajos del turno">'+pagos+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+pendientes+'</span> pedidos por confirmar</small></span></button>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+(pendientes+reclamos)+'</span> pedidos y reclamos pendientes</small></span></button>'+
  '</nav>';
 }
 function navBadge(){
- return allowed()&&pendientes?'<span class="mgp-nav-count" data-gcc-nav-count aria-label="'+pendientes+' pedidos por confirmar">'+Math.min(99,pendientes)+'</span>':'';
+ return allowed()&&(pendientes+reclamos)?'<span class="mgp-nav-count" data-gcc-nav-count aria-label="'+(pendientes+reclamos)+' pedidos y reclamos pendientes">'+Math.min(99,pendientes+reclamos)+'</span>':'';
 }
-const pendingCount=()=>allowed()?pendientes:0;
+const pendingCount=()=>allowed()?pendientes+reclamos:0;
 
 function indicadores(){
  if(!allowed())return ocultarAviso();
  const nav=document.querySelector('#snav button[data-go="pedidos-clientes"]');
  if(nav){
   let b=nav.querySelector('[data-gcc-nav-count]');
-  if(pendientes){
+  if(pendientes+reclamos){
    if(!b){b=document.createElement('span');b.className='mgp-nav-count';b.dataset.gccNavCount='';nav.appendChild(b);}
-   b.textContent=String(Math.min(99,pendientes));b.setAttribute('aria-label',pendientes+' pedidos por confirmar');
+   b.textContent=String(Math.min(99,pendientes+reclamos));b.setAttribute('aria-label',(pendientes+reclamos)+' pedidos y reclamos pendientes');
   }else b?.remove();
  }
- document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes);});
+ document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes+reclamos);});
  window.GestLokMobileDock?.refresh?.();
 }
-function avisoNuevo(){
+function avisoNuevo(tipo='pedido'){
  // Aviso flotante en cualquier pantalla de GESTLOK (no se muestra si ya se está en la Central).
  if(api?.S?.view==='pedidos-clientes')return;
  let a=document.getElementById('mgp-global-alert');
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
- a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>¡Pedido nuevo por chat!</strong><small>'+
-  esc(localName())+' · '+pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar</small></div>'+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedidos</button>';
+ a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+(tipo==='reclamo'?'¡Reclamo de cliente!':'¡Pedido nuevo por chat!')+'</strong><small>'+
+  esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar')+'</small></div>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Abrir Central</button>';
  try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
 }
 function ocultarAviso(){document.getElementById('mgp-global-alert')?.remove();}
 
-function actualizar(n){
- const antes=vistos;
+function actualizar(n,r=reclamos){
+ const antes=vistos,antesReclamos=reclamosVistos;
  pendientes=Math.max(0,Number(n)||0);vistos=pendientes;
+ reclamos=Math.max(0,Number(r)||0);reclamosVistos=reclamos;
  indicadores();
- if(antes!==null&&pendientes>antes)avisoNuevo();
- if(!pendientes)ocultarAviso();
+ if(antesReclamos!==null&&reclamos>antesReclamos)avisoNuevo('reclamo');
+ else if(antes!==null&&pendientes>antes)avisoNuevo('pedido');
+ if(!pendientes&&!reclamos)ocultarAviso();
 }
 async function consultar(){
  if(!rolOk()||!online()||!window.GestLokSupabase)return;
@@ -111,7 +113,7 @@ async function consultar(){
   leer(data,t);
   if(!servidor.locales.has(loc)){if(antes)api?.render?.();return;}
   const s=(data?.sucursales||[]).find(x=>x.local_id===loc);
-  actualizar(s?s.pendientes:0);
+  actualizar(s?s.pendientes:0,s?s.reclamos:0);
  }catch{/* sin conexión: se reintenta en el próximo ciclo */}
 }
 
@@ -160,7 +162,7 @@ function subscribe(loc,push){
  push(()=>{clearInterval(t);window.removeEventListener('focus',foco);ocultarAviso();});
 }
 function reset(){
- epoca++;pendientes=0;vistos=null;ocultarAviso();servidor={tenant:'',locales:new Map()};buscando='';
+ epoca++;pendientes=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();servidor={tenant:'',locales:new Map()};buscando='';
  if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';
 }
 function attach(h){if(!api)api=h;}

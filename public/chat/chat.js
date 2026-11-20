@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120pagos1';
+import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120soporte1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -30,7 +30,8 @@ function slugDeUrl() {
 const SLUG = DEMO ? 'demo' : slugDeUrl();
 
 const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [], pedido: null, enviando: false,
-  ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: ''};
+  ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
+  ultimoLocal: 0, soportePendiente: false};
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
 function token() {
@@ -87,8 +88,9 @@ function mostrarEscribiendo(si) {
 
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
-  ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}]
-  : [{id: 'carta', texto: 'Ver menú'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'}];
+  ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
+  : [{id: 'carta', texto: 'Ver menú'}, {id: 'horario', texto: 'Horario y envío'},
+      {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
 
 async function enviar(entrada, textoVisible) {
   if (S.enviando) return;
@@ -111,6 +113,10 @@ async function enviar(entrada, textoVisible) {
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return;
     }
     actualizarCarrito(r.carrito);
+    if (typeof r.soporte_pendiente === 'boolean') {
+      S.soportePendiente = r.soporte_pendiente;
+      programarSondeo();
+    }
     for (const m of r.mensajes || []) mensajeAsistente(m);
     if (r.pedido) mostrarPedido(r.pedido);
   } catch {
@@ -164,14 +170,29 @@ function mostrarPedido(p) {
 }
 function programarSondeo() {
   clearTimeout(S.sondeo);
-  if (!['pendiente', 'confirmado'].includes(S.pedido?.estado)) return;
+  if (!S.soportePendiente && !['pendiente', 'confirmado'].includes(S.pedido?.estado)) return;
   S.sondeo = setTimeout(async () => {
-    if (document.hidden) return programarSondeo();
-    try { const r = await api('estado'); if (r.ok && r.pedidos?.[0]) mostrarPedido(r.pedidos[0]); else programarSondeo(); }
-    catch { programarSondeo(); }
+    // Mantener contacto con el gerente durante soporte, aun si el cliente cambia de pestaña.
+    if (document.hidden && !S.soportePendiente) return programarSondeo();
+    try {
+      const r = await api('estado', {desde: S.ultimoLocal});
+      if (r.ok) {
+        for (const m of r.mensajes_local || []) {
+          if (!Number.isSafeInteger(m.id) || m.id <= S.ultimoLocal) continue;
+          S.ultimoLocal = m.id;
+          burbuja('local', m.texto);
+          try { navigator.vibrate?.(100); } catch { /* opcional */ }
+        }
+        if (typeof r.soporte_pendiente === 'boolean') S.soportePendiente = r.soporte_pendiente;
+        if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
+        else programarSondeo();
+      } else programarSondeo();
+    } catch { programarSondeo(); }
   }, 12000);
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && ['pendiente', 'confirmado'].includes(S.pedido?.estado)) programarSondeo(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (S.soportePendiente || ['pendiente', 'confirmado'].includes(S.pedido?.estado))) programarSondeo();
+});
 
 // ---------------------------------------------------------------------------------------------- hojas
 function abrirHoja(titulo, contenido) {
@@ -377,6 +398,9 @@ async function iniciar() {
     return pantallaFija('Chat no encontrado', r.error && r.status !== 404 ? r.error : 'Revisá el enlace que te compartió el local.');
   }
   S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
+  S.soportePendiente = r.soporte_pendiente === true;
+  S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')
+    .map(m => Number.isSafeInteger(m.id) ? m.id : 0));
   const nombre = [r.sucursal.empresa, r.sucursal.nombre].filter(Boolean).join(' · ');
   document.title = nombre + ' · Pedidos por chat';
   $('titulo').textContent = nombre;
@@ -392,6 +416,7 @@ async function iniciar() {
   actualizarCarrito(r.carrito);
   if (!(r.nuevos || []).length) chips(BOTONES_BASE());
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
+  if (S.soportePendiente) programarSondeo();
   texto.disabled = false; $('btn-carta').disabled = false;
   $('app').setAttribute('aria-busy', 'false');
 }
