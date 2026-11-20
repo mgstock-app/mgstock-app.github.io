@@ -29,6 +29,11 @@ describe('GESTLOK Chat · soporte y seguimiento humano',()=>{
       return req.reply({ok:true,carrito:[],mensajes:[{texto:'Consulta registrada'}]});
     }).as('chat');
     cy.visit('/chat/?s=mi-gusto-munro');
+    cy.get('#hoja').should('be.visible').and('contain.text','Datos para iniciar');
+    cy.get('#hoja input[name="nombre"]').type('Cliente Prueba');
+    cy.get('#hoja input[name="telefono"]').type('1144556677');
+    cy.contains('#hoja button','Continuar con mi pedido').click();
+    cy.get('#hoja').should('not.be.visible');
     cy.contains('.chip','Ayuda con mi pedido').click();
     cy.contains('.chip','Consultar demora').click();
     cy.contains('.burbuja.asistente','15 a 20 minutos').should('be.visible');
