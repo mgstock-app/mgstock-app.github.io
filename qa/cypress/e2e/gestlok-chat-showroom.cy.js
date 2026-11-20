@@ -1,5 +1,23 @@
 /* global cy, describe, it, expect */
 describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
+  it('editor legible en 360 px: mensaje completo, cámara y menú sin solaparse',()=>{
+    cy.viewport(360,740);
+    cy.visit('/chat/?demo=1&showroom=1');
+    cy.get('#app').should('have.attr','aria-busy','false');
+    cy.get('.redactar').should('have.css','display','grid');
+    cy.get('#texto').should('be.visible').then($el=>{
+      const r=$el[0].getBoundingClientRect();
+      expect(r.width).to.be.greaterThan(220);
+      expect(r.height).to.be.at.least(56);
+    });
+    cy.get('#btn-carta').should('be.visible');
+    cy.get('#btn-galeria').should('be.visible');
+    cy.get('#btn-camara').should('be.visible');
+    cy.get('#btn-enviar').should('be.visible');
+    cy.get('#texto').type('Quiero 3 empanadas de carne');
+    cy.get('#texto').should('have.value','Quiero 3 empanadas de carne');
+  });
+
   it('cliente hace pedido, gerente confirma y cliente ve el cambio sin escribir en Supabase',()=>{
     cy.viewport(390,820);
     let red=0;
