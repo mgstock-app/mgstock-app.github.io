@@ -481,18 +481,21 @@ function abrirProducto(p, sugerido = {}, inline = null) {
     for (const c of contadores) c();
     const falta = faltantes(p, linea().opciones)[0];
     boton.disabled = Boolean(falta);
-    boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase()
+    boton.textContent = falta
+      ? 'Completá ' + falta.nombre.toLowerCase() + ' para agregar'
       : 'Agregar a mi selección · ' + pesos(totalCarrito(S.catalogo, [linea()]));
   };
   // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
   const grupoCantidad = g => {
     const total = Number(g.total) || 1;
-    const resumen = el('small', {'aria-live': 'polite'});
+    const resumen = el('small', {class: 'grupo-estado', 'aria-live': 'polite'});
     contadores.push(() => {
       const u = unidades(elegidas[g.id]);
       const quedan = total - u;
-      resumen.textContent = u + ' de ' + total + (quedan === 0 ? ' · Completo' : quedan === 1 ? ' · Falta 1' : ' · Faltan ' + quedan);
+      resumen.textContent = quedan === 0 ? 'Completo' : (quedan === 1 ? 'Falta 1' : 'Faltan ' + quedan);
       resumen.classList.toggle('completo', quedan === 0);
+      resumen.classList.toggle('pendiente', quedan > 0);
+      resumen.setAttribute('aria-label', g.nombre + ': ' + u + ' de ' + total + ' elegidos, ' + resumen.textContent);
     });
     const filas = valoresDisponibles(S.catalogo, g).map(v => {
       const n = el('output', {class: 'n', text: String(elegidas[g.id][v.id] || 0)});
@@ -514,12 +517,21 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       });
       return fila;
     });
-    return el('fieldset', {class: 'grupo grupo-cantidad'}, el('legend', {}, g.nombre, el('small', {text: 'Elegí ' + total + (total > 1 ? ' · podés repetir' : '')}), resumen),
-      filas.length ? filas : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
+    return el('fieldset', {class: 'grupo grupo-cantidad'},
+      el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}), resumen),
+      el('p', {class: 'grupo-instruccion', text: 'Elegí ' + total + ' en total' +
+        (total > 1 ? ' · podés repetir variedades' : '')}),
+      filas.length ? el('div', {class: 'grupo-opciones'}, filas)
+        : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
   };
-  const grupos = (p.opciones || []).map(g => esCantidad(g) ? grupoCantidad(g) : el('fieldset', {class: 'grupo'},
-    el('legend', {}, g.nombre, el('small', {text: g.tipo === 'una' ? (g.obligatorio ? 'Elegí 1' : 'Opcional') : 'Hasta ' + g.max + (g.obligatorio ? ' · obligatorio' : '')})),
-    g.valores.map(v => {
+  const grupos = (p.opciones || []).map(g => esCantidad(g) ? grupoCantidad(g) : el('fieldset', {class: 'grupo grupo-opcional'},
+    el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}),
+      el('small', {class: 'grupo-estado' + (g.obligatorio ? ' pendiente' : ' opcional'),
+        text: g.obligatorio ? 'Obligatorio' : 'Opcional'})),
+    el('p', {class: 'grupo-instruccion', text: g.tipo === 'una'
+      ? 'Elegí ' + (g.obligatorio ? '1 opción' : 'hasta 1 opción')
+      : 'Elegí hasta ' + g.max + ' opciones'}),
+    el('div', {class: 'grupo-opciones'}, g.valores.map(v => {
       const input = el('input', {type: g.tipo === 'una' ? 'radio' : 'checkbox', name: 'g-' + g.id, value: v.id, checked: elegidas[g.id].includes(v.id)});
       input.addEventListener('change', () => {
         if (g.tipo === 'una') elegidas[g.id] = [v.id];
@@ -530,7 +542,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
         error.hidden = true; refrescar();
       });
       return el('label', {class: 'opcion'}, input, el('span', {text: v.nombre}), Number(v.extra) > 0 ? el('em', {text: '+ ' + pesos(v.extra)}) : null);
-    })));
+    }))));
   const form = el('form', {onsubmit: e => {
     e.preventDefault();
     const l = linea(); const problema = validarLinea(S.catalogo, l);
@@ -543,6 +555,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   }},
   p.descripcion ? el('p', {class: 'nota', text: p.descripcion}) : null,
   el('p', {class: 'precio', text: pesos(p.precio)}),
+  el('p', {class: 'menu-ayuda', text: 'Sumá las cantidades con + y −. Elegí todas las opciones obligatorias antes de agregar.'}),
   grupos,
   el('div', {class: 'cantidad'}, el('button', {type: 'button', 'aria-label': 'Menos', text: '−', onclick: () => { cantidad = Math.max(1, cantidad - 1); refrescar(); }}),
     salida, el('button', {type: 'button', 'aria-label': 'Más', text: '+', onclick: () => { cantidad = Math.min(50, cantidad + 1); refrescar(); }})),
