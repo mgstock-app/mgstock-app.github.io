@@ -4,8 +4,8 @@
 let ctx=null,shownFor='',visible=false,busy=false,registered=false,message='';
 let keyPromise=null;
 let prefAccount='',preferences=null,prefLoading=false,prefSaving='',prefError='';
-const categories=[['order_ready','Pedido de proveedor preparado','Cuando un gerente finaliza un pedido.'],['due_soon','Vencimiento próximo','Un aviso diario a las 08:00 si vence en 1 a 3 días.'],['due_today','Vencimiento hoy','Un aviso a las 08:00 por servicios que vencen hoy.'],['urgent_chat','Mensaje urgente del gerente','Aviso inmediato por mensaje marcado urgente.'],['important_changes','Cambios importantes','Eliminaciones o correcciones grandes, agrupadas cada 30 min.']];
-const defaultPrefs={master:true,order_ready:true,due_soon:true,due_today:true,urgent_chat:true,important_changes:true};
+const categories=[['order_ready','Pedido de proveedor preparado','Cuando un gerente finaliza un pedido.'],['due_soon','Vencimiento próximo','Un aviso diario a las 08:00 si vence en 1 a 3 días.'],['due_today','Vencimiento hoy','Un aviso a las 08:00 por servicios que vencen hoy.'],['urgent_chat','Mensaje urgente del gerente','Aviso inmediato por mensaje marcado urgente.'],['important_changes','Cambios importantes','Eliminaciones o correcciones grandes, agrupadas cada 30 min.'],['chat_order','Nuevo pedido de GESTLOK Chat','Aviso por cada pedido real pendiente de revisión.']];
+const defaultPrefs={master:true,order_ready:true,due_soon:true,due_today:true,urgent_chat:true,important_changes:true,chat_order:true};
 const conf=()=>window.SPM_CONFIG||{};
 const supa=()=>window.GestLokSupabase;
 const owner=()=>!!ctx && ctx.miRol()==='dueno' && !!ctx.S.local && !!ctx.S.me?.email;
