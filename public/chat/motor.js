@@ -50,7 +50,7 @@ const MAX_CANTIDAD = 50;
 /** Mensajes automáticos sugeridos. El dueño los cambia en el panel (vacío = este texto).
  * Variables: {nombre} {codigo} {total} {direccion} {local} {motivo}. */
 export const MENSAJES_BASE = {
-  recibido: 'Gracias, {nombre}. Recibimos su pedido. El gerente lo revisará antes de confirmarlo. Total estimado: {total}.',
+  recibido: 'Gracias, {nombre}. Recibimos su pedido, que está pendiente de revisión y confirmación del gerente. Total estimado: {total}.',
   terminado_retiro: '{nombre}, su pedido está listo para retirar en {local}. Al acercarse, solo indique su nombre.',
   terminado_envio: '{nombre}, su pedido está listo. El local coordinará la entrega en {direccion}.',
   rechazado: 'Le pedimos disculpas, {nombre}. No pudimos tomar su pedido. Motivo: {motivo}',
@@ -82,7 +82,7 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
         : (() => {
           const t=salida(mensajeDe(mensajes,'recibido'));
           const valido=/(preparando|prepara|preparación|confirmad|listo|en camino|despach|entregad|ya sale)/i.test(t)
-            ? 'Gracias, '+(nombre||'')+'. Recibimos su pedido.' : t;
+            ? 'Gracias, '+(nombre||'')+'. Recibimos su pedido, que está pendiente de revisión y confirmación del gerente.' : t;
           return /pendiente de revisión y confirmación/i.test(valido)
             ? valido : valido+' Su pedido está pendiente de revisión y confirmación del gerente.';
         })();
