@@ -81,7 +81,7 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
            .format(new Date(pedido.programado_para))+' h. Queda sujeto a revisión y confirmación del gerente antes de prepararlo.'
         : (() => {
           const t=salida(mensajeDe(mensajes,'recibido'));
-          const valido=/\b(prepar|confirmad|en camino|despach|listo para|ya sale)\b/i.test(t)
+          const valido=/(preparando|prepara|preparación|confirmad|listo|en camino|despach|entregad|ya sale)/i.test(t)
             ? 'Gracias, '+(nombre||'')+'. Recibimos su pedido.' : t;
           return /pendiente de revisión y confirmación/i.test(valido)
             ? valido : valido+' Su pedido está pendiente de revisión y confirmación del gerente.';
