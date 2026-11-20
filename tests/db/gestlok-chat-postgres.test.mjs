@@ -30,6 +30,7 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   ok(DB, ['-f', MIG]); // repetible
   ok(DB, ['-f', MIG2]);
   ok(DB, ['-f', MIG2]); // repetible
+  ok(DB, ['-f', 'supabase/migrations/20261120000406_gestlok_chat_confirmacion_manual.sql']);
   const r = psql(DB, ['-f', 'supabase/tests/gestlok-chat-permisos.sql']);
   const out = (r.stderr || '') + (r.stdout || '');
   assert.match(out, /ERROR:\s+INFORME/, out);

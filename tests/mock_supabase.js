@@ -228,7 +228,7 @@
     if (fn === 'gestlok_chat_panel_pedidos') return {data: {nivel: nivel(loc), pedidos: C.pedidos.filter(p => p.local === loc && (x.p_estado === 'todos' || p.estado === x.p_estado))}, error: null};
     if (fn === 'gestlok_chat_panel_decidir') {
       const p = C.pedidos.find(q => q.id === x.p_pedido);
-      if (p.estado !== 'pendiente') return {data: null, error: {code: 'P0001', message: 'Este pedido ya fue resuelto'}};
+      if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(x.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(x.p_decision)))) return {data: null, error: {code: 'P0001', message: 'Este pedido ya fue resuelto'}};
       Object.assign(p, {estado: x.p_decision, motivo: x.p_motivo || '', decidido_at: new Date().toISOString()});
       return {data: {ok: true, codigo: p.codigo, estado: p.estado}, error: null};
     }

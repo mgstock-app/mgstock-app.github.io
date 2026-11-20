@@ -28,9 +28,13 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   central().find('.tarjeta.pendiente').should('contain.text','MM-0001').and('contain.text','Cliente Ficticio');
   central().find('#sucursal').should('not.be.visible');
   central().find('[data-p="mensajes"]').should('be.visible');
+  central().contains('button','Confirmar y pasar a preparación').click();
+  central().contains('No hay pedidos pendientes de confirmación');
+  central().contains('button','En preparación').click();
+  central().find('.tarjeta.confirmado').should('contain.text','MM-0001');
   central().contains('button','Pedido terminado').click();
   central().find('#aviso').should('contain.text','MM-0001 terminado');
-  central().contains('No hay pedidos en preparación');
+  central().contains('No hay pedidos para mostrar');
   cy.get('#snav button[data-go="pedidos-clientes"] [data-gcc-nav-count]').should('not.exist');
   cy.contains('Pedidos WhatsApp').should('not.exist');
  });
@@ -77,7 +81,7 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   setup('gerente.torcuato@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();
   cy.get('.gcc-cab').should('contain.text','Don Torcuato');
-  central().contains('No hay pedidos en preparación');
+  central().contains('No hay pedidos pendientes de confirmación');
   central().find('.tarjeta').should('not.exist');
  });
 

@@ -18,7 +18,7 @@ const MAX_CANTIDAD = 50;
 /** Mensajes automáticos sugeridos. El dueño los cambia en el panel (vacío = este texto).
  * Variables: {nombre} {codigo} {total} {direccion} {local} {motivo}. */
 export const MENSAJES_BASE = {
-  recibido: '¡Gracias, {nombre}! Recibimos tu pedido {codigo} y ya lo estamos preparando.\nTotal: {total}.\nTe aviso por acá cuando esté terminado.',
+  recibido: '¡Gracias, {nombre}! Recibimos tu pedido {codigo}. Está pendiente de revisión y confirmación del gerente.\nTotal: {total}.',
   terminado_retiro: '¡Tu pedido {codigo} está listo! Ya podés pasar a retirarlo por {local}.',
   terminado_envio: '¡Tu pedido {codigo} está listo y sale para {direccion}!',
   rechazado: 'Lo sentimos, {nombre}: no pudimos tomar tu pedido {codigo}.\nMotivo: {motivo}',
@@ -39,7 +39,8 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
   const datos = {nombre: pedido.nombre || '', codigo: pedido.codigo, total: pesos(pedido.total),
     direccion: pedido.direccion || 'tu dirección', local: s.direccion || ('el local de ' + (s.nombre || '')).trim(), motivo: pedido.motivo || ''};
   switch (pedido.estado) {
-    case 'pendiente': return plantilla(mensajeDe(mensajes, 'recibido'), datos);
+    case 'pendiente': return plantilla(MENSAJES_BASE.recibido, datos);
+    case 'confirmado': return 'El gerente confirmó tu pedido ' + pedido.codigo + '. Ya está en preparación.';
     case 'terminado': return plantilla(mensajeDe(mensajes, pedido.entrega === 'envio' ? 'terminado_envio' : 'terminado_retiro'), datos);
     case 'rechazado': return plantilla(mensajeDe(mensajes, 'rechazado'), datos);
     case 'cancelado': return 'Cancelamos tu pedido ' + pedido.codigo + '.';
@@ -347,7 +348,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
     case 'vaciar': e.carrito = []; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
-    case 'humano': decir('Tu pedido llega al local y una persona lo prepara y te avisa cuando está terminado.' + (s.direccion ? ' También podés acercarte a ' + s.direccion + '.' : ''), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'humano': decir('Tu pedido llega al local para que el gerente lo revise y confirme antes de prepararlo.' + (s.direccion ? ' También podés acercarte a ' + s.direccion + '.' : ''), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'estado': decir('Te muestro cómo va tu pedido.'); return fin({tipo: 'estado'});
     case 'cancelar':
       if (e.carrito.length) { e.carrito = []; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }

@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
   let body: Json;
   try { body = JSON.parse(crudo); } catch { return json({ ok: false, error: "Pedido inválido" }, 400, origen); }
 
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, error: "Pedido inválido" }, 400, origen);
   const slug = String(body.slug ?? "").toLowerCase();
   const token = String(body.token ?? "");
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || slug.length > 60) return json({ ok: false, error: "Chat inexistente" }, 404, origen);
