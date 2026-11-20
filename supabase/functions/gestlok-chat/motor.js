@@ -382,9 +382,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   if (entrada.boton === 'programar_si') {
     if (!s.atencion?.habilitado) {decir('La programación no está habilitada para este local.');return fin();}
     e.programado=true;
-    decir('Con gusto. Puede elegir los productos de la carta. Su pedido quedará programado para '+
+    decir('Con gusto. '+(e.carrito.length
+      ? 'Conservamos los productos que ya eligió. Puede finalizar el pedido cuando lo desee. '
+      : 'Puede elegir los productos de la carta. ')+'Su pedido quedará programado para '+
       s.atencion.proximo_texto+' y será revisado por el gerente antes de su preparación.',{
-      botones:[{id:'carta',texto:'Ver menú'},{id:'soporte',texto:'Contactar al gerente'}]});
+      botones:[...botonesCarrito(e.carrito),{id:'soporte',texto:'Contactar al gerente'}]});
     return fin();
   }
   if (entrada.boton === 'programar_no') {
