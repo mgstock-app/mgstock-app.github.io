@@ -542,7 +542,8 @@ function abrirDatos() {
   const inputDireccion=dir.querySelector('input');
   const avisoRecuerdo=el('div',{class:'recuerdo-cliente',hidden:true});
   let perfil=null;let telefonoConsultado='';let datoConfirmado='';
-  let telefonoIdentidad=String(d.telefono||'').replace(/\D/g,'');
+  const telefonoIdentidad=String(d.telefono||'').replace(/\D/g,'');
+  let identidadLimpiada=false;
 
   function preguntaDeRecuerdo() {
     avisoRecuerdo.replaceChildren();
@@ -581,12 +582,13 @@ function abrirDatos() {
   inputTelefono.addEventListener('blur',consultarRecuerdo);
   inputTelefono.addEventListener('input',()=>{
     const nuevo=String(inputTelefono.value||'').replace(/\D/g,'');
-    if (/^[0-9]{8,15}$/.test(telefonoIdentidad) && nuevo!==telefonoIdentidad) {
-      // Dispositivo compartido: cambiar de teléfono no conserva el nombre/domicilio anterior.
+    const cambioDePersona=(!identidadLimpiada && /^[0-9]{8,15}$/.test(telefonoIdentidad)
+      && nuevo!==telefonoIdentidad) || (perfil?.encontrado && nuevo!==telefonoConsultado);
+    if (cambioDePersona) {
+      // Dispositivo compartido: no se arrastra el nombre o domicilio de otra persona.
       d.nombre='';d.direccion='';inputNombre.value='';inputDireccion.value='';
-      guardarDatos();
+      identidadLimpiada=true;guardarDatos();
     }
-    telefonoIdentidad=nuevo;
     if (nuevo!==telefonoConsultado) {
       perfil=null;datoConfirmado='';avisoRecuerdo.hidden=true;
     }
