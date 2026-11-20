@@ -163,6 +163,7 @@ declare
   v_ids text[]; v_unidades integer; v_agotada text;
 begin
   c := gestlok_chat_private.conversacion_de(p_conversacion, p_token_hash);
+  select * into c from gestlok_chat_private.conversaciones where id=c.id for update;
   if c.cerrada_at is not null then raise exception 'La conversación está cerrada. Iniciá una nueva.' using errcode = 'P0001'; end if;
   s := gestlok_chat_private.sucursal_abierta(c.sucursal_id);
   if p_pedido is null or jsonb_typeof(p_pedido) <> 'object' or jsonb_typeof(p_pedido->'items') is distinct from 'array'
@@ -429,6 +430,7 @@ AS $function$
 declare c gestlok_chat_private.conversaciones; s gestlok_chat_private.sucursales;
 begin
   c := gestlok_chat_private.conversacion_de(p_conversacion, p_token_hash);
+  select * into c from gestlok_chat_private.conversaciones where id=c.id for update;
   if c.cerrada_at is not null then raise exception 'La conversación está cerrada. Iniciá una nueva.' using errcode='P0001'; end if;
   s := gestlok_chat_private.sucursal_abierta(c.sucursal_id);
   if c.mensajes >= 400 then
@@ -466,6 +468,7 @@ declare c gestlok_chat_private.conversaciones; s gestlok_chat_private.sucursales
   v_pedido uuid; v_respuesta text; v_id uuid; v_ya boolean;
 begin
   c := gestlok_chat_private.conversacion_de(p_conversacion,p_token_hash);
+  select * into c from gestlok_chat_private.conversaciones where id=c.id for update;
   if c.cerrada_at is not null then raise exception 'La conversación está cerrada. Iniciá una nueva.' using errcode='P0001'; end if;
   s := gestlok_chat_private.sucursal_abierta(c.sucursal_id);
   if p_tipo not in ('demora','faltante','otro','consulta') or length(btrim(coalesce(p_detalle,''))) not between 3 and 600 then
