@@ -237,10 +237,8 @@ begin
   insert into gestlok_chat_private.pedido_eventos(pedido_id,evento) values(v_ped.id,'creado');
   -- Solo la función Edge aporta esta huella de navegador (jamás el número por sí solo).
   -- Los datos se guardan únicamente después de crear correctamente el pedido.
-  if coalesce(p_pedido->>'perfil_hash','') ~ '^[0-9a-f]{64}
-  return jsonb_build_object('ok',true,'pedido',gestlok_chat_private.pedido_publico(v_ped));
-end $function$
- then
+  if length(coalesce(p_pedido->>'perfil_hash',''))=64
+     and coalesce(p_pedido->>'perfil_hash','') ~ '^[0-9a-f]{64}' then
     insert into gestlok_chat_private.clientes_frecuentes
        (tenant_id,sucursal_id,navegador_hash,telefono,nombre,direccion,visitas,ultimo_pedido_at)
     values(s.tenant_id,s.id,decode(p_pedido->>'perfil_hash','hex'),v_tel,v_nombre,
