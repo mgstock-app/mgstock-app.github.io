@@ -42,6 +42,9 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
     '20261120024820_gestlok_chat_reportes_fecha_local.sql',
     '20261120024908_gestlok_chat_turnos_privilegios_privados.sql',
     '20261120031746_gestlok_chat_munro_prueba_temporal_eliminacion_segura.sql',
+    '20261120060000_gestlok_chat_promos_cantidad.sql',
+    '20261120070000_gestlok_chat_resena_cierre.sql',
+    '20261120073000_gestlok_chat_venta_sugerida.sql',
   ]) {
     ok(DB, ['-f', 'supabase/migrations/' + name]);
     ok(DB, ['-f', 'supabase/migrations/' + name]); // idempotencia
@@ -53,4 +56,5 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   const lines = informe.split('\n').map(s => s.trim()).filter(Boolean);
   assert.deepEqual(lines.filter(l => l.startsWith('FALLA')), [], informe);
   assert.ok(lines.filter(l => l.startsWith('OK')).length >= 80, informe);
+  assert.ok(lines.some(l => l.startsWith('OK') && l.includes('promo armada')), 'faltan las pruebas de promos: ' + informe);
 });

@@ -188,7 +188,7 @@
       acciones.append(
         el('button', {type: 'button', class: 'boton principal',
           disabled:!!programadoFuturo,
-          text: programadoFuturo?'Disponible al abrir el local':p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : 'Pedido terminado',
+          text: programadoFuturo?'Disponible al abrir el local':p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : p.entrega === 'envio' ? 'Pedido enviado' : 'Listo para retirar',
           onclick: () => decidir(p, p.estado === 'pendiente' ? 'confirmado' : 'terminado', '')}),
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
@@ -216,7 +216,7 @@
     S.ocupado = true;
     try {
       await rpc('panel_decidir', {p_pedido: p.id, p_decision: decision, p_motivo: motivo || ''});
-      aviso(decision === 'confirmado' ? 'Pedido ' + p.codigo + ' confirmado y enviado a preparación' : decision === 'terminado' ? 'Pedido ' + p.codigo + ' terminado: el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
+      aviso(decision === 'confirmado' ? 'Pedido ' + p.codigo + ' confirmado y enviado a preparación' : decision === 'terminado' ? 'Pedido ' + p.codigo + (p.entrega === 'envio' ? ' enviado' : ' listo para retirar') + ': el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
       if (S.pendientesVistos) S.pendientesVistos -= 1;
     } catch (e) { aviso(e.message, true); }
     finally { S.ocupado = false; }
@@ -374,36 +374,58 @@
   }
 
   // Editor de opciones: cada grupo con valores «Nombre | extra».
-  function editorOpciones(opciones) {
+  // Tipo «Promo: elegir N unidades» (cualquier rubro): el cliente reparte N entre las variedades y puede repetir.
+  // Una variedad con el mismo nombre que un producto de la carta queda enlazada: si ese producto se agota, no se ofrece.
+  function editorOpciones(opciones, c) {
     const caja = el('div', {class: 'opciones'});
+    const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const productos = (c?.productos || []).filter(x => x.activo !== false);
     const grupos = (opciones || []).map(g => ({...g, texto: g.valores.map(v => v.nombre + (Number(v.extra) ? ' | ' + v.extra : '')).join('\n')}));
     const pintar = () => caja.replaceChildren(...grupos.map((g, i) => {
       const nombre = el('input', {type: 'text', maxlength: '60', placeholder: 'Ej.: Tamaño'}); nombre.value = g.nombre || '';
       nombre.oninput = () => { g.nombre = nombre.value; };
-      const tipo = el('select', {}, el('option', {value: 'una', text: 'Elige una'}), el('option', {value: 'varias', text: 'Elige varias'}));
+      const tipo = el('select', {}, el('option', {value: 'una', text: 'Elige una'}), el('option', {value: 'varias', text: 'Elige varias'}),
+        el('option', {value: 'cantidad', text: 'Promo: elegir N unidades'}));
       tipo.value = g.tipo || 'una'; tipo.onchange = () => { g.tipo = tipo.value; pintar(); };
       const max = el('input', {type: 'number', min: '1', max: '30', inputmode: 'numeric'}); max.value = String(g.max || 2); max.oninput = () => { g.max = Number(max.value); };
+      const total = el('input', {type: 'number', min: '1', max: '50', inputmode: 'numeric'}); total.value = String(g.total || 6); total.oninput = () => { g.total = Number(total.value); };
+      // Carga de un toque las variedades de una categoría (por ejemplo, todas las empanadas).
+      const desde = el('select', {'aria-label': 'Sumar variedades de una categoría'}, el('option', {value: '', text: 'Sumar variedades de una categoría…'}),
+        (c?.categorias || []).map(k => el('option', {value: k.id, text: k.nombre})));
+      desde.onchange = () => {
+        const ya = new Set(String(g.texto || '').split('\n').map(norm).filter(Boolean));
+        const nuevos = productos.filter(x => x.categoria_id === desde.value && !ya.has(norm(x.nombre))).map(x => x.nombre);
+        g.texto = [String(g.texto || '').trim(), ...nuevos].filter(Boolean).join('\n'); desde.value = ''; pintar();
+      };
       const obl = el('input', {type: 'checkbox', checked: !!g.obligatorio}); obl.onchange = () => { g.obligatorio = obl.checked; };
       const valores = el('textarea', {rows: '3', placeholder: 'Un valor por renglón. Con recargo: Grande | 2000'}); valores.value = g.texto || '';
       valores.oninput = () => { g.texto = valores.value; };
       return el('fieldset', {class: 'grupo'}, el('legend', {text: 'Opción ' + (i + 1)}),
-        campo('Nombre', nombre), el('div', {class: 'dos'}, campo('Tipo', tipo), g.tipo === 'varias' ? campo('Máximo', max) : el('span')),
-        el('label', {class: 'check'}, obl, ' Obligatoria'), campo('Valores', valores),
+        campo('Nombre', nombre), el('div', {class: 'dos'}, campo('Tipo', tipo), g.tipo === 'varias' ? campo('Máximo', max) : g.tipo === 'cantidad' ? campo('Unidades a elegir', total) : el('span')),
+        g.tipo === 'cantidad' ? el('p', {class: 'nota', text: 'El cliente reparte las unidades entre estas variedades y puede repetir. Las que se llaman igual que un producto de la carta se ocultan solas cuando ese producto se agota.'})
+          : el('label', {class: 'check'}, obl, ' Obligatoria'),
+        campo('Valores', valores), g.tipo === 'cantidad' && (c?.categorias || []).length ? desde : null,
         el('button', {type: 'button', class: 'enlace peligro', text: 'Quitar opción', onclick: () => { grupos.splice(i, 1); pintar(); }}));
     }), el('button', {type: 'button', class: 'boton', text: '+ Agregar opción (tamaño, sabor, extras…)',
       onclick: () => { if (grupos.length < 8) { grupos.push({nombre: '', tipo: 'una', obligatorio: true, texto: ''}); pintar(); } }}));
     pintar();
-    const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x';
+    const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x';
     caja.leer = () => grupos.map((g, i) => {
       const usados = new Set();
       const valores = String(g.texto || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
         const [n, e] = l.split('|').map(x => x.trim());
-        let id = slug(n); while (usados.has(id)) id = (id + '_').slice(0, 30); usados.add(id);
-        return {id, nombre: n.slice(0, 60), extra: Math.max(0, Number(String(e || '0').replace(/[^0-9.]/g, '')) || 0)};
+        // Se conserva el código de antes (así no se pierden los «agotados» del gerente) y se enlaza con la carta por nombre.
+        const previo = (g.valores || []).find(v => norm(v.nombre) === norm(n));
+        let id = previo?.id || slug(n); while (usados.has(id)) id = (id + '_').slice(0, 30); usados.add(id);
+        const prod = productos.find(x => norm(x.nombre) === norm(n));
+        return {id, nombre: n.slice(0, 60), extra: Math.max(0, Number(String(e || '0').replace(/[^0-9.]/g, '')) || 0), ...(prod ? {producto_id: prod.id} : {})};
       });
       if (!String(g.nombre || '').trim() || !valores.length) throw new Error('Completá el nombre y los valores de la opción ' + (i + 1) + '.');
-      return {id: (slug(g.nombre) + '_' + i).slice(0, 30), nombre: g.nombre.trim().slice(0, 60), tipo: g.tipo || 'una', obligatorio: !!g.obligatorio,
-        ...(g.tipo === 'varias' ? {max: Math.min(30, Math.max(1, Math.round(Number(g.max) || 1)))} : {}), valores};
+      if (valores.length > 40) throw new Error('La opción ' + (i + 1) + ' tiene más de 40 valores.');
+      return {id: g.id || (slug(g.nombre) + '_' + i).slice(0, 30), nombre: g.nombre.trim().slice(0, 60), tipo: g.tipo || 'una',
+        obligatorio: g.tipo === 'cantidad' ? true : !!g.obligatorio,
+        ...(g.tipo === 'varias' ? {max: Math.min(30, Math.max(1, Math.round(Number(g.max) || 1)))} : {}),
+        ...(g.tipo === 'cantidad' ? {total: Math.min(50, Math.max(1, Math.round(Number(g.total) || 1)))} : {}), valores};
     });
     return caja;
   }
@@ -416,7 +438,7 @@
     const orden = el('input', {type: 'number', min: '0', max: '10000', inputmode: 'numeric'}); orden.value = String(p?.orden ?? 0);
     const activo = el('input', {type: 'checkbox', checked: p ? p.activo : true});
     const disp = el('input', {type: 'checkbox', checked: p ? p.disponible : true});
-    const ops = editorOpciones(p?.opciones);
+    const ops = editorOpciones(p?.opciones, c);
     dialogo(p ? 'Editar producto' : 'Nuevo producto', [campo('Nombre', nombre), campo('Descripción (opcional)', desc),
       el('div', {class: 'dos'}, campo('Precio', precio), campo('Orden', orden)), campo('Categoría', cat),
       el('label', {class: 'check'}, activo, ' Figura en la carta'), el('label', {class: 'check'}, disp, ' Hay hoy (disponible)'),
@@ -431,15 +453,15 @@
 
   // ------------------------------------------------------------------------------------------- mensajes
   const MENSAJES = [
-    ['terminado_retiro', 'Pedido terminado · retiro', 'Cuando marcás «Pedido terminado» y el cliente retira.'],
-    ['terminado_envio', 'Pedido terminado · envío', 'Cuando marcás «Pedido terminado» y es con envío.'],
+    ['terminado_retiro', 'Listo para retirar', 'Cuando marcás «Listo para retirar».'],
+    ['terminado_envio', 'Pedido enviado', 'Cuando marcás «Pedido enviado».'],
     ['rechazado', 'Pedido rechazado', 'Se agrega el motivo que escribís al rechazar.'],
     ['pausado', 'Chat en pausa', 'Cuando el chat está cerrado.'],
     ['despedida', 'Despedida', 'Cuando el cliente agradece.'],
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261120sugerida1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
@@ -452,6 +474,22 @@
     const instrucciones = area(a.ia_instrucciones, 2000, 5, 'Ej.: Tratá de vos. Ofrecé un complemento cuando pidan el producto principal. Si preguntan por algo especial, deciles que llamen al local.');
     const info = area(a.ia_info, 4000, 6, 'Ej.: Tiempo de preparación: 30 a 40 minutos. Hay opciones sin TACC: … Promos de la semana: … Formas de retiro y garantía: …');
     const campos = {};
+    // Al terminar el pedido: link de reseñas de Google del local (opcional), invitación y cierre.
+    const resenaUrl = el('input', {type: 'url', maxlength: '300', inputmode: 'url', placeholder: 'https://g.page/r/…/review', disabled: !editable});
+    resenaUrl.value = a.mensajes?.resena_url || '';
+    const resenaTexto = area(a.mensajes?.resena, 600, 2, motor?.MENSAJES_BASE?.resena || '');
+    const cierreTexto = area(a.mensajes?.cierre, 600, 2, motor?.MENSAJES_BASE?.cierre || '');
+    const sugerenciaTexto = area(a.mensajes?.sugerencia, 600, 2, motor?.MENSAJES_BASE?.sugerencia || '');
+    const vistaCierre = el('p', {class: 'vista-previa'});
+    const pintarCierre = () => {
+      const url = motor?.urlResena ? motor.urlResena(resenaUrl.value) : resenaUrl.value.trim();
+      const r = (resenaTexto.value.trim() || motor?.MENSAJES_BASE?.resena || '');
+      const c = (cierreTexto.value.trim() || motor?.MENSAJES_BASE?.cierre || '');
+      vistaCierre.textContent = resenaUrl.value.trim() && !url ? 'El link tiene que ser de Google (g.page, maps.app.goo.gl o google.com) y empezar con https://'
+        : 'Así lo ve el cliente después del aviso: ' + (url ? r + ' [Dejar mi reseña en Google] ' : '') + c;
+    };
+    for (const x of [resenaUrl, resenaTexto, cierreTexto]) x.addEventListener('input', pintarCierre);
+    pintarCierre();
     const plantillas = MENSAJES.map(([k, titulo, ayuda]) => {
       const base = motor?.MENSAJES_BASE?.[k] || '';
       const t = area(a.mensajes?.[k], 600, 3, base);
@@ -465,6 +503,10 @@
     const form = el('form', {class: 'ajustes', onsubmit: async e => {
       e.preventDefault();
       const mensajes = {}; for (const [k, t] of Object.entries(campos)) if (t.value.trim()) mensajes[k] = t.value.trim();
+      if (resenaUrl.value.trim() && motor?.urlResena && !motor.urlResena(resenaUrl.value)) return aviso('El link de reseñas tiene que ser de Google y empezar con https://', true);
+      // Se mandan siempre (vacío = sin link / texto sugerido) para que la base sepa que se borraron.
+      mensajes.resena_url = resenaUrl.value.trim(); mensajes.resena = resenaTexto.value.trim(); mensajes.cierre = cierreTexto.value.trim();
+      mensajes.sugerencia = sugerenciaTexto.value.trim();
       try {
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
           ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
@@ -476,12 +518,22 @@
       el('label', {class: 'check'}, activa, ' Responder con IA (si se apaga, responde el asistente guiado)'),
       campo('Nombre del asistente (opcional)', nombre),
       campo('Mensaje de bienvenida', bienvenida),
+      el('small', {class: 'ayuda', text: 'Con la IA activa, la bienvenida la escribe la IA tomando este texto como base y el saludo según la hora. Debajo siempre aparecen los botones y el carrito.'}),
       campo('Indicaciones para la IA: tono, qué ofrecer, qué evitar', instrucciones),
       campo('Información del local y preguntas frecuentes', info),
       el('p', {class: 'nota', text: 'La IA solo usa la carta, estos datos y los ajustes del local. No puede cambiar precios, confirmar ni terminar pedidos.'})),
     el('section', {class: 'bloque'}, el('h3', {text: 'Mensajes automáticos'}),
       el('p', {class: 'nota', text: 'Dejalo vacío para usar el texto sugerido. Podés usar: {nombre} {codigo} {total} {direccion} {local} {motivo}.'}),
       plantillas),
+    el('section', {class: 'bloque'}, el('h3', {text: 'Antes de finalizar: venta sugerida'}),
+      el('p', {class: 'nota', text: 'Cuando el cliente toca «Finalizar pedido» y no lleva postre o bebida, se le ofrece una vez, con botones para ver esas categorías de la carta (solo las que tengan algo disponible).'}),
+      campo('Pregunta para ofrecer postre o bebida', sugerenciaTexto)),
+    el('section', {class: 'bloque'}, el('h3', {text: 'Al terminar el pedido: reseña y cierre'}),
+      el('p', {class: 'nota', text: 'Después de «Listo para retirar» o «Pedido enviado», el cliente recibe la invitación con el botón a Google (solo si cargás el link de este local) y el mensaje de cierre.'}),
+      campo('Link de reseñas de Google de este local (opcional)', resenaUrl),
+      campo('Invitación a dejar la reseña', resenaTexto),
+      campo('Mensaje de cierre', cierreTexto),
+      vistaCierre),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar mensajes'})
       : el('p', {class: 'nota', text: 'Mensajes en solo lectura.'}));
     contenido.replaceChildren(form);

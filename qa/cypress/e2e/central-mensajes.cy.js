@@ -17,7 +17,7 @@ const central=()=>cy.get('.gcc-panel',{timeout:15000}).shadow();
 describe('GESTLOK · Central de mensajes de cada local',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
 
- it('gerente de Munro: atajo con contador, pedido en preparación y «Pedido terminado»',()=>{
+ it('gerente de Munro: atajo con contador, pedido en preparación y «Listo para retirar»',()=>{
   setup('gerente.munro@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).should('contain.text','Central de mensajes').and('not.contain.text','WhatsApp');
   cy.get('[data-gcc-quick-count]',{timeout:20000}).should('have.text','1');
@@ -32,8 +32,8 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   central().contains('No hay pedidos pendientes de confirmación');
   central().contains('button','En preparación').click();
   central().find('.tarjeta.confirmado').should('contain.text','MM-0001');
-  central().contains('button','Pedido terminado').click();
-  central().find('#aviso').should('contain.text','MM-0001 terminado');
+  central().contains('button','Listo para retirar').click();
+  central().find('#aviso').should('contain.text','MM-0001 listo para retirar');
   central().contains('No hay pedidos para mostrar');
   cy.get('#snav button[data-go="pedidos-clientes"] [data-gcc-nav-count]').should('not.exist');
   cy.contains('Pedidos WhatsApp').should('not.exist');

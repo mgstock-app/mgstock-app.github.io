@@ -81,10 +81,17 @@ herramientas `agregar_producto`, `quitar_producto`, `vaciar_pedido`, `mostrar_ca
 `estado_del_pedido` y `cancelar_pedido_enviado`. Recibe las reglas fijas, los datos del local, las **indicaciones** y la
 **información / preguntas frecuentes** que carga el dueño en la pestaña **Mensajes**, la carta con códigos P1, P2… (sin
 identificadores internos) y el pedido en curso. No puede crear pedidos (los crea la base con el formulario), cambiar
-precios, terminar pedidos ni ver otros clientes. Proveedores: `anthropic` (Claude, `claude-haiku-5-5`) u `openai`
-(cualquier API compatible; por defecto Gemini `gemini-flash-latest`). Secretos de la función: `GESTLOK_CHAT_IA_PROVEEDOR`,
+precios, terminar pedidos ni ver otros clientes. Proveedores: `gemini` (`gemini-flash-latest`, gratuito; elegido para Mi Gusto), `openai` (ChatGPT, `gpt-4.1-mini`), `anthropic`
+(Claude, `claude-haiku-5-5`). Para Mi Gusto: secretos `GESTLOK_CHAT_IA_PROVEEDOR=gemini` y `GESTLOK_CHAT_IA_CLAVE` (clave gratis de Google AI Studio). Secretos de la función: `GESTLOK_CHAT_IA_PROVEEDOR`,
 `GESTLOK_CHAT_IA_CLAVE`, opcionales `GESTLOK_CHAT_IA_MODELO` y `GESTLOK_CHAT_IA_URL`. Sin clave, con la IA apagada o
 si falla (12 s, 4 rondas), responde el motor guiado.
+
+**Qué hace la IA y qué hace el sistema.** El pedido se arma con los botones y el carrito (motor guiado, sin costo).
+La IA solo: 1) escribe la **bienvenida** de cada conversación nueva (una llamada por conversación, sin herramientas,
+saludo según la hora, toma como base la bienvenida del dueño; si tarda más de 6 s, falla o trae precios, números o
+enlaces, queda la bienvenida guiada; con el local cerrado, el aviso de próxima apertura y sus botones los pone el
+sistema debajo); 2) responde el texto libre que el guiado no entiende. Los **avisos de estado del pedido** (recibido,
+confirmado, listo, rechazado, cancelado) los arma siempre el sistema con los mensajes del local: la IA no interviene.
 
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
@@ -99,8 +106,23 @@ Estados: `pendiente` (requiere revisión) → `confirmado` (el gerente autoriza 
 y el cliente recibe «tu pedido está listo») / `rechazado` (con motivo para el cliente) / `cancelado` (por el cliente).
 
 **Mensajes configurables** (pestaña Mensajes, por sucursal; vacío = texto sugerido): bienvenida,
-pedido terminado (retiro y envío), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}`
-`{direccion}` `{local}` `{motivo}`.
+«Listo para retirar» y «Pedido enviado» (el botón del gerente cambia según la entrega; los dos pasan el pedido a
+`terminado`), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}` `{direccion}` `{local}` `{motivo}`.
+
+**Al terminar el pedido: reseña y cierre.** Después del aviso de «listo» o «enviado», el cliente recibe la invitación a
+reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó su **link de reseñas de Google**) y el
+**mensaje de cierre** («¡Gracias por elegirnos!»). Se edita en Mensajes → «Al terminar el pedido: reseña y cierre»
+(dueño, administradora o gerente del local). El link es por sucursal, solo `https://` y de Google (g.page,
+maps.app.goo.gl, google.com…): la base rechaza cualquier otro. Se muestra una vez por pedido en ese teléfono, también si
+el cliente vuelve a abrir el chat dentro de las 24 h; el aviso de estado arriba del chat queda con el enlace «Dejar reseña».
+**Venta sugerida.** Al tocar «Finalizar pedido», si el pedido no lleva postre o bebida, el chat lo ofrece una vez
+(pregunta editable en Mensajes → «Antes de finalizar: venta sugerida») con botones «Ver postres» / «Ver bebidas», que
+abren la carta en esa categoría, y «No, gracias. Finalizar». Las categorías se reconocen por el nombre (postres,
+helados, dulces, bebidas, gaseosas, cervezas, vinos, aguas, jugos) y solo se ofrecen si tienen algo disponible; una
+promo que ya trae bebida («+ lata») no la vuelve a ofrecer. Con IA, la herramienta finalizar_pedido hace el mismo paso.
+
+Mi Gusto: todas las casillas de Mensajes cargadas con `supabase/operaciones/mi-gusto-chat-mensajes-ideales-20261120.sql`
+(Munro y Don Torcuato, cada uno con su link de reseñas de Google); quedan editables desde la Central de mensajes.
 Un solo pedido pendiente por conversación; topes por día por sucursal, por teléfono y por conversación.
 El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pendiente o confirmado).
 

@@ -2,7 +2,7 @@
  * La IA conversa con el cliente, pero SOLO actúa con herramientas acotadas sobre la carta y el carrito de esta
  * conversación: no puede crear pedidos, fijar precios, ver otros clientes ni salir del negocio. El pedido lo crea la
  * base cuando el cliente completa el formulario de datos. Si no hay clave, se pasa el tope o falla, responde el motor.
- * Proveedores: «anthropic» (Claude) u «openai» (cualquier API compatible con OpenAI, por ejemplo Gemini).
+ * Proveedores: «openai» (ChatGPT), «anthropic» (Claude) o «gemini» (Google, API compatible con OpenAI).
  */
 import {botonesCarrito, describirLinea, faltantes, limpiarEstado, pesos, responder, sumar, textoCarrito,
   textoEnvio, textoHorario, textoPago, totalCarrito, validarLinea, formalizar} from './motor.js';
@@ -13,7 +13,8 @@ const ESPERA_MS = 12000;
 
 export const PROVEEDORES = {
   anthropic: {url: 'https://api.anthropic.com/v1/messages', modelo: 'claude-haiku-5-5'},
-  openai: {url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', modelo: 'gemini-flash-latest'},
+  openai: {url: 'https://api.openai.com/v1/chat/completions', modelo: 'gpt-4.1-mini'},
+  gemini: {url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', modelo: 'gemini-flash-latest'},
 };
 
 const HERRAMIENTAS = [
@@ -22,7 +23,7 @@ const HERRAMIENTAS = [
       producto: {type: 'string', description: 'Código del producto, por ejemplo P3'},
       cantidad: {type: 'integer', minimum: 1, maximum: 50},
       opciones: {type: 'object', description: 'Por cada código de opción, la lista de códigos de valores elegidos. Ej.: {"tam":["grande"]}',
-        additionalProperties: {type: 'array', items: {type: 'string'}}},
+        additionalProperties: {anyOf: [{type: 'array', items: {type: 'string'}}, {type: 'object', additionalProperties: {type: 'integer', minimum: 0}}]}},
       nota: {type: 'string', description: 'Aclaración del cliente para ese producto (opcional)'}},
     required: ['producto', 'cantidad']}},
   {nombre: 'quitar_producto', descripcion: 'Quita una línea del pedido.',
@@ -51,7 +52,7 @@ export function armarSistema({sucursal, privado, catalogo, estado}) {
   const {prods, porId} = indice(catalogo);
   const cats = new Map((catalogo?.categorias || []).map(c => [c.id, c.nombre]));
   const carta = prods.map(p => {
-    const ops = (p.opciones || []).map(g => '    · ' + g.nombre + ' [código ' + g.id + '] (' + (g.tipo === 'una' ? 'elegir 1' : 'hasta ' + g.max) +
+    const ops = (p.opciones || []).map(g => '    · ' + g.nombre + ' [código ' + g.id + '] (' + (g.tipo === 'una' ? 'elegir 1' : g.tipo === 'cantidad' ? 'repartir exactamente ' + g.total + ' unidades, se pueden repetir; pasá {código: cantidad}' : 'hasta ' + g.max) +
       (g.obligatorio ? ', obligatorio' : ', opcional') + '): ' + g.valores.map(v => v.nombre + ' [' + v.id + ']' + (Number(v.extra) ? ' +' + pesos(v.extra) : '')).join(', '));
     return '- ' + porId.get(p.id) + ' · ' + p.nombre + ' · ' + pesos(p.precio) + (p.disponible === false ? ' · AGOTADO HOY' : '') +
       (p.categoria_id && cats.get(p.categoria_id) ? ' · ' + cats.get(p.categoria_id) : '') + (p.descripcion ? ' · ' + p.descripcion : '') +
@@ -109,7 +110,7 @@ export function armarHistorial(historial, texto) {
 /** Ejecuta las herramientas sobre el estado de esta conversación. */
 function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
   const {porCodigo} = indice(catalogo);
-  const ui = {tipo: null, productos: null, cantidad: null, accion: null};
+  const ui = {tipo: null, productos: null, cantidad: null, accion: null, botones: null};
   const ejecutar = (nombre, args) => {
     args = args && typeof args === 'object' ? args : {};
     switch (nombre) {
@@ -119,7 +120,10 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
         const cantidad = Math.round(Number(args.cantidad));
         const opciones = {};
         if (args.opciones && typeof args.opciones === 'object') {
-          for (const [k, v] of Object.entries(args.opciones)) if (Array.isArray(v)) opciones[k] = v.map(String).slice(0, 30);
+          for (const [k, v] of Object.entries(args.opciones)) {
+            if (Array.isArray(v)) opciones[k] = v.map(String).slice(0, 30);
+            else if (v && typeof v === 'object') opciones[k] = Object.fromEntries(Object.entries(v).slice(0, 40).map(([id, n]) => [String(id), Math.max(0, Math.round(Number(n)) || 0)]).filter(([, n]) => n > 0));
+          }
         }
         const linea = {producto_id: p.id, cantidad, opciones, nota: String(args.nota || '').slice(0, 200)};
         const falta = faltantes(p, opciones);
@@ -143,6 +147,11 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
       case 'finalizar_pedido': {
         const r = responder({sucursal, catalogo, estado, entrada: {boton: 'finalizar'}, mensajes});
         const m = r.mensajes[0] || {};
+        // Venta sugerida (una vez por pedido): la IA ofrece postre o bebida antes de pedir los datos.
+        if (m.sugerencia) {
+          estado.sugerido = true; ui.botones = m.botones;
+          return 'Antes de cerrar, ofrecele al cliente con amabilidad y sin insistir: «' + m.texto + '». El sistema le muestra botones para ver esas opciones. Si no quiere nada más, volvé a usar finalizar_pedido.';
+        }
         if (m.tipo === 'datos') { ui.tipo = 'datos'; estado.paso = 'datos'; return 'Listo: el cliente ya ve el formulario para sus datos. Decile que lo complete para enviar el pedido.'; }
         return 'Todavía no se puede cerrar: ' + (m.texto || 'revisá el pedido');
       }
@@ -157,8 +166,8 @@ function crearEjecutor({sucursal, catalogo, estado, mensajes}) {
   return {ejecutar, ui};
 }
 
-async function pedir(fetchImpl, url, init) {
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ESPERA_MS);
+async function pedir(fetchImpl, url, init, espera = ESPERA_MS) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), espera);
   try {
     const res = await fetchImpl(url, {...init, signal: ctl.signal});
     const body = await res.json().catch(() => null);
@@ -225,6 +234,58 @@ export async function responderIA({sucursal, privado, catalogo, estado, historia
   if (!respuesta && !ui.tipo && !ui.accion) throw new Error('IA sin respuesta');
   const m = {texto: formalizar(respuesta || (ui.tipo === 'datos' ? 'Complete sus datos para enviar el pedido.' : 'Entendido.'))};
   if (ui.tipo) { m.tipo = ui.tipo; if (ui.productos) { m.productos = ui.productos; m.cantidad = ui.cantidad; } }
-  else m.botones = botonesCarrito(e.carrito);
+  else m.botones = ui.botones || botonesCarrito(e.carrito);
   return {estado: e, mensajes: [m], ...(ui.accion ? {accion: ui.accion} : {}), motor: 'ia'};
+}
+
+/* Bienvenida: la IA escribe solo el saludo inicial. Los botones, el carrito, la carta y los avisos de estado
+ * siguen siendo del sistema. Sin herramientas, sin datos inventados y con un tope corto de espera: si tarda,
+ * falla o devuelve algo dudoso, se usa la bienvenida del asistente guiado. */
+const ESPERA_BIENVENIDA_MS = 6000;
+
+export function momentoDelDia(ahora = new Date()) {
+  const h = Number(new Intl.DateTimeFormat('en-GB', {timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23'}).format(ahora));
+  return h >= 6 && h < 13 ? 'Buenos días' : h >= 13 && h < 20 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+export function armarSistemaBienvenida({sucursal, privado, ahora}) {
+  const s = sucursal || {}; const pr = privado || {};
+  const cerrado = s.atencion?.habilitado && s.atencion.abierto === false;
+  return [
+    'Escriba SOLO el mensaje de bienvenida del chat de pedidos de ' + (s.empresa || 'el comercio') + ', sucursal ' + (s.nombre || '') + '.',
+    'Usted es ' + (s.asistente ? s.asistente + ', la asistente virtual' : 'el asistente virtual') + ' del local.',
+    'Trate al cliente de USTED, en español formal de Argentina, cálido y breve: 1 o 2 oraciones, como máximo 40 palabras. Sin emojis, sin voseo, sin markdown.',
+    'Empiece con «' + momentoDelDia(ahora) + '».',
+    cerrado
+      ? 'El local está cerrado en este momento: no invite a pedir ahora. Justo debajo, el sistema informa la próxima apertura y ofrece dejar un pedido programado.'
+      : 'Invite a armar el pedido con los botones de abajo («Ver menú») o a escribir lo que necesita.',
+    'No mencione precios, promociones, productos, horarios, demoras, números ni enlaces. No pida datos personales.',
+    s.bienvenida ? 'Bienvenida que escribió el dueño (respete su contenido y su tono): ' + String(s.bienvenida).slice(0, 500) : '',
+    pr.ia_instrucciones ? 'Indicaciones del dueño (solo para el tono): ' + String(pr.ia_instrucciones).slice(0, 800) : '',
+  ].filter(Boolean).join('\n');
+}
+
+/** Devuelve el texto de bienvenida o lanza error (la función usa entonces la bienvenida guiada). */
+export async function bienvenidaIA({sucursal, privado, config, fetchImpl, ahora}) {
+  const prov = PROVEEDORES[config?.proveedor];
+  if (!prov || !config?.clave) throw new Error('IA sin configurar');
+  const sistema = armarSistemaBienvenida({sucursal, privado, ahora});
+  const pedido = 'Un cliente acaba de abrir el chat. Escriba la bienvenida.';
+  const url = config.url || prov.url; const modelo = config.modelo || prov.modelo; const f = fetchImpl || fetch;
+  let texto;
+  if (config.proveedor === 'anthropic') {
+    const r = await pedir(f, url, {method: 'POST',
+      headers: {'content-type': 'application/json', 'x-api-key': config.clave, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: modelo, max_tokens: 300, system: sistema, messages: [{role: 'user', content: pedido}]})}, ESPERA_BIENVENIDA_MS);
+    texto = (Array.isArray(r.content) ? r.content : []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+  } else {
+    const r = await pedir(f, url, {method: 'POST',
+      headers: {'content-type': 'application/json', authorization: 'Bearer ' + config.clave},
+      body: JSON.stringify({model: modelo, max_tokens: 600, messages: [{role: 'system', content: sistema}, {role: 'user', content: pedido}]})}, ESPERA_BIENVENIDA_MS);
+    texto = r.choices?.[0]?.message?.content;
+  }
+  const limpio = limpiarTexto(texto).replace(/\s+/g, ' ').trim();
+  // Un saludo no lleva precios, números ni enlaces; si aparece algo así, se descarta.
+  if (limpio.length < 8 || limpio.length > 320 || /[$\d]|https?:|www\./i.test(limpio)) throw new Error('IA: bienvenida descartada');
+  return formalizar(limpio);
 }

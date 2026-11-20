@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120turnos1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120sugerida1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -72,7 +72,11 @@ function chips(botones) {
 function accion(texto, fn) { lista.append(el('button', {type: 'button', class: 'accion', text: texto, onclick: fn})); bajar(); }
 function mensajeAsistente(m, {abrir = true} = {}) {
   burbuja('asistente', m.texto);
-  if (m.tipo === 'carta') { accion('Ver la carta', abrirCarta); if (abrir) abrirCarta(); }
+  if (m.tipo === 'carta') {
+    // Venta sugerida: abre la carta directo en la categoría ofrecida (postres, bebidas…).
+    if (m.categoria && S.catalogo.categorias.some(c => c.id === m.categoria)) S.categoria = m.categoria;
+    accion('Ver la carta', abrirCarta); if (abrir) abrirCarta();
+  }
   else if (m.tipo === 'producto') {
     const p = producto(m.productos?.[0]);
     if (p) { accion('Elegir opciones de ' + p.nombre, () => abrirProducto(p, m)); if (abrir) abrirProducto(p, m); }
@@ -150,24 +154,47 @@ const TEXTO_ESTADO = {
   rechazado: ['El local no pudo tomarlo', ''],
   cancelado: ['Pedido cancelado', ''],
 };
+/** Pedido listo o enviado: aviso, invitación a reseñar (si el local cargó su link de Google) y cierre.
+ * Una sola vez por pedido en este teléfono, aunque el cliente cierre el chat y vuelva más tarde (hasta 24 h). */
+function despedidaPedido(p) {
+  if (p.estado !== 'terminado' || Date.now() - new Date(p.creado_at).getTime() > 864e5) return;
+  const clave = 'gestlok-chat:cierre:' + (S.sucursal?.slug || '') + ':' + p.creado_at;
+  try { if (localStorage.getItem(clave)) return; localStorage.setItem(clave, '1'); } catch { /* sin almacenamiento: se muestra igual */ }
+  // Si el cliente acaba de consultar el estado, el aviso ya está en pantalla: no se repite.
+  const yaVisto = [...lista.querySelectorAll('.burbuja')].slice(-3).some(b => b.textContent === p.aviso);
+  if (p.aviso && !yaVisto) burbuja('asistente', p.aviso);
+  const url = urlResena(p.resena?.url);
+  if (url) {
+    lista.append(el('div', {class: 'burbuja asistente resena'}, String(p.resena.texto || ''),
+      el('a', {class: 'boton chico resena-link', href: url, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar mi reseña en Google'})));
+  }
+  if (p.cierre) burbuja('asistente', p.cierre);
+  bajar();
+  try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
+}
 function mostrarPedido(p) {
   const antes = S.pedido;
   S.pedido = p;
   const caja = $('aviso-pedido');
   if (!p) { caja.hidden = true; return; }
-  const [t, sub] = TEXTO_ESTADO[p.estado] || [p.estado, ''];
+  const envio = p.entrega === 'envio';
+  const [t, sub] = p.estado === 'terminado' && envio ? ['¡Pedido en camino!', ''] : (TEXTO_ESTADO[p.estado] || [p.estado, '']);
+  const resena = p.estado === 'terminado' ? urlResena(p.resena?.url) : '';
   const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
   const etiqueta = programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
     timeZone:'America/Argentina/Buenos_Aires',weekday:'short',hour:'2-digit',minute:'2-digit'}) : t;
   caja.className = 'aviso-pedido ' + p.estado;
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
     el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
-      : p.estado === 'terminado' ? (p.entrega === 'envio' ? 'El local coordinará su entrega' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
-    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null].filter(Boolean));
+      : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
+    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null,
+    resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null].filter(Boolean));
   caja.hidden = false;
-  if (antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado)) {
+  const cambio = antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado);
+  if (p.estado === 'terminado' && (cambio || !antes)) despedidaPedido(p);
+  else if (cambio) {
     // El texto lo arma la función con los mensajes que configuró el local.
-    if (p.aviso && ['confirmado', 'terminado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
+    if (p.aviso && ['confirmado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
     try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
   }
   programarSondeo();
@@ -240,14 +267,52 @@ function abrirCarta() {
 function abrirProducto(p, sugerido = {}) {
   let cantidad = Math.min(50, Math.max(1, Number(sugerido.cantidad) || 1));
   const elegidas = {};
-  for (const g of p.opciones || []) elegidas[g.id] = [...(sugerido.opciones?.[g.id] || [])];
+  for (const g of p.opciones || []) elegidas[g.id] = esCantidad(g) ? {...(sugerido.opciones?.[g.id] || {})} : [...(sugerido.opciones?.[g.id] || [])];
+  const contadores = []; // se actualizan en cada cambio (promos: «4 de 6»)
   const salida = el('output', {'aria-live': 'polite', text: String(cantidad)});
   const nota = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: bien cocida, sin cebolla'});
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const boton = el('button', {type: 'submit', class: 'boton principal ancho'});
-  const linea = () => ({producto_id: p.id, cantidad, opciones: Object.fromEntries(Object.entries(elegidas).filter(([, v]) => v.length)), nota: nota.value.trim()});
-  const refrescar = () => { salida.textContent = String(cantidad); boton.textContent = 'Agregar · ' + pesos(totalCarrito(S.catalogo, [linea()])); };
-  const grupos = (p.opciones || []).map(g => el('fieldset', {class: 'grupo'},
+  const linea = () => ({producto_id: p.id, cantidad, nota: nota.value.trim(), opciones: Object.fromEntries(Object.entries(elegidas)
+    .map(([k, v]) => [k, Array.isArray(v) ? v : Object.fromEntries(Object.entries(v).filter(([, n]) => n > 0))])
+    .filter(([, v]) => Array.isArray(v) ? v.length : Object.keys(v).length))});
+  const refrescar = () => {
+    salida.textContent = String(cantidad);
+    for (const c of contadores) c();
+    const falta = faltantes(p, linea().opciones).find(esCantidad);
+    boton.disabled = !!falta;
+    boton.textContent = falta ? 'Elegí ' + (Number(falta.total) - unidades(elegidas[falta.id])) + ' más en ' + falta.nombre.toLowerCase()
+      : 'Agregar · ' + pesos(totalCarrito(S.catalogo, [linea()]));
+  };
+  // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
+  const grupoCantidad = g => {
+    const total = Number(g.total) || 1;
+    const resumen = el('small', {'aria-live': 'polite'});
+    contadores.push(() => { const u = unidades(elegidas[g.id]); resumen.textContent = u + ' de ' + total; resumen.classList.toggle('completo', u === total); });
+    const filas = valoresDisponibles(S.catalogo, g).map(v => {
+      const n = el('output', {class: 'n', text: String(elegidas[g.id][v.id] || 0)});
+      const menos = el('button', {type: 'button', class: 'paso', 'aria-label': 'Quitar ' + v.nombre, text: '−'});
+      const mas = el('button', {type: 'button', class: 'paso', 'aria-label': 'Sumar ' + v.nombre, text: '+'});
+      const fila = el('div', {class: 'opcion opcion-cantidad'}, el('span', {text: v.nombre}),
+        Number(v.extra) > 0 ? el('em', {text: '+ ' + pesos(v.extra)}) : null, el('div', {class: 'pasos'}, menos, n, mas));
+      const cambiar = d => {
+        const actual = elegidas[g.id][v.id] || 0, u = unidades(elegidas[g.id]);
+        if (d > 0 && u >= total) return;
+        elegidas[g.id][v.id] = Math.max(0, actual + d);
+        error.hidden = true; refrescar();
+      };
+      menos.addEventListener('click', () => cambiar(-1));
+      mas.addEventListener('click', () => cambiar(1));
+      contadores.push(() => {
+        const k = elegidas[g.id][v.id] || 0, u = unidades(elegidas[g.id]);
+        n.textContent = String(k); menos.disabled = k === 0; mas.disabled = u >= total; fila.classList.toggle('elegida', k > 0);
+      });
+      return fila;
+    });
+    return el('fieldset', {class: 'grupo grupo-cantidad'}, el('legend', {}, g.nombre, el('small', {text: 'Elegí ' + total + (total > 1 ? ' · podés repetir' : '')}), resumen),
+      filas.length ? filas : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
+  };
+  const grupos = (p.opciones || []).map(g => esCantidad(g) ? grupoCantidad(g) : el('fieldset', {class: 'grupo'},
     el('legend', {}, g.nombre, el('small', {text: g.tipo === 'una' ? (g.obligatorio ? 'Elegí 1' : 'Opcional') : 'Hasta ' + g.max + (g.obligatorio ? ' · obligatorio' : '')})),
     g.valores.map(v => {
       const input = el('input', {type: g.tipo === 'una' ? 'radio' : 'checkbox', name: 'g-' + g.id, value: v.id, checked: elegidas[g.id].includes(v.id)});
@@ -441,6 +506,11 @@ const DEMO_DATOS = {
         {id: 'tam', nombre: 'Tamaño', tipo: 'una', obligatorio: true, valores: [{id: 'chica', nombre: 'Chica'}, {id: 'grande', nombre: 'Grande', extra: 3000}]},
         {id: 'ext', nombre: 'Extras', tipo: 'varias', max: 2, valores: [{id: 'acei', nombre: 'Aceitunas', extra: 500}, {id: 'huevo', nombre: 'Huevo', extra: 600}]}]},
       {id: 'd5', categoria_id: 'c3', nombre: 'Flan casero', descripcion: 'Con dulce de leche', precio: 2500, activo: true, disponible: true, opciones: []},
+      // Promo de demostración: repartir 6 unidades entre variedades (la humita está agotada y no se ofrece).
+      {id: 'd6', categoria_id: 'c1', nombre: 'Pack 6 empanadas + 2 salsas', descripcion: '6 empanadas a elección y 2 salsas.', precio: 6500, activo: true, disponible: true, opciones: [
+        {id: 'emp', nombre: 'Empanadas', tipo: 'cantidad', total: 6, obligatorio: true, valores: [{id: 'carne', nombre: 'Empanada de carne', extra: 0, producto_id: 'd1'},
+          {id: 'jyq', nombre: 'Empanada de jamón y queso', extra: 0, producto_id: 'd2'}, {id: 'humita', nombre: 'Empanada de humita', extra: 0, producto_id: 'd3'}]},
+        {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla', extra: 0}, {id: 'ajo', nombre: 'Crema de ajo', extra: 0}]}]},
     ]},
 };
 let demoEstado = null; let demoPedido = null;
@@ -462,7 +532,7 @@ async function demoApi(accion, extra) {
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
     demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
-    r.estado.carrito = [];
+    r.estado.carrito = []; r.estado.sugerido = false;
     mensajes.push({texto: pedido.aviso});
     // La demo conserva el pedido pendiente: nunca simula una confirmación automática.
   } else if (r.accion?.tipo === 'estado') {
