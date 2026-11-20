@@ -10,7 +10,7 @@
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { describirLinea, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { clasificarSoporte, describirLinea, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
 import { responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
@@ -29,6 +29,9 @@ const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
 const BOTON_TEXTO: Record<string, string> = {
   carta: "Ver la carta", horario: "Horario y envío", pago: "Medios de pago", finalizar: "Finalizar pedido",
   carrito: "Ver mi pedido", estado: "¿Cómo va mi pedido?", cancelar: "Cancelar pedido",
+  soporte: "Ayuda con mi pedido", demora: "Consultar demora", reclamo_demora: "Avisar demora al gerente",
+  reclamo_faltante: "Faltante en mi pedido", reclamo_otro: "Otro reclamo",
+  hablar_gerente: "Hablar con el gerente",
 };
 
 function cors(origen: string | null): HeadersInit {
@@ -141,18 +144,40 @@ Deno.serve(async (req) => {
           p_cliente: "", p_respuesta: r.mensajes.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
         mensajes = [];
       }
+      const soporte = await rpc("gestlok_chat_srv_respuestas", {
+        p_conversacion: convId, p_token_hash: hash, p_desde: 0 });
       return json({ ok: true, sucursal, catalogo, mensajes, nuevos: extra, carrito: (estado as Json).carrito ?? [],
-        pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso) }, 200, origen);
+        pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso),
+        soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
 
     if (accion === "estado") {
-      const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
-      return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso) }, 200, origen);
+      const desde = Number.isSafeInteger(body.desde) && (body.desde as number) >= 0
+        ? (body.desde as number) : 0;
+      const [est, soporte] = await Promise.all([
+        rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash }),
+        rpc("gestlok_chat_srv_respuestas", { p_conversacion: convId, p_token_hash: hash, p_desde: desde })]);
+      return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso),
+        mensajes_local: soporte.mensajes_local || [], soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
 
     if (accion !== "mensaje") return json({ ok: false, error: "Acción desconocida" }, 400, origen);
-    const entrada = limpiarEntrada(body.entrada);
+    let entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
+    const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
+    const clase = clasificarSoporte(entrada);
+    if (clase && clase !== "consulta_demora") {
+      // Reclamos prioritarios, sin IA: registrar el texto y la alerta en una sola transacción.
+      const detalle = textoOriginal || BOTON_TEXTO[String(entrada.boton)] || "Consulta al gerente";
+      const ticket = await rpc("gestlok_chat_srv_reclamo", {
+        p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
+        p_tipo: clase, p_detalle: detalle });
+      return json({ ok: true, mensajes: [{ texto: ticket.texto,
+          botones: [{id:"estado",texto:"Estado de mi pedido"},{id:"soporte",texto:"Más ayuda"}] }],
+        carrito: (conv.estado as Json)?.carrito || [], soporte_pendiente: true,
+        motor: "guiado" }, 200, origen);
+    }
+    if (clase === "consulta_demora") entrada = {boton:"demora"};
 
     // Texto libre → IA (si está activa y configurada) con respaldo en el motor. Botones, carta y formulario → motor.
     let r: Turno | null = null;
@@ -168,11 +193,11 @@ Deno.serve(async (req) => {
     const mensajes: Json[] = [...r.mensajes];
     let pedido: Json | null = null;
     // Lo que queda escrito del lado del cliente (sin datos personales).
-    const cliente = entrada.texto ? String(entrada.texto)
+    const cliente = textoOriginal || (entrada.texto ? String(entrada.texto)
       : entrada.boton ? (BOTON_TEXTO[String(entrada.boton)] || "Elegí una opción")
       : entrada.agregar ? "Agregar: " + describirLinea(catalogo, entrada.agregar as never)
       : entrada.datos ? "Envié mis datos para el pedido"
-      : "Quitar un producto";
+      : "Quitar un producto");
 
     if (r.accion?.tipo === "crear_pedido") {
       const { data, error } = await db.rpc("gestlok_chat_srv_pedido", { p_conversacion: convId, p_token_hash: hash, p_pedido: r.accion.pedido });
