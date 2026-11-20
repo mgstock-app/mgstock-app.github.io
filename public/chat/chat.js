@@ -122,6 +122,7 @@ async function enviar(entrada, textoVisible) {
     actualizarCarrito(r.carrito);
     if (typeof r.soporte_pendiente === 'boolean') {
       S.soportePendiente = r.soporte_pendiente;
+      if (S.pedido) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(S.pedido.estado) && !S.soportePendiente;
       programarSondeo();
     }
     for (const m of r.mensajes || []) mensajeAsistente(m);
@@ -203,8 +204,11 @@ function mostrarPedido(p) {
       : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null,
     p.estado === 'terminado' && !p.recibido_at ? el('button', {type:'button', text:'Ya recibí mi pedido', onclick:confirmarRecepcion}) : null,
+    ['pendiente','confirmado','terminado'].includes(p.estado) ? el('button', {type:'button', text:'Necesito ayuda', onclick:() => enviar({boton:'soporte'},'Necesito ayuda')}) : null,
     resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null].filter(Boolean));
   caja.hidden = false;
+  // Tras enviar el pedido solo se muestra el seguimiento; el texto libre se habilita si hay soporte humano.
+  $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(p.estado) && !S.soportePendiente;
   const cambio = antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado);
   if (p.estado === 'terminado' && p.recibido_at && (!antes || !antes.recibido_at)) despedidaPedido(p);
   else if (cambio) {
@@ -229,7 +233,10 @@ function programarSondeo() {
           burbuja('local', m.texto);
           try { navigator.vibrate?.(100); } catch { /* opcional */ }
         }
-        if (typeof r.soporte_pendiente === 'boolean') S.soportePendiente = r.soporte_pendiente;
+        if (typeof r.soporte_pendiente === 'boolean') {
+          S.soportePendiente = r.soporte_pendiente;
+          if (S.pedido) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(S.pedido.estado) && !S.soportePendiente;
+        }
         if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
         else programarSondeo();
       } else programarSondeo();
@@ -555,7 +562,10 @@ async function iniciar() {
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
   if (!(r.nuevos || []).length && !(r.pedidos?.[0] && ['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado))) chips(BOTONES_BASE());
-  if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
+  if (r.pedidos?.[0]) {
+    if (['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado)) S.identificado = true;
+    mostrarPedido(r.pedidos[0]);
+  }
   if (S.soportePendiente) programarSondeo();
   $('app').setAttribute('aria-busy', 'false');
   // El saludo se ve primero; antes de usar el pedido se solicitan los datos obligatorios.
