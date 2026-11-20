@@ -29,7 +29,7 @@ function sonar(){
   o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+.17);
  });}catch{/* audio no compatible */}
 }
-document.addEventListener('pointerdown',()=>{if(!soundReady||audioCtx?.state!=='running')activarSonido();},{capture:true});
+document.addEventListener('pointerdown',()=>{if(allowed()&&(!soundReady||audioCtx?.state!=='running'))activarSonido();},{capture:true});
 
 const VERSION_PANEL='20261120pizzassafe1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
