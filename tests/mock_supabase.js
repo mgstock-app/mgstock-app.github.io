@@ -191,16 +191,18 @@
     } catch (e) { return err(typeof e === 'string' ? e : 'Error'); }
   }
   // GESTLOK Chat · Central de mensajes (como las RPC gestlok_chat_panel_*): datos ficticios en memoria.
-  // Dueño y creadora configuran todo; el gerente gestiona su local (pedidos, carta y mensajes); lectura y otros no ven nada.
+  // Dueño, creadora y gerente tienen control completo del chat solo en sus locales habilitados.
   function chatRpc(fn, x, a){
     const C = window.__chat = window.__chat || {pedidos: [{id: 'ch-1', local: 'munro', codigo: 'MM-0001', estado: 'pendiente', motivo: '',
       cliente_nombre: 'Cliente Ficticio', cliente_telefono: '1100000000', entrega: 'retiro', direccion: '', horario: '', medio_pago: 'efectivo', nota: '',
       subtotal: 3000, envio: 0, total: 3000, creado_at: new Date().toISOString(), decidido_at: null,
       items: [{cantidad: 3, nombre: 'Empanada de prueba', opciones: [], nota: '', importe: 3000}]}], version: {munro: 1, torcuato: 1},
-      carta: {munro: {categorias: [], productos: []}, torcuato: {categorias: [], productos: []}}, mensajes: {munro: {}, torcuato: {}}};
+      carta: {munro: {categorias: [], productos: []}, torcuato: {categorias: [], productos: []}},
+      adicionales: {munro:[{grupo_id:'gratinado',valor_id:'gratinar',nombre:'Gratinada adicional',extra_min:900,extra_max:900,disponible:true}],
+        torcuato:[]}, mensajes: {munro: {}, torcuato: {}}};
     const suc = {munro: 'suc-munro', torcuato: 'suc-torcuato'}, deSuc = id => Object.keys(suc).find(k => suc[k] === id);
     const nivel = loc => !a ? null : ['dueno', 'creadora'].includes(a.rol) ? 'configurar'
-      : (a.rol === 'gerente' && (a.locales || []).includes(loc)) ? 'gestionar' : null;
+      : (a.rol === 'gerente' && (a.locales || []).includes(loc)) ? 'configurar' : null;
     const sinPermiso = {data: null, error: {code: '42501', message: 'No tenés permiso para esta acción de GESTLOK Chat'}};
     const pend = loc => C.pedidos.filter(p => p.local === loc && p.estado === 'pendiente').length;
     // Como en el servidor: solo las empresas con GESTLOK Chat encendido (en el simulador, Mi Gusto).
@@ -233,6 +235,24 @@
       return {data: {ok: true, codigo: p.codigo, estado: p.estado}, error: null};
     }
     if (fn === 'gestlok_chat_panel_catalogo') return {data: {...C.carta[loc], nivel: nivel(loc)}, error: null};
+    if (fn === 'gestlok_chat_panel_stock_adicionales') return {data:C.adicionales[loc],error:null};
+    if (fn === 'gestlok_chat_panel_stock_adicional') {
+      const extra=C.adicionales[loc].find(a=>a.grupo_id===x.p_grupo&&a.valor_id===x.p_valor);
+      if (!extra) return {data:null,error:{code:'22023',message:'Adicional no encontrado para este local'}};
+      extra.disponible=x.p_disponible;return {data:{ok:true},error:null};
+    }
+    if (fn === 'gestlok_chat_panel_stock_categoria') {
+      if (!C.carta[loc].categorias.some(c=>c.id===x.p_categoria))
+        return {data:null,error:{code:'22023',message:'Categoría no encontrada'}};
+      C.carta[loc].productos.filter(p=>p.categoria_id===x.p_categoria&&p.activo)
+        .forEach(p=>{p.disponible=x.p_disponible;});
+      return {data:{ok:true},error:null};
+    }
+    if (fn === 'gestlok_chat_panel_disponible') {
+      const p=C.carta[loc].productos.find(p=>p.id===x.p_producto);
+      if(!p)return {data:null,error:{code:'22023',message:'Producto no encontrado'}};
+      p.disponible=x.p_disponible;return {data:{ok:true},error:null};
+    }
     if (fn === 'gestlok_chat_panel_categoria_guardar') {
       const id = x.p_id || ('cat-' + loc + '-' + (C.carta[loc].categorias.length + 1));
       C.carta[loc].categorias = C.carta[loc].categorias.filter(k => k.id !== id).concat({id, nombre: x.p_nombre, orden: x.p_orden || 0, activa: x.p_activa !== false});

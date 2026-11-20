@@ -30,7 +30,24 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   ok(DB, ['-f', MIG]); // repetible
   ok(DB, ['-f', MIG2]);
   ok(DB, ['-f', MIG2]); // repetible
-  ok(DB, ['-f', 'supabase/migrations/20261120000406_gestlok_chat_confirmacion_manual.sql']);
+  for (const name of [
+    '20261120000406_gestlok_chat_confirmacion_manual.sql',
+    '20261120010751_gestlok_chat_pagos_por_entrega.sql',
+    '20261120010908_gestlok_chat_pagos_retiro_delivery_columnas.sql',
+    '20261120013358_gestlok_chat_stock_interno_permisos_gerente.sql',
+    '20261120014204_gestlok_chat_gerente_no_ampliar_editor.sql',
+    '20261120020052_gestlok_chat_soporte_reclamos_gerente.sql',
+    '20261120021122_gestlok_chat_soporte_seguimiento_hasta_cierre.sql',
+    '20261120024146_gestlok_chat_turnos_programacion_reportes.sql',
+    '20261120024820_gestlok_chat_reportes_fecha_local.sql',
+    '20261120024908_gestlok_chat_turnos_privilegios_privados.sql',
+    '20261120060000_gestlok_chat_promos_cantidad.sql',
+    '20261120070000_gestlok_chat_resena_cierre.sql',
+    '20261120073000_gestlok_chat_venta_sugerida.sql',
+  ]) {
+    ok(DB, ['-f', 'supabase/migrations/' + name]);
+    ok(DB, ['-f', 'supabase/migrations/' + name]); // idempotencia
+  }
   const r = psql(DB, ['-f', 'supabase/tests/gestlok-chat-permisos.sql']);
   const out = (r.stderr || '') + (r.stdout || '');
   assert.match(out, /ERROR:\s+INFORME/, out);
@@ -38,4 +55,5 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
   const lines = informe.split('\n').map(s => s.trim()).filter(Boolean);
   assert.deepEqual(lines.filter(l => l.startsWith('FALLA')), [], informe);
   assert.ok(lines.filter(l => l.startsWith('OK')).length >= 80, informe);
+  assert.ok(lines.some(l => l.startsWith('OK') && l.includes('promo armada')), 'faltan las pruebas de promos: ' + informe);
 });

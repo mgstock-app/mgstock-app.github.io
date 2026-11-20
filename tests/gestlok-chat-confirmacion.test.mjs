@@ -9,7 +9,7 @@ test('confirmación manual, permisos y aislamiento sobre PostgreSQL embebido', a
  const db = new PGlite({extensions:{pgcrypto}});
  try {
   await db.exec(read('tests/fixtures/chat/base.sql'));
-  for (const file of ['20261119210000_gestlok_chat_base.sql','20261119233500_gestlok_chat_comercializar.sql','20261120000406_gestlok_chat_confirmacion_manual.sql']) {
+  for (const file of ['20261119210000_gestlok_chat_base.sql','20261119233500_gestlok_chat_comercializar.sql','20261120000406_gestlok_chat_confirmacion_manual.sql','20261120010751_gestlok_chat_pagos_por_entrega.sql','20261120010908_gestlok_chat_pagos_retiro_delivery_columnas.sql','20261120013358_gestlok_chat_stock_interno_permisos_gerente.sql','20261120014204_gestlok_chat_gerente_no_ampliar_editor.sql','20261120020052_gestlok_chat_soporte_reclamos_gerente.sql','20261120021122_gestlok_chat_soporte_seguimiento_hasta_cierre.sql','20261120024146_gestlok_chat_turnos_programacion_reportes.sql','20261120024820_gestlok_chat_reportes_fecha_local.sql','20261120024908_gestlok_chat_turnos_privilegios_privados.sql','20261120060000_gestlok_chat_promos_cantidad.sql','20261120070000_gestlok_chat_resena_cierre.sql','20261120073000_gestlok_chat_venta_sugerida.sql']) {
    await db.exec(read('supabase/migrations/' + file));
    await db.exec(read('supabase/migrations/' + file));
   }
@@ -35,7 +35,7 @@ test('función pública → pedido completo → gerente → estado del cliente',
  globalThis.Deno = {env:{get:k=>({SUPABASE_URL:'http://local',SUPABASE_SERVICE_ROLE_KEY:'test'})[k]},serve:h=>{handler=h;}};
  try {
   await db.exec(read('tests/fixtures/chat/base.sql'));
-  for(const f of ['20261119210000_gestlok_chat_base.sql','20261120000406_gestlok_chat_confirmacion_manual.sql']) await db.exec(read('supabase/migrations/'+f));
+  for(const f of ['20261119210000_gestlok_chat_base.sql','20261120000406_gestlok_chat_confirmacion_manual.sql','20261120010751_gestlok_chat_pagos_por_entrega.sql','20261120010908_gestlok_chat_pagos_retiro_delivery_columnas.sql','20261120013358_gestlok_chat_stock_interno_permisos_gerente.sql','20261120014204_gestlok_chat_gerente_no_ampliar_editor.sql','20261120020052_gestlok_chat_soporte_reclamos_gerente.sql','20261120021122_gestlok_chat_soporte_seguimiento_hasta_cierre.sql','20261120024146_gestlok_chat_turnos_programacion_reportes.sql','20261120024820_gestlok_chat_reportes_fecha_local.sql','20261120024908_gestlok_chat_turnos_privilegios_privados.sql','20261120060000_gestlok_chat_promos_cantidad.sql','20261120070000_gestlok_chat_resena_cierre.sql','20261120073000_gestlok_chat_venta_sugerida.sql']) await db.exec(read('supabase/migrations/'+f));
   const fixture = read('tests/db/gestlok-chat-funcion.test.mjs').match(/const SEMILLA = `([\s\S]*?)`;/)[1];
   await db.exec(fixture);
   globalThis.__chatTestClient = {rpc:async (fn,args) => {
@@ -61,6 +61,13 @@ test('función pública → pedido completo → gerente → estado del cliente',
   assert.equal((await call(null)).status,400);
   assert.equal((await call({...base,accion:'abrir'})).ok,true);
   assert.equal((await call({...base,accion:'mensaje',entrada:{texto:'2 empanadas de carne'}})).carrito.length,1);
+  await db.exec("update gestlok_chat_private.sucursales set medios_pago = array['efectivo','transferencia','credito'], medios_pago_envio = array['efectivo','transferencia'] where slug = 'mi-gusto-munro'");
+  const pagoNoPermitido = await call({...base,accion:'mensaje',entrada:{datos:{nombre:'Ana',telefono:'1155551234',
+    entrega:'envio',direccion:'Mitre 200',medio_pago:'credito',horario:'21:30'}}});
+  assert.equal(pagoNoPermitido.pedido, null, 'rechaza tarjeta en delivery');
+  assert.match(pagoNoPermitido.mensajes.at(-1).texto, /no está disponible para delivery/);
+  assert.equal(pagoNoPermitido.carrito.length, 1, 'conserva el carrito después de rechazar pago');
+
   const r=await call({...base,accion:'mensaje',entrada:{datos:{nombre:'Ana',telefono:'1155551234',entrega:'envio',direccion:'Mitre 200',medio_pago:'efectivo',horario:'21:30',nota:'Tocar timbre'}}});
   assert.equal(r.pedido.estado,'pendiente');
   assert.equal(Number(r.pedido.total),2500);

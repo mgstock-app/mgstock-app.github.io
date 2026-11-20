@@ -38,6 +38,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .aviso-pedido .punto{width:10px;height:10px;border-radius:50%;background:currentColor;margin-top:5px;flex:none}
 .aviso-pedido.pendiente .punto{animation:latir 1.6s ease-in-out infinite}
 @keyframes latir{50%{opacity:.25}}
+.aviso-pedido a{margin-left:auto;color:inherit;font-size:13px;white-space:nowrap;text-decoration:underline}
+.burbuja.resena .resena-link{display:flex;width:fit-content;align-items:center;margin-top:8px;text-decoration:none;color:var(--acento);border-color:var(--acento)}
 .aviso-pedido button{margin-left:auto;border:0;background:transparent;color:inherit;text-decoration:underline;font-size:13px;padding:0}
 
 .mensajes{flex:1;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
@@ -138,3 +140,16 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .menu-revision .linea{align-items:center}
 .menu-revision .total{border-top:1px solid var(--linea)}
 .menu-revision .boton{width:100%}
+/* Promos y combos: repartir unidades entre variedades (botones grandes para el pulgar, sin saltos de diseño) */
+.grupo-cantidad legend{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;width:100%}
+.grupo-cantidad legend small[aria-live]{margin-left:auto;font-weight:700;color:var(--acento);font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.grupo-cantidad legend small.completo{color:#1c7c4a}
+.opcion-cantidad{cursor:default;min-height:52px;padding:6px 6px 6px 12px}
+.opcion-cantidad.elegida{border-color:var(--acento);background:var(--acento-suave)}
+.opcion-cantidad span{min-width:0;overflow-wrap:anywhere}
+.pasos{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.pasos .paso{width:40px;height:40px;border-radius:50%;border:1px solid var(--linea);background:var(--papel);font-size:20px;line-height:1;color:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pasos .paso:disabled{opacity:.35}
+.pasos .n{display:inline-block;width:2ch;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.boton.principal:disabled{opacity:.6;cursor:not-allowed}
+

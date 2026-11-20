@@ -33,7 +33,7 @@ test('normaliza y formatea pesos', () => {
 test('bienvenida con botones', () => {
   const r = turno(null, {inicio: true});
   assert.match(r.mensajes[0].texto, /asistente de Mi Gusto Munro/);
-  assert.equal(r.mensajes[0].botones.length, 3);
+  assert.equal(r.mensajes[0].botones.length, 4);
 });
 
 test('pedido escrito con cantidades y contexto', () => {
@@ -129,3 +129,158 @@ test('los ejemplos salen de la carta del local (sirve para cualquier comercio)',
   assert.doesNotMatch(M.textoCarrito({productos: [{nombre: 'Corte de pelo', activo: true}]}, []), /empanada/);
 });
 
+
+test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correctamente', () => {
+  const miGusto = {...suc,
+    bienvenida: '¡Hola! Soy el asistente de Mi Gusto Munro. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.',
+    medios_pago: ['debito', 'credito', 'efectivo', 'transferencia'],
+    medios_pago_retiro: ['debito', 'credito', 'efectivo', 'transferencia'],
+    medios_pago_envio: ['efectivo', 'transferencia']};
+  const responder = entrada => M.responder({sucursal: miGusto, catalogo: cat, estado: null, entrada});
+  const inicio = responder({inicio: true});
+  assert.equal(inicio.mensajes[0].texto, M.formalizar(miGusto.bienvenida));
+  assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago', 'soporte']);
+  const pagos = responder({boton: 'pago'});
+  assert.match(pagos.mensajes[0].texto, /Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia/);
+  assert.match(pagos.mensajes[0].texto, /Delivery: Efectivo, Transferencia/);
+  assert.doesNotMatch(pagos.mensajes[0].texto, /Mercado Pago/);
+  assert.match(responder({boton: 'horario'}).mensajes[0].texto, /Horario:/);
+  assert.match(responder({boton: 'horario'}).mensajes[0].texto, /Envíos/mi);
+  assert.equal(responder({boton: 'carta'}).mensajes[0].tipo, 'carta');
+  assert.deepEqual(M.pagosDe(miGusto, 'envio'), ['efectivo', 'transferencia']);
+  assert.deepEqual(M.pagosDe(miGusto, 'retiro'), ['debito', 'credito', 'efectivo', 'transferencia']);
+});
+
+test('soporte: informa demoras y no afirma que el pedido esté confirmado', () => {
+ const local={...suc,demora_retiro:'15 a 20 minutos',demora_envio:'35 a 40 minutos'};
+ const r=M.responder({sucursal:local,catalogo:cat,estado:null,entrada:{boton:'demora'}});
+ assert.match(r.mensajes[0].texto,/15 a 20 minutos/);
+ assert.match(r.mensajes[0].texto,/35 a 40 minutos/);
+ assert.doesNotMatch(r.mensajes[0].texto,/pedido confirmado/i);
+ assert.ok(r.mensajes[0].botones.some(b=>b.id==='reclamo_demora'));
+ const help=M.responder({sucursal:local,catalogo:cat,estado:null,entrada:{boton:'soporte'}});
+ assert.ok(help.mensajes[0].botones.some(b=>b.id==='reclamo_faltante'));
+});
+test('soporte: consultas no crean reclamo; faltante, demora real y otros reclamos sí',()=>{
+ assert.equal(M.clasificarSoporte({texto:'¿Cuánto tarda el delivery?'}),'consulta_demora');
+ assert.equal(M.clasificarSoporte({texto:'Mi pedido se demora, hace una hora que espero'}),'demora');
+ assert.equal(M.clasificarSoporte({texto:'Me falta una empanada del pedido'}),'faltante');
+ assert.equal(M.clasificarSoporte({texto:'Me cobraron mal'}),'otro');
+ assert.equal(M.clasificarSoporte({boton:'reclamo_faltante'}),'faltante');
+ assert.equal(M.clasificarSoporte({boton:'hablar_gerente'}),'otro');
+ assert.equal(M.clasificarSoporte({texto:'Quiero 3 empanadas de carne'}),null);
+});
+
+test('Mi Gusto fuera de horario ofrece próximo turno y acepta pedido programado',()=>{
+  const cerrado={...suc,atencion:{habilitado:true,abierto:false,proximo_texto:'hoy a las 19:00'}};
+  const inicio=M.responder({sucursal:cerrado,catalogo:cat,estado:null,entrada:{inicio:true}});
+  assert.match(inicio.mensajes[0].texto,/cerrado/i);
+  assert.match(inicio.mensajes[0].texto,/hoy a las 19:00/);
+  assert.ok(inicio.mensajes[0].botones.some(b=>b.id==='programar_si'));
+  assert.doesNotMatch(inicio.mensajes[0].texto,/\\btu\\b|\\bpodés\\b/i);
+  let r=M.responder({sucursal:cerrado,catalogo:cat,estado:inicio.estado,entrada:{boton:'programar_si'}});
+  assert.equal(r.estado.programado,true);
+  r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{texto:'3 empanadas de carne'}});
+  r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{boton:'finalizar'}});
+  assert.equal(r.mensajes[0].tipo,'datos');
+  r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{datos:{
+    nombre:'María López',telefono:'1155551234',entrega:'retiro',medio_pago:'efectivo'}}});
+  assert.equal(r.accion.tipo,'crear_pedido');
+  assert.equal(r.accion.pedido.programar,true);
+});
+test('sin autorización no se envía un pedido fuera de horario',()=>{
+ const cerrado={...suc,atencion:{habilitado:true,abierto:false,proximo_texto:'mañana a las 11:00'}};
+ let r=M.responder({sucursal:cerrado,catalogo:cat,estado:null,entrada:{texto:'3 empanadas de carne'}});
+ r=M.responder({sucursal:cerrado,catalogo:cat,estado:r.estado,entrada:{boton:'finalizar'}});
+ assert.match(r.mensajes[0].texto,/mañana a las 11:00/);
+ assert.equal(r.accion,undefined);
+});
+test('no expone código interno y comunica retiro por nombre',()=>{
+ const p={codigo:'MM-0452',estado:'terminado',nombre:'Ana',entrega:'retiro',total:12000};
+ const t=M.textoEstadoPedido(p,{nombre:'Munro',direccion:'Av. Mitre 100'},null);
+ assert.doesNotMatch(t,/MM-0452|código/i);
+ assert.match(t,/nombre/i);
+ assert.doesNotMatch(t,/\\btu\\b|\\bpodés\\b/i);
+});
+test('consulta ajena deriva al gerente y pedido gastronómico no',()=>{
+ assert.equal(M.consultaAjena('¿Quién ganó el partido de fútbol?'),true);
+ assert.equal(M.consultaAjena('Quiero 2 pizzas muzzarella'),false);
+ assert.equal(M.consultaAjena('¿Cuánto demora mi pedido?'),false);
+});
+
+test('promos: repartir unidades entre variedades (premium y clásicas sin recargo) y salsas', () => {
+  const cat = {productos: [
+    {id: 'e1', nombre: 'Carne', precio: 4900, activo: true, disponible: true, opciones: []},
+    {id: 'e2', nombre: 'La Sagrada', precio: 5500, activo: true, disponible: false, opciones: []},
+    {id: 'pk', nombre: 'Pack 6 empanadas + 2 salsas', precio: 31500, activo: true, disponible: true, opciones: [
+      {id: 'emp', nombre: 'Empanadas', tipo: 'cantidad', total: 6, obligatorio: true, valores: [
+        {id: 'carne', nombre: 'Carne', extra: 0, producto_id: 'e1'}, {id: 'sagrada', nombre: 'La Sagrada', extra: 0, producto_id: 'e2'},
+        {id: 'pollo', nombre: 'Pollo', extra: 0}]},
+      {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla'}, {id: 'ajo', nombre: 'Crema de ajo'}]}]},
+  ]};
+  const pack = cat.productos[2];
+  assert.deepEqual(M.valoresDisponibles(cat, pack.opciones[0]).map(v => v.id), ['carne', 'pollo']); // La Sagrada agotada
+  const linea = {producto_id: 'pk', cantidad: 1, opciones: {emp: {carne: 4, pollo: 2}, sal: {criolla: 1, ajo: 1}}};
+  assert.equal(M.validarLinea(cat, linea), '');
+  assert.equal(M.importeLinea(cat, linea), 31500);
+  assert.match(M.describirLinea(cat, linea), /4 Carne, 2 Pollo · 1 Criolla, 1 Crema de ajo/);
+  assert.match(M.validarLinea(cat, {...linea, opciones: {emp: {carne: 5}, sal: {criolla: 2}}}), /elegí 6 \(llevás 5\)/);
+  assert.match(M.validarLinea(cat, {...linea, opciones: {emp: {carne: 3, sagrada: 3}, sal: {criolla: 2}}}), /La Sagrada no está disponible/);
+  assert.equal(M.faltantes(pack, {emp: {carne: 6}}).map(g => g.id).join(), 'sal');
+  assert.equal(M.unidades({a: 2, b: 3, c: -1}), 5);
+});
+
+test('reseña y cierre al terminar el pedido: solo links https de Google', () => {
+  assert.equal(M.urlResena('https://g.page/r/CT9jkvArEGhFEBM/review'), 'https://g.page/r/CT9jkvArEGhFEBM/review');
+  assert.ok(M.urlResena('https://maps.app.goo.gl/abc123'));
+  assert.ok(M.urlResena('https://search.google.com/local/writereview?placeid=XYZ'));
+  for (const malo of ['http://g.page/r/x', 'https://g.page.estafa.example/r', 'https://estafa.example/g.page', 'javascript:alert(1)',
+    'https://usuario:clave@g.page/r/x', 'https://g.page/r/x y', '', null]) assert.equal(M.urlResena(malo), '', String(malo));
+  const msj = {resena_url: 'https://g.page/r/CT9jkvArEGhFEBM/review', resena: '{nombre}, nos ayudaría mucho que nos deje su reseña.', cierre: '¡Gracias por elegirnos! 🥰'};
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, msj),
+    {resena: {texto: 'Ana, nos ayudaría mucho que nos deje su reseña.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'}, cierre: '¡Gracias por elegirnos! 🥰'});
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
+  assert.equal(M.cierrePedido({estado: 'pendiente'}, msj), null);
+  assert.equal(M.cierrePedido({estado: 'rechazado'}, msj), null, 'un pedido rechazado no pide reseña');
+  assert.match(M.textoEstadoPedido({estado: 'terminado', entrega: 'envio', nombre: 'Ana', direccion: 'Mitre 200', total: 1000}, {}, {}), /en camino a Mitre 200/);
+});
+
+test('venta sugerida: antes de los datos ofrece postres y bebidas una sola vez', () => {
+  const cat = {categorias: [{id: 'ce', nombre: 'Empanadas'}, {id: 'cb', nombre: 'Bebidas'}, {id: 'cp', nombre: 'Postres'}, {id: 'cv', nombre: 'Vinos'}], productos: [
+    {id: 'e1', categoria_id: 'ce', nombre: 'Empanada de carne', precio: 1000, activo: true, disponible: true, opciones: []},
+    {id: 'b1', categoria_id: 'cb', nombre: 'Coca-Cola lata', precio: 900, activo: true, disponible: true, opciones: []},
+    {id: 'p1', categoria_id: 'cp', nombre: 'Flan', precio: 1500, activo: true, disponible: true, opciones: []},
+    {id: 'v1', categoria_id: 'cv', nombre: 'Malbec', precio: 9000, activo: true, disponible: false, opciones: []},
+    {id: 'k1', categoria_id: 'ce', nombre: 'Pack 2 empanadas + lata', precio: 2500, activo: true, disponible: true, opciones: [
+      {id: 'lata', nombre: 'Lata', tipo: 'una', obligatorio: true, valores: [{id: 'coca', nombre: 'Coca-Cola'}]}]},
+  ]};
+  const suc = {nombre: 'Centro', acepta_retiro: true};
+  let r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 2, opciones: {}}]}, entrada: {boton: 'finalizar'}});
+  assert.equal(r.mensajes[0].sugerencia, true);
+  assert.match(r.mensajes[0].texto, /postre o una bebida/);
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.id), ['carta:cb', 'carta:cp', 'finalizar'], 'categorías en el orden de la carta');
+  assert.deepEqual(r.mensajes[0].botones.map(b => b.texto), ['Ver bebidas', 'Ver postres', 'No, gracias. Finalizar']);
+  assert.ok(!r.mensajes[0].botones.some(b => b.id === 'carta:cv'), 'sin vinos disponibles no se ofrecen');
+  assert.equal(r.estado.sugerido, true);
+  // «Ver postres» abre la carta en esa categoría.
+  const v = M.responder({sucursal: suc, catalogo: cat, estado: r.estado, entrada: {boton: 'carta:cp'}});
+  assert.equal(v.mensajes[0].tipo, 'carta'); assert.equal(v.mensajes[0].categoria, 'cp');
+  // «No, gracias. Finalizar»: no se vuelve a ofrecer y pasa a los datos.
+  r = M.responder({sucursal: suc, catalogo: cat, estado: r.estado, entrada: {boton: 'finalizar'}});
+  assert.equal(r.mensajes[0].tipo, 'datos');
+  // Con postre y bebida en el pedido, va directo a los datos.
+  r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}, {producto_id: 'p1', cantidad: 1, opciones: {}},
+    {producto_id: 'b1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'}});
+  assert.equal(r.mensajes[0].tipo, 'datos');
+  // Una promo con lata ya trae bebida: solo se ofrecen postres.
+  assert.deepEqual(M.categoriasSugeridas(cat, [{producto_id: 'k1', cantidad: 1, opciones: {lata: ['coca']}}]).map(c => c.id), ['cp']);
+  // Texto propio del local.
+  r = M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'},
+    mensajes: {sugerencia: '¿Le sumamos un Franui o una gaseosa?'}});
+  assert.equal(r.mensajes[0].texto, '¿Le sumamos un Franui o una gaseosa?');
+  // Vaciar el pedido vuelve a habilitar la sugerencia.
+  assert.equal(M.responder({sucursal: suc, catalogo: cat, estado: {carrito: [], sugerido: true}, entrada: {boton: 'vaciar'}}).estado.sugerido, false);
+  // Un local sin postres ni bebidas no ve ningún paso extra.
+  assert.equal(M.responder({sucursal: suc, catalogo: {categorias: [{id: 'ce', nombre: 'Empanadas'}], productos: [cat.productos[0]]},
+    estado: {carrito: [{producto_id: 'e1', cantidad: 1, opciones: {}}]}, entrada: {boton: 'finalizar'}}).mensajes[0].tipo, 'datos');
+});

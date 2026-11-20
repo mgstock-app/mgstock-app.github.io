@@ -12,19 +12,73 @@ const NUMEROS = {
 const VACIAS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'con', 'sin', 'y', 'a', 'al', 'en', 'para', 'por', 'un', 'una',
   'uno', 'unos', 'unas', 'quiero', 'queria', 'quisiera', 'me', 'das', 'das', 'mandame', 'mandas', 'traeme', 'pedir',
   'pido', 'hola', 'porfa', 'por', 'favor', 'gracias', 'tambien', 'mas', 'otra', 'otro', 'que', 'q', 'sea', 'son']);
+/** Mantiene un trato respetuoso incluso en los textos del motor de respaldo. */
+export function formalizar(texto) {
+  return String(texto||'')
+    .replace(/\b([Tt])u pedido\b/g,(_m,i)=>i==='T'?'Su pedido':'su pedido')
+    .replace(/\b([Tt])us datos\b/g,(_m,i)=>i==='T'?'Sus datos':'sus datos')
+    .replace(/\b([Tt])u dirección\b/g,(_m,i)=>i==='T'?'Su dirección':'su dirección')
+    .replace(/\b([Tt])e responderá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='T'?'Le responderá':'le responderá')
+    .replace(/\b([Tt])e avisamos\b/g,(_m,i)=>i==='T'?'Le avisamos':'le avisamos')
+    .replace(/\b([Pp])odés\b/g,(_m,i)=>i==='P'?'Puede':'puede')
+    .replace(/\b([Qq])uerés\b/g,(_m,i)=>i==='Q'?'Desea':'desea')
+    .replace(/\b([Tt])ocá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='T'?'Seleccione':'seleccione')
+    .replace(/\b([Ee])legí(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='E'?'Elija':'elija')
+    .replace(/\b([Mm])irá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='M'?'Consulte':'consulte')
+    .replace(/\b([Rr])evisá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='R'?'Revise':'revise')
+    .replace(/\b([Ee])scribime\b/g,(_m,i)=>i==='E'?'Escríbanos':'escríbanos')
+    .replace(/\b([Cc])ompletá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='C'?'Complete':'complete')
+    .replace(/\b([Aa])gregá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='A'?'Agregue':'agregue')
+    .replace(/\b([Cc])onsultá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='C'?'Consulte':'consulte')
+    .replace(/\b([Ss])i necesitás\b/g,(_m,i)=>i==='S'?'Si necesita':'si necesita')
+    .replace(/\b([Tt])enés\b/g,(_m,i)=>i==='T'?'Tiene':'tiene')
+    .replace(/\b([Pp])robá(?=\s|[.!?,;:]|$)/g,(_m,i)=>i==='P'?'Intente':'intente')
+    .replace(/\b([Vv])olvé\b/g,(_m,i)=>i==='V'?'Vuelva':'vuelva')
+    .replace(/\b([Dd])ecime\b/g,(_m,i)=>i==='D'?'Indíqueme':'indíqueme')
+    .replace(/\b([Hh])acemos\b/g,(_m,i)=>i==='H'?'Realizamos':'realizamos')
+    .replace(/\b([Tt])e\b/g,(_m,i)=>i==='T'?'Le':'le')
+    .replace(/\b([Tt])u\b/g,(_m,i)=>i==='T'?'Su':'su')
+    .replace(/\b([Tt])us\b/g,(_m,i)=>i==='T'?'Sus':'sus')
+    .replace(/ayudarte/gi,'ayudarle')
+    .replace(/([Nn])ecesitás/g,(_m,i)=>i==='N'?'Necesita':'necesita')
+    .replace(/([Qq])uerías/g,(_m,i)=>i==='Q'?'Desearía':'desearía')
+;
+}
 const MAX_CARRITO = 30;
 const MAX_CANTIDAD = 50;
 
 /** Mensajes automáticos sugeridos. El dueño los cambia en el panel (vacío = este texto).
  * Variables: {nombre} {codigo} {total} {direccion} {local} {motivo}. */
 export const MENSAJES_BASE = {
-  recibido: '¡Gracias, {nombre}! Recibimos tu pedido {codigo}. Está pendiente de revisión y confirmación del gerente.\nTotal: {total}.',
-  terminado_retiro: '¡Tu pedido {codigo} está listo! Ya podés pasar a retirarlo por {local}.',
-  terminado_envio: '¡Tu pedido {codigo} está listo y sale para {direccion}!',
-  rechazado: 'Lo sentimos, {nombre}: no pudimos tomar tu pedido {codigo}.\nMotivo: {motivo}',
-  pausado: 'Ahora no estamos tomando pedidos por chat. Volvé a intentar más tarde.',
-  despedida: '¡Gracias por escribirnos! Si necesitás algo más, acá estoy.',
+  recibido: 'Gracias, {nombre}. Recibimos su pedido, que está pendiente de revisión y confirmación del gerente. Total estimado: {total}.',
+  terminado_retiro: '{nombre}, su pedido está listo para retirar en {local}. Al acercarse, solo indique su nombre.',
+  terminado_envio: '{nombre}, su pedido está en camino a {direccion}.',
+  rechazado: 'Le pedimos disculpas, {nombre}. No pudimos tomar su pedido. Motivo: {motivo}',
+  pausado: 'En este momento el chat se encuentra en pausa. Puede volver a contactarnos más tarde.',
+  despedida: 'Muchas gracias por comunicarse. Estamos a su disposición.',
+  // Al terminar el pedido (listo para retirar o enviado): invitación a reseñar (solo si hay link) y cierre.
+  resena: '¿Cómo fue su experiencia? Nos ayudaría mucho que nos la cuente en una reseña.',
+  cierre: '¡Gracias por elegirnos!',
+  // Venta sugerida: antes de pedir los datos, si el pedido no tiene postre o bebida.
+  sugerencia: 'Antes de finalizar, ¿desea agregar un postre o una bebida para acompañar su pedido?',
 };
+/** Link de reseñas del local: solo https y solo dominios de Google (evita enlaces engañosos). '' si no sirve. */
+export function urlResena(u) {
+  const t = String(u ?? '').trim();
+  if (!t || t.length > 300 || /[\s<>"']/.test(t)) return '';
+  let x; try { x = new URL(t); } catch { return ''; }
+  const hosts = ['g.page', 'maps.app.goo.gl', 'goo.gl', 'g.co', 'search.google.com', 'maps.google.com',
+    'google.com', 'www.google.com', 'google.com.ar', 'www.google.com.ar'];
+  return x.protocol === 'https:' && !x.username && !x.password && !x.port && hosts.includes(x.hostname) ? x.href : '';
+}
+/** Pedido terminado → invitación a reseñar (si el local cargó su link) y mensaje de cierre. null en otros estados. */
+export function cierrePedido(pedido, mensajes) {
+  if (pedido?.estado !== 'terminado') return null;
+  const d = {nombre: pedido.nombre || ''};
+  const url = urlResena(mensajes?.resena_url);
+  return {resena: url ? {texto: formalizar(plantilla(mensajeDe(mensajes, 'resena'), d)), url} : null,
+    cierre: formalizar(plantilla(mensajeDe(mensajes, 'cierre'), d))};
+}
 /** Completa una plantilla con los datos (las variables sin dato quedan vacías). */
 export function plantilla(texto, datos) {
   return String(texto ?? '').replace(/\{(nombre|codigo|total|direccion|local|motivo)\}/g, (_, k) => String(datos?.[k] ?? '')).replace(/[ \t]+\n/g, '\n').trim();
@@ -35,21 +89,35 @@ export function mensajeDe(mensajes, clave) {
 }
 /** Texto para el cliente según el estado de su pedido. */
 export function textoEstadoPedido(pedido, sucursal, mensajes) {
-  const s = sucursal || {};
-  const datos = {nombre: pedido.nombre || '', codigo: pedido.codigo, total: pesos(pedido.total),
-    direccion: pedido.direccion || 'tu dirección', local: s.direccion || ('el local de ' + (s.nombre || '')).trim(), motivo: pedido.motivo || ''};
-  switch (pedido.estado) {
-    case 'pendiente': return plantilla(MENSAJES_BASE.recibido, datos);
-    case 'confirmado': return 'El gerente confirmó tu pedido ' + pedido.codigo + '. Ya está en preparación.';
-    case 'terminado': return plantilla(mensajeDe(mensajes, pedido.entrega === 'envio' ? 'terminado_envio' : 'terminado_retiro'), datos);
-    case 'rechazado': return plantilla(mensajeDe(mensajes, 'rechazado'), datos);
-    case 'cancelado': return 'Cancelamos tu pedido ' + pedido.codigo + '.';
+  const s=sucursal||{};
+  const nombre=pedido.nombre||'';
+  const d={nombre,total:pesos(pedido.total),direccion:pedido.direccion||'su dirección',
+    local:s.direccion||('el local de '+(s.nombre||'')).trim(),motivo:pedido.motivo||'',codigo:''};
+  const salida = texto => formalizar(plantilla(String(texto||'').replace(/\bpedido\s*\{codigo\}/gi,'pedido').replace(/\{codigo\}/g,''),d)
+     .replace(/\b[A-Z]{1,4}-\d{4,}\b/g,'').replace(/\s+([.!?,])/g,'$1'));
+  switch(pedido.estado){
+    case 'pendiente':
+      return pedido.programado_para
+        ? 'Gracias, '+nombre+'. Recibimos su pedido programado para '+new Intl.DateTimeFormat('es-AR',
+           {timeZone:'America/Argentina/Buenos_Aires',weekday:'long',hour:'2-digit',minute:'2-digit'})
+           .format(new Date(pedido.programado_para))+' h. Queda sujeto a revisión y confirmación del gerente antes de prepararlo.'
+        : (() => {
+          const t=salida(mensajeDe(mensajes,'recibido'));
+          const valido=/(preparando|prepara|preparación|confirmad|listo|en camino|despach|entregad|ya sale)/i.test(t)
+            ? 'Gracias, '+(nombre||'')+'. Recibimos su pedido, que está pendiente de revisión y confirmación del gerente.' : t;
+          return /pendiente de revisión y confirmación/i.test(valido)
+            ? valido : valido+' Su pedido está pendiente de revisión y confirmación del gerente.';
+        })();
+    case 'confirmado': return 'El gerente confirmó su pedido. El local está preparándolo.';
+    case 'terminado': return salida(mensajeDe(mensajes,pedido.entrega==='envio'?'terminado_envio':'terminado_retiro'));
+    case 'rechazado': return salida(mensajeDe(mensajes,'rechazado'));
+    case 'cancelado': return 'Su pedido fue cancelado.';
     default: return '';
   }
 }
 
 export const PAGOS = {
-  efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito',
+  efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Tarjeta de débito', credito: 'Tarjeta de crédito',
 };
 
 export function normalizar(t) {
@@ -68,13 +136,35 @@ export function pesos(n) {
 function productoPorId(catalogo, id) { return (catalogo?.productos || []).find(p => p.id === id); }
 function disponibles(catalogo) { return (catalogo?.productos || []).filter(p => p.activo !== false); }
 
+/* Grupo «cantidad» (promos y combos de cualquier rubro): el cliente reparte un total exacto entre variedades,
+ * pudiendo repetir. Ej.: «Pack 6 empanadas + 2 salsas» → {empanadas: {carne: 3, pollo: 3}, salsas: {criolla: 2}}.
+ * Una variedad puede apuntar a un producto de la carta (producto_id): si ese producto se agota, deja de ofrecerse. */
+export function esCantidad(g) { return g?.tipo === 'cantidad'; }
+/** Unidades elegidas en un grupo «cantidad» ({id: n} → suma). */
+export function unidades(sel) {
+  return sel && typeof sel === 'object' && !Array.isArray(sel) ? Object.values(sel).reduce((a, n) => a + (Number.isInteger(n) && n > 0 ? n : 0), 0) : 0;
+}
+/** Variedades que se pueden elegir hoy (sin las que apuntan a un producto agotado o fuera de la carta). */
+export function valoresDisponibles(catalogo, g) {
+  return (g?.valores || []).filter(v => {
+    if (!v.producto_id) return true;
+    const x = productoPorId(catalogo, v.producto_id);
+    return !!x && x.activo !== false && x.disponible !== false;
+  });
+}
+/** Lista de ids elegidos (grupos «una»/«varias») o pares [id, n] (grupo «cantidad»). */
+function elegidos(g, sel) {
+  if (esCantidad(g)) return sel && typeof sel === 'object' && !Array.isArray(sel) ? Object.entries(sel).filter(([, n]) => Number.isInteger(n) && n > 0) : [];
+  return Array.isArray(sel) ? sel.map(id => [id, 1]) : [];
+}
+
 /** Precio orientativo de una línea (la base recalcula siempre). */
 export function importeLinea(catalogo, linea) {
   const p = productoPorId(catalogo, linea.producto_id);
   if (!p) return 0;
   let extra = 0;
   for (const g of p.opciones || []) {
-    for (const vid of linea.opciones?.[g.id] || []) extra += Number(g.valores.find(v => v.id === vid)?.extra || 0);
+    for (const [vid, n] of elegidos(g, linea.opciones?.[g.id])) extra += n * Number(g.valores.find(v => v.id === vid)?.extra || 0);
   }
   return (Number(p.precio) + extra) * linea.cantidad;
 }
@@ -86,15 +176,40 @@ export function describirLinea(catalogo, linea) {
   if (!p) return linea.cantidad + ' × (producto que ya no está)';
   const ops = [];
   for (const g of p.opciones || []) {
-    const vals = (linea.opciones?.[g.id] || []).map(id => g.valores.find(v => v.id === id)?.nombre).filter(Boolean);
+    const vals = elegidos(g, linea.opciones?.[g.id]).map(([id, n]) => {
+      const nombre = g.valores.find(v => v.id === id)?.nombre;
+      return nombre && (esCantidad(g) ? n + ' ' + nombre : nombre);
+    }).filter(Boolean);
     if (vals.length) ops.push(vals.join(', '));
   }
   return linea.cantidad + ' × ' + p.nombre + (ops.length ? ' (' + ops.join(' · ') + ')' : '') + (linea.nota ? ' — ' + linea.nota : '');
 }
 
+/* Venta sugerida (cualquier rubro gastronómico): categorías de postres y de bebidas, reconocidas por su nombre. */
+const RE_POSTRE = /postre|helado|dulce|torta/i;
+const RE_BEBIDA = /bebida|gaseosa|cerveza|vino|agua|jugo|refresco/i;
+/** Categorías para ofrecer antes de finalizar: postres y bebidas con algo disponible, si el pedido todavía no tiene. */
+export function categoriasSugeridas(catalogo, carrito) {
+  const cats = catalogo?.categorias || [];
+  const tipoCat = c => RE_POSTRE.test(c?.nombre || '') ? 'postre' : RE_BEBIDA.test(c?.nombre || '') ? 'bebida' : '';
+  const tipoDe = p => tipoCat(cats.find(c => c.id === p?.categoria_id));
+  const tiene = {postre: false, bebida: false};
+  for (const l of carrito || []) {
+    const p = productoPorId(catalogo, l.producto_id);
+    const t = tipoDe(p);
+    if (t) tiene[t] = true;
+    // Promos que ya traen bebida (ej. «+ lata»): no se ofrece otra.
+    if ((p?.opciones || []).some(g => RE_BEBIDA.test(g.nombre) || /lata/i.test(g.nombre))) tiene.bebida = true;
+  }
+  return cats.filter(c => { const t = tipoCat(c); return t && !tiene[t]; })
+    .filter(c => disponibles(catalogo).some(p => p.categoria_id === c.id && p.disponible !== false))
+    .slice(0, 3).map(c => ({id: c.id, nombre: c.nombre, tipo: tipoCat(c)}));
+}
+
 /** Opciones obligatorias que todavía faltan elegir en una línea. */
 export function faltantes(producto, opciones) {
-  return (producto.opciones || []).filter(g => g.obligatorio && !(opciones?.[g.id] || []).length);
+  return (producto.opciones || []).filter(g => esCantidad(g) ? unidades(opciones?.[g.id]) !== Number(g.total)
+    : g.obligatorio && !(opciones?.[g.id] || []).length);
 }
 
 /** Valida una línea igual que la base (para avisar antes de enviar). Devuelve '' o el problema. */
@@ -105,6 +220,17 @@ export function validarLinea(catalogo, linea) {
   if (!Number.isInteger(linea.cantidad) || linea.cantidad < 1 || linea.cantidad > MAX_CANTIDAD) return 'Cantidad inválida.';
   for (const k of Object.keys(linea.opciones || {})) if (!(p.opciones || []).some(g => g.id === k)) return 'Opción inválida.';
   for (const g of p.opciones || []) {
+    if (esCantidad(g)) {
+      const sel = linea.opciones?.[g.id] || {};
+      if (typeof sel !== 'object' || Array.isArray(sel)) return 'Opción inválida.';
+      for (const [id, n] of Object.entries(sel)) {
+        if (!Number.isInteger(n) || n < 0 || !g.valores.some(v => v.id === id)) return 'Opción inválida.';
+        if (n > 0 && !valoresDisponibles(catalogo, g).some(v => v.id === id)) return (g.valores.find(v => v.id === id)?.nombre || 'Una variedad') + ' no está disponible ahora.';
+      }
+      const u = unidades(sel), total = Number(g.total);
+      if (u !== total) return 'En ' + g.nombre.toLowerCase() + ' de ' + p.nombre + ' elegí ' + total + (u ? ' (llevás ' + u + ')' : '') + '.';
+      continue;
+    }
     const sel = linea.opciones?.[g.id] || [];
     if (new Set(sel).size !== sel.length || sel.some(id => !g.valores.some(v => v.id === id))) return 'Opción inválida.';
     if (g.obligatorio && !sel.length) return 'Elegí ' + g.nombre.toLowerCase() + ' para ' + p.nombre + '.';
@@ -148,6 +274,7 @@ function opcionesDe(producto, segmento) {
   const q = new Set(claves(normalizar(segmento).replace(/\bsin\s+[a-z0-9ñ]+/g, ' ')));
   const ops = {};
   for (const g of producto.opciones || []) {
+    if (esCantidad(g)) continue; // las promos se arman en su selector (cantidades por variedad)
     const elegidas = g.valores.filter(v => {
       const k = claves(v.nombre);
       return k.length && k.every(w => q.has(w));
@@ -186,9 +313,38 @@ export function interpretarPedido(catalogo, texto) {
   return {lineas, dudas, sinCoincidencia};
 }
 
+/** Consultas claramente ajenas a la gastronomía: se deriva en vez de inventar respuestas.
+ * Los casos ambiguos se dejan a la IA y a su herramienta de derivación. */
+export function consultaAjena(texto='') {
+  const n=normalizar(texto);
+  if (/\b(pedido|comida|menu|carta|delivery|repart|pizza|empanada|horario|local|envio|retiro|pago|demora|precio)\b/.test(n)) return false;
+  return /\b(clima|pronostico|temperatura|presidente|politica|gobierno|elecciones|futbol|partido de futbol|river|boca juniors|medicina|diagnostico|enfermedad|cotizacion dolar|bolsa|criptomoneda|tarea escolar|historia argentina|programacion|codigo fuente|capital de|matematica|geografia|astrologia|horoscopo)\b/.test(n);
+}
+/** Clasifica reclamos antes de llamar a la IA; consultar tiempos no genera alerta por sí solo. */
+export function clasificarSoporte(entrada = {}) {
+  const b = String(entrada.boton || '');
+  if (b === 'reclamo_demora') return 'demora';
+  if (b === 'reclamo_faltante') return 'faltante';
+  if (b === 'reclamo_otro' || b === 'hablar_gerente') return 'otro';
+  const t = normalizar(String(entrada.texto || ''));
+  if (!t) return null;
+  if (/\b(faltante|me falta|me falto|faltaron|pedido incompleto|no me trajeron|no vino (la|el|un)|vino incompleto)\b/.test(t)) return 'faltante';
+  if (/\b(reclamo|queja|me cobraron mal|cobraron de mas|pedido equivocado|pedido incorrecto|no es lo que pedi|vino frio|mal estado|mal servicio|vino mal|hablar con (un )?(gerente|responsable))\b/.test(t)) return 'otro';
+  if (/\b(mi pedido (se )?(demora|esta tardando|tarda mucho|no llega)|no llego mi pedido|pedido no llega|sigo esperando|paso (una|1|dos|2) hora|tardo mucho|viene demorado|se esta demorando)\b/.test(t)) return 'demora';
+  if (/\b(cuanto (tarda|demora|falta)|tiempo (de entrega|estimado)|cuanta demora|demora del delivery|demora para retirar)\b/.test(t)) return 'consulta_demora';
+  return null;
+}
+export function textoDemora(s = {}) {
+  const r = s.demora_retiro ? 'Retiro en el local: ' + s.demora_retiro + '.' : '';
+  const d = s.demora_envio ? 'Delivery: ' + s.demora_envio + '.' : '';
+  return [r,d].filter(Boolean).join('\n') ||
+    'El tiempo estimado de entrega todavía no está configurado para este local.';
+}
+
 function intencion(t) {
   const n = normalizar(t);
   if (!n) return 'vacio';
+  if (/\b(cuanto tarda|cuanto demora|cuanta demora|tiempo de entrega|demora del delivery)\b/.test(n)) return 'demora';
   if (/\b(estado|como va|ya esta|confirmaron|cuanto falta|llego)\b/.test(n) ||
       (/\bmi pedido\b/.test(n) && n.split(' ').length <= 5 && !/\d/.test(n))) return 'estado';
   if (/\b(cancel|anula)/.test(n)) return 'cancelar';
@@ -208,7 +364,8 @@ function intencion(t) {
 }
 
 const BOTONES_INICIO = [
-  {id: 'carta', texto: 'Armar mi pedido'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'},
+  {id: 'carta', texto: 'Armar mi pedido'}, {id: 'horario', texto: 'Horario y envío'},
+  {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'},
 ];
 export function botonesCarrito(carrito) {
   return carrito.length
@@ -230,8 +387,14 @@ export function textoEnvio(s) {
   if (Number(s.pedido_minimo) > 0) partes.push('Pedido mínimo: ' + pesos(s.pedido_minimo) + '.');
   return partes.join('\n');
 }
+export function pagosDe(s, entrega) {
+  const personalizados = entrega === 'envio' ? s.medios_pago_envio : s.medios_pago_retiro;
+  return Array.isArray(personalizados) && personalizados.length ? personalizados : (s.medios_pago || ['efectivo']);
+}
 export function textoPago(s) {
-  return 'Aceptamos: ' + (s.medios_pago || ['efectivo']).map(m => PAGOS[m] || m).join(', ') + '.';
+  const retiro = s.acepta_retiro ? 'Retiro en el local: ' + pagosDe(s, 'retiro').map(m => PAGOS[m] || m).join(', ') + '.' : '';
+  const envio = s.acepta_envio ? 'Delivery: ' + pagosDe(s, 'envio').map(m => PAGOS[m] || m).join(', ') + '.' : '';
+  return [retiro, envio].filter(Boolean).join('\n') || 'Consultá los medios de pago con el local.';
 }
 // Ejemplo de pedido armado con la carta de ESTE local (sirve para cualquier comercio).
 export function ejemploPedido(catalogo) {
@@ -261,7 +424,7 @@ export function sumar(catalogo, carrito, lineas) {
   return avisos;
 }
 
-export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: []}; }
+export function estadoInicial() { return {carrito: [], paso: 'inicio', pendientes: [], programado: false, sugerido: false}; }
 
 export function limpiarEstado(estado, catalogo) {
   const e = Object.assign(estadoInicial(), estado && typeof estado === 'object' ? estado : {});
@@ -279,14 +442,43 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   const s = sucursal || {};
   const e = limpiarEstado(estado, catalogo);
   const out = [];
-  const decir = (texto, extra = {}) => out.push({texto, ...extra});
+  const decir = (texto, extra = {}) => out.push({texto:formalizar(texto), ...extra});
   const fin = (accion) => ({estado: e, mensajes: out, ...(accion ? {accion} : {})});
   entrada = entrada || {};
 
   if (entrada.inicio) {
-    decir((s.bienvenida || ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' + (s.nombre || '') + '.').trim()) +
-      '\nPodés escribirme tu pedido, por ejemplo ' + ejemploPedido(catalogo) + ', o mirar la carta.',
+    if (s.atencion?.habilitado && s.atencion.abierto === false) {
+      decir('Gracias por comunicarse. Por el momento nuestro local está cerrado. Abriremos nuevamente '+s.atencion.proximo_texto+
+        '. ¿Desea dejar un pedido programado para la próxima apertura? El gerente lo revisará y confirmará cuando corresponda.',{
+        botones:[{id:'programar_si',texto:'Sí, dejar pedido programado'},
+          {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
+      return fin();
+    }
+    decir(s.bienvenida?.trim() ||
+      ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' +
+       (s.nombre || '') + '. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.').trim(),
       {botones: BOTONES_INICIO});
+    return fin();
+  }
+  if (entrada.boton === 'programar_si') {
+    if (!s.atencion?.habilitado || s.atencion.abierto) {
+      e.programado=false;
+      decir(s.atencion?.abierto
+        ? 'El local ya está abierto. Puede realizar su pedido normalmente.'
+        : 'La programación no está habilitada para este local.',{botones:botonesCarrito(e.carrito)});
+      return fin();
+    }
+    e.programado=true;
+    decir('Con gusto. '+(e.carrito.length
+      ? 'Conservamos los productos que ya eligió. Puede finalizar el pedido cuando lo desee. '
+      : 'Puede elegir los productos de la carta. ')+'Su pedido quedará programado para '+
+      s.atencion.proximo_texto+' y será revisado por el gerente antes de su preparación.',{
+      botones:[...botonesCarrito(e.carrito),{id:'soporte',texto:'Contactar al gerente'}]});
+    return fin();
+  }
+  if (entrada.boton === 'programar_no') {
+    e.programado=false;
+    decir('Entendido. Cuando lo desee, puede volver a comunicarse. Muchas gracias.',{botones:BOTONES_INICIO});
     return fin();
   }
   // La carta interactiva envía todas las selecciones juntas. Se validan ANTES de guardar nada.
@@ -341,6 +533,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     return fin();
   }
   if (entrada.datos) {
+    if (s.atencion?.habilitado && !s.atencion.abierto && !e.programado) {
+      decir('Por el momento el local está cerrado. ¿Desea dejar este pedido para '+s.atencion.proximo_texto+'?',{
+        botones:[{id:'programar_si',texto:'Sí, programar pedido'},{id:'programar_no',texto:'No, gracias'}]});
+      return fin();
+    }
     // El formulario de cierre envía los datos: la base valida todo y crea el pedido.
     if (!e.carrito.length) { decir('Tu pedido está vacío.', {botones: BOTONES_INICIO}); return fin(); }
     for (const l of e.carrito) {
@@ -352,13 +549,21 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       items: e.carrito.map(l => ({producto_id: l.producto_id, cantidad: l.cantidad, opciones: l.opciones, nota: l.nota})),
       nombre: String(d.nombre || '').slice(0, 80), telefono: String(d.telefono || '').slice(0, 25),
       entrega: d.entrega === 'envio' ? 'envio' : 'retiro', direccion: String(d.direccion || '').slice(0, 200),
-      horario: String(d.horario || '').slice(0, 60), medio_pago: String(d.medio_pago || ''), nota: String(d.nota || '').slice(0, 500),
+      horario: e.programado && !s.atencion?.abierto ? '' : String(d.horario || '').slice(0, 60),
+      programar: Boolean(e.programado), medio_pago: String(d.medio_pago || ''), nota: String(d.nota || '').slice(0, 500),
     }});
   }
 
   const texto = String(entrada.texto || '').slice(0, 600);
   const accion = entrada.boton ? String(entrada.boton) : intencion(texto);
 
+  // Venta sugerida: «Ver postres» / «Ver bebidas» abre la carta en esa categoría.
+  if (accion.startsWith('carta:')) {
+    const c = (catalogo?.categorias || []).find(x => x.id === accion.slice(6));
+    decir(c ? 'Estas son las opciones de ' + c.nombre.toLowerCase() + '. Toque una para agregarla.' : 'Esta es nuestra carta.',
+      {tipo: 'carta', ...(c ? {categoria: c.id} : {})});
+    return fin();
+  }
   // Dudas pendientes: «¿Cuál?» → el cliente toca una opción.
   if (accion.startsWith('elegir:')) {
     const [, id, cant] = accion.split(':');
@@ -373,20 +578,33 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   }
 
   switch (accion) {
+    case 'programar_si': return responder({sucursal:s,catalogo,estado:e,entrada:{boton:'programar_si'},mensajes});
+    case 'programar_no': return responder({sucursal:s,catalogo,estado:e,entrada:{boton:'programar_no'},mensajes});
     case 'vacio': decir('Escribime qué necesitás.', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'saludo': decir('¡Hola! ¿Qué te gustaría pedir hoy?', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'gracias': decir(mensajeDe(mensajes, 'despedida'), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'horario': decir(textoHorario(s) + '\n' + textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'soporte':
+      decir('¿Necesitás consultar una demora o informar un problema con tu pedido? El gerente puede responderte por este mismo chat.', {
+        botones: [{id:'demora',texto:'Consultar demora'},{id:'reclamo_faltante',texto:'Faltante en mi pedido'},
+          {id:'reclamo_otro',texto:'Otro reclamo'},{id:'hablar_gerente',texto:'Hablar con el gerente'}]});
+      return fin();
+    case 'demora':
+      decir('Los tiempos habituales son estimados:\n' + textoDemora(s) +
+        '\nSi tu pedido ya está demorado, puedo avisarle al gerente para que te responda acá.', {
+        botones: [{id:'reclamo_demora',texto:'Avisar demora al gerente'},
+          {id:'reclamo_faltante',texto:'Reclamar faltante'},{id:'soporte',texto:'Más ayuda'}]});
+      return fin();
     case 'envio': decir(textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'pago': decir(textoPago(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'direccion': decir(s.direccion ? 'Estamos en ' + s.direccion + '.' : 'El local todavía no cargó su dirección.', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
-    case 'vaciar': e.carrito = []; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
-    case 'humano': decir('Tu pedido llega al local para que el gerente lo revise y confirme antes de prepararlo.' + (s.direccion ? ' También podés acercarte a ' + s.direccion + '.' : ''), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'vaciar': e.carrito = []; e.sugerido = false; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
+    case 'humano': decir('El gerente puede responderle por este mismo chat. Para pedir atención, seleccione la opción de soporte.',{botones:[{id:'hablar_gerente',texto:'Hablar con el gerente'}]}); return fin();
     case 'estado': decir('Te muestro cómo va tu pedido.'); return fin({tipo: 'estado'});
     case 'cancelar':
-      if (e.carrito.length) { e.carrito = []; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }
+      if (e.carrito.length) { e.carrito = []; e.sugerido = false; decir('Listo, vacié tu pedido.', {botones: BOTONES_INICIO}); return fin(); }
       decir('Voy a cancelar tu pedido pendiente.'); return fin({tipo: 'cancelar'});
     case 'finalizar':
       if (!e.carrito.length) { decir(textoCarrito(catalogo, e.carrito), {botones: BOTONES_INICIO}); return fin(); }
@@ -398,8 +616,24 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
         decir('El pedido mínimo es de ' + pesos(s.pedido_minimo) + '. ' + textoCarrito(catalogo, e.carrito), {botones: botonesCarrito(e.carrito)});
         return fin();
       }
+      if (s.atencion?.habilitado && !s.atencion.abierto && !e.programado) {
+        decir('Estamos cerrados y abriremos nuevamente '+s.atencion.proximo_texto+
+          '. ¿Desea programar su pedido?',{botones:[{id:'programar_si',texto:'Sí, programar pedido'},
+          {id:'programar_no',texto:'No, gracias'}]}); return fin();
+      }
+      // Venta sugerida: una sola vez por pedido, antes de pedir los datos.
+      if (!e.sugerido) {
+        const cats = categoriasSugeridas(catalogo, e.carrito);
+        if (cats.length) {
+          e.sugerido = true;
+          decir(mensajeDe(mensajes, 'sugerencia'), {sugerencia: true, botones: [
+            ...cats.map(c => ({id: 'carta:' + c.id, texto: 'Ver ' + c.nombre.toLowerCase()})),
+            {id: 'finalizar', texto: 'No, gracias. Finalizar'}]});
+          return fin();
+        }
+      }
       e.paso = 'datos';
-      decir(textoCarrito(catalogo, e.carrito) + '\nCompletá tus datos para enviarlo al local.', {tipo: 'datos'});
+      decir(textoCarrito(catalogo, e.carrito) + '\nComplete sus datos para enviar el pedido al local.', {tipo: 'datos'});
       return fin();
     default: break;
   }

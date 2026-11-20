@@ -4,20 +4,23 @@
  * - Topes por IP, por conversación y por sucursal (en la base). Textos acotados. CORS solo para los dominios propios.
  * - Precios, totales, disponibilidad y numeración los decide la base. El asistente solo arma el carrito.
  * - No guarda nombre, teléfono ni dirección en el chat: esos datos van únicamente en el pedido.
- * - Texto libre: lo responde la IA si la sucursal la tiene activa y hay clave; si no (o si falla), el motor sin IA.
+ * - Prioridad: botones y carrito (asistente guiado, sin costo). La IA escribe la bienvenida y responde solo lo que
+ *   el guiado no entiende; si no hay IA o falla, la consulta pasa al gerente por el mismo chat.
+ * - Los avisos de estado del pedido (recibido, confirmado, listo, rechazado) los arma el sistema con los mensajes
+ *   del local; la IA no interviene.
  * Secretos: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (automáticos), GESTLOK_CHAT_SALT (recomendado),
  * GESTLOK_CHAT_ORIGINS (opcional), GESTLOK_CHAT_IA_PROVEEDOR («anthropic» u «openai»), GESTLOK_CHAT_IA_CLAVE,
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { describirLinea, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
-import { responderIA } from "./ia.js";
+import { cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { bienvenidaIA, responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
 type Turno = {
   estado: Json & { carrito: unknown[]; paso?: unknown };
   mensajes: Json[];
-  accion?: { tipo: string; pedido?: unknown };
+  accion?: { tipo: string; pedido?: unknown; motivo?: string };
   motor?: string;
 };
 const env = (k: string) => Deno.env.get(k) || "";
@@ -29,6 +32,9 @@ const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
 const BOTON_TEXTO: Record<string, string> = {
   carta: "Ver la carta", horario: "Horario y envío", pago: "Medios de pago", finalizar: "Finalizar pedido",
   carrito: "Ver mi pedido", estado: "¿Cómo va mi pedido?", cancelar: "Cancelar pedido",
+  soporte: "Ayuda con mi pedido", demora: "Consultar demora", reclamo_demora: "Avisar demora al gerente",
+  reclamo_faltante: "Faltante en mi pedido", reclamo_otro: "Otro reclamo",
+  hablar_gerente: "Hablar con el gerente", programar_si:"Sí, dejar pedido programado", programar_no:"No, gracias",
 };
 
 function cors(origen: string | null): HeadersInit {
@@ -80,10 +86,16 @@ function limpiarEntrada(e: unknown): Json | null {
   if (Number.isInteger(x.quitar) && (x.quitar as number) >= 0 && (x.quitar as number) < 30) out.quitar = x.quitar;
   if (x.agregar && typeof x.agregar === "object") {
     const a = x.agregar as Json;
-    const opciones: Record<string, string[]> = {};
+    const opciones: Record<string, string[] | Record<string, number>> = {};
     if (a.opciones && typeof a.opciones === "object") {
       for (const [k, v] of Object.entries(a.opciones as Json).slice(0, 8)) {
-        if (/^[a-z0-9_]{1,30}$/.test(k) && Array.isArray(v)) opciones[k] = v.filter((i) => typeof i === "string" && /^[a-z0-9_]{1,30}$/.test(i)).slice(0, 30);
+        if (!/^[a-z0-9_]{1,30}$/.test(k)) continue;
+        if (Array.isArray(v)) opciones[k] = v.filter((i) => typeof i === "string" && /^[a-z0-9_]{1,30}$/.test(i)).slice(0, 30);
+        // Promos: {variedad: cantidad} (enteros de 0 a 50).
+        else if (v && typeof v === "object") {
+          opciones[k] = Object.fromEntries(Object.entries(v as Json).slice(0, 40)
+            .filter(([id, n]) => /^[a-z0-9_]{1,30}$/.test(id) && Number.isInteger(n) && (n as number) > 0 && (n as number) <= 50)) as Record<string, number>;
+        }
       }
     }
     if (typeof a.producto_id === "string" && /^[0-9a-f-]{36}$/.test(a.producto_id)) {
@@ -147,7 +159,16 @@ Deno.serve(async (req) => {
     const privado = (suc.privado as Json) || {};
     const mensajesLocal = (privado.mensajes as Json) || {};
     // Cada pedido lleva el texto que corresponde a su estado, con los mensajes que configuró el local.
-    const conAviso = (p: Json) => ({ ...p, aviso: textoEstadoPedido(p, sucursal, mensajesLocal) });
+    // El código es solo interno del gerente. No se expone en el JSON ni en la charla pública.
+    const sinCodigo = (v: string) => String(v||'').replace(/\bpedido\s+[A-Z]{1,4}-\d{4,}\b/gi,'pedido')
+       .replace(/\b[A-Z]{1,4}-\d{4,}\b/g,'').replace(/\s+([.!?,])/g,'$1');
+    const conAviso = (p: Json) => {
+      const visible: Json = {...p};
+      delete visible.codigo;
+      // Pedido terminado: invitación a reseñar (solo con link de Google del local) y «Gracias por elegirnos».
+      const cierre = cierrePedido(p, mensajesLocal);
+      return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal)), ...(cierre || {})};
+    };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;
 
@@ -158,62 +179,131 @@ Deno.serve(async (req) => {
       if (conv.nueva) {
         const r = responder({ sucursal, catalogo, estado, entrada: { inicio: true }, mensajes: mensajesLocal });
         estado = r.estado; extra = r.mensajes;
+        // La bienvenida la escribe la IA (si está activa y con clave). Botones, carrito, carta y avisos siguen
+        // siendo del sistema. Si la IA tarda, falla o responde algo dudoso, queda la bienvenida guiada.
+        if (privado.ia_activa !== false && IA.clave && extra.length) {
+          try {
+            const saludo = await bienvenidaIA({ sucursal, privado, config: IA });
+            const at = (sucursal.atencion as Json) || {};
+            extra = at.habilitado && at.abierto === false
+              // Cerrado: saludo de la IA y, debajo, el aviso del sistema con la próxima apertura y sus botones.
+              ? [{ texto: saludo }, { ...extra[0], texto: String(extra[0].texto || "").replace(/^Gracias por comunicarse\.\s*/, "") }, ...extra.slice(1)]
+              : [{ ...extra[0], texto: saludo }, ...extra.slice(1)];
+          } catch (e) {
+            console.warn("gestlok-chat bienvenida IA no disponible → guiada", (e as Error)?.message);
+          }
+        }
         await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
-          p_cliente: "", p_respuesta: r.mensajes.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
+          p_cliente: "", p_respuesta: extra.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
         mensajes = [];
       }
-      return json({ ok: true, sucursal, catalogo, mensajes, nuevos: extra, carrito: (estado as Json).carrito ?? [],
-        pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso) }, 200, origen);
+      const soporte = await rpc("gestlok_chat_srv_respuestas", {
+        p_conversacion: convId, p_token_hash: hash, p_desde: 0 });
+      return json({ ok: true, sucursal, catalogo,
+        mensajes: mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+        nuevos:extra.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+        carrito: (estado as Json).carrito ?? [],
+        pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso),
+        soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
 
     if (accion === "estado") {
-      const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
-      return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso) }, 200, origen);
+      const desde = Number.isSafeInteger(body.desde) && (body.desde as number) >= 0
+        ? (body.desde as number) : 0;
+      const [est, soporte] = await Promise.all([
+        rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash }),
+        rpc("gestlok_chat_srv_respuestas", { p_conversacion: convId, p_token_hash: hash, p_desde: desde })]);
+      return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso),
+        mensajes_local: ((soporte.mensajes_local as Json[]) || []).map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+        soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
 
     if (accion !== "mensaje") return json({ ok: false, error: "Acción desconocida" }, 400, origen);
-    const entrada = limpiarEntrada(body.entrada);
+    let entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
+    const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
+    let clase = clasificarSoporte(entrada);
+    if (!clase && textoOriginal && consultaAjena(textoOriginal)) clase='consulta';
+    if (!clase && textoOriginal) {
+      // Si el gerente está atendiendo un reclamo, los siguientes mensajes también llegan al humano.
+      const activo = await rpc("gestlok_chat_srv_respuestas", {
+        p_conversacion: convId, p_token_hash: hash, p_desde: Number.MAX_SAFE_INTEGER });
+      if (activo.soporte_pendiente) clase = String(activo.tipo_soporte || "otro");
+    }
+    if (clase && clase !== "consulta_demora") {
+      // Reclamos prioritarios, sin IA: registrar el texto y la alerta en una sola transacción.
+      const detalle = textoOriginal || BOTON_TEXTO[String(entrada.boton)] || "Consulta al gerente";
+      const ticket = await rpc("gestlok_chat_srv_reclamo", {
+        p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
+        p_tipo: clase, p_detalle: detalle });
+      return json({ ok: true, mensajes: [{ texto: sinCodigo(String(ticket.texto)),
+          botones: [{id:"estado",texto:"Estado de mi pedido"},{id:"soporte",texto:"Más ayuda"}] }],
+        carrito: (conv.estado as Json)?.carrito || [], soporte_pendiente: true,
+        motor: "guiado" }, 200, origen);
+    }
+    if (clase === "consulta_demora") entrada = {boton:"demora"};
 
-    // Texto libre → IA (si está activa y configurada) con respaldo en el motor. Botones, carta y formulario → motor.
-    let r: Turno | null = null;
-    if (entrada.texto && privado.ia_activa !== false && IA.clave) {
+    // Primero botones y carrito: el asistente guiado (sin costo) resuelve carta, pedidos, horarios, pagos y estado.
+    // La IA (Gemini u otra) entra SOLO cuando el guiado no entiende un texto libre: consultas importantes y raras.
+    const noEntiende = (t: Turno) => t.mensajes.length === 1 && !t.accion &&
+      /^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(String(t.mensajes[0].texto || ''));
+    let r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
+    if (textoOriginal && noEntiende(r) && privado.ia_activa !== false && IA.clave) {
       try {
         r = await responderIA({ sucursal, privado, catalogo, estado: conv.estado, historial: conv.mensajes,
-          texto: String(entrada.texto), config: IA }) as Turno;
+          texto: textoOriginal, config: IA }) as Turno;
       } catch (e) {
-        console.warn("gestlok-chat IA → motor", (e as Error)?.message);
+        console.warn("gestlok-chat IA no disponible → gerente", (e as Error)?.message);
       }
     }
-    if (!r) r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
-    const mensajes: Json[] = [...r.mensajes];
+    // Si tampoco el motor de respaldo comprende la pregunta, el gerente la recibe.
+    // No se deriva un pedido válido ni una consulta de menú.
+    if (textoOriginal && r.mensajes.length === 1 &&
+      /^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(String(r.mensajes[0].texto||'')) &&
+      !r.accion) {
+      const t=await rpc("gestlok_chat_srv_reclamo",{
+        p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+        p_tipo:'consulta',p_detalle:textoOriginal});
+      return json({ok:true,mensajes:[{texto:sinCodigo(String(t.texto))}],
+        carrito:(conv.estado as Json)?.carrito || [],soporte_pendiente:true,motor:'guiado'},200,origen);
+    }
+    if (r.accion?.tipo === 'derivar') {
+      const t = await rpc("gestlok_chat_srv_reclamo",{
+        p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+        p_tipo:'consulta',p_detalle: textoOriginal || String(r.accion.motivo||'Consulta al gerente')});
+      return json({ok:true,mensajes:[{texto:sinCodigo(String(t.texto))}], 
+        carrito:(conv.estado as Json)?.carrito || [],soporte_pendiente:true,motor:'ia'},200,origen);
+    }
+    const mensajes: Json[] = r.mensajes.map(m=>({...m,texto:sinCodigo(formalizar(String(m.texto||'')))}));
     let pedido: Json | null = null;
     // Lo que queda escrito del lado del cliente (sin datos personales).
-    const cliente = entrada.texto ? String(entrada.texto)
+    const cliente = textoOriginal || (entrada.texto ? String(entrada.texto)
       : entrada.boton ? (BOTON_TEXTO[String(entrada.boton)] || "Elegí una opción")
       : entrada.agregar ? "Agregar: " + describirLinea(catalogo, entrada.agregar as never)
       : entrada.agregar_varios ? "Selección del menú: " +
         (entrada.agregar_varios as Json[]).map(l => describirLinea(catalogo, l as never)).join(", ")
       : entrada.datos ? "Envié mis datos para el pedido"
-      : "Quitar un producto";
+      : "Quitar un producto");
 
     if (r.accion?.tipo === "crear_pedido") {
       const { data, error } = await db.rpc("gestlok_chat_srv_pedido", { p_conversacion: convId, p_token_hash: hash, p_pedido: r.accion.pedido });
       if (error) {
-        mensajes.push({ texto: textoError(error) + "\nRevisá los datos y volvé a enviarlo.", tipo: "datos" });
+        mensajes.push({ texto: sinCodigo(formalizar(textoError(error))) + "\nRevise los datos e intente nuevamente.", tipo: "datos" });
       } else {
         pedido = conAviso((data as Json).pedido as Json);
         r.estado.carrito = []; r.estado.paso = "enviado";
+        r.estado.programado = false; // Cada nuevo pedido requiere consentimiento independiente.
+        r.estado.sugerido = false; // El próximo pedido vuelve a recibir la venta sugerida.
         mensajes.push({ texto: String(pedido.aviso) });
       }
     } else if (r.accion?.tipo === "estado") {
       const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
       const ult = ((est.pedidos as Json[]) || [])[0];
       pedido = ult ? conAviso(ult) : null;
-      mensajes.push({ texto: pedido ? String(pedido.aviso) : "Todavía no enviaste ningún pedido desde este teléfono." });
+      mensajes.push({ texto: pedido ? String(pedido.aviso) : "Todavía no hay pedidos enviados desde este chat." });
     } else if (r.accion?.tipo === "cancelar") {
       const { data, error } = await db.rpc("gestlok_chat_srv_cancelar", { p_conversacion: convId, p_token_hash: hash });
-      if (error) mensajes.push({ texto: textoError(error) });
+      if (error) mensajes.push({ texto: sinCodigo(formalizar(textoError(error))) });
       else { pedido = conAviso((data as Json).pedido as Json); mensajes.push({ texto: String(pedido.aviso) }); }
     }
 
@@ -224,7 +314,8 @@ Deno.serve(async (req) => {
       // Si el pedido ya se creó, el cliente tiene que enterarse aunque no se haya podido guardar el turno.
       if (!pedido || r.accion?.tipo !== "crear_pedido") throw e;
     }
-    return json({ ok: true, mensajes, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
+    return json({ ok: true, mensajes:mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+      atencion:sucursal.atencion, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
       motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);
   } catch (e) {
     const err = e as { code?: string; message?: string };

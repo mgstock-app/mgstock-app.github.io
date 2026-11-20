@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261119c';
+  const VERSION_CSS = '20261120turnos1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -45,14 +45,17 @@
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
+      [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
+        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
-          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) : null))),
+          k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
+          k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
     el('main', {id: 'contenido', class: 'contenido', tabindex: '-1'}),
     el('div', {class: 'aviso', id: 'aviso', role: 'status', 'aria-live': 'polite', hidden: true}));
   raiz.replaceChildren(...[EMBED ? el('link', {rel: 'stylesheet', href: '/chat/panel/panel.css?v=' + VERSION_CSS}) : null, marco].filter(Boolean));
   const $ = id => raiz.querySelector('#' + id);
-  const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0, pendientesVistos: null, ocupado: false};
+  const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0,
+    pendientesVistos: null, reclamosVistos: null, reporteDias:30, ocupado: false};
   let sb = op.sb || null;
   if (!DEMO && !sb) {
     try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: false}}); }
@@ -101,7 +104,8 @@
     S.sucursales = r.sucursales;
     $('empresa').textContent = r.empresa;
     const sel = $('sucursal');
-    sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id, text: s.nombre + (s.pendientes ? ' (' + s.pendientes + ')' : '')})));
+    sel.replaceChildren(...r.sucursales.map(s => el('option', {value: s.id,
+      text: s.nombre + ((s.pendientes || s.reclamos) ? ' (' + ((s.pendientes||0)+(s.reclamos||0)) + ')' : '')})));
     let guardada = null; try { guardada = localStorage.getItem('gestlok-chat-panel:sucursal'); } catch { /* sin almacenamiento */ }
     S.suc = (LOCAL && r.sucursales.find(s => s.local_id === LOCAL)) || r.sucursales.find(s => s.id === guardada) || r.sucursales[0];
     if (EMBED && LOCAL && S.suc.local_id !== LOCAL) return fijo('Sin acceso a esta sucursal', 'Tu usuario no tiene la Central de mensajes de este local.');
@@ -123,10 +127,14 @@
     for (const b of $('pestanas').querySelectorAll('[data-p]')) {
       b.setAttribute('aria-selected', String(b.dataset.p === S.pestana));
       if (b.dataset.p === 'ajustes' || b.dataset.p === 'mensajes') b.hidden = !puede('ver');
-      if (b.dataset.p === 'charlas') b.hidden = !puede('gestionar');
+      if (b.dataset.p === 'charlas' || b.dataset.p === 'soporte') b.hidden = !puede('gestionar');
     }
     clearTimeout(S.sondeo);
-    ({pedidos: verPedidos, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
+    const avisoSoporte = $('globo-soporte');
+    if (avisoSoporte) { avisoSoporte.textContent = String(S.suc?.reclamos || 0);
+      avisoSoporte.hidden = !(S.suc?.reclamos > 0); }
+    ({pedidos: verPedidos, soporte: verSoporte, reporte:verReporte, stock: verStock, carta: verCarta,
+      mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
@@ -171,12 +179,17 @@
   function tarjetaPedido(p) {
     const tel = String(p.cliente_telefono || '');
     const acciones = el('div', {class: 'acciones'});
+    const programadoFuturo=p.estado==='pendiente' && p.programado_para && 
+      new Date(p.programado_para).getTime()>Date.now();
     if (['pendiente', 'confirmado'].includes(p.estado) && puede('gestionar')) {
       const motivo = el('input', {type: 'text', maxlength: '300', placeholder: 'Motivo para el cliente (ej.: sin stock)', 'aria-label': 'Motivo del rechazo'});
       const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
         el('button', {type: 'button', class: 'boton peligro', text: 'Rechazar pedido', onclick: () => decidir(p, 'rechazado', motivo.value)}));
       acciones.append(
-        el('button', {type: 'button', class: 'boton principal', text: p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : 'Pedido terminado', onclick: () => decidir(p, p.estado === 'pendiente' ? 'confirmado' : 'terminado', '')}),
+        el('button', {type: 'button', class: 'boton principal',
+          disabled:!!programadoFuturo,
+          text: programadoFuturo?'Disponible al abrir el local':p.estado === 'pendiente' ? 'Confirmar y pasar a preparación' : p.entrega === 'envio' ? 'Pedido enviado' : 'Listo para retirar',
+          onclick: () => decidir(p, p.estado === 'pendiente' ? 'confirmado' : 'terminado', '')}),
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
     }
@@ -184,6 +197,9 @@
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
         el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel})),
+      programadoFuturo?el('p',{class:'nota-cliente',text:'PEDIDO PROGRAMADO · Próxima apertura '+
+        new Date(p.programado_para).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
+        '. El gerente debe confirmar al comenzar el turno.'}):null,
       el('p', {class: 'entrega', text: (p.entrega === 'envio' ? 'Envío a ' + p.direccion : 'Retira en el local') +
         ' · ' + (PAGOS[p.medio_pago] || p.medio_pago) + (p.horario ? ' · Para: ' + p.horario : '')}),
       el('ul', {class: 'items'}, (p.items || []).map(i => el('li', {},
@@ -200,11 +216,124 @@
     S.ocupado = true;
     try {
       await rpc('panel_decidir', {p_pedido: p.id, p_decision: decision, p_motivo: motivo || ''});
-      aviso(decision === 'confirmado' ? 'Pedido ' + p.codigo + ' confirmado y enviado a preparación' : decision === 'terminado' ? 'Pedido ' + p.codigo + ' terminado: el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
+      aviso(decision === 'confirmado' ? 'Pedido ' + p.codigo + ' confirmado y enviado a preparación' : decision === 'terminado' ? 'Pedido ' + p.codigo + (p.entrega === 'envio' ? ' enviado' : ' listo para retirar') + ': el cliente ya recibió el aviso' : 'Pedido ' + p.codigo + ' rechazado');
       if (S.pendientesVistos) S.pendientesVistos -= 1;
     } catch (e) { aviso(e.message, true); }
     finally { S.ocupado = false; }
     verPedidos();
+  }
+
+  // ------------------------------------------------------------------------------------------- stock operativo, exclusivo del panel interno
+  async function verStock() {
+    contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando stock del chat…'}));
+    const sucursalId = S.suc.id;
+    let c, extras;
+    try {
+      [c, extras] = await Promise.all([
+        rpc('panel_catalogo', {p_sucursal: sucursalId}),
+        rpc('panel_stock_adicionales', {p_sucursal: sucursalId}),
+      ]);
+    } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    if (S.suc.id !== sucursalId || S.pestana !== 'stock') return;
+    const editable = puede('gestionar');
+    const bloques = [];
+    const encabezado = el('div', {class: 'stock-encabezado'},
+      el('div', {}, el('h2', {text: 'Disponibilidad'}), el('p', {class: 'nota', text:
+        'Control interno del local. Apagá productos o adicionales agotados; el cliente no ve estos interruptores.'})));
+    const categorias = [...c.categorias].sort((a,b) => (a.orden||0)-(b.orden||0));
+    if (c.productos.some(p => !p.categoria_id)) categorias.push({id: null, nombre: 'Otros'});
+    for (const categoria of categorias) {
+      const productos = c.productos.filter(p => (p.categoria_id||null) === categoria.id && p.activo);
+      if (!productos.length) continue;
+      bloques.push(crearGrupoStock(categoria.nombre, productos.map(p => ({id:p.id, nombre:p.nombre,
+        precio:p.precio, disponible: p.disponible, tipo:'producto', categoria_id:categoria.id})),
+        categoria.id, editable, sucursalId));
+    }
+    if (extras?.length) {
+      const elementos = extras.map(o => ({id:o.grupo_id + ':' + o.valor_id, nombre:o.nombre,
+        precio:o.extra_min, precio_max:o.extra_max, disponible:o.disponible,
+        tipo:'adicional', grupo_id:o.grupo_id, valor_id:o.valor_id}));
+      bloques.push(crearGrupoStock(categorias.some(k => /^adicionales$/i.test(k.nombre)) ? 'Extras opcionales' : 'Adicionales', elementos, null, editable, sucursalId));
+    }
+    contenido.replaceChildren(encabezado, ...(bloques.length ? bloques : [el('p', {class:'nota',text:'No hay productos activos para controlar.'})]));
+  }
+
+  function crearGrupoStock(titulo, items, categoriaId, editable, sucursalId) {
+    const disponibles = items.filter(x => x.disponible).length;
+    const bloque = el('section', {class: 'stock-bloque'});
+    const desplegar = el('button', {type:'button',class:'stock-desplegar',
+      'aria-expanded':'false','aria-label':'Mostrar productos de ' + titulo, text:titulo});
+    const lista = el('div', {class: 'stock-lista', hidden:true});
+    const cabecera = el('div', {class:'stock-cabecera' + (/empanadas?/i.test(titulo)?' empanadas':'')},
+      desplegar, el('span',{class:'stock-conteo',text:disponibles + ' de ' + items.length + ' disponibles'}));
+    bloque.append(cabecera, lista);
+    desplegar.onclick = () => {
+      lista.hidden = !lista.hidden;
+      
+      desplegar.setAttribute('aria-expanded', String(!lista.hidden));
+    };
+    function itemFila(i) {
+      const precio = i.precio_max && i.precio_max !== i.precio
+        ? ' · ' + pesos(i.precio) + '–' + pesos(i.precio_max) : ' · ' + pesos(i.precio);
+      const estado = el('span', {class:'stock-estado ' + (i.disponible?'encendido':'apagado'),
+        text:i.disponible?'Disponible':'Agotado'});
+      const cambio = el('input', {type:'checkbox',checked:i.disponible,
+        'aria-label': (i.disponible?'Apagar ':'Encender ') + i.nombre});
+      cambio.onchange = async () => {
+        const anterior = i.disponible;
+        cambio.disabled = true;
+        try {
+          if (i.tipo === 'producto') {
+            await rpc('panel_disponible', {p_producto:i.id,p_disponible:cambio.checked});
+          } else {
+            await rpc('panel_stock_adicional', {p_sucursal:sucursalId,p_grupo:i.grupo_id,p_valor:i.valor_id,
+              p_disponible:cambio.checked});
+          }
+          i.disponible = cambio.checked;
+          estado.className = 'stock-estado ' + (i.disponible?'encendido':'apagado');
+          estado.textContent = i.disponible?'Disponible':'Agotado';
+          cabecera.querySelector('.stock-conteo').textContent =
+            items.filter(x=>x.disponible).length + ' de ' + items.length + ' disponibles';
+          cambio.setAttribute('aria-label',(i.disponible?'Apagar ':'Encender ')+i.nombre);
+          aviso(i.nombre + (i.disponible ? ' disponible' : ' agotado'));
+        } catch(e) { cambio.checked=anterior; aviso(e.message,true); }
+        finally { cambio.disabled = false; }
+      };
+      return el('div', {class:'stock-item'},
+        el('span',{class:'stock-led ' + (i.disponible?'encendido':'apagado'),'aria-hidden':'true'}),
+        el('div',{class:'stock-item-txt'}, el('strong',{text:i.nombre}),
+          el('small',{text:precio.slice(3)})),estado,
+        editable?el('label',{class:'stock-switch'},cambio,el('span',{class:'stock-slider','aria-hidden':'true'})):null);
+    }
+    lista.replaceChildren(...items.map(itemFila));
+    if (editable && categoriaId) {
+      const todosDisponibles = disponibles === items.length;
+      const boton = el('button',{type:'button',class:'stock-grupo-accion',
+        text:todosDisponibles?'Apagar categoría':'Encender categoría'});
+      boton.onclick = async () => {
+        boton.disabled = true;
+        const encender = items.some(x=>!x.disponible);
+        try {
+          await rpc('panel_stock_categoria',{p_sucursal:sucursalId,p_categoria:categoriaId,p_disponible:encender});
+          for(const i of items)i.disponible=encender;
+          lista.querySelectorAll('.stock-item').forEach(fila => {
+            fila.querySelector('.stock-led').className='stock-led ' + (encender?'encendido':'apagado');
+            const estado=fila.querySelector('.stock-estado');
+            estado.className='stock-estado ' + (encender?'encendido':'apagado');
+            estado.textContent=encender?'Disponible':'Agotado';
+            const control=fila.querySelector('input[type=checkbox]');
+            if (control) { control.checked=encender;control.setAttribute('aria-label',
+              (encender?'Apagar ':'Encender ')+fila.querySelector('strong').textContent); }
+          });
+          cabecera.querySelector('.stock-conteo').textContent=
+            items.filter(x=>x.disponible).length + ' de ' + items.length + ' disponibles';
+          boton.textContent=encender?'Apagar categoría':'Encender categoría';
+          aviso(titulo+(encender?' habilitada':' agotada'));
+        }catch(e){aviso(e.message,true);boton.disabled=false;}
+      };
+      lista.prepend(el('div',{class:'stock-acciones'},boton));
+    }
+    return bloque;
   }
 
   // ------------------------------------------------------------------------------------------- carta
@@ -217,7 +346,7 @@
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
     poner(contenido,
-      el('p', {class: 'nota', text: config ? 'Cargá lo que ofrecés por chat: productos, precios y categorías. «Hay» se apaga cuando algo se agota.' : 'Carta en solo lectura.'}),
+      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para prender o apagar por falta de stock usá la pestaña Stock.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
         el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)})) : null,
@@ -227,11 +356,7 @@
         prods.map(p => el('div', {class: 'producto' + (p.activo ? '' : ' inactivo')},
           el('div', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
             el('small', {text: pesos(p.precio) + ((p.opciones || []).length ? ' · con opciones' : '') + (p.activo ? '' : ' · no figura en la carta')})),
-          puede('gestionar') ? el('label', {class: 'interruptor'},
-            el('input', {type: 'checkbox', checked: p.disponible, 'aria-label': 'Disponible: ' + p.nombre, onchange: async ev => {
-              try { await rpc('panel_disponible', {p_producto: p.id, p_disponible: ev.target.checked}); aviso(p.nombre + (ev.target.checked ? ' disponible' : ' agotado')); }
-              catch (e) { ev.target.checked = !ev.target.checked; aviso(e.message, true); }
-            }}), el('span', {text: 'Hay'})) : el('span', {class: p.disponible ? 'ok' : 'agotado', text: p.disponible ? 'Disponible' : 'Agotado'}),
+          el('span', {class: !p.activo ? 'stock-inactivo' : p.disponible ? 'ok' : 'agotado', text: !p.activo ? 'Oculto' : p.disponible ? 'Disponible' : 'Agotado'}),
           config ? el('button', {type: 'button', class: 'enlace', text: 'Editar', onclick: () => editarProducto(p, c)}) : null)))))
         : el('div', {class: 'vacio'}, el('p', {text: 'Todavía no hay productos.'})));
   }
@@ -249,36 +374,58 @@
   }
 
   // Editor de opciones: cada grupo con valores «Nombre | extra».
-  function editorOpciones(opciones) {
+  // Tipo «Promo: elegir N unidades» (cualquier rubro): el cliente reparte N entre las variedades y puede repetir.
+  // Una variedad con el mismo nombre que un producto de la carta queda enlazada: si ese producto se agota, no se ofrece.
+  function editorOpciones(opciones, c) {
     const caja = el('div', {class: 'opciones'});
+    const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const productos = (c?.productos || []).filter(x => x.activo !== false);
     const grupos = (opciones || []).map(g => ({...g, texto: g.valores.map(v => v.nombre + (Number(v.extra) ? ' | ' + v.extra : '')).join('\n')}));
     const pintar = () => caja.replaceChildren(...grupos.map((g, i) => {
       const nombre = el('input', {type: 'text', maxlength: '60', placeholder: 'Ej.: Tamaño'}); nombre.value = g.nombre || '';
       nombre.oninput = () => { g.nombre = nombre.value; };
-      const tipo = el('select', {}, el('option', {value: 'una', text: 'Elige una'}), el('option', {value: 'varias', text: 'Elige varias'}));
+      const tipo = el('select', {}, el('option', {value: 'una', text: 'Elige una'}), el('option', {value: 'varias', text: 'Elige varias'}),
+        el('option', {value: 'cantidad', text: 'Promo: elegir N unidades'}));
       tipo.value = g.tipo || 'una'; tipo.onchange = () => { g.tipo = tipo.value; pintar(); };
       const max = el('input', {type: 'number', min: '1', max: '30', inputmode: 'numeric'}); max.value = String(g.max || 2); max.oninput = () => { g.max = Number(max.value); };
+      const total = el('input', {type: 'number', min: '1', max: '50', inputmode: 'numeric'}); total.value = String(g.total || 6); total.oninput = () => { g.total = Number(total.value); };
+      // Carga de un toque las variedades de una categoría (por ejemplo, todas las empanadas).
+      const desde = el('select', {'aria-label': 'Sumar variedades de una categoría'}, el('option', {value: '', text: 'Sumar variedades de una categoría…'}),
+        (c?.categorias || []).map(k => el('option', {value: k.id, text: k.nombre})));
+      desde.onchange = () => {
+        const ya = new Set(String(g.texto || '').split('\n').map(norm).filter(Boolean));
+        const nuevos = productos.filter(x => x.categoria_id === desde.value && !ya.has(norm(x.nombre))).map(x => x.nombre);
+        g.texto = [String(g.texto || '').trim(), ...nuevos].filter(Boolean).join('\n'); desde.value = ''; pintar();
+      };
       const obl = el('input', {type: 'checkbox', checked: !!g.obligatorio}); obl.onchange = () => { g.obligatorio = obl.checked; };
       const valores = el('textarea', {rows: '3', placeholder: 'Un valor por renglón. Con recargo: Grande | 2000'}); valores.value = g.texto || '';
       valores.oninput = () => { g.texto = valores.value; };
       return el('fieldset', {class: 'grupo'}, el('legend', {text: 'Opción ' + (i + 1)}),
-        campo('Nombre', nombre), el('div', {class: 'dos'}, campo('Tipo', tipo), g.tipo === 'varias' ? campo('Máximo', max) : el('span')),
-        el('label', {class: 'check'}, obl, ' Obligatoria'), campo('Valores', valores),
+        campo('Nombre', nombre), el('div', {class: 'dos'}, campo('Tipo', tipo), g.tipo === 'varias' ? campo('Máximo', max) : g.tipo === 'cantidad' ? campo('Unidades a elegir', total) : el('span')),
+        g.tipo === 'cantidad' ? el('p', {class: 'nota', text: 'El cliente reparte las unidades entre estas variedades y puede repetir. Las que se llaman igual que un producto de la carta se ocultan solas cuando ese producto se agota.'})
+          : el('label', {class: 'check'}, obl, ' Obligatoria'),
+        campo('Valores', valores), g.tipo === 'cantidad' && (c?.categorias || []).length ? desde : null,
         el('button', {type: 'button', class: 'enlace peligro', text: 'Quitar opción', onclick: () => { grupos.splice(i, 1); pintar(); }}));
     }), el('button', {type: 'button', class: 'boton', text: '+ Agregar opción (tamaño, sabor, extras…)',
       onclick: () => { if (grupos.length < 8) { grupos.push({nombre: '', tipo: 'una', obligatorio: true, texto: ''}); pintar(); } }}));
     pintar();
-    const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x';
+    const slug = t => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'x';
     caja.leer = () => grupos.map((g, i) => {
       const usados = new Set();
       const valores = String(g.texto || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
         const [n, e] = l.split('|').map(x => x.trim());
-        let id = slug(n); while (usados.has(id)) id = (id + '_').slice(0, 30); usados.add(id);
-        return {id, nombre: n.slice(0, 60), extra: Math.max(0, Number(String(e || '0').replace(/[^0-9.]/g, '')) || 0)};
+        // Se conserva el código de antes (así no se pierden los «agotados» del gerente) y se enlaza con la carta por nombre.
+        const previo = (g.valores || []).find(v => norm(v.nombre) === norm(n));
+        let id = previo?.id || slug(n); while (usados.has(id)) id = (id + '_').slice(0, 30); usados.add(id);
+        const prod = productos.find(x => norm(x.nombre) === norm(n));
+        return {id, nombre: n.slice(0, 60), extra: Math.max(0, Number(String(e || '0').replace(/[^0-9.]/g, '')) || 0), ...(prod ? {producto_id: prod.id} : {})};
       });
       if (!String(g.nombre || '').trim() || !valores.length) throw new Error('Completá el nombre y los valores de la opción ' + (i + 1) + '.');
-      return {id: (slug(g.nombre) + '_' + i).slice(0, 30), nombre: g.nombre.trim().slice(0, 60), tipo: g.tipo || 'una', obligatorio: !!g.obligatorio,
-        ...(g.tipo === 'varias' ? {max: Math.min(30, Math.max(1, Math.round(Number(g.max) || 1)))} : {}), valores};
+      if (valores.length > 40) throw new Error('La opción ' + (i + 1) + ' tiene más de 40 valores.');
+      return {id: g.id || (slug(g.nombre) + '_' + i).slice(0, 30), nombre: g.nombre.trim().slice(0, 60), tipo: g.tipo || 'una',
+        obligatorio: g.tipo === 'cantidad' ? true : !!g.obligatorio,
+        ...(g.tipo === 'varias' ? {max: Math.min(30, Math.max(1, Math.round(Number(g.max) || 1)))} : {}),
+        ...(g.tipo === 'cantidad' ? {total: Math.min(50, Math.max(1, Math.round(Number(g.total) || 1)))} : {}), valores};
     });
     return caja;
   }
@@ -291,7 +438,7 @@
     const orden = el('input', {type: 'number', min: '0', max: '10000', inputmode: 'numeric'}); orden.value = String(p?.orden ?? 0);
     const activo = el('input', {type: 'checkbox', checked: p ? p.activo : true});
     const disp = el('input', {type: 'checkbox', checked: p ? p.disponible : true});
-    const ops = editorOpciones(p?.opciones);
+    const ops = editorOpciones(p?.opciones, c);
     dialogo(p ? 'Editar producto' : 'Nuevo producto', [campo('Nombre', nombre), campo('Descripción (opcional)', desc),
       el('div', {class: 'dos'}, campo('Precio', precio), campo('Orden', orden)), campo('Categoría', cat),
       el('label', {class: 'check'}, activo, ' Figura en la carta'), el('label', {class: 'check'}, disp, ' Hay hoy (disponible)'),
@@ -306,15 +453,15 @@
 
   // ------------------------------------------------------------------------------------------- mensajes
   const MENSAJES = [
-    ['terminado_retiro', 'Pedido terminado · retiro', 'Cuando marcás «Pedido terminado» y el cliente retira.'],
-    ['terminado_envio', 'Pedido terminado · envío', 'Cuando marcás «Pedido terminado» y es con envío.'],
+    ['terminado_retiro', 'Listo para retirar', 'Cuando marcás «Listo para retirar».'],
+    ['terminado_envio', 'Pedido enviado', 'Cuando marcás «Pedido enviado».'],
     ['rechazado', 'Pedido rechazado', 'Se agrega el motivo que escribís al rechazar.'],
     ['pausado', 'Chat en pausa', 'Cuando el chat está cerrado.'],
     ['despedida', 'Despedida', 'Cuando el cliente agradece.'],
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261120sugerida1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
@@ -327,6 +474,22 @@
     const instrucciones = area(a.ia_instrucciones, 2000, 5, 'Ej.: Tratá de vos. Ofrecé un complemento cuando pidan el producto principal. Si preguntan por algo especial, deciles que llamen al local.');
     const info = area(a.ia_info, 4000, 6, 'Ej.: Tiempo de preparación: 30 a 40 minutos. Hay opciones sin TACC: … Promos de la semana: … Formas de retiro y garantía: …');
     const campos = {};
+    // Al terminar el pedido: link de reseñas de Google del local (opcional), invitación y cierre.
+    const resenaUrl = el('input', {type: 'url', maxlength: '300', inputmode: 'url', placeholder: 'https://g.page/r/…/review', disabled: !editable});
+    resenaUrl.value = a.mensajes?.resena_url || '';
+    const resenaTexto = area(a.mensajes?.resena, 600, 2, motor?.MENSAJES_BASE?.resena || '');
+    const cierreTexto = area(a.mensajes?.cierre, 600, 2, motor?.MENSAJES_BASE?.cierre || '');
+    const sugerenciaTexto = area(a.mensajes?.sugerencia, 600, 2, motor?.MENSAJES_BASE?.sugerencia || '');
+    const vistaCierre = el('p', {class: 'vista-previa'});
+    const pintarCierre = () => {
+      const url = motor?.urlResena ? motor.urlResena(resenaUrl.value) : resenaUrl.value.trim();
+      const r = (resenaTexto.value.trim() || motor?.MENSAJES_BASE?.resena || '');
+      const c = (cierreTexto.value.trim() || motor?.MENSAJES_BASE?.cierre || '');
+      vistaCierre.textContent = resenaUrl.value.trim() && !url ? 'El link tiene que ser de Google (g.page, maps.app.goo.gl o google.com) y empezar con https://'
+        : 'Así lo ve el cliente después del aviso: ' + (url ? r + ' [Dejar mi reseña en Google] ' : '') + c;
+    };
+    for (const x of [resenaUrl, resenaTexto, cierreTexto]) x.addEventListener('input', pintarCierre);
+    pintarCierre();
     const plantillas = MENSAJES.map(([k, titulo, ayuda]) => {
       const base = motor?.MENSAJES_BASE?.[k] || '';
       const t = area(a.mensajes?.[k], 600, 3, base);
@@ -340,6 +503,10 @@
     const form = el('form', {class: 'ajustes', onsubmit: async e => {
       e.preventDefault();
       const mensajes = {}; for (const [k, t] of Object.entries(campos)) if (t.value.trim()) mensajes[k] = t.value.trim();
+      if (resenaUrl.value.trim() && motor?.urlResena && !motor.urlResena(resenaUrl.value)) return aviso('El link de reseñas tiene que ser de Google y empezar con https://', true);
+      // Se mandan siempre (vacío = sin link / texto sugerido) para que la base sepa que se borraron.
+      mensajes.resena_url = resenaUrl.value.trim(); mensajes.resena = resenaTexto.value.trim(); mensajes.cierre = cierreTexto.value.trim();
+      mensajes.sugerencia = sugerenciaTexto.value.trim();
       try {
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
           ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
@@ -351,12 +518,22 @@
       el('label', {class: 'check'}, activa, ' Responder con IA (si se apaga, responde el asistente guiado)'),
       campo('Nombre del asistente (opcional)', nombre),
       campo('Mensaje de bienvenida', bienvenida),
+      el('small', {class: 'ayuda', text: 'Con la IA activa, la bienvenida la escribe la IA tomando este texto como base y el saludo según la hora. Debajo siempre aparecen los botones y el carrito.'}),
       campo('Indicaciones para la IA: tono, qué ofrecer, qué evitar', instrucciones),
       campo('Información del local y preguntas frecuentes', info),
       el('p', {class: 'nota', text: 'La IA solo usa la carta, estos datos y los ajustes del local. No puede cambiar precios, confirmar ni terminar pedidos.'})),
     el('section', {class: 'bloque'}, el('h3', {text: 'Mensajes automáticos'}),
       el('p', {class: 'nota', text: 'Dejalo vacío para usar el texto sugerido. Podés usar: {nombre} {codigo} {total} {direccion} {local} {motivo}.'}),
       plantillas),
+    el('section', {class: 'bloque'}, el('h3', {text: 'Antes de finalizar: venta sugerida'}),
+      el('p', {class: 'nota', text: 'Cuando el cliente toca «Finalizar pedido» y no lleva postre o bebida, se le ofrece una vez, con botones para ver esas categorías de la carta (solo las que tengan algo disponible).'}),
+      campo('Pregunta para ofrecer postre o bebida', sugerenciaTexto)),
+    el('section', {class: 'bloque'}, el('h3', {text: 'Al terminar el pedido: reseña y cierre'}),
+      el('p', {class: 'nota', text: 'Después de «Listo para retirar» o «Pedido enviado», el cliente recibe la invitación con el botón a Google (solo si cargás el link de este local) y el mensaje de cierre.'}),
+      campo('Link de reseñas de Google de este local (opcional)', resenaUrl),
+      campo('Invitación a dejar la reseña', resenaTexto),
+      campo('Mensaje de cierre', cierreTexto),
+      vistaCierre),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar mensajes'})
       : el('p', {class: 'nota', text: 'Mensajes en solo lectura.'}));
     contenido.replaceChildren(form);
@@ -408,6 +585,82 @@
     contenido.replaceChildren(form);
   }
 
+  // ------------------------------------------------------------------------------------------- historial diario de demanda por sucursal
+  async function verReporte() {
+    const id=S.suc.id,dias=S.reporteDias;
+    contenido.replaceChildren(
+      el('h2',{text:'Historial diario · Pedidos por GESTLOK Chat'}),
+      el('p',{class:'nota',text:'Pedidos registrados en el sistema, agrupados por día y tipo de entrega. Los cancelados y rechazados se informan por separado.'}),
+      el('div',{class:'filtros'},[7,30,90].map(n=>el('button',{type:'button',class:'chip',
+        'aria-pressed':String(n===S.reporteDias),text:'Últimos '+n+' días',onclick:()=>{S.reporteDias=n;verReporte();}}))),
+      el('p',{class:'nota',text:'Consultando registros…'}));
+    let registros;
+    try {registros=await rpc('panel_reporte_diario',{p_sucursal:id,p_dias:dias});}
+    catch(e){contenido.append(el('p',{class:'error',text:e.message}));return;}
+    if(S.pestana!=='reporte'||S.suc.id!==id||S.reporteDias!==dias)return;
+    const acum=(k)=>registros.reduce((s,r)=>s+Number(r[k]||0),0);
+    const resumen=el('div',{class:'reporte-resumen'},
+      ...[['Pedidos recibidos','total'],['Retiro','retiro'],['Delivery','delivery'],
+        ['Programados','programados']].map(([titulo,key])=>el('div',{class:'reporte-cifra'},
+          el('small',{text:titulo}),el('strong',{text:String(acum(key))}))));
+    const entradas=registros.filter(r=>Number(r.total)>0);
+    const fechas=entradas.length?entradas.map(r=>el('article',{class:'reporte-dia'},
+      el('header',{},el('strong',{text:new Date(String(r.fecha)+'T12:00:00').toLocaleDateString('es-AR',
+       {weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})}),
+       el('span',{class:'estado',text:r.total+' pedido'+(r.total===1?'':'s')})),
+      el('div',{class:'reporte-detalle'},
+        el('span',{text:'Retiro: '+r.retiro}),
+        el('span',{text:'Delivery: '+r.delivery}),
+        el('span',{text:'Programados: '+r.programados}),
+        el('span',{text:'Por confirmar: '+r.pendientes}),
+        el('span',{text:'En preparación: '+r.confirmados}),
+        el('span',{text:'Terminados: '+r.terminados}),
+        el('span',{text:'Cancelados: '+r.cancelados}),
+        el('span',{text:'Rechazados: '+r.rechazados})))) :
+      [el('p',{class:'nota',text:'No se registraron pedidos en el período seleccionado.'})];
+    const botones=contenido.querySelector('.filtros');
+    contenido.replaceChildren(
+      el('h2',{text:'Historial diario · Pedidos por GESTLOK Chat'}),
+      el('p',{class:'nota',text:'Registros reales de '+S.suc.nombre+'. No incluye consultas sin pedido.'}),
+      botones,resumen,...fechas);
+  }
+
+  // ------------------------------------------------------------------------------------------- soporte humano y reclamos
+  async function verSoporte() {
+    const sucId = S.suc.id;
+    contenido.replaceChildren(el('h2', {text:'Soporte al cliente'}),
+      el('p', {class:'nota',text:'Los reclamos llegan desde el chat público. El gerente responde al cliente en la misma conversación.'}),
+      el('p',{class:'nota',text:'Cargando reclamos…'}));
+    let reclamos;
+    try { reclamos = await rpc('panel_soporte',{p_sucursal:sucId}); }
+    catch(e){return contenido.replaceChildren(el('p',{class:'error',text:e.message}));}
+    if (S.pestana !== 'soporte' || S.suc.id !== sucId) return;
+    S.suc.reclamos = reclamos.length;
+    const badge = $('globo-soporte');
+    if (badge) { badge.hidden = !reclamos.length; badge.textContent = String(reclamos.length); }
+    contenido.replaceChildren(
+      el('h2',{text:'Soporte al cliente'}),
+      el('p',{class:'nota',text:'Reclamos de esta sucursal pendientes de respuesta.'}),
+      ...(reclamos.length ? reclamos.map(r => el('article',{class:'soporte-reclamo'},
+        el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo',consulta:'Consulta para el gerente'})[r.tipo]||'Reclamo'}),
+          r.pedido ? el('span',{class:'estado',text:'Pedido '+r.pedido}) : null),
+        el('p',{text:r.detalle}),
+        el('small',{text:hora(r.creado_at)+(r.respondido_at?' · Respondido, pendiente de cierre':' · Esperando respuesta')}),
+        el('div',{class:'acciones'},
+          el('button',{type:'button',class:'boton principal',text:'Responder en el chat',
+            onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at},r.id)}),
+          r.respondido_at ? el('button',{type:'button',class:'boton',text:'Cerrar reclamo',onclick:async()=>{
+            try{
+              await rpc('panel_cerrar_reclamo',{p_reclamo:r.id});
+              aviso('Reclamo cerrado');
+              verSoporte();
+            }catch(e){aviso(e.message,true);}
+          }}) : null))) :
+        [el('p',{class:'nota',text:'No hay reclamos pendientes.'})]));
+    clearTimeout(S.sondeo);
+    S.sondeo=setTimeout(()=>{if(S.pestana==='soporte'&&!document.hidden)verSoporte();},15000);
+  }
+
   // ------------------------------------------------------------------------------------------- conversaciones
   async function verCharlas() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
@@ -418,15 +671,26 @@
         el('span', {class: 'charla-cab'}, el('strong', {text: hora(c.ultima_at)}), c.pedido ? el('span', {class: 'estado', text: c.pedido}) : null),
         el('span', {class: 'charla-ult', text: c.ultimo || ''})))) : el('p', {class: 'nota', text: 'Todavía no hay conversaciones.'}));
   }
-  async function abrirCharla(c) {
+  async function abrirCharla(c, reclamoId = null) {
     let m;
     try { m = await rpc('panel_conversacion', {p_conversacion: c.id}); } catch (e) { return aviso(e.message, true); }
-    dialogo('Conversación · ' + hora(c.creada_at), [el('div', {class: 'hilo'}, m.map(x => el('p', {class: 'msj ' + x.rol, text: x.texto})))], null);
+    const respuesta = el('textarea',{rows:3,maxlength:1000,placeholder:'Escribí tu respuesta al cliente',
+      'aria-label':'Respuesta al cliente',class:'soporte-texto'});
+    dialogo('Conversación · ' + hora(c.creada_at), [
+      el('div', {class: 'hilo'}, m.map(x => el('p', {class: 'msj ' + x.rol, text: x.texto}))),
+      puede('gestionar') ? campo('Responder por este chat',respuesta) : null
+    ].filter(Boolean), puede('gestionar') ? async ()=>{
+      if (respuesta.value.trim().length < 2) throw new Error('Escribí una respuesta para el cliente.');
+      await rpc('panel_responder',{p_conversacion:c.id,p_texto:respuesta.value.trim(),p_reclamo:reclamoId});
+      aviso('Respuesta enviada al cliente por GESTLOK Chat');
+      if (S.pestana === 'soporte') await verSoporte();
+      else if(S.pestana === 'charlas') await verCharlas();
+    }:null,'Enviar mensaje');
   }
 
   // ------------------------------------------------------------------------------------------- utilidades
   function campo(texto, control) { return el('label', {class: 'campo'}, el('span', {text: texto}), control); }
-  function dialogo(titulo, cuerpo, guardar) {
+  function dialogo(titulo, cuerpo, guardar, textoGuardar = 'Guardar') {
     const d = el('dialog', {class: 'dialogo', 'aria-label': titulo});
     const error = el('p', {class: 'error', role: 'alert', hidden: true});
     const form = el('form', {method: 'dialog', onsubmit: async e => {
@@ -438,19 +702,25 @@
     }}, el('header', {}, el('h2', {text: titulo}), el('button', {type: 'button', class: 'cerrar', 'aria-label': 'Cerrar', text: '×', onclick: () => d.close()})),
     el('div', {class: 'dialogo-cuerpo'}, cuerpo), error,
     guardar ? el('footer', {}, el('button', {type: 'button', class: 'boton', text: 'Cancelar', onclick: () => d.close()}),
-      el('button', {type: 'submit', class: 'boton principal', text: 'Guardar'})) : null);
+      el('button', {type: 'submit', class: 'boton principal', text: textoGuardar})) : null);
     d.append(form); marco.append(d);
     d.addEventListener('close', () => d.remove());
     d.showModal();
   }
-  const alVolver = () => { if (marco.isConnected && !document.hidden && S.pestana === 'pedidos' && S.suc) verPedidos(); };
+  const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
+    if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
   document.addEventListener('visibilitychange', alVolver);
 
   // ------------------------------------------------------------------------------------------- demostración
   const D = {
     nivel: 'configurar',
-    suc: [{id: 's1', nombre: 'Munro', slug: 'demo', activa: true, nivel: 'configurar', pendientes: 1}, {id: 's2', nombre: 'Don Torcuato', slug: 'demo-2', activa: false, nivel: 'configurar', pendientes: 0}],
+    reclamos:[{id:'r1',conversacion_id:'v1',tipo:'demora',detalle:'Mi pedido está tardando mucho',
+      creado_at:new Date().toISOString(),pedido:'MM-0007',estado:'pendiente'}],
+    respuestas:[],
+    suc: [{id: 's1', nombre: 'Munro', slug: 'demo', activa: true, nivel: 'configurar', pendientes: 1, reclamos:1}, {id: 's2', nombre: 'Don Torcuato', slug: 'demo-2', activa: false, nivel: 'configurar', pendientes: 0}],
     cats: [{id: 'c1', nombre: 'Empanadas', orden: 1, activa: true}, {id: 'c2', nombre: 'Pizzas', orden: 2, activa: true}],
+    adicionales: [{grupo_id:'gratinado',valor_id:'gratinar',nombre:'Gratinada adicional',
+      extra_min:900,extra_max:900,disponible:true}],
     prods: [{id: 'p1', categoria_id: 'c1', nombre: 'Empanada de carne', descripcion: '', precio: 1200, activo: true, disponible: true, orden: 0, opciones: []},
       {id: 'p2', categoria_id: 'c1', nombre: 'Empanada de humita', descripcion: '', precio: 1200, activo: true, disponible: false, orden: 0, opciones: []},
       {id: 'p3', categoria_id: 'c2', nombre: 'Pizza muzzarella', descripcion: '', precio: 7500, activo: true, disponible: true, orden: 0, opciones: [
@@ -474,12 +744,46 @@
       case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
       case 'panel_disponible': D.prods.find(p => p.id === a.p_producto).disponible = a.p_disponible; return {ok: true};
+      case 'panel_stock_categoria':
+        D.prods.filter(p=>p.categoria_id===a.p_categoria&&p.activo).forEach(p=>{p.disponible=a.p_disponible;});
+        return {ok:true};
+      case 'panel_stock_adicionales': return D.adicionales;
+      case 'panel_stock_adicional':
+        D.adicionales.find(o=>o.grupo_id===a.p_grupo&&o.valor_id===a.p_valor).disponible=a.p_disponible;
+        return {ok:true};
       case 'panel_producto_guardar': { const x = a.p_producto; if (x.id) Object.assign(D.prods.find(p => p.id === x.id), x); else D.prods.push({...x, id: 'n' + Date.now()}); return {ok: true}; }
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
       case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente'}];
-      case 'panel_conversacion': return [{rol: 'asistente', texto: '¡Hola! ¿Qué te gustaría pedir hoy?'}, {rol: 'cliente', texto: 'media docena de carne y una pizza chica'}, {rol: 'asistente', texto: 'Agregué: …'}];
+      case 'panel_conversacion': return [
+        {rol:'asistente',texto:'¡Hola! ¿Qué te gustaría pedir hoy?'},
+        {rol:'cliente',texto:'Mi pedido está tardando mucho'},
+        {rol:'asistente',texto:'Avisé al gerente. Te responderá por este mismo chat.'},
+        ...D.respuestas.map(texto=>({rol:'local',texto}))];
+      case 'panel_soporte': return D.reclamos.filter(r=>r.estado==='pendiente');
+      case 'panel_reporte_diario': return Array.from({length:a.p_dias||30},(_,i)=>({
+        fecha:new Date(Date.now()-i*86400000).toISOString().slice(0,10),total:i?0:2,
+        retiro:i?0:1,delivery:i?0:1,programados:i?0:1,pendientes:i?0:1,
+        confirmados:0,terminados:i?0:1,rechazados:0,cancelados:0,importe_confirmado:i?0:3600}));
+      case 'panel_responder': {
+        if (String(a.p_texto||'').trim().length < 2) throw new Error('Escribí una respuesta.');
+        D.respuestas.push(a.p_texto);
+        if (a.p_reclamo) {
+          const r=D.reclamos.find(x=>x.id===a.p_reclamo);
+          if(!r || r.estado!=='pendiente')throw new Error('Reclamo cerrado');
+          r.respondido_at=new Date().toISOString();
+        }
+        D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
+        return {ok:true};
+      }
+      case 'panel_cerrar_reclamo': {
+        const r=D.reclamos.find(x=>x.id===a.p_reclamo);
+        if (!r?.respondido_at) throw new Error('Primero respondé al cliente');
+        r.estado='respondido';
+        D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
+        return {ok:true};
+      }
       default: throw new Error('Demostración: ' + fn);
     }
   }
