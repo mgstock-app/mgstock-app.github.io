@@ -138,7 +138,7 @@ function limpiarEntrada(e: unknown): Json | null {
   if (x.datos && typeof x.datos === "object") {
     const d = x.datos as Json; const s = (k: string, n: number) => String(d[k] ?? "").trim().slice(0, n);
     out.datos = { nombre: s("nombre", 80), telefono: s("telefono", 25), entrega: s("entrega", 10), direccion: s("direccion", 200),
-      horario: s("horario", 60), medio_pago: s("medio_pago", 20), nota: s("nota", 500) };
+      horario: s("horario", 60), medio_pago: s("medio_pago", 20), efectivo_abona: s("efectivo_abona", 16), nota: s("nota", 500) };
   }
   return Object.keys(out).length ? out : null;
 }
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "Método no permitido" }, 405, origen);
   if (origen && !ORIGENES.includes(origen)) return json({ ok: false, error: "Origen no permitido" }, 403, origen);
   const crudo = await req.text();
-  if (crudo.length > 12000) return json({ ok: false, error: "Mensaje demasiado largo" }, 413, origen);
+  if (crudo.length > 2800000) return json({ ok: false, error: "Archivo demasiado grande" }, 413, origen);
   let body: Json;
   try { body = JSON.parse(crudo); } catch { return json({ ok: false, error: "Pedido inválido" }, 400, origen); }
 
@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
   const dia = new Date().toISOString().slice(0, 10);
   const ipHash = (await sha256Hex((env("GESTLOK_CHAT_SALT") || "gestlok-chat") + "|" + dia + "|" + ip)).slice(0, 32);
   const accion = String(body.accion ?? "");
+  if (accion !== "adjuntar" && crudo.length > 12000) return json({ok:false,error:"Mensaje demasiado largo"},413,origen);
 
   try {
     const suc = await rpc("gestlok_chat_srv_sucursal", { p_slug: slug });
