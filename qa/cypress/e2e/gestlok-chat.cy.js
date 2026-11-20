@@ -17,11 +17,11 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja button[type=submit]').should('contain.text', '10.500').click();
     cy.get('.burbuja.asistente').last().should('contain.text', 'Pizza muzzarella (Grande)');
     cy.get('#btn-finalizar').click();
-    // Venta sugerida: ofrece postres antes de los datos; «Ver postres» abre la carta en esa categoría.
+    // Venta sugerida: ofrece el postre con su precio antes de los datos; un toque lo agrega al pedido.
     cy.get('.burbuja.asistente').last().should('contain.text', 'postre o una bebida');
-    cy.contains('.chip', 'Ver postres').click();
-    cy.get('#hoja').should('be.visible').and('contain.text', 'Flan casero').and('not.contain.text', 'Pizza muzzarella');
-    cy.get('#hoja-cerrar').click();
+    cy.contains('.chip', 'No, gracias. Finalizar').should('be.visible');
+    cy.contains('.chip', 'Flan casero · $ 2.500').click();
+    cy.get('.burbuja.asistente').last().should('contain.text', 'Flan casero');
     cy.get('#btn-finalizar').click();
     cy.get('#hoja input[name=nombre]').type('Ana');
     cy.get('#hoja input[name=telefono]').type('11 5555 1234');
