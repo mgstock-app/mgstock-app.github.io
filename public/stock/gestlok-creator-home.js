@@ -321,7 +321,8 @@
   // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
   // La lista de empresas/locales y la autorización de ingreso siguen viniendo del servidor.
   function premiumLocales(p) {
-    const companies=window.GestLokOwnerAreas?.creatorBrands?.()||[];
+    const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
+    const companies=grouped.length?grouped:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
     const currentTenant=api.S?.me?.tenant_id;
     const fallback=window.GestLokOwnerAreas?.companyFolders?.()||p.parts?.locales||'';
     const loading=!companies.length&&/Cargando empresas|No pudimos cargar/.test(fallback);
