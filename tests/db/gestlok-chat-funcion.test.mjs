@@ -45,6 +45,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   ok(DB, ['-f', 'supabase/migrations/20261120073000_gestlok_chat_venta_sugerida.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261120134000_gestlok_chat_delivery_fotos_cierre.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261120141000_gestlok_chat_clientes_recurrentes_sesion.sql']);
+  ok(DB, ['-f', 'supabase/operaciones/gestlok-chat-recepcion-conciliada-20261120.sql']);
   ok(DB, [], SEMILLA);
   process.env.CHAT_PG_DB = urlFor(DB);
 
@@ -135,9 +136,17 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.match(r.body.pedidos[0].aviso, /sal|entreg|listo|pedido/i);
   assert.match(r.body.pedidos[0].aviso, /Mitre 200/);
   assert.doesNotMatch(JSON.stringify(r.body), /MM-0001/, 'el código no llega al cliente');
-  // Pedido terminado: cierre siempre; la invitación a reseñar solo si el local cargó su link de Google.
-  assert.equal(r.body.pedidos[0].cierre, '¡Gracias por elegirnos!');
-  assert.equal(r.body.pedidos[0].resena, null, 'sin link no se ofrece la reseña');
+  // Pedido terminado está listo/en camino, pero NO recibido: sin reseña ni agradecimiento.
+  assert.equal(r.body.pedidos[0].recibido_at, null);
+  assert.equal(r.body.pedidos[0].cierre, undefined);
+  assert.equal(r.body.pedidos[0].resena, undefined);
+  r = await llamar({slug:'mi-gusto-munro', token:TOKEN, accion:'recibido'});
+  assert.equal(r.status,200);
+  assert.ok(r.body.pedido.recibido_at, 'registra entrega confirmada por el cliente');
+  assert.equal(r.body.pedido.cierre,'¡Gracias por elegirnos!');
+  const marca = r.body.pedido.recibido_at;
+  r = await llamar({slug:'mi-gusto-munro', token:TOKEN, accion:'recibido'});
+  assert.equal(r.body.pedido.recibido_at,marca, 'confirmación idempotente');
   ok(DB, [], `update gestlok_chat_private.sucursales set mensajes = mensajes || '{"resena_url":"https://g.page/r/CT9jkvArEGhFEBM/review","resena":"Nos ayudaría mucho que nos deje su reseña y nos cuente su experiencia.","cierre":"¡Gracias por elegirnos! 🥰"}' where slug = 'mi-gusto-munro'`);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
   assert.deepEqual(r.body.pedidos[0].resena, {texto: 'Nos ayudaría mucho que nos deje su reseña y nos cuente su experiencia.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'});
@@ -158,6 +167,9 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'mensaje', entrada: {texto: 'x'.repeat(5000)}});
   assert.equal(r.status, 200);
 
+  // Otro navegador sin el token no puede confirmar la entrega ajena.
+  r = await llamar({slug:'mi-gusto-munro',token:'otroTokenDeOtroCliente000000000000000002',accion:'recibido'});
+  assert.equal(r.body.ok,false);
   // Otro teléfono no ve el pedido del primero
   r = await llamar({slug: 'mi-gusto-munro', token: 'otroTokenDeOtroCliente000000000000000002', accion: 'estado'});
   assert.equal(r.body.pedidos.length, 0);

@@ -218,6 +218,12 @@ test('promos: repartir unidades entre variedades (premium y clásicas sin recarg
         {id: 'pollo', nombre: 'Pollo', extra: 0}]},
       {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla'}, {id: 'ajo', nombre: 'Crema de ajo'}]}]},
   ]};
+  // Una docena pedida por texto debe aprovechar la promo exacta, sin duplicar productos.
+  cat.productos[0].nombre = 'Empanada de carne';
+  const sugerida = M.responder({sucursal:{},catalogo:cat,estado:null,entrada:{texto:'6 empanadas de carne'}});
+  assert.match(sugerida.mensajes.at(-1).texto,/promoción/);
+  assert.match(sugerida.mensajes.at(-1).texto,/2 salsas/);
+  assert.equal(sugerida.estado.carrito.length,0);
   const pack = cat.productos[2];
   assert.deepEqual(M.valoresDisponibles(cat, pack.opciones[0]).map(v => v.id), ['carne', 'pollo']); // La Sagrada agotada
   const linea = {producto_id: 'pk', cantidad: 1, opciones: {emp: {carne: 4, pollo: 2}, sal: {criolla: 1, ajo: 1}}};
@@ -237,9 +243,10 @@ test('reseña y cierre al terminar el pedido: solo links https de Google', () =>
   for (const malo of ['http://g.page/r/x', 'https://g.page.estafa.example/r', 'https://estafa.example/g.page', 'javascript:alert(1)',
     'https://usuario:clave@g.page/r/x', 'https://g.page/r/x y', '', null]) assert.equal(M.urlResena(malo), '', String(malo));
   const msj = {resena_url: 'https://g.page/r/CT9jkvArEGhFEBM/review', resena: '{nombre}, nos ayudaría mucho que nos deje su reseña.', cierre: '¡Gracias por elegirnos! 🥰'};
-  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, msj),
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', recibido_at:'2026-11-20T12:00:00Z', nombre: 'Ana'}, msj),
     {resena: {texto: 'Ana, nos ayudaría mucho que nos deje su reseña.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'}, cierre: '¡Gracias por elegirnos! 🥰'});
-  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', recibido_at:'2026-11-20T12:00:00Z', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
+  assert.equal(M.cierrePedido({estado:'terminado', nombre:'Ana'}, msj), null, 'sin recepción no se envía reseña');
   assert.equal(M.cierrePedido({estado: 'pendiente'}, msj), null);
   assert.equal(M.cierrePedido({estado: 'rechazado'}, msj), null, 'un pedido rechazado no pide reseña');
   assert.match(M.textoEstadoPedido({estado: 'terminado', entrega: 'envio', nombre: 'Ana', direccion: 'Mitre 200', total: 1000}, {}, {}), /en camino a Mitre 200/);

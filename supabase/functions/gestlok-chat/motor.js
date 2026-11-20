@@ -73,7 +73,7 @@ export function urlResena(u) {
 }
 /** Pedido terminado → invitación a reseñar (si el local cargó su link) y mensaje de cierre. null en otros estados. */
 export function cierrePedido(pedido, mensajes) {
-  if (pedido?.estado !== 'terminado') return null;
+  if (pedido?.estado !== 'terminado' || !pedido?.recibido_at) return null;
   const d = {nombre: pedido.nombre || ''};
   const url = urlResena(mensajes?.resena_url);
   return {resena: url ? {texto: formalizar(plantilla(mensajeDe(mensajes, 'resena'), d)), url} : null,
@@ -677,6 +677,30 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   if (!lineas.length && !dudas.length) {
     decir('No te entendí bien. Podés escribir algo como ' + ejemploPedido(catalogo) + ' o mirar la carta.', {botones: botonesCarrito(e.carrito)});
     return fin();
+  }
+  // Cantidad exacta de empanadas: ofrecer primero el pack con sus salsas incluidas.
+  // No sumar unidades sueltas cuando el cliente eligió una promoción disponible.
+  if (lineas.length === 1 && !dudas.length && !sinCoincidencia.length) {
+    const l = lineas[0], individual = productoPorId(catalogo, l.producto_id);
+    const promo = disponibles(catalogo).find(p => {
+      if (p.disponible === false || !/\b(pack|promo|promoción)\b/i.test(p.nombre || '')) return false;
+      const grupos = (p.opciones || []).filter(esCantidad);
+      const emp = grupos.find(g => /empanad/i.test(g.nombre) && Number(g.total) === l.cantidad);
+      const salsa = grupos.find(g => /salsa/i.test(g.nombre) && Number(g.total) > 0);
+      return individual && /empanad/i.test(individual.nombre) && emp && salsa &&
+        valoresDisponibles(catalogo, emp).some(v => v.producto_id === individual.id);
+    });
+    if (promo) {
+      const emp = promo.opciones.find(g => esCantidad(g) && /empanad/i.test(g.nombre) && Number(g.total) === l.cantidad);
+      const salsa = promo.opciones.find(g => esCantidad(g) && /salsa/i.test(g.nombre));
+      const variedad = valoresDisponibles(catalogo, emp).find(v => v.producto_id === individual.id);
+      if (variedad && salsa) {
+        decir('Tenemos una promoción de ' + l.cantidad + ' empanadas que incluye ' + salsa.total +
+          ' salsas a elección. Seleccione las salsas que prefiera para agregar el pack completo.',
+          {tipo:'producto', productos:[promo.id], cantidad:1, opciones:{[emp.id]:{[variedad.id]:l.cantidad}}});
+        return fin();
+      }
+    }
   }
   const completas = []; const aElegir = [];
   for (const l of lineas) {

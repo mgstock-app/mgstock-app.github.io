@@ -272,6 +272,13 @@ Deno.serve(async (req) => {
         soporte_pendiente: soporte.soporte_pendiente, cerrada, fotos }, 200, origen);
     }
 
+    if (accion === "recibido") {
+      // Sólo la conversación dueña del token puede confirmar un pedido terminado.
+      // La función SQL verifica el estado y hace la operación idempotente.
+      const recibido = await rpc("gestlok_chat_srv_recibido", {p_conversacion:convId,p_token_hash:hash});
+      return json({ok:true,pedido:conAviso(recibido.pedido as Json)},200,origen);
+    }
+
     if (accion === "estado") {
       const desde = Number.isSafeInteger(body.desde) && (body.desde as number) >= 0
         ? (body.desde as number) : 0;
@@ -288,6 +295,26 @@ Deno.serve(async (req) => {
     let entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
     const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
+    // Seguimiento posterior al pedido: no procesar mensajes arbitrarios como nuevos pedidos,
+    // no gastar IA y no crear alertas inútiles al gerente. Mantener soporte explícito.
+    const ultimo = Array.isArray(conv.pedidos) ? (conv.pedidos as Json[])[0] : null;
+    if (ultimo && ["pendiente","confirmado","terminado"].includes(String(ultimo.estado || ""))) {
+      const boton = String(entrada.boton || "");
+      const esSoporte = !!clasificarSoporte(entrada) || ["soporte","hablar_gerente","demora"].includes(boton);
+      const esEstado = boton === "estado" || /\b(estado|como va|cómo va|seguimiento|confirmaron|ya está listo|ya esta listo)\b/i.test(textoOriginal);
+      if (!esSoporte && !esEstado && boton !== "cancelar") {
+        const seguimiento = await rpc("gestlok_chat_srv_respuestas", {
+          p_conversacion:convId, p_token_hash:hash,p_desde:Number.MAX_SAFE_INTEGER });
+        if (seguimiento.soporte_pendiente !== true) {
+          await rpc("gestlok_chat_srv_turno", {
+            p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+            p_cliente:"",p_respuesta:"",p_estado:(conv.estado as Json) || {} });
+          return json({ok:true,mensajes:[{texto:"Su pedido está en seguimiento. Puede consultar su estado o solicitar ayuda al gerente.",
+            botones:[{id:"estado",texto:"Ver estado del pedido"},{id:"soporte",texto:"Necesito ayuda"}]}],
+            carrito:(conv.estado as Json)?.carrito || [],motor:"guiado"},200,origen);
+        }
+      }
+    }
     let clase = clasificarSoporte(entrada);
     if (!clase && textoOriginal && consultaAjena(textoOriginal)) clase='consulta';
     if (!clase && textoOriginal) {
@@ -363,7 +390,7 @@ Deno.serve(async (req) => {
         r.estado.carrito = []; r.estado.paso = "enviado";
         r.estado.programado = false; // Cada nuevo pedido requiere consentimiento independiente.
         r.estado.sugerido = false; // El próximo pedido vuelve a recibir la venta sugerida.
-        mensajes.push({ texto: String(pedido.aviso) });
+        mensajes.push({ texto: String(pedido.aviso), botones:[{id:"estado",texto:"Ver estado del pedido"},{id:"soporte",texto:"Necesito ayuda"}] });
       }
     } else if (r.accion?.tipo === "estado") {
       const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
