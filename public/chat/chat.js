@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120recepcion3';
+import {describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120menu4';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -168,7 +168,9 @@ function mostrarEscribiendo(si) {
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
   ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
-  : [{id: 'carta', texto: 'Ver menú'}, {id: 'horario', texto: 'Horario y envío'},
+  : [{id: 'carta', texto: 'Ver menú'},
+      ...(usaMenuInteractivo(S.sucursal) && promocionesVigentes(S.catalogo).length ? [{id: 'promociones', texto: 'Ver promociones'}] : []),
+      {id: 'horario', texto: 'Horario y envío'},
       {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
 
 async function enviar(entrada, textoVisible) {
@@ -225,6 +227,7 @@ function tocarBoton(b) {
     return enviar(S.ultimaEntrada.entrada, null);
   }
   if (b.id === 'carta') return abrirCarta();
+  if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.texto);
 }
 function bloquear(si) { $('btn-enviar').disabled = si || !$('texto').value.trim(); $('btn-finalizar').disabled = si; }
@@ -389,7 +392,7 @@ function abrirProducto(p, sugerido = {}) {
   let cantidad = Math.min(50, Math.max(1, Number(sugerido.cantidad) || 1));
   const elegidas = {};
   for (const g of p.opciones || []) elegidas[g.id] = esCantidad(g) ? {...(sugerido.opciones?.[g.id] || {})} : [...(sugerido.opciones?.[g.id] || [])];
-  const contadores = []; // se actualizan en cada cambio (promos: «4 de 6»)
+  const contadores = [];
   const salida = el('output', {'aria-live': 'polite', text: String(cantidad)});
   const nota = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: bien cocida, sin cebolla'});
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
@@ -400,16 +403,21 @@ function abrirProducto(p, sugerido = {}) {
   const refrescar = () => {
     salida.textContent = String(cantidad);
     for (const c of contadores) c();
-    const falta = faltantes(p, linea().opciones).find(esCantidad);
-    boton.disabled = !!falta;
-    boton.textContent = falta ? 'Elegí ' + (Number(falta.total) - unidades(elegidas[falta.id])) + ' más en ' + falta.nombre.toLowerCase()
+    const falta = faltantes(p, linea().opciones)[0];
+    boton.disabled = Boolean(falta);
+    boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase()
       : 'Agregar a mi selección · ' + pesos(totalCarrito(S.catalogo, [linea()]));
   };
   // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
   const grupoCantidad = g => {
     const total = Number(g.total) || 1;
     const resumen = el('small', {'aria-live': 'polite'});
-    contadores.push(() => { const u = unidades(elegidas[g.id]); resumen.textContent = u + ' de ' + total; resumen.classList.toggle('completo', u === total); });
+    contadores.push(() => {
+      const u = unidades(elegidas[g.id]);
+      const quedan = total - u;
+      resumen.textContent = u + ' de ' + total + (quedan === 0 ? ' · Completo' : quedan === 1 ? ' · Falta 1' : ' · Faltan ' + quedan);
+      resumen.classList.toggle('completo', quedan === 0);
+    });
     const filas = valoresDisponibles(S.catalogo, g).map(v => {
       const n = el('output', {class: 'n', text: String(elegidas[g.id][v.id] || 0)});
       const menos = el('button', {type: 'button', class: 'paso', 'aria-label': 'Quitar ' + v.nombre, text: '−'});
@@ -468,18 +476,29 @@ function abrirProducto(p, sugerido = {}) {
 }
 
 function abrirSeleccion() {
+  const subtotal = totalCarrito(S.catalogo, S.borrador);
+  const anterior = totalCarrito(S.catalogo, S.carrito);
   const cuerpo = el('div', {class: 'menu-revision'},
-    el('p', {class: 'nota', text: 'Revisá todos los productos antes de enviárselos al asistente.'}),
-    ...S.borrador.map((l, i) => el('div', {class: 'linea'},
-      el('div', {}, el('strong', {text: describirLinea(S.catalogo, l)}),
-        el('small', {text: pesos(totalCarrito(S.catalogo, [l]))})),
-      el('button', {type: 'button', class: 'boton chico', text: 'Quitar', onclick: () => {
+    el('ul', {class: 'seleccion-lista'}, S.borrador.map((l, i) => {
+      const nombre = producto(l.producto_id)?.nombre || 'Producto que ya no está en el menú';
+      const detalles = detallesLinea(S.catalogo, l);
+      return el('li', {class: 'seleccion-linea'},
+        el('strong', {class: 'seleccion-nombre', text: l.cantidad + ' × ' + nombre}),
+        el('span', {class: 'precio', text: pesos(totalCarrito(S.catalogo, [l]))}),
+        detalles.length || l.nota ? el('div', {class: 'seleccion-detalle'},
+          detalles.map(d => el('p', {}, el('strong', {text: d.grupo}), ' · ' + d.valores)),
+          l.nota ? el('p', {text: l.nota}) : null) : null,
+        el('button', {type: 'button', class: 'boton chico', text: 'Quitar', 'aria-label': 'Quitar ' + nombre, onclick: () => {
         S.borrador.splice(i, 1); S.loteId = null; guardarBorrador(); actualizarCarrito();
         S.borrador.length ? abrirSeleccion() : abrirCarta();
-      }}))),
+        }}));
+    })),
+    S.carrito.length ? el('div', {class: 'seleccion-subtotales'},
+      el('span', {text: 'Esta selección'}), el('span', {class: 'precio', text: pesos(subtotal)}),
+      el('span', {text: 'Ya en tu pedido'}), el('span', {class: 'precio', text: pesos(anterior)})) : null,
     el('div', {class: 'total'}, el('span', {text: 'Total estimado'}),
-      el('span', {text: pesos(totalCarrito(S.catalogo, [...S.carrito, ...S.borrador]))})),
-    el('p', {class: 'nota', text: 'El asistente recibirá tu selección. Después vas a completar tus datos; el gerente confirma manualmente.'}),
+      el('span', {class: 'precio', text: pesos(subtotal + anterior)})),
+    el('p', {class: 'nota', text: 'Después de enviar la selección, completá tus datos. El gerente revisará y confirmará el pedido.'}),
     el('button', {type: 'button', class: 'boton ancho', text: 'Seguir eligiendo', onclick: abrirCarta}),
     el('button', {type: 'button', class: 'boton principal ancho', text: 'Enviar selección al asistente',
       onclick: async () => {
@@ -507,6 +526,7 @@ function abrirCarrito() {
 }
 
 function abrirDatos() {
+  if (S.borrador.length) return abrirSeleccion();
   const s = S.sucursal; const d = S.datos;
   if (!d.entrega) d.entrega = s.acepta_retiro ? 'retiro' : 'envio';
   const medios = entrega => {

@@ -171,18 +171,50 @@ export function importeLinea(catalogo, linea) {
 export function totalCarrito(catalogo, carrito) {
   return (carrito || []).reduce((s, l) => s + importeLinea(catalogo, l), 0);
 }
-export function describirLinea(catalogo, linea) {
+export function detallesLinea(catalogo, linea) {
   const p = productoPorId(catalogo, linea.producto_id);
-  if (!p) return linea.cantidad + ' × (producto que ya no está)';
   const ops = [];
-  for (const g of p.opciones || []) {
+  for (const g of p?.opciones || []) {
     const vals = elegidos(g, linea.opciones?.[g.id]).map(([id, n]) => {
       const nombre = g.valores.find(v => v.id === id)?.nombre;
       return nombre && (esCantidad(g) ? n + ' ' + nombre : nombre);
     }).filter(Boolean);
-    if (vals.length) ops.push(vals.join(', '));
+    if (vals.length) ops.push({grupo: g.nombre, valores: vals.join(', ')});
   }
+  return ops;
+}
+export function describirLinea(catalogo, linea) {
+  const p = productoPorId(catalogo, linea.producto_id);
+  if (!p) return linea.cantidad + ' × (producto que ya no está)';
+  const ops = detallesLinea(catalogo, linea).map(o => o.valores);
   return linea.cantidad + ' × ' + p.nombre + (ops.length ? ' (' + ops.join(' · ') + ')' : '') + (linea.nota ? ' — ' + linea.nota : '');
+}
+
+export function usaMenuInteractivo(sucursal) {
+  return ['mi-gusto-munro', 'mi-gusto-torcuato'].includes(sucursal?.slug);
+}
+
+export function promocionesVigentes(catalogo) {
+  const categorias = new Set((catalogo?.categorias || [])
+    .filter(c => /\b(promocion\w*|combos?|packs?)\b/.test(normalizar(c.nombre))).map(c => c.id));
+  return disponibles(catalogo).filter(p => p.disponible !== false &&
+    (categorias.has(p.categoria_id) || /\b(promocion\w*|promos?|combos?|packs?)\b/.test(normalizar(p.nombre))) &&
+    (p.opciones || []).every(g => !esCantidad(g) || valoresDisponibles(catalogo, g).length > 0));
+}
+
+function promocionesParaTexto(promos, texto) {
+  const n = normalizar(texto);
+  const pidePromo = /\b(promocion\w*|promos?|combos?|packs?|ofertas?)\b/.test(n);
+  const mencionaEmpanadas = /\b(empanadas?|docenas?)\b/.test(n);
+  if (!pidePromo && !mencionaEmpanadas) return null;
+  const cantidadExplicita = /\b(\d+|media|docenas?)\b/.test(n) || palabras(n).some(p => NUMEROS[p] > 1);
+  if (!cantidadExplicita) return pidePromo ? promos : null;
+  const cantidad = cantidadDe(n);
+  const conBebida = /\b(lata|bebida|gaseosa)\b/.test(n) && !/\bsin (lata|bebida|gaseosa)\b/.test(n);
+  const candidatos = promos.filter(p => (p.opciones || []).some(g => esCantidad(g) &&
+    /empanad/i.test(g.nombre) && Number(g.total) === cantidad) &&
+    (!conBebida || (p.opciones || []).some(g => /bebida|lata/i.test(g.nombre))));
+  return pidePromo || candidatos.length ? candidatos : null;
 }
 
 /* Venta sugerida (cualquier rubro gastronómico): categorías de postres y de bebidas, reconocidas por su nombre. */
@@ -459,6 +491,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   const decir = (texto, extra = {}) => out.push({texto:formalizar(texto), ...extra});
   const fin = (accion) => ({estado: e, mensajes: out, ...(accion ? {accion} : {})});
   entrada = entrada || {};
+  const menuInteractivo = usaMenuInteractivo(s);
 
   if (entrada.inicio) {
     if (s.atencion?.habilitado && s.atencion.abierto === false) {
@@ -468,10 +501,12 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
           {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
       return fin();
     }
-    decir(s.bienvenida?.trim() ||
+    const bienvenida = s.bienvenida?.trim() ||
       ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' +
-       (s.nombre || '') + '. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.').trim(),
-      {botones: BOTONES_INICIO});
+       (s.nombre || '') + (menuInteractivo ? '. Puede armar su pedido desde el menú interactivo.' : '. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.')).trim();
+    const hayPromos = menuInteractivo && promocionesVigentes(catalogo).length > 0;
+    decir(bienvenida + (hayPromos ? '\nPuede consultar las promociones disponibles de este local.' : ''), {
+      botones: hayPromos ? [BOTONES_INICIO[0], {id: 'promociones', texto: 'Ver promociones'}, ...BOTONES_INICIO.slice(1)] : BOTONES_INICIO});
     return fin();
   }
   if (entrada.boton === 'programar_si') {
@@ -575,6 +610,18 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   const texto = String(entrada.texto || '').slice(0, 600);
   const accion = entrada.boton ? String(entrada.boton) : intencion(texto);
 
+  if (menuInteractivo && (accion === 'promociones' || (!entrada.boton && ['texto', 'precio', 'carta'].includes(accion)))) {
+    const promos = promocionesVigentes(catalogo);
+    const candidatas = accion === 'promociones' ? promos : promocionesParaTexto(promos, texto);
+    if (candidatas) {
+      const botones = candidatas.map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}));
+      decir(botones.length ? 'Estas son las promociones disponibles en este local. Elija una para completar su selección.'
+        : 'No hay una promoción disponible para esa selección. Puede consultar el menú del local.',
+      {botones: [...botones, {id: 'carta', texto: 'Ver menú completo'}]});
+      return fin();
+    }
+  }
+
   // Venta sugerida: «Ver postres» / «Ver bebidas» abre la carta en esa categoría.
   if (accion.startsWith('carta:')) {
     const c = (catalogo?.categorias || []).find(x => x.id === accion.slice(6));
@@ -586,6 +633,15 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   if (accion.startsWith('elegir:')) {
     const [, id, cant] = accion.split(':');
     const p = productoPorId(catalogo, id);
+    if (menuInteractivo) {
+      if (p && p.activo !== false && p.disponible !== false) {
+        decir('Complete su selección de ' + p.nombre + ' en el menú.',
+          {tipo: 'producto', productos: [p.id], cantidad: Math.min(MAX_CANTIDAD, Math.max(1, Number(cant) || 1))});
+      } else {
+        decir('Ese producto ya no está disponible. Puede elegir otro en el menú.', {tipo: 'carta'});
+      }
+      return fin();
+    }
     if (p) {
       const falta = faltantes(p, {});
       if (falta.length) { decir('Elegí las opciones de ' + p.nombre + '.', {tipo: 'producto', productos: [p.id], cantidad: Number(cant) || 1}); return fin(); }
@@ -670,8 +726,22 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
 
   // Texto libre: intentar armar el pedido.
   const {lineas, dudas, sinCoincidencia} = interpretarPedido(catalogo, texto);
+  if (menuInteractivo && (lineas.length || dudas.length)) {
+    if (lineas.length === 1 && !dudas.length && !sinCoincidencia.length) {
+      const l = lineas[0];
+      const p = productoPorId(catalogo, l.producto_id);
+      if (p.disponible !== false) {
+        decir('Revise la cantidad y complete su selección de ' + p.nombre + ' en el menú.',
+          {tipo: 'producto', productos: [p.id], cantidad: l.cantidad, opciones: l.opciones});
+        return fin();
+      }
+    }
+    decir('Elija los productos y las cantidades de su pedido en el menú interactivo.', {tipo: 'carta'});
+    return fin();
+  }
   if (!lineas.length && !dudas.length && /\b(pedi|pedido|ordenar|encargar)/.test(normalizar(texto))) {
-    decir('¡Dale! Mirá la carta y tocá lo que quieras, o escribime por ejemplo ' + ejemploPedido(catalogo) + '.', {tipo: 'carta'});
+    decir(menuInteractivo ? 'Elija los productos y las cantidades de su pedido en el menú interactivo.'
+      : '¡Dale! Mirá la carta y tocá lo que quieras, o escribime por ejemplo ' + ejemploPedido(catalogo) + '.', {tipo: 'carta'});
     return fin();
   }
   if (!lineas.length && !dudas.length) {

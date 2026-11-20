@@ -17,7 +17,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja button[type=submit]').should('contain.text', '10.500').click();
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
-    cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella (Grande)');
+    cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella')
+      .and('contain.text','Tamaño · Grande').and('contain.text','10.500');
     cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', 'Pizza muzzarella (Grande)');
     cy.get('#btn-finalizar').click();
@@ -214,26 +215,38 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
   });
 
   it('promo en el celular: reparte 6 empanadas y 2 salsas con − y +, sin poder pasarse (demostración)', () => {
-    cy.viewport(375, 740);
+    cy.viewport(320, 740);
     cy.visit('/chat/?demo=1');
     cy.get('.burbuja.asistente', {timeout: 15000}).should('exist');
     cy.get('#btn-carta').should('not.be.disabled').click();
     cy.get('#hoja').should('be.visible').contains('button', 'Pack 6 empanadas + 2 salsas').click();
     cy.get('#hoja .grupo-cantidad').should('have.length', 2);
     cy.get('#hoja .grupo-cantidad').first().find('.opcion-cantidad').should('have.length', 2); // humita agotada
-    cy.get('#hoja button[type=submit]').should('be.disabled').and('contain.text', 'Elegí 6 más');
+    cy.get('#hoja button[type=submit]').should('be.disabled').and('contain.text', 'Completar empanadas');
+    cy.get('#hoja .grupo-cantidad').first().should('contain.text', 'Faltan 6');
     cy.get('#hoja [aria-label="Sumar Empanada de carne"]').click().click().click().click();
     cy.get('#hoja [aria-label="Sumar Empanada de jamón y queso"]').click().click();
     cy.get('#hoja [aria-label="Sumar Empanada de carne"]').should('be.disabled');
     cy.get('#hoja .grupo-cantidad').first().should('contain.text', '6 de 6');
     cy.get('#hoja [aria-label="Sumar Criolla"]').click();
+    cy.get('#hoja .grupo-cantidad').last().should('contain.text', 'Falta 1');
+    cy.get('#hoja button[type=submit]').should('be.disabled');
     cy.get('#hoja [aria-label="Sumar Crema de ajo"]').click();
     cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', '6.500').click();
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
     cy.get('#hoja .menu-revision').should('contain.text','4 Empanada de carne').and('contain.text','1 Crema de ajo');
+    cy.get('.seleccion-linea').should($linea => {
+      const fila = $linea[0];
+      const nombre = fila.querySelector('.seleccion-nombre').getBoundingClientRect();
+      const precio = fila.querySelector('.precio').getBoundingClientRect();
+      const quitar = fila.querySelector('button').getBoundingClientRect();
+      expect(nombre.right).to.be.lessThan(precio.left);
+      expect(quitar.top).to.be.greaterThan(precio.bottom);
+      expect(fila.scrollWidth).to.be.at.most(fila.clientWidth);
+    });
     cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', '4 Empanada de carne').and('contain.text', '1 Crema de ajo');
-    cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(375)); // sin desborde horizontal
+    cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(320));
   });
 });
 

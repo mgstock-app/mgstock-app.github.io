@@ -56,6 +56,21 @@ test('OpenAI/Gemini: agrega con herramientas y responde', async () => {
   assert.match(llamadas[1].body.messages.at(-1).content, /Agregado: 2 × Empanada de carne/);
 });
 
+test('Mi Gusto: la IA abre el selector y no incorpora un producto por texto', async () => {
+  for (const slug of ['mi-gusto-munro', 'mi-gusto-torcuato']) {
+    const {fetchImpl, llamadas} = apiFalsa([
+      oai(null, [['agregar_producto', {producto: 'P2', cantidad: 1, opciones: {tam: ['grande']}}]]),
+      oai('Elija el tamaño en el menú interactivo.'),
+    ]);
+    const r = await responderIA({sucursal: {...sucursal, slug}, privado, catalogo, estado: null,
+      historial: [], texto: 'una pizza grande', config: cfgOAI, fetchImpl});
+    assert.deepEqual(r.estado.carrito, []);
+    assert.equal(r.mensajes[0].tipo, 'producto');
+    assert.deepEqual(r.mensajes[0].productos, ['uuid-pizza']);
+    assert.match(llamadas[0].body.messages[0].content, /PROMOCIONES VIGENTES/);
+  }
+});
+
 test('la IA no puede inventar productos, saltear opciones ni pedir agotados', async () => {
   const {fetchImpl, llamadas} = apiFalsa([oai(null, [['agregar_producto', {producto: 'P99', cantidad: 1}], ['agregar_producto', {producto: 'P2', cantidad: 1}],
     ['agregar_producto', {producto: 'P3', cantidad: 1}], ['agregar_producto', {producto: 'P1', cantidad: 500}]]), oai('¿De qué tamaño querés la pizza?')]);
