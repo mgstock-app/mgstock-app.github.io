@@ -545,9 +545,17 @@
         el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo'})[r.tipo]||'Reclamo'}),
           r.pedido ? el('span',{class:'estado',text:'Pedido '+r.pedido}) : null),
         el('p',{text:r.detalle}),
-        el('small',{text:hora(r.creado_at)}),
-        el('button',{type:'button',class:'boton principal',text:'Responder en el chat',
-          onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at},r.id)}))) :
+        el('small',{text:hora(r.creado_at)+(r.respondido_at?' · Respondido, pendiente de cierre':' · Esperando respuesta')}),
+        el('div',{class:'acciones'},
+          el('button',{type:'button',class:'boton principal',text:'Responder en el chat',
+            onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at},r.id)}),
+          r.respondido_at ? el('button',{type:'button',class:'boton',text:'Cerrar reclamo',onclick:async()=>{
+            try{
+              await rpc('panel_cerrar_reclamo',{p_reclamo:r.id});
+              aviso('Reclamo cerrado');
+              verSoporte();
+            }catch(e){aviso(e.message,true);}
+          }}) : null))) :
         [el('p',{class:'nota',text:'No hay reclamos pendientes.'})]));
     clearTimeout(S.sondeo);
     S.sondeo=setTimeout(()=>{if(S.pestana==='soporte'&&!document.hidden)verSoporte();},15000);
@@ -659,11 +667,18 @@
         D.respuestas.push(a.p_texto);
         if (a.p_reclamo) {
           const r=D.reclamos.find(x=>x.id===a.p_reclamo);
-          if(!r || r.estado!=='pendiente')throw new Error('Reclamo ya respondido');
-          r.estado='respondido';
+          if(!r || r.estado!=='pendiente')throw new Error('Reclamo cerrado');
+          r.respondido_at=new Date().toISOString();
         }
         D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
         return {ok:true};
+      case 'panel_cerrar_reclamo': {
+        const r=D.reclamos.find(x=>x.id===a.p_reclamo);
+        if (!r?.respondido_at) throw new Error('Primero respondé al cliente');
+        r.estado='respondido';
+        D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
+        return {ok:true};
+      }
       }
       default: throw new Error('Demostración: ' + fn);
     }
