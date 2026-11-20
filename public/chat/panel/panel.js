@@ -815,6 +815,24 @@
       acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'Munro y Florida', pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia'],
       activa: true, prefijo: 'MM', version: 3, mensajes: {}, ia_activa: true, ia_nombre: 'Sofi', ia_instrucciones: '', ia_info: ''},
   };
+  if (SHOWROOM) {
+    // Mostrar a futuros comercios un local completamente ficticio. Nunca
+    // incrustar la identidad ni los datos bancarios de una tienda real.
+    D.suc[0].nombre='Sucursal Centro';
+    D.suc[0].slug='demo';
+    D.suc[0].local_id='demo';
+    D.suc.splice(1);
+    Object.assign(D.config,{slug:'demo',nombre:'Sucursal Centro',empresa:'Comercio de demostración',
+      direccion:'Calle Ejemplo 123',envio_zona:'Zona de demostración',prefijo:'DEMO'});
+    D.pedidos[0].codigo='DEMO-0007';
+    D.pedidos[0].cliente_nombre='Cliente de ejemplo';
+    D.pedidos[0].cliente_telefono='1100000000';
+    D.pedidos[0].direccion='Calle Ejemplo 456';
+    D.pedidos[1].codigo='DEMO-0006';
+    D.pedidos[1].cliente_nombre='Otro cliente de ejemplo';
+    D.pedidos[1].cliente_telefono='1100000001';
+    D.reclamos[0].pedido='DEMO-0007';
+  }
   async function demoRpc(fn, a) {
     await new Promise(r => setTimeout(r, 120));
     switch (fn) {
@@ -845,7 +863,10 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
-      case 'panel_clientes': return [{nombre:'María (demo)',telefono:'1155551234',pedidos:3,ultimo_at:new Date().toISOString(),direccion:'Mitre 300'}];
+      case 'panel_clientes': return SHOWROOM
+        ? [{nombre:'Cliente frecuente (demo)',telefono:'1100000002',pedidos:3,
+            ultimo_at:new Date().toISOString(),direccion:'Calle Ejemplo 123'}]
+        : [{nombre:'María (demo)',telefono:'1155551234',pedidos:3,ultimo_at:new Date().toISOString(),direccion:'Mitre 300'}];
       case 'panel_conversaciones': {
         const sh=SHOWROOM?.read(),ultimo=sh?.messages.at(-1);
         return [...(sh?.messages.length?[{id:'showroom-conversacion',creada_at:new Date().toISOString(),
@@ -859,7 +880,9 @@
         puede_enviar_transferencia:true};
       case 'panel_enviar_transferencia':
         if(D.cerrada)throw Error('La conversación ya está cerrada');
-        D.respuestas.push('Le envio los datos para transferir!\nAlias: migustomunro\nTitular: Gisela Alejandra Oppenheimer\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
+        D.respuestas.push(SHOWROOM
+          ? 'Datos ficticios para demostración: Alias comercio.demo · No transferir.'
+          : 'Le envio los datos para transferir!\\nAlias: migustomunro\\nTitular: Gisela Alejandra Oppenheimer\\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
         return {ok:true};
       case 'panel_cerrar_conversacion':
         D.cerrada=true;D.respuestas.push('La conversación fue finalizada por el local. Puede iniciar una nueva consulta cuando lo necesite.');
