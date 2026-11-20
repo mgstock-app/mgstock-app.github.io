@@ -33,7 +33,7 @@ test('normaliza y formatea pesos', () => {
 test('bienvenida con botones', () => {
   const r = turno(null, {inicio: true});
   assert.match(r.mensajes[0].texto, /asistente de Mi Gusto Munro/);
-  assert.equal(r.mensajes[0].botones.length, 3);
+  assert.equal(r.mensajes[0].botones.length, 4);
 });
 
 test('pedido escrito con cantidades y contexto', () => {
@@ -149,4 +149,24 @@ test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correcta
   assert.equal(responder({boton: 'carta'}).mensajes[0].tipo, 'carta');
   assert.deepEqual(M.pagosDe(miGusto, 'envio'), ['efectivo', 'transferencia']);
   assert.deepEqual(M.pagosDe(miGusto, 'retiro'), ['debito', 'credito', 'efectivo', 'transferencia']);
+});
+
+test('soporte: informa demoras y no afirma que el pedido esté confirmado', () => {
+ const local={...suc,demora_retiro:'15 a 20 minutos',demora_envio:'35 a 40 minutos'};
+ const r=M.responder({sucursal:local,catalogo:cat,estado:null,entrada:{boton:'demora'}});
+ assert.match(r.mensajes[0].texto,/15 a 20 minutos/);
+ assert.match(r.mensajes[0].texto,/35 a 40 minutos/);
+ assert.doesNotMatch(r.mensajes[0].texto,/pedido confirmado/i);
+ assert.ok(r.mensajes[0].botones.some(b=>b.id==='reclamo_demora'));
+ const help=M.responder({sucursal:local,catalogo:cat,estado:null,entrada:{boton:'soporte'}});
+ assert.ok(help.mensajes[0].botones.some(b=>b.id==='reclamo_faltante'));
+});
+test('soporte: consultas no crean reclamo; faltante, demora real y otros reclamos sí',()=>{
+ assert.equal(M.clasificarSoporte({texto:'¿Cuánto tarda el delivery?'}),'consulta_demora');
+ assert.equal(M.clasificarSoporte({texto:'Mi pedido se demora, hace una hora que espero'}),'demora');
+ assert.equal(M.clasificarSoporte({texto:'Me falta una empanada del pedido'}),'faltante');
+ assert.equal(M.clasificarSoporte({texto:'Me cobraron mal'}),'otro');
+ assert.equal(M.clasificarSoporte({boton:'reclamo_faltante'}),'faltante');
+ assert.equal(M.clasificarSoporte({boton:'hablar_gerente'}),'otro');
+ assert.equal(M.clasificarSoporte({texto:'Quiero 3 empanadas de carne'}),null);
 });
