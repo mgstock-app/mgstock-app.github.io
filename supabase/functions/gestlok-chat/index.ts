@@ -4,7 +4,8 @@
  * - Topes por IP, por conversación y por sucursal (en la base). Textos acotados. CORS solo para los dominios propios.
  * - Precios, totales, disponibilidad y numeración los decide la base. El asistente solo arma el carrito.
  * - No guarda nombre, teléfono ni dirección en el chat: esos datos van únicamente en el pedido.
- * - Texto libre: lo responde la IA si la sucursal la tiene activa y hay clave; si no (o si falla), el motor sin IA.
+ * - Prioridad: botones y carrito (asistente guiado, sin costo). La IA solo responde lo que el guiado no entiende;
+ *   si no hay IA o falla, la consulta pasa al gerente por el mismo chat.
  * Secretos: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (automáticos), GESTLOK_CHAT_SALT (recomendado),
  * GESTLOK_CHAT_ORIGINS (opcional), GESTLOK_CHAT_IA_PROVEEDOR («anthropic» u «openai»), GESTLOK_CHAT_IA_CLAVE,
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
@@ -203,17 +204,19 @@ Deno.serve(async (req) => {
     }
     if (clase === "consulta_demora") entrada = {boton:"demora"};
 
-    // Texto libre → IA (si está activa y configurada) con respaldo en el motor. Botones, carta y formulario → motor.
-    let r: Turno | null = null;
-    if (entrada.texto && privado.ia_activa !== false && IA.clave) {
+    // Primero botones y carrito: el asistente guiado (sin costo) resuelve carta, pedidos, horarios, pagos y estado.
+    // La IA (Gemini u otra) entra SOLO cuando el guiado no entiende un texto libre: consultas importantes y raras.
+    const noEntiende = (t: Turno) => t.mensajes.length === 1 && !t.accion &&
+      /^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(String(t.mensajes[0].texto || ''));
+    let r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
+    if (textoOriginal && noEntiende(r) && privado.ia_activa !== false && IA.clave) {
       try {
         r = await responderIA({ sucursal, privado, catalogo, estado: conv.estado, historial: conv.mensajes,
-          texto: String(entrada.texto), config: IA }) as Turno;
+          texto: textoOriginal, config: IA }) as Turno;
       } catch (e) {
-        console.warn("gestlok-chat IA → motor", (e as Error)?.message);
+        console.warn("gestlok-chat IA no disponible → gerente", (e as Error)?.message);
       }
     }
-    if (!r) r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
     // Si tampoco el motor de respaldo comprende la pregunta, el gerente la recibe.
     // No se deriva un pedido válido ni una consulta de menú.
     if (textoOriginal && r.mensajes.length === 1 &&

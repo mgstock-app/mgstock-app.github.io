@@ -136,18 +136,26 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   const llamarIA = async body => { const res = await handlerIA(new Request('http://local/gestlok-chat', {method: 'POST',
     headers: {'content-type': 'application/json', origin: ORIGEN, 'x-forwarded-for': '200.5.5.5'}, body: JSON.stringify(body)})); return res.json(); };
   await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'abrir'});
+  // Prioridad botones y carrito: un pedido escrito lo resuelve el asistente guiado, sin llamar a la IA.
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'tres de jamón y queso porfa'}})};
+  assert.equal(r.body.motor, 'guiado');
+  assert.equal(iaPedidos.length, 0, 'lo que el guiado entiende no gasta IA');
+  assert.deepEqual(r.body.carrito.map(l => l.cantidad), [3]);
+  // Solo lo que el guiado no entiende pasa a la IA.
+  r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'aceptan perros adentro'}})};
   assert.equal(r.body.motor, 'ia');
   assert.equal(r.body.mensajes[0].texto, 'Listo, sumé 3 de jamón y queso. ¿Algo más?');
-  assert.deepEqual(r.body.carrito.map(l => l.cantidad), [3]);
+  assert.ok(iaPedidos.length > 0);
   assert.match(iaPedidos[0].messages[0].content, /Instrucción secreta del dueño/, 'la IA recibe las indicaciones del dueño');
   assert.ok(!iaPedidos[0].messages[0].content.includes('5a000000'), 'la IA no recibe identificadores internos');
   ENV.GESTLOK_CHAT_IA_URL = 'https://falla.example/v1/chat';
   globalThis.Deno.serve = h => { handlerIA = h; };
   await import(pathToFileURL(root + 'supabase/functions/gestlok-chat/index.ts').href + '?ia=2');
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: '1 de carne'}})};
-  assert.equal(r.body.motor, 'guiado', 'si la IA falla responde el motor');
-  assert.deepEqual(r.body.carrito.map(l => l.cantidad).sort(), [1, 3]);
+  assert.equal(r.body.motor, 'guiado', 'el pedido escrito sigue por el guiado');
+  assert.deepEqual(r.body.carrito.map(l => l.cantidad).sort(), [1, 6]);
+  r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'hacen facturas tipo A'}})};
+  assert.equal(r.body.soporte_pendiente, true, 'si la IA falla, la consulta pasa al gerente');
   delete ENV.GESTLOK_CHAT_IA_URL;
   ok(DB, [], `update gestlok_chat_private.sucursales set ia_activa = false where slug = 'mi-gusto-munro'`);
   iaPedidos = [];
