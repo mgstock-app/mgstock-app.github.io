@@ -39,6 +39,7 @@ test('GESTLOK Chat · aislamiento, permisos, pedidos y seguridad', {skip}, async
     '20261120020052_gestlok_chat_soporte_reclamos_gerente.sql',
     '20261120021122_gestlok_chat_soporte_seguimiento_hasta_cierre.sql',
     '20261120024146_gestlok_chat_turnos_programacion_reportes.sql',
+    '20261120024820_gestlok_chat_reportes_fecha_local.sql',
   ]) {
     ok(DB, ['-f', 'supabase/migrations/' + name]);
     ok(DB, ['-f', 'supabase/migrations/' + name]); // idempotencia
