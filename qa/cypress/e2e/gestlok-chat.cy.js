@@ -233,3 +233,52 @@ describe('GESTLOK Chat · transferencia y cierre del gerente', () => {
     cy.get('.charla').should('contain.text','Cerrada');
   });
 });
+
+describe('GESTLOK Chat · clientes frecuentes y continuidad sin registro',()=>{
+  const empezarPedido=()=>{
+    cy.get('#texto').type('2 empanadas de carne{enter}');
+    cy.get('#btn-finalizar').click();
+    cy.contains('.chip','No, gracias. Finalizar').click();
+    cy.get('#hoja').should('be.visible').and('contain.text','Sus datos');
+  };
+
+  it('conserva el texto que todavía no fue enviado al refrescar',()=>{
+    cy.viewport(390,800);
+    cy.visit('/chat/?demo=1');
+    cy.get('#texto').type('Quería consultar por una promoción');
+    cy.reload();
+    cy.get('#texto').should('have.value','Quería consultar por una promoción');
+    cy.get('#btn-enviar').should('not.be.disabled');
+  });
+
+  it('conserva el formulario incompleto después de salir y volver al chat',()=>{
+    cy.viewport(390,800);
+    cy.visit('/chat/?demo=1');
+    empezarPedido();
+    cy.get('#hoja input[name=nombre]').type('María de prueba');
+    cy.get('#hoja input[name=telefono]').type('11 5555 2244');
+    cy.contains('#hoja label','Envío').click();
+    cy.get('#hoja input[name=direccion]').type('Belgrano 1254');
+    cy.reload();
+    empezarPedido();
+    cy.get('#hoja input[name=nombre]').should('have.value','María de prueba');
+    cy.get('#hoja input[name=telefono]').should('have.value','11 5555 2244');
+    cy.get('#hoja input[name=direccion]').should('have.value','Belgrano 1254');
+  });
+
+  it('pregunta el nombre y la dirección guardada antes de reutilizarlos',()=>{
+    cy.viewport(390,800);
+    cy.visit('/chat/?demo=1&frecuente=1');
+    empezarPedido();
+    cy.get('#hoja input[name=telefono]').type('11 5555 3344').blur();
+    cy.get('#hoja .recuerdo-cliente').should('be.visible')
+      .and('contain.text','¿El pedido es a nombre de María Pérez?');
+    cy.get('#hoja .recuerdo-cliente').contains('button','Sí, es correcto').click();
+    cy.get('#hoja input[name=nombre]').should('have.value','María Pérez');
+    cy.contains('#hoja label','Envío').click();
+    cy.get('#hoja .recuerdo-cliente').should('be.visible')
+      .and('contain.text','¿El envío sigue siendo a Av. Siempre Viva 742?');
+    cy.get('#hoja .recuerdo-cliente').contains('button','Sí, es correcto').click();
+    cy.get('#hoja input[name=direccion]').should('have.value','Av. Siempre Viva 742');
+  });
+});
