@@ -186,9 +186,31 @@ export function interpretarPedido(catalogo, texto) {
   return {lineas, dudas, sinCoincidencia};
 }
 
+/** Clasifica reclamos antes de llamar a la IA; consultar tiempos no genera alerta por sí solo. */
+export function clasificarSoporte(entrada = {}) {
+  const b = String(entrada.boton || '');
+  if (b === 'reclamo_demora') return 'demora';
+  if (b === 'reclamo_faltante') return 'faltante';
+  if (b === 'reclamo_otro' || b === 'hablar_gerente') return 'otro';
+  const t = normalizar(String(entrada.texto || ''));
+  if (!t) return null;
+  if (/\b(faltante|me falta|me falto|faltaron|pedido incompleto|no me trajeron|no vino (la|el|un)|vino incompleto)\b/.test(t)) return 'faltante';
+  if (/\b(reclamo|queja|me cobraron mal|cobraron de mas|pedido equivocado|pedido incorrecto|no es lo que pedi|vino frio|mal estado|mal servicio|vino mal|hablar con (un )?(gerente|responsable))\b/.test(t)) return 'otro';
+  if (/\b(mi pedido (se )?(demora|esta tardando|tarda mucho|no llega)|no llego mi pedido|pedido no llega|sigo esperando|paso (una|1|dos|2) hora|tardo mucho|viene demorado|se esta demorando)\b/.test(t)) return 'demora';
+  if (/\b(cuanto (tarda|demora|falta)|tiempo (de entrega|estimado)|cuanta demora|demora del delivery|demora para retirar)\b/.test(t)) return 'consulta_demora';
+  return null;
+}
+export function textoDemora(s = {}) {
+  const r = s.demora_retiro ? 'Retiro en el local: ' + s.demora_retiro + '.' : '';
+  const d = s.demora_envio ? 'Delivery: ' + s.demora_envio + '.' : '';
+  return [r,d].filter(Boolean).join('\n') ||
+    'El tiempo estimado de entrega todavía no está configurado para este local.';
+}
+
 function intencion(t) {
   const n = normalizar(t);
   if (!n) return 'vacio';
+  if (/\b(cuanto tarda|cuanto demora|cuanta demora|tiempo de entrega|demora del delivery)\b/.test(n)) return 'demora';
   if (/\b(estado|como va|ya esta|confirmaron|cuanto falta|llego)\b/.test(n) ||
       (/\bmi pedido\b/.test(n) && n.split(' ').length <= 5 && !/\d/.test(n))) return 'estado';
   if (/\b(cancel|anula)/.test(n)) return 'cancelar';
@@ -208,7 +230,8 @@ function intencion(t) {
 }
 
 const BOTONES_INICIO = [
-  {id: 'carta', texto: 'Ver la carta'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'},
+  {id: 'carta', texto: 'Ver menú'}, {id: 'horario', texto: 'Horario y envío'},
+  {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'},
 ];
 export function botonesCarrito(carrito) {
   return carrito.length
@@ -349,6 +372,17 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     case 'saludo': decir('¡Hola! ¿Qué te gustaría pedir hoy?', {botones: botonesCarrito(e.carrito)}); return fin();
     case 'gracias': decir(mensajeDe(mensajes, 'despedida'), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'horario': decir(textoHorario(s) + '\n' + textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
+    case 'soporte':
+      decir('¿Necesitás consultar una demora o informar un problema con tu pedido? El gerente puede responderte por este mismo chat.', {
+        botones: [{id:'demora',texto:'Consultar demora'},{id:'reclamo_faltante',texto:'Faltante en mi pedido'},
+          {id:'reclamo_otro',texto:'Otro reclamo'},{id:'hablar_gerente',texto:'Hablar con el gerente'}]});
+      return fin();
+    case 'demora':
+      decir('Los tiempos habituales son estimados:\n' + textoDemora(s) +
+        '\nSi tu pedido ya está demorado, puedo avisarle al gerente para que te responda acá.', {
+        botones: [{id:'reclamo_demora',texto:'Avisar demora al gerente'},
+          {id:'reclamo_faltante',texto:'Reclamar faltante'},{id:'soporte',texto:'Más ayuda'}]});
+      return fin();
     case 'envio': decir(textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'pago': decir(textoPago(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'direccion': decir(s.direccion ? 'Estamos en ' + s.direccion + '.' : 'El local todavía no cargó su dirección.', {botones: botonesCarrito(e.carrito)}); return fin();
