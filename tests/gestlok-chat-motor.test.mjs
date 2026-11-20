@@ -129,3 +129,24 @@ test('los ejemplos salen de la carta del local (sirve para cualquier comercio)',
   assert.doesNotMatch(M.textoCarrito({productos: [{nombre: 'Corte de pelo', activo: true}]}, []), /empanada/);
 });
 
+
+test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correctamente', () => {
+  const miGusto = {...suc,
+    bienvenida: '¡Hola! Soy el asistente de Mi Gusto Munro. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.',
+    medios_pago: ['debito', 'credito', 'efectivo', 'transferencia'],
+    medios_pago_retiro: ['debito', 'credito', 'efectivo', 'transferencia'],
+    medios_pago_envio: ['efectivo', 'transferencia']};
+  const responder = entrada => M.responder({sucursal: miGusto, catalogo: cat, estado: null, entrada});
+  const inicio = responder({inicio: true});
+  assert.equal(inicio.mensajes[0].texto, miGusto.bienvenida);
+  assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago']);
+  const pagos = responder({boton: 'pago'});
+  assert.match(pagos.mensajes[0].texto, /Retiro en el local: Débito, Crédito, Efectivo, Transferencia/);
+  assert.match(pagos.mensajes[0].texto, /Delivery: Efectivo, Transferencia/);
+  assert.doesNotMatch(pagos.mensajes[0].texto, /Mercado Pago/);
+  assert.match(responder({boton: 'horario'}).mensajes[0].texto, /Horario:/);
+  assert.match(responder({boton: 'horario'}).mensajes[0].texto, /Envíos/mi);
+  assert.equal(responder({boton: 'carta'}).mensajes[0].tipo, 'carta');
+  assert.deepEqual(M.pagosDe(miGusto, 'envio'), ['efectivo', 'transferencia']);
+  assert.deepEqual(M.pagosDe(miGusto, 'retiro'), ['debito', 'credito', 'efectivo', 'transferencia']);
+});
