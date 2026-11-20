@@ -201,7 +201,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
     if (!JSON.parse(init.body).tools) return {ok: true, status: 200, json: async () => ({choices: [{message: {content: 'Buenas noches, bienvenido a Mi Gusto Munro. Puede ver el menú con los botones de abajo.'}}]})};
     const ultimo = JSON.parse(init.body).messages.at(-1);
     const body = ultimo.role === 'tool'
-      ? {choices: [{message: {content: 'Listo, sumé 3 de jamón y queso. ¿Algo más?'}}]}
+      ? {choices: [{message: {content: 'Complete su selección de jamón y queso en el menú.'}}]}
       : {choices: [{message: {content: null, tool_calls: [{id: 't1', type: 'function', function: {name: 'agregar_producto', arguments: '{"producto":"P2","cantidad":3}'}}]}}]};
     return {ok: true, status: 200, json: async () => body};
   };
@@ -227,11 +227,15 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'tres de jamón y queso porfa'}})};
   assert.equal(r.body.motor, 'guiado');
   assert.equal(iaPedidos.length, 0, 'lo que el guiado entiende no gasta IA');
-  assert.deepEqual(r.body.carrito.map(l => l.cantidad), [3]);
+  assert.deepEqual(r.body.carrito, []);
+  assert.equal(r.body.mensajes[0].tipo, 'producto');
+  assert.equal(r.body.mensajes[0].cantidad, 3);
   // Solo lo que el guiado no entiende pasa a la IA.
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'aceptan perros adentro'}})};
   assert.equal(r.body.motor, 'ia');
-  assert.equal(r.body.mensajes[0].texto, 'Listo, sumé 3 de jamón y queso. ¿Algo más?');
+  assert.equal(r.body.mensajes[0].texto, 'Complete su selección de jamón y queso en el menú.');
+  assert.equal(r.body.mensajes[0].tipo, 'producto');
+  assert.deepEqual(r.body.carrito, []);
   assert.ok(iaPedidos.length > 0);
   assert.match(iaPedidos[0].messages[0].content, /Instrucción secreta del dueño/, 'la IA recibe las indicaciones del dueño');
   assert.ok(!iaPedidos[0].messages[0].content.includes('5a000000'), 'la IA no recibe identificadores internos');
@@ -240,7 +244,8 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   await import(pathToFileURL(root + 'supabase/functions/gestlok-chat/index.ts').href + '?ia=2');
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: '1 de carne'}})};
   assert.equal(r.body.motor, 'guiado', 'el pedido escrito sigue por el guiado');
-  assert.deepEqual(r.body.carrito.map(l => l.cantidad).sort(), [1, 6]);
+  assert.equal(r.body.mensajes[0].tipo, 'producto');
+  assert.deepEqual(r.body.carrito, []);
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: TOKEN_IA, accion: 'mensaje', entrada: {texto: 'hacen facturas tipo A'}})};
   assert.equal(r.body.soporte_pendiente, true, 'si la IA falla, la consulta pasa al gerente');
   r = {body: await llamarIA({slug: 'mi-gusto-munro', token: 'tokenDeOtroClienteConLaIACaida0000000003', accion: 'abrir'})};
@@ -256,9 +261,11 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   // Delivery: descuento real en la base, monto entregado y cambio para el repartidor.
   ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_pct=10 where slug='mi-gusto-munro'");
   const TOKEN_CASH='tokenDePruebaMontoEfectivo00000000000004';
+  const seleccionCarne = {lote_id:'152be738-6038-4614-be55-2985e270984f',
+    agregar_varios:[{producto_id:'9a000000-0000-4000-8000-000000000001',cantidad:2}]};
   r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'abrir'});
   assert.equal(r.status,200);
-  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'mensaje',entrada:{texto:'2 empanadas de carne'}});
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'mensaje',entrada:seleccionCarne});
   assert.equal(r.body.carrito.length,1);
   r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH,accion:'mensaje',entrada:{boton:'finalizar'}});
   assert.ok(r.body.mensajes.some(m=>m.tipo==='datos'));
@@ -309,7 +316,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
     accion:'recordar',telefono:TEL_FREQ});
   assert.equal(r.body.encontrado,false,'no hay registro automático por conocer un teléfono');
   r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ1,cliente_token:BROWSER,
-    accion:'mensaje',entrada:{texto:'2 empanadas de carne'}});
+    accion:'mensaje',entrada:seleccionCarne});
   assert.equal(r.body.carrito.length,1);
   r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ1,cliente_token:BROWSER,accion:'mensaje',
     entrada:{datos:{nombre:'María Frecuente',telefono:TEL_FREQ,entrega:'envio',
