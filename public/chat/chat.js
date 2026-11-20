@@ -160,7 +160,7 @@ const TEXTO_ESTADO = {
 /** Pedido listo o enviado: aviso, invitación a reseñar (si el local cargó su link de Google) y cierre.
  * Una sola vez por pedido en este teléfono, aunque el cliente cierre el chat y vuelva más tarde (hasta 24 h). */
 function despedidaPedido(p) {
-  if (!p.recibido_at || p.estado !== 'terminado' || Date.now() - new Date(p.creado_at).getTime() > 864e5) return;
+  if (!p.recibido_at || p.estado !== 'terminado' || Date.now() - new Date(p.recibido_at).getTime() > 864e5) return;
   const clave = 'gestlok-chat:cierre:' + (S.sucursal?.slug || '') + ':' + p.creado_at;
   try { if (localStorage.getItem(clave)) return; localStorage.setItem(clave, '1'); } catch { /* sin almacenamiento: se muestra igual */ }
   // Si el cliente acaba de consultar el estado, el aviso ya está en pantalla: no se repite.
