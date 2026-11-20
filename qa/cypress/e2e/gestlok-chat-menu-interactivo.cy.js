@@ -30,19 +30,35 @@ describe('GESTLOK Chat · menú interactivo', () => {
     cy.get('#hoja-titulo').should('have.text','Menú interactivo');
     cy.get('#hoja .menu-producto-detalle:visible').should('contain.text','Empanadas')
       .and('contain.text','Salsas');
+    cy.get('#hoja .menu-producto-detalle:visible img').should('not.exist');
+    cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first()
+      .find('.grupo-estado').should('contain.text','Faltan 6');
+    cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').last()
+      .find('.grupo-estado').should('contain.text','Faltan 2');
     cy.get('#hoja .menu-producto-detalle:visible button[type=submit]').should('be.disabled');
     cy.get('#hoja .menu-producto-detalle:visible')
       .contains('.opcion-cantidad','Empanada de carne').find('button[aria-label="Sumar Empanada de carne"]')
       .click().click().click().click().click().click();
+    cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first()
+      .find('.grupo-estado').should('contain.text','Completo');
+    cy.get('#hoja .menu-producto-detalle:visible button[type=submit]').should('be.disabled');
     cy.get('#hoja .menu-producto-detalle:visible')
       .contains('.opcion-cantidad','Criolla').find('button[aria-label="Sumar Criolla"]').click().click();
+    cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').last()
+      .find('.grupo-estado').should('contain.text','Completo');
     cy.get('#hoja .menu-producto-detalle:visible button[type=submit]').should('not.be.disabled').click();
     cy.get('#hoja-titulo').should('have.text','Menú interactivo');
     cy.get('#hoja .menu-producto-detalle:visible').should('not.exist');
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
     cy.get('#hoja .menu-pie').contains('button','Revisar selección').click();
     cy.get('#hoja .menu-revision').should('contain.text','Pack 6 empanadas + 2 salsas')
-      .and('contain.text','Criolla');
+      .and('contain.text','6 Empanada de carne')
+      .and('contain.text','2 Criolla');
+    // Se envía todo junto; hasta acá no se escribió nada al asistente.
+    cy.get('.burbuja.cliente').should('not.exist');
+    cy.get('#hoja .menu-revision button').contains('Enviar selección al asistente').click();
+    cy.get('#hoja').should('not.be.visible');
+    cy.get('#barra-texto').should('contain.text','1 producto');
   });
 
   it('arma un pedido visual, lo revisa y recién entonces lo envía al asistente', () => {
