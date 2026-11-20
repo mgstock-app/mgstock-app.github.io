@@ -51,17 +51,17 @@ begin
  insert into gestlok_chat_private.clientes_frecuentes
  (tenant_id,sucursal_id,navegador_hash,telefono,nombre,direccion,visitas,ultimo_pedido_at)
  values(c.tenant_id,c.sucursal_id,p_navegador_hash,v_telefono,anterior.cliente_nombre,
-   (select coalesce(p.direccion,'') from gestlok_chat_private.pedidos p
+   coalesce((select p.direccion from gestlok_chat_private.pedidos p
     where p.conversacion_id=c.id and p.sucursal_id=c.sucursal_id
       and p.cliente_telefono=v_telefono and p.entrega='envio'
-    order by p.creado_at desc limit 1),
+    order by p.creado_at desc limit 1),''),
    greatest(v_cantidad,1),anterior.creado_at)
  on conflict (sucursal_id,navegador_hash,telefono) do nothing;
  return jsonb_build_object('encontrado',true,'nombre',anterior.cliente_nombre,
-   'direccion',(select coalesce(p.direccion,'') from gestlok_chat_private.pedidos p
+   'direccion',coalesce((select p.direccion from gestlok_chat_private.pedidos p
     where p.conversacion_id=c.id and p.sucursal_id=c.sucursal_id
       and p.cliente_telefono=v_telefono and p.entrega='envio'
-    order by p.creado_at desc limit 1),
+    order by p.creado_at desc limit 1),''),
    'visitas',v_cantidad);
 end $$;
 revoke all on function public.gestlok_chat_srv_recordar(uuid,bytea,bytea,text) from public,anon,authenticated;
