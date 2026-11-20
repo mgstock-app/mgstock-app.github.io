@@ -73,7 +73,7 @@ export function urlResena(u) {
 }
 /** Pedido terminado → invitación a reseñar (si el local cargó su link) y mensaje de cierre. null en otros estados. */
 export function cierrePedido(pedido, mensajes) {
-  if (pedido?.estado !== 'terminado') return null;
+  if (pedido?.estado !== 'terminado' || !pedido?.recibido_at) return null;
   const d = {nombre: pedido.nombre || ''};
   const url = urlResena(mensajes?.resena_url);
   return {resena: url ? {texto: formalizar(plantilla(mensajeDe(mensajes, 'resena'), d)), url} : null,
