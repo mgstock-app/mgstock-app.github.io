@@ -130,8 +130,8 @@ Deno.serve(async (req) => {
     const mensajesLocal = (privado.mensajes as Json) || {};
     // Cada pedido lleva el texto que corresponde a su estado, con los mensajes que configuró el local.
     // El código es solo interno del gerente. No se expone en el JSON ni en la charla pública.
-    const sinCodigo = (v: string) => String(v||'').replace(/\\bpedido\\s+[A-Z]{1,4}-\\d{4,}\\b/gi,'pedido')
-       .replace(/\\b[A-Z]{1,4}-\\d{4,}\\b/g,'').replace(/\\s+([.!?,])/g,'$1');
+    const sinCodigo = (v: string) => String(v||'').replace(/\bpedido\s+[A-Z]{1,4}-\d{4,}\b/gi,'pedido')
+       .replace(/\b[A-Z]{1,4}-\d{4,}\b/g,'').replace(/\s+([.!?,])/g,'$1');
     const conAviso = (p: Json) => {
       const {codigo: _interno, ...visible}=p;
       return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal))};
