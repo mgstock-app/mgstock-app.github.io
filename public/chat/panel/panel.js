@@ -63,7 +63,6 @@
   }
   async function rpc(fn, args) {
     if (DEMO) return demoRpc(fn, args || {});
-    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await sb.rpc('gestlok_chat_' + fn, args || {}); } catch { throw new Error('Sin conexión. Revisá internet y probá de nuevo.'); }
     if (r.error) {
@@ -95,7 +94,6 @@
       const {data} = await sb.auth.getSession();
       if (!data?.session) return fijo('Entrá a GESTLOK', 'Iniciá sesión en GESTLOK con tu cuenta y volvé a abrir el panel.', ['Ir a GESTLOK', '/']);
     }
-    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await rpc('panel_inicio'); } catch (e) { return fijo('No pudimos abrir el panel', e.message); }
     if (!r.habilitado) return fijo('GESTLOK Chat no está activo', 'GESTLOK Chat no está habilitado para la empresa que tenés elegida en GESTLOK. Si tenés varias empresas, elegí la correcta en GESTLOK y volvé.', ['Ir a GESTLOK', '/']);
@@ -413,7 +411,6 @@
   // ------------------------------------------------------------------------------------------- conversaciones
   async function verCharlas() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    const sucursal = S.suc.id, filtro = S.filtro;
     let r;
     try { r = await rpc('panel_conversaciones', {p_sucursal: S.suc.id, p_limite: 40}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Solo lectura. Se borran solas a los 60 días; los pedidos quedan.'}),
