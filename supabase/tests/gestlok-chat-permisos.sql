@@ -91,7 +91,7 @@ begin
   perform prueba_como('gerente.munro@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 1 and j->'sucursales'->0->>'nombre' = 'Munro'
-    and j->'sucursales'->0->>'nivel' = 'gestionar' and j->'sucursales'->0->>'local_id' = 'munro' then 'OK' else 'FALLA' end || ' gerente de Munro ve solo Munro';
+    and j->'sucursales'->0->>'nivel' = 'configurar' and j->'sucursales'->0->>'local_id' = 'munro' then 'OK' else 'FALLA' end || ' gerente de Munro ve solo Munro';
   perform prueba_como('colaborador.a@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 0 then 'OK' else 'FALLA' end || ' colaborador no ve sucursales';
@@ -109,10 +109,10 @@ begin
 
   -- Configuración (dueña) ---------------------------------------------------------------------------------------
   perform prueba_como('gerente.munro@prueba.example');
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"activa":true}', 1)::text $q$, s_munro));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no abre ni pausa el chat (ajustes del dueño)';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Hola","envio_costo":0}', 1)::text $q$, s_munro));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cambia ajustes aunque mande mensajes juntos';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"activa":true}', 1)::text $q$, s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no abre chat de Torcuato';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Hola","envio_costo":0}', 999)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'error:40001%' then 'OK' else 'FALLA' end || ' gerente puede configurar pero respeta versiones';
   perform prueba_como('duena.a@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L,
      '{"activa":true,"acepta_envio":true,"envio_costo":500,"pedido_minimo":1500,"medios_pago":["efectivo","transferencia"],"bienvenida":"Hola"}', 1)::text $q$, s_munro));
@@ -132,6 +132,9 @@ begin
   perform prueba_como('gerente.munro@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Tono cálido","bienvenida":"Hola","mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!"}}', 3)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro edita los mensajes del bot · ' || left(v, 60);
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L,
+    '{"horario":"11:00 a 14:40 / 19:00 a 23:15","envio_costo":4000}', 4)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente puede editar ajustes completos de su local';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"x"}}', 1)::text $q$, s_torc));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no edita los mensajes de Torcuato';
   perform prueba_como('duena.a@prueba.example');
@@ -174,7 +177,24 @@ begin
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no carga productos en Torcuato';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_disponible(%L, false)::text $q$, p_torc));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no toca Torcuato';
+  -- Botonera de stock: acción masiva, opción adicional y aislamiento estricto.
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_categoria(%L, %L, false)::text $q$, s_munro, cat));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente apaga una categoría propia';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_categoria(%L, %L, true)::text $q$, s_munro, cat));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente vuelve a encender sin perder productos';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_categoria(%L, %L, false)::text $q$, s_torc, cat));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no apaga categoría de otra sucursal';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_adicional(%L, 'ext', 'acei', false)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente apaga adicional de su local';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_adicionales(%L)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' and v like '%"disponible": false%' then 'OK' else 'FALLA' end || ' adicional aparece agotado en botonera';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_adicional(%L, 'ext', 'acei', true)::text $q$, s_munro));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente repone adicional sin cambiar precio';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_adicional(%L, 'ext', 'acei', false)::text $q$, s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no apaga adicionales de Torcuato';
   perform prueba_como('colaborador.a@prueba.example');
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_stock_categoria(%L, %L, false)::text $q$, s_munro, cat));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' colaborador no accede a la botonera';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_disponible(%L, false)::text $q$, p_emp));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' colaborador no marca agotado';
 
