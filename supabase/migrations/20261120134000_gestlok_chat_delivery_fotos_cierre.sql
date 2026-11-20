@@ -348,7 +348,7 @@ begin
       'cliente_telefono', p.cliente_telefono, 'conversacion_id', p.conversacion_id, 'entrega', p.entrega, 'direccion', p.direccion, 'horario', p.horario,
       'medio_pago', p.medio_pago, 'descuento', p.descuento, 'efectivo_abona', p.efectivo_abona,
       'efectivo_cambio', p.efectivo_cambio, 'nota', p.nota, 'items', p.items, 'subtotal', p.subtotal, 'envio', p.envio,
-      'total', p.total, 'programado_para', p.programado_para, 'es_prueba',p.es_prueba, 'creado_at', p.creado_at, 'decidido_at', p.decidido_at, 'confirmado_at', p.confirmado_at) order by
+      'total', p.total, 'programado_para', p.programado_para, 'es_prueba',to_jsonb(p)->'es_prueba', 'creado_at', p.creado_at, 'decidido_at', p.decidido_at, 'confirmado_at', p.confirmado_at) order by
         case when p.estado = 'pendiente' then p.creado_at end asc nulls last, p.creado_at desc)
     from (select * from gestlok_chat_private.pedidos x where x.sucursal_id = p_sucursal
             and (p_estado = 'todos' or x.estado = p_estado)
