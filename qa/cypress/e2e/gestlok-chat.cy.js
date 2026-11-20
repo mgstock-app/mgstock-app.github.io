@@ -32,6 +32,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja button[type=submit]').click();
     cy.get('#hoja .error-form').should('contain.text', 'dirección');
     cy.get('#hoja input[name=direccion]').type('Mitre 200');
+    cy.get('#hoja input[name=efectivo_abona]').should('be.visible').type('50000');
+    cy.get('#hoja .cambio-previsto').should('contain.text','Cambio a enviar');
     cy.get('#hoja button[type=submit]').click();
     cy.get('#aviso-pedido').should('be.visible').and('contain.text', 'Pendiente de confirmación').and('not.contain.text','DEMO-0001');
     cy.get('.burbuja.asistente').last().should('contain.text', 'pendiente de revisión y confirmación').and('not.contain.text','DEMO-0001');
@@ -213,5 +215,21 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', '4 Empanada de carne').and('contain.text', '1 Crema de ajo');
     cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(375)); // sin desborde horizontal
+  });
+});
+
+describe('GESTLOK Chat · transferencia y cierre del gerente', () => {
+  it('envía los datos al cliente por el botón y cierra manualmente el hilo', () => {
+    cy.viewport(390, 844);
+    cy.visit('/chat/panel/?demo=1');
+    cy.get('.tarjeta.pendiente').contains('button','Abrir chat del cliente').click();
+    cy.get('dialog').should('be.visible');
+    cy.contains('dialog button','Enviar datos para transferencia').click();
+    cy.get('dialog .hilo').should('contain.text','Alias: migustomunro')
+      .and('contain.text','Gisela Alejandra Oppenheimer');
+    cy.contains('dialog button','Cerrar conversación').click();
+    cy.get('#aviso').should('contain.text','Conversación finalizada');
+    cy.get('[data-p=charlas]').click();
+    cy.get('.charla').should('contain.text','Cerrada');
   });
 });

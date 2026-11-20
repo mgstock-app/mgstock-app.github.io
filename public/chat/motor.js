@@ -559,12 +559,16 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
       if (problema) { decir(problema, {botones: botonesCarrito(e.carrito)}); return fin(); }
     }
     const d = entrada.datos;
+    if (d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0) {
+      decir('Puede abonar por transferencia. Si prefiere efectivo, tiene un 10% de descuento en los productos. El gerente le enviará los datos para transferir por este chat y podrá adjuntar aquí el comprobante.');
+    }
     return fin({tipo: 'crear_pedido', pedido: {
       items: e.carrito.map(l => ({producto_id: l.producto_id, cantidad: l.cantidad, opciones: l.opciones, nota: l.nota})),
       nombre: String(d.nombre || '').slice(0, 80), telefono: String(d.telefono || '').slice(0, 25),
       entrega: d.entrega === 'envio' ? 'envio' : 'retiro', direccion: String(d.direccion || '').slice(0, 200),
       horario: e.programado && !s.atencion?.abierto ? '' : String(d.horario || '').slice(0, 60),
-      programar: Boolean(e.programado), medio_pago: String(d.medio_pago || ''), nota: String(d.nota || '').slice(0, 500),
+      programar: Boolean(e.programado), medio_pago: String(d.medio_pago || ''),
+      efectivo_abona: String(d.efectivo_abona || '').slice(0,16), nota: String(d.nota || '').slice(0, 500),
     }});
   }
 

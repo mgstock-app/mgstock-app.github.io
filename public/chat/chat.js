@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120menuupsell1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120delivery1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -31,7 +31,7 @@ const SLUG = DEMO ? 'demo' : slugDeUrl();
 
 const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [], pedido: null, enviando: false,
   ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
-  ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null};
+  ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null, cerrada: false};
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
 function token() {
@@ -73,7 +73,7 @@ function sumarBorrador(l) {
 // ---------------------------------------------------------------------------------------------- conexión
 async function api(accion, extra = {}) {
   if (DEMO) return demoApi(accion, extra);
-  const ctl = new AbortController(); const corte = setTimeout(() => ctl.abort(), 20000);
+  const ctl = new AbortController(); const corte = setTimeout(() => ctl.abort(), accion === "adjuntar" ? 45000 : 20000);
   try {
     const res = await fetch(CFG.funcion, {method: 'POST', signal: ctl.signal,
       headers: {'content-type': 'application/json', apikey: CFG.key || '', authorization: 'Bearer ' + (CFG.key || '')},
@@ -88,6 +88,24 @@ async function api(accion, extra = {}) {
 const lista = $('mensajes');
 function bajar() { requestAnimationFrame(() => { lista.scrollTop = lista.scrollHeight; }); }
 function burbuja(rol, texto) { lista.append(el('div', {class: 'burbuja ' + rol, text: texto})); bajar(); }
+function burbujaFoto(rol, url, texto = 'Foto enviada') {
+  const n=el('div',{class:'burbuja foto '+rol});
+  if (typeof url==='string' && /^https:\/\//.test(url)) n.append(el('a',{href:url,target:'_blank',rel:'noopener noreferrer'},
+    el('img',{src:url,alt:'Imagen compartida en la conversación',loading:'lazy'})));
+  n.append(el('span',{text:texto}));lista.append(n);bajar();
+}
+function mostrarCierre() {
+  if (S.cerrada) return;
+  S.cerrada=true;clearTimeout(S.sondeo);
+  $('redactar').hidden=true;$('barra-pedido').hidden=true;
+  const reiniciar=el('button',{type:'button',class:'boton principal',text:'Iniciar nueva conversación',onclick:()=>{
+    try {localStorage.removeItem('gestlok-chat:token:'+SLUG);localStorage.removeItem(CLAVE_BORRADOR);}catch{}
+    location.reload();
+  }});
+  lista.append(el('div',{class:'chat-cerrado'},
+    el('p',{text:'El gerente finalizó esta conversación. Puede iniciar una nueva consulta.'}),reiniciar));
+  bajar();
+}
 function quitarChips() { lista.querySelectorAll('.chips,.accion').forEach(n => n.remove()); }
 function chips(botones) {
   if (!botones?.length) return;
@@ -140,6 +158,7 @@ async function enviar(entrada, textoVisible) {
       }
       lista.querySelectorAll('.burbuja.error').forEach(n => n.remove());
       burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
+      if (r.status === 409 && /cerrad|finalizad/i.test(r.error||'')) {mostrarCierre();return false;}
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return false;
     }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
@@ -235,7 +254,7 @@ function mostrarPedido(p) {
 }
 function programarSondeo() {
   clearTimeout(S.sondeo);
-  if (!S.soportePendiente && !['pendiente', 'confirmado'].includes(S.pedido?.estado)) return;
+  if (S.cerrada) return;
   S.sondeo = setTimeout(async () => {
     // Mantener contacto con el gerente durante soporte, aun si el cliente cambia de pestaña.
     if (document.hidden && !S.soportePendiente) return programarSondeo();
@@ -249,6 +268,7 @@ function programarSondeo() {
           try { navigator.vibrate?.(100); } catch { /* opcional */ }
         }
         if (typeof r.soporte_pendiente === 'boolean') S.soportePendiente = r.soporte_pendiente;
+        if (r.cerrada) {mostrarCierre();return;}
         if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
         else programarSondeo();
       } else programarSondeo();
@@ -256,7 +276,7 @@ function programarSondeo() {
   }, 12000);
 }
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && (S.soportePendiente || ['pendiente', 'confirmado'].includes(S.pedido?.estado))) programarSondeo();
+  if (!document.hidden && !S.cerrada) programarSondeo();
 });
 
 // ---------------------------------------------------------------------------------------------- hojas
@@ -442,6 +462,9 @@ function abrirDatos() {
   };
   const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '200', autocomplete: 'street-address', placeholder: 'Calle, número, piso, entre calles'});
   const totalTxt = el('span');
+  const notaPago = el('p', {class:'nota pago-explicacion'});
+  const cambioTxt = el('p', {class:'nota cambio-previsto'});
+  let importeEstimado = 0;
   const refrescar = () => {
     dir.hidden = d.entrega !== 'envio';
     const disponibles = medios(d.entrega);
@@ -449,18 +472,47 @@ function abrirDatos() {
     if (!disponibles.includes(d.medio_pago)) d.medio_pago = disponibles[0] || 'efectivo';
     pago.value = d.medio_pago;
     const envio = d.entrega === 'envio' ? Number(s.envio_costo) || 0 : 0;
-    totalTxt.textContent = pesos(totalCarrito(S.catalogo, S.carrito) + envio);
+    const subtotal = totalCarrito(S.catalogo, S.carrito);
+    const porcentaje = d.entrega === 'envio' && d.medio_pago === 'efectivo'
+      ? Number(s.descuento_efectivo_pct) || 0 : 0;
+    const descuento = Math.round(subtotal * porcentaje) / 100;
+    importeEstimado = Math.round((subtotal + envio - descuento) * 100) / 100;
+    totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye 10% de descuento en productos' : '');
+    const efectivoDelivery = d.entrega === 'envio' && d.medio_pago === 'efectivo';
+    efectivo.hidden = !efectivoDelivery;
+    // Validación al enviar: primero dirección y luego importe. Sin bloqueo nativo anticipado.
+    cambioTxt.hidden = !efectivoDelivery;
+    if (efectivoDelivery) {
+      const abona = Number(d.efectivo_abona);
+      cambioTxt.textContent = Number.isFinite(abona) && abona >= importeEstimado && abona > 0
+        ? 'Cambio a enviar: ' + pesos(abona - importeEstimado)
+        : 'Indique con cuánto abonará para preparar el cambio. También puede elegir pago justo.';
+    }
+    notaPago.hidden = !(d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0);
+    notaPago.textContent = 'Si abona en efectivo tiene un ' + (Number(s.descuento_efectivo_pct) || 0) +
+      '% de descuento en los productos. Si prefiere transferencia, el gerente le enviará los datos por este chat. Puede adjuntar aquí el comprobante.';
   };
   const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío' + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : '')]].filter(Boolean);
   const pago = el('select', {name: 'medio_pago'});
-  pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; });
+  pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; refrescar(); });
+  const efectivo = campo('efectivo_abona', '¿Con cuánto va a abonar en efectivo?', {
+    type:'number',min:'1',max:'99999999',step:'0.01',inputmode:'decimal',placeholder:'Ej.: 20000'});
+  const efectivoInput = efectivo.querySelector('input');
+  efectivoInput.addEventListener('input', refrescar);
+  const pagoJusto = el('button',{type:'button',class:'boton chico',text:'Pago justo, sin cambio',onclick:()=>{
+    d.efectivo_abona=importeEstimado.toFixed(2); efectivoInput.value=d.efectivo_abona; refrescar();
+  }});
+  efectivo.append(pagoJusto);
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const form = el('form', {onsubmit: e => {
     e.preventDefault();
     const tel = String(d.telefono || '').replace(/\D/g, '');
     const problema = String(d.nombre || '').trim().length < 2 ? 'Ingrese su nombre.'
       : tel.length < 8 || tel.length > 15 ? 'Ingrese un teléfono válido (con código de área).'
-      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.' : '';
+      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.'
+      : d.entrega === 'envio' && d.medio_pago === 'efectivo' &&
+        (!Number.isFinite(Number(d.efectivo_abona)) || Number(d.efectivo_abona) < importeEstimado)
+        ? 'Indique un importe en efectivo igual o superior al total, o seleccione pago justo.' : '';
     if (problema) { error.textContent = problema; error.hidden = false; return; }
     cerrarHoja();
     enviar({datos: {...d}}, 'Enviar pedido');
@@ -474,6 +526,7 @@ function abrirDatos() {
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
   dir,
   el('label', {class: 'campo'}, el('span', {text: 'Medio de pago'}), pago),
+  notaPago, efectivo, cambioTxt,
   s.atencion?.habilitado && !s.atencion.abierto
     ? el('p',{class:'nota',text:'Pedido para la próxima apertura: '+s.atencion.proximo_texto+'. El gerente lo confirmará manualmente.'})
     : campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
@@ -517,6 +570,64 @@ $('btn-carrito').onclick = abrirCarrito;
 $('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Finalizar pedido');
 $('btn-info').onclick = abrirInfo;
 
+// La foto se redimensiona en el teléfono: reduce uso de datos y elimina metadatos EXIF.
+async function imagenComprimida(archivo) {
+  if (!archivo || !archivo.type.startsWith('image/')) throw Error('Elegí una imagen.');
+  if (archivo.size > 25000000) throw Error('La foto es demasiado grande.');
+  let bmp;
+  try { bmp=await createImageBitmap(archivo); }
+  catch {
+    bmp=await new Promise((ok,fail)=>{
+      const img=new Image();const url=URL.createObjectURL(archivo);
+      img.onload=()=>{URL.revokeObjectURL(url);ok(img);};
+      img.onerror=()=>{URL.revokeObjectURL(url);fail(Error('No se pudo abrir la imagen.'));};
+      img.src=url;
+    });
+  }
+  const lienzo=document.createElement('canvas');
+  const escala=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+  lienzo.width=Math.max(1,Math.round(bmp.width*escala));
+  lienzo.height=Math.max(1,Math.round(bmp.height*escala));
+  lienzo.getContext('2d').drawImage(bmp,0,0,lienzo.width,lienzo.height);
+  bmp.close?.();
+  let foto=await new Promise(ok=>lienzo.toBlob(ok,'image/jpeg',0.82));
+  if (!foto || foto.size>2000000) {
+    const escala2=Math.min(1,1100/Math.max(lienzo.width,lienzo.height));
+    const reducido=document.createElement('canvas');
+    reducido.width=Math.max(1,Math.round(lienzo.width*escala2));
+    reducido.height=Math.max(1,Math.round(lienzo.height*escala2));
+    reducido.getContext('2d').drawImage(lienzo,0,0,reducido.width,reducido.height);
+    foto=await new Promise(ok=>reducido.toBlob(ok,'image/jpeg',0.65));
+  }
+  if (!foto || foto.size>2000000) throw Error('La imagen sigue siendo demasiado grande. Probá con otra foto.');
+  const data=await new Promise((ok,fail)=>{
+    const reader=new FileReader();reader.onload=()=>ok(String(reader.result));reader.onerror=()=>fail(Error('No se pudo leer la foto.'));
+    reader.readAsDataURL(foto);
+  });
+  return {mime:'image/jpeg',imagen:data.split(',')[1]};
+}
+async function enviarFoto(archivo) {
+  if (S.enviando || S.cerrada) return;
+  S.enviando=true;$('btn-galeria').disabled=true;$('btn-camara').disabled=true;
+  try {
+    const imagen=await imagenComprimida(archivo);
+    const r=await api('adjuntar',imagen);
+    if (!r.ok) throw Error(r.error||'No se pudo enviar la foto.');
+    burbujaFoto('cliente',r.imagen_url,'Foto enviada al gerente');
+    S.soportePendiente=true;programarSondeo();
+  } catch(e) {burbuja('error',e.message||'No pudimos enviar la foto.');}
+  finally {S.enviando=false;$('btn-galeria').disabled=false;$('btn-camara').disabled=false;}
+}
+$('btn-galeria').onclick=()=>$('foto-galeria').click();
+$('btn-camara').onclick=()=>$('foto-camara').click();
+for (const input of [$('foto-galeria'),$('foto-camara')]) {
+  input.addEventListener('change',()=>{
+    const archivo=input.files?.[0];input.value='';
+    if (archivo) enviarFoto(archivo);
+  });
+}
+
+
 // ---------------------------------------------------------------------------------------------- inicio
 function pantallaFija(titulo, detalle) {
   $('app').setAttribute('aria-busy', 'false');
@@ -549,17 +660,21 @@ async function iniciar() {
   $('subtitulo').textContent = r.sucursal.horario || 'Pedidos por chat';
   $('avatar').textContent = (r.sucursal.empresa || r.sucursal.nombre || 'G').trim().charAt(0).toUpperCase();
   $('btn-info').hidden = false;
+  const urlsFotos = new Map((r.fotos || []).map(f=>[Number(f.mensaje_id),f.url]));
   for (const [indice, m] of (r.mensajes || []).entries()) {
+    if (m.rol === 'cliente' && urlsFotos.has(Number(m.id))) {
+      burbujaFoto('cliente',urlsFotos.get(Number(m.id)),'Foto enviada al gerente');continue;
+    }
     const antiguo = indice === 0 && m.rol === 'asistente' && /Podés escribirme tu pedido, por ejemplo/.test(m.texto);
     burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente',
       antiguo && r.sucursal.bienvenida ? r.sucursal.bienvenida : m.texto);
   }
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
-  if (!(r.nuevos || []).length) chips(BOTONES_BASE());
+  if (!(r.nuevos || []).length && !r.cerrada) chips(BOTONES_BASE());
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
-  if (S.soportePendiente) programarSondeo();
   texto.disabled = false; $('btn-carta').disabled = false;
+  if (r.cerrada) mostrarCierre(); else programarSondeo();
   $('app').setAttribute('aria-busy', 'false');
 }
 
@@ -567,7 +682,7 @@ async function iniciar() {
 const DEMO_DATOS = {
   sucursal: {slug: 'demo', nombre: 'Sucursal Centro', empresa: 'Tu Comercio', bienvenida: '', horario: 'Todos los días de 11 a 23',
     direccion: 'Av. Siempre Viva 742', acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'hasta 20 cuadras',
-    pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia', 'mercado_pago']},
+    pedido_minimo: 3000, descuento_efectivo_pct:10, medios_pago: ['efectivo', 'transferencia', 'mercado_pago']},
   catalogo: {categorias: [{id: 'c1', nombre: 'Empanadas'}, {id: 'c2', nombre: 'Pizzas'}, {id: 'c3', nombre: 'Postres'}],
     productos: [
       {id: 'd1', categoria_id: 'c1', nombre: 'Empanada de carne', descripcion: 'Cortada a cuchillo', precio: 1200, activo: true, disponible: true, opciones: []},
@@ -593,15 +708,22 @@ async function demoApi(accion, extra) {
     demoEstado = r.estado;
     return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
   }
-  if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : []};
+  if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : [],cerrada:false};
+  if (accion === 'adjuntar') return {ok:true,imagen_url:null,texto:'Foto enviada al gerente'};
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
   const mensajes = [...r.mensajes]; let pedido = null;
   if (r.accion?.tipo === 'crear_pedido') {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
+    const efectivo = r.accion.pedido.entrega === 'envio' && r.accion.pedido.medio_pago === 'efectivo';
+    const descuento = efectivo ? Math.round(sub * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
+    const total = sub + envio - descuento;
+    const abona = efectivo ? Number(r.accion.pedido.efectivo_abona || total) : null;
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
-    demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
+    demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente',
+      total, subtotal:sub, envio, descuento, efectivo_abona:abona,
+      efectivo_cambio:efectivo ? abona-total : null, medio_pago: r.accion.pedido.medio_pago, motivo: '',
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
     r.estado.carrito = []; r.estado.sugerido = false;
     mensajes.push({texto: pedido.aviso});

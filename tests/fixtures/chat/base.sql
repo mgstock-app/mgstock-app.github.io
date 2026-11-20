@@ -10,6 +10,23 @@ begin
 end $$;
 create extension if not exists pgcrypto;
 
+-- Emulación mínima del catálogo de Supabase Storage para las pruebas SQL.
+-- Solo el service_role de la Edge Function escribe; el panel usa SELECT sujeto a RLS.
+CREATE SCHEMA IF NOT EXISTS storage;
+CREATE TABLE storage.buckets (
+  id text PRIMARY KEY, name text NOT NULL, public boolean NOT NULL DEFAULT false,
+  file_size_limit bigint, allowed_mime_types text[]
+);
+CREATE TABLE storage.objects (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  bucket_id text NOT NULL REFERENCES storage.buckets(id), name text NOT NULL,
+  UNIQUE(bucket_id,name)
+);
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+GRANT USAGE ON SCHEMA storage TO authenticated,service_role;
+GRANT SELECT ON storage.objects TO authenticated;
+
+
 create schema auth;
 create table auth.users (id uuid primary key, email text not null, email_confirmed_at timestamptz, created_at timestamptz not null default now());
 create function auth.jwt() returns jsonb language sql stable as $$

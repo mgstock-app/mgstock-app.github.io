@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261120turnos1';
+  const VERSION_CSS = '20261120delivery1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261120delivery1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -193,6 +193,10 @@
         el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
         caja);
     }
+    if (p.conversacion_id && puede('gestionar')) {
+      acciones.prepend(el('button',{type:'button',class:'boton',text:'Abrir chat del cliente',
+        onclick:()=>abrirCharla({id:p.conversacion_id,creada_at:p.creado_at})}));
+    }
     return el('article', {class: 'tarjeta ' + p.estado},
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
@@ -206,7 +210,10 @@
         el('span', {text: i.cantidad + ' × ' + i.nombre + ((i.opciones || []).length ? ' (' + i.opciones.map(o => o.valores.join(', ')).join(' · ') + ')' : '') + (i.nota ? ' — ' + i.nota : '')}),
         el('span', {text: pesos(i.importe)})))),
       p.nota ? el('p', {class: 'nota-cliente', text: 'Aclaración: ' + p.nota}) : null,
+      Number(p.descuento)>0 ? el('p',{class:'nota-cliente',text:'Descuento efectivo 10%: −'+pesos(p.descuento)}) : null,
       el('p', {class: 'totales', text: (Number(p.envio) > 0 ? 'Envío ' + pesos(p.envio) + ' · ' : '') + 'Total ' + pesos(p.total)}),
+      p.entrega==='envio' && p.medio_pago==='efectivo' && Number(p.efectivo_abona)>0
+        ? el('p',{class:'nota-cliente',text:'Abonará con '+pesos(p.efectivo_abona)+' · Cambio a enviar: '+pesos(p.efectivo_cambio)}) : null,
       p.motivo && p.estado !== 'pendiente' ? el('p', {class: 'nota', text: 'Motivo: ' + p.motivo}) : null,
       acciones);
   }
@@ -461,7 +468,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261120menuupsell1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261120delivery1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
@@ -666,25 +673,70 @@
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     let r;
     try { r = await rpc('panel_conversaciones', {p_sucursal: S.suc.id, p_limite: 40}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    contenido.replaceChildren(el('p', {class: 'nota', text: 'Solo lectura. Se borran solas a los 60 días; los pedidos quedan.'}),
+    contenido.replaceChildren(el('p', {class: 'nota', text: 'Mensajes y comprobantes por sucursal. El gerente puede responder y cerrar manualmente la conversación.'}),
       r.length ? el('div', {class: 'tarjetas'}, r.map(c => el('button', {type: 'button', class: 'charla', onclick: () => abrirCharla(c)},
-        el('span', {class: 'charla-cab'}, el('strong', {text: hora(c.ultima_at)}), c.pedido ? el('span', {class: 'estado', text: c.pedido}) : null),
+        el('span', {class: 'charla-cab'}, el('strong', {text: hora(c.ultima_at)}),
+          c.cerrada_at ? el('span',{class:'estado',text:'Cerrada'}) : null,
+          c.pedido ? el('span', {class: 'estado', text: c.pedido}) : null),
         el('span', {class: 'charla-ult', text: c.ultimo || ''})))) : el('p', {class: 'nota', text: 'Todavía no hay conversaciones.'}));
   }
   async function abrirCharla(c, reclamoId = null) {
-    let m;
-    try { m = await rpc('panel_conversacion', {p_conversacion: c.id}); } catch (e) { return aviso(e.message, true); }
-    const respuesta = el('textarea',{rows:3,maxlength:1000,placeholder:'Escribí tu respuesta al cliente',
+    let mensajes, estado;
+    try {
+      [mensajes,estado]=await Promise.all([
+        rpc('panel_conversacion',{p_conversacion:c.id}),
+        rpc('panel_estado_conversacion',{p_conversacion:c.id})]);
+    } catch(e) {return aviso(e.message,true);}
+    const hilo=el('div',{class:'hilo'});
+    const pintarMensajes=async (lista) => {
+      const nodos=await Promise.all(lista.map(async m=>{
+        const item=el('p',{class:'msj '+m.rol,text:m.texto});
+        if (m.adjunto?.path && !DEMO) {
+          const {data,error}=await sb.storage.from('gestlok-chat-adjuntos').createSignedUrl(m.adjunto.path,300);
+          if (!error && data?.signedUrl) item.append(el('a',{href:data.signedUrl,target:'_blank',rel:'noopener noreferrer'},
+            el('img',{src:data.signedUrl,alt:'Foto o comprobante del cliente',loading:'lazy'})));
+        }
+        return item;
+      }));
+      hilo.replaceChildren(...nodos);
+      hilo.scrollTop=hilo.scrollHeight;
+    };
+    await pintarMensajes(mensajes);
+    const respuesta=el('textarea',{rows:3,maxlength:1000,placeholder:'Escribí tu respuesta al cliente',
       'aria-label':'Respuesta al cliente',class:'soporte-texto'});
-    dialogo('Conversación · ' + hora(c.creada_at), [
-      el('div', {class: 'hilo'}, m.map(x => el('p', {class: 'msj ' + x.rol, text: x.texto}))),
-      puede('gestionar') ? campo('Responder por este chat',respuesta) : null
-    ].filter(Boolean), puede('gestionar') ? async ()=>{
-      if (respuesta.value.trim().length < 2) throw new Error('Escribí una respuesta para el cliente.');
+    const deshabilitado=Boolean(estado.cerrada);
+    const botonTransferencia=el('button',{type:'button',class:'boton',text:'Enviar datos para transferencia',
+      disabled:deshabilitado || !estado.puede_enviar_transferencia,onclick:async()=>{
+        botonTransferencia.disabled=true;
+        try {
+          await rpc('panel_enviar_transferencia',{p_conversacion:c.id});
+          await pintarMensajes(await rpc('panel_conversacion',{p_conversacion:c.id}));
+          aviso('Datos de transferencia enviados por este chat');
+        } catch(e){aviso(e.message,true);}
+        finally{botonTransferencia.disabled=deshabilitado || !estado.puede_enviar_transferencia;}
+      }});
+    let modal;
+    const botonCerrar=el('button',{type:'button',class:'boton',text:'Cerrar conversación',disabled:deshabilitado,
+      onclick:async()=>{
+        if (!confirm('¿Cerrar esta conversación? El cliente podrá iniciar una nueva.')) return;
+        botonCerrar.disabled=true;
+        try {
+          await rpc('panel_cerrar_conversacion',{p_conversacion:c.id});
+          modal.close();
+          aviso('Conversación finalizada');
+          if (S.pestana==='soporte') verSoporte(); else if(S.pestana==='charlas') verCharlas();
+        } catch(e){botonCerrar.disabled=false;aviso(e.message,true);}
+      }});
+    modal=dialogo('Conversación · '+hora(c.creada_at),[
+      deshabilitado ? el('p',{class:'nota',text:'Conversación finalizada por el gerente.'}) : null,
+      hilo,
+      puede('gestionar') && !deshabilitado ? campo('Responder por este chat',respuesta) : null,
+      puede('gestionar') ? el('div',{class:'acciones'},botonTransferencia,botonCerrar) : null
+    ].filter(Boolean),puede('gestionar') && !deshabilitado ? async()=>{
+      if (respuesta.value.trim().length<2) throw Error('Escribí una respuesta para el cliente.');
       await rpc('panel_responder',{p_conversacion:c.id,p_texto:respuesta.value.trim(),p_reclamo:reclamoId});
       aviso('Respuesta enviada al cliente por GESTLOK Chat');
-      if (S.pestana === 'soporte') await verSoporte();
-      else if(S.pestana === 'charlas') await verCharlas();
+      if(S.pestana==='soporte') await verSoporte(); else if(S.pestana==='charlas') await verCharlas();
     }:null,'Enviar mensaje');
   }
 
@@ -706,6 +758,7 @@
     d.append(form); marco.append(d);
     d.addEventListener('close', () => d.remove());
     d.showModal();
+    return d;
   }
   const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
     if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
@@ -725,7 +778,7 @@
       {id: 'p2', categoria_id: 'c1', nombre: 'Empanada de humita', descripcion: '', precio: 1200, activo: true, disponible: false, orden: 0, opciones: []},
       {id: 'p3', categoria_id: 'c2', nombre: 'Pizza muzzarella', descripcion: '', precio: 7500, activo: true, disponible: true, orden: 0, opciones: [
         {id: 'tam_0', nombre: 'Tamaño', tipo: 'una', obligatorio: true, valores: [{id: 'chica', nombre: 'Chica', extra: 0}, {id: 'grande', nombre: 'Grande', extra: 3000}]}]}],
-    pedidos: [{id: 'x1', codigo: 'MM-0007', estado: 'pendiente', motivo: '', cliente_nombre: 'Ana Pérez', cliente_telefono: '1155551234', entrega: 'envio',
+    pedidos: [{id: 'x1', conversacion_id: 'v1', codigo: 'MM-0007', estado: 'pendiente', motivo: '', cliente_nombre: 'Ana Pérez', cliente_telefono: '1155551234', entrega: 'envio',
       direccion: 'Av. Mitre 2200, 3° B', horario: '21:30', medio_pago: 'transferencia', nota: 'Tocar timbre B', subtotal: 13900, envio: 800, total: 14700,
       creado_at: new Date().toISOString(), items: [{cantidad: 6, nombre: 'Empanada de carne', opciones: [], nota: '', importe: 7200},
         {cantidad: 1, nombre: 'Pizza muzzarella', opciones: [{grupo: 'Tamaño', valores: ['Chica']}], nota: 'bien cocida', importe: 7500}]},
@@ -755,7 +808,16 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
-      case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente'}];
+      case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente',cerrada_at:D.cerrada?new Date().toISOString():null}];
+      case 'panel_estado_conversacion': return {cerrada:!!D.cerrada,puede_enviar_transferencia:true};
+      case 'panel_enviar_transferencia':
+        if(D.cerrada)throw Error('La conversación ya está cerrada');
+        D.respuestas.push('Le envio los datos para transferir!\nAlias: migustomunro\nTitular: Gisela Alejandra Oppenheimer\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
+        return {ok:true};
+      case 'panel_cerrar_conversacion':
+        D.cerrada=true;D.respuestas.push('La conversación fue finalizada por el local. Puede iniciar una nueva consulta cuando lo necesite.');
+        D.reclamos.forEach(r=>{r.estado='respondido';});
+        return {ok:true,cerrada:true};
       case 'panel_conversacion': return [
         {rol:'asistente',texto:'¡Hola! ¿Qué te gustaría pedir hoy?'},
         {rol:'cliente',texto:'Mi pedido está tardando mucho'},
