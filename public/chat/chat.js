@@ -621,7 +621,7 @@ function abrirDatos() {
     : campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
   campo('nota', 'Aclaraciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2'}),
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
-  el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Le informaremos por este chat. Sus datos se usan únicamente para el pedido.'}),
+  el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Sus datos de contacto y entrega se conservarán en esta sucursal para facilitar futuros pedidos desde este navegador. Puede corregirlos cuando quiera. No necesita crear una cuenta.'}),
   error,
   el('button', {type: 'submit', class: 'boton principal ancho', text: 'Enviar pedido'}));
   refrescar();
