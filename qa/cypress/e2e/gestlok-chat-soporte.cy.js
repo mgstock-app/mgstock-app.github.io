@@ -37,7 +37,7 @@ describe('GESTLOK Chat · soporte y seguimiento humano',()=>{
     cy.contains('.burbuja.asistente','Te responderá por este mismo chat').should('be.visible');
     // Acepta un mensaje del gerente sin cambiar el estado ni confirmar pedidos.
     cy.window().then(w=>w.document.dispatchEvent(new Event('visibilitychange')));
-    cy.contains('.burbuja.local','Ya revisamos tu pedido',{timeout:22000}).should('be.visible');
+    cy.contains('.burbuja.local',/ya revisamos tu pedido/i,{timeout:22000}).should('be.visible');
     cy.get('#aviso-pedido').should('not.be.visible');
   });
   it('la Central interna recibe un reclamo y el gerente lo contesta',()=>{
