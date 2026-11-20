@@ -17,7 +17,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja button[type=submit]').should('contain.text', '10.500').click();
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
-    cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella (Grande)');
+    cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella')
+      .and('contain.text','Tamaño · Grande').and('contain.text','10.500');
     cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
     cy.get('.burbuja.asistente').last().should('contain.text', 'Pizza muzzarella (Grande)');
     cy.get('#btn-finalizar').click();
