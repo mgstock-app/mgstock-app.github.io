@@ -49,7 +49,7 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
 }
 
 export const PAGOS = {
-  efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito',
+  efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Tarjeta de débito', credito: 'Tarjeta de crédito',
 };
 
 export function normalizar(t) {
@@ -230,8 +230,14 @@ export function textoEnvio(s) {
   if (Number(s.pedido_minimo) > 0) partes.push('Pedido mínimo: ' + pesos(s.pedido_minimo) + '.');
   return partes.join('\n');
 }
+export function pagosDe(s, entrega) {
+  const personalizados = entrega === 'envio' ? s.medios_pago_envio : s.medios_pago_retiro;
+  return Array.isArray(personalizados) && personalizados.length ? personalizados : (s.medios_pago || ['efectivo']);
+}
 export function textoPago(s) {
-  return 'Aceptamos: ' + (s.medios_pago || ['efectivo']).map(m => PAGOS[m] || m).join(', ') + '.';
+  const retiro = s.acepta_retiro ? 'Retiro en el local: ' + pagosDe(s, 'retiro').map(m => PAGOS[m] || m).join(', ') + '.' : '';
+  const envio = s.acepta_envio ? 'Delivery: ' + pagosDe(s, 'envio').map(m => PAGOS[m] || m).join(', ') + '.' : '';
+  return [retiro, envio].filter(Boolean).join('\n') || 'Consultá los medios de pago con el local.';
 }
 // Ejemplo de pedido armado con la carta de ESTE local (sirve para cualquier comercio).
 export function ejemploPedido(catalogo) {
@@ -284,8 +290,9 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
   entrada = entrada || {};
 
   if (entrada.inicio) {
-    decir((s.bienvenida || ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' + (s.nombre || '') + '.').trim()) +
-      '\nPodés escribirme tu pedido, por ejemplo ' + ejemploPedido(catalogo) + ', o mirar la carta.',
+    decir(s.bienvenida?.trim() ||
+      ('¡Hola! Soy ' + (s.asistente ? s.asistente + ', ' : 'el ') + 'asistente de ' + (s.empresa || 'el local') + ' ' +
+       (s.nombre || '') + '. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.').trim(),
       {botones: BOTONES_INICIO});
     return fin();
   }

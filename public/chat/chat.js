@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js';
+import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120pagos1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -88,7 +88,7 @@ function mostrarEscribiendo(si) {
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
   ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}]
-  : [{id: 'carta', texto: 'Ver la carta'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'}];
+  : [{id: 'carta', texto: 'Ver menú'}, {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'}];
 
 async function enviar(entrada, textoVisible) {
   if (S.enviando) return;
@@ -99,7 +99,17 @@ async function enviar(entrada, textoVisible) {
   try {
     const r = await api('mensaje', {entrada});
     mostrarEscribiendo(false);
-    if (!r.ok) { burbuja('error', r.error || 'No pudimos enviar tu mensaje.'); chips([{id: '__reintentar', texto: 'Reintentar'}]); return; }
+    if (!r.ok) {
+      if (r.motivo === 'pausado') {
+        $('titulo').textContent = [r.sucursal?.empresa, r.sucursal?.nombre].filter(Boolean).join(' · ') ||
+          $('titulo').textContent;
+        pantallaFija('Chat en pausa', r.sucursal?.mensaje || 'El local pausó temporalmente la atención por chat.');
+        return;
+      }
+      lista.querySelectorAll('.burbuja.error').forEach(n => n.remove());
+      burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
+      chips([{id: '__reintentar', texto: 'Reintentar'}]); return;
+    }
     actualizarCarrito(r.carrito);
     for (const m of r.mensajes || []) mensajeAsistente(m);
     if (r.pedido) mostrarPedido(r.pedido);
@@ -110,7 +120,10 @@ async function enviar(entrada, textoVisible) {
   } finally { S.enviando = false; bloquear(false); }
 }
 function tocarBoton(b) {
-  if (b.id === '__reintentar' && S.ultimaEntrada) { quitarChips(); return enviar(S.ultimaEntrada.entrada, null); }
+  if (b.id === '__reintentar' && S.ultimaEntrada) {
+    quitarChips(); lista.querySelectorAll('.burbuja.error').forEach(n => n.remove());
+    return enviar(S.ultimaEntrada.entrada, null);
+  }
   if (b.id === 'carta') return abrirCarta();
   enviar({boton: b.id}, b.texto);
 }
@@ -256,7 +269,11 @@ function abrirCarrito() {
 function abrirDatos() {
   const s = S.sucursal; const d = S.datos;
   if (!d.entrega) d.entrega = s.acepta_retiro ? 'retiro' : 'envio';
-  if (!d.medio_pago) d.medio_pago = s.medios_pago?.[0] || 'efectivo';
+  const medios = entrega => {
+    const lista = entrega === 'envio' ? s.medios_pago_envio : s.medios_pago_retiro;
+    return Array.isArray(lista) && lista.length ? lista : (s.medios_pago || ['efectivo']);
+  };
+  if (!d.medio_pago) d.medio_pago = medios(d.entrega)[0] || 'efectivo';
   const campo = (nombre, etiqueta, attrs) => {
     const i = el(attrs.tag || 'input', {name: nombre, ...attrs, tag: undefined});
     i.value = d[nombre] || ''; i.addEventListener('input', () => { d[nombre] = i.value; });
@@ -266,11 +283,15 @@ function abrirDatos() {
   const totalTxt = el('span');
   const refrescar = () => {
     dir.hidden = d.entrega !== 'envio';
+    const disponibles = medios(d.entrega);
+    pago.replaceChildren(...disponibles.map(m => el('option', {value: m, text: PAGOS[m] || m})));
+    if (!disponibles.includes(d.medio_pago)) d.medio_pago = disponibles[0] || 'efectivo';
+    pago.value = d.medio_pago;
     const envio = d.entrega === 'envio' ? Number(s.envio_costo) || 0 : 0;
     totalTxt.textContent = pesos(totalCarrito(S.catalogo, S.carrito) + envio);
   };
   const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío' + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : '')]].filter(Boolean);
-  const pago = el('select', {name: 'medio_pago'}, (s.medios_pago || ['efectivo']).map(m => el('option', {value: m, text: PAGOS[m] || m})));
+  const pago = el('select', {name: 'medio_pago'});
   pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; });
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const form = el('form', {onsubmit: e => {
@@ -306,7 +327,8 @@ function abrirInfo() {
   const s = S.sucursal;
   const filas = [['Horario', s.horario || 'Sin cargar'], ['Dirección', s.direccion || 'Sin cargar'],
     ['Entrega', [s.acepta_retiro && 'Retiro en el local', s.acepta_envio && ('Envío' + (s.envio_zona ? ' a ' + s.envio_zona : '') + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : ''))].filter(Boolean).join(' · ')],
-    ['Pago', (s.medios_pago || []).map(m => PAGOS[m] || m).join(', ')],
+    s.acepta_retiro ? ['Pago · retiro en local', (s.medios_pago_retiro || s.medios_pago || []).map(m => PAGOS[m] || m).join(', ')] : null,
+    s.acepta_envio ? ['Pago · delivery', (s.medios_pago_envio || s.medios_pago || []).map(m => PAGOS[m] || m).join(', ')] : null,
     Number(s.pedido_minimo) > 0 ? ['Pedido mínimo', pesos(s.pedido_minimo)] : null].filter(Boolean);
   abrirHoja(s.empresa + ' · ' + s.nombre, el('div', {}, filas.map(([k, v]) => el('div', {class: 'linea'}, el('div', {}, el('small', {text: k}), v)))));
 }
@@ -336,6 +358,8 @@ $('btn-info').onclick = abrirInfo;
 function pantallaFija(titulo, detalle) {
   $('app').setAttribute('aria-busy', 'false');
   $('redactar').hidden = true;
+  $('barra-pedido').hidden = true;
+  $('btn-carta').disabled = true;
   lista.replaceChildren(el('div', {class: 'pausado'}, el('h2', {text: titulo}), el('p', {text: detalle})));
 }
 async function iniciar() {
@@ -359,7 +383,11 @@ async function iniciar() {
   $('subtitulo').textContent = r.sucursal.horario || 'Pedidos por chat';
   $('avatar').textContent = (r.sucursal.empresa || r.sucursal.nombre || 'G').trim().charAt(0).toUpperCase();
   $('btn-info').hidden = false;
-  for (const m of r.mensajes || []) burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente', m.texto);
+  for (const [indice, m] of (r.mensajes || []).entries()) {
+    const antiguo = indice === 0 && m.rol === 'asistente' && /Podés escribirme tu pedido, por ejemplo/.test(m.texto);
+    burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente',
+      antiguo && r.sucursal.bienvenida ? r.sucursal.bienvenida : m.texto);
+  }
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
   if (!(r.nuevos || []).length) chips(BOTONES_BASE());
