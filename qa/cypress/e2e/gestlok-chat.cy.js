@@ -215,3 +215,19 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(375)); // sin desborde horizontal
   });
 });
+
+describe('GESTLOK Chat · transferencia y cierre del gerente', () => {
+  it('envía los datos al cliente por el botón y cierra manualmente el hilo', () => {
+    cy.viewport(390, 844);
+    cy.visit('/chat/panel/?demo=1');
+    cy.get('.tarjeta.pendiente').contains('button','Abrir chat del cliente').click();
+    cy.get('dialog').should('be.visible');
+    cy.contains('dialog button','Enviar datos para transferencia').click();
+    cy.get('dialog .hilo').should('contain.text','Alias: migustomunro')
+      .and('contain.text','Gisela Alejandra Oppenheimer');
+    cy.contains('dialog button','Cerrar conversación').click();
+    cy.get('#aviso').should('contain.text','Conversación finalizada');
+    cy.get('[data-p=charlas]').click();
+    cy.get('.charla').should('contain.text','Cerrada');
+  });
+});
