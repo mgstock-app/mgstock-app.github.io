@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120delivery1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120clientes1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -34,8 +34,7 @@ const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [
   ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null, cerrada: false};
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
-function token() {
-  const clave = 'gestlok-chat:token:' + SLUG;
+function token(clave = 'gestlok-chat:token:' + SLUG) {
   try { const t = localStorage.getItem(clave); if (t && /^[A-Za-z0-9_-]{32,64}$/.test(t)) return t; } catch { /* sin almacenamiento */ }
   const b = crypto.getRandomValues(new Uint8Array(32));
   const t = btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -43,6 +42,37 @@ function token() {
   return t;
 }
 const TOKEN = token();
+// Esta clave sobrevive al cierre de una conversación: los clientes vuelven sin registrarse.
+const CLIENTE_TOKEN = token('gestlok-chat:cliente:' + SLUG);
+const CLAVE_DATOS = 'gestlok-chat:datos:' + SLUG;
+const CLAVE_TEXTO = 'gestlok-chat:texto:' + SLUG;
+const DURACION_BORRADOR = 24 * 60 * 60 * 1000; // solo datos todavía sin enviar
+function recuperarLocal(clave) {
+  try {
+    const x = JSON.parse(localStorage.getItem(clave) || 'null');
+    if (x && typeof x === 'object' && Number(x.at) > Date.now()-DURACION_BORRADOR) return x.valor;
+    localStorage.removeItem(clave);
+  } catch { /* navegación privada o datos inválidos */ }
+  return null;
+}
+function guardarLocal(clave,valor) {
+  try { localStorage.setItem(clave,JSON.stringify({at:Date.now(),valor})); }
+  catch { /* también funciona sin almacenamiento, mientras la página siga abierta */ }
+}
+function guardarDatos() {
+  if (!S.cerrada) guardarLocal(CLAVE_DATOS,S.datos);
+}
+function restaurarDatos() {
+  const d = recuperarLocal(CLAVE_DATOS);
+  if (d && typeof d==='object' && !Array.isArray(d)) {
+    for (const campo of ['nombre','telefono','direccion','entrega','medio_pago','efectivo_abona','horario','nota'])
+      if (typeof d[campo]==='string') S.datos[campo]=d[campo].slice(0,500);
+  }
+}
+function borrarBorradoresLocales() {
+  try { localStorage.removeItem(CLAVE_DATOS);localStorage.removeItem(CLAVE_TEXTO); }
+  catch { /* sin almacenamiento */ }
+}
 const CLAVE_BORRADOR = 'gestlok-chat:menu:' + SLUG;
 function guardarBorrador() {
   try {
@@ -77,7 +107,7 @@ async function api(accion, extra = {}) {
   try {
     const res = await fetch(CFG.funcion, {method: 'POST', signal: ctl.signal,
       headers: {'content-type': 'application/json', apikey: CFG.key || '', authorization: 'Bearer ' + (CFG.key || '')},
-      body: JSON.stringify({slug: SLUG, token: TOKEN, accion, ...extra})});
+      body: JSON.stringify({slug: SLUG, token: TOKEN, cliente_token:CLIENTE_TOKEN, accion, ...extra})});
     let body = null; try { body = await res.json(); } catch { /* respuesta vacía */ }
     if (!body) throw new Error('red');
     return {status: res.status, ...body};
@@ -100,6 +130,7 @@ function mostrarCierre() {
   $('redactar').hidden=true;$('barra-pedido').hidden=true;
   const reiniciar=el('button',{type:'button',class:'boton principal',text:'Iniciar nueva conversación',onclick:()=>{
     try {localStorage.removeItem('gestlok-chat:token:'+SLUG);localStorage.removeItem(CLAVE_BORRADOR);}catch{}
+    borrarBorradoresLocales();
     location.reload();
   }});
   lista.append(el('div',{class:'chat-cerrado'},
@@ -172,7 +203,13 @@ async function enviar(entrada, textoVisible) {
       programarSondeo();
     }
     for (const m of r.mensajes || []) mensajeAsistente(m);
-    if (r.pedido) mostrarPedido(r.pedido);
+    if (r.pedido) {
+      mostrarPedido(r.pedido);
+      // Los datos ya están guardados de forma privada en el servidor. No dejar
+      // un formulario con domicilio/teléfono terminado en un dispositivo compartido.
+      S.datos={entrega:'',medio_pago:''};
+      try {localStorage.removeItem(CLAVE_DATOS);} catch {}
+    }
     return loteAceptado;
   } catch {
     mostrarEscribiendo(false);
@@ -457,7 +494,7 @@ function abrirDatos() {
   if (!d.medio_pago) d.medio_pago = medios(d.entrega)[0] || 'efectivo';
   const campo = (nombre, etiqueta, attrs) => {
     const i = el(attrs.tag || 'input', {name: nombre, ...attrs, tag: undefined});
-    i.value = d[nombre] || ''; i.addEventListener('input', () => { d[nombre] = i.value; });
+    i.value = d[nombre] || ''; i.addEventListener('input', () => { d[nombre] = i.value; guardarDatos(); });
     return el('label', {class: 'campo'}, el('span', {text: etiqueta}), i);
   };
   const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '200', autocomplete: 'street-address', placeholder: 'Calle, número, piso, entre calles'});
@@ -494,15 +531,80 @@ function abrirDatos() {
   };
   const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío' + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : '')]].filter(Boolean);
   const pago = el('select', {name: 'medio_pago'});
-  pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; refrescar(); });
+  pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; guardarDatos();refrescar(); });
   const efectivo = campo('efectivo_abona', '¿Con cuánto va a abonar en efectivo?', {
     type:'number',min:'1',max:'99999999',step:'0.01',inputmode:'decimal',placeholder:'Ej.: 20000'});
   const efectivoInput = efectivo.querySelector('input');
   efectivoInput.addEventListener('input', refrescar);
   const pagoJusto = el('button',{type:'button',class:'boton chico',text:'Pago justo, sin cambio',onclick:()=>{
-    d.efectivo_abona=importeEstimado.toFixed(2); efectivoInput.value=d.efectivo_abona; refrescar();
+    d.efectivo_abona=importeEstimado.toFixed(2); efectivoInput.value=d.efectivo_abona; guardarDatos();refrescar();
   }});
   efectivo.append(pagoJusto);
+  const campoNombre=campo('nombre','Nombre',{type:'text',maxlength:'80',autocomplete:'name',required:true});
+  const campoTelefono=campo('telefono','Teléfono de contacto',{
+    type:'tel',maxlength:'25',autocomplete:'tel',inputmode:'tel',placeholder:'Ej.: 11 5555 1234',required:true});
+  const inputNombre=campoNombre.querySelector('input');
+  const inputTelefono=campoTelefono.querySelector('input');
+  const inputDireccion=dir.querySelector('input');
+  const avisoRecuerdo=el('div',{class:'recuerdo-cliente',hidden:true});
+  let perfil=null;let telefonoConsultado='';let datoConfirmado='';
+  const telefonoIdentidad=String(d.telefono||'').replace(/\D/g,'');
+  let identidadLimpiada=false;
+
+  function preguntaDeRecuerdo() {
+    avisoRecuerdo.replaceChildren();
+    if (!perfil?.encontrado) {avisoRecuerdo.hidden=true;return;}
+    const direccion=d.entrega==='envio' && String(perfil.direccion||'').trim().length>=5;
+    const tipo=direccion?'direccion':'nombre';
+    if (datoConfirmado===tipo) {avisoRecuerdo.hidden=true;return;}
+    const pregunta=direccion
+      ? '¡Qué bueno volver a atenderlo! ¿El envío sigue siendo a '+perfil.direccion+'?'
+      : '¡Qué bueno volver a atenderlo! ¿El pedido es a nombre de '+perfil.nombre+'?';
+    const si=el('button',{type:'button',class:'boton chico',text:'Sí, es correcto',onclick:()=>{
+      if (perfil.nombre && (!d.nombre.trim() || d.entrega==='retiro')) {
+        d.nombre=perfil.nombre;inputNombre.value=perfil.nombre;
+      }
+      if (direccion) {d.direccion=perfil.direccion;inputDireccion.value=perfil.direccion;}
+      datoConfirmado=tipo;avisoRecuerdo.hidden=true;guardarDatos();
+    }});
+    const no=el('button',{type:'button',class:'boton chico',text:'No, modificar',onclick:()=>{
+      if (direccion) {d.direccion='';inputDireccion.value='';inputDireccion.focus();}
+      else {d.nombre='';inputNombre.value='';inputNombre.focus();}
+      datoConfirmado=tipo;avisoRecuerdo.hidden=true;guardarDatos();
+    }});
+    poner(avisoRecuerdo,el('p',{text:pregunta}),el('div',{class:'recuerdo-acciones'},si,no));
+    avisoRecuerdo.hidden=false;
+  }
+  async function consultarRecuerdo() {
+    const tel=String(inputTelefono.value||'').replace(/\D/g,'');
+    if (!/^[0-9]{8,15}$/.test(tel) || tel===telefonoConsultado) return;
+    telefonoConsultado=tel;perfil=null;datoConfirmado='';avisoRecuerdo.hidden=true;
+    try {
+      const r=await api('recordar',{telefono:tel});
+      if (String(inputTelefono.value||'').replace(/\D/g,'')!==tel) return;
+      if (r.ok && r.encontrado) {perfil=r;preguntaDeRecuerdo();}
+    } catch { /* puede hacer pedido nuevo aunque falle el recuerdo */ }
+  }
+  inputTelefono.addEventListener('blur',consultarRecuerdo);
+  inputTelefono.addEventListener('input',()=>{
+    const nuevo=String(inputTelefono.value||'').replace(/\D/g,'');
+    const cambioDePersona=(!identidadLimpiada && /^[0-9]{8,15}$/.test(telefonoIdentidad)
+      && nuevo!==telefonoIdentidad) || (perfil?.encontrado && nuevo!==telefonoConsultado);
+    if (cambioDePersona) {
+      // Dispositivo compartido: no se arrastra el nombre o domicilio de otra persona.
+      d.nombre='';d.direccion='';inputNombre.value='';inputDireccion.value='';
+      identidadLimpiada=true;guardarDatos();
+    }
+    if (nuevo!==telefonoConsultado) {
+      perfil=null;datoConfirmado='';avisoRecuerdo.hidden=true;
+    }
+  });
+  inputNombre.addEventListener('input',()=>{
+    if (perfil && d.entrega==='retiro') {datoConfirmado='nombre';avisoRecuerdo.hidden=true;}
+  });
+  inputDireccion.addEventListener('input',()=>{
+    if (perfil && d.entrega==='envio') {datoConfirmado='direccion';avisoRecuerdo.hidden=true;}
+  });
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const form = el('form', {onsubmit: e => {
     e.preventDefault();
@@ -513,15 +615,20 @@ function abrirDatos() {
       : d.entrega === 'envio' && d.medio_pago === 'efectivo' &&
         (!Number.isFinite(Number(d.efectivo_abona)) || Number(d.efectivo_abona) < importeEstimado)
         ? 'Indique un importe en efectivo igual o superior al total, o seleccione pago justo.' : '';
-    if (problema) { error.textContent = problema; error.hidden = false; return; }
+    const faltaConfirmar=perfil?.encontrado && !datoConfirmado &&
+      (d.entrega==='retiro' || String(perfil.direccion||'').trim().length>=5);
+    if (problema || faltaConfirmar) {
+      error.textContent = problema || 'Confirme el nombre o la dirección guardada, o elija modificarla.';
+      error.hidden=false;return;
+    }
     cerrarHoja();
     enviar({datos: {...d}}, 'Enviar pedido');
   }},
-  campo('nombre', 'Nombre', {type: 'text', maxlength: '80', autocomplete: 'name', required: true}),
-  campo('telefono', 'Teléfono de contacto', {type: 'tel', maxlength: '25', autocomplete: 'tel', inputmode: 'tel', placeholder: 'Ej.: 11 5555 1234', required: true}),
+  campoNombre,campoTelefono,avisoRecuerdo,
+  el('p',{class:'nota',text:'No hace falta registrarse. Si ya pidió desde este navegador, al ingresar su teléfono podremos recordar sus datos.'}),
   entregas.length > 1 ? el('div', {class: 'segmentado', role: 'radiogroup', 'aria-label': 'Entrega'}, entregas.map(([v, t]) => {
     const r = el('input', {type: 'radio', name: 'entrega', value: v, checked: d.entrega === v});
-    r.addEventListener('change', () => { d.entrega = v; refrescar(); });
+    r.addEventListener('change', () => { d.entrega=v;datoConfirmado='';guardarDatos();refrescar();preguntaDeRecuerdo(); });
     return el('label', {}, r, t);
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
   dir,
@@ -532,11 +639,12 @@ function abrirDatos() {
     : campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
   campo('nota', 'Aclaraciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2'}),
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
-  el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Le informaremos por este chat. Sus datos se usan únicamente para el pedido.'}),
+  el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Sus datos de contacto y entrega se conservarán en esta sucursal para facilitar futuros pedidos desde este navegador. Puede corregirlos cuando quiera. No necesita crear una cuenta.'}),
   error,
   el('button', {type: 'submit', class: 'boton principal ancho', text: 'Enviar pedido'}));
   refrescar();
   abrirHoja('Sus datos', form);
+  if (/^[0-9]{8,15}$/.test(String(d.telefono||'').replace(/\D/g,''))) consultarRecuerdo();
 }
 
 function abrirInfo() {
@@ -552,6 +660,7 @@ function abrirInfo() {
 // ---------------------------------------------------------------------------------------------- redactar
 const texto = $('texto');
 texto.addEventListener('input', () => {
+  guardarLocal(CLAVE_TEXTO,texto.value.slice(0,600));
   texto.style.height = 'auto'; texto.style.height = Math.min(120, texto.scrollHeight) + 'px';
   $('btn-enviar').disabled = S.enviando || !texto.value.trim();
 });
@@ -563,7 +672,12 @@ $('redactar').addEventListener('submit', e => {
   const t = texto.value.trim();
   if (!t || S.enviando) return;
   texto.value = ''; texto.style.height = 'auto';
-  enviar({texto: t}, t);
+  guardarLocal(CLAVE_TEXTO,'');
+  enviar({texto: t}, t).then(ok=>{
+    if (!ok && !texto.value) {
+      texto.value=t; texto.dispatchEvent(new Event('input'));
+    }
+  });
 });
 $('btn-carta').onclick = abrirCarta;
 $('btn-carrito').onclick = abrirCarrito;
@@ -650,7 +764,8 @@ async function iniciar() {
     }
     return pantallaFija('Chat no encontrado', r.error && r.status !== 404 ? r.error : 'Revisá el enlace que te compartió el local.');
   }
-  S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo; restaurarBorrador();
+  S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
+  restaurarDatos(); restaurarBorrador();
   S.soportePendiente = r.soporte_pendiente === true;
   S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')
     .map(m => Number.isSafeInteger(m.id) ? m.id : 0));
@@ -674,7 +789,14 @@ async function iniciar() {
   if (!(r.nuevos || []).length && !r.cerrada) chips(BOTONES_BASE());
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
   texto.disabled = false; $('btn-carta').disabled = false;
-  if (r.cerrada) mostrarCierre(); else programarSondeo();
+  if (!r.cerrada) {
+    const escrito = recuperarLocal(CLAVE_TEXTO);
+    if (typeof escrito==='string' && !texto.value) {
+      texto.value=escrito.slice(0,600);
+      texto.dispatchEvent(new Event('input'));
+    }
+    programarSondeo();
+  } else mostrarCierre();
   $('app').setAttribute('aria-busy', 'false');
 }
 
@@ -709,6 +831,9 @@ async function demoApi(accion, extra) {
     return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
   }
   if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : [],cerrada:false};
+  if (accion === 'recordar') return params.get('frecuente')==='1'
+    ? {ok:true,encontrado:true,nombre:'María Pérez',direccion:'Av. Siempre Viva 742',visitas:3}
+    : {ok:true,encontrado:false};
   if (accion === 'adjuntar') return {ok:true,imagen_url:null,texto:'Foto enviada al gerente'};
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
