@@ -107,6 +107,8 @@ function limpiarEntrada(e: unknown): Json | null {
       lineas.push({producto_id: a.producto_id, cantidad: a.cantidad, opciones,
         nota: typeof a.nota === "string" ? a.nota.slice(0, 200) : ""});
     }
+    if (typeof x.lote_id !== "string" || !/^[0-9a-f-]{36}$/.test(x.lote_id)) return null;
+    out.lote_id = x.lote_id;
     out.agregar_varios = lineas;
   }
   if (x.datos && typeof x.datos === "object") {
