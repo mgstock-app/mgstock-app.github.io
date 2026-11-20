@@ -622,6 +622,30 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes}) {
     decir('No te entendí bien. Podés escribir algo como ' + ejemploPedido(catalogo) + ' o mirar la carta.', {botones: botonesCarrito(e.carrito)});
     return fin();
   }
+  // Si el cliente escribe una cantidad que coincide con un pack vigente, ofrecer sus salsas
+  // antes de agregar unidades sueltas. No asumir promos si no existen en la carta de este local.
+  if (lineas.length === 1 && !dudas.length && !sinCoincidencia.length) {
+    const l = lineas[0], individual = productoPorId(catalogo, l.producto_id);
+    const promo = disponibles(catalogo).find(p => {
+      if (p.disponible === false || !/^pack\\s/i.test(p.nombre || '')) return false;
+      const grupos = (p.opciones || []).filter(esCantidad);
+      const emp = grupos.find(g => /empanad/i.test(g.nombre) && Number(g.total) === l.cantidad);
+      const salsa = grupos.find(g => /salsa/i.test(g.nombre) && Number(g.total) > 0);
+      return individual && /empanad/i.test(individual.nombre) && emp && salsa &&
+        valoresDisponibles(catalogo, emp).some(v => v.producto_id === individual.id);
+    });
+    if (promo) {
+      const emp = promo.opciones.find(g => esCantidad(g) && /empanad/i.test(g.nombre) && Number(g.total) === l.cantidad);
+      const salsa = promo.opciones.find(g => esCantidad(g) && /salsa/i.test(g.nombre));
+      const variedad = valoresDisponibles(catalogo, emp).find(v => v.producto_id === individual.id);
+      if (variedad && salsa) {
+        decir('Tenemos una promoción de ' + l.cantidad + ' empanadas que incluye ' + salsa.total +
+          ' salsas a elección. Seleccione las salsas que prefiera para agregar el pack completo.',
+          {tipo:'producto', productos:[promo.id], cantidad:1, opciones:{[emp.id]:{[variedad.id]:l.cantidad}}});
+        return fin();
+      }
+    }
+  }
   const completas = []; const aElegir = [];
   for (const l of lineas) {
     const p = productoPorId(catalogo, l.producto_id);
