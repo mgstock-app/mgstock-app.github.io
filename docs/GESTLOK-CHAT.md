@@ -95,14 +95,14 @@ detrás del mismo motor; si la IA falla o no está activa, sigue el motor.
 ## 5. Pedido
 
 Productos y opciones, aclaraciones, retiro o envío (dirección), nombre, teléfono, medio de pago, horario deseado.
-Estados: `pendiente` (el asistente lo tomó; el local lo prepara) → **`terminado`** (el gerente toca «Pedido terminado»
+Estados: `pendiente` (requiere revisión) → `confirmado` (el gerente autoriza preparación) → **`terminado`** (el gerente toca «Pedido terminado»
 y el cliente recibe «tu pedido está listo») / `rechazado` (con motivo para el cliente) / `cancelado` (por el cliente).
 
-**Mensajes configurables** (pestaña Mensajes, por sucursal; vacío = texto sugerido): bienvenida, pedido recibido,
+**Mensajes configurables** (pestaña Mensajes, por sucursal; vacío = texto sugerido): bienvenida,
 pedido terminado (retiro y envío), rechazado, chat en pausa y despedida. Variables: `{nombre}` `{codigo}` `{total}`
 `{direccion}` `{local}` `{motivo}`.
 Un solo pedido pendiente por conversación; topes por día por sucursal, por teléfono y por conversación.
-El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pendiente).
+El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pendiente o confirmado).
 
 ## 6. Seguridad
 
