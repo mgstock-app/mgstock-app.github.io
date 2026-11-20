@@ -143,15 +143,15 @@ async function dispatch(){
 }
 Deno.serve(async(req:Request)=>{
  const origin=req.headers.get("origin"),accepted=origin&&allowedOrigins.has(origin)?origin:SITE;
- const reply=(status:number,data:unknown)=>json(status,data,accepted);
+ const reply=(status:number,data:unknown)=>reply(status,data,accepted);
  if(origin&&!allowedOrigins.has(origin))return reply(403,{ok:false,error:"Origen no permitido"});
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"Access-Control-Allow-Origin":accepted}});
  if(!SUPA_URL||!SERVICE||!ANON)return reply(503,{ok:false,error:"Servicio no configurado"});
  const op=new URL(req.url).searchParams.get("op");
  if(req.method==="GET"&&op==="config"){
   const {data,error}=await admin.from("gestlok_push_settings").select("public_key").eq("id",1).single();
-  return error||!data?.public_key?json(503,{ok:false,error:"Clave pública no disponible"}):
-   json(200,{ok:true,publicKey:data.public_key,deliveryEnabled:true});
+  return error||!data?.public_key?reply(503,{ok:false,error:"Clave pública no disponible"}):
+   reply(200,{ok:true,publicKey:data.public_key,deliveryEnabled:true});
  }
  if(req.method==="POST"&&op==="dispatch"){
    if(!await verifyCron(req.headers.get("x-gestlok-cron")||""))return reply(403,{ok:false,error:"No autorizado"});
@@ -159,7 +159,7 @@ Deno.serve(async(req:Request)=>{
  }
  if(req.method!=="GET"&&req.method!=="POST")return reply(405,{ok:false,error:"Método no permitido"});
  const account=await auth(req);
- if(!account)return reply(403,{ok:false,error:"Solo Dueña puede gestionar notificaciones"});
+ if(!account)return reply(403,{ok:false,error:"Solo personal autorizado puede gestionar notificaciones"});
  if(req.method==="GET"&&op==="preferences"){
    return reply(200,{ok:true,preferences:await prefOf(account.tenant_id,account.user.id)});
  }
@@ -167,7 +167,7 @@ Deno.serve(async(req:Request)=>{
  let data:Record<string,unknown>;
  try{
   if(Number(req.headers.get("content-length")||0)>8192)throw Error("too long");
-  data=await req.json();
+  data=await req.reply();
   if(!data||typeof data!=="object"||Array.isArray(data))throw Error("invalid");
  }catch{return reply(400,{ok:false,error:"Datos inválidos"});}
  if(data.op==="set-preference"){
@@ -180,8 +180,8 @@ Deno.serve(async(req:Request)=>{
    const {error}=await admin.from("gestlok_push_preferences").upsert({
      tenant_id:account.tenant_id,user_id:account.user.id,...prefs,updated_at:new Date().toISOString()
    },{onConflict:"tenant_id,user_id"});
-   return error?json(503,{ok:false,error:"No se guardó la preferencia"}):
-     json(200,{ok:true,preferences:prefs});
+   return error?reply(503,{ok:false,error:"No se guardó la preferencia"}):
+     reply(200,{ok:true,preferences:prefs});
  }
  if(data.op!=="subscribe"&&data.op!=="unsubscribe")return reply(400,{ok:false,error:"Operación inválida"});
  const sub=data.subscription as {endpoint?:unknown,keys?:{auth?:unknown,p256dh?:unknown}};
@@ -189,7 +189,7 @@ Deno.serve(async(req:Request)=>{
  if(data.op==="unsubscribe"){
    const {error}=await admin.from("gestlok_push_devices").delete()
      .eq("endpoint",sub.endpoint).eq("user_id",account.user.id).eq("tenant_id",account.tenant_id);
-   return error?json(503,{ok:false,error:"No se pudo quitar dispositivo"}):json(200,{ok:true});
+   return error?reply(503,{ok:false,error:"No se pudo quitar dispositivo"}):reply(200,{ok:true});
  }
  if(!validKey(sub.keys?.auth,100)||!validKey(sub.keys?.p256dh,200))
    return reply(400,{ok:false,error:"Claves push inválidas"});
@@ -197,5 +197,5 @@ Deno.serve(async(req:Request)=>{
    endpoint:sub.endpoint,user_id:account.user.id,tenant_id:account.tenant_id,
    auth_key:sub.keys?.auth,p256dh_key:sub.keys?.p256dh,enabled:true,registered_at:new Date().toISOString()
  },{onConflict:"endpoint"});
- return error?json(503,{ok:false,error:"No se pudo registrar dispositivo"}):json(200,{ok:true});
+ return error?reply(503,{ok:false,error:"No se pudo registrar dispositivo"}):reply(200,{ok:true});
 });
