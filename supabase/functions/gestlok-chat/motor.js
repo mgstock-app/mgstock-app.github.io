@@ -52,11 +52,31 @@ const MAX_CANTIDAD = 50;
 export const MENSAJES_BASE = {
   recibido: 'Gracias, {nombre}. Recibimos su pedido, que está pendiente de revisión y confirmación del gerente. Total estimado: {total}.',
   terminado_retiro: '{nombre}, su pedido está listo para retirar en {local}. Al acercarse, solo indique su nombre.',
-  terminado_envio: '{nombre}, su pedido está listo. El local coordinará la entrega en {direccion}.',
+  terminado_envio: '{nombre}, su pedido está en camino a {direccion}.',
   rechazado: 'Le pedimos disculpas, {nombre}. No pudimos tomar su pedido. Motivo: {motivo}',
   pausado: 'En este momento el chat se encuentra en pausa. Puede volver a contactarnos más tarde.',
   despedida: 'Muchas gracias por comunicarse. Estamos a su disposición.',
+  // Al terminar el pedido (listo para retirar o enviado): invitación a reseñar (solo si hay link) y cierre.
+  resena: '¿Cómo fue su experiencia? Nos ayudaría mucho que nos la cuente en una reseña.',
+  cierre: '¡Gracias por elegirnos!',
 };
+/** Link de reseñas del local: solo https y solo dominios de Google (evita enlaces engañosos). '' si no sirve. */
+export function urlResena(u) {
+  const t = String(u ?? '').trim();
+  if (!t || t.length > 300 || /[\s<>"']/.test(t)) return '';
+  let x; try { x = new URL(t); } catch { return ''; }
+  const hosts = ['g.page', 'maps.app.goo.gl', 'goo.gl', 'g.co', 'search.google.com', 'maps.google.com',
+    'google.com', 'www.google.com', 'google.com.ar', 'www.google.com.ar'];
+  return x.protocol === 'https:' && !x.username && !x.password && !x.port && hosts.includes(x.hostname) ? x.href : '';
+}
+/** Pedido terminado → invitación a reseñar (si el local cargó su link) y mensaje de cierre. null en otros estados. */
+export function cierrePedido(pedido, mensajes) {
+  if (pedido?.estado !== 'terminado') return null;
+  const d = {nombre: pedido.nombre || ''};
+  const url = urlResena(mensajes?.resena_url);
+  return {resena: url ? {texto: formalizar(plantilla(mensajeDe(mensajes, 'resena'), d)), url} : null,
+    cierre: formalizar(plantilla(mensajeDe(mensajes, 'cierre'), d))};
+}
 /** Completa una plantilla con los datos (las variables sin dato quedan vacías). */
 export function plantilla(texto, datos) {
   return String(texto ?? '').replace(/\{(nombre|codigo|total|direccion|local|motivo)\}/g, (_, k) => String(datos?.[k] ?? '')).replace(/[ \t]+\n/g, '\n').trim();

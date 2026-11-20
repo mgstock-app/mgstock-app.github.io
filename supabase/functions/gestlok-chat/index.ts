@@ -13,7 +13,7 @@
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
 import { bienvenidaIA, responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
@@ -144,7 +144,9 @@ Deno.serve(async (req) => {
     const conAviso = (p: Json) => {
       const visible: Json = {...p};
       delete visible.codigo;
-      return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal))};
+      // Pedido terminado: invitación a reseñar (solo con link de Google del local) y «Gracias por elegirnos».
+      const cierre = cierrePedido(p, mensajesLocal);
+      return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal)), ...(cierre || {})};
     };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;
