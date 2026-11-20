@@ -602,6 +602,11 @@ async function demoApi(accion, extra) {
     demoEstado = r.estado;
     return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
   }
+  if (accion === 'recibido') {
+    if (!demoPedido || demoPedido.estado !== 'terminado') return {ok:false,error:'Todavía no puede confirmar la recepción.'};
+    demoPedido.recibido_at ||= new Date().toISOString();
+    return {ok:true,pedido:demoPedido};
+  }
   if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : []};
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
