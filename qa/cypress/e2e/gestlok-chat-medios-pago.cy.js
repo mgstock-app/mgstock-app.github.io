@@ -18,7 +18,7 @@ describe('GESTLOK Chat · mensajes y medios de pago', () => {
       if(req.body.accion==='abrir') return req.reply({ok:true,sucursal,catalogo:{categorias:[],productos:[producto]},
         mensajes:[],nuevos:[{texto:sucursal.bienvenida,botones:btns}],carrito,pedidos:[]});
       const boton = req.body.entrada?.boton;
-      if(boton==='pago') return req.reply({ok:true,carrito,mensajes:[{texto:'Retiro en el local: Débito, Crédito, Efectivo, Transferencia.\nDelivery: Efectivo, Transferencia.',botones:btns}]});
+      if(boton==='pago') return req.reply({ok:true,carrito,mensajes:[{texto:'Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia.\nDelivery: Efectivo, Transferencia.',botones:btns}]});
       if(boton==='horario') return req.reply({ok:true,carrito,mensajes:[{texto:sucursal.horario+' · Envío: $ 4.000',botones:btns}]});
       if(boton==='finalizar') return req.reply({ok:true,carrito,mensajes:[{texto:'Completá tus datos',tipo:'datos'}]});
       return req.reply({ok:true,carrito,mensajes:[{texto:'Te ayudo con tu consulta',botones:btns}]});
@@ -27,14 +27,14 @@ describe('GESTLOK Chat · mensajes y medios de pago', () => {
     cy.contains('.burbuja.asistente','¿En qué puedo ayudarte?').should('be.visible');
     cy.contains('.chip','Medios de pago').click();
     cy.wait('@chat');
-    cy.contains('.burbuja.asistente','Retiro en el local: Débito, Crédito, Efectivo, Transferencia.').should('be.visible');
+    cy.contains('.burbuja.asistente','Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia.').should('be.visible');
     cy.contains('.burbuja.asistente','Delivery: Efectivo, Transferencia.').should('be.visible');
     cy.contains('.chip','Horario y envío').click();
     cy.wait('@chat');
     cy.contains('.burbuja.asistente','11:00 a 14:40').should('be.visible');
     cy.get('#btn-info').click();
     cy.get('#hoja').should('contain.text','Pago · retiro en local').and('contain.text','Pago · delivery')
-      .and('contain.text','Crédito, Efectivo, Transferencia');
+      .and('contain.text','Tarjeta de crédito, Efectivo, Transferencia');
     cy.get('#hoja-cerrar').click();
     cy.get('#btn-finalizar').click();
     cy.wait('@chat');
