@@ -237,9 +237,10 @@ test('reseña y cierre al terminar el pedido: solo links https de Google', () =>
   for (const malo of ['http://g.page/r/x', 'https://g.page.estafa.example/r', 'https://estafa.example/g.page', 'javascript:alert(1)',
     'https://usuario:clave@g.page/r/x', 'https://g.page/r/x y', '', null]) assert.equal(M.urlResena(malo), '', String(malo));
   const msj = {resena_url: 'https://g.page/r/CT9jkvArEGhFEBM/review', resena: '{nombre}, nos ayudaría mucho que nos deje su reseña.', cierre: '¡Gracias por elegirnos! 🥰'};
-  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, msj),
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', recibido_at: '2026-11-20T06:00:00Z', nombre: 'Ana'}, msj),
     {resena: {texto: 'Ana, nos ayudaría mucho que nos deje su reseña.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'}, cierre: '¡Gracias por elegirnos! 🥰'});
-  assert.deepEqual(M.cierrePedido({estado: 'terminado', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
+  assert.deepEqual(M.cierrePedido({estado: 'terminado', recibido_at: '2026-11-20T06:00:00Z', nombre: 'Ana'}, {}), {resena: null, cierre: '¡Gracias por elegirnos!'}, 'sin link: solo el cierre');
+  assert.equal(M.cierrePedido({estado: 'terminado', nombre:'Ana'}, msj), null, 'no mostrar reseña sin recepción');
   assert.equal(M.cierrePedido({estado: 'pendiente'}, msj), null);
   assert.equal(M.cierrePedido({estado: 'rechazado'}, msj), null, 'un pedido rechazado no pide reseña');
   assert.match(M.textoEstadoPedido({estado: 'terminado', entrega: 'envio', nombre: 'Ana', direccion: 'Mitre 200', total: 1000}, {}, {}), /en camino a Mitre 200/);
