@@ -122,9 +122,25 @@ describe('GESTLOK Chat · chat público', () => {
     acepta_retiro: true, acepta_envio: true, envio_costo: 0, pedido_minimo: 0, medios_pago: ['efectivo']},
     catalogo: {categorias: [], productos: []}, mensajes: [], nuevos: [], carrito: [], pedidos: [pedido]});
 
+  it('pedido listo ofrece confirmar recepción y ayuda, pero no reseña anticipada', () => {
+    cy.viewport(390, 800);
+    cy.intercept('POST', FUNCION, req => {
+      if (req.body.accion === 'abrir') req.reply(abrirConPedido({creado_at:new Date().toISOString(),estado:'terminado',entrega:'retiro',total:2000,nombre:'Ana',aviso:'Su pedido está listo para retirar.'}));
+      else if (req.body.accion === 'recibido') req.reply({ok:true,pedido:{creado_at:new Date().toISOString(),estado:'terminado',entrega:'retiro',total:2000,nombre:'Ana',recibido_at:new Date().toISOString(),resena:{texto:'Gracias por su compra',url:'https://g.page/r/CT9jkvArEGhFEBM/review'},cierre:'Gracias por elegirnos'}});
+      else req.reply({ok:true,mensajes:[]});
+    });
+    cy.visit('/chat/?s=mi-gusto-torcuato');
+    cy.get('#aviso-pedido').should('contain.text','¡Pedido listo!').and('not.contain.text','Dejar reseña');
+    cy.get('#redactar').should('not.be.visible');
+    cy.contains('#aviso-pedido button','Necesito ayuda').should('exist');
+    cy.contains('#aviso-pedido button','Ya recibí mi pedido').click();
+    cy.get('#aviso-pedido').should('contain.text','Pedido recibido por el cliente');
+    cy.get('#aviso-pedido').should('contain.text','Dejar reseña');
+  });
+
   it('pedido listo: aviso, reseña de Google y «Gracias por elegirnos» una sola vez', () => {
     cy.viewport(390, 800);
-    const pedido = {creado_at: new Date().toISOString(), estado: 'terminado', entrega: 'retiro', total: 2000, nombre: 'Ana',
+    const pedido = {creado_at: new Date().toISOString(), estado: 'terminado', recibido_at: new Date().toISOString(), entrega: 'retiro', total: 2000, nombre: 'Ana',
       aviso: 'Ana, su pedido ya está listo para retirar.',
       resena: {texto: 'Nos ayudaría mucho que nos deje su reseña y nos cuente su experiencia.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'},
       cierre: '¡Gracias por elegirnos! 🥰'};
@@ -146,7 +162,7 @@ describe('GESTLOK Chat · chat público', () => {
 
   it('pedido enviado: «en camino»; un link de reseña que no es de Google no se muestra', () => {
     cy.viewport(390, 800);
-    cy.intercept('POST', FUNCION, abrirConPedido({creado_at: new Date().toISOString(), estado: 'terminado', entrega: 'envio', total: 2000,
+    cy.intercept('POST', FUNCION, abrirConPedido({creado_at: new Date().toISOString(), estado: 'terminado', recibido_at: new Date().toISOString(), entrega: 'envio', total: 2000,
       aviso: 'Ana, su pedido está en camino 🛵', resena: {texto: 'Déjenos su reseña', url: 'https://estafa.example/review'}, cierre: '¡Gracias por elegirnos!'})).as('fn');
     cy.visit('/chat/?s=mi-gusto-torcuato');
     cy.wait('@fn');
