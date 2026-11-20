@@ -263,15 +263,15 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.get(".mhs-tabla tbody tr").first().find(".mhs-total-nombre").should("contain.text","2 turnos");
   cy.get(".mhs-tabla tbody tr").first().find(".mhs-horas-dia").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
-    .should("contain.text","Activo").and("not.contain.text","Refuerzo").and("not.contain.text","Inactivo");
+    .find("select").should("have.value","activo");
   cy.contains("button","Modificar").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(3).find('select[aria-label^="Estado de"]').select("refuerzo",{scrollBehavior:"center"});
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
-    .should("have.class","mhs-estado-refuerzo").and("contain.text","Refuerzo");
+    .should("have.class","mhs-estado-refuerzo").find("select").should("have.value","refuerzo");
   cy.get(".mhs-guardado-flotante",{timeout:15000}).should("contain.text","Guardado automáticamente");
   cy.contains("button","Finalizar edición").should("not.exist");
   cy.get(".mhs-tabla tbody tr").eq(3).find(".mhs-estado")
-    .should("contain.text","Refuerzo").and("not.contain.text","Activo");
+    .find("select").should("have.value","refuerzo");
  });
  it("guarda OFF y Medio OFF por día, sin borrar horarios ni duplicar el OFF de liquidación",()=>{
   cy.viewport(1320,900);
@@ -294,7 +294,7 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   lun().find(".mhs-horas-dia").should("contain.text","4:00 h");
   // Intentar OFF sobre un horario cargado muestra error y conserva las dos horas.
   lun().find('select[aria-label^="Descanso ·"]').select("off");
-  cy.get(".mhs-alerta").should("contain.text","Borrá las entradas y salidas");
+  cy.get(".mhs-guardado-flotante--error").should("contain.text","Borrá las entradas y salidas");
   lun().find('select[aria-label^="Descanso ·"]').should("have.value","medio_off");
   lun().find('input[type="time"]').eq(0).should("have.value","09:00");
   lun().find('input[type="time"]').eq(1).should("have.value","13:00");
@@ -361,8 +361,11 @@ describe("Mi Gusto Munro · Horarios nativos de colaboradores",()=>{
   cy.contains("button","Semana finalizada").click();
   cy.get(".mhs-guardado-flotante").should("contain.text","Semana finalizada y enviada a Historial");
   cy.get(".mhs-semana").should("contain.text","16/11 al 22/11");
-  cy.get(".mhs-tabla tbody tr").first().should("contain.text","Julia");
-  cy.get(".mhs-tabla tbody tr").should("have.length",7).should("not.contain.text","Martín");
+  cy.get(".mhs-tabla tbody tr").first().find('input[aria-label^="Nombre del colaborador"]').should("have.value","Julia");
+  cy.get(".mhs-tabla tbody tr").should("have.length",7);
+  cy.get('.mhs-tabla tbody tr input[aria-label^="Nombre del colaborador"]').should($inputs=>{
+    expect([...$inputs].map(x=>x.value)).not.to.include("Martín");
+  });
   cy.get(".mhs-tabla tbody tr").first().find("input[type=time]").each($input=>expect($input.val()).to.eq(""));
   cy.wrap(null).should(()=>{expect(ultimo.ultimoCierre()).to.deep.eq({p_semana:SEMANA});expect(ultimo.cierres()).to.deep.eq([SEMANA]);});
   cy.get(".mhs-pestanas").contains("button","Resumen semanal").click();
