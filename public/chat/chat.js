@@ -716,8 +716,14 @@ async function demoApi(accion, extra) {
   if (r.accion?.tipo === 'crear_pedido') {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
+    const efectivo = r.accion.pedido.entrega === 'envio' && r.accion.pedido.medio_pago === 'efectivo';
+    const descuento = efectivo ? Math.round(sub * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
+    const total = sub + envio - descuento;
+    const abona = efectivo ? Number(r.accion.pedido.efectivo_abona || total) : null;
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
-    demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
+    demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente',
+      total, subtotal:sub, envio, descuento, efectivo_abona:abona,
+      efectivo_cambio:efectivo ? abona-total : null, medio_pago: r.accion.pedido.medio_pago, motivo: '',
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
     r.estado.carrito = []; r.estado.sugerido = false;
     mensajes.push({texto: pedido.aviso});
