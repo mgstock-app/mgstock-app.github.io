@@ -50,7 +50,7 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   central().find('[data-p="carta"]').should('have.attr','aria-selected','true');
  });
 
- it('gerente de Munro edita carta (producto, precio y categoría) y mensajes del bot; los ajustes quedan para el dueño',()=>{
+ it('gerente de Munro administra carta, mensajes y ajustes de su sucursal',()=>{
   setup('gerente.munro@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();
   central().find('[data-p="carta"]').click();
@@ -73,8 +73,7 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   central().contains('button','Guardar mensajes').click();
   central().find('#aviso').should('contain.text','Mensajes guardados');
   central().find('[data-p="ajustes"]').click();
-  central().contains('button','Guardar ajustes').should('not.exist');
-  central().contains('los cambia el dueño o la administradora');
+  central().contains('button','Guardar ajustes').should('be.visible');
  });
 
  it('gerente de Torcuato ve solo su local',()=>{
