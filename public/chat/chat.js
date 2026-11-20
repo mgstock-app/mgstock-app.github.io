@@ -283,6 +283,7 @@ function abrirCarta() {
   const cuerpo = el('div');
   const pintar = () => {
     const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria));
+    const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
     poner(cuerpo,
       cats.length > 1 ? el('div', {class: 'categorias', role: 'toolbar', 'aria-label': 'Categorías'},
         [{id: '', nombre: 'Todo'}, ...cats].map(c => el('button', {type: 'button', class: 'chip', text: c.nombre,
@@ -295,7 +296,8 @@ function abrirCarta() {
         : el('p', {class: 'nota', text: 'Todavía no hay productos cargados.'}),
       el('div', {class: 'menu-pie'},
         el('div', {class: 'menu-pie-texto', text: S.borrador.length
-          ? S.borrador.reduce((n, l) => n + l.cantidad, 0) + ' productos seleccionados · ' + pesos(totalCarrito(S.catalogo, S.borrador))
+          ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
+            pesos(totalCarrito(S.catalogo, S.borrador))
           : 'Elegí los productos y cantidades para tu pedido.'}),
         S.borrador.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Revisar selección',
           onclick: abrirSeleccion}) : null));
