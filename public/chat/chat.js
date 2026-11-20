@@ -31,7 +31,7 @@ const SLUG = DEMO ? 'demo' : slugDeUrl();
 
 const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [], pedido: null, enviando: false,
   ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
-  ultimoLocal: 0, soportePendiente: false};
+  ultimoLocal: 0, soportePendiente: false, identificado: false};
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
 function token() {
@@ -97,6 +97,8 @@ const BOTONES_BASE = () => S.carrito.length
       {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
 
 async function enviar(entrada, textoVisible) {
+  // Los datos personales no se escriben en el historial del chat. Se adjuntan recién al enviar el pedido.
+  if (!S.identificado) { abrirIdentificacion(); return; }
   if (S.enviando) return;
   S.enviando = true; S.ultimaEntrada = {entrada, textoVisible};
   quitarChips();
@@ -236,6 +238,8 @@ function abrirHoja(titulo, contenido) {
   (primero || $('hoja-cerrar')).focus({preventScroll: true});
 }
 function cerrarHoja() {
+  // Identificación inicial obligatoria: no se puede avanzar sin contacto y modalidad de entrega.
+  if (!S.identificado) return;
   $('hoja').hidden = true; $('fondo-hoja').hidden = true;
   const f = S.hojaFoco; S.hojaFoco = null;
   if (f && document.contains(f)) f.focus({preventScroll: true});
@@ -245,6 +249,7 @@ $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
 function abrirCarta() {
+  if (!S.identificado) { abrirIdentificacion(); return; }
   const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id));
   const cuerpo = el('div');
   const pintar = () => {
@@ -354,6 +359,55 @@ function abrirCarrito() {
     el('p', {class: 'nota', text: 'El total final lo calcula el local con los precios vigentes.'}),
     S.carrito.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Finalizar pedido', onclick: () => { cerrarHoja(); enviar({boton: 'finalizar'}, 'Finalizar pedido'); }}) : null);
   abrirHoja('Tu pedido', cuerpo);
+}
+
+function abrirIdentificacion() {
+  if (!S.sucursal || S.identificado) return;
+  const s = S.sucursal, d = S.datos;
+  if (!d.entrega) d.entrega = s.acepta_retiro ? 'retiro' : 'envio';
+  const campo = (clave, etiqueta, tipo, attrs = {}) => {
+    const input = el('input', {type: tipo, name: clave, maxlength: clave === 'nombre' ? '80' : clave === 'telefono' ? '25' : '200', ...attrs});
+    input.value = d[clave] || '';
+    input.addEventListener('input', () => { d[clave] = input.value; });
+    return el('label', {class: 'campo'}, el('span', {text: etiqueta}), input);
+  };
+  const opciones = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío a domicilio']].filter(Boolean);
+  const direccion = campo('direccion', 'Dirección de entrega', 'text', {autocomplete:'street-address', placeholder:'Calle, número y localidad'});
+  const error = el('p', {class:'error-form', role:'alert', hidden:true});
+  const refrescar = () => { direccion.hidden = d.entrega !== 'envio'; };
+  const elegir = el('div', {class:'segmentado', role:'radiogroup', 'aria-label':'Modalidad del pedido'}, opciones.map(([valor, nombre]) => {
+    const input = el('input', {type:'radio', name:'identificacion-entrega', value:valor, checked:d.entrega === valor});
+    input.addEventListener('change', () => { d.entrega = valor; refrescar(); });
+    return el('label', {}, input, nombre);
+  }));
+  const formulario = el('form', {onsubmit: ev => {
+    ev.preventDefault();
+    const tel = String(d.telefono || '').replace(/\D/g, '');
+    const problema = String(d.nombre || '').trim().length < 2 ? 'Ingrese su nombre.'
+      : tel.length < 8 || tel.length > 15 ? 'Ingrese un teléfono válido con código de área.'
+      : !opciones.some(([v]) => v === d.entrega) ? 'Seleccione retiro o envío.'
+      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.' : '';
+    if (problema) { error.textContent = problema; error.hidden = false; return; }
+    // Datos solo en memoria hasta el envío final: no se agregan a mensajes ni almacenamiento local.
+    S.identificado = true;
+    cerrarHoja();
+    burbuja('asistente', 'Gracias, ' + String(d.nombre).trim() + '. Ya puede elegir sus productos o consultar nuestra carta.');
+    chips(BOTONES_BASE());
+    $('texto').disabled = false; $('btn-carta').disabled = false;
+    $('texto').focus({preventScroll:true});
+  }},
+  el('p', {class:'nota', text:'Antes de empezar, necesitamos sus datos de contacto. No se mostrarán en la conversación.'}),
+  campo('nombre', 'Nombre y apellido', 'text', {autocomplete:'name', required:true}),
+  campo('telefono', 'Teléfono de contacto', 'tel', {autocomplete:'tel', inputmode:'tel', placeholder:'Ej.: 11 5555 1234', required:true}),
+  opciones.length > 1 ? elegir : el('p', {class:'nota', text: opciones[0]?.[1] || ''}),
+  direccion,
+  el('p', {class:'nota', text:'El gerente revisará y confirmará manualmente el pedido. Sus datos se enviarán al local al finalizarlo.'}),
+  error,
+  el('button', {type:'submit', class:'boton principal ancho', text:'Continuar con mi pedido'}));
+  refrescar();
+  abrirHoja('Datos para iniciar', formulario);
+  $('hoja-cerrar').hidden = true;
+  $('fondo-hoja').onclick = () => {};
 }
 
 function abrirDatos() {
@@ -488,8 +542,9 @@ async function iniciar() {
   if (!(r.nuevos || []).length) chips(BOTONES_BASE());
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
   if (S.soportePendiente) programarSondeo();
-  texto.disabled = false; $('btn-carta').disabled = false;
   $('app').setAttribute('aria-busy', 'false');
+  // El saludo se ve primero; antes de usar el pedido se solicitan los datos obligatorios.
+  abrirIdentificacion();
 }
 
 // ---------------------------------------------------------------------------------------------- demostración
