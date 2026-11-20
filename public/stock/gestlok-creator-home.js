@@ -236,7 +236,8 @@
   // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
   // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
-    const indexed=Array.isArray(p.companies)?p.companies:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]);
+    const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
+    const indexed=grouped.length?grouped:(Array.isArray(p.companies)?p.companies:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]));
     const companyRows=indexed.length?indexed:(data.recent_companies||[]);
     // Un registro crea una tarjeta independiente, también para empresas futuras.
     // Los locales se agrupan dentro de su empresa y conservan la apertura autorizada.
@@ -245,10 +246,10 @@
       const localRows=Array.isArray(c.locals)?c.locals:[];
       const n=Array.isArray(c.locals)?localRows.length:num(c.locals);
       const localCards=localRows.map(l=>{
-        const molinoBrand=c.tenant_id===MOLINO_TENANT?
-          (window.GestLokMolino?.logoHTML?.(l.id,'card',c.tenant_id)||''):'';
-        const attrs=own?'data-act="local" data-id="'+esc(l.id)+'"':
-          'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
+        const molinoBrand=(l.tenant_id||c.tenant_id)===MOLINO_TENANT?
+          (window.GestLokMolino?.logoHTML?.(l.id,'card',l.tenant_id||c.tenant_id)||''):'';
+        const attrs=(l.tenant_id||c.tenant_id)===api.S?.me?.tenant_id?'data-act="local" data-id="'+esc(l.id)+'"':
+          'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(l.tenant_id||c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
         return '<button type="button" class="gl-ch-quick-local gl-ch-company-local" '+attrs+
           ' aria-label="Abrir el local '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
           (molinoBrand?molinoBrand:'<span class="gl-ch-quick-icon">'+svg('<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>',22)+'</span>')+
@@ -265,7 +266,7 @@
         svg('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>',24)+
         '</span><div class="gl-ch-company-info"><h3>'+esc(c.name)+'</h3><p>'+
         n+(n===1?' local':' locales')+'</p></div></div>'+
-        '<div class="gl-ch-company-actions">'+access+support+'</div></article>';
+        '<div class="gl-ch-company-actions">'+access+(window.GestLokOwnerAreas?.creatorAddLocalForm?.(c.tenant_id)||'')+support+'</div></article>';
     }).join('');
     // Una microapp se abre DENTRO de un local autorizado. El acceso empieza por su selector.
     const microapps = [
@@ -320,7 +321,7 @@
   // Vista exclusiva de la cuenta administradora aprobada. Solo cambia presentación.
   // La lista de empresas/locales y la autorización de ingreso siguen viniendo del servidor.
   function premiumLocales(p) {
-    const companies=window.GestLokOwnerAreas?.creatorCompanies?.()||[];
+    const companies=window.GestLokOwnerAreas?.creatorBrands?.()||[];
     const currentTenant=api.S?.me?.tenant_id;
     const fallback=window.GestLokOwnerAreas?.companyFolders?.()||p.parts?.locales||'';
     const loading=!companies.length&&/Cargando empresas|No pudimos cargar/.test(fallback);
@@ -337,9 +338,9 @@
     const cards=companies.map(c=>{
       const locals=Array.isArray(c.locals)?c.locals:[];
       const n=locals.length;
-      const attrs=l=>c.tenant_id===currentTenant
+      const attrs=l=>(l.tenant_id||c.tenant_id)===currentTenant
         ?'data-act="local" data-id="'+esc(l.id)+'"'
-        :'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
+        :'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(l.tenant_id||c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
       const localCards=locals.map(l=>'<button type="button" class="gl-ch-premium-local" '+attrs(l)+
         ' aria-label="Ingresar a '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-local-icon">'+svg(storeIcon,19)+'</span><span>'+esc(l.name||l.id)+'</span>'+
@@ -352,6 +353,7 @@
         '<span class="gl-ch-premium-select">Seleccionar empresa <span aria-hidden="true">→</span></span>'+
         '</summary><div class="gl-ch-premium-company-locals">'+
         (localCards||'<p>Esta empresa todavía no tiene locales creados.</p>')+
+        (window.GestLokOwnerAreas?.creatorAddLocalForm?.(c.tenant_id)||'')+
         '</div></details>';
     }).join('');
     return '<div class="gl-ch-premium-locales">'+stats+
