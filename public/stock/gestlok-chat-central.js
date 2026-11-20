@@ -148,11 +148,43 @@ function avisoNuevo(tipo='pedido',recordatorio=false){
 document.addEventListener('click',ev=>{
   const b=ev.target.closest?.('[data-gcc-alert]');if(!b||!allowed())return;
   ev.preventDefault();activarSonido();
-  if(b.dataset.gccAlert==='probar')avisoNuevo('pedido');
+  if(b.dataset.gccAlert==='probar'){avisoNuevo('pedido');return;}
+  // Solicitar permiso dentro del gesto real, antes de cualquier operación asíncrona.
+  const permiso='Notification' in window?
+    (Notification.permission==='default'?Notification.requestPermission():
+      Promise.resolve(Notification.permission)):Promise.resolve('unsupported');
+  Promise.resolve(permiso).then(async value=>{
+    if(value==='granted'){await registrarPush();b.textContent='Notificaciones activadas';}
+    else b.textContent='Sonido activado · Push sin permiso';
+  }).catch(err=>{b.textContent='Sonido activado · Revisar avisos';b.title=String(err?.message||'Error de notificaciones');});
   const estado=document.querySelector('[data-gcc-alert-estado]');
   if(estado)estado.textContent=soundReady?'Sonido activado en esta sesión.':
     'En algunos celulares necesitás tocar nuevamente para activar sonido.';
 });
+async function registrarPush(){
+ const c=window.SPM_CONFIG||{};
+ if(!c.url||!c.key||!navigator.serviceWorker||!window.PushManager)
+   throw Error('El dispositivo no admite notificaciones push.');
+ const apiUrl=c.url.replace(/\/$/,'')+'/functions/v1/gestlok-push';
+ const {data}=await window.GestLokSupabase.auth.getSession();
+ const token=data?.session?.access_token;
+ if(!token)throw Error('Iniciá sesión.');
+ const headers={apikey:c.key,Authorization:'Bearer '+token};
+ const response=await fetch(apiUrl+'?op=config',{headers,cache:'no-store'});
+ const conf=await response.json();
+ if(!response.ok||!conf.publicKey)throw Error('Las notificaciones no están disponibles.');
+ const k=conf.publicKey.replace(/-/g,'+').replace(/_/g,'/');
+ const bytes=atob(k+'='.repeat((4-k.length%4)%4));
+ const worker=await navigator.serviceWorker.ready;
+ let subscription=await worker.pushManager.getSubscription();
+ if(!subscription)subscription=await worker.pushManager.subscribe({
+   userVisibleOnly:true,applicationServerKey:Uint8Array.from(bytes,ch=>ch.charCodeAt(0))});
+ const saved=await fetch(apiUrl,{method:'POST',
+   headers:{...headers,'Content-Type':'application/json'},
+   body:JSON.stringify({op:'subscribe',subscription:subscription.toJSON()})});
+ const result=await saved.json();
+ if(!saved.ok||!result.ok)throw Error(result.error||'No se pudo vincular el dispositivo.');
+}
 function ocultarAviso(){document.getElementById('mgp-global-alert')?.remove();}
 
 function actualizar(n,r=reclamos){
@@ -216,7 +248,7 @@ function view(){
   '<div class="gcc-cab"><h2>Central de mensajes</h2><small>GESTLOK Chat · '+esc(localName())+' · asistente y pedidos por chat</small>'+
   '<a href="/chat/panel/?local='+encodeURIComponent(l)+'" target="_blank" rel="noopener">Abrir aparte</a></div>'+
   (online()?'':'<p class="gcc-aviso">Sin conexión: la Central se actualiza cuando vuelva internet.</p>')+
-  '<div class="gcc-alert-controls"><button type="button" data-gcc-alert="activar">Activar sonido</button>'+
+  '<div class="gcc-alert-controls"><button type="button" data-gcc-alert="activar">Activar sonido y notificaciones</button>'+
    '<button type="button" data-gcc-alert="probar">Probar aviso</button><span data-gcc-alert-estado role="status"></span></div>'+
    '<div data-gcc-lugar></div></section>';
 }
