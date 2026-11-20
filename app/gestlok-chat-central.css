@@ -56,3 +56,20 @@
 #hub .gl-ch-chat-row a{color:#126386;font-weight:700}
 #hub .gl-ch-chat-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:520px){#hub .gl-ch-chat-row{flex-direction:column}#hub .gl-ch-chat-actions{width:100%}#hub .gl-ch-chat-actions .btn{flex:1}}
+
+/* Avisos GESTLOK Chat · visibles aun sobre diálogos y formularios. */
+.mgp-global-alert{z-index:30050;align-items:flex-start;max-height:min(45dvh,350px);overflow-y:auto}
+.mgp-alert-copy small{font-size:13px;line-height:1.55}
+.mgp-alert-close{flex:none;display:grid;place-items:center;width:34px;height:34px;
+  border:0;border-radius:9px;background:#ffffff1f;color:#fff;font-size:22px;cursor:pointer}
+.gcc-alert-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.gcc-alert-controls button{min-height:44px;border-radius:10px;border:1px solid #adcae3;
+  padding:10px 14px;background:#edf5fc;color:#12345a;font:inherit;font-weight:650;cursor:pointer}
+.gcc-alert-controls [data-gcc-alert-estado]{font-size:13px;color:#496782}
+@media(max-width:540px){
+ .mgp-global-alert{bottom:calc(83px + env(safe-area-inset-bottom,0px));padding:12px}
+ .mgp-alert-copy strong{font-size:15px}
+ .mgp-alert-copy small{font-size:13px}
+ .mgp-alert-open{font-size:13px;min-height:44px}
+ .gcc-alert-controls button{flex:1 1 125px}
+}
