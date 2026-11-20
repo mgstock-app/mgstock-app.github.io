@@ -163,6 +163,10 @@ Deno.serve(async (req) => {
   const dia = new Date().toISOString().slice(0, 10);
   const ipHash = (await sha256Hex((env("GESTLOK_CHAT_SALT") || "gestlok-chat") + "|" + dia + "|" + ip)).slice(0, 32);
   const accion = String(body.accion ?? "");
+  // Clave anónima estable en el navegador, independiente de la conversación.
+  const clienteToken = String(body.cliente_token ?? "");
+  const navegadorHash = /^[A-Za-z0-9_-]{32,64}$/.test(clienteToken)
+    ? "\\x" + await sha256Hex(clienteToken) : null;
   if (accion !== "adjuntar" && crudo.length > 12000) return json({ok:false,error:"Mensaje demasiado largo"},413,origen);
 
   try {
@@ -186,6 +190,16 @@ Deno.serve(async (req) => {
     const convId = conv.id as string;
     const cierre = await rpc("gestlok_chat_srv_cierre", {p_conversacion:convId,p_token_hash:hash});
     const cerrada = cierre.cerrada === true;
+    if (accion === "recordar") {
+      if (cerrada) return json({ok:false,error:"Iniciá una conversación nueva para pedir."},409,origen);
+      const tel = String(body.telefono ?? "").replace(/\D/g,"");
+      if (!navegadorHash || !/^[0-9]{8,15}$/.test(tel))
+        return json({ok:false,error:"Ingresá un teléfono válido."},400,origen);
+      // Nunca busca direcciones por teléfono sin probar la clave anónima de este dispositivo.
+      const perfil = await rpc("gestlok_chat_srv_recordar", {
+        p_conversacion:convId,p_token_hash:hash,p_navegador_hash:navegadorHash,p_telefono:tel});
+      return json({ok:true,...perfil},200,origen);
+    }
     if (accion === "adjuntar") {
       if (cerrada) return json({ok:false,error:"La conversación ya fue finalizada. Iniciá una nueva."},409,origen);
       const mime = String(body.mime || "");
@@ -338,6 +352,8 @@ Deno.serve(async (req) => {
       : "Quitar un producto");
 
     if (r.accion?.tipo === "crear_pedido") {
+      // La ficha se registra en la misma transacción que acepta el pedido.
+      if (navegadorHash) r.accion.pedido.perfil_hash = navegadorHash.slice(2);
       const { data, error } = await db.rpc("gestlok_chat_srv_pedido", { p_conversacion: convId, p_token_hash: hash, p_pedido: r.accion.pedido });
       if (error) {
         mensajes.push({ texto: sinCodigo(formalizar(textoError(error))) + "\nRevise los datos e intente nuevamente.", tipo: "datos" });
