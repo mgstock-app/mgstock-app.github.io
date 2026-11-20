@@ -10,7 +10,7 @@
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { clasificarSoporte, describirLinea, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
 import { responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
@@ -31,7 +31,7 @@ const BOTON_TEXTO: Record<string, string> = {
   carrito: "Ver mi pedido", estado: "¿Cómo va mi pedido?", cancelar: "Cancelar pedido",
   soporte: "Ayuda con mi pedido", demora: "Consultar demora", reclamo_demora: "Avisar demora al gerente",
   reclamo_faltante: "Faltante en mi pedido", reclamo_otro: "Otro reclamo",
-  hablar_gerente: "Hablar con el gerente",
+  hablar_gerente: "Hablar con el gerente", programar_si:"Sí, dejar pedido programado", programar_no:"No, gracias",
 };
 
 function cors(origen: string | null): HeadersInit {
@@ -129,7 +129,13 @@ Deno.serve(async (req) => {
     const privado = (suc.privado as Json) || {};
     const mensajesLocal = (privado.mensajes as Json) || {};
     // Cada pedido lleva el texto que corresponde a su estado, con los mensajes que configuró el local.
-    const conAviso = (p: Json) => ({ ...p, aviso: textoEstadoPedido(p, sucursal, mensajesLocal) });
+    // El código es solo interno del gerente. No se expone en el JSON ni en la charla pública.
+    const sinCodigo = (v: string) => String(v||'').replace(/\\bpedido\\s+[A-Z]{1,4}-\\d{4,}\\b/gi,'pedido')
+       .replace(/\\b[A-Z]{1,4}-\\d{4,}\\b/g,'').replace(/\\s+([.!?,])/g,'$1');
+    const conAviso = (p: Json) => {
+      const {codigo: _interno, ...visible}=p;
+      return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal))};
+    };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;
 
@@ -146,7 +152,10 @@ Deno.serve(async (req) => {
       }
       const soporte = await rpc("gestlok_chat_srv_respuestas", {
         p_conversacion: convId, p_token_hash: hash, p_desde: 0 });
-      return json({ ok: true, sucursal, catalogo, mensajes, nuevos: extra, carrito: (estado as Json).carrito ?? [],
+      return json({ ok: true, sucursal, catalogo,
+        mensajes: mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+        nuevos:extra.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+        carrito: (estado as Json).carrito ?? [],
         pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso),
         soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
@@ -166,6 +175,7 @@ Deno.serve(async (req) => {
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
     const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
     let clase = clasificarSoporte(entrada);
+    if (!clase && textoOriginal && consultaAjena(textoOriginal)) clase='consulta';
     if (!clase && textoOriginal) {
       // Si el gerente está atendiendo un reclamo, los siguientes mensajes también llegan al humano.
       const activo = await rpc("gestlok_chat_srv_respuestas", {
@@ -178,7 +188,7 @@ Deno.serve(async (req) => {
       const ticket = await rpc("gestlok_chat_srv_reclamo", {
         p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
         p_tipo: clase, p_detalle: detalle });
-      return json({ ok: true, mensajes: [{ texto: ticket.texto,
+      return json({ ok: true, mensajes: [{ texto: sinCodigo(String(ticket.texto)),
           botones: [{id:"estado",texto:"Estado de mi pedido"},{id:"soporte",texto:"Más ayuda"}] }],
         carrito: (conv.estado as Json)?.carrito || [], soporte_pendiente: true,
         motor: "guiado" }, 200, origen);
@@ -196,7 +206,14 @@ Deno.serve(async (req) => {
       }
     }
     if (!r) r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
-    const mensajes: Json[] = [...r.mensajes];
+    if (r.accion?.tipo === 'derivar') {
+      const t = await rpc("gestlok_chat_srv_reclamo",{
+        p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+        p_tipo:'consulta',p_detalle: textoOriginal || String(r.accion.motivo||'Consulta al gerente')});
+      return json({ok:true,mensajes:[{texto:sinCodigo(String(t.texto))}], 
+        carrito:(conv.estado as Json)?.carrito || [],soporte_pendiente:true,motor:'ia'},200,origen);
+    }
+    const mensajes: Json[] = r.mensajes.map(m=>({...m,texto:sinCodigo(formalizar(String(m.texto||'')))}));
     let pedido: Json | null = null;
     // Lo que queda escrito del lado del cliente (sin datos personales).
     const cliente = textoOriginal || (entrada.texto ? String(entrada.texto)
@@ -208,7 +225,7 @@ Deno.serve(async (req) => {
     if (r.accion?.tipo === "crear_pedido") {
       const { data, error } = await db.rpc("gestlok_chat_srv_pedido", { p_conversacion: convId, p_token_hash: hash, p_pedido: r.accion.pedido });
       if (error) {
-        mensajes.push({ texto: textoError(error) + "\nRevisá los datos y volvé a enviarlo.", tipo: "datos" });
+        mensajes.push({ texto: sinCodigo(formalizar(textoError(error))) + "\nRevise los datos e intente nuevamente.", tipo: "datos" });
       } else {
         pedido = conAviso((data as Json).pedido as Json);
         r.estado.carrito = []; r.estado.paso = "enviado";
@@ -218,10 +235,10 @@ Deno.serve(async (req) => {
       const est = await rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash });
       const ult = ((est.pedidos as Json[]) || [])[0];
       pedido = ult ? conAviso(ult) : null;
-      mensajes.push({ texto: pedido ? String(pedido.aviso) : "Todavía no enviaste ningún pedido desde este teléfono." });
+      mensajes.push({ texto: pedido ? String(pedido.aviso) : "Todavía no hay pedidos enviados desde este chat." });
     } else if (r.accion?.tipo === "cancelar") {
       const { data, error } = await db.rpc("gestlok_chat_srv_cancelar", { p_conversacion: convId, p_token_hash: hash });
-      if (error) mensajes.push({ texto: textoError(error) });
+      if (error) mensajes.push({ texto: sinCodigo(formalizar(textoError(error))) });
       else { pedido = conAviso((data as Json).pedido as Json); mensajes.push({ texto: String(pedido.aviso) }); }
     }
 
@@ -232,7 +249,8 @@ Deno.serve(async (req) => {
       // Si el pedido ya se creó, el cliente tiene que enterarse aunque no se haya podido guardar el turno.
       if (!pedido || r.accion?.tipo !== "crear_pedido") throw e;
     }
-    return json({ ok: true, mensajes, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
+    return json({ ok: true, mensajes:mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+      carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
       motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);
   } catch (e) {
     const err = e as { code?: string; message?: string };
