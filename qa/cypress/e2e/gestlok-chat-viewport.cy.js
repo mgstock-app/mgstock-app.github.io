@@ -44,7 +44,7 @@ describe('GESTLOK Chat · campo de texto siempre visible', () => {
       verificarLayout();
       cy.get('#texto').type('Necesito ayuda con mi pedido. '.repeat(7), {delay:0});
       verificarLayout();
-      cy.get('#texto').should('contain.value','Necesito ayuda');
+      cy.get('#texto').invoke('val').should('include','Necesito ayuda');
     });
   }
 });
