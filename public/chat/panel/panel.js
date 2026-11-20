@@ -778,7 +778,7 @@
       {id: 'p2', categoria_id: 'c1', nombre: 'Empanada de humita', descripcion: '', precio: 1200, activo: true, disponible: false, orden: 0, opciones: []},
       {id: 'p3', categoria_id: 'c2', nombre: 'Pizza muzzarella', descripcion: '', precio: 7500, activo: true, disponible: true, orden: 0, opciones: [
         {id: 'tam_0', nombre: 'Tamaño', tipo: 'una', obligatorio: true, valores: [{id: 'chica', nombre: 'Chica', extra: 0}, {id: 'grande', nombre: 'Grande', extra: 3000}]}]}],
-    pedidos: [{id: 'x1', codigo: 'MM-0007', estado: 'pendiente', motivo: '', cliente_nombre: 'Ana Pérez', cliente_telefono: '1155551234', entrega: 'envio',
+    pedidos: [{id: 'x1', conversacion_id: 'v1', codigo: 'MM-0007', estado: 'pendiente', motivo: '', cliente_nombre: 'Ana Pérez', cliente_telefono: '1155551234', entrega: 'envio',
       direccion: 'Av. Mitre 2200, 3° B', horario: '21:30', medio_pago: 'transferencia', nota: 'Tocar timbre B', subtotal: 13900, envio: 800, total: 14700,
       creado_at: new Date().toISOString(), items: [{cantidad: 6, nombre: 'Empanada de carne', opciones: [], nota: '', importe: 7200},
         {cantidad: 1, nombre: 'Pizza muzzarella', opciones: [{grupo: 'Tamaño', valores: ['Chica']}], nota: 'bien cocida', importe: 7500}]},
@@ -808,7 +808,16 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
-      case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente'}];
+      case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente',cerrada_at:D.cerrada?new Date().toISOString():null}];
+      case 'panel_estado_conversacion': return {cerrada:!!D.cerrada,puede_enviar_transferencia:true};
+      case 'panel_enviar_transferencia':
+        if(D.cerrada)throw Error('La conversación ya está cerrada');
+        D.respuestas.push('Le envio los datos para transferir!\nAlias: migustomunro\nTitular: Gisela Alejandra Oppenheimer\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
+        return {ok:true};
+      case 'panel_cerrar_conversacion':
+        D.cerrada=true;D.respuestas.push('La conversación fue finalizada por el local. Puede iniciar una nueva consulta cuando lo necesite.');
+        D.reclamos.forEach(r=>{r.estado='respondido';});
+        return {ok:true,cerrada:true};
       case 'panel_conversacion': return [
         {rol:'asistente',texto:'¡Hola! ¿Qué te gustaría pedir hoy?'},
         {rol:'cliente',texto:'Mi pedido está tardando mucho'},
