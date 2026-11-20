@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261120clientes1';
+  const VERSION_CSS = '20261120abrir1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261120clientes1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261120demanda1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -55,7 +55,7 @@
   raiz.replaceChildren(...[EMBED ? el('link', {rel: 'stylesheet', href: '/chat/panel/panel.css?v=' + VERSION_CSS}) : null, marco].filter(Boolean));
   const $ = id => raiz.querySelector('#' + id);
   const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0,
-    pendientesVistos: null, reclamosVistos: null, reporteDias:30, ocupado: false};
+    pendientesVistos: null, reclamosVistos: null, reporteDias:30, ocupado: false, resaltar: '', porAbrir: String(op.abrir || '')};
   let sb = op.sb || null;
   if (!DEMO && !sb) {
     try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: false}}); }
@@ -118,6 +118,7 @@
     $('pestanas').hidden = false;
     $('panel').setAttribute('aria-busy', 'false');
     mostrar();
+    if (S.porAbrir) procesarAbrir();
   }
   $('pestanas').addEventListener('click', e => {
     const b = e.target.closest('[data-p]'); if (!b) return;
@@ -165,6 +166,11 @@
     }
     lista.replaceChildren(...(r.pedidos.length ? r.pedidos.map(tarjetaPedido)
       : [el('p', {class: 'nota', text: S.filtro === 'pendiente' ? 'No hay pedidos pendientes de confirmación.' : 'No hay pedidos para mostrar.'})]));
+    if (S.resaltar) {
+      const t = [...lista.querySelectorAll('[data-pedido]')].find(x => x.dataset.pedido === S.resaltar);
+      S.resaltar = '';
+      if (t) { t.classList.add('resaltada'); try { t.scrollIntoView({block: 'center', behavior: 'smooth'}); } catch { /* nada */ } }
+    }
     programar(lista);
   }
   function programar(lista) {
@@ -176,11 +182,64 @@
       cargarPedidos(lista);
     }, 15000);
   }
+  // Pedido nuevo sin abrir: resumen (como el aviso) y «Abrir pedido». Abrirlo lo pasa a preparación y el cliente
+  // recibe el aviso con la demora del local. «Rechazar…» sigue disponible sin abrirlo.
+  function tarjetaCerrada(p) {
+    const motivo = el('input', {type: 'text', maxlength: '300', placeholder: 'Motivo para el cliente (ej.: sin stock)', 'aria-label': 'Motivo del rechazo'});
+    const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
+      el('button', {type: 'button', class: 'boton peligro', text: 'Rechazar pedido', onclick: () => decidir(p, 'rechazado', motivo.value)}));
+    const items = (p.items || []).map(i => i.cantidad + ' × ' + i.nombre);
+    const desde = Math.max(new Date(p.creado_at).getTime() || 0, p.programado_para ? new Date(p.programado_para).getTime() || 0 : 0);
+    const min = desde ? Math.max(0, Math.floor((Date.now() - desde) / 60000)) : 0;
+    return el('article', {class: 'tarjeta pendiente cerrada' + (min >= 5 ? ' urgente' : min >= 2 ? ' demorada' : ''), 'data-pedido': p.id},
+      el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado pendiente', text: 'Sin abrir'}),
+        el('small', {text: min < 1 ? 'Recién llegado' : 'Hace ' + min + ' min'})),
+      el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre})),
+      Number(p.cliente_pedidos) >= 2 ? el('p', {class: 'nota-cliente', text: 'Cliente frecuente · ' + p.cliente_pedidos + ' pedidos en esta sucursal'}) : null,
+      el('p', {class: 'entrega', text: (p.entrega === 'envio' ? 'Envío' : 'Retira en el local') + ' · ' + (PAGOS[p.medio_pago] || p.medio_pago) + ' · Total ' + pesos(p.total)}),
+      items.length ? el('p', {class: 'resumen', text: items.slice(0, 2).join(' · ') + (items.length > 2 ? ' · +' + (items.length - 2) + ' más' : '')}) : null,
+      min >= 5 ? el('p', {class: 'nota-cliente', text: 'El cliente ya recibió el aviso de alta demanda.'}) : null,
+      el('p', {class: 'nota', text: 'Al abrirlo pasa a «En preparación» y el cliente recibe el aviso con la demora estimada.'}),
+      el('div', {class: 'acciones'},
+        p.conversacion_id ? el('button', {type: 'button', class: 'boton', text: 'Abrir chat del cliente',
+          onclick: () => abrirCharla({id: p.conversacion_id, creada_at: p.creado_at})}) : null,
+        el('button', {type: 'button', class: 'boton principal', text: 'Abrir pedido', onclick: () => abrirPedido(p)}),
+        el('button', {type: 'button', class: 'boton', text: 'Rechazar…', onclick: () => { caja.hidden = !caja.hidden; if (!caja.hidden) motivo.focus(); }}),
+        caja));
+  }
+  async function abrirPedido(p) {
+    if (S.ocupado) return;
+    S.ocupado = true;
+    try {
+      await rpc('panel_decidir', {p_pedido: p.id, p_decision: 'confirmado', p_motivo: ''});
+      aviso('Pedido ' + p.codigo + ' abierto: pasó a preparación y el cliente recibió el aviso con la demora');
+      if (S.pendientesVistos) S.pendientesVistos -= 1;
+      avisarAnfitrion(Math.max(0, S.pendientesVistos || 0));
+    } catch (e) { aviso(e.message, true); }
+    finally { S.ocupado = false; }
+    S.filtro = 'confirmado'; S.resaltar = p.id;
+    verPedidos();
+  }
+  // Desde el aviso o la notificación de GESTLOK: abrir ese pedido (si sigue sin abrir) o mostrarlo.
+  async function procesarAbrir() {
+    const id = S.porAbrir;
+    if (!id || !S.suc) return;
+    S.porAbrir = '';
+    if (S.pestana !== 'pedidos') { S.pestana = 'pedidos'; mostrar(); }
+    let r;
+    try { r = await rpc('panel_pedidos', {p_sucursal: S.suc.id, p_estado: 'pendiente', p_limite: 60}); } catch { return; }
+    const p = (r.pedidos || []).find(x => x.id === id);
+    const futuro = p?.programado_para && new Date(p.programado_para).getTime() > Date.now();
+    if (p && !futuro && puede('gestionar')) return abrirPedido(p);
+    S.filtro = p ? 'pendiente' : 'todos'; S.resaltar = id;
+    verPedidos();
+  }
   function tarjetaPedido(p) {
     const tel = String(p.cliente_telefono || '');
     const acciones = el('div', {class: 'acciones'});
     const programadoFuturo=p.estado==='pendiente' && p.programado_para && 
       new Date(p.programado_para).getTime()>Date.now();
+    if (p.estado === 'pendiente' && !programadoFuturo && puede('gestionar')) return tarjetaCerrada(p);
     if (['pendiente', 'confirmado'].includes(p.estado) && puede('gestionar')) {
       const motivo = el('input', {type: 'text', maxlength: '300', placeholder: 'Motivo para el cliente (ej.: sin stock)', 'aria-label': 'Motivo del rechazo'});
       const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
@@ -197,7 +256,7 @@
       acciones.prepend(el('button',{type:'button',class:'boton',text:'Abrir chat del cliente',
         onclick:()=>abrirCharla({id:p.conversacion_id,creada_at:p.creado_at})}));
     }
-    return el('article', {class: 'tarjeta ' + p.estado},
+    return el('article', {class: 'tarjeta ' + p.estado, 'data-pedido': p.id},
       el('header', {}, el('strong', {text: p.codigo}), el('span', {class: 'estado ' + p.estado, text: ESTADOS[p.estado] || p.estado}), el('small', {text: hora(p.creado_at)})),
       el('p', {class: 'cliente'}, el('b', {text: p.cliente_nombre}), ' · ',
         el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel})),
@@ -473,7 +532,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261120clientes1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261120demanda1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
@@ -880,6 +939,7 @@
   return {
     marco,
     refrescar: () => { if (S.suc && S.pestana === 'pedidos') verPedidos(); },
+    abrir: id => { S.porAbrir = String(id || ''); return procesarAbrir(); },
     destruir: () => { clearTimeout(S.sondeo); document.removeEventListener('visibilitychange', alVolver); raiz.replaceChildren(); },
   };
   }

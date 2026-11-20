@@ -109,12 +109,37 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
           return /pendiente de revisión y confirmación/i.test(valido)
             ? valido : valido+' Su pedido está pendiente de revisión y confirmación del gerente.';
         })();
-    case 'confirmado': return 'El gerente confirmó su pedido. El local está preparándolo.';
+    case 'confirmado': {
+      // Al abrir el pedido el gerente, el cliente recibe «en preparación» con la demora configurada del local.
+      const demora = demoraPedido(pedido, s);
+      return (nombre ? nombre + ', su' : 'Su') + ' pedido ya está en preparación.' +
+        (demora ? ' ' + (pedido.entrega === 'envio' ? 'Tiempo estimado de entrega' : 'Tiempo estimado para retirar') + ': ' + demora + '.' : '');
+    }
     case 'terminado': return salida(mensajeDe(mensajes,pedido.entrega==='envio'?'terminado_envio':'terminado_retiro'));
     case 'rechazado': return salida(mensajeDe(mensajes,'rechazado'));
     case 'cancelado': return 'Su pedido fue cancelado.';
     default: return '';
   }
+}
+
+/** Demora estimada del local según la entrega del pedido («35 a 40 minutos»). '' si el local no la cargó. */
+export function demoraPedido(pedido, sucursal) {
+  const s = sucursal || {};
+  const d = String((pedido?.entrega === 'envio' ? s.demora_envio : s.demora_retiro) || '').trim().replace(/[.\s]+$/, '');
+  return d.length > 80 ? '' : d;
+}
+/** Minutos sin que el gerente abra un pedido antes de avisarle al cliente que hay alta demanda. */
+export const ESPERA_ALTA_DEMANDA_MIN = 5;
+/** Pedido pendiente sin abrir hace 5 minutos o más (desde que se pudo atender: creado o, si es programado, su hora)
+ * → aviso de alta demanda para el cliente. '' en cualquier otro caso. */
+export function avisoEspera(pedido, ahora = Date.now()) {
+  if (pedido?.estado !== 'pendiente') return '';
+  const creado = new Date(pedido.creado_at).getTime();
+  const programado = pedido.programado_para ? new Date(pedido.programado_para).getTime() : 0;
+  const desde = Math.max(Number.isFinite(creado) ? creado : 0, Number.isFinite(programado) ? programado : 0);
+  if (!desde || ahora - desde < ESPERA_ALTA_DEMANDA_MIN * 60000) return '';
+  const nombre = String(pedido.nombre || '').trim();
+  return 'Gracias por la espera' + (nombre ? ', ' + nombre : '') + '. Estamos con alta demanda en este momento: en breve le confirmamos su pedido.';
 }
 
 export const PAGOS = {

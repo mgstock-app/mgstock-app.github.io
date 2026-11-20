@@ -13,7 +13,7 @@
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { avisoEspera, cierrePedido, clasificarSoporte, consultaAjena, demoraPedido, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
 import { bienvenidaIA, responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
@@ -184,7 +184,11 @@ Deno.serve(async (req) => {
       delete visible.codigo;
       // Pedido terminado: invitación a reseñar (solo con link de Google del local) y «Gracias por elegirnos».
       const cierre = cierrePedido(p, mensajesLocal);
-      return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal)), ...(cierre || {})};
+      // Pendiente sin abrir hace 5 min: «alta demanda» (el chat lo muestra una vez). En preparación: demora del local.
+      const espera = avisoEspera(p);
+      const demora = p.estado === 'confirmado' ? demoraPedido(p, sucursal) : '';
+      return {...visible, aviso:sinCodigo(textoEstadoPedido(p,sucursal,mensajesLocal)), ...(cierre || {}),
+        ...(espera ? {espera} : {}), ...(demora ? {demora} : {})};
     };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;

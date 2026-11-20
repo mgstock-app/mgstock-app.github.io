@@ -65,3 +65,10 @@
 #hub .gl-ch-chat-row a{color:#126386;font-weight:700}
 #hub .gl-ch-chat-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:520px){#hub .gl-ch-chat-row{flex-direction:column}#hub .gl-ch-chat-actions{width:100%}#hub .gl-ch-chat-actions .btn{flex:1}}
+/* Sonido y notificaciones del gerente (Central) y botón para activarlas desde el aviso flotante */
+.gcc-avisos{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin:0 0 12px;padding:10px 12px;border:1px solid #f1d58a;border-radius:12px;background:#fff8e6;color:#5c4400;font-size:13px;line-height:1.45}
+.gcc-avisos.activos{border-color:#bfe5cc;background:#eefaf2;color:#145c2e}
+.gcc-avisos span{flex:1 1 220px}
+.gcc-avisos-boton{min-height:36px;padding:7px 12px;border:1px solid #c9d3de;border-radius:9px;background:#fff;color:#12345a;font-size:13px;font-weight:800;cursor:pointer}
+.gcc-avisos-boton.principal{border-color:#1f8a4c;background:#1f8a4c;color:#fff}
+.mgp-alert-permiso{display:inline-block;margin-top:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background:transparent;color:#fff;font-size:12px;font-weight:800;cursor:pointer}

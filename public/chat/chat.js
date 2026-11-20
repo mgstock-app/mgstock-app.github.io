@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120tamanos5';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120demanda1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -265,6 +265,15 @@ function despedidaPedido(p) {
   bajar();
   try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
 }
+/** Pedido sin abrir hace 5 minutos: el asistente avisa que hay alta demanda (una vez por pedido en este teléfono). */
+function avisoAltaDemanda(p) {
+  if (p.estado !== 'pendiente' || !p.espera) return;
+  const clave = 'gestlok-chat:espera:' + (S.sucursal?.slug || '') + ':' + p.creado_at;
+  try { if (localStorage.getItem(clave)) return; localStorage.setItem(clave, '1'); } catch { /* sin almacenamiento: se muestra igual */ }
+  burbuja('asistente', p.espera);
+  bajar();
+  try { navigator.vibrate?.(120); } catch { /* sin vibración */ }
+}
 async function confirmarRecepcion() {
   if (S.enviando || S.cerrada || S.pedido?.estado !== 'terminado' || S.pedido?.recibido_at) return;
   S.enviando = true;
@@ -293,7 +302,9 @@ function mostrarPedido(p) {
   caja.className = 'aviso-pedido ' + p.estado;
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
     el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
-      : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
+      : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre')
+      : p.estado === 'confirmado' && p.demora ? 'En preparación · Demora estimada: ' + p.demora
+      : p.estado === 'pendiente' && p.espera && !programado ? 'Alta demanda: en breve le confirmamos su pedido' : sub) + ' · ' + pesos(p.total)),
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null,
     p.estado === 'terminado' && !p.recibido_at ? el('button', {type:'button', text:'Ya recibí mi pedido', onclick:confirmarRecepcion}) : null,
     ['pendiente','confirmado','terminado'].includes(p.estado) ? el('button', {type:'button', text:'Necesito ayuda', onclick:()=>enviar({boton:'soporte'},'Necesito ayuda')}) : null,
@@ -304,6 +315,7 @@ function mostrarPedido(p) {
   const cambio = antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado);
   const recienTerminado = !antes || antes.creado_at !== p.creado_at || antes.estado !== 'terminado';
   if (p.estado === 'terminado' && recienTerminado) despedidaPedido(p);
+  else if (p.estado === 'pendiente' && p.espera) avisoAltaDemanda(p);
   else if (cambio) {
     // El texto lo arma la función con los mensajes que configuró el local.
     if (p.aviso && ['confirmado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);

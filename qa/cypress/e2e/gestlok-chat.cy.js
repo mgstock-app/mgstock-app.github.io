@@ -170,10 +170,9 @@ describe('GESTLOK Chat · panel', () => {
     cy.contains('button', 'Rechazar…').click();
     cy.get('.rechazo .boton.peligro').click();
     cy.get('#aviso').should('contain.text', 'motivo');
-    cy.get('.acciones .boton.principal').should('have.text', 'Confirmar y pasar a preparación').click();
-    cy.contains('No hay pedidos pendientes de confirmación');
-    cy.contains('button', 'En preparación').click();
-    cy.get('.tarjeta.confirmado').should('contain.text', 'MM-0007');
+    cy.get('.acciones .boton.principal').should('have.text', 'Abrir pedido').click();
+    cy.get('#aviso').should('contain.text', 'MM-0007 abierto');
+    cy.get('.tarjeta.confirmado.resaltada').should('contain.text', 'MM-0007');
     cy.get('.acciones .boton.principal').should('have.text', 'Pedido enviado');
     cy.get('.acciones .boton.principal').click();
     cy.get('#aviso').should('contain.text', 'MM-0007 enviado');

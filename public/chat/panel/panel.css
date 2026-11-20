@@ -210,3 +210,11 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .dialogo .acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .dialogo .acciones .boton{flex:1;min-width:180px;white-space:normal}
 .dialogo .acciones .boton:disabled{opacity:.5}
+
+/* Pedido nuevo sin abrir: resumen y «Abrir pedido» (al abrirlo pasa a preparación) */
+.tarjeta.cerrada{background:#fffaf0}
+.tarjeta.cerrada .resumen{margin:6px 0 0;color:var(--gris);font-size:14px}
+.tarjeta.cerrada.demorada{border-left-color:#e08a00}
+.tarjeta.cerrada.urgente{border-left-color:var(--mal);box-shadow:0 0 0 2px rgba(200,40,40,.15)}
+.tarjeta.resaltada{box-shadow:0 0 0 3px rgba(42,188,104,.45);animation:tarjeta-abierta 1.2s ease-out 1}
+@keyframes tarjeta-abierta{0%{transform:scale(.98)}60%{transform:scale(1.01)}100%{transform:none}}

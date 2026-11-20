@@ -28,10 +28,12 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   central().find('.tarjeta.pendiente').should('contain.text','MM-0001').and('contain.text','Cliente Ficticio');
   central().find('#sucursal').should('not.be.visible');
   central().find('[data-p="mensajes"]').should('be.visible');
-  central().contains('button','Confirmar y pasar a preparación').click();
-  central().contains('No hay pedidos pendientes de confirmación');
-  central().contains('button','En preparación').click();
-  central().find('.tarjeta.confirmado').should('contain.text','MM-0001');
+  // Pedido nuevo cerrado: «Abrir pedido» lo pasa a preparación (el cliente recibe la demora) y lo muestra abierto.
+  central().find('.tarjeta.pendiente.cerrada').should('contain.text','Sin abrir').and('contain.text','Abrir pedido');
+  central().contains('button','Abrir pedido').click();
+  central().find('#aviso').should('contain.text','MM-0001 abierto');
+  central().find('.tarjeta.confirmado.resaltada').should('contain.text','MM-0001');
+  cy.window().its('__chat.pedidos.0.estado').should('eq','confirmado');
   central().contains('button','Listo para retirar').click();
   central().find('#aviso').should('contain.text','MM-0001 listo para retirar');
   central().contains('No hay pedidos para mostrar');
@@ -54,9 +56,14 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.get('#mgp-global-alert [data-gcc-cerrar]').click();
   cy.get('#mgp-global-alert').should('not.exist');
   cy.window().then(w=>{w.__chat.pedidos.push(pedido('ch-3','MM-0003'));w.dispatchEvent(new Event('focus'));});
-  cy.get('#mgp-global-alert',{timeout:20000}).should('contain.text','MM-0003').contains('button','Ver pedido').click();
+  cy.get('#mgp-global-alert',{timeout:20000}).should('contain.text','MM-0003').contains('button','Abrir pedido').click();
   cy.get('#ttl').should('contain.text','Central de mensajes');
-  central().find('.tarjeta.pendiente').should('have.length',3);
+  // Abrir desde el aviso = el gerente abrió ese pedido: pasa a preparación y queda a la vista.
+  central().find('.tarjeta.confirmado.resaltada',{timeout:15000}).should('contain.text','MM-0003');
+  cy.window().then(w=>{expect(w.__chat.pedidos.find(p=>p.codigo==='MM-0003').estado).to.eq('confirmado');
+   expect(w.__chat.pedidos.find(p=>p.codigo==='MM-0002').estado).to.eq('pendiente');});
+  cy.get('#mgp-global-alert').should('not.exist');
+  cy.get('.gcc-avisos').should('contain.text','Probar aviso');
  });
 
  it('el panel no se recarga cuando GESTLOK redibuja la pantalla',()=>{

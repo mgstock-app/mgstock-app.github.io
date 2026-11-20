@@ -119,12 +119,26 @@ reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó s
 (dueño, administradora o gerente del local). El link es por sucursal, solo `https://` y de Google (g.page,
 maps.app.goo.gl, google.com…): la base rechaza cualquier otro. Se muestra una vez por pedido en ese teléfono, también si
 el cliente vuelve a abrir el chat dentro de las 24 h; el aviso de estado arriba del chat queda con el enlace «Dejar reseña».
-**Aviso de pedido nuevo con vista previa (en todo GESTLOK).** Si el dueño o gerente está en otra sección (Pagos Online,
-Stock, Inicio…), al entrar un pedido aparece abajo un aviso con el código, el cliente, retiro o envío, el medio de pago,
-el total y los primeros productos («+N más»), con «Ver pedido» (abre la Central) y «×» para cerrarlo. Con un reclamo o
-consulta muestra el tipo, el pedido y el texto del cliente, con «Responder». Queda por encima de las ventanas abiertas
-(por ejemplo, el reporte de Pagos Online). Se revisa cada 15 s y al volver a la pestaña; vale igual para Munro y
-Don Torcuato, cada uno con sus pedidos. Si no se puede leer el detalle, queda el aviso simple con la cantidad.
+**Avisos al gerente: sonido, notificación y recordatorios (en todo GESTLOK).** Mientras GESTLOK está abierto (en
+cualquier sección: Pagos Online, Stock, Inicio… o en segundo plano), cada pedido nuevo suena y llega como notificación
+del sistema con vista previa (código, cliente, retiro o envío, pago, total y primeros productos). Si sigue **sin abrir**,
+vuelve a sonar y notificar **a los 2 minutos** y **a los 5 minutos** (a los 5, el cliente ya recibió el aviso de alta
+demanda). Fuera de la Central también aparece el aviso flotante, por encima de las ventanas abiertas, con «Abrir pedido»
+y «×». Los reclamos y consultas suenan y notifican al llegar («Responder»). La Central muestra «Activar» (permiso de
+notificaciones del navegador) y «Probar aviso». El sonido se habilita con el primer toque en GESTLOK (regla de los
+navegadores). Al entrar a GESTLOK no suenan los pedidos que ya estaban; sí sus recordatorios. Munro y Don Torcuato, cada
+uno con sus pedidos. Con GESTLOK cerrado o el teléfono bloqueado no hay avisos: harían falta notificaciones push del servidor.
+
+**Abrir el pedido = pasa a preparación.** En la Central, el pedido nuevo llega «Sin abrir» (resumen, hace cuántos
+minutos, «Abrir pedido», «Rechazar…» y «Abrir chat del cliente»). Al tocar «Abrir pedido» (en la Central, en el aviso
+flotante o en la notificación) el pedido pasa a «En preparación» y el cliente recibe: «Su pedido ya está en preparación.
+Tiempo estimado de entrega / para retirar: …» con la demora del local según la entrega. Después se puede rechazar con
+motivo igual que antes. Los pedidos programados para más tarde siguen como antes (se habilitan al abrir el local).
+
+**Alta demanda (5 minutos sin abrir).** Si el gerente no abrió el pedido a los 5 minutos (desde que se creó o desde su
+hora si es programado), el asistente le escribe al cliente una vez: «Gracias por la espera. Estamos con alta demanda en
+este momento: en breve le confirmamos su pedido.» Lo calcula la función al consultar el estado (sin tareas programadas).
+
 **Venta sugerida.** Al tocar «Finalizar pedido», si el pedido no lleva postre o bebida, el chat lo ofrece una vez
 (pregunta editable en Mensajes → «Antes de finalizar: venta sugerida») con botones de productos concretos con su precio
 (de cada categoría, el más caro y el más económico; un toque lo agrega al pedido), «Ver más postres / bebidas» si hay
@@ -179,6 +193,6 @@ El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pend
 
 ## Confirmación manual (19/11/2026)
 
-El chat público toma el pedido completo y lo deja `pendiente`. El gerente revisa los detalles y pulsa «Confirmar y pasar a preparación». La misma operación transaccional registra `confirmado`, fecha y usuario, y lo incorpora a la lista interna «En preparación» de la Central. Solo después se puede marcar `terminado`. No se crea una venta ni se modifica caja o stock. La base impide terminar sin confirmar, duplicar la confirmación o decidir pedidos de otro local/empresa. El asistente y el cliente no tienen permisos para confirmar.
+El chat público toma el pedido completo y lo deja `pendiente`. El gerente toca «Abrir pedido» (pasa a preparación y el cliente recibe la demora). La misma operación transaccional registra `confirmado`, fecha y usuario, y lo incorpora a la lista interna «En preparación» de la Central. Solo después se puede marcar `terminado`. No se crea una venta ni se modifica caja o stock. La base impide terminar sin confirmar, duplicar la confirmación o decidir pedidos de otro local/empresa. El asistente y el cliente no tienen permisos para confirmar.
 
 Migración: `20261120000406_gestlok_chat_confirmacion_manual.sql`. El texto pendiente es fijo para que plantillas anteriores no anuncien preparación antes de la aprobación. Se conservan los pedidos históricos.

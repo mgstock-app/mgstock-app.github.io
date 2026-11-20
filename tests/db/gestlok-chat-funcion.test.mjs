@@ -129,6 +129,18 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
   assert.equal(r.body.pedidos[0].estado, 'pendiente');
   assert.ok(!JSON.stringify(r.body).includes('Instrucción secreta'), 'las instrucciones de la IA nunca llegan al cliente');
+  assert.equal(r.body.pedidos[0].espera, undefined, 'recién llegado: sin aviso de alta demanda');
+  // 5 minutos sin que el gerente lo abra → aviso de alta demanda para el cliente.
+  ok(DB, [], `update gestlok_chat_private.pedidos set creado_at = now() - interval '6 minutes' where codigo = 'MM-0001'`);
+  r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
+  assert.match(r.body.pedidos[0].espera, /alta demanda.*en breve le confirmamos su pedido/i);
+  // El gerente abre el pedido → «en preparación» con la demora del local según la entrega.
+  ok(DB, [], `update gestlok_chat_private.sucursales set demora_envio = '35 a 40 minutos' where slug = 'mi-gusto-munro'`);
+  ok(DB, [], `update gestlok_chat_private.pedidos set estado = 'confirmado', decidido_at = now() where codigo = 'MM-0001'`);
+  r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});
+  assert.equal(r.body.pedidos[0].espera, undefined, 'abierto: ya no hay alta demanda');
+  assert.equal(r.body.pedidos[0].demora, '35 a 40 minutos');
+  assert.match(r.body.pedidos[0].aviso, /ya está en preparación\. Tiempo estimado de entrega: 35 a 40 minutos\./);
   // El gerente marca terminado → el cliente recibe el aviso de «listo» (envío)
   ok(DB, [], `update gestlok_chat_private.pedidos set estado = 'terminado', decidido_at = now() where codigo = 'MM-0001'`);
   r = await llamar({slug: 'mi-gusto-munro', token: TOKEN, accion: 'estado'});

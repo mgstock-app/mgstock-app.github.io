@@ -91,7 +91,9 @@ self.addEventListener('notificationclick',event=>{
     const local=event.notification.data?.local,view=event.notification.data?.view;
     if(opened){
       await opened.focus();
-      opened.postMessage({type:'gestlok-push-open',local,view});
+      // Avisos de GESTLOK Chat: qué pedido abrir en la Central (solo un identificador).
+      const pedido=/^[0-9a-f-]{8,40}$/i.test(String(event.notification.data?.pedido||''))?String(event.notification.data.pedido):'';
+      opened.postMessage({type:'gestlok-push-open',local,view,pedido});
       return;
     }
     if(local && view){url.searchParams.set('gl_local',local);url.searchParams.set('gl_view',view);}

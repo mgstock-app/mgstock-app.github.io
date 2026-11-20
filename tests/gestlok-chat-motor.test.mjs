@@ -345,3 +345,26 @@ test('pizza chica, individual o de 4 porciones: se ofrecen las individuales de l
   assert.equal(r.mensajes[0].tipo, 'carta', 'muchas opciones de una categoría: abre la carta ahí');
   assert.equal(r.mensajes[0].categoria, 'p8');
 });
+
+test('al abrir el pedido: «en preparación» con la demora del local según la entrega', () => {
+  const suc = {nombre: 'Munro', demora_retiro: '15 a 20 minutos', demora_envio: '35 a 40 minutos'};
+  assert.equal(M.textoEstadoPedido({estado: 'confirmado', nombre: 'Laura', entrega: 'envio'}, suc, {}),
+    'Laura, su pedido ya está en preparación. Tiempo estimado de entrega: 35 a 40 minutos.');
+  assert.equal(M.textoEstadoPedido({estado: 'confirmado', nombre: '', entrega: 'retiro'}, suc, {}),
+    'Su pedido ya está en preparación. Tiempo estimado para retirar: 15 a 20 minutos.');
+  assert.equal(M.textoEstadoPedido({estado: 'confirmado', nombre: 'Ana', entrega: 'retiro'}, {nombre: 'Munro'}, {}),
+    'Ana, su pedido ya está en preparación.', 'sin demora cargada no inventa una');
+  assert.equal(M.demoraPedido({entrega: 'envio'}, suc), '35 a 40 minutos');
+});
+
+test('pedido sin abrir hace 5 minutos: aviso de alta demanda para el cliente', () => {
+  const t0 = Date.parse('2026-11-20T16:00:00Z');
+  const p = {estado: 'pendiente', nombre: 'Laura', creado_at: '2026-11-20T16:00:00Z'};
+  assert.equal(M.avisoEspera(p, t0 + 4 * 60000 + 59000), '', 'antes de los 5 minutos no avisa');
+  assert.equal(M.avisoEspera(p, t0 + 5 * 60000),
+    'Gracias por la espera, Laura. Estamos con alta demanda en este momento: en breve le confirmamos su pedido.');
+  assert.equal(M.avisoEspera({...p, estado: 'confirmado'}, t0 + 9 * 60000), '', 'abierto: ya no');
+  assert.equal(M.avisoEspera({...p, programado_para: '2026-11-20T20:00:00Z'}, t0 + 30 * 60000), '',
+    'programado: cuenta desde su hora');
+  assert.match(M.avisoEspera({...p, nombre: ''}, t0 + 6 * 60000), /^Gracias por la espera\. Estamos con alta demanda/);
+});
