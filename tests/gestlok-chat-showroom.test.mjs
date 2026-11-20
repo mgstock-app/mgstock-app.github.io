@@ -68,5 +68,5 @@ test('la creadora tiene entrada en Inicio y dos perfiles usando los modos reales
   assert.match(gerente,/if \(DEMO\) return demoRpc\(fn, args \|\| \{\}\);/);
   assert.match(cliente,/SHOWROOM\.order\(/);
   assert.match(gerente,/SHOWROOM\.decide\(/);
-  assert.doesNotMatch(bridge,/supabase|\/functions\/v1|fetch\(/i);
+  assert.doesNotMatch(bridge,/\bfetch\s*\(|\.rpc\s*\(|\/functions\/v1/i);
 });
