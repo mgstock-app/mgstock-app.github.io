@@ -7,7 +7,8 @@ describe('Observaciones internas de Proveedores · ambos locales',()=>{
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
     cy.visit('/');cy.wait('@fake');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
-    cy.window().then(w=>w.__rows.push({col:local+'/productos',id:'p-note',data:{nombre:'Producto ficticio',proveedor:'Proveedor Demo Notas',cat:'General',stock:5,orden:1000}}));
+    // El mock puede inicializar __rows después del primer render; Cypress debe esperarlo.
+    cy.window().its('__rows').should('be.an','array').then(rows=>rows.push({col:local+'/productos',id:'p-note',data:{nombre:'Producto ficticio',proveedor:'Proveedor Demo Notas',cat:'General',stock:5,orden:1000}}));
     cy.get('#au-email').clear().type('dueno@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
