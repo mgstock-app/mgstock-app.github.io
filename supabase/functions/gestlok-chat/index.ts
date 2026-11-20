@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
           }
         }
         await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
-          p_cliente: "", p_respuesta: r.mensajes.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
+          p_cliente: "", p_respuesta: extra.map((m: Json) => m.texto).join("\n\n"), p_estado: estado });
         mensajes = [];
       }
       const soporte = await rpc("gestlok_chat_srv_respuestas", {
