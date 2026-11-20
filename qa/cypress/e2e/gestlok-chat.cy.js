@@ -86,16 +86,16 @@ describe('GESTLOK Chat · chat público', () => {
     acepta_retiro: true, acepta_envio: true, envio_costo: 0, pedido_minimo: 0, medios_pago: ['efectivo']},
     catalogo: {categorias: [], productos: []}, mensajes: [], nuevos: [], carrito: [], pedidos: [pedido]});
 
-  it('pedido listo: aviso, reseña de Google y «Gracias por elegirnos» una sola vez', () => {
+  it('pedido recibido por el cliente: reseña de Google y agradecimiento una sola vez', () => {
     cy.viewport(390, 800);
-    const pedido = {creado_at: new Date().toISOString(), estado: 'terminado', entrega: 'retiro', total: 2000, nombre: 'Ana',
+    const pedido = {creado_at: new Date().toISOString(), recibido_at: new Date().toISOString(), estado: 'terminado', entrega: 'retiro', total: 2000, nombre: 'Ana',
       aviso: 'Ana, su pedido ya está listo para retirar.',
       resena: {texto: 'Nos ayudaría mucho que nos deje su reseña y nos cuente su experiencia.', url: 'https://g.page/r/CT9jkvArEGhFEBM/review'},
       cierre: '¡Gracias por elegirnos! 🥰'};
     cy.intercept('POST', FUNCION, abrirConPedido(pedido)).as('fn');
     cy.visit('/chat/?s=mi-gusto-torcuato');
     cy.wait('@fn');
-    cy.get('#aviso-pedido').should('contain.text', '¡Pedido listo!').find('a')
+    cy.get('#aviso-pedido').should('contain.text', 'Pedido recibido por el cliente').find('a')
       .should('have.attr', 'href', pedido.resena.url).and('have.attr', 'rel', 'noopener noreferrer');
     cy.contains('.burbuja.asistente', 'listo para retirar');
     cy.get('.burbuja.resena').should('contain.text', 'nos cuente su experiencia').find('a.resena-link')
@@ -108,6 +108,25 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('.burbuja.resena').should('not.exist');
   });
 
+  it('no ofrece reseña antes de recibir; el cliente confirma su recepción sin registrarse', () => {
+    cy.viewport(390,800);
+    const pedido = {creado_at:new Date().toISOString(),estado:'terminado',entrega:'retiro',total:2000,nombre:'Ana',
+      aviso:'Su pedido está listo para retirar',resena:{texto:'Déjenos su reseña',url:'https://g.page/r/review'},
+      cierre:'¡Gracias por elegirnos!'};
+    cy.intercept('POST', FUNCION, req => {
+      if (req.body.accion === 'recibido') return req.reply({ok:true,pedido:{...pedido,recibido_at:new Date().toISOString()}});
+      return req.reply(abrirConPedido(pedido));
+    }).as('fn');
+    cy.visit('/chat/?s=mi-gusto-torcuato');
+    cy.wait('@fn');
+    cy.get('#aviso-pedido').should('contain.text','Ya recibí mi pedido');
+    cy.get('.burbuja.resena').should('not.exist');
+    cy.get('#aviso-pedido').contains('button','Ya recibí mi pedido').click();
+    cy.wait('@fn');
+    cy.get('#aviso-pedido').should('contain.text','Pedido recibido por el cliente');
+    cy.get('.burbuja.resena').should('exist');
+  });
+
   it('pedido enviado: «en camino»; un link de reseña que no es de Google no se muestra', () => {
     cy.viewport(390, 800);
     cy.intercept('POST', FUNCION, abrirConPedido({creado_at: new Date().toISOString(), estado: 'terminado', entrega: 'envio', total: 2000,
@@ -116,7 +135,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.wait('@fn');
     cy.get('#aviso-pedido').should('contain.text', '¡Pedido en camino!').find('a').should('not.exist');
     cy.get('.burbuja.resena').should('not.exist');
-    cy.get('.burbuja.asistente').last().should('have.text', '¡Gracias por elegirnos!');
+    cy.get('.burbuja.asistente').last().should('not.have.text', '¡Gracias por elegirnos!');
     cy.get('a[href*="estafa"]').should('not.exist');
   });
 
