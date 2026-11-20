@@ -491,7 +491,8 @@ function abrirProducto(p, sugerido = {}, inline = null) {
     contadores.push(() => {
       const u = unidades(elegidas[g.id]);
       const quedan = total - u;
-      resumen.textContent = quedan === 0 ? 'Completo' : (quedan === 1 ? 'Falta 1' : 'Faltan ' + quedan);
+      resumen.textContent = u + ' de ' + total + ' · ' +
+        (quedan === 0 ? 'Completo' : (quedan === 1 ? 'Falta 1' : 'Faltan ' + quedan));
       resumen.classList.toggle('completo', quedan === 0);
       resumen.classList.toggle('pendiente', quedan > 0);
       resumen.setAttribute('aria-label', g.nombre + ': ' + u + ' de ' + total + ' elegidos, ' + resumen.textContent);
