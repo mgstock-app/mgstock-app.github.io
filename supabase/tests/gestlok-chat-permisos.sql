@@ -133,7 +133,7 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"ia_instrucciones":"Tono cálido","bienvenida":"Hola","mensajes":{"recibido":"Recibimos tu pedido {codigo}","terminado_retiro":"Listo {codigo}, pasá a buscarlo","pausado":"Volvemos a las 19","despedida":"¡Gracias por elegirnos!"}}', 3)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente de Munro edita los mensajes del bot · ' || left(v, 60);
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L,
-    '{"horario":"11:00 a 14:40 / 19:00 a 23:15","envio_costo":4000}', 4)::text $q$, s_munro));
+    '{"horario":"11:00 a 14:40 / 19:00 a 23:15","envio_costo":500}', 4)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente puede editar ajustes completos de su local';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"mensajes":{"recibido":"x"}}', 1)::text $q$, s_torc));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente de Munro no edita los mensajes de Torcuato';
