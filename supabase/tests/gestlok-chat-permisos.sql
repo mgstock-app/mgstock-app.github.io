@@ -344,141 +344,32 @@ begin
   perform set_config('prueba.escritura', '', true);
   perform set_config('prueba.soporte', '', true);
 
-  -- Horarios y reportes: la apertura se calcula con hora argentina, sin revelar datos de clientes.
+
+  -- Horarios y reportes por sucursal, usando fechas de prueba (sin afectar pedidos reales).
   perform set_config('role','postgres',true);
   update gestlok_chat_private.sucursales set
     turnos_chat='[{"inicio":"11:00","fin":"14:40"},{"inicio":"19:00","fin":"23:15"}]'::jsonb
   where id=s_munro;
   select gestlok_chat_private.estado_atencion(s,'2026-11-20 15:30'::timestamp)
   into j from gestlok_chat_private.sucursales s where s.id=s_munro;
-  r := r || E'\n' || case when j->>'abierto'='false' and j->>'proximo_texto'='hoy a las 19:00'
-    then 'OK' else 'FALLA' end || ' a las 15:30 se programa para la noche';
+  r:=r || E'\n' || case when j->>'abierto'='false' and j->>'proximo_texto'='hoy a las 19:00'
+    then 'OK' else 'FALLA' end || ' entre turnos, siguiente apertura a las 19:00';
   select gestlok_chat_private.estado_atencion(s,'2026-11-20 23:30'::timestamp)
   into j from gestlok_chat_private.sucursales s where s.id=s_munro;
-  r := r || E'\n' || case when j->>'abierto'='false' and j->>'proximo_texto'='mañana a las 11:00'
-    then 'OK' else 'FALLA' end || ' tras el cierre nocturno abre mañana a las 11:00';
+  r:=r || E'\n' || case when j->>'abierto'='false' and j->>'proximo_texto'='mañana a las 11:00'
+    then 'OK' else 'FALLA' end || ' después del turno noche, abre al día siguiente';
   perform prueba_como('gerente.munro@prueba.example');
   j:=public.gestlok_chat_panel_reporte_diario(s_munro,7);
-  r := r || E'\n' || case when jsonb_array_length(j)=7 and (j->0->>'fecha') ~ '^\\d{4}-\\d{2}-\\d{2}
-  perform set_config('role', 'postgres', true);
-  procedure_ok := gestlok_chat_private.consumir('prueba:x', 'minuto', 2) and gestlok_chat_private.consumir('prueba:x', 'minuto', 2)
-                  and not gestlok_chat_private.consumir('prueba:x', 'minuto', 2);
-  r := r || E'\n' || case when procedure_ok then 'OK' else 'FALLA' end || ' los topes cortan al pasarse';
-  select count(*) into n from gestlok_chat_private.auditoria where accion in ('producto_guardar','config_guardar','producto_disponible');
-  r := r || E'\n' || case when n >= 5 then 'OK' else 'FALLA' end || ' los cambios quedan auditados (' || n || ')';
-  select count(*) into n from gestlok_chat_private.pedido_eventos where pedido_id = ped1;
-  r := r || E'\n' || case when n = 3 then 'OK' else 'FALLA' end || ' historial: creado, confirmado y terminado';
-
-  -- Soporte: reclamos reales del cliente y respuesta humana sin salir del mismo chat.
-  perform prueba_como('service_role');
-  v := prueba_q(format($q$ select public.gestlok_chat_srv_reclamo(%L,%L::bytea,'ip1','faltante','Me falta una empanada')::text $q$,conv1,h1));
-  r := r || E'\n' || case when v like 'ok:%' and v like '%gerente%' then 'OK' else 'FALLA' end
-    || ' el cliente avisa faltante; queda una alerta para el gerente · ' || left(v,85);
-  perform set_config('role','postgres',true);
-  select id into ticket1 from gestlok_chat_private.reclamos where conversacion_id=conv1 and estado='pendiente';
-  r := r || E'\n' || case when ticket1 is not null then 'OK' else 'FALLA' end || ' alerta persistente en sucursal Munro';
-  perform prueba_como('gerente.munro@prueba.example');
-  j := public.gestlok_chat_panel_inicio();
-  r := r || E'\n' || case when (j->'sucursales'->0->>'reclamos')::int=1 then 'OK' else 'FALLA' end
-    || ' el gerente ve el aviso en la Central de GESTLOK';
-  j := public.gestlok_chat_panel_soporte(s_munro);
-  r := r || E'\n' || case when jsonb_array_length(j)=1 and j->0->>'tipo'='faltante' then 'OK' else 'FALLA' end
-    || ' alerta de faltante se abre desde el local correcto';
-  v := prueba_q(format('select public.gestlok_chat_panel_soporte(%L)::text',s_torc));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
-    || ' gerente de Munro no ve reclamos de Torcuato';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'Revisamos el faltante y te contactamos acá',%L)::text $q$,conv1,ticket1));
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
-    || ' gerente responde por el mismo chat de cliente';
-  perform prueba_como('service_role');
-  j := public.gestlok_chat_srv_respuestas(conv1,h1,0);
-  r := r || E'\n' || case when j->>'soporte_pendiente'='true'
-      and j->>'tipo_soporte'='faltante'
-      and (j->'mensajes_local'->0->>'texto') like '%Revisamos el faltante%' then 'OK' else 'FALLA' end
-    || ' la respuesta humana llega al cliente y el hilo sigue abierto';
-  v := prueba_q(format($q$ select public.gestlok_chat_srv_reclamo(%L,%L::bytea,'ip1','faltante','Todavía falta la salsa')::text $q$,conv1,h1));
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
-    || ' cliente responde en el mismo hilo y vuelve a avisar';
-  perform prueba_como('gerente.munro@prueba.example');
-  j := public.gestlok_chat_panel_soporte(s_munro);
-  r := r || E'\n' || case when jsonb_array_length(j)=1 and (j->0->>'detalle')='Todavía falta la salsa'
-    and j->0->>'respondido_at' is null then 'OK' else 'FALLA' end
-    || ' reclamo vuelve a esperar respuesta sin duplicar la alerta';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'También revisamos la salsa',%L)::text $q$,conv1,ticket1));
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
-    || ' gerente puede continuar la conversación';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_cerrar_reclamo(%L)::text $q$,ticket1));
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
-    || ' gerente resuelve y cierra el reclamo manualmente';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_cerrar_reclamo(%L)::text $q$,ticket1));
-  r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end
-    || ' un reclamo cerrado no puede cerrarse dos veces';
-  perform prueba_como('service_role');
-  j := public.gestlok_chat_srv_respuestas(conv1,h1,0);
-  r := r || E'\n' || case when j->>'soporte_pendiente'='false'
-      and jsonb_array_length(j->'mensajes_local')=2 then 'OK' else 'FALLA' end
-    || ' el cliente ve las dos respuestas del gerente y el reclamo queda cerrado';
-  v := prueba_q(format($q$ select public.gestlok_chat_srv_respuestas(%L,%L::bytea,0)::text $q$,conv1,h2));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
-    || ' otro cliente no lee la conversación de soporte';
-  perform set_config('role','postgres',true);
-  update gestlok_chat_private.conversaciones set ultima_at = now() - interval '61 days' where id = conv1;
-  j := gestlok_chat_private.purgar();
-  select count(*) into n from gestlok_chat_private.pedidos where id = ped1 and conversacion_id is null;
-  r := r || E'\n' || case when (j->>'conversaciones')::int = 1 and n = 1 then 'OK' else 'FALLA' end || ' conversaciones viejas se borran y el pedido queda';
-  select count(*) into n from gestlok_chat_private.mensajes where conversacion_id = conv1;
-  r := r || E'\n' || case when n = 0 then 'OK' else 'FALLA' end || ' sin mensajes huérfanos';
-
-
-  -- Micro app general: la administradora la enciende para un comercio nuevo desde su panel --------------------------
-  perform set_config('role', 'postgres', true);
-  insert into gestlok_tenancy.tenants (id, code) values ('d0000000-0000-4000-8000-00000000000d', 'LOLA');
-  insert into public.docs (tenant_id, col, id, data) values
-    ('d0000000-0000-4000-8000-00000000000d', 'locales', 'sur', '{"nombre":"Café Sur"}'),
-    ('d0000000-0000-4000-8000-00000000000d', 'locales', 'norte', '{"nombre":"Norte"}');
-  perform prueba_como('duena.a@prueba.example');
-  v := prueba_q($q$ select public.gestlok_chat_admin_empresas()::text $q$);
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' una dueña no ve el listado de empresas';
-  v := prueba_q($q$ select public.gestlok_chat_admin_estado('a0000000-0000-4000-8000-00000000000a', false)::text $q$);
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' una dueña no pausa la micro app';
-  perform prueba_como('creadora@prueba.example');
-  v := prueba_q($q$ select public.gestlok_chat_admin_habilitar('d0000000-0000-4000-8000-00000000000d', 'Café Lola')->>'sucursales' $q$);
-  r := r || E'\n' || case when v = 'ok:2' then 'OK' else 'FALLA' end || ' alta en un clic: un chat por cada local · ' || v;
-  v := prueba_q($q$ select public.gestlok_chat_admin_habilitar('d0000000-0000-4000-8000-00000000000d', 'Café Lola', null)->>'sucursales' $q$);
-  r := r || E'\n' || case when v = 'ok:0' then 'OK' else 'FALLA' end || ' repetir el alta no duplica chats';
-  perform set_config('role', 'postgres', true);
-  select string_agg(slug || '/' || prefijo || '/' || nombre || '/' || activa, ' ' order by slug) into v
-    from gestlok_chat_private.sucursales where tenant_id = 'd0000000-0000-4000-8000-00000000000d';
-  r := r || E'\n' || case when v = 'cafe-lola-cafe-sur/CS/Café Sur/false cafe-lola-norte/N/Norte/false' then 'OK' else 'FALLA' end
-    || ' enlaces y prefijos automáticos, chats apagados · ' || coalesce(v, '');
-  r := r || E'\n' || case when gestlok_chat_private.slug_libre('Empa Munro') = 'empa-munro-2' then 'OK' else 'FALLA' end || ' un enlace ocupado no se repite';
-  perform prueba_como('creadora@prueba.example');
-  j := public.gestlok_chat_admin_empresas();
-  r := r || E'\n' || case when jsonb_array_length(j) = 3 and not (j::text ~ 'cliente_|telefono') then 'OK' else 'FALLA' end || ' la administradora ve las 3 empresas sin datos de clientes';
-  v := prueba_q($q$ select public.gestlok_chat_admin_estado('d0000000-0000-4000-8000-00000000000d', false)::text $q$);
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' la administradora pausa la micro app de una empresa';
-  perform prueba_como('service_role');
-  j := public.gestlok_chat_srv_sucursal('cafe-lola-norte');
-  r := r || E'\n' || case when j->>'motivo' = 'no_existe' then 'OK' else 'FALLA' end || ' empresa pausada: su chat no existe para el público';
-  perform prueba_como('creadora@prueba.example');
-  v := prueba_q($q$ select public.gestlok_chat_admin_estado('d0000000-0000-4000-8000-00000000000d', true)::text $q$);
-  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' y la vuelve a activar';
-  perform set_config('role', 'postgres', true);
-  raise exception 'INFORME%', r;
-end $t$;
-
-    then 'OK' else 'FALLA' end || ' reporte diario por local: 7 fechas locales ISO';
+  r:=r || E'\n' || case when jsonb_array_length(j)=7
+     and (j->0->>'fecha') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    then 'OK' else 'FALLA' end || ' reporte diario con fechas locales ISO';
   v:=prueba_q(format('select public.gestlok_chat_panel_reporte_diario(%L,7)::text',s_torc));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
-    || ' gerente de Munro no consulta reportes de Torcuato';
+  r:=r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' el gerente de Munro no ve reportes de Torcuato';
   perform prueba_como('duena.b@prueba.example');
-  v:=prueba_q(format('select public.gestlok_chat_panel_reporte_diario(%L,30)::text',s_munro));
-  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
-    || ' empresa B no puede leer el reporte de la empresa A';
-  perform prueba_como('service_role');
-  v:=prueba_q(format($q$ select public.gestlok_chat_srv_reclamo(%L,%L::bytea,'ip1','consulta','Quisiera consultar otra cuestión')::text $q$,conv1,h1));
-  r := r || E'\n' || case when v like 'ok:%' and v like '%gerente%' then 'OK' else 'FALLA' end
-    || ' consulta ajena al comercio deriva a gerente sin código';
+  v:=prueba_q(format('select public.gestlok_chat_panel_reporte_diario(%L,7)::text',s_munro));
+  r:=r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' otra empresa no ve el historial diario de Mi Gusto';
   perform set_config('role','postgres',true);
 
   -- Topes, auditoría y borrado ---------------------------------------------------------------------------------------
