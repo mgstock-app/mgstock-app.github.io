@@ -45,7 +45,7 @@
       el('div', {class: 'tope-texto'}, el('h1', {text: 'GESTLOK Chat'}), el('p', {id: 'empresa', text: 'Cargando…'})),
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
-      [['pedidos', 'Pedidos'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
+      [['pedidos', 'Pedidos'], ['stock', 'Stock'], ['carta', 'Carta'], ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) : null))),
     el('main', {id: 'contenido', class: 'contenido', tabindex: '-1'}),
@@ -126,7 +126,7 @@
       if (b.dataset.p === 'charlas') b.hidden = !puede('gestionar');
     }
     clearTimeout(S.sondeo);
-    ({pedidos: verPedidos, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
+    ({pedidos: verPedidos, stock: verStock, carta: verCarta, mensajes: verMensajes, ajustes: verAjustes, charlas: verCharlas})[S.pestana]();
   }
 
   // ------------------------------------------------------------------------------------------- pedidos
@@ -207,6 +207,110 @@
     verPedidos();
   }
 
+  // ------------------------------------------------------------------------------------------- stock operativo, exclusivo del panel interno
+  async function verStock() {
+    contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando stock del chat…'}));
+    const sucursalId = S.suc.id;
+    let c, extras;
+    try {
+      [c, extras] = await Promise.all([
+        rpc('panel_catalogo', {p_sucursal: sucursalId}),
+        rpc('panel_stock_adicionales', {p_sucursal: sucursalId}),
+      ]);
+    } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    if (S.suc.id !== sucursalId || S.pestana !== 'stock') return;
+    const editable = puede('gestionar');
+    const bloques = [];
+    const encabezado = el('div', {class: 'stock-encabezado'},
+      el('div', {}, el('h2', {text: 'Disponibilidad'}), el('p', {class: 'nota', text:
+        'Control interno del local. Apagá productos o adicionales agotados; el cliente no ve estos interruptores.'})));
+    const categorias = [...c.categorias].sort((a,b) => (a.orden||0)-(b.orden||0));
+    if (c.productos.some(p => !p.categoria_id)) categorias.push({id: null, nombre: 'Otros'});
+    for (const categoria of categorias) {
+      const productos = c.productos.filter(p => (p.categoria_id||null) === categoria.id && p.activo);
+      if (!productos.length) continue;
+      bloques.push(crearGrupoStock(categoria.nombre, productos.map(p => ({id:p.id, nombre:p.nombre,
+        precio:p.precio, disponible: p.disponible, tipo:'producto', categoria_id:categoria.id})),
+        categoria.id, editable, sucursalId));
+    }
+    if (extras?.length) {
+      const elementos = extras.map(o => ({id:o.grupo_id + ':' + o.valor_id, nombre:o.nombre,
+        precio:o.extra_min, precio_max:o.extra_max, disponible:o.disponible,
+        tipo:'adicional', grupo_id:o.grupo_id, valor_id:o.valor_id}));
+      bloques.push(crearGrupoStock('Adicionales', elementos, null, editable, sucursalId));
+    }
+    contenido.replaceChildren(encabezado, ...bloques.length ? bloques : [el('p', {class:'nota',text:'No hay productos activos para controlar.'})]);
+  }
+
+  function crearGrupoStock(titulo, items, categoriaId, editable, sucursalId) {
+    const disponibles = items.filter(x => x.disponible).length;
+    const bloque = el('section', {class: 'stock-bloque'});
+    const desplegar = el('button', {type:'button',class:'stock-desplegar',
+      'aria-expanded':'false','aria-label':'Mostrar productos de ' + titulo});
+    const lista = el('div', {class: 'stock-lista', hidden:true});
+    const cabecera = el('div', {class:'stock-cabecera'},
+      desplegar,
+      el('span',{class:'stock-conteo',text:disponibles + ' de ' + items.length + ' disponibles'}));
+    bloque.append(el('h3', {class:'stock-titulo',text:titulo}), cabecera, lista);
+    desplegar.textContent = 'Ver productos';
+    desplegar.onclick = () => {
+      lista.hidden = !lista.hidden;
+      desplegar.textContent = lista.hidden ? 'Ver productos' : 'Ocultar productos';
+      desplegar.setAttribute('aria-expanded', String(!lista.hidden));
+    };
+    function itemFila(i) {
+      const precio = i.precio_max && i.precio_max !== i.precio
+        ? ' · ' + pesos(i.precio) + '–' + pesos(i.precio_max) : ' · ' + pesos(i.precio);
+      const estado = el('span', {class:'stock-estado ' + (i.disponible?'encendido':'apagado'),
+        text:i.disponible?'Disponible':'Agotado'});
+      const cambio = el('input', {type:'checkbox',checked:i.disponible,
+        'aria-label': (i.disponible?'Apagar ':'Encender ') + i.nombre});
+      cambio.onchange = async () => {
+        const anterior = i.disponible;
+        cambio.disabled = true;
+        try {
+          if (i.tipo === 'producto') {
+            await rpc('panel_disponible', {p_producto:i.id,p_disponible:cambio.checked});
+          } else {
+            await rpc('panel_stock_adicional', {p_sucursal:sucursalId,p_grupo:i.grupo_id,p_valor:i.valor_id,
+              p_disponible:cambio.checked});
+          }
+          i.disponible = cambio.checked;
+          estado.className = 'stock-estado ' + (i.disponible?'encendido':'apagado');
+          estado.textContent = i.disponible?'Disponible':'Agotado';
+          cabecera.querySelector('.stock-conteo').textContent =
+            items.filter(x=>x.disponible).length + ' de ' + items.length + ' disponibles';
+          cambio.setAttribute('aria-label',(i.disponible?'Apagar ':'Encender ')+i.nombre);
+          aviso(i.nombre + (i.disponible ? ' disponible' : ' agotado'));
+        } catch(e) { cambio.checked=anterior; aviso(e.message,true); }
+        finally { cambio.disabled = false; }
+      };
+      return el('div', {class:'stock-item'},
+        el('span',{class:'stock-led ' + (i.disponible?'encendido':'apagado'),'aria-hidden':'true'}),
+        el('div',{class:'stock-item-txt'}, el('strong',{text:i.nombre}),
+          el('small',{text:precio.slice(3)})),estado,
+        editable?el('label',{class:'stock-switch'},cambio,el('span',{class:'stock-slider','aria-hidden':'true'})):null);
+    }
+    lista.replaceChildren(...items.map(itemFila));
+    if (editable && categoriaId) {
+      const todosDisponibles = disponibles === items.length;
+      const boton = el('button',{type:'button',class:'stock-grupo-accion',
+        text:todosDisponibles?'Apagar categoría':'Encender categoría'});
+      boton.onclick = async () => {
+        boton.disabled = true;
+        const encender = items.some(x=>!x.disponible);
+        try {
+          await rpc('panel_stock_categoria',{p_sucursal:sucursalId,p_categoria:categoriaId,p_disponible:encender});
+          for(const i of items)i.disponible=encender;
+          aviso(titulo+(encender?' habilitada':' agotada'));
+          verStock();
+        }catch(e){aviso(e.message,true);boton.disabled=false;}
+      };
+      cabecera.append(boton);
+    }
+    return bloque;
+  }
+
   // ------------------------------------------------------------------------------------------- carta
   async function verCarta() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando la carta…'}));
@@ -217,7 +321,7 @@
     const porCat = [...c.categorias, {id: null, nombre: 'Sin categoría'}].map(cat => ({cat, prods: c.productos.filter(p => (p.categoria_id || null) === cat.id)}))
       .filter(x => x.prods.length || (x.cat.id && config));
     poner(contenido,
-      el('p', {class: 'nota', text: config ? 'Cargá lo que ofrecés por chat: productos, precios y categorías. «Hay» se apaga cuando algo se agota.' : 'Carta en solo lectura.'}),
+      el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para prender o apagar por falta de stock usá la pestaña Stock.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
         el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)})) : null,
@@ -227,11 +331,7 @@
         prods.map(p => el('div', {class: 'producto' + (p.activo ? '' : ' inactivo')},
           el('div', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
             el('small', {text: pesos(p.precio) + ((p.opciones || []).length ? ' · con opciones' : '') + (p.activo ? '' : ' · no figura en la carta')})),
-          puede('gestionar') ? el('label', {class: 'interruptor'},
-            el('input', {type: 'checkbox', checked: p.disponible, 'aria-label': 'Disponible: ' + p.nombre, onchange: async ev => {
-              try { await rpc('panel_disponible', {p_producto: p.id, p_disponible: ev.target.checked}); aviso(p.nombre + (ev.target.checked ? ' disponible' : ' agotado')); }
-              catch (e) { ev.target.checked = !ev.target.checked; aviso(e.message, true); }
-            }}), el('span', {text: 'Hay'})) : el('span', {class: p.disponible ? 'ok' : 'agotado', text: p.disponible ? 'Disponible' : 'Agotado'}),
+          el('span', {class: !p.activo ? 'stock-inactivo' : p.disponible ? 'ok' : 'agotado', text: !p.activo ? 'Oculto' : p.disponible ? 'Disponible' : 'Agotado'}),
           config ? el('button', {type: 'button', class: 'enlace', text: 'Editar', onclick: () => editarProducto(p, c)}) : null)))))
         : el('div', {class: 'vacio'}, el('p', {text: 'Todavía no hay productos.'})));
   }
