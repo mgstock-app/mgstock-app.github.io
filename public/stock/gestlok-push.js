@@ -184,7 +184,7 @@ document.addEventListener('click',e=>{
   ctx.render();
 });
 async function onLogout(){
- if(!owner()||!canPrompt())return;
+ if(!ctx?.S?.me?.email || !['dueno','gerente'].includes(ctx.miRol()) || !canPrompt())return;
  try{
   const registration=await navigator.serviceWorker.getRegistration();
   if(!registration)return;
