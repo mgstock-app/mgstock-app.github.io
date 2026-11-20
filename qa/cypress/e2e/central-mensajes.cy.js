@@ -39,6 +39,17 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.contains('Pedidos WhatsApp').should('not.exist');
  });
 
+ it('gerente puede probar banner con sonido desde la Central y cerrarlo',()=>{
+  setup('gerente.munro@example.com',390);
+  cy.get('#gestlok-mobile-dock [data-dock="more"]',{timeout:15000}).click();
+  cy.get('#gestlok-mobile-sheet').contains('Central de mensajes').click();
+  cy.get('[data-gcc-alert="activar"]',{timeout:15000}).should('be.visible');
+  cy.get('[data-gcc-alert="probar"]').click();
+  cy.get('#mgp-global-alert').should('be.visible').and('contain.text','Pedido nuevo por chat!');
+  cy.get('#mgp-global-alert [data-gcc-close]').click();
+  cy.get('#mgp-global-alert').should('not.exist');
+ });
+
  it('el panel no se recarga cuando GESTLOK redibuja la pantalla',()=>{
   setup('gerente.munro@example.com',1280);
   cy.get('#snav button[data-go="pedidos-clientes"]',{timeout:15000}).click();
