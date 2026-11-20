@@ -15,27 +15,27 @@ const VACIAS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'con', 'sin', 'y'
 /** Mantiene un trato respetuoso incluso en los textos del motor de respaldo. */
 export function formalizar(texto) {
   return String(texto||'')
-    .replace(/\\b([Tt])u pedido\\b/g,(_m,i)=>i==='T'?'Su pedido':'su pedido')
-    .replace(/\\b([Tt])us datos\\b/g,(_m,i)=>i==='T'?'Sus datos':'sus datos')
-    .replace(/\\b([Tt])u dirección\\b/g,(_m,i)=>i==='T'?'Su dirección':'su dirección')
-    .replace(/\\b([Tt])e responderá\\b/g,(_m,i)=>i==='T'?'Le responderá':'le responderá')
-    .replace(/\\b([Tt])e avisamos\\b/g,(_m,i)=>i==='T'?'Le avisamos':'le avisamos')
-    .replace(/\\b([Pp])odés\\b/g,(_m,i)=>i==='P'?'Puede':'puede')
-    .replace(/\\b([Qq])uerés\\b/g,(_m,i)=>i==='Q'?'Desea':'desea')
-    .replace(/\\b([Tt])ocá\\b/g,(_m,i)=>i==='T'?'Seleccione':'seleccione')
-    .replace(/\\b([Ee])legí\\b/g,(_m,i)=>i==='E'?'Elija':'elija')
-    .replace(/\\b([Mm])irá\\b/g,(_m,i)=>i==='M'?'Consulte':'consulte')
-    .replace(/\\b([Rr])evisá\\b/g,(_m,i)=>i==='R'?'Revise':'revise')
-    .replace(/\\b([Ee])scribime\\b/g,(_m,i)=>i==='E'?'Escríbanos':'escríbanos')
-    .replace(/\\b([Cc])ompletá\\b/g,(_m,i)=>i==='C'?'Complete':'complete')
-    .replace(/\\b([Aa])gregá\\b/g,(_m,i)=>i==='A'?'Agregue':'agregue')
-    .replace(/\\b([Cc])onsultá\\b/g,(_m,i)=>i==='C'?'Consulte':'consulte')
-    .replace(/\\b([Ss])i necesitás\\b/g,(_m,i)=>i==='S'?'Si necesita':'si necesita')
-    .replace(/\\b([Tt])enés\\b/g,(_m,i)=>i==='T'?'Tiene':'tiene')
-    .replace(/\\b([Pp])robá\\b/g,(_m,i)=>i==='P'?'Intente':'intente')
-    .replace(/\\b([Vv])olvé\\b/g,(_m,i)=>i==='V'?'Vuelva':'vuelva')
-    .replace(/\\b([Dd])ecime\\b/g,(_m,i)=>i==='D'?'Indíqueme':'indíqueme')
-    .replace(/\\b([Hh])acemos\\b/g,(_m,i)=>i==='H'?'Realizamos':'realizamos');
+    .replace(/\b([Tt])u pedido\b/g,(_m,i)=>i==='T'?'Su pedido':'su pedido')
+    .replace(/\b([Tt])us datos\b/g,(_m,i)=>i==='T'?'Sus datos':'sus datos')
+    .replace(/\b([Tt])u dirección\b/g,(_m,i)=>i==='T'?'Su dirección':'su dirección')
+    .replace(/\b([Tt])e responderá\b/g,(_m,i)=>i==='T'?'Le responderá':'le responderá')
+    .replace(/\b([Tt])e avisamos\b/g,(_m,i)=>i==='T'?'Le avisamos':'le avisamos')
+    .replace(/\b([Pp])odés\b/g,(_m,i)=>i==='P'?'Puede':'puede')
+    .replace(/\b([Qq])uerés\b/g,(_m,i)=>i==='Q'?'Desea':'desea')
+    .replace(/\b([Tt])ocá\b/g,(_m,i)=>i==='T'?'Seleccione':'seleccione')
+    .replace(/\b([Ee])legí\b/g,(_m,i)=>i==='E'?'Elija':'elija')
+    .replace(/\b([Mm])irá\b/g,(_m,i)=>i==='M'?'Consulte':'consulte')
+    .replace(/\b([Rr])evisá\b/g,(_m,i)=>i==='R'?'Revise':'revise')
+    .replace(/\b([Ee])scribime\b/g,(_m,i)=>i==='E'?'Escríbanos':'escríbanos')
+    .replace(/\b([Cc])ompletá\b/g,(_m,i)=>i==='C'?'Complete':'complete')
+    .replace(/\b([Aa])gregá\b/g,(_m,i)=>i==='A'?'Agregue':'agregue')
+    .replace(/\b([Cc])onsultá\b/g,(_m,i)=>i==='C'?'Consulte':'consulte')
+    .replace(/\b([Ss])i necesitás\b/g,(_m,i)=>i==='S'?'Si necesita':'si necesita')
+    .replace(/\b([Tt])enés\b/g,(_m,i)=>i==='T'?'Tiene':'tiene')
+    .replace(/\b([Pp])robá\b/g,(_m,i)=>i==='P'?'Intente':'intente')
+    .replace(/\b([Vv])olvé\b/g,(_m,i)=>i==='V'?'Vuelva':'vuelva')
+    .replace(/\b([Dd])ecime\b/g,(_m,i)=>i==='D'?'Indíqueme':'indíqueme')
+    .replace(/\b([Hh])acemos\b/g,(_m,i)=>i==='H'?'Realizamos':'realizamos');
 }
 const MAX_CARRITO = 30;
 const MAX_CANTIDAD = 50;
@@ -64,8 +64,8 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
   const nombre=pedido.nombre||'';
   const d={nombre,total:pesos(pedido.total),direccion:pedido.direccion||'su dirección',
     local:s.direccion||('el local de '+(s.nombre||'')).trim(),motivo:pedido.motivo||'',codigo:''};
-  const salida = texto => formalizar(plantilla(String(texto||'').replace(/\\bpedido\\s*\\{codigo\\}/gi,'pedido').replace(/\\{codigo\\}/g,''),d)
-     .replace(/\\b[A-Z]{1,4}-\\d{4,}\\b/g,'').replace(/\\s+([.!?,])/g,'$1'));
+  const salida = texto => formalizar(plantilla(String(texto||'').replace(/\bpedido\s*\{codigo\}/gi,'pedido').replace(/\{codigo\}/g,''),d)
+     .replace(/\b[A-Z]{1,4}-\d{4,}\b/g,'').replace(/\s+([.!?,])/g,'$1'));
   switch(pedido.estado){
     case 'pendiente':
       return pedido.programado_para
@@ -223,8 +223,8 @@ export function interpretarPedido(catalogo, texto) {
  * Los casos ambiguos se dejan a la IA y a su herramienta de derivación. */
 export function consultaAjena(texto='') {
   const n=normalizar(texto);
-  if (/\\b(pedido|comida|menu|carta|delivery|repart|pizza|empanada|horario|local|envio|retiro|pago|demora|precio)\\b/.test(n)) return false;
-  return /\\b(clima|pronostico|temperatura|presidente|politica|gobierno|elecciones|futbol|partido de futbol|river|boca juniors|medicina|diagnostico|enfermedad|cotizacion dolar|bolsa|criptomoneda|tarea escolar|historia argentina|programacion|codigo fuente|capital de|matematica|geografia|astrologia|horoscopo)\\b/.test(n);
+  if (/\b(pedido|comida|menu|carta|delivery|repart|pizza|empanada|horario|local|envio|retiro|pago|demora|precio)\b/.test(n)) return false;
+  return /\b(clima|pronostico|temperatura|presidente|politica|gobierno|elecciones|futbol|partido de futbol|river|boca juniors|medicina|diagnostico|enfermedad|cotizacion dolar|bolsa|criptomoneda|tarea escolar|historia argentina|programacion|codigo fuente|capital de|matematica|geografia|astrologia|horoscopo)\b/.test(n);
 }
 /** Clasifica reclamos antes de llamar a la IA; consultar tiempos no genera alerta por sí solo. */
 export function clasificarSoporte(entrada = {}) {
