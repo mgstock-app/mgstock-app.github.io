@@ -97,16 +97,11 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get("#ing-pend select").select("No importar");
     // Después de volver a leer el archivo, la selección es explícita.
     // Así el test comprueba el flujo de duplicados sin depender del auto-tildado.
-    // La lectura del archivo termina en segundo plano y puede volver a dibujar la tabla:
-    // si eso destilda la fila, se vuelve a tildar hasta que «Importar» quede habilitado.
+    // Esperar el estado actualizado después de cada render: nunca provocar click
+    // manual desde un .should (ese elemento puede haber sido reemplazado por render()).
     cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().check({force:true});
-    cy.get("#ing-ok").should(($ok) => {
-      if ($ok.prop("disabled")) {
-        const fila = Cypress.$('#ing-tabla [data-ingon]:not(:disabled)').first();
-        if (fila.length && !fila.prop("checked")) fila.trigger("click");
-      }
-      expect($ok.prop("disabled"), "Importar habilitado").to.eq(false);
-    });
+    cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().should('be.checked');
+    cy.get('#ing-ok',{timeout:15000}).should('not.be.disabled');
     cy.get("#ing-ok").click();
     cy.get("#pn").should("contain.text", "ya se importó");
     cy.get('#pn [data-act="close"]').first().click();
