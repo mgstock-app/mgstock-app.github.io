@@ -342,6 +342,19 @@ function programarSondeo() {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !S.cerrada) programarSondeo();
 });
+// Reflejar de inmediato la respuesta del gerente en la demostración de la
+// administradora. En el chat real se conserva el sondeo seguro de 12 segundos.
+if (SHOWROOM) window.addEventListener('storage', async event => {
+  if(event.key!==SHOWROOM.key || !S.sucursal || S.cerrada)return;
+  const r=await api('estado',{desde:S.ultimoLocal}).catch(()=>null);
+  if(!r?.ok)return;
+  for(const m of r.mensajes_local||[]) {
+    if(!Number.isSafeInteger(m.id)||m.id<=S.ultimoLocal)continue;
+    S.ultimoLocal=m.id;
+    burbuja('local',m.texto);
+  }
+  if(r.pedidos?.[0])mostrarPedido(r.pedidos[0]);
+});
 
 // ---------------------------------------------------------------------------------------------- hojas
 function abrirHoja(titulo, contenido) {
