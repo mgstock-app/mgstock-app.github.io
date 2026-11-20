@@ -29,7 +29,7 @@ function sonar(){
   o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+.17);
  });}catch{/* audio no compatible */}
 }
-document.addEventListener('pointerdown',()=>{if(!soundReady)activarSonido();},{capture:true});
+document.addEventListener('pointerdown',()=>{if(!soundReady||audioCtx?.state!=='running')activarSonido();},{capture:true});
 
 const VERSION_PANEL='20261120pizzassafe1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -137,7 +137,7 @@ function avisoNuevo(tipo='pedido',recordatorio=false){
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
  a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+
-   (tipo==='reclamo'?'¡Reclamo de cliente!':recordatorio?'Pedido sin abrir · recordatorio':'¡Pedido nuevo por chat!')+
+   (tipo==='prueba'?'Aviso de prueba · sin pedido real':tipo==='reclamo'?'¡Reclamo de cliente!':recordatorio?'Pedido sin abrir · recordatorio':'¡Pedido nuevo por chat!')+
    '</strong><small data-gcc-preview>'+
   esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar')+'</small></div>'+
   '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedido</button>'+
@@ -148,7 +148,7 @@ function avisoNuevo(tipo='pedido',recordatorio=false){
 document.addEventListener('click',ev=>{
   const b=ev.target.closest?.('[data-gcc-alert]');if(!b||!allowed())return;
   ev.preventDefault();activarSonido();
-  if(b.dataset.gccAlert==='probar'){avisoNuevo('pedido');return;}
+  if(b.dataset.gccAlert==='probar'){void Promise.resolve(audioCtx?.resume()).then(()=>{soundReady=true;avisoNuevo('prueba');});return;}
   // Solicitar permiso dentro del gesto real, antes de cualquier operación asíncrona.
   const permiso='Notification' in window?
     (Notification.permission==='default'?Notification.requestPermission():
