@@ -509,6 +509,17 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_srv_respuestas(%L,%L::bytea,0)::text $q$,conv1,h2));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
     || ' otro cliente no lee la conversación de soporte';
+  perform prueba_como('gerente.munro@prueba.example');
+  j := public.gestlok_chat_panel_clientes(s_munro);
+  r := r || E'\n' || case when jsonb_typeof(j)='array' then 'OK' else 'FALLA' end
+    || ' gerente solo consulta clientes frecuentes de su sucursal';
+  v := prueba_q(format('select public.gestlok_chat_panel_clientes(%L)::text',s_torc));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' gerente de Munro no consulta clientes de Torcuato';
+  perform prueba_como(null);
+  v := prueba_q(format('select public.gestlok_chat_panel_clientes(%L)::text',s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
+    || ' público no accede a lista de clientes';
   perform set_config('role','postgres',true);
   update gestlok_chat_private.conversaciones set ultima_at = now() - interval '61 days' where id = conv1;
   j := gestlok_chat_private.purgar();

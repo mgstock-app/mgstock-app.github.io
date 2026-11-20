@@ -282,3 +282,14 @@ describe('GESTLOK Chat · clientes frecuentes y continuidad sin registro',()=>{
     cy.get('#hoja input[name=direccion]').should('have.value','Av. Siempre Viva 742');
   });
 });
+
+describe('GESTLOK Chat · gerencia de clientes frecuentes',()=>{
+  it('lista compras recurrentes sin registro en la Central de esa sucursal',()=>{
+    cy.viewport(390,820);
+    cy.visit('/chat/panel/?demo=1');
+    cy.get('[data-p=clientes]').click();
+    cy.get('#contenido').should('contain.text','María (demo)')
+      .and('contain.text','3 pedidos')
+      .and('contain.text','Última dirección de delivery');
+  });
+});
