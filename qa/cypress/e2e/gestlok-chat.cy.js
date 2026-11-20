@@ -2,12 +2,51 @@
 // GESTLOK Chat: chat público (celular) y panel de GESTLOK, sin red real (modo demostración y respuestas simuladas).
 const FUNCION = '**/functions/v1/gestlok-chat';
 const sinDesborde = () => cy.document().its('documentElement.scrollWidth').should('be.lte', 392);
+const identificar = () => {
+  cy.get('#hoja').should('be.visible').and('contain.text', 'Datos para iniciar');
+  cy.get('#hoja input[name=nombre]').type('Ana Pérez');
+  cy.get('#hoja input[name=telefono]').type('11 5555 1234');
+  cy.get('#hoja button[type=submit]').click();
+  cy.get('#hoja').should('not.be.visible');
+};
 
 describe('GESTLOK Chat · chat público', () => {
+  it('solicita datos antes de permitir pedidos y exige dirección para delivery', () => {
+    cy.viewport(390, 800);
+    cy.visit('/chat/?demo=1');
+    cy.get('.burbuja.asistente').should('exist');
+    cy.get('#texto').should('be.disabled');
+    cy.get('#btn-carta').should('be.disabled');
+    cy.get('#hoja-cerrar').should('not.be.visible');
+    cy.get('#hoja input[name=nombre]').type('Ana Pérez');
+    cy.get('#hoja input[name=telefono]').type('11 5555 1234');
+    cy.get('#hoja').contains('label', 'Envío a domicilio').click();
+    cy.get('#hoja button[type=submit]').click();
+    cy.get('#hoja .error-form').should('contain.text', 'dirección');
+    cy.get('#hoja input[name=direccion]').type('Mitre 200, Munro');
+    cy.get('#hoja button[type=submit]').click();
+    cy.get('#texto').should('not.be.disabled');
+    cy.get('#btn-carta').should('not.be.disabled');
+  });
+
+  it('al escribir seis empanadas sugiere la promo con las dos salsas a elección', () => {
+    cy.viewport(390, 800);
+    cy.visit('/chat/?demo=1');
+    identificar();
+    cy.get('#texto').type('6 empanadas de carne{enter}');
+    cy.get('.burbuja.asistente').last().should('contain.text', 'promoción').and('contain.text', '2 salsas');
+    cy.get('#hoja').should('be.visible').and('contain.text', 'Pack 6 empanadas + 2 salsas');
+    cy.get('#hoja .grupo-cantidad').first().should('contain.text', '6 de 6');
+    cy.get('#hoja [aria-label="Sumar Criolla"]').click().click();
+    cy.get('#hoja button[type=submit]').should('not.be.disabled').click();
+    cy.get('#barra-texto').should('contain.text', '1 producto');
+  });
+
   it('toma un pedido completo en el celular (demostración)', () => {
     cy.viewport(390, 800);
     cy.visit('/chat/?demo=1');
     cy.get('.burbuja.asistente').should('contain.text', 'Comercio Sucursal Centro'); // el trato formal muestra «Su Comercio»
+    identificar();
     cy.get('#texto').type('2 empanadas de carne y 1 de jamón y queso{enter}');
     cy.get('.burbuja.asistente').last().should('contain.text', '2 × Empanada de carne').and('contain.text', '1 × Empanada de jamón y queso');
     cy.get('#barra-texto').should('contain.text', '3 productos');
@@ -23,8 +62,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja').should('be.visible').and('contain.text', 'Flan casero').and('not.contain.text', 'Pizza muzzarella');
     cy.get('#hoja-cerrar').click();
     cy.get('#btn-finalizar').click();
-    cy.get('#hoja input[name=nombre]').type('Ana');
-    cy.get('#hoja input[name=telefono]').type('11 5555 1234');
+    cy.get('#hoja input[name=nombre]').should('have.value', 'Ana Pérez');
+    cy.get('#hoja input[name=telefono]').should('have.value', '11 5555 1234');
     cy.get('#hoja').contains('label', 'Envío').click();
     cy.get('#hoja button[type=submit]').click();
     cy.get('#hoja .error-form').should('contain.text', 'dirección');
@@ -41,6 +80,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.viewport(390, 800);
     cy.visit('/chat/?demo=1');
     cy.get('.burbuja.asistente').should('be.visible');
+    identificar();
     cy.get('#btn-carta').should('not.be.disabled').click();
     cy.get('#hoja').contains('button', 'Empanada de humita').should('be.disabled').and('contain.text', 'Agotado');
     cy.get('#hoja-cerrar').click();
@@ -66,6 +106,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.visit('/chat/?s=mi-gusto-munro');
     cy.wait('@fn');
     cy.get('#titulo').should('have.text', 'Mi Gusto · Munro');
+    identificar();
     cy.get('#texto').type('2 de carne{enter}');
     cy.wait('@fn');
     cy.get('#barra-texto').should('contain.text', '2 productos · $ 2.000');
@@ -193,6 +234,7 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.viewport(375, 740);
     cy.visit('/chat/?demo=1');
     cy.get('.burbuja.asistente', {timeout: 15000}).should('exist');
+    identificar();
     cy.get('#btn-carta').should('not.be.disabled').click();
     cy.get('#hoja').should('be.visible').contains('button', 'Pack 6 empanadas + 2 salsas').click();
     cy.get('#hoja .grupo-cantidad').should('have.length', 2);
