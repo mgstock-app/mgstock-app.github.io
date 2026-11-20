@@ -293,28 +293,10 @@ begin
      then round(v_sub * s.descuento_efectivo_pct / 100, 2) else 0 end;
   v_total := v_sub - v_descuento + v_envio;
   if v_entrega='envio' and v_pago='efectivo' then
-    if p_pedido ? 'efectivo_abona' and coalesce(p_pedido->>'efectivo_abona','') !~ '^[0-9]{1,8}([.][0-9]{1,2})?
-
-  if not gestlok_chat_private.consumir('ped:suc:' || s.id::text, 'dia', s.tope_pedidos_dia)
-     or not gestlok_chat_private.consumir('ped:tel:' || s.id::text || ':' || v_tel, 'dia', 5)
-     or not gestlok_chat_private.consumir('ped:conv:' || c.id::text, 'dia', 5) then
-    raise exception 'Se alcanzó el límite de pedidos por hoy. Comunicate con el local.' using errcode = 'P0001';
-  end if;
-
-  update gestlok_chat_private.sucursales set ultimo_numero = ultimo_numero + 1 where id = s.id returning ultimo_numero into v_num;
-  insert into gestlok_chat_private.pedidos(tenant_id, sucursal_id, conversacion_id, numero, codigo, cliente_nombre,
-    cliente_telefono, entrega, direccion, horario, medio_pago, nota, items, subtotal, envio, total, descuento, efectivo_abona, efectivo_cambio)
-  values (s.tenant_id, s.id, c.id, v_num, s.prefijo || '-' || lpad(v_num::text, 4, '0'), v_nombre, v_tel, v_entrega,
-    case when v_entrega = 'envio' then left(v_dir, 200) else '' end, left(btrim(coalesce(p_pedido->>'horario', '')), 60),
-    v_pago, left(btrim(coalesce(p_pedido->>'nota', '')), 500), items, v_sub, v_envio, v_total, v_descuento, v_abona, v_cambio)
-  returning * into v_ped;
-  insert into gestlok_chat_private.pedido_eventos(pedido_id, evento) values (v_ped.id, 'creado');
-  return jsonb_build_object('ok', true, 'pedido', gestlok_chat_private.pedido_publico(v_ped));
-end $function$
- then
+    if p_pedido ? 'efectivo_abona' AND coalesce(p_pedido->>'efectivo_abona','') !~ '^[0-9]{1,8}([.][0-9]{1,2})?$' then
       raise exception 'Indique con cuánto va a abonar en efectivo' using errcode='22023';
     end if;
-    -- Compatibilidad con conversaciones abiertas antes del cambio: el monto omitido significa pago justo.
+    -- Compatibilidad durante despliegue: cliente antiguo sin monto significa pago justo.
     v_abona := coalesce(nullif(p_pedido->>'efectivo_abona','')::numeric, v_total);
     if v_abona < v_total then raise exception 'El efectivo indicado no alcanza para cubrir el total' using errcode='22023'; end if;
     v_cambio := round(v_abona - v_total, 2);
@@ -323,18 +305,18 @@ end $function$
   if not gestlok_chat_private.consumir('ped:suc:' || s.id::text, 'dia', s.tope_pedidos_dia)
      or not gestlok_chat_private.consumir('ped:tel:' || s.id::text || ':' || v_tel, 'dia', 5)
      or not gestlok_chat_private.consumir('ped:conv:' || c.id::text, 'dia', 5) then
-    raise exception 'Se alcanzó el límite de pedidos por hoy. Comunicate con el local.' using errcode = 'P0001';
+    raise exception 'Se alcanzó el límite de pedidos por hoy. Comunicate con el local.' using errcode='P0001';
   end if;
 
-  update gestlok_chat_private.sucursales set ultimo_numero = ultimo_numero + 1 where id = s.id returning ultimo_numero into v_num;
-  insert into gestlok_chat_private.pedidos(tenant_id, sucursal_id, conversacion_id, numero, codigo, cliente_nombre,
-    cliente_telefono, entrega, direccion, horario, medio_pago, nota, items, subtotal, envio, total)
-  values (s.tenant_id, s.id, c.id, v_num, s.prefijo || '-' || lpad(v_num::text, 4, '0'), v_nombre, v_tel, v_entrega,
-    case when v_entrega = 'envio' then left(v_dir, 200) else '' end, left(btrim(coalesce(p_pedido->>'horario', '')), 60),
-    v_pago, left(btrim(coalesce(p_pedido->>'nota', '')), 500), items, v_sub, v_envio, v_total)
+  update gestlok_chat_private.sucursales set ultimo_numero=ultimo_numero+1 where id=s.id returning ultimo_numero into v_num;
+  insert into gestlok_chat_private.pedidos(tenant_id,sucursal_id,conversacion_id,numero,codigo,cliente_nombre,
+    cliente_telefono,entrega,direccion,horario,medio_pago,nota,items,subtotal,envio,total,descuento,efectivo_abona,efectivo_cambio)
+  values(s.tenant_id,s.id,c.id,v_num,s.prefijo||'-'||lpad(v_num::text,4,'0'),v_nombre,v_tel,v_entrega,
+    case when v_entrega='envio' then left(v_dir,200) else '' end,left(btrim(coalesce(p_pedido->>'horario','')),60),
+    v_pago,left(btrim(coalesce(p_pedido->>'nota','')),500),items,v_sub,v_envio,v_total,v_descuento,v_abona,v_cambio)
   returning * into v_ped;
-  insert into gestlok_chat_private.pedido_eventos(pedido_id, evento) values (v_ped.id, 'creado');
-  return jsonb_build_object('ok', true, 'pedido', gestlok_chat_private.pedido_publico(v_ped));
+  insert into gestlok_chat_private.pedido_eventos(pedido_id,evento) values(v_ped.id,'creado');
+  return jsonb_build_object('ok',true,'pedido',gestlok_chat_private.pedido_publico(v_ped));
 end $function$;
 
 CREATE OR REPLACE FUNCTION gestlok_chat_private.pedido_publico(p gestlok_chat_private.pedidos)
