@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120pagos1';
+import {describirLinea, pesos, responder, textoEstadoPedido, totalCarrito, validarLinea, PAGOS} from './motor.js?v=20261120soporte1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
