@@ -2,7 +2,7 @@
  * La IA conversa con el cliente, pero SOLO actúa con herramientas acotadas sobre la carta y el carrito de esta
  * conversación: no puede crear pedidos, fijar precios, ver otros clientes ni salir del negocio. El pedido lo crea la
  * base cuando el cliente completa el formulario de datos. Si no hay clave, se pasa el tope o falla, responde el motor.
- * Proveedores: «anthropic» (Claude) u «openai» (cualquier API compatible con OpenAI, por ejemplo Gemini).
+ * Proveedores: «openai» (ChatGPT), «anthropic» (Claude) o «gemini» (Google, API compatible con OpenAI).
  */
 import {botonesCarrito, describirLinea, faltantes, limpiarEstado, pesos, responder, sumar, textoCarrito,
   textoEnvio, textoHorario, textoPago, totalCarrito, validarLinea, formalizar} from './motor.js';
@@ -13,7 +13,8 @@ const ESPERA_MS = 12000;
 
 export const PROVEEDORES = {
   anthropic: {url: 'https://api.anthropic.com/v1/messages', modelo: 'claude-haiku-5-5'},
-  openai: {url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', modelo: 'gemini-flash-latest'},
+  openai: {url: 'https://api.openai.com/v1/chat/completions', modelo: 'gpt-4.1-mini'},
+  gemini: {url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', modelo: 'gemini-flash-latest'},
 };
 
 const HERRAMIENTAS = [

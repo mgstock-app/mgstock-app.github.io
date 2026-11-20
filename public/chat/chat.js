@@ -479,6 +479,11 @@ const DEMO_DATOS = {
         {id: 'tam', nombre: 'Tamaño', tipo: 'una', obligatorio: true, valores: [{id: 'chica', nombre: 'Chica'}, {id: 'grande', nombre: 'Grande', extra: 3000}]},
         {id: 'ext', nombre: 'Extras', tipo: 'varias', max: 2, valores: [{id: 'acei', nombre: 'Aceitunas', extra: 500}, {id: 'huevo', nombre: 'Huevo', extra: 600}]}]},
       {id: 'd5', categoria_id: 'c3', nombre: 'Flan casero', descripcion: 'Con dulce de leche', precio: 2500, activo: true, disponible: true, opciones: []},
+      // Promo de demostración: repartir 6 unidades entre variedades (la humita está agotada y no se ofrece).
+      {id: 'd6', categoria_id: 'c1', nombre: 'Pack 6 empanadas + 2 salsas', descripcion: '6 empanadas a elección y 2 salsas.', precio: 6500, activo: true, disponible: true, opciones: [
+        {id: 'emp', nombre: 'Empanadas', tipo: 'cantidad', total: 6, obligatorio: true, valores: [{id: 'carne', nombre: 'Empanada de carne', extra: 0, producto_id: 'd1'},
+          {id: 'jyq', nombre: 'Empanada de jamón y queso', extra: 0, producto_id: 'd2'}, {id: 'humita', nombre: 'Empanada de humita', extra: 0, producto_id: 'd3'}]},
+        {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla', extra: 0}, {id: 'ajo', nombre: 'Crema de ajo', extra: 0}]}]},
     ]},
 };
 let demoEstado = null; let demoPedido = null;
