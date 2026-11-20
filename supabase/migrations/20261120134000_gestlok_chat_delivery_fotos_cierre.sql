@@ -36,20 +36,20 @@ CREATE INDEX IF NOT EXISTS gchat_adjuntos_conv ON gestlok_chat_private.adjuntos(
 ALTER TABLE gestlok_chat_private.adjuntos ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON gestlok_chat_private.adjuntos FROM public,anon,authenticated;
 
-CREATE OR REPLACE FUNCTION gestlok_chat_private.autorizar_foto(p_path text)
+CREATE OR REPLACE FUNCTION public.gestlok_chat_puede_ver_foto(p_path text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT auth.uid() IS NOT NULL AND EXISTS (
   SELECT 1 FROM gestlok_chat_private.adjuntos a WHERE a.path=p_path
    AND gestlok_chat_private.nivel(a.sucursal_id) IN ('gestionar','configurar')
  )
 $$;
-REVOKE ALL ON FUNCTION gestlok_chat_private.autorizar_foto(text) FROM public,anon,authenticated;
-GRANT EXECUTE ON FUNCTION gestlok_chat_private.autorizar_foto(text) TO authenticated;
+REVOKE ALL ON FUNCTION public.gestlok_chat_puede_ver_foto(text) FROM public,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.gestlok_chat_puede_ver_foto(text) TO authenticated;
 DO $$
 BEGIN
  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='gestlok_chat_manager_read_own_photos') THEN
   CREATE POLICY gestlok_chat_manager_read_own_photos ON storage.objects FOR SELECT TO authenticated
-   USING (bucket_id='gestlok-chat-adjuntos' AND gestlok_chat_private.autorizar_foto(name));
+   USING (bucket_id='gestlok-chat-adjuntos' AND public.gestlok_chat_puede_ver_foto(name));
  END IF;
 END $$;
 
