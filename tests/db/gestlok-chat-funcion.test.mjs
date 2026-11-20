@@ -269,6 +269,44 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FOTO,accion:'mensaje',entrada:{texto:'hola'}});
   assert.equal(r.status,409,'el cliente no escribe en una charla cerrada');
 
+  // Un cliente puede volver sin registrarse. El teléfono NO basta para revelar su dirección.
+  const BROWSER='claveEstableDeUnNavegadorAnonimo00000000001';
+  const BROWSER_EXTRA='claveDeOtroNavegadorAnonimo000000000002';
+  const TOKEN_FREQ1='tokenClienteFrecuentePrimeraCharla00001';
+  const TOKEN_FREQ2='tokenClienteFrecuenteSegundaCharla00002';
+  const TEL_FREQ='1155550111';
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ1,cliente_token:BROWSER,accion:'abrir'});
+  assert.equal(r.status,200);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ1,cliente_token:BROWSER,
+    accion:'recordar',telefono:TEL_FREQ});
+  assert.equal(r.body.encontrado,false,'no hay registro automático por conocer un teléfono');
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ1,cliente_token:BROWSER,
+    accion:'mensaje',entrada:{texto:'2 empanadas de carne'}});
+  assert.equal(r.body.carrito.length,1);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ1,cliente_token:BROWSER,accion:'mensaje',
+    entrada:{datos:{nombre:'María Frecuente',telefono:TEL_FREQ,entrega:'envio',
+      direccion:'Mitre 300, Munro',medio_pago:'transferencia'}}});
+  assert.equal(r.status,200,'el primer pedido se recibe sin registro');
+  assert.equal(r.body.pedido.estado,'pendiente','no se confirma solo');
+  ok(DB, [], "update gestlok_chat_private.conversaciones set cerrada_at=now() where id=(select conversacion_id from gestlok_chat_private.pedidos where cliente_telefono='"+TEL_FREQ+"' limit 1)");
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ2,cliente_token:BROWSER,accion:'abrir'});
+  assert.equal(r.status,200,'nuevo chat y misma clave anónima');
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ2,cliente_token:BROWSER,
+    accion:'recordar',telefono:TEL_FREQ});
+  assert.equal(r.body.encontrado,true);
+  assert.equal(r.body.nombre,'María Frecuente');
+  assert.equal(r.body.direccion,'Mitre 300, Munro');
+  assert.equal(r.body.visitas,1);
+  const otroTelefono=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ2,cliente_token:BROWSER,
+    accion:'recordar',telefono:'1155550998'});
+  assert.equal(otroTelefono.body.encontrado,false,'no se consulta otro teléfono con igual navegador');
+  const otroDispositivo=await llamar({slug:'mi-gusto-munro',token:TOKEN_FREQ2,cliente_token:BROWSER_EXTRA,
+    accion:'recordar',telefono:TEL_FREQ});
+  assert.equal(otroDispositivo.body.encontrado,false,'mismo teléfono sin secreto del navegador nunca revela dirección');
+  const perfilGuardado=ok(DB,['-At','-c'],
+    'select count(*) from gestlok_chat_private.clientes_frecuentes where telefono='+String.fromCharCode(39)+TEL_FREQ+String.fromCharCode(39)).trim();
+  assert.equal(perfilGuardado,'1');
+
   // Topes: muchos mensajes seguidos desde la misma conexión se frenan
   let frenado = false;
   for (let i = 0; i < 25 && !frenado; i++) {
