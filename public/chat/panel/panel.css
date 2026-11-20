@@ -139,3 +139,44 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .panel.embebido{min-height:0;background:var(--fondo);border-radius:12px}
 .embebido .contenido{padding:12px 4px}
 @media(min-width:900px){.embebido .contenido{padding:14px 0}}
+
+/* Stock interno: vista compacta con categorías plegables, inspirada en la botonera operativa del local. */
+.stock-encabezado{margin:0 0 10px}
+.stock-encabezado h2{margin:0;font-size:17px;color:var(--azul)}
+.stock-encabezado .nota{margin:3px 0 0}
+.stock-bloque{margin-bottom:8px;border:1px solid var(--linea);border-radius:10px;background:var(--papel);overflow:hidden}
+.stock-titulo{margin:0;padding:9px 12px;background:#eaf1fa;color:#203e61;font-size:14px;font-weight:750;border-bottom:1px solid var(--linea)}
+.stock-cabecera{display:flex;align-items:center;gap:10px;padding:7px 11px}
+.stock-desplegar{font-size:13px;font-weight:650;color:var(--azul);background:transparent;border:0;padding:6px 4px;min-height:32px}
+.stock-desplegar::before{content:'▸';display:inline-block;margin-right:7px;transition:transform .14s}
+.stock-desplegar[aria-expanded="true"]::before{transform:rotate(90deg)}
+.stock-conteo{color:var(--gris);font-size:12px;margin-left:auto;white-space:nowrap}
+.stock-grupo-accion{border:1px solid #c8d9eb;background:#f6fbff;color:var(--azul);font-size:12px;font-weight:650;padding:6px 10px;border-radius:7px;min-height:32px}
+.stock-grupo-accion:disabled{opacity:.55}
+.stock-lista{padding:0 12px 4px;border-top:1px solid var(--linea)}
+.stock-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eef1f5;min-height:42px}
+.stock-item:last-child{border-bottom:0}
+.stock-led{flex:0 0 8px;height:8px;width:8px;border-radius:50%;background:#b91c1c}
+.stock-led.encendido{background:#16a34a}
+.stock-item-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.stock-item-txt strong{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.stock-item-txt small{font-size:12px;color:var(--gris)}
+.stock-estado{font-size:12px;font-weight:650;white-space:nowrap}
+.stock-estado.encendido{color:#166534}
+.stock-estado.apagado{color:#b91c1c}
+.stock-switch{position:relative;display:inline-flex;width:38px;height:23px;align-items:center;flex:none;cursor:pointer}
+.stock-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.stock-slider{display:block;width:38px;height:22px;border-radius:99px;background:#cbd5e1;transition:background .12s}
+.stock-slider::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .12s}
+.stock-switch input:checked + .stock-slider{background:#16804d}
+.stock-switch input:checked + .stock-slider::after{transform:translateX(16px)}
+.stock-switch input:focus-visible + .stock-slider{outline:2px solid var(--azul);outline-offset:2px}
+.stock-switch input:disabled + .stock-slider{opacity:.5}
+.stock-inactivo{font-size:12px;color:var(--gris)}
+@media(max-width:480px){
+ .stock-cabecera{gap:6px;padding:6px 9px}
+ .stock-grupo-accion{padding:6px 7px}
+ .stock-conteo{font-size:11px}
+ .stock-item{gap:7px}
+ .stock-estado{font-size:11px}
+}
