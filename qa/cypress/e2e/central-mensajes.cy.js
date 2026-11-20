@@ -45,7 +45,7 @@ describe('GESTLOK · Central de mensajes de cada local',()=>{
   cy.get('#gestlok-mobile-sheet').contains('Central de mensajes').click();
   cy.get('[data-gcc-alert="activar"]',{timeout:15000}).should('be.visible');
   cy.get('[data-gcc-alert="probar"]').click();
-  cy.get('#mgp-global-alert').should('be.visible').and('contain.text','Pedido nuevo por chat!');
+  cy.get('#mgp-global-alert').should('be.visible').and('contain.text','Aviso de prueba');
   cy.get('#mgp-global-alert [data-gcc-close]').click();
   cy.get('#mgp-global-alert').should('not.exist');
  });
