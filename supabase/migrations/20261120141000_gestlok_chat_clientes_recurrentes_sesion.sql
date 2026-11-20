@@ -327,3 +327,31 @@ begin
   return jsonb_build_object('conversaciones',n_conv,'limites',n_lim,'clientes',n_clientes);
 end $gc_purge$;
 revoke all on function gestlok_chat_private.purgar() from public,anon,authenticated;
+
+
+-- Central de mensajes: historial agrupado sin compartir datos entre sucursales.
+-- Solo personal con permiso para gestionar ESTE local.
+create or replace function public.gestlok_chat_panel_clientes(p_sucursal uuid,p_limite integer default 50)
+returns jsonb language plpgsql stable security definer set search_path='' as $gchat_frecuentes$
+begin
+ perform gestlok_chat_private.exigir(p_sucursal,'gestionar');
+ return coalesce((select jsonb_agg(jsonb_build_object(
+   'nombre',x.nombre,'telefono',x.telefono,'pedidos',x.pedidos,
+   'ultimo_at',x.ultimo_at,'direccion',x.direccion)
+   order by x.pedidos desc,x.ultimo_at desc)
+ from (
+   select p.cliente_telefono as telefono,
+      (array_agg(p.cliente_nombre order by p.creado_at desc))[1] as nombre,
+      (array_agg(p.direccion order by p.creado_at desc)
+         filter(where p.entrega='envio' and btrim(p.direccion)<>''))[1] as direccion,
+      count(*) as pedidos,max(p.creado_at) as ultimo_at
+   from gestlok_chat_private.pedidos p
+   where p.sucursal_id=p_sucursal
+   group by p.cliente_telefono
+   having count(*)>=2
+   order by count(*) desc,max(p.creado_at) desc
+   limit least(greatest(coalesce(p_limite,50),1),100)
+ ) x),'[]'::jsonb);
+end $gchat_frecuentes$;
+revoke all on function public.gestlok_chat_panel_clientes(uuid,integer) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_panel_clientes(uuid,integer) to authenticated;
