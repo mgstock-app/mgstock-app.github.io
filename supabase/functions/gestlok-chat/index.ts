@@ -220,6 +220,20 @@ Deno.serve(async (req) => {
         carrito: (conv.estado as Json)?.carrito || [], soporte_pendiente: true,
         motor: "guiado" }, 200, origen);
     }
+    // Pedido ya enviado: bloquear charla libre antes de llegar a la IA.
+    // Estado y reclamos siguen por el servidor, sin gasto de tokens.
+    // Los pedidos se consultan de esta conversación y este token, nunca por ID del cliente.
+    const pedidosActuales = Array.isArray(conv.pedidos) ? conv.pedidos as Json[] : [];
+    const ultimoPedido = pedidosActuales[0] as Json | undefined;
+    if (ultimoPedido && ["pendiente", "confirmado", "terminado"].includes(String(ultimoPedido.estado || ""))) {
+      const boton = String(entrada.boton || "");
+      const consultaEstado = boton === "estado" || /\\b(estado|como va|seguimiento|confirmaron|ya esta listo)\\b/i.test(textoOriginal);
+      if (!consultaEstado && boton !== "soporte" && boton !== "reclamo_faltante" && boton !== "reclamo_otro" && boton !== "reclamo_demora" && boton !== "hablar_gerente" && boton !== "demora" && boton !== "cancelar") {
+        return json({ok:true,mensajes:[{texto:"Su pedido ya fue recibido. Puede consultar su estado o solicitar ayuda al gerente.",
+          botones:[{id:"estado",texto:"Ver estado del pedido"},{id:"soporte",texto:"Necesito ayuda"}]}],
+          carrito:(conv.estado as Json)?.carrito || [],motor:"guiado"},200,origen);
+      }
+    }
     if (clase === "consulta_demora") entrada = {boton:"demora"};
 
     // Primero botones y carrito: el asistente guiado (sin costo) resuelve carta, pedidos, horarios, pagos y estado.
