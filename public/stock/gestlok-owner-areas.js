@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const isSoloOwner=()=>api?.role?.()==='dueno'&&window.GestLokPilot?.scanner?.()===true;
-  let api,state={status:'loading',data:null},gerente={status:'loading',locals:[]},gerenteBusy=false,busy=false,admin={status:'loading',companies:[]},adminBusy=false;
+  let api,state={status:'loading',data:null},gerente={status:'loading',locals:[]},gerenteBusy=false,busy=false,admin={status:'loading',companies:[]},adminBusy=false,addingLocal=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // Una identidad por empresa y sucursal: GESTLOK es la herramienta, no la marca principal.
   // El nombre viene del contexto autorizado; nunca de datos editables del navegador.
@@ -160,20 +160,56 @@
       // El registro de acciones es complementario: si no responde, el registro de empresas sigue visible.
       let audit=[];
       try{const r=await window.GestLokSupabase.rpc('gestlok_creator_audit');if(!r.error&&Array.isArray(r.data))audit=r.data.slice(0,8);}catch{}
-      const next={status:'ready',companies:data.companies,audit};
+      // Agrupación exclusiva de la administradora: no altera el tenant activo de dueños/gerentes.
+      let brandLinks=[];
+      try{const groups=await window.GestLokSupabase.rpc('gestlok_creator_brand_links_index');
+        if(!groups.error&&groups.data?.scope==='brand_links'&&Array.isArray(groups.data.links))
+          brandLinks=groups.data.links;
+      }catch{/* Compatible con versiones anteriores de Supabase. */}
+      const next={status:'ready',companies:data.companies,audit,brandLinks};
       if(JSON.stringify(next)!==JSON.stringify(admin)){admin=next;if(!api.S.creatorSetup&&!api.S.panel)api.render();}
     }catch{const changed=admin.status!=='error';admin={status:'error',companies:[],audit:[]};if(changed&&!api.S.creatorSetup&&!api.S.panel)api.render();}
     finally{adminBusy=false;}
   }
   const ACTIONS={module_enabled:'Empleados habilitado',module_disabled:'Empleados deshabilitado',recibonet_linked:'Empresa vinculada con ReciboNet',editing_enabled:'Edición habilitada',editing_disabled:'Edición cerrada',support_view_opened:'Consulta de empresa abierta (solo lectura)',support_view_closed:'Consulta de empresa cerrada'};
   const when=v=>{try{return new Date(v).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});}catch{return '';}};
+  // Marca visible única para la creadora; cada botón conserva el tenant REAL de su sucursal.
+  function creatorBrands(){
+    if(api?.role?.()!=='creadora'||admin.status!=='ready')return [];
+    const links=new Map((admin.brandLinks||[]).map(x=>[x.tenant_id,x]));
+    const companies=new Map(admin.companies.map(x=>[x.tenant_id,x]));
+    const groups=new Map();
+    for(const c of admin.companies){
+      const link=links.get(c.tenant_id), root=link?.root_tenant||c.tenant_id;
+      if(!groups.has(root)){
+        const parent=companies.get(root);
+        groups.set(root,{tenant_id:root,name:links.get(root)?.brand_name||link?.brand_name||parent?.name||c.name,
+          locals:[],owners:0,tenant_ids:[]});
+      }
+      const group=groups.get(root);
+      group.tenant_ids.push(c.tenant_id);
+      group.owners+=Number(c.owners)||0;
+      group.locals.push(...(c.locals||[]).map(l=>({...l,tenant_id:c.tenant_id})));
+    }
+    return [...groups.values()];
+  }
+  function creatorAddLocalForm(tenant){
+    if(api?.role?.()!=='creadora')return '';
+    return '<details class="gl-company-add-local"><summary>+ Agregar local</summary>'+
+      '<form data-creator-add-local-form="'+esc(tenant)+'" class="gl-company-add-form">'+
+      '<label>Nombre del local<input name="local" type="text" minlength="2" maxlength="80" placeholder="Ej. San Fernando" autocomplete="off" required></label>'+
+      '<label>Email del dueño<input name="owner" type="email" maxlength="254" placeholder="dueno@ejemplo.com" autocomplete="off" required></label>'+
+      '<p>Si el dueño ya pertenece a esta marca, se suma a su grupo. Si es un dueño nuevo, se crea una empresa privada. Los otros dueños no tendrán acceso.</p>'+
+      '<button type="submit" class="btn primary"'+(addingLocal?' disabled':'')+'>Crear local y asignar dueño</button>'+
+      '</form></details>';
+  }
   function companyFolders(){
     if(api?.role()!=='creadora')return '';
     if(admin.status!=='ready')return '<p role="status">'+(admin.status==='error'?'No pudimos cargar las empresas. Volvé a intentarlo.':'Cargando empresas…')+'</p>';
-    return '<section class="gl-admin-card" aria-label="Empresas y locales"><header><h2>Locales</h2><small>Elegí una empresa y después un local</small></header><div class="gl-company-folders">'+admin.companies.map(c=>
-      '<details class="gl-company-folder"><summary><span aria-hidden="true">📁</span> <b>'+esc(c.name)+'</b><small>'+esc((c.locals||[]).length)+' locales</small></summary><div class="gl-company-locals">'+
-      ((c.locals||[]).map(l=>'<button type="button" class="btn" '+(c.tenant_id===api.S.me?.tenant_id?'data-act="local" data-id="'+esc(l.id)+'"':'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(c.tenant_id)+'" data-company-name="'+esc(c.name)+'"')+'><span>'+esc(l.name||l.id)+'</span><span aria-hidden="true">→</span></button>').join('')||'<p>Esta empresa todavía no tiene locales creados.</p>')+
-      '</div></details>').join('')+'</div></section>';
+    return '<section class="gl-admin-card" aria-label="Empresas y locales"><header><h2>Locales</h2><small>Elegí una empresa y después un local</small></header><div class="gl-company-folders">'+creatorBrands().map(c=>
+      '<details class="gl-company-folder"><summary><span aria-hidden="true">📁</span> <b>'+esc(c.name)+'</b><small>'+esc(c.locals.length)+' locales</small></summary><div class="gl-company-locals">'+
+      ((c.locals||[]).map(l=>'<button type="button" class="btn" '+(l.tenant_id===api.S.me?.tenant_id?'data-act="local" data-id="'+esc(l.id)+'"':'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(l.tenant_id)+'" data-company-name="'+esc(c.name)+'"')+'><span>'+esc(l.name||l.id)+'</span><span aria-hidden="true">→</span></button>').join('')||'<p>Esta empresa todavía no tiene locales creados.</p>')+
+      creatorAddLocalForm(c.tenant_id)+'</div></details>').join('')+'</div></section>';
   }
   function adminView(){
     if(api?.role()!=='creadora')return '';
@@ -396,6 +432,30 @@
   window.addEventListener?.('popstate',()=>{
     if(isSoloOwner()&&api.S.panel?.startsWith('owner-')&&!window.history?.state?.glOwnerPanel){api.closePanel?.();panelKind='';}
   });
+  document.addEventListener('submit',async e=>{
+    const form=e.target.closest?.('[data-creator-add-local-form]');
+    if(!form)return;
+    e.preventDefault();
+    if(api?.role?.()!=='creadora'||addingLocal)return;
+    const parent=form.dataset.creatorAddLocalForm;
+    const nombre=form.elements.namedItem('local')?.value?.trim();
+    const correo=form.elements.namedItem('owner')?.value?.trim().toLowerCase();
+    if(!nombre||!correo||!form.reportValidity())return;
+    const grupo=creatorBrands().find(c=>c.tenant_id===parent);
+    if(!grupo)return;
+    if(!window.confirm('¿Crear '+nombre+' en '+grupo.name+' y asignarlo a '+correo+'? Si pertenece a otro grupo, el sistema rechazará la operación.'))return;
+    addingLocal=true;
+    const submit=form.querySelector('[type="submit"]');
+    if(submit)submit.disabled=true;
+    try{
+      const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_add_brand_local',
+        {p_parent_tenant:parent,p_local_name:nombre,p_owner_email:correo});
+      if(error||!data?.ok)throw Error(error?.message||'No se pudo crear el local.');
+      api.toast?.('Local creado y dueño asignado. '+(data.grupo_nuevo?'Debe registrarse con ese correo.':'Acceso del dueño existente actualizado.'));
+      await refreshAdmin();
+    }catch(err){api.toast?.('No se creó el local: '+(err?.message||'Error de permisos.'),true);}
+    finally{addingLocal=false;if(submit?.isConnected)submit.disabled=false;}
+  });
   document.addEventListener('click',e=>{
     if(isSoloOwner()&&window.history?.state?.glOwnerPanel&&(e.target.closest('#pn [data-act="close"]')||e.target.id==='ov'))window.history.back();
     if(e.target.closest('[data-owner-area-retry]')){e.preventDefault();refresh();}
@@ -442,5 +502,5 @@
   const companyName=()=>String((state.status==='ready'&&state.data?.tenant_id===api?.S?.me?.tenant_id?state.data.company_name:'')||
     (gerenteMarca.tenant===api?.S?.me?.tenant_id?gerenteMarca.name:'')||'').trim();
   window.GestLokOwnerAreas=Object.freeze({companyName,attach(ctx){api=ctx;window.GestLokMolino?.attach?.(ctx);window.GestLokInvites?.attach?.(ctx);},refresh,gerenteCard,gerenteHome,view,header,sync,allowed,staffNavVisible,openStaffHorarios,refreshAdmin,adminView,companyFolders,
-    creatorCompanies:()=>api?.role?.()==='creadora'&&admin.status==='ready'?admin.companies.map(c=>({...c,locals:(c.locals||[]).map(l=>({...l}))})):[]});
+    creatorCompanies:()=>api?.role?.()==='creadora'&&admin.status==='ready'?admin.companies.map(c=>({...c,locals:(c.locals||[]).map(l=>({...l}))})):[],creatorBrands,creatorAddLocalForm});
 })();

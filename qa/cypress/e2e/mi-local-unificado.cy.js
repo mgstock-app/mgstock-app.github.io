@@ -11,6 +11,7 @@ describe('Mi local · inicio único de Perfumes',()=>{
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
   cy.visit('/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
+  cy.window().its('GestLokSupabase',{timeout:15000}).should('exist');
   cy.window().then(w=>{
    w.__cajaAppHabilitada=['dueno@example.com'];
    const db=w.GestLokSupabase,from=db.from.bind(db);

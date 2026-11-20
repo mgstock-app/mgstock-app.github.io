@@ -2446,3 +2446,15 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
   .gl-soporte-float .gl-soporte-icon svg{width:25px;height:25px}
 }
 @media print{.gl-soporte-float{display:none!important}}
+
+/* Carpeta de empresa · agregar sucursal con dueño asignado, solo panel de creadora. */
+.gl-company-add-local{width:100%;min-width:0;margin-top:10px;padding:10px 12px;border:1px solid #cbdbea;border-radius:13px;background:#f8fbfe;color:#143655}
+.gl-company-add-local>summary{font-size:14px;font-weight:750;cursor:pointer;list-style:none;padding:5px 3px}
+.gl-company-add-local>summary::-webkit-details-marker{display:none}
+.gl-company-add-form{display:grid;gap:12px;padding:13px 3px 4px}
+.gl-company-add-form label{display:grid;gap:5px;color:#284968;font-size:13px;font-weight:650;min-width:0}
+.gl-company-add-form input{width:100%;min-width:0;box-sizing:border-box;padding:12px;border:1px solid #bdcddc;border-radius:10px;background:#fff;color:#12345a;font-size:16px}
+.gl-company-add-form input:focus-visible{outline:2px solid #2389d1;outline-offset:1px}
+.gl-company-add-form p{margin:0;color:#5c7187;font-size:12px;line-height:1.5}
+.gl-company-add-form button{width:100%;min-height:44px}
+.gl-ch-company-actions .gl-company-add-local,.gl-ch-premium-company-locals .gl-company-add-local{width:100%}

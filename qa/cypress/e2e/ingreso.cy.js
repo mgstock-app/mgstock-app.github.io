@@ -97,15 +97,16 @@ describe("MG Stock: Ingreso de mercadería", () => {
     cy.get("#ing-pend select").select("No importar");
     // Después de volver a leer el archivo, la selección es explícita.
     // Así el test comprueba el flujo de duplicados sin depender del auto-tildado.
-    // La lectura del archivo termina en segundo plano y puede volver a dibujar la tabla:
-    // si eso destilda la fila, se vuelve a tildar hasta que «Importar» quede habilitado.
+    // Esperar el estado actualizado después de cada render: nunca provocar click
+    // manual desde un .should (ese elemento puede haber sido reemplazado por render()).
     cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().check({force:true});
-    cy.get("#ing-ok").should(($ok) => {
-      if ($ok.prop("disabled")) {
-        const fila = Cypress.$('#ing-tabla [data-ingon]:not(:disabled)').first();
-        if (fila.length && !fila.prop("checked")) fila.trigger("click");
-      }
-      expect($ok.prop("disabled"), "Importar habilitado").to.eq(false);
+    cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().should('be.checked');
+    // Diagnóstico del bloqueo real, sin omitir el control antidualidad de importación.
+    cy.get('#ing-ok',{timeout:15000}).should($ok=>{
+      const $=Cypress.$, bloque=$('#ing-bloqueo').text().trim();
+      const pendientes=$('#ing-pend select').length;
+      const seleccionados=$('#ing-tabla [data-ingon]:checked:not(:disabled)').length;
+      expect($ok.prop('disabled'),'Importar habilitado (bloqueo='+JSON.stringify(bloque)+', pendientes='+pendientes+', seleccionados='+seleccionados+')').to.eq(false);
     });
     cy.get("#ing-ok").click();
     cy.get("#pn").should("contain.text", "ya se importó");

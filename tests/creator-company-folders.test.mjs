@@ -10,7 +10,11 @@ function load(role='creadora'){
 }
 test('Locales agrupa todas las empresas y conserva el tenant de locales con el mismo id',async()=>{
  const a=load();await a.refreshAdmin();const html=a.companyFolders();
- assert.equal((html.match(/<details /g)||[]).length,3);
+ assert.equal((html.match(/<details class="gl-company-folder"/g)||[]).length,3);
+ assert.equal((html.match(/<details class="gl-company-add-local"/g)||[]).length,3);
+ // Cada empresa ofrece exactamente un formulario propio; solo la creadora puede usarlo.
+ assert.equal((html.match(/<form data-creator-add-local-form=/g)||[]).length,3);
+ assert.match(html,/Email del dueño/);
  assert.match(html,/data-act="local" data-id="munro"/);
  assert.match(html,/data-act="local" data-id="torcuato"/);
  assert.match(html,/data-company-local="munro" data-company-tenant="other"/);
