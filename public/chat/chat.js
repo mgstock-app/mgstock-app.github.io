@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120menu4';
+import {describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120reviewready1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -248,10 +248,11 @@ const TEXTO_ESTADO = {
   rechazado: ['El local no pudo tomarlo', ''],
   cancelado: ['Pedido cancelado', ''],
 };
-/** Pedido listo o enviado: aviso, invitación a reseñar (si el local cargó su link de Google) y cierre.
+/** Pedido listo o enviado: aviso, reseña (si el local cargó su link de Google) y cierre, sin esperar recepción.
  * Una sola vez por pedido en este teléfono, aunque el cliente cierre el chat y vuelva más tarde (hasta 24 h). */
 function despedidaPedido(p) {
-  if (!p.recibido_at || p.estado !== 'terminado' || Date.now() - new Date(p.recibido_at).getTime() > 864e5) return;
+  const desde = p.decidido_at || p.recibido_at || p.creado_at;
+  if (p.estado !== 'terminado' || (desde && Date.now() - new Date(desde).getTime() > 864e5)) return;
   const clave = 'gestlok-chat:cierre:' + (S.sucursal?.slug || '') + ':' + p.creado_at;
   try { if (localStorage.getItem(clave)) return; localStorage.setItem(clave, '1'); } catch { /* sin almacenamiento: se muestra igual */ }
   // Si el cliente acaba de consultar el estado, el aviso ya está en pantalla: no se repite.
@@ -275,7 +276,7 @@ async function confirmarRecepcion() {
       burbuja('error', r.error || 'No pudimos confirmar la recepción. Intentá nuevamente.');
       return;
     }
-    mostrarPedido(r.pedido); // muestra el agradecimiento y recién ahora permite la reseña
+    mostrarPedido(r.pedido); // la recepción se registra por separado; la reseña se ofreció al marcar listo/enviado
   } catch {
     burbuja('error', 'Sin conexión. Intentá nuevamente.');
   } finally { S.enviando = false; }
@@ -287,7 +288,7 @@ function mostrarPedido(p) {
   if (!p) { caja.hidden = true; return; }
   const envio = p.entrega === 'envio';
   const [t, sub] = p.estado === 'terminado' && envio ? ['¡Pedido en camino!', ''] : (TEXTO_ESTADO[p.estado] || [p.estado, '']);
-  const resena = p.estado === 'terminado' && p.recibido_at ? urlResena(p.resena?.url) : '';
+  const resena = p.estado === 'terminado' ? urlResena(p.resena?.url) : '';
   const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
   const etiqueta = p.recibido_at ? 'Pedido recibido por el cliente' : programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
     timeZone:'America/Argentina/Buenos_Aires',weekday:'short',hour:'2-digit',minute:'2-digit'}) : t;
@@ -303,7 +304,7 @@ function mostrarPedido(p) {
   // Seguimiento y ayuda por botones: el cliente no necesita volver a escribir.
   if (!S.cerrada) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(p.estado) && !S.soportePendiente;
   const cambio = antes && antes.creado_at === p.creado_at && antes.estado !== p.estado && ['pendiente','confirmado'].includes(antes.estado);
-  if (p.estado === 'terminado' && p.recibido_at && (!antes || !antes.recibido_at)) despedidaPedido(p);
+  if (p.estado === 'terminado' && (!antes || antes.creado_at !== p.creado_at || antes.estado !== 'terminado')) despedidaPedido(p);
   else if (cambio) {
     // El texto lo arma la función con los mensajes que configuró el local.
     if (p.aviso && ['confirmado', 'rechazado'].includes(p.estado)) burbuja('asistente', p.aviso);
