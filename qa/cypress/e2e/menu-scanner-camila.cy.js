@@ -25,7 +25,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   cy.get('.gl-ch-nav [data-ch-tab="locales"]',{timeout:18000}).click();
   cy.get('#hub .gl-company-folder')
    .filter((_,e)=>!!e.querySelector('[data-act="local"][data-id="munro"]')).first().as('cami');
-  cy.get('@cami').find('summary').click();
+  cy.get('@cami').find('> summary').click();
   cy.get('@cami').find('[data-act="local"][data-id="munro"]').click();
   cy.get('#snav',{timeout:18000}).should('be.visible');
   cy.get('#snav [data-scanner-section="ventas"]').should('be.visible').and('not.be.disabled');
@@ -66,7 +66,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
   cy.get('.gl-ch-nav [data-ch-tab="locales"]',{timeout:18000}).should('be.visible').click();
   cy.get('#hub .gl-company-folder')
    .filter((_,e)=>!!e.querySelector('[data-act="local"][data-id="munro"]')).first().as('cami');
-  cy.get('@cami').find('summary').click();
+  cy.get('@cami').find('> summary').click();
   cy.get('@cami').find('[data-act="local"][data-id="munro"]').click();
   cy.get('#view .gl-scanner-private-home',{timeout:18000}).should('be.visible')
    .and('contain.text','ZAYRO');
