@@ -107,14 +107,26 @@ function limpiarEntrada(e: unknown): Json | null {
     const lineas: Json[] = [];
     for (const bruto of x.agregar_varios) {
       if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return null;
-      const a = bruto as Json; const opciones: Record<string, string[]> = {};
+      const a = bruto as Json;
+      // El lote acepta tanto opciones simples (array) como combos de cantidad
+      // ({variedad: cantidad}). Validamos todo antes de guardar, sin descartar grupos.
+      const opciones: Record<string, string[] | Record<string, number>> = {};
       if (typeof a.producto_id !== "string" || !/^[0-9a-f-]{36}$/.test(a.producto_id) ||
           !Number.isInteger(a.cantidad) || (a.cantidad as number) < 1 || (a.cantidad as number) > 50) return null;
       if (a.opciones && (typeof a.opciones !== "object" || Array.isArray(a.opciones))) return null;
-      for (const [k, v] of Object.entries((a.opciones as Json) || {}).slice(0, 8)) {
-        if (!/^[a-z0-9_]{1,30}$/.test(k) || !Array.isArray(v) ||
-            v.some(i => typeof i !== "string" || !/^[a-z0-9_]{1,30}$/.test(i))) return null;
-        opciones[k] = v.slice(0, 30);
+      const grupos = Object.entries((a.opciones as Json) || {});
+      if (grupos.length > 8) return null;
+      for (const [k, v] of grupos) {
+        if (!/^[a-z0-9_]{1,30}$/.test(k)) return null;
+        if (Array.isArray(v)) {
+          if (v.length > 30 || v.some(i => typeof i !== "string" || !/^[a-z0-9_]{1,30}$/.test(i))) return null;
+          opciones[k] = v;
+        } else if (v && typeof v === "object") {
+          const cantidades = Object.entries(v as Json);
+          if (cantidades.length > 40 || cantidades.some(([id, n]) =>
+            !/^[a-z0-9_]{1,30}$/.test(id) || !Number.isInteger(n) || (n as number) < 1 || (n as number) > 50)) return null;
+          opciones[k] = Object.fromEntries(cantidades) as Record<string, number>;
+        } else return null;
       }
       lineas.push({producto_id: a.producto_id, cantidad: a.cantidad, opciones,
         nota: typeof a.nota === "string" ? a.nota.slice(0, 200) : ""});
