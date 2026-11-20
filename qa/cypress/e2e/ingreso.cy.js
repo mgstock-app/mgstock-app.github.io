@@ -101,6 +101,15 @@ describe("MG Stock: Ingreso de mercadería", () => {
     // manual desde un .should (ese elemento puede haber sido reemplazado por render()).
     cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().check({force:true});
     cy.get('#ing-tabla [data-ingon]:not(:disabled)').first().should('be.checked');
+    // Activar una fila vuelve a calcular los pendientes. Si reaparece el destino
+    // «Producto desconocido», hay que descartarlo expresamente antes de importar.
+    // No saltear el bloqueo ni forzar el botón: es una validación real de la app.
+    cy.get('body').then($body => {
+      if ($body.find('#ing-pend select').length) {
+        cy.get('#ing-pend select').select('No importar');
+      }
+    });
+    cy.get('#ing-pend').should('not.exist');
     // Diagnóstico del bloqueo real, sin omitir el control antidualidad de importación.
     cy.get('#ing-ok',{timeout:15000}).should($ok=>{
       const $=Cypress.$, bloque=$('#ing-bloqueo').text().trim();
