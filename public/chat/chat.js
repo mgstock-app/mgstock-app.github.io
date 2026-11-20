@@ -442,6 +442,9 @@ function abrirDatos() {
   };
   const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '200', autocomplete: 'street-address', placeholder: 'Calle, número, piso, entre calles'});
   const totalTxt = el('span');
+  const notaPago = el('p', {class:'nota pago-explicacion'});
+  const cambioTxt = el('p', {class:'nota cambio-previsto'});
+  let importeEstimado = 0;
   const refrescar = () => {
     dir.hidden = d.entrega !== 'envio';
     const disponibles = medios(d.entrega);
@@ -449,18 +452,47 @@ function abrirDatos() {
     if (!disponibles.includes(d.medio_pago)) d.medio_pago = disponibles[0] || 'efectivo';
     pago.value = d.medio_pago;
     const envio = d.entrega === 'envio' ? Number(s.envio_costo) || 0 : 0;
-    totalTxt.textContent = pesos(totalCarrito(S.catalogo, S.carrito) + envio);
+    const subtotal = totalCarrito(S.catalogo, S.carrito);
+    const porcentaje = d.entrega === 'envio' && d.medio_pago === 'efectivo'
+      ? Number(s.descuento_efectivo_pct) || 0 : 0;
+    const descuento = Math.round(subtotal * porcentaje) / 100;
+    importeEstimado = Math.round((subtotal + envio - descuento) * 100) / 100;
+    totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye 10% de descuento en productos' : '');
+    const efectivoDelivery = d.entrega === 'envio' && d.medio_pago === 'efectivo';
+    efectivo.hidden = !efectivoDelivery;
+    efectivoInput.required = efectivoDelivery;
+    cambioTxt.hidden = !efectivoDelivery;
+    if (efectivoDelivery) {
+      const abona = Number(d.efectivo_abona);
+      cambioTxt.textContent = Number.isFinite(abona) && abona >= importeEstimado && abona > 0
+        ? 'Cambio a enviar: ' + pesos(abona - importeEstimado)
+        : 'Indique con cuánto abonará para preparar el cambio. También puede elegir pago justo.';
+    }
+    notaPago.hidden = !(d.entrega === 'envio' && d.medio_pago === 'transferencia');
+    notaPago.textContent = 'Si abona en efectivo tiene un ' + (Number(s.descuento_efectivo_pct) || 0) +
+      '% de descuento en los productos. Si prefiere transferencia, el gerente le enviará los datos por este chat. Puede adjuntar aquí el comprobante.';
   };
   const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío' + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : '')]].filter(Boolean);
   const pago = el('select', {name: 'medio_pago'});
-  pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; });
+  pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; refrescar(); });
+  const efectivo = campo('efectivo_abona', '¿Con cuánto va a abonar en efectivo?', {
+    type:'number',min:'1',max:'99999999',step:'0.01',inputmode:'decimal',placeholder:'Ej.: 20000'});
+  const efectivoInput = efectivo.querySelector('input');
+  efectivoInput.addEventListener('input', refrescar);
+  const pagoJusto = el('button',{type:'button',class:'boton chico',text:'Pago justo, sin cambio',onclick:()=>{
+    d.efectivo_abona=importeEstimado.toFixed(2); efectivoInput.value=d.efectivo_abona; refrescar();
+  }});
+  efectivo.append(pagoJusto);
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const form = el('form', {onsubmit: e => {
     e.preventDefault();
     const tel = String(d.telefono || '').replace(/\D/g, '');
     const problema = String(d.nombre || '').trim().length < 2 ? 'Ingrese su nombre.'
       : tel.length < 8 || tel.length > 15 ? 'Ingrese un teléfono válido (con código de área).'
-      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.' : '';
+      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.'
+      : d.entrega === 'envio' && d.medio_pago === 'efectivo' &&
+        (!Number.isFinite(Number(d.efectivo_abona)) || Number(d.efectivo_abona) < importeEstimado)
+        ? 'Indique un importe en efectivo igual o superior al total, o seleccione pago justo.' : '';
     if (problema) { error.textContent = problema; error.hidden = false; return; }
     cerrarHoja();
     enviar({datos: {...d}}, 'Enviar pedido');
@@ -474,6 +506,7 @@ function abrirDatos() {
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
   dir,
   el('label', {class: 'campo'}, el('span', {text: 'Medio de pago'}), pago),
+  notaPago, efectivo, cambioTxt,
   s.atencion?.habilitado && !s.atencion.abierto
     ? el('p',{class:'nota',text:'Pedido para la próxima apertura: '+s.atencion.proximo_texto+'. El gerente lo confirmará manualmente.'})
     : campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
