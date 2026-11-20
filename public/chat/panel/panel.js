@@ -36,6 +36,7 @@
    */
   function montar(destino, op = {}) {
   const DEMO = !!op.demo;
+  const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
   const EMBED = !!op.embebido;
   const LOCAL = String(op.local || '').toLowerCase();
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
@@ -817,9 +818,20 @@
   async function demoRpc(fn, a) {
     await new Promise(r => setTimeout(r, 120));
     switch (fn) {
-      case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración', sucursales: D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
-      case 'panel_pedidos': return {nivel: D.nivel, pedidos: D.pedidos.filter(p => a.p_estado === 'todos' || p.estado === a.p_estado)};
-      case 'panel_decidir': { const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
+      case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración',
+        sucursales: SHOWROOM ? [{...D.suc[0],nombre:'Sucursal Centro',local_id:'demo'}] :
+          D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
+      case 'panel_pedidos': {
+        const compartido=SHOWROOM?.read().order;
+        return {nivel:D.nivel,pedidos:[...(compartido?[compartido]:[]),...D.pedidos]
+          .filter(p=>a.p_estado==='todos'||p.estado===a.p_estado)};
+      }
+      case 'panel_decidir': {
+        if(SHOWROOM?.read().order?.id===a.p_pedido) {
+          if(!SHOWROOM.decide(a.p_pedido,a.p_decision,a.p_motivo))throw new Error('Este pedido ya fue resuelto');
+          return {ok:true};
+        }
+        const p = D.pedidos.find(x => x.id === a.p_pedido); if (!((p.estado === 'pendiente' && ['confirmado','rechazado'].includes(a.p_decision)) || (p.estado === 'confirmado' && ['terminado','rechazado'].includes(a.p_decision)))) throw new Error('Este pedido ya fue resuelto'); p.estado = a.p_decision; p.motivo = a.p_motivo; return {ok: true}; }
       case 'panel_catalogo': return {categorias: D.cats, productos: D.prods, nivel: D.nivel};
       case 'panel_disponible': D.prods.find(p => p.id === a.p_producto).disponible = a.p_disponible; return {ok: true};
       case 'panel_stock_categoria':
@@ -834,8 +846,17 @@
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
       case 'panel_clientes': return [{nombre:'María (demo)',telefono:'1155551234',pedidos:3,ultimo_at:new Date().toISOString(),direccion:'Mitre 300'}];
-      case 'panel_conversaciones': return [{id: 'v1', creada_at: new Date().toISOString(), ultima_at: new Date().toISOString(), mensajes: 6, ultimo: '¡Listo! Enviamos tu pedido MM-0007 al local.', pedido: 'MM-0007 · pendiente',cerrada_at:D.cerrada?new Date().toISOString():null}];
-      case 'panel_estado_conversacion': return {cerrada:!!D.cerrada,puede_enviar_transferencia:true};
+      case 'panel_conversaciones': {
+        const sh=SHOWROOM?.read(),ultimo=sh?.messages.at(-1);
+        return [...(sh?.messages.length?[{id:'showroom-conversacion',creada_at:new Date().toISOString(),
+          ultima_at:new Date().toISOString(),mensajes:sh.messages.length,ultimo:ultimo?.texto||'',
+          pedido:sh.order?sh.order.codigo+' · '+sh.order.estado:'',cerrada_at:null}]:[]),
+          {id:'v1',creada_at:new Date().toISOString(),ultima_at:new Date().toISOString(),mensajes:6,
+            ultimo:'¡Listo! Enviamos tu pedido MM-0007 al local.',pedido:'MM-0007 · pendiente',
+            cerrada_at:D.cerrada?new Date().toISOString():null}];
+      }
+      case 'panel_estado_conversacion': return {cerrada:a.p_conversacion==='showroom-conversacion'?false:!!D.cerrada,
+        puede_enviar_transferencia:true};
       case 'panel_enviar_transferencia':
         if(D.cerrada)throw Error('La conversación ya está cerrada');
         D.respuestas.push('Le envio los datos para transferir!\nAlias: migustomunro\nTitular: Gisela Alejandra Oppenheimer\nCuando pueda necesitamos que nos envie el comprobante por este medio! Muchas gracias');
@@ -844,7 +865,9 @@
         D.cerrada=true;D.respuestas.push('La conversación fue finalizada por el local. Puede iniciar una nueva consulta cuando lo necesite.');
         D.reclamos.forEach(r=>{r.estado='respondido';});
         return {ok:true,cerrada:true};
-      case 'panel_conversacion': return [
+      case 'panel_conversacion': if(SHOWROOM&&a.p_conversacion==='showroom-conversacion')
+        return SHOWROOM.read().messages;
+        return [
         {rol:'asistente',texto:'¡Hola! ¿Qué te gustaría pedir hoy?'},
         {rol:'cliente',texto:'Mi pedido está tardando mucho'},
         {rol:'asistente',texto:'Avisé al gerente. Te responderá por este mismo chat.'},
@@ -856,6 +879,10 @@
         confirmados:0,terminados:i?0:1,rechazados:0,cancelados:0,importe_confirmado:i?0:3600}));
       case 'panel_responder': {
         if (String(a.p_texto||'').trim().length < 2) throw new Error('Escribí una respuesta.');
+        if(SHOWROOM&&a.p_conversacion==='showroom-conversacion') {
+          SHOWROOM.add('local',a.p_texto);
+          return {ok:true};
+        }
         D.respuestas.push(a.p_texto);
         if (a.p_reclamo) {
           const r=D.reclamos.find(x=>x.id===a.p_reclamo);
