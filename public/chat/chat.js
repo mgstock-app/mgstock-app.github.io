@@ -211,7 +211,7 @@ $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
 function abrirCarta() {
-  const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id));
+  const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id && p.activo !== false));
   const cuerpo = el('div');
   const pintar = () => {
     const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria));
@@ -233,7 +233,7 @@ function abrirCarta() {
           onclick: abrirSeleccion}) : null));
   };
   pintar();
-  abrirHoja('Carta', cuerpo);
+  abrirHoja('Menú interactivo', cuerpo);
 }
 
 function abrirProducto(p, sugerido = {}) {
