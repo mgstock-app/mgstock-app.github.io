@@ -16,5 +16,26 @@ export function createClient() {
       }
       return {data: JSON.parse(r.stdout.trim().split('\n').pop()), error: null};
     },
+    storage: {
+      from(bucket) {
+        const ejecutar = sql => spawnSync('psql',[process.env.CHAT_PG_DB,'-X','-q','-At','-v','ON_ERROR_STOP=1'],
+          {input:sql,encoding:'utf8'});
+        return {
+          async upload(path,bytes) {
+            const r=ejecutar('insert into storage.objects(bucket_id,name) values('+lit(bucket)+','+lit(path)+');');
+            return r.status===0 ? {data:{path},error:null} : {data:null,error:{message:r.stderr}};
+          },
+          async createSignedUrl(path) {
+            const r=ejecutar('select count(*) from storage.objects where bucket_id='+lit(bucket)+' and name='+lit(path)+';');
+            if(r.status!==0 || Number(r.stdout.trim())!==1) return {data:null,error:{message:'Archivo no encontrado'}};
+            return {data:{signedUrl:'https://test-storage.example/private/'+encodeURIComponent(path)},error:null};
+          },
+          async remove(paths) {
+            for(const path of paths) ejecutar('delete from storage.objects where bucket_id='+lit(bucket)+' and name='+lit(path)+';');
+            return {data:[],error:null};
+          },
+        };
+      },
+    },
   };
 }
