@@ -95,6 +95,9 @@ confirmado, listo, rechazado, cancelado) los arma siempre el sistema con los men
 
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
+Tamaños (20/11): «chica», «individual», «personal» o «de 4 porciones» ofrecen las pizzas individuales de la carta;
+«grande», «entera» o «de 8 porciones» las de 8 porciones (se lee del nombre y la descripción de cada producto). Las medidas
+no son cantidades: «una pizza de 8 porciones» es 1 pizza, «una coca 2,25» es 1 Coca-Cola 2,25 L, «2 packs de 12» son 2 del Pack 12.
 Pregunta cuando hay dudas y pide las opciones obligatorias. **Nunca** fija precios ni confirma: la base recalcula todo
 al crear el pedido. Etapa 3: IA opcional con herramientas acotadas (buscar en la carta, armar carrito, pedir datos),
 detrás del mismo motor; si la IA falla o no está activa, sigue el motor.
