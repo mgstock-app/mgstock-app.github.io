@@ -165,7 +165,13 @@ Deno.serve(async (req) => {
     let entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
     const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
-    const clase = clasificarSoporte(entrada);
+    let clase = clasificarSoporte(entrada);
+    if (!clase && textoOriginal) {
+      // Si el gerente está atendiendo un reclamo, los siguientes mensajes también llegan al humano.
+      const activo = await rpc("gestlok_chat_srv_respuestas", {
+        p_conversacion: convId, p_token_hash: hash, p_desde: Number.MAX_SAFE_INTEGER });
+      if (activo.soporte_pendiente) clase = String(activo.tipo_soporte || "otro");
+    }
     if (clase && clase !== "consulta_demora") {
       // Reclamos prioritarios, sin IA: registrar el texto y la alerta en una sola transacción.
       const detalle = textoOriginal || BOTON_TEXTO[String(entrada.boton)] || "Consulta al gerente";
