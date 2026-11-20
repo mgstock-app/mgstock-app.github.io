@@ -95,30 +95,31 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
         {"id":"sal","nombre":"Salsas","tipo":"cantidad","obligatorio":true,"total":2,
          "valores":[{"id":"criolla","nombre":"Criolla","extra":0},{"id":"ajo","nombre":"Crema de ajo","extra":0}]}]'::jsonb)`);
   const TOKEN_PROMO = 'tokenDePruebaParaComboEmpanadas0002ABCD';
+  const llamarPromo = body => llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,...body},{ip:'192.0.2.10'});
   const lotePromo = 'dde41c36-6d22-4c59-9db7-954c1c5932e1';
   const entradaPromo = {agregar_varios:[{producto_id:promoId,cantidad:1,nota:'',
     opciones:{emp:{carne:4,jyq:2},sal:{criolla:1,ajo:1}}}],lote_id:lotePromo};
-  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'abrir'});
+  r = await llamarPromo({accion:'abrir'});
   assert.equal(r.status,200);
-  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:{texto:'¿Tienen el pack de seis empanadas?'}});
+  r = await llamarPromo({accion:'mensaje',entrada:{texto:'¿Tienen el pack de seis empanadas?'}});
   assert.ok(r.body.mensajes[0].botones.some(b => b.id === 'elegir:' + promoId + ':1'));
   assert.deepEqual(r.body.carrito, []);
-  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:{boton:'elegir:' + promoId + ':1'}});
+  r = await llamarPromo({accion:'mensaje',entrada:{boton:'elegir:' + promoId + ':1'}});
   assert.equal(r.body.mensajes[0].tipo, 'producto');
-  const incompleto = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:{...entradaPromo,
+  const incompleto = await llamarPromo({accion:'mensaje',entrada:{...entradaPromo,
     agregar_varios:[{...entradaPromo.agregar_varios[0], opciones:{emp:{carne:4,jyq:2}, sal:{ajo:1}}}]}});
   assert.equal(incompleto.body.lote_aceptado, false);
   assert.deepEqual(incompleto.body.carrito, []);
-  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:entradaPromo});
+  r = await llamarPromo({accion:'mensaje',entrada:entradaPromo});
   assert.equal(r.status,200,'la función acepta el mapa de cantidades del combo');
   assert.equal(r.body.lote_aceptado,true,'el servidor confirma la aceptación del lote');
   assert.equal(r.body.carrito.length,1);
   assert.equal(r.body.carrito[0].opciones.emp.carne,4);
   assert.equal(r.body.carrito[0].opciones.sal.ajo,1);
-  r = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',entrada:entradaPromo});
+  r = await llamarPromo({accion:'mensaje',entrada:entradaPromo});
   assert.equal(r.body.lote_aceptado,true,'un reintento obtiene acuse sin duplicar');
   assert.equal(r.body.carrito.length,1,'el combo se agregó una sola vez');
-  const rechazado = await llamar({slug:'mi-gusto-munro',token:TOKEN_PROMO,accion:'mensaje',
+  const rechazado = await llamarPromo({accion:'mensaje',
     entrada:{agregar_varios:[{producto_id:promoId,cantidad:1,opciones:{emp:{carne:'4'},sal:{criolla:2}}}],lote_id:'c879b229-650a-41e0-83eb-3034f96819d8'}});
   assert.equal(rechazado.status,400,'no se aceptan cantidades falsas en un combo');
   ok(DB, [], `update gestlok_chat_private.productos set activo=false where id='${promoId}'`);
