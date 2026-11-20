@@ -168,7 +168,8 @@ Deno.serve(async (req) => {
         rpc("gestlok_chat_srv_estado", { p_conversacion: convId, p_token_hash: hash }),
         rpc("gestlok_chat_srv_respuestas", { p_conversacion: convId, p_token_hash: hash, p_desde: desde })]);
       return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso),
-        mensajes_local: soporte.mensajes_local || [], soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
+        mensajes_local: ((soporte.mensajes_local as Json[]) || []).map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+        soporte_pendiente: soporte.soporte_pendiente }, 200, origen);
     }
 
     if (accion !== "mensaje") return json({ ok: false, error: "Acción desconocida" }, 400, origen);
@@ -207,6 +208,17 @@ Deno.serve(async (req) => {
       }
     }
     if (!r) r = responder({ sucursal, catalogo, estado: conv.estado, entrada, mensajes: mensajesLocal }) as Turno;
+    // Si tampoco el motor de respaldo comprende la pregunta, el gerente la recibe.
+    // No se deriva un pedido válido ni una consulta de menú.
+    if (textoOriginal && r.mensajes.length === 1 &&
+      /^(No (le|te) entendí bien|No (puedo|sabemos) responder)/i.test(String(r.mensajes[0].texto||'')) &&
+      !r.accion) {
+      const t=await rpc("gestlok_chat_srv_reclamo",{
+        p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
+        p_tipo:'consulta',p_detalle:textoOriginal});
+      return json({ok:true,mensajes:[{texto:sinCodigo(String(t.texto))}],
+        carrito:(conv.estado as Json)?.carrito || [],soporte_pendiente:true,motor:'guiado'},200,origen);
+    }
     if (r.accion?.tipo === 'derivar') {
       const t = await rpc("gestlok_chat_srv_reclamo",{
         p_conversacion:convId,p_token_hash:hash,p_ip_hash:ipHash,
