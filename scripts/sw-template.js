@@ -77,7 +77,7 @@ self.addEventListener('push', event => {
       tag:String(payload.tag||'gestlok').slice(0,70),
       data:{url:BASE+route,
         local:typeof payload.local==='string' && /^[A-Za-z0-9_-]{1,80}$/.test(payload.local)?payload.local:'',
-        view:['chat','proveedores','vencimientos','avisos'].includes(payload.view)?payload.view:'inicio'}
+        view:['chat','proveedores','vencimientos','avisos','pedidos-clientes'].includes(payload.view)?payload.view:'inicio'}
     });
   })());
 });
