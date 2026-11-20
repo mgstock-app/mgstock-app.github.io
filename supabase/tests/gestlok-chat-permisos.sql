@@ -344,7 +344,6 @@ begin
   perform set_config('prueba.escritura', '', true);
   perform set_config('prueba.soporte', '', true);
 
-
   -- Horarios y reportes: la apertura se calcula con hora argentina, sin revelar datos de clientes.
   perform set_config('role','postgres',true);
   update gestlok_chat_private.sucursales set
