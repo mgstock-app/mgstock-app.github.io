@@ -672,13 +672,13 @@
         }
         D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
         return {ok:true};
+      }
       case 'panel_cerrar_reclamo': {
         const r=D.reclamos.find(x=>x.id===a.p_reclamo);
         if (!r?.respondido_at) throw new Error('Primero respondé al cliente');
         r.estado='respondido';
         D.suc[0].reclamos=D.reclamos.filter(x=>x.estado==='pendiente').length;
         return {ok:true};
-      }
       }
       default: throw new Error('Demostración: ' + fn);
     }
