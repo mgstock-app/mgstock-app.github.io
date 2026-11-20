@@ -14,6 +14,11 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     cy.get('#texto').type('3 empanadas de carne{enter}');
     cy.get('#barra-texto').should('contain.text','3 productos');
     cy.get('#btn-finalizar').click();
+    // Esperar la respuesta del motor antes de decidir si aparece la venta sugerida.
+    cy.get('body').should($body=>{
+      const sugerencia=$body.find('.chip').toArray().some(x=>x.textContent.includes('No, gracias. Finalizar'));
+      expect(sugerencia||$body.find('#hoja').is(':visible')).to.eq(true);
+    });
     cy.get('body').then($body=>{
       if($body.find('.chip').toArray().some(x=>x.textContent.includes('No, gracias. Finalizar')))
         cy.contains('.chip','No, gracias. Finalizar').click();
