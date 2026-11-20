@@ -11,6 +11,15 @@ const sucursal = {
 const btns = [{id:'carta',texto:'Ver menú'},{id:'horario',texto:'Horario y envío'},{id:'pago',texto:'Medios de pago'}];
 const producto = {id:'9a000000-0000-4000-8000-000000000001',nombre:'Empanada',precio:4900,activo:true,disponible:true,opciones:[]};
 const carrito = [{producto_id:producto.id,cantidad:1,opciones:{},nota:''}];
+
+// El chat solicita datos antes de habilitar las consultas del cliente.
+function completarIngreso() {
+  cy.get('#hoja').should('be.visible').and('contain.text','Datos para iniciar');
+  cy.get('#hoja input[name="nombre"]').type('Cliente Prueba');
+  cy.get('#hoja input[name="telefono"]').type('1144556677');
+  cy.contains('#hoja button','Continuar con mi pedido').click();
+  cy.get('#hoja').should('not.be.visible');
+}
 describe('GESTLOK Chat · mensajes y medios de pago', () => {
   it('botones responden correctamente y el formulario filtra pagos por retiro o delivery', () => {
     cy.viewport(390,844);
@@ -24,6 +33,7 @@ describe('GESTLOK Chat · mensajes y medios de pago', () => {
       return req.reply({ok:true,carrito,mensajes:[{texto:'Te ayudo con tu consulta',botones:btns}]});
     }).as('chat');
     cy.visit('/chat/?s=mi-gusto-munro');
+    completarIngreso();
     cy.contains('.burbuja.asistente','¿En qué puedo ayudarte?').should('be.visible');
     cy.contains('.chip','Medios de pago').click();
     cy.wait('@chat');
@@ -54,6 +64,7 @@ describe('GESTLOK Chat · mensajes y medios de pago', () => {
       return req.reply({ok:false,motivo:'pausado',sucursal:{empresa:'Mi Gusto',nombre:'Munro',mensaje:'Volvé a intentar más tarde.'}});
     });
     cy.visit('/chat/?s=mi-gusto-munro');
+    completarIngreso();
     cy.contains('.chip','Medios de pago').click();
     cy.contains('.pausado','Chat en pausa').should('be.visible');
     cy.contains('No pudimos enviar tu mensaje').should('not.exist');
