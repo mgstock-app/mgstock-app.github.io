@@ -284,7 +284,7 @@ function abrirDatos() {
     enviar({datos: {...d}}, 'Enviar pedido');
   }},
   campo('nombre', 'Nombre', {type: 'text', maxlength: '80', autocomplete: 'name', required: true}),
-  campo('telefono', 'Teléfono (WhatsApp)', {type: 'tel', maxlength: '25', autocomplete: 'tel', inputmode: 'tel', placeholder: 'Ej.: 11 5555 1234', required: true}),
+  campo('telefono', 'Teléfono de contacto', {type: 'tel', maxlength: '25', autocomplete: 'tel', inputmode: 'tel', placeholder: 'Ej.: 11 5555 1234', required: true}),
   entregas.length > 1 ? el('div', {class: 'segmentado', role: 'radiogroup', 'aria-label': 'Entrega'}, entregas.map(([v, t]) => {
     const r = el('input', {type: 'radio', name: 'entrega', value: v, checked: d.entrega === v});
     r.addEventListener('change', () => { d.entrega = v; refrescar(); });
@@ -295,7 +295,7 @@ function abrirDatos() {
   campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
   campo('nota', 'Aclaraciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2'}),
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
-  el('p', {class: 'nota', text: 'El local prepara tu pedido y te avisa por acá cuando está listo. Tus datos se usan solo para este pedido.'}),
+  el('p', {class: 'nota', text: 'El gerente revisa y confirma tu pedido antes de prepararlo. Te avisamos por este chat. Tus datos se usan solo para este pedido.'}),
   error,
   el('button', {type: 'submit', class: 'boton principal ancho', text: 'Enviar pedido'}));
   refrescar();
