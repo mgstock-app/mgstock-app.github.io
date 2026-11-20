@@ -375,14 +375,34 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'Revisamos el faltante y te contactamos acá',%L)::text $q$,conv1,ticket1));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
     || ' gerente responde por el mismo chat de cliente';
-  v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'Duplicado',%L)::text $q$,conv1,ticket1));
+  perform prueba_como('service_role');
+  j := public.gestlok_chat_srv_respuestas(conv1,h1,0);
+  r := r || E'\n' || case when j->>'soporte_pendiente'='true'
+      and j->>'tipo_soporte'='faltante'
+      and (j->'mensajes_local'->0->>'texto') like '%Revisamos el faltante%' then 'OK' else 'FALLA' end
+    || ' la respuesta humana llega al cliente y el hilo sigue abierto';
+  v := prueba_q(format($q$ select public.gestlok_chat_srv_reclamo(%L,%L::bytea,'ip1','faltante','Todavía falta la salsa')::text $q$,conv1,h1));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
+    || ' cliente responde en el mismo hilo y vuelve a avisar';
+  perform prueba_como('gerente.munro@prueba.example');
+  j := public.gestlok_chat_panel_soporte(s_munro);
+  r := r || E'\n' || case when jsonb_array_length(j)=1 and (j->0->>'detalle')='Todavía falta la salsa'
+    and j->0->>'respondido_at' is null then 'OK' else 'FALLA' end
+    || ' reclamo vuelve a esperar respuesta sin duplicar la alerta';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_responder(%L,'También revisamos la salsa',%L)::text $q$,conv1,ticket1));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
+    || ' gerente puede continuar la conversación';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_cerrar_reclamo(%L)::text $q$,ticket1));
+  r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end
+    || ' gerente resuelve y cierra el reclamo manualmente';
+  v := prueba_q(format($q$ select public.gestlok_chat_panel_cerrar_reclamo(%L)::text $q$,ticket1));
   r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end
-    || ' reclamo respondido no se cierra dos veces';
+    || ' un reclamo cerrado no puede cerrarse dos veces';
   perform prueba_como('service_role');
   j := public.gestlok_chat_srv_respuestas(conv1,h1,0);
   r := r || E'\n' || case when j->>'soporte_pendiente'='false'
-      and (j->'mensajes_local'->0->>'texto') like '%Revisamos el faltante%' then 'OK' else 'FALLA' end
-    || ' cliente recupera respuesta humana por su token y el aviso se resuelve';
+      and jsonb_array_length(j->'mensajes_local')=2 then 'OK' else 'FALLA' end
+    || ' el cliente ve las dos respuestas del gerente y el reclamo queda cerrado';
   v := prueba_q(format($q$ select public.gestlok_chat_srv_respuestas(%L,%L::bytea,0)::text $q$,conv1,h2));
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end
     || ' otro cliente no lee la conversación de soporte';
