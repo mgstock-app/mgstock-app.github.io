@@ -139,7 +139,7 @@ test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correcta
   const responder = entrada => M.responder({sucursal: miGusto, catalogo: cat, estado: null, entrada});
   const inicio = responder({inicio: true});
   assert.equal(inicio.mensajes[0].texto, miGusto.bienvenida);
-  assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago']);
+  assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago', 'soporte']);
   const pagos = responder({boton: 'pago'});
   assert.match(pagos.mensajes[0].texto, /Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia/);
   assert.match(pagos.mensajes[0].texto, /Delivery: Efectivo, Transferencia/);
