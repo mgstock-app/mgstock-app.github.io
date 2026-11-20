@@ -353,8 +353,9 @@ Deno.serve(async (req) => {
 
     if (r.accion?.tipo === "crear_pedido") {
       // La ficha se registra en la misma transacción que acepta el pedido.
-      if (navegadorHash) r.accion.pedido.perfil_hash = navegadorHash.slice(2);
-      const { data, error } = await db.rpc("gestlok_chat_srv_pedido", { p_conversacion: convId, p_token_hash: hash, p_pedido: r.accion.pedido });
+      const pedidoNuevo: Json = {...(r.accion.pedido as Json)};
+      if (navegadorHash) pedidoNuevo.perfil_hash = navegadorHash.slice(2);
+      const { data, error } = await db.rpc("gestlok_chat_srv_pedido", { p_conversacion: convId, p_token_hash: hash, p_pedido: pedidoNuevo });
       if (error) {
         mensajes.push({ texto: sinCodigo(formalizar(textoError(error))) + "\nRevise los datos e intente nuevamente.", tipo: "datos" });
       } else {
