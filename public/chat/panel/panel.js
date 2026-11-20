@@ -461,7 +461,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261120resena1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261120sugerida1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
@@ -479,6 +479,7 @@
     resenaUrl.value = a.mensajes?.resena_url || '';
     const resenaTexto = area(a.mensajes?.resena, 600, 2, motor?.MENSAJES_BASE?.resena || '');
     const cierreTexto = area(a.mensajes?.cierre, 600, 2, motor?.MENSAJES_BASE?.cierre || '');
+    const sugerenciaTexto = area(a.mensajes?.sugerencia, 600, 2, motor?.MENSAJES_BASE?.sugerencia || '');
     const vistaCierre = el('p', {class: 'vista-previa'});
     const pintarCierre = () => {
       const url = motor?.urlResena ? motor.urlResena(resenaUrl.value) : resenaUrl.value.trim();
@@ -505,6 +506,7 @@
       if (resenaUrl.value.trim() && motor?.urlResena && !motor.urlResena(resenaUrl.value)) return aviso('El link de reseñas tiene que ser de Google y empezar con https://', true);
       // Se mandan siempre (vacío = sin link / texto sugerido) para que la base sepa que se borraron.
       mensajes.resena_url = resenaUrl.value.trim(); mensajes.resena = resenaTexto.value.trim(); mensajes.cierre = cierreTexto.value.trim();
+      mensajes.sugerencia = sugerenciaTexto.value.trim();
       try {
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
           ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
@@ -523,6 +525,9 @@
     el('section', {class: 'bloque'}, el('h3', {text: 'Mensajes automáticos'}),
       el('p', {class: 'nota', text: 'Dejalo vacío para usar el texto sugerido. Podés usar: {nombre} {codigo} {total} {direccion} {local} {motivo}.'}),
       plantillas),
+    el('section', {class: 'bloque'}, el('h3', {text: 'Antes de finalizar: venta sugerida'}),
+      el('p', {class: 'nota', text: 'Cuando el cliente toca «Finalizar pedido» y no lleva postre o bebida, se le ofrece una vez, con botones para ver esas categorías de la carta (solo las que tengan algo disponible).'}),
+      campo('Pregunta para ofrecer postre o bebida', sugerenciaTexto)),
     el('section', {class: 'bloque'}, el('h3', {text: 'Al terminar el pedido: reseña y cierre'}),
       el('p', {class: 'nota', text: 'Después de «Listo para retirar» o «Pedido enviado», el cliente recibe la invitación con el botón a Google (solo si cargás el link de este local) y el mensaje de cierre.'}),
       campo('Link de reseñas de Google de este local (opcional)', resenaUrl),

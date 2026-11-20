@@ -115,7 +115,14 @@ reseñar con el botón «Dejar mi reseña en Google» (solo si el local cargó s
 (dueño, administradora o gerente del local). El link es por sucursal, solo `https://` y de Google (g.page,
 maps.app.goo.gl, google.com…): la base rechaza cualquier otro. Se muestra una vez por pedido en ese teléfono, también si
 el cliente vuelve a abrir el chat dentro de las 24 h; el aviso de estado arriba del chat queda con el enlace «Dejar reseña».
-Mi Gusto: textos cargados con `supabase/operaciones/mi-gusto-chat-resena-cierre-20261120.sql`; link solo en Don Torcuato.
+**Venta sugerida.** Al tocar «Finalizar pedido», si el pedido no lleva postre o bebida, el chat lo ofrece una vez
+(pregunta editable en Mensajes → «Antes de finalizar: venta sugerida») con botones «Ver postres» / «Ver bebidas», que
+abren la carta en esa categoría, y «No, gracias. Finalizar». Las categorías se reconocen por el nombre (postres,
+helados, dulces, bebidas, gaseosas, cervezas, vinos, aguas, jugos) y solo se ofrecen si tienen algo disponible; una
+promo que ya trae bebida («+ lata») no la vuelve a ofrecer. Con IA, la herramienta finalizar_pedido hace el mismo paso.
+
+Mi Gusto: todas las casillas de Mensajes cargadas con `supabase/operaciones/mi-gusto-chat-mensajes-ideales-20261120.sql`
+(Munro y Don Torcuato, cada uno con su link de reseñas de Google); quedan editables desde la Central de mensajes.
 Un solo pedido pendiente por conversación; topes por día por sucursal, por teléfono y por conversación.
 El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pendiente o confirmado).
 

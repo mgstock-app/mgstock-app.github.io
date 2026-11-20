@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120resena1';
+import {describirLinea, esCantidad, faltantes, pesos, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120sugerida1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -72,7 +72,11 @@ function chips(botones) {
 function accion(texto, fn) { lista.append(el('button', {type: 'button', class: 'accion', text: texto, onclick: fn})); bajar(); }
 function mensajeAsistente(m, {abrir = true} = {}) {
   burbuja('asistente', m.texto);
-  if (m.tipo === 'carta') { accion('Ver la carta', abrirCarta); if (abrir) abrirCarta(); }
+  if (m.tipo === 'carta') {
+    // Venta sugerida: abre la carta directo en la categoría ofrecida (postres, bebidas…).
+    if (m.categoria && S.catalogo.categorias.some(c => c.id === m.categoria)) S.categoria = m.categoria;
+    accion('Ver la carta', abrirCarta); if (abrir) abrirCarta();
+  }
   else if (m.tipo === 'producto') {
     const p = producto(m.productos?.[0]);
     if (p) { accion('Elegir opciones de ' + p.nombre, () => abrirProducto(p, m)); if (abrir) abrirProducto(p, m); }
@@ -528,7 +532,7 @@ async function demoApi(accion, extra) {
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
     demoPedido = pedido = conAviso({creado_at:new Date().toISOString(), estado: 'pendiente', total: sub + envio, medio_pago: r.accion.pedido.medio_pago, motivo: '',
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
-    r.estado.carrito = [];
+    r.estado.carrito = []; r.estado.sugerido = false;
     mensajes.push({texto: pedido.aviso});
     // La demo conserva el pedido pendiente: nunca simula una confirmación automática.
   } else if (r.accion?.tipo === 'estado') {

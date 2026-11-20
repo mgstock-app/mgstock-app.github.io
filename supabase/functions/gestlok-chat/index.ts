@@ -270,6 +270,7 @@ Deno.serve(async (req) => {
         pedido = conAviso((data as Json).pedido as Json);
         r.estado.carrito = []; r.estado.paso = "enviado";
         r.estado.programado = false; // Cada nuevo pedido requiere consentimiento independiente.
+        r.estado.sugerido = false; // El próximo pedido vuelve a recibir la venta sugerida.
         mensajes.push({ texto: String(pedido.aviso) });
       }
     } else if (r.accion?.tipo === "estado") {
