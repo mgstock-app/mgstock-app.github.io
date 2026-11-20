@@ -79,8 +79,13 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
         ? 'Gracias, '+nombre+'. Recibimos su pedido programado para '+new Intl.DateTimeFormat('es-AR',
            {timeZone:'America/Argentina/Buenos_Aires',weekday:'long',hour:'2-digit',minute:'2-digit'})
            .format(new Date(pedido.programado_para))+' h. Queda sujeto a revisión y confirmación del gerente antes de prepararlo.'
-        : (() => { const t = salida(mensajeDe(mensajes,'recibido')); return /gerente.*confirm|pendiente de revisión/i.test(t)
-          ? t : t + ' El gerente lo revisará antes de confirmarlo.'; })();
+        : (() => {
+          const t=salida(mensajeDe(mensajes,'recibido'));
+          const valido=/\b(prepar|confirmad|en camino|despach|listo para|ya sale)\b/i.test(t)
+            ? 'Gracias, '+(nombre||'')+'. Recibimos su pedido.' : t;
+          return /pendiente de revisión y confirmación/i.test(valido)
+            ? valido : valido+' Su pedido está pendiente de revisión y confirmación del gerente.';
+        })();
     case 'confirmado': return 'El gerente confirmó su pedido. El local está preparándolo.';
     case 'terminado': return salida(mensajeDe(mensajes,pedido.entrega==='envio'?'terminado_envio':'terminado_retiro'));
     case 'rechazado': return salida(mensajeDe(mensajes,'rechazado'));
