@@ -19,7 +19,9 @@ test("Munro: empleado ve exclusivamente su propia semana, sin escrituras",()=>{
  assert.match(sql,/revoke all on function public\.rm_munro_horarios_mi_resumen\(\) from public,anon,authenticated/);
  assert.match(sql,/grant execute on function public\.rm_munro_horarios_mi_resumen\(\) to authenticated/);
  assert.doesNotMatch(sql,/\bupdate rm_test_private\.munro_horarios_planillas\b|\bdelete from rm_test_private\.munro_horarios_planillas\b/i);
- assert.match(portal,/user\.local_id==="munro"&&<EmployeeMunroWeeklySummary/);
+ assert.match(portal,/if \(munro\) return <div className="employee-munro-horarios"><EmployeeMunroWeeklySummary \/>/);
+ assert.match(portal,/if \(munro \|\| user\?\.role !== "employee"/,
+   "Munro no debe ejecutar el RPC de Google Sheets");
  assert.match(mine,/rm_munro_horarios_mi_resumen/);
  assert.match(mine,/Mi resumen semanal/);
  assert.match(mine,/Solo lectura/);
@@ -45,7 +47,7 @@ test("Munro: vinculación exige gerente autorizado y nunca coincide por nombre",
 
 test("solo Munro habilita el resumen en la vista individual, resto conserva Google Sheets",()=>{
  assert.match(portal,/user\?\.role !== "employee" \|\| user\.status !== "approved"/);
- assert.match(portal,/user\.local_id==="munro"/);
+ assert.match(portal,/user\.local_id === "munro"/);
  assert.match(portal,/rm_app_employee_schedule_view/);
  assert.match(portal,/Ver planilla \(solo lectura\)/);
  assert.match(mine,/e\.target\.value/);

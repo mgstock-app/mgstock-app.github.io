@@ -304,3 +304,35 @@ test('Selects sin editar NO bloquean la actualización; cambios reales sí',()=>
  assert.equal(dirty({tagName:'INPUT',type:'text',value:'',defaultValue:''}),false);
  assert.equal(dirty({tagName:'INPUT',type:'text',value:'escrito',defaultValue:''}),true);
 });
+
+
+test('Munro personal sin Google Sheets no anuncia actualización falsa a otros locales',()=>{
+ const link='modules/empleados/components/schedules/EmployeeScheduleLink.tsx';
+ const portal='modules/empleados/components/pages/EmployeePortalShell.tsx';
+ const patches={
+  [link]:[
+   '-    if (user?.role !== "employee" || user.status !== "approved") return;',
+   '-  }, [user?.role, user?.status, user?.local_id, reload]);',
+   '-    {user.local_id==="munro"&&<EmployeeMunroWeeklySummary />}',
+   '+  // Munro tiene un RPC personal exclusivo. Nunca solicitar ni mostrar Google Sheets del local.',
+   '+  const munro = user?.role === "employee" && user.status === "approved" && user.local_id === "munro";',
+   '+    if (munro || user?.role !== "employee" || user.status !== "approved") return;',
+   '+  }, [user?.role, user?.status, user?.local_id, munro, reload]);',
+   '+  if (munro) return <div className="employee-munro-horarios"><EmployeeMunroWeeklySummary /></div>;'
+  ].join('\n'),
+  [portal]:[
+   '-          Los horarios de Google Sheets se abren en vista de lectura.',
+   '+          {user.local_id==="munro"',
+   '+            ?" Los horarios de Munro se muestran en tu Resumen semanal personal y en solo lectura."',
+   '+            :" Los horarios de Google Sheets se abren en vista de lectura."}'
+  ].join('\n')
+ };
+ assert.deepEqual(releaseAudience([link,portal],patches),[LOCAL_AUDIENCE.munro]);
+ assert.deepEqual(releaseAudience([link,portal],{...patches,[link]:patches[link]+'\n+  const pruebaGlobal=true;'}),['*'],
+   'una modificación adicional no autorizada requiere aviso general');
+ for(const [tenant,local] of [[TENANTS.miGusto,'torcuato'],[TENANTS.molino,'acassuso'],[TENANTS.zayro,'']]){
+  const f=fixture(true,[LOCAL_AUDIENCE.munro],tenant,local);
+  f.handlers.controllerchange();
+  assert.equal(f.elements.length,0,tenant+'/'+local+' no recibe aviso falso');
+ }
+});

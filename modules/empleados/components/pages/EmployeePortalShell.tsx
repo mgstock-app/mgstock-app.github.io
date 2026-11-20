@@ -105,7 +105,9 @@ export function EmployeePortalShell(){
         <p className="employee-private-portal__privacy">
           <span aria-hidden="true">🔒</span>
           Tu recibo es personal y privado. Solo podés consultar el que publica tu empresa para tu cuenta.
-          Los horarios de Google Sheets se abren en vista de lectura.
+          {user.local_id==="munro"
+            ?" Los horarios de Munro se muestran en tu Resumen semanal personal y en solo lectura."
+            :" Los horarios de Google Sheets se abren en vista de lectura."}
         </p>
       </section>
     </main>

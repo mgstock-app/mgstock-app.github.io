@@ -127,6 +127,39 @@ function onlyMiGustoMorningShell(patch){
  if(!minus?.startsWith('const SHELL = ')||!plus?.startsWith('const SHELL = '))return false;
  return plus.replace("'/stock/mi-gusto-conteo-morning.js', ", '')===minus;
 }
+// Las únicas líneas permitidas en el cambio de «Resumen personal sin Sheets».
+// Un diff mixto o una modificación no reconocida conserva aviso global (fail closed).
+const soloCambios=(patch,quitadas,agregadas)=>{
+  if(typeof patch!=='string')return false;
+  const lines=patch.split('\n').filter(line=>/^[+-](?![+-])/.test(line));
+  const menos=lines.filter(line=>line[0]==='-').map(line=>line.slice(1).trim());
+  const mas=lines.filter(line=>line[0]==='+').map(line=>line.slice(1).trim());
+  return menos.length===quitadas.length&&mas.length===agregadas.length
+    &&menos.every(x=>quitadas.includes(x))&&mas.every(x=>agregadas.includes(x))
+    &&quitadas.every(x=>menos.includes(x))&&agregadas.every(x=>mas.includes(x));
+};
+function soloResumenMunroSinSheets(patch) {
+  return soloCambios(patch,[
+    'if (user?.role !== "employee" || user.status !== "approved") return;',
+    '}, [user?.role, user?.status, user?.local_id, reload]);',
+    '{user.local_id==="munro"&&<EmployeeMunroWeeklySummary />}'
+  ],[
+    '// Munro tiene un RPC personal exclusivo. Nunca solicitar ni mostrar Google Sheets del local.',
+    'const munro = user?.role === "employee" && user.status === "approved" && user.local_id === "munro";',
+    'if (munro || user?.role !== "employee" || user.status !== "approved") return;',
+    '}, [user?.role, user?.status, user?.local_id, munro, reload]);',
+    'if (munro) return <div className="employee-munro-horarios"><EmployeeMunroWeeklySummary /></div>;'
+  ]);
+}
+function soloLeyendaMunro(patch) {
+  return soloCambios(patch,[
+    'Los horarios de Google Sheets se abren en vista de lectura.'
+  ],[
+    '{user.local_id==="munro"',
+    '?" Los horarios de Munro se muestran en tu Resumen semanal personal y en solo lectura."',
+    ':" Los horarios de Google Sheets se abren en vista de lectura."}'
+  ]);
+}
 export function releaseAudience(paths, patches = {}) {
   const audience = new Set();
   for (const path of paths || []) {
@@ -140,6 +173,10 @@ export function releaseAudience(paths, patches = {}) {
         && patches[p].includes('+import { EmployeeMunroWeeklySummary } from "./EmployeeMunroWeeklySummary";')
         && patches[p].includes('+    {user.local_id==="munro"&&<EmployeeMunroWeeklySummary />}')
         ? [LOCAL_AUDIENCE.munro] :
+      p === 'modules/empleados/components/schedules/EmployeeScheduleLink.tsx'
+        && soloResumenMunroSinSheets(patches[p]) ? [LOCAL_AUDIENCE.munro] :
+      p === 'modules/empleados/components/pages/EmployeePortalShell.tsx'
+        && soloLeyendaMunro(patches[p]) ? [LOCAL_AUDIENCE.munro] :
       (SHARED_LOADERS.has(p) ? referenceAudience(patches[p]) : fileAudience(p));
     for (const t of targets) {
       if (t === '*') return ['*'];
