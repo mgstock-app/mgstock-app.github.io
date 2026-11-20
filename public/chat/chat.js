@@ -481,8 +481,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
     for (const c of contadores) c();
     const falta = faltantes(p, linea().opciones)[0];
     boton.disabled = Boolean(falta);
-    boton.textContent = falta
-      ? 'Completá ' + falta.nombre.toLowerCase() + ' para agregar'
+    boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase()
       : 'Agregar a mi selección · ' + pesos(totalCarrito(S.catalogo, [linea()]));
   };
   // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
