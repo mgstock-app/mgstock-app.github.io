@@ -293,7 +293,7 @@ begin
      then round(v_sub * s.descuento_efectivo_pct / 100, 2) else 0 end;
   v_total := v_sub - v_descuento + v_envio;
   if v_entrega='envio' and v_pago='efectivo' then
-    if p_pedido ? 'efectivo_abona' AND coalesce(p_pedido->>'efectivo_abona','') !~ '^[0-9]{1,8}([.][0-9]{1,2})?$' then
+    if nullif(btrim(coalesce(p_pedido->>'efectivo_abona','')),'') IS NOT NULL AND coalesce(p_pedido->>'efectivo_abona','') !~ '^[0-9]{1,8}([.][0-9]{1,2})?$' then
       raise exception 'Indique con cuánto va a abonar en efectivo' using errcode='22023';
     end if;
     -- Compatibilidad durante despliegue: cliente antiguo sin monto significa pago justo.
