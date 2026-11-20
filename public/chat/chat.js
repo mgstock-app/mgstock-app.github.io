@@ -21,6 +21,7 @@ const el = (tag, props = {}, ...hijos) => {
 const poner = (nodo, ...hijos) => nodo.replaceChildren(...hijos.flat().filter(h => h !== null && h !== undefined && h !== false));
 const params = new URLSearchParams(location.search);
 const DEMO = params.get('demo') === '1';
+const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
 function slugDeUrl() {
   const q = (params.get('s') || '').toLowerCase();
   if (q) return q;
@@ -871,14 +872,22 @@ async function demoApi(accion, extra) {
   if (accion === 'abrir') {
     const r = responder({...base, estado: null, entrada: {inicio: true}});
     demoEstado = r.estado;
-    return {ok: true, ...base, mensajes: [], nuevos: r.mensajes, carrito: [], pedidos: []};
+    const guardado = SHOWROOM?.read();
+    if(guardado?.order) demoPedido = {...guardado.order, aviso: textoEstadoPedido(guardado.order, DEMO_DATOS.sucursal, {})};
+    return {ok: true, ...base, mensajes: guardado?.messages || [], nuevos: r.mensajes, carrito: [],
+      pedidos: demoPedido ? [demoPedido] : []};
   }
   if (accion === 'recibido') {
     if (!demoPedido || demoPedido.estado !== 'terminado') return {ok:false,error:'Todavía no puede confirmar recepción.'};
     demoPedido.recibido_at ||= new Date().toISOString();
     return {ok:true,pedido:demoPedido};
   }
-  if (accion === 'estado') return {ok: true, pedidos: demoPedido ? [demoPedido] : [],cerrada:false};
+  if (accion === 'estado') {
+    const compartido = SHOWROOM?.read();
+    if(compartido?.order) demoPedido={...compartido.order, aviso:textoEstadoPedido(compartido.order,DEMO_DATOS.sucursal,{})};
+    const nuevosLocales=(compartido?.messages||[]).filter(m=>m.rol==='local'&&m.id>S.ultimoLocal);
+    return {ok:true,pedidos:demoPedido?[demoPedido]:[],mensajes_local:nuevosLocales,cerrada:false};
+  }
   if (accion === 'recordar') return params.get('frecuente')==='1'
     ? {ok:true,encontrado:true,nombre:'María Pérez',direccion:'Av. Siempre Viva 742',visitas:3}
     : {ok:true,encontrado:false};
@@ -886,6 +895,11 @@ async function demoApi(accion, extra) {
   const r = responder({...base, estado: demoEstado, entrada: extra.entrada});
   demoEstado = r.estado;
   const mensajes = [...r.mensajes]; let pedido = null;
+  if(SHOWROOM && extra?.entrada) {
+    const t=String(extra.entrada.texto||extra.entrada.boton||'').trim();
+    if(t)SHOWROOM.add('cliente',t);
+    for(const m of mensajes)if(m.texto)SHOWROOM.add('asistente',m.texto);
+  }
   if (r.accion?.tipo === 'crear_pedido') {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
@@ -898,12 +912,25 @@ async function demoApi(accion, extra) {
       total, subtotal:sub, envio, descuento, efectivo_abona:abona,
       efectivo_cambio:efectivo ? abona-total : null, medio_pago: r.accion.pedido.medio_pago, motivo: '',
       entrega: r.accion.pedido.entrega, direccion: r.accion.pedido.direccion, nombre: r.accion.pedido.nombre.split(' ')[0]});
+    if(SHOWROOM) {
+      const piezas=(r.estado.carrito||[]).map(l=>{
+        const p=DEMO_DATOS.catalogo.productos.find(x=>x.id===l.producto_id);
+        return {cantidad:l.cantidad,nombre:p?.nombre||'Producto de prueba',
+          opciones:detallesLinea(DEMO_DATOS.catalogo,l).map(o=>({...o,valores:[o.valores]})),
+          nota:l.nota||'',importe:totalCarrito(DEMO_DATOS.catalogo,[l])};
+      });
+      const orden=SHOWROOM.order({...demoPedido,cliente_nombre:r.accion.pedido.nombre,
+        cliente_telefono:r.accion.pedido.telefono||'',horario:r.accion.pedido.horario||'',
+        nota:r.accion.pedido.nota||'',items:piezas});
+      if(orden)demoPedido=pedido=conAviso({...orden,nombre:demoPedido.nombre});
+    }
     r.estado.carrito = []; r.estado.sugerido = false;
     mensajes.push({texto: pedido.aviso});
     // La demo conserva el pedido pendiente: nunca simula una confirmación automática.
   } else if (r.accion?.tipo === 'estado') {
     mensajes.push({texto: demoPedido ? demoPedido.aviso : 'Todavía no hay pedidos enviados desde este chat.'});
   } else if (r.accion?.tipo === 'cancelar' && demoPedido?.estado === 'pendiente') {
+    if(SHOWROOM)SHOWROOM.decide(demoPedido.id,'cancelado','Cancelado desde la vista cliente');
     demoPedido = pedido = {...demoPedido, estado: 'cancelado'};
     mensajes.push({texto: 'Su pedido fue cancelado.'});
   }
