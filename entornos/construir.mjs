@@ -78,6 +78,7 @@ writeFileSync(join(salida, 'chat/config.js'), '/* ' + ent.nombre + ': base de pr
 // Aviso fijo en todas las pantallas y botón para pasar a la etapa siguiente.
 writeFileSync(join(salida, 'entorno.js'), `(function(){
   if (document.getElementById('gestlok-entorno')) return;
+  try { if (window.top !== window.self) return; } catch (e) { return; }
   var b = document.createElement('div'); b.id = 'gestlok-entorno';
   b.setAttribute('style','position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;gap:8px;align-items:center;' +
     'background:${ent.color};color:#fff;font:600 12px/1.2 system-ui,sans-serif;padding:6px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap');
@@ -92,6 +93,7 @@ writeFileSync(join(salida, 'entorno.js'), `(function(){
 const lista = MICROAPPS.map(m => '<h2>' + esc(m.nombre) + '</h2>' + m.enlaces.map(([n, h]) => '<a class="b" href="' + esc(h) + '">' + esc(n) + '</a>').join('')).join('');
 writeFileSync(join(salida, 'index.html'), pagina(ent.nombre, '<h1>' + esc(ent.nombre) + '</h1>' +
   '<p class="nota">Entorno aislado de GESTLOK Chat con base de pruebas. Los demás módulos de GESTLOK aún no se publican aquí. Nada de lo que hagas acá llega a dueños, gerentes ni clientes reales.</p>' +
+  '<a class="b" href="/dividida/"><strong>Pantalla dividida: cliente y gerente</strong></a>' +
   '<a class="b" href="/ingresar/">Ingresar (cuenta de prueba)</a>' + lista +
   '<h2>Etapas</h2><p class="nota">Prueba → Testing → gestlok.com.ar. Con el botón «' + esc(ent.boton) + '» se abre la acción en GitHub: tocá «Run workflow» y elegí la acción.</p>'));
 
@@ -110,6 +112,33 @@ writeFileSync(join(salida, 'ingresar/index.html'), pagina('Ingresar · ' + ent.n
   'if(r.error){m.textContent="No se pudo entrar: "+r.error.message;return}location.href="/chat/panel/"}catch(e){m.textContent="No se pudo conectar con la base de pruebas. Reintentá."}};' +
   'document.getElementById("n").onclick=async function(){var x=d();if(!x.email||x.password.length<8){m.textContent="Completá email y una contraseña de 8 o más.";return}' +
   'try{var r=await sb.auth.signUp(x);m.textContent=r.error?"No se pudo crear: "+r.error.message:"Listo. Confirmá el email que te llegó y después tocá Entrar."}catch(e){m.textContent="No se pudo conectar con la base de pruebas. Reintentá."}}})();</script>'));
+
+// Pantalla dividida: chat del cliente (izquierda) y panel del gerente (derecha) en la misma pantalla.
+const LOCALES = [['mi-gusto-munro', 'Munro'], ['mi-gusto-torcuato', 'Don Torcuato']];
+mkdirSync(join(salida, 'dividida'), {recursive: true});
+writeFileSync(join(salida, 'dividida/index.html'), '<!doctype html><html lang="es"><head><meta charset="utf-8">' +
+  '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">' +
+  '<title>' + esc(ent.nombre) + ' · Cliente y gerente</title><style>' +
+  'html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#eef1f5;color:#16202c}' +
+  'header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#16202c;color:#fff;font-size:14px}' +
+  'header b{margin-right:auto}header select,header button,header a{font:inherit;padding:6px 10px;border-radius:8px;border:0}' +
+  'header a{background:#fff;color:#16202c;text-decoration:none}.etiqueta{font-weight:600;font-size:13px;padding:6px 10px;background:#fff;border-bottom:1px solid #d5dbe3}' +
+  'main{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:10px;padding:10px;height:calc(100% - 52px);box-sizing:border-box}' +
+  'section{display:flex;flex-direction:column;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12)}' +
+  'iframe{flex:1;width:100%;border:0}@media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:80vh 90vh;height:auto}}' +
+  '</style><script src="/entorno.js" defer></script></head><body>' +
+  '<header><b>' + esc(ent.nombre) + ' · Cliente y gerente</b><label>Local <select id="local">' +
+  LOCALES.map(([s, n]) => '<option value="' + s + '">' + esc(n) + '</option>').join('') + '</select></label>' +
+  '<button id="nuevo" type="button" title="Empieza una conversación nueva como otro cliente">Nuevo cliente</button>' +
+  '<a href="/">Inicio</a></header><main>' +
+  '<section><div class="etiqueta">Vista cliente</div><iframe id="cliente" title="Chat del cliente"></iframe></section>' +
+  '<section><div class="etiqueta">Vista gerente</div><iframe id="gerente" title="Panel del gerente" src="/chat/panel/"></iframe></section>' +
+  '</main><script>(function(){var sel=document.getElementById("local"),cli=document.getElementById("cliente");' +
+  'var p=new URLSearchParams(location.search).get("s");if(p&&[].some.call(sel.options,function(o){return o.value===p}))sel.value=p;' +
+  'function abrir(){cli.src="/chat/?s="+encodeURIComponent(sel.value)+"&v="+Date.now();' +
+  'history.replaceState(null,"","?s="+encodeURIComponent(sel.value))}sel.onchange=abrir;' +
+  'document.getElementById("nuevo").onclick=function(){try{Object.keys(localStorage).forEach(function(k){' +
+  'if(/gestlok[-_]?chat/i.test(k)&&!/^sb-/.test(k))localStorage.removeItem(k)})}catch(e){}abrir()};abrir()})();</script></body></html>');
 
 writeFileSync(join(salida, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Frame-Options: SAMEORIGIN\n');
 writeFileSync(join(salida, 'robots.txt'), 'User-agent: *\nDisallow: /\n');

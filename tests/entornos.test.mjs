@@ -76,3 +76,21 @@ test('Prueba: catálogo ficticio reproducible y restringido a base aislada', () 
   assert.match(menu, /on conflict \(sucursal_id,nombre\) do nothing/);
   assert.doesNotMatch(menu, new RegExp(cfg.real.ref), 'ningún identificador de producción');
 });
+
+test('pantalla dividida: cliente y gerente en la misma pantalla, sin aviso repetido', async () => {
+  const {execFileSync} = await import('node:child_process');
+  const {mkdtempSync, readFileSync: leer} = await import('node:fs');
+  const {tmpdir} = await import('node:os');
+  const {join: unir} = await import('node:path');
+  for (const entorno of ['prueba', 'testing']) {
+    const out = mkdtempSync(unir(tmpdir(), 'dividida-'));
+    execFileSync('node', ['entornos/construir.mjs', out], {env: {...process.env, ENTORNO: entorno}});
+    const html = leer(unir(out, 'dividida/index.html'), 'utf8');
+    assert.match(html, /id="cliente"/);
+    assert.match(html, /id="gerente"[^>]*src="\/chat\/panel\/"/);
+    assert.match(html, /mi-gusto-munro/);
+    assert.match(html, /mi-gusto-torcuato/);
+    assert.match(leer(unir(out, 'index.html'), 'utf8'), /href="\/dividida\/"/);
+    assert.match(leer(unir(out, 'entorno.js'), 'utf8'), /window\.top !== window\.self/);
+  }
+});
