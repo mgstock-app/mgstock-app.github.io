@@ -33,13 +33,12 @@ async function config(slug:string){
  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))throw Error("Sucursal inválida");
  const [one,two]=await Promise.all([
   db.from("gestlok_push_settings").select("public_key").eq("id",1).single(),
-  db.schema("gestlok_chat_private").from("sucursales")
-   .select("id,nombre,activa,cliente_push_promos_activo").eq("slug",slug).maybeSingle()
+  db.rpc("gestlok_chat_push_public_config",{p_slug:slug})
  ]);
- // private schema no se publica en PostgREST: consulta por RPC abajo.
- if(one.error||!one.data?.public_key||two.error||!two.data?.activa)
+ // La tabla privada no se expone en PostgREST: solo RPC de datos mínimos.
+ if(one.error||!one.data?.public_key||two.error||!two.data?.slug)
    throw Error("Las notificaciones todavía no están disponibles");
- return {publicKey:one.data.public_key,promocionesHabilitadas:two.data.cliente_push_promos_activo===true};
+ return {publicKey:one.data.public_key,promocionesHabilitadas:two.data.promociones_habilitadas===true};
 }
 async function checkCron(token:string){
  if(!/^[a-f0-9]{64}$/i.test(token))return false;
