@@ -44,9 +44,11 @@ describe('GESTLOK Chat · compra rápida, búsqueda y GPS opcional', () => {
       if(req.body.accion==='recordar') return req.reply({ok:true,encontrado:false});
       if(req.body.accion==='mensaje' && req.body.entrada?.boton==='finalizar')
         return req.reply({ok:true,carrito,mensajes:[{texto:'Completá tus datos',tipo:'datos'}]});
-      if(req.body.accion==='mensaje' && req.body.entrada?.datos)
+      if(req.body.accion==='mensaje' && req.body.entrada?.datos) {
+        req.alias='pedidoEnviar';
         return req.reply({ok:true,carrito:[],mensajes:[{texto:'Pedido recibido, pendiente de confirmación del gerente.'}],
           pedido:{estado:'pendiente',total:8900,entrega:'envio',items:[{producto_id:prod.id}]}});
+      }
       req.reply({ok:true,carrito,mensajes:[]});
     }).as('chatAPI');
     cy.visit('/chat/?s=mi-gusto-munro');
@@ -73,7 +75,7 @@ describe('GESTLOK Chat · compra rápida, búsqueda y GPS opcional', () => {
     cy.get('#hoja textarea[name=nota]').should('have.attr','placeholder','Ej.: Portón negro, tocar timbre')
       .type('Portón negro');
     cy.get('#hoja button[type=submit]').contains('Enviar pedido').click();
-    cy.wait('@chatAPI').then(r=>{
+    cy.wait('@pedidoEnviar').then(r=>{
       const d=r.request.body.entrada.datos;
       expect(d.direccion).to.contain('Mitre y Belgrano');
       expect(d.direccion).to.contain('https://www.google.com/maps?q=-34.501234,-58.612345');
@@ -99,7 +101,7 @@ describe('GESTLOK Chat · compra rápida, búsqueda y GPS opcional', () => {
     cy.get('#hoja input[name=telefono]').type('1123456789');
     cy.get('#hoja select[name=medio_pago]').select('transferencia');
     cy.get('#hoja button[type=submit]').contains('Enviar pedido').click();
-    cy.wait('@chatAPI').then(r=>{
+    cy.wait('@pedidoEnviar').then(r=>{
       const d=r.request.body.entrada.datos;
       expect(d.direccion).to.contain('Calle Mitre 2500');
       expect(d.direccion).to.contain('Entre calles: Belgrano y Moreno');
