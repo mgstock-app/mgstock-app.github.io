@@ -42,7 +42,17 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .burbuja.resena .resena-link{display:flex;width:fit-content;align-items:center;margin-top:8px;text-decoration:none;color:var(--acento);border-color:var(--acento)}
 .aviso-pedido button{margin-left:auto;border:0;background:transparent;color:inherit;text-decoration:underline;font-size:13px;padding:0}
 
-.mensajes{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px 8px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.mensajes{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:14px 12px 8px;display:flex;flex-direction:column;gap:8px;
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth;
+  /* Fondo claro original, predeterminado en todos los chats de GESTLOK. */
+  background-color:#f7fafd;
+  background-image:url('/chat/wallpaper-gestlok.svg');
+  background-repeat:repeat;
+  background-size:240px 240px;
+  background-position:center top;
+}
 .burbuja{max-width:86%;padding:9px 12px;border-radius:var(--radio);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;box-shadow:0 1px 1px rgba(0,0,0,.04)}
 .burbuja.asistente{align-self:flex-start;background:var(--papel);border-bottom-left-radius:6px}
 .burbuja.cliente{align-self:flex-end;background:var(--acento);color:#fff;border-bottom-right-radius:6px}
@@ -512,10 +522,10 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   white-space:normal;color:#182230;
 }
 .chat-bienvenida .bienvenida-icono{
-  display:grid;place-items:center;width:46px;height:46px;margin-bottom:14px;
-  border-radius:15px;background:#edf4ff;color:var(--acento);
-  font-size:29px;line-height:1;
+  display:grid;place-items:center;width:38px;height:38px;margin-bottom:12px;
+  border-radius:12px;background:#edf4ff;
 }
+.chat-bienvenida .bienvenida-icono img{display:block;width:28px;height:28px}
 .chat-bienvenida .bienvenida-etiqueta{
   margin:0 0 9px;font-size:12px;font-weight:750;letter-spacing:.09em;
   color:#617189;text-transform:uppercase;overflow-wrap:anywhere;
@@ -562,24 +572,26 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .mensajes:has(.chat-bienvenida):not(:has(.burbuja.cliente)) .chips .chip{font-size:13.5px}
 }
 
-/* WhatsApp externo opcional: solo ícono; nunca envía pedidos ni sustituye al chat. */
+/* Enlace opcional externo: visible abajo a la derecha del CHAT, nunca en la cabecera.
+   El botón tiene área táctil de 44px y un símbolo visual discreto de 34px. */
 .chat-whatsapp{
   position:fixed;z-index:3;
-  left:max(14px,calc((100vw - 720px)/2 + 14px));
-  bottom:max(82px,calc(82px + env(safe-area-inset-bottom)));
-  width:46px;height:46px;border-radius:50%;
-  display:grid;place-items:center;
-  color:#fff;background:#25d366;border:2px solid #fff;
-  box-shadow:0 4px 15px rgba(20,55,40,.22);
+  right:max(12px,calc((100vw - 720px)/2 + 12px));
+  bottom:calc(94px + env(safe-area-inset-bottom, 0px));
+  width:44px;height:44px;border:0;border-radius:50%;
+  display:grid;place-items:center;background:transparent;color:#fff;
   text-decoration:none;-webkit-tap-highlight-color:transparent;
 }
-.chat-whatsapp svg{width:25px;height:25px;fill:currentColor;stroke:none}
-.chat-whatsapp:hover{background:#20ba59}
-.chat-whatsapp:focus-visible{outline:3px solid #116e3b;outline-offset:3px}
-body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:none}
-@media(max-width:620px){
-  .chat-whatsapp{bottom:calc(154px + env(safe-area-inset-bottom));width:44px;height:44px}
+.chat-whatsapp svg{
+  display:block;width:34px;height:34px;padding:8px;
+  border-radius:50%;fill:#fff;stroke:none;background:#25d366;
+  box-shadow:0 3px 10px rgba(20,55,40,.17);
 }
+.chat-whatsapp:hover svg{background:#20ba59}
+.chat-whatsapp:focus-visible{outline:2px solid #116e3b;outline-offset:2px}
+.chat-whatsapp[hidden]{display:none!important}
+body:has(.hoja:not([hidden])) .chat-whatsapp,
+body:has(#texto:focus) .chat-whatsapp{visibility:hidden;pointer-events:none}
 /* Cancelación segura y opciones de venta posteriores. */
 .confirmar-cancelacion{display:grid;gap:12px;padding:8px 0 14px}
 .confirmar-cancelacion p{margin:0 0 6px;font-size:16px;line-height:1.5}
@@ -629,19 +641,6 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .ubicacion-opciones .ubicacion-estado a{color:#0871a0;text-decoration:underline}
 .costo-envio{font-size:13px;margin:-1px 0 12px;color:#455669}
 .segmentado label{min-width:0;overflow-wrap:anywhere}
-/* WhatsApp externo: escritorio en la canaleta izquierda; móvil en encabezado,
-   nunca encima de mensajes, promociones ni controles de compra. */
-.chat-whatsapp[hidden]{display:none!important}
-@media(min-width:840px){
-  .chat-whatsapp{left:calc(50% - 360px - 60px);top:105px;bottom:auto}
-}
-@media(max-width:839px){
-  .cabecera{padding-left:64px}
-  .chat-whatsapp{left:10px;top:max(12px,env(safe-area-inset-top));bottom:auto;
-    width:42px;height:42px;z-index:4}
-  .chat-whatsapp svg{width:24px;height:24px}
-}
-
 /* Al editar un combo, mostrar solo el filtro interno de sus variedades. */
 .menu-interactivo.menu-editando > .menu-filtro-carta-contenedor{display:none!important}
 
