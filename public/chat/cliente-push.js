@@ -10,6 +10,11 @@
  const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||
    navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
  const installed=()=>window.matchMedia?.('(display-mode:standalone)').matches||navigator.standalone===true;
+ const chatWorker=reg=>{
+   if(!reg?.scope)return false;
+   try{const u=new URL(reg.scope);return u.origin===location.origin&&u.pathname==='/chat/'}
+   catch{return false}
+ };
  const prefs=()=>{try{return JSON.parse(localStorage.getItem(key())||'null')}catch{return null}};
  const save=p=>{try{if(p)localStorage.setItem(key(),JSON.stringify(p));
    else localStorage.removeItem(key())}catch{}};
@@ -47,7 +52,8 @@
   if(!supports()||Notification.permission!=='granted'||!prefs()||!slug||!token)return;
   try{
    const reg=await navigator.serviceWorker.getRegistration('/chat/');
-   const subscription=await reg?.pushManager.getSubscription();
+   if(!chatWorker(reg))return;
+   const subscription=await reg.pushManager.getSubscription();
    if(subscription)await endpoint('subscribe',subscription,prefs());
   }catch{/* La persona puede modificar el permiso desde el menú. */}
  }
@@ -85,7 +91,8 @@
         busy=true;saveBtn.disabled=true;
         try{
           const reg=await navigator.serviceWorker.getRegistration('/chat/');
-          const sub=await reg?.pushManager.getSubscription();
+          // Nunca eliminar la suscripción de la PWA administrativa del mismo navegador.
+          const sub=chatWorker(reg)?await reg.pushManager.getSubscription():null;
           if(sub){try{await endpoint('unsubscribe',sub,p)}finally{await sub.unsubscribe()}}
           save(null);state.textContent='Avisos desactivados en este dispositivo.';
           saveBtn.textContent='Avisos desactivados';
