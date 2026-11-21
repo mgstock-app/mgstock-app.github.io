@@ -33,3 +33,12 @@
  .ems-dias th:nth-child(4){width:18%}
  .ems-dias th:nth-child(5){width:19%}
 }
+
+.ems-semanas{display:grid;gap:9px}
+.ems-semanas>p{margin:0 0 3px;color:#516278;font-size:13px}
+.ems-semana-card{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:54px;padding:13px 14px;border:1px solid #cbd8e8;border-radius:11px;background:#f8fbff;color:#172f4c;text-align:left;font:inherit;font-weight:750;cursor:pointer}
+.ems-semana-card:hover,.ems-semana-card:focus-visible{border-color:#264b75;background:#edf4fc;outline-offset:2px}
+.ems-semana-card small{flex-shrink:0;color:#60738b;font-size:11px;font-weight:500}
+.ems-volver{justify-self:start;background:transparent;border:0;color:#214b77;text-align:left;font:inherit;font-size:13px;font-weight:750;padding:6px 0;cursor:pointer}
+.ems-semana-titulo{margin:0;font-size:16px}
+@media(max-width:600px){.ems-semana-card{align-items:flex-start;flex-direction:column;gap:4px;min-height:58px}}
