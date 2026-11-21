@@ -53,7 +53,7 @@
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
           k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
-    EMBED ? null : el('aside', {id:'comandas-resumen', class:'comandas-resumen', role:'status', 'aria-live':'polite', hidden:true},
+    EMBED ? null : el('aside', {id:'comandas-resumen', class:'comandas-resumen sin-comandas', role:'status', 'aria-live':'polite'},
       el('strong',{text:'Comandas activas'}),
       el('span',{id:'comandas-pendientes',text:'Por confirmar: 0'}),
       el('span',{id:'comandas-preparacion',text:'En preparación: 0'}),
@@ -97,9 +97,13 @@
     if(EMBED)return;
     const resumen=$('comandas-resumen');if(!resumen||!s)return;
     const pend=Math.max(0,Number(s.pendientes)||0),prep=Math.max(0,Number(s.en_preparacion)||0);
-    resumen.hidden=pend+prep===0;
-    $('comandas-pendientes').textContent='Por confirmar: '+pend;
-    $('comandas-preparacion').textContent='En preparación: '+prep;
+    const activas=pend+prep;
+    resumen.classList.toggle('sin-comandas',activas===0);
+    const titulo=resumen.querySelector('strong');
+    if(titulo)titulo.textContent=activas?'Comandas activas':'Sin comandas activas';
+    const p=$('comandas-pendientes'),c=$('comandas-preparacion');
+    if(p.textContent!=='Por confirmar: '+pend)p.textContent='Por confirmar: '+pend;
+    if(c.textContent!=='En preparación: '+prep)c.textContent='En preparación: '+prep;
     S.suc.pendientes=pend;S.suc.en_preparacion=prep;
   }
   async function revisarComandas() {
