@@ -108,7 +108,12 @@ export function textoEstadoPedido(pedido, sucursal, mensajes) {
           return /pendiente de revisión y confirmación/i.test(valido)
             ? valido : valido+' Su pedido está pendiente de revisión y confirmación del gerente.';
         })();
-    case 'confirmado': return 'El gerente confirmó su pedido. El local está preparándolo.';
+    case 'confirmado': {
+      const plazo=pedido.entrega==='envio'?s.demora_envio:s.demora_retiro;
+      const demora=typeof plazo==='string'?plazo.trim().replace(/[.!?]+$/,''):'';
+      return 'El gerente confirmó su pedido. El local está preparándolo.'+
+        (demora?' Tiempo estimado de '+(pedido.entrega==='envio'?'envío':'retiro')+': '+demora+'.':'');
+    }
     case 'terminado': return salida(mensajeDe(mensajes,pedido.entrega==='envio'?'terminado_envio':'terminado_retiro'));
     case 'rechazado': return salida(mensajeDe(mensajes,'rechazado'));
     case 'cancelado': return 'Su pedido fue cancelado.';
