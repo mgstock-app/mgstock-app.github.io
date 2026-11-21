@@ -26,7 +26,7 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     });
   }
 
-  for (const ancho of [390,1100]) {
+  for (const ancho of [390,700,1100]) {
     it('marca GESTLOK y fondo profesional en '+ancho+' px sin afectar el editor',()=>{
       cy.viewport(ancho,820);
       cy.visit('/chat/?demo=1&showroom=1');
@@ -41,7 +41,7 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
       cy.get('#mensajes').should('have.css','background-color','rgb(234, 240, 246)');
       cy.request('/chat/wallpaper-gestlok.svg?v=20261121contraste1')
         .its('status').should('eq',200);
-      if (ancho>=760) {
+      if (ancho>=620) {
         cy.get('#app').should('have.css','border-left-width','2px')
           .and('have.css','border-right-width','2px');
         cy.get('body').should('have.css','background-color','rgb(231, 237, 243)');
