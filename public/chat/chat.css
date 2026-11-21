@@ -347,3 +347,103 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .menu-interactivo .menu-fila .producto-texto strong{font-size:15px}
   .menu-interactivo .menu-producto-detalle .menu-personalizar-titulo{flex-wrap:wrap}
 }
+
+
+/* Selector de promociones: lista continua de variedades, como referencia del cliente.
+   Contadores en cada fila, faltantes por grupo y una única acción fija inferior. */
+#hoja:has(.menu-interactivo.menu-editando){
+  top:0;bottom:0;max-height:100dvh;height:100dvh;border-radius:0;
+}
+#hoja:has(.menu-interactivo.menu-editando) .hoja-cuerpo{
+  flex:1 1 auto;min-height:0;padding-bottom:112px;
+}
+.menu-interactivo.menu-editando .menu-producto-detalle .menu-form-combo{padding-bottom:18px}
+.menu-interactivo.menu-editando .menu-producto-detalle .menu-personalizar-titulo{
+  top:0;margin:0 0 12px;gap:10px;background:#fff;
+}
+.menu-interactivo.menu-editando .menu-producto-detalle .menu-personalizar-titulo strong{
+  font-size:16px;line-height:1.35;
+}
+.menu-form-combo > .precio{display:block;margin:0 0 8px;font-size:15px;color:var(--tinta)}
+.menu-interactivo .menu-form-combo .cantidad-contenedor{
+  margin:0 0 16px;padding:10px 0;border-bottom:1px solid var(--linea);
+  border-top:0;
+}
+.menu-interactivo .menu-form-combo .cantidad-etiqueta{font-size:14px}
+.menu-interactivo .menu-form-combo .cantidad button{width:40px;height:40px}
+.menu-form-combo .grupo.menu-grupo-lista{
+  display:block;width:100%;border:0!important;border-radius:0!important;
+  margin:0 0 20px!important;padding:0!important;background:#fff!important;
+  min-inline-size:0;
+}
+.menu-form-combo .menu-grupo-lista .grupo-encabezado{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;margin:0 0 6px;padding:12px;
+  background:#edf3f8;border-radius:10px;font-size:15px;
+}
+.menu-form-combo .menu-grupo-lista .grupo-encabezado strong{font-size:16px}
+.menu-form-combo .menu-grupo-lista .grupo-estado{
+  display:inline-flex;flex:none;font-size:13px;padding:5px 8px;white-space:nowrap;
+}
+.menu-form-combo .menu-grupo-lista .grupo-estado.pendiente{background:#fce8e6;color:#ad3434}
+.menu-form-combo .menu-grupo-lista .grupo-estado.completo{background:#e0f3e7;color:#17633e}
+.menu-form-combo .menu-grupo-lista .grupo-instruccion{
+  font-size:12.5px;color:var(--gris);margin:0 12px 5px;
+}
+.menu-form-combo .menu-grupo-lista .grupo-opciones{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:0;
+}
+.menu-form-combo .menu-grupo-lista .opcion.menu-variedad-fila{
+  display:grid;grid-template-columns:46px minmax(0,1fr) auto;
+  align-items:center;gap:11px;
+  min-height:86px;margin:0;padding:12px 5px;
+  border:0;border-radius:0;border-bottom:1px solid var(--linea);
+  background:#fff;cursor:default;
+}
+.menu-form-combo .menu-grupo-lista .opcion.menu-variedad-fila.elegida{background:#f7fafc}
+.menu-variedad-foto{
+  display:grid;place-items:center;width:46px;height:46px;flex:none;
+  object-fit:cover;border-radius:9px;background:#eef3f7;
+}
+.menu-variedad-inicial{
+  font-weight:750;font-size:18px;color:#58718a;
+}
+.menu-variedad-texto{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;overflow-wrap:anywhere}
+.menu-variedad-texto strong{font-size:14.5px;line-height:1.35;font-weight:650}
+.menu-variedad-texto small{font-size:12px;line-height:1.3}
+.menu-variedad-destacado{color:var(--acento-osc)}
+.menu-variedad-extra{color:var(--gris)}
+.menu-form-combo .menu-variedad-fila .pasos{display:flex;align-items:center;gap:3px;margin:0}
+.menu-form-combo .menu-variedad-fila .pasos .paso{
+  display:grid;place-items:center;width:40px;height:40px;margin:0;
+  border:1px solid #c6d5e3;border-radius:10px;font-size:24px;
+  color:var(--acento-osc);background:#fff;font-weight:600;
+}
+.menu-form-combo .menu-variedad-fila .pasos .paso:disabled{color:var(--gris);opacity:.3}
+.menu-form-combo .menu-variedad-fila .pasos .n{min-width:20px;text-align:center;font-size:15px}
+.menu-form-combo .menu-nota-producto{margin:14px 0 0}
+.menu-form-combo .menu-combo-acciones{
+  position:fixed;z-index:14;left:50%;bottom:0;
+  transform:translateX(-50%);width:min(720px,100%);
+  padding:9px max(16px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  border-top:1px solid var(--linea);background:#fff;box-shadow:0 -5px 18px rgba(30,65,99,.08);
+}
+.menu-combo-estado{display:block;text-align:center;color:#9b3c35;font-size:12.5px;font-weight:600;margin-bottom:7px}
+.menu-combo-estado.completo{color:#17633e}
+.menu-form-combo .menu-combo-acciones button[type=submit]{
+  display:block;position:static;min-height:52px;margin:0;width:100%;
+  border-radius:12px;box-shadow:none;
+}
+.menu-form-combo .menu-combo-acciones button[type=submit]:disabled{
+  background:#dfe4eb;border-color:#dfe4eb;color:#536474;opacity:1;
+}
+@media(max-width:380px){
+  .menu-form-combo .menu-grupo-lista .opcion.menu-variedad-fila{
+    grid-template-columns:40px minmax(0,1fr) auto;gap:8px;min-height:78px;padding:10px 2px;
+  }
+  .menu-variedad-foto{width:40px;height:40px}
+  .menu-variedad-texto strong{font-size:13.5px}
+  .menu-form-combo .menu-variedad-fila .pasos{gap:2px}
+  .menu-form-combo .menu-variedad-fila .pasos .paso{width:36px;height:40px}
+  .menu-form-combo .menu-variedad-fila .pasos .n{min-width:16px;font-size:14px}
+}
