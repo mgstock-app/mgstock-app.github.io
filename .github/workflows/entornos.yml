@@ -1,0 +1,81 @@
+name: Entornos · prueba → testing → gestlok.com.ar
+# Prueba y testing son copias de GESTLOK en Cloudflare Pages (gestlok-prueba / gestlok-testing) que usan la
+# BASE DE PRUEBAS (otro proyecto de Supabase). Nada llega a dueños, gerentes ni clientes reales.
+#  · Cada cambio en la rama «prueba» actualiza la base y las funciones de prueba.
+#  · «Enviar a testing»: copia «prueba» en «testing» y actualiza las funciones de testing.
+#  · «Publicar en gestlok.com.ar»: abre el pedido de publicación testing → main (se publica al aprobarlo).
+on:
+  push:
+    branches: [prueba]
+  workflow_dispatch:
+    inputs:
+      accion:
+        description: 'Qué hacer'
+        type: choice
+        required: true
+        default: enviar-a-testing
+        options: [enviar-a-testing, publicar-en-gestlok, preparar-prueba]
+      copiar_carta:
+        description: 'Copiar la carta de Mi Gusto (solo productos y textos) a la base de pruebas'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: entornos-gestlok
+  cancel-in-progress: false
+jobs:
+  prueba:
+    if: github.event_name == 'push' || inputs.accion == 'preparar-prueba'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: prueba }
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Base y funciones de prueba
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node entornos/backend.mjs --entorno prueba --sql --funciones --ajustes ${{ inputs.copiar_carta && '--carta' || '' }}
+  testing:
+    if: inputs.accion == 'enviar-a-testing'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: prueba, fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Base de pruebas al día
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node entornos/backend.mjs --entorno testing --sql --funciones --ajustes
+      - name: Copiar «prueba» en «testing» (Cloudflare publica testing solo)
+        run: |
+          if git ls-remote --exit-code --heads origin testing >/dev/null; then
+            git fetch origin testing
+            git merge-base --is-ancestor origin/testing HEAD || {
+              echo "::error::«testing» tiene cambios que no están en «prueba». Pasalos a «prueba» primero."; exit 1; }
+          fi
+          git push origin HEAD:refs/heads/testing
+  publicar:
+    if: inputs.accion == 'publicar-en-gestlok'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: testing }
+      - name: Pedido de publicación testing → gestlok.com.ar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existente=$(gh pr list --base main --head testing --state open --json url --jq '.[0].url')
+          if [ -n "$existente" ]; then echo "Ya está abierto: $existente"; echo "### Pedido de publicación: $existente" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          url=$(gh pr create --base main --head testing --title "Publicar testing en gestlok.com.ar" --body "Publicación de lo aprobado en testing.
+
+          - Se publica en gestlok.com.ar al aprobar este pedido, con todas las pruebas en verde.
+          - Si incluye cambios de base de datos o funciones, se aplican a la base real con aprobación de la dueña antes de aprobarlo.") || true
+          if [ -z "$url" ]; then
+            url="https://github.com/${{ github.repository }}/compare/main...testing?expand=1"
+            echo "::warning::GitHub no dejó abrir el pedido automáticamente. Abrilo desde: $url"
+          fi
+          echo "### Pedido de publicación: $url" >> "$GITHUB_STEP_SUMMARY"
