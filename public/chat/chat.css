@@ -439,3 +439,16 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .menu-form-combo .menu-variedad-fila .pasos .paso{width:36px;height:40px}
   .menu-form-combo .menu-variedad-fila .pasos .n{min-width:16px;font-size:14px}
 }
+
+/* Acción principal de bienvenida: el pedido tiene prioridad visual y táctil. */
+.chips:has(.chip-hacer-pedido){width:100%;max-width:100%;gap:9px}
+.chips .chip-hacer-pedido{
+  order:-1;flex:0 0 100%;width:100%;min-height:54px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:13px;padding:13px 18px;
+  background:var(--acento);border:1px solid var(--acento);color:#fff;
+  font-size:17px;font-weight:750;box-shadow:0 2px 7px rgba(36,86,127,.15);
+}
+.chips .chip-hacer-pedido:hover{background:var(--acento-osc);border-color:var(--acento-osc)}
+.chips .chip-hacer-pedido:active{transform:translateY(1px)}
+.chips .chip-hacer-pedido:focus-visible{outline:3px solid var(--acento-osc);outline-offset:3px}
