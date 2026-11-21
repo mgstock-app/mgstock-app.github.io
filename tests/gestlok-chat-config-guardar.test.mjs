@@ -15,7 +15,7 @@ test('guardar ajustes mantiene opciones de pago válidas por tipo de entrega', (
   assert.match(sql, /unnest\(medios_pago_retiro\)/);
   assert.match(sql, /unnest\(medios_pago_envio\)/);
   assert.match(sql, /where u\.metodo = any\(v_medios\)/);
-  assert.match(sql, /v_medios\), v_medios\) end/);
+  assert.match(sql, /v_medios\)\), v_medios\) end/);
   assert.match(sql, /Seleccioná al menos un medio de pago válido/);
   assert.doesNotMatch(sql, /drop (table|constraint)|disable row level security|grant execute to anon/i);
 });
