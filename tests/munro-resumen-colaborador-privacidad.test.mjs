@@ -50,5 +50,9 @@ test("solo Munro habilita el resumen en la vista individual, resto conserva Goog
  assert.match(portal,/user\.local_id === "munro"/);
  assert.match(portal,/rm_app_employee_schedule_view/);
  assert.match(portal,/Ver planilla \(solo lectura\)/);
- assert.match(mine,/e\.target\.value/);
+ assert.match(mine,/onClick=\{\(\)=>setSemana\(s\.semana\)\}/);
+ assert.match(mine,/className="ems-semana-card"/);
+ assert.match(mine,/className="ems-volver"/);
+ assert.match(mine,/setSemana\(actual=>r\.semanas\?\.some\(s=>s\.semana===actual\)\?actual:""\)/);
+ assert.doesNotMatch(mine,/rm_munro_horarios_obtener/);
 });
