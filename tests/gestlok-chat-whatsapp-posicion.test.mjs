@@ -19,7 +19,7 @@ test('WhatsApp discreto dentro de la esquina inferior derecha del chat',()=>{
   assert.match(bloque,/body:has\(\.redactar:focus-within\)/);
   assert.doesNotMatch(bloque,/left:|top:105px|bottom:auto/);
   assert.doesNotMatch(css, /\.cabecera\{padding-left:64px\}/);
-  assert.match(html,/chat\.css\?v=20261121whatsappabajo1/);
+  assert.match(html,/chat\.css\?v=20261121marca1/);
   assert.match(html,/id="whatsapp-local" class="chat-whatsapp"/);
 });
 
