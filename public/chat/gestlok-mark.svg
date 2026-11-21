@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Símbolo de GESTLOK Chat">
+  <title>GESTLOK Chat</title>
+  <path d="M17 9h30c6.6 0 12 5.4 12 12v19c0 6.6-5.4 12-12 12H29L14 60v-9C8.6 49.5 5 45.1 5 40V21C5 14.4 10.4 9 17 9Z" fill="#eef6ff" stroke="#194b77" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M42.5 24.6c-2.4-3.2-5.8-4.9-10-4.9-7.1 0-12.3 5.4-12.3 12.4s5.2 12.4 12.3 12.4c5 0 9.2-2.7 11.2-6.8V33H33" fill="none" stroke="#236d9f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
