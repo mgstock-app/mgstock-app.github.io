@@ -9,35 +9,46 @@
 (()=>{
 'use strict';
 const PAUSA_MS=15000;
+const RECORDAR_PENDIENTES_MS=120000; // por confirmar: cada 2 minutos
+const RECORDAR_PREPARACION_MS=300000; // en preparación: cada 5 minutos
 let audioCtx=null,soundReady=false;
-function activarSonido(){
- try{const C=window.AudioContext||window.webkitAudioContext;
-  if(!C)return false;
+async function activarSonido(){
+ try{
+  const C=window.AudioContext||window.webkitAudioContext;
+  if(!C){soundReady=false;return false;}
   audioCtx ||= new C();
-  void audioCtx.resume().then(()=>{soundReady=true;}).catch(()=>{soundReady=false;});
-  soundReady=audioCtx.state==='running';return true;
- }catch{return false;}
+  await audioCtx.resume();
+  soundReady=audioCtx.state==='running';
+  return soundReady;
+ }catch{soundReady=false;return false;}
 }
 function sonar(){
- if(!soundReady||audioCtx?.state!=='running')return;
- try{[0,.2,.4].forEach((delay,i)=>{
-  const t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type='sine';o.frequency.value=i===2?890:740;
-  g.gain.setValueAtTime(.0001,t);
-  g.gain.exponentialRampToValueAtTime(.14,t+.03);
-  g.gain.exponentialRampToValueAtTime(.0001,t+.16);
-  o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+.17);
- });}catch{/* audio no compatible */}
+ // Los navegadores impiden reproducir audio sin una interacción previa del usuario.
+ if(!soundReady||audioCtx?.state!=='running'||document.hidden)return false;
+ try{
+  [0,.19,.38].forEach((delay,i)=>{
+   const t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+   o.type='sine';o.frequency.value=i===1?1100:880;
+   g.gain.setValueAtTime(.0001,t);
+   g.gain.exponentialRampToValueAtTime(.23,t+.04);
+   g.gain.exponentialRampToValueAtTime(.0001,t+.17);
+   o.connect(g);g.connect(audioCtx.destination);o.onended=()=>{o.disconnect();g.disconnect();};
+   o.start(t);o.stop(t+.18);
+  });
+  return true;
+ }catch{return false;}
 }
-document.addEventListener('pointerdown',()=>{if(allowed()&&(!soundReady||audioCtx?.state!=='running'))activarSonido();},{capture:true});
+document.addEventListener('pointerdown',()=>{
+ if(allowed()&&(!soundReady||audioCtx?.state!=='running'))void activarSonido();
+},{capture:true});
 
-const VERSION_PANEL='20261121ajustesfix1';
+const VERSION_PANEL='20261121comandas1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
-let api=null,pendientes=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
+let api=null,pendientes=0,pendientesAvisables=0,avisablesVistos=null,enPreparacion=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;
 // Locales con GESTLOK Chat encendido para esta sesión: {tenant, locales: Map(local_id → nombre)}. Lo dice el servidor.
 let servidor={tenant:'',locales:new Map()},buscando='',fallo={tenant:'',at:0};
-let idsSucursal=new Map(), ultimoAvisoId='', ultimoAvisoAt=0, avisoEtapa=0, avisoAbierto=false, idConsulta=0;
+let idsSucursal=new Map(), ultimoAvisoId='', ultimoRecordatorioAt=0, estadoLocal='', idConsulta=0;
 async function detalleNuevo(){
  const localActual=local(),suc=idsSucursal.get(localActual),turno=++idConsulta;
  if(!suc||!online()||!allowed())return;
@@ -48,7 +59,7 @@ async function detalleNuevo(){
   const pedido=(data?.pedidos||[]).filter(p=>!p.es_prueba)
     .sort((a,b)=>Date.parse(b.creado_at)-Date.parse(a.creado_at))[0];
   if(!pedido)return;
-  ultimoAvisoId=pedido.id;ultimoAvisoAt=Date.now();avisoEtapa=0;avisoAbierto=false;
+  ultimoAvisoId=pedido.id;
   const a=document.getElementById('mgp-global-alert');
   const detalle=a?.querySelector('[data-gcc-preview]');
   if(detalle)detalle.textContent=[pedido.codigo,pedido.cliente_nombre,pedido.entrega==='envio'?'Delivery':'Retiro',
@@ -57,13 +68,17 @@ async function detalleNuevo(){
  }catch{/* la alerta simple sigue visible */}
 }
 function recordarPedido(){
- if(!ultimoAvisoId||!ultimoAvisoAt||!pendientes||avisoAbierto||document.hidden)return;
- const mins=(Date.now()-ultimoAvisoAt)/60000,etapa=mins>=5?2:mins>=2?1:0;
- if(etapa>avisoEtapa){avisoEtapa=etapa;avisoNuevo('pedido',true);}
+ const activas=pendientesAvisables+enPreparacion;
+ if(!activas){ultimoRecordatorioAt=0;return;}
+ if(document.hidden||!online()||!allowed())return;
+ const intervalo=pendientesAvisables?RECORDAR_PENDIENTES_MS:RECORDAR_PREPARACION_MS;
+ if(!ultimoRecordatorioAt){ultimoRecordatorioAt=Date.now();return;}
+ if(Date.now()-ultimoRecordatorioAt<intervalo)return;
+ ultimoRecordatorioAt=Date.now();
+ avisoNuevo(pendientesAvisables?'pedido':'preparacion',true);
 }
 document.addEventListener('click',e=>{
- if(e.target.closest?.('[data-gcc-close]')){e.preventDefault();ocultarAviso();return;}
- if(e.target.closest?.('.mgp-alert-open'))avisoAbierto=true;
+ if(e.target.closest?.('[data-gcc-close]')){e.preventDefault();ocultarAviso();}
 });
 
 
@@ -98,7 +113,7 @@ async function descubrir(){
   const antes=servidor.locales.has(local());
   leer(data,t);
   const suc=(data?.sucursales||[]).find(x=>x.local_id===local());
-  if(suc&&servidor.locales.has(local()))actualizar(suc.pendientes,suc.reclamos);
+  if(suc&&servidor.locales.has(local()))actualizar(suc.pendientes,suc.reclamos,suc.en_preparacion,suc.pendientes_avisables);
   if(servidor.locales.has(local())!==antes)api?.render?.();
  }catch{fallo={tenant:t,at:Date.now()};/* sin conexión: se vuelve a preguntar más tarde */}
  finally{if(buscando===t)buscando='';}
@@ -109,25 +124,33 @@ function quickAccess(){
  // «Pagos Online» solo donde esa micro app existe (hoy Mi Gusto).
  const pagos=window.GestLokMiGustoOnline?.permitido?.()?'<button type="button" data-go="cierre-online" class="mgp-shift-button"><span class="mgp-shift-symbol" aria-hidden="true">▤</span><span><strong>Pagos Online</strong><small>Movimientos y cierre</small></span></button>':'';
  return '<nav class="mgp-shift-quick" aria-label="Atajos del turno">'+pagos+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+(pendientes+reclamos)+'</span> pedidos y reclamos pendientes</small></span></button>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-shift-button">'+chatIcon+'<span><strong>Central de mensajes</strong><small><span data-gcc-quick-count>'+(pendientes+enPreparacion+reclamos)+'</span> comandas activas y reclamos</small></span></button>'+
  '</nav>';
 }
 function navBadge(){
- return allowed()&&(pendientes+reclamos)?'<span class="mgp-nav-count" data-gcc-nav-count aria-label="'+(pendientes+reclamos)+' pedidos y reclamos pendientes">'+Math.min(99,pendientes+reclamos)+'</span>':'';
+ return allowed()&&(pendientes+enPreparacion+reclamos)?'<span class="mgp-nav-count" data-gcc-nav-count aria-label="'+(pendientes+enPreparacion+reclamos)+' comandas activas y reclamos">'+Math.min(99,pendientes+enPreparacion+reclamos)+'</span>':'';
 }
-const pendingCount=()=>allowed()?pendientes+reclamos:0;
+const pendingCount=()=>allowed()?pendientes+enPreparacion+reclamos:0;
 
 function indicadores(){
  if(!allowed())return ocultarAviso();
  const nav=document.querySelector('#snav button[data-go="pedidos-clientes"]');
  if(nav){
   let b=nav.querySelector('[data-gcc-nav-count]');
-  if(pendientes+reclamos){
+  if(pendientes+enPreparacion+reclamos){
    if(!b){b=document.createElement('span');b.className='mgp-nav-count';b.dataset.gccNavCount='';nav.appendChild(b);}
-   b.textContent=String(Math.min(99,pendientes+reclamos));b.setAttribute('aria-label',(pendientes+reclamos)+' pedidos y reclamos pendientes');
+   b.textContent=String(Math.min(99,pendientes+enPreparacion+reclamos));b.setAttribute('aria-label',(pendientes+enPreparacion+reclamos)+' comandas activas y reclamos');
   }else b?.remove();
  }
- document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes+reclamos);});
+ document.querySelectorAll('[data-gcc-quick-count]').forEach(e=>{e.textContent=String(pendientes+enPreparacion+reclamos);});
+ const resumen=document.querySelector('[data-gcc-comandas]');
+ if(resumen){
+  resumen.hidden=pendientes+enPreparacion===0;
+  const pendiente=resumen.querySelector('[data-gcc-pendientes]');
+  const preparando=resumen.querySelector('[data-gcc-preparacion]');
+  if(pendiente)pendiente.textContent=String(pendientes);
+  if(preparando)preparando.textContent=String(enPreparacion);
+ }
  window.GestLokMobileDock?.refresh?.();
 }
 function avisoNuevo(tipo='pedido',recordatorio=false){
@@ -137,30 +160,45 @@ function avisoNuevo(tipo='pedido',recordatorio=false){
  if(!a){a=document.createElement('aside');a.id='mgp-global-alert';a.className='mgp-global-alert mgp-global-alert-new';
   a.setAttribute('role','status');a.setAttribute('aria-live','polite');document.body.appendChild(a);}
  a.innerHTML='<span class="mgp-alert-icon">'+chatIcon+'</span><div class="mgp-alert-copy"><strong>'+
-   (tipo==='prueba'?'Aviso de prueba · sin pedido real':tipo==='reclamo'?'¡Reclamo de cliente!':recordatorio?'Pedido sin abrir · recordatorio':'¡Pedido nuevo por chat!')+
+   (tipo==='prueba'?'Aviso de prueba · sin pedido real':tipo==='reclamo'?'¡Reclamo de cliente!':tipo==='preparacion'?'Comandas en preparación · recordatorio':recordatorio?'Comandas por confirmar · recordatorio':'¡Pedido nuevo por chat!')+
    '</strong><small data-gcc-preview>'+
-  esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):pendientes+' pedido'+(pendientes===1?'':'s')+' por confirmar')+'</small></div>'+
-  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver pedido</button>'+
+  esc(localName())+' · '+(tipo==='reclamo'?reclamos+' reclamo'+(reclamos===1?'':'s')+' pendiente'+(reclamos===1?'':'s'):tipo==='preparacion'?enPreparacion+' comanda'+(enPreparacion===1?'':'s')+' en preparación':pendientesAvisables+' por confirmar · '+enPreparacion+' en preparación')+'</small></div>'+
+  '<button type="button" data-go="pedidos-clientes" class="mgp-alert-open">Ver comandas</button>'+
    '<button type="button" class="mgp-alert-close" data-gcc-close aria-label="Cerrar aviso">×</button>';
  sonar();
   try{navigator.vibrate?.([120,80,120]);}catch{/* sin vibración */}
 }
 document.addEventListener('click',ev=>{
-  const b=ev.target.closest?.('[data-gcc-alert]');if(!b||!allowed())return;
-  ev.preventDefault();activarSonido();
-  if(b.dataset.gccAlert==='probar'){void Promise.resolve(audioCtx?.resume()).then(()=>{soundReady=true;avisoNuevo('prueba');});return;}
-  // Solicitar permiso dentro del gesto real, antes de cualquier operación asíncrona.
-  const permiso='Notification' in window?
-    (Notification.permission==='default'?Notification.requestPermission():
-      Promise.resolve(Notification.permission)):Promise.resolve('unsupported');
-  Promise.resolve(permiso).then(async value=>{
-    if(value==='granted'){await registrarPush();b.textContent='Notificaciones activadas';}
-    else b.textContent='Sonido activado · Push sin permiso';
-  }).catch(err=>{b.textContent='Sonido activado · Revisar avisos';b.title=String(err?.message||'Error de notificaciones');});
-  const estado=document.querySelector('[data-gcc-alert-estado]');
-  if(estado)estado.textContent=soundReady?'Sonido activado en esta sesión.':
-    'En algunos celulares necesitás tocar nuevamente para activar sonido.';
+ const b=ev.target.closest?.('[data-gcc-alert]');if(!b||!allowed())return;
+ ev.preventDefault();
+ const estado=document.querySelector('[data-gcc-alert-estado]');
+ // Activar/reanudar AudioContext en el gesto del usuario, nunca al consultar el servidor.
+ const activar=activarSonido();
+ if(b.dataset.gccAlert==='probar'){
+  void activar.then(ok=>{
+   avisoNuevo('prueba');
+   if(estado)estado.textContent=ok
+      ?'Prueba de sonido emitida. Si no se escucha, revisá el volumen del dispositivo.'
+      :'El navegador bloqueó el sonido. Tocá Activar sonido y volvé a probar.';
+  });
+  return;
+ }
+ // El permiso push se pide dentro del mismo clic; un rechazo no desactiva el sonido local.
+ const permiso='Notification' in window?
+   (Notification.permission==='default'?Notification.requestPermission():
+    Promise.resolve(Notification.permission)):Promise.resolve('unsupported');
+ void activar.then(ok=>{
+  if(ok)sonar(); // confirmación audible al activar
+  if(estado)estado.textContent=ok
+    ?'Sonido activado en esta pestaña. Se repetirá mientras haya comandas activas.'
+    :'No se pudo activar el sonido. Revisá volumen, permisos y el dispositivo de salida.';
+ });
+ Promise.resolve(permiso).then(async value=>{
+   if(value==='granted'){await registrarPush();b.textContent='Notificaciones activadas';}
+   else b.textContent='Sonido habilitado · Push sin permiso';
+ }).catch(err=>{b.textContent='Sonido local · Revisar push';b.title=String(err?.message||'Error de notificaciones');});
 });
+
 async function registrarPush(){
  const c=window.SPM_CONFIG||{};
  if(!c.url||!c.key||!navigator.serviceWorker||!window.PushManager)
@@ -187,16 +225,27 @@ async function registrarPush(){
 }
 function ocultarAviso(){document.getElementById('mgp-global-alert')?.remove();}
 
-function actualizar(n,r=reclamos){
- const antes=vistos,antesReclamos=reclamosVistos;
- pendientes=Math.max(0,Number(n)||0);vistos=pendientes;
+function actualizar(n,r=reclamos,preparando=enPreparacion,avisables=n){
+ const loc=local();
+ if(estadoLocal!==loc){
+  estadoLocal=loc;vistos=null;avisablesVistos=null;reclamosVistos=null;
+  ultimoRecordatorioAt=0;ultimoAvisoId='';ocultarAviso();
+ }
+ const antesAvisables=avisablesVistos,antesReclamos=reclamosVistos;
+ pendientes=Math.max(0,Number(n)||0);
+ pendientesAvisables=Math.min(pendientes,Math.max(0,Number(avisables)||0));
+ avisablesVistos=pendientesAvisables;vistos=pendientes;
+ enPreparacion=Math.max(0,Number(preparando)||0);
  reclamos=Math.max(0,Number(r)||0);reclamosVistos=reclamos;
  indicadores();
  if(antesReclamos!==null&&reclamos>antesReclamos)avisoNuevo('reclamo');
- else if(antes!==null&&pendientes>antes){avisoNuevo('pedido');void detalleNuevo();}
- if(!pendientes&&!reclamos){ocultarAviso();ultimoAvisoId='';ultimoAvisoAt=0;}
-  recordarPedido();
+ else if(antesAvisables!==null&&pendientesAvisables>antesAvisables){
+  ultimoRecordatorioAt=Date.now();avisoNuevo('pedido');void detalleNuevo();
+ }
+ if(!pendientesAvisables&&!enPreparacion&&!reclamos){ocultarAviso();ultimoAvisoId='';}
+ recordarPedido();
 }
+
 async function consultar(){
  if(!rolOk()||!online()||!window.GestLokSupabase)return;
  // Empresas o locales sin GESTLOK Chat: no se consulta cada 15 segundos.
@@ -210,7 +259,7 @@ async function consultar(){
   leer(data,t);
   if(!servidor.locales.has(loc)){if(antes)api?.render?.();return;}
   const s=(data?.sucursales||[]).find(x=>x.local_id===loc);
-  actualizar(s?s.pendientes:0,s?s.reclamos:0);
+  actualizar(s?s.pendientes:0,s?s.reclamos:0,s?s.en_preparacion:0,s?s.pendientes_avisables:0);
  }catch{/* sin conexión: se reintenta en el próximo ciclo */}
 }
 
@@ -237,7 +286,7 @@ function colocar(){
   if(panel||loc!==local()||!anfitrion)return;
   panelLocal=loc;
   panel=window.GestLokChatPanel.montar(anfitrion,{sb:window.GestLokSupabase,local:loc,embebido:true,
-   alCambiarPendientes:(l,n)=>{if(l===local())actualizar(n);}});
+   alCambiarPendientes:(l,n)=>{if(l===local())actualizar(n,reclamos,enPreparacion,n);}});
  }).catch(()=>{lugar.innerHTML='<p class="gcc-aviso">No se pudo abrir la Central de mensajes. Revisá tu conexión y volvé a entrar.</p>';});
 }
 function view(){
@@ -248,6 +297,7 @@ function view(){
   '<div class="gcc-cab"><h2>Central de mensajes</h2><small>GESTLOK Chat · '+esc(localName())+' · asistente y pedidos por chat</small>'+
   '<a href="/chat/panel/?local='+encodeURIComponent(l)+'" target="_blank" rel="noopener">Abrir aparte</a></div>'+
   (online()?'':'<p class="gcc-aviso">Sin conexión: la Central se actualiza cuando vuelva internet.</p>')+
+  '<div class="gcc-active-summary" data-gcc-comandas role="status" aria-live="polite"'+(pendientes+enPreparacion?'':' hidden')+'><strong>Comandas activas</strong><span>Por confirmar: <b data-gcc-pendientes>'+pendientes+'</b></span><span>En preparación: <b data-gcc-preparacion>'+enPreparacion+'</b></span></div>'+
   '<div class="gcc-alert-controls"><button type="button" data-gcc-alert="activar">Activar sonido y notificaciones</button>'+
    '<button type="button" data-gcc-alert="probar">Probar aviso</button><span data-gcc-alert-estado role="status"></span></div>'+
    '<div data-gcc-lugar></div></section>';
@@ -261,11 +311,11 @@ function subscribe(loc,push){
  push(()=>{clearInterval(t);window.removeEventListener('focus',foco);ocultarAviso();});
 }
 function reset(){
- epoca++;pendientes=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();idsSucursal.clear();ultimoAvisoId='';ultimoAvisoAt=0;avisoAbierto=false;servidor={tenant:'',locales:new Map()};buscando='';
+ epoca++;pendientes=0;pendientesAvisables=0;avisablesVistos=null;enPreparacion=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();idsSucursal.clear();ultimoAvisoId='';ultimoRecordatorioAt=0;estadoLocal='';servidor={tenant:'',locales:new Map()};buscando='';
  if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';
 }
 function attach(h){if(!api)api=h;}
 
 window.GestLokMiGustoOrders=Object.freeze({attach,subscribe,reset,view,permitido:allowed,pendingCount,navBadge,quickAccess,
- _test:{actualizar,consultar,colocar,descubrir,estado:()=>({pendientes,vistos,montado:!!panel,locales:[...servidor.locales.keys()]})}});
+ _test:{actualizar,consultar,colocar,descubrir,recordarPedido,estado:()=>({pendientes,pendientesAvisables,enPreparacion,reclamos,vistos,soundReady,montado:!!panel,locales:[...servidor.locales.keys()]})}});
 })();
