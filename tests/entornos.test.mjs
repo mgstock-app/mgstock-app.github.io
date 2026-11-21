@@ -28,3 +28,25 @@ test('otras ramas no publican GESTLOK', () => {
   execFileSync('node', ['entornos/construir.mjs', out], {env: {...process.env, ENTORNO: 'main', CF_PAGES_BRANCH: ''}});
   assert.ok(!existsSync(join(out, 'chat')));
 });
+
+test('CI bloquea promociones si falta permiso o si Cloudflare no publicó cada etapa', () => {
+  const workflow=readFileSync('.github/workflows/entornos.yml','utf8');
+  const backend=readFileSync('entornos/backend.mjs','utf8');
+  assert.match(workflow,/::error title=Entorno incompleto/);
+  assert.doesNotMatch(workflow,/Falta el secreto SUPABASE_ACCESS_TOKEN[^\n]*exit 0/);
+  assert.match(workflow,/gestlok-prueba\.pages\.dev/);
+  assert.match(workflow,/gestlok-testing\.pages\.dev/);
+  assert.match(workflow,/gestlok-chat-testing/);
+  assert.match(workflow,/SUPABASE_PROD_READ_TOKEN/);
+  assert.match(backend,/const PROD_READ_TOKEN = process\.env\.SUPABASE_PROD_READ_TOKEN/);
+  assert.match(backend,/if \(!PROD_READ_TOKEN\)/);
+  assert.match(backend,/authorization: 'Bearer ' \+ PROD_READ_TOKEN/);
+  assert.match(workflow,/Pedido de publicación testing/);
+});
+
+test('base de pruebas: docs no queda expuesto por el Data API', () => {
+  const schema=readFileSync('entornos/sql/base-pruebas.sql','utf8');
+  assert.match(schema,/alter table public\.docs enable row level security/i);
+  assert.match(schema,/revoke all on table public\.docs from anon, authenticated/i);
+  assert.match(schema,/grant select, insert, update, delete on table public\.docs to service_role/i);
+});
