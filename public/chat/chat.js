@@ -150,6 +150,20 @@ async function api(accion, extra = {}) {
 const lista = $('mensajes');
 function bajar() { requestAnimationFrame(() => { lista.scrollTop = lista.scrollHeight; }); }
 function burbuja(rol, texto) { lista.append(el('div', {class: 'burbuja ' + rol, text: texto})); bajar(); }
+/* La primera bienvenida es una portada de chat, no un bloque de instrucciones.
+ * Los avisos de cierre/programación se conservan como mensajes reales. */
+function esSaludoInicial(m) {
+  const texto = String(m?.texto || '');
+  return !!texto.trim() && !/local est[aá] cerrado|abriremos nuevamente|pedido programado|no estamos tomando pedidos/i.test(texto);
+}
+function bienvenidaVisual() {
+  const marca = S.sucursal?.empresa || S.sucursal?.nombre || 'el local';
+  lista.append(el('section', {class: 'burbuja asistente chat-bienvenida', 'aria-label': 'Bienvenida del chat'},
+    el('span', {class: 'bienvenida-icono', 'aria-hidden': true, text: '✦'}),
+    el('p', {class: 'bienvenida-etiqueta', text: 'CHAT DE ' + marca}),
+    el('h2', {class: 'bienvenida-titulo', text: '¡Hola! ¿En qué podemos ayudarte hoy?'})));
+  bajar();
+}
 function burbujaFoto(rol, url, texto = 'Foto enviada') {
   const n=el('div',{class:'burbuja foto '+rol});
   if (typeof url==='string' && /^https:\/\//.test(url)) n.append(el('a',{href:url,target:'_blank',rel:'noopener noreferrer'},
@@ -1059,21 +1073,28 @@ async function iniciar() {
   S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')
     .map(m => Number.isSafeInteger(m.id) ? m.id : 0));
   const nombre = [r.sucursal.empresa, r.sucursal.nombre].filter(Boolean).join(' · ');
-  document.title = nombre + ' · Pedidos por chat';
+  document.title = nombre + ' · Chat';
   $('titulo').textContent = nombre;
-  $('subtitulo').textContent = r.sucursal.horario || 'Pedidos por chat';
+  $('subtitulo').textContent = 'Chat de atención y pedidos';
   $('avatar').textContent = (r.sucursal.empresa || r.sucursal.nombre || 'G').trim().charAt(0).toUpperCase();
   $('btn-info').hidden = false;
   const urlsFotos = new Map((r.fotos || []).map(f=>[Number(f.mensaje_id),f.url]));
+  let saludoMostrado = false;
   for (const [indice, m] of (r.mensajes || []).entries()) {
+    if (indice === 0 && m.rol === 'asistente' && esSaludoInicial(m)) {
+      bienvenidaVisual(); saludoMostrado = true; continue;
+    }
     if (m.rol === 'cliente' && urlsFotos.has(Number(m.id))) {
       burbujaFoto('cliente',urlsFotos.get(Number(m.id)),'Foto enviada al gerente');continue;
     }
-    const antiguo = indice === 0 && m.rol === 'asistente' && /Podés escribirme tu pedido, por ejemplo/.test(m.texto);
-    burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente',
-      antiguo && r.sucursal.bienvenida ? r.sucursal.bienvenida : m.texto);
+    burbuja(m.rol === 'cliente' ? 'cliente' : m.rol === 'local' ? 'local' : 'asistente', m.texto);
   }
-  for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
+  for (const [indice, m] of (r.nuevos || []).entries()) {
+    if (!saludoMostrado && indice === 0 && !(r.mensajes || []).length && esSaludoInicial(m)) {
+      bienvenidaVisual(); chips(m.botones); saludoMostrado = true; continue;
+    }
+    mensajeAsistente(m, {abrir: false});
+  }
   actualizarCarrito(r.carrito);
   const pedidoEnCurso=!!(r.pedidos?.[0] && ['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado));
   if (!r.cerrada && !pedidoEnCurso) {
