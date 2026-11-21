@@ -4,26 +4,28 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import {releaseAudience,fileAudience,TENANTS,LOCAL_AUDIENCE} from '../scripts/pwa-release-scope.mjs';
 const read = p => readFileSync(p, 'utf8');
-function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, local = 'munro') {
+function fixture(controlled = true, scope = null, tenant = TENANTS.miGusto, local = 'munro', pageRelease = '100001-1', workerRelease = '100002-1', sharedStorage = new Map()) {
   const handlers = {}, elements = [];
   let reloads = 0, currentTenant = tenant, currentLocal = local, channel, timerId = 0;
+  let activeRelease = workerRelease;
   const intervals=new Map();
   const element = () => ({style:{},children:[],listeners:{},attributes:{},removed:false,setAttribute(n,v){this.attributes[n]=v;},append(...c){this.children.push(...c);},addEventListener(n,f){this.listeners[n]=f;},remove(){this.removed=true;}});
   const controller = scope == null ? {} : {
-    postMessage(message) { channel.port1.onmessage({data:{type:message.type,audience:scope}}); }
+    postMessage(message) { channel.port1.onmessage({data:{type:message.type,audience:scope,release:activeRelease}}); }
   };
   const navigator = {onLine:true,serviceWorker:{controller:controlled?controller:null,addEventListener(n,f){handlers[n]=f;}}};
   const window = {location:{reload(){reloads++;}},GestLokNavContext:()=>({tenant:currentTenant,local:currentLocal})};
-  const document = {createElement:element,body:{appendChild(e){elements.push(e);}}};
+  const document = {createElement:element,body:{appendChild(e){elements.push(e);}},documentElement:{dataset:{gestlokBuild:pageRelease}}};
+  const localStorage = {getItem:key=>sharedStorage.get(key)??null,setItem:(key,value)=>sharedStorage.set(key,String(value))};
   const MessageChannel = scope == null ? undefined : class {
     constructor(){channel=this;this.port1={onmessage:null,close(){}};this.port2={};}
   };
   vm.runInNewContext(read('public/stock/gestlok-pwa-update.js'), {
-    navigator,window,document,MessageChannel,setTimeout:()=>123,clearTimeout(){},
+    navigator,window,document,localStorage,MessageChannel,setTimeout:()=>123,clearTimeout(){},
     setInterval:fn=>{const id=++timerId;intervals.set(id,fn);return id;},
     clearInterval:id=>intervals.delete(id)
   });
-  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;},replaceController:()=>{navigator.serviceWorker.controller={...controller};},tick:()=>{for(const fn of [...intervals.values()])fn();},timerCount:()=>intervals.size};
+  return {handlers,elements,navigator,window,reloads:()=>reloads,setTenant:x=>{currentTenant=x;},setLocal:x=>{currentLocal=x;},setRelease:x=>{activeRelease=x;},storage:sharedStorage,replaceController:()=>{navigator.serviceWorker.controller={...controller};},tick:()=>{for(const fn of [...intervals.values()])fn();},timerCount:()=>intervals.size};
 }
 test('Una instalación nueva no pide recargar; una actualización verificada avisa solo una vez', () => {
   const first=fixture(false,['*']);first.handlers.controllerchange();assert.equal(first.elements.length,0);
@@ -189,7 +191,7 @@ test('Deslizar descarta el cartel sin volver a mostrarlo hasta la próxima versi
  assert.equal(f.elements.length,1,'No reabrir un aviso que la persona descartó');
  f.handlers.controllerchange();
  assert.equal(f.elements.length,1,'Un evento duplicado del mismo worker no cuenta como nueva versión');
- f.replaceController();f.handlers.controllerchange();
+ f.setRelease('100003-1');f.replaceController();f.handlers.controllerchange();
  assert.equal(f.elements.length,2,'Nueva publicación relevante se puede anunciar');
 });
 test('Worker anterior o sin audiencia no causa avisos globales inventados',()=>{
@@ -280,7 +282,7 @@ test('X arriba a la izquierda: descarta el aviso sin recargar ni perder formular
  f.window.GestLokPWAUpdate.refresh();
  f.tick();
  assert.equal(f.elements.length,1,'No reaparece el cartel mientras no haya otra versión');
- f.replaceController();
+ f.setRelease('100003-1');f.replaceController();
  f.handlers.controllerchange();
  assert.equal(f.elements.length,2,'Una actualización nueva sí puede volver a mostrarse');
 });
@@ -335,4 +337,41 @@ test('Munro personal sin Google Sheets no anuncia actualización falsa a otros l
   f.handlers.controllerchange();
   assert.equal(f.elements.length,0,tenant+'/'+local+' no recibe aviso falso');
  }
+});
+
+test('Reiniciar PC con HTML y service worker de la misma versión no muestra cartel',()=>{
+ const f=fixture(true,['*'],TENANTS.miGusto,'munro','100002-1','100002-1');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,0,'Abrir la última versión no exige otra actualización');
+ f.window.GestLokPWAUpdate.refresh();
+ assert.equal(f.elements.length,0);
+});
+
+test('Un HTML sin versión verificable tampoco inventa una actualización',()=>{
+ const f=fixture(true,['*'],TENANTS.miGusto,'munro','','100002-1');
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,0,'Compatibilidad con caché antigua sin reclamos falsos');
+});
+
+test('Cerrar el cartel se recuerda al apagar y encender; una versión posterior sí puede avisar',()=>{
+ const storage=new Map();
+ const f=fixture(true,['*'],TENANTS.miGusto,'munro','100001-1','100002-1',storage);
+ f.handlers.controllerchange();
+ assert.equal(f.elements.length,1);
+ const x=f.elements[0].children.find(c=>c.attributes['aria-label']==='Cerrar aviso de actualización');
+ x.listeners.click();
+ assert.equal(storage.get('gestlok:pwa-dismissed-release'),'100002-1');
+ const reinicio=fixture(true,['*'],TENANTS.miGusto,'munro','100001-1','100002-1',storage);
+ reinicio.handlers.controllerchange();
+ assert.equal(reinicio.elements.length,0,'No insistir con el mismo aviso tras reiniciar');
+ const otra=fixture(true,['*'],TENANTS.miGusto,'munro','100001-1','100003-1',storage);
+ otra.handlers.controllerchange();
+ assert.equal(otra.elements.length,1,'Una versión distinta y relevante sí avisa');
+});
+
+test('La página y el worker comparten el identificador de publicación de GitHub',()=>{
+ const layout=read('app/layout.tsx'), sw=read('scripts/sw-template.js'), generator=read('scripts/version-cache.mjs');
+ assert.match(layout,/data-gestlok-build=\{pageRelease\}/);
+ assert.match(sw,/release:BUILD_RELEASE/);
+ assert.match(generator,/\.replace\('__BUILD_RELEASE__', version\)/);
 });
