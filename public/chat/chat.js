@@ -139,12 +139,32 @@ function mostrarCierre() {
   bajar();
 }
 function quitarChips() { lista.querySelectorAll('.chips,.accion').forEach(n => n.remove()); }
+// Orden natural: «Pack 2», «Pack 3», «Pack 6», «Pack 12» (no «Pack 12» antes que «Pack 2»).
+const NATURAL = new Intl.Collator('es', {numeric: true, sensitivity: 'base'});
+const RE_CAT_PROMO = /promo|combo|pack/i;
+const ordenProducto = (a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0) || NATURAL.compare(a.nombre || '', b.nombre || '');
+/** Categorías con productos visibles: las de promociones primero (el cliente empieza por la promo que busca). */
+function categoriasMenu() {
+  const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id && p.activo !== false));
+  return [...cats.filter(c => RE_CAT_PROMO.test(c.nombre || '')), ...cats.filter(c => !RE_CAT_PROMO.test(c.nombre || ''))];
+}
+/** Botones de promociones que manda el asistente: de menor a mayor, igual que en el menú. */
+function ordenarBotones(botones) {
+  const promos = new Set(promocionesVigentes(S.catalogo || {productos: []}).map(p => p.id));
+  const prod = b => String(b.id || '').startsWith('elegir:') ? producto(String(b.id).split(':')[1]) : null;
+  const elegir = botones.filter(b => prod(b));
+  if (elegir.length < 2 || !elegir.every(b => promos.has(prod(b).id))) return botones;
+  const ordenados = [...elegir].sort((a, b) => ordenProducto(prod(a), prod(b)));
+  let i = 0;
+  return botones.map(b => prod(b) ? ordenados[i++] : b);
+}
 function chips(botones) {
   if (!botones?.length) return;
   // El acceso principal a la carta debe verse primero aunque el servidor todavía
   // lo envíe como «Ver menú». «Agregar más» mantiene su función en pedidos existentes.
-  const principal = b => b.id === 'carta' && /^(ver|hacer|armar)/i.test(String(b.texto || ''));
-  const ordenados = [...botones].sort((a, b) => Number(principal(b)) - Number(principal(a)));
+  // «Ver menú completo» (debajo de la lista de promociones) no es la acción de bienvenida: queda al final.
+  const principal = b => b.id === 'carta' && /^(ver( el)? men[uú]|ver la carta|hacer un pedido|armar mi pedido)$/i.test(String(b.texto || '').trim());
+  const ordenados = [...ordenarBotones(botones)].sort((a, b) => Number(principal(b)) - Number(principal(a)));
   lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
     type: 'button',
     class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : ''),
@@ -384,7 +404,8 @@ $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
 function abrirCarta() {
-  const cats = S.catalogo.categorias.filter(c => S.catalogo.productos.some(p => p.categoria_id === c.id && p.activo !== false));
+  const cats = categoriasMenu();
+  const posCat = new Map(cats.map((c, i) => [c.id, i]));
   const cuerpo = el('div', {class: 'menu-interactivo'});
   let aviso = '';
 
@@ -393,7 +414,8 @@ function abrirCarta() {
   const pintar = (mantenerPosicion = false) => {
     const scroll = mantenerPosicion ? $('hoja-cuerpo').scrollTop : 0;
     const tabsScroll = cuerpo.querySelector('.categorias')?.scrollLeft || 0;
-    const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria));
+    const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria))
+      .sort((a, b) => (posCat.get(a.categoria_id) ?? 999) - (posCat.get(b.categoria_id) ?? 999) || ordenProducto(a, b));
     const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
     const mostrarError = texto => { aviso = texto; pintar(true); };
     const lineaSimple = p => S.borrador.find(l => l.producto_id === p.id && !l.nota &&
@@ -491,6 +513,18 @@ function abrirCarta() {
   abrirHoja('Menú interactivo', cuerpo);
 }
 
+function iconoTacho() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '18'); svg.setAttribute('height', '18');
+  svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'icono-tacho');
+  const d = document.createElementNS(ns, 'path');
+  d.setAttribute('d', 'M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3');
+  d.setAttribute('fill', 'none'); d.setAttribute('stroke', 'currentColor'); d.setAttribute('stroke-width', '2');
+  d.setAttribute('stroke-linecap', 'round'); d.setAttribute('stroke-linejoin', 'round');
+  svg.append(d);
+  return svg;
+}
 function abrirProducto(p, sugerido = {}, inline = null) {
   let cantidad = Math.min(50, Math.max(1, Number(sugerido.cantidad) || 1));
   const elegidas = {};
@@ -526,11 +560,11 @@ function abrirProducto(p, sugerido = {}, inline = null) {
     contadores.push(() => {
       const elegidasTotal = unidades(elegidas[g.id]);
       const quedan = Math.max(0, total - elegidasTotal);
-      resumen.textContent = elegidasTotal + ' de ' + total + ' · ' +
-        (quedan === 0 ? 'Completo' : (quedan === 1 ? 'Falta 1' : 'Faltan ' + quedan));
+      resumen.textContent = quedan === 0 ? 'Completo' : elegidasTotal === 0 ? 'Debe elegir ' + total
+        : (quedan === 1 ? 'Falta 1' : 'Faltan ' + quedan);
       resumen.classList.toggle('completo', quedan === 0);
       resumen.classList.toggle('pendiente', quedan > 0);
-      resumen.setAttribute('aria-label', g.nombre + ': ' + resumen.textContent);
+      resumen.setAttribute('aria-label', g.nombre + ': ' + elegidasTotal + ' de ' + total + ' · ' + resumen.textContent);
     });
     const filas = valoresDisponibles(S.catalogo, g).map(v => {
       const n = el('output', {class: 'n', 'aria-live': 'polite', text: String(elegidas[g.id][v.id] || 0)});
@@ -540,8 +574,8 @@ function abrirProducto(p, sugerido = {}, inline = null) {
         v.destacado === true ? el('small', {class: 'menu-variedad-destacado', text: '★ Más vendido'}) : null,
         el('strong', {text: v.nombre}),
         Number(v.extra) > 0 ? el('small', {class: 'menu-variedad-extra', text: '+ ' + pesos(v.extra)}) : null);
-      const fila = el('div', {class: 'opcion opcion-cantidad menu-variedad-fila'},
-        texto, el('div', {class: 'pasos'}, menos, n, mas));
+      const pasos = el('div', {class: 'pasos'}, menos, n, mas);
+      const fila = el('div', {class: 'opcion opcion-cantidad menu-variedad-fila'}, texto, pasos);
       const cambiar = d => {
         const actual = elegidas[g.id][v.id] || 0;
         if (d > 0 && unidades(elegidas[g.id]) >= total) return;
@@ -556,22 +590,30 @@ function abrirProducto(p, sugerido = {}, inline = null) {
         n.textContent = String(k);
         menos.hidden = k === 0;
         n.hidden = k === 0;
+        // Con 1 elegida, el botón de quitar es un tacho; con más, «−».
+        if (k === 1) menos.replaceChildren(iconoTacho()); else menos.textContent = '−';
         mas.disabled = unidades(elegidas[g.id]) >= total;
+        pasos.classList.toggle('activo', k > 0);
         fila.classList.toggle('elegida', k > 0);
       });
       return fila;
     });
     return el('fieldset', {class: 'grupo grupo-cantidad menu-grupo-lista'},
       el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}), resumen),
-      el('p', {class: 'grupo-instruccion', text: 'Elegí ' + total + ' en total' +
-        (total > 1 ? ' · Podés repetir variedades' : '')}),
       filas.length ? el('div', {class: 'grupo-opciones'}, filas)
         : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
   };
-  const grupos = (p.opciones || []).map(g => esCantidad(g) ? grupoCantidad(g) : el('fieldset', {class: 'grupo grupo-opcional'},
-    el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}),
-      el('small', {class: 'grupo-estado' + (g.obligatorio ? ' pendiente' : ' opcional'),
-        text: g.obligatorio ? 'Obligatorio' : 'Opcional'})),
+  const etiquetaGrupo = g => {
+    const e = el('small', {class: 'grupo-estado'});
+    contadores.push(() => {
+      const listo = (elegidas[g.id] || []).length > 0;
+      e.textContent = !g.obligatorio ? 'Opcional' : listo ? 'Completo' : 'Debe elegir ' + (g.tipo === 'una' ? '1' : 'al menos 1');
+      e.className = 'grupo-estado ' + (!g.obligatorio ? 'opcional' : listo ? 'completo' : 'pendiente');
+    });
+    return e;
+  };
+  const grupos = (p.opciones || []).map(g => esCantidad(g) ? grupoCantidad(g) : el('fieldset', {class: 'grupo grupo-opcional' + (esPromo ? ' menu-grupo-lista' : '')},
+    el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}), etiquetaGrupo(g)),
     el('p', {class: 'grupo-instruccion', text: g.tipo === 'una'
       ? 'Elegí ' + (g.obligatorio ? '1 opción' : 'hasta 1 opción')
       : 'Elegí hasta ' + g.max + ' opciones'}),

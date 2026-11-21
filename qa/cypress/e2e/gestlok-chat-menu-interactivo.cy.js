@@ -107,9 +107,9 @@ describe('GESTLOK Chat · menú interactivo', () => {
       .find('button[aria-label^="Quitar"]').should('not.be.visible');
     cy.get('#hoja .menu-producto-detalle:visible img').should('not.exist');
     cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first()
-      .find('.grupo-estado').should('contain.text','Faltan 6');
+      .find('.grupo-estado').should('contain.text','Debe elegir 6');
     cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').last()
-      .find('.grupo-estado').should('contain.text','Faltan 2');
+      .find('.grupo-estado').should('contain.text','Debe elegir 2');
     cy.get('#hoja .menu-producto-detalle:visible button[type=submit]').should('be.disabled');
     cy.get('#hoja .menu-producto-detalle:visible')
       .contains('.opcion-cantidad','Empanada de carne').find('button[aria-label="Sumar Empanada de carne"]')
@@ -137,6 +137,25 @@ describe('GESTLOK Chat · menú interactivo', () => {
     cy.get('#hoja .menu-revision button').contains('Enviar selección al asistente').click();
     cy.get('#hoja').should('not.be.visible');
     cy.get('#barra-texto').should('contain.text','1 producto');
+  });
+
+  it('selector de promo como la referencia: Debe elegir, + suelto, tacho con 1 y − con más', () => {
+    cy.viewport(390, 844);
+    cy.visit('/chat/?demo=1');
+    cy.get('#btn-carta').should('not.be.disabled').click();
+    cy.contains('#hoja .menu-fila','Pack 6 empanadas + 2 salsas').find('button.menu-paso-mas').click();
+    cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first().within(() => {
+      cy.get('.grupo-estado').should('have.class', 'pendiente').and('contain.text', 'Debe elegir 6');
+      cy.get('.menu-variedad-fila').first().as('fila');
+    });
+    cy.get('@fila').find('.pasos').should('not.have.class', 'activo');
+    cy.get('@fila').find('button[aria-label^="Sumar"]').click();
+    cy.get('@fila').find('.pasos').should('have.class', 'activo');
+    cy.get('@fila').find('button[aria-label^="Quitar"] svg.icono-tacho').should('exist');
+    cy.get('@fila').find('button[aria-label^="Sumar"]').click();
+    cy.get('@fila').find('button[aria-label^="Quitar"]').should('contain.text', '−');
+    cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first()
+      .find('.grupo-estado').should('contain.text', 'Faltan 4');
   });
 
   it('arma un pedido visual, lo revisa y recién entonces lo envía al asistente', () => {
