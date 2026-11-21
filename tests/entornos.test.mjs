@@ -43,3 +43,10 @@ test('CI bloquea promociones si falta permiso o si Cloudflare no publicó cada e
   assert.match(backend,/authorization: 'Bearer ' \+ PROD_READ_TOKEN/);
   assert.match(workflow,/Pedido de publicación testing/);
 });
+
+test('base de pruebas: docs no queda expuesto por el Data API', () => {
+  const schema=readFileSync('entornos/sql/base-pruebas.sql','utf8');
+  assert.match(schema,/alter table public\.docs enable row level security/i);
+  assert.match(schema,/revoke all on table public\.docs from anon, authenticated/i);
+  assert.match(schema,/grant select, insert, update, delete on table public\.docs to service_role/i);
+});
