@@ -73,7 +73,7 @@ test('la central recuerda comandas en ambos estados y el sonido se desbloquea co
  assert.match(alerta.innerHTML,/Comandas por confirmar/);
  assert.equal(osciladores,0,'sin gesto no se reproduce audio');
  for(const fn of handlers.get('pointerdown')||[])fn({});
- await Promise.resolve();await Promise.resolve();
+ await new Promise(resolve=>setImmediate(resolve));
  assert.equal(central._test.estado().soundReady,true);
  reloj+=120000;central._test.recordarPedido();
  assert.ok(osciladores>=3,'suena después de habilitarlo');
