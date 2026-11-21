@@ -8,14 +8,14 @@
   "entornos": {
     "prueba": {
       "nombre": "GESTLOK · Prueba",
-      "sitio": "https://gestlok-prueba.pages.dev",
+      "sitio": "https://gestlok-prueba.vercel.app",
       "color": "#b45309",
       "boton": "Enviar a testing",
       "siguiente": "testing"
     },
     "testing": {
       "nombre": "GESTLOK · Testing",
-      "sitio": "https://gestlok-testing.pages.dev",
+      "sitio": "https://gestlok-testing.vercel.app",
       "color": "#1d4ed8",
       "boton": "Publicar en gestlok.com.ar",
       "siguiente": "gestlok.com.ar"

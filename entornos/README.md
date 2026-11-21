@@ -5,8 +5,8 @@
 ## Estado y separación
 
 - Producción: `gestlok.com.ar`; proyecto Supabase real. Nunca cambiar aquí la configuración desde estos pasos.
-- Prueba: `gestlok-prueba.pages.dev`, rama GitHub `prueba`, funciones `gestlok-chat-prueba` y `gestlok-chat-push-prueba`.
-- Testing: `gestlok-testing.pages.dev`, rama GitHub `testing`, funciones `gestlok-chat-testing` y `gestlok-chat-push-testing`.
+- Prueba: `gestlok-prueba.vercel.app`, rama GitHub `prueba`, funciones `gestlok-chat-prueba` y `gestlok-chat-push-prueba`.
+- Testing: `gestlok-testing.vercel.app`, rama GitHub `testing`, funciones `gestlok-chat-testing` y `gestlok-chat-push-testing`.
 - Ambos entornos usan **solo** el proyecto Supabase `gestlok-pruebas` (`irqeitzbfyerxcrogkyh`), con empresas y sucursales de demostración. No comparten clientes, conversaciones ni pedidos con producción.
 - El directorio `dist-entorno` solo contiene recursos de prueba y sus claves públicas de Supabase; nunca incluir allí tokens de administración, contraseñas ni `service_role`.
 - Las notificaciones push de prueba requieren su configuración VAPID independiente; no reutilizar dispositivos ni permisos push de producción.

@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfg = JSON.parse(readFileSync(join(raiz, 'entornos/entornos.json'), 'utf8'));
-const nombre = process.env.ENTORNO || process.env.CF_PAGES_BRANCH || '';
+const nombre = process.env.ENTORNO || process.env.VERCEL_GIT_COMMIT_REF || process.env.CF_PAGES_BRANCH || '';
 const ent = cfg.entornos[nombre];
 const salida = resolve(raiz, process.argv[2] || 'dist-entorno');
 const URL_REAL = 'https://' + cfg.real.ref + '.supabase.co';

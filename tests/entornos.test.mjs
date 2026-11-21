@@ -49,8 +49,8 @@ test('CI bloquea promociones si falta permiso o si Cloudflare no publicó cada e
   const backend=readFileSync('entornos/backend.mjs','utf8');
   assert.match(workflow,/::error title=Entorno incompleto/);
   assert.doesNotMatch(workflow,/Falta el secreto SUPABASE_ACCESS_TOKEN[^\n]*exit 0/);
-  assert.match(workflow,/gestlok-prueba\.pages\.dev/);
-  assert.match(workflow,/gestlok-testing\.pages\.dev/);
+  assert.match(workflow,/gestlok-prueba\.vercel\.app/);
+  assert.match(workflow,/gestlok-testing\.vercel\.app/);
   assert.match(workflow,/gestlok-chat-testing/);
   assert.match(workflow,/SUPABASE_PROD_READ_TOKEN/);
   assert.match(backend,/const PROD_READ_TOKEN = process\.env\.SUPABASE_PROD_READ_TOKEN/);
