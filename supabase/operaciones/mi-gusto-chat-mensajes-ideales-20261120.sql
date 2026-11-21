@@ -6,8 +6,8 @@
 begin;
 
 update gestlok_chat_private.sucursales s set
-  bienvenida = '¡Hola! Le damos la bienvenida a Mi Gusto ' || s.nombre
-    || '. Puede ver el menú y armar su pedido con los botones de abajo, o escribirnos lo que necesita.',
+  -- El saludo según la hora y la guía de los botones («Hacer un pedido», …) los agrega el asistente (20/11/2026).
+  bienvenida = 'Le damos la bienvenida a Mi Gusto ' || s.nombre || '.',
   ia_instrucciones = 'Trate siempre al cliente de usted, con respeto, calidez y respuestas breves. Ayúdelo a armar su pedido '
     || 'con la carta y las promociones disponibles, y recomiende una promo cuando le convenga. Antes de finalizar, ofrezca '
     || 'agregar un postre o una bebida, sin insistir si no lo desea. Si consulta algo que no figura en la carta ni en la '
