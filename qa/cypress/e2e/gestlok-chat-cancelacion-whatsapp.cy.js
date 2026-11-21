@@ -6,7 +6,7 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
   const catalogo = {categorias:[{id:'emp',nombre:'Empanadas'}],productos:[product]};
   const pedido = {estado:'pendiente',creado_at:'2026-11-21T12:00:00-03:00',
     total:4900,entrega:'retiro',nombre:'Cliente',items:[]};
-  function mockAbrir(slug,telefono,conPedido=false) {
+  function mockAbrir(slug,telefono,conPedido=false,onCancel=()=>{}) {
     cy.intercept('POST', '**/functions/v1/gestlok-chat', req=>{
       if(req.body.accion==='abrir') return req.reply({ok:true,sucursal:{
         slug,empresa:'Mi Gusto',nombre:slug==='mi-gusto-munro'?'Munro':'Don Torcuato',
@@ -14,9 +14,11 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
         catalogo,mensajes:[],nuevos:[{texto:'¡Hola! ¿En qué podemos ayudarte hoy?',
           botones:[{id:'carta',texto:'Hacer un pedido'}]}],
         carrito:[],pedidos:conPedido?[pedido]:[]});
-      if(req.body.accion==='mensaje' && req.body.entrada?.boton==='cancelar')
+      if(req.body.accion==='mensaje' && req.body.entrada?.boton==='cancelar') {
+        onCancel();
         return req.reply({ok:true,mensajes:[{texto:'Su pedido fue cancelado.'}],
           carrito:[],pedido:{...pedido,estado:'cancelado'}});
+      }
       return req.reply({ok:true,mensajes:[],carrito:[],pedidos:[]});
     }).as('chat');
   }
@@ -44,10 +46,7 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
   it('pide confirmación, permite seguir y solo cancela al confirmar',()=>{
     cy.viewport(390,844);
     let cancelaciones=0;
-    mockAbrir('mi-gusto-munro','5491171446654',true);
-    cy.intercept('POST','**/functions/v1/gestlok-chat',req=>{
-      if(req.body.accion==='mensaje' && req.body.entrada?.boton==='cancelar') cancelaciones++;
-    });
+    mockAbrir('mi-gusto-munro','5491171446654',true,()=>cancelaciones++);
     cy.visit('/chat/?s=mi-gusto-munro',{
       onBeforeLoad(win){win.localStorage.setItem('gestlok-chat:ultimo-pedido:mi-gusto-munro',
         JSON.stringify({at:Date.now(),lineas:[{producto_id:product.id,cantidad:1,opciones:{}}]}));}
