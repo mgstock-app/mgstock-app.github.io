@@ -62,3 +62,14 @@ test('base de pruebas: docs no queda expuesto por el Data API', () => {
   assert.match(schema,/revoke all on table public\.docs from anon, authenticated/i);
   assert.match(schema,/grant select, insert, update, delete on table public\.docs to service_role/i);
 });
+
+test('Prueba: catálogo ficticio reproducible y restringido a base aislada', () => {
+  const indice = readFileSync('entornos/sql.txt', 'utf8');
+  const menu = readFileSync('entornos/sql/catalogo-demo.sql', 'utf8');
+  assert.match(indice, /entornos\/sql\/semilla\.sql\n(?:[^\n]*\n)*entornos\/sql\/catalogo-demo\.sql/);
+  assert.match(menu, /to_regclass\('entorno_control\.sql_aplicado'\)/);
+  assert.match(menu, /MIGUSTO-PRUEBA/);
+  assert.match(menu, /Pack DEMO/);
+  assert.match(menu, /on conflict \(sucursal_id,nombre\) do nothing/);
+  assert.doesNotMatch(menu, new RegExp(cfg.real.ref), 'ningún identificador de producción');
+});
