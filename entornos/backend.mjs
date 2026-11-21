@@ -42,9 +42,19 @@ const leerReal = select => {
   });
 };
 const pruebasUrl = 'https://' + PRUEBAS + '.supabase.co';
-/** Todo lo que apunte a la base real pasa a la de pruebas (los avisos automáticos usan la función de «prueba»). */
-const aPruebas = (t, ent) => t.split('https://' + REAL + '.supabase.co').join(pruebasUrl).split(REAL).join(PRUEBAS)
-  .replace(/\/functions\/v1\/(gestlok-chat(?:-push)?)(?![\w-])/g, '/functions/v1/$1-' + ent);
+/** Aislamiento de backend y CORS de las dos URLs Cloudflare, también tras futuras actualizaciones. */
+const sitiosPrueba = Object.values(cfg.entornos).map(e => e.sitio);
+const aPruebas = (texto, ent) => {
+  let t = texto.split('https://' + REAL + '.supabase.co').join(pruebasUrl).split(REAL).join(PRUEBAS)
+    .replace(/\/functions\/v1\/(gestlok-chat(?:-push)?)(?![\w-])/g, '/functions/v1/$1-' + ent);
+  // gestlok-chat/index.ts: permitir las dos páginas de prueba aunque aún no exista un secreto de orígenes.
+  t = t.replace('.split(",").map((s) => s.trim()).filter(Boolean);',
+    '.split(",").map((s) => s.trim()).filter(Boolean).concat(' + JSON.stringify(sitiosPrueba) + ');');
+  // gestlok-chat-push/index.ts: conservar orígenes autorizados y añadir únicamente los de los entornos.
+  t = t.replace(/const allowedOrigins=new Set\(\[([^\]]*)\]\);/,
+    (_todo, previos) => 'const allowedOrigins=new Set([' + previos + ',' + sitiosPrueba.map(x => JSON.stringify(x)).join(',') + ']);');
+  return t;
+};
 const literal = t => { const tag = '$j' + Math.random().toString(36).slice(2, 8) + '$'; return tag + t + tag; };
 
 async function aplicarSql() {
@@ -115,6 +125,7 @@ async function copiarCarta() {
 
 if (args.includes('--sql')) await aplicarSql();
 if (args.includes('--carta')) await copiarCarta();
-if (args.includes('--funciones')) desplegarFunciones();
+// Configurar CORS/Auth ANTES del despliegue para que la primera petición tenga el entorno correcto.
 if (args.includes('--ajustes')) await ajustes();
+if (args.includes('--funciones')) desplegarFunciones();
 console.log('Entorno «' + entorno + '» listo en la base de pruebas ' + PRUEBAS + '.');
