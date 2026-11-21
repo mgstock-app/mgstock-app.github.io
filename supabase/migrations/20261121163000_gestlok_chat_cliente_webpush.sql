@@ -160,6 +160,20 @@ end $$;
 revoke all on function public.gestlok_chat_panel_push_promociones(uuid,boolean,text) from public,anon;
 grant execute on function public.gestlok_chat_panel_push_promociones(uuid,boolean,text) to authenticated,service_role;
 
+-- Configuración pública mínima, consultada SOLO por Edge Function con service_role.
+-- La tabla privada nunca se expone en el Data API.
+create or replace function public.gestlok_chat_push_public_config(p_sucursal uuid default null,p_slug text default null)
+returns jsonb language sql stable security definer set search_path='' as $
+ select jsonb_build_object('slug',s.slug,'nombre',s.nombre,
+  'promociones_habilitadas',s.cliente_push_promos_activo)
+ from gestlok_chat_private.sucursales s
+ where s.activa and (p_sucursal is not null and s.id=p_sucursal or
+                     p_sucursal is null and s.slug=p_slug)
+ limit 1
+$;
+revoke all on function public.gestlok_chat_push_public_config(uuid,text) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_push_public_config(uuid,text) to service_role;
+
 -- Dispatcher central cada minuto; la clave reside en Supabase Vault y nunca sale al navegador.
 select cron.schedule('gestlok-chat-cliente-push-dispatch','* * * * *', $cron$
  select net.http_post(
