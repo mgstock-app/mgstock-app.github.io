@@ -167,10 +167,11 @@ function esSaludoInicial(m) {
   return !!texto.trim() && !/local est[aá] cerrado|abriremos nuevamente|pedido programado|no estamos tomando pedidos/i.test(texto);
 }
 function bienvenidaVisual() {
-  const marca = S.sucursal?.empresa || S.sucursal?.nombre || 'el local';
-  lista.append(el('section', {class: 'burbuja asistente chat-bienvenida', 'aria-label': 'Bienvenida del chat'},
-    el('span', {class: 'bienvenida-icono', 'aria-hidden': true, text: '✦'}),
-    el('p', {class: 'bienvenida-etiqueta', text: 'CHAT DE ' + marca}),
+  // El símbolo representa a GESTLOK Chat; el nombre del comercio se mantiene en la cabecera.
+  lista.append(el('section', {class: 'burbuja asistente chat-bienvenida', 'aria-label': 'Bienvenida de GESTLOK Chat'},
+    el('span', {class: 'bienvenida-icono', 'aria-hidden': true},
+      el('img', {src: '/chat/gestlok-mark.svg', alt: '', width: '28', height: '28'})),
+    el('p', {class: 'bienvenida-etiqueta', text: 'GESTLOK CHAT'}),
     el('h2', {class: 'bienvenida-titulo', text: '¡Hola! ¿En qué podemos ayudarte hoy?'})));
   bajar();
 }
