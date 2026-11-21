@@ -195,7 +195,7 @@ document.addEventListener('click',ev=>{
  });
  Promise.resolve(permiso).then(async value=>{
    if(value==='granted'){await registrarPush();b.textContent='Notificaciones activadas';}
-   else b.textContent='Sonido habilitado · Push sin permiso';
+   else b.textContent=soundReady?'Sonido activado · Push sin permiso':'Push sin permiso · Revisar sonido';
  }).catch(err=>{b.textContent='Sonido local · Revisar push';b.title=String(err?.message||'Error de notificaciones');});
 });
 
