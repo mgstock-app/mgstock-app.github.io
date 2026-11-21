@@ -1,0 +1,29 @@
+{
+  "repo": "mgstock-app/mgstock-app.github.io",
+  "real": { "ref": "vgsepaaewbctjsjcpeta" },
+  "pruebas": {
+    "ref": "irqeitzbfyerxcrogkyh",
+    "anon": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlycWVpdHpiZnllcnhjcm9na3loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyNzUzMzAsImV4cCI6MjExMDg1MTMzMH0.wm4Bqm4K3kpnkRQkPiZxXkjGdL-RZzSInguOfuHP7iM"
+  },
+  "entornos": {
+    "prueba": {
+      "nombre": "GESTLOK · Prueba",
+      "sitio": "https://gestlok-prueba.pages.dev",
+      "color": "#b45309",
+      "boton": "Enviar a testing",
+      "siguiente": "testing"
+    },
+    "testing": {
+      "nombre": "GESTLOK · Testing",
+      "sitio": "https://gestlok-testing.pages.dev",
+      "color": "#1d4ed8",
+      "boton": "Publicar en gestlok.com.ar",
+      "siguiente": "gestlok.com.ar"
+    }
+  },
+  "funciones": [
+    { "nombre": "gestlok-chat", "verify_jwt": false },
+    { "nombre": "gestlok-chat-push", "verify_jwt": false }
+  ],
+  "sucursales_prueba": ["mi-gusto-munro", "mi-gusto-torcuato"]
+}
