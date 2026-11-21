@@ -27,6 +27,16 @@ test('el mensaje pendiente nunca anuncia preparación aunque exista una plantill
  assert.match(textoEstadoPedido(p, {}, {recibido:'Ya lo estamos preparando'}), /pendiente de revisión y confirmación/);
  assert.match(textoEstadoPedido({...p,estado:'confirmado'}, {}, {}), /gerente confirmó/);
 });
+test('confirmación muestra demora configurada por entrega, nunca una promesa',()=>{
+ const retiro=textoEstadoPedido({estado:'confirmado',entrega:'retiro',nombre:'Ana'}, {demora_retiro:'15 a 20 minutos'}, {});
+ assert.match(retiro,/Tiempo estimado de retiro: 15 a 20 minutos/);
+ const envio=textoEstadoPedido({estado:'confirmado',entrega:'envio',nombre:'Ana'}, {demora_envio:'35 a 40 minutos'}, {});
+ assert.match(envio,/Tiempo estimado de envío: 35 a 40 minutos/);
+ assert.doesNotMatch(envio,/garantizado|prometemos|hora exacta/i);
+ const sinConfig=textoEstadoPedido({estado:'confirmado',entrega:'retiro'}, {}, {});
+ assert.doesNotMatch(sinConfig,/Tiempo estimado/);
+});
+
 test('función pública → pedido completo → gerente → estado del cliente', async () => {
  const {default: ts} = await import('typescript');
  const db = new PGlite({extensions:{pgcrypto}});
