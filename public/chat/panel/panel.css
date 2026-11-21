@@ -20,6 +20,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 
 .tope{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));background:var(--azul);color:#fff}
 .volver{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;color:#fff;font-size:30px;line-height:1;text-decoration:none}
+.tope-marca{width:29px;height:32px;object-fit:contain;flex:none;background:#f5f8fb;border-radius:7px;padding:2px}
 .tope-texto{flex:1;min-width:0}
 .tope h1{margin:0;font-size:16px;font-weight:750;letter-spacing:.01em}
 .tope p{margin:0;font-size:13px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -104,7 +105,10 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .charla{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;background:var(--papel);border:1px solid var(--linea);border-radius:12px;padding:10px 12px}
 .charla-cab{display:flex;gap:8px;align-items:center}
 .charla-ult{color:var(--gris);font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.hilo{display:flex;flex-direction:column;gap:6px}
+.hilo{display:flex;flex-direction:column;gap:6px;
+ background-color:#f3f5f8;
+ background-image:url('/chat/wallpaper-gestlok.svg');
+ background-position:center;background-size:cover;background-repeat:no-repeat}
 .msj{margin:0;padding:8px 10px;border-radius:12px;max-width:88%;white-space:pre-wrap;font-size:14.5px}
 .msj.cliente{align-self:flex-end;background:var(--azul);color:#fff}
 .msj.asistente,.msj.local{align-self:flex-start;background:var(--azul-suave)}
