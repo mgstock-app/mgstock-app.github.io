@@ -27,12 +27,15 @@ for (const entorno of ['prueba', 'testing']) {
       ingreso.indexOf('id="f"'),
       ingreso.indexOf('<script src="/vendor/supabase.js"></script>'),
       ingreso.indexOf('<script src="/chat/config.js"></script>'),
-      ingreso.indexOf('<script>(function(){var C=window.GESTLOK_CHAT_CONFIG'),
+      ingreso.indexOf('<script>(function(){var m=document.getElementById("m"),C=window.GESTLOK_CHAT_CONFIG'),
     ];
     assert.ok(indices.every(i => i >= 0), 'formulario y dependencias deben existir');
     assert.deepEqual(indices, [...indices].sort((a, b) => a - b),
       'formulario → Supabase → config → inicialización, en este orden');
     assert.ok(ingreso.indexOf('</head>') < indices[0], 'el formulario debe estar en el body');
+    assert.match(ingreso, /No se pudo iniciar el acceso de pruebas/);
+    assert.match(ingreso, /No se pudo conectar con la base de pruebas/);
+    assert.match(ingreso, /typeof window\.supabase\.createClient/);
   });
 }
 test('otras ramas no publican GESTLOK', () => {
