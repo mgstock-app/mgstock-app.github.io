@@ -56,3 +56,28 @@ test('panel del gerente conserva su interfaz de trabajo y adopta la identidad de
   assert.ok(manifest.icons.some(i=>i.src==='/chat/gestlok-monograma.svg' && i.type==='image/svg+xml'));
   assert.ok(manifest.icons.some(i=>i.sizes==='192x192'), 'mantener el respaldo PNG compatible');
 });
+
+test('el fondo y los bordes laterales se distinguen en escritorio sin afectar la vista móvil',()=>{
+  const css=read('public/chat/chat.css');
+  const wallpaper=read('public/chat/wallpaper-gestlok.svg');
+  const page=read('public/chat/index.html');
+  const panel=read('public/chat/panel/panel.css');
+  const panelPage=read('public/chat/panel/index.html');
+  const panelScript=read('public/chat/panel/panel.js');
+
+  assert.match(css, /html,body\{[^}]*background:#e7edf3/);
+  assert.match(css, /@media\(min-width:760px\)\{\s*\.app\{/);
+  assert.match(css, /border-left:2px solid #9eafc2/);
+  assert.match(css, /border-right:2px solid #9eafc2/);
+  assert.match(css, /box-shadow:-9px 0 22px/);
+  assert.match(css, /@media\(max-width:759px\)\{html,body\{background:#f3f5f8\}\}/);
+  assert.match(css, /background-color:#eaf0f6/);
+  assert.match(css, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
+  assert.match(panel, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
+  assert.match(page, /chat\.css\?v=20261121bordes1/);
+  assert.match(panelPage, /panel\.css\?v=20261121bordes1/);
+  assert.match(panelScript, /VERSION_CSS = '20261121bordes1'/);
+  assert.match(wallpaper, /stop-color="#cddce9"/);
+  assert.match(wallpaper, /stop-color="#dce6f0"/);
+  assert.doesNotMatch(wallpaper, /<script\b|<image\b|<foreignObject\b/);
+});
