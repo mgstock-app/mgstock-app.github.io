@@ -74,6 +74,9 @@ describe('GESTLOK Chat · compra rápida, búsqueda y GPS opcional', () => {
       .find('a').should('have.attr','href','https://www.google.com/maps?q=-34.501234,-58.612345');
     cy.get('#hoja textarea[name=nota]').should('have.attr','placeholder','Ej.: Portón negro, tocar timbre')
       .type('Portón negro');
+    // En delivery el efectivo viene primero: hay que indicar con cuánto abona o elegir pago justo.
+    cy.get('#hoja select[name=medio_pago]').should('have.value','efectivo');
+    cy.get('#hoja button').contains('Pago justo, sin cambio').click();
     cy.get('#hoja button[type=submit]').contains('Enviar pedido').click();
     cy.wait('@pedidoEnviar').then(r=>{
       const d=r.request.body.entrada.datos;
