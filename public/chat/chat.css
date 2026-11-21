@@ -682,3 +682,9 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
  .cabecera #btn-notificaciones,.cabecera #btn-info{width:38px;min-width:38px}
  .gchat-push-dialog{padding:18px}
 }
+
+/* El acceso para volver a comprar no queda apretado contra soporte o seguimiento. */
+.aviso-pedido{flex-wrap:wrap}
+.aviso-pedido>div:first-of-type{flex:1 1 175px;min-width:0}
+.aviso-pedido .nuevo-pedido{flex:1 1 100%;margin:5px 0 0}
+.aviso-pedido .seguimiento-etapas{flex:1 1 100%;min-width:0}
