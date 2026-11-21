@@ -21,6 +21,21 @@ for (const entorno of ['prueba', 'testing']) {
     assert.match(readFileSync(join(out, 'chat/index.html'), 'utf8'), /entorno\.js/);
     assert.match(readFileSync(join(out, 'entorno.js'), 'utf8'), new RegExp(cfg.entornos[entorno].boton));
     assert.ok(existsSync(join(out, 'ingresar/index.html')));
+    const ingreso = readFileSync(join(out, 'ingresar/index.html'), 'utf8');
+    // Un fallo previo ejecutaba signInWithPassword antes de cargar Supabase y config.
+    const indices = [
+      ingreso.indexOf('id="f"'),
+      ingreso.indexOf('<script src="/vendor/supabase.js"></script>'),
+      ingreso.indexOf('<script src="/chat/config.js"></script>'),
+      ingreso.indexOf('<script>(function(){var m=document.getElementById("m"),C=window.GESTLOK_CHAT_CONFIG'),
+    ];
+    assert.ok(indices.every(i => i >= 0), 'formulario y dependencias deben existir');
+    assert.deepEqual(indices, [...indices].sort((a, b) => a - b),
+      'formulario → Supabase → config → inicialización, en este orden');
+    assert.ok(ingreso.indexOf('</head>') < indices[0], 'el formulario debe estar en el body');
+    assert.match(ingreso, /No se pudo iniciar el acceso de pruebas/);
+    assert.match(ingreso, /No se pudo conectar con la base de pruebas/);
+    assert.match(ingreso, /typeof window\.supabase\.createClient/);
   });
 }
 test('otras ramas no publican GESTLOK', () => {
@@ -49,4 +64,15 @@ test('base de pruebas: docs no queda expuesto por el Data API', () => {
   assert.match(schema,/alter table public\.docs enable row level security/i);
   assert.match(schema,/revoke all on table public\.docs from anon, authenticated/i);
   assert.match(schema,/grant select, insert, update, delete on table public\.docs to service_role/i);
+});
+
+test('Prueba: catálogo ficticio reproducible y restringido a base aislada', () => {
+  const indice = readFileSync('entornos/sql.txt', 'utf8');
+  const menu = readFileSync('entornos/sql/catalogo-demo.sql', 'utf8');
+  assert.match(indice, /entornos\/sql\/semilla\.sql\n(?:[^\n]*\n)*entornos\/sql\/catalogo-demo\.sql/);
+  assert.match(menu, /to_regclass\('entorno_control\.sql_aplicado'\)/);
+  assert.match(menu, /MIGUSTO-PRUEBA/);
+  assert.match(menu, /Pack DEMO/);
+  assert.match(menu, /on conflict \(sucursal_id,nombre\) do nothing/);
+  assert.doesNotMatch(menu, new RegExp(cfg.real.ref), 'ningún identificador de producción');
 });
