@@ -125,7 +125,7 @@ writeFileSync(join(salida, 'dividida/index.html'), '<!doctype html><html lang="e
   'header a{background:#fff;color:#16202c;text-decoration:none}.etiqueta{font-weight:600;font-size:13px;padding:6px 10px;background:#fff;border-bottom:1px solid #d5dbe3}' +
   'main{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:10px;padding:10px;height:calc(100% - 52px);box-sizing:border-box}' +
   'section{display:flex;flex-direction:column;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12)}' +
-  'iframe{flex:1;width:100%;border:0}@media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:80vh 90vh;height:auto}}' +
+  'iframe{flex:1;width:100%;border:0}' +
   '</style><script src="/entorno.js" defer></script></head><body>' +
   '<header><b>' + esc(ent.nombre) + ' · Cliente y gerente</b><label>Local <select id="local">' +
   LOCALES.map(([s, n]) => '<option value="' + s + '">' + esc(n) + '</option>').join('') + '</select></label>' +
