@@ -7,7 +7,7 @@ describe('GESTLOK Chat · chat público', () => {
   it('toma un pedido completo en el celular (demostración)', () => {
     cy.viewport(390, 800);
     cy.visit('/chat/?demo=1');
-    cy.get('.burbuja.asistente').should('contain.text', 'Comercio Sucursal Centro'); // el trato formal muestra «Su Comercio»
+    cy.get('.chat-bienvenida').should('contain.text', '¡Hola! ¿En qué podemos ayudarte hoy?').and('contain.text', 'Tu Comercio');
     cy.get('#texto').type('2 empanadas de carne y 1 de jamón y queso{enter}');
     cy.get('.burbuja.asistente').last().should('contain.text', '2 × Empanada de carne').and('contain.text', '1 × Empanada de jamón y queso');
     cy.get('#barra-texto').should('contain.text', '3 productos');
