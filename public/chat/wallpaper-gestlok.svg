@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-hidden="true">
+  <!-- Patrón original de iconos discretos para cualquier empresa en GESTLOK Chat. -->
+  <rect width="240" height="240" fill="#f7fafd"/>
+  <g fill="none" stroke="#8daec5" stroke-opacity=".25" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 25h29a10 10 0 0 1 10 10v12a10 10 0 0 1-10 10H41l-12 8v-8a10 10 0 0 1-10-10V35a10 10 0 0 1 5-10z"/>
+    <path d="M32 39h20M32 46h12"/>
+    <path d="M165 20l3 9 9 3-9 3-3 9-3-9-9-3 9-3z"/>
+    <path d="M197 74a15 15 0 1 1-30 0 15 15 0 0 1 30 0z"/>
+    <path d="m174 74 5 5 10-11"/>
+    <path d="M83 104h36a9 9 0 0 1 9 9v14a9 9 0 0 1-9 9h-20l-9 7v-7a9 9 0 0 1-7-9v-14a9 9 0 0 1 9-9z"/>
+    <circle cx="97" cy="120" r="1.4"/><circle cx="105" cy="120" r="1.4"/><circle cx="113" cy="120" r="1.4"/>
+    <path d="M17 173h28a8 8 0 0 1 8 8v17a8 8 0 0 1-8 8H27l-9 7v-7a8 8 0 0 1-8-8v-17a8 8 0 0 1 7-8z"/>
+    <path d="m23 190 6 6 12-13"/>
+    <path d="M175 164h32a9 9 0 0 1 9 9v20a9 9 0 0 1-9 9h-32a9 9 0 0 1-9-9v-20a9 9 0 0 1 9-9z"/>
+    <path d="M175 177h32M176 186h18"/>
+    <path d="m139 215 3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/>
+    <path d="M75 12c5 3 10 3 15 0"/>
+    <path d="M215 123c-3 5-3 10 0 15"/>
+    <path d="M117 192a8 8 0 0 0 11 0"/>
+  </g>
+</svg>
