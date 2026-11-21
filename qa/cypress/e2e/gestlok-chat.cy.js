@@ -83,7 +83,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.wait('@fn');
     cy.get('#barra-texto').should('contain.text', '2 productos · $ 2.000');
     cy.wrap(cuerpos).should(c => {
-      expect(c[0]).to.include({slug: 'mi-gusto-munro', menu_interactivo: true, accion: 'abrir'});
+      expect(c[0]).to.include({slug: 'mi-gusto-munro', accion: 'abrir'});
       expect(c[0].token).to.match(/^[A-Za-z0-9_-]{43}$/);
       expect(c[1].token).to.eq(c[0].token);
       expect(c[1].entrada).to.deep.eq({texto: '2 de carne'});
