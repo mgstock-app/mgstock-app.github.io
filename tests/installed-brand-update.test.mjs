@@ -30,7 +30,9 @@ test("GestLok es el nombre de Android e iOS y los iconos tienen URLs versionadas
   for(const s of ["192x192","512x512"])assert.ok(sizes.includes(s));
 });
 test("La PWA verifica actualizaciones al abrirla y al regresar, sin forzar recargas",()=>{
-  assert.match(app,/serviceWorker\.register\('sw\.js', \{updateViaCache:'none'\}\)/);
+  assert.match(app,/serviceWorker\.register\(/);
+  assert.match(app,/location\.pathname\) \? '\.\.\/sw\.js' : 'sw\.js'/);
+  assert.match(app,/updateViaCache:'none'/);
   assert.match(app,/reg\.update\(\)\.catch/);
   assert.match(app,/document\.addEventListener\('visibilitychange', refresh\)/);
   assert.match(app,/window\.addEventListener\('online', refresh\)/);
