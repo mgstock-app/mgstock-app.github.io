@@ -43,3 +43,16 @@ test('navegadores cargan nueva marca sin alterar pedidos ni acceso a WhatsApp',(
   assert.match(css, /right:max\(12px,calc\(\(100vw - 720px\)\/2 \+ 12px\)\)/);
   assert.match(script, /'https:\/\/wa\.me\/' \+ telefono/);
 });
+
+test('panel del gerente conserva su interfaz de trabajo y adopta la identidad de GESTLOK Chat',()=>{
+  const panel=read('public/chat/panel/panel.js');
+  const styles=read('public/chat/panel/panel.css');
+  const page=read('public/chat/panel/index.html');
+  const manifest=JSON.parse(read('public/chat/manifest.webmanifest'));
+  assert.match(panel, /class: 'tope-marca', src: '\/chat\/gestlok-monograma\.svg'/);
+  assert.match(styles, /\.hilo\{[\s\S]*?background-image:url\('\/chat\/wallpaper-gestlok\.svg'\)/);
+  assert.match(styles, /\.embebido \.tope-marca\{display:none\}/);
+  assert.match(page, /chat\/gestlok-monograma\.svg/);
+  assert.ok(manifest.icons.some(i=>i.src==='/chat/gestlok-monograma.svg' && i.type==='image/svg+xml'));
+  assert.ok(manifest.icons.some(i=>i.sizes==='192x192'), 'mantener el respaldo PNG compatible');
+});
