@@ -404,6 +404,9 @@ function mostrarPedido(p) {
   const envio = p.entrega === 'envio';
   const [t, sub] = p.estado === 'terminado' && envio ? ['¡Pedido en camino!', ''] : (TEXTO_ESTADO[p.estado] || [p.estado, '']);
   const resena = p.estado === 'terminado' ? urlResena(p.resena?.url) : '';
+  const promoConfirmada = p.estado !== 'cancelado' && p.estado !== 'rechazado' &&
+    Array.isArray(p.items) && p.items.some(item=>
+      (producto(item.producto_id)?.opciones || []).some(esCantidad));
   const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
   const pasoSeguimiento = p.estado === 'pendiente' ? 0 : p.estado === 'confirmado' ? 1 : p.estado === 'terminado' ? 2 : -1;
   const etiqueta = p.recibido_at ? 'Pedido recibido por el cliente' : programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
@@ -411,7 +414,9 @@ function mostrarPedido(p) {
   caja.className = 'aviso-pedido ' + p.estado;
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
     el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
-      : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
+      : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total),
+      promoConfirmada ? el('span',{class:'promo-elegida-etiqueta promo-estado-pedido',
+        text:'✓ Promoción incluida en tu pedido'}) : null),
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar pedido', onclick: abrirConfirmacionCancelar}) : null,
     p.estado === 'cancelado' ? el('div', {class:'pedido-recuperar'},
       recuperarUltimoPedido().length ? el('button',{type:'button',class:'boton',text:'Retomar pedido',onclick:repetirUltimoPedido}) : null,
