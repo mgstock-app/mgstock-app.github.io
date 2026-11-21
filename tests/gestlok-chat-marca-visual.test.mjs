@@ -66,11 +66,11 @@ test('el fondo y los bordes laterales se distinguen en escritorio sin afectar la
   const panelScript=read('public/chat/panel/panel.js');
 
   assert.match(css, /html,body\{[^}]*background:#e7edf3/);
-  assert.match(css, /@media\(min-width:760px\)\{\s*\.app\{/);
+  assert.match(css, /@media\(min-width:620px\)\{\s*\.app\{/);
   assert.match(css, /border-left:2px solid #9eafc2/);
   assert.match(css, /border-right:2px solid #9eafc2/);
   assert.match(css, /box-shadow:-9px 0 22px/);
-  assert.match(css, /@media\(max-width:759px\)\{html,body\{background:#f3f5f8\}\}/);
+  assert.match(css, /@media\(max-width:619px\)\{html,body\{background:#f3f5f8\}\}/);
   assert.match(css, /background-color:#eaf0f6/);
   assert.match(css, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
   assert.match(panel, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
