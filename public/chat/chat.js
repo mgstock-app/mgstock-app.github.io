@@ -76,7 +76,7 @@ function guardarDatos() {
 function restaurarDatos() {
   const d = recuperarLocal(CLAVE_DATOS);
   if (d && typeof d==='object' && !Array.isArray(d)) {
-    for (const campo of ['nombre','telefono','direccion','entrega','medio_pago','efectivo_abona','horario','nota'])
+    for (const campo of ['nombre','telefono','direccion','entre_calles','entrega','medio_pago','efectivo_abona','horario','nota'])
       if (typeof d[campo]==='string') S.datos[campo]=d[campo].slice(0,500);
   }
 }
@@ -222,8 +222,10 @@ function chips(botones) {
   const ordenados = [...ordenarBotones(botones)].sort((a, b) => Number(principal(b)) - Number(principal(a)));
   lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
     type: 'button',
-    class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : ''),
-    text: principal(b) ? 'Hacer un pedido' : b.id === 'finalizar' ? 'Enviar pedido' : b.texto,
+    class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : '') +
+      (b.id === 'finalizar' && /^No, gracias/i.test(b.texto || '') ? ' chip-omitir-envio' : ''),
+    text: principal(b) ? 'Hacer un pedido' : b.id === 'finalizar'
+      ? (/^No, gracias/i.test(b.texto || '') ? 'No, gracias, enviar' : 'Enviar pedido') : b.texto,
     onclick: () => tocarBoton(b)
   }))));
   bajar();
@@ -500,13 +502,17 @@ function abrirCarta() {
   const posCat = new Map(cats.map((c, i) => [c.id, i]));
   const cuerpo = el('div', {class: 'menu-interactivo'});
   let aviso = '';
+  let filtroCarta = '';
+  const sinAcentos = texto => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
   // El menú sigue abierto al agregar, quitar o personalizar productos.
   // Se preserva la posición para que el cliente no pierda el producto que estaba mirando.
   const pintar = (mantenerPosicion = false) => {
     const scroll = mantenerPosicion ? $('hoja-cuerpo').scrollTop : 0;
     const tabsScroll = cuerpo.querySelector('.categorias')?.scrollLeft || 0;
-    const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria))
+    const prods = S.catalogo.productos.filter(p => p.activo !== false &&
+      (!S.categoria || p.categoria_id === S.categoria) &&
+      (!filtroCarta || sinAcentos(p.nombre + ' ' + (p.descripcion || '')).includes(sinAcentos(filtroCarta))))
       .sort((a, b) => (posCat.get(a.categoria_id) ?? 999) - (posCat.get(b.categoria_id) ?? 999) || ordenProducto(a, b));
     const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
     const mostrarError = texto => { aviso = texto; pintar(true); };
@@ -536,6 +542,8 @@ function abrirCarta() {
       const opcionales = (p.opciones || []).filter(g => !esCantidad(g) && !g.obligatorio);
       const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > opcionales.length;
       const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
+      const cantidadConfirmada = S.carrito.filter(l => l.producto_id === p.id).reduce((n,l)=>n+l.cantidad,0);
+      const promoElegida = (p.opciones || []).some(esCantidad) && cantidad + cantidadConfirmada > 0;
       const simple = lineaSimple(p);
       const detalle = el('div', {class: 'menu-producto-detalle', hidden: true});
       let posicionLista = 0;
@@ -571,6 +579,7 @@ function abrirCarta() {
         onclick: requiereOpciones ? undefined : mostrarDetalle,
         'aria-label': requiereOpciones ? undefined : 'Personalizar ' + p.nombre},
         el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
+          promoElegida ? el('small', {class: 'promo-elegida-etiqueta', text: '✓ Promoción seleccionada'}) : null,
           p.descripcion ? el('small', {text: p.descripcion}) : null,
           !requiereOpciones && disponible && opcionales.length ? el('small', {class: 'menu-adicional',
             text: 'Opcional: ' + opcionales.flatMap(g => g.valores || []).slice(0, 3)
@@ -586,18 +595,34 @@ function abrirCarta() {
         el('button', {type: 'button', class: 'menu-paso menu-paso-mas' + (requiereOpciones ? ' menu-paso-elegir' : ''),
           'aria-label': requiereOpciones ? 'Elegir opciones de ' + p.nombre : 'Sumar una unidad de ' + p.nombre,
           text: requiereOpciones ? 'Elegir' : '+', onclick: () => requiereOpciones ? mostrarDetalle() : cambiarSimple(p, 1)}));
-      return el('li', {class: 'menu-fila'},
+      return el('li', {class: 'menu-fila' + (promoElegida ? ' menu-fila-promo-elegida' : '')},
         el('div', {class: 'menu-fila-principal'}, botonProducto, controles),
         detalle);
     };
+    const busquedaCarta = el('input', {type:'search', class:'menu-filtro-carta',
+      'aria-label':'Buscar productos o promociones', placeholder:'Buscar productos o promociones…'});
+    busquedaCarta.value = filtroCarta;
+    busquedaCarta.addEventListener('input', () => {
+      filtroCarta = busquedaCarta.value;
+      // No reconstruir el input: conserva teclado, foco y selección mientras filtra.
+      cuerpo.querySelectorAll('.menu-fila').forEach(fila => {
+        const hay = sinAcentos(fila.querySelector('.producto-texto strong')?.textContent).includes(sinAcentos(filtroCarta));
+        fila.hidden = !hay;
+      });
+      const visibles = [...cuerpo.querySelectorAll('.menu-fila')].filter(f=>!f.hidden).length;
+      const avisoVacio = cuerpo.querySelector('.menu-filtro-vacio');
+      if(avisoVacio) avisoVacio.hidden = visibles !== 0;
+    });
     poner(cuerpo,
+      el('div',{class:'menu-filtro-carta-contenedor'},busquedaCarta),
       cats.length > 1 ? el('div', {class: 'categorias', role: 'toolbar', 'aria-label': 'Categorías'},
         [{id: '', nombre: 'Todo'}, ...cats].map(c => el('button', {type: 'button', class: 'chip', text: c.nombre,
           'aria-pressed': String(S.categoria === c.id),
           onclick: () => { S.categoria = c.id; aviso = ''; pintar(); }}))) : null,
       aviso ? el('p', {class: 'error-form menu-aviso', role: 'alert', text: aviso}) : null,
       prods.length ? el('ul', {class: 'lista'}, prods.map(filaProducto))
-        : el('p', {class: 'nota', text: 'Todavía no hay productos cargados.'}),
+        : el('p', {class: 'nota', text: filtroCarta ? 'No encontramos resultados.' : 'Todavía no hay productos cargados.'}),
+      prods.length ? el('p', {class:'nota menu-filtro-vacio', text:'No encontramos productos con ese nombre.', hidden:true}) : null,
       el('div', {class: 'menu-pie'},
         el('div', {class: 'menu-pie-texto', 'aria-live': 'polite', text: S.borrador.length
           ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
@@ -697,10 +722,25 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       });
       return fila;
     });
+    const buscador = el('input', {type:'search', class:'menu-filtro-variedades',
+      'aria-label':'Buscar ' + g.nombre.toLowerCase(), placeholder:'Buscar ' + g.nombre.toLowerCase() + '…'});
+    const sinResultados = el('p',{class:'nota menu-sin-resultados',text:'No hay coincidencias.',hidden:true});
+    buscador.addEventListener('input',()=>{
+      const q=buscador.value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+      let encontradas=0;
+      for(const fila of filas){
+        const nombre=fila.querySelector('.menu-variedad-texto strong')?.textContent || '';
+        fila.hidden=!nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q);
+        if(!fila.hidden) encontradas++;
+      }
+      sinResultados.hidden=encontradas>0;
+    });
     return el('fieldset', {class: 'grupo grupo-cantidad menu-grupo-lista'},
       el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}), resumen),
+      filas.length ? el('label',{class:'menu-busqueda-variedades'},el('span',{text:'Buscar variedad'}),buscador) : null,
       filas.length ? el('div', {class: 'grupo-opciones'}, filas)
-        : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
+        : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}),
+      filas.length ? sinResultados : null);
   };
   const etiquetaGrupo = g => {
     const e = el('small', {class: 'grupo-estado'});
@@ -773,7 +813,9 @@ function abrirSeleccion() {
     el('ul', {class: 'seleccion-lista'}, S.borrador.map((l, i) => {
       const nombre = producto(l.producto_id)?.nombre || 'Producto que ya no está en el menú';
       const detalles = detallesLinea(S.catalogo, l);
-      return el('li', {class: 'seleccion-linea'},
+      const esLineaPromo = (producto(l.producto_id)?.opciones || []).some(esCantidad);
+      return el('li', {class: 'seleccion-linea' + (esLineaPromo ? ' seleccion-linea-promo' : '')},
+        esLineaPromo ? el('span', {class:'promo-elegida-etiqueta',text:'✓ Promoción seleccionada'}) : null,
         el('strong', {class: 'seleccion-nombre', text: l.cantidad + ' × ' + nombre}),
         el('span', {class: 'precio', text: pesos(totalCarrito(S.catalogo, [l]))}),
         detalles.length || l.nota ? el('div', {class: 'seleccion-detalle'},
