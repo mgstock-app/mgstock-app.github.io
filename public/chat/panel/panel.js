@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261120bienvenida1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261121pizzas1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -477,7 +477,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261120bienvenida1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261121pizzas1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).

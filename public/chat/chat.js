@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121pizzas1';
+import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121pizzas1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -220,6 +220,10 @@ async function enviar(entrada, textoVisible) {
       if (r.status === 409 && /cerrad|finalizad/i.test(r.error||'')) {mostrarCierre();return false;}
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return false;
     }
+    if (r.catalogo && r.sucursal) {
+      S.catalogo = r.catalogo; S.sucursal = {...r.sucursal, atencion: r.atencion || r.sucursal.atencion};
+      S.borrador = S.borrador.filter(l => producto(l.producto_id)); guardarBorrador();
+    }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
     // Solo borrar el borrador si el servidor ACEPTÓ el lote; un error de catálogo o
     // de validación puede devolver HTTP 200 con un mensaje, pero sin incorporar productos.
@@ -436,7 +440,10 @@ function abrirCarta() {
     };
     const filaProducto = p => {
       const disponible = p.disponible !== false;
-      const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > 0;
+      // Solo adicionales opcionales (ej. pizzas con «Jamón adicional»): se suman con + y −, como las empanadas.
+      // Tocando el nombre se agrega con adicional. Lo obligatorio (promos, tamaños) sigue con «Elegir».
+      const opcionales = (p.opciones || []).filter(g => !esCantidad(g) && !g.obligatorio);
+      const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > opcionales.length;
       const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
       const simple = lineaSimple(p);
       const detalle = el('div', {class: 'menu-producto-detalle', hidden: true});
@@ -473,12 +480,16 @@ function abrirCarta() {
         onclick: requiereOpciones ? undefined : mostrarDetalle,
         'aria-label': requiereOpciones ? undefined : 'Personalizar ' + p.nombre},
         el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
-          p.descripcion ? el('small', {text: p.descripcion}) : null),
+          p.descripcion ? el('small', {text: p.descripcion}) : null,
+          !requiereOpciones && disponible && opcionales.length ? el('small', {class: 'menu-adicional',
+            text: 'Opcional: ' + opcionales.flatMap(g => g.valores || []).slice(0, 3)
+              .map(v => v.nombre + (Number(v.extra) ? '\u00a0+\u00a0' + pesos(v.extra).replace(' ', '\u00a0') : '')).join(', ') + ' · toque el nombre'}) : null),
         disponible ? el('span', {class: 'precio', text: pesos(p.precio)}) :
           el('span', {class: 'agotado', text: 'Agotado'}));
       const controles = !disponible ? null : el('div', {class: 'menu-pasos'},
-        !requiereOpciones && simple ? el('button', {type: 'button', class: 'menu-paso',
-          'aria-label': 'Quitar una unidad de ' + p.nombre, text: '−', onclick: () => cambiarSimple(p, -1)}) : null,
+        !requiereOpciones && simple ? el('button', {type: 'button', class: 'menu-paso' + (simple.cantidad === 1 ? ' menu-paso-tacho' : ''),
+          'aria-label': 'Quitar una unidad de ' + p.nombre, text: simple.cantidad === 1 ? undefined : '−',
+          onclick: () => cambiarSimple(p, -1)}, simple.cantidad === 1 ? iconoTacho() : null) : null,
         cantidad ? el('output', {class: 'menu-n', 'aria-label': p.nombre + ': ' + cantidad + ' seleccionados',
           text: String(cantidad)}) : null,
         el('button', {type: 'button', class: 'menu-paso menu-paso-mas' + (requiereOpciones ? ' menu-paso-elegir' : ''),
@@ -1055,9 +1066,11 @@ const DEMO_DATOS = {
 let demoEstado = null; let demoPedido = null;
 async function demoApi(accion, extra) {
   await new Promise(r => setTimeout(r, 250));
-  const base = {sucursal: DEMO_DATOS.sucursal, catalogo: DEMO_DATOS.catalogo};
+  const ahoraDemo = params.get('ahora') && !Number.isNaN(Date.parse(params.get('ahora'))) ? new Date(params.get('ahora')) : new Date();
+  const base = carteleraDelDia(DEMO_DATOS.sucursal, DEMO_DATOS.catalogo, ahoraDemo);
+  delete base.clave;
   if (accion === 'abrir') {
-    const r = responder({...base, estado: null, entrada: {inicio: true}});
+    const r = responder({...base, estado: null, entrada: {inicio: true}, ahora: ahoraDemo});
     demoEstado = r.estado;
     const guardado = SHOWROOM?.read();
     if(guardado?.order) demoPedido = {...guardado.order, aviso: textoEstadoPedido(guardado.order, DEMO_DATOS.sucursal, {})};

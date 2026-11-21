@@ -481,3 +481,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .menu-form-combo .menu-combo-acciones{width:min(1080px,100%)}
   .menu-form-combo .menu-grupo-lista .grupo-opciones{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px}
 }
+
+/* Pizzas y productos con adicionales opcionales: + y − directos en la lista; el adicional, tocando el nombre. */
+.menu-fila .producto-texto small.menu-adicional{color:var(--acento-osc);font-weight:600}
+.menu-paso-tacho .icono-tacho{display:block}

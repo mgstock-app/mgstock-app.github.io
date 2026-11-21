@@ -14,7 +14,7 @@
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { carteleraDelDia, cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
 import { bienvenidaIA, responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
@@ -174,7 +174,9 @@ Deno.serve(async (req) => {
   try {
     const suc = await rpc("gestlok_chat_srv_sucursal", { p_slug: slug });
     if (!suc.ok) return json({ ok: false, motivo: suc.motivo, sucursal: suc.sucursal ?? null }, suc.motivo === "pausado" ? 200 : 404, origen);
-    const sucursal = suc.sucursal as Json; const catalogo = suc.catalogo as Json; const sucId = suc.id as string;
+    // Cartelera del momento (ej. Jueves On Fire de Mi Gusto): carta y medios de pago que rigen ahora.
+    const cartelera = carteleraDelDia(suc.sucursal, suc.catalogo, new Date()) as { sucursal: Json; catalogo: Json; clave: string };
+    const sucursal = cartelera.sucursal; const catalogo = cartelera.catalogo; const sucId = suc.id as string;
     const privado = (suc.privado as Json) || {};
     const mensajesLocal = (privado.mensajes as Json) || {};
     // Cada pedido lleva el texto que corresponde a su estado, con los mensajes que configuró el local.
@@ -240,7 +242,7 @@ Deno.serve(async (req) => {
       let extra: Json[] = [];
       if (conv.nueva) {
         const r = responder({ sucursal, catalogo, estado, entrada: { inicio: true }, mensajes: mensajesLocal });
-        estado = r.estado; extra = r.mensajes;
+        estado = { ...r.estado, cartelera: cartelera.clave }; extra = r.mensajes;
         // La bienvenida la escribe la IA (si está activa y con clave). Botones, carrito, carta y avisos siguen
         // siendo del sistema. Si la IA tarda, falla o responde algo dudoso, queda la bienvenida guiada.
         if (privado.ia_activa !== false && IA.clave && extra.length) {
@@ -382,6 +384,8 @@ Deno.serve(async (req) => {
       : entrada.datos ? "Envié mis datos para el pedido"
       : "Quitar un producto");
 
+    const cambioCartelera = String((conv.estado as Json)?.cartelera || "normal") !== cartelera.clave;
+    r.estado.cartelera = cartelera.clave;
     if (r.accion?.tipo === "crear_pedido") {
       // La ficha se registra en la misma transacción que acepta el pedido.
       const pedidoNuevo: Json = {...(r.accion.pedido as Json)};
@@ -416,6 +420,7 @@ Deno.serve(async (req) => {
       if (!pedido || r.accion?.tipo !== "crear_pedido") throw e;
     }
     return json({ ok: true, mensajes:mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
+      ...(cambioCartelera ? { sucursal, catalogo } : {}),
       atencion:sucursal.atencion, carrito: r.estado.carrito, total: totalCarrito(catalogo, r.estado.carrito), pedido,
       lote_aceptado: !!entrada.agregar_varios && r.estado.ultimo_lote === entrada.lote_id,
       motor: r.motor === "ia" ? "ia" : "guiado" }, 200, origen);

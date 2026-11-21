@@ -101,6 +101,19 @@ promociones», «Horario y envío», «Medios de pago» o «Ayuda con mi pedido�
 interactivo y promos vigentes). Con la IA activa, la IA escribe el saludo y el sistema agrega la guía debajo (la IA no
 nombra botones, para que nunca invente uno). La bienvenida del dueño no necesita mencionar los botones.
 
+**Pizzas, promos para compartir y Jueves On Fire (21/11/2026, Mi Gusto Munro y Torcuato).**
+- Menú interactivo: los productos que solo tienen adicionales opcionales (las pizzas con «Jamón adicional») se suman
+  con **+** y **−** como las empanadas (tacho con 1 unidad). Tocando el nombre se agrega con adicional.
+- «Promociones para compartir» (categoría con «compartir»): Promo Pareja ($32.900, pizza grande ½ Muzzarella + ½ Jamón y
+  morrón + 2 empanadas) y Promo Clásica ($46.900, Muzzarella grande + 6 empanadas + 2 salsas). Se eligen las empanadas
+  y salsas con el mismo selector de promos. No se ofrecen por empanadas sueltas; sí cuando el cliente pide promo con
+  pizza. Carga: `supabase/operaciones/mi-gusto-chat-compartir-on-fire-20261121.sql`.
+- **Jueves On Fire** (`carteleraDelDia` en motor.js; la función la aplica antes de responder): el último jueves de cada
+  mes desde las 18:00 (Argentina) y por ese turno se ofrece **solo** «Jueves On Fire · 12 empanadas + 3 salsas»
+  ($39.500); el Pack 12 de $52.900 y el resto de la carta no aparecen, el saludo lo anuncia y el pago es **solo en
+  efectivo** (retiro y delivery; el envío se cobra aparte). El resto del mes la promo On Fire no aparece. Si un carrito
+  tenía otros productos cuando empieza, se quitan y se avisa. Pasado el cierre del turno vuelve la carta normal.
+
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
 Pregunta cuando hay dudas y pide las opciones obligatorias. **Nunca** fija precios ni confirma: la base recalcula todo

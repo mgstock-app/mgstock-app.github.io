@@ -202,16 +202,73 @@ export function promocionesVigentes(catalogo) {
     (p.opciones || []).every(g => !esCantidad(g) || valoresDisponibles(catalogo, g).length > 0));
 }
 
-function promocionesParaTexto(promos, texto) {
+/* Promos «para compartir» (categoría con «compartir», ej. pizza + empanadas): llevan productos fijos además de las
+ * unidades a elección, así que no se ofrecen para empanadas sueltas; sí cuando el cliente menciona pizza. */
+export function promoParaCompartir(catalogo, p) {
+  const c = (catalogo?.categorias || []).find(x => x.id === p?.categoria_id);
+  return /\bcompartir\b/.test(normalizar(c?.nombre || ''));
+}
+
+/* ------------------------------------------------------------------ Jueves On Fire (solo Mi Gusto, ambos locales)
+ * El último jueves de cada mes, desde las 18:00 (hora de Argentina) y por ese turno, se ofrece EXCLUSIVAMENTE la
+ * promo «Jueves On Fire» (12 empanadas + 3 salsas a elección): el resto de la carta (incluido el Pack 12 de precio
+ * normal) no se ofrece y el pago es solo en efectivo. El resto del mes la promo On Fire no aparece.
+ * La función del servidor aplica esta cartelera ANTES de responder: la base valida y cobra sobre ella. */
+const TZ_AR = 'America/Argentina/Buenos_Aires';
+const RE_ON_FIRE = /\bjueves on fire\b/;
+function horaAR(ahora) {
+  const f = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {timeZone: TZ_AR, year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', weekday: 'short', hourCycle: 'h23'}).formatToParts(ahora).map(x => [x.type, x.value]));
+  return {anio: Number(f.year), mes: Number(f.month), dia: Number(f.day), hora: Number(f.hour), semana: f.weekday,
+    fecha: f.year + '-' + f.month + '-' + f.day};
+}
+/** ¿Es el último jueves del mes, a partir de las 18:00 de Argentina? */
+export function esNocheOnFire(ahora = new Date()) {
+  const a = horaAR(ahora);
+  if (a.semana !== 'Thu' || a.hora < 18) return false;
+  return a.dia + 7 > new Date(Date.UTC(a.anio, a.mes, 0)).getUTCDate();
+}
+export const esPromoOnFire = p => RE_ON_FIRE.test(normalizar(p?.nombre));
+/** Carta y medios de pago que rigen ahora. Devuelve {sucursal, catalogo, clave}. */
+export function carteleraDelDia(sucursal, catalogo, ahora = new Date()) {
+  const base = {sucursal, catalogo, clave: 'normal'};
+  const onFire = usaMenuInteractivo(sucursal) ? (catalogo?.productos || []).filter(esPromoOnFire) : [];
+  if (!onFire.length) return base;
+  const at = sucursal?.atencion;
+  // Pasado el cierre de ese turno (próxima apertura otro día) vuelve la carta normal para pedidos programados.
+  const otroDia = at?.habilitado && at.abierto === false && at.proxima_apertura &&
+    horaAR(new Date(at.proxima_apertura)).fecha !== horaAR(ahora).fecha;
+  const vigentes = esNocheOnFire(ahora) && !otroDia
+    ? onFire.filter(p => p.activo !== false && p.disponible !== false) : [];
+  if (!vigentes.length) return {...base, catalogo: {...catalogo, productos: catalogo.productos.filter(p => !esPromoOnFire(p))}};
+  // Solo la promo On Fire: sus variedades agotadas ya quedan afuera y dejan de apuntar a productos que no se muestran.
+  const productos = vigentes.map(p => ({...p, opciones: (p.opciones || []).map(g => esCantidad(g)
+    ? {...g, valores: valoresDisponibles(catalogo, g).map(({producto_id, ...v}) => v)} : g)}));
+  const cats = new Set(productos.map(p => p.categoria_id));
+  const promo = productos[0];
+  const efectivo = ['efectivo'];
+  return {
+    sucursal: {...sucursal, medios_pago: efectivo, medios_pago_retiro: efectivo, medios_pago_envio: efectivo,
+      especial: {id: 'jueves_on_fire', texto: '🔥 Hoy es Jueves On Fire: ' + promo.nombre.replace(/^jueves on fire\s*[·:-]?\s*/i, '') +
+        ' a ' + pesos(promo.precio) + ', empanadas y salsas a elección. ' +
+        (sucursal?.acepta_envio ? 'Envío a domicilio con costo adicional. ' : '') + 'Pago solo en efectivo.'}},
+    catalogo: {...catalogo, categorias: (catalogo.categorias || []).filter(c => cats.has(c.id)), productos},
+    clave: 'onfire:' + horaAR(ahora).fecha,
+  };
+}
+
+function promocionesParaTexto(promos, texto, catalogo) {
   const n = normalizar(texto);
   const pidePromo = /\b(promocion\w*|promos?|combos?|packs?|ofertas?)\b/.test(n);
   const mencionaEmpanadas = /\b(empanadas?|docenas?)\b/.test(n);
   if (!pidePromo && !mencionaEmpanadas) return null;
+  const compartir = promos.filter(p => promoParaCompartir(catalogo, p));
+  if (compartir.length && /\b(pizzas?|muzzas?|muzzarella|mozzarella|compartir)\b/.test(n)) return compartir;
   const cantidadExplicita = /\b(\d+|media|docenas?)\b/.test(n) || palabras(n).some(p => NUMEROS[p] > 1);
   if (!cantidadExplicita) return pidePromo ? promos : null;
   const cantidad = cantidadDe(n);
   const conBebida = /\b(lata|bebida|gaseosa)\b/.test(n) && !/\bsin (lata|bebida|gaseosa)\b/.test(n);
-  const candidatos = promos.filter(p => (p.opciones || []).some(g => esCantidad(g) &&
+  const candidatos = promos.filter(p => !promoParaCompartir(catalogo, p) && (p.opciones || []).some(g => esCantidad(g) &&
     /empanad/i.test(g.nombre) && Number(g.total) === cantidad) &&
     (!conBebida || (p.opciones || []).some(g => /bebida|lata/i.test(g.nombre))));
   return pidePromo || candidatos.length ? candidatos : null;
@@ -246,7 +303,8 @@ export function candidatoPromo(catalogo, carrito, promoId) {
 }
 /** Promos para ofrecer: las del mismo tamaño que lo elegido; si no hay, la más cercana para arriba (máximo 3). */
 export function promosParaCarrito(catalogo, carrito) {
-  const cands = promocionesVigentes(catalogo).map(p => candidatoPromo(catalogo, carrito, p.id)).filter(Boolean);
+  const cands = promocionesVigentes(catalogo).filter(p => !promoParaCompartir(catalogo, p))
+    .map(p => candidatoPromo(catalogo, carrito, p.id)).filter(Boolean);
   if (!cands.length) return [];
   const nivel = c => c.total === c.unidades ? [0, 0] : c.total > c.unidades ? [1, c.total - c.unidades] : [2, c.unidades - c.total];
   const extras = c => (c.promo.opciones || []).filter(g => g !== c.grupo && esCantidad(g)).length;
@@ -563,7 +621,7 @@ export function bienvenidaGuiada(sucursal, botones, ahora) {
   let cuerpo = String(s.bienvenida || '').trim().replace(SALUDO_SUELTO, '');
   cuerpo = cuerpo ? cuerpo.charAt(0).toUpperCase() + cuerpo.slice(1)
     : (s.asistente ? 'Soy ' + s.asistente + ', la asistente virtual de ' + local + '.' : 'Le damos la bienvenida a ' + local + '.');
-  return ['¡' + momentoDelDia(ahora) + '! ' + cuerpo, guiaBotones(botones)].filter(Boolean).join('\n');
+  return ['¡' + momentoDelDia(ahora) + '! ' + cuerpo, s.especial?.texto, guiaBotones(botones)].filter(Boolean).join('\n');
 }
 export function botonesCarrito(carrito) {
   return carrito.length
@@ -644,18 +702,27 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
   const fin = (accion) => ({estado: e, mensajes: out, ...(accion ? {accion} : {})});
   entrada = entrada || {};
   const menuInteractivo = usaMenuInteractivo(s);
+  // Productos que dejaron de ofrecerse mientras estaban en el carrito (ej. empieza el Jueves On Fire): se avisa una vez.
+  const quitados = (Array.isArray(estado?.carrito) ? estado.carrito.length : 0) - e.carrito.length;
+  if (quitados > 0 && !entrada.inicio) {
+    decir(s.especial ? 'Ahora rige el Jueves On Fire: quitamos de su pedido lo que no forma parte de la promo.'
+      : quitados === 1 ? 'Un producto de su pedido ya no está disponible y lo quitamos.'
+      : 'Algunos productos de su pedido ya no están disponibles y los quitamos.');
+  }
 
   if (entrada.inicio) {
     if (s.atencion?.habilitado && s.atencion.abierto === false) {
       decir('Gracias por comunicarse. Por el momento nuestro local está cerrado. Abriremos nuevamente '+s.atencion.proximo_texto+
-        '. ¿Desea dejar un pedido programado para la próxima apertura? El gerente lo revisará y confirmará cuando corresponda.',{
+        '. ¿Desea dejar un pedido programado para la próxima apertura? El gerente lo revisará y confirmará cuando corresponda.'+
+        (s.especial?.texto ? '\n' + s.especial.texto : ''),{
         botones:[{id:'programar_si',texto:'Sí, dejar pedido programado'},
           {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
       return fin();
     }
     // Saludo según la hora, bienvenida del dueño y, en el mismo mensaje, qué hace cada botón de abajo.
     const botones = botonesBienvenida(s, catalogo);
-    decir(bienvenidaGuiada(s, botones, ahora), {botones, guia: guiaBotones(botones)});
+    const guia = [s.especial?.texto, guiaBotones(botones)].filter(Boolean).join('\n');
+    decir(bienvenidaGuiada(s, botones, ahora), {botones, guia});
     return fin();
   }
   if (entrada.boton === 'programar_si') {
@@ -777,6 +844,10 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
       if (problema) { decir(problema, {botones: botonesCarrito(e.carrito)}); return fin(); }
     }
     const d = entrada.datos;
+    if (s.especial && !pagosDe(s, d.entrega === 'envio' ? 'envio' : 'retiro').includes(String(d.medio_pago || ''))) {
+      decir('Hoy, por Jueves On Fire, el pago es solo en efectivo. Elija «Efectivo» para enviar su pedido.', {tipo: 'datos'});
+      return fin();
+    }
     if (d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0) {
       decir('Puede abonar por transferencia. Si prefiere efectivo, tiene un 10% de descuento en los productos. El gerente le enviará los datos para transferir por este chat y podrá adjuntar aquí el comprobante.');
     }
@@ -814,7 +885,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
 
   if (menuInteractivo && (accion === 'promociones' || (!entrada.boton && ['texto', 'precio', 'carta'].includes(accion)))) {
     const promos = promocionesVigentes(catalogo);
-    const candidatas = accion === 'promociones' ? promos : promocionesParaTexto(promos, texto);
+    const candidatas = accion === 'promociones' ? promos : promocionesParaTexto(promos, texto, catalogo);
     if (candidatas) {
       const botones = candidatas.map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}));
       decir(botones.length ? 'Estas son las promociones disponibles en este local. Elija una para completar su selección.'
