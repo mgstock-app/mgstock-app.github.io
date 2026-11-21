@@ -12,7 +12,8 @@ const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfg = JSON.parse(readFileSync(join(raiz, 'entornos/entornos.json'), 'utf8'));
 const args = process.argv.slice(2);
 const entorno = args[args.indexOf('--entorno') + 1];
-const TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
+const TOKEN = process.env.SUPABASE_ACCESS_TOKEN; // Limitado a gestlok-pruebas.
+const PROD_READ_TOKEN = process.env.SUPABASE_PROD_READ_TOKEN; // Opcional; SOLO para copiar la carta.
 const PRUEBAS = cfg.pruebas.ref;
 const REAL = cfg.real.ref;
 if (!cfg.entornos[entorno]) throw new Error('Entorno inválido: ' + entorno);
@@ -30,13 +31,30 @@ async function api(ruta, opciones = {}) {
 const enPruebas = query => api('/projects/' + PRUEBAS + '/database/query', {method: 'POST', body: JSON.stringify({query})});
 /** Lectura de la base real: una sola consulta SELECT (sin «;»), nada más. */
 const leerReal = select => {
+  if (!PROD_READ_TOKEN) {
+    throw new Error('Copiar carta requiere SUPABASE_PROD_READ_TOKEN con acceso de solo lectura a producción; no se usará el token de pruebas.');
+  }
   if (!/^\s*select\b/i.test(select) || select.includes(';')) throw new Error('Solo lectura de la base real.');
-  return api('/projects/' + REAL + '/database/query', {method: 'POST', body: JSON.stringify({query: select})});
+  return api('/projects/' + REAL + '/database/query', {
+    method: 'POST',
+    headers: {authorization: 'Bearer ' + PROD_READ_TOKEN},
+    body: JSON.stringify({query: select}),
+  });
 };
 const pruebasUrl = 'https://' + PRUEBAS + '.supabase.co';
-/** Todo lo que apunte a la base real pasa a la de pruebas (los avisos automáticos usan la función de «prueba»). */
-const aPruebas = (t, ent) => t.split('https://' + REAL + '.supabase.co').join(pruebasUrl).split(REAL).join(PRUEBAS)
-  .replace(/\/functions\/v1\/(gestlok-chat(?:-push)?)(?![\w-])/g, '/functions/v1/$1-' + ent);
+/** Aislamiento de backend y CORS de las dos URLs Cloudflare, también tras futuras actualizaciones. */
+const sitiosPrueba = Object.values(cfg.entornos).map(e => e.sitio);
+const aPruebas = (texto, ent) => {
+  let t = texto.split('https://' + REAL + '.supabase.co').join(pruebasUrl).split(REAL).join(PRUEBAS)
+    .replace(/\/functions\/v1\/(gestlok-chat(?:-push)?)(?![\w-])/g, '/functions/v1/$1-' + ent);
+  // gestlok-chat/index.ts: permitir las dos páginas de prueba aunque aún no exista un secreto de orígenes.
+  t = t.replace('.split(",").map((s) => s.trim()).filter(Boolean);',
+    '.split(",").map((s) => s.trim()).filter(Boolean).concat(' + JSON.stringify(sitiosPrueba) + ');');
+  // gestlok-chat-push/index.ts: conservar orígenes autorizados y añadir únicamente los de los entornos.
+  t = t.replace(/const allowedOrigins=new Set\(\[([^\]]*)\]\);/,
+    (_todo, previos) => 'const allowedOrigins=new Set([' + previos + ',' + sitiosPrueba.map(x => JSON.stringify(x)).join(',') + ']);');
+  return t;
+};
 const literal = t => { const tag = '$j' + Math.random().toString(36).slice(2, 8) + '$'; return tag + t + tag; };
 
 async function aplicarSql() {
@@ -107,6 +125,7 @@ async function copiarCarta() {
 
 if (args.includes('--sql')) await aplicarSql();
 if (args.includes('--carta')) await copiarCarta();
-if (args.includes('--funciones')) desplegarFunciones();
+// Configurar CORS/Auth ANTES del despliegue para que la primera petición tenga el entorno correcto.
 if (args.includes('--ajustes')) await ajustes();
+if (args.includes('--funciones')) desplegarFunciones();
 console.log('Entorno «' + entorno + '» listo en la base de pruebas ' + PRUEBAS + '.');
