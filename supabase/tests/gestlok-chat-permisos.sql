@@ -88,6 +88,10 @@ begin
   perform prueba_como('duena.a@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 2 then 'OK' else 'FALLA' end || ' dueña A ve sus 2 sucursales';
+  r := r || E'\n' || case when
+    (select count(*) from jsonb_array_elements(j->'sucursales') x
+      where x ? 'pendientes' and x ? 'pendientes_avisables' and x ? 'en_preparacion') = 2
+    then 'OK' else 'FALLA' end || ' dueña recibe contadores activos separados por sucursal';
   perform prueba_como('gerente.munro@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 1 and j->'sucursales'->0->>'nombre' = 'Munro'
