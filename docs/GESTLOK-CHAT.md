@@ -113,6 +113,8 @@ nombra botones, para que nunca invente uno). La bienvenida del dueño no necesit
   ($39.500, precio final: no lleva el 10% por delivery en efectivo; migración 20261121040000); el Pack 12 de $52.900 y el resto de la carta no aparecen, el saludo lo anuncia y el pago es **solo en
   efectivo** (retiro y delivery; el envío se cobra aparte). El resto del mes la promo On Fire no aparece. Si un carrito
   tenía otros productos cuando empieza, se quitan y se avisa. Pasado el cierre del turno vuelve la carta normal.
+  Doble control en la base (migración 20261121050000): `gestlok_chat_srv_pedido` rechaza la On Fire fuera del último
+  jueves desde las 18:00 (`gestlok_chat_private.es_noche_on_fire`), aunque una versión vieja del chat la mostrara.
 
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
