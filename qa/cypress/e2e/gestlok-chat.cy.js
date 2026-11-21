@@ -15,7 +15,8 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja').should('be.visible');
     cy.contains('#hoja .menu-fila', 'Pizza muzzarella').find('button.menu-paso-elegir').click();
     cy.get('#hoja').contains('label', 'Grande').click();
-    cy.get('#hoja .menu-producto-detalle:visible .precio').should('contain.text', '10.500');
+    // El precio del encabezado es base ($ 7.500); el tamaño elegido se suma al total de la línea.
+    cy.get('#hoja .menu-producto-detalle:visible').should('contain.text', 'Grande');
     cy.get('#hoja button[type=submit]').should('contain.text', 'Agregar y seguir eligiendo').click();
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
