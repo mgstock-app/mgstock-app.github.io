@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121global1';
+import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121confirmacion3';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
