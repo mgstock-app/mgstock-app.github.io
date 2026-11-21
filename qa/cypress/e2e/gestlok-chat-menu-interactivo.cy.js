@@ -58,6 +58,11 @@ describe('GESTLOK Chat · menú interactivo', () => {
     cy.get('#hoja-titulo').should('have.text','Menú interactivo');
     cy.get('#hoja .menu-producto-detalle:visible').should('contain.text','Empanadas')
       .and('contain.text','Salsas');
+    cy.get('#hoja .menu-form-combo .menu-combo-acciones').should('be.visible')
+      .and('contain.text', 'Agregar $ 6.500');
+    cy.get('#hoja .menu-form-combo .menu-combo-acciones button').should('be.disabled');
+    cy.get('#hoja .menu-grupo-lista').first().find('.menu-variedad-fila').first()
+      .find('button[aria-label^="Quitar"]').should('not.be.visible');
     cy.get('#hoja .menu-producto-detalle:visible img').should('not.exist');
     cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first()
       .find('.grupo-estado').should('contain.text','Faltan 6');
@@ -69,12 +74,15 @@ describe('GESTLOK Chat · menú interactivo', () => {
       .click().click().click().click().click().click();
     cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').first()
       .find('.grupo-estado').should('contain.text','Completo');
+    cy.get('#hoja .menu-variedad-fila').first().find('button[aria-label^="Quitar"]').should('be.visible');
+    cy.get('#hoja .menu-form-combo .menu-combo-acciones button').should('be.disabled');
     cy.get('#hoja .menu-producto-detalle:visible button[type=submit]').should('be.disabled');
     cy.get('#hoja .menu-producto-detalle:visible')
       .contains('.opcion-cantidad','Criolla').find('button[aria-label="Sumar Criolla"]').click().click();
     cy.get('#hoja .menu-producto-detalle:visible .grupo-cantidad').last()
       .find('.grupo-estado').should('contain.text','Completo');
-    cy.get('#hoja .menu-producto-detalle:visible button[type=submit]').should('not.be.disabled').click();
+    cy.get('#hoja .menu-form-combo .menu-combo-acciones button[type=submit]')
+      .should('not.be.disabled').and('contain.text', 'Agregar $ 6.500').click();
     cy.get('#hoja-titulo').should('have.text','Menú interactivo');
     cy.get('#hoja .menu-producto-detalle:visible').should('not.exist');
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
