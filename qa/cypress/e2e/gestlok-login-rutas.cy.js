@@ -10,7 +10,6 @@ describe('GESTLOK · rutas absolutas desde la portada /login',()=>{
         .to.equal('/empleados/personal/');
     });
     cy.get('#stock-root').should('exist');
-    cy.get('.au-cover img').should('have.attr','src','icons/gestlok-wordmark.svg')
-;
+    cy.get('.au-cover img').should('have.attr','src','icons/gestlok-wordmark.svg');
   });
 });
