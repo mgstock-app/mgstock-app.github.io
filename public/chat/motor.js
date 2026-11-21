@@ -190,9 +190,15 @@ export function describirLinea(catalogo, linea) {
   return linea.cantidad + ' × ' + p.nombre + (ops.length ? ' (' + ops.join(' · ') + ')' : '') + (linea.nota ? ' — ' + linea.nota : '');
 }
 
+/* GLOBAL vs. LOCAL. El motor es el mismo para todos los comercios. Lo propio de cada local es configuración:
+ * - sucursal.menu_interactivo: pedidos por el menú interactivo (promos con selector, sin texto libre al carrito).
+ * - producto.reglas (cada promo o producto): {cuando: {dia_semana 1-7 (4 = jueves), semana: 'todas'|'ultima',
+ *   desde 'HH:MM', hasta 'HH:MM'}, nombre, aviso, exclusiva, solo_efectivo, sin_descuento, compartir}.
+ *   Ej. Mi Gusto «Jueves On Fire»: último jueves desde las 18:00, exclusiva, solo efectivo y sin descuento. */
 export function usaMenuInteractivo(sucursal) {
-  return ['mi-gusto-munro', 'mi-gusto-torcuato'].includes(sucursal?.slug);
+  return sucursal?.menu_interactivo === true;
 }
+const reglasDe = p => (p?.reglas && typeof p.reglas === 'object' && !Array.isArray(p.reglas)) ? p.reglas : {};
 
 export function promocionesVigentes(catalogo) {
   const categorias = new Set((catalogo?.categorias || [])
@@ -202,59 +208,78 @@ export function promocionesVigentes(catalogo) {
     (p.opciones || []).every(g => !esCantidad(g) || valoresDisponibles(catalogo, g).length > 0));
 }
 
-/* Promos «para compartir» (categoría con «compartir», ej. pizza + empanadas): llevan productos fijos además de las
- * unidades a elección, así que no se ofrecen para empanadas sueltas; sí cuando el cliente menciona pizza. */
+/* Promos «para compartir» (regla compartir del producto, ej. pizza + empanadas): llevan productos fijos además de
+ * las unidades a elección, así que no se ofrecen para empanadas sueltas; sí cuando el cliente menciona pizza. */
 export function promoParaCompartir(catalogo, p) {
-  const c = (catalogo?.categorias || []).find(x => x.id === p?.categoria_id);
-  return /\bcompartir\b/.test(normalizar(c?.nombre || ''));
+  return reglasDe(p).compartir === true;
 }
 
-/* ------------------------------------------------------------------ Jueves On Fire (solo Mi Gusto, ambos locales)
- * El último jueves de cada mes, desde las 18:00 (hora de Argentina) y por ese turno, se ofrece EXCLUSIVAMENTE la
- * promo «Jueves On Fire» (12 empanadas + 3 salsas a elección): el resto de la carta (incluido el Pack 12 de precio
- * normal) no se ofrece y el pago es solo en efectivo. El resto del mes la promo On Fire no aparece.
- * La función del servidor aplica esta cartelera ANTES de responder: la base valida y cobra sobre ella. */
+/* ------------------------------------------------------------- Promos programadas (configuración de cada local)
+ * Un producto con reglas.cuando solo se ofrece en su día y horario (hora de Argentina). Si además es «exclusiva»,
+ * mientras rige es lo único que se ofrece. La función del servidor aplica esta cartelera ANTES de responder y la base
+ * vuelve a controlar día, horario y pago al crear el pedido. */
 const TZ_AR = 'America/Argentina/Buenos_Aires';
-const RE_ON_FIRE = /\bjueves on fire\b/;
 function horaAR(ahora) {
   const f = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {timeZone: TZ_AR, year: 'numeric', month: '2-digit',
-    day: '2-digit', hour: '2-digit', weekday: 'short', hourCycle: 'h23'}).formatToParts(ahora).map(x => [x.type, x.value]));
-  return {anio: Number(f.year), mes: Number(f.month), dia: Number(f.day), hora: Number(f.hour), semana: f.weekday,
-    fecha: f.year + '-' + f.month + '-' + f.day};
+    day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23'}).formatToParts(ahora).map(x => [x.type, x.value]));
+  return {anio: Number(f.year), mes: Number(f.month), dia: Number(f.day), minutos: Number(f.hour) * 60 + Number(f.minute),
+    semana: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(f.weekday) + 1, fecha: f.year + '-' + f.month + '-' + f.day};
 }
-/** ¿Es el último jueves del mes, a partir de las 18:00 de Argentina? */
-export function esNocheOnFire(ahora = new Date()) {
+const minutosDe = (hhmm, def) => /^\d{1,2}:\d{2}$/.test(String(hhmm || '')) ? Number(hhmm.split(':')[0]) * 60 + Number(hhmm.split(':')[1]) : def;
+/** ¿Rige ahora la regla «cuando» de un producto? Sin «cuando», siempre. */
+export function reglaVigente(reglas, ahora = new Date()) {
+  const c = reglas?.cuando;
+  if (!c || typeof c !== 'object') return true;
   const a = horaAR(ahora);
-  if (a.semana !== 'Thu' || a.hora < 18) return false;
-  return a.dia + 7 > new Date(Date.UTC(a.anio, a.mes, 0)).getUTCDate();
+  if (c.dia_semana && Number(c.dia_semana) !== a.semana) return false;
+  if (c.semana === 'ultima' && a.dia + 7 <= new Date(Date.UTC(a.anio, a.mes, 0)).getUTCDate()) return false;
+  return a.minutos >= minutosDe(c.desde, 0) && a.minutos <= minutosDe(c.hasta, 24 * 60 - 1);
 }
-export const esPromoOnFire = p => RE_ON_FIRE.test(normalizar(p?.nombre));
+export const esProgramado = p => !!reglasDe(p).cuando;
 /** Carta y medios de pago que rigen ahora. Devuelve {sucursal, catalogo, clave}. */
 export function carteleraDelDia(sucursal, catalogo, ahora = new Date()) {
   const base = {sucursal, catalogo, clave: 'normal'};
-  const onFire = usaMenuInteractivo(sucursal) ? (catalogo?.productos || []).filter(esPromoOnFire) : [];
-  if (!onFire.length) return base;
+  const programados = (catalogo?.productos || []).filter(esProgramado);
+  if (!programados.length) return base;
   const at = sucursal?.atencion;
-  // Pasado el cierre de ese turno (próxima apertura otro día) vuelve la carta normal para pedidos programados.
+  // Con el local cerrado hasta otro día (pedido programado), la promo del día no se ofrece.
   const otroDia = at?.habilitado && at.abierto === false && at.proxima_apertura &&
     horaAR(new Date(at.proxima_apertura)).fecha !== horaAR(ahora).fecha;
-  const vigentes = esNocheOnFire(ahora) && !otroDia
-    ? onFire.filter(p => p.activo !== false && p.disponible !== false) : [];
-  if (!vigentes.length) return {...base, catalogo: {...catalogo, productos: catalogo.productos.filter(p => !esPromoOnFire(p))}};
-  // Solo la promo On Fire: sus variedades agotadas ya quedan afuera y dejan de apuntar a productos que no se muestran.
-  const productos = vigentes.map(p => ({...p, opciones: (p.opciones || []).map(g => esCantidad(g)
+  const vigentes = otroDia ? [] : programados.filter(p => p.activo !== false && p.disponible !== false && reglaVigente(reglasDe(p), ahora));
+  const fuera = new Set(programados.filter(p => !vigentes.includes(p)).map(p => p.id));
+  const exclusivas = vigentes.filter(p => reglasDe(p).exclusiva === true);
+  if (!exclusivas.length) {
+    if (!fuera.size) return {...base, clave: vigentes.length ? 'programada:' + vigentes.map(p => p.id).join(',') : 'normal'};
+    return {...base, clave: vigentes.length ? 'programada:' + vigentes.map(p => p.id).join(',') : 'normal',
+      catalogo: {...catalogo, productos: catalogo.productos.filter(p => !fuera.has(p.id))}};
+  }
+  // Promo exclusiva: solo ella; sus variedades agotadas quedan afuera y dejan de apuntar a productos que no se muestran.
+  const productos = exclusivas.map(p => ({...p, opciones: (p.opciones || []).map(g => esCantidad(g)
     ? {...g, valores: valoresDisponibles(catalogo, g).map(v => Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'producto_id')))} : g)}));
   const cats = new Set(productos.map(p => p.categoria_id));
-  const promo = productos[0];
+  const promo = productos[0]; const r = reglasDe(promo);
+  const nombre = String(r.nombre || promo.nombre);
+  const aElegir = (promo.opciones || []).filter(esCantidad).map(g => String(g.nombre).toLowerCase());
   const efectivo = ['efectivo'];
+  const soloEfectivo = productos.every(p => reglasDe(p).solo_efectivo === true);
   return {
-    sucursal: {...sucursal, medios_pago: efectivo, medios_pago_retiro: efectivo, medios_pago_envio: efectivo,
-      especial: {id: 'jueves_on_fire', texto: '🔥 Hoy es Jueves On Fire: ' + promo.nombre.replace(/^jueves on fire\s*[·:-]?\s*/i, '') +
-        ' a ' + pesos(promo.precio) + ' (precio final), empanadas y salsas a elección. ' +
-        (sucursal?.acepta_envio ? 'Envío a domicilio con costo adicional. ' : '') + 'Pago solo en efectivo.'}},
+    sucursal: {...sucursal, ...(soloEfectivo ? {medios_pago: efectivo, medios_pago_retiro: efectivo, medios_pago_envio: efectivo} : {}),
+      especial: {nombre, texto: (r.aviso ? String(r.aviso) : 'Hoy rige ' + nombre) + ': ' +
+        promo.nombre.replace(new RegExp('^' + nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[·:-]?\\s*', 'i'), '') +
+        ' a ' + pesos(promo.precio) + (r.sin_descuento ? ' (precio final)' : '') +
+        (aElegir.length ? ', ' + aElegir.join(' y ') + ' a elección' : '') + '. ' +
+        (sucursal?.acepta_envio ? 'Envío a domicilio con costo adicional. ' : '') + (soloEfectivo ? 'Pago solo en efectivo.' : '')}},
     catalogo: {...catalogo, categorias: (catalogo.categorias || []).filter(c => cats.has(c.id)), productos},
-    clave: 'onfire:' + horaAR(ahora).fecha,
+    clave: 'exclusiva:' + productos.map(p => p.id).join(',') + ':' + horaAR(ahora).fecha,
   };
+}
+/** Productos del carrito que se pagan solo en efectivo (regla del local). */
+export function soloEfectivo(catalogo, carrito) {
+  return (carrito || []).some(l => reglasDe(productoPorId(catalogo, l.producto_id)).solo_efectivo === true);
+}
+/** Parte del total que no lleva el descuento por efectivo (promos a precio final). */
+export function totalSinDescuento(catalogo, carrito) {
+  return totalCarrito(catalogo, (carrito || []).filter(l => reglasDe(productoPorId(catalogo, l.producto_id)).sin_descuento === true));
 }
 
 function promocionesParaTexto(promos, texto, catalogo) {
@@ -555,6 +580,34 @@ export function clasificarSoporte(entrada = {}) {
   if (/\b(cuanto (tarda|demora|falta)|tiempo (de entrega|estimado)|cuanta demora|demora del delivery|demora para retirar)\b/.test(t)) return 'consulta_demora';
   return null;
 }
+/** Reclamos que necesitan detalle: antes de avisar al gerente, el asistente pide qué pasó (y una foto).
+ * «Avisar demora» y «Hablar con el gerente» siguen avisando en el acto. */
+export const RECLAMO_ESPERA_MS = 30 * 60 * 1000;
+export function reclamoConDetalle(boton = '') {
+  return boton === 'reclamo_faltante' ? 'faltante' : boton === 'reclamo_otro' ? 'otro' : null;
+}
+/** Tipo de reclamo que espera la descripción del cliente (vence a los 30 minutos). */
+export function reclamoEnEspera(estado, ahora = Date.now()) {
+  const r = estado && typeof estado === 'object' ? estado.reclamo_espera : null;
+  if (!r || typeof r !== 'object' || !['faltante', 'otro'].includes(r.tipo)) return null;
+  const desde = Number(r.desde);
+  if (!Number.isFinite(desde) || ahora - desde > RECLAMO_ESPERA_MS || desde - ahora > 60000) return null;
+  return r.tipo;
+}
+export function sinReclamoEnEspera(estado) {
+  const e = estado && typeof estado === 'object' ? {...estado} : {};
+  delete e.reclamo_espera;
+  return e;
+}
+export function textoPedirDetalle(tipo) {
+  return tipo === 'faltante'
+    ? 'Lamentamos lo sucedido. Para que el gerente pueda revisarlo y darle una solución rápida:\n' +
+      '1. Escriba aquí abajo qué producto le faltó (por ejemplo: «faltó 1 empanada de carne»).\n' +
+      '2. Adjunte una foto del pedido que recibió con el botón 📷 (cámara) o 📎 (galería).'
+    : 'Lamentamos el inconveniente. Para que el gerente sepa qué sucedió, escriba aquí abajo su reclamo con el mayor detalle posible.\n' +
+      'Si le sirve, también puede adjuntar una foto con el botón 📷 (cámara) o 📎 (galería).';
+}
+export const TEXTO_FOTO_FALTANTE = 'Si todavía no envió la foto del pedido, puede adjuntarla ahora con 📷 o 📎.';
 export function textoDemora(s = {}) {
   const r = s.demora_retiro ? 'Retiro en el local: ' + s.demora_retiro + '.' : '';
   const d = s.demora_envio ? 'Delivery: ' + s.demora_envio + '.' : '';
@@ -705,7 +758,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
   // Productos que dejaron de ofrecerse mientras estaban en el carrito (ej. empieza el Jueves On Fire): se avisa una vez.
   const quitados = (Array.isArray(estado?.carrito) ? estado.carrito.length : 0) - e.carrito.length;
   if (quitados > 0 && !entrada.inicio) {
-    decir(s.especial ? 'Ahora rige el Jueves On Fire: quitamos de su pedido lo que no forma parte de la promo.'
+    decir(s.especial ? 'Ahora rige ' + s.especial.nombre + ': quitamos de su pedido lo que no forma parte de la promo.'
       : quitados === 1 ? 'Un producto de su pedido ya no está disponible y lo quitamos.'
       : 'Algunos productos de su pedido ya no están disponibles y los quitamos.');
   }
@@ -844,12 +897,14 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
       if (problema) { decir(problema, {botones: botonesCarrito(e.carrito)}); return fin(); }
     }
     const d = entrada.datos;
-    if (s.especial && !pagosDe(s, d.entrega === 'envio' ? 'envio' : 'retiro').includes(String(d.medio_pago || ''))) {
-      decir('Hoy, por Jueves On Fire, el pago es solo en efectivo. Elija «Efectivo» para enviar su pedido.', {tipo: 'datos'});
+    if ((soloEfectivo(catalogo, e.carrito) || s.especial) && String(d.medio_pago || '') !== 'efectivo' &&
+        !(s.especial && pagosDe(s, d.entrega === 'envio' ? 'envio' : 'retiro').includes(String(d.medio_pago || '')))) {
+      decir((s.especial ? 'Hoy, por ' + s.especial.nombre + ', el pago' : 'Su pedido tiene una promo que') +
+        ' es solo en efectivo. Elija «Efectivo» para enviar su pedido.', {tipo: 'datos'});
       return fin();
     }
     if (d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0) {
-      decir('Puede abonar por transferencia. Si prefiere efectivo, tiene un 10% de descuento en los productos. El gerente le enviará los datos para transferir por este chat y podrá adjuntar aquí el comprobante.');
+      decir('Puede abonar por transferencia. Si prefiere efectivo, tiene un ' + Number(s.descuento_efectivo_pct) + '% de descuento en los productos. El gerente le enviará los datos para transferir por este chat y podrá adjuntar aquí el comprobante.');
     }
     return fin({tipo: 'crear_pedido', pedido: {
       items: e.carrito.map(l => ({producto_id: l.producto_id, cantidad: l.cantidad, opciones: l.opciones, nota: l.nota})),

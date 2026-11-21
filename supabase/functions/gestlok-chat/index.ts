@@ -14,7 +14,8 @@
  * GESTLOK_CHAT_IA_MODELO y GESTLOK_CHAT_IA_URL (opcionales).
  */
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-import { carteleraDelDia, cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, responder, textoEstadoPedido, totalCarrito } from "./motor.js";
+import { carteleraDelDia, cierrePedido, clasificarSoporte, consultaAjena, describirLinea, formalizar, reclamoConDetalle, reclamoEnEspera,
+  responder, sinReclamoEnEspera, textoEstadoPedido, textoPedirDetalle, totalCarrito, TEXTO_FOTO_FALTANTE } from "./motor.js";
 import { bienvenidaIA, responderIA } from "./ia.js";
 
 type Json = Record<string, unknown>;
@@ -36,7 +37,7 @@ const BOTON_TEXTO: Record<string, string> = {
   soporte: "Ayuda con mi pedido", demora: "Consultar demora", reclamo_demora: "Avisar demora al gerente",
   reclamo_faltante: "Faltante en mi pedido", reclamo_otro: "Otro reclamo",
   hablar_gerente: "Hablar con el gerente", programar_si:"Sí, dejar pedido programado", programar_no:"No, gracias",
-  promo_no: "Seguir sin promoción",
+  promo_no: "Seguir sin promoción", reclamo_cancelar: "Cancelar reclamo",
 };
 
 function cors(origen: string | null): HeadersInit {
@@ -232,7 +233,12 @@ Deno.serve(async (req) => {
           p_path:path,p_mime:mime,p_bytes:bytes.length});
       } catch (e) { await bucket.remove([path]); throw e; }
       const {data:firmada}=await bucket.createSignedUrl(path,600);
+      // Si el cliente tocó «Faltante» y todavía no escribió qué pasó, se lo recordamos.
+      const espera = reclamoEnEspera(conv.estado);
       return json({ok:true,imagen_url:firmada?.signedUrl||null,texto:"Foto enviada al gerente.",
+        ...(espera ? {mensajes:[{texto: espera === "faltante"
+          ? "Foto recibida. Ahora escriba qué producto le faltó para que el gerente lo revise."
+          : "Foto recibida. Ahora escriba qué sucedió para que el gerente lo revise."}]} : {}),
         soporte_pendiente:true},200,origen);
     }
 
@@ -274,7 +280,7 @@ Deno.serve(async (req) => {
         nuevos:extra.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
         carrito: (estado as Json).carrito ?? [],
         pedidos: ((conv.pedidos as Json[]) ?? []).map(conAviso),
-        soporte_pendiente: soporte.soporte_pendiente, cerrada, fotos }, 200, origen);
+        soporte_pendiente: soporte.soporte_pendiente === true || !!reclamoEnEspera(estado), cerrada, fotos }, 200, origen);
     }
 
     if (accion === "recibido") {
@@ -292,7 +298,7 @@ Deno.serve(async (req) => {
         rpc("gestlok_chat_srv_respuestas", { p_conversacion: convId, p_token_hash: hash, p_desde: desde })]);
       return json({ ok: true, pedidos: ((est.pedidos as Json[]) ?? []).map(conAviso),
         mensajes_local: ((soporte.mensajes_local as Json[]) || []).map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
-        soporte_pendiente: soporte.soporte_pendiente, cerrada }, 200, origen);
+        soporte_pendiente: soporte.soporte_pendiente === true || !!reclamoEnEspera(conv.estado), cerrada }, 200, origen);
     }
 
     if (accion !== "mensaje") return json({ ok: false, error: "Acción desconocida" }, 400, origen);
@@ -300,6 +306,44 @@ Deno.serve(async (req) => {
     let entrada = limpiarEntrada(body.entrada);
     if (!entrada) return json({ ok: false, error: "Mensaje vacío" }, 400, origen);
     const textoOriginal = typeof entrada.texto === "string" ? String(entrada.texto) : "";
+    const estadoConv = ((conv.estado as Json) || {}) as Json;
+    const botonEntrada = String(entrada.boton || "");
+    const carritoConv = (estadoConv.carrito as unknown[]) || [];
+    // «Faltante en mi pedido» / «Otro reclamo»: antes de avisar al gerente, el asistente pide qué pasó y una foto.
+    // El cuadro para escribir y los botones de foto quedan visibles (soporte_pendiente) aunque haya un pedido en curso.
+    const tipoDetalle = reclamoConDetalle(botonEntrada);
+    if (tipoDetalle) {
+      const texto = textoPedirDetalle(tipoDetalle);
+      await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
+        p_cliente: BOTON_TEXTO[botonEntrada], p_respuesta: texto,
+        p_estado: { ...sinReclamoEnEspera(estadoConv), reclamo_espera: { tipo: tipoDetalle, desde: Date.now() } } });
+      return json({ ok: true, mensajes: [{ texto, botones: [{ id: "reclamo_cancelar", texto: "Cancelar" }] }],
+        carrito: carritoConv, soporte_pendiente: true, motor: "guiado" }, 200, origen);
+    }
+    if (botonEntrada === "reclamo_cancelar") {
+      const pendiente = await rpc("gestlok_chat_srv_respuestas", {
+        p_conversacion: convId, p_token_hash: hash, p_desde: Number.MAX_SAFE_INTEGER });
+      const texto = "De acuerdo. Si necesita ayuda con su pedido, puede escribirnos cuando quiera.";
+      await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
+        p_cliente: BOTON_TEXTO.reclamo_cancelar, p_respuesta: texto, p_estado: sinReclamoEnEspera(estadoConv) });
+      return json({ ok: true, mensajes: [{ texto, botones: [{ id: "estado", texto: "Estado de mi pedido" },
+        { id: "soporte", texto: "Necesito ayuda" }] }], carrito: carritoConv,
+        soporte_pendiente: pendiente.soporte_pendiente === true, motor: "guiado" }, 200, origen);
+    }
+    const enEspera = reclamoEnEspera(estadoConv);
+    if (enEspera && textoOriginal && !botonEntrada) {
+      // La descripción del cliente abre el reclamo: el gerente ya sabe qué falta (la foto se suma al mismo caso).
+      const ticket = await rpc("gestlok_chat_srv_reclamo", {
+        p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
+        p_tipo: enEspera, p_detalle: textoOriginal.length >= 3 ? textoOriginal : "Reclamo: " + textoOriginal });
+      try {
+        await rpc("gestlok_chat_srv_turno", { p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
+          p_cliente: "", p_respuesta: "", p_estado: sinReclamoEnEspera(estadoConv) });
+      } catch (e) { console.warn("gestlok-chat: no se pudo cerrar la espera del reclamo", (e as Error)?.message); }
+      const texto = sinCodigo(String(ticket.texto)) + (enEspera === "faltante" ? "\n" + TEXTO_FOTO_FALTANTE : "");
+      return json({ ok: true, mensajes: [{ texto, botones: [{ id: "estado", texto: "Estado de mi pedido" },
+        { id: "soporte", texto: "Más ayuda" }] }], carrito: carritoConv, soporte_pendiente: true, motor: "guiado" }, 200, origen);
+    }
     // Seguimiento posterior al pedido: no procesar mensajes arbitrarios como nuevos pedidos,
     // no gastar IA y no crear alertas inútiles al gerente. Mantener soporte explícito.
     const ultimo = Array.isArray(conv.pedidos) ? (conv.pedidos as Json[])[0] : null;
@@ -334,7 +378,8 @@ Deno.serve(async (req) => {
       const ticket = await rpc("gestlok_chat_srv_reclamo", {
         p_conversacion: convId, p_token_hash: hash, p_ip_hash: ipHash,
         p_tipo: clase, p_detalle: detalle });
-      return json({ ok: true, mensajes: [{ texto: sinCodigo(String(ticket.texto)),
+      return json({ ok: true, mensajes: [{ texto: sinCodigo(String(ticket.texto)) +
+            (clase === "faltante" && textoOriginal ? "\n" + TEXTO_FOTO_FALTANTE : ""),
           botones: [{id:"estado",texto:"Estado de mi pedido"},{id:"soporte",texto:"Más ayuda"}] }],
         carrito: (conv.estado as Json)?.carrito || [], soporte_pendiente: true,
         motor: "guiado" }, 200, origen);

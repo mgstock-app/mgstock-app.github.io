@@ -1,6 +1,6 @@
 const API = '**/functions/v1/gestlok-chat';
 const sucursal = {
-  slug: 'mi-gusto-munro', empresa: 'Mi Gusto', nombre: 'Munro',
+  slug: 'mi-gusto-munro', menu_interactivo: true, empresa: 'Mi Gusto', nombre: 'Munro',
   bienvenida: '¡Hola! Soy el asistente de Mi Gusto Munro. ¿En qué puedo ayudarte? Podés escribirme o pedirme el menú.',
   horario: 'Todos los días de 11:00 a 14:40 y de 19:00 a 23:15', direccion: 'Av. Mitre 2510',
   acepta_retiro: true, acepta_envio: true, envio_costo: 4000,

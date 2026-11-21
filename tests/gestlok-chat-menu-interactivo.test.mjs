@@ -63,7 +63,7 @@ test('cada sucursal ofrece solo sus promociones disponibles y lleva al selector'
     const carta = {...catalogo, productos: [...catalogo.productos, promo,
       {...promo, id: 'oculto', activo: false}, {...promo, id: 'agotado', disponible: false},
       {...promo, id: 'sin-variedades', opciones: [{...grupo, valores: []}]}]};
-    const responderLocal = entrada => responder({sucursal: {...sucursal, slug}, catalogo: carta, entrada});
+    const responderLocal = entrada => responder({sucursal: {...sucursal, slug, menu_interactivo: true}, catalogo: carta, entrada});
     assert.deepEqual(promocionesVigentes(carta), [promo]);
     for (const texto of ['¿Qué promociones tienen?', 'Quiero seis empanadas', '¿Cuánto sale el pack de 6?']) {
       const r = responderLocal({texto});

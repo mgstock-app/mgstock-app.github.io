@@ -60,7 +60,7 @@ test('función pública → pedido completo → gerente → estado del cliente',
   for(const f of ['motor.js','ia.js']) source=source.replace('"./'+f+'"',JSON.stringify(new URL('../supabase/functions/gestlok-chat/'+f,import.meta.url).href));
   const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
   await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
-  const base={slug:'mi-gusto-munro',token:'tokenDePruebaDelClienteNumero0001abcdEFGH'};
+  const base={slug:'mi-gusto-munro',menu_interactivo:true,token:'tokenDePruebaDelClienteNumero0001abcdEFGH'};
   const call=async (body)=>{
    const r=await handler(new Request('http://local/',{method:'POST',headers:{origin:'https://chat.gestlok.com.ar','content-type':'application/json'},body:JSON.stringify(body)}));
    return {status:r.status,...await r.json()};

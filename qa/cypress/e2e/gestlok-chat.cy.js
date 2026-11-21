@@ -68,7 +68,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.intercept('POST', FUNCION, req => {
       cuerpos.push(req.body);
       if (req.body.accion === 'abrir') {
-        req.reply({ok: true, sucursal: {slug: 'mi-gusto-munro', nombre: 'Munro', empresa: 'Mi Gusto', horario: 'De 11 a 23', acepta_retiro: true,
+        req.reply({ok: true, sucursal: {slug: 'mi-gusto-munro', menu_interactivo: true, nombre: 'Munro', empresa: 'Mi Gusto', horario: 'De 11 a 23', acepta_retiro: true,
           acepta_envio: false, envio_costo: 0, pedido_minimo: 0, medios_pago: ['efectivo']},
           catalogo: {categorias: [], productos: [{id: '9a000000-0000-4000-8000-000000000001', nombre: 'Empanada de carne', precio: 1000, activo: true, disponible: true, opciones: []}]},
           mensajes: [], nuevos: [{texto: '¡Hola! Soy el asistente de Mi Gusto Munro.', botones: [{id: 'carta', texto: 'Ver la carta'}]}], carrito: [], pedidos: []});
@@ -83,14 +83,14 @@ describe('GESTLOK Chat · chat público', () => {
     cy.wait('@fn');
     cy.get('#barra-texto').should('contain.text', '2 productos · $ 2.000');
     cy.wrap(cuerpos).should(c => {
-      expect(c[0]).to.include({slug: 'mi-gusto-munro', accion: 'abrir'});
+      expect(c[0]).to.include({slug: 'mi-gusto-munro', menu_interactivo: true, accion: 'abrir'});
       expect(c[0].token).to.match(/^[A-Za-z0-9_-]{43}$/);
       expect(c[1].token).to.eq(c[0].token);
       expect(c[1].entrada).to.deep.eq({texto: '2 de carne'});
     });
   });
 
-  const abrirConPedido = pedido => ({ok: true, sucursal: {slug: 'mi-gusto-torcuato', nombre: 'Don Torcuato', empresa: 'Mi Gusto', horario: 'De 11 a 23',
+  const abrirConPedido = pedido => ({ok: true, sucursal: {slug: 'mi-gusto-torcuato', menu_interactivo: true, nombre: 'Don Torcuato', empresa: 'Mi Gusto', horario: 'De 11 a 23',
     acepta_retiro: true, acepta_envio: true, envio_costo: 0, pedido_minimo: 0, medios_pago: ['efectivo']},
     catalogo: {categorias: [], productos: []}, mensajes: [], nuevos: [], carrito: [], pedidos: [pedido]});
 

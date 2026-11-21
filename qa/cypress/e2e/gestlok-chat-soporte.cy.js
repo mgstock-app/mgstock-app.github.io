@@ -3,7 +3,7 @@ describe('GESTLOK Chat · soporte y seguimiento humano',()=>{
   const endpoint='**/functions/v1/gestlok-chat';
   it('cliente consulta demora, avisa al gerente y recibe su respuesta en el mismo chat',()=>{
     cy.viewport(390,844);
-    const local={empresa:'Mi Gusto',nombre:'Munro',slug:'mi-gusto-munro',horario:'11:00 a 14:40 / 19:00 a 23:15',
+    const local={empresa:'Mi Gusto',nombre:'Munro',slug:'mi-gusto-munro',menu_interactivo:true,horario:'11:00 a 14:40 / 19:00 a 23:15',
       direccion:'Av. Mitre 2510',demora_retiro:'15 a 20 minutos',demora_envio:'35 a 40 minutos',
       acepta_retiro:true,acepta_envio:true,medios_pago:['efectivo','transferencia']};
     let estados=0;

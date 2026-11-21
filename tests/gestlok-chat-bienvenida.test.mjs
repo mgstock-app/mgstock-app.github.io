@@ -14,7 +14,7 @@ const catalogo = {categorias: [{id: 'promos', nombre: 'Promociones'}, {id: 'emp'
   {id: 'e-jyq', nombre: 'Jamón y queso', precio: 4900, categoria_id: 'emp', activo: true, disponible: true, opciones: []},
   promo]};
 const noche = new Date('2026-11-20T21:40:00-03:00');
-const local = slug => ({slug, empresa: 'Mi Gusto', nombre: slug === 'mi-gusto-munro' ? 'Munro' : 'Don Torcuato',
+const local = slug => ({slug, menu_interactivo: true, empresa: 'Mi Gusto', nombre: slug === 'mi-gusto-munro' ? 'Munro' : 'Don Torcuato',
   bienvenida: '¡Hola! Le damos la bienvenida a Mi Gusto ' + (slug === 'mi-gusto-munro' ? 'Munro' : 'Don Torcuato') + '.',
   acepta_retiro: true, acepta_envio: true, medios_pago: ['efectivo']});
 
