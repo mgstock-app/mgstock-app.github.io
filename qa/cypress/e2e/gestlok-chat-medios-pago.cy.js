@@ -24,7 +24,7 @@ describe('GESTLOK Chat · mensajes y medios de pago', () => {
       return req.reply({ok:true,carrito,mensajes:[{texto:'Te ayudo con tu consulta',botones:btns}]});
     }).as('chat');
     cy.visit('/chat/?s=mi-gusto-munro');
-    cy.contains('.burbuja.asistente','¿En qué puedo ayudarte?').should('be.visible');
+    cy.get('.chat-bienvenida .bienvenida-titulo').should('have.text','¡Hola! ¿En qué podemos ayudarte hoy?').and('be.visible');
     cy.contains('.chip','Medios de pago').click();
     cy.wait('@chat');
     cy.contains('.burbuja.asistente','Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia.').should('be.visible');
