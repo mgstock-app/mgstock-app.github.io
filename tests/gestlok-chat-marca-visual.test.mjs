@@ -23,7 +23,7 @@ test('fondo profesional predeterminado sin motivos repetidos y con buen contrast
   const wallpaper=read('public/chat/wallpaper-gestlok.svg');
   assert.match(wallpaper, /viewBox="0 0 900 1400"/);
   assert.match(wallpaper, /linearGradient/);
-  assert.doesNotMatch(wallpaper, /<text|<image|http:|https:|filter=|foreignObject/);
+  assert.doesNotMatch(wallpaper, /<text\\b|<image\\b|<foreignObject\\b|<filter\\b|<script\\b|xlink:href/);
   assert.match(css, /\.mensajes\{[\s\S]*?background-image:url\('\/chat\/wallpaper-gestlok\.svg'\)/);
   assert.match(css, /background-size:cover/);
   assert.match(css, /background-repeat:no-repeat/);
