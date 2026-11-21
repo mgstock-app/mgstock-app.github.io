@@ -1,4 +1,4 @@
-/* global describe, it, cy, expect */
+/* global describe, it, cy */
 // Las mejoras funcionan sin pedidos reales y conservan el aislamiento por local.
 describe('GESTLOK Chat · seguimiento, recurrencia e indicadores', () => {
   it('permite repetir la selección guardada sin enviar ni confirmar nada automáticamente', () => {
