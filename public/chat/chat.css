@@ -641,3 +641,6 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
     width:42px;height:42px;z-index:4}
   .chat-whatsapp svg{width:24px;height:24px}
 }
+
+/* Al editar un combo, mostrar solo el filtro interno de sus variedades. */
+.menu-interactivo.menu-editando > .menu-filtro-carta-contenedor{display:none!important}
