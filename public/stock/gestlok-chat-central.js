@@ -286,7 +286,7 @@ function colocar(){
   if(panel||loc!==local()||!anfitrion)return;
   panelLocal=loc;
   panel=window.GestLokChatPanel.montar(anfitrion,{sb:window.GestLokSupabase,local:loc,embebido:true,
-   alCambiarPendientes:(l,n)=>{if(l===local())actualizar(n,reclamos,enPreparacion,n);}});
+   alCambiarPendientes:(l)=>{if(l===local())void consultar();}});
  }).catch(()=>{lugar.innerHTML='<p class="gcc-aviso">No se pudo abrir la Central de mensajes. Revisá tu conexión y volvé a entrar.</p>';});
 }
 function view(){
