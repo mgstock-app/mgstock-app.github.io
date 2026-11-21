@@ -1,4 +1,4 @@
-/* global describe, it, cy, expect */
+/* global describe, it, cy */
 /** Regresión multiempresa: únicamente datos simulados; ningún pedido real. */
 describe('GESTLOK Chat · una misma interfaz para cualquier empresa', () => {
   const empresas = [
