@@ -562,23 +562,28 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .mensajes:has(.chat-bienvenida):not(:has(.burbuja.cliente)) .chips .chip{font-size:13.5px}
 }
 
-/* WhatsApp externo opcional: solo ícono; nunca envía pedidos ni sustituye al chat. */
+/* Canal externo opcional. En esquina inferior derecha, dentro del ancho del chat:
+   nunca sustituye al pedido interno ni invade el encabezado o el editor. */
 .chat-whatsapp{
   position:fixed;z-index:3;
-  left:max(14px,calc((100vw - 720px)/2 + 14px));
-  bottom:max(82px,calc(82px + env(safe-area-inset-bottom)));
-  width:46px;height:46px;border-radius:50%;
-  display:grid;place-items:center;
-  color:#fff;background:#25d366;border:2px solid #fff;
-  box-shadow:0 4px 15px rgba(20,55,40,.22);
+  right:max(12px,calc((100vw - 720px)/2 + 12px));
+  bottom:calc(94px + env(safe-area-inset-bottom, 0px));
+  width:44px;height:44px;border:0;border-radius:50%;
+  display:grid;place-items:center;color:#fff;background:transparent;
   text-decoration:none;-webkit-tap-highlight-color:transparent;
 }
-.chat-whatsapp svg{width:25px;height:25px;fill:currentColor;stroke:none}
-.chat-whatsapp:hover{background:#20ba59}
-.chat-whatsapp:focus-visible{outline:3px solid #116e3b;outline-offset:3px}
-body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:none}
+.chat-whatsapp svg{
+  width:34px;height:34px;padding:7px;border-radius:50%;
+  fill:currentColor;stroke:none;background:#25d366;
+  box-shadow:0 3px 10px rgba(20,55,40,.18);
+}
+.chat-whatsapp:hover svg{background:#20ba59}
+.chat-whatsapp:focus-visible{outline:3px solid #116e3b;outline-offset:2px}
+body:has(.hoja:not([hidden])) .chat-whatsapp,
+body:has(.redactar:focus-within) .chat-whatsapp{visibility:hidden;pointer-events:none}
 @media(max-width:620px){
-  .chat-whatsapp{bottom:calc(154px + env(safe-area-inset-bottom));width:44px;height:44px}
+  /* El editor móvil ocupa dos filas: mantener el contacto por ENCIMA del editor. */
+  .chat-whatsapp{bottom:calc(174px + env(safe-area-inset-bottom, 0px))}
 }
 /* Cancelación segura y opciones de venta posteriores. */
 .confirmar-cancelacion{display:grid;gap:12px;padding:8px 0 14px}
@@ -629,18 +634,8 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .ubicacion-opciones .ubicacion-estado a{color:#0871a0;text-decoration:underline}
 .costo-envio{font-size:13px;margin:-1px 0 12px;color:#455669}
 .segmentado label{min-width:0;overflow-wrap:anywhere}
-/* WhatsApp externo: escritorio en la canaleta izquierda; móvil en encabezado,
-   nunca encima de mensajes, promociones ni controles de compra. */
+/* No mostrar el acceso a WhatsApp hasta que el local configure un teléfono. */
 .chat-whatsapp[hidden]{display:none!important}
-@media(min-width:840px){
-  .chat-whatsapp{left:calc(50% - 360px - 60px);top:105px;bottom:auto}
-}
-@media(max-width:839px){
-  .cabecera{padding-left:64px}
-  .chat-whatsapp{left:10px;top:max(12px,env(safe-area-inset-top));bottom:auto;
-    width:42px;height:42px;z-index:4}
-  .chat-whatsapp svg{width:24px;height:24px}
-}
 
 /* Al editar un combo, mostrar solo el filtro interno de sus variedades. */
 .menu-interactivo.menu-editando > .menu-filtro-carta-contenedor{display:none!important}
