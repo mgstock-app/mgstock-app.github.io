@@ -101,13 +101,13 @@ writeFileSync(join(salida, 'ingresar/index.html'), pagina('Ingresar · ' + ent.n
   '<form id="f"><input id="e" type="email" autocomplete="email" placeholder="Email" required>' +
   '<input id="c" type="password" autocomplete="current-password" placeholder="Contraseña (mínimo 8)" minlength="8" required>' +
   '<button class="p" type="submit">Entrar</button><button type="button" id="n">Crear usuario de prueba</button></form><p id="m" class="nota" role="status"></p>' +
+  '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script>' +
   '<script>(function(){var C=window.GESTLOK_CHAT_CONFIG,sb=window.supabase.createClient(C.url,C.key,{auth:{persistSession:true}}),m=document.getElementById("m");' +
   'function d(){return{email:document.getElementById("e").value.trim(),password:document.getElementById("c").value}}' +
   'document.getElementById("f").onsubmit=async function(ev){ev.preventDefault();m.textContent="Entrando…";var r=await sb.auth.signInWithPassword(d());' +
   'if(r.error){m.textContent="No se pudo entrar: "+r.error.message;return}location.href="/chat/panel/"};' +
   'document.getElementById("n").onclick=async function(){var x=d();if(!x.email||x.password.length<8){m.textContent="Completá email y una contraseña de 8 o más.";return}' +
-  'var r=await sb.auth.signUp(x);m.textContent=r.error?"No se pudo crear: "+r.error.message:"Listo. Confirmá el email que te llegó y después tocá Entrar."}})();</script>',
-  '<script src="/vendor/supabase.js"></script><script src="/chat/config.js"></script>'));
+  'var r=await sb.auth.signUp(x);m.textContent=r.error?"No se pudo crear: "+r.error.message:"Listo. Confirmá el email que te llegó y después tocá Entrar."}})();</script>'));
 
 writeFileSync(join(salida, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Frame-Options: SAMEORIGIN\n');
 writeFileSync(join(salida, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
