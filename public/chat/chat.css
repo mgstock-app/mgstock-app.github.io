@@ -561,3 +561,28 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .chat-bienvenida .bienvenida-titulo{font-size:24px}
   .mensajes:has(.chat-bienvenida):not(:has(.burbuja.cliente)) .chips .chip{font-size:13.5px}
 }
+
+/* WhatsApp externo opcional: solo ícono; nunca envía pedidos ni sustituye al chat. */
+.chat-whatsapp{
+  position:fixed;z-index:3;
+  left:max(14px,calc((100vw - 720px)/2 + 14px));
+  bottom:max(82px,calc(82px + env(safe-area-inset-bottom)));
+  width:46px;height:46px;border-radius:50%;
+  display:grid;place-items:center;
+  color:#fff;background:#25d366;border:2px solid #fff;
+  box-shadow:0 4px 15px rgba(20,55,40,.22);
+  text-decoration:none;-webkit-tap-highlight-color:transparent;
+}
+.chat-whatsapp svg{width:25px;height:25px;fill:currentColor;stroke:none}
+.chat-whatsapp:hover{background:#20ba59}
+.chat-whatsapp:focus-visible{outline:3px solid #116e3b;outline-offset:3px}
+body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:none}
+@media(max-width:620px){
+  .chat-whatsapp{bottom:calc(154px + env(safe-area-inset-bottom));width:44px;height:44px}
+}
+/* Cancelación segura y opciones de venta posteriores. */
+.confirmar-cancelacion{display:grid;gap:12px;padding:8px 0 14px}
+.confirmar-cancelacion p{margin:0 0 6px;font-size:16px;line-height:1.5}
+.confirmar-cancelacion .cancelar-accion{border-color:#e6c1c1;color:#a12b2b;background:#fff}
+.pedido-recuperar{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin:7px 0 0}
+.pedido-recuperar .boton{flex:1 1 145px;min-height:44px;font-size:14px}
