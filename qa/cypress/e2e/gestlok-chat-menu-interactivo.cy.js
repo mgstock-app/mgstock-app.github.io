@@ -178,8 +178,11 @@ describe('GESTLOK Chat · menú interactivo', () => {
       .and('contain.text', '1 × Empanada de jamón y queso');
 
     cy.get('#hoja .menu-revision button').contains('Enviar selección al asistente').click();
-    cy.get('.burbuja.asistente', {timeout: 12000}).last()
-      .should('contain.text', 'Recibí su selección del menú');
+    cy.contains('.burbuja.asistente', 'Recibí su selección del menú', {timeout: 12000});
+    // Con 3 empanadas sueltas el asistente ofrece armar la promo; el cliente puede seguir sin ella.
+    cy.get('.burbuja.asistente').last().should('contain.text', 'Tenemos una promoción para usted');
+    cy.contains('.chip', 'No, seguir sin promoción').click();
+    cy.get('.burbuja.asistente').last().should('contain.text', 'seguimos con su selección');
     cy.get('#barra-texto').should('contain.text', '3 productos');
     cy.get('#hoja').should('not.be.visible');
 

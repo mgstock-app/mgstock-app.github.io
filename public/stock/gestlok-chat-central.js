@@ -31,7 +31,7 @@ function sonar(){
 }
 document.addEventListener('pointerdown',()=>{if(allowed()&&(!soundReady||audioCtx?.state!=='running'))activarSonido();},{capture:true});
 
-const VERSION_PANEL='20261120pizzassafe1';
+const VERSION_PANEL='20261121pizzas1';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chatIcon='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>';
 let api=null,pendientes=0,vistos=null,reclamos=0,reclamosVistos=null,anfitrion=null,panel=null,panelLocal='',cargaPanel=null,epoca=0;

@@ -93,6 +93,27 @@ enlaces, queda la bienvenida guiada; con el local cerrado, el aviso de próxima 
 sistema debajo); 2) responde el texto libre que el guiado no entiende. Los **avisos de estado del pedido** (recibido,
 confirmado, listo, rechazado, cancelado) los arma siempre el sistema con los mensajes del local: la IA no interviene.
 
+**Saludo y botones (20/11/2026).** La conversación arranca abajo, junto al cuadro de escribir (como en WhatsApp), así
+el saludo y los botones quedan a mano. El primer mensaje es: saludo según la hora de Argentina («¡Buenas noches!»;
+reemplaza un «¡Hola!» suelto al comienzo del texto del dueño) + bienvenida del dueño + en el mismo globo la guía de los
+botones con sus nombres exactos: «Para hacer su pedido, toque «Hacer un pedido» aquí abajo. También puede tocar «Ver
+promociones», «Horario y envío», «Medios de pago» o «Ayuda con mi pedido».» («Ver promociones» solo con menú
+interactivo y promos vigentes). Con la IA activa, la IA escribe el saludo y el sistema agrega la guía debajo (la IA no
+nombra botones, para que nunca invente uno). La bienvenida del dueño no necesita mencionar los botones.
+
+**Pizzas, promos para compartir y Jueves On Fire (21/11/2026, Mi Gusto Munro y Torcuato).**
+- Menú interactivo: los productos que solo tienen adicionales opcionales (las pizzas con «Jamón adicional») se suman
+  con **+** y **−** como las empanadas (tacho con 1 unidad). Tocando el nombre se agrega con adicional.
+- «Promociones para compartir» (categoría con «compartir»): Promo Pareja ($32.900, pizza grande ½ Muzzarella + ½ Jamón y
+  morrón + 2 empanadas) y Promo Clásica ($46.900, Muzzarella grande + 6 empanadas + 2 salsas). Se eligen las empanadas
+  y salsas con el mismo selector de promos. No se ofrecen por empanadas sueltas; sí cuando el cliente pide promo con
+  pizza. Carga: `supabase/operaciones/mi-gusto-chat-compartir-on-fire-20261121.sql`.
+- **Jueves On Fire** (`carteleraDelDia` en motor.js; la función la aplica antes de responder): el último jueves de cada
+  mes desde las 18:00 (Argentina) y por ese turno se ofrece **solo** «Jueves On Fire · 12 empanadas + 3 salsas»
+  ($39.500, precio final: no lleva el 10% por delivery en efectivo; migración 20261121040000); el Pack 12 de $52.900 y el resto de la carta no aparecen, el saludo lo anuncia y el pago es **solo en
+  efectivo** (retiro y delivery; el envío se cobra aparte). El resto del mes la promo On Fire no aparece. Si un carrito
+  tenía otros productos cuando empieza, se quitan y se avisa. Pasado el cierre del turno vuelve la carta normal.
+
 **Motor guiado (respaldo, sin costo):** entiende saludos, horario, envío, pagos, dirección, precios, la carta y
 pedidos escritos («2 de carne y 1 de jamón y queso», «media docena», «pizza grande con aceitunas», «sin …»).
 Pregunta cuando hay dudas y pide las opciones obligatorias. **Nunca** fija precios ni confirma: la base recalcula todo

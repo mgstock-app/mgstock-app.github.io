@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261120pizzassafe1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261121pizzas1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -477,7 +477,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261120pizzassafe1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261121pizzas1').catch(() => null);
     let a;
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
@@ -486,7 +486,7 @@
     const area = (valor, max, filas, ph) => { const t = el('textarea', {rows: String(filas), maxlength: String(max), placeholder: ph || '', disabled: !editable}); t.value = valor || ''; return t; };
     const activa = el('input', {type: 'checkbox', checked: a.ia_activa !== false, disabled: !editable});
     const nombre = el('input', {type: 'text', maxlength: '40', placeholder: 'Ej.: Sofi', disabled: !editable}); nombre.value = a.ia_nombre || '';
-    const bienvenida = area(a.bienvenida, 500, 3, '¡Hola! Soy ' + (a.ia_nombre || 'el asistente') + ' de ' + a.empresa + ' ' + a.nombre + '. Podés escribirme tu pedido o mirar la carta.');
+    const bienvenida = area(a.bienvenida, 500, 3, 'Le damos la bienvenida a ' + a.empresa + ' ' + a.nombre + '.');
     const instrucciones = area(a.ia_instrucciones, 2000, 5, 'Ej.: Tratá de vos. Ofrecé un complemento cuando pidan el producto principal. Si preguntan por algo especial, deciles que llamen al local.');
     const info = area(a.ia_info, 4000, 6, 'Ej.: Tiempo de preparación: 30 a 40 minutos. Hay opciones sin TACC: … Promos de la semana: … Formas de retiro y garantía: …');
     const campos = {};
@@ -534,7 +534,7 @@
       el('label', {class: 'check'}, activa, ' Responder con IA (si se apaga, responde el asistente guiado)'),
       campo('Nombre del asistente (opcional)', nombre),
       campo('Mensaje de bienvenida', bienvenida),
-      el('small', {class: 'ayuda', text: 'Con la IA activa, la bienvenida la escribe la IA tomando este texto como base y el saludo según la hora. Debajo siempre aparecen los botones y el carrito.'}),
+      el('small', {class: 'ayuda', text: 'El asistente saluda según la hora (Buenos días, Buenas tardes o Buenas noches), suma este texto y en el mismo mensaje le indica al cliente los botones de abajo («Hacer un pedido», promociones, horario, pagos y ayuda). No hace falta nombrar los botones acá. Con la IA activa, la IA escribe el saludo tomando este texto como base.'}),
       campo('Indicaciones para la IA: tono, qué ofrecer, qué evitar', instrucciones),
       campo('Información del local y preguntas frecuentes', info),
       el('p', {class: 'nota', text: 'La IA solo usa la carta, estos datos y los ajustes del local. No puede cambiar precios, confirmar ni terminar pedidos.'})),

@@ -5,7 +5,9 @@
  * Proveedores: «openai» (ChatGPT), «anthropic» (Claude) o «gemini» (Google, API compatible con OpenAI).
  */
 import {botonesCarrito, describirLinea, faltantes, limpiarEstado, pesos, responder, sumar, textoCarrito,
-  textoEnvio, textoHorario, textoPago, totalCarrito, validarLinea, formalizar, promocionesVigentes, usaMenuInteractivo} from './motor.js';
+  textoEnvio, textoHorario, textoPago, totalCarrito, validarLinea, formalizar, promocionesVigentes, usaMenuInteractivo,
+  momentoDelDia} from './motor.js';
+export {momentoDelDia};
 
 const MAX_RONDAS = 4;
 const MAX_HISTORIAL = 12;
@@ -260,11 +262,6 @@ export async function responderIA({sucursal, privado, catalogo, estado, historia
  * falla o devuelve algo dudoso, se usa la bienvenida del asistente guiado. */
 const ESPERA_BIENVENIDA_MS = 6000;
 
-export function momentoDelDia(ahora = new Date()) {
-  const h = Number(new Intl.DateTimeFormat('en-GB', {timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', hourCycle: 'h23'}).format(ahora));
-  return h >= 6 && h < 13 ? 'Buenos días' : h >= 13 && h < 20 ? 'Buenas tardes' : 'Buenas noches';
-}
-
 export function armarSistemaBienvenida({sucursal, privado, ahora}) {
   const s = sucursal || {}; const pr = privado || {};
   const cerrado = s.atencion?.habilitado && s.atencion.abierto === false;
@@ -275,7 +272,7 @@ export function armarSistemaBienvenida({sucursal, privado, ahora}) {
     'Empiece con «' + momentoDelDia(ahora) + '».',
     cerrado
       ? 'El local está cerrado en este momento: no invite a pedir ahora. Justo debajo, el sistema informa la próxima apertura y ofrece dejar un pedido programado.'
-      : 'Invite a armar el pedido con los botones de abajo («Ver menú») o a escribir lo que necesita.',
+      : 'Salude, dé la bienvenida e invite a usar los botones de abajo para hacer el pedido. No escriba los nombres de los botones: justo debajo de su texto el sistema agrega cuáles son y para qué sirve cada uno.',
     'No mencione precios, promociones, productos, horarios, demoras, números ni enlaces. No pida datos personales.',
     s.bienvenida ? 'Bienvenida que escribió el dueño (respete su contenido y su tono): ' + String(s.bienvenida).slice(0, 500) : '',
     pr.ia_instrucciones ? 'Indicaciones del dueño (solo para el tono): ' + String(pr.ia_instrucciones).slice(0, 800) : '',

@@ -32,8 +32,10 @@ test('normaliza y formatea pesos', () => {
 
 test('bienvenida con botones', () => {
   const r = turno(null, {inicio: true});
-  assert.match(r.mensajes[0].texto, /asistente de Mi Gusto Munro/);
+  assert.match(r.mensajes[0].texto, /^¡Buen(os días|as tardes|as noches)! Le damos la bienvenida a Mi Gusto Munro\./);
+  assert.match(r.mensajes[0].texto, /toque «Hacer un pedido» aquí abajo/);
   assert.equal(r.mensajes[0].botones.length, 4);
+  assert.equal(r.mensajes[0].botones[0].texto, 'Hacer un pedido');
 });
 
 test('pedido escrito con cantidades y contexto', () => {
@@ -137,8 +139,9 @@ test('Mi Gusto: bienvenida breve, consulta de pagos y botones responden correcta
     medios_pago_retiro: ['debito', 'credito', 'efectivo', 'transferencia'],
     medios_pago_envio: ['efectivo', 'transferencia']};
   const responder = entrada => M.responder({sucursal: miGusto, catalogo: cat, estado: null, entrada});
-  const inicio = responder({inicio: true});
-  assert.equal(inicio.mensajes[0].texto, M.formalizar(miGusto.bienvenida));
+  const inicio = M.responder({sucursal: miGusto, catalogo: cat, estado: null, entrada: {inicio: true}, ahora: new Date('2026-11-20T23:30:00-03:00')});
+  assert.equal(inicio.mensajes[0].texto, '¡Buenas noches! ' + M.formalizar(miGusto.bienvenida.replace('¡Hola! ', '')) +
+    '\nPara hacer su pedido, toque «Hacer un pedido» aquí abajo. También puede tocar «Horario y envío», «Medios de pago» o «Ayuda con mi pedido».');
   assert.deepEqual(inicio.mensajes[0].botones.map(b => b.id), ['carta', 'horario', 'pago', 'soporte']);
   const pagos = responder({boton: 'pago'});
   assert.match(pagos.mensajes[0].texto, /Retiro en el local: Tarjeta de débito, Tarjeta de crédito, Efectivo, Transferencia/);

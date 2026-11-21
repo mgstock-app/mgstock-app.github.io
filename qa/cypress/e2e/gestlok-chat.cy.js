@@ -23,7 +23,11 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella')
       .and('contain.text','Tamaño · Grande').and('contain.text','10.500');
     cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
-    cy.get('.burbuja.asistente').last().should('contain.text', 'Pizza muzzarella (Grande)');
+    cy.contains('.burbuja.asistente', 'Pizza muzzarella (Grande)');
+    // Con 3 empanadas sueltas el asistente ofrece armar la promo; el cliente sigue sin ella.
+    cy.get('.burbuja.asistente').last().should('contain.text', 'Tenemos una promoción para usted');
+    cy.contains('.chip', 'No, seguir sin promoción').click();
+    cy.get('.burbuja.asistente').last().should('contain.text', 'seguimos con su selección');
     cy.get('#btn-finalizar').click();
     // Venta sugerida: ofrece un postre concreto con precio. El cliente decide si agregarlo.
     cy.get('.burbuja.asistente').last().should('contain.text', 'postre o una bebida');
@@ -276,16 +280,17 @@ describe('GESTLOK Chat · clientes frecuentes y continuidad sin registro',()=>{
     // El pedido demo mínimo es $3.000; 3 empanadas de $1.200 permiten finalizar.
     cy.get('#texto').type('3 empanadas de carne{enter}');
     cy.get('#btn-finalizar').click();
-    // Si hay venta sugerida permite rechazar; si no, abre directamente los datos.
-    cy.get('body').should($body => {
-      const sugerencia = $body.find('.chip').toArray().some(x => x.textContent.includes('No, gracias. Finalizar'));
-      expect(sugerencia || $body.find('#hoja').is(':visible')).to.eq(true);
-    });
-    cy.get('body').then($body => {
-      if ($body.find('.chip').toArray().some(x => x.textContent.includes('No, gracias. Finalizar'))) {
+    // Antes de los datos pueden aparecer la oferta de promo y la venta sugerida: se rechazan las dos.
+    const pasarOfertas = veces => cy.get('body').should($body => {
+      const oferta = $body.find('.chip').toArray().some(x => x.textContent.includes('No, gracias. Finalizar'));
+      expect(oferta || $body.find('#hoja').is(':visible')).to.eq(true);
+    }).then($body => {
+      if (veces > 0 && !$body.find('#hoja').is(':visible')) {
         cy.contains('.chip','No, gracias. Finalizar').click();
+        pasarOfertas(veces - 1);
       }
     });
+    pasarOfertas(3);
     cy.get('#hoja').should('be.visible').and('contain.text','Sus datos');
   };
 

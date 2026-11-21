@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261120pizzassafe1';
+import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, esPromoOnFire, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121pizzas1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -197,10 +197,7 @@ function mostrarEscribiendo(si) {
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
   ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
-  : [{id: 'carta', texto: 'Hacer un pedido'},
-      ...(usaMenuInteractivo(S.sucursal) && promocionesVigentes(S.catalogo).length ? [{id: 'promociones', texto: 'Ver promociones'}] : []),
-      {id: 'horario', texto: 'Horario y envío'},
-      {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
+  : botonesBienvenida(S.sucursal, S.catalogo); // «Hacer un pedido», «Ver promociones» (si hay), horario, pagos y ayuda
 
 async function enviar(entrada, textoVisible) {
   if (S.enviando) return false;
@@ -222,6 +219,10 @@ async function enviar(entrada, textoVisible) {
       burbuja('error', r.error || 'No se pudo procesar la consulta. Probá de nuevo.');
       if (r.status === 409 && /cerrad|finalizad/i.test(r.error||'')) {mostrarCierre();return false;}
       chips([{id: '__reintentar', texto: 'Reintentar'}]); return false;
+    }
+    if (r.catalogo && r.sucursal) {
+      S.catalogo = r.catalogo; S.sucursal = {...r.sucursal, atencion: r.atencion || r.sucursal.atencion};
+      S.borrador = S.borrador.filter(l => producto(l.producto_id)); guardarBorrador();
     }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
     // Solo borrar el borrador si el servidor ACEPTÓ el lote; un error de catálogo o
@@ -439,7 +440,10 @@ function abrirCarta() {
     };
     const filaProducto = p => {
       const disponible = p.disponible !== false;
-      const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > 0;
+      // Solo adicionales opcionales (ej. pizzas con «Jamón adicional»): se suman con + y −, como las empanadas.
+      // Tocando el nombre se agrega con adicional. Lo obligatorio (promos, tamaños) sigue con «Elegir».
+      const opcionales = (p.opciones || []).filter(g => !esCantidad(g) && !g.obligatorio);
+      const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > opcionales.length;
       const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
       const simple = lineaSimple(p);
       const detalle = el('div', {class: 'menu-producto-detalle', hidden: true});
@@ -476,12 +480,16 @@ function abrirCarta() {
         onclick: requiereOpciones ? undefined : mostrarDetalle,
         'aria-label': requiereOpciones ? undefined : 'Personalizar ' + p.nombre},
         el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
-          p.descripcion ? el('small', {text: p.descripcion}) : null),
+          p.descripcion ? el('small', {text: p.descripcion}) : null,
+          !requiereOpciones && disponible && opcionales.length ? el('small', {class: 'menu-adicional',
+            text: 'Opcional: ' + opcionales.flatMap(g => g.valores || []).slice(0, 3)
+              .map(v => v.nombre + (Number(v.extra) ? '\u00a0+\u00a0' + pesos(v.extra).replace(' ', '\u00a0') : '')).join(', ') + ' · toque el nombre'}) : null),
         disponible ? el('span', {class: 'precio', text: pesos(p.precio)}) :
           el('span', {class: 'agotado', text: 'Agotado'}));
       const controles = !disponible ? null : el('div', {class: 'menu-pasos'},
-        !requiereOpciones && simple ? el('button', {type: 'button', class: 'menu-paso',
-          'aria-label': 'Quitar una unidad de ' + p.nombre, text: '−', onclick: () => cambiarSimple(p, -1)}) : null,
+        !requiereOpciones && simple ? el('button', {type: 'button', class: 'menu-paso' + (simple.cantidad === 1 ? ' menu-paso-tacho' : ''),
+          'aria-label': 'Quitar una unidad de ' + p.nombre, text: simple.cantidad === 1 ? undefined : '−',
+          onclick: () => cambiarSimple(p, -1)}, simple.cantidad === 1 ? iconoTacho() : null) : null,
         cantidad ? el('output', {class: 'menu-n', 'aria-label': p.nombre + ': ' + cantidad + ' seleccionados',
           text: String(cantidad)}) : null,
         el('button', {type: 'button', class: 'menu-paso menu-paso-mas' + (requiereOpciones ? ' menu-paso-elegir' : ''),
@@ -746,7 +754,9 @@ function abrirDatos() {
     const subtotal = totalCarrito(S.catalogo, S.carrito);
     const porcentaje = d.entrega === 'envio' && d.medio_pago === 'efectivo'
       ? Number(s.descuento_efectivo_pct) || 0 : 0;
-    const descuento = Math.round(subtotal * porcentaje) / 100;
+    // La promo «Jueves On Fire» es precio final: no lleva el descuento por efectivo (igual que en la base).
+    const conDescuento = totalCarrito(S.catalogo, S.carrito.filter(l => !esPromoOnFire(producto(l.producto_id))));
+    const descuento = Math.round(conDescuento * porcentaje) / 100;
     importeEstimado = Math.round((subtotal + envio - descuento) * 100) / 100;
     totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye 10% de descuento en productos' : '');
     const efectivoDelivery = d.entrega === 'envio' && d.medio_pago === 'efectivo';
@@ -1058,9 +1068,11 @@ const DEMO_DATOS = {
 let demoEstado = null; let demoPedido = null;
 async function demoApi(accion, extra) {
   await new Promise(r => setTimeout(r, 250));
-  const base = {sucursal: DEMO_DATOS.sucursal, catalogo: DEMO_DATOS.catalogo};
+  const ahoraDemo = params.get('ahora') && !Number.isNaN(Date.parse(params.get('ahora'))) ? new Date(params.get('ahora')) : new Date();
+  const base = carteleraDelDia(DEMO_DATOS.sucursal, DEMO_DATOS.catalogo, ahoraDemo);
+  delete base.clave;
   if (accion === 'abrir') {
-    const r = responder({...base, estado: null, entrada: {inicio: true}});
+    const r = responder({...base, estado: null, entrada: {inicio: true}, ahora: ahoraDemo});
     demoEstado = r.estado;
     const guardado = SHOWROOM?.read();
     if(guardado?.order) demoPedido = {...guardado.order, aviso: textoEstadoPedido(guardado.order, DEMO_DATOS.sucursal, {})};
@@ -1094,7 +1106,8 @@ async function demoApi(accion, extra) {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
     const efectivo = r.accion.pedido.entrega === 'envio' && r.accion.pedido.medio_pago === 'efectivo';
-    const descuento = efectivo ? Math.round(sub * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
+    const conDescuento = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito.filter(l => !esPromoOnFire(DEMO_DATOS.catalogo.productos.find(x => x.id === l.producto_id))));
+    const descuento = efectivo ? Math.round(conDescuento * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
     const total = sub + envio - descuento;
     const abona = efectivo ? Number(r.accion.pedido.efectivo_abona || total) : null;
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});
