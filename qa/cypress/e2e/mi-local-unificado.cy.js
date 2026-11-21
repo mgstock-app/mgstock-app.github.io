@@ -37,8 +37,8 @@ describe('Mi local · inicio único de Perfumes',()=>{
   cy.window().then(w=>{expect(w.GestLokCajaDiaria.entryUrl()).to.include('/caja/?desde=gestlok');w.__navigationMarker='same-document';});
   cy.get('#hub [data-pilot-caja]').click();
   cy.get('#gl-caja-app-panel').should('be.visible');
-  // «/» abre el panel en «/login/» (entrada oficial): la caja se abre sin salir de esa página.
-  cy.location('pathname').should('match',/^\/(login\/)?$/);
+  // El inicio canónico ahora es /login/; Caja abre un panel sin navegar fuera de él.
+  cy.location('pathname').should('equal','/login/');
   cy.get('#gl-caja-app-panel iframe').its('0.contentWindow.__caja.S.user.email').should('equal','dueno@example.com');
   cy.get('#gl-caja-app-panel iframe').its('0.contentDocument.body').should('not.be.empty').then(cy.wrap).find('[data-caja-volver]').first().click();
   cy.get('#gl-caja-app-panel').should('not.be.visible');
