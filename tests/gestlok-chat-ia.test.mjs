@@ -62,7 +62,7 @@ test('Mi Gusto: la IA abre el selector y no incorpora un producto por texto', as
       oai(null, [['agregar_producto', {producto: 'P2', cantidad: 1, opciones: {tam: ['grande']}}]]),
       oai('Elija el tamaño en el menú interactivo.'),
     ]);
-    const r = await responderIA({sucursal: {...sucursal, slug}, privado, catalogo, estado: null,
+    const r = await responderIA({sucursal: {...sucursal, slug, menu_interactivo: true}, privado, catalogo, estado: null,
       historial: [], texto: 'una pizza grande', config: cfgOAI, fetchImpl});
     assert.deepEqual(r.estado.carrito, []);
     assert.equal(r.mensajes[0].tipo, 'producto');

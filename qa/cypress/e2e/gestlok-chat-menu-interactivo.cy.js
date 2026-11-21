@@ -26,7 +26,7 @@ describe('GESTLOK Chat · menú interactivo', () => {
       const local = slug === 'mi-gusto-munro' ? 'Munro' : 'Don Torcuato';
       cy.intercept('POST', '**/functions/v1/gestlok-chat', req => {
         if (req.body.accion !== 'abrir') return req.reply({ok:true,carrito:[],mensajes:[]});
-        req.reply({ok:true,sucursal:{slug,empresa:'Mi Gusto',nombre:local,horario:'11:00 a 14:40 y 19:00 a 23:15'},
+        req.reply({ok:true,sucursal:{slug,menu_interactivo:true,empresa:'Mi Gusto',nombre:local,horario:'11:00 a 14:40 y 19:00 a 23:15'},
           catalogo:{categorias:[{id:'c1',nombre:'Empanadas'}],productos:[{
             id:'9a000000-0000-4000-8000-000000000001',categoria_id:'c1',
             nombre:'Empanada de carne',precio:4900,activo:true,disponible:true,opciones:[]}]},
@@ -202,7 +202,7 @@ describe('GESTLOK Chat · menú interactivo ante un rechazo', () => {
       nombre:'Empanada de carne',precio:1200,activo:true,disponible:true,opciones:[]};
     cy.intercept('POST','**/functions/v1/gestlok-chat', req => {
       if (req.body.accion === 'abrir') return req.reply({ok:true,sucursal:{
-        slug:'mi-gusto-munro',empresa:'Mi Gusto',nombre:'Munro',acepta_retiro:true,
+        slug:'mi-gusto-munro',menu_interactivo:true,empresa:'Mi Gusto',nombre:'Munro',acepta_retiro:true,
         acepta_envio:false,medios_pago:['efectivo']},catalogo:{
         categorias:[{id:'c1',nombre:'Empanadas'}],productos:[producto]},
         mensajes:[],nuevos:[{texto:'Bienvenido',botones:[]}],carrito:[],pedidos:[]});

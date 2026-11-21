@@ -101,7 +101,18 @@ promociones», «Horario y envío», «Medios de pago» o «Ayuda con mi pedido�
 interactivo y promos vigentes). Con la IA activa, la IA escribe el saludo y el sistema agrega la guía debajo (la IA no
 nombra botones, para que nunca invente uno). La bienvenida del dueño no necesita mencionar los botones.
 
-**Pizzas, promos para compartir y Jueves On Fire (21/11/2026, Mi Gusto Munro y Torcuato).**
+**Función global y personalización de cada local (21/11/2026).** El motor, el chat y la base son los mismos para todos
+los comercios. Lo propio de cada local es configuración (no código):
+- `sucursales.menu_interactivo` (sí/no): pedidos por el menú interactivo con promos (nuevos locales: sí).
+- `productos.reglas` (cada producto o promo): `cuando` {dia_semana 1-7, semana `todas`|`ultima`, desde, hasta} (promo
+  programada), `nombre`, `aviso`, `exclusiva` (mientras rige es lo único que se ofrece), `solo_efectivo`, `sin_descuento`
+  (precio final, sin el % por efectivo del local) y `compartir` (no se ofrece por unidades sueltas).
+- Del local: carta, precios, promos, `descuento_efectivo_pct`, medios de pago, envío, horarios y mensajes.
+La base controla las reglas al crear el pedido (`regla_vigente`, efectivo y descuento). Migración 20261121060000.
+Reclamos: «Faltante en mi pedido» y «Otro reclamo» piden la descripción y una foto antes de avisar al gerente; la foto
+se suma al mismo caso.
+
+**Ejemplo Mi Gusto — pizzas, promos para compartir y Jueves On Fire (21/11/2026, Mi Gusto Munro y Torcuato).**
 - Menú interactivo: los productos que solo tienen adicionales opcionales (las pizzas con «Jamón adicional») se suman
   con **+** y **−** como las empanadas (tacho con 1 unidad). Tocando el nombre se agrega con adicional.
 - «Promociones para compartir» (categoría con «compartir»): Promo Pareja ($32.900, pizza grande ½ Muzzarella + ½ Jamón y

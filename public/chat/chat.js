@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, esPromoOnFire, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121pizzas1';
+import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121global1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -730,6 +730,8 @@ function abrirDatos() {
   const s = S.sucursal; const d = S.datos;
   if (!d.entrega) d.entrega = s.acepta_retiro ? 'retiro' : 'envio';
   const medios = entrega => {
+    // Promo del local que se paga solo en efectivo (regla del producto): no se ofrecen otros medios.
+    if (soloEfectivo(S.catalogo, S.carrito)) return ['efectivo'];
     const lista = entrega === 'envio' ? s.medios_pago_envio : s.medios_pago_retiro;
     return Array.isArray(lista) && lista.length ? lista : (s.medios_pago || ['efectivo']);
   };
@@ -754,11 +756,11 @@ function abrirDatos() {
     const subtotal = totalCarrito(S.catalogo, S.carrito);
     const porcentaje = d.entrega === 'envio' && d.medio_pago === 'efectivo'
       ? Number(s.descuento_efectivo_pct) || 0 : 0;
-    // La promo «Jueves On Fire» es precio final: no lleva el descuento por efectivo (igual que en la base).
-    const conDescuento = totalCarrito(S.catalogo, S.carrito.filter(l => !esPromoOnFire(producto(l.producto_id))));
+    // Promos a precio final (regla sin_descuento del local) no llevan el descuento por efectivo (igual que en la base).
+    const conDescuento = subtotal - totalSinDescuento(S.catalogo, S.carrito);
     const descuento = Math.round(conDescuento * porcentaje) / 100;
     importeEstimado = Math.round((subtotal + envio - descuento) * 100) / 100;
-    totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye 10% de descuento en productos' : '');
+    totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye ' + porcentaje + '% de descuento en productos' : '');
     const efectivoDelivery = d.entrega === 'envio' && d.medio_pago === 'efectivo';
     efectivo.hidden = !efectivoDelivery;
     // Validación al enviar: primero dirección y luego importe. Sin bloqueo nativo anticipado.
@@ -972,6 +974,8 @@ async function enviarFoto(archivo) {
     const r=await api('adjuntar',imagen);
     if (!r.ok) throw Error(r.error||'No se pudo enviar la foto.');
     burbujaFoto('cliente',r.imagen_url,'Foto enviada al gerente');
+    // Si el asistente todavía espera la descripción del reclamo, la pide debajo de la foto.
+    for (const m of r.mensajes || []) mensajeAsistente(m, {abrir: false});
     S.soportePendiente=true;programarSondeo();
   } catch(e) {burbuja('error',e.message||'No pudimos enviar la foto.');}
   finally {S.enviando=false;$('btn-galeria').disabled=false;$('btn-camara').disabled=false;}
@@ -1106,7 +1110,7 @@ async function demoApi(accion, extra) {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
     const efectivo = r.accion.pedido.entrega === 'envio' && r.accion.pedido.medio_pago === 'efectivo';
-    const conDescuento = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito.filter(l => !esPromoOnFire(DEMO_DATOS.catalogo.productos.find(x => x.id === l.producto_id))));
+    const conDescuento = sub - totalSinDescuento(DEMO_DATOS.catalogo, r.estado.carrito);
     const descuento = efectivo ? Math.round(conDescuento * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
     const total = sub + envio - descuento;
     const abona = efectivo ? Number(r.accion.pedido.efectivo_abona || total) : null;
