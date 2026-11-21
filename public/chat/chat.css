@@ -503,6 +503,14 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 /* 21/11 · Primera pantalla: bienvenida breve, centrada y reconocible como chat.
    No altera la carta, las promociones, el carrito ni los mensajes posteriores. */
 :root{--fondo:#fff}
+.mensajes{
+  /* Fondo de pantalla predeterminado, sin motivos repetidos, independiente de la sucursal. */
+  background-color:#f3f5f8;
+  background-image:url('/chat/wallpaper-gestlok.svg');
+  background-position:center center;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
 .burbuja.asistente:not(.chat-bienvenida){background:#f2f5f9}
 .cabecera p{color:#536477}
 .burbuja.asistente.chat-bienvenida{
@@ -512,9 +520,12 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   white-space:normal;color:#182230;
 }
 .chat-bienvenida .bienvenida-icono{
-  display:grid;place-items:center;width:46px;height:46px;margin-bottom:14px;
-  border-radius:15px;background:#edf4ff;color:var(--acento);
-  font-size:29px;line-height:1;
+  display:grid;place-items:center;
+  width:66px;height:72px;margin-bottom:11px;
+  background:transparent;border:0;border-radius:0;
+}
+.chat-bienvenida .bienvenida-icono img{
+  display:block;width:60px;height:66px;object-fit:contain;
 }
 .chat-bienvenida .bienvenida-etiqueta{
   margin:0 0 9px;font-size:12px;font-weight:750;letter-spacing:.09em;
@@ -555,6 +566,10 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .mensajes:has(.burbuja.cliente) .chat-bienvenida .bienvenida-etiqueta{display:none}
 .mensajes:has(.burbuja.cliente) .chat-bienvenida .bienvenida-titulo{
   font-size:16px;line-height:1.45;font-weight:650;letter-spacing:0;
+}
+@media(max-width:430px){
+  .chat-bienvenida .bienvenida-icono{width:56px;height:62px}
+  .chat-bienvenida .bienvenida-icono img{width:52px;height:58px}
 }
 @media(max-width:360px){
   .mensajes:has(.chat-bienvenida):not(:has(.burbuja.cliente)){padding:24px 12px 10px}
