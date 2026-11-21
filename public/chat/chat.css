@@ -586,3 +586,58 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .confirmar-cancelacion .cancelar-accion{border-color:#e6c1c1;color:#a12b2b;background:#fff}
 .pedido-recuperar{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin:7px 0 0}
 .pedido-recuperar .boton{flex:1 1 145px;min-height:44px;font-size:14px}
+
+/* Compra rápida 21/11: búsqueda de variedades, selección confirmada y accesos claros. */
+.menu-busqueda-variedades{display:block;margin:10px 0 8px;padding:0 4px}
+.menu-busqueda-variedades span{display:block;font-size:12px;font-weight:650;color:#486178;margin:0 0 5px}
+.menu-filtro-variedades,.menu-filtro-carta{
+  display:block;box-sizing:border-box;width:100%;min-height:48px;padding:11px 14px;
+  border:1px solid #b5c8da;border-radius:12px;background:#fff;color:#1b2d3c;
+  font-size:16px;outline-offset:2px;
+}
+.menu-filtro-variedades:focus,.menu-filtro-carta:focus{outline:2px solid #1580a2;border-color:#1580a2}
+.menu-variedad-fila[hidden],.menu-fila[hidden],.menu-sin-resultados[hidden],
+.menu-filtro-vacio[hidden]{display:none!important}
+.menu-filtro-carta-contenedor{margin:0 0 12px}
+.menu-form-combo .menu-grupo-lista .opcion.menu-variedad-fila.elegida{
+  background:#edf9ef;border-left:3px solid #29915c;padding-left:9px;
+}
+.menu-fila-promo-elegida{margin:5px 0;border:1px solid #b8e2c3!important;border-radius:12px;background:#eefaf1}
+.menu-interactivo .menu-fila-promo-elegida .menu-fila-principal{padding:2px 9px}
+.promo-elegida-etiqueta{
+  display:inline-flex!important;align-items:center;width:fit-content;margin:5px 0 0;
+  padding:3px 9px;border:1px solid #a6d9b5;border-radius:20px;
+  background:#dbf5e4;color:#17613b!important;font-size:12px!important;font-weight:750;
+}
+.seleccion-linea-promo{border:1px solid #a6d9b5;border-radius:12px;padding:12px;background:#f0faf2}
+.chip.chip-omitir-envio{
+  background:#087a48;border:1px solid #087a48;color:#fff;
+  font-weight:750;min-height:46px;padding:11px 17px;
+}
+.chip.chip-omitir-envio:hover{background:#07653d}
+.chip.chip-omitir-envio:focus-visible{outline:3px solid #087a48;outline-offset:3px}
+.ubicacion-opciones{
+  display:grid;grid-template-columns:1fr;gap:5px;
+  margin:-5px 0 14px;padding:12px;border-radius:13px;background:#f2f8fa;border:1px solid #d7e5eb;
+}
+.ubicacion-opciones[hidden],.ubicacion-estado[hidden],.costo-envio[hidden]{display:none!important}
+.ubicacion-opciones .nota{margin:0;font-size:13px}
+.ubicacion-opciones .ubicacion-boton{width:100%;background:#fff;border-color:#a8c7d3}
+.ubicacion-opciones .ubicacion-boton:disabled{opacity:.65}
+.ubicacion-opciones .ubicacion-estado{min-height:20px;font-size:12.5px;line-height:1.45;color:#486072}
+.ubicacion-opciones .ubicacion-estado .ubicacion-ok{color:#187146}
+.ubicacion-opciones .ubicacion-estado a{color:#0871a0;text-decoration:underline}
+.costo-envio{font-size:13px;margin:-1px 0 12px;color:#455669}
+.segmentado label{min-width:0;overflow-wrap:anywhere}
+/* WhatsApp externo: escritorio en la canaleta izquierda; móvil en encabezado,
+   nunca encima de mensajes, promociones ni controles de compra. */
+.chat-whatsapp[hidden]{display:none!important}
+@media(min-width:840px){
+  .chat-whatsapp{left:calc(50% - 360px - 60px);top:105px;bottom:auto}
+}
+@media(max-width:839px){
+  .cabecera{padding-left:64px}
+  .chat-whatsapp{left:10px;top:max(12px,env(safe-area-inset-top));bottom:auto;
+    width:42px;height:42px;z-index:4}
+  .chat-whatsapp svg{width:24px;height:24px}
+}
