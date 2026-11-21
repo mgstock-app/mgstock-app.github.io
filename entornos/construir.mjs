@@ -52,6 +52,7 @@ function adaptar(texto, ruta) {
   t = t.split(URL_REAL).join(URL_PRUEBAS);
   // Cada entorno usa sus propias funciones en la base de pruebas: gestlok-chat-prueba, gestlok-chat-testing…
   t = t.replace(/\/functions\/v1\/(gestlok-chat(?:-push)?)(?![\w-])/g, '/functions/v1/$1-' + nombre);
+  t = t.split("['Ir a GESTLOK', '/']").join("['Ingresar como gerente', '/ingresar/']");
   if (/\.html?$/.test(ruta)) {
     t = t.replace(/<head([^>]*)>/i, '<head$1><meta name="robots" content="noindex,nofollow"><script src="/entorno.js" defer></script>');
   }
@@ -78,7 +79,7 @@ writeFileSync(join(salida, 'chat/config.js'), '/* ' + ent.nombre + ': base de pr
 // Aviso fijo en todas las pantallas y botón para pasar a la etapa siguiente.
 writeFileSync(join(salida, 'entorno.js'), `(function(){
   if (document.getElementById('gestlok-entorno')) return;
-  try { if (window.top !== window.self) return; } catch (e) { return; }
+  try { if (window.top !== window.self) { if (location.pathname === '/') location.replace('/ingresar/'); return; } } catch (e) { return; }
   var b = document.createElement('div'); b.id = 'gestlok-entorno';
   b.setAttribute('style','position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;gap:8px;align-items:center;' +
     'background:${ent.color};color:#fff;font:600 12px/1.2 system-ui,sans-serif;padding:6px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap');
