@@ -1,5 +1,31 @@
 /* global cy, describe, it, expect */
 describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
+  for(const ancho of [390,1100]){
+    it('WhatsApp abajo a la derecha sin tapar el editor ('+ancho+' px)',()=>{
+      cy.viewport(ancho,800);
+      cy.visit('/chat/?demo=1&showroom=1');
+      cy.get('#app').should('have.attr','aria-busy','false');
+      // La demo oculta el contacto externo; mostrar el elemento solo para probar el CSS.
+      cy.get('#whatsapp-local')
+        .invoke('attr','href','https://wa.me/5491155551234')
+        .invoke('removeAttr','hidden')
+        .should('be.visible')
+        .then($link=>{
+          const rect=$link[0].getBoundingClientRect();
+          const app=$link[0].ownerDocument.querySelector('#app').getBoundingClientRect();
+          const editor=$link[0].ownerDocument.querySelector('.redactar').getBoundingClientRect();
+          expect(rect.width).to.eq(44);
+          expect(rect.height).to.eq(44);
+          expect(rect.left).to.be.greaterThan(app.left);
+          expect(rect.right).to.be.at.most(app.right);
+          expect(app.right-rect.right).to.be.lessThan(50);
+          expect(rect.bottom).to.be.at.most(editor.top-4);
+        });
+      cy.get('#texto').focus();
+      cy.get('#whatsapp-local').should('not.be.visible');
+    });
+  }
+
   it('editor legible en 360 px: mensaje completo, cámara y menú sin solaparse',()=>{
     cy.viewport(360,740);
     cy.visit('/chat/?demo=1&showroom=1');
