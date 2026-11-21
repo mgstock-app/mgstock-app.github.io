@@ -23,7 +23,7 @@ test('el backend separa por local pendientes, avisables y en preparación, sin D
  assert.match(sql, /p\.sucursal_id = s\.id/g);
  assert.match(sql, /'pendientes_avisables'/);
  assert.match(sql, /'en_preparacion'/);
- assert.match(sql, /p\.es_prueba is not true/g);
+ assert.match(sql, /coalesce\(to_jsonb\(p\)->>'es_prueba','false'\) <> 'true'/g);
  assert.match(sql, /p\.programado_para is null or p\.programado_para <= now\(\)/);
  assert.doesNotMatch(sql, /grant (execute|all) .* anon|disable row level security/i);
  const pg=leer('tests/db/gestlok-chat-postgres.test.mjs');
