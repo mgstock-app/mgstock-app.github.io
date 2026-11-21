@@ -75,7 +75,7 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
       req.reply({ok:true,carrito:[],mensajes:[]});
     });
     cy.visit('/chat/?s=mi-gusto-torcuato');
-    cy.get('.pedido-recuperar').contains('button','Hacer nuevo pedido').click();
+    cy.get('.pedido-recuperar').contains('button','Hacer un nuevo pedido').click();
     cy.get('#hoja-titulo').should('have.text','Menú');
     cy.get('#hoja .lista').should('contain.text','Empanada de carne');
     cy.get('.menu-pie-texto').should('contain.text','Elegí los productos');
