@@ -12,9 +12,11 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('.burbuja.asistente').last().should('contain.text', '2 × Empanada de carne').and('contain.text', '1 × Empanada de jamón y queso');
     cy.get('#barra-texto').should('contain.text', '3 productos');
     cy.get('#btn-carta').click();
-    cy.get('#hoja').should('be.visible').contains('button', 'Pizza muzzarella').click();
+    cy.get('#hoja').should('be.visible');
+    cy.contains('#hoja .menu-fila', 'Pizza muzzarella').find('button.menu-paso-elegir').click();
     cy.get('#hoja').contains('label', 'Grande').click();
-    cy.get('#hoja button[type=submit]').should('contain.text', '10.500').click();
+    cy.get('#hoja .menu-producto-detalle:visible .precio').should('contain.text', '10.500');
+    cy.get('#hoja button[type=submit]').should('contain.text', 'Agregar y seguir eligiendo').click();
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
     cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella')
@@ -219,7 +221,8 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.visit('/chat/?demo=1');
     cy.get('.burbuja.asistente', {timeout: 15000}).should('exist');
     cy.get('#btn-carta').should('not.be.disabled').click();
-    cy.get('#hoja').should('be.visible').contains('button', 'Pack 6 empanadas + 2 salsas').click();
+    cy.get('#hoja').should('be.visible');
+    cy.contains('#hoja .menu-fila', 'Pack 6 empanadas + 2 salsas').find('button.menu-paso-elegir').click();
     cy.get('#hoja .grupo-cantidad').should('have.length', 2);
     cy.get('#hoja .grupo-cantidad').first().find('.opcion-cantidad').should('have.length', 2); // humita agotada
     cy.get('#hoja button[type=submit]').should('be.disabled').and('contain.text', 'Completar empanadas');
@@ -232,7 +235,8 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.get('#hoja .grupo-cantidad').last().should('contain.text', 'Falta 1');
     cy.get('#hoja button[type=submit]').should('be.disabled');
     cy.get('#hoja [aria-label="Sumar Crema de ajo"]').click();
-    cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', '6.500').click();
+    cy.get('#hoja .menu-producto-detalle:visible .precio').should('contain.text', '6.500');
+    cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', 'Agregar y seguir eligiendo').click();
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
     cy.get('#hoja .menu-revision').should('contain.text','4 Empanada de carne').and('contain.text','1 Crema de ajo');
     cy.get('.seleccion-linea').should($linea => {
