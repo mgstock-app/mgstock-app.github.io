@@ -18,12 +18,12 @@ begin
       select jsonb_build_object('id', s.id, 'nombre', s.nombre, 'slug', s.slug, 'local_id', s.local_id, 'activa', s.activa,
         'nivel', gestlok_chat_private.nivel(s.id),
         'pendientes', (select count(*) from gestlok_chat_private.pedidos p
-            where p.sucursal_id = s.id and p.estado = 'pendiente' and p.es_prueba is not true),
+            where p.sucursal_id = s.id and p.estado = 'pendiente' and coalesce(to_jsonb(p)->>'es_prueba','false') <> 'true'),
         'pendientes_avisables', (select count(*) from gestlok_chat_private.pedidos p
-            where p.sucursal_id = s.id and p.estado = 'pendiente' and p.es_prueba is not true
+            where p.sucursal_id = s.id and p.estado = 'pendiente' and coalesce(to_jsonb(p)->>'es_prueba','false') <> 'true'
               and (p.programado_para is null or p.programado_para <= now())),
         'en_preparacion', (select count(*) from gestlok_chat_private.pedidos p
-            where p.sucursal_id = s.id and p.estado = 'confirmado' and p.es_prueba is not true),
+            where p.sucursal_id = s.id and p.estado = 'confirmado' and coalesce(to_jsonb(p)->>'es_prueba','false') <> 'true'),
         'reclamos', (select count(*) from gestlok_chat_private.reclamos r where r.sucursal_id=s.id and r.estado='pendiente')) x
       from gestlok_chat_private.sucursales s where s.tenant_id = e.tenant_id and gestlok_chat_private.nivel(s.id) is not null) q), '[]'::jsonb));
 end $function$;
