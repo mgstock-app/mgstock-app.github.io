@@ -117,6 +117,32 @@ begin
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L,
      '{"activa":true,"acepta_envio":true,"envio_costo":500,"pedido_minimo":1500,"medios_pago":["efectivo","transferencia"],"bienvenida":"Hola"}', 1)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' dueña configura Munro · ' || left(v, 60);
+  -- Regresión CHECK 23514: al quitar un pago global se actualizan retiro y envío.
+  -- Se prueba dentro de una subtransacción que revierte TODAS las escrituras de este escenario.
+  procedure_ok := false;
+  begin
+    perform set_config('role', 'postgres', true);
+    update gestlok_chat_private.sucursales
+      set medios_pago_retiro = array['efectivo','transferencia'],
+          medios_pago_envio = array['transferencia']
+      where id = s_munro;
+    perform prueba_como('duena.a@prueba.example');
+    v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(
+      %L, '{"medios_pago":["efectivo"]}', 2)::text $q$, s_munro));
+    if v like 'ok:%' then
+      perform set_config('role', 'postgres', true);
+      select medios_pago = array['efectivo']::text[]
+         and medios_pago_retiro = array['efectivo']::text[]
+         and medios_pago_envio = array['efectivo']::text[]
+        into procedure_ok
+        from gestlok_chat_private.sucursales where id=s_munro;
+    end if;
+    raise exception 'revertir prueba aislada de pagos' using errcode='ZX001';
+  exception when sqlstate 'ZX001' then
+    r := r || E'\n' || case when procedure_ok then 'OK' else 'FALLA' end
+      || ' retirar medios globales mantiene retiro/envío consistentes · ' || left(v, 45);
+  end;
+  perform prueba_como('duena.a@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"horario":"x"}', 1)::text $q$, s_munro));
   r := r || E'\n' || case when v like 'error:40001%' then 'OK' else 'FALLA' end || ' versión vieja no pisa cambios';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"medios_pago":["bitcoin"]}', 2)::text $q$, s_munro));
