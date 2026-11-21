@@ -12,7 +12,8 @@ const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfg = JSON.parse(readFileSync(join(raiz, 'entornos/entornos.json'), 'utf8'));
 const args = process.argv.slice(2);
 const entorno = args[args.indexOf('--entorno') + 1];
-const TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
+const TOKEN = process.env.SUPABASE_ACCESS_TOKEN; // Limitado a gestlok-pruebas.
+const PROD_READ_TOKEN = process.env.SUPABASE_PROD_READ_TOKEN; // Opcional; SOLO para copiar la carta.
 const PRUEBAS = cfg.pruebas.ref;
 const REAL = cfg.real.ref;
 if (!cfg.entornos[entorno]) throw new Error('Entorno inválido: ' + entorno);
@@ -30,8 +31,15 @@ async function api(ruta, opciones = {}) {
 const enPruebas = query => api('/projects/' + PRUEBAS + '/database/query', {method: 'POST', body: JSON.stringify({query})});
 /** Lectura de la base real: una sola consulta SELECT (sin «;»), nada más. */
 const leerReal = select => {
+  if (!PROD_READ_TOKEN) {
+    throw new Error('Copiar carta requiere SUPABASE_PROD_READ_TOKEN con acceso de solo lectura a producción; no se usará el token de pruebas.');
+  }
   if (!/^\s*select\b/i.test(select) || select.includes(';')) throw new Error('Solo lectura de la base real.');
-  return api('/projects/' + REAL + '/database/query', {method: 'POST', body: JSON.stringify({query: select})});
+  return api('/projects/' + REAL + '/database/query', {
+    method: 'POST',
+    headers: {authorization: 'Bearer ' + PROD_READ_TOKEN},
+    body: JSON.stringify({query: select}),
+  });
 };
 const pruebasUrl = 'https://' + PRUEBAS + '.supabase.co';
 /** Todo lo que apunte a la base real pasa a la de pruebas (los avisos automáticos usan la función de «prueba»). */
