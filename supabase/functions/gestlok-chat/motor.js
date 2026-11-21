@@ -250,7 +250,7 @@ export function carteleraDelDia(sucursal, catalogo, ahora = new Date()) {
   return {
     sucursal: {...sucursal, medios_pago: efectivo, medios_pago_retiro: efectivo, medios_pago_envio: efectivo,
       especial: {id: 'jueves_on_fire', texto: '🔥 Hoy es Jueves On Fire: ' + promo.nombre.replace(/^jueves on fire\s*[·:-]?\s*/i, '') +
-        ' a ' + pesos(promo.precio) + ', empanadas y salsas a elección. ' +
+        ' a ' + pesos(promo.precio) + ' (precio final), empanadas y salsas a elección. ' +
         (sucursal?.acepta_envio ? 'Envío a domicilio con costo adicional. ' : '') + 'Pago solo en efectivo.'}},
     catalogo: {...catalogo, categorias: (catalogo.categorias || []).filter(c => cats.has(c.id)), productos},
     clave: 'onfire:' + horaAR(ahora).fecha,

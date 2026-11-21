@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121pizzas1';
+import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, esPromoOnFire, faltantes, pesos, promocionesVigentes, responder, textoEstadoPedido, totalCarrito, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121pizzas1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -754,7 +754,9 @@ function abrirDatos() {
     const subtotal = totalCarrito(S.catalogo, S.carrito);
     const porcentaje = d.entrega === 'envio' && d.medio_pago === 'efectivo'
       ? Number(s.descuento_efectivo_pct) || 0 : 0;
-    const descuento = Math.round(subtotal * porcentaje) / 100;
+    // La promo «Jueves On Fire» es precio final: no lleva el descuento por efectivo (igual que en la base).
+    const conDescuento = totalCarrito(S.catalogo, S.carrito.filter(l => !esPromoOnFire(producto(l.producto_id))));
+    const descuento = Math.round(conDescuento * porcentaje) / 100;
     importeEstimado = Math.round((subtotal + envio - descuento) * 100) / 100;
     totalTxt.textContent = pesos(importeEstimado) + (descuento ? ' · Incluye 10% de descuento en productos' : '');
     const efectivoDelivery = d.entrega === 'envio' && d.medio_pago === 'efectivo';
@@ -1104,7 +1106,8 @@ async function demoApi(accion, extra) {
     const sub = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito);
     const envio = r.accion.pedido.entrega === 'envio' ? DEMO_DATOS.sucursal.envio_costo : 0;
     const efectivo = r.accion.pedido.entrega === 'envio' && r.accion.pedido.medio_pago === 'efectivo';
-    const descuento = efectivo ? Math.round(sub * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
+    const conDescuento = totalCarrito(DEMO_DATOS.catalogo, r.estado.carrito.filter(l => !esPromoOnFire(DEMO_DATOS.catalogo.productos.find(x => x.id === l.producto_id))));
+    const descuento = efectivo ? Math.round(conDescuento * Number(DEMO_DATOS.sucursal.descuento_efectivo_pct)) / 100 : 0;
     const total = sub + envio - descuento;
     const abona = efectivo ? Number(r.accion.pedido.efectivo_abona || total) : null;
     const conAviso = p => ({...p, aviso: textoEstadoPedido(p, DEMO_DATOS.sucursal, {})});

@@ -58,7 +58,7 @@ test('Jueves On Fire: solo la promo On Fire, variedades disponibles y pago en ef
   assert.deepEqual(c.catalogo.productos[0].opciones[0].valores.map(v => v.id), ['carne', 'pollo'], 'la humita agotada no se ofrece');
   assert.deepEqual(M.pagosDe(c.sucursal, 'retiro'), ['efectivo']);
   assert.deepEqual(M.pagosDe(c.sucursal, 'envio'), ['efectivo']);
-  assert.match(c.sucursal.especial.texto, /Jueves On Fire: 12 empanadas \+ 3 salsas a \$ 39\.500.*Envío a domicilio con costo adicional\. Pago solo en efectivo\./);
+  assert.match(c.sucursal.especial.texto, /Jueves On Fire: 12 empanadas \+ 3 salsas a \$ 39\.500 \(precio final\).*Envío a domicilio con costo adicional\. Pago solo en efectivo\./);
   const saludo = M.responder({sucursal: c.sucursal, catalogo: c.catalogo, estado: null, entrada: {inicio: true}, ahora: FIRE});
   assert.match(saludo.mensajes[0].texto, /Hoy es Jueves On Fire/);
   assert.match(saludo.mensajes[0].guia, /Hoy es Jueves On Fire/);

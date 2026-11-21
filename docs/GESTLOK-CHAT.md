@@ -110,7 +110,7 @@ nombra botones, para que nunca invente uno). La bienvenida del dueño no necesit
   pizza. Carga: `supabase/operaciones/mi-gusto-chat-compartir-on-fire-20261121.sql`.
 - **Jueves On Fire** (`carteleraDelDia` en motor.js; la función la aplica antes de responder): el último jueves de cada
   mes desde las 18:00 (Argentina) y por ese turno se ofrece **solo** «Jueves On Fire · 12 empanadas + 3 salsas»
-  ($39.500); el Pack 12 de $52.900 y el resto de la carta no aparecen, el saludo lo anuncia y el pago es **solo en
+  ($39.500, precio final: no lleva el 10% por delivery en efectivo; migración 20261121040000); el Pack 12 de $52.900 y el resto de la carta no aparecen, el saludo lo anuncia y el pago es **solo en
   efectivo** (retiro y delivery; el envío se cobra aparte). El resto del mes la promo On Fire no aparece. Si un carrito
   tenía otros productos cuando empieza, se quitan y se avisa. Pasado el cierre del turno vuelve la carta normal.
 
