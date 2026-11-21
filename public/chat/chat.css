@@ -514,7 +514,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .mensajes{
   /* Fondo de pantalla predeterminado, sin motivos repetidos, independiente de la sucursal. */
   background-color:#eaf0f6;
-  background-image:url('/chat/wallpaper-gestlok.svg');
+  background-image:url('/chat/wallpaper-gestlok.svg?v=20261121contraste1');
   background-position:center center;
   background-size:cover;
   background-repeat:no-repeat;
