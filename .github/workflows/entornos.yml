@@ -7,6 +7,8 @@ name: Entornos · prueba → testing → gestlok.com.ar
 on:
   push:
     branches: [prueba]
+  pull_request:
+    branches: [prueba]
   workflow_dispatch:
     inputs:
       accion:
@@ -26,7 +28,17 @@ concurrency:
   group: entornos-gestlok
   cancel-in-progress: false
 jobs:
+  verificar-demo:
+    name: Acceso sin login, vista móvil y aislamiento de demostración
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Pruebas automatizadas de la demo (sin datos reales)
+        run: node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs
   prueba:
+    needs: verificar-demo
     if: github.event_name == 'push' || inputs.accion == 'preparar-prueba'
     runs-on: ubuntu-24.04
     steps:
@@ -48,6 +60,7 @@ jobs:
           fi
           node entornos/backend.mjs --entorno prueba --sql --funciones --ajustes ${{ inputs.copiar_carta && '--carta' || '' }}
   testing:
+    needs: verificar-demo
     if: inputs.accion == 'enviar-a-testing'
     runs-on: ubuntu-24.04
     steps:
@@ -83,6 +96,7 @@ jobs:
           fi
           git push origin HEAD:refs/heads/testing
   publicar:
+    needs: verificar-demo
     if: inputs.accion == 'publicar-en-gestlok'
     runs-on: ubuntu-24.04
     steps:
