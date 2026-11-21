@@ -16,7 +16,7 @@ describe('GESTLOK Chat · menú interactivo', () => {
     });
     cy.get('.chips button.chip-hacer-pedido').first().click();
     cy.get('#hoja').should('be.visible');
-    cy.get('#hoja-titulo').should('have.text', 'Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text', 'Menú');
     cy.get('#hoja .lista').should('contain.text', 'Empanada de carne');
   });
 
@@ -37,7 +37,7 @@ describe('GESTLOK Chat · menú interactivo', () => {
       cy.visit('/chat/?s=' + slug);
       cy.wait('@chat');
       cy.get('.chips button').first().should('have.text','Hacer un pedido').and('have.class','chip-hacer-pedido').click();
-      cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+      cy.get('#hoja-titulo').should('have.text','Menú');
       cy.get('#hoja').should('contain.text','Empanada de carne');
     });
   });
@@ -64,7 +64,7 @@ describe('GESTLOK Chat · menú interactivo', () => {
     cy.contains('#hoja .menu-fila','Empanada de jamón y queso')
       .find('button[aria-label="Sumar una unidad de Empanada de jamón y queso"]').click();
     cy.get('#hoja .menu-pie-texto').should('contain.text', '2 productos seleccionados');
-    cy.get('#hoja .menu-pie button').contains('Revisar selección').click();
+    cy.get('#hoja .menu-pie button').contains('Continuar').click();
     cy.get('#hoja .menu-revision').should('contain.text', 'Empanada de carne')
       .and('contain.text', 'Empanada de jamón y queso');
     cy.get('.burbuja.cliente').should('not.exist');
@@ -73,22 +73,22 @@ describe('GESTLOK Chat · menú interactivo', () => {
     cy.viewport(390, 844);
     cy.visit('/chat/?demo=1');
     cy.get('#btn-carta').should('not.be.disabled').click();
-    cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text','Menú');
     const carne=()=>cy.contains('#hoja .menu-fila','Empanada de carne').first();
     carne().find('button[aria-label="Sumar una unidad de Empanada de carne"]').click();
     carne().find('button[aria-label="Sumar una unidad de Empanada de carne"]').click();
     carne().find('output.menu-n').should('contain.text','2');
-    cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text','Menú');
     cy.get('#hoja .menu-pie-texto').should('contain.text','2 productos seleccionados');
     carne().find('button[aria-label="Quitar una unidad de Empanada de carne"]').click();
     carne().find('output.menu-n').should('contain.text','1');
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
     cy.get('#hoja .categorias').contains('button','Pizzas').click();
-    cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text','Menú');
     cy.get('#hoja .lista').should('contain.text','Pizza muzzarella');
     cy.get('#hoja .categorias').contains('button','Empanadas').click();
     carne().should('be.visible');
-    cy.get('#hoja .menu-pie').should('contain.text','Revisar selección');
+    cy.get('#hoja .menu-pie').should('contain.text','Continuar');
   });
 
   it('despliega promociones y obliga a elegir todas las variedades sin salir del menú', () => {
@@ -97,7 +97,7 @@ describe('GESTLOK Chat · menú interactivo', () => {
     cy.get('#btn-carta').should('not.be.disabled').click();
     cy.contains('#hoja .menu-fila','Pack 6 empanadas + 2 salsas')
       .find('button.menu-paso-mas').click();
-    cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text','Menú');
     cy.get('#hoja .menu-producto-detalle:visible').should('contain.text','Empanadas')
       .and('contain.text','Salsas');
     cy.get('#hoja .menu-form-combo .menu-combo-acciones').should('be.visible')
@@ -125,16 +125,16 @@ describe('GESTLOK Chat · menú interactivo', () => {
       .find('.grupo-estado').should('contain.text','Completo');
     cy.get('#hoja .menu-form-combo .menu-combo-acciones button[type=submit]')
       .should('not.be.disabled').and('contain.text', 'Agregar $ 6.500').click();
-    cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text','Menú');
     cy.get('#hoja .menu-producto-detalle:visible').should('not.exist');
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
-    cy.get('#hoja .menu-pie').contains('button','Revisar selección').click();
+    cy.get('#hoja .menu-pie').contains('button','Continuar').click();
     cy.get('#hoja .menu-revision').should('contain.text','Pack 6 empanadas + 2 salsas')
       .and('contain.text','6 Empanada de carne')
       .and('contain.text','2 Criolla');
     // Se envía todo junto; hasta acá no se escribió nada al asistente.
     cy.get('.burbuja.cliente').should('not.exist');
-    cy.get('#hoja .menu-revision button').contains('Enviar selección al asistente').click();
+    cy.get('#hoja .menu-revision button').contains('Continuar').click();
     cy.get('#hoja').should('not.be.visible');
     cy.get('#barra-texto').should('contain.text','1 producto');
   });
@@ -173,11 +173,11 @@ describe('GESTLOK Chat · menú interactivo', () => {
 
     // Todavía no se enviaron mensajes de productos al asistente.
     cy.get('.burbuja.cliente').should('not.exist');
-    cy.get('#hoja .menu-pie button').contains('Revisar selección').click();
+    cy.get('#hoja .menu-pie button').contains('Continuar').click();
     cy.get('#hoja .menu-revision').should('contain.text','2 × Empanada de carne')
       .and('contain.text', '1 × Empanada de jamón y queso');
 
-    cy.get('#hoja .menu-revision button').contains('Enviar selección al asistente').click();
+    cy.get('#hoja .menu-revision button').contains('Continuar').click();
     cy.contains('.burbuja.asistente', 'Recibí su selección del menú', {timeout: 12000});
     // Con 3 empanadas sueltas el asistente ofrece armar la promo; el cliente puede seguir sin ella.
     cy.get('.burbuja.asistente').last().should('contain.text', 'Tenemos una promoción para usted');
@@ -213,8 +213,8 @@ describe('GESTLOK Chat · menú interactivo ante un rechazo', () => {
     cy.get('#btn-carta').click();
     cy.contains('#hoja .producto','Empanada de carne').click();
     cy.get('#hoja form button[type=submit]').click();
-    cy.contains('#hoja .menu-pie button','Revisar selección').click();
-    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
+    cy.contains('#hoja .menu-pie button','Continuar').click();
+    cy.contains('#hoja .menu-revision button','Continuar').click();
     cy.wait('@chat');
     cy.get('#hoja').should('be.visible').and('contain.text','Tu selección del menú');
     cy.get('#hoja .menu-revision').should('contain.text','1 × Empanada de carne');
