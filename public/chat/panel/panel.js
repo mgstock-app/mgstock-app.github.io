@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261120clientes1';
+  const VERSION_CSS = '20261121metricas1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -183,8 +183,10 @@
   function tarjetaPedido(p) {
     const tel = String(p.cliente_telefono || '');
     const acciones = el('div', {class: 'acciones'});
-    const programadoFuturo=p.estado==='pendiente' && p.programado_para && 
+    const programadoFuturo=p.estado==='pendiente' && p.programado_para &&
       new Date(p.programado_para).getTime()>Date.now();
+    const esperaMin=p.estado==='pendiente' && !programadoFuturo
+      ? Math.max(0,Math.floor((Date.now()-new Date(p.creado_at).getTime())/60000)) : 0;
     if (['pendiente', 'confirmado'].includes(p.estado) && puede('gestionar')) {
       const motivo = el('input', {type: 'text', maxlength: '300', placeholder: 'Motivo para el cliente (ej.: sin stock)', 'aria-label': 'Motivo del rechazo'});
       const caja = el('div', {class: 'rechazo', hidden: true}, motivo,
@@ -207,6 +209,8 @@
         el('a', {href: 'tel:+' + (tel.length === 10 ? '54' + tel : tel), text: tel})),
       Number(p.cliente_pedidos)>=2
         ? el('p',{class:'nota-cliente',text:'Cliente frecuente · '+p.cliente_pedidos+' pedidos en esta sucursal'}) : null,
+      esperaMin>=2 ? el('p',{class:'alerta-demora',role:'status',
+        text:(esperaMin>=5?'ATENCIÓN PRIORITARIA':'PEDIDO SIN CONFIRMAR')+' · '+esperaMin+' minutos esperando revisión'}) : null,
       programadoFuturo?el('p',{class:'nota-cliente',text:'PEDIDO PROGRAMADO · Próxima apertura '+
         new Date(p.programado_para).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
         '. El gerente debe confirmar al comenzar el turno.'}):null,
@@ -614,11 +618,31 @@
     try {registros=await rpc('panel_reporte_diario',{p_sucursal:id,p_dias:dias});}
     catch(e){contenido.append(el('p',{class:'error',text:e.message}));return;}
     if(S.pestana!=='reporte'||S.suc.id!==id||S.reporteDias!==dias)return;
+    // La base calcula por sucursal y excluye pedidos de prueba; sólo lo ve personal habilitado.
+    // Si aún no se publicó la migración, el historial diario sigue funcionando.
+    let metricas=null;
+    try { metricas=await rpc('panel_metricas',{p_sucursal:id,p_dias:dias}); } catch { /* sin métricas */ }
+    if(S.pestana!=='reporte'||S.suc.id!==id||S.reporteDias!==dias)return;
     const acum=(k)=>registros.reduce((s,r)=>s+Number(r[k]||0),0);
     const resumen=el('div',{class:'reporte-resumen'},
       ...[['Pedidos recibidos','total'],['Retiro','retiro'],['Delivery','delivery'],
         ['Programados','programados']].map(([titulo,key])=>el('div',{class:'reporte-cifra'},
           el('small',{text:titulo}),el('strong',{text:String(acum(key))}))));
+    const indicadores=metricas?el('section',{class:'reporte-indicadores','aria-label':'Indicadores del local'},
+      el('h3',{text:'Indicadores del período'}),
+      el('div',{class:'reporte-resumen'},
+        ...[
+          ['Pedidos aceptados',String(metricas.pedidos_aceptados||0)],
+          ['Importe de pedidos aceptados',pesos(metricas.monto_aceptados)],
+          ['Tiempo medio hasta confirmar',metricas.tiempo_confirmacion_min == null?'Sin datos':metricas.tiempo_confirmacion_min+' min'],
+          ['Clientes frecuentes',String(metricas.clientes_frecuentes||0)]
+        ].map(([titulo,valor])=>el('div',{class:'reporte-cifra'},el('small',{text:titulo}),el('strong',{text:valor})))),
+      el('p',{class:'nota',text:'Importe estimado de pedidos aceptados, no dinero cobrado en caja.'}),
+      el('h3',{text:'Productos más pedidos'}),
+      Array.isArray(metricas.productos_top)&&metricas.productos_top.length
+        ? el('ol',{class:'reporte-top'},metricas.productos_top.map(p=>
+          el('li',{},el('span',{text:p.nombre}),el('strong',{text:p.unidades+' uds.'}))))
+        : el('p',{class:'nota',text:'Aún no hay productos en pedidos aceptados.'})) : null;
     const entradas=registros.filter(r=>Number(r.total)>0);
     const fechas=entradas.length?entradas.map(r=>el('article',{class:'reporte-dia'},
       el('header',{},el('strong',{text:new Date(String(r.fecha)+'T12:00:00').toLocaleDateString('es-AR',
@@ -638,7 +662,7 @@
     contenido.replaceChildren(
       el('h2',{text:'Historial diario · Pedidos por GESTLOK Chat'}),
       el('p',{class:'nota',text:'Registros reales de '+S.suc.nombre+'. No incluye consultas sin pedido.'}),
-      botones,resumen,...fechas);
+      botones,resumen,...(indicadores?[indicadores]:[]),...fechas);
   }
 
   // ------------------------------------------------------------------------------------------- soporte humano y reclamos
@@ -907,6 +931,9 @@
         {rol:'asistente',texto:'Avisé al gerente. Te responderá por este mismo chat.'},
         ...D.respuestas.map(texto=>({rol:'local',texto}))];
       case 'panel_soporte': return D.reclamos.filter(r=>r.estado==='pendiente');
+      case 'panel_metricas': return {pedidos_recibidos:2,pedidos_aceptados:1,
+        monto_aceptados:3600,tiempo_confirmacion_min:4,clientes_frecuentes:1,
+        productos_top:[{nombre:'Empanada de carne',unidades:3}]};
       case 'panel_reporte_diario': return Array.from({length:a.p_dias||30},(_,i)=>({
         fecha:new Date(Date.now()-i*86400000).toISOString().slice(0,10),total:i?0:2,
         retiro:i?0:1,delivery:i?0:1,programados:i?0:1,pendientes:i?0:1,

@@ -74,6 +74,37 @@ function borrarBorradoresLocales() {
   try { localStorage.removeItem(CLAVE_DATOS);localStorage.removeItem(CLAVE_TEXTO); }
   catch { /* sin almacenamiento */ }
 }
+// Guardar solamente la selección de productos (sin nombres, teléfono ni dirección).
+// La repetición siempre se vuelve a validar contra la carta actual del local.
+const CLAVE_ULTIMO_PEDIDO = 'gestlok-chat:ultimo-pedido:' + SLUG;
+const REPETIR_VIGENCIA = 30 * 24 * 60 * 60 * 1000;
+function guardarUltimoPedido(carrito) {
+  const lineas = (Array.isArray(carrito) ? carrito : []).slice(0,30)
+    .map(l => ({producto_id:l.producto_id,cantidad:l.cantidad,opciones:l.opciones || {}}))
+    .filter(l => !validarLinea(S.catalogo,l));
+  if (!lineas.length) return;
+  try { localStorage.setItem(CLAVE_ULTIMO_PEDIDO, JSON.stringify({at:Date.now(),lineas})); }
+  catch { /* almacenamiento opcional */ }
+}
+function recuperarUltimoPedido() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CLAVE_ULTIMO_PEDIDO) || 'null');
+    if (!d || !Array.isArray(d.lineas) || d.lineas.length > 30 ||
+        Date.now() - Number(d.at) > REPETIR_VIGENCIA || Number(d.at) > Date.now()) return [];
+    return d.lineas.filter(l => l && !validarLinea(S.catalogo,l) &&
+      producto(l.producto_id)?.activo !== false && producto(l.producto_id)?.disponible !== false);
+  } catch { return []; }
+}
+function repetirUltimoPedido() {
+  if (S.pedido && ['pendiente','confirmado'].includes(S.pedido.estado))
+    return burbuja('asistente','Primero esperá la resolución de tu pedido actual.');
+  if (S.borrador.length || S.carrito.length)
+    return burbuja('asistente','Ya estás armando un pedido. Podés terminarlo o modificarlo desde el menú.');
+  const lineas=recuperarUltimoPedido();
+  if (!lineas.length) return burbuja('asistente','Los productos de tu último pedido ya no están disponibles. Revisá el menú actualizado.');
+  S.borrador=lineas.map(l=>({...l}));S.loteId=null;guardarBorrador();actualizarCarrito();
+  abrirSeleccion(); // Siempre revisar antes de enviar: jamás confirma ni cobra.
+}
 const CLAVE_BORRADOR = 'gestlok-chat:menu:' + SLUG;
 function guardarBorrador() {
   try {
@@ -197,11 +228,14 @@ function mostrarEscribiendo(si) {
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
   ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
-  : botonesBienvenida(S.sucursal, S.catalogo); // «Hacer un pedido», «Ver promociones» (si hay), horario, pagos y ayuda
+  : [...botonesBienvenida(S.sucursal, S.catalogo),
+      ...(recuperarUltimoPedido().length ? [{id:'repetir',texto:'Repetir mi último pedido'}] : [])];
+
 
 async function enviar(entrada, textoVisible) {
   if (S.enviando) return false;
   S.enviando = true; S.ultimaEntrada = {entrada, textoVisible};
+  const carritoAntes = Array.isArray(S.carrito) ? S.carrito.map(l=>({...l})) : [];
   quitarChips();
   if (textoVisible) burbuja('cliente', textoVisible);
   mostrarEscribiendo(true); bloquear(true);
@@ -237,6 +271,7 @@ async function enviar(entrada, textoVisible) {
     }
     for (const m of r.mensajes || []) mensajeAsistente(m);
     if (r.pedido) {
+      if (entrada.datos && r.pedido.estado === 'pendiente') guardarUltimoPedido(carritoAntes);
       mostrarPedido(r.pedido);
       // Los datos ya están guardados de forma privada en el servidor. No dejar
       // un formulario con domicilio/teléfono terminado en un dispositivo compartido.
@@ -256,6 +291,7 @@ function tocarBoton(b) {
     quitarChips(); lista.querySelectorAll('.burbuja.error').forEach(n => n.remove());
     return enviar(S.ultimaEntrada.entrada, null);
   }
+  if (b.id === 'repetir') return repetirUltimoPedido();
   if (b.id === 'carta') return abrirCarta();
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.texto);
@@ -320,6 +356,7 @@ function mostrarPedido(p) {
   const [t, sub] = p.estado === 'terminado' && envio ? ['¡Pedido en camino!', ''] : (TEXTO_ESTADO[p.estado] || [p.estado, '']);
   const resena = p.estado === 'terminado' ? urlResena(p.resena?.url) : '';
   const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
+  const pasoSeguimiento = p.estado === 'pendiente' ? 0 : p.estado === 'confirmado' ? 1 : p.estado === 'terminado' ? 2 : -1;
   const etiqueta = p.recibido_at ? 'Pedido recibido por el cliente' : programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
     timeZone:'America/Argentina/Buenos_Aires',weekday:'short',hour:'2-digit',minute:'2-digit'}) : t;
   caja.className = 'aviso-pedido ' + p.estado;
@@ -329,7 +366,11 @@ function mostrarPedido(p) {
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null,
     p.estado === 'terminado' && !p.recibido_at ? el('button', {type:'button', text:'Ya recibí mi pedido', onclick:confirmarRecepcion}) : null,
     ['pendiente','confirmado','terminado'].includes(p.estado) ? el('button', {type:'button', text:'Necesito ayuda', onclick:()=>enviar({boton:'soporte'},'Necesito ayuda')}) : null,
-    resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null].filter(Boolean));
+    resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null,
+    pasoSeguimiento >= 0 ? el('ol',{class:'seguimiento-etapas','aria-label':'Seguimiento del pedido'},
+      ['Recibido','Confirmado',envio?'En camino':'Listo para retirar'].map((t,i)=>
+        el('li',{class:'seguimiento-etapa'+(i<=pasoSeguimiento?' completada':''),
+          'aria-current':i===pasoSeguimiento?'step':undefined,text:t}))) : null].filter(Boolean));
   caja.hidden = false;
   // Seguimiento y ayuda por botones: el cliente no necesita volver a escribir.
   if (!S.cerrada) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(p.estado) && !S.soportePendiente;
@@ -1034,7 +1075,12 @@ async function iniciar() {
   }
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
-  if (!(r.nuevos || []).length && !r.cerrada && !(r.pedidos?.[0] && ['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado))) chips(BOTONES_BASE());
+  const pedidoEnCurso=!!(r.pedidos?.[0] && ['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado));
+  if (!r.cerrada && !pedidoEnCurso) {
+    if (!(r.nuevos || []).length) chips(BOTONES_BASE());
+    else if (!S.carrito.length && recuperarUltimoPedido().length)
+      chips([{id:'repetir',texto:'Repetir mi último pedido'}]);
+  }
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
   texto.disabled = false; $('btn-carta').disabled = false;
   if (!r.cerrada) {
