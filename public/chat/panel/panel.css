@@ -48,6 +48,12 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .vacio h2{color:var(--tinta);font-size:19px}
 .vacio .boton{display:inline-block;text-decoration:none;margin-top:8px}
 
+.comandas-resumen{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:8px 12px 0;background:#fff8e8;border:1px solid #d7b264;border-left:4px solid #b77913;border-radius:10px;font-size:14px}
+.comandas-resumen strong{color:#704e16}
+.comandas-resumen span{font-weight:650;font-variant-numeric:tabular-nums}
+.comandas-resumen .boton{margin-left:auto;min-height:36px;padding:7px 10px}
+.comandas-resumen.sin-comandas{background:#f6f8fa;border-color:#dce4eb;color:#475569}
+@media(max-width:600px){.comandas-resumen .boton{width:100%;margin-left:0}}
 .tarjetas{display:grid;gap:10px}
 @media(min-width:820px){.tarjetas{grid-template-columns:1fr 1fr}}
 .tarjeta{background:var(--papel);border:1px solid var(--linea);border-left:4px solid var(--linea);border-radius:12px;padding:12px}
