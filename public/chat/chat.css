@@ -9,7 +9,7 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{height:100%;width:100%;min-height:0;margin:0;overflow:hidden;background:var(--fondo);color:var(--tinta)}
+html,body{height:100%;width:100%;min-height:0;margin:0;overflow:hidden;background:#e7edf3;color:var(--tinta)}
 body{font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%;overscroll-behavior:none}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -18,7 +18,15 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .oculto{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:0;max-width:720px;width:100%;margin:0 auto;overflow:hidden;background:var(--fondo)}
-@media(min-width:760px){.app{border-left:1px solid var(--linea);border-right:1px solid var(--linea)}}
+/* Separación nítida del chat en pantallas grandes; en móvil ocupa el ancho completo. */
+@media(min-width:620px){
+  .app{
+    border-left:2px solid #9eafc2;
+    border-right:2px solid #9eafc2;
+    box-shadow:-9px 0 22px -14px rgba(28,58,85,.32),9px 0 22px -14px rgba(28,58,85,.32);
+  }
+}
+@media(max-width:619px){html,body{background:#f3f5f8}}
 
 .cabecera{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));
   background:var(--papel);border-bottom:1px solid var(--linea);position:relative;z-index:2}
@@ -505,8 +513,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 :root{--fondo:#fff}
 .mensajes{
   /* Fondo de pantalla predeterminado, sin motivos repetidos, independiente de la sucursal. */
-  background-color:#f3f5f8;
-  background-image:url('/chat/wallpaper-gestlok.svg');
+  background-color:#eaf0f6;
+  background-image:url('/chat/wallpaper-gestlok.svg?v=20261121contraste1');
   background-position:center center;
   background-size:cover;
   background-repeat:no-repeat;

@@ -116,7 +116,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
  display:flex;flex-direction:column;gap:6px;
  padding:12px;border-radius:12px;
  background-color:#f3f5f8;
- background-image:url('/chat/wallpaper-gestlok.svg');
+ background-image:url('/chat/wallpaper-gestlok.svg?v=20261121contraste1');
  background-position:center center;background-size:cover;background-repeat:no-repeat;
 }
 .msj{margin:0;padding:8px 10px;border-radius:12px;max-width:88%;white-space:pre-wrap;font-size:14.5px}

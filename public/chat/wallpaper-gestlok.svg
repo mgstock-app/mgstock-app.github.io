@@ -1,31 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1400" preserveAspectRatio="xMidYMid slice">
-  <title>Fondo claro de GESTLOK Chat</title>
-  <!-- Papel plata muy claro con planos geométricos amplios. Sin dibujos ni marcas repetidas. -->
+  <title>Fondo gris perla de GESTLOK Chat</title>
+  <!-- Formas grandes, definidas y luminosas; sin estampados ni elementos que compitan con los mensajes. -->
   <defs>
-    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#edf0f4"/>
-      <stop offset="34%" stop-color="#f8f9fb"/>
-      <stop offset="70%" stop-color="#f1f3f6"/>
-      <stop offset="100%" stop-color="#e9edf1"/>
+    <linearGradient id="papel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#edf2f7"/>
+      <stop offset=".46" stop-color="#f3f6f9"/>
+      <stop offset="1" stop-color="#e5ebf2"/>
     </linearGradient>
-    <radialGradient id="luz" cx=".35" cy=".45" r=".85">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".78"/>
-      <stop offset="55%" stop-color="#ffffff" stop-opacity=".21"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="plano1" x1="0" y1="0" x2="1" y2=".8">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".6"/>
-      <stop offset="100%" stop-color="#e3e8ee" stop-opacity=".17"/>
+    <linearGradient id="planoA" x1="0" y1=".2" x2="1" y2=".85">
+      <stop offset="0" stop-color="#dce6f0"/>
+      <stop offset="1" stop-color="#f0f5f9"/>
     </linearGradient>
-    <linearGradient id="plano2" x1="1" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#d9e0e8" stop-opacity=".28"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity=".05"/>
+    <linearGradient id="planoB" x1=".7" y1=".1" x2=".1" y2="1">
+      <stop offset="0" stop-color="#cddce9"/>
+      <stop offset="1" stop-color="#e5edf4"/>
+    </linearGradient>
+    <linearGradient id="planoC" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#e2eaf3"/>
+      <stop offset="1" stop-color="#f7f9fc"/>
     </linearGradient>
   </defs>
-  <rect width="900" height="1400" fill="url(#base)"/>
-  <path d="M0 0H900V295L377 861 0 1195Z" fill="url(#plano1)"/>
-  <path d="M900 255V1400H295Z" fill="url(#plano2)"/>
-  <path d="M0 1010 325 703 900 0V158L295 852 0 1168Z" fill="#ffffff" opacity=".12"/>
-  <path d="M0 0H450L0 570Z" fill="#ffffff" opacity=".1"/>
-  <rect width="900" height="1400" fill="url(#luz)"/>
+  <rect width="900" height="1400" fill="url(#papel)"/>
+  <path d="M0 0H900V250L220 1100 0 1260Z" fill="#fafbfd" opacity=".7"/>
+  <path d="M900 190V1400H95Z" fill="url(#planoA)" opacity=".78"/>
+  <path d="M900 340V1140L445 1400H260Z" fill="url(#planoB)" opacity=".55"/>
+  <path d="M0 840L580 0H805L0 1190Z" fill="url(#planoC)" opacity=".7"/>
+  <path d="M0 1110L790 0H900L0 1250Z" fill="#d6e1eb" opacity=".23"/>
+  <path d="M0 1365L870 355" fill="none" stroke="#bacad9" stroke-opacity=".28" stroke-width="2"/>
+  <path d="M900 1130L565 1400" fill="none" stroke="#b4c5d7" stroke-opacity=".26" stroke-width="2"/>
 </svg>
