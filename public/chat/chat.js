@@ -877,14 +877,66 @@ function abrirDatos() {
     i.value = d[nombre] || ''; i.addEventListener('input', () => { d[nombre] = i.value; guardarDatos(); });
     return el('label', {class: 'campo'}, el('span', {text: etiqueta}), i);
   };
-  const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '200', autocomplete: 'street-address', placeholder: 'Calle, número, piso, entre calles'});
+  const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '140',
+    autocomplete: 'street-address', placeholder: 'Calle, número y piso'});
+  const entreCalles = campo('entre_calles', 'Entre calles', {type:'text',maxlength:'90',
+    placeholder:'Ej.: Belgrano y San Martín'});
+  // GPS únicamente tras un toque voluntario del cliente. No se guarda en localStorage
+  // ni se comparte con la API hasta que confirme «Enviar pedido».
+  let gpsSeleccionado = null;
+  const ubicacionEstado=el('p',{class:'nota ubicacion-estado',role:'status','aria-live':'polite',
+    text:'Podés escribir la dirección o elegir tu ubicación actual.'});
+  const botonUbicacion=el('button',{type:'button',class:'boton ubicacion-boton',
+    text:'Usar mi ubicación',onclick:()=>{
+      if (!navigator.geolocation || !window.isSecureContext) {
+        ubicacionEstado.textContent='Tu navegador no permite acceder al GPS. Ingresá la dirección manualmente.';
+        return;
+      }
+      botonUbicacion.disabled=true;
+      ubicacionEstado.textContent='Buscando tu ubicación…';
+      navigator.geolocation.getCurrentPosition(pos=>{
+        botonUbicacion.disabled=false;
+        const lat=pos.coords.latitude,lng=pos.coords.longitude;
+        if (!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180) {
+          ubicacionEstado.textContent='No pudimos obtener una ubicación válida. Ingresá la dirección manualmente.';
+          return;
+        }
+        gpsSeleccionado={lat:lat.toFixed(6),lng:lng.toFixed(6)};
+        ubicacionEstado.replaceChildren(
+          el('strong',{class:'ubicacion-ok',text:'✓ Ubicación obtenida'}),
+          ' · Precisión aproximada: '+Math.round(pos.coords.accuracy||0)+' m. ',
+          el('a',{href:'https://www.google.com/maps?q='+gpsSeleccionado.lat+','+gpsSeleccionado.lng,
+            target:'_blank',rel:'noopener noreferrer',text:'Ver ubicación'}));
+        preguntaDeRecuerdo();
+      },errorGPS=>{
+        botonUbicacion.disabled=false;
+        ubicacionEstado.textContent=errorGPS.code===1
+          ? 'No se concedió el permiso. Podés cargar la dirección manualmente.'
+          : 'No pudimos obtener el GPS. Escribí la dirección manualmente.';
+      },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+    }});
+  const bloqueUbicacion=el('div',{class:'ubicacion-opciones'},
+    el('p',{class:'nota',text:'Usar GPS (opcional)'}),botonUbicacion,ubicacionEstado);
+  const notaPedido=campo('nota','Observaciones (opcional)',{tag:'textarea',maxlength:'500',rows:'2',
+    placeholder:'Ej.: Portón negro, tocar timbre'});
+  const direccionFinal=()=>[
+    String(d.direccion||'').trim(),
+    d.entre_calles?.trim() ? 'Entre calles: '+d.entre_calles.trim() : '',
+    gpsSeleccionado ? 'GPS: https://www.google.com/maps?q='+gpsSeleccionado.lat+','+gpsSeleccionado.lng : ''
+  ].filter(Boolean).join(' · ').slice(0,200);
+  const notaCostoEnvio=el('p',{class:'nota costo-envio'});
   const totalTxt = el('span');
   const notaPago = el('p', {class:'nota pago-explicacion'});
   const cambioTxt = el('p', {class:'nota cambio-previsto'});
   let importeEstimado = 0;
   const refrescar = () => {
     dir.hidden = d.entrega !== 'envio';
-    const disponibles = medios(d.entrega);
+    entreCalles.hidden = d.entrega !== 'envio';
+    bloqueUbicacion.hidden = d.entrega !== 'envio';
+    notaCostoEnvio.hidden = d.entrega !== 'envio' || Number(s.envio_costo) <= 0;
+    notaCostoEnvio.textContent = 'Costo de envío: ' + pesos(s.envio_costo);
+    const ordenPagos=['debito','credito','transferencia','efectivo','mercado_pago'];
+    const disponibles = [...medios(d.entrega)].sort((a,b)=>ordenPagos.indexOf(a)-ordenPagos.indexOf(b));
     pago.replaceChildren(...disponibles.map(m => el('option', {value: m, text: PAGOS[m] || m})));
     if (!disponibles.includes(d.medio_pago)) d.medio_pago = disponibles[0] || 'efectivo';
     pago.value = d.medio_pago;
@@ -911,7 +963,8 @@ function abrirDatos() {
     notaPago.textContent = 'Si abona en efectivo tiene un ' + (Number(s.descuento_efectivo_pct) || 0) +
       '% de descuento en los productos. Si prefiere transferencia, el gerente le enviará los datos por este chat. Puede adjuntar aquí el comprobante.';
   };
-  const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío' + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : '')]].filter(Boolean);
+  const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'],
+    s.acepta_envio && ['envio', 'Envío a domicilio']].filter(Boolean);
   const pago = el('select', {name: 'medio_pago'});
   pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; guardarDatos();refrescar(); });
   const efectivo = campo('efectivo_abona', '¿Con cuánto va a abonar en efectivo?', {
@@ -935,7 +988,7 @@ function abrirDatos() {
 
   function preguntaDeRecuerdo() {
     avisoRecuerdo.replaceChildren();
-    if (!perfil?.encontrado) {avisoRecuerdo.hidden=true;return;}
+    if (!perfil?.encontrado || (gpsSeleccionado && d.entrega==='envio')) {avisoRecuerdo.hidden=true;return;}
     const direccion=d.entrega==='envio' && String(perfil.direccion||'').trim().length>=5;
     const tipo=direccion?'direccion':'nombre';
     if (datoConfirmado===tipo) {avisoRecuerdo.hidden=true;return;}
@@ -993,18 +1046,20 @@ function abrirDatos() {
     const tel = String(d.telefono || '').replace(/\D/g, '');
     const problema = String(d.nombre || '').trim().length < 2 ? 'Ingrese su nombre.'
       : tel.length < 8 || tel.length > 15 ? 'Ingrese un teléfono válido (con código de área).'
-      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.'
+      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 && !gpsSeleccionado
+        ? 'Ingresá calle y número o utilizá la ubicación GPS.'
       : d.entrega === 'envio' && d.medio_pago === 'efectivo' &&
         (!Number.isFinite(Number(d.efectivo_abona)) || Number(d.efectivo_abona) < importeEstimado)
         ? 'Indique un importe en efectivo igual o superior al total, o seleccione pago justo.' : '';
     const faltaConfirmar=perfil?.encontrado && !datoConfirmado &&
+      !(gpsSeleccionado && d.entrega==='envio') &&
       (d.entrega==='retiro' || String(perfil.direccion||'').trim().length>=5);
     if (problema || faltaConfirmar) {
       error.textContent = problema || 'Confirme el nombre o la dirección guardada, o elija modificarla.';
       error.hidden=false;return;
     }
     cerrarHoja();
-    enviar({datos: {...d}}, 'Enviar pedido');
+    enviar({datos: {...d, direccion: d.entrega==='envio' ? direccionFinal() : ''}}, 'Enviar pedido');
   }},
   campoNombre,campoTelefono,avisoRecuerdo,
   el('p',{class:'nota',text:'No hace falta registrarse. Si ya pidió desde este navegador, al ingresar su teléfono podremos recordar sus datos.'}),
@@ -1013,14 +1068,13 @@ function abrirDatos() {
     r.addEventListener('change', () => { d.entrega=v;datoConfirmado='';guardarDatos();refrescar();preguntaDeRecuerdo(); });
     return el('label', {}, r, t);
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
-  dir,
+  dir, entreCalles, bloqueUbicacion, notaCostoEnvio,
   el('label', {class: 'campo'}, el('span', {text: 'Medio de pago'}), pago),
   notaPago, efectivo, cambioTxt,
   s.atencion?.habilitado && !s.atencion.abierto
     ? el('p',{class:'nota',text:'Pedido para la próxima apertura: '+s.atencion.proximo_texto+'. El gerente lo confirmará manualmente.'})
     : null,
-  campo('nota', 'Observaciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2',
-    placeholder: '¿Querés agregar algo a tu pedido?'}),
+  notaPedido,
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
   el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Sus datos de contacto y entrega se conservarán en esta sucursal para facilitar futuros pedidos desde este navegador. Puede corregirlos cuando quiera. No necesita crear una cuenta.'}),
   error,
