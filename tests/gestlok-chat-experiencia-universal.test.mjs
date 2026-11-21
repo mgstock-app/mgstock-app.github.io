@@ -61,7 +61,7 @@ test('la identidad de chat se comparte entre empresas, sucursales y la demo',()=
   const js=src('public/chat/chat.js'),css=src('public/chat/chat.css'),p=src('public/chat/panel/panel.js');
   assert.match(js,/src: '\/chat\/gestlok-monograma\.svg'/);
   assert.match(js,/'CHAT DE ' \+ marca/);
-  assert.match(css,/background-image:url\('\/chat\/wallpaper-gestlok\.svg'\)/);
+  assert.match(css,/background-image:url\('\/chat\/wallpaper-gestlok\.svg\?v=20261121contraste1'\)/);
   assert.match(p,/gestlok-monograma\.svg/);
   assert.doesNotMatch(js,/slug\s*===?\s*['"]mi-gusto-/);
   const bridge=src('public/chat/showroom-bridge.js');
