@@ -180,17 +180,32 @@ function burbujaFoto(rol, url, texto = 'Foto enviada') {
     el('img',{src:url,alt:'Imagen compartida en la conversación',loading:'lazy'})));
   n.append(el('span',{text:texto}));lista.append(n);bajar();
 }
+/** Cada compra nueva usa otro token secreto y otra conversación.
+ * Mantiene CLIENTE_TOKEN, que permite reconocer a un cliente frecuente solo en su sucursal.
+ * Nunca reabre ni modifica un pedido que ya fue confirmado o entregado. */
+function nuevaConversacion() {
+  if (S.enviando) return;
+  // Si el último pedido aún está pendiente o en preparación, evitar duplicados.
+  if (S.pedido && ['pendiente','confirmado'].includes(S.pedido.estado)) {
+    burbuja('asistente','Todavía tenés un pedido en curso. Esperá a que el local lo termine antes de hacer otro.');
+    return;
+  }
+  try {
+    localStorage.removeItem('gestlok-chat:token:'+SLUG);
+    localStorage.removeItem(CLAVE_BORRADOR);
+    localStorage.removeItem(CLAVE_TEXTO);
+  } catch { /* nueva sesión anónima también funciona en navegación privada */ }
+  S.borrador=[]; S.loteId=null;
+  // Se crea otra conversación desde el backend; el historial anterior queda conservado.
+  location.reload();
+}
 function mostrarCierre() {
   if (S.cerrada) return;
   S.cerrada=true;clearTimeout(S.sondeo);
   $('redactar').hidden=true;$('barra-pedido').hidden=true;
-  const reiniciar=el('button',{type:'button',class:'boton principal',text:'Iniciar nueva conversación',onclick:()=>{
-    try {localStorage.removeItem('gestlok-chat:token:'+SLUG);localStorage.removeItem(CLAVE_BORRADOR);}catch{}
-    borrarBorradoresLocales();
-    location.reload();
-  }});
+  const reiniciar=el('button',{type:'button',class:'boton principal',text:'Hacer un nuevo pedido',onclick:nuevaConversacion});
   lista.append(el('div',{class:'chat-cerrado'},
-    el('p',{text:'El gerente finalizó esta conversación. Puede iniciar una nueva consulta.'}),reiniciar));
+    el('p',{text:'Esta conversación finalizó. Podés volver a comprar en el mismo local.'}),reiniciar));
   bajar();
 }
 function quitarChips() { lista.querySelectorAll('.chips,.accion').forEach(n => n.remove()); }
@@ -417,10 +432,15 @@ function mostrarPedido(p) {
       : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total),
       promoConfirmada ? el('span',{class:'promo-elegida-etiqueta promo-estado-pedido',
         text:'✓ Promoción incluida en tu pedido'}) : null),
+    ['pendiente','confirmado'].includes(p.estado) ?
+      el('button',{type:'button',class:'aviso-push-activar',text:'Recibir avisos',
+        onclick:()=>window.GestLokChatPush?.open()}) : null,
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar pedido', onclick: abrirConfirmacionCancelar}) : null,
+    ['terminado','rechazado'].includes(p.estado) ? el('button',{
+      type:'button',class:'boton nuevo-pedido',text:'Hacer un nuevo pedido',onclick:nuevaConversacion}) : null,
     p.estado === 'cancelado' ? el('div', {class:'pedido-recuperar'},
       recuperarUltimoPedido().length ? el('button',{type:'button',class:'boton',text:'Retomar pedido',onclick:repetirUltimoPedido}) : null,
-      el('button',{type:'button',class:'boton',text:'Hacer nuevo pedido',onclick:hacerNuevoPedido})) : null,
+      el('button',{type:'button',class:'boton',text:'Hacer un nuevo pedido',onclick:nuevaConversacion})) : null,
     p.estado === 'terminado' && !p.recibido_at ? el('button', {type:'button', text:'Ya recibí mi pedido', onclick:confirmarRecepcion}) : null,
     ['pendiente','confirmado','terminado'].includes(p.estado) ? el('button', {type:'button', text:'Necesito ayuda', onclick:()=>enviar({boton:'soporte'},'Necesito ayuda')}) : null,
     resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null,
@@ -1133,6 +1153,7 @@ $('redactar').addEventListener('submit', e => {
   });
 });
 $('btn-carta').onclick = abrirCarta;
+$('btn-notificaciones').onclick=()=>window.GestLokChatPush?.open();
 $('btn-carrito').onclick = abrirCarrito;
 $('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Enviar pedido');
 $('btn-info').onclick = abrirInfo;
@@ -1222,6 +1243,7 @@ async function iniciar() {
   }
   S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
   actualizarWhatsApp(S.sucursal);
+  if(!DEMO)window.GestLokChatPush?.setup(SLUG,TOKEN);
   restaurarDatos(); restaurarBorrador();
   S.soportePendiente = r.soporte_pendiente === true;
   S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')

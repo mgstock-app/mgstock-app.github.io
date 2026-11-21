@@ -9,7 +9,8 @@
 <title>Pedidos por chat · GESTLOK Chat</title>
 <link rel="icon" href="/icons/gestlok-favicon-v2-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icons/gestlok-apple-v2-180.png">
-<link rel="stylesheet" href="/chat/chat.css?v=20261121rapida1">
+<link rel="manifest" href="/chat/manifest.webmanifest">
+<link rel="stylesheet" href="/chat/chat.css?v=20261121cliente1">
 </head>
 <body>
 <div class="app" id="app" aria-busy="true">
@@ -19,6 +20,9 @@
       <h1 id="titulo">Cargando…</h1>
       <p id="subtitulo">Chat de atención y pedidos</p>
     </div>
+    <button class="icono" id="btn-notificaciones" type="button" aria-label="Notificaciones del local" title="Notificaciones">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+    </button>
     <button class="icono" id="btn-info" type="button" aria-label="Horario, envío y pagos" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
     </button>
@@ -64,6 +68,7 @@
 <noscript><p class="sin-js">Para hacer tu pedido activá JavaScript en el navegador.</p></noscript>
 <script src="/chat/config.js?v=20261119a"></script>
 <script src="/chat/showroom-bridge.js?v=20261120showroom1"></script>
-<script type="module" src="/chat/chat.js?v=20261121rapida1"></script>
+<script defer src="/chat/cliente-push.js?v=20261121cliente1"></script>
+<script type="module" src="/chat/chat.js?v=20261121cliente1"></script>
 </body>
 </html>

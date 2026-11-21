@@ -12,6 +12,7 @@ export default function Home() {
       <GestLokIntro />
       <Link className="gestlok-demo-entry" href="/conocer/#video">Ver video de Plan Scanner · 30 segundos</Link>
       <Link className="gestlok-public-about-entry" href="/conocer/">Conocé GESTLOK y sus funciones</Link>
+      <script dangerouslySetInnerHTML={{__html: "if (location.pathname === '/') location.replace('/login/' + location.search + location.hash);"}} />
       <StockRuntime />
       <nav className="stock-legal-nav" aria-label="Información legal de GestLok">
         <a href={`${basePath}/privacidad.html`}>Privacidad</a>

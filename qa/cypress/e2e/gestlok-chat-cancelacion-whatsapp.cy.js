@@ -66,16 +66,23 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
   });
   it('desde un pedido cancelado puede comenzar uno nuevo con menú vacío',()=>{
     cy.viewport(390,844);
+    let aperturas=0;
     cy.intercept('POST','**/functions/v1/gestlok-chat',req=>{
-      if(req.body.accion==='abrir') return req.reply({
-        ok:true,sucursal:{slug:'mi-gusto-torcuato',empresa:'Mi Gusto',nombre:'Don Torcuato',
-          whatsapp_local:'5491176617182',menu_interactivo:true},catalogo,
-        mensajes:[{rol:'asistente',texto:'¡Buenas tardes! Bienvenidos'}],
-        nuevos:[],carrito:[],pedidos:[{...pedido,estado:'cancelado'}]});
+      if(req.body.accion==='abrir') {
+        aperturas++;
+        return req.reply({
+          ok:true,sucursal:{slug:'mi-gusto-torcuato',empresa:'Mi Gusto',nombre:'Don Torcuato',
+            whatsapp_local:'5491176617182',menu_interactivo:true},catalogo,
+          mensajes:[{rol:'asistente',texto:'¡Buenas tardes! Bienvenidos'}],
+          nuevos:[],carrito:[],pedidos:aperturas===1?[{...pedido,estado:'cancelado'}]:[]});
+      }
       req.reply({ok:true,carrito:[],mensajes:[]});
     });
     cy.visit('/chat/?s=mi-gusto-torcuato');
-    cy.get('.pedido-recuperar').contains('button','Hacer nuevo pedido').click();
+    cy.get('.pedido-recuperar').contains('button','Hacer un nuevo pedido').click();
+    cy.get('#app').should('have.attr','aria-busy','false');
+    cy.then(()=>expect(aperturas).to.equal(2));
+    cy.get('#btn-carta').click();
     cy.get('#hoja-titulo').should('have.text','Menú');
     cy.get('#hoja .lista').should('contain.text','Empanada de carne');
     cy.get('.menu-pie-texto').should('contain.text','Elegí los productos');

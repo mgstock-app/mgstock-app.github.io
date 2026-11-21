@@ -4113,7 +4113,8 @@ function start(){
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // Keep the existing installed PWA: request SW revalidation on launch and
     // when returning to GestLok. Never force a reload while editing stock.
-    navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(reg => {
+    navigator.serviceWorker.register(
+      /\/login\/$/.test(location.pathname) ? '../sw.js' : 'sw.js', {updateViaCache:'none'}).then(reg => {
       let lastCheck = 0;
       const refresh = () => {
         if (document.visibilityState !== 'visible' || navigator.onLine === false) return;

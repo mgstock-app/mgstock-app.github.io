@@ -622,7 +622,48 @@
       campo('Número con código de país, sin + ni espacios',numeroWhatsApp),
       editable ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
         : el('p',{class:'nota',text:'Solo el dueño o la administradora pueden cambiar este número.'})));
-    contenido.replaceChildren(form,contactoWhatsApp);
+    // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
+    const pushCampanas=el('section',{class:'bloque'},
+      el('h3',{text:'Notificaciones a clientes'}),
+      el('p',{class:'nota',text:'Los clientes pueden permitir avisos de sus pedidos. Las promociones son opcionales y se envían solamente a quienes también aceptaron recibirlas.'}));
+    const pushEstado=el('p',{class:'nota',role:'status','aria-live':'polite',text:'Consultando…'});
+    const activo=el('input',{type:'checkbox',disabled:!editable});
+    const textoPromo=el('textarea',{rows:'3',maxlength:'150',
+      placeholder:'Ej.: Hoy 2 empanadas + 1 salsa a precio especial.',disabled:!editable});
+    const enviarPromo=el('button',{type:'button',class:'boton',text:'Enviar promoción a suscriptores',
+      disabled:!editable,onclick:async()=>{
+        const mensaje=textoPromo.value.trim();
+        if(mensaje.length<10)return aviso('Escribí una promoción de al menos 10 caracteres.',true);
+        if(!window.confirm('¿Enviar esta promoción a los clientes que aceptaron notificaciones de esta sucursal?'))return;
+        try{
+          await rpc('panel_push_promociones',{p_sucursal:S.suc.id,p_mensaje:mensaje});
+          textoPromo.value='';aviso('Promoción programada para suscriptores.');
+        }catch(e){aviso(e.message,true);}
+      }});
+    activo.addEventListener('change',async()=>{
+      try{
+        const r=await rpc('panel_push_promociones',{p_sucursal:S.suc.id,p_enabled:activo.checked});
+        activo.checked=r.enabled===true;textoPromo.disabled=!editable||!activo.checked;
+        enviarPromo.disabled=!editable||!activo.checked;
+        pushEstado.textContent=activo.checked?'Promociones habilitadas para esta sucursal.':'Promociones deshabilitadas.';
+        aviso('Preferencia guardada');
+      }catch(e){activo.checked=!activo.checked;aviso(e.message,true);}
+    });
+    pushCampanas.append(
+      el('label',{class:'check'},activo,' Permitir campañas de promociones'),
+      pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
+      enviarPromo,
+      el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
+    contenido.replaceChildren(form,contactoWhatsApp,pushCampanas);
+    try{
+      const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
+      if(S.pestana!=='ajustes')return;
+      activo.checked=p.enabled===true;
+      pushEstado.textContent=activo.checked?'Promociones habilitadas.':'Promociones deshabilitadas.';
+      textoPromo.disabled=!editable||!activo.checked;
+      enviarPromo.disabled=!editable||!activo.checked;
+    }catch(e){pushEstado.textContent='No pudimos cargar los permisos promocionales.';activo.disabled=true;}
+
   }
 
   // ------------------------------------------------------------------------------------------- historial diario de demanda por sucursal
@@ -918,6 +959,10 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
+      case 'panel_push_promociones': {
+        if(a.p_enabled!==undefined)D.config.cliente_push_promos_activo=!!a.p_enabled;
+        return {ok:true,enabled:!!D.config.cliente_push_promos_activo};
+      }
       case 'panel_whatsapp_guardar': D.config.whatsapp_local = a.p_whatsapp || ''; D.config.version += 1; return {ok:true};
       case 'panel_clientes': return SHOWROOM
         ? [{nombre:'Cliente frecuente (demo)',telefono:'1100000002',pedidos:3,
