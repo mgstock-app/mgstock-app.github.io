@@ -1,5 +1,5 @@
-// GESTLOK · construye el sitio de un entorno (prueba o testing) para Cloudflare Pages. Sin dependencias.
-//   Cloudflare: comando «node entornos/construir.mjs», carpeta de salida «dist-entorno».
+// GESTLOK · construye el sitio de un entorno (prueba o testing) para Vercel (o Cloudflare Pages). Sin dependencias.
+//   Vercel: Framework «Other», comando «node entornos/construir.mjs», carpeta de salida «dist-entorno».
 //   Local: ENTORNO=prueba node entornos/construir.mjs
 // Toma las micro apps de public/ tal cual están en la rama y las apunta a la BASE DE PRUEBAS
 // (nunca a la real). Si quedara una referencia a la base real, la construcción falla.
@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfg = JSON.parse(readFileSync(join(raiz, 'entornos/entornos.json'), 'utf8'));
-const nombre = process.env.ENTORNO || process.env.CF_PAGES_BRANCH || '';
+const nombre = process.env.ENTORNO || process.env.VERCEL_GIT_COMMIT_REF || process.env.CF_PAGES_BRANCH || '';
 const ent = cfg.entornos[nombre];
 const salida = resolve(raiz, process.argv[2] || 'dist-entorno');
 const URL_REAL = 'https://' + cfg.real.ref + '.supabase.co';

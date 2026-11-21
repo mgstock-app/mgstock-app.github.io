@@ -5,30 +5,25 @@
 ## Estado y separación
 
 - Producción: `gestlok.com.ar`; proyecto Supabase real. Nunca cambiar aquí la configuración desde estos pasos.
-- Prueba: `gestlok-prueba.pages.dev`, rama GitHub `prueba`, funciones `gestlok-chat-prueba` y `gestlok-chat-push-prueba`.
-- Testing: `gestlok-testing.pages.dev`, rama GitHub `testing`, funciones `gestlok-chat-testing` y `gestlok-chat-push-testing`.
+- Prueba: `gestlok-prueba.vercel.app`, rama GitHub `prueba`, funciones `gestlok-chat-prueba` y `gestlok-chat-push-prueba`.
+- Testing: `gestlok-testing.vercel.app`, rama GitHub `testing`, funciones `gestlok-chat-testing` y `gestlok-chat-push-testing`.
 - Ambos entornos usan **solo** el proyecto Supabase `gestlok-pruebas` (`irqeitzbfyerxcrogkyh`), con empresas y sucursales de demostración. No comparten clientes, conversaciones ni pedidos con producción.
 - El directorio `dist-entorno` solo contiene recursos de prueba y sus claves públicas de Supabase; nunca incluir allí tokens de administración, contraseñas ni `service_role`.
 - Las notificaciones push de prueba requieren su configuración VAPID independiente; no reutilizar dispositivos ni permisos push de producción.
 
-## Dos proyectos Cloudflare Pages (se requiere acceso a la cuenta)
+## Dos proyectos en Vercel (uso personal: pruebas, ideas y demos)
 
-En [Cloudflare → Workers & Pages](https://dash.cloudflare.com/) crear dos proyectos **Pages / GitHub** conectados al mismo repositorio `mgstock-app/mgstock-app.github.io`.
+En [Vercel](https://vercel.com/new) importar `mgstock-app/mgstock-app.github.io` dos veces:
 
-| Campo | Proyecto Prueba | Proyecto Testing |
-|---|---|---|
-| Nombre | `gestlok-prueba` | `gestlok-testing` |
-| Rama de producción del proyecto Cloudflare | `prueba` | `testing` |
-| Framework | Ninguno / None | Ninguno / None |
-| Directorio raíz | raíz del repositorio | raíz del repositorio |
-| Comando de construcción | `node entornos/construir.mjs` | `node entornos/construir.mjs` |
-| Carpeta de salida | `dist-entorno` | `dist-entorno` |
-| Variable de entorno | `ENTORNO=prueba` | `ENTORNO=testing` |
-| Versión de Node | `NODE_VERSION=24` | `NODE_VERSION=24` |
+| Ajuste | Prueba | Testing |
+| --- | --- | --- |
+| Nombre del proyecto | `gestlok-prueba` | `gestlok-testing` |
+| Framework Preset | Other | Other |
+| Build Command | `node entornos/construir.mjs` | `node entornos/construir.mjs` |
+| Output Directory | `dist-entorno` | `dist-entorno` |
+| Rama de producción (Settings → Environments → Production) | `prueba` | `testing` |
 
-En cada proyecto Cloudflare, dejar como rama de producción **solo la rama asignada** (nunca `main`), y desactivar las implementaciones automáticas de otras ramas si no son necesarias. No conectar el dominio `gestlok.com.ar` a ninguno de los proyectos de prueba.
-
-Una vez que Cloudflare termine sus builds, confirmar que la página principal muestra «GESTLOK · Prueba» o «GESTLOK · Testing». La prueba del banner y el parámetro `?s=` en el chat deben funcionar.
+El entorno se toma de la rama (`VERCEL_GIT_COMMIT_REF`): cualquier otra rama publica una página vacía, nunca GESTLOK.
 
 ## Secreto GitHub obligatorio: sin éxitos falsos
 

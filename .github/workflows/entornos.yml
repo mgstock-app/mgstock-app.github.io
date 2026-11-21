@@ -1,5 +1,5 @@
 name: Entornos · prueba → testing → gestlok.com.ar
-# Prueba y testing son copias de GESTLOK en Cloudflare Pages (gestlok-prueba / gestlok-testing) que usan la
+# Prueba y testing son copias de GESTLOK en Vercel (gestlok-prueba / gestlok-testing) que usan la
 # BASE DE PRUEBAS (otro proyecto de Supabase). Nada llega a dueños, gerentes ni clientes reales.
 #  · Cada cambio en la rama «prueba» actualiza la base y las funciones de prueba.
 #  · «Enviar a testing»: copia «prueba» en «testing» y actualiza las funciones de testing.
@@ -55,11 +55,11 @@ jobs:
         with: { ref: prueba, fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
-      - name: Comprobar que Cloudflare publicó Prueba
+      - name: Comprobar que Vercel publicó Prueba
         run: |
-          html=$(curl --fail --silent --show-error --location --max-time 20 https://gestlok-prueba.pages.dev/)
+          html=$(curl --fail --silent --show-error --location --max-time 20 https://gestlok-prueba.vercel.app/)
           if ! printf '%s' "$html" | grep -Fq 'GESTLOK · Prueba'; then
-            echo "::error title=Prueba sin publicar::El sitio gestlok-prueba.pages.dev no contiene la página de Prueba de GESTLOK."
+            echo "::error title=Prueba sin publicar::El sitio gestlok-prueba.vercel.app no contiene la página de Prueba de GESTLOK."
             exit 1
           fi
       - name: Base de pruebas al día
@@ -74,7 +74,7 @@ jobs:
             exit 1
           fi
           node entornos/backend.mjs --entorno testing --sql --funciones --ajustes
-      - name: Copiar «prueba» en «testing» (Cloudflare publica testing solo)
+      - name: Copiar «prueba» en «testing» (Vercel publica testing solo)
         run: |
           if git ls-remote --exit-code --heads origin testing >/dev/null; then
             git fetch origin testing
@@ -90,18 +90,18 @@ jobs:
         with: { ref: testing }
       - name: Verificar que Testing está publicado antes de abrir el PR
         run: |
-          html=$(curl --fail --silent --show-error --location --max-time 20 https://gestlok-testing.pages.dev/)
+          html=$(curl --fail --silent --show-error --location --max-time 20 https://gestlok-testing.vercel.app/)
           if ! printf '%s' "$html" | grep -Fq 'GESTLOK · Testing'; then
-            echo "::error title=Testing sin publicar::No se puede solicitar publicación: gestlok-testing.pages.dev aún no está listo."
+            echo "::error title=Testing sin publicar::No se puede solicitar publicación: gestlok-testing.vercel.app aún no está listo."
             exit 1
           fi
       - name: Verificar backend de Testing (CORS)
         run: |
           headers=$(curl --silent --show-error --max-time 20 --dump-header - --output /dev/null \
-            --request OPTIONS --header 'Origin: https://gestlok-testing.pages.dev' \
+            --request OPTIONS --header 'Origin: https://gestlok-testing.vercel.app' \
             --header 'Access-Control-Request-Method: POST' \
             'https://irqeitzbfyerxcrogkyh.supabase.co/functions/v1/gestlok-chat-testing')
-          if ! printf '%s' "$headers" | tr -d '\r' | grep -Fiq 'access-control-allow-origin: https://gestlok-testing.pages.dev'; then
+          if ! printf '%s' "$headers" | tr -d '\r' | grep -Fiq 'access-control-allow-origin: https://gestlok-testing.vercel.app'; then
             echo "::error title=Backend de Testing no listo::Revisá la función y el permiso CORS del entorno de pruebas."
             exit 1
           fi
