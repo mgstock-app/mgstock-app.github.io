@@ -87,7 +87,7 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       content=content.replace(pwaUpdated,pwaOriginal);
       // Login canónico: la PWA mantiene el mismo worker al navegar a /login/.
       // Solo esta sustitución de ruta se considera una excepción auditada.
-      const swRutaLogin="navigator.serviceWorker.register(\\n      /\\/login\\/$/.test(location.pathname) ? '../sw.js' : 'sw.js', {updateViaCache:'none'})";
+      const swRutaLogin="navigator.serviceWorker.register(\n      /\\/login\\/$/.test(location.pathname) ? '../sw.js' : 'sw.js', {updateViaCache:'none'})";
       const swRutaOriginal="navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})";
       assert.equal(content.split(swRutaLogin).length-1,1,'Ruta PWA ajustada únicamente para /login/');
       content=content.replace(swRutaLogin,swRutaOriginal);
