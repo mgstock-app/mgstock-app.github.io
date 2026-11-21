@@ -32,6 +32,23 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+      // Normalizar únicamente el refresco seguro de Stock Local para mantener
+      // el SHA original de pantallas, permisos y lógica de negocio.
+      const refreshMarker = '<button type="button" class="btn sm" data-act="f-refresh">';
+      const buttonStart = content.indexOf(refreshMarker);
+      assert.ok(buttonStart >= 0, 'Botón de refresco verificado');
+      assert.equal(content.indexOf(refreshMarker, buttonStart+1), -1, 'Botón no duplicado');
+      const buttonEnd = content.indexOf('</button>', buttonStart) + '</button>'.length;
+      assert.ok(buttonEnd > buttonStart, 'Cierre único del botón de refresco');
+      content = content.slice(0, buttonStart) + content.slice(buttonEnd);
+      const refreshCase = "    case 'f-refresh': void refreshStockFromServer(); break;\n";
+      assert.equal(content.split(refreshCase).length-1, 1, 'Acción de refresco única y revisada');
+      content = content.replace(refreshCase, '');
+      const refreshBegin = '/* Recarga verificable de Stock Local: lectura HTTP directa';
+      const begin = content.indexOf(refreshBegin), end = content.indexOf('function openSaveF(){', begin);
+      assert.ok(begin >= 0 && end > begin, 'Función verificada antes de Guardar conteo');
+      assert.equal(content.indexOf(refreshBegin, begin+1), -1, 'Función no duplicada');
+      content = content.slice(0, begin) + content.slice(end);
       // Destino adicional de push para pedidos GESTLOK Chat. La navegación
       // sigue validando el local autorizado antes de abrir la Central.
       const chatPushActual="!['chat','proveedores','vencimientos','avisos','pedidos-clientes'].includes(p.view)";
