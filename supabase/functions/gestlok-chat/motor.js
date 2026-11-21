@@ -243,7 +243,7 @@ export function carteleraDelDia(sucursal, catalogo, ahora = new Date()) {
   if (!vigentes.length) return {...base, catalogo: {...catalogo, productos: catalogo.productos.filter(p => !esPromoOnFire(p))}};
   // Solo la promo On Fire: sus variedades agotadas ya quedan afuera y dejan de apuntar a productos que no se muestran.
   const productos = vigentes.map(p => ({...p, opciones: (p.opciones || []).map(g => esCantidad(g)
-    ? {...g, valores: valoresDisponibles(catalogo, g).map(({producto_id, ...v}) => v)} : g)}));
+    ? {...g, valores: valoresDisponibles(catalogo, g).map(v => Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'producto_id')))} : g)}));
   const cats = new Set(productos.map(p => p.categoria_id));
   const promo = productos[0];
   const efectivo = ['efectivo'];
