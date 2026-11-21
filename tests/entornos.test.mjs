@@ -38,6 +38,22 @@ for (const entorno of ['prueba', 'testing']) {
     assert.match(ingreso, /typeof window\.supabase\.createClient/);
   });
 }
+test('demo dividida muestra sucursal elegida sin usar catálogos ni credenciales reales', () => {
+  const cliente = readFileSync('public/chat/chat.js', 'utf8');
+  const gerente = readFileSync('public/chat/panel/panel.js', 'utf8');
+  for (const texto of [cliente, gerente]) {
+    assert.match(texto, /SHOWROOM_SUCURSAL/,
+      'sólo la simulación debe adaptar los nombres de local');
+    assert.match(texto, /mi-gusto-munro/);
+    assert.match(texto, /mi-gusto-torcuato/);
+    assert.match(texto, /Mi Gusto · DEMOSTRACIÓN/);
+  }
+  assert.match(cliente, /if \(SHOWROOM_SUCURSAL\)/,
+    'la vista pública normal no altera su identidad');
+  assert.match(gerente, /if \(SHOWROOM\)/,
+    'el gerente normal no altera su lista de sucursales');
+});
+
 test('otras ramas no publican GESTLOK', () => {
   const out = mkdtempSync(join(tmpdir(), 'entorno-'));
   execFileSync('node', ['entornos/construir.mjs', out], {env: {...process.env, ENTORNO: 'main', CF_PAGES_BRANCH: ''}});
@@ -99,6 +115,8 @@ test('pantalla dividida: cliente y gerente en la misma pantalla, sin aviso repet
     assert.match(html, /data-vista-boton="cliente"/,
       'en celular permite alternar al cliente sin scroll horizontal');
     assert.match(html, /@media\(max-width:760px\)/);
+    assert.match(html, /padding:48px 8px 8px/,
+      'el aviso fijo de Prueba no tapa los controles de la cabecera en celular');
     assert.match(html, /sessionStorage\.removeItem\("gestlok:chat-showroom:v1"\)/,
       'nuevo cliente o nueva sucursal restablece el pedido ficticio');
     assert.match(html, /mi-gusto-munro/);

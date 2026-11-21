@@ -911,14 +911,18 @@
       acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'Munro y Florida', pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia'],
       activa: true, prefijo: 'MM', version: 3, mensajes: {}, ia_activa: true, ia_nombre: 'Sofi', ia_instrucciones: '', ia_info: ''},
   };
+  const SHOWROOM_SUCURSAL = SHOWROOM && ({
+    'mi-gusto-munro': 'Munro',
+    'mi-gusto-torcuato': 'Don Torcuato',
+  })[new URLSearchParams(location.search).get('s')];
   if (SHOWROOM) {
     // Mostrar a futuros comercios un local completamente ficticio. Nunca
     // incrustar la identidad ni los datos bancarios de una tienda real.
-    D.suc[0].nombre='Sucursal Centro';
+    D.suc[0].nombre=SHOWROOM_SUCURSAL || 'Sucursal Centro';
     D.suc[0].slug='demo';
     D.suc[0].local_id='demo';
     D.suc.splice(1);
-    Object.assign(D.config,{slug:'demo',nombre:'Sucursal Centro',empresa:'Comercio de demostración',
+    Object.assign(D.config,{slug:'demo',nombre:D.suc[0].nombre,empresa:SHOWROOM_SUCURSAL ? 'Mi Gusto · DEMOSTRACIÓN' : 'Comercio de demostración',
       direccion:'Calle Ejemplo 123',envio_zona:'Zona de demostración',prefijo:'DEMO'});
     D.pedidos[0].codigo='DEMO-0007';
     D.pedidos[0].cliente_nombre='Cliente de ejemplo';
@@ -932,8 +936,8 @@
   async function demoRpc(fn, a) {
     await new Promise(r => setTimeout(r, 120));
     switch (fn) {
-      case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración',
-        sucursales: SHOWROOM ? [{...D.suc[0],nombre:'Sucursal Centro',local_id:'demo'}] :
+      case 'panel_inicio': return {habilitado: true, empresa: SHOWROOM_SUCURSAL ? 'Mi Gusto · DEMOSTRACIÓN' : 'Comercio de demostración',
+        sucursales: SHOWROOM ? [{...D.suc[0],local_id:'demo'}] :
           D.suc.map(s => ({...s, local_id: s.id === 's1' ? 'munro' : 'torcuato'}))};
       case 'panel_pedidos': {
         const compartido=SHOWROOM?.read().order;

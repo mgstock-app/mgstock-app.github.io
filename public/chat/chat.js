@@ -1316,6 +1316,17 @@ const DEMO_DATOS = {
         {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla', extra: 0}, {id: 'ajo', nombre: 'Crema de ajo', extra: 0}]}]},
     ]},
 };
+// El selector de la demo dividida identifica la sucursal que se está representando.
+// Sólo afecta a datos simulados: nunca activa el catálogo ni las credenciales reales.
+const SHOWROOM_SUCURSAL = SHOWROOM && ({
+  'mi-gusto-munro': 'Munro',
+  'mi-gusto-torcuato': 'Don Torcuato',
+})[params.get('s')];
+if (SHOWROOM_SUCURSAL) {
+  DEMO_DATOS.sucursal.nombre = SHOWROOM_SUCURSAL;
+  DEMO_DATOS.sucursal.empresa = 'Mi Gusto · DEMOSTRACIÓN';
+  DEMO_DATOS.sucursal.slug = 'demo-' + params.get('s');
+}
 let demoEstado = null; let demoPedido = null;
 async function demoApi(accion, extra) {
   await new Promise(r => setTimeout(r, 250));

@@ -122,14 +122,14 @@ writeFileSync(join(salida, 'dividida/index.html'), '<!doctype html><html lang="e
   '<title>' + esc(ent.nombre) + ' · Cliente y gerente</title><style>' +
   'html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#eef1f5;color:#16202c}' +
   'body{display:flex;flex-direction:column;min-height:100dvh}' +
-  'header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#16202c;color:#fff;font-size:14px}' +
+  'header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:46px 12px 8px;background:#16202c;color:#fff;font-size:14px}' +
   'header b{margin-right:auto}header select,header button,header a{font:inherit;padding:6px 10px;border-radius:8px;border:0}' +
   'header a{background:#fff;color:#16202c;text-decoration:none}.etiqueta{font-weight:600;font-size:13px;padding:6px 10px;background:#fff;border-bottom:1px solid #d5dbe3}' +
   'main{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:10px;padding:10px;flex:1;min-height:0;box-sizing:border-box}' +
   'section{display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12)}' +
   'iframe{flex:1;width:100%;min-height:0;border:0}' +
   '.vistas{display:none}' +
-  '@media(max-width:760px){header{gap:6px;padding:8px}header b{flex-basis:100%}header label{flex:1}header select{max-width:100%}.vistas{display:flex;gap:6px;width:100%}.vistas button{flex:1;background:#334155;color:#fff}.vistas button[aria-pressed="true"]{background:#fff;color:#16202c}main{grid-template-columns:minmax(0,1fr);padding:8px;gap:0}main[data-movil="gerente"] section[data-vista="cliente"],main[data-movil="cliente"] section[data-vista="gerente"]{display:none}}' +
+  '@media(max-width:760px){header{gap:6px;padding:48px 8px 8px}header b{flex-basis:100%}header label{flex:1}header select{max-width:100%}.vistas{display:flex;gap:6px;width:100%}.vistas button{flex:1;background:#334155;color:#fff}.vistas button[aria-pressed="true"]{background:#fff;color:#16202c}main{grid-template-columns:minmax(0,1fr);padding:8px;gap:0}main[data-movil="gerente"] section[data-vista="cliente"],main[data-movil="cliente"] section[data-vista="gerente"]{display:none}}' +
   '</style><script src="/entorno.js" defer></script></head><body>' +
   '<header><b>' + esc(ent.nombre) + ' · Cliente y gerente</b><label>Local <select id="local">' +
   LOCALES.map(([s, n]) => '<option value="' + s + '">' + esc(n) + '</option>').join('') + '</select></label>' +
