@@ -121,25 +121,30 @@ writeFileSync(join(salida, 'dividida/index.html'), '<!doctype html><html lang="e
   '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">' +
   '<title>' + esc(ent.nombre) + ' · Cliente y gerente</title><style>' +
   'html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#eef1f5;color:#16202c}' +
+  'body{display:flex;flex-direction:column;min-height:100dvh}' +
   'header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#16202c;color:#fff;font-size:14px}' +
   'header b{margin-right:auto}header select,header button,header a{font:inherit;padding:6px 10px;border-radius:8px;border:0}' +
   'header a{background:#fff;color:#16202c;text-decoration:none}.etiqueta{font-weight:600;font-size:13px;padding:6px 10px;background:#fff;border-bottom:1px solid #d5dbe3}' +
-  'main{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:10px;padding:10px;height:calc(100% - 52px);box-sizing:border-box}' +
-  'section{display:flex;flex-direction:column;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12)}' +
-  'iframe{flex:1;width:100%;border:0}' +
+  'main{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:10px;padding:10px;flex:1;min-height:0;box-sizing:border-box}' +
+  'section{display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12)}' +
+  'iframe{flex:1;width:100%;min-height:0;border:0}' +
+  '.vistas{display:none}' +
+  '@media(max-width:760px){header{gap:6px;padding:8px}header b{flex-basis:100%}header label{flex:1}header select{max-width:100%}.vistas{display:flex;gap:6px;width:100%}.vistas button{flex:1;background:#334155;color:#fff}.vistas button[aria-pressed="true"]{background:#fff;color:#16202c}main{grid-template-columns:minmax(0,1fr);padding:8px;gap:0}main[data-movil="gerente"] section[data-vista="cliente"],main[data-movil="cliente"] section[data-vista="gerente"]{display:none}}' +
   '</style><script src="/entorno.js" defer></script></head><body>' +
   '<header><b>' + esc(ent.nombre) + ' · Cliente y gerente</b><label>Local <select id="local">' +
   LOCALES.map(([s, n]) => '<option value="' + s + '">' + esc(n) + '</option>').join('') + '</select></label>' +
   '<button id="nuevo" type="button" title="Empieza una conversación nueva como otro cliente">Nuevo cliente</button>' +
-  '<a href="/">Inicio</a></header><main>' +
-  '<section><div class="etiqueta">Vista cliente</div><iframe id="cliente" title="Chat del cliente"></iframe></section>' +
-  '<section><div class="etiqueta">Vista gerente</div><iframe id="gerente" title="Panel del gerente" src="/chat/panel/"></iframe></section>' +
-  '</main><script>(function(){var sel=document.getElementById("local"),cli=document.getElementById("cliente");' +
+  '<a href="/">Inicio</a><nav class="vistas" aria-label="Elegir perfil"><button type="button" data-vista-boton="cliente" aria-pressed="false">Cliente</button><button type="button" data-vista-boton="gerente" aria-pressed="true">Gerente</button></nav></header><main id="vistas" data-movil="gerente">' +
+  '<section data-vista="cliente"><div class="etiqueta">Vista cliente · DEMOSTRACIÓN</div><iframe id="cliente" title="Chat del cliente de demostración"></iframe></section>' +
+  '<section data-vista="gerente"><div class="etiqueta">Vista gerente · DEMOSTRACIÓN</div><iframe id="gerente" title="Panel del gerente de demostración"></iframe></section>' +
+  '</main><script>(function(){var sel=document.getElementById("local"),cli=document.getElementById("cliente"),ger=document.getElementById("gerente"),vistas=document.getElementById("vistas");' +
+  'document.querySelectorAll("[data-vista-boton]").forEach(function(b){b.onclick=function(){vistas.dataset.movil=b.dataset.vistaBoton;document.querySelectorAll("[data-vista-boton]").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))})}});' +
   'var p=new URLSearchParams(location.search).get("s");if(p&&[].some.call(sel.options,function(o){return o.value===p}))sel.value=p;' +
-  'function abrir(){cli.src="/chat/?s="+encodeURIComponent(sel.value)+"&v="+Date.now();' +
-  'history.replaceState(null,"","?s="+encodeURIComponent(sel.value))}sel.onchange=abrir;' +
+  'function abrir(){cli.src="/chat/?demo=1&showroom=1&s="+encodeURIComponent(sel.value)+"&v="+Date.now();' +
+  'ger.src="/chat/panel/?demo=1&showroom=1&s="+encodeURIComponent(sel.value);' +
+  'history.replaceState(null,"","?s="+encodeURIComponent(sel.value))}sel.onchange=function(){try{sessionStorage.removeItem("gestlok:chat-showroom:v1")}catch(e){}abrir()};' +
   'document.getElementById("nuevo").onclick=function(){try{Object.keys(localStorage).forEach(function(k){' +
-  'if(/gestlok[-_]?chat/i.test(k)&&!/^sb-/.test(k))localStorage.removeItem(k)})}catch(e){}abrir()};abrir()})();</script></body></html>');
+  'if(/gestlok[-_]?chat/i.test(k)&&!/^sb-/.test(k))localStorage.removeItem(k)})}catch(e){}try{sessionStorage.removeItem("gestlok:chat-showroom:v1")}catch(e){}abrir()};abrir()})();</script></body></html>');
 
 writeFileSync(join(salida, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n  X-Frame-Options: SAMEORIGIN\n');
 writeFileSync(join(salida, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
