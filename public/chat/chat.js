@@ -576,8 +576,10 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   el('p', {class: 'precio', text: pesos(p.precio)}),
   el('p', {class: 'menu-ayuda', text: 'Elegí las opciones y cantidades. Al agregar, volvés al menú para seguir eligiendo.'}),
   grupos,
-  el('div', {class: 'cantidad'}, el('button', {type: 'button', 'aria-label': 'Menos', text: '−', onclick: () => { cantidad = Math.max(1, cantidad - 1); refrescar(); }}),
-    salida, el('button', {type: 'button', 'aria-label': 'Más', text: '+', onclick: () => { cantidad = Math.min(50, cantidad + 1); refrescar(); }})),
+  el('div', {class: 'cantidad-contenedor'},
+    el('strong', {class: 'cantidad-etiqueta', text: (p.opciones || []).some(esCantidad) ? 'Cantidad de promociones' : 'Cantidad del producto'}),
+    el('div', {class: 'cantidad'}, el('button', {type: 'button', 'aria-label': 'Menos', text: '−', onclick: () => { cantidad = Math.max(1, cantidad - 1); refrescar(); }}),
+      salida, el('button', {type: 'button', 'aria-label': 'Más', text: '+', onclick: () => { cantidad = Math.min(50, cantidad + 1); refrescar(); }}))),
   el('label', {class: 'campo'}, el('span', {text: 'Aclaración (opcional)'}), nota),
   error, boton);
   refrescar();
