@@ -186,7 +186,10 @@ function burbujaFoto(rol, url, texto = 'Foto enviada') {
 function nuevaConversacion() {
   if (S.enviando) return;
   // Si el último pedido aún está pendiente o en preparación, evitar duplicados.
-  if (S.pedido && ['pendiente','confirmado'].includes(S.pedido.estado) && !S.cerrada) return;
+  if (S.pedido && ['pendiente','confirmado'].includes(S.pedido.estado)) {
+    burbuja('asistente','Todavía tenés un pedido en curso. Esperá a que el local lo termine antes de hacer otro.');
+    return;
+  }
   try {
     localStorage.removeItem('gestlok-chat:token:'+SLUG);
     localStorage.removeItem(CLAVE_BORRADOR);
