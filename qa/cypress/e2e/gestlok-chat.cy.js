@@ -226,7 +226,7 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.contains('#hoja .menu-fila', 'Pack 6 empanadas + 2 salsas').find('button.menu-paso-elegir').click();
     cy.get('#hoja .grupo-cantidad').should('have.length', 2);
     cy.get('#hoja .grupo-cantidad').first().find('.opcion-cantidad').should('have.length', 2); // humita agotada
-    cy.get('#hoja button[type=submit]').should('be.disabled').and('contain.text', 'Completar empanadas');
+    cy.get('#hoja button[type=submit]').should('be.disabled').and('contain.text', 'Agregar $ 6.500');
     cy.get('#hoja .grupo-cantidad').first().should('contain.text', 'Faltan 6');
     cy.get('#hoja [aria-label="Sumar Empanada de carne"]').click().click().click().click();
     cy.get('#hoja [aria-label="Sumar Empanada de jamón y queso"]').click().click();
@@ -237,7 +237,7 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.get('#hoja button[type=submit]').should('be.disabled');
     cy.get('#hoja [aria-label="Sumar Crema de ajo"]').click();
     cy.get('#hoja .menu-producto-detalle:visible .precio').should('contain.text', '6.500');
-    cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', 'Agregar y seguir eligiendo').click();
+    cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', 'Agregar $ 6.500').click();
     cy.contains('#hoja .menu-pie button','Revisar selección').click();
     cy.get('#hoja .menu-revision').should('contain.text','4 Empanada de carne').and('contain.text','1 Crema de ajo');
     cy.get('.seleccion-linea').should($linea => {
