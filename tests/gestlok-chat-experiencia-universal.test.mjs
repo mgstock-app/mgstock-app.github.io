@@ -56,3 +56,14 @@ test('al conectar una nueva empresa se hereda el menú y los locales inactivos s
  assert.match(central,/gestlok_chat_panel_inicio/);
  assert.match(central,/servidor\.locales\.has\(local\(\)\)/);
 });
+
+test('la identidad de chat se comparte entre empresas, sucursales y la demo',()=>{
+  const js=src('public/chat/chat.js'),css=src('public/chat/chat.css'),p=src('public/chat/panel/panel.js');
+  assert.match(js,/src: '\/chat\/gestlok-monograma\.svg'/);
+  assert.match(js,/'CHAT DE ' \+ marca/);
+  assert.match(css,/background-image:url\('\/chat\/wallpaper-gestlok\.svg'\)/);
+  assert.match(p,/gestlok-monograma\.svg/);
+  assert.doesNotMatch(js,/slug\s*===?\s*['"]mi-gusto-/);
+  const bridge=src('public/chat/showroom-bridge.js');
+  assert.match(bridge,/showroom/i);
+});
