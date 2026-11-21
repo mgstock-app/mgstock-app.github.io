@@ -1,4 +1,46 @@
 describe('GESTLOK Chat · menú interactivo', () => {
+  it('destaca Hacer un pedido antes de los accesos secundarios y abre la carta en celular', () => {
+    cy.viewport(320, 740);
+    cy.visit('/chat/?demo=1');
+    cy.get('.burbuja.asistente').should('exist');
+    cy.get('.chips').first().within(() => {
+      cy.get('button.chip-hacer-pedido').should('have.text', 'Hacer un pedido')
+        .and('be.visible')
+        .and('have.css', 'background-color', 'rgb(49, 109, 159)');
+      cy.get('button.chip-hacer-pedido').should('have.length', 1);
+    });
+    cy.get('.chips button.chip-hacer-pedido').first().then($boton => {
+      const boton = $boton[0].getBoundingClientRect();
+      expect(boton.width).to.be.greaterThan(280);
+      expect(boton.height).to.be.at.least(54);
+    });
+    cy.get('.chips button.chip-hacer-pedido').first().click();
+    cy.get('#hoja').should('be.visible');
+    cy.get('#hoja-titulo').should('have.text', 'Menú interactivo');
+    cy.get('#hoja .lista').should('contain.text', 'Empanada de carne');
+  });
+
+  ['mi-gusto-munro', 'mi-gusto-torcuato'].forEach(slug => {
+    it('destaca el botón de pedido aunque la API todavía envíe Ver menú en ' + slug, () => {
+      cy.viewport(390, 844);
+      const local = slug === 'mi-gusto-munro' ? 'Munro' : 'Don Torcuato';
+      cy.intercept('POST', '**/functions/v1/gestlok-chat', req => {
+        if (req.body.accion !== 'abrir') return req.reply({ok:true,carrito:[],mensajes:[]});
+        req.reply({ok:true,sucursal:{slug,empresa:'Mi Gusto',nombre:local,horario:'11:00 a 14:40 y 19:00 a 23:15'},
+          catalogo:{categorias:[{id:'c1',nombre:'Empanadas'}],productos:[{
+            id:'9a000000-0000-4000-8000-000000000001',categoria_id:'c1',
+            nombre:'Empanada de carne',precio:4900,activo:true,disponible:true,opciones:[]}]},
+          mensajes:[],nuevos:[{texto:'Para realizar su pedido, toque Hacer un pedido.',
+            botones:[{id:'horario',texto:'Horario y envío'},{id:'carta',texto:'Ver menú'},
+              {id:'pago',texto:'Medios de pago'}]}],carrito:[],pedidos:[]});
+      }).as('chat');
+      cy.visit('/chat/?s=' + slug);
+      cy.wait('@chat');
+      cy.get('.chips button').first().should('have.text','Hacer un pedido').and('have.class','chip-hacer-pedido').click();
+      cy.get('#hoja-titulo').should('have.text','Menú interactivo');
+      cy.get('#hoja').should('contain.text','Empanada de carne');
+    });
+  });
   it('separa la configuración de la lista y mantiene la selección antes de enviar', () => {
     cy.viewport(390, 844);
     cy.visit('/chat/?demo=1');
