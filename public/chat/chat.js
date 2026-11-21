@@ -960,7 +960,11 @@ function abrirDatos() {
     bloqueUbicacion.hidden = d.entrega !== 'envio';
     notaCostoEnvio.hidden = d.entrega !== 'envio' || Number(s.envio_costo) <= 0;
     notaCostoEnvio.textContent = 'Costo de envío: ' + pesos(s.envio_costo);
-    const ordenPagos=['debito','credito','transferencia','efectivo','mercado_pago'];
+    // Retiro: tarjetas primero. Delivery: efectivo primero, con el descuento visible;
+    // sin imponerlo si el cliente ya eligió otra forma de pago habilitada.
+    const ordenPagos=d.entrega==='envio'
+      ? ['efectivo','transferencia','debito','credito','mercado_pago']
+      : ['debito','credito','transferencia','efectivo','mercado_pago'];
     const disponibles = [...medios(d.entrega)].sort((a,b)=>ordenPagos.indexOf(a)-ordenPagos.indexOf(b));
     const tarjetas=disponibles.filter(m=>m==='debito'||m==='credito');
     const otros=disponibles.filter(m=>m!=='debito'&&m!=='credito');
