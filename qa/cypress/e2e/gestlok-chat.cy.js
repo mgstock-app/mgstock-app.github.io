@@ -38,7 +38,7 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja input[name=telefono]').type('11 5555 1234');
     cy.get('#hoja').contains('label', 'Envío').click();
     cy.get('#hoja button[type=submit]').click();
-    cy.get('#hoja .error-form').should('contain.text', 'dirección');
+    cy.get('#hoja .error-form').should('contain.text', 'calle y número');
     cy.get('#hoja input[name=direccion]').type('Mitre 200');
     cy.get('#hoja input[name=efectivo_abona]').should('be.visible').type('50000');
     cy.get('#hoja .cambio-previsto').should('contain.text','Cambio a enviar');
@@ -282,7 +282,7 @@ describe('GESTLOK Chat · clientes frecuentes y continuidad sin registro',()=>{
     cy.get('#btn-finalizar').click();
     // Antes de los datos pueden aparecer la oferta de promo y la venta sugerida: se rechazan las dos.
     const pasarOfertas = veces => cy.get('body').should($body => {
-      const oferta = $body.find('.chip').toArray().some(x => /No, gracias\. Finalizar|No, seguir sin promoción/.test(x.textContent));
+      const oferta = $body.find('.chip').toArray().some(x => /No, gracias, enviar|No, seguir sin promoción/.test(x.textContent));
       expect(oferta || $body.find('#hoja').is(':visible')).to.eq(true);
     }).then($body => {
       if (veces > 0 && !$body.find('#hoja').is(':visible')) {
