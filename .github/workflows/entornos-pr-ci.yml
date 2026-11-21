@@ -1,0 +1,19 @@
+name: Prueba y Testing · validación sin datos reales
+on:
+  pull_request:
+    branches: [prueba, testing]
+permissions:
+  contents: read
+jobs:
+  entornos:
+    name: Compilación aislada y controles de seguridad
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Validar sintaxis y generación de Prueba y Testing
+        run: |
+          node --check entornos/construir.mjs
+          node --check entornos/backend.mjs
+          node --test tests/entornos.test.mjs
