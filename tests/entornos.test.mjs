@@ -87,7 +87,20 @@ test('pantalla dividida: cliente y gerente en la misma pantalla, sin aviso repet
     execFileSync('node', ['entornos/construir.mjs', out], {env: {...process.env, ENTORNO: entorno}});
     const html = leer(unir(out, 'dividida/index.html'), 'utf8');
     assert.match(html, /id="cliente"/);
-    assert.match(html, /id="gerente"[^>]*src="\/chat\/panel\/"/);
+    assert.match(html, /id="gerente"/);
+    assert.match(html, /\/chat\/\?demo=1&showroom=1&s=/,
+      'la vista cliente abre una simulación sin autenticación ni pedidos reales');
+    assert.match(html, /\/chat\/panel\/\?demo=1&showroom=1&s=/,
+      'el panel gerente abre automáticamente en modo simulación sin pedir credenciales');
+    assert.doesNotMatch(html, /\/ingresar\//,
+      'la pantalla dividida no puede enviar al formulario de ingreso');
+    assert.match(html, /data-movil="gerente"/,
+      'en celular empieza por el panel de gerente');
+    assert.match(html, /data-vista-boton="cliente"/,
+      'en celular permite alternar al cliente sin scroll horizontal');
+    assert.match(html, /@media\(max-width:760px\)/);
+    assert.match(html, /sessionStorage\.removeItem\("gestlok:chat-showroom:v1"\)/,
+      'nuevo cliente o nueva sucursal restablece el pedido ficticio');
     assert.match(html, /mi-gusto-munro/);
     assert.match(html, /mi-gusto-torcuato/);
     assert.match(leer(unir(out, 'index.html'), 'utf8'), /href="\/dividida\/"/);
