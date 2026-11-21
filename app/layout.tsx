@@ -29,6 +29,9 @@ import "./gestlok-nfc-qr.css";
 import "./gestlok-caja-diaria.css";
 import "./creator-premium.css";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+// Se incrusta la versión de ESTA página: reiniciar la PC no implica que haya una actualización pendiente.
+const pageRelease = process.env.GITHUB_RUN_ID
+  ? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || "1"}` : "";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://gestlok.com.ar"),
   title: "GESTLOK | Software de gestión de negocios y locales",
@@ -58,5 +61,5 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#11283c" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="es-AR"><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap" /></head><body>{children}</body></html>;
+  return <html lang="es-AR" data-gestlok-build={pageRelease}><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&display=swap" /></head><body>{children}</body></html>;
 }

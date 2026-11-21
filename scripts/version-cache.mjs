@@ -36,5 +36,6 @@ const SCOPE_MARK = '/*__UPDATE_AUDIENCE__*/["*"]';
 if (!template.includes(SCOPE_MARK)) throw new Error('Marcador de alcance PWA ausente');
 writeFileSync(new URL('../public/sw.js', import.meta.url), template
   .replace('__BUILD_VERSION__', digest)
+  .replace('__BUILD_RELEASE__', version)
   .replace(SCOPE_MARK, JSON.stringify(audience)));
 console.log(`mgstock cache: ${digest}; aviso a: ${JSON.stringify(audience)}`);
