@@ -602,7 +602,27 @@
       el('p', {class: 'etiqueta', text: 'Medios de pago'}), el('div', {class: 'medios'}, medios)),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
       : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
-    contenido.replaceChildren(form);
+    // Contacto externo por sucursal. No sincroniza pedidos ni mensajes con WhatsApp.
+    const numeroWhatsApp = el('input', {type:'tel', inputmode:'tel', maxlength:'24',
+      placeholder:'Ej.: 5491171446654', disabled:!editable});
+    numeroWhatsApp.value = a.whatsapp_local || '';
+    const contactoWhatsApp = el('form', {class:'ajustes', onsubmit:async e=>{
+      e.preventDefault();
+      const telefono = numeroWhatsApp.value.replace(/\D/g,'');
+      if (telefono && !/^[1-9][0-9]{7,14}$/.test(telefono))
+        return aviso('Ingresá un número internacional válido, por ejemplo 5491171446654.',true);
+      try {
+        await rpc('panel_whatsapp_guardar', {p_sucursal:S.suc.id,p_whatsapp:telefono,p_version:a.version});
+        aviso('WhatsApp del local guardado');verAjustes();
+      } catch(err) {aviso(err.message,true);}
+    }},
+    el('section', {class:'bloque'},
+      el('h3', {text:'WhatsApp del local'}),
+      el('p', {class:'nota',text:'Solo aparece el ícono en el chat público. Abre el WhatsApp de esta sucursal, sin enviar pedidos ni conectar mensajes externos.'}),
+      campo('Número con código de país, sin + ni espacios',numeroWhatsApp),
+      editable ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
+        : el('p',{class:'nota',text:'Solo el dueño o la administradora pueden cambiar este número.'})));
+    contenido.replaceChildren(form,contactoWhatsApp);
   }
 
   // ------------------------------------------------------------------------------------------- historial diario de demanda por sucursal
@@ -898,6 +918,7 @@
       case 'panel_categoria_guardar': if (a.p_id) Object.assign(D.cats.find(c => c.id === a.p_id), {nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); else D.cats.push({id: 'k' + Date.now(), nombre: a.p_nombre, orden: a.p_orden, activa: a.p_activa}); return {ok: true};
       case 'panel_config': return {...D.config, nivel: D.nivel};
       case 'panel_config_guardar': Object.assign(D.config, a.p_config, {version: D.config.version + 1}); return {ok: true};
+      case 'panel_whatsapp_guardar': D.config.whatsapp_local = a.p_whatsapp || ''; D.config.version += 1; return {ok:true};
       case 'panel_clientes': return SHOWROOM
         ? [{nombre:'Cliente frecuente (demo)',telefono:'1100000002',pedidos:3,
             ultimo_at:new Date().toISOString(),direccion:'Calle Ejemplo 123'}]

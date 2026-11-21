@@ -7,7 +7,7 @@ describe('GESTLOK Chat · chat público', () => {
   it('toma un pedido completo en el celular (demostración)', () => {
     cy.viewport(390, 800);
     cy.visit('/chat/?demo=1');
-    cy.get('.burbuja.asistente').should('contain.text', 'Comercio Sucursal Centro'); // el trato formal muestra «Su Comercio»
+    cy.get('.chat-bienvenida').should('contain.text', '¡Hola! ¿En qué podemos ayudarte hoy?').and('contain.text', 'Tu Comercio');
     cy.get('#texto').type('2 empanadas de carne y 1 de jamón y queso{enter}');
     cy.get('.burbuja.asistente').last().should('contain.text', '2 × Empanada de carne').and('contain.text', '1 × Empanada de jamón y queso');
     cy.get('#barra-texto').should('contain.text', '3 productos');
@@ -17,12 +17,12 @@ describe('GESTLOK Chat · chat público', () => {
     cy.get('#hoja').contains('label', 'Grande').click();
     // El precio del encabezado es base ($ 7.500); el tamaño elegido se suma al total de la línea.
     cy.get('#hoja .menu-producto-detalle:visible').should('contain.text', 'Grande');
-    cy.get('#hoja button[type=submit]').should('contain.text', 'Agregar y seguir eligiendo').click();
+    cy.get('#hoja button[type=submit]').should('contain.text', 'Agregar producto').click();
     cy.get('#hoja .menu-pie-texto').should('contain.text','1 producto seleccionado');
-    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.contains('#hoja .menu-pie button','Continuar').click();
     cy.get('#hoja .menu-revision').should('contain.text','Pizza muzzarella')
       .and('contain.text','Tamaño · Grande').and('contain.text','10.500');
-    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
+    cy.contains('#hoja .menu-revision button','Continuar').click();
     cy.contains('.burbuja.asistente', 'Pizza muzzarella (Grande)');
     // Con 3 empanadas sueltas el asistente ofrece armar la promo; el cliente sigue sin ella.
     cy.get('.burbuja.asistente').last().should('contain.text', 'Tenemos una promoción para usted');
@@ -242,7 +242,7 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.get('#hoja [aria-label="Sumar Crema de ajo"]').click();
     cy.get('#hoja .menu-producto-detalle:visible .precio').should('contain.text', '6.500');
     cy.get('#hoja button[type=submit]').should('not.be.disabled').and('contain.text', 'Agregar $ 6.500').click();
-    cy.contains('#hoja .menu-pie button','Revisar selección').click();
+    cy.contains('#hoja .menu-pie button','Continuar').click();
     cy.get('#hoja .menu-revision').should('contain.text','4 Empanada de carne').and('contain.text','1 Crema de ajo');
     cy.get('.seleccion-linea').should($linea => {
       const fila = $linea[0];
@@ -253,7 +253,7 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
       expect(quitar.top).to.be.greaterThan(precio.bottom);
       expect(fila.scrollWidth).to.be.at.most(fila.clientWidth);
     });
-    cy.contains('#hoja .menu-revision button','Enviar selección al asistente').click();
+    cy.contains('#hoja .menu-revision button','Continuar').click();
     cy.get('.burbuja.asistente').last().should('contain.text', '4 Empanada de carne').and('contain.text', '1 Crema de ajo');
     cy.window().then(w => expect(w.document.documentElement.scrollWidth).to.be.at.most(320));
   });

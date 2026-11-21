@@ -33,6 +33,16 @@ const SLUG = DEMO ? 'demo' : slugDeUrl();
 const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [], pedido: null, enviando: false,
   ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
   ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null, cerrada: false};
+/* Contacto opcional, asignado por el servidor a ESTA sucursal; nunca cambia el canal de pedidos. */
+function actualizarWhatsApp(sucursal) {
+  const link = $('whatsapp-local');
+  const telefono = String(sucursal?.whatsapp_local || '').replace(/\D/g, '');
+  if (!/^[1-9][0-9]{7,14}$/.test(telefono)) {
+    link.hidden = true; link.removeAttribute('href'); return;
+  }
+  link.href = 'https://wa.me/' + telefono;
+  link.hidden = false;
+}
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
 function token(clave = 'gestlok-chat:token:' + SLUG) {
@@ -213,7 +223,7 @@ function chips(botones) {
   lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
     type: 'button',
     class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : ''),
-    text: principal(b) ? 'Hacer un pedido' : b.texto,
+    text: principal(b) ? 'Hacer un pedido' : b.id === 'finalizar' ? 'Enviar pedido' : b.texto,
     onclick: () => tocarBoton(b)
   }))));
   bajar();
@@ -241,12 +251,16 @@ function mostrarEscribiendo(si) {
 
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
-  ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
+  ? [{id: 'finalizar', texto: 'Enviar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
   : [...botonesBienvenida(S.sucursal, S.catalogo),
       ...(recuperarUltimoPedido().length ? [{id:'repetir',texto:'Repetir mi último pedido'}] : [])];
 
 
-async function enviar(entrada, textoVisible) {
+async function enviar(entrada, textoVisible, {cancelacionConfirmada = false} = {}) {
+  if (entrada?.boton === 'cancelar' && !cancelacionConfirmada) {
+    abrirConfirmacionCancelar();
+    return false;
+  }
   if (S.enviando) return false;
   S.enviando = true; S.ultimaEntrada = {entrada, textoVisible};
   const carritoAntes = Array.isArray(S.carrito) ? S.carrito.map(l=>({...l})) : [];
@@ -270,6 +284,7 @@ async function enviar(entrada, textoVisible) {
     }
     if (r.catalogo && r.sucursal) {
       S.catalogo = r.catalogo; S.sucursal = {...r.sucursal, atencion: r.atencion || r.sucursal.atencion};
+      actualizarWhatsApp(S.sucursal);
       S.borrador = S.borrador.filter(l => producto(l.producto_id)); guardarBorrador();
     }
     if (r.atencion && S.sucursal) S.sucursal.atencion = r.atencion;
@@ -306,9 +321,10 @@ function tocarBoton(b) {
     return enviar(S.ultimaEntrada.entrada, null);
   }
   if (b.id === 'repetir') return repetirUltimoPedido();
+  if (b.id === 'cancelar') return abrirConfirmacionCancelar();
   if (b.id === 'carta') return abrirCarta();
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
-  enviar({boton: b.id}, b.texto);
+  enviar({boton: b.id}, b.id === 'finalizar' ? 'Enviar pedido' : b.texto);
 }
 function bloquear(si) { $('btn-enviar').disabled = si || !$('texto').value.trim(); $('btn-finalizar').disabled = si; }
 
@@ -319,7 +335,7 @@ function actualizarCarrito(c) {
   $('barra-pedido').hidden = !n;
   $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' +
     pesos(totalCarrito(S.catalogo, [...S.carrito, ...S.borrador]));
-  $('btn-finalizar').textContent = S.borrador.length ? 'Enviar al asistente' : 'Finalizar';
+  $('btn-finalizar').textContent = S.borrador.length ? 'Continuar' : 'Enviar pedido';
 }
 const TEXTO_ESTADO = {
   pendiente: ['Pendiente de confirmación', 'El gerente debe revisar y confirmar su pedido'],
@@ -361,6 +377,23 @@ async function confirmarRecepcion() {
     burbuja('error', 'Sin conexión. Intentá nuevamente.');
   } finally { S.enviando = false; }
 }
+/* Confirmación deliberada: un toque involuntario no cancela una venta.
+ * El servidor sigue validando que el pedido esté pendiente cuando recibe la solicitud. */
+function abrirConfirmacionCancelar() {
+  if (S.enviando || S.cerrada || S.pedido?.estado !== 'pendiente') return;
+  abrirHoja('¿Cancelar pedido?', el('div', {class:'confirmar-cancelacion'},
+    el('p', {text:'¿Seguro que querés cancelar tu pedido? Todavía podés seguir con tu compra.'}),
+    el('button', {type:'button',class:'boton principal ancho',text:'Seguir con mi pedido',onclick:cerrarHoja}),
+    el('button', {type:'button',class:'boton ancho cancelar-accion',text:'Sí, cancelar pedido',onclick:()=>{
+      cerrarHoja();
+      if (/^cancelar/i.test($('texto').value.trim())) { $('texto').value=''; guardarLocal(CLAVE_TEXTO,''); $('texto').dispatchEvent(new Event('input')); }
+      enviar({boton:'cancelar'}, 'Cancelar pedido', {cancelacionConfirmada:true});
+    }})));
+}
+function hacerNuevoPedido() {
+  S.borrador=[]; S.loteId=null; guardarBorrador(); actualizarCarrito();
+  abrirCarta();
+}
 function mostrarPedido(p) {
   const antes = S.pedido;
   S.pedido = p;
@@ -377,7 +410,10 @@ function mostrarPedido(p) {
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
     el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
       : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
-    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar', onclick: () => enviar({boton: 'cancelar'}, 'Cancelar pedido')}) : null,
+    p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar pedido', onclick: abrirConfirmacionCancelar}) : null,
+    p.estado === 'cancelado' ? el('div', {class:'pedido-recuperar'},
+      recuperarUltimoPedido().length ? el('button',{type:'button',class:'boton',text:'Retomar pedido',onclick:repetirUltimoPedido}) : null,
+      el('button',{type:'button',class:'boton',text:'Hacer nuevo pedido',onclick:hacerNuevoPedido})) : null,
     p.estado === 'terminado' && !p.recibido_at ? el('button', {type:'button', text:'Ya recibí mi pedido', onclick:confirmarRecepcion}) : null,
     ['pendiente','confirmado','terminado'].includes(p.estado) ? el('button', {type:'button', text:'Necesito ayuda', onclick:()=>enviar({boton:'soporte'},'Necesito ayuda')}) : null,
     resena ? el('a', {href: resena, target: '_blank', rel: 'noopener noreferrer', text: 'Dejar reseña'}) : null,
@@ -567,13 +603,13 @@ function abrirCarta() {
           ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
             pesos(totalCarrito(S.catalogo, S.borrador))
           : 'Elegí los productos y cantidades para tu pedido.'}),
-        S.borrador.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Revisar selección',
+        S.borrador.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Continuar',
           onclick: abrirSeleccion}) : null));
     if (cuerpo.querySelector('.categorias')) cuerpo.querySelector('.categorias').scrollLeft = tabsScroll;
     $('hoja-cuerpo').scrollTop = scroll;
   };
   pintar();
-  abrirHoja('Menú interactivo', cuerpo);
+  abrirHoja('Menú', cuerpo);
 }
 
 function iconoTacho() {
@@ -613,7 +649,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       estadoFinal.textContent = falta ? 'Completá la selección para agregar' : 'Selección completa';
       estadoFinal.classList.toggle('completo', !falta);
     } else {
-      boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase() : 'Agregar y seguir eligiendo';
+      boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase() : 'Agregar producto';
     }
   };
   // Selector guiado en una sola vista: filas compactas y cantidades en línea.
@@ -754,8 +790,8 @@ function abrirSeleccion() {
     el('div', {class: 'total'}, el('span', {text: 'Total estimado'}),
       el('span', {class: 'precio', text: pesos(subtotal + anterior)})),
     el('p', {class: 'nota', text: 'Después de enviar la selección, completá tus datos. El gerente revisará y confirmará el pedido.'}),
-    el('button', {type: 'button', class: 'boton ancho', text: 'Seguir eligiendo', onclick: abrirCarta}),
-    el('button', {type: 'button', class: 'boton principal ancho', text: 'Enviar selección al asistente',
+    el('button', {type: 'button', class: 'boton ancho', text: 'Agregar más productos', onclick: abrirCarta}),
+    el('button', {type: 'button', class: 'boton principal ancho', text: 'Continuar',
       onclick: async () => {
         if (S.enviando || !S.borrador.length) return;
         if (!S.loteId) { S.loteId = crypto.randomUUID(); guardarBorrador(); }
@@ -776,7 +812,7 @@ function abrirCarrito() {
       : el('p', {class: 'nota', text: 'Tu pedido está vacío.'}),
     el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), el('span', {text: pesos(totalCarrito(S.catalogo, S.carrito))})),
     el('p', {class: 'nota', text: 'El total final lo calcula el local con los precios vigentes.'}),
-    S.carrito.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Finalizar pedido', onclick: () => { cerrarHoja(); enviar({boton: 'finalizar'}, 'Finalizar pedido'); }}) : null);
+    S.carrito.length ? el('button', {type: 'button', class: 'boton principal ancho', text: 'Enviar pedido', onclick: () => { cerrarHoja(); enviar({boton: 'finalizar'}, 'Enviar pedido'); }}) : null);
   abrirHoja('Tu pedido', cuerpo);
 }
 
@@ -791,6 +827,9 @@ function abrirDatos() {
     return Array.isArray(lista) && lista.length ? lista : (s.medios_pago || ['efectivo']);
   };
   if (!d.medio_pago) d.medio_pago = medios(d.entrega)[0] || 'efectivo';
+  // La observación reemplaza al campo confuso «¿Para cuándo?» sin perder un borrador antiguo.
+  if (d.horario && !d.nota) d.nota = d.horario;
+  d.horario = '';
   const campo = (nombre, etiqueta, attrs) => {
     const i = el(attrs.tag || 'input', {name: nombre, ...attrs, tag: undefined});
     i.value = d[nombre] || ''; i.addEventListener('input', () => { d[nombre] = i.value; guardarDatos(); });
@@ -937,8 +976,9 @@ function abrirDatos() {
   notaPago, efectivo, cambioTxt,
   s.atencion?.habilitado && !s.atencion.abierto
     ? el('p',{class:'nota',text:'Pedido para la próxima apertura: '+s.atencion.proximo_texto+'. El gerente lo confirmará manualmente.'})
-    : campo('horario', '¿Para cuándo? (opcional)', {type: 'text', maxlength: '60', placeholder: 'Lo antes posible'}),
-  campo('nota', 'Aclaraciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2'}),
+    : null,
+  campo('nota', 'Observaciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2',
+    placeholder: '¿Querés agregar algo a tu pedido?'}),
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
   el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Sus datos de contacto y entrega se conservarán en esta sucursal para facilitar futuros pedidos desde este navegador. Puede corregirlos cuando quiera. No necesita crear una cuenta.'}),
   error,
@@ -974,6 +1014,11 @@ $('redactar').addEventListener('submit', e => {
   if (!t || S.enviando) return;
   texto.value = ''; texto.style.height = 'auto';
   guardarLocal(CLAVE_TEXTO,'');
+  if (/^(quiero\s+)?cancelar\s+(mi\s+|el\s+)?pedido[.!?\s]*$/i.test(t) && S.pedido?.estado === 'pendiente') {
+    texto.value=t; texto.dispatchEvent(new Event('input'));
+    abrirConfirmacionCancelar();
+    return;
+  }
   enviar({texto: t}, t).then(ok=>{
     if (!ok && !texto.value) {
       texto.value=t; texto.dispatchEvent(new Event('input'));
@@ -982,7 +1027,7 @@ $('redactar').addEventListener('submit', e => {
 });
 $('btn-carta').onclick = abrirCarta;
 $('btn-carrito').onclick = abrirCarrito;
-$('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Finalizar pedido');
+$('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Enviar pedido');
 $('btn-info').onclick = abrirInfo;
 
 // La foto se redimensiona en el teléfono: reduce uso de datos y elimina metadatos EXIF.
@@ -1050,6 +1095,7 @@ function pantallaFija(titulo, detalle) {
   $('app').setAttribute('aria-busy', 'false');
   $('redactar').hidden = true;
   $('barra-pedido').hidden = true;
+  $('whatsapp-local').hidden = true;
   $('btn-carta').disabled = true;
   lista.replaceChildren(el('div', {class: 'pausado'}, el('h2', {text: titulo}), el('p', {text: detalle})));
 }
@@ -1068,6 +1114,7 @@ async function iniciar() {
     return pantallaFija('Chat no encontrado', r.error && r.status !== 404 ? r.error : 'Revisá el enlace que te compartió el local.');
   }
   S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
+  actualizarWhatsApp(S.sucursal);
   restaurarDatos(); restaurarBorrador();
   S.soportePendiente = r.soporte_pendiente === true;
   S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')

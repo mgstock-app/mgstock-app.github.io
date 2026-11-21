@@ -12,7 +12,7 @@ describe('GESTLOK Chat · bienvenida simple', () => {
     cy.get('.chat-bienvenida').should('not.contain', 'Para hacer su pedido, toque');
     cy.get('#texto').should('have.attr', 'placeholder', 'Escribí tu mensaje…');
     cy.get('.chips button.chip-hacer-pedido').first().should('be.visible').click();
-    cy.get('#hoja-titulo').should('have.text', 'Menú interactivo');
+    cy.get('#hoja-titulo').should('have.text', 'Menú');
   });
 
   it('al volver a abrir, transforma solo el primer saludo y conserva el historial', () => {
