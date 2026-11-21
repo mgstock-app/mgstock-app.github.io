@@ -22,7 +22,7 @@ export function EmployeeMunroWeeklySummary(){
   rpc<Respuesta>("rm_munro_horarios_mi_resumen").then(r=>{
    if(!activo)return;
    setData(r);
-   setSemana(actual=>r.semanas?.some(s=>s.semana===actual)?actual:r.semanas?.[0]?.semana||"");
+   setSemana(actual=>r.semanas?.some(s=>s.semana===actual)?actual:"");
    setError("");
   }).catch(()=>{if(activo)setError("No pudimos consultar tu resumen personal. Reintentá o avisá al encargado.");})
    .finally(()=>{if(activo)setCargando(false);});
@@ -46,11 +46,8 @@ export function EmployeeMunroWeeklySummary(){
    !data?.vinculado?<p className="ems-aviso">Tu cuenta todavía no está vinculada a tu ficha de horarios de Munro. Solicitale al gerente que la vincule desde Staff. No se muestran horarios de otras personas.</p>:
    !data.semanas.length?<p>Por ahora no hay semanas cargadas en tu ficha de horarios.</p>:
    actual&&calculo?<>
-    <label className="ems-semana">Seleccionar semana
-     <select aria-label="Semana de mi resumen" value={semana} onChange={e=>setSemana(e.target.value)}>
-      {data.semanas.map(s=><option key={s.semana} value={s.semana}>{titulo(s.semana)}{s.finalizada?" · finalizada":""}</option>)}
-     </select>
-    </label>
+    <button type="button" className="ems-volver" onClick={()=>setSemana("")}>← Volver a semanas</button>
+    <h3 className="ems-semana-titulo">Semana {titulo(actual.semana)}</h3>
     <p className="ems-nombre">Colaborador: <strong>{actual.nombre}</strong></p>
     <div className="ems-tabla-scroll">
      <table className="ems-dias">
@@ -81,6 +78,13 @@ export function EmployeeMunroWeeklySummary(){
      <div className="ems-total"><dt>Total final a liquidar</dt><dd>{calculo.total===null||calculo.errores.length||calculo.pendientes?"Pendiente":<strong>{cantidad(actual.modalidad,calculo.total)}</strong>}</dd></div>
      {calculo.observaciones&&<div><dt>Observaciones</dt><dd>{calculo.observaciones}</dd></div>}
     </dl>
-   </>:null}
+   </>:<div className="ems-semanas" aria-label="Semanas de mi resumen">
+    <p>Elegí una semana para consultar tus horarios.</p>
+    {data.semanas.map(s=><button type="button" key={s.semana} className="ems-semana-card"
+      onClick={()=>setSemana(s.semana)} aria-label={"Ver semana "+titulo(s.semana)}>
+      <span>Semana {titulo(s.semana)}</span>
+      <small>{s.finalizada?"Finalizada":"En curso"}</small>
+    </button>)}
+   </div>}
  </section>;
 }
