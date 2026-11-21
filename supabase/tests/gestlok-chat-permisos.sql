@@ -88,6 +88,10 @@ begin
   perform prueba_como('duena.a@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 2 then 'OK' else 'FALLA' end || ' dueña A ve sus 2 sucursales';
+  r := r || E'\n' || case when
+    (select count(*) from jsonb_array_elements(j->'sucursales') x
+      where x ? 'pendientes' and x ? 'pendientes_avisables' and x ? 'en_preparacion') = 2
+    then 'OK' else 'FALLA' end || ' dueña recibe contadores activos separados por sucursal';
   perform prueba_como('gerente.munro@prueba.example');
   j := public.gestlok_chat_panel_inicio();
   r := r || E'\n' || case when jsonb_array_length(j->'sucursales') = 1 and j->'sucursales'->0->>'nombre' = 'Munro'
@@ -393,12 +397,24 @@ begin
   perform prueba_como('gerente.munro@prueba.example');
   j := public.gestlok_chat_panel_pedidos(s_munro);
   r := r || E'\n' || case when jsonb_array_length(j->'pedidos') = 1 and j->'pedidos'->0->>'cliente_telefono' = '5491155551234' then 'OK' else 'FALLA' end || ' gerente de Munro ve el pedido pendiente';
+  j := public.gestlok_chat_panel_inicio();
+  select count(*) into n from jsonb_array_elements(j->'sucursales') x
+   where x->>'local_id'='munro' and (x->>'pendientes')::integer >= 1
+     and (x->>'pendientes_avisables')::integer >= 1 and (x->>'en_preparacion')::integer = 0;
+  r := r || E'\n' || case when n=1 then 'OK' else 'FALLA' end
+    || ' panel_inicio informa comanda por confirmar solo en Munro';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'rechazado', '')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:22023%' then 'OK' else 'FALLA' end || ' rechazar exige motivo';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'terminado')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' no termina sin confirmación manual';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
   r := r || E'\n' || case when v like 'ok:%' then 'OK' else 'FALLA' end || ' gerente confirma antes de preparación';
+  j := public.gestlok_chat_panel_inicio();
+  select count(*) into n from jsonb_array_elements(j->'sucursales') x
+   where x->>'local_id'='munro' and (x->>'pendientes_avisables')::integer = 0
+     and (x->>'en_preparacion')::integer >= 1;
+  r := r || E'\n' || case when n=1 then 'OK' else 'FALLA' end
+    || ' confirmar traslada aviso de pendiente a en preparación';
   v := prueba_q(format($q$ select public.gestlok_chat_panel_decidir(%L, 'confirmado')::text $q$, ped1));
   r := r || E'\n' || case when v like 'error:P0001%' then 'OK' else 'FALLA' end || ' no duplica confirmación';
   perform prueba_como('service_role');

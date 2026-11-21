@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261121metricas1';
+  const VERSION_CSS = '20261121comandas1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -49,16 +49,88 @@
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
       [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
-        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['charlas', 'Conversaciones'], ['clientes','Clientes frecuentes']].map(([k, t], i) =>
+        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['clientes','Clientes frecuentes']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
           k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
+    EMBED ? null : el('aside', {id:'comandas-resumen', class:'comandas-resumen sin-comandas', role:'status', 'aria-live':'polite'},
+      el('strong',{text:'Comandas activas'}),
+      el('span',{id:'comandas-pendientes',text:'Por confirmar: 0'}),
+      el('span',{id:'comandas-preparacion',text:'En preparación: 0'}),
+      el('button',{type:'button',class:'boton',id:'activar-sonido-panel',text:'Activar sonido',onclick:()=>habilitarSonidoPanel()})),
     el('main', {id: 'contenido', class: 'contenido', tabindex: '-1'}),
     el('div', {class: 'aviso', id: 'aviso', role: 'status', 'aria-live': 'polite', hidden: true}));
   raiz.replaceChildren(...[EMBED ? el('link', {rel: 'stylesheet', href: '/chat/panel/panel.css?v=' + VERSION_CSS}) : null, marco].filter(Boolean));
   const $ = id => raiz.querySelector('#' + id);
   const S = {sucursales: [], suc: null, pestana: 'pedidos', filtro: 'pendiente', sondeo: 0,
     pendientesVistos: null, reclamosVistos: null, reporteDias:30, ocupado: false};
+  let timerComandas=0, ultimoAvisoComandas=0, avisablesAnteriores=null;
+  let audioStandalone=null, sonidoStandalone=false;
+  function sonarStandalone() {
+    if(EMBED||document.hidden||!sonidoStandalone||audioStandalone?.state!=='running')return false;
+    try{
+      [0,.19,.38].forEach((delay,i)=>{
+        const t=audioStandalone.currentTime+delay,o=audioStandalone.createOscillator(),g=audioStandalone.createGain();
+        o.type='sine';o.frequency.value=i===1?1100:880;
+        g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.23,t+.04);
+        g.gain.exponentialRampToValueAtTime(.0001,t+.17);
+        o.connect(g);g.connect(audioStandalone.destination);
+        o.onended=()=>{o.disconnect();g.disconnect();};o.start(t);o.stop(t+.18);
+      });
+      return true;
+    }catch{return false;}
+  }
+  async function habilitarSonidoPanel() {
+    const b=$('activar-sonido-panel');
+    try{
+      const C=window.AudioContext||window.webkitAudioContext;
+      if(!C)throw new Error('Este navegador no admite sonido del chat.');
+      audioStandalone ||= new C();
+      await audioStandalone.resume();
+      sonidoStandalone=audioStandalone.state==='running';
+      if(!sonidoStandalone)throw new Error('El navegador bloqueó el sonido.');
+      sonarStandalone();
+      if(b)b.textContent='Sonido activado';
+    }catch(e){sonidoStandalone=false;if(b)b.textContent='Reintentar sonido';aviso(e.message,true);}
+  }
+  function pintarComandas(s) {
+    if(EMBED)return;
+    const resumen=$('comandas-resumen');if(!resumen||!s)return;
+    const pend=Math.max(0,Number(s.pendientes)||0),prep=Math.max(0,Number(s.en_preparacion)||0);
+    const activas=pend+prep;
+    resumen.classList.toggle('sin-comandas',activas===0);
+    const titulo=resumen.querySelector('strong');
+    if(titulo)titulo.textContent=activas?'Comandas activas':'Sin comandas activas';
+    const p=$('comandas-pendientes'),c=$('comandas-preparacion');
+    if(p.textContent!=='Por confirmar: '+pend)p.textContent='Por confirmar: '+pend;
+    if(c.textContent!=='En preparación: '+prep)c.textContent='En preparación: '+prep;
+    S.suc.pendientes=pend;S.suc.en_preparacion=prep;
+  }
+  async function revisarComandas() {
+    if(EMBED||DEMO||document.hidden||!marco.isConnected||!S.suc)return;
+    const sucursal=S.suc.id;
+    try{
+      const data=await rpc('panel_inicio');
+      if(!S.suc||S.suc.id!==sucursal||!marco.isConnected)return;
+      const suc=(data.sucursales||[]).find(s=>s.id===sucursal);
+      if(!suc)return;
+      pintarComandas(suc);
+      const activas=Math.max(0,Number(suc.pendientes_avisables??suc.pendientes)||0);
+      const preparando=Math.max(0,Number(suc.en_preparacion)||0);
+      if(avisablesAnteriores!==null&&activas>avisablesAnteriores){
+        ultimoAvisoComandas=Date.now();aviso('Llegó una comanda nueva por confirmar');sonarStandalone();
+      }
+      avisablesAnteriores=activas;
+      if(!activas&&!preparando){ultimoAvisoComandas=0;return;}
+      if(!ultimoAvisoComandas){ultimoAvisoComandas=Date.now();return;}
+      const cada=activas?120000:300000;
+      if(Date.now()-ultimoAvisoComandas>=cada){
+        ultimoAvisoComandas=Date.now();
+        aviso(activas?activas+' comanda(s) pendientes de confirmación':preparando+' comanda(s) en preparación');
+        sonarStandalone();
+      }
+    }catch{/* conservar el último estado hasta recuperar la conexión */}
+  }
   let sb = op.sb || null;
   if (!DEMO && !sb) {
     try { sb = window.supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: false}}); }
@@ -119,12 +191,17 @@
     sel.value = S.suc.id; sel.hidden = r.sucursales.length < 2 || (EMBED && !!LOCAL);
     sel.onchange = () => {
       S.suc = S.sucursales.find(s => s.id === sel.value); S.pendientesVistos = null;
+      avisablesAnteriores=null;ultimoAvisoComandas=0;
       try { localStorage.setItem(sucursalPref, S.suc.id); } catch { /* nada */ }
-      mostrar();
+      mostrar();pintarComandas(S.suc);void revisarComandas();
     };
     $('pestanas').hidden = false;
     $('panel').setAttribute('aria-busy', 'false');
-    mostrar();
+    mostrar();pintarComandas(S.suc);
+    if(!EMBED&&!DEMO){
+      clearInterval(timerComandas);
+      timerComandas=setInterval(revisarComandas,15000);
+    }
   }
   $('pestanas').addEventListener('click', e => {
     const b = e.target.closest('[data-p]'); if (!b) return;
@@ -244,6 +321,7 @@
     } catch (e) { aviso(e.message, true); }
     finally { S.ocupado = false; }
     verPedidos();
+    if (!EMBED) void revisarComandas();
   }
 
   // ------------------------------------------------------------------------------------------- stock operativo, exclusivo del panel interno
@@ -886,7 +964,8 @@
     return d;
   }
   const alVolver = () => { if (!marco.isConnected || document.hidden || !S.suc) return;
-    if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte(); };
+    if(S.pestana === 'pedidos') verPedidos(); else if(S.pestana === 'soporte') verSoporte();
+    if(!EMBED)void revisarComandas(); };
   document.addEventListener('visibilitychange', alVolver);
   // Los dos iframes del showroom comparten sessionStorage en la misma pestaña.
   // Refrescar sin navegar ni consultar la base cuando el cliente arma un pedido.
@@ -1045,7 +1124,7 @@
   return {
     marco,
     refrescar: () => { if (S.suc && S.pestana === 'pedidos') verPedidos(); },
-    destruir: () => { clearTimeout(S.sondeo);
+    destruir: () => { clearTimeout(S.sondeo); clearInterval(timerComandas);
       document.removeEventListener('visibilitychange', alVolver);
       if(SHOWROOM)window.removeEventListener('storage',alCambioShowroom);
       raiz.replaceChildren(); },
