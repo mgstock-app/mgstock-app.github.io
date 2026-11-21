@@ -2,12 +2,25 @@
 (() => {
   'use strict';
   if (!('serviceWorker' in navigator)) return;
+  // El HTML puede llegar actualizado al abrir de nuevo la PC, incluso antes de activarse el SW.
+  // Nunca anunciar que esa misma versión necesita otra recarga.
+  const pageRelease = String(document.documentElement?.dataset?.gestlokBuild || '');
+  const dismissedKey = 'gestlok:pwa-dismissed-release';
+  let notifiedRelease = '';
   let controlled = !!navigator.serviceWorker.controller;
   let lastNotifiedController = null;
   let pending = () => true;
   let banner;
   let audience = null;
   let retries = 0, retryQueued = false, bannerTimer = null, dismissed = false;
+  function dismissCurrentRelease() {
+    dismissed = true;
+    if (notifiedRelease) {
+      try { localStorage.setItem(dismissedKey, notifiedRelease); }
+      catch { /* Privacidad o almacenamiento deshabilitado: descartar al menos en esta sesión. */ }
+    }
+    hideBanner();
+  }
 
   // Un nuevo SW NO significa que todos los locales tengan novedades.
   // Audiencias: ['*'] = cambios compartidos; ['tenant'] = toda la empresa;
@@ -71,6 +84,8 @@
         message.textContent = 'Guardá los cambios y cerrá los formularios abiertos antes de actualizar.';
         return;
       }
+      // Si la persona decidió actualizar, no insistir con esta misma publicación tras reiniciar.
+      dismissCurrentRelease();
       window.location.reload();
     });
     // Cerrar siempre es posible, incluso cuando hay formularios pendientes.
@@ -81,8 +96,7 @@
     closeButton.textContent = '×';
     closeButton.style.cssText = 'position:absolute;top:9px;left:9px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid #ffffff55;border-radius:10px;background:#ffffff15;color:#fff;font-size:26px;line-height:1;cursor:pointer';
     closeButton.addEventListener('click', () => {
-      dismissed = true;
-      hideBanner();
+      dismissCurrentRelease();
     });
     // Descartar con gesto horizontal sin instalar ni perder cambios abiertos.
     banner.style.touchAction = 'pan-y';
@@ -98,8 +112,7 @@
       const dy = event.changedTouches[0].clientY - startY;
       startX = startY = null;
       if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-        dismissed = true;
-        hideBanner();
+        dismissCurrentRelease();
       }
     }, { passive: true });
     banner.append(message, button, closeButton);
@@ -126,7 +139,7 @@
     // No convertir un evento duplicado en un aviso nuevo.
     if (worker && worker === lastNotifiedController) return;
     lastNotifiedController=worker;
-    audience=null; dismissed=false; hideBanner(); retries=0; retryQueued=false;
+    audience=null; dismissed=false; notifiedRelease=''; hideBanner(); retries=0; retryQueued=false;
     // Worker anterior o sin MessageChannel: no sabemos qué local cambió.
     // Mostrar un aviso global sería falso; se actualiza silenciosamente al reabrir.
     if (!worker?.postMessage || typeof MessageChannel !== 'function') { safeSilence(); return; }
@@ -141,10 +154,17 @@
       clearTimeout(timeout);
       channel.port1.close?.();
       if (data?.type !== 'gestlok-update-audience' || !Array.isArray(data.audience) ||
+          typeof data.release !== 'string' || !/^\d{5,24}-\d{1,6}$/.test(data.release) ||
           !data.audience.every(value => value==='*' ||
             (typeof value === 'string' && /^[0-9a-f-]{36}(?::[a-z0-9_-]{1,60})?$/.test(value)))) {
         safeSilence(); return;
       }
+      // El controlador puede actualizarse durante la apertura de la PC aunque el HTML ya sea
+      // el último. Solo existe una actualización REAL si el código de esta pestaña es anterior.
+      if (!pageRelease || data.release === pageRelease) { safeSilence(); return; }
+      notifiedRelease = data.release;
+      try { dismissed = localStorage.getItem(dismissedKey) === notifiedRelease; }
+      catch { dismissed = false; }
       audience = data.audience;
       checkAudience();
     };
