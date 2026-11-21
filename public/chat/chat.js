@@ -586,7 +586,11 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       });
       return el('label', {class: 'opcion'}, input, el('span', {text: v.nombre}), Number(v.extra) > 0 ? el('em', {text: '+ ' + pesos(v.extra)}) : null);
     }))));
-  const form = el('form', {onsubmit: e => {
+  const cantidadControl = el('div', {class: 'cantidad-contenedor'},
+    el('strong', {class: 'cantidad-etiqueta', text: esPromo ? 'Cantidad de promociones' : 'Cantidad del producto'}),
+    el('div', {class: 'cantidad'}, el('button', {type: 'button', 'aria-label': 'Menos', text: '−', onclick: () => { cantidad = Math.max(1, cantidad - 1); refrescar(); }}),
+      salida, el('button', {type: 'button', 'aria-label': 'Más', text: '+', onclick: () => { cantidad = Math.min(50, cantidad + 1); refrescar(); }})));
+  const form = el('form', {class: esPromo ? 'menu-form-combo' : 'menu-form-simple', onsubmit: e => {
     e.preventDefault();
     const l = linea(); const problema = validarLinea(S.catalogo, l);
     if (problema) { error.textContent = problema; error.hidden = false; return; }
@@ -598,18 +602,19 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   }},
   p.descripcion ? el('p', {class: 'nota', text: p.descripcion}) : null,
   el('p', {class: 'precio', text: pesos(p.precio)}),
-  el('p', {class: 'menu-ayuda', text: 'Elegí las opciones y cantidades. Al agregar, volvés al menú para seguir eligiendo.'}),
+  esPromo ? cantidadControl : null,
+  esPromo ? null : el('p', {class: 'menu-ayuda', text: 'Elegí las opciones y cantidades. Al agregar, volvés al menú.'}),
   grupos,
-  el('div', {class: 'cantidad-contenedor'},
-    el('strong', {class: 'cantidad-etiqueta', text: (p.opciones || []).some(esCantidad) ? 'Cantidad de promociones' : 'Cantidad del producto'}),
-    el('div', {class: 'cantidad'}, el('button', {type: 'button', 'aria-label': 'Menos', text: '−', onclick: () => { cantidad = Math.max(1, cantidad - 1); refrescar(); }}),
-      salida, el('button', {type: 'button', 'aria-label': 'Más', text: '+', onclick: () => { cantidad = Math.min(50, cantidad + 1); refrescar(); }}))),
-  el('label', {class: 'campo'}, el('span', {text: 'Aclaración (opcional)'}), nota),
-  error, boton);
+  esPromo ? null : cantidadControl,
+  el('label', {class: 'campo menu-nota-producto'}, el('span', {text: 'Aclaración (opcional)'}), nota),
+  error,
+  esPromo
+    ? el('div', {class: 'menu-combo-acciones'}, estadoFinal, boton)
+    : boton);
   refrescar();
   if (inline) {
     inline.slot.replaceChildren(
-      el('div', {class: 'menu-personalizar-titulo'}, el('strong', {text: 'Personalizá ' + p.nombre}),
+      el('div', {class: 'menu-personalizar-titulo'}, el('strong', {text: 'Elegí · ' + p.nombre}),
         el('button', {type: 'button', class: 'boton chico', text: 'Volver al menú',
           onclick: inline.onCancel})),
       form);
