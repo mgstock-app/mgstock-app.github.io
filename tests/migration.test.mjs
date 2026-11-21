@@ -45,10 +45,10 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       assert.equal(content.split(refreshCase).length-1, 1, 'Acción de refresco única y revisada');
       content = content.replace(refreshCase, '');
       const refreshBegin = '/* Recarga verificable de Stock Local: lectura HTTP directa';
-      const begin = content.indexOf(refreshBegin), end = content.indexOf('function openSaveF(){', begin);
-      assert.ok(begin >= 0 && end > begin, 'Función verificada antes de Guardar conteo');
-      assert.equal(content.indexOf(refreshBegin, begin+1), -1, 'Función no duplicada');
-      content = content.slice(0, begin) + content.slice(end);
+      const refreshStart = content.indexOf(refreshBegin), refreshEnd = content.indexOf('function openSaveF(){', refreshStart);
+      assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'Función verificada antes de Guardar conteo');
+      assert.equal(content.indexOf(refreshBegin, refreshStart+1), -1, 'Función no duplicada');
+      content = content.slice(0, refreshStart) + content.slice(refreshEnd);
       // Destino adicional de push para pedidos GESTLOK Chat. La navegación
       // sigue validando el local autorizado antes de abrir la Central.
       const chatPushActual="!['chat','proveedores','vencimientos','avisos','pedidos-clientes'].includes(p.view)";
