@@ -688,3 +688,14 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .aviso-pedido>div:first-of-type{flex:1 1 175px;min-width:0}
 .aviso-pedido .nuevo-pedido{flex:1 1 100%;margin:5px 0 0}
 .aviso-pedido .seguimiento-etapas{flex:1 1 100%;min-width:0}
+
+/* Una promo ocupa el mismo grid de nombre/precio que cualquier producto.
+   El indicador de confirmación verde usa su propia fila para evitar solaparse
+   con nombre, importe y botón Quitar en pantallas angostas. */
+.seleccion-linea-promo > .promo-elegida-etiqueta{
+  grid-column:1/-1;
+  grid-row:auto;
+  justify-self:start;
+  max-width:100%;
+  white-space:normal;
+}
