@@ -143,7 +143,7 @@ function chips(botones) {
   if (!botones?.length) return;
   // El acceso principal a la carta debe verse primero aunque el servidor todavía
   // lo envíe como «Ver menú». «Agregar más» mantiene su función en pedidos existentes.
-  const principal = b => b.id === 'carta' && /^(ver|hacer)/i.test(String(b.texto || ''));
+  const principal = b => b.id === 'carta' && /^(ver|hacer|armar)/i.test(String(b.texto || ''));
   const ordenados = [...botones].sort((a, b) => Number(principal(b)) - Number(principal(a)));
   lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
     type: 'button',
