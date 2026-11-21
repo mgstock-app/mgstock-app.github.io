@@ -1878,7 +1878,7 @@ V.fabrica = () => {
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja(), TN = esc(totalNombre(IH));
   const head = `${banners()}<div class="bar"><p class="lead">${IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
-    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
+    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -1967,6 +1967,61 @@ function setF(id, k, v){
   if (d[k] === base) delete d[k];
   if (!Object.keys(d).length) delete S.fdraft[id];
   saveDraft();
+}
+/* Recarga verificable de Stock Local: lectura HTTP directa para no confundir
+   una copia sin conexión con los datos actuales del servidor. Nunca escribe en la base,
+   ni borra los borradores que la persona está editando en este dispositivo. */
+let stockRefreshBusy = false;
+async function refreshStockFromServer(){
+  if (!S.local || !isFabV(S.view) || stockRefreshBusy) return;
+  if (navigator.onLine === false){ toast('Sin conexión: no se puede comprobar el stock del servidor.', true); return; }
+  const local = S.local, vista = S.view;
+  const cfg = window.SPM_CONFIG || {}, client = window.GestLokSupabase;
+  if (!cfg.url || !cfg.key || !client?.auth){ toast('No se pudo verificar la conexión con Stock Local.', true); return; }
+  stockRefreshBusy = true;
+  const button = document.querySelector('[data-act="f-refresh"]');
+  if (button){ button.disabled = true; button.textContent = 'Consultando servidor…'; }
+  try {
+    const {data, error} = await client.auth.getSession();
+    if (error || !data?.session?.access_token) throw new Error('Reingresá a tu cuenta para actualizar.');
+    const list = [];
+    let offset = 0;
+    for (;;){
+      const url = new URL(cfg.url.replace(/\/$/, '') + '/rest/v1/docs');
+      url.searchParams.set('col', 'eq.' + local + '/fabrica');
+      url.searchParams.set('select', 'id,data');
+      url.searchParams.set('order', 'id.asc');
+      url.searchParams.set('limit', '1000');
+      url.searchParams.set('offset', String(offset));
+      const response = await fetch(url.toString(), {cache:'no-store', headers:{
+        apikey:cfg.key, authorization:'Bearer ' + data.session.access_token
+      }});
+      if (!response.ok) throw new Error('El servidor no respondió a la consulta (' + response.status + ').');
+      const rows = await response.json();
+      if (!Array.isArray(rows)) throw new Error('La respuesta del servidor no es válida.');
+      list.push(...rows);
+      if (rows.length < 1000) break;
+      offset += rows.length;
+    }
+    // No mostrar una hoja vacía ante un fallo de permisos o un resultado inesperado.
+    if (!list.length && S.allFab.length) throw new Error('El servidor no devolvió productos. Se conservó la planilla anterior.');
+    if (S.local !== local) return;
+    S.allFab = list.map(r => ({id:r.id, ...(r.data || {})}));
+    S.loaded.f = true;
+    const pending = withCtx(vista, () => fPend().length);
+    onSnapRefresh();
+    toast(pending
+      ? 'Datos consultados. Hay cambios sin guardar en este equipo que se muestran encima del stock del servidor. Revisalos o usá Descartar cambios.'
+      : 'Stock Local actualizado desde el servidor.' , pending);
+  } catch (e) {
+    toast('No se pudo actualizar el Stock Local: ' + String(e?.message || 'revisá la conexión') + '. Los datos no se modificaron.', true);
+  } finally {
+    stockRefreshBusy = false;
+    if (S.local === local){
+      const b = document.querySelector('[data-act="f-refresh"]');
+      if (b){ b.disabled = false; b.innerHTML = ic('zero') + 'Actualizar datos'; }
+    }
+  }
 }
 function openSaveF(){
   if (!needWrite()) return;
@@ -3600,6 +3655,7 @@ document.addEventListener('click', e => {
     case 'save-f-ok': doSaveF(); break;
     case 'f-zero': if (!needWrite()) break; openConfirm('Poner todo en 0', 'Local y Fábrica quedan en 0 en todas las filas, para empezar la planilla del día. No se guarda hasta que toques Guardar conteo.', 'Poner en 0', 'f-zero-ok', false); break;
     case 'f-zero-ok': for (const it of S.fab){ setF(it.id, 'l', 0); setF(it.id, 'f', 0); } closePanel(); render(); toast('Planilla en 0. Cargá los valores y guardá.'); break;
+    case 'f-refresh': void refreshStockFromServer(); break;
     case 'f-copy': copyText(fabTexto(), 'Planilla copiada'); break;
     case 'f-xls': xlsFab(); break;
     case 'xls-stock': xlsStock(); break;
