@@ -227,11 +227,11 @@ describe('GESTLOK Chat · historial de demanda del local',()=>{
     cy.get('#hoja .grupo-cantidad').should('have.length', 2);
     cy.get('#hoja .grupo-cantidad').first().find('.opcion-cantidad').should('have.length', 2); // humita agotada
     cy.get('#hoja button[type=submit]').should('be.disabled').and('contain.text', 'Agregar $ 6.500');
-    cy.get('#hoja .grupo-cantidad').first().should('contain.text', 'Faltan 6');
+    cy.get('#hoja .grupo-cantidad').first().should('contain.text', 'Debe elegir 6');
     cy.get('#hoja [aria-label="Sumar Empanada de carne"]').click().click().click().click();
     cy.get('#hoja [aria-label="Sumar Empanada de jamón y queso"]').click().click();
     cy.get('#hoja [aria-label="Sumar Empanada de carne"]').should('be.disabled');
-    cy.get('#hoja .grupo-cantidad').first().should('contain.text', '6 de 6');
+    cy.get('#hoja .grupo-cantidad').first().should('contain.text', 'Completo');
     cy.get('#hoja [aria-label="Sumar Criolla"]').click();
     cy.get('#hoja .grupo-cantidad').last().should('contain.text', 'Falta 1');
     cy.get('#hoja button[type=submit]').should('be.disabled');

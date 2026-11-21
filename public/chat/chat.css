@@ -452,3 +452,30 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .chips .chip-hacer-pedido:hover{background:var(--acento-osc);border-color:var(--acento-osc)}
 .chips .chip-hacer-pedido:active{transform:translateY(1px)}
 .chips .chip-hacer-pedido:focus-visible{outline:3px solid var(--acento-osc);outline-offset:3px}
+
+/* Promos como la referencia del cliente (Te Pido): barra gris con etiqueta de color
+   («Debe elegir», «Faltan», «Completo», «Opcional»), «+» suelto y, al elegir, una píldora
+   con tacho (1) o «−» (más de 1), la cantidad y «+». En tablet: hoja ancha y dos columnas. */
+.menu-form-combo .menu-grupo-lista .grupo-encabezado{background:#e9ecef;border-radius:8px;padding:12px 14px}
+.menu-form-combo .menu-grupo-lista .grupo-encabezado strong{font-size:16px;font-weight:700;color:#1f2933}
+.menu-form-combo .menu-grupo-lista .grupo-estado{border-radius:6px;padding:4px 9px;font-size:12.5px;font-weight:700;line-height:1.2}
+.menu-form-combo .menu-grupo-lista .grupo-estado.pendiente{background:#e53935;color:#fff}
+.menu-form-combo .menu-grupo-lista .grupo-estado.completo{background:#1e8a4c;color:#fff}
+.menu-form-combo .menu-grupo-lista .grupo-estado.opcional{background:#f39c12;color:#fff}
+.menu-form-combo .menu-grupo-lista .opcion.menu-variedad-fila{min-height:64px;padding:10px 6px}
+.menu-form-combo .menu-grupo-lista .opcion.menu-variedad-fila.elegida{background:#fff}
+.menu-form-combo .menu-variedad-texto strong{font-weight:600;color:#1f2933}
+.menu-form-combo .menu-variedad-fila .pasos{gap:0;padding:1px;border:1.5px solid transparent;border-radius:9px}
+.menu-form-combo .menu-variedad-fila .pasos.activo{border-color:#2b3640}
+.menu-form-combo .menu-variedad-fila .pasos .paso{width:40px;height:40px;border:0;border-radius:8px;background:transparent;
+  font-size:26px;font-weight:500;color:#1f2933}
+.menu-form-combo .menu-variedad-fila .pasos .paso:active{background:#eef2f5}
+.menu-form-combo .menu-variedad-fila .pasos .paso:disabled{color:#8a96a3;opacity:.35}
+.menu-form-combo .menu-variedad-fila .pasos .n{min-width:18px;font-size:15px;font-weight:600;color:#1f2933}
+.menu-form-combo .icono-tacho{display:block}
+.menu-form-combo .grupo-opcional.menu-grupo-lista .opcion{margin:0;padding:12px 6px;border:0;border-bottom:1px solid var(--linea);border-radius:0}
+@media (min-width:760px){
+  #hoja:has(.menu-form-combo){max-width:min(1080px,100%)}
+  .menu-form-combo .menu-combo-acciones{width:min(1080px,100%)}
+  .menu-form-combo .menu-grupo-lista .grupo-opciones{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px}
+}
