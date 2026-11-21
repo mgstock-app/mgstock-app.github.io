@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440" role="img" aria-label="Símbolo de GESTLOK Chat">
+  <title>GESTLOK Chat</title>
+  <!-- Monograma geométrico inspirado en la marca aprobada: trazos entrelazados azul marino. -->
+  <path fill="#19345c" d="M306 87c0 15-11 26-26 26H151c-43 0-69 27-69 70v79h192l-17 34c-5 9-14 15-24 15H65c-16 0-26-12-26-27V183c0-72 47-121 119-121h122c15 0 26 10 26 25Z"/>
+  <path fill="#19345c" d="M161 171h157c26 0 40 15 40 40v102c0 69-47 116-116 116H138c-15 0-27-12-27-26s12-26 27-26h104c43 0 68-24 68-66v-94H137l5-24c3-14 9-22 19-22Z"/>
+</svg>
