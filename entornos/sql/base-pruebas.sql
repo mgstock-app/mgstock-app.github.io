@@ -20,7 +20,8 @@ create extension if not exists pg_cron;
 
 
 create table public.docs (col text not null, id text not null, data jsonb not null default '{}'::jsonb,
-  tenant_id uuid not null, updated_at timestamptz not null default now(), primary key (tenant_id, col, id));
+  tenant_id uuid not null, updated_at timestamptz not null default now(),
+  updated_by text default (auth.jwt() ->> 'email'), primary key (tenant_id, col, id));
 
 create schema gestlok_tenancy;
 create table gestlok_tenancy.tenants (id uuid primary key, code text, created_at timestamptz not null default now());
