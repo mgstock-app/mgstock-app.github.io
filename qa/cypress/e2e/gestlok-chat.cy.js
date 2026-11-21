@@ -270,8 +270,11 @@ describe('GESTLOK Chat · transferencia y cierre del gerente', () => {
       .and('contain.text','Gisela Alejandra Oppenheimer');
     cy.contains('dialog button','Cerrar conversación').click();
     cy.get('#aviso').should('contain.text','Conversación finalizada');
-    cy.get('[data-p=charlas]').click();
-    cy.get('.charla').should('contain.text','Cerrada');
+    // La pestaña redundante «Conversaciones» fue retirada del menú.
+    // Se accede a la conversación desde su comanda, sin perder su estado de cierre.
+    cy.get('[data-p=charlas]').should('not.exist');
+    cy.get('.tarjeta.pendiente').contains('button','Abrir chat del cliente').click();
+    cy.contains('dialog','Conversación finalizada por el gerente.').should('be.visible');
   });
 });
 
