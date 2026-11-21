@@ -21,6 +21,18 @@ for (const entorno of ['prueba', 'testing']) {
     assert.match(readFileSync(join(out, 'chat/index.html'), 'utf8'), /entorno\.js/);
     assert.match(readFileSync(join(out, 'entorno.js'), 'utf8'), new RegExp(cfg.entornos[entorno].boton));
     assert.ok(existsSync(join(out, 'ingresar/index.html')));
+    const ingreso = readFileSync(join(out, 'ingresar/index.html'), 'utf8');
+    // Un fallo previo ejecutaba signInWithPassword antes de cargar Supabase y config.
+    const indices = [
+      ingreso.indexOf('id="f"'),
+      ingreso.indexOf('<script src="/vendor/supabase.js"></script>'),
+      ingreso.indexOf('<script src="/chat/config.js"></script>'),
+      ingreso.indexOf('<script>(function(){var C=window.GESTLOK_CHAT_CONFIG'),
+    ];
+    assert.ok(indices.every(i => i >= 0), 'formulario y dependencias deben existir');
+    assert.deepEqual(indices, [...indices].sort((a, b) => a - b),
+      'formulario → Supabase → config → inicialización, en este orden');
+    assert.ok(ingreso.indexOf('</head>') < indices[0], 'el formulario debe estar en el body');
   });
 }
 test('otras ramas no publican GESTLOK', () => {
