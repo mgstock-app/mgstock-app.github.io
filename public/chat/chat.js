@@ -942,7 +942,12 @@ function abrirDatos() {
     notaCostoEnvio.textContent = 'Costo de envío: ' + pesos(s.envio_costo);
     const ordenPagos=['debito','credito','transferencia','efectivo','mercado_pago'];
     const disponibles = [...medios(d.entrega)].sort((a,b)=>ordenPagos.indexOf(a)-ordenPagos.indexOf(b));
-    pago.replaceChildren(...disponibles.map(m => el('option', {value: m, text: PAGOS[m] || m})));
+    const tarjetas=disponibles.filter(m=>m==='debito'||m==='credito');
+    const otros=disponibles.filter(m=>m!=='debito'&&m!=='credito');
+    pago.replaceChildren(
+      tarjetas.length ? el('optgroup',{label:'Tarjeta débito/crédito'},
+        tarjetas.map(m=>el('option',{value:m,text:PAGOS[m]||m}))) : null,
+      ...otros.map(m=>el('option', {value: m, text: PAGOS[m] || m})));
     if (!disponibles.includes(d.medio_pago)) d.medio_pago = disponibles[0] || 'efectivo';
     pago.value = d.medio_pago;
     const envio = d.entrega === 'envio' ? Number(s.envio_costo) || 0 : 0;
