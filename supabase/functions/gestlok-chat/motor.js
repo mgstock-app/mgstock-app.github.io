@@ -1018,7 +1018,13 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
         return fin();
       }
     }
-    decir('Elija los productos y las cantidades de su pedido en el menú interactivo.', {tipo: 'carta'});
+    // «Quiero una pizza»: el menú abre en la categoría de la mayoría de lo que coincide (ej. Pizzas, con + y −).
+    const cats = [...lineas.map(l => productoPorId(catalogo, l.producto_id)?.categoria_id),
+      ...dudas.flatMap(d => d.opciones.map(p => p.categoria_id))].filter(Boolean);
+    const cuenta = new Map(); for (const c of cats) cuenta.set(c, (cuenta.get(c) || 0) + 1);
+    const [mayor, veces] = [...cuenta].sort((a, b) => b[1] - a[1])[0] || [];
+    const categoria = veces > cats.length / 2 ? mayor : null;
+    decir('Elija los productos y las cantidades de su pedido en el menú interactivo.', {tipo: 'carta', ...(categoria ? {categoria} : {})});
     return fin();
   }
   if (!lineas.length && !dudas.length && /\b(pedi|pedido|ordenar|encargar)/.test(normalizar(texto))) {
