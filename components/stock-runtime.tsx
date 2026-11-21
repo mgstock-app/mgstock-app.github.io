@@ -42,7 +42,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-push.js",
     "/stock/munro-daily.js",
     "/stock/mi-gusto-cierre-online.js?rev=filtro-pagos-20261118",
-    "/stock/gestlok-chat-central.js?rev=chat-ajustesfix-20261121",
+    "/stock/gestlok-chat-central.js?rev=chat-comandas-20261121",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-creator-home.js?rev=showroom-20261120",
@@ -87,7 +87,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=filtro-pagos-20261118");
       if (!visitor) await load("/stock/mi-gusto-conteo-morning.js?rev=recuperar-noche-20261117");
       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=consumo-tres-mas-20261119");
-      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-ajustesfix-20261121");
+      if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-comandas-20261121");
       await load("/stock/munro-motos.js?rev=motos-autoguardado-20261113");
       await load("/stock/gestlok-commerce.js");
       if (!visitor) await load("/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108");
