@@ -48,6 +48,17 @@ Cliente (celular) ──► chat.gestlok.com.ar  (hoy: gestlok.com.ar/chat/?s=<s
 | Alta Mi Gusto | `supabase/operaciones/gestlok-chat-habilitar-mi-gusto.sql` |
 | Copiar carta de Munro (opcional) | `supabase/operaciones/gestlok-chat-copiar-carta-munro.sql` |
 
+## Regla de producto: interfaz universal por empresa (21/11/2026)
+
+GESTLOK Chat es **una única microapp general**, no una versión para Mi Gusto y otra para cada empresa.
+Al vincularla desde la administración, **todas las sucursales heredan automáticamente la misma interfaz pública** y los mismos modales: bienvenida y botones, menú interactivo, categorías, buscadores de productos y variedades, personalización de promociones, validación y señal verde de selección, carrito, revisión, compra rápida, venta sugerida, formulario de datos, retiro/envío, ubicación GPS opcional, entrecalles, observaciones, medios de pago, seguimiento de pedido, soporte, nueva compra y campanita de notificaciones opt-in. Las mejoras posteriores se aplican a todos por compartir `public/chat/chat.js`, `public/chat/chat.css`, `public/chat/cliente-push.js` y `public/chat/panel/panel.js`.
+
+**Personalización por sucursal:** nombre/logo cuando esté configurado, número de WhatsApp (solo enlace externo de soporte), carta, precios, promociones, horarios, domicilio, cobertura/costo de delivery, opciones de pago, textos y permisos comerciales. **Aislamiento de datos:** la conversación, los pedidos, la clientela habitual, las suscripciones y los avisos se validan contra la empresa/sucursal correspondiente. Un mismo dispositivo no une los historiales de distintos locales.
+
+**Alta y locales preconfigurados:** el valor predeterminado de `sucursales.menu_interactivo` es `true`. La migración `20261121173000_gestlok_chat_experiencia_universal_al_vincular.sql` corrige solamente los locales cuyo chat todavía no está activo y conservaron el valor antiguo `false`. No activa el chat por sí sola; no modifica preferencias de locales ya activos, ni duplica catálogos, ni cambia precios.
+
+**Control de calidad:** al agregar una empresa nueva, probar la misma carta, modales, búsqueda, pago, seguimiento y notificaciones sin referenciar nombres ni precios de Mi Gusto. Ver `qa/cypress/e2e/gestlok-chat-universal-empresas.cy.js`.
+
 ## 2. Datos (todos con empresa y sucursal)
 
 `empresas` (la creadora enciende el módulo) · `sucursales` (enlace público `slug`, horario, dirección, retiro/envío,
