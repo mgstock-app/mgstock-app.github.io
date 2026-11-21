@@ -321,6 +321,7 @@
     } catch (e) { aviso(e.message, true); }
     finally { S.ocupado = false; }
     verPedidos();
+    if (!EMBED) void revisarComandas();
   }
 
   // ------------------------------------------------------------------------------------------- stock operativo, exclusivo del panel interno
