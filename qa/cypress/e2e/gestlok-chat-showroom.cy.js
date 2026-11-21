@@ -26,6 +26,26 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     });
   }
 
+  for (const ancho of [390,1100]) {
+    it('marca GESTLOK y fondo profesional en '+ancho+' px sin afectar el editor',()=>{
+      cy.viewport(ancho,820);
+      cy.visit('/chat/?demo=1&showroom=1');
+      cy.get('#app').should('have.attr','aria-busy','false');
+      cy.get('.chat-bienvenida .bienvenida-icono img')
+        .should('have.attr','src','/chat/gestlok-monograma.svg')
+        .and('be.visible')
+        .then($img=>expect($img[0].naturalWidth).to.be.greaterThan(0));
+      cy.get('.bienvenida-etiqueta').should('contain.text','CHAT DE');
+      cy.get('#mensajes').should('have.css','background-image')
+        .and('contain','wallpaper-gestlok.svg');
+      cy.get('#mensajes').then($el=>{
+        expect($el[0].scrollWidth).to.be.at.most($el[0].clientWidth+2);
+      });
+      cy.get('#texto').should('be.visible').type('Hola');
+      cy.get('#texto').should('have.value','Hola');
+    });
+  }
+
   it('editor legible en 360 px: mensaje completo, cámara y menú sin solaparse',()=>{
     cy.viewport(360,740);
     cy.visit('/chat/?demo=1&showroom=1');
