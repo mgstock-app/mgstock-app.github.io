@@ -73,6 +73,9 @@
     try { r = await sb.rpc('gestlok_chat_' + fn, args || {}); } catch { throw new Error('Sin conexión. Revisá internet y probá de nuevo.'); }
     if (r.error) {
       const m = r.error.message || '';
+      if (r.error.code === '23514') {
+        throw new Error('No se pudo guardar: revisá los medios de pago, el costo de envío y el pedido mínimo. Si quitaste un medio de pago, volvé a intentar.');
+      }
       if (r.error.code === '42501') throw new Error(m.includes('permiso') ? m : 'No tenés permiso para esta acción.');
       if (['P0001', '22023', '40001', 'P0002'].includes(r.error.code)) throw new Error(m);
       throw new Error('No se pudo completar. Probá de nuevo.');
@@ -578,11 +581,17 @@
       const elegidos = medios.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value);
       if (!elegidos.length) return aviso('Elegí al menos un medio de pago.', true);
       if (!f.acepta_retiro.checked && !f.acepta_envio.checked) return aviso('Elegí retiro, envío o ambos.', true);
+      const costoEnvio = Number(f.envio_costo.value || 0);
+      const pedidoMinimo = Number(f.pedido_minimo.value || 0);
+      if (!Number.isFinite(costoEnvio) || costoEnvio < 0 || costoEnvio >= 1000000)
+        return aviso('El costo de envío debe estar entre $0 y $999.999.', true);
+      if (!Number.isFinite(pedidoMinimo) || pedidoMinimo < 0 || pedidoMinimo >= 10000000)
+        return aviso('El pedido mínimo debe estar entre $0 y $9.999.999.', true);
       try {
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
           activa: f.activa.checked, horario: f.horario.value, direccion: f.direccion.value,
-          acepta_retiro: f.acepta_retiro.checked, acepta_envio: f.acepta_envio.checked, envio_costo: Number(f.envio_costo.value) || 0,
-          envio_zona: f.envio_zona.value, pedido_minimo: Number(f.pedido_minimo.value) || 0, medios_pago: elegidos}});
+          acepta_retiro: f.acepta_retiro.checked, acepta_envio: f.acepta_envio.checked, envio_costo: costoEnvio,
+          envio_zona: f.envio_zona.value, pedido_minimo: pedidoMinimo, medios_pago: elegidos}});
         aviso('Ajustes guardados'); verAjustes();
       } catch (err) { aviso(err.message, true); }
     }},
@@ -599,7 +608,9 @@
       el('div', {class: 'dos'}, campo('Costo de envío', inp('envio_costo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'})),
         campo('Pedido mínimo', inp('pedido_minimo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'}))),
       campo('Zona de envío', inp('envio_zona', {type: 'text', maxlength: '300', placeholder: 'Ej.: barrios o localidades a los que llegás'})),
-      el('p', {class: 'etiqueta', text: 'Medios de pago'}), el('div', {class: 'medios'}, medios)),
+      el('p', {class: 'etiqueta', text: 'Medios de pago'}),
+      el('p', {class: 'nota', text: 'Si quitás un medio, también se quitará de las opciones de retiro y delivery de esta sucursal.'}),
+      el('div', {class: 'medios'}, medios)),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
       : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
     // Contacto externo por sucursal. No sincroniza pedidos ni mensajes con WhatsApp.
