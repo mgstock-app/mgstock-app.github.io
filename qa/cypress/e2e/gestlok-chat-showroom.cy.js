@@ -34,11 +34,12 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     cy.get('#btn-finalizar').click();
     // Antes de los datos pueden aparecer la oferta de promo (3 sueltas → pack) y la venta sugerida: se rechazan.
     const pasarOfertas=veces=>cy.get('body').should($body=>{
-      const oferta=$body.find('.chip').toArray().some(x=>x.textContent.includes('No, gracias. Finalizar'));
+      const oferta=$body.find('.chip').toArray().some(x=>/No, gracias\. Finalizar|No, seguir sin promoción/.test(x.textContent));
       expect(oferta||$body.find('#hoja').is(':visible')).to.eq(true);
     }).then($body=>{
       if(veces>0&&!$body.find('#hoja').is(':visible')){
-        cy.contains('.chip','No, gracias. Finalizar').click();
+        const promo=$body.find('.chip').toArray().some(x=>x.textContent.includes('No, seguir sin promoción'));
+        cy.contains('.chip',promo?'No, seguir sin promoción':'No, gracias. Finalizar').click();
         pasarOfertas(veces-1);
       }
     });
