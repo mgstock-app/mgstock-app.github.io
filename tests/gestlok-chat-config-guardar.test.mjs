@@ -23,6 +23,7 @@ test('el panel comunica el error y valida límites antes de guardar', () => {
   const js = leer('public/chat/panel/panel.js');
   const page = leer('public/chat/panel/index.html');
   const central = leer('public/stock/gestlok-chat-central.js');
+  const runtime = leer('components/stock-runtime.tsx');
   assert.match(js, /r\.error\.code === '23514'/);
   assert.match(js, /costoEnvio >= 1000000/);
   assert.match(js, /pedidoMinimo >= 10000000/);
@@ -30,4 +31,5 @@ test('el panel comunica el error y valida límites antes de guardar', () => {
   assert.match(js, /p_sucursal: S\.suc\.id, p_version: a\.version/);
   assert.match(page, /panel\.js\?v=20261121ajustesfix1/);
   assert.match(central, /VERSION_PANEL='20261121ajustesfix1'/);
+  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-ajustesfix-20261121/);
 });
