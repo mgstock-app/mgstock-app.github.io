@@ -1075,7 +1075,12 @@ async function iniciar() {
   }
   for (const m of r.nuevos || []) mensajeAsistente(m, {abrir: false});
   actualizarCarrito(r.carrito);
-  if (!(r.nuevos || []).length && !r.cerrada && !(r.pedidos?.[0] && ['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado))) chips(BOTONES_BASE());
+  const pedidoEnCurso=!!(r.pedidos?.[0] && ['pendiente','confirmado','terminado'].includes(r.pedidos[0].estado));
+  if (!r.cerrada && !pedidoEnCurso) {
+    if (!(r.nuevos || []).length) chips(BOTONES_BASE());
+    else if (!S.carrito.length && recuperarUltimoPedido().length)
+      chips([{id:'repetir',texto:'Repetir mi último pedido'}]);
+  }
   if (r.pedidos?.[0]) mostrarPedido(r.pedidos[0]);
   texto.disabled = false; $('btn-carta').disabled = false;
   if (!r.cerrada) {
