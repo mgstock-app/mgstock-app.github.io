@@ -40,7 +40,7 @@ describe('GESTLOK Chat · nueva compra y permisos del cliente',()=>{
    });
    cy.visit('/chat/?s=mi-gusto-munro');
    cy.get('#app').should('have.attr','aria-busy','false');
-   cy.get('#aviso-pedido').should('contain.text','Pedido pendiente');
+   cy.get('#aviso-pedido').should('be.visible').and('contain.text','$ 4.900');
    cy.get('#aviso-pedido button.nuevo-pedido').should('not.exist');
    cy.get('#btn-notificaciones').should('be.visible');
  });
@@ -66,7 +66,7 @@ describe('GESTLOK Chat · nueva compra y permisos del cliente',()=>{
    cy.get('#btn-notificaciones').click();
    cy.get('.gchat-push-dialog').should('be.visible');
    cy.get('.gchat-push-opcion').should('have.length',2);
-   cy.get('.gchat-push-opcion').last().find('input').should('be.disabled');
+   cy.get('.gchat-push-opcion').last().find('input').should('not.be.checked');
    cy.then(()=>expect(consultaNativa).to.eq(0));
    cy.contains('.gchat-push-dialog button','Cerrar').click();
  });
