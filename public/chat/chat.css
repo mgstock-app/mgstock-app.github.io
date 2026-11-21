@@ -485,3 +485,16 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 /* Pizzas y productos con adicionales opcionales: + y − directos en la lista; el adicional, tocando el nombre. */
 .menu-fila .producto-texto small.menu-adicional{color:var(--acento-osc);font-weight:600}
 .menu-paso-tacho .icono-tacho{display:block}
+
+
+/* Seguimiento compacto de pedido: visible en 360 px sin ocupar toda la pantalla. */
+.aviso-pedido{flex-wrap:wrap}
+.aviso-pedido>div{flex:1 1 170px;min-width:0}
+.seguimiento-etapas{flex:1 0 100%;list-style:none;margin:6px 0 0;padding:9px 0 0;
+  border-top:1px solid currentColor;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.seguimiento-etapa{position:relative;padding:12px 2px 0;text-align:center;
+  font-size:11px;line-height:1.25;color:var(--gris);overflow-wrap:anywhere}
+.seguimiento-etapa::before{content:'';position:absolute;top:0;left:calc(50% - 4px);
+  width:8px;height:8px;border-radius:50%;background:var(--linea);border:1px solid var(--gris-claro)}
+.seguimiento-etapa.completada{font-weight:750;color:inherit}
+.seguimiento-etapa.completada::before{background:currentColor;border-color:currentColor}
