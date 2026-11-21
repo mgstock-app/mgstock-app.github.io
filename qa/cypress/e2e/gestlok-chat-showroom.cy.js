@@ -57,6 +57,12 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     });
     cy.visit('/chat/panel/?demo=1&showroom=1');
     cy.get('#panel').should('have.attr','aria-busy','false');
+    cy.get('#pestanas [data-p="charlas"]').should('not.exist');
+    cy.get('#comandas-resumen').should('be.visible').and('contain.text','Comandas activas');
+    cy.get('#comandas-resumen').should('contain.text','Por confirmar:');
+    cy.get('#comandas-resumen').should('contain.text','En preparación:');
+    cy.get('#activar-sonido-panel').should('be.visible');
+
     cy.get('#empresa').should('contain.text','Comercio de demostración');
     cy.contains('#contenido .tarjeta','DEMO-').should('contain.text','Ana Demostración')
       .contains('button','Confirmar y pasar a preparación').click();
