@@ -487,11 +487,13 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   let cantidad = Math.min(50, Math.max(1, Number(sugerido.cantidad) || 1));
   const elegidas = {};
   for (const g of p.opciones || []) elegidas[g.id] = esCantidad(g) ? {...(sugerido.opciones?.[g.id] || {})} : [...(sugerido.opciones?.[g.id] || [])];
+  const esPromo = (p.opciones || []).some(esCantidad);
   const contadores = [];
   const salida = el('output', {'aria-live': 'polite', text: String(cantidad)});
   const nota = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: bien cocida, sin cebolla'});
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const boton = el('button', {type: 'submit', class: 'boton principal ancho'});
+  const estadoFinal = el('span', {class: 'menu-combo-estado', 'aria-live': 'polite'});
   const linea = () => ({producto_id: p.id, cantidad, nota: nota.value.trim(), opciones: Object.fromEntries(Object.entries(elegidas)
     .map(([k, v]) => [k, Array.isArray(v) ? v : Object.fromEntries(Object.entries(v).filter(([, n]) => n > 0))])
     .filter(([, v]) => Array.isArray(v) ? v.length : Object.keys(v).length))});
@@ -500,46 +502,68 @@ function abrirProducto(p, sugerido = {}, inline = null) {
     for (const c of contadores) c();
     const falta = faltantes(p, linea().opciones)[0];
     boton.disabled = Boolean(falta);
-    boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase()
-      : 'Agregar y seguir eligiendo';
+    const total = pesos(totalCarrito(S.catalogo, [linea()]));
+    if (esPromo) {
+      boton.textContent = 'Agregar ' + total;
+      estadoFinal.textContent = falta ? 'Completá la selección para agregar' : 'Selección completa';
+      estadoFinal.classList.toggle('completo', !falta);
+    } else {
+      boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase() : 'Agregar y seguir eligiendo';
+    }
   };
-  // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
+  // Selector guiado en una sola vista: filas compactas y cantidades en línea.
   const grupoCantidad = g => {
     const total = Number(g.total) || 1;
     const resumen = el('small', {class: 'grupo-estado', 'aria-live': 'polite'});
     contadores.push(() => {
-      const u = unidades(elegidas[g.id]);
-      const quedan = total - u;
-      resumen.textContent = u + ' de ' + total + ' · ' +
+      const elegidasTotal = unidades(elegidas[g.id]);
+      const quedan = Math.max(0, total - elegidasTotal);
+      resumen.textContent = elegidasTotal + ' de ' + total + ' · ' +
         (quedan === 0 ? 'Completo' : (quedan === 1 ? 'Falta 1' : 'Faltan ' + quedan));
       resumen.classList.toggle('completo', quedan === 0);
       resumen.classList.toggle('pendiente', quedan > 0);
-      resumen.setAttribute('aria-label', g.nombre + ': ' + u + ' de ' + total + ' elegidos, ' + resumen.textContent);
+      resumen.setAttribute('aria-label', g.nombre + ': ' + resumen.textContent);
     });
     const filas = valoresDisponibles(S.catalogo, g).map(v => {
-      const n = el('output', {class: 'n', text: String(elegidas[g.id][v.id] || 0)});
-      const menos = el('button', {type: 'button', class: 'paso', 'aria-label': 'Quitar ' + v.nombre, text: '−'});
-      const mas = el('button', {type: 'button', class: 'paso', 'aria-label': 'Sumar ' + v.nombre, text: '+'});
-      const fila = el('div', {class: 'opcion opcion-cantidad'}, el('span', {text: v.nombre}),
-        Number(v.extra) > 0 ? el('em', {text: '+ ' + pesos(v.extra)}) : null, el('div', {class: 'pasos'}, menos, n, mas));
+      const n = el('output', {class: 'n', 'aria-live': 'polite', text: String(elegidas[g.id][v.id] || 0)});
+      const menos = el('button', {type: 'button', class: 'paso paso-quitar', 'aria-label': 'Quitar ' + v.nombre, text: '−'});
+      const mas = el('button', {type: 'button', class: 'paso paso-sumar', 'aria-label': 'Sumar ' + v.nombre, text: '+'});
+      const origen = S.catalogo.productos.find(prod => prod.id === v.producto_id);
+      const foto = [v.imagen_url, v.image_url, origen?.imagen_url, origen?.image_url]
+        .find(url => { try { const u = new URL(url); return u.protocol === 'https:' && !u.username && !u.password; } catch { return false; } });
+      const miniatura = foto
+        ? el('img', {class: 'menu-variedad-foto', src: foto, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer'})
+        : el('span', {class: 'menu-variedad-foto menu-variedad-inicial', 'aria-hidden': 'true',
+            text: v.nombre.trim().charAt(0).toUpperCase()});
+      const texto = el('span', {class: 'menu-variedad-texto'},
+        v.destacado === true ? el('small', {class: 'menu-variedad-destacado', text: '★ Más vendido'}) : null,
+        el('strong', {text: v.nombre}),
+        Number(v.extra) > 0 ? el('small', {class: 'menu-variedad-extra', text: '+ ' + pesos(v.extra)}) : null);
+      const fila = el('div', {class: 'opcion opcion-cantidad menu-variedad-fila'},
+        miniatura, texto, el('div', {class: 'pasos'}, menos, n, mas));
       const cambiar = d => {
-        const actual = elegidas[g.id][v.id] || 0, u = unidades(elegidas[g.id]);
-        if (d > 0 && u >= total) return;
+        const actual = elegidas[g.id][v.id] || 0;
+        if (d > 0 && unidades(elegidas[g.id]) >= total) return;
         elegidas[g.id][v.id] = Math.max(0, actual + d);
-        error.hidden = true; refrescar();
+        error.hidden = true;
+        refrescar();
       };
       menos.addEventListener('click', () => cambiar(-1));
       mas.addEventListener('click', () => cambiar(1));
       contadores.push(() => {
-        const k = elegidas[g.id][v.id] || 0, u = unidades(elegidas[g.id]);
-        n.textContent = String(k); menos.disabled = k === 0; mas.disabled = u >= total; fila.classList.toggle('elegida', k > 0);
+        const k = elegidas[g.id][v.id] || 0;
+        n.textContent = String(k);
+        menos.hidden = k === 0;
+        n.hidden = k === 0;
+        mas.disabled = unidades(elegidas[g.id]) >= total;
+        fila.classList.toggle('elegida', k > 0);
       });
       return fila;
     });
-    return el('fieldset', {class: 'grupo grupo-cantidad'},
+    return el('fieldset', {class: 'grupo grupo-cantidad menu-grupo-lista'},
       el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}), resumen),
       el('p', {class: 'grupo-instruccion', text: 'Elegí ' + total + ' en total' +
-        (total > 1 ? ' · podés repetir variedades' : '')}),
+        (total > 1 ? ' · Podés repetir variedades' : '')}),
       filas.length ? el('div', {class: 'grupo-opciones'}, filas)
         : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
   };
