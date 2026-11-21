@@ -386,6 +386,7 @@ function abrirConfirmacionCancelar() {
     el('button', {type:'button',class:'boton principal ancho',text:'Seguir con mi pedido',onclick:cerrarHoja}),
     el('button', {type:'button',class:'boton ancho cancelar-accion',text:'Sí, cancelar pedido',onclick:()=>{
       cerrarHoja();
+      if (/^cancelar/i.test($('texto').value.trim())) { $('texto').value=''; guardarLocal(CLAVE_TEXTO,''); $('texto').dispatchEvent(new Event('input')); }
       enviar({boton:'cancelar'}, 'Cancelar pedido', {cancelacionConfirmada:true});
     }})));
 }
@@ -648,7 +649,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       estadoFinal.textContent = falta ? 'Completá la selección para agregar' : 'Selección completa';
       estadoFinal.classList.toggle('completo', !falta);
     } else {
-      boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase() : 'Agregar y seguir eligiendo';
+      boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase() : 'Agregar producto';
     }
   };
   // Selector guiado en una sola vista: filas compactas y cantidades en línea.
