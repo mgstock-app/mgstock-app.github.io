@@ -429,6 +429,9 @@ function mostrarPedido(p) {
       : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total),
       promoConfirmada ? el('span',{class:'promo-elegida-etiqueta promo-estado-pedido',
         text:'✓ Promoción incluida en tu pedido'}) : null),
+    ['pendiente','confirmado'].includes(p.estado) ?
+      el('button',{type:'button',class:'aviso-push-activar',text:'Recibir avisos',
+        onclick:()=>window.GestLokChatPush?.open()}) : null,
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar pedido', onclick: abrirConfirmacionCancelar}) : null,
     ['terminado','rechazado'].includes(p.estado) ? el('button',{
       type:'button',class:'boton nuevo-pedido',text:'Hacer un nuevo pedido',onclick:nuevaConversacion}) : null,
@@ -1147,6 +1150,7 @@ $('redactar').addEventListener('submit', e => {
   });
 });
 $('btn-carta').onclick = abrirCarta;
+$('btn-notificaciones').onclick=()=>window.GestLokChatPush?.open();
 $('btn-carrito').onclick = abrirCarrito;
 $('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Enviar pedido');
 $('btn-info').onclick = abrirInfo;
@@ -1236,6 +1240,7 @@ async function iniciar() {
   }
   S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
   actualizarWhatsApp(S.sucursal);
+  if(!DEMO)window.GestLokChatPush?.setup(SLUG,TOKEN);
   restaurarDatos(); restaurarBorrador();
   S.soportePendiente = r.soporte_pendiente === true;
   S.ultimoLocal = Math.max(0, ...(r.mensajes || []).filter(m => m.rol === 'local')
