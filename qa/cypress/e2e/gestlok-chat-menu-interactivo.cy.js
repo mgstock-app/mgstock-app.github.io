@@ -188,7 +188,7 @@ describe('GESTLOK Chat · menú interactivo', () => {
 
     // Registrar el pedido requiere una acción posterior y datos del cliente.
     cy.get('#btn-finalizar').should('contain.text', 'Enviar pedido').click();
-    cy.contains('.chip','No, gracias. Finalizar').click();
+    cy.contains('.chip','No, gracias, enviar').click();
     cy.get('#hoja').should('be.visible');
     cy.get('#hoja').should('contain.text', 'Sus datos');
     cy.get('#aviso-pedido').should('not.be.visible');
