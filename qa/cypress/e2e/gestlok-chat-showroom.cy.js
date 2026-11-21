@@ -1,5 +1,20 @@
 /* global cy, describe, it, expect */
 describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
+  for (const width of [390, 1100]) {
+    it('marca compartida visible en demo de cliente a '+width+' px',()=>{
+      cy.viewport(width,800);
+      cy.visit('/chat/?demo=1&showroom=1');
+      cy.get('#app').should('have.attr','aria-busy','false');
+      cy.get('.chat-bienvenida .bienvenida-icono img')
+        .should('have.attr','src','/chat/gestlok-monograma.svg')
+        .and('be.visible')
+        .then($img=>expect($img[0].naturalWidth).to.be.greaterThan(0));
+      cy.get('.bienvenida-etiqueta').should('contain.text','CHAT DE');
+      cy.get('#mensajes').should('have.css','background-image').and('include','wallpaper-gestlok.svg');
+      cy.get('#texto').should('be.visible');
+    });
+  }
+
   it('editor legible en 360 px: mensaje completo, cámara y menú sin solaparse',()=>{
     cy.viewport(360,740);
     cy.visit('/chat/?demo=1&showroom=1');
