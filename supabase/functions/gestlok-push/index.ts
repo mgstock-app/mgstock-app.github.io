@@ -143,7 +143,7 @@ async function dispatch(){
 }
 Deno.serve(async(req:Request)=>{
  const origin=req.headers.get("origin"),accepted=origin&&allowedOrigins.has(origin)?origin:SITE;
- const reply=(status:number,data:unknown)=>reply(status,data,accepted);
+ const reply=(status:number,data:unknown)=>json(status,data,accepted);
  if(origin&&!allowedOrigins.has(origin))return reply(403,{ok:false,error:"Origen no permitido"});
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:{...cors,"Access-Control-Allow-Origin":accepted}});
  if(!SUPA_URL||!SERVICE||!ANON)return reply(503,{ok:false,error:"Servicio no configurado"});
