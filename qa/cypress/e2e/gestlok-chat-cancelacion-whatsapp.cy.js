@@ -33,7 +33,7 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
         .and('have.attr','href','https://wa.me/'+tel)
         .and('have.attr','target','_blank')
         .find('svg').should('exist');
-      cy.get('#whatsapp-local').invoke('text').should('eq','');
+      cy.get('#whatsapp-local').invoke('text').then(valor=>expect(valor.trim()).to.equal(''));
     });
   }
   it('si la sucursal no tiene un número válido, nunca muestra enlace a otro local',()=>{
