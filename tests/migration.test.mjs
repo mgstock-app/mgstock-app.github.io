@@ -85,6 +85,12 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       const pwaOriginal="    [...document.querySelectorAll('#view input, #view textarea, #view select')].some(el =>\n      el.type === 'checkbox' || el.type === 'radio' ? el.checked !== el.defaultChecked : el.value !== el.defaultValue)\n";
       assert.equal(content.split(pwaUpdated).length-1,1,'Detector PWA único y auditado');
       content=content.replace(pwaUpdated,pwaOriginal);
+      // Login canónico: la PWA mantiene el mismo worker al navegar a /login/.
+      // Solo esta sustitución de ruta se considera una excepción auditada.
+      const swRutaLogin="navigator.serviceWorker.register(\\n      /\\/login\\/$/.test(location.pathname) ? '../sw.js' : 'sw.js', {updateViaCache:'none'})";
+      const swRutaOriginal="navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})";
+      assert.equal(content.split(swRutaLogin).length-1,1,'Ruta PWA ajustada únicamente para /login/');
+      content=content.replace(swRutaLogin,swRutaOriginal);
       // Normalizar exclusivamente la preservación visual de scroll de Conteo.
       // Los hashes históricos y los permisos permanecen intactos.
       const scrollStart='// Evitar saltos durante actualizaciones que redibujan Conteo.\n';
