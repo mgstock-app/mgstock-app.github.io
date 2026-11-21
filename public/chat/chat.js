@@ -413,19 +413,38 @@ function abrirCarta() {
       const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
       const simple = lineaSimple(p);
       const detalle = el('div', {class: 'menu-producto-detalle', hidden: true});
-      const cerrarDetalle = () => { detalle.replaceChildren(); detalle.hidden = true; };
+      let posicionLista = 0;
+      const cerrarDetalle = () => {
+        detalle.replaceChildren(); detalle.hidden = true;
+        cuerpo.classList.remove('menu-editando');
+        detalle.closest('.menu-fila')?.classList.remove('menu-fila-editando');
+        $('hoja-cuerpo').scrollTop = posicionLista;
+      };
       const mostrarDetalle = () => {
         if (!disponible) return;
-        if (!detalle.hidden) { cerrarDetalle(); return; }
-        // Un solo editor abierto, siempre debajo del producto elegido.
+        if (!detalle.hidden) return cerrarDetalle();
+        posicionLista = $('hoja-cuerpo').scrollTop;
+        // Editor de un solo producto: ocultar la lista para no mezclar opciones
+        // de un combo con productos que no pertenecen al mismo.
         cuerpo.querySelectorAll('.menu-producto-detalle').forEach(d => {
           d.replaceChildren(); d.hidden = true;
         });
-        abrirProducto(p, {}, {slot: detalle, onAdd: () => pintar(true), onCancel: cerrarDetalle});
+        cuerpo.querySelectorAll('.menu-fila-editando').forEach(f => f.classList.remove('menu-fila-editando'));
+        detalle.closest('.menu-fila').classList.add('menu-fila-editando');
+        cuerpo.classList.add('menu-editando');
+        abrirProducto(p, {}, {slot: detalle, onAdd: () => {
+          cuerpo.classList.remove('menu-editando');
+          pintar();
+          $('hoja-cuerpo').scrollTop = posicionLista;
+        }, onCancel: cerrarDetalle});
+        $('hoja-cuerpo').scrollTop = 0;
       };
-      const botonProducto = el('button', {type: 'button', class: 'producto',
-        disabled: !disponible, onclick: mostrarDetalle,
-        'aria-label': requiereOpciones ? 'Elegir opciones de ' + p.nombre : 'Personalizar ' + p.nombre},
+      const botonProducto = el(requiereOpciones ? 'div' : 'button', {
+        type: requiereOpciones ? undefined : 'button',
+        class: requiereOpciones ? 'producto menu-producto-info' : 'producto',
+        disabled: !requiereOpciones && !disponible,
+        onclick: requiereOpciones ? undefined : mostrarDetalle,
+        'aria-label': requiereOpciones ? undefined : 'Personalizar ' + p.nombre},
         el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
           p.descripcion ? el('small', {text: p.descripcion}) : null),
         disponible ? el('span', {class: 'precio', text: pesos(p.precio)}) :
@@ -435,9 +454,9 @@ function abrirCarta() {
           'aria-label': 'Quitar una unidad de ' + p.nombre, text: '−', onclick: () => cambiarSimple(p, -1)}) : null,
         cantidad ? el('output', {class: 'menu-n', 'aria-label': p.nombre + ': ' + cantidad + ' seleccionados',
           text: String(cantidad)}) : null,
-        el('button', {type: 'button', class: 'menu-paso menu-paso-mas',
+        el('button', {type: 'button', class: 'menu-paso menu-paso-mas' + (requiereOpciones ? ' menu-paso-elegir' : ''),
           'aria-label': requiereOpciones ? 'Elegir opciones de ' + p.nombre : 'Sumar una unidad de ' + p.nombre,
-          text: '+', onclick: () => requiereOpciones ? mostrarDetalle() : cambiarSimple(p, 1)}));
+          text: requiereOpciones ? 'Elegir' : '+', onclick: () => requiereOpciones ? mostrarDetalle() : cambiarSimple(p, 1)}));
       return el('li', {class: 'menu-fila'},
         el('div', {class: 'menu-fila-principal'}, botonProducto, controles),
         detalle);
@@ -482,7 +501,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
     const falta = faltantes(p, linea().opciones)[0];
     boton.disabled = Boolean(falta);
     boton.textContent = falta ? 'Completar ' + falta.nombre.toLowerCase()
-      : 'Agregar a mi selección · ' + pesos(totalCarrito(S.catalogo, [linea()]));
+      : 'Agregar y seguir eligiendo';
   };
   // Promo o combo: repartir un total exacto entre variedades (se pueden repetir), con botones − y +.
   const grupoCantidad = g => {
@@ -555,7 +574,7 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   }},
   p.descripcion ? el('p', {class: 'nota', text: p.descripcion}) : null,
   el('p', {class: 'precio', text: pesos(p.precio)}),
-  el('p', {class: 'menu-ayuda', text: 'Sumá las cantidades con + y −. Elegí todas las opciones obligatorias antes de agregar.'}),
+  el('p', {class: 'menu-ayuda', text: 'Elegí las opciones y cantidades. Al agregar, volvés al menú para seguir eligiendo.'}),
   grupos,
   el('div', {class: 'cantidad'}, el('button', {type: 'button', 'aria-label': 'Menos', text: '−', onclick: () => { cantidad = Math.max(1, cantidad - 1); refrescar(); }}),
     salida, el('button', {type: 'button', 'aria-label': 'Más', text: '+', onclick: () => { cantidad = Math.min(50, cantidad + 1); refrescar(); }})),
