@@ -76,7 +76,7 @@ function guardarDatos() {
 function restaurarDatos() {
   const d = recuperarLocal(CLAVE_DATOS);
   if (d && typeof d==='object' && !Array.isArray(d)) {
-    for (const campo of ['nombre','telefono','direccion','entrega','medio_pago','efectivo_abona','horario','nota'])
+    for (const campo of ['nombre','telefono','direccion','entre_calles','entrega','medio_pago','efectivo_abona','horario','nota'])
       if (typeof d[campo]==='string') S.datos[campo]=d[campo].slice(0,500);
   }
 }
@@ -222,8 +222,10 @@ function chips(botones) {
   const ordenados = [...ordenarBotones(botones)].sort((a, b) => Number(principal(b)) - Number(principal(a)));
   lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
     type: 'button',
-    class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : ''),
-    text: principal(b) ? 'Hacer un pedido' : b.id === 'finalizar' ? 'Enviar pedido' : b.texto,
+    class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : '') +
+      (b.id === 'finalizar' && /^No, gracias/i.test(b.texto || '') ? ' chip-omitir-envio' : ''),
+    text: principal(b) ? 'Hacer un pedido' : b.id === 'finalizar'
+      ? (/^No, gracias/i.test(b.texto || '') ? 'No, gracias, enviar' : 'Enviar pedido') : b.texto,
     onclick: () => tocarBoton(b)
   }))));
   bajar();
@@ -402,6 +404,9 @@ function mostrarPedido(p) {
   const envio = p.entrega === 'envio';
   const [t, sub] = p.estado === 'terminado' && envio ? ['¡Pedido en camino!', ''] : (TEXTO_ESTADO[p.estado] || [p.estado, '']);
   const resena = p.estado === 'terminado' ? urlResena(p.resena?.url) : '';
+  const promoConfirmada = p.estado !== 'cancelado' && p.estado !== 'rechazado' &&
+    Array.isArray(p.items) && p.items.some(item=>
+      (producto(item.producto_id)?.opciones || []).some(esCantidad));
   const programado = p.estado === 'pendiente' && p.programado_para && new Date(p.programado_para).getTime()>Date.now();
   const pasoSeguimiento = p.estado === 'pendiente' ? 0 : p.estado === 'confirmado' ? 1 : p.estado === 'terminado' ? 2 : -1;
   const etiqueta = p.recibido_at ? 'Pedido recibido por el cliente' : programado ? 'Programado para '+new Date(p.programado_para).toLocaleString('es-AR',{
@@ -409,7 +414,9 @@ function mostrarPedido(p) {
   caja.className = 'aviso-pedido ' + p.estado;
   caja.replaceChildren(...[el('span', {class: 'punto', 'aria-hidden': 'true'}),
     el('div', {}, el('strong', {text: etiqueta}), (p.estado === 'rechazado' && p.motivo ? p.motivo
-      : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total)),
+      : p.recibido_at ? 'Recepción confirmada' : p.estado === 'terminado' ? (envio ? 'Va en camino a su dirección' : 'Puede pasar a retirar con su nombre') : sub) + ' · ' + pesos(p.total),
+      promoConfirmada ? el('span',{class:'promo-elegida-etiqueta promo-estado-pedido',
+        text:'✓ Promoción incluida en tu pedido'}) : null),
     p.estado === 'pendiente' ? el('button', {type: 'button', text: 'Cancelar pedido', onclick: abrirConfirmacionCancelar}) : null,
     p.estado === 'cancelado' ? el('div', {class:'pedido-recuperar'},
       recuperarUltimoPedido().length ? el('button',{type:'button',class:'boton',text:'Retomar pedido',onclick:repetirUltimoPedido}) : null,
@@ -500,13 +507,17 @@ function abrirCarta() {
   const posCat = new Map(cats.map((c, i) => [c.id, i]));
   const cuerpo = el('div', {class: 'menu-interactivo'});
   let aviso = '';
+  let filtroCarta = '';
+  const sinAcentos = texto => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
   // El menú sigue abierto al agregar, quitar o personalizar productos.
   // Se preserva la posición para que el cliente no pierda el producto que estaba mirando.
   const pintar = (mantenerPosicion = false) => {
     const scroll = mantenerPosicion ? $('hoja-cuerpo').scrollTop : 0;
     const tabsScroll = cuerpo.querySelector('.categorias')?.scrollLeft || 0;
-    const prods = S.catalogo.productos.filter(p => p.activo !== false && (!S.categoria || p.categoria_id === S.categoria))
+    const prods = S.catalogo.productos.filter(p => p.activo !== false &&
+      (!S.categoria || p.categoria_id === S.categoria) &&
+      (!filtroCarta || sinAcentos(p.nombre + ' ' + (p.descripcion || '')).includes(sinAcentos(filtroCarta))))
       .sort((a, b) => (posCat.get(a.categoria_id) ?? 999) - (posCat.get(b.categoria_id) ?? 999) || ordenProducto(a, b));
     const cantidadSeleccionada = S.borrador.reduce((n, l) => n + l.cantidad, 0);
     const mostrarError = texto => { aviso = texto; pintar(true); };
@@ -536,6 +547,8 @@ function abrirCarta() {
       const opcionales = (p.opciones || []).filter(g => !esCantidad(g) && !g.obligatorio);
       const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > opcionales.length;
       const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
+      const cantidadConfirmada = S.carrito.filter(l => l.producto_id === p.id).reduce((n,l)=>n+l.cantidad,0);
+      const promoElegida = (p.opciones || []).some(esCantidad) && cantidad + cantidadConfirmada > 0;
       const simple = lineaSimple(p);
       const detalle = el('div', {class: 'menu-producto-detalle', hidden: true});
       let posicionLista = 0;
@@ -571,6 +584,7 @@ function abrirCarta() {
         onclick: requiereOpciones ? undefined : mostrarDetalle,
         'aria-label': requiereOpciones ? undefined : 'Personalizar ' + p.nombre},
         el('span', {class: 'producto-texto'}, el('strong', {text: p.nombre}),
+          promoElegida ? el('small', {class: 'promo-elegida-etiqueta', text: '✓ Promoción seleccionada'}) : null,
           p.descripcion ? el('small', {text: p.descripcion}) : null,
           !requiereOpciones && disponible && opcionales.length ? el('small', {class: 'menu-adicional',
             text: 'Opcional: ' + opcionales.flatMap(g => g.valores || []).slice(0, 3)
@@ -586,18 +600,34 @@ function abrirCarta() {
         el('button', {type: 'button', class: 'menu-paso menu-paso-mas' + (requiereOpciones ? ' menu-paso-elegir' : ''),
           'aria-label': requiereOpciones ? 'Elegir opciones de ' + p.nombre : 'Sumar una unidad de ' + p.nombre,
           text: requiereOpciones ? 'Elegir' : '+', onclick: () => requiereOpciones ? mostrarDetalle() : cambiarSimple(p, 1)}));
-      return el('li', {class: 'menu-fila'},
+      return el('li', {class: 'menu-fila' + (promoElegida ? ' menu-fila-promo-elegida' : '')},
         el('div', {class: 'menu-fila-principal'}, botonProducto, controles),
         detalle);
     };
+    const busquedaCarta = el('input', {type:'search', class:'menu-filtro-carta',
+      'aria-label':'Buscar productos o promociones', placeholder:'Buscar productos o promociones…'});
+    busquedaCarta.value = filtroCarta;
+    busquedaCarta.addEventListener('input', () => {
+      filtroCarta = busquedaCarta.value;
+      // No reconstruir el input: conserva teclado, foco y selección mientras filtra.
+      cuerpo.querySelectorAll('.menu-fila').forEach(fila => {
+        const hay = sinAcentos(fila.querySelector('.producto-texto strong')?.textContent).includes(sinAcentos(filtroCarta));
+        fila.hidden = !hay;
+      });
+      const visibles = [...cuerpo.querySelectorAll('.menu-fila')].filter(f=>!f.hidden).length;
+      const avisoVacio = cuerpo.querySelector('.menu-filtro-vacio');
+      if(avisoVacio) avisoVacio.hidden = visibles !== 0;
+    });
     poner(cuerpo,
+      el('div',{class:'menu-filtro-carta-contenedor'},busquedaCarta),
       cats.length > 1 ? el('div', {class: 'categorias', role: 'toolbar', 'aria-label': 'Categorías'},
         [{id: '', nombre: 'Todo'}, ...cats].map(c => el('button', {type: 'button', class: 'chip', text: c.nombre,
           'aria-pressed': String(S.categoria === c.id),
           onclick: () => { S.categoria = c.id; aviso = ''; pintar(); }}))) : null,
       aviso ? el('p', {class: 'error-form menu-aviso', role: 'alert', text: aviso}) : null,
       prods.length ? el('ul', {class: 'lista'}, prods.map(filaProducto))
-        : el('p', {class: 'nota', text: 'Todavía no hay productos cargados.'}),
+        : el('p', {class: 'nota', text: filtroCarta ? 'No encontramos resultados.' : 'Todavía no hay productos cargados.'}),
+      prods.length ? el('p', {class:'nota menu-filtro-vacio', text:'No encontramos productos con ese nombre.', hidden:true}) : null,
       el('div', {class: 'menu-pie'},
         el('div', {class: 'menu-pie-texto', 'aria-live': 'polite', text: S.borrador.length
           ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
@@ -697,10 +727,25 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       });
       return fila;
     });
+    const buscador = el('input', {type:'search', class:'menu-filtro-variedades',
+      'aria-label':'Buscar ' + g.nombre.toLowerCase(), placeholder:'Buscar ' + g.nombre.toLowerCase() + '…'});
+    const sinResultados = el('p',{class:'nota menu-sin-resultados',text:'No hay coincidencias.',hidden:true});
+    buscador.addEventListener('input',()=>{
+      const q=buscador.value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+      let encontradas=0;
+      for(const fila of filas){
+        const nombre=fila.querySelector('.menu-variedad-texto strong')?.textContent || '';
+        fila.hidden=!nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q);
+        if(!fila.hidden) encontradas++;
+      }
+      sinResultados.hidden=encontradas>0;
+    });
     return el('fieldset', {class: 'grupo grupo-cantidad menu-grupo-lista'},
       el('legend', {class: 'grupo-encabezado'}, el('strong', {text: g.nombre}), resumen),
+      filas.length ? el('label',{class:'menu-busqueda-variedades'},el('span',{text:'Buscar variedad'}),buscador) : null,
       filas.length ? el('div', {class: 'grupo-opciones'}, filas)
-        : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}));
+        : el('p', {class: 'nota', text: 'Hoy no hay variedades disponibles.'}),
+      filas.length ? sinResultados : null);
   };
   const etiquetaGrupo = g => {
     const e = el('small', {class: 'grupo-estado'});
@@ -773,7 +818,9 @@ function abrirSeleccion() {
     el('ul', {class: 'seleccion-lista'}, S.borrador.map((l, i) => {
       const nombre = producto(l.producto_id)?.nombre || 'Producto que ya no está en el menú';
       const detalles = detallesLinea(S.catalogo, l);
-      return el('li', {class: 'seleccion-linea'},
+      const esLineaPromo = (producto(l.producto_id)?.opciones || []).some(esCantidad);
+      return el('li', {class: 'seleccion-linea' + (esLineaPromo ? ' seleccion-linea-promo' : '')},
+        esLineaPromo ? el('span', {class:'promo-elegida-etiqueta',text:'✓ Promoción seleccionada'}) : null,
         el('strong', {class: 'seleccion-nombre', text: l.cantidad + ' × ' + nombre}),
         el('span', {class: 'precio', text: pesos(totalCarrito(S.catalogo, [l]))}),
         detalles.length || l.nota ? el('div', {class: 'seleccion-detalle'},
@@ -835,15 +882,73 @@ function abrirDatos() {
     i.value = d[nombre] || ''; i.addEventListener('input', () => { d[nombre] = i.value; guardarDatos(); });
     return el('label', {class: 'campo'}, el('span', {text: etiqueta}), i);
   };
-  const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '200', autocomplete: 'street-address', placeholder: 'Calle, número, piso, entre calles'});
+  const dir = campo('direccion', 'Dirección de entrega', {type: 'text', maxlength: '140',
+    autocomplete: 'street-address', placeholder: 'Calle, número y piso'});
+  const entreCalles = campo('entre_calles', 'Entre calles', {type:'text',maxlength:'90',
+    placeholder:'Ej.: Belgrano y San Martín'});
+  // GPS únicamente tras un toque voluntario del cliente. No se guarda en localStorage
+  // ni se comparte con la API hasta que confirme «Enviar pedido».
+  let gpsSeleccionado = null;
+  const ubicacionEstado=el('p',{class:'nota ubicacion-estado',role:'status','aria-live':'polite',
+    text:'Podés escribir la dirección o elegir tu ubicación actual.'});
+  const botonUbicacion=el('button',{type:'button',class:'boton ubicacion-boton',
+    text:'Usar mi ubicación',onclick:()=>{
+      if (!navigator.geolocation || !window.isSecureContext) {
+        ubicacionEstado.textContent='Tu navegador no permite acceder al GPS. Ingresá la dirección manualmente.';
+        return;
+      }
+      botonUbicacion.disabled=true;
+      ubicacionEstado.textContent='Buscando tu ubicación…';
+      navigator.geolocation.getCurrentPosition(pos=>{
+        botonUbicacion.disabled=false;
+        const lat=pos.coords.latitude,lng=pos.coords.longitude;
+        if (!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180) {
+          ubicacionEstado.textContent='No pudimos obtener una ubicación válida. Ingresá la dirección manualmente.';
+          return;
+        }
+        gpsSeleccionado={lat:lat.toFixed(6),lng:lng.toFixed(6)};
+        ubicacionEstado.replaceChildren(
+          el('strong',{class:'ubicacion-ok',text:'✓ Ubicación obtenida'}),
+          ' · Precisión aproximada: '+Math.round(pos.coords.accuracy||0)+' m. ',
+          el('a',{href:'https://www.google.com/maps?q='+gpsSeleccionado.lat+','+gpsSeleccionado.lng,
+            target:'_blank',rel:'noopener noreferrer',text:'Ver ubicación'}));
+        preguntaDeRecuerdo();
+      },errorGPS=>{
+        botonUbicacion.disabled=false;
+        ubicacionEstado.textContent=errorGPS.code===1
+          ? 'No se concedió el permiso. Podés cargar la dirección manualmente.'
+          : 'No pudimos obtener el GPS. Escribí la dirección manualmente.';
+      },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+    }});
+  const bloqueUbicacion=el('div',{class:'ubicacion-opciones'},
+    el('p',{class:'nota',text:'Usar GPS (opcional)'}),botonUbicacion,ubicacionEstado);
+  const notaPedido=campo('nota','Observaciones (opcional)',{tag:'textarea',maxlength:'500',rows:'2',
+    placeholder:'Ej.: Portón negro, tocar timbre'});
+  const direccionFinal=()=>[
+    String(d.direccion||'').trim(),
+    d.entre_calles?.trim() ? 'Entre calles: '+d.entre_calles.trim() : '',
+    gpsSeleccionado ? 'GPS: https://www.google.com/maps?q='+gpsSeleccionado.lat+','+gpsSeleccionado.lng : ''
+  ].filter(Boolean).join(' · ').slice(0,200);
+  const notaCostoEnvio=el('p',{class:'nota costo-envio'});
   const totalTxt = el('span');
   const notaPago = el('p', {class:'nota pago-explicacion'});
   const cambioTxt = el('p', {class:'nota cambio-previsto'});
   let importeEstimado = 0;
   const refrescar = () => {
     dir.hidden = d.entrega !== 'envio';
-    const disponibles = medios(d.entrega);
-    pago.replaceChildren(...disponibles.map(m => el('option', {value: m, text: PAGOS[m] || m})));
+    entreCalles.hidden = d.entrega !== 'envio';
+    bloqueUbicacion.hidden = d.entrega !== 'envio';
+    notaCostoEnvio.hidden = d.entrega !== 'envio' || Number(s.envio_costo) <= 0;
+    notaCostoEnvio.textContent = 'Costo de envío: ' + pesos(s.envio_costo);
+    const ordenPagos=['debito','credito','transferencia','efectivo','mercado_pago'];
+    const disponibles = [...medios(d.entrega)].sort((a,b)=>ordenPagos.indexOf(a)-ordenPagos.indexOf(b));
+    const tarjetas=disponibles.filter(m=>m==='debito'||m==='credito');
+    const otros=disponibles.filter(m=>m!=='debito'&&m!=='credito');
+    pago.replaceChildren(...[
+      tarjetas.length ? el('optgroup',{label:'Tarjeta débito/crédito'},
+        tarjetas.map(m=>el('option',{value:m,text:PAGOS[m]||m}))) : null,
+      ...otros.map(m=>el('option', {value: m, text: PAGOS[m] || m}))
+    ].filter(Boolean));
     if (!disponibles.includes(d.medio_pago)) d.medio_pago = disponibles[0] || 'efectivo';
     pago.value = d.medio_pago;
     const envio = d.entrega === 'envio' ? Number(s.envio_costo) || 0 : 0;
@@ -869,7 +974,8 @@ function abrirDatos() {
     notaPago.textContent = 'Si abona en efectivo tiene un ' + (Number(s.descuento_efectivo_pct) || 0) +
       '% de descuento en los productos. Si prefiere transferencia, el gerente le enviará los datos por este chat. Puede adjuntar aquí el comprobante.';
   };
-  const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'], s.acepta_envio && ['envio', 'Envío' + (Number(s.envio_costo) > 0 ? ' · ' + pesos(s.envio_costo) : '')]].filter(Boolean);
+  const entregas = [s.acepta_retiro && ['retiro', 'Retiro en el local'],
+    s.acepta_envio && ['envio', 'Envío a domicilio']].filter(Boolean);
   const pago = el('select', {name: 'medio_pago'});
   pago.value = d.medio_pago; pago.addEventListener('change', () => { d.medio_pago = pago.value; guardarDatos();refrescar(); });
   const efectivo = campo('efectivo_abona', '¿Con cuánto va a abonar en efectivo?', {
@@ -893,7 +999,7 @@ function abrirDatos() {
 
   function preguntaDeRecuerdo() {
     avisoRecuerdo.replaceChildren();
-    if (!perfil?.encontrado) {avisoRecuerdo.hidden=true;return;}
+    if (!perfil?.encontrado || (gpsSeleccionado && d.entrega==='envio')) {avisoRecuerdo.hidden=true;return;}
     const direccion=d.entrega==='envio' && String(perfil.direccion||'').trim().length>=5;
     const tipo=direccion?'direccion':'nombre';
     if (datoConfirmado===tipo) {avisoRecuerdo.hidden=true;return;}
@@ -951,18 +1057,20 @@ function abrirDatos() {
     const tel = String(d.telefono || '').replace(/\D/g, '');
     const problema = String(d.nombre || '').trim().length < 2 ? 'Ingrese su nombre.'
       : tel.length < 8 || tel.length > 15 ? 'Ingrese un teléfono válido (con código de área).'
-      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 ? 'Ingrese la dirección de entrega.'
+      : d.entrega === 'envio' && String(d.direccion || '').trim().length < 5 && !gpsSeleccionado
+        ? 'Ingresá calle y número o utilizá la ubicación GPS.'
       : d.entrega === 'envio' && d.medio_pago === 'efectivo' &&
         (!Number.isFinite(Number(d.efectivo_abona)) || Number(d.efectivo_abona) < importeEstimado)
         ? 'Indique un importe en efectivo igual o superior al total, o seleccione pago justo.' : '';
     const faltaConfirmar=perfil?.encontrado && !datoConfirmado &&
+      !(gpsSeleccionado && d.entrega==='envio') &&
       (d.entrega==='retiro' || String(perfil.direccion||'').trim().length>=5);
     if (problema || faltaConfirmar) {
       error.textContent = problema || 'Confirme el nombre o la dirección guardada, o elija modificarla.';
       error.hidden=false;return;
     }
     cerrarHoja();
-    enviar({datos: {...d}}, 'Enviar pedido');
+    enviar({datos: {...d, direccion: d.entrega==='envio' ? direccionFinal() : ''}}, 'Enviar pedido');
   }},
   campoNombre,campoTelefono,avisoRecuerdo,
   el('p',{class:'nota',text:'No hace falta registrarse. Si ya pidió desde este navegador, al ingresar su teléfono podremos recordar sus datos.'}),
@@ -971,14 +1079,13 @@ function abrirDatos() {
     r.addEventListener('change', () => { d.entrega=v;datoConfirmado='';guardarDatos();refrescar();preguntaDeRecuerdo(); });
     return el('label', {}, r, t);
   })) : el('p', {class: 'nota', text: entregas[0]?.[1] || ''}),
-  dir,
+  dir, entreCalles, bloqueUbicacion, notaCostoEnvio,
   el('label', {class: 'campo'}, el('span', {text: 'Medio de pago'}), pago),
   notaPago, efectivo, cambioTxt,
   s.atencion?.habilitado && !s.atencion.abierto
     ? el('p',{class:'nota',text:'Pedido para la próxima apertura: '+s.atencion.proximo_texto+'. El gerente lo confirmará manualmente.'})
     : null,
-  campo('nota', 'Observaciones (opcional)', {tag: 'textarea', maxlength: '500', rows: '2',
-    placeholder: '¿Querés agregar algo a tu pedido?'}),
+  notaPedido,
   el('div', {class: 'total'}, el('span', {text: 'Total estimado'}), totalTxt),
   el('p', {class: 'nota', text: 'El gerente revisará y confirmará su pedido antes de prepararlo. Sus datos de contacto y entrega se conservarán en esta sucursal para facilitar futuros pedidos desde este navegador. Puede corregirlos cuando quiera. No necesita crear una cuenta.'}),
   error,

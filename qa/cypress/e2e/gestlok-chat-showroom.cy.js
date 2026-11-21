@@ -39,7 +39,7 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
     }).then($body=>{
       if(veces>0&&!$body.find('#hoja').is(':visible')){
         const promo=$body.find('.chip').toArray().some(x=>x.textContent.includes('No, seguir sin promoción'));
-        cy.contains('.chip',promo?'No, seguir sin promoción':'No, gracias. Finalizar').click();
+        cy.contains('.chip',promo?'No, seguir sin promoción':'No, gracias, enviar').click();
         pasarOfertas(veces-1);
       }
     });
