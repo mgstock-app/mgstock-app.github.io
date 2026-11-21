@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1400" preserveAspectRatio="xMidYMid slice">
+  <title>Fondo claro de GESTLOK Chat</title>
+  <!-- Papel plata muy claro con planos geométricos amplios. Sin dibujos ni marcas repetidas. -->
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#edf0f4"/>
+      <stop offset="34%" stop-color="#f8f9fb"/>
+      <stop offset="70%" stop-color="#f1f3f6"/>
+      <stop offset="100%" stop-color="#e9edf1"/>
+    </linearGradient>
+    <radialGradient id="luz" cx=".35" cy=".45" r=".85">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".78"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity=".21"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="plano1" x1="0" y1="0" x2="1" y2=".8">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".6"/>
+      <stop offset="100%" stop-color="#e3e8ee" stop-opacity=".17"/>
+    </linearGradient>
+    <linearGradient id="plano2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d9e0e8" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity=".05"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1400" fill="url(#base)"/>
+  <path d="M0 0H900V295L377 861 0 1195Z" fill="url(#plano1)"/>
+  <path d="M900 255V1400H295Z" fill="url(#plano2)"/>
+  <path d="M0 1010 325 703 900 0V158L295 852 0 1168Z" fill="#ffffff" opacity=".12"/>
+  <path d="M0 0H450L0 570Z" fill="#ffffff" opacity=".1"/>
+  <rect width="900" height="1400" fill="url(#luz)"/>
+</svg>
