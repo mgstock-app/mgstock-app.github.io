@@ -528,19 +528,12 @@ function abrirProducto(p, sugerido = {}, inline = null) {
       const n = el('output', {class: 'n', 'aria-live': 'polite', text: String(elegidas[g.id][v.id] || 0)});
       const menos = el('button', {type: 'button', class: 'paso paso-quitar', 'aria-label': 'Quitar ' + v.nombre, text: '−'});
       const mas = el('button', {type: 'button', class: 'paso paso-sumar', 'aria-label': 'Sumar ' + v.nombre, text: '+'});
-      const origen = S.catalogo.productos.find(prod => prod.id === v.producto_id);
-      const foto = [v.imagen_url, v.image_url, origen?.imagen_url, origen?.image_url]
-        .find(url => { try { const u = new URL(url); return u.protocol === 'https:' && !u.username && !u.password; } catch { return false; } });
-      const miniatura = foto
-        ? el('img', {class: 'menu-variedad-foto', src: foto, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer'})
-        : el('span', {class: 'menu-variedad-foto menu-variedad-inicial', 'aria-hidden': 'true',
-            text: v.nombre.trim().charAt(0).toUpperCase()});
       const texto = el('span', {class: 'menu-variedad-texto'},
         v.destacado === true ? el('small', {class: 'menu-variedad-destacado', text: '★ Más vendido'}) : null,
         el('strong', {text: v.nombre}),
         Number(v.extra) > 0 ? el('small', {class: 'menu-variedad-extra', text: '+ ' + pesos(v.extra)}) : null);
       const fila = el('div', {class: 'opcion opcion-cantidad menu-variedad-fila'},
-        miniatura, texto, el('div', {class: 'pasos'}, menos, n, mas));
+        texto, el('div', {class: 'pasos'}, menos, n, mas));
       const cambiar = d => {
         const actual = elegidas[g.id][v.id] || 0;
         if (d > 0 && unidades(elegidas[g.id]) >= total) return;
