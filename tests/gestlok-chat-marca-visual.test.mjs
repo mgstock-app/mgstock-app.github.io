@@ -24,7 +24,7 @@ test('fondo profesional predeterminado sin motivos repetidos y con buen contrast
   assert.match(wallpaper, /viewBox="0 0 900 1400"/);
   assert.match(wallpaper, /linearGradient/);
   assert.doesNotMatch(wallpaper, /<text\\b|<image\\b|<foreignObject\\b|<filter\\b|<script\\b|xlink:href/);
-  assert.match(css, /\.mensajes\{[\s\S]*?background-image:url\('\/chat\/wallpaper-gestlok\.svg'\)/);
+  assert.match(css, /\.mensajes\{[\s\S]*?background-image:url\('\/chat\/wallpaper-gestlok\.svg\?v=20261121contraste1'\)/);
   assert.match(css, /background-size:cover/);
   assert.match(css, /background-repeat:no-repeat/);
   assert.match(css, /\.burbuja\.asistente:not\(\.chat-bienvenida\)\{background:#f2f5f9\}/);
@@ -36,7 +36,7 @@ test('navegadores cargan nueva marca sin alterar pedidos ni acceso a WhatsApp',(
   const page=read('public/chat/index.html');
   const script=read('public/chat/chat.js');
   const css=read('public/chat/chat.css');
-  assert.match(page, /chat\/chat\.css\?v=20261121marca1/);
+  assert.match(page, /chat\/chat\.css\?v=20261121bordes1/);
   assert.match(page, /chat\/chat\.js\?v=20261121marca1/);
   assert.match(page, /chat\/gestlok-monograma\.svg" type="image\/svg\+xml"/);
   assert.match(page, /id="whatsapp-local" class="chat-whatsapp"/);
@@ -50,7 +50,7 @@ test('panel del gerente conserva su interfaz de trabajo y adopta la identidad de
   const page=read('public/chat/panel/index.html');
   const manifest=JSON.parse(read('public/chat/manifest.webmanifest'));
   assert.match(panel, /class: 'tope-marca', src: '\/chat\/gestlok-monograma\.svg'/);
-  assert.match(styles, /\.hilo\{[\s\S]*?background-image:url\('\/chat\/wallpaper-gestlok\.svg'\)/);
+  assert.match(styles, /\.hilo\{[\s\S]*?background-image:url\('\/chat\/wallpaper-gestlok\.svg\?v=20261121contraste1'\)/);
   assert.match(styles, /\.embebido \.tope-marca\{display:none\}/);
   assert.match(page, /chat\/gestlok-monograma\.svg/);
   assert.ok(manifest.icons.some(i=>i.src==='/chat/gestlok-monograma.svg' && i.type==='image/svg+xml'));
