@@ -141,8 +141,16 @@ function mostrarCierre() {
 function quitarChips() { lista.querySelectorAll('.chips,.accion').forEach(n => n.remove()); }
 function chips(botones) {
   if (!botones?.length) return;
-  lista.append(el('div', {class: 'chips'}, botones.map(b => el('button', {type: 'button', class: 'chip', text: b.texto,
-    onclick: () => tocarBoton(b)}))));
+  // El acceso principal a la carta debe verse primero aunque el servidor todavía
+  // lo envíe como «Ver menú». «Agregar más» mantiene su función en pedidos existentes.
+  const principal = b => b.id === 'carta' && /^(ver|hacer|armar)/i.test(String(b.texto || ''));
+  const ordenados = [...botones].sort((a, b) => Number(principal(b)) - Number(principal(a)));
+  lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
+    type: 'button',
+    class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : ''),
+    text: principal(b) ? 'Hacer un pedido' : b.texto,
+    onclick: () => tocarBoton(b)
+  }))));
   bajar();
 }
 function accion(texto, fn) { lista.append(el('button', {type: 'button', class: 'accion', text: texto, onclick: fn})); bajar(); }
@@ -169,7 +177,7 @@ function mostrarEscribiendo(si) {
 const producto = id => S.catalogo.productos.find(p => p.id === id);
 const BOTONES_BASE = () => S.carrito.length
   ? [{id: 'finalizar', texto: 'Finalizar pedido'}, {id: 'carta', texto: 'Agregar más'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}]
-  : [{id: 'carta', texto: 'Ver menú'},
+  : [{id: 'carta', texto: 'Hacer un pedido'},
       ...(usaMenuInteractivo(S.sucursal) && promocionesVigentes(S.catalogo).length ? [{id: 'promociones', texto: 'Ver promociones'}] : []),
       {id: 'horario', texto: 'Horario y envío'},
       {id: 'pago', texto: 'Medios de pago'}, {id: 'soporte', texto: 'Ayuda con mi pedido'}];
