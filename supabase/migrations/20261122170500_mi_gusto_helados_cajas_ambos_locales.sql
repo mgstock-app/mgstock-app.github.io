@@ -23,7 +23,8 @@ begin
         or (id='c4-10' and name='Franui CA')) <> 3 then
    raise exception 'Catálogo Franui de munro no coincide: no se aplica';
  end if;
-end $guard_munro$;
+end;
+$guard_munro$;
 
 insert into gestlok_munro_conteo_private.products (id,section,name,units_per_chapa,position,active)
 values ('c4-11','HELADOS','LeBanana',30,411,true)
@@ -69,7 +70,8 @@ begin
         or (id='c4-10' and name='Franui CA')) <> 3 then
    raise exception 'Catálogo Franui de torcuato no coincide: no se aplica';
  end if;
-end $guard_torcuato$;
+end;
+$guard_torcuato$;
 
 insert into gestlok_torcuato_conteo_private.products (id,section,name,units_per_chapa,position,active)
 values ('c4-11','HELADOS','LeBanana',30,411,true)
