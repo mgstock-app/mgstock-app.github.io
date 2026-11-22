@@ -9,7 +9,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
 const TENANT='cb0dc04a-9a13-434f-a3d0-47f1d8f39670';
 
 function mount({local='torcuato',role='gerente',access=[local],tenant=TENANT}={}){
- const events=new Map(),calls=[],draws=[];
+ const events=new Map(),calls=[],draws=[],routes=[];
  const window={};
  const storage=new Map();
  window.localStorage={
@@ -30,8 +30,8 @@ function mount({local='torcuato',role='gerente',access=[local],tenant=TENANT}={}
  }};
  const mod=window.GestLokMunroConteo;
  const S={me:{id:'u1',tenant_id:tenant},local,view:'conteo-munro',ro:false,offline:false};
- mod.attach({S,miRol:()=>role,misLocales:()=>access,render:()=>draws.push(S.local),toast:()=>{}});
- return {mod,S,calls,events,draws,storage,state};
+ mod.attach({S,miRol:()=>role,misLocales:()=>access,render:()=>draws.push(S.local),toast:()=>{},go:to=>routes.push(to)});
+ return {mod,S,calls,events,draws,routes,storage,state};
 }
 
 test('Torcuato usa el mismo conteo visual y muestra su propia sucursal',async()=>{
@@ -93,4 +93,22 @@ test('La migración solo clona catálogo y preferencias, nunca registros ni hist
  assert.match(sql,/revoke all on schema gestlok_torcuato_conteo_private from public,anon,authenticated/);
  assert.match(sql,/grant execute on function .* to authenticated/);
  assert.match(sql,/puede_ver_local/);
+});
+
+test('dueña accede al historial antiguo de su sucursal sin editar planillas',async()=>{
+ const x=mount({local:'torcuato',role:'dueno',access:['munro','torcuato']});
+ x.S.loaded={c:true};x.S.conteos=[{id:'a'},{id:'b'}];
+ x.mod.view();await tick();await tick();
+ const html=x.mod.view();
+ assert.match(html,/Historial anterior de Stock/);
+ assert.match(html,/Ver historial anterior \(2\)/);
+ assert.match(html,/Don Torcuato/);
+ assert.doesNotMatch(html,/gcm-count-screen|data-gcm-finalize/);
+ const target={closest:s=>s==='.gcm-page'?{}:{hasAttribute:k=>k==='data-gcm-legacy-history'}};
+ await x.events.get('click')({target,preventDefault(){},stopPropagation(){}});
+ assert.deepEqual(x.routes,['historial']);
+ const app=fs.readFileSync(new URL('../public/stock/app.js',import.meta.url),'utf8');
+ assert.match(app,/miGustoOwnerHistorialSoloLectura/);
+ assert.match(app,/\!miGustoOwnerHistorialSoloLectura\(\)/);
+ assert.match(app,/\|\| miGustoOwnerHistorialSoloLectura\(\)/);
 });
