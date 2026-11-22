@@ -24,7 +24,7 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
   }
   for(const [slug,tel] of [
     ['mi-gusto-munro','5491171446654'],['mi-gusto-torcuato','5491176617182']]) {
-    it('muestra solo el icono WhatsApp y enlaza exclusivamente a ' + slug,()=>{
+    it('muestra el botón WhatsApp y enlaza exclusivamente a ' + slug,()=>{
       cy.viewport(390,844);
       mockAbrir(slug,tel);
       cy.visit('/chat/?s='+slug);
@@ -33,7 +33,7 @@ describe('GESTLOK Chat · cancelación segura y WhatsApp por sucursal', () => {
         .and('have.attr','href','https://wa.me/'+tel)
         .and('have.attr','target','_blank')
         .find('svg').should('exist');
-      cy.get('#whatsapp-local').invoke('text').then(valor=>expect(valor.trim()).to.equal(''));
+      cy.get('#whatsapp-local').invoke('text').then(valor=>expect(valor.trim()).to.equal('WhatsApp'));
     });
   }
   it('si la sucursal no tiene un número válido, nunca muestra enlace a otro local',()=>{
