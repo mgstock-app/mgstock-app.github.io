@@ -847,8 +847,9 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    (noStock?' checked':'')+(sum>0?' disabled':'')+' aria-label="Sin stock: '+esc(p.name)+'">Sin stock</label>':'';
   return '<tr data-gcm-morning-row="'+esc(p.id)+'" class="'+(p.units_per_chapa>0?'gcm-chapa-row':'gcm-qty-row')+
    (check?.different?(check.acknowledged?' gcm-morning-confirmed':' gcm-morning-difference'):'')+'">'+(showDecomiso?decompColumn(p,canWrite):'')+'<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+
+   (!p.active?'<small class="gcm-product-retirado">Quitado del catálogo · conserva las cantidades de este turno</small>':'')+
    (shift==='manana_entrada'?'<small data-gcm-morning-note'+(check?.different?'':' hidden')+'>'+esc(check?.label||'')+'</small>':'')+
-   (canCatalog?'<div class="gcm-product-actions">'+
+   (canCatalog&&p.active?'<div class="gcm-product-actions">'+
    '<button type="button" class="gcm-product-menu-trigger" data-gcm-product-menu="'+esc(p.id)+'" aria-haspopup="dialog" aria-label="Opciones del producto '+esc(p.name)+'" title="Opciones del producto">⋯</button>'+
    '<dialog class="gcm-product-dialog" aria-label="Opciones del producto '+esc(p.name)+'">'+
    '<div class="gcm-product-dialog-heading"><strong>Opciones del producto</strong><span>'+esc(p.name)+'</span></div>'+
@@ -862,8 +863,18 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
- (canManageCategories?'<button type="button" class="gcm-hide-section" data-gcm-hide-section="'+esc(name)+'" aria-label="Quitar sección '+esc(name)+' del conteo" title="Ocultar sección del conteo">Quitar</button>':'')+
+ (canCatalog&&items.some(p=>p.active)?'<button type="button" class="gcm-hide-section" data-gcm-remove-products-open="'+esc(name)+'" aria-haspopup="dialog" aria-label="Quitar productos de '+esc(name)+'" title="Elegir productos para quitar de esta categoría">Quitar</button>':'')+
  '</span></summary>'+
+ (canCatalog?'<dialog class="gcm-remove-products-dialog" aria-label="Quitar productos de '+esc(name)+'">'+
+ '<div class="gcm-remove-products-heading"><strong>Quitar productos</strong><span>Categoría: '+esc(name)+'</span></div>'+
+ '<p>Seleccioná los productos para quitarlos del catálogo. La categoría y el historial se conservan. Si uno tiene cantidades en el turno abierto, seguirá visible hasta cerrar ese turno para no perderlas.</p>'+
+ '<div class="gcm-remove-products-list" role="group" aria-label="Productos de '+esc(name)+'">'+
+ items.filter(p=>p.active).map(p=>'<label><input type="checkbox" data-gcm-remove-selected="'+esc(p.id)+'"><span>'+esc(p.name)+'</span></label>').join('')+
+ '</div>'+
+ '<p class="gcm-remove-products-error" data-gcm-remove-products-error role="alert" aria-live="polite"></p>'+
+ '<div class="gcm-remove-products-actions"><button type="button" class="gcm-remove-products-confirm" data-gcm-remove-products-save>Quitar seleccionados</button>'+
+ '<button type="button" class="gcm-remove-products-cancel" data-gcm-remove-products-cancel>Cancelar</button></div>'+
+ '</dialog>':'')+
  (canCatalog?'<div class="gcm-product-add-bar">'+
  '<button type="button" class="gcm-add-product-trigger" data-gcm-add-product-open="'+esc(name)+'" aria-haspopup="dialog">+ Agregar producto</button>'+
  '<span>El producto aparecerá en los tres turnos.</span></div>'+
@@ -985,7 +996,9 @@ function view(){
  if(activeVto==='d'&&!showDecomiso)activeVto='1';
  const sectionsLocked=!!snapshot?.settings?.locked;
  const canManageCategories=canWrite&&(!sectionsLocked||admin());
- const list=(snapshot?.products||[]).filter(p=>p.active||!!rec.data?.[p.id]||!!rec.decomiso?.[p.id]);
+ // Los productos quitados desaparecen del conteo activo si no tienen cantidades.
+ // Si ya hubo unidades cargadas en este turno, conservar la fila para poder revisarlas.
+ const list=(snapshot?.products||[]).filter(p=>p.active||recordedTotal(rec,p)>0);
  // La administradora también puede recuperar categorías sin productos activos.
  const categories=[...new Set((admin()?snapshot?.products||[]:list).map(p=>p.section).filter(Boolean))]
   .sort((a,b)=>shift==='manana_entrada'?
@@ -1288,32 +1301,66 @@ document.addEventListener('click',async e=>{
   el.closest('.gcm-product-dialog')?.close();
   return;
  }
- if(el.hasAttribute('data-gcm-hide-section')){
-  // El botón está dentro del summary: no debe abrir/cerrar la categoría.
+ if(el.hasAttribute('data-gcm-remove-products-open')){
+  // El botón está dentro del <summary>, pero nunca debe ocultar la categoría.
+  e.preventDefault();e.stopPropagation();
+  if(!admin()||!editable()||closed()||busy||!snapshot||historyMode)return;
+  const section=el.dataset.gcmRemoveProductsOpen;
+  const wrapper=el.closest('.gcm-section');
+  if(!section||wrapper?.dataset.gcmSection!==section||!snapshot.products.some(p=>p.active&&p.section===section))return;
+  const dialog=wrapper.querySelector('.gcm-remove-products-dialog');
+  if(dialog&&!dialog.open&&typeof dialog.showModal==='function'){
+   dialog.querySelectorAll('[data-gcm-remove-selected]').forEach(input=>{input.checked=false;});
+   const status=dialog.querySelector('[data-gcm-remove-products-error]');if(status)status.textContent='';
+   dialog.showModal();
+   dialog.querySelector('[data-gcm-remove-selected]')?.focus();
+  }
+  return;
+ }
+ if(el.hasAttribute('data-gcm-remove-products-cancel')){
   e.preventDefault();
-  e.stopPropagation();
-  if(!editable()||closed()||busy||!snapshot||snapshot?.settings?.locked&&!admin())return;
-  const section=el.dataset.gcmHideSection;
-  if(!section||!snapshot.products.some(p=>p.active&&p.section===section))return;
-  busy=true;
-  const d=day,s=shift;
+  el.closest('.gcm-remove-products-dialog')?.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-remove-products-save')){
+  e.preventDefault();
+  if(!admin()||!editable()||closed()||busy||!snapshot||historyMode)return;
+  const dialog=el.closest('.gcm-remove-products-dialog');
+  const section=el.closest('.gcm-section')?.dataset.gcmSection;
+  if(!dialog?.open||!section)return;
+  const selectedIds=[...dialog.querySelectorAll('[data-gcm-remove-selected]:checked')]
+   .map(input=>input.dataset.gcmRemoveSelected);
+  const selectedProducts=selectedIds.map(id=>snapshot.products.find(p=>p.id===id&&p.section===section&&p.active));
+  const status=dialog.querySelector('[data-gcm-remove-products-error]');
+  if(!selectedIds.length){if(status)status.textContent='Seleccioná al menos un producto.';return;}
+  if(selectedIds.length!==selectedProducts.filter(Boolean).length||new Set(selectedIds).size!==selectedIds.length){
+   if(status)status.textContent='La selección cambió. Volvé a abrir la lista.';return;
+  }
+  const names=selectedProducts.map(p=>p.name);
+  if(!window.confirm('¿Quitar '+names.length+' producto'+(names.length===1?'':'s')+' de '+section+'? Dejarán de estar activos en el catálogo de '+localLabel()+'. Los conteos históricos seguirán guardados.'))return;
+  const local=activeLocal(),atGeneration=generation;
+  busy=true;el.disabled=true;
+  if(status)status.textContent='Guardando cambios…';
+  let done=0;
   try{
-   await rpc('gestlok_munro_conteo_set_section',{p_day:d,p_shift:s,p_section:section,p_visible:false});
-   const rec=draftRecord();
-   if(rec){
-    const hidden=Array.isArray(rec.hidden_sections)?rec.hidden_sections:[];
-    rec.hidden_sections=[...new Set([...hidden,section])];
+   for(const p of selectedProducts){
+    if(local!==activeLocal()||generation!==atGeneration)throw Error('Cambió la sucursal o el conteo. Volvé a revisar la selección.');
+    const response=await rpc('gestlok_munro_conteo_product',{p_id:p.id,p_name:p.name,p_active:false});
+    if(!response?.ok)throw Error('El servidor no confirmó que se quitó '+p.name+'.');
+    done++;
    }
-   if(snapshot?.settings?.locked){
-    const original=Array.isArray(snapshot.settings.hidden_sections)?snapshot.settings.hidden_sections:[];
-    const next=[...new Set([...original,section])];
-    snapshot.settings.hidden_sections=next;
-    snapshot.counts.filter(x=>x.status==='borrador').forEach(x=>{x.hidden_sections=next;});
-   }
-   opened.delete(section);
+   dialog.close();
    error='';
-  }catch(err){error=err.message||'No se pudo ocultar la sección';api.toast?.(error);}
-  finally{busy=false;api.render();}
+   api?.toast?.(done===1?'Producto quitado de '+section+'.':done+' productos quitados de '+section+'.');
+  }catch(err){
+   const message=(done?done+' productos quitados. ':'')+(err.message||'No se pudieron quitar los productos.');
+   if(status)status.textContent=message;
+   api?.toast?.(message);
+  }finally{
+   busy=false;el.disabled=false;
+   // Refrescar desde Supabase, nunca marcar como quitado algo que no confirmó la base.
+   void refresh();
+  }
   return;
  }
  if(el.hasAttribute('data-gcm-extra-add')||el.hasAttribute('data-gcm-extra-remove')){
