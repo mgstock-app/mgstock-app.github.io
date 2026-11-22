@@ -12,6 +12,7 @@
     ['usuarios', 'Usuarios', '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'],
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
+    ['gestlok-chat', 'GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
     ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
@@ -146,6 +147,99 @@
     }catch(e){chatError='No se pudo actualizar GESTLOK Chat. '+String(e?.message||'');}
     finally{chatBusy=false;chatTried=false;void loadChatAdmin();}
   }
+
+  // Catálogo y asignación por empresa: las operaciones son RPC con identidad de creadora validada.
+  let microapps=[],microappsLoaded=false,microappsBusy=false,microappsError='',companyBusy=false;
+  const premiumAdmin=()=>api?.isCreadora?.() &&
+    String(api?.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
+  async function loadMicroapps(force=false){
+    if(!premiumAdmin()||!window.GestLokSupabase?.rpc||microappsBusy||(!force&&microappsLoaded))return;
+    microappsBusy=true;microappsError='';
+    try{
+      const r=await window.GestLokSupabase.rpc('gestlok_creator_microapps');
+      if(r.error||!Array.isArray(r.data))throw (r.error||Error('Respuesta inválida'));
+      microapps=r.data;microappsLoaded=true;
+    }catch(e){microappsError='No se pudieron consultar las apps asignadas. '+String(e?.message||'');}
+    finally{microappsBusy=false;if(tab==='locales')api?.render?.();}
+  }
+  function microappsEmpresa(tenant,empresa){
+    if(!premiumAdmin())return '';
+    const apps=microapps.filter(a=>a.tenant_id===tenant);
+    const activas=apps.filter(a=>a.habilitada);
+    const asignadas=activas.map(a=>'<div class="gl-ch-app-row"><span><b>'+esc(a.nombre)+'</b><small>'+
+      (a.estado==='activa'?'Activa':a.estado==='esperando_configuracion'?'Configuración pendiente':a.app_code==='sistema_ventas'?'Pendiente: registro del dueño':'Pendiente')+
+      '</small></span><button type="button" class="btn sm" data-ch-app-remove="'+esc(tenant)+'" data-app="'+esc(a.app_code)+'"'+
+      (microappsBusy?' disabled':'')+'>Desactivar</button></div>').join('');
+    const disponibles=apps.filter(a=>!a.habilitada);
+    return '<section class="gl-ch-company-apps" aria-label="Aplicaciones de '+esc(empresa)+'">'+
+      '<h4>Apps asignadas</h4>'+
+      (microappsError?'<p role="alert">'+esc(microappsError)+'</p>':'')+
+      (!microappsLoaded?'<p role="status">Cargando aplicaciones…</p>':(asignadas||'<p>Sin aplicaciones asignadas.</p>'))+
+      (disponibles.length?'<div class="gl-ch-app-picker"><label>Asignar app<select data-ch-app-select="'+esc(tenant)+'">'+
+        disponibles.map(a=>'<option value="'+esc(a.app_code)+'">'+esc(a.nombre)+'</option>').join('')+
+        '</select></label><button type="button" class="btn primary" data-ch-app-add="'+esc(tenant)+'"'+(microappsBusy?' disabled':'')+'>+ Apps</button></div>':
+        (microappsLoaded?'<small>Ya se asignaron todas las apps disponibles.</small>':''))+
+      '<p class="gl-ch-app-tip">El diseño y las reglas de permisos vienen de la microapp. La empresa configura su catálogo, productos y ajustes por local.</p>'+
+      '</section>';
+  }
+  function crearEmpresaForm(){
+    return '<details class="gl-ch-add-company"><summary>+ Agregar empresa</summary>'+
+      '<form data-ch-create-business class="gl-ch-add-company-form">'+
+      '<p>Creá un espacio independiente con su primer local. Solo se habilitan las apps que asignes después.</p>'+
+      '<label>Nombre de la tienda<input name="nombre" required minlength="2" maxlength="100" autocomplete="organization" placeholder="Ej. Tienda Central"></label>'+
+      '<label>Email del dueño<input name="dueno" type="email" required maxlength="254" autocomplete="off" placeholder="dueno@tienda.com"></label>'+
+      '<label>Email del gerente (opcional)<input name="gerente" type="email" maxlength="254" autocomplete="off" placeholder="gerente@tienda.com"></label>'+
+      '<button type="submit" class="btn primary"'+(companyBusy?' disabled':'')+'>Crear empresa</button>'+
+      '<small>Se prepara «Local principal». Nadie recibe una contraseña automáticamente. Los accesos se autorizan por email y por empresa.</small>'+
+      '</form></details>';
+  }
+  async function crearEmpresa(form){
+    if(!premiumAdmin()||companyBusy||!form.reportValidity())return;
+    const d=new FormData(form),nombre=String(d.get('nombre')||'').trim(),
+      dueno=String(d.get('dueno')||'').trim().toLowerCase(),
+      gerente=String(d.get('gerente')||'').trim().toLowerCase();
+    if(!nombre||!dueno)return;
+    if(!window.confirm('¿Crear la empresa '+nombre+' con dueño '+dueno+(gerente?' y gerente '+gerente:'')+'? No modifica otros comercios.'))return;
+    companyBusy=true;const button=form.querySelector('[type="submit"]');if(button)button.disabled=true;
+    try{
+      const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_crear_empresa_microapps',
+        {p_nombre:nombre,p_dueno_email:dueno,p_gerente_email:gerente||null});
+      if(error||!data?.tenant_id)throw (error||Error('No se pudo confirmar el alta.'));
+      api.toast?.('Empresa creada. Ahora podés asignarle sus microapps desde Locales.');
+      form.reset();
+      await Promise.all([window.GestLokOwnerAreas?.refreshAdmin?.(),loadMicroapps(true)]);
+    }catch(e){api.toast?.('No se creó la empresa: '+String(e?.message||'Error de permisos.'),true);}
+    finally{companyBusy=false;if(button?.isConnected)button.disabled=false;api?.render?.();}
+  }
+  async function asignarMicroapp(tenant,app,habilitar){
+    if(!premiumAdmin()||microappsBusy)return;
+    const company=(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===tenant);
+    const selected=microapps.find(a=>a.tenant_id===tenant&&a.app_code===app);
+    if(!company||!selected||selected.habilitada===habilitar)return;
+    if(!window.confirm((habilitar?'¿Asignar ':'¿Desactivar ')+selected.nombre+' en '+company.name+
+      '? Los datos de las demás empresas y sus apps no se modifican.'))return;
+    microappsBusy=true;
+    try{
+      const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_asignar_microapp',
+        {p_tenant:tenant,p_app:app,p_habilitar:habilitar});
+      if(error||!data?.ok)throw (error||Error('No se pudo guardar.'));
+      api.toast?.(habilitar?selected.nombre+' asignada a '+company.name+'.':'Microapp desactivada sin borrar sus datos.');
+      microappsLoaded=false;chatTried=false;void loadChatAdmin();
+    }catch(e){api.toast?.('No se pudo asignar la app: '+String(e?.message||''),true);}
+    finally{microappsBusy=false;void loadMicroapps(true);api?.render?.();}
+  }
+  function linksChatView(){
+    if(!premiumAdmin())return '';
+    return '<section class="gl-admin-card gl-ch-links" aria-label="Enlaces GESTLOK Chat">'+
+      '<header><h2>GESTLOK Chat</h2><small>Accesos rápidos de administradora</small></header>'+
+      '<p>Producción y entornos de prueba separados. Las pruebas no deben ingresar pedidos reales.</p>'+
+      '<div class="gl-ch-links-grid">'+
+      '<a class="btn" href="https://gestlok.com.ar/chat/panel/" target="_blank" rel="noopener noreferrer">GESTLOK Chat · Panel</a>'+
+      '<a class="btn" href="https://gestlok-prueba.vercel.app/" target="_blank" rel="noopener noreferrer">Abrir GESTLOK Prueba</a>'+
+      '<a class="btn" href="https://gestlok-testing.vercel.app/" target="_blank" rel="noopener noreferrer">Abrir GESTLOK Testing</a>'+
+      '</div><p class="gl-ch-app-tip">Para habilitar GESTLOK Chat en una nueva empresa, ingresá a «Locales» → «+ Apps».</p></section>';
+  }
+
   async function loadCoupons(){if(!api?.isCreadora?.()||couponBusy||!window.GestLokSupabase)return;couponBusy=true;couponAttempted=true;couponError='';try{for(const loc of ['munro','torcuato']){const {data,error}=await window.GestLokSupabase.rpc('gestlok_resenas_list',{p_local:loc});if(error)throw error;couponRows[loc]=Array.isArray(data)?data:[];}}catch{couponError='No se pudieron consultar los cupones. Revisá permisos y conexión.';}finally{couponBusy=false;if(api?.isCreadora?.())api.render();}}
   function couponView(){if(!couponAttempted&&!couponBusy)queueMicrotask(loadCoupons);return '<section class="gl-admin-card" aria-label="Cupones de Mi Gusto"><header><h2>Cupones de Mi Gusto</h2><button type="button" data-ch-coupons-refresh>Actualizar</button></header><p>Munro y Torcuato por separado. Beneficio del 10% independiente de publicar reseñas. La emisión y utilización se realizan desde la sección Reseñas de cada sucursal.</p>'+(couponError?'<p role="alert">'+esc(couponError)+'</p>':'')+['munro','torcuato'].map(loc=>{const a=couponRows[loc]||[];const counts={pending:0,used:0,expired:0};a.forEach(r=>{if(r.status in counts)counts[r.status]++;});return '<article style="border-top:1px solid #ddd;padding:12px 0"><h3>'+ (loc==='munro'?'Munro':'Torcuato') +'</h3><p>Total: '+a.length+' · Pendientes: '+counts.pending+' · Usados: '+counts.used+' · Vencidos: '+counts.expired+'</p><div style="overflow-x:auto"><table><thead><tr><th>Cupón</th><th>Cliente</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>'+a.slice(0,50).map(r=>'<tr><td>'+esc(r.code)+'</td><td>'+esc(r.customer_name)+'</td><td>'+esc(r.status)+'</td><td>'+esc(String(r.created_at||'').slice(0,10))+'</td></tr>').join('')+'</tbody></table></div></article>';}).join('')+'</section>';}
 
@@ -241,6 +335,7 @@
   // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
   // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
+    if(!microappsLoaded&&!microappsBusy)queueMicrotask(()=>loadMicroapps());
     const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
     const indexed=grouped.length?grouped:(Array.isArray(p.companies)?p.companies:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]));
     const companyRows=indexed.length?indexed:(data.recent_companies||[]);
@@ -351,6 +446,8 @@
       const attrs=l=>(l.tenant_id||c.tenant_id)===currentTenant
         ?'data-act="local" data-id="'+esc(l.id)+'"'
         :'data-company-local="'+esc(l.id)+'" data-company-tenant="'+esc(l.tenant_id||c.tenant_id)+'" data-company-name="'+esc(c.name)+'"';
+      const appTenantIds=Array.isArray(c.tenant_ids)&&c.tenant_ids.length?c.tenant_ids:[c.tenant_id];
+      const appsHTML=appTenantIds.map(t=>microappsEmpresa(t,c.name)).join('');
       const localCards=locals.map(l=>'<button type="button" class="gl-ch-premium-local" '+attrs(l)+
         ' aria-label="Ingresar a '+esc(l.name||l.id)+' de '+esc(c.name)+'">'+
         '<span class="gl-ch-premium-local-icon">'+svg(storeIcon,19)+'</span><span>'+esc(l.name||l.id)+'</span>'+
@@ -364,11 +461,11 @@
         '</summary><div class="gl-ch-premium-company-locals">'+
         (localCards||'<p>Esta empresa todavía no tiene locales creados.</p>')+
         (window.GestLokOwnerAreas?.creatorAddLocalForm?.(c.tenant_id)||'')+
-        '</div></details>';
+        appsHTML+'</div></details>';
     }).join('');
     return '<div class="gl-ch-premium-locales">'+stats+
       '<section class="gl-ch-premium-directory" aria-label="Empresas y locales">'+
-      '<header><div><h2>Locales</h2><p>Elegí una empresa y después un local.</p></div></header>'+
+      '<header><div><h2>Locales</h2><p>Elegí una empresa y después un local.</p></div></header>'+crearEmpresaForm()+
       (loading?fallback:'<div class="gl-ch-premium-company-grid">'+
         (cards||'<p class="gl-ch-premium-empty">No hay empresas disponibles.</p>')+'</div>')+
       '</section></div>';
@@ -472,7 +569,7 @@
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
-    const nav = TABS.map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const nav = TABS.filter(t=>t[0]!=='gestlok-chat'||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>').join('');
     const d = today();
     let body;
@@ -480,6 +577,7 @@
     else if (cur === 'empresas') body = '<div class="gl-ch-stack">' + (parts.companies || '') + (parts.prepare || '') + '</div>';
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
+    else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+chatAdminView()+'</div>';
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
@@ -487,7 +585,8 @@
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
-      cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' : 'Administración de GESTLOK';
+      cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
+      cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
@@ -511,11 +610,26 @@
   function goTab(v) {
     if (!validTab(v)) return;
     if(v !== 'chat-prueba') showroomExpandido = false;
+    if(v==='locales')void loadMicroapps();
     tab = v; store.set(v);
     api?.render();
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
+  document.addEventListener('submit',ev=>{
+    if(!ev.target?.matches?.('[data-ch-create-business]'))return;
+    ev.preventDefault();void crearEmpresa(ev.target);
+  });
   document.addEventListener('click', ev => {
+    const appAdd=ev.target.closest?.('[data-ch-app-add]');
+    if(appAdd&&premiumAdmin()){
+      ev.preventDefault();const tenant=appAdd.dataset.chAppAdd;
+      const select=document.querySelector('[data-ch-app-select="'+tenant+'"]');
+      if(select?.value)void asignarMicroapp(tenant,select.value,true);return;
+    }
+    const appRemove=ev.target.closest?.('[data-ch-app-remove]');
+    if(appRemove&&premiumAdmin()){
+      ev.preventDefault();void asignarMicroapp(appRemove.dataset.chAppRemove,appRemove.dataset.app,false);return;
+    }
     const collapse = ev.target.closest?.('[data-ch-collapse]');
     if (collapse && api?.isCreadora?.()) {
       ev.preventDefault();
