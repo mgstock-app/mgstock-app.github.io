@@ -9,7 +9,7 @@ describe('Mi local · inicio único de Perfumes',()=>{
    body:body.replaceAll('cb0dc04a-9a13-434f-a3d0-47f1d8f39670',tenant)
   }).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-  cy.visit('/');cy.wait('@fake');
+  cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
   cy.window().its('GestLokSupabase',{timeout:15000}).should('exist');
   cy.window().then(w=>{

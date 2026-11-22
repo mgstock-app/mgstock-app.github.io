@@ -4,7 +4,7 @@ describe('Tres codueños: mismas tarjetas y ambos locales',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  for(const email of owners)for(const local of ['munro','torcuato'])it(email+' abre '+local+' con permisos de dueño',()=>{
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
-  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
+  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
   cy.window().then(w=>{
    w.__staffModule=true;

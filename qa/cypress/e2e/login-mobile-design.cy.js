@@ -8,7 +8,7 @@ describe('GESTLOK: ingreso móvil aprobado',()=>{
       cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body:fake}).as('fakeAuth');
     });
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-    cy.visit('/');cy.wait('@fakeAuth');
+    cy.visit('/login/');cy.wait('@fakeAuth');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
     cy.get('#au-in').should('be.visible');
   };

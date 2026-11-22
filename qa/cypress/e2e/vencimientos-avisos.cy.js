@@ -9,7 +9,7 @@ describe("GestLok · Vencimientos y avisos nuevos, datos de prueba solamente",()
       statusCode:200,headers:{"content-type":"application/javascript"},body:mock
     }).as("fakeDb"));
     cy.intercept("**/*.supabase.co/**",{forceNetworkError:true});
-    cy.visit("/");
+    cy.visit("/login/");
     cy.wait("@fakeDb");
     cy.get(".gl-intro",{timeout:10000}).should("not.be.visible");
     cy.get("#au-in").should("be.visible");

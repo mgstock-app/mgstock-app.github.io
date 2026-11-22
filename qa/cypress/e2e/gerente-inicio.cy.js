@@ -1,7 +1,7 @@
 /* global Cypress, describe, it, cy */
 function start(){
  cy.task('mockSupabase').then(mock=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body:mock}).as('mockSupabase'));
- cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@mockSupabase');
+ cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@mockSupabase');
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
 }
 function login(email){

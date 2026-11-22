@@ -16,7 +16,9 @@
     ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
-    ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>']
+    ['herramientas', 'Herramientas', '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>'],
+    // Mensajes del formulario de Contacto de gestlok.com.ar (gestlok-contacto-web.js).
+    ['contacto', 'Mensajes web', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>']
   ]);
   const MOLINO_TENANT = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
   const MOLINO_NEXT = 'gestlok:creator-molino-microapp:v1';
@@ -398,7 +400,8 @@
       ['Locales', 'locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9"/>'],
       ['Herramientas', 'herramientas', '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>'],
       ['Prueba GESTLOK Chat', 'chat-prueba', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
-      ['Reseñas', 'resenas', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>']
+      ['Reseñas', 'resenas', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
+      ['Mensajes web', 'contacto', '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>']
     ].map(([name,id,icon]) => '<button type="button" class="gl-ch-shortcut" data-ch-tab="' + id + '">' +
       '<span class="gl-ch-ico b">' + svg(icon, 22) + '</span><b>' + name + '</b><span aria-hidden="true">›</span></button>').join('');
     return '<div class="gl-ch-creator-start">' +
@@ -566,11 +569,13 @@
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
     const cur = validTab(tab) && (tab!=='gestlok-chat'||premiumAdmin()) ? tab : 'inicio';
+    void window.GestLokContactoWeb?.prefetch?.();
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
     const nav = TABS.filter(t=>t[0]!=='gestlok-chat'||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
-      (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') + '</button>').join('');
+      (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') +
+      (t[0] === 'contacto' && window.GestLokContactoWeb?.unread?.() ? '<b>' + esc(window.GestLokContactoWeb.unread()) + '</b>' : '') + '</button>').join('');
     const d = today();
     let body;
     if (cur === 'inicio') body = home(p);
@@ -581,12 +586,14 @@
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
+    else if (cur === 'contacto') body = '<div class="gl-ch-stack">' + (window.GestLokContactoWeb?.view?.() || '<section class="gl-admin-card"><p role="status">Mensajes web se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
     else if (cur === 'herramientas') body = '<div class="gl-ch-stack">' + chatAdminView() + dailySettingsView() + (parts.tools || '') + '</div>';
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
-      cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' : 'Administración de GESTLOK';
+      cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' :
+      cur === 'contacto' ? 'Mensajes del formulario de Contacto de gestlok.com.ar.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
       '<aside class="gl-ch-side" aria-label="Administración GESTLOK"><div class="gl-ch-logo"><img src="icons/gestlok-wordmark.svg" alt="GESTLOK" width="170" height="48"><small>CREADORA · ADMIN</small></div>' +
@@ -611,6 +618,7 @@
     if (!validTab(v) || (v==='gestlok-chat'&&!premiumAdmin())) return;
     if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales')void loadMicroapps(true);
+    if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
     tab = v; store.set(v);
     api?.render();
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
@@ -691,7 +699,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; window.GestLokNfcQr?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });

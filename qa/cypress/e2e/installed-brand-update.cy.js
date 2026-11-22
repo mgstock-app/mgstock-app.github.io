@@ -4,7 +4,7 @@ describe("GestLok · actualización de marca sin reinstalar la PWA",()=>{
     if(error.message.includes("Minified React error #418"))return false;
   });
   it("mantiene el enlace original al manifest para instalaciones existentes",()=>{
-    cy.visit("/");
+    cy.visit("/login/");
     cy.get('link[rel="manifest"]').should("have.attr","href","/manifest.webmanifest");
     cy.title().should("eq","GESTLOK | Software de gestión de negocios y locales");
     cy.get('link[rel="apple-touch-icon"]').should("have.attr","href").and("include","gestlok-apple-v2-180.png");

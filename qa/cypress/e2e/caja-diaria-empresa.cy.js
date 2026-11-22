@@ -8,7 +8,7 @@ const iniciar = (email, {habilitada = true, cajaApp = false, viewport = [390, 84
     cy.intercept('GET', '**/vendor/supabase.js', {statusCode: 200, headers: {'content-type': 'application/javascript'}, body: fake}).as('mock');
   });
   cy.intercept('**/*.supabase.co/**', {forceNetworkError: true});
-  cy.visit('/');
+  cy.visit('/login/');
   cy.wait('@mock');
   cy.get('.gl-intro', {timeout: 15000}).should('not.be.visible');
   // Esperar al simulador y controlador: la intro breve ya no oculta su carga.

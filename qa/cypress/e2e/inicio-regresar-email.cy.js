@@ -6,7 +6,7 @@ function launch() {
     cy.intercept('GET', '**/vendor/supabase.js', {statusCode:200, headers:{'content-type':'application/javascript'}, body:mock}).as('fakeSupabase');
   });
   cy.intercept('**/*.supabase.co/**', {forceNetworkError:true});
-  cy.visit('/');
+  cy.visit('/login/');
   cy.wait('@fakeSupabase');
   cy.get('.gl-intro', {timeout:12000}).should('not.be.visible');
 }
@@ -49,7 +49,7 @@ describe('Inicio compacto, «Regresar» y email recordado', () => {
   it('al volver a entrar, el email de la última sesión ya está completo (la contraseña no)', () => {
     launch(); login('gerente.munro@example.com');
     cy.window().its('localStorage').invoke('getItem', 'gestlok:ultimo-email').should('eq', 'gerente.munro@example.com');
-    cy.visit('/');
+    cy.visit('/login/');
     cy.get('#au-in', {timeout:15000}).should('be.visible');
     cy.get('#au-email').should('have.value', 'gerente.munro@example.com');
     cy.get('#au-pass').should('have.value', '');

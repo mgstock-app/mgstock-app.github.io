@@ -33,7 +33,7 @@ test("pantalla de ingreso y caché públicos no muestran la marca privada", () =
   const auth = read("public/stock/auth.js");
   const sw = read("scripts/sw-template.js");
   const builtSw = read("public/sw.js");
-  const page = read("app/page.tsx");
+  const page = read("app/login/page.tsx");
   assert.match(markup, /gestlok-wordmark\.svg/);
   assert.doesNotMatch(markup, /img\/mi-gusto|alt="Mi Gusto"/i);
   assert.doesNotMatch(auth, /Mi Gusto/);

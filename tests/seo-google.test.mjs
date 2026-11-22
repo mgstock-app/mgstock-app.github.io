@@ -19,7 +19,7 @@ test('La portada tiene un título descriptivo y URL canónica GESTLOK',()=>{
   assert.match(layout,/alternates:\s*\{ canonical: "\/" \}/);
   assert.match(layout,/openGraph:/);
   assert.doesNotMatch(layout,/metadataBase: new URL\(process\.env\.NEXT_PUBLIC_SITE_URL \|\| "http:\/\/localhost:3000"\)/);
-  assert.match(read('app/page.tsx'),/href="\/conocer\/"/);
+  assert.match(read('app/login/page.tsx'),/href="\/conocer\/"/);
 });
 
 test('Página de presentación SEO pública no da acceso a módulos protegidos',()=>{

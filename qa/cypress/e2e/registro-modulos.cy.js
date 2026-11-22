@@ -2,7 +2,7 @@
 function launch(){
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-  cy.visit('/');cy.wait('@fake');
+  cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
 }
 function login(email){cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();}

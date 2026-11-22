@@ -13,6 +13,8 @@ export default function Home() {
       <Link className="gestlok-demo-entry" href="/conocer/#video">Ver video de Plan Scanner · 30 segundos</Link>
       <Link className="gestlok-public-about-entry" href="/conocer/">Conocé GESTLOK y sus funciones</Link>
       <StockRuntime />
+      {/* «Registrarme» del inicio publicitario: abre directo «Crear mi cuenta» (solo sin sesión). */}
+      <script dangerouslySetInnerHTML={{__html: "(function(){if(location.hash!=='#registrarme')return;var n=0,t=setInterval(function(){var b=document.querySelector('[data-au=\"up\"]');if(b&&b.offsetParent!==null){clearInterval(t);try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}b.click();}else if(++n>80){clearInterval(t);try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}}},150);})();"}} />
       <nav className="stock-legal-nav" aria-label="Información legal de GestLok">
         <a href={`${basePath}/privacidad.html`}>Privacidad</a>
         <a href={`${basePath}/terminos.html`}>Condiciones de uso</a>

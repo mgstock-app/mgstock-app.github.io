@@ -30,7 +30,7 @@ test('Tablero Munro usa datos iniciales de la captura, historial acumulativo y n
 });
 
 test('Se oculta el pie legal flotante para usuarios dentro de GestLok, manteniendo acceso previo al login', () => {
-  const page = file('app/page.tsx');
+  const page = file('app/login/page.tsx');
   assert.match(page, /\.stock-legal-nav \{ display:none/);
   assert.match(page, /html\.auth-on \.stock-legal-nav \{ display:flex/);
 });

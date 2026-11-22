@@ -6,7 +6,7 @@ const MOLINO = '6c8717ea-5f78-426b-9458-74a5dcac6e4e';
 function login(email, molino) {
   cy.task('mockSupabase').then(body => cy.intercept('GET', '**/vendor/supabase.js', { statusCode: 200, headers: { 'content-type': 'application/javascript' }, body }).as('fake'));
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
-  cy.visit('/'); cy.wait('@fake');
+  cy.visit('/login/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
   cy.window().then(w => {
     w.__dashboard = true;

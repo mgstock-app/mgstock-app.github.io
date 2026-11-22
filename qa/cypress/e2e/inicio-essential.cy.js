@@ -5,7 +5,7 @@ function start(){
   statusCode:200,headers:{'content-type':'application/javascript'},body:mock
  }).as('mockSupabase'));
  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
- cy.visit('/');
+ cy.visit('/login/');
  cy.wait('@mockSupabase');
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
 }

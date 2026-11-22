@@ -4,7 +4,7 @@
 function start(email = 'dueno@example.com', staff = false) {
   cy.task('mockSupabase').then(body => cy.intercept('GET', '**/vendor/supabase.js', { statusCode: 200, headers: { 'content-type': 'application/javascript' }, body }).as('fake'));
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
-  cy.visit('/'); cy.wait('@fake');
+  cy.visit('/login/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
   // La portada puede aparecer antes de que el backend simulado y app.js
   // terminen de inicializarse. Esperar datos reales del fixture de prueba.

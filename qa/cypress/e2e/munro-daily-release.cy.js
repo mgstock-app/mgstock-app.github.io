@@ -17,7 +17,7 @@ function launch(tenant = TENANT) {
     }).as('fakeSupabase');
   });
   cy.intercept('**/*.supabase.co/**', {forceNetworkError:true});
-  cy.visit('/');
+  cy.visit('/login/');
   cy.wait('@fakeSupabase');
   cy.get('.gl-intro', {timeout:12000}).should('not.be.visible');
   cy.get('#au-in').should('be.visible');

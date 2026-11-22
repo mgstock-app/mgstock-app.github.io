@@ -9,7 +9,7 @@ describe("GestLok · avisos de vencimientos por sucursal en Inicio",()=>{
       statusCode:200,headers:{"content-type":"application/javascript"},body:mock
     }).as("fakeSupabase"));
     cy.intercept("**/*.supabase.co/**",{forceNetworkError:true});
-    cy.visit("/");
+    cy.visit("/login/");
     cy.wait("@fakeSupabase");
     cy.get(".gl-intro",{timeout:10000}).should("not.be.visible");
   });
