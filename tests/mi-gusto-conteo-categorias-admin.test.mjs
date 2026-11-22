@@ -16,8 +16,8 @@ async function app({local='munro',role='creadora'}={}){
   products:[{id:'p1',name:'Ajo',section:'SALSAS',position:201,active:true,units_per_chapa:0},
    {id:'p2',name:'Ketchup',section:'SALSAS',position:202,active:true,units_per_chapa:0},
    {id:'p3',name:'Carne',section:'EMPANADAS',position:101,active:true,units_per_chapa:30}],
-  settings:{locked:true,hidden_sections:['SALSAS']},
-  counts:[{day,shift:'manana_entrada',status:'borrador',hidden_sections:['SALSAS'],
+  settings:{locked:true,hidden_sections:[]},
+  counts:[{day,shift:'manana_entrada',status:'borrador',hidden_sections:[],
     data:{},decomiso:{},consumption:[],waste:[],responsable:'Cami'}],
   history:[{day:'2026-11-19',shift:'noche_salida',status:'finalizado',
      hidden_sections:[],data:{p1:{v1:{qty:8}}}}]
@@ -87,6 +87,8 @@ for(const local of ['munro','torcuato']){
  });
  test(local+': renombrar SALSAS conserva ids, cantidades e historial',async()=>{
   const x=await app({local});
+  x.db.settings.hidden_sections=['SALSAS'];
+  x.db.counts[0].hidden_sections=['SALSAS'];
   await x.click('data-gcm-rename-category',{gcmRenameCategory:'SALSAS'});
   assert.equal(x.dialog.open,true);
   assert.equal(x.ui.input.value,'SALSAS');
