@@ -50,6 +50,39 @@ for(const loc of ['munro','torcuato']){
  });
 }
 
+
+for(const local of ['munro','torcuato']){
+ test('Conteo '+local+': Categorías usa chevrons y permite plegar/desplegar sin escribir datos',async()=>{
+  const a=mount(local);a.mod.view();await tick();
+  const original=a.mod.view();
+  assert.match(original,/<strong>Categorías<\/strong><button[^>]*data-gcm-category-close[^>]*><span aria-hidden="true">▾<\/span><\/button>/);
+  assert.match(original,/data-gcm-category-toggle[^>]*>Categorías <span[^>]*>▸<\/span><\/button>/);
+  assert.doesNotMatch(original,/>\+ Categorías<|>−<\/button>/);
+  const classes=new Set(),attrs={};
+  const list={
+   add:name=>classes.add(name),remove:name=>classes.delete(name),
+   contains:name=>classes.has(name),
+   toggle:(name,on)=>{if(on)classes.add(name);else classes.delete(name);}
+  };
+  const toggle={innerHTML:'',setAttribute:(key,value)=>{attrs[key]=value;}};
+  const root={classList:list,querySelector:selector=>selector==='.gcm-category-toggle'?toggle:null};
+  const clicks=a.events.get('click');
+  const close={hasAttribute:name=>name==='data-gcm-category-close'};
+  await clicks({target:{closest:selector=>selector==='.gcm-page'?root:selector==='button'?close:null}});
+  assert.equal(classes.has('is-category-nav-collapsed'),true);
+  assert.match(a.mod.view(),/is-category-nav-collapsed/);
+  assert.match(toggle.innerHTML,/Categorías .*▸/);
+  assert.equal(attrs['aria-expanded'],'false');
+  const reopen={innerHTML:'',hasAttribute:name=>name==='data-gcm-category-toggle',
+   setAttribute:(key,value)=>{attrs[key]=value;}};
+  await clicks({target:{closest:selector=>selector==='.gcm-page'?root:selector==='button'?reopen:null}});
+  assert.equal(classes.has('is-category-nav-collapsed'),false);
+  assert.equal(classes.has('is-category-nav-open'),true);
+  assert.match(reopen.innerHTML,/Categorías .*▾/);
+  assert.equal(attrs['aria-expanded'],'true');
+  assert.equal(a.calls.length,1,'No debe guardar ni consultar nuevamente al abrir y cerrar categorías');
+ });
+}
 test('Navegar por categoría abre su cuadro y se desplaza sin guardar ni modificar cantidades',async()=>{
  const a=mount('munro');a.mod.view();await tick();
  let navigated=0;
