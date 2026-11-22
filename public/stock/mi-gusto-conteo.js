@@ -863,6 +863,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
+ (canCatalog?'<button type="button" class="gcm-rename-section" data-gcm-rename-category="'+esc(name)+'" aria-label="Cambiar nombre de '+esc(name)+'" title="Cambiar nombre de categoría">Renombrar</button>':'')+
  (canCatalog&&items.some(p=>p.active)?'<button type="button" class="gcm-hide-section" data-gcm-remove-products-open="'+esc(name)+'" aria-haspopup="dialog" aria-label="Quitar productos de '+esc(name)+'" title="Elegir productos para quitar de esta categoría">Quitar</button>':'')+
  '</span></summary>'+
  (canCatalog?'<dialog class="gcm-remove-products-dialog" aria-label="Quitar productos de '+esc(name)+'">'+
@@ -1000,9 +1001,19 @@ function view(){
  // Si ya hubo unidades cargadas en este turno, conservar la fila para poder revisarlas.
  const list=(snapshot?.products||[]).filter(p=>p.active||recordedTotal(rec,p)>0);
  // La administradora también puede recuperar categorías sin productos activos.
- const categories=[...new Set((admin()?snapshot?.products||[]:list).map(p=>p.section).filter(Boolean))]
-  .sort((a,b)=>shift==='manana_entrada'?
-   (/EMPANADA/i.test(a)?0:/PIZZA/i.test(a)?1:2)-(/EMPANADA/i.test(b)?0:/PIZZA/i.test(b)?1:2):0);
+ // Catálogo central por sucursal: admite categorías vacías creadas por la administradora.
+ const categoryPositions=new Map((snapshot?.categories||[]).map(c=>[c.name,Number(c.position)]));
+ const categories=[...new Set([
+   ...(Array.isArray(snapshot?.categories)?snapshot.categories.map(c=>c.name):[]),
+   ...(admin()?snapshot?.products||[]:list).map(p=>p.section)
+  ].filter(Boolean))]
+  .sort((a,b)=>{
+   const pa=categoryPositions.get(a),pb=categoryPositions.get(b);
+   // La categoría conserva su lugar al cambiar de nombre.
+   if(Number.isFinite(pa)&&Number.isFinite(pb))return pa-pb;
+   return shift==='manana_entrada'?
+    (/EMPANADA/i.test(a)?0:/PIZZA/i.test(a)?1:2)-(/EMPANADA/i.test(b)?0:/PIZZA/i.test(b)?1:2):0;
+  });
  const hiddenSource=sectionsLocked&&!historyRecord?snapshot?.settings?.hidden_sections:rec.hidden_sections;
  const hidden=new Set(Array.isArray(hiddenSource)?hiddenSource:[]);
  const visibleCategories=categories.filter(name=>!hidden.has(name)||shift==='manana_entrada'&&
@@ -1031,6 +1042,16 @@ function view(){
  (shift==='manana_entrada'?'<p class="gcm-morning-quick-note">Comparación nocturna: revisá las filas rojas. El detalle y los OK están después de la planilla.</p>':'')+
  '<div class="gcm-count-layout">'+categorySidebar(visibleCategories,list)+
  '<main class="gcm-count-main">'+expiryRuler(showDecomiso)+
+ (admin()&&editable()&&!busy?'<div class="gcm-category-admin-bar"><button type="button" data-gcm-add-category aria-haspopup="dialog">+ Agregar categoría</button>'+
+ '<span>Las categorías son propias de '+esc(localLabel())+'.</span></div>'+
+ '<dialog class="gcm-category-editor-dialog" aria-label="Crear o cambiar nombre de categoría">'+
+ '<h3 data-gcm-category-editor-title>Agregar categoría</h3>'+
+ '<p data-gcm-category-editor-note>La categoría aparecerá en los tres turnos, sin productos cargados.</p>'+
+ '<label>Nombre de la categoría<input type="text" maxlength="70" minlength="3" autocomplete="off" data-gcm-category-editor-name placeholder="Ej.: POSTRES" required></label>'+
+ '<p class="gcm-category-editor-error" role="alert" data-gcm-category-editor-error aria-live="polite"></p>'+
+ '<div class="gcm-category-editor-actions"><button type="button" data-gcm-category-editor-save>Guardar</button>'+
+ '<button type="button" data-gcm-category-editor-cancel>Cancelar</button></div>'+
+ '</dialog>':'')+
  (canManageCategories?'<details class="gcm-section-config"><summary>Personalizar secciones'+(hidden.size?' · '+hidden.size+' ocultas':'')+'</summary>'+
  '<div class="gcm-config-options">'+categories.map(name=>
   '<label><input type="checkbox" data-gcm-section-visible="'+esc(name)+'"'+(!hidden.has(name)?' checked':'')+
@@ -1229,13 +1250,84 @@ document.addEventListener('click',async e=>{
   target.scrollIntoView?.({behavior:'smooth',block:'start'});
   return;
  }
+ if(el.hasAttribute('data-gcm-add-category')||el.hasAttribute('data-gcm-rename-category')){
+  e.preventDefault();
+  if(el.hasAttribute('data-gcm-rename-category'))e.stopPropagation(); // Dentro del summary.
+  if(!admin()||!editable()||busy||!snapshot||historyMode)return;
+  const oldName=el.dataset.gcmRenameCategory||'';
+  if(oldName&&!snapshot.categories?.some(c=>c.name===oldName)&&
+     !snapshot.products.some(p=>p.section===oldName))return;
+  const dialog=root.querySelector('.gcm-category-editor-dialog');
+  if(!dialog||dialog.open||typeof dialog.showModal!=='function')return;
+  dialog.dataset.oldCategory=oldName;
+  const title=dialog.querySelector('[data-gcm-category-editor-title]');
+  const note=dialog.querySelector('[data-gcm-category-editor-note]');
+  const input=dialog.querySelector('[data-gcm-category-editor-name]');
+  const status=dialog.querySelector('[data-gcm-category-editor-error]');
+  if(title)title.textContent=oldName?'Cambiar nombre de categoría':'Agregar categoría';
+  if(note)note.textContent=oldName?
+   'Se actualizará el nombre para todos los productos de esta categoría en '+localLabel()+'. Las cantidades e historiales se conservan.':
+   'La nueva categoría aparecerá vacía en los tres turnos de '+localLabel()+'.';
+  if(input)input.value=oldName;
+  if(status)status.textContent='';
+  dialog.showModal();
+  input?.focus();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-category-editor-cancel')){
+  e.preventDefault();
+  el.closest('.gcm-category-editor-dialog')?.close();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-category-editor-save')){
+  e.preventDefault();
+  if(!admin()||!editable()||busy||!snapshot||historyMode)return;
+  const dialog=el.closest('.gcm-category-editor-dialog');
+  if(!dialog?.open)return;
+  const oldName=dialog.dataset.oldCategory||'';
+  const input=dialog.querySelector('[data-gcm-category-editor-name]');
+  const status=dialog.querySelector('[data-gcm-category-editor-error]');
+  const name=String(input?.value||'').trim();
+  const fail=text=>{if(status)status.textContent=text;input?.focus();};
+  if(name.length<3||name.length>70||name.includes('/')||!/[a-záéíóúüñ0-9]/i.test(name)){
+   fail('Ingresá un nombre válido de 3 a 70 caracteres.');return;
+  }
+  const known=(snapshot.categories?.map(c=>c.name)||snapshot.products.map(p=>p.section));
+  if(known.some(n=>n!==oldName&&n.toLocaleLowerCase('es')===name.toLocaleLowerCase('es'))){
+   fail('Ya existe una categoría con ese nombre.');return;
+  }
+  if(oldName===name){dialog.close();return;}
+  if(oldName&&!window.confirm('¿Cambiar «'+oldName+'» por «'+name+'» en '+localLabel()+
+   '? Se actualizarán los productos de la categoría. Las cantidades históricas se conservarán.'))return;
+  busy=true;el.disabled=true;if(status)status.textContent='Guardando categoría…';
+  const atLocal=activeLocal(),atGeneration=generation;
+  try{
+   const response=await rpc('gestlok_munro_conteo_save_category',
+    {p_name:name,p_old_name:oldName||null});
+   if(!response?.ok||response?.name!==name)throw Error('El servidor no confirmó el cambio de categoría.');
+   if(atLocal!==activeLocal()||atGeneration!==generation)throw Error('Cambió la sucursal. Revisá el resultado antes de continuar.');
+   if(oldName)opened.delete(oldName);
+   opened.add(name);
+   dialog.close();error='';
+   busy=false;
+   await refresh();
+   api?.toast?.(oldName?'Categoría renombrada correctamente.':'Categoría agregada a '+localLabel()+'.');
+  }catch(err){
+   const message=err.message||'No se pudo guardar la categoría.';
+   if(status)status.textContent=message;
+   api?.toast?.(message);
+  }finally{
+   busy=false;el.disabled=false;
+  }
+  return;
+ }
  if(el.hasAttribute('data-gcm-add-product-open')){
   e.preventDefault();
   if(!admin()||!editable()||busy||!snapshot||historyMode)return;
   const section=el.dataset.gcmAddProductOpen;
   const wrapper=el.closest('.gcm-section');
   if(!wrapper||wrapper.dataset.gcmSection!==section||
-     !snapshot.products.some(p=>p.section===section))return;
+     !(snapshot.categories?.some(c=>c.name===section)||snapshot.products.some(p=>p.section===section)))return;
   const dialog=wrapper.querySelector('.gcm-add-product-dialog');
   if(dialog&&!dialog.open&&typeof dialog.showModal==='function'){
    dialog.showModal();
@@ -1253,7 +1345,8 @@ document.addEventListener('click',async e=>{
   if(!admin()||!editable()||busy||!snapshot||historyMode)return;
   const dialog=el.closest('.gcm-add-product-dialog');
   const section=el.closest('.gcm-section')?.dataset.gcmSection;
-  if(!dialog||!section||!snapshot.products.some(p=>p.section===section))return;
+  if(!dialog||!section||
+     !(snapshot.categories?.some(c=>c.name===section)||snapshot.products.some(p=>p.section===section)))return;
   const input=dialog.querySelector('[data-gcm-new-product-name]');
   const type=dialog.querySelector('[data-gcm-new-product-type]');
   const status=dialog.querySelector('[data-gcm-add-product-error]');
