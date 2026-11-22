@@ -110,7 +110,9 @@ test('solo quedan habilitados pack enteros de 1 a 1000 unidades',async()=>{
 test('SQL conserva equivalencia por turno y separa permisos locales',()=>{
  assert.match(sql,/create table if not exists gestlok_munro_conteo_private\.pack_rate_snapshots/);
  assert.match(sql,/create table if not exists gestlok_torcuato_conteo_private\.pack_rate_snapshots/);
- assert.match(sql,/require_access\(true,false\)/);
+ assert.match(sql,/require_access\(false,false\)/);
+ assert.match(sql,/public\.puede_editar_local\('munro'\)/);
+ assert.match(sql,/public\.puede_editar_local\('torcuato'\)/);
  assert.match(sql,/public\.mi_rol\(\) not in \('creadora','dueno','gerente'\)/);
  assert.match(sql,/on conflict\(day,shift,product_id\) do nothing/);
  assert.match(sql,/status='borrador'/);
