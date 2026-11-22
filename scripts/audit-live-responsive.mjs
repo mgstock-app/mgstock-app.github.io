@@ -7,6 +7,8 @@ import { execFileSync } from 'node:child_process';
 const require = createRequire('/tmp/gestlok-live-audit/package.json');
 const { chromium } = require('playwright-core');
 const origin = 'https://gestlok.com.ar/';
+// La raíz es el inicio publicitario; la pantalla de ingreso (#au-in) vive en /login/.
+const ingreso = origin + 'login/';
 const target = 'artifacts/gestlok-live';
 await mkdir(target, {recursive:true});
 const configurations=[
@@ -34,7 +36,7 @@ try{
   const entry={name:config.name,viewport:config.width,status:'not-checked',url:'',issues:[],consoleErrors:[]};
   page.on('pageerror',e=>entry.consoleErrors.push(e.message.slice(0,200)));
   try{
-    const response=await page.goto(origin,{waitUntil:'domcontentloaded',timeout:40000});
+    const response=await page.goto(ingreso,{waitUntil:'domcontentloaded',timeout:40000});
     entry.httpStatus=response?.status()??null;
     entry.url=page.url();
     if(!response?.ok())entry.issues.push('HTTP '+entry.httpStatus);
