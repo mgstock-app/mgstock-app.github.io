@@ -25,7 +25,8 @@ test('una misma casilla permite chapas y unidades sueltas',()=>{
  assert.match(source,/cell\.chapas/);
  assert.match(source,/cell\[kind\]=val/);
  assert.match(source,/p_chapas:newCell\.chapas,p_sueltas:newCell\.sueltas/);
- assert.match(source,/v\.chapas\*p\.units_per_chapa\+v\.sueltas/);
+ assert.match(source,/const amount=\(p,v\)=>p\.units_per_chapa>0\?/);
+ assert.match(source,/\(Number\(v\.chapas\)\|\|0\)\*p\.units_per_chapa\+\(Number\(v\.sueltas\)\|\|0\)\+\(Number\(v\.qty\)\|\|0\)/);
 });
 test('catálogo editable solo por creadora y tres turnos por sucursal',()=>{
  assert.match(source,/LOCALES\.includes\(api\.S\?\.local\)/);
