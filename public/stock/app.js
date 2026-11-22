@@ -324,6 +324,7 @@ function fPend(){ return fItems().filter(it => { const d = S.fdraft[it.id]; if (
 const fSin = it => { const l = fVal(it, 'l'); return l != null ? l === 0 : !!it.sinStock; };
 const bloqueOf = it => Math.max(1, Math.round(num(it.bloque) || 1));
 const canW = () => !!S.db && !S.ro;
+const miGustoOwnerHistorialSoloLectura = () => S.me?.tenant_id === MI_GUSTO_TENANT && miRol() === 'dueno';
 const isCreadora = () => !!(S.me && S.me.isOwner);
 function needWrite(){
   if (!S.db){ toast('Iniciá sesión para guardar.', true); return false; }
@@ -2187,7 +2188,7 @@ function histCard(c, q){
       <div class="hc-k"><span class="pill ${ch.length ? 'acc' : ''}">${plural(ch.length, 'cambio', 'cambios')}</span>${sinN ? `<span class="pill crit">${sinN} sin stock</span>` : ''}</div></div>
     ${c.nota ? `<p class="hc-n">${esc(c.nota)}</p>` : ''}
     ${open ? `<div class="hc-t">${shown.length ? `<div class="mv hd"><div>Producto</div><span class="m-a">Antes</span><span>Después</span><span>Dif.</span></div>${shown.map(mvRow).join('')}` : `<div class="mv"><div><b>Sin diferencias</b><small>El conteo coincidió con el stock.</small></div></div>`}${sinN ? `<div class="mv"><div><b style="color:var(--crit)">Sin stock en ese momento</b><small>${esc((c.sinStock||[]).join(', '))}</small></div></div>` : ''}</div>` : ''}
-    <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar detalle' : 'Ver detalle'}</button>${isLast && canW() ? `<button class="btn sm" data-act="corregir" data-id="${esc(c.id)}">${ic('edit')}Corregir</button>` : ''}</div>
+    <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar detalle' : 'Ver detalle'}</button>${isLast && canW() && !miGustoOwnerHistorialSoloLectura() ? `<button class="btn sm" data-act="corregir" data-id="${esc(c.id)}">${ic('edit')}Corregir</button>` : ''}</div>
   </article>`;
 }
 function mvRow(x){
@@ -2581,7 +2582,7 @@ function openConfirm(title, text, okLabel, act, danger){
   openPanel(`<div class="pn-h"><div><h3>${esc(title)}</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div><div class="pn-b"><p class="lead">${text}</p></div><div class="pn-f"><button class="btn" data-act="close">Cancelar</button><button class="btn ${danger ? 'danger solid' : 'primary'}" data-act="${act}">${esc(okLabel)}</button></div>`, 'dlg');
 }
 function corregir(id, force){
-  const c = S.conteos.find(x => x.id === id); if (!c || !needWrite()) return;
+  const c = S.conteos.find(x => x.id === id); if (!c || !needWrite() || miGustoOwnerHistorialSoloLectura()) return;
   const main = withCtx('conteo', () => ({pend:pendientes().length, cont:draftCount()}));
   if (!force && (main.pend || main.cont)){ S._corr = id; openConfirm('Corregir conteo', 'Tenés productos contados sin guardar. Si corregís el conteo anterior, ese avance se descarta.', 'Descartar y corregir', 'corr-ok', true); return; }
   withCtx('conteo', clearDraftCtx);
@@ -4162,7 +4163,7 @@ window.GestLokMunroMotos?.attach({S,C,w,render,canW,toast,fail,miRol,misLocales}
 window.GestLokResenas?.attach({S,render,miRol,misLocales});
 window.GestLokReclamosInternos?.attach({S,render,miRol,misLocales});
 window.GestLokMiGustoOnline?.attach({S,render,miRol,misLocales,toast});
-window.GestLokMunroConteo?.attach({S,render,miRol,misLocales,toast});
+window.GestLokMunroConteo?.attach({S,render,miRol,misLocales,toast,go});
 window.GestLokMiGustoOrders?.attach({S,render,miRol,misLocales,toast});
 window.GestLokCommerce?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
 window.GestLokTienda?.attach({S,C,render,canW,toast,fail,miRol,localNombre,go});
