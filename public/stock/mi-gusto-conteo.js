@@ -28,7 +28,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
  // el conteo debe decir «caja» sin modificar el formato del servidor.
  const packWord=p=>p?.pack_kind==='caja'?'caja':p?.pack_kind==='chapa'?'chapa':
  (p?.units_per_chapa===45&&/caja palito/i.test(p.name)||
-  p?.units_per_chapa>0&&/^(franui|pink|le\\s*banana)/i.test(p?.name||''))?'caja':'chapa';
+  p?.units_per_chapa>0&&/^(franui|pink|le\s*banana)/i.test(p?.name||''))?'caja':'chapa';
 const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
@@ -521,7 +521,8 @@ function historyCorrectionPanel(rec){
  // También se pueden corregir artículos activos sin datos en este turno cerrado.
  const usable=catalog.filter(p=>p.active||present.has(p.id));
  if(!historyEditProduct||!usable.some(p=>p.id===historyEditProduct))historyEditProduct=usable[0]?.id||'';
- const p=usable.find(x=>x.id===historyEditProduct);
+ const baseProduct=usable.find(x=>x.id===historyEditProduct);
+  const p=baseProduct?historicProduct(rec,baseProduct):null;
  const kind=historyEditKind;
  const idx=kind==='decomiso'?0:historyEditVto;
  const prev=kind==='cell'?rec.data?.[p?.id]?.['v'+idx]:
@@ -1686,7 +1687,8 @@ document.addEventListener('click',async e=>{
    expected=manualSinStock(rec,pid);
   }else if(kind==='cell'||kind==='decomiso'){
    pid=historyEditProduct;index=kind==='cell'?historyEditVto:0;
-   const p=snapshot?.products?.find(x=>x.id===pid);
+   const baseProduct=snapshot?.products?.find(x=>x.id===pid);
+   const p=baseProduct?historicProduct(rec,baseProduct):null;
    if(!p){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
    const current=kind==='cell'?rec.data?.[pid]?.['v'+index]:rec.decomiso?.[pid];
    expected=current===undefined?null:current;
@@ -1900,6 +1902,13 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',async e=>{
  const input=e.target,root=input.closest?.('.gcm-page');
  if(!root||!allowed())return;
+ if(input.hasAttribute('data-gcm-new-product-type')||input.hasAttribute('data-gcm-product-config-type')){
+  const add=input.hasAttribute('data-gcm-new-product-type');
+  const dialog=input.closest(add?'.gcm-add-product-dialog':'.gcm-product-config-dialog');
+  const wrap=dialog?.querySelector(add?'[data-gcm-new-product-pack-wrap]':'[data-gcm-product-config-pack-wrap]');
+  if(wrap)wrap.hidden=input.value!=='1';
+  return;
+ }
  if(input.id==='gcm-history-month'){
   if(!historyMode||historyRecord||historyLoading)return;
   const month=input.value;
