@@ -837,6 +837,60 @@ function updateCategoryFromScroll(){
  if(current)selectCategoryButton(root,current.dataset.gcmSection||current.dataset.gcmKind);
 }
 
+
+function productConfigDialog(){
+ return '<dialog class="gcm-product-config-dialog" aria-label="Editar unidades y presentación">'+
+ '<h3>Configurar producto</h3><p data-gcm-product-config-title></p>'+
+ '<label>Cómo se cuenta<select data-gcm-product-config-type>'+
+ '<option value="0">Por unidades</option>'+
+ '<option value="1">Por caja/pack cerrado y unidades sueltas</option></select></label>'+
+ '<div data-gcm-product-config-pack-wrap>'+
+ '<label>Unidades que trae una caja/pack cerrado'+
+ '<input type="number" min="1" max="1000" step="1" inputmode="numeric" data-gcm-product-config-pack-units></label>'+
+ '<label>Nombre de la presentación<select data-gcm-product-config-kind>'+
+ '<option value="caja">Caja / pack</option><option value="chapa">Chapa</option></select></label></div>'+
+ '<p>La equivalencia nueva se utiliza en los próximos conteos. Los registros cerrados conservan la anterior.</p>'+
+ '<p role="alert" class="gcm-product-config-error" data-gcm-product-config-error></p>'+
+ '<div class="gcm-product-config-actions">'+
+ '<button type="button" data-gcm-product-config-save>Guardar presentación</button>'+
+ '<button type="button" data-gcm-product-config-cancel>Cancelar</button></div></dialog>';
+}
+function ownerCatalogView(){
+ const categories=(snapshot?.categories||[]).map(c=>c.name);
+ const names=[...new Set([...categories,...(snapshot?.products||[]).map(p=>p.section)])].filter(Boolean);
+ const sections=names.map(section=>{
+  const products=(snapshot?.products||[]).filter(p=>p.active&&p.section===section);
+  return '<section class="gcm-owner-catalog-section gcm-section" data-gcm-section="'+esc(section)+'">'+
+   '<h3>'+esc(section)+' <small>'+products.length+' productos</small></h3>'+
+   '<button type="button" class="gcm-add-product-trigger" data-gcm-add-product-open="'+esc(section)+'">+ Agregar producto</button>'+
+   '<dialog class="gcm-add-product-dialog" aria-label="Agregar producto en '+esc(section)+'">'+
+    '<div class="gcm-product-dialog-heading"><strong>Agregar producto</strong><span>'+esc(section)+'</span></div>'+
+    '<label class="gcm-add-product-field">Nombre del producto'+
+    '<input type="text" data-gcm-new-product-name maxlength="100" required></label>'+
+    '<label class="gcm-add-product-field">Cómo se cuenta<select data-gcm-new-product-type>'+
+    '<option value="0"'+(!/EMPANADA/i.test(section)?' selected':'')+'>Por unidades</option>'+
+    '<option value="1"'+(/EMPANADA/i.test(section)?' selected':'')+'>Por caja/pack cerrado (y unidades sueltas)</option></select></label>'+
+    '<label class="gcm-add-product-field" data-gcm-new-product-pack-wrap'+(!/EMPANADA/i.test(section)?' hidden':'')+'>Unidades por caja/pack cerrado'+
+    '<input data-gcm-new-product-pack-units type="number" inputmode="numeric" min="1" max="1000" step="1" value="'+(/EMPANADA/i.test(section)?'30':'12')+'"></label>'+
+    '<p class="gcm-add-product-error" data-gcm-add-product-error role="alert"></p>'+
+    '<div class="gcm-add-product-actions"><button type="button" data-gcm-add-product-save>Guardar producto</button>'+
+    '<button type="button" data-gcm-add-product-cancel>Cancelar</button></div></dialog>'+
+   '<div class="gcm-owner-catalog-products">'+
+    products.map(p=>'<div class="gcm-owner-catalog-product"><span><strong>'+esc(p.name)+'</strong>'+
+    '<small>'+(p.units_per_chapa>0?'1 '+esc(packWord(p))+' = '+p.units_per_chapa+' unidades':'Por unidades')+'</small></span>'+
+    '<button type="button" data-gcm-config-product="'+esc(p.id)+'">Editar</button></div>').join('')+
+   '</div></section>';
+ }).join('');
+ return '<div class="gcm-page gcm-owner-catalog"><header class="gcm-history-top">'+
+  '<div class="gcm-history-title"><button type="button" data-gcm-catalog-back>← Volver al historial</button>'+
+  '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span>'+
+  '<h2>Configurar productos</h2></div></div></header>'+
+  '<p>Podés agregar productos y cambiar cuántas unidades trae cada caja o pack. No permite modificar los conteos del personal.</p>'+
+  (loading?'<p role="status">Cargando catálogo…</p>':'')+
+  (error?'<p role="alert">'+esc(error)+'</p>':'')+
+  sections+productConfigDialog()+'</div>';
+}
+
 function sectionTable(name,items,canWrite,canCatalog,canConfig,showDecomiso,canManageCategories){
  const dateBase=historyRecord?.day||day;
  const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:labelDay(plusDays(dateBase,i)).slice(0,5)}));
@@ -1249,6 +1303,12 @@ document.addEventListener('click',async e=>{
   }
   return;
  }
+ if(el.hasAttribute('data-gcm-catalog-open')&&ownerHistoryOnly()){
+  e.preventDefault();ownerCatalogMode=true;void refresh();api?.render?.();return;
+ }
+ if(el.hasAttribute('data-gcm-catalog-back')&&ownerHistoryOnly()){
+  e.preventDefault();ownerCatalogMode=false;api?.render?.();return;
+ }
  if(el.hasAttribute('data-gcm-nav-section')||el.hasAttribute('data-gcm-nav-extras')){
   const name=el.dataset.gcmNavSection,extra=el.dataset.gcmNavExtras;
   const section=name?[...root.querySelectorAll('.gcm-count-main .gcm-section')].find(x=>x.dataset.gcmSection===name):null;
@@ -1336,6 +1396,66 @@ document.addEventListener('click',async e=>{
   }
   return;
  }
+ if(el.hasAttribute('data-gcm-config-product')){
+  e.preventDefault();
+  if(!canConfigureProduct()||busy||!snapshot||historyRecord)return;
+  const p=productById(el.dataset.gcmConfigProduct);
+  const dialog=root.querySelector('.gcm-product-config-dialog');
+  if(!p||!dialog||dialog.open||typeof dialog.showModal!=='function')return;
+  el.closest('.gcm-product-dialog')?.close();
+  dialog.dataset.productId=p.id;
+  const title=dialog.querySelector('[data-gcm-product-config-title]');
+  const type=dialog.querySelector('[data-gcm-product-config-type]');
+  const units=dialog.querySelector('[data-gcm-product-config-pack-units]');
+  const kind=dialog.querySelector('[data-gcm-product-config-kind]');
+  const wrap=dialog.querySelector('[data-gcm-product-config-pack-wrap]');
+  const status=dialog.querySelector('[data-gcm-product-config-error]');
+  if(title)title.textContent=p.section+' · '+p.name;
+  if(type)type.value=p.units_per_chapa>0?'1':'0';
+  if(units)units.value=String(p.units_per_chapa||12);
+  if(kind)kind.value=p.pack_kind||(/EMPANADA/i.test(p.section)?'chapa':'caja');
+  if(wrap)wrap.hidden=!(p.units_per_chapa>0);
+  if(status)status.textContent='';
+  dialog.showModal();
+  units?.focus();
+  return;
+ }
+ if(el.hasAttribute('data-gcm-product-config-cancel')){
+  e.preventDefault();el.closest('.gcm-product-config-dialog')?.close();return;
+ }
+ if(el.hasAttribute('data-gcm-product-config-save')){
+  e.preventDefault();
+  if(!canConfigureProduct()||busy||!snapshot||historyRecord)return;
+  const dialog=el.closest('.gcm-product-config-dialog');
+  const p=productById(dialog?.dataset.productId);
+  if(!p||!dialog?.open)return;
+  const mode=dialog.querySelector('[data-gcm-product-config-type]')?.value;
+  const unitsInput=dialog.querySelector('[data-gcm-product-config-pack-units]');
+  const kind=dialog.querySelector('[data-gcm-product-config-kind]')?.value||'caja';
+  const units=mode==='1'?Number(unitsInput?.value):0;
+  const status=dialog.querySelector('[data-gcm-product-config-error]');
+  if(!Number.isSafeInteger(units)||units<0||units>1000||(mode==='1'&&units<1)){
+   if(status)status.textContent='Indicá de 1 a 1000 unidades por caja o pack.';return;
+  }
+  const local=activeLocal(),gen=generation;
+  if(units!==p.units_per_chapa&&
+    !window.confirm('¿Guardar '+(units?'1 caja/pack = '+units+' unidades':'conteo por unidades')+
+    ' para '+p.name+'? Los conteos cerrados conservarán la equivalencia anterior.'))return;
+  busy=true;el.disabled=true;if(status)status.textContent='Guardando…';
+  try{
+   const result=await rpc('gestlok_munro_conteo_save_product_config',
+    {p_id:p.id,p_section:p.section,p_name:p.name,p_units_per_pack:units,p_pack_kind:kind});
+   if(!result?.ok)throw Error('El servidor no confirmó la configuración.');
+   if(local!==activeLocal()||gen!==generation)throw Error('Cambió el local. Volvé a consultar el catálogo.');
+   dialog.close();error='';busy=false;
+   await refresh();
+   api?.toast?.('Presentación actualizada: '+p.name+'.');
+  }catch(err){
+   if(status)status.textContent=err.message||'No se pudo modificar la presentación.';
+   api?.toast?.(err.message||'No se pudo guardar.');
+  }finally{busy=false;el.disabled=false;}
+  return;
+ }
  if(el.hasAttribute('data-gcm-add-product-open')){
   e.preventDefault();
   if(!canConfigureProduct()||busy||!snapshot||historyRecord)return;
@@ -1400,7 +1520,7 @@ document.addEventListener('click',async e=>{
  }
  if(el.hasAttribute('data-gcm-product-menu')){
   e.preventDefault();
-  if(!admin()||busy||closed())return;
+  if(!(admin()||canConfigureProduct())||busy)return;
   const p=productById(el.dataset.gcmProductMenu);
   if(!p)return;
   const dialog=el.closest('.gcm-product-actions')?.querySelector('.gcm-product-dialog');
