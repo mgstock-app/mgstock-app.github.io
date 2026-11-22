@@ -10,7 +10,7 @@ const SUPABASE_URL = "https://vgsepaaewbctjsjcpeta.supabase.co";
 const SUPABASE_ANON =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnc2VwYWFld2JjdGpzamNwZXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1NDEwNjEsImV4cCI6MjEwODExNzA2MX0.WFeUP95DJAOOsiZ5BbBvqT1QURmA5KJLDjlDpwuU838";
 
-// Cuadros del carrusel: pantallas reales de GESTLOK Chat (carta y local reales de Mi Gusto Munro).
+// Cuadros del carrusel: pantallas de GESTLOK Chat con un local, productos, precios y cliente ficticios («Sabores del Barrio»).
 const CUADROS: ReadonlyArray<{ img: string; titulo: string; texto: string; alt: string }> = [
   { img: "1-bienvenida", titulo: "Tu cliente entra y pide", alt: "Pantalla de bienvenida del chat de un local con el botón Hacer un pedido",
     texto: "Abre el chat de tu local desde un enlace o un QR y toca «Hacer un pedido». Sin descargar nada." },
@@ -25,6 +25,8 @@ const CUADROS: ReadonlyArray<{ img: string; titulo: string; texto: string; alt: 
   { img: "6-seguimiento", titulo: "Sigue su pedido en vivo", alt: "Seguimiento del pedido con las etapas Recibido, Confirmado y Listo",
     texto: "Recibido, confirmado y listo. Al terminar, lo invita a dejar su reseña en Google." },
 ];
+
+const INTERVALO_MS = 6000;
 
 const BENEFICIOS: ReadonlyArray<{ titulo: string; texto: string }> = [
   { titulo: "Pedidos sin errores", texto: "Botones y carrito: tu cliente elige de la carta, no escribe a mano." },
@@ -81,19 +83,20 @@ export function GestlokHome() {
   useEffect(() => {
     if (emmaAbierta) preguntaRef.current?.focus();
   }, [emmaAbierta]);
-  // Avance automático cada 5 s; se frena con Pausar, al tocar o pasar el mouse y si el equipo pide menos movimiento.
+  // Avance automático: se mueve solo y se detiene con «Pausar» (o mientras el mouse está encima).
+  // Si el equipo pide menos movimiento, cambia de cuadro sin deslizar.
   useEffect(() => {
     if (pausado || tocando) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setInterval(() => irA((actual + 1) % CUADROS.length), 5000);
-    return () => window.clearInterval(t);
-  });
+    const t = window.setTimeout(() => irA((actual + 1) % CUADROS.length), INTERVALO_MS);
+    return () => window.clearTimeout(t);
+  }, [pausado, tocando, actual]);
 
   function irA(i: number) {
     const pista = pistaRef.current;
     const tarjeta = pista?.children[i] as HTMLElement | undefined;
     if (!pista || !tarjeta) return;
-    pista.scrollTo({ left: tarjeta.offsetLeft - pista.offsetLeft, behavior: "smooth" });
+    const quieto = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    pista.scrollTo({ left: tarjeta.offsetLeft - pista.offsetLeft, behavior: quieto ? "auto" : "smooth" });
     setActual(i);
   }
   function alDesplazar() {
@@ -209,7 +212,7 @@ export function GestlokHome() {
           <div className="glh-apps-cab">
             <div>
               <h2 id="glh-como-titulo">Así funciona GESTLOK Chat</h2>
-              <p>Pantallas reales de un local que ya lo usa.</p>
+              <p>Pantallas de GESTLOK Chat. Local, productos y precios de ejemplo.</p>
             </div>
             <div className="glh-car-ctrl">
               <button type="button" className="glh-btn glh-btn-claro glh-flecha" aria-label="Cuadro anterior" onClick={() => irA((actual + CUADROS.length - 1) % CUADROS.length)}>
@@ -225,8 +228,7 @@ export function GestlokHome() {
             </div>
           </div>
           <div className="glh-cuadros" ref={pistaRef} onScroll={alDesplazar}
-            onMouseEnter={() => setTocando(true)} onMouseLeave={() => setTocando(false)}
-            onTouchStart={() => setTocando(true)} onFocus={() => setTocando(true)} onBlur={() => setTocando(false)}>
+            onMouseEnter={() => setTocando(true)} onMouseLeave={() => setTocando(false)}>
             {CUADROS.map((c, i) => (
               <figure key={c.img} className={"glh-cuadro" + (i === actual ? " glh-cuadro-on" : "")} aria-label={"Paso " + (i + 1) + " de " + CUADROS.length}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- captura estática exportada */}
@@ -242,7 +244,9 @@ export function GestlokHome() {
           <div className="glh-puntos" role="group" aria-label="Elegir cuadro">
             {CUADROS.map((c, i) => (
               <button key={c.img} type="button" aria-label={"Ir al paso " + (i + 1) + ": " + c.titulo} aria-current={i === actual ? "step" : undefined}
-                className={i === actual ? "glh-punto-on" : ""} onClick={() => irA(i)} />
+                className={i === actual ? "glh-punto-on" : ""} onClick={() => irA(i)}>
+                {i === actual ? <span key={"p" + actual} className={"glh-progreso" + (pausado || tocando ? " glh-progreso-pausa" : "")} /> : null}
+              </button>
             ))}
           </div>
         </section>

@@ -22,6 +22,8 @@ test("el inicio publicita GESTLOK Chat con cuadros reales, contacto sin número 
   assert.match(home, /href="\/login\/">Ingresar</);
   assert.match(home, /href="\/login\/#registrarme">Registrarme</);
   assert.match(home, /Así funciona GESTLOK Chat/);
+  assert.match(home, /Local, productos y precios de ejemplo/);
+  assert.doesNotMatch(home, /Mi Gusto|Munro/);
   for (const img of ["1-bienvenida", "2-carta", "3-promo", "4-sugerencia", "5-gerente", "6-seguimiento"]) {
     assert.ok(home.includes(`img: "${img}"`), img);
     assert.ok(readFileSync(new URL(`../public/img/gestlok-chat/${img}.webp`, import.meta.url)).length > 5000, img);
