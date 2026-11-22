@@ -20,9 +20,15 @@ function setup(role='creadora'){
  history:[],settings:{locked:true,hidden_sections:[]}};
  window.GestLokSupabase={rpc:async(name,args)=>{
   calls.push(name);rpcArgs.push({name,args});
-  if(name==='gestlok_munro_conteo_add_product'){
+  if(name==='gestlok_munro_conteo_save_product_config'){
+   if(args.p_id){
+    const p=data.products.find(p=>p.id===args.p_id);
+    if(!p)return {error:{message:'Producto inexistente'}};
+    p.units_per_chapa=args.p_units_per_pack;p.pack_kind=args.p_pack_kind;
+    return {data:{ok:true,product:p},error:null};
+   }
    const p={id:'new-'+(data.products.length+1),name:args.p_name,section:args.p_section,
-    units_per_chapa:args.p_units_per_chapa,position:301+data.products.length,active:true};
+    units_per_chapa:args.p_units_per_pack,pack_kind:args.p_pack_kind,position:301+data.products.length,active:true};
    data.products.push(p);return {data:{ok:true,product:p},error:null};
   }
   return {data:name==='gestlok_munro_conteo_state'?data:{ok:true},error:null};
@@ -69,15 +75,17 @@ test('tocar tres puntos abre un diálogo nativo sobre la tabla y se puede cancel
  assert.equal(dialog.closed,1);
  assert.ok(!calls.includes('gestlok_munro_conteo_product'));
 });
-test('gerente no ve ni puede abrir acciones de catálogo de administradora',async()=>{
+test('gerente ve edición de presentación, pero no eliminar ni renombrar el producto',async()=>{
  const {mod,listeners}=setup('gerente');mod.view();await tick();
  const html=mod.view();
- assert.doesNotMatch(html,/data-gcm-product-menu/);
- assert.doesNotMatch(html,/gcm-product-dialog/);
- const dialog={open:false,showModal(){this.open=true},querySelector:()=>null};
+ assert.match(html,/data-gcm-product-menu="p1"/);
+ assert.match(html,/data-gcm-config-product="p1"/);
+ assert.doesNotMatch(html,/data-gcm-rename="p1"/);
+ assert.doesNotMatch(html,/data-gcm-remove="p1"/);
+ const dialog={open:false,showModal(){this.open=true},querySelector:()=>({focus(){}})};
  const button={dataset:{gcmProductMenu:'p1'},hasAttribute:k=>k==='data-gcm-product-menu'};
  await listeners.get('click')(fakeEvent(button,dialog));
- assert.equal(dialog.open,false);
+ assert.equal(dialog.open,true);
 });
 
 test('botón Agregar producto aparece en todas las categorías, incluso sin activos',async()=>{
@@ -96,8 +104,8 @@ test('botón Agregar producto aparece en todas las categorías, incluso sin acti
  assert.match(html,/data-gcm-new-product-name/);
  assert.match(html,/data-gcm-new-product-type/);
  assert.match(html,/Por unidades/);
- assert.match(html,/Por chapas \(27 unidades\)/);
- assert.match(html,/Por chapas \(30 unidades\)/);
+ assert.match(html,/Por caja\/pack cerrado/);
+ assert.match(html,/data-gcm-new-product-pack-units/);
  assert.match(css,/dialog\.gcm-add-product-dialog::backdrop/);
  assert.match(css,/@media\(max-width:700px\)/);
 });
@@ -110,16 +118,17 @@ function addProductEvent(attr,section,dialog){
  };
  return {target:button,preventDefault(){},stopPropagation(){}};
 }
-function newProductDialog(name,per='0'){
+function newProductDialog(name,per='0',pack=12){
  const input={value:name,focus(){this.focused=true}},
-  type={value:per},status={textContent:''};
+  type={value:per},packInput={value:String(pack)},status={textContent:''};
  return {
-  open:false,input,type,status,
+  open:false,input,type,packInput,status,
   showModal(){this.open=true;},
   close(){this.open=false;},
   querySelector:selector=>({
    '[data-gcm-new-product-name]':input,
    '[data-gcm-new-product-type]':type,
+   '[data-gcm-new-product-pack-units]':packInput,
    '[data-gcm-add-product-error]':status
   }[selector]||null)
  };
@@ -135,10 +144,10 @@ test('administradora agrega pizza por unidades: se guarda y aparece en los 3 tur
  assert.equal(dialog.input.focused,true);
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','PIZZAS',dialog));
  assert.equal(dialog.open,false,'debe cerrar únicamente cuando guardó correctamente');
- const req=rpcArgs.find(x=>x.name==='gestlok_munro_conteo_add_product');
+ const req=rpcArgs.find(x=>x.name==='gestlok_munro_conteo_save_product_config');
  assert.equal(req.args.p_section,'PIZZAS');
  assert.equal(req.args.p_name,'Pizza especial');
- assert.equal(req.args.p_units_per_chapa,0);
+ assert.equal(req.args.p_units_per_pack,0);
  assert.equal(data.products.find(p=>p.name==='Pizza especial')?.active,true);
  assert.equal(data.counts[0].data['new-3'],undefined,'el alta no altera conteos ya registrados');
  const html=mod.view();
@@ -148,32 +157,32 @@ test('administradora agrega pizza por unidades: se guarda y aparece en los 3 tur
  assert.ok(calls.includes('gestlok_munro_conteo_state'),'debe volver a leer el catálogo');
 });
 
-test('empanadas admite chapas de 27 o 30; no crea duplicados ni nombres vacíos',async()=>{
+test('empanadas admite pack variable, no crea duplicados ni nombres vacíos',async()=>{
  const {mod,listeners,data,rpcArgs}=setup();
  mod.view();await tick();
- const dialog=newProductDialog('Empanada nueva','27');
+ const dialog=newProductDialog('Empanada nueva','1',27);
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','EMPANADAS',dialog));
- assert.equal(rpcArgs.find(x=>x.name==='gestlok_munro_conteo_add_product')?.args.p_units_per_chapa,27);
+ assert.equal(rpcArgs.find(x=>x.name==='gestlok_munro_conteo_save_product_config')?.args.p_units_per_pack,27);
  dialog.input.value='AC';
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','EMPANADAS',dialog));
  assert.match(dialog.status.textContent,/Ya existe/);
  dialog.input.value=' ';
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','EMPANADAS',dialog));
  assert.match(dialog.status.textContent,/nombre/);
- assert.equal(rpcArgs.filter(x=>x.name==='gestlok_munro_conteo_add_product').length,1);
+ assert.equal(rpcArgs.filter(x=>x.name==='gestlok_munro_conteo_save_product_config').length,1);
  assert.equal(data.products.filter(p=>p.name==='AC').length,1);
 });
 
-test('gerente no puede abrir ni guardar un alta del catálogo',async()=>{
+test('gerente puede agregar un producto por unidades sin editar los conteos',async()=>{
  const {mod,data,listeners,calls}=setup('gerente');
  data.products.push({id:'p2',section:'PIZZAS',name:'Pizza Ind',active:true,units_per_chapa:0,position:301});
  mod.view();await tick();
- assert.doesNotMatch(mod.view(),/data-gcm-add-product-open/);
+ assert.match(mod.view(),/data-gcm-add-product-open="PIZZAS"/);
  const dialog=newProductDialog('Pizza sin permiso');
  await listeners.get('click')(addProductEvent('data-gcm-add-product-open','PIZZAS',dialog));
  await listeners.get('click')(addProductEvent('data-gcm-add-product-save','PIZZAS',dialog));
  assert.equal(dialog.open,false);
- assert.equal(calls.includes('gestlok_munro_conteo_add_product'),false);
+ assert.ok(calls.includes('gestlok_munro_conteo_save_product_config'));
 });
 
 test('SQL de agregar producto valida rol, categoría existente y no modifica historial',()=>{
