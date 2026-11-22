@@ -117,7 +117,7 @@ const ownerHistoryOnly=()=>allowed()&&api.miRol()==='dueno';
 const editable=()=>allowed()&&!ownerHistoryOnly()&&!finishing&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
 const admin=()=>allowed()&&api.miRol()==='creadora'&&!api.S?.ro;
 // Administración de PRESENTACIÓN y alta de productos, no de categorías ni historiales.
-const canManagePacks=()=>allowed()&&!api.S?.ro&&!api.S?.offline&&navigator.onLine!==false&&
+const canManagePacks=()=>allowed()&&(!api.S?.ro||api.miRol()==='dueno')&&!api.S?.offline&&navigator.onLine!==false&&
  !!window.GestLokSupabase&&['creadora','dueno','gerente'].includes(api.miRol())&&!finishing;
 const selected=()=>historyRecord||(snapshot?.counts||[]).find(s=>s.shift===shift)||null;
 const closed=()=>!!historyRecord||selected()?.status==='finalizado';
