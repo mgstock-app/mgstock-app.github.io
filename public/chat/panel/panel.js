@@ -826,18 +826,18 @@
     try { reclamos = await rpc('panel_soporte',{p_sucursal:sucId}); }
     catch(e){return contenido.replaceChildren(el('p',{class:'error',text:e.message}));}
     if (S.pestana !== 'soporte' || S.suc.id !== sucId) return;
-    S.suc.reclamos = reclamos.length;
+    S.suc.reclamos = reclamos.filter(r=>r.estado==='pendiente').length;
     const badge = $('globo-soporte');
-    if (badge) { badge.hidden = !reclamos.length; badge.textContent = String(reclamos.length); }
+    if (badge) { badge.hidden = !S.suc.reclamos; badge.textContent = String(S.suc.reclamos); }
     contenido.replaceChildren(
       el('h2',{text:'Soporte al cliente'}),
-      el('p',{class:'nota',text:'Reclamos de esta sucursal pendientes de respuesta.'}),
+      el('p',{class:'nota',text:'Reclamos pendientes e historial de casos cerrados de esta sucursal.'}),
       ...(reclamos.length ? reclamos.map(r => el('article',{class:'soporte-reclamo'},
         el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo',consulta:'Consulta para el gerente'})[r.tipo]||'Reclamo'}),
           r.pedido ? el('span',{class:'estado',text:'Pedido '+r.pedido}) : null),
         el('p',{text:r.detalle}),
         r.historial_expirado ? el('small',{text:'El chat cumplió 24 horas. Este reclamo sigue guardado.'}) : null,
-        el('small',{text:hora(r.creado_at)+(r.respondido_at?' · Respondido, pendiente de cierre':' · Esperando respuesta')}),
+        el('small',{text:hora(r.creado_at)+(r.estado==='respondido' ? (r.respondido_at?' · Resuelto':' · Archivado') : r.respondido_at?' · Respondido, pendiente de cierre':' · Esperando respuesta')}),
         ...(r.evidencia_paths||[]).slice(0,10).map((path,i)=>el('button',{
           type:'button',class:'boton',text:'Ver foto adjunta '+(i+1),onclick:async()=>{
             if(DEMO)return aviso('La foto solo está disponible en el panel real.');
@@ -846,17 +846,22 @@
             window.open(data.signedUrl,'_blank','noopener,noreferrer');
           }})),
         el('div',{class:'acciones'},
-          el('button',{type:'button',class:'boton principal',text:'Responder reclamo',
+          r.estado==='pendiente' && !r.historial_expirado ? el('button',{type:'button',class:'boton principal',text:'Responder reclamo',
             onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at,
-              detalle:r.detalle,historial_expirado:r.historial_expirado},r.id)}),
-          r.respondido_at ? el('button',{type:'button',class:'boton',text:'Cerrar reclamo',onclick:async()=>{
+              detalle:r.detalle,historial_expirado:r.historial_expirado},r.id)}) : null,
+          r.estado==='pendiente' && r.historial_expirado ? el('button',{type:'button',class:'boton',text:'Archivar reclamo',onclick:async()=>{
+            if(!confirm('¿Archivar este reclamo? Se conservarán el detalle y las fotos en el historial del gerente.'))return;
+            try{await rpc('panel_archivar_reclamo',{p_reclamo:r.id});aviso('Reclamo archivado');verSoporte();}
+            catch(e){aviso(e.message,true);}
+          }}) : null,
+          r.estado==='pendiente' && r.respondido_at ? el('button',{type:'button',class:'boton',text:'Cerrar reclamo',onclick:async()=>{
             try{
               await rpc('panel_cerrar_reclamo',{p_reclamo:r.id});
               aviso('Reclamo cerrado');
               verSoporte();
             }catch(e){aviso(e.message,true);}
           }}) : null))) :
-        [el('p',{class:'nota',text:'No hay reclamos pendientes.'})]));
+        [el('p',{class:'nota',text:'No hay reclamos registrados.'})]));
     clearTimeout(S.sondeo);
     S.sondeo=setTimeout(()=>{if(S.pestana==='soporte'&&!document.hidden)verSoporte();},15000);
   }
