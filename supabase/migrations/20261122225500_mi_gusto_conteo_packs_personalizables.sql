@@ -32,13 +32,6 @@ update gestlok_munro_conteo_private.shifts s set pack_units=coalesce((
  ),'{}'::jsonb)
 where s.pack_units='{}'::jsonb and (s.data<>'{}'::jsonb or s.decomiso<>'{}'::jsonb);
 -- El nombre de la presentación (caja/pack/chapa) también pertenece al turno.
-update gestlok_torcuato_conteo_private.shifts s set pack_labels=coalesce((
-  select jsonb_object_agg(k.id,p.pack_label)
-  from (select key as id from jsonb_object_keys(s.pack_units) as key) k
-  join gestlok_torcuato_conteo_private.products p on p.id=k.id
- ),'{}'::jsonb)
-where s.pack_labels='{}'::jsonb and s.pack_units<>'{}'::jsonb;
--- El nombre de la presentación (caja/pack/chapa) también pertenece al turno.
 update gestlok_munro_conteo_private.shifts s set pack_labels=coalesce((
   select jsonb_object_agg(k.id,p.pack_label)
   from (select key as id from jsonb_object_keys(s.pack_units) as key) k
@@ -48,7 +41,7 @@ where s.pack_labels='{}'::jsonb and s.pack_units<>'{}'::jsonb;
 
 create or replace function gestlok_munro_conteo_private.preserve_pack_units()
 returns trigger language plpgsql set search_path='' as $fn$
-declare v_id text;v_per integer;v_label text;v_label text;
+declare v_id text;v_per integer;v_label text;
 begin
  for v_id in select key from (
   select key from jsonb_object_keys(new.data) as key
@@ -477,10 +470,17 @@ update gestlok_torcuato_conteo_private.shifts s set pack_units=coalesce((
   ) k join gestlok_torcuato_conteo_private.products p on p.id=k.id
  ),'{}'::jsonb)
 where s.pack_units='{}'::jsonb and (s.data<>'{}'::jsonb or s.decomiso<>'{}'::jsonb);
+-- Etiquetas históricas de cada pack.
+update gestlok_torcuato_conteo_private.shifts s set pack_labels=coalesce((
+  select jsonb_object_agg(k.id,p.pack_label)
+  from (select key as id from jsonb_object_keys(s.pack_units) as key) k
+  join gestlok_torcuato_conteo_private.products p on p.id=k.id
+ ),'{}'::jsonb)
+where s.pack_labels='{}'::jsonb and s.pack_units<>'{}'::jsonb;
 
 create or replace function gestlok_torcuato_conteo_private.preserve_pack_units()
 returns trigger language plpgsql set search_path='' as $fn$
-declare v_id text;v_per integer;
+declare v_id text;v_per integer;v_label text;
 begin
  for v_id in select key from (
   select key from jsonb_object_keys(new.data) as key
