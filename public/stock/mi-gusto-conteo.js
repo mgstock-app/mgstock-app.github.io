@@ -230,6 +230,18 @@ function historyListView(){
    !groups.length&&!historyError?'<p class="gcm-history-empty">No hay conteos por turnos registrados en este mes.</p>':days)+
   '</div>';
 }
+// Solo una confirmación explícita del gerente significa «Sin stock».
+const manualSinStock=(rec,id)=>rec?.data?.[id]?.sin_stock===true;
+const stockLabel=(rec,id,total)=>total>0?String(total):(manualSinStock(rec,id)?'Sin stock':'—');
+function recordedTotal(rec,p){
+ if(!rec||!p)return 0;
+ let value=0;
+ for(let i=1;i<=4;i++){
+  const v=rec.data?.[p.id]?.['v'+i]||{};
+  value+=amount(p,v);
+ }
+ return value+amount(p,rec.decomiso?.[p.id]||{});
+}
 // Resumen derivado de las cantidades realmente archivadas. Nunca modifica el historial.
 function historyProductTotals(rec){
  // Conteo muestra snapshot.products en el orden original del catálogo.
@@ -251,7 +263,9 @@ function historyProductTotals(rec){
    total+=amount(p,{chapas:Number(v.chapas)||0,sueltas:Number(v.sueltas)||0,qty:Number(v.qty)||0});
   }
   total+=amount(p,{chapas:Number(decomiso.chapas)||0,sueltas:Number(decomiso.sueltas)||0,qty:Number(decomiso.qty)||0});
-  return {id,name:p.name,section:p.section||'OTROS',total,order:catalogOrder.get(id)??Number.MAX_SAFE_INTEGER};
+  return {id,name:p.name,section:p.section||'OTROS',total,
+   manualSinStock:total===0&&manualSinStock(rec,id),
+   order:catalogOrder.get(id)??Number.MAX_SAFE_INTEGER};
  }).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
 }
 // Agrupación únicamente visual: usa las secciones y los totales reales del catálogo.
@@ -260,11 +274,14 @@ function historyGroupedProducts(rec){
  const groups=new Map();
  for(const row of historyProductTotals(rec)){
   const section=String(row.section||'OTROS').trim()||'OTROS';
-  if(!groups.has(section))groups.set(section,{section,rows:[],total:0,missing:false});
+  if(!groups.has(section))groups.set(section,{section,rows:[],total:0,missing:false,reported:false});
   const group=groups.get(section);
   group.rows.push(row);
   if(row.total===null)group.missing=true;
-  else group.total+=row.total;
+  else{
+   group.total+=row.total;
+   if(row.total>0||row.manualSinStock)group.reported=true;
+  }
  }
  return [...groups.values()];
 }
@@ -272,18 +289,19 @@ function historySummaryTable(rec){
  const groups=historyGroupedProducts(rec);
  const general=groups.reduce((sum,group)=>sum+group.total,0);
  const missing=groups.some(group=>group.missing);
+ const hasRegistered=groups.some(group=>group.reported);
  const isEmpanadas=group=>group.section.toLocaleUpperCase('es').includes('EMPANADAS');
  const empanadas=groups.filter(isEmpanadas),others=groups.filter(group=>!isEmpanadas(group));
  // Un solo renglón por producto. El orden de la planilla se conserva íntegro.
  const card=group=>'<section class="gcm-hd-summary-group'+(isEmpanadas(group)?' gcm-hd-empanadas':'')+'"><h4>'+esc(group.section)+
-   '<span>Total: '+group.total+(group.missing?' · revisar':'')+'</span></h4>'+
+   '<span>Total: '+(group.reported?group.total:'—')+(group.missing?' · revisar':'')+'</span></h4>'+
    '<table><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody>'+
    group.rows.map(row=>'<tr><td><strong>'+esc(row.name)+'</strong></td>'+
-    '<td class="gcm-hd-summary-number'+(row.total===0?' is-no-stock':'')+'">'+
-    (row.total===null?'Sin referencia':row.total===0?'Sin stock':row.total)+'</td></tr>').join('')+
+    '<td class="gcm-hd-summary-number'+(row.manualSinStock?' is-no-stock':'')+'">'+
+    (row.total===null?'Sin referencia':row.total===0?(row.manualSinStock?'Sin stock':'—'):row.total)+'</td></tr>').join('')+
    '</tbody></table></section>';
  return '<section class="gcm-hd-summary"><header class="gcm-hd-summary-header">'+
-  '<h3>Productos y totales</h3><div>Total general <strong>'+general+'</strong></div></header>'+
+  '<h3>Productos y totales</h3><div>Total general <strong>'+(hasRegistered?general:'—')+'</strong></div></header>'+
   (groups.length?'<div class="gcm-hd-summary-layout'+(empanadas.length?' has-empanadas':'')+'">'+
     (empanadas.length?'<div class="gcm-hd-empanadas-stack">'+empanadas.map(card).join('')+'</div>':'')+
     (others.length?'<div class="gcm-hd-summary-grid">'+others.map(card).join('')+'</div>':'')+
@@ -320,6 +338,7 @@ function historyA4Image(rec){
  const groups=historyGroupedProducts(rec);
  const rows=groups.flatMap(group=>group.rows);
  const sum=groups.reduce((n,group)=>n+group.total,0);
+ const hasRegistered=groups.some(group=>group.reported);
  const consumption=Array.from({length:10},(_,i)=>rec.consumption?.[i]||{});
  const waste=rec.waste_visible&&Array.isArray(rec.waste)?
   rec.waste.filter(x=>String(x?.name||'').trim()||String(x?.value||'').trim()):[];
@@ -350,7 +369,7 @@ function historyA4Image(rec){
  // Barra principal: total de ese turno; los 10 consumos son espacios fijos.
  rect(M,262,W-2*M,99,navy);
  write('TOTAL GENERAL',M+23,297,20,'#dce8f4','700');
- write(sum,M+23,342,43,'#fff','700');
+ write(hasRegistered?sum:'—',M+23,342,43,'#fff','700');
  if(hasConsumption)write('10 ESPACIOS DE CONSUMO',right-23,325,21,'#fff','600','right');
  write('RESUMEN POR CATEGORÍA',M,407,26,navy,'700');
  rule(M,421,W-2*M);
@@ -385,7 +404,7 @@ function historyA4Image(rec){
  const startX=(W-(plan.cols*plan.width+(plan.cols-1)*21))/2;
  for(const card of cards){
   const x=startX+card.col*(plan.width+21),y=top+card.y;
-  const totalLabel=card.continued?'':('Total '+card.group.total+(card.group.missing?'*':''));
+  const totalLabel=card.continued?'':('Total '+(card.group.reported?card.group.total:'—')+(card.group.missing?'*':''));
   rect(x,y,plan.width,37,pale);
   write(trim(card.group.section+(card.continued?' (cont.)':''),plan.width-148,19,'700'),
    x+13,y+25,19,navy,'700');
@@ -395,7 +414,7 @@ function historyA4Image(rec){
    if(i%2===1)rect(x,yy,plan.width,plan.rowH,'#f8fafc');
    const label=trim(row.name,plan.width-113,plan.font,'600');
    write(label,x+13,yy+plan.rowH*.76,plan.font,ink,'600');
-   write(row.total===null?'—':row.total===0?'Sin stock':row.total,x+plan.width-13,yy+plan.rowH*.76,
+   write(row.total===null?'—':row.total===0?(row.manualSinStock?'Sin stock':'—'):row.total,x+plan.width-13,yy+plan.rowH*.76,
     plan.font,navy,'700','right');
    rule(x,yy+plan.rowH,plan.width);
   }
@@ -461,7 +480,7 @@ function historyDetailsTable(section,products,rec){
    return makeCell(p,cell);
   }).join('');
   total+=amount(p,{chapas:Number(decomp.chapas)||0,sueltas:Number(decomp.sueltas)||0,qty:Number(decomp.qty)||0});
-  return '<tr>'+(showDecomiso?makeCell(p,decomp):'')+'<th scope="row">'+esc(p.name)+'</th>'+cols+'<td class="gcm-hd-total'+(total===0?' is-no-stock':'')+'">'+(total===0?'Sin stock':total)+'</td></tr>';
+  return '<tr>'+(showDecomiso?makeCell(p,decomp):'')+'<th scope="row">'+esc(p.name)+'</th>'+cols+'<td class="gcm-hd-total'+(total===0&&manualSinStock(rec,p.id)?' is-no-stock':'')+'">'+stockLabel(rec,p.id,total)+'</td></tr>';
  }).join('');
  return '<details class="gcm-hd-category"'+(section==='EMPANADAS'?' open':'')+'>'+
    '<summary>'+esc(section)+'<span>'+products.length+' productos</span></summary>'+
@@ -489,8 +508,8 @@ function historyCorrectionPanel(rec){
  const canEdit=editable()&&rec.status==='finalizado';
  const catalog=snapshot?.products||[];
  const present=new Set([...Object.keys(rec.data||{}),...Object.keys(rec.decomiso||{})]);
- const products=catalog.filter(p=>present.has(p.id));
- const usable=products.length?products:catalog;
+ // También se pueden corregir artículos activos sin datos en este turno cerrado.
+ const usable=catalog.filter(p=>p.active||present.has(p.id));
  if(!historyEditProduct||!usable.some(p=>p.id===historyEditProduct))historyEditProduct=usable[0]?.id||'';
  const p=usable.find(x=>x.id===historyEditProduct);
  const kind=historyEditKind;
@@ -506,7 +525,13 @@ function historyCorrectionPanel(rec){
  const row=(r,i)=>'<div class="gcm-history-fix-row"><strong>'+(i+1)+'</strong>'+
   '<input data-gcm-history-extra-name placeholder="'+(kind==='consumption'?'Colaborador':'Producto')+'" maxlength="90" value="'+esc(r.name||'')+'" aria-label="Nombre fila '+(i+1)+'">'+
   '<input data-gcm-history-extra-value placeholder="'+(kind==='consumption'?'Consumo':'Cantidad')+'" maxlength="90" value="'+esc(r.value||'')+'" aria-label="Valor fila '+(i+1)+'"></div>';
- const details=kind==='cell'||kind==='decomiso'?
+ const details=kind==='sin_stock'?
+  '<div class="gcm-history-fix-grid"><label>Producto<select id="gcm-history-fix-product">'+
+  usable.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===historyEditProduct?' selected':'')+'>'+esc(q.section+' · '+q.name)+'</option>').join('')+
+  '</select></label><label class="gcm-sin-stock-fix"><input type="checkbox" id="gcm-history-fix-sin-stock"'+
+  (manualSinStock(rec,p?.id)?' checked':'')+'> Confirmar Sin stock</label></div>'+
+  '<p class="gcm-history-fix-expl">Sin marcar significa «—» cuando no se registraron cantidades. La marca solo puede guardarse sin unidades.</p>':
+  kind==='cell'||kind==='decomiso'?
   '<div class="gcm-history-fix-grid"><label>Producto<select id="gcm-history-fix-product">'+
    usable.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===historyEditProduct?' selected':'')+'>'+esc(q.section+' · '+q.name)+'</option>').join('')+
    '</select></label>'+
@@ -522,11 +547,11 @@ function historyCorrectionPanel(rec){
    responsables().map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
   '<div class="gcm-history-fix-list">'+list.map(row).join('')+'</div>'+
    '<p class="gcm-history-fix-expl">Se guardan los registros cargados. Los campos vacíos de la fila adicional no crean datos.</p>';
- const kinds=[['cell','Cantidad por vencimiento'],['decomiso','Decomiso'],['responsable','Responsable'],
+ const kinds=[['cell','Cantidad por vencimiento'],['sin_stock','Sin stock (manual)'],['decomiso','Decomiso'],['responsable','Responsable'],
   ...(rec.shift==='manana_entrada'?[]:[['consumption','Consumos']]),['waste','Desperdicios']];
  const changes=historyCorrectionsLoaded?
   '<div class="gcm-history-corrections"><h4>Correcciones registradas</h4>'+
-  (historyCorrections.length?historyCorrections.map(x=>'<article><strong>'+esc(x.kind==='cell'?'Vto '+x.expiry_index:x.kind==='decomiso'?'Decomiso':x.kind==='responsable'?'Responsable':x.kind==='consumption'?'Consumos':'Desperdicios')+
+  (historyCorrections.length?historyCorrections.map(x=>'<article><strong>'+esc(x.kind==='cell'?'Vto '+x.expiry_index:x.kind==='sin_stock'?'Sin stock (manual)':x.kind==='decomiso'?'Decomiso':x.kind==='responsable'?'Responsable':x.kind==='consumption'?'Consumos':'Desperdicios')+
    '</strong> · '+esc(catalog.find(p=>p.id===x.product_id)?.name||'')+
    '<small>'+esc(x.actor_email||'')+' · '+esc(new Date(x.corrected_at).toLocaleString('es-AR'))+'</small>'+
    '<p>Motivo: '+esc(x.reason||'')+'</p><details><summary>Ver antes y después</summary>'+
@@ -625,13 +650,21 @@ function getCell(p,i){
 function patchCell(pid,i,newCell){
  const rec=draftRecord();if(!rec)return;
  rec.data=rec.data||{};rec.data[pid]={...(rec.data[pid]||{}),['v'+i]:{...newCell}};
+ const p=snapshot?.products?.find(x=>x.id===pid);
+ if(p&&recordedTotal(rec,p)>0)rec.data[pid].sin_stock=false;
 }
 // Franui antes guardaba unidades en qty. Seguir sumando esas unidades
 // históricas después de cambiar el producto a cajas de 24.
 const amount=(p,v)=>p.units_per_chapa>0?
  (Number(v.chapas)||0)*p.units_per_chapa+(Number(v.sueltas)||0)+(Number(v.qty)||0):
  (Number(v.qty)||0);
-function patchDecomiso(pid,newCell){const rec=draftRecord();if(rec){rec.decomiso=rec.decomiso||{};rec.decomiso[pid]={...newCell};}}
+function patchDecomiso(pid,newCell){
+ const rec=draftRecord();if(rec){
+  rec.decomiso=rec.decomiso||{};rec.decomiso[pid]={...newCell};
+  const p=snapshot?.products?.find(x=>x.id===pid);
+  if(p&&recordedTotal(rec,p)>0&&rec.data?.[pid])rec.data[pid].sin_stock=false;
+ }
+}
 function saveDecomiso(p,newCell){
  patchDecomiso(p.id,newCell);
  const d=day,s=shift,draft=noteDraft('decomiso',d,s,p.id,0,newCell);
@@ -718,8 +751,10 @@ function syncCountDom(el,p,i,isDecomp){
  if(total){
   let sum=amount(p,getDecomisoCell(p));
   for(let n=1;n<=4;n++)sum+=amount(p,getCell(p,n));
-  total.textContent=sum?String(sum):'Sin stock';
-  total.classList?.toggle?.('is-no-stock',sum===0);
+  total.textContent=stockLabel(entry(),p.id,sum);
+  total.classList?.toggle?.('is-no-stock',sum===0&&manualSinStock(entry(),p.id));
+  const flag=row?.querySelector?.('[data-gcm-sin-stock]');
+  if(flag){flag.checked=manualSinStock(entry(),p.id);flag.disabled=sum>0;}
  }
 }
 
@@ -806,6 +841,10 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
   }).join('');
   let sum=amount(p,getDecomisoCell(p));
   for(let i=1;i<=4;i++)sum+=amount(p,getCell(p,i));
+  const noStock=manualSinStock(entry(),p.id);
+  const stockCheck=canWrite?
+   '<label class="gcm-sin-stock-control"><input type="checkbox" data-gcm-sin-stock="'+esc(p.id)+'"'+
+   (noStock?' checked':'')+(sum>0?' disabled':'')+' aria-label="Sin stock: '+esc(p.name)+'">Sin stock</label>':'';
   return '<tr data-gcm-morning-row="'+esc(p.id)+'" class="'+(p.units_per_chapa>0?'gcm-chapa-row':'gcm-qty-row')+
    (check?.different?(check.acknowledged?' gcm-morning-confirmed':' gcm-morning-difference'):'')+'">'+(showDecomiso?decompColumn(p,canWrite):'')+'<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+
    (shift==='manana_entrada'?'<small data-gcm-morning-note'+(check?.different?'':' hidden')+'>'+esc(check?.label||'')+'</small>':'')+
@@ -818,8 +857,8 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    '<button type="button" data-gcm-remove="'+esc(p.id)+'">Quitar producto</button>'+
    '<button type="button" class="gcm-product-dialog-cancel" data-gcm-menu-close>Cancelar</button>'+
    '</div></dialog></div>':'')+
-   '</th>'+cells+'<td class="gcm-total'+(sum===0?' is-no-stock':'')+'">'+
-   (sum===0?'Sin stock':sum)+'</td></tr>';
+   stockCheck+'</th>'+cells+'<td class="gcm-total'+(sum===0&&noStock?' is-no-stock':'')+'">'+
+   stockLabel(entry(),p.id,sum)+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
@@ -1353,7 +1392,12 @@ document.addEventListener('click',async e=>{
   const reason=document.getElementById('gcm-history-fix-reason')?.value?.trim()||'';
   if(reason.length<8||reason.length>300){historyCorrectionError='Escribí el motivo de la corrección (mínimo 8 caracteres).';api.render();return;}
   let pid=null,index=null,value,expected;
-  if(kind==='cell'||kind==='decomiso'){
+  if(kind==='sin_stock'){
+   pid=historyEditProduct;
+   if(!snapshot?.products?.some(p=>p.id===pid)){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
+   value=!!document.getElementById('gcm-history-fix-sin-stock')?.checked;
+   expected=manualSinStock(rec,pid);
+  }else if(kind==='cell'||kind==='decomiso'){
    pid=historyEditProduct;index=kind==='cell'?historyEditVto:0;
    const p=snapshot?.products?.find(x=>x.id===pid);
    if(!p){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
@@ -1382,10 +1426,15 @@ document.addEventListener('click',async e=>{
   historyCorrecting=true;historyCorrectionError='';el.disabled=true;
   const fixedDay=rec.day,fixedShift=rec.shift;
   try{
-   const response=await rpc('gestlok_munro_conteo_correct_closed',{
-    p_day:fixedDay,p_shift:fixedShift,p_kind:kind,p_product:pid,p_index:index,
-    p_value:value,p_expected:expected,p_reason:reason
-   });
+   const response=kind==='sin_stock'?
+    await rpc('gestlok_munro_conteo_sin_stock',{
+     p_day:fixedDay,p_shift:fixedShift,p_product:pid,
+     p_sin_stock:value,p_expected:expected,p_reason:reason
+    }):
+    await rpc('gestlok_munro_conteo_correct_closed',{
+     p_day:fixedDay,p_shift:fixedShift,p_kind:kind,p_product:pid,p_index:index,
+     p_value:value,p_expected:expected,p_reason:reason
+    });
    if(!response?.ok)throw Error('El servidor no confirmó la corrección.');
    if(local!==activeLocal()||historyRecord?.day!==fixedDay||historyRecord?.shift!==fixedShift)throw Error('Cambió el turno o la sucursal. Revisá el historial.');
    const rows=await rpc('gestlok_munro_conteo_history',{p_month:fixedDay.slice(0,7)+'-01'});
