@@ -11,6 +11,9 @@ on:
       - 'entornos/sql.txt'
       - 'entornos/backend.mjs'
       - 'entornos/entornos.json'
+      - 'vercel.json'
+      - 'scripts/vercel-ignore-entornos.mjs'
+      - 'tests/vercel-entornos.test.mjs'
       - 'scripts/sync-gestlok-chat-entornos.mjs'
       - 'tests/chat-sync-entornos.test.mjs'
       - '.github/workflows/sync-gestlok-chat.yml'
@@ -37,7 +40,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - name: Comprobar aislamiento y sincronización antes de cambiar ramas
-        run: node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs tests/chat-sync-entornos.test.mjs
+        run: node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs tests/chat-sync-entornos.test.mjs tests/vercel-entornos.test.mjs
       - name: Preparar copia de Chat en ambas ramas sin sobreescribir sus configuraciones
         shell: bash
         run: |
@@ -65,7 +68,8 @@ jobs:
             folder="$RUNNER_TEMP/gestlok-chat-$branch"
             git -C "$folder" add -A -- public/chat public/icons public/img public/vendor \
               supabase/functions/gestlok-chat supabase/functions/gestlok-chat-push \
-              supabase/migrations entornos/backend.mjs entornos/entornos.json entornos/sql.txt
+              supabase/migrations entornos/backend.mjs entornos/entornos.json entornos/sql.txt \
+              vercel.json scripts/vercel-ignore-entornos.mjs
             if git -C "$folder" diff --cached --quiet; then
               echo "### $branch: ya estaba sincronizado" >> "$GITHUB_STEP_SUMMARY"
             else

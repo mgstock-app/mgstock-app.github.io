@@ -26,7 +26,7 @@ function copy(relative,{replace=false}={}){
 for(const dir of ['public/chat','supabase/functions/gestlok-chat','supabase/functions/gestlok-chat-push'])
  copy(dir,{replace:true});
 for(const dir of ['public/icons','public/img','public/vendor'])copy(dir);
-for(const file of ['entornos/backend.mjs','entornos/entornos.json'])copy(file);
+for(const file of ['entornos/backend.mjs','entornos/entornos.json','vercel.json','scripts/vercel-ignore-entornos.mjs'])copy(file);
 
 // Conservar el selector de sucursal de la demo DIVIDIDA. Es una personalización
 // de Prueba/Testing exclusivamente bajo ?demo=1&showroom=1, sin tocar la app real.

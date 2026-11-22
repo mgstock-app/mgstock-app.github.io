@@ -18,6 +18,8 @@ test('al actualizar Chat, prueba/testing reciben código y SQL sin borrar sus de
    entornos:{prueba:{sitio:'https://prueba.example.com'},testing:{sitio:'https://testing.example.com'}}
   }));
   put(src,'entornos/backend.mjs','// backend aislado');
+  put(src,'vercel.json','{"git":{"deploymentEnabled":{"*":false,"prueba":true,"testing":true}}}');
+  put(src,'scripts/vercel-ignore-entornos.mjs','// only correct project');
   put(src,'entornos/sql.txt','# base\nentornos/sql/base-pruebas.sql\nentornos/sql/semilla.sql\n');
   for(const dir of ['public/chat','supabase/functions/gestlok-chat',
    'supabase/functions/gestlok-chat-push','public/icons','public/img','public/vendor']){
@@ -36,6 +38,8 @@ test('al actualizar Chat, prueba/testing reciben código y SQL sin borrar sus de
   assert.equal(readFileSync(join(dst,'public/chat/recurso.txt'),'utf8'),'de main');
   assert.equal(existsSync(join(dst,'public/chat/obsoleto.txt')),false);
   assert.equal(readFileSync(join(dst,'entornos/construir.mjs'),'utf8'),'// constructor exclusivo de Prueba');
+  assert.match(readFileSync(join(dst,'vercel.json'),'utf8'),/"prueba":true/);
+  assert.equal(readFileSync(join(dst,'scripts/vercel-ignore-entornos.mjs'),'utf8'),'// only correct project');
   assert.equal(readFileSync(join(dst,'public/img/imagen-extra.txt'),'utf8'),'conservar');
   assert.equal(existsSync(join(dst,'supabase/migrations/20261122220000_otra_app.sql')),false);
   const sql=readFileSync(join(dst,'entornos/sql.txt'),'utf8');
