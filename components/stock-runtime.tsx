@@ -24,7 +24,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/mi-gusto-conteo.js?rev=consumo-tres-mas-20261119",
     "/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113",
     "/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101",
-    "/stock/app.js?rev=pwa-cerrar-borradores-20261118",
+    "/stock/app.js?rev=mi-gusto-stock-categorias-20261122",
   ];
   const privateScripts = [
     "/stock/gestlok-registration.js",
@@ -125,7 +125,7 @@ export function StockRuntime() {
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");
       // Versioned URLs prevent installed PWAs from reusing older registration controllers.
-      await load("/stock/app.js?rev=pwa-cerrar-borradores-20261118");
+      await load("/stock/app.js?rev=mi-gusto-stock-categorias-20261122");
       await load("/stock/gestlok-sidebar-polish.js?rev=white-20261028-v2");
       await load("/stock/gestlok-mobile-dock.js?rev=menu-empresa-20261108");
       if (!visitor) await load("/stock/gestlok-navigation-editor.js?rev=menu-empresa-20261108");
