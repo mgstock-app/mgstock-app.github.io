@@ -70,7 +70,11 @@
 .glh-puntos{display:flex;justify-content:center;gap:4px;margin-top:10px}
 .glh-puntos button{width:28px;height:28px;border:0;background:transparent;cursor:pointer;position:relative;padding:0}
 .glh-puntos button::after{content:"";position:absolute;inset:10px;border-radius:50%;background:#B9C9D6}
-.glh-puntos .glh-punto-on::after{inset:9px 4px;border-radius:999px;background:var(--teal-dk)}
+.glh-puntos .glh-punto-on{width:40px}
+.glh-puntos .glh-punto-on::after{inset:10px 4px;border-radius:999px;background:#B9DDDD}
+.glh-progreso{position:absolute;inset:10px 4px;z-index:1;border-radius:999px;background:var(--teal-dk);transform-origin:left center;animation:glh-progreso 6s linear forwards}
+.glh-progreso-pausa{animation-play-state:paused}
+@keyframes glh-progreso{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .glh-app-ico{width:44px;height:44px;border-radius:12px;background:#E5F4F4;color:var(--teal-dk);display:flex;align-items:center;justify-content:center}
 .glh-beneficios{background:#fff;padding:64px 24px}
 .glh-beneficios h2{max-width:1200px;margin:0 auto 28px;font-size:32px;line-height:1.1;font-weight:800;letter-spacing:-.8px;color:var(--navy)}
@@ -79,7 +83,7 @@
 .glh-beneficios li .glh-app-ico{grid-row:span 2}
 .glh-beneficios b{font-size:17px;color:var(--navy)}
 .glh-beneficios li>span:last-child{font-size:14px;line-height:1.45;color:var(--gris)}
-@media (prefers-reduced-motion:reduce){.glh-pausa{display:none}.glh-cuadro{transition:none}}
+@media (prefers-reduced-motion:reduce){.glh-cuadro{transition:none}.glh-progreso{animation:none;transform:none}}
 
 /* Contacto */
 .glh-contacto{background:var(--navy-2);color:#fff;padding:80px 24px;scroll-margin-top:8px}

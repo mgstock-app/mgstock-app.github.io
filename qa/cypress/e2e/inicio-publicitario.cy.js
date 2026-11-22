@@ -15,12 +15,18 @@ describe('Inicio publicitario', () => {
     cy.contains('a', 'Ingresar').should('have.attr', 'href', '/login/');
     cy.contains('a', 'Registrarme').should('have.attr', 'href', '/login/#registrarme');
     cy.contains('h2', 'Así funciona GESTLOK Chat').should('be.visible');
+    // Se mueve solo: a los 6 s pasa al segundo cuadro.
+    cy.get('.glh-puntos button').eq(0).should('have.attr', 'aria-current', 'step');
+    cy.get('.glh-puntos button', {timeout: 9000}).eq(1).should('have.attr', 'aria-current', 'step');
+    cy.get('.glh-progreso').should('exist');
     cy.get('.glh-cuadro').should('have.length', 6);
     cy.get('.glh-cuadro img').first().should('be.visible').and($img => expect($img[0].naturalWidth).to.be.greaterThan(0));
     cy.contains('button', 'Pausar').click();
     cy.contains('button', 'Reanudar').should('have.attr', 'aria-pressed', 'true');
     cy.get('[aria-label="Cuadro siguiente"]').click();
-    cy.get('.glh-puntos button').eq(1).should('have.attr', 'aria-current', 'step');
+    cy.get('.glh-puntos button').eq(2).should('have.attr', 'aria-current', 'step');
+    cy.wait(7000);
+    cy.get('.glh-puntos button').eq(2).should('have.attr', 'aria-current', 'step');
     cy.contains('Plan Scanner').should('not.exist');
     cy.contains('Sobre mí').should('not.exist');
     cy.get('a[href*="wa.me"]').should('not.exist');
