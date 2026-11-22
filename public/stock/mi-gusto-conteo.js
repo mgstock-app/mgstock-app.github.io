@@ -1627,7 +1627,7 @@ document.addEventListener('change',async e=>{
    historyCorrectionError='';api.render();return;
  }
  // Confirmación manual por producto. Un campo sin registrar no equivale a cero.
- if(input.hasAttribute('data-gcm-sin-stock')){
+ if(input.hasAttribute?.('data-gcm-sin-stock')){
   const p=productById(input.dataset.gcmSinStock);
   const record=entry();
   const previous=p?manualSinStock(record,p.id):false,desired=!!input.checked;
