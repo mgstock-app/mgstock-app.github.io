@@ -30,8 +30,11 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
-  // Nueve pestañas: se sumó «Prueba GESTLOK Chat» a las ocho anteriores.
-  cy.get('.gl-ch-nav button').should('have.length',9);
+  // Diez pestañas: GESTLOK Chat tiene accesos propios a producción, Prueba y Testing.
+  cy.get('.gl-ch-nav button').should('have.length',10);
+  cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
+  cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
+  cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="chat-prueba"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="resenas"]').should('exist');
   cy.get('.gl-ch-nav [data-ch-tab="nfc"]').should('exist');
