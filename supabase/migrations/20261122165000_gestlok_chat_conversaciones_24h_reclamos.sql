@@ -352,3 +352,20 @@ BEGIN
  PERFORM gestlok_chat_private.auditar(c.sucursal_id,'cerrar_conversacion',jsonb_build_object('conversacion',c.id));
  RETURN jsonb_build_object('ok',true,'cerrada',true);
 END $$;
+
+
+-- Al consultar el estado de un pedido no se deben mostrar pedidos del ciclo vencido.
+create or replace function public.gestlok_chat_srv_estado(p_conversacion uuid,p_token_hash bytea)
+returns jsonb language plpgsql stable security definer set search_path='' as $gc_order_state$
+declare c gestlok_chat_private.conversaciones;
+begin
+  c:=gestlok_chat_private.conversacion_de(p_conversacion,p_token_hash);
+  return jsonb_build_object('pedidos',coalesce((
+    select jsonb_agg(gestlok_chat_private.pedido_publico(p) order by p.creado_at desc)
+    from (select * from gestlok_chat_private.pedidos
+      where conversacion_id=c.id and creado_at>=c.reiniciada_at
+      order by creado_at desc limit 5) p
+  ),'[]'::jsonb));
+end $gc_order_state$;
+revoke all on function public.gestlok_chat_srv_estado(uuid,bytea) from public,anon,authenticated;
+grant execute on function public.gestlok_chat_srv_estado(uuid,bytea) to service_role;
