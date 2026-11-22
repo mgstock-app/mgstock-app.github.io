@@ -102,17 +102,19 @@ test('las RPC privadas validan permisos y requieren activar Desperdicios',()=>{
  assert.match(sql,/revoke all on function public\.gestlok_munro_conteo_set_section/);
 });
 
-test('gerente puede quitar SALSAS desde el botón visible en su barra y restaurarla',async()=>{
- const {mod,db,rec,calls,button,input}=setup();
+test('gerente puede ocultar y restaurar SALSAS sin eliminar productos del catálogo',async()=>{
+ const {mod,db,rec,calls,input}=setup();
  mod.view();await tick();
  let html=mod.view();
- assert.match(html,/data-gcm-hide-section="SALSAS"/);
- assert.match(html,/data-gcm-hide-section="EMPANADAS"/);
- await button('data-gcm-hide-section',{gcmHideSection:'SALSAS'});
+ assert.doesNotMatch(html,/data-gcm-hide-section/);
+ assert.doesNotMatch(html,/data-gcm-remove-products-open/); // permisos de catálogo: creadora
+ assert.match(html,/data-gcm-section-visible="SALSAS"/);
+ await input({attr:'data-gcm-section-visible',dataset:{gcmSectionVisible:'SALSAS'},checked:false});
  assert.equal(rec.hidden_sections.join(','),'SALSAS');
  html=mod.view();
  assert.doesNotMatch(html,/data-gcm-section="SALSAS"/);
  assert.equal(db.products.length,2);
+ assert.ok(db.products.every(p=>p.active));
  assert.ok(calls.some(x=>x.name==='gestlok_munro_conteo_set_section'&&x.args.p_section==='SALSAS'&&x.args.p_visible===false));
  await input({attr:'data-gcm-section-visible',dataset:{gcmSectionVisible:'SALSAS'},checked:true});
  assert.match(mod.view(),/data-gcm-section="SALSAS"/);
