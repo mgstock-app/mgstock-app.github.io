@@ -54,7 +54,7 @@ function app(role='dueno'){
   await listeners.get('click')({target,preventDefault(){},stopPropagation(){}});
   await tick();return module.view();
  };
- return {module,window,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
+ return {module,window,document,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
 }
 async function start(role='dueno'){
  const m=app(role);m.module.view();await tick();await tick();
@@ -110,7 +110,7 @@ test('dueña siempre recibe tarjetas completas aunque el historial llegue antes 
  assert.doesNotMatch(html,/data-gcm-finalize|Editar turno cerrado|Producto sin referencia/);
 });
 
-test('Franui Pink, CA y LeBanana aparecen en historial aunque no tengan stock; qty viejo conserva unidades',async()=>{
+test('historial muestra — sin datos y Sin stock sólo con confirmación manual; qty viejo conserva unidades',async()=>{
  const m=app('dueno');
  m.products.push(
   {id:'f-pink',name:'Pink',section:'HELADOS',units_per_chapa:24,active:true,position:408},
@@ -120,13 +120,13 @@ test('Franui Pink, CA y LeBanana aparecen en historial aunque no tengan stock; q
  );
  const exit=m.rows.find(r=>r.day===m.today&&r.shift==='manana_salida');
  exit.data['f-pink']={v1:{qty:14,chapas:0,sueltas:0}};
- exit.data['f-ca']={v1:{qty:0,chapas:0,sueltas:0}};
+ exit.data['f-ca']={v1:{qty:0,chapas:0,sueltas:0},sin_stock:true};
  m.module.view();await tick();await tick();
  await m.click('data-gcm-history-day',m.today);
  const html=await m.click('data-gcm-history',m.today+'|manana_salida');
  assert.match(html,/<strong>Pink<\/strong><\/td><td[^>]*>14<\/td>/,'14 unidades antiguas de Pink no se pierden');
  assert.match(html,/<strong>Franui CA<\/strong><\/td><td[^>]*>Sin stock<\/td>/,'Franui amargo debe aparecer');
- assert.match(html,/<strong>LeBanana<\/strong><\/td><td[^>]*>Sin stock<\/td>/,'LeBanana también debe aparecer sin registro');
+ assert.match(html,/<strong>LeBanana<\/strong><\/td><td[^>]*>—<\/td>/,'Sin registrar es —, no Sin stock automático');
  assert.doesNotMatch(html,/Old discontinued/,'Los artículos inactivos sin registros no se inventan');
  assert.ok(m.drawn.includes('Sin stock'),'La descarga A4 también debe mantener productos sin stock');
  assert.match(html,/14 u\./,'El desglose conserva las 14 unidades históricas aunque Pink ahora se cuente por caja');
@@ -150,6 +150,88 @@ test('Franui Pink y LeBanana usan cajas y unidades sueltas en el conteo operativ
  assert.doesNotMatch(html,/data-gcm-qty-plus="f-pink"|data-gcm-qty-plus="lebanana"/);
 });
 
+test('gerente puede editar en turnos finalizados un producto que jamás fue cargado',async()=>{
+ const m=await start('gerente');
+ m.products.push({id:'missing',name:'Franui amargo',section:'HELADOS',units_per_chapa:24,active:true,position:410});
+ await m.click('data-gcm-history-day',m.today);
+ let html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ assert.match(html,/<strong>Franui amargo<\/strong><\/td><td[^>]*>—<\/td>/);
+ assert.match(html,/data-gcm-history-fix-toggle/);
+ html=await m.click('data-gcm-history-fix-toggle');
+ assert.match(html,/value="missing"/,'un producto sin datos debe estar en el selector de corrección');
+ assert.match(html,/Sin stock \(manual\)/);
+ assert.match(html,/data-gcm-history-fix-save/);
+ assert.doesNotMatch(html,/data-gcm-finalize/);
+});
+
+test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin reabrir turno',async()=>{
+ const m=await start('gerente');
+ const exit=m.rows.find(r=>r.day===m.today&&r.shift==='manana_salida');
+ m.products.unshift({id:'empty',name:'LeBanana',section:'HELADOS',units_per_chapa:30,active:true,position:411});
+ const rpc=m.window.GestLokSupabase.rpc;
+ m.window.GestLokSupabase.rpc=async(name,args)=>{
+  if(name==='gestlok_munro_conteo_sin_stock'){
+   m.calls.push({name,args});
+   assert.equal(args.p_expected,false);
+   assert.equal(args.p_sin_stock,true);
+   assert.equal(args.p_product,'empty');
+   assert.match(args.p_reason,/conteo/i);
+   exit.data.empty={sin_stock:true};
+   return {data:{ok:true},error:null};
+  }
+  return rpc(name,args);
+ };
+ await m.click('data-gcm-history-day',m.today);
+ await m.click('data-gcm-history',m.today+'|manana_salida');
+ await m.click('data-gcm-history-fix-toggle');
+ // El menú está en modo edición. Elegimos el tipo «Sin stock» y el artículo no cargado.
+ const change=m.listeners.get('change');
+ const target={id:'gcm-history-fix-kind',value:'sin_stock',closest:s=>s==='.gcm-page'?{}:null};
+ await change({target});await tick();
+ // El primer artículo sin registrar del catálogo debe poder seleccionarse.
+ const selectProduct={id:'gcm-history-fix-product',value:'empty',closest:s=>s==='.gcm-page'?{}:null};
+ await change({target:selectProduct});await tick();
+ let html=m.module.view();
+ assert.match(html,/id="gcm-history-fix-sin-stock"/);
+ assert.match(html,/value="empty" selected/);
+ m.document.getElementById=id=>id==='gcm-history-fix-reason'?
+  {value:'Corrección por conteo sin carga del producto'}:
+  id==='gcm-history-fix-sin-stock'?{checked:true}:null;
+ html=await m.click('data-gcm-history-fix-save');
+ assert.match(html,/<strong>LeBanana<\/strong><\/td><td[^>]*>Sin stock<\/td>/);
+ assert.equal(exit.data.empty.sin_stock,true);
+ assert.equal(exit.status,'finalizado');
+ assert.ok(m.calls.some(x=>x.name==='gestlok_munro_conteo_sin_stock'&&x.args.p_product==='empty'));
+ const readonly=await start('dueno');
+ await readonly.click('data-gcm-history-day',readonly.today);
+ const ownerHtml=await readonly.click('data-gcm-history',readonly.today+'|manana_salida');
+ assert.doesNotMatch(ownerHtml,/data-gcm-history-fix-save|gcm-history-fix-sin-stock/);
+});
+
+test('gerente marca manualmente Sin stock durante el turno y conserva — en productos vacíos',async()=>{
+ const m=app('gerente');m.module.view();await tick();await tick();
+ const cell={textContent:'',classList:{toggle(){}}},status={textContent:'',className:''};
+ const row={querySelector:sel=>sel==='.gcm-total'?cell:sel==='.gcm-cell-save'?status:null};
+ const input={dataset:{gcmSinStock:'p2'},checked:true,disabled:false,
+  hasAttribute:name=>name==='data-gcm-sin-stock',
+  closest:sel=>sel==='.gcm-page'?{}:sel==='tr'?row:null};
+ await m.listeners.get('change')({target:input});await tick();
+ assert.ok(m.calls.some(c=>c.name==='gestlok_munro_conteo_sin_stock'&&c.args.p_sin_stock===true&&c.args.p_expected===false));
+ assert.equal(m.todayEntry.data.p2.sin_stock,true);
+ assert.equal(cell.textContent,'Sin stock');
+ assert.match(m.module.view(),/data-gcm-sin-stock="p2" checked/);
+ assert.doesNotMatch(m.module.view(),/data-gcm-sin-stock="p1" checked/);
+});
+test('migración separa marca manual de cero y requiere auditoría en ambos locales',()=>{
+ const migration=fs.readFileSync(new URL('../supabase/migrations/20261122181500_mi_gusto_conteo_sin_stock_manual.sql',import.meta.url),'utf8');
+ for(const local of ['munro','torcuato']){
+  assert.match(migration,new RegExp('public\\.gestlok_'+local+'_conteo_sin_stock'));
+  assert.match(migration,new RegExp('gestlok_'+local+'_conteo_private\\.require_access\\(true,false\\)'));
+ }
+ assert.equal((migration.match(/p_reason is null or length\(trim\(p_reason\)\) not between 8 and 300/g)||[]).length,2);
+ assert.equal((migration.match(/closed_corrections/g)||[]).length>=4,true);
+ assert.doesNotMatch(migration,/update\s+gestlok_.*_conteo_private\.shifts\s+set\s+status\s*=/i);
+});
 test('dueña ve error de catálogo y puede reintentar sin perder el turno seleccionado',async()=>{
  const m=app('dueno'),rpc=m.window.GestLokSupabase.rpc;
  let fails=true;
