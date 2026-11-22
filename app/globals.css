@@ -2458,3 +2458,46 @@ button.gl-home-essential-stat:focus-visible,.gl-home-essential-links button:focu
 .gl-company-add-form p{margin:0;color:#5c7187;font-size:12px;line-height:1.5}
 .gl-company-add-form button{width:100%;min-height:44px}
 .gl-ch-company-actions .gl-company-add-local,.gl-ch-premium-company-locals .gl-company-add-local{width:100%}
+
+/* Mi Gusto · Stock Local: menú por categorías a la izquierda de la planilla.
+   Solo se monta en stock/munro/torcuato; no modifica otros módulos. */
+.gl-mg-stock-layout{display:grid;grid-template-columns:184px minmax(0,1fr);align-items:start;gap:14px;min-width:0}
+.gl-mg-stock-nav{position:sticky;top:76px;max-height:calc(100dvh - 110px);display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gl-mg-stock-nav-title{padding:13px 12px 10px;color:#12345a;font-weight:750;font-size:13px;border-bottom:1px solid var(--line)}
+.gl-mg-stock-nav-list{display:grid;gap:3px;overflow-y:auto;overscroll-behavior:contain;padding:7px;scrollbar-width:thin}
+.gl-mg-stock-cat{border:0;background:transparent;display:flex;align-items:center;gap:7px;min-height:42px;width:100%;border-radius:8px;padding:7px 9px;text-align:left;color:#233c50;font-size:12.5px;font-weight:650}
+.gl-mg-stock-cat i{width:8px;height:8px;background:var(--cc,#8094a3);border-radius:2px;flex:none}
+.gl-mg-stock-cat-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.gl-mg-stock-cat-num{flex:none;font-size:11px;color:#6a7b89;font-weight:600}
+.gl-mg-stock-cat:hover{background:#f1f5f8}
+.gl-mg-stock-cat[aria-pressed="true"]{background:#12345a;color:white}
+.gl-mg-stock-cat[aria-pressed="true"] .gl-mg-stock-cat-num{color:#dfe9f0}
+.gl-mg-stock-main{min-width:0}
+.gl-mg-stock-main .tools{margin-bottom:12px}
+.gl-mg-stock-drawer{display:none}
+@media(min-width:701px) and (max-width:1000px){
+  .gl-mg-stock-layout{grid-template-columns:155px minmax(0,1fr);gap:10px}
+  .gl-mg-stock-cat{padding:7px 8px}
+}
+@media(max-width:700px){
+  .gl-mg-stock-layout{display:block}
+  .gl-mg-stock-nav{display:none}
+  .gl-mg-stock-drawer{display:block;position:relative;z-index:5;margin:0 0 12px}
+  .gl-mg-stock-drawer>summary{list-style:none;cursor:pointer;min-height:44px;padding:10px 14px;
+    background:#f4f7fa;border:1px solid #cbd7e2;border-radius:10px;color:#12345a;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:750}
+  .gl-mg-stock-drawer>summary::-webkit-details-marker{display:none}
+  .gl-mg-stock-drawer>summary::before{content:"☰";margin-right:5px}
+  .gl-mg-stock-drawer>summary span{margin-left:auto;max-width:48%;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;color:#506a7e}
+  .gl-mg-stock-drawer-list{position:absolute;left:0;top:calc(100% + 4px);width:min(270px,86vw);
+    max-height:min(65dvh,480px);overflow-y:auto;overscroll-behavior:contain;display:grid;gap:3px;
+    padding:9px;background:#fff;border:1px solid #cbd7e2;border-radius:12px;
+    box-shadow:0 16px 35px rgba(15,43,65,.18)}
+  .gl-mg-stock-drawer:not([open]) .gl-mg-stock-drawer-list{display:none}
+  .gl-mg-stock-drawer-list .gl-mg-stock-cat{min-height:45px;font-size:14px}
+}
+@media print{
+  .gl-mg-stock-layout{display:block}
+  .gl-mg-stock-nav,.gl-mg-stock-drawer{display:none!important}
+}
