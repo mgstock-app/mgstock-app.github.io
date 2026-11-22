@@ -2098,3 +2098,62 @@ dialog.gcm-category-editor-dialog::backdrop{background:rgba(7,24,43,.6)}
  .gcm-count-screen .gcm-section-toolbar .gcm-rename-section{min-height:36px;padding:6px 9px}
  dialog.gcm-category-editor-dialog{padding:17px}
 }
+
+
+/* Configuración de presentación por unidad o caja/pack, solo roles autorizados. */
+.gcm-add-product-dialog [data-gcm-new-product-pack-wrap][hidden],
+.gcm-product-config-dialog [data-gcm-product-config-pack-wrap][hidden]{display:none!important}
+.gcm-product-config-dialog{
+ box-sizing:border-box;position:fixed;inset:0;margin:auto;
+ width:min(460px,calc(100vw - 20px));max-height:min(85dvh,660px);
+ overflow:auto;padding:22px;border:1px solid #c7d7e6;border-radius:14px;
+ background:#fff;color:#193c58;box-shadow:0 20px 62px #061f3940;z-index:10000;
+}
+.gcm-product-config-dialog::backdrop{background:rgba(7,24,43,.6)}
+.gcm-product-config-dialog h3{margin:0;color:#153c5b;font-size:20px}
+.gcm-product-config-dialog p{font-size:13px;line-height:1.5;color:#567289}
+.gcm-product-config-dialog label{display:grid;gap:7px;margin:15px 0 0;font-weight:750;font-size:14px}
+.gcm-product-config-dialog select,
+.gcm-product-config-dialog input{
+ width:100%;box-sizing:border-box;min-height:47px;padding:10px 12px;
+ font:inherit;font-size:16px;color:#153c5b;background:#fff;
+ border:1px solid #b5c9d9;border-radius:9px;
+}
+.gcm-product-config-dialog input:focus-visible,
+.gcm-product-config-dialog select:focus-visible{outline:2px solid #087bb6;outline-offset:2px}
+.gcm-product-config-dialog .gcm-product-config-error{color:#a32937;font-weight:700;min-height:17px}
+.gcm-product-config-error:empty{display:none}
+.gcm-product-config-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.gcm-product-config-actions button{
+ flex:1 1 165px;min-height:47px;padding:10px 12px;border-radius:9px;
+ border:1px solid #b7cade;background:#f5f8fb;color:#194266;
+ font-weight:800;font-size:14px;cursor:pointer;
+}
+.gcm-product-config-actions [data-gcm-product-config-save]{background:#12345a;border-color:#12345a;color:#fff}
+.gcm-product-config-actions button:disabled{opacity:.55;cursor:wait}
+.gcm-owner-catalog{max-width:1100px;margin:auto;padding-bottom:45px}
+.gcm-owner-catalog>p{color:#526d84;line-height:1.5}
+.gcm-owner-catalog-section{
+ border:1px solid #d7e2ec;border-radius:12px;
+ margin:14px 0;padding:16px;background:#fff;
+}
+.gcm-owner-catalog-section h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;color:#193b5b}
+.gcm-owner-catalog-section h3 small{font-size:12px;font-weight:650;color:#657c8f}
+.gcm-owner-catalog-section>.gcm-add-product-trigger{min-height:44px;margin-bottom:13px}
+.gcm-owner-catalog-products{display:grid;gap:9px}
+.gcm-owner-catalog-product{
+ display:flex;justify-content:space-between;align-items:center;
+ gap:12px;padding:12px;border-radius:10px;background:#f6f9fc;border:1px solid #e0e8ef
+}
+.gcm-owner-catalog-product>span{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.gcm-owner-catalog-product small{font-size:12px;color:#627e95}
+.gcm-owner-catalog-product button{
+ min-height:42px;padding:9px 13px;flex-shrink:0;
+ border:1px solid #b7c9dc;border-radius:8px;background:white;color:#194667;
+ font-size:13px;font-weight:800;cursor:pointer
+}
+@media(max-width:650px){
+ .gcm-product-config-dialog{padding:17px}
+ .gcm-owner-catalog-section{padding:12px}
+ .gcm-owner-catalog-product{align-items:flex-start}
+}
