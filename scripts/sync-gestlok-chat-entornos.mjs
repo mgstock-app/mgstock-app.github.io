@@ -28,6 +28,61 @@ for(const dir of ['public/chat','supabase/functions/gestlok-chat','supabase/func
 for(const dir of ['public/icons','public/img','public/vendor'])copy(dir);
 for(const file of ['entornos/backend.mjs','entornos/entornos.json'])copy(file);
 
+// Conservar el selector de sucursal de la demo DIVIDIDA. Es una personalización
+// de Prueba/Testing exclusivamente bajo ?demo=1&showroom=1, sin tocar la app real.
+// Si main incorpora nativamente esta funcionalidad, no se vuelve a inyectar.
+function replaceUnique(code,before,after){
+ if(code.split(before).length!==2)throw Error('La estructura de la demo cambió: revisar sincronización antes de publicar.');
+ return code.replace(before,after);
+}
+function adaptDemo(){
+ const cliente=join(dest,'public/chat/chat.js');
+ if(existsSync(cliente)){
+  let t=readFileSync(cliente,'utf8');
+  if(!t.includes('const SHOWROOM_SUCURSAL')){
+   const hook='let demoEstado = null; let demoPedido = null;';
+   const addon=[
+    '// Identidad exclusiva de la demo dividida; nunca alcanza una sesión real.',
+    "const SHOWROOM_SUCURSAL = SHOWROOM && ({",
+    "  'mi-gusto-munro': 'Munro',",
+    "  'mi-gusto-torcuato': 'Don Torcuato',",
+    "})[params.get('s')];",
+    "if (SHOWROOM_SUCURSAL) {",
+    "  DEMO_DATOS.sucursal.nombre = SHOWROOM_SUCURSAL;",
+    "  DEMO_DATOS.sucursal.empresa = 'Mi Gusto · DEMOSTRACIÓN';",
+    "  DEMO_DATOS.sucursal.slug = 'demo-' + params.get('s');",
+    "}"
+   ].join('\n');
+   t=replaceUnique(t,hook,addon+'\n'+hook);
+   writeFileSync(cliente,t);
+  }
+ }
+ const panel=join(dest,'public/chat/panel/panel.js');
+ if(existsSync(panel)){
+  let t=readFileSync(panel,'utf8');
+  if(!t.includes('const SHOWROOM_SUCURSAL')){
+   const hook="  if (SHOWROOM) {\n    // Mostrar a futuros comercios un local completamente ficticio.";
+   const addon=[
+    "  const SHOWROOM_SUCURSAL = SHOWROOM && ({",
+    "    'mi-gusto-munro': 'Munro',",
+    "    'mi-gusto-torcuato': 'Don Torcuato',",
+    "  })[new URLSearchParams(location.search).get('s')];"
+   ].join('\n');
+   t=replaceUnique(t,hook,addon+'\n'+hook);
+   t=replaceUnique(t,"D.suc[0].nombre='Sucursal Centro';",
+    "D.suc[0].nombre=SHOWROOM_SUCURSAL || 'Sucursal Centro';");
+   t=replaceUnique(t,"nombre:'Sucursal Centro',empresa:'Comercio de demostración'",
+    "nombre:D.suc[0].nombre,empresa:SHOWROOM_SUCURSAL ? 'Mi Gusto · DEMOSTRACIÓN' : 'Comercio de demostración'");
+   t=replaceUnique(t,"case 'panel_inicio': return {habilitado: true, empresa: 'Comercio de demostración',",
+    "case 'panel_inicio': return {habilitado: true, empresa: SHOWROOM_SUCURSAL ? 'Mi Gusto · DEMOSTRACIÓN' : 'Comercio de demostración',");
+   t=replaceUnique(t,"sucursales: SHOWROOM ? [{...D.suc[0],nombre:'Sucursal Centro',local_id:'demo'}]",
+    "sucursales: SHOWROOM ? [{...D.suc[0],local_id:'demo'}]");
+   writeFileSync(panel,t);
+  }
+ }
+}
+adaptDemo();
+
 // La rama de pruebas conserva su propio entornos/construir.mjs y el catálogo ficticio.
 // Migraciones Chat nuevas se agregan automáticamente en orden al manifiesto, nunca las
 // migraciones generales de GESTLOK ni SQL de producción ajeno a este módulo.
