@@ -36,8 +36,10 @@ describe('GESTLOK · demo de Horarios y modo sin conexión', () => {
     // El cambio de plantilla reconstruye el modal; comprobamos que el campo sigue habilitado
     // y completamos el valor sin depender de la secuencia de teclas del runner Cypress.
     const sheetDemoUrl='https://docs.google.com/spreadsheets/d/EJEMPLO_123/edit';
-    cy.get('#gl-dh-url', {timeout:10000}).should('be.visible').and('be.enabled')
-      .and('not.have.attr','readonly').invoke('val',sheetDemoUrl).trigger('input')
+    cy.get('#gl-dh-url', {timeout:10000}).should('be.visible').and('be.enabled');
+    cy.get('#gl-dh-url').should('not.have.attr','readonly');
+    // Reconsultamos: Cypress puede devolver undefined al comprobar que falta un atributo.
+    cy.get('#gl-dh-url').invoke('val',sheetDemoUrl).trigger('input')
       .should('have.value',sheetDemoUrl);
     cy.get('#gl-dh-link button[type=submit]').click();
     cy.get('#gl-demo-emp').should('contain.text', 'Enlace guardado en esta demo');
