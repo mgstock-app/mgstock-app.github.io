@@ -242,8 +242,11 @@ const stockLabel=(rec,id,total)=>total>0?String(total):(manualSinStock(rec,id)?'
 // La equivalencia se fija por producto y turno. Cambiar la presentación no reescribe historial.
 function productForRecord(rec,p){
  if(!p)return p;
- const per=rec?.pack_units?.[p.id];
- return Number.isInteger(per)&&per>=0&&per<=1000?{...p,units_per_chapa:per}:p;
+ const per=rec?.pack_units?.[p.id],label=rec?.pack_labels?.[p.id];
+ const rate=Number.isInteger(per)&&per>=0&&per<=1000?per:p.units_per_chapa;
+ const historicalLabel=['unidad','caja','pack','chapa'].includes(label)?label:p.pack_label;
+ return rate!==p.units_per_chapa||historicalLabel!==p.pack_label?
+  {...p,units_per_chapa:rate,pack_label:historicalLabel}:p;
 }
 function recordedTotal(rec,p){
  if(!rec||!p)return 0;
