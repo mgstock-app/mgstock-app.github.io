@@ -4,28 +4,28 @@ import {readFileSync} from 'node:fs';
 
 const css=readFileSync(new URL('../public/chat/chat.css',import.meta.url),'utf8');
 const html=readFileSync(new URL('../public/chat/index.html',import.meta.url),'utf8');
+const js=readFileSync(new URL('../public/chat/chat.js',import.meta.url),'utf8');
 
-test('WhatsApp discreto dentro de la esquina inferior derecha del chat',()=>{
-  const bloque=css.split('/* Canal externo opcional. En esquina inferior derecha')[1]
+test('WhatsApp queda a la izquierda de Enviar pedido y nunca flota sobre el chat',()=>{
+  const barra=html.match(/<div class="barra-pedido"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.match(barra,/id="whatsapp-local" class="chat-whatsapp"/);
+  assert.ok(barra.indexOf('id="whatsapp-local"') < barra.indexOf('id="btn-finalizar"'));
+  assert.match(barra,/>WhatsApp<\/span>/);
+  const bloque=css.split('/* Contacto externo en la barra del pedido')[1]
     ?.split('/* Cancelación segura y opciones de venta posteriores. */')[0];
-  assert.ok(bloque,'debe existir el estilo inferior derecho');
-  assert.match(bloque,/right:max\(12px,calc\(\(100vw - 720px\)\/2 \+ 12px\)\)/);
-  assert.match(bloque,/bottom:calc\(94px \+ env\(safe-area-inset-bottom, 0px\)\)/);
-  assert.match(bloque,/width:44px;height:44px/);
-  assert.match(bloque,/width:34px;height:34px/);
+  assert.ok(bloque);
+  assert.match(bloque,/position:static/);
+  assert.doesNotMatch(bloque,/position:fixed|right:max|bottom:calc/);
   assert.match(bloque,/@media\(max-width:620px\)/);
-  assert.match(bloque,/bottom:calc\(174px \+ env\(safe-area-inset-bottom, 0px\)\)/);
-  assert.match(bloque,/body:has\(\.hoja:not\(\[hidden\]\)\)/);
-  assert.match(bloque,/body:has\(\.redactar:focus-within\)/);
-  assert.doesNotMatch(bloque,/left:|top:105px|bottom:auto/);
-  assert.doesNotMatch(css, /\.cabecera\{padding-left:64px\}/);
-  assert.match(html,/chat\.css\?v=20261121bordes1/);
-  assert.match(html,/id="whatsapp-local" class="chat-whatsapp"/);
+  assert.match(bloque,/@media\(max-width:350px\)/);
+  assert.match(html,/chat\.css\?v=20261122acciones1/);
 });
 
-test('el contacto externo conserva su vínculo, sin intervenir en los pedidos',()=>{
-  const js=readFileSync(new URL('../public/chat/chat.js',import.meta.url),'utf8');
+test('WhatsApp conserva su vínculo y no modifica la lógica del pedido',()=>{
   assert.match(js,/link\.href = 'https:\/\/wa\.me\/' \+ telefono/);
   assert.match(js,/link\.hidden = false/);
-  assert.match(js,/link\.hidden = true; link\.removeAttribute\('href'\)/);
+  assert.match(js,/link\.removeAttribute\('href'\)/);
+  assert.match(js,/const hayPedido = cantidad > 0 && !S\.cerrada/);
+  assert.match(js,/\$\('btn-finalizar'\)\.hidden = !hayPedido/);
+  assert.match(js,/\$\('barra-pedido'\)\.hidden = !hayPedido && \$\('whatsapp-local'\)\.hidden/);
 });
