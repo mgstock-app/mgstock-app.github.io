@@ -95,20 +95,13 @@ test('La migración solo clona catálogo y preferencias, nunca registros ni hist
  assert.match(sql,/puede_ver_local/);
 });
 
-test('dueña accede al historial antiguo de su sucursal sin editar planillas',async()=>{
+test('dueña de Torcuato ve historial vacío sin importar registros anteriores de Stock',async()=>{
  const x=mount({local:'torcuato',role:'dueno',access:['munro','torcuato']});
- x.S.loaded={c:true};x.S.conteos=[{id:'a'},{id:'b'}];
+ x.S.loaded={c:true};x.S.conteos=[{id:'un-conteo-antiguo'}];
  x.mod.view();await tick();await tick();
  const html=x.mod.view();
- assert.match(html,/Historial anterior de Stock/);
- assert.match(html,/Ver historial anterior \(2\)/);
- assert.match(html,/Don Torcuato/);
- assert.doesNotMatch(html,/gcm-count-screen|data-gcm-finalize/);
- const target={closest:s=>s==='.gcm-page'?{}:{hasAttribute:k=>k==='data-gcm-legacy-history'}};
- await x.events.get('click')({target,preventDefault(){},stopPropagation(){}});
- assert.deepEqual(x.routes,['historial']);
- const app=fs.readFileSync(new URL('../public/stock/app.js',import.meta.url),'utf8');
- assert.match(app,/miGustoOwnerHistorialSoloLectura/);
- assert.match(app,/\!miGustoOwnerHistorialSoloLectura\(\)/);
- assert.match(app,/\|\| miGustoOwnerHistorialSoloLectura\(\)/);
+ assert.match(html,/MI GUSTO · DON TORCUATO/);
+ assert.match(html,/No hay conteos por turnos registrados en este mes/);
+ assert.doesNotMatch(html,/gcm-count-screen|data-gcm-finalize|Ver historial anterior|un-conteo-antiguo/);
+ assert.deepEqual(x.calls.filter(c=>c.name.endsWith('_history')).map(c=>c.name),['gestlok_torcuato_conteo_history']);
 });
