@@ -836,10 +836,19 @@
         el('header',{},el('strong',{text:({demora:'Demora',faltante:'Producto faltante',otro:'Otro reclamo',consulta:'Consulta para el gerente'})[r.tipo]||'Reclamo'}),
           r.pedido ? el('span',{class:'estado',text:'Pedido '+r.pedido}) : null),
         el('p',{text:r.detalle}),
+        r.historial_expirado ? el('small',{text:'El chat cumplió 24 horas. Este reclamo sigue guardado.'}) : null,
         el('small',{text:hora(r.creado_at)+(r.respondido_at?' · Respondido, pendiente de cierre':' · Esperando respuesta')}),
+        ...(r.evidencia_paths||[]).slice(0,10).map((path,i)=>el('button',{
+          type:'button',class:'boton',text:'Ver foto adjunta '+(i+1),onclick:async()=>{
+            if(DEMO)return aviso('La foto solo está disponible en el panel real.');
+            const {data,error}=await sb.storage.from('gestlok-chat-adjuntos').createSignedUrl(path,300);
+            if(error||!data?.signedUrl)return aviso('No se pudo abrir la foto.',true);
+            window.open(data.signedUrl,'_blank','noopener,noreferrer');
+          }})),
         el('div',{class:'acciones'},
-          el('button',{type:'button',class:'boton principal',text:'Responder en el chat',
-            onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at},r.id)}),
+          el('button',{type:'button',class:'boton principal',text:'Responder reclamo',
+            onclick:()=>abrirCharla({id:r.conversacion_id,creada_at:r.creado_at,
+              detalle:r.detalle,historial_expirado:r.historial_expirado},r.id)}),
           r.respondido_at ? el('button',{type:'button',class:'boton',text:'Cerrar reclamo',onclick:async()=>{
             try{
               await rpc('panel_cerrar_reclamo',{p_reclamo:r.id});
@@ -912,6 +921,8 @@
         } catch(e){botonCerrar.disabled=false;aviso(e.message,true);}
       }});
     modal=dialogo('Conversación · '+hora(c.creada_at),[
+      reclamoId ? el('p',{class:'nota',text:'Reclamo: '+String(c.detalle||'')}) : null,
+      c.historial_expirado ? el('p',{class:'nota',text:'El historial anterior ya se limpió a las 24 horas. Se conserva el reclamo.'}) : null,
       deshabilitado ? el('p',{class:'nota',text:'Conversación finalizada por el gerente.'}) : null,
       hilo,
       puede('gestionar') && !deshabilitado ? campo('Responder por este chat',respuesta) : null,
