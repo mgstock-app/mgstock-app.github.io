@@ -42,7 +42,10 @@ describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
       cy.get('.chat-bienvenida .bienvenida-icono img')
         .should('have.attr','src','/chat/gestlok-monograma.svg')
         .and('be.visible')
-        .then($img=>expect($img[0].naturalWidth).to.be.greaterThan(0));
+        .should($img=>{
+          expect($img[0].complete,'el logo terminó de cargar').to.equal(true);
+          expect($img[0].naturalWidth,'el archivo del logo se descargó').to.be.greaterThan(0);
+        });
       cy.get('.bienvenida-etiqueta').should('contain.text','CHAT DE');
       cy.get('#mensajes').should('have.css','background-image')
         .and('contain','wallpaper-gestlok.svg?v=20261121contraste1');
