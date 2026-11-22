@@ -110,6 +110,46 @@ test('dueña siempre recibe tarjetas completas aunque el historial llegue antes 
  assert.doesNotMatch(html,/data-gcm-finalize|Editar turno cerrado|Producto sin referencia/);
 });
 
+test('Franui Pink, CA y LeBanana aparecen en historial aunque no tengan stock; qty viejo conserva unidades',async()=>{
+ const m=app('dueno');
+ m.products.push(
+  {id:'f-pink',name:'Pink',section:'HELADOS',units_per_chapa:24,active:true,position:408},
+  {id:'f-ca',name:'Franui CA',section:'HELADOS',units_per_chapa:24,active:true,position:410},
+  {id:'lebanana',name:'LeBanana',section:'HELADOS',units_per_chapa:30,active:true,position:411},
+  {id:'obsolete',name:'Old discontinued',section:'HELADOS',units_per_chapa:0,active:false,position:412}
+ );
+ const exit=m.rows.find(r=>r.day===m.today&&r.shift==='manana_salida');
+ exit.data['f-pink']={v1:{qty:14,chapas:0,sueltas:0}};
+ exit.data['f-ca']={v1:{qty:0,chapas:0,sueltas:0}};
+ m.module.view();await tick();await tick();
+ await m.click('data-gcm-history-day',m.today);
+ const html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ assert.match(html,/<strong>Pink<\/strong><\/td><td[^>]*>14<\/td>/,'14 unidades antiguas de Pink no se pierden');
+ assert.match(html,/<strong>Franui CA<\/strong><\/td><td[^>]*>Sin stock<\/td>/,'Franui amargo debe aparecer');
+ assert.match(html,/<strong>LeBanana<\/strong><\/td><td[^>]*>Sin stock<\/td>/,'LeBanana también debe aparecer sin registro');
+ assert.doesNotMatch(html,/Old discontinued/,'Los artículos inactivos sin registros no se inventan');
+ assert.ok(m.drawn.includes('Sin stock'),'La descarga A4 también debe mantener productos sin stock');
+ assert.match(html,/14 u\./,'El desglose conserva las 14 unidades históricas aunque Pink ahora se cuente por caja');
+ assert.doesNotMatch(html,/data-gcm-history-fix-save|data-gcm-finalize/);
+});
+
+test('Franui Pink y LeBanana usan cajas y unidades sueltas en el conteo operativo',async()=>{
+ const m=app('gerente');
+ m.products.push(
+  {id:'f-pink',name:'Pink',section:'HELADOS',units_per_chapa:24,active:true,position:408},
+  {id:'lebanana',name:'LeBanana',section:'HELADOS',units_per_chapa:30,active:true,position:411}
+ );
+ m.module.view();await tick();await tick();
+ const html=m.module.view();
+ assert.match(html,/data-gcm-plus="f-pink"/);
+ assert.match(html,/data-gcm-suelta-plus="f-pink"/);
+ assert.match(html,/Sumar caja Pink/);
+ assert.match(html,/data-gcm-plus="lebanana"/);
+ assert.match(html,/data-gcm-suelta-plus="lebanana"/);
+ assert.match(html,/Sumar caja LeBanana/);
+ assert.doesNotMatch(html,/data-gcm-qty-plus="f-pink"|data-gcm-qty-plus="lebanana"/);
+});
+
 test('dueña ve error de catálogo y puede reintentar sin perder el turno seleccionado',async()=>{
  const m=app('dueno'),rpc=m.window.GestLokSupabase.rpc;
  let fails=true;

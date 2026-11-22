@@ -1952,3 +1952,13 @@ dialog.gcm-add-product-dialog::backdrop{
  .gcm-count-screen .gcm-category-toggle,
  .gcm-count-screen .gcm-category-nav-head button[data-gcm-category-close]{display:none!important}
 }
+
+/* Conteo: el cero es un estado de stock, no un motivo para ocultar el producto. */
+.gcm-history-detail .gcm-hd-summary-number.is-no-stock,
+.gcm-history-detail .gcm-hd-total.is-no-stock,
+.gcm-count-screen .gcm-total.is-no-stock{
+ color:#88542b!important;
+ font-size:13px!important;
+ font-weight:800;
+ white-space:nowrap;
+}

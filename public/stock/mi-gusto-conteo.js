@@ -24,8 +24,10 @@ function nextTurn(date,turn){
 }
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- // Caja Palito tiene cajas de 45 unidades. El dato interno sigue siendo «chapas».
- const packWord=p=>p?.units_per_chapa===45&&/caja palito/i.test(p.name)?'caja':'chapa';
+ // El campo de almacenamiento se llama chapas, pero en Helados y Caja Palito
+ // el conteo debe decir «caja» sin modificar el formato del servidor.
+ const packWord=p=>p?.units_per_chapa===45&&/caja palito/i.test(p.name)||
+  p?.units_per_chapa>0&&/^(franui|pink|le\s*banana)/i.test(p?.name||'')?'caja':'chapa';
 const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
@@ -235,7 +237,10 @@ function historyProductTotals(rec){
  const catalogProducts=snapshot?.products||[];
  const catalog=new Map(catalogProducts.map(p=>[String(p.id),p]));
  const catalogOrder=new Map(catalogProducts.map((p,i)=>[String(p.id),i]));
- const ids=new Set([...Object.keys(rec.data||{}),...Object.keys(rec.decomiso||{})]);
+ // Mostrar también los productos activos con total cero, sin modificar los datos.
+ // Conservar en el historial los productos inactivos que sí tengan registros.
+ const ids=new Set([...catalogProducts.filter(p=>p.active).map(p=>String(p.id)),
+  ...Object.keys(rec.data||{}),...Object.keys(rec.decomiso||{})]);
  return [...ids].map(id=>{
   const p=catalog.get(id);
   if(!p)return {id,name:'Producto sin referencia ('+id.slice(0,8)+')',section:'OTROS',total:null,order:Number.MAX_SAFE_INTEGER};
@@ -274,7 +279,8 @@ function historySummaryTable(rec){
    '<span>Total: '+group.total+(group.missing?' · revisar':'')+'</span></h4>'+
    '<table><thead><tr><th>Producto</th><th>Total</th></tr></thead><tbody>'+
    group.rows.map(row=>'<tr><td><strong>'+esc(row.name)+'</strong></td>'+
-    '<td class="gcm-hd-summary-number">'+(row.total===null?'Sin referencia':row.total)+'</td></tr>').join('')+
+    '<td class="gcm-hd-summary-number'+(row.total===0?' is-no-stock':'')+'">'+
+    (row.total===null?'Sin referencia':row.total===0?'Sin stock':row.total)+'</td></tr>').join('')+
    '</tbody></table></section>';
  return '<section class="gcm-hd-summary"><header class="gcm-hd-summary-header">'+
   '<h3>Productos y totales</h3><div>Total general <strong>'+general+'</strong></div></header>'+
@@ -389,7 +395,7 @@ function historyA4Image(rec){
    if(i%2===1)rect(x,yy,plan.width,plan.rowH,'#f8fafc');
    const label=trim(row.name,plan.width-113,plan.font,'600');
    write(label,x+13,yy+plan.rowH*.76,plan.font,ink,'600');
-   write(row.total===null?'—':row.total,x+plan.width-13,yy+plan.rowH*.76,
+   write(row.total===null?'—':row.total===0?'Sin stock':row.total,x+plan.width-13,yy+plan.rowH*.76,
     plan.font,navy,'700','right');
    rule(x,yy+plan.rowH,plan.width);
   }
@@ -437,10 +443,13 @@ function historyDetailsTable(section,products,rec){
  const showDecomiso=!!rec.decomiso_visible;
  const makeCell=(p,v)=>{
   const chapas=Math.max(0,Number(v?.chapas)||0),sueltas=Math.max(0,Number(v?.sueltas)||0),qty=Math.max(0,Number(v?.qty)||0);
-  const total=p.units_per_chapa>0?chapas*p.units_per_chapa+sueltas:qty;
+  const total=amount(p,{chapas,sueltas,qty});
   if(!total)return '<td class="gcm-hd-qty">—</td>';
   const pack=packWord(p);
-  const parts=p.units_per_chapa>0&&chapas?'<small>'+chapas+' '+pack+(chapas===1?'':'s')+(sueltas?' + '+sueltas+' u.':'')+'</small>':'';
+  const loose=sueltas+(p.units_per_chapa>0?qty:0);
+  const parts=p.units_per_chapa>0&&(chapas||loose)?
+   '<small>'+(chapas?chapas+' '+pack+(chapas===1?'':'s'):'')+
+    (loose?(chapas?' + ':'')+loose+' u.':'')+'</small>':'';
   return '<td class="gcm-hd-qty"><strong>'+total+'</strong>'+parts+'</td>';
  };
  const rows=products.map(p=>{
@@ -452,7 +461,7 @@ function historyDetailsTable(section,products,rec){
    return makeCell(p,cell);
   }).join('');
   total+=amount(p,{chapas:Number(decomp.chapas)||0,sueltas:Number(decomp.sueltas)||0,qty:Number(decomp.qty)||0});
-  return '<tr>'+(showDecomiso?makeCell(p,decomp):'')+'<th scope="row">'+esc(p.name)+'</th>'+cols+'<td class="gcm-hd-total">'+(total||'—')+'</td></tr>';
+  return '<tr>'+(showDecomiso?makeCell(p,decomp):'')+'<th scope="row">'+esc(p.name)+'</th>'+cols+'<td class="gcm-hd-total'+(total===0?' is-no-stock':'')+'">'+(total===0?'Sin stock':total)+'</td></tr>';
  }).join('');
  return '<details class="gcm-hd-category"'+(section==='EMPANADAS'?' open':'')+'>'+
    '<summary>'+esc(section)+'<span>'+products.length+' productos</span></summary>'+
@@ -488,7 +497,8 @@ function historyCorrectionPanel(rec){
  const idx=kind==='decomiso'?0:historyEditVto;
  const prev=kind==='cell'?rec.data?.[p?.id]?.['v'+idx]:
   kind==='decomiso'?rec.decomiso?.[p?.id]:null;
- const value={chapas:Number(prev?.chapas)||0,sueltas:Number(prev?.sueltas)||0,qty:Number(prev?.qty)||0};
+ const value={chapas:Number(prev?.chapas)||0,sueltas:(Number(prev?.sueltas)||0)+(p?.units_per_chapa>0?(Number(prev?.qty)||0):0),
+  qty:p?.units_per_chapa>0?0:(Number(prev?.qty)||0)};
  const input=(field,label,max)=>'<label>'+label+'<input type="number" min="0" max="'+max+
   '" step="1" inputmode="numeric" data-gcm-history-number="'+field+'" value="'+value[field]+'" required></label>';
  const list=kind==='consumption'?Array.from({length:10},(_,i)=>rec.consumption?.[i]||{name:'',value:''}):
@@ -558,7 +568,7 @@ function historyDetailView(){
   try{historyPreviewUrl=historyA4Image(rec);}
   catch(e){historyPreviewError=e.message||'Error en vista A4';}
  }
- const products=(snapshot.products||[]).filter(p=>rec.data?.[p.id]||rec.decomiso?.[p.id]);
+ const products=(snapshot.products||[]).filter(p=>p.active||rec.data?.[p.id]||rec.decomiso?.[p.id]);
  const categories=[...new Set(products.map(p=>p.section))];
  const filename='conteo-'+activeLocal()+'-'+rec.day+'-'+(onlyMunroHistoricalCorrection(rec)?'noche_salida':rec.shift)+'.png';
  const image=historyPreviewUrl?'<figure class="gcm-a4-preview">'+
@@ -604,7 +614,9 @@ function draftRecord(){
 }
 function getDecomisoCell(p){
  const v=entry().decomiso?.[p.id]||{};
- return {chapas:Math.max(0,Number(v.chapas)||0),sueltas:Math.max(0,Number(v.sueltas)||0),qty:Math.max(0,Number(v.qty)||0)};
+ return {chapas:Math.max(0,Number(v.chapas)||0),
+  sueltas:Math.max(0,(Number(v.sueltas)||0)+(p.units_per_chapa>0?(Number(v.qty)||0):0)),
+  qty:p.units_per_chapa>0?0:Math.max(0,Number(v.qty)||0)};
 }
 function getCell(p,i){
  const e=entry(),v=e.data?.[p.id]?.['v'+i]||{};
@@ -614,7 +626,11 @@ function patchCell(pid,i,newCell){
  const rec=draftRecord();if(!rec)return;
  rec.data=rec.data||{};rec.data[pid]={...(rec.data[pid]||{}),['v'+i]:{...newCell}};
 }
-const amount=(p,v)=>p.units_per_chapa>0?v.chapas*p.units_per_chapa+v.sueltas:v.qty;
+// Franui antes guardaba unidades en qty. Seguir sumando esas unidades
+// históricas después de cambiar el producto a cajas de 24.
+const amount=(p,v)=>p.units_per_chapa>0?
+ (Number(v.chapas)||0)*p.units_per_chapa+(Number(v.sueltas)||0)+(Number(v.qty)||0):
+ (Number(v.qty)||0);
 function patchDecomiso(pid,newCell){const rec=draftRecord();if(rec){rec.decomiso=rec.decomiso||{};rec.decomiso[pid]={...newCell};}}
 function saveDecomiso(p,newCell){
  patchDecomiso(p.id,newCell);
@@ -702,7 +718,8 @@ function syncCountDom(el,p,i,isDecomp){
  if(total){
   let sum=amount(p,getDecomisoCell(p));
   for(let n=1;n<=4;n++)sum+=amount(p,getCell(p,n));
-  total.textContent=sum?String(sum):'—';
+  total.textContent=sum?String(sum):'Sin stock';
+  total.classList?.toggle?.('is-no-stock',sum===0);
  }
 }
 
@@ -801,7 +818,8 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    '<button type="button" data-gcm-remove="'+esc(p.id)+'">Quitar producto</button>'+
    '<button type="button" class="gcm-product-dialog-cancel" data-gcm-menu-close>Cancelar</button>'+
    '</div></dialog></div>':'')+
-   '</th>'+cells+'<td class="gcm-total">'+(sum||'—')+'</td></tr>';
+   '</th>'+cells+'<td class="gcm-total'+(sum===0?' is-no-stock':'')+'">'+
+   (sum===0?'Sin stock':sum)+'</td></tr>';
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
