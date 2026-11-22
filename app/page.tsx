@@ -9,11 +9,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// Enlaces de la app que llegan a la raíz (Google, confirmación de email, recuperación de
-// contraseña, invitaciones con ?… o #…) y la app instalada siguen yendo directo a /login/.
+// Siguen yendo directo a /login/: los enlaces de la app que llegan a la raíz (Google,
+// confirmación de email, recuperación de contraseña, invitaciones con ?… o #…), la app
+// instalada y los «Volver a GESTLOK» de las micro apps (Empleados, Caja…), que apuntan a «/».
 const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=!h||/^#(inicio|micro-apps|contacto)?$/.test(h);" +
   "var instalada=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;" +
-  "if(location.search||!nuestro||instalada){location.replace('/login/'+location.search+h);}}catch(e){}})();";
+  "var r='';try{var u=new URL(document.referrer);if(u.origin===location.origin)r=u.pathname;}catch(e){}" +
+  "var desdeApp=!!r&&r!=='/'&&!/^\\/(conocer\\/?|[a-z-]+\\.html)$/.test(r);" +
+  "if(location.search||!nuestro||instalada||desdeApp){location.replace('/login/'+location.search+h);}}catch(e){}})();";
 
 export default function Home() {
   return (

@@ -47,7 +47,7 @@ export default function ConocerGestlok() {
         </Link>
         <nav aria-label="Navegación pública">
           <Link href="#video">Ver video</Link>
-          <Link className="gl-public-header-cta" href="/">Ingresar</Link>
+          <Link className="gl-public-header-cta" href="/login/">Ingresar</Link>
         </nav>
       </header>
 
@@ -58,7 +58,7 @@ export default function ConocerGestlok() {
           <p className="gl-public-lead">GESTLOK reúne las herramientas de tu negocio en un solo lugar. Con Plan Scanner, escaneás productos con la cámara del celular, registrás ventas y mantenés el stock y los precios al día.</p>
           <div className="gl-public-actions">
             <Link className="gl-public-primary" href="#video">Ver Plan Scanner en acción</Link>
-            <Link className="gl-public-secondary" href="/">Entrar a GESTLOK</Link>
+            <Link className="gl-public-secondary" href="/login/">Entrar a GESTLOK</Link>
           </div>
           <p className="gl-public-caption">Accedé desde el navegador de tu computadora o celular. Las funciones disponibles dependen de los permisos y módulos habilitados.</p>
         </section>
@@ -69,7 +69,7 @@ export default function ConocerGestlok() {
             <h2 id="gl-public-video-title">Escaneá. Vendé. Controlá.</h2>
             <p>Conocé el recorrido completo: leé códigos de barras con la cámara del celular, prepará el carrito, confirmá el cobro y mirá cómo se actualizan las unidades. Todo junto con costos, márgenes y precios de venta.</p>
             <p className="gl-public-video-caption">Video ilustrativo con productos y valores ficticios. Reproducilo con sonido.</p>
-            <Link className="gl-public-primary" href="/">Ingresar a GESTLOK</Link>
+            <Link className="gl-public-primary" href="/login/">Ingresar a GESTLOK</Link>
           </div>
           <div className="gl-public-video-frame">
             <video
@@ -108,7 +108,7 @@ export default function ConocerGestlok() {
             <span className="gl-public-eyebrow">EN TU CELULAR</span>
             <h2 id="gl-public-mobile-heading">GESTLOK también se puede instalar como app</h2>
             <p>En Android y iPhone podés agregar GESTLOK a tu pantalla de inicio y acceder con tu cuenta, sin necesidad de descargar una aplicación de una tienda.</p>
-            <Link href="/">Abrir GESTLOK e instalar</Link>
+            <Link href="/login/">Abrir GESTLOK e instalar</Link>
           </div>
         </section>
 
@@ -123,7 +123,7 @@ export default function ConocerGestlok() {
         <nav aria-label="Documentos legales">
           <a href="/privacidad.html">Privacidad</a>
           <a href="/terminos.html">Condiciones de uso</a>
-          <Link href="/">Ingresar</Link>
+          <Link href="/login/">Ingresar</Link>
         </nav>
       </footer>
     </main>
