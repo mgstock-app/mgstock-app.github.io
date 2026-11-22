@@ -31,5 +31,5 @@ test('el panel comunica el error y valida límites antes de guardar', () => {
   assert.match(js, /p_sucursal: S\.suc\.id, p_version: a\.version/);
   assert.match(page, /panel\.js\?v=20261121marca2/);
   assert.match(central, /VERSION_PANEL='20261121marca2'/);
-  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-marca-20261121/);
+  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-badge-20261122/);
 });
