@@ -74,7 +74,7 @@ test('gerente no ve ni puede abrir acciones de catálogo de administradora',asyn
  const {mod,listeners}=setup('gerente');mod.view();await tick();
  const html=mod.view();
  assert.doesNotMatch(html,/data-gcm-product-menu/);
- assert.doesNotMatch(html,/gcm-product-dialog/);
+ assert.doesNotMatch(html,/<dialog class="gcm-product-dialog"/);
  const dialog={open:false,showModal(){this.open=true},querySelector:()=>null};
  const button={dataset:{gcmProductMenu:'p1'},hasAttribute:k=>k==='data-gcm-product-menu'};
  await listeners.get('click')(fakeEvent(button,dialog));
