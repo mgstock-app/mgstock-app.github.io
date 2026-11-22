@@ -50,7 +50,8 @@ test('otros comercios: sin menú interactivo no aparece «Ver promociones»; tex
 
 test('Munro y Don Torcuato cerrados: comparten accesos y siguen exigiendo programar el pedido', () => {
   for (const slug of ['mi-gusto-munro', 'mi-gusto-torcuato']) {
-    const s = {...local(slug), atencion: {habilitado: true, abierto: false, proximo_texto: 'mañana a las 11:00'}};
+    const s = {...local(slug), horario: '11:00 a 14:40 y 19:00 a 23:15',
+      atencion: {habilitado: true, abierto: false, proximo_texto: 'mañana a las 11:00'}};
     const ejecutar = (estado, entrada) => responder({sucursal: s, catalogo, estado, entrada, ahora: noche});
     const m = ejecutar(null, {inicio: true}).mensajes[0];
     assert.match(m.texto, /local está cerrado/);
