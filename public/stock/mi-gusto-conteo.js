@@ -165,7 +165,7 @@ async function loadHistory(){
   const rows=await rpc('gestlok_munro_conteo_history',{p_month:month+'-01'});
   if(token!==historyToken||!historyMode||month!==historyMonth)return;
   if(!Array.isArray(rows))throw Error('No se pudo leer el historial.');
-  historyRows=rows.filter(r=>r&&typeof r.day==='string'&&SHIFTS.some(s=>s[0]===r.shift)&&(!ownerHistoryOnly()||r.status==='finalizado'));
+  historyRows=rows.filter(r=>r&&typeof r.day==='string'&&SHIFTS.some(s=>s[0]===r.shift)&&(!ownerHistoryOnly()||r.status==='finalizado'||onlyMunroHistoricalCorrection(r)));
   historyError='';
  }catch(e){
   if(token===historyToken)historyError=e.message||'No se pudo cargar el historial';
