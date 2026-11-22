@@ -92,6 +92,13 @@ function borrarBorradoresLocales() {
   try { localStorage.removeItem(CLAVE_DATOS);localStorage.removeItem(CLAVE_TEXTO); }
   catch { /* sin almacenamiento */ }
 }
+// El servidor decide cuándo venció el hilo. También se limpia el carrito sin enviar
+// del dispositivo, pero se conserva la clave separada de cliente frecuente.
+function limpiarSesionExpirada() {
+  borrarBorradoresLocales();
+  try { localStorage.removeItem('gestlok-chat:menu:' + SLUG); } catch { /* opcional */ }
+  S.borrador=[]; S.loteId=null;
+}
 // Guardar solamente la selección de productos (sin nombres, teléfono ni dirección).
 // La repetición siempre se vuelve a validar contra la carta actual del local.
 const CLAVE_ULTIMO_PEDIDO = 'gestlok-chat:ultimo-pedido:' + SLUG;
@@ -160,6 +167,12 @@ async function api(accion, extra = {}) {
       body: JSON.stringify({slug: SLUG, token: TOKEN, cliente_token:CLIENTE_TOKEN, accion, ...extra})});
     let body = null; try { body = await res.json(); } catch { /* respuesta vacía */ }
     if (!body) throw new Error('red');
+    if (body.expirada === true && accion !== 'abrir') {
+      limpiarSesionExpirada();
+      // Se pide una nueva bienvenida, sin reutilizar los mensajes anteriores.
+      location.reload();
+      return {status: res.status, ...body};
+    }
     return {status: res.status, ...body};
   } finally { clearTimeout(corte); }
 }
@@ -1255,6 +1268,7 @@ async function iniciar() {
     }
     return pantallaFija('Chat no encontrado', r.error && r.status !== 404 ? r.error : 'Revisá el enlace que te compartió el local.');
   }
+  if (r.expirada === true) limpiarSesionExpirada();
   S.sucursal = r.sucursal; S.catalogo = r.catalogo || S.catalogo;
   actualizarWhatsApp(S.sucursal);
   if(!DEMO)window.GestLokChatPush?.setup(SLUG,TOKEN);
