@@ -8,7 +8,7 @@ describe('Scanner · invitaciones',()=>{
   const rows=[];
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{headers:{'content-type':'application/javascript'},body:body.replaceAll('cb0dc04a-9a13-434f-a3d0-47f1d8f39670',tenant)}));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-  cy.visit('/');
+  cy.visit('/login/');
   cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
   cy.window().its('GestLokSupabase',{timeout:15000}).should('exist').then(db=>{
    const from=db.from.bind(db),rpc=db.rpc.bind(db);

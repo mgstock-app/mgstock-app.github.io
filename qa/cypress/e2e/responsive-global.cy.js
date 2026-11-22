@@ -11,7 +11,7 @@ describe('GESTLOK · diseño adaptativo global',()=>{
       }).as('supabaseMock');
     });
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-    cy.visit('/');cy.wait('@supabaseMock');
+    cy.visit('/login/');cy.wait('@supabaseMock');
     cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
     cy.get('#au-in').should('be.visible');
   };
@@ -60,7 +60,7 @@ describe('GESTLOK · diseño adaptativo global',()=>{
       }).as('supabaseMock');
     });
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-    cy.visit('/');cy.wait('@supabaseMock');
+    cy.visit('/login/');cy.wait('@supabaseMock');
     cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
     cy.get('#au-email').clear().type('gerente.munro@example.com');
     cy.get('#au-pass').type('secreto1',{log:false});

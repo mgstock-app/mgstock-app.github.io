@@ -20,7 +20,7 @@ describe('Identidad Mi Gusto para el equipo autorizado',()=>{
       statusCode:200,headers:{'content-type':'application/javascript'},body
     }).as('mockSupabase'));
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-    cy.visit('/');cy.wait('@mockSupabase');
+    cy.visit('/login/');cy.wait('@mockSupabase');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
     cy.get('.gestlok-company-identity').should('not.exist');
   });

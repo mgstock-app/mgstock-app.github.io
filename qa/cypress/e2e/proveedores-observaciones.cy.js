@@ -5,7 +5,7 @@ describe('Observaciones internas de Proveedores · ambos locales',()=>{
   for(const local of ['munro','torcuato'])it(`muestra, guarda y recupera la observación en ${local}`,()=>{
     cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-    cy.visit('/');cy.wait('@fake');
+    cy.visit('/login/');cy.wait('@fake');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
     // El mock puede inicializar __rows después del primer render; Cypress debe esperarlo.
     cy.window().its('__rows').should('be.an','array').then(rows=>rows.push({col:local+'/productos',id:'p-note',data:{nombre:'Producto ficticio',proveedor:'Proveedor Demo Notas',cat:'General',stock:5,orden:1000}}));

@@ -54,7 +54,7 @@ describe('GestLok · demo para visitantes sin registro',()=>{
   abrirInicioDelDueno();
  });
  it('La pantalla de login dirige al video comercial en lugar de la demo',()=>{
-  bootstrap('/');
+  bootstrap('/login/');
   cy.get('#au-in').should('be.visible');
   cy.get('#au-demo-link').should('be.visible').and('have.attr','href','/conocer/#video').and('contain.text','Plan Scanner');
  });

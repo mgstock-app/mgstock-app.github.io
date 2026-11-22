@@ -12,7 +12,7 @@ describe('GestLok Stock Local: categorías y planilla responsive',()=>{
     });
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
     cy.viewport(1280,900);
-    cy.visit('/');
+    cy.visit('/login/');
     cy.wait('@mockSupabase');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
     cy.get('#au-email').clear().type('dueno@example.com');

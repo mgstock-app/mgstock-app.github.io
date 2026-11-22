@@ -6,7 +6,7 @@ const login=(email)=>{
     headers:{'content-type':'application/javascript'},body:mock}).as('fake');
  });
  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
- cy.visit('/');
+ cy.visit('/login/');
  cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
  cy.get('#au-email').clear().type(email);

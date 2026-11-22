@@ -27,7 +27,7 @@ describe("MG Stock: Ingresar remito (PDF y foto)", () => {
       cy.intercept("GET", "**/vendor/supabase.js", { statusCode: 200, headers: { "content-type": "application/javascript" }, body: mock }).as("fakeSupabase");
     });
     cy.intercept("**/*.supabase.co/**", { forceNetworkError: true });
-    cy.visit("/");
+    cy.visit("/login/");
     cy.wait("@fakeSupabase");
     // La presentación permanece visible ~3,7 s antes de permitir el ingreso.
     cy.get(".gl-intro", { timeout: 10000 }).should("not.be.visible");

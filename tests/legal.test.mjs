@@ -15,7 +15,7 @@ test("privacy, terms and browser storage notices are static public pages", () =>
 });
 
 test("legal links are available from the React app", () => {
-  const page = read("app/page.tsx");
+  const page = read("app/login/page.tsx");
   for (const path of ["privacidad", "terminos", "almacenamiento"]) {
     assert.ok(page.includes(`/${path}.html`));
   }

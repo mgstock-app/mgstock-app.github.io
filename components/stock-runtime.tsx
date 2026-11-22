@@ -45,7 +45,8 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-chat-central.js?rev=chat-badge-20261122",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
-    "/stock/gestlok-creator-home.js?rev=showroom-20261120",
+    "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
+    "/stock/gestlok-creator-home.js?rev=contacto-web-20261122",
     "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -111,7 +112,9 @@ export function StockRuntime() {
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
-      await load("/stock/gestlok-creator-home.js?rev=showroom-20261120");
+      // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
+      if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
+      await load("/stock/gestlok-creator-home.js?rev=contacto-web-20261122");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");

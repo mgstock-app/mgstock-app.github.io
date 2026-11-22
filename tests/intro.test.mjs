@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 
 test("la introducción GestLok aparece antes del login sin cambiar los accesos", () => {
-  const page = read("app/page.tsx");
+  const page = read("app/login/page.tsx");
   const splash = read("components/gestlok-intro.tsx");
   const css = read("app/gestlok-intro.css");
   assert.match(page, /<GestLokIntro \/>/);

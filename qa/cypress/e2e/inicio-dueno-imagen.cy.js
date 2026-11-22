@@ -4,7 +4,7 @@
 function start(email = 'dueno@example.com', setup) {
   cy.task('mockSupabase').then(body => cy.intercept('GET', '**/vendor/supabase.js', { statusCode: 200, headers: { 'content-type': 'application/javascript' }, body }).as('fake'));
   cy.intercept('**/*.supabase.co/**', { forceNetworkError: true });
-  cy.visit('/'); cy.wait('@fake');
+  cy.visit('/login/'); cy.wait('@fake');
   cy.get('.gl-intro', { timeout: 12000 }).should('not.be.visible');
   // La intro puede desaparecer antes de completar el arranque.
   cy.window().should(w => {

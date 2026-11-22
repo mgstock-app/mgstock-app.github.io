@@ -1,7 +1,7 @@
 /* global Cypress, cy, describe, it */
 function start(fail=false,email='dueno@example.com'){
  cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
- cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
+ cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
  if(fail)cy.window().then(w=>{w.__ownerAreaFail=true;});
  cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
@@ -34,7 +34,7 @@ describe('Inicio de dueño · áreas verificadas por backend',()=>{
 
  it('PerCam: dueño de un solo local recibe el inicio universal antes de abrir su negocio',()=>{
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
-  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
+  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
   cy.window().should(w=>{
    expect(w.__rows, 'locales simulados disponibles').to.be.an('array');

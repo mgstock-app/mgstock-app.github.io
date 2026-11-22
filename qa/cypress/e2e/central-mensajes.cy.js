@@ -6,7 +6,7 @@ const setup=(email,width=390,opciones={})=>{
    cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body:fake}).as('mock');
  });
  cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
- cy.visit('/');cy.wait('@mock');
+ cy.visit('/login/');cy.wait('@mock');
  cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
  cy.window().then(w=>{if(opciones.panel)w.__dashboard=true;if(opciones.sinChat)w.__chatSinEmpresa=true;});
  cy.get('#au-email').clear().type(email);

@@ -14,7 +14,7 @@ describe("GestLok · chat efímero y punto de mensajes nuevos",()=>{
       statusCode:200,headers:{"content-type":"application/javascript"},body:mock
     }).as("fakeSupabase"));
     cy.intercept("**/*.supabase.co/**",{forceNetworkError:true});
-    cy.visit("/");
+    cy.visit("/login/");
     cy.wait("@fakeSupabase");
     cy.get(".gl-intro",{timeout:10000}).should("not.be.visible");
   });

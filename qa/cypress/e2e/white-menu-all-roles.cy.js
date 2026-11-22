@@ -17,7 +17,7 @@ describe('GESTLOK: navegación blanca compartida y plegable sin alterar permisos
      }).as('supabaseFalso');
    });
    cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-   cy.visit('/');cy.wait('@supabaseFalso');
+   cy.visit('/login/');cy.wait('@supabaseFalso');
    cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
  });
  const revisarLocal=()=>{

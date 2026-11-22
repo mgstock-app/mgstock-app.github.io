@@ -4,7 +4,7 @@ import {readFileSync,statSync} from 'node:fs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 
 test('El sitio público muestra Plan Scanner en video y no ofrece la demo interactiva',()=>{
- const home=read('app/page.tsx');
+ const home=read('app/login/page.tsx');
  const conocer=read('app/conocer/page.tsx');
  const auth=read('public/stock/auth.js');
  assert.ok(home.includes('href="/conocer/#video"'));

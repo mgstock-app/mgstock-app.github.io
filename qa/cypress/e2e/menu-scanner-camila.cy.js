@@ -12,7 +12,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
    statusCode:200,headers:{'content-type':'application/javascript'},body
   }).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-  cy.visit('/');cy.wait('@fake');
+  cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:14000}).should('not.be.visible');
   cy.window().then(w=>{
    w.__dashboard=true;
@@ -53,7 +53,7 @@ describe('Menú de la perfumería Camila · Plan Scanner y ZAYRO',()=>{
    statusCode:200,headers:{'content-type':'application/javascript'},body
   }).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
-  cy.visit('/');cy.wait('@fake');
+  cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:14000}).should('not.be.visible');
   cy.window().then(w=>{
    w.__dashboard=true;

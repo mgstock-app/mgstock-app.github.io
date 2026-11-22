@@ -1,7 +1,7 @@
 /* global Cypress, cy, describe, it */
 function start(email,dashboard=true){
  cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
- cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/');cy.wait('@fake');
+ cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
  cy.window().then(w=>{w.__dashboard=dashboard;});
  cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
@@ -31,7 +31,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
   // Diez pestañas: GESTLOK Chat tiene accesos propios a producción, Prueba y Testing.
-  cy.get('.gl-ch-nav button').should('have.length',10);
+  cy.get('.gl-ch-nav button').should('have.length',11);
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
