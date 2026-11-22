@@ -100,14 +100,18 @@ jobs:
                  && grep -Fq "GESTLOK · ${branch^}" /tmp/gestlok-chat-site.html \
                  && curl --fail --silent --show-error --location --max-time 20 "$site/chat/config.js" -o /tmp/gestlok-chat-config.js \
                  && grep -Fq 'irqeitzbfyerxcrogkyh' /tmp/gestlok-chat-config.js \
-                 && ! grep -Fq 'vgsepaaewbctjsjcpeta' /tmp/gestlok-chat-config.js; then
+                 && ! grep -Fq 'vgsepaaewbctjsjcpeta' /tmp/gestlok-chat-config.js \
+                 && curl --fail --silent --show-error --location --max-time 20 "$site/chat/chat.js" -o "/tmp/gestlok-$branch-client.js" \
+                 && cmp -s "$RUNNER_TEMP/gestlok-chat-$branch/dist-entorno/chat/chat.js" "/tmp/gestlok-$branch-client.js" \
+                 && curl --fail --silent --show-error --location --max-time 20 "$site/chat/panel/panel.js" -o "/tmp/gestlok-$branch-panel.js" \
+                 && cmp -s "$RUNNER_TEMP/gestlok-chat-$branch/dist-entorno/chat/panel/panel.js" "/tmp/gestlok-$branch-panel.js"; then
                 ok=1; break
               fi
               sleep 15
             done
             if [ "$ok" -ne 1 ]; then
-              echo "::error title=Sitio sin actualizar::$site no publicó Chat con la base aislada. Revisar el límite de builds de Vercel."
+              echo "::error title=Sitio sin versión nueva::$site no entrega los mismos archivos de Chat que se generaron para $branch. Revisar el límite de builds de Vercel."
               exit 1
             fi
-            echo "### $branch: sitio visible y aislado" >> "$GITHUB_STEP_SUMMARY"
+            echo "### $branch: sitio visible, aislado y con archivos de Chat idénticos a la compilación" >> "$GITHUB_STEP_SUMMARY"
           done
