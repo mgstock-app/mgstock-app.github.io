@@ -565,7 +565,7 @@
   try { navCollapsed = localStorage.getItem(navPrefKey) === 'yes'; } catch {}
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
-    const cur = validTab(tab) ? tab : 'inicio';
+    const cur = validTab(tab) && (tab!=='gestlok-chat'||premiumAdmin()) ? tab : 'inicio';
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
@@ -608,7 +608,7 @@
       '<p><a class="btn primary" href="empleados/">Abrir Administración de empleados →</a></p></section>';
   }
   function goTab(v) {
-    if (!validTab(v)) return;
+    if (!validTab(v) || (v==='gestlok-chat'&&!premiumAdmin())) return;
     if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales')void loadMicroapps(true);
     tab = v; store.set(v);
