@@ -1977,3 +1977,15 @@ dialog.gcm-add-product-dialog::backdrop{
 .gcm-history-detail .gcm-hd-summary-number.is-no-stock{
  font-size:12px!important;font-weight:750;color:#855122!important;white-space:nowrap;
 }
+
+/* Categorías: flechas claras para plegar/desplegar, sin signos + o −. */
+.gcm-count-screen .gcm-category-chevron{
+ display:inline-block;min-width:13px;margin-left:5px;
+ font-size:17px;font-weight:800;line-height:1;vertical-align:middle;
+}
+.gcm-count-screen .gcm-category-nav-head button[data-gcm-category-close]{
+ font-size:22px;line-height:1;
+}
+.gcm-count-screen .gcm-category-nav-head button[data-gcm-category-close] span{
+ display:block;line-height:1;
+}

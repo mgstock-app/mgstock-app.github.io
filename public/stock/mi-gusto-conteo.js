@@ -785,9 +785,9 @@ function decompColumn(p,canWrite){
 function categorySidebar(names,products){
  const links=names.map((name,index)=>'<button type="button" data-gcm-nav-section="'+esc(name)+'"'+(index===0?' class="is-active" aria-current="true"':'')+
  '><span>'+esc(name)+'</span><small>'+products.filter(p=>p.section===name).length+'</small></button>').join('');
- return '<button type="button" class="gcm-category-toggle" data-gcm-category-toggle aria-expanded="false" aria-controls="gcm-category-nav" aria-label="Mostrar categorías">'+(categoriasPlegadas?'+ Categorías':'☰ Categorías')+'</button>'+
+ return '<button type="button" class="gcm-category-toggle" data-gcm-category-toggle aria-expanded="false" aria-controls="gcm-category-nav" aria-label="Mostrar categorías">Categorías <span class="gcm-category-chevron" aria-hidden="true">▸</span></button>'+
  '<aside class="gcm-category-nav" id="gcm-category-nav" aria-label="Navegar por categorías del conteo">'+
- '<div class="gcm-category-nav-head"><strong>Categorías</strong><button type="button" data-gcm-category-close aria-label="Ocultar categorías" title="Ocultar categorías">−</button></div>'+
+ '<div class="gcm-category-nav-head"><strong>Categorías</strong><button type="button" data-gcm-category-close aria-label="Plegar categorías" title="Plegar categorías" aria-controls="gcm-category-nav" aria-expanded="true"><span aria-hidden="true">▾</span></button></div>'+
  '<div class="gcm-category-nav-items">'+links+
  (shift==='manana_entrada'?'':'<button type="button" data-gcm-nav-extras="consumption">Consumo de Staff</button>')+
  '<button type="button" data-gcm-nav-extras="waste">Desperdicios</button></div></aside>';
@@ -1179,7 +1179,8 @@ document.addEventListener('click',async e=>{
   root.classList.add('is-category-nav-collapsed');
   root.classList.remove('is-category-nav-open');
   const toggle=root.querySelector('.gcm-category-toggle');
-  if(toggle){toggle.textContent='+ Categorías';toggle.setAttribute('aria-expanded','false');}
+  if(toggle){toggle.innerHTML='Categorías <span class="gcm-category-chevron" aria-hidden="true">▸</span>';
+   toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Mostrar categorías');}
   return;
  }
  if(el.hasAttribute('data-gcm-category-toggle')){
@@ -1187,12 +1188,15 @@ document.addEventListener('click',async e=>{
    categoriasPlegadas=false;
    root.classList.remove('is-category-nav-collapsed');
    root.classList.add('is-category-nav-open');
-   el.textContent='☰ Categorías';
+   el.innerHTML='Categorías <span class="gcm-category-chevron" aria-hidden="true">▾</span>';
    el.setAttribute('aria-expanded','true');
+   el.setAttribute('aria-label','Ocultar categorías');
   }else{
    const open=!root.classList.contains('is-category-nav-open');
    root.classList.toggle('is-category-nav-open',open);
    el.setAttribute('aria-expanded',String(open));
+   el.setAttribute('aria-label',open?'Ocultar categorías':'Mostrar categorías');
+   el.innerHTML='Categorías <span class="gcm-category-chevron" aria-hidden="true">'+(open?'▾':'▸')+'</span>';
   }
   return;
  }
@@ -1205,7 +1209,10 @@ document.addEventListener('click',async e=>{
   if(section&&!section.open){section.open=true;opened.add(name);}
   selectCategoryButton(root,name||extra);
   root.classList.remove('is-category-nav-open');
-  root.querySelector('.gcm-category-toggle')?.setAttribute('aria-expanded','false');
+  const toggle=root.querySelector('.gcm-category-toggle');
+  if(toggle){toggle.setAttribute('aria-expanded','false');
+   toggle.setAttribute('aria-label','Mostrar categorías');
+   toggle.innerHTML='Categorías <span class="gcm-category-chevron" aria-hidden="true">▸</span>';}
   target.scrollIntoView?.({behavior:'smooth',block:'start'});
   return;
  }
