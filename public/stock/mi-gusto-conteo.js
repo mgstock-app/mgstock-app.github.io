@@ -525,7 +525,7 @@ function historyCorrectionPanel(rec){
  // También se pueden corregir artículos activos sin datos en este turno cerrado.
  const usable=catalog.filter(p=>p.active||present.has(p.id));
  if(!historyEditProduct||!usable.some(p=>p.id===historyEditProduct))historyEditProduct=usable[0]?.id||'';
- const p=usable.find(x=>x.id===historyEditProduct);
+ const p=productForRecord(rec,usable.find(x=>x.id===historyEditProduct));
  const kind=historyEditKind;
  const idx=kind==='decomiso'?0:historyEditVto;
  const prev=kind==='cell'?rec.data?.[p?.id]?.['v'+idx]:
@@ -552,7 +552,7 @@ function historyCorrectionPanel(rec){
    (kind==='cell'?'<label>Vencimiento<select id="gcm-history-fix-vto">'+
     [1,2,3,4].map(n=>'<option value="'+n+'"'+(idx===n?' selected':'')+'>Vto '+n+'</option>').join('')+
     '</select></label>':'<p class="gcm-history-fix-expl">Decomiso del turno</p>')+
-   (p?.units_per_chapa>0?input('chapas',packWord(p)==='caja'?'Cajas (0–500)':'Chapas (0–500)',500)+input('sueltas','Unidades sueltas (0–100000)',100000):
+   (p?.units_per_chapa>0?input('chapas',({caja:'Cajas',pack:'Packs',chapa:'Chapas'}[packWord(p)]||'Packs')+' (0–500)',500)+input('sueltas','Unidades sueltas (0–100000)',100000):
     input('qty','Unidades (0–1000000)',1000000))+'</div>'+
    '<p class="gcm-history-fix-expl">Valor archivado: <strong>'+
    (p?.units_per_chapa>0?value.chapas+' '+packWord(p)+(value.chapas===1?'':'s')+' + '+value.sueltas+' unidades':value.qty+' unidades')+
@@ -1690,7 +1690,7 @@ document.addEventListener('click',async e=>{
    expected=manualSinStock(rec,pid);
   }else if(kind==='cell'||kind==='decomiso'){
    pid=historyEditProduct;index=kind==='cell'?historyEditVto:0;
-   const p=snapshot?.products?.find(x=>x.id===pid);
+   const p=productForRecord(rec,snapshot?.products?.find(x=>x.id===pid));
    if(!p){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
    const current=kind==='cell'?rec.data?.[pid]?.['v'+index]:rec.decomiso?.[pid];
    expected=current===undefined?null:current;
