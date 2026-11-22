@@ -1962,3 +1962,18 @@ dialog.gcm-add-product-dialog::backdrop{
  font-weight:800;
  white-space:nowrap;
 }
+
+/* El cero no es Sin stock: sólo la confirmación explícita del gerente. */
+.gcm-sin-stock-control,.gcm-sin-stock-fix{
+ display:inline-flex;align-items:center;gap:6px;
+ font-size:12px;font-weight:650;color:#455d75;cursor:pointer;
+}
+.gcm-sin-stock-control{margin-top:7px;padding:4px 7px;border:1px solid #dce5ed;border-radius:7px;background:#f8fafc}
+.gcm-sin-stock-control input,.gcm-sin-stock-fix input{width:16px;height:16px;accent-color:#12345a;flex-shrink:0;margin:0}
+.gcm-sin-stock-control:has(input:checked){border-color:#c78c55;background:#fff6ea;color:#754924}
+.gcm-sin-stock-control:has(input:disabled){opacity:.65;cursor:not-allowed}
+.gcm-sin-stock-fix{min-height:42px;padding:10px}
+.gcm-count-screen .gcm-total.is-no-stock,.gcm-history-detail .gcm-hd-total.is-no-stock,
+.gcm-history-detail .gcm-hd-summary-number.is-no-stock{
+ font-size:12px!important;font-weight:750;color:#855122!important;white-space:nowrap;
+}
