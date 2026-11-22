@@ -49,6 +49,7 @@ let api=null,pendientes=0,pendientesAvisables=0,avisablesVistos=null,enPreparaci
 // Locales con GESTLOK Chat encendido para esta sesión: {tenant, locales: Map(local_id → nombre)}. Lo dice el servidor.
 let servidor={tenant:'',locales:new Map()},buscando='',fallo={tenant:'',at:0};
 let idsSucursal=new Map(), ultimoAvisoId='', ultimoRecordatorioAt=0, estadoLocal='', idConsulta=0;
+let ultimoBadge=-1; // Insignia de la PWA: sólo los pedidos reales de locales autorizados del gerente.
 async function detalleNuevo(){
  const localActual=local(),suc=idsSucursal.get(localActual),turno=++idConsulta;
  if(!suc||!online()||!allowed())return;
@@ -114,9 +115,35 @@ async function descubrir(){
   leer(data,t);
   const suc=(data?.sucursales||[]).find(x=>x.local_id===local());
   if(suc&&servidor.locales.has(local()))actualizar(suc.pendientes,suc.reclamos,suc.en_preparacion,suc.pendientes_avisables);
+  actualizarInsignia();
   if(servidor.locales.has(local())!==antes)api?.render?.();
  }catch{fallo={tenant:t,at:Date.now()};/* sin conexión: se vuelve a preguntar más tarde */}
  finally{if(buscando===t)buscando='';}
+}
+
+// El icono instalado pertenece a toda la PWA, no a un local.
+// El backend responde sólo con las sucursales autorizadas; comprobamos de nuevo los permisos del gerente
+// y nunca contamos demostraciones ni pedidos programados para más adelante.
+function actualizarInsignia(){
+ let cantidad=0;
+ if(api?.miRol?.()==='gerente' && servidor.tenant===tenant() && tenant() &&
+    !window.GestLokCreatorSupport?.previewRol?.()){
+  const locales=new Set(api.misLocales?.()||[]);
+  for(const [id,s] of idsSucursal){
+   if(!locales.has(id)||!servidor.locales.has(id)||s.activa===false)continue;
+   const n=Number(s.pendientes_avisables);
+   if(Number.isFinite(n)&&n>0)cantidad+=Math.floor(n);
+  }
+ }
+ cantidad=Math.min(999,cantidad);
+ if(cantidad===ultimoBadge)return;
+ ultimoBadge=cantidad;
+ // Compatible con los sistemas que admiten App Badging. En Android el indicador del
+ // lanzador depende de notificaciones push visibles y del permiso/configuración del sistema.
+ try{
+  const operacion=cantidad?navigator.setAppBadge?.(cantidad):navigator.clearAppBadge?.();
+  Promise.resolve(operacion).catch(()=>{/* navegador no compatible o permiso denegado */});
+ }catch{/* no disponible en este dispositivo */}
 }
 
 function quickAccess(){
@@ -232,11 +259,14 @@ function actualizar(n,r=reclamos,preparando=enPreparacion,avisables=n){
   ultimoRecordatorioAt=0;ultimoAvisoId='';ocultarAviso();
  }
  const antesAvisables=avisablesVistos,antesReclamos=reclamosVistos;
+ const sucursalActual=idsSucursal.get(loc);
+ if(sucursalActual)sucursalActual.pendientes_avisables=avisables;
  pendientes=Math.max(0,Number(n)||0);
  pendientesAvisables=Math.min(pendientes,Math.max(0,Number(avisables)||0));
  avisablesVistos=pendientesAvisables;vistos=pendientes;
  enPreparacion=Math.max(0,Number(preparando)||0);
  reclamos=Math.max(0,Number(r)||0);reclamosVistos=reclamos;
+ actualizarInsignia();
  indicadores();
  if(antesReclamos!==null&&reclamos>antesReclamos)avisoNuevo('reclamo');
  else if(antesAvisables!==null&&pendientesAvisables>antesAvisables){
@@ -257,7 +287,7 @@ async function consultar(){
   if(error||e!==epoca||loc!==local())return;
   const t=tenant(),antes=servidor.locales.has(loc);
   leer(data,t);
-  if(!servidor.locales.has(loc)){if(antes)api?.render?.();return;}
+  if(!servidor.locales.has(loc)){actualizarInsignia();if(antes)api?.render?.();return;}
   const s=(data?.sucursales||[]).find(x=>x.local_id===loc);
   actualizar(s?s.pendientes:0,s?s.reclamos:0,s?s.en_preparacion:0,s?s.pendientes_avisables:0);
  }catch{/* sin conexión: se reintenta en el próximo ciclo */}
@@ -312,7 +342,7 @@ function subscribe(loc,push){
 }
 function reset(){
  epoca++;pendientes=0;pendientesAvisables=0;avisablesVistos=null;enPreparacion=0;vistos=null;reclamos=0;reclamosVistos=null;ocultarAviso();idsSucursal.clear();ultimoAvisoId='';ultimoRecordatorioAt=0;estadoLocal='';servidor={tenant:'',locales:new Map()};buscando='';
- if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';
+ if(panel){panel.destruir();panel=null;}anfitrion=null;panelLocal='';ultimoBadge=-1;actualizarInsignia();
 }
 function attach(h){if(!api)api=h;}
 
