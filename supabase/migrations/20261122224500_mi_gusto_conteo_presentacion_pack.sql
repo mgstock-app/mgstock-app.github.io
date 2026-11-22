@@ -28,7 +28,11 @@ declare v_old gestlok_munro_conteo_private.products%rowtype;
  v_rate integer:=p_units_per_pack;v_kind text:=coalesce(p_pack_kind,'caja');
  v_id text;v_position integer;v_after jsonb;v_before jsonb;
 begin
- perform gestlok_munro_conteo_private.require_access(true,false);
+ -- Excepción exclusiva de catálogo. Los dueños siguen SIN permiso para escribir conteos.
+ perform gestlok_munro_conteo_private.require_access(false,false);
+ if not public.puede_editar_local('munro') then
+   raise exception 'Sin permiso de edición para este local' using errcode='42501';
+ end if;
  if public.mi_rol() not in ('creadora','dueno','gerente') then
    raise exception 'Rol no habilitado para configurar productos' using errcode='42501';
  end if;
@@ -409,7 +413,11 @@ declare v_old gestlok_torcuato_conteo_private.products%rowtype;
  v_rate integer:=p_units_per_pack;v_kind text:=coalesce(p_pack_kind,'caja');
  v_id text;v_position integer;v_after jsonb;v_before jsonb;
 begin
- perform gestlok_torcuato_conteo_private.require_access(true,false);
+ -- Excepción exclusiva de catálogo. Los dueños siguen SIN permiso para escribir conteos.
+ perform gestlok_torcuato_conteo_private.require_access(false,false);
+ if not public.puede_editar_local('torcuato') then
+   raise exception 'Sin permiso de edición para este local' using errcode='42501';
+ end if;
  if public.mi_rol() not in ('creadora','dueno','gerente') then
    raise exception 'Rol no habilitado para configurar productos' using errcode='42501';
  end if;
