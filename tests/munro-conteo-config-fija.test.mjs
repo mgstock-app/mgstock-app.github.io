@@ -46,19 +46,22 @@ test('gerente no ve Quitar ni ajustes, no puede modificar categorías pero puede
  await tick();
  assert.ok(!rpcCalls.some(x=>x.name==='gestlok_munro_conteo_set_section'));
 });
-test('administradora puede modificar selección y la tienda adopta la nueva lista',async()=>{
+test('administradora ve Quitar productos sin esconder categorías; las secciones fijas se gestionan aparte',async()=>{
  const {mod,listeners,state,rpcCalls}=app('creadora');
  mod.view();await tick();
  let h=mod.view();
- assert.match(h,/data-gcm-hide-section="SALSAS"/);
+ assert.match(h,/data-gcm-remove-products-open="SALSAS"/);
+ assert.match(h,/data-gcm-remove-selected="s"/);
  assert.match(h,/data-gcm-section-visible="GASEOSAS 500 CC"/);
- const button={dataset:{gcmHideSection:'SALSAS'},hasAttribute:x=>x==='data-gcm-hide-section'};
+ assert.doesNotMatch(h,/data-gcm-hide-section/);
+ const button={dataset:{gcmRemoveProductsOpen:'SALSAS'},hasAttribute:x=>x==='data-gcm-remove-products-open',
+   closest:selector=>selector==='.gcm-section'?{dataset:{gcmSection:'SALSAS'},querySelector:()=>null}:null};
  await listeners.get('click')({target:{closest:what=>what==='button'?button:{}},preventDefault(){},stopPropagation(){}});
  await tick();
  h=mod.view();
- assert.doesNotMatch(h,/data-gcm-section="SALSAS"/);
- assert.ok(state.settings.hidden_sections.includes('SALSAS'));
- assert.ok(rpcCalls.some(x=>x.name==='gestlok_munro_conteo_set_section'&&x.args.p_section==='SALSAS'&&x.args.p_visible===false));
+ assert.match(h,/data-gcm-section="SALSAS"/);
+ assert.equal(state.settings.hidden_sections.includes('SALSAS'),false);
+ assert.ok(!rpcCalls.some(x=>x.name==='gestlok_munro_conteo_set_section'));
 });
 test('bloqueo de servidor: solo administradora modifica categorías; desperdicios sigue disponible',()=>{
  assert.match(migration,/create table if not exists gestlok_munro_conteo_private\.settings/);
