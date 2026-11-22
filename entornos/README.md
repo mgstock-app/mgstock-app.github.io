@@ -34,6 +34,28 @@ En el repositorio GitHub entrar a **Settings → Secrets and variables → Actio
 
 Los pasos de backend ahora **fallan claramente** si falta `SUPABASE_ACCESS_TOKEN`; un check verde ya no puede significar «no ejecutado por falta de permisos». La publicación a producción exige que Testing esté visible y que su función tenga CORS correcto.
 
+## Actualización automática de GESTLOK Chat
+
+Al incorporarse a `main` un cambio de la web de Chat, del panel, de las funciones o de las
+migraciones `gestlok_chat_*`, GitHub Actions ejecuta
+[`sync-gestlok-chat.yml`](../.github/workflows/sync-gestlok-chat.yml).
+
+El proceso **copia la versión actual a las dos ramas `prueba` y `testing`**, compila cada
+entorno y valida el aislamiento antes de publicar ramas. Después aplica exclusivamente en
+`gestlok-pruebas` las migraciones nuevas y actualiza `gestlok-chat-prueba`,
+`gestlok-chat-testing` y sus funciones de notificaciones. Nunca escribe en la base real.
+
+El constructor específico de cada rama y el catálogo de demostración se conservan. Una
+migración nueva de Chat se añade automáticamente al manifiesto de pruebas, pero un error
+de permisos, SQL, despliegue o verificación del sitio deja **el trabajo en rojo**. Si el
+proveedor de hosting bloquea nuevas compilaciones por límite de uso, las ramas pueden
+estar sincronizadas sin que todavía se vea la última versión en los enlaces públicos.
+
+La automatización también tiene `Run workflow` manual para recuperar cambios pendientes.
+Los pasos manuales de abajo siguen disponibles cuando querés probar una versión
+experimental antes de incorporarla a `main`. **Ningún entorno de pruebas publica
+automáticamente cambios en producción.**
+
 ## Circuito de uso
 
 1. Subir cambios a la rama `prueba`: Cloudflare construye el sitio y Actions aplica cambios de backend al proyecto aislado.
