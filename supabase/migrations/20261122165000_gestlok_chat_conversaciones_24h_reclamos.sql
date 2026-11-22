@@ -331,3 +331,24 @@ BEGIN
  END IF;
  RETURN jsonb_build_object('ok',true,'mensaje_id',mid);
 END $$;
+
+
+-- Al cerrar una charla nueva, nunca cerrar los reclamos conservados de ciclos anteriores.
+CREATE OR REPLACE FUNCTION public.gestlok_chat_panel_cerrar_conversacion(p_conversacion uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE c gestlok_chat_private.conversaciones;
+BEGIN
+ SELECT * INTO c FROM gestlok_chat_private.conversaciones WHERE id=p_conversacion FOR UPDATE;
+ IF c.id IS NULL THEN RAISE EXCEPTION 'Conversación inexistente' USING errcode='P0002'; END IF;
+ PERFORM gestlok_chat_private.exigir(c.sucursal_id,'gestionar');
+ IF c.cerrada_at IS NOT NULL THEN RETURN jsonb_build_object('ok',true,'ya_cerrada',true); END IF;
+ UPDATE gestlok_chat_private.conversaciones SET cerrada_at=now(),cerrada_por=auth.uid(),
+   ultima_at=now(),mensajes=mensajes+1 WHERE id=c.id;
+ INSERT INTO gestlok_chat_private.mensajes(conversacion_id,rol,texto)
+ VALUES(c.id,'local','La conversación fue finalizada por el local. Puede iniciar una nueva consulta cuando lo necesite.');
+ UPDATE gestlok_chat_private.reclamos SET estado='respondido',actualizado_at=now(),
+  respondido_at=coalesce(respondido_at,now()),respondido_por=coalesce(respondido_por,auth.uid())
+ WHERE conversacion_id=c.id AND ciclo=c.ciclo AND estado='pendiente';
+ PERFORM gestlok_chat_private.auditar(c.sucursal_id,'cerrar_conversacion',jsonb_build_object('conversacion',c.id));
+ RETURN jsonb_build_object('ok',true,'cerrada',true);
+END $$;
