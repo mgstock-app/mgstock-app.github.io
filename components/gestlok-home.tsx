@@ -157,9 +157,7 @@ export function GestlokHome() {
       <header className="glh-top">
         <div className="glh-top-in">
           <div className="glh-acceso">
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- GESTLOK se abre con carga completa (sesión y scripts propios). */}
             <a className="glh-btn glh-btn-borde" href="/login/">Ingresar</a>
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- GESTLOK se abre con carga completa (sesión y scripts propios). */}
             <a className="glh-btn glh-btn-teal" href="/login/#registrarme">Registrarme</a>
           </div>
           <nav className="glh-nav" aria-label="Secciones">
@@ -167,6 +165,7 @@ export function GestlokHome() {
             <a href="#contacto">Contacto</a>
           </nav>
           <a className="glh-marca" href="#inicio" aria-label="GESTLOK, volver al inicio">
+            {/* eslint-disable-next-line @next/next/no-img-element -- ícono SVG chico de la marca */}
             <img src="/icons/gestlok.svg" alt="" width={36} height={36} />
             <span>Gest<em>Lok</em></span>
           </a>
@@ -175,6 +174,7 @@ export function GestlokHome() {
 
       <main>
         <section id="inicio" className="glh-hero">
+          {/* eslint-disable-next-line @next/next/no-img-element -- ícono SVG de la marca */}
           <img className="glh-hero-logo" src="/icons/gestlok.svg" alt="" width={88} height={88} />
           <h1>Gest<em>Lok</em></h1>
           <p className="glh-lema">Tu negocio, en orden.</p>
@@ -277,7 +277,6 @@ export function GestlokHome() {
         <div className="glh-pie-in">
           <span>© 2026 GESTLOK · Tu negocio, en orden.</span>
           <nav aria-label="Información legal">
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- página pública con carga completa. */}
             <a href="/conocer/">Conocé GESTLOK</a>
             <a href="/privacidad.html">Privacidad</a>
             <a href="/terminos.html">Condiciones de uso</a>
