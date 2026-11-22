@@ -1,6 +1,25 @@
 -- Administración de categorías Conteo: Mi Gusto Munro y Don Torcuato.
 -- Solo catálogos de estas dos sucursales. No altera datos ni estados de turnos finalizados.
 
+-- Las chapas/cajas especiales dependen del PRODUCTO, no del nombre editable
+-- de su categoría. Mantener exactamente las reglas de unidades 24 y 45.
+alter table gestlok_munro_conteo_private.products
+ drop constraint if exists products_units_per_chapa_check;
+alter table gestlok_munro_conteo_private.products
+ add constraint products_units_per_chapa_check
+ check (units_per_chapa in (0,27,30)
+   or (units_per_chapa=45 and lower(btrim(name))='caja palito')
+   or (units_per_chapa=24 and (lower(name) like 'franui%' or lower(name)='pink')));
+
+alter table gestlok_torcuato_conteo_private.products
+ drop constraint if exists products_units_per_chapa_check;
+alter table gestlok_torcuato_conteo_private.products
+ add constraint products_units_per_chapa_check
+ check (units_per_chapa in (0,27,30)
+   or (units_per_chapa=45 and lower(btrim(name))='caja palito')
+   or (units_per_chapa=24 and (lower(name) like 'franui%' or lower(name)='pink')));
+
+
 create table if not exists gestlok_munro_conteo_private.categories (
  name text primary key check (char_length(btrim(name)) between 3 and 70 and name=btrim(name)),
  position integer not null,
