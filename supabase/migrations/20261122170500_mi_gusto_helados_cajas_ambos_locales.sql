@@ -5,6 +5,18 @@
 -- Don Torcuato sigue sin registros en su Historial de Conteo.
 
 
+-- Mantener la regla original y habilitar 24 sólo para helados Franui/Pink.
+alter table gestlok_munro_conteo_private.products
+ drop constraint if exists products_units_per_chapa_check;
+alter table gestlok_munro_conteo_private.products
+ add constraint products_units_per_chapa_check
+ check (
+  units_per_chapa in (0,27,30)
+  or (units_per_chapa=45 and section='SALSAS' and lower(btrim(name))='caja palito')
+  or (units_per_chapa=24 and section='HELADOS' and
+    (lower(name) like 'franui%' or lower(name)='pink'))
+ );
+
 -- MUNRO: conservar los IDs históricos de Franui / Pink.
 update gestlok_munro_conteo_private.products
    set units_per_chapa=24
@@ -51,6 +63,18 @@ returns bigint language sql immutable set search_path='' as $fn$
  ) v;
 $fn$;
 
+
+-- Mantener la regla original y habilitar 24 sólo para helados Franui/Pink.
+alter table gestlok_torcuato_conteo_private.products
+ drop constraint if exists products_units_per_chapa_check;
+alter table gestlok_torcuato_conteo_private.products
+ add constraint products_units_per_chapa_check
+ check (
+  units_per_chapa in (0,27,30)
+  or (units_per_chapa=45 and section='SALSAS' and lower(btrim(name))='caja palito')
+  or (units_per_chapa=24 and section='HELADOS' and
+    (lower(name) like 'franui%' or lower(name)='pink'))
+ );
 
 -- TORCUATO: conservar los IDs históricos de Franui / Pink.
 update gestlok_torcuato_conteo_private.products
