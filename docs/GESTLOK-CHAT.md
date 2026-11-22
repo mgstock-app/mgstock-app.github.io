@@ -217,3 +217,12 @@ El cliente ve el estado en el mismo chat (consulta cada 12 s mientras está pend
 El chat público toma el pedido completo y lo deja `pendiente`. El gerente revisa los detalles y pulsa «Confirmar y pasar a preparación». La misma operación transaccional registra `confirmado`, fecha y usuario, y lo incorpora a la lista interna «En preparación» de la Central. Solo después se puede marcar `terminado`. No se crea una venta ni se modifica caja o stock. La base impide terminar sin confirmar, duplicar la confirmación o decidir pedidos de otro local/empresa. El asistente y el cliente no tienen permisos para confirmar.
 
 Migración: `20261120000406_gestlok_chat_confirmacion_manual.sql`. El texto pendiente es fijo para que plantillas anteriores no anuncien preparación antes de la aprobación. Se conservan los pedidos históricos.
+
+## Retención del chat público (24 horas)
+
+- El historial visible y los mensajes temporales de cada conversación se limpian al pasar **24 horas desde la última actividad**. La base ejecuta mantenimiento cada 15 minutos y comprueba el vencimiento al volver a abrir la charla. Un navegador que haya dejado la pestaña abierta debe refrescar su estado antes de enviar nuevos mensajes.
+- **No se interrumpe un pedido pendiente o en preparación**. Mientras exista una comanda activa, el hilo conserva su seguimiento hasta que se resuelva.
+- Los pedidos y reportes comerciales no se borran con el chat. Tampoco se elimina la identidad anónima separada con la que se puede reconocer a clientes frecuentes de la misma sucursal.
+- Los **reclamos quedan guardados en el panel del gerente** (motivo, fecha, pedido relacionado y evidencias adjuntas) incluso después de limpiar el intercambio completo. Los reclamos siguen aislados por sucursal y el gerente puede atender/cerrar el expediente. Un reclamo anterior no se asocia automáticamente a una sesión nueva.
+- Los archivos de evidencia asociados a reclamos se conservan en un bucket privado; solo el panel autorizado puede obtener enlaces firmados de corta duración. La limpieza de mensajes no equivale a eliminar automáticamente todos los archivos del almacenamiento.
+- Migración: `20261122165000_gestlok_chat_conversaciones_24h_reclamos.sql`. Tests: `tests/db/gestlok-chat-retencion-24h.sql` y `qa/cypress/e2e/gestlok-chat-retencion-24h.cy.js`.
