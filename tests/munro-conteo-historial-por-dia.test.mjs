@@ -171,6 +171,7 @@ test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin rea
  const rpc=m.window.GestLokSupabase.rpc;
  m.window.GestLokSupabase.rpc=async(name,args)=>{
   if(name==='gestlok_munro_conteo_sin_stock'){
+   m.calls.push({name,args});
    assert.equal(args.p_expected,false);
    assert.equal(args.p_sin_stock,true);
    assert.equal(args.p_product,'empty');
