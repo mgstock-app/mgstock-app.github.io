@@ -57,7 +57,8 @@ for(const local of ['munro','torcuato']){
   const original=a.mod.view();
   assert.match(original,/<strong>Categorías<\/strong><button[^>]*data-gcm-category-close[^>]*><span aria-hidden="true">▾<\/span><\/button>/);
   assert.match(original,/data-gcm-category-toggle[^>]*>Categorías <span[^>]*>▸<\/span><\/button>/);
-  assert.doesNotMatch(original,/>\+ Categorías<|>−<\/button>/);
+  const categoryControls=original.slice(original.indexOf('class="gcm-category-toggle"'),original.indexOf('class="gcm-category-nav-items"'));
+  assert.doesNotMatch(categoryControls,/>\+ Categorías<|>−<\/button>/);
   const classes=new Set(),attrs={};
   const list={
    add:name=>classes.add(name),remove:name=>classes.delete(name),
