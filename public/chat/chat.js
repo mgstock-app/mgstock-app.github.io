@@ -34,14 +34,22 @@ const S = {sucursal: null, catalogo: {categorias: [], productos: []}, carrito: [
   ultimaEntrada: null, datos: {entrega: '', medio_pago: ''}, sondeo: 0, hojaFoco: null, categoria: '',
   ultimoLocal: 0, soportePendiente: false, borrador: [], loteId: null, cerrada: false};
 /* Contacto opcional, asignado por el servidor a ESTA sucursal; nunca cambia el canal de pedidos. */
-function actualizarWhatsApp(sucursal) {
+function actualizarBarraAcciones() {
+   const cantidad = [...S.carrito, ...S.borrador].reduce((s, l) => s + l.cantidad, 0);
+   const hayPedido = cantidad > 0 && !S.cerrada;
+   $('barra-pedido').hidden = !hayPedido && $('whatsapp-local').hidden;
+   $('btn-carrito').hidden = !hayPedido;
+   $('btn-finalizar').hidden = !hayPedido;
+ }
+ function actualizarWhatsApp(sucursal) {
   const link = $('whatsapp-local');
   const telefono = String(sucursal?.whatsapp_local || '').replace(/\D/g, '');
   if (!/^[1-9][0-9]{7,14}$/.test(telefono)) {
-    link.hidden = true; link.removeAttribute('href'); return;
+    link.hidden = true; link.removeAttribute('href'); actualizarBarraAcciones(); return;
   }
   link.href = 'https://wa.me/' + telefono;
   link.hidden = false;
+   actualizarBarraAcciones();
 }
 
 // Token anónimo de este teléfono (la base guarda solo su hash).
@@ -204,7 +212,7 @@ function nuevaConversacion() {
 function mostrarCierre() {
   if (S.cerrada) return;
   S.cerrada=true;clearTimeout(S.sondeo);
-  $('redactar').hidden=true;$('barra-pedido').hidden=true;
+  $('redactar').hidden=true;actualizarBarraAcciones();
   const reiniciar=el('button',{type:'button',class:'boton principal',text:'Hacer un nuevo pedido',onclick:nuevaConversacion});
   lista.append(el('div',{class:'chat-cerrado'},
     el('p',{text:'Esta conversación finalizó. Podés volver a comprar en el mismo local.'}),reiniciar));
@@ -351,7 +359,7 @@ function bloquear(si) { $('btn-enviar').disabled = si || !$('texto').value.trim(
 function actualizarCarrito(c) {
   if (Array.isArray(c)) S.carrito = c;
   const n = [...S.carrito, ...S.borrador].reduce((s, l) => s + l.cantidad, 0);
-  $('barra-pedido').hidden = !n;
+  actualizarBarraAcciones();
   $('barra-texto').textContent = n + (n === 1 ? ' producto' : ' productos') + ' · ' +
     pesos(totalCarrito(S.catalogo, [...S.carrito, ...S.borrador]));
   $('btn-finalizar').textContent = S.borrador.length ? 'Continuar' : 'Enviar pedido';
@@ -1318,6 +1326,16 @@ const DEMO_DATOS = {
         {id: 'sal', nombre: 'Salsas', tipo: 'cantidad', total: 2, obligatorio: true, valores: [{id: 'criolla', nombre: 'Criolla', extra: 0}, {id: 'ajo', nombre: 'Crema de ajo', extra: 0}]}]},
     ]},
 };
+// Identidad exclusiva de la demo dividida; nunca alcanza una sesión real.
+const SHOWROOM_SUCURSAL = SHOWROOM && ({
+  'mi-gusto-munro': 'Munro',
+  'mi-gusto-torcuato': 'Don Torcuato',
+})[params.get('s')];
+if (SHOWROOM_SUCURSAL) {
+  DEMO_DATOS.sucursal.nombre = SHOWROOM_SUCURSAL;
+  DEMO_DATOS.sucursal.empresa = 'Mi Gusto · DEMOSTRACIÓN';
+  DEMO_DATOS.sucursal.slug = 'demo-' + params.get('s');
+}
 let demoEstado = null; let demoPedido = null;
 async function demoApi(accion, extra) {
   await new Promise(r => setTimeout(r, 250));
