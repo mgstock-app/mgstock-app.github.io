@@ -193,6 +193,11 @@ Deno.serve(async (req) => {
     };
     const conv = await rpc("gestlok_chat_srv_conversacion", { p_sucursal: sucId, p_token_hash: hash, p_ip_hash: ipHash });
     const convId = conv.id as string;
+    // Los mensajes vencidos ya se limpiaron en la base. Nunca aceptar un turno
+    // con el estado anterior si el cliente dejó la pestaña abierta 24 horas.
+    if (conv.expirada === true && accion !== "abrir") {
+      return json({ok:false,expirada:true,error:"El chat se reinició después de 24 horas. Ya podés iniciar una nueva consulta."},409,origen);
+    }
     const cierre = await rpc("gestlok_chat_srv_cierre", {p_conversacion:convId,p_token_hash:hash});
     const cerrada = cierre.cerrada === true;
     if (accion === "recordar") {
@@ -275,7 +280,7 @@ Deno.serve(async (req) => {
         const {data}=await db.storage.from("gestlok-chat-adjuntos").createSignedUrl(String(f.path),600);
         return {mensaje_id:f.mensaje_id,url:data?.signedUrl||null};
       }));
-      return json({ ok: true, sucursal, catalogo,
+      return json({ ok: true, sucursal, catalogo, expirada:conv.expirada === true,
         mensajes: mensajes.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
         nuevos:extra.map(m=>({...m,texto:sinCodigo(String(m.texto||''))})),
         carrito: (estado as Json).carrito ?? [],
