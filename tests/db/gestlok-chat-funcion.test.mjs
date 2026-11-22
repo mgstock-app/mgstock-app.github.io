@@ -51,6 +51,7 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   ok(DB, ['-f', 'supabase/operaciones/gestlok-chat-recepcion-conciliada-20261120.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261122165000_gestlok_chat_conversaciones_24h_reclamos.sql']);
   ok(DB, [], SEMILLA);
+  ok(DB, ['-f', 'tests/db/gestlok-chat-retencion-24h.sql']);
   process.env.CHAT_PG_DB = urlFor(DB);
 
   let handler;
