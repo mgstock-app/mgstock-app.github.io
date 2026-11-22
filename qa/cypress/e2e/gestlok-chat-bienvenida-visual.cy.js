@@ -36,20 +36,31 @@ describe('GESTLOK Chat · bienvenida simple', () => {
     cy.get('#mensajes').should('not.have.css', 'overflow-x', 'scroll');
   });
 
-  it('si el local está cerrado, no oculta el aviso ni los botones para programar', () => {
-    cy.viewport(390, 844);
-    cy.intercept('POST', '**/functions/v1/gestlok-chat', req => {
-      if (req.body.accion !== 'abrir') return req.reply({ok: true, pedidos: [], mensajes_local: []});
-      req.reply({ok: true,
-        sucursal: {slug: 'mi-gusto-torcuato', empresa: 'Mi Gusto', nombre: 'Don Torcuato'},
-        catalogo: {categorias: [], productos: []}, mensajes: [], carrito: [], pedidos: [],
-        nuevos: [{texto: 'Gracias por comunicarse. Por el momento nuestro local está cerrado. Abriremos nuevamente mañana a las 11.',
-          botones: [{id: 'programar_si', texto: 'Sí, dejar pedido programado'},
-            {id: 'programar_no', texto: 'No, gracias'}]}]});
+  for (const [slug, sucursal] of [['mi-gusto-munro', 'Munro'], ['mi-gusto-torcuato', 'Don Torcuato']]) {
+    it(sucursal + ': cerrado, ofrece el mismo menú de inicio sin perder la programación', () => {
+      cy.viewport(390, 844);
+      cy.intercept('POST', '**/functions/v1/gestlok-chat', req => {
+        if (req.body.accion !== 'abrir') return req.reply({ok: true, pedidos: [], mensajes_local: []});
+        req.reply({ok: true,
+          sucursal: {slug, empresa: 'Mi Gusto', nombre: sucursal, menu_interactivo: true,
+            atencion: {habilitado: true, abierto: false, proximo_texto: 'mañana a las 11'}},
+          catalogo: {categorias: [], productos: []}, mensajes: [], carrito: [], pedidos: [],
+          nuevos: [{texto: 'Gracias por comunicarse. Por el momento nuestro local está cerrado. Abriremos nuevamente mañana a las 11.',
+            botones: [{id: 'carta', texto: 'Hacer un pedido'},
+              {id: 'horario', texto: 'Horario y envío'}, {id: 'pago', texto: 'Medios de pago'},
+              {id: 'soporte', texto: 'Ayuda con mi pedido'},
+              {id: 'programar_si', texto: 'Sí, dejar pedido programado'},
+              {id: 'programar_no', texto: 'No, gracias'}]}]});
+      });
+      cy.visit('/chat/?s=' + slug);
+      cy.get('.chat-bienvenida').should('not.exist');
+      cy.get('.burbuja.asistente').should('contain', 'local está cerrado');
+      cy.get('.chips .chip-hacer-pedido').should('have.text', 'Hacer un pedido').and('be.visible');
+      for (const texto of ['Horario y envío', 'Medios de pago', 'Ayuda con mi pedido', 'Sí, dejar pedido programado']) {
+        cy.contains('.chip', texto).should('exist');
+      }
+      cy.get('.chips .chip-hacer-pedido').click();
+      cy.get('#hoja-titulo').should('have.text', 'Menú');
     });
-    cy.visit('/chat/?s=mi-gusto-torcuato');
-    cy.get('.chat-bienvenida').should('not.exist');
-    cy.get('.burbuja.asistente').should('contain', 'local está cerrado');
-    cy.contains('.chip', 'Sí, dejar pedido programado').should('be.visible');
-  });
+  }
 });

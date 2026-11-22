@@ -773,8 +773,11 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
       decir('Gracias por comunicarse. Por el momento nuestro local está cerrado. Abriremos nuevamente '+s.atencion.proximo_texto+
         '. ¿Desea dejar un pedido programado para la próxima apertura? El gerente lo revisará y confirmará cuando corresponda.'+
         (s.especial?.texto ? '\n' + s.especial.texto : ''),{
-        botones:[{id:'programar_si',texto:'Sí, dejar pedido programado'},
-          {id:'programar_no',texto:'No, gracias'},{id:'soporte',texto:'Consultar al gerente'}]});
+        // Cerrado no significa menos funciones: las dos sucursales mantienen el menú habitual.
+        // Hacer un pedido permite armar la carta; al finalizar se exige programarlo.
+        botones:[...botonesBienvenida(s, catalogo),
+          {id:'programar_si',texto:'Sí, dejar pedido programado'},
+          {id:'programar_no',texto:'No, gracias'}]});
       return fin();
     }
     // Saludo según la hora, bienvenida del dueño y, en el mismo mensaje, qué hace cada botón de abajo.

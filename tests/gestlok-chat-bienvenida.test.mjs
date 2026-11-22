@@ -48,11 +48,27 @@ test('otros comercios: sin menú interactivo no aparece «Ver promociones»; tex
     '¡Buenas noches! Bienvenido a Café Brío.');
 });
 
-test('local cerrado: se mantiene el aviso de próxima apertura con sus botones', () => {
-  const s = {...local('mi-gusto-munro'), atencion: {habilitado: true, abierto: false, proximo_texto: 'mañana a las 11:00'}};
-  const m = responder({sucursal: s, catalogo, estado: null, entrada: {inicio: true}, ahora: noche}).mensajes[0];
-  assert.match(m.texto, /local está cerrado/);
-  assert.deepEqual(m.botones.map(b => b.id), ['programar_si', 'programar_no', 'soporte']);
+test('Munro y Don Torcuato cerrados: comparten accesos y siguen exigiendo programar el pedido', () => {
+  for (const slug of ['mi-gusto-munro', 'mi-gusto-torcuato']) {
+    const s = {...local(slug), horario: '11:00 a 14:40 y 19:00 a 23:15',
+      atencion: {habilitado: true, abierto: false, proximo_texto: 'mañana a las 11:00'}};
+    const ejecutar = (estado, entrada) => responder({sucursal: s, catalogo, estado, entrada, ahora: noche});
+    const m = ejecutar(null, {inicio: true}).mensajes[0];
+    assert.match(m.texto, /local está cerrado/);
+    assert.deepEqual(m.botones.map(b => b.id),
+      ['carta', 'promociones', 'horario', 'pago', 'soporte', 'programar_si', 'programar_no']);
+    assert.equal(m.botones[0].texto, 'Hacer un pedido');
+    assert.equal(ejecutar(null, {boton: 'carta'}).mensajes[0].tipo, 'carta');
+    assert.match(ejecutar(null, {boton: 'horario'}).mensajes[0].texto, /Horario:/);
+    assert.match(ejecutar(null, {boton: 'pago'}).mensajes[0].texto, /Efectivo/);
+    const agregado = ejecutar(null, {agregar: {producto_id: 'e-carne', cantidad: 1, opciones: {}}});
+    assert.equal(agregado.estado.carrito.length, 1);
+    const finalizar = ejecutar(agregado.estado, {boton: 'finalizar'});
+    assert.match(finalizar.mensajes[0].texto, /programar su pedido/i);
+    assert.equal(finalizar.accion, undefined, 'no puede mandar un pedido cerrado sin programación');
+    const programado = ejecutar(finalizar.estado, {boton: 'programar_si'});
+    assert.equal(programado.estado.programado, true);
+  }
 });
 
 test('con IA: la IA saluda y no inventa nombres de botones (los agrega el sistema debajo)', () => {
