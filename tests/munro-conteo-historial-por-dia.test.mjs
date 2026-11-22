@@ -56,10 +56,10 @@ function app(role='dueno'){
  };
  return {module,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
 }
-async function start(role){
+async function start(role='dueno'){
  const m=app(role);m.module.view();await tick();await tick();
- let html=await m.click('data-gcm-history-open');await tick();html=m.module.view();
- return {...m,html};
+ if(role!=='dueno'){await m.click('data-gcm-history-open');await tick();}
+ return {...m,html:m.module.view()};
 }
 test('dueña ve solo filas por fecha, más reciente primero y ninguna tabla cargada por defecto',async()=>{
  const m=await start('dueno');
@@ -70,9 +70,25 @@ test('dueña ve solo filas por fecha, más reciente primero y ninguna tabla carg
  assert.doesNotMatch(m.html,/Totales por categoría/);
  assert.doesNotMatch(m.html,/class="gcm-hd-meta"/);
  assert.ok(m.calls.some(x=>x.name==='gestlok_munro_conteo_history'&&x.args.p_month===m.today.slice(0,7)+'-01'));
+ assert.doesNotMatch(m.html,/data-gcm-history-exit|gcm-count-screen|data-gcm-finalize|Editar turno cerrado|Volver al conteo/);
+ assert.ok(m.calls.some(x=>x.name==='gestlok_munro_conteo_state'),'El catálogo se consulta para mostrar cantidades reales');
+ assert.equal(m.calls.some(x=>/gestlok_munro_conteo_set_|gestlok_munro_conteo_finalize/.test(x.name)),false);
 });
+test('dueña sólo ve turnos archivados, nunca el borrador activo ni sus controles',async()=>{
+ const m=await start('dueno');
+ let html=await m.click('data-gcm-history-day',m.today);
+ assert.equal((html.match(/data-gcm-history="/g)||[]).length,1);
+ assert.match(html,/data-gcm-history="[^"]*manana_salida"/);
+ assert.doesNotMatch(html,/data-gcm-history="[^"]*manana_entrada"/);
+ html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ assert.match(html,/Resumen del conteo/);
+ assert.doesNotMatch(html,/Editar turno cerrado|data-gcm-history-fix-toggle|data-gcm-finalize|gcm-count-screen/);
+ html=await m.click('data-gcm-history-exit');
+ assert.match(html,/Resumen del conteo/,'No puede salir del historial para editar el turno');
+});
+
 test('flecha del día abre exactamente los tres turnos, sin inventar datos ni horarios',async()=>{
- const m=await start();
+ const m=await start('gerente');
  const html=await m.click('data-gcm-history-day',m.today);
  assert.match(html,/Turno Mañana entrada/i);
  assert.match(html,/Turno Mañana salida/i);
@@ -84,7 +100,7 @@ test('flecha del día abre exactamente los tres turnos, sin inventar datos ni ho
  assert.match(html,/Finalizado/);
 });
 test('Ver detalle abre solo el conteo del turno seleccionado, en lectura',async()=>{
- const m=await start();
+ const m=await start('gerente');
  await m.click('data-gcm-history-day',m.today);
  let html=await m.click('data-gcm-history',m.today+'|manana_entrada');
  assert.match(html,/Vista previa A4/);
@@ -255,7 +271,7 @@ test('Conteo e Historial están disponibles en teléfono, tablet y PC',()=>{
 });
 
 test('la vista A4 usa valores archivados, no cambia registros y dibuja 10 consumos',async()=>{
- const m=await start('dueno');await m.click('data-gcm-history-day',m.today);
+ const m=await start('gerente');await m.click('data-gcm-history-day',m.today);
  const before=m.calls.length;
  const html=await m.click('data-gcm-history',m.today+'|manana_entrada');
  assert.match(html,/Hoja A4 completa/);
@@ -288,7 +304,7 @@ test('Mañana entrada sin Consumos; Mañana salida inicia con 3 espacios ampliab
 });
 
 test('A4 respeta el orden de Conteo y pone cada total cerca del producto, con letra grande',async()=>{
- const m=app('dueno');
+ const m=app('gerente');
  // Alfabéticamente sería otro orden. Conteo utiliza el mismo arreglo del catálogo.
  m.todayEntry.data.p2={v1:{chapas:1,sueltas:0,qty:0}};
  const expected=[];
@@ -357,4 +373,18 @@ test('desde el 15/11 el historial sigue mostrando los tres turnos habituales',()
   const title=win.GestLokMunroConteo._test.historyShiftLabel({day:'2026-11-15',shift:s});
   assert.ok(title&&title.includes(' · '));
  }
+});
+
+test('migración conserva el aislamiento de ambas sucursales y bloquea la escritura de dueños',()=>{
+ const sql=fs.readFileSync(new URL('../supabase/migrations/20261122164000_mi_gusto_conteo_duenos_historial_solo_lectura.sql',import.meta.url),'utf8');
+ for(const local of ['munro','torcuato']){
+  assert.match(sql,new RegExp('gestlok_'+local+'_conteo_private\\.require_access'));
+  assert.match(sql,new RegExp("puede_ver_local\\('"+local+"'\\)"));
+  assert.match(sql,new RegExp('public\\.gestlok_'+local+'_conteo_history'));
+  assert.match(sql,new RegExp('public\\.gestlok_'+local+'_conteo_state'));
+ }
+ assert.equal((sql.match(/if p_write and r='dueno'/g)||[]).length,2);
+ assert.equal((sql.match(/'counts',case when public\.mi_rol\(\)='dueno' then '\[\]'::jsonb/g)||[]).length,2);
+ assert.equal((sql.match(/s\.status='finalizado'/g)||[]).length,2);
+ assert.doesNotMatch(sql,/insert into|delete from|truncate /i);
 });
