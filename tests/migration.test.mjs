@@ -32,6 +32,40 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+    // Menú lateral de categorías exclusivamente visual para Stock Local de Mi Gusto.
+    // Se revierten SOLO estos fragmentos auditados antes de verificar el SHA histórico.
+    const reviewedStockSidebar=[
+      {
+        actual:"function tools(id, val, ph, ocultarChips=false){",
+        original:"function tools(id, val, ph){"
+      },
+      {
+        actual:"!ocultarChips && cs.length > 1 ?",
+        original:"cs.length > 1 ?"
+      },
+      {
+        actual:"${miGustoStockConCategorias(tools('q-stock', S.q, 'Buscar producto', miGustoStockLateralActivo())+\n      (list.length ? sheet('stock', list, p => rowStock(p, false), {cls:'nosug', head:HEADS.stock0}) : vacio))}",
+        original:"${tools('q-stock', S.q, 'Buscar producto')}\n    ${list.length ? sheet('stock', list, p => rowStock(p, false), {cls:'nosug', head:HEADS.stock0}) : vacio}"
+      },
+      {
+        actual:"${miGustoStockConCategorias(tools('q-stock', S.q, 'Buscar producto', miGustoStockLateralActivo())+\n      (list.length ? sheet('stock', list, p => rowStock(p, true)) : vacio))}",
+        original:"${tools('q-stock', S.q, 'Buscar producto')}\n    ${list.length ? sheet('stock', list, p => rowStock(p, true)) : vacio}"
+      },
+      {
+        actual:"    case 'cat': {\n      const lateral=miGustoStockLateralActivo() && !!t.closest('.gl-mg-stock-nav, .gl-mg-stock-drawer');\n      S.cat=t.dataset.cat||'';\n      if(lateral){S.q='';S.filtro='todos';}\n      render();\n      if(lateral)document.querySelector('#view .gl-mg-stock-main')?.scrollIntoView({block:'start',behavior:'auto'});\n      break;\n    }",
+        original:"    case 'cat': S.cat = t.dataset.cat; render(); break;"
+      }
+    ];
+    const sidebarStart='/* Stock Local de Mi Gusto: navegación por categorías del local (Munro y Torcuato).';
+    const startSidebar=content.indexOf(sidebarStart);
+    const endSidebar=content.indexOf('function tools(id, val, ph, ocultarChips=false){',startSidebar);
+    assert.ok(startSidebar>=0 && endSidebar>startSidebar,'Único bloque de navegación de Stock Local auditado');
+    assert.equal(content.indexOf(sidebarStart,startSidebar+1),-1,'La navegación no está duplicada');
+    content=content.slice(0,startSidebar)+content.slice(endSidebar);
+    for(const {actual,original} of reviewedStockSidebar){
+      assert.equal(content.split(actual).length-1,1,'Cambio visual único de categorías de Stock Local');
+      content=content.replace(actual,original);
+    }
       // Normalizar únicamente el refresco seguro de Stock Local para mantener
       // el SHA original de pantallas, permisos y lógica de negocio.
       const refreshMarker = '<button type="button" class="btn sm" data-act="f-refresh">';
