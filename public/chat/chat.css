@@ -83,7 +83,23 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .icono.enviar svg{transform:translateX(-1px)}
 .pie{flex:0 0 auto;margin:0;padding:4px 12px max(4px,env(safe-area-inset-bottom));font-size:11.5px;color:var(--gris-claro);text-align:center;background:var(--papel)}
 .pie a{color:inherit}
-.redactar+.pie{padding-top:0}
+.chat-inferior+.pie{padding-top:0}
+.chat-inferior{flex:0 0 auto;min-width:0;display:flex;flex-direction:column;background:var(--papel)}
+/* En computadoras, WhatsApp se alinea con el campo de mensaje y Enviar pedido. */
+@media(min-width:621px){
+  .chat-inferior{
+    display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-rows:auto auto;gap:0 8px;align-items:center;
+    padding:8px 10px;border-top:1px solid var(--linea)
+  }
+  .chat-inferior .barra-pedido{display:contents}
+  .chat-inferior .barra-pedido[hidden]{display:none!important}
+  .chat-inferior .barra-resumen{grid-column:1/-1;grid-row:1;padding:0 2px 8px}
+  .chat-inferior .redactar{grid-column:1;grid-row:2;min-width:0;border:0;padding:0}
+  .chat-inferior .chat-whatsapp{grid-column:2;grid-row:2}
+  .chat-inferior #btn-finalizar{grid-column:3;grid-row:2}
+}
+
 
 /* Hojas (carta, producto, pedido, datos) */
 .fondo-hoja{position:fixed;inset:0;background:rgba(28,25,23,.45);z-index:10;animation:aparecer .15s ease}
