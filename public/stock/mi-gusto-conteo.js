@@ -109,7 +109,8 @@ const activePending=()=>[...pendingDrafts.values()].filter(x=>x.day===day&&x.shi
 const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&LOCALES.includes(api.S?.local)&&
  !window.GestLokCreatorSupport?.previewRol?.() &&
  (api.miRol()==='creadora'||api.miRol()==='dueno'||(api.miRol()==='gerente'&&api.misLocales().includes(api.S.local)));
-const editable=()=>allowed()&&!finishing&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
+const ownerHistoryOnly=()=>allowed()&&api.miRol()==='dueno';
+const editable=()=>allowed()&&!ownerHistoryOnly()&&!finishing&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
 const admin=()=>allowed()&&api.miRol()==='creadora'&&!api.S?.ro;
 const selected=()=>historyRecord||(snapshot?.counts||[]).find(s=>s.shift===shift)||null;
 const closed=()=>!!historyRecord||selected()?.status==='finalizado';
@@ -127,6 +128,7 @@ async function rpc(name,args){
  const local=activeLocal();
  // No aceptar RPC arbitrarios: solo los nombres del módulo original.
  if(!/^gestlok_munro_conteo_[a-z_]+$/.test(name))throw Error('Función de Conteo no autorizada');
+ if(ownerHistoryOnly()&&!['gestlok_munro_conteo_state','gestlok_munro_conteo_history','gestlok_munro_conteo_correction_history'].includes(name))throw Error('La dueña solo puede consultar historiales de conteo.');
  const target=local==='torcuato'?name.replace('gestlok_munro_conteo_','gestlok_torcuato_conteo_'):name;
  const r=await window.GestLokSupabase.rpc(target,args||{});
  if(r.error)throw Error(r.error.message||'No se pudo guardar.');
@@ -141,7 +143,7 @@ async function refresh(){
   if(token!==generation||day!==d)return;
   if(!Array.isArray(value?.products)||!Array.isArray(value?.counts)||!Array.isArray(value?.history))throw Error('Respuesta incompleta del servidor.');
   snapshot=value;overlayDrafts();error='';
-  if(autoResumeTurn&&d===arDay()){
+  if(autoResumeTurn&&d===arDay()&&!ownerHistoryOnly()){
    autoResumeTurn=false;
    const firstOpen=SHIFTS.find(([id])=>value.counts.find(row=>row.shift===id)?.status!=='finalizado');
    if(firstOpen)shift=firstOpen[0];
@@ -163,7 +165,7 @@ async function loadHistory(){
   const rows=await rpc('gestlok_munro_conteo_history',{p_month:month+'-01'});
   if(token!==historyToken||!historyMode||month!==historyMonth)return;
   if(!Array.isArray(rows))throw Error('No se pudo leer el historial.');
-  historyRows=rows.filter(r=>r&&typeof r.day==='string'&&SHIFTS.some(s=>s[0]===r.shift));
+  historyRows=rows.filter(r=>r&&typeof r.day==='string'&&SHIFTS.some(s=>s[0]===r.shift)&&(!ownerHistoryOnly()||r.status==='finalizado'));
   historyError='';
  }catch(e){
   if(token===historyToken)historyError=e.message||'No se pudo cargar el historial';
@@ -191,6 +193,7 @@ function dateTitle(iso){
  return [...groups.entries()].sort((a,b)=>b[0].localeCompare(a[0]));
 }
 function conteoHistorialNav(mode){
+ if(ownerHistoryOnly())return '';
  return '<nav class="gcm-mode-nav" aria-label="Conteo e historial">'+
  '<button type="button" data-gcm-history-exit'+(mode==='conteo'?' class="is-active" aria-current="page"':'')+'>Conteo</button>'+
  '<button type="button" data-gcm-history-open'+(mode==='historial'?' class="is-active" aria-current="page"':'')+'>Historial</button>'+
@@ -217,7 +220,7 @@ function historyListView(){
    }).join('')+'</div>':'')+'</section>';
  }).join('');
  return '<div class="gcm-page gcm-history-screen">'+conteoHistorialNav('historial')+
-  '<header class="gcm-history-top"><div class="gcm-history-title"><button type="button" data-gcm-history-exit>← Volver al conteo</button>'+
+  '<header class="gcm-history-top"><div class="gcm-history-title">'+(ownerHistoryOnly()?'':'<button type="button" data-gcm-history-exit>← Volver al conteo</button>')+
    '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Historial de conteos</h2></div></div>'+
    '<label>Mes <input type="month" id="gcm-history-month" min="2025-01" max="'+arDay().slice(0,7)+'" value="'+esc(historyMonth)+'"></label></header>'+
   (historyError?'<p class="gcm-error" role="alert">'+esc(historyError)+' <button type="button" data-gcm-history-retry>Reintentar</button></p>':'')+
@@ -897,6 +900,10 @@ async function verifyTurnSaved(requireExisting=false){
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de su sucursal de Mi Gusto.</p>';
  // Se conserva el día seleccionado hasta que el gerente lo cambie expresamente.
+ if(ownerHistoryOnly()&&!historyMode){
+  historyMode=true;historyRecord=null;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyError='';
+  void loadHistory();
+ }
  if(!snapshot&&!loading&&!error)void refresh();
  if(historyMode)return historyRecord?historyDetailView():historyListView();
  const rec=entry(),canWrite=editable()&&!closed()&&!!snapshot,canCatalog=admin()&&!historyRecord&&!busy;
@@ -1285,7 +1292,7 @@ document.addEventListener('click',async e=>{
   historyExpanded=null;historyRows=[];historyError='';void loadHistory();api.render();return;
  }
  if(el.hasAttribute('data-gcm-history-exit')){
-  if(busy)return;
+  if(ownerHistoryOnly()||busy)return;
   historyMode=false;historyRecord=null;historyPreviewUrl='';historyPreviewError='';++historyToken;clearHistoryEditor();
   historyLoading=false;error='';void refresh();api.render();return;
  }
