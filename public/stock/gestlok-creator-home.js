@@ -149,12 +149,12 @@
   }
 
   // Catálogo y asignación por empresa: las operaciones son RPC con identidad de creadora validada.
-  let microapps=[],microappsLoaded=false,microappsBusy=false,microappsError='',companyBusy=false;
+  let microapps=[],microappsLoaded=false,microappsBusy=false,microappsTried=false,microappsError='',companyBusy=false;
   const premiumAdmin=()=>api?.isCreadora?.() &&
     String(api?.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
   async function loadMicroapps(force=false){
-    if(!premiumAdmin()||!window.GestLokSupabase?.rpc||microappsBusy||(!force&&microappsLoaded))return;
-    microappsBusy=true;microappsError='';
+    if(!premiumAdmin()||!window.GestLokSupabase?.rpc||microappsBusy||(!force&&(microappsLoaded||microappsTried)))return;
+    microappsBusy=true;microappsTried=true;microappsError='';
     try{
       const r=await window.GestLokSupabase.rpc('gestlok_creator_microapps');
       if(r.error||!Array.isArray(r.data))throw (r.error||Error('Respuesta inválida'));
@@ -173,7 +173,7 @@
     const disponibles=apps.filter(a=>!a.habilitada);
     return '<section class="gl-ch-company-apps" aria-label="Aplicaciones de '+esc(empresa)+'">'+
       '<h4>Apps asignadas</h4>'+
-      (microappsError?'<p role="alert">'+esc(microappsError)+'</p>':'')+
+      (microappsError?'<p role="alert">'+esc(microappsError)+'</p><button type="button" class="btn" data-ch-app-refresh>Reintentar consulta</button>':'')+
       (!microappsLoaded?'<p role="status">Cargando aplicaciones…</p>':(asignadas||'<p>Sin aplicaciones asignadas.</p>'))+
       (disponibles.length?'<div class="gl-ch-app-picker"><label>Asignar app<select data-ch-app-select="'+esc(tenant)+'">'+
         disponibles.map(a=>'<option value="'+esc(a.app_code)+'">'+esc(a.nombre)+'</option>').join('')+
@@ -335,7 +335,7 @@
   // Inicio independiente de la cuenta creadora: accesos reales, sin métricas invasivas.
   // Las operaciones siguen delegadas a los módulos existentes y a sus permisos.
   function home(p) {
-    if(!microappsLoaded&&!microappsBusy)queueMicrotask(()=>loadMicroapps());
+    if(!microappsLoaded&&!microappsBusy&&!microappsTried)queueMicrotask(()=>loadMicroapps());
     const grouped=window.GestLokOwnerAreas?.creatorBrands?.()||[];
     const indexed=grouped.length?grouped:(Array.isArray(p.companies)?p.companies:(window.GestLokOwnerAreas?.creatorCompanies?.()||[]));
     const companyRows=indexed.length?indexed:(data.recent_companies||[]);
@@ -610,7 +610,7 @@
   function goTab(v) {
     if (!validTab(v)) return;
     if(v !== 'chat-prueba') showroomExpandido = false;
-    if(v==='locales')void loadMicroapps();
+    if(v==='locales')void loadMicroapps(true);
     tab = v; store.set(v);
     api?.render();
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
@@ -620,6 +620,8 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const refreshApps=ev.target.closest?.('[data-ch-app-refresh]');
+    if(refreshApps&&premiumAdmin()){ev.preventDefault();void loadMicroapps(true);return;}
     const appAdd=ev.target.closest?.('[data-ch-app-add]');
     if(appAdd&&premiumAdmin()){
       ev.preventDefault();const tenant=appAdd.dataset.chAppAdd;
