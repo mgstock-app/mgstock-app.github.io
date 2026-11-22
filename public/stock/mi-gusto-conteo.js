@@ -1036,7 +1036,7 @@ function view(){
  (shift==='manana_entrada'?'<p class="gcm-morning-quick-note">Comparación nocturna: revisá las filas rojas. El detalle y los OK están después de la planilla.</p>':'')+
  '<div class="gcm-count-layout">'+categorySidebar(visibleCategories,list)+
  '<main class="gcm-count-main">'+expiryRuler(showDecomiso)+
- (admin()&&canWrite?'<div class="gcm-category-admin-bar"><button type="button" data-gcm-add-category aria-haspopup="dialog">+ Agregar categoría</button>'+
+ (admin()&&editable()&&!busy?'<div class="gcm-category-admin-bar"><button type="button" data-gcm-add-category aria-haspopup="dialog">+ Agregar categoría</button>'+
  '<span>Las categorías son propias de '+esc(localLabel())+'.</span></div>'+
  '<dialog class="gcm-category-editor-dialog" aria-label="Crear o cambiar nombre de categoría">'+
  '<h3 data-gcm-category-editor-title>Agregar categoría</h3>'+
@@ -1247,7 +1247,7 @@ document.addEventListener('click',async e=>{
  if(el.hasAttribute('data-gcm-add-category')||el.hasAttribute('data-gcm-rename-category')){
   e.preventDefault();
   if(el.hasAttribute('data-gcm-rename-category'))e.stopPropagation(); // Dentro del summary.
-  if(!admin()||!editable()||closed()||busy||!snapshot||historyMode)return;
+  if(!admin()||!editable()||busy||!snapshot||historyMode)return;
   const oldName=el.dataset.gcmRenameCategory||'';
   if(oldName&&!snapshot.categories?.some(c=>c.name===oldName)&&
      !snapshot.products.some(p=>p.section===oldName))return;
@@ -1275,7 +1275,7 @@ document.addEventListener('click',async e=>{
  }
  if(el.hasAttribute('data-gcm-category-editor-save')){
   e.preventDefault();
-  if(!admin()||!editable()||closed()||busy||!snapshot||historyMode)return;
+  if(!admin()||!editable()||busy||!snapshot||historyMode)return;
   const dialog=el.closest('.gcm-category-editor-dialog');
   if(!dialog?.open)return;
   const oldName=dialog.dataset.oldCategory||'';
