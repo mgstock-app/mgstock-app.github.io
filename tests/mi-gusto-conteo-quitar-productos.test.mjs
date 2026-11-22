@@ -78,6 +78,7 @@ for(const local of ['munro','torcuato']){
   assert.equal(x.db.products[2].active,true);
   assert.deepEqual(x.db.settings.hidden_sections,[]);
   assert.equal(x.db.history[0].data.s1.v1.qty,2);
+  assert.doesNotMatch(x.mod.view(),/data-gcm-morning-row="s1"/);
   assert.ok(x.calls.some(c=>c.name==='gestlok_'+local+'_conteo_product'
     &&c.args.p_id==='s1'&&c.args.p_name==='Ajo'&&c.args.p_active===false));
   assert.ok(!x.calls.some(c=>c.name.endsWith('_set_section')));
@@ -102,4 +103,18 @@ test('gerente no accede al selector ni puede invocar la edición del catálogo',
  await x.click(x.button('data-gcm-remove-products-open',{gcmRemoveProductsOpen:'SALSAS'}));
  assert.equal(x.dialog.open,false);
  assert.ok(!x.calls.some(c=>c.name.endsWith('_product')));
+});
+
+test('un producto retirado con cantidades en el turno sigue visible para que no se pierdan',async()=>{
+ const x=await app();
+ x.db.counts[0].data.s1={v1:{qty:2}};
+ x.mod.reset();x.mod.view();await tick();
+ await x.click(x.button('data-gcm-remove-products-open',{gcmRemoveProductsOpen:'SALSAS'}));
+ x.checks[0].checked=true;
+ await x.click(x.button('data-gcm-remove-products-save'));
+ await tick();
+ const html=x.mod.view();
+ assert.match(html,/data-gcm-morning-row="s1"/);
+ assert.match(html,/Quitado del catálogo/);
+ assert.equal(x.db.counts[0].data.s1.v1.qty,2);
 });
