@@ -847,8 +847,9 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
    (noStock?' checked':'')+(sum>0?' disabled':'')+' aria-label="Sin stock: '+esc(p.name)+'">Sin stock</label>':'';
   return '<tr data-gcm-morning-row="'+esc(p.id)+'" class="'+(p.units_per_chapa>0?'gcm-chapa-row':'gcm-qty-row')+
    (check?.different?(check.acknowledged?' gcm-morning-confirmed':' gcm-morning-difference'):'')+'">'+(showDecomiso?decompColumn(p,canWrite):'')+'<th scope="row" class="gcm-product-cell"><span class="gcm-product-name">'+esc(p.name)+'</span>'+
+   (!p.active?'<small class="gcm-product-retirado">Quitado del catálogo · conserva las cantidades de este turno</small>':'')+
    (shift==='manana_entrada'?'<small data-gcm-morning-note'+(check?.different?'':' hidden')+'>'+esc(check?.label||'')+'</small>':'')+
-   (canCatalog?'<div class="gcm-product-actions">'+
+   (canCatalog&&p.active?'<div class="gcm-product-actions">'+
    '<button type="button" class="gcm-product-menu-trigger" data-gcm-product-menu="'+esc(p.id)+'" aria-haspopup="dialog" aria-label="Opciones del producto '+esc(p.name)+'" title="Opciones del producto">⋯</button>'+
    '<dialog class="gcm-product-dialog" aria-label="Opciones del producto '+esc(p.name)+'">'+
    '<div class="gcm-product-dialog-heading"><strong>Opciones del producto</strong><span>'+esc(p.name)+'</span></div>'+
@@ -862,11 +863,11 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  }).join('');
  return '<details class="gcm-section" data-gcm-section="'+esc(name)+'"'+(opened.has(name)?' open':'')+'><summary><strong>'+esc(name)+'</strong>'+
  '<span class="gcm-section-toolbar"><span>'+items.length+' productos</span>'+
- (canCatalog?'<button type="button" class="gcm-hide-section" data-gcm-remove-products-open="'+esc(name)+'" aria-haspopup="dialog" aria-label="Quitar productos de '+esc(name)+'" title="Elegir productos para quitar de esta categoría">Quitar</button>':'')+
+ (canCatalog&&items.some(p=>p.active)?'<button type="button" class="gcm-hide-section" data-gcm-remove-products-open="'+esc(name)+'" aria-haspopup="dialog" aria-label="Quitar productos de '+esc(name)+'" title="Elegir productos para quitar de esta categoría">Quitar</button>':'')+
  '</span></summary>'+
  (canCatalog?'<dialog class="gcm-remove-products-dialog" aria-label="Quitar productos de '+esc(name)+'">'+
  '<div class="gcm-remove-products-heading"><strong>Quitar productos</strong><span>Categoría: '+esc(name)+'</span></div>'+
- '<p>Seleccioná qué productos querés quitar de la categoría. El nombre de la categoría y los conteos históricos se conservan.</p>'+
+ '<p>Seleccioná los productos para quitarlos del catálogo. La categoría y el historial se conservan. Si uno tiene cantidades en el turno abierto, seguirá visible hasta cerrar ese turno para no perderlas.</p>'+
  '<div class="gcm-remove-products-list" role="group" aria-label="Productos de '+esc(name)+'">'+
  items.filter(p=>p.active).map(p=>'<label><input type="checkbox" data-gcm-remove-selected="'+esc(p.id)+'"><span>'+esc(p.name)+'</span></label>').join('')+
  '</div>'+
@@ -995,7 +996,9 @@ function view(){
  if(activeVto==='d'&&!showDecomiso)activeVto='1';
  const sectionsLocked=!!snapshot?.settings?.locked;
  const canManageCategories=canWrite&&(!sectionsLocked||admin());
- const list=(snapshot?.products||[]).filter(p=>p.active||!!rec.data?.[p.id]||!!rec.decomiso?.[p.id]);
+ // Los productos quitados desaparecen del conteo activo si no tienen cantidades.
+ // Si ya hubo unidades cargadas en este turno, conservar la fila para poder revisarlas.
+ const list=(snapshot?.products||[]).filter(p=>p.active||recordedTotal(rec,p)>0);
  // La administradora también puede recuperar categorías sin productos activos.
  const categories=[...new Set((admin()?snapshot?.products||[]:list).map(p=>p.section).filter(Boolean))]
   .sort((a,b)=>shift==='manana_entrada'?
