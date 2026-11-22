@@ -74,7 +74,7 @@ test('el fondo y los bordes laterales se distinguen en escritorio sin afectar la
   assert.match(css, /background-color:#eaf0f6/);
   assert.match(css, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
   assert.match(panel, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
-  assert.match(page, /chat\.css\?v=20261121bordes1/);
+  assert.match(page, /chat\.css\?v=20261122acciones1/);
   assert.match(panelPage, /panel\.css\?v=20261121bordes1/);
   assert.match(panelScript, /VERSION_CSS = '20261121bordes1'/);
   assert.match(wallpaper, /stop-color="#cddce9"/);
