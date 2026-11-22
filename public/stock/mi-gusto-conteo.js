@@ -226,12 +226,6 @@ function historyListView(){
   (historyError?'<p class="gcm-error" role="alert">'+esc(historyError)+' <button type="button" data-gcm-history-retry>Reintentar</button></p>':'')+
   (historyLoading?'<p role="status" class="gcm-loading">Cargando historial…</p>':
    !groups.length&&!historyError?'<p class="gcm-history-empty">No hay conteos por turnos registrados en este mes.</p>':days)+
-  (ownerHistoryOnly()&&typeof api?.go==='function'?
-   '<section class="gcm-history-legacy"><h3>Historial anterior de Stock</h3>'+
-   '<p>Consultá los conteos guardados en las planillas anteriores de '+esc(localLabel())+
-   '. Se mantienen separados de los turnos actuales.</p>'+
-   '<button type="button" data-gcm-legacy-history>Ver historial anterior'+
-   (api.S?.loaded?.c?' ('+Number(api.S?.conteos?.length||0)+')':'')+'</button></section>':'')+
   '</div>';
 }
 // Resumen derivado de las cantidades realmente archivadas. Nunca modifica el historial.
@@ -1296,9 +1290,6 @@ document.addEventListener('click',async e=>{
   if(historyMode){historyRecord=null;api.render();return;}
   historyMode=true;historyRecord=null;historyPreviewUrl='';historyPreviewError='';historyMonth=(lastClosedDay||arDay()).slice(0,7);clearHistoryEditor();
   historyExpanded=null;historyRows=[];historyError='';void loadHistory();api.render();return;
- }
- if(el.hasAttribute('data-gcm-legacy-history')&&ownerHistoryOnly()){
-  api.go?.('historial');return;
  }
  if(el.hasAttribute('data-gcm-history-exit')){
   if(ownerHistoryOnly()||busy)return;
