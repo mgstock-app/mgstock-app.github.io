@@ -54,7 +54,7 @@ function app(role='dueno'){
   await listeners.get('click')({target,preventDefault(){},stopPropagation(){}});
   await tick();return module.view();
  };
- return {module,window,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
+ return {module,window,document,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
 }
 async function start(role='dueno'){
  const m=app(role);m.module.view();await tick();await tick();
@@ -193,16 +193,34 @@ test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin rea
  let html=m.module.view();
  assert.match(html,/id="gcm-history-fix-sin-stock"/);
  assert.match(html,/value="empty" selected/);
- m.window.document?.getElementById?.('nonexistent');
- // El controlador sólo necesita el motivo y el valor marcado.
- // El entorno de prueba permite simular los dos controles reales.
- // Se comprueba además que el acceso de dueña no ofrece esta edición.
+ m.document.getElementById=id=>id==='gcm-history-fix-reason'?
+  {value:'Corrección por conteo sin carga del producto'}:
+  id==='gcm-history-fix-sin-stock'?{checked:true}:null;
+ html=await m.click('data-gcm-history-fix-save');
+ assert.match(html,/<strong>LeBanana<\/strong><\/td><td[^>]*>Sin stock<\/td>/);
+ assert.equal(exit.data.empty.sin_stock,true);
+ assert.equal(exit.status,'finalizado');
+ assert.ok(m.calls.some(x=>x.name==='gestlok_munro_conteo_sin_stock'&&x.args.p_product==='empty'));
  const readonly=await start('dueno');
  await readonly.click('data-gcm-history-day',readonly.today);
  const ownerHtml=await readonly.click('data-gcm-history',readonly.today+'|manana_salida');
  assert.doesNotMatch(ownerHtml,/data-gcm-history-fix-save|gcm-history-fix-sin-stock/);
 });
 
+test('gerente marca manualmente Sin stock durante el turno y conserva — en productos vacíos',async()=>{
+ const m=app('gerente');m.module.view();await tick();await tick();
+ const cell={textContent:'',classList:{toggle(){}}},status={textContent:'',className:''};
+ const row={querySelector:sel=>sel==='.gcm-total'?cell:sel==='.gcm-cell-save'?status:null};
+ const input={dataset:{gcmSinStock:'p2'},checked:true,disabled:false,
+  hasAttribute:name=>name==='data-gcm-sin-stock',
+  closest:sel=>sel==='.gcm-page'?{}:sel==='tr'?row:null};
+ await m.listeners.get('change')({target:input});await tick();
+ assert.ok(m.calls.some(c=>c.name==='gestlok_munro_conteo_sin_stock'&&c.args.p_sin_stock===true&&c.args.p_expected===false));
+ assert.equal(m.todayEntry.data.p2.sin_stock,true);
+ assert.equal(cell.textContent,'Sin stock');
+ assert.match(m.module.view(),/data-gcm-sin-stock="p2" checked/);
+ assert.doesNotMatch(m.module.view(),/data-gcm-sin-stock="p1" checked/);
+});
 test('migración separa marca manual de cero y requiere auditoría en ambos locales',()=>{
  const migration=fs.readFileSync(new URL('../supabase/migrations/20261122181500_mi_gusto_conteo_sin_stock_manual.sql',import.meta.url),'utf8');
  for(const local of ['munro','torcuato']){
