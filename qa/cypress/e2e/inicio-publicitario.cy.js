@@ -6,21 +6,22 @@ Cypress.on('uncaught:exception', error => {
   return undefined;
 });
 
-const APPS = ['GESTLOK Chat', 'GESTLOK Caja', 'Plan Scanner', 'Stock y proveedores', 'Precios', 'Empleados',
-  'Horarios', 'Reseñas con cupón', 'NFC y QR', 'Vínculo entre sucursales'];
 
 describe('Inicio publicitario', () => {
-  it('muestra Ingresar, Registrarme, el carrusel y no expone el número personal', () => {
+  it('publicita GESTLOK Chat con cuadros reales y no expone el número personal', () => {
     cy.visit('/');
     cy.location('pathname').should('eq', '/');
-    cy.get('h1').should('contain.text', 'GestLok');
+    cy.get('h1').should('contain.text', 'Tus clientes piden solos por chat');
     cy.contains('a', 'Ingresar').should('have.attr', 'href', '/login/');
     cy.contains('a', 'Registrarme').should('have.attr', 'href', '/login/#registrarme');
-    APPS.forEach(nombre => cy.get('.glh-app:not([aria-hidden])').contains('h3', nombre).should('exist'));
-    cy.get('.glh-app[aria-hidden="true"]').should('have.length', APPS.length);
+    cy.contains('h2', 'Así funciona GESTLOK Chat').should('be.visible');
+    cy.get('.glh-cuadro').should('have.length', 6);
+    cy.get('.glh-cuadro img').first().should('be.visible').and($img => expect($img[0].naturalWidth).to.be.greaterThan(0));
     cy.contains('button', 'Pausar').click();
-    cy.get('.glh-pista').should('have.class', 'glh-pausada');
     cy.contains('button', 'Reanudar').should('have.attr', 'aria-pressed', 'true');
+    cy.get('[aria-label="Cuadro siguiente"]').click();
+    cy.get('.glh-puntos button').eq(1).should('have.attr', 'aria-current', 'step');
+    cy.contains('Plan Scanner').should('not.exist');
     cy.contains('Sobre mí').should('not.exist');
     cy.get('a[href*="wa.me"]').should('not.exist');
     cy.get('body').should('not.contain.text', '4471');
@@ -63,8 +64,8 @@ describe('Inicio publicitario', () => {
     cy.visit('/');
     cy.contains('button', 'Hablá con Emma').click();
     cy.get('[role="dialog"]').should('contain.text', 'Soy Emma');
-    cy.contains('.glh-sugerencias button', '¿Qué micro apps hay?').click();
-    cy.get('.glh-emma-lista').should('contain.text', 'Plan Scanner');
+    cy.contains('.glh-sugerencias button', '¿Cómo funciona?').click();
+    cy.get('.glh-emma-lista').should('contain.text', 'Hacer un pedido');
     cy.get('#glh-emma-pregunta').type('¿Cuánto cuesta?{enter}');
     cy.contains('button', 'Ir al formulario de contacto').click();
     cy.get('[role="dialog"]').should('not.exist');

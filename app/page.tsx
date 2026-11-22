@@ -4,15 +4,15 @@ import "./inicio-publico.css";
 
 // Inicio publicitario de gestlok.com.ar. La app (ingreso y paneles) vive en /login/.
 export const metadata: Metadata = {
-  title: "GESTLOK | Micro apps para comercios",
-  description: "GESTLOK: tu negocio, en orden. Micro apps para comercios: atención por chat, caja, stock, precios, personal y más, desde el celular o la computadora.",
+  title: "GESTLOK Chat | Pedidos por chat para tu comercio, las 24 horas",
+  description: "GESTLOK Chat: tus clientes piden solos por chat, con tu carta y tus promos. Confirmás desde tu panel, sugiere bebida o postre y pide la reseña en Google.",
   alternates: { canonical: "/" },
 };
 
 // Siguen yendo directo a /login/: los enlaces de la app que llegan a la raíz (Google,
 // confirmación de email, recuperación de contraseña, invitaciones con ?… o #…), la app
 // instalada y los «Volver a GESTLOK» de las micro apps (Empleados, Caja…), que apuntan a «/».
-const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=!h||/^#(inicio|micro-apps|contacto)?$/.test(h);" +
+const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=!h||/^#(inicio|como-funciona|beneficios|micro-apps|contacto)?$/.test(h);" +
   "var instalada=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;" +
   "var r='';try{var u=new URL(document.referrer);if(u.origin===location.origin)r=u.pathname;}catch(e){}" +
   "var desdeApp=!!r&&r!=='/'&&!/^\\/(conocer\\/?|[a-z-]+\\.html)$/.test(r);" +

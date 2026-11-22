@@ -42,8 +42,8 @@
 /* Portada */
 .glh-hero{background:#fff;padding:72px 24px 48px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px}
 .glh-hero-logo{width:88px;height:88px;border-radius:22px;box-shadow:0 12px 32px rgba(16,42,62,.18)}
-.glh-hero h1{font-size:64px;line-height:1.02;font-weight:800;letter-spacing:-2px;color:var(--navy)}
-.glh-lema{font-size:24px;font-weight:600;color:var(--navy)}
+.glh-marca-chat{font-size:28px;font-weight:800;letter-spacing:-.6px;color:var(--navy)}
+.glh-hero h1{max-width:860px;font-size:clamp(34px,5.2vw,56px);line-height:1.06;font-weight:800;letter-spacing:-1.5px;color:var(--navy);text-wrap:balance}
 .glh-bajada{max-width:620px;font-size:18px;line-height:1.55;color:var(--gris)}
 .glh-hero-acciones{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:6px}
 
@@ -53,21 +53,33 @@
 .glh-apps-cab h2{font-size:32px;line-height:1.1;font-weight:800;letter-spacing:-.8px;color:var(--navy)}
 .glh-apps-cab p{margin-top:6px;color:var(--gris)}
 .glh-pausa{font-size:14px}
-.glh-carrusel{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 72px,#000 calc(100% - 72px),transparent 100%);
-  mask-image:linear-gradient(90deg,transparent 0,#000 72px,#000 calc(100% - 72px),transparent 100%)}
-.glh-pista{display:flex;width:max-content;padding:4px 0 10px;animation:glh-desliza 55s linear infinite}
-.glh-carrusel:hover .glh-pista,.glh-pista.glh-pausada{animation-play-state:paused}
-@keyframes glh-desliza{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.glh-app{flex:none;width:264px;margin-right:16px;padding:20px;display:flex;flex-direction:column;gap:12px;background:#fff;
-  border:1px solid var(--borde);border-radius:16px;box-shadow:0 1px 2px rgba(16,42,62,.05)}
+.glh-car-ctrl{display:flex;align-items:center;gap:8px}
+.glh-flecha{width:44px;padding:0}
+.glh-cuadros{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:24px;padding:6px 24px 14px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;max-width:1200px;margin:0 auto}
+.glh-cuadros::-webkit-scrollbar{display:none}
+.glh-cuadro{flex:none;width:300px;margin:0;scroll-snap-align:start;display:flex;flex-direction:column;gap:14px;padding:14px;background:#fff;
+  border:1px solid var(--borde);border-radius:22px;box-shadow:0 1px 2px rgba(16,42,62,.05);transition:box-shadow .2s,border-color .2s}
+.glh-cuadro-on{border-color:#9CCFCF;box-shadow:0 10px 30px rgba(16,42,62,.12)}
+.glh-cuadro img{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--linea);background:var(--suave)}
+.glh-cuadro figcaption{display:grid;grid-template-columns:32px 1fr;gap:4px 10px;align-items:start}
+.glh-paso{grid-row:span 2;width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:15px;
+  display:flex;align-items:center;justify-content:center}
+.glh-cuadro b{font-size:17px;line-height:1.3;color:var(--navy)}
+.glh-cuadro figcaption span:last-child{font-size:14px;line-height:1.45;color:var(--gris)}
+.glh-puntos{display:flex;justify-content:center;gap:4px;margin-top:10px}
+.glh-puntos button{width:28px;height:28px;border:0;background:transparent;cursor:pointer;position:relative;padding:0}
+.glh-puntos button::after{content:"";position:absolute;inset:10px;border-radius:50%;background:#B9C9D6}
+.glh-puntos .glh-punto-on::after{inset:9px 4px;border-radius:999px;background:var(--teal-dk)}
 .glh-app-ico{width:44px;height:44px;border-radius:12px;background:#E5F4F4;color:var(--teal-dk);display:flex;align-items:center;justify-content:center}
-.glh-app h3{font-size:18px;line-height:1.25;font-weight:700;letter-spacing:-.2px;color:var(--navy)}
-.glh-app p{font-size:14px;line-height:1.45;color:var(--gris)}
-@media (prefers-reduced-motion:reduce){
-  .glh-carrusel{overflow-x:auto;-webkit-mask-image:none;mask-image:none}
-  .glh-pista{animation:none}
-  .glh-pausa{display:none}
-}
+.glh-beneficios{background:#fff;padding:64px 24px}
+.glh-beneficios h2{max-width:1200px;margin:0 auto 28px;font-size:32px;line-height:1.1;font-weight:800;letter-spacing:-.8px;color:var(--navy)}
+.glh-beneficios ul{max-width:1200px;margin:0 auto;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.glh-beneficios li{display:grid;grid-template-columns:44px 1fr;gap:4px 14px;padding:20px;border:1px solid var(--borde);border-radius:16px;background:var(--suave)}
+.glh-beneficios li .glh-app-ico{grid-row:span 2}
+.glh-beneficios b{font-size:17px;color:var(--navy)}
+.glh-beneficios li>span:last-child{font-size:14px;line-height:1.45;color:var(--gris)}
+@media (prefers-reduced-motion:reduce){.glh-pausa{display:none}.glh-cuadro{transition:none}}
 
 /* Contacto */
 .glh-contacto{background:var(--navy-2);color:#fff;padding:80px 24px;scroll-margin-top:8px}
@@ -149,19 +161,20 @@
   .glh-marca span{display:none}
   .glh-hero{padding:48px 20px 36px;gap:14px}
   .glh-hero-logo{width:72px;height:72px;border-radius:18px}
-  .glh-hero h1{font-size:48px;letter-spacing:-1.5px}
-  .glh-lema{font-size:20px}
+  .glh-hero h1{letter-spacing:-1px}
+  .glh-marca-chat{font-size:24px}
   .glh-bajada{font-size:16px}
   .glh-hero-acciones{width:100%;flex-wrap:nowrap}
   .glh-hero-acciones .glh-btn{flex:1 1 0;padding:0 12px;font-size:15px}
   .glh-apps{padding:36px 0 40px}
   .glh-apps-cab{padding:0 20px 20px;flex-direction:column;align-items:flex-start}
   .glh-apps-cab h2{font-size:26px}
-  .glh-carrusel{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
-    mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%)}
-  .glh-pista{animation-duration:48s}
-  .glh-app{width:232px;margin-right:12px;padding:18px;gap:10px}
-  .glh-app h3{font-size:17px}
+  .glh-apps-cab{flex-direction:row;align-items:flex-end}
+  .glh-car-ctrl .glh-flecha{display:none}
+  .glh-cuadros{gap:14px;padding:6px 20px 14px;scroll-padding-inline:20px}
+  .glh-cuadro{width:78vw;max-width:300px}
+  .glh-beneficios{padding:44px 20px}
+  .glh-beneficios h2{font-size:26px}
   .glh-contacto{padding:48px 20px 112px}
   .glh-contacto-in{gap:24px}
   .glh-contacto-txt{flex-basis:100%;gap:12px;padding-top:0}

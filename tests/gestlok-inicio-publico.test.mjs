@@ -10,34 +10,38 @@ test("la raíz es el inicio publicitario y los enlaces de la app siguen yendo a 
   assert.doesNotMatch(page, /<StockRuntime \/>/);
   assert.match(page, /location\.replace\('\/login\/'\+location\.search\+h\)/);
   assert.match(page, /display-mode: standalone/);
-  assert.match(page, /#\(inicio\|micro-apps\|contacto\)/);
+  assert.match(page, /#\(inicio\|como-funciona\|beneficios\|micro-apps\|contacto\)/);
   const login = read("app/login/page.tsx");
   assert.match(login, /<StockRuntime \/>/);
   assert.match(login, /#registrarme/);
   assert.match(login, /\[data-au=\\"up\\"\]/);
 });
 
-test("el inicio tiene acceso, carrusel, contacto sin número personal y Emma", () => {
+test("el inicio publicita GESTLOK Chat con cuadros reales, contacto sin número personal y Emma", () => {
   const home = read("components/gestlok-home.tsx");
   assert.match(home, /href="\/login\/">Ingresar</);
   assert.match(home, /href="\/login\/#registrarme">Registrarme</);
-  for (const app of ["GESTLOK Chat", "GESTLOK Caja", "Plan Scanner", "Stock y proveedores", "Precios", "Empleados",
-    "Horarios", "Reseñas con cupón", "NFC y QR", "Vínculo entre sucursales"]) assert.ok(home.includes(`nombre: "${app}"`), app);
+  assert.match(home, /Así funciona GESTLOK Chat/);
+  for (const img of ["1-bienvenida", "2-carta", "3-promo", "4-sugerencia", "5-gerente", "6-seguimiento"]) {
+    assert.ok(home.includes(`img: "${img}"`), img);
+    assert.ok(readFileSync(new URL(`../public/img/gestlok-chat/${img}.webp`, import.meta.url)).length > 5000, img);
+  }
   for (const id of ["glh-nombre", "glh-telefono", "glh-email", "glh-mensaje"]) assert.ok(home.includes(`id="${id}"`), id);
   assert.match(home, /\(opcional\)/);
   assert.match(home, /rpc\/gestlok_contacto_enviar/);
   assert.match(home, /cm9sZSI6ImFub24i/);
-  assert.doesNotMatch(home, /wa\.me|4471|5491144715168|Sobre mí/);
+  assert.doesNotMatch(home, /wa\.me|4471|5491144715168|Sobre mí|Plan Scanner|Vínculo entre sucursales/);
   assert.match(home, /Hablá con Emma/);
 });
 
 test("Emma responde los temas principales y deriva lo demás a Contacto", { skip: !process.features?.typescript }, async () => {
   const { responderEmma } = await import("../lib/gestlok-emma.ts");
-  assert.match(responderEmma("¿Qué micro apps hay?").texto, /Plan Scanner/);
+  assert.match(responderEmma("¿Cómo funciona?").texto, /Hacer un pedido/);
+  assert.equal(responderEmma("¿Tienen caja?").contacto, true);
+  assert.match(responderEmma("¿Y las reseñas?").texto, /Google/);
   assert.match(responderEmma("¿Cómo me registro?").texto, /Registrarme/);
   assert.equal(responderEmma("¿Cuánto cuesta?").contacto, true);
   assert.equal(responderEmma("Hablar con una persona").contacto, true);
-  assert.match(responderEmma("pedidos a mis proveedores").texto, /Stock y proveedores/);
   assert.match(responderEmma("mis clientes me escriben pedidos").texto, /GESTLOK Chat/);
   assert.equal(responderEmma("¿Qué opinás del clima?").contacto, true);
 });

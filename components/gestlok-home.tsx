@@ -10,33 +10,30 @@ const SUPABASE_URL = "https://vgsepaaewbctjsjcpeta.supabase.co";
 const SUPABASE_ANON =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnc2VwYWFld2JjdGpzamNwZXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1NDEwNjEsImV4cCI6MjEwODExNzA2MX0.WFeUP95DJAOOsiZ5BbBvqT1QURmA5KJLDjlDpwuU838";
 
-type IdApp = "chat" | "caja" | "scanner" | "stock" | "precios" | "empleados" | "horarios" | "resenas" | "nfc" | "sucursales";
-
-const MICRO_APPS: ReadonlyArray<{ id: IdApp; nombre: string; texto: string }> = [
-  { id: "chat", nombre: "GESTLOK Chat", texto: "Pedidos y consultas por chat, también con el local cerrado." },
-  { id: "caja", nombre: "GESTLOK Caja", texto: "Apertura, medios de pago, gastos, retiros y arqueo del día." },
-  { id: "scanner", nombre: "Plan Scanner", texto: "Escaneá con el celular, cobrá y el stock se descuenta solo." },
-  { id: "stock", nombre: "Stock y proveedores", texto: "Existencias, conteos y pedidos a proveedores por local." },
-  { id: "precios", nombre: "Precios", texto: "Costos, márgenes y precios de venta siempre al día." },
-  { id: "empleados", nombre: "Empleados", texto: "Legajos y recibos, con permisos para cada rol." },
-  { id: "horarios", nombre: "Horarios", texto: "Turnos semanales e historial de cada colaborador." },
-  { id: "resenas", nombre: "Reseñas con cupón", texto: "Más reseñas en Google, con un beneficio para tu cliente." },
-  { id: "nfc", nombre: "NFC y QR", texto: "Placas para reseñas y cartas: acercan el celular o escanean." },
-  { id: "sucursales", nombre: "Vínculo entre sucursales", texto: "Pedidos, envíos y avisos entre tus locales." },
+// Cuadros del carrusel: pantallas reales de GESTLOK Chat (carta y local reales de Mi Gusto Munro).
+const CUADROS: ReadonlyArray<{ img: string; titulo: string; texto: string; alt: string }> = [
+  { img: "1-bienvenida", titulo: "Tu cliente entra y pide", alt: "Pantalla de bienvenida del chat de un local con el botón Hacer un pedido",
+    texto: "Abre el chat de tu local desde un enlace o un QR y toca «Hacer un pedido». Sin descargar nada." },
+  { img: "2-carta", titulo: "Ve tu carta y tus promos", alt: "Carta del local con promociones de empanadas y botones Elegir",
+    texto: "Las promociones primero y la carta completa, con precios siempre al día." },
+  { img: "3-promo", titulo: "Arma su promo sin errores", alt: "Selector de una promo de 6 empanadas con cantidades por gusto",
+    texto: "Elige gustos y salsas con + y −. No puede enviar una promo incompleta." },
+  { img: "4-sugerencia", titulo: "Le ofrece algo más", alt: "El chat ofrece bebidas o postres antes de enviar el pedido",
+    texto: "Antes de cerrar, sugiere una bebida o un postre. Ventas extra sin pedirlo vos." },
+  { img: "5-gerente", titulo: "El pedido llega a tu panel", alt: "Panel del gerente con un pedido pendiente de confirmación",
+    texto: "Con aviso sonoro. El gerente lo revisa y lo confirma; nada se confirma solo." },
+  { img: "6-seguimiento", titulo: "Sigue su pedido en vivo", alt: "Seguimiento del pedido con las etapas Recibido, Confirmado y Listo",
+    texto: "Recibido, confirmado y listo. Al terminar, lo invita a dejar su reseña en Google." },
 ];
 
-const ICONOS: Record<IdApp, ReactNode> = {
-  chat: <><path d="M20 12.5a7.5 7.5 0 0 1-10.9 6.7L4 20.5l1.4-4.6A7.5 7.5 0 1 1 20 12.5z" /><path d="M9 11h6M9 14h4" /></>,
-  caja: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10.5h18M15.5 15h2" /></>,
-  scanner: <><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" /><path d="M8.5 9v6M11 9v6M13.5 9v6M15.5 9v6" /></>,
-  stock: <><path d="M12 3 20 7.5 12 12 4 7.5z" /><path d="M4 7.5v9L12 21l8-4.5v-9M12 12v9" /></>,
-  precios: <><path d="M20.5 12.6 12.6 20.5a1.6 1.6 0 0 1-2.3 0L3.5 13.7V3.5h10.2l6.8 6.8a1.6 1.6 0 0 1 0 2.3z" /><circle cx="8" cy="8" r="1.4" /></>,
-  empleados: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2 .7 3.5 2.6 3.5 5.7" /></>,
-  horarios: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
-  resenas: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
-  nfc: <><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1" /><rect x="14" y="3.5" width="6.5" height="6.5" rx="1" /><rect x="3.5" y="14" width="6.5" height="6.5" rx="1" /><path d="M14 14h2.5v2.5H14zM20.5 14v.01M14 20.5h.01M17.5 20.5h3v-3" /></>,
-  sucursales: <path d="M3 10 4.5 5h5L11 10M4 10v9h6v-9M13 10l1.5-5h5L21 10M14 10v9h6v-9M10 14.5h4" />,
-};
+const BENEFICIOS: ReadonlyArray<{ titulo: string; texto: string }> = [
+  { titulo: "Pedidos sin errores", texto: "Botones y carrito: tu cliente elige de la carta, no escribe a mano." },
+  { titulo: "Abierto las 24 horas", texto: "Con el local cerrado, el cliente puede dejar su pedido programado." },
+  { titulo: "Vos decidís", texto: "Cada pedido lo confirma el gerente, con aviso sonoro al llegar." },
+  { titulo: "Vende más", texto: "Sugiere bebida o postre antes de cerrar el pedido." },
+  { titulo: "Más reseñas", texto: "Al terminar el pedido invita al cliente a contar su experiencia en Google." },
+  { titulo: "Para cualquier rubro", texto: "Gastronomía, cafeterías, perfumerías, ferreterías y más, con tu carta y tus promos." },
+];
 
 function Svg({ children, size = 24, width = 1.8 }: { children: ReactNode; size?: number; width?: number }) {
   return (
@@ -66,6 +63,9 @@ export function validarContacto(f: Form): string {
 
 export function GestlokHome() {
   const [pausado, setPausado] = useState(false);
+  const [actual, setActual] = useState(0);
+  const [tocando, setTocando] = useState(false);
+  const pistaRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState<Form>(FORM_VACIO);
   const [estado, setEstado] = useState<"idle" | "enviando" | "ok">("idle");
   const [error, setError] = useState("");
@@ -81,6 +81,29 @@ export function GestlokHome() {
   useEffect(() => {
     if (emmaAbierta) preguntaRef.current?.focus();
   }, [emmaAbierta]);
+  // Avance automático cada 5 s; se frena con Pausar, al tocar o pasar el mouse y si el equipo pide menos movimiento.
+  useEffect(() => {
+    if (pausado || tocando) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const t = window.setInterval(() => irA((actual + 1) % CUADROS.length), 5000);
+    return () => window.clearInterval(t);
+  });
+
+  function irA(i: number) {
+    const pista = pistaRef.current;
+    const tarjeta = pista?.children[i] as HTMLElement | undefined;
+    if (!pista || !tarjeta) return;
+    pista.scrollTo({ left: tarjeta.offsetLeft - pista.offsetLeft, behavior: "smooth" });
+    setActual(i);
+  }
+  function alDesplazar() {
+    const pista = pistaRef.current;
+    if (!pista) return;
+    const hijos = Array.from(pista.children) as HTMLElement[];
+    let mejor = 0, dist = Infinity;
+    hijos.forEach((h, i) => { const d = Math.abs(h.offsetLeft - pista.offsetLeft - pista.scrollLeft); if (d < dist) { dist = d; mejor = i; } });
+    if (mejor !== actual) setActual(mejor);
+  }
   useEffect(() => {
     const el = listaRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -150,8 +173,6 @@ export function GestlokHome() {
     }
   }
 
-  const tarjetas = [...MICRO_APPS.map((a) => ({ ...a, copia: false })), ...MICRO_APPS.map((a) => ({ ...a, copia: true }))];
-
   return (
     <div className="glh">
       <header className="glh-top">
@@ -161,7 +182,7 @@ export function GestlokHome() {
             <a className="glh-btn glh-btn-teal" href="/login/#registrarme">Registrarme</a>
           </div>
           <nav className="glh-nav" aria-label="Secciones">
-            <a href="#micro-apps">Micro apps</a>
+            <a href="#como-funciona">Cómo funciona</a>
             <a href="#contacto">Contacto</a>
           </nav>
           <a className="glh-marca" href="#inicio" aria-label="GESTLOK, volver al inicio">
@@ -174,39 +195,65 @@ export function GestlokHome() {
 
       <main>
         <section id="inicio" className="glh-hero">
-          {/* eslint-disable-next-line @next/next/no-img-element -- ícono SVG de la marca */}
           <img className="glh-hero-logo" src="/icons/gestlok.svg" alt="" width={88} height={88} />
-          <h1>Gest<em>Lok</em></h1>
-          <p className="glh-lema">Tu negocio, en orden.</p>
-          <p className="glh-bajada">Micro apps para comercios: atención por chat, caja, stock, precios, personal y más. Desde el celular o la computadora.</p>
+          <p className="glh-marca-chat">Gest<em>Lok</em> Chat</p>
+          <h1>Tus clientes piden solos por chat, las 24 horas.</h1>
+          <p className="glh-bajada">Tu carta, tus promos y tus pedidos en un solo chat. El cliente arma su pedido desde el celular y vos lo confirmás desde tu panel.</p>
           <div className="glh-hero-acciones">
-            <a className="glh-btn glh-btn-navy glh-btn-xl" href="#micro-apps">Ver micro apps</a>
-            <a className="glh-btn glh-btn-claro glh-btn-xl" href="#contacto">Contacto</a>
+            <a className="glh-btn glh-btn-navy glh-btn-xl" href="#como-funciona">Ver cómo funciona</a>
+            <a className="glh-btn glh-btn-claro glh-btn-xl" href="#contacto">Quiero GESTLOK Chat</a>
           </div>
         </section>
 
-        <section id="micro-apps" className="glh-apps" aria-labelledby="glh-apps-titulo">
+        <section id="como-funciona" className="glh-apps" aria-labelledby="glh-como-titulo" aria-roledescription="carrusel">
           <div className="glh-apps-cab">
             <div>
-              <h2 id="glh-apps-titulo">Micro apps GESTLOK</h2>
-              <p>Cada comercio usa las que necesita, con sus propios datos y permisos.</p>
+              <h2 id="glh-como-titulo">Así funciona GESTLOK Chat</h2>
+              <p>Pantallas reales de un local que ya lo usa.</p>
             </div>
-            <button type="button" className="glh-btn glh-btn-claro glh-pausa" onClick={() => setPausado((p) => !p)} aria-pressed={pausado}>
-              <Svg size={18} width={2}>{pausado ? <path d="M8 5.5v13l10.5-6.5z" /> : <path d="M9 6v12M15 6v12" />}</Svg>
-              <span>{pausado ? "Reanudar" : "Pausar"}</span>
-            </button>
-          </div>
-          <div className="glh-carrusel">
-            <div className={"glh-pista" + (pausado ? " glh-pausada" : "")}>
-              {tarjetas.map((a, i) => (
-                <article key={a.id + i} className="glh-app" aria-hidden={a.copia || undefined}>
-                  <span className="glh-app-ico"><Svg>{ICONOS[a.id]}</Svg></span>
-                  <h3>{a.nombre}</h3>
-                  <p>{a.texto}</p>
-                </article>
-              ))}
+            <div className="glh-car-ctrl">
+              <button type="button" className="glh-btn glh-btn-claro glh-flecha" aria-label="Cuadro anterior" onClick={() => irA((actual + CUADROS.length - 1) % CUADROS.length)}>
+                <Svg size={20} width={2}><path d="M15 6l-6 6 6 6" /></Svg>
+              </button>
+              <button type="button" className="glh-btn glh-btn-claro glh-pausa" onClick={() => setPausado((p) => !p)} aria-pressed={pausado}>
+                <Svg size={18} width={2}>{pausado ? <path d="M8 5.5v13l10.5-6.5z" /> : <path d="M9 6v12M15 6v12" />}</Svg>
+                <span>{pausado ? "Reanudar" : "Pausar"}</span>
+              </button>
+              <button type="button" className="glh-btn glh-btn-claro glh-flecha" aria-label="Cuadro siguiente" onClick={() => irA((actual + 1) % CUADROS.length)}>
+                <Svg size={20} width={2}><path d="M9 6l6 6-6 6" /></Svg>
+              </button>
             </div>
           </div>
+          <div className="glh-cuadros" ref={pistaRef} onScroll={alDesplazar}
+            onMouseEnter={() => setTocando(true)} onMouseLeave={() => setTocando(false)}
+            onTouchStart={() => setTocando(true)} onFocus={() => setTocando(true)} onBlur={() => setTocando(false)}>
+            {CUADROS.map((c, i) => (
+              <figure key={c.img} className={"glh-cuadro" + (i === actual ? " glh-cuadro-on" : "")} aria-label={"Paso " + (i + 1) + " de " + CUADROS.length}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- captura estática exportada */}
+                <img src={"/img/gestlok-chat/" + c.img + ".webp"} alt={c.alt} width={300} height={649} loading={i < 3 ? "eager" : "lazy"} />
+                <figcaption>
+                  <span className="glh-paso">{i + 1}</span>
+                  <b>{c.titulo}</b>
+                  <span>{c.texto}</span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="glh-puntos" role="group" aria-label="Elegir cuadro">
+            {CUADROS.map((c, i) => (
+              <button key={c.img} type="button" aria-label={"Ir al paso " + (i + 1) + ": " + c.titulo} aria-current={i === actual ? "step" : undefined}
+                className={i === actual ? "glh-punto-on" : ""} onClick={() => irA(i)} />
+            ))}
+          </div>
+        </section>
+
+        <section id="beneficios" className="glh-beneficios" aria-labelledby="glh-ben-titulo">
+          <h2 id="glh-ben-titulo">Lo que hace por tu local</h2>
+          <ul>
+            {BENEFICIOS.map((b) => (
+              <li key={b.titulo}><span className="glh-app-ico"><Svg size={22} width={2.2}>{TILDE}</Svg></span><b>{b.titulo}</b><span>{b.texto}</span></li>
+            ))}
+          </ul>
         </section>
 
         <section id="contacto" className="glh-contacto" aria-labelledby="glh-contacto-titulo">
