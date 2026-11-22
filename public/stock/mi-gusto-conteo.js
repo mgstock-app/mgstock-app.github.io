@@ -215,7 +215,7 @@ function historyListView(){
     const rec=records.get(key);
     return '<div class="gcm-history-shift"><span class="gcm-history-shift-name">Turno '+esc(title.replace(' · ',' '))+'</span>'+
     (rec?'<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+(rec.status==='finalizado'?'Finalizado':'En curso')+'</span>'+
-     '<button type="button" class="gcm-history-detail-button" data-gcm-history="'+esc(date)+'|'+esc(key)+'">Vista previa A4</button>':
+     '<button type="button" class="gcm-history-detail-button" data-gcm-history="'+esc(date)+'|'+esc(key)+'">'+(ownerHistoryOnly()?'Ver conteo completo':'Vista previa A4')+'</button>':
      '<span class="gcm-history-no-data">Sin cargar</span>')+'</div>';
    }).join('')+'</div>':'')+'</section>';
  }).join('');
@@ -541,7 +541,24 @@ function historyCorrectionPanel(rec){
 function historyDetailView(){
  const rec=historyRecord;
  if(!rec)return historyListView();
- const products=(snapshot?.products||[]).filter(p=>rec.data?.[p.id]||rec.decomiso?.[p.id]);
+ // El historial y el catálogo llegan por RPC independientes. Sin catálogo, no
+ // dibujar tarjetas incompletas ni exportar una imagen vacía para la dueña.
+ if(!Array.isArray(snapshot?.products)||!snapshot.products.length){
+  return '<div class="gcm-page gcm-history-screen gcm-history-detail">'+
+   '<header class="gcm-history-top"><div class="gcm-history-title">'+
+   '<button type="button" data-gcm-history-back>← Volver al historial</button>'+
+   '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Resumen del conteo</h2></div></div></header>'+
+   (error?'<p class="gcm-error" role="alert">No se pudieron cargar los productos del historial: '+esc(error)+
+    ' <button type="button" data-gcm-retry>Reintentar</button></p>':
+    '<p class="gcm-loading" role="status">Cargando productos y cantidades del historial…</p>')+
+   '</div>';
+ }
+ // Generar el A4 solo después de tener los productos del mismo local.
+ if(!historyPreviewUrl&&!historyPreviewError){
+  try{historyPreviewUrl=historyA4Image(rec);}
+  catch(e){historyPreviewError=e.message||'Error en vista A4';}
+ }
+ const products=(snapshot.products||[]).filter(p=>rec.data?.[p.id]||rec.decomiso?.[p.id]);
  const categories=[...new Set(products.map(p=>p.section))];
  const filename='conteo-'+activeLocal()+'-'+rec.day+'-'+(onlyMunroHistoricalCorrection(rec)?'noche_salida':rec.shift)+'.png';
  const image=historyPreviewUrl?'<figure class="gcm-a4-preview">'+
@@ -1385,8 +1402,10 @@ document.addEventListener('click',async e=>{
   const record=historyRows.find(v=>v.day===d&&v.shift===s);
   if(historyMode&&record){
    historyRecord=record;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
-   try{historyPreviewUrl=historyA4Image(record);}
-   catch(err){historyPreviewError=err.message||'No se pudo generar el A4.';}
+   if(Array.isArray(snapshot?.products)&&snapshot.products.length){
+    try{historyPreviewUrl=historyA4Image(record);}
+    catch(err){historyPreviewError=err.message||'No se pudo generar el A4.';}
+   }
    api.render();
   }return;
  }

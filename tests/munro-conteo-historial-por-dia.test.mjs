@@ -54,7 +54,7 @@ function app(role='dueno'){
   await listeners.get('click')({target,preventDefault(){},stopPropagation(){}});
   await tick();return module.view();
  };
- return {module,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
+ return {module,window,today,older,calls,click,listeners,rows,drawn,placed,canvases,products,todayEntry};
 }
 async function start(role='dueno'){
  const m=app(role);m.module.view();await tick();await tick();
@@ -85,6 +85,46 @@ test('dueña sólo ve turnos archivados, nunca el borrador activo ni sus control
  assert.doesNotMatch(html,/Editar turno cerrado|data-gcm-history-fix-toggle|data-gcm-finalize|gcm-count-screen/);
  html=await m.click('data-gcm-history-exit');
  assert.match(html,/Resumen del conteo/,'No puede salir del historial para editar el turno');
+});
+
+test('dueña siempre recibe tarjetas completas aunque el historial llegue antes que los productos',async()=>{
+ const m=app('dueno');
+ const rpc=m.window.GestLokSupabase.rpc;
+ let releaseState;
+ m.window.GestLokSupabase.rpc=(name,args)=>name==='gestlok_munro_conteo_state'
+  ? new Promise(resolve=>{releaseState=()=>resolve(rpc(name,args));}):rpc(name,args);
+ m.module.view();await tick();await tick();
+ assert.equal(typeof releaseState,'function','El catálogo permanece descargándose');
+ await m.click('data-gcm-history-day',m.today);
+ let html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ assert.match(html,/Cargando productos y cantidades del historial/);
+ assert.doesNotMatch(html,/Producto sin referencia|No hay productos cargados|data-gcm-a4-refresh|data-gcm-hd-summary-group/);
+ assert.equal(m.canvases.length,0,'No genera una imagen incompleta antes de conocer el catálogo');
+ releaseState();await tick();await tick();
+ html=m.module.view();
+ assert.match(html,/Productos y totales/);
+ assert.match(html,/<strong>MT<\/strong>/);
+ assert.match(html,/Responsable: Shuli/);
+ assert.match(html,/>35</);
+ assert.equal(m.canvases.length,1,'Regenera A4 usando los datos verdaderos');
+ assert.doesNotMatch(html,/data-gcm-finalize|Editar turno cerrado|Producto sin referencia/);
+});
+
+test('dueña ve error de catálogo y puede reintentar sin perder el turno seleccionado',async()=>{
+ const m=app('dueno'),rpc=m.window.GestLokSupabase.rpc;
+ let fails=true;
+ m.window.GestLokSupabase.rpc=(name,args)=>name==='gestlok_munro_conteo_state'&&fails
+  ? Promise.resolve({data:null,error:{message:'Error transitorio de lectura'}}):rpc(name,args);
+ m.module.view();await tick();await tick();
+ await m.click('data-gcm-history-day',m.today);
+ let html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ assert.match(html,/No se pudieron cargar los productos del historial/);
+ assert.match(html,/Error transitorio de lectura/);
+ assert.match(html,/data-gcm-retry/);
+ fails=false;
+ html=await m.click('data-gcm-retry');await tick();await tick();
+ assert.match(m.module.view(),/<strong>MT<\/strong>/);
+ assert.match(m.module.view(),/Responsable: Shuli/);
 });
 
 test('flecha del día abre exactamente los tres turnos, sin inventar datos ni horarios',async()=>{
