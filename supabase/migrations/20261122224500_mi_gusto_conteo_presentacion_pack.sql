@@ -769,3 +769,135 @@ begin
  return new;
 end $function$
 ;
+
+-- Serializar registros de cantidades con cambios de equivalencia del producto.
+
+CREATE OR REPLACE FUNCTION public.gestlok_munro_conteo_set_cell(p_day date, p_shift text, p_product text, p_index integer, p_chapas integer DEFAULT 0, p_sueltas integer DEFAULT 0, p_qty integer DEFAULT 0)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare r gestlok_munro_conteo_private.shifts%rowtype; per integer; new_cell jsonb;
+begin
+ perform gestlok_munro_conteo_private.require_access(true,false);
+ if p_day is null or p_day < date '2025-01-01' or p_day > (now() at time zone 'America/Argentina/Buenos_Aires')::date + 1
+   or p_shift not in ('manana_entrada','manana_salida','noche_salida') or p_index not between 1 and 4
+   or p_chapas not between 0 and 500 or p_sueltas not between 0 and 100000 or p_qty not between 0 and 1000000 then
+   raise exception 'Cantidad, fecha o turno no válido';
+ end if;
+ select units_per_chapa into per from gestlok_munro_conteo_private.products where id=p_product and active=true for share;
+ if per is null then raise exception 'Producto no disponible'; end if;
+ if per>0 and p_qty<>0 then raise exception 'Las empanadas usan chapas y unidades sueltas'; end if;
+ if per=0 and (p_chapas<>0 or p_sueltas<>0) then raise exception 'Este producto usa unidades'; end if;
+ insert into gestlok_munro_conteo_private.shifts(day,shift) values(p_day,p_shift) on conflict do nothing;
+ select * into r from gestlok_munro_conteo_private.shifts where day=p_day and shift=p_shift for update;
+ if r.status='finalizado' then raise exception 'Este conteo ya fue finalizado'; end if;
+ new_cell:=jsonb_build_object('chapas',p_chapas,'sueltas',p_sueltas,'qty',p_qty);
+ update gestlok_munro_conteo_private.shifts set
+  data=jsonb_set(r.data,array[p_product],coalesce(r.data->p_product,'{}'::jsonb)||jsonb_build_object('v'||p_index,new_cell),true),
+  updated_by=auth.uid(),updated_at=now()
+ where day=p_day and shift=p_shift;
+ return jsonb_build_object('ok',true,'updated_at',now());
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION public.gestlok_munro_conteo_set_decomiso(p_day date, p_shift text, p_product text, p_chapas integer DEFAULT 0, p_sueltas integer DEFAULT 0, p_qty integer DEFAULT 0)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE r gestlok_munro_conteo_private.shifts%rowtype; per integer;
+BEGIN
+  PERFORM gestlok_munro_conteo_private.require_access(true,false);
+  IF p_day IS NULL OR p_day < date '2025-01-01'
+    OR p_day > (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date + 1
+    OR p_shift NOT IN ('manana_entrada','manana_salida','noche_salida')
+    OR p_product IS NULL OR p_chapas NOT BETWEEN 0 AND 500
+    OR p_sueltas NOT BETWEEN 0 AND 100000 OR p_qty NOT BETWEEN 0 AND 1000000
+  THEN RAISE EXCEPTION 'Decomiso no válido'; END IF;
+  SELECT units_per_chapa INTO per FROM gestlok_munro_conteo_private.products
+    WHERE id=p_product AND active for share;
+  IF per IS NULL THEN RAISE EXCEPTION 'Producto no disponible'; END IF;
+  IF (per>0 AND p_qty<>0) OR (per=0 AND (p_chapas<>0 OR p_sueltas<>0))
+  THEN RAISE EXCEPTION 'Formato de decomiso no válido para este producto'; END IF;
+  INSERT INTO gestlok_munro_conteo_private.shifts(day,shift) VALUES(p_day,p_shift)
+    ON CONFLICT DO NOTHING;
+  SELECT * INTO r FROM gestlok_munro_conteo_private.shifts
+    WHERE day=p_day AND shift=p_shift FOR UPDATE;
+  IF r.status='finalizado' THEN RAISE EXCEPTION 'El conteo está finalizado'; END IF;
+  IF NOT r.decomiso_visible THEN RAISE EXCEPTION 'Primero activá Decomiso'; END IF;
+  UPDATE gestlok_munro_conteo_private.shifts SET
+     decomiso=jsonb_set(r.decomiso,ARRAY[p_product],
+       jsonb_build_object('chapas',p_chapas,'sueltas',p_sueltas,'qty',p_qty),true),
+     updated_by=auth.uid(),updated_at=now()
+     WHERE day=p_day AND shift=p_shift;
+  RETURN jsonb_build_object('ok',true);
+END $function$
+;
+
+CREATE OR REPLACE FUNCTION public.gestlok_torcuato_conteo_set_cell(p_day date, p_shift text, p_product text, p_index integer, p_chapas integer DEFAULT 0, p_sueltas integer DEFAULT 0, p_qty integer DEFAULT 0)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare r gestlok_torcuato_conteo_private.shifts%rowtype; per integer; new_cell jsonb;
+begin
+ perform gestlok_torcuato_conteo_private.require_access(true,false);
+ if p_day is null or p_day < date '2025-01-01' or p_day > (now() at time zone 'America/Argentina/Buenos_Aires')::date + 1
+   or p_shift not in ('manana_entrada','manana_salida','noche_salida') or p_index not between 1 and 4
+   or p_chapas not between 0 and 500 or p_sueltas not between 0 and 100000 or p_qty not between 0 and 1000000 then
+   raise exception 'Cantidad, fecha o turno no válido';
+ end if;
+ select units_per_chapa into per from gestlok_torcuato_conteo_private.products where id=p_product and active=true for share;
+ if per is null then raise exception 'Producto no disponible'; end if;
+ if per>0 and p_qty<>0 then raise exception 'Las empanadas usan chapas y unidades sueltas'; end if;
+ if per=0 and (p_chapas<>0 or p_sueltas<>0) then raise exception 'Este producto usa unidades'; end if;
+ insert into gestlok_torcuato_conteo_private.shifts(day,shift) values(p_day,p_shift) on conflict do nothing;
+ select * into r from gestlok_torcuato_conteo_private.shifts where day=p_day and shift=p_shift for update;
+ if r.status='finalizado' then raise exception 'Este conteo ya fue finalizado'; end if;
+ new_cell:=jsonb_build_object('chapas',p_chapas,'sueltas',p_sueltas,'qty',p_qty);
+ update gestlok_torcuato_conteo_private.shifts set
+  data=jsonb_set(r.data,array[p_product],coalesce(r.data->p_product,'{}'::jsonb)||jsonb_build_object('v'||p_index,new_cell),true),
+  updated_by=auth.uid(),updated_at=now()
+ where day=p_day and shift=p_shift;
+ return jsonb_build_object('ok',true,'updated_at',now());
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION public.gestlok_torcuato_conteo_set_decomiso(p_day date, p_shift text, p_product text, p_chapas integer DEFAULT 0, p_sueltas integer DEFAULT 0, p_qty integer DEFAULT 0)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE r gestlok_torcuato_conteo_private.shifts%rowtype; per integer;
+BEGIN
+  PERFORM gestlok_torcuato_conteo_private.require_access(true,false);
+  IF p_day IS NULL OR p_day < date '2025-01-01'
+    OR p_day > (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date + 1
+    OR p_shift NOT IN ('manana_entrada','manana_salida','noche_salida')
+    OR p_product IS NULL OR p_chapas NOT BETWEEN 0 AND 500
+    OR p_sueltas NOT BETWEEN 0 AND 100000 OR p_qty NOT BETWEEN 0 AND 1000000
+  THEN RAISE EXCEPTION 'Decomiso no válido'; END IF;
+  SELECT units_per_chapa INTO per FROM gestlok_torcuato_conteo_private.products
+    WHERE id=p_product AND active for share;
+  IF per IS NULL THEN RAISE EXCEPTION 'Producto no disponible'; END IF;
+  IF (per>0 AND p_qty<>0) OR (per=0 AND (p_chapas<>0 OR p_sueltas<>0))
+  THEN RAISE EXCEPTION 'Formato de decomiso no válido para este producto'; END IF;
+  INSERT INTO gestlok_torcuato_conteo_private.shifts(day,shift) VALUES(p_day,p_shift)
+    ON CONFLICT DO NOTHING;
+  SELECT * INTO r FROM gestlok_torcuato_conteo_private.shifts
+    WHERE day=p_day AND shift=p_shift FOR UPDATE;
+  IF r.status='finalizado' THEN RAISE EXCEPTION 'El conteo está finalizado'; END IF;
+  IF NOT r.decomiso_visible THEN RAISE EXCEPTION 'Primero activá Decomiso'; END IF;
+  UPDATE gestlok_torcuato_conteo_private.shifts SET
+     decomiso=jsonb_set(r.decomiso,ARRAY[p_product],
+       jsonb_build_object('chapas',p_chapas,'sueltas',p_sueltas,'qty',p_qty),true),
+     updated_by=auth.uid(),updated_at=now()
+     WHERE day=p_day AND shift=p_shift;
+  RETURN jsonb_build_object('ok',true);
+END $function$
+;
