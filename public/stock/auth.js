@@ -186,6 +186,13 @@
       window.__spmPoll = setInterval(async () => { try { const { data } = await sb.rpc('mi_rol'); if (data){ clearInterval(window.__spmPoll); location.reload(); } } catch {} }, 10000);
       return;
     }
+    // Si la administradora asignó Sistema de ventas antes del registro,
+    // vincularlo SOLO al UID del dueño autenticado de esa empresa.
+    // La función no asigna apps a empresas antiguas ni modifica otras tiendas.
+    if (rol === 'dueno' && !sinRed) {
+      try { await sb.rpc('gestlok_microapps_activar_dueno'); } catch { /* El acceso a GestLok no depende de Scanner. */ }
+      if (attempt !== authGeneration) return;
+    }
     hide();
     const me = $('#logout-wrap'); if (me) me.hidden = false;
     if (!started){ started = true; resolveAuth(true); }
