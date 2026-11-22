@@ -2098,3 +2098,66 @@ dialog.gcm-category-editor-dialog::backdrop{background:rgba(7,24,43,.6)}
  .gcm-count-screen .gcm-section-toolbar .gcm-rename-section{min-height:36px;padding:6px 9px}
  dialog.gcm-category-editor-dialog{padding:17px}
 }
+
+
+/* Conteo: presentación por unidades, caja o pack (dueña, gerentes y administradora). */
+.gcm-page .gcm-pack-quick{margin:12px 0;display:flex;gap:8px}
+.gcm-page .gcm-pack-quick button,.gcm-history-screen .gcm-pack-manage-link{
+ min-height:44px;border-radius:10px;border:1px solid #b7cbdf;background:#f2f7fb;
+ color:#14395a;font-weight:750;font-size:13px;padding:10px 14px;cursor:pointer;
+}
+.gcm-page .gcm-pack-quick button:hover,.gcm-history-screen .gcm-pack-manage-link:hover{background:#e7f1fa}
+.gcm-add-pack-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.gcm-add-pack-fields[hidden],.gcm-pack-fields[hidden]{display:none!important}
+.gcm-pack-catalog-screen .gcm-pack-header{
+ display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;
+ padding:15px;background:#f4f8fb;border:1px solid #d4e0eb;border-radius:14px;margin-bottom:18px;
+}
+.gcm-pack-header h2{font-size:22px;margin:7px 0;color:#123958}
+.gcm-pack-header p{font-size:13px;line-height:1.5;color:#56728a}
+.gcm-pack-header>button{min-height:44px;border:1px solid #b6cadd;background:white;border-radius:10px;color:#214766;padding:9px 14px;font-size:13px;font-weight:750}
+.gcm-pack-catalog-screen .gcm-pack-group{
+ margin:12px 0 20px;border:1px solid #d3dfeb;border-radius:13px;overflow:hidden;background:#fff
+}
+.gcm-pack-group header{
+ background:#12345a;color:#fff;display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:8px;padding:13px 15px
+}
+.gcm-pack-group header h3{font-size:16px;margin:0}
+.gcm-pack-group header button{min-height:40px;padding:8px 13px;border-radius:8px;border:1px solid #92abc4;background:#245078;color:#fff;font-size:13px;font-weight:750;cursor:pointer}
+.gcm-pack-items{display:grid}
+.gcm-pack-item{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:11px 15px;border-bottom:1px solid #e2e9f0;min-width:0}
+.gcm-pack-item:last-child{border-bottom:0}
+.gcm-pack-item span{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.gcm-pack-item strong{font-size:14px;color:#193956}
+.gcm-pack-item small{font-size:12px;color:#657f93}
+.gcm-pack-item button{min-height:40px;flex:0 0 auto;border:1px solid #b6ccde;background:#f5f9fc;border-radius:9px;padding:8px 10px;font-size:12px;color:#173d60;font-weight:700;cursor:pointer}
+.gcm-pack-group>p{font-size:13px;color:#698198;padding:14px 15px}
+dialog.gcm-pack-editor{
+ position:fixed;inset:0;margin:auto;box-sizing:border-box;
+ width:min(460px,calc(100vw - 22px));max-height:85dvh;overflow-y:auto;
+ border:1px solid #cad9e7;border-radius:14px;padding:20px;
+ background:#fff;color:#153a5b;box-shadow:0 18px 65px #09254252;z-index:10000;
+}
+dialog.gcm-pack-editor::backdrop{background:rgba(8,28,47,.62)}
+.gcm-pack-editor h3{font-size:20px;margin:0 0 15px}
+.gcm-pack-editor label{display:grid;gap:7px;font-size:13px;font-weight:750;margin:12px 0;color:#244662}
+.gcm-pack-editor input,.gcm-pack-editor select{
+ min-height:45px;min-width:0;width:100%;box-sizing:border-box;border:1px solid #b9cddd;
+ border-radius:9px;padding:9px 11px;background:white;color:#173a57;font:inherit;font-size:16px
+}
+.gcm-pack-editor input:read-only{background:#eef3f8;color:#567084}
+.gcm-pack-fields{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.gcm-pack-editor>p{font-size:12px;color:#54718a;line-height:1.5}
+.gcm-pack-error{font-size:12px;color:#a02e39!important;font-weight:700;min-height:15px}
+.gcm-pack-error:empty{display:none}
+.gcm-pack-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:17px}
+.gcm-pack-actions button{flex:1 1 135px;min-height:46px;border:1px solid #bbcfe0;border-radius:9px;background:#f6f9fb;color:#153d5d;font-size:14px;font-weight:750;cursor:pointer}
+.gcm-pack-actions [data-gcm-pack-save]{background:#12345a;border-color:#12345a;color:#fff}
+.gcm-pack-actions button:disabled{opacity:.55;cursor:wait}
+@media(max-width:650px){
+ .gcm-pack-fields,.gcm-add-pack-fields{grid-template-columns:1fr}
+ .gcm-pack-item{align-items:flex-start;flex-direction:column}
+ .gcm-pack-item button{width:100%}
+ dialog.gcm-pack-editor{padding:15px}
+}
