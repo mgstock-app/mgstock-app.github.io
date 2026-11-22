@@ -566,10 +566,30 @@ function banners(){
   if (S.editing && S.view !== 'conteo' && !isCustom(S.view)) h += `<div class="editbar"><span>Estás corrigiendo el conteo del <b>${esc(fechaHora(S.editing.fecha))}</b>.</span><span class="bar-a"><button class="btn sm" data-go="conteo">Ir a Conteo</button><button class="btn sm" data-act="edit-cancel">Cancelar corrección</button></span></div>`;
   return h;
 }
-function tools(id, val, ph){
+/* Stock Local de Mi Gusto: navegación por categorías del local (Munro y Torcuato).
+   No cambia existencias, permisos ni el guardado del conteo. */
+const miGustoStockLateralActivo=()=>S.view==='stock'&&miGustoContext()&&
+  ['munro','torcuato'].includes(S.local);
+function miGustoStockConCategorias(contenido){
+ if(!miGustoStockLateralActivo())return contenido;
+ const categorias=cats();
+ const enlace=(nombre,total)=>'<button type="button" class="gl-mg-stock-cat" data-act="cat" data-cat="'+esc(nombre)+
+  '" aria-pressed="'+(S.cat===nombre)+'" '+(nombre?'style="--cc:'+ccOf(nombre)+'"':'')+'>'+
+  (nombre?'<i aria-hidden="true"></i>':'')+'<span class="gl-mg-stock-cat-name">'+esc(nombre||'Todas')+'</span>'+
+  '<span class="gl-mg-stock-cat-num">'+total+'</span></button>';
+ const opciones=enlace('',S.prods.length)+categorias.map(([nombre,total])=>enlace(nombre,total)).join('');
+ return '<div class="gl-mg-stock-layout">'+
+  '<nav class="gl-mg-stock-nav" aria-label="Categorías de Stock Local"><div class="gl-mg-stock-nav-title">Categorías</div>'+
+  '<div class="gl-mg-stock-nav-list">'+opciones+'</div></nav>'+
+  '<details class="gl-mg-stock-drawer"><summary>Categorías <span>'+esc(S.cat||'Todas')+'</span></summary>'+
+  '<nav class="gl-mg-stock-drawer-list" aria-label="Elegir categoría de Stock Local">'+opciones+'</nav></details>'+
+  '<div class="gl-mg-stock-main">'+contenido+'</div></div>';
+}
+
+function tools(id, val, ph, ocultarChips=false){
   const cs = cats();
   return `<div class="tools"><div class="search">${ic('search')}<input id="${id}" type="search" placeholder="${esc(ph)}" value="${esc(val)}" autocomplete="off" aria-label="${esc(ph)}"></div>
-  ${cs.length > 1 ? `<div class="chips" role="group" aria-label="Categorías"><button class="chip" data-act="cat" data-cat="" aria-pressed="${!S.cat}">Todas<span class="c">${S.prods.length}</span></button>${cs.map(([c,n]) => `<button class="chip" data-act="cat" data-cat="${esc(c)}" aria-pressed="${S.cat === c}" style="--cc:${ccOf(c)}"><i></i>${esc(c)}<span class="c">${n}</span></button>`).join('')}</div>` : ''}</div>`;
+  ${!ocultarChips && cs.length > 1 ? `<div class="chips" role="group" aria-label="Categorías"><button class="chip" data-act="cat" data-cat="" aria-pressed="${!S.cat}">Todas<span class="c">${S.prods.length}</span></button>${cs.map(([c,n]) => `<button class="chip" data-act="cat" data-cat="${esc(c)}" aria-pressed="${S.cat === c}" style="--cc:${ccOf(c)}"><i></i>${esc(c)}<span class="c">${n}</span></button>`).join('')}</div>` : ''}</div>`;
 }
 function ssBox(p, pref){ return `<label class="ss"><input type="checkbox" id="${pref}-${esc(p.id)}" data-ss="${esc(p.id)}" ${p.sinStock ? 'checked' : ''} ${canW() ? '' : 'disabled'} aria-label="Sin stock: ${esc(p.nombre)}"><span>Sin stock</span></label>`; }
 function loadingList(){ return `<div class="sheet">${'<div class="sk"></div>'.repeat(5)}</div>`; }
@@ -1575,16 +1595,16 @@ V.stock = () => {
     const c = {todos:base.length, sin:0, bajo:0, nc:0}; base.forEach(p => { const e = estado(p); if (has(c, e)) c[e]++; });
     const list = base.filter(p => fil === 'todos' || estado(p) === fil), f = btn(c, fil);
     return head + `<div class="statf">${f('todos','Todos','var(--accent)')}${f('sin','Sin stock','var(--crit)')}${f('bajo','Stock bajo','var(--warn)')}${f('nc','Sin contar','var(--nc)')}</div>
-    ${tools('q-stock', S.q, 'Buscar producto')}
-    ${list.length ? sheet('stock', list, p => rowStock(p, false), {cls:'nosug', head:HEADS.stock0}) : vacio}`;
+    ${miGustoStockConCategorias(tools('q-stock', S.q, 'Buscar producto', miGustoStockLateralActivo())+
+      (list.length ? sheet('stock', list, p => rowStock(p, false), {cls:'nosug', head:HEADS.stock0}) : vacio))}`;
   }
   const grp = e => e === 'bajo' ? 'poco' : e;
   const fil = S.filtro === 'bajo' ? 'poco' : S.filtro;
   const c = {todos:base.length, sin:0, poco:0, ideal:0, exc:0, nc:0}; base.forEach(p => { const e = grp(estadoSug(p)); if (has(c, e)) c[e]++; });
   const list = base.filter(p => fil === 'todos' || grp(estadoSug(p)) === fil), f = btn(c, fil);
   return head + `<div class="statf st6">${f('todos','Todos','var(--accent)')}${f('sin','Sin stock','var(--crit)')}${f('poco','Poco stock','var(--yel)')}${f('ideal','Stock ideal','var(--ok)')}${f('exc','Exceso','var(--exc)')}${f('nc','Sin contar','var(--nc)')}</div>
-    ${tools('q-stock', S.q, 'Buscar producto')}
-    ${list.length ? sheet('stock', list, p => rowStock(p, true)) : vacio}`;
+    ${miGustoStockConCategorias(tools('q-stock', S.q, 'Buscar producto', miGustoStockLateralActivo())+
+      (list.length ? sheet('stock', list, p => rowStock(p, true)) : vacio))}`;
 };
 function rowStock(p, sg = sugActivo()){
   const st = sg ? estadoSug(p) : estado(p), q = qty(p), chg = has(S.draft, p.id) && q !== stockOf(p), meta = metaTxt(p), id = esc(p.id);
@@ -3679,7 +3699,14 @@ document.addEventListener('click', e => {
     case 'hoja-cancel': S.hj.editId = null; S.hj.delId = null; refreshHojas(); break;
     case 'hoja-del-ok': borrarHoja(id); break;
     case 'hoja-show': mostrarHoja(id); break;
-    case 'cat': S.cat = t.dataset.cat; render(); break;
+    case 'cat': {
+      const lateral=miGustoStockLateralActivo() && !!t.closest('.gl-mg-stock-nav, .gl-mg-stock-drawer');
+      S.cat=t.dataset.cat||'';
+      if(lateral){S.q='';S.filtro='todos';}
+      render();
+      if(lateral)document.querySelector('#view .gl-mg-stock-main')?.scrollIntoView({block:'start',behavior:'auto'});
+      break;
+    }
     case 'cat-go': S.cat = t.dataset.cat; S.filtro = 'todos'; S.q = ''; go('stock'); break;
     case 'filtro': S.filtro = t.dataset.f; render(); break;
     case 'cfiltro': S.cfiltro = t.dataset.f; render(); break;
