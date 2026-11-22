@@ -1,0 +1,113 @@
+name: GESTLOK Chat · sincronización automática a Prueba y Testing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/chat/**'
+      - 'supabase/functions/gestlok-chat/**'
+      - 'supabase/functions/gestlok-chat-push/**'
+      - 'supabase/migrations/*_gestlok_chat_*.sql'
+      - 'entornos/sql.txt'
+      - 'entornos/backend.mjs'
+      - 'entornos/entornos.json'
+      - 'scripts/sync-gestlok-chat-entornos.mjs'
+      - 'tests/chat-sync-entornos.test.mjs'
+      - '.github/workflows/sync-gestlok-chat.yml'
+  workflow_dispatch:
+
+# El flujo solo escribe código en prueba/testing y servicios de la BASE DE PRUEBAS.
+# Nunca mezcla datos reales ni abre una publicación automática hacia main.
+permissions:
+  contents: write
+concurrency:
+  group: gestlok-chat-auto-sync-entornos
+  cancel-in-progress: false
+jobs:
+  sincronizar:
+    name: Chat → prueba y testing (sin tocar producción)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Comprobar aislamiento y sincronización antes de cambiar ramas
+        run: node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs tests/chat-sync-entornos.test.mjs
+      - name: Preparar copia de Chat en ambas ramas sin sobreescribir sus configuraciones
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global user.name 'gestlok-chat-sync[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main prueba testing
+          for branch in prueba testing; do
+            folder="$RUNNER_TEMP/gestlok-chat-$branch"
+            git worktree add --detach "$folder" "origin/$branch"
+            node scripts/sync-gestlok-chat-entornos.mjs "$GITHUB_WORKSPACE" "$folder" "$branch"
+            (cd "$folder" && node --test tests/entornos.test.mjs tests/gestlok-chat-showroom.test.mjs)
+            (cd "$folder" && ENTORNO="$branch" node entornos/construir.mjs)
+            test -f "$folder/dist-entorno/chat/config.js"
+            if grep -Fq 'vgsepaaewbctjsjcpeta' "$folder/dist-entorno/chat/config.js"; then
+              echo '::error title=Aislamiento roto::Configuración de producción detectada en un entorno de pruebas.'
+              exit 1
+            fi
+          done
+      - name: Publicar ramas Prueba y Testing sin fusionar ni sobrescribir main
+        shell: bash
+        run: |
+          set -euo pipefail
+          for branch in prueba testing; do
+            folder="$RUNNER_TEMP/gestlok-chat-$branch"
+            git -C "$folder" add -A -- public/chat public/icons public/img public/vendor \
+              supabase/functions/gestlok-chat supabase/functions/gestlok-chat-push \
+              supabase/migrations entornos/backend.mjs entornos/entornos.json entornos/sql.txt
+            if git -C "$folder" diff --cached --quiet; then
+              echo "### $branch: ya estaba sincronizado" >> "$GITHUB_STEP_SUMMARY"
+            else
+              git -C "$folder" commit -m "sync(chat): copia segura de main a $branch ($GITHUB_SHA)"
+              git -C "$folder" push origin "HEAD:refs/heads/$branch"
+              echo "### $branch: código actualizado desde $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+      - name: Actualizar base y funciones de Chat en los dos entornos aislados
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo '::error title=Falta autorización::Configurar SUPABASE_ACCESS_TOKEN con permisos SOLO en gestlok-pruebas.'
+            exit 1
+          fi
+          for branch in prueba testing; do
+            echo "Actualizando $branch en gestlok-pruebas"
+            (cd "$RUNNER_TEMP/gestlok-chat-$branch" && node entornos/backend.mjs --entorno "$branch" --sql --funciones --ajustes)
+          done
+      - name: Comprobar que los dos sitios entregan Chat y no la base real
+        shell: bash
+        run: |
+          set -euo pipefail
+          for branch in prueba testing; do
+            site="https://gestlok-$branch.vercel.app"
+            ok=0
+            for attempt in 1 2 3 4 5; do
+              if curl --fail --silent --show-error --location --max-time 20 "$site/" -o /tmp/gestlok-chat-site.html \
+                 && grep -Fq "GESTLOK · ${branch^}" /tmp/gestlok-chat-site.html \
+                 && curl --fail --silent --show-error --location --max-time 20 "$site/chat/config.js" -o /tmp/gestlok-chat-config.js \
+                 && grep -Fq 'irqeitzbfyerxcrogkyh' /tmp/gestlok-chat-config.js \
+                 && ! grep -Fq 'vgsepaaewbctjsjcpeta' /tmp/gestlok-chat-config.js; then
+                ok=1; break
+              fi
+              sleep 15
+            done
+            if [ "$ok" -ne 1 ]; then
+              echo "::error title=Sitio sin actualizar::$site no publicó Chat con la base aislada. Revisar el límite de builds de Vercel."
+              exit 1
+            fi
+            echo "### $branch: sitio visible y aislado" >> "$GITHUB_STEP_SUMMARY"
+          done
