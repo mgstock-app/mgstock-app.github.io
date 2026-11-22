@@ -99,7 +99,7 @@ test('el panel y la app usan recursos renovados para evitar código cacheado',()
  assert.match(pag,/panel\.css\?v=20261121bordes1/);
  assert.match(panel,/VERSION_CSS = '20261121bordes1'/);
  assert.match(central,/VERSION_PANEL='20261121marca2'/);
- assert.match(runtime,/chat-marca-20261121/);
+ assert.match(runtime,/chat-badge-20261122/);
  assert.match(central,/RECORDAR_PENDIENTES_MS=120000/);
  assert.match(central,/RECORDAR_PREPARACION_MS=300000/);
  assert.match(central,/data-gcc-comandas/);

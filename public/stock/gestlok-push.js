@@ -184,6 +184,8 @@ document.addEventListener('click',e=>{
   ctx.render();
 });
 async function onLogout(){
+ // Nunca conservar un indicador de pedidos de la cuenta anterior.
+ try{await navigator.clearAppBadge?.();}catch{/* no soportado */}
  if(!ctx?.S?.me?.email || !['dueno','gerente'].includes(ctx.miRol()) || !canPrompt())return;
  try{
   const registration=await navigator.serviceWorker.getRegistration();
