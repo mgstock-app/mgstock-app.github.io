@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 // Enlaces de la app que llegan a la raíz (Google, confirmación de email, recuperación de
 // contraseña, invitaciones con ?… o #…) y la app instalada siguen yendo directo a /login/.
-const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=/^#(inicio|micro-apps|contacto)?$/.test(h);" +
+const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=!h||/^#(inicio|micro-apps|contacto)?$/.test(h);" +
   "var instalada=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;" +
   "if(location.search||!nuestro||instalada){location.replace('/login/'+location.search+h);}}catch(e){}})();";
 
