@@ -26,7 +26,8 @@ function nextTurn(date,turn){
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  // El campo de almacenamiento se llama chapas, pero en Helados y Caja Palito
  // el conteo debe decir «caja» sin modificar el formato del servidor.
- const packWord=p=>p?.units_per_chapa===45&&/caja palito/i.test(p.name)||
+ const packWord=p=>p?.pack_label&&p.pack_label!=='unidad'?p.pack_label:
+  p?.units_per_chapa===45&&/caja palito/i.test(p.name)||
   p?.units_per_chapa>0&&/^(franui|pink|le\s*banana)/i.test(p?.name||'')?'caja':'chapa';
 const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
@@ -47,6 +48,7 @@ let recoveringFromDay=null; // Solo aviso contextual al recuperar una noche pasa
 let categoriasPlegadas=false; // Preferencia visual del local durante la sesión.
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null,historyPreviewUrl='',historyPreviewError='';
 let historyEditMode=false,historyEditKind='cell',historyEditProduct='',historyEditVto=1;
+let productCatalogMode=false;
 let historyCorrections=[],historyCorrectionsLoaded=false,historyCorrectionError='',historyCorrecting=false;
 function clearHistoryEditor(){
  historyEditMode=false;historyEditKind='cell';historyEditProduct='';historyEditVto=1;
@@ -114,6 +116,9 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&LOCALES.includes(api.S?.
 const ownerHistoryOnly=()=>allowed()&&api.miRol()==='dueno';
 const editable=()=>allowed()&&!ownerHistoryOnly()&&!finishing&&!api.S?.ro&&api.S?.offline!==true&&navigator.onLine!==false&&!!window.GestLokSupabase;
 const admin=()=>allowed()&&api.miRol()==='creadora'&&!api.S?.ro;
+// Administración de PRESENTACIÓN y alta de productos, no de categorías ni historiales.
+const canManagePacks=()=>allowed()&&!api.S?.ro&&!api.S?.offline&&navigator.onLine!==false&&
+ !!window.GestLokSupabase&&['creadora','dueno','gerente'].includes(api.miRol())&&!finishing;
 const selected=()=>historyRecord||(snapshot?.counts||[]).find(s=>s.shift===shift)||null;
 const closed=()=>!!historyRecord||selected()?.status==='finalizado';
 const morning=()=>window.GestLokConteoMorning;
@@ -123,14 +128,14 @@ function reset(){
  morning()?.clear();
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
  loading=false;busy=false;finishing=false;error='';queues.clear();pendingDrafts.clear();pendingStore='';opened=new Set(['EMPANADAS']);categoriasPlegadas=false;
- historyMode=false;recoveringFromDay=null;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
+ historyMode=false;productCatalogMode=false;recoveringFromDay=null;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
 }
 async function rpc(name,args){
  if(!allowed()||!window.GestLokSupabase)throw Error('Sin acceso o sin conexión con el servidor.');
  const local=activeLocal();
  // No aceptar RPC arbitrarios: solo los nombres del módulo original.
  if(!/^gestlok_munro_conteo_[a-z_]+$/.test(name))throw Error('Función de Conteo no autorizada');
- if(ownerHistoryOnly()&&!['gestlok_munro_conteo_state','gestlok_munro_conteo_history','gestlok_munro_conteo_correction_history'].includes(name))throw Error('La dueña solo puede consultar historiales de conteo.');
+ if(ownerHistoryOnly()&&!['gestlok_munro_conteo_state','gestlok_munro_conteo_history','gestlok_munro_conteo_correction_history','gestlok_munro_conteo_save_product_pack'].includes(name))throw Error('La dueña solo puede consultar historiales de conteo.');
  const target=local==='torcuato'?name.replace('gestlok_munro_conteo_','gestlok_torcuato_conteo_'):name;
  const r=await window.GestLokSupabase.rpc(target,args||{});
  if(r.error)throw Error(r.error.message||'No se pudo guardar.');
@@ -224,6 +229,7 @@ function historyListView(){
  return '<div class="gcm-page gcm-history-screen">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+(ownerHistoryOnly()?'':'<button type="button" data-gcm-history-exit>← Volver al conteo</button>')+
    '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Historial de conteos</h2></div></div>'+
+   (canManagePacks()?'<button type="button" class="gcm-pack-manage-link" data-gcm-products-open>Gestionar productos</button>':'')+
    '<label>Mes <input type="month" id="gcm-history-month" min="2025-01" max="'+arDay().slice(0,7)+'" value="'+esc(historyMonth)+'"></label></header>'+
   (historyError?'<p class="gcm-error" role="alert">'+esc(historyError)+' <button type="button" data-gcm-history-retry>Reintentar</button></p>':'')+
   (historyLoading?'<p role="status" class="gcm-loading">Cargando historial…</p>':
@@ -233,8 +239,15 @@ function historyListView(){
 // Solo una confirmación explícita del gerente significa «Sin stock».
 const manualSinStock=(rec,id)=>rec?.data?.[id]?.sin_stock===true;
 const stockLabel=(rec,id,total)=>total>0?String(total):(manualSinStock(rec,id)?'Sin stock':'—');
+// La equivalencia se fija por producto y turno. Cambiar la presentación no reescribe historial.
+function productForRecord(rec,p){
+ if(!p)return p;
+ const per=rec?.pack_units?.[p.id];
+ return Number.isInteger(per)&&per>=0&&per<=1000?{...p,units_per_chapa:per}:p;
+}
 function recordedTotal(rec,p){
  if(!rec||!p)return 0;
+ p=productForRecord(rec,p);
  let value=0;
  for(let i=1;i<=4;i++){
   const v=rec.data?.[p.id]?.['v'+i]||{};
@@ -254,7 +267,7 @@ function historyProductTotals(rec){
  const ids=new Set([...catalogProducts.filter(p=>p.active).map(p=>String(p.id)),
   ...Object.keys(rec.data||{}),...Object.keys(rec.decomiso||{})]);
  return [...ids].map(id=>{
-  const p=catalog.get(id);
+  const p=productForRecord(rec,catalog.get(id));
   if(!p)return {id,name:'Producto sin referencia ('+id.slice(0,8)+')',section:'OTROS',total:null,order:Number.MAX_SAFE_INTEGER};
   const data=rec.data?.[id]||{},decomiso=rec.decomiso?.[id]||{};
   let total=0;
@@ -471,7 +484,8 @@ function historyDetailsTable(section,products,rec){
     (loose?(chapas?' + ':'')+loose+' u.':'')+'</small>':'';
   return '<td class="gcm-hd-qty"><strong>'+total+'</strong>'+parts+'</td>';
  };
- const rows=products.map(p=>{
+ const rows=products.map(item=>{
+  const p=productForRecord(rec,item);
   const v=rec.data?.[p.id]||{},decomp=rec.decomiso?.[p.id]||{};
   let total=0;
   const cols=[1,2,3,4].map(i=>{
@@ -827,10 +841,11 @@ function updateCategoryFromScroll(){
  if(current)selectCategoryButton(root,current.dataset.gcmSection||current.dataset.gcmKind);
 }
 
-function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories){
+function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCategories,canProducts){
  const dateBase=historyRecord?.day||day;
  const dates=Array.from({length:4},(_,i)=>({vto:'Vto '+(i+1),dia:labelDay(plusDays(dateBase,i)).slice(0,5)}));
- const rows=items.map(p=>{
+ const rows=items.map(item=>{
+  const p=productForRecord(entry(),item);
   const check=shift==='manana_entrada'?morning()?.row(p.id):null;
   const cells=[1,2,3,4].map(i=>{
    const v=getCell(p,i);
@@ -876,7 +891,7 @@ function sectionTable(name,items,canWrite,canCatalog,showDecomiso,canManageCateg
  '<div class="gcm-remove-products-actions"><button type="button" class="gcm-remove-products-confirm" data-gcm-remove-products-save>Quitar seleccionados</button>'+
  '<button type="button" class="gcm-remove-products-cancel" data-gcm-remove-products-cancel>Cancelar</button></div>'+
  '</dialog>':'')+
- (canCatalog?'<div class="gcm-product-add-bar">'+
+ (canProducts?'<div class="gcm-product-add-bar">'+
  '<button type="button" class="gcm-add-product-trigger" data-gcm-add-product-open="'+esc(name)+'" aria-haspopup="dialog">+ Agregar producto</button>'+
  '<span>El producto aparecerá en los tres turnos.</span></div>'+
  '<dialog class="gcm-add-product-dialog" aria-label="Agregar producto en '+esc(name)+'">'+
@@ -983,6 +998,41 @@ async function verifyTurnSaved(requireExisting=false){
  }
  return {state,remote};
 }
+
+// Catálogo universal para dueña, gerente y administradora, también en vista Historial.
+function productCatalogView(){
+ const products=snapshot?.products||[];
+ const names=[...new Set([...(snapshot?.categories||[]).map(c=>c.name),...products.map(p=>p.section)])].filter(Boolean);
+ const groups=names.map(name=>{
+  const items=products.filter(p=>p.section===name&&p.active);
+  return '<section class="gcm-pack-group"><header><h3>'+esc(name)+'</h3>'+
+   '<button type="button" data-gcm-pack-add="'+esc(name)+'">+ Agregar producto</button></header>'+
+   (items.length?'<div class="gcm-pack-items">'+items.map(p=>
+    '<div class="gcm-pack-item"><span><strong>'+esc(p.name)+'</strong><small>'+
+    (p.units_per_chapa>0?'1 '+esc(packWord(p))+' = '+p.units_per_chapa+' unidades':'Por unidades')+
+    '</small></span><button type="button" data-gcm-pack-edit="'+esc(p.id)+'">Editar presentación</button></div>'
+   ).join('')+'</div>':'<p>Sin productos activos. Podés agregar uno.</p>')+'</section>';
+ }).join('');
+ return '<div class="gcm-page gcm-pack-catalog-screen">'+
+  '<header class="gcm-pack-header"><div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span>'+
+  '<h2>Productos y presentaciones</h2><p>Configuración exclusiva de esta sucursal. El historial conserva sus equivalencias.</p></div>'+
+  '<button type="button" data-gcm-products-close>← Volver</button></header>'+
+  (!snapshot?'<p role="status">Cargando productos…</p>':groups)+
+  '<dialog class="gcm-pack-editor" aria-label="Configurar producto">'+
+  '<h3 data-gcm-pack-title>Presentación del producto</h3>'+
+  '<label>Producto<input type="text" data-gcm-pack-name maxlength="100" required></label>'+
+  '<label>Cómo se cuenta<select data-gcm-pack-mode>'+
+  '<option value="unidad">Por unidades</option><option value="pack">Por caja / pack cerrado</option></select></label>'+
+  '<div class="gcm-pack-fields" data-gcm-pack-fields>'+
+  '<label>Tipo de envase<select data-gcm-pack-label>'+
+  '<option value="caja">Caja</option><option value="pack">Pack</option><option value="chapa">Chapa</option></select></label>'+
+  '<label>Unidades por caja / pack<input type="number" inputmode="numeric" min="1" max="1000" step="1" data-gcm-pack-units placeholder="Ej.: 12"></label>'+
+  '</div><p>Los cambios de presentación se aplican a nuevos registros. Los turnos con cantidades cargadas conservan su equivalencia original.</p>'+
+  '<p class="gcm-pack-error" data-gcm-pack-error role="alert" aria-live="polite"></p>'+
+  '<div class="gcm-pack-actions"><button type="button" data-gcm-pack-save>Guardar</button>'+
+  '<button type="button" data-gcm-pack-cancel>Cancelar</button></div></dialog></div>';
+}
+
 function view(){
  if(!allowed())return '<p>El Conteo está disponible únicamente para el personal autorizado de su sucursal de Mi Gusto.</p>';
  // Se conserva el día seleccionado hasta que el gerente lo cambie expresamente.
@@ -991,6 +1041,7 @@ function view(){
   void loadHistory();
  }
  if(!snapshot&&!loading&&!error)void refresh();
+ if(productCatalogMode)return productCatalogView();
  if(historyMode)return historyRecord?historyDetailView():historyListView();
  const rec=entry(),canWrite=editable()&&!closed()&&!!snapshot,canCatalog=admin()&&!historyRecord&&!busy;
  const showDecomiso=!!rec.decomiso_visible;
@@ -1026,6 +1077,7 @@ function view(){
  '<div class="gcm-header-fields gcm-header-fields-compact" aria-label="Datos del conteo"><div class="gcm-field-local"><span>Local</span><strong>'+esc(localLabel())+'</strong></div>'+
  '<div class="gcm-field-responsable-summary"><span>Responsable</span><strong>'+esc(rec.responsable||'Por seleccionar')+'</strong></div>'+
  '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
+ (canManagePacks()?'<div class="gcm-pack-quick"><button type="button" data-gcm-products-open>Gestionar productos y presentaciones</button></div>':'')+
  '<div class="gcm-current-shift" aria-label="Turno correspondiente al conteo"><span>Turno de conteo</span><strong>'+esc(turnoVisible)+'</strong></div>'+
  (recoveringFromDay&&shift==='noche_salida'?'<div class="gcm-recovery-active" role="status">Recuperando <strong>Noche · salida del '+labelDay(day)+'</strong>. Al cerrar vas a volver a Mañana · entrada del '+labelDay(recoveringFromDay)+'.</div>':'')+
  '<div data-gcm-recovery-holder>'+(shift==='manana_entrada'?(morning()?.recoveryPanel?.()||''):'')+'</div>'+
@@ -1059,7 +1111,7 @@ function view(){
  ).join('')+'</div><p>Ocultar una sección no borra productos ni cantidades. Podés volver a mostrarla cuando quieras.</p></details>':
  sectionsLocked?'':'')+
  (visibleCategories.length?'':'<p class="gcm-empty-sections">Todas las secciones están ocultas. Entrá a «Personalizar secciones» para mostrarlas.</p>')+
- visibleCategories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso,canManageCategories)).join('')+
+ visibleCategories.map(name=>sectionTable(name,list.filter(p=>p.section===name),canWrite,canCatalog,showDecomiso,canManageCategories,canManagePacks())).join('')+
  (Object.values(rec.decomiso||{}).some(v=>Number(v.chapas)||Number(v.sueltas)||Number(v.qty))?'<p class="gcm-decomp-note">Los totales incluyen el decomiso registrado, aunque ocultes la columna.</p>':'')+
  '<div class="gcm-extra-controls"><label class="gcm-waste-toggle"><input id="gcm-waste-toggle" type="checkbox"'+(showWaste?' checked':'')+
  (!canWrite?' disabled':'')+'><span>Mostrar Desperdicios</span></label>'+
@@ -1113,7 +1165,7 @@ function saveCell(p,i,newCell){
  task.then(()=>{confirmDraft(draft);if(s==='manana_entrada')morning()?.schedule(morningCtx());}).catch(()=>{});
  return task;
 }
-const productById=id=>snapshot?.products?.find(p=>p.id===id&&p.active);
+const productById=id=>productForRecord(entry(),snapshot?.products?.find(p=>p.id===id&&p.active));
 function updateExtra(input){
  const kind=input.dataset.gcmExtra,idx=Number(input.dataset.row),field=input.dataset.field;
  if(kind==='consumption'&&shift==='manana_entrada')return;
