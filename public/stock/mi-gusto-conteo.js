@@ -13,6 +13,8 @@ const localLabel=()=>activeLocal()==='torcuato'?'Don Torcuato':'Munro';
 const onlyMunroHistoricalCorrection=rec=>activeLocal()==='munro'&&rec?.day==='2026-11-14'&&rec?.shift==='manana_entrada';
 const SHIFTS=[['manana_entrada','Mañana · entrada'],['manana_salida','Mañana · salida'],['noche_salida','Noche · salida']];
 const RESPONSABLES=['Cami','Shuli','Tizi'];
+const RESPONSABLES_TORCUATO=['Cami','Caro','Gabi'];
+const responsables=()=>activeLocal()==='torcuato'?RESPONSABLES_TORCUATO:RESPONSABLES;
 /** Orden único del turno. El último cierre abre mañana entrada del siguiente día. */
 function nextTurn(date,turn){
  const idx=SHIFTS.findIndex(x=>x[0]===turn);
@@ -40,6 +42,7 @@ function marks(value){
 }
 let api=null,snapshot=null,day=arDay(),shift='manana_entrada',activeVto='1',historyRecord=null,loading=false,error='',busy=false,finishing=false,opened=new Set(['EMPANADAS']),generation=0;
 let recoveringFromDay=null; // Solo aviso contextual al recuperar una noche pasada.
+let categoriasPlegadas=false; // Preferencia visual del local durante la sesión.
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null,historyPreviewUrl='',historyPreviewError='';
 let historyEditMode=false,historyEditKind='cell',historyEditProduct='',historyEditVto=1;
 let historyCorrections=[],historyCorrectionsLoaded=false,historyCorrectionError='',historyCorrecting=false;
@@ -116,7 +119,7 @@ function reset(){
  ++generation;++historyToken;
  morning()?.clear();
  snapshot=null;day=arDay();shift='manana_entrada';activeVto='1';historyRecord=null;
- loading=false;busy=false;finishing=false;error='';queues.clear();pendingDrafts.clear();pendingStore='';opened=new Set(['EMPANADAS']);
+ loading=false;busy=false;finishing=false;error='';queues.clear();pendingDrafts.clear();pendingStore='';opened=new Set(['EMPANADAS']);categoriasPlegadas=false;
  historyMode=false;recoveringFromDay=null;historyMonth=arDay().slice(0,7);historyRows=[];historyExpanded=null;historyLoading=false;historyError='';autoResumeTurn=true;lastClosedDay=null;historyPreviewUrl='';historyPreviewError='';clearHistoryEditor();
 }
 async function rpc(name,args){
@@ -503,7 +506,7 @@ function historyCorrectionPanel(rec){
    (p?.units_per_chapa>0?value.chapas+' '+packWord(p)+(value.chapas===1?'':'s')+' + '+value.sueltas+' unidades':value.qty+' unidades')+
    '</strong>. El cambio afecta únicamente este producto y vencimiento.</p>':
   kind==='responsable'?'<label>Responsable del turno<select id="gcm-history-fix-responsable">'+
-   RESPONSABLES.map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
+   responsables().map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
   '<div class="gcm-history-fix-list">'+list.map(row).join('')+'</div>'+
    '<p class="gcm-history-fix-expl">Se guardan los registros cargados. Los campos vacíos de la fila adicional no crean datos.</p>';
  const kinds=[['cell','Cantidad por vencimiento'],['decomiso','Decomiso'],['responsable','Responsable'],
@@ -710,9 +713,9 @@ function decompColumn(p,canWrite){
 function categorySidebar(names,products){
  const links=names.map((name,index)=>'<button type="button" data-gcm-nav-section="'+esc(name)+'"'+(index===0?' class="is-active" aria-current="true"':'')+
  '><span>'+esc(name)+'</span><small>'+products.filter(p=>p.section===name).length+'</small></button>').join('');
- return '<button type="button" class="gcm-category-toggle" data-gcm-category-toggle aria-expanded="false" aria-controls="gcm-category-nav">☰ Categorías</button>'+
+ return '<button type="button" class="gcm-category-toggle" data-gcm-category-toggle aria-expanded="false" aria-controls="gcm-category-nav" aria-label="Mostrar categorías">'+(categoriasPlegadas?'+ Categorías':'☰ Categorías')+'</button>'+
  '<aside class="gcm-category-nav" id="gcm-category-nav" aria-label="Navegar por categorías del conteo">'+
- '<div class="gcm-category-nav-head"><strong>Categorías</strong><button type="button" data-gcm-category-close aria-label="Cerrar categorías">×</button></div>'+
+ '<div class="gcm-category-nav-head"><strong>Categorías</strong><button type="button" data-gcm-category-close aria-label="Ocultar categorías" title="Ocultar categorías">−</button></div>'+
  '<div class="gcm-category-nav-items">'+links+
  (shift==='manana_entrada'?'':'<button type="button" data-gcm-nav-extras="consumption">Consumo de Staff</button>')+
  '<button type="button" data-gcm-nav-extras="waste">Desperdicios</button></div></aside>';
@@ -886,7 +889,7 @@ async function verifyTurnSaved(requireExisting=false){
   throw Error('Hay cantidades sin confirmar en el servidor. No se cerró el turno.');
  if(requireExisting){
   if(remote.status==='finalizado')throw Error('Este turno ya está cerrado. Revisá el historial.');
-  if(!RESPONSABLES.includes(remote.responsable))
+  if(!responsables().includes(remote.responsable))
    throw Error('Seleccioná al gerente responsable antes de cerrar el turno.');
  }
  return {state,remote};
@@ -913,18 +916,17 @@ function view(){
  const showWaste=!!rec.waste_visible;
  // El turno depende del estado real, nunca de la hora del dispositivo.
  const turnoVisible=snapshot?(SHIFTS.find(([id])=>id===shift)?.[1]||'Turno no identificado'):'Verificando turno…';
- return '<div class="gcm-page gcm-count-screen">'+conteoHistorialNav('conteo')+
+ return '<div class="gcm-page gcm-count-screen'+(categoriasPlegadas?' is-category-nav-collapsed':'')+'">'+conteoHistorialNav('conteo')+
  '<header class="gcm-header gcm-header-compact"><div class="gcm-header-title"><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Conteo</h2></div>'+
  '<div class="gcm-header-fields gcm-header-fields-compact" aria-label="Datos del conteo"><div class="gcm-field-local"><span>Local</span><strong>'+esc(localLabel())+'</strong></div>'+
- '<label class="gcm-field-responsable">Responsable <select id="gcm-responsable"'+(!canWrite?' disabled':'')+'><option value="">Seleccionar responsable</option>'+
- RESPONSABLES.map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
+ '<div class="gcm-field-responsable-summary"><span>Responsable</span><strong>'+esc(rec.responsable||'Por seleccionar')+'</strong></div>'+
  '<div class="gcm-field-fecha"><span>Fecha</span><strong>'+labelDay(day)+'</strong></div></div></header>'+
  '<div class="gcm-current-shift" aria-label="Turno correspondiente al conteo"><span>Turno de conteo</span><strong>'+esc(turnoVisible)+'</strong></div>'+
  (recoveringFromDay&&shift==='noche_salida'?'<div class="gcm-recovery-active" role="status">Recuperando <strong>Noche · salida del '+labelDay(day)+'</strong>. Al cerrar vas a volver a Mañana · entrada del '+labelDay(recoveringFromDay)+'.</div>':'')+
  '<div data-gcm-recovery-holder>'+(shift==='manana_entrada'?(morning()?.recoveryPanel?.()||''):'')+'</div>'+
  '<div class="gcm-save-bar"><span>Los cambios se guardan por casilla y pueden verificarse en el servidor.</span>'+
  '<button type="button" data-gcm-manual-save>Guardar conteo</button>'+
- (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'')+
+ (!closed()?'<button type="button" class="gcm-close-turn" data-gcm-go-to-close>Ir al cierre ↓</button>':'')+
  '</div>'+
  // Sin pestañas de turnos: el avance es automático y se identifica arriba y en Historial.
  (error?'<p class="gcm-error" role="alert">'+esc(error)+' <button type="button" data-gcm-retry>Reintentar</button></p>':'')+
@@ -950,8 +952,10 @@ function view(){
  '<div class="gcm-bottom'+(showWaste?'':' gcm-bottom-single')+'">'+
  (shift==='manana_entrada'?'':extraTable('consumption','CONSUMO','Colaborador','Consumo',rec,canWrite))+
  (showWaste?extraTable('waste','DESPERDICIOS','Producto','Cantidad',rec,canWrite):'')+'</div>'+
- (!historyRecord?'<div class="gcm-actions"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
- (!closed()?'<button type="button" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>':'<span>Conteo archivado</span>')+'</div>':'')+
+ (!historyRecord?'<div class="gcm-actions" id="gcm-cierre"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
+ (!closed()?'<div class="gcm-finalize-controls"><label class="gcm-finalize-responsable" for="gcm-responsable"><span>Gerente responsable</span><select id="gcm-responsable"'+(!canWrite?' disabled':'')+' required><option value="">Seleccionar gerente</option>'+
+ responsables().map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
+ '<button type="button" class="gcm-bottom-finalize" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button></div>':'<span>Conteo archivado</span>')+'</div>':'')+
  '</main></div>'+
  (shift==='manana_entrada'?'<div data-gcm-morning-holder>'+(morning()?.panel()||'<p role="status">Consultando diferencias…</p>')+'</div>':'')+ '':'' )+
  '</div>';
@@ -1089,10 +1093,26 @@ document.addEventListener('click',async e=>{
   }
   return;
  }
- if(el.hasAttribute('data-gcm-category-toggle')||el.hasAttribute('data-gcm-category-close')){
-  const open=el.hasAttribute('data-gcm-category-toggle')&&!root.classList.contains('is-category-nav-open');
-  root.classList.toggle('is-category-nav-open',open);
-  root.querySelector('.gcm-category-toggle')?.setAttribute('aria-expanded',String(open));
+ if(el.hasAttribute('data-gcm-category-close')){
+  categoriasPlegadas=true;
+  root.classList.add('is-category-nav-collapsed');
+  root.classList.remove('is-category-nav-open');
+  const toggle=root.querySelector('.gcm-category-toggle');
+  if(toggle){toggle.textContent='+ Categorías';toggle.setAttribute('aria-expanded','false');}
+  return;
+ }
+ if(el.hasAttribute('data-gcm-category-toggle')){
+  if(categoriasPlegadas){
+   categoriasPlegadas=false;
+   root.classList.remove('is-category-nav-collapsed');
+   root.classList.add('is-category-nav-open');
+   el.textContent='☰ Categorías';
+   el.setAttribute('aria-expanded','true');
+  }else{
+   const open=!root.classList.contains('is-category-nav-open');
+   root.classList.toggle('is-category-nav-open',open);
+   el.setAttribute('aria-expanded',String(open));
+  }
   return;
  }
  if(el.hasAttribute('data-gcm-nav-section')||el.hasAttribute('data-gcm-nav-extras')){
@@ -1416,6 +1436,11 @@ document.addEventListener('click',async e=>{
   finally{busy=false;void refresh();}
   return;
  }
+ if(el.hasAttribute('data-gcm-go-to-close')){
+  root.querySelector('#gcm-cierre')?.scrollIntoView?.({block:'end',behavior:'smooth'});
+  root.querySelector('#gcm-responsable')?.focus?.({preventScroll:true});
+  return;
+ }
  if(el.hasAttribute('data-gcm-finalize')){
   if(!editable()||closed()||!snapshot||finishing)return;
   const currentDay=day,currentShift=shift,following=nextTurn(currentDay,currentShift);
@@ -1511,7 +1536,7 @@ document.addEventListener('change',async e=>{
  if(input.id==='gcm-responsable'){
   if(!editable()||closed()||busy||!snapshot)return;
   const name=input.value;
-  if(name!==''&&!RESPONSABLES.includes(name))return;
+  if(name!==''&&!responsables().includes(name))return;
   const d=day,s=shift,old=entry().responsable||'';
   busy=true;
   try{await rpc('gestlok_munro_conteo_responsable',{p_day:d,p_shift:s,p_responsable:name});
