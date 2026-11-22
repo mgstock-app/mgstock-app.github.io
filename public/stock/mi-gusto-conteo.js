@@ -1002,12 +1002,18 @@ function view(){
  const list=(snapshot?.products||[]).filter(p=>p.active||recordedTotal(rec,p)>0);
  // La administradora también puede recuperar categorías sin productos activos.
  // Catálogo central por sucursal: admite categorías vacías creadas por la administradora.
+ const categoryPositions=new Map((snapshot?.categories||[]).map(c=>[c.name,Number(c.position)]));
  const categories=[...new Set([
    ...(Array.isArray(snapshot?.categories)?snapshot.categories.map(c=>c.name):[]),
    ...(admin()?snapshot?.products||[]:list).map(p=>p.section)
   ].filter(Boolean))]
-  .sort((a,b)=>shift==='manana_entrada'?
-   (/EMPANADA/i.test(a)?0:/PIZZA/i.test(a)?1:2)-(/EMPANADA/i.test(b)?0:/PIZZA/i.test(b)?1:2):0);
+  .sort((a,b)=>{
+   const pa=categoryPositions.get(a),pb=categoryPositions.get(b);
+   // La categoría conserva su lugar al cambiar de nombre.
+   if(Number.isFinite(pa)&&Number.isFinite(pb))return pa-pb;
+   return shift==='manana_entrada'?
+    (/EMPANADA/i.test(a)?0:/PIZZA/i.test(a)?1:2)-(/EMPANADA/i.test(b)?0:/PIZZA/i.test(b)?1:2):0;
+  });
  const hiddenSource=sectionsLocked&&!historyRecord?snapshot?.settings?.hidden_sections:rec.hidden_sections;
  const hidden=new Set(Array.isArray(hiddenSource)?hiddenSource:[]);
  const visibleCategories=categories.filter(name=>!hidden.has(name)||shift==='manana_entrada'&&
