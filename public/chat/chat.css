@@ -83,7 +83,23 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .icono.enviar svg{transform:translateX(-1px)}
 .pie{flex:0 0 auto;margin:0;padding:4px 12px max(4px,env(safe-area-inset-bottom));font-size:11.5px;color:var(--gris-claro);text-align:center;background:var(--papel)}
 .pie a{color:inherit}
-.redactar+.pie{padding-top:0}
+.chat-inferior+.pie{padding-top:0}
+.chat-inferior{flex:0 0 auto;min-width:0;display:flex;flex-direction:column;background:var(--papel)}
+/* En computadoras, WhatsApp se alinea con el campo de mensaje y Enviar pedido. */
+@media(min-width:621px){
+  .chat-inferior{
+    display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-rows:auto auto;gap:0 8px;align-items:center;
+    padding:8px 10px;border-top:1px solid var(--linea)
+  }
+  .chat-inferior .barra-pedido{display:contents}
+  .chat-inferior .barra-pedido[hidden]{display:none!important}
+  .chat-inferior .barra-resumen{grid-column:1/-1;grid-row:1;padding:0 2px 8px}
+  .chat-inferior .redactar{grid-column:1;grid-row:2;min-width:0;border:0;padding:0}
+  .chat-inferior .chat-whatsapp{grid-column:2;grid-row:2}
+  .chat-inferior #btn-finalizar{grid-column:3;grid-row:2}
+}
+
 
 /* Hojas (carta, producto, pedido, datos) */
 .fondo-hoja{position:fixed;inset:0;background:rgba(28,25,23,.45);z-index:10;animation:aparecer .15s ease}
@@ -585,28 +601,32 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
   .mensajes:has(.chat-bienvenida):not(:has(.burbuja.cliente)) .chips .chip{font-size:13.5px}
 }
 
-/* Canal externo opcional. En esquina inferior derecha, dentro del ancho del chat:
-   nunca sustituye al pedido interno ni invade el encabezado o el editor. */
+/* Contacto externo en la barra del pedido, junto a la acción principal.
+   Sin posicionamiento flotante: no tapa el envío ni el texto del cliente. */
+.barra-pedido{flex-wrap:wrap;justify-content:flex-end;gap:10px}
 .chat-whatsapp{
-  position:fixed;z-index:3;
-  right:max(12px,calc((100vw - 720px)/2 + 12px));
-  bottom:calc(94px + env(safe-area-inset-bottom, 0px));
-  width:44px;height:44px;border:0;border-radius:50%;
-  display:grid;place-items:center;color:#fff;background:transparent;
-  text-decoration:none;-webkit-tap-highlight-color:transparent;
+  position:static;z-index:auto;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-width:124px;min-height:44px;padding:9px 13px;
+  border:1px solid #137c3d;border-radius:12px;
+  background:#168c49;color:#fff;font-size:14.5px;font-weight:700;
+  text-decoration:none;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
 }
-.chat-whatsapp svg{
-  width:34px;height:34px;padding:7px;border-radius:50%;
-  fill:currentColor;stroke:none;background:#25d366;
-  box-shadow:0 3px 10px rgba(20,55,40,.18);
-}
-.chat-whatsapp:hover svg{background:#20ba59}
+.chat-whatsapp svg{width:24px;height:24px;fill:currentColor;stroke:none;flex:none}
+.chat-whatsapp:hover{background:#116f3a}
 .chat-whatsapp:focus-visible{outline:3px solid #116e3b;outline-offset:2px}
-body:has(.hoja:not([hidden])) .chat-whatsapp,
-body:has(.redactar:focus-within) .chat-whatsapp{visibility:hidden;pointer-events:none}
+.barra-pedido #btn-finalizar{flex:0 0 auto;white-space:nowrap}
+body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:none}
 @media(max-width:620px){
-  /* El editor móvil ocupa dos filas: mantener el contacto por ENCIMA del editor. */
-  .chat-whatsapp{bottom:calc(174px + env(safe-area-inset-bottom, 0px))}
+  .barra-pedido{gap:8px;padding:8px 10px}
+  .barra-pedido .barra-resumen{flex:1 1 100%;min-height:36px}
+  .barra-pedido #btn-finalizar{min-height:48px}
+  .chat-whatsapp{min-height:48px}
+}
+@media(max-width:350px){
+  .chat-whatsapp{min-width:48px;padding:9px 12px}
+  .chat-whatsapp span{display:none}
 }
 /* Cancelación segura y opciones de venta posteriores. */
 .confirmar-cancelacion{display:grid;gap:12px;padding:8px 0 14px}

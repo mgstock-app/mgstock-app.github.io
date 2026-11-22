@@ -1,28 +1,36 @@
 /* global cy, describe, it, expect */
 describe('Prueba GESTLOK Chat · circuito ficticio vinculado',()=>{
   for(const ancho of [390,1100]){
-    it('WhatsApp abajo a la derecha sin tapar el editor ('+ancho+' px)',()=>{
+    it('WhatsApp a la izquierda de Enviar pedido, sin tapar el editor ('+ancho+' px)',()=>{
       cy.viewport(ancho,800);
       cy.visit('/chat/?demo=1&showroom=1');
       cy.get('#app').should('have.attr','aria-busy','false');
-      // La demo oculta el contacto externo; mostrar el elemento solo para probar el CSS.
+      // La demo no tiene WhatsApp real. Habilitar la barra solo para revisar la disposición.
+      cy.get('#barra-pedido').invoke('removeAttr','hidden');
+      cy.get('#btn-finalizar').invoke('removeAttr','hidden');
       cy.get('#whatsapp-local')
         .invoke('attr','href','https://wa.me/5491155551234')
         .invoke('removeAttr','hidden')
         .should('be.visible')
+        .and('contain.text','WhatsApp')
         .then($link=>{
           const rect=$link[0].getBoundingClientRect();
-          const app=$link[0].ownerDocument.querySelector('#app').getBoundingClientRect();
-          const editor=$link[0].ownerDocument.querySelector('.redactar').getBoundingClientRect();
-          expect(rect.width).to.eq(44);
-          expect(rect.height).to.eq(44);
-          expect(rect.left).to.be.greaterThan(app.left);
+          const doc=$link[0].ownerDocument;
+          const app=doc.querySelector('#app').getBoundingClientRect();
+          const editor=doc.querySelector('.redactar').getBoundingClientRect();
+          const enviar=doc.querySelector('#btn-finalizar').getBoundingClientRect();
+          expect(rect.width).to.be.greaterThan(110);
+          expect(rect.height).to.be.at.least(44);
+          expect(rect.left).to.be.at.least(app.left);
           expect(rect.right).to.be.at.most(app.right);
-          expect(app.right-rect.right).to.be.lessThan(50);
-          expect(rect.bottom).to.be.at.most(editor.top-4);
+          expect(rect.right).to.be.at.most(enviar.left);
+          expect(Math.abs(rect.top-enviar.top)).to.be.lessThan(6);
+          if(ancho<=620) expect(rect.bottom).to.be.at.most(editor.top+1);
+          else expect(Math.abs(rect.top-editor.top)).to.be.lessThan(10);
         });
       cy.get('#texto').focus();
-      cy.get('#whatsapp-local').should('not.be.visible');
+      // Como es una acción en su propia fila, ya no es necesario ocultarla al escribir.
+      cy.get('#whatsapp-local').should('be.visible');
     });
   }
 

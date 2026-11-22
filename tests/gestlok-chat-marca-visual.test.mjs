@@ -36,11 +36,11 @@ test('navegadores cargan nueva marca sin alterar pedidos ni acceso a WhatsApp',(
   const page=read('public/chat/index.html');
   const script=read('public/chat/chat.js');
   const css=read('public/chat/chat.css');
-  assert.match(page, /chat\/chat\.css\?v=20261121bordes1/);
+  assert.match(page, /chat\/chat\.css\?v=20261122acciones1/);
   assert.match(page, /chat\/chat\.js\?v=20261121marca1/);
   assert.match(page, /chat\/gestlok-monograma\.svg" type="image\/svg\+xml"/);
   assert.match(page, /id="whatsapp-local" class="chat-whatsapp"/);
-  assert.match(css, /right:max\(12px,calc\(\(100vw - 720px\)\/2 \+ 12px\)\)/);
+  assert.match(css, /\.chat-whatsapp\{[\s\S]*?position:static/);
   assert.match(script, /'https:\/\/wa\.me\/' \+ telefono/);
 });
 
@@ -74,7 +74,7 @@ test('el fondo y los bordes laterales se distinguen en escritorio sin afectar la
   assert.match(css, /background-color:#eaf0f6/);
   assert.match(css, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
   assert.match(panel, /wallpaper-gestlok\.svg\?v=20261121contraste1/);
-  assert.match(page, /chat\.css\?v=20261121bordes1/);
+  assert.match(page, /chat\.css\?v=20261122acciones1/);
   assert.match(panelPage, /panel\.css\?v=20261121bordes1/);
   assert.match(panelScript, /VERSION_CSS = '20261121bordes1'/);
   assert.match(wallpaper, /stop-color="#cddce9"/);
