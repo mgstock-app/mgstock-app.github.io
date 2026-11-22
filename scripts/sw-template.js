@@ -73,6 +73,11 @@ self.addEventListener('push', event => {
     const body=String(payload.body||'').slice(0,240);
     const route=typeof payload.path==='string' && /^\/(?!\/)[a-zA-Z0-9/_-]{0,120}$/.test(payload.path)
       ? payload.path : '/';
+    // Pedidos confirmados por la base y autorizados por el despacho: marca la PWA en
+    // sistemas compatibles. Android usa la notificación visible para mostrar su punto.
+    if(/^chat_order:[0-9]+$/.test(String(payload.tag||''))){
+      try{await self.navigator?.setAppBadge?.();}catch{/* App Badging no compatible */}
+    }
     await self.registration.showNotification(title,{
       body,icon:BASE+'/icons/gestlok-app-v2-192.png',
       badge:BASE+'/icons/gestlok-favicon-v2-32.png',
