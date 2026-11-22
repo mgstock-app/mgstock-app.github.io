@@ -20,6 +20,8 @@ alter table gestlok_munro_conteo_private.products add constraint products_pack_l
 
 alter table gestlok_munro_conteo_private.shifts add column if not exists pack_units jsonb not null default '{}'::jsonb
  check (jsonb_typeof(pack_units)='object');
+alter table gestlok_munro_conteo_private.shifts add column if not exists pack_labels jsonb not null default '{}'::jsonb
+ check (jsonb_typeof(pack_labels)='object');
 -- La equivalencia anterior de cada producto queda fijada, sin tocar data/decomiso.
 update gestlok_munro_conteo_private.shifts s set pack_units=coalesce((
   select jsonb_object_agg(k.id,p.units_per_chapa)
@@ -29,10 +31,24 @@ update gestlok_munro_conteo_private.shifts s set pack_units=coalesce((
   ) k join gestlok_munro_conteo_private.products p on p.id=k.id
  ),'{}'::jsonb)
 where s.pack_units='{}'::jsonb and (s.data<>'{}'::jsonb or s.decomiso<>'{}'::jsonb);
+-- El nombre de la presentación (caja/pack/chapa) también pertenece al turno.
+update gestlok_torcuato_conteo_private.shifts s set pack_labels=coalesce((
+  select jsonb_object_agg(k.id,p.pack_label)
+  from (select key as id from jsonb_object_keys(s.pack_units) as key) k
+  join gestlok_torcuato_conteo_private.products p on p.id=k.id
+ ),'{}'::jsonb)
+where s.pack_labels='{}'::jsonb and s.pack_units<>'{}'::jsonb;
+-- El nombre de la presentación (caja/pack/chapa) también pertenece al turno.
+update gestlok_munro_conteo_private.shifts s set pack_labels=coalesce((
+  select jsonb_object_agg(k.id,p.pack_label)
+  from (select key as id from jsonb_object_keys(s.pack_units) as key) k
+  join gestlok_munro_conteo_private.products p on p.id=k.id
+ ),'{}'::jsonb)
+where s.pack_labels='{}'::jsonb and s.pack_units<>'{}'::jsonb;
 
 create or replace function gestlok_munro_conteo_private.preserve_pack_units()
 returns trigger language plpgsql set search_path='' as $fn$
-declare v_id text;v_per integer;
+declare v_id text;v_per integer;v_label text;v_label text;
 begin
  for v_id in select key from (
   select key from jsonb_object_keys(new.data) as key
@@ -43,6 +59,10 @@ begin
      if v_per is not null then
        new.pack_units:=jsonb_set(new.pack_units,array[v_id],to_jsonb(v_per),true);
      end if;
+   end if;
+   if not new.pack_labels ? v_id then
+     select p.pack_label into v_label from gestlok_munro_conteo_private.products p where p.id=v_id;
+     if v_label is not null then new.pack_labels:=jsonb_set(new.pack_labels,array[v_id],to_jsonb(v_label),true); end if;
    end if;
  end loop;
  return new;
@@ -446,6 +466,8 @@ alter table gestlok_torcuato_conteo_private.products add constraint products_pac
 
 alter table gestlok_torcuato_conteo_private.shifts add column if not exists pack_units jsonb not null default '{}'::jsonb
  check (jsonb_typeof(pack_units)='object');
+alter table gestlok_torcuato_conteo_private.shifts add column if not exists pack_labels jsonb not null default '{}'::jsonb
+ check (jsonb_typeof(pack_labels)='object');
 -- La equivalencia anterior de cada producto queda fijada, sin tocar data/decomiso.
 update gestlok_torcuato_conteo_private.shifts s set pack_units=coalesce((
   select jsonb_object_agg(k.id,p.units_per_chapa)
@@ -469,6 +491,10 @@ begin
      if v_per is not null then
        new.pack_units:=jsonb_set(new.pack_units,array[v_id],to_jsonb(v_per),true);
      end if;
+   end if;
+   if not new.pack_labels ? v_id then
+     select p.pack_label into v_label from gestlok_torcuato_conteo_private.products p where p.id=v_id;
+     if v_label is not null then new.pack_labels:=jsonb_set(new.pack_labels,array[v_id],to_jsonb(v_label),true); end if;
    end if;
  end loop;
  return new;
