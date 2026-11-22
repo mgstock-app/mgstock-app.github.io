@@ -22,6 +22,12 @@ describe('Identidad Mi Gusto para el equipo autorizado',()=>{
     cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});
     cy.visit('/login/');cy.wait('@mockSupabase');
     cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
+    // El mock puede cargarse después de la portada. La animación no implica que
+    // el controlador ni los datos de prueba ya estén inicializados.
+    cy.window().should(w=>{
+      expect(w.__rows,'catálogo ficticio de usuarios').to.be.an('array');
+      expect(w.GestLokNavContext,'controlador de locales cargado').to.be.a('function');
+    });
     cy.get('.gestlok-company-identity').should('not.exist');
   });
   it('ambos locales: el dueño ve logo y eslogan en inicio y dentro del local',()=>{
