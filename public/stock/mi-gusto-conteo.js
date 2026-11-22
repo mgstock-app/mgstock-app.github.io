@@ -1902,7 +1902,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',async e=>{
  const input=e.target,root=input.closest?.('.gcm-page');
  if(!root||!allowed())return;
- if(input.hasAttribute('data-gcm-new-product-type')||input.hasAttribute('data-gcm-product-config-type')){
+ if(input.hasAttribute?.('data-gcm-new-product-type')||input.hasAttribute?.('data-gcm-product-config-type')){
   const add=input.hasAttribute('data-gcm-new-product-type');
   const dialog=input.closest(add?'.gcm-add-product-dialog':'.gcm-product-config-dialog');
   const wrap=dialog?.querySelector(add?'[data-gcm-new-product-pack-wrap]':'[data-gcm-product-config-pack-wrap]');
