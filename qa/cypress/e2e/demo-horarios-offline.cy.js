@@ -33,7 +33,12 @@ describe('GESTLOK · demo de Horarios y modo sin conexión', () => {
     cy.get('#gl-demo-emp input[value="propio"]').check({force:true});
     cy.get('#gl-demo-emp').should('contain.text', 'Subir mi Excel (.xlsx)').and('contain.text', 'Usar mi Google Sheets');
     // Separar la edición de Sheets de la lectura asíncrona del archivo Excel.
-    cy.get('#gl-dh-url', {timeout:10000}).should('be.enabled').type('https://docs.google.com/spreadsheets/d/EJEMPLO_123/edit');
+    // El cambio de plantilla reconstruye el modal; comprobamos que el campo sigue habilitado
+    // y completamos el valor sin depender de la secuencia de teclas del runner Cypress.
+    const sheetDemoUrl='https://docs.google.com/spreadsheets/d/EJEMPLO_123/edit';
+    cy.get('#gl-dh-url', {timeout:10000}).should('be.visible').and('be.enabled')
+      .and('not.have.attr','readonly').invoke('val',sheetDemoUrl).trigger('input')
+      .should('have.value',sheetDemoUrl);
     cy.get('#gl-dh-link button[type=submit]').click();
     cy.get('#gl-demo-emp').should('contain.text', 'Enlace guardado en esta demo');
     cy.get('#gl-dh-file').selectFile('../public/plantillas/GESTLOK-plantilla-horarios.xlsx', {force:true});
