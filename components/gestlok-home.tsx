@@ -10,7 +10,7 @@ const SUPABASE_URL = "https://vgsepaaewbctjsjcpeta.supabase.co";
 const SUPABASE_ANON =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnc2VwYWFld2JjdGpzamNwZXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1NDEwNjEsImV4cCI6MjEwODExNzA2MX0.WFeUP95DJAOOsiZ5BbBvqT1QURmA5KJLDjlDpwuU838";
 
-// Cuadros del carrusel: pantallas reales de GESTLOK Chat (carta y local reales de Mi Gusto Munro).
+// Cuadros del carrusel: pantallas de GESTLOK Chat con un local, productos, precios y cliente ficticios («Sabores del Barrio»).
 const CUADROS: ReadonlyArray<{ img: string; titulo: string; texto: string; alt: string }> = [
   { img: "1-bienvenida", titulo: "Tu cliente entra y pide", alt: "Pantalla de bienvenida del chat de un local con el botón Hacer un pedido",
     texto: "Abre el chat de tu local desde un enlace o un QR y toca «Hacer un pedido». Sin descargar nada." },
@@ -209,7 +209,7 @@ export function GestlokHome() {
           <div className="glh-apps-cab">
             <div>
               <h2 id="glh-como-titulo">Así funciona GESTLOK Chat</h2>
-              <p>Pantallas reales de un local que ya lo usa.</p>
+              <p>Pantallas de GESTLOK Chat. Local, productos y precios de ejemplo.</p>
             </div>
             <div className="glh-car-ctrl">
               <button type="button" className="glh-btn glh-btn-claro glh-flecha" aria-label="Cuadro anterior" onClick={() => irA((actual + CUADROS.length - 1) % CUADROS.length)}>
