@@ -7,6 +7,8 @@ declare
   v_s uuid;
   v_c uuid;
   v_reclamo uuid;
+  v_mensaje bigint;
+  v_foto text;
   v_hash bytea := digest('gestlok-chat-qa-24h-test-20261122','sha256');
   v_r jsonb;
   v_m integer;
@@ -21,7 +23,11 @@ begin
          now()-interval '25 hours',now()-interval '25 hours')
   returning id into v_c;
   insert into gestlok_chat_private.mensajes(conversacion_id,rol,texto,creado_at)
-  values(v_c,'cliente','Mensaje temporal a limpiar',now()-interval '25 hours');
+  values(v_c,'cliente','Mensaje temporal a limpiar',now()-interval '25 hours')
+  returning id into v_mensaje;
+  v_foto:=v_s::text||'/'||v_c::text||'/00000000-0000-4000-8000-000000000123.jpg';
+  insert into gestlok_chat_private.adjuntos(mensaje_id,tenant_id,sucursal_id,conversacion_id,path,mime,bytes)
+  values(v_mensaje,v_t,v_s,v_c,v_foto,'image/jpeg',1000);
   insert into gestlok_chat_private.reclamos(tenant_id,sucursal_id,conversacion_id,tipo,detalle)
   values(v_t,v_s,v_c,'otro','El cliente informó un problema en su pedido')
   returning id into v_reclamo;
@@ -34,8 +40,12 @@ begin
   select ciclo into v_ciclo from gestlok_chat_private.conversaciones where id=v_c;
   if v_ciclo<>2 then raise exception 'No inició un ciclo independiente'; end if;
   if not exists(select 1 from gestlok_chat_private.reclamos
-      where id=v_reclamo and estado='pendiente' and ciclo=1) then
-    raise exception 'El reclamo anterior desapareció';
+      where id=v_reclamo and estado='pendiente' and ciclo=1
+        and v_foto=any(evidencia_paths)) then
+    raise exception 'El reclamo o su evidencia anterior desaparecieron';
+  end if;
+  if exists(select 1 from gestlok_chat_private.adjuntos where conversacion_id=v_c) then
+    raise exception 'Se conservaron metadatos temporales de las fotos';
   end if;
 
   v_r:=public.gestlok_chat_srv_respuestas(v_c,v_hash,0);
