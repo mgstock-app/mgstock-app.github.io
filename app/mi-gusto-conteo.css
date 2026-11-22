@@ -279,12 +279,6 @@
 .gcm-history-detail-button:hover{background:#234e77}
 .gcm-history-no-data{color:#8190a0;font-size:12px;font-style:italic}
 .gcm-history-empty{font-size:13px;color:#60758b;border:1px dashed #cbd7e5;border-radius:8px;padding:22px;text-align:center}
-.gcm-history-legacy{margin:18px 0 0;padding:18px;border:1px solid #dce5ef;border-radius:10px;background:#f7f9fc}
-.gcm-history-legacy h3{font-size:16px;color:#12345a;margin:0 0 6px}
-.gcm-history-legacy p{font-size:13px;line-height:1.5;color:#51657b;margin:0 0 13px}
-.gcm-history-legacy button{min-height:41px;padding:9px 16px;background:#12345a;border:1px solid #12345a;border-radius:8px;color:white;font-size:13px;font-weight:750;cursor:pointer}
-.gcm-history-legacy button:hover{background:#234e77}
-
 .gcm-history-detail .gcm-history-top{margin-bottom:14px}
 .gcm-hd-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px 15px;background:#edf3fa;border:1px solid #dde7f2;padding:11px 13px;border-radius:8px;color:#173b5b;font-size:13px;margin-bottom:9px}
 .gcm-hd-meta>strong{font-size:16px}
