@@ -1626,6 +1626,44 @@ document.addEventListener('change',async e=>{
    if(input.id==='gcm-history-fix-vto')historyEditVto=Number(input.value)||1;
    historyCorrectionError='';api.render();return;
  }
+ // Confirmación manual por producto. Un campo sin registrar no equivale a cero.
+ if(input.hasAttribute('data-gcm-sin-stock')){
+  const p=productById(input.dataset.gcmSinStock);
+  const record=entry();
+  const previous=p?manualSinStock(record,p.id):false,desired=!!input.checked;
+  if(!p||!editable()||closed()||historyMode||!snapshot||busy||recordedTotal(record,p)>0&&desired){
+   input.checked=previous;
+   if(p&&recordedTotal(record,p)>0&&desired)api.toast?.('Este producto tiene cantidades. No se puede marcar Sin stock.');
+   return;
+  }
+  if(desired===previous)return;
+  const atDay=day,atShift=shift,atLocal=activeLocal(),atGeneration=generation;
+  const row=input.closest?.('tr'),status=row?.querySelector?.('.gcm-cell-save');
+  busy=true;input.disabled=true;
+  if(status){status.textContent='Guardando…';status.className='gcm-cell-save is-saving';}
+  try{
+   const confirmation=await rpc('gestlok_munro_conteo_sin_stock',{
+    p_day:atDay,p_shift:atShift,p_product:p.id,p_sin_stock:desired,
+    p_expected:previous
+   });
+   if(!confirmation?.ok)throw Error('El servidor no confirmó Sin stock.');
+   if(atLocal!==activeLocal()||atGeneration!==generation||atDay!==day||atShift!==shift)return;
+   const draft=draftRecord();
+   draft.data=draft.data||{};
+   draft.data[p.id]={...(draft.data[p.id]||{}),sin_stock:desired};
+   const total=recordedTotal(draft,p),cell=row?.querySelector?.('.gcm-total');
+   if(cell){cell.textContent=stockLabel(draft,p.id,total);cell.classList?.toggle?.('is-no-stock',desired&&total===0);}
+   if(status){status.textContent='✓ Guardado';status.className='gcm-cell-save is-saved';}
+  }catch(err){
+   input.checked=previous;
+   if(status){status.textContent='No guardado';status.className='gcm-cell-save is-error';}
+   api.toast?.(err.message||'No se pudo guardar Sin stock.');
+  }finally{
+   busy=false;
+   input.disabled=!!(p&&recordedTotal(entry(),p)>0);
+  }
+  return;
+ }
  if(input.id==='gcm-responsable'){
   if(!editable()||closed()||busy||!snapshot)return;
   const name=input.value;
