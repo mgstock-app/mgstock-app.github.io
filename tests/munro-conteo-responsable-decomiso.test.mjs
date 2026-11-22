@@ -34,7 +34,7 @@ async function renderReady(visible){
 test('local fijo Munro, fecha del día argentino y selector de responsables',async()=>{
  const {html}=await renderReady(true);
  assert.match(html,/<strong>Munro<\/strong>/);
- assert.match(html,/class="gcm-field-responsable">Responsable/);
+ assert.match(html,/class="gcm-finalize-responsable" for="gcm-responsable"/);
  for(const name of ['Cami','Shuli','Tizi'])assert.match(html,new RegExp('value="'+name+'"'));
  assert.match(html,/<option value="Shuli" selected>Shuli<\/option>/);
  assert.match(html,/class="gcm-field-fecha"><span>Fecha<\/span>/);

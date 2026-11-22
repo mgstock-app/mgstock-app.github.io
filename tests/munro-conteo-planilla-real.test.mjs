@@ -264,7 +264,7 @@ test('hoja de carga: metadatos compactos sin botones de turnos; Historial conser
  assert.match(html,/class="gcm-header gcm-header-compact"/);
  assert.match(html,/class="gcm-header-fields gcm-header-fields-compact"/);
  assert.match(html,/<span>Local<\/span><strong>Munro<\/strong>/);
- assert.match(html,/class="gcm-field-responsable">Responsable <select id="gcm-responsable"/);
+ assert.match(html,/class="gcm-finalize-responsable" for="gcm-responsable"/);
  assert.match(html,/class="gcm-field-fecha"><span>Fecha<\/span>/);
  assert.doesNotMatch(html,/gcm-day-bar|Recuperar conteo|data-gcm-day=/);
  assert.doesNotMatch(html,/data-gcm-shift=|<nav class="gcm-tabs"/);
