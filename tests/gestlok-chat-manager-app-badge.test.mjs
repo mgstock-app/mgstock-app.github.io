@@ -56,7 +56,7 @@ test('el badge de gerentes cuenta SOLO pedidos reales avisables de locales asign
  await central._test.consultar();
  assert.ok(clears.length>=1,'sin pedidos reales pendientes elimina la insignia');
  central.reset();
- assert.equal(clears.length>=2,'cambiar de local o cerrar la sesión limpia el badge');
+ assert.ok(clears.length>=2,'cambiar de local o cerrar la sesión limpia el badge');
 });
 
 test('propietarios, colaboradores y gerentes sin permisos no reciben badge numérico',async()=>{
