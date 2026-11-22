@@ -49,7 +49,7 @@ for(const [local,options,other] of [
   assert.equal((html.match(/data-gcm-finalize/g)||[]).length,1);
   assert.match(html,/Responsable<\/span><strong>Cami<\/strong>/);
   assert.match(html,/gcm-category-nav-head/);
-  assert.match(html,/data-gcm-category-close aria-label="Ocultar categorías"/);
+  assert.match(html,/data-gcm-category-close aria-label="Plegar categorías"/);
  });
  test(local+': guardar responsable usa únicamente RPC del local y aparece en historial',async()=>{
   const ctx=mount(local);ctx.mod.view();await tick();
@@ -63,9 +63,9 @@ for(const [local,options,other] of [
  });
 }
 
-test('el − oculta categorías, el + las recupera y no guarda ni modifica cantidades',async()=>{
+test('la flecha cierra y vuelve a desplegar Categorías sin guardar ni cambiar cantidades',async()=>{
  const ctx=mount('munro');ctx.mod.view();await tick();
- const classes=new Set(),toggle={textContent:'☰ Categorías',attrs:{},setAttribute(k,v){this.attrs[k]=v;}};
+ const classes=new Set(),toggle={innerHTML:'Categorías <span>▸</span>',attrs:{},setAttribute(k,v){this.attrs[k]=v;}};
  const root={
   classList:{
    contains:s=>classes.has(s),
@@ -87,12 +87,12 @@ test('el − oculta categorías, el + las recupera y no guarda ni modifica canti
  const before=ctx.calls.length;
  await click({target:makeButton('data-gcm-category-close')});
  assert.equal(classes.has('is-category-nav-collapsed'),true);
- assert.equal(toggle.textContent,'+ Categorías');
+ assert.match(toggle.innerHTML,/Categorías .*▸/);
  assert.match(ctx.mod.view(),/gcm-count-screen is-category-nav-collapsed/);
- const plus=makeButton('data-gcm-category-toggle');
- await click({target:plus});
+ const arrow=makeButton('data-gcm-category-toggle');
+ await click({target:arrow});
  assert.equal(classes.has('is-category-nav-collapsed'),false);
- assert.equal(plus.textContent,'☰ Categorías');
+ assert.match(arrow.innerHTML,/Categorías .*▾/);
  assert.doesNotMatch(ctx.mod.view(),/gcm-count-screen is-category-nav-collapsed/);
  assert.equal(ctx.calls.length,before,'el desplegable no debe escribir en Supabase');
 });
