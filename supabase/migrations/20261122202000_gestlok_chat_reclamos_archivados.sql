@@ -10,7 +10,7 @@ begin
     'historial_expirado',c.reiniciada_at>r.creado_at,
     'ultimo',(case when r.ciclo=c.ciclo then (select m.texto from gestlok_chat_private.mensajes m
       where m.conversacion_id=r.conversacion_id
-        and m.creado_at>=c.reiniciada_at order by m.id desc limit 1) else null end)
+        and m.creado_at>=c.reiniciada_at order by m.id desc limit 1) else null end))
     order by case when r.estado='pendiente' then 0 else 1 end, r.actualizado_at desc)
     from (select * from gestlok_chat_private.reclamos
       where sucursal_id=p_sucursal
