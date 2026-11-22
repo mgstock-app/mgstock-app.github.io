@@ -1,4 +1,10 @@
-/* global describe,it,cy,expect */
+/* global describe,it,cy,expect,Cypress */
+// Mismo aviso de hidratación #418 que ya exceptúan otras pruebas del HTML de GESTLOK en Cypress;
+// cualquier otro error sigue haciendo fallar la prueba.
+Cypress.on('uncaught:exception',error=>{
+  if(/Minified React error #418/.test(error?.message||'')&&/react\.dev\/errors\/418/.test(error?.message||''))return false;
+  return undefined;
+});
 describe('GESTLOK · rutas absolutas desde la portada /login',()=>{
   it('los recursos del inicio se resuelven en la raíz y no dentro de /login/',()=>{
     cy.viewport(390,844);
