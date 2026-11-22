@@ -62,13 +62,19 @@ test('El 14/11 no se renombra en el historial de Torcuato',()=>{
 });
 test('Cambio de sucursal reinicia memoria, usa el RPC nuevo y no reutiliza conteos',async()=>{
  const x=mount({local:'munro',role:'dueno',access:['munro','torcuato']});
- x.mod.view();await tick();assert.match(x.mod.view(),/Munro producto/);
+ x.mod.view();await tick();await tick();
+ assert.match(x.mod.view(),/MI GUSTO · MUNRO/);
+ assert.doesNotMatch(x.mod.view(),/Munro producto|gcm-count-screen/,'Dueña solo consulta historial');
  x.S.local='torcuato';x.mod.reset();
  // El backend cambia por local, no por los datos cargados anteriormente.
  x.state.products=[{id:'t1',name:'Solo Don Torcuato',section:'EMPANADAS',units_per_chapa:30,position:100,active:true}];
- x.mod.view();await tick();const view=x.mod.view();
- assert.match(view,/Solo Don Torcuato/);assert.doesNotMatch(view,/Munro producto/);
- assert.deepEqual(x.calls.map(c=>c.name),['gestlok_munro_conteo_state','gestlok_torcuato_conteo_state']);
+ x.mod.view();await tick();await tick();const view=x.mod.view();
+ assert.match(view,/MI GUSTO · DON TORCUATO/);
+ assert.doesNotMatch(view,/Munro producto|gcm-count-screen/);
+ assert.deepEqual(x.calls.filter(c=>c.name.endsWith('_state')).map(c=>c.name),
+  ['gestlok_munro_conteo_state','gestlok_torcuato_conteo_state']);
+ assert.deepEqual(x.calls.filter(c=>c.name.endsWith('_history')).map(c=>c.name),
+  ['gestlok_munro_conteo_history','gestlok_torcuato_conteo_history']);
 });
 test('Un gerente de Munro no puede abrir Conteo de Torcuato ni viceversa',()=>{
  assert.equal(mount({local:'torcuato',access:['munro']}).mod.permitido(),false);
