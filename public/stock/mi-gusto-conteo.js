@@ -27,7 +27,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
  // El campo de almacenamiento se llama chapas, pero en Helados y Caja Palito
  // el conteo debe decir «caja» sin modificar el formato del servidor.
  const packWord=p=>p?.units_per_chapa===45&&/caja palito/i.test(p.name)||
-  p?.units_per_chapa>0&&/^(franui|le\s*banana)/i.test(p?.name||'')?'caja':'chapa';
+  p?.units_per_chapa>0&&/^(franui|pink|le\s*banana)/i.test(p?.name||'')?'caja':'chapa';
 const arDay=()=>{const v=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const n=k=>v.find(t=>t.type===k)?.value||'';return n('year')+'-'+n('month')+'-'+n('day');};
 const labelDay=s=>{const a=String(s||'').split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:'—';};
 function plusDays(s,n){const d=new Date(s+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
@@ -446,7 +446,10 @@ function historyDetailsTable(section,products,rec){
   const total=amount(p,{chapas,sueltas,qty});
   if(!total)return '<td class="gcm-hd-qty">—</td>';
   const pack=packWord(p);
-  const parts=p.units_per_chapa>0&&chapas?'<small>'+chapas+' '+pack+(chapas===1?'':'s')+(sueltas?' + '+sueltas+' u.':'')+'</small>':'';
+  const loose=sueltas+(p.units_per_chapa>0?qty:0);
+  const parts=p.units_per_chapa>0&&(chapas||loose)?
+   '<small>'+(chapas?chapas+' '+pack+(chapas===1?'':'s'):'')+
+    (loose?(chapas?' + ':'')+loose+' u.':'')+'</small>':'';
   return '<td class="gcm-hd-qty"><strong>'+total+'</strong>'+parts+'</td>';
  };
  const rows=products.map(p=>{
@@ -494,7 +497,8 @@ function historyCorrectionPanel(rec){
  const idx=kind==='decomiso'?0:historyEditVto;
  const prev=kind==='cell'?rec.data?.[p?.id]?.['v'+idx]:
   kind==='decomiso'?rec.decomiso?.[p?.id]:null;
- const value={chapas:Number(prev?.chapas)||0,sueltas:Number(prev?.sueltas)||0,qty:Number(prev?.qty)||0};
+ const value={chapas:Number(prev?.chapas)||0,sueltas:(Number(prev?.sueltas)||0)+(p?.units_per_chapa>0?(Number(prev?.qty)||0):0),
+  qty:p?.units_per_chapa>0?0:(Number(prev?.qty)||0)};
  const input=(field,label,max)=>'<label>'+label+'<input type="number" min="0" max="'+max+
   '" step="1" inputmode="numeric" data-gcm-history-number="'+field+'" value="'+value[field]+'" required></label>';
  const list=kind==='consumption'?Array.from({length:10},(_,i)=>rec.consumption?.[i]||{name:'',value:''}):
