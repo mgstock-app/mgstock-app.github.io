@@ -32,6 +32,13 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+    // La dueña de Mi Gusto consulta las hojas reales y el historial desde accesos explícitos.
+    // Revertir sólo estos seis fragmentos revisados; el SHA del stock original no cambia.
+    const inventoryHooks=JSON.parse(read('tests/mi-gusto-duena-inventory-hooks.json')).hooks;
+    for(const {actual,original} of inventoryHooks){
+      assert.equal(content.split(actual).length-1,1,'Hook auditado de consulta de inventario para dueña');
+      content=content.replace(actual,original);
+    }
     // Menú lateral de categorías exclusivamente visual para Stock Local de Mi Gusto.
     // Se revierten SOLO estos fragmentos auditados antes de verificar el SHA histórico.
     const reviewedStockSidebar=[
