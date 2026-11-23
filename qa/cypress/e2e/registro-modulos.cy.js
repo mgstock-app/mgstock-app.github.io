@@ -8,28 +8,41 @@ function launch(){
 function login(email){cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();}
 describe('Registro por módulos · solicitud sin conceder permisos',()=>{
   Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
-  for(const [choice,modules] of Object.entries({empleados:['recibos_personal'],empresa:['comercial'],ambas:['comercial','recibos_personal']})){
-    it(`registra la opción ${choice}, la conserva al confirmar y espera autorización`,()=>{
-      launch();cy.get('[data-au="up"]').click();
-      cy.get('#gl-signup-kind').select('dueno');cy.get('#gl-signup-modules').should('be.visible').select(choice);
-      const email=`dueno-${choice}@example.invalid`;
-      cy.get('#au-email2').type(email);cy.get('#au-pass2').type('secreto1',{log:false});cy.get('#au-pass3').type('secreto1',{log:false});
-      cy.get('#au-up button[type="submit"]').click();
-      cy.window().its('__signup.options.data.gestlok_registration').should('deep.equal',{kind:'dueno',choice});
-      login(email);
-      cy.get('#gl-registration-request [data-registration-status]').should('contain.text','Solicitud guardada');
-      cy.get('#gl-request-modules').should('have.value',choice);
-      cy.window().its('__rows').should(rows=>{
-        const row=rows.find(r=>r.col==='registration_requests'&&r.id===email);
-        expect(row.data.tipoCuenta).to.eq('dueno');expect(row.data.modulosSolicitados).to.deep.eq(modules);
-        expect(rows.some(r=>r.col==='equipo'&&r.id===email)).to.eq(false);
-      });
-      cy.get('[data-mode="pend"]').should('be.visible');cy.get('#app').should('not.be.visible');
+  it('el alta pública ofrece solo GESTLOK Chat y pide el rubro escrito cuando es «Otro»',()=>{
+    launch();cy.get('[data-au="up"]').click();
+    cy.get('#gl-signup-kind option').then(o=>expect([...o].map(x=>x.textContent)).to.include('Soy gerente de un local'));
+    cy.get('#gl-signup-kind').select('dueno');
+    cy.get('[data-registration-module-field]').should('not.be.visible');
+    cy.contains('Administración de empleados').should('not.exist');
+    cy.get('#gl-signup-negocio').should('be.visible');
+    cy.get('#gl-signup-rubro-otro').should('not.be.visible');
+    cy.get('#gl-signup-rubro').select('otro');cy.get('#gl-signup-rubro-otro').should('be.visible').and('have.attr','required');
+    cy.get('[data-registration-google]').should('be.visible');
+  });
+  it('gerente: se registra con el código privado del local y espera que el dueño lo acepte',()=>{
+    launch();cy.get('[data-au="up"]').click();
+    cy.get('#gl-signup-kind').select('colaborador');
+    cy.get('#gl-signup-negocio').should('not.be.visible');
+    cy.get('#gl-signup-codigo').should('be.visible').type('k7pa-3qxm');
+    const email='gerente-codigo@example.invalid';
+    cy.get('#au-email2').type(email);cy.get('#au-pass2').type('secreto1',{log:false});cy.get('#au-pass3').type('secreto1',{log:false});
+    cy.get('#au-up button[type="submit"]').click();
+    login(email);
+    cy.get('#gl-registration-request [data-registration-status]').should('contain.text','Solicitud enviada a Mi Gusto · Munro');
+    cy.window().its('__rows').should(rows=>{
+      const row=rows.find(r=>r.col==='registration_requests'&&r.id===email);
+      expect(row.data.tipoCuenta).to.eq('colaborador');expect(row.data.negocio.tipo).to.eq('gerente');
+      expect(rows.some(r=>r.col==='equipo'&&r.id===email)).to.eq(false);
     });
-  }
+    cy.get('[data-mode="pend"]').should('be.visible');cy.get('#app').should('not.be.visible');
+  });
+  it('ingreso: recordar el email se puede apagar',()=>{
+    launch();cy.get('[data-registration-recordar]').should('be.checked').uncheck();
+    cy.window().then(w=>expect(w.localStorage.getItem('gestlok:no-recordar-email')).to.eq('1'));
+  });
   it('GESTLOK Chat: pide los datos del comercio, los envía al confirmar y no da acceso',()=>{
     launch();cy.get('[data-au="up"]').click();
-    cy.get('#gl-signup-kind').select('dueno');cy.get('#gl-signup-modules').select('chat');
+    cy.get('#gl-signup-kind').select('dueno');
     cy.get('#gl-signup-negocio').should('be.visible').type('La Esquina Pizzería');
     cy.get('#gl-signup-rubro').select('gastronomia');cy.get('#gl-signup-localidad').type('Vicente López');
     const email='dueno-chat@example.invalid';
@@ -49,7 +62,7 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
   });
   it('primer ingreso sin preferencia permite elegir y no muestra éxito si falla el guardado',()=>{
     launch();login('nuevo-google@example.invalid');
-    cy.get('#gl-request-kind').should('be.enabled').select('dueno');cy.get('#gl-request-modules').select('ambas');
+    cy.get('#gl-request-kind').should('be.enabled').select('dueno');cy.get('#gl-request-negocio').type('Kiosco Sol');cy.get('#gl-request-rubro').select('almacen');
     cy.window().then(w=>{w.__registrationFail=true;});
     cy.get('#gl-registration-request button[type="submit"]').click();
     cy.get('[data-registration-status]').should('contain.text','No se pudo guardar');

@@ -27,7 +27,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/app.js?rev=stock-local-cierre-0050-20261123",
   ];
   const privateScripts = [
-    "/stock/gestlok-registration.js?rev=chat-altas-20261123",
+    "/stock/gestlok-registration.js?rev=gerentes-20261123",
     "/stock/auth.js?rev=auth-invites-google-20261107",
     "/stock/gestlok-logout.js?rev=logout-profile-menu-20261107",
     "/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108",
@@ -73,7 +73,7 @@ export function StockRuntime() {
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
-      if (!visitor) await load("/stock/gestlok-registration.js?rev=chat-altas-20261123");
+      if (!visitor) await load("/stock/gestlok-registration.js?rev=gerentes-20261123");
       if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
       await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=auth-invites-google-20261107");
       // Perfil seguro: salida dentro de Mi perfil, también accesible para cuentas pendientes.

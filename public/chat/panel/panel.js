@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261121bordes1';
+  const VERSION_CSS = '20261123gerentes1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -871,6 +871,38 @@
     })();
     return caja;
   }
+  // Gerentes del local: código privado para registrarse y aceptar o rechazar a quien lo usó (dueño y administradora).
+  function bloqueGerentes() {
+    const caja = el('section', {class: 'bloque gerentes'});
+    if (DEMO) return null;
+    const pintar = async (renovar = false) => {
+      let g;
+      try { g = await rpc('panel_gerentes', {p_sucursal: S.suc.id, p_renovar: renovar}); }
+      catch (e) { caja.replaceChildren(el('h3', {text: 'Gerentes de este local'}), el('p', {class: 'error', text: e.message})); return; }
+      const resolver = async (r, aceptar) => {
+        if (!confirm(aceptar ? '¿Aceptar a ' + r.email + ' como gerente de ' + S.suc.nombre + '?' : '¿Rechazar a ' + r.email + '?')) return;
+        try { await rpc('panel_gerente_resolver', {p_sucursal: S.suc.id, p_user: r.user_id, p_aceptar: aceptar});
+          aviso(aceptar ? r.email + ' ya es gerente de este local.' : 'Solicitud rechazada.'); pintar(); }
+        catch (e) { aviso(e.message, true); }
+      };
+      const lista = (g.pendientes || []).map(r => el('div', {class: 'fila-gerente'},
+        el('span', {text: (r.nombre ? r.nombre + ' · ' : '') + r.email}),
+        el('button', {type: 'button', class: 'boton principal', text: 'Aceptar', onclick: () => resolver(r, true)}),
+        el('button', {type: 'button', class: 'boton', text: 'Rechazar', onclick: () => resolver(r, false)})));
+      caja.replaceChildren(el('h3', {text: 'Gerentes de este local'}),
+        el('p', {class: 'nota', text: 'Pasale este código privado a tu gerente: se registra en gestlok.com.ar → «Registrarme» → «Soy gerente de un local», y vos lo aceptás acá.'}),
+        el('p', {class: 'codigo-local'}, el('b', {text: g.codigo}), ' ',
+          el('button', {type: 'button', class: 'boton', text: 'Copiar', onclick: async () => {
+            try { await navigator.clipboard.writeText(g.codigo); aviso('Código copiado.'); } catch { aviso('Código: ' + g.codigo); } }}),
+          el('button', {type: 'button', class: 'boton', text: 'Cambiar código', onclick: () => {
+            if (confirm('¿Cambiar el código? El anterior deja de servir para registrarse.')) pintar(true); }})),
+        lista.length ? el('div', {class: 'lista-gerentes'}, el('p', {class: 'nota', text: 'Esperan tu aprobación:'}), ...lista)
+          : el('p', {class: 'nota', text: 'No hay gerentes esperando aprobación.'}));
+    };
+    caja.append(el('h3', {text: 'Gerentes de este local'}), el('p', {class: 'nota', text: 'Cargando…'}));
+    pintar();
+    return caja;
+  }
   async function verAjustes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     let a;
@@ -1045,7 +1077,8 @@
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
     const suscripcion = editable ? bloqueSuscripcion() : null;
-    contenido.replaceChildren(...[suscripcion, form, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
+    const gerentes = editable ? bloqueGerentes() : null;
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
