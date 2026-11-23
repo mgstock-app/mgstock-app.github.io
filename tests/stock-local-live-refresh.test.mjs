@@ -27,6 +27,9 @@ function fixture({ rows, fail = false, draft = {} } = {}){
     withCtx:(_view,fn)=>fn(),
     fPend:()=>S.fdraft.pepperoni?.l !== undefined && S.fdraft.pepperoni.l !== S.allFab[0].local ? [S.allFab[0]] : [],
     onSnapRefresh:()=>events.push(['render']),
+    // Fuera de Mi Gusto (o sin borradores viejos) la limpieza no descarta nada.
+    purgarBorradoresViejos:()=>0,
+    saveDraft:()=>events.push(['saveDraft']),
     toast:(message,error)=>events.push(['toast',message,error]),
     fetch:async(url,options)=>{
       events.push(['fetch',url,options]);

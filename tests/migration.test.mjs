@@ -34,6 +34,13 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     if (path === 'public/stock/app.js') {
     // Normalizar primero SOLO los cambios nuevos y auditados de Stock Local
     // antes de restaurar los hooks previos de lectura para dueña.
+    // Borradores seguros de Stock Local (23/11): se revierten primero porque están encima de los cambios de turnos.
+    const borradoresHooks=JSON.parse(read('tests/stock-local-borradores-hooks.json')).hooks;
+    for(let i=borradoresHooks.length-1;i>=0;i--){
+      const {actual,original}=borradoresHooks[i];
+      assert.equal(content.split(actual).length-1,1,'Cambio revisado de borradores de Stock Local #'+i);
+      content=content.replace(actual,original);
+    }
     const turnosHooks=JSON.parse(read('tests/mi-gusto-stock-local-turnos-hooks.json')).hooks;
     for(let i=turnosHooks.length-1;i>=0;i--){
       const {actual,original}=turnosHooks[i];
