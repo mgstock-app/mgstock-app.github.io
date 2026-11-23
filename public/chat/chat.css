@@ -737,3 +737,10 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
   max-width:100%;
   white-space:normal;
 }
+
+/* Promos: precio con descuento por efectivo con envío, debajo del precio real (amarillo claro). */
+.precio-doble{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.precio-efectivo{display:inline-block;padding:2px 8px;border-radius:8px;background:#FFF3C4;color:#5C4400;font-weight:700;font-size:12.5px;white-space:nowrap}
+.precio-efectivo-detalle{margin:-4px 0 10px;font-size:13.5px}
+.menu-nota-efectivo{margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#FFF8DC;color:#5C4400;font-size:13px;line-height:1.4}
+.menu-editando .menu-nota-efectivo{display:none}
