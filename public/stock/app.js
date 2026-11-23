@@ -468,7 +468,7 @@ function render(){
   // No incluye claves, archivos ni datos de otra cuenta.
   const formScope=[S.me?.tenant_id||'',S.me?.id||S.me?.email||'',S.local,S.view].join('|');
   const formGuard=window.GestLokFormDraftGuard;
-  const preserved=renderedFormScope===formScope?formGuard?.capture($('#view'),formScope,document.activeElement,{legacy:S.view==='ingreso'}):null;
+  const preserved=renderedFormScope===formScope && !stockLocalDuenaServidor()?formGuard?.capture($('#view'),formScope,document.activeElement,{legacy:S.view==='ingreso'}):null;
   const srt = sorted(); S.rn = new Map(srt.map((p,i) => [p.id, i + 1]));
   S.cc = new Map(cats().map(([c], i) => [c, `var(--c${i % 6 + 1})`]));
   const toolsOpen=S.view==='inicio' && !!$('#view .gl-home-essential-settings')?.open;
@@ -2146,7 +2146,7 @@ async function doSaveF(v = S.view, closeTurn = false){
     } else await w(() => C('conteos').add(registro));
     withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
     if (S.panel === 'save' || (closeTurn && S.panel === 'confirm')) closePanel(); render();
-    toast(closeTurn ? 'Guardado exitoso · Turno cerrado y archivado en Historial' : `Guardado exitoso · ${plan.nom}${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}${guardadoLocal() ? ' en este equipo · se envía al volver internet' : ''}`);
+    toast(closeTurn ? 'Guardado exitoso · Turno cerrado y archivado en Historial' : guardadoLocal() ? 'Guardado pendiente de sincronizar · almacenado en este equipo' : `Guardado exitoso · ${plan.nom}${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}`);
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
     if (!navigator.onLine && !syncOffline() && !closeTurn){ S.offline = true; queueSave(v, true); } else fail(e);
@@ -2228,17 +2228,45 @@ function histList(){
 V.historial = () => {
   const head = `${banners()}<div class="bar"><p class="lead">Cada vez que se toca Guardar conteo queda registrado acá, con fecha, hora y qué cambió.</p></div>`;
   if (!S.loaded.c) return head + loadingList();
-  if (!S.conteos.length) return head + noMatch('Todavía no hay conteos guardados', 'Cuando alguien toque Guardar conteo en cualquier hoja, aparece acá.');
+  if (!S.conteos.length) return head + stockLocalTurnoActualHistorial() + noMatch('Todavía no hay conteos guardados', 'Cuando alguien toque Guardar conteo en cualquier hoja, aparece acá.');
   const q = norm(S.histQ), list = histList();
   const keys = [...new Set(S.conteos.map(histKey))].map(k => [k, histKeyLabel(k)]).sort((a,b) => a[1].localeCompare(b[1], 'es'));
   const filtrado = S.histHoja || S.histPer !== 'todo' || q;
-  return head + `<div class="tools hist-f"><div class="search">${ic('search')}<input id="q-hist" type="search" placeholder="Buscar por producto o persona" value="${esc(S.histQ)}" autocomplete="off" aria-label="Buscar por producto o persona"></div>
+  return head + stockLocalTurnoActualHistorial() + `<div class="tools hist-f"><div class="search">${ic('search')}<input id="q-hist" type="search" placeholder="Buscar por producto o persona" value="${esc(S.histQ)}" autocomplete="off" aria-label="Buscar por producto o persona"></div>
       <div class="fld"><select id="h-hoja" aria-label="Hoja"><option value="">Todas las hojas</option>${keys.map(([k, l]) => `<option value="${esc(k)}" ${S.histHoja === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
       <div class="fld"><select id="h-per" aria-label="Período">${PERIODOS.map(([k, l]) => `<option value="${k}" ${S.histPer === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
     ${filtrado ? `<div class="hist-n"><span>${plural(list.length, 'conteo', 'conteos')}${list.length !== S.conteos.length ? ` de ${S.conteos.length}` : ''}</span><button class="btn sm ghost" data-act="hist-clear">Sacar filtros</button></div>` : ''}` +
     (list.length ? `<div class="hlist">${list.slice(0, S.histN).map(c => histCard(c, q)).join('')}</div>${list.length > S.histN ? `<div class="bar-a" style="justify-content:center;margin-top:14px"><button class="btn" data-act="hist-more">Ver más conteos</button></div>` : ''}`
       : noMatch('Sin resultados', 'No hay conteos con estos filtros.'));
 };
+// La dueña puede consultar el turno actual con los datos del servidor sin cerrarlo,
+// y debajo conservar todos los turnos históricos, incluso los del 22/11.
+function stockLocalTurnoActualHistorial(){
+  if(S.me?.tenant_id!==MI_GUSTO_TENANT || !['munro','torcuato'].includes(S.local) ||
+    !S.loaded.h || !S.loaded.f || !S.loaded.c)return '';
+  const h=miGustoStockLocal();
+  if(!h || stockLocalCierreHoy())return '';
+  const items=S.allFab.filter(x=>(x.hoja||'fabrica')===h.id)
+    .sort((a,b)=>(a.orden??1e9)-(b.orden??1e9));
+  if(!items.length)return '';
+  const expanded=!!S.histOpen['stock-local-open'];
+  const filas=items.map(x=>{
+    const l=num(x.local),f=num(x.fabrica);
+    const total=round((l??0)+(f??0));
+    return '<div class="mv mvf"><div><b>'+esc(x.nombre||'Producto')+'</b></div>'+
+      '<span>'+fmt(l)+'</span><span>'+fmt(f)+'</span><span><b>'+fmt(total)+'</b></span></div>';
+  }).join('');
+  return '<article class="card hc gl-stock-open-turn" data-stock-open-turn aria-label="Stock Local · Turno en curso">'+
+    '<div class="hc-h"><div class="hc-d"><b>HOY</b></div><div class="hc-m">'+
+    '<b>Stock Local · Turno en curso</b><small>'+esc(localNombre())+' · '+items.length+
+    ' productos · cantidades confirmadas del servidor</small></div>'+
+    '<div class="hc-k"><span class="pill acc">Abierto</span></div></div>'+
+    (expanded?'<div class="hc-t"><div class="mv hd mvf"><div>Producto</div>'+
+      '<span>Local</span><span>Ingreso</span><span>Total</span></div>'+filas+'</div>':'')+
+    '<div class="hc-a"><button type="button" class="btn sm" data-act="stock-local-open-toggle">'+
+    (expanded?'Ocultar cantidades':'Ver cantidades')+'</button>'+
+    '<button type="button" class="btn sm" data-go="'+esc(h.id)+'">Abrir Stock Local</button></div></article>';
+}
 function histCardF(c, q){
   const fl = c.filas || [], open = !!S.histOpen[c.id] || (!!q && fl.some(x => norm(x.nombre).includes(q)));
   const shown = q ? fl.filter(x => norm(x.nombre).includes(q)) : fl, d = new Date(c.fecha);
@@ -3752,6 +3780,7 @@ document.addEventListener('click', e => {
     case 'guardar': openSave(); break;
     case 'stock-local-close': openCloseStockLocal(); break;
     case 'stock-local-close-ok': void doSaveF(S.view,true); break;
+    case 'stock-local-open-toggle': S.histOpen['stock-local-open']=!S.histOpen['stock-local-open']; render(); break;
     case 'stock-local-history':
       if(stockLocalEnVista()){S.histHoja=miGustoStockLocal().id;S.histPer='todo';S.histQ='';S.histN=30;go('historial');}
       break;
