@@ -548,9 +548,12 @@ $('hoja-cerrar').onclick = cerrarHoja;
 $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
-/** Precio de una promo pagando en efectivo con envío (descuento del local), o null si no corresponde.
+/** Precio en amarillo de una promo pagando en efectivo con envío: personalización EXCLUSIVA de
+ * Mi Gusto Munro y Don Torcuato (pedido de la usuaria, 22/11). No es parte de la micro app general.
  * Igual que el total del pedido: solo envío + efectivo, y nunca en promos a precio final (sin_descuento). */
+const LOCALES_PRECIO_EFECTIVO = ['mi-gusto-munro', 'mi-gusto-torcuato'];
 function precioEfectivo(p) {
+  if (!LOCALES_PRECIO_EFECTIVO.includes(S.sucursal?.slug || SLUG)) return null;
   const pct = Number(S.sucursal?.descuento_efectivo_pct) || 0;
   const promo = (p?.opciones || []).some(esCantidad);
   if (!promo || pct <= 0 || S.sucursal?.acepta_envio === false || p?.reglas?.sin_descuento === true) return null;
