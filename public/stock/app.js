@@ -2297,6 +2297,11 @@ function onOnline(){
   const q = S.queued;
   S.offline = false; render();
   /* Un borrador que quedó en espera (versiones anteriores) se guarda solo al volver internet. */
+  if (q && S.db && q.fab && S.me?.tenant_id===MI_GUSTO_TENANT && ['munro','torcuato'].includes(S.local) && q.view===miGustoStockLocal()?.id){
+    stockLocalAutoStatus('Reconectado · sincronizando…');
+    if(stockLocalAutoEligible())void flushStockLocalAutoSave();
+    return;
+  }
   if (q && S.db && syncOffline()){ toast('Volvió internet: guardando el conteo pendiente…'); void (q.fab ? doSaveF(q.view) : doSave(q.view)); return; }
   if (q && S.db) toast('Volvió internet. Tu borrador sigue pendiente: revisalo y tocá Guardar conteo.');
   else toast(syncOffline() ? 'Volvió la conexión: enviando lo guardado en este equipo' : 'Volvió la conexión');
@@ -3855,8 +3860,11 @@ function go(v, silent){
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
   if(v === 'inicio') S.creatorBusiness=false;
+  if(stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))void flushStockLocalAutoSave();
   S.view = v; if(v === 'chat') markChatRead(); $('#app').classList.remove('open'); $('#scrim').hidden = true;
-  render(); if (!silent) window.scrollTo({top:0});
+  render();
+  if(stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))scheduleStockLocalAutoSave(200);
+  if (!silent) window.scrollTo({top:0});
 }
 function applySkin(){ document.documentElement.removeAttribute('data-skin'); }
 
@@ -3909,6 +3917,7 @@ document.addEventListener('click', e => {
     case 'locales': mostrarHub(); break;
     case 'retry-locales': S.loadError = false; S.loadStartedAt = Date.now(); S.booted = false; S.loaded.e = false; S.loaded.l = false; renderHub(); boot(); break;
     case 'guardar': openSave(); break;
+    case 'stock-auto-retry': if(stockLocalAutoEligible())void flushStockLocalAutoSave(); break;
     case 'stock-local-close': openCloseStockLocal(); break;
     case 'stock-local-close-ok': void doSaveF(S.view,true); break;
     case 'stock-local-open-toggle': S.histOpen['stock-local-open']=!S.histOpen['stock-local-open']; render(); break;
@@ -4137,6 +4146,10 @@ $('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closePanel()
 /* ---------- Conexión ---------- */
 function setLive(s){ S.live = s; if (S.local) renderLive(); }
 function onSnapRefresh(){
+  // Conservar foco, scroll e inputs mientras Stock Local autosincroniza.
+  if(stockLocalEnVista() && (stockLocalAutoPromise || document.activeElement?.matches?.('[data-fl],[data-ff]')) && document.querySelector('#view .xl')){
+    renderChrome();return;
+  }
   // Las novedades ajenas a Conteo actualizan el estado sin destruir sus campos.
   // Si se revoca el acceso, se renderiza para aplicar los permisos nuevos.
   if (S.view === 'conteo-munro' && puedeVerConteoMunro()) renderLive();
@@ -4323,10 +4336,15 @@ function subscribeLocal(){
   push(C('fabrica').onSnapshot(mine(snap => {
     S.allFab = snap.docs.map(d => ({id:d.id, ...d.data()}));
     for (const k of Object.keys(S.fdraft)) if (!S.allFab.some(x => x.id === k)) delete S.fdraft[k];
-    S.loaded.f = true; onSnapRefresh();
+    const wasLoaded=S.loaded.f;
+    S.loaded.f = true;
+    if(wasLoaded && refreshStockLocalRows())return;
+    onSnapRefresh();
   }), errLive));
 }
 function cerrarLocal(){
+  if(stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))void flushStockLocalAutoSave();
+  clearTimeout(stockLocalAutoTimer); stockLocalAutoTimer=null;
   saveDraft();
   for (const u of S.unsubs) try { u(); } catch {}
   S.unsubs = []; S.local = null; S.queued = null;
@@ -4352,6 +4370,7 @@ function abrirLocal(id){
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
     S.stockLocalVerBorrador=false; S.stockLocalClosing=false; S.histOpen={};
+    stockLocalAutoStatus('Guardado automáticamente');
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
     void window.GestLokCreatorHome?.refreshDaily?.(true);
