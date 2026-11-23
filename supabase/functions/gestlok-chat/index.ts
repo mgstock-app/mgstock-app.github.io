@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
   try {
     const suc = await rpc("gestlok_chat_srv_sucursal", { p_slug: slug });
     if (!suc.ok) return json({ ok: false, motivo: suc.motivo, sucursal: suc.sucursal ?? null }, suc.motivo === "pausado" ? 200 : 404, origen);
-    // Cartelera del momento (ej. Jueves On Fire de Mi Gusto): carta y medios de pago que rigen ahora.
+    // Cartelera del momento (promos por día y horario de cada local): carta y medios de pago que rigen ahora.
     const cartelera = carteleraDelDia(suc.sucursal, suc.catalogo, new Date()) as { sucursal: Json; catalogo: Json; clave: string };
     const sucursal = cartelera.sucursal; const catalogo = cartelera.catalogo; const sucId = suc.id as string;
     const privado = (suc.privado as Json) || {};
