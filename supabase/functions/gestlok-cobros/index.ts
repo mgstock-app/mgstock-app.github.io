@@ -111,6 +111,17 @@ async function webhook(req: Request, url: URL) {
   const { data, error } = await admin().rpc("gestlok_cobros_srv_evento", { p_tipo: ruta[0], p_recurso: r.body });
   if (error) { console.error("evento_error", error.message); return new Response("reintentar", { status: 500 }); }
   console.log("evento", ruta[0], JSON.stringify(data));
+  // Promo del primer mes: aprobado un pago con monto menor a la cuota, la suscripción pasa a la cuota completa.
+  const monto = Number(r.body?.transaction_amount);
+  if (ruta[0] === "authorized_payment" && data?.pago === "approved" && r.body?.preapproval_id && monto > 0) {
+    const { data: cuota } = await admin().rpc("gestlok_cobros_srv_cuota");
+    if (Number(cuota) > monto) {
+      const u = await mp("/preapproval/" + encodeURIComponent(String(r.body.preapproval_id)), {
+        method: "PUT", body: JSON.stringify({ auto_recurring: { transaction_amount: Number(cuota), currency_id: "ARS" } }),
+      });
+      console.log("cuota_completa", u.status, u.ok ? "ok" : JSON.stringify(u.body).slice(0, 300));
+    }
+  }
   return new Response("ok", { status: 200 });
 }
 

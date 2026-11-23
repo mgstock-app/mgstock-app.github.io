@@ -39,3 +39,12 @@ test("cobros: el dueño ve su suscripción en Ajustes y la administradora los li
   assert.match(home, /functions\.invoke\('gestlok-cobros'/);
   assert.match(home, /if\(!premiumAdmin\(\)\|\|!c\)return '';/);
 });
+
+test("cobros: primer mes con descuento y después la cuota completa", () => {
+  const sql = leer("supabase/migrations/20261123210000_gestlok_chat_cobros_primer_mes.sql");
+  assert.match(sql, /descuento_primer_mes numeric\(5,2\) not null default 15/);
+  assert.match(sql, /round\(a\.cuota \* \(100 - a\.descuento_primer_mes\) \/ 100, 0\)/);
+  const fn = leer("supabase/functions/gestlok-cobros/index.ts");
+  assert.match(fn, /method: "PUT", body: JSON\.stringify\(\{ auto_recurring: \{ transaction_amount: Number\(cuota\)/);
+  assert.match(leer("public/chat/panel/panel.js"), /Promo de lanzamiento: el primer mes con/);
+});
