@@ -2038,6 +2038,130 @@ function setF(id, k, v){
   saveDraft();
   if (stockLocalAutoEligible()) scheduleStockLocalAutoSave();
 }
+/* Mi Gusto · Stock Local: autoguardado progresivo, sin generar conteos por tecla.
+   Un borrador es exclusivo del usuario y sucursal; los cambios confirmados se
+   envían por campo para evitar sobrescribir otras cantidades. */
+let stockLocalAutoTimer=null, stockLocalAutoPromise=null;
+let stockLocalAutoState='Guardado automáticamente';
+const stockLocalAutoEligible=()=>stockLocalEnVista() && canW() && !stockLocalDuenaServidor();
+function stockLocalAutoStatus(message){
+  stockLocalAutoState=message;
+  const status=document.getElementById('gl-stock-auto-status');
+  if(status)status.textContent=message;
+  const retry=document.querySelector('#view [data-act="stock-auto-retry"]');
+  if(retry)retry.hidden=message!=='Error al guardar · Reintentar';
+}
+function stockLocalAutoOffline(){
+  S.queued={view:S.view,fab:true};
+  if(S.local && (S.uid || S.me?.email))lsSet(queuedKey(),S.queued);
+  saveDraft();
+  stockLocalAutoStatus('Sin conexión · pendiente de sincronización');
+}
+function scheduleStockLocalAutoSave(delay=850){
+  if(!stockLocalAutoEligible())return;
+  clearTimeout(stockLocalAutoTimer);
+  if(!withCtx(S.view,()=>fPend().length)){
+    stockLocalAutoStatus('Guardado automáticamente');return;
+  }
+  stockLocalAutoStatus('Cambios pendientes · autoguardando…');
+  stockLocalAutoTimer=setTimeout(()=>{
+    stockLocalAutoTimer=null;
+    void flushStockLocalAutoSave();
+  },delay);
+}
+async function flushStockLocalAutoSave(){
+  clearTimeout(stockLocalAutoTimer);
+  stockLocalAutoTimer=null;
+  if(stockLocalAutoPromise){
+    await stockLocalAutoPromise;
+    if(!stockLocalAutoEligible())return false;
+    if(!withCtx(S.view,()=>fPend().length))return true;
+  }
+  if(!stockLocalAutoEligible())return false;
+  if(S.offline || navigator.onLine===false){stockLocalAutoOffline();return false;}
+  const local=S.local,view=S.view,now=Date.now();
+  const changes=withCtx(view,()=>fPend().map(it=>{
+    const d=S.fdraft[it.id]||{},patch={actualizado:now},fields={};
+    if(has(d,'l')){
+      fields.l=d.l;
+      patch.local=d.l;
+      if(d.l!==null)patch.sinStock=d.l===0;
+    }
+    if(has(d,'f')){fields.f=d.f;patch.fabrica=d.f;}
+    return {id:it.id,patch,fields};
+  }));
+  if(!changes.length){stockLocalAutoStatus('Guardado automáticamente');return true;}
+  stockLocalAutoStatus('Guardando cambios…');
+  const collection=S.db.collection(local+'/fabrica');
+  const task=(async()=>{
+    try{
+      for(let i=0;i<changes.length;i+=5){
+        await Promise.all(changes.slice(i,i+5).map(async u=>{
+          await w(()=>collection.doc(u.id).update(u.patch));
+          // Un guardado tardío no puede eliminar modificaciones más nuevas.
+          if(S.local!==local || S.view!==view)return;
+          const it=S.allFab.find(x=>x.id===u.id);
+          if(it)Object.assign(it,u.patch);
+          const draft=S.fdraft[u.id];
+          if(draft){
+            for(const [key,value] of Object.entries(u.fields))
+              if(has(draft,key)&&draft[key]===value)delete draft[key];
+            if(!Object.keys(draft).length)delete S.fdraft[u.id];
+          }
+          saveDraft();
+        }));
+      }
+      if(S.local===local && S.view===view){
+        if(S.queued?.view===view){
+          S.queued=null;
+          localStorage.removeItem(queuedKey());
+        }
+        const pending=withCtx(view,()=>fPend().length);
+        stockLocalAutoStatus(pending?'Cambios pendientes · autoguardando…':'Guardado automáticamente');
+        renderSavebar();
+      }
+      return true;
+    }catch(e){
+      if(S.local===local && S.view===view){
+        stockLocalAutoStatus(navigator.onLine===false?'Sin conexión · pendiente de sincronización':'Error al guardar · Reintentar');
+        saveDraft();
+      }
+      return false;
+    }
+  })();
+  stockLocalAutoPromise=task.finally(()=>{stockLocalAutoPromise=null;});
+  return stockLocalAutoPromise;
+}
+function refreshStockLocalRows(){
+  if(!stockLocalEnVista() || !S.loaded.f || !document.querySelector('#view .xl'))return false;
+  const items=withCtx(S.view,()=>fItems());
+  const rows=document.querySelectorAll('#view .xl-r[id^="fr-"]');
+  if(rows.length!==items.length || items.some(it=>!document.getElementById('fr-'+it.id)))return false;
+  for(const it of items){
+    const d=stockLocalDuenaServidor()?{}:(S.fdraft[it.id]||{});
+    for(const [k,prefix] of [['l','fl-'],['f','ff-']]){
+      const input=document.getElementById(prefix+it.id);
+      if(input && document.activeElement!==input && !has(d,k))
+        input.value=fmtIn(fVal(it,k));
+      if(input)input.classList.toggle('chg',has(d,k));
+    }
+    const total=document.getElementById('ft-'+it.id);
+    if(total)total.textContent=fmt(fTot(it));
+    const row=document.getElementById('fr-'+it.id);
+    if(!row)continue;
+    row.classList.toggle('sin',fSin(it));
+    const cb=row.querySelector('[data-fss]');if(cb)cb.checked=fSin(it);
+    const frac=fracOf(fVal(it,'l'));
+    row.querySelectorAll('[data-act="ffrac"]').forEach(b=>
+      b.setAttribute('aria-pressed',Math.abs(frac-Number(b.dataset.f))<1e-9));
+    row.querySelectorAll('[data-act="fstep"][data-delta="-1"]').forEach(b=>{
+      const n=fVal(it,b.dataset.field==='f'?'f':'l');
+      b.disabled=!canW() || stockLocalDuenaServidor() || !(n>0);
+    });
+  }
+  renderChrome();
+  return true;
+}
 /* Recarga verificable de Stock Local: lectura HTTP directa para no confundir
    una copia sin conexión con los datos actuales del servidor. Nunca escribe en la base,
    ni borra los borradores que la persona está editando en este dispositivo. */
