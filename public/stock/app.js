@@ -4162,7 +4162,7 @@ $('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closePanel()
 function setLive(s){ S.live = s; if (S.local) renderLive(); }
 function onSnapRefresh(){
   // Conservar foco, scroll e inputs mientras Stock Local autosincroniza.
-  if(stockLocalEnVista() && (stockLocalAutoPromise || document.activeElement?.matches?.('[data-fl],[data-ff]')) && document.querySelector('#view .xl')){
+  if(stockLocalEnVista() && canW() && (stockLocalAutoPromise || document.activeElement?.matches?.('[data-fl],[data-ff]')) && document.querySelector('#view .xl')){
     renderChrome();return;
   }
   // Las novedades ajenas a Conteo actualizan el estado sin destruir sus campos.
@@ -4338,6 +4338,7 @@ function subscribeLocal(){
     }
     if (isCustom(S.view) && !S.hojasDB.some(h => h.id === S.view)) S.view = 'inicio';
     onSnapRefresh();
+    if(S.loaded.f && stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))scheduleStockLocalAutoSave(300);
   }), e => { if (S.local !== loc) return; S.loaded.h = true; errLive(e); render(); }));
   push(C('productos').onSnapshot(mine(snap => {
     S.allProds = snap.docs.map(d => ({id:d.id, ...d.data()}));
@@ -4364,6 +4365,7 @@ function subscribeLocal(){
     S.loaded.f = true;
     if(wasLoaded && refreshStockLocalRows())return;
     onSnapRefresh();
+    if(!wasLoaded && stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))scheduleStockLocalAutoSave(300);
   }), errLive));
 }
 function cerrarLocal(){
