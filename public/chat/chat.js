@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261123venta1';
+import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261123efectivo1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -548,15 +548,19 @@ $('hoja-cerrar').onclick = cerrarHoja;
 $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
-/** Precio en amarillo de una promo pagando en efectivo con envío: personalización EXCLUSIVA de
- * Mi Gusto Munro y Don Torcuato (pedido de la usuaria, 22/11). No es parte de la micro app general.
- * Igual que el total del pedido: solo envío + efectivo, y nunca en promos a precio final (sin_descuento). */
-const LOCALES_PRECIO_EFECTIVO = ['mi-gusto-munro', 'mi-gusto-torcuato'];
+/** Precio en amarillo de una promo pagando en efectivo: solo si el local lo activó (precio_efectivo_en_carta) y tiene
+ * descuento por efectivo para alguna entrega que ofrece. Configuración de cada local, no de la app general.
+ * Igual que el total del pedido: nunca en promos a precio final (sin_descuento). */
+const entregaDescuento = () => {
+  const r = S.sucursal?.descuento_efectivo_entrega || 'envio';
+  return r === 'ambas' ? (S.sucursal?.acepta_envio !== false || S.sucursal?.acepta_retiro !== false)
+    : r === 'envio' ? S.sucursal?.acepta_envio !== false : S.sucursal?.acepta_retiro !== false;
+};
 function precioEfectivo(p) {
-  if (!LOCALES_PRECIO_EFECTIVO.includes(S.sucursal?.slug || SLUG)) return null;
+  if (S.sucursal?.precio_efectivo_en_carta !== true) return null;
   const pct = Number(S.sucursal?.descuento_efectivo_pct) || 0;
   const promo = (p?.opciones || []).some(esCantidad);
-  if (!promo || pct <= 0 || S.sucursal?.acepta_envio === false || p?.reglas?.sin_descuento === true) return null;
+  if (!promo || pct <= 0 || !entregaDescuento() || p?.reglas?.sin_descuento === true) return null;
   return Math.round(Number(p.precio) * (100 - pct) / 100);
 }
 function abrirCarta({soloVer = false} = {}) {
@@ -687,7 +691,8 @@ function abrirCarta({soloVer = false} = {}) {
           onclick: () => { S.categoria = c.id; aviso = ''; pintar(); }}))) : null,
       aviso ? el('p', {class: 'error-form menu-aviso', role: 'alert', text: aviso}) : null,
       prods.some(p => p.disponible !== false && precioEfectivo(p) !== null)
-        ? el('p', {class: 'menu-nota-efectivo', text: 'En amarillo: precio de la promo pagando en efectivo con envío (' +
+        ? el('p', {class: 'menu-nota-efectivo', text: 'En amarillo: precio de la promo pagando en efectivo' +
+          ({envio: ' con envío', retiro: ' al retirar'}[S.sucursal?.descuento_efectivo_entrega || 'envio'] || '') + ' (' +
           (Number(S.sucursal?.descuento_efectivo_pct) || 0) + '% de descuento).'}) : null,
       prods.length ? el('ul', {class: 'lista'}, prods.map(filaProducto))
         : el('p', {class: 'nota', text: filtroCarta ? 'No encontramos resultados.' : 'Todavía no hay productos cargados.'}),
@@ -1028,7 +1033,8 @@ function abrirDatos() {
     pago.value = d.medio_pago;
     const envio = d.entrega === 'envio' ? Number(s.envio_costo) || 0 : 0;
     const subtotal = totalCarrito(S.catalogo, S.carrito);
-    const porcentaje = d.entrega === 'envio' && d.medio_pago === 'efectivo'
+    // Descuento por efectivo según la configuración del local (porcentaje y forma de entrega).
+    const porcentaje = d.medio_pago === 'efectivo' && descuentoEfectivoAplica(s, d.entrega)
       ? Number(s.descuento_efectivo_pct) || 0 : 0;
     // Promos a precio final (regla sin_descuento del local) no llevan el descuento por efectivo (igual que en la base).
     const conDescuento = subtotal - totalSinDescuento(S.catalogo, S.carrito);
@@ -1045,7 +1051,7 @@ function abrirDatos() {
         ? 'Cambio a enviar: ' + pesos(abona - importeEstimado)
         : 'Indique con cuánto abonará para preparar el cambio. También puede elegir pago justo.';
     }
-    notaPago.hidden = !(d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0);
+    notaPago.hidden = !(d.medio_pago === 'transferencia' && descuentoEfectivoAplica(s, d.entrega));
     notaPago.textContent = 'Si abona en efectivo tiene un ' + (Number(s.descuento_efectivo_pct) || 0) +
       '% de descuento en los productos. Si prefiere transferencia, el gerente le enviará los datos por este chat. Puede adjuntar aquí el comprobante.';
   };
@@ -1351,7 +1357,7 @@ async function iniciar() {
 const DEMO_DATOS = {
   sucursal: {slug: 'demo', nombre: 'Sucursal Centro', empresa: 'Tu Comercio', bienvenida: '', horario: 'Todos los días de 11 a 23',
     direccion: 'Av. Siempre Viva 742', acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'hasta 20 cuadras',
-    pedido_minimo: 3000, descuento_efectivo_pct:10, medios_pago: ['efectivo', 'transferencia', 'mercado_pago']},
+    pedido_minimo: 3000, descuento_efectivo_pct:0, medios_pago: ['efectivo', 'transferencia', 'mercado_pago']},
   catalogo: {categorias: [{id: 'c1', nombre: 'Empanadas'}, {id: 'c2', nombre: 'Pizzas'}, {id: 'c3', nombre: 'Postres'}],
     productos: [
       {id: 'd1', categoria_id: 'c1', nombre: 'Empanada de carne', descripcion: 'Cortada a cuchillo', precio: 1200, activo: true, disponible: true, opciones: []},
