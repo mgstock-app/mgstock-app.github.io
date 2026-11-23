@@ -13,7 +13,8 @@ describe('Inicio publicitario', () => {
     cy.location('pathname').should('eq', '/');
     cy.get('h1').should('contain.text', 'Tus clientes piden solos por chat');
     cy.contains('a', 'Ingresar').should('have.attr', 'href', '/login/');
-    cy.contains('a', 'Registrarme').should('have.attr', 'href', '/login/#registrarme');
+    cy.contains('a', 'Registrarme').should('have.attr', 'href', '/login/#registrarme').and('have.css', 'color', 'rgb(255, 255, 255)');
+    cy.contains('a', 'Ver cómo funciona').should('have.css', 'color', 'rgb(255, 255, 255)');
     cy.contains('h2', 'Así funciona GESTLOK Chat').should('be.visible');
     // Se mueve solo: a los 6 s pasa al segundo cuadro.
     cy.get('.glh-puntos button').eq(0).should('have.attr', 'aria-current', 'step');
