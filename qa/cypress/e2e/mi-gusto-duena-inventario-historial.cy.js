@@ -73,7 +73,14 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       setup();
       abrirLocal(local);
       cy.get('#view [data-go="h-qa-owner-stock"]').click();
+      // Menú simplificado: estas funciones no forman parte de Stock Local.
       cy.get('#view [data-act="f-zero"]').should('not.exist');
+      cy.get('#view [data-go="ingreso"]').should('not.exist');
+      cy.get('#view [data-act="tot-nombre"]').should('not.exist');
+      cy.get('#view [data-act="print"]').should('not.exist');
+      cy.get('#view [data-act="f-copy"]').should('not.exist');
+      cy.get('#view [data-act="f-refresh"]').should('not.exist');
+      cy.get('#savebar').should('not.be.visible');
       cy.get('#fl-f-owner-qa').should('have.value','7').and('be.disabled');
       cy.get('#view .gl-stock-server-status').should('contain.text','Vista confirmada del servidor');
       cy.get('#view [data-act="stock-local-draft-view"]').click();
@@ -89,6 +96,29 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#view [data-act="hist-toggle"]').first().click();
       cy.get('#view').should('contain.text','Registro exclusivo '+local);
       cy.get('#view').should('not.contain.text','Registro exclusivo '+(local==='munro'?'torcuato':'munro'));
+    });
+    it(local+': autoguardado edita una fila sin mover el formulario ni duplicar historial',()=>{
+      setup();
+      abrirLocal(local);
+      cy.get('#view [data-go="h-qa-owner-stock"]').click();
+      cy.get('#view [data-act="stock-local-draft-view"]').click();
+      cy.get('#view .xl').then($el=>{cy.window().then(w=>{w.__stockLocalRoot=$el[0];});});
+      cy.get('#fl-f-owner-qa').clear().type('15');
+      cy.get('#view #gl-stock-auto-status',{timeout:20000}).should('contain.text','Guardado automáticamente');
+      cy.get('#fl-f-owner-qa').should('have.value','15');
+      cy.get('#view .xl').then($el=>cy.window().then(w=>{
+        expect($el[0]).to.equal(w.__stockLocalRoot);
+        expect(w.__rows.find(x=>x.col===local+'/fabrica'&&x.id==='f-owner-qa').data.local).to.equal(15);
+        expect(w.__rows.filter(x=>x.col===local+'/conteos').length).to.equal(1);
+      }));
+      cy.get('#view [data-act="stock-local-close"]').click();
+      cy.get('#ov [data-act="stock-local-close-ok"]').click();
+      cy.get('#toast',{timeout:20000}).should('contain.text','Guardado exitoso');
+      cy.window().then(w=>{
+        const closed=w.__rows.filter(x=>x.col===local+'/conteos'&&x.data?.turnoCerrado);
+        expect(closed).to.have.length(1);
+        expect(closed[0].data.filas.some(x=>x.pid==='f-owner-qa'&&x.local===15)).to.equal(true);
+      });
     });
     it(local+': cerrar turno registra historial y muestra Guardado exitoso',()=>{
       setup();
