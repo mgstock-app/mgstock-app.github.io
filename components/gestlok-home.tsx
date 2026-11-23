@@ -47,7 +47,7 @@ function Svg({ children, size = 24, width = 1.8 }: { children: ReactNode; size?:
 const BURBUJA = <path d="M20 12.5a7.5 7.5 0 0 1-10.9 6.7L4 20.5l1.4-4.6A7.5 7.5 0 1 1 20 12.5z" />;
 const TILDE = <path d="M5 12.5l4.5 4.5L19 7.5" />;
 
-type Mensaje = { de: "emma" | "yo"; texto: string; contacto?: boolean };
+type Mensaje = { de: "emma" | "yo"; texto: string; contacto?: boolean; registrarme?: boolean };
 type Form = { nombre: string; telefono: string; email: string; mensaje: string; acepto: boolean; web: string };
 const FORM_VACIO: Form = { nombre: "", telefono: "", email: "", mensaje: "", acepto: false, web: "" };
 
@@ -142,7 +142,7 @@ export function GestlokHome() {
     setEscribiendo(true);
     setTimeout(() => {
       const r = responderEmma(t);
-      setMensajes((m) => [...m, { de: "emma", texto: r.texto, contacto: r.contacto }]);
+      setMensajes((m) => [...m, { de: "emma", texto: r.texto, contacto: r.contacto, registrarme: r.registrarme }]);
       setEscribiendo(false);
     }, 450);
   }
@@ -355,6 +355,7 @@ export function GestlokHome() {
             {mensajes.map((m, i) => (
               <div key={i} className={"glh-burbuja " + (m.de === "yo" ? "glh-yo" : "glh-ella")}>
                 <span>{m.texto}</span>
+                {m.registrarme ? <a className="glh-btn glh-btn-teal glh-btn-chico" href="/login/#registrarme">Registrarme y empezar</a> : null}
                 {m.contacto ? <button type="button" className="glh-btn glh-btn-navy glh-btn-chico" onClick={irAContacto}>Ir al formulario de contacto</button> : null}
               </div>
             ))}

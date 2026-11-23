@@ -42,7 +42,14 @@ test("Emma responde los temas principales y deriva lo demás a Contacto", { skip
   assert.equal(responderEmma("¿Tienen caja?").contacto, true);
   assert.match(responderEmma("¿Y las reseñas?").texto, /Google/);
   assert.match(responderEmma("¿Cómo me registro?").texto, /Registrarme/);
-  assert.equal(responderEmma("¿Cuánto cuesta?").contacto, true);
+  const precio = responderEmma("CUANTO SALE?");
+  assert.match(precio.texto, /\$ 70\.000 por mes por local, con soporte incluido/);
+  assert.match(precio.texto, /15% de descuento: \$ 59\.500/);
+  assert.match(precio.texto, /\$ 50\.000, opcional/);
+  assert.equal(precio.registrarme, true);
+  assert.match(responderEmma("¿tienen alguna promo?").texto, /primer mes/);
+  assert.match(responderEmma("¿me dan un QR?").texto, /QR/);
+  assert.doesNotMatch(responderEmma("¿me dan un QR?").texto, /Estamos preparando/);
   assert.equal(responderEmma("Hablar con una persona").contacto, true);
   assert.match(responderEmma("mis clientes me escriben pedidos").texto, /GESTLOK Chat/);
   assert.equal(responderEmma("¿Qué opinás del clima?").contacto, true);
