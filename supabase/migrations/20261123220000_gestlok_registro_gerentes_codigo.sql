@@ -61,8 +61,9 @@ begin
   v_codigo := upper(regexp_replace(coalesce(p_codigo, ''), '[^A-Za-z0-9]', '', 'g'));
   select * into c from gestlok_platform.codigos_local where codigo = v_codigo;
   if c.codigo is null then
+    -- Se responde sin error para que el intento quede registrado (un error desharía el registro del freno).
     insert into gestlok_platform.admin_audit(actor, action, tenant_id, detail) values (auth.uid(), 'gerente_codigo_invalido', null, '{}'::jsonb);
-    raise exception 'Ese código no corresponde a ningún local. Revisalo con el dueño.' using errcode = '22023';
+    return jsonb_build_object('error', 'Ese código no corresponde a ningún local. Revisalo con el dueño.');
   end if;
   select coalesce(e.nombre_publico, co.name) into v_empresa
     from gestlok_tenancy.tenants t

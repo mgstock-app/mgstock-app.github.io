@@ -95,6 +95,7 @@
         :intent.choice==='chat'?await rpc('gestlok_request_chat_registration',{p_negocio:intent.negocio})
         :await rpc('gestlok_request_registration',{p_kind:intent.kind,p_modules:intent.modules});
       if(error)throw error;
+      if(data?.error)throw new Error(data.error);
       try{localStorage.removeItem(CLAVE_CHAT);}catch{}
       message(form,intent.kind==='colaborador'?'Solicitud enviada a '+(data?.empresa||'la empresa')+(data?.local?' · '+data.local:'')+'. Cuando el dueño la acepte vas a entrar como gerente.'
         :intent.choice==='chat'?'Solicitud guardada. La administradora revisará tu comercio y te avisará cuando GESTLOK Chat esté activo.'
