@@ -30,5 +30,5 @@ test('las pantallas avisan el cierre automático y conservan el cierre manual', 
   assert.match(conteo, /data-gcm-finalize/);
   const runtime = leer('components/stock-runtime.tsx');
   assert.equal((runtime.match(/app\.js\?rev=stock-local-cierre-0050-20261123/g) || []).length, 2);
-  assert.equal((runtime.match(/mi-gusto-conteo\.js\?rev=conteo-cierre-0050-20261123/g) || []).length, 2);
+  assert.equal((runtime.match(/mi-gusto-conteo\.js\?rev=conteo-cierre-sin-stock-20261123/g) || []).length, 2);
 });
