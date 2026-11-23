@@ -4350,7 +4350,16 @@ function subscribeLocal(){
   }), errLive));
   push(C('fabrica').onSnapshot(mine(snap => {
     S.allFab = snap.docs.map(d => ({id:d.id, ...d.data()}));
-    for (const k of Object.keys(S.fdraft)) if (!S.allFab.some(x => x.id === k)) delete S.fdraft[k];
+    let draftCleaned=false;
+    for(const k of Object.keys(S.fdraft)){
+      const current=S.allFab.find(x=>x.id===k);
+      if(!current){delete S.fdraft[k];draftCleaned=true;continue;}
+      const draft=S.fdraft[k];
+      if(has(draft,'l') && draft.l===num(current.local)){delete draft.l;draftCleaned=true;}
+      if(has(draft,'f') && draft.f===num(current.fabrica)){delete draft.f;draftCleaned=true;}
+      if(!Object.keys(draft).length)delete S.fdraft[k];
+    }
+    if(draftCleaned)saveDraft();
     const wasLoaded=S.loaded.f;
     S.loaded.f = true;
     if(wasLoaded && refreshStockLocalRows())return;
