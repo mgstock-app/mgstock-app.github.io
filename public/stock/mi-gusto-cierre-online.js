@@ -411,12 +411,13 @@ function clearEntryForm(){
  for(const name of ['comanda','amount','observacion']){const field=form.elements.namedItem(name);if(field)field.value='';}
  const method=form.elements.namedItem('method');if(method)method.value='transferencia';
  const app=form.elements.namedItem('app');if(app)app.checked=false;
+ const pya=form.elements.namedItem('pya');if(pya)pya.checked=false;
  const details=form.querySelector('.mg-on-observation-details');if(details)details.open=false;
 }
 async function action(name,args,notify){
  if(!writable())return;
  saving=true;error='';saveNotice=false;
- try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();editing=null;
+ try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note_pya')clearEntryForm();editing=null;
   if(name.startsWith('gestlok_mg_online_close')&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
   if(name==='gestlok_mg_online_delete')await rpcRefresh(true);else await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
@@ -519,8 +520,13 @@ function attach(h){
   const toggle=e.target.closest('[data-mgon-app]');
   if(toggle&&writable()){
    const m=snapshot?.active?.movements?.find(x=>x.id===toggle.dataset.mgonApp);
-   if(m)void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:m.id,
-     p_comanda:m.comanda,p_method:m.method,p_amount:m.amount,p_app:!m.app,p_observacion:m.observacion||''},'APP actualizado.');return;}
+   if(m)void action('gestlok_mg_online_save_note_pya',{p_shift:snapshot.active.id,p_id:m.id,
+     p_comanda:m.comanda,p_method:m.method,p_amount:m.gross_amount??m.amount,p_app:!m.app,p_observacion:m.observacion||'',p_pya:!!m.pya},'APP actualizado.');return;}
+  const togglePya=e.target.closest('[data-mgon-pya]');
+  if(togglePya&&writable()){
+   const m=snapshot?.active?.movements?.find(x=>x.id===togglePya.dataset.mgonPya);
+   if(m)void action('gestlok_mg_online_save_note_pya',{p_shift:snapshot.active.id,p_id:m.id,
+     p_comanda:m.comanda,p_method:m.method,p_amount:m.gross_amount??m.amount,p_app:!!m.app,p_observacion:m.observacion||'',p_pya:!m.pya},'Marca PYA actualizada.');return;}
   const close=e.target.closest('[data-mgon-close]');
   if(close&&writable()&&snapshot?.active){
    const s=snapshot.active,declared=emptySelected(s);
@@ -539,12 +545,12 @@ function attach(h){
  document.addEventListener('submit',e=>{
   if(e.target.id!=='mg-online-form'||!writable())return;
   e.preventDefault();const d=new FormData(e.target),comanda=String(d.get('comanda')||'').trim(),
-   amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),
+   amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),pya=d.has('pya'),
    observacion=String(d.get('observacion')||'').trim();
   if(!/^[0-9]{1,10}$/.test(comanda)||!Number.isFinite(amount)||amount<=0||!(method in METHODS)||observacion.length>300){
     error='Completá una comanda numérica, un monto positivo y la forma de pago.';api.render();return;}
-  void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:editing,
-   p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion},'Movimiento guardado.');
+  void action('gestlok_mg_online_save_note_pya',{p_shift:snapshot.active.id,p_id:editing,
+   p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion,p_pya:pya},'Movimiento guardado.');
  });
  document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&modalDay){modalDay=null;photoError='';api.render();}
