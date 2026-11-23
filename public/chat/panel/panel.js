@@ -451,7 +451,8 @@
       el('p', {class: 'nota', text: config ? 'Editá productos, precios y categorías. Para prender o apagar por falta de stock usá la pestaña Stock.' : 'Carta en solo lectura.'}),
       config ? el('div', {class: 'fila-botones'},
         el('button', {type: 'button', class: 'boton principal', text: '+ Producto', onclick: () => editarProducto(null, c)}),
-        el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)})) : null,
+        el('button', {type: 'button', class: 'boton', text: '+ Categoría', onclick: () => editarCategoria(null)}),
+        el('button', {type: 'button', class: 'boton', text: 'Importar carta (PDF, foto o texto)', onclick: () => importarCarta()})) : null,
       porCat.length ? el('div', {}, porCat.map(({cat, prods}) => el('section', {class: 'categoria'},
         el('h3', {}, cat.nombre, cat.id && cat.activa === false ? el('small', {text: ' · oculta'}) : null,
           config && cat.id ? el('button', {type: 'button', class: 'enlace', text: 'Editar', onclick: () => editarCategoria(cat)}) : null),
@@ -461,6 +462,116 @@
           el('span', {class: !p.activo ? 'stock-inactivo' : p.disponible ? 'ok' : 'agotado', text: !p.activo ? 'Oculto' : p.disponible ? 'Disponible' : 'Agotado'}),
           config ? el('button', {type: 'button', class: 'enlace', text: 'Editar', onclick: () => editarProducto(p, c)}) : null)))))
         : el('div', {class: 'vacio'}, el('p', {text: 'Todavía no hay productos.'})));
+  }
+
+  // Importar carta: PDF, foto o texto pegado → propuesta revisable → se guarda con las mismas funciones de la carta
+  // (la base valida permisos y datos). No borra nada; opcionalmente actualiza el precio de productos con el mismo nombre.
+  async function importarCarta() {
+    const sucId = S.suc.id;
+    let mod;
+    try { mod = await import('/chat/panel/importar-carta.js?v=20261123importar1'); }
+    catch { return aviso('No se pudo abrir el importador. Revisá la conexión.', true); }
+    const archivo = el('input', {type: 'file', accept: 'application/pdf,image/jpeg,image/png,image/webp', 'aria-label': 'Archivo de la carta'});
+    const pegado = el('textarea', {rows: '5', maxlength: '40000', placeholder: 'Ej.:\nEMPANADAS\nCarne $ 1.900\nJamón y queso $ 1.700\nBEBIDAS\nAgua 500 ml $ 1.500'});
+    const estado = el('p', {class: 'nota', role: 'status', 'aria-live': 'polite'});
+    const propuesta = el('div', {});
+    const leer = el('button', {type: 'button', class: 'boton principal', text: 'Leer carta'});
+    const volver = el('button', {type: 'button', class: 'boton', text: 'Volver a la carta', onclick: () => verCarta()});
+    leer.onclick = async () => {
+      leer.disabled = true; propuesta.replaceChildren();
+      try {
+        let texto = pegado.value.trim();
+        if (archivo.files?.[0]) texto = (await mod.leerArchivo(archivo.files[0], t => { estado.textContent = t; })) + (texto ? '\n' + texto : '');
+        if (!texto) throw new Error('Elegí un archivo o pegá el texto de la carta.');
+        const cats = mod.analizarCarta(texto);
+        if (!cats.length) throw new Error('No encontramos productos con precio. Probá con otro archivo o pegá el texto (un producto por renglón, con su precio).');
+        estado.textContent = '';
+        mostrarPropuesta(mod, cats);
+      } catch (e) { estado.textContent = ''; aviso(e.message, true); }
+      finally { leer.disabled = false; }
+    };
+    const mostrarPropuesta = (mod, cats) => {
+      const actualizar = el('input', {type: 'checkbox', checked: true});
+      const otras = (S.sucursales || []).filter(x => x.id !== sucId && ['gestionar', 'configurar'].includes(x.nivel));
+      const otrasChk = otras.map(x => { const i = el('input', {type: 'checkbox', value: x.id}); return el('label', {class: 'check'}, i, ' También en ' + x.nombre); });
+      const cuenta = () => cats.reduce((n, c) => n + c.productos.filter(p => p.incluir !== false).length, 0);
+      const resumen = el('p', {class: 'nota'});
+      const pintarResumen = () => { resumen.textContent = cuenta() + ' producto(s) para guardar en ' + cats.filter(c => c.productos.some(p => p.incluir !== false)).length + ' categoría(s).'; };
+      const bloques = cats.map(c => {
+        const nomCat = el('input', {type: 'text', maxlength: '60', 'aria-label': 'Nombre de la categoría'}); nomCat.value = c.nombre;
+        nomCat.oninput = () => { c.nombre = nomCat.value; };
+        return el('fieldset', {class: 'grupo'}, el('legend', {text: 'Categoría'}), campo('Nombre de la categoría', nomCat),
+          c.productos.map(p => {
+            const inc = el('input', {type: 'checkbox', checked: true, 'aria-label': 'Incluir ' + p.nombre});
+            inc.onchange = () => { p.incluir = inc.checked; pintarResumen(); };
+            const n = el('input', {type: 'text', maxlength: '120', 'aria-label': 'Nombre'}); n.value = p.nombre; n.oninput = () => { p.nombre = n.value; };
+            const pr = el('input', {type: 'number', min: '1', step: '1', inputmode: 'numeric', 'aria-label': 'Precio'}); pr.value = String(p.precio); pr.oninput = () => { p.precio = Number(pr.value); };
+            const d = el('input', {type: 'text', maxlength: '300', 'aria-label': 'Descripción'}); d.value = p.descripcion || ''; d.oninput = () => { p.descripcion = d.value; };
+            return el('div', {class: 'grupo'}, el('label', {class: 'check'}, inc, ' Incluir'), el('div', {class: 'dos'}, campo('Producto', n), campo('Precio', pr)), campo('Descripción (opcional)', d));
+          }));
+      });
+      const guardar = el('button', {type: 'button', class: 'boton principal ancho', text: 'Guardar en la carta'});
+      guardar.onclick = async () => {
+        const elegidos = cats.map(c => ({nombre: String(c.nombre || '').trim() || 'General',
+          productos: c.productos.filter(p => p.incluir !== false)})).filter(c => c.productos.length);
+        for (const c of elegidos) for (const p of c.productos) {
+          if (!String(p.nombre || '').trim() || !(Number(p.precio) > 0)) return aviso('Revisá «' + (p.nombre || 'sin nombre') + '»: falta el nombre o el precio.', true);
+        }
+        if (!elegidos.length) return aviso('No hay productos marcados para guardar.', true);
+        const destinos = [sucId, ...otrasChk.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value)];
+        guardar.disabled = true;
+        let creados = 0, actualizados = 0, omitidos = 0;
+        try {
+          for (const destino of destinos) {
+            const cat = await rpc('panel_catalogo', {p_sucursal: destino});
+            const porNombre = new Map((cat.productos || []).map(x => [mod.normalizar(x.nombre), x]));
+            let orden = Math.max(0, ...(cat.categorias || []).map(k => Number(k.orden) || 0));
+            for (const c of elegidos) {
+              let catId = (cat.categorias || []).find(k => mod.normalizar(k.nombre) === mod.normalizar(c.nombre))?.id;
+              if (!catId) {
+                orden += 10;
+                catId = (await rpc('panel_categoria_guardar', {p_sucursal: destino, p_id: null, p_nombre: c.nombre.slice(0, 60), p_orden: orden, p_activa: true})).id;
+              }
+              let ordenProd = 0;
+              for (const p of c.productos) {
+                ordenProd += 10;
+                estado.textContent = 'Guardando ' + p.nombre + '…';
+                const previo = porNombre.get(mod.normalizar(p.nombre));
+                if (previo) {
+                  if (!actualizar.checked || Number(previo.precio) === Number(p.precio)) { omitidos++; continue; }
+                  // Se manda el producto completo para no perder opciones, disponibilidad ni reglas (las reglas no se tocan).
+                  await rpc('panel_producto_guardar', {p_sucursal: destino, p_producto: {id: previo.id, nombre: previo.nombre,
+                    descripcion: previo.descripcion || String(p.descripcion || '').trim(), precio: Number(p.precio), categoria_id: previo.categoria_id || null,
+                    orden: Number(previo.orden) || 0, activo: previo.activo !== false, disponible: previo.disponible !== false, opciones: previo.opciones || []}});
+                  actualizados++;
+                } else {
+                  await rpc('panel_producto_guardar', {p_sucursal: destino, p_producto: {nombre: p.nombre.trim().slice(0, 120),
+                    descripcion: String(p.descripcion || '').trim().slice(0, 300), precio: Math.round(Number(p.precio) * 100) / 100,
+                    categoria_id: catId, orden: ordenProd, activo: true, disponible: true, opciones: []}});
+                  creados++;
+                }
+              }
+            }
+          }
+          estado.textContent = '';
+          aviso('Carta importada: ' + creados + ' nuevo(s), ' + actualizados + ' precio(s) actualizado(s)' + (omitidos ? ', ' + omitidos + ' sin cambios' : '') + '.');
+          verCarta();
+        } catch (e) {
+          estado.textContent = '';
+          aviso('Se guardaron ' + creados + ' nuevo(s) y ' + actualizados + ' actualizado(s) antes del error: ' + e.message, true);
+          guardar.disabled = false;
+        }
+      };
+      pintarResumen();
+      propuesta.replaceChildren(el('h3', {text: 'Revisá la propuesta'}),
+        el('p', {class: 'nota', text: 'Corregí nombres, precios y categorías, y destildá lo que no va. Las promos con variedades a elección y las opciones (tamaños, sabores) se completan después en cada producto.'}),
+        ...bloques, el('label', {class: 'check'}, actualizar, ' Si un producto ya existe con el mismo nombre, actualizar su precio'),
+        ...otrasChk, resumen, guardar);
+    };
+    contenido.replaceChildren(el('section', {class: 'bloque'}, el('h3', {text: 'Importar carta'}),
+      el('p', {class: 'nota', text: 'Subí la carta en PDF o una foto, o pegá el texto. Se arma una propuesta con categorías, productos y precios que revisás antes de guardar. No se borra nada de la carta actual. El archivo se lee en este dispositivo.'}),
+      campo('Archivo (PDF o foto)', archivo), campo('O pegá el texto de la carta', pegado),
+      el('div', {class: 'fila-botones'}, leer, volver), estado), propuesta);
   }
 
   function editarCategoria(cat) {
