@@ -7,7 +7,7 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
     if(error.message.includes('Minified React error #418'))return false;
   });
 
-  function setup(){
+  function setup(email='dueno@example.com'){
     cy.task('mockSupabase').then(body=>{
       cy.intercept('GET','**/vendor/supabase.js',{
         statusCode:200,headers:{'content-type':'application/javascript'},body
@@ -41,7 +41,7 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
         });
       }
     });
-    cy.get('#au-email').clear().type('dueno@example.com');
+    cy.get('#au-email').clear().type(email);
     cy.get('#au-pass').type('secreto1',{log:false});
     cy.get('#au-in button[type="submit"]').click();
   }
@@ -88,7 +88,7 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#fl-f-owner-qa').should('have.value','13');
       cy.get('#view [data-act="stock-local-draft-server"]').click();
       cy.get('#fl-f-owner-qa').should('have.value','7').and('be.disabled');
-      cy.get('#view .gl-stock-server-status').should('contain.text','cambios pendientes');
+      cy.get('#view .gl-stock-server-status').should('contain.text','Vista confirmada del servidor');
       cy.get('#view [data-act="stock-local-history"]').click();
       cy.get('#view [data-stock-open-turn]').should('contain.text','Turno en curso');
       cy.get('#view [data-act="stock-local-open-toggle"]').click();
@@ -96,6 +96,19 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#view [data-act="hist-toggle"]').first().click();
       cy.get('#view').should('contain.text','Registro exclusivo '+local);
       cy.get('#view').should('not.contain.text','Registro exclusivo '+(local==='munro'?'torcuato':'munro'));
+    });
+    it(local+': gerente edita sin reconstrución de filas y dueña recibe dato confirmado',()=>{
+      setup(local==='munro'?'gerente.munro@example.com':'gerente.torcuato@example.com');
+      cy.get('#app',{timeout:15000}).should('be.visible');
+      cy.get('#snav [data-go="h-qa-owner-stock"]').click({force:true});
+      cy.get('#view .xl').then($el=>cy.window().then(w=>{w.__stockLocalRoot=$el[0];}));
+      cy.get('#fl-f-owner-qa').should('be.enabled').clear().type('11');
+      cy.get('#view #gl-stock-auto-status',{timeout:20000}).should('contain.text','Guardado automáticamente');
+      cy.get('#view .xl').then($el=>cy.window().then(w=>{
+        expect($el[0]).to.equal(w.__stockLocalRoot);
+        expect(w.__rows.find(x=>x.col===local+'/fabrica'&&x.id==='f-owner-qa').data.local).to.equal(11);
+        expect(w.__rows.filter(x=>x.col===local+'/conteos').length).to.equal(1);
+      }));
     });
     it(local+': autoguardado edita una fila sin mover el formulario ni duplicar historial',()=>{
       setup();
