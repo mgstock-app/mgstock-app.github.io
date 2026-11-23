@@ -65,6 +65,7 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#snav [data-go="h-qa-owner-cajas"]').click();
       cy.get('#view').should('contain.text','Caja '+local);
       cy.get('#snav [data-go="historial"]').click();
+      cy.get('#view [data-act="hist-toggle"]').first().click();
       cy.get('#view').should('contain.text','Registro exclusivo '+local);
       cy.get('#view').should('not.contain.text','Registro exclusivo '+(local==='munro'?'torcuato':'munro'));
     });
