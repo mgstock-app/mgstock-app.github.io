@@ -103,7 +103,7 @@ const S = {
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
   hj:{editId:null, delId:null, add:false, busy:false},
-  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false
+  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false, stockLocalVerBorrador:false, stockLocalClosing:false
 };
 S.loaded.l = false;
 
@@ -232,6 +232,34 @@ const miGustoStockLocal = () => S.loaded.h && visibles().find(h =>
   h.id !== 'stock' && h.tipo === 'ingreso' && /^stock local$/i.test(String(h.nombre||'').trim()));
 const miGustoStockCajas = () => S.loaded.h && visibles().find(h =>
   h.tipo === 'lista' && /^stock cajas?$/i.test(String(h.nombre||'').trim()));
+// Stock Local de Mi Gusto: el borrador de UN dispositivo nunca reemplaza
+// silenciosamente lo que está confirmado en el servidor para la dueña.
+const stockLocalEnVista = () => S.me?.tenant_id === MI_GUSTO_TENANT &&
+  ['munro','torcuato'].includes(S.local) && S.loaded.h && S.view === miGustoStockLocal()?.id;
+const stockLocalDuena = () => stockLocalEnVista() && miRol() === 'dueno';
+const stockLocalDuenaServidor = () => stockLocalDuena() && !S.stockLocalVerBorrador;
+const stockLocalHoyAR = () => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return p.year+'-'+p.month+'-'+p.day;
+};
+const stockLocalCierreHoy = () => S.conteos.find(c => c.tipo === 'fabrica' &&
+  c.hoja === miGustoStockLocal()?.id && c.turnoCerrado === true &&
+  c.fechaOperativa === stockLocalHoyAR());
+function stockLocalDuenaAviso(){
+  if(!stockLocalDuena())return '';
+  const n=withCtx(S.view,()=>fPend().length), server=stockLocalDuenaServidor();
+  return '<div class="note gl-stock-server-status" role="status"><b>'+
+    (server?'Vista confirmada del servidor.':'Modo edición del Stock Local.')+
+    '</b> '+(server?'Las cantidades son las guardadas y visibles para todo el equipo.':
+      'Los cambios de este dispositivo no aparecen en otras cuentas hasta que guardes.')+
+    (n?' Hay '+n+' filas con cambios pendientes en este dispositivo.':'')+
+    ' <button type="button" class="btn sm" data-act="'+(server?'stock-local-draft-view':'stock-local-draft-server')+'">'+
+    (server?(n?'Revisar borrador local':'Editar stock'):'Ver datos del servidor')+'</button>'+
+    (n?'<button type="button" class="btn sm danger" data-act="stock-local-draft-discard">Descartar borrador local</button>':'')+
+    '</div>';
+}
 function ownerInventoryLinks(){
   if(!miGustoOwnerInventory())return '';
   if(!S.loaded.h)return '<p class="note" role="status">Cargando Stock Local, Stock Cajas e historial de la sucursal…</p>';
@@ -335,7 +363,7 @@ const lastStockCtx = () => { const l = listaCtx(); return l ? S.conteos.find(c =
 const lastFab = () => { const f = fabCtx(); return S.conteos.find(c => c.tipo === 'fabrica' && (c.hoja || 'fabrica') === f); };
 /* Conteo Fábrica */
 const fItems = () => [...S.fab].sort((a,b) => (a.orden ?? 1e9) - (b.orden ?? 1e9) || String(a.nombre||'').localeCompare(String(b.nombre||''), 'es'));
-function fVal(it, k){ const d = S.fdraft[it.id]; if (d && has(d, k)) return d[k]; return num(k === 'l' ? it.local : it.fabrica); }
+function fVal(it, k){ if (stockLocalDuenaServidor()) return num(k === 'l' ? it.local : it.fabrica); const d = S.fdraft[it.id]; if (d && has(d, k)) return d[k]; return num(k === 'l' ? it.local : it.fabrica); }
 const fTot = it => round((fVal(it, 'l') || 0) + (fVal(it, 'f') || 0));
 function fPend(){ return fItems().filter(it => { const d = S.fdraft[it.id]; if (!d) return false; return (has(d, 'l') && d.l !== num(it.local)) || (has(d, 'f') && d.f !== num(it.fabrica)); }); }
 const fSin = it => { const l = fVal(it, 'l'); return l != null ? l === 0 : !!it.sinStock; };
@@ -529,12 +557,12 @@ function renderSavebar(){
   const enCola = S.queued && S.queued.view === S.view;
   if (isFabV(S.view)){
     const fp = fPend().length, lf = lastFab();
-    $('#sb-main').textContent = enCola ? (S.offline ? 'Borrador local: guardar al volver internet' : 'Borrador pendiente: revisá y guardá')  : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
+    $('#sb-main').textContent = stockLocalDuenaServidor() && fp ? `${fp} cambios locales ocultos · datos del servidor visibles` : enCola ? (S.offline ? 'Borrador local: guardar al volver internet' : 'Borrador pendiente: revisá y guardá') : fp ? `${plural(fp, 'fila cambiada', 'filas cambiadas')} sin guardar` : 'Sin cambios';
     $('#sb-sub').textContent = lf ? `${nombreHoja(fabCtx())} guardado ${rel(lf.fecha)} · ${whoName(lf)}` : (S.loaded.c ? 'Esta planilla todavía no se guardó' : 'Cargando…');
     $('#savebar').classList.toggle('dirty', !!fp);
     const c = $('#sb-cnt'); c.hidden = !fp; c.textContent = fp;
     $('#sb-desc').hidden = !S.fab.some(it => has(S.fdraft, it.id));
-    $('#sb-save').disabled = !canW();
+    $('#sb-save').disabled = !canW() || stockLocalDuenaServidor();
     return;
   }
   const ed = editingCtx(), pend = pendientes().length, cont = draftCount(), last = lastStockCtx();
@@ -1918,8 +1946,8 @@ V.fabrica = () => {
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja(), TN = esc(totalNombre(IH));
-  const head = `${banners()}<div class="bar"><p class="lead">${IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
-    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}</div></div>`;
+  const head = `${banners()}${stockLocalDuenaAviso()}<div class="bar"><p class="lead">${IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
+    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() && !stockLocalDuenaServidor() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -1931,26 +1959,26 @@ V.fabrica = () => {
     prev = b; n++; rows += rowFab(it, n);
   }
   return head + `<div class="xl" role="table" aria-label="${esc(nom)}">
-    <div class="xl-top"><b>Planilla<span class="num">${esc(hoy)}</span></b><small>${lf ? `Último guardado ${esc(fechaHora(lf.fecha))}` : 'Sin guardar todavía'} · <label class="ss" aria-hidden="true"><input type="checkbox" tabindex="-1"></label> = sin stock</small></div>
+    <div class="xl-top"><b>Planilla<span class="num">${esc(hoy)}</span></b><small>${lf ? `Último guardado ${esc(fechaHora(lf.fecha))}` : 'Sin guardar todavía'}${stockLocalEnVista() ? ' · ' + (S.loaded.c && stockLocalCierreHoy() ? 'Turno cerrado' : 'Turno abierto') : ''} · <label class="ss" aria-hidden="true"><input type="checkbox" tabindex="-1"></label> = sin stock</small></div>
     <div class="xl-r xl-h" role="row"><span class="xn"></span><span class="xh-p">Producto</span>${IH ? `<span class="xh-t">${TN}<small>local + ingreso</small></span><span>Local<small>stock local</small></span><span class="xh-f">Ingreso<small>remitos</small></span>` : `<span class="xh-t">Total stock<small>local + fábrica</small></span><span>Local<small>stock local</small></span><span class="xh-f">Fábrica<small>ingreso mañana ${esc(manana)}</small></span>`}</div>
     ${rows}
     ${canW() ? `<div class="xl-add"><button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button></div>` : ''}
   </div>`;
 };
 function rowFab(it, n){
-  const id = esc(it.id), l = fVal(it, 'l'), f = fVal(it, 'f'), d = S.fdraft[it.id] || {}, dis = canW() ? '' : 'disabled';
+  const id = esc(it.id), l = fVal(it, 'l'), f = fVal(it, 'f'), d = stockLocalDuenaServidor() ? {} : (S.fdraft[it.id] || {}), dis = canW() && !stockLocalDuenaServidor() ? '' : 'disabled';
   const chgL = has(d, 'l') && d.l !== num(it.local), chgF = has(d, 'f') && d.f !== num(it.fabrica);
   return `<div class="xl-r ${fSin(it) ? 'sin' : ''} ${fabIsFolded(bloqueOf(it)) ? 'gl-folded-row' : ''}" id="fr-${id}" role="row">
     <span class="xn">${n}</span>
     <span class="xp ${it.resaltar ? 'hl' : ''}"><label class="ss"><input type="checkbox" data-fss="${id}" ${fSin(it) ? 'checked' : ''} ${dis} aria-label="Sin stock: ${esc(it.nombre)}"><span>Sin stock</span></label><span class="xpn">${canW() ? `<button class="xpb" data-act="f-item" data-id="${id}" title="Modificar o eliminar"><b>${esc(it.nombre)}</b></button>` : `<b>${esc(it.nombre)}</b>`}${notaCell(it, 'f')}</span></span>
     <span class="xt"><small class="xl-mob-label">Total</small><strong id="ft-${id}">${fmt(fTot(it))}</strong></span>
-    <span class="xc xcl"><small class="xl-mob-label">Local</small><span class="xl-stepper" role="group" aria-label="Ajustar Local de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="-1" aria-label="Restar 1 a Local de ${esc(it.nombre)}" ${!canW() || !(l > 0) ? 'disabled' : ''}>−</button><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="1" aria-label="Sumar 1 a Local de ${esc(it.nombre)}" ${dis}>+</button></span>${fracFab(it, l)}</span>
-    <span class="xc fab"><small class="xl-mob-label">${ingHoja() ? 'Ingreso' : 'Fábrica'}</small><span class="xl-stepper" role="group" aria-label="Ajustar ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="-1" aria-label="Restar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${!canW() || !(f > 0) ? 'disabled' : ''}>−</button><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="1" aria-label="Sumar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}>+</button></span></span>
+    <span class="xc xcl"><small class="xl-mob-label">Local</small><span class="xl-stepper" role="group" aria-label="Ajustar Local de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="-1" aria-label="Restar 1 a Local de ${esc(it.nombre)}" ${!canW() || stockLocalDuenaServidor() || !(l > 0) ? 'disabled' : ''}>−</button><input id="fl-${id}" data-fl="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(l))}" placeholder="0" class="${chgL ? 'chg' : ''}" aria-label="Local de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="l" data-delta="1" aria-label="Sumar 1 a Local de ${esc(it.nombre)}" ${dis}>+</button></span>${fracFab(it, l)}</span>
+    <span class="xc fab"><small class="xl-mob-label">${ingHoja() ? 'Ingreso' : 'Fábrica'}</small><span class="xl-stepper" role="group" aria-label="Ajustar ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}"><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="-1" aria-label="Restar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${!canW() || stockLocalDuenaServidor() || !(f > 0) ? 'disabled' : ''}>−</button><input id="ff-${id}" data-ff="${id}" inputmode="decimal" autocomplete="off" value="${esc(fmtIn(f))}" placeholder="0" class="${chgF ? 'chg' : ''}" aria-label="${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}><button type="button" data-act="fstep" data-id="${id}" data-field="f" data-delta="1" aria-label="Sumar 1 a ${ingHoja() ? 'Ingreso' : 'Fábrica'} de ${esc(it.nombre)}" ${dis}>+</button></span></span>
   </div>`;
 }
 /* ¼ ½ ¾ debajo de Local: eligen la fracción (tocar la misma otra vez la saca) */
 function fracFab(it, l){
-  const id = esc(it.id), fr = fracOf(l), dis = canW() ? '' : 'disabled';
+  const id = esc(it.id), fr = fracOf(l), dis = canW() && !stockLocalDuenaServidor() ? '' : 'disabled';
   return `<span class="fq" role="group" aria-label="Fracción de Local de ${esc(it.nombre)}">${[[1, '¼'], [2, '½'], [3, '¾']].map(([k, t]) => `<button id="ffq${k}-${id}" data-act="ffrac" data-id="${id}" data-f="${k / 4}" aria-pressed="${Math.abs(fr - k / 4) < 1e-9}" aria-label="${t} en Local de ${esc(it.nombre)}" ${dis}>${t}</button>`).join('')}</span>`;
 }
 /* Agregar, modificar o eliminar productos desde la misma planilla */
@@ -2066,6 +2094,7 @@ async function refreshStockFromServer(){
 }
 function openSaveF(){
   if (!needWrite()) return;
+  if (stockLocalDuenaServidor()){ toast('Primero elegí Editar stock o Revisar borrador local.',true); return; }
   const pend = fPend(); S.panel = 'save';
   const lista = pend.length ? `<div class="sum">${pend.map(it => `<div><span>${esc(it.nombre)}</span><span class="num">L ${fmt(fVal(it,'l') ?? 0)} + F ${fmt(fVal(it,'f') ?? 0)} = <b class="dif eq" style="font-family:var(--f-num);font-size:13px">${fmt(fTot(it))}</b></span></div>`).join('')}</div>`
     : `<p class="note">No cambiaste ninguna fila. Se guarda igual la planilla completa con fecha y hora, como control.</p>`;
@@ -2074,8 +2103,27 @@ function openSaveF(){
   <div class="pn-f"><button class="btn" data-act="close">Cancelar</button><button class="btn primary" id="sv-ok" data-act="save-f-ok">${ic('save')}Guardar conteo</button></div>`, 'dlg');
   setTimeout(() => $('#sv-ok')?.focus(), 40);
 }
-async function doSaveF(v = S.view){
+function openCloseStockLocal(){
+  if (!stockLocalEnVista() || !needWrite()) return;
+  if (!S.loaded.c || !S.loaded.f){ toast('Cargando los datos del servidor. No se cerró el turno.',true); return; }
+  if (stockLocalCierreHoy()){ toast('Este turno ya figura cerrado en el historial.',true); return; }
+  if (S.stockLocalClosing || S.offline || navigator.onLine===false){
+    toast('Para cerrar turno se necesita conexión con el servidor.',true); return;
+  }
+  if (stockLocalDuenaServidor()){
+    toast('Revisá o descartá el borrador local y elegí Editar stock antes de cerrar.',true); return;
+  }
+  openConfirm('Cerrar turno de Stock Local',
+    'Se guardarán los cambios y una copia completa en Historial, con fecha de hoy y sucursal. No se borrará el stock para el próximo turno.',
+    'Guardar y cerrar turno','stock-local-close-ok',false);
+}
+async function doSaveF(v = S.view, closeTurn = false){
+  if (closeTurn && (!stockLocalEnVista() || !S.loaded.c || !S.loaded.f || stockLocalCierreHoy() || S.stockLocalClosing || S.offline || navigator.onLine===false)){
+    toast('No se pudo cerrar el turno: verificá conexión e historial antes de reintentar.',true); return;
+  }
   if (sinRed()){ queueSave(v, true); return; }
+  if (stockLocalDuenaServidor()){ toast('Primero revisá o descartá el borrador local.',true); return; }
+  if (closeTurn)S.stockLocalClosing=true;
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
   const plan = withCtx(v, () => {
@@ -2086,14 +2134,23 @@ async function doSaveF(v = S.view){
   });
   try {
     await batchRun(plan.ups, u => C('fabrica').doc(u.id).update(u.data));
-    await w(() => C('conteos').add({tipo:'fabrica', fecha:now, autor:S.uid || null, responsable:'', nota:'', hoja:plan.hoja, nombreHoja:plan.nom, filas:plan.filas, cambiadas:plan.n, total:plan.filas.length, sinStock:plan.filas.filter(x => x.sin).map(x => x.nombre)}));
+    const registro = {tipo:'fabrica', fecha:now, autor:S.uid || null, responsable:'', nota:'',
+      hoja:plan.hoja, nombreHoja:plan.nom, filas:plan.filas, cambiadas:plan.n,
+      total:plan.filas.length, sinStock:plan.filas.filter(x => x.sin).map(x => x.nombre)};
+    if(closeTurn){
+      // Identidad fija por sucursal (C) + hoja + fecha: no se duplica el cierre al reintentar.
+      registro.turnoCerrado=true;
+      registro.fechaOperativa=stockLocalHoyAR();
+      registro.cerradoEn=now;
+      await w(() => C('conteos').doc('cierre-'+plan.hoja+'-'+registro.fechaOperativa).set(registro));
+    } else await w(() => C('conteos').add(registro));
     withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
-    if (S.panel === 'save') closePanel(); render();
-    toast(`${plan.nom} guardado${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}${guardadoLocal() ? ' en este equipo · se envía solo al volver internet' : ''}`);
+    if (S.panel === 'save' || (closeTurn && S.panel === 'confirm')) closePanel(); render();
+    toast(closeTurn ? 'Guardado exitoso · Turno cerrado y archivado en Historial' : `Guardado exitoso · ${plan.nom}${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}${guardadoLocal() ? ' en este equipo · se envía al volver internet' : ''}`);
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
-    if (!navigator.onLine && !syncOffline()){ S.offline = true; queueSave(v, true); } else fail(e);
-  }
+    if (!navigator.onLine && !syncOffline() && !closeTurn){ S.offline = true; queueSave(v, true); } else fail(e);
+  } finally { if(closeTurn) S.stockLocalClosing=false; }
 }
 /* Sin internet: conserva el borrador hasta que la persona confirme guardarlo con conexión. */
 function queueSave(v, fab){
@@ -2189,7 +2246,7 @@ function histCardF(c, q){
   const ing = fl.filter(x => (x.fabrica || 0) > 0).length, sinN = fl.filter(x => x.sin).length;
   return `<article class="card hc" id="hc-${esc(c.id)}">
     <div class="hc-h"><div class="hc-d" style="background:var(--fab-bg);color:var(--fab-ink)"><b>${esc(dia)}</b><small style="color:inherit">${esc(mes)}</small></div>
-      <div class="hc-m"><b>${esc(hojaLabel(c, 'Conteo Fábrica'))} de las ${esc(horaCorta(c.fecha))}</b><small>${esc(whoName(c))} · ${plural(fl.length, 'fila', 'filas')}${c.cambiadas ? ` · ${c.cambiadas} cambiadas` : ''}</small></div>
+      <div class="hc-m"><b>${esc(hojaLabel(c, 'Conteo Fábrica'))}${c.turnoCerrado ? ' · Turno cerrado' : ' · Guardado'} de las ${esc(horaCorta(c.fecha))}</b><small>${esc(whoName(c))} · ${plural(fl.length, 'fila', 'filas')}${c.cambiadas ? ` · ${c.cambiadas} cambiadas` : ''}</small></div>
       <div class="hc-k"><span class="pill ok">${ing} ingresan mañana</span>${sinN ? `<span class="pill crit">${sinN} sin stock</span>` : ''}</div></div>
     ${open ? `<div class="hc-t"><div class="mv hd mvf"><div>Producto</div><span>Local</span><span>Fábrica</span><span>Total</span></div>${shown.map(x => `<div class="mv mvf"><div><b style="${x.sin ? 'color:var(--crit)' : ''}">${esc(x.nombre)}</b></div><span>${fmt(x.local ?? 0)}</span><span>${fmt(x.fabrica ?? 0)}</span><span><b>${fmt(x.total)}</b></span></div>`).join('')}</div>` : ''}
     <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar planilla' : 'Ver planilla'}</button></div>
@@ -3693,6 +3750,29 @@ document.addEventListener('click', e => {
     case 'locales': mostrarHub(); break;
     case 'retry-locales': S.loadError = false; S.loadStartedAt = Date.now(); S.booted = false; S.loaded.e = false; S.loaded.l = false; renderHub(); boot(); break;
     case 'guardar': openSave(); break;
+    case 'stock-local-close': openCloseStockLocal(); break;
+    case 'stock-local-close-ok': void doSaveF(S.view,true); break;
+    case 'stock-local-history':
+      if(stockLocalEnVista()){S.histHoja=miGustoStockLocal().id;S.histPer='todo';S.histQ='';S.histN=30;go('historial');}
+      break;
+    case 'stock-local-draft-view':
+      if(stockLocalDuena()){S.stockLocalVerBorrador=true;render();}
+      break;
+    case 'stock-local-draft-server':
+      if(stockLocalDuena()){S.stockLocalVerBorrador=false;render();}
+      break;
+    case 'stock-local-draft-discard':
+      if(stockLocalDuena() && withCtx(S.view,()=>fPend().length))
+        openConfirm('Descartar borrador del dispositivo','Solo se borrarán los cambios sin guardar de este dispositivo. Las cantidades del servidor y el historial no se modifican.','Descartar borrador','stock-local-draft-discard-ok',true);
+      break;
+    case 'stock-local-draft-discard-ok':
+      if(stockLocalDuena()){
+        withCtx(S.view,clearFDraftCtx);
+        if(S.queued && S.queued.view===S.view){S.queued=null;localStorage.removeItem(queuedKey());}
+        S.stockLocalVerBorrador=false;closePanel();render();
+        toast('Borrador local descartado. Datos confirmados del servidor visibles.');
+      }
+      break;
     case 'recover-draft': recoverLegacyDraft(); break;
     case 'save-ok': doSave(); break;
     case 'descartar': if (isFabV(S.view)) openConfirm('Descartar cambios', 'Se borran los valores de Local y Fábrica que todavía no guardaste. La planilla vuelve al último guardado.', 'Descartar', 'desc-f-ok', true); else openConfirm('Descartar cambios', `Se borran las cantidades contadas y las notas que todavía no guardaste${editingCtx() ? ', y se cancela la corrección' : ''}.`, 'Descartar', 'desc-ok', true); break;
@@ -4111,6 +4191,7 @@ function abrirLocal(id){
     window.GestLokMiGustoOrders?.reset();
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
+    S.stockLocalVerBorrador=false; S.stockLocalClosing=false;
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
     void window.GestLokCreatorHome?.refreshDaily?.(true);
