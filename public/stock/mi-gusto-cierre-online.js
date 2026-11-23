@@ -47,7 +47,7 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
    (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>m.method==='getnet'||m.method==='mercado_pago');
+const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>!m.pya&&(m.method==='getnet'||m.method==='mercado_pago'));
 const emptySelected=s=>!!s&&!hasPosnet(s)&&emptyCheckedFor===s.id;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;activeMethodFilter='todos';emptyCheckedFor=null;error='';}
 function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';activeMethodFilter='todos';historyMethodFilter='todos';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
@@ -89,10 +89,10 @@ async function refresh(){
 function status(){
  const s=snapshot?.active;
  return '<div class="mg-on-summary">'+
- ['transferencia','getnet','mercado_pago','efectivo','total_app','total_ventas','online_local'].map((key,i)=>
+ ['transferencia','getnet','mercado_pago','efectivo','total_app','total_ventas','online_local','total_pya'].map((key,i)=>
   '<div class="mg-on-summary-item '+(key==='online_local'?'mg-on-local':key==='total_ventas'?'mg-on-total':'')+'"><span>'+esc({
  transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',efectivo:'Efectivo',total_app:'Total APP',
- total_ventas:'Total ventas online',online_local:'Online Local'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div><p class="mg-on-online-help">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla aparte.</p>';
+ total_ventas:'Total ventas online',online_local:'Online Local',total_pya:'PYA simbólico · no suma'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div><p class="mg-on-online-help">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla aparte. Las comandas PYA son simbólicas y no suman en ningún medio de pago ni en el total online.</p>';
 }
 function currentHead(){
  const s=snapshot?.active;
@@ -141,14 +141,16 @@ function movementList(){
   esc(({transferencia:'T',getnet:'G',mercado_pago:'MP',efectivo:'E'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
  const appControl=r=>'<button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+
    '" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>APP</b></button>';
+ const pyaControl=r=>'<button type="button" class="mg-on-pya-toggle" role="switch" aria-label="PYA simbólico de comanda '+esc(r.comanda)+
+   '" aria-checked="'+!!r.pya+'" data-mgon-pya="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>PYA</button>';
  const actions=r=>'<div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
    '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div>';
- const card=r=>'<article class="mg-on-recent-card '+(r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
+ const card=r=>'<article class="mg-on-recent-card '+(r.pya?'mg-on-pya-row':r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
   '<div class="mg-on-recent-row-main">'+
   '<strong class="mg-on-recent-order" aria-label="Comanda número '+esc(r.comanda)+'">#'+esc(r.comanda)+'</strong>'+
   '<div class="mg-on-recent-amount"><strong>'+cash(r.amount)+'</strong>'+
-   (r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</div>'+
-  '<div class="mg-on-recent-app">'+appControl(r)+'</div>'+
+   (r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+(r.pya?'<small class="mg-on-pya-note">PYA · simbólico · no suma</small>':'')+'</div>'+
+  '<div class="mg-on-recent-app">'+appControl(r)+pyaControl(r)+'</div>'+
   '<div class="mg-on-recent-meta"><span class="mg-on-recent-time">'+timeOf(r.created_at)+'</span>'+method(r)+'</div>'+
   '<div class="mg-on-recent-commands">'+actions(r)+'</div></div>'+
   (r.observacion?'<p class="mg-on-recent-card-note"><span>Observación: </span>'+esc(r.observacion)+'</p>':'')+
@@ -162,8 +164,8 @@ function movementList(){
 function cashMovementDetail(s=snapshot?.active){
  const closed=s?.status==='cerrado';
  const rows=[...(s?.movements||[])].filter(r=>r.method==='efectivo').reverse();
- const total=rows.reduce((v,r)=>v+(Number(r.amount)||0),0);
- const discountTotal=rows.reduce((v,r)=>r.ok?v:v+(Number(r.discount_amount)||0),0);
+ const total=rows.reduce((v,r)=>v+(r.pya?0:Number(r.amount)||0),0);
+ const discountTotal=rows.reduce((v,r)=>r.ok||r.pya?v:v+(Number(r.discount_amount)||0),0);
  if(closed&&!rows.length)return '';
  const title='<header class="mg-on-cash-head"><div><h3>Detalle de efectivo del turno</h3><p>'+date(s?.day)+' · Turno '+esc(shiftName(s?.turno))+' · '+esc(LOCALS[local()]||'')+(closed?' · Cerrado':'')+'</p></div><div class="mg-on-cash-metrics"><div class="mg-on-cash-total"><span>Total efectivo</span><strong>'+cash(total)+'</strong><small>'+rows.length+' movimientos</small></div><div class="mg-on-cash-total mg-on-cash-discounts"><span>Total descuentos</span><strong data-mgon-total-discounts>'+cash(discountTotal)+'</strong><small>Pendientes sin OK · Solo pagos en efectivo</small></div></div></header>';
  if(!rows.length)return '<section class="mg-on-cash-detail-section">'+title+'<p class="mg-on-empty">Todavía no se registraron pagos en efectivo en este turno.</p></section>';
@@ -175,7 +177,7 @@ function cashMovementDetail(s=snapshot?.active){
 function parseAmountInput(value){const raw=String(value??'').trim().replace(/\s/g,'');if(!/^\d{1,11}(?:\.\d{3})*(?:,\d{0,2})?$/.test(raw)&&!/^\d{1,11}(?:,\d{0,2})?$/.test(raw))return NaN;return Number(raw.replace(/\./g,'').replace(',','.'));}
 function formatAmountInput(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
 function formatAmountTyping(value){const cleaned=String(value??'').replace(/[^0-9,]/g,'');const comma=cleaned.indexOf(',');const integer=(comma<0?cleaned:cleaned.slice(0,comma)).slice(0,11);const cents=comma<0?'':','+cleaned.slice(comma+1).replace(/,/g,'').slice(0,2);return integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+cents;}
-function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
+function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.pya?.checked){out.hidden=false;out.textContent='PYA simbólico: no se suma a ninguna forma de pago ni al total online.';return;}if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
 function entry(){
  const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
  return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
@@ -183,7 +185,8 @@ function entry(){
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
  '<label>Monto ($)<input type="text" inputmode="decimal" name="amount" autocomplete="off" maxlength="18" value="'+esc(r?.gross_amount!=null?formatAmountInput(r.gross_amount):'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
- '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
+ '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label>'+ 
+ '<label class="mg-on-check mg-on-check-pya"><input type="checkbox" name="pya" '+(r?.pya?'checked':'')+'><span>PYA <small>Simbólico · no suma</small></span></label></div>'+
  '<p class="mg-on-cash-preview" id="mg-on-cash-preview" aria-live="polite"></p>'+ '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
  '<label class="mg-on-observation">Detalle de la observación <small>(máximo 300 caracteres)</small>'+
  '<textarea name="observacion" maxlength="300" autocomplete="off" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
