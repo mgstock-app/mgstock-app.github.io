@@ -48,10 +48,10 @@ let recoveringFromDay=null; // Solo aviso contextual al recuperar una noche pasa
 let categoriasPlegadas=false;
 let ownerCatalogMode=false; // La dueña administra presentaciones sin modificar el conteo activo. // Preferencia visual del local durante la sesión.
 let historyMode=false,historyMonth=arDay().slice(0,7),historyRows=[],historyExpanded=null,historyLoading=false,historyError='',historyToken=0,autoResumeTurn=true,lastClosedDay=null,historyPreviewUrl='',historyPreviewError='';
-let historyEditMode=false,historyEditKind='cell',historyEditProduct='',historyEditVto=1;
+let historyEditMode=false,historyEditKind='total',historyEditProduct='',historyEditVto=1;
 let historyCorrections=[],historyCorrectionsLoaded=false,historyCorrectionError='',historyCorrecting=false;
 function clearHistoryEditor(){
- historyEditMode=false;historyEditKind='cell';historyEditProduct='';historyEditVto=1;
+ historyEditMode=false;historyEditKind='total';historyEditProduct='';historyEditVto=1;
  historyCorrections=[];historyCorrectionsLoaded=false;historyCorrectionError='';historyCorrecting=false;
 }
 
@@ -490,11 +490,13 @@ function historyDetailsTable(section,products,rec){
   const p=historicProduct(rec,original);
   const v=rec.data?.[p.id]||{},decomp=rec.decomiso?.[p.id]||{};
   let total=0;
-  const cols=[1,2,3,4].map(i=>{
+  let cols=[1,2,3,4].map(i=>{
    const cell=v['v'+i]||{};
    total+=amount(p,{chapas:Number(cell.chapas)||0,sueltas:Number(cell.sueltas)||0,qty:Number(cell.qty)||0});
    return makeCell(p,cell);
   }).join('');
+  // Corregido por total en el turno cerrado: ya no hay detalle por vencimiento.
+  if(v.total_corregido===true)cols='<td class="gcm-hd-qty gcm-hd-corrected" colspan="4">Total corregido</td>';
   total+=amount(p,{chapas:Number(decomp.chapas)||0,sueltas:Number(decomp.sueltas)||0,qty:Number(decomp.qty)||0});
   return '<tr>'+(showDecomiso?makeCell(p,decomp):'')+'<th scope="row">'+esc(p.name)+'</th>'+cols+'<td class="gcm-hd-total'+(total===0&&manualSinStock(rec,p.id)?' is-no-stock':'')+'">'+stockLabel(rec,p.id,total)+'</td></tr>';
  }).join('');
@@ -529,10 +531,17 @@ function historyCorrectionPanel(rec){
  if(!historyEditProduct||!usable.some(p=>p.id===historyEditProduct))historyEditProduct=usable[0]?.id||'';
  const baseProduct=usable.find(x=>x.id===historyEditProduct);
   const p=baseProduct?historicProduct(rec,baseProduct):null;
+ // Las cantidades de un turno cerrado se corrigen por total del producto (sin vencimientos).
+ const kinds=[['total','Cantidad total del producto'],['sin_stock','Sin stock (manual)'],['decomiso','Decomiso'],['responsable','Responsable'],
+  ...(rec.shift==='manana_entrada'?[]:[['consumption','Consumos']]),['waste','Desperdicios']];
+ if(!kinds.some(([id])=>id===historyEditKind))historyEditKind='total';
  const kind=historyEditKind;
- const idx=kind==='decomiso'?0:historyEditVto;
- const prev=kind==='cell'?rec.data?.[p?.id]?.['v'+idx]:
-  kind==='decomiso'?rec.decomiso?.[p?.id]:null;
+ const prev=kind==='decomiso'?rec.decomiso?.[p?.id]:null;
+ const productSelect='<label>Producto<select id="gcm-history-fix-product">'+
+  usable.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===historyEditProduct?' selected':'')+'>'+esc(q.section+' · '+q.name)+'</option>').join('')+
+  '</select></label>';
+ const currentTotal=p?recordedTotal(rec,p):0;
+ const decomisoUnits=p?amount(p,rec.decomiso?.[p.id]||{}):0;
  const value={chapas:Number(prev?.chapas)||0,sueltas:(Number(prev?.sueltas)||0)+(p?.units_per_chapa>0?(Number(prev?.qty)||0):0),
   qty:p?.units_per_chapa>0?0:(Number(prev?.qty)||0)};
  const input=(field,label,max)=>'<label>'+label+'<input type="number" min="0" max="'+max+
@@ -543,40 +552,40 @@ function historyCorrectionPanel(rec){
   '<input data-gcm-history-extra-name placeholder="'+(kind==='consumption'?'Colaborador':'Producto')+'" maxlength="90" value="'+esc(r.name||'')+'" aria-label="Nombre fila '+(i+1)+'">'+
   '<input data-gcm-history-extra-value placeholder="'+(kind==='consumption'?'Consumo':'Cantidad')+'" maxlength="90" value="'+esc(r.value||'')+'" aria-label="Valor fila '+(i+1)+'"></div>';
  const details=kind==='sin_stock'?
-  '<div class="gcm-history-fix-grid"><label>Producto<select id="gcm-history-fix-product">'+
-  usable.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===historyEditProduct?' selected':'')+'>'+esc(q.section+' · '+q.name)+'</option>').join('')+
-  '</select></label><label class="gcm-sin-stock-fix"><input type="checkbox" id="gcm-history-fix-sin-stock"'+
+  '<div class="gcm-history-fix-grid">'+productSelect+
+  '<label class="gcm-sin-stock-fix"><input type="checkbox" id="gcm-history-fix-sin-stock"'+
   (manualSinStock(rec,p?.id)?' checked':'')+'> Confirmar Sin stock</label></div>'+
   '<p class="gcm-history-fix-expl">Sin marcar significa «—» cuando no se registraron cantidades. La marca solo puede guardarse sin unidades.</p>':
-  kind==='cell'||kind==='decomiso'?
-  '<div class="gcm-history-fix-grid"><label>Producto<select id="gcm-history-fix-product">'+
-   usable.map(q=>'<option value="'+esc(q.id)+'"'+(q.id===historyEditProduct?' selected':'')+'>'+esc(q.section+' · '+q.name)+'</option>').join('')+
-   '</select></label>'+
-   (kind==='cell'?'<label>Vencimiento<select id="gcm-history-fix-vto">'+
-    [1,2,3,4].map(n=>'<option value="'+n+'"'+(idx===n?' selected':'')+'>Vto '+n+'</option>').join('')+
-    '</select></label>':'<p class="gcm-history-fix-expl">Decomiso del turno</p>')+
+  kind==='total'?
+  '<div class="gcm-history-fix-grid">'+productSelect+
+   '<label>Cantidad total (unidades)<input type="number" min="'+decomisoUnits+'" max="1000000" step="1" inputmode="numeric" data-gcm-history-number="total" value="'+currentTotal+'" required></label></div>'+
+   '<p class="gcm-history-fix-expl">Total archivado: <strong>'+currentTotal+' unidades</strong>'+
+   (decomisoUnits?' (incluye '+decomisoUnits+' de decomiso)':'')+
+   '. El total nuevo reemplaza el detalle por vencimiento de este producto.</p>':
+  kind==='decomiso'?
+  '<div class="gcm-history-fix-grid">'+productSelect+
+   '<p class="gcm-history-fix-expl">Decomiso del turno</p>'+
    (p?.units_per_chapa>0?input('chapas',packWord(p)==='caja'?'Cajas (0–500)':'Chapas (0–500)',500)+input('sueltas','Unidades sueltas (0–100000)',100000):
     input('qty','Unidades (0–1000000)',1000000))+'</div>'+
    '<p class="gcm-history-fix-expl">Valor archivado: <strong>'+
    (p?.units_per_chapa>0?value.chapas+' '+packWord(p)+(value.chapas===1?'':'s')+' + '+value.sueltas+' unidades':value.qty+' unidades')+
-   '</strong>. El cambio afecta únicamente este producto y vencimiento.</p>':
+   '</strong>. El cambio afecta únicamente el decomiso de este producto.</p>':
   kind==='responsable'?'<label>Responsable del turno<select id="gcm-history-fix-responsable">'+
    responsables().map(name=>'<option value="'+esc(name)+'"'+(rec.responsable===name?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label>':
   '<div class="gcm-history-fix-list">'+list.map(row).join('')+'</div>'+
    '<p class="gcm-history-fix-expl">Se guardan los registros cargados. Los campos vacíos de la fila adicional no crean datos.</p>';
- const kinds=[['cell','Cantidad por vencimiento'],['sin_stock','Sin stock (manual)'],['decomiso','Decomiso'],['responsable','Responsable'],
-  ...(rec.shift==='manana_entrada'?[]:[['consumption','Consumos']]),['waste','Desperdicios']];
  const changes=historyCorrectionsLoaded?
   '<div class="gcm-history-corrections"><h4>Correcciones registradas</h4>'+
-  (historyCorrections.length?historyCorrections.map(x=>'<article><strong>'+esc(x.kind==='cell'?'Vto '+x.expiry_index:x.kind==='sin_stock'?'Sin stock (manual)':x.kind==='decomiso'?'Decomiso':x.kind==='responsable'?'Responsable':x.kind==='consumption'?'Consumos':'Desperdicios')+
+  (historyCorrections.length?historyCorrections.map(x=>'<article><strong>'+esc(x.kind==='total'?'Total del producto':x.kind==='cell'?'Vto '+x.expiry_index:x.kind==='sin_stock'?'Sin stock (manual)':x.kind==='decomiso'?'Decomiso':x.kind==='responsable'?'Responsable':x.kind==='consumption'?'Consumos':'Desperdicios')+
    '</strong> · '+esc(catalog.find(p=>p.id===x.product_id)?.name||'')+
    '<small>'+esc(x.actor_email||'')+' · '+esc(new Date(x.corrected_at).toLocaleString('es-AR'))+'</small>'+
-   '<p>Motivo: '+esc(x.reason||'')+'</p><details><summary>Ver antes y después</summary>'+
+   (x.kind==='total'?'<p>Total: '+esc(String(x.before_value?.total??'—'))+' → '+esc(String(x.after_value?.total??'—'))+' unidades</p>':'')+
+   (x.reason?'<p>Motivo: '+esc(x.reason)+'</p>':'')+'<details><summary>Ver antes y después</summary>'+
    '<pre>'+esc(JSON.stringify(x.before_value))+' → '+esc(JSON.stringify(x.after_value))+'</pre></details></article>').join(''):
    '<p>Este turno todavía no tiene correcciones.</p>')+'</div>':'';
  return '<section class="gcm-history-correction">'+
   '<div class="gcm-history-correction-head"><div><h3>Correcciones del turno cerrado</h3>'+
-  '<p>El turno sigue finalizado. Cada modificación se registra con fecha, usuario y motivo.</p></div>'+
+  '<p>El turno sigue finalizado. Cada modificación se registra con fecha y usuario.</p></div>'+
   (canEdit?'<button type="button" data-gcm-history-fix-toggle aria-expanded="'+historyEditMode+'">'+
    (historyEditMode?'Cancelar edición':'Editar turno cerrado')+'</button>':'')+
   '<button type="button" data-gcm-history-show-corrections>Ver cambios realizados</button></div>'+
@@ -585,7 +594,6 @@ function historyCorrectionPanel(rec){
    '<label>¿Qué querés corregir?<select id="gcm-history-fix-kind">'+
    kinds.map(([id,name])=>'<option value="'+id+'"'+(id===kind?' selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
    details+
-   '<label>Motivo obligatorio de la corrección<textarea id="gcm-history-fix-reason" maxlength="300" minlength="8" rows="2" placeholder="Por ejemplo: se registraron 3 unidades de más por error de carga"></textarea></label>'+
    '<button type="button" data-gcm-history-fix-save'+(historyCorrecting?' disabled':'')+'>Guardar corrección auditada</button>'+
    '<p class="gcm-history-fix-expl">Solo se guardará este cambio. El registro anterior permanece en auditoría.</p></div>':'')+
   changes+'</section>';
@@ -635,7 +643,7 @@ function historyDetailView(){
   (rec.waste_visible?'<details class="gcm-hd-consumption"><summary>Desperdicios</summary>'+
    '<div class="gcm-hd-consumption-body">'+historyExtraBlock('waste','Desperdicios',rec)+'</div></details>':'')+
   '<details class="gcm-hd-breakdown"><summary>Ver detalle por vencimiento</summary>'+
-  '<p class="gcm-hd-notice">El detalle original se conserva. Las correcciones auditadas se gestionan arriba.</p>'+
+  '<p class="gcm-hd-notice">El detalle original se conserva, salvo en los productos corregidos por total. Las correcciones auditadas se gestionan arriba.</p>'+
   (categories.length?categories.map(section=>historyDetailsTable(section,products.filter(p=>p.section===section),rec)).join(''):
    '<p>No hay productos cargados.</p>')+'</details>'+
   // La hoja A4 queda disponible solo al desplegar esta opción secundaria;
@@ -1683,10 +1691,20 @@ document.addEventListener('click',async e=>{
  if(el.hasAttribute('data-gcm-history-fix-save')&&historyMode&&historyRecord){
   if(!editable()||!historyEditMode||historyCorrecting)return;
   const rec=historyRecord,local=activeLocal(),kind=historyEditKind;
-  const reason=document.getElementById('gcm-history-fix-reason')?.value?.trim()||'';
-  if(reason.length<8||reason.length>300){historyCorrectionError='Escribí el motivo de la corrección (mínimo 8 caracteres).';api.render();return;}
+  // Sin motivo: la auditoría guarda fecha, usuario, antes y después.
   let pid=null,index=null,value,expected;
-  if(kind==='sin_stock'){
+  if(kind==='total'){
+   pid=historyEditProduct;
+   const baseProduct=snapshot?.products?.find(x=>x.id===pid);
+   if(!baseProduct){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
+   const input=document.querySelector('[data-gcm-history-number="total"]');
+   const raw=String(input?.value??'').trim(),n=Number(raw);
+   if(!/^\d+$/.test(raw)||!Number.isSafeInteger(n)||n>1000000){
+    historyCorrectionError='Ingresá la cantidad total en unidades (número entero, cero o mayor).';api.render();return;
+   }
+   value={total:n};
+   expected=rec.data?.[pid]===undefined?null:rec.data[pid];
+  }else if(kind==='sin_stock'){
    pid=historyEditProduct;
    if(!snapshot?.products?.some(p=>p.id===pid)){historyCorrectionError='Seleccioná un producto válido.';api.render();return;}
    value=!!document.getElementById('gcm-history-fix-sin-stock')?.checked;
@@ -1724,11 +1742,11 @@ document.addEventListener('click',async e=>{
    const response=kind==='sin_stock'?
     await rpc('gestlok_munro_conteo_sin_stock',{
      p_day:fixedDay,p_shift:fixedShift,p_product:pid,
-     p_sin_stock:value,p_expected:expected,p_reason:reason
+     p_sin_stock:value,p_expected:expected,p_reason:null
     }):
     await rpc('gestlok_munro_conteo_correct_closed',{
      p_day:fixedDay,p_shift:fixedShift,p_kind:kind,p_product:pid,p_index:index,
-     p_value:value,p_expected:expected,p_reason:reason
+     p_value:value,p_expected:expected,p_reason:null
     });
    if(!response?.ok)throw Error('El servidor no confirmó la corrección.');
    if(local!==activeLocal()||historyRecord?.day!==fixedDay||historyRecord?.shift!==fixedShift)throw Error('Cambió el turno o la sucursal. Revisá el historial.');
