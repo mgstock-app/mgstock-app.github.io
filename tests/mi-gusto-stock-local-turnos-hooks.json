@@ -1,5 +1,5 @@
 {
-  "description": "Revertir en orden inverso estos cambios auditados permite comprobar la huella original de Stock Local; autosave granular, pruebas de estabilidad, barra simple, dueño servidor, cierre histórico Mi Gusto.",
+  "description": "Cambios reversibles y auditados de Stock Local Mi Gusto: auto-save granular, estabilidad visual, botones simplificados, cierre de turno, vista dueña y sincronización.",
   "hooks": [
     {
       "actual": "  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false, stockLocalVerBorrador:false, stockLocalClosing:false\n",
@@ -68,6 +68,10 @@
     {
       "actual": "  if (q && S.db && q.fab && S.me?.tenant_id===MI_GUSTO_TENANT && ['munro','torcuato'].includes(S.local) && q.view===miGustoStockLocal()?.id){\n    stockLocalAutoStatus('Reconectado · sincronizando…');\n    if(stockLocalAutoEligible())void flushStockLocalAutoSave();\n    return;\n  }\n",
       "original": ""
+    },
+    {
+      "actual": "  const previous=!!it.sinStock;\n  if (val) setF(id, 'l', 0);\n  else if (fVal(it, 'l') === 0) setF(id, 'l', null);\n  // El checkbox no debe volver a tildarse brevemente por un snapshot anterior.\n  if(stockLocalEnVista())it.sinStock=val;\n  const inp = document.getElementById('fl-' + id); if (inp) inp.value = fmtIn(fVal(it, 'l'));\n  refreshF(id);\n  try { await w(() => C('fabrica').doc(id).update({sinStock:val})); if(!stockLocalEnVista())toast(val ? `${it.nombre}: sin stock` : `${it.nombre}: vuelve a tener stock`); }\n  catch(e){ if(stockLocalEnVista()){it.sinStock=previous;refreshF(id);}el.checked = !val; fail(e); }\n",
+      "original": "  if (val) setF(id, 'l', 0);\n  else if (fVal(it, 'l') === 0) setF(id, 'l', null);\n  const inp = document.getElementById('fl-' + id); if (inp) inp.value = fmtIn(fVal(it, 'l'));\n  refreshF(id);\n  try { await w(() => C('fabrica').doc(id).update({sinStock:val})); toast(val ? `${it.nombre}: sin stock` : `${it.nombre}: vuelve a tener stock`); }\n  catch(e){ el.checked = !val; fail(e); }\n"
     },
     {
       "actual": "  if (!S.conteos.length) return head + stockLocalTurnoActualHistorial() + noMatch('Todavía no hay conteos guardados', 'Cuando alguien toque Guardar conteo en cualquier hoja, aparece acá.');\n",
