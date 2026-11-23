@@ -41,5 +41,6 @@ supabase/migrations/20261123050000_gestlok_chat_reglas_panel_clientes.sql
 supabase/migrations/20261123150000_gestlok_chat_descuento_efectivo_por_local.sql
 supabase/migrations/20261123170000_gestlok_chat_alta_propia_comercios.sql
 supabase/migrations/20261123200000_gestlok_chat_cobros_mercado_pago.sql
+supabase/migrations/20261123210000_gestlok_chat_cobros_primer_mes.sql
 entornos/sql/semilla.sql
 entornos/sql/catalogo-demo.sql
