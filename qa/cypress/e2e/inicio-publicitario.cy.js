@@ -76,7 +76,11 @@ describe('Inicio publicitario', () => {
     cy.get('[role="dialog"]').should('contain.text', 'Soy Emma');
     cy.contains('.glh-sugerencias button', '¿Cómo funciona?').click();
     cy.get('.glh-emma-lista').should('contain.text', 'Hacer un pedido');
+    // El precio ya no se deriva: Emma lo dice e invita a registrarse.
     cy.get('#glh-emma-pregunta').type('¿Cuánto cuesta?{enter}');
+    cy.get('.glh-emma-lista').should('contain.text', '$ 70.000 por mes por local').and('contain.text', '$ 59.500');
+    cy.contains('a', 'Registrarme y empezar').should('have.attr', 'href', '/login/#registrarme');
+    cy.get('#glh-emma-pregunta').type('Hablar con una persona{enter}');
     cy.contains('button', 'Ir al formulario de contacto').click();
     cy.get('[role="dialog"]').should('not.exist');
     cy.get('#contacto').should('be.visible');
