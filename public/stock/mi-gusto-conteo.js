@@ -1046,8 +1046,11 @@ async function verifyTurnSaved(requireExisting=false){
    throw Error('Todavía no existe un conteo guardado para este turno.');
   return {state,remote:null};
  }
+ // sin_stock es una marca booleana, no una celda de cantidades.
+ // El servidor puede omitirla cuando es false; ambos representan sin marcar.
  const mismatched=Object.entries(local.data||{}).some(([pid,values])=>
-  Object.entries(values).some(([vto,cell])=>{
+  (values.sin_stock===true)!==(remote.data?.[pid]?.sin_stock===true)||
+  Object.entries(values).filter(([vto])=>/^v[1-4]$/.test(vto)).some(([vto,cell])=>{
    const saved=remote.data?.[pid]?.[vto];
    return !saved||['chapas','sueltas','qty'].some(k=>Number(saved[k]||0)!==Number(cell[k]||0));
   }));
