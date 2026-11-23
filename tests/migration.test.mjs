@@ -32,6 +32,14 @@ test('markup, styles, authentication and business logic match original SHA-256 f
       }
     }
     if (path === 'public/stock/app.js') {
+    // Normalizar primero SOLO los cambios nuevos y auditados de Stock Local
+    // antes de restaurar los hooks previos de lectura para dueña.
+    const turnosHooks=JSON.parse(read('tests/mi-gusto-stock-local-turnos-hooks.json')).hooks;
+    for(let i=turnosHooks.length-1;i>=0;i--){
+      const {actual,original}=turnosHooks[i];
+      assert.equal(content.split(actual).length-1,1,'Cambio revisado de Stock Local Mi Gusto #'+i);
+      content=content.replace(actual,original);
+    }
     // La dueña de Mi Gusto consulta las hojas reales y el historial desde accesos explícitos.
     // Revertir sólo estos seis fragmentos revisados; el SHA del stock original no cambia.
     const inventoryHooks=JSON.parse(read('tests/mi-gusto-duena-inventory-hooks.json')).hooks;
