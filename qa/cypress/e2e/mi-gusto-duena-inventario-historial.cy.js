@@ -73,6 +73,7 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       setup();
       abrirLocal(local);
       cy.get('#view [data-go="h-qa-owner-stock"]').click();
+      cy.get('#view [data-act="f-zero"]').should('not.exist');
       cy.get('#fl-f-owner-qa').should('have.value','7').and('be.disabled');
       cy.get('#view .gl-stock-server-status').should('contain.text','Vista confirmada del servidor');
       cy.get('#view [data-act="stock-local-draft-view"]').click();
