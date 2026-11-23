@@ -35,7 +35,7 @@ AS $function$
      count(*) as comandas
    from gestlok_mg_online_private.movements m where m.shift_id=s.id
  ) z
-$function$
+$function$;
 
 
 -- RPC v2 con p_pya explícito: se conserva save_note original para clientes en caché.
@@ -86,7 +86,7 @@ begin
   values(p_local,s.id,m.id,case when p_id is null then 'creado' else 'editado' end,
     auth.uid(),case when p_id is null then null else to_jsonb(old_m) end,to_jsonb(m));
  return gestlok_mg_online_private.payload(s);
-end $function$
+end $function$;
 
 
 -- Las comandas simbólicas PYA no son movimientos reales de Posnet.
@@ -134,7 +134,7 @@ begin
  values(p_local,n.id,'iniciado',auth.uid());
  return jsonb_build_object('closed',gestlok_mg_online_private.payload(s),
      'active',gestlok_mg_online_private.payload(n));
-end $function$
+end $function$;
 
 
 revoke all on function public.gestlok_mg_online_save_note_pya(text,uuid,uuid,text,text,numeric,boolean,text,boolean) from public,anon;
