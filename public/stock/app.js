@@ -98,7 +98,7 @@ const S = {
   db:null, user:null, dl:null, uid:null, me:null, ro:false, booted:false, live:'wait',
   loaded:{p:false, c:false, e:false, f:false, h:false},
   allProds:[], allFab:[], hojasDB:[], conteos:[], chat:[], diarios:[], vencimientos:[], avisos:[], provInfo:[], provHistorial:[], equipo:[], sol:[], names:{}, rn:new Map(), cc:new Map(),
-  draft:{}, notas:{}, editing:null, fdraft:{}, legacyDraft:false,
+  draft:{}, notas:{}, editing:null, fdraft:{}, fmeta:{}, fSesion:new Set(), fabSyncAt:0, legacyDraft:false,
   view:'inicio', diarioDia:'', diarioProd:'', unreadChat:0, provOpen:'', provAdding:false, provDrafts:{}, provEnvio:null, provBusy:false, q:'', cat:'', filtro:'todos', cfiltro:'todos', pedAdj:{}, histQ:'', histOpen:{}, histN:30,
   pedGrp:lsGet('spm-pedgrp', 'cat') === 'prov' ? 'prov' : 'cat', histHoja:'', histPer:'todo', offline:!navigator.onLine, queued:null,
   panel:null, aj:{tab:'productos', q:'', cat:'', editId:null, delId:null, catEdit:null, busy:false, paste:''}, eqDel:null,
@@ -156,14 +156,14 @@ const hasLocalDraft = d => !!(d && typeof d === 'object' &&
   (Object.keys(d.draft || {}).length || Object.keys(d.notas || {}).length ||
    Object.keys(d.fdraft || {}).length || d.editing));
 function saveDraft(){
-  if (S.local && (S.uid || S.me?.email)) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft});
+  if (S.local && (S.uid || S.me?.email)) lsSet(draftKey(), {draft:S.draft, notas:S.notas, editing:S.editing, fdraft:S.fdraft, fmeta:S.fmeta});
   const chatText = S.view === 'chat' && S.local ? $('#gestlok-chat-text') : null;
   if (chatText && !chatPending()) lsSet(chatDraftKey(), chatText.value.slice(0, 1000));
 }
 function restoreDraft(){
-  S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {}; S.legacyDraft = false;
+  S.draft = {}; S.notas = {}; S.editing = null; S.fdraft = {}; S.fmeta = {}; S.fSesion = new Set(); S.legacyDraft = false;
   const d = S.local && (S.uid || S.me?.email) ? lsGet(draftKey(), null) : null;
-  if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; }
+  if (d && typeof d === 'object'){ S.draft = d.draft || {}; S.notas = d.notas || {}; S.editing = d.editing || null; S.fdraft = d.fdraft || {}; S.fmeta = d.fmeta && typeof d.fmeta === 'object' ? d.fmeta : {}; }
   if (S.local && !hasLocalDraft(d) && hasLocalDraft(lsGet(legacyDraftKey(), null))) S.legacyDraft = true;
   const q = S.local && (S.uid || S.me?.email) ? lsGet(queuedKey(), null) : null;
   S.queued = q && typeof q.view === 'string' && typeof q.fab === 'boolean' ? q : null;
@@ -247,6 +247,56 @@ const stockLocalHoyAR = () => {
 const stockLocalCierreHoy = () => S.conteos.find(c => c.tipo === 'fabrica' &&
   c.hoja === miGustoStockLocal()?.id && c.turnoCerrado === true &&
   c.fechaOperativa === stockLocalHoyAR());
+/* Mi Gusto · Stock Local: un borrador que quedó en un equipo nunca debe tapar ni pisar los datos reales.
+   Al llegar datos del servidor se descartan los borradores de este dispositivo que no se editaron en esta sesión y:
+   - no tienen día (borradores anteriores a este control), o son de otro día;
+   - o el servidor cambió ese campo después de que se empezó a editar (gana el dato guardado por el equipo).
+   Lo editado en esta sesión sigue su curso normal con el autoguardado. Devuelve cuántos campos se descartaron. */
+function purgarBorradoresViejos(){
+  if (S.me?.tenant_id !== MI_GUSTO_TENANT) return 0;
+  const hoy = stockLocalHoyAR(); let n = 0;
+  for (const id of Object.keys(S.fdraft)){
+    if (S.fSesion.has(id)) continue;
+    const it = S.allFab.find(x => x.id === id); if (!it) continue;
+    const d = S.fdraft[id], m = S.fmeta[id];
+    if (!m || typeof m !== 'object' || m.dia !== hoy || !m.base || typeof m.base !== 'object'){
+      n += Object.keys(d).length; delete S.fdraft[id]; delete S.fmeta[id]; continue;
+    }
+    for (const k of ['l', 'f']){
+      if (!has(d, k)) continue;
+      if (!has(m.base, k) || m.base[k] !== num(k === 'l' ? it.local : it.fabrica)){ delete d[k]; n++; }
+    }
+    if (!Object.keys(d).length){ delete S.fdraft[id]; delete S.fmeta[id]; }
+  }
+  for (const id of Object.keys(S.fmeta)) if (!S.fdraft[id]) delete S.fmeta[id];
+  return n;
+}
+/* Cuándo llegaron por última vez los datos del servidor. Si pasan más de 3 minutos sin datos nuevos con la
+   pantalla visible, se avisa y se ofrece actualizar (por ejemplo, una computadora que estuvo suspendida). */
+function stockLocalSyncTexto(){
+  if (!S.fabSyncAt) return {txt:'Conectando con el servidor…', viejo:false};
+  const viejo = Date.now() - S.fabSyncAt > 180000;
+  const hora = new Date(S.fabSyncAt).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  return {txt: viejo ? 'Los datos pueden no estar al día (última consulta al servidor: ' + hora + ').' : 'Datos del servidor al día · ' + hora, viejo};
+}
+function stockLocalSyncLinea(){
+  if (!stockLocalEnVista()) return '';
+  const e = stockLocalSyncTexto();
+  return '<p class="note' + (e.viejo ? ' warn' : '') + '" id="gl-stock-sync" role="status"><span data-sync-txt>' + esc(e.txt) + '</span> ' +
+    '<button type="button" class="btn sm" data-act="f-refresh">Actualizar ahora</button></p>';
+}
+function stockLocalSyncPintar(){
+  const p = document.getElementById('gl-stock-sync'); if (!p) return;
+  const e = stockLocalSyncTexto();
+  const t = p.querySelector('[data-sync-txt]'); if (t) t.textContent = e.txt;
+  p.classList.toggle('warn', e.viejo);
+}
+setInterval(() => {
+  if (document.visibilityState !== 'visible' || !stockLocalEnVista()) return;
+  stockLocalSyncPintar();
+  // Datos viejos con la pantalla a la vista: se consultan de nuevo sin tocar lo que la persona está editando.
+  if (S.fabSyncAt && Date.now() - S.fabSyncAt > 180000 && navigator.onLine !== false) void refreshStockFromServer(true);
+}, 30000);
 function stockLocalDuenaAviso(){
   if(!stockLocalDuena())return '';
   const n=withCtx(S.view,()=>fPend().length), server=stockLocalDuenaServidor();
@@ -1946,7 +1996,7 @@ V.fabrica = () => {
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja(), TN = esc(totalNombre(IH)), auto=stockLocalEnVista();
-  const head = `${banners()}${stockLocalDuenaAviso()}<div class="bar"><p class="lead">${auto ? 'Cargá las cantidades de Local e Ingreso. Cada cambio se guarda automáticamente para todo el equipo. El historial se registra al cerrar el turno.' : IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
+  const head = `${banners()}${stockLocalDuenaAviso()}${stockLocalSyncLinea()}<div class="bar"><p class="lead">${auto ? 'Cargá las cantidades de Local e Ingreso. Cada cambio se guarda automáticamente para todo el equipo. El historial se registra al cerrar el turno.' : IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
     <div class="bar-a">${IH && esTotal() && !auto ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `${!stockLocalEnVista() ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>` : ''}${canW() && !stockLocalDuenaServidor() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}${!auto ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
@@ -2034,7 +2084,13 @@ function setF(id, k, v){
   const d = S.fdraft[id] || (S.fdraft[id] = {}); d[k] = v;
   const base = num(k === 'l' ? it.local : it.fabrica);
   if (d[k] === base) delete d[k];
-  if (!Object.keys(d).length) delete S.fdraft[id];
+  if (!Object.keys(d).length){ delete S.fdraft[id]; delete S.fmeta[id]; }
+  else {
+    // Cada borrador recuerda su día y el valor del servidor cuando se empezó a editar (ver purgarBorradoresViejos).
+    const m = S.fmeta[id] || (S.fmeta[id] = {t:Date.now(), dia:stockLocalHoyAR(), base:{}});
+    if (!has(m.base, k)) m.base[k] = base;
+    m.t = Date.now(); m.dia = stockLocalHoyAR(); S.fSesion.add(id);
+  }
   saveDraft();
   if (stockLocalAutoEligible()) scheduleStockLocalAutoSave();
 }
@@ -2171,14 +2227,15 @@ function refreshStockLocalRows(){
    una copia sin conexión con los datos actuales del servidor. Nunca escribe en la base,
    ni borra los borradores que la persona está editando en este dispositivo. */
 let stockRefreshBusy = false;
-async function refreshStockFromServer(){
+async function refreshStockFromServer(silencioso=false){
   if (!S.local || !isFabV(S.view) || stockRefreshBusy) return;
-  if (navigator.onLine === false){ toast('Sin conexión: no se puede comprobar el stock del servidor.', true); return; }
+  if (navigator.onLine === false){ if (!silencioso) toast('Sin conexión: no se puede comprobar el stock del servidor.', true); return; }
   const local = S.local, vista = S.view;
   const cfg = window.SPM_CONFIG || {}, client = window.GestLokSupabase;
   if (!cfg.url || !cfg.key || !client?.auth){ toast('No se pudo verificar la conexión con Stock Local.', true); return; }
   stockRefreshBusy = true;
-  const button = document.querySelector('[data-act="f-refresh"]');
+  const button = silencioso ? null : document.querySelector('[data-act="f-refresh"]');
+  const textoBoton = button ? button.innerHTML : '';
   if (button){ button.disabled = true; button.textContent = 'Consultando servidor…'; }
   try {
     const {data, error} = await client.auth.getSession();
@@ -2207,18 +2264,22 @@ async function refreshStockFromServer(){
     if (S.local !== local) return;
     S.allFab = list.map(r => ({id:r.id, ...(r.data || {})}));
     S.loaded.f = true;
+    S.fabSyncAt = Date.now();
+    const viejos = purgarBorradoresViejos();
+    if (viejos){ saveDraft(); if (S.stockLocalVerBorrador && !withCtx(vista, () => fPend().length)) S.stockLocalVerBorrador = false; }
     const pending = withCtx(vista, () => fPend().length);
     onSnapRefresh();
-    toast(pending
+    if (viejos) toast('Se descartaron ' + viejos + ' cambio(s) viejo(s) de este dispositivo que no estaban guardados. Se muestran los datos reales del servidor.');
+    else if (!silencioso) toast(pending
       ? 'Datos consultados. Hay cambios sin guardar en este equipo que se muestran encima del stock del servidor. Revisalos o usá Descartar cambios.'
       : 'Stock Local actualizado desde el servidor.' , pending);
   } catch (e) {
-    toast('No se pudo actualizar el Stock Local: ' + String(e?.message || 'revisá la conexión') + '. Los datos no se modificaron.', true);
+    if (!silencioso) toast('No se pudo actualizar el Stock Local: ' + String(e?.message || 'revisá la conexión') + '. Los datos no se modificaron.', true);
   } finally {
     stockRefreshBusy = false;
     if (S.local === local){
-      const b = document.querySelector('[data-act="f-refresh"]');
-      if (b){ b.disabled = false; b.innerHTML = ic('zero') + 'Actualizar datos'; }
+      const b = button || null;
+      if (b){ b.disabled = false; b.innerHTML = textoBoton || (ic('zero') + 'Actualizar datos'); }
     }
   }
 }
@@ -4363,10 +4424,17 @@ function subscribeLocal(){
       if(has(draft,'f') && draft.f===num(current.fabrica)){delete draft.f;draftCleaned=true;}
       if(!Object.keys(draft).length)delete S.fdraft[k];
     }
-    if(draftCleaned)saveDraft();
+    const viejos=purgarBorradoresViejos();
+    if(draftCleaned||viejos)saveDraft();
+    S.fabSyncAt=Date.now();
     const wasLoaded=S.loaded.f;
     S.loaded.f = true;
-    if(wasLoaded && refreshStockLocalRows())return;
+    if(viejos){
+      if(S.stockLocalVerBorrador && !withCtx(S.view,()=>fPend().length))S.stockLocalVerBorrador=false;
+      toast('Se descartaron '+viejos+' cambio(s) viejo(s) de este dispositivo que no estaban guardados. Se muestran los datos reales del servidor.');
+    }
+    stockLocalSyncPintar();
+    if(!viejos && wasLoaded && refreshStockLocalRows())return;
     onSnapRefresh();
     if(!wasLoaded && stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))scheduleStockLocalAutoSave(300);
   }), errLive));

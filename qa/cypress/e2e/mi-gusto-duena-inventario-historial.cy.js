@@ -79,7 +79,10 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#view [data-act="tot-nombre"]').should('not.exist');
       cy.get('#view [data-act="print"]').should('not.exist');
       cy.get('#view [data-act="f-copy"]').should('not.exist');
-      cy.get('#view [data-act="f-refresh"]').should('not.exist');
+      // «Actualizar datos» no va en la barra; sí la línea de sincronización con «Actualizar ahora».
+      cy.get('#view .bar [data-act="f-refresh"]').should('not.exist');
+      cy.get('#view #gl-stock-sync').should('contain.text','Datos del servidor al día');
+      cy.get('#view #gl-stock-sync [data-act="f-refresh"]').should('contain.text','Actualizar ahora');
       cy.get('#savebar').should('not.be.visible');
       cy.get('#fl-f-owner-qa').should('have.value','7').and('be.disabled');
       cy.get('#view .gl-stock-server-status').should('contain.text','Vista confirmada del servidor');
