@@ -2245,7 +2245,7 @@ function stockLocalTurnoActualHistorial(){
   if(S.me?.tenant_id!==MI_GUSTO_TENANT || !['munro','torcuato'].includes(S.local) ||
     !S.loaded.h || !S.loaded.f || !S.loaded.c)return '';
   const h=miGustoStockLocal();
-  if(!h || stockLocalCierreHoy())return '';
+  if(!h || stockLocalCierreHoy() || (S.histHoja && S.histHoja!==h.id) || !enPeriodo(Date.now(),S.histPer))return '';
   const items=S.allFab.filter(x=>(x.hoja||'fabrica')===h.id)
     .sort((a,b)=>(a.orden??1e9)-(b.orden??1e9));
   if(!items.length)return '';
@@ -4220,7 +4220,7 @@ function abrirLocal(id){
     window.GestLokMiGustoOrders?.reset();
     S.allProds = []; S.allFab = []; S.hojasDB = []; S.conteos = []; S.chat = []; S.diarios = []; S.vencimientos = []; S.avisos = []; window.GestLokUpdates?.reset(); S.provInfo = []; S.provHistorial = []; S.provOpen = ''; S.provAdding = false; S.provDrafts = {}; S.unreadChat = 0;
     S.loaded.p = S.loaded.c = S.loaded.f = S.loaded.h = false;
-    S.stockLocalVerBorrador=false; S.stockLocalClosing=false;
+    S.stockLocalVerBorrador=false; S.stockLocalClosing=false; S.histOpen={};
     S.ntEdit = {}; S.view = 'inicio'; S.diarioDia = ''; S.diarioProd = ''; S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; S.histHoja = ''; S.histPer = 'todo'; S.histQ = ''; S.pedAdj = {};
     restoreDraft(); subscribeLocal();
     void window.GestLokCreatorHome?.refreshDaily?.(true);
