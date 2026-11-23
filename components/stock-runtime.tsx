@@ -111,7 +111,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108");
       // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
       if (!visitor) await load("/vendor/qrcode-generator.js");
-      if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
+      if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-chat-20261123");
       // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
       if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
       await load("/stock/gestlok-creator-home.js?rev=chat-altas-20261123");

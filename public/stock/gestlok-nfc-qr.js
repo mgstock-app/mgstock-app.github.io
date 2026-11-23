@@ -17,6 +17,8 @@
   let comForm = null, sucForm = null, formSaving = false;
   let mkCom = '', mkSuc = '', mkAct = false, mkCant = '10', creating = false;
   let reasign = null, actBusy = false;
+  // Locales de GESTLOK Chat para asignar placas sin escribir links (se cargan al reasignar).
+  let chatLocs = null, chatLocsBusy = false, deepCode = '';
   let openQr = '', openHist = '', comHist = '';
   let fbOpen = false, fbDraft = '', fbSaving = false, nfcBusy = '';
   const hist = new Map();
@@ -101,6 +103,7 @@
       if (error) throw error;
       if (!d || d.scope !== 'nfc_list' || !Array.isArray(d.placas)) throw Error('');
       data = d; status = 'ready'; loadError = '';
+      if (deepCode) openDeepCode();
       if (fCom && fCom !== NONE && !comById(fCom)) { fCom = ''; fSuc = ''; }
       if (fSuc && !sucById(fSuc)) fSuc = '';
     } catch (e) {
@@ -296,7 +299,51 @@
     } catch (e) { toast(errText(e, 'No se pudo cambiar el estado.')); }
     finally { actBusy = false; await load(true); }
   }
+  // Enlace directo desde la placa escaneada (/r/?CODIGO → «Asignar este QR» → /login/?nfc=CODIGO).
+  try { deepCode = (new URLSearchParams(location.search).get('nfc') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12); } catch { deepCode = ''; }
+  if (deepCode) {
+    let tries = 0;
+    const t = setInterval(() => {
+      tries += 1;
+      const home = window.GestLokCreatorHome;
+      if (home?.setTab && creator()) { clearInterval(t); if (home.tab?.() !== 'nfc') home.setTab('nfc'); else void load(true); }
+      else if (tries > 120) clearInterval(t);
+    }, 500);
+  }
+  function openDeepCode() {
+    const code = deepCode; deepCode = '';
+    try { const u = new URL(location.href); u.searchParams.delete('nfc'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch { /* queda el parámetro */ }
+    if (!byCode(code)) { toast('El código ' + code + ' no corresponde a ninguna placa.'); return; }
+    fCom = ''; fSuc = ''; filter = 'todas'; query = code;
+    startReasign([code], code);
+  }
+  async function loadChatLocs() {
+    if (chatLocs || chatLocsBusy) return;
+    chatLocsBusy = true;
+    try {
+      const empresas = await call('gestlok_chat_admin_empresas');
+      chatLocs = (Array.isArray(empresas) ? empresas : []).filter(e => e.habilitada)
+        .flatMap(e => (e.sucursales || []).map(x => ({slug: String(x.slug || ''), label: e.nombre + ' · ' + x.nombre, activa: !!x.activa})))
+        .filter(x => x.slug).sort((a, b) => a.label.localeCompare(b.label, 'es'));
+    } catch { chatLocs = []; }
+    finally { chatLocsBusy = false; if (reasign) render(); }
+  }
+  async function saveChatAssign() {
+    if (!reasign || actBusy) return;
+    const loc = (chatLocs || []).find(x => x.slug === reasign.chat);
+    if (!loc) { toast('Elegí el local de GESTLOK Chat.'); return; }
+    actBusy = true; render();
+    try {
+      const d = await call('gestlok_nfc_asignar_chat', {p_codes: reasign.codes, p_slug: loc.slug});
+      toast(plural(reasign.codes.length, 'placa asignada', 'placas asignadas') + ' a ' + (d?.lugar || loc.label) + ' y activa' + (reasign.codes.length === 1 ? '' : 's') +
+        '. Al escanear abre ' + (d?.destino || 'su chat') + '.');
+      reasign.codes.forEach(c => hist.delete('p:' + c));
+      reasign = null;
+    } catch (e) { toast(errText(e, 'No se pudieron asignar las placas.')); }
+    finally { actBusy = false; await load(true); }
+  }
   function startReasign(codes, key) {
+    void loadChatLocs();
     const first = byCode(codes[0]);
     reasign = {codes, key, comercio: (key === 'bulk' ? (fCom !== NONE && fCom) || '' : first?.comercio_id || ''), sucursal: key === 'bulk' ? '' : first?.sucursal_id || ''};
     editing = ''; draft = null; openQr = ''; openHist = '';
@@ -454,7 +501,15 @@
       '<label>Sucursal' + sucSelect('rsuc', r.comercio, r.sucursal, '<option value="">Todo el comercio (sin sucursal)</option>') + '</label>' +
       '<small>El QR y el chip no cambian. La placa deja su link propio y usa el del lugar nuevo; si ahí no hay link, queda desactivada.</small>' +
       '<div class="gl-nfc-actions"><button type="submit" class="btn primary"' + (actBusy ? ' disabled' : '') + '>' + (actBusy ? 'Reasignando…' : 'Reasignar') + '</button>' +
-      btn('reasign-cancel', 'Cancelar') + '</div></form>';
+      btn('reasign-cancel', 'Cancelar') + '</div>' +
+      // Atajo: el link de un local de GESTLOK Chat (crea comercio y sucursal si no existen y deja la placa activa).
+      '<fieldset class="gl-nfc-chat"><legend>O asignar directo a GESTLOK Chat</legend>' +
+      (chatLocs === null ? '<small role="status">Cargando locales de GESTLOK Chat…</small>' : !chatLocs.length ? '<small>No hay empresas con GESTLOK Chat activo.</small>' :
+        '<label>Local de GESTLOK Chat<select data-nfc-sel="rchat"><option value="">Elegí el local</option>' +
+        chatLocs.map(x => '<option value="' + esc(x.slug) + '"' + (r.chat === x.slug ? ' selected' : '') + '>' + esc(x.label) + (x.activa ? '' : ' (chat apagado)') + '</option>').join('') +
+        '</select></label><small>Al escanear abre gestlok.com.ar/chat/?s=… de ese local. La placa queda activa.</small>' +
+        '<div class="gl-nfc-actions">' + btn('reasign-chat', actBusy ? 'Asignando…' : 'Asignar y activar', (actBusy || !r.chat) ? ' disabled' : '', 'btn primary') + '</div>') +
+      '</fieldset></form>';
   }
   function destHtml(p) {
     const u = destEf(p);
@@ -584,6 +639,7 @@
       case 'off': void setActiva([code], false); break;
       case 'reasign': startReasign([code], code); break;
       case 'reasign-cancel': reasign = null; render(); break;
+      case 'reasign-chat': void saveChatAssign(); break;
       case 'bulk-on': void setActiva(visible().map(p => p.code), true); break;
       case 'bulk-off': void setActiva(visible().map(p => p.code), false); break;
       case 'bulk-reasign': { const l = visible().map(p => p.code); if (l.length) startReasign(l, 'bulk'); else toast('No hay placas en esta lista.'); break; }
@@ -633,6 +689,7 @@
       else if (sel === 'mkact') { mkAct = !!t.checked; return; }
       else if (sel === 'rcom' && reasign) { reasign.comercio = v; reasign.sucursal = ''; }
       else if (sel === 'rsuc' && reasign) reasign.sucursal = v;
+      else if (sel === 'rchat' && reasign) reasign.chat = v;
       render();
       return;
     }

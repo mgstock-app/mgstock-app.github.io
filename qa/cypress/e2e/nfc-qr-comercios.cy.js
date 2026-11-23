@@ -2,14 +2,14 @@
 // NFC y QR por comercio y sucursal (02/11/2026): flujo completo de la creadora con el Supabase falso
 // (tests/mock_supabase.js, función nfcRpc). Comercios y sucursales con su propio link, placas por cantidad,
 // cambiar el destino sin cambiar el código, activar/desactivar, reasignar, buscador, historial y descarga de QR.
-function start(email){
+function start(email,path='/login/'){
  cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
- cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@fake');
+ cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit(path);cy.wait('@fake');
  cy.get('.gl-intro',{timeout:12000}).should('not.be.visible');
  cy.window().then(w=>{w.__dashboard=true;});
  cy.get('#au-email').clear().type(email);cy.get('#au-pass').type('secreto1',{log:false});cy.get('#au-in button[type="submit"]').click();
 }
-const card=code=>cy.contains('.gl-nfc-item code',code).closest('.gl-nfc-item');
+const card=(code,o)=>cy.contains('.gl-nfc-item code',code,o).closest('.gl-nfc-item');
 describe('NFC y QR · comercios, sucursales y placas de la creadora',()=>{
  Cypress.on('uncaught:exception',e=>{if(e.message.includes('Minified React error #418'))return false;});
  it('crea comercio y sucursal con su link, genera placas activas y cambia el destino sin cambiar el código',()=>{
@@ -105,6 +105,35 @@ describe('NFC y QR · comercios, sucursales y placas de la creadora',()=>{
   cy.get('form[data-nfc-form="create"] button[type="submit"]').click();
   cy.get('.gl-nfc-item',{timeout:10000}).should('have.length',10).first().should('contain.text','Sin comercio').and('contain.text','placa no activa');
   cy.document().then(d=>{expect(d.documentElement.scrollWidth).to.be.at.most(392);});
+ });
+ it('QR impresos sin activar: se asignan después al chat de un local de GESTLOK Chat',()=>{
+  cy.viewport(1440,1000);start('kmu15lopez@gmail.com');
+  cy.get('.gl-ch-nav [data-ch-tab="nfc"]',{timeout:12000}).click();
+  cy.get('select[data-nfc-sel="mkcom"]').should('have.value','');
+  cy.get('form[data-nfc-form="create"] input[name="cantidad"]').clear().type('2');
+  cy.get('form[data-nfc-form="create"] button[type="submit"]').click();
+  cy.get('.gl-nfc-item',{timeout:10000}).should('have.length',2).each($el=>expect($el.text()).to.include('Sin comercio').and.include('Sin activar'));
+  cy.get('.gl-nfc-item code').first().invoke('text').then(code=>{
+   card(code).contains('button','Reasignar').click();
+   cy.get('select[data-nfc-sel="rchat"]',{timeout:10000}).select('mi-gusto-munro');
+   cy.get('[data-nfc-act="reasign-chat"]').should('not.be.disabled').click();
+   // La lista sigue en «Sin comercio» para asignar la siguiente; se ven todas para revisarla.
+   cy.get('.gl-nfc-item').should('have.length',1);
+   cy.get('select[data-nfc-sel="fcom"]').select('Todos los comercios');
+   card(code).should('contain.text','Mi Gusto · Munro').and('contain.text','Activa').and('contain.text','https://gestlok.com.ar/chat/?s=mi-gusto-munro');
+  });
+  cy.get('.gl-nfc-item').filter(':contains("Sin activar")').should('have.length',1);
+ });
+ it('escanear un QR sin activar con la sesión de la administradora abre su asignación',()=>{
+  cy.viewport(1440,1000);
+  cy.on('window:before:load',w=>{w.__nfc={comercios:[],hist:[],fb:'',seq:0,placas:[{code:'QRK7PA',numero:1,cliente:'',destino:null,nota:'',activa:false,escaneos:0,ultimo_escaneo:null,comercio_id:null,sucursal_id:null}]};});
+  start('kmu15lopez@gmail.com','/login/?nfc=qrk7pa');
+  card('QRK7PA',{timeout:15000}).should('be.visible');
+  cy.get('form[data-nfc-form="reasign"]').should('be.visible');
+  cy.get('select[data-nfc-sel="rchat"]',{timeout:10000}).select('mi-gusto-torcuato');
+  cy.get('[data-nfc-act="reasign-chat"]').click();
+  card('QRK7PA').should('contain.text','Mi Gusto · Don Torcuato').and('contain.text','Activa');
+  cy.location('search').should('not.contain','nfc=');
  });
  it('una dueña no ve NFC y QR',()=>{
   start('dueno@example.com');

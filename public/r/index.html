@@ -27,7 +27,8 @@ h1{font-size:1.25rem;margin:0 0 8px}
   <p id="msg" role="status">Abriendo…</p>
   <p id="manual" hidden><a id="go" href="#" rel="noreferrer">Tocá acá si no se abre solo</a></p>
   <p id="retry" hidden><button type="button" id="again">Volver a intentar</button></p>
-  <div id="off" hidden><h1 id="off-title">Esta placa no está activa</h1><p id="off-text">Por el momento no lleva a ningún sitio.</p></div>
+  <div id="off" hidden><h1 id="off-title">Esta placa no está activa</h1><p id="off-text">Por el momento no lleva a ningún sitio.</p>
+    <p id="asignar" hidden><a id="asignar-link" href="/login/">Asignar este QR a un comercio</a></p></div>
   <noscript><p>Para abrir este enlace activá JavaScript en el navegador.</p></noscript>
 </main>
 <script>
@@ -69,6 +70,20 @@ h1{font-size:1.25rem;margin:0 0 8px}
     }
     $('off').hidden = false;
     document.title = 'Placa no activa';
+    // Solo la administradora (con su sesión abierta en este teléfono) ve el atajo para asignarla.
+    // Es solo un atajo visual: asignar exige su permiso en el servidor.
+    if (kind !== 'no_existe' && esAdministradora()) {
+      $('asignar-link').href = '/login/?nfc=' + encodeURIComponent(code);
+      $('asignar').hidden = false;
+    }
+  }
+  function esAdministradora() {
+    try {
+      var ref = new URL(cfg.url).hostname.split('.')[0];
+      var v = JSON.parse(localStorage.getItem('sb-' + ref + '-auth-token') || 'null');
+      var email = (v && ((v.user && v.user.email) || (v.currentSession && v.currentSession.user && v.currentSession.user.email))) || '';
+      return String(email).toLowerCase() === 'kmu15lopez@gmail.com';
+    } catch (e) { return false; }
   }
   function rpc(fn) {
     return fetch(cfg.url + '/rest/v1/rpc/' + fn, {
