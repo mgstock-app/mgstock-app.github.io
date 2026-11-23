@@ -26,7 +26,7 @@ test('No cambia lógica de actualización, cantidades, guardado ni búsqueda',()
  assert.match(js,/data-act="dec"/);
  assert.match(js,/function renderSavebar\(\)/);
  assert.match(js,/function tools\(id, val, ph, ocultarChips=false\)/);
- assert.match(runtime,/stock\/app\.js\?rev=stock-local-borradores-20261123/g);
+ assert.match(runtime,/stock\/app\.js\?rev=stock-local-cierre-0050-20261123/g);
 });
 test('Tablet ofrece lateral fijo y celular panel de categorías accesible sin aplastar la planilla',()=>{
  assert.match(css,/\.gl-mg-stock-layout\{display:grid;grid-template-columns:184px minmax\(0,1fr\)/);

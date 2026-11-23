@@ -238,10 +238,11 @@ const stockLocalEnVista = () => S.me?.tenant_id === MI_GUSTO_TENANT &&
   ['munro','torcuato'].includes(S.local) && S.loaded.h && S.view === miGustoStockLocal()?.id;
 const stockLocalDuena = () => stockLocalEnVista() && miRol() === 'dueno';
 const stockLocalDuenaServidor = () => stockLocalDuena() && !S.stockLocalVerBorrador;
+// Día operativo de Mi Gusto: cambia a las 00:50, igual que el cierre automático de la base.
 const stockLocalHoyAR = () => {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
     timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'
-  }).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  }).formatToParts(new Date(Date.now() - 50 * 60000)).map(x=>[x.type,x.value]));
   return p.year+'-'+p.month+'-'+p.day;
 };
 const stockLocalCierreHoy = () => S.conteos.find(c => c.tipo === 'fabrica' &&
@@ -1996,7 +1997,7 @@ V.fabrica = () => {
   const hoy = d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja(), TN = esc(totalNombre(IH)), auto=stockLocalEnVista();
-  const head = `${banners()}${stockLocalDuenaAviso()}${stockLocalSyncLinea()}<div class="bar"><p class="lead">${auto ? 'Cargá las cantidades de Local e Ingreso. Cada cambio se guarda automáticamente para todo el equipo. El historial se registra al cerrar el turno.' : IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
+  const head = `${banners()}${stockLocalDuenaAviso()}${stockLocalSyncLinea()}<div class="bar"><p class="lead">${auto ? 'Cargá las cantidades de Local e Ingreso. Cada cambio se guarda automáticamente para todo el equipo. El historial se registra al cerrar el turno; si nadie lo cierra, se cierra solo a las 00:50.' : IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
     <div class="bar-a">${IH && esTotal() && !auto ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `${!stockLocalEnVista() ? `<button class="btn sm" data-act="f-zero" ${canW() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>` : ''}${canW() && !stockLocalDuenaServidor() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}${!auto ? `<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
@@ -2492,7 +2493,8 @@ function stockLocalTurnoActualHistorial(){
 }
 function histCardF(c, q){
   const fl = c.filas || [], open = !!S.histOpen[c.id] || (!!q && fl.some(x => norm(x.nombre).includes(q)));
-  const shown = q ? fl.filter(x => norm(x.nombre).includes(q)) : fl, d = new Date(c.fecha);
+  const fo = /^\d{4}-\d{2}-\d{2}$/.test(String(c.fechaOperativa || '')) ? new Date(c.fechaOperativa + 'T12:00:00') : null;
+  const shown = q ? fl.filter(x => norm(x.nombre).includes(q)) : fl, d = fo || new Date(c.fecha);
   const dia = d.toLocaleDateString('es-AR', {day:'2-digit'}), mes = d.toLocaleDateString('es-AR', {month:'short'}).replace('.', '');
   const ing = fl.filter(x => (x.fabrica || 0) > 0).length, sinN = fl.filter(x => x.sin).length;
   // Mi Gusto (Munro y Don Torcuato): los productos sin stock se leen sin abrir la planilla y con su etiqueta.
@@ -2500,7 +2502,7 @@ function histCardF(c, q){
   const sinLista = mg && sinN ? `<p class="note" data-hist-sin style="margin:8px 0 0"><b style="color:var(--crit)">Sin stock:</b> ${esc(fl.filter(x => x.sin).map(x => x.nombre).join(', '))}</p>` : '';
   return `<article class="card hc" id="hc-${esc(c.id)}">
     <div class="hc-h"><div class="hc-d" style="background:var(--fab-bg);color:var(--fab-ink)"><b>${esc(dia)}</b><small style="color:inherit">${esc(mes)}</small></div>
-      <div class="hc-m"><b>${esc(hojaLabel(c, 'Conteo Fábrica'))}${c.turnoCerrado ? ' · Turno cerrado' : ' · Guardado'} de las ${esc(horaCorta(c.fecha))}</b><small>${esc(whoName(c))} · ${plural(fl.length, 'fila', 'filas')}${c.cambiadas ? ` · ${c.cambiadas} cambiadas` : ''}</small></div>
+      <div class="hc-m"><b>${esc(hojaLabel(c, 'Conteo Fábrica'))}${c.cierreAutomatico ? ' · Turno cerrado automáticamente a las 00:50' : `${c.turnoCerrado ? ' · Turno cerrado' : ' · Guardado'} de las ${esc(horaCorta(c.fecha))}`}</b><small>${esc(whoName(c))} · ${plural(fl.length, 'fila', 'filas')}${c.cambiadas ? ` · ${c.cambiadas} cambiadas` : ''}</small></div>
       <div class="hc-k"><span class="pill ok">${ing} ${mg ? 'con ingreso' : 'ingresan mañana'}</span>${sinN ? `<span class="pill crit">${sinN} sin stock</span>` : ''}</div></div>${sinLista}
     ${open ? `<div class="hc-t"><div class="mv hd mvf"><div>Producto</div><span>Local</span><span>${mg ? 'Ingreso' : 'Fábrica'}</span><span>Total</span></div>${shown.map(x => `<div class="mv mvf"><div><b style="${x.sin ? 'color:var(--crit)' : ''}">${esc(x.nombre)}</b>${mg && x.sin ? '<small style="color:var(--crit);font-weight:700">Sin stock</small>' : ''}</div><span>${fmt(x.local ?? 0)}</span><span>${fmt(x.fabrica ?? 0)}</span><span><b>${fmt(x.total)}</b></span></div>`).join('')}</div>` : ''}
     <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar planilla' : 'Ver planilla'}</button></div>

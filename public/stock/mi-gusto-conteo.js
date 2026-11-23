@@ -370,7 +370,7 @@ function historyA4Image(rec){
  const meta=[
   ['Fecha',labelDay(rec.day)],
   ['Turno',historyShiftLabel(rec)],
-  ['Responsable',rec.responsable||'Sin asignar'],
+  ['Responsable',rec.responsable||(rec.cierre_automatico?'Cierre automático 00:50':'Sin asignar')],
   ['Estado',rec.status==='finalizado'?'Finalizado':'En curso']
  ];
  const metaW=(W-2*M)/4;
@@ -631,7 +631,7 @@ function historyDetailView(){
    '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Resumen del conteo</h2></div></div></header>'+
   '<div class="gcm-hd-meta" aria-label="Datos del turno"><strong>'+esc(labelDay(rec.day))+'</strong>'+
   '<span>Turno '+esc(historyShiftLabel(rec).replace(' · ',' '))+'</span>'+
-  '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span>'+
+  '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span>'+(rec.cierre_automatico?'<span>Cerrado automáticamente a las 00:50</span>':'')+
   '<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
   (rec.status==='finalizado'?'Finalizado':ownerHistoryOnly()?'Turno abierto':'En curso')+'</span></div>'+
   // Pantalla principal: tarjetas reales en todo el ancho; Empanadas ocupa la
@@ -1154,7 +1154,8 @@ function view(){
  (!historyRecord?'<div class="gcm-actions" id="gcm-cierre"><button type="button" data-gcm-manual-save>Guardar conteo</button><button type="button" data-gcm-refresh>Actualizar</button>'+
  (!closed()?'<div class="gcm-finalize-controls"><label class="gcm-finalize-responsable" for="gcm-responsable"><span>Gerente responsable</span><select id="gcm-responsable"'+(!canWrite?' disabled':'')+' required><option value="">Seleccionar gerente</option>'+
  responsables().map(n=>'<option value="'+esc(n)+'"'+(rec.responsable===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
- '<button type="button" class="gcm-bottom-finalize" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button></div>':'<span>Conteo archivado</span>')+'</div>':'')+
+ '<button type="button" class="gcm-bottom-finalize" data-gcm-finalize'+(!canWrite?' disabled':'')+'>Cerrar turno</button>'+
+  '<small class="gcm-auto-close-note">Si queda abierto, se cierra solo a las 00:50.</small></div>':'<span>Conteo archivado'+(rec.cierre_automatico?' · cierre automático 00:50':'')+'</span>')+'</div>':'')+
  '</main></div>'+
  (shift==='manana_entrada'?'<div data-gcm-morning-holder>'+(morning()?.panel()||'<p role="status">Consultando diferencias…</p>')+'</div>':'')+ '':'' )+
  '</div>';
