@@ -184,8 +184,9 @@
     const form=document.querySelector('#au-in');if(!form||form.querySelector('[data-registration-recordar]'))return;
     let no=false;try{no=localStorage.getItem(NO_RECORDAR)==='1';if(no)localStorage.removeItem('gestlok:ultimo-email');}catch{}
     const l=document.createElement('label');l.className='gl-registration-recordar';
-    l.innerHTML='<input type="checkbox" data-registration-recordar'+(no?'':' checked')+'> Recordar mi email en este equipo';
-    form.querySelector('button[type="submit"]')?.before(l);
+    l.innerHTML='<input type="checkbox" data-registration-recordar'+(no?'':' checked')+'> Recordar mi email';
+    // En la misma línea que «Contraseña»: no agrega alto al formulario.
+    const fld=form.querySelector('#au-pass')?.closest('.fld');if(fld)fld.prepend(l);else form.querySelector('button[type="submit"]')?.before(l);
   }
   document.addEventListener('change',e=>{
     if(!e.target.matches?.('[data-registration-recordar]'))return;

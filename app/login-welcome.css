@@ -173,8 +173,8 @@ html.auth-on .gestlok-demo-entry {display:none!important}
 }
 
 /* Registro: GESTLOK Chat, gerente con código, Google y recordar email (gestlok-registration.js). */
-.gl-registration-recordar{display:flex;gap:8px;align-items:center;font-size:14px;color:#3d4a59;margin:2px 0 4px}
-.gl-registration-recordar input{width:18px;height:18px}
+.gl-registration-recordar{float:right;display:inline-flex;gap:6px;align-items:center;font-size:13px;color:#3d4a59;margin:0;font-weight:500}
+.gl-registration-recordar input{width:16px;height:16px;margin:0}
 .gl-registration-detail{display:block;margin:-2px 0 8px;color:#55606d;font-size:13px}
 .gl-registration-o{text-align:center;margin:10px 0 6px;color:#6b7684;font-size:13px}
 .gl-registration-google{width:100%}

@@ -58,7 +58,7 @@ test('Alta pública: solo GESTLOK Chat, «Otro rubro» escrito a mano, gerente c
   assert.doesNotMatch(source,/Soy colaborador\/a de una empresa/);
   assert.match(source,/rpc\('gestlok_request_gerente_registration',\{p_codigo:intent\.codigo\}\)/);
   assert.match(source,/Registrarme con Google/);
-  assert.match(source,/Recordar mi email en este equipo/);
+  assert.match(source,/Recordar mi email/);
   assert.match(g.label({tipoCuenta:'colaborador',negocio:{tipo:'gerente',empresa:'Mi Gusto',local:'Munro'}}),/gerente · Mi Gusto · Munro · La acepta el dueño/);
   const sql=readFileSync('supabase/migrations/20261123220000_gestlok_registro_gerentes_codigo.sql','utf8');
   assert.match(sql,/codigo text not null unique check \(codigo ~ '\^\[A-HJ-NP-Z2-9\]\{8\}\$'\)/);
