@@ -22,11 +22,12 @@ const entrar = (email) => {
   cy.get('#ttl').should('contain.text', 'Pagos Online');
   cy.get('#mg-online-form', { timeout: 15000 }).should('be.visible');
 };
-const cargar = ({ comanda, monto, metodo, app, nota }) => {
+const cargar = ({ comanda, monto, metodo, app, pya, nota }) => {
   cy.get('#mg-online-form input[name="comanda"]').clear().type(comanda);
   cy.get('#mg-online-form input[name="amount"]').clear().type(monto);
   if (metodo) cy.get('#mg-online-form select[name="method"]').select(metodo);
   if (app) cy.get('#mg-online-form input[name="app"]').check({ force: true });
+  if (pya) cy.get('#mg-online-form input[name="pya"]').check({ force: true });
   if (nota) {
     cy.get('#mg-online-form .mg-on-observation-details summary').click();
     cy.get('#mg-online-form textarea[name="observacion"]').clear().type(nota);
@@ -38,6 +39,7 @@ const formularioVacio = () => {
   cy.get('#mg-online-form input[name="amount"]').should('have.value', '');
   cy.get('#mg-online-form select[name="method"]').should('have.value', 'transferencia');
   cy.get('#mg-online-form input[name="app"]').should('not.be.checked');
+  cy.get('#mg-online-form input[name="pya"]').should('not.be.checked');
   cy.get('#mg-online-form textarea[name="observacion"]').should('have.value', '');
   cy.get('#mg-online-form .mg-on-observation-details').should('not.have.attr', 'open');
 };
@@ -82,6 +84,33 @@ describe('GESTLOK · Pagos Online: formulario limpio después de guardar', () =>
       cy.get('[data-mgon-payment-filter="active"]').select('todos');
       cy.get('.mg-on-recent-desktop .mg-on-recent-card').should('have.length',2);
       cy.window().its('__mgOnlineSaved').should('have.length',2);
+    });
+  }
+
+  for (const [local,email] of [['munro','gerente.munro@example.com'],['torcuato','gerente.torcuato@example.com']]){
+    it(local+': PYA conserva comanda sin sumar y se puede desmarcar',()=>{
+      entrar(email);
+      cargar({comanda:'103',monto:'8500',metodo:'transferencia',pya:true});
+      formularioVacio();
+      cy.contains('.mg-on-summary-item','Transferencia').should('contain.text','0,00');
+      cy.contains('.mg-on-summary-item','Total ventas online').should('contain.text','0,00');
+      cy.contains('.mg-on-summary-item','PYA simbólico').should('contain.text','8.500,00');
+      cy.contains('.mg-on-recent-desktop .mg-on-recent-order','#103')
+        .closest('.mg-on-recent-card').should('contain.text','PYA · simbólico · no suma')
+        .find('[data-mgon-pya]').should('have.attr','aria-checked','true');
+      cargar({comanda:'104',monto:'500',metodo:'transferencia'});
+      cy.contains('.mg-on-summary-item','Transferencia').should('contain.text','500,00');
+      cy.contains('.mg-on-summary-item','Total ventas online').should('contain.text','500,00');
+      cy.window().its('__mgOnlineSaved').should(rows=>{
+        expect(rows.find(r=>r.comanda==='103')).to.include({pya:true,method:'transferencia',amount:8500});
+        expect(rows.find(r=>r.comanda==='104')).to.include({pya:false,method:'transferencia',amount:500});
+      });
+      cy.contains('.mg-on-recent-desktop .mg-on-recent-order','#103')
+        .closest('.mg-on-recent-card').find('[data-mgon-pya]').click();
+      cy.contains('.mg-on-summary-item','Transferencia').should('contain.text','9.000,00');
+      cy.contains('.mg-on-summary-item','PYA simbólico').should('contain.text','0,00');
+      cy.contains('.mg-on-recent-desktop .mg-on-recent-order','#103')
+        .closest('.mg-on-recent-card').find('[data-mgon-pya]').should('have.attr','aria-checked','false');
     });
   }
 
