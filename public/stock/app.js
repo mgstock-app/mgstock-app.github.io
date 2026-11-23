@@ -224,6 +224,23 @@ function inicioEmpresa(){
   return banners() + '<div class="gl-creator-local-home gl-empresa-home">' + (home || '<p role="status">Comprobando tus áreas…</p>') + '</div>';
 }
 const miGustoContext = () => S.loaded.e && S.me?.tenant_id === MI_GUSTO_TENANT && !!miEquipo() && (!isCreadora() || !!S.local);
+// Accesos de consulta de Mi Gusto: siempre resolver la hoja REAL de la sucursal,
+// nunca el stock base oculto mientras termina de cargar el catálogo de hojas.
+const miGustoOwnerInventory = () => S.me?.tenant_id === MI_GUSTO_TENANT &&
+  miRol() === 'dueno' && ['munro','torcuato'].includes(S.local);
+const miGustoStockLocal = () => S.loaded.h && visibles().find(h =>
+  h.id !== 'stock' && h.tipo === 'ingreso' && /^stock local$/i.test(String(h.nombre||'').trim()));
+const miGustoStockCajas = () => S.loaded.h && visibles().find(h =>
+  h.tipo === 'lista' && /^stock cajas?$/i.test(String(h.nombre||'').trim()));
+function ownerInventoryLinks(){
+  if(!miGustoOwnerInventory())return '';
+  if(!S.loaded.h)return '<p class="note" role="status">Cargando Stock Local, Stock Cajas e historial de la sucursal…</p>';
+  const local=miGustoStockLocal(),cajas=miGustoStockCajas();
+  return '<nav class="bar-a gl-owner-inventory-links" aria-label="Consultas de inventario de '+esc(localNombre())+'">'+
+    (local?'<button class="btn sm" type="button" data-go="'+esc(local.id)+'">Stock Local</button>':'')+
+    (cajas?'<button class="btn sm" type="button" data-go="'+esc(cajas.id)+'">Stock Cajas</button>':'')+
+    '<button class="btn sm" type="button" data-go="historial">Historial de conteos completo</button></nav>';
+}
 function misLocales(){ const e = miEquipo(); const pv = e && e.rol === 'creadora' && window.GestLokCreatorSupport?.previewRol?.(); const l = pv ? S.me && S.me.locales : e ? e.locales : S.me && S.me.locales; return Array.isArray(l) ? l : []; }
 const esTotal = () => ['creadora', 'dueno'].includes(miRol());
 /* «Avisos» (actualizaciones del local): creadora, dueño y gerente. El servidor solo entrega los avisos de su propio local. */
@@ -487,13 +504,16 @@ function renderNav(){
   if (menuEmpresa()){ renderNavEmpresa(); return; }
   const nav = $('#snav'), edit = canW();
   const varios = localesMios().length > 1;
-  const hojasMenu = visibles();
-  const stockDiario = hojasMenu.find(h => h.id === 'stock' || /^(stock local|stock)$/i.test(String(h.nombre || '').trim()));
+  const hojasMenu = S.me?.tenant_id === MI_GUSTO_TENANT && !S.loaded.h ? [] : visibles();
+  const stockDiario = hojasMenu.find(h => h.id !== 'stock' && h.tipo === 'ingreso' && /^stock local$/i.test(String(h.nombre||'').trim())) ||
+    hojasMenu.find(h => h.id === 'stock' || /^(stock local|stock)$/i.test(String(h.nombre || '').trim()));
+  const ownerCajas = miGustoOwnerInventory() ? miGustoStockCajas() : null;
+  const ownerHistorial = miGustoOwnerInventory() && S.loaded.h && !hojasMenu.some(h => h.id === 'historial');
   const pagosDiarios = puedeVerPagosOnline();
-  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>${pagosDiarios ? `<button data-go="cierre-online">${ic('clip')}<span class="nl">Pagos Online</span></button>` : ''}${puedeVerPedidosClientes() ? `<button data-go="pedidos-clientes">${ic('cart')}<span class="nl">Central de mensajes</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}${stockDiario ? `<button data-go="${esc(stockDiario.id)}">${ic('box')}<span class="nl">Stock Local</span>${hojaBadge(stockDiario)}</button>` : ''}<button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
+  const html = `<button class="snav-loc snav-back" data-act="locales" aria-label="Regresar al inicio">${ic('back')}<span class="nl">Regresar</span><small>${varios ? 'Inicio y locales' : 'Inicio'}</small></button><button data-go="inicio">${ic('home')}<span class="nl">Inicio</span></button>${pagosDiarios ? `<button data-go="cierre-online">${ic('clip')}<span class="nl">Pagos Online</span></button>` : ''}${puedeVerPedidosClientes() ? `<button data-go="pedidos-clientes">${ic('cart')}<span class="nl">Central de mensajes</span>${window.GestLokMiGustoOrders?.navBadge?.()||''}</button>` : ''}${stockDiario ? `<button data-go="${esc(stockDiario.id)}">${ic('box')}<span class="nl">Stock Local</span>${hojaBadge(stockDiario)}</button>` : ''}${ownerCajas ? `<button data-go="${esc(ownerCajas.id)}">${ic('box')}<span class="nl">Stock Cajas</span>${hojaBadge(ownerCajas)}</button>` : ''}${ownerHistorial ? `<button data-go="historial">${ic('clock')}<span class="nl">Historial de conteos</span></button>` : ''}<button data-go="proveedores">${ic('box')}<span class="nl">Proveedores</span></button>${window.GestLokCommerce?.online() ? `<button data-go="pedidos-online">${ic('cart')}<span class="nl">Pedidos online</span></button><button data-go="tienda-online">${ic('box')}<span class="nl">Mi tienda</span></button>` : ''}<button data-go="chat">${ic('msg')}<span class="nl">Chat del local</span>${S.unreadChat ? `<span class="gl-chat-badge" aria-label="${S.unreadChat} mensajes nuevos"><span class="gl-chat-dot" aria-hidden="true"></span><span class="gl-chat-count">${Math.min(99,S.unreadChat)}</span></span>` : ''}</button>${navAdmLocal()}<button data-go="vencimientos">${ic('clock')}<span class="nl">Vencimientos</span></button>${puedeVerAvisos() ? `<button data-go="avisos">${ic('msg')}<span class="nl">Avisos</span></button>` : ''}
     ${esTotal() && window.GestLokCommerce?.mode() !== 'online' ? `<button data-go="ingreso" class="snav-ing">${ic('in')}<span class="nl">Ingreso de mercadería</span></button>` : ''}
     <div class="snav-l"><span>Hojas</span>${edit ? `<button class="snav-e" data-act="hojas" title="Editar, agregar o borrar hojas">${ic('edit')}Editar</button>` : ''}</div>
-    ${hojasMenu.filter(h => !stockDiario || h.id !== stockDiario.id).map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
+    ${hojasMenu.filter(h => (!stockDiario || h.id !== stockDiario.id) && (!ownerCajas || h.id !== ownerCajas.id)).map(h => `<button data-go="${esc(h.id)}">${ic(h.ic)}<span class="nl">${esc(h.nombre)}</span>${hojaBadge(h)}</button>`).join('')}
     ${edit ? `<button class="snav-add" data-act="hoja-new">${ic('plus')}<span class="nl">Agregar hoja</span></button>` : ''}`;
   if (nav._h !== html){ nav.innerHTML = html; nav._h = html; }
 }
@@ -1459,6 +1479,7 @@ function inicioOperativo(){
         ${miRol()==='dueno'?`<button type="button" class="gl-owner-notif-trigger" data-act="owner-notifications" aria-haspopup="dialog">${ic('bell')}<span>Notificaciones</span>${ic('chev')}</button>`:''}
       </header>
       ${miRol()==='dueno'?(window.GestLokPush?.homePrompt?.()||''):''}
+      ${ownerInventoryLinks()}
       ${!S.loaded.p?'<p class="note">Cargando información del local…</p>':''}
       ${S.loaded.p&&!total&&canW()?`<div class="gl-home-essential-setup">
         <span>Este local todavía no tiene productos cargados.</span>
@@ -3609,6 +3630,11 @@ function backup(){
 
 /* ---------- Navegación y tema ---------- */
 function go(v, silent){
+  // Un enlace antiguo a «stock» no debe abrir Stock Sugerido oculto de Mi Gusto.
+  if(v==='stock' && S.me?.tenant_id===MI_GUSTO_TENANT && S.loaded.h && hojaById('stock')?.oculta){
+    const real=miGustoStockLocal();
+    if(real)v=real.id;
+  }
   const ok = (v === 'pedidos-clientes' && puedeVerPedidosClientes()) || (v === 'cierre-online' && puedeVerPagosOnline()) || (v === 'conteo-munro' && puedeVerConteoMunro()) || (v === 'resenas' && puedeVerResenas()) || (v === 'reclamos-internos' && puedeVerReclamos()) || v === 'inicio' || v === 'chat' || v === 'proveedores' || (v === 'pedidos-online' && window.GestLokCommerce?.online()) || (v === 'tienda-online' && window.GestLokCommerce?.online()) || (v === 'diario' && puedeVerDiarioMunro()) || (v === 'motos' && puedeVerMotos()) || v === 'vencimientos' || (v === 'avisos' && puedeVerAvisos()) || (v === 'ingreso' && esTotal() && window.GestLokCommerce?.mode() !== 'online') || (isBase(v) && (v !== 'fabrica' || window.GestLokCommerce?.mode() !== 'online')) || (isCustom(v) && (!S.loaded.h || S.hojasDB.some(h => h.id === v)));
   if (!ok || (window.GestLokCommerce?.mode() === 'online' && (v === 'ingreso' || esFabT(tipoVista(v))))) v = 'inicio';
   if (ctxKey(v) !== ctxKey(S.view)){ S.cat = ''; S.q = ''; S.filtro = 'todos'; S.cfiltro = 'todos'; }
@@ -4036,6 +4062,12 @@ function subscribeLocal(){
   push(C('hojas').onSnapshot(mine(snap => {
     S.hojasDB = snap.docs.map(d => ({id:d.id, ...d.data()}));
     S.loaded.h = true;
+    // En una carga lenta, el menú legado puede haber abierto «stock» antes de saber
+    // que es una hoja oculta. Redirigir a la planilla real, sin tocar cantidades.
+    if(S.me?.tenant_id===MI_GUSTO_TENANT && S.view==='stock' && hojaById('stock')?.oculta){
+      const real=miGustoStockLocal();
+      if(real)S.view=real.id;
+    }
     if (isCustom(S.view) && !S.hojasDB.some(h => h.id === S.view)) S.view = 'inicio';
     onSnapRefresh();
   }), e => { if (S.local !== loc) return; S.loaded.h = true; errLive(e); render(); }));
