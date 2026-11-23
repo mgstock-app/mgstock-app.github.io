@@ -15,7 +15,7 @@ test('Pagos Online: el formulario se vacía después de guardar, antes de redibu
  assert.match(s,/app\.checked=false/);
  // Solo después de que el servidor confirmó el guardado, y antes del render que preserva borradores.
  const action=s.slice(s.indexOf('async function action('),s.indexOf('async function rpcRefresh('));
- const saved=action.indexOf("const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();");
+ const saved=action.indexOf("const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note_pya')clearEntryForm();");
  assert.ok(saved>0,'se limpia justo después de confirmar el guardado');
  assert.ok(saved<action.indexOf('await rpcRefresh()'),'se limpia antes de volver a dibujar');
  assert.match(action,/catch\(e\)\{error=e\.message\|\|'No se pudo completar';api\.render\(\);\}/);

@@ -504,3 +504,27 @@
  .mg-on-modal-filterbar>span{display:none}
  .mg-on-history-filters .mg-on-pay-filter{flex:1 1 100%}
 }
+
+/* PYA: comanda de referencia, visible en todos los turnos pero excluida de la caja. */
+@media (min-width:851px){
+ .mg-on-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.15fr) minmax(112px,.7fr) minmax(112px,.7fr)}
+}
+.mg-on-fields .mg-on-check-pya{background:#f3f6fa;border:1px solid #c7d2e0}
+.mg-on-fields .mg-on-check-pya input{accent-color:#193d64}
+.mg-on-fields .mg-on-check-pya span{color:#193d64}
+.mg-on-fields .mg-on-check-pya small{color:#506985}
+.mg-on-recent-app{gap:4px 8px;flex-wrap:wrap}
+.mg-on-pya-toggle{
+ display:inline-flex;align-items:center;justify-content:center;min-height:39px;min-width:50px;
+ border:1px solid #b9c9da;border-radius:9px;background:#f4f7fb;color:#344c68;
+ padding:7px 9px;font-size:12px;font-weight:900;cursor:pointer;
+}
+.mg-on-pya-toggle[aria-checked=true]{background:#163d65;border-color:#163d65;color:#fff}
+.mg-on-pya-toggle:disabled{cursor:default;opacity:.65}
+.mg-on-pya-toggle:focus-visible{outline:3px solid #78a9e4;outline-offset:2px}
+.mg-on-recent .mg-on-recent-card.mg-on-pya-row{background:#f7f9fc;border-color:#aabbd0}
+.mg-on-pya-note{display:block;font-size:11px;line-height:1.35;color:#466384;font-weight:750}
+@media (max-width:760px){
+ .mg-on-recent-app{justify-content:flex-start;align-items:center;gap:6px}
+ .mg-on-pya-toggle{min-width:49px;min-height:38px}
+}

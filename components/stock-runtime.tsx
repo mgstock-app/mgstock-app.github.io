@@ -41,7 +41,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113",
     "/stock/gestlok-push.js",
     "/stock/munro-daily.js",
-    "/stock/mi-gusto-cierre-online.js?rev=filtro-pagos-20261118",
+    "/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123",
     "/stock/gestlok-chat-central.js?rev=chat-badge-20261122",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
@@ -85,7 +85,7 @@ export function StockRuntime() {
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
       if (!visitor) await load("/stock/gestlok-reclamos-internos.js?rev=reclamos-global-20261029");
-      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=filtro-pagos-20261118");
+      if (!visitor) await load("/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123");
       if (!visitor) await load("/stock/mi-gusto-conteo-morning.js?rev=recuperar-noche-20261117");
       if (!visitor) await load("/stock/mi-gusto-conteo.js?rev=conteo-categorias-pack-20261122");
       if (!visitor) await load("/stock/gestlok-chat-central.js?rev=chat-badge-20261122");

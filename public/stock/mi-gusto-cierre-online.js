@@ -47,7 +47,7 @@ const allowed=()=>!!api&&api.S?.me?.tenant_id===TENANT&&local() in LOCALS &&
    (api.miRol()==='creadora'&&!api.S?.ro));
 const online=()=>api&&!api.S?.offline&&navigator.onLine!==false;
 const writable=()=>allowed()&&online()&&!saving;
-const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>m.method==='getnet'||m.method==='mercado_pago');
+const hasPosnet=s=>!!s&&Array.isArray(s.movements)&&s.movements.some(m=>!m.pya&&(m.method==='getnet'||m.method==='mercado_pago'));
 const emptySelected=s=>!!s&&!hasPosnet(s)&&emptyCheckedFor===s.id;
 function openForEntry(){tab='movimientos';editing=null;saveNotice=false;showAllMoves=false;activeMethodFilter='todos';emptyCheckedFor=null;error='';}
 function reset(){++gen;cashOkSaving=false;snapshot=null;tab='movimientos';error='';loading=false;saving=false;editing=null;opened=null;filter='';viewMode='dia';shiftFilter='todos';modalDay=null;modalTab='dia';activeMethodFilter='todos';historyMethodFilter='todos';uploading=null;choosingPhoto=false;photoUrls={};photoError='';saveNotice=false;showAllMoves=false;emptyCheckedFor=null;}
@@ -89,10 +89,10 @@ async function refresh(){
 function status(){
  const s=snapshot?.active;
  return '<div class="mg-on-summary">'+
- ['transferencia','getnet','mercado_pago','efectivo','total_app','total_ventas','online_local'].map((key,i)=>
+ ['transferencia','getnet','mercado_pago','efectivo','total_app','total_ventas','online_local','total_pya'].map((key,i)=>
   '<div class="mg-on-summary-item '+(key==='online_local'?'mg-on-local':key==='total_ventas'?'mg-on-total':'')+'"><span>'+esc({
  transferencia:'Transferencia',getnet:'Getnet',mercado_pago:'Mercado Pago',efectivo:'Efectivo',total_app:'Total APP',
- total_ventas:'Total ventas online',online_local:'Online Local'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div><p class="mg-on-online-help">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla aparte.</p>';
+ total_ventas:'Total ventas online',online_local:'Online Local',total_pya:'PYA simbólico · no suma'}[key])+'</span><strong>'+cash(s?.[key]||0)+'</strong></div>').join('')+'</div><p class="mg-on-online-help">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla aparte. Las comandas PYA son simbólicas y no suman en ningún medio de pago ni en el total online.</p>';
 }
 function currentHead(){
  const s=snapshot?.active;
@@ -141,14 +141,16 @@ function movementList(){
   esc(({transferencia:'T',getnet:'G',mercado_pago:'MP',efectivo:'E'})[r.method]||'•')+'</span>'+esc(METHODS[r.method]||r.method)+'</span>';
  const appControl=r=>'<button type="button" class="mg-on-switch" role="switch" aria-label="APP de comanda '+esc(r.comanda)+
    '" aria-checked="'+!!r.app+'" data-mgon-app="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'><span></span><b>APP</b></button>';
+ const pyaControl=r=>'<button type="button" class="mg-on-pya-toggle" role="switch" aria-label="PYA simbólico de comanda '+esc(r.comanda)+
+   '" aria-checked="'+!!r.pya+'" data-mgon-pya="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>PYA</button>';
  const actions=r=>'<div class="mg-on-rowbuttons"><button type="button" data-mgon-edit="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Editar</button>'+
    '<button type="button" class="mg-on-danger" data-mgon-delete="'+esc(r.id)+'" '+(!writable()?'disabled':'')+'>Quitar</button></div>';
- const card=r=>'<article class="mg-on-recent-card '+(r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
+ const card=r=>'<article class="mg-on-recent-card '+(r.pya?'mg-on-pya-row':r.method==='efectivo'?'mg-on-cash-row':'')+'">'+
   '<div class="mg-on-recent-row-main">'+
   '<strong class="mg-on-recent-order" aria-label="Comanda número '+esc(r.comanda)+'">#'+esc(r.comanda)+'</strong>'+
   '<div class="mg-on-recent-amount"><strong>'+cash(r.amount)+'</strong>'+
-   (r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+'</div>'+
-  '<div class="mg-on-recent-app">'+appControl(r)+'</div>'+
+   (r.method==='efectivo'?'<small class="mg-on-cash-detail">Bruto '+cash(r.gross_amount??r.amount)+' · 10% OFF '+cash(r.discount_amount||0)+'</small>':'')+(r.pya?'<small class="mg-on-pya-note">PYA · simbólico · no suma</small>':'')+'</div>'+
+  '<div class="mg-on-recent-app">'+appControl(r)+pyaControl(r)+'</div>'+
   '<div class="mg-on-recent-meta"><span class="mg-on-recent-time">'+timeOf(r.created_at)+'</span>'+method(r)+'</div>'+
   '<div class="mg-on-recent-commands">'+actions(r)+'</div></div>'+
   (r.observacion?'<p class="mg-on-recent-card-note"><span>Observación: </span>'+esc(r.observacion)+'</p>':'')+
@@ -162,20 +164,20 @@ function movementList(){
 function cashMovementDetail(s=snapshot?.active){
  const closed=s?.status==='cerrado';
  const rows=[...(s?.movements||[])].filter(r=>r.method==='efectivo').reverse();
- const total=rows.reduce((v,r)=>v+(Number(r.amount)||0),0);
- const discountTotal=rows.reduce((v,r)=>r.ok?v:v+(Number(r.discount_amount)||0),0);
+ const total=rows.reduce((v,r)=>v+(r.pya?0:Number(r.amount)||0),0);
+ const discountTotal=rows.reduce((v,r)=>r.ok||r.pya?v:v+(Number(r.discount_amount)||0),0);
  if(closed&&!rows.length)return '';
  const title='<header class="mg-on-cash-head"><div><h3>Detalle de efectivo del turno</h3><p>'+date(s?.day)+' · Turno '+esc(shiftName(s?.turno))+' · '+esc(LOCALS[local()]||'')+(closed?' · Cerrado':'')+'</p></div><div class="mg-on-cash-metrics"><div class="mg-on-cash-total"><span>Total efectivo</span><strong>'+cash(total)+'</strong><small>'+rows.length+' movimientos</small></div><div class="mg-on-cash-total mg-on-cash-discounts"><span>Total descuentos</span><strong data-mgon-total-discounts>'+cash(discountTotal)+'</strong><small>Pendientes sin OK · Solo pagos en efectivo</small></div></div></header>';
  if(!rows.length)return '<section class="mg-on-cash-detail-section">'+title+'<p class="mg-on-empty">Todavía no se registraron pagos en efectivo en este turno.</p></section>';
  const table='<div class="mg-on-cash-scroll" tabindex="0" aria-label="Detalle de pagos en efectivo"><table><thead><tr><th scope="col">OK</th><th scope="col">Comanda</th><th scope="col">Hora</th><th scope="col">Importe bruto</th><th scope="col">Descuento</th><th scope="col">Efectivo cobrado</th><th scope="col">Observación</th></tr></thead><tbody>'+
- rows.map(r=>'<tr class="'+(r.ok?'mg-on-cash-reviewed':'')+'"><td><label class="mg-on-ok-label"><input type="checkbox" data-mgon-cash-ok="'+esc(r.id)+'" '+(r.ok?'checked':'')+' '+(closed||!writable()?'disabled':'')+' aria-label="OK comanda '+esc(r.comanda)+'"><span>OK</span></label></td><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+timeOf(r.created_at)+'</td><td>'+cash(r.gross_amount??r.amount)+'</td><td>'+cash(r.discount_amount||0)+'</td><td><strong>'+cash(r.amount)+'</strong></td><td>'+esc(r.observacion||'—')+'</td></tr>').join('')+
+ rows.map(r=>'<tr class="'+(r.ok?'mg-on-cash-reviewed':'')+'"><td><label class="mg-on-ok-label"><input type="checkbox" data-mgon-cash-ok="'+esc(r.id)+'" '+(r.ok?'checked':'')+' '+(closed||!writable()?'disabled':'')+' aria-label="OK comanda '+esc(r.comanda)+'"><span>OK</span></label></td><td><strong>#'+esc(r.comanda)+'</strong></td><td>'+timeOf(r.created_at)+'</td><td>'+cash(r.gross_amount??r.amount)+'</td><td>'+cash(r.discount_amount||0)+'</td><td><strong>'+cash(r.amount)+'</strong></td><td>'+(r.pya?'<strong class="mg-on-pya-note">PYA · no suma</strong> · ':'')+esc(r.observacion||'—')+'</td></tr>').join('')+
  '</tbody><tfoot><tr><td colspan="4">TOTAL EFECTIVO DEL TURNO</td><td class="mg-on-cash-discount-footer"><small>Total descuentos pendientes</small><strong data-mgon-total-discounts-footer>'+cash(discountTotal)+'</strong></td><td class="mg-on-cash-amount-footer">'+cash(total)+'</td><td>'+rows.length+' movimientos · '+rows.filter(r=>r.ok).length+' OK</td></tr></tfoot></table></div>';
  return '<section class="mg-on-cash-detail-section'+(closed?' mg-on-cash-history':'')+'" aria-label="Detalle de efectivo del turno">'+title+table+'</section>';
 }
 function parseAmountInput(value){const raw=String(value??'').trim().replace(/\s/g,'');if(!/^\d{1,11}(?:\.\d{3})*(?:,\d{0,2})?$/.test(raw)&&!/^\d{1,11}(?:,\d{0,2})?$/.test(raw))return NaN;return Number(raw.replace(/\./g,'').replace(',','.'));}
 function formatAmountInput(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2}):'';}
 function formatAmountTyping(value){const cleaned=String(value??'').replace(/[^0-9,]/g,'');const comma=cleaned.indexOf(',');const integer=(comma<0?cleaned:cleaned.slice(0,comma)).slice(0,11);const cents=comma<0?'':','+cleaned.slice(comma+1).replace(/,/g,'').slice(0,2);return integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+cents;}
-function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
+function updateCashPreview(){const f=document.querySelector('#mg-online-form');if(!f)return;const out=f.querySelector('#mg-on-cash-preview');if(!out)return;const gross=parseAmountInput(f.elements.amount?.value||'');if(f.elements.pya?.checked){out.hidden=false;out.textContent='PYA simbólico: no se suma a ninguna forma de pago ni al total online.';return;}if(f.elements.method?.value!=='efectivo'||!Number.isFinite(gross)||gross<=0){out.textContent='';out.hidden=true;return;}const discount=Math.round(gross*10)/100;out.hidden=false;out.textContent='Total a cobrar: '+cash(gross-discount);}
 function entry(){
  const s=snapshot?.active,r=(s?.movements||[]).find(x=>x.id===editing);
  return '<form id="mg-online-form" class="mg-on-entry" autocomplete="off"><div class="mg-on-entry-head"><span class="mg-on-entry-icon" aria-hidden="true">▤</span>'+
@@ -183,7 +185,8 @@ function entry(){
  '<div class="mg-on-fields"><label>Número de comanda<input type="text" inputmode="numeric" pattern="[0-9]{1,10}" name="comanda" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="10" value="'+esc(r?.comanda||'')+'" placeholder="Ej. 36" required></label>'+
  '<label>Monto ($)<input type="text" inputmode="decimal" name="amount" autocomplete="off" maxlength="18" value="'+esc(r?.gross_amount!=null?formatAmountInput(r.gross_amount):'')+'" placeholder="0,00" required></label>'+
  '<label>Forma de pago<select name="method">'+Object.entries(METHODS).map(([k,v])=>'<option value="'+k+'" '+((r?.method||'transferencia')===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
- '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label></div>'+
+ '<label class="mg-on-check"><input type="checkbox" name="app" '+(r?.app?'checked':'')+'><span>APP <small>Descontar de Online Local</small></span></label>'+ 
+ '<label class="mg-on-check mg-on-check-pya"><input type="checkbox" name="pya" '+(r?.pya?'checked':'')+'><span>PYA <small>Simbólico · no suma</small></span></label></div>'+
  '<p class="mg-on-cash-preview" id="mg-on-cash-preview" aria-live="polite"></p>'+ '<details class="mg-on-observation-details" '+(r?.observacion?'open':'')+'><summary>Agregar observación <small>(opcional)</small></summary>'+
  '<label class="mg-on-observation">Detalle de la observación <small>(máximo 300 caracteres)</small>'+
  '<textarea name="observacion" maxlength="300" autocomplete="off" rows="2" placeholder="Ej. El cliente retiró más tarde">'+esc(r?.observacion||'')+'</textarea></label></details>'+
@@ -287,7 +290,7 @@ async function showPhoto(id){
 function shiftCard(s,turnoHint='tarde'){
  if(!s)return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(turnoHint))+'</h3><span class="mg-on-pending">Próximo turno</span></header><p class="mg-on-empty">Sin movimientos. Este turno todavía no tiene registros guardados.</p></article>';
  return '<article class="mg-on-shift"><header><h3>'+esc(shiftName(s.turno))+'</h3><span class="'+(s.status==='cerrado'?'mg-on-closed':'mg-on-open')+'">'+(s.status==='cerrado'?'✓ Cerrado':'● Abierto')+'</span></header>'+
- [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas online'],['online_local','Online Local']].map(([key,label])=>
+ [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],['efectivo','Efectivo'],['total_app','Total APP'],['total_ventas','Total ventas online'],['online_local','Online Local'],['total_pya','PYA simbólico · no suma']].map(([key,label])=>
  '<div class="mg-on-shift-row '+(key==='online_local'?'mg-on-local':'')+'"><span>'+label+'</span><strong>'+cash(s[key])+'</strong></div>').join('')+
  '<small>'+Number(s.comandas||0)+' comandas registradas'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</small>'+photoControl(s)+'</article>';
 }
@@ -299,16 +302,16 @@ function summary(){
  return '<section class="mg-on-dashboard"><h3>Resumen diario · '+date(curr?.day)+'</h3>'+
  '<div class="mg-on-hero"><div><span>Total ventas online del día</span><strong>'+cash(total)+'</strong></div><div><span>Online Local</span><strong>'+cash(onlineLocal)+'</strong></div></div>'+
  '<div class="mg-on-shifts">'+shiftCard(morning,'manana')+shiftCard(afternoon,'tarde')+'</div>'+
- '<p class="mg-on-note">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla por separado y no se suma al online.</p>'+
+ '<p class="mg-on-note">Online Local = Transferencia + Getnet + Mercado Pago − APP. El efectivo se controla por separado. PYA es simbólico y no suma en ningún medio de pago.</p>'+
  '<div class="mg-on-actions"><button type="button" data-mgon-tab="movimientos" class="mg-on-primary">Cargar comandas</button>'+
  '<button type="button" data-mgon-jump-history>Ver historial</button></div></section>';
 }
 function oldRows(s){
  const rows=filterPayments(s.movements||[],historyMethodFilter);
  return '<div class="mg-on-detail"><h4>Movimientos individuales · '+esc(shiftName(s.turno))+'</h4>'+
- '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Importe</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
- (rows.length?rows.map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join(''):
- '<tr><td colspan="5" class="mg-on-pay-empty">No hay movimientos con este medio de pago en el turno.</td></tr>')+
+ '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Importe</th><th>APP</th><th>PYA</th><th>Observaciones</th></tr></thead><tbody>'+
+ (rows.length?rows.map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td><td>'+cash(m.amount)+(m.pya?' <small class="mg-on-pya-note">No suma</small>':'')+'</td><td>'+(m.app?'Sí':'No')+'</td><td>'+(m.pya?'Simbólico':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join(''):
+ '<tr><td colspan="6" class="mg-on-pay-empty">No hay movimientos con este medio de pago en el turno.</td></tr>')+
  '</tbody></table></div>'+shiftCard(s)+(historyMethodFilter==='todos'?cashMovementDetail(s):'')+'</div>';
 }
 /* El servidor devuelve cierres definitivos por sucursal.
@@ -316,16 +319,16 @@ function oldRows(s){
 function historyGroups(rows){
  const days=new Map();
  for(const s of rows||[]){
-  if(!days.has(s.day))days.set(s.day,{day:s.day,shifts:[],transferencia:0,getnet:0,mercado_pago:0,total_app:0,total_ventas:0,online_local:0,comandas:0});
+  if(!days.has(s.day))days.set(s.day,{day:s.day,shifts:[],transferencia:0,getnet:0,mercado_pago:0,total_app:0,total_ventas:0,online_local:0,total_pya:0,comandas:0});
   const d=days.get(s.day);d.shifts.push(s);
-  for(const key of ['transferencia','getnet','mercado_pago','total_app','total_ventas','online_local','comandas'])d[key]+=Number(s[key]||0);
+  for(const key of ['transferencia','getnet','mercado_pago','total_app','total_ventas','online_local','total_pya','comandas'])d[key]+=Number(s[key]||0);
  }
  return [...days.values()].sort((a,b)=>String(b.day).localeCompare(String(a.day)));
 }
 function historyTotals(model){
  return '<div class="mg-on-kpis">'+
   [['transferencia','Transferencia'],['getnet','Getnet'],['mercado_pago','Mercado Pago'],
-   ['total_ventas','Total ventas online'],['total_app','Total APP'],['online_local','Online Local']].map(([key,label])=>
+   ['total_ventas','Total ventas online'],['total_app','Total APP'],['online_local','Online Local'],['total_pya','PYA simbólico · no suma']].map(([key,label])=>
     '<span>'+label+' <strong>'+cash(model[key])+'</strong></span>').join('')+'</div>';
 }
 function shiftHistoryCard(s){
@@ -350,10 +353,10 @@ function reportTurn(s,turno){
  '<span class="mg-on-closed">✓ Cerrado'+(s.sin_movimientos?' · Sin movimientos de Posnet':'')+'</span></header>'+
  historyTotals(s)+
  '<h4>Movimientos individuales'+(historyMethodFilter==='todos'?'':' · '+esc(METHODS[historyMethodFilter]))+' ('+rows.length+')</h4>'+
- '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>Observaciones</th></tr></thead><tbody>'+
+ '<div class="mg-on-tablewrap"><table><thead><tr><th>Comanda</th><th>Pago</th><th>Monto</th><th>APP</th><th>PYA</th><th>Observaciones</th></tr></thead><tbody>'+
  (rows.length?rows.map(m=>'<tr><td>#'+esc(m.comanda)+'</td><td>'+esc(METHODS[m.method]||m.method)+'</td>'+
- '<td>'+cash(m.amount)+'</td><td>'+(m.app?'Sí':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join(''):
- '<tr><td colspan="5" class="mg-on-pay-empty">No hay movimientos con este medio de pago en el turno.</td></tr>')+
+ '<td>'+cash(m.amount)+(m.pya?' <small class="mg-on-pya-note">No suma</small>':'')+'</td><td>'+(m.app?'Sí':'No')+'</td><td>'+(m.pya?'Simbólico':'No')+'</td><td class="mg-on-observation-cell">'+esc(m.observacion||'—')+'</td></tr>').join(''):
+ '<tr><td colspan="6" class="mg-on-pay-empty">No hay movimientos con este medio de pago en el turno.</td></tr>')+
  '</tbody></table></div><div class="mg-on-photo-area">'+photoControl(s)+'</div>'+(historyMethodFilter==='todos'?cashMovementDetail(s):'')+'</section>';
 }
 function historyModal(){
@@ -408,12 +411,13 @@ function clearEntryForm(){
  for(const name of ['comanda','amount','observacion']){const field=form.elements.namedItem(name);if(field)field.value='';}
  const method=form.elements.namedItem('method');if(method)method.value='transferencia';
  const app=form.elements.namedItem('app');if(app)app.checked=false;
+ const pya=form.elements.namedItem('pya');if(pya)pya.checked=false;
  const details=form.querySelector('.mg-on-observation-details');if(details)details.open=false;
 }
 async function action(name,args,notify){
  if(!writable())return;
  saving=true;error='';saveNotice=false;
- try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note')clearEntryForm();editing=null;
+ try{const result=await rpc(name,args);if(name==='gestlok_mg_online_save_note_pya')clearEntryForm();editing=null;
   if(name.startsWith('gestlok_mg_online_close')&&result?.closed){modalDay=result.closed.day;modalTab=result.closed.turno;photoError='';}
   if(name==='gestlok_mg_online_delete')await rpcRefresh(true);else await rpcRefresh();saveNotice=notify==='Movimiento guardado.';if(notify)api.toast?.(notify);}
  catch(e){error=e.message||'No se pudo completar';api.render();}
@@ -516,8 +520,13 @@ function attach(h){
   const toggle=e.target.closest('[data-mgon-app]');
   if(toggle&&writable()){
    const m=snapshot?.active?.movements?.find(x=>x.id===toggle.dataset.mgonApp);
-   if(m)void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:m.id,
-     p_comanda:m.comanda,p_method:m.method,p_amount:m.amount,p_app:!m.app,p_observacion:m.observacion||''},'APP actualizado.');return;}
+   if(m)void action('gestlok_mg_online_save_note_pya',{p_shift:snapshot.active.id,p_id:m.id,
+     p_comanda:m.comanda,p_method:m.method,p_amount:m.gross_amount??m.amount,p_app:!m.app,p_observacion:m.observacion||'',p_pya:!!m.pya},'APP actualizado.');return;}
+  const togglePya=e.target.closest('[data-mgon-pya]');
+  if(togglePya&&writable()){
+   const m=snapshot?.active?.movements?.find(x=>x.id===togglePya.dataset.mgonPya);
+   if(m)void action('gestlok_mg_online_save_note_pya',{p_shift:snapshot.active.id,p_id:m.id,
+     p_comanda:m.comanda,p_method:m.method,p_amount:m.gross_amount??m.amount,p_app:!!m.app,p_observacion:m.observacion||'',p_pya:!m.pya},'Marca PYA actualizada.');return;}
   const close=e.target.closest('[data-mgon-close]');
   if(close&&writable()&&snapshot?.active){
    const s=snapshot.active,declared=emptySelected(s);
@@ -536,12 +545,12 @@ function attach(h){
  document.addEventListener('submit',e=>{
   if(e.target.id!=='mg-online-form'||!writable())return;
   e.preventDefault();const d=new FormData(e.target),comanda=String(d.get('comanda')||'').trim(),
-   amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),
+   amount=parseAmountInput(d.get('amount')),method=String(d.get('method')||''),app=d.has('app'),pya=d.has('pya'),
    observacion=String(d.get('observacion')||'').trim();
   if(!/^[0-9]{1,10}$/.test(comanda)||!Number.isFinite(amount)||amount<=0||!(method in METHODS)||observacion.length>300){
     error='Completá una comanda numérica, un monto positivo y la forma de pago.';api.render();return;}
-  void action('gestlok_mg_online_save_note',{p_shift:snapshot.active.id,p_id:editing,
-   p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion},'Movimiento guardado.');
+  void action('gestlok_mg_online_save_note_pya',{p_shift:snapshot.active.id,p_id:editing,
+   p_comanda:comanda,p_method:method,p_amount:amount,p_app:app,p_observacion:observacion,p_pya:pya},'Movimiento guardado.');
  });
  document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&modalDay){modalDay=null;photoError='';api.render();}
