@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261123venta1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261123efectivo1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -304,7 +304,7 @@
         ? 'CLIENTE CONFIRMÓ RECEPCIÓN · ' + new Date(p.recibido_at).toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
         : 'Esperando confirmación de recepción del cliente'}) : null,
       p.nota ? el('p', {class: 'nota-cliente', text: 'Aclaración: ' + p.nota}) : null,
-      Number(p.descuento)>0 ? el('p',{class:'nota-cliente',text:'Descuento efectivo 10%: −'+pesos(p.descuento)}) : null,
+      Number(p.descuento)>0 ? el('p',{class:'nota-cliente',text:'Descuento por pago en efectivo: −'+pesos(p.descuento)}) : null,
       el('p', {class: 'totales', text: (Number(p.envio) > 0 ? 'Envío ' + pesos(p.envio) + ' · ' : '') + 'Total ' + pesos(p.total)}),
       p.entrega==='envio' && p.medio_pago==='efectivo' && Number(p.efectivo_abona)>0
         ? el('p',{class:'nota-cliente',text:'Abonará con '+pesos(p.efectivo_abona)+' · Cambio a enviar: '+pesos(p.efectivo_cambio)}) : null,
@@ -655,7 +655,7 @@
     semana.value = c?.semana === 'ultima' ? 'ultima' : 'todas';
     const desde = el('input', {type: 'time'}); desde.value = /^\d{1,2}:\d{2}$/.test(c?.desde || '') ? c.desde.padStart(5, '0') : '';
     const hasta = el('input', {type: 'time'}); hasta.value = /^\d{1,2}:\d{2}$/.test(c?.hasta || '') ? c.hasta.padStart(5, '0') : '';
-    const nombreP = el('input', {type: 'text', maxlength: '60', placeholder: 'Ej.: Jueves de promo'}); nombreP.value = r.nombre || '';
+    const nombreP = el('input', {type: 'text', maxlength: '60', placeholder: 'Ej.: Promo del viernes'}); nombreP.value = r.nombre || '';
     const avisoP = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: Hoy rige la promo del jueves'}); avisoP.value = r.aviso || '';
     const exclusiva = el('input', {type: 'checkbox', checked: r.exclusiva === true});
     const efectivo = el('input', {type: 'checkbox', checked: r.solo_efectivo === true});
@@ -728,7 +728,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261123venta1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261123efectivo1').catch(() => null);
     let a, cat = {categorias: []};
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     try { cat = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch { /* sin categorías: venta sugerida automática */ }
@@ -851,6 +851,9 @@
       if (!f.acepta_retiro.checked && !f.acepta_envio.checked) return aviso('Elegí retiro, envío o ambos.', true);
       const costoEnvio = Number(f.envio_costo.value || 0);
       const pedidoMinimo = Number(f.pedido_minimo.value || 0);
+      const pctEfectivo = Number(f.descuento_efectivo_pct.value || 0);
+      if (!Number.isFinite(pctEfectivo) || pctEfectivo < 0 || pctEfectivo > 50)
+        return aviso('El descuento por pago en efectivo debe estar entre 0 y 50 %.', true);
       if (!Number.isFinite(costoEnvio) || costoEnvio < 0 || costoEnvio >= 1000000)
         return aviso('El costo de envío debe estar entre $0 y $999.999.', true);
       if (!Number.isFinite(pedidoMinimo) || pedidoMinimo < 0 || pedidoMinimo >= 10000000)
@@ -859,7 +862,10 @@
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
           activa: f.activa.checked, horario: f.horario.value, direccion: f.direccion.value,
           acepta_retiro: f.acepta_retiro.checked, acepta_envio: f.acepta_envio.checked, envio_costo: costoEnvio,
-          envio_zona: f.envio_zona.value, pedido_minimo: pedidoMinimo, medios_pago: elegidos}});
+          envio_zona: f.envio_zona.value, pedido_minimo: pedidoMinimo, medios_pago: elegidos,
+          descuento_efectivo_pct: Math.round(pctEfectivo * 100) / 100,
+          descuento_efectivo_entrega: f.descuento_efectivo_entrega.value,
+          precio_efectivo_en_carta: f.precio_efectivo_en_carta.checked}});
         aviso('Ajustes guardados'); verAjustes();
       } catch (err) { aviso(err.message, true); }
     }},
@@ -879,6 +885,15 @@
       el('p', {class: 'etiqueta', text: 'Medios de pago'}),
       el('p', {class: 'nota', text: 'Si quitás un medio, también se quitará de las opciones de retiro y delivery de esta sucursal.'}),
       el('div', {class: 'medios'}, medios)),
+    // Descuento por pagar en efectivo: lo define cada local (0 = sin descuento). No es una regla de la app.
+    el('section', {class: 'bloque'}, el('h3', {text: 'Descuento por pago en efectivo'}),
+      el('div', {class: 'dos'}, campo('Descuento (%)', inp('descuento_efectivo_pct', {type: 'number', min: '0', max: '50', step: '0.5', inputmode: 'decimal'})),
+        campo('Vale para', (() => { const sel = el('select', {disabled: !editable},
+          [['envio', 'Pedidos con envío'], ['retiro', 'Pedidos para retirar'], ['ambas', 'Envío y retiro']].map(([v, t]) =>
+            el('option', {value: v, text: t})));
+          sel.value = a.descuento_efectivo_entrega || 'envio'; f.descuento_efectivo_entrega = sel; return sel; })())),
+      chk('precio_efectivo_en_carta', 'Mostrar en la carta el precio de las promos pagando en efectivo'),
+      el('p', {class: 'nota', text: 'Con 0 % no se aplica ningún descuento. Las promos marcadas «sin descuento» nunca lo llevan.'})),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
       : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
     // Link de reseñas de Google: lo cambian el dueño, el gerente del local y la administradora (por ejemplo, si el
@@ -1307,8 +1322,9 @@
       {id: 'x2', codigo: 'MM-0006', estado: 'terminado', motivo: '', cliente_nombre: 'Beto', cliente_telefono: '1144443333', entrega: 'retiro', direccion: '',
         horario: '', medio_pago: 'efectivo', nota: '', subtotal: 3600, envio: 0, total: 3600, creado_at: new Date(Date.now() - 3600e3).toISOString(),
         items: [{cantidad: 3, nombre: 'Empanada de carne', opciones: [], nota: '', importe: 3600}]}],
-    config: {slug: 'mi-gusto-munro', nombre: 'Munro', empresa: 'Mi Gusto', bienvenida: '', horario: 'Todos los días de 11 a 23', direccion: 'Av. Mitre 100',
+    config: {slug: 'demo', nombre: 'Munro', empresa: 'Comercio de demostración', bienvenida: '', horario: 'Todos los días de 11 a 23', direccion: 'Av. Mitre 100',
       acepta_retiro: true, acepta_envio: true, envio_costo: 800, envio_zona: 'Munro y Florida', pedido_minimo: 3000, medios_pago: ['efectivo', 'transferencia'],
+      descuento_efectivo_pct: 0, descuento_efectivo_entrega: 'envio', precio_efectivo_en_carta: false,
       activa: true, prefijo: 'MM', version: 3, mensajes: {}, ia_activa: true, ia_nombre: 'Sofi', ia_instrucciones: '', ia_info: ''},
   };
   if (SHOWROOM) {

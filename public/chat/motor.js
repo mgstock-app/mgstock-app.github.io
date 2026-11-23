@@ -195,11 +195,19 @@ export function describirLinea(catalogo, linea) {
   return linea.cantidad + ' × ' + p.nombre + (ops.length ? ' (' + ops.join(' · ') + ')' : '') + (linea.nota ? ' — ' + linea.nota : '');
 }
 
-/* GLOBAL vs. LOCAL. El motor es el mismo para todos los comercios. Lo propio de cada local es configuración:
+/* GLOBAL vs. LOCAL. El motor es el mismo para todos los comercios. Lo propio de cada local es configuración
+ * (nunca nombres de comercios en el código):
  * - sucursal.menu_interactivo: pedidos por el menú interactivo (promos con selector, sin texto libre al carrito).
- * - producto.reglas (cada promo o producto): {cuando: {dia_semana 1-7 (4 = jueves), semana: 'todas'|'ultima',
+ * - sucursal.descuento_efectivo_pct / descuento_efectivo_entrega ('envio'|'retiro'|'ambas') / precio_efectivo_en_carta.
+ * - producto.reglas (cada promo o producto): {cuando: {dia_semana 1-7, semana: 'todas'|'ultima',
  *   desde 'HH:MM', hasta 'HH:MM'}, nombre, aviso, exclusiva, solo_efectivo, sin_descuento, compartir}.
- *   Ej. Mi Gusto «Jueves On Fire»: último jueves desde las 18:00, exclusiva, solo efectivo y sin descuento. */
+ *   Ej.: una promo que rige solo el último viernes del mes desde las 20:00, exclusiva y solo en efectivo. */
+/** ¿El descuento por pago en efectivo del local vale para esta forma de entrega? (sin dato = solo envío, como antes) */
+export function descuentoEfectivoAplica(sucursal, entrega) {
+  if (!(Number(sucursal?.descuento_efectivo_pct) > 0)) return false;
+  const regla = sucursal?.descuento_efectivo_entrega || 'envio';
+  return regla === 'ambas' || regla === entrega;
+}
 export function usaMenuInteractivo(sucursal) {
   return sucursal?.menu_interactivo === true;
 }
@@ -782,7 +790,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
   const fin = (accion) => ({estado: e, mensajes: out, ...(accion ? {accion} : {})});
   entrada = entrada || {};
   const menuInteractivo = usaMenuInteractivo(s);
-  // Productos que dejaron de ofrecerse mientras estaban en el carrito (ej. empieza el Jueves On Fire): se avisa una vez.
+  // Productos que dejaron de ofrecerse mientras estaban en el carrito (ej. empieza una promo exclusiva por horario): se avisa una vez.
   const quitados = (Array.isArray(estado?.carrito) ? estado.carrito.length : 0) - e.carrito.length;
   if (quitados > 0 && !entrada.inicio) {
     decir(s.especial ? 'Ahora rige ' + s.especial.nombre + ': quitamos de su pedido lo que no forma parte de la promo.'
@@ -933,7 +941,7 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
         ' es solo en efectivo. Elija «Efectivo» para enviar su pedido.', {tipo: 'datos'});
       return fin();
     }
-    if (d.entrega === 'envio' && d.medio_pago === 'transferencia' && Number(s.descuento_efectivo_pct) > 0) {
+    if (d.medio_pago === 'transferencia' && descuentoEfectivoAplica(s, d.entrega)) {
       decir('Puede abonar por transferencia. Si prefiere efectivo, tiene un ' + Number(s.descuento_efectivo_pct) + '% de descuento en los productos. El gerente le enviará los datos para transferir por este chat y podrá adjuntar aquí el comprobante.');
     }
     return fin({tipo: 'crear_pedido', pedido: {

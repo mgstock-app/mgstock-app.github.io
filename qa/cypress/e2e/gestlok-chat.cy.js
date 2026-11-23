@@ -200,7 +200,7 @@ describe('GESTLOK Chat · panel', () => {
     cy.contains('button', 'Guardar mensajes').click();
     cy.get('#aviso').should('contain.text', 'Mensajes guardados');
     cy.get('[data-p=ajustes]').click();
-    cy.get('.enlace-publico a').should('have.attr', 'href', 'https://gestlok.com.ar/chat/?s=mi-gusto-munro');
+    cy.get('.enlace-publico a').should('have.attr', 'href', 'https://gestlok.com.ar/chat/?s=demo');
     cy.get('.qr img').should('be.visible');
     sinDesborde();
   });

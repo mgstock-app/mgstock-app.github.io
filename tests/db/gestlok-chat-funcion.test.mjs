@@ -51,6 +51,8 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   ok(DB, ['-f', 'supabase/operaciones/gestlok-chat-recepcion-conciliada-20261120.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261122165000_gestlok_chat_conversaciones_24h_reclamos.sql']);
   ok(DB, ['-f', 'supabase/migrations/20261122202000_gestlok_chat_reclamos_archivados.sql']);
+  ok(DB, ['-f', 'supabase/migrations/20261123150000_gestlok_chat_descuento_efectivo_por_local.sql']);
+  ok(DB, ['-f', 'supabase/migrations/20261123150000_gestlok_chat_descuento_efectivo_por_local.sql']); // repetible
   ok(DB, [], SEMILLA);
   ok(DB, ['-f', 'tests/db/gestlok-chat-retencion-24h.sql']);
   process.env.CHAT_PG_DB = urlFor(DB);
@@ -288,7 +290,19 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.equal(Number(r.body.pedido.total),2300);
   assert.equal(Number(r.body.pedido.efectivo_abona),3000);
   assert.equal(Number(r.body.pedido.efectivo_cambio),700);
-  ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_pct=0 where slug='mi-gusto-munro'");
+  // El descuento es configuración del local: si el local lo da solo al retirar, un envío en efectivo no lo lleva.
+  ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_entrega='retiro' where slug='mi-gusto-munro'");
+  const TOKEN_CASH2='tokenDePruebaDescuentoSoloRetiro00000006';
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'abrir'});
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',entrada:seleccionCarne});
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',entrada:{boton:'finalizar'}});
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',
+    entrada:{datos:{nombre:'Cliente efectivo dos',telefono:'1155550011',entrega:'envio',direccion:'Mitre 300',
+      medio_pago:'efectivo',efectivo_abona:'3000'}}});
+  assert.equal(r.status,200);
+  assert.equal(Number(r.body.pedido.descuento),0);
+  assert.equal(Number(r.body.pedido.total),2500);
+  ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_pct=0, descuento_efectivo_entrega='ambas' where slug='mi-gusto-munro'");
 
   // Foto: la sube el cliente por el token de SU conversación y Storage privado.
   const TOKEN_FOTO='tokenDePruebaFotosCliente000000000000005';
