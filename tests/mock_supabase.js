@@ -181,6 +181,20 @@
         }
         return {data:{movidas:n, desactivadas:off, no_existen:[]}, error:null};
       }
+      if (fn === 'gestlok_nfc_asignar_chat'){
+        // Como en el servidor: locales de GESTLOK Chat del simulador (Mi Gusto Munro y Don Torcuato).
+        const locs = {'mi-gusto-munro':['Mi Gusto','Munro'], 'mi-gusto-torcuato':['Mi Gusto','Don Torcuato']}, l = locs[x.p_slug];
+        if (!l) return err('Ese local de GESTLOK Chat no existe', 'P0002');
+        const destino = 'https://gestlok.com.ar/chat/?s=' + x.p_slug;
+        let c = st.comercios.find(y => y.nombre.toLowerCase() === l[0].toLowerCase());
+        if (!c){ c = {id:'com-' + (++st.seq), nombre:l[0], destino:null, nota:'', sucursales:[]}; st.comercios.push(c); log('comercio_creado', null, c.id, null, 'Creado desde GESTLOK Chat'); }
+        let su = c.sucursales.find(y => y.nombre.toLowerCase() === l[1].toLowerCase());
+        if (!su){ su = {id:'suc-' + (++st.seq), comercio_id:c.id, nombre:l[1], destino}; c.sucursales.push(su); log('sucursal_creada', null, c.id, su.id, 'Creada desde GESTLOK Chat'); }
+        else su.destino = destino;
+        const mov = nfcRpc('gestlok_nfc_reasignar', {p_codes:x.p_codes, p_comercio:c.id, p_sucursal:su.id}, a).data;
+        const act = nfcRpc('gestlok_nfc_activar', {p_codes:x.p_codes, p_activa:true}, a).data;
+        return {data:{ok:true, destino, lugar:l[0] + ' · ' + l[1], movidas:mov.movidas, activadas:act.cambiadas, no_existen:[]}, error:null};
+      }
       if (fn === 'gestlok_nfc_historial'){
         const code = x.p_code ? String(x.p_code).toUpperCase() : null;
         return {data:st.hist.filter(h => (!code || h.code === code) && (!x.p_comercio || h.comercio_id === x.p_comercio)).slice(0, x.p_limit || 100)

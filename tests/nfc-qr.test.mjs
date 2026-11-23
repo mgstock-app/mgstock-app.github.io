@@ -255,7 +255,21 @@ test('La pestaña está en el panel de la creadora y los archivos se cargan en o
     b = rt.indexOf('await load("/stock/gestlok-nfc-qr.js'),
     c = rt.indexOf('await load("/stock/gestlok-creator-home.js');
   assert.ok(a > 0 && a < b && b < c);
-  assert.ok(rt.includes('/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102'));
+  assert.ok(rt.includes('/stock/gestlok-nfc-qr.js?rev=nfc-chat-20261123'));
   const sw = read('scripts/sw-template.js');
   assert.ok(sw.includes("'/stock/gestlok-nfc-qr.js'") && sw.includes("'/vendor/qrcode-generator.js'"));
+});
+
+test('QR sin activar: se asignan al chat de un local de GESTLOK Chat y la administradora tiene un atajo al escanear', () => {
+  const sql = read('supabase/migrations/20261123180000_gestlok_nfc_asignar_chat.sql');
+  assert.match(sql, /v_actor uuid := gestlok_nfc_private\.require_creator\(\);/);
+  assert.match(sql, /v_url := 'https:\/\/gestlok\.com\.ar\/chat\/\?s=' \|\| s\.slug;/);
+  assert.match(sql, /revoke all on function public\.gestlok_nfc_asignar_chat\(text\[\], text\) from public, anon;/);
+  const js = read('public/stock/gestlok-nfc-qr.js');
+  assert.match(js, /call\('gestlok_nfc_asignar_chat', \{p_codes: reasign\.codes, p_slug: loc\.slug\}\)/);
+  assert.match(js, /get\('nfc'\)/);
+  const page = read('public/r/index.html');
+  assert.match(page, /if \(kind !== 'no_existe' && esAdministradora\(\)\)/);
+  assert.match(page, /'\/login\/\?nfc=' \+ encodeURIComponent\(code\)/);
+  assert.doesNotMatch(page, /gestlok_nfc_asignar_chat/, 'la página pública no asigna nada');
 });
