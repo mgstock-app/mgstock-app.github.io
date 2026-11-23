@@ -2460,22 +2460,30 @@ function stockLocalTurnoActualHistorial(){
   if(S.me?.tenant_id!==MI_GUSTO_TENANT || !['munro','torcuato'].includes(S.local) ||
     !S.loaded.h || !S.loaded.f || !S.loaded.c)return '';
   const h=miGustoStockLocal();
-  if(!h || stockLocalCierreHoy() || (S.histHoja && S.histHoja!==h.id) || !enPeriodo(Date.now(),S.histPer))return '';
+  // Siempre visible: antes del cierre es el turno en curso; después, el estado actual (lo cargado después del cierre).
+  if(!h || (S.histHoja && S.histHoja!==h.id) || !enPeriodo(Date.now(),S.histPer))return '';
+  const cerradoHoy=!!stockLocalCierreHoy();
   const items=S.allFab.filter(x=>(x.hoja||'fabrica')===h.id)
     .sort((a,b)=>(a.orden??1e9)-(b.orden??1e9));
   if(!items.length)return '';
   const expanded=!!S.histOpen['stock-local-open'];
+  // Misma regla que la planilla (fSin) con los datos del servidor: Local en 0, o marcado sin stock sin Local cargado.
+  const sinDe=x=>{const l=num(x.local);return l!=null?l===0:!!x.sinStock;};
+  const sinNombres=items.filter(sinDe).map(x=>x.nombre||'Producto');
   const filas=items.map(x=>{
-    const l=num(x.local),f=num(x.fabrica);
+    const l=num(x.local),f=num(x.fabrica),sin=sinDe(x);
     const total=round((l??0)+(f??0));
-    return '<div class="mv mvf"><div><b>'+esc(x.nombre||'Producto')+'</b></div>'+
+    return '<div class="mv mvf'+(sin?' gl-sin':'')+'"><div><b'+(sin?' style="color:var(--crit)"':'')+'>'+esc(x.nombre||'Producto')+'</b>'+
+      (sin?'<small style="color:var(--crit);font-weight:700">Sin stock</small>':'')+'</div>'+
       '<span>'+fmt(l)+'</span><span>'+fmt(f)+'</span><span><b>'+fmt(total)+'</b></span></div>';
   }).join('');
   return '<article class="card hc gl-stock-open-turn" data-stock-open-turn aria-label="Stock Local · Turno en curso">'+
     '<div class="hc-h"><div class="hc-d"><b>HOY</b></div><div class="hc-m">'+
-    '<b>Stock Local · Turno en curso</b><small>'+esc(localNombre())+' · '+items.length+
-    ' productos · cantidades confirmadas del servidor</small></div>'+
-    '<div class="hc-k"><span class="pill acc">Abierto</span></div></div>'+
+    '<b>'+(cerradoHoy?'Stock Local · Estado actual':'Stock Local · Turno en curso')+'</b><small>'+esc(localNombre())+' · '+items.length+
+    ' productos · cantidades confirmadas del servidor'+(cerradoHoy?' · incluye lo cargado después del cierre de hoy':'')+'</small></div>'+
+    '<div class="hc-k">'+(sinNombres.length?'<span class="pill crit">'+sinNombres.length+' sin stock</span>':'')+
+    '<span class="pill acc">'+(cerradoHoy?'Después del cierre':'Abierto')+'</span></div></div>'+
+    (sinNombres.length?'<p class="note" data-stock-open-sin style="margin:8px 0 0"><b style="color:var(--crit)">Sin stock:</b> '+esc(sinNombres.join(', '))+'</p>':'')+
     (expanded?'<div class="hc-t"><div class="mv hd mvf"><div>Producto</div>'+
       '<span>Local</span><span>Ingreso</span><span>Total</span></div>'+filas+'</div>':'')+
     '<div class="hc-a"><button type="button" class="btn sm" data-act="stock-local-open-toggle">'+
@@ -2487,11 +2495,14 @@ function histCardF(c, q){
   const shown = q ? fl.filter(x => norm(x.nombre).includes(q)) : fl, d = new Date(c.fecha);
   const dia = d.toLocaleDateString('es-AR', {day:'2-digit'}), mes = d.toLocaleDateString('es-AR', {month:'short'}).replace('.', '');
   const ing = fl.filter(x => (x.fabrica || 0) > 0).length, sinN = fl.filter(x => x.sin).length;
+  // Mi Gusto (Munro y Don Torcuato): los productos sin stock se leen sin abrir la planilla y con su etiqueta.
+  const mg = S.me?.tenant_id === MI_GUSTO_TENANT;
+  const sinLista = mg && sinN ? `<p class="note" data-hist-sin style="margin:8px 0 0"><b style="color:var(--crit)">Sin stock:</b> ${esc(fl.filter(x => x.sin).map(x => x.nombre).join(', '))}</p>` : '';
   return `<article class="card hc" id="hc-${esc(c.id)}">
     <div class="hc-h"><div class="hc-d" style="background:var(--fab-bg);color:var(--fab-ink)"><b>${esc(dia)}</b><small style="color:inherit">${esc(mes)}</small></div>
       <div class="hc-m"><b>${esc(hojaLabel(c, 'Conteo Fábrica'))}${c.turnoCerrado ? ' · Turno cerrado' : ' · Guardado'} de las ${esc(horaCorta(c.fecha))}</b><small>${esc(whoName(c))} · ${plural(fl.length, 'fila', 'filas')}${c.cambiadas ? ` · ${c.cambiadas} cambiadas` : ''}</small></div>
-      <div class="hc-k"><span class="pill ok">${ing} ingresan mañana</span>${sinN ? `<span class="pill crit">${sinN} sin stock</span>` : ''}</div></div>
-    ${open ? `<div class="hc-t"><div class="mv hd mvf"><div>Producto</div><span>Local</span><span>Fábrica</span><span>Total</span></div>${shown.map(x => `<div class="mv mvf"><div><b style="${x.sin ? 'color:var(--crit)' : ''}">${esc(x.nombre)}</b></div><span>${fmt(x.local ?? 0)}</span><span>${fmt(x.fabrica ?? 0)}</span><span><b>${fmt(x.total)}</b></span></div>`).join('')}</div>` : ''}
+      <div class="hc-k"><span class="pill ok">${ing} ${mg ? 'con ingreso' : 'ingresan mañana'}</span>${sinN ? `<span class="pill crit">${sinN} sin stock</span>` : ''}</div></div>${sinLista}
+    ${open ? `<div class="hc-t"><div class="mv hd mvf"><div>Producto</div><span>Local</span><span>${mg ? 'Ingreso' : 'Fábrica'}</span><span>Total</span></div>${shown.map(x => `<div class="mv mvf"><div><b style="${x.sin ? 'color:var(--crit)' : ''}">${esc(x.nombre)}</b>${mg && x.sin ? '<small style="color:var(--crit);font-weight:700">Sin stock</small>' : ''}</div><span>${fmt(x.local ?? 0)}</span><span>${fmt(x.fabrica ?? 0)}</span><span><b>${fmt(x.total)}</b></span></div>`).join('')}</div>` : ''}
     <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar planilla' : 'Ver planilla'}</button></div>
   </article>`;
 }
