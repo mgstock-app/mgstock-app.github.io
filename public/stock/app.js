@@ -2254,7 +2254,21 @@ async function doSaveF(v = S.view, closeTurn = false){
   }
   if (sinRed()){ queueSave(v, true); return; }
   if (stockLocalDuenaServidor() && (!closeTurn || withCtx(v,()=>fPend().length))){ toast('Primero revisá o descartá el borrador local.',true); return; }
-  if (closeTurn)S.stockLocalClosing=true;
+  const closingLocal=S.local;
+  if (closeTurn){
+    S.stockLocalClosing=true;
+    // Congelar cantidades mientras se confirma y se arma la foto histórica.
+    document.querySelectorAll('#view .xl input, #view .xl button').forEach(el=>{el.disabled=true;});
+    const pending=withCtx(v,()=>fPend().length);
+    const synced=stockLocalAutoEligible() ? await flushStockLocalAutoSave() : pending===0;
+    if(S.local!==closingLocal || S.view!==v || !synced || withCtx(v,()=>fPend().length)){
+      S.stockLocalClosing=false;
+      if(S.panel==='confirm')closePanel();
+      if(S.local===closingLocal && S.view===v)render();
+      toast('No se cerró el turno: quedan cambios pendientes de sincronizar.',true);
+      return;
+    }
+  }
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
   const plan = withCtx(v, () => {
@@ -2274,14 +2288,15 @@ async function doSaveF(v = S.view, closeTurn = false){
       registro.fechaOperativa=stockLocalHoyAR();
       registro.cerradoEn=now;
       await w(() => C('conteos').doc('cierre-'+plan.hoja+'-'+registro.fechaOperativa).set(registro));
+      if(S.local===closingLocal && !stockLocalCierreHoy())S.conteos.unshift({id:'cierre-'+plan.hoja+'-'+registro.fechaOperativa,...registro});
     } else await w(() => C('conteos').add(registro));
     withCtx(v, clearFDraftCtx); if (S.queued && S.queued.view === v){ S.queued = null; localStorage.removeItem(queuedKey()); }
-    if (S.panel === 'save' || (closeTurn && S.panel === 'confirm')) closePanel(); render();
+    if (S.panel === 'save' || (closeTurn && S.panel === 'confirm')) closePanel(); if(!closeTurn)render();
     toast(closeTurn ? 'Guardado exitoso · Turno cerrado y archivado en Historial' : guardadoLocal() ? 'Guardado pendiente de sincronizar · almacenado en este equipo' : `Guardado exitoso · ${plan.nom}${plan.n ? ` · ${plural(plan.n, 'fila', 'filas')}` : ''}`);
   } catch(e){
     if (btn){ btn.disabled = false; btn.textContent = 'Guardar conteo'; }
     if (!navigator.onLine && !syncOffline() && !closeTurn){ S.offline = true; queueSave(v, true); } else fail(e);
-  } finally { if(closeTurn) S.stockLocalClosing=false; }
+  } finally { if(closeTurn){S.stockLocalClosing=false;if(S.local===closingLocal && S.view===v)render();} }
 }
 /* Sin internet: conserva el borrador hasta que la persona confirme guardarlo con conexión. */
 function queueSave(v, fab){
@@ -3916,7 +3931,7 @@ document.addEventListener('click', e => {
     case 'local': abrirLocal(id); break;
     case 'locales': mostrarHub(); break;
     case 'retry-locales': S.loadError = false; S.loadStartedAt = Date.now(); S.booted = false; S.loaded.e = false; S.loaded.l = false; renderHub(); boot(); break;
-    case 'guardar': openSave(); break;
+    case 'guardar': if(stockLocalEnVista())break; openSave(); break;
     case 'stock-auto-retry': if(stockLocalAutoEligible())void flushStockLocalAutoSave(); break;
     case 'stock-local-close': openCloseStockLocal(); break;
     case 'stock-local-close-ok': void doSaveF(S.view,true); break;
