@@ -1,4 +1,4 @@
-/* global Cypress, cy, describe, it, expect */
+/* global Cypress, cy, describe, it */
 import { abrirLocal } from '../helpers/abrir-local';
 
 // Los datos son simulados: nunca escribe Stock, Cajas o Conteos reales.
