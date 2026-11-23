@@ -1,5 +1,5 @@
 {
-  "description": "Hooks revisados de Stock Local Mi Gusto: autosave seguro, cierre transaccional en historial, vista dueña sin borradores ajenos, controles de barra simplificados y protección de estabilidad. Revertir estos hooks restaura main para SHA histórico.",
+  "description": "Revertir en orden inverso estos cambios auditados permite comprobar la huella original de Stock Local; autosave granular, pruebas de estabilidad, barra simple, dueño servidor, cierre histórico Mi Gusto.",
   "hooks": [
     {
       "actual": "  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false, stockLocalVerBorrador:false, stockLocalClosing:false\n",
@@ -98,11 +98,15 @@
       "original": "    case 'f-zero': if (!needWrite()) break; openConfirm('Poner todo en 0', 'Local y Fábrica quedan en 0 en todas las filas, para empezar la planilla del día. No se guarda hasta que toques Guardar conteo.', 'Poner en 0', 'f-zero-ok', false); break;\n    case 'f-zero-ok': for (const it of S.fab){ setF(it.id, 'l', 0); setF(it.id, 'f', 0); } closePanel(); render(); toast('Planilla en 0. Cargá los valores y guardá.'); break;\n"
     },
     {
-      "actual": "  // Conservar foco, scroll e inputs mientras Stock Local autosincroniza.\n  if(stockLocalEnVista() && (stockLocalAutoPromise || document.activeElement?.matches?.('[data-fl],[data-ff]')) && document.querySelector('#view .xl')){\n    renderChrome();return;\n  }\n",
+      "actual": "  // Conservar foco, scroll e inputs mientras Stock Local autosincroniza.\n  if(stockLocalEnVista() && canW() && (stockLocalAutoPromise || document.activeElement?.matches?.('[data-fl],[data-ff]')) && document.querySelector('#view .xl')){\n    renderChrome();return;\n  }\n",
       "original": ""
     },
     {
-      "actual": "    let draftCleaned=false;\n    for(const k of Object.keys(S.fdraft)){\n      const current=S.allFab.find(x=>x.id===k);\n      if(!current){delete S.fdraft[k];draftCleaned=true;continue;}\n      const draft=S.fdraft[k];\n      if(has(draft,'l') && draft.l===num(current.local)){delete draft.l;draftCleaned=true;}\n      if(has(draft,'f') && draft.f===num(current.fabrica)){delete draft.f;draftCleaned=true;}\n      if(!Object.keys(draft).length)delete S.fdraft[k];\n    }\n    if(draftCleaned)saveDraft();\n    const wasLoaded=S.loaded.f;\n    S.loaded.f = true;\n    if(wasLoaded && refreshStockLocalRows())return;\n    onSnapRefresh();\n",
+      "actual": "    if(S.loaded.f && stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))scheduleStockLocalAutoSave(300);\n",
+      "original": ""
+    },
+    {
+      "actual": "    let draftCleaned=false;\n    for(const k of Object.keys(S.fdraft)){\n      const current=S.allFab.find(x=>x.id===k);\n      if(!current){delete S.fdraft[k];draftCleaned=true;continue;}\n      const draft=S.fdraft[k];\n      if(has(draft,'l') && draft.l===num(current.local)){delete draft.l;draftCleaned=true;}\n      if(has(draft,'f') && draft.f===num(current.fabrica)){delete draft.f;draftCleaned=true;}\n      if(!Object.keys(draft).length)delete S.fdraft[k];\n    }\n    if(draftCleaned)saveDraft();\n    const wasLoaded=S.loaded.f;\n    S.loaded.f = true;\n    if(wasLoaded && refreshStockLocalRows())return;\n    onSnapRefresh();\n    if(!wasLoaded && stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))scheduleStockLocalAutoSave(300);\n",
       "original": "    for (const k of Object.keys(S.fdraft)) if (!S.allFab.some(x => x.id === k)) delete S.fdraft[k];\n    S.loaded.f = true; onSnapRefresh();\n"
     },
     {
