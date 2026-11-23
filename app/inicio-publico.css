@@ -4,7 +4,8 @@
   min-height:100vh;background:var(--navy-2);color:var(--navy);font:400 16px/1.5 Inter,system-ui,-apple-system,sans-serif;
   -webkit-font-smoothing:antialiased;overflow-x:clip}
 .glh *{box-sizing:border-box}
-.glh a{color:inherit}
+/* Sin especificidad: los botones (.glh-btn-*) definen su propio color de texto. */
+:where(.glh a){color:inherit}
 .glh h1,.glh h2,.glh h3,.glh p,.glh ul{margin:0}
 .glh :focus-visible{outline:3px solid var(--teal-cl);outline-offset:2px}
 .glh-oculto,.glh-trampa{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
