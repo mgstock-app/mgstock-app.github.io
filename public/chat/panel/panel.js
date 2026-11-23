@@ -861,6 +861,7 @@
       const boton = el('button', {type: 'button', class: 'boton principal', text: textoBoton, onclick: () => pagar('cuota')});
       caja.append(el('h3', {text: 'Tu suscripción a GESTLOK Chat'}),
         el('p', {class: 'nota', text: 'Estado: ' + estado + ' · ' + pesos(c.cuota) + ' por mes, débito automático con Mercado Pago.' +
+          (Number(c.primer_mes) < Number(c.cuota) && c.estado !== 'activa' ? ' Promo de lanzamiento: el primer mes con ' + Number(c.descuento_primer_mes) + '% de descuento (' + pesos(c.primer_mes) + ').' : '') +
           (c.proximo_cobro && c.estado === 'activa' ? ' Próximo cobro: ' + fecha(c.proximo_cobro) + '.' : '')}),
         c.pausada ? el('p', {class: 'error', text: 'Tu chat está pausado porque no se pudo cobrar la cuota. Cuando Mercado Pago apruebe el pago se vuelve a encender solo.'}) :
           c.vence ? el('p', {class: 'nota', text: 'Tenés hasta el ' + fecha(c.vence) + ' para suscribirte. Si no, el chat se pausa solo.'}) : null,
