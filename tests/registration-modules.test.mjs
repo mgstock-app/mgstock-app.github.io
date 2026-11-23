@@ -12,7 +12,11 @@ test('Dueño puede solicitar empleados, empresa o ambas sin obtener permisos',()
   }
 });
 test('Colaboradores no solicitan módulos de dueño y las selecciones desconocidas fallan',()=>{
-  const g=load();assert.equal(g.parse('colaborador','ambas').modules.length,0);
+  const g=load();
+  // El gerente se registra con el código privado del local: sin código no hay solicitud.
+  assert.throws(()=>g.parse('colaborador','ambas'),/código privado del local/);
+  const gerente=g.parse('colaborador','ambas',null,' k7pa-3qxm ');
+  assert.equal(gerente.modules.length,0);assert.equal(gerente.codigo,'K7PA3QXM');
   for(const args of [['creadora','ambas'],['dueno','admin'],['dueno','__proto__'],['','']])assert.throws(()=>g.parse(...args));
 });
 test('El panel administrativo distingue preferencias de concesión de acceso',()=>{
@@ -43,4 +47,22 @@ test('GESTLOK Chat: la aprobación crea empresa nueva con el chat apagado y solo
   const home=readFileSync('public/stock/gestlok-creator-home.js','utf8');
   assert.match(home,/rpc\('gestlok_creator_aprobar_chat',\{p_user:user\}\)/);
   assert.match(home,/if\(!premiumAdmin\(\)\)return '';/);
+});
+test('Alta pública: solo GESTLOK Chat, «Otro rubro» escrito a mano, gerente con código y Google',()=>{
+  const g=load();
+  assert.equal(g.parse('dueno','',{nombre:'Kiosco Sol',rubro:'almacen'}).choice,'chat');
+  assert.throws(()=>g.parse('dueno','chat',{nombre:'La Esquina',rubro:'otro'}),/cuál es tu rubro/);
+  assert.deepEqual({...g.parse('dueno','chat',{nombre:'La Esquina',rubro:'otro',rubro_otro:' Heladería '}).negocio},
+    {nombre:'La Esquina',rubro:'otro',rubro_otro:'Heladería',localidad:''});
+  assert.match(source,/Soy gerente de un local/);
+  assert.doesNotMatch(source,/Soy colaborador\/a de una empresa/);
+  assert.match(source,/rpc\('gestlok_request_gerente_registration',\{p_codigo:intent\.codigo\}\)/);
+  assert.match(source,/Registrarme con Google/);
+  assert.match(source,/Recordar mi email/);
+  assert.match(g.label({tipoCuenta:'colaborador',negocio:{tipo:'gerente',empresa:'Mi Gusto',local:'Munro'}}),/gerente · Mi Gusto · Munro · La acepta el dueño/);
+  const sql=readFileSync('supabase/migrations/20261123220000_gestlok_registro_gerentes_codigo.sql','utf8');
+  assert.match(sql,/codigo text not null unique check \(codigo ~ '\^\[A-HJ-NP-Z2-9\]\{8\}\$'\)/);
+  assert.match(sql,/perform gestlok_chat_private\.exigir\(p_sucursal, 'configurar'\);/);
+  assert.match(sql,/if v_intentos >= 10 then/);
+  assert.match(readFileSync('public/chat/panel/panel.js','utf8'),/rpc\('panel_gerente_resolver'/);
 });

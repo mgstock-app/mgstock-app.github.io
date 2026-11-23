@@ -467,8 +467,19 @@
         const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
         return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending',negocio:row.data.negocio||null}:null,error:null};
       }
+      if (fn === 'gestlok_request_gerente_registration'){
+        if(!session||a)return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(window.__registrationFail)return {data:null,error:{code:'XX000',message:'falla simulada'}};
+        const c=String(args?.p_codigo||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        if(c!=='K7PA3QXM')return {data:null,error:{code:'22023',message:'Ese código no corresponde a ningún local. Revisalo con el dueño.'}};
+        let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        if(!row){row={col:'registration_requests',id:me(),data:{email:me(),fecha:Date.now()}};rows.push(row);}
+        row.data={...row.data,tipoCuenta:'colaborador',modulosSolicitados:[],negocio:{tipo:'gerente',empresa:'Mi Gusto',local:'Munro',local_id:'munro'},status:'pending'};notify('solicitudes');
+        return {data:{status:'pending',empresa:'Mi Gusto',local:'Munro'},error:null};
+      }
       if (fn === 'gestlok_request_chat_registration'){
         const n=args?.p_negocio||{};
+        if(window.__registrationFail)return {data:null,error:{code:'XX000',message:'falla simulada'}};
         if(!session||a)return {data:null,error:{code:'42501',message:'Sin permiso'}};
         if(String(n.nombre||'').trim().length<2||!n.rubro)return {data:null,error:{code:'22023',message:'Faltan los datos del comercio'}};
         let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
