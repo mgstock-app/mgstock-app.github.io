@@ -878,7 +878,9 @@
     const pintar = async (renovar = false) => {
       let g;
       try { g = await rpc('panel_gerentes', {p_sucursal: S.suc.id, p_renovar: renovar}); }
-      catch (e) { caja.replaceChildren(el('h3', {text: 'Gerentes de este local'}), el('p', {class: 'error', text: e.message})); return; }
+      catch (e) {
+        if (/solo el dueño/i.test(e.message)) { caja.hidden = true; return; }
+        caja.replaceChildren(el('h3', {text: 'Gerentes de este local'}), el('p', {class: 'error', text: e.message})); return; }
       const resolver = async (r, aceptar) => {
         if (!confirm(aceptar ? '¿Aceptar a ' + r.email + ' como gerente de ' + S.suc.nombre + '?' : '¿Rechazar a ' + r.email + '?')) return;
         try { await rpc('panel_gerente_resolver', {p_sucursal: S.suc.id, p_user: r.user_id, p_aceptar: aceptar});

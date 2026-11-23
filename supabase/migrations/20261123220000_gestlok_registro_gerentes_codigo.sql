@@ -89,6 +89,8 @@ returns jsonb language plpgsql security definer set search_path to '' as $functi
 declare s gestlok_chat_private.sucursales; v_codigo text;
 begin
   perform gestlok_chat_private.exigir(p_sucursal, 'configurar');
+  -- El gerente también tiene nivel «configurar» en su local: el código y las aprobaciones son solo del dueño y la administradora.
+  if public.mi_rol() not in ('dueno', 'creadora') then raise exception 'Solo el dueño acepta gerentes' using errcode = '42501'; end if;
   select * into s from gestlok_chat_private.sucursales where id = p_sucursal;
   if p_renovar then delete from gestlok_platform.codigos_local where tenant_id = s.tenant_id and local_id = s.local_id; end if;
   insert into gestlok_platform.codigos_local (tenant_id, local_id, codigo) values (s.tenant_id, s.local_id, gestlok_platform.codigo_local_nuevo())
@@ -107,6 +109,8 @@ returns jsonb language plpgsql security definer set search_path to '' as $functi
 declare s gestlok_chat_private.sucursales; r gestlok_platform.registration_requests;
 begin
   perform gestlok_chat_private.exigir(p_sucursal, 'configurar');
+  -- El gerente también tiene nivel «configurar» en su local: el código y las aprobaciones son solo del dueño y la administradora.
+  if public.mi_rol() not in ('dueno', 'creadora') then raise exception 'Solo el dueño acepta gerentes' using errcode = '42501'; end if;
   select * into s from gestlok_chat_private.sucursales where id = p_sucursal;
   select * into r from gestlok_platform.registration_requests where user_id = p_user for update;
   if r.user_id is null or r.status <> 'pending' or r.negocio->>'tipo' is distinct from 'gerente'
