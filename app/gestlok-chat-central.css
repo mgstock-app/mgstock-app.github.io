@@ -83,3 +83,5 @@
  .mgp-alert-open{font-size:13px;min-height:44px}
  .gcc-alert-controls button{flex:1 1 125px}
 }
+#hub .gl-ch-cobro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0;padding-top:8px;border-top:1px dashed #d8dee6}
+#hub .gl-ch-cobro small{flex:1 1 100%;color:#3d4a59}

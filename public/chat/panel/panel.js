@@ -831,6 +831,45 @@
   }
 
   // ------------------------------------------------------------------------------------------- ajustes
+  // Suscripción a GESTLOK Chat (solo dueño y administradora, y solo si la empresa tiene cobro).
+  // El pago lo procesa Mercado Pago; acá se ve el estado y se abre el link de pago.
+  const ESTADO_COBRO = {sin_suscripcion: 'Sin suscripción', pendiente: 'Esperando el pago en Mercado Pago', activa: 'Activa',
+    en_mora: 'Pago rechazado', cancelada: 'Suscripción cancelada'};
+  function bloqueSuscripcion() {
+    const caja = el('section', {class: 'bloque suscripcion', hidden: true});
+    if (DEMO) return caja;
+    (async () => {
+      let c;
+      try { c = await rpc('panel_suscripcion', {p_sucursal: S.suc.id}); } catch { return; }
+      if (!c?.requiere_cobro) return;
+      const fecha = v => v ? new Date(v).toLocaleDateString('es-AR', {day: 'numeric', month: 'long', timeZone: 'America/Argentina/Buenos_Aires'}) : '';
+      const email = el('input', {type: 'email', maxlength: '254', autocomplete: 'email', placeholder: 'Email de tu cuenta de Mercado Pago'});
+      const estado = c.pausada ? 'Chat pausado por falta de pago' : (ESTADO_COBRO[c.estado] || c.estado);
+      const pagar = async tipo => {
+        boton.disabled = true; boton.textContent = 'Abriendo Mercado Pago…';
+        try {
+          const {data, error} = await sb.functions.invoke('gestlok-cobros', {body: {accion: 'link', tenant: c.tenant_id, tipo, email: email.value.trim() || null}});
+          if (error || !data?.link) {
+            let m = data?.error || '';
+            try { m = m || (await error?.context?.json?.())?.error || ''; } catch { /* sin detalle */ }
+            throw new Error(m || 'No se pudo abrir Mercado Pago. Probá de nuevo.');
+          }
+          location.href = data.link;
+        } catch (e) { aviso(e.message, true); boton.disabled = false; boton.textContent = textoBoton; }
+      };
+      const textoBoton = c.estado === 'pendiente' ? 'Completar el pago en Mercado Pago' : 'Suscribirme con Mercado Pago';
+      const boton = el('button', {type: 'button', class: 'boton principal', text: textoBoton, onclick: () => pagar('cuota')});
+      caja.append(el('h3', {text: 'Tu suscripción a GESTLOK Chat'}),
+        el('p', {class: 'nota', text: 'Estado: ' + estado + ' · ' + pesos(c.cuota) + ' por mes, débito automático con Mercado Pago.' +
+          (c.proximo_cobro && c.estado === 'activa' ? ' Próximo cobro: ' + fecha(c.proximo_cobro) + '.' : '')}),
+        c.pausada ? el('p', {class: 'error', text: 'Tu chat está pausado porque no se pudo cobrar la cuota. Cuando Mercado Pago apruebe el pago se vuelve a encender solo.'}) :
+          c.vence ? el('p', {class: 'nota', text: 'Tenés hasta el ' + fecha(c.vence) + ' para suscribirte. Si no, el chat se pausa solo.'}) : null,
+        c.estado === 'activa' ? null : campo('Email de tu cuenta de Mercado Pago (si es distinto al de GESTLOK)', email),
+        c.estado === 'activa' ? null : boton);
+      caja.hidden = false;
+    })();
+    return caja;
+  }
   async function verAjustes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     let a;
@@ -1004,7 +1043,8 @@
       pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
-    contenido.replaceChildren(form,resenaForm,llevar,contactoWhatsApp,pushCampanas);
+    const suscripcion = editable ? bloqueSuscripcion() : null;
+    contenido.replaceChildren(...[suscripcion, form, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;

@@ -139,10 +139,49 @@
     }catch(e){api?.toast?.((aprobar?'No se pudo aprobar: ':'No se pudo rechazar: ')+String(e?.message||''),true);}
     finally{altasBusy=false;altasTried=false;chatTried=false;void loadAltasChat();void loadChatAdmin();}
   }
+  // Cobros con Mercado Pago por empresa (solo la administradora): estado, links de cuota y adaptación.
+  let cobros=null;
+  const ESTADO_COBRO={sin_suscripcion:'sin suscribirse',pendiente:'esperando el pago',activa:'suscripción activa',en_mora:'pago rechazado',cancelada:'suscripción cancelada'};
+  const pesosAR=n=>'$ '+String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  async function loadCobros(){
+    if(!premiumAdmin())return;
+    try{const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_cobros');if(error)throw error;cobros=data||null;}
+    catch{cobros=null;}
+  }
+  function cobroFila(tenant){
+    const c=(cobros?.empresas||[]).find(x=>x.tenant_id===tenant);if(!premiumAdmin()||!c)return '';
+    if(!c.requiere_cobro)return '<p class="gl-ch-cobro"><small>Cobro: no se le cobra</small> <button type="button" class="btn" data-ch-cobro-req="'+esc(tenant)+'" data-v="si">Cobrar cuota</button></p>';
+    const fecha=v=>v?new Date(v).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}):'';
+    const estado=c.pausada?'chat pausado por falta de pago':(ESTADO_COBRO[c.estado]||c.estado);
+    return '<p class="gl-ch-cobro"><small>Cobro: '+esc(estado)+' · '+esc(pesosAR(c.cuota))+'/mes'+(c.proximo_cobro&&c.estado==='activa'?' · próximo '+esc(fecha(c.proximo_cobro)):'')+
+      (c.vence?' · vence el plazo el '+esc(fecha(c.vence)):'')+(c.adaptacion_pagada?' · adaptación pagada':'')+'</small> '+
+      (c.estado==='activa'?'':'<button type="button" class="btn" data-ch-cobro-link="'+esc(tenant)+'" data-t="cuota">Copiar link de cuota</button>')+
+      (c.adaptacion_pagada?'':'<button type="button" class="btn" data-ch-cobro-link="'+esc(tenant)+'" data-t="adaptacion">Link de adaptación '+esc(pesosAR(c.adaptacion))+'</button>')+
+      '<button type="button" class="btn" data-ch-cobro-req="'+esc(tenant)+'" data-v="no">No cobrar</button></p>';
+  }
+  async function cobroAccion(btn){
+    const tenant=btn.dataset.chCobroLink||btn.dataset.chCobroReq;if(!tenant||chatBusy)return;
+    chatBusy=true;api?.render?.();
+    try{
+      if(btn.dataset.chCobroReq){
+        const si=btn.dataset.v==='si';
+        if(!window.confirm(si?'¿Cobrarle la cuota mensual a esta empresa? Al activar su chat tiene '+(cobros?.ajustes?.gracia_dias??3)+' días para suscribirse.':'¿Dejar de cobrarle a esta empresa? Si su chat estaba pausado por falta de pago, se vuelve a encender.'))return;
+        const {error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_cobro_requerir',{p_tenant:tenant,p_requiere:si});if(error)throw error;
+        api?.toast?.(si?'Listo: esta empresa tiene cobro de cuota.':'Listo: a esta empresa no se le cobra.');
+      }else{
+        const {data,error}=await window.GestLokSupabase.functions.invoke('gestlok-cobros',{body:{accion:'link',tenant,tipo:btn.dataset.t}});
+        let m=data?.error||'';
+        if(error||!data?.link){try{m=m||(await error?.context?.json?.())?.error||'';}catch{}throw new Error(m||'No se pudo crear el link de Mercado Pago.');}
+        try{await navigator.clipboard.writeText(data.link);api?.toast?.('Link de Mercado Pago copiado. Mandáselo al dueño.');}
+        catch{window.prompt('Copiá el link de Mercado Pago y mandáselo al dueño:',data.link);}
+      }
+    }catch(e){api?.toast?.(String(e?.message||'No se pudo completar.'),true);}
+    finally{chatBusy=false;await loadCobros();api?.render?.();}
+  }
   async function loadChatAdmin(){
     if(!api?.isCreadora?.()||chatBusy||!window.GestLokSupabase?.rpc)return;
     chatBusy=true;chatTried=true;chatError='';
-    try{const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_empresas');if(error)throw error;chatAdmin=Array.isArray(data)?data:[];}
+    try{const {data,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_empresas');if(error)throw error;chatAdmin=Array.isArray(data)?data:[];await loadCobros();}
     catch{chatError='No se pudo consultar GESTLOK Chat. Revisá la conexión.';}
     finally{chatBusy=false;api?.render?.();}
   }
@@ -166,7 +205,7 @@
           '<button type="button" class="btn" data-ch-chat-on="'+esc(c.tenant_id)+'"'+(chatBusy?' disabled':'')+'>Sumar locales nuevos</button>':
         '<button type="button" class="btn primary" data-ch-chat-estado="'+esc(c.tenant_id)+'" data-v="si"'+(chatBusy?' disabled':'')+'>Reactivar</button>';
       return '<article class="gl-ch-chat-row" data-ch-chat-company="'+esc(c.tenant_id)+'"><div><h3>'+esc(c.name)+'</h3><small>'+esc(estado)+
-        (n?'':' · sin locales cargados')+'</small>'+(sucs?'<ul>'+sucs+'</ul>':'')+'</div><div class="gl-ch-chat-actions">'+boton+'</div></article>';
+        (n?'':' · sin locales cargados')+'</small>'+(sucs?'<ul>'+sucs+'</ul>':'')+(e?cobroFila(c.tenant_id):'')+'</div><div class="gl-ch-chat-actions">'+boton+'</div></article>';
     }).join('');
     return '<section class="gl-admin-card gl-ch-chat-admin" aria-label="GESTLOK Chat por empresa">'+
       '<header><h2>GESTLOK Chat</h2><small>Atención y pedidos por chat · un chat por local</small></header>'+
@@ -690,6 +729,8 @@
       api.render();
       return;
     }
+    const cobroBtn=ev.target.closest?.('[data-ch-cobro-link],[data-ch-cobro-req]');
+    if(cobroBtn&&api?.isCreadora?.()){ev.preventDefault();void cobroAccion(cobroBtn);return;}
     const altaChat=ev.target.closest?.('[data-ch-chat-alta]');
     if(altaChat&&api?.isCreadora?.()){ev.preventDefault();void altaChatAction(altaChat.dataset.chChatAlta,altaChat.dataset.v==='si');return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
