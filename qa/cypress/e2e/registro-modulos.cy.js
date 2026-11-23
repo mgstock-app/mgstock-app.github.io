@@ -27,6 +27,26 @@ describe('Registro por módulos · solicitud sin conceder permisos',()=>{
       cy.get('[data-mode="pend"]').should('be.visible');cy.get('#app').should('not.be.visible');
     });
   }
+  it('GESTLOK Chat: pide los datos del comercio, los envía al confirmar y no da acceso',()=>{
+    launch();cy.get('[data-au="up"]').click();
+    cy.get('#gl-signup-kind').select('dueno');cy.get('#gl-signup-modules').select('chat');
+    cy.get('#gl-signup-negocio').should('be.visible').type('La Esquina Pizzería');
+    cy.get('#gl-signup-rubro').select('gastronomia');cy.get('#gl-signup-localidad').type('Vicente López');
+    const email='dueno-chat@example.invalid';
+    cy.get('#au-email2').type(email);cy.get('#au-pass2').type('secreto1',{log:false});cy.get('#au-pass3').type('secreto1',{log:false});
+    cy.get('#au-up button[type="submit"]').click();
+    cy.window().its('__signup.options.data.gestlok_registration').should('deep.equal',{kind:'dueno',choice:'chat'});
+    login(email);
+    cy.get('#gl-registration-request [data-registration-status]').should('contain.text','GESTLOK Chat esté activo');
+    cy.get('#gl-request-negocio').should('have.value','La Esquina Pizzería');
+    cy.window().its('__rows').should(rows=>{
+      const row=rows.find(r=>r.col==='registration_requests'&&r.id===email);
+      expect(row.data.modulosSolicitados).to.deep.eq(['gestlok_chat']);
+      expect(row.data.negocio).to.deep.eq({nombre:'La Esquina Pizzería',rubro:'gastronomia',localidad:'Vicente López'});
+      expect(rows.some(r=>r.col==='equipo'&&r.id===email)).to.eq(false);
+    });
+    cy.get('[data-mode="pend"]').should('be.visible');cy.get('#app').should('not.be.visible');
+  });
   it('primer ingreso sin preferencia permite elegir y no muestra éxito si falla el guardado',()=>{
     launch();login('nuevo-google@example.invalid');
     cy.get('#gl-request-kind').should('be.enabled').select('dueno');cy.get('#gl-request-modules').select('ambas');

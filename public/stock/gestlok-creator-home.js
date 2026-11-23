@@ -98,6 +98,47 @@
   // GESTLOK Chat · micro app general: la administradora la enciende por empresa. El servidor (require_admin)
   // valida cada acción; cada local queda con su chat apagado hasta que el dueño o el gerente lo configure.
   let chatAdmin=null, chatBusy=false, chatError='', chatTried=false;
+  // Altas propias de GESTLOK Chat: comercios que crearon su cuenta y esperan aprobación (solo la administradora).
+  let altasChat=[], altasBusy=false, altasTried=false, altasError='';
+  async function loadAltasChat(){
+    if(!premiumAdmin()||altasBusy||!window.GestLokSupabase?.rpc)return;
+    altasBusy=true;altasTried=true;altasError='';
+    try{
+      const {data,error}=await window.GestLokSupabase.rpc('gestlok_creator_registration_requests');if(error)throw error;
+      altasChat=(Array.isArray(data)?data:[]).filter(r=>JSON.stringify(r.modulosSolicitados)==='["gestlok_chat"]');
+    }catch{altasError='No se pudieron consultar las solicitudes de comercios.';}
+    finally{altasBusy=false;api?.render?.();}
+  }
+  function altasChatView(){
+    if(!premiumAdmin())return '';
+    if(!altasTried&&!altasBusy)queueMicrotask(loadAltasChat);
+    const rubros=window.GestLokRegistration?.rubros||{};
+    const filas=altasChat.map(r=>{const n=r.negocio||{};
+      return '<article class="gl-ch-chat-row gl-ch-chat-alta" data-ch-chat-alta-row="'+esc(r.registrationUserId)+'"><div><h3>'+esc(n.nombre||'Comercio sin nombre')+'</h3><small>'+
+        esc([rubros[n.rubro]||n.rubro,n.localidad,r.email].filter(Boolean).join(' · '))+
+        (r.fecha?' · '+esc(new Date(r.fecha).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})):'')+'</small></div>'+
+        '<div class="gl-ch-chat-actions"><button type="button" class="btn primary" data-ch-chat-alta="'+esc(r.registrationUserId)+'" data-v="si"'+(altasBusy?' disabled':'')+'>Aprobar y crear</button>'+
+        '<button type="button" class="btn" data-ch-chat-alta="'+esc(r.registrationUserId)+'" data-v="no"'+(altasBusy?' disabled':'')+'>Rechazar</button></div></article>';}).join('');
+    if(!filas&&!altasError)return '';
+    return '<div class="gl-ch-chat-altas" aria-label="Comercios que pidieron GESTLOK Chat"><h3>Comercios que pidieron GESTLOK Chat</h3>'+
+      '<p>Al aprobar se crea la empresa con su local, el dueño queda vinculado y su chat queda apagado hasta que cargue la carta.</p>'+
+      (altasError?'<p role="alert">'+esc(altasError)+'</p>':'')+filas+'</div>';
+  }
+  async function altaChatAction(user,aprobar){
+    const r=altasChat.find(x=>x.registrationUserId===user);if(!r||altasBusy)return;
+    const nombre=r.negocio?.nombre||r.email;
+    if(!window.confirm(aprobar?'¿Aprobar a '+nombre+' ('+r.email+')? Se crea su empresa con GESTLOK Chat. No modifica otros comercios.'
+      :'¿Rechazar la solicitud de '+nombre+'? Podrá corregirla y volver a enviarla.'))return;
+    altasBusy=true;api?.render?.();
+    try{
+      const {data,error}=aprobar?await window.GestLokSupabase.rpc('gestlok_creator_aprobar_chat',{p_user:user})
+        :await window.GestLokSupabase.rpc('gestlok_review_registration',{p_user:user,p_status:'rejected'});
+      if(error)throw error;
+      api?.toast?.(aprobar?nombre+' aprobado. Su chat: gestlok.com.ar/chat/?s='+(data?.slug||'')+' (apagado hasta que lo configure).':'Solicitud de '+nombre+' rechazada.');
+      if(aprobar)await window.GestLokOwnerAreas?.refreshAdmin?.();
+    }catch(e){api?.toast?.((aprobar?'No se pudo aprobar: ':'No se pudo rechazar: ')+String(e?.message||''),true);}
+    finally{altasBusy=false;altasTried=false;chatTried=false;void loadAltasChat();void loadChatAdmin();}
+  }
   async function loadChatAdmin(){
     if(!api?.isCreadora?.()||chatBusy||!window.GestLokSupabase?.rpc)return;
     chatBusy=true;chatTried=true;chatError='';
@@ -130,6 +171,7 @@
     return '<section class="gl-admin-card gl-ch-chat-admin" aria-label="GESTLOK Chat por empresa">'+
       '<header><h2>GESTLOK Chat</h2><small>Atención y pedidos por chat · un chat por local</small></header>'+
       '<p>Encendela para cada comercio. Cada local queda con su propio chat y su enlace, apagado hasta que el dueño o el gerente carguen la carta, los mensajes y los ajustes en su Central de mensajes.</p>'+
+      altasChatView()+
       (chatBusy&&!chatAdmin?'<p role="status">Consultando…</p>':'')+(chatError?'<p role="alert">'+esc(chatError)+'</p>':'')+
       '<div class="gl-ch-chat-list">'+(filas||'<p>No hay empresas cargadas.</p>')+'</div></section>';
   }
@@ -648,6 +690,8 @@
       api.render();
       return;
     }
+    const altaChat=ev.target.closest?.('[data-ch-chat-alta]');
+    if(altaChat&&api?.isCreadora?.()){ev.preventDefault();void altaChatAction(altaChat.dataset.chChatAlta,altaChat.dataset.v==='si');return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
     if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
     const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');

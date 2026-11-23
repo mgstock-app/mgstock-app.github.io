@@ -54,6 +54,10 @@
 #hub .gl-ch-chat-row small{color:#60768b}
 #hub .gl-ch-chat-row ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:#2d4a63;line-height:1.6}
 #hub .gl-ch-chat-row a{color:#126386;font-weight:700}
+#hub .gl-ch-chat-altas{display:grid;gap:10px;margin:4px 0 14px;padding:12px;border:1px solid #f0d58c;border-radius:14px;background:#fffaf0}
+#hub .gl-ch-chat-altas h3{margin:0;font-size:15px;color:#6b4b00}
+#hub .gl-ch-chat-altas p{margin:0;font-size:13px;color:#5d5340}
+#hub .gl-ch-chat-alta{background:#fff}
 #hub .gl-ch-chat-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:520px){#hub .gl-ch-chat-row{flex-direction:column}#hub .gl-ch-chat-actions{width:100%}#hub .gl-ch-chat-actions .btn{flex:1}}
 

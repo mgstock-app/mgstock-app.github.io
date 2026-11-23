@@ -27,7 +27,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/app.js?rev=stock-local-cierre-0050-20261123",
   ];
   const privateScripts = [
-    "/stock/gestlok-registration.js",
+    "/stock/gestlok-registration.js?rev=chat-altas-20261123",
     "/stock/auth.js?rev=auth-invites-google-20261107",
     "/stock/gestlok-logout.js?rev=logout-profile-menu-20261107",
     "/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108",
@@ -46,7 +46,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
-    "/stock/gestlok-creator-home.js?rev=contacto-web-20261122",
+    "/stock/gestlok-creator-home.js?rev=chat-altas-20261123",
     "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -73,7 +73,7 @@ export function StockRuntime() {
       // La demo usa EXACTAMENTE los módulos operativos de GestLok, pero nunca la
       // autenticación, las claves privilegiadas ni el backend de empresas reales.
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
-      if (!visitor) await load("/stock/gestlok-registration.js");
+      if (!visitor) await load("/stock/gestlok-registration.js?rev=chat-altas-20261123");
       if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
       await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=auth-invites-google-20261107");
       // Perfil seguro: salida dentro de Mi perfil, también accesible para cuentas pendientes.
@@ -114,7 +114,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-comercios-20261102");
       // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
       if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
-      await load("/stock/gestlok-creator-home.js?rev=contacto-web-20261122");
+      await load("/stock/gestlok-creator-home.js?rev=chat-altas-20261123");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");

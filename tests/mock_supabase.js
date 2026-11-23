@@ -451,7 +451,16 @@
       }
       if (fn === 'gestlok_my_registration'){
         const row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
-        return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending'}:null,error:null};
+        return {data:row?.data.tipoCuenta?{kind:row.data.tipoCuenta,modules:row.data.modulosSolicitados,status:row.data.status||'pending',negocio:row.data.negocio||null}:null,error:null};
+      }
+      if (fn === 'gestlok_request_chat_registration'){
+        const n=args?.p_negocio||{};
+        if(!session||a)return {data:null,error:{code:'42501',message:'Sin permiso'}};
+        if(String(n.nombre||'').trim().length<2||!n.rubro)return {data:null,error:{code:'22023',message:'Faltan los datos del comercio'}};
+        let row=rows.find(r=>r.col==='registration_requests'&&r.id===me());
+        if(!row){row={col:'registration_requests',id:me(),data:{email:me(),fecha:Date.now()}};rows.push(row);}
+        row.data={...row.data,tipoCuenta:'dueno',modulosSolicitados:['gestlok_chat'],negocio:{...n},status:'pending'};notify('solicitudes');
+        return {data:{kind:'dueno',modules:['gestlok_chat'],negocio:{...n},status:'pending'},error:null};
       }
       if (fn === 'gestlok_request_registration'){
         if(window.__registrationFail)return {data:null,error:{message:'Sin conexión'}};
