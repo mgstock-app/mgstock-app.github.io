@@ -33,11 +33,13 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
         setHoja('h-qa-owner-cajas',{nombre:'Stock Cajas',tipo:'lista',orden:3,oculta:false});
         const fab=rows.find(r=>r.col===local+'/fabrica');
         if(fab)add(local+'/fabrica','f-owner-qa',{...fab.data,hoja:'h-qa-owner-stock',nombre:'Stock Local '+local,local:7,fabrica:2});
+        if(fab)add(local+'/fabrica','f-owner-sin',{...fab.data,hoja:'h-qa-owner-stock',nombre:'Sin stock QA '+local,local:0,fabrica:0,sinStock:true});
         const producto=rows.find(r=>r.col===catalogo);
         if(producto)add(catalogo,'c-owner-qa',{...producto.data,hoja:'h-qa-owner-cajas',nombre:'Caja '+local,stock:14});
         add(local+'/conteos','conteo-owner-qa',{
           fecha:Date.now(),tipo:'fabrica',hoja:'h-qa-owner-stock',
-          autor:'dueno@example.com',filas:[{nombre:'Registro exclusivo '+local,local:7,fabrica:2,total:9}]
+          autor:'dueno@example.com',filas:[{nombre:'Registro exclusivo '+local,local:7,fabrica:2,total:9},
+            {nombre:'Agotado QA '+local,local:0,fabrica:0,total:0,sin:true}]
         });
       }
     });
@@ -145,8 +147,20 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#toast',{timeout:15000}).should('contain.text','Guardado exitoso');
       cy.get('#view').should('contain.text','Turno cerrado');
       cy.get('#view [data-act="stock-local-history"]').click();
-      cy.get('#view [data-stock-open-turn]').should('not.exist');
+      // Después del cierre la dueña sigue viendo el estado actual del servidor, además del turno archivado.
+      cy.get('#view [data-stock-open-turn]').should('contain.text','Estado actual').and('contain.text','Después del cierre');
       cy.get('#view').should('contain.text','Turno cerrado');
+    });
+    it(local+': el historial muestra los productos sin stock del turno en curso y de los guardados',()=>{
+      setup();
+      abrirLocal(local);
+      cy.get('#view [data-go="h-qa-owner-stock"]').click();
+      cy.get('#view [data-act="stock-local-history"]').click();
+      cy.get('#view [data-stock-open-turn]').should('contain.text','sin stock');
+      cy.get('#view [data-stock-open-sin]').should('contain.text','Sin stock QA '+local);
+      cy.get('#view [data-act="stock-local-open-toggle"]').click();
+      cy.get('#view [data-stock-open-turn] .gl-sin').should('contain.text','Sin stock QA '+local).and('contain.text','Sin stock');
+      cy.get('#view [data-hist-sin]').should('contain.text','Agotado QA '+local);
     });
   }
 });
