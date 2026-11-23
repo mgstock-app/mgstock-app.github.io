@@ -1,5 +1,5 @@
 {
-  "description": "Hooks auditados y reversibles: Stock Local Mi Gusto Munro/Torcuato, autoguardado por campo sin redibujos, cierre de turno e interfaz reducida. A revertir, la huella histórica del controlador original permanece intacta.",
+  "description": "Hooks revisados de Stock Local Mi Gusto: autosave seguro, cierre transaccional en historial, vista dueña sin borradores ajenos, controles de barra simplificados y protección de estabilidad. Revertir estos hooks restaura main para SHA histórico.",
   "hooks": [
     {
       "actual": "  local:null, localesDB:[], hub:{}, unsubs:[], started:false, demoTienda:false, creatorSetup:false, stockLocalVerBorrador:false, stockLocalClosing:false\n",
@@ -102,8 +102,8 @@
       "original": ""
     },
     {
-      "actual": "    const wasLoaded=S.loaded.f;\n    S.loaded.f = true;\n    if(wasLoaded && refreshStockLocalRows())return;\n    onSnapRefresh();\n",
-      "original": "    S.loaded.f = true; onSnapRefresh();\n"
+      "actual": "    let draftCleaned=false;\n    for(const k of Object.keys(S.fdraft)){\n      const current=S.allFab.find(x=>x.id===k);\n      if(!current){delete S.fdraft[k];draftCleaned=true;continue;}\n      const draft=S.fdraft[k];\n      if(has(draft,'l') && draft.l===num(current.local)){delete draft.l;draftCleaned=true;}\n      if(has(draft,'f') && draft.f===num(current.fabrica)){delete draft.f;draftCleaned=true;}\n      if(!Object.keys(draft).length)delete S.fdraft[k];\n    }\n    if(draftCleaned)saveDraft();\n    const wasLoaded=S.loaded.f;\n    S.loaded.f = true;\n    if(wasLoaded && refreshStockLocalRows())return;\n    onSnapRefresh();\n",
+      "original": "    for (const k of Object.keys(S.fdraft)) if (!S.allFab.some(x => x.id === k)) delete S.fdraft[k];\n    S.loaded.f = true; onSnapRefresh();\n"
     },
     {
       "actual": "  if(stockLocalAutoEligible() && withCtx(S.view,()=>fPend().length))void flushStockLocalAutoSave();\n  clearTimeout(stockLocalAutoTimer); stockLocalAutoTimer=null;\n",
