@@ -367,12 +367,34 @@ const botonesOfertaPromo = (cands, alFinalizar) => [
   ...cands.map(c => ({id: 'promo:' + c.promo.id, texto: 'Armar ' + c.promo.nombre + ' · ' + pesos(c.promo.precio)})),
   alFinalizar ? {id: 'finalizar', texto: 'No, gracias. Finalizar'} : {id: 'promo_no', texto: 'No, seguir sin promoción'}];
 
-/* Venta sugerida (cualquier rubro gastronómico): categorías de postres y de bebidas, reconocidas por su nombre. */
+/* Venta sugerida (cualquier rubro). Si el local eligió categorías en Mensajes (mensajes.sugerir_categorias:
+ * ids separados por coma, o «ninguna» para no ofrecer nada), se usan esas. Si no eligió, se reconocen por el nombre
+ * las categorías de postres y de bebidas (gastronomía). */
 const RE_POSTRE = /postre|helado|dulce|torta/i;
 const RE_BEBIDA = /bebida|gaseosa|cerveza|vino|agua|jugo|refresco/i;
-/** Categorías para ofrecer antes de finalizar: postres y bebidas con algo disponible, si el pedido todavía no tiene. */
-export function categoriasSugeridas(catalogo, carrito) {
+/** Categorías elegidas por el local para la venta sugerida: null = no eligió (reconocimiento automático). */
+export function categoriasElegidas(mensajes) {
+  const conf = String(mensajes?.sugerir_categorias || '').trim();
+  if (!conf) return null;
+  if (conf === 'ninguna') return [];
+  return conf.split(',').map(x => x.trim()).filter(x => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 6);
+}
+/** Pregunta de la venta sugerida: la del local; con categorías elegidas y sin texto propio, una pregunta general. */
+export function preguntaSugerida(mensajes) {
+  const propio = typeof mensajes?.sugerencia === 'string' ? mensajes.sugerencia.trim() : '';
+  if (propio) return propio;
+  return categoriasElegidas(mensajes)?.length ? 'Antes de finalizar, ¿desea agregar algo más a su pedido?' : MENSAJES_BASE.sugerencia;
+}
+/** Categorías para ofrecer antes de finalizar, con algo disponible y que el pedido todavía no tenga. */
+export function categoriasSugeridas(catalogo, carrito, mensajes) {
   const cats = catalogo?.categorias || [];
+  const elegidas = categoriasElegidas(mensajes);
+  if (elegidas) {
+    const enCarrito = new Set((carrito || []).map(l => productoPorId(catalogo, l.producto_id)?.categoria_id).filter(Boolean));
+    return elegidas.map(id => cats.find(c => c.id === id)).filter(c => c && c.activa !== false && !enCarrito.has(c.id))
+      .filter(c => disponibles(catalogo).some(p => p.categoria_id === c.id && p.disponible !== false))
+      .slice(0, 3).map(c => ({id: c.id, nombre: c.nombre, tipo: 'elegida'}));
+  }
   const tipoCat = c => RE_POSTRE.test(c?.nombre || '') ? 'postre' : RE_BEBIDA.test(c?.nombre || '') ? 'bebida' : '';
   const tipoDe = p => tipoCat(cats.find(c => c.id === p?.categoria_id));
   const tiene = {postre: false, bebida: false};
@@ -1042,12 +1064,12 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
       }
       // Venta sugerida: una sola vez por pedido, antes de pedir los datos.
       if (!e.sugerido) {
-        const cats = categoriasSugeridas(catalogo, e.carrito);
+        const cats = categoriasSugeridas(catalogo, e.carrito, mensajes);
         if (cats.length) {
           e.sugerido = true;
           // Oferta concreta: precio y un toque para agregar. El total se valida en la base.
           const grupos = productosSugeridos(catalogo, cats);
-          decir(mensajeDe(mensajes, 'sugerencia'), {sugerencia: true, botones: [
+          decir(preguntaSugerida(mensajes), {sugerencia: true, botones: [
             ...grupos.flatMap(g => g.productos.map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}))),
             ...grupos.filter(g => g.total > g.productos.length).map(g => ({id: 'carta:' + g.categoria.id, texto: 'Ver más ' + g.categoria.nombre.toLowerCase()})),
             {id: 'finalizar', texto: 'No, gracias. Finalizar'}]});
