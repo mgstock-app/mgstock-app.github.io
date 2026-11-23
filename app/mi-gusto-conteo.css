@@ -2158,3 +2158,6 @@ dialog.gcm-category-editor-dialog::backdrop{background:rgba(7,24,43,.6)}
  .gcm-owner-catalog-section{padding:12px}
  .gcm-owner-catalog-product{align-items:flex-start}
 }
+/* Aviso del cierre automático de las 00:50 junto a «Cerrar turno» (Munro y Don Torcuato). */
+.gcm-count-screen .gcm-auto-close-note{flex:1 1 100%;color:#5a7288;font-size:12px;font-weight:600}
+.gcm-count-screen .gcm-finalize-controls{flex-wrap:wrap}

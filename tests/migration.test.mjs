@@ -34,7 +34,14 @@ test('markup, styles, authentication and business logic match original SHA-256 f
     if (path === 'public/stock/app.js') {
     // Normalizar primero SOLO los cambios nuevos y auditados de Stock Local
     // antes de restaurar los hooks previos de lectura para dueña.
-    // Historial con sin stock y estado actual (23/11): es lo más nuevo, se revierte antes que los borradores.
+    // Cierre automático 00:50 (23/11): lo más nuevo, se revierte antes que el historial con sin stock.
+    const cierreAutoHooks=JSON.parse(read('tests/mi-gusto-cierre-automatico-hooks.json')).hooks;
+    for(let i=cierreAutoHooks.length-1;i>=0;i--){
+      const {actual,original}=cierreAutoHooks[i];
+      assert.equal(content.split(actual).length-1,1,'Cambio revisado del cierre automático #'+i);
+      content=content.replace(actual,original);
+    }
+    // Historial con sin stock y estado actual (23/11): se revierte antes que los borradores.
     const histSinHooks=JSON.parse(read('tests/stock-local-historial-sin-stock-hooks.json')).hooks;
     for(let i=histSinHooks.length-1;i>=0;i--){
       const {actual,original}=histSinHooks[i];

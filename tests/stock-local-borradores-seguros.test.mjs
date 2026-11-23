@@ -56,5 +56,5 @@ test('Stock Local muestra cuándo llegaron los datos del servidor y permite actu
   assert.match(source, /\$\{stockLocalDuenaAviso\(\)\}\$\{stockLocalSyncLinea\(\)\}/);
   assert.match(source, /m\.base\[k\] = base/);
   const runtime = readFileSync(new URL('../components/stock-runtime.tsx', import.meta.url), 'utf8');
-  assert.equal((runtime.match(/app\.js\?rev=stock-local-borradores-20261123/g) || []).length, 2);
+  assert.equal((runtime.match(/app\.js\?rev=stock-local-cierre-0050-20261123/g) || []).length, 2);
 });
