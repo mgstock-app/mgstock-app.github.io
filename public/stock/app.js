@@ -1947,7 +1947,7 @@ V.fabrica = () => {
   const manana = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
   const IH = ingHoja(), TN = esc(totalNombre(IH));
   const head = `${banners()}${stockLocalDuenaAviso()}<div class="bar"><p class="lead">${IH ? `El gerente carga lo que hay en el <b>Local</b>. El <b>Ingreso</b> se carga a mano o con <b>Ingresar remito</b> (foto o PDF). <b>${TN}</b> = Local + Ingreso, se calcula solo.` : `Cargá el stock del <b>Local</b> y lo que entra de <b>Fábrica</b> mañana. El <b>Total stock</b> se suma solo.`} Unidades enteras, medias o cuartos: tocá <b>− o +</b> para restar o sumar una unidad en Local e Ingreso/Fábrica. En Local usá también <b>¼ ½ ¾</b> o escribí 0,25 · 0,5 · 0,75.${canW() ? ' Tocá el nombre de un producto para modificarlo o eliminarlo.' : ''}</p>
-    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() && !stockLocalDuenaServidor() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
+    <div class="bar-a">${IH && esTotal() ? `<button class="btn sm primary" data-go="ingreso">${ic('in')}Ingresar remito</button><button class="btn sm" data-act="tot-nombre">${ic('edit')}Nombre de «${TN}»</button>` : ''}${its.length && canW() ? `<button class="btn sm" data-act="f-add-dlg">${ic('plus')}Agregar producto</button>` : ''}${its.length ? `<button class="btn sm" data-act="f-zero" ${canW() && !stockLocalDuenaServidor() ? '' : 'disabled'}>${ic('zero')}Poner todo en 0</button>${canW() && !stockLocalDuenaServidor() ? `<button class="btn sm danger" data-act="borrar">${ic('trash')}Borrar datos</button>` : ''}<button class="btn sm" data-act="print">${ic('print')}Imprimir</button><button type="button" class="btn sm" data-act="f-refresh">${ic('zero')}Actualizar datos</button><button class="btn sm primary" data-act="f-copy">${ic('copy')}Copiar planilla</button>` : ''}${stockLocalEnVista() ? `<button type="button" class="btn sm" data-act="stock-local-history">${ic('clock')}Historial de turnos</button>${canW() ? (S.loaded.c && stockLocalCierreHoy() ? '<span class="pill ok">Turno cerrado hoy</span>' : `<button type="button" class="btn sm primary" data-act="stock-local-close" ${!S.loaded.c || S.stockLocalClosing ? 'disabled' : ''}>Cerrar turno</button>`) : ''}` : ''}</div></div>`;
   if (!S.loaded.f) return head + loadingList();
   if (!its.length) return head + `<div class="xl"><div class="empty"><b>La planilla está vacía</b>Agregá los productos de ${esc(nom)} uno por uno o pegá la lista completa.<div class="bar-a"><button class="btn primary" data-act="f-add-dlg">${ic('plus')}Agregar productos</button><button class="btn" data-act="aj-open" data-tab="f-paste">Pegar lista</button></div></div></div>`;
   let rows = '', n = 0, prev = null;
@@ -2110,8 +2110,8 @@ function openCloseStockLocal(){
   if (S.stockLocalClosing || S.offline || navigator.onLine===false){
     toast('Para cerrar turno se necesita conexión con el servidor.',true); return;
   }
-  if (stockLocalDuenaServidor()){
-    toast('Revisá o descartá el borrador local y elegí Editar stock antes de cerrar.',true); return;
+  if (stockLocalDuenaServidor() && withCtx(S.view,()=>fPend().length)){
+    toast('Revisá o descartá el borrador local antes de cerrar.',true); return;
   }
   openConfirm('Cerrar turno de Stock Local',
     'Se guardarán los cambios y una copia completa en Historial, con fecha de hoy y sucursal. No se borrará el stock para el próximo turno.',
@@ -2122,7 +2122,7 @@ async function doSaveF(v = S.view, closeTurn = false){
     toast('No se pudo cerrar el turno: verificá conexión e historial antes de reintentar.',true); return;
   }
   if (sinRed()){ queueSave(v, true); return; }
-  if (stockLocalDuenaServidor()){ toast('Primero revisá o descartá el borrador local.',true); return; }
+  if (stockLocalDuenaServidor() && (!closeTurn || withCtx(v,()=>fPend().length))){ toast('Primero revisá o descartá el borrador local.',true); return; }
   if (closeTurn)S.stockLocalClosing=true;
   const btn = $('#sv-ok'); if (btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
   const now = Date.now();
