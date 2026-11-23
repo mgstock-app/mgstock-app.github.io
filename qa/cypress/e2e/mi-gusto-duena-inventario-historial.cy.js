@@ -69,5 +69,25 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#view').should('contain.text','Registro exclusivo '+local);
       cy.get('#view').should('not.contain.text','Registro exclusivo '+(local==='munro'?'torcuato':'munro'));
     });
+    it(local+': distingue turno en curso, histórico y valores reales del servidor aunque haya borrador',()=>{
+      setup();
+      abrirLocal(local);
+      cy.get('#view [data-go="h-qa-owner-stock"]').click();
+      cy.get('#fl-f-owner-qa').should('have.value','7').and('be.disabled');
+      cy.get('#view .gl-stock-server-status').should('contain.text','Vista confirmada del servidor');
+      cy.get('#view [data-act="stock-local-draft-view"]').click();
+      cy.get('#fl-f-owner-qa').should('be.enabled').clear().type('13');
+      cy.get('#fl-f-owner-qa').should('have.value','13');
+      cy.get('#view [data-act="stock-local-draft-server"]').click();
+      cy.get('#fl-f-owner-qa').should('have.value','7').and('be.disabled');
+      cy.get('#view .gl-stock-server-status').should('contain.text','cambios pendientes');
+      cy.get('#view [data-act="stock-local-history"]').click();
+      cy.get('#view [data-stock-open-turn]').should('contain.text','Turno en curso');
+      cy.get('#view [data-act="stock-local-open-toggle"]').click();
+      cy.get('#view [data-stock-open-turn]').should('contain.text','Stock Local '+local);
+      cy.get('#view [data-act="hist-toggle"]').first().click();
+      cy.get('#view').should('contain.text','Registro exclusivo '+local);
+      cy.get('#view').should('not.contain.text','Registro exclusivo '+(local==='munro'?'torcuato':'munro'));
+    });
   }
 });
