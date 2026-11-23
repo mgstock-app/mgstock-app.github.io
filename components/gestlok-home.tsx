@@ -68,6 +68,7 @@ export function GestlokHome() {
   const [actual, setActual] = useState(0);
   const [tocando, setTocando] = useState(false);
   const pistaRef = useRef<HTMLDivElement>(null);
+  const moviendoHasta = useRef(0);
   const [form, setForm] = useState<Form>(FORM_VACIO);
   const [estado, setEstado] = useState<"idle" | "enviando" | "ok">("idle");
   const [error, setError] = useState("");
@@ -96,12 +97,14 @@ export function GestlokHome() {
     const tarjeta = pista?.children[i] as HTMLElement | undefined;
     if (!pista || !tarjeta) return;
     const quieto = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    // Mientras dura el desplazamiento automático no se recalcula el cuadro actual.
+    moviendoHasta.current = Date.now() + 900;
     pista.scrollTo({ left: tarjeta.offsetLeft - pista.offsetLeft, behavior: quieto ? "auto" : "smooth" });
     setActual(i);
   }
   function alDesplazar() {
     const pista = pistaRef.current;
-    if (!pista) return;
+    if (!pista || Date.now() < moviendoHasta.current) return;
     const hijos = Array.from(pista.children) as HTMLElement[];
     let mejor = 0, dist = Infinity;
     hijos.forEach((h, i) => { const d = Math.abs(h.offsetLeft - pista.offsetLeft - pista.scrollLeft); if (d < dist) { dist = d; mejor = i; } });

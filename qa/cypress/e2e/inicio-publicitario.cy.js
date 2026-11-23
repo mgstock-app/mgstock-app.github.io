@@ -19,15 +19,18 @@ describe('Inicio publicitario', () => {
     // Se mueve solo: a los 6 s pasa al segundo cuadro.
     cy.get('.glh-puntos button').eq(0).should('have.attr', 'aria-current', 'step');
     cy.get('.glh-puntos button', {timeout: 9000}).eq(1).should('have.attr', 'aria-current', 'step');
+    cy.contains('button', 'Pausar').click();
+    cy.contains('button', 'Reanudar').should('have.attr', 'aria-pressed', 'true');
     cy.get('.glh-progreso').should('exist');
     cy.get('.glh-cuadro').should('have.length', 6);
     cy.get('.glh-cuadro img').first().should('be.visible').and($img => expect($img[0].naturalWidth).to.be.greaterThan(0));
-    cy.contains('button', 'Pausar').click();
-    cy.contains('button', 'Reanudar').should('have.attr', 'aria-pressed', 'true');
-    cy.get('[aria-label="Cuadro siguiente"]').click();
-    cy.get('.glh-puntos button').eq(2).should('have.attr', 'aria-current', 'step');
-    cy.wait(7000);
-    cy.get('.glh-puntos button').eq(2).should('have.attr', 'aria-current', 'step');
+    // En pausa no avanza; «siguiente» pasa al próximo cuadro.
+    cy.get('.glh-puntos button[aria-current="step"]').invoke('index').then(i => {
+      cy.get('[aria-label="Cuadro siguiente"]').click();
+      cy.get('.glh-puntos button').eq((i + 1) % 6).should('have.attr', 'aria-current', 'step');
+      cy.wait(7000);
+      cy.get('.glh-puntos button').eq((i + 1) % 6).should('have.attr', 'aria-current', 'step');
+    });
     cy.contains('Plan Scanner').should('not.exist');
     cy.contains('Sobre mí').should('not.exist');
     cy.get('a[href*="wa.me"]').should('not.exist');
