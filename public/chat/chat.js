@@ -258,6 +258,8 @@ function chips(botones) {
   // «Ver menú completo» (debajo de la lista de promociones) no es la acción de bienvenida: queda al final.
   const principal = b => b.id === 'carta' && /^(ver( el)? men[uú]|ver la carta|hacer un pedido|armar mi pedido)$/i.test(String(b.texto || '').trim());
   const ordenados = [...ordenarBotones(botones)].sort((a, b) => Number(principal(b)) - Number(principal(a)));
+  // «Ver menú»: la carta completa con precios, solo para mirar, sin empezar un pedido.
+  if (ordenados.some(principal) && !ordenados.some(b => b.id === '__ver_menu')) ordenados.splice(1, 0, {id: '__ver_menu', texto: 'Ver menú'});
   lista.append(el('div', {class: 'chips'}, ordenados.map(b => el('button', {
     type: 'button',
     class: 'chip' + (principal(b) ? ' chip-hacer-pedido' : '') +
@@ -363,6 +365,7 @@ function tocarBoton(b) {
   if (b.id === 'repetir') return repetirUltimoPedido();
   if (b.id === 'cancelar') return abrirConfirmacionCancelar();
   if (b.id === 'carta') return abrirCarta();
+  if (b.id === '__ver_menu') return abrirCarta({soloVer: true});
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.id === 'finalizar' ? 'Enviar pedido' : b.texto);
 }
@@ -545,7 +548,16 @@ $('hoja-cerrar').onclick = cerrarHoja;
 $('fondo-hoja').onclick = cerrarHoja;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('hoja').hidden) cerrarHoja(); });
 
-function abrirCarta() {
+/** Precio de una promo pagando en efectivo con envío (descuento del local), o null si no corresponde.
+ * Igual que el total del pedido: solo envío + efectivo, y nunca en promos a precio final (sin_descuento). */
+function precioEfectivo(p) {
+  const pct = Number(S.sucursal?.descuento_efectivo_pct) || 0;
+  const promo = (p?.opciones || []).some(esCantidad);
+  if (!promo || pct <= 0 || S.sucursal?.acepta_envio === false || p?.reglas?.sin_descuento === true) return null;
+  return Math.round(Number(p.precio) * (100 - pct) / 100);
+}
+function abrirCarta({soloVer = false} = {}) {
+  let mirando = soloVer;
   const cats = categoriasMenu();
   const posCat = new Map(cats.map((c, i) => [c.id, i]));
   const cuerpo = el('div', {class: 'menu-interactivo'});
@@ -588,7 +600,7 @@ function abrirCarta() {
       // Solo adicionales opcionales (ej. pizzas con «Jamón adicional»): se suman con + y −, como las empanadas.
       // Tocando el nombre se agrega con adicional. Lo obligatorio (promos, tamaños) sigue con «Elegir».
       const opcionales = (p.opciones || []).filter(g => !esCantidad(g) && !g.obligatorio);
-      const requiereOpciones = Array.isArray(p.opciones) && p.opciones.length > opcionales.length;
+      const requiereOpciones = mirando || (Array.isArray(p.opciones) && p.opciones.length > opcionales.length);
       const cantidad = S.borrador.filter(l => l.producto_id === p.id).reduce((n, l) => n + l.cantidad, 0);
       const cantidadConfirmada = S.carrito.filter(l => l.producto_id === p.id).reduce((n,l)=>n+l.cantidad,0);
       const promoElegida = (p.opciones || []).some(esCantidad) && cantidad + cantidadConfirmada > 0;
@@ -632,9 +644,12 @@ function abrirCarta() {
           !requiereOpciones && disponible && opcionales.length ? el('small', {class: 'menu-adicional',
             text: 'Opcional: ' + opcionales.flatMap(g => g.valores || []).slice(0, 3)
               .map(v => v.nombre + (Number(v.extra) ? '\u00a0+\u00a0' + pesos(v.extra).replace(' ', '\u00a0') : '')).join(', ') + ' · toque el nombre'}) : null),
-        disponible ? el('span', {class: 'precio', text: pesos(p.precio)}) :
+        disponible ? (precioEfectivo(p) !== null
+          ? el('span', {class: 'precio-doble'}, el('span', {class: 'precio', text: pesos(p.precio)}),
+            el('span', {class: 'precio-efectivo', text: pesos(precioEfectivo(p)) + ' efectivo'}))
+          : el('span', {class: 'precio', text: pesos(p.precio)})) :
           el('span', {class: 'agotado', text: 'Agotado'}));
-      const controles = !disponible ? null : el('div', {class: 'menu-pasos'},
+      const controles = !disponible || mirando ? null : el('div', {class: 'menu-pasos'},
         !requiereOpciones && simple ? el('button', {type: 'button', class: 'menu-paso' + (simple.cantidad === 1 ? ' menu-paso-tacho' : ''),
           'aria-label': 'Quitar una unidad de ' + p.nombre, text: simple.cantidad === 1 ? undefined : '−',
           onclick: () => cambiarSimple(p, -1)}, simple.cantidad === 1 ? iconoTacho() : null) : null,
@@ -668,9 +683,16 @@ function abrirCarta() {
           'aria-pressed': String(S.categoria === c.id),
           onclick: () => { S.categoria = c.id; aviso = ''; pintar(); }}))) : null,
       aviso ? el('p', {class: 'error-form menu-aviso', role: 'alert', text: aviso}) : null,
+      prods.some(p => p.disponible !== false && precioEfectivo(p) !== null)
+        ? el('p', {class: 'menu-nota-efectivo', text: 'En amarillo: precio de la promo pagando en efectivo con envío (' +
+          (Number(S.sucursal?.descuento_efectivo_pct) || 0) + '% de descuento).'}) : null,
       prods.length ? el('ul', {class: 'lista'}, prods.map(filaProducto))
         : el('p', {class: 'nota', text: filtroCarta ? 'No encontramos resultados.' : 'Todavía no hay productos cargados.'}),
       prods.length ? el('p', {class:'nota menu-filtro-vacio', text:'No encontramos productos con ese nombre.', hidden:true}) : null,
+      mirando ? el('div', {class: 'menu-pie'},
+        el('div', {class: 'menu-pie-texto', text: 'Esta es nuestra carta. Para pedir, toque «Hacer un pedido».'}),
+        el('button', {type: 'button', class: 'boton principal ancho', text: 'Hacer un pedido',
+          onclick: () => { mirando = false; pintar(); }})) :
       el('div', {class: 'menu-pie'},
         el('div', {class: 'menu-pie-texto', 'aria-live': 'polite', text: S.borrador.length
           ? cantidadSeleccionada + (cantidadSeleccionada === 1 ? ' producto seleccionado · ' : ' productos seleccionados · ') +
@@ -832,6 +854,8 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   }},
   p.descripcion ? el('p', {class: 'nota', text: p.descripcion}) : null,
   el('p', {class: 'precio', text: pesos(p.precio)}),
+  precioEfectivo(p) !== null ? el('p', {class: 'precio-efectivo precio-efectivo-detalle',
+    text: pesos(precioEfectivo(p)) + ' pagando en efectivo con envío'}) : null,
   esPromo ? cantidadControl : null,
   esPromo ? null : el('p', {class: 'menu-ayuda', text: 'Elegí las opciones y cantidades. Al agregar, volvés al menú.'}),
   grupos,
