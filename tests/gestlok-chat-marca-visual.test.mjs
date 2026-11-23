@@ -37,7 +37,7 @@ test('navegadores cargan nueva marca sin alterar pedidos ni acceso a WhatsApp',(
   const script=read('public/chat/chat.js');
   const css=read('public/chat/chat.css');
   assert.match(page, /chat\/chat\.css\?v=20261122vermenu2/);
-  assert.match(page, /chat\/chat\.js\?v=20261122vermenu2/);
+  assert.match(page, /chat\/chat\.js\?v=20261123venta1/);
   assert.match(page, /chat\/gestlok-monograma\.svg" type="image\/svg\+xml"/);
   assert.match(page, /id="whatsapp-local" class="chat-whatsapp"/);
   assert.match(css, /\.chat-whatsapp\{[\s\S]*?position:static/);
