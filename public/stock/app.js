@@ -2343,12 +2343,15 @@ function fabTexto(){
 async function toggleFSS(id, val, el){
   if (!needWrite()){ el.checked = !val; return; }
   const it = S.fab.find(x => x.id === id); if (!it) return;
+  const previous=!!it.sinStock;
   if (val) setF(id, 'l', 0);
   else if (fVal(it, 'l') === 0) setF(id, 'l', null);
+  // El checkbox no debe volver a tildarse brevemente por un snapshot anterior.
+  if(stockLocalEnVista())it.sinStock=val;
   const inp = document.getElementById('fl-' + id); if (inp) inp.value = fmtIn(fVal(it, 'l'));
   refreshF(id);
-  try { await w(() => C('fabrica').doc(id).update({sinStock:val})); toast(val ? `${it.nombre}: sin stock` : `${it.nombre}: vuelve a tener stock`); }
-  catch(e){ el.checked = !val; fail(e); }
+  try { await w(() => C('fabrica').doc(id).update({sinStock:val})); if(!stockLocalEnVista())toast(val ? `${it.nombre}: sin stock` : `${it.nombre}: vuelve a tener stock`); }
+  catch(e){ if(stockLocalEnVista()){it.sinStock=previous;refreshF(id);}el.checked = !val; fail(e); }
 }
 
 /* Filtros del Historial: por hoja (los datos de Stock y Conteo son los mismos) y por período */
