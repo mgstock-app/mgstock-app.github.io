@@ -2099,7 +2099,7 @@ async function flushStockLocalAutoSave(){
         await Promise.all(changes.slice(i,i+5).map(async u=>{
           await w(()=>collection.doc(u.id).update(u.patch));
           // Un guardado tardío no puede eliminar modificaciones más nuevas.
-          if(S.local!==local || S.view!==view)return;
+          if(S.local!==local)return;
           const it=S.allFab.find(x=>x.id===u.id);
           if(it)Object.assign(it,u.patch);
           const draft=S.fdraft[u.id];
@@ -2111,19 +2111,21 @@ async function flushStockLocalAutoSave(){
           saveDraft();
         }));
       }
-      if(S.local===local && S.view===view){
+      if(S.local===local){
         if(S.queued?.view===view){
           S.queued=null;
           localStorage.removeItem(queuedKey());
         }
         const pending=withCtx(view,()=>fPend().length);
-        stockLocalAutoStatus(pending?'Cambios pendientes · autoguardando…':'Guardado automáticamente');
-        renderSavebar();
+        if(S.view===view){
+          stockLocalAutoStatus(pending?'Cambios pendientes · autoguardando…':'Guardado automáticamente');
+          renderSavebar();
+        }
       }
       return true;
     }catch(e){
-      if(S.local===local && S.view===view){
-        stockLocalAutoStatus(navigator.onLine===false?'Sin conexión · pendiente de sincronización':'Error al guardar · Reintentar');
+      if(S.local===local){
+        if(S.view===view)stockLocalAutoStatus(navigator.onLine===false?'Sin conexión · pendiente de sincronización':'Error al guardar · Reintentar');
         saveDraft();
       }
       return false;
@@ -2136,7 +2138,10 @@ function refreshStockLocalRows(){
   if(!stockLocalEnVista() || !S.loaded.f || !document.querySelector('#view .xl'))return false;
   const items=withCtx(S.view,()=>fItems());
   const rows=document.querySelectorAll('#view .xl-r[id^="fr-"]');
-  if(rows.length!==items.length || items.some(it=>!document.getElementById('fr-'+it.id)))return false;
+  if(rows.length!==items.length || items.some(it=>{
+    const row=document.getElementById('fr-'+it.id);
+    return !row || row.querySelector('.xpn b')?.textContent!==String(it.nombre||'');
+  }))return false;
   for(const it of items){
     const d=stockLocalDuenaServidor()?{}:(S.fdraft[it.id]||{});
     for(const [k,prefix] of [['l','fl-'],['f','ff-']]){
