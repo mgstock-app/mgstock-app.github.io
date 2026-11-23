@@ -31,14 +31,16 @@ for(const local of ['munro','torcuato']){
   assert.doesNotMatch(sql,/set status='borrador'|set finished_at=null|delete from .*shifts/i);
  });
 }
-test('El historial ofrece editar cantidad, decomiso, responsable y extras con motivo',()=>{
+test('El historial ofrece corregir total del producto, decomiso, responsable y extras sin motivo',()=>{
  assert.match(js,/function historyCorrectionPanel\(rec\)/);
  assert.match(js,/Editar turno cerrado/);
  assert.match(js,/Guardar corrección auditada/);
- assert.match(js,/Motivo obligatorio de la corrección/);
+ assert.doesNotMatch(js,/Motivo obligatorio de la corrección|gcm-history-fix-reason/);
+ assert.match(js,/\['total','Cantidad total del producto'\]/);
+ assert.doesNotMatch(js,/\['cell','Cantidad por vencimiento'\]/);
  assert.match(js,/gestlok_munro_conteo_correct_closed/);
  assert.match(js,/gestlok_munro_conteo_correction_history/);
- assert.match(js,/p_expected:expected,p_reason:reason/);
+ assert.match(js,/p_expected:expected,p_reason:null/);
  assert.match(js,/if\(!response\?\.ok\)throw Error/);
  assert.match(js,/if\(!fresh\|\|fresh.status!=='finalizado'\)/);
  assert.match(js,/historyPreviewUrl=historyA4Image\(fresh\)/);
@@ -54,4 +56,24 @@ test('El control global de letra se retiró de todas las pantallas',()=>{
 test('Los módulos JS no contienen errores de sintaxis',()=>{
  assert.doesNotThrow(()=>new vm.Script(js));
  assert.doesNotThrow(()=>new vm.Script(fonts));
+});
+
+const fix=read('supabase/migrations/20261123033000_mi_gusto_conteo_correccion_total_sin_motivo.sql');
+for(const local of ['munro','torcuato']){
+ test('Conteo de '+local+': corrección por total, motivo opcional y sin choque de alias r',()=>{
+  const schema='gestlok_'+local+'_conteo_private';
+  assert.match(fix,new RegExp('alter table '+schema+'\\.closed_corrections alter column reason drop not null'));
+  assert.match(fix,new RegExp('create or replace function public\\.gestlok_'+local+'_conteo_correct_closed\\(','i'));
+  assert.match(fix,new RegExp('create or replace function public\\.gestlok_'+local+'_conteo_sin_stock\\(','i'));
+  assert.match(fix,/if p_kind='total' then/);
+  assert.match(fix,/'total_corregido',true/);
+  assert.match(fix,/El total no puede ser menor que el decomiso registrado/);
+  assert.match(fix,/if not found or r.status<>'finalizado'/);
+  assert.match(fix,/where day=p_day and shift=p_shift and status='finalizado'/);
+ });
+}
+test('La corrección no vuelve a usar el alias r dentro de funciones con la variable r',()=>{
+ assert.doesNotMatch(fix,/pack_rate_snapshots r\b/);
+ assert.doesNotMatch(fix,/not between 8 and 300/);
+ assert.doesNotMatch(fix,/set status='borrador'|set finished_at=null|delete from .*shifts/i);
 });

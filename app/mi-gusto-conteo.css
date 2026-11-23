@@ -297,6 +297,7 @@
 }
 .gcm-hd-qty strong{font-variant-numeric:tabular-nums}
 .gcm-hd-qty small{display:block;color:#5a7288;font-size:10px;margin-top:3px;white-space:nowrap}
+.gcm-hd-qty.gcm-hd-corrected{text-align:left;font-style:italic;font-weight:700;color:#5a7288;background:#f6f9fc}
 .gcm-hd-total{font-weight:900;background:#eef4fa;color:#143858}
 .gcm-hd-extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
 .gcm-hd-extra{border:1px solid #d9e2ed;border-radius:8px;overflow:hidden}

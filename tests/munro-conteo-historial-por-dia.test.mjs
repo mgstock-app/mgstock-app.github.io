@@ -179,7 +179,7 @@ test('gerente puede editar en turnos finalizados un producto que jamás fue carg
  assert.doesNotMatch(html,/data-gcm-finalize/);
 });
 
-test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin reabrir turno',async()=>{
+test('marcar Sin stock en turno cerrado no pide motivo y usa RPC auditado, sin reabrir turno',async()=>{
  const m=await start('gerente');
  const exit=m.rows.find(r=>r.day===m.today&&r.shift==='manana_salida');
  m.products.unshift({id:'empty',name:'LeBanana',section:'HELADOS',units_per_chapa:30,active:true,position:411});
@@ -190,7 +190,7 @@ test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin rea
    assert.equal(args.p_expected,false);
    assert.equal(args.p_sin_stock,true);
    assert.equal(args.p_product,'empty');
-   assert.match(args.p_reason,/conteo/i);
+   assert.equal(args.p_reason,null);
    exit.data.empty={sin_stock:true};
    return {data:{ok:true},error:null};
   }
@@ -209,9 +209,8 @@ test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin rea
  let html=m.module.view();
  assert.match(html,/id="gcm-history-fix-sin-stock"/);
  assert.match(html,/value="empty" selected/);
- m.document.getElementById=id=>id==='gcm-history-fix-reason'?
-  {value:'Corrección por conteo sin carga del producto'}:
-  id==='gcm-history-fix-sin-stock'?{checked:true}:null;
+ assert.doesNotMatch(html,/gcm-history-fix-reason|Motivo obligatorio/);
+ m.document.getElementById=id=>id==='gcm-history-fix-sin-stock'?{checked:true}:null;
  html=await m.click('data-gcm-history-fix-save');
  assert.match(html,/<strong>LeBanana<\/strong><\/td><td[^>]*>Sin stock<\/td>/);
  assert.equal(exit.data.empty.sin_stock,true);
@@ -221,6 +220,42 @@ test('marcar Sin stock en turno cerrado exige motivo y usa RPC auditado, sin rea
  await readonly.click('data-gcm-history-day',readonly.today);
  const ownerHtml=await readonly.click('data-gcm-history',readonly.today+'|manana_salida');
  assert.doesNotMatch(ownerHtml,/data-gcm-history-fix-save|gcm-history-fix-sin-stock/);
+});
+
+test('gerente corrige un turno cerrado por cantidad total del producto, sin vencimiento ni motivo',async()=>{
+ const m=await start('gerente');
+ const exit=m.rows.find(r=>r.day===m.today&&r.shift==='manana_salida');
+ const rpc=m.window.GestLokSupabase.rpc;
+ m.window.GestLokSupabase.rpc=async(name,args)=>{
+  if(name==='gestlok_munro_conteo_correct_closed'){
+   m.calls.push({name,args});
+   assert.equal(args.p_kind,'total');
+   assert.equal(args.p_product,'p2');
+   assert.equal(args.p_index,null);
+   assert.equal(JSON.stringify(args.p_value),'{"total":40}');
+   assert.equal(JSON.stringify(args.p_expected),'{"v1":{"chapas":1,"sueltas":8,"qty":0}}');
+   assert.equal(args.p_reason,null);
+   exit.data.p2={v1:{chapas:1,sueltas:13,qty:0},total_corregido:true};
+   return {data:{ok:true,total:40},error:null};
+  }
+  return rpc(name,args);
+ };
+ await m.click('data-gcm-history-day',m.today);
+ let html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ html=await m.click('data-gcm-history-fix-toggle');
+ assert.match(html,/<option value="total" selected>Cantidad total del producto<\/option>/);
+ assert.doesNotMatch(html,/Cantidad por vencimiento|id="gcm-history-fix-vto"|gcm-history-fix-reason|Motivo obligatorio/);
+ const change=m.listeners.get('change');
+ await change({target:{id:'gcm-history-fix-product',value:'p2',closest:s=>s==='.gcm-page'?{}:null}});await tick();
+ html=m.module.view();
+ assert.match(html,/data-gcm-history-number="total" value="35"/,'1 chapa de 27 + 8 sueltas');
+ assert.match(html,/Total archivado: <strong>35 unidades<\/strong>/);
+ m.document.querySelector=sel=>sel==='[data-gcm-history-number="total"]'?{value:'40'}:null;
+ html=await m.click('data-gcm-history-fix-save');
+ assert.ok(m.calls.some(x=>x.name==='gestlok_munro_conteo_correct_closed'));
+ assert.equal(exit.status,'finalizado');
+ assert.match(html,/<strong>MT<\/strong><\/td><td[^>]*>40<\/td>/);
+ assert.match(html,/colspan="4">Total corregido</);
 });
 
 test('gerente marca manualmente Sin stock durante el turno y conserva — en productos vacíos',async()=>{
