@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261121confirmacion3';
+import {botonesBienvenida, carteleraDelDia, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261123venta1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -729,7 +729,8 @@ function abrirProducto(p, sugerido = {}, inline = null) {
   const esPromo = (p.opciones || []).some(esCantidad);
   const contadores = [];
   const salida = el('output', {'aria-live': 'polite', text: String(cantidad)});
-  const nota = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: bien cocida, sin cebolla'});
+  // Sin ejemplo de un rubro en particular: sirve igual para comida, ferretería, perfumería o pet shop.
+  const nota = el('input', {type: 'text', maxlength: '200', placeholder: 'Opcional: algo que el local deba saber'});
   const error = el('p', {class: 'error-form', role: 'alert', hidden: true});
   const boton = el('button', {type: 'submit', class: 'boton principal ancho'});
   const estadoFinal = el('span', {class: 'menu-combo-estado', 'aria-live': 'polite'});

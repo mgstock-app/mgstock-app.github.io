@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261121global1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261123venta1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -50,7 +50,7 @@
       el('label', {class: 'oculto', for: 'sucursal', text: 'Sucursal'}), el('select', {id: 'sucursal', hidden: true})),
     el('nav', {class: 'pestanas', id: 'pestanas', role: 'tablist', 'aria-label': 'Secciones', hidden: true},
       [['pedidos', 'Pedidos'], ['soporte', 'Soporte'], ['reporte','Historial diario'], ['stock', 'Stock'], ['carta', 'Carta'],
-        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['clientes','Clientes frecuentes']].map(([k, t], i) =>
+        ['mensajes', 'Mensajes'], ['ajustes', 'Ajustes'], ['clientes','Clientes']].map(([k, t], i) =>
         el('button', {role: 'tab', type: 'button', 'data-p': k, 'aria-selected': String(i === 0)}, t,
           k === 'pedidos' ? el('span', {class: 'globo', id: 'globo', hidden: true}) :
           k === 'soporte' ? el('span', {class: 'globo', id: 'globo-soporte', hidden: true}) : null))),
@@ -531,6 +531,58 @@
     });
     return caja;
   }
+  // Reglas del producto (cada local): día y horario de la promo, última semana del mes, exclusiva, solo efectivo,
+  // precio final sin descuento y «para compartir». La base las vuelve a validar y controla el pedido.
+  function editorReglas(previas) {
+    const r = previas && typeof previas === 'object' && !Array.isArray(previas) ? previas : {};
+    const c = r.cuando && typeof r.cuando === 'object' ? r.cuando : null;
+    const programada = el('input', {type: 'checkbox', checked: !!c});
+    const dia = el('select', {}, el('option', {value: '', text: 'Todos los días'}),
+      ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((d, i) => el('option', {value: String(i + 1), text: d})));
+    dia.value = c?.dia_semana ? String(c.dia_semana) : '';
+    const semana = el('select', {}, el('option', {value: 'todas', text: 'Todas las semanas'}), el('option', {value: 'ultima', text: 'Solo la última semana del mes'}));
+    semana.value = c?.semana === 'ultima' ? 'ultima' : 'todas';
+    const desde = el('input', {type: 'time'}); desde.value = /^\d{1,2}:\d{2}$/.test(c?.desde || '') ? c.desde.padStart(5, '0') : '';
+    const hasta = el('input', {type: 'time'}); hasta.value = /^\d{1,2}:\d{2}$/.test(c?.hasta || '') ? c.hasta.padStart(5, '0') : '';
+    const nombreP = el('input', {type: 'text', maxlength: '60', placeholder: 'Ej.: Jueves de promo'}); nombreP.value = r.nombre || '';
+    const avisoP = el('input', {type: 'text', maxlength: '200', placeholder: 'Ej.: Hoy rige la promo del jueves'}); avisoP.value = r.aviso || '';
+    const exclusiva = el('input', {type: 'checkbox', checked: r.exclusiva === true});
+    const efectivo = el('input', {type: 'checkbox', checked: r.solo_efectivo === true});
+    const final = el('input', {type: 'checkbox', checked: r.sin_descuento === true});
+    const compartir = el('input', {type: 'checkbox', checked: r.compartir === true});
+    const detalle = el('div', {class: 'grupo', hidden: !programada.checked},
+      el('div', {class: 'dos'}, campo('Día', dia), campo('Semana', semana)),
+      el('div', {class: 'dos'}, campo('Desde (opcional)', desde), campo('Hasta (opcional)', hasta)),
+      campo('Nombre de la promo (opcional)', nombreP), campo('Aviso en el saludo (opcional)', avisoP),
+      el('label', {class: 'check'}, exclusiva, ' Mientras rige, es lo único que se ofrece'),
+      el('p', {class: 'nota', text: 'Fuera de ese día y horario no aparece en el chat y la base no la acepta. Hora de Argentina.'}));
+    programada.addEventListener('change', () => { detalle.hidden = !programada.checked; });
+    const caja = el('div', {class: 'opciones'},
+      el('label', {class: 'check'}, programada, ' Solo algunos días u horarios'), detalle,
+      el('label', {class: 'check'}, efectivo, ' Se paga solo en efectivo'),
+      el('label', {class: 'check'}, final, ' Precio final (sin el descuento por efectivo del local)'),
+      el('label', {class: 'check'}, compartir, ' Promo para compartir (no se ofrece por unidades sueltas)'));
+    caja.leer = () => {
+      const out = {};
+      if (programada.checked) {
+        if (desde.value && hasta.value && hasta.value <= desde.value) throw new Error('En la promo por horario, «Hasta» tiene que ser después de «Desde».');
+        const cu = {};
+        if (dia.value) cu.dia_semana = Number(dia.value);
+        if (semana.value === 'ultima') cu.semana = 'ultima';
+        if (desde.value) cu.desde = desde.value;
+        if (hasta.value) cu.hasta = hasta.value;
+        out.cuando = cu;
+        if (nombreP.value.trim()) out.nombre = nombreP.value.trim();
+        if (avisoP.value.trim()) out.aviso = avisoP.value.trim();
+        if (exclusiva.checked) out.exclusiva = true;
+      }
+      if (efectivo.checked) out.solo_efectivo = true;
+      if (final.checked) out.sin_descuento = true;
+      if (compartir.checked) out.compartir = true;
+      return out;
+    };
+    return caja;
+  }
   function editarProducto(p, c) {
     const nombre = el('input', {type: 'text', maxlength: '120', required: true}); nombre.value = p?.nombre || '';
     const desc = el('input', {type: 'text', maxlength: '300'}); desc.value = p?.descripcion || '';
@@ -541,14 +593,16 @@
     const activo = el('input', {type: 'checkbox', checked: p ? p.activo : true});
     const disp = el('input', {type: 'checkbox', checked: p ? p.disponible : true});
     const ops = editorOpciones(p?.opciones, c);
+    const reglas = editorReglas(p?.reglas);
     dialogo(p ? 'Editar producto' : 'Nuevo producto', [campo('Nombre', nombre), campo('Descripción (opcional)', desc),
       el('div', {class: 'dos'}, campo('Precio', precio), campo('Orden', orden)), campo('Categoría', cat),
       el('label', {class: 'check'}, activo, ' Figura en la carta'), el('label', {class: 'check'}, disp, ' Hay hoy (disponible)'),
-      el('h4', {text: 'Opciones'}), ops],
+      el('h4', {text: 'Opciones'}), ops, el('h4', {text: 'Promo por día y horario'}), reglas],
     async () => {
       const opciones = ops.leer();
+      const r = reglas.leer();
       await rpc('panel_producto_guardar', {p_sucursal: S.suc.id, p_producto: {id: p?.id, nombre: nombre.value.trim(), descripcion: desc.value.trim(),
-        precio: Number(precio.value), categoria_id: cat.value || null, orden: Number(orden.value) || 0, activo: activo.checked, disponible: disp.checked, opciones}});
+        precio: Number(precio.value), categoria_id: cat.value || null, orden: Number(orden.value) || 0, activo: activo.checked, disponible: disp.checked, opciones, reglas: r}});
       aviso('Producto guardado'); verCarta();
     });
   }
@@ -563,9 +617,10 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261121global1').catch(() => null);
-    let a;
+    if (!motor) motor = await import('/chat/motor.js?v=20261123venta1').catch(() => null);
+    let a, cat = {categorias: []};
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    try { cat = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch { /* sin categorías: venta sugerida automática */ }
     // Mensajes del asistente: dueño, administradora y gerente del local (lo valida la base).
     const editable = puede('gestionar');
     const ejemplo = {nombre: 'Ana', codigo: (a.prefijo || 'P') + '-0012', total: '$ 8.400', direccion: 'Av. Mitre 2200', local: a.direccion || ('el local de ' + a.nombre), motivo: 'nos quedamos sin stock'};
@@ -582,6 +637,21 @@
     const resenaTexto = area(a.mensajes?.resena, 600, 2, motor?.MENSAJES_BASE?.resena || '');
     const cierreTexto = area(a.mensajes?.cierre, 600, 2, motor?.MENSAJES_BASE?.cierre || '');
     const sugerenciaTexto = area(a.mensajes?.sugerencia, 600, 2, motor?.MENSAJES_BASE?.sugerencia || '');
+    // Venta sugerida para cualquier rubro: automático (postres y bebidas), categorías elegidas o nada.
+    const confSug = String(a.mensajes?.sugerir_categorias || '').trim();
+    const elegidasSug = new Set(confSug && confSug !== 'ninguna' ? confSug.split(',').map(x => x.trim()) : []);
+    const modoSug = el('select', {disabled: !editable, 'aria-label': 'Qué ofrecer antes de finalizar'},
+      el('option', {value: 'auto', text: 'Automático: postres y bebidas (gastronomía)'}),
+      el('option', {value: 'elegir', text: 'Elegir categorías de mi carta'}),
+      el('option', {value: 'ninguna', text: 'No ofrecer nada'}));
+    modoSug.value = confSug === 'ninguna' ? 'ninguna' : elegidasSug.size ? 'elegir' : 'auto';
+    const checksSug = (cat.categorias || []).filter(k => k.activa !== false).map(k => {
+      const i = el('input', {type: 'checkbox', value: k.id, checked: elegidasSug.has(k.id), disabled: !editable});
+      return el('label', {class: 'check'}, i, ' ' + k.nombre);
+    });
+    const cajaSug = el('div', {class: 'medios', hidden: modoSug.value !== 'elegir'}, checksSug.length ? checksSug
+      : el('p', {class: 'nota', text: 'Todavía no hay categorías en la carta.'}));
+    modoSug.addEventListener('change', () => { cajaSug.hidden = modoSug.value !== 'elegir'; });
     const vistaCierre = el('p', {class: 'vista-previa'});
     const pintarCierre = () => {
       const url = motor?.urlResena ? motor.urlResena(resenaUrl.value) : resenaUrl.value.trim();
@@ -609,6 +679,12 @@
       // Se mandan siempre (vacío = sin link / texto sugerido) para que la base sepa que se borraron.
       mensajes.resena_url = resenaUrl.value.trim(); mensajes.resena = resenaTexto.value.trim(); mensajes.cierre = cierreTexto.value.trim();
       mensajes.sugerencia = sugerenciaTexto.value.trim();
+      if (modoSug.value === 'ninguna') mensajes.sugerir_categorias = 'ninguna';
+      else if (modoSug.value === 'elegir') {
+        const ids = checksSug.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value).slice(0, 6);
+        if (!ids.length) return aviso('Elegí al menos una categoría para ofrecer antes de finalizar (hasta 6).', true);
+        mensajes.sugerir_categorias = ids.join(',');
+      }
       try {
         await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
           ia_activa: activa.checked, ia_nombre: nombre.value.trim(), ia_instrucciones: instrucciones.value, ia_info: info.value,
@@ -628,8 +704,10 @@
       el('p', {class: 'nota', text: 'Dejalo vacío para usar el texto sugerido. Podés usar: {nombre} {codigo} {total} {direccion} {local} {motivo}.'}),
       plantillas),
     el('section', {class: 'bloque'}, el('h3', {text: 'Antes de finalizar: venta sugerida'}),
-      el('p', {class: 'nota', text: 'Cuando el cliente toca «Finalizar pedido» y no lleva postre o bebida, se le ofrece una vez, con botones para ver esas categorías de la carta (solo las que tengan algo disponible).'}),
-      campo('Pregunta para ofrecer postre o bebida', sugerenciaTexto)),
+      el('p', {class: 'nota', text: 'Cuando el cliente toca «Finalizar pedido», se le ofrece una sola vez algo de las categorías elegidas que todavía no lleve (solo productos disponibles, con su precio y un toque para agregar). Sirve para cualquier rubro: por ejemplo, accesorios en una ferretería o snacks en un pet shop.'}),
+      campo('Qué ofrecer', modoSug), cajaSug,
+      campo('Pregunta para ofrecerlo', sugerenciaTexto),
+      el('small', {class: 'ayuda', text: 'Vacía: «¿desea agregar un postre o una bebida?» en automático, o «¿desea agregar algo más a su pedido?» con categorías elegidas.'})),
     el('section', {class: 'bloque'}, el('h3', {text: 'Al terminar el pedido: reseña y cierre'}),
       el('p', {class: 'nota', text: 'Después de «Listo para retirar» o «Pedido enviado», el cliente recibe la invitación con el botón a Google (solo si cargás el link de este local) y el mensaje de cierre.'}),
       campo('Link de reseñas de Google de este local (opcional)', resenaUrl),
@@ -692,6 +770,62 @@
       el('div', {class: 'medios'}, medios)),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
       : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
+    // Link de reseñas de Google: lo cambian el dueño, el gerente del local y la administradora (por ejemplo, si el
+    // local se muda). Es el mismo dato de Mensajes → «Al terminar el pedido»; se manda la configuración de mensajes
+    // completa para no borrar las otras plantillas.
+    const puedeResena = puede('gestionar');
+    const linkResena = el('input', {type: 'url', maxlength: '300', inputmode: 'url', placeholder: 'https://g.page/r/…/review', disabled: !puedeResena});
+    linkResena.value = a.mensajes?.resena_url || '';
+    const resenaForm = el('form', {class: 'ajustes', onsubmit: async e => {
+      e.preventDefault();
+      const url = linkResena.value.trim();
+      if (url && motor?.urlResena && !motor.urlResena(url)) return aviso('El link de reseñas tiene que ser de Google (g.page, maps.app.goo.gl o google.com) y empezar con https://', true);
+      const mensajes = {};
+      for (const [k, v] of Object.entries(a.mensajes || {})) if (typeof v === 'string' && v.trim()) mensajes[k] = v;
+      mensajes.resena_url = url;
+      try {
+        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {mensajes}});
+        aviso(url ? 'Link de reseñas guardado' : 'Link de reseñas quitado'); verAjustes();
+      } catch (err) { aviso(err.message, true); }
+    }},
+    el('section', {class: 'bloque'}, el('h3', {text: 'Reseñas de Google'}),
+      el('p', {class: 'nota', text: 'Cuando el pedido está listo o enviado, el cliente recibe el botón «Dejar mi reseña en Google» con este link. Si el local se muda o cambia de ficha en Google, cambialo acá.'}),
+      campo('Link de reseñas de Google de este local', linkResena),
+      el('small', {class: 'ayuda', text: 'En Google Maps, en la ficha del local: «Pedir reseñas» o «Compartir perfil» → copiar el link. Vacío = no se invita a reseñar.'}),
+      puedeResena ? el('button', {type: 'submit', class: 'boton ancho', text: 'Guardar link de reseñas'})
+        : el('p', {class: 'nota', text: 'Solo el dueño, el gerente del local o la administradora pueden cambiarlo.'})));
+    // Cómo llegan los clientes al chat: respuesta automática de WhatsApp Business y cartel con QR.
+    const textoWhatsApp = 'Hola, gracias por comunicarse con ' + [a.empresa, a.nombre].filter(Boolean).join(' ') +
+      '. Para hacer su pedido más rápido, ingrese aquí: ' + enlace +
+      ' — vea la carta con precios, arme su pedido y le avisamos cuando esté listo.';
+    const cajaTexto = el('textarea', {rows: '4', readonly: true, 'aria-label': 'Texto para WhatsApp Business'}); cajaTexto.value = textoWhatsApp;
+    const imprimirCartel = () => {
+      let img = '';
+      try { const q = window.qrcode(0, 'M'); q.addData(enlace); q.make(); img = q.createDataURL(12, 4); } catch { /* sin QR */ }
+      if (!img) return aviso('No se pudo generar el QR en este dispositivo.', true);
+      const w = window.open('', '_blank');
+      if (!w) return aviso('Permití las ventanas emergentes para imprimir el cartel.', true);
+      const esc = t => String(t || '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+      w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cartel QR · ' + esc(a.nombre) + '</title>' +
+        '<style>@page{size:A4;margin:14mm}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#12345a;text-align:center}' +
+        '.c{border:3px solid #12345a;border-radius:18px;padding:28px 20px;max-width:560px;margin:0 auto}' +
+        'h1{font-size:34px;margin:0 0 6px}h2{font-size:22px;font-weight:600;margin:0 0 18px;color:#2a5a86}' +
+        'img{width:320px;height:320px;image-rendering:pixelated}p{font-size:20px;margin:16px 0 4px}small{display:block;font-size:13px;color:#536b80;word-break:break-all}' +
+        '.pie{margin-top:18px;font-size:12px;color:#8193a5}</style></head><body><div class="c">' +
+        '<h1>' + esc([a.empresa, a.nombre].filter(Boolean).join(' · ')) + '</h1><h2>Hacé tu pedido desde el celular</h2>' +
+        '<img alt="QR del chat de pedidos" src="' + img + '">' +
+        '<p>Escaneá el código, mirá la carta con precios y armá tu pedido.</p><small>' + esc(enlace) + '</small>' +
+        '<div class="pie">GESTLOK Chat</div></div><script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script></body></html>');
+      w.document.close();
+    };
+    const llevar = el('section', {class: 'bloque'}, el('h3', {text: 'Cómo llegan tus clientes al chat'}),
+      el('p', {class: 'nota', text: 'Pegá este texto en WhatsApp Business → Herramientas para la empresa → «Mensaje de bienvenida» y «Mensaje de ausencia». Así, cada cliente que escribe recibe el link del chat automáticamente.'}),
+      campo('Texto para WhatsApp Business', cajaTexto),
+      el('div', {class: 'fila-botones'},
+        el('button', {type: 'button', class: 'boton', text: 'Copiar texto para WhatsApp', onclick: async () => {
+          try { await navigator.clipboard.writeText(textoWhatsApp); aviso('Texto copiado'); } catch { cajaTexto.select(); aviso('Seleccionalo y copialo', true); } }}),
+        el('button', {type: 'button', class: 'boton', text: 'Imprimir cartel con QR', onclick: imprimirCartel})),
+      el('p', {class: 'nota', text: 'El cartel sirve para el mostrador, la vidriera, las bolsas y los volantes. Imprimilo en A4 o guardalo como PDF.'}));
     // Contacto externo por sucursal. No sincroniza pedidos ni mensajes con WhatsApp.
     const numeroWhatsApp = el('input', {type:'tel', inputmode:'tel', maxlength:'24',
       placeholder:'Ej.: 5491171446654', disabled:!editable});
@@ -744,7 +878,7 @@
       pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
-    contenido.replaceChildren(form,contactoWhatsApp,pushCampanas);
+    contenido.replaceChildren(form,resenaForm,llevar,contactoWhatsApp,pushCampanas);
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
@@ -794,6 +928,38 @@
         ? el('ol',{class:'reporte-top'},metricas.productos_top.map(p=>
           el('li',{},el('span',{text:p.nombre}),el('strong',{text:p.unidades+' uds.'}))))
         : el('p',{class:'nota',text:'Aún no hay productos en pedidos aceptados.'})) : null;
+    // Resumen por mes y ahorro estimado frente a una app de delivery con comisión. El % lo elige quien mira el panel
+    // (queda guardado en este navegador); es una estimación, no dinero cobrado.
+    const claveCom='gestlok-chat-comision:'+id;
+    let comision=25;
+    try{const g=Number(localStorage.getItem(claveCom));if(g>0&&g<=60)comision=g;}catch{/* sin almacenamiento */}
+    const meses=new Map();
+    for(const r of registros){
+      const m=String(r.fecha).slice(0,7);
+      const x=meses.get(m)||{pedidos:0,aceptados:0,importe:0};
+      x.pedidos+=Number(r.total||0);x.aceptados+=Number(r.confirmados||0)+Number(r.terminados||0);
+      x.importe+=Number(r.importe_confirmado||0);meses.set(m,x);
+    }
+    const inputCom=el('input',{type:'number',min:'1',max:'60',step:'1',inputmode:'numeric','aria-label':'Comisión de la app de delivery (%)'});
+    inputCom.value=String(comision);
+    const tablaMeses=el('div',{class:'tarjetas'});
+    const pintarMeses=()=>{
+      const pct=Math.min(60,Math.max(1,Number(inputCom.value)||25));
+      tablaMeses.replaceChildren(...[...meses.entries()].filter(([,x])=>x.pedidos>0).map(([m,x])=>el('article',{class:'tarjeta'},
+        el('header',{},el('strong',{text:new Date(m+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'})}),
+          el('span',{class:'estado',text:x.pedidos+' pedido'+(x.pedidos===1?'':'s')})),
+        el('p',{class:'nota-cliente',text:'Aceptados: '+x.aceptados+' · Importe: '+pesos(x.importe)+
+          ' · Ticket promedio: '+(x.aceptados?pesos(Math.round(x.importe/x.aceptados)):'—')}),
+        el('p',{class:'nota-cliente'},el('strong',{text:'Ahorro estimado en comisiones: '+pesos(Math.round(x.importe*pct/100))})))));
+      if(!tablaMeses.children.length)tablaMeses.append(el('p',{class:'nota',text:'Sin pedidos en el período.'}));
+    };
+    inputCom.addEventListener('input',()=>{pintarMeses();try{localStorage.setItem(claveCom,String(Number(inputCom.value)||25));}catch{/* sin almacenamiento */}});
+    pintarMeses();
+    const porMes=el('section',{class:'reporte-indicadores','aria-label':'Resumen por mes'},
+      el('h3',{text:'Resumen por mes'}),
+      el('p',{class:'nota',text:'Lo que entró por GESTLOK Chat y lo que habría costado en comisiones en una app de delivery. Para ver varios meses elegí «Últimos 90 días».'}),
+      campo('Comisión de la app de delivery para comparar (%)',inputCom),tablaMeses,
+      el('p',{class:'nota',text:'Estimación sobre el importe de los pedidos aceptados. GESTLOK Chat no cobra comisión por pedido.'}));
     const entradas=registros.filter(r=>Number(r.total)>0);
     const fechas=entradas.length?entradas.map(r=>el('article',{class:'reporte-dia'},
       el('header',{},el('strong',{text:new Date(String(r.fecha)+'T12:00:00').toLocaleDateString('es-AR',
@@ -813,7 +979,7 @@
     contenido.replaceChildren(
       el('h2',{text:'Historial diario · Pedidos por GESTLOK Chat'}),
       el('p',{class:'nota',text:'Registros reales de '+S.suc.nombre+'. No incluye consultas sin pedido.'}),
-      botones,resumen,...(indicadores?[indicadores]:[]),...fechas);
+      botones,resumen,porMes,...(indicadores?[indicadores]:[]),...fechas);
   }
 
   // ------------------------------------------------------------------------------------------- soporte humano y reclamos
@@ -940,24 +1106,40 @@
     }:null,'Enviar mensaje');
   }
 
-  // Clientes frecuentes de ESTA sucursal. Solo personal autorizado; no hay búsquedas públicas por teléfono.
+  // Clientes de ESTA sucursal (todos los que pidieron; frecuentes = 2 o más). Solo personal autorizado; no hay
+  // búsquedas públicas por teléfono.
   async function verClientes() {
-    contenido.replaceChildren(el('p',{class:'nota',text:'Cargando clientes frecuentes…'}));
+    contenido.replaceChildren(el('p',{class:'nota',text:'Cargando clientes…'}));
     let clientes;
-    try {clientes=await rpc('panel_clientes',{p_sucursal:S.suc.id,p_limite:60});}
+    try {clientes=await rpc('panel_clientes',{p_sucursal:S.suc.id,p_limite:200});}
     catch(e){contenido.replaceChildren(el('p',{class:'error',text:e.message}));return;}
     if (!Array.isArray(clientes) || !clientes.length) {
-      contenido.replaceChildren(el('p',{class:'nota',text:'Todavía no hay clientes con más de un pedido en esta sucursal.'}));
+      contenido.replaceChildren(el('p',{class:'nota',text:'Todavía no hay clientes con pedidos en esta sucursal.'}));
       return;
     }
-    contenido.replaceChildren(
-      el('p',{class:'nota',text:'Clientes con dos o más pedidos en esta sucursal. Datos internos, visibles solo para el personal autorizado.'}),
-      el('div',{class:'tarjetas'},clientes.map(c=>el('article',{class:'tarjeta'},
-        el('header',{},el('strong',{text:c.nombre}),el('span',{class:'estado',text:c.pedidos+' pedidos'})),
+    const buscar=el('input',{type:'search',placeholder:'Buscar por nombre o teléfono',maxlength:'60','aria-label':'Buscar cliente'});
+    const soloFrecuentes=el('input',{type:'checkbox'});
+    const lista=el('div',{class:'tarjetas'});
+    const resumen=el('p',{class:'nota'});
+    const norm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const pintar=()=>{
+      const q=norm(buscar.value.trim()),qn=buscar.value.replace(/\D/g,'');
+      const vis=clientes.filter(c=>(!soloFrecuentes.checked||Number(c.pedidos)>=2)&&
+        (!q||norm(c.nombre).includes(q)||(qn&&String(c.telefono||'').includes(qn))));
+      resumen.textContent=clientes.length+' cliente'+(clientes.length===1?'':'s')+' · '+
+        clientes.filter(c=>Number(c.pedidos)>=2).length+' frecuente(s) (2 o más pedidos)'+(vis.length!==clientes.length?' · mostrando '+vis.length:'');
+      lista.replaceChildren(...vis.map(c=>el('article',{class:'tarjeta'},
+        el('header',{},el('strong',{text:c.nombre||'Sin nombre'}),
+          el('span',{class:'estado',text:c.pedidos+' pedido'+(Number(c.pedidos)===1?'':'s')+(Number(c.pedidos)>=2?' · frecuente':'')})),
         el('p',{class:'cliente'},el('a',{href:'tel:+'+String(c.telefono||''),text:String(c.telefono||'')})),
-        el('p',{class:'nota-cliente',text:'Último pedido: '+hora(c.ultimo_at)}),
-        c.direccion ? el('p',{class:'nota-cliente',text:'Última dirección de delivery: '+c.direccion}) : null
-      ))));
+        el('p',{class:'nota-cliente',text:'Último pedido: '+hora(c.ultimo_at)+(c.gastado!=null?' · Total pedido: '+pesos(c.gastado):'')}),
+        c.direccion ? el('p',{class:'nota-cliente',text:'Última dirección de delivery: '+c.direccion}) : null)));
+    };
+    buscar.addEventListener('input',pintar);soloFrecuentes.addEventListener('change',pintar);
+    contenido.replaceChildren(
+      el('p',{class:'nota',text:'Clientes que hicieron pedidos por el chat en esta sucursal. Datos internos, visibles solo para el personal autorizado. «Total pedido» suma los pedidos aceptados.'}),
+      campo('Buscar cliente',buscar),el('label',{class:'check'},soloFrecuentes,' Solo frecuentes (2 o más pedidos)'),resumen,lista);
+    pintar();
   }
 
   // ------------------------------------------------------------------------------------------- utilidades
