@@ -292,13 +292,15 @@ test('función gestlok-chat de punta a punta', {skip}, async t => {
   assert.equal(Number(r.body.pedido.efectivo_cambio),700);
   // El descuento es configuración del local: si el local lo da solo al retirar, un envío en efectivo no lo lleva.
   ok(DB, [], "update gestlok_chat_private.sucursales set descuento_efectivo_entrega='retiro' where slug='mi-gusto-munro'");
+  // IP propia para no sumar al límite de mensajes por minuto de las pruebas que siguen.
+  const IP_CASH2={ip:'200.1.1.7'};
   const TOKEN_CASH2='tokenDePruebaDescuentoSoloRetiro00000006';
-  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'abrir'});
-  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',entrada:seleccionCarne});
-  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',entrada:{boton:'finalizar'}});
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'abrir'},IP_CASH2);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',entrada:seleccionCarne},IP_CASH2);
+  r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',entrada:{boton:'finalizar'}},IP_CASH2);
   r=await llamar({slug:'mi-gusto-munro',token:TOKEN_CASH2,accion:'mensaje',
     entrada:{datos:{nombre:'Cliente efectivo dos',telefono:'1155550011',entrega:'envio',direccion:'Mitre 300',
-      medio_pago:'efectivo',efectivo_abona:'3000'}}});
+      medio_pago:'efectivo',efectivo_abona:'3000'}}},IP_CASH2);
   assert.equal(r.status,200);
   assert.equal(Number(r.body.pedido.descuento),0);
   assert.equal(Number(r.body.pedido.total),2500);
