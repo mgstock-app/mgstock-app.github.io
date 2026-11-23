@@ -171,7 +171,8 @@ async function loadHistory(){
   const rows=await rpc('gestlok_munro_conteo_history',{p_month:month+'-01'});
   if(token!==historyToken||!historyMode||month!==historyMonth)return;
   if(!Array.isArray(rows))throw Error('No se pudo leer el historial.');
-  historyRows=rows.filter(r=>r&&typeof r.day==='string'&&SHIFTS.some(s=>s[0]===r.shift)&&(!ownerHistoryOnly()||r.status==='finalizado'||onlyMunroHistoricalCorrection(r)));
+  // La dueña debe ver también los turnos abiertos: los permisos de edición se validan aparte.
+  historyRows=rows.filter(r=>r&&typeof r.day==='string'&&SHIFTS.some(s=>s[0]===r.shift)&&['borrador','finalizado'].includes(r.status));
   historyError='';
  }catch(e){
   if(token===historyToken)historyError=e.message||'No se pudo cargar el historial';
@@ -207,6 +208,7 @@ function conteoHistorialNav(mode){
 }
 function historyListView(){
  const groups=groupedHistory();
+ const openCount=historyRows.filter(r=>r.status==='borrador').length;
  const days=groups.map(([date,records])=>{
   const expanded=historyExpanded===date;
   const name=(date===arDay()?'Hoy · ':'')+labelDay(date);
@@ -220,7 +222,7 @@ function historyListView(){
   :SHIFTS).map(([key,title])=>{
     const rec=records.get(key);
     return '<div class="gcm-history-shift"><span class="gcm-history-shift-name">Turno '+esc(title.replace(' · ',' '))+'</span>'+
-    (rec?'<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+(rec.status==='finalizado'?'Finalizado':'En curso')+'</span>'+
+    (rec?'<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+(rec.status==='finalizado'?'Finalizado':ownerHistoryOnly()?'Turno abierto':'En curso')+'</span>'+
      '<button type="button" class="gcm-history-detail-button" data-gcm-history="'+esc(date)+'|'+esc(key)+'">'+(ownerHistoryOnly()?'Ver conteo completo':'Vista previa A4')+'</button>':
      '<span class="gcm-history-no-data">Sin cargar</span>')+'</div>';
    }).join('')+'</div>':'')+'</section>';
@@ -228,7 +230,11 @@ function historyListView(){
  return '<div class="gcm-page gcm-history-screen">'+conteoHistorialNav('historial')+
   '<header class="gcm-history-top"><div class="gcm-history-title">'+(ownerHistoryOnly()?'<button type="button" data-gcm-catalog-open>Configurar productos</button>':'<button type="button" data-gcm-history-exit>← Volver al conteo</button>')+
    '<div><span class="gcm-eyebrow">MI GUSTO · '+esc(localLabel().toUpperCase())+'</span><h2>Historial de conteos</h2></div></div>'+
-   '<label>Mes <input type="month" id="gcm-history-month" min="2025-01" max="'+arDay().slice(0,7)+'" value="'+esc(historyMonth)+'"></label></header>'+
+   '<label>Mes <input type="month" id="gcm-history-month" min="2025-01" max="'+arDay().slice(0,7)+'" value="'+esc(historyMonth)+'"></label>'+ 
+   '<button type="button" data-gcm-history-retry'+(historyLoading?' disabled':'')+'>Actualizar estados</button></header>'+ 
+  (ownerHistoryOnly()&&!historyLoading&&!historyError?'<p class="gcm-history-owner-note" role="status">'+
+    (openCount?openCount+' turno'+(openCount===1?'':'s')+' abierto'+(openCount===1?'':'s')+' pendiente'+(openCount===1?'':'s')+' de cierre en este mes.':'No hay turnos abiertos registrados en este mes.')+
+    ' Podés consultar sus cantidades sin modificar el conteo.</p>':'')+
   (historyError?'<p class="gcm-error" role="alert">'+esc(historyError)+' <button type="button" data-gcm-history-retry>Reintentar</button></p>':'')+
   (historyLoading?'<p role="status" class="gcm-loading">Cargando historial…</p>':
    !groups.length&&!historyError?'<p class="gcm-history-empty">No hay conteos por turnos registrados en este mes.</p>':days)+
@@ -619,7 +625,7 @@ function historyDetailView(){
   '<span>Turno '+esc(historyShiftLabel(rec).replace(' · ',' '))+'</span>'+
   '<span>Responsable: '+esc(rec.responsable||'Sin asignar')+'</span>'+
   '<span class="gcm-history-status'+(rec.status==='finalizado'?' is-done':'')+'">'+
-  (rec.status==='finalizado'?'Finalizado':'En curso')+'</span></div>'+
+  (rec.status==='finalizado'?'Finalizado':ownerHistoryOnly()?'Turno abierto':'En curso')+'</span></div>'+
   // Pantalla principal: tarjetas reales en todo el ancho; Empanadas ocupa la
   // fila completa y distribuye sus numerosos productos en columnas legibles.
   historySummaryTable(rec)+
