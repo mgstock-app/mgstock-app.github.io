@@ -89,5 +89,17 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
       cy.get('#view').should('contain.text','Registro exclusivo '+local);
       cy.get('#view').should('not.contain.text','Registro exclusivo '+(local==='munro'?'torcuato':'munro'));
     });
+    it(local+': cerrar turno registra historial y muestra Guardado exitoso',()=>{
+      setup();
+      abrirLocal(local);
+      cy.get('#view [data-go="h-qa-owner-stock"]').click();
+      cy.get('#view [data-act="stock-local-close"]').should('be.enabled').click();
+      cy.get('#ov [data-act="stock-local-close-ok"]').should('be.visible').click();
+      cy.get('#toast',{timeout:15000}).should('contain.text','Guardado exitoso');
+      cy.get('#view').should('contain.text','Turno cerrado');
+      cy.get('#view [data-act="stock-local-history"]').click();
+      cy.get('#view [data-stock-open-turn]').should('not.exist');
+      cy.get('#view').should('contain.text','Turno cerrado');
+    });
   }
 });
