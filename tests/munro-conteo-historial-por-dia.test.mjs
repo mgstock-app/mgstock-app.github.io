@@ -74,17 +74,32 @@ test('dueña ve solo filas por fecha, más reciente primero y ninguna tabla carg
  assert.ok(m.calls.some(x=>x.name==='gestlok_munro_conteo_state'),'El catálogo se consulta para mostrar cantidades reales');
  assert.equal(m.calls.some(x=>/gestlok_munro_conteo_set_|gestlok_munro_conteo_finalize/.test(x.name)),false);
 });
-test('dueña sólo ve turnos archivados, nunca el borrador activo ni sus controles',async()=>{
+test('dueña ve turnos abiertos y finalizados con todas sus cantidades, sin poder modificar',async()=>{
  const m=await start('dueno');
+ assert.match(m.html,/1 turno abierto pendiente de cierre en este mes/);
  let html=await m.click('data-gcm-history-day',m.today);
- assert.equal((html.match(/data-gcm-history="/g)||[]).length,1);
+ assert.equal((html.match(/data-gcm-history="/g)||[]).length,2,'Debe poder abrir ambos turnos registrados');
+ assert.match(html,/data-gcm-history="[^"]*manana_entrada"/);
  assert.match(html,/data-gcm-history="[^"]*manana_salida"/);
- assert.doesNotMatch(html,/data-gcm-history="[^"]*manana_entrada"/);
- html=await m.click('data-gcm-history',m.today+'|manana_salida');
+ assert.match(html,/Turno abierto/);
+ html=await m.click('data-gcm-history',m.today+'|manana_entrada');
  assert.match(html,/Resumen del conteo/);
- assert.doesNotMatch(html,/Editar turno cerrado|data-gcm-history-fix-toggle|data-gcm-finalize|gcm-count-screen/);
+ assert.match(html,/Turno abierto/);
+ assert.match(html,/Responsable: Cami/);
+ assert.match(html,/>65</,'Conserva las 2 chapas + 5 sueltas del borrador');
+ assert.doesNotMatch(html,/Editar turno cerrado|data-gcm-history-fix-toggle|data-gcm-finalize|gcm-count-screen|data-gcm-plus=/);
  html=await m.click('data-gcm-history-exit');
- assert.match(html,/Resumen del conteo/,'No puede salir del historial para editar el turno');
+ assert.match(html,/Resumen del conteo/,'La dueña no puede entrar a la edición');
+});
+test('dueña actualiza estados sin salir: un turno abierto que fue cerrado cambia a finalizado',async()=>{
+ const m=await start('dueno');
+ m.todayEntry.status='finalizado';
+ let html=await m.click('data-gcm-history-retry');
+ assert.match(html,/No hay turnos abiertos registrados en este mes/);
+ html=await m.click('data-gcm-history-day',m.today);
+ assert.equal((html.match(/Finalizado/g)||[]).length>=2,true);
+ assert.doesNotMatch(html,/Turno abierto/);
+ assert.equal(m.calls.filter(c=>c.name==='gestlok_munro_conteo_history').length>=2,true);
 });
 
 test('dueña siempre recibe tarjetas completas aunque el historial llegue antes que los productos',async()=>{
