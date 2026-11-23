@@ -18,7 +18,7 @@ test('WhatsApp queda a la izquierda de Enviar pedido y nunca flota sobre el chat
   assert.doesNotMatch(bloque,/position:fixed|right:max|bottom:calc/);
   assert.match(bloque,/@media\(max-width:620px\)/);
   assert.match(bloque,/@media\(max-width:350px\)/);
-  assert.match(html,/chat\.css\?v=20261122acciones1/);
+  assert.match(html,/chat\.css\?v=20261122vermenu1/);
   assert.match(html,/class="chat-inferior"/);
   assert.match(css, /grid-template-columns:minmax\(0,1fr\) auto auto/);
   assert.match(css, /\.chat-inferior \.redactar\{grid-column:1;grid-row:2/);
