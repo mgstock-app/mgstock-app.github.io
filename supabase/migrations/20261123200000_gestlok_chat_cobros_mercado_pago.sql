@@ -199,7 +199,9 @@ begin
   if p_tipo = 'cuota' and s.estado = 'activa' then raise exception 'La suscripción ya está activa' using errcode = '22023'; end if;
   select * into a from gestlok_chat_private.cobro_ajustes where id;
   v_email := lower(btrim(coalesce(nullif(p_email, ''),
-    (select c.owner_email from gestlok_platform.companies c where c.tenant_id = p_tenant), '')));
+    (select nullif(c.owner_email, '') from gestlok_platform.companies c where c.tenant_id = p_tenant),
+    (select d.data->>'email' from public.docs d where d.tenant_id = p_tenant and d.col = 'equipo' and d.data->>'rol' = 'dueno'
+      order by d.updated_at limit 1), '')));
   if v_email !~ '^[a-z0-9._%+\-]+@[a-z0-9\-]+(\.[a-z0-9\-]+)+$' or length(v_email) > 254 then
     raise exception 'Escribí el email de la cuenta de Mercado Pago que va a pagar' using errcode = '22023';
   end if;
