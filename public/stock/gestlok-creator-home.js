@@ -658,7 +658,36 @@
     ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>']
   ]);
   let hqAgent = 'desarrollo';
-  let hqDraft = '';
+  let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqError = '', hqEpoch = 0;
+  const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
+  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqError='';}
+  async function hqRequest(fn,args){
+    if(!hqAllowed()||hqBusy)return;
+    const epoch=hqEpoch; hqBusy=true;hqError='';
+    api?.render();
+    try{
+      const sb=window.GestLokSupabase;
+      if(!sb?.rpc)throw Error('sin conexión');
+      if(fn){
+        const res=await sb.rpc(fn,args);
+        if(res.error||!res.data)throw Error('No se confirmó el cambio');
+        if(epoch!==hqEpoch||!hqAllowed())return;
+        if(fn==='gestlok_hq_add_task')hqDraft='';
+      }
+      const res=await sb.rpc('gestlok_hq_list_tasks');
+      if(res.error||!Array.isArray(res.data))throw Error('No se pudo consultar');
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      hqTasks=res.data;hqLoaded=true;
+    }catch{if(epoch===hqEpoch){hqError='No se pudo confirmar la operación. Actualizá la bandeja antes de volver a intentar.';}}
+    finally{if(epoch===hqEpoch){hqBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqTaskList(){
+    if(!hqAllowed())return '';
+    const renderTask=t=>'<article style="padding:12px;border:1px solid #dce3eb;border-radius:8px;margin:8px 0;overflow-wrap:anywhere"><strong>'+esc(HQ_AGENTS.find(a=>a[0]===t.agent)?.[1]||'Área')+'</strong> · '+esc(t.status)+'<p style="white-space:pre-wrap">'+esc(t.instruction)+'</p><small>'+esc(dmy(t.created_at))+'</small>'+
+      (t.status==='pendiente'?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy?'disabled':'')+'>Marcar cerrada</button><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy?'disabled':'')+'>Cancelar tarea</button></div>':'')+'</article>';
+    return '<section aria-label="Bandeja privada de tareas" style="margin-top:20px"><h3>Bandeja de tareas</h3><button class="btn" type="button" data-ch-hq-refresh '+(hqBusy?'disabled':'')+'>Actualizar</button><p role="status">'+esc(hqError||(hqBusy?'Consultando…':!hqLoaded?'Bandeja sin consultar':'Guardado privado · sin ejecución automática'))+'</p>'+
+      (hqLoaded?'<h4>Pendientes</h4>'+(hqTasks.filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqTasks.filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
+  }
   function hqView(){
     if(!premiumAdmin() || status!=='ready')return '';
     const selected=HQ_AGENTS.find(a=>a[0]===hqAgent)||HQ_AGENTS[0];
@@ -668,9 +697,9 @@
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;background:#f0f3f7;padding:12px;border-radius:12px">'+
       HQ_AGENTS.map(a=>'<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" style="min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:5px;padding:14px;border-radius:9px;border:2px solid '+(a[0]===selected[0]?'#12345a':'transparent')+';background:'+a[3]+';color:#12345a">'+desk(a)+
         '<strong style="display:flex;gap:6px;align-items:center">'+svg(a[4],20)+esc(a[1])+'</strong><span>'+esc(a[2])+'</span><small>Sin conexión a IA</small></button>').join('')+
-      '</div><div style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>Dirección general · Creadora</strong><p>Elegí un área y prepará una tarea para delegar. La tarea es un borrador, no se ejecuta ni se envía automáticamente.</p></div>'+
-      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3><label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
-      '<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
+      '</div><div style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>Dirección general · Creadora</strong><p>Elegí un área y prepará una tarea para delegar. Guardá una tarea en la bandeja privada o copiá la instrucción para delegarla. No se ejecuta ni se envía automáticamente.</p></div>'+
+      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3><label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>Guardar tarea privada</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
+      hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
   }
 
   function view(p) {
@@ -725,19 +754,22 @@
   }
   function goTab(v) {
     if (!validTab(v) || (['gestlok-chat','hq'].includes(v)&&!premiumAdmin())) return;
-    if(v !== 'hq') hqDraft = '';
+    if(v !== 'hq') hqReset();
     if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales')void loadMicroapps(true);
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
     tab = v; store.set(v);
     api?.render();
+    if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest();
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
+  document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
   document.addEventListener('submit',ev=>{
     if(ev.target?.matches?.('[data-ch-hq-form]')){
       ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready')return;
       const input=ev.target.querySelector('textarea');const feedback=ev.target.querySelector('[data-ch-hq-feedback]');
       hqDraft=String(input?.value||'').trim().slice(0,4000);if(!hqDraft)return;
+      if(ev.submitter?.dataset?.hqAction!=='copy'){void hqRequest('gestlok_hq_add_task',{p_agent:hqAgent,p_instruction:hqDraft});return;}
       const agent=HQ_AGENTS.find(a=>a[0]===hqAgent);const prompt='GESTLOK HQ · '+agent[1]+'\\nTarea: '+hqDraft+'\\nNo modificar producción ni datos de clientes sin autorización. Informar resultados y pruebas reales.';
       if(!window.navigator?.clipboard?.writeText){feedback.textContent='No se pudo acceder al portapapeles. Copiá el texto manualmente.';return;}
       window.navigator.clipboard.writeText(prompt).then(()=>{feedback.textContent='Instrucción copiada. Todavía no se ejecutó la tarea.';},()=>{feedback.textContent='No se pudo copiar. Copiá el texto manualmente.';});return;
@@ -746,6 +778,8 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
+    const hqClose=ev.target.closest?.('[data-ch-hq-close]');if(hqClose){ev.preventDefault();if(hqAllowed()&&['cerrada','cancelada'].includes(hqClose.dataset.status))void hqRequest('gestlok_hq_close_task',{p_id:hqClose.dataset.chHqClose,p_status:hqClose.dataset.status});return;}
     const hq=ev.target.closest?.('[data-ch-hq-agent]');
     if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
       hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
@@ -824,7 +858,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){hqDraft='';hqAgent='desarrollo';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
