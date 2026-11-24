@@ -17,6 +17,11 @@ describe('Mi Gusto · dueña consulta inventario e historiales de ambas sucursal
     cy.visit('/login/');
     cy.wait('@mockSupabase');
     cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
+    // La descarga del mock no garantiza que su script ya se haya ejecutado.
+    cy.window({timeout:15000}).should(w=>{
+      expect(w.__rows,'datos simulados cargados').to.be.an('array');
+      expect(w.GestLokNavContext,'controlador de locales listo').to.be.a('function');
+    });
     cy.window().then(w=>{
       const rows=w.__rows;
       for(const local of ['munro','torcuato']){
