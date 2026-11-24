@@ -214,8 +214,9 @@ export function usaMenuInteractivo(sucursal) {
 const reglasDe = p => (p?.reglas && typeof p.reglas === 'object' && !Array.isArray(p.reglas)) ? p.reglas : {};
 
 export function promocionesVigentes(catalogo) {
+  // Secciones de promociones: «Promociones…», «Promos», «Combos», «Packs» u «Ofertas» (cualquier rubro).
   const categorias = new Set((catalogo?.categorias || [])
-    .filter(c => /\b(promocion\w*|combos?|packs?)\b/.test(normalizar(c.nombre))).map(c => c.id));
+    .filter(c => /\b(promocion\w*|promos?|combos?|packs?|ofertas?)\b/.test(normalizar(c.nombre))).map(c => c.id));
   return disponibles(catalogo).filter(p => p.disponible !== false &&
     (categorias.has(p.categoria_id) || /\b(promocion\w*|promos?|combos?|packs?)\b/.test(normalizar(p.nombre))) &&
     (p.opciones || []).every(g => !esCantidad(g) || valoresDisponibles(catalogo, g).length > 0));
@@ -295,15 +296,54 @@ export function totalSinDescuento(catalogo, carrito) {
   return totalCarrito(catalogo, (carrito || []).filter(l => reglasDe(productoPorId(catalogo, l.producto_id)).sin_descuento === true));
 }
 
+/* Pedido de promociones en texto libre («Promos», «¿Tienen promociones?», «Hola, ¿qué combos hay?»): vale para
+ * cualquier local que tenga una sección de promociones activa, con o sin menú interactivo. */
+const RE_PIDE_PROMO = /\b(promocion\w*|promos?|combos?|packs?|ofertas?)\b/;
+export function pidePromociones(texto) { return RE_PIDE_PROMO.test(normalizar(texto)); }
+const RE_SECCION_PROMO = /\b(promocion\w*|promos?|combos?|packs?|ofertas?)\b/;
+const ordenCarta = x => Number(x?.orden) || 0;
+const NATURAL = new Intl.Collator('es', {numeric: true, sensitivity: 'base'});
+/** Secciones de promociones del local, en el orden de la carta, con sus promos (de las recibidas). */
+export function seccionesPromo(catalogo, promos) {
+  return (catalogo?.categorias || []).filter(c => c.activa !== false && RE_SECCION_PROMO.test(normalizar(c.nombre)))
+    .sort((a, b) => ordenCarta(a) - ordenCarta(b))
+    .map(c => ({categoria: c, promos: promos.filter(p => p.categoria_id === c.id),
+      claves: claves(String(c.nombre).replace(/\b(promoci[oó]n\w*|promos?|combos?|packs?|ofertas?)\b/gi, ''))}))
+    .filter(x => x.promos.length);
+}
+/** Promos en el orden en que el cliente las ve: por sección de la carta y de menor a mayor («Pack 2» antes que «Pack 12»). */
+export function ordenarPromos(catalogo, promos) {
+  const cats = new Map((catalogo?.categorias || []).map(c => [c.id, ordenCarta(c)]));
+  const sec = p => cats.has(p.categoria_id) ? cats.get(p.categoria_id) : Number.MAX_SAFE_INTEGER;
+  return [...promos].sort((a, b) => sec(a) - sec(b) || ordenCarta(a) - ordenCarta(b) || NATURAL.compare(a.nombre || '', b.nombre || ''));
+}
+const mismaRaiz = (a, b) => a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)));
+/** Si el cliente nombra una sección («promos de empanadas», «combos de perfumes»), solo las promos de esa sección. */
+function promosDeSeccionPedida(catalogo, promos, texto) {
+  const secciones = seccionesPromo(catalogo, promos);
+  if (secciones.length < 2) return null;
+  const dichas = claves(texto);
+  const elegidas = secciones.filter(x => x.claves.some(c => dichas.some(d => mismaRaiz(c, d))));
+  return elegidas.length && elegidas.length < secciones.length ? elegidas.flatMap(x => x.promos) : null;
+}
+/** Texto que acompaña los botones de promociones: nombra las secciones del local. */
+function textoPromociones(catalogo, candidatas, promos) {
+  if (!candidatas.length) return promos.length ? 'No hay una promoción disponible para esa selección. Puede consultar el menú del local.'
+    : 'Por el momento este local no tiene promociones disponibles. Puede consultar el menú completo.';
+  const secciones = seccionesPromo(catalogo, candidatas).map(x => x.categoria.nombre);
+  const lista = secciones.length > 1 ? secciones.slice(0, -1).join(', ') + ' y ' + secciones[secciones.length - 1] : secciones[0];
+  return 'Estas son las promociones disponibles en este local' + (lista ? ': ' + lista : '') + '. Elija una para completar su selección.';
+}
+
 function promocionesParaTexto(promos, texto, catalogo) {
   const n = normalizar(texto);
-  const pidePromo = /\b(promocion\w*|promos?|combos?|packs?|ofertas?)\b/.test(n);
+  const pidePromo = RE_PIDE_PROMO.test(n);
   const mencionaEmpanadas = /\b(empanadas?|docenas?)\b/.test(n);
   if (!pidePromo && !mencionaEmpanadas) return null;
   const compartir = promos.filter(p => promoParaCompartir(catalogo, p));
   if (compartir.length && /\b(pizzas?|muzzas?|muzzarella|mozzarella|compartir)\b/.test(n)) return compartir;
   const cantidadExplicita = /\b(\d+|media|docenas?)\b/.test(n) || palabras(n).some(p => NUMEROS[p] > 1);
-  if (!cantidadExplicita) return pidePromo ? promos : null;
+  if (!cantidadExplicita) return pidePromo ? (promosDeSeccionPedida(catalogo, promos, texto) || promos) : null;
   const cantidad = cantidadDe(n);
   const conBebida = /\b(lata|bebida|gaseosa)\b/.test(n) && !/\bsin (lata|bebida|gaseosa)\b/.test(n);
   const candidatos = promos.filter(p => !promoParaCompartir(catalogo, p) && (p.opciones || []).some(g => esCantidad(g) &&
@@ -976,14 +1016,17 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
     return fin();
   }
 
-  if (menuInteractivo && (accion === 'promociones' || (!entrada.boton && ['texto', 'precio', 'carta'].includes(accion)))) {
+  // Promociones: el botón «Ver promociones» o un texto que las pide. Con menú interactivo también se reconocen
+  // pedidos sueltos que entran en una promo («quiero 6 empanadas»). Un saludo que pide promos («Hola, ¿tienen
+  // promos?») también las muestra. Las ofrece con botones, por sección de la carta y de menor a mayor.
+  const pideTexto = !entrada.boton && pidePromociones(texto);
+  if (accion === 'promociones' || (!entrada.boton && menuInteractivo && ['texto', 'precio', 'carta'].includes(accion)) ||
+      (pideTexto && ['texto', 'precio', 'carta', 'saludo'].includes(accion))) {
     const promos = promocionesVigentes(catalogo);
     const candidatas = accion === 'promociones' ? promos : promocionesParaTexto(promos, texto, catalogo);
     if (candidatas) {
-      const botones = candidatas.map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}));
-      decir(botones.length ? 'Estas son las promociones disponibles en este local. Elija una para completar su selección.'
-        : 'No hay una promoción disponible para esa selección. Puede consultar el menú del local.',
-      {botones: [...botones, {id: 'carta', texto: 'Ver menú completo'}]});
+      const botones = ordenarPromos(catalogo, candidatas).map(p => ({id: 'elegir:' + p.id + ':1', texto: p.nombre + ' · ' + pesos(p.precio)}));
+      decir(textoPromociones(catalogo, candidatas, promos), {botones: [...botones, {id: 'carta', texto: 'Ver menú completo'}]});
       return fin();
     }
   }

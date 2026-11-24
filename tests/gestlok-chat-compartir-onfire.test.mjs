@@ -117,7 +117,8 @@ test('promos para compartir: no se ofrecen por empanadas sueltas; sí cuando se 
   const seis = M.responder({sucursal: c.sucursal, catalogo: c.catalogo, estado: null, entrada: {texto: 'quiero 6 empanadas'}});
   assert.deepEqual(seis.mensajes[0].botones.map(b => b.id), ['elegir:p6:1', 'carta']);
   const pizza = M.responder({sucursal: c.sucursal, catalogo: c.catalogo, estado: null, entrada: {texto: 'tienen promo con pizza y empanadas?'}});
-  assert.deepEqual(pizza.mensajes[0].botones.map(b => b.id), ['elegir:pareja:1', 'elegir:clasica:1', 'carta']);
+  // Mismo orden que en la carta: por sección y orden del producto; si empatan, por nombre.
+  assert.deepEqual(pizza.mensajes[0].botones.map(b => b.id), ['elegir:clasica:1', 'elegir:pareja:1', 'carta']);
   assert.equal(M.validarLinea(c.catalogo, {producto_id: 'clasica', cantidad: 1,
     opciones: {empanadas: {carne: 3, pollo: 3}, salsas: {criolla: 1, cheddar: 1}}}), '');
   assert.equal(M.importeLinea(c.catalogo, {producto_id: 'pareja', cantidad: 1, opciones: {empanadas: {carne: 2}}}), 32900);
