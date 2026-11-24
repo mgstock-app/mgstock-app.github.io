@@ -3,7 +3,7 @@
 // Inicio publicitario de gestlok.com.ar: Ingresar/Registrarme, carrusel de micro apps,
 // Contacto (el mensaje llega al panel de la creadora) y Emma, la asistente de la web.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { EMMA_SALUDO, EMMA_SUGERENCIAS, responderEmma } from "@/lib/gestlok-emma";
+import { EMMA_SALUDO, EMMA_SUGERENCIAS, normalizar, responderEmma } from "@/lib/gestlok-emma";
 
 // Clave pública (anon): los permisos los controla la base. Solo puede enviar mensajes.
 const SUPABASE_URL = "https://vgsepaaewbctjsjcpeta.supabase.co";
@@ -77,6 +77,19 @@ export function GestlokHome() {
   const [error, setError] = useState("");
   const [emmaAbierta, setEmmaAbierta] = useState(false);
   const [mensajes, setMensajes] = useState<Mensaje[]>([{ de: "emma", texto: EMMA_SALUDO }]);
+  const consultasHechas = mensajes.filter((m) => m.de === "yo").map((m) => normalizar(m.texto));
+  const preguntasDisponibles = [
+    ...EMMA_SUGERENCIAS,
+    "¿Sirve para mi rubro?",
+    "¿Cómo puedo cargar mi carta?",
+    "¿Cómo comparto mi QR?",
+    "¿Tengo que instalar una app?",
+    "¿Hay descuento de lanzamiento?",
+    "¿Puedo recibir reseñas de Google?",
+  ];
+  const sinResponder = preguntasDisponibles.filter((s) => !consultasHechas.includes(normalizar(s)));
+  const sugerencias = consultasHechas.length === 0 ? EMMA_SUGERENCIAS
+    : (sinResponder.length ? sinResponder : preguntasDisponibles.filter((s) => normalizar(s) !== consultasHechas[consultasHechas.length - 1])).slice(0, 4);
   const [pregunta, setPregunta] = useState("");
   const [escribiendo, setEscribiendo] = useState(false);
   const listaRef = useRef<HTMLDivElement>(null);
@@ -380,9 +393,9 @@ export function GestlokHome() {
               </div>
             ))}
             {escribiendo ? <div className="glh-burbuja glh-ella glh-escribe">Emma está escribiendo…</div> : null}
-            {mensajes.length === 1 ? (
-              <div className="glh-sugerencias">
-                {EMMA_SUGERENCIAS.map((s) => <button type="button" key={s} onClick={() => preguntar(s)}>{s}</button>)}
+            {!escribiendo ? (
+              <div className="glh-sugerencias" role="group" aria-label="Preguntas sugeridas">
+                {sugerencias.map((s) => <button type="button" key={s} onClick={() => preguntar(s)}>{s}</button>)}
               </div>
             ) : null}
           </div>
