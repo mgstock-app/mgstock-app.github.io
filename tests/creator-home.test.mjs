@@ -232,7 +232,10 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(html,/Copiar instrucción para delegar/);
   r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
   assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
-  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks']);
+  // Rendering Inicio also schedules its existing microapp and Chat prefetches.
+  // Keep the full allowlist and assert exactly one HQ read, with no writes or agent runs.
+  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')),['gestlok_hq_list_tasks']);
+  assert.deepEqual(r.calls.filter(fn=>!fn.startsWith('gestlok_hq_')).sort(),['gestlok_creator_dashboard','gestlok_creator_microapps','gestlok_chat_admin_empresas','gestlok_chat_admin_cobros'].sort());
 });
 test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el panel', async () => {
   for(const opts of [{email:'otra@example.invalid'},{creadora:false}]){
