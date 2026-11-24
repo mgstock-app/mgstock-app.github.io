@@ -122,8 +122,14 @@ describe('Inicio publicitario', () => {
     cy.window().then(win => {
       expect(win.document.documentElement.scrollWidth).to.be.at.most(win.innerWidth + 1);
     });
-    // Navegación completa desde /demo/ hacia la raíz: queda en el inicio publicitario.
-    cy.window().then(win => { win.location.href = '/'; });
+    // Llegar a la raíz desde /demo/ (el navegador manda /demo/ como referrer): queda en el inicio publicitario.
+    // Cypress corre la página dentro de su propio marco y cambia el referrer real, por eso se fija acá.
+    cy.visit('/', {
+      onBeforeLoad(win) {
+        Object.defineProperty(win.document, 'referrer', { configurable: true, get: () => win.location.origin + '/demo/' });
+      },
+    });
+    cy.document().its('referrer').should('match', /\/demo\/$/);
     cy.location('pathname').should('eq', '/');
     cy.get('h1').should('contain.text', 'Tus clientes piden solos por chat');
   });
