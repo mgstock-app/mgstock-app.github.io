@@ -6,6 +6,8 @@ describe('Tres codueños: mismas tarjetas y ambos locales',()=>{
   cy.task('mockSupabase').then(body=>cy.intercept('GET','**/vendor/supabase.js',{statusCode:200,headers:{'content-type':'application/javascript'},body}).as('fake'));
   cy.intercept('**/*.supabase.co/**',{forceNetworkError:true});cy.visit('/login/');cy.wait('@fake');
   cy.get('.gl-intro',{timeout:15000}).should('not.be.visible');
+  // Wait for the intercepted Supabase mock to actually initialize, not just its network response.
+  cy.window().its('__rows',{timeout:15000}).should('be.an','array');
   cy.window().then(w=>{
    w.__staffModule=true;
    for(const [i,mail] of owners.entries())w.__rows.push({col:'equipo',id:mail,data:{email:mail,nombre:'Dueño de prueba '+(i+1),rol:'dueno',logoId:'mi-gusto'}});
