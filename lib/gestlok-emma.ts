@@ -2,9 +2,9 @@
 // fijos y revisados (sin IA todavía, sin costo y sin enviar datos a ningún servicio).
 // Lo que no sabe lo deriva al formulario de Contacto, que llega al panel de la creadora.
 
-export type RespuestaEmma = { texto: string; contacto?: boolean; registrarme?: boolean };
+export type RespuestaEmma = { texto: string; contacto?: boolean; registrarme?: boolean; demo?: boolean };
 
-type Tema = { claves: RegExp; texto: string; contacto?: boolean; registrarme?: boolean };
+type Tema = { claves: RegExp; texto: string; contacto?: boolean; registrarme?: boolean; demo?: boolean };
 
 // Precios vigentes (decisión de la administradora, 23/11/2026). Mantener igual que gestlok_chat_private.cobro_ajustes.
 export const PRECIOS = { cuota: 70000, adaptacion: 50000, descuentoPrimerMes: 15 } as const;
@@ -18,6 +18,7 @@ export const EMMA_SALUDO =
 export const EMMA_SUGERENCIAS = [
   "¿Qué es GESTLOK Chat?",
   "¿Cómo funciona?",
+  "Quiero ver la demo",
   "¿Cuánto cuesta?",
   "¿Cómo me registro?",
   "Hablar con una persona",
@@ -34,6 +35,9 @@ const TEMAS: Tema[] = [
   { claves: /(descuento|promo(cion)? de lanzamiento|oferta|bonific|prueba gratis|gratis|tienen (alguna )?promo)/,
     texto: "Promo de lanzamiento: el primer mes de GESTLOK Chat tiene " + PRECIOS.descuentoPrimerMes + "% de descuento, queda en " + PRIMER_MES +
       ". Después son " + pesos(PRECIOS.cuota) + " por mes por local, con soporte incluido." + CIERRE, registrarme: true },
+  { claves: /(\bdemo\b|demostracion|probar(lo)?\b|ver como (queda|anda|se ve)|verlo funcionando)/,
+    texto: "Podés probarlo ahora en la demo: hacés un pedido como cliente y ves cómo le llega al panel del local, en la misma pantalla. " +
+      "Es un local de ejemplo, no se envía nada a ningún comercio.", demo: true },
   { claves: /(cuanto (sale|cuesta|vale|cobran)|precio|plan(es)?\b|abono|tarifa|suscrip|mensual|presupuesto|cotiz|pago|pagar|tarjeta|mercado ?pago)/,
     texto: "GESTLOK Chat cuesta " + pesos(PRECIOS.cuota) + " por mes por local, con soporte incluido, y por lanzamiento el primer mes tiene " +
       PRECIOS.descuentoPrimerMes + "% de descuento: " + PRIMER_MES + ". Se paga con débito automático por Mercado Pago y empezás a pagar recién cuando tu chat está activo. " +
@@ -48,7 +52,7 @@ const TEMAS: Tema[] = [
   { claves: /(ingres|entrar|login|iniciar sesion|contrasena|clave|olvide)/,
     texto: "Si ya tenés cuenta, tocá «Ingresar» arriba. Ahí también podés recuperar tu contraseña con «Olvidé mi contraseña»." },
   { claves: /(como funciona|que hace|funciones|paso a paso)/,
-    texto: "Tu cliente abre el chat de tu local, toca «Hacer un pedido», arma su pedido con la carta y las promos, y lo envía. Te llega al panel con aviso sonoro, lo confirmás y el cliente sigue el estado en vivo. Más arriba, en «Así funciona», están las pantallas reales." },
+    texto: "Tu cliente abre el chat de tu local, toca «Hacer un pedido», arma su pedido con la carta y las promos, y lo envía. Te llega al panel con aviso sonoro, lo confirmás y el cliente sigue el estado en vivo. Más arriba, en «Así funciona», están las pantallas reales, y en la demo lo podés probar vos.", demo: true },
   { claves: /(\bqr\b|codigo|cartel|mesa|vidriera|instagram|whatsapp)/,
     texto: "Tu local tiene su link propio para Instagram, WhatsApp o Google, y su QR para imprimir en el mostrador, las mesas o la vidriera: el cliente lo escanea y entra directo a hacer su pedido." + CIERRE, registrarme: true },
   { claves: /(caja|scanner|escane|stock|inventario|proveedor|margen|emplead|sueldo|recibo|horario|turno|nfc|placa|micro ?apps?|aplicaciones|modulos|otras herramientas)/,
@@ -81,5 +85,5 @@ export function responderEmma(pregunta: string): RespuestaEmma {
   if (!t) return { texto: "Escribí tu pregunta y te ayudo." };
   const tema = TEMAS.find((x) => x.claves.test(t));
   if (!tema) return { texto: NO_SE, contacto: true };
-  return { texto: tema.texto, contacto: tema.contacto, registrarme: tema.registrarme };
+  return { texto: tema.texto, contacto: tema.contacto, registrarme: tema.registrarme, demo: tema.demo };
 }

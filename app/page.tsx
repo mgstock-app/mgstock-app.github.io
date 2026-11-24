@@ -12,10 +12,11 @@ export const metadata: Metadata = {
 // Siguen yendo directo a /login/: los enlaces de la app que llegan a la raíz (Google,
 // confirmación de email, recuperación de contraseña, invitaciones con ?… o #…), la app
 // instalada y los «Volver a GESTLOK» de las micro apps (Empleados, Caja…), que apuntan a «/».
-const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=!h||/^#(inicio|como-funciona|beneficios|micro-apps|contacto)?$/.test(h);" +
+// Desde /conocer/ y /demo/ (páginas públicas) se vuelve al inicio publicitario, no a la app.
+const REDIRIGIR_A_LA_APP = "(function(){try{var h=location.hash||'';var nuestro=!h||/^#(inicio|como-funciona|demo|beneficios|micro-apps|contacto)?$/.test(h);" +
   "var instalada=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;" +
   "var r='';try{var u=new URL(document.referrer);if(u.origin===location.origin)r=u.pathname;}catch(e){}" +
-  "var desdeApp=!!r&&r!=='/'&&!/^\\/(conocer\\/?|[a-z-]+\\.html)$/.test(r);" +
+  "var desdeApp=!!r&&r!=='/'&&!/^\\/(conocer\\/?|demo\\/?|[a-z-]+\\.html)$/.test(r);" +
   "if(location.search||!nuestro||instalada||desdeApp){location.replace('/login/'+location.search+h);}}catch(e){}})();";
 
 export default function Home() {
