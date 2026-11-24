@@ -30,8 +30,14 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-microapp').first().click();
   cy.get('.gl-ch-nav [data-ch-tab="locales"]').should('have.attr','aria-current','page');
   cy.get('.gl-ch-nav [data-ch-tab="inicio"]').click();
-  // Diez pestañas: GESTLOK Chat tiene accesos propios a producción, Prueba y Testing.
-  cy.get('.gl-ch-nav button').should('have.length',11);
+  // Doce pestañas: las once existentes más GESTLOK HQ, exclusivo de la creadora.
+  cy.get('.gl-ch-nav button').should('have.length',12);
+  cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
+  cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Sin conexión a IA');
+  cy.get('[data-ch-hq-agent]').should('have.length',5);
+  cy.get('[data-ch-hq-agent="marketing"]').click();
+  cy.get('[data-ch-hq-agent="marketing"]').should('have.attr','aria-pressed','true');
+  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
@@ -86,6 +92,11 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-profile-switch-logout').should('be.visible');
   cy.get('[data-roles-close]').click();
   cy.get('.gl-ch-main h1').should('be.visible');
+  cy.get('.gl-ch-nav [data-ch-tab="hq"]').click();
+  cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible');
+  cy.get('[data-ch-hq-agent="datos"]').click();
+  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Data Analytics');
+  cy.get('#gl-hq-task').should('be.visible');
   cy.get('.gl-ch').then($root=>{
    const r=$root[0].getBoundingClientRect();
    expect(r.left).to.be.at.least(0);
@@ -97,10 +108,12 @@ describe('Inicio independiente de la creadora',()=>{
   start('kmu15lopez@gmail.com',false);
   cy.get('#hub',{timeout:12000}).should('contain.text','Panel administrativo');
   cy.get('.gl-ch').should('not.exist');
+  cy.get('[data-ch-tab="hq"],[data-ch-hq-form]').should('not.exist');
  });
  it('una dueña nunca ve el panel de la creadora',()=>{
   start('dueno@example.com');
   cy.get('#hub',{timeout:12000}).should('contain.text','Administrar mi empresa');
   cy.get('.gl-ch').should('not.exist');
+  cy.get('[data-ch-tab="hq"],[data-ch-hq-form]').should('not.exist');
  });
 });
