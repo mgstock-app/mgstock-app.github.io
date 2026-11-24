@@ -14,7 +14,7 @@ const DASH = {
   activity: [{at: '2026-10-26T03:31:42Z', kind: 'audit', what: 'employee_space_created', who: null, company: 'Perfumes'}, {at: '2026-10-26T03:22:11Z', kind: 'login', what: 'login', who: 'kmu***@gmail.com', company: 'Mi Gusto'}],
   system: {accounts: 6, confirmed_accounts: 6, verified_links: 2, editing_open: false, support_open: false}
 };
-function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen} = {}) {
+function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com'} = {}) {
   const listeners = {}, calls = [], argsLog = [], store = existingStore || new Map(), notices = [], opened = [];
   let renders = 0, reloads = 0, invalidations = 0;
   const window = {
@@ -29,7 +29,7 @@ function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existing
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
   vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask});
   const h = window.GestLokCreatorHome;
-  h.attach({S: {me: {email: 'kmu15lopez@gmail.com', tenant_id: tenant}}, isCreadora: () => creadora,
+  h.attach({S: {me: {email, tenant_id: tenant}}, isCreadora: () => creadora,
     render: () => { renders++; }, toast: (msg,bad) => { notices.push({msg,bad}); }});
   return {h, calls, argsLog, listeners, renders: () => renders, store, window, notices,
     opened, reloads: () => reloads, invalidations: () => invalidations};
@@ -219,4 +219,30 @@ test('No se concede acceso a otras empresas, ni se abren enlaces no autorizados'
  const other=load(async()=>({data:DASH,error:null}),{creadora:false,tenant:MOLINO});
  clickMolino(other,'envios');await tick();
  assert.deepEqual(other.opened,[]);
+});
+
+test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución', async () => {
+  const r = load(async () => ({data: DASH, error: null}));
+  r.h.mode(); await tick(); await tick();
+  assert.match(r.h.view({parts:{}}), /data-ch-tab="hq"/);
+  r.h.setTab('hq');
+  const html=r.h.view({parts:{}});
+  for(const area of ['Desarrollo','Control de calidad','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
+  assert.match(html,/Sin conexión a IA/);
+  assert.match(html,/Copiar instrucción para delegar/);
+  r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
+  assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
+  assert.deepEqual(r.calls,['gestlok_creator_dashboard']);
+});
+test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el panel', async () => {
+  for(const opts of [{email:'otra@example.invalid'},{creadora:false}]){
+    const r=load(async()=>({data:DASH,error:null}),opts);
+    r.h.mode();await tick();await tick();r.h.setTab('hq');
+    assert.notEqual(r.h.tab(),'hq');
+    assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-tab="hq"|Oficina virtual GESTLOK HQ/);
+  }
+  const r=load(async()=>({error:{code:'42501'},data:null}));
+  r.h.mode();await tick();await tick();
+  assert.equal(r.h.mode(),'off');
+  assert.doesNotMatch(r.h.view({parts:{}}),/Oficina virtual GESTLOK HQ/);
 });
