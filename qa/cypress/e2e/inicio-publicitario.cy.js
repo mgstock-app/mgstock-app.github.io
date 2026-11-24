@@ -95,6 +95,39 @@ describe('Inicio publicitario', () => {
     cy.location('search').should('eq', '?invitacion=ABC123');
   });
 
+  it('la demo se abre desde el inicio y muestra cliente y panel con datos ficticios', () => {
+    cy.visit('/');
+    cy.get('.glh-nav').contains('a', 'Demo').should('have.attr', 'href', '/demo/');
+    cy.get('#demo').contains('h2', 'Probalo antes de contratar');
+    cy.get('#demo').contains('a', 'Abrir la demo').should('have.attr', 'href', '/demo/').click();
+    cy.location('pathname').should('eq', '/demo/');
+    cy.get('h1').should('contain.text', 'Probá GESTLOK Chat');
+    cy.contains('No se envía nada a ningún comercio').should('be.visible');
+    cy.get('.glh-nav a[aria-current="page"]').should('have.text', 'Demo');
+    cy.get('iframe[title*="Vista del cliente"]').should('have.attr', 'src', '/chat/?demo=1&showroom=1').and('be.visible');
+    cy.get('iframe[title*="Panel del local"]').should('have.attr', 'src', '/chat/panel/?demo=1&showroom=1').and('be.visible');
+    cy.contains('button', 'Empezar de nuevo').click();
+    cy.get('.glh-demo-aviso').should('contain.text', 'empezó de nuevo');
+    cy.get('body').should('not.contain.text', 'Mi Gusto').and('not.contain.text', '70.000');
+  });
+
+  it('en el celular la demo usa pestañas y volver lleva al inicio, no a la app', () => {
+    cy.viewport(375, 812);
+    cy.visit('/demo/');
+    cy.get('#glh-demo-cliente').should('be.visible');
+    cy.get('#glh-demo-local').should('not.be.visible');
+    cy.contains('[role="tab"]', 'Panel del local').click().should('have.attr', 'aria-selected', 'true');
+    cy.get('#glh-demo-local').should('be.visible');
+    cy.get('#glh-demo-cliente').should('not.be.visible');
+    cy.window().then(win => {
+      expect(win.document.documentElement.scrollWidth).to.be.at.most(win.innerWidth + 1);
+    });
+    // Navegación completa desde /demo/ hacia la raíz: queda en el inicio publicitario.
+    cy.window().then(win => { win.location.href = '/'; });
+    cy.location('pathname').should('eq', '/');
+    cy.get('h1').should('contain.text', 'Tus clientes piden solos por chat');
+  });
+
   it('en el celular no se desborda', () => {
     cy.viewport(375, 812);
     cy.visit('/');

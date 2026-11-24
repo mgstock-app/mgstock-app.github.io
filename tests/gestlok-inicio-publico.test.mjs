@@ -10,7 +10,9 @@ test("la raíz es el inicio publicitario y los enlaces de la app siguen yendo a 
   assert.doesNotMatch(page, /<StockRuntime \/>/);
   assert.match(page, /location\.replace\('\/login\/'\+location\.search\+h\)/);
   assert.match(page, /display-mode: standalone/);
-  assert.match(page, /#\(inicio\|como-funciona\|beneficios\|micro-apps\|contacto\)/);
+  assert.match(page, /#\(inicio\|como-funciona\|demo\|beneficios\|micro-apps\|contacto\)/);
+  // Volver desde /demo/ o /conocer/ lleva al inicio publicitario, no a la app.
+  assert.match(page, /conocer\\\\\/\?\|demo\\\\\/\?\|/);
   const login = read("app/login/page.tsx");
   assert.match(login, /<StockRuntime \/>/);
   assert.match(login, /#registrarme/);
@@ -53,6 +55,50 @@ test("Emma responde los temas principales y deriva lo demás a Contacto", { skip
   assert.equal(responderEmma("Hablar con una persona").contacto, true);
   assert.match(responderEmma("mis clientes me escriben pedidos").texto, /GESTLOK Chat/);
   assert.equal(responderEmma("¿Qué opinás del clima?").contacto, true);
+  for (const q of ["Quiero ver la demo", "¿Lo puedo probar?", "¿Tienen una demostración?"]) {
+    const r = responderEmma(q);
+    assert.equal(r.demo, true, q);
+    assert.match(r.texto, /local de ejemplo/, q);
+  }
+  assert.equal(responderEmma("¿Cómo funciona?").demo, true);
+  assert.doesNotMatch(responderEmma("¿tienen prueba gratis?").texto, /local de ejemplo/);
+});
+
+test("la demo pública usa solo el modo de demostración, sin base real ni precios", () => {
+  const demo = read("components/gestlok-demo.tsx");
+  assert.match(demo, /URL_CLIENTE = "\/chat\/\?demo=1&showroom=1"/);
+  assert.match(demo, /URL_PANEL = "\/chat\/panel\/\?demo=1&showroom=1"/);
+  assert.match(demo, /CLAVE_SHOWROOM = "gestlok:chat-showroom:v1"/);
+  assert.match(demo, /No se envía nada a ningún comercio/);
+  assert.match(demo, /Vista del cliente/);
+  assert.match(demo, /Panel del local/);
+  assert.match(demo, /Empezar de nuevo/);
+  const codigo = demo.replace(/^\s*\/\/.*$/gm, ""); // sin comentarios
+  assert.doesNotMatch(codigo, /supabase|rpc\/|apikey|Mi Gusto|Munro|Torcuato|\$ ?\d/i);
+  const page = read("app/demo/page.tsx");
+  assert.match(page, /<GestlokDemo \/>/);
+  assert.match(page, /canonical: "\/demo\/"/);
+  // El marco del panel nunca consulta la base en modo demostración.
+  assert.match(read("public/chat/panel/panel.js"), /if \(DEMO\) return demoRpc\(fn, args \|\| \{\}\);/);
+  assert.match(read("public/chat/chat.js"), /if \(DEMO\) return demoApi\(accion, extra\);/);
+  const home = read("components/gestlok-home.tsx");
+  assert.match(home, /<a href="\/demo\/">Demo<\/a>/);
+  assert.match(home, /id="demo"/);
+  assert.match(home, /Probalo antes de contratar/);
+  assert.match(home, /href="\/demo\/">Abrir la demo</);
+  assert.doesNotMatch(home, /\$ ?70\.000|59\.500|Precios<\/a>/);
+  assert.match(read("public/sitemap.xml"), /gestlok\.com\.ar\/demo\//);
+});
+
+test("solo se borran las claves del local de demostración", async () => {
+  const src = read("components/gestlok-demo.tsx");
+  const cuerpo = src.match(/export function esClaveDeDemo\(clave: string\): boolean \{([\s\S]*?)\n\}/)[1]
+    .replace(/: string/g, "");
+  const esClaveDeDemo = new Function("clave", cuerpo);
+  for (const k of ["gestlok-chat:token:demo", "gestlok-chat:cliente:demo", "gestlok-chat:ultimo-pedido:demo",
+    "gestlok-chat:cierre:demo:2026-11-24T03:00:00.000Z", "gestlok-chat-panel:sucursal-demo"]) assert.equal(esClaveDeDemo(k), true, k);
+  for (const k of ["gestlok-chat:token:mi-gusto-munro", "gestlok-chat:cliente:mi-gusto-torcuato", "gestlok-chat:token:demo-2x",
+    "gestlok-chat-panel:sucursal", "sb-vgsepaaewbctjsjcpeta-auth-token", "gestlok-chat:cierre:mi-gusto-munro:x"]) assert.equal(esClaveDeDemo(k), false, k);
 });
 
 test("solo la creadora lee los mensajes; cualquiera puede enviarlos", () => {
