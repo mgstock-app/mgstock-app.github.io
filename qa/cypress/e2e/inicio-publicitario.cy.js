@@ -89,6 +89,27 @@ describe('Inicio publicitario', () => {
     cy.get('[role="dialog"]').should('not.exist');
   });
 
+  it('Emma mantiene preguntas sugeridas después de cada respuesta en el celular', () => {
+    cy.viewport(375, 812);
+    cy.visit('/');
+    cy.contains('button', 'Hablá con Emma').click();
+    cy.get('.glh-sugerencias button').should('have.length', 6);
+    cy.contains('.glh-sugerencias button', '¿Qué es GESTLOK Chat?').click();
+    cy.get('.glh-emma-lista').should('contain.text', 'atiende a tus clientes');
+    cy.get('.glh-sugerencias button').should('have.length', 4);
+    cy.contains('.glh-sugerencias button', '¿Qué es GESTLOK Chat?').should('not.exist');
+    cy.contains('.glh-sugerencias button', '¿Cuánto cuesta?').click();
+    cy.get('.glh-emma-lista').should('contain.text', '$ 70.000 por mes por local');
+    cy.get('.glh-sugerencias button').should('have.length', 4);
+    cy.contains('.glh-sugerencias button', '¿Cuánto cuesta?').should('not.exist');
+    cy.get('#glh-emma-pregunta').type('consulta desconocida xyz{enter}');
+    cy.get('.glh-emma-lista').should('contain.text', 'Esa consulta prefiero');
+    cy.get('.glh-sugerencias button').should('have.length', 4);
+    cy.contains('.glh-sugerencias button', 'Quiero ver la demo').click();
+    cy.get('.glh-emma-lista').contains('a', 'Abrir la demo').should('have.attr', 'href', '/demo/');
+    cy.get('.glh-sugerencias button').should('have.length', 4);
+  });
+
   it('los enlaces de la app que llegan a la raíz siguen yendo a /login/', () => {
     cy.visit('/?invitacion=ABC123');
     cy.location('pathname').should('eq', '/login/');
