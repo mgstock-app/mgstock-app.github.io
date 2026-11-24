@@ -81,7 +81,7 @@ export function GestlokHome() {
   const preguntasDisponibles = [
     ...EMMA_SUGERENCIAS,
     "¿Sirve para mi rubro?",
-    "¿Cómo cargo mi carta?",
+    "¿Cómo puedo cargar mi carta?",
     "¿Cómo comparto mi QR?",
     "¿Tengo que instalar una app?",
     "¿Hay descuento de lanzamiento?",
