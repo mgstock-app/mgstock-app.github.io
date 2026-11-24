@@ -120,7 +120,11 @@ describe('Inicio publicitario', () => {
     cy.visit('/');
     cy.get('.glh-nav').contains('a', 'Demo').should('have.attr', 'href', '/demo/');
     cy.get('#demo').contains('h2', 'Probalo antes de contratar');
-    cy.get('#demo').contains('a', 'Abrir la demo').should('have.attr', 'href', '/demo/').click();
+    // Confirmar que el inicio es interactivo y detener el carrusel durante la navegación.
+    cy.contains('button', 'Pausar').click();
+    cy.contains('button', 'Reanudar').should('have.attr', 'aria-pressed', 'true');
+    cy.get('#demo').contains('a', 'Abrir la demo').should('have.attr', 'href', '/demo/');
+    cy.get('#demo').contains('a', 'Abrir la demo').click();
     cy.location('pathname').should('eq', '/demo/');
     cy.get('h1').should('contain.text', 'Probá GESTLOK Chat');
     cy.contains('No se envía nada a ningún comercio').should('be.visible');
