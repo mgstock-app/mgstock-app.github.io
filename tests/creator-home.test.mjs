@@ -222,17 +222,17 @@ test('No se concede acceso a otras empresas, ni se abren enlaces no autorizados'
 });
 
 test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución', async () => {
-  const r = load(async () => ({data: DASH, error: null}));
+  const r = load(async (fn) => ({data: fn==='gestlok_hq_list_tasks'?[]:DASH, error: null}));
   r.h.mode(); await tick(); await tick();
   assert.match(r.h.view({parts:{}}), /data-ch-tab="hq"/);
-  r.h.setTab('hq');
+  r.h.setTab('hq'); await tick();
   const html=r.h.view({parts:{}});
   for(const area of ['Desarrollo','Control de calidad','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
   assert.match(html,/Sin conexión a IA/);
   assert.match(html,/Copiar instrucción para delegar/);
   r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
   assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
-  assert.deepEqual(r.calls,['gestlok_creator_dashboard']);
+  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks']);
 });
 test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el panel', async () => {
   for(const opts of [{email:'otra@example.invalid'},{creadora:false}]){
@@ -245,4 +245,23 @@ test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el pane
   r.h.mode();await tick();await tick();
   assert.equal(r.h.mode(),'off');
   assert.doesNotMatch(r.h.view({parts:{}}),/Oficina virtual GESTLOK HQ/);
+});
+
+test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',async()=>{
+  const rows=[];const r=load(async(fn,args)=>{
+    if(fn==='gestlok_creator_dashboard')return {data:DASH};
+    if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
+    if(fn==='gestlok_hq_add_task'){rows.push({id:'id-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'id-1'};}
+    if(fn==='gestlok_hq_close_task'){rows[0].status=args.p_status;return {data:true};}
+    throw Error(fn);
+  });
+  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+  r.listeners.submit({preventDefault(){},submitter:{dataset:{hqAction:'save'}},target:{matches:s=>s==='[data-ch-hq-form]',querySelector:s=>s==='textarea'?{value:'Revisar <script>'}:null}});
+  await tick();await tick();
+  assert.match(r.h.view({parts:{}}),/Revisar &lt;script&gt;/);
+  r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-close]'?{dataset:{chHqClose:'id-1',status:'cerrada'}}:null}});
+  await tick();await tick();
+  assert.match(r.h.view({parts:{}}),/No hay tareas pendientes/);
+  assert.match(r.h.view({parts:{}}),/cerrada/);
+  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_close_task','gestlok_hq_list_tasks']);
 });
