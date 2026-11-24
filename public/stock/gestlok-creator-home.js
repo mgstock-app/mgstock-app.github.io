@@ -13,6 +13,7 @@
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
     ['gestlok-chat', 'GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
+    ['hq', 'GESTLOK HQ', '<path d="M3 20V5h18v15zM3 12h18M12 5v15"/>'],
     ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['nfc', 'NFC y QR', '<rect x="5" y="3" width="10" height="18" rx="2"/><path d="M9 18h2M18 9a4 4 0 0 1 0 6M20.5 7a7.5 7.5 0 0 1 0 10"/>'],
@@ -647,14 +648,39 @@
   const navPrefKey = 'gestlok:creator-menu-collapsed:v1';
   let navCollapsed = false;
   try { navCollapsed = localStorage.getItem(navPrefKey) === 'yes'; } catch {}
+
+  // HQ: private workspace shell. No agent runs or tenant data are simulated.
+  const HQ_AGENTS = Object.freeze([
+    ['desarrollo','Desarrollo','Programación y nuevas funciones','#dce9f8','<path d="m9 7-5 5 5 5m6-10 5 5-5 5m-2-12-2 14"/>'],
+    ['calidad','Control de calidad','Pruebas, seguridad y regresiones','#dcece7','<path d="m12 3 8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6zM8 12l3 3 5-6"/>'],
+    ['atencion','Atención al cliente','Chats y pedidos · sin acceso a conversaciones','#e3e9f3','<path d="M4 4h16v13H9l-5 4zM8 9h8m-8 4h5"/>'],
+    ['marketing','Marketing','Publicidad y comunicación','#f3e9d8','<path d="M3 10h5l12-5v14l-12-5H3zM8 14l2 6h3"/>'],
+    ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>']
+  ]);
+  let hqAgent = 'desarrollo';
+  let hqDraft = '';
+  function hqView(){
+    if(!premiumAdmin() || status!=='ready')return '';
+    const selected=HQ_AGENTS.find(a=>a[0]===hqAgent)||HQ_AGENTS[0];
+    const desk=(a)=>'<svg viewBox="0 0 120 76" width="120" height="76" aria-hidden="true"><path d="M9 43 57 20l53 23-48 25z" fill="#c4cedb"/><path d="M24 32 59 16l36 17-35 17z" fill="#ffffff"/><path d="M24 32v8l36 17v-7z" fill="#aab9cc"/><path d="M60 50v7l35-17v-7z" fill="#8495ac"/><path d="M44 19l24-10v19L44 38z" fill="#24374f"/><path d="M48 21l16-7v12l-16 7z" fill="#d8e7f7"/><path d="M54 33v5l-8 4 15-3" stroke="#586c86" stroke-width="2" fill="none"/><circle cx="76" cy="43" r="7" fill="#e0b89e"/><path d="M67 57v-6q9-7 18 0v6l-9 5z" fill="#12345a"/></svg>';
+    return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
+      '<p>Organizá el trabajo de GESTLOK por áreas. Los cinco agentes todavía no están conectados a un ejecutor de IA; ningún estado de trabajo es simulado.</p>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;background:#f0f3f7;padding:12px;border-radius:12px">'+
+      HQ_AGENTS.map(a=>'<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" style="min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:5px;padding:14px;border-radius:9px;border:2px solid '+(a[0]===selected[0]?'#12345a':'transparent')+';background:'+a[3]+';color:#12345a">'+desk(a)+
+        '<strong style="display:flex;gap:6px;align-items:center">'+svg(a[4],20)+esc(a[1])+'</strong><span>'+esc(a[2])+'</span><small>Sin conexión a IA</small></button>').join('')+
+      '</div><div style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>Dirección general · Creadora</strong><p>Elegí un área y prepará una tarea para delegar. La tarea es un borrador, no se ejecuta ni se envía automáticamente.</p></div>'+
+      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3><label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
+      '<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
+  }
+
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
-    const cur = validTab(tab) && (tab!=='gestlok-chat'||premiumAdmin()) ? tab : 'inicio';
+    const cur = validTab(tab) && (!['gestlok-chat','hq'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
     void window.GestLokContactoWeb?.prefetch?.();
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
-    const nav = TABS.filter(t=>t[0]!=='gestlok-chat'||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const nav = TABS.filter(t=>!['gestlok-chat','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') +
       (t[0] === 'contacto' && window.GestLokContactoWeb?.unread?.() ? '<b>' + esc(window.GestLokContactoWeb.unread()) + '</b>' : '') + '</button>').join('');
     const d = today();
@@ -664,6 +690,7 @@
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+chatAdminView()+'</div>';
+    else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
     else if (cur === 'nfc') body = '<div class="gl-ch-stack">' + (window.GestLokNfcQr?.view?.() || '<section class="gl-admin-card"><p role="status">NFC y QR se está actualizando. Cerrá y volvé a abrir GESTLOK.</p></section>') + '</div>';
@@ -672,6 +699,7 @@
     else body = '<div class="gl-ch-stack">' + empleados(p) + '</div>';
     const title = cur === 'inicio' ? '¡Hola!' : (TABS.find(t => t[0] === cur) || [])[1];
     const sub = cur === 'inicio' ? 'Aquí podés gestionar todo el ecosistema de GESTLOK.' :
+      cur === 'hq' ? 'Tu oficina virtual · Áreas de trabajo y delegación.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
       cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' :
       cur === 'contacto' ? 'Mensajes del formulario de Contacto de gestlok.com.ar.' : 'Administración de GESTLOK';
@@ -696,7 +724,8 @@
       '<p><a class="btn primary" href="empleados/">Abrir Administración de empleados →</a></p></section>';
   }
   function goTab(v) {
-    if (!validTab(v) || (v==='gestlok-chat'&&!premiumAdmin())) return;
+    if (!validTab(v) || (['gestlok-chat','hq'].includes(v)&&!premiumAdmin())) return;
+    if(v !== 'hq') hqDraft = '';
     if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales')void loadMicroapps(true);
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
@@ -705,10 +734,21 @@
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
   document.addEventListener('submit',ev=>{
+    if(ev.target?.matches?.('[data-ch-hq-form]')){
+      ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready')return;
+      const input=ev.target.querySelector('textarea');const feedback=ev.target.querySelector('[data-ch-hq-feedback]');
+      hqDraft=String(input?.value||'').trim().slice(0,4000);if(!hqDraft)return;
+      const agent=HQ_AGENTS.find(a=>a[0]===hqAgent);const prompt='GESTLOK HQ · '+agent[1]+'\\nTarea: '+hqDraft+'\\nNo modificar producción ni datos de clientes sin autorización. Informar resultados y pruebas reales.';
+      if(!window.navigator?.clipboard?.writeText){feedback.textContent='No se pudo acceder al portapapeles. Copiá el texto manualmente.';return;}
+      window.navigator.clipboard.writeText(prompt).then(()=>{feedback.textContent='Instrucción copiada. Todavía no se ejecutó la tarea.';},()=>{feedback.textContent='No se pudo copiar. Copiá el texto manualmente.';});return;
+    }
     if(!ev.target?.matches?.('[data-ch-create-business]'))return;
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const hq=ev.target.closest?.('[data-ch-hq-agent]');
+    if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
+      hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
     const refreshApps=ev.target.closest?.('[data-ch-app-refresh]');
     if(refreshApps&&premiumAdmin()){ev.preventDefault();void loadMicroapps(true);return;}
     const appAdd=ev.target.closest?.('[data-ch-app-add]');
@@ -784,7 +824,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){hqDraft='';hqAgent='desarrollo';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
