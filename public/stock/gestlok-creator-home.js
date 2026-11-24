@@ -372,7 +372,7 @@
       if (changed && (!estabaListo || tab !== 'chat-prueba')) api.render();
     } catch {
       const changed = status !== 'off';
-      data = null; status = 'off';
+      data = null; status = 'off'; hqReset();
       if (changed) api.render();
     } finally { busy = false; }
   }
@@ -658,12 +658,12 @@
     ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>']
   ]);
   let hqAgent = 'desarrollo';
-  let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqError = '', hqEpoch = 0;
+  let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqError='';}
+  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';}
   async function hqRequest(fn,args){
     if(!hqAllowed()||hqBusy)return;
-    const epoch=hqEpoch; hqBusy=true;hqError='';
+    const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
     api?.render();
     try{
       const sb=window.GestLokSupabase;
@@ -690,6 +690,7 @@
   }
   function hqView(){
     if(!premiumAdmin() || status!=='ready')return '';
+    if(!hqAttempted&&!hqBusy)queueMicrotask(()=>{if(!hqAttempted&&hqAllowed())void hqRequest();});
     const selected=HQ_AGENTS.find(a=>a[0]===hqAgent)||HQ_AGENTS[0];
     const desk=(a)=>'<svg viewBox="0 0 120 76" width="120" height="76" aria-hidden="true"><path d="M9 43 57 20l53 23-48 25z" fill="#c4cedb"/><path d="M24 32 59 16l36 17-35 17z" fill="#ffffff"/><path d="M24 32v8l36 17v-7z" fill="#aab9cc"/><path d="M60 50v7l35-17v-7z" fill="#8495ac"/><path d="M44 19l24-10v19L44 38z" fill="#24374f"/><path d="M48 21l16-7v12l-16 7z" fill="#d8e7f7"/><path d="M54 33v5l-8 4 15-3" stroke="#586c86" stroke-width="2" fill="none"/><circle cx="76" cy="43" r="7" fill="#e0b89e"/><path d="M67 57v-6q9-7 18 0v6l-9 5z" fill="#12345a"/></svg>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
