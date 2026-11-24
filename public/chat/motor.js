@@ -595,6 +595,108 @@ function opcionesDe(producto, segmento) {
   return ops;
 }
 
+/* ------------------------------------------------------------- Solo la carta del local
+ * El asistente responde únicamente con lo que el local tiene cargado. Si el cliente pide algo que no está en la
+ * carta («¿tienen sushi?», «una hamburguesa», «empanadas de atún»), se le avisa que ese producto no lo trabajamos
+ * y se le muestra lo que sí hay. Vale para cualquier rubro: el vocabulario sale de la carta de cada local. */
+const NO_PRODUCTO = new Set(['tienen', 'tenes', 'tiene', 'hay', 'venden', 'vendes', 'vende', 'hacen', 'haces', 'hace',
+  'trabajan', 'trabajas', 'quiero', 'quisiera', 'queria', 'dame', 'das', 'mandame', 'traeme', 'traer', 'mandar', 'busco',
+  'buscaba', 'necesito', 'precio', 'precios', 'cuanto', 'cuanta', 'sale', 'salen', 'cuesta', 'cuestan', 'vale', 'valen',
+  'algo', 'alguna', 'alguno', 'algun', 'algunas', 'algunos', 'tipo', 'ver', 'pedir', 'comprar', 'llevar', 'hoy', 'ahora',
+  'manana', 'rico', 'rica', 'ricos', 'ricas', 'bien', 'muy', 'mucho', 'poco', 'buenas', 'buenos', 'buen', 'dia', 'tarde',
+  'noche', 'hola', 'gracias', 'porfa', 'favor', 'si', 'no', 'ok', 'dale', 'tambien', 'solo', 'nomas', 'es', 'esta',
+  'estan', 'como', 'cual', 'cuales', 'donde', 'cuando', 'ustedes', 'vos', 'usted', 'le', 'les', 'lo', 'los', 'nos',
+  'mi', 'su', 'sus', 'este', 'esa', 'ese', 'eso', 'esto', 'aca', 'ahi', 'mas', 'menos', 'otra', 'otro', 'otros',
+  'otras', 'disponible', 'disponibles', 'queda', 'quedan', 'quedo', 'hecho', 'hechas', 'hechos', 'casero', 'casera',
+  'caseras', 'caseros', 'grande', 'chico', 'chica', 'mediano', 'mediana', 'gusto', 'gustos', 'sabor', 'sabores',
+  'variedad', 'variedades', 'opcion', 'opciones', 'producto', 'productos', 'menu', 'carta', 'lista', 'catalogo', 'cosas',
+  'cosa', 'comida', 'comidas', 'comer', 'tomar', 'beber', 'picar', 'promo', 'promos', 'promocion', 'promociones',
+  // Cantidades, tamaños y aclaraciones: no son productos.
+  'docena', 'docenas', 'media', 'medio', 'surtida', 'surtidas', 'surtido', 'surtidos', 'variada', 'variadas', 'variado',
+  'mixta', 'mixtas', 'mixto', 'litro', 'litros', 'ml', 'cc', 'kilo', 'kilos', 'gramos', 'porcion', 'porciones', 'unidad',
+  'unidades', 'dulce', 'dulces', 'salado', 'salada', 'caliente', 'calientes', 'frio', 'fria', 'frios', 'frias', 'cocida',
+  'cocido', 'jugosa', 'jugoso', 'dorada', 'dorado', 'crocante', 'tostada', 'tostado', 'extra', 'doble', 'simple',
+  // Entrega y repetir pedidos.
+  'retirar', 'retiro', 'buscar', 'paso', 'pasar', 'llevo', 'mandan', 'traen', 'mismo', 'misma', 'vez', 'ultima', 'ultimo',
+  'anterior', 'siempre', 'repetir', 'noches', 'tardes', 'dias', 'buenos', 'gente', 'personas', 'chicos']);
+/* Consultas que no son productos: no se contestan con «no lo trabajamos» (siguen al asistente o al gerente). */
+const NO_ES_PRODUCTO = new Set(['trabajo', 'empleo', 'curriculum', 'cv', 'factura', 'facturas', 'facturan', 'reserva',
+  'reservar', 'reservas', 'mesa', 'mesas', 'estacionamiento', 'wifi', 'bano', 'banos', 'mascota', 'mascotas', 'perro',
+  'perros', 'ayuda', 'consulta', 'pregunta', 'info', 'informacion', 'pedido', 'pedidos', 'problema', 'reclamo', 'demora',
+  'gerente', 'encargado', 'duena', 'dueno', 'duda', 'numero', 'telefono', 'whatsapp', 'instagram', 'facebook', 'local',
+  'sucursal', 'abierto', 'abiertos', 'cerrado', 'cerrados', 'chau', 'adios', 'bueno', 'perfecto', 'genial', 'nada', 'todo',
+  'listo', 'gracias', 'cambio', 'vuelto', 'cupon', 'descuento', 'descuentos', 'tarjeta', 'tarjetas', 'cuotas', 'envio',
+  'envios', 'zona', 'direccion', 'horario', 'horarios']);
+const RE_PIDE_PRODUCTO = /\b(tienen|tenes|hay|venden|vendes|hacen|haces|trabajan|quiero|quisiera|queria|dame|me das|mandame|traeme|busco|necesito|precio|cuanto)\b/;
+function distancia(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const d = Array.from({length: a.length + 1}, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+/** Palabras de la carta del local: productos (también agotados), descripciones, secciones y opciones. */
+export function vocabularioCarta(catalogo) {
+  const textos = [];
+  for (const c of catalogo?.categorias || []) textos.push(c.nombre);
+  for (const p of disponibles(catalogo)) {
+    textos.push(p.nombre, p.descripcion || '');
+    for (const g of p.opciones || []) { textos.push(g.nombre); for (const v of g.valores || []) textos.push(v.nombre); }
+  }
+  return new Set(textos.flatMap(t => claves(t)).filter(w => w.length > 1 && !/^\d+$/.test(w)));
+}
+/** ¿La palabra está en la carta? Acepta plural/singular y un error de tipeo («empanda» = «empanada»). */
+function enCarta(vocab, w) {
+  if (vocab.has(w)) return true;
+  for (const v of vocab) {
+    if (mismaRaiz(v, w)) return true;
+    if (w.length >= 5 && v.length >= 5 && distancia(v, w) <= (w.length >= 8 ? 2 : 1)) return true;
+  }
+  return false;
+}
+/** Si el cliente pide algo que el local no tiene en su carta, devuelve {nombre, categoria?}; si no, null. */
+export function fueraDeCarta(catalogo, texto) {
+  const n = normalizar(texto);
+  if (!n || !disponibles(catalogo).length) return null;
+  const todas = n.split(' ').filter(Boolean);
+  if (todas.some(w => NO_ES_PRODUCTO.has(w))) return null;
+  // Lo que sigue a «sin» es una aclaración («sin TACC», «sin cebolla»), no un producto pedido.
+  const tras = new Set(todas.filter((w, i) => todas[i - 1] === 'sin'));
+  const utiles = todas.filter(w => !tras.has(w) && !VACIAS.has(w) && !NO_PRODUCTO.has(w) && !NUMEROS[w] && !/^\d/.test(w) && w.length > 2);
+  if (!utiles.length) return null;
+  const vocab = vocabularioCarta(catalogo);
+  const conocida = w => enCarta(vocab, raiz(w));
+  // Para mostrarle al cliente lo que escribió, con sus tildes.
+  const original = new Map(String(texto).split(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+/).filter(Boolean)
+    .map(w => [normalizar(w), w.toLowerCase()]));
+  const ver = w => original.get(w) || w;
+  // Variedad que no existe: «empanadas de atún», «pizza con ananá» (lo primero está en la carta, lo segundo no).
+  for (let i = 0; i + 2 < todas.length; i++) {
+    const [a, nexo, b] = [todas[i], todas[i + 1], todas[i + 2]];
+    if ((nexo === 'de' || nexo === 'con') && utiles.includes(a) && conocida(a) && utiles.includes(b) && !conocida(b)) {
+      const cat = disponibles(catalogo).find(p => claves(p.nombre).some(k => mismaRaiz(k, raiz(a))) ||
+        (catalogo?.categorias || []).some(c => c.id === p.categoria_id && claves(c.nombre).some(k => mismaRaiz(k, raiz(a)))));
+      return {nombre: [ver(a), nexo, ver(b)].join(' '), categoria: cat?.categoria_id || null};
+    }
+  }
+  if (utiles.some(conocida)) return null;
+  // Nada de lo que nombró está en la carta: un pedido corto («¿tienen sushi?», «quiero una hamburguesa», «cerveza»).
+  if (utiles.length > 4 || (!RE_PIDE_PRODUCTO.test(n) && utiles.length > 2)) return null;
+  // Se muestra lo que escribió, de la primera a la última palabra desconocida («tortas de cumpleaños»).
+  const desde = todas.indexOf(utiles[0]), hasta = todas.lastIndexOf(utiles[utiles.length - 1]);
+  return {nombre: todas.slice(desde, hasta + 1).map(ver).join(' '), categoria: null};
+}
+/** Sección de la carta que el cliente nombra («¿tienen postres?», «qué bebidas hay»), con algo disponible. */
+export function categoriaNombrada(catalogo, texto) {
+  const dichas = claves(texto);
+  return (catalogo?.categorias || []).find(c => {
+    const k = claves(String(c.nombre).replace(/\b(promoci[oó]n\w*|promos?|combos?|packs?|ofertas?)\b/gi, ''));
+    return k.length && k.some(w => dichas.some(d => mismaRaiz(w, d))) &&
+      disponibles(catalogo).some(p => p.categoria_id === c.id && p.disponible !== false);
+  }) || null;
+}
+
 /** Interpreta un pedido escrito. Devuelve {lineas, dudas, sinCoincidencia}. */
 export function interpretarPedido(catalogo, texto) {
   // Corta por comas, «más» o «+»; «y» solo corta si sigue una cantidad («… y 1 de jamón y queso»).
@@ -1031,6 +1133,17 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
     }
   }
 
+  // Solo la carta: si pide algo que el local no tiene, se le avisa y se le muestra lo que sí hay (sin IA ni gerente).
+  if (!entrada.boton && ['texto', 'carta', 'precio'].includes(accion)) {
+    const fuera = fueraDeCarta(catalogo, texto);
+    if (fuera) {
+      const txt = 'Lo sentimos, «' + fuera.nombre + '» no lo trabajamos. ';
+      if (fuera.categoria) decir(txt + 'Estas son las opciones que tenemos:', {tipo: 'carta', categoria: fuera.categoria});
+      else decir(txt + 'Puede ver todo lo que ofrecemos en el menú.', {botones: botonesCarrito(e.carrito)});
+      return fin();
+    }
+  }
+
   // Venta sugerida: «Ver postres» / «Ver bebidas» abre la carta en esa categoría.
   if (accion.startsWith('carta:')) {
     const c = (catalogo?.categorias || []).find(x => x.id === accion.slice(6));
@@ -1081,7 +1194,12 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
     case 'envio': decir(textoEnvio(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'pago': decir(textoPago(s), {botones: botonesCarrito(e.carrito)}); return fin();
     case 'direccion': decir(s.direccion ? 'Estamos en ' + s.direccion + '.' : 'El local todavía no cargó su dirección.', {botones: botonesCarrito(e.carrito)}); return fin();
-    case 'carta': decir('Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta'}); return fin();
+    case 'carta': {
+      const c = entrada.boton ? null : categoriaNombrada(catalogo, texto);
+      decir(c ? 'Estas son nuestras opciones de ' + c.nombre.toLowerCase() + '. Toque una para agregarla.'
+        : 'Esta es nuestra carta. Tocá un producto para agregarlo.', {tipo: 'carta', ...(c ? {categoria: c.id} : {})});
+      return fin();
+    }
     case 'carrito': decir(textoCarrito(catalogo, e.carrito), {tipo: e.carrito.length ? 'carrito' : undefined, botones: botonesCarrito(e.carrito)}); return fin();
     case 'vaciar': e.carrito = []; e.sugerido = false; delete e.promo_ofrecida; delete e.promo_reemplazo; decir('Listo, empezamos de nuevo.', {botones: BOTONES_INICIO}); return fin();
     case 'humano': decir('El gerente puede responderle por este mismo chat. Para pedir atención, seleccione la opción de soporte.',{botones:[{id:'hablar_gerente',texto:'Hablar con el gerente'}]}); return fin();
@@ -1144,6 +1262,22 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
 
   // Texto libre: intentar armar el pedido.
   const {lineas, dudas, sinCoincidencia} = interpretarPedido(catalogo, texto);
+  // Nombró un producto con su nombre completo («agua sin gas») y hoy no hay: se avisa en vez de abrir la carta.
+  const nombrados = [...new Set([...lineas.map(l => productoPorId(catalogo, l.producto_id)), ...dudas.flatMap(d => d.opciones)]
+    .filter(p => p && (' ' + normalizar(texto) + ' ').includes(' ' + normalizar(p.nombre) + ' ')))];
+  if (nombrados.length === 1 && nombrados[0].disponible === false) {
+    const p = nombrados[0];
+    decir('Lo sentimos, hoy ' + p.nombre + ' no está disponible. Puede elegir otra opción del menú.',
+      {tipo: 'carta', ...(p.categoria_id ? {categoria: p.categoria_id} : {})});
+    return fin();
+  }
+  if (!lineas.length && !dudas.length) {
+    const c = categoriaNombrada(catalogo, texto);
+    if (c) {
+      decir('Estas son nuestras opciones de ' + c.nombre.toLowerCase() + '. Toque una para agregarla.', {tipo: 'carta', categoria: c.id});
+      return fin();
+    }
+  }
   if (menuInteractivo && (lineas.length || dudas.length)) {
     if (lineas.length === 1 && !dudas.length && !sinCoincidencia.length) {
       const l = lineas[0];
@@ -1153,6 +1287,10 @@ export function responder({sucursal, catalogo, estado, entrada, mensajes, ahora}
           {tipo: 'producto', productos: [p.id], cantidad: l.cantidad, opciones: l.opciones});
         return fin();
       }
+      // Está en la carta pero hoy no hay: se avisa y se abre la sección para elegir otra opción.
+      decir('Lo sentimos, hoy ' + p.nombre + ' no está disponible. Puede elegir otra opción del menú.',
+        {tipo: 'carta', ...(p.categoria_id ? {categoria: p.categoria_id} : {})});
+      return fin();
     }
     // «Quiero una pizza»: el menú abre en la categoría de la mayoría de lo que coincide (ej. Pizzas, con + y −).
     const cats = [...lineas.map(l => productoPorId(catalogo, l.producto_id)?.categoria_id),
