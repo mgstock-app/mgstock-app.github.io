@@ -35,32 +35,17 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Motor de agentes');
   cy.get('[data-ch-hq-agent]').should('have.length',7);
-  // Verify WebGL when the browser supports it; otherwise validate the animated fallback.
-  cy.get('[data-hq-3d-host]').should('have.attr','data-hq-meeting','false');
-  cy.get('[data-hq-3d-host]',{timeout:20000}).should(($host)=>{
-    expect(['three','fallback']).to.include($host.attr('data-hq-renderer'));
-  }).then(($host)=>{
-    if($host.attr('data-hq-renderer')==='three'){
-      cy.get('[data-hq-3d-host] canvas').should('be.visible').and(($canvas)=>{
-        expect($canvas[0].width).to.be.greaterThan(100);
-        expect($canvas[0].height).to.be.greaterThan(100);
-      });
-      cy.get('[data-hq-3d-host]').should('contain.text','equipo disponible');
-      cy.get('[data-hq-3d-host]').contains('button','Pausar').click();
-      cy.get('[data-hq-3d-host]').contains('button','Reanudar').click();
-    }else{
-      cy.get('.hq-general-stage .hq-hand').first().should(($hand)=>{
-        const win=$hand[0].ownerDocument.defaultView;
-        if(!win.matchMedia('(prefers-reduced-motion: reduce)').matches)
-          expect(win.getComputedStyle($hand[0]).animationName).to.equal('none');
-      });
-      cy.get('.hq-meeting-actor').should('have.length',8).each(($actor)=>{
-        const el=$actor[0],win=el.ownerDocument.defaultView;
-        expect(win.getComputedStyle(el).animationName).to.equal('none');
-        expect(Number(win.getComputedStyle(el).opacity)).to.equal(0);
-      });
-    }
+  // La oficina pixel art se monta en su lugar, anima en un lienzo y conserva el estado entre renders.
+  cy.get('[data-hq-office-slot] [data-hq-office="ready"]',{timeout:20000}).should('be.visible');
+  cy.get('[data-hq-office-slot] canvas').should('be.visible').and(($canvas)=>{
+    expect($canvas[0].width).to.be.greaterThan(100);
+    expect($canvas[0].height).to.be.greaterThan(100);
   });
+  cy.get('[data-hq-office-slot]').contains('button','Pausar').click();
+  cy.get('[data-hq-office-slot]').contains('button','Reanudar').click();
+  cy.get('[data-hq-office-slot] [data-hqo-tab="ideas"]').click();
+  cy.get('[data-hq-office-slot] [data-hqo-panel="ideas"]').should('be.visible').and('contain.text','Convertir en tarea');
+  cy.get('[data-hq-office-slot] [data-hqo-tab="oficina"]').click();
   cy.get('[data-ch-hq-agent="testing"]').click();
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Testing');
   cy.get('[data-ch-hq-github]').should('be.visible');
@@ -69,10 +54,8 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');
   cy.get('[data-ch-hq-room="private"]').first().click();
   cy.get('[aria-label="Oficina privada del empleado"]').should('contain.text','Oficina privada · Martina');
-  cy.get('[data-hq-3d-host]',{timeout:20000}).should($host=>{
-    expect(['three','fallback']).to.include($host.attr('data-hq-renderer'));
-    if($host.attr('data-hq-renderer')==='three'){expect($host.find('[data-hq-name]')).to.have.length(1);expect($host.find('[data-hq-name="marketing"]')).to.have.length(1);}
-  });
+  cy.get('[data-hq-office-slot]').should('have.attr','data-hq-focus','marketing');
+  cy.get('[data-hq-office-slot] [data-hq-office="ready"]',{timeout:20000}).should('be.visible');
   cy.get('[data-ch-hq-room="general"]').first().click();
   cy.get('[data-ch-hq-agent]').should('have.length',7);
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();

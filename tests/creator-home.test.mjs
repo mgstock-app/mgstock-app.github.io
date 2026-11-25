@@ -239,7 +239,8 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
   // Rendering Inicio also schedules its existing microapp and Chat prefetches.
   // Keep the full allowlist for HQ reads, including Facundo evidence, with no writes or agent runs.
-  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')),['gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_support_status']);
+  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')&&fn!=='gestlok_hq_pulso'),['gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_support_status']);
+  assert.ok(r.calls.filter(fn=>fn==='gestlok_hq_pulso').length<=1);
   assert.deepEqual(r.calls.filter(fn=>!fn.startsWith('gestlok_hq_')).sort(),['gestlok_creator_dashboard','gestlok_creator_microapps','gestlok_chat_admin_empresas','gestlok_chat_admin_cobros'].sort());
 });
 test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el panel', async () => {
@@ -261,6 +262,7 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
     if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
     if(fn==='gestlok_hq_list_runs')return {data:[]};
     if(fn==='gestlok_hq_support_status')return {data:{checks:[],worker:null}};
+    if(fn==='gestlok_hq_pulso')return {data:{sucursales:[],conteo:{}}};
     if(fn==='gestlok_hq_add_task'){rows.push({id:'id-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'id-1'};}
     if(fn==='gestlok_hq_close_task'){rows[0].status=args.p_status;return {data:true};}
     throw Error(fn);
@@ -273,7 +275,9 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
   await tick();await tick();
   assert.match(r.h.view({parts:{}}),/No hay tareas pendientes/);
   assert.match(r.h.view({parts:{}}),/cerrada/);
-  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_support_status','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_close_task','gestlok_hq_list_tasks','gestlok_hq_list_runs']);
+  // El pulso de la oficina es una lectura más; nunca agrega escrituras ni ejecuciones.
+  assert.deepEqual(r.calls.filter(fn=>fn!=='gestlok_hq_pulso'),['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_support_status','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_close_task','gestlok_hq_list_tasks','gestlok_hq_list_runs']);
+  assert.ok(r.calls.filter(fn=>fn==='gestlok_hq_pulso').length<=1);
 });
 
 test('HQ Testing consulta Actions reales sin enviar instrucciones ni modificar GitHub',async()=>{
@@ -388,65 +392,55 @@ test('HQ shows executive decisions automatically without invoking a paid model',
 });
 
 
-test('HQ: animated desks are independent of execution, private rooms use the same avatar, and reduced motion is supported',async()=>{
+test('HQ: la oficina animada es independiente de la ejecución y la oficina privada enfoca al empleado',async()=>{
  const rows=[{id:'work-1',agent:'testing',instruction:'Revisar',status:'pendiente',created_at:DASH.generated_at}];
  const runs=[{task_id:'work-1',state:'working'}];let invoked=0;
  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true,verified:true}};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
- assert.equal((html.match(/class="hq-desk"/g)||[]).length,8);
- assert.equal((html.match(/class="hq-walk"/g)||[]).length,8);
- assert.equal((html.match(/class="hq-seat"/g)||[]).length,8);
- assert.equal((html.match(/class="gl-hq-avatar hq-working"/g)||[]).length,1);
- assert.match(html,/prefers-reduced-motion:reduce/);
+ assert.equal((html.match(/data-hq-office-slot/g)||[]).length,1);
+ assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,7);
+ assert.equal((html.match(/data-ch-hq-leader/g)||[]).length,1);
+ assert.equal((html.match(/· En ejecución"/g)||[]).length,1);
+ assert.match(html,/Tomás · Testing · En ejecución/);
  assert.match(html,/estados de ejecución corresponden únicamente a tareas reales/);
+ assert.match(html,/eso es animación/);
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
  click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
  const room=r.h.view({parts:{}});
  assert.match(room,/Oficina privada · Tomás/);
- assert.match(room,/class="gl-hq-avatar hq-working"/);
- assert.equal((room.match(/class="hq-desk"/g)||[]).length,1);
+ assert.match(room,/data-hq-office-slot data-hq-focus="testing"/);
  assert.equal(invoked,0);
 });
 
-test('HQ: each employee keeps their own portrait in the general, private and meeting scenes',async()=>{
+test('HQ: cada empleado conserva su identidad en la oficina, la ficha y el módulo animado',async()=>{
+ const office=readFileSync('public/stock/gestlok-hq-office.mjs','utf8');
  const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}));
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
- const html=r.h.view({parts:{}});
- const people=[['desarrollo','masculino','short'],['calidad','femenino','long'],['testing','masculino','curly'],['atencion','femenino','bun'],['marketing','femenino','bob'],['datos','masculino','beard'],['soporte','masculino','short'],['lider','femenino','ponytail']];
- for(const [id,gender,portrait] of people){
-  assert.ok(html.includes('data-hq-person="'+id+'" data-hq-gender="'+gender+'"'),id);
-  assert.ok(html.includes('data-hq-portrait="'+portrait+'"'),id);
-  assert.equal((html.match(new RegExp('data-hq-person="'+id+'"','g'))||[]).length,2,id);
-  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+ const people=[['desarrollo','Nicolás','Castor'],['calidad','Camila','Coneja'],['testing','Tomás','Rana'],['atencion','Renata','Gata'],['marketing','Martina','Zorra'],['datos','Santiago','Pulpo'],['soporte','Facundo','Robot'],['lider','Alex','Búho']];
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+ for(const [id,name,animal] of people){
+  assert.ok(office.includes("{id: '"+id+"', name: '"+name+"', animal: '"+animal+"'"),id);
   if(id==='lider')click('[data-ch-hq-leader]');else{click('[data-ch-hq-agent]',{chHqAgent:id});click('[data-ch-hq-room]',{chHqRoom:'private'});}
   const room=r.h.view({parts:{}});
-  assert.ok(room.includes('data-hq-person="'+id+'" data-hq-gender="'+gender+'"'));
-  assert.ok(room.includes('data-hq-portrait="'+portrait+'"'));
+  assert.ok(room.includes('Oficina privada · '+name),id);
+  assert.ok(room.includes(name+' · '+animal),id);
  }
 });
 
-test('HQ premium uses a pinned, self-hosted renderer and preserves the private fallback',()=>{
- const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
- const vendor=readFileSync('scripts/vendor-hq-three.mjs','utf8');
- const pkg=JSON.parse(readFileSync('package.json','utf8'));
- const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
- assert.equal(pkg.dependencies.three,'0.180.0');
- assert.equal(lock.packages['node_modules/three'].version,pkg.dependencies.three);
- assert.match(pkg.scripts.prebuild,/vendor-hq-three/);
- assert.match(vendor,/three\.module\.js/);
- assert.match(renderer,/import \* as T from '\.\.\/vendor\/hq-three\/three\.module\.js'/);
- assert.match(renderer,/new T\.WebGLRenderer/);
- assert.match(renderer,/new T\.OrthographicCamera/);
- assert.match(renderer,/new T\.Raycaster/);
- assert.match(renderer,/function animatePerson/);
- assert.match(renderer,/function pathAt/);
- assert.match(renderer,/function dispose/);
- assert.match(renderer,/prefers-reduced-motion/);
- assert.doesNotMatch(renderer,/\bfetch\s*\(|\.rpc\s*\(|https?:\/\//);
- assert.match(source,/data-hq-3d-host/);
- assert.match(source,/if\(!hqAllowed\(\)\|\|!host\.isConnected\)return/);
- assert.match(source,/data-hq-renderer="fallback"/);
+test('HQ: la oficina es un módulo propio, sin IA, sin base y con movimiento reducido',()=>{
+ const office=readFileSync('public/stock/gestlok-hq-office.mjs','utf8');
+ assert.doesNotMatch(office,/\bfetch\s*\(|\.rpc\s*\(|functions\.invoke|https?:\/\/|import\s/);
+ assert.match(office,/export function attach/);
+ assert.match(office,/export function update/);
+ assert.match(office,/export function buildInsights/);
+ assert.match(office,/prefers-reduced-motion/);
+ assert.match(office,/if \(!STATE\.root\.isConnected\) return;/);
+ assert.match(office,/localStorage\.(get|set)Item\(IDEAS_KEY/);
+ assert.doesNotMatch(office,/gestlok-hq-3d/);
+ assert.match(source,/import\('\.\/gestlok-hq-office\.mjs\?rev=/);
+ assert.match(source,/data-hq-office-slot/);
+ assert.doesNotMatch(source,/data-hq-3d-host|gestlok-hq-3d/);
 });
 
 test('HQ: only an actual pending execution activates work or a meeting',async()=>{
@@ -462,18 +456,23 @@ test('HQ: only an actual pending execution activates work or a meeting',async()=
   r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
   const html=r.h.view({parts:{}});
   assert.ok(html.includes('data-hq-meeting="'+meeting+'"'));
-  assert.equal((html.match(/class="gl-hq-avatar hq-working"/g)||[]).length,working);
+  assert.equal((html.match(/· En ejecución"/g)||[]).length,working);
   if(!working)assert.match(html,/Sin tareas en ejecución · equipo disponible/);
  }
 });
 
-test('HQ: readable projected HTML name and sector labels, dedicated free-plan provider',()=>{
- const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
+test('HQ: comentarios con datos reales del pulso y proveedor gratuito dedicado',async()=>{
+ const office=await import('../public/stock/gestlok-hq-office.mjs');
  const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
- assert.match(renderer,/name.textContent=p.name/);
- assert.match(renderer,/role.textContent=p.sector\|\|p.role/);
- assert.match(renderer,/labelPoint.*project\(camera\)/);
- assert.match(source,/sector:a\[0\]==='lider'\?'Directora ejecutiva':a\[1\]/);
+ const pulse={sucursales:[{slug:'a',nombre:'Centro',empresa:'Demo <b>',activa:true,habilitada:true,ia_activa:true,conv_7d:20,ped_7d:2,pendientes:2,pendiente_max_min:7,reclamos_pendientes:1,productos_agotados:3,aceptados_7d:1,ticket_7d:12000,promos_dia:[]}],conteo:{}};
+ const ins=office.buildInsights({pulse,now:'2026-11-25T15:00:00Z'});
+ assert.ok(ins.some(i=>i.agent==='atencion'&&i.level===3&&/2 pedidos sin abrir \(el más viejo, hace 7 min\)/.test(i.text)));
+ assert.ok(ins.some(i=>i.agent==='atencion'&&/1 reclamo sin responder/.test(i.text)));
+ assert.ok(ins.some(i=>i.agent==='datos'&&/20 conversaciones y 2 pedidos en 7 días \(10% termina en pedido\)/.test(i.text)&&i.idea));
+ assert.ok(ins.some(i=>i.agent==='calidad'&&/3 productos agotados/.test(i.text)));
+ assert.equal(ins[0].level,3);
+ const ideas=office.buildIdeas(ins,{});
+ assert.ok(ideas.some(i=>i.source==='dato')&&ideas.some(i=>i.source==='propuesta'));
  assert.match(backend,/GESTLOK_HQ_GROQ_FREE_API_KEY/);
  assert.match(backend,/https:\/\/api\.groq\.com\/openai\/v1\/chat\/completions/);
  assert.match(backend,/openai\/gpt-oss-20b/);
@@ -520,15 +519,14 @@ test('HQ Facundo is an independent read-only technical support area',async()=>{
  assert.match(backend,/api\.groq\.com/);assert.doesNotMatch(backend,/api\.openai\.com/);
 });
 
-test('HQ private 3D office isolates its selected employee and uses collision-aware responsive labels',()=>{
- const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
- assert.match(renderer,/privateWorld.visible=privateMode;world.visible=!privateMode/);
- assert.match(renderer,/filter\(\(\{p\}\)=>!privateMode\|\|p.id===opts.selected\)/);
- assert.match(renderer,/workstation\(0,-.15,Math.max\(0,people.findIndex/);
- assert.match(renderer,/placed.some\(q=>r.l<q.r/);
- assert.match(renderer,/for\(const delta of \[-1,1,-2,2,-3,3\]\)/);
- assert.match(renderer,/const compact=w<560&&!privateMode/);
- assert.match(renderer,/if\(priv\)\{target.set\(0,.75,0\)/);
+test('HQ: el pulso es de solo lectura, exclusivo de la creadora y sin datos personales',()=>{
+ const sql=readFileSync('supabase/migrations/20261125150000_gestlok_hq_pulso.sql','utf8');
+ assert.match(sql,/gestlok_hq_private\.require_creator\(\)/);
+ assert.match(sql,/stable security definer set search_path = ''/);
+ assert.match(sql,/revoke all on function gestlok_hq_private\.pulso\(\) from public, anon, authenticated/);
+ assert.doesNotMatch(sql,/'cliente_nombre'|'cliente_telefono'|'direccion'|'texto'|'detalle'|'nota'/);
+ assert.doesNotMatch(sql,/\b(insert|update|delete)\b\s/i);
+ assert.match(sql,/not coalesce\(p\.es_prueba, false\)/);
 });
 
 test('HQ verifies Groq automatically without executing tasks and reports credential errors',async()=>{
