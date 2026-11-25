@@ -521,7 +521,8 @@ test('HQ private 3D office isolates its selected employee and uses collision-awa
  assert.match(renderer,/privateWorld.visible=privateMode;world.visible=!privateMode/);
  assert.match(renderer,/filter\(\(\{p\}\)=>!privateMode\|\|p.id===opts.selected\)/);
  assert.match(renderer,/workstation\(0,-.15,Math.max\(0,people.findIndex/);
- assert.match(renderer,/placed.some\(q=>rect.l<q.r/);
+ assert.match(renderer,/placed.some\(q=>r.l<q.r/);
+ assert.match(renderer,/for\(const delta of \[-1,1,-2,2,-3,3\]\)/);
  assert.match(renderer,/const compact=w<560&&!privateMode/);
  assert.match(renderer,/if\(priv\)\{target.set\(0,.75,0\)/);
 });
@@ -539,4 +540,14 @@ test('HQ verifies Groq automatically without executing tasks and reports credent
  assert.match(r.h.view({parts:{}}),/Groq · conexión disponible/);
  assert.deepEqual(invocations,['status','status']);
  r.h.setTab('inicio');poll.fn();await tick();assert.equal(invocations.length,2);
+});
+
+
+test('HQ shows Facundo and persisted pending tasks even without a provider connection',async()=>{
+ const rows=[{id:'support-pending',agent:'soporte',status:'pendiente',instruction:'Control preventivo',created_at:DASH.generated_at}];
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?[]:DASH}));
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/Facundo · Servicio técnico · Tarea pendiente · sin iniciar/);
+ assert.match(html,/data-ch-hq-agent="soporte"/);
 });
