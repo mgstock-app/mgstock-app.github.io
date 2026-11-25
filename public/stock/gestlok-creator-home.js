@@ -693,9 +693,17 @@
     finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
   }
   setInterval(()=>{void hqCheckConnection();},2000);
+  function hqQuota(){
+    if(!hqLoaded||!hqRunsLoaded)return null;
+    const cutoff=Date.now()-86400000;
+    const recent=hqRuns.filter(r=>Date.parse(r.created_at)>cutoff);
+    const used=recent.reduce((n,r)=>n+(hqTasks.find(t=>t.id===r.task_id)?.agent==='lider'?8:1),0);
+    return {remaining:Math.max(0,10-used),next:recent.length?Math.min(...recent.map(r=>Date.parse(r.created_at)+86400000)):null};
+  }
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
+    if(action==='run'){const q=hqQuota(),cost=hqTasks.find(t=>t.id===taskId)?.agent==='lider'?8:1;if(q&&q.remaining<cost){hqAIError='Cuota interna insuficiente: quedan '+q.remaining+' de 10 consultas. No se inició la tarea.';api?.render();return;}}
     if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 8 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Usá únicamente una clave de Groq del plan gratuito. Si se agota la cuota, la ejecución se detiene.'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     try{
@@ -714,7 +722,8 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   function hqAIView(){
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 8. La cuota del proveedor puede ser menor.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIStatusError|| (hqAIReady===true?(hqRuns.some(r=>r.state==='review')?'Groq · conexión disponible · informes registrados':'Groq · conexión disponible (respuesta de IA aún no verificada)'):hqAIReady===false?'Conexión de IA no disponible':'Verificando conexión de IA automáticamente…')))+'</p></section>';
+    const quota=hqQuota();
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 8. La cuota del proveedor puede ser menor.</p>'+(quota?'<p role="status"><strong>Cuota interna: '+esc(quota.remaining)+' de 10 consultas disponibles.</strong> '+(quota.next!==null?'Próxima liberación: '+esc(new Date(quota.next).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}))+' (hora argentina).':'')+' Las ejecuciones fallidas también reservan cuota.</p>':'')+'<button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIStatusError|| (hqAIReady===true?(hqRuns.some(r=>r.state==='review')?'Groq · conexión disponible · informes registrados':'Groq · conexión disponible (respuesta de IA aún no verificada)'):hqAIReady===false?'Conexión de IA no disponible':'Verificando conexión de IA automáticamente…')))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
     if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
@@ -750,6 +759,8 @@
   function hqRunView(t){
     const r=hqRuns.find(r=>r.task_id===t.id);
     if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+'</div>';
+    const quota=hqQuota(),cost=t.agent==='lider'?8:1;
+    if(t.status==='pendiente'&&quota&&quota.remaining<cost)return '<p role="status">Cuota insuficiente: esta tarea necesita '+cost+' consultas y quedan '+esc(quota.remaining)+'. La tarea sigue pendiente.</p>';
     return t.status==='pendiente'&&hqAIReady===true?'<button type="button" class="btn primary" data-ch-hq-ai-run="'+esc(t.id)+'" '+(hqAIBusy?'disabled':'')+'>'+(t.agent==='lider'?'Iniciar reunión de IA':'Ejecutar con IA')+'</button>':'';
   }
   let hqGithub = null, hqGithubBusy = false, hqGithubError = '';
