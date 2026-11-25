@@ -676,7 +676,7 @@
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
-    if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 7 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Puede generar consumo de API.'))return;
+    if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Usa hasta 7 consultas de la cuota de GroqCloud Free. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Usa cuota de GroqCloud. Mantené la cuenta en plan Free.'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     try{
       const sb=window.GestLokSupabase;
@@ -693,7 +693,7 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   function hqAIView(){
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Falta configurar la clave independiente de HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Falta configurar la clave de GroqCloud Free':'Sin conexión a IA: no verificada'))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
     if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
