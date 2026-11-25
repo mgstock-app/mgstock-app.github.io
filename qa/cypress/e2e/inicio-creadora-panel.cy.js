@@ -46,7 +46,7 @@ describe('Inicio independiente de la creadora',()=>{
     if(win.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
     expect(win.getComputedStyle(el).animationName).to.equal('hqMeetingTrip');
     const animation=el.getAnimations().find(a=>a.animationName==='hqMeetingTrip');
-    expect(animation,'animated meeting participant').to.exist;
+    expect(animation,'animated meeting participant').to.not.equal(undefined);
     animation.pause();animation.currentTime=14000;
     expect(Number(win.getComputedStyle(el).opacity)).to.be.greaterThan(.9);
     animation.play();
