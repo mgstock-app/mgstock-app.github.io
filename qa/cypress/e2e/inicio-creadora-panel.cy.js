@@ -34,7 +34,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav button').should('have.length',12);
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Motor de agentes');
-  cy.get('[data-ch-hq-agent]').should('have.length',7);
+  cy.get('[data-ch-hq-agent]').should('have.length',9);
   // La oficina pixel art se monta en su lugar, anima en un lienzo y conserva el estado entre renders.
   cy.get('[data-hq-office-slot] [data-hq-office="ready"]',{timeout:20000}).should('be.visible');
   cy.get('[data-hq-office-slot] canvas').should('be.visible').and(($canvas)=>{
@@ -49,6 +49,10 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('[data-ch-hq-agent="testing"]').click();
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Testing');
   cy.get('[data-ch-hq-github]').should('be.visible');
+  cy.get('[data-ch-hq-agent="difusion"]').click();
+  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing GESTLOK Chat');
+  cy.get('[data-ch-hq-agent="soporte_general"]').click();
+  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Soporte general');
   cy.get('[data-ch-hq-agent="marketing"]').click();
   cy.get('[data-ch-hq-agent="marketing"]').should('have.attr','aria-pressed','true');
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');
@@ -57,7 +61,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('[data-hq-office-slot]').should('have.attr','data-hq-focus','marketing');
   cy.get('[data-hq-office-slot] [data-hq-office="ready"]',{timeout:20000}).should('be.visible');
   cy.get('[data-ch-hq-room="general"]').first().click();
-  cy.get('[data-ch-hq-agent]').should('have.length',7);
+  cy.get('[data-ch-hq-agent]').should('have.length',9);
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');

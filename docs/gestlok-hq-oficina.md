@@ -71,3 +71,10 @@ motor de IA, incorporaciones, GitHub y bandeja de tareas.
 
 Migraciones `gestlok_hq_pulso`, `gestlok_hq_trabajo_diario` y `gestlok_hq_limites_plan_gratis` aplicadas en producción;
 `gestlok-hq-agent` v7 y `gestlok-hq-worker` v2 desplegadas.
+
+## Marketing de GESTLOK Chat y Soporte general (25/11/2026)
+
+- **Valentina · Lora · Marketing de GESTLOK Chat** (`difusion`): investiga cómo publicitar la micro app y dónde publicarla. Trabaja con el **mapa de difusión** (`gestlok_hq_private.difusion_canales`): sitios verificados el 25/11, todos gratuitos (Search Console, Instagram, Facebook, TikTok, YouTube, LinkedIn, Capterra, G2, AlternativeTo, iProUP, SaaSHub, SaaSworthy, Product Hunt, BetaList y el Perfil de Empresa de Google, este último solo si hay atención presencial). Deja el texto listo; publicar lo hace la administradora y lo marca en Reportes → «Difusión de GESTLOK Chat» (`gestlok_hq_difusion_estado`). Nunca compra publicidad ni usa la marca de un cliente sin permiso.
+- **Lucas · Perro · Soporte general** (`soporte_general`): altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones en mora y locales sin carta. Lee solo cantidades (`pulso_plataforma`), sin datos personales; redacta respuestas, no las envía.
+- Las misiones y la jornada diaria pasan a nueve sectores (las de siete siguen siendo válidas). Cada uno respeta el límite de 4 consultas diarias del plan gratuito.
+- Migración: `20261125190000_gestlok_hq_marketing_soporte_general.sql`.

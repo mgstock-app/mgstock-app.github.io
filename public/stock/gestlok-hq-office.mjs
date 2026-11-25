@@ -17,7 +17,9 @@ export const TEAM = Object.freeze([
   {id: 'datos', name: 'Santiago', animal: 'Pulpo', kind: 'octo', puesto: 'Métricas de los locales', foco: 'Conversión, ticket promedio y tiempos de cada local.', seat: [22, 3], body: '#3fb7b0', belly: '#9fe3dc', accent: '#1d4f63', extra: '#2a8f89'},
   {id: 'soporte', name: 'Facundo', animal: 'Robot', kind: 'robot', puesto: 'Guardia técnica de los locales', foco: 'Sitio, pruebas, Conteo y cierres automáticos. Solo lectura.', seat: [27, 3], body: '#a3b1bf', belly: '#64748a', accent: '#38e0ff', extra: '#5c6b7a'},
   {id: 'desarrollo', name: 'Nicolás', animal: 'Castor', kind: 'beaver', puesto: 'Producto GESTLOK Chat', foco: 'Mejoras y nuevas funciones del chat.', seat: [3, 12], body: '#9a6a43', belly: '#dcb58e', accent: '#f6c232', extra: '#5e3d22'},
-  {id: 'testing', name: 'Tomás', animal: 'Rana', kind: 'frog', puesto: 'Pruebas del chat', foco: 'Recorridos de prueba y CI en verde antes de publicar.', seat: [7, 12], body: '#58b368', belly: '#c9eebd', accent: '#ffffff', extra: '#2f6b3a'}
+  {id: 'testing', name: 'Tomás', animal: 'Rana', kind: 'frog', puesto: 'Pruebas del chat', foco: 'Recorridos de prueba y CI en verde antes de publicar.', seat: [7, 12], body: '#58b368', belly: '#c9eebd', accent: '#ffffff', extra: '#2f6b3a'},
+  {id: 'difusion', name: 'Valentina', animal: 'Lora', kind: 'parrot', puesto: 'Marketing de GESTLOK Chat', foco: 'Dónde publicitar la micro app gratis y con qué texto.', seat: [7, 6], body: '#2fb24c', belly: '#ffd23f', accent: '#e5484d', extra: '#2766c9'},
+  {id: 'soporte_general', name: 'Lucas', animal: 'Perro', kind: 'dog', puesto: 'Soporte general', foco: 'Altas de comercios, gerentes, mensajes de la web y suscripciones.', seat: [26, 6], body: '#c98b4f', belly: '#f3dcc0', accent: '#2766c9', extra: '#7a4b26'}
 ]);
 const BY_ID = Object.fromEntries(TEAM.map(p => [p.id, p]));
 
@@ -45,9 +47,9 @@ const MAP = [
   '##############################'
 ];
 const ROOMS = [
-  {id: 'chat', label: 'GESTLOK Chat · Pedidos', x: 1, y: 2},
+  {id: 'chat', label: 'GESTLOK Chat · Pedidos y difusión', x: 1, y: 2},
   {id: 'meet', label: 'Sala de reuniones', x: 11, y: 2},
-  {id: 'locales', label: 'Locales activos', x: 20, y: 2},
+  {id: 'locales', label: 'Locales y soporte', x: 20, y: 2},
   {id: 'taller', label: 'Taller de producto', x: 1, y: 11},
   {id: 'cafe', label: 'Café y descanso', x: 11, y: 11},
   {id: 'dir', label: 'Dirección', x: 20, y: 11}
@@ -57,12 +59,12 @@ const FURNITURE = [
   ['screen-chat', 2, 1, 6, 1, false], ['window', 8, 1, 2, 1, false],
   ['board', 12, 1, 6, 1, false],
   ['screen-local-0', 20, 1, 4, 1, false], ['screen-local-1', 24, 1, 4, 1, false],
-  ['desk', 2, 4, 2, 1, true], ['desk', 6, 4, 2, 1, true], ['desk', 2, 7, 2, 1, true],
+  ['desk', 2, 4, 2, 1, true], ['desk', 6, 4, 2, 1, true], ['desk', 2, 7, 2, 1, true], ['desk', 6, 7, 2, 1, true],
   ['plant', 8, 7, 1, 1, true], ['plant', 1, 2, 1, 1, true],
   ['table', 12, 4, 6, 2, true],
   ['plant', 18, 7, 1, 1, true],
   ['desk', 21, 4, 2, 1, true], ['desk', 26, 4, 2, 1, true],
-  ['rack', 28, 6, 1, 2, true], ['map', 21, 6, 3, 2, true],
+  ['rack', 28, 6, 1, 2, true], ['map', 21, 6, 3, 2, true], ['desk', 25, 7, 2, 1, true],
   ['desk', 2, 13, 2, 1, true], ['desk', 6, 13, 2, 1, true],
   ['kanban', 8, 15, 2, 1, true], ['shelf', 1, 16, 3, 1, true], ['plant', 9, 11, 1, 1, true],
   ['counter', 11, 11, 4, 1, true], ['cooler', 16, 11, 1, 1, true], ['fridge', 17, 11, 2, 1, true],
@@ -148,7 +150,9 @@ const REPLIES = {
   error: [['soporte', 'Reviso el motivo antes de repetir.'], ['lider', 'Sin apuro: no se gastan consultas de más.']],
   ia: [['lider', 'Mientras tanto trabajamos con datos reales.'], ['soporte', 'Puedo revisar la conexión cuando la jefa quiera.']],
   propuesta: [['lider', 'Buena idea, la anoto para la reunión.'], ['datos', 'Me gusta: se puede medir.'], ['testing', 'Si se hace, la pruebo en los dos locales.']],
-  general: [['lider', 'Gracias, lo tengo en cuenta.'], ['datos', 'Buen dato.']]
+  general: [['lider', 'Gracias, lo tengo en cuenta.'], ['datos', 'Buen dato.']],
+  plataforma: [['lider', 'Bien, Lucas: eso lo decide la jefa, dejale la respuesta lista.'], ['atencion', 'Si es de un local, te paso cómo vienen los pedidos.']],
+  difusion: [['marketing', 'Te paso las promos de los locales para los ejemplos.'], ['lider', 'Solo canales gratis y con el local de ejemplo, ¿sí?'], ['desarrollo', 'Si piden algo nuevo en esos sitios, lo anoto para el chat.']]
 };
 const TEAM_PROPOSALS = [
   ['desarrollo', 'prop-carrito', 'Recordatorio al cliente que dejó el carrito sin enviar en el chat.'],
@@ -156,7 +160,9 @@ const TEAM_PROPOSALS = [
   ['testing', 'prop-recorrido', 'Recorrido de prueba semanal: un pedido completo en cada local del chat.'],
   ['calidad', 'prop-fotos', 'Revisar que cada producto de la carta tenga descripción clara.'],
   ['datos', 'prop-reporte', 'Reporte semanal automático por local con conversión y ticket promedio.'],
-  ['atencion', 'prop-faq', 'Respuestas rápidas para las preguntas más comunes de los clientes.']
+  ['atencion', 'prop-faq', 'Respuestas rápidas para las preguntas más comunes de los clientes.'],
+  ['difusion', 'prop-ficha', 'Ficha única de GESTLOK Chat (descripción corta, larga y capturas) para copiar en cada directorio.'],
+  ['soporte_general', 'prop-guia', 'Guía de primeros pasos para el dueño de un comercio nuevo: carta, horarios, QR y gerente.']
 ];
 
 function localLabel(x) { return [x.empresa, x.nombre].filter(Boolean).join(' '); }
@@ -234,6 +240,28 @@ export function buildInsights(model = {}) {
     }
   } else if (model.pulseError) {
     push({id: 'pulso-off', agent: 'soporte', level: 2, tag: 'general', text: model.pulseError});
+  }
+  const plat = pulse && pulse.plataforma && typeof pulse.plataforma === 'object' ? pulse.plataforma : null;
+  if (plat) {
+    const n = k => Number(plat[k]) || 0;
+    if (n('altas_pendientes')) push({id: 'plat-altas', agent: 'soporte_general', level: 3, tag: 'plataforma', basis: 'dato', text: plural(n('altas_pendientes'), 'comercio espera', 'comercios esperan') + ' el alta en GESTLOK. Dejo la respuesta lista para que la apruebes.'});
+    if (n('gerentes_pendientes')) push({id: 'plat-gerentes', agent: 'soporte_general', level: 2, tag: 'plataforma', text: plural(n('gerentes_pendientes'), 'gerente espera', 'gerentes esperan') + ' aprobación para entrar a su local.'});
+    if (n('mensajes_web_sin_leer')) push({id: 'plat-msj', agent: 'soporte_general', level: 3, tag: 'plataforma', text: 'Hay ' + plural(n('mensajes_web_sin_leer'), 'mensaje', 'mensajes') + ' del formulario de gestlok.com.ar sin leer en «Mensajes web».',
+      idea: {agent: 'soporte_general', text: 'Respuesta modelo para los mensajes de la web: qué es GESTLOK Chat, el link a la demo y cómo seguir.'}});
+    if (n('suscripciones_en_mora')) push({id: 'plat-mora', agent: 'soporte_general', level: 3, tag: 'plataforma', text: plural(n('suscripciones_en_mora'), 'suscripción está', 'suscripciones están') + ' en mora.'});
+    if (n('suscripciones_pendientes')) push({id: 'plat-susp', agent: 'soporte_general', level: 2, tag: 'plataforma', text: plural(n('suscripciones_pendientes'), 'suscripción espera', 'suscripciones esperan') + ' el primer pago.'});
+    if (n('locales_sin_carta')) push({id: 'plat-carta', agent: 'soporte_general', level: 2, tag: 'plataforma', text: plural(n('locales_sin_carta'), 'local de GESTLOK Chat no tiene', 'locales de GESTLOK Chat no tienen') + ' productos activos en la carta.',
+      idea: {agent: 'soporte_general', text: 'Guía corta para cargar la carta, con un ejemplo, para el local que todavía no tiene productos.'}});
+    if (!n('altas_pendientes') && !n('gerentes_pendientes') && !n('mensajes_web_sin_leer') && !n('suscripciones_en_mora'))
+      push({id: 'plat-ok', agent: 'soporte_general', tag: 'plataforma', text: 'Soporte general al día: sin altas, gerentes ni mensajes de la web pendientes. ' + plural(n('empresas_chat'), 'empresa usa', 'empresas usan') + ' GESTLOK Chat.'});
+  }
+  const canales = pulse && Array.isArray(pulse.difusion) ? pulse.difusion : [];
+  if (canales.length) {
+    const pend = canales.filter(c => c && c.estado === 'pendiente'), pub = canales.filter(c => c && c.estado === 'publicado');
+    const next = pend.slice().sort((a, b) => (Number(a.prioridad) || 3) - (Number(b.prioridad) || 3))[0];
+    push({id: 'dif-estado', agent: 'difusion', level: pub.length ? 1 : 2, tag: 'difusion', text: 'Mapa de difusión de GESTLOK Chat: ' + plural(pub.length, 'sitio publicado', 'sitios publicados') + ' y ' + plural(pend.length, 'pendiente', 'pendientes') + ', todos gratis.'});
+    if (next) push({id: 'dif-next', agent: 'difusion', level: 2, tag: 'difusion', text: 'Próximo sitio para publicar GESTLOK Chat: ' + String(next.nombre).slice(0, 60) + '.',
+      idea: {agent: 'difusion', text: 'Publicar GESTLOK Chat en ' + String(next.nombre).slice(0, 60) + ': ' + String(next.como || '').slice(0, 150)}});
   }
   const support = model.support;
   const check = Array.isArray(support?.checks) ? support.checks[0] : null;
@@ -349,6 +377,24 @@ function drawCreature(c, p, o) {
       if (!back) { R(4, 1, 2, 2, '#ffffff'); R(10, 1, 2, 2, '#ffffff');
         if (o.sleep || blink) { R(4, 2, 2, 1, dark); R(10, 2, 2, 1, dark); } else { R(5 + Math.max(0, side), 1, 1, 2, dark); R(10 + Math.max(0, side), 1, 1, 2, dark); }
         R(5, 7, 6, 1, p.extra); R(3, 6, 1, 1, '#f7a1a1'); R(12, 6, 1, 1, '#f7a1a1'); }
+      feet(p.extra); break;
+    }
+    case 'parrot': {
+      R(5, 9, 6, 5, p.body); if (!back) R(6, 10, 4, 3, p.belly);
+      const flap = o.walking || o.typing ? (Math.floor(o.t * 8) % 2) : 0;
+      R(3, 8 - flap, 2, 5, p.extra); R(11, 8 - flap, 2, 5, p.extra); R(3, 12 - flap, 2, 1, p.accent); R(11, 12 - flap, 2, 1, p.accent);
+      R(4, 2, 8, 7, p.body); R(5, 1, 6, 1, p.body); R(6, -1, 2, 2, p.accent); R(8, 0, 2, 1, p.accent);
+      if (!back) { R(5, 4, 2, 2, '#ffffff'); R(9, 4, 2, 2, '#ffffff'); eyes(5, 9, 4); R(7, 6, 2, 2, '#f2b134'); R(7, 8, 2, 1, '#c98a1d'); }
+      else R(6, 9, 4, 4, p.extra);
+      R(7, 14, 2, 2, p.extra); R(5, 14 - step, 1, 2, '#f2b134'); R(10, 14 + step, 1, 2, '#f2b134');
+      break;
+    }
+    case 'dog': {
+      R(12, 9, 2, 2, p.body); R(14, 8 - (Math.floor(o.t * 6) % 2), 1, 2, p.body);
+      R(4, 9, 8, 5, p.body); if (!back) R(6, 10, 4, 4, p.belly); arms(p.body);
+      R(3, 2, 10, 7, p.body); R(4, 1, 8, 1, p.body);
+      R(1, 2, 3, 6, p.extra); R(12, 2, 3, 6, p.extra);
+      if (!back) { eyes(5, 9, 4); R(6, 6, 4, 2, p.belly); R(7, 6, 2, 1, dark); R(7, 8, 2, 1, '#e46a6a'); R(4, 9, 8, 1, p.accent); R(7, 10, 2, 1, '#ffd23f'); }
       feet(p.extra); break;
     }
     default: {
@@ -551,6 +597,7 @@ const CSS = `
 .hqo-btn{appearance:none;border:1px solid #b9c9d8;background:#fff;color:var(--ink);font:inherit;font-weight:700;font-size:12.5px;padding:6px 10px;border-radius:9px;cursor:pointer}
 .hqo-btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
 .hqo-btn:disabled{opacity:.5;cursor:default}
+.hqo-canal{flex-wrap:wrap;align-items:flex-start}.hqo-canal-txt{flex:1 1 240px;min-width:0}.hqo-canal-act{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
 .hqo-controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .hqo-controls small{color:var(--muted);margin-left:auto;font-size:11.5px}
 .hqo-feed{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0;max-height:560px;display:flex;flex-direction:column}
@@ -658,7 +705,7 @@ function setTab(tab) {
 }
 
 function onClick(ev) {
-  const t = ev.target.closest?.('[data-hqo-tab],[data-hqo-act],[data-hqo-assign],[data-hqo-private],[data-hqo-idea],[data-hqo-dismiss],[data-hqo-close-card],[data-hqo-pick]');
+  const t = ev.target.closest?.('[data-hqo-tab],[data-hqo-act],[data-hqo-assign],[data-hqo-private],[data-hqo-idea],[data-hqo-dismiss],[data-hqo-close-card],[data-hqo-pick],[data-hqo-canal]');
   if (!t) return;
   if (t.dataset.hqoTab) return setTab(t.dataset.hqoTab);
   if (t.dataset.hqoAct === 'pause') { STATE.paused = !STATE.paused; t.textContent = STATE.paused ? 'Reanudar' : 'Pausar'; return; }
@@ -666,6 +713,7 @@ function onClick(ev) {
   if (t.dataset.hqoAct === 'meeting') { startMeeting('manual'); return; }
   if (t.dataset.hqoAssign) { STATE.handlers.onAssign?.(t.dataset.hqoAssign); return; }
   if (t.dataset.hqoPrivate) { STATE.handlers.onPrivate?.(t.dataset.hqoPrivate); return; }
+  if (t.dataset.hqoCanal) { t.disabled = true; STATE.handlers.onCanal?.(t.dataset.hqoCanal, t.dataset.hqoEstado); return; }
   if (t.dataset.hqoPick) { STATE.selected = t.dataset.hqoPick; setTab('oficina'); return; }
   if (t.dataset.hqoCloseCard) { STATE.selected = null; return; }
   if (t.dataset.hqoIdea) {
@@ -865,7 +913,7 @@ function pct(v, total) { return (v / total * 100).toFixed(3) + '%'; }
 function drawOverlay(now) {
   const {ov, sim} = STATE, wide = STATE.canvas.getBoundingClientRect().width;
   const parts = [];
-  if (wide > 420) for (const r of ROOMS) parts.push('<span class="hqo-room" style="left:' + pct(r.x * T, W) + ';top:' + pct(r.y * T, H) + '">' + esc(r.id === 'locales' && STATE.locales[0] ? 'Locales · ' + (STATE.locales[0].empresa || STATE.locales[0].nombre) : r.label) + '</span>');
+  if (wide > 420) for (const r of ROOMS) parts.push('<span class="hqo-room" style="left:' + pct(r.x * T, W) + ';top:' + pct(r.y * T, H) + '">' + esc(r.id === 'locales' && STATE.locales[0] ? 'Locales y soporte · ' + (STATE.locales[0].empresa || STATE.locales[0].nombre) : r.label) + '</span>');
   if (wide > 520) {
     const tot = STATE.locales.reduce((s, l) => s + (Number(l.ped_hoy) || 0), 0), pend = STATE.locales.reduce((s, l) => s + (Number(l.pendientes) || 0), 0);
     parts.push('<span class="hqo-scr" style="left:' + pct(5 * T, W) + ';top:' + pct(1 * T + 2, H) + '">EN VIVO · ' + plural(tot, 'pedido hoy', 'pedidos hoy') + ' · ' + pend + ' sin abrir</span>');
@@ -951,7 +999,32 @@ function renderPanels() {
         kpi(l.min_confirmacion_7d == null ? '—' : Number(l.min_confirmacion_7d) < 1 ? '<1 min' : Math.round(l.min_confirmacion_7d) + ' min', 'confirmación') + kpi(l.reclamos_pendientes || 0, 'reclamos', l.reclamos_pendientes ? 'bad' : '') + kpi(l.productos_agotados || 0, 'agotados', l.productos_agotados ? 'bad' : '') + '</div>' +
         (own.length ? own.map(i => '<div class="hqo-line">' + img(BY_ID[i.agent], 22) + '<span>' + esc(i.text) + '</span></div>').join('') : '<p class="hqo-empty">Sin novedades para este local.</p>') + '</div>';
     }
-    html += '</div><h3 style="margin:16px 0 8px">Informe de cada sector</h3><div class="hqo-grid">';
+    const plat = m.pulse && typeof m.pulse.plataforma === 'object' ? m.pulse.plataforma : null;
+    if (plat) {
+      const n = k => Number(plat[k]) || 0;
+      html += '<div class="hqo-box" data-hqo-soporte-general><h3>Soporte general · GESTLOK</h3><small class="hqo-empty">Lucas revisa la plataforma: solo cantidades, sin datos personales.</small><div class="hqo-kpis">' +
+        kpi(n('altas_pendientes'), 'altas pendientes', n('altas_pendientes') ? 'bad' : 'good') + kpi(n('gerentes_pendientes'), 'gerentes esperando', n('gerentes_pendientes') ? 'bad' : '') +
+        kpi(n('mensajes_web_sin_leer'), 'mensajes web sin leer', n('mensajes_web_sin_leer') ? 'bad' : 'good') + kpi(n('suscripciones_en_mora'), 'suscripciones en mora', n('suscripciones_en_mora') ? 'bad' : '') +
+        kpi(n('empresas_chat'), 'empresas con Chat') + kpi(n('locales_activos'), 'locales activos') + kpi(n('locales_sin_carta'), 'locales sin carta', n('locales_sin_carta') ? 'bad' : '') + '</div></div>';
+    }
+    html += '</div>';
+    const canales = Array.isArray(m.pulse?.difusion) ? m.pulse.difusion : [];
+    if (canales.length) {
+      const label = {pendiente: 'Pendiente', publicado: 'Publicado', descartado: 'Descartado'};
+      html += '<h3 style="margin:16px 0 8px">Difusión de GESTLOK Chat · dónde publicar</h3><p class="hqo-empty" style="margin:0 0 8px">Mapa de Valentina: sitios verificados y gratuitos. Publicar lo hacés vos; acá marcás cómo va.</p><div class="hqo-box" data-hqo-difusion>';
+      for (const c of canales) {
+        const url = /^https:\/\//.test(String(c.url || '')) ? String(c.url) : '';
+        const st = label[c.estado] ? c.estado : 'pendiente';
+        html += '<div class="hqo-line hqo-canal"><span class="hqo-tag ' + (st === 'publicado' ? 'dato' : st === 'descartado' ? 'anim' : 'tarea') + '">' + label[st] + '</span><span class="hqo-canal-txt"><strong>' +
+          (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nombre) + '</a>' : esc(c.nombre)) + '</strong> · ' + esc(c.tipo || '') + ' · ' + esc(c.costo || 'Gratis') +
+          (Number(c.prioridad) === 1 ? ' · <b>prioridad alta</b>' : '') + '<br>' + esc(c.como || '') + '</span><span class="hqo-canal-act">' +
+          (st !== 'publicado' ? '<button type="button" class="hqo-btn" data-hqo-canal="' + esc(c.id) + '" data-hqo-estado="publicado">Marcar publicado</button>' : '') +
+          (st !== 'descartado' ? '<button type="button" class="hqo-btn" data-hqo-canal="' + esc(c.id) + '" data-hqo-estado="descartado">Descartar</button>' : '') +
+          (st !== 'pendiente' ? '<button type="button" class="hqo-btn" data-hqo-canal="' + esc(c.id) + '" data-hqo-estado="pendiente">Volver a pendiente</button>' : '') + '</span></div>';
+      }
+      html += '</div>';
+    }
+    html += '<h3 style="margin:16px 0 8px">Informe de cada sector</h3><div class="hqo-grid">';
     for (const p of TEAM) {
       const own = STATE.insights.filter(i => i.agent === p.id), rs = realState(p.id, m);
       const lastRun = runs.filter(r => tasks.some(t => t.id === r.task_id && t.agent === p.id) && r.state === 'review' && r.result)[0];

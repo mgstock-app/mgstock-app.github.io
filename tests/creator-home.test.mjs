@@ -232,7 +232,7 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(html,/Plano interactivo de la oficina/);
   assert.match(html,/Centro de misiones/);
   assert.match(html,/Ficha del empleado/);
-  assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,7);
+  assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,9);
   for(const area of ['Desarrollo','Control de calidad','Testing','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
   assert.match(html,/IA pendiente de verificación/);
   assert.match(html,/Copiar instrucción para delegar/);
@@ -375,7 +375,7 @@ test('HQ: solicitud de incorporación de Alex requiere decisión independiente d
  confirmed=true;click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'approved'});await tick();await tick();
  assert.equal(decisions.length,1);assert.equal(decisions[0].p_decision,'approved');
  assert.match(r.h.view({parts:{}}),/Autorizada · pendiente de configuración/);
- assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,7);
+ assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,9);
  click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'rejected'});await tick();assert.equal(decisions.length,1);
 });
 
@@ -400,7 +400,7 @@ test('HQ: la oficina animada es independiente de la ejecución y la oficina priv
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
  assert.equal((html.match(/data-hq-office-slot/g)||[]).length,1);
- assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,7);
+ assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,9);
  assert.equal((html.match(/data-ch-hq-leader/g)||[]).length,1);
  assert.equal((html.match(/· En ejecución"/g)||[]).length,1);
  assert.match(html,/Tomás · Testing · En ejecución/);
@@ -503,7 +503,7 @@ test('HQ provider diagnosis distinguishes credential failure and limits, with no
  const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
  assert.match(backend,/safeProviderError/);assert.match(backend,/code===401/);assert.match(backend,/code===429/);
  assert.match(backend,/models\/openai\/gpt-oss-20b/);
- assert.match(backend,/for\(const \[area,profile\] of Object.entries\(profiles\)\)/);
+ assert.match(backend,/for\(const \[area,profile\] of Object.entries\(profiles\)\.filter\(\(\[a\]\)=>LEGACY_AREAS\.includes\(a\)\)\)/);
  assert.doesNotMatch(backend,/Promise\.allSettled\(Object\.entries\(profiles\)/);
 });
 
@@ -709,4 +709,46 @@ test('HQ: un informe esperando aprobación no frena la jornada diaria',()=>{
  const sql=readFileSync('supabase/migrations/20261125180000_gestlok_hq_jornada_no_bloquea.sql','utf8');
  assert.match(sql,/t\.auto_enabled\s+and not exists\(select 1 from gestlok_hq_private\.agent_runs r where r\.task_id = t\.id\)\) then return null/);
  assert.match(sql,/revoke all on function gestlok_hq_private\.daily_mission\(\) from public, anon, authenticated/);
+});
+
+test('HQ: Marketing de GESTLOK Chat y Soporte general trabajan con datos reales y solo canales gratis',async()=>{
+ const office=await import('../public/stock/gestlok-hq-office.mjs');
+ const ids=office.TEAM.map(p=>p.id);
+ assert.ok(ids.includes('difusion')&&ids.includes('soporte_general'));
+ assert.equal(office.TEAM.length,10);
+ const pulse={sucursales:[],conteo:{},
+  plataforma:{empresas_chat:2,altas_pendientes:1,gerentes_pendientes:0,mensajes_web_sin_leer:2,suscripciones_en_mora:0,suscripciones_pendientes:0,locales_sin_carta:1},
+  difusion:[{id:'instagram',nombre:'Instagram de GESTLOK',url:'https://www.instagram.com/',estado:'publicado',prioridad:1,como:'Perfil gratis'},
+   {id:'capterra',nombre:'Capterra',url:'https://www.capterra.es/company/vendors',estado:'pendiente',prioridad:2,como:'Listado básico gratis'},
+   {id:'search-console',nombre:'Google Search Console',url:'https://search.google.com/search-console',estado:'pendiente',prioridad:1,como:'Alta gratis del sitio'}]};
+ const ins=office.buildInsights({pulse,now:'2026-11-25T15:00:00Z'});
+ assert.ok(ins.some(i=>i.agent==='soporte_general'&&i.level===3&&/1 comercio espera el alta/.test(i.text)));
+ assert.ok(ins.some(i=>i.agent==='soporte_general'&&/2 mensajes del formulario de gestlok\.com\.ar sin leer/.test(i.text)&&i.idea));
+ assert.ok(ins.some(i=>i.agent==='soporte_general'&&/1 local de GESTLOK Chat no tiene productos activos/.test(i.text)));
+ assert.ok(ins.some(i=>i.agent==='difusion'&&/1 sitio publicado y 2 pendientes, todos gratis/.test(i.text)));
+ assert.ok(ins.some(i=>i.agent==='difusion'&&/Próximo sitio para publicar GESTLOK Chat: Google Search Console/.test(i.text)));
+ const sql=readFileSync('supabase/migrations/20261125190000_gestlok_hq_marketing_soporte_general.sql','utf8');
+ assert.match(sql,/'difusion','soporte_general','lider'/);
+ assert.match(sql,/revoke all on gestlok_hq_private\.difusion_canales from public, anon, authenticated/);
+ assert.match(sql,/function gestlok_hq_private\.difusion_estado[\s\S]*require_creator\(\)/);
+ assert.match(sql,/revoke all on function gestlok_hq_private\.pulso_plataforma\(\) from public, anon, authenticated/);
+ assert.doesNotMatch(sql.slice(sql.indexOf('pulso_plataforma() returns'),sql.indexOf('pulso_difusion() returns')),/payer_email|email|telefono|nombre_publico|mp_preapproval/);
+ const seeds=[...sql.matchAll(/^ \('([a-z0-9-]+)', '[^']+', '([^']+)'/gm)];
+ assert.ok(seeds.length>=10);
+ for(const [,,url] of seeds)assert.match(url,/^https:\/\//);
+ assert.doesNotMatch(sql,/costo[^\n]*\$|USD|pago por clic es obligatorio/);
+ assert.match(sql,/Google no admite empresas que solo operan online/);
+ assert.match(sql,/\('difusion', 'Valentina · Marketing de GESTLOK Chat/);
+ assert.match(sql,/\('soporte_general', 'Lucas · Soporte general/);
+ assert.match(sql,/creator_id=p_user\)<7 or exists/);
+ assert.match(sql,/t\.auto_enabled\s+and not exists\(select 1 from gestlok_hq_private\.agent_runs r where r\.task_id = t\.id\)\) then return null/);
+ for(const f of ['supabase/functions/gestlok-hq-agent/index.ts','supabase/functions/gestlok-hq-worker/index.ts']){
+  const code=readFileSync(f,'utf8');
+  assert.match(code,/difusion:"Valentina · Marketing de GESTLOK Chat/);
+  assert.match(code,/soporte_general:"Lucas · Soporte general de GESTLOK/);
+  assert.match(code,/no compr\w+ publicidad ni publi\w+ nada/);
+ }
+ const home=readFileSync('public/stock/gestlok-creator-home.js','utf8');
+ assert.match(home,/rpc\('gestlok_hq_difusion_estado',\{p_id:id,p_estado:estado\}\)/);
+ assert.match(home,/\['pendiente','publicado','descartado'\]\.includes\(estado\)/);
 });

@@ -657,7 +657,9 @@
     ['atencion','Atención al cliente','Mesa de pedidos · pedidos sin abrir, reclamos y conversaciones','#e3e9f3','<path d="M4 4h16v13H9l-5 4zM8 9h8m-8 4h5"/>'],
     ['marketing','Marketing','Promos y ventas · promos del día, reseñas y difusión del QR','#f3e9d8','<path d="M3 10h5l12-5v14l-12-5H3zM8 14l2 6h3"/>'],
     ['datos','Data Analytics','Métricas de los locales · conversión, ticket y tiempos','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>'],
-    ['soporte','Servicio técnico','Guardia técnica de los locales · sitio, pruebas, Conteo y cierres','#e2e9ed','<path d="M12 22s8-4 8-12V5l-8-3-8 3v5c0 8 8 12 8 12zM8 12l3 3 5-6"/>']
+    ['soporte','Servicio técnico','Guardia técnica de los locales · sitio, pruebas, Conteo y cierres','#e2e9ed','<path d="M12 22s8-4 8-12V5l-8-3-8 3v5c0 8 8 12 8 12zM8 12l3 3 5-6"/>'],
+    ['difusion','Marketing GESTLOK Chat','Difusión de la micro app · dónde publicarla gratis y con qué texto','#f6e3ec','<path d="M4 12a8 8 0 1 0 16 0 8 8 0 1 0-16 0m0 0h16M12 4c2.5 2.5 2.5 13.5 0 16M12 4c-2.5 2.5-2.5 13.5 0 16"/>'],
+    ['soporte_general','Soporte general','Altas de comercios, gerentes, mensajes de la web y suscripciones','#e4efe1','<path d="M4 13a8 8 0 0 1 16 0v4h-3v-5h3M4 12v5h3v-5H4m13 5c0 2-2 3-5 3"/>']
   ]);
   let hqAgent = 'desarrollo';
   const HQ_PEOPLE=Object.freeze({
@@ -667,11 +669,13 @@
     atencion:{name:'Renata',animal:'Gata',role:'Mesa de pedidos · GESTLOK Chat',skills:'Pedidos sin abrir, reclamos y experiencia de compra. No accede a conversaciones ni envía mensajes.'},
     marketing:{name:'Martina',animal:'Zorra',role:'Promos y ventas',skills:'Promos del día, venta sugerida, reseñas y difusión del QR. No publica ni compra publicidad.'},
     datos:{name:'Santiago',animal:'Pulpo',role:'Métricas de los locales',skills:'Conversión, ticket promedio, tiempos de confirmación y oportunidades por local.'},
+    difusion:{name:'Valentina',animal:'Loro',role:'Marketing de GESTLOK Chat',skills:'Investiga dónde publicitar la micro app gratis (redes, directorios de software, prensa) y deja los textos listos. No publica ni compra publicidad.'},
+    soporte_general:{name:'Lucas',animal:'Perro',role:'Soporte general de GESTLOK',skills:'Altas de comercios, gerentes pendientes, mensajes del formulario web, suscripciones y locales sin carta. Redacta respuestas; no envía mensajes ni aprueba altas.'},
     soporte:{name:'Facundo',animal:'Robot',role:'Guardia técnica de los locales',skills:'Control preventivo del sitio, pruebas, Conteo y cierres automáticos. Solo lectura; toda modificación requiere aprobación de la administradora.'},
     lider:{name:'Alex',animal:'Búho',role:'Directora de la oficina',skills:'Coordina al equipo, junta las ideas, prioriza y eleva informes. Solo propone: decide la administradora.'}
   });
   let hqRoom=false;
-  const HQ_LEADER=['lider','Dirección de IA','Coordina las siete áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
+  const HQ_LEADER=['lider','Dirección de IA','Coordina las nueve áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
   let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[], hqRunsLoaded=false, hqRunsError='';
@@ -727,7 +731,7 @@
     const ready=children.filter(q=>q.status!=='cancelada'&&hqRuns.some(r=>r.task_id===q.id&&r.state==='review')).length;
     const running=children.some(q=>hqRuns.some(r=>r.task_id===q.id&&r.state==='working'));
     const quota=hqQuota();
-    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los siete sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||t.auto_enabled||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button>'+(children.length===7&&typeof t.auto_enabled==='boolean'?'<p role="status">'+esc(t.auto_enabled?'Modo autónomo autorizado · continúa por servidor cuando haya cuota':'Modo autónomo desactivado')+'</p><button type="button" class="btn" data-ch-hq-auto="'+esc(t.id)+'" data-enabled="'+(!t.auto_enabled)+'" '+(hqBusy||hqAIBusy?'disabled':'')+'>'+(t.auto_enabled?'Pausar trabajo autónomo':'Autorizar trabajo autónomo')+'</button>':'')+'</div>';
+    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los nueve sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||t.auto_enabled||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button>'+(children.length===7&&typeof t.auto_enabled==='boolean'?'<p role="status">'+esc(t.auto_enabled?'Modo autónomo autorizado · continúa por servidor cuando haya cuota':'Modo autónomo desactivado')+'</p><button type="button" class="btn" data-ch-hq-auto="'+esc(t.id)+'" data-enabled="'+(!t.auto_enabled)+'" '+(hqBusy||hqAIBusy?'disabled':'')+'>'+(t.auto_enabled?'Pausar trabajo autónomo':'Autorizar trabajo autónomo')+'</button>':'')+'</div>';
   }
   const HQ_TEAM_GAP_MS=Number.isFinite(window.GestLokHqTeamGapMs)?window.GestLokHqTeamGapMs:45000;
   function hqLimitsView(q){
@@ -763,16 +767,16 @@
       const sb=window.GestLokSupabase;
       const refresh=async()=>{const [tasks,runs]=await Promise.all([sb.rpc('gestlok_hq_list_tasks'),sb.rpc('gestlok_hq_list_runs')]);if(!alive())throw Error('Sesión cerrada');if(tasks.error||runs.error||!Array.isArray(tasks.data)||!Array.isArray(runs.data))throw Error('No se pudo sincronizar');hqTasks=tasks.data;hqRuns=runs.data;hqLoaded=true;hqRunsLoaded=true;api?.render();};
       if(initial){
-        if(!window.confirm('¿Distribuir esta misión a los siete sectores? Las tareas iniciales pendientes compatibles se reutilizan. No se consulta IA todavía.'))return;
+        if(!window.confirm('¿Distribuir esta misión a los nueve sectores? Las tareas iniciales pendientes compatibles se reutilizan. No se consulta IA todavía.'))return;
         const res=await sb.rpc('gestlok_hq_delegate_mission',{p_task:id,p_reuse_initial:true});if(res.error||res.data!==true)throw Error('No se confirmó la distribución');
         await refresh();return;
       }
       await refresh();
-      for(let step=0;step<8&&alive();step++){
+      for(let step=0;step<12&&alive();step++){
         const parent=hqTasks.find(t=>t.id===id);
         if(parent?.status!=='pendiente'||hqRuns.some(r=>r.task_id===id))break;
         const children=hqTasks.filter(t=>t.parent_task_id===id);
-        if(children.length!==7||children.some(t=>hqRuns.some(r=>r.task_id===t.id&&r.state==='working')))break;
+        if(children.length<7||children.some(t=>hqRuns.some(r=>r.task_id===t.id&&r.state==='working')))break;
         if(hqQuota()?.remaining===0){hqAIError='Cuota interna agotada. Los resultados se conservaron; continuá cuando se renueve.';break;}
         const next=children.find(t=>t.status==='pendiente'&&!hqRuns.some(r=>r.task_id===t.id));
         if(!next&&!children.some(t=>t.status!=='cancelada'&&hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))){hqAIError='No hay propuestas exitosas para Alex.';break;}
@@ -885,7 +889,7 @@
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';}
+  function hqReset(){hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
   async function hqSync(){
@@ -966,8 +970,22 @@
     onPrivate:id=>{if(!hqAllowed()||!hqArea(id))return;if(hqAgent!==id)hqDraft='';hqAgent=id;hqRoom=true;api?.render();},
     // La idea solo precarga el formulario: la creadora la revisa y decide si la guarda.
     onIdea:(id,text)=>{if(!hqAllowed()||!hqArea(id))return;hqAgent=id;hqRoom=false;hqDraft=String(text||'').slice(0,4000);api?.render();hqFocusForm();},
-    onSelect:()=>{}
+    onSelect:()=>{},
+    // Mapa de difusión: la creadora marca dónde ya publicó GESTLOK Chat. No publica nada por ella.
+    onCanal:(id,estado)=>{void hqSetCanal(id,estado);}
   });
+  let hqCanalBusy=false;
+  async function hqSetCanal(id,estado){
+    if(!hqAllowed()||hqCanalBusy||!/^[a-z0-9-]{2,40}$/.test(String(id||''))||!['pendiente','publicado','descartado'].includes(estado))return;
+    const epoch=hqEpoch;hqCanalBusy=true;
+    try{
+      const res=await window.GestLokSupabase.rpc('gestlok_hq_difusion_estado',{p_id:id,p_estado:estado});
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      if(res.error||res.data!==true)hqPulseError='No se pudo guardar el estado del sitio de difusión. Probá de nuevo.';
+      else{const c=(hqPulse?.difusion||[]).find(x=>x.id===id);if(c)c.estado=estado;}
+    }catch{if(epoch===hqEpoch)hqPulseError='No se pudo guardar el estado del sitio de difusión.';}
+    finally{if(epoch===hqEpoch){hqCanalBusy=false;hqPulseAt=0;hqOfficeSync();void hqReadPulse(true);}}
+  }
   function hqOfficeSync(){
     if(!hqAllowed()||typeof document.querySelector!=='function')return;
     const slot=document.querySelector('[data-hq-office-slot]');
@@ -975,7 +993,7 @@
     if(hqOfficeMod){try{hqOfficeMod.attach(slot,hqOfficeModel(),hqOfficeHandlers);}catch{slot.textContent='No se pudo dibujar la oficina. El Centro de control sigue disponible.';}return;}
     if(hqOfficeLoading)return;
     hqOfficeLoading=true;
-    import('./gestlok-hq-office.mjs?rev=hq-office-20261125').then(mod=>{hqOfficeMod=mod;hqOfficeSync();})
+    import('./gestlok-hq-office.mjs?rev=hq-office-20261125b').then(mod=>{hqOfficeMod=mod;hqOfficeSync();})
       .catch(()=>{const s=document.querySelector('[data-hq-office-slot]');if(s)s.textContent='No se pudo cargar la oficina animada. El Centro de control sigue disponible.';})
       .finally(()=>{hqOfficeLoading=false;});
   }
@@ -1017,7 +1035,7 @@
       navigation+(hqRoom?room:office)+hqExecutiveInbox()+hqSupportView()+
       '<h3 style="margin-top:20px">Centro de control</h3>'+
       '<div aria-label="Ficha del empleado" style="margin-top:8px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
-      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los siete sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
+      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
       hqAIView()+hqHiringView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
   }
 
