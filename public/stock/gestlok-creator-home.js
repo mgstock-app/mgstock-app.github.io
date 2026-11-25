@@ -697,8 +697,49 @@
     if(!hqLoaded||!hqRunsLoaded)return null;
     const cutoff=Date.now()-86400000;
     const recent=hqRuns.filter(r=>Date.parse(r.created_at)>cutoff);
-    const used=recent.reduce((n,r)=>n+(hqTasks.find(t=>t.id===r.task_id)?.agent==='lider'?8:1),0);
+    const used=recent.reduce((n,r)=>n+(Number.isInteger(r.quota_units)?r.quota_units:hqTasks.find(t=>t.id===r.task_id)?.agent==='lider'?8:1),0);
     return {remaining:Math.max(0,10-used),next:recent.length?Math.min(...recent.map(r=>Date.parse(r.created_at)+86400000)):null};
+  }
+  function hqTeamView(t){
+    if(t.agent!=='lider'||t.status!=='pendiente'||hqRuns.some(r=>r.task_id===t.id))return '';
+    const children=hqTasks.filter(q=>q.parent_task_id===t.id);
+    const pending=children.filter(q=>q.status==='pendiente'&&!hqRuns.some(r=>r.task_id===q.id)).length;
+    const ready=children.filter(q=>q.status!=='cancelada'&&hqRuns.some(r=>r.task_id===q.id&&r.state==='review')).length;
+    const running=children.some(q=>hqRuns.some(r=>r.task_id===q.id&&r.state==='working'));
+    const quota=hqQuota();
+    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los siete sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button></div>';
+  }
+  async function hqTeam(id){
+    if(!hqAllowed()||hqBusy||hqAIBusy||!hqTasks.some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
+    const initial=!hqTasks.some(t=>t.parent_task_id===id);
+    if(!initial&&(!hqAIReady||!window.confirm('¿Continuar las tareas pendientes del equipo con Groq gratuito? Se conserva cada resultado y se detiene al alcanzar la cuota o un error. No se modifica GESTLOK.')))return;
+    const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
+    const alive=()=>epoch===hqEpoch&&hqAllowed();
+    try{
+      const sb=window.GestLokSupabase;
+      const refresh=async()=>{const [tasks,runs]=await Promise.all([sb.rpc('gestlok_hq_list_tasks'),sb.rpc('gestlok_hq_list_runs')]);if(!alive())throw Error('Sesión cerrada');if(tasks.error||runs.error||!Array.isArray(tasks.data)||!Array.isArray(runs.data))throw Error('No se pudo sincronizar');hqTasks=tasks.data;hqRuns=runs.data;hqLoaded=true;hqRunsLoaded=true;api?.render();};
+      if(initial){
+        if(!window.confirm('¿Distribuir esta misión a los siete sectores? Las tareas iniciales pendientes compatibles se reutilizan. No se consulta IA todavía.'))return;
+        const res=await sb.rpc('gestlok_hq_delegate_mission',{p_task:id,p_reuse_initial:true});if(res.error||res.data!==true)throw Error('No se confirmó la distribución');
+        await refresh();return;
+      }
+      await refresh();
+      for(let step=0;step<8&&alive();step++){
+        const parent=hqTasks.find(t=>t.id===id);
+        if(parent?.status!=='pendiente'||hqRuns.some(r=>r.task_id===id))break;
+        const children=hqTasks.filter(t=>t.parent_task_id===id);
+        if(children.length!==7||children.some(t=>hqRuns.some(r=>r.task_id===t.id&&r.state==='working')))break;
+        if(hqQuota()?.remaining===0){hqAIError='Cuota interna agotada. Los resultados se conservaron; continuá cuando se renueve.';break;}
+        const next=children.find(t=>t.status==='pendiente'&&!hqRuns.some(r=>r.task_id===t.id));
+        if(!next&&!children.some(t=>t.status!=='cancelada'&&hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))){hqAIError='No hay propuestas exitosas para Alex.';break;}
+        const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action:'run',task_id:next?.id||id}});
+        if(!alive())return;
+        await refresh();
+        if(res.error||res.data?.state!=='review'){hqAIError='El equipo se detuvo por un error o límite. Consultá el resultado individual; las demás tareas se conservan.';break;}
+        if(!next)break;
+      }
+    }catch{if(alive())hqAIError='No se confirmó la operación. Actualizá la bandeja antes de continuar.';}
+    finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
@@ -759,6 +800,7 @@
   function hqRunView(t){
     const r=hqRuns.find(r=>r.task_id===t.id);
     if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+'</div>';
+    if(t.agent==='lider'&&t.status==='pendiente')return hqTeamView(t);
     const quota=hqQuota(),cost=t.agent==='lider'?8:1;
     if(t.status==='pendiente'&&quota&&quota.remaining<cost)return '<p role="status">Cuota insuficiente: esta tarea necesita '+cost+' consultas y quedan '+esc(quota.remaining)+'. La tarea sigue pendiente.</p>';
     return t.status==='pendiente'&&hqAIReady===true?'<button type="button" class="btn primary" data-ch-hq-ai-run="'+esc(t.id)+'" '+(hqAIBusy?'disabled':'')+'>'+(t.agent==='lider'?'Iniciar reunión de IA':'Ejecutar con IA')+'</button>':'';
@@ -1014,6 +1056,7 @@
   document.addEventListener('click', ev => {
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
+    const hqTeamButton=ev.target.closest?.('[data-ch-hq-team]');if(hqTeamButton){ev.preventDefault();void hqTeam(hqTeamButton.dataset.chHqTeam);return;}
     const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
