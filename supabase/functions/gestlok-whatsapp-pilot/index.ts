@@ -1,10 +1,10 @@
 import {createClient} from "npm:@supabase/supabase-js@2.118.0";
-import {extractPilotMessages,verifySignature} from "./pilot.mjs";
+import {extractPilotMessages,verifySignature,isPilotProject} from "./pilot.mjs";
 const env=(k:string)=>Deno.env.get(k)||"";
 const reply=(body:string,status=200)=>new Response(body,{status,headers:{"Content-Type":"text/plain","Cache-Control":"no-store"}});
 Deno.serve(async req=>{
  // Default off. Never attach this endpoint to a live number during the pilot.
- if(env("GL_WA_PILOT_ENABLED")!=="true"||!env("SUPABASE_URL").includes("irqeitzbfyerxcrogkyh"))return reply("Disabled",503);
+ if(env("GL_WA_PILOT_ENABLED")!=="true"||!isPilotProject(env("SUPABASE_URL")))return reply("Disabled",503);
  const secret=env("GL_WA_PILOT_APP_SECRET"),verify=env("GL_WA_PILOT_VERIFY_TOKEN");
  const config={waba:env("GL_WA_PILOT_WABA"),phoneId:env("GL_WA_PILOT_PHONE_ID"),testSenders:env("GL_WA_PILOT_SENDERS").split(",").map(s=>s.trim()).filter(s=>/^\d{8,15}$/.test(s))};
  if(!secret||verify.length<24||!config.waba||!config.phoneId||!config.testSenders.length)return reply("Not configured",503);

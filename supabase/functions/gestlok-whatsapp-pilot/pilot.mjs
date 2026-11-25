@@ -25,3 +25,8 @@ export async function verifySignature(raw,signature,secret,cryptoImpl=globalThis
  const bytes=Uint8Array.from(signature.slice(7).match(/../g),h=>parseInt(h,16));
  return cryptoImpl.subtle.verify('HMAC',key,bytes,raw);
 }
+
+// Exact HTTPS origin; never accept a lookalike hostname, credentials or URL path.
+export function isPilotProject(raw){
+ try{const u=new URL(raw);return u.origin==='https://irqeitzbfyerxcrogkyh.supabase.co'&&!u.username&&!u.password&&u.pathname==='/'&&!u.search&&!u.hash;}catch{return false;}
+}
