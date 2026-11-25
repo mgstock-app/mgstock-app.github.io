@@ -34,7 +34,10 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav button').should('have.length',12);
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Sin conexión a IA');
-  cy.get('[data-ch-hq-agent]').should('have.length',5);
+  cy.get('[data-ch-hq-agent]').should('have.length',6);
+  cy.get('[data-ch-hq-agent="testing"]').click();
+  cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Testing');
+  cy.get('[data-ch-hq-github]').should('be.visible');
   cy.get('[data-ch-hq-agent="marketing"]').click();
   cy.get('[data-ch-hq-agent="marketing"]').should('have.attr','aria-pressed','true');
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');

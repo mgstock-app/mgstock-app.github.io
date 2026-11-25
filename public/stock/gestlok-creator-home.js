@@ -652,15 +652,35 @@
   // HQ: private workspace shell. No agent runs or tenant data are simulated.
   const HQ_AGENTS = Object.freeze([
     ['desarrollo','Desarrollo','Programación y nuevas funciones','#dce9f8','<path d="m9 7-5 5 5 5m6-10 5 5-5 5m-2-12-2 14"/>'],
-    ['calidad','Control de calidad','Pruebas, seguridad y regresiones','#dcece7','<path d="m12 3 8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6zM8 12l3 3 5-6"/>'],
+    ['calidad','Control de calidad','Revisión, seguridad y criterios de aceptación','#dcece7','<path d="m12 3 8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6zM8 12l3 3 5-6"/>'],
+    ['testing','Testing','Cypress, pruebas funcionales y regresiones','#e5eef0','<path d="M9 3h6m-5 0v7l-5 8a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-8V3M8 15h8"/>'],
     ['atencion','Atención al cliente','Chats y pedidos · sin acceso a conversaciones','#e3e9f3','<path d="M4 4h16v13H9l-5 4zM8 9h8m-8 4h5"/>'],
     ['marketing','Marketing','Publicidad y comunicación','#f3e9d8','<path d="M3 10h5l12-5v14l-12-5H3zM8 14l2 6h3"/>'],
     ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>']
   ]);
   let hqAgent = 'desarrollo';
+  let hqGithub = null, hqGithubBusy = false, hqGithubError = '';
+  const hqTech=()=>['desarrollo','calidad','testing'].includes(hqAgent);
+  async function hqCheckGithub(){
+    if(!hqAllowed()||!hqTech()||hqGithubBusy)return;
+    const epoch=hqEpoch;hqGithubBusy=true;hqGithubError='';hqGithub=null;api?.render();
+    try{
+      const response=await fetch('https://api.github.com/repos/mgstock-app/mgstock-app.github.io/actions/runs?per_page=15',{headers:{Accept:'application/vnd.github+json'},credentials:'omit',cache:'no-store'});
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const d=await response.json();if(!Array.isArray(d.workflow_runs))throw Error('Respuesta inválida');
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      hqGithub={checked:new Date().toISOString(),runs:d.workflow_runs.slice(0,10).map(x=>({id:Number(x.id),name:String(x.name||''),status:String(x.status||''),conclusion:String(x.conclusion||''),sha:String(x.head_sha||'').slice(0,7),branch:String(x.head_branch||''),event:String(x.event||'')}))};
+    }catch{if(epoch===hqEpoch)hqGithubError='No se pudo consultar GitHub. Abrí Actions o intentá nuevamente.';}
+    finally{if(epoch===hqEpoch){hqGithubBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqGithubView(){
+    if(!hqTech())return '';
+    const labels={success:'Aprobado',failure:'Falló',cancelled:'Cancelado',skipped:'Omitido',in_progress:'En curso',queued:'En cola'};
+    return '<section aria-label="Actividad real de GitHub" style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:10px"><h3>Actividad real de GitHub</h3><p>Consulta de solo lectura. No ejecuta pruebas ni modifica el repositorio.</p><button type="button" class="btn" data-ch-hq-github '+(hqGithubBusy?'disabled':'')+'>'+(hqGithubBusy?'Consultando…':'Consultar ejecuciones')+'</button> <a href="https://github.com/mgstock-app/mgstock-app.github.io/actions" target="_blank" rel="noopener noreferrer">Abrir Actions</a><p role="status">'+esc(hqGithubError||(hqGithub?'Última consulta: '+new Date(hqGithub.checked).toLocaleString('es-AR') : 'Sin consultar'))+'</p>'+(hqGithub?hqGithub.runs.map(x=>'<article style="border-top:1px solid #dce3eb;padding:8px 0;overflow-wrap:anywhere"><a href="https://github.com/mgstock-app/mgstock-app.github.io/actions/runs/'+x.id+'" target="_blank" rel="noopener noreferrer">'+esc(x.name)+'</a> · <strong>'+esc(labels[x.conclusion||x.status]||x.conclusion||x.status)+'</strong><small style="display:block">'+esc(x.branch)+' · '+esc(x.sha)+' · '+esc(x.event)+'</small></article>').join(''):'')+'</section>';
+  }
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';}
+  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';}
   async function hqRequest(fn,args){
     if(!hqAllowed()||hqBusy)return;
     const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
@@ -692,15 +712,15 @@
     if(!premiumAdmin() || status!=='ready')return '';
     if(!hqAttempted&&!hqBusy)queueMicrotask(()=>{if(!hqAttempted&&hqAllowed())void hqRequest();});
     const selected=HQ_AGENTS.find(a=>a[0]===hqAgent)||HQ_AGENTS[0];
-    const desk=(a)=>'<svg viewBox="0 0 120 76" width="120" height="76" aria-hidden="true"><path d="M9 43 57 20l53 23-48 25z" fill="#c4cedb"/><path d="M24 32 59 16l36 17-35 17z" fill="#ffffff"/><path d="M24 32v8l36 17v-7z" fill="#aab9cc"/><path d="M60 50v7l35-17v-7z" fill="#8495ac"/><path d="M44 19l24-10v19L44 38z" fill="#24374f"/><path d="M48 21l16-7v12l-16 7z" fill="#d8e7f7"/><path d="M54 33v5l-8 4 15-3" stroke="#586c86" stroke-width="2" fill="none"/><circle cx="76" cy="43" r="7" fill="#e0b89e"/><path d="M67 57v-6q9-7 18 0v6l-9 5z" fill="#12345a"/></svg>';
+    const desk=(a)=>'<svg viewBox="0 0 120 76" width="84" height="53" aria-hidden="true"><path d="M9 43 57 20l53 23-48 25z" fill="#c4cedb"/><path d="M24 32 59 16l36 17-35 17z" fill="#ffffff"/><path d="M24 32v8l36 17v-7z" fill="#aab9cc"/><path d="M60 50v7l35-17v-7z" fill="#8495ac"/><path d="M44 19l24-10v19L44 38z" fill="#24374f"/><path d="M48 21l16-7v12l-16 7z" fill="#d8e7f7"/><path d="M54 33v5l-8 4 15-3" stroke="#586c86" stroke-width="2" fill="none"/><circle cx="76" cy="43" r="7" fill="#e0b89e"/><path d="M67 57v-6q9-7 18 0v6l-9 5z" fill="#12345a"/></svg>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Organizá el trabajo de GESTLOK por áreas. Los cinco agentes todavía no están conectados a un ejecutor de IA; ningún estado de trabajo es simulado.</p>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;background:#f0f3f7;padding:12px;border-radius:12px">'+
-      HQ_AGENTS.map(a=>'<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" style="min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:5px;padding:14px;border-radius:9px;border:2px solid '+(a[0]===selected[0]?'#12345a':'transparent')+';background:'+a[3]+';color:#12345a">'+desk(a)+
-        '<strong style="display:flex;gap:6px;align-items:center">'+svg(a[4],20)+esc(a[1])+'</strong><span>'+esc(a[2])+'</span><small>Sin conexión a IA</small></button>').join('')+
-      '</div><div style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>Dirección general · Creadora</strong><p>Elegí un área y prepará una tarea para delegar. Guardá una tarea en la bandeja privada o copiá la instrucción para delegarla. No se ejecuta ni se envía automáticamente.</p></div>'+
+      '<p>Tu equipo de seis áreas. Elegí un escritorio. Las consultas a GitHub son reales; el ejecutor de IA todavía no está conectado.</p>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,112px),1fr));gap:8px;background:#f0f3f7;padding:8px;border-radius:12px">'+
+      HQ_AGENTS.map(a=>'<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" style="min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;padding:8px;border-radius:9px;border:2px solid '+(a[0]===selected[0]?'#12345a':'transparent')+';background:'+a[3]+';color:#12345a">'+desk(a)+
+        '<strong style="font-size:13px;line-height:1.25;overflow-wrap:anywhere">'+esc(a[1])+'</strong><small style="font-size:11px">Sin conexión a IA</small></button>').join('')+
+      '</div><div style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(selected[1])+'</strong><p>'+esc(selected[2])+'</p><small>Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3><label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>Guardar tarea privada</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
-      hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
+      hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
   }
 
   function view(p) {
@@ -779,6 +799,7 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
     const hqClose=ev.target.closest?.('[data-ch-hq-close]');if(hqClose){ev.preventDefault();if(hqAllowed()&&['cerrada','cancelada'].includes(hqClose.dataset.status))void hqRequest('gestlok_hq_close_task',{p_id:hqClose.dataset.chHqClose,p_status:hqClose.dataset.status});return;}
     const hq=ev.target.closest?.('[data-ch-hq-agent]');

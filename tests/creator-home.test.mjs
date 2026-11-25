@@ -14,7 +14,7 @@ const DASH = {
   activity: [{at: '2026-10-26T03:31:42Z', kind: 'audit', what: 'employee_space_created', who: null, company: 'Perfumes'}, {at: '2026-10-26T03:22:11Z', kind: 'login', what: 'login', who: 'kmu***@gmail.com', company: 'Mi Gusto'}],
   system: {accounts: 6, confirmed_accounts: 6, verified_links: 2, editing_open: false, support_open: false}
 };
-function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com'} = {}) {
+function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com', fetcher} = {}) {
   const listeners = {}, calls = [], argsLog = [], store = existingStore || new Map(), notices = [], opened = [];
   let renders = 0, reloads = 0, invalidations = 0;
   const window = {
@@ -27,7 +27,7 @@ function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existing
     GestLokSupabase: {rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
   };
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
-  vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask});
+  vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask, fetch: fetcher});
   const h = window.GestLokCreatorHome;
   h.attach({S: {me: {email, tenant_id: tenant}}, isCreadora: () => creadora,
     render: () => { renders++; }, toast: (msg,bad) => { notices.push({msg,bad}); }});
@@ -227,7 +227,7 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(r.h.view({parts:{}}), /data-ch-tab="hq"/);
   r.h.setTab('hq'); await tick();
   const html=r.h.view({parts:{}});
-  for(const area of ['Desarrollo','Control de calidad','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
+  for(const area of ['Desarrollo','Control de calidad','Testing','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
   assert.match(html,/Sin conexión a IA/);
   assert.match(html,/Copiar instrucción para delegar/);
   r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
@@ -267,4 +267,23 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
   assert.match(r.h.view({parts:{}}),/No hay tareas pendientes/);
   assert.match(r.h.view({parts:{}}),/cerrada/);
   assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_close_task','gestlok_hq_list_tasks']);
+});
+
+test('HQ Testing consulta Actions reales sin enviar instrucciones ni modificar GitHub',async()=>{
+ const requests=[];
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?[]:DASH}),{fetcher:async(url,opts)=>{requests.push([url,opts]);return {ok:true,json:async()=>({workflow_runs:[{id:123,name:'Cypress <test>',status:'completed',conclusion:'failure',head_sha:'abcdef123',head_branch:'main',event:'push'}]})};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'testing'}}:null}});
+ assert.match(r.h.view({parts:{}}),/Preparar tarea · Testing/);
+ r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-github]'?{}:null}});
+ await tick();await tick();
+ assert.equal(requests.length,1);
+ assert.match(requests[0][0],/^https:\/\/api.github.com\/repos\/mgstock-app\/mgstock-app.github.io\/actions\/runs\?/);
+ assert.equal(requests[0][1].credentials,'omit');
+ assert.equal(requests[0][1].body,undefined);
+ assert.match(r.h.view({parts:{}}),/Cypress &lt;test&gt;/);
+ assert.match(r.h.view({parts:{}}),/Falló/);
+ assert.match(r.h.view({parts:{}}),/actions\/runs\/123/);
+ r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
+ assert.doesNotMatch(r.h.view({parts:{}}),/Actividad real de GitHub/);
 });
