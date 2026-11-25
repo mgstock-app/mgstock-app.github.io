@@ -659,6 +659,34 @@
     ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>']
   ]);
   let hqAgent = 'desarrollo';
+  let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[];
+  async function hqAI(action,taskId){
+    if(!hqAllowed()||hqAIBusy)return;
+    if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
+    if(action==='run' && !window.confirm('¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Puede generar consumo de API.'))return;
+    const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
+    try{
+      const sb=window.GestLokSupabase;
+      if(!sb?.functions?.invoke)throw Error('Sin conexión');
+      const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action,task_id:taskId}});
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      if(action==='status')hqAIReady=!res.error&&res.data?.configured===true;
+      if(res.error)hqAIError='No se pudo confirmar la conexión o ejecución. Consultá los resultados antes de repetir.';
+      const runs=await sb.rpc('gestlok_hq_list_runs');
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      if(runs.error||!Array.isArray(runs.data))throw Error('Sin resultados');
+      hqRuns=runs.data;
+    }catch{if(epoch===hqEpoch)hqAIError='No se pudo consultar el motor de IA o sus resultados.';}
+    finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqAIView(){
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 ejecuciones cada 24 horas.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Sin conexión a IA: falta configuración':'Sin conexión a IA: no verificada'))+'</p></section>';
+  }
+  function hqRunView(t){
+    const r=hqRuns.find(r=>r.task_id===t.id);
+    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+'</div>';
+    return t.status==='pendiente'&&hqAIReady===true?'<button type="button" class="btn primary" data-ch-hq-ai-run="'+esc(t.id)+'" '+(hqAIBusy?'disabled':'')+'>Ejecutar con IA</button>':'';
+  }
   let hqGithub = null, hqGithubBusy = false, hqGithubError = '';
   const hqTech=()=>['desarrollo','calidad','testing'].includes(hqAgent);
   async function hqCheckGithub(){
@@ -680,7 +708,7 @@
   }
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';}
+  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqRuns=[];}
   async function hqRequest(fn,args){
     if(!hqAllowed()||hqBusy)return;
     const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
@@ -703,7 +731,7 @@
   }
   function hqTaskList(){
     if(!hqAllowed())return '';
-    const renderTask=t=>'<article style="padding:12px;border:1px solid #dce3eb;border-radius:8px;margin:8px 0;overflow-wrap:anywhere"><strong>'+esc(HQ_AGENTS.find(a=>a[0]===t.agent)?.[1]||'Área')+'</strong> · '+esc(t.status)+'<p style="white-space:pre-wrap">'+esc(t.instruction)+'</p><small>'+esc(dmy(t.created_at))+'</small>'+
+    const renderTask=t=>'<article style="padding:12px;border:1px solid #dce3eb;border-radius:8px;margin:8px 0;overflow-wrap:anywhere"><strong>'+esc(HQ_AGENTS.find(a=>a[0]===t.agent)?.[1]||'Área')+'</strong> · '+esc(t.status)+'<p style="white-space:pre-wrap">'+esc(t.instruction)+'</p><small>'+esc(dmy(t.created_at))+'</small>'+hqRunView(t)+
       (t.status==='pendiente'?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy?'disabled':'')+'>Marcar cerrada</button><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy?'disabled':'')+'>Cancelar tarea</button></div>':'')+'</article>';
     return '<section aria-label="Bandeja privada de tareas" style="margin-top:20px"><h3>Bandeja de tareas</h3><button class="btn" type="button" data-ch-hq-refresh '+(hqBusy?'disabled':'')+'>Actualizar</button><p role="status">'+esc(hqError||(hqBusy?'Consultando…':!hqLoaded?'Bandeja sin consultar':'Guardado privado · sin ejecución automática'))+'</p>'+
       (hqLoaded?'<h4>Pendientes</h4>'+(hqTasks.filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqTasks.filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
@@ -714,13 +742,13 @@
     const selected=HQ_AGENTS.find(a=>a[0]===hqAgent)||HQ_AGENTS[0];
     const desk=(a)=>'<svg viewBox="0 0 120 76" width="84" height="53" aria-hidden="true"><path d="M9 43 57 20l53 23-48 25z" fill="#c4cedb"/><path d="M24 32 59 16l36 17-35 17z" fill="#ffffff"/><path d="M24 32v8l36 17v-7z" fill="#aab9cc"/><path d="M60 50v7l35-17v-7z" fill="#8495ac"/><path d="M44 19l24-10v19L44 38z" fill="#24374f"/><path d="M48 21l16-7v12l-16 7z" fill="#d8e7f7"/><path d="M54 33v5l-8 4 15-3" stroke="#586c86" stroke-width="2" fill="none"/><circle cx="76" cy="43" r="7" fill="#e0b89e"/><path d="M67 57v-6q9-7 18 0v6l-9 5z" fill="#12345a"/></svg>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Tu equipo de seis áreas. Elegí un escritorio. Las consultas a GitHub son reales; el ejecutor de IA todavía no está conectado.</p>'+
+      '<p>Tu equipo de seis áreas. Elegí un escritorio. Las consultas a GitHub son reales. El motor de IA requiere una configuración independiente.</p>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,112px),1fr));gap:8px;background:#f0f3f7;padding:8px;border-radius:12px">'+
       HQ_AGENTS.map(a=>'<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" style="min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;padding:8px;border-radius:9px;border:2px solid '+(a[0]===selected[0]?'#12345a':'transparent')+';background:'+a[3]+';color:#12345a">'+desk(a)+
-        '<strong style="font-size:13px;line-height:1.25;overflow-wrap:anywhere">'+esc(a[1])+'</strong><small style="font-size:11px">Sin conexión a IA</small></button>').join('')+
+        '<strong style="font-size:13px;line-height:1.25;overflow-wrap:anywhere">'+esc(a[1])+'</strong><small style="font-size:11px">'+(hqAIReady===true?'Proveedor configurado':'Sin conexión a IA')+'</small></button>').join('')+
       '</div><div style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(selected[1])+'</strong><p>'+esc(selected[2])+'</p><small>Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3><label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>Guardar tarea privada</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
-      hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
+      hqAIView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
   }
 
   function view(p) {
@@ -799,6 +827,8 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();void hqAI('status');return;}
+    const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
     const hqClose=ev.target.closest?.('[data-ch-hq-close]');if(hqClose){ev.preventDefault();if(hqAllowed()&&['cerrada','cancelada'].includes(hqClose.dataset.status))void hqRequest('gestlok_hq_close_task',{p_id:hqClose.dataset.chHqClose,p_status:hqClose.dataset.status});return;}
