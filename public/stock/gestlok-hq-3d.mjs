@@ -5,8 +5,8 @@ const C={ink:0x19354b,navy:0x28485e,oak:0xd2b28c,cream:0xf1eee8,white:0xf7fafc,s
 const clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 const smooth=n=>{n=clamp(n);return n*n*(3-2*n);};
 const mix=(a,b,t)=>a+(b-a)*t;
-const palette=[[-5.6,-3.6],[5.6,-3.6],[-5.6,0],[5.6,0],[-5.6,3.6],[5.6,3.6],[0,4.65]];
-const seats=[[-1.85,-2.8],[1.85,-2.8],[-1.85,-1.55],[1.85,-1.55],[-.8,-.75],[.8,-.75],[0,-3.85]];
+const palette=[[-5.6,-3.6],[5.6,-3.6],[-5.6,0],[5.6,0],[-5.6,3.6],[5.6,3.6],[-2.0,4.3],[0,4.65]];
+const seats=[[-1.85,-2.8],[1.85,-2.8],[-1.85,-1.55],[1.85,-1.55],[-.8,-.75],[.8,-.75],[0,-.65],[0,-3.85]];
 const mounted=new WeakMap();
 export function mount(host,people,opts={}){
  if(!host?.isConnected||mounted.has(host))return;
@@ -84,7 +84,7 @@ export function mount(host,people,opts={}){
  }
  function workstation(x,z,i){
   const g=group(world,x,0,z);
-  const w=i===6?2.55:2.30;
+  const w=i===7?2.55:2.30;
   box(g,w,.12,.95,C.oak,0,.77,0);
   for(const xx of [-w/2+.12,w/2-.12]){box(g,.085,.70,.80,C.steel,xx,.38,0);}
   box(g,.43,.56,.68,C.white,w/2-.38,.32,-.03);
@@ -126,7 +126,7 @@ export function mount(host,people,opts={}){
   const body=group(pelvis,0,.10,0);
   sphere(body,.255,shirt,0,.19,0,fem?.89:1.02,1.17,.57);
   box(body,.27,.028,.06,0xe5e9ea,0,.385,.125);
-  if(i===6){box(body,.038,.23,.035,0xe8edf0,0,.21,.155);}
+  if(i===7){box(body,.038,.23,.035,0xe8edf0,0,.21,.155);}
   const neck=cyl(body,.062,.071,.09,skin,0,.43,0);
   const head=group(body,0,.54,0);sphere(head,.139,skin,0,0,0,.88,1.16,.91);
   // Facial features and distinct adult hair silhouettes.
