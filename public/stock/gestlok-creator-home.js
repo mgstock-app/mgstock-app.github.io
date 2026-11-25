@@ -992,7 +992,7 @@
     const leader=ev.target.closest?.('[data-ch-hq-leader]');if(leader){ev.preventDefault();if(hqAllowed()){if(hqAgent!=='lider')hqDraft='';hqAgent='lider';hqRoom=true;api?.render();}return;}
     const hq=ev.target.closest?.('[data-ch-hq-agent]');
     if(hq){ev.preventDefault();if(!premiumAdmin()||tab!=='hq'||status!=='ready'||!HQ_AGENTS.some(a=>a[0]===hq.dataset.chHqAgent))return;
-      if(hqAgent!==hq.dataset.chHqAgent)hqDraft='';hqAgent=hq.dataset.chHqAgent;hqRoom=true;api?.render();return;}
+      if(hqAgent!==hq.dataset.chHqAgent)hqDraft='';hqAgent=hq.dataset.chHqAgent;api?.render();return;}
     const refreshApps=ev.target.closest?.('[data-ch-app-refresh]');
     if(refreshApps&&premiumAdmin()){ev.preventDefault();void loadMicroapps(true);return;}
     const appAdd=ev.target.closest?.('[data-ch-app-add]');
