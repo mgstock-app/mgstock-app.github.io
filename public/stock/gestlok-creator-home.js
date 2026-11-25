@@ -853,7 +853,7 @@
       const host=document.querySelector?.('[data-hq-3d-host]');
       if(!host||host.dataset.hqMode!==(hqRoom?'private':'general')||host.dataset.hqSelected!==selected[0]||host.dataset.hqLoading)return;
       host.dataset.hqLoading='true';host.dataset.hqRenderer='loading';
-      import('./gestlok-hq-3d.mjs?rev=hq-premium-20261125').then(mod=>{
+      import('./gestlok-hq-3d.mjs?rev=hq-actividad-real-20261125').then(mod=>{
         if(!hqAllowed()||!host.isConnected)return;
         mod.mount(host,hqScenePeople,{mode:host.dataset.hqMode,selected:selected[0],meeting:meetingActive,activityText,onSelect:id=>{
           if(!hqAllowed()||!hqScenePeople.some(p=>p.id===id))return;
