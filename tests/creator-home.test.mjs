@@ -584,3 +584,26 @@ test('HQ staged SQL preserves prior quota and protects the mission and sector re
  assert.match(backend,/Array.isArray\(claim.entries\)/);
  assert.match(backend,/if\(!staged\)for/);
 });
+
+
+test('HQ autonomous worker is opt-in, has a server-only credential and observes public evidence',()=>{
+ const sql=readFileSync('docs/hq-autonomous-worker-migration.sql','utf8');
+ const schedule=readFileSync('docs/hq-autonomous-worker-schedule.sql','utf8');
+ const worker=readFileSync('supabase/functions/gestlok-hq-worker/index.ts','utf8');
+ assert.match(sql,/auto_enabled boolean not null default false/);
+ assert.match(sql,/require_creator\(\)/);
+ assert.match(sql,/sum\(quota_units\)/);
+ assert.match(sql,/pg_try_advisory_xact_lock/);
+ assert.match(sql,/state='working' and created_at<now\(\)-interval '15 minutes'/);
+ assert.match(sql,/revoke all on function public.gestlok_hq_worker_claim\(text\) from public,anon,authenticated/);
+ assert.match(sql,/grant execute on function public.gestlok_hq_worker_claim\(text\) to service_role/);
+ assert.match(schedule,/vault.decrypted_secrets/);
+ assert.match(worker,/auth.error\|\|auth.data!==true/);
+ assert.match(worker,/GESTLOK_HQ_GROQ_FREE_API_KEY/);
+ assert.match(worker,/No se confirma|No se confirmó/);
+ assert.doesNotMatch(worker,/api\.openai\.com/);
+ assert.match(source,/Autorizar trabajo autónomo/);
+ assert.match(source,/Pausar trabajo autónomo/);
+ assert.match(source,/gestlok_hq_support_status/);
+ assert.match(source,/No acredita pruebas autenticadas/);
+});
