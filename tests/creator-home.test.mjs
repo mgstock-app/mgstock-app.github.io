@@ -381,3 +381,25 @@ test('HQ shows executive decisions automatically without invoking a paid model',
  assert.match(html,/Informe &lt;seguro&gt;/);
  assert.equal(invoked,0);
 });
+
+
+test('HQ: animated desks are independent of execution, private rooms use the same avatar, and reduced motion is supported',async()=>{
+ const rows=[{id:'work-1',agent:'testing',instruction:'Revisar',status:'pendiente',created_at:DASH.generated_at}];
+ const runs=[{task_id:'work-1',state:'working'}];let invoked=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ assert.equal((html.match(/class="hq-desk"/g)||[]).length,7);
+ assert.equal((html.match(/class="hq-walk"/g)||[]).length,7);
+ assert.equal((html.match(/class="hq-seat"/g)||[]).length,7);
+ assert.equal((html.match(/class="gl-hq-avatar hq-working"/g)||[]).length,1);
+ assert.match(html,/prefers-reduced-motion:reduce/);
+ assert.match(html,/estados de ejecución corresponden únicamente a tareas reales/);
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
+ const room=r.h.view({parts:{}});
+ assert.match(room,/Oficina privada · Julián/);
+ assert.match(room,/class="gl-hq-avatar hq-working"/);
+ assert.equal((room.match(/class="hq-desk"/g)||[]).length,1);
+ assert.equal(invoked,0);
+});
