@@ -5,7 +5,7 @@ const C={ink:0x19354b,navy:0x28485e,oak:0xd2b28c,cream:0xf1eee8,white:0xf7fafc,s
 const clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 const smooth=n=>{n=clamp(n);return n*n*(3-2*n);};
 const mix=(a,b,t)=>a+(b-a)*t;
-const palette=[[-5.6,-3.6],[5.6,-3.6],[-5.6,0],[5.6,0],[-5.6,3.6],[5.6,3.6],[-2.0,4.3],[0,4.65]];
+const palette=[[-5.6,-3.6],[5.6,-3.6],[-5.6,0],[5.6,0],[-5.6,3.6],[5.6,3.6],[-1.8,4.0],[1.65,4.0]];
 const seats=[[-1.85,-2.8],[1.85,-2.8],[-1.85,-1.55],[1.85,-1.55],[-.8,-.75],[.8,-.75],[0,-.65],[0,-3.85]];
 const mounted=new WeakMap();
 export function mount(host,people,opts={}){
@@ -268,8 +268,13 @@ export function mount(host,people,opts={}){
    const px=clamp(x,bw/2+3,Math.max(bw/2+3,w-bw/2-3));
    const py=clamp(y,bh+3,Math.max(bh+3,h-3));
    const rect={l:px-bw/2-3,r:px+bw/2+3,t:py-bh-3,b:py+3};
-   if(placed.some(q=>rect.l<q.r&&rect.r>q.l&&rect.t<q.b&&rect.b>q.t)){a.badge.style.display='none';continue;}
-   placed.push(rect);a.badge.style.left=px+'px';a.badge.style.top=py+'px';
+   const collides=r=>placed.some(q=>r.l<q.r&&r.r>q.l&&r.t<q.b&&r.b>q.t);
+   let finalY=py, finalRect=rect;
+   if(collides(rect)){
+    for(const delta of [-1,1,-2,2,-3,3]){const candidate=clamp(py+delta*(bh+7),bh+3,Math.max(bh+3,h-3));const shifted={...rect,t:candidate-bh-3,b:candidate+3};if(!collides(shifted)){finalY=candidate;finalRect=shifted;break;}}
+   }
+   if(collides(finalRect)){a.badge.style.display='none';continue;}
+   placed.push(finalRect);a.badge.style.left=px+'px';a.badge.style.top=finalY+'px';
   }
  }
  const ray=new T.Raycaster(),pointer=new T.Vector2();
