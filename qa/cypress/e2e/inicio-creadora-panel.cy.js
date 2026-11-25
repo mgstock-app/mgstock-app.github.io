@@ -67,6 +67,14 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('[data-ch-hq-agent="marketing"]').click();
   cy.get('[data-ch-hq-agent="marketing"]').should('have.attr','aria-pressed','true');
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');
+  cy.get('[data-ch-hq-room="private"]').first().click();
+  cy.get('[aria-label="Oficina privada del empleado"]').should('contain.text','Oficina privada · Martina');
+  cy.get('[data-hq-3d-host]',{timeout:20000}).should($host=>{
+    expect(['three','fallback']).to.include($host.attr('data-hq-renderer'));
+    if($host.attr('data-hq-renderer')==='three'){expect($host.find('[data-hq-name]')).to.have.length(1);expect($host.find('[data-hq-name="marketing"]')).to.have.length(1);}
+  });
+  cy.get('[data-ch-hq-room="general"]').first().click();
+  cy.get('[data-ch-hq-agent]').should('have.length',7);
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
