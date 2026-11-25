@@ -14,7 +14,7 @@ const DASH = {
   activity: [{at: '2026-10-26T03:31:42Z', kind: 'audit', what: 'employee_space_created', who: null, company: 'Perfumes'}, {at: '2026-10-26T03:22:11Z', kind: 'login', what: 'login', who: 'kmu***@gmail.com', company: 'Mi Gusto'}],
   system: {accounts: 6, confirmed_accounts: 6, verified_links: 2, editing_open: false, support_open: false}
 };
-function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com', fetcher} = {}) {
+function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com', fetcher, invoke, confirm=()=>true} = {}) {
   const listeners = {}, calls = [], argsLog = [], store = existingStore || new Map(), notices = [], opened = [];
   let renders = 0, reloads = 0, invalidations = 0;
   const window = {
@@ -23,8 +23,8 @@ function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existing
     GestLokOffline: {pending: async () => 0, invalidateContext: async () => { invalidations++; }},
     location: {reload(){reloads++;}},
     sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)},
-    scrollTo() {},
-    GestLokSupabase: {rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
+    scrollTo() {}, confirm,
+    GestLokSupabase: {functions:{invoke},rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
   };
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
   vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask, fetch: fetcher});
@@ -286,4 +286,26 @@ test('HQ Testing consulta Actions reales sin enviar instrucciones ni modificar G
  assert.match(r.h.view({parts:{}}),/actions\/runs\/123/);
  r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
  assert.doesNotMatch(r.h.view({parts:{}}),/Actividad real de GitHub/);
+});
+
+test('HQ AI requires explicit confirmation, saved pending task and a configured provider',async()=>{
+ const requests=[], rows=[{id:'id-1',agent:'testing',instruction:'Revisar',status:'pendiente',created_at:DASH.generated_at}];
+ let runs=[], confirmed=false;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{confirm:()=>confirmed,invoke:async(name,options)=>{
+  requests.push([name,options.body]);
+  if(options.body.action==='status')return {data:{configured:true}};
+  runs=[{task_id:'id-1',state:'review',result:'Informe <seguro>'}];return {data:{ok:true,state:'review'}};
+ }});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Proveedor configurado/);
+ click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();assert.equal(requests.length,1);
+ confirmed=true;click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();await tick();
+ assert.equal(requests.length,2);
+ assert.equal(requests[1][0],'gestlok-hq-agent');
+ assert.equal(requests[1][1].task_id,'id-1');
+ assert.match(r.h.view({parts:{}}),/Informe &lt;seguro&gt;/);
+ assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
 });
