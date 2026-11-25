@@ -88,6 +88,7 @@ grant execute on function public.gestlok_hq_worker_observe(text,integer,integer,
 create function gestlok_hq_private.worker_status(p_token text,p_pause_minutes integer) returns boolean language plpgsql security definer set search_path='' as $$
 begin
  if not gestlok_hq_private.worker_auth(p_token) then raise exception 'Acceso denegado' using errcode='42501'; end if;
+ update gestlok_hq_private.worker_control set last_tick=now() where id=1;
  if p_pause_minutes between 1 and 1440 then update gestlok_hq_private.worker_control set paused_until=greatest(coalesce(paused_until,now()),now()+make_interval(mins=>p_pause_minutes)) where id=1; end if;
  return true;
 end $$;
