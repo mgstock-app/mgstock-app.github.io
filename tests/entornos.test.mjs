@@ -148,3 +148,24 @@ test('Carta visual: solo Prueba gastronómica, jamás producción ni Testing', a
  assert.match(cliente,/S\.borrador\.length\?abrirSeleccion\(\):abrirCarrito\(\)/);
  assert.match(cliente,/m\.categoria \|\| !pilotoCartaVisual\(\) \? abrirCarta\(\) : abrirOpcionesCarta\(\)/);
 });
+
+test('Carta Mi Gusto: cinco imágenes, consulta y aislamiento exclusivo de Prueba', async()=>{
+ const {cartaMiGustoHabilitada,consultaCartaMiGusto,hojasCartaMiGusto}=await import('../public/chat/carta-visual.mjs');
+ for(const slug of ['mi-gusto-munro','mi-gusto-torcuato'])assert.equal(cartaMiGustoHabilitada('prueba',slug),true);
+ for(const env of ['testing','main',undefined])assert.equal(cartaMiGustoHabilitada(env,'mi-gusto-munro'),false);
+ assert.equal(cartaMiGustoHabilitada('prueba','perfumeria'),false);
+ assert.equal(cartaMiGustoHabilitada('prueba','demo'),false);
+ assert.equal(hojasCartaMiGusto().length,5);
+ assert.equal(hojasCartaMiGusto('promos').length,3);
+ assert.equal(hojasCartaMiGusto('pizzas').length,2);
+ assert.equal(consultaCartaMiGusto('¿Qué promos tienen?'),'promos');
+ assert.equal(consultaCartaMiGusto('¿Cuánto sale la docena?'),'empanadas-promos');
+ assert.equal(consultaCartaMiGusto('¿Qué gustos de empanadas tienen?'),'empanadas-sabores');
+ assert.equal(consultaCartaMiGusto('¿Qué pizzas grandes tienen?'),'pizzas-family');
+ assert.equal(consultaCartaMiGusto('Quiero pedir 2 pizzas'),null);
+ for(const c of hojasCartaMiGusto()){
+  const bytes=readFileSync('public'+c.url);
+  assert.equal(bytes.subarray(0,4).toString(),'RIFF');
+  assert.equal(bytes.subarray(8,12).toString(),'WEBP');
+ }
+});

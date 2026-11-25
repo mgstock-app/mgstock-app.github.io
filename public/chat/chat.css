@@ -774,3 +774,11 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .cv-giro .cv-plato{animation:cv-giro .32s ease-out}
 @keyframes cv-giro{from{transform:perspective(420px) rotateY(-35deg) scale(.92);opacity:.65}to{transform:perspective(420px) rotateY(0) scale(1);opacity:1}}
 @media(prefers-reduced-motion:reduce){.cv-giro .cv-plato{animation:none}}
+
+/* Imágenes de carta Mi Gusto: referencia en el chat, sin alterar carrito. */
+.mg-carta-visual{display:grid;gap:9px;width:min(360px,88%);max-width:100%;box-sizing:border-box}
+.mg-carta-visual p{margin:0}
+.mg-carta-visual a{display:block;border-radius:10px;overflow:hidden;background:#080808;line-height:0}
+.mg-carta-visual a img{display:block;width:100%;max-height:400px;object-fit:contain}
+.mg-carta-visual a span{display:block;padding:12px;line-height:1.4;color:white}
+.mg-carta-visual .mg-carta-nota{font-size:12px;line-height:1.4;opacity:.8}
