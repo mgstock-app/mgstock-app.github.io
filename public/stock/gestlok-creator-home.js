@@ -731,7 +731,7 @@
     const ready=children.filter(q=>q.status!=='cancelada'&&hqRuns.some(r=>r.task_id===q.id&&r.state==='review')).length;
     const running=children.some(q=>hqRuns.some(r=>r.task_id===q.id&&r.state==='working'));
     const quota=hqQuota();
-    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los nueve sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||t.auto_enabled||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button>'+(children.length===7&&typeof t.auto_enabled==='boolean'?'<p role="status">'+esc(t.auto_enabled?'Modo autónomo autorizado · continúa por servidor cuando haya cuota':'Modo autónomo desactivado')+'</p><button type="button" class="btn" data-ch-hq-auto="'+esc(t.id)+'" data-enabled="'+(!t.auto_enabled)+'" '+(hqBusy||hqAIBusy?'disabled':'')+'>'+(t.auto_enabled?'Pausar trabajo autónomo':'Autorizar trabajo autónomo')+'</button>':'')+'</div>';
+    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los nueve sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||t.auto_enabled||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button>'+((children.length>=7||(t.targeted&&children.length>0))&&typeof t.auto_enabled==='boolean'?'<p role="status">'+esc(t.auto_enabled?'Modo autónomo autorizado · continúa por servidor cuando haya cuota':'Modo autónomo desactivado')+'</p><button type="button" class="btn" data-ch-hq-auto="'+esc(t.id)+'" data-enabled="'+(!t.auto_enabled)+'" '+(hqBusy||hqAIBusy?'disabled':'')+'>'+(t.auto_enabled?'Pausar trabajo autónomo':'Autorizar trabajo autónomo')+'</button>':'')+'</div>';
   }
   const HQ_TEAM_GAP_MS=Number.isFinite(window.GestLokHqTeamGapMs)?window.GestLokHqTeamGapMs:45000;
   function hqLimitsView(q){
@@ -776,7 +776,7 @@
         const parent=hqTasks.find(t=>t.id===id);
         if(parent?.status!=='pendiente'||hqRuns.some(r=>r.task_id===id))break;
         const children=hqTasks.filter(t=>t.parent_task_id===id);
-        if(children.length<7||children.some(t=>hqRuns.some(r=>r.task_id===t.id&&r.state==='working')))break;
+        if((!parent.targeted&&children.length<7)||!children.length||children.some(t=>hqRuns.some(r=>r.task_id===t.id&&r.state==='working')))break;
         if(hqQuota()?.remaining===0){hqAIError='Cuota interna agotada. Los resultados se conservaron; continuá cuando se renueve.';break;}
         const next=children.find(t=>t.status==='pendiente'&&!hqRuns.some(r=>r.task_id===t.id));
         if(!next&&!children.some(t=>t.status!=='cancelada'&&hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))){hqAIError='No hay propuestas exitosas para Alex.';break;}
@@ -848,7 +848,7 @@
     const hires=hqRuns.filter(r=>r.state==='review'&&r.hire_request&&!r.hire_decision);
     return '<section aria-label="Bandeja ejecutiva de Alex" style="margin:14px 0;padding:14px;border:1px solid #cbd8e2;background:#f3f7fa;border-radius:12px"><header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><strong>Dirección ejecutiva · Alex</strong><button type="button" class="btn" data-ch-hq-refresh '+(hqBusy||hqAIBusy?'disabled':'')+'>Actualizar bandeja</button></header>'+
       '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para aprobar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
-      pending.map(({t,r})=>'<details style="background:white;padding:12px;margin:8px 0;border:1px solid #dce3eb;border-radius:8px"><summary style="cursor:pointer;font-weight:650;overflow-wrap:anywhere">'+esc(t.instruction.slice(0,120))+'</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result||'')+'</p><button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Aprobar informe</button> <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Descartar informe</button></details>').join('')+
+      pending.map(({t,r})=>'<details style="background:white;padding:12px;margin:8px 0;border:1px solid #dce3eb;border-radius:8px"><summary style="cursor:pointer;font-weight:650;overflow-wrap:anywhere">'+esc(t.instruction.slice(0,120))+'</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result||'')+'</p>'+hqTasks.filter(q=>q.parent_task_id===t.id).map(q=>{const run=hqRuns.find(x=>x.task_id===q.id&&x.state==='review');return run?hqEntregaView(q,run):'';}).join('')+'<button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Aprobar informe</button> <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Descartar informe</button></details>').join('')+
       (hires.length?'<p>Tenés solicitudes de incorporación para revisar en la sección inferior. Aprobar una propuesta no activa un agente.</p>':'')+'</section>';
   }
   function hqHiringView(){
@@ -859,9 +859,44 @@
       '<p><strong>'+esc(r.hire_decision==='approved'?'Autorizada · pendiente de configuración':r.hire_decision==='rejected'?'Rechazada':'Pendiente de tu decisión')+'</strong></p>'+
       (!r.hire_decision?'<div style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="btn primary" data-ch-hq-hire="'+esc(r.id)+'" data-decision="approved" '+(hqAIBusy?'disabled':'')+'>Autorizar incorporación</button><button type="button" class="btn" data-ch-hq-hire="'+esc(r.id)+'" data-decision="rejected" '+(hqAIBusy?'disabled':'')+'>Rechazar solicitud</button></div>':'')+'</article>';}).join(''):'<p>Sin solicitudes consultadas o registradas.</p>')+'</section>';
   }
+  function hqEntregaView(t,r){
+    if(r.state!=='review'||!r.result)return '';
+    const piece=String(r.result).split(/\r?\n/).find(l=>/^PIEZA_HQ\|[^|]{1,60}\|[^|]{1,100}\|[^|]{1,35}$/.test(l));
+    const id=esc(r.id);
+    return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
+      '<button type="button" class="btn" data-ch-hq-download="'+id+'">Descargar entrega</button>'+
+      (piece&&['marketing','difusion'].includes(t.agent)?'<button type="button" class="btn primary" data-ch-hq-piece="'+id+'">Descargar imagen SVG</button>':'')+
+      (t.agent==='desarrollo'?'<button type="button" class="btn" data-ch-hq-issue="'+id+'">Preparar tarea en GitHub</button>':'')+
+      '</div>';
+  }
+  function hqDownloadArtifact(id,kind){
+    if(!hqAllowed())return;
+    const r=hqRuns.find(x=>x.id===id&&x.state==='review');
+    const t=r&&hqTasks.find(x=>x.id===r.task_id);
+    if(!t||!r.result)return;
+    if(kind==='issue'){
+      if(t.agent!=='desarrollo')return;
+      const url='https://github.com/mgstock-app/mgstock-app.github.io/issues/new?title='+encodeURIComponent(('HQ · '+t.instruction).slice(0,120))+'&body='+encodeURIComponent(('Propuesta de Desarrollo para revisión humana. No autoriza cambios ni publicaciones.\n\n'+r.result).slice(0,1800));
+      window.open(url,'_blank','noopener,noreferrer');return;
+    }
+    let data=String(r.result),mime='text/plain;charset=utf-8',ext='txt';
+    if(kind==='piece'){
+      if(!['marketing','difusion'].includes(t.agent))return;
+      const line=data.split(/\r?\n/).find(l=>/^PIEZA_HQ\|[^|]{1,60}\|[^|]{1,100}\|[^|]{1,35}$/.test(l));
+      if(!line)return;
+      const [,title,subtitle,cta]=line.split('|');
+      const xml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+      const wrap=(s,max)=>{const out=[];let row='';for(const word of s.split(/\s+/).flatMap(w=>w.match(new RegExp('.{1,'+max+'}','gu'))||[])){if(row&&(row+' '+word).length>max){out.push(row);row='';}row+=(row?' ':'')+word;}if(row)out.push(row);return out;};
+      const lines=(s,max,y,step,size,color,weight)=>wrap(s,max).map((l,i)=>'<text x="76" y="'+(y+i*step)+'" font-family="Arial,sans-serif" font-size="'+size+'" fill="'+color+'" font-weight="'+weight+'">'+xml(l)+'</text>').join('');
+      data='<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080"><rect width="1080" height="1080" fill="#122C43"/><rect x="48" y="48" width="984" height="984" rx="28" fill="none" stroke="#708BA2" stroke-width="2"/><rect x="76" y="100" width="96" height="8" rx="4" fill="#A7C8E0"/>'+lines(title,22,270,83,70,'#FFFFFF',700)+lines(subtitle,34,620,50,40,'#DFEAF3',400)+'<rect x="76" y="874" width="928" height="100" rx="20" fill="#FFFFFF"/>'+lines(cta,36,936,38,38,'#122C43',700)+'</svg>';
+      mime='image/svg+xml;charset=utf-8';ext='svg';
+    }
+    const href=URL.createObjectURL(new Blob([data],{type:mime}));const a=document.createElement('a');
+    a.href=href;a.download='gestlok-hq-'+id.slice(0,8)+'.'+ext;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),1000);
+  }
   function hqRunView(t){
     const r=hqRuns.find(r=>r.task_id===t.id);
-    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+'</div>';
+    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+hqEntregaView(t,r)+'</div>';
     if(t.agent==='lider'&&t.status==='pendiente')return hqTeamView(t);
     const quota=hqQuota(),cost=t.agent==='lider'?8:1;
     if(t.status==='pendiente'&&quota&&quota.remaining<cost)return '<p role="status">Cuota insuficiente: esta tarea necesita '+cost+' consultas y quedan '+esc(quota.remaining)+'. La tarea sigue pendiente.</p>';
@@ -1115,6 +1150,7 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const artifact=ev.target.closest?.('[data-ch-hq-download],[data-ch-hq-piece],[data-ch-hq-issue]');if(artifact){ev.preventDefault();hqDownloadArtifact(artifact.dataset.chHqDownload||artifact.dataset.chHqPiece||artifact.dataset.chHqIssue,artifact.dataset.chHqPiece?'piece':artifact.dataset.chHqIssue?'issue':'text');return;}
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
     const auto=ev.target.closest?.('[data-ch-hq-auto]');if(auto){ev.preventDefault();if(hqAllowed()){const enabled=auto.dataset.enabled==='true';if(window.confirm(enabled?'¿Autorizar esta misión en modo autónomo? El servidor continúa con Groq gratuito aun si cerrás GESTLOK; no realiza modificaciones comerciales.':'¿Pausar las próximas tareas autónomas? Una consulta ya iniciada puede terminar.'))void hqRequest('gestlok_hq_set_auto',{p_task:auto.dataset.chHqAuto,p_enabled:enabled});}return;}
