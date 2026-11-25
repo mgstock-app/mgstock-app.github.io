@@ -111,6 +111,28 @@ begin
   v := prueba_q('select public.gestlok_chat_panel_inicio()::text');
   r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' anónimo no entra al panel';
 
+  -- Solicitudes WhatsApp: no cambian la configuración ni crean conexión.
+  perform set_config('role','postgres',true);
+  update gestlok_chat_private.sucursales set whatsapp_local='5491100000000' where id=s_munro;
+  perform prueba_como('duena.a@prueba.example');
+  j := public.gestlok_chat_panel_whatsapp_solicitud(s_munro,'solicitar');
+  r := r || E'\n' || case when j->>'estado'='pendiente' and j->>'conectado'='false' and j->>'respuestas_automaticas'='false' then 'OK' else 'FALLA' end || ' solicitud no equivale a conexión';
+  j := public.gestlok_chat_panel_whatsapp_solicitud(s_torc);
+  r := r || E'\n' || case when j->>'estado'='no_vinculado' then 'OK' else 'FALLA' end || ' solicitud aislada por sucursal';
+  perform prueba_como('gerente.munro@prueba.example');
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_solicitud(%L,%L)::text',s_munro,'cancelar'));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' gerente no cancela vinculación';
+  j := public.gestlok_chat_panel_whatsapp_solicitud(s_munro);
+  r := r || E'\n' || case when j->>'puede_solicitar'='false' then 'OK' else 'FALLA' end || ' gerente solo consulta';
+  perform prueba_como('duena.b@prueba.example');
+  v := prueba_q(format('select public.gestlok_chat_panel_whatsapp_solicitud(%L)::text',s_munro));
+  r := r || E'\n' || case when v like 'error:42501%' then 'OK' else 'FALLA' end || ' empresa B no ve solicitud A';
+  perform prueba_como('duena.a@prueba.example');
+  j := public.gestlok_chat_panel_whatsapp_solicitud(s_munro,'cancelar');
+  r := r || E'\n' || case when j->>'estado'='no_vinculado' then 'OK' else 'FALLA' end || ' dueña cancela solicitud';
+  perform set_config('role','postgres',true);
+  update gestlok_chat_private.sucursales set whatsapp_local='' where id=s_munro;
+
   -- Configuración (dueña) ---------------------------------------------------------------------------------------
   perform prueba_como('gerente.munro@prueba.example');
   v := prueba_q(format($q$ select public.gestlok_chat_panel_config_guardar(%L, '{"activa":true}', 1)::text $q$, s_torc));

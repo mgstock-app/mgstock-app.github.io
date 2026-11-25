@@ -1065,8 +1065,9 @@
       const pendiente=r?.estado==='pendiente';
       canalEstado.textContent=pendiente?(r.numero_actual===false?'Número modificado · cancelá la solicitud anterior y creá otra.':'Solicitud registrada · falta autorización de Meta.'):
         'No vinculado · sin acceso a los mensajes de WhatsApp.';
-      canalPedir.disabled=!editable||DEMO||pendiente||!a.whatsapp_local;
-      canalCancelar.hidden=!pendiente;canalCancelar.disabled=!editable||DEMO||!pendiente;
+      canalPedir.hidden=!r?.puede_solicitar;
+      canalPedir.disabled=!r?.puede_solicitar||!editable||DEMO||pendiente||!a.whatsapp_local;
+      canalCancelar.hidden=!pendiente||!r?.puede_solicitar;canalCancelar.disabled=!r?.puede_solicitar||!editable||DEMO||!pendiente;
     };
     const canalAccion=async accion=>{
       if(!editable||DEMO||!canalVigente())return;

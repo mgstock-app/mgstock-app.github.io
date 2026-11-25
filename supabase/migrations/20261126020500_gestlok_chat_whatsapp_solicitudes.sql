@@ -13,7 +13,10 @@ declare s gestlok_chat_private.sucursales; q gestlok_chat_private.whatsapp_solic
 begin
  if p_accion is null or p_accion not in ('ver','solicitar','cancelar') then raise exception 'Acción inválida' using errcode='22023'; end if;
  if p_accion='ver' then perform gestlok_chat_private.exigir(p_sucursal,'ver');
- else perform gestlok_chat_private.exigir(p_sucursal,'configurar'); end if;
+ else
+  perform gestlok_chat_private.exigir(p_sucursal,'configurar');
+  if coalesce(public.mi_rol(),'') not in ('dueno','creadora') then raise exception 'Solo dueño o administradora' using errcode='42501'; end if;
+ end if;
  select * into s from gestlok_chat_private.sucursales where id=p_sucursal for update;
  if not found then raise exception 'Sucursal no disponible' using errcode='42501'; end if;
  if p_accion='solicitar' then
@@ -26,7 +29,7 @@ begin
  select * into q from gestlok_chat_private.whatsapp_solicitudes where sucursal_id=s.id;
  return jsonb_build_object('estado',case when q.sucursal_id is null then 'no_vinculado' else 'pendiente' end,
  'numero_actual',coalesce(q.numero=s.whatsapp_local,false),'solicitada_at',q.solicitada_at,
- 'conectado',false,'respuestas_automaticas',false);
+ 'conectado',false,'respuestas_automaticas',false,'puede_solicitar',coalesce(public.mi_rol() in ('dueno','creadora'),false) and gestlok_chat_private.nivel(p_sucursal)='configurar');
 end $$;
 revoke all on function public.gestlok_chat_panel_whatsapp_solicitud(uuid,text) from public,anon,authenticated;
 grant execute on function public.gestlok_chat_panel_whatsapp_solicitud(uuid,text) to authenticated;
