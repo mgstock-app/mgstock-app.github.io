@@ -113,6 +113,7 @@ export function mount(host,people,opts={}){
  // A label is rendered from fixed names only, never from external task instructions.
  function label(name){
   const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');
+  if(!ctx)throw Error('Canvas de etiquetas no disponible');
   ctx.fillStyle='#f8fbfc';ctx.beginPath();ctx.roundRect(3,3,250,58,14);ctx.fill();
   ctx.strokeStyle='#aebfc9';ctx.lineWidth=2;ctx.stroke();
   ctx.fillStyle='#19354b';ctx.font='600 28px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,128,32,240);
@@ -166,7 +167,6 @@ export function mount(host,people,opts={}){
   return {p,i,g,pelvis,body,head,arms,legs,badge,hips,neck};
  }
  const actors=people.map(avatar);
- const vec=new T.Vector3();
  function place(a,x,z,yaw){a.g.position.set(x,.062,z);a.g.rotation.y=yaw;}
  function pose(a,kind,t){
   const walk=kind==='walk',sit=kind==='type'||kind==='think'||kind==='research'||kind==='meeting'||kind==='consult';
@@ -249,12 +249,13 @@ export function mount(host,people,opts={}){
  }
  mounted.set(host,{dispose});
  try{
+  host.hidden=false;
   setCamera();
   if(typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(()=>{if(host.isConnected)setCamera();});resizeObserver.observe(host);}
   let time=performance.now()/1000;let clock=performance.now();
   actors.forEach(a=>animatePerson(a,time,reduced.matches));
   renderer.render(scene,camera);
-  host.dataset.hqRenderer='three';host.hidden=false;
+  host.dataset.hqRenderer='three';
   const stage=host.closest('[data-hq-scene-shell]');if(stage)stage.dataset.hq3dReady='true';
   function loop(now){
    if(!host.isConnected){dispose();return;}
