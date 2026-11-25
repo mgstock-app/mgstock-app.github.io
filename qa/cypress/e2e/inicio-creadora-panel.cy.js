@@ -35,6 +35,24 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Sin conexión a IA');
   cy.get('[data-ch-hq-agent]').should('have.length',6);
+  // Check the actual browser animation, not just the existence of SVG markup.
+  cy.get('.hq-general-stage .hq-hand').first().should(($hand)=>{
+    const win=$hand[0].ownerDocument.defaultView;
+    if(!win.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      expect(win.getComputedStyle($hand[0]).animationName).to.equal('hqType');
+  });
+  cy.get('.hq-meeting-actor').should('have.length',7).first().should(($actor)=>{
+    const el=$actor[0], win=el.ownerDocument.defaultView;
+    if(win.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    expect(win.getComputedStyle(el).animationName).to.equal('hqMeetingTrip');
+    const animation=el.getAnimations().find(a=>a.animationName==='hqMeetingTrip');
+    expect(animation,'animated meeting participant').to.exist;
+    animation.pause();animation.currentTime=14000;
+    expect(Number(win.getComputedStyle(el).opacity)).to.be.greaterThan(.9);
+    animation.play();
+  });
+  cy.get('.hq-meeting-phase').should('exist');
+  cy.get('.hq-meeting-consult').should('exist');
   cy.get('[data-ch-hq-agent="testing"]').click();
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Testing');
   cy.get('[data-ch-hq-github]').should('be.visible');
