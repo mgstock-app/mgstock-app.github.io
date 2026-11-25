@@ -843,12 +843,38 @@
     }catch{if(epoch===hqEpoch)hqAIError='No se confirmó el registro. Consultá los resultados antes de repetir.';}
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
+  function hqReportParts(raw){
+    const s=String(raw||'').replace(/\r/g,'');
+    const marker=/\n\s*PROPUESTAS (?:ORIGINALES DE LOS SECTORES|REGISTRADAS)\s*\n/i.exec(s);
+    const brief=(marker?s.slice(0,marker.index):s).replace(/^INFORME DE DIRECCIÓN[^\n]*\n?/i,'').trim();
+    const evidence=marker?s.slice(marker.index+marker[0].length).trim():'';
+    const fields={};
+    for(const line of brief.split('\n')){
+      const m=/^(TÍTULO|TIPO|PRIORIDAD|SITUACIÓN|ACCIÓN):\s*(.+)$/u.exec(line.trim());
+      if(m&&!fields[m[1]])fields[m[1]]=m[2].trim();
+    }
+    const valid=!!(fields['TÍTULO']&&fields['SITUACIÓN']&&fields['ACCIÓN']&&['DECISIÓN','INFORMATIVO'].includes(fields.TIPO)&&['ALTA','MEDIA','BAJA'].includes(fields.PRIORIDAD));
+    const cut=(v,max)=>String(v||'').slice(0,max);
+    return {valid,brief,evidence,title:cut(fields['TÍTULO'],90),type:fields.TIPO,priority:fields.PRIORIDAD,situation:cut(fields['SITUACIÓN'],240),action:cut(fields['ACCIÓN'],280)};
+  }
+  function hqReportCard(t,r){
+    const p=hqReportParts(r.result);
+    const decision=p.valid&&p.type==='DECISIÓN';
+    const title=p.valid?p.title:'Informe anterior · '+String(t.instruction||'').slice(0,80);
+    const label=p.valid?(decision?'Requiere tu decisión':'Informativo'):'Revisar detalle';
+    const disabled=hqBusy||hqAIBusy?'disabled':'';
+    const detail='<details style="margin-top:12px"><summary style="cursor:pointer">Ver informe completo y respaldo</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(p.brief)+'</p>'+(p.evidence?'<details><summary>Informes de los empleados</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(p.evidence)+'</p></details>':'')+'</details>';
+    return '<article style="background:white;color:#173450;padding:14px;margin:10px 0;border:1px solid #dce3eb;border-radius:10px;overflow-wrap:anywhere"><small style="font-weight:650">'+esc(label)+(p.valid?' · Prioridad '+esc(p.priority.toLowerCase()):'')+'</small><h3 style="font-size:17px;margin:6px 0 10px">'+esc(title)+'</h3>'+
+      (p.valid?'<p><strong>Qué pasa</strong><br>'+esc(p.situation)+'</p><p><strong>'+(decision?'Qué necesita tu aprobación':'Próximo paso')+'</strong><br>'+esc(p.action)+'</p>':'<p>Este informe se generó con el formato anterior. Abrí el detalle para revisar su contenido; no se inventará una decisión.</p>')+
+      detail+hqTasks.filter(q=>q.parent_task_id===t.id).map(q=>{const run=hqRuns.find(x=>x.task_id===q.id&&x.state==='review');return run?hqEntregaView(q,run):'';}).join('')+
+      '<p style="font-size:12px;color:#526477">Cerrar o aprobar registra tu revisión. No ejecuta cambios ni publicaciones.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+disabled+'>'+(decision?'Aprobar propuesta':'Marcar revisado')+'</button> <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+disabled+'>'+(decision?'Rechazar propuesta':'Descartar informe')+'</button></div></article>';
+  }
   function hqExecutiveInbox(){
     const pending=hqTasks.filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
     const hires=hqRuns.filter(r=>r.state==='review'&&r.hire_request&&!r.hire_decision);
     return '<section aria-label="Bandeja ejecutiva de Alex" style="margin:14px 0;padding:14px;border:1px solid #cbd8e2;background:#f3f7fa;border-radius:12px"><header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><strong>Dirección ejecutiva · Alex</strong><button type="button" class="btn" data-ch-hq-refresh '+(hqBusy||hqAIBusy?'disabled':'')+'>Actualizar bandeja</button></header>'+
-      '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para aprobar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
-      pending.map(({t,r})=>'<details style="background:white;padding:12px;margin:8px 0;border:1px solid #dce3eb;border-radius:8px"><summary style="cursor:pointer;font-weight:650;overflow-wrap:anywhere">'+esc(t.instruction.slice(0,120))+'</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result||'')+'</p>'+hqTasks.filter(q=>q.parent_task_id===t.id).map(q=>{const run=hqRuns.find(x=>x.task_id===q.id&&x.state==='review');return run?hqEntregaView(q,run):'';}).join('')+'<button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Aprobar informe</button> <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Descartar informe</button></details>').join('')+
+      '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para revisar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
+      pending.sort((a,b)=>Number(hqReportParts(b.r.result).type==='DECISIÓN')-Number(hqReportParts(a.r.result).type==='DECISIÓN')||Number(hqReportParts(b.r.result).priority==='ALTA')-Number(hqReportParts(a.r.result).priority==='ALTA')).map(({t,r})=>hqReportCard(t,r)).join('')+
       (hires.length?'<p>Tenés solicitudes de incorporación para revisar en la sección inferior. Aprobar una propuesta no activa un agente.</p>':'')+'</section>';
   }
   function hqHiringView(){
@@ -896,7 +922,7 @@
   }
   function hqRunView(t){
     const r=hqRuns.find(r=>r.task_id===t.id);
-    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+hqEntregaView(t,r)+'</div>';
+    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<details><summary>Ver informe completo</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p></details>':'')+hqEntregaView(t,r)+'</div>';
     if(t.agent==='lider'&&t.status==='pendiente')return hqTeamView(t);
     const quota=hqQuota(),cost=t.agent==='lider'?8:1;
     if(t.status==='pendiente'&&quota&&quota.remaining<cost)return '<p role="status">Cuota insuficiente: esta tarea necesita '+cost+' consultas y quedan '+esc(quota.remaining)+'. La tarea sigue pendiente.</p>';
