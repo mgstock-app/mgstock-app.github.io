@@ -672,9 +672,9 @@
   const HQ_LEADER=['lider','Dirección de IA','Coordina las seis áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
-  let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[];
+  let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[], hqRunsLoaded=false, hqRunsError='';
   async function hqAI(action,taskId){
-    if(!hqAllowed()||hqAIBusy)return;
+    if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
     if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 7 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Puede generar consumo de API.'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
@@ -683,20 +683,20 @@
       if(!sb?.functions?.invoke)throw Error('Sin conexión');
       const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action,task_id:taskId}});
       if(epoch!==hqEpoch||!hqAllowed())return;
-      if(action==='status')hqAIReady=!res.error&&res.data?.configured===true;
+      if(action==='status')hqAIReady=res.error?null:res.data?.configured===true;
       if(res.error)hqAIError='No se pudo confirmar la conexión o ejecución. Consultá los resultados antes de repetir.';
       const runs=await sb.rpc('gestlok_hq_list_runs');
       if(epoch!==hqEpoch||!hqAllowed())return;
       if(runs.error||!Array.isArray(runs.data))throw Error('Sin resultados');
-      hqRuns=runs.data;
+      hqRuns=runs.data;hqRunsLoaded=true;hqRunsError='';
     }catch{if(epoch===hqEpoch)hqAIError='No se pudo consultar el motor de IA o sus resultados.';}
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   function hqAIView(){
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Sin conexión a IA: falta configuración':'Sin conexión a IA: no verificada'))+'</p></section>';
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Falta configurar la clave independiente de HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
-    if(!hqAllowed()||hqAIBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
+    if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
     if(!window.confirm(decision==='approved'?'¿Autorizar la incorporación propuesta? Se registrará tu aprobación; el nuevo agente todavía requiere configuración.':'¿Rechazar esta solicitud de incorporación?'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     try{
@@ -706,9 +706,17 @@
       const runs=await sb.rpc('gestlok_hq_list_runs');
       if(epoch!==hqEpoch||!hqAllowed())return;
       if(runs.error||!Array.isArray(runs.data))throw Error('Sin resultados');
-      hqRuns=runs.data;
+      hqRuns=runs.data;hqRunsLoaded=true;hqRunsError='';
     }catch{if(epoch===hqEpoch)hqAIError='No se confirmó el registro. Consultá los resultados antes de repetir.';}
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqExecutiveInbox(){
+    const pending=hqTasks.filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
+    const hires=hqRuns.filter(r=>r.state==='review'&&r.hire_request&&!r.hire_decision);
+    return '<section aria-label="Bandeja ejecutiva de Alex" style="margin:14px 0;padding:14px;border:1px solid #cbd8e2;background:#f3f7fa;border-radius:12px"><header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><strong>Dirección ejecutiva · Alex</strong><button type="button" class="btn" data-ch-hq-refresh '+(hqBusy||hqAIBusy?'disabled':'')+'>Actualizar bandeja</button></header>'+
+      '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para aprobar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
+      pending.map(({t,r})=>'<details style="background:white;padding:12px;margin:8px 0;border:1px solid #dce3eb;border-radius:8px"><summary style="cursor:pointer;font-weight:650;overflow-wrap:anywhere">'+esc(t.instruction.slice(0,120))+'</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result||'')+'</p><button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Aprobar informe</button> <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Descartar informe</button></details>').join('')+
+      (hires.length?'<p>Tenés solicitudes de incorporación para revisar en la sección inferior. Aprobar una propuesta no activa un agente.</p>':'')+'</section>';
   }
   function hqHiringView(){
     const requests=hqRuns.filter(r=>r.state==='review'&&r.hire_request);
@@ -744,9 +752,9 @@
   }
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqRuns=[];hqRoom=false;}
+  function hqReset(){hqEpoch++;hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;}
   async function hqRequest(fn,args){
-    if(!hqAllowed()||hqBusy)return;
+    if(!hqAllowed()||hqBusy||hqAIBusy)return;
     const epoch=hqEpoch; hqBusy=true;hqAttempted=true;hqError='';
     api?.render();
     try{
@@ -762,6 +770,7 @@
       if(res.error||!Array.isArray(res.data))throw Error('No se pudo consultar');
       if(epoch!==hqEpoch||!hqAllowed())return;
       hqTasks=res.data;hqLoaded=true;
+      try{const runs=await sb.rpc('gestlok_hq_list_runs');if(epoch!==hqEpoch||!hqAllowed())return;if(runs.error||!Array.isArray(runs.data))throw Error('Sin resultados');hqRuns=runs.data;hqRunsLoaded=true;hqRunsError='';}catch{if(epoch===hqEpoch)hqRunsError='No se pudieron consultar los informes. Actualizá la bandeja.';}
     }catch{if(epoch===hqEpoch){hqError='No se pudo confirmar la operación. Actualizá la bandeja antes de volver a intentar.';}}
     finally{if(epoch===hqEpoch){hqBusy=false;if(hqAllowed())api?.render();}}
   }
@@ -803,7 +812,7 @@
       '<div style="padding:12px;border-top:1px solid #cbd8e2"><strong>Proyectos del sector</strong><p>'+esc(hqLoaded?roomTasks.length+' registrados · '+roomTasks.filter(t=>t.status==='pendiente').length+' pendientes':'Sin consultar')+'</p>'+roomTasks.slice(0,5).map(t=>'<p style="overflow-wrap:anywhere;margin:6px 0">'+esc(t.status+' · '+t.instruction.slice(0,100))+'</p>').join('')+'</div></section>';
     const navigation='<div role="group" aria-label="Ambientes de GESTLOK HQ" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><button type="button" class="btn" data-ch-hq-room="general" aria-pressed="'+!hqRoom+'">Oficina general</button><button type="button" class="btn" data-ch-hq-room="private" aria-pressed="'+hqRoom+'">Oficina privada de '+esc(person.name)+'</button></div>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Los estados corresponden a resultados registrados; no se simula actividad.</p>'+navigation+(hqRoom?room:office)+
+      '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Los estados corresponden a resultados registrados; no se simula actividad.</p>'+hqExecutiveInbox()+navigation+(hqRoom?room:office)+
       '<div aria-label="Ficha del empleado" style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los seis sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
       hqAIView()+hqHiringView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';

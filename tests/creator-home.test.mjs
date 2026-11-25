@@ -222,7 +222,7 @@ test('No se concede acceso a otras empresas, ni se abren enlaces no autorizados'
 });
 
 test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución', async () => {
-  const r = load(async (fn) => ({data: fn==='gestlok_hq_list_tasks'?[]:DASH, error: null}));
+  const r = load(async (fn) => ({data: ['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH, error: null}));
   r.h.mode(); await tick(); await tick();
   assert.match(r.h.view({parts:{}}), /data-ch-tab="hq"/);
   r.h.setTab('hq'); await tick();
@@ -238,7 +238,7 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
   // Rendering Inicio also schedules its existing microapp and Chat prefetches.
   // Keep the full allowlist and assert exactly one HQ read, with no writes or agent runs.
-  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')),['gestlok_hq_list_tasks']);
+  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')),['gestlok_hq_list_tasks','gestlok_hq_list_runs']);
   assert.deepEqual(r.calls.filter(fn=>!fn.startsWith('gestlok_hq_')).sort(),['gestlok_creator_dashboard','gestlok_creator_microapps','gestlok_chat_admin_empresas','gestlok_chat_admin_cobros'].sort());
 });
 test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el panel', async () => {
@@ -258,6 +258,7 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
   const rows=[];const r=load(async(fn,args)=>{
     if(fn==='gestlok_creator_dashboard')return {data:DASH};
     if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
+    if(fn==='gestlok_hq_list_runs')return {data:[]};
     if(fn==='gestlok_hq_add_task'){rows.push({id:'id-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'id-1'};}
     if(fn==='gestlok_hq_close_task'){rows[0].status=args.p_status;return {data:true};}
     throw Error(fn);
@@ -270,12 +271,12 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
   await tick();await tick();
   assert.match(r.h.view({parts:{}}),/No hay tareas pendientes/);
   assert.match(r.h.view({parts:{}}),/cerrada/);
-  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_close_task','gestlok_hq_list_tasks']);
+  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_close_task','gestlok_hq_list_tasks','gestlok_hq_list_runs']);
 });
 
 test('HQ Testing consulta Actions reales sin enviar instrucciones ni modificar GitHub',async()=>{
  const requests=[];
- const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?[]:DASH}),{fetcher:async(url,opts)=>{requests.push([url,opts]);return {ok:true,json:async()=>({workflow_runs:[{id:123,name:'Cypress <test>',status:'completed',conclusion:'failure',head_sha:'abcdef123',head_branch:'main',event:'push'}]})};}});
+ const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}),{fetcher:async(url,opts)=>{requests.push([url,opts]);return {ok:true,json:async()=>({workflow_runs:[{id:123,name:'Cypress <test>',status:'completed',conclusion:'failure',head_sha:'abcdef123',head_branch:'main',event:'push'}]})};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
  r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'testing'}}:null}});
  assert.match(r.h.view({parts:{}}),/Preparar tarea · Testing/);
@@ -366,4 +367,17 @@ test('HQ: solicitud de incorporación de Alex requiere decisión independiente d
  assert.match(r.h.view({parts:{}}),/Autorizada · pendiente de configuración/);
  assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,6);
  click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'rejected'});await tick();assert.equal(decisions.length,1);
+});
+
+test('HQ shows executive decisions automatically without invoking a paid model',async()=>{
+ const rows=[{id:'meeting-1',agent:'lider',instruction:'Revisión de microapps',status:'pendiente',created_at:DASH.generated_at}];
+ const reports=[{id:'run-1',task_id:'meeting-1',state:'review',result:'Informe <seguro>',hire_request:{name:'Emilia',specialty:'UX/UI'},hire_decision:null}];
+ let invoked=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?reports:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/Bandeja ejecutiva de Alex/);
+ assert.match(html,/1 informes para aprobar · 1 incorporaciones para decidir/);
+ assert.match(html,/Informe &lt;seguro&gt;/);
+ assert.equal(invoked,0);
 });
