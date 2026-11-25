@@ -666,10 +666,10 @@
     atencion:{name:'Sofía',role:'Especialista en experiencia del cliente',skills:'Atención, reclamos y experiencia de compra.'},
     marketing:{name:'Lucía',role:'Estratega de marketing',skills:'Comunicación, posicionamiento y crecimiento.'},
     datos:{name:'Bruno',role:'Analista de datos',skills:'Indicadores, hipótesis y oportunidades comerciales.'},
-    lider:{name:'Alex',role:'Director de IA',skills:'Estrategia, coordinación y evaluación de propuestas.'}
+    lider:{name:'Alex',role:'Directora Ejecutiva de IA',skills:'Estrategia, coordinación, evaluación de propuestas y planificación de incorporaciones.'}
   });
   let hqRoom=false;
-  const HQ_LEADER=['lider','Dirección de IA','Coordina las seis áreas, evalúa propuestas y eleva prioridades a la administradora.'];
+  const HQ_LEADER=['lider','Dirección de IA','Coordina las seis áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
   let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[];
@@ -694,6 +694,29 @@
   }
   function hqAIView(){
     return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Sin conexión a IA: falta configuración':'Sin conexión a IA: no verificada'))+'</p></section>';
+  }
+  async function hqDecideHire(id,decision){
+    if(!hqAllowed()||hqAIBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
+    if(!window.confirm(decision==='approved'?'¿Autorizar la incorporación propuesta? Se registrará tu aprobación; el nuevo agente todavía requiere configuración.':'¿Rechazar esta solicitud de incorporación?'))return;
+    const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
+    try{
+      const sb=window.GestLokSupabase;
+      const res=await sb.rpc('gestlok_hq_decide_hire',{p_run:id,p_decision:decision});
+      if(res.error||res.data!==true)throw Error('Decisión no registrada');
+      const runs=await sb.rpc('gestlok_hq_list_runs');
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      if(runs.error||!Array.isArray(runs.data))throw Error('Sin resultados');
+      hqRuns=runs.data;
+    }catch{if(epoch===hqEpoch)hqAIError='No se confirmó el registro. Consultá los resultados antes de repetir.';}
+    finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
+  }
+  function hqHiringView(){
+    const requests=hqRuns.filter(r=>r.state==='review'&&r.hire_request);
+    const fields=[['reason','Por qué hace falta'],['benefit','Beneficio esperado'],['cost','Costo estimado'],['permissions','Permisos mínimos'],['alternative','Alternativa sin incorporar']];
+    return '<section aria-label="Solicitudes de incorporación" style="margin-top:16px;padding:12px;border:1px solid #cbd8e2;border-radius:10px"><h3>Solicitudes de incorporación</h3><p>Alex puede proponerte nuevas especialidades. Solo la administradora decide. Aprobar registra la autorización, no activa un agente ni concede permisos.</p>'+
+    (requests.length?requests.map(r=>{const h=r.hire_request;return '<article style="margin:10px 0;padding:12px;background:#f3f7fa;border-radius:8px;overflow-wrap:anywhere"><strong>'+esc(h.name+' · '+h.specialty)+'</strong>'+fields.map(([key,label])=>'<p><strong>'+label+':</strong> '+esc(h[key]||'No especificado')+'</p>').join('')+
+      '<p><strong>'+esc(r.hire_decision==='approved'?'Autorizada · pendiente de configuración':r.hire_decision==='rejected'?'Rechazada':'Pendiente de tu decisión')+'</strong></p>'+
+      (!r.hire_decision?'<div style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="btn primary" data-ch-hq-hire="'+esc(r.id)+'" data-decision="approved" '+(hqAIBusy?'disabled':'')+'>Autorizar incorporación</button><button type="button" class="btn" data-ch-hq-hire="'+esc(r.id)+'" data-decision="rejected" '+(hqAIBusy?'disabled':'')+'>Rechazar solicitud</button></div>':'')+'</article>';}).join(''):'<p>Sin solicitudes consultadas o registradas.</p>')+'</section>';
   }
   function hqRunView(t){
     const r=hqRuns.find(r=>r.task_id===t.id);
@@ -769,7 +792,7 @@
       '<div style="position:relative;aspect-ratio:1.02;min-height:330px;max-height:690px;isolation:isolate;background:#e7eef3">'+officeFloor+
       HQ_AGENTS.map((a,i)=>{const st=states(a);return '<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" aria-label="'+esc(HQ_PEOPLE[a[0]].name+' · '+a[1]+' · '+st[0])+'" style="position:absolute;z-index:2;left:'+positions[i][0]+'%;top:'+positions[i][1]+'%;transform:translate(-50%,-50%);width:29%;max-width:160px;min-width:0;padding:3px 1px;border:1px solid '+(a[0]===selected[0]?'#1a5b83':'transparent')+';border-radius:9px;background:'+(a[0]===selected[0]?'#e9f6ffb8':'transparent')+';cursor:pointer;color:#173449;line-height:1.15">'+
         '<span style="display:inline-flex;align-items:center;gap:3px;max-width:100%;box-sizing:border-box;padding:4px 5px;border-radius:8px;background:#fff;box-shadow:0 1px 4px #28475d30;font-size:clamp(9px,2.3vw,13px);font-weight:700;overflow-wrap:anywhere"><span aria-hidden="true" style="flex:none;width:7px;height:7px;border-radius:50%;background:'+st[1]+'"></span>'+esc(HQ_PEOPLE[a[0]].name)+'</span>'+character(a,i)+'<span style="display:block;font-size:clamp(9px,2.1vw,12px);font-weight:600;background:#f7fafbd9;border-radius:4px;padding:2px;overflow-wrap:anywhere">'+esc(a[1])+'</span></button>';}).join('')+
-      '<button type="button" data-ch-hq-leader aria-pressed="'+(hqAgent==='lider')+'" style="position:absolute;z-index:3;bottom:3%;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;padding:6px 10px;color:#173449;background:#fff;border:1px solid #8ba5b8;border-radius:9px;white-space:nowrap">Alex · Dirección de IA</button></div>'+
+      '<button type="button" data-ch-hq-leader aria-pressed="'+(hqAgent==='lider')+'" style="position:absolute;z-index:3;bottom:3%;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;padding:6px 10px;color:#173449;background:#fff;border:1px solid #8ba5b8;border-radius:9px;white-space:nowrap">Alex · Directora Ejecutiva</button></div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:#fff;font-size:11px;color:#425970"><span>● Sin conexión</span><span style="color:#b7791f">● En ejecución</span><span style="color:#2765a8">● Por revisar</span><span style="color:#ac4141">● Error</span></div></div>';
     const person=HQ_PEOPLE[selected[0]];
     const roomTasks=hqTasks.filter(t=>t.agent===selected[0]);
@@ -783,7 +806,7 @@
       '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Los estados corresponden a resultados registrados; no se simula actividad.</p>'+navigation+(hqRoom?room:office)+
       '<div aria-label="Ficha del empleado" style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los seis sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
-      hqAIView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
+      hqAIView()+hqHiringView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
   }
 
   function view(p) {
@@ -862,6 +885,7 @@
     ev.preventDefault();void crearEmpresa(ev.target);
   });
   document.addEventListener('click', ev => {
+    const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();void hqAI('status');return;}
     const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
