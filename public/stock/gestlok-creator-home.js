@@ -675,6 +675,24 @@
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
   let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[], hqRunsLoaded=false, hqRunsError='';
+  let hqAIStatusAt=0,hqAIStatusBusy=false,hqAIStatusError='',hqAIConfigured=null;
+  // Read-only provider status; never requests completion tokens or starts tasks.
+  async function hqCheckConnection(force=false){
+    if(!hqAllowed()||!hqLoaded||hqBusy||hqAIBusy||hqAIStatusBusy||document.visibilityState==='hidden')return;
+    if(!force&&(Date.now()-hqAIStatusAt<(hqAIReady===true?300000:60000)||['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id)))return;
+    const epoch=hqEpoch;hqAIStatusBusy=true;hqAIStatusAt=Date.now();
+    const before=JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]);
+    try{
+      const sb=window.GestLokSupabase;if(!sb?.functions?.invoke)throw Error('Sin acceso al motor');
+      const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action:'status'}});
+      if(epoch!==hqEpoch||!hqAllowed())return;
+      if(res.error)throw Error('No se pudo consultar Groq desde HQ');
+      hqAIConfigured=res.data?.configured===true;hqAIReady=hqAIConfigured&&res.data?.verified===true;
+      hqAIStatusError=String(res.data?.diagnostic||(!hqAIConfigured?'Falta configurar la clave gratuita de Groq.':!hqAIReady?'Groq todavía no confirmó la conexión.':''));
+    }catch{if(epoch===hqEpoch){hqAIReady=false;hqAIStatusError='No se pudo verificar la conexión con Groq. Volvé a comprobar.';}}
+    finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
+  }
+  setInterval(()=>{void hqCheckConnection();},2000);
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
@@ -685,7 +703,7 @@
       if(!sb?.functions?.invoke)throw Error('Sin conexión');
       const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action,task_id:taskId}});
       if(epoch!==hqEpoch||!hqAllowed())return;
-      if(action==='status'){hqAIReady=res.error?null:res.data?.configured===true&&res.data?.verified!==false;if(res.data?.diagnostic)hqAIError=String(res.data.diagnostic);}
+      if(action==='status'){hqAIStatusAt=Date.now();hqAIConfigured=res.error?null:res.data?.configured===true;hqAIReady=res.error?false:hqAIConfigured&&res.data?.verified===true;hqAIStatusError=String(res.data?.diagnostic||(!hqAIConfigured?'No se confirmó la clave de Groq.':!hqAIReady?'Groq todavía no confirmó la conexión.':''));}
       if(res.error)hqAIError='No se pudo confirmar la conexión o ejecución. Consultá los resultados antes de repetir.';
       else if(action==='run'&&res.data?.state==='error')hqAIError='La ejecución terminó con error. Consultá el motivo en la bandeja de tareas.';
       const runs=await sb.rpc('gestlok_hq_list_runs');
@@ -696,7 +714,7 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   function hqAIView(){
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 8. La cuota del proveedor puede ser menor.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Groq · conexión disponible (respuesta de IA aún no verificada)':hqAIReady===false?'Falta configurar la clave gratuita de Groq para HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 8. La cuota del proveedor puede ser menor.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIStatusError|| (hqAIReady===true?(hqRuns.some(r=>r.state==='review')?'Groq · conexión disponible · informes registrados':'Groq · conexión disponible (respuesta de IA aún no verificada)'):hqAIReady===false?'Conexión de IA no disponible':'Verificando conexión de IA automáticamente…')))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
     if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
@@ -756,7 +774,7 @@
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;}
+  function hqReset(){hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
   async function hqSync(){
@@ -815,7 +833,7 @@
       if(runs.some(r=>r.state==='review'&&hqTasks.some(t=>t.id===r.task_id&&t.status==='pendiente')))return ['Por revisar','#2765a8'];
       if(runs[0]?.state==='error')return ['Último: error','#ac4141'];
       if(hqAIReady===true)return ['Disponible · sin tarea en ejecución','#28765a'];
-      return ['Sin conexión a IA','#68798b'];
+      return [hqAIReady===false?'Conexión de IA no disponible':'IA pendiente de verificación','#68798b'];
     };
     const meetingActive=hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqTasks.some(t=>t.id===r.task_id&&t.agent==='lider'&&t.status==='pendiente'));
     const anyWorking=hqRunsLoaded&&hqRuns.some(r=>r.state==='working'&&hqTasks.some(t=>t.id===r.task_id&&t.status==='pendiente'));
@@ -876,7 +894,7 @@
       const host=document.querySelector?.('[data-hq-3d-host]');
       if(!host||host.dataset.hqMode!==(hqRoom?'private':'general')||host.dataset.hqSelected!==selected[0]||host.dataset.hqLoading)return;
       host.dataset.hqLoading='true';host.dataset.hqRenderer='loading';
-      import('./gestlok-hq-3d.mjs?rev=hq-servicio-tecnico-20261125').then(mod=>{
+      import('./gestlok-hq-3d.mjs?rev=hq-conexion-auto-20261125').then(mod=>{
         if(!hqAllowed()||!host.isConnected)return;
         mod.mount(host,hqScenePeople,{mode:host.dataset.hqMode,selected:selected[0],meeting:meetingActive,activityText,onSelect:id=>{
           if(!hqAllowed()||!hqScenePeople.some(p=>p.id===id))return;
@@ -889,7 +907,7 @@
       HQ_AGENTS.map((a,i)=>{const st=states(a);return '<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" aria-label="'+esc(HQ_PEOPLE[a[0]].name+' · '+a[1]+' · '+st[0])+'" style="position:absolute;z-index:2;left:'+positions[i][0]+'%;top:'+positions[i][1]+'%;transform:translate(-50%,-50%);width:29%;max-width:160px;min-width:0;padding:3px 1px;border:1px solid '+(a[0]===selected[0]?'#1a5b83':'transparent')+';border-radius:9px;background:'+(a[0]===selected[0]?'#e9f6ffb8':'transparent')+';cursor:pointer;color:#173449;line-height:1.15">'+
         '<span style="display:inline-flex;align-items:center;gap:3px;max-width:100%;box-sizing:border-box;padding:4px 5px;border-radius:8px;background:#fff;box-shadow:0 1px 4px #28475d30;font-size:clamp(9px,2.3vw,13px);font-weight:700;overflow-wrap:anywhere"><span aria-hidden="true" style="flex:none;width:7px;height:7px;border-radius:50%;background:'+st[1]+'"></span>'+esc(HQ_PEOPLE[a[0]].name)+'</span>'+character(a,i)+'<span style="display:block;font-size:clamp(9px,2.1vw,12px);font-weight:600;background:#f7fafbd9;border-radius:4px;padding:2px;overflow-wrap:anywhere">'+esc(a[1])+'</span></button>';}).join('')+
       '<button type="button" data-ch-hq-leader aria-pressed="'+(hqAgent==='lider')+'" style="position:absolute;z-index:3;bottom:3%;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;padding:2px 6px;color:#173449;background:#ffffffb8;border:1px solid #8ba5b8;border-radius:9px;max-width:29%;white-space:normal"><span style="display:block;width:clamp(40px,9vw,70px);margin:auto">'+character(hqArea('lider'),HQ_AGENTS.length)+'</span>Alex · Directora Ejecutiva</button></div>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:#fff;font-size:11px;color:#425970"><span>● Sin conexión</span><span style="color:#b7791f">● En ejecución</span><span style="color:#2765a8">● Por revisar</span><span style="color:#ac4141">● Error</span></div></div>';
+      '<div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:#fff;font-size:11px;color:#425970"><span>● IA no verificada o no disponible</span><span style="color:#28765a">● Disponible</span><span style="color:#b7791f">● En ejecución</span><span style="color:#2765a8">● Por revisar</span><span style="color:#ac4141">● Error</span></div></div>';
     const person=HQ_PEOPLE[selected[0]];
     const roomTasks=hqTasks.filter(t=>t.agent===selected[0]);
     const room='<section data-hq-scene-shell aria-label="Oficina privada del empleado" style="border:1px solid #cbd8e2;border-radius:12px;overflow:hidden;background:#f3f7fa">'+
@@ -983,7 +1001,7 @@
   });
   document.addEventListener('click', ev => {
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
-    const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();void hqAI('status');return;}
+    const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
     const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
