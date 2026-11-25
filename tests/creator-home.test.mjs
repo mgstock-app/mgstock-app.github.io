@@ -27,11 +27,12 @@ function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existing
     GestLokSupabase: {functions:{invoke},rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
   };
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
-  vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask, fetch: fetcher});
+  const intervals=[];
+  vm.runInNewContext(source, {window, document, setInterval: (fn,ms) => {intervals.push({fn,ms});return intervals.length;}, clearInterval() {}, Date, queueMicrotask, fetch: fetcher});
   const h = window.GestLokCreatorHome;
   h.attach({S: {me: {email, tenant_id: tenant}}, isCreadora: () => creadora,
     render: () => { renders++; }, toast: (msg,bad) => { notices.push({msg,bad}); }});
-  return {h, calls, argsLog, listeners, renders: () => renders, store, window, notices,
+  return {h, calls, argsLog, listeners, intervals, document, renders: () => renders, store, window, notices,
     opened, reloads: () => reloads, invalidations: () => invalidations};
 }
 const tick = () => new Promise(r => setTimeout(r, 0));
@@ -475,4 +476,29 @@ test('HQ: readable projected HTML name and sector labels, dedicated free-plan pr
  assert.doesNotMatch(backend,/api\.openai\.com|GESTLOK_HQ_OPENAI_API_KEY/);
  assert.match(backend,/gestlok_hq_claim_run/);
  assert.match(backend,/gestlok_hq_finish_director/);
+});
+
+test('HQ synchronizes persisted runs across devices without invoking AI or disrupting a draft',async()=>{
+ let rows=[],runs=[],invocations=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invocations++;return {data:{configured:true,verified:true}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const poll=r.intervals.find(x=>x.ms===4000);assert.ok(poll);
+ rows=[{id:'remote-meeting',agent:'lider',status:'pendiente',instruction:'Remota',created_at:DASH.generated_at}];
+ runs=[{task_id:'remote-meeting',state:'working'}];
+ poll.fn();await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/data-hq-meeting="true"/);
+ const renderCount=r.renders();poll.fn();await tick();await tick();assert.equal(r.renders(),renderCount);
+ r.document.activeElement={id:'gl-hq-task'};
+ runs=[{task_id:'remote-meeting',state:'review',result:'Resultado remoto'}];
+ poll.fn();await tick();await tick();assert.match(r.h.view({parts:{}}),/data-hq-meeting="true"/);
+ r.document.activeElement=null;poll.fn();await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Resultado remoto/);assert.match(r.h.view({parts:{}}),/data-hq-meeting="false"/);
+ assert.equal(invocations,0);r.h.setTab('inicio');const count=r.calls.length;poll.fn();await tick();assert.equal(r.calls.length,count);
+});
+test('HQ provider diagnosis distinguishes credential failure and limits, with no parallel burst',()=>{
+ const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
+ assert.match(backend,/safeProviderError/);assert.match(backend,/code===401/);assert.match(backend,/code===429/);
+ assert.match(backend,/models\/openai\/gpt-oss-20b/);
+ assert.match(backend,/for\(const \[area,profile\] of Object.entries\(profiles\)\)/);
+ assert.doesNotMatch(backend,/Promise\.allSettled\(Object\.entries\(profiles\)/);
 });
