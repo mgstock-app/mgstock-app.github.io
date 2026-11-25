@@ -305,7 +305,7 @@ test('HQ AI requires explicit confirmation, saved pending task and a configured 
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
  assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
  click('[data-ch-hq-ai-status]');await tick();await tick();
- assert.match(r.h.view({parts:{}}),/Proveedor configurado/);
+ assert.match(r.h.view({parts:{}}),/Groq · clave configurada \(respuesta aún no verificada\)/);
  click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();assert.equal(requests.length,1);
  confirmed=true;click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();await tick();
  assert.equal(requests.length,2);
