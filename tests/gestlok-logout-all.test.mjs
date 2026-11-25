@@ -99,7 +99,7 @@ test('Se reutiliza siempre el cierre local de auth.js, sin cambiar permisos ni e
 test('La app renueva caché de perfil y cierre para PWA',()=>{
  assert.match(runtime,/\/stock\/gestlok-logout\.js\?rev=logout-profile-menu-20261107/);
  assert.match(runtime,/\/stock\/gestlok-role-switcher\.js\?rev=roles-logout-profile-20261107/);
- assert.match(runtime,/\/stock\/gestlok-creator-home\.js\?rev=hq-oficina-viva-20261125/);
+ assert.match(runtime,/\/stock\/gestlok-creator-home\.js\?rev=hq-premium-20261125/);
  assert.match(sw,/'\/stock\/gestlok-logout\.js'/);
  assert.match(sw,/'\/stock\/gestlok-logout\.css'/);
 });
