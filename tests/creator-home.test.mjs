@@ -343,3 +343,27 @@ test('HQ Dirección: identidades estables, ambientes privados y aprobación con 
  click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();await tick();
  assert.equal(decisions.length,1);assert.equal(rows[0].status,'cerrada');
 });
+
+test('HQ: solicitud de incorporación de Alex requiere decisión independiente de la creadora',async()=>{
+ const rows=[{id:'meeting-1',agent:'lider',instruction:'Innovación',status:'pendiente',created_at:DASH.generated_at}];
+ const hire={name:'Emilia',specialty:'UX/UI',reason:'Falta investigación de experiencia',benefit:'Reducir errores de uso',cost:'A evaluar',permissions:'Solo lectura',alternative:'Delegar en Desarrollo'};
+ const reports=[{id:'run-1',task_id:'meeting-1',state:'review',result:'Informe',hire_request:hire,hire_decision:null}];
+ const decisions=[];let confirmed=false;
+ const r=load(async(fn,args)=>{
+  if(fn==='gestlok_hq_list_tasks')return {data:rows};
+  if(fn==='gestlok_hq_list_runs')return {data:reports};
+  if(fn==='gestlok_hq_decide_hire'){decisions.push(args);reports[0].hire_decision=args.p_decision;return {data:true};}
+  return {data:DASH};
+ },{confirm:()=>confirmed,invoke:async()=>({data:{configured:true}})});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Emilia · UX\/UI/);
+ assert.match(r.h.view({parts:{}}),/Por qué hace falta/);
+ click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'approved'});await tick();assert.equal(decisions.length,0);
+ confirmed=true;click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'approved'});await tick();await tick();
+ assert.equal(decisions.length,1);assert.equal(decisions[0].p_decision,'approved');
+ assert.match(r.h.view({parts:{}}),/Autorizada · pendiente de configuración/);
+ assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,6);
+ click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'rejected'});await tick();assert.equal(decisions.length,1);
+});
