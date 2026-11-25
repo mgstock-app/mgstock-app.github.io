@@ -4,7 +4,7 @@
  */
 import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261124carta1';
 
-import {cartaVisualHabilitada, productosVisuales, pasoVisual} from './carta-visual.mjs?v=20261124visual1';
+import {cartaVisualHabilitada, productosVisuales, pasoVisual, cartaMiGustoHabilitada, consultaCartaMiGusto, hojasCartaMiGusto} from './carta-visual.mjs?v=20261125mg1';
 
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
@@ -278,8 +278,8 @@ function mensajeAsistente(m, {abrir = true} = {}) {
   if (m.tipo === 'carta') {
     // Venta sugerida: abre la carta directo en la categoría ofrecida (postres, bebidas…).
     if (m.categoria && S.catalogo.categorias.some(c => c.id === m.categoria)) S.categoria = m.categoria;
-    const ver = () => m.categoria || !pilotoCartaVisual() ? abrirCarta() : abrirOpcionesCarta();
-    accion('Ver la carta', ver); if (abrir) ver();
+    const ver = () => { if(cartaMiGustoActiva() && !m.categoria) return mostrarCategoriasMiGusto(); return m.categoria || !pilotoCartaVisual() ? abrirCarta() : abrirOpcionesCarta(); };
+    accion('Ver la carta', ver); if (abrir && !(cartaMiGustoActiva() && !m.categoria)) ver();
   }
   else if (m.tipo === 'producto') {
     const p = producto(m.productos?.[0]);
@@ -343,7 +343,10 @@ async function enviar(entrada, textoVisible, {cancelacionConfirmada = false} = {
       if (S.pedido && !S.cerrada) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(S.pedido.estado) && !S.soportePendiente;
       programarSondeo();
     }
-    for (const m of r.mensajes || []) mensajeAsistente(m);
+    const consultaVisual = cartaMiGustoActiva() && !S.pedido && !entrada.agregar_varios &&
+      (entrada.boton==='promociones'?'promos':!entrada.boton?consultaCartaMiGusto(entrada.texto):null);
+    for (const m of r.mensajes || []) mensajeAsistente(m,{abrir:!consultaVisual});
+    if(consultaVisual && !r.pedido) mostrarCategoriasMiGusto(consultaVisual);
     if (r.pedido) {
       if (entrada.datos && r.pedido.estado === 'pendiente') guardarUltimoPedido(carritoAntes);
       mostrarPedido(r.pedido);
@@ -369,6 +372,7 @@ function tocarBoton(b) {
   if (b.id === 'cancelar') return abrirConfirmacionCancelar();
   if (b.id === 'carta') return abrirCarta();
   if (b.id === '__ver_menu') return abrirOpcionesCarta();
+  if (b.id === 'promociones' && cartaMiGustoActiva() && !S.pedido) return mostrarCategoriasMiGusto('promos');
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.id === 'finalizar' ? 'Enviar pedido' : b.texto);
 }
@@ -567,7 +571,32 @@ function precioEfectivo(p) {
   return Math.round(Number(p.precio) * (100 - pct) / 100);
 }
 const pilotoCartaVisual = () => cartaVisualHabilitada(CFG.entorno, DEMO, SLUG);
+const cartaMiGustoActiva = () => cartaMiGustoHabilitada(CFG.entorno, DEMO && SHOWROOM ? (params.get('s')||'') : SLUG);
+function mostrarCategoriasMiGusto(tipo='todo') {
+ if(!cartaMiGustoActiva() || S.cerrada || !S.sucursal)return;
+ const hojas=hojasCartaMiGusto(tipo);
+ if(hojas.length===1 && tipo!=='todo')return mostrarImagenMiGusto(hojas[0]);
+ const n=el('div',{class:'burbuja asistente mg-carta-visual'});
+ n.append(el('p',{text:'Elegí qué parte de la carta querés consultar.'}),
+ ...hojas.map(c=>el('button',{type:'button',class:'boton ancho',text:c.titulo,onclick:()=>mostrarImagenMiGusto(c)})),
+ el('button',{type:'button',class:'boton principal ancho',text:'Hacer un pedido',onclick:()=>abrirCarta()}));
+ lista.append(n);bajar();
+}
+function mostrarImagenMiGusto(c) {
+ if(!cartaMiGustoActiva() || S.cerrada || !S.sucursal)return;
+ const imagen=el('img',{src:c.url,alt:c.titulo,loading:'lazy',decoding:'async'});
+ const enlace=el('a',{href:c.url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar '+c.titulo},imagen);
+ imagen.addEventListener('error',()=>{enlace.replaceChildren(el('span',{text:'No se pudo cargar la imagen. Podés consultar el menú interactivo.'}));enlace.removeAttribute('href');});
+ lista.append(el('div',{class:'burbuja asistente mg-carta-visual'},
+ el('strong',{text:c.titulo}),enlace,
+ el('p',{class:'mg-carta-nota',text:'Tocá la imagen para ampliarla. Carta de referencia en Prueba; el precio final se confirma en el menú interactivo.'}),
+ el('button',{type:'button',class:'boton principal ancho',text:'Hacer un pedido',onclick:()=>abrirCarta()}),
+ el('button',{type:'button',class:'boton ancho',text:'Ver otra categoría',onclick:()=>mostrarCategoriasMiGusto()}),
+ el('button',{type:'button',class:'boton ancho',text:'Volver al menú principal',onclick:()=>chips(BOTONES_BASE())})));
+ bajar();
+}
 function abrirOpcionesCarta() {
+  if(cartaMiGustoActiva())return mostrarCategoriasMiGusto();
   if (!pilotoCartaVisual()) return abrirCarta({soloVer:true});
   if (S.cerrada || !S.sucursal) return;
   abrirHoja('Nuestra carta',el('div',{class:'cv-eleccion'},
