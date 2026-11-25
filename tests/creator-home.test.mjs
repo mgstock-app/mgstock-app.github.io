@@ -238,8 +238,8 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
   assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
   // Rendering Inicio also schedules its existing microapp and Chat prefetches.
-  // Keep the full allowlist and assert exactly one HQ read, with no writes or agent runs.
-  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')),['gestlok_hq_list_tasks','gestlok_hq_list_runs']);
+  // Keep the full allowlist for HQ reads, including Facundo evidence, with no writes or agent runs.
+  assert.deepEqual(r.calls.filter(fn=>fn.startsWith('gestlok_hq_')),['gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_support_status']);
   assert.deepEqual(r.calls.filter(fn=>!fn.startsWith('gestlok_hq_')).sort(),['gestlok_creator_dashboard','gestlok_creator_microapps','gestlok_chat_admin_empresas','gestlok_chat_admin_cobros'].sort());
 });
 test('GESTLOK HQ: otro correo, dueño y respuesta rechazada no habilitan el panel', async () => {
@@ -260,6 +260,7 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
     if(fn==='gestlok_creator_dashboard')return {data:DASH};
     if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
     if(fn==='gestlok_hq_list_runs')return {data:[]};
+    if(fn==='gestlok_hq_support_status')return {data:{checks:[],worker:null}};
     if(fn==='gestlok_hq_add_task'){rows.push({id:'id-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'id-1'};}
     if(fn==='gestlok_hq_close_task'){rows[0].status=args.p_status;return {data:true};}
     throw Error(fn);
@@ -272,7 +273,7 @@ test('GESTLOK HQ: guarda y consulta tareas privadas sin enviar trabajos a IA',as
   await tick();await tick();
   assert.match(r.h.view({parts:{}}),/No hay tareas pendientes/);
   assert.match(r.h.view({parts:{}}),/cerrada/);
-  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_close_task','gestlok_hq_list_tasks','gestlok_hq_list_runs']);
+  assert.deepEqual(r.calls,['gestlok_creator_dashboard','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_support_status','gestlok_hq_add_task','gestlok_hq_list_tasks','gestlok_hq_list_runs','gestlok_hq_close_task','gestlok_hq_list_tasks','gestlok_hq_list_runs']);
 });
 
 test('HQ Testing consulta Actions reales sin enviar instrucciones ni modificar GitHub',async()=>{
@@ -583,4 +584,40 @@ test('HQ staged SQL preserves prior quota and protects the mission and sector re
  const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
  assert.match(backend,/Array.isArray\(claim.entries\)/);
  assert.match(backend,/if\(!staged\)for/);
+});
+
+
+test('HQ autonomous worker is opt-in, has a server-only credential and observes public evidence',()=>{
+ const sql=readFileSync('docs/hq-autonomous-worker-migration.sql','utf8');
+ const schedule=readFileSync('docs/hq-autonomous-worker-schedule.sql','utf8');
+ const worker=readFileSync('supabase/functions/gestlok-hq-worker/index.ts','utf8');
+ assert.match(sql,/auto_enabled boolean not null default false/);
+ assert.match(sql,/require_creator\(\)/);
+ assert.match(sql,/sum\(quota_units\)/);
+ assert.match(sql,/pg_try_advisory_xact_lock/);
+ assert.match(sql,/state='working' and created_at<now\(\)-interval '15 minutes'/);
+ assert.match(sql,/revoke all on function public.gestlok_hq_worker_claim\(text\) from public,anon,authenticated/);
+ assert.match(sql,/grant execute on function public.gestlok_hq_worker_claim\(text\) to service_role/);
+ assert.match(schedule,/vault.decrypted_secrets/);
+ assert.match(worker,/auth.error\|\|auth.data!==true/);
+ assert.match(worker,/GESTLOK_HQ_GROQ_FREE_API_KEY/);
+ assert.match(worker,/No se confirma|No se confirmó/);
+ assert.doesNotMatch(worker,/api\.openai\.com/);
+ assert.match(source,/Autorizar trabajo autónomo/);
+ assert.match(source,/Pausar trabajo autónomo/);
+ assert.match(source,/gestlok_hq_support_status/);
+ assert.match(source,/No acredita pruebas autenticadas/);
+});
+
+
+test('HQ Facundo displays recorded server evidence and never starts an AI run on entry',async()=>{
+ const status={worker:{last_tick:new Date().toISOString(),paused_until:null},checks:[{checked_at:new Date().toISOString(),conclusion:'Sin alerta pública observada',detail:'<evidencia> HTTP 200'}]};
+ let calls=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_support_status'?status:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}),{invoke:async()=>{calls++;return {data:{configured:true,verified:true}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/Sin alerta pública observada/);
+ assert.match(html,/&lt;evidencia&gt; HTTP 200/);
+ assert.match(html,/No acredita pruebas autenticadas/);
+ assert.equal(calls,0);
 });

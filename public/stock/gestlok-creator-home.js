@@ -700,6 +700,20 @@
     const used=recent.reduce((n,r)=>n+(Number.isInteger(r.quota_units)?r.quota_units:hqTasks.find(t=>t.id===r.task_id)?.agent==='lider'?8:1),0);
     return {remaining:Math.max(0,10-used),next:recent.length?Math.min(...recent.map(r=>Date.parse(r.created_at)+86400000)):null};
   }
+  let hqSupport=null,hqSupportAt=0,hqSupportBusy=false;
+  async function hqReadSupport(){
+    if(!hqAllowed()||!hqLoaded||hqSupportBusy||document.visibilityState==='hidden'||Date.now()-hqSupportAt<60000)return;
+    const epoch=hqEpoch;hqSupportBusy=true;hqSupportAt=Date.now();
+    try{const res=await window.GestLokSupabase.rpc('gestlok_hq_support_status');if(epoch!==hqEpoch||!hqAllowed())return;if(res.error||!Array.isArray(res.data?.checks))return;const changed=JSON.stringify(hqSupport)!==JSON.stringify(res.data);hqSupport=res.data;if(changed&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}
+    catch{/* keep last observed data */}
+    finally{if(epoch===hqEpoch)hqSupportBusy=false;}
+  }
+  setInterval(()=>{void hqReadSupport();},60000);
+  function hqSupportView(){
+    const latest=hqSupport?.checks?.[0],worker=hqSupport?.worker;
+    const when=x=>x?new Date(x).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}):'Sin registro';
+    return '<section aria-label="Servicio técnico preventivo de Facundo" style="padding:12px;border:1px solid #cbd8e2;border-radius:10px;margin:12px 0"><h3>Facundo · Servicio técnico preventivo</h3><p role="status">'+esc(latest?latest.conclusion:'Sin controles de servidor confirmados')+'</p><p>Último control: '+esc(when(latest?.checked_at))+' · Worker: '+esc(when(worker?.last_tick))+'</p>'+(worker?.paused_until&&Date.parse(worker.paused_until)>Date.now()?'<p>IA pausada hasta '+esc(when(worker.paused_until))+'</p>':'')+(latest?'<details><summary>Ver evidencia pública</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(latest.detail)+'</p></details>':'')+'<p>Alcance: acceso público y GitHub. No acredita pruebas autenticadas de roles, locales, stock ni caja.</p></section>';
+  }
   function hqTeamView(t){
     if(t.agent!=='lider'||t.status!=='pendiente'||hqRuns.some(r=>r.task_id===t.id))return '';
     const children=hqTasks.filter(q=>q.parent_task_id===t.id);
@@ -707,11 +721,12 @@
     const ready=children.filter(q=>q.status!=='cancelada'&&hqRuns.some(r=>r.task_id===q.id&&r.state==='review')).length;
     const running=children.some(q=>hqRuns.some(r=>r.task_id===q.id&&r.state==='working'));
     const quota=hqQuota();
-    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los siete sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button></div>';
+    return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los siete sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||t.auto_enabled||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button>'+(children.length===7&&typeof t.auto_enabled==='boolean'?'<p role="status">'+esc(t.auto_enabled?'Modo autónomo autorizado · continúa por servidor cuando haya cuota':'Modo autónomo desactivado')+'</p><button type="button" class="btn" data-ch-hq-auto="'+esc(t.id)+'" data-enabled="'+(!t.auto_enabled)+'" '+(hqBusy||hqAIBusy?'disabled':'')+'>'+(t.auto_enabled?'Pausar trabajo autónomo':'Autorizar trabajo autónomo')+'</button>':'')+'</div>';
   }
   async function hqTeam(id){
     if(!hqAllowed()||hqBusy||hqAIBusy||!hqTasks.some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
     const initial=!hqTasks.some(t=>t.parent_task_id===id);
+    if(hqTasks.some(t=>t.id===id&&t.auto_enabled))return;
     if(!initial&&(!hqAIReady||!window.confirm('¿Continuar las tareas pendientes del equipo con Groq gratuito? Se conserva cada resultado y se detiene al alcanzar la cuota o un error. No se modifica GESTLOK.')))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     const alive=()=>epoch===hqEpoch&&hqAllowed();
@@ -827,7 +842,7 @@
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;}
+  function hqReset(){hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
   async function hqSync(){
@@ -872,7 +887,7 @@
     if(!hqAllowed())return '';
     const renderTask=t=>'<article style="padding:12px;border:1px solid #dce3eb;border-radius:8px;margin:8px 0;overflow-wrap:anywhere"><strong>'+esc(hqArea(t.agent)?.[1]||'Área')+'</strong> · '+esc(t.status)+'<p style="white-space:pre-wrap">'+esc(t.instruction)+'</p><small>'+esc(dmy(t.created_at))+'</small>'+hqRunView(t)+
       (t.status==='pendiente'?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||(t.agent==='lider'&&!hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))?'disabled':'')+'>'+(t.agent==='lider'?'Aprobar informe':'Marcar cerrada')+'</button><button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy?'disabled':'')+'>'+(t.agent==='lider'?'Descartar informe':'Cancelar tarea')+'</button></div>':'')+'</article>';
-    return '<section aria-label="Bandeja privada de tareas" style="margin-top:20px"><h3>Bandeja de tareas</h3><button class="btn" type="button" data-ch-hq-refresh '+(hqBusy?'disabled':'')+'>Actualizar</button><p role="status">'+esc(hqError||(hqBusy?'Consultando…':!hqLoaded?'Bandeja sin consultar':'Sincronización automática cada 4 segundos · sin ejecución automática'))+'</p>'+
+    return '<section aria-label="Bandeja privada de tareas" style="margin-top:20px"><h3>Bandeja de tareas</h3><button class="btn" type="button" data-ch-hq-refresh '+(hqBusy?'disabled':'')+'>Actualizar</button><p role="status">'+esc(hqError||(hqBusy?'Consultando…':!hqLoaded?'Bandeja sin consultar':'Sincronización automática cada 4 segundos · ejecución de servidor solo en misiones autorizadas'))+'</p>'+
       (hqLoaded?'<h4>Pendientes</h4>'+(hqTasks.filter(t=>t.status==='pendiente').map(renderTask).join('')||'<p>No hay tareas pendientes.</p>')+'<h4>Historial</h4>'+(hqTasks.filter(t=>t.status!=='pendiente').map(renderTask).join('')||'<p>No hay tareas cerradas.</p>'):'')+'</section>';
   }
   function hqView(){
@@ -972,7 +987,7 @@
       '<div style="padding:12px;border-top:1px solid #cbd8e2"><strong>Proyectos del sector</strong><p>'+esc(hqLoaded?roomTasks.length+' registrados · '+roomTasks.filter(t=>t.status==='pendiente').length+' pendientes':'Sin consultar')+'</p>'+roomTasks.slice(0,5).map(t=>'<p style="overflow-wrap:anywhere;margin:6px 0">'+esc(t.status+' · '+t.instruction.slice(0,100))+'</p>').join('')+'</div></section>';
     const navigation='<div role="group" aria-label="Ambientes de GESTLOK HQ" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><button type="button" class="btn" data-ch-hq-room="general" aria-pressed="'+!hqRoom+'">Oficina general</button><button type="button" class="btn" data-ch-hq-room="private" aria-pressed="'+hqRoom+'">Oficina privada de '+esc(person.name)+'</button></div>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Todos los empleados, incluida Alex, pueden investigar y proponer. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos. Las animaciones de la oficina son visuales; los estados de ejecución corresponden únicamente a tareas reales. Sin tareas en ejecución, el equipo permanece disponible. Las reuniones solo se representan cuando hay una ejecución de dirección registrada; no indican una fase concreta del debate.</p>'+hqMotion+hq3dStyles+hqExecutiveInbox()+navigation+(hqRoom?room:office)+
+      '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Todos los empleados, incluida Alex, pueden investigar y proponer. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos. Las animaciones de la oficina son visuales; los estados de ejecución corresponden únicamente a tareas reales. Sin tareas en ejecución, el equipo permanece disponible. Las reuniones solo se representan cuando hay una ejecución de dirección registrada; no indican una fase concreta del debate.</p>'+hqMotion+hq3dStyles+hqExecutiveInbox()+hqSupportView()+navigation+(hqRoom?room:office)+
       '<div aria-label="Ficha del empleado" style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
       '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los siete sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
       hqAIView()+hqHiringView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
@@ -1036,7 +1051,7 @@
     if(v==='contacto')void window.GestLokContactoWeb?.refresh?.();
     tab = v; store.set(v);
     api?.render();
-    if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest();
+    if(v==='hq'&&!hqLoaded&&!hqBusy)void hqRequest().then(()=>hqReadSupport());
     try { window.scrollTo({top: 0}); } catch { /* sin scroll */ }
   }
   document.addEventListener('input',ev=>{if(hqAllowed()&&ev.target?.id==='gl-hq-task')hqDraft=String(ev.target.value||'').slice(0,4000);});
@@ -1056,6 +1071,7 @@
   document.addEventListener('click', ev => {
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
+    const auto=ev.target.closest?.('[data-ch-hq-auto]');if(auto){ev.preventDefault();if(hqAllowed()){const enabled=auto.dataset.enabled==='true';if(window.confirm(enabled?'¿Autorizar esta misión en modo autónomo? El servidor continúa con Groq gratuito aun si cerrás GESTLOK; no realiza modificaciones comerciales.':'¿Pausar las próximas tareas autónomas? Una consulta ya iniciada puede terminar.'))void hqRequest('gestlok_hq_set_auto',{p_task:auto.dataset.chHqAuto,p_enabled:enabled});}return;}
     const hqTeamButton=ev.target.closest?.('[data-ch-hq-team]');if(hqTeamButton){ev.preventDefault();void hqTeam(hqTeamButton.dataset.chHqTeam);return;}
     const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
