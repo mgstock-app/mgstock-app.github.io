@@ -1,17 +1,11 @@
-# GESTLOK HQ — Activación segura
+# GESTLOK HQ — Activación de IA gratuita
 
-La oficina privada utiliza la función `gestlok-hq-agent`, independiente del chat comercial. Solo la creadora autenticada puede consultar o ejecutar tareas y decidir sobre incorporaciones.
+La oficina privada usa una función independiente de GESTLOK Chat. Solo la creadora autenticada puede ejecutar tareas y decidir incorporaciones.
 
-## Activación
+1. Crear una cuenta en https://console.groq.com/ y mantener la organización en **Free**, sin método de pago ni upgrade. Confirmar el plan y cuota en el panel de Groq.
+2. Crear una clave en https://console.groq.com/keys. Guardarla directamente en Supabase (proyecto de GESTLOK) → Edge Functions → Secrets con el nombre `GESTLOK_HQ_GROQ_FREE_API_KEY`. Nunca compartir la clave en un chat, GitHub ni frontend.
+3. Desplegar la función `gestlok-hq-agent` desde el código aprobado de main. No cambiar funciones comerciales, permisos ni base de datos.
+4. En HQ pulsar Comprobar conexión y resultados. La presencia de la clave no confirma que responda el modelo. Ejecutar una tarea no sensible y verificar que se guarda una respuesta real del sector elegido.
+5. Probar una reunión de Alex solo cuando haya un objetivo concreto. Reserva siete de las diez consultas permitidas por HQ cada 24 horas; Groq puede imponer límites menores de tokens o solicitudes. Una respuesta parcial identifica las áreas sin respuesta.
 
-1. Crear un proyecto de API de OpenAI dedicado a HQ y configurar su facturación y alertas de uso. La suscripción ChatGPT no sustituye la facturación API.
-2. Crear una clave de ese proyecto. Guardarla directamente en Supabase > Edge Functions > Secrets con nombre `GESTLOK_HQ_OPENAI_API_KEY`. Nunca pegarla en un chat, archivo, GitHub ni frontend. No reutilizar la clave de GESTLOK Chat.
-3. Desde el panel de la creadora entrar en HQ y pulsar Comprobar conexión y resultados. El indicador confirma la presencia del secreto, no una llamada exitosa al modelo.
-4. Crear una tarea no sensible de prueba para un agente y ejecutar con consentimiento. Verificar informe guardado, errores, consumo y aislamiento.
-5. Crear una reunión para Alex. Consume hasta siete consultas del límite de diez por 24 horas. Verificar propuestas de los sectores, informe ejecutivo y solicitudes de incorporación separadas.
-
-## Límites
-
-No existe ejecución automática ni publicación de cambios. El proveedor recibe instrucciones de tareas y evidencia pública de GitHub, no conversaciones ni pedidos de clientes. No incluir datos personales o secretos en las instrucciones. La autorización de una incorporación no aprovisiona un agente. La bandeja ejecutiva consulta resultados guardados sin llamar al proveedor.
-
-Las alertas presupuestarias del proveedor no sustituyen los límites de ejecución del servidor. Para detener el acceso al modelo, retirar únicamente el secreto dedicado de HQ.
+El proveedor exclusivo es Groq, modelo GPT-OSS 20B. No hay fallback a OpenAI ni reintentos automáticos al agotarse la cuota. El código no puede comprobar el plan de facturación de una clave: mantener Free es una condición imprescindible. No enviar datos sensibles; las instrucciones y evidencia pública se procesan externamente. No hay ejecución autónoma, cambios de producción ni publicación por parte de agentes. Para detener el acceso al modelo, retirar el secreto dedicado de HQ.
