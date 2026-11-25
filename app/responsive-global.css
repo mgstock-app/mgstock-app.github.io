@@ -126,7 +126,10 @@ html,body{max-width:100%;overflow-x:clip}
 }
 /* Tablet: dos columnas únicamente cuando tienen espacio suficiente. */
 @media screen and (min-width:768px) and (max-width:1023px){
- html.auth-on .auth .au-card{width:min(100%,560px);max-width:560px}
+ /* El nuevo botón puede requerir scroll vertical; conservar el centro del viewport. */
+ html.auth-on .auth{scrollbar-width:none}
+ html.auth-on .auth::-webkit-scrollbar{display:none}
+ html.auth-on .auth .au-card{width:min(100%,560px);max-width:560px;margin-inline:auto}
  .gl-oh-hub .gl-oh-main.hub-in{box-sizing:border-box;width:100%;max-width:100%;padding:22px 24px 40px}
  .gl-oh-hub .gl-owner-landing .gl-owner-areas{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
  .gl-oh-hub .gl-owner-landing .gl-owner-area{min-width:0;padding:20px}
