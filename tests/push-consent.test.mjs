@@ -44,6 +44,6 @@ test('SW soporta push visible y abre únicamente URLs del propio sitio',()=>{
  assert.match(sw,/addEventListener\('notificationclick'/);
  assert.match(sw,/url\.origin!==self\.location\.origin/);
  assert.match(sw,/\/stock\/gestlok-push\.js/);
- assert.match(runtime,/load\("\/stock\/gestlok-push\.js"\)/);
+ assert.match(runtime,/load\("\/stock\/gestlok-push\.js\?rev=hq-push-20261125"\)/);
  assert.match(css,/\.gl-push-permission/);
 });
