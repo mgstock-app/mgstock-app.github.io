@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {draft} from '../public/chat/asistente-whatsapp/draft.mjs';
+test('piloto distingue carta, pedido y reclamo sin inventar datos',()=>{assert.equal(draft('¿Me pasás la carta?').kind,'carta');assert.equal(draft('Quiero una docena').kind,'pedido');assert.equal(draft('Mi pedido llegó frío').kind,'humano');assert.equal(draft('¿Hacen delivery?').kind,'entrega');assert.equal(draft('').kind,'invalid');assert.doesNotMatch(draft('precio').text,/https?:|\$\d/);});
