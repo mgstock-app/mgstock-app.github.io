@@ -621,3 +621,22 @@ test('HQ Facundo displays recorded server evidence and never starts an AI run on
  assert.match(html,/No acredita pruebas autenticadas/);
  assert.equal(calls,0);
 });
+
+
+test('HQ Alex inbox shows unvalidated incoming reports and quota blockage without requesting AI',async()=>{
+ const now=new Date().toISOString();
+ const rows=[{id:'old',agent:'lider',status:'pendiente',instruction:'Reunión anterior'},{id:'mission',agent:'lider',status:'pendiente',auto_enabled:true,instruction:'Misión activa'},{id:'support',agent:'soporte',status:'pendiente',parent_task_id:'mission',instruction:'Control'},{id:'care',agent:'atencion',status:'pendiente',parent_task_id:'mission',instruction:'Atención'},{id:'qa',agent:'testing',status:'pendiente',parent_task_id:'mission',instruction:'Pruebas'},{id:'rest',agent:'marketing',status:'cancelada',parent_task_id:'mission',instruction:'Descanso'}];
+ const runs=[{task_id:'old',state:'error',quota_units:8,created_at:now},{task_id:'support',state:'review',quota_units:1,created_at:now,result:'<incidencia no validada>'},{task_id:'care',state:'review',quota_units:1,created_at:now,result:'Hipótesis'}];
+ let calls=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{calls++;return {data:{configured:true,verified:true}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/Recepción automática de Dirección/);
+ assert.match(html,/Informe de Alex pendiente · cuota interna agotada/);
+ assert.match(html,/Facundo · Informe recibido · sin validar/);
+ assert.match(html,/Renata · Informe recibido · sin validar/);
+ assert.match(html,/&lt;incidencia no validada&gt;/);
+ assert.match(html,/No es una conclusión de Alex/);
+ assert.doesNotMatch(html,/Martina · Informe recibido/);
+ assert.equal(calls,0);
+});
