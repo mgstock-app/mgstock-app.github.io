@@ -48,7 +48,10 @@ Deno.serve(async req=>{
   const leader=claim.agent==="lider";
   if(leader&&!Array.isArray(claim.entries))throw Error("invalid mission");
   const system=leader?"Sos Alex, directora de la oficina de GESTLOK HQ. Evaluá las propuestas registradas de los sectores con la evidencia; elegí las tres prioridades del día para GESTLOK Chat y los locales, con impacto, esfuerzo, riesgos, área responsable y cómo validarlas en los dos locales. Indicá qué sectores faltan. Devuelve únicamente JSON con briefing (texto) y hire (null o un objeto con name, specialty, reason, benefit, cost, permissions, alternative si se justifica una nueva especialidad).":profiles[claim.agent];
-  const input=JSON.stringify({objective:String(claim.instruction).slice(0,4000),evidence:{sitio:JSON.parse(detail),locales:pulse},proposals:leader?claim.entries:undefined});
+  // Cada sector recibe solo la evidencia que usa (menos tokens del plan gratuito).
+  const own=(typeof pulse==="object"&&pulse)?{...(pulse as Record<string,unknown>)}:pulse;
+  if(typeof own==="object"&&own){if(!["difusion","marketing"].includes(claim.agent))delete (own as Record<string,unknown>).mapa_difusion;if(!["soporte_general","soporte","lider"].includes(claim.agent))delete (own as Record<string,unknown>).plataforma;}
+  const input=JSON.stringify({objective:String(claim.instruction).slice(0,4000),evidence:{sitio:JSON.parse(detail),locales:own},proposals:leader?claim.entries:undefined});
   const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},signal:AbortSignal.timeout(25000),body:JSON.stringify({model:"openai/gpt-oss-20b",messages:[{role:"system",content:system+" "+rules},{role:"user",content:input}],max_completion_tokens:leader?2000:1200,reasoning_effort:"low",...(leader?{response_format:{type:"json_object"}}:{})})});
   if(!res.ok){
    // Groq rechazó antes de responder: se libera la reserva y la tarea vuelve a quedar pendiente.
