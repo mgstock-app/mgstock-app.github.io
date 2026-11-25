@@ -33,7 +33,7 @@ describe('Inicio independiente de la creadora',()=>{
   // Doce pestañas: las once existentes más GESTLOK HQ, exclusivo de la creadora.
   cy.get('.gl-ch-nav button').should('have.length',12);
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
-  cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Sin conexión a IA');
+  cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Motor de agentes');
   cy.get('[data-ch-hq-agent]').should('have.length',7);
   // Verify WebGL when the browser supports it; otherwise validate the animated fallback.
   cy.get('[data-hq-3d-host]').should('have.attr','data-hq-meeting','false');
