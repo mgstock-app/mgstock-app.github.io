@@ -233,7 +233,7 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(html,/Ficha del empleado/);
   assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,7);
   for(const area of ['Desarrollo','Control de calidad','Testing','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
-  assert.match(html,/Sin conexión a IA/);
+  assert.match(html,/IA pendiente de verificación/);
   assert.match(html,/Copiar instrucción para delegar/);
   r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
   assert.match(r.h.view({parts:{}}),/Preparar tarea · Marketing/);
@@ -299,7 +299,7 @@ test('HQ AI requires explicit confirmation, saved pending task and a configured 
  let runs=[], confirmed=false;
  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{confirm:()=>confirmed,invoke:async(name,options)=>{
   requests.push([name,options.body]);
-  if(options.body.action==='status')return {data:{configured:true}};
+  if(options.body.action==='status')return {data:{configured:true,verified:true}};
   runs=[{task_id:'id-1',state:'review',result:'Informe <seguro>'}];return {data:{ok:true,state:'review'}};
  }});
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
@@ -324,7 +324,7 @@ test('HQ Dirección: identidades estables, ambientes privados y aprobación con 
   if(fn==='gestlok_hq_add_task'){rows.push({id:'meeting-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'meeting-1'};}
   if(fn==='gestlok_hq_close_task'){decisions.push(args);rows[0].status=args.p_status;return {data:true};}
   return {data:DASH};
- },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true}};reports=[{task_id:'meeting-1',state:'review',result:'Informe del líder'}];return {data:{ok:true,state:'review'}};}});
+ },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true,verified:true}};reports=[{task_id:'meeting-1',state:'review',result:'Informe del líder'}];return {data:{ok:true,state:'review'}};}});
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
  for(const name of ['Nicolás','Camila','Tomás','Renata','Martina','Santiago','Alex'])assert.ok(r.h.view({parts:{}}).includes(name),name);
@@ -356,7 +356,7 @@ test('HQ: solicitud de incorporación de Alex requiere decisión independiente d
   if(fn==='gestlok_hq_list_runs')return {data:reports};
   if(fn==='gestlok_hq_decide_hire'){decisions.push(args);reports[0].hire_decision=args.p_decision;return {data:true};}
   return {data:DASH};
- },{confirm:()=>confirmed,invoke:async()=>({data:{configured:true}})});
+ },{confirm:()=>confirmed,invoke:async()=>({data:{configured:true,verified:true}})});
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
  click('[data-ch-hq-ai-status]');await tick();await tick();
@@ -374,7 +374,7 @@ test('HQ shows executive decisions automatically without invoking a paid model',
  const rows=[{id:'meeting-1',agent:'lider',instruction:'Revisión de microapps',status:'pendiente',created_at:DASH.generated_at}];
  const reports=[{id:'run-1',task_id:'meeting-1',state:'review',result:'Informe <seguro>',hire_request:{name:'Emilia',specialty:'UX/UI'},hire_decision:null}];
  let invoked=0;
- const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?reports:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true}};}});
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?reports:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true,verified:true}};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
  assert.match(html,/Bandeja ejecutiva de Alex/);
@@ -387,7 +387,7 @@ test('HQ shows executive decisions automatically without invoking a paid model',
 test('HQ: animated desks are independent of execution, private rooms use the same avatar, and reduced motion is supported',async()=>{
  const rows=[{id:'work-1',agent:'testing',instruction:'Revisar',status:'pendiente',created_at:DASH.generated_at}];
  const runs=[{task_id:'work-1',state:'working'}];let invoked=0;
- const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true}};}});
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true,verified:true}};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
  assert.equal((html.match(/class="hq-desk"/g)||[]).length,8);
@@ -524,4 +524,19 @@ test('HQ private 3D office isolates its selected employee and uses collision-awa
  assert.match(renderer,/placed.some\(q=>rect.l<q.r/);
  assert.match(renderer,/const compact=w<560&&!privateMode/);
  assert.match(renderer,/if\(priv\)\{target.set\(0,.75,0\)/);
+});
+
+test('HQ verifies Groq automatically without executing tasks and reports credential errors',async()=>{
+ let invocations=[],verified=false;
+ const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}),{invoke:async(name,opts)=>{invocations.push(opts.body.action);return {data:verified?{configured:true,verified:true}:{configured:true,verified:false,diagnostic:'Groq rechazó la clave (401).'}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/IA pendiente de verificación/);
+ const poll=r.intervals.find(x=>x.ms===2000);assert.ok(poll);
+ poll.fn();await tick();await tick();
+ assert.deepEqual(invocations,['status']);assert.match(r.h.view({parts:{}}),/Groq rechazó la clave \(401\)/);
+ poll.fn();await tick();assert.equal(invocations.length,1);
+ verified=true;r.listeners.click({preventDefault(){},target:{closest:q=>q==='[data-ch-hq-ai-status]'?{}:null}});await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Groq · conexión disponible/);
+ assert.deepEqual(invocations,['status','status']);
+ r.h.setTab('inicio');poll.fn();await tick();assert.equal(invocations.length,2);
 });
