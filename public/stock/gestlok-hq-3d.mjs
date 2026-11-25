@@ -30,6 +30,8 @@ export function mount(host,people,opts={}){
  const cyl=(p,r1,r2,h,c,x,y,z)=>mesh(p,'CylinderGeometry',[r1,r2,h,16],c,x,y,z);
  const group=(p,x=0,y=0,z=0)=>{const g=new T.Group();g.position.set(x,y,z);p.add(g);return g;};
  const world=group(scene);
+ const privateMode=opts.mode==='private';
+ const privateWorld=group(scene);privateWorld.visible=privateMode;world.visible=!privateMode;
  const hemi=new T.HemisphereLight(0xf3f8ff,0xa69a8d,2.3);scene.add(hemi);
  const key=new T.DirectionalLight(0xfff4dd,3.1);key.position.set(-7,14,9);key.castShadow=true;key.shadow.mapSize.set(1024,1024);
  Object.assign(key.shadow.camera,{left:-11,right:11,top:10,bottom:-10,near:.5,far:35});key.shadow.bias=-.0004;key.shadow.normalBias=.025;scene.add(key);
@@ -82,8 +84,8 @@ export function mount(host,people,opts={}){
   else if(kind%3===1){for(let i=0;i<5;i++)box(g,.062,.08+i*.042,.011,0x87bcb5,-.24+i*.115,.25+(.08+i*.042)/2,.048);}
   else{for(let i=0;i<3;i++){box(g,.46,.055,.011,0x7faebd,-.03,.51-i*.10,.048);box(g,.08,.055,.012,0xc5d8db,-.27,.51-i*.10,.05);}}
  }
- function workstation(x,z,i){
-  const g=group(world,x,0,z);
+ function workstation(x,z,i,parent=world){
+  const g=group(parent,x,0,z);
   const w=i===7?2.55:2.30;
   box(g,w,.12,.95,C.oak,0,.77,0);
   for(const xx of [-w/2+.12,w/2-.12]){box(g,.085,.70,.80,C.steel,xx,.38,0);}
@@ -99,6 +101,22 @@ export function mount(host,people,opts={}){
   return g;
  }
  palette.forEach(([x,z],i)=>workstation(x,z,i));
+ // A private office is a separate room, not a crop of the shared office.
+ if(privateMode){
+  box(privateWorld,5.8,.24,5.0,0x94a5ad,0,-.15,0);
+  box(privateWorld,5.55,.09,4.8,0xe4d9c8,0,-.035,0);
+  box(privateWorld,3.5,.025,2.8,0xd1dde0,0,.025,.35);
+  box(privateWorld,5.5,2.6,.13,0xf0f3f4,0,1.3,-2.35);
+  box(privateWorld,.13,2.6,4.8,0xe6ecef,-2.75,1.3,0);
+  box(privateWorld,3.1,1.30,.06,C.glass,.55,1.55,-2.26,{transparent:true,opacity:.45});
+  for(const x of [-1,.55,2.1])box(privateWorld,.055,1.4,.09,C.steel,x,1.55,-2.20);
+  box(privateWorld,3.25,.075,.15,C.navy,.55,.86,-2.20);
+  workstation(0,-.15,Math.max(0,people.findIndex(p=>p.id===opts.selected)),privateWorld);
+  box(privateWorld,1.1,.82,.45,C.white,1.95,.42,-1.8);
+  for(let j=0;j<3;j++)box(privateWorld,.85,.025,.015,C.steel,1.95,.18+j*.23,-1.56);
+  const plant=group(privateWorld,-2.05,0,-1.55);cyl(plant,.20,.16,.35,0x9ca9a8,0,.17,0);
+  for(let j=0;j<6;j++){const a=j*2.4;sphere(plant,.16,j%2?0x6b9a6b:0x40784f,Math.cos(a)*.14,.5+j%3*.09,Math.sin(a)*.14,.65,1.7,.55);}
+ }
  // Meeting room: solid oval table, seating and presentation board.
  const table=group(world,0,0,-2.15);
  const tableTop=cyl(table,1,1,.12,0xc3a17d,0,.77,0);tableTop.scale.set(1.58,1,1.05);
@@ -119,14 +137,14 @@ export function mount(host,people,opts={}){
   el.addEventListener('click',()=>opts.onSelect?.(p.id));return el;
  }
  function avatar(p,i){
-  const g=group(world),pelvis=group(g,0,.79,0);
+  const g=group(privateMode?privateWorld:world),pelvis=group(g,0,.79,0);
   const skin=p.skin||'#d8a687',hair=p.hair||'#342c29',shirt=p.shirt||'#34536f',fem=p.gender==='femenino';
   const trousers=fem?0x34434e:0x273844;
   const hips=sphere(pelvis,.18,trousers,0,.035,0,fem?1.16:1.05,.75,.78);
   const body=group(pelvis,0,.10,0);
   sphere(body,.255,shirt,0,.19,0,fem?.89:1.02,1.17,.57);
   box(body,.27,.028,.06,0xe5e9ea,0,.385,.125);
-  if(i===7){box(body,.038,.23,.035,0xe8edf0,0,.21,.155);}
+  if(p.id==='lider'){box(body,.038,.23,.035,0xe8edf0,0,.21,.155);}
   const neck=cyl(body,.062,.071,.09,skin,0,.43,0);
   const head=group(body,0,.54,0);sphere(head,.139,skin,0,0,0,.88,1.16,.91);
   // Facial features and distinct adult hair silhouettes.
@@ -163,7 +181,7 @@ export function mount(host,people,opts={}){
   g.userData.person=p.id;g.traverse(o=>{if(o.isMesh||o.isSprite)o.userData.person=p.id;});
   return {p,i,g,pelvis,body,head,arms,legs,badge,hips,neck};
  }
- const actors=people.map(avatar);
+ const actors=people.map((p,i)=>({p,i})).filter(({p})=>!privateMode||p.id===opts.selected).map(({p,i})=>avatar(p,i));
  function place(a,x,z,yaw){a.g.position.set(x,.062,z);a.g.rotation.y=yaw;}
  function pose(a,kind,t){
   const walk=kind==='walk',sit=kind==='idle'||kind==='type'||kind==='think'||kind==='research'||kind==='meeting'||kind==='consult';
@@ -195,7 +213,7 @@ export function mount(host,people,opts={}){
  }
  // Activity is derived exclusively from backend run state, not a looping clock.
  function animatePerson(a,t,still){
-  const [dx,dz]=palette[a.i], desk=[dx,dz+.83], goal=seats[a.i];
+  const [dx,dz]=privateMode?[0,-.15]:palette[a.i], desk=[dx,dz+.83], goal=seats[a.i];
   const working=a.p.working, privateView=opts.mode==='private';
   const inMeeting=opts.meeting===true&&!privateView&&(!working||a.p.id==='lider');
   if(!inMeeting){
@@ -214,10 +232,10 @@ export function mount(host,people,opts={}){
  const target=new T.Vector3();
  function setCamera(){
   const w=Math.max(1,host.clientWidth),h=Math.max(1,viewport.clientHeight);const aspect=w/h;
-  const priv=opts.mode==='private',selected=Math.max(0,people.findIndex(p=>p.id===opts.selected));
-  const base=priv?4.0:Math.max(7.8,10/aspect);
+  const priv=privateMode;
+  const base=priv?Math.max(3.1,3.3/aspect):Math.max(7.8,10/aspect);
   camera.left=-base*aspect/zoom;camera.right=base*aspect/zoom;camera.top=base/zoom;camera.bottom=-base/zoom;
-  if(priv){const [x,z]=palette[selected];target.set(x,.60,z+.2);camera.position.set(x+5,5.5,z+8);}
+  if(priv){target.set(0,.75,0);camera.position.set(4.8,5.4,7.5);}
   else{target.set(0,.15,0);camera.position.set(13,18,21);}
   camera.lookAt(target);camera.updateProjectionMatrix();renderer.setSize(w,h,false);
  }
@@ -234,13 +252,24 @@ export function mount(host,people,opts={}){
  const labelPoint=new T.Vector3();
  function updateLabels(){
   const w=viewport.clientWidth,h=viewport.clientHeight;
-  for(const a of actors){
+  // The roster below the canvas preserves full names and sectors.
+  const compact=w<560&&!privateMode;
+  const placed=[];
+  const ordered=[...actors].sort((a,b)=>Number(b.p.id===opts.selected)-Number(a.p.id===opts.selected));
+  for(const a of ordered){
    labelPoint.set(a.g.position.x,a.pelvis.position.y+1.16,a.g.position.z).project(camera);
    const x=(labelPoint.x*.5+.5)*w,y=(-labelPoint.y*.5+.5)*h;
    const show=(opts.mode!=='private'||a.p.id===opts.selected)&&labelPoint.z>=-1&&labelPoint.z<=1&&x>=0&&x<=w&&y>=0&&y<=h;
    a.badge.style.display=show?'grid':'none';if(!show)continue;
-   a.badge.style.left=clamp(x,Math.min(80,w/2),Math.max(w-80,w/2))+'px';
-   a.badge.style.top=Math.max(y,54)+'px';
+   const role=a.badge.querySelector('small');if(role)role.style.display=compact?'none':'block';
+   a.badge.style.minWidth=compact?'0':'92px';a.badge.style.maxWidth=compact?'90px':'160px';
+   a.badge.style.padding=compact?'3px 5px':'5px 8px';
+   const bw=a.badge.offsetWidth||90,bh=a.badge.offsetHeight||30;
+   const px=clamp(x,bw/2+3,Math.max(bw/2+3,w-bw/2-3));
+   const py=clamp(y,bh+3,Math.max(bh+3,h-3));
+   const rect={l:px-bw/2-3,r:px+bw/2+3,t:py-bh-3,b:py+3};
+   if(placed.some(q=>rect.l<q.r&&rect.r>q.l&&rect.t<q.b&&rect.b>q.t)){a.badge.style.display='none';continue;}
+   placed.push(rect);a.badge.style.left=px+'px';a.badge.style.top=py+'px';
   }
  }
  const ray=new T.Raycaster(),pointer=new T.Vector2();
