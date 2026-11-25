@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261123gerentes1';
+  const VERSION_CSS = '20261125visual2';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -905,6 +905,61 @@
     pintar();
     return caja;
   }
+  function bloqueCartaVisual(a,editable){
+    const id=a.id, caja=el('section',{class:'bloque'},el('h3',{text:'Carta visual (opcional)'}),
+      el('p',{class:'nota',text:'Activá esta opción para mostrar imágenes de tu carta y promociones. El menú interactivo para pedidos siempre sigue disponible. Usá únicamente imágenes destinadas al público.'}));
+    if(DEMO){caja.append(el('p',{class:'nota',text:'Configuración disponible en el panel real de cada comercio.'}));return caja;}
+    const estado=el('p',{class:'nota',role:'status',text:'Consultando carta visual…'});caja.append(estado);
+    void (async()=>{
+      try{
+        const config=await rpc('panel_carta_visual',{p_sucursal:id});
+        if(S.suc?.id!==id||S.pestana!=='ajustes')return;
+        const enabled=el('input',{type:'checkbox',checked:config.enabled===true,disabled:!editable});
+        caja.append(el('label',{class:'check'},enabled,' Mostrar carta con imágenes'));
+        if(config.marca&&!config.hojas.length)caja.append(el('p',{class:'nota',text:'Se usa la carta de la marca si no cargás imágenes propias.'}));
+        const rows=Array.from({length:8},(_,i)=>{
+          const slot=i+1,h=config.hojas.find(x=>x.slot===slot)||{};
+          const title=el('input',{type:'text',maxlength:80,placeholder:'Nombre de la sección',disabled:!editable});title.value=h.titulo||'';
+          const promo=el('input',{type:'checkbox',checked:h.promo===true,disabled:!editable});
+          const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp',disabled:!editable});
+          const quitar=el('input',{type:'checkbox',disabled:!editable||!h.path});
+          const row=el('details',{},el('summary',{text:'Imagen '+slot+(h.titulo?' · '+h.titulo:'')}),campo('Título',title),el('label',{class:'check'},promo,' Es una promoción'),campo('Cargar o reemplazar imagen',file),
+            h.path?el('label',{class:'check'},quitar,' Quitar de la carta'):null);
+          caja.append(row);return {slot,h,title,promo,file,quitar};
+        });
+        const guardar=el('button',{type:'button',class:'boton principal ancho',text:'Guardar carta visual',disabled:!editable,onclick:async()=>{
+          if(S.suc?.id!==id||guardar.disabled)return;
+          guardar.disabled=true;
+          try{
+            const hojas=[];
+            for(const row of rows){
+              if(row.quitar.checked)continue;
+              let path=row.h.path;
+              const title=row.title.value.trim(),file=row.file.files?.[0];
+              if(!path&&!file)continue;
+              if(!title)throw Error('Ingresá un título para cada imagen.');
+              if(file){
+                if(file.size>12000000||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Elegí una imagen JPG, PNG o WebP de hasta 12 MB.');
+                const bitmap=await createImageBitmap(file);
+                const scale=Math.min(1,2200/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+                canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+                const blob=await new Promise(ok=>canvas.toBlob(ok,'image/webp',.82));
+                if(!blob||blob.type!=='image/webp'||blob.size>1500000)throw Error('No pudimos preparar la imagen. Probá con una más liviana.');
+                path=id+'/'+row.slot+'-'+(String(path||'').endsWith('-a.webp')?'b':'a')+'.webp';
+                const r=await sb.storage.from('gestlok-chat-cartas').upload(path,blob,{upsert:true,contentType:'image/webp',cacheControl:'0'});
+                if(r.error)throw Error('No se pudo subir la imagen '+row.slot+'.');
+              }
+              hojas.push({slot:row.slot,titulo:title,promo:row.promo.checked,path});
+            }
+            if(enabled.checked&&!hojas.length&&!config.marca)throw Error('Cargá por lo menos una imagen antes de activar la carta.');
+            await rpc('panel_carta_visual',{p_sucursal:id,p_enabled:enabled.checked,p_hojas:hojas,p_revision:config.revision});
+            aviso('Carta visual guardada');if(S.suc?.id===id&&S.pestana==='ajustes')verAjustes();
+          }catch(e){aviso(e.message,true);guardar.disabled=false;}
+        }});
+        caja.append(guardar);estado.textContent=config.enabled?'Carta visual activa.':'Carta visual desactivada.';
+      }catch(e){estado.textContent='No se pudo consultar la carta visual. Probá actualizar.';}
+    })();return caja;
+  }
   async function verAjustes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
     let a;
@@ -1080,7 +1135,7 @@
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
     const suscripcion = editable ? bloqueSuscripcion() : null;
     const gerentes = editable ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
+    contenido.replaceChildren(...[suscripcion, form, bloqueCartaVisual(a,editable), gerentes, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
