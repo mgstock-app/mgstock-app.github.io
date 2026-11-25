@@ -443,3 +443,21 @@ test('HQ premium uses a pinned, self-hosted renderer and preserves the private f
  assert.match(source,/if\(!hqAllowed\(\)\|\|!host\.isConnected\)return/);
  assert.match(source,/data-hq-renderer="fallback"/);
 });
+
+test('HQ: only an actual pending execution activates work or a meeting',async()=>{
+ for(const [rows,runs,meeting,working] of [
+  [[],[],false,0],
+  [[{id:'m',agent:'lider',status:'pendiente',instruction:'Planificar'}],[],false,0],
+  [[{id:'m',agent:'lider',status:'pendiente',instruction:'Planificar'}],[{task_id:'m',state:'working'}],true,1],
+  [[{id:'m',agent:'lider',status:'cerrada',instruction:'Planificar'}],[{task_id:'m',state:'working'}],false,0],
+  [[{id:'w',agent:'testing',status:'pendiente',instruction:'Revisar'}],[{task_id:'w',state:'working'}],false,1],
+  [[{id:'m',agent:'lider',status:'pendiente',instruction:'Planificar'}],[{task_id:'m',state:'review'}],false,0]
+ ]){
+  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}));
+  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+  const html=r.h.view({parts:{}});
+  assert.ok(html.includes('data-hq-meeting="'+meeting+'"'));
+  assert.equal((html.match(/class="gl-hq-avatar hq-working"/g)||[]).length,working);
+  if(!working)assert.match(html,/Sin tareas en ejecución · equipo disponible/);
+ }
+});
