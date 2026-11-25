@@ -744,3 +744,33 @@ body:has(.hoja:not([hidden])) .chat-whatsapp{visibility:hidden;pointer-events:no
 .precio-efectivo-detalle{margin:-4px 0 10px;font-size:13.5px}
 .menu-nota-efectivo{margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#FFF8DC;color:#5C4400;font-size:13px;line-height:1.4}
 .menu-editando .menu-nota-efectivo{display:none}
+
+
+/* Carta visual gastronómica · piloto Prueba, sin imágenes por ahora. */
+.cv-eleccion{display:grid;gap:12px;padding:8px 0}
+.carta-visual{display:grid;gap:12px;min-width:0;color:#1e293b}
+.carta-visual [hidden]{display:none!important}
+.cv-marca{font-weight:750;font-size:1.05rem;letter-spacing:.04em;text-align:center}
+.cv-buscar{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d0d5db;border-radius:12px;font:inherit;background:#fff;color:#16202c}
+.cv-categorias{margin:0;max-width:100%;overflow-x:auto}
+.cv-escenario{display:grid;justify-items:center;gap:10px;min-width:0;padding:16px 12px 14px;border-radius:18px;background:radial-gradient(ellipse at 50% 40%,#704a31 0%,#31241d 48%,#181512 100%);color:#fff;text-align:center;overflow:hidden;touch-action:pan-y}
+.cv-categoria{font-size:12px;color:#e4cbb4;letter-spacing:.12em;text-transform:uppercase}
+.cv-rueda{position:relative;width:100%;display:grid;grid-template-columns:40px minmax(0,1fr) 40px;align-items:center;gap:4px}
+.cv-platos{position:relative;height:clamp(130px,43vw,220px);display:flex;align-items:center;justify-content:center;overflow:hidden;isolation:isolate}
+.cv-plato{display:grid;place-items:center;width:min(76%,190px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#f6f1e7 0 61%,#d8c7b0 62% 65%,#fffaf1 66% 73%,#e6d9c8 74% 100%);box-shadow:0 12px 20px #0005;z-index:1}
+.cv-sin-foto{color:#6e5c4b;font-size:12px}
+.cv-plato-lateral{position:absolute;width:42%;aspect-ratio:1;border-radius:50%;background:#dbd0c0;color:#4b4037;opacity:.45;display:grid;place-items:center;font-size:10px;padding:8px;overflow:hidden;box-sizing:border-box;transform:scale(.76)}
+.cv-plato-lateral:first-child{left:-15%}.cv-plato-lateral:last-child{right:-15%}
+.cv-flecha{border:1px solid #ffffff55;border-radius:50%;background:#ffffff16;color:white;width:40px;height:40px;font:inherit;font-size:28px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+.cv-flecha:disabled{opacity:.3;cursor:default}
+.cv-posicion{font-size:12px;color:#ded4ca;font-variant-numeric:tabular-nums}
+.cv-nombre{font-size:clamp(20px,5vw,30px);line-height:1.1;margin:0;overflow-wrap:anywhere}
+.cv-descripcion,.cv-efectivo,.cv-elegido,.cv-vacio{font-size:14px;margin:0;overflow-wrap:anywhere}
+.cv-descripcion{color:#e5ddd4}.cv-efectivo{color:#ffd477}.cv-elegido{color:#d7ecd2}
+.cv-precio{font-size:22px;font-weight:750}
+.cv-escenario .cv-agregar{background:#a82c28;color:#fff;border-color:#a82c28;min-height:44px}
+.cv-escenario .cv-agregar:disabled{opacity:.55}
+.cv-pie{display:grid;gap:8px;padding:8px 0}.cv-total{font-weight:650;text-align:center}
+.cv-giro .cv-plato{animation:cv-giro .32s ease-out}
+@keyframes cv-giro{from{transform:perspective(420px) rotateY(-35deg) scale(.92);opacity:.65}to{transform:perspective(420px) rotateY(0) scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.cv-giro .cv-plato{animation:none}}
