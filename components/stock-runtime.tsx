@@ -39,14 +39,14 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-molino.js?rev=pedidosya-20261109",
     // Solo descarga anticipada: cada módulo sigue EJECUTÁNDOSE en su orden original.
     "/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113",
-    "/stock/gestlok-push.js",
+    "/stock/gestlok-push.js?rev=hq-push-20261125",
     "/stock/munro-daily.js",
     "/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123",
     "/stock/gestlok-chat-central.js?rev=chat-badge-20261122",
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
-    "/stock/gestlok-creator-home.js?rev=hq-office-20261125b",
+    "/stock/gestlok-creator-home.js?rev=hq-reporte-20261125",
     "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -80,7 +80,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-logout.js?rev=logout-profile-menu-20261107");
       if (!visitor) await load("/stock/gestlok-ios-install.js?rev=ios-home-screen-20261030");
       await load("/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113");
-      if (!visitor) await load("/stock/gestlok-push.js");
+      if (!visitor) await load("/stock/gestlok-push.js?rev=hq-push-20261125");
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");
@@ -114,7 +114,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-chat-20261123");
       // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
       if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
-      await load("/stock/gestlok-creator-home.js?rev=hq-office-20261125b");
+      await load("/stock/gestlok-creator-home.js?rev=hq-reporte-20261125");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");

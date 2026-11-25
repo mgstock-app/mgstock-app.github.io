@@ -387,8 +387,11 @@ test('HQ shows executive decisions automatically without invoking a paid model',
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
  assert.match(html,/Bandeja ejecutiva de Alex/);
- assert.match(html,/1 informes para aprobar · 1 incorporaciones para decidir/);
+ assert.match(html,/1 informes para revisar · 1 incorporaciones para decidir/);
  assert.match(html,/Informe &lt;seguro&gt;/);
+ assert.match(html,/Ver informe completo y respaldo/);
+ assert.match(html,/Marcar revisado/);
+ assert.match(html,/Activar en este dispositivo/);
  assert.equal(invoked,0);
 });
 

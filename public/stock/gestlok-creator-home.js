@@ -843,12 +843,79 @@
     }catch{if(epoch===hqEpoch)hqAIError='No se confirmó el registro. Consultá los resultados antes de repetir.';}
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
+  function hqReportParts(raw){
+    const s=String(raw||'').replace(/\r/g,'');
+    const marker=/\n\s*PROPUESTAS (?:ORIGINALES DE LOS SECTORES|REGISTRADAS)\s*\n/i.exec(s);
+    const brief=(marker?s.slice(0,marker.index):s).replace(/^INFORME DE DIRECCIÓN[^\n]*\n?/i,'').trim();
+    const evidence=marker?s.slice(marker.index+marker[0].length).trim():'';
+    const fields={};
+    for(const line of brief.split('\n')){
+      const m=/^(TÍTULO|TIPO|PRIORIDAD|SITUACIÓN|ACCIÓN):\s*(.+)$/u.exec(line.trim());
+      if(m&&!fields[m[1]])fields[m[1]]=m[2].trim();
+    }
+    const valid=!!(fields['TÍTULO']&&fields['SITUACIÓN']&&fields['ACCIÓN']&&['DECISIÓN','INFORMATIVO'].includes(fields.TIPO)&&['ALTA','MEDIA','BAJA'].includes(fields.PRIORIDAD));
+    const cut=(v,max)=>String(v||'').slice(0,max);
+    return {valid,brief,evidence,title:cut(fields['TÍTULO'],90),type:fields.TIPO,priority:fields.PRIORIDAD,situation:cut(fields['SITUACIÓN'],240),action:cut(fields['ACCIÓN'],280)};
+  }
+  function hqReportCard(t,r){
+    const p=hqReportParts(r.result);
+    const decision=p.valid&&p.type==='DECISIÓN';
+    const title=p.valid?p.title:'Informe anterior · '+String(t.instruction||'').slice(0,80);
+    const label=p.valid?(decision?'Requiere tu decisión':'Informativo'):'Revisar detalle';
+    const disabled=hqBusy||hqAIBusy?'disabled':'';
+    const detail='<details style="margin-top:12px"><summary style="cursor:pointer">Ver informe completo y respaldo</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(p.brief)+'</p>'+(p.evidence?'<details><summary>Informes de los empleados</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(p.evidence)+'</p></details>':'')+'</details>';
+    return '<article style="background:white;color:#173450;padding:14px;margin:10px 0;border:1px solid #dce3eb;border-radius:10px;overflow-wrap:anywhere"><small style="font-weight:650">'+esc(label)+(p.valid?' · Prioridad '+esc(p.priority.toLowerCase()):'')+'</small><h3 style="font-size:17px;margin:6px 0 10px">'+esc(title)+'</h3>'+
+      (p.valid?'<p><strong>Qué pasa</strong><br>'+esc(p.situation)+'</p><p><strong>'+(decision?'Qué necesita tu aprobación':'Próximo paso')+'</strong><br>'+esc(p.action)+'</p>':'<p>Este informe se generó con el formato anterior. Abrí el detalle para revisar su contenido; no se inventará una decisión.</p>')+
+      detail+hqTasks.filter(q=>q.parent_task_id===t.id).map(q=>{const run=hqRuns.find(x=>x.task_id===q.id&&x.state==='review');return run?hqEntregaView(q,run):'';}).join('')+
+      '<p style="font-size:12px;color:#526477">Cerrar o aprobar registra tu revisión. No ejecuta cambios ni publicaciones.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+disabled+'>'+(decision?'Aprobar propuesta':'Marcar revisado')+'</button>'+(decision?' <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+disabled+'>Rechazar propuesta</button>':'')+'</div></article>';
+  }
+  let hqPushMessage='',hqPushBusy=false;
+  async function hqPushToggle(enable){
+    if(!hqAllowed()||hqPushBusy)return;
+    hqPushBusy=true;
+    try{
+      if(!('Notification'in window)||!('serviceWorker'in navigator)||!('PushManager'in window))throw Error('Este dispositivo no admite avisos push.');
+      if(enable&&Notification.permission!=='granted'){
+        const permission=await Notification.requestPermission();
+        if(permission!=='granted')throw Error('No se concedió permiso de notificaciones.');
+      }
+      const sb=window.GestLokSupabase,cfg=window.SPM_CONFIG||{};
+      const reg=await navigator.serviceWorker.getRegistration();
+      if(!reg?.active)throw Error('Abrí GESTLOK instalado o actualizá la aplicación.');
+      let sub=await reg.pushManager.getSubscription();
+      if(enable&&!sub){
+        const response=await fetch(cfg.url.replace(/\/$/,'')+'/functions/v1/gestlok-push?op=config',{headers:{apikey:cfg.key},cache:'no-store'});
+        const key=await response.json();if(!response.ok||!key.publicKey)throw Error('El servicio de avisos no está disponible.');
+        const raw=atob(key.publicKey.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-key.publicKey.length%4)%4));
+        sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:Uint8Array.from(raw,c=>c.charCodeAt(0))});
+      }
+      if(!sub){hqPushMessage='Este dispositivo no está vinculado.';return;}
+      const info=sub.toJSON();
+      const args={p_endpoint:info.endpoint,p_enable:enable,...(enable?{p_auth:info.keys?.auth,p_p256dh:info.keys?.p256dh}:{})};
+      const result=await sb.rpc('gestlok_hq_push_device',args);
+      if(result.error||enable&&result.data!==true)throw Error('No se confirmó la vinculación.');
+      if(!enable&&result.data===true)await sub.unsubscribe().catch(()=>{});
+      hqPushMessage=enable?'Dispositivo vinculado a Alex. Los nuevos informes podrán generar avisos.':'Avisos de Alex desactivados en este dispositivo.';
+    }catch(e){hqPushMessage=String(e?.message||'No se pudo configurar el aviso.').slice(0,160);}
+    finally{hqPushBusy=false;if(hqAllowed())api?.render();}
+  }
+  window.GestLokHQPushLogout=async()=>{
+    try{
+      const reg=await navigator.serviceWorker?.getRegistration();
+      const sub=await reg?.pushManager?.getSubscription();if(!sub)return;
+      const r=await window.GestLokSupabase?.rpc('gestlok_hq_push_device',{p_endpoint:sub.endpoint,p_enable:false});
+      if(!r?.error&&r?.data===true)await sub.unsubscribe();
+    }catch{}
+  };
+  function hqPushView(){
+    return '<div style="margin:10px 0;padding:10px;border:1px solid #cbd8e2;border-radius:8px"><strong>Avisos de Alex en tu teléfono</strong><p style="font-size:13px">Desde el teléfono, activá las notificaciones. Solo se avisará que hay un informe nuevo; el detalle queda en tu oficina privada.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ch-hq-push="on" '+(hqPushBusy?'disabled':'')+'>Activar en este dispositivo</button><button type="button" class="btn" data-ch-hq-push="off" '+(hqPushBusy?'disabled':'')+'>Desactivar</button></div><p role="status">'+esc(hqPushMessage)+'</p></div>';
+  }
   function hqExecutiveInbox(){
     const pending=hqTasks.filter(t=>t.agent==='lider'&&t.status==='pendiente').map(t=>({t,r:hqRuns.find(r=>r.task_id===t.id&&r.state==='review')})).filter(x=>x.r);
     const hires=hqRuns.filter(r=>r.state==='review'&&r.hire_request&&!r.hire_decision);
     return '<section aria-label="Bandeja ejecutiva de Alex" style="margin:14px 0;padding:14px;border:1px solid #cbd8e2;background:#f3f7fa;border-radius:12px"><header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><strong>Dirección ejecutiva · Alex</strong><button type="button" class="btn" data-ch-hq-refresh '+(hqBusy||hqAIBusy?'disabled':'')+'>Actualizar bandeja</button></header>'+
-      '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para aprobar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
-      pending.map(({t,r})=>'<details style="background:white;padding:12px;margin:8px 0;border:1px solid #dce3eb;border-radius:8px"><summary style="cursor:pointer;font-weight:650;overflow-wrap:anywhere">'+esc(t.instruction.slice(0,120))+'</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result||'')+'</p>'+hqTasks.filter(q=>q.parent_task_id===t.id).map(q=>{const run=hqRuns.find(x=>x.task_id===q.id&&x.state==='review');return run?hqEntregaView(q,run):'';}).join('')+'<button type="button" class="btn primary" data-ch-hq-close="'+esc(t.id)+'" data-status="cerrada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Aprobar informe</button> <button type="button" class="btn" data-ch-hq-close="'+esc(t.id)+'" data-status="cancelada" '+(hqBusy||hqAIBusy?'disabled':'')+'>Descartar informe</button></details>').join('')+
+      '<p role="status">'+esc(hqRunsError||(hqBusy?'Consultando informes…':!hqLoaded||!hqRunsLoaded?'Informes aún sin consultar':pending.length+' informes para revisar · '+hires.length+' incorporaciones para decidir'))+'</p>'+
+      hqPushView()+pending.sort((a,b)=>Number(hqReportParts(b.r.result).type==='DECISIÓN')-Number(hqReportParts(a.r.result).type==='DECISIÓN')||Number(hqReportParts(b.r.result).priority==='ALTA')-Number(hqReportParts(a.r.result).priority==='ALTA')).map(({t,r})=>hqReportCard(t,r)).join('')+
       (hires.length?'<p>Tenés solicitudes de incorporación para revisar en la sección inferior. Aprobar una propuesta no activa un agente.</p>':'')+'</section>';
   }
   function hqHiringView(){
@@ -896,7 +963,7 @@
   }
   function hqRunView(t){
     const r=hqRuns.find(r=>r.task_id===t.id);
-    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p>':'')+hqEntregaView(t,r)+'</div>';
+    if(r)return '<div style="padding:10px;background:#f0f3f7;border-radius:8px;margin:8px 0"><strong>'+esc(({working:'Trabajando · consulta en curso',review:'Informe para revisar',error:'Error de ejecución'})[r.state]||'Estado desconocido')+'</strong>'+(r.result?'<details><summary>Ver informe completo</summary><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.result)+'</p></details>':'')+hqEntregaView(t,r)+'</div>';
     if(t.agent==='lider'&&t.status==='pendiente')return hqTeamView(t);
     const quota=hqQuota(),cost=t.agent==='lider'?8:1;
     if(t.status==='pendiente'&&quota&&quota.remaining<cost)return '<p role="status">Cuota insuficiente: esta tarea necesita '+cost+' consultas y quedan '+esc(quota.remaining)+'. La tarea sigue pendiente.</p>';
@@ -924,7 +991,7 @@
   let hqDraft = '', hqTasks = [], hqBusy = false, hqLoaded = false, hqAttempted = false, hqError = '', hqEpoch = 0;
   let hqSyncBusy=false,hqSyncError='';
   const hqAllowed=()=>premiumAdmin() && status==='ready' && tab==='hq';
-  function hqReset(){hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
+  function hqReset(){hqPushMessage='';hqSupport=null;hqSupportAt=0;hqSupportBusy=false;hqEpoch++;hqSyncBusy=false;hqSyncError='';hqDraft='';hqTasks=[];hqBusy=false;hqLoaded=false;hqAttempted=false;hqError='';hqGithub=null;hqGithubBusy=false;hqGithubError='';hqAIReady=null;hqAIBusy=false;hqAIError='';hqAIStatusAt=0;hqAIStatusBusy=false;hqAIStatusError='';hqAIConfigured=null;hqRuns=[];hqRunsLoaded=false;hqRunsError='';hqRoom=false;hqPulse=null;hqPulseAt=0;hqPulseBusy=false;hqPulseError='';hqCanalBusy=false;}
   // Read-only polling, scoped to the authenticated creator's visible HQ.
   // Deliberately runs during a model request to observe real server-side state.
   async function hqSync(){
@@ -1158,6 +1225,7 @@
     const hqTeamButton=ev.target.closest?.('[data-ch-hq-team]');if(hqTeamButton){ev.preventDefault();void hqTeam(hqTeamButton.dataset.chHqTeam);return;}
     const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}
+    const hqPush=ev.target.closest?.('[data-ch-hq-push]');if(hqPush){ev.preventDefault();void hqPushToggle(hqPush.dataset.chHqPush==='on');return;}
     const hqRefresh=ev.target.closest?.('[data-ch-hq-refresh]');if(hqRefresh){ev.preventDefault();void hqRequest();return;}
     const hqClose=ev.target.closest?.('[data-ch-hq-close]');if(hqClose){ev.preventDefault();if(hqAllowed()&&['cerrada','cancelada'].includes(hqClose.dataset.status)&&!(hqTasks.some(t=>t.id===hqClose.dataset.chHqClose&&t.agent==='lider')&&hqClose.dataset.status==='cerrada'&&!hqRuns.some(r=>r.task_id===hqClose.dataset.chHqClose&&r.state==='review')))void hqRequest('gestlok_hq_close_task',{p_id:hqClose.dataset.chHqClose,p_status:hqClose.dataset.status});return;}
     const hqRoomLink=ev.target.closest?.('[data-ch-hq-room]');if(hqRoomLink){ev.preventDefault();if(hqAllowed()){hqRoom=hqRoomLink.dataset.chHqRoom==='private';api?.render();}return;}
