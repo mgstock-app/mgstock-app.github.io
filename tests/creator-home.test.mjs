@@ -313,3 +313,33 @@ test('HQ AI requires explicit confirmation, saved pending task and a configured 
  assert.match(r.h.view({parts:{}}),/Informe &lt;seguro&gt;/);
  assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
 });
+
+test('HQ Dirección: identidades estables, ambientes privados y aprobación con informe',async()=>{
+ const rows=[];let reports=[];const decisions=[];
+ const r=load(async(fn,args)=>{
+  if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
+  if(fn==='gestlok_hq_list_runs')return {data:reports};
+  if(fn==='gestlok_hq_add_task'){rows.push({id:'meeting-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'meeting-1'};}
+  if(fn==='gestlok_hq_close_task'){decisions.push(args);rows[0].status=args.p_status;return {data:true};}
+  return {data:DASH};
+ },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true}};reports=[{task_id:'meeting-1',state:'review',result:'Informe del líder'}];return {data:{ok:true,state:'review'}};}});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ for(const name of ['Mateo','Valentina','Julián','Sofía','Lucía','Bruno','Alex'])assert.ok(r.h.view({parts:{}}).includes(name),name);
+ click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
+ assert.match(r.h.view({parts:{}}),/Oficina privada · Julián/);
+ click('[data-ch-hq-room]',{chHqRoom:'general'});assert.match(r.h.view({parts:{}}),/Plano interactivo de la oficina/);
+ click('[data-ch-hq-leader]');
+ assert.match(r.h.view({parts:{}}),/Oficina privada · Alex/);
+ assert.match(r.h.view({parts:{}}),/Preparar tarea · Dirección de IA/);
+ r.listeners.submit({preventDefault(){},submitter:{dataset:{hqAction:'save'}},target:{matches:s=>s==='[data-ch-hq-form]',querySelector:s=>s==='textarea'?{value:'Mejorar pedidos en Munro'}:s==='#gl-hq-scope'?{value:'GESTLOK Chat · local específico'}:null}});
+ await tick();await tick();
+ assert.equal(rows[0].agent,'lider');assert.match(rows[0].instruction,/GESTLOK Chat · local específico/);
+ click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();assert.equal(decisions.length,0);
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Iniciar reunión de IA/);
+ click('[data-ch-hq-ai-run]',{chHqAiRun:'meeting-1'});await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Informe del líder/);
+ click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();await tick();
+ assert.equal(decisions.length,1);assert.equal(rows[0].status,'cerrada');
+});
