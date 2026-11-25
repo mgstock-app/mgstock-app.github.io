@@ -8,7 +8,6 @@ const mix=(a,b,t)=>a+(b-a)*t;
 const palette=[[-5.6,-3.6],[5.6,-3.6],[-5.6,0],[5.6,0],[-5.6,3.6],[5.6,3.6],[0,4.65]];
 const seats=[[-1.85,-2.8],[1.85,-2.8],[-1.85,-1.55],[1.85,-1.55],[-.8,-.75],[.8,-.75],[0,-3.85]];
 const mounted=new WeakMap();
-const sec=(n)=>((n%60)+60)%60;
 export function mount(host,people,opts={}){
  if(!host?.isConnected||mounted.has(host))return;
  let renderer;
@@ -169,7 +168,7 @@ export function mount(host,people,opts={}){
  const actors=people.map(avatar);
  function place(a,x,z,yaw){a.g.position.set(x,.062,z);a.g.rotation.y=yaw;}
  function pose(a,kind,t){
-  const walk=kind==='walk',sit=kind==='type'||kind==='think'||kind==='research'||kind==='meeting'||kind==='consult';
+  const walk=kind==='walk',sit=kind==='idle'||kind==='type'||kind==='think'||kind==='research'||kind==='meeting'||kind==='consult';
   a.pelvis.position.y=sit?.57:walk?.80+Math.sin(t*13)*.025:.79;
   a.body.rotation.x=kind==='think'?-.10:kind==='type'?.13:kind==='meeting'?.04:0;
   a.head.rotation.y=kind==='research'?Math.sin(t*2)*.24:kind==='meeting'||kind==='consult'?Math.sin(t*1.3)*.25:Math.sin(t*.6)*.06;
@@ -186,6 +185,7 @@ export function mount(host,people,opts={}){
    else if(kind==='type'||kind==='research'){shoulder.rotation.x=-.9+Math.sin(t*8+j*2)*.07;elbow.rotation.x=-.52+Math.sin(t*12+j*2)*.11;}
    else if(kind==='think'){shoulder.rotation.x=j===0?-1.0:-.34;elbow.rotation.x=j===0?-1.62:-.65;}
    else if(kind==='meeting'||kind==='consult'){shoulder.rotation.x=-.48-Math.sin(t*2+j*1.8)*.30;elbow.rotation.x=-.7-Math.sin(t*3+j)*.3;shoulder.rotation.z=j===0?-.21:.21;}
+   else if(kind==='idle'){shoulder.rotation.x=-.18;elbow.rotation.x=-.36;}
    else{shoulder.rotation.x=0;elbow.rotation.x=-.12;}
   });
  }
@@ -195,21 +195,20 @@ export function mount(host,people,opts={}){
   for(let i=0;i<lengths.length;i++){if(remaining<=lengths[i]||i===lengths.length-1){const a=points[i],b=points[i+1],u=lengths[i]?clamp(remaining/lengths[i]):1;return [mix(a[0],b[0],u),mix(a[1],b[1],u),Math.atan2(b[0]-a[0],b[1]-a[1])];}remaining-=lengths[i];}
   return [points[0][0],points[0][1],0];
  }
+ // Activity is derived exclusively from backend run state, not a looping clock.
  function animatePerson(a,t,still){
   const [dx,dz]=palette[a.i], desk=[dx,dz+.83], goal=seats[a.i];
   const working=a.p.working, privateView=opts.mode==='private';
-  const local=sec(t+a.i*2.4), phase=sec(t+8);
-  if(working||privateView||still||phase<13||phase>=47){
+  const inMeeting=opts.meeting===true&&!privateView&&(!working||a.p.id==='lider');
+  if(!inMeeting){
    place(a,desk[0],desk[1],Math.PI);
-   const activity=working?'type':still?'type':local%17<8?'type':local%17<12?'think':'research';
-   pose(a,activity,t);return;
+   pose(a,working?'type':'idle',still?0:t);return;
   }
   const side=dx<0?-1:dx>0?1:0;
   const corridor=side*3.3;
   const points=[desk,[dx,dz+1.45],[corridor,dz+1.45],[corridor,goal[1]],[goal[0],goal[1]]];
-  if(phase<22){place(a,...pathAt(points,(phase-13)/9));pose(a,'walk',t);}
-  else if(phase<37){place(a,goal[0],goal[1],Math.atan2(-goal[0],-2.15-goal[1]));pose(a,phase<30?'meeting':'consult',t+a.i*.7);}
-  else{place(a,...pathAt(points.slice().reverse(),(phase-37)/10));pose(a,'walk',t);}
+  if(!still&&t<7){place(a,...pathAt(points,t/7));pose(a,'walk',t);}
+  else{place(a,goal[0],goal[1],Math.atan2(-goal[0],-2.15-goal[1]));pose(a,'idle',still?0:t);}
  }
  const camera=new T.OrthographicCamera(-10,10,8,-8,.1,100);
  let zoom=1, paused=false, disposed=false, frame=0,lastDraw=0,resizeObserver;
@@ -227,7 +226,7 @@ export function mount(host,people,opts={}){
  const viewport=document.createElement('div');viewport.style.cssText='position:relative;width:100%;height:clamp(330px,66vw,680px);overflow:hidden;background:#e4ecf0';
  if(opts.mode==='private')viewport.style.height='clamp(280px,46vw,450px)';
  const toolbar=document.createElement('div');toolbar.style.cssText='display:flex;flex-wrap:wrap;gap:7px;padding:9px;background:#f8fbfc;border-top:1px solid #d4e0e6;align-items:center;color:#19354b';
- const status=document.createElement('span');status.style.cssText='font-size:12px;flex:1;min-width:130px';status.textContent='Escena ilustrativa · oficina 3D';
+ const status=document.createElement('span');status.style.cssText='font-size:12px;flex:1;min-width:130px';status.textContent=opts.activityText||'Sin tareas en ejecución · equipo disponible';
  function button(text,action){const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=text;b.addEventListener('click',action);toolbar.append(b);return b;}
  button('−',()=>{zoom=clamp(zoom-.15,.8,1.8);setCamera();});button('+',()=>{zoom=clamp(zoom+.15,.8,1.8);setCamera();});button('Restablecer',()=>{zoom=1;setCamera();});
  const pauseButton=button('Pausar',()=>{paused=!paused;pauseButton.textContent=paused?'Reanudar':'Pausar';});
@@ -252,7 +251,7 @@ export function mount(host,people,opts={}){
   host.hidden=false;
   setCamera();
   if(typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(()=>{if(host.isConnected)setCamera();});resizeObserver.observe(host);}
-  let time=performance.now()/1000;let clock=performance.now();
+  let time=0;let clock=performance.now();
   actors.forEach(a=>animatePerson(a,time,reduced.matches));
   renderer.render(scene,camera);
   host.dataset.hqRenderer='three';
@@ -263,8 +262,7 @@ export function mount(host,people,opts={}){
    if(!paused&&!reduced.matches&&document.visibilityState!=='hidden')time+=dt;
    if(now-lastDraw>33&&document.visibilityState!=='hidden'){
     actors.forEach(a=>animatePerson(a,time,reduced.matches));
-    const phase=sec(time+8);
-    if(opts.mode!=='private')status.textContent='Escena ilustrativa · '+(phase>=13&&phase<22?'Camino a reunión':phase>=22&&phase<30?'Debate de proyectos':phase>=30&&phase<37?'Consulta con dirección':phase>=37&&phase<47?'Regreso a los puestos':'Trabajo individual');
+
     renderer.render(scene,camera);lastDraw=now;
    }
    frame=requestAnimationFrame(loop);
