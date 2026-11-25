@@ -676,7 +676,7 @@
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
-    if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 7 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Puede generar consumo de API.'))return;
+    if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 7 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Usá únicamente una clave de Groq del plan gratuito. Si se agota la cuota, la ejecución se detiene.'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     try{
       const sb=window.GestLokSupabase;
@@ -693,7 +693,7 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   function hqAIView(){
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Proveedor configurado':hqAIReady===false?'Falta configurar la clave independiente de HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7. La cuota del proveedor puede ser menor.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Groq · clave configurada (respuesta aún no verificada)':hqAIReady===false?'Falta configurar la clave gratuita de Groq para HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
     if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
@@ -846,14 +846,14 @@
       }).join('')+'<g class="hq-meeting-phase" opacity="0"><rect x="220" y="132" width="160" height="22" rx="10" fill="#173449"/><text x="300" y="146" text-anchor="middle" font-size="11" fill="#fff">Reunión de IA en ejecución</text></g><g class="hq-meeting-consult" opacity="0"><rect x="218" y="132" width="164" height="22" rx="10" fill="#173449"/><text x="300" y="146" text-anchor="middle" font-size="11" fill="#fff">Reunión de IA en ejecución</text></g></svg>';
     const sceneHost='<div data-hq-3d-host data-hq-renderer="fallback" data-hq-meeting="'+meetingActive+'" data-hq-activity="'+esc(activityText)+'" data-hq-mode="'+(hqRoom?'private':'general')+'" data-hq-selected="'+selected[0]+'" hidden></div>';
     const hq3dStyles='<style>[data-hq-scene-shell][data-hq3d-ready="true"] .hq-general-stage{position:static!important;aspect-ratio:auto!important;min-height:0!important;max-height:none!important;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;padding:8px;background:#f6f9fb!important}[data-hq3d-ready="true"] .hq-general-stage>svg,[data-hq3d-ready="true"] .hq-general-stage .gl-hq-avatar,[data-hq3d-ready="true"] .hq-private-fallback{display:none!important}[data-hq3d-ready="true"] .hq-general-stage>button{position:static!important;transform:none!important;width:100%!important;max-width:none!important;margin:0!important;min-height:42px;align-self:stretch}[data-hq3d-ready="true"] .hq-general-stage>button>span{box-shadow:none!important}[data-hq-3d-host][hidden]{display:none!important}</style>';
-    const hqScenePeople=[...HQ_AGENTS,hqArea('lider')].map(a=>({id:a[0],...HQ_PEOPLE[a[0]],working:states(a)[0]==='En ejecución'}));
+    const hqScenePeople=[...HQ_AGENTS,hqArea('lider')].map(a=>({id:a[0],...HQ_PEOPLE[a[0]],sector:a[0]==='lider'?'Directora ejecutiva':a[1],working:states(a)[0]==='En ejecución'}));
     // Defer until the existing legacy renderer has attached the new HTML.
     if(typeof window.WebGL2RenderingContext!=='undefined')queueMicrotask(()=>{
       if(!hqAllowed())return;
       const host=document.querySelector?.('[data-hq-3d-host]');
       if(!host||host.dataset.hqMode!==(hqRoom?'private':'general')||host.dataset.hqSelected!==selected[0]||host.dataset.hqLoading)return;
       host.dataset.hqLoading='true';host.dataset.hqRenderer='loading';
-      import('./gestlok-hq-3d.mjs?rev=hq-actividad-real-20261125').then(mod=>{
+      import('./gestlok-hq-3d.mjs?rev=hq-groq-etiquetas-20261125').then(mod=>{
         if(!hqAllowed()||!host.isConnected)return;
         mod.mount(host,hqScenePeople,{mode:host.dataset.hqMode,selected:selected[0],meeting:meetingActive,activityText,onSelect:id=>{
           if(!hqAllowed()||!hqScenePeople.some(p=>p.id===id))return;
