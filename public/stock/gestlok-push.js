@@ -184,6 +184,7 @@ document.addEventListener('click',e=>{
   ctx.render();
 });
 async function onLogout(){
+ try{await window.GestLokHQPushLogout?.();}catch{}
  // Nunca conservar un indicador de pedidos de la cuenta anterior.
  try{await navigator.clearAppBadge?.();}catch{/* no soportado */}
  if(!ctx?.S?.me?.email || !['dueno','gerente'].includes(ctx.miRol()) || !canPrompt())return;

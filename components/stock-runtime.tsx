@@ -39,7 +39,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-molino.js?rev=pedidosya-20261109",
     // Solo descarga anticipada: cada módulo sigue EJECUTÁNDOSE en su orden original.
     "/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113",
-    "/stock/gestlok-push.js",
+    "/stock/gestlok-push.js?rev=hq-push-20261125",
     "/stock/munro-daily.js",
     "/stock/mi-gusto-cierre-online.js?rev=pya-simbolico-20261123",
     "/stock/gestlok-chat-central.js?rev=chat-badge-20261122",
@@ -80,7 +80,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-logout.js?rev=logout-profile-menu-20261107");
       if (!visitor) await load("/stock/gestlok-ios-install.js?rev=ios-home-screen-20261030");
       await load("/stock/gestlok-updates.js?rev=avisos-solo-por-solicitud-20261113");
-      if (!visitor) await load("/stock/gestlok-push.js");
+      if (!visitor) await load("/stock/gestlok-push.js?rev=hq-push-20261125");
       await load("/stock/munro-daily.js");
       await load("/stock/mi-gusto-resenas.js?rev=resenas-editar-20261027");
       if (!visitor) await load("/stock/mi-gusto-resenas-contactos.js?rev=whatsapp-cupon-20261030");

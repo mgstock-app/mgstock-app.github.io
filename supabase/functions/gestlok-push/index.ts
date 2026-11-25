@@ -58,6 +58,26 @@ async function verifyCron(token:string){
  const {data,error}=await admin.from("gestlok_push_control").select("cron_token_hash").eq("id",1).single();
  return !error && data?.cron_token_hash===actual;
 }
+// Separado de los avisos de locales: solo jobs de Alex autorizados en SQL.
+async function dispatchHq(){
+ const {data,error}=await admin.rpc("gestlok_hq_push_claim");
+ if(error||!Array.isArray(data))return {attempted:0,delivered:0};
+ let attempted=0,delivered=0;
+ for(const j of data){
+  let result="retry";
+  if(!endpointValid(j.endpoint)||!validKey(j.auth_key,100)||!validKey(j.p256dh_key,200))result="gone";
+  else{
+   attempted++;
+   try{
+    await webpush.sendNotification({endpoint:j.endpoint,keys:{auth:j.auth_key,p256dh:j.p256dh_key}},
+     JSON.stringify({title:"Alex · GESTLOK HQ",body:"Tenés un informe nuevo para revisar en tu oficina.",path:"/login/",tag:"hq-"+j.id}),{TTL:3600,urgency:"normal"});
+    result="sent";delivered++;
+   }catch(e){const code=Number((e as {statusCode?:number}).statusCode||0);if(code===404||code===410)result="gone";}
+  }
+  await admin.rpc("gestlok_hq_push_ack",{p_id:j.id,p_lease:j.lease,p_result:result});
+ }
+ return {attempted,delivered};
+}
 async function dispatch(){
  const {data:config,error:keysError}=await admin.from("gestlok_push_settings")
   .select("public_key,private_jwk").eq("id",1).single();
@@ -139,7 +159,8 @@ async function dispatch(){
   }
   if(!retry)await admin.from("gestlok_push_events").update({delivered_at:new Date().toISOString()}).eq("id",evt.id);
  }
- return json(200,{ok:true,attempted,delivered,deliveryEnabled:true});
+ let hq={attempted:0,delivered:0};try{hq=await dispatchHq();}catch{/* no interrumpir avisos de comercios */}
+ return json(200,{ok:true,attempted,delivered,hq,deliveryEnabled:true});
 }
 Deno.serve(async(req:Request)=>{
  const origin=req.headers.get("origin"),accepted=origin&&allowedOrigins.has(origin)?origin:SITE;
