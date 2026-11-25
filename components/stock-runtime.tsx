@@ -46,7 +46,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-caja-diaria.js?rev=caja-integrada-20261104",
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
-    "/stock/gestlok-creator-home.js?rev=hq-oficina-animada-20261125",
+    "/stock/gestlok-creator-home.js?rev=hq-oficina-viva-20261125",
     "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
@@ -114,7 +114,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-chat-20261123");
       // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
       if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
-      await load("/stock/gestlok-creator-home.js?rev=hq-oficina-animada-20261125");
+      await load("/stock/gestlok-creator-home.js?rev=hq-oficina-viva-20261125");
       await load("/stock/gestlok-tienda.js");
       if (visitor) await load("/stock/gestlok-demo-horarios.js");
       await load("/stock/gestlok-demo.js");
