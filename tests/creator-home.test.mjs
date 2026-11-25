@@ -231,7 +231,7 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(html,/Plano interactivo de la oficina/);
   assert.match(html,/Centro de misiones/);
   assert.match(html,/Ficha del empleado/);
-  assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,6);
+  assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,7);
   for(const area of ['Desarrollo','Control de calidad','Testing','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
   assert.match(html,/Sin conexión a IA/);
   assert.match(html,/Copiar instrucción para delegar/);
@@ -366,7 +366,7 @@ test('HQ: solicitud de incorporación de Alex requiere decisión independiente d
  confirmed=true;click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'approved'});await tick();await tick();
  assert.equal(decisions.length,1);assert.equal(decisions[0].p_decision,'approved');
  assert.match(r.h.view({parts:{}}),/Autorizada · pendiente de configuración/);
- assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,6);
+ assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,7);
  click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'rejected'});await tick();assert.equal(decisions.length,1);
 });
 
@@ -390,9 +390,9 @@ test('HQ: animated desks are independent of execution, private rooms use the sam
  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true}};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
- assert.equal((html.match(/class="hq-desk"/g)||[]).length,7);
- assert.equal((html.match(/class="hq-walk"/g)||[]).length,7);
- assert.equal((html.match(/class="hq-seat"/g)||[]).length,7);
+ assert.equal((html.match(/class="hq-desk"/g)||[]).length,8);
+ assert.equal((html.match(/class="hq-walk"/g)||[]).length,8);
+ assert.equal((html.match(/class="hq-seat"/g)||[]).length,8);
  assert.equal((html.match(/class="gl-hq-avatar hq-working"/g)||[]).length,1);
  assert.match(html,/prefers-reduced-motion:reduce/);
  assert.match(html,/estados de ejecución corresponden únicamente a tareas reales/);
@@ -409,7 +409,7 @@ test('HQ: each employee keeps their own portrait in the general, private and mee
  const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}));
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
- const people=[['desarrollo','masculino','short'],['calidad','femenino','long'],['testing','masculino','curly'],['atencion','femenino','bun'],['marketing','femenino','bob'],['datos','masculino','beard'],['lider','femenino','ponytail']];
+ const people=[['desarrollo','masculino','short'],['calidad','femenino','long'],['testing','masculino','curly'],['atencion','femenino','bun'],['marketing','femenino','bob'],['datos','masculino','beard'],['soporte','masculino','short'],['lider','femenino','ponytail']];
  for(const [id,gender,portrait] of people){
   assert.ok(html.includes('data-hq-person="'+id+'" data-hq-gender="'+gender+'"'),id);
   assert.ok(html.includes('data-hq-portrait="'+portrait+'"'),id);
@@ -501,4 +501,27 @@ test('HQ provider diagnosis distinguishes credential failure and limits, with no
  assert.match(backend,/models\/openai\/gpt-oss-20b/);
  assert.match(backend,/for\(const \[area,profile\] of Object.entries\(profiles\)\)/);
  assert.doesNotMatch(backend,/Promise\.allSettled\(Object\.entries\(profiles\)/);
+});
+
+test('HQ Facundo is an independent read-only technical support area',async()=>{
+ const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}));
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+ click('[data-ch-hq-agent]',{chHqAgent:'soporte'});click('[data-ch-hq-room]',{chHqRoom:'private'});
+ const html=r.h.view({parts:{}});
+ assert.match(html,/Oficina privada · Facundo/);assert.match(html,/Control preventivo · solo lectura/);
+ assert.match(html,/Preparar tarea · Servicio técnico/);assert.match(html,/Solo la administradora puede autorizar/);
+ const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
+ assert.match(backend,/soporte:"Facundo/);assert.match(backend,/Solo la administradora puede autorizar cambios/);
+ assert.match(backend,/api\.groq\.com/);assert.doesNotMatch(backend,/api\.openai\.com/);
+});
+
+test('HQ private 3D office isolates its selected employee and uses collision-aware responsive labels',()=>{
+ const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
+ assert.match(renderer,/privateWorld.visible=privateMode;world.visible=!privateMode/);
+ assert.match(renderer,/filter\(\(\{p\}\)=>!privateMode\|\|p.id===opts.selected\)/);
+ assert.match(renderer,/workstation\(0,-.15,Math.max\(0,people.findIndex/);
+ assert.match(renderer,/placed.some\(q=>rect.l<q.r/);
+ assert.match(renderer,/const compact=w<560&&!privateMode/);
+ assert.match(renderer,/if\(priv\)\{target.set\(0,.75,0\)/);
 });

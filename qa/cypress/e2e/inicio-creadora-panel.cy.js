@@ -34,7 +34,7 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('.gl-ch-nav button').should('have.length',12);
   cy.get('.gl-ch-nav [data-ch-tab="hq"]').should('be.visible').click();
   cy.get('[aria-label="Oficina virtual GESTLOK HQ"]').should('be.visible').and('contain.text','Sin conexión a IA');
-  cy.get('[data-ch-hq-agent]').should('have.length',6);
+  cy.get('[data-ch-hq-agent]').should('have.length',7);
   // Verify WebGL when the browser supports it; otherwise validate the animated fallback.
   cy.get('[data-hq-3d-host]').should('have.attr','data-hq-meeting','false');
   cy.get('[data-hq-3d-host]',{timeout:20000}).should(($host)=>{
@@ -54,7 +54,7 @@ describe('Inicio independiente de la creadora',()=>{
         if(!win.matchMedia('(prefers-reduced-motion: reduce)').matches)
           expect(win.getComputedStyle($hand[0]).animationName).to.equal('none');
       });
-      cy.get('.hq-meeting-actor').should('have.length',7).each(($actor)=>{
+      cy.get('.hq-meeting-actor').should('have.length',8).each(($actor)=>{
         const el=$actor[0],win=el.ownerDocument.defaultView;
         expect(win.getComputedStyle(el).animationName).to.equal('none');
         expect(Number(win.getComputedStyle(el).opacity)).to.equal(0);
@@ -67,6 +67,14 @@ describe('Inicio independiente de la creadora',()=>{
   cy.get('[data-ch-hq-agent="marketing"]').click();
   cy.get('[data-ch-hq-agent="marketing"]').should('have.attr','aria-pressed','true');
   cy.get('[data-ch-hq-form]').should('contain.text','Preparar tarea · Marketing');
+  cy.get('[data-ch-hq-room="private"]').first().click();
+  cy.get('[aria-label="Oficina privada del empleado"]').should('contain.text','Oficina privada · Martina');
+  cy.get('[data-hq-3d-host]',{timeout:20000}).should($host=>{
+    expect(['three','fallback']).to.include($host.attr('data-hq-renderer'));
+    if($host.attr('data-hq-renderer')==='three'){expect($host.find('[data-hq-name]')).to.have.length(1);expect($host.find('[data-hq-name="marketing"]')).to.have.length(1);}
+  });
+  cy.get('[data-ch-hq-room="general"]').first().click();
+  cy.get('[data-ch-hq-agent]').should('have.length',7);
   cy.get('.gl-ch-nav [data-ch-tab="gestlok-chat"]').click();
   cy.get('.gl-ch-links [href="https://gestlok-prueba.vercel.app/"]').should('exist');
   cy.get('.gl-ch-links [href="https://gestlok-testing.vercel.app/"]').should('exist');
