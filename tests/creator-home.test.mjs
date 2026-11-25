@@ -326,9 +326,9 @@ test('HQ Dirección: identidades estables, ambientes privados y aprobación con 
  },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true}};reports=[{task_id:'meeting-1',state:'review',result:'Informe del líder'}];return {data:{ok:true,state:'review'}};}});
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
- for(const name of ['Mateo','Valentina','Julián','Sofía','Lucía','Bruno','Alex'])assert.ok(r.h.view({parts:{}}).includes(name),name);
+ for(const name of ['Nicolás','Camila','Tomás','Renata','Martina','Santiago','Alex'])assert.ok(r.h.view({parts:{}}).includes(name),name);
  click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
- assert.match(r.h.view({parts:{}}),/Oficina privada · Julián/);
+ assert.match(r.h.view({parts:{}}),/Oficina privada · Tomás/);
  click('[data-ch-hq-room]',{chHqRoom:'general'});assert.match(r.h.view({parts:{}}),/Plano interactivo de la oficina/);
  click('[data-ch-hq-leader]');
  assert.match(r.h.view({parts:{}}),/Oficina privada · Alex/);
@@ -398,8 +398,25 @@ test('HQ: animated desks are independent of execution, private rooms use the sam
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
  click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
  const room=r.h.view({parts:{}});
- assert.match(room,/Oficina privada · Julián/);
+ assert.match(room,/Oficina privada · Tomás/);
  assert.match(room,/class="gl-hq-avatar hq-working"/);
  assert.equal((room.match(/class="hq-desk"/g)||[]).length,1);
  assert.equal(invoked,0);
+});
+
+test('HQ: each employee keeps their own portrait in the general, private and meeting scenes',async()=>{
+ const r=load(async fn=>({data:['gestlok_hq_list_tasks','gestlok_hq_list_runs'].includes(fn)?[]:DASH}));
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ const people=[['desarrollo','masculino','short'],['calidad','femenino','long'],['testing','masculino','curly'],['atencion','femenino','bun'],['marketing','femenino','bob'],['datos','masculino','beard'],['lider','femenino','ponytail']];
+ for(const [id,gender,portrait] of people){
+  assert.ok(html.includes('data-hq-person="'+id+'" data-hq-gender="'+gender+'"'),id);
+  assert.ok(html.includes('data-hq-portrait="'+portrait+'"'),id);
+  assert.equal((html.match(new RegExp('data-hq-person="'+id+'"','g'))||[]).length,2,id);
+  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+  if(id==='lider')click('[data-ch-hq-leader]');else{click('[data-ch-hq-agent]',{chHqAgent:id});click('[data-ch-hq-room]',{chHqRoom:'private'});}
+  const room=r.h.view({parts:{}});
+  assert.ok(room.includes('data-hq-person="'+id+'" data-hq-gender="'+gender+'"'));
+  assert.ok(room.includes('data-hq-portrait="'+portrait+'"'));
+ }
 });
