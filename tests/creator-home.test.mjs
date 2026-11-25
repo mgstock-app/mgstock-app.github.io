@@ -227,6 +227,10 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(r.h.view({parts:{}}), /data-ch-tab="hq"/);
   r.h.setTab('hq'); await tick();
   const html=r.h.view({parts:{}});
+  assert.match(html,/Plano interactivo de la oficina/);
+  assert.match(html,/Centro de misiones/);
+  assert.match(html,/Ficha del empleado/);
+  assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,6);
   for(const area of ['Desarrollo','Control de calidad','Testing','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
   assert.match(html,/Sin conexión a IA/);
   assert.match(html,/Copiar instrucción para delegar/);
