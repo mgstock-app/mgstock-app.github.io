@@ -420,3 +420,26 @@ test('HQ: each employee keeps their own portrait in the general, private and mee
   assert.ok(room.includes('data-hq-portrait="'+portrait+'"'));
  }
 });
+
+test('HQ premium uses a pinned, self-hosted renderer and preserves the private fallback',()=>{
+ const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
+ const vendor=readFileSync('scripts/vendor-hq-three.mjs','utf8');
+ const pkg=JSON.parse(readFileSync('package.json','utf8'));
+ const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
+ assert.equal(pkg.dependencies.three,'0.180.0');
+ assert.equal(lock.packages['node_modules/three'].version,pkg.dependencies.three);
+ assert.match(pkg.scripts.prebuild,/vendor-hq-three/);
+ assert.match(vendor,/three\.module\.js/);
+ assert.match(renderer,/import \* as T from '\.\.\/vendor\/hq-three\/three\.module\.js'/);
+ assert.match(renderer,/new T\.WebGLRenderer/);
+ assert.match(renderer,/new T\.OrthographicCamera/);
+ assert.match(renderer,/new T\.Raycaster/);
+ assert.match(renderer,/function animatePerson/);
+ assert.match(renderer,/function pathAt/);
+ assert.match(renderer,/function dispose/);
+ assert.match(renderer,/prefers-reduced-motion/);
+ assert.doesNotMatch(renderer,/\bfetch\s*\(|\.rpc\s*\(|https?:\/\//);
+ assert.match(source,/data-hq-3d-host/);
+ assert.match(source,/if\(!hqAllowed\(\)\|\|!host\.isConnected\)return/);
+ assert.match(source,/data-hq-renderer="fallback"/);
+});
