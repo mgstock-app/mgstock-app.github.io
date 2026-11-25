@@ -4,7 +4,7 @@
  */
 import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261124carta1';
 
-import {cartaMarcaHabilitada, consultaCartaMarca, hojasCartaMarca} from './carta-marca.mjs?v=20261125mgprod1';
+import {cartaMarcaHabilitada, consultaCartaMarca, hojasCartaMarca} from './carta-marca.mjs?v=20261125visual2';
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...hijos) => {
@@ -572,7 +572,8 @@ function precioEfectivo(p) {
 const cartaMarcaActiva = () => cartaMarcaHabilitada(CFG.entorno || 'produccion', S.sucursal, SLUG, DEMO);
 function mostrarCategoriasMarca(tipo='todo') {
  if(!cartaMarcaActiva() || S.cerrada || !S.sucursal || S.pedido)return;
- const hojas=hojasCartaMarca(tipo);
+ const hojas=hojasCartaMarca(tipo,S.sucursal,CFG.url);
+ if(!hojas.length)return abrirCarta({soloVer:true});
  if(hojas.length===1 && tipo!=='todo')return mostrarImagenMarca(hojas[0]);
  const n=el('div',{class:'burbuja asistente mg-carta-visual'});
  n.append(el('p',{text:'Elegí qué parte de la carta querés consultar.'}),

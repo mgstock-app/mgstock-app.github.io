@@ -6,7 +6,7 @@ export const CARTA_MARCA = Object.freeze([
  {id:'pizzas-indi-promos',titulo:'Pizzas INDI y promociones'}
 ].map(c=>Object.freeze({...c,url:'/chat/carta-mi-gusto/'+c.id+'.webp'})));
 export function cartaMarcaHabilitada(entorno, sucursal, slug, demo=false) {
- return !demo && entorno==='produccion' && sucursal?.carta_visual_marca === 'mi-gusto' && sucursal.slug===slug;
+ return !demo && entorno==='produccion' && sucursal?.slug===slug && (typeof sucursal.carta_visual_activa==='boolean' ? sucursal.carta_visual_activa : sucursal.carta_visual_marca==='mi-gusto');
 }
 export function consultaCartaMarca(texto) {
  const t=String(texto||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -21,7 +21,15 @@ export function consultaCartaMarca(texto) {
  if(/pizzas?/.test(t))return 'pizzas';
  return /promo|combo|oferta/.test(t)?'promos':'todo';
 }
-export function hojasCartaMarca(tipo='todo') {
+export function hojasCartaMarca(tipo='todo',sucursal=null,base='') {
+ if(sucursal && sucursal.carta_visual_activa===false)return [];
+ if(Array.isArray(sucursal?.carta_visual_hojas)&&sucursal.carta_visual_hojas.length){
+  // URL de nuestro Storage, nunca un enlace externo indicado por el comercio.
+  let root;try{root=new URL(base);if(root.protocol!=='https:'||!root.hostname.endsWith('.supabase.co'))return [];}catch{return [];}
+  const hojas=sucursal.carta_visual_hojas.filter(h=>typeof h.titulo==='string'&&/^[0-9a-f-]{36}\/[1-8]-[ab]\.webp$/.test(h.path||'')).map(h=>({id:h.path,titulo:h.titulo,url:root.origin+'/storage/v1/object/public/gestlok-chat-cartas/'+h.path+'?v='+encodeURIComponent(sucursal.carta_visual_revision||0),promo:h.promo===true}));
+  return tipo==='promos'?hojas.filter(h=>h.promo):hojas;
+ }
+ if(sucursal&&sucursal.carta_visual_marca!=='mi-gusto')return [];
  return CARTA_MARCA.filter(c=>tipo==='todo'||c.id===tipo||
  (tipo==='promos'&&['empanadas-promos','almuerzos','pizzas-indi-promos'].includes(c.id))||
  (tipo==='pizzas'&&c.id.startsWith('pizzas-')));
