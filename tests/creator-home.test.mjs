@@ -704,3 +704,9 @@ test('HQ: cada empleado tiene un límite diario y el plan gratuito nunca se agot
  assert.doesNotMatch(sql,/gestlok_hq_record_tokens\(uuid, uuid, integer\) to authenticated/);
  for(const f of ['supabase/functions/gestlok-hq-agent/index.ts','supabase/functions/gestlok-hq-worker/index.ts'])assert.match(readFileSync(f,'utf8'),/gestlok_hq_record_tokens/);
 });
+
+test('HQ: un informe esperando aprobación no frena la jornada diaria',()=>{
+ const sql=readFileSync('supabase/migrations/20261125180000_gestlok_hq_jornada_no_bloquea.sql','utf8');
+ assert.match(sql,/t\.auto_enabled\s+and not exists\(select 1 from gestlok_hq_private\.agent_runs r where r\.task_id = t\.id\)\) then return null/);
+ assert.match(sql,/revoke all on function gestlok_hq_private\.daily_mission\(\) from public, anon, authenticated/);
+});
