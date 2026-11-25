@@ -46,8 +46,15 @@ Deno.serve(async req=>{
     context="Ejecuciones públicas observadas en GitHub Actions: "+JSON.stringify(data.workflow_runs.slice(0,8).map((r:Record<string,unknown>)=>({name:String(r.name||"").slice(0,120),status:r.status,conclusion:r.conclusion,sha:String(r.head_sha||"").slice(0,7),branch:String(r.head_branch||"").slice(0,120),id:r.id})));
    }catch{context="No se pudo consultar GitHub. No inventes resultados.";}
   }
+  const hireFields=["name","specialty","reason","benefit","cost","permissions","alternative"];
+  const executiveFormat={type:"json_schema",name:"executive_report",strict:true,schema:{
+   type:"object",additionalProperties:false,required:["briefing","hire"],properties:{
+    briefing:{type:"string"},hire:{anyOf:[{type:"null"},{type:"object",additionalProperties:false,required:hireFields,properties:Object.fromEntries(hireFields.map(k=>[k,{type:"string"}]))}]}
+   }
+  }};
   const ask=async(instructions:string,input:string,max=1000,structured=false)=>{
-   const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},signal:AbortSignal.timeout(45000),body:JSON.stringify({model:env("GESTLOK_HQ_MODEL")||"gpt-4.1-mini",store:false,max_output_tokens:max,instructions,input,...(structured?{text:{format:{type:"json_schema",name:"executive_report",strict:true,schema:{type:"object",additionalProperties:false,required:["briefing","hire"],properties:{briefing:{type:"string"},hire:{anyOf:[{type:"null"},{type:"object",additionalProperties:false,required:["name","specialty","reason","benefit","cost","permissions","alternative"],properties:Object.fromEntries(["name","specialty","reason","benefit","cost","permissions","alternative"].map(k=>[k,{type:"string"}]))}]}}}}}}:{})})});
+   const payload={model:env("GESTLOK_HQ_MODEL")||"gpt-4.1-mini",store:false,max_output_tokens:max,instructions,input,...(structured?{text:{format:executiveFormat}}:{})};
+   const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},signal:AbortSignal.timeout(35000),body:JSON.stringify(payload)});
    if(!response.ok)throw Error("provider");
    const data=await response.json();
    const output=(data.output||[]).flatMap((item:Record<string,unknown>)=>item.type==="message"&&Array.isArray(item.content)?item.content:[]).filter((item:Record<string,unknown>)=>item.type==="output_text"&&typeof item.text==="string").map((item:Record<string,unknown>)=>item.text).join("\n").trim();
