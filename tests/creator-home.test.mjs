@@ -515,3 +515,13 @@ test('HQ Facundo is an independent read-only technical support area',async()=>{
  assert.match(backend,/soporte:"Facundo/);assert.match(backend,/Solo la administradora puede autorizar cambios/);
  assert.match(backend,/api\.groq\.com/);assert.doesNotMatch(backend,/api\.openai\.com/);
 });
+
+test('HQ private 3D office isolates its selected employee and uses collision-aware responsive labels',()=>{
+ const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
+ assert.match(renderer,/privateWorld.visible=privateMode;world.visible=!privateMode/);
+ assert.match(renderer,/filter\(\(\{p\}\)=>!privateMode\|\|p.id===opts.selected\)/);
+ assert.match(renderer,/workstation\(0,-.15,Math.max\(0,people.findIndex/);
+ assert.match(renderer,/placed.some\(q=>rect.l<q.r/);
+ assert.match(renderer,/const compact=w<560&&!privateMode/);
+ assert.match(renderer,/if\(priv\)\{target.set\(0,.75,0\)/);
+});
