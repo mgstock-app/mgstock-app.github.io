@@ -461,3 +461,18 @@ test('HQ: only an actual pending execution activates work or a meeting',async()=
   if(!working)assert.match(html,/Sin tareas en ejecución · equipo disponible/);
  }
 });
+
+test('HQ: readable projected HTML name and sector labels, dedicated free-plan provider',()=>{
+ const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
+ const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
+ assert.match(renderer,/name.textContent=p.name/);
+ assert.match(renderer,/role.textContent=p.sector\|\|p.role/);
+ assert.match(renderer,/labelPoint.*project\(camera\)/);
+ assert.match(source,/sector:a\[0\]==='lider'\?'Directora ejecutiva':a\[1\]/);
+ assert.match(backend,/GESTLOK_HQ_GROQ_FREE_API_KEY/);
+ assert.match(backend,/https:\/\/api\.groq\.com\/openai\/v1\/chat\/completions/);
+ assert.match(backend,/openai\/gpt-oss-20b/);
+ assert.doesNotMatch(backend,/api\.openai\.com|GESTLOK_HQ_OPENAI_API_KEY/);
+ assert.match(backend,/gestlok_hq_claim_run/);
+ assert.match(backend,/gestlok_hq_finish_director/);
+});
