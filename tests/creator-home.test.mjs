@@ -551,3 +551,18 @@ test('HQ shows Facundo and persisted pending tasks even without a provider conne
  assert.match(html,/Facundo · Servicio técnico · Tarea pendiente · sin iniciar/);
  assert.match(html,/data-ch-hq-agent="soporte"/);
 });
+
+
+test('HQ exposes remaining reserved quota and blocks a second full meeting without consuming tokens',async()=>{
+ const now=new Date().toISOString();
+ const rows=[{id:'failed',agent:'lider',status:'pendiente',instruction:'Primera reunión',created_at:now},{id:'next',agent:'lider',status:'pendiente',instruction:'Segunda reunión',created_at:now},{id:'support',agent:'soporte',status:'pendiente',instruction:'Control preventivo',created_at:now}];
+ const runs=[{task_id:'failed',state:'error',created_at:now}];
+ let invoked=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true,verified:true}};}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/Cuota interna: 2 de 10 consultas disponibles/);
+ assert.match(html,/Cuota insuficiente: esta tarea necesita 8 consultas y quedan 2/);
+ assert.doesNotMatch(html,/data-ch-hq-ai-run="next"/);
+ assert.equal(invoked,0);
+});
