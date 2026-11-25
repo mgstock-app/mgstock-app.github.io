@@ -4,7 +4,7 @@
  */
 import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261124carta1';
 
-import {cartaMiGustoHabilitada, consultaCartaMiGusto, hojasCartaMiGusto} from './carta-mi-gusto.mjs?v=20261125mgprod1';
+import {cartaMarcaHabilitada, consultaCartaMarca, hojasCartaMarca} from './carta-marca.mjs?v=20261125mgprod1';
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...hijos) => {
@@ -277,8 +277,8 @@ function mensajeAsistente(m, {abrir = true} = {}) {
   if (m.tipo === 'carta') {
     // Venta sugerida: abre la carta directo en la categoría ofrecida (postres, bebidas…).
     if (m.categoria && S.catalogo.categorias.some(c => c.id === m.categoria)) S.categoria = m.categoria;
-    const ver = () => cartaMiGustoActiva() && !m.categoria && !S.pedido ? mostrarCategoriasMiGusto() : abrirCarta();
-    accion('Ver la carta', ver); if (abrir && !(cartaMiGustoActiva() && !m.categoria && !S.pedido)) ver();
+    const ver = () => cartaMarcaActiva() && !m.categoria && !S.pedido ? mostrarCategoriasMarca() : abrirCarta();
+    accion('Ver la carta', ver); if (abrir && !(cartaMarcaActiva() && !m.categoria && !S.pedido)) ver();
   }
   else if (m.tipo === 'producto') {
     const p = producto(m.productos?.[0]);
@@ -342,10 +342,10 @@ async function enviar(entrada, textoVisible, {cancelacionConfirmada = false} = {
       if (S.pedido && !S.cerrada) $('redactar').hidden = ['pendiente','confirmado','terminado'].includes(S.pedido.estado) && !S.soportePendiente;
       programarSondeo();
     }
-    const consultaVisual = cartaMiGustoActiva() && !S.pedido && !r.pedido && !entrada.agregar_varios &&
-      (entrada.boton==='promociones'?'promos':!entrada.boton?consultaCartaMiGusto(entrada.texto):null);
+    const consultaVisual = cartaMarcaActiva() && !S.pedido && !r.pedido && !entrada.agregar_varios &&
+      (entrada.boton==='promociones'?'promos':!entrada.boton?consultaCartaMarca(entrada.texto):null);
     for (const m of r.mensajes || []) mensajeAsistente(m,{abrir:!consultaVisual});
-    if(consultaVisual) mostrarCategoriasMiGusto(consultaVisual);
+    if(consultaVisual) mostrarCategoriasMarca(consultaVisual);
     if (r.pedido) {
       if (entrada.datos && r.pedido.estado === 'pendiente') guardarUltimoPedido(carritoAntes);
       mostrarPedido(r.pedido);
@@ -370,8 +370,8 @@ function tocarBoton(b) {
   if (b.id === 'repetir') return repetirUltimoPedido();
   if (b.id === 'cancelar') return abrirConfirmacionCancelar();
   if (b.id === 'carta') return abrirCarta();
-  if (b.id === '__ver_menu') return cartaMiGustoActiva() && !S.pedido ? mostrarCategoriasMiGusto() : abrirCarta({soloVer: true});
-  if (b.id === 'promociones' && cartaMiGustoActiva() && !S.pedido) return mostrarCategoriasMiGusto('promos');
+  if (b.id === '__ver_menu') return cartaMarcaActiva() && !S.pedido ? mostrarCategoriasMarca() : abrirCarta({soloVer: true});
+  if (b.id === 'promociones' && cartaMarcaActiva() && !S.pedido) return mostrarCategoriasMarca('promos');
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.id === 'finalizar' ? 'Enviar pedido' : b.texto);
 }
@@ -569,19 +569,19 @@ function precioEfectivo(p) {
   if (!promo || pct <= 0 || !entregaDescuento() || p?.reglas?.sin_descuento === true) return null;
   return Math.round(Number(p.precio) * (100 - pct) / 100);
 }
-const cartaMiGustoActiva = () => cartaMiGustoHabilitada(CFG.entorno || 'produccion', SLUG, DEMO) && !!S.sucursal && (!S.sucursal.slug || S.sucursal.slug===SLUG);
-function mostrarCategoriasMiGusto(tipo='todo') {
- if(!cartaMiGustoActiva() || S.cerrada || !S.sucursal || S.pedido)return;
- const hojas=hojasCartaMiGusto(tipo);
- if(hojas.length===1 && tipo!=='todo')return mostrarImagenMiGusto(hojas[0]);
+const cartaMarcaActiva = () => cartaMarcaHabilitada(CFG.entorno || 'produccion', S.sucursal, SLUG, DEMO);
+function mostrarCategoriasMarca(tipo='todo') {
+ if(!cartaMarcaActiva() || S.cerrada || !S.sucursal || S.pedido)return;
+ const hojas=hojasCartaMarca(tipo);
+ if(hojas.length===1 && tipo!=='todo')return mostrarImagenMarca(hojas[0]);
  const n=el('div',{class:'burbuja asistente mg-carta-visual'});
  n.append(el('p',{text:'Elegí qué parte de la carta querés consultar.'}),
- ...hojas.map(c=>el('button',{type:'button',class:'boton ancho',text:c.titulo,onclick:()=>mostrarImagenMiGusto(c)})),
+ ...hojas.map(c=>el('button',{type:'button',class:'boton ancho',text:c.titulo,onclick:()=>mostrarImagenMarca(c)})),
  el('button',{type:'button',class:'boton principal ancho',text:'Hacer un pedido',onclick:()=>abrirCarta()}));
  lista.append(n);bajar();
 }
-function mostrarImagenMiGusto(c) {
- if(!cartaMiGustoActiva() || S.cerrada || !S.sucursal || S.pedido)return;
+function mostrarImagenMarca(c) {
+ if(!cartaMarcaActiva() || S.cerrada || !S.sucursal || S.pedido)return;
  const imagen=el('img',{src:c.url,alt:c.titulo,loading:'lazy',decoding:'async'});
  const enlace=el('a',{href:c.url,target:'_blank',rel:'noopener noreferrer','aria-label':'Ampliar '+c.titulo},imagen);
  imagen.addEventListener('error',()=>{enlace.replaceChildren(el('span',{text:'No se pudo cargar la imagen. Podés consultar el menú interactivo.'}));enlace.removeAttribute('href');});
@@ -589,7 +589,7 @@ function mostrarImagenMiGusto(c) {
  el('strong',{text:c.titulo}),enlace,
  el('p',{class:'mg-carta-nota',text:'Tocá la imagen para ampliarla. Carta de referencia; el precio final se confirma en el menú interactivo.'}),
  el('button',{type:'button',class:'boton principal ancho',text:'Hacer un pedido',onclick:()=>abrirCarta()}),
- el('button',{type:'button',class:'boton ancho',text:'Ver otra categoría',onclick:()=>mostrarCategoriasMiGusto()}),
+ el('button',{type:'button',class:'boton ancho',text:'Ver otra categoría',onclick:()=>mostrarCategoriasMarca()}),
  el('button',{type:'button',class:'boton ancho',text:'Volver al menú principal',onclick:()=>chips(BOTONES_BASE())})));
  bajar();
 }
@@ -1244,7 +1244,7 @@ $('redactar').addEventListener('submit', e => {
     }
   });
 });
-$('btn-carta').onclick = () => cartaMiGustoActiva() && !S.pedido ? mostrarCategoriasMiGusto() : abrirCarta();
+$('btn-carta').onclick = () => cartaMarcaActiva() && !S.pedido ? mostrarCategoriasMarca() : abrirCarta();
 $('btn-notificaciones').onclick=()=>window.GestLokChatPush?.open();
 $('btn-carrito').onclick = abrirCarrito;
 $('btn-finalizar').onclick = () => S.borrador.length ? abrirSeleccion() : enviar({boton: 'finalizar'}, 'Enviar pedido');
