@@ -41,9 +41,9 @@ Deno.serve(async req=>{
  if(body.action!=="run"||typeof body.task_id!=="string"||!/^[0-9a-f-]{36}$/i.test(body.task_id))return reply({error:"Tarea inválida"},400);
  if(!key)return reply({error:"Falta configurar la clave del plan gratuito de Groq para HQ"},503);
  const {data:claim,error:claimError}=await db.rpc("gestlok_hq_claim_run",{p_user:user.id,p_task:body.task_id});
- if(claimError||!claim?.id)return reply({error:claimError?.message?.includes("Límite de")?"Cuota interna de HQ agotada. Las tareas pendientes se conservan.":"Tarea no disponible o sectores pendientes"},409);
+ if(claimError||!claim?.id){const m=String(claimError?.message||"");return reply({error:/Límite/.test(m)?m.replace(/^.*?(Límite)/,"$1")+". La tarea sigue pendiente; se libera a medida que pasan las 24 horas.":"Tarea no disponible o sectores pendientes"},409);}
  let hire:Record<string,string>|null=null;
- let state="error",result="No se pudo completar el análisis.",diagnostic="",rejected=false;
+ let state="error",result="No se pudo completar el análisis.",diagnostic="",rejected=false,tokensUsed=0;
  try{
   let context="Sin datos externos consultados.";
   // Pulso agregado de los locales (sin datos personales), leído con la sesión de la creadora.
@@ -68,6 +68,7 @@ Deno.serve(async req=>{
    // Never retry on limits, switch providers, use paid tiers, or log prompts/secrets.
    if(!response.ok){diagnostic=safeProviderError(response.status);rejected=true;throw Error("provider");}
    const data=await response.json();
+   const total=Number(data.usage?.total_tokens);if(Number.isFinite(total)&&total>0)tokensUsed+=Math.round(total);
    const output=data.choices?.[0]?.message?.content;
    if(typeof output!=="string"||!output.trim()){diagnostic="Groq no devolvió contenido final (posible límite de tokens).";throw Error("empty");}
    return output.trim();
@@ -101,11 +102,13 @@ Deno.serve(async req=>{
   state="review";result=output.slice(0,16000);
  }catch{hire=null;result=(diagnostic||"No se pudo completar o interpretar la respuesta de Groq.")+" No se usó otro proveedor. Consultá el estado de conexión antes de iniciar una nueva tarea.";}
  // Groq rechazó antes de responder (límite, clave o caída): se libera la reserva y la tarea sigue pendiente.
- if(state!=="review"&&rejected){
+ if(state!=="review"&&rejected&&tokensUsed===0){
   const {data:freed,error:freeError}=await db.rpc("gestlok_hq_release_run",{p_user:user.id,p_run:claim.id});
   if(!freeError&&freed===true)return reply({ok:false,state:"released",diagnostic:diagnostic+" La tarea sigue pendiente y no se gastó cupo: probá de nuevo en unos minutos."});
  }
  const {data:saved,error:saveError}=await db.rpc(claim.agent==="lider"?"gestlok_hq_finish_director":"gestlok_hq_finish_run",{p_user:user.id,p_run:claim.id,p_state:state,p_result:result,...(claim.agent==="lider"?{p_hire:hire}:{})});
+ // Uso real de tokens para el límite diario del plan gratuito.
+ if(tokensUsed>0)await db.rpc("gestlok_hq_record_tokens",{p_user:user.id,p_run:claim.id,p_tokens:tokensUsed});
  if(saveError||!saved)return reply({error:"No se confirmó el guardado del resultado"},500);
  return reply({ok:true,state});
 });

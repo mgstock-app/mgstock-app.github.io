@@ -564,7 +564,7 @@ test('HQ exposes remaining reserved quota and blocks a second full meeting witho
  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true,verified:true}};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
- assert.match(html,/Cuota interna: 32 de 40 consultas disponibles/);
+ assert.match(html,/Cuota interna: 22 de 30 consultas disponibles/);
  assert.match(html,/Distribuir misión/);
  assert.doesNotMatch(html,/data-ch-hq-ai-run="next"/);
  assert.equal(invoked,0);
@@ -676,4 +676,31 @@ test('HQ: el trabajo diario es opt-out, de solo lectura y respeta el plan gratui
  assert.match(agent,/gestlok_hq_release_run/);
  assert.match(agent,/state:"released"/);
  assert.doesNotMatch(worker+agent,/api\.openai\.com/);
+});
+
+test('HQ: cada empleado tiene un límite diario y el plan gratuito nunca se agota',async()=>{
+ const now=new Date().toISOString();
+ const rows=[...[1,2,3,4].map(i=>({id:'d'+i,agent:'datos',instruction:'Métrica '+i,status:'cerrada',created_at:now})),{id:'d5',agent:'datos',instruction:'Otra',status:'pendiente',created_at:now}];
+ const runs=[1,2,3,4].map(i=>({task_id:'d'+i,state:'review',result:'ok',quota_units:1,created_at:now}));
+ let invoked=0;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async(n,o)=>{if(o.body.action!=='status')invoked++;return {data:{configured:true,verified:true}};}});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ let html=r.h.view({parts:{}});
+ assert.match(html,/Santiago 4\/4/);
+ assert.match(html,/Alex 0\/8/);
+ assert.match(html,/30 consultas para todo el equipo, 4 por empleado \(Alex 8\)/);
+ click('[data-ch-hq-ai-run]',{chHqAiRun:'d5'});await tick();await tick();
+ html=r.h.view({parts:{}});
+ assert.match(html,/Límite diario de Santiago: 4 consultas por 24 horas \(plan gratuito\)/);
+ assert.equal(invoked,0);
+ const sql=readFileSync('supabase/migrations/20261125170000_gestlok_hq_limites_plan_gratis.sql','utf8');
+ assert.match(sql,/'consultas_dia', 30, 'por_empleado', 4, 'alex', 8/);
+ assert.match(sql,/'tokens_dia', 150000/);
+ assert.match(sql,/Límite diario de este empleado/);
+ assert.match(sql,/exception when sqlstate '22023' then return null/);
+ assert.match(sql,/grant execute on function public\.gestlok_hq_record_tokens\(uuid, uuid, integer\) to service_role/);
+ assert.doesNotMatch(sql,/gestlok_hq_record_tokens\(uuid, uuid, integer\) to authenticated/);
+ for(const f of ['supabase/functions/gestlok-hq-agent/index.ts','supabase/functions/gestlok-hq-worker/index.ts'])assert.match(readFileSync(f,'utf8'),/gestlok_hq_record_tokens/);
 });

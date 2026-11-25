@@ -265,7 +265,11 @@ export function buildInsights(model = {}) {
     push({id: 'jornada', agent: 'lider', tag: 'general', basis: 'sistema', text: jor.ultima === hoyIso ? 'La jornada de hoy ya arrancó: cada sector trabaja con el pulso del día y después preparo el informe.' : now.h < 8 ? 'La jornada diaria arranca a las 08:00.' : 'La jornada de hoy arranca cuando termine la misión en curso.'});
   }
   if (model.aiReady === false) push({id: 'ia-off', agent: 'desarrollo', tag: 'ia', text: 'La IA de HQ todavía no responde; seguimos trabajando con datos reales.'});
-  if (model.quota && Number.isFinite(model.quota.remaining)) push({id: 'cuota', agent: 'lider', tag: 'general', text: 'Quedan ' + model.quota.remaining + ' de ' + (model.quota.limit || 40) + ' consultas de IA en las últimas 24 h.'});
+  if (model.quota && Number.isFinite(model.quota.remaining)) {
+    const tk = model.quota.tokens;
+    push({id: 'cuota', agent: 'lider', tag: 'general', text: 'Plan gratuito: quedan ' + model.quota.remaining + ' de ' + (model.quota.limit || 30) + ' consultas de IA del equipo hoy' + (tk ? ' y ' + Math.max(0, tk.limit - tk.used).toLocaleString('es-AR') + ' tokens' : '') + '.'});
+    for (const p of TEAM) { const used = model.quota.perAgent?.[p.id] || 0, cap = model.quota.caps?.[p.id]; if (cap && used >= cap) push({id: 'tope-' + p.id, agent: p.id, level: 2, tag: 'general', basis: 'sistema', text: 'Llegué a mi límite diario de IA (' + cap + ' consultas). Sigo con datos reales y mañana retomo.'}); }
+  }
   const alerts = out.filter(i => i.level >= 3).length;
   push({id: 'resumen', agent: 'lider', level: alerts ? 3 : 1, tag: 'general', basis: 'resumen',
     text: 'Resumen: ' + plural(alerts, 'alerta', 'alertas') + ' en los locales, ' + plural(pendingTotal, 'tarea sin iniciar', 'tareas sin iniciar') + ' y ' + plural(reviewTotal, 'informe', 'informes') + ' para revisar.'});
@@ -914,7 +918,7 @@ function chips() {
   const check = m.support?.checks?.[0];
   if (check) { const al = /^ALERTA/i.test(String(check.conclusion || '')), rv = /^(REVISAR|VERIFICACI)/i.test(String(check.conclusion || '')); list.push(['<i></i>Sitio: ' + (al ? 'alerta' : rv ? 'revisar' : 'en línea'), al ? 'bad' : rv ? 'warn' : 'ok']); }
   const jor = m.pulse?.jornada; if (jor) list.push(['<i></i>Jornada diaria: ' + (jor.activa ? 'activa' : 'pausada'), jor.activa ? 'ok' : 'warn']);
-  list.push(['<i></i>IA: ' + (m.aiReady === true ? 'lista' : m.aiReady === false ? 'no disponible' : 'sin verificar') + (m.quota ? ' · ' + m.quota.remaining + '/' + (m.quota.limit || 40) : ''), m.aiReady === true ? 'ok' : 'warn']);
+  list.push(['<i></i>IA: ' + (m.aiReady === true ? 'lista' : m.aiReady === false ? 'no disponible' : 'sin verificar') + (m.quota ? ' · ' + m.quota.remaining + '/' + (m.quota.limit || 30) + ' hoy' : ''), m.aiReady === true ? 'ok' : 'warn']);
   el.innerHTML = list.map(([t, k]) => '<span class="hqo-chip ' + k + '">' + t + '</span>').join('');
 }
 
@@ -980,6 +984,7 @@ function renderPanels() {
       html += '<div class="hqo-box"><div class="hqo-member"><canvas data-hqo-portrait="' + p.id + '" width="60" height="60"></canvas><div><h3 style="margin:0">' + esc(p.name) + ' <small class="hqo-empty">· ' + esc(p.animal) + '</small></h3><strong style="font-size:13px">' + esc(p.puesto) + '</strong><p style="margin:4px 0;color:#5b6f84;font-size:12.5px">' + esc(p.foco) + '</p></div></div>' +
         '<p style="margin:8px 0 2px;color:' + rs.color + ';font-weight:700">● ' + esc(rs.text) + '</p><p style="margin:0;font-size:12.5px">Ahora: ' + esc(a?.label || '') + '</p>' +
         '<p style="margin:8px 0 0;font-size:12px">Nivel ' + level + ' · ' + xp + ' XP <small class="hqo-empty">(tareas reales cerradas e informes)</small></p><div class="hqo-bar"><span style="width:' + (xp % 60) / 60 * 100 + '%"></span></div>' +
+        (m.quota?.caps ? '<p style="margin:6px 0 0;font-size:12px">IA hoy: ' + (m.quota.perAgent?.[p.id] || 0) + ' de ' + m.quota.caps[p.id] + ' consultas <small class="hqo-empty">(límite diario del plan gratuito)</small></p><div class="hqo-bar"><span style="width:' + Math.min(100, (m.quota.perAgent?.[p.id] || 0) / m.quota.caps[p.id] * 100) + '%;background:#5fa8e8"></span></div>' : '') +
         '<p style="margin:6px 0 0;font-size:12px">Energía (animación)</p><div class="hqo-bar"><span style="width:' + Math.round(a?.energy || 0) + '%;background:#ffb35c"></span></div>' +
         '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button type="button" class="hqo-btn primary" data-hqo-assign="' + p.id + '">Asignar tarea</button><button type="button" class="hqo-btn" data-hqo-pick="' + p.id + '">Ver en la oficina</button><button type="button" class="hqo-btn" data-hqo-private="' + p.id + '">Su oficina</button></div></div>';
     }
