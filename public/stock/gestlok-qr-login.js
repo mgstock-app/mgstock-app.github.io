@@ -118,7 +118,7 @@ function fromProfile(){
 function mount(){
  const form=document.querySelector('#au-in');
  if(form&&!form.querySelector('#gl-qr-login')){
-  const b=button('Ingresar con QR',desktop);b.id='gl-qr-login';b.style.cssText+=';width:100%;margin:8px 0';
+  const b=button('Ingresar con QR',desktop);b.id='gl-qr-login';b.style.cssText+=';box-sizing:border-box;width:100%;max-width:100%;min-height:48px;margin:0';
   const google=form.querySelector('[data-au="google"]');if(google)google.after(b);else form.prepend(b);
  }
  if(pair){const p=pair;pair='';void mobile(p);}
