@@ -656,7 +656,8 @@
     ['testing','Testing','Cypress, pruebas funcionales y regresiones','#e5eef0','<path d="M9 3h6m-5 0v7l-5 8a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-8V3M8 15h8"/>'],
     ['atencion','Atención al cliente','Chats y pedidos · sin acceso a conversaciones','#e3e9f3','<path d="M4 4h16v13H9l-5 4zM8 9h8m-8 4h5"/>'],
     ['marketing','Marketing','Publicidad y comunicación','#f3e9d8','<path d="M3 10h5l12-5v14l-12-5H3zM8 14l2 6h3"/>'],
-    ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>']
+    ['datos','Data Analytics','Indicadores y análisis','#e8e2f3','<path d="M4 4v16h16M8 16v-4m4 4V8m4 8V5"/>'],
+    ['soporte','Servicio técnico','Monitoreo preventivo de todos los roles y locales','#e2e9ed','<path d="M12 22s8-4 8-12V5l-8-3-8 3v5c0 8 8 12 8 12zM8 12l3 3 5-6"/>']
   ]);
   let hqAgent = 'desarrollo';
   const HQ_PEOPLE=Object.freeze({
@@ -666,17 +667,18 @@
     atencion:{name:'Renata',gender:'femenino',skin:'#af7656',hair:'#2e292b',hairstyle:'bun',shirt:'#7865a4',role:'Especialista en experiencia del cliente',skills:'Atención, reclamos y experiencia de compra.'},
     marketing:{name:'Martina',gender:'femenino',skin:'#e7c6a9',hair:'#a96a43',hairstyle:'bob',shirt:'#aa6574',role:'Estratega de marketing',skills:'Comunicación, posicionamiento y crecimiento.'},
     datos:{name:'Santiago',gender:'masculino',skin:'#d5a480',hair:'#3c332e',hairstyle:'beard',shirt:'#407e91',role:'Analista de datos',skills:'Indicadores, hipótesis y oportunidades comerciales.'},
+    soporte:{name:'Facundo',gender:'masculino',skin:'#ba8568',hair:'#252f36',hairstyle:'short',shirt:'#54717a',role:'Especialista en soporte técnico y monitoreo',skills:'Control preventivo, disponibilidad, roles, sincronización, diagnóstico de incidentes. Solo lectura; toda modificación requiere aprobación de la administradora.'},
     lider:{name:'Alex',gender:'femenino',skin:'#d8a687',hair:'#372a29',hairstyle:'ponytail',shirt:'#34536f',role:'Directora Ejecutiva de IA',skills:'Estrategia, coordinación, evaluación de propuestas y planificación de incorporaciones.'}
   });
   let hqRoom=false;
-  const HQ_LEADER=['lider','Dirección de IA','Coordina las seis áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
+  const HQ_LEADER=['lider','Dirección de IA','Coordina las siete áreas, evalúa propuestas y solicita nuevas especialidades justificadas a la administradora.'];
   const hqArea=id=>id==='lider'?HQ_LEADER:HQ_AGENTS.find(a=>a[0]===id);
   let hqScope='GESTLOK · empresa y nuevas microapps';
   let hqAIReady=null, hqAIBusy=false, hqAIError='', hqRuns=[], hqRunsLoaded=false, hqRunsError='';
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
-    if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 7 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Usá únicamente una clave de Groq del plan gratuito. Si se agota la cuota, la ejecución se detiene.'))return;
+    if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 8 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Usá únicamente una clave de Groq del plan gratuito. Si se agota la cuota, la ejecución se detiene.'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     try{
       const sb=window.GestLokSupabase;
@@ -694,7 +696,7 @@
     finally{if(epoch===hqEpoch){hqAIBusy=false;if(hqAllowed())api?.render();}}
   }
   function hqAIView(){
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 7. La cuota del proveedor puede ser menor.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Groq · conexión disponible (respuesta de IA aún no verificada)':hqAIReady===false?'Falta configurar la clave gratuita de Groq para HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas; una reunión reserva 8. La cuota del proveedor puede ser menor.</p><button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIReady===true?'Groq · conexión disponible (respuesta de IA aún no verificada)':hqAIReady===false?'Falta configurar la clave gratuita de Groq para HQ':'Sin conexión a IA: no verificada'))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
     if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
@@ -733,7 +735,7 @@
     return t.status==='pendiente'&&hqAIReady===true?'<button type="button" class="btn primary" data-ch-hq-ai-run="'+esc(t.id)+'" '+(hqAIBusy?'disabled':'')+'>'+(t.agent==='lider'?'Iniciar reunión de IA':'Ejecutar con IA')+'</button>':'';
   }
   let hqGithub = null, hqGithubBusy = false, hqGithubError = '';
-  const hqTech=()=>['desarrollo','calidad','testing'].includes(hqAgent);
+  const hqTech=()=>['desarrollo','calidad','testing','soporte'].includes(hqAgent);
   async function hqCheckGithub(){
     if(!hqAllowed()||!hqTech()||hqGithubBusy)return;
     const epoch=hqEpoch;hqGithubBusy=true;hqGithubError='';hqGithub=null;api?.render();
@@ -806,7 +808,7 @@
     if(!premiumAdmin() || status!=='ready')return '';
     if(!hqAttempted&&!hqBusy)queueMicrotask(()=>{if(!hqAttempted&&hqAllowed())void hqRequest();});
     const selected=hqArea(hqAgent)||HQ_AGENTS[0];
-    const positions=[[22,31],[50,23],[78,31],[22,67],[50,57],[78,67]];
+    const positions=[[17,24],[43,18],[77,24],[17,61],[43,54],[77,61],[18,84]];
     const states=a=>{
       const runs=hqRunsLoaded?hqRuns.filter(r=>hqTasks.some(t=>t.id===r.task_id&&t.agent===a[0]&&t.status==='pendiente')):[];
       if(runs.some(r=>r.state==='working'))return ['En ejecución','#b7791f'];
@@ -858,11 +860,11 @@
     };
     // The meeting is an explicitly illustrative scene, not a report of real AI execution.
     const meetingPeople=[...HQ_AGENTS,hqArea('lider')];
-    const meetingSeats=[[258,187],[300,169],[342,187],[258,219],[300,235],[342,219],[300,202]];
+    const meetingSeats=[[248,181],[282,166],[320,166],[352,181],[352,219],[320,236],[248,219],[282,236]];
     const meetingScene='<svg class="hq-meeting-floor" viewBox="0 0 600 430" preserveAspectRatio="none" aria-hidden="true"><g><ellipse cx="300" cy="202" rx="67" ry="34" fill="#8ca9bb" opacity=".25"/><ellipse cx="300" cy="198" rx="64" ry="28" fill="#eaf0f4" stroke="#94afbf" stroke-width="2"/><path d="M281 192h30v16h-30z" fill="#fff" stroke="#9aafbd"/><path d="M286 197h19m-19 5h15" stroke="#7692a6"/></g>'+
       meetingPeople.map((a,i)=>{
         if(a[0]!=='lider'&&states(a)[0]==='En ejecución')return '';
-        const p=HQ_PEOPLE[a[0]], dest=meetingSeats[i], from=i===6?[300,365]:[positions[i][0]*6,positions[i][1]*4.3];
+        const p=HQ_PEOPLE[a[0]], dest=meetingSeats[i], from=a[0]==='lider'?[300,365]:[positions[i][0]*6,positions[i][1]*4.3];
         return '<g transform="translate('+dest[0]+' '+dest[1]+')"><g class="hq-meeting-actor" data-hq-person="'+a[0]+'" data-hq-gender="'+p.gender+'" opacity="0" style="--hq-x:'+(from[0]-dest[0])+'px;--hq-y:'+(from[1]-dest[1])+'px"><ellipse cx="0" cy="12" rx="10" ry="4" fill="#637d90" opacity=".35"/><path d="M-5 3v9m10-9v9" stroke="#263e50" stroke-width="5" stroke-linecap="round"/><rect x="-9" y="-9" width="18" height="15" rx="5" fill="'+p.shirt+'"/><g transform="translate(0 -15) scale(.78) translate(-77 -32)">'+hqPortrait(p)+'</g><path class="hq-conversation-hand" d="M8 -5l8 -7m-25 7-6 4" stroke="'+p.skin+'" stroke-width="4" stroke-linecap="round"/><text y="24" font-size="9" text-anchor="middle" font-weight="700" fill="#173449" stroke="#fff" stroke-width="2.5" paint-order="stroke">'+esc(HQ_PEOPLE[a[0]].name)+'</text></g></g>';
       }).join('')+'<g class="hq-meeting-phase" opacity="0"><rect x="220" y="132" width="160" height="22" rx="10" fill="#173449"/><text x="300" y="146" text-anchor="middle" font-size="11" fill="#fff">Reunión de IA en ejecución</text></g><g class="hq-meeting-consult" opacity="0"><rect x="218" y="132" width="164" height="22" rx="10" fill="#173449"/><text x="300" y="146" text-anchor="middle" font-size="11" fill="#fff">Reunión de IA en ejecución</text></g></svg>';
     const sceneHost='<div data-hq-3d-host data-hq-renderer="fallback" data-hq-meeting="'+meetingActive+'" data-hq-activity="'+esc(activityText)+'" data-hq-mode="'+(hqRoom?'private':'general')+'" data-hq-selected="'+selected[0]+'" hidden></div>';
@@ -874,7 +876,7 @@
       const host=document.querySelector?.('[data-hq-3d-host]');
       if(!host||host.dataset.hqMode!==(hqRoom?'private':'general')||host.dataset.hqSelected!==selected[0]||host.dataset.hqLoading)return;
       host.dataset.hqLoading='true';host.dataset.hqRenderer='loading';
-      import('./gestlok-hq-3d.mjs?rev=hq-sync-20261125').then(mod=>{
+      import('./gestlok-hq-3d.mjs?rev=hq-servicio-tecnico-20261125').then(mod=>{
         if(!hqAllowed()||!host.isConnected)return;
         mod.mount(host,hqScenePeople,{mode:host.dataset.hqMode,selected:selected[0],meeting:meetingActive,activityText,onSelect:id=>{
           if(!hqAllowed()||!hqScenePeople.some(p=>p.id===id))return;
@@ -886,20 +888,21 @@
       '<div class="hq-general-stage" data-hq-meeting="'+meetingActive+'" style="position:relative;aspect-ratio:1.02;min-height:390px;max-height:690px;isolation:isolate;background:#e7eef3">'+officeFloor+meetingScene+
       HQ_AGENTS.map((a,i)=>{const st=states(a);return '<button type="button" data-ch-hq-agent="'+a[0]+'" aria-pressed="'+(a[0]===selected[0])+'" aria-label="'+esc(HQ_PEOPLE[a[0]].name+' · '+a[1]+' · '+st[0])+'" style="position:absolute;z-index:2;left:'+positions[i][0]+'%;top:'+positions[i][1]+'%;transform:translate(-50%,-50%);width:29%;max-width:160px;min-width:0;padding:3px 1px;border:1px solid '+(a[0]===selected[0]?'#1a5b83':'transparent')+';border-radius:9px;background:'+(a[0]===selected[0]?'#e9f6ffb8':'transparent')+';cursor:pointer;color:#173449;line-height:1.15">'+
         '<span style="display:inline-flex;align-items:center;gap:3px;max-width:100%;box-sizing:border-box;padding:4px 5px;border-radius:8px;background:#fff;box-shadow:0 1px 4px #28475d30;font-size:clamp(9px,2.3vw,13px);font-weight:700;overflow-wrap:anywhere"><span aria-hidden="true" style="flex:none;width:7px;height:7px;border-radius:50%;background:'+st[1]+'"></span>'+esc(HQ_PEOPLE[a[0]].name)+'</span>'+character(a,i)+'<span style="display:block;font-size:clamp(9px,2.1vw,12px);font-weight:600;background:#f7fafbd9;border-radius:4px;padding:2px;overflow-wrap:anywhere">'+esc(a[1])+'</span></button>';}).join('')+
-      '<button type="button" data-ch-hq-leader aria-pressed="'+(hqAgent==='lider')+'" style="position:absolute;z-index:3;bottom:3%;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;padding:2px 6px;color:#173449;background:#ffffffb8;border:1px solid #8ba5b8;border-radius:9px;max-width:29%;white-space:normal"><span style="display:block;width:clamp(40px,9vw,70px);margin:auto">'+character(hqArea('lider'),6)+'</span>Alex · Directora Ejecutiva</button></div>'+
+      '<button type="button" data-ch-hq-leader aria-pressed="'+(hqAgent==='lider')+'" style="position:absolute;z-index:3;bottom:3%;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;padding:2px 6px;color:#173449;background:#ffffffb8;border:1px solid #8ba5b8;border-radius:9px;max-width:29%;white-space:normal"><span style="display:block;width:clamp(40px,9vw,70px);margin:auto">'+character(hqArea('lider'),HQ_AGENTS.length)+'</span>Alex · Directora Ejecutiva</button></div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;background:#fff;font-size:11px;color:#425970"><span>● Sin conexión</span><span style="color:#b7791f">● En ejecución</span><span style="color:#2765a8">● Por revisar</span><span style="color:#ac4141">● Error</span></div></div>';
     const person=HQ_PEOPLE[selected[0]];
     const roomTasks=hqTasks.filter(t=>t.agent===selected[0]);
     const room='<section data-hq-scene-shell aria-label="Oficina privada del empleado" style="border:1px solid #cbd8e2;border-radius:12px;overflow:hidden;background:#f3f7fa">'+
       '<header style="padding:12px;background:#112c43;color:#fff"><strong>Oficina privada · '+esc(person.name)+'</strong><small style="display:block">'+esc(person.role)+'</small></header>'+sceneHost+
-      '<div class="hq-private-fallback" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;align-items:center">'+character(selected,selected[0]==='lider'?6:HQ_AGENTS.findIndex(a=>a[0]===selected[0]),true)+
+      '<div class="hq-private-fallback" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;align-items:center">'+character(selected,selected[0]==='lider'?HQ_AGENTS.length:HQ_AGENTS.findIndex(a=>a[0]===selected[0]),true)+
       '<div><strong>'+esc(person.name)+'</strong><p>'+esc(person.skills)+'</p><small>'+esc(states(selected)[0])+'</small></div></div>'+
+      (selected[0]==='soporte'?'<div style="padding:12px;background:#fff;border-top:1px solid #cbd8e2"><strong>Control preventivo · solo lectura</strong><p>Prioridad: todos los roles, Mi Gusto Munro y Don Torcuato. Verificar accesos, stock, conteo, pagos, staff, historial y sincronización. Registrar evidencia y elevar a Alex; ninguna configuración o reparación automática. Las rondas programadas externas no se representan como ejecución de IA hasta registrar evidencia.</p></div>':'')+
       '<div style="padding:12px;border-top:1px solid #cbd8e2"><strong>Proyectos del sector</strong><p>'+esc(hqLoaded?roomTasks.length+' registrados · '+roomTasks.filter(t=>t.status==='pendiente').length+' pendientes':'Sin consultar')+'</p>'+roomTasks.slice(0,5).map(t=>'<p style="overflow-wrap:anywhere;margin:6px 0">'+esc(t.status+' · '+t.instruction.slice(0,100))+'</p>').join('')+'</div></section>';
     const navigation='<div role="group" aria-label="Ambientes de GESTLOK HQ" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"><button type="button" class="btn" data-ch-hq-room="general" aria-pressed="'+!hqRoom+'">Oficina general</button><button type="button" class="btn" data-ch-hq-room="private" aria-pressed="'+hqRoom+'">Oficina privada de '+esc(person.name)+'</button></div>';
     return '<section class="gl-admin-card" aria-label="Oficina virtual GESTLOK HQ"><header><h2>Centro de operaciones</h2><small>Privado · Dirección general</small></header>'+
-      '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Las animaciones de la oficina son visuales; los estados de ejecución corresponden únicamente a tareas reales. Sin tareas en ejecución, el equipo permanece disponible. Las reuniones solo se representan cuando hay una ejecución de dirección registrada; no indican una fase concreta del debate.</p>'+hqMotion+hq3dStyles+hqExecutiveInbox()+navigation+(hqRoom?room:office)+
+      '<p>Tocá un empleado para abrir su ficha y asignarle una misión. Todos los empleados, incluida Alex, pueden investigar y proponer. Solo la administradora puede autorizar cambios de configuración, código, permisos, publicaciones o gastos. Las animaciones de la oficina son visuales; los estados de ejecución corresponden únicamente a tareas reales. Sin tareas en ejecución, el equipo permanece disponible. Las reuniones solo se representan cuando hay una ejecución de dirección registrada; no indican una fase concreta del debate.</p>'+hqMotion+hq3dStyles+hqExecutiveInbox()+navigation+(hqRoom?room:office)+
       '<div aria-label="Ficha del empleado" style="margin-top:16px;padding:12px;border:1px solid #dce3eb;border-radius:9px"><strong>'+esc(person.name+' · '+selected[1])+'</strong><p>'+esc(person.role+' · '+selected[2])+'</p><button type="button" class="btn" data-ch-hq-room="private">Entrar a oficina privada</button><small>'+esc(states(selected)[0])+' · Dirección general · Creadora. Las tareas guardadas no se ejecutan automáticamente.</small></div>'+
-      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los seis sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
+      '<form data-ch-hq-form style="display:grid;gap:10px;margin-top:16px"><h3>Preparar tarea · '+esc(selected[1])+'</h3>'+(hqAgent==='lider'?'<label for="gl-hq-scope">Alcance de la reunión</label><select id="gl-hq-scope">'+['GESTLOK · empresa y nuevas microapps','GESTLOK Chat · producto general','GESTLOK Chat · local específico'].map(v=>'<option '+(hqScope===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select><p>Los siete sectores propondrán ideas y el líder preparará un informe. Indicá el local y el contexto si corresponde. Sin cambios automáticos.</p>':'')+'<label for="gl-hq-task">Objetivo y detalles</label><textarea id="gl-hq-task" name="task" maxlength="4000" rows="5" required style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab9cc;border-radius:8px;color:#17283b;background:white" placeholder="¿Qué necesitás que haga esta área?">'+esc(hqDraft)+'</textarea><button class="btn primary" type="submit" data-hq-action="save" '+(hqBusy?'disabled':'')+'>'+(hqAgent==='lider'?'Guardar reunión privada':'Guardar tarea privada')+'</button><button class="btn" type="submit" data-hq-action="copy">Copiar instrucción para delegar</button><p role="status" data-ch-hq-feedback></p></form>'+
       hqAIView()+hqHiringView()+hqGithubView()+hqTaskList()+'<p><a href="https://github.com/mgstock-app/mgstock-app.github.io/issues" target="_blank" rel="noopener noreferrer">Abrir tareas reales en GitHub</a></p></section>';
   }
 
