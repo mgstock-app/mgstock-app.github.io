@@ -14,7 +14,7 @@ const DASH = {
   activity: [{at: '2026-10-26T03:31:42Z', kind: 'audit', what: 'employee_space_created', who: null, company: 'Perfumes'}, {at: '2026-10-26T03:22:11Z', kind: 'login', what: 'login', who: 'kmu***@gmail.com', company: 'Mi Gusto'}],
   system: {accounts: 6, confirmed_accounts: 6, verified_links: 2, editing_open: false, support_open: false}
 };
-function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com', fetcher} = {}) {
+function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existingStore, molinoOpen, email = 'kmu15lopez@gmail.com', fetcher, invoke, confirm=()=>true} = {}) {
   const listeners = {}, calls = [], argsLog = [], store = existingStore || new Map(), notices = [], opened = [];
   let renders = 0, reloads = 0, invalidations = 0;
   const window = {
@@ -23,8 +23,8 @@ function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existing
     GestLokOffline: {pending: async () => 0, invalidateContext: async () => { invalidations++; }},
     location: {reload(){reloads++;}},
     sessionStorage: {getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k)},
-    scrollTo() {},
-    GestLokSupabase: {rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
+    scrollTo() {}, confirm,
+    GestLokSupabase: {functions:{invoke},rpc: async (fn,args) => { calls.push(fn); argsLog.push(args); return rpc(fn,args); }}
   };
   const document = {addEventListener(n, f) { listeners[n] = f; }, visibilityState: 'visible'};
   vm.runInNewContext(source, {window, document, setInterval: () => 0, clearInterval() {}, Date, queueMicrotask, fetch: fetcher});
@@ -227,6 +227,10 @@ test('GESTLOK HQ: solo la creadora selecciona agentes y no se simula ejecución'
   assert.match(r.h.view({parts:{}}), /data-ch-tab="hq"/);
   r.h.setTab('hq'); await tick();
   const html=r.h.view({parts:{}});
+  assert.match(html,/Plano interactivo de la oficina/);
+  assert.match(html,/Centro de misiones/);
+  assert.match(html,/Ficha del empleado/);
+  assert.equal((html.match(/data-ch-hq-agent="/g)||[]).length,6);
   for(const area of ['Desarrollo','Control de calidad','Testing','Atención al cliente','Marketing','Data Analytics']) assert.ok(html.includes(area),area);
   assert.match(html,/Sin conexión a IA/);
   assert.match(html,/Copiar instrucción para delegar/);
@@ -286,4 +290,80 @@ test('HQ Testing consulta Actions reales sin enviar instrucciones ni modificar G
  assert.match(r.h.view({parts:{}}),/actions\/runs\/123/);
  r.listeners.click({preventDefault(){},target:{closest:s=>s==='[data-ch-hq-agent]'?{dataset:{chHqAgent:'marketing'}}:null}});
  assert.doesNotMatch(r.h.view({parts:{}}),/Actividad real de GitHub/);
+});
+
+test('HQ AI requires explicit confirmation, saved pending task and a configured provider',async()=>{
+ const requests=[], rows=[{id:'id-1',agent:'testing',instruction:'Revisar',status:'pendiente',created_at:DASH.generated_at}];
+ let runs=[], confirmed=false;
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{confirm:()=>confirmed,invoke:async(name,options)=>{
+  requests.push([name,options.body]);
+  if(options.body.action==='status')return {data:{configured:true}};
+  runs=[{task_id:'id-1',state:'review',result:'Informe <seguro>'}];return {data:{ok:true,state:'review'}};
+ }});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Proveedor configurado/);
+ click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();assert.equal(requests.length,1);
+ confirmed=true;click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();await tick();
+ assert.equal(requests.length,2);
+ assert.equal(requests[1][0],'gestlok-hq-agent');
+ assert.equal(requests[1][1].task_id,'id-1');
+ assert.match(r.h.view({parts:{}}),/Informe &lt;seguro&gt;/);
+ assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
+});
+
+test('HQ Dirección: identidades estables, ambientes privados y aprobación con informe',async()=>{
+ const rows=[];let reports=[];const decisions=[];
+ const r=load(async(fn,args)=>{
+  if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
+  if(fn==='gestlok_hq_list_runs')return {data:reports};
+  if(fn==='gestlok_hq_add_task'){rows.push({id:'meeting-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'meeting-1'};}
+  if(fn==='gestlok_hq_close_task'){decisions.push(args);rows[0].status=args.p_status;return {data:true};}
+  return {data:DASH};
+ },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true}};reports=[{task_id:'meeting-1',state:'review',result:'Informe del líder'}];return {data:{ok:true,state:'review'}};}});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ for(const name of ['Mateo','Valentina','Julián','Sofía','Lucía','Bruno','Alex'])assert.ok(r.h.view({parts:{}}).includes(name),name);
+ click('[data-ch-hq-agent]',{chHqAgent:'testing'});click('[data-ch-hq-room]',{chHqRoom:'private'});
+ assert.match(r.h.view({parts:{}}),/Oficina privada · Julián/);
+ click('[data-ch-hq-room]',{chHqRoom:'general'});assert.match(r.h.view({parts:{}}),/Plano interactivo de la oficina/);
+ click('[data-ch-hq-leader]');
+ assert.match(r.h.view({parts:{}}),/Oficina privada · Alex/);
+ assert.match(r.h.view({parts:{}}),/Preparar tarea · Dirección de IA/);
+ r.listeners.submit({preventDefault(){},submitter:{dataset:{hqAction:'save'}},target:{matches:s=>s==='[data-ch-hq-form]',querySelector:s=>s==='textarea'?{value:'Mejorar pedidos en Munro'}:s==='#gl-hq-scope'?{value:'GESTLOK Chat · local específico'}:null}});
+ await tick();await tick();
+ assert.equal(rows[0].agent,'lider');assert.match(rows[0].instruction,/GESTLOK Chat · local específico/);
+ click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();assert.equal(decisions.length,0);
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Iniciar reunión de IA/);
+ click('[data-ch-hq-ai-run]',{chHqAiRun:'meeting-1'});await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Informe del líder/);
+ click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();await tick();
+ assert.equal(decisions.length,1);assert.equal(rows[0].status,'cerrada');
+});
+
+test('HQ: solicitud de incorporación de Alex requiere decisión independiente de la creadora',async()=>{
+ const rows=[{id:'meeting-1',agent:'lider',instruction:'Innovación',status:'pendiente',created_at:DASH.generated_at}];
+ const hire={name:'Emilia',specialty:'UX/UI',reason:'Falta investigación de experiencia',benefit:'Reducir errores de uso',cost:'A evaluar',permissions:'Solo lectura',alternative:'Delegar en Desarrollo'};
+ const reports=[{id:'run-1',task_id:'meeting-1',state:'review',result:'Informe',hire_request:hire,hire_decision:null}];
+ const decisions=[];let confirmed=false;
+ const r=load(async(fn,args)=>{
+  if(fn==='gestlok_hq_list_tasks')return {data:rows};
+  if(fn==='gestlok_hq_list_runs')return {data:reports};
+  if(fn==='gestlok_hq_decide_hire'){decisions.push(args);reports[0].hire_decision=args.p_decision;return {data:true};}
+  return {data:DASH};
+ },{confirm:()=>confirmed,invoke:async()=>({data:{configured:true}})});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Emilia · UX\/UI/);
+ assert.match(r.h.view({parts:{}}),/Por qué hace falta/);
+ click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'approved'});await tick();assert.equal(decisions.length,0);
+ confirmed=true;click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'approved'});await tick();await tick();
+ assert.equal(decisions.length,1);assert.equal(decisions[0].p_decision,'approved');
+ assert.match(r.h.view({parts:{}}),/Autorizada · pendiente de configuración/);
+ assert.equal((r.h.view({parts:{}}).match(/data-ch-hq-agent="/g)||[]).length,6);
+ click('[data-ch-hq-hire]',{chHqHire:'run-1',decision:'rejected'});await tick();assert.equal(decisions.length,1);
 });
