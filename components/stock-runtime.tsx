@@ -29,6 +29,7 @@ function preloadStartupScripts(visitor: boolean) {
   const privateScripts = [
     "/stock/gestlok-registration.js?rev=gerentes-20261123",
     "/stock/auth.js?rev=auth-invites-google-20261107",
+    "/stock/gestlok-qr-login.js?rev=qr-login-20261125",
     "/stock/gestlok-logout.js?rev=logout-profile-menu-20261107",
     "/stock/gestlok-pilot.js?rev=zayro-creadora-operativa-20261108",
     "/stock/gestlok-cami-monthly.js?rev=cami-monthly-20261106",
@@ -47,7 +48,7 @@ function preloadStartupScripts(visitor: boolean) {
     "/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108",
     "/stock/gestlok-contacto-web.js?rev=contacto-web-20261122",
     "/stock/gestlok-creator-home.js?rev=hq-office-20261125b",
-    "/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107",
+    "/stock/gestlok-role-switcher.js?rev=roles-qr-20261125",
   ];
   for (const src of visitor ? common : [...common, ...privateScripts]) {
     const link = document.createElement("link");
@@ -75,6 +76,8 @@ export function StockRuntime() {
       const visitor = new URLSearchParams(location.search).get("demo") === "1";
       if (!visitor) await load("/stock/gestlok-registration.js?rev=gerentes-20261123");
       if (!visitor) await load("/stock/gestlok-invites.js?rev=invite-google-20261107");
+      if (!visitor) await load("/vendor/qrcode-generator.js");
+      if (!visitor) await load("/stock/gestlok-qr-login.js?rev=qr-login-20261125");
       await load(visitor ? "/stock/gestlok-visitor-demo.js" : "/stock/auth.js?rev=auth-invites-google-20261107");
       // Perfil seguro: salida dentro de Mi perfil, también accesible para cuentas pendientes.
       if (!visitor) await load("/stock/gestlok-logout.js?rev=logout-profile-menu-20261107");
@@ -109,8 +112,7 @@ export function StockRuntime() {
       await load("/stock/gestlok-owner-areas.js?rev=munro-staff-sidebar-20261113");
       await load("/stock/gestlok-creator-mode.js?rev=creadora-inicio-20261026");
       await load("/stock/gestlok-creator-support.js?rev=creadora-permisos-20261108");
-      // NFC y QR: solo la creadora. La librería de QR se carga antes del panel que la usa.
-      if (!visitor) await load("/vendor/qrcode-generator.js");
+      // NFC y QR: la librería ya está cargada antes del ingreso.
       if (!visitor) await load("/stock/gestlok-nfc-qr.js?rev=nfc-chat-20261123");
       // Mensajes web (Contacto de gestlok.com.ar): solo la creadora; el servidor lo valida.
       if (!visitor) await load("/stock/gestlok-contacto-web.js?rev=contacto-web-20261122");
@@ -123,7 +125,7 @@ export function StockRuntime() {
       if (!visitor) await load("/stock/gestlok-support.js?rev=burbuja-arrastrable-20261113");
       // Modo diseño: solo la creadora ve el botón; los cambios se leen por empresa.
       if (!visitor) await load("/stock/gestlok-design-mode.js?rev=modo-diseno-lateral-20261109");
-      if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-logout-profile-20261107");
+      if (!visitor) await load("/stock/gestlok-role-switcher.js?rev=roles-qr-20261125");
       await load("/stock/gestlok-provider-pdf.js");
       // Preservación global de entradas antes de iniciar la app.
       await load("/stock/gestlok-form-draft-guard.js?rev=sin-sugerencias-20261101");

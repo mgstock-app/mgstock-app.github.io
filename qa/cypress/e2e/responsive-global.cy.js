@@ -37,6 +37,7 @@ describe('GESTLOK · diseño adaptativo global',()=>{
   }
   it('tablet 768px: formulario centrado, no estirado y sin scroll horizontal',()=>{
     visitLogin(768,1024);
+    cy.get('#gl-qr-login').should('be.visible');
     cy.get('#auth .au-card').then($el=>{
       const rect=$el[0].getBoundingClientRect();
       expect(rect.width).to.be.greaterThan(480);
