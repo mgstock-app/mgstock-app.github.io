@@ -317,14 +317,15 @@ test('HQ AI requires explicit confirmation, saved pending task and a configured 
 });
 
 test('HQ Dirección: identidades estables, ambientes privados y aprobación con informe',async()=>{
- const rows=[];let reports=[];const decisions=[];
+ const rows=[];let reports=[];const decisions=[];const executed=[];
  const r=load(async(fn,args)=>{
   if(fn==='gestlok_hq_list_tasks')return {data:rows.slice()};
   if(fn==='gestlok_hq_list_runs')return {data:reports};
   if(fn==='gestlok_hq_add_task'){rows.push({id:'meeting-1',agent:args.p_agent,instruction:args.p_instruction,status:'pendiente',created_at:DASH.generated_at});return {data:'meeting-1'};}
+  if(fn==='gestlok_hq_delegate_mission'){for(const agent of ['desarrollo','calidad','testing','atencion','marketing','datos','soporte'])if(!rows.some(t=>t.parent_task_id===args.p_task&&t.agent===agent))rows.push({id:agent,agent,parent_task_id:args.p_task,status:'pendiente',instruction:'Misión',created_at:DASH.generated_at});return {data:true};}
   if(fn==='gestlok_hq_close_task'){decisions.push(args);rows[0].status=args.p_status;return {data:true};}
   return {data:DASH};
- },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true,verified:true}};reports=[{task_id:'meeting-1',state:'review',result:'Informe del líder'}];return {data:{ok:true,state:'review'}};}});
+ },{invoke:async(name,options)=>{if(options.body.action==='status')return {data:{configured:true,verified:true}};executed.push(options.body.task_id);reports=[...reports,{task_id:options.body.task_id,state:'review',result:options.body.task_id==='meeting-1'?'Informe del líder':'Propuesta',quota_units:1,created_at:new Date().toISOString()}];return {data:{ok:true,state:'review'}};}});
  const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:s=>s===selector?{dataset}:null}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
  for(const name of ['Nicolás','Camila','Tomás','Renata','Martina','Santiago','Alex'])assert.ok(r.h.view({parts:{}}).includes(name),name);
@@ -339,8 +340,10 @@ test('HQ Dirección: identidades estables, ambientes privados y aprobación con 
  assert.equal(rows[0].agent,'lider');assert.match(rows[0].instruction,/GESTLOK Chat · local específico/);
  click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();assert.equal(decisions.length,0);
  click('[data-ch-hq-ai-status]');await tick();await tick();
- assert.match(r.h.view({parts:{}}),/Iniciar reunión de IA/);
- click('[data-ch-hq-ai-run]',{chHqAiRun:'meeting-1'});await tick();await tick();
+ assert.match(r.h.view({parts:{}}),/Distribuir misión/);
+ click('[data-ch-hq-team]',{chHqTeam:'meeting-1'});await tick();await tick();assert.equal(executed.length,0);assert.equal(rows.length,8);
+ assert.match(r.h.view({parts:{}}),/7 sectores asignados/);
+ click('[data-ch-hq-team]',{chHqTeam:'meeting-1'});for(let i=0;i<24;i++)await tick();assert.equal(executed.length,8);assert.equal(executed.at(-1),'meeting-1');
  assert.match(r.h.view({parts:{}}),/Informe del líder/);
  click('[data-ch-hq-close]',{chHqClose:'meeting-1',status:'cerrada'});await tick();await tick();
  assert.equal(decisions.length,1);assert.equal(rows[0].status,'cerrada');
@@ -562,7 +565,22 @@ test('HQ exposes remaining reserved quota and blocks a second full meeting witho
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
  assert.match(html,/Cuota interna: 2 de 10 consultas disponibles/);
- assert.match(html,/Cuota insuficiente: esta tarea necesita 8 consultas y quedan 2/);
+ assert.match(html,/Distribuir misión/);
  assert.doesNotMatch(html,/data-ch-hq-ai-run="next"/);
  assert.equal(invoked,0);
+});
+
+
+test('HQ staged SQL preserves prior quota and protects the mission and sector relation',()=>{
+ const sql=readFileSync('docs/hq-staged-delegation-migration.sql','utf8');
+ assert.match(sql,/unique index hq_one_sector_per_mission/);
+ assert.match(sql,/require_creator\(\)/);
+ assert.match(sql,/pg_advisory_xact_lock/);
+ assert.match(sql,/sum\(quota_units\)/);
+ assert.match(sql,/quota_units=8/);
+ assert.match(sql,/Sectores pendientes/);
+ assert.match(sql,/revoke all on function public.gestlok_hq_delegate_mission/);
+ const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
+ assert.match(backend,/Array.isArray\(claim.entries\)/);
+ assert.match(backend,/if\(!staged\)for/);
 });
