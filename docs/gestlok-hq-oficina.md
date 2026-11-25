@@ -42,12 +42,25 @@ tarea» precarga el formulario y la creadora decide si la guarda.
 Debajo sigue el **Centro de control** de siempre: bandeja ejecutiva de Alex, Facundo, formulario de tareas,
 motor de IA, incorporaciones, GitHub y bandeja de tareas.
 
+## Trabajo real del equipo
+
+- **Jornada diaria automática** (se pausa desde HQ → Centro de control → Motor de agentes): todos los días desde las
+  08:00 (hora de Buenos Aires) el servidor crea la misión del día: Facundo, Renata, Santiago, Camila, Martina, Nicolás y
+  Tomás analizan GESTLOK Chat y los locales con el pulso del día, y Alex arma el informe con tres prioridades para tu
+  aprobación. Una misión autónoma por vez; el worker corre cada 10 minutos y hace una consulta por ronda.
+- **Cupo**: 40 consultas de IA cada 24 h (Groq Free para `openai/gpt-oss-20b` permite 1.000 solicitudes y 200.000 tokens
+  por día, 30 solicitudes y 8.000 tokens por minuto).
+- **Si Groq pide esperar** (429, clave o caída), se libera la reserva y la tarea queda pendiente: no se gasta cupo.
+- Entre sectores, «Continuar equipo» hace una pausa de 25 s para no superar los 8.000 tokens por minuto.
+- Los informes usan solo los números del pulso; si un dato no está, lo dicen.
+
 ## Archivos
 
 - `public/stock/gestlok-hq-office.mjs`: motor pixel art, simulación, comentarios con datos y paneles. Sin dependencias, sin red, sin base.
 - `public/stock/gestlok-creator-home.js`: `hqView` monta la oficina, lee el pulso cada minuto y conecta los botones.
 - `supabase/migrations/20261125150000_gestlok_hq_pulso.sql`: función `gestlok_hq_pulso()` de solo lectura, exclusiva de la creadora, con indicadores agregados (sin nombres, teléfonos, direcciones ni mensajes de clientes).
-- `supabase/functions/gestlok-hq-agent/index.ts`: los informes de IA reciben el pulso agregado como evidencia y los puestos nuevos.
+- `supabase/migrations/20261125160000_gestlok_hq_trabajo_diario.sql`: jornada diaria, cupo 40, liberar reserva, pulso para el worker, ronda cada 10 min.
+- `supabase/functions/gestlok-hq-agent/index.ts` y `gestlok-hq-worker/index.ts`: los informes de IA reciben el pulso agregado como evidencia, los puestos nuevos y liberan la reserva si Groq rechaza.
 - Se retiró la oficina 3D (`gestlok-hq-3d.mjs`). La copia de `three` en `public/vendor/hq-three` quedó sin uso y se puede retirar después.
 
 ## Activación

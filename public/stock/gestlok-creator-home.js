@@ -693,12 +693,14 @@
     finally{if(epoch===hqEpoch){hqAIStatusBusy=false;if(hqAllowed()&&(force||before!==JSON.stringify([hqAIReady,hqAIConfigured,hqAIStatusError]))&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id))api?.render();}}
   }
   setInterval(()=>{void hqCheckConnection();},2000);
+  // Cupo interno por 24 h. Groq Free (openai/gpt-oss-20b) permite 1.000 solicitudes y 200.000 tokens por día.
+  const HQ_DAILY_LIMIT=40;
   function hqQuota(){
     if(!hqLoaded||!hqRunsLoaded)return null;
     const cutoff=Date.now()-86400000;
     const recent=hqRuns.filter(r=>Date.parse(r.created_at)>cutoff);
     const used=recent.reduce((n,r)=>n+(Number.isInteger(r.quota_units)?r.quota_units:hqTasks.find(t=>t.id===r.task_id)?.agent==='lider'?8:1),0);
-    return {remaining:Math.max(0,10-used),next:recent.length?Math.min(...recent.map(r=>Date.parse(r.created_at)+86400000)):null};
+    return {limit:HQ_DAILY_LIMIT,remaining:Math.max(0,HQ_DAILY_LIMIT-used),next:recent.length?Math.min(...recent.map(r=>Date.parse(r.created_at)+86400000)):null};
   }
   let hqSupport=null,hqSupportAt=0,hqSupportBusy=false;
   async function hqReadSupport(){
@@ -722,6 +724,23 @@
     const running=children.some(q=>hqRuns.some(r=>r.task_id===q.id&&r.state==='working'));
     const quota=hqQuota();
     return '<div style="padding:10px;border:1px solid #cbd8e2;border-radius:8px;margin:8px 0"><strong>Delegación de Alex</strong><p>'+esc(children.length?children.length+' sectores asignados · '+ready+' informes · '+pending+' sin iniciar':'Distribuí la misión en los siete sectores sin consumir IA. Si corresponde, se reutilizan las tareas iniciales sin ejecutar.')+'</p><button type="button" class="btn primary" data-ch-hq-team="'+esc(t.id)+'" '+(hqAIBusy||hqBusy||running||t.auto_enabled||(children.length&&(!hqAIReady||quota?.remaining===0||(!pending&&!ready)))?'disabled':'')+'>'+(!children.length?'Distribuir misión':pending?'Continuar equipo':'Preparar informe de Alex')+'</button>'+(children.length===7&&typeof t.auto_enabled==='boolean'?'<p role="status">'+esc(t.auto_enabled?'Modo autónomo autorizado · continúa por servidor cuando haya cuota':'Modo autónomo desactivado')+'</p><button type="button" class="btn" data-ch-hq-auto="'+esc(t.id)+'" data-enabled="'+(!t.auto_enabled)+'" '+(hqBusy||hqAIBusy?'disabled':'')+'>'+(t.auto_enabled?'Pausar trabajo autónomo':'Autorizar trabajo autónomo')+'</button>':'')+'</div>';
+  }
+  const HQ_TEAM_GAP_MS=Number.isFinite(window.GestLokHqTeamGapMs)?window.GestLokHqTeamGapMs:25000;
+  // Jornada diaria automática: el servidor arma la misión del día a las 08:00 y la avanza sola.
+  let hqDailyBusy=false;
+  function hqDailyView(){
+    const j=hqPulse?.jornada;
+    if(!j)return '<p role="status" style="padding:8px 10px;background:#f3f7fa;border-radius:8px">Jornada diaria automática: '+esc(hqPulseError?'no disponible todavía (falta activar el pulso).':'consultando…')+'</p>';
+    const last=j.ultima?String(j.ultima).split('-').reverse().join('/'):'todavía no corrió';
+    return '<div aria-label="Jornada diaria automática" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;background:#f3f7fa;border-radius:8px;margin:8px 0"><strong>Jornada diaria automática: '+(j.activa?'activa':'pausada')+'</strong><small style="flex:1 1 220px">Todos los días desde las 08:00 el equipo revisa GESTLOK Chat y los locales con el pulso del día y Alex arma un informe para tu aprobación. Última jornada: '+esc(last)+'. Solo análisis y propuestas.</small><button type="button" class="btn" data-ch-hq-daily data-enabled="'+(!j.activa)+'" '+(hqDailyBusy?'disabled':'')+'>'+(j.activa?'Pausar jornada diaria':'Activar jornada diaria')+'</button></div>';
+  }
+  async function hqSetDaily(enabled){
+    if(!hqAllowed()||hqDailyBusy)return;
+    if(!window.confirm(enabled?'¿Activar la jornada diaria? Desde las 08:00 el servidor usa Groq gratuito para que el equipo analice GESTLOK Chat y los locales. No modifica nada.':'¿Pausar la jornada diaria? Las tareas ya creadas se conservan.'))return;
+    const epoch=hqEpoch;hqDailyBusy=true;api?.render();
+    try{const res=await window.GestLokSupabase.rpc('gestlok_hq_set_daily',{p_enabled:enabled});if(res.error||res.data!==true)throw Error('sin confirmar');hqPulseAt=0;await hqReadPulse(true);}
+    catch{if(epoch===hqEpoch)hqAIError='No se confirmó el cambio de la jornada diaria.';}
+    finally{if(epoch===hqEpoch){hqDailyBusy=false;if(hqAllowed())api?.render();}}
   }
   async function hqTeam(id){
     if(!hqAllowed()||hqBusy||hqAIBusy||!hqTasks.some(t=>t.id===id&&t.agent==='lider'&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===id))return;
@@ -747,9 +766,17 @@
         if(hqQuota()?.remaining===0){hqAIError='Cuota interna agotada. Los resultados se conservaron; continuá cuando se renueve.';break;}
         const next=children.find(t=>t.status==='pendiente'&&!hqRuns.some(r=>r.task_id===t.id));
         if(!next&&!children.some(t=>t.status!=='cancelada'&&hqRuns.some(r=>r.task_id===t.id&&r.state==='review'))){hqAIError='No hay propuestas exitosas para Alex.';break;}
+        if(step>0&&HQ_TEAM_GAP_MS>0){
+          // Pausa entre sectores: el plan gratuito de Groq admite 8.000 tokens por minuto.
+          hqAIError='Pausa breve entre sectores para respetar el límite gratuito de Groq…';api?.render();
+          await new Promise(r=>setTimeout(r,HQ_TEAM_GAP_MS));
+          if(!alive())return;
+          hqAIError='';
+        }
         const res=await sb.functions.invoke('gestlok-hq-agent',{body:{action:'run',task_id:next?.id||id}});
         if(!alive())return;
         await refresh();
+        if(res.data?.state==='released'){hqAIError=String(res.data.diagnostic||'Groq pidió esperar. Las tareas siguen pendientes y no se gastó cupo.');break;}
         if(res.error||res.data?.state!=='review'){hqAIError='El equipo se detuvo por un error o límite. Consultá el resultado individual; las demás tareas se conservan.';break;}
         if(!next)break;
       }
@@ -759,7 +786,7 @@
   async function hqAI(action,taskId){
     if(!hqAllowed()||hqAIBusy||hqBusy)return;
     if(action==='run' && (!hqAIReady||!hqTasks.some(t=>t.id===taskId&&t.status==='pendiente')||hqRuns.some(r=>r.task_id===taskId)))return;
-    if(action==='run'){const q=hqQuota(),cost=hqTasks.find(t=>t.id===taskId)?.agent==='lider'?8:1;if(q&&q.remaining<cost){hqAIError='Cuota interna insuficiente: quedan '+q.remaining+' de 10 consultas. No se inició la tarea.';api?.render();return;}}
+    if(action==='run'){const q=hqQuota(),cost=hqTasks.find(t=>t.id===taskId)?.agent==='lider'?8:1;if(q&&q.remaining<cost){hqAIError='Cuota interna insuficiente: quedan '+q.remaining+' de '+HQ_DAILY_LIMIT+' consultas. No se inició la tarea.';api?.render();return;}}
     if(action==='run' && !window.confirm(hqTasks.find(t=>t.id===taskId)?.agent==='lider'?'¿Iniciar la reunión? Consume hasta 8 consultas de IA. No incluyas datos personales ni secretos.':'¿Enviar esta instrucción al proveedor de IA? No incluyas datos personales ni secretos. Usá únicamente una clave de Groq del plan gratuito. Si se agota la cuota, la ejecución se detiene.'))return;
     const epoch=hqEpoch;hqAIBusy=true;hqAIError='';api?.render();
     try{
@@ -769,6 +796,7 @@
       if(epoch!==hqEpoch||!hqAllowed())return;
       if(action==='status'){hqAIStatusAt=Date.now();hqAIConfigured=res.error?null:res.data?.configured===true;hqAIReady=res.error?false:hqAIConfigured&&res.data?.verified===true;hqAIStatusError=String(res.data?.diagnostic||(!hqAIConfigured?'No se confirmó la clave de Groq.':!hqAIReady?'Groq todavía no confirmó la conexión.':''));}
       if(res.error)hqAIError='No se pudo confirmar la conexión o ejecución. Consultá los resultados antes de repetir.';
+      else if(action==='run'&&res.data?.state==='released')hqAIError=String(res.data.diagnostic||'Groq pidió esperar. La tarea sigue pendiente y no se gastó cupo.');
       else if(action==='run'&&res.data?.state==='error')hqAIError='La ejecución terminó con error. Consultá el motivo en la bandeja de tareas.';
       const runs=await sb.rpc('gestlok_hq_list_runs');
       if(epoch!==hqEpoch||!hqAllowed())return;
@@ -779,7 +807,7 @@
   }
   function hqAIView(){
     const quota=hqQuota();
-    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: 10 consultas de IA cada 24 horas. Cada sector y el informe final de Alex reservan una consulta; los resultados quedan guardados por separado. Las reuniones anteriores reservaban 8. La cuota del proveedor puede ser menor.</p>'+(quota?'<p role="status"><strong>Cuota interna: '+esc(quota.remaining)+' de 10 consultas disponibles.</strong> '+(quota.next!==null?'Próxima liberación: '+esc(new Date(quota.next).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}))+' (hora argentina).':'')+' Las ejecuciones fallidas también reservan cuota.</p>':'')+'<button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIStatusError|| (hqAIReady===true?(hqRuns.some(r=>r.state==='review')?'Groq · conexión disponible · informes registrados':'Groq · conexión disponible (respuesta de IA aún no verificada)'):hqAIReady===false?'Conexión de IA no disponible':'Verificando conexión de IA automáticamente…')))+'</p></section>';
+    return '<section aria-label="Motor de agentes" style="padding:12px;border:1px solid #dce3eb;border-radius:9px;margin-top:16px"><h3>Motor de agentes</h3><p>Ejecutá una tarea guardada y recibí un informe para revisar. No modifica código ni ejecuta pruebas o publicaciones. Proveedor previsto: Groq Free, sin alternativa paga. Límite: '+HQ_DAILY_LIMIT+' consultas de IA cada 24 horas. Cada sector y el informe final de Alex reservan una consulta; los resultados quedan guardados por separado. Las reuniones anteriores reservaban 8. Si Groq pide esperar, la tarea sigue pendiente y no se gasta cupo.</p>'+hqDailyView()+(quota?'<p role="status"><strong>Cuota interna: '+esc(quota.remaining)+' de '+HQ_DAILY_LIMIT+' consultas disponibles.</strong> '+(quota.next!==null?'Próxima liberación: '+esc(new Date(quota.next).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}))+' (hora argentina).':'')+' Las ejecuciones fallidas también reservan cuota.</p>':'')+'<button type="button" class="btn" data-ch-hq-ai-status '+(hqAIBusy?'disabled':'')+'>Comprobar conexión y resultados</button><p role="status">'+esc(hqAIError||(hqAIBusy?'Consultando…':hqAIStatusError|| (hqAIReady===true?(hqRuns.some(r=>r.state==='review')?'Groq · conexión disponible · informes registrados':'Groq · conexión disponible (respuesta de IA aún no verificada)'):hqAIReady===false?'Conexión de IA no disponible':'Verificando conexión de IA automáticamente…')))+'</p></section>';
   }
   async function hqDecideHire(id,decision){
     if(!hqAllowed()||hqAIBusy||hqBusy||!['approved','rejected'].includes(decision)||!hqRuns.some(r=>r.id===id&&r.hire_request&&!r.hire_decision))return;
@@ -903,7 +931,7 @@
       if(res.error||!Array.isArray(res.data?.sucursales)){
         const msg=String(res.error?.message||'')+' '+String(res.error?.code||'');
         hqPulseError=/gestlok_hq_pulso|PGRST202|42883/i.test(msg)?'El pulso de los locales todavía no está activo: falta aplicar la migración gestlok_hq_pulso.':'No se pudo leer el pulso de los locales. Se vuelve a intentar en un minuto.';
-      }else{hqPulse=res.data;hqPulseError='';}
+      }else{const before=JSON.stringify(hqPulse?.jornada||null);hqPulse=res.data;hqPulseError='';if(before!==JSON.stringify(hqPulse.jornada||null)&&!['gl-hq-task','gl-hq-scope'].includes(document.activeElement?.id)){api?.render();return;}}
       hqOfficeSync();
     }catch{if(epoch===hqEpoch){hqPulseError='No se pudo leer el pulso de los locales.';hqOfficeSync();}}
     finally{if(epoch===hqEpoch)hqPulseBusy=false;}
@@ -1057,6 +1085,7 @@
     const hire=ev.target.closest?.('[data-ch-hq-hire]');if(hire){ev.preventDefault();void hqDecideHire(hire.dataset.chHqHire,hire.dataset.decision);return;}
     const hqAIStatus=ev.target.closest?.('[data-ch-hq-ai-status]');if(hqAIStatus){ev.preventDefault();if(!hqAIStatusBusy)void hqAI('status');return;}
     const auto=ev.target.closest?.('[data-ch-hq-auto]');if(auto){ev.preventDefault();if(hqAllowed()){const enabled=auto.dataset.enabled==='true';if(window.confirm(enabled?'¿Autorizar esta misión en modo autónomo? El servidor continúa con Groq gratuito aun si cerrás GESTLOK; no realiza modificaciones comerciales.':'¿Pausar las próximas tareas autónomas? Una consulta ya iniciada puede terminar.'))void hqRequest('gestlok_hq_set_auto',{p_task:auto.dataset.chHqAuto,p_enabled:enabled});}return;}
+    const hqDaily=ev.target.closest?.('[data-ch-hq-daily]');if(hqDaily){ev.preventDefault();void hqSetDaily(hqDaily.dataset.enabled==='true');return;}
     const hqTeamButton=ev.target.closest?.('[data-ch-hq-team]');if(hqTeamButton){ev.preventDefault();void hqTeam(hqTeamButton.dataset.chHqTeam);return;}
     const hqAIRun=ev.target.closest?.('[data-ch-hq-ai-run]');if(hqAIRun){ev.preventDefault();void hqAI('run',hqAIRun.dataset.chHqAiRun);return;}
     const hqGit=ev.target.closest?.('[data-ch-hq-github]');if(hqGit){ev.preventDefault();void hqCheckGithub();return;}

@@ -259,8 +259,13 @@ export function buildInsights(model = {}) {
     if (review.length) push({id: 'rev-' + p.id, agent: p.id, level: 2, tag: 'informe', basis: 'ia', text: 'Mi informe está listo para que lo revises en la bandeja.'});
     if (errors.length) push({id: 'err-' + p.id, agent: p.id, level: 2, tag: 'error', basis: 'ia', text: 'Mi última ejecución terminó con error; está el motivo en la bandeja.'});
   }
+  const jor = model.pulse?.jornada;
+  if (jor && jor.activa) {
+    const hoyIso = now.y + '-' + String(now.m).padStart(2, '0') + '-' + String(now.d).padStart(2, '0');
+    push({id: 'jornada', agent: 'lider', tag: 'general', basis: 'sistema', text: jor.ultima === hoyIso ? 'La jornada de hoy ya arrancó: cada sector trabaja con el pulso del día y después preparo el informe.' : now.h < 8 ? 'La jornada diaria arranca a las 08:00.' : 'La jornada de hoy arranca cuando termine la misión en curso.'});
+  }
   if (model.aiReady === false) push({id: 'ia-off', agent: 'desarrollo', tag: 'ia', text: 'La IA de HQ todavía no responde; seguimos trabajando con datos reales.'});
-  if (model.quota && Number.isFinite(model.quota.remaining)) push({id: 'cuota', agent: 'lider', tag: 'general', text: 'Quedan ' + model.quota.remaining + ' de 10 consultas de IA en las últimas 24 h.'});
+  if (model.quota && Number.isFinite(model.quota.remaining)) push({id: 'cuota', agent: 'lider', tag: 'general', text: 'Quedan ' + model.quota.remaining + ' de ' + (model.quota.limit || 40) + ' consultas de IA en las últimas 24 h.'});
   const alerts = out.filter(i => i.level >= 3).length;
   push({id: 'resumen', agent: 'lider', level: alerts ? 3 : 1, tag: 'general', basis: 'resumen',
     text: 'Resumen: ' + plural(alerts, 'alerta', 'alertas') + ' en los locales, ' + plural(pendingTotal, 'tarea sin iniciar', 'tareas sin iniciar') + ' y ' + plural(reviewTotal, 'informe', 'informes') + ' para revisar.'});
@@ -908,7 +913,8 @@ function chips() {
   if (!STATE.locales.length) list.push(['<i></i>' + (m.pulseError ? 'Pulso sin conectar' : 'Consultando locales'), 'warn']);
   const check = m.support?.checks?.[0];
   if (check) { const al = /^ALERTA/i.test(String(check.conclusion || '')), rv = /^(REVISAR|VERIFICACI)/i.test(String(check.conclusion || '')); list.push(['<i></i>Sitio: ' + (al ? 'alerta' : rv ? 'revisar' : 'en línea'), al ? 'bad' : rv ? 'warn' : 'ok']); }
-  list.push(['<i></i>IA: ' + (m.aiReady === true ? 'lista' : m.aiReady === false ? 'no disponible' : 'sin verificar') + (m.quota ? ' · ' + m.quota.remaining + '/10' : ''), m.aiReady === true ? 'ok' : 'warn']);
+  const jor = m.pulse?.jornada; if (jor) list.push(['<i></i>Jornada diaria: ' + (jor.activa ? 'activa' : 'pausada'), jor.activa ? 'ok' : 'warn']);
+  list.push(['<i></i>IA: ' + (m.aiReady === true ? 'lista' : m.aiReady === false ? 'no disponible' : 'sin verificar') + (m.quota ? ' · ' + m.quota.remaining + '/' + (m.quota.limit || 40) : ''), m.aiReady === true ? 'ok' : 'warn']);
   el.innerHTML = list.map(([t, k]) => '<span class="hqo-chip ' + k + '">' + t + '</span>').join('');
 }
 

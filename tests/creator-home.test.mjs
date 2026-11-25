@@ -19,6 +19,7 @@ function load(rpc, {creadora = true, permanent = false, tenant = 't-1', existing
   let renders = 0, reloads = 0, invalidations = 0;
   const window = {
     GestLokCreatorMode: {state: () => ({permanent})},
+    GestLokHqTeamGapMs: 0,
     GestLokMolino: {open: tab => { opened.push(tab); molinoOpen?.(tab); }},
     GestLokOffline: {pending: async () => 0, invalidateContext: async () => { invalidations++; }},
     location: {reload(){reloads++;}},
@@ -563,7 +564,7 @@ test('HQ exposes remaining reserved quota and blocks a second full meeting witho
  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}),{invoke:async()=>{invoked++;return {data:{configured:true,verified:true}};}});
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
  const html=r.h.view({parts:{}});
- assert.match(html,/Cuota interna: 2 de 10 consultas disponibles/);
+ assert.match(html,/Cuota interna: 32 de 40 consultas disponibles/);
  assert.match(html,/Distribuir misión/);
  assert.doesNotMatch(html,/data-ch-hq-ai-run="next"/);
  assert.equal(invoked,0);
@@ -618,4 +619,61 @@ test('HQ Facundo displays recorded server evidence and never starts an AI run on
  assert.match(html,/&lt;evidencia&gt; HTTP 200/);
  assert.match(html,/No acredita pruebas autenticadas/);
  assert.equal(calls,0);
+});
+
+test('HQ: la jornada diaria se ve en el motor y se pausa solo con confirmación',async()=>{
+ let daily=true;const calls=[];let confirmed=false;
+ const r=load(async(fn,args)=>{calls.push([fn,args]);
+  if(fn==='gestlok_hq_list_tasks'||fn==='gestlok_hq_list_runs')return {data:[]};
+  if(fn==='gestlok_hq_pulso')return {data:{sucursales:[],conteo:{},jornada:{activa:daily,ultima:'2026-11-25'},cupo:{limite:40}}};
+  if(fn==='gestlok_hq_set_daily'){daily=args.p_enabled;return {data:true};}
+  return {data:DASH};},{confirm:()=>confirmed});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ r.h.view({parts:{}});await tick();await tick();await tick();
+ let html=r.h.view({parts:{}});
+ assert.match(html,/Jornada diaria automática: activa/);
+ assert.match(html,/Última jornada: 25\/11\/2026/);
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+ click('[data-ch-hq-daily]',{enabled:'false'});await tick();
+ assert.equal(calls.filter(c=>c[0]==='gestlok_hq_set_daily').length,0);
+ confirmed=true;click('[data-ch-hq-daily]',{enabled:'false'});for(let i=0;i<6;i++)await tick();
+ assert.equal(JSON.stringify(calls.filter(c=>c[0]==='gestlok_hq_set_daily').map(c=>c[1])),'[{"p_enabled":false}]');
+ html=r.h.view({parts:{}});
+ assert.match(html,/Jornada diaria automática: pausada/);
+ assert.match(html,/Activar jornada diaria/);
+});
+
+test('HQ: si Groq pide esperar, la tarea sigue pendiente, no se gasta cupo y se informa',async()=>{
+ const rows=[{id:'t-1',agent:'datos',instruction:'Comparar locales',status:'pendiente',created_at:DASH.generated_at}];
+ const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?[]:DASH}),{invoke:async(name,o)=>o.body.action==='status'?{data:{configured:true,verified:true}}:{data:{ok:false,state:'released',diagnostic:'Cuota gratuita o límite temporal de Groq alcanzado (429). La tarea sigue pendiente y no se gastó cupo.'}}});
+ const click=(selector,dataset={})=>r.listeners.click({preventDefault(){},target:{closest:q=>q===selector?{dataset}:null}});
+ r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
+ click('[data-ch-hq-ai-status]');await tick();await tick();
+ click('[data-ch-hq-ai-run]',{chHqAiRun:'t-1'});for(let i=0;i<6;i++)await tick();
+ const html=r.h.view({parts:{}});
+ assert.match(html,/límite temporal de Groq alcanzado \(429\)\. La tarea sigue pendiente y no se gastó cupo/);
+ assert.match(html,/data-ch-hq-ai-run="t-1"/);
+});
+
+test('HQ: el trabajo diario es opt-out, de solo lectura y respeta el plan gratuito',()=>{
+ const sql=readFileSync('supabase/migrations/20261125160000_gestlok_hq_trabajo_diario.sql','utf8');
+ const worker=readFileSync('supabase/functions/gestlok-hq-worker/index.ts','utf8');
+ const agent=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
+ assert.match(sql,/revoke all on function gestlok_hq_private\.daily_mission\(\) from public, anon, authenticated/);
+ assert.match(sql,/function gestlok_hq_private\.set_daily\(p_enabled boolean\)[\s\S]*require_creator\(\)/);
+ assert.match(sql,/grant execute on function public\.gestlok_hq_release_run\(uuid, uuid\) to service_role/);
+ assert.doesNotMatch(sql,/grant execute on function public\.gestlok_hq_release_run\(uuid, uuid\) to authenticated/);
+ assert.match(sql,/grant execute on function public\.gestlok_hq_worker_pulso\(text\) to service_role/);
+ assert.match(sql,/\+units>40/);
+ assert.match(sql,/>=40 then return null/);
+ assert.match(sql,/perform gestlok_hq_private\.daily_mission\(\)/);
+ assert.match(sql,/hora < 8/);
+ assert.match(sql,/t\.auto_enabled\) then return null/);
+ assert.match(sql,/schedule := '\*\/10 \* \* \* \*'/);
+ assert.match(worker,/gestlok_hq_worker_pulso/);
+ assert.match(worker,/gestlok_hq_release_run/);
+ assert.match(worker,/si un dato no está, decilo y no lo inventes/);
+ assert.match(agent,/gestlok_hq_release_run/);
+ assert.match(agent,/state:"released"/);
+ assert.doesNotMatch(worker+agent,/api\.openai\.com/);
 });

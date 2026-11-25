@@ -2,10 +2,10 @@
 -- Indicadores agregados de GESTLOK Chat y del Conteo de Mi Gusto para que los empleados de HQ
 -- comenten, reporten y propongan con datos reales. Solo lectura y exclusivo de la creadora.
 -- No devuelve nombres, teléfonos, direcciones, conversaciones ni textos de clientes.
-create or replace function gestlok_hq_private.pulso() returns jsonb
+-- Datos internos del pulso: sin permisos para nadie; solo los usan las funciones de abajo.
+create or replace function gestlok_hq_private.pulso_datos() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
-  v uuid := gestlok_hq_private.require_creator();
   hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
   desde_hoy timestamptz := (hoy::timestamp at time zone 'America/Argentina/Buenos_Aires');
   desde_7 timestamptz := now() - interval '7 days';
@@ -97,6 +97,15 @@ begin
   );
 end $$;
 
+revoke all on function gestlok_hq_private.pulso_datos() from public, anon, authenticated;
+
+-- Lectura de la creadora.
+create or replace function gestlok_hq_private.pulso() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare v uuid := gestlok_hq_private.require_creator();
+begin
+  return gestlok_hq_private.pulso_datos();
+end $$;
 revoke all on function gestlok_hq_private.pulso() from public, anon, authenticated;
 grant execute on function gestlok_hq_private.pulso() to authenticated;
 
