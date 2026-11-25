@@ -305,7 +305,7 @@ test('HQ AI requires explicit confirmation, saved pending task and a configured 
  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();
  assert.doesNotMatch(r.h.view({parts:{}}),/data-ch-hq-ai-run=/);
  click('[data-ch-hq-ai-status]');await tick();await tick();
- assert.match(r.h.view({parts:{}}),/Proveedor configurado/);
+ assert.match(r.h.view({parts:{}}),/Groq · clave configurada \(respuesta aún no verificada\)/);
  click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();assert.equal(requests.length,1);
  confirmed=true;click('[data-ch-hq-ai-run]',{chHqAiRun:'id-1'});await tick();await tick();
  assert.equal(requests.length,2);
@@ -442,4 +442,37 @@ test('HQ premium uses a pinned, self-hosted renderer and preserves the private f
  assert.match(source,/data-hq-3d-host/);
  assert.match(source,/if\(!hqAllowed\(\)\|\|!host\.isConnected\)return/);
  assert.match(source,/data-hq-renderer="fallback"/);
+});
+
+test('HQ: only an actual pending execution activates work or a meeting',async()=>{
+ for(const [rows,runs,meeting,working] of [
+  [[],[],false,0],
+  [[{id:'m',agent:'lider',status:'pendiente',instruction:'Planificar'}],[],false,0],
+  [[{id:'m',agent:'lider',status:'pendiente',instruction:'Planificar'}],[{task_id:'m',state:'working'}],true,1],
+  [[{id:'m',agent:'lider',status:'cerrada',instruction:'Planificar'}],[{task_id:'m',state:'working'}],false,0],
+  [[{id:'w',agent:'testing',status:'pendiente',instruction:'Revisar'}],[{task_id:'w',state:'working'}],false,1],
+  [[{id:'m',agent:'lider',status:'pendiente',instruction:'Planificar'}],[{task_id:'m',state:'review'}],false,0]
+ ]){
+  const r=load(async fn=>({data:fn==='gestlok_hq_list_tasks'?rows:fn==='gestlok_hq_list_runs'?runs:DASH}));
+  r.h.mode();await tick();await tick();r.h.setTab('hq');await tick();await tick();
+  const html=r.h.view({parts:{}});
+  assert.ok(html.includes('data-hq-meeting="'+meeting+'"'));
+  assert.equal((html.match(/class="gl-hq-avatar hq-working"/g)||[]).length,working);
+  if(!working)assert.match(html,/Sin tareas en ejecución · equipo disponible/);
+ }
+});
+
+test('HQ: readable projected HTML name and sector labels, dedicated free-plan provider',()=>{
+ const renderer=readFileSync('public/stock/gestlok-hq-3d.mjs','utf8');
+ const backend=readFileSync('supabase/functions/gestlok-hq-agent/index.ts','utf8');
+ assert.match(renderer,/name.textContent=p.name/);
+ assert.match(renderer,/role.textContent=p.sector\|\|p.role/);
+ assert.match(renderer,/labelPoint.*project\(camera\)/);
+ assert.match(source,/sector:a\[0\]==='lider'\?'Directora ejecutiva':a\[1\]/);
+ assert.match(backend,/GESTLOK_HQ_GROQ_FREE_API_KEY/);
+ assert.match(backend,/https:\/\/api\.groq\.com\/openai\/v1\/chat\/completions/);
+ assert.match(backend,/openai\/gpt-oss-20b/);
+ assert.doesNotMatch(backend,/api\.openai\.com|GESTLOK_HQ_OPENAI_API_KEY/);
+ assert.match(backend,/gestlok_hq_claim_run/);
+ assert.match(backend,/gestlok_hq_finish_director/);
 });
