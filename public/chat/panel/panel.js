@@ -9,7 +9,7 @@
   const CFG = window.GESTLOK_CHAT_CONFIG || {
     url: 'https://vgsepaaewbctjsjcpeta.supabase.co',
     key: (window.SPM_CONFIG && window.SPM_CONFIG.key) || ''};
-  const VERSION_CSS = '20261123gerentes1';
+  const VERSION_CSS = '20261126canales1';
   const el = (tag, props = {}, ...hijos) => {
     const n = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -1046,6 +1046,38 @@
       campo('Número con código de país, sin + ni espacios',numeroWhatsApp),
       editable ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
         : el('p',{class:'nota',text:'Solo el dueño o la administradora pueden cambiar este número.'})));
+    // Canal de atención opcional por sucursal. Solicitud != conexión.
+    const canalId=S.suc.id;
+    const canalEstado=el('p',{class:'nota',role:'status','aria-live':'polite',text:'Consultando estado de vinculación…'});
+    const canalPedir=el('button',{type:'button',class:'boton principal ancho',text:'Solicitar vinculación de WhatsApp',disabled:true});
+    const canalCancelar=el('button',{type:'button',class:'boton ancho',text:'Cancelar solicitud',disabled:true,hidden:true});
+    const canalWhatsApp=el('section',{class:'bloque'},
+      el('h3',{text:'Canales de atención'}),
+      el('p',{text:'GESTLOK Chat Web · '+(a.activa?'Activo':'Pausado')}),
+      el('h4',{text:'WhatsApp Business · conexión oficial'}),
+      el('p',{text:a.whatsapp_local?'Número de contacto: +'+a.whatsapp_local:'Guardá primero el número del local.'}),
+      canalEstado,el('p',{class:'nota',text:'Las solicitudes no conectan el número. La persona titular debe autorizar la vinculación oficial de Meta. Hasta verificarla, no se leen ni envían mensajes.'}),
+      el('p',{class:'nota',text:'Respuestas automáticas: desactivadas. Confirmación de pedidos: manual. Sin envíos de pago autorizados.'}),
+      editable&&!DEMO?el('div',{class:'fila-botones'},canalPedir,canalCancelar):el('p',{class:'nota',text:DEMO?'Demostración: no se solicitan conexiones reales.':'Solo el dueño o la administradora gestionan la solicitud.'}));
+    const canalVigente=()=>S.suc?.id===canalId&&S.pestana==='ajustes';
+    const canalMostrar=r=>{
+      if(!canalVigente())return;
+      const pendiente=r?.estado==='pendiente';
+      canalEstado.textContent=pendiente?(r.numero_actual===false?'Número modificado · cancelá la solicitud anterior y creá otra.':'Solicitud registrada · falta autorización de Meta.'):
+        'No vinculado · sin acceso a los mensajes de WhatsApp.';
+      canalPedir.disabled=!editable||DEMO||pendiente||!a.whatsapp_local;
+      canalCancelar.hidden=!pendiente;canalCancelar.disabled=!editable||DEMO||!pendiente;
+    };
+    const canalAccion=async accion=>{
+      if(!editable||DEMO||!canalVigente())return;
+      canalPedir.disabled=true;canalCancelar.disabled=true;
+      try{const r=await rpc('panel_whatsapp_solicitud',{p_sucursal:canalId,p_accion:accion});canalMostrar(r);}
+      catch(e){if(canalVigente()){canalEstado.textContent='No se confirmó el cambio. Volvé a abrir Ajustes.';aviso(e.message,true);}}
+    };
+    canalPedir.addEventListener('click',()=>canalAccion('solicitar'));
+    canalCancelar.addEventListener('click',()=>canalAccion('cancelar'));
+    if(DEMO){canalEstado.textContent='Demostración · no vinculado.';}
+    else void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1080,7 +1112,7 @@
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
     const suscripcion = editable ? bloqueSuscripcion() : null;
     const gerentes = editable ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, pushCampanas].filter(Boolean));
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, canalWhatsApp, pushCampanas].filter(Boolean));
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;
