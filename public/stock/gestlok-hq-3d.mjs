@@ -110,15 +110,13 @@ export function mount(host,people,opts={}){
  box(board,3.35,1.47,.15,C.navy,0,1.69,0);box(board,3.13,1.25,.025,0xeef4f6,0,1.69,.09);
  for(let i=0;i<5;i++){box(board,.31,.20+i*.12,.02,i%2?0x82adb7:0x467d91,-1.13+i*.48,1.19+(.20+i*.12)/2,.11);}
  // A label is rendered from fixed names only, never from external task instructions.
- function label(name){
-  const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');
-  if(!ctx)throw Error('Canvas de etiquetas no disponible');
-  ctx.fillStyle='#f8fbfc';ctx.beginPath();ctx.roundRect(3,3,250,58,14);ctx.fill();
-  ctx.strokeStyle='#aebfc9';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='#19354b';ctx.font='600 28px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,128,32,240);
-  const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;textures.push(tex);
-  const m=new T.SpriteMaterial({map:tex,transparent:true,depthTest:false});mats.set('label:'+name,m);
-  const sp=new T.Sprite(m);sp.scale.set(1.25,.31,1);sp.renderOrder=10;return sp;
+ function label(p){
+  const el=document.createElement('button');el.type='button';el.dataset.hqName=p.id;
+  el.style.cssText='position:absolute;z-index:4;transform:translate(-50%,-100%);display:grid;gap:1px;min-width:92px;max-width:160px;padding:5px 8px;border:1px solid #a6bac7;border-radius:7px;background:#fff;color:#19354b;box-shadow:0 3px 12px #19354b35;text-align:center;cursor:pointer;line-height:1.15;pointer-events:auto;font-family:system-ui,sans-serif';
+  const name=document.createElement('strong');name.textContent=p.name;name.style.fontSize='14px';
+  const role=document.createElement('small');role.textContent=p.sector||p.role;role.style.cssText='font-size:11px;font-weight:600;color:#34566e';
+  el.append(name,role);el.setAttribute('aria-label',p.name+' · '+(p.sector||p.role));
+  el.addEventListener('click',()=>opts.onSelect?.(p.id));return el;
  }
  function avatar(p,i){
   const g=group(world),pelvis=group(g,0,.79,0);
@@ -161,7 +159,7 @@ export function mount(host,people,opts={}){
     box(knee,.13,.09,.22,0x202f38,0,-.34,.046);
     legs.push({hip,knee});
   }
-  const badge=label(p.name);g.add(badge);badge.position.set(0,1.78,0);
+  const badge=label(p);
   g.userData.person=p.id;g.traverse(o=>{if(o.isMesh||o.isSprite)o.userData.person=p.id;});
   return {p,i,g,pelvis,body,head,arms,legs,badge,hips,neck};
  }
@@ -173,7 +171,7 @@ export function mount(host,people,opts={}){
   a.body.rotation.x=kind==='think'?-.10:kind==='type'?.13:kind==='meeting'?.04:0;
   a.head.rotation.y=kind==='research'?Math.sin(t*2)*.24:kind==='meeting'||kind==='consult'?Math.sin(t*1.3)*.25:Math.sin(t*.6)*.06;
   a.head.rotation.x=kind==='think'?-.12:kind==='type'?.12:kind==='research'?.05:0;
-  a.badge.position.y=sit?1.57:1.78;
+
   a.legs.forEach(({hip,knee},j)=>{
    const wave=Math.sin(t*10+j*Math.PI);
    hip.rotation.x=walk?wave*.53:sit?-1.35:0;
@@ -230,7 +228,21 @@ export function mount(host,people,opts={}){
  function button(text,action){const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=text;b.addEventListener('click',action);toolbar.append(b);return b;}
  button('−',()=>{zoom=clamp(zoom-.15,.8,1.8);setCamera();});button('+',()=>{zoom=clamp(zoom+.15,.8,1.8);setCamera();});button('Restablecer',()=>{zoom=1;setCamera();});
  const pauseButton=button('Pausar',()=>{paused=!paused;pauseButton.textContent=paused?'Reanudar':'Pausar';});
- toolbar.append(status);viewport.append(renderer.domElement);host.append(viewport,toolbar);
+ toolbar.append(status);viewport.append(renderer.domElement);
+ const labels=document.createElement('div');labels.style.cssText='position:absolute;inset:0;pointer-events:none;overflow:hidden';viewport.append(labels);
+ actors.forEach(a=>labels.append(a.badge));host.append(viewport,toolbar);
+ const labelPoint=new T.Vector3();
+ function updateLabels(){
+  const w=viewport.clientWidth,h=viewport.clientHeight;
+  for(const a of actors){
+   labelPoint.set(a.g.position.x,a.pelvis.position.y+1.16,a.g.position.z).project(camera);
+   const x=(labelPoint.x*.5+.5)*w,y=(-labelPoint.y*.5+.5)*h;
+   const show=(opts.mode!=='private'||a.p.id===opts.selected)&&labelPoint.z>=-1&&labelPoint.z<=1&&x>=0&&x<=w&&y>=0&&y<=h;
+   a.badge.style.display=show?'grid':'none';if(!show)continue;
+   a.badge.style.left=clamp(x,Math.min(80,w/2),Math.max(w-80,w/2))+'px';
+   a.badge.style.top=Math.max(y,54)+'px';
+  }
+ }
  const ray=new T.Raycaster(),pointer=new T.Vector2();
  let start=null;
  renderer.domElement.addEventListener('pointerdown',ev=>{start=[ev.clientX,ev.clientY];});
@@ -253,7 +265,7 @@ export function mount(host,people,opts={}){
   if(typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(()=>{if(host.isConnected)setCamera();});resizeObserver.observe(host);}
   let time=0;let clock=performance.now();
   actors.forEach(a=>animatePerson(a,time,reduced.matches));
-  renderer.render(scene,camera);
+  renderer.render(scene,camera);updateLabels();
   host.dataset.hqRenderer='three';
   const stage=host.closest('[data-hq-scene-shell]');if(stage)stage.dataset.hq3dReady='true';
   function loop(now){
@@ -263,7 +275,7 @@ export function mount(host,people,opts={}){
    if(now-lastDraw>33&&document.visibilityState!=='hidden'){
     actors.forEach(a=>animatePerson(a,time,reduced.matches));
 
-    renderer.render(scene,camera);lastDraw=now;
+    renderer.render(scene,camera);updateLabels();lastDraw=now;
    }
    frame=requestAnimationFrame(loop);
   }
