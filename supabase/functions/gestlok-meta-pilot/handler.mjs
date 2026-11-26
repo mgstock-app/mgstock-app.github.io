@@ -10,6 +10,7 @@ const hash=async s=>hex(await crypto.subtle.digest('SHA-256',enc.encode(s)));
 const list=v=>Array.isArray(v)?v:[];
 const resp=(status,body='')=>new Response(body,{status,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'}});
 const canonical=p=>p.replace(/^\+549(\d{10})$/,'+54$1');
+const diagnosticInt=v=>Number.isSafeInteger(v)&&v>=0&&v<=2147483647?v:null;
 const alias=p=>/^\+54\d{10}$/.test(p)?p.replace(/^\+54/,'+549'):p;
 export async function signatureValid(raw,sig,secret){
  if(!(raw instanceof Uint8Array)||raw.length>262144||typeof sig!=='string'||!/^sha256=[a-f0-9]{64}$/.test(sig)||typeof secret!=='string'||secret.length<24)return false;
@@ -65,8 +66,12 @@ export function createMetaPilot({project,appSecret,verifyToken,accessToken,testS
     // No multi-message splitting. Every reserved attempt costs at most one sandbox response.
     if(!body.trim()||Array.from(body).length>4000||await isExcluded()||!fresh(now())){await outcome(eventHash,'excluded');continue;}
     let res;try{res=await fetcher('https://graph.facebook.com/v25.0/'+TEST_PHONE+'/messages',{method:'POST',headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to:m.from,type:'text',text:{body,preview_url:false}}),signal:AbortSignal.timeout(8000),redirect:'error'});}catch{await outcome(eventHash,'uncertain');continue;}
-    // Record only acceptance, not delivery. Do not retry even if outcome is ambiguous.
-    await outcome(eventHash,res.ok?'accepted':'failed');
+    // Keep only numeric diagnostics. In particular, never log Graph error bodies
+    // (which can include tokens, recipient numbers and message content).
+    const diagnostic={httpStatus:diagnosticInt(res.status),graphCode:null,graphSubcode:null};
+    if(!res.ok)try{const parsed=await res.json();diagnostic.graphCode=diagnosticInt(parsed?.error?.code);diagnostic.graphSubcode=diagnosticInt(parsed?.error?.error_subcode);}catch{/* No valid Graph response. */}
+    // Acceptance is not delivery. Do not retry any failed or ambiguous request.
+    await outcome(eventHash,res.ok?'accepted':'failed',diagnostic);
    }catch{if(reserved)try{await outcome(eventHash,'uncertain');}catch{}else return resp(503,'Retry');}
   }
   return resp(200,'OK');
