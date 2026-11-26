@@ -1055,7 +1055,8 @@
       el('h3',{text:'WhatsApp · seguridad de la prueba'}),
       el('p',{text:'WhatsApp real: no vinculado. Respuestas automáticas: desactivadas.'}),
       el('p',{class:'nota',text:'No uses el WhatsApp comercial para experimentar. La prueba de vinculación, respuestas, exclusión de contactos y cupo utiliza solo datos ficticios y no puede enviar mensajes.'}),
-      CFG.entorno==='prueba'&&editable?el('a',{class:'boton principal',href:'/chat/prueba-whatsapp/',text:'Abrir laboratorio seguro de WhatsApp'}):null);
+      CFG.entorno==='prueba'&&editable?el('a',{class:'boton principal',href:'/chat/prueba-whatsapp/',text:'Abrir laboratorio seguro de WhatsApp'}):null,
+      CFG.entorno==='prueba'&&editable&&!DEMO?el('a',{class:'boton',href:'/chat/prueba-whatsapp/conector.html',text:'Conector de ensayo en vivo · solo administradora'}):null);
     // Cupo de servicio: no confundir estimación de prueba con consumo real.
     const cupoEstado=el('p',{role:'status','aria-live':'polite',class:'nota',text:'Consultando cupo…'});
     const cupoDetalle=el('p',{class:'nota',text:'El asistente debe detenerse antes de generar cargos. El límite de seguridad del ensayo es de 900 sobre 1.000 mensajes mensuales por número.'});
