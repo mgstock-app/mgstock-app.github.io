@@ -85,3 +85,19 @@
 }
 #hub .gl-ch-cobro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0;padding-top:8px;border-top:1px dashed #d8dee6}
 #hub .gl-ch-cobro small{flex:1 1 100%;color:#3d4a59}
+
+
+/* Administración de habilitaciones de WhatsApp Premium */
+#hub .gl-wa-premium .gl-wa-notice{background:#edf5ff;border:1px solid #cddff1;border-radius:12px;padding:14px;color:#264969;line-height:1.5;margin:12px 0 18px}
+#hub .gl-wa-notice p{margin:6px 0 0}
+#hub .gl-wa-form{display:grid;gap:10px;max-width:680px;padding:16px;border:1px solid #dae6f0;border-radius:14px;margin:16px 0 22px;background:#f8fbff}
+#hub .gl-wa-form h3{margin:0 0 4px}
+#hub .gl-wa-form label{font-weight:700;color:#213b55}
+#hub .gl-wa-form select,#hub .gl-wa-form textarea{width:100%;min-width:0;padding:10px 12px;border:1px solid #adbed0;border-radius:8px;font:inherit;color:#183550;background:white;box-sizing:border-box}
+#hub .gl-wa-form small{color:#526b82}
+#hub .gl-wa-form .btn{justify-self:start;min-height:44px}
+#hub .gl-wa-status{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 0;font-size:13px}
+#hub .gl-wa-on,#hub .gl-wa-off{padding:4px 8px;border-radius:8px;background:#e2f4e8;color:#175b35}
+#hub .gl-wa-off{background:#f0f2f4;color:#53606f}
+#hub .gl-wa-error{color:#a71c27;font-weight:700}
+@media(max-width:520px){#hub .gl-wa-form .btn{width:100%}#hub .gl-wa-form{padding:12px}}

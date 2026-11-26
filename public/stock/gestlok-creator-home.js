@@ -13,6 +13,7 @@
     ['empleados', 'Empleados', '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3 .1 5 2 5 5.3"/>'],
     ['locales', 'Locales', '<path d="M5 9l1.5-5h11L19 9z"/><path d="M6 9v11h12V9M10 20v-5h4v5"/>'],
     ['gestlok-chat', 'GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/>'],
+    ['habilitacion', 'Habilitación', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="m8 12 3 3 5-6M8 3v4M16 3v4"/>'],
     ['hq', 'GESTLOK HQ', '<path d="M3 20V5h18v15zM3 12h18M12 5v15"/>'],
     ['chat-prueba', 'Prueba GESTLOK Chat', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6M9 20l-3 2"/>'],
     ['resenas', 'Reseñas GESTLOK', '<path d="M4 5h16v14H4z"/><path d="M8 10h8M8 14h5"/>'],
@@ -236,6 +237,58 @@
   let microapps=[],microappsLoaded=false,microappsBusy=false,microappsTried=false,microappsError='',companyBusy=false;
   const premiumAdmin=()=>api?.isCreadora?.() &&
     String(api?.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
+  // Habilitación comercial: no solicita credenciales ni llama al proveedor WhatsApp.
+  let premiumWhatsApp=null,premiumWABusy=false,premiumWAError='',premiumWATried=false,premiumWALocal='',premiumWADraft='';
+  const premiumWAAllowed=()=>premiumAdmin();
+  const premiumWAKey=l=>JSON.stringify([l.tenant_id,l.local_id]);
+  const premiumWACompany=l=>(window.GestLokOwnerAreas?.creatorCompanies?.()||[]).find(c=>c.tenant_id===l.tenant_id)?.name||l.empresa;
+  async function premiumWARequest(params={p_accion:'listar'}){
+    if(!premiumWAAllowed()||premiumWABusy||!window.GestLokSupabase?.rpc)return;
+    premiumWABusy=true;premiumWATried=true;premiumWAError='';
+    if(params.p_accion!=='listar')api?.render?.();
+    try{
+      const {data:result,error}=await window.GestLokSupabase.rpc('gestlok_chat_admin_whatsapp_premium',params);
+      if(error)throw error;
+      if(!premiumWAAllowed())return;
+      if(!Array.isArray(result?.locales)||!Array.isArray(result?.numeros))throw new Error('Respuesta inválida.');
+      premiumWhatsApp=result;
+      if(params.p_accion==='agregar'){premiumWADraft='';api?.toast?.('Números habilitados internamente. La conexión con WhatsApp sigue pendiente.');}
+      if(params.p_accion==='estado')api?.toast?.(params.p_habilitada?'Habilitación interna reactivada.':'Número pausado.');
+    }catch(e){premiumWAError=['22023','23505','P0002'].includes(String(e?.code))?String(e.message):'No se pudo consultar o guardar. Revisá la conexión y los permisos.';}
+    finally{premiumWABusy=false;if(premiumWAAllowed())api?.render?.();}
+  }
+  function premiumWAView(){
+    if(!premiumWAAllowed())return '';
+    if(!premiumWATried&&!premiumWABusy)queueMicrotask(()=>premiumWARequest());
+    const locales=premiumWhatsApp?.locales||[],numeros=premiumWhatsApp?.numeros||[];
+    const options=locales.map(l=>'<option value="'+esc(premiumWAKey(l))+'"'+(premiumWALocal===premiumWAKey(l)?' selected':'')+'>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</option>').join('');
+    const active=numeros.filter(n=>n.habilitada&&n.local_existe).length;
+    const rows=numeros.map(n=>'<article class="gl-ch-chat-row"><div><h3>'+esc(n.numero)+'</h3><small>'+esc(premiumWACompany(n)+' · '+n.nombre)+'</small><p class="gl-wa-status"><strong class="'+(n.habilitada&&n.local_existe?'gl-wa-on':'gl-wa-off')+'">'+(n.habilitada&&n.local_existe?'Habilitado internamente':'Pausado / inactivo')+'</strong><span>WhatsApp: pendiente de vinculación</span></p></div><div class="gl-ch-chat-actions"><button type="button" class="btn" data-ch-wa-state="'+esc(n.id)+'" data-v="'+(!n.habilitada?'si':'no')+'"'+(premiumWABusy||(!n.local_existe&&!n.habilitada)?' disabled':'')+'>'+(n.habilitada?'Pausar':'Reactivar')+'</button></div></article>').join('');
+    return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK Chat Premium">'+
+      '<header><h2>GESTLOK Chat Premium</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar</button></header>'+
+      '<p>Autorizá qué comercios y números de WhatsApp pueden usar Chat Premium según su suscripción. Podés habilitar varios números por local.</p>'+
+      '<div class="gl-wa-notice"><strong>Conexión de WhatsApp: pendiente de vinculación</strong><p>El registro habilita el acceso comercial dentro de GESTLOK. No vincula el teléfono, no activa la IA, no envía mensajes ni genera cargos. Cada número deberá autorizar la vinculación oficial cuando GESTLOK esté habilitado como proveedor.</p></div>'+
+      (premiumWAError?'<p role="alert" class="gl-wa-error">'+esc(premiumWAError)+'</p>':'')+
+      (premiumWABusy?'<p role="status">Consultando o guardando…</p>':'')+
+      (premiumWhatsApp?'<form data-ch-wa-form class="gl-wa-form"><h3>Nueva habilitación</h3><label for="gl-wa-local">Empresa y local</label><select id="gl-wa-local" name="local" required'+(premiumWABusy?' disabled':'')+'><option value="">Seleccioná el local</option>'+options+'</select>'+
+        '<label for="gl-wa-numeros">Número o números de WhatsApp del comercio</label><textarea id="gl-wa-numeros" name="numeros" required rows="3" maxlength="3050" placeholder="+54 9 11 … (uno por línea)"'+(premiumWABusy?' disabled':'')+'>'+esc(premiumWADraft)+'</textarea><small>Incluí + y código de país. Uno por línea o separados por coma. No cargues números de clientes ni contactos excluidos.</small>'+
+        '<button type="submit" class="btn primary"'+(!locales.length||premiumWABusy?' disabled':'')+'>Habilitar números</button></form>'+
+        '<h3>Números autorizados · '+active+' habilitados / '+numeros.length+' registrados</h3><div class="gl-ch-chat-list">'+(rows||'<p>Todavía no hay números autorizados.</p>')+'</div>':'')+'</section>';
+  }
+  document.addEventListener('input',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-numeros')premiumWADraft=ev.target.value;});
+  document.addEventListener('change',ev=>{if(premiumWAAllowed()&&tab==='habilitacion'&&ev.target?.id==='gl-wa-local')premiumWALocal=ev.target.value;});
+  document.addEventListener('submit',ev=>{
+    if(!ev.target?.matches?.('[data-ch-wa-form]'))return;
+    ev.preventDefault();if(!premiumWAAllowed()||tab!=='habilitacion'||premiumWABusy)return;
+    const f=ev.target,premiumLocal=(premiumWhatsApp?.locales||[]).find(l=>premiumWAKey(l)===f.elements.local.value);
+    if(!premiumLocal)return;
+    const phones=String(f.elements.numeros.value||'').split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+    premiumWALocal=f.elements.local.value;premiumWADraft=f.elements.numeros.value;
+    if(!phones.length){premiumWAError='Ingresá al menos un número.';api?.render?.();return;}
+    if(!window.confirm('¿Habilitar '+phones.length+' número(s) de '+premiumLocal.nombre+' para GESTLOK Chat Premium? No se conectará WhatsApp todavía.'))return;
+    void premiumWARequest({p_accion:'agregar',p_tenant:premiumLocal.tenant_id,p_local:premiumLocal.local_id,p_numeros:phones});
+  });
+
   async function loadMicroapps(force=false){
     if(!premiumAdmin()||!window.GestLokSupabase?.rpc||microappsBusy||(!force&&(microappsLoaded||microappsTried)))return;
     microappsBusy=true;microappsTried=true;microappsError='';
@@ -1143,12 +1196,12 @@
 
   function view(p) {
     if (!data) return '<div class="gl-ch"><main class="gl-ch-main"><p role="status" class="gl-ch-loading">Preparando tu panel…</p></main></div>';
-    const cur = validTab(tab) && (!['gestlok-chat','hq'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
+    const cur = validTab(tab) && (!['gestlok-chat','habilitacion','hq'].includes(tab)||premiumAdmin()) ? tab : 'inicio';
     void window.GestLokContactoWeb?.prefetch?.();
     resumeMolinoTool();
     const parts = p.parts || {};
     const premium=api?.isCreadora?.()&&String(api.S?.me?.email||'').trim().toLowerCase()===PREMIUM_ADMIN_EMAIL;
-    const nav = TABS.filter(t=>!['gestlok-chat','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
+    const nav = TABS.filter(t=>!['gestlok-chat','habilitacion','hq'].includes(t[0])||premium).map(t => '<button type="button" title="' + t[1] + '" aria-label="' + t[1] + '" data-ch-tab="' + t[0] + '"' + (t[0] === cur ? ' aria-current="page" class="on"' : '') + '>' + svg(t[2], 20) + '<span>' + t[1] + '</span>' +
       (t[0] === 'usuarios' && p.pending ? '<b>' + esc(p.pending) + '</b>' : '') +
       (t[0] === 'contacto' && window.GestLokContactoWeb?.unread?.() ? '<b>' + esc(window.GestLokContactoWeb.unread()) + '</b>' : '') + '</button>').join('');
     const d = today();
@@ -1158,6 +1211,7 @@
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+chatAdminView()+'</div>';
+    else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+premiumWAView()+'</div>';
     else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
@@ -1170,6 +1224,7 @@
       cur === 'hq' ? 'Tu oficina virtual · Áreas de trabajo y delegación.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
       cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' :
+      cur === 'habilitacion' ? 'Suscripciones y números de WhatsApp autorizados por local.' :
       cur === 'contacto' ? 'Mensajes del formulario de Contacto de gestlok.com.ar.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +
@@ -1192,7 +1247,8 @@
       '<p><a class="btn primary" href="empleados/">Abrir Administración de empleados →</a></p></section>';
   }
   function goTab(v) {
-    if (!validTab(v) || (['gestlok-chat','hq'].includes(v)&&!premiumAdmin())) return;
+    if (!validTab(v) || (['gestlok-chat','habilitacion','hq'].includes(v)&&!premiumAdmin())) return;
+    if(v==='habilitacion'&&!premiumWABusy){premiumWhatsApp=null;premiumWATried=false;premiumWAError='';}
     if(v !== 'hq') hqReset();
     if(v !== 'chat-prueba') showroomExpandido = false;
     if(v==='locales')void loadMicroapps(true);
@@ -1257,6 +1313,10 @@
     if(cobroBtn&&api?.isCreadora?.()){ev.preventDefault();void cobroAccion(cobroBtn);return;}
     const altaChat=ev.target.closest?.('[data-ch-chat-alta]');
     if(altaChat&&api?.isCreadora?.()){ev.preventDefault();void altaChatAction(altaChat.dataset.chChatAlta,altaChat.dataset.v==='si');return;}
+    const waRefresh=ev.target.closest?.('[data-ch-wa-refresh]');
+    if(waRefresh&&premiumWAAllowed()&&tab==='habilitacion'){ev.preventDefault();void premiumWARequest();return;}
+    const waState=ev.target.closest?.('[data-ch-wa-state]');
+    if(waState&&premiumWAAllowed()&&tab==='habilitacion'&&!premiumWABusy){ev.preventDefault();const enable=waState.dataset.v==='si';if(window.confirm(enable?'¿Reactivar este número en Premium? WhatsApp seguirá pendiente de vinculación.':'¿Pausar la habilitación interna de este número?'))void premiumWARequest({p_accion:'estado',p_id:waState.dataset.chWaState,p_habilitada:enable});return;}
     const chatOn=ev.target.closest?.('[data-ch-chat-on]');
     if(chatOn&&api?.isCreadora?.()){ev.preventDefault();void chatAdminAction(chatOn.dataset.chChatOn,null);return;}
     const chatEstado=ev.target.closest?.('[data-ch-chat-estado]');
@@ -1308,7 +1368,7 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && status === 'ready') {if(hqAllowed())void hqSync();else load();void refreshDaily(true);} });
   window.GestLokCreatorHome = Object.freeze({
-    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
+    attach(ctx) { api = ctx; if(!premiumAdmin()){hqReset();hqAgent='desarrollo';premiumWhatsApp=null;premiumWATried=false;premiumWALocal='';premiumWADraft='';premiumWAError='';} window.GestLokNfcQr?.attach?.(ctx); window.GestLokContactoWeb?.attach?.(ctx); const s = store.get(); tab = validTab(s) ? s : 'inicio'; },
     mode, view, refresh: load, tab: () => tab, setTab: goTab,
     dailyVisible, refreshDaily, dailySettingsView
   });
