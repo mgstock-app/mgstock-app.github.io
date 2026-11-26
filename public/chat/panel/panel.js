@@ -27,7 +27,7 @@
   const PAGOS = {efectivo: 'Efectivo', transferencia: 'Transferencia', mercado_pago: 'Mercado Pago', debito: 'Débito', credito: 'Crédito'};
   const ESTADOS = {pendiente: 'Pendiente de confirmación', confirmado: 'En preparación', terminado: 'Terminado', rechazado: 'Rechazado', cancelado: 'Cancelado por el cliente'};
   let motor = null; // plantillas de mensajes compartidas con el chat
-  import('/chat/motor.js?v=20261124carta1').then(m => { motor = m; }).catch(() => {});
+  import('/chat/motor.js?v=20261126comercial1').then(m => { motor = m; }).catch(() => {});
 
   /**
    * Monta el panel en «destino».
@@ -39,6 +39,7 @@
   const SHOWROOM = DEMO && window.GestLokChatShowroom?.enabled ? window.GestLokChatShowroom : null;
   const EMBED = !!op.embebido;
   const LOCAL = String(op.local || '').toLowerCase();
+  const ADMIN_CONFIG = !DEMO && !EMBED && /^[0-9a-f-]{36}$/i.test(new URLSearchParams(location.search).get('configurar')||'') ? new URLSearchParams(location.search).get('configurar') : '';
   const raiz = EMBED ? (destino.shadowRoot || destino.attachShadow({mode: 'open'})) : destino;
   const marco = el('div', {class: 'panel' + (EMBED ? ' embebido' : ''), id: 'panel', 'aria-busy': 'true'},
     el('header', {class: 'tope'},
@@ -175,6 +176,16 @@
     if (!DEMO) {
       const {data} = await sb.auth.getSession();
       if (!data?.session) return fijo('Entrá a GESTLOK', 'Iniciá sesión en GESTLOK con tu cuenta y volvé a abrir el panel.', ['Ir a GESTLOK', '/']);
+    }
+    if (ADMIN_CONFIG) {
+      try {
+        const a=await rpc('panel_config',{p_sucursal:ADMIN_CONFIG});
+        if(!a.administradora_chat)throw Error('Configuración administrativa exclusiva de la creadora.');
+        S.suc={id:ADMIN_CONFIG,nivel:a.nivel,nombre:a.nombre,slug:a.slug}; S.pestana='ajustes';
+        $('empresa').textContent=[a.empresa,a.nombre].filter(Boolean).join(' · ');
+        $('panel').setAttribute('aria-busy','false'); $('comandas-resumen')?.remove();
+        await verAjustes(); return;
+      }catch(e){return fijo('Sin acceso a la configuración',e.message,['Ir a GESTLOK','/']);}
     }
     let r;
     try { r = await rpc('panel_inicio'); } catch (e) { return fijo('No pudimos abrir el panel', e.message); }
@@ -786,7 +797,7 @@
   ];
   async function verMensajes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
-    if (!motor) motor = await import('/chat/motor.js?v=20261124carta1').catch(() => null);
+    if (!motor) motor = await import('/chat/motor.js?v=20261126comercial1').catch(() => null);
     let a, cat = {categorias: []};
     try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
     try { cat = await rpc('panel_catalogo', {p_sucursal: S.suc.id}); } catch { /* sin categorías: venta sugerida automática */ }
@@ -965,9 +976,12 @@
   }
   async function verAjustes() {
     contenido.replaceChildren(el('p', {class: 'nota', text: 'Cargando…'}));
+    const sucAjustes=S.suc.id;
     let a;
-    try { a = await rpc('panel_config', {p_sucursal: S.suc.id}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
-    const editable = puede('configurar');
+    try { a = await rpc('panel_config', {p_sucursal: sucAjustes}); } catch (e) { return contenido.replaceChildren(el('p', {class: 'error', text: e.message})); }
+    const editable = a.nivel === 'configurar';
+    const adminNumero = a.administradora_chat === true;
+    if(S.suc.id!==sucAjustes||S.pestana!=='ajustes')return;
     const enlace = 'https://gestlok.com.ar/chat/?s=' + encodeURIComponent(a.slug);
     const final = 'https://chat.gestlok.com.ar/' + a.slug;
     const qr = el('div', {class: 'qr', 'aria-label': 'Código QR del chat'});
@@ -975,11 +989,44 @@
     const f = {};
     const inp = (k, attrs) => { const i = el(attrs.tag || 'input', {...attrs, tag: undefined, disabled: !editable}); i.value = a[k] ?? ''; f[k] = i; return i; };
     const chk = (k, texto) => { const i = el('input', {type: 'checkbox', checked: !!a[k], disabled: !editable}); f[k] = i; return el('label', {class: 'check'}, i, ' ' + texto); };
-    const medios = Object.entries(PAGOS).map(([v, t]) => { const i = el('input', {type: 'checkbox', value: v, checked: (a.medios_pago || []).includes(v), disabled: !editable}); return el('label', {class: 'check'}, i, ' ' + t); });
+    const diasNombres=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    const dias=diasNombres.map((d,i)=>el('label',{class:'check'},el('input',{type:'checkbox',value:String(i+1),checked:(a.dias_apertura||[1,2,3,4,5,6,7]).includes(i+1),disabled:!editable}),' '+d));
+    const turnos=Array.from({length:3},(_,i)=>{
+      const inicio=el('input',{type:'time',disabled:!editable}),fin=el('input',{type:'time',disabled:!editable});
+      inicio.value=a.turnos_chat?.[i]?.inicio||'';fin.value=a.turnos_chat?.[i]?.fin||'';
+      return {inicio,fin,vista:el('div',{class:'dos'},campo('Turno '+(i+1)+' · Desde',inicio),campo('Hasta',fin))};
+    });
+    const seleccionPagos=(k)=>Object.entries(PAGOS).map(([v,t])=>el('label',{class:'check'},el('input',{type:'checkbox',value:v,checked:(a[k]||a.medios_pago||[]).includes(v),disabled:!editable}),' '+t));
+    const retiro=seleccionPagos('medios_pago_retiro'),envio=seleccionPagos('medios_pago_envio');
+    const seleccion=ls=>ls.map(l=>l.querySelector('input')).filter(i=>i.checked).map(i=>i.value);
+    const foto=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp',disabled:!editable||DEMO});
+    const fotoEstado=el('small',{class:'nota',text:'JPG, PNG o WebP · hasta 2 MB. Solo publicá imágenes de tu carta.'});
+    const subirFoto=el('button',{type:'button',class:'boton',text:'Subir foto de la carta',disabled:!editable||DEMO,onclick:async()=>{
+      if(!editable||DEMO||S.suc.id!==sucAjustes)return;
+      const file=foto.files?.[0],ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file?.type];
+      if(!file||!ext||file.size>2097152)return aviso('Elegí una imagen JPG, PNG o WebP de hasta 2 MB.',true);
+      subirFoto.disabled=true;
+      try{
+        const path=sucAjustes+'/'+crypto.randomUUID()+'.'+ext;
+        const bucket=sb.storage.from('gestlok-chat-cartas');
+        const {error}=await bucket.upload(path,file,{contentType:file.type,upsert:false});
+        if(error)throw error;
+        f.carta_imagen_url.value=bucket.getPublicUrl(path).data.publicUrl;
+        fotoEstado.textContent='Foto cargada. Tocá Guardar ajustes para publicarla en esta carta.';
+      }catch(e){aviso('No pudimos subir la foto. Probá con otra imagen.',true);}
+      finally{subirFoto.disabled=false;}
+    }});
     const form = el('form', {class: 'ajustes', onsubmit: async e => {
       e.preventDefault();
-      const elegidos = medios.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value);
-      if (!elegidos.length) return aviso('Elegí al menos un medio de pago.', true);
+      if(!editable||S.suc.id!==sucAjustes)return;
+      const diasElegidos=seleccion(dias).map(Number),horas=turnos.filter(t=>t.inicio.value||t.fin.value).map(t=>({inicio:t.inicio.value,fin:t.fin.value}));
+      if(!diasElegidos.length)return aviso('Elegí al menos un día de apertura.',true);
+      if(horas.some(t=>!t.inicio||!t.fin||t.inicio>=t.fin))return aviso('Completá cada turno: desde y hasta, dentro del mismo día.',true);
+      horas.sort((a,b)=>a.inicio.localeCompare(b.inicio));
+      if(horas.some((t,i)=>i&&horas[i-1].fin>t.inicio))return aviso('Los turnos se superponen.',true);
+      const pagosRetiro=seleccion(retiro),pagosEnvio=seleccion(envio);
+      const elegidos=[...new Set([...pagosRetiro,...pagosEnvio])];
+      if(!pagosRetiro.length||!pagosEnvio.length||!elegidos.length)return aviso('Seleccioná al menos un medio de pago por modalidad.',true);
       if (!f.acepta_retiro.checked && !f.acepta_envio.checked) return aviso('Elegí retiro, envío o ambos.', true);
       const costoEnvio = Number(f.envio_costo.value || 0);
       const pedidoMinimo = Number(f.pedido_minimo.value || 0);
@@ -991,8 +1038,12 @@
       if (!Number.isFinite(pedidoMinimo) || pedidoMinimo < 0 || pedidoMinimo >= 10000000)
         return aviso('El pedido mínimo debe estar entre $0 y $9.999.999.', true);
       try {
-        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {
-          activa: f.activa.checked, horario: f.horario.value, direccion: f.direccion.value,
+        await rpc('panel_config_guardar', {p_sucursal: sucAjustes, p_version: a.version, p_config: {
+          activa: f.activa.checked, horario: horas.length ? (diasElegidos.length===7?'Todos los días':diasElegidos.map(d=>diasNombres[d-1]).join(', '))+' · '+horas.map(t=>t.inicio+' a '+t.fin).join(' y ') : f.horario.value, direccion: f.direccion.value,
+          dias_apertura:diasElegidos, turnos_chat:horas,
+          medios_pago_retiro:pagosRetiro, medios_pago_envio:pagosEnvio,
+          datos_transferencia:f.datos_transferencia.value, carta_texto:f.carta_texto.value,
+          carta_imagen_url:f.carta_imagen_url.value.trim(), ubicacion_url:f.ubicacion_url.value.trim(), reservas_info:f.reservas_info.value,
           acepta_retiro: f.acepta_retiro.checked, acepta_envio: f.acepta_envio.checked, envio_costo: costoEnvio,
           envio_zona: f.envio_zona.value, pedido_minimo: pedidoMinimo, medios_pago: elegidos,
           descuento_efectivo_pct: Math.round(pctEfectivo * 100) / 100,
@@ -1008,15 +1059,29 @@
       qr, el('p', {class: 'nota', text: 'Cuando esté listo el subdominio, el enlace será ' + final + '.'})),
     el('section', {class: 'bloque'}, el('h3', {text: 'Estado'}), chk('activa', 'Chat abierto: los clientes pueden escribir y pedir')),
     el('section', {class: 'bloque'}, el('h3', {text: 'Lo que ve el cliente'}),
-      campo('Horario', inp('horario', {type: 'text', maxlength: '300', placeholder: 'Ej.: Todos los días de 11 a 15 y de 19 a 23'})),
-      campo('Dirección del local', inp('direccion', {type: 'text', maxlength: '200'}))),
+      campo('Horario descriptivo (si no usás turnos)', inp('horario', {type: 'text', maxlength: '300', placeholder: 'Ej.: Todos los días de 11 a 15 y de 19 a 23'})),
+      campo('Dirección del local', inp('direccion', {type: 'text', maxlength: '200'})),
+      campo('Ubicación · enlace de Maps',inp('ubicacion_url',{type:'url',maxlength:1500,placeholder:'https://maps.app.goo.gl/…'})),
+      campo('Reservas · instrucciones del local',inp('reservas_info',{tag:'textarea',rows:3,maxlength:500,placeholder:'Si acepta reservas, indicá cómo solicitarlas. No se confirman automáticamente.'}))),
+    el('section',{class:'bloque'},el('h3',{text:'Días y horarios de apertura'}),
+      el('p',{class:'nota',text:'Elegí los días hábiles y hasta tres turnos diarios. Si dejás los turnos vacíos, el estado seguirá siendo manual. Los turnos deben terminar el mismo día.'}),
+      el('div',{class:'medios'},dias),turnos.map(t=>t.vista)),
+    el('section',{class:'bloque'},el('h3',{text:'Carta para clientes'}),
+      el('p',{class:'nota',text:'La carta con precios y productos se edita en Carta. También podés mostrar un texto o una foto propia de esta sucursal.'}),
+      campo('Carta en texto',inp('carta_texto',{tag:'textarea',rows:6,maxlength:6000})),
+      campo('Foto de carta (URL HTTPS)',inp('carta_imagen_url',{type:'url',maxlength:1500,placeholder:'https://…/carta.jpg'})),
+      campo('O subí tu foto',foto),subirFoto,fotoEstado,
+      el('p',{class:'nota',text:'Para importar productos y precios desde una foto, usá Carta → Importar carta. La foto de referencia no cambia los precios del carrito.'})),
+
     el('section', {class: 'bloque'}, el('h3', {text: 'Entrega y pago'}), chk('acepta_retiro', 'Retiro en el local'), chk('acepta_envio', 'Envío a domicilio'),
       el('div', {class: 'dos'}, campo('Costo de envío', inp('envio_costo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'})),
         campo('Pedido mínimo', inp('pedido_minimo', {type: 'number', min: '0', step: '1', inputmode: 'numeric'}))),
       campo('Zona de envío', inp('envio_zona', {type: 'text', maxlength: '300', placeholder: 'Ej.: barrios o localidades a los que llegás'})),
-      el('p', {class: 'etiqueta', text: 'Medios de pago'}),
-      el('p', {class: 'nota', text: 'Si quitás un medio, también se quitará de las opciones de retiro y delivery de esta sucursal.'}),
-      el('div', {class: 'medios'}, medios)),
+      el('p', {class:'nota',text:'Configurá los medios de pago independientemente para retiro y delivery.'}),
+      el('p',{class:'etiqueta',text:'Medios de pago · retiro'}),el('div',{class:'medios'},retiro),
+      el('p',{class:'etiqueta',text:'Medios de pago · delivery'}),el('div',{class:'medios'},envio),
+      campo('Alias / datos de transferencia',inp('datos_transferencia',{tag:'textarea',rows:3,maxlength:700,placeholder:'Alias, titular, CBU/CVU. Los datos se comparten cuando el gerente lo autoriza.'})),
+      el('p',{class:'nota',text:'Los datos bancarios no se publican ni se confirman pagos automáticamente.'})),
     // Descuento por pagar en efectivo: lo define cada local (0 = sin descuento). No es una regla de la app.
     el('section', {class: 'bloque'}, el('h3', {text: 'Descuento por pago en efectivo'}),
       el('div', {class: 'dos'}, campo('Descuento (%)', inp('descuento_efectivo_pct', {type: 'number', min: '0', max: '50', step: '0.5', inputmode: 'decimal'})),
@@ -1027,7 +1092,7 @@
       chk('precio_efectivo_en_carta', 'Mostrar en la carta el precio de las promos pagando en efectivo'),
       el('p', {class: 'nota', text: 'Con 0 % no se aplica ningún descuento. Las promos marcadas «sin descuento» nunca lo llevan.'})),
     editable ? el('button', {type: 'submit', class: 'boton principal ancho', text: 'Guardar ajustes'})
-      : el('p', {class: 'nota', text: 'Los ajustes del local (abrir o pausar el chat, entrega, pagos y horario) los cambia el dueño o la administradora.'}));
+      : el('p', {class: 'nota', text: 'Los ajustes del local los cambia el dueño, gerente autorizado o la administradora.'}));
     // Link de reseñas de Google: lo cambian el dueño, el gerente del local y la administradora (por ejemplo, si el
     // local se muda). Es el mismo dato de Mensajes → «Al terminar el pedido»; se manda la configuración de mensajes
     // completa para no borrar las otras plantillas.
@@ -1042,7 +1107,7 @@
       for (const [k, v] of Object.entries(a.mensajes || {})) if (typeof v === 'string' && v.trim()) mensajes[k] = v;
       mensajes.resena_url = url;
       try {
-        await rpc('panel_config_guardar', {p_sucursal: S.suc.id, p_version: a.version, p_config: {mensajes}});
+        await rpc('panel_config_guardar', {p_sucursal: sucAjustes, p_version: a.version, p_config: {mensajes}});
         aviso(url ? 'Link de reseñas guardado' : 'Link de reseñas quitado'); verAjustes();
       } catch (err) { aviso(err.message, true); }
     }},
@@ -1086,15 +1151,16 @@
       el('p', {class: 'nota', text: 'El cartel sirve para el mostrador, la vidriera, las bolsas y los volantes. Imprimilo en A4 o guardalo como PDF.'}));
     // Contacto externo por sucursal. No sincroniza pedidos ni mensajes con WhatsApp.
     const numeroWhatsApp = el('input', {type:'tel', inputmode:'tel', maxlength:'24',
-      placeholder:'Ej.: 5491171446654', disabled:!editable});
+      placeholder:'Ej.: 5491100000000', disabled:!adminNumero});
     numeroWhatsApp.value = a.whatsapp_local || '';
     const contactoWhatsApp = el('form', {class:'ajustes', onsubmit:async e=>{
       e.preventDefault();
+      if(!adminNumero)return;
       const telefono = numeroWhatsApp.value.replace(/\D/g,'');
       if (telefono && !/^[1-9][0-9]{7,14}$/.test(telefono))
         return aviso('Ingresá un número internacional válido, por ejemplo 5491171446654.',true);
       try {
-        await rpc('panel_whatsapp_guardar', {p_sucursal:S.suc.id,p_whatsapp:telefono,p_version:a.version});
+        await rpc('panel_whatsapp_guardar', {p_sucursal:sucAjustes,p_whatsapp:telefono,p_version:a.version});
         aviso('WhatsApp del local guardado');verAjustes();
       } catch(err) {aviso(err.message,true);}
     }},
@@ -1102,8 +1168,8 @@
       el('h3', {text:'WhatsApp del local'}),
       el('p', {class:'nota',text:'Solo aparece el ícono en el chat público. Abre el WhatsApp de esta sucursal, sin enviar pedidos ni conectar mensajes externos.'}),
       campo('Número con código de país, sin + ni espacios',numeroWhatsApp),
-      editable ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
-        : el('p',{class:'nota',text:'Solo el dueño o la administradora pueden cambiar este número.'})));
+      adminNumero ? el('button',{type:'submit',class:'boton ancho',text:'Guardar WhatsApp'})
+        : el('p',{class:'nota',text:'Solo la administradora de GESTLOK puede cargar o cambiar este número. Pedile la habilitación.'})));
     // Canal de atención opcional por sucursal. Solicitud != conexión.
     const canalId=S.suc.id;
     const canalEstado=el('p',{class:'nota',role:'status','aria-live':'polite',text:'Consultando estado de vinculación…'});
@@ -1136,7 +1202,7 @@
     canalPedir.addEventListener('click',()=>canalAccion('solicitar'));
     canalCancelar.addEventListener('click',()=>canalAccion('cancelar'));
     if(DEMO){canalEstado.textContent='Demostración · no vinculado.';}
-    else void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
+    else if(!ADMIN_CONFIG) void rpc('panel_whatsapp_solicitud',{p_sucursal:canalId}).then(canalMostrar).catch(()=>{if(canalVigente())canalEstado.textContent='No pudimos consultar el estado. No se puede solicitar una conexión todavía.';});
     // Campañas únicamente con consentimiento del cliente. Avisos de estado siempre separados.
     const pushCampanas=el('section',{class:'bloque'},
       el('h3',{text:'Notificaciones a clientes'}),
@@ -1169,9 +1235,10 @@
       pushEstado,el('label',{class:'campo'},el('span',{text:'Mensaje promocional'}),textoPromo),
       enviarPromo,
       el('p',{class:'nota',text:'Máximo una campaña cada 24 horas. No se envía nada a clientes sin permiso explícito.'}));
-    const suscripcion = editable ? bloqueSuscripcion() : null;
-    const gerentes = editable ? bloqueGerentes() : null;
-    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, canalWhatsApp, pushCampanas].filter(Boolean));
+    const suscripcion = editable && !ADMIN_CONFIG ? bloqueSuscripcion() : null;
+    const gerentes = editable && !ADMIN_CONFIG ? bloqueGerentes() : null;
+    contenido.replaceChildren(...[suscripcion, form, gerentes, resenaForm, llevar, contactoWhatsApp, ADMIN_CONFIG?null:canalWhatsApp, ADMIN_CONFIG?null:pushCampanas].filter(Boolean));
+    if(ADMIN_CONFIG)return;
     try{
       const p=await rpc('panel_push_promociones',{p_sucursal:S.suc.id});
       if(S.pestana!=='ajustes')return;

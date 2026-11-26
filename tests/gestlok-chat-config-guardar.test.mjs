@@ -27,9 +27,9 @@ test('el panel comunica el error y valida límites antes de guardar', () => {
   assert.match(js, /r\.error\.code === '23514'/);
   assert.match(js, /costoEnvio >= 1000000/);
   assert.match(js, /pedidoMinimo >= 10000000/);
-  assert.match(js, /if \(!elegidos\.length\)/);
-  assert.match(js, /p_sucursal: S\.suc\.id, p_version: a\.version/);
-  assert.match(page, /panel\.js\?v=20261126wapiloto1/);
-  assert.match(central, /VERSION_PANEL='20261126wapiloto1'/);
-  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-badge-20261122/);
+  assert.match(js, /!pagosRetiro\.length\|\|!pagosEnvio\.length\|\|!elegidos\.length/);
+  assert.match(js, /p_sucursal: sucAjustes, p_version: a\.version/);
+  assert.match(page, /panel\.js\?v=20261126comercial1/);
+  assert.match(central, /VERSION_PANEL='20261126comercial1'/);
+  assert.match(runtime, /gestlok-chat-central\.js\?rev=chat-comercial-20261126/);
 });

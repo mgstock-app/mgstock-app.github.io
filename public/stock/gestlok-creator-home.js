@@ -270,6 +270,7 @@
     if(!premiumWATried&&!premiumWABusy)queueMicrotask(()=>premiumWARequest());
     const locales=premiumWhatsApp?.locales||[],numeros=premiumWhatsApp?.numeros||[];
     const options=locales.map(l=>'<option value="'+esc(premiumWAKey(l))+'"'+(premiumWALocal===premiumWAKey(l)?' selected':'')+'>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</option>').join('');
+    const configLocales=locales.filter(l=>l.sucursal_id).map(l=>'<li><b>'+esc(premiumWACompany(l)+' · '+l.nombre)+'</b> <a class="btn" href="/chat/panel/?configurar='+encodeURIComponent(l.sucursal_id)+'" target="_blank" rel="noopener">Configurar local</a></li>').join('');
     const active=numeros.filter(n=>n.habilitada&&n.local_existe).length;
     const statusNames={enlace_emitido:'Esperando autorización del comercio',enlace_vencido:'Enlace vencido',cuenta_autorizada:'Cuenta autorizada · falta comprobar número',numero_verificado:'Número comprobado anteriormente · automatización apagada',pausado:'Pausado'};
     const rows=numeros.map(n=>{
@@ -286,7 +287,8 @@
     }).join('');
     return '<section class="gl-admin-card gl-ch-chat-admin gl-wa-premium" aria-label="Habilitación de GESTLOK Chat Premium">'+
       '<header><h2>GESTLOK Chat Premium</h2><button type="button" class="btn" data-ch-wa-refresh'+(premiumWABusy?' disabled':'')+'>Actualizar</button></header>'+
-      '<p>Autorizá qué comercios y números de WhatsApp pueden usar Chat Premium según su suscripción. Podés habilitar varios números por local.</p>'+
+      '<p>Autorizá qué comercios y números de WhatsApp pueden usar Chat Premium según su suscripción. Podés habilitar varios números por local. Solo la administradora autoriza números; cada negocio configura sus propios datos.</p>'+
+      (configLocales?'<h3>Configuración de cada local</h3><ul>'+configLocales+'</ul>':'')+
       '<div class="gl-wa-notice"><strong>Conexión de WhatsApp: pendiente de vinculación</strong><p>El registro habilita el acceso comercial dentro de GESTLOK. No vincula el teléfono, no activa la IA, no envía mensajes ni genera cargos. Cada número deberá autorizar la vinculación oficial cuando GESTLOK esté habilitado como proveedor.</p></div>'+
       (premiumWAError?'<p role="alert" class="gl-wa-error">'+esc(premiumWAError)+'</p>':'')+
       (premiumWABusy?'<p role="status">Consultando o guardando…</p>':'')+
@@ -1277,7 +1279,7 @@
     else if (cur === 'usuarios') body = '<div class="gl-ch-stack">' + (parts.users || '') + '</div>';
     else if (cur === 'locales') body = premium?premiumLocales(p):'<div class="gl-ch-stack">' + (window.GestLokOwnerAreas?.companyFolders?.() || parts.locales || '') + '</div>';
     else if (cur === 'gestlok-chat') body = '<div class="gl-ch-stack">'+linksChatView()+chatAdminView()+'</div>';
-    else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+premiumWAView()+'</div>';
+    else if (cur === 'habilitacion') body = '<div class="gl-ch-stack">'+chatAdminView()+premiumWAView()+'</div>';
     else if (cur === 'hq') body = hqView();
     else if (cur === 'chat-prueba') body = chatShowroomView();
     else if (cur === 'resenas') body = '<div class="gl-ch-stack">' + (window.GestLokDemoMetrics?.view?.() || '') + '</div>';
@@ -1290,7 +1292,7 @@
       cur === 'hq' ? 'Tu oficina virtual · Áreas de trabajo y delegación.' :
       cur === 'chat-prueba' ? 'Dos perfiles conectados, con datos exclusivamente de demostración.' :
       cur === 'gestlok-chat' ? 'Accedé a producción, Prueba y Testing.' :
-      cur === 'habilitacion' ? 'Suscripciones y números de WhatsApp autorizados por local.' :
+      cur === 'habilitacion' ? 'Habilitación de GESTLOK Chat, números y configuración por local.' :
       cur === 'contacto' ? 'Mensajes del formulario de Contacto de gestlok.com.ar.' : 'Administración de GESTLOK';
     const initial = esc(String(api.S?.me?.email || 'A').trim().charAt(0).toUpperCase());
     return '<div class="gl-ch' + (premium ? ' gl-ch-premium' : '') + (navCollapsed ? ' gl-ch-collapsed' : '') + '">' +

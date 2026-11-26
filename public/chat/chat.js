@@ -2,7 +2,7 @@
  * Habla solo con la función segura «gestlok-chat». Nunca usa innerHTML con datos: todo va por textContent.
  * Modo demostración sin red: ?demo=1 (usa el mismo motor con una carta de ejemplo).
  */
-import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261124carta1';
+import {botonesBienvenida, carteleraDelDia, descuentoEfectivoAplica, describirLinea, detallesLinea, esCantidad, faltantes, pesos, promocionesVigentes, responder, soloEfectivo, textoEstadoPedido, totalCarrito, totalSinDescuento, unidades, urlResena, usaMenuInteractivo, validarLinea, valoresDisponibles, PAGOS} from './motor.js?v=20261126comercial1';
 
 import {cartaMarcaHabilitada, consultaCartaMarca, hojasCartaMarca} from './carta-marca.mjs?v=20261125mgprod1';
 const CFG = window.GESTLOK_CHAT_CONFIG || {};
@@ -272,12 +272,16 @@ function chips(botones) {
   bajar();
 }
 function accion(texto, fn) { lista.append(el('button', {type: 'button', class: 'accion', text: texto, onclick: fn})); bajar(); }
-function mensajeAsistente(m, {abrir = true} = {}) {
+function mensajeAsistente(m, {abrir = true, mostrarFoto = false} = {}) {
   burbuja('asistente', m.texto);
   if (m.tipo === 'carta') {
     // Venta sugerida: abre la carta directo en la categoría ofrecida (postres, bebidas…).
     if (m.categoria && S.catalogo.categorias.some(c => c.id === m.categoria)) S.categoria = m.categoria;
     const ver = () => cartaMarcaActiva() && !m.categoria && !S.pedido ? mostrarCategoriasMarca() : abrirCarta();
+    if(tieneCartaConfigurada()&&!m.categoria){
+      if(mostrarFoto){mostrarCartaConfigurada();accion('Hacer un pedido',()=>abrirCarta());chips(m.botones);return;}
+      accion('Ver carta del local',mostrarCartaConfigurada);
+    }
     accion('Ver la carta', ver); if (abrir && !(cartaMarcaActiva() && !m.categoria && !S.pedido)) ver();
   }
   else if (m.tipo === 'producto') {
@@ -344,7 +348,7 @@ async function enviar(entrada, textoVisible, {cancelacionConfirmada = false} = {
     }
     const consultaVisual = cartaMarcaActiva() && !S.pedido && !r.pedido && !entrada.agregar_varios &&
       (entrada.boton==='promociones'?'promos':!entrada.boton?consultaCartaMarca(entrada.texto):null);
-    for (const m of r.mensajes || []) mensajeAsistente(m,{abrir:!consultaVisual});
+    for (const m of r.mensajes || []) mensajeAsistente(m,{abrir:!consultaVisual,mostrarFoto:!entrada.boton&&!S.pedido&&/\b(carta|menu|menú|precios?)\b/i.test(entrada.texto||'')});
     if(consultaVisual) mostrarCategoriasMarca(consultaVisual);
     if (r.pedido) {
       if (entrada.datos && r.pedido.estado === 'pendiente') guardarUltimoPedido(carritoAntes);
@@ -370,7 +374,7 @@ function tocarBoton(b) {
   if (b.id === 'repetir') return repetirUltimoPedido();
   if (b.id === 'cancelar') return abrirConfirmacionCancelar();
   if (b.id === 'carta') return abrirCarta();
-  if (b.id === '__ver_menu') return cartaMarcaActiva() && !S.pedido ? mostrarCategoriasMarca() : abrirCarta({soloVer: true});
+  if (b.id === '__ver_menu') return tieneCartaConfigurada() ? mostrarCartaConfigurada() : cartaMarcaActiva() && !S.pedido ? mostrarCategoriasMarca() : abrirCarta({soloVer: true});
   if (b.id === 'promociones' && cartaMarcaActiva() && !S.pedido) return mostrarCategoriasMarca('promos');
   if (b.id === 'finalizar' && S.borrador.length) return abrirSeleccion();
   enviar({boton: b.id}, b.id === 'finalizar' ? 'Enviar pedido' : b.texto);
@@ -594,6 +598,19 @@ function mostrarImagenMarca(c) {
  bajar();
 }
 
+function mostrarCartaConfigurada() {
+  const s=S.sucursal||{};
+  const cuerpo=el('div',{class:'menu-interactivo'});
+  if(s.carta_texto)cuerpo.append(el('p',{text:s.carta_texto,style:'white-space:pre-wrap'}));
+  if(/^https:\/\//i.test(s.carta_imagen_url||'')){
+    const imagen=el('img',{src:s.carta_imagen_url,alt:'Carta del local',style:'width:100%;height:auto;border-radius:12px',loading:'lazy',referrerpolicy:'no-referrer'});
+    cuerpo.append(imagen);
+  }
+  cuerpo.append(el('p',{class:'mg-carta-nota',text:'Carta de referencia. Los precios del pedido se validan en el menú interactivo.'}),
+    el('button',{type:'button',class:'boton principal ancho',text:'Ver productos y precios',onclick:()=>abrirCarta({soloVer:true})}));
+  lista.append(cuerpo); bajar();
+}
+const tieneCartaConfigurada=()=>!!(S.sucursal?.carta_texto||S.sucursal?.carta_imagen_url);
 function abrirCarta({soloVer = false} = {}) {
   let mirando = soloVer;
   const cats = categoriasMenu();
