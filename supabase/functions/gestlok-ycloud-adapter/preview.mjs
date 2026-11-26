@@ -1,11 +1,11 @@
 // Preview only: reuse the real chat engine. No persistence, no network by default,
 // no provider sends, no order execution. Explicitly report unsupported web UI.
-import {responder,clasificarSoporte,consultaAjena,carteleraDelDia} from '../gestlok-chat/motor.js';
+import {responder,clasificarSoporte,consultaAjena,carteleraDelDia,validarLinea,valoresDisponibles,importeLinea} from '../gestlok-chat/motor.js';
 import {responderIA} from '../gestlok-chat/ia.js';
 const text=v=>String(v??'').trim();
 const available=p=>p?.activo!==false&&p?.disponible!==false;
 export function projectWhatsApp(turn,catalogo){
- const messages=[];const pending=new Set();const options=[];
+ const messages=[];const pending=new Set();const options=[];const selectors=[];
  const add=(id,label)=>{if(typeof id!=='string'||!id||options.some(x=>x.id===id)||options.length>=30)return;options.push({id,label:text(label).slice(0,80)});};
  for(const m of turn.mensajes||[]){
   if(m.tipo==='carta'){
@@ -13,7 +13,11 @@ export function projectWhatsApp(turn,catalogo){
    if(list.length){messages.push('Productos disponibles:');for(const p of list)add('elegir:'+p.id+':1',p.nombre+' · $ '+Number(p.precio).toLocaleString('es-AR'));}
    if(list.length>30)pending.add('paginacion_carta');
   }else if(m.tipo==='producto'){
-   pending.add('selector_producto'); // mandatory variants must not be inferred or skipped
+   pending.add('selector_producto');
+   for(const id of (m.productos||[]).slice(0,30)){
+    const p=(catalogo?.productos||[]).find(x=>x.id===id&&available(x));if(!p)continue;
+    selectors.push({id:p.id,label:p.nombre,quantity:Number.isInteger(m.cantidad)?m.cantidad:1,basePrice:Number(p.precio),groups:(p.opciones||[]).map(g=>({id:g.id,label:g.nombre,type:g.tipo,required:g.obligatorio===true,total:g.total,max:g.max,values:valoresDisponibles(catalogo,g).map(v=>({id:v.id,label:v.nombre,extra:Number(v.extra)||0}))}))});
+   }
   }else if(m.tipo==='datos'){
    pending.add('formulario_datos');
   }else if(m.tipo){
@@ -22,7 +26,7 @@ export function projectWhatsApp(turn,catalogo){
   for(const b of m.botones||[])add(b.id,b.texto);
  }
  if(turn.accion)pending.add('accion_'+turn.accion.tipo);
- return {messages,options:options.map((o,i)=>({...o,number:i+1})),pending:[...pending],sendAllowed:false};
+ return {messages,selectors,options:options.map((o,i)=>({...o,number:i+1})),pending:[...pending],sendAllowed:false};
 }
 export async function previewWhatsApp({sucursal,catalogo,privado={},estado,historial=[],entrada,config={},fetchImpl,ahora=new Date()}){
  const active=carteleraDelDia(sucursal,catalogo,ahora);
@@ -46,4 +50,29 @@ export function selectPreviewOption(projection,input){
  const s=text(input);if(!/^[1-9][0-9]?$/.test(s))return null;
  const option=projection?.options?.find(x=>x.number===Number(s));
  return option?{boton:option.id}:null;
+}
+
+ // A preview may build a cart entry only from a product explicitly offered in that turn.
+ // The live transport must persist the selector and bind it to its conversation before use.
+export function completePreviewProduct({projection,catalogo,selection,lotId}){
+ const fail=error=>({ok:false,error});
+ const offered=projection?.selectors?.find(x=>x.id===selection?.productId);
+ if(!offered)return fail('Producto no ofrecido en este turno.');
+ if(typeof lotId!=='string'||!/^[0-9a-f-]{36}$/i.test(lotId))return fail('Selección sin identificador.');
+ const p=(catalogo?.productos||[]).find(x=>x.id===offered.id&&available(x));
+ if(!p)return fail('Producto no disponible.');
+ const choices=selection.options??{};
+ if(!choices||typeof choices!=='object'||Array.isArray(choices))return fail('Opciones inválidas.');
+ for(const [id,value] of Object.entries(choices)){
+  const g=(p.opciones||[]).find(x=>x.id===id);
+  if(!g)return fail('Opción desconocida.');
+  if(g.tipo==='cantidad'){
+   if(!value||typeof value!=='object'||Array.isArray(value)||Object.values(value).some(n=>!Number.isInteger(n)||n<0||n>50))return fail('Cantidad de variedad inválida.');
+  }else if(!Array.isArray(value)||value.some(x=>typeof x!=='string'))return fail('Opciones inválidas.');
+  const ids=Array.isArray(value)?value:Object.keys(value).filter(x=>value[x]>0);
+  if(ids.some(id=>!valoresDisponibles(catalogo,g).some(v=>v.id===id)))return fail('Variedad no disponible.');
+ }
+ const line={producto_id:p.id,cantidad:selection.quantity,opciones:choices,nota:''};
+ const issue=validarLinea(catalogo,line);if(issue)return fail(issue);
+ return {ok:true,estimatedTotal:importeLinea(catalogo,line),entry:{agregar_varios:[line],lote_id:lotId}};
 }
