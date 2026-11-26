@@ -22,7 +22,7 @@ const MICROAPPS = [{
   enlaces: [['Chat de clientes · Munro', '/chat/?s=mi-gusto-munro'], ['Chat de clientes · Torcuato', '/chat/?s=mi-gusto-torcuato'],
     ['Panel del local (gerente y dueño)', '/chat/panel/']],
 }];
-if (nombre === 'prueba') MICROAPPS[0].enlaces.push(['Laboratorio seguro de WhatsApp · sin conexión real','/chat/prueba-whatsapp/']);
+if (nombre === 'prueba') MICROAPPS[0].enlaces.push(['Laboratorio seguro de WhatsApp · sin conexión real','/chat/prueba-whatsapp/'], ['Conector WhatsApp · ensayo privado en vivo (administradora)','/chat/prueba-whatsapp/conector.html']);
 const COMPARTIDAS = ['vendor', 'icons', 'img'];
 
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
