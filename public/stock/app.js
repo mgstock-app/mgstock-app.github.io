@@ -2491,6 +2491,65 @@ function stockLocalTurnoActualHistorial(){
     (expanded?'Ocultar cantidades':'Ver cantidades')+'</button>'+
     '<button type="button" class="btn sm" data-go="'+esc(h.id)+'">Abrir Stock Local</button></div></article>';
 }
+
+/* Mi Gusto: corregir una foto histórica sin tocar el stock actual ni crear otro cierre. */
+function stockLocalPuedeEditarCierre(c){
+  return canW() && S.loaded.h && S.loaded.c && S.me?.tenant_id===MI_GUSTO_TENANT &&
+    ['munro','torcuato'].includes(S.local) && c?.tipo==='fabrica' && c.turnoCerrado===true &&
+    c.hoja===miGustoStockLocal()?.id && Array.isArray(c.filas) && c.filas.length>0;
+}
+let stockLocalEdicionCierre=null;
+function stockLocalEditarCierre(id){
+  const c=S.conteos.find(x=>x.id===id);
+  if(!stockLocalPuedeEditarCierre(c) || !needWrite())return;
+  if(S.offline || navigator.onLine===false){toast('Necesitás conexión para modificar un turno cerrado.',true);return;}
+  stockLocalEdicionCierre={id,local:S.local,hoja:c.hoja,filas:JSON.parse(JSON.stringify(c.filas)),busy:false};
+  S.panel='stock-local-edit-closed';
+  const fields=c.filas.map((x,i)=>`<div class="fld" style="margin-bottom:12px"><b>${esc(x.nombre||'Producto')}</b><div style="display:flex;gap:8px"><label style="flex:1;min-width:0">Local<input data-stock-closed-local="${i}" inputmode="decimal" value="${esc(fmtIn(x.local))}" placeholder="Sin cargar" style="width:100%"></label><label style="flex:1;min-width:0">Ingreso<input data-stock-closed-ingreso="${i}" inputmode="decimal" value="${esc(fmtIn(x.fabrica))}" placeholder="Sin cargar" style="width:100%"></label></div></div>`).join('');
+  openPanel(`<div class="pn-h"><div><small>${esc(localNombre())} · ${esc(c.fechaOperativa||fechaCorta(c.fecha))}</small><h3>Modificar turno cerrado</h3></div><button class="ib" data-act="close" aria-label="Cerrar">${ic('x')}</button></div><div class="pn-b"><p class="lead">Corregí las cantidades de este turno. Los campos vacíos quedan sin cargar. No se modifica la planilla actual ni se crea otro turno.</p>${fields}</div><div class="pn-f"><button class="btn" data-act="close">Cancelar</button><button class="btn primary" data-act="stock-local-edit-closed-save" id="stock-local-edit-closed-save">Guardar cambios</button></div>`,'dlg');
+}
+async function stockLocalGuardarCierre(){
+  const e=stockLocalEdicionCierre;
+  if(!e || e.busy || S.panel!=='stock-local-edit-closed' || S.local!==e.local || !needWrite())return;
+  if(!stockLocalPuedeEditarCierre(S.conteos.find(x=>x.id===e.id)) || S.offline || navigator.onLine===false){toast('No se puede guardar sin conexión o permisos.',true);return;}
+  const filas=[];let cambiadas=0;
+  for(let i=0;i<e.filas.length;i++){
+    const x=e.filas[i], l=$('[data-stock-closed-local="'+i+'"]'), f=$('[data-stock-closed-ingreso="'+i+'"]');
+    if(!l||!f)return;
+    const local=numQ(l.value), fabrica=numQ(f.value);
+    if([[l,local],[f,fabrica]].some(([el,n])=>el.value.trim()!=='' && (n==null || !Number.isFinite(n) || n<0 || !isQuarter(n)))){
+      toast('Ingresá cantidades válidas en unidades, mitades o cuartos.',true);return;
+    }
+    const cambio=local!==num(x.local)||fabrica!==num(x.fabrica);
+    if(cambio)cambiadas++;
+    filas.push(cambio?{...x,local,fabrica,total:round((local??0)+(fabrica??0)),sin:local!=null?local===0:(num(x.local)==null&&!!x.sin),cambio:true}:x);
+  }
+  if(!cambiadas){closePanel();toast('No hay cambios para guardar.');return;}
+  const ref=C('conteos').doc(e.id), btn=$('#stock-local-edit-closed-save');
+  e.busy=true;if(btn)btn.disabled=true;
+  try{
+    const snap=await ref.get(), actual=snap.data();
+    // Evitar sobrescribir una corrección recibida desde otro equipo durante la edición.
+    if(!snap.exists || !actual || actual.hoja!==e.hoja || actual.turnoCerrado!==true ||
+       JSON.stringify(actual.filas)!==JSON.stringify(e.filas)){
+      toast('El turno cambió en otro equipo. Cerrá y volvé a abrir para editar.',true);return;
+    }
+    if(S.local!==e.local || S.panel!=='stock-local-edit-closed' || stockLocalEdicionCierre!==e ||
+       !needWrite() || S.offline || navigator.onLine===false)return;
+    const patch={filas,cambiadas:filas.filter(x=>x.cambio).length,total:filas.length,
+      sinStock:filas.filter(x=>x.sin).map(x=>x.nombre),modificado:true,
+      modificadoEn:Date.now(),modificadoPor:S.uid||null};
+    await ref.update(patch);
+    if(S.local===e.local){
+      const ix=S.conteos.findIndex(x=>x.id===e.id);
+      if(ix>=0)S.conteos[ix]={...S.conteos[ix],...patch};
+      if(stockLocalEdicionCierre===e && S.panel==='stock-local-edit-closed')closePanel();
+      render();
+    }
+    toast('Guardado exitoso · Turno corregido');
+  }catch(err){fail(err);}finally{e.busy=false;if(btn)btn.disabled=false;}
+}
+
 function histCardF(c, q){
   const fl = c.filas || [], open = !!S.histOpen[c.id] || (!!q && fl.some(x => norm(x.nombre).includes(q)));
   const fo = /^\d{4}-\d{2}-\d{2}$/.test(String(c.fechaOperativa || '')) ? new Date(c.fechaOperativa + 'T12:00:00') : null;
@@ -2505,7 +2564,7 @@ function histCardF(c, q){
       <div class="hc-m"><b>${esc(hojaLabel(c, 'Conteo Fábrica'))}${c.cierreAutomatico ? ' · Turno cerrado automáticamente a las 00:50' : `${c.turnoCerrado ? ' · Turno cerrado' : ' · Guardado'} de las ${esc(horaCorta(c.fecha))}`}</b><small>${esc(whoName(c))} · ${plural(fl.length, 'fila', 'filas')}${c.cambiadas ? ` · ${c.cambiadas} cambiadas` : ''}</small></div>
       <div class="hc-k"><span class="pill ok">${ing} ${mg ? 'con ingreso' : 'ingresan mañana'}</span>${sinN ? `<span class="pill crit">${sinN} sin stock</span>` : ''}</div></div>${sinLista}
     ${open ? `<div class="hc-t"><div class="mv hd mvf"><div>Producto</div><span>Local</span><span>${mg ? 'Ingreso' : 'Fábrica'}</span><span>Total</span></div>${shown.map(x => `<div class="mv mvf"><div><b style="${x.sin ? 'color:var(--crit)' : ''}">${esc(x.nombre)}</b>${mg && x.sin ? '<small style="color:var(--crit);font-weight:700">Sin stock</small>' : ''}</div><span>${fmt(x.local ?? 0)}</span><span>${fmt(x.fabrica ?? 0)}</span><span><b>${fmt(x.total)}</b></span></div>`).join('')}</div>` : ''}
-    <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar planilla' : 'Ver planilla'}</button></div>
+    <div class="hc-a"><button class="btn sm" data-act="hist-toggle" data-id="${esc(c.id)}">${open ? 'Ocultar planilla' : 'Ver planilla'}</button>${stockLocalPuedeEditarCierre(c) ? `<button class="btn sm" data-act="stock-local-edit-closed" data-id="${esc(c.id)}">${ic('edit')}Modificar turno</button>` : ''}${c.modificado && c.turnoCerrado ? '<span class="tagmod">Corregido</span>' : ''}</div>
   </article>`;
 }
 function histCard(c, q){
@@ -4117,6 +4176,8 @@ document.addEventListener('click', e => {
     case 'copiar-pedido': copyText(pedidoTexto(), 'Pedido copiado. Pegalo en WhatsApp o en el mail al proveedor.'); break;
     case 'copy': copyText(t.dataset.text, 'Copiado'); break;
     case 'hist-toggle': S.histOpen[id] = !S.histOpen[id]; render(); break;
+    case 'stock-local-edit-closed': stockLocalEditarCierre(id); break;
+    case 'stock-local-edit-closed-save': void stockLocalGuardarCierre(); break;
     case 'hist-more': S.histN += 30; render(); break;
     case 'corregir': corregir(id); break;
     case 'corr-ok': corregir(S._corr, true); break;
