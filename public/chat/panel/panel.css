@@ -261,3 +261,18 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .gerentes .codigo-local b{font:700 1.25rem/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;padding:6px 10px;border-radius:10px;background:#eef6f5}
 .gerentes .fila-gerente{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e3e8ee}
 .gerentes .fila-gerente span{flex:1 1 200px;overflow-wrap:anywhere}
+
+/* Bandeja de atención manual, separada de pedidos. */
+.wa-bandeja{display:grid;gap:12px}
+.wa-bandeja-lista{display:grid;gap:12px}
+.wa-bandeja-card{border:1px solid var(--linea,#dbe2ea);border-radius:14px;padding:14px;display:grid;gap:10px}
+.wa-bandeja-card h3,.wa-bandeja-card p{margin:0;overflow-wrap:anywhere}
+.wa-bubble{border-radius:12px;max-width:90%;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.wa-bubble.in{background:#eef2f8;color:#13294b;justify-self:start}
+.wa-bubble.out{background:#def7e8;color:#145332;justify-self:end}
+.wa-bubble small{display:block;font-weight:700;margin-bottom:5px}
+.wa-bandeja-card textarea{box-sizing:border-box;width:100%;font-size:16px;min-height:80px;padding:10px}
+.excluidos-panel{display:grid;gap:12px}
+.excluidos-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--linea,#dbe2ea);padding:12px 0}
+.excluidos-fila div{display:grid;gap:4px;min-width:0}
+.excluidos-fila span{overflow-wrap:anywhere}
