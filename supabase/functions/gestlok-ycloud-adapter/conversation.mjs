@@ -53,7 +53,10 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
   st.engine=r.estado??st.engine;
   const p=r.projection;
   if(p.pending.includes('derivacion_humana')||p.pending.some(x=>x==='accion_cancelar'||x==='accion_estado'||x==='accion_derivar')){
-   st.stage='handoff';return show(['Consulta para atención del gerente. En esta simulación no se ha enviado al local.'],[]);
+   st.stage='handoff';
+   const detail=entrada.boton?(st.menu.find(o=>o.id===entrada.boton)?.label||entrada.boton):input;
+   const response=show(['Consulta para atención del gerente. En esta simulación no se ha enviado al local. Escriba MENU para volver a la carta.'],[]);
+   return {...response,action:{type:'simulated_handoff',idempotencyKey:event.id,detail,reason:clasificarSoporte(entrada)||'consulta'}};
   }
   if(p.pending.includes('formulario_datos')){st.stage='checkout';st.data={telefono:identity.phone};return checkout();}
   if(p.selectors.length){
@@ -116,8 +119,18 @@ export async function conversationPreview({identity,sucursal,catalogo,privado={}
    'Medio de pago: '+(PAGOS[st.data.medio_pago]||st.data.medio_pago),...(st.data.efectivo_abona?['Abona con: '+pesos(Number(st.data.efectivo_abona))]:[]),r.message],
   [choice('confirm','Confirmar solicitud'),choice('edit_data','Modificar datos'),choice('back','Volver al carrito')]);
  }
- if(st.stage==='submitted')return show(['La solicitud de prueba ya fue registrada en esta conversación. No se creó un pedido real.'],[]);
- if(st.stage==='handoff')return show(['La consulta requiere atención del gerente. No se ha enviado al local en esta simulación.'],[]);
+ // A completed request remains immutable. Only an explicit new-order command
+ // resets the local draft; the persisted event history is never reset.
+ if(st.stage==='submitted'){
+  if(word==='nuevo pedido'||word==='hacer otro pedido'){
+   const seen=st.seen;
+   for(const k of Object.keys(st))delete st[k];
+   Object.assign(st,{scope,engine:estadoInicial(),stage:'menu',seen,menu:[],page:0});
+   return run({inicio:true});
+  }
+  return show(['La solicitud de prueba ya fue registrada. No se creó un pedido real. Para empezar otro, escriba NUEVO PEDIDO.'],[]);
+ }
+ if(st.stage==='handoff'&&word!=='menu'&&word!=='volver al menu')return show(['La consulta requiere atención del gerente. No se ha enviado al local en esta simulación. Escriba MENU para volver a la carta.'],[]);
  if(word==='hablar con el gerente'||word==='ayuda con mi pedido'||clasificarSoporte({texto:input})&&st.stage==='menu')return run({texto:input});
  if(word==='menu'||word==='volver al menu'){
   delete st.product;delete st.data;delete st.review;delete st.engine.promo_reemplazo;return run({boton:'carta'});

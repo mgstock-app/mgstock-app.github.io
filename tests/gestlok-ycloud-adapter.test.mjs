@@ -129,7 +129,7 @@ test('ensayo de webhook YCloud, dos sucursales, duplicados concurrentes y bandej
 test('consulta habitual de demora no deriva automáticamente a gerente',async()=>{
  const u=client({sucursal:{...s2,demora_envio:'30 minutos'}});
  const r=await u.say('¿Cuánto tarda?');assert.equal(r.session.stage,'menu');assert.match(r.messages.join('\n'),/30 minutos/);
- const next=await u.pick('reclamo_demora');assert.equal(next.session.stage,'handoff');assert.equal(next.action,undefined);
+ const next=await u.pick('reclamo_demora');assert.equal(next.session.stage,'handoff');assert.equal(next.action.type,'simulated_handoff');assert.equal(next.action.reason,'demora');assert.notEqual(next.action.detail,'1');
 });
 test('calcula envío y descuento de efectivo antes de aceptar el monto entregado',()=>{
  const estado={carrito:[{producto_id:'p1',cantidad:2,opciones:{}}]};
@@ -205,4 +205,61 @@ test('proyección YCloud de respuestas por WhatsApp sin envíos ni plantillas pa
  const p=projectYCloudText(base);assert.equal(p.dispatchAllowed,false);assert.equal(p.payloads.length,1);assert.equal(p.payloads[0].type,'text');assert.match(p.payloads[0].text.body,/Pack ficticio/);
  assert.equal(projectYCloudText({...base,lastInboundAt:'2026-11-24T01:00:00Z'}).reason,'service_window_unverified');
  assert.equal(projectYCloudText({...base,from:ident.phone}).reason,'invalid_numbers');
+});
+
+test('nuevo pedido explícito no reutiliza datos personales o carrito de la solicitud anterior ni admite duplicados',async()=>{
+ const u=client();await fillProduct(u);await fillCheckout(u,'retiro');
+ const old=await u.pick('confirm');
+ assert.equal(old.action.type,'simulated_order');
+ assert.equal((await u.say('hola')).session.stage,'submitted');
+ const started=await u.say('Nuevo pedido');
+ assert.equal(started.session.stage,'menu');
+ assert.deepEqual(started.session.engine.carrito,[]);
+ assert.equal(started.session.data,undefined);
+ assert.equal(started.session.review,undefined);
+ assert.equal(started.session.product,undefined);
+ assert.equal(started.action,undefined);
+ const repeat=await u.say('1',{event:{id:old.action.idempotencyKey,text:'1'}});
+ assert.equal(repeat.duplicate,true);assert.equal(repeat.action,undefined);
+});
+
+test('dos locales: gerente ficticio revisa una sola vez, reclamo queda aislado y no hay envío',async()=>{
+ const a={empresa:'empresa-a',sucursal:'munro-ficticio',to:'+5491100000001',waba:'ficticia',senders:[ident.phone],config:s2,catalogo};
+ const b={...a,sucursal:'torcuato-ficticio',to:'+5491100000002'};
+ const foreign={...a,empresa:'empresa-b'};
+ const pilot=createOfflinePilot([a,b]);let seq=0,last;
+ async function say(body,route=a){
+  const id=String(++seq);
+  last=await pilot.receive({id:'e'+id,type:'whatsapp.inbound_message.received',apiVersion:'v2',whatsappInboundMessage:{id:'m'+id,wabaId:route.waba,from:ident.phone,to:route.to,type:'text',text:{body}}});
+  assert.equal(last.sendAllowed,false);assert.equal(last.accepted,true);return last;
+ }
+ async function pick(id){const o=last.options.find(x=>x.id===id);assert.ok(o,id);return say(String(o.number));}
+ await say('Hola');await pick('carta');await pick('elegir:p1:1');await say('2');await pick('add');await pick('finalizar');await pick('retiro');await say('Persona ficticia');await pick('debito');await pick('confirm');
+ const p=pilot.listPending(a)[0];assert.equal(p.status,'pendiente');
+ assert.equal(pilot.reviewPending({...b,id:p.id,decision:'confirmado'}).ok,false);
+ assert.equal(pilot.reviewPending({...foreign,id:p.id,decision:'confirmado'}).ok,false);
+ assert.equal(pilot.reviewPending({...a,id:p.id,decision:'enviado'}).ok,false);
+ assert.deepEqual(pilot.reviewPending({...a,id:p.id,decision:'confirmado'}),{ok:true,status:'confirmado',simulated:true,sendAllowed:false});
+ assert.equal(pilot.reviewPending({...a,id:p.id,decision:'rechazado'}).reason,'already_reviewed');
+ assert.equal(pilot.listPending(a)[0].status,'confirmado');
+ await say('Nuevo pedido');assert.equal(pilot.listPending(a).length,1);
+ const r=await say('Me cobraron mal',b);assert.equal(r.stage,'handoff');
+ assert.equal(pilot.listHandoffs(a).length,0);assert.equal(pilot.listHandoffs(foreign).length,0);
+ assert.equal(pilot.listHandoffs(b)[0].detail,'Me cobraron mal');
+ await say('Otro mensaje',b);assert.equal(pilot.listHandoffs(b).length,1);
+ assert.equal((await say('MENU',b)).stage,'menu');
+});
+
+test('coste cero: la configuración IA por sí sola no ejecuta llamadas externas',async()=>{
+ const oldFetch=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;throw Error('Red prohibida');};
+ try{
+  const u=client({privado:{ia_activa:true}});
+  await u.say('Hola');
+  const r=await u.say('zzz qqq xxx');
+  assert.equal(r.session.stage,'handoff');
+  assert.equal(r.action.type,'simulated_handoff');
+  assert.equal(r.sendAllowed,false);
+  assert.equal(calls,0);
+ }finally{globalThis.fetch=oldFetch;}
 });

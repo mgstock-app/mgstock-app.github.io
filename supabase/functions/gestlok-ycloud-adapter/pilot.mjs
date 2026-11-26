@@ -11,7 +11,7 @@ export function createOfflinePilot(routes){
   if(!id(r.waba)||!e164.test(r.to)||!id(r.empresa)||!id(r.sucursal)||!Array.isArray(r.senders)||!r.senders.length||r.senders.some(p=>!e164.test(p)||p===r.to))throw Error('Ruta ficticia inválida');
   const k=JSON.stringify([r.waba,r.to]);if(uniq.has(k))throw Error('Ruta ambigua');uniq.add(k);
  }
- const sessions=new Map(),seen=new Set(),pending=new Map();
+ const sessions=new Map(),seen=new Set(),pending=new Map(),handoffs=new Map();
  let preceding=Promise.resolve();
  function receive(payload,now=new Date()){
   // Serialize simulated turns even when multiple deliveries arrive simultaneously.
@@ -36,6 +36,9 @@ export function createOfflinePilot(routes){
    const requestId=messageKey;
    pending.set(requestId,{id:requestId,empresa:route.empresa,sucursal:route.sucursal,status:'pendiente',pedido:result.action.pedido});
   }
+  if(result.action?.type==='simulated_handoff'){
+   handoffs.set(messageKey,{id:messageKey,empresa:route.empresa,sucursal:route.sucursal,status:'pendiente',reason:result.action.reason,detail:result.action.detail});
+  }
   return {accepted:true,messages:result.messages,options:result.options,stage:result.session.stage,sendAllowed:false};
  }
  // Manager review demonstration only: no live order approval or permission system.
@@ -43,5 +46,18 @@ export function createOfflinePilot(routes){
  function listPending({empresa,sucursal}){
   return structuredClone([...pending.values()].filter(x=>x.empresa===empresa&&x.sucursal===sucursal));
  }
- return {receive,listPending};
+ // Fictional operator actions only. These methods are NOT authentication and
+ // must never be exposed as endpoints or used against real customer records.
+ function listHandoffs({empresa,sucursal}){
+  return structuredClone([...handoffs.values()].filter(x=>x.empresa===empresa&&x.sucursal===sucursal));
+ }
+ function reviewPending({empresa,sucursal,id,decision}){
+  if(!['confirmado','rechazado'].includes(decision))return {ok:false,reason:'invalid_decision',sendAllowed:false};
+  const record=pending.get(id);
+  if(!record||record.empresa!==empresa||record.sucursal!==sucursal)return {ok:false,reason:'not_found',sendAllowed:false};
+  if(record.status!=='pendiente')return {ok:false,reason:'already_reviewed',sendAllowed:false};
+  record.status=decision;
+  return {ok:true,status:decision,simulated:true,sendAllowed:false};
+ }
+ return {receive,listPending,listHandoffs,reviewPending};
 }
