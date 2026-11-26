@@ -21,7 +21,7 @@ Deno.serve(async req=>{
  const ep=await res.json();
  const url="https://irqeitzbfyerxcrogkyh.supabase.co/functions/v1/gestlok-ycloud-webhook";
  const secret=env("YCLOUD_WEBHOOK_SECRET");
- const flags={endpoint_active:ep.status==="active",url_correct:ep.url===url,inbound_event:Array.isArray(ep.events)&&ep.events.includes("whatsapp.inbound_message.received"),signing_secret_matches:!!secret&&ep.secret===secret,pilot_enabled:env("YCLOUD_PILOT_ENABLED")==="true",waba_configured:env("YCLOUD_PILOT_WABA")==="4470112546605042",destination_configured:env("YCLOUD_PILOT_NUMBER")==="+5491176617182",test_sender_configured:/^\\+[1-9]\\d{7,14}$/.test(env("YCLOUD_TEST_SENDER"))&&env("YCLOUD_TEST_SENDER")!==env("YCLOUD_PILOT_NUMBER")};
+ const flags={endpoint_active:ep.status==="active",url_correct:ep.url===url,inbound_event:Array.isArray(ep.enabledEvents)&&ep.enabledEvents.includes("whatsapp.inbound_message.received"),signing_secret_matches:!!secret&&ep.secret===secret,pilot_enabled:env("YCLOUD_PILOT_ENABLED")==="true",waba_configured:env("YCLOUD_PILOT_WABA")==="4470112546605042",destination_configured:env("YCLOUD_PILOT_NUMBER")==="+5491176617182",test_sender_configured:/^\+[1-9]\d{7,14}$/.test(env("YCLOUD_TEST_SENDER"))&&env("YCLOUD_TEST_SENDER")!==env("YCLOUD_PILOT_NUMBER")};
  return reply({ok:Object.values(flags).every(Boolean),provider_status:res.status,...flags});
  }catch{return reply({ok:false,reason:"provider_unreachable"},502);}
 });

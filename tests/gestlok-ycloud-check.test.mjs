@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+const src=readFileSync(new URL('../supabase/functions/gestlok-ycloud-check/index.ts',import.meta.url),'utf8');
+test('YCloud utiliza enabledEvents y valida E.164 sin escapes duplicados',()=>{assert.ok(src.includes('Array.isArray(ep.enabledEvents)&&ep.enabledEvents.includes("whatsapp.inbound_message.received")'));const re=src.match(/test_sender_configured:(\/[^/]+\/)/)[1];const pattern=new RegExp(re.slice(1,-1));assert.equal(pattern.test('+5491100000000'),true);assert.equal(pattern.test('5491100000000'),false);});
