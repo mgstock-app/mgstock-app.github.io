@@ -100,3 +100,51 @@ test('puente de ensayo firmado: ruta exacta, un remitente, exclusión, interacci
  assert.equal((await request(make(2,{type:'interactive',interactive:{type:'list_reply',list_reply:{id}}}))).status,'duplicate');
  assert.equal(commits,2);
 });
+
+import {visualMenuFor,visualIntent} from '../public/chat/whatsapp-bot/visual-menu.mjs';
+const visualOrigin='https://gestlok-prueba.vercel.app';
+const visualOpts={visualOrigin,visualDemonstration:true};
+test('menú y carta son consultas; elegir una categoría envía una foto y botones en un único mensaje',async()=>{
+ for(const [local,query] of [['munro','Hola, quisiera ver el menú'],['torcuato','Carta']]){
+  const u=client(local,visualOpts);const start=await u.say(query);
+  assert.equal(start.payloads.length,1);assert.ok(!start.payloads[0].interactive.header);
+  assert.equal(start.choices.filter(c=>c.id.startsWith('visual:sheet:')).length,5);
+  for(const id of ['empanadas-sabores','empanadas-promos','almuerzos','pizzas-family','pizzas-indi-promos']){
+   const r=await u.pick('visual:sheet:'+id);assert.equal(r.payloads.length,1);
+   assert.equal(r.payloads[0].interactive.type,'button');assert.equal(r.payloads[0].interactive.header.type,'image');
+   assert.equal(r.payloads[0].interactive.header.image.link,visualOrigin+'/chat/whatsapp-bot/cartas/'+id+'.jpg');
+   assert.ok(r.choices.some(c=>c.id==='visual:buy'));assert.equal(r.action,undefined);assert.equal(r.session.engine.carrito.length,0);
+   const dup=await u.input({text:'menu'},{input:{id:r.session.seen.at(-1),text:'menu'}});assert.equal(dup.duplicate,true);
+   // A duplicate carries no new choices; recover the last valid selection state.
+   await u.say('carta');
+  }
+ }
+});
+test('promociones muestra sus tres categorías, permite empezar el pedido sin gerente',async()=>{
+ const u=client('munro',visualOpts);await u.say('Hola');await u.pick('promociones');
+ assert.equal(u.r.payloads[0].interactive.type,'button');assert.equal(u.r.choices.length,3);
+ await u.pick('visual:sheet:empanadas-promos');assert.ok(u.r.payloads[0].interactive.header.image.link.endsWith('empanadas-promos.jpg'));
+ await u.pick('visual:order_promos');assert.ok(u.r.choices.some(c=>c.id==='elegir:pack:1'));
+ await u.pick('elegir:pack:1');assert.equal(u.r.session.stage,'quantity');assert.equal(u.r.action,undefined);
+});
+test('solo Mi Gusto recibe las fotos: flag de marca y ruta de local, nunca por texto o nombre comercial',async()=>{
+ const f=fixture();
+ const other={...f,identity:{...f.identity,empresa:'otra-empresa',sucursal:'otra-sucursal'},sucursal:{...f.sucursal,nombre:'Mi Gusto',slug:'otra-sucursal',empresa:'Mi Gusto',carta_visual_marca:null}};
+ const u=client('munro',{...other,...visualOpts});await u.say('Hola');assert.ok(!u.r.choices.some(c=>c.id==='visual:menu'));
+ const r=await u.say('menu');assert.ok(!r.payloads.some(p=>p.interactive?.header));assert.ok(r.choices.length);
+ assert.equal(visualMenuFor({...other,origin:visualOrigin,demonstration:true}),null);
+ assert.equal(visualMenuFor({...f,origin:'https://otro-sitio.invalid',demonstration:true}),null);
+ assert.equal(visualMenuFor({...f,sucursal:{...f.sucursal,slug:'mi-gusto-munro'},origin:visualOrigin}),null);
+ const real={...f,sucursal:{...f.sucursal,slug:'mi-gusto-torcuato',carta_visual_marca:'mi-gusto'}};
+ assert.ok(visualMenuFor({...real,origin:visualOrigin}));
+ assert.equal(visualIntent('quiero 6 empanadas de la promo'),null);
+ assert.equal(visualIntent('tengo un reclamo por la promoción'),null);
+});
+test('protege la selección visual en curso, las exclusiones y el aislamiento del local',async()=>{
+ const u=client('munro',visualOpts),v=client('torcuato',visualOpts);await u.say('carta');await v.say('carta');
+ const key=u.r.choices[0].token;
+ const denied=await v.input({clickId:key});assert.equal(denied.reason,'stale');assert.ok(!denied.payloads.some(p=>p.interactive?.header));
+ const excluded=await u.input({clickId:key},{excluded:true});assert.equal(excluded.reason,'excluded');assert.equal(excluded.payloads.length,0);
+ await u.say('promociones');await u.pick('visual:sheet:empanadas-promos');await u.pick('visual:order_promos');await u.pick('elegir:pack:1');await u.pick('qty:1');
+ assert.equal(u.r.session.stage,'flavor');const action=await u.say('promociones');assert.equal(action.session.stage,'flavor');assert.ok(!action.payloads.some(p=>p.interactive?.header));
+});
